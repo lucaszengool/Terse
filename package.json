@@ -1,0 +1,64 @@
+{
+  "name": "terse",
+  "version": "1.0.0",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --mac",
+    "build:dir": "electron-builder --mac --dir"
+  },
+  "keywords": [
+    "prompt",
+    "llm",
+    "token",
+    "optimizer"
+  ],
+  "author": "Terse",
+  "license": "MIT",
+  "description": "Floating prompt monitor & token optimizer for LLMs",
+  "build": {
+    "appId": "com.terse.app",
+    "productName": "Terse",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": ["dmg"],
+      "hardenedRuntime": false,
+      "entitlements": null,
+      "entitlementsInherit": null
+    },
+    "dmg": {
+      "title": "Terse",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asar": false
+  },
+  "devDependencies": {
+    "electron": "^40.8.0",
+    "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "clipboardy": "^5.3.1",
+    "compromise": "^14.15.0",
+    "dictionary-de": "^3.0.0",
+    "dictionary-en": "^4.0.0",
+    "dictionary-es": "^4.0.0",
+    "dictionary-fr": "^3.0.0",
+    "dictionary-it": "^2.0.0",
+    "dictionary-pt": "^4.0.0",
+    "dictionary-ru": "^3.0.0",
+    "franc-min": "^6.2.0",
+    "node-global-key-listener": "^0.3.0",
+    "nspell": "^2.1.5",
+    "stopword": "^3.1.5"
+  }
+}

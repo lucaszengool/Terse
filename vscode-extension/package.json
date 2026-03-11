@@ -1,0 +1,19 @@
+{
+  "name": "terse-bridge",
+  "displayName": "Terse Bridge",
+  "description": "Bridges VS Code editor content to the Terse prompt optimizer",
+  "version": "0.1.0",
+  "publisher": "terse",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "terse.status",
+        "title": "Terse: Show Bridge Status"
+      }
+    ]
+  }
+}

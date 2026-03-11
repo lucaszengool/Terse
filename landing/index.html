@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terse — Intelligent Token Optimizer for LLMs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--ac3:#a7f3d0;
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;
+      font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .mono{font-family:'JetBrains Mono','SF Mono',Menlo,monospace}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    /* NAV */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 40px;display:flex;align-items:center;justify-content:space-between;
+      background:hsla(250,24%,5%,0.7);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--bd);transition:all .3s}
+    nav.scrolled{background:hsla(250,24%,5%,0.95)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
+    .logo-icon{width:30px;height:30px;background:var(--acd);border:1px solid var(--acm);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--ac);font-weight:800;font-size:14px}
+    .nav-links{display:flex;gap:28px}
+    .nav-links a{color:var(--t3);font-size:14px;font-weight:500;transition:color .2s}
+    .nav-links a:hover{color:var(--t1)}
+    .nav-cta{padding:8px 20px;background:var(--t1);color:var(--bg0);border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+
+    /* HERO */
+    .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:130px 40px 60px;position:relative;overflow:hidden}
+    .hero-glow{position:absolute;top:-250px;left:50%;transform:translateX(-50%);width:900px;height:900px;background:radial-gradient(ellipse,rgba(110,231,183,0.07) 0%,transparent 65%);pointer-events:none}
+    .hero h1{font-size:clamp(50px,9vw,96px);font-weight:900;letter-spacing:-4px;line-height:1.0;margin-bottom:20px;position:relative;z-index:1}
+    .hero .sub{font-size:19px;color:var(--t2);max-width:580px;margin:0 auto 36px;line-height:1.7;position:relative;z-index:1}
+    .hero-actions{display:flex;gap:12px;position:relative;z-index:1;margin-bottom:56px}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px);box-shadow:0 8px 30px hsla(0,0%,100%,0.08)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-ghost:hover{background:var(--sf);border-color:var(--bdl)}
+
+    /* HERO SCENES */
+    .hero-stage{position:relative;z-index:1;width:100%;max-width:780px;height:340px}
+    .scene{position:absolute;top:0;left:0;width:100%;opacity:0;transition:opacity .6s ease;pointer-events:none}
+    .scene.active{opacity:1;pointer-events:auto;position:relative}
+    .scene-indicators{display:flex;gap:8px;justify-content:center;margin-top:20px;position:relative;z-index:1}
+    .scene-dot{width:32px;height:4px;border-radius:2px;background:var(--sf);cursor:pointer;transition:all .3s;overflow:hidden;position:relative}
+    .scene-dot.active{background:var(--bd)}
+    .scene-dot .fill{position:absolute;top:0;left:0;height:100%;width:0;background:var(--ac);border-radius:2px;transition:width linear}
+    .scene-dot.active .fill{width:100%}
+
+    /* SHARED WINDOW */
+    .win{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 40px 100px hsla(250,50%,5%,0.6)}
+    .win-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .win-title{margin-left:8px;font-size:11px;color:var(--t3)}
+    .win-badge{margin-left:auto;padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+
+    /* Scene 1: Browser ChatGPT */
+    .chatgpt-body{padding:16px;display:flex;flex-direction:column;gap:10px;height:280px;justify-content:flex-end;overflow:hidden}
+    .chatgpt-input{display:flex;align-items:flex-end;gap:8px;padding:10px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:10px}
+    .chatgpt-input-text{flex:1;font-size:13px;color:var(--t2);min-height:18px;line-height:1.5}
+    .chatgpt-send{width:28px;height:28px;border-radius:6px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .terse-popup{margin:0 -16px;margin-top:-6px;padding:8px 16px;background:hsla(0,0%,100%,0.02);border-top:1px solid var(--bd);display:flex;align-items:center;gap:10px;opacity:0;transition:opacity .4s}
+    .terse-popup.show{opacity:1}
+    .terse-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0}
+    .terse-label{font-size:10px;color:var(--t3);flex:1}
+    .terse-savings{font-size:12px;font-weight:800;color:var(--ac)}
+
+    /* Scene 2: VS Code */
+    .vscode-body{display:grid;grid-template-columns:200px 1fr;height:280px;overflow:hidden}
+    .vscode-sidebar{background:hsla(0,0%,100%,0.015);border-right:1px solid var(--bd);padding:10px;font-size:11px}
+    .vscode-file{padding:4px 8px;border-radius:4px;color:var(--t3);margin-bottom:2px}
+    .vscode-file.active{background:var(--sf);color:var(--t1)}
+    .vscode-editor{padding:12px;position:relative}
+    .vscode-chat{position:absolute;bottom:0;right:0;width:100%;padding:10px;border-top:1px solid var(--bd);background:var(--bg2)}
+    .vscode-chat-label{font-size:9px;color:var(--t3);margin-bottom:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+    .vscode-chat-input{font-size:12px;color:var(--t2);min-height:16px}
+
+    /* Scene 3: Agent */
+    .agent-body{padding:14px;height:280px;overflow:hidden}
+    .term-line{font-size:12px;line-height:1.8;color:var(--t3);opacity:0;transition:opacity .3s}
+    .term-line.show{opacity:1}
+    .term-line.cmd{color:var(--t1)}
+    .term-line.out{color:var(--t3)}
+    .term-line.prompt{color:var(--t2)}
+    .term-line.green{color:var(--ac)}
+    .agent-banner-anim{margin:8px 0;padding:8px 12px;background:var(--acd);border:1px solid var(--acm);border-radius:6px;display:flex;align-items:center;gap:8px;
+      opacity:0;transition:opacity .4s}
+    .agent-banner-anim.show{opacity:1}
+    .agent-mini-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;opacity:0;transition:opacity .4s}
+    .agent-mini-stats.show{opacity:1}
+    .ams{text-align:center;padding:6px;background:var(--sf);border-radius:5px;border:1px solid var(--bd)}
+    .ams-v{font-size:14px;font-weight:800;display:block}
+    .ams-l{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+
+    /* Scene 0: OpenClaw */
+    .openclaw-body{padding:0;display:flex;flex-direction:column;height:280px;overflow:hidden}
+    .oc-toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.015)}
+    .oc-model{font-size:10px;font-weight:700;color:var(--t2);padding:3px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:4px}
+    .oc-status{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:9px;color:var(--t3)}
+    .oc-status-dot{width:5px;height:5px;border-radius:50%;background:var(--ac)}
+    .oc-chat{flex:1;padding:12px 14px;display:flex;flex-direction:column;gap:8px;justify-content:flex-end}
+    .oc-msg{max-width:85%;padding:8px 12px;border-radius:10px;font-size:12px;line-height:1.5}
+    .oc-msg.assistant{background:var(--sf);border:1px solid var(--bd);color:var(--t2);align-self:flex-start;border-bottom-left-radius:2px}
+    .oc-msg.user{background:var(--acd);border:1px solid var(--acm);color:var(--t1);align-self:flex-end;border-bottom-right-radius:2px}
+    .oc-input-row{display:flex;align-items:flex-end;gap:8px;padding:10px 14px;border-top:1px solid var(--bd);background:hsla(0,0%,100%,0.015)}
+    .oc-input-text{flex:1;font-size:12px;color:var(--t2);min-height:18px;line-height:1.5}
+    .oc-send{width:28px;height:28px;border-radius:6px;background:var(--sf);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .oc-chat{scrollbar-width:none}.oc-chat::-webkit-scrollbar{display:none}
+    .oc-msg{opacity:0;transition:opacity .3s}.oc-msg.show{opacity:1}
+    .oc-msg .msg-original{text-decoration:line-through;opacity:.35;font-size:10px;line-height:1.4;display:block;margin-bottom:2px}
+    .oc-msg .msg-sent{display:block;font-size:12px;line-height:1.4}
+    .oc-msg .msg-badge{font-size:9px;color:var(--ac);font-weight:700;margin-top:3px;display:block}
+    .oc-terse-line{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:10px;color:var(--ac);opacity:0;transition:all .3s}
+    .oc-terse-line.show{opacity:1}
+    .oc-terse-line .terse-dot{width:5px;height:5px}
+    .oc-stats-bar{display:flex;gap:8px;margin-left:auto;flex-wrap:nowrap}
+    .oc-stat{font-size:8px;color:var(--t3);white-space:nowrap;display:flex;align-items:center;gap:2px}
+    .oc-stat-n{font-weight:700;color:var(--t2);font-family:var(--mono);transition:color .3s}
+    .oc-stat-saved .oc-stat-n{color:var(--ac)}
+    .oc-tool-line{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:4px;background:hsla(0,0%,100%,.03);border:1px solid var(--bd);font-size:10px;color:var(--t3);opacity:0;transition:all .3s}
+    .oc-tool-line.show{opacity:1}
+    .oc-tool-line .tool-icon{font-size:9px;opacity:.6}
+
+    /* Terse optimization panel (shared across scenes) */
+    .terse-panel{margin:0;padding:10px 14px;background:hsla(0,0%,0%,0.15);border-top:1px solid var(--bd);opacity:0;transition:opacity .4s}
+    .terse-panel.show{opacity:1}
+    .tp-header{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+    .tp-header .terse-dot{flex-shrink:0}
+    .tp-stage{font-size:9px;font-weight:600;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;flex:1}
+    .tp-tok-counter{font-size:11px;font-weight:800;color:var(--t2);tabular-nums:true;font-variant-numeric:tabular-nums}
+    .tp-tok-counter .tok-val{transition:all .2s}
+    .tp-steps{display:flex;gap:3px;margin-bottom:8px}
+    .tp-step{flex:1;height:3px;background:var(--sf);border-radius:2px;overflow:hidden;position:relative}
+    .tp-step .tp-fill{height:100%;width:0;background:var(--ac);border-radius:2px;transition:width .3s ease}
+    .tp-step.done .tp-fill{width:100%}
+    .tp-result{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--acd);border:1px solid var(--acm);border-radius:5px;opacity:0;transition:opacity .3s}
+    .tp-result.show{opacity:1}
+    .tp-result-text{flex:1;font-size:11px;color:var(--ac3)}
+    .tp-result-pct{font-size:14px;font-weight:900;color:var(--ac)}
+    .tp-before-after{display:flex;align-items:center;gap:6px;font-size:10px;margin-bottom:6px;opacity:0;transition:opacity .3s}
+    .tp-before-after.show{opacity:1}
+    .tp-ba-before{color:var(--t3);text-decoration:line-through}
+    .tp-ba-arrow{color:var(--t3)}
+    .tp-ba-after{color:var(--ac);font-weight:700}
+    .tp-extras{display:flex;gap:8px;margin-top:8px;opacity:0;transition:opacity .4s}
+    .tp-extras.show{opacity:1}
+    .tp-extra{flex:1;padding:6px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:5px;text-align:center}
+    .tp-extra-icon{display:block;font-size:9px;font-weight:800;color:var(--t3);margin-bottom:2px}
+    .tp-extra-val{display:block;font-size:13px;font-weight:800;color:var(--ac)}
+    .tp-extra-lbl{display:block;font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+
+    /* Scene 4: Sessions */
+    .sessions-body{padding:14px;height:280px;overflow:hidden}
+    .sess-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);margin-bottom:6px;background:var(--sf);
+      opacity:0;transform:translateX(-20px);transition:all .4s}
+    .sess-item.show{opacity:1;transform:translateX(0)}
+    .sess-item.active{border-color:var(--acm);background:var(--acd)}
+    .sess-dot{width:7px;height:7px;border-radius:50%;background:var(--t3);flex-shrink:0}
+    .sess-item.active .sess-dot{background:var(--ac)}
+    .sess-name{font-size:12px;font-weight:600;flex:1}
+    .sess-sub{font-size:10px;color:var(--t3)}
+    .sess-badge{font-size:9px;font-weight:700;color:var(--ac)}
+    .sess-add{display:flex;align-items:center;justify-content:center;padding:10px;border:1px dashed var(--bd);border-radius:8px;color:var(--t3);font-size:12px;
+      opacity:0;transition:all .4s}
+    .sess-add.show{opacity:1}
+
+    /* TRACK CONNECTOR */
+    .track{width:2px;height:80px;margin:0 auto;background:linear-gradient(to bottom,var(--bd),var(--bdl),var(--bd));position:relative}
+    .track::after{content:'';position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--bg3);border:2px solid var(--bd);transition:all .4s}
+    .track.lit{background:linear-gradient(to bottom,var(--acm),var(--ac),var(--acm))}
+    .track.lit::after{background:var(--ac);border-color:var(--ac);box-shadow:0 0 12px var(--acm)}
+
+    /* SECTIONS */
+    .section{padding:100px 40px;position:relative;overflow:hidden}
+    .s-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center}
+    .s-inner.rev{direction:rtl}.s-inner.rev>*{direction:ltr}
+    .section .label{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:18px;background:var(--acd);color:var(--ac)}
+    .section h2{font-size:clamp(34px,4.5vw,52px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:14px}
+    .section .desc{font-size:16px;color:var(--t2);line-height:1.7;margin-bottom:22px;max-width:480px}
+    .flist{list-style:none;display:flex;flex-direction:column;gap:10px}
+    .flist li{display:flex;align-items:flex-start;gap:8px;font-size:14px;color:var(--t2)}
+    .flist li svg{flex-shrink:0;margin-top:3px;width:14px;height:14px;color:var(--ac)}
+    .glow{position:absolute;width:400px;height:400px;border-radius:50%;filter:blur(120px);pointer-events:none;opacity:.05;background:var(--ac)}
+    .alts{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
+    .alts span{padding:3px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:5px;font-size:11px;color:var(--t3)}
+
+    /* REVEAL */
+    .rv{opacity:0;transform:translateY(28px);transition:all .7s cubic-bezier(.16,1,.3,1)}.rv.vis{opacity:1;transform:translateY(0)}
+    .rvl{opacity:0;transform:translateX(-36px);transition:all .7s cubic-bezier(.16,1,.3,1)}.rvl.vis{opacity:1;transform:translateX(0)}
+    .rvr{opacity:0;transform:translateX(36px);transition:all .7s cubic-bezier(.16,1,.3,1)}.rvr.vis{opacity:1;transform:translateX(0)}
+    .d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}
+
+    /* PIPELINE ANIM */
+    .pipe-flow{padding:14px}
+    .pipe-text-in{padding:8px 10px;background:var(--sf);border-radius:6px;font-size:11px;color:var(--t2);margin-bottom:10px;min-height:36px;transition:all .4s;line-height:1.5}
+    .pipe-step{display:flex;align-items:center;gap:10px;padding:8px 12px;border-left:2px solid var(--bd);position:relative;transition:all .4s cubic-bezier(.16,1,.3,1)}
+    .pipe-step::before{content:'';position:absolute;left:-6px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:var(--bg2);border:2px solid var(--bd);transition:all .4s}
+    .pipe-step.lit{border-left-color:var(--acm);background:var(--acd);border-radius:0 6px 6px 0}
+    .pipe-step.lit::before{background:var(--ac);border-color:var(--ac);box-shadow:0 0 10px var(--acm)}
+    .pipe-n{font-size:9px;font-weight:800;color:var(--t3);min-width:14px}.pipe-step.lit .pipe-n{color:var(--ac)}
+    .pipe-nm{font-size:12px;font-weight:600;flex:1}
+    .pipe-text-out{padding:8px 10px;background:var(--acd);border:1px solid var(--acm);border-radius:6px;font-size:11px;color:var(--ac3);margin-top:10px;min-height:36px;opacity:0;transition:all .4s;line-height:1.5}
+    .pipe-text-out.show{opacity:1}
+
+    /* SPELL ANIM */
+    .spell-flow{padding:14px}
+    .spell-sentence{padding:10px;background:var(--sf);border-radius:6px;font-size:13px;line-height:1.8;min-height:44px;margin-bottom:10px}
+    .spell-word{display:inline;transition:all .4s}
+    .spell-word.fixing{background:rgba(110,231,183,0.15);border-radius:3px;padding:1px 3px}
+    .spell-word.wrong{color:var(--t3);text-decoration:line-through}
+    .spell-word.fixed{color:var(--ac)}
+    .spell-stages-mini{display:flex;gap:6px;margin-top:8px}
+    .spell-stage-pill{padding:4px 10px;border-radius:4px;font-size:10px;font-weight:600;background:var(--sf);color:var(--t3);border:1px solid var(--bd);transition:all .3s}
+    .spell-stage-pill.active{background:var(--acd);color:var(--ac);border-color:var(--acm)}
+
+    /* TECHNIQUE ANIM */
+    .tech-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px}
+    .tc{padding:12px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;position:relative;overflow:hidden;transition:all .4s}
+    .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0;transition:opacity .3s}
+    .tc.pulse{border-color:var(--acm)}.tc.pulse::before{opacity:1}
+    .tc h4{font-size:11px;font-weight:700;margin-bottom:3px}
+    .tc-demo{font-size:10px;color:var(--t3);min-height:28px;margin-top:4px;padding:4px 6px;background:hsla(0,0%,0%,0.2);border-radius:3px;line-height:1.5;transition:all .3s}
+    .tc-demo .del{text-decoration:line-through;opacity:.5}
+
+    /* MODE ANIM */
+    .mode-viz{padding:14px}
+    .mode-slider{display:flex;gap:2px;margin-bottom:14px;background:var(--sf);border-radius:6px;padding:2px;border:1px solid var(--bd)}
+    .mode-opt{flex:1;padding:6px;text-align:center;font-size:11px;font-weight:700;border-radius:4px;cursor:pointer;transition:all .3s;color:var(--t3)}
+    .mode-opt.active{background:var(--acd);color:var(--ac)}
+    .mode-input-box{font-size:12px;color:var(--t2);padding:10px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;margin-bottom:12px;line-height:1.6}
+    .mode-output-box{font-size:12px;color:var(--ac3);padding:10px;background:var(--acd);border:1px solid var(--acm);border-radius:6px;line-height:1.6;transition:all .4s}
+    .mode-stats-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;font-size:12px}
+    .mode-bar{flex:1;height:4px;background:var(--sf);border-radius:2px;margin:0 12px;overflow:hidden}
+    .mode-bar-fill{height:100%;background:var(--ac);border-radius:2px;transition:width .6s cubic-bezier(.16,1,.3,1)}
+
+    /* AGENT SECTION ANIM */
+    .agent-full{padding:14px}
+    .agent-term{background:hsla(0,0%,0%,0.3);border-radius:8px;padding:10px;margin-bottom:10px;min-height:60px}
+    .at-line{font-size:11px;line-height:1.8;opacity:0;transition:opacity .3s}
+    .at-line.show{opacity:1}
+    .at-line.cmd{color:var(--t1)}.at-line.out{color:var(--t3)}.at-line.terse{color:var(--ac)}
+    .agent-connect-banner{padding:8px 12px;background:var(--acd);border:1px solid var(--acm);border-radius:6px;display:flex;align-items:center;gap:8px;margin-bottom:10px;
+      opacity:0;transform:scale(.96);transition:all .4s}
+    .agent-connect-banner.show{opacity:1;transform:scale(1)}
+    .agent-connect-btn{padding:4px 12px;background:var(--ac);color:var(--bg0);border:none;border-radius:4px;font-size:10px;font-weight:700;margin-left:auto}
+    .agent-panel-anim{opacity:0;transition:all .4s}.agent-panel-anim.show{opacity:1}
+    .ap-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px}
+    .ap-stat{text-align:center;padding:8px 4px;background:var(--sf);border-radius:6px;border:1px solid var(--bd)}
+    .ap-v{font-size:16px;font-weight:800;display:block}.ap-l{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+    .ap-savings-bar{padding:8px 12px;background:var(--acd);border:1px solid var(--acm);border-radius:6px;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .ap-sv-label{font-size:11px;color:var(--t2)}.ap-sv-val{font-size:14px;font-weight:800;color:var(--ac);margin-left:auto}
+    .ap-feed{max-height:80px;overflow:hidden;font-size:10px;line-height:1.8}
+    .ap-model-row{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:5px;margin-bottom:6px;font-size:10px;opacity:0;transition:opacity .3s}
+    .ap-model-row.show{opacity:1}
+    .ap-model-label{color:var(--t3)}.ap-model-val{color:var(--t2);font-weight:600}
+    .ap-model-dot{width:5px;height:5px;border-radius:50%;background:var(--ac);margin-left:auto;animation:dotpulse .8s infinite}
+    .ap-model-status{color:var(--ac);font-size:9px;font-weight:600}
+    .ap-fl{opacity:0;transition:opacity .3s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ap-fl.show{opacity:1}
+    .ap-fl.usr{color:var(--t1)}.ap-fl.ast{color:var(--t2)}.ap-fl.tl{color:var(--t3)}.ap-fl.opt{color:var(--ac)}
+
+    /* BENCH ANIM */
+    .bench-bars{padding:14px;display:flex;flex-direction:column;gap:8px}
+    .bb{display:flex;align-items:center;gap:10px;opacity:0;transform:translateX(-20px);transition:all .5s cubic-bezier(.16,1,.3,1)}
+    .bb.show{opacity:1;transform:translateX(0)}
+    .bb-label{font-size:11px;color:var(--t2);width:140px;flex-shrink:0}
+    .bb-track{flex:1;height:6px;background:var(--sf);border-radius:3px;overflow:hidden}
+    .bb-fill{height:100%;background:var(--ac);border-radius:3px;width:0;transition:width .8s cubic-bezier(.16,1,.3,1)}
+    .bb-pct{font-size:12px;font-weight:800;color:var(--ac);width:40px;text-align:right}
+
+    /* Hero word-level optimization */
+    .hw{display:inline;transition:all .4s ease}
+    .hw.filler{opacity:.2;text-decoration:line-through}
+    .terse-dot.pulse{animation:dotpulse .5s infinite}
+    @keyframes dotpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(1.5)}}
+    .terse-stage-text{font-size:9px;color:var(--t3);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+    /* Pipeline token badges */
+    .pipe-detect{display:flex;align-items:center;gap:6px;padding:5px 10px;margin-bottom:8px;border-radius:5px;background:var(--acd);border:1px solid var(--acm);font-size:10px;font-weight:600;color:var(--ac);opacity:0;transition:opacity .3s}
+    .pipe-detect.show{opacity:1}
+    .pipe-detect .pd-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0}
+    .pipe-tok{font-size:9px;font-weight:700;margin-left:auto;color:var(--t3);opacity:0;transition:all .4s}
+    .pipe-step.lit .pipe-tok{opacity:1;color:var(--ac)}
+    .pipe-tok-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:9px;font-weight:700;margin-left:6px;vertical-align:middle}
+    .pipe-tok-badge.before{background:var(--sf);border:1px solid var(--bd);color:var(--t3)}
+    .pipe-tok-badge.after{background:var(--acd);border:1px solid var(--acm);color:var(--ac)}
+    /* Mode word morph */
+    .mw{display:inline;transition:all .4s ease;color:var(--t2)}
+    .mw.kept{color:var(--ac3)}
+    .mw.cut{opacity:.2;text-decoration:line-through;color:var(--t3)}
+
+    /* HOW IT WORKS — phase-based viz */
+    .hw-phase{padding:8px 14px;opacity:.15;transition:opacity .35s;border-bottom:1px solid var(--bd)}
+    .hw-phase:last-child{border-bottom:none}
+    .hw-phase.show{opacity:1}
+    .hw-phase-label{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+    .hw-phase-num{width:16px;height:16px;border-radius:50%;background:var(--acd);border:1px solid var(--acm);display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:var(--ac);flex-shrink:0}
+    .hw-prompt-box{font-size:10px;line-height:1.5;color:var(--t2);padding:6px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;min-height:14px}
+    .hw-prompt-box.accent{border-color:var(--acm);background:var(--acd);color:var(--ac);font-weight:600}
+    .hw-tok-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:9px;font-weight:700;margin-top:4px}
+    .hw-tok-badge:not(.saved){background:var(--sf);border:1px solid var(--bd);color:var(--t3)}
+    .hw-tok-badge.saved{background:var(--acd);border:1px solid var(--acm);color:var(--ac)}
+    .hw-stages{display:flex;flex-direction:column;gap:3px}
+    .hw-stage{display:flex;align-items:center;gap:6px;padding:3px 8px;border-radius:4px;background:var(--sf);border:1px solid var(--bd);opacity:.3;transition:all .3s}
+    .hw-stage.active{opacity:1;border-color:var(--acm);background:var(--acd)}
+    .hw-stage.done{opacity:.6}
+    .hw-sn{width:14px;height:14px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--t3);flex-shrink:0}
+    .hw-stage.active .hw-sn{background:var(--acm);color:var(--ac)}
+    .hw-snm{font-size:9px;font-weight:600;color:var(--t3);flex:1}
+    .hw-sval{font-size:9px;color:var(--ac);font-weight:600;font-family:var(--mono)}
+    .hw-agent-actions{display:flex;flex-direction:column;gap:3px}
+    .hw-agent-act{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--t3);padding:3px 8px;border-radius:4px;background:var(--sf);border:1px solid var(--bd);opacity:0;transition:opacity .3s}
+    .hw-agent-act.show{opacity:1}
+    .hw-agent-act .act-icon{font-size:8px;opacity:.6}
+    .hw-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+    .hw-stat{text-align:center;padding:4px 2px;border-radius:4px;background:var(--sf);border:1px solid var(--bd)}
+    .hw-stat-v{display:block;font-size:11px;font-weight:800;color:var(--t1);font-family:var(--mono)}
+    .hw-stat-l{display:block;font-size:7px;color:var(--t3);text-transform:uppercase;letter-spacing:.3px;margin-top:1px}
+    .hw-savings-bar{margin-top:6px;padding:5px 10px;border-radius:4px;background:var(--acd);border:1px solid var(--acm);font-size:10px;font-weight:700;color:var(--ac);text-align:center;opacity:0;transition:all .4s}
+    .hw-savings-bar.show{opacity:1}
+
+    /* TRUST BAR */
+    .trust-bar{padding:30px 0;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);background:var(--bg1);overflow:hidden;position:relative}
+    .trust-bar::before,.trust-bar::after{content:'';position:absolute;top:0;bottom:0;width:100px;z-index:2;pointer-events:none}
+    .trust-bar::before{left:0;background:linear-gradient(to right,var(--bg1),transparent)}
+    .trust-bar::after{right:0;background:linear-gradient(to left,var(--bg1),transparent)}
+    .trust-track{display:flex;gap:60px;animation:trustScroll 30s linear infinite;width:max-content}
+    .trust-item{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--t3);white-space:nowrap;flex-shrink:0}
+    .trust-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;border:1px solid var(--bd);background:var(--sf)}
+    @keyframes trustScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+    /* FEATURE HIGHLIGHTS (3-col) */
+    .features-section{padding:80px 40px;background:var(--bg1);border-bottom:1px solid var(--bd)}
+    .features-inner{max-width:1200px;margin:0 auto}
+    .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:40px}
+    .feat{opacity:0;transform:translateY(20px);transition:all .6s cubic-bezier(.16,1,.3,1)}
+    .feat.vis{opacity:1;transform:translateY(0)}
+    .feat-icon{width:36px;height:36px;border-radius:8px;background:var(--sf);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:var(--t2)}
+    .feat h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-divider{grid-column:1/-1;height:1px;background:var(--bd);margin:10px 0}
+    .works-with{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding-top:10px}
+    .works-with-label{font-size:12px;color:var(--t3);font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap}
+    .works-with-logos{display:flex;gap:8px}
+    .ww-logo{width:28px;height:28px;border-radius:6px;background:var(--sf);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--t3)}
+
+    /* TESTIMONIALS */
+    .testimonials-section{padding:80px 40px;background:var(--bg0);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);overflow:hidden}
+    .testimonials-inner{max-width:1200px;margin:0 auto}
+    .testimonials-inner h2{font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-1.5px;text-align:center;margin-bottom:6px}
+    .testimonials-sub{text-align:center;font-size:14px;color:var(--t3);margin-bottom:40px}
+    .testimonials-track{display:flex;gap:20px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:10px;scrollbar-width:none}
+    .testimonials-track::-webkit-scrollbar{display:none}
+    .testi-card{min-width:300px;max-width:340px;flex-shrink:0;scroll-snap-align:start;padding:20px;border:1px solid var(--bd);border-radius:12px;background:var(--sf)}
+    .testi-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+    .testi-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg3);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--t2)}
+    .testi-name{font-size:13px;font-weight:700}.testi-handle{font-size:11px;color:var(--t3)}
+    .testi-body{font-size:13px;color:var(--t2);line-height:1.6}
+    .testi-body .hl{color:var(--ac)}
+    .testi-tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:var(--acd);color:var(--ac)}
+
+    /* STATS */
+    .stats-section{padding:120px 40px;background:var(--bg0);position:relative;overflow:hidden}
+    .stats-section::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acm),transparent)}
+    .stats-section::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acm),transparent)}
+    .stats-inner{max-width:1000px;margin:0 auto;text-align:center}
+    .stats-inner h2{font-size:clamp(34px,4.5vw,52px);font-weight:900;letter-spacing:-2px;margin-bottom:60px}
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+    .stat-card{padding:32px 20px;border-radius:14px;background:linear-gradient(160deg,hsla(0,0%,100%,0.03),hsla(0,0%,100%,0.01));border:1px solid var(--bd);position:relative;transition:all .4s;overflow:hidden}
+    .stat-card::before{content:'';position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:80px;height:80px;background:radial-gradient(circle,rgba(110,231,183,0.12),transparent 70%);pointer-events:none;transition:all .4s}
+    .stat-card:hover{border-color:var(--acm);transform:translateY(-4px);box-shadow:0 20px 60px hsla(160,50%,40%,0.06)}
+    .stat-card:hover::before{width:120px;height:120px}
+    .stat-num{font-size:clamp(40px,5vw,56px);font-weight:900;letter-spacing:-2px;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;position:relative;z-index:1}
+    .stat-lbl{font-size:13px;color:var(--t3);margin-top:6px;position:relative;z-index:1}
+
+    /* CTA */
+    .cta{padding:140px 40px;text-align:center;position:relative;overflow:hidden;background:linear-gradient(180deg,var(--bg2) 0%,var(--bg0) 100%)}
+    .cta-glow{position:absolute;bottom:-200px;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.05) 0%,transparent 65%);pointer-events:none}
+    .cta h2{font-size:clamp(44px,7vw,80px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:20px;position:relative;z-index:1}
+    .cta p{font-size:17px;color:var(--t2);max-width:460px;margin:0 auto 36px;position:relative;z-index:1}
+    .cta .hero-actions{justify-content:center;position:relative;z-index:1}
+
+    /* FOOTER */
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)}
+    .footer-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:2fr repeat(3,1fr);gap:50px}
+    .footer-brand p{font-size:12px;color:var(--t3);max-width:220px;line-height:1.6;margin-top:12px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;font-size:12px;color:var(--t3);padding:3px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1200px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:900px){
+      .s-inner{grid-template-columns:1fr;gap:40px}.s-inner.rev{direction:ltr}
+      .tech-cards{grid-template-columns:1fr 1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}
+      .footer-inner{grid-template-columns:1fr 1fr}nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}.section{padding:60px 20px}.vscode-body{grid-template-columns:1fr}
+      .vscode-sidebar{display:none}.ap-grid{grid-template-columns:repeat(2,1fr)}
+      .features-grid{grid-template-columns:1fr;gap:24px}.features-section{padding:50px 20px}
+      .how-step p{max-width:100%}
+      .hero-stage{height:320px}
+      .chatgpt-body,.openclaw-body,.vscode-body,.agent-body,.sessions-body{height:260px}
+      .testi-card{min-width:260px}
+    }
+  </style>
+</head>
+<body>
+
+<nav id="nav">
+  <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links"><a href="#how-it-works">How It Works</a><a href="#pipeline">Pipeline</a><a href="#agents">Agent Monitor</a><a href="#benchmarks">Benchmarks</a></div>
+  <button class="nav-cta" onclick="document.getElementById('dl').scrollIntoView({behavior:'smooth'})">Download</button>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <h1 class="rv">Save every token<br><span class="gradient-text">on your AI.</span></h1>
+  <p class="sub rv d1">Terse sits between you and your AI — intercepting every prompt and agent message, automatically compressing them before they're sent. It rewrites your words in real time, catches typos that cause retries, and cuts 40-70% of tokens across ChatGPT, Claude Code, Cursor, and OpenClaw.</p>
+  <div class="hero-actions rv d2">
+    <button class="btn-primary" onclick="document.getElementById('dl').scrollIntoView({behavior:'smooth'})">Download for macOS <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+    <button class="btn-ghost" onclick="document.getElementById('pipeline').scrollIntoView({behavior:'smooth'})">See the pipeline</button>
+  </div>
+
+  <div class="hero-stage rv d3">
+    <!-- Scene 0: OpenClaw — comprehensive agent auto-reduction demo -->
+    <div class="scene active" id="sc0">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">OpenClaw — Chat</span><span class="win-badge">Agent</span></div>
+        <div class="openclaw-body">
+          <div class="oc-toolbar">
+            <div class="oc-model">claude-sonnet-4-6</div>
+            <div class="oc-status"><div class="oc-status-dot" id="s0statusDot"></div><span id="s0statusText">Connected</span></div>
+            <div class="oc-stats-bar" id="s0statsBar">
+              <span class="oc-stat"><span class="oc-stat-n" id="s0turns">0</span> turns</span>
+              <span class="oc-stat"><span class="oc-stat-n" id="s0input_tok">0</span> in</span>
+              <span class="oc-stat"><span class="oc-stat-n" id="s0output_tok">0</span> out</span>
+              <span class="oc-stat"><span class="oc-stat-n" id="s0cache">0</span> cache</span>
+              <span class="oc-stat">$<span class="oc-stat-n" id="s0cost">0.000</span></span>
+              <span class="oc-stat oc-stat-saved"><span class="oc-stat-n" id="s0saved">0</span> saved</span>
+            </div>
+          </div>
+          <div class="oc-chat" id="s0chat" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 14px;display:flex;flex-direction:column;gap:5px;justify-content:flex-end"></div>
+          <div class="oc-input-row">
+            <div class="oc-input-text mono" id="s0input" style="min-height:16px"></div>
+            <div class="oc-send" id="s0sendBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 1: ChatGPT Browser -->
+    <div class="scene" id="sc1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Google Chrome — ChatGPT</span><span class="win-badge">Browser</span></div>
+        <div class="chatgpt-body">
+          <div class="terse-panel" id="s1panel">
+            <div class="tp-header">
+              <div class="terse-dot" id="s1dot"></div>
+              <span class="tp-stage" id="s1stage">Ready</span>
+              <span class="tp-tok-counter mono" id="s1tok"></span>
+            </div>
+            <div class="tp-steps">
+              <div class="tp-step" id="s1st0"><div class="tp-fill"></div></div>
+              <div class="tp-step" id="s1st1"><div class="tp-fill"></div></div>
+              <div class="tp-step" id="s1st2"><div class="tp-fill"></div></div>
+              <div class="tp-step" id="s1st3"><div class="tp-fill"></div></div>
+              <div class="tp-step" id="s1st4"><div class="tp-fill"></div></div>
+              <div class="tp-step" id="s1st5"><div class="tp-fill"></div></div>
+              <div class="tp-step" id="s1st6"><div class="tp-fill"></div></div>
+            </div>
+            <div class="tp-result" id="s1result">
+              <span class="tp-result-text mono" id="s1resultText"></span>
+              <span class="tp-result-pct" id="s1resultPct"></span>
+            </div>
+          </div>
+          <div class="chatgpt-input">
+            <div class="chatgpt-input-text mono" id="s1input"></div>
+            <div class="chatgpt-send"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--bg0)" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 2: VS Code -->
+    <div class="scene" id="sc2">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">VS Code — Cursor Chat</span><span class="win-badge">Editor</span></div>
+        <div class="vscode-body">
+          <div class="vscode-sidebar mono">
+            <div class="vscode-file active">main.js</div>
+            <div class="vscode-file">optimizer.js</div>
+            <div class="vscode-file">capture.js</div>
+            <div class="vscode-file">preload.js</div>
+          </div>
+          <div class="vscode-editor">
+            <div style="font-size:11px;color:var(--t3);line-height:1.8" class="mono">
+              <div><span style="color:var(--t3)">1</span> <span style="color:var(--ac)">const</span> optimizer = <span style="color:var(--ac)">new</span> PromptOptimizer();</div>
+              <div><span style="color:var(--t3)">2</span> <span style="color:var(--ac)">const</span> result = optimizer.optimize(text);</div>
+              <div><span style="color:var(--t3)">3</span> console.log(result.stats);</div>
+            </div>
+            <div class="vscode-chat">
+              <div class="vscode-chat-label">Cursor Chat &middot; <span style="color:var(--ac)">Aggr Mode</span></div>
+              <div class="vscode-chat-input mono" id="s2input"></div>
+              <div class="terse-panel" id="s2panel" style="margin:6px -10px -10px;padding:6px 10px;border-radius:0">
+                <div class="tp-header">
+                  <div class="terse-dot" id="s2dot"></div>
+                  <span class="tp-stage" id="s2stage">Ready</span>
+                  <span class="tp-tok-counter mono" id="s2tok"></span>
+                </div>
+                <div class="tp-steps" style="margin-bottom:4px">
+                  <div class="tp-step" id="s2st0"><div class="tp-fill"></div></div>
+                  <div class="tp-step" id="s2st1"><div class="tp-fill"></div></div>
+                  <div class="tp-step" id="s2st2"><div class="tp-fill"></div></div>
+                  <div class="tp-step" id="s2st3"><div class="tp-fill"></div></div>
+                  <div class="tp-step" id="s2st4"><div class="tp-fill"></div></div>
+                  <div class="tp-step" id="s2st5"><div class="tp-fill"></div></div>
+                  <div class="tp-step" id="s2st6"><div class="tp-fill"></div></div>
+                </div>
+                <div class="tp-result" id="s2result">
+                  <span class="tp-result-text mono" id="s2resultText"></span>
+                  <span class="tp-result-pct" id="s2resultPct"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 3: Agent Monitor -->
+    <div class="scene" id="sc3">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Terminal — Claude Code</span><span class="win-badge">Agent</span></div>
+        <div class="agent-body mono">
+          <div id="s3lines"></div>
+          <div class="agent-banner-anim" id="s3banner">
+            <div class="terse-dot"></div>
+            <span style="font-size:11px">Claude Code detected</span>
+            <span class="agent-connect-btn" id="s3connectBtn">Connect</span>
+          </div>
+          <div class="agent-mini-stats" id="s3stats">
+            <div class="ams"><span class="ams-v" id="s3turns">0</span><span class="ams-l">Turns</span></div>
+            <div class="ams"><span class="ams-v" id="s3input">0</span><span class="ams-l">Input</span></div>
+            <div class="ams"><span class="ams-v" id="s3output">0</span><span class="ams-l">Output</span></div>
+            <div class="ams"><span class="ams-v" id="s3cost">$0</span><span class="ams-l">Cost</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 4: Sessions -->
+    <div class="scene" id="sc4">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Terse — Session Manager</span><span class="win-badge">Multi-App</span></div>
+        <div class="sessions-body" id="s4body">
+          <div class="sess-item active" id="s4s1"><div class="sess-dot"></div><div style="flex:1"><div class="sess-name">Google Chrome</div><div class="sess-sub">ChatGPT — claude.ai</div></div><span class="sess-badge">ACTIVE</span></div>
+          <div class="sess-item" id="s4s2"><div class="sess-dot"></div><div style="flex:1"><div class="sess-name">VS Code</div><div class="sess-sub">terse-project — main.js</div></div></div>
+          <div class="sess-item" id="s4s3"><div class="sess-dot"></div><div style="flex:1"><div class="sess-name">Cursor</div><div class="sess-sub">my-project — index.ts</div></div></div>
+          <div class="sess-add" id="s4add">+ Add Session</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scene-indicators">
+      <div class="scene-dot active" data-scene="0"><div class="fill"></div></div>
+      <div class="scene-dot" data-scene="1"><div class="fill"></div></div>
+      <div class="scene-dot" data-scene="2"><div class="fill"></div></div>
+      <div class="scene-dot" data-scene="3"><div class="fill"></div></div>
+      <div class="scene-dot" data-scene="4"><div class="fill"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TRUST BAR ═══ -->
+<div class="trust-bar">
+  <div class="trust-track">
+    <div class="trust-item"><div class="trust-icon">C</div>ChatGPT</div>
+    <div class="trust-item"><div class="trust-icon" style="color:var(--ac)">CC</div>Claude Code</div>
+    <div class="trust-item"><div class="trust-icon">OC</div>OpenClaw</div>
+    <div class="trust-item"><div class="trust-icon">Cu</div>Cursor</div>
+    <div class="trust-item"><div class="trust-icon">Ai</div>Aider</div>
+    <div class="trust-item"><div class="trust-icon">VS</div>VS Code</div>
+    <div class="trust-item"><div class="trust-icon">Sa</div>Safari</div>
+    <div class="trust-item"><div class="trust-icon">Ch</div>Chrome</div>
+    <div class="trust-item"><div class="trust-icon">Cl</div>Claude.ai</div>
+    <div class="trust-item"><div class="trust-icon">Gm</div>Gemini</div>
+    <div class="trust-item"><div class="trust-icon">Wi</div>Windsurf</div>
+    <div class="trust-item"><div class="trust-icon">Cp</div>Copilot</div>
+    <!-- Duplicate for seamless loop -->
+    <div class="trust-item"><div class="trust-icon">C</div>ChatGPT</div>
+    <div class="trust-item"><div class="trust-icon" style="color:var(--ac)">CC</div>Claude Code</div>
+    <div class="trust-item"><div class="trust-icon">OC</div>OpenClaw</div>
+    <div class="trust-item"><div class="trust-icon">Cu</div>Cursor</div>
+    <div class="trust-item"><div class="trust-icon">Ai</div>Aider</div>
+    <div class="trust-item"><div class="trust-icon">VS</div>VS Code</div>
+    <div class="trust-item"><div class="trust-icon">Sa</div>Safari</div>
+    <div class="trust-item"><div class="trust-icon">Ch</div>Chrome</div>
+    <div class="trust-item"><div class="trust-icon">Cl</div>Claude.ai</div>
+    <div class="trust-item"><div class="trust-icon">Gm</div>Gemini</div>
+    <div class="trust-item"><div class="trust-icon">Wi</div>Windsurf</div>
+    <div class="trust-item"><div class="trust-icon">Cp</div>Copilot</div>
+  </div>
+</div>
+
+<!-- ═══ FEATURE HIGHLIGHTS ═══ -->
+<section class="features-section">
+  <div class="features-inner">
+    <div class="features-grid">
+      <div class="feat rv">
+        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <h3>Auto-rewrite every prompt</h3>
+        <p>Terse intercepts what you type — strips filler, fixes typos, compresses verbose text — and sends the optimized version. You write naturally, your AI gets fewer tokens.</p>
+      </div>
+      <div class="feat rv d1">
+        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+        <h3>Cut agent token burn live</h3>
+        <p>During Claude Code, OpenClaw, and Cursor sessions, Terse auto-optimizes every user message before it hits the API — reducing input tokens on every single turn.</p>
+      </div>
+      <div class="feat rv d2">
+        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
+        <h3>Prevent wasted retries</h3>
+        <p>Typos like "authetication" confuse agents into wrong fixes. Terse catches every misspelling before send — so you don't burn tokens on correction loops.</p>
+      </div>
+      <div class="feat-divider"></div>
+      <div class="works-with rv d1">
+        <span class="works-with-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg> Works with</span>
+        <div class="works-with-logos">
+          <div class="ww-logo">C</div>
+          <div class="ww-logo" style="color:var(--ac)">CC</div>
+          <div class="ww-logo">OC</div>
+          <div class="ww-logo">Cu</div>
+          <div class="ww-logo">Ai</div>
+          <div class="ww-logo">VS</div>
+          <div class="ww-logo">Ch</div>
+          <div class="ww-logo">Sa</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS: AGENT TOKEN REDUCTION — FULL WALKTHROUGH ═══ -->
+<section class="section" id="how-it-works" style="background:var(--bg0);border-top:1px solid var(--bd)">
+  <div class="glow" style="top:-100px;right:-200px"></div>
+  <div class="s-inner">
+    <div class="rvl">
+      <div class="label">How It Works</div>
+      <h2>How Terse cuts tokens<br><span class="gradient-text">in agent sessions.</span></h2>
+      <p class="desc">When you use Claude Code, OpenClaw, Cursor, or Aider — every message you send costs tokens. Terse intercepts each prompt before it hits the API, runs it through 7 optimization stages, and auto-sends the compressed version. Watch the full lifecycle:</p>
+      <ul class="flist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Intercepts via macOS Accessibility — no plugins needed</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Fixes typos before they cause agent retry loops</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Strips filler, hedging, pleasantries — agent only gets intent</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Compresses to telegraph style in Aggressive mode</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-sends optimized prompt — you type naturally</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tracks input/output/cache/tools per turn from JSONL logs</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Savings compound across every turn in the session</li>
+      </ul>
+      <div class="alts"><span>Claude Code</span><span>OpenClaw</span><span>Aider</span><span>Cursor Agent</span></div>
+    </div>
+    <div class="rvr d1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Agent Session — Live Optimization</span></div>
+        <div id="howViz" style="font-size:11px;height:460px;overflow:hidden">
+          <!-- Phase 1: User types -->
+          <div class="hw-phase" id="hwP1">
+            <div class="hw-phase-label" id="hwPL1"><span class="hw-phase-num">1</span> You type in OpenClaw</div>
+            <div class="hw-prompt-box mono" id="hwPrompt" style="min-height:32px">&nbsp;</div>
+            <div class="hw-tok-badge mono" id="hwTokBefore">&nbsp;</div>
+          </div>
+          <!-- Phase 2: Terse intercepts — 7 stages -->
+          <div class="hw-phase" id="hwP2">
+            <div class="hw-phase-label" id="hwPL2"><span class="hw-phase-num">2</span> Terse intercepts — 7-stage pipeline</div>
+            <div class="hw-stages" id="hwStages">
+              <div class="hw-stage" id="hwS0"><span class="hw-sn">1</span><span class="hw-snm">Spell Correction</span><span class="hw-sval" id="hwSV0"></span></div>
+              <div class="hw-stage" id="hwS1"><span class="hw-sn">2</span><span class="hw-snm">Whitespace</span><span class="hw-sval" id="hwSV1"></span></div>
+              <div class="hw-stage" id="hwS2"><span class="hw-sn">3</span><span class="hw-snm">Filler Removal</span><span class="hw-sval" id="hwSV2"></span></div>
+              <div class="hw-stage" id="hwS3"><span class="hw-sn">4</span><span class="hw-snm">Hedging Removal</span><span class="hw-sval" id="hwSV3"></span></div>
+              <div class="hw-stage" id="hwS4"><span class="hw-sn">5</span><span class="hw-snm">Question → Imperative</span><span class="hw-sval" id="hwSV4"></span></div>
+              <div class="hw-stage" id="hwS5"><span class="hw-sn">6</span><span class="hw-snm">Low-Info Drop</span><span class="hw-sval" id="hwSV5"></span></div>
+              <div class="hw-stage" id="hwS6"><span class="hw-sn">7</span><span class="hw-snm">Final Cleanup</span><span class="hw-sval" id="hwSV6"></span></div>
+            </div>
+          </div>
+          <!-- Phase 3: Optimized prompt sent -->
+          <div class="hw-phase" id="hwP3">
+            <div class="hw-phase-label" id="hwPL3"><span class="hw-phase-num">3</span> Optimized prompt auto-sent to agent</div>
+            <div class="hw-prompt-box mono accent" id="hwOptimized">&nbsp;</div>
+            <div class="hw-tok-badge mono saved" id="hwTokAfter">&nbsp;</div>
+          </div>
+          <!-- Phase 4: Agent works -->
+          <div class="hw-phase" id="hwP4">
+            <div class="hw-phase-label" id="hwPL4"><span class="hw-phase-num">4</span> Agent processes with fewer tokens</div>
+            <div class="hw-agent-actions" id="hwActions">
+              <div class="hw-agent-act" id="hwA0"><span class="act-icon">⚙</span><span>&nbsp;</span></div>
+              <div class="hw-agent-act" id="hwA1"><span class="act-icon">⚙</span><span>&nbsp;</span></div>
+              <div class="hw-agent-act" id="hwA2"><span class="act-icon">✎</span><span>&nbsp;</span></div>
+              <div class="hw-agent-act" id="hwA3"><span class="act-icon">▶</span><span>&nbsp;</span></div>
+              <div class="hw-agent-act" id="hwA4"><span class="act-icon">✓</span><span>&nbsp;</span></div>
+            </div>
+          </div>
+          <!-- Phase 5: Session stats -->
+          <div class="hw-phase" id="hwP5">
+            <div class="hw-phase-label" id="hwPL5"><span class="hw-phase-num">5</span> Session tracking — JSONL log</div>
+            <div class="hw-stats-grid" id="hwStatsGrid">
+              <div class="hw-stat"><span class="hw-stat-v" id="hwSTurns">—</span><span class="hw-stat-l">Turn</span></div>
+              <div class="hw-stat"><span class="hw-stat-v" id="hwSIn">—</span><span class="hw-stat-l">Input tok</span></div>
+              <div class="hw-stat"><span class="hw-stat-v" id="hwSOut">—</span><span class="hw-stat-l">Output tok</span></div>
+              <div class="hw-stat"><span class="hw-stat-v" id="hwSCache">—</span><span class="hw-stat-l">Cache</span></div>
+              <div class="hw-stat"><span class="hw-stat-v" id="hwSTools">—</span><span class="hw-stat-l">Tools</span></div>
+              <div class="hw-stat"><span class="hw-stat-v" id="hwSSaved">—</span><span class="hw-stat-l">Tok saved</span></div>
+              <div class="hw-stat"><span class="hw-stat-v" id="hwSTypos">—</span><span class="hw-stat-l">Typos</span></div>
+              <div class="hw-stat"><span class="hw-stat-v" id="hwSCost">—</span><span class="hw-stat-l">Cost</span></div>
+            </div>
+            <div class="hw-savings-bar" id="hwSavingsBar">&nbsp;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="t1"></div>
+
+<!-- ═══ PIPELINE ═══ -->
+<section class="section" id="pipeline" style="background:var(--bg1)">
+  <div class="glow" style="top:-100px;left:-200px"></div>
+  <div class="s-inner">
+    <div class="rvl">
+      <div class="label">Live Optimization Pipeline</div>
+      <h2>7 stages,<br><span class="gradient-text">wherever you type.</span></h2>
+      <p class="desc">Type a prompt in Chrome, Cursor, VS Code, or a terminal — Terse auto-detects the input field via macOS Accessibility and runs your text through 7 optimization stages before it's sent. No plugins, no copy-paste. Just type and it works.</p>
+      <ul class="flist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-detects text fields in any connected app</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Optimizes live as you type — no manual trigger needed</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Code blocks protected · on-device · zero latency</li>
+      </ul>
+    </div>
+    <div class="rvr d1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title" id="pipeTitle">Pipeline — Live</span></div>
+        <div class="pipe-flow" id="pipeViz" style="height:380px;overflow:hidden">
+          <div class="pipe-detect" id="pipeDetect"></div>
+          <div class="pipe-text-in mono" id="pipeIn"></div>
+          <div class="pipe-step"><span class="pipe-n">1</span><span class="pipe-nm">Spell Correction</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step"><span class="pipe-n">2</span><span class="pipe-nm">Whitespace</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step"><span class="pipe-n">3</span><span class="pipe-nm">Pattern Optimization</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step"><span class="pipe-n">4</span><span class="pipe-nm">Redundancy Elimination</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step"><span class="pipe-n">5</span><span class="pipe-nm">NLP Analysis</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step"><span class="pipe-n">6</span><span class="pipe-nm">Aggressive Compression</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step"><span class="pipe-n">7</span><span class="pipe-nm">Final Cleanup</span><span class="pipe-tok"></span></div>
+          <div class="pipe-text-out mono" id="pipeOut"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="t2"></div>
+
+<!-- ═══ SPELLCHECK ═══ -->
+<section class="section" style="background:var(--bg2)">
+  <div class="glow" style="top:50px;right:-200px"></div>
+  <div class="s-inner rev">
+    <div class="rvr">
+      <div class="label">Live Spell Correction</div>
+      <h2>Fix typos<br><span class="gradient-text">as you type.</span></h2>
+      <p class="desc">Every prompt you type is scanned in real time. Terse catches misspellings before they hit the model — preventing confused responses, wasted correction turns, and costly agent retry loops. 400+ entries, Norvig edit-distance, and macOS NSSpellChecker working together.</p>
+      <ul class="flist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Runs automatically on every prompt — no button to press</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Context-aware: "what souls I do" → "what should I do"</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Safe: skips ALL-CAPS, Capitalized, code tokens</li>
+      </ul>
+    </div>
+    <div class="rvl d1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Spell Correction — Live</span></div>
+        <div class="spell-flow" id="spellViz">
+          <div class="spell-sentence mono" id="spellSentence"></div>
+          <div class="spell-stages-mini">
+            <div class="spell-stage-pill" id="sp1">TYPOS Dict</div>
+            <div class="spell-stage-pill" id="sp2">Norvig</div>
+            <div class="spell-stage-pill" id="sp3">Context</div>
+            <div class="spell-stage-pill" id="sp4">Hunspell</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="t3"></div>
+
+<!-- ═══ TECHNIQUES ═══ -->
+<section class="section" id="techniques" style="background:var(--bg1)">
+  <div class="glow" style="bottom:-100px;left:-150px"></div>
+  <div class="s-inner">
+    <div class="rvl">
+      <div class="label">20+ Techniques</div>
+      <h2>Every wasted<br><span class="gradient-text">token found.</span></h2>
+      <p class="desc">Filler removal, question-to-imperative, Jaccard deduplication, telegraph compression — each technique targets a different source of token waste in both manual prompts and agent conversations.</p>
+      <ul class="flist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>130+ phrase-shortening rules for verbose prompts</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Semantic dedup — catches repeated questions across turns</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Low-info dropping — removes "thanks" and pleasantries</li>
+      </ul>
+    </div>
+    <div class="rvr d1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Techniques — Live</span></div>
+        <div class="tech-cards" id="techViz">
+          <div class="tc" id="tc0"><h4>Filler Removal</h4><div class="tc-demo mono" id="td0"></div></div>
+          <div class="tc" id="tc1"><h4>Question → Imperative</h4><div class="tc-demo mono" id="td1"></div></div>
+          <div class="tc" id="tc2"><h4>Phrase Shortening</h4><div class="tc-demo mono" id="td2"></div></div>
+          <div class="tc" id="tc3"><h4>Semantic Dedup</h4><div class="tc-demo mono" id="td3"></div></div>
+          <div class="tc" id="tc4"><h4>Telegraph Style</h4><div class="tc-demo mono" id="td4"></div></div>
+          <div class="tc" id="tc5"><h4>Low-Info Drop</h4><div class="tc-demo mono" id="td5"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="t4"></div>
+
+<!-- ═══ MODES ═══ -->
+<section class="section" style="background:var(--bg2)">
+  <div class="s-inner rev">
+    <div class="rvr">
+      <div class="label">Three Modes</div>
+      <h2>You control<br><span class="gradient-text">how much to save.</span></h2>
+      <p class="desc">Different contexts need different levels. Soft for careful prompts, Normal for everyday use, Aggressive for agent sessions where every token counts against your bill.</p>
+      <ul class="flist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Soft:</strong> Typo-fix only. Perfect for critical prompts.</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Normal:</strong> Strips filler and hedging. Best for chat.</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Aggressive:</strong> Max savings. Ideal for agents + APIs.</li>
+      </ul>
+    </div>
+    <div class="rvl d1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Mode Comparison</span></div>
+        <div class="mode-viz" id="modeViz">
+          <div class="mode-slider"><div class="mode-opt active" id="mo0">Soft</div><div class="mode-opt" id="mo1">Normal</div><div class="mode-opt" id="mo2">Aggr</div></div>
+          <div class="mode-input-box mono" style="font-size:11px">"I was just wondering if you could perhaps help me understand how to implement a binary search tree in Python please?"</div>
+          <div class="mode-output-box mono" id="modeOut" style="font-size:11px"></div>
+          <div class="mode-stats-row"><span style="color:var(--t3);font-size:11px" id="modeTok">22 tok</span><div class="mode-bar"><div class="mode-bar-fill" id="modeBar"></div></div><span style="font-size:13px;font-weight:800;color:var(--ac)" id="modePct">0%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="t5"></div>
+
+<!-- ═══ AGENT MONITOR ═══ -->
+<section class="section" id="agents" style="background:var(--bg1)">
+  <div class="glow" style="top:0;right:-200px"></div>
+  <div class="s-inner">
+    <div class="rvl">
+      <div class="label">Agent Monitor</div>
+      <h2>See everything<br><span class="gradient-text">your agent does.</span></h2>
+      <p class="desc">Terse auto-detects Claude Code, OpenClaw, Aider, and Cursor Agent. It tails session logs in real time — tracking tokens, cost, tool calls, cache hits, typos caught, and cumulative savings.</p>
+      <ul class="flist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Live token tracking: input, output, cache reads</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Per-session cost estimation + savings potential</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Spellcheck on every prompt before it's sent</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tool call tracking + activity feed</li>
+      </ul>
+      <div class="alts"><span>Claude Code</span><span>OpenClaw</span><span>Aider</span><span>Cursor Agent</span></div>
+    </div>
+    <div class="rvr d1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Agent Monitor — Live</span></div>
+        <div class="agent-full" id="agentViz">
+          <div class="agent-term mono" id="agTerm"></div>
+          <div class="agent-connect-banner" id="agBanner"><div class="terse-dot"></div><span style="font-size:11px;flex:1">Claude Code detected — monitor session?</span><span class="agent-connect-btn">Connect</span></div>
+          <div class="agent-panel-anim" id="agPanel">
+            <div class="ap-grid">
+              <div class="ap-stat"><span class="ap-v" id="agTurns">0</span><span class="ap-l">Turns</span></div>
+              <div class="ap-stat"><span class="ap-v" id="agInput">0</span><span class="ap-l">Input</span></div>
+              <div class="ap-stat"><span class="ap-v" id="agOutput">0</span><span class="ap-l">Output</span></div>
+              <div class="ap-stat"><span class="ap-v" id="agCost">$0</span><span class="ap-l">Cost</span></div>
+              <div class="ap-stat"><span class="ap-v" id="agCache">0</span><span class="ap-l">Cache</span></div>
+              <div class="ap-stat"><span class="ap-v" id="agTools">0</span><span class="ap-l">Tools</span></div>
+              <div class="ap-stat"><span class="ap-v" id="agTypos">0</span><span class="ap-l">Typos</span></div>
+              <div class="ap-stat"><span class="ap-v" id="agDur">0s</span><span class="ap-l">Duration</span></div>
+            </div>
+            <div class="ap-savings-bar"><span class="ap-sv-label">Prompt savings</span><span class="ap-sv-val" id="agSav">—</span></div>
+            <div class="ap-model-row" id="agModelRow"><span class="ap-model-label">Model:</span><span class="ap-model-val">claude-opus-4-6</span><span class="ap-model-dot"></span><span class="ap-model-status">Streaming</span></div>
+            <div class="ap-feed mono" id="agFeed"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="t6"></div>
+
+<!-- ═══ BENCHMARKS ═══ -->
+<section class="section" id="benchmarks" style="background:var(--bg2)">
+  <div class="s-inner rev">
+    <div class="rvr">
+      <div class="label">Benchmarks</div>
+      <h2>Tested on<br><span class="gradient-text">real sessions.</span></h2>
+      <p class="desc">Tested on real ChatGPT prompts, Claude Code sessions, and agent workflows. Clean technical prompts pass through untouched. Verbose prompts and agent messages see 40-70% reduction.</p>
+      <ul class="flist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Benchmarked across manual prompts and agent turns</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Clean prompts correctly return 0% — no false changes</li>
+      </ul>
+    </div>
+    <div class="rvl d1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Benchmarks — Aggressive Mode</span></div>
+        <div class="bench-bars" id="benchViz">
+          <div class="bb" data-pct="51"><span class="bb-label">Typo-heavy rambling</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-51%</span></div>
+          <div class="bb" data-pct="60"><span class="bb-label">Verbose Docker Q</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-60%</span></div>
+          <div class="bb" data-pct="46"><span class="bb-label">Chatty debug request</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-46%</span></div>
+          <div class="bb" data-pct="64"><span class="bb-label">Mixed typos + filler</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-64%</span></div>
+          <div class="bb" data-pct="63"><span class="bb-label">Well-written (Normal)</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-63%</span></div>
+          <div class="bb" data-pct="28"><span class="bb-label">Repeated questions</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-28%</span></div>
+          <div class="bb" data-pct="0"><span class="bb-label">Clean technical</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">0%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="t7"></div>
+
+<!-- ═══ TESTIMONIALS ═══ -->
+<section class="testimonials-section">
+  <div class="testimonials-inner">
+    <h2 class="rv">...and loved by <span class="gradient-text">developers</span></h2>
+    <p class="testimonials-sub rv d1">Engineers and AI power users cutting costs and gaining visibility into their token usage.</p>
+    <div class="testimonials-track">
+      <div class="testi-card">
+        <div class="testi-header">
+          <div class="testi-avatar">M</div>
+          <div><div class="testi-name">Marcus Chen</div><div class="testi-handle">@marcuschen_dev</div></div>
+        </div>
+        <div class="testi-body">Been using <span class="hl">@TerseApp</span> with Claude Code for a week. Token usage dropped ~40% on agent sessions. The spellcheck alone saves me from costly correction loops — and the monitor shows exactly where tokens go.</div>
+        <div class="testi-tag">Claude Code</div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-header">
+          <div class="testi-avatar">S</div>
+          <div><div class="testi-name">Sarah Kim</div><div class="testi-handle">@sarahk_ai</div></div>
+        </div>
+        <div class="testi-body">I type verbose ChatGPT prompts out of habit. <span class="hl">Terse</span> catches all my filler words and hedging in real time. -60% tokens on average. It's like Grammarly for token efficiency.</div>
+        <div class="testi-tag">ChatGPT</div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-header">
+          <div class="testi-avatar">J</div>
+          <div><div class="testi-name">Jake Ortiz</div><div class="testi-handle">@jakeortiz</div></div>
+        </div>
+        <div class="testi-body">The agent monitor alone is worth it. I can see input/output/cache per turn, tool call costs, and which <span class="hl">Cursor</span> sessions are burning the most tokens. Finally have visibility into agent spend.</div>
+        <div class="testi-tag">Cursor Agent</div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-header">
+          <div class="testi-avatar">A</div>
+          <div><div class="testi-name">Amara Patel</div><div class="testi-handle">@amara_codes</div></div>
+        </div>
+        <div class="testi-body">Runs 100% on-device. No API calls, no cloud. As someone who works with sensitive codebases, this was the only token optimizer I'd actually trust. <span class="hl">Privacy-first</span> done right.</div>
+        <div class="testi-tag">Privacy</div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-header">
+          <div class="testi-avatar">R</div>
+          <div><div class="testi-name">Ravi Nguyen</div><div class="testi-handle">@ravi_ng</div></div>
+        </div>
+        <div class="testi-body">Set up <span class="hl">OpenClaw</span> + Terse and my API bill dropped immediately. Auto-mode rewrites prompts before send, the monitor tracks every turn's cost, and catching typos means fewer "sorry, I meant..." follow-ups.</div>
+        <div class="testi-tag">OpenClaw</div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-header">
+          <div class="testi-avatar">E</div>
+          <div><div class="testi-name">Elena Vasquez</div><div class="testi-handle">@elena_v</div></div>
+        </div>
+        <div class="testi-body">The three modes are perfect. Soft for important prompts where every word matters, Aggressive for quick throwaway questions. <span class="hl">Terse</span> adapts to how I work, not the other way around.</div>
+        <div class="testi-tag">3 Modes</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<section class="stats-section">
+  <div class="stats-inner">
+    <h2 class="rv">Built on <span class="gradient-text">research.</span></h2>
+    <div class="stats-grid">
+      <div class="rv d1"><div class="stat-num" data-t="7" data-s="">0</div><div class="stat-lbl">Pipeline stages</div></div>
+      <div class="rv d1"><div class="stat-num" data-t="20" data-s="+">0</div><div class="stat-lbl">Token reduction techniques</div></div>
+      <div class="rv d2"><div class="stat-num" data-t="400" data-s="+">0</div><div class="stat-lbl">Typo corrections built-in</div></div>
+      <div class="rv d3"><div class="stat-num" data-t="12" data-s="">0</div><div class="stat-lbl">Apps &amp; agents supported</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="cta" id="dl">
+  <div class="cta-glow"></div>
+  <h2 class="rv">Stop wasting<br><span class="gradient-text">tokens and money.</span></h2>
+  <p class="rv d1">Optimize prompts, monitor agents, catch typos, track costs — all on your machine. Free, private, no cloud.</p>
+  <div class="hero-actions rv d2">
+    <button class="btn-primary">Download for macOS <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+    <a href="#" class="btn-ghost">GitHub <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p>Token optimizer + agent monitor. Reduce prompt costs, track sessions, catch typos. All on-device.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="#pipeline">Pipeline</a><a href="#techniques">Techniques</a><a href="#agents">Agent Monitor</a><a href="#dl">Download</a></div>
+    <div class="footer-col"><h4>Techniques</h4><a href="#">Spell Correction</a><a href="#">Pattern Optimization</a><a href="#">NLP Analysis</a><a href="#">Telegraph Compression</a></div>
+    <div class="footer-col"><h4>Research</h4><a href="#">LLMLingua (EMNLP 2023)</a><a href="#">Norvig Spelling</a><a href="#">Selective Context</a><a href="#">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>Electron &middot; Swift &middot; compromise.js</span></div>
+</footer>
+
+<script>
+// ═══ Reveal ═══
+const rObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('vis')}),{threshold:.12,rootMargin:'0px 0px -30px 0px'});
+document.querySelectorAll('.rv,.rvl,.rvr,.feat').forEach(el=>rObs.observe(el));
+// ═══ Nav ═══
+window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('scrolled',window.scrollY>30));
+// ═══ Track ═══
+const tObs=new IntersectionObserver(e=>e.forEach(x=>x.target.classList.toggle('lit',x.isIntersecting)),{threshold:.5});
+document.querySelectorAll('.track').forEach(el=>tObs.observe(el));
+// ═══ Counters ═══
+const cObs=new IntersectionObserver(e=>e.forEach(x=>{if(!x.isIntersecting)return;const el=x.target,t=+el.dataset.t,s=el.dataset.s||'';let c=0;const st=Math.max(1,Math.floor(t/30));const iv=setInterval(()=>{c+=st;if(c>=t){c=t;clearInterval(iv)}el.textContent=c+s},25);cObs.unobserve(el)}),{threshold:.5});
+document.querySelectorAll('.stat-num').forEach(el=>cObs.observe(el));
+
+// ═══ HOW IT WORKS — COMPREHENSIVE AGENT SESSION ANIMATION ═══
+(function(){
+  let hwRan=false;
+  const hwObs=new IntersectionObserver(e=>{
+    if(!e[0].isIntersecting)return;
+    if(hwRan)return;hwRan=true;runHowViz();
+  },{threshold:.2});
+  const howSec=document.getElementById('howViz');
+  if(howSec)hwObs.observe(howSec);
+
+  function $(id){return document.getElementById(id)}
+  function showPhase(id){$(id).classList.add('show')}
+  function hwType(el,text,speed){
+    el.textContent='';let i=0;
+    const iv=setInterval(()=>{if(i<text.length){el.textContent+=text[i];i++}else clearInterval(iv)},speed);
+  }
+  function showStage(i,val){
+    if(i>0){const p=$('hwS'+(i-1));p.classList.remove('active');p.classList.add('done')}
+    $('hwS'+i).classList.add('active');
+    if(val)$('hwSV'+i).textContent=val;
+  }
+  function showAction(i,text){
+    const a=$('hwA'+i);if(!a)return;
+    a.lastElementChild.textContent=text;a.classList.add('show');
+  }
+
+  const actionTexts=['Read auth.ts, token.ts, middleware.ts','Search: token refresh logic','Edit auth.ts — add refresh handler','Run npm test — 8/8 pass','Agent response: 89 output tokens'];
+
+  function runHowViz(){
+    // Reset: dim all phases, clear content, reset stages and actions
+    for(let i=1;i<=5;i++) $('hwP'+i).classList.remove('show');
+    $('hwPrompt').innerHTML='&nbsp;';$('hwTokBefore').innerHTML='&nbsp;';
+    $('hwOptimized').innerHTML='&nbsp;';$('hwTokAfter').innerHTML='&nbsp;';
+    $('hwSavingsBar').classList.remove('show');$('hwSavingsBar').innerHTML='&nbsp;';
+    for(let i=0;i<7;i++){$('hwS'+i).classList.remove('active','done');$('hwSV'+i).textContent=''}
+    for(let i=0;i<5;i++){$('hwA'+i).classList.remove('show');$('hwA'+i).lastElementChild.innerHTML='&nbsp;'}
+    ['hwSTurns','hwSIn','hwSOut','hwSCache','hwSTools','hwSSaved','hwSTypos','hwSCost'].forEach(id=>$(id).textContent='—');
+
+    const userText="I dont know if this makes sense but could you maybe help me refacter the authetication module so that it handles tokne refresh properly please?";
+    const optimized="Refactor authentication module: handle token refresh";
+    const stageVals=['authetication→authentication, tokne→token, refacter→refactor','normalized','removed 4 filler phrases','removed "could you maybe"','imperative form','dropped "please","properly"','48 → 10 tok'];
+
+    const seq=[
+      {t:300,fn:()=>showPhase('hwP1')},
+      {t:200,fn:()=>hwType($('hwPrompt'),userText,18)},
+      {t:userText.length*18+300,fn:()=>{$('hwTokBefore').textContent='48 tokens · $0.006 input cost'}},
+      {t:500,fn:()=>showPhase('hwP2')},
+      {t:250,fn:()=>showStage(0,stageVals[0])},
+      {t:320,fn:()=>showStage(1,stageVals[1])},
+      {t:300,fn:()=>showStage(2,stageVals[2])},
+      {t:300,fn:()=>showStage(3,stageVals[3])},
+      {t:280,fn:()=>showStage(4,stageVals[4])},
+      {t:260,fn:()=>showStage(5,stageVals[5])},
+      {t:260,fn:()=>{showStage(6,stageVals[6]);$('hwS6').classList.remove('active');$('hwS6').classList.add('done')}},
+      {t:450,fn:()=>{showPhase('hwP3');$('hwOptimized').textContent=optimized;$('hwTokAfter').textContent='10 tokens · −79% · $0.005 saved · auto-sent ✔'}},
+      {t:500,fn:()=>showPhase('hwP4')},
+      {t:200,fn:()=>showAction(0,actionTexts[0])},
+      {t:300,fn:()=>showAction(1,actionTexts[1])},
+      {t:300,fn:()=>showAction(2,actionTexts[2])},
+      {t:300,fn:()=>showAction(3,actionTexts[3])},
+      {t:250,fn:()=>showAction(4,actionTexts[4])},
+      {t:500,fn:()=>{
+        showPhase('hwP5');
+        $('hwSTurns').textContent='1';$('hwSIn').textContent='10';$('hwSOut').textContent='89';
+        $('hwSCache').textContent='24';$('hwSTools').textContent='4';$('hwSSaved').textContent='38';
+        $('hwSTypos').textContent='3';$('hwSCost').textContent='$0.018';
+      }},
+      {t:400,fn:()=>{$('hwSavingsBar').textContent='3 typos caught · 38 tokens saved · −79% input · $0.005 saved · 0 retries';$('hwSavingsBar').classList.add('show')}},
+      {t:3500,fn:()=>{hwRan=false;runHowViz()}}
+    ];
+    let delay=0;
+    seq.forEach(s=>{delay+=s.t;setTimeout(s.fn,delay)});
+  }
+})();
+
+// ═══ HERO MULTI-SCENE ═══
+const SCENE_DUR=14000;
+let curScene=0,sceneTimer=null;
+const scenes=['sc0','sc1','sc2','sc3','sc4'];
+const dots=document.querySelectorAll('.scene-dot');
+function showScene(i){
+  curScene=i;
+  scenes.forEach((id,j)=>{document.getElementById(id).classList.toggle('active',j===i)});
+  dots.forEach((d,j)=>{d.classList.toggle('active',j===i);d.querySelector('.fill').style.width='0';d.querySelector('.fill').style.transition='none'});
+  requestAnimationFrame(()=>{const f=dots[i].querySelector('.fill');f.style.transition=`width ${SCENE_DUR}ms linear`;f.style.width='100%'});
+  if(i===0)runScene0();if(i===1)runScene1();if(i===2)runScene2();if(i===3)runScene3();if(i===4)runScene4();
+}
+function nextScene(){showScene((curScene+1)%5)}
+dots.forEach(d=>d.addEventListener('click',()=>{clearInterval(sceneTimer);showScene(+d.dataset.scene);sceneTimer=setInterval(nextScene,SCENE_DUR)}));
+
+// ═══ SHARED HERO HELPERS ═══
+function typeText(el,text,speed,cb){el.textContent='';let i=0;const iv=setInterval(()=>{if(i<text.length){el.textContent+=text[i];i++}else{clearInterval(iv);if(cb)cb()}},speed)}
+
+// Scene 0: OpenClaw — comprehensive agent session with live stats, tool calls, cache, auto-reduction
+function runScene0(){
+  const chat=document.getElementById('s0chat');
+  const inp=document.getElementById('s0input');
+  const sendBtn=document.getElementById('s0sendBtn');
+  chat.innerHTML='';inp.textContent='';
+  // Reset stats
+  const st={turns:0,inTok:0,outTok:0,cache:0,cost:0,saved:0};
+  function updStats(){
+    const $=id=>document.getElementById(id);
+    $('s0turns').textContent=st.turns;
+    $('s0input_tok').textContent=st.inTok;
+    $('s0output_tok').textContent=st.outTok;
+    $('s0cache').textContent=st.cache;
+    $('s0cost').textContent=st.cost.toFixed(3);
+    $('s0saved').textContent=st.saved;
+  }
+  updStats();
+
+  function addMsg(html,cls,delay){
+    return new Promise(r=>{setTimeout(()=>{
+      const d=document.createElement('div');d.className='oc-msg '+cls;d.innerHTML=html;chat.appendChild(d);
+      requestAnimationFrame(()=>d.classList.add('show'));chat.scrollTop=9999;r();
+    },delay)});
+  }
+  function addTerse(text,delay){
+    return new Promise(r=>{setTimeout(()=>{
+      const d=document.createElement('div');d.className='oc-terse-line';
+      d.innerHTML='<div class="terse-dot" style="width:5px;height:5px;flex-shrink:0"></div><span>'+text+'</span>';
+      chat.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'));chat.scrollTop=9999;r();
+    },delay)});
+  }
+  function addTool(icon,text,delay){
+    return new Promise(r=>{setTimeout(()=>{
+      const d=document.createElement('div');d.className='oc-tool-line';
+      d.innerHTML='<span class="tool-icon">'+icon+'</span><span>'+text+'</span>';
+      chat.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'));chat.scrollTop=9999;r();
+    },delay)});
+  }
+  function typeInp(text,speed){
+    return new Promise(r=>{inp.textContent='';let i=0;
+      const iv=setInterval(()=>{if(i<text.length){inp.textContent+=text[i];i++}else{clearInterval(iv);r()}},speed);
+    });
+  }
+  function flashSend(){sendBtn.style.background='var(--acd)';sendBtn.style.borderColor='var(--acm)'}
+  function resetSend(){sendBtn.style.background='';sendBtn.style.borderColor=''}
+
+  // === TURN 1: verbose prompt with typo → full pipeline ===
+  typeInp("So basically I've been struggling to figure out why my authetication endpoint keeps returning a 500 error when I try to POST data to it, could you please help me?",16).then(()=>{
+    flashSend();
+    return addTerse('[terse] Intercepting prompt before API...',250);
+  }).then(()=>{
+    return addTerse('[terse] Stage 1 — Spell check: authetication → authentication',220);
+  }).then(()=>{
+    return addTerse('[terse] Stage 2 — Whitespace normalized',160);
+  }).then(()=>{
+    return addTerse('[terse] Stage 3 — Filler removed: "So basically", "I\'ve been struggling to figure out"',240);
+  }).then(()=>{
+    return addTerse('[terse] Stage 4 — Hedging removed: "could you please help me"',200);
+  }).then(()=>{
+    return addTerse('[terse] Stage 5 — Question → imperative',180);
+  }).then(()=>{
+    return addTerse('[terse] Stage 6 — Low-info dropped: "to it"',160);
+  }).then(()=>{
+    return addTerse('[terse] Stage 7 — Final: 48 → 10 tokens (−79%) — auto-sending ✔',200);
+  }).then(()=>{
+    inp.textContent='';resetSend();
+    st.turns=1;st.inTok=10;st.saved=38;updStats();
+    return addMsg(
+      '<span class="msg-original">So basically I\'ve been struggling to figure out why my authetication endpoint keeps returning a 500 error when I try to POST data to it, could you please help me?</span>'+
+      '<span class="msg-sent">Fix authentication endpoint 500 error on POST</span>'+
+      '<span class="msg-badge">1 typo fixed · 48→10 tok · −79% · $0.004 saved</span>','user',150);
+  }).then(()=>{
+    // Agent response with tool calls
+    return addTool('⚙','Read auth.ts, login.ts, middleware.ts',200);
+  }).then(()=>{
+    st.outTok=42;st.cost=0.012;updStats();
+    return addTool('⚙','Run grep -n "verify" auth.ts',220);
+  }).then(()=>{
+    st.cache=18;updStats();
+    return addMsg('Found the issue — your token expiry check on line 47 uses <code style="color:var(--ac)">&lt;</code> instead of <code style="color:var(--ac)">&lt;=</code>. I\'ll fix it.','assistant',250);
+  }).then(()=>{
+    st.outTok=89;st.cost=0.021;updStats();
+    return addTool('⚙','Edit auth.ts:47 — fix expiry comparison',200);
+  }).then(()=>{
+    // === TURN 2: typos + verbose → caught + compressed ===
+    return typeInp("ok thansk but I aslo think theres a problme with the middlewear where its not cheking the tokne expiry corectly",18);
+  }).then(()=>{
+    flashSend();
+    return addTerse('[terse] Intercepting — 6 typos detected!',220);
+  }).then(()=>{
+    return addTerse('[terse] Fixed: thansk→thanks, aslo→also, problme→problem, middlewear→middleware, tokne→token, corectly→correctly',260);
+  }).then(()=>{
+    return addTerse('[terse] Filler: "ok", "I also think" — hedging removed',180);
+  }).then(()=>{
+    return addTerse('[terse] Semantic dedup: similar to turn 1 intent — merged',200);
+  }).then(()=>{
+    return addTerse('[terse] Compressed: 32 → 8 tok (−75%) — auto-sending ✔',180);
+  }).then(()=>{
+    inp.textContent='';resetSend();
+    st.turns=2;st.inTok=18;st.saved=72;updStats();
+    return addMsg(
+      '<span class="msg-original">ok thansk but I aslo think theres a problme with the middlewear where its not cheking the tokne expiry corectly</span>'+
+      '<span class="msg-sent">Check middleware token expiry validation</span>'+
+      '<span class="msg-badge">6 typos · 32→8 tok · −75% · dedup applied</span>','user',150);
+  }).then(()=>{
+    return addTool('⚙','Read middleware.ts',180);
+  }).then(()=>{
+    st.outTok=134;st.cache=41;st.cost=0.034;updStats();
+    return addMsg('Middleware looks correct now after the fix. Running tests...','assistant',250);
+  }).then(()=>{
+    return addTool('⚙','Run npm test -- auth.test.ts',200);
+  }).then(()=>{
+    st.outTok=156;st.cost=0.041;updStats();
+    return addTool('✓','All 12 tests pass',250);
+  }).then(()=>{
+    // Session summary
+    st.turns=2;st.inTok=18;st.outTok=156;st.cache=41;st.cost=0.041;st.saved=72;updStats();
+    return addTerse('[terse] Session: 2 turns · 80→18 input tok saved · 7 typos caught · $0.006 saved · 0 retries · 0 correction loops',350);
+  });
+}
+// Shared: panel-based step-by-step scene
+function panelScene(cfg){
+  const inp=document.getElementById(cfg.inp);
+  const panel=document.getElementById(cfg.panel);
+  const dot=document.getElementById(cfg.dot);
+  const stageEl=document.getElementById(cfg.stage);
+  const tokEl=document.getElementById(cfg.tok);
+  const result=document.getElementById(cfg.result);
+
+  panel.classList.remove('show');result.classList.remove('show');
+  dot.classList.remove('pulse');stageEl.textContent='Ready';tokEl.textContent='';inp.innerHTML='';
+  for(let i=0;i<7;i++){const st=document.getElementById(cfg.prefix+'st'+i);if(st)st.classList.remove('done')}
+
+  const words=cfg.text.split(' ');
+  let wi=0;
+  const typeIv=setInterval(()=>{
+    if(wi>=words.length){clearInterval(typeIv);afterType();return}
+    if(wi>0)inp.appendChild(document.createTextNode(' '));
+    const s=document.createElement('span');s.className='hw';s.textContent=words[wi];inp.appendChild(s);
+    wi++;
+  },cfg.ws||50);
+
+  function afterType(){
+    setTimeout(()=>{
+      panel.classList.add('show');
+      dot.classList.add('pulse');
+      stageEl.textContent='Scanning...';
+      tokEl.textContent=cfg.stages[0].tok+' tok';
+
+      let si=0;
+      setTimeout(()=>{
+        const stIv=setInterval(()=>{
+          if(si<cfg.stages.length){
+            const st=cfg.stages[si];
+            const stepEl=document.getElementById(cfg.prefix+'st'+si);
+            if(stepEl)stepEl.classList.add('done');
+            stageEl.textContent=st.name;
+            tokEl.textContent=st.tok+' tok';
+            // Strike filler at pattern stage
+            if(si===cfg.fillerStage&&cfg.filler){
+              const hw=inp.querySelectorAll('.hw');
+              cfg.filler.forEach((idx,i)=>{setTimeout(()=>{if(hw[idx])hw[idx].classList.add('filler')},i*50)});
+            }
+            si++;
+          } else {
+            clearInterval(stIv);
+            dot.classList.remove('pulse');
+            stageEl.textContent='Done';
+            setTimeout(()=>{
+              result.classList.add('show');
+              document.getElementById(cfg.resultText).textContent=cfg.out;
+              document.getElementById(cfg.resultPct).textContent=cfg.pct;
+            },250);
+          }
+        },340);
+      },250);
+    },280);
+  }
+}
+
+// Scene 1: ChatGPT
+function runScene1(){
+  panelScene({
+    inp:'s1input',panel:'s1panel',dot:'s1dot',stage:'s1stage',tok:'s1tok',
+    result:'s1result',resultText:'s1resultText',resultPct:'s1resultPct',prefix:'s1',
+    text:"Hey could you maybe help me to wirte a Python function that calculates the factorial of a numbr please",
+    filler:[0,1,2,3,4,5,6,11,12,13,15,16,18],fillerStage:2,
+    stages:[
+      {name:'Spell — wirte→write, numbr→number',tok:38},
+      {name:'Whitespace',tok:38},
+      {name:'Patterns — filler removed',tok:22},
+      {name:'Redundancy',tok:20},
+      {name:'NLP — question→imperative',tok:14},
+      {name:'Compression',tok:10},
+      {name:'Cleanup',tok:8},
+    ],
+    out:"Write Python factorial function",pct:'-79%',ws:48
+  });
+}
+
+// Scene 2: VS Code
+function runScene2(){
+  panelScene({
+    inp:'s2input',panel:'s2panel',dot:'s2dot',stage:'s2stage',tok:'s2tok',
+    result:'s2result',resultText:'s2resultText',resultPct:'s2resultPct',prefix:'s2',
+    text:"I'm basically trying to figure out how to refactor this component to use TypeScript generics if that makes sense",
+    filler:[0,1,2,3,4,5,6,7,15,16,17,18],fillerStage:2,
+    stages:[
+      {name:'Spell check — clean',tok:34},
+      {name:'Whitespace',tok:34},
+      {name:'Patterns — hedging removed',tok:20},
+      {name:'Redundancy',tok:18},
+      {name:'NLP analysis',tok:14},
+      {name:'Compression — telegraph',tok:10},
+      {name:'Cleanup',tok:8},
+    ],
+    out:"Refactor component to TypeScript generics",pct:'-76%',ws:48
+  });
+}
+
+// Scene 3: Agent — multi-step terminal with Terse intercepting
+function runScene3(){
+  const c=document.getElementById('s3lines');c.innerHTML='';
+  document.getElementById('s3banner').classList.remove('show');
+  document.getElementById('s3stats').classList.remove('show');
+  const lines=[
+    {cls:'cmd',text:'$ claude',d:0},
+    {cls:'out',text:'Claude Code v1.2.0',d:400},
+    {cls:'cmd',text:'> fix the auth bug in login.ts',d:900},
+    {cls:'out',text:'I\'ll read login.ts and check the token logic...',d:1600},
+  ];
+  lines.forEach(l=>{
+    setTimeout(()=>{
+      const d=document.createElement('div');d.className='term-line '+l.cls;d.textContent=l.text;c.appendChild(d);
+      requestAnimationFrame(()=>d.classList.add('show'));
+    },l.d);
+  });
+  setTimeout(()=>document.getElementById('s3banner').classList.add('show'),2400);
+  setTimeout(()=>{
+    document.getElementById('s3banner').classList.remove('show');
+    document.getElementById('s3stats').classList.add('show');
+    let t=0;const iv=setInterval(()=>{t++;if(t>8){clearInterval(iv);return}
+      document.getElementById('s3turns').textContent=Math.min(t,4);
+      document.getElementById('s3input').textContent=(t*42>999?(t*42/1000).toFixed(1)+'K':t*42);
+      document.getElementById('s3output').textContent=(t*28);
+      document.getElementById('s3cost').textContent='$'+(t*.032).toFixed(3);
+    },300);
+    setTimeout(()=>{
+      const d=document.createElement('div');d.className='term-line green';d.textContent='[terse] Prompt optimized: 38→14 tokens (-63%)';c.appendChild(d);
+      requestAnimationFrame(()=>d.classList.add('show'));
+    },500);
+  },3400);
+}
+
+// Scene 4: Sessions — items appear with live optimization badges
+function runScene4(){
+  ['s4s1','s4s2','s4s3'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  document.getElementById('s4add').classList.remove('show');
+  ['s4s1','s4s2','s4s3','s4add'].forEach((id,i)=>{
+    setTimeout(()=>document.getElementById(id).classList.add('show'),i*300);
+  });
+}
+
+showScene(0);sceneTimer=setInterval(nextScene,SCENE_DUR);
+
+// ═══ PIPELINE ANIM — with token counts decreasing at each stage ═══
+const pipeTexts=[
+  {in:"Hey I was just wondering if you could maybe help me wirte a function that takes a list",
+   out:"Write function: take list",
+   toks:[52,50,50,38,34,28,22,20],
+   env:"Chrome — ChatGPT"},
+  {in:"So basically what I'm trying to do is deploy my app to production using Docker plz",
+   out:"Deploy app to production with Docker",
+   toks:[48,46,46,36,32,26,18,14],
+   env:"Cursor — Agent Chat"},
+  {in:"I dont know if this makes sense but I really need help with authetication in my React app",
+   out:"Help with authentication in React app",
+   toks:[54,50,50,40,36,28,20,16],
+   env:"OpenClaw — Session"},
+  {in:"Could you please explain to me how I should go about setting up the CI pipeline for this project",
+   out:"Set up CI pipeline for project",
+   toks:[50,50,50,38,32,24,16,12],
+   env:"Terminal — Claude Code"},
+];
+let pipeIdx=0;
+function runPipe(){
+  const steps=document.querySelectorAll('#pipeViz .pipe-step');
+  const inEl=document.getElementById('pipeIn'),outEl=document.getElementById('pipeOut');
+  const titleEl=document.getElementById('pipeTitle');
+  const detectEl=document.getElementById('pipeDetect');
+  const ex=pipeTexts[pipeIdx];
+  titleEl.textContent=ex.env+' — Live';
+  // Reset
+  detectEl.classList.remove('show');detectEl.innerHTML='';
+  steps.forEach(s=>{s.classList.remove('lit');const tk=s.querySelector('.pipe-tok');if(tk)tk.textContent=''});
+  outEl.classList.remove('show');outEl.innerHTML='';
+  inEl.textContent='';
+  // Step 1: Show detection
+  detectEl.innerHTML='<span class="pd-dot"></span> Detected: '+ex.env+' — reading text field...';
+  detectEl.classList.add('show');
+  setTimeout(()=>{
+    detectEl.innerHTML='<span class="pd-dot"></span> Captured prompt from '+ex.env+' — optimizing...';
+    // Step 2: Type the prompt
+    typeText(inEl,ex.in,12,()=>{
+      inEl.innerHTML+=' <span class="pipe-tok-badge before">'+ex.toks[0]+' tok</span>';
+      // Step 3: Run pipeline stages
+      let si=0;
+      setTimeout(()=>{
+        const sv=setInterval(()=>{
+          if(si<steps.length){
+            steps[si].classList.add('lit');
+            const tk=steps[si].querySelector('.pipe-tok');
+            if(tk)tk.textContent=ex.toks[si+1]+' tok';
+            si++;
+          } else {
+            clearInterval(sv);
+            const pct=Math.round((1-ex.toks[7]/ex.toks[0])*100);
+            // Step 4: Show optimized output + auto-sent
+            outEl.innerHTML=ex.out+' <span class="pipe-tok-badge after">'+ex.toks[7]+' tok &middot; -'+pct+'%</span>';
+            outEl.classList.add('show');
+            detectEl.innerHTML='<span class="pd-dot"></span> Auto-sent optimized prompt back to '+ex.env+' ✔';
+            setTimeout(()=>{pipeIdx=(pipeIdx+1)%pipeTexts.length;runPipe()},2500);
+          }
+        },340);
+      },250);
+    });
+  },600);
+}
+const pObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runPipe();pObs.unobserve(x.target)}}),{threshold:.3});
+pObs.observe(document.getElementById('pipeViz'));
+
+// ═══ SPELL ANIM — 3 examples with more typos ═══
+const spellData=[
+  {words:[{t:'I',ok:true},{t:'want',ok:true},{t:'to',ok:true},{t:'wirte',ok:false,fix:'write',stage:0},{t:'a',ok:true},{t:'fucntion',ok:false,fix:'function',stage:0},{t:'that',ok:true},{t:'retuns',ok:false,fix:'returns',stage:1},{t:'the',ok:true},{t:'sum',ok:true},{t:'of',ok:true},{t:'numbres',ok:false,fix:'numbers',stage:1}]},
+  {words:[{t:'what',ok:true},{t:'souls',ok:false,fix:'should',stage:2},{t:'I',ok:true},{t:'do',ok:true},{t:'to',ok:true},{t:'deplpy',ok:false,fix:'deploy',stage:0},{t:'my',ok:true},{t:'databse',ok:false,fix:'database',stage:0},{t:'to',ok:true},{t:'producton',ok:false,fix:'production',stage:1}]},
+  {words:[{t:'plz',ok:false,fix:'please',stage:0},{t:'explane',ok:false,fix:'explain',stage:1},{t:'how',ok:true},{t:'to',ok:true},{t:'implment',ok:false,fix:'implement',stage:1},{t:'authetication',ok:false,fix:'authentication',stage:1},{t:'in',ok:true},{t:'reqct',ok:false,fix:'react',stage:0}]},
+];
+let spellIdx=0;
+function runSpell(){
+  const el=document.getElementById('spellSentence');const pills=['sp1','sp2','sp3','sp4'];
+  pills.forEach(id=>document.getElementById(id).classList.remove('active'));
+  const data=spellData[spellIdx];
+  el.innerHTML=data.words.map((w,i)=>`<span class="spell-word" id="sw${i}">${w.t}</span> `).join('');
+  const fixes=data.words.map((w,i)=>({i,w})).filter(x=>!x.w.ok);
+  let fi=0;
+  const doFix=()=>{
+    if(fi>=fixes.length){setTimeout(()=>{spellIdx=(spellIdx+1)%spellData.length;runSpell()},2000);return}
+    const {i,w}=fixes[fi];
+    const span=document.getElementById('sw'+i);
+    document.getElementById(pills[w.stage]).classList.add('active');
+    span.classList.add('fixing');
+    setTimeout(()=>{
+      span.classList.add('wrong');
+      setTimeout(()=>{span.textContent=w.fix;span.classList.remove('wrong','fixing');span.classList.add('fixed');
+        fi++;setTimeout(doFix,350);
+      },300);
+    },350);
+  };
+  setTimeout(doFix,500);
+}
+const sObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runSpell();sObs.unobserve(x.target)}}),{threshold:.3});
+sObs.observe(document.getElementById('spellViz'));
+
+// ═══ TECHNIQUE ANIM — type out before, then transform ═══
+const techDemos=[
+  {before:'I basically think that',after:'(removed)',pause:1200},
+  {before:'Can you help me write',after:'Write',pause:1200},
+  {before:'due to the fact that',after:'because',pause:1200},
+  {before:'how to learn + how to study',after:'how to learn',pause:1200},
+  {before:'I want to create',after:'create',pause:1200},
+  {before:"I'd appreciate any help",after:'(dropped)',pause:1200},
+];
+function runTech(){
+  techDemos.forEach((td,i)=>{
+    const card=document.getElementById('tc'+i),demo=document.getElementById('td'+i);
+    function cycle(){
+      // Type out the before text word by word
+      const words=td.before.split(' ');
+      demo.innerHTML='';
+      let wi=0;
+      const tIv=setInterval(()=>{
+        if(wi>=words.length){
+          clearInterval(tIv);
+          card.classList.add('pulse');
+          setTimeout(()=>{
+            demo.innerHTML='<span class="del">'+td.before+'</span>';
+            setTimeout(()=>{
+              demo.innerHTML='<span style="color:var(--ac)">'+td.after+'</span>';
+              setTimeout(()=>{card.classList.remove('pulse');setTimeout(cycle,td.pause+i*200)},1500);
+            },700);
+          },300);
+        } else {
+          demo.textContent+=(wi>0?' ':'')+words[wi];wi++;
+        }
+      },55);
+    }
+    setTimeout(cycle,i*500);
+  });
+}
+const tObs2=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runTech();tObs2.unobserve(x.target)}}),{threshold:.3});
+tObs2.observe(document.getElementById('techViz'));
+
+// ═══ MODE ANIM — word-level morph showing which words get cut ═══
+const modeWords='I was just wondering if you could perhaps help me understand how to implement a binary search tree in Python please?'.split(' ');
+const modeKeep=[
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  // Soft: all kept
+  [0,0,0,0,0,0,0,0,1,1,0,0,1,1,1,1,1,1,1,0],  // Normal: "help me implement a binary search tree in Python"
+  [0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1,0,1,0],  // Aggr: "implement binary search tree Python"
+];
+const modeMeta=[
+  {tok:'22 tok',pct:'0%',bar:0},
+  {tok:'10 tok',pct:'-55%',bar:55},
+  {tok:'6 tok',pct:'-73%',bar:73},
+];
+let modeIdx=0;
+function runMode(){
+  ['mo0','mo1','mo2'].forEach((id,i)=>document.getElementById(id).classList.toggle('active',i===modeIdx));
+  const outEl=document.getElementById('modeOut');
+  const keep=modeKeep[modeIdx];
+  const hasCuts=keep.some(k=>!k);
+  outEl.innerHTML=modeWords.map((w,i)=>{
+    if(!keep[i]) return '<span class="mw cut">'+w+'</span>';
+    return '<span class="mw'+(hasCuts?' kept':'')+'">'+w+'</span>';
+  }).join(' ');
+  const m=modeMeta[modeIdx];
+  document.getElementById('modeTok').textContent=m.tok;
+  document.getElementById('modePct').textContent=m.pct;
+  document.getElementById('modeBar').style.width=m.bar+'%';
+  modeIdx=(modeIdx+1)%3;
+  setTimeout(runMode,2500);
+}
+const mObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runMode();mObs.unobserve(x.target)}}),{threshold:.3});
+mObs.observe(document.getElementById('modeViz'));
+
+// ═══ AGENT SECTION ANIM — multi-perspective ═══
+function runAgent(){
+  const term=document.getElementById('agTerm'),banner=document.getElementById('agBanner'),panel=document.getElementById('agPanel'),feed=document.getElementById('agFeed'),modelRow=document.getElementById('agModelRow');
+  term.innerHTML='';banner.classList.remove('show');panel.classList.remove('show');feed.innerHTML='';modelRow.classList.remove('show');
+  // Reset new stats
+  ['agCache','agTools','agTypos','agDur'].forEach(id=>document.getElementById(id).textContent='0');
+
+  const lines=[
+    {cls:'cmd',text:'$ claude "fix the auth bug"',d:0},
+    {cls:'out',text:'Claude Code v1.2.0 — reading codebase...',d:500},
+    {cls:'out',text:'Reading auth.ts, login.ts, middleware.ts...',d:1200},
+  ];
+  lines.forEach(l=>setTimeout(()=>{const d=document.createElement('div');d.className='at-line '+l.cls;d.textContent=l.text;term.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'))},l.d));
+  setTimeout(()=>banner.classList.add('show'),2000);
+  setTimeout(()=>{
+    banner.classList.remove('show');
+    panel.classList.add('show');
+    modelRow.classList.add('show');
+
+    // Multi-perspective feed: prompts, tools, spellcheck, cache, cost alerts
+    const feedLines=[
+      {cls:'usr',text:'[you] fix the auth bug in login.ts'},
+      {cls:'opt',text:'[terse] spell: "authetication"→"authentication"'},
+      {cls:'ast',text:'[agent] Reading auth.ts...'},
+      {cls:'tl',text:'[tool] Read auth.ts (245 lines) — cached'},
+      {cls:'opt',text:'[terse] prompt optimized: 42→18 tokens (-57%)'},
+      {cls:'ast',text:'[agent] Found issue — token expiry check wrong'},
+      {cls:'tl',text:'[tool] Edit auth.ts:47 — applied'},
+      {cls:'usr',text:'[you] add rate limmiting to the API endpionts'},
+      {cls:'opt',text:'[terse] spell: "limmiting"→"limiting", "endpionts"→"endpoints"'},
+      {cls:'opt',text:'[terse] prompt optimized: 38→12 tokens (-68%)'},
+      {cls:'tl',text:'[tool] Read server.ts (180 lines) — cached'},
+      {cls:'ast',text:'[agent] Adding express-rate-limit middleware...'},
+      {cls:'tl',text:'[tool] Edit server.ts:12 — applied'},
+      {cls:'usr',text:'[you] write tests for both changes'},
+      {cls:'opt',text:'[terse] prompt optimized: 28→14 tokens (-50%)'},
+      {cls:'ast',text:'[agent] Creating test files...'},
+      {cls:'tl',text:'[tool] Write auth.test.ts (52 lines)'},
+      {cls:'opt',text:'[terse] session total: 108→44 tokens saved ($0.008)'},
+    ];
+    let t=0,fi=0,toolCount=0,typoCount=0,cacheCount=0;
+    const iv=setInterval(()=>{
+      t++;if(t>18){clearInterval(iv);setTimeout(runAgent,3000);return}
+      // Core stats
+      document.getElementById('agTurns').textContent=Math.min(t,8);
+      const ik=t*41;document.getElementById('agInput').textContent=ik>999?(ik/1000).toFixed(1)+'K':ik;
+      document.getElementById('agOutput').textContent=t*28;
+      document.getElementById('agCost').textContent='$'+(t*.038).toFixed(3);
+      // Extra stats
+      document.getElementById('agDur').textContent=Math.min(t*3,45)+'s';
+      const sv=Math.min(38,Math.round(t*2.2));
+      document.getElementById('agSav').textContent=sv>0?sv+'% ('+Math.round(t*340)+' tok)':'—';
+      // Feed lines with stat tracking
+      if(fi<feedLines.length){
+        const fl=feedLines[fi];
+        const d=document.createElement('div');d.className='ap-fl mono '+fl.cls;d.textContent=fl.text;feed.appendChild(d);
+        requestAnimationFrame(()=>d.classList.add('show'));
+        while(feed.children.length>6)feed.removeChild(feed.firstChild);
+        // Track tool calls, typos, cache hits from feed
+        if(fl.cls==='tl'){toolCount++;document.getElementById('agTools').textContent=toolCount}
+        if(fl.text.includes('spell:')){typoCount+=fl.text.split('→').length-1;document.getElementById('agTypos').textContent=typoCount}
+        if(fl.text.includes('cached')){cacheCount++;document.getElementById('agCache').textContent=cacheCount+'x'}
+        fi++;
+      }
+    },450);
+  },3200);
+}
+const aObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runAgent();aObs.unobserve(x.target)}}),{threshold:.3});
+aObs.observe(document.getElementById('agentViz'));
+
+// ═══ BENCH BARS ANIM ═══
+const bObs=new IntersectionObserver(e=>e.forEach(x=>{if(!x.isIntersecting)return;
+  x.target.querySelectorAll('.bb').forEach((b,i)=>{
+    setTimeout(()=>{b.classList.add('show');const fill=b.querySelector('.bb-fill');fill.style.width=b.dataset.pct+'%'},i*120);
+  });bObs.unobserve(x.target)}),{threshold:.3});
+bObs.observe(document.getElementById('benchViz'));
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+const { contextBridge, ipcRenderer } = require('electron');
+contextBridge.exposeInMainWorld('terse', {
+  enterPickMode: () => ipcRenderer.invoke('enter-pick-mode'),
+  getSessions: () => ipcRenderer.invoke('get-sessions'),
+  removeSession: (id) => ipcRenderer.invoke('remove-session', id),
+  captureNow: () => ipcRenderer.invoke('capture-now'),
+  replaceInTarget: (text) => ipcRenderer.invoke('replace-in-target', text),
+  applyToClipboard: (text) => ipcRenderer.invoke('apply-to-clipboard', text),
+  optimizeText: (text) => ipcRenderer.invoke('optimize-text', text),
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  updateSettings: (s) => ipcRenderer.invoke('update-settings', s),
+  closeWindow: () => ipcRenderer.invoke('close-window'),
+  setAutoMode: (on) => ipcRenderer.invoke('set-auto-mode', on),
+  requestAccessibility: () => ipcRenderer.invoke('request-accessibility'),
+  installBridge: () => ipcRenderer.invoke('install-bridge'),
+  setPopupMinimized: (on) => ipcRenderer.invoke('set-popup-minimized', on),
+  resizePopup: (h) => ipcRenderer.invoke('resize-popup', h),
+  movePopupBy: (dx, dy) => ipcRenderer.invoke('move-popup-by', dx, dy),
+  // Agent Monitor
+  getAgentDetections: () => ipcRenderer.invoke('get-agent-detections'),
+  getAgentSessions: () => ipcRenderer.invoke('get-agent-sessions'),
+  acceptAgent: (type) => ipcRenderer.invoke('accept-agent', type),
+  dismissAgent: (type) => ipcRenderer.invoke('dismiss-agent', type),
+  disconnectAgent: (type) => ipcRenderer.invoke('disconnect-agent', type),
+  analyzeAgentSession: (type) => ipcRenderer.invoke('analyze-agent-session', type),
+  on: (ch, cb) => ipcRenderer.on(ch, (_, d) => cb(d)),
+});

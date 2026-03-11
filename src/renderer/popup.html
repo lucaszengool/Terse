@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Terse Popup</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Minimized favicon -->
+  <div id="favicon" class="favicon" title="Show Terse">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="2" width="20" height="20" rx="5" fill="rgba(110,231,183,0.12)" stroke="rgba(110,231,183,0.4)" stroke-width="1"/>
+      <text x="12" y="17" text-anchor="middle" fill="#6ee7b7" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="14" font-weight="700">T</text>
+    </svg>
+  </div>
+
+  <div id="bar">
+    <div class="bar-header">
+      <div class="bar-left">
+        <div class="dot"></div>
+        <span id="appLabel">Connected</span>
+      </div>
+      <div class="bar-right">
+        <button id="btnHide" class="hide-btn" title="Minimize to icon">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="light" title="Typos + whitespace only">Soft</button>
+          <button class="mode-btn" data-mode="balanced" title="Balanced optimization">Normal</button>
+          <button class="mode-btn" data-mode="aggressive" title="Maximum compression">Aggr</button>
+        </div>
+        <div class="auto-toggle">
+          <button class="auto-btn active" data-auto="off" title="Manual only">Off</button>
+          <button class="auto-btn" data-auto="send" title="Optimize when you press Enter">Send</button>
+          <button class="auto-btn" data-auto="auto" title="Live replace as you type">Auto</button>
+        </div>
+      </div>
+    </div>
+    <div class="bar-stats-row">
+      <div id="techniques" class="techniques"></div>
+      <div class="bar-stats">
+        <span id="tokBefore">0</span>
+        <span class="arrow">→</span>
+        <span id="tokAfter" class="accent">0</span>
+        <span id="tokPct" class="pct"></span>
+      </div>
+    </div>
+    <div id="hintState" class="hint-state">
+      <span>Select your prompt text, then click Capture</span>
+    </div>
+    <div id="bridgeInstall" class="bridge-install hidden">
+      <span class="bridge-msg">Install <b>Terse Bridge</b> for live mode in VS Code</span>
+      <button id="btnInstallBridge" class="install-btn">Install Extension</button>
+    </div>
+    <!-- Agent Detection Banner -->
+    <div id="agentBanner" class="agent-banner hidden">
+      <div class="agent-banner-inner">
+        <span id="agentBannerIcon" class="agent-icon"></span>
+        <span id="agentBannerText" class="agent-text">Agent detected</span>
+        <button id="btnAgentAccept" class="agent-accept-btn">Connect</button>
+        <button id="btnAgentDismiss" class="agent-dismiss-btn">Dismiss</button>
+      </div>
+    </div>
+
+    <!-- Agent Monitor Panel (shown when connected) -->
+    <div id="agentPanel" class="agent-panel hidden">
+      <div class="agent-panel-header">
+        <span id="agentPanelIcon" class="agent-icon"></span>
+        <span id="agentPanelName" class="agent-name">Agent</span>
+        <span id="agentPanelStatus" class="agent-status">Monitoring</span>
+        <button id="btnAgentDisconnect" class="agent-disconnect-btn" title="Disconnect">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="agent-stats-grid">
+        <div class="agent-stat">
+          <span class="agent-stat-label">Turns</span>
+          <span id="agentTurns" class="agent-stat-value">0</span>
+        </div>
+        <div class="agent-stat">
+          <span class="agent-stat-label">Input</span>
+          <span id="agentInputTok" class="agent-stat-value">0</span>
+        </div>
+        <div class="agent-stat">
+          <span class="agent-stat-label">Output</span>
+          <span id="agentOutputTok" class="agent-stat-value">0</span>
+        </div>
+        <div class="agent-stat">
+          <span class="agent-stat-label">Cost</span>
+          <span id="agentCost" class="agent-stat-value">$0</span>
+        </div>
+      </div>
+      <div class="agent-optimization-row">
+        <span class="agent-opt-label">User prompt savings:</span>
+        <span id="agentOptSavings" class="agent-opt-value">—</span>
+      </div>
+      <!-- Optimization breakdown: technique tags + per-technique savings -->
+      <div id="agentOptBreakdown" class="agent-opt-breakdown hidden">
+        <div id="agentOptTechniques" class="agent-opt-techniques"></div>
+      </div>
+      <!-- Recent optimizations: before/after per message -->
+      <div id="agentOptRecent" class="agent-opt-recent hidden">
+        <!-- Populated by JS -->
+      </div>
+      <div class="agent-tools-row">
+        <span class="agent-tools-label">Tools:</span>
+        <span id="agentToolCount" class="agent-tools-value">0 calls</span>
+      </div>
+      <div id="agentActivity" class="agent-activity">
+        <!-- Live activity feed -->
+      </div>
+    </div>
+
+    <textarea id="optimized" class="opt-text hidden" spellcheck="false" readonly placeholder="Optimized text appears here..."></textarea>
+    <div class="actions">
+      <button id="btnCapture" class="capture-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Capture
+      </button>
+      <button id="btnReplace" class="replace-btn" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Replace
+      </button>
+      <button id="btnCopy" class="copy-btn" title="Copy">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      </button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

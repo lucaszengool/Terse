@@ -206,6 +206,12 @@
     .pipe-step.lit::before{background:var(--ac);border-color:var(--ac);box-shadow:0 0 10px var(--acm)}
     .pipe-n{font-size:9px;font-weight:800;color:var(--t3);min-width:14px}.pipe-step.lit .pipe-n{color:var(--ac)}
     .pipe-nm{font-size:12px;font-weight:600;flex:1}
+    .pipe-stages-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+    .pipe-stages-col{display:flex;flex-direction:column;gap:0}
+    .pipe-live-text{font-size:10px;line-height:1.6;color:var(--t2);padding:8px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;align-self:start;min-height:100px;transition:all .3s}
+    .pipe-live-text .pl-cut{text-decoration:line-through;opacity:.3;color:var(--t3)}
+    .pipe-live-text .pl-fix{color:var(--ac);font-weight:600}
+    .pipe-live-text .pl-kept{color:var(--t2)}
     .pipe-text-out{padding:8px 10px;background:var(--acd);border:1px solid var(--acm);border-radius:6px;font-size:11px;color:var(--ac3);margin-top:10px;min-height:36px;opacity:0;transition:all .4s;line-height:1.5}
     .pipe-text-out.show{opacity:1}
 
@@ -219,6 +225,11 @@
     .spell-stages-mini{display:flex;gap:6px;margin-top:8px}
     .spell-stage-pill{padding:4px 10px;border-radius:4px;font-size:10px;font-weight:600;background:var(--sf);color:var(--t3);border:1px solid var(--bd);transition:all .3s}
     .spell-stage-pill.active{background:var(--acd);color:var(--ac);border-color:var(--acm)}
+    .spell-detect{font-size:9px;font-weight:600;color:var(--ac);margin-bottom:6px;opacity:0;transition:opacity .3s;display:flex;align-items:center;gap:5px}
+    .spell-detect.show{opacity:1}
+    .spell-detect .sd-dot{width:5px;height:5px;border-radius:50%;background:var(--ac);flex-shrink:0}
+    .spell-result{margin-top:8px;padding:5px 10px;border-radius:5px;background:var(--acd);border:1px solid var(--acm);font-size:10px;font-weight:600;color:var(--ac);opacity:0;transition:opacity .3s}
+    .spell-result.show{opacity:1}
 
     /* TECHNIQUE ANIM */
     .tech-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px}
@@ -380,11 +391,15 @@
     .stat-lbl{font-size:13px;color:var(--t3);margin-top:6px;position:relative;z-index:1}
 
     /* CTA */
-    .cta{padding:140px 40px;text-align:center;position:relative;overflow:hidden;background:linear-gradient(180deg,var(--bg2) 0%,var(--bg0) 100%)}
-    .cta-glow{position:absolute;bottom:-200px;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.05) 0%,transparent 65%);pointer-events:none}
+    .cta{padding:140px 40px;text-align:center;position:relative;overflow:hidden;background:var(--bg0)}
+    .cta::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acm),transparent)}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(110,231,183,0.06) 0%,rgba(110,231,183,0.02) 30%,transparent 65%);pointer-events:none;animation:ctaPulse 4s ease-in-out infinite}
+    @keyframes ctaPulse{0%,100%{opacity:.6;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}}
     .cta h2{font-size:clamp(44px,7vw,80px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:20px;position:relative;z-index:1}
-    .cta p{font-size:17px;color:var(--t2);max-width:460px;margin:0 auto 36px;position:relative;z-index:1}
+    .cta p{font-size:17px;color:var(--t2);max-width:480px;margin:0 auto 40px;position:relative;z-index:1;line-height:1.7}
     .cta .hero-actions{justify-content:center;position:relative;z-index:1}
+    .cta .btn-primary{padding:16px 36px;font-size:16px;border-radius:12px;box-shadow:0 0 40px rgba(110,231,183,0.15)}
+    .cta .btn-primary:hover{box-shadow:0 0 60px rgba(110,231,183,0.25)}
 
     /* FOOTER */
     footer{padding:50px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)}
@@ -421,7 +436,7 @@
 <section class="hero">
   <div class="hero-glow"></div>
   <h1 class="rv">Save every token<br><span class="gradient-text">on your AI.</span></h1>
-  <p class="sub rv d1">Terse sits between you and your AI — intercepting every prompt and agent message, automatically compressing them before they're sent. It rewrites your words in real time, catches typos that cause retries, and cuts 40-70% of tokens across ChatGPT, Claude Code, Cursor, and OpenClaw.</p>
+  <p class="sub rv d1">Cut 40-70% of your AI token costs. Terse auto-compresses every prompt, fixes typos, deduplicates context, and tracks spend — across ChatGPT, Claude Code, Cursor, and OpenClaw.</p>
   <div class="hero-actions rv d2">
     <button class="btn-primary" onclick="document.getElementById('dl').scrollIntoView({behavior:'smooth'})">Download for macOS <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
     <button class="btn-ghost" onclick="document.getElementById('pipeline').scrollIntoView({behavior:'smooth'})">See the pipeline</button>
@@ -614,18 +629,18 @@
     <div class="features-grid">
       <div class="feat rv">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
-        <h3>Auto-rewrite every prompt</h3>
-        <p>Terse intercepts what you type — strips filler, fixes typos, compresses verbose text — and sends the optimized version. You write naturally, your AI gets fewer tokens.</p>
+        <h3>Compress every prompt</h3>
+        <p>Strips filler, fixes typos, shortens phrases, and compresses verbose text — automatically, before send. You type naturally, the model gets 40-70% fewer input tokens.</p>
       </div>
       <div class="feat rv d1">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
-        <h3>Cut agent token burn live</h3>
-        <p>During Claude Code, OpenClaw, and Cursor sessions, Terse auto-optimizes every user message before it hits the API — reducing input tokens on every single turn.</p>
+        <h3>Optimize agent sessions</h3>
+        <p>Terse monitors Claude Code, OpenClaw, and Cursor sessions in real time — compressing your messages, trimming redundant context, tracking tool calls, cache hits, and per-turn cost.</p>
       </div>
       <div class="feat rv d2">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
-        <h3>Prevent wasted retries</h3>
-        <p>Typos like "authetication" confuse agents into wrong fixes. Terse catches every misspelling before send — so you don't burn tokens on correction loops.</p>
+        <h3>Eliminate wasted tokens</h3>
+        <p>Catches typos before they cause retry loops, deduplicates repeated context across turns, drops low-value pleasantries, and prevents the conversation history bloat that makes agents expensive.</p>
       </div>
       <div class="feat-divider"></div>
       <div class="works-with rv d1">
@@ -650,17 +665,16 @@
   <div class="glow" style="top:-100px;right:-200px"></div>
   <div class="s-inner">
     <div class="rvl">
-      <div class="label">How It Works</div>
-      <h2>How Terse cuts tokens<br><span class="gradient-text">in agent sessions.</span></h2>
-      <p class="desc">When you use Claude Code, OpenClaw, Cursor, or Aider — every message you send costs tokens. Terse intercepts each prompt before it hits the API, runs it through 7 optimization stages, and auto-sends the compressed version. Watch the full lifecycle:</p>
+      <div class="label">Agent Token Optimization</div>
+      <h2>Every turn optimized,<br><span class="gradient-text">automatically.</span></h2>
+      <p class="desc">Agent sessions are token-intensive — a single task can consume 50x more tokens than a simple chat. Terse attacks this from every angle: compressing your prompts, deduplicating repeated context across turns, catching typos that cause retry loops, and tracking where every token goes.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Intercepts via macOS Accessibility — no plugins needed</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Compresses every user message before it hits the API</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Deduplicates context — catches repeated instructions across turns</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Fixes typos before they cause agent retry loops</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Strips filler, hedging, pleasantries — agent only gets intent</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Compresses to telegraph style in Aggressive mode</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-sends optimized prompt — you type naturally</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tracks input/output/cache/tools per turn from JSONL logs</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Savings compound across every turn in the session</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tracks input, output, cache reads, tool calls per turn</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Monitors JSONL session logs for real-time cost visibility</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Savings compound — 5-turn session saves 200-400 tokens</li>
       </ul>
       <div class="alts"><span>Claude Code</span><span>OpenClaw</span><span>Aider</span><span>Cursor Agent</span></div>
     </div>
@@ -670,20 +684,20 @@
         <div id="howViz" style="font-size:11px;height:460px;overflow:hidden">
           <!-- Phase 1: User types -->
           <div class="hw-phase" id="hwP1">
-            <div class="hw-phase-label" id="hwPL1"><span class="hw-phase-num">1</span> You type in OpenClaw</div>
+            <div class="hw-phase-label" id="hwPL1"><span class="hw-phase-num">1</span> You type in agent session</div>
             <div class="hw-prompt-box mono" id="hwPrompt" style="min-height:32px">&nbsp;</div>
             <div class="hw-tok-badge mono" id="hwTokBefore">&nbsp;</div>
           </div>
-          <!-- Phase 2: Terse intercepts — 7 stages -->
+          <!-- Phase 2: Terse intercepts — optimization -->
           <div class="hw-phase" id="hwP2">
-            <div class="hw-phase-label" id="hwPL2"><span class="hw-phase-num">2</span> Terse intercepts — 7-stage pipeline</div>
+            <div class="hw-phase-label" id="hwPL2"><span class="hw-phase-num">2</span> Terse optimizes — compress + dedup + fix</div>
             <div class="hw-stages" id="hwStages">
-              <div class="hw-stage" id="hwS0"><span class="hw-sn">1</span><span class="hw-snm">Spell Correction</span><span class="hw-sval" id="hwSV0"></span></div>
-              <div class="hw-stage" id="hwS1"><span class="hw-sn">2</span><span class="hw-snm">Whitespace</span><span class="hw-sval" id="hwSV1"></span></div>
+              <div class="hw-stage" id="hwS0"><span class="hw-sn">1</span><span class="hw-snm">Typo Correction</span><span class="hw-sval" id="hwSV0"></span></div>
+              <div class="hw-stage" id="hwS1"><span class="hw-sn">2</span><span class="hw-snm">Context Dedup</span><span class="hw-sval" id="hwSV1"></span></div>
               <div class="hw-stage" id="hwS2"><span class="hw-sn">3</span><span class="hw-snm">Filler Removal</span><span class="hw-sval" id="hwSV2"></span></div>
-              <div class="hw-stage" id="hwS3"><span class="hw-sn">4</span><span class="hw-snm">Hedging Removal</span><span class="hw-sval" id="hwSV3"></span></div>
-              <div class="hw-stage" id="hwS4"><span class="hw-sn">5</span><span class="hw-snm">Question → Imperative</span><span class="hw-sval" id="hwSV4"></span></div>
-              <div class="hw-stage" id="hwS5"><span class="hw-sn">6</span><span class="hw-snm">Low-Info Drop</span><span class="hw-sval" id="hwSV5"></span></div>
+              <div class="hw-stage" id="hwS3"><span class="hw-sn">4</span><span class="hw-snm">Prompt Compression</span><span class="hw-sval" id="hwSV3"></span></div>
+              <div class="hw-stage" id="hwS4"><span class="hw-sn">5</span><span class="hw-snm">History Trimming</span><span class="hw-sval" id="hwSV4"></span></div>
+              <div class="hw-stage" id="hwS5"><span class="hw-sn">6</span><span class="hw-snm">Imperative Rewrite</span><span class="hw-sval" id="hwSV5"></span></div>
               <div class="hw-stage" id="hwS6"><span class="hw-sn">7</span><span class="hw-snm">Final Cleanup</span><span class="hw-sval" id="hwSV6"></span></div>
             </div>
           </div>
@@ -695,7 +709,7 @@
           </div>
           <!-- Phase 4: Agent works -->
           <div class="hw-phase" id="hwP4">
-            <div class="hw-phase-label" id="hwPL4"><span class="hw-phase-num">4</span> Agent processes with fewer tokens</div>
+            <div class="hw-phase-label" id="hwPL4"><span class="hw-phase-num">4</span> Agent runs — Terse tracks everything</div>
             <div class="hw-agent-actions" id="hwActions">
               <div class="hw-agent-act" id="hwA0"><span class="act-icon">⚙</span><span>&nbsp;</span></div>
               <div class="hw-agent-act" id="hwA1"><span class="act-icon">⚙</span><span>&nbsp;</span></div>
@@ -706,7 +720,7 @@
           </div>
           <!-- Phase 5: Session stats -->
           <div class="hw-phase" id="hwP5">
-            <div class="hw-phase-label" id="hwPL5"><span class="hw-phase-num">5</span> Session tracking — JSONL log</div>
+            <div class="hw-phase-label" id="hwPL5"><span class="hw-phase-num">5</span> Cumulative savings — per-turn cost breakdown</div>
             <div class="hw-stats-grid" id="hwStatsGrid">
               <div class="hw-stat"><span class="hw-stat-v" id="hwSTurns">—</span><span class="hw-stat-l">Turn</span></div>
               <div class="hw-stat"><span class="hw-stat-v" id="hwSIn">—</span><span class="hw-stat-l">Input tok</span></div>
@@ -732,28 +746,33 @@
   <div class="glow" style="top:-100px;left:-200px"></div>
   <div class="s-inner">
     <div class="rvl">
-      <div class="label">Live Optimization Pipeline</div>
-      <h2>7 stages,<br><span class="gradient-text">wherever you type.</span></h2>
-      <p class="desc">Type a prompt in Chrome, Cursor, VS Code, or a terminal — Terse auto-detects the input field via macOS Accessibility and runs your text through 7 optimization stages before it's sent. No plugins, no copy-paste. Just type and it works.</p>
+      <div class="label">Works Everywhere</div>
+      <h2>Runs on<br><span class="gradient-text">any app, automatically.</span></h2>
+      <p class="desc">Connect Terse to Chrome, Cursor, VS Code, OpenClaw, or any terminal — it auto-detects text fields via macOS Accessibility and starts optimizing immediately. No plugins to install, no workflows to change. Just open the app and Terse is already working.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-detects text fields in any connected app</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Optimizes live as you type — no manual trigger needed</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-detects any text input — browsers, IDEs, terminals, agents</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>7-stage pipeline runs on every prompt before send</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Code blocks protected · on-device · zero latency</li>
       </ul>
     </div>
     <div class="rvr d1">
       <div class="win">
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title" id="pipeTitle">Pipeline — Live</span></div>
-        <div class="pipe-flow" id="pipeViz" style="height:380px;overflow:hidden">
+        <div class="pipe-flow" id="pipeViz" style="height:400px;overflow:hidden">
           <div class="pipe-detect" id="pipeDetect"></div>
           <div class="pipe-text-in mono" id="pipeIn"></div>
-          <div class="pipe-step"><span class="pipe-n">1</span><span class="pipe-nm">Spell Correction</span><span class="pipe-tok"></span></div>
-          <div class="pipe-step"><span class="pipe-n">2</span><span class="pipe-nm">Whitespace</span><span class="pipe-tok"></span></div>
-          <div class="pipe-step"><span class="pipe-n">3</span><span class="pipe-nm">Pattern Optimization</span><span class="pipe-tok"></span></div>
-          <div class="pipe-step"><span class="pipe-n">4</span><span class="pipe-nm">Redundancy Elimination</span><span class="pipe-tok"></span></div>
-          <div class="pipe-step"><span class="pipe-n">5</span><span class="pipe-nm">NLP Analysis</span><span class="pipe-tok"></span></div>
-          <div class="pipe-step"><span class="pipe-n">6</span><span class="pipe-nm">Aggressive Compression</span><span class="pipe-tok"></span></div>
-          <div class="pipe-step"><span class="pipe-n">7</span><span class="pipe-nm">Final Cleanup</span><span class="pipe-tok"></span></div>
+          <div class="pipe-stages-wrap">
+            <div class="pipe-stages-col">
+              <div class="pipe-step"><span class="pipe-n">1</span><span class="pipe-nm">Spell Correction</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">2</span><span class="pipe-nm">Whitespace</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">3</span><span class="pipe-nm">Pattern Optimization</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">4</span><span class="pipe-nm">Redundancy Elimination</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">5</span><span class="pipe-nm">NLP Analysis</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">6</span><span class="pipe-nm">Aggressive Compression</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">7</span><span class="pipe-nm">Final Cleanup</span><span class="pipe-tok"></span></div>
+            </div>
+            <div class="pipe-live-text mono" id="pipeLive"></div>
+          </div>
           <div class="pipe-text-out mono" id="pipeOut"></div>
         </div>
       </div>
@@ -768,11 +787,11 @@
   <div class="glow" style="top:50px;right:-200px"></div>
   <div class="s-inner rev">
     <div class="rvr">
-      <div class="label">Live Spell Correction</div>
-      <h2>Fix typos<br><span class="gradient-text">as you type.</span></h2>
-      <p class="desc">Every prompt you type is scanned in real time. Terse catches misspellings before they hit the model — preventing confused responses, wasted correction turns, and costly agent retry loops. 400+ entries, Norvig edit-distance, and macOS NSSpellChecker working together.</p>
+      <div class="label">Live Token Optimization</div>
+      <h2>Every prompt<br><span class="gradient-text">rewritten live.</span></h2>
+      <p class="desc">As you type, Terse edits your prompt in real time — fixing typos, stripping filler, compressing verbose phrasing. The optimized version is what gets sent to the model. Fewer tokens per message means lower cost and better responses.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Runs automatically on every prompt — no button to press</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Rewrites every prompt before it's sent — automatically</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Context-aware: "what souls I do" → "what should I do"</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Safe: skips ALL-CAPS, Capitalized, code tokens</li>
       </ul>
@@ -780,14 +799,16 @@
     <div class="rvl d1">
       <div class="win">
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Spell Correction — Live</span></div>
-        <div class="spell-flow" id="spellViz">
+        <div class="spell-flow" id="spellViz" style="height:200px;overflow:hidden">
+          <div class="spell-detect" id="spellDetect"></div>
           <div class="spell-sentence mono" id="spellSentence"></div>
           <div class="spell-stages-mini">
             <div class="spell-stage-pill" id="sp1">TYPOS Dict</div>
             <div class="spell-stage-pill" id="sp2">Norvig</div>
             <div class="spell-stage-pill" id="sp3">Context</div>
-            <div class="spell-stage-pill" id="sp4">Hunspell</div>
+            <div class="spell-stage-pill" id="sp4">macOS Spellcheck</div>
           </div>
+          <div class="spell-result" id="spellResult"></div>
         </div>
       </div>
     </div>
@@ -995,11 +1016,12 @@
 <section class="stats-section">
   <div class="stats-inner">
     <h2 class="rv">Built on <span class="gradient-text">research.</span></h2>
+    <p class="rv d1" style="color:var(--t3);font-size:15px;max-width:480px;margin:-40px auto 50px">Grounded in LLMLingua, Norvig spelling, selective context pruning, and real-world prompt analysis.</p>
     <div class="stats-grid">
-      <div class="rv d1"><div class="stat-num" data-t="7" data-s="">0</div><div class="stat-lbl">Pipeline stages</div></div>
-      <div class="rv d1"><div class="stat-num" data-t="20" data-s="+">0</div><div class="stat-lbl">Token reduction techniques</div></div>
-      <div class="rv d2"><div class="stat-num" data-t="400" data-s="+">0</div><div class="stat-lbl">Typo corrections built-in</div></div>
-      <div class="rv d3"><div class="stat-num" data-t="12" data-s="">0</div><div class="stat-lbl">Apps &amp; agents supported</div></div>
+      <div class="stat-card rv d1"><div class="stat-num" data-t="7" data-s="">0</div><div class="stat-lbl">Pipeline stages</div></div>
+      <div class="stat-card rv d1"><div class="stat-num" data-t="20" data-s="+">0</div><div class="stat-lbl">Token reduction techniques</div></div>
+      <div class="stat-card rv d2"><div class="stat-num" data-t="400" data-s="+">0</div><div class="stat-lbl">Typo corrections built-in</div></div>
+      <div class="stat-card rv d3"><div class="stat-num" data-t="12" data-s="">0</div><div class="stat-lbl">Apps &amp; agents supported</div></div>
     </div>
   </div>
 </section>
@@ -1008,10 +1030,15 @@
 <section class="cta" id="dl">
   <div class="cta-glow"></div>
   <h2 class="rv">Stop wasting<br><span class="gradient-text">tokens and money.</span></h2>
-  <p class="rv d1">Optimize prompts, monitor agents, catch typos, track costs — all on your machine. Free, private, no cloud.</p>
+  <p class="rv d1">Every prompt optimized. Every typo caught. Every agent session tracked. All on your machine — free, private, no cloud required.</p>
   <div class="hero-actions rv d2">
     <button class="btn-primary">Download for macOS <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
     <a href="#" class="btn-ghost">GitHub <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></a>
+  </div>
+  <div class="rv d3" style="margin-top:40px;display:flex;justify-content:center;gap:32px;position:relative;z-index:1">
+    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>100% on-device</span>
+    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>Free &amp; open source</span>
+    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Zero latency</span>
   </div>
 </section>
 
@@ -1064,8 +1091,6 @@ document.querySelectorAll('.stat-num').forEach(el=>cObs.observe(el));
     a.lastElementChild.textContent=text;a.classList.add('show');
   }
 
-  const actionTexts=['Read auth.ts, token.ts, middleware.ts','Search: token refresh logic','Edit auth.ts — add refresh handler','Run npm test — 8/8 pass','Agent response: 89 output tokens'];
-
   function runHowViz(){
     // Reset: dim all phases, clear content, reset stages and actions
     for(let i=1;i<=5;i++) $('hwP'+i).classList.remove('show');
@@ -1076,36 +1101,44 @@ document.querySelectorAll('.stat-num').forEach(el=>cObs.observe(el));
     for(let i=0;i<5;i++){$('hwA'+i).classList.remove('show');$('hwA'+i).lastElementChild.innerHTML='&nbsp;'}
     ['hwSTurns','hwSIn','hwSOut','hwSCache','hwSTools','hwSSaved','hwSTypos','hwSCost'].forEach(id=>$(id).textContent='—');
 
-    const userText="I dont know if this makes sense but could you maybe help me refacter the authetication module so that it handles tokne refresh properly please?";
+    const userText="I dont know if this makes sense but could you maybe help me refacter the authetication module like I mentioned earlier so that it handles tokne refresh properly please?";
     const optimized="Refactor authentication module: handle token refresh";
-    const stageVals=['authetication→authentication, tokne→token, refacter→refactor','normalized','removed 4 filler phrases','removed "could you maybe"','imperative form','dropped "please","properly"','48 → 10 tok'];
+    const stageVals=[
+      'authetication→authentication, tokne→token, refacter→refactor',
+      '"like I mentioned earlier" — already in context, removed',
+      'stripped "I dont know if this makes sense but"',
+      '"could you maybe help me" → imperative form',
+      'dropped repeated system context from turn history',
+      'question→imperative rewrite',
+      '52 → 9 tok'
+    ];
 
     const seq=[
       {t:300,fn:()=>showPhase('hwP1')},
-      {t:200,fn:()=>hwType($('hwPrompt'),userText,18)},
-      {t:userText.length*18+300,fn:()=>{$('hwTokBefore').textContent='48 tokens · $0.006 input cost'}},
+      {t:200,fn:()=>hwType($('hwPrompt'),userText,16)},
+      {t:userText.length*16+300,fn:()=>{$('hwTokBefore').textContent='52 tokens · $0.007 input cost'}},
       {t:500,fn:()=>showPhase('hwP2')},
       {t:250,fn:()=>showStage(0,stageVals[0])},
-      {t:320,fn:()=>showStage(1,stageVals[1])},
-      {t:300,fn:()=>showStage(2,stageVals[2])},
-      {t:300,fn:()=>showStage(3,stageVals[3])},
-      {t:280,fn:()=>showStage(4,stageVals[4])},
+      {t:300,fn:()=>showStage(1,stageVals[1])},
+      {t:280,fn:()=>showStage(2,stageVals[2])},
+      {t:280,fn:()=>showStage(3,stageVals[3])},
+      {t:260,fn:()=>showStage(4,stageVals[4])},
       {t:260,fn:()=>showStage(5,stageVals[5])},
       {t:260,fn:()=>{showStage(6,stageVals[6]);$('hwS6').classList.remove('active');$('hwS6').classList.add('done')}},
-      {t:450,fn:()=>{showPhase('hwP3');$('hwOptimized').textContent=optimized;$('hwTokAfter').textContent='10 tokens · −79% · $0.005 saved · auto-sent ✔'}},
-      {t:500,fn:()=>showPhase('hwP4')},
-      {t:200,fn:()=>showAction(0,actionTexts[0])},
-      {t:300,fn:()=>showAction(1,actionTexts[1])},
-      {t:300,fn:()=>showAction(2,actionTexts[2])},
-      {t:300,fn:()=>showAction(3,actionTexts[3])},
-      {t:250,fn:()=>showAction(4,actionTexts[4])},
-      {t:500,fn:()=>{
+      {t:400,fn:()=>{showPhase('hwP3');$('hwOptimized').textContent=optimized;$('hwTokAfter').textContent='9 tokens · −83% · $0.006 saved · auto-sent ✔'}},
+      {t:450,fn:()=>showPhase('hwP4')},
+      {t:180,fn:()=>showAction(0,'Read auth.ts, token.ts (245 lines) — 18 tok cached')},
+      {t:260,fn:()=>showAction(1,'Search: token refresh — deduped vs turn 1 context')},
+      {t:260,fn:()=>showAction(2,'Edit auth.ts:47 — applied (tool call tracked)')},
+      {t:260,fn:()=>showAction(3,'Run npm test — 8/8 pass · $0.003 tool cost')},
+      {t:220,fn:()=>showAction(4,'Response: 89 out tok · 24 cache reads · $0.018 total')},
+      {t:450,fn:()=>{
         showPhase('hwP5');
-        $('hwSTurns').textContent='1';$('hwSIn').textContent='10';$('hwSOut').textContent='89';
-        $('hwSCache').textContent='24';$('hwSTools').textContent='4';$('hwSSaved').textContent='38';
+        $('hwSTurns').textContent='1';$('hwSIn').textContent='9';$('hwSOut').textContent='89';
+        $('hwSCache').textContent='24';$('hwSTools').textContent='3';$('hwSSaved').textContent='43';
         $('hwSTypos').textContent='3';$('hwSCost').textContent='$0.018';
       }},
-      {t:400,fn:()=>{$('hwSavingsBar').textContent='3 typos caught · 38 tokens saved · −79% input · $0.005 saved · 0 retries';$('hwSavingsBar').classList.add('show')}},
+      {t:350,fn:()=>{$('hwSavingsBar').textContent='3 typos fixed · 1 dedup · 43 tok saved (−83%) · $0.006 saved · 0 retries · history trimmed';$('hwSavingsBar').classList.add('show')}},
       {t:3500,fn:()=>{hwRan=false;runHowViz()}}
     ];
     let delay=0;
@@ -1397,24 +1430,64 @@ function runScene4(){
 
 showScene(0);sceneTimer=setInterval(nextScene,SCENE_DUR);
 
-// ═══ PIPELINE ANIM — with token counts decreasing at each stage ═══
+// ═══ PIPELINE ANIM — with live text transformation at each stage ═══
 const pipeTexts=[
   {in:"Hey I was just wondering if you could maybe help me wirte a function that takes a list",
    out:"Write function: take list",
    toks:[52,50,50,38,34,28,22,20],
-   env:"Chrome — ChatGPT"},
+   env:"Chrome — ChatGPT",
+   live:[
+     null,
+     [{t:'wirte',cls:'pl-fix',r:'write'},{t:'a function that takes a list',cls:'pl-kept'}],
+     [{t:'write a function that takes a list',cls:'pl-kept'}],
+     [{t:'Hey I was just wondering if you could maybe help me',cls:'pl-cut'},{t:' write a function that takes a list',cls:'pl-kept'}],
+     [{t:'write a function that takes a list',cls:'pl-kept'}],
+     [{t:'Write function:',cls:'pl-fix'},{t:' take list',cls:'pl-kept'}],
+     [{t:'Write function: take list',cls:'pl-fix'}],
+     [{t:'Write function: take list',cls:'pl-fix'}],
+   ]},
   {in:"So basically what I'm trying to do is deploy my app to production using Docker plz",
    out:"Deploy app to production with Docker",
    toks:[48,46,46,36,32,26,18,14],
-   env:"Cursor — Agent Chat"},
+   env:"Cursor — Agent Chat",
+   live:[
+     null,
+     [{t:'plz',cls:'pl-fix',r:'please'},{t:' deploy my app to production using Docker',cls:'pl-kept'}],
+     [{t:'deploy my app to production using Docker please',cls:'pl-kept'}],
+     [{t:'So basically what I\'m trying to do is',cls:'pl-cut'},{t:' deploy my app to production using Docker',cls:'pl-kept'},{t:' please',cls:'pl-cut'}],
+     [{t:'deploy app to production using Docker',cls:'pl-kept'}],
+     [{t:'Deploy app production Docker',cls:'pl-fix'}],
+     [{t:'Deploy app to production with Docker',cls:'pl-fix'}],
+     [{t:'Deploy app to production with Docker',cls:'pl-fix'}],
+   ]},
   {in:"I dont know if this makes sense but I really need help with authetication in my React app",
    out:"Help with authentication in React app",
    toks:[54,50,50,40,36,28,20,16],
-   env:"OpenClaw — Session"},
+   env:"OpenClaw — Session",
+   live:[
+     null,
+     [{t:'dont',cls:'pl-fix',r:"don't"},{t:' authetication',cls:'pl-fix',r:'authentication'},{t:' React app',cls:'pl-kept'}],
+     [{t:"don't know... authentication in my React app",cls:'pl-kept'}],
+     [{t:'I dont know if this makes sense but I really need',cls:'pl-cut'},{t:' help with authentication in my React app',cls:'pl-kept'}],
+     [{t:'help with authentication in React app',cls:'pl-kept'}],
+     [{t:'Help authentication React app',cls:'pl-fix'}],
+     [{t:'Help with authentication in React app',cls:'pl-fix'}],
+     [{t:'Help with authentication in React app',cls:'pl-fix'}],
+   ]},
   {in:"Could you please explain to me how I should go about setting up the CI pipeline for this project",
    out:"Set up CI pipeline for project",
    toks:[50,50,50,38,32,24,16,12],
-   env:"Terminal — Claude Code"},
+   env:"Terminal — Claude Code",
+   live:[
+     null,
+     [{t:'(no typos)',cls:'pl-kept'}],
+     [{t:'setting up the CI pipeline for this project',cls:'pl-kept'}],
+     [{t:'Could you please explain to me how I should go about',cls:'pl-cut'},{t:' setting up the CI pipeline for this project',cls:'pl-kept'}],
+     [{t:'set up CI pipeline for project',cls:'pl-kept'}],
+     [{t:'Set up CI pipeline project',cls:'pl-fix'}],
+     [{t:'Set up CI pipeline for project',cls:'pl-fix'}],
+     [{t:'Set up CI pipeline for project',cls:'pl-fix'}],
+   ]},
 ];
 let pipeIdx=0;
 function runPipe(){
@@ -1422,22 +1495,24 @@ function runPipe(){
   const inEl=document.getElementById('pipeIn'),outEl=document.getElementById('pipeOut');
   const titleEl=document.getElementById('pipeTitle');
   const detectEl=document.getElementById('pipeDetect');
+  const liveEl=document.getElementById('pipeLive');
   const ex=pipeTexts[pipeIdx];
   titleEl.textContent=ex.env+' — Live';
   // Reset
   detectEl.classList.remove('show');detectEl.innerHTML='';
   steps.forEach(s=>{s.classList.remove('lit');const tk=s.querySelector('.pipe-tok');if(tk)tk.textContent=''});
   outEl.classList.remove('show');outEl.innerHTML='';
+  liveEl.innerHTML='<span style="color:var(--t3);font-size:9px">Text will transform here as each stage runs...</span>';
   inEl.textContent='';
   // Step 1: Show detection
   detectEl.innerHTML='<span class="pd-dot"></span> Detected: '+ex.env+' — reading text field...';
   detectEl.classList.add('show');
   setTimeout(()=>{
-    detectEl.innerHTML='<span class="pd-dot"></span> Captured prompt from '+ex.env+' — optimizing...';
+    detectEl.innerHTML='<span class="pd-dot"></span> Captured from '+ex.env+' — optimizing...';
     // Step 2: Type the prompt
-    typeText(inEl,ex.in,12,()=>{
+    typeText(inEl,ex.in,11,()=>{
       inEl.innerHTML+=' <span class="pipe-tok-badge before">'+ex.toks[0]+' tok</span>';
-      // Step 3: Run pipeline stages
+      // Step 3: Run pipeline stages with live text
       let si=0;
       setTimeout(()=>{
         const sv=setInterval(()=>{
@@ -1445,17 +1520,22 @@ function runPipe(){
             steps[si].classList.add('lit');
             const tk=steps[si].querySelector('.pipe-tok');
             if(tk)tk.textContent=ex.toks[si+1]+' tok';
+            // Update live text
+            const lv=ex.live[si+1];
+            if(lv){
+              liveEl.innerHTML=lv.map(p=>'<span class="'+p.cls+'">'+p.t+'</span>').join(' ');
+            }
             si++;
           } else {
             clearInterval(sv);
             const pct=Math.round((1-ex.toks[7]/ex.toks[0])*100);
-            // Step 4: Show optimized output + auto-sent
             outEl.innerHTML=ex.out+' <span class="pipe-tok-badge after">'+ex.toks[7]+' tok &middot; -'+pct+'%</span>';
             outEl.classList.add('show');
-            detectEl.innerHTML='<span class="pd-dot"></span> Auto-sent optimized prompt back to '+ex.env+' ✔';
-            setTimeout(()=>{pipeIdx=(pipeIdx+1)%pipeTexts.length;runPipe()},2500);
+            liveEl.innerHTML='<span class="pl-fix">'+ex.out+'</span> <span style="font-size:9px;color:var(--ac)">✔ optimized</span>';
+            detectEl.innerHTML='<span class="pd-dot"></span> Auto-sent back to '+ex.env+' ✔';
+            setTimeout(()=>{pipeIdx=(pipeIdx+1)%pipeTexts.length;runPipe()},2800);
           }
-        },340);
+        },380);
       },250);
     });
   },600);
@@ -1463,34 +1543,48 @@ function runPipe(){
 const pObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runPipe();pObs.unobserve(x.target)}}),{threshold:.3});
 pObs.observe(document.getElementById('pipeViz'));
 
-// ═══ SPELL ANIM — 3 examples with more typos ═══
+// ═══ SPELL ANIM — live detection + correction + result summary ═══
 const spellData=[
-  {words:[{t:'I',ok:true},{t:'want',ok:true},{t:'to',ok:true},{t:'wirte',ok:false,fix:'write',stage:0},{t:'a',ok:true},{t:'fucntion',ok:false,fix:'function',stage:0},{t:'that',ok:true},{t:'retuns',ok:false,fix:'returns',stage:1},{t:'the',ok:true},{t:'sum',ok:true},{t:'of',ok:true},{t:'numbres',ok:false,fix:'numbers',stage:1}]},
-  {words:[{t:'what',ok:true},{t:'souls',ok:false,fix:'should',stage:2},{t:'I',ok:true},{t:'do',ok:true},{t:'to',ok:true},{t:'deplpy',ok:false,fix:'deploy',stage:0},{t:'my',ok:true},{t:'databse',ok:false,fix:'database',stage:0},{t:'to',ok:true},{t:'producton',ok:false,fix:'production',stage:1}]},
-  {words:[{t:'plz',ok:false,fix:'please',stage:0},{t:'explane',ok:false,fix:'explain',stage:1},{t:'how',ok:true},{t:'to',ok:true},{t:'implment',ok:false,fix:'implement',stage:1},{t:'authetication',ok:false,fix:'authentication',stage:1},{t:'in',ok:true},{t:'reqct',ok:false,fix:'react',stage:0}]},
+  {env:'ChatGPT prompt',words:[{t:'I',ok:true},{t:'want',ok:true},{t:'to',ok:true},{t:'wirte',ok:false,fix:'write',stage:0},{t:'a',ok:true},{t:'fucntion',ok:false,fix:'function',stage:0},{t:'that',ok:true},{t:'retuns',ok:false,fix:'returns',stage:1},{t:'the',ok:true},{t:'sum',ok:true},{t:'of',ok:true},{t:'numbres',ok:false,fix:'numbers',stage:1}]},
+  {env:'OpenClaw agent turn',words:[{t:'what',ok:true},{t:'souls',ok:false,fix:'should',stage:2},{t:'I',ok:true},{t:'do',ok:true},{t:'to',ok:true},{t:'deplpy',ok:false,fix:'deploy',stage:0},{t:'my',ok:true},{t:'databse',ok:false,fix:'database',stage:0},{t:'to',ok:true},{t:'producton',ok:false,fix:'production',stage:1}]},
+  {env:'Cursor chat',words:[{t:'plz',ok:false,fix:'please',stage:0},{t:'explane',ok:false,fix:'explain',stage:1},{t:'how',ok:true},{t:'to',ok:true},{t:'implment',ok:false,fix:'implement',stage:1},{t:'authetication',ok:false,fix:'authentication',stage:1},{t:'in',ok:true},{t:'reqct',ok:false,fix:'react',stage:0}]},
 ];
 let spellIdx=0;
 function runSpell(){
   const el=document.getElementById('spellSentence');const pills=['sp1','sp2','sp3','sp4'];
+  const detectEl=document.getElementById('spellDetect');
+  const resultEl=document.getElementById('spellResult');
   pills.forEach(id=>document.getElementById(id).classList.remove('active'));
+  detectEl.classList.remove('show');resultEl.classList.remove('show');resultEl.textContent='';
   const data=spellData[spellIdx];
+  // Show detection
+  detectEl.innerHTML='<span class="sd-dot"></span> Scanning '+data.env+'...';
+  detectEl.classList.add('show');
   el.innerHTML=data.words.map((w,i)=>`<span class="spell-word" id="sw${i}">${w.t}</span> `).join('');
   const fixes=data.words.map((w,i)=>({i,w})).filter(x=>!x.w.ok);
   let fi=0;
-  const doFix=()=>{
-    if(fi>=fixes.length){setTimeout(()=>{spellIdx=(spellIdx+1)%spellData.length;runSpell()},2000);return}
-    const {i,w}=fixes[fi];
-    const span=document.getElementById('sw'+i);
-    document.getElementById(pills[w.stage]).classList.add('active');
-    span.classList.add('fixing');
-    setTimeout(()=>{
-      span.classList.add('wrong');
-      setTimeout(()=>{span.textContent=w.fix;span.classList.remove('wrong','fixing');span.classList.add('fixed');
-        fi++;setTimeout(doFix,350);
+  setTimeout(()=>{
+    detectEl.innerHTML='<span class="sd-dot"></span> '+fixes.length+' typos detected in '+data.env+' — fixing...';
+    const doFix=()=>{
+      if(fi>=fixes.length){
+        detectEl.innerHTML='<span class="sd-dot"></span> All typos fixed — prompt clean ✔';
+        resultEl.textContent=fixes.length+' typos caught · '+fixes.map(f=>f.w.t+'→'+f.w.fix).join(', ')+' · corrected before send';
+        resultEl.classList.add('show');
+        setTimeout(()=>{spellIdx=(spellIdx+1)%spellData.length;runSpell()},2500);return;
+      }
+      const {i,w}=fixes[fi];
+      const span=document.getElementById('sw'+i);
+      document.getElementById(pills[w.stage]).classList.add('active');
+      span.classList.add('fixing');
+      setTimeout(()=>{
+        span.classList.add('wrong');
+        setTimeout(()=>{span.textContent=w.fix;span.classList.remove('wrong','fixing');span.classList.add('fixed');
+          fi++;setTimeout(doFix,300);
+        },250);
       },300);
-    },350);
-  };
-  setTimeout(doFix,500);
+    };
+    doFix();
+  },500);
 }
 const sObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runSpell();sObs.unobserve(x.target)}}),{threshold:.3});
 sObs.observe(document.getElementById('spellViz'));

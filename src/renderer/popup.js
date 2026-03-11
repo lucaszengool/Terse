@@ -3,6 +3,7 @@ const T = window.terse;
 let hasContent = false;
 let autoMode = 'off';
 let minimized = false;
+let agentPanelVisible = false; // true when focused app is an agent host and panel is showing
 
 function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -112,9 +113,10 @@ T.on('popup-show', d => {
     document.getElementById('optimized').classList.add('hidden');
     document.getElementById('btnReplace').disabled = true;
   }
-  // Show agent panel only when the active session's app has an agent connected
+  // Show agent panel only when the focused app is hosting a connected agent
   const panel = document.getElementById('agentPanel');
-  if (d.hasAgent && activeAgentType) {
+  agentPanelVisible = !!(d.hasAgent && activeAgentType);
+  if (agentPanelVisible) {
     panel.classList.remove('hidden');
   } else {
     panel.classList.add('hidden');
@@ -124,10 +126,11 @@ T.on('popup-show', d => {
 
 T.on('popup-hide', () => {
   hasContent = false;
+  agentPanelVisible = false;
 });
 
 T.on('popup-hint', d => {
-  if (hasContent || activeAgentType) return;
+  if (hasContent || agentPanelVisible) return;
   document.getElementById('appLabel').textContent = d.app || 'Connected';
   const hint = document.getElementById('hintState');
   const bridgeDiv = document.getElementById('bridgeInstall');
@@ -147,8 +150,8 @@ T.on('popup-hint', d => {
 
 T.on('popup-clear', () => {
   hasContent = false;
-  // Don't show hint or resize if agent panel is active
-  if (activeAgentType) return;
+  // Don't show hint or resize if agent panel is showing for this app
+  if (agentPanelVisible) return;
   document.getElementById('hintState').classList.remove('hidden');
   document.getElementById('bridgeInstall').classList.add('hidden');
   document.getElementById('optimized').classList.add('hidden');
@@ -385,17 +388,10 @@ T.getAgentSessions().then(sessions => {
     showAgentPanel(sessions[0]);
     return;
   }
-  // No connected sessions — check for pending detections and auto-connect
-  T.getAgentDetections().then(async detections => {
+  // No connected sessions — show banner for pending detections (let user choose to connect)
+  T.getAgentDetections().then(detections => {
     if (detections.length > 0 && !activeAgentType) {
-      // Auto-connect to detected agent (skip banner)
-      const det = detections[0];
-      const session = await T.acceptAgent(det.type);
-      if (session) {
-        showAgentPanel(session);
-      } else {
-        showAgentBanner(det);
-      }
+      showAgentBanner(detections[0]);
     }
   });
 });

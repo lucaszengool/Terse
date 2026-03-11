@@ -186,9 +186,14 @@ class JSONLWatcher {
       this.offset = 0;
     }
 
-    this.watcher = fs.watch(this.filePath, { persistent: false }, (eventType) => {
-      if (eventType === 'change') this._readNew();
-    });
+    try {
+      this.watcher = fs.watch(this.filePath, { persistent: false }, (eventType) => {
+        if (eventType === 'change') this._readNew();
+      });
+    } catch {
+      // File may not exist yet — polling will pick it up
+      this.watcher = null;
+    }
 
     // Also poll every 2s as fallback (fs.watch can miss events)
     this._pollInterval = setInterval(() => this._readNew(), 2000);
@@ -257,6 +262,7 @@ class AgentSession {
     this.totalOutputTokens = 0;
     this.totalCacheReadTokens = 0;
     this.totalCacheCreateTokens = 0;
+    this.detectedModel = null; // detected from JSONL (e.g. "claude-sonnet-4-6")
 
     // Message history (last N for display)
     this.messages = [];      // { role, content, tokens, timestamp, type }
@@ -353,12 +359,30 @@ class AgentSession {
       const encodedCwd = appCwd.replace(/\//g, '-');
       const ownProjectDir = path.join(logDir, encodedCwd);
 
+      // Also try to detect the agent's working directory from its process
+      let agentCwdDir = null;
+      if (this.agentInfo.pid) {
+        try {
+          const { execFileSync } = require('child_process');
+          const lsofOut = execFileSync('lsof', ['-p', String(this.agentInfo.pid), '-d', 'cwd', '-Fn'], { timeout: 2000, encoding: 'utf-8' });
+          const cwdMatch = lsofOut.match(/\nn(.+)/);
+          if (cwdMatch) {
+            const agentEncoded = cwdMatch[1].replace(/\//g, '-');
+            const agentDir = path.join(logDir, agentEncoded);
+            if (fs.existsSync(agentDir)) agentCwdDir = agentDir;
+          }
+        } catch { /* lsof may fail, fallback below */ }
+      }
+
       let subdirs;
-      if (fs.existsSync(ownProjectDir)) {
-        // Prefer own project dir — most likely the user wants to monitor the session for THIS project
+      if (agentCwdDir) {
+        // Prefer the agent's own project dir
+        subdirs = [agentCwdDir];
+      } else if (fs.existsSync(ownProjectDir)) {
+        // Prefer own project dir
         subdirs = [ownProjectDir];
       } else {
-        // Fallback: scan all project dirs
+        // Fallback: scan all project dirs, sorted by recency
         subdirs = fs.readdirSync(logDir, { withFileTypes: true })
           .filter(d => d.isDirectory())
           .map(d => path.join(logDir, d.name));
@@ -416,6 +440,10 @@ class AgentSession {
     if (obj.type === 'file-history-snapshot') return;
     const msg = obj.message;
     const ts = obj.timestamp || new Date().toISOString();
+
+    // Detect model from assistant responses
+    if (msg.model) this.detectedModel = msg.model;
+    if (obj.model) this.detectedModel = obj.model;
 
     // Track token usage (input_tokens is small; real input is in cache fields)
     if (msg.usage) {
@@ -555,35 +583,48 @@ class AgentSession {
   }
 
   /**
-   * Run the optimizer on all user messages and calculate potential savings.
-   * Stores per-message optimization details and technique breakdown.
+   * Run the optimizer on user messages and calculate potential savings.
+   * Uses incremental caching — only analyzes new messages since last call.
    */
   analyzeOptimization(optimizer) {
     if (!optimizer || this.userMessages.length === 0) return this.optimizationStats;
 
-    let totalOriginal = 0;
-    let totalOptimized = 0;
-    let optimizedCount = 0;
-    const techniqueFreq = {};    // technique name → count
-    const techniqueSavings = {}; // technique name → total tokens saved
-    const perMessage = [];       // per-message optimization details (last 10)
+    // Skip if no new messages since last analysis
+    if (this._lastAnalyzedCount === this.userMessages.length) return this.optimizationStats;
 
-    for (const msg of this.userMessages) {
+    // Initialize cache on first call
+    if (!this._optCache) {
+      this._optCache = {
+        totalOriginal: 0,
+        totalOptimized: 0,
+        optimizedCount: 0,
+        techniqueFreq: {},
+        techniqueSavings: {},
+        perMessage: [],
+      };
+      this._lastAnalyzedCount = 0;
+    }
+
+    const cache = this._optCache;
+    const startIdx = this._lastAnalyzedCount;
+
+    for (let i = startIdx; i < this.userMessages.length; i++) {
+      const msg = this.userMessages[i];
       if (!msg.text || msg.text.length < 20) continue;
       const result = optimizer.optimize(msg.text);
       const saved = result.stats.tokensSaved;
-      totalOriginal += result.stats.originalTokens;
-      totalOptimized += result.stats.optimizedTokens;
+      cache.totalOriginal += result.stats.originalTokens;
+      cache.totalOptimized += result.stats.optimizedTokens;
       if (saved > 0) {
-        optimizedCount++;
+        cache.optimizedCount++;
         const techs = result.stats.techniquesApplied;
         const perTech = techs.length > 0 ? Math.round(saved / techs.length) : 0;
         for (const t of techs) {
-          techniqueFreq[t] = (techniqueFreq[t] || 0) + 1;
-          techniqueSavings[t] = (techniqueSavings[t] || 0) + perTech;
+          cache.techniqueFreq[t] = (cache.techniqueFreq[t] || 0) + 1;
+          cache.techniqueSavings[t] = (cache.techniqueSavings[t] || 0) + perTech;
         }
       }
-      perMessage.push({
+      cache.perMessage.push({
         original: msg.text.substring(0, 100) + (msg.text.length > 100 ? '...' : ''),
         optimized: result.optimized.substring(0, 100) + (result.optimized.length > 100 ? '...' : ''),
         originalTokens: result.stats.originalTokens,
@@ -593,7 +634,13 @@ class AgentSession {
         techniques: result.stats.techniquesApplied,
         timestamp: msg.timestamp,
       });
+      // Keep perMessage bounded
+      if (cache.perMessage.length > 10) cache.perMessage = cache.perMessage.slice(-10);
     }
+
+    this._lastAnalyzedCount = this.userMessages.length;
+
+    const { totalOriginal, totalOptimized, optimizedCount, techniqueFreq, techniqueSavings, perMessage } = cache;
 
     // Sort techniques by savings (most impactful first)
     const topTechniques = Object.entries(techniqueSavings)
@@ -620,13 +667,22 @@ class AgentSession {
   }
 
   /**
+   * Reset the incremental analysis cache (e.g. when optimizer settings change).
+   */
+  resetAnalysisCache() {
+    this._optCache = null;
+    this._lastAnalyzedCount = 0;
+  }
+
+  /**
    * Get a summary snapshot for the UI.
    */
   getSnapshot() {
-    const costPer1KInput = 0.003;  // approximate $/1K tokens
-    const costPer1KOutput = 0.015;
-    const estCost = (this.totalInputTokens / 1000) * costPer1KInput
-                  + (this.totalOutputTokens / 1000) * costPer1KOutput;
+    // Model-specific pricing (per 1K tokens)
+    const pricing = this._getModelPricing();
+    const estCost = (this.totalInputTokens / 1000) * pricing.input
+                  + (this.totalOutputTokens / 1000) * pricing.output
+                  + (this.totalCacheReadTokens / 1000) * pricing.cacheRead;
 
     return {
       id: this.id,
@@ -635,6 +691,7 @@ class AgentSession {
       agentIcon: this.agentInfo.icon,
       connected: this.connected,
       sessionFile: this.sessionFile,
+      model: this.detectedModel,
       turns: this.turns,
       totalInputTokens: this.totalInputTokens,
       totalOutputTokens: this.totalOutputTokens,
@@ -647,6 +704,15 @@ class AgentSession {
       toolCallCount: this.toolCalls.length,
       optimizationStats: this.optimizationStats,
     };
+  }
+
+  _getModelPricing() {
+    const m = (this.detectedModel || '').toLowerCase();
+    // Pricing per 1K tokens (as of 2025)
+    if (m.includes('opus')) return { input: 0.015, output: 0.075, cacheRead: 0.0015 };
+    if (m.includes('haiku')) return { input: 0.0008, output: 0.004, cacheRead: 0.00008 };
+    // Default: Sonnet pricing
+    return { input: 0.003, output: 0.015, cacheRead: 0.0003 };
   }
 }
 

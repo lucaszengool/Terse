@@ -1,5 +1,54 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, Tray, nativeImage, screen, clipboard, systemPreferences } = require('electron');
 const path = require('path');
+const { execSync } = require('child_process');
+
+// ── Kill stale Terse processes before acquiring single-instance lock ──
+// Only targets Terse-specific Electron processes (NOT VS Code, Cursor, etc.)
+function killStaleTerseProcesses() {
+  try {
+    // Find Electron processes whose full command path contains Terse
+    const psOutput = execSync('ps -axo pid,command', { encoding: 'utf-8', timeout: 5000 });
+    const lines = psOutput.split('\n');
+    const myPid = process.pid;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      // Extract PID (first token)
+      const spaceIdx = trimmed.indexOf(' ');
+      if (spaceIdx < 0) continue;
+      const pid = parseInt(trimmed.substring(0, spaceIdx), 10);
+      if (isNaN(pid) || pid === myPid) continue;
+
+      const cmd = trimmed.substring(spaceIdx + 1);
+
+      // Skip anything that looks like VS Code / Cursor / other Electron apps
+      if (cmd.includes('Visual Studio Code.app') || cmd.includes('Code.app') ||
+          cmd.includes('Cursor.app') || cmd.includes('code-insiders')) continue;
+
+      // Kill stale Terse Electron processes (path contains Terse/node_modules/electron)
+      if (cmd.includes('Terse/node_modules/electron') || cmd.includes('Terse/node_modules/.bin/electron')) {
+        try {
+          process.kill(pid, 'SIGTERM');
+          console.log(`[Terse] Killed stale Electron process ${pid}`);
+        } catch { /* already dead */ }
+      }
+
+      // Kill orphaned terse-ax helper processes
+      if (cmd.includes('terse-ax') && !cmd.includes('Visual Studio Code')) {
+        try {
+          process.kill(pid, 'SIGTERM');
+          console.log(`[Terse] Killed orphaned terse-ax process ${pid}`);
+        } catch { /* already dead */ }
+      }
+    }
+  } catch (e) {
+    console.warn('[Terse] Stale process cleanup failed:', e.message);
+  }
+}
+
+killStaleTerseProcesses();
 
 // Single instance lock — prevent multiple Terse processes eating memory
 const gotLock = app.requestSingleInstanceLock();
@@ -8,6 +57,39 @@ if (!gotLock) { app.quit(); process.exit(0); }
 const { PromptOptimizer } = require('./optimizer');
 const { getFrontApp, readAXApp, readSelection, readAllViaClipboard, writeViaClipboard, writeToApp, startKeyMonitor, stopKeyMonitor, getKeyMonitorBuffer, resetKeyMonitorBuffer, writeViaKeyMonitor, setKeyMonitorSendMode, sendEnterViaKeyMonitor, readBridge, writeBridge, reloadBridge, isBridgeAlive, enableAXForApp, checkFocusIsTextInput } = require('./capture');
 const { AgentMonitor } = require('./agent-monitor');
+
+// ── Agent-app matching ──
+// Check if `appPid` is an ancestor of any connected agent process.
+// Walks up the process tree from each agent PID to see if it's hosted inside the app.
+function isAgentApp(appPid) {
+  if (!appPid || agentMonitor.sessions.size === 0) return false;
+  for (const [, agSess] of agentMonitor.sessions) {
+    const agentPid = agSess.agentInfo && agSess.agentInfo.pid;
+    if (!agentPid) continue;
+    // Walk up parent PID chain from agent process (max 20 levels to avoid infinite loops)
+    let pid = agentPid;
+    for (let i = 0; i < 20 && pid > 1; i++) {
+      if (pid === appPid) return true;
+      try {
+        const ppid = parseInt(execSync(`ps -o ppid= -p ${pid}`, { encoding: 'utf-8', timeout: 1000 }).trim(), 10);
+        if (isNaN(ppid) || ppid === pid) break;
+        pid = ppid;
+      } catch { break; }
+    }
+  }
+  return false;
+}
+
+// Cache for isAgentApp lookups (cleared when agent sessions change)
+let _agentAppCache = new Map(); // appPid → { result, ts }
+function isAgentAppCached(appPid) {
+  const now = Date.now();
+  const cached = _agentAppCache.get(appPid);
+  if (cached && now - cached.ts < 5000) return cached.result; // cache for 5s
+  const result = isAgentApp(appPid);
+  _agentAppCache.set(appPid, { result, ts: now });
+  return result;
+}
 
 let mainWindow = null;
 let popupWindow = null;
@@ -312,8 +394,8 @@ function showPopup(session) {
   if (!popupWindow.isVisible()) {
     popupWindow.showInactive();
   }
-  // Check if this session's app has a connected agent monitor
-  const hasAgent = agentMonitor.sessions.size > 0 && isAXBlind(session.bundleId);
+  // Check if this session's app is hosting a connected agent process
+  const hasAgent = isAgentAppCached(session.pid);
   sendPopup('popup-show', { app: session.title || session.name, sessionId: session.id, hasAgent });
   sendMain('sessions-updated');
 }
@@ -821,7 +903,13 @@ ipcMain.handle('resize-popup', (_, h) => {
 });
 ipcMain.handle('optimize-text', (_, text) => optimizer.optimize(text));
 ipcMain.handle('get-settings', () => optimizer.getSettings());
-ipcMain.handle('update-settings', (_, s) => { optimizer.updateSettings(s); return true; });
+ipcMain.handle('update-settings', (_, s) => {
+  optimizer.updateSettings(s);
+  for (const session of agentMonitor.sessions.values()) {
+    session.resetAnalysisCache();
+  }
+  return true;
+});
 ipcMain.handle('close-window', () => { if (mainWindow) mainWindow.hide(); });
 ipcMain.handle('request-accessibility', () => {
   systemPreferences.isTrustedAccessibilityClient(true);
@@ -961,6 +1049,11 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   stopPolling();
   agentMonitor.stop();
+
+  // Kill any child terse-ax processes spawned by this instance
+  try {
+    execSync('pkill -f terse-ax 2>/dev/null || true', { timeout: 3000 });
+  } catch { /* ignore */ }
 });
 
 // Keep running when windows are closed (tray app), but allow Cmd+Q to quit

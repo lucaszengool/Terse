@@ -429,8 +429,23 @@
 <nav id="nav">
   <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
   <div class="nav-links"><a href="#how-it-works">How It Works</a><a href="#pipeline">Pipeline</a><a href="#agents">Agent Monitor</a><a href="#benchmarks">Benchmarks</a></div>
-  <button class="nav-cta" onclick="document.getElementById('dl').scrollIntoView({behavior:'smooth'})">Download</button>
+  <div style="display:flex;gap:10px;align-items:center">
+    <button class="nav-sign-in" onclick="openClerkSignIn()" style="padding:8px 16px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s">Sign In</button>
+    <button class="nav-cta" onclick="openClerkSignUp()">Sign Up</button>
+    <div id="clerk-user" style="display:none;align-items:center;gap:8px">
+      <img id="clerk-avatar" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--bd)" />
+      <button onclick="clerkSignOut()" style="padding:6px 14px;background:transparent;color:var(--t3);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer">Sign Out</button>
+    </div>
+  </div>
 </nav>
+
+<!-- Clerk Auth Modal -->
+<div id="clerk-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);align-items:center;justify-content:center">
+  <div style="position:relative;background:var(--bg1);border:1px solid var(--bd);border-radius:16px;padding:20px;min-width:400px;min-height:500px">
+    <button onclick="closeClerkModal()" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;z-index:1">&times;</button>
+    <div id="clerk-mount"></div>
+  </div>
+</div>
 
 <!-- ═══ HERO ═══ -->
 <section class="hero">
@@ -1736,6 +1751,76 @@ const bObs=new IntersectionObserver(e=>e.forEach(x=>{if(!x.isIntersecting)return
     setTimeout(()=>{b.classList.add('show');const fill=b.querySelector('.bb-fill');fill.style.width=b.dataset.pct+'%'},i*120);
   });bObs.unobserve(x.target)}),{threshold:.3});
 bObs.observe(document.getElementById('benchViz'));
+</script>
+
+<!-- Clerk Authentication -->
+<script
+  async
+  crossorigin="anonymous"
+  data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck"
+  src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+  type="text/javascript"
+></script>
+<script>
+window.addEventListener('load', async () => {
+  await window.Clerk.load();
+  updateClerkUI();
+  window.Clerk.addListener(updateClerkUI);
+});
+
+function updateClerkUI() {
+  const user = window.Clerk.user;
+  const signBtns = document.querySelectorAll('.nav-sign-in, .nav-cta');
+  const userEl = document.getElementById('clerk-user');
+  if (user) {
+    signBtns.forEach(b => b.style.display = 'none');
+    userEl.style.display = 'flex';
+    document.getElementById('clerk-avatar').src = user.imageUrl;
+  } else {
+    signBtns.forEach(b => b.style.display = '');
+    userEl.style.display = 'none';
+  }
+}
+
+function openClerkSignIn() {
+  const modal = document.getElementById('clerk-modal');
+  const mount = document.getElementById('clerk-mount');
+  modal.style.display = 'flex';
+  mount.innerHTML = '';
+  window.Clerk.mountSignIn(mount, {
+    appearance: {
+      baseTheme: undefined,
+      variables: { colorPrimary: '#6ee7b7', colorBackground: '#15132a', colorText: '#fff', colorInputBackground: '#1c1a33', colorInputText: '#fff' }
+    }
+  });
+  modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
+}
+
+function openClerkSignUp() {
+  const modal = document.getElementById('clerk-modal');
+  const mount = document.getElementById('clerk-mount');
+  modal.style.display = 'flex';
+  mount.innerHTML = '';
+  window.Clerk.mountSignUp(mount, {
+    appearance: {
+      baseTheme: undefined,
+      variables: { colorPrimary: '#6ee7b7', colorBackground: '#15132a', colorText: '#fff', colorInputBackground: '#1c1a33', colorInputText: '#fff' }
+    }
+  });
+  modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
+}
+
+function closeClerkModal() {
+  const modal = document.getElementById('clerk-modal');
+  const mount = document.getElementById('clerk-mount');
+  window.Clerk.unmountSignIn(mount);
+  window.Clerk.unmountSignUp(mount);
+  modal.style.display = 'none';
+}
+
+function clerkSignOut() {
+  window.Clerk.signOut();
+}
 </script>
 </body>
 </html>

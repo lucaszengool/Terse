@@ -4,7 +4,12 @@
  */
 
 const nspell = require('nspell');
-const nlp = require('compromise');
+// Lazy-load heavy NLP modules to reduce startup memory (~30MB saved)
+let _nlp = null;
+function nlp(text) {
+  if (!_nlp) _nlp = require('compromise');
+  return _nlp(text);
+}
 const { franc } = require('franc-min');
 const { removeStopwords, eng, fra, deu, spa, por, ita, rus, jpn, zho } = require('stopword');
 const { spellCorrect, deduplicateClauses, compressRepeatedPhrases } = require('./spellfix');

@@ -6,10 +6,10 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="titlebar">
-    <div class="titlebar-left">
+  <div id="titlebar" data-tauri-drag-region>
+    <div class="titlebar-left" data-tauri-drag-region>
       <div class="status-dot" id="statusDot"></div>
-      <span class="app-title">Terse</span>
+      <span class="app-title" data-tauri-drag-region>Terse</span>
       <span class="tracking-label" id="trackingLabel"></span>
     </div>
     <div class="titlebar-controls">
@@ -41,6 +41,11 @@
         <p class="idle-title">No connections yet</p>
         <p class="idle-sub">Click + to connect to a chat input</p>
       </div>
+
+      <button id="btnStats" class="stats-nav-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="13" width="4" height="8" rx="1"/><rect x="10" y="9" width="4" height="12" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
+        Statistics
+      </button>
 
       <div class="idle-divider"><span>or paste below</span></div>
       <textarea id="manualInput" class="manual-area" placeholder="Paste a prompt to optimize..." spellcheck="false"></textarea>
@@ -98,11 +103,32 @@
         <label class="setting-row"><span>Compress whitespace</span><input type="checkbox" data-key="compressWhitespace" checked></label>
         <label class="setting-row"><span>Compress code</span><input type="checkbox" data-key="compressCodeBlocks" checked></label>
       </div>
+      <div class="setting-group">
+        <label class="setting-label">Account</label>
+        <div id="accountSection">
+          <button id="btnSignIn" class="secondary-btn" style="margin-bottom:6px" onclick="window.open('https://terse-production.up.railway.app/')">Sign In / Sign Up</button>
+          <div id="accountInfo" class="hidden" style="padding:6px 0;font-size:11px;color:var(--t2)">
+            <span id="accountEmail"></span>
+            <span id="accountTier" style="margin-left:8px;padding:2px 6px;background:var(--acd);color:var(--ac);border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase"></span>
+          </div>
+        </div>
+      </div>
       <button id="btnCloseSettings" class="secondary-btn">Done</button>
+    </div>
+
+    <!-- License Banner -->
+    <div id="licenseBanner" class="license-banner hidden">
+      <div class="license-info">
+        <span id="licenseTier" class="license-tier">Free</span>
+        <span id="licenseUsage" class="license-usage"></span>
+      </div>
+      <button id="btnUpgrade" class="upgrade-btn" onclick="window.open('https://terse-production.up.railway.app/#pricing')">Upgrade</button>
     </div>
 
     <div id="toast" class="toast hidden"></div>
   </div>
+  <script src="tauri-bridge.js"></script>
+  <script src="optimizer-bundle.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

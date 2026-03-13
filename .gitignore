@@ -4,3 +4,10 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+.env
+
+# Tauri build artifacts
+src-tauri/target/
+
+# Electron backup (legacy)
+electron-backup/

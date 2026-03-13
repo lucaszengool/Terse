@@ -421,14 +421,40 @@
       .hero-stage{height:320px}
       .chatgpt-body,.openclaw-body,.vscode-body,.agent-body,.sessions-body{height:260px}
       .testi-card{min-width:260px}
+      .pricing-grid{flex-direction:column;align-items:center}
+      .price-card{min-width:280px}
     }
+    /* PRICING */
+    .pricing-grid{display:flex;gap:16px;justify-content:center;align-items:stretch;max-width:1100px;margin:0 auto;flex-wrap:wrap}
+    .price-card{flex:1;min-width:300px;max-width:340px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:32px 28px;display:flex;flex-direction:column;transition:all .3s;position:relative}
+    .price-card:hover{border-color:var(--bdl);transform:translateY(-4px);box-shadow:0 20px 60px hsla(250,50%,5%,0.5)}
+    .price-card.recommended{border-color:var(--acm);background:linear-gradient(180deg,rgba(110,231,183,0.04) 0%,var(--bg2) 40%)}
+    .price-card.recommended::before{content:'RECOMMENDED';position:absolute;top:-12px;left:50%;transform:translateX(-50%);padding:4px 16px;background:var(--gradient);color:var(--bg0);font-size:10px;font-weight:800;letter-spacing:1px;border-radius:20px}
+    .price-tier{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:8px}
+    .price-amount{font-size:48px;font-weight:900;letter-spacing:-2px;margin-bottom:4px;line-height:1}
+    .price-amount .curr{font-size:24px;font-weight:700;vertical-align:super;color:var(--t2)}
+    .price-amount .period{font-size:16px;font-weight:500;color:var(--t3)}
+    .price-desc{font-size:14px;color:var(--t2);margin-bottom:20px;line-height:1.6}
+    .price-features{list-style:none;margin-bottom:auto;padding-bottom:24px}
+    .price-features li{font-size:13px;color:var(--t2);padding:6px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--sf)}
+    .price-features li:last-child{border-bottom:none}
+    .price-features .check{width:18px;height:18px;border-radius:50%;background:var(--acd);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .price-features .check svg{width:10px;height:10px;stroke:var(--ac);fill:none;stroke-width:3}
+    .price-features .x-mark{width:18px;height:18px;border-radius:50%;background:rgba(248,113,113,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .price-features .x-mark svg{width:8px;height:8px;stroke:#f87171;fill:none;stroke-width:3}
+    .price-btn{padding:13px;background:var(--sf);color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;text-align:center}
+    .price-btn:hover{background:var(--sfh);border-color:var(--bdl)}
+    .price-btn.primary{background:var(--t1);color:var(--bg0);border-color:var(--t1)}
+    .price-btn.primary:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 8px 24px hsla(0,0%,100%,0.1)}
+    .price-btn.accent{background:var(--gradient);color:var(--bg0);border-color:var(--ac)}
+    .price-btn.accent:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 8px 30px rgba(110,231,183,0.2)}
   </style>
 </head>
 <body>
 
 <nav id="nav">
   <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
-  <div class="nav-links"><a href="#how-it-works">How It Works</a><a href="#pipeline">Pipeline</a><a href="#agents">Agent Monitor</a><a href="#benchmarks">Benchmarks</a></div>
+  <div class="nav-links"><a href="#how-it-works">How It Works</a><a href="#pipeline">Pipeline</a><a href="#agents">Agent Monitor</a><a href="#benchmarks">Benchmarks</a><a href="#pricing">Pricing</a></div>
   <div style="display:flex;gap:10px;align-items:center">
     <button class="nav-sign-in" onclick="openClerkSignIn()" style="padding:8px 16px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s">Sign In</button>
     <button class="nav-cta" onclick="openClerkSignUp()">Sign Up</button>
@@ -1041,6 +1067,68 @@
   </div>
 </section>
 
+<!-- ═══ PRICING ═══ -->
+<section class="section" id="pricing" style="background:var(--bg0)">
+  <div class="section-inner" style="max-width:1200px">
+    <div class="section-label rv">Pricing</div>
+    <h2 class="section-title rv" style="margin-bottom:12px">Simple, transparent plans</h2>
+    <p class="rv" style="color:var(--t2);max-width:520px;margin:0 auto 48px;text-align:center;font-size:15px;line-height:1.7">Start free. Upgrade when you need more sessions, devices, or unlimited optimizations.</p>
+
+    <div class="pricing-grid rv d1">
+      <!-- FREE -->
+      <div class="price-card">
+        <div class="price-tier">Free</div>
+        <div class="price-amount"><span class="curr">$</span>0<span class="period">/mo</span></div>
+        <p class="price-desc">Get started with essential prompt optimization.</p>
+        <ul class="price-features">
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>50 optimizations per week</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>1 connected session</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>1 device</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>All 3 optimization modes</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Spell correction</li>
+          <li><span class="x-mark"><svg viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span><span style="color:var(--t3)">Agent monitoring</span></li>
+          <li><span class="x-mark"><svg viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span><span style="color:var(--t3)">Auto-replace mode</span></li>
+        </ul>
+        <button class="price-btn" onclick="handlePricing('free')">Get Started</button>
+      </div>
+
+      <!-- PRO -->
+      <div class="price-card recommended">
+        <div class="price-tier" style="color:var(--ac)">Pro</div>
+        <div class="price-amount"><span class="curr">$</span>7<span style="font-size:32px">.99</span><span class="period">/mo</span></div>
+        <p class="price-desc">For developers who optimize every day. Unlimited prompts, multi-session.</p>
+        <ul class="price-features">
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;optimizations</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>3 connected sessions</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>2 devices</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>All 3 optimization modes</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Agent monitoring (Claude Code, etc)</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Auto-replace &amp; Send-mode</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Token statistics dashboard</li>
+        </ul>
+        <button class="price-btn accent" onclick="handlePricing('pro')">Subscribe to Pro</button>
+      </div>
+
+      <!-- PREMIUM -->
+      <div class="price-card">
+        <div class="price-tier" style="color:var(--ac)">Premium</div>
+        <div class="price-amount"><span class="curr">$</span>99<span class="period">/mo</span></div>
+        <p class="price-desc">For teams and power users. Unlimited everything, priority support.</p>
+        <ul class="price-features">
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;optimizations</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;connected sessions</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;devices</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>All 3 optimization modes</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Agent monitoring + analytics</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Auto-replace &amp; Send-mode</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Priority support</li>
+        </ul>
+        <button class="price-btn primary" onclick="handlePricing('premium')">Subscribe to Premium</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ CTA ═══ -->
 <section class="cta" id="dl">
   <div class="cta-glow"></div>
@@ -1060,11 +1148,11 @@
 <footer>
   <div class="footer-inner">
     <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p>Token optimizer + agent monitor. Reduce prompt costs, track sessions, catch typos. All on-device.</p></div>
-    <div class="footer-col"><h4>Product</h4><a href="#pipeline">Pipeline</a><a href="#techniques">Techniques</a><a href="#agents">Agent Monitor</a><a href="#dl">Download</a></div>
+    <div class="footer-col"><h4>Product</h4><a href="#pipeline">Pipeline</a><a href="#techniques">Techniques</a><a href="#agents">Agent Monitor</a><a href="#pricing">Pricing</a><a href="#dl">Download</a></div>
     <div class="footer-col"><h4>Techniques</h4><a href="#">Spell Correction</a><a href="#">Pattern Optimization</a><a href="#">NLP Analysis</a><a href="#">Telegraph Compression</a></div>
     <div class="footer-col"><h4>Research</h4><a href="#">LLMLingua (EMNLP 2023)</a><a href="#">Norvig Spelling</a><a href="#">Selective Context</a><a href="#">Docs</a></div>
   </div>
-  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>Electron &middot; Swift &middot; compromise.js</span></div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
 </footer>
 
 <script>
@@ -1843,6 +1931,101 @@ function closeClerkModal() {
 function clerkSignOut() {
   window.Clerk.signOut();
 }
+
+// ═══ PRICING & STRIPE CHECKOUT ═══
+const API_BASE = window.location.origin;
+
+async function handlePricing(tier) {
+  // If free tier, just sign up
+  if (tier === 'free') {
+    if (!window.Clerk?.user) {
+      openClerkSignUp();
+    } else {
+      showPricingToast('You already have a free account!');
+    }
+    return;
+  }
+
+  // Must be signed in for paid tiers
+  if (!window.Clerk?.user) {
+    // Store desired tier, sign up first
+    window._pendingTier = tier;
+    openClerkSignUp();
+    return;
+  }
+
+  await startCheckout(tier);
+}
+
+async function startCheckout(tier) {
+  const user = window.Clerk.user;
+  if (!user) return;
+
+  const btn = document.querySelector(`[onclick="handlePricing('${tier}')"]`);
+  if (btn) { btn.textContent = 'Loading...'; btn.disabled = true; }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tier,
+        clerkUserId: user.id,
+        clerkUserEmail: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress,
+      }),
+    });
+
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      showPricingToast('Error: ' + (data.error || 'Failed to create checkout'));
+      if (btn) { btn.textContent = tier === 'pro' ? 'Subscribe to Pro' : 'Subscribe to Premium'; btn.disabled = false; }
+    }
+  } catch (err) {
+    showPricingToast('Network error. Please try again.');
+    if (btn) { btn.textContent = tier === 'pro' ? 'Subscribe to Pro' : 'Subscribe to Premium'; btn.disabled = false; }
+  }
+}
+
+function showPricingToast(msg) {
+  let toast = document.getElementById('pricing-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'pricing-toast';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;background:rgba(30,30,34,0.95);border:1px solid var(--bdl);border-radius:10px;color:var(--t1);font-size:14px;z-index:10000;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:opacity .3s';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  setTimeout(() => toast.style.opacity = '0', 3000);
+}
+
+// After Clerk sign-in, check if there was a pending tier selection
+const _origUpdateClerkUI = updateClerkUI;
+updateClerkUI = function() {
+  _origUpdateClerkUI();
+  if (window.Clerk?.user && window._pendingTier) {
+    const tier = window._pendingTier;
+    window._pendingTier = null;
+    closeClerkModal();
+    setTimeout(() => startCheckout(tier), 500);
+  }
+};
+
+// Check URL for checkout success/cancel
+(function checkCheckoutResult() {
+  const params = new URLSearchParams(window.location.search);
+  const checkout = params.get('checkout');
+  if (checkout === 'success') {
+    const tier = params.get('tier') || 'pro';
+    setTimeout(() => showPricingToast(`${tier.charAt(0).toUpperCase() + tier.slice(1)} plan activated! You can now use Terse with full features.`), 1000);
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (checkout === 'cancelled') {
+    setTimeout(() => showPricingToast('Checkout cancelled. You can try again anytime.'), 500);
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+})();
 </script>
 </body>
 </html>

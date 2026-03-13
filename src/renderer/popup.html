@@ -14,9 +14,9 @@
     </svg>
   </div>
 
-  <div id="bar">
-    <div class="bar-header">
-      <div class="bar-left">
+  <div id="bar" data-tauri-drag-region>
+    <div class="bar-header" data-tauri-drag-region>
+      <div class="bar-left" data-tauri-drag-region>
         <div class="dot"></div>
         <span id="appLabel">Connected</span>
       </div>
@@ -30,8 +30,8 @@
           <button class="mode-btn" data-mode="aggressive" title="Maximum compression">Aggr</button>
         </div>
         <div class="auto-toggle">
-          <button class="auto-btn active" data-auto="off" title="Manual only">Off</button>
-          <button class="auto-btn" data-auto="send" title="Optimize when you press Enter">Send</button>
+          <button class="auto-btn" data-auto="off" title="Manual only">Off</button>
+          <button class="auto-btn active" data-auto="send" title="Optimize when you press Enter">Send</button>
           <button class="auto-btn" data-auto="auto" title="Live replace as you type">Auto</button>
         </div>
       </div>
@@ -68,46 +68,96 @@
         <span id="agentPanelIcon" class="agent-icon"></span>
         <span id="agentPanelName" class="agent-name">Agent</span>
         <span id="agentPanelStatus" class="agent-status">Monitoring</span>
+        <button id="btnAgentDetails" class="agent-details-btn" title="Toggle details">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
         <button id="btnAgentDisconnect" class="agent-disconnect-btn" title="Disconnect">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div class="agent-stats-grid">
-        <div class="agent-stat">
-          <span class="agent-stat-label">Turns</span>
-          <span id="agentTurns" class="agent-stat-value">0</span>
+
+      <!-- Compact summary bar (always visible) -->
+      <div class="agent-summary-bar">
+        <span class="sum-item"><span class="sum-label">Ctx</span> <span id="agentCtxShort" class="sum-val">0%</span></span>
+        <span class="sum-sep">|</span>
+        <span class="sum-item"><span class="sum-label">In</span> <span id="agentInputShort" class="sum-val">0</span></span>
+        <span class="sum-sep">|</span>
+        <span class="sum-item"><span class="sum-label">Cache</span> <span id="agentCacheShort" class="sum-val">0%</span></span>
+        <span class="sum-sep">|</span>
+        <span class="sum-item"><span class="sum-label">Tools</span> <span id="agentToolShort" class="sum-val">0</span></span>
+        <span class="sum-sep">|</span>
+        <span class="sum-item sum-save"><span id="agentSaveShort" class="sum-val">0</span> saveable</span>
+      </div>
+
+      <!-- Context fill bar (always visible, compact) -->
+      <div class="context-fill-bar-mini"><div class="context-fill-bar-fill" id="agentContextBar"></div></div>
+
+      <!-- ═══ Activity log with inline optimization (PRIMARY VIEW) ═══ -->
+      <div id="agentActivity" class="agent-activity"></div>
+
+      <!-- ═══ Details panel (hidden by default, toggled by ▼ button) ═══ -->
+      <div id="agentDetailsPanel" class="agent-details-panel hidden">
+        <!-- Context fill meter -->
+        <div class="context-fill-wrap">
+          <div class="context-fill-header">
+            <span class="context-fill-label">Context</span>
+            <span id="agentContextPct" class="context-fill-pct">0%</span>
+            <span id="agentBurnRate" class="burn-rate">0 tok/min</span>
+          </div>
         </div>
-        <div class="agent-stat">
-          <span class="agent-stat-label">Input</span>
-          <span id="agentInputTok" class="agent-stat-value">0</span>
+
+        <!-- Stats grid -->
+        <div class="agent-stats-grid">
+          <div class="agent-stat"><span class="agent-stat-label">Turns</span><span id="agentTurns" class="agent-stat-value">0</span></div>
+          <div class="agent-stat"><span class="agent-stat-label">Input</span><span id="agentInputTok" class="agent-stat-value">0</span></div>
+          <div class="agent-stat"><span class="agent-stat-label">Cache</span><span id="agentCacheEff" class="agent-stat-value">0%</span></div>
+          <div class="agent-stat"><span class="agent-stat-label">Tools</span><span id="agentToolCount" class="agent-stat-value">0</span></div>
         </div>
-        <div class="agent-stat">
-          <span class="agent-stat-label">Output</span>
-          <span id="agentOutputTok" class="agent-stat-value">0</span>
+
+        <!-- Token breakdown -->
+        <div class="token-breakdown">
+          <div class="breakdown-bar">
+            <div class="breakdown-seg user" id="breakdownUser" title="User prompts"></div>
+            <div class="breakdown-seg assistant" id="breakdownAssistant" title="Assistant"></div>
+            <div class="breakdown-seg tool" id="breakdownTool" title="Tool results"></div>
+          </div>
+          <div class="breakdown-legend">
+            <span class="legend-item"><span class="legend-dot user"></span>User <span id="breakdownUserPct">0%</span></span>
+            <span class="legend-item"><span class="legend-dot assistant"></span>Asst <span id="breakdownAsstPct">0%</span></span>
+            <span class="legend-item"><span class="legend-dot tool"></span>Tools <span id="breakdownToolPct">0%</span></span>
+          </div>
         </div>
-        <div class="agent-stat">
-          <span class="agent-stat-label">Cost</span>
-          <span id="agentCost" class="agent-stat-value">$0</span>
+
+        <!-- Savings hero -->
+        <div class="agent-savings-hero">
+          <div class="savings-big">
+            <span id="agentSavedBig" class="savings-num">0</span>
+            <span class="savings-unit">tokens saveable</span>
+          </div>
+          <div class="savings-bar-wrap">
+            <div class="savings-bar"><div class="savings-bar-fill" id="agentSavingsBar"></div></div>
+            <span id="agentSavingsPct" class="savings-pct">0%</span>
+          </div>
         </div>
-      </div>
-      <div class="agent-optimization-row">
-        <span class="agent-opt-label">User prompt savings:</span>
-        <span id="agentOptSavings" class="agent-opt-value">—</span>
-      </div>
-      <!-- Optimization breakdown: technique tags + per-technique savings -->
-      <div id="agentOptBreakdown" class="agent-opt-breakdown hidden">
-        <div id="agentOptTechniques" class="agent-opt-techniques"></div>
-      </div>
-      <!-- Recent optimizations: before/after per message -->
-      <div id="agentOptRecent" class="agent-opt-recent hidden">
-        <!-- Populated by JS -->
-      </div>
-      <div class="agent-tools-row">
-        <span class="agent-tools-label">Tools:</span>
-        <span id="agentToolCount" class="agent-tools-value">0 calls</span>
-      </div>
-      <div id="agentActivity" class="agent-activity">
-        <!-- Live activity feed -->
+
+        <!-- Insights -->
+        <div id="agentInsights" class="agent-insights hidden"></div>
+
+        <!-- How tokens were saved -->
+        <div id="agentOptDetail" class="agent-opt-detail hidden">
+          <div class="opt-detail-header">
+            <span class="opt-detail-title">How tokens were saved</span>
+            <span id="agentOptMsgCount" class="opt-detail-count"></span>
+          </div>
+          <div id="agentOptTechniques" class="agent-opt-techniques"></div>
+          <div id="agentOptRecent" class="agent-opt-recent hidden"></div>
+        </div>
+
+        <!-- Warnings -->
+        <div id="agentWarnings" class="agent-warnings hidden">
+          <div id="agentDedupAlerts"></div>
+          <div id="agentRedundantTools"></div>
+        </div>
       </div>
     </div>
 
@@ -126,6 +176,8 @@
       </button>
     </div>
   </div>
+  <script src="tauri-bridge.js"></script>
+  <script src="optimizer-bundle.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

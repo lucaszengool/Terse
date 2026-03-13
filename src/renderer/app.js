@@ -17,7 +17,33 @@ function show(name) {
   $$('.setting-row input').forEach(cb => { if (s[cb.dataset.key] !== undefined) cb.checked = s[cb.dataset.key]; });
   show('sessions');
   refreshSessions();
+  updateLicenseBanner();
 })();
+
+// ── License ──
+async function updateLicenseBanner() {
+  if (!T.getLicense) return;
+  try {
+    const lic = await T.getLicense();
+    const banner = $('#licenseBanner');
+    if (!banner) return;
+    banner.classList.remove('hidden');
+    $('#licenseTier').textContent = lic.tier.charAt(0).toUpperCase() + lic.tier.slice(1);
+    if (lic.remaining >= 0) {
+      $('#licenseUsage').textContent = lic.remaining + '/' + lic.limits.optimizationsPerWeek + ' left this week';
+      if (lic.remaining <= 10) banner.classList.add('limit-warning');
+      else banner.classList.remove('limit-warning');
+    } else {
+      $('#licenseUsage').textContent = 'Unlimited';
+      banner.classList.remove('limit-warning');
+    }
+    if (lic.tier !== 'free') {
+      $('#btnUpgrade').textContent = 'Manage';
+    }
+  } catch {}
+}
+// Refresh license every 60s
+setInterval(updateLicenseBanner, 60000);
 
 // ── Sessions ──
 function refreshSessions() {
@@ -143,6 +169,7 @@ $('#btnManCopy').addEventListener('click', async () => {
 $('#btnSettings').addEventListener('click', () => {
   $('#settingsPanel').classList.contains('hidden') ? show('settings') : show(prevView);
 });
+$('#btnStats').addEventListener('click', () => T.navigateToStats());
 $('#btnCloseSettings').addEventListener('click', () => show(prevView));
 $$('.toggle-btn').forEach(b => b.addEventListener('click', () => {
   $$('.toggle-btn').forEach(x => x.classList.remove('active')); b.classList.add('active');

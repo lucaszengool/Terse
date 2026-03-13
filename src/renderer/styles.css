@@ -113,6 +113,10 @@ body { background: var(--bg); backdrop-filter: blur(48px) saturate(190%);
 .secondary-btn { width: 100%; padding: 7px; background: var(--sf); color: var(--t2); border: 1px solid var(--bd);
   border-radius: var(--rs); font-size: 11px; cursor: pointer; }
 .secondary-btn:hover { background: var(--sfh); color: var(--t1); }
+.stats-nav-btn { width: 100%; padding: 8px; margin: 8px 0 4px; background: var(--acd); color: var(--ac);
+  border: 1px solid var(--acm); border-radius: var(--rs); font-size: 11px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.stats-nav-btn:hover { background: var(--acm); }
 .ghost-btn { width: 100%; padding: 6px; background: transparent; color: var(--t3); border: none;
   border-radius: var(--rs); font-size: 11px; cursor: pointer; }
 .ghost-btn:hover { color: var(--t2); }
@@ -138,6 +142,19 @@ body { background: var(--bg); backdrop-filter: blur(48px) saturate(190%);
   background: rgba(28,28,30,0.95); border: 1px solid var(--bdl); border-radius: var(--rs);
   font-size: 11px; color: var(--t2); z-index: 100; animation: slideUp 0.15s ease; }
 .toast.error { border-color: rgba(248,113,113,0.3); color: var(--red); }
+/* License Banner */
+.license-banner { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px;
+  margin-bottom: 6px; background: var(--acd); border: 1px solid var(--acm); border-radius: var(--rs); }
+.license-info { display: flex; align-items: center; gap: 8px; }
+.license-tier { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 2px 6px; background: var(--ac); color: #0a0a0a; border-radius: 3px; }
+.license-usage { font-size: 10px; color: var(--t2); }
+.upgrade-btn { padding: 3px 10px; background: var(--ac); color: #0a0a0a; border: none; border-radius: 4px;
+  font-size: 10px; font-weight: 700; cursor: pointer; }
+.upgrade-btn:hover { opacity: 0.85; }
+.license-banner.limit-warning { background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.3); }
+.license-banner.limit-warning .license-tier { background: var(--warn); }
+
 .hidden { display: none !important; }
 
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }

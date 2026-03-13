@@ -2,10 +2,10 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install serve"
+    "buildCommand": "npm install"
   },
   "deploy": {
-    "startCommand": "npx serve landing --listen ${PORT:-3000}",
+    "startCommand": "node api/server.js",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

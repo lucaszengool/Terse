@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Terse — Statistics</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:rgba(18,18,20,0.95);--bg2:rgba(30,30,34,0.8);--sf:rgba(255,255,255,0.05);
+      --bd:rgba(255,255,255,0.07);--bdl:rgba(255,255,255,0.12);
+      --t1:rgba(255,255,255,0.92);--t2:rgba(255,255,255,0.5);--t3:rgba(255,255,255,0.28);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.12);--acm:rgba(110,231,183,0.25);
+      --blue:rgba(59,130,246,0.8);--blued:rgba(59,130,246,0.12);
+      --yellow:rgba(251,191,36,0.8);--yellowd:rgba(251,191,36,0.1);
+      --purple:rgba(168,85,247,0.8);--purpled:rgba(168,85,247,0.1);
+    }
+    html,body{height:100%;background:var(--bg);color:var(--t1);
+      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+      font-size:12px;line-height:1.4;-webkit-font-smoothing:antialiased;overflow-y:auto}
+    body{backdrop-filter:blur(48px);-webkit-backdrop-filter:blur(48px);padding:12px}
+
+    .header{display:flex;align-items:center;gap:8px;margin-bottom:14px;-webkit-app-region:drag}
+    .header button{-webkit-app-region:no-drag}
+    .back-btn{width:24px;height:24px;border-radius:5px;border:1px solid var(--bd);
+      background:var(--sf);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .back-btn:hover{background:var(--bdl);color:var(--t1)}
+    .header h1{font-size:14px;font-weight:700;flex:1}
+
+    .period-tabs{display:flex;gap:2px;background:var(--sf);border-radius:5px;padding:2px;
+      border:1px solid var(--bd);margin-bottom:14px}
+    .period-tab{padding:5px 14px;font-size:10px;font-weight:600;border:none;background:none;
+      color:var(--t3);cursor:pointer;border-radius:4px}
+    .period-tab:hover{color:var(--t2)}
+    .period-tab.active{background:var(--acd);color:var(--ac)}
+
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+    .summary-card{text-align:center;padding:10px 6px;background:var(--sf);border:1px solid var(--bd);border-radius:6px}
+    .summary-num{display:block;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+    .summary-num.accent{color:var(--ac)}
+    .summary-label{display:block;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+    .section{margin-bottom:14px}
+    .section-title{font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;
+      text-transform:uppercase;letter-spacing:.5px}
+
+    .chart-container{background:var(--sf);border:1px solid var(--bd);border-radius:6px;
+      padding:10px;position:relative;height:140px;overflow:hidden}
+    .chart-bar-row{display:flex;align-items:flex-end;gap:3px;height:100px;padding:0 4px}
+    .chart-bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+    .chart-bar{border-radius:2px 2px 0 0;min-height:1px;width:100%;max-width:20px;transition:height .3s}
+    .chart-bar.tokens{background:var(--blue)}
+    .chart-bar.saved{background:var(--ac)}
+    .chart-date{font-size:8px;color:var(--t3);text-align:center;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+    .chart-legend{display:flex;gap:12px;justify-content:center;margin-top:8px}
+    .chart-legend-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--t2)}
+    .chart-legend-dot{width:8px;height:8px;border-radius:2px}
+
+    .source-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+    .source-card{padding:10px;background:var(--sf);border:1px solid var(--bd);border-radius:6px}
+    .source-header{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+    .source-icon{width:8px;height:8px;border-radius:2px}
+    .source-name{font-size:11px;font-weight:700;color:var(--t1)}
+    .source-stats{display:flex;flex-direction:column;gap:3px}
+    .source-row{display:flex;justify-content:space-between;font-size:10px}
+    .source-row .label{color:var(--t3)}
+    .source-row .value{color:var(--t2);font-weight:600;font-variant-numeric:tabular-nums}
+    .source-row .value.green{color:var(--ac)}
+
+    .pct-bar{height:4px;background:var(--sf);border-radius:2px;margin-top:4px;overflow:hidden}
+    .pct-bar-fill{height:100%;border-radius:2px;background:var(--ac);transition:width .3s}
+
+    .empty-state{text-align:center;padding:40px 20px;color:var(--t3);font-size:12px}
+    .empty-state p{margin-top:8px;font-size:10px}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <button class="back-btn" id="btnBack" title="Back to sessions">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <h1>Token Statistics</h1>
+  </div>
+
+  <div class="period-tabs" id="periodTabs">
+    <button class="period-tab" data-period="day">Today</button>
+    <button class="period-tab" data-period="week">Week</button>
+    <button class="period-tab active" data-period="month">Month</button>
+    <button class="period-tab" data-period="all">All Time</button>
+  </div>
+
+  <div class="summary-grid" id="summaryGrid">
+    <div class="summary-card">
+      <span class="summary-num" id="sumTokensIn">0</span>
+      <span class="summary-label">Tokens Used</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-num accent" id="sumSaved">0</span>
+      <span class="summary-label">Tokens Saved</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-num accent" id="sumPct">0%</span>
+      <span class="summary-label">Reduction</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-num" id="sumMsgs">0</span>
+      <span class="summary-label">Messages</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Usage & Savings Over Time</div>
+    <div class="chart-container">
+      <div class="chart-bar-row" id="chartBars"></div>
+      <div class="chart-legend">
+        <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--blue)"></div>Tokens Used</div>
+        <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--ac)"></div>Tokens Saved</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">By Source</div>
+    <div class="source-grid" id="sourceGrid"></div>
+  </div>
+
+  <div id="emptyState" class="empty-state" style="display:none">
+    <div style="font-size:32px;opacity:0.3">T</div>
+    <p>No stats yet. Start optimizing prompts to see data here.</p>
+  </div>
+
+  <script src="tauri-bridge.js"></script>
+  <script>
+    const T = window.terse;
+    let currentPeriod = 'month';
+
+    function fmtTok(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return String(n);
+    }
+
+    function fmtDate(d, period) {
+      const parts = d.split('-');
+      if (period === 'day') return parts[2];
+      return parts[1] + '/' + parts[2];
+    }
+
+    const SOURCE_META = {
+      browser: { name: 'Browser', color: 'var(--blue)', colorBg: 'var(--blued)' },
+      agent:   { name: 'Agent',   color: 'var(--ac)',   colorBg: 'var(--acd)' },
+      editor:  { name: 'Editor',  color: 'var(--purple)', colorBg: 'var(--purpled)' },
+      manual:  { name: 'Manual',  color: 'var(--yellow)', colorBg: 'var(--yellowd)' },
+    };
+
+    async function render() {
+      const data = await T.getStats(currentPeriod);
+      if (!data) return;
+
+      const { summary, bySource, byDay } = data;
+      const hasData = summary.tokensIn > 0 || summary.tokensSaved > 0;
+
+      document.getElementById('emptyState').style.display = hasData ? 'none' : 'block';
+
+      // Summary
+      document.getElementById('sumTokensIn').textContent = fmtTok(summary.tokensIn);
+      document.getElementById('sumSaved').textContent = fmtTok(summary.tokensSaved);
+      document.getElementById('sumPct').textContent = summary.percentSaved + '%';
+      document.getElementById('sumMsgs').textContent = fmtTok(summary.messagesTotal);
+
+      // Chart
+      const chartEl = document.getElementById('chartBars');
+      chartEl.innerHTML = '';
+      if (byDay.length > 0) {
+        const maxTok = Math.max(...byDay.map(d => Math.max(d.tokensIn, d.tokensSaved, 1)));
+        const maxBars = 14;
+        const days = byDay.slice(-maxBars);
+        for (const d of days) {
+          const grp = document.createElement('div');
+          grp.className = 'chart-bar-group';
+          const h1 = Math.max(1, Math.round((d.tokensIn / maxTok) * 90));
+          const h2 = Math.max(1, Math.round((d.tokensSaved / maxTok) * 90));
+          grp.innerHTML =
+            '<div style="display:flex;gap:1px;align-items:flex-end;height:90px;width:100%">' +
+              '<div class="chart-bar tokens" style="height:' + h1 + 'px" title="' + fmtTok(d.tokensIn) + ' tokens"></div>' +
+              '<div class="chart-bar saved" style="height:' + h2 + 'px" title="' + fmtTok(d.tokensSaved) + ' saved"></div>' +
+            '</div>' +
+            '<div class="chart-date">' + fmtDate(d.date, currentPeriod) + '</div>';
+          chartEl.appendChild(grp);
+        }
+      }
+
+      // Source breakdown
+      const srcEl = document.getElementById('sourceGrid');
+      srcEl.innerHTML = '';
+      for (const [key, meta] of Object.entries(SOURCE_META)) {
+        const s = bySource[key] || {};
+        if (!s.tokensIn && !s.tokensSaved) continue;
+        const pct = s.tokensIn > 0 ? Math.round((s.tokensSaved / s.tokensIn) * 100) : 0;
+        const card = document.createElement('div');
+        card.className = 'source-card';
+        card.innerHTML =
+          '<div class="source-header">' +
+            '<div class="source-icon" style="background:' + meta.color + '"></div>' +
+            '<div class="source-name">' + meta.name + '</div>' +
+          '</div>' +
+          '<div class="source-stats">' +
+            '<div class="source-row"><span class="label">Tokens</span><span class="value">' + fmtTok(s.tokensIn) + '</span></div>' +
+            '<div class="source-row"><span class="label">Saved</span><span class="value green">' + fmtTok(s.tokensSaved) + ' (' + pct + '%)</span></div>' +
+            '<div class="source-row"><span class="label">Messages</span><span class="value">' + (s.messagesTotal || 0) + '</span></div>' +
+            (s.toolCalls > 0 ? '<div class="source-row"><span class="label">Tool Calls</span><span class="value">' + s.toolCalls + '</span></div>' : '') +
+          '</div>' +
+          '<div class="pct-bar"><div class="pct-bar-fill" style="width:' + pct + '%"></div></div>';
+        srcEl.appendChild(card);
+      }
+    }
+
+    // Period tabs
+    document.getElementById('periodTabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('.period-tab');
+      if (!tab) return;
+      document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentPeriod = tab.dataset.period;
+      render();
+    });
+
+    // Back button
+    document.getElementById('btnBack').addEventListener('click', () => {
+      T.navigateBack();
+    });
+
+    render();
+    // Refresh every 10s
+    setInterval(render, 10000);
+  </script>
+</body>
+</html>

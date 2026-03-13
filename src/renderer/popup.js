@@ -1,9 +1,10 @@
 const T = window.terse;
 
 let hasContent = false;
-let autoMode = 'off';
+let autoMode = 'send';
 let minimized = false;
 let agentPanelVisible = false; // true when focused app is an agent host and panel is showing
+let lastShownSessionId = null; // track which session popup is showing to reset on switch
 
 function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -13,12 +14,13 @@ function escapeHtml(s) {
 function autoResizePopup() {
   if (minimized) return;
   const ta = document.getElementById('optimized');
-  if (ta.classList.contains('hidden')) return;
-  // Reset height to measure scrollHeight
-  ta.style.height = 'auto';
-  const contentH = Math.min(Math.max(ta.scrollHeight, 44), 300);
-  ta.style.height = contentH + 'px';
-  // Measure full body and tell main process
+  if (!ta.classList.contains('hidden')) {
+    // Reset height to measure scrollHeight
+    ta.style.height = 'auto';
+    const contentH = Math.min(Math.max(ta.scrollHeight, 44), 300);
+    ta.style.height = contentH + 'px';
+  }
+  // Always measure and resize the window to match visible content
   requestAnimationFrame(() => {
     const bodyH = document.getElementById('bar').offsetHeight + 20; // 20 for padding
     T.resizePopup(bodyH);
@@ -81,45 +83,63 @@ document.querySelectorAll('.auto-btn').forEach(btn => {
 
 // Live update from main process
 T.on('popup-update', d => {
-  hasContent = true;
-  document.getElementById('hintState').classList.add('hidden');
-  document.getElementById('bridgeInstall').classList.add('hidden');
-  document.getElementById('optimized').classList.remove('hidden');
+  try {
+    hasContent = true;
+    document.getElementById('hintState').classList.add('hidden');
+    document.getElementById('bridgeInstall').classList.add('hidden');
+    document.getElementById('optimized').classList.remove('hidden');
 
-  document.getElementById('appLabel').textContent = d.app || 'Connected';
-  document.getElementById('tokBefore').textContent = d.stats.originalTokens.toLocaleString();
-  document.getElementById('tokAfter').textContent = d.stats.optimizedTokens.toLocaleString();
-  const pct = d.stats.percentSaved;
-  document.getElementById('tokPct').textContent = pct > 0 ? '-' + pct + '%' : '';
+    document.getElementById('appLabel').textContent = d.app || 'Connected';
+    const stats = d.stats || {};
+    document.getElementById('tokBefore').textContent = (stats.originalTokens || 0).toLocaleString();
+    document.getElementById('tokAfter').textContent = (stats.optimizedTokens || 0).toLocaleString();
+    const pct = stats.percentSaved || 0;
+    document.getElementById('tokPct').textContent = pct > 0 ? '-' + pct + '%' : '';
 
-  const tc = document.getElementById('techniques');
-  tc.innerHTML = '';
-  (d.stats.techniquesApplied || []).forEach(t => {
-    const s = document.createElement('span');
-    s.className = 'technique-tag';
-    s.textContent = t;
-    tc.appendChild(s);
-  });
+    const tc = document.getElementById('techniques');
+    tc.innerHTML = '';
+    (stats.techniquesApplied || []).forEach(t => {
+      const s = document.createElement('span');
+      s.className = 'technique-tag';
+      s.textContent = t;
+      tc.appendChild(s);
+    });
 
-  document.getElementById('optimized').value = d.optimized;
-  document.getElementById('btnReplace').disabled = false;
-  autoResizePopup();
+    document.getElementById('optimized').value = d.optimized || '';
+    document.getElementById('btnReplace').disabled = false;
+    autoResizePopup();
+  } catch (e) {
+    console.error('[terse] popup-update error:', e);
+  }
 });
 
 T.on('popup-show', d => {
   document.getElementById('appLabel').textContent = d.app || 'Connected';
-  if (!hasContent) {
+
+  // Reset state when switching to a different session
+  if (d.sessionId !== lastShownSessionId) {
+    hasContent = false;
+    lastShownSessionId = d.sessionId;
+
+    // Hide agent panel — each text session starts fresh, agent panel
+    // only reappears via explicit agent-connected/agent-update events
+    agentPanelVisible = false;
+    document.getElementById('agentPanel').classList.add('hidden');
+
+    // Reset text optimization UI
+    document.getElementById('hintState').classList.remove('hidden');
+    document.getElementById('bridgeInstall').classList.add('hidden');
+    document.getElementById('optimized').classList.add('hidden');
+    document.getElementById('optimized').value = '';
+    document.getElementById('tokBefore').textContent = '0';
+    document.getElementById('tokAfter').textContent = '0';
+    document.getElementById('tokPct').textContent = '';
+    document.getElementById('techniques').innerHTML = '';
+    document.getElementById('btnReplace').disabled = true;
+  } else if (!hasContent) {
     document.getElementById('hintState').classList.remove('hidden');
     document.getElementById('optimized').classList.add('hidden');
     document.getElementById('btnReplace').disabled = true;
-  }
-  // Show agent panel only when the focused app is hosting a connected agent
-  const panel = document.getElementById('agentPanel');
-  agentPanelVisible = !!(d.hasAgent && activeAgentType);
-  if (agentPanelVisible) {
-    panel.classList.remove('hidden');
-  } else {
-    panel.classList.add('hidden');
   }
   autoResizePopup();
 });
@@ -237,6 +257,7 @@ function showAgentPanel(snapshot) {
   document.getElementById('agentPanelStatus').textContent = 'Monitoring';
   panel.classList.remove('hidden');
   hideAgentBanner();
+  enrichAgentOptStats(snapshot);
   updateAgentPanel(snapshot);
   autoResizePopup();
 }
@@ -248,79 +269,415 @@ function hideAgentPanel() {
 }
 
 function updateAgentPanel(snapshot) {
+  // ── Context fill meter ──
+  const ctxFill = snapshot.contextFill || 0;
+  const currentCtx = snapshot.currentContext || 0;
+  const ctxBar = document.getElementById('agentContextBar');
+  document.getElementById('agentContextPct').textContent =
+    formatTokens(currentCtx) + ' / 200K (' + ctxFill + '%)';
+  ctxBar.style.width = Math.min(ctxFill, 100) + '%';
+  ctxBar.className = 'context-fill-bar-fill' +
+    (ctxFill > 85 ? ' danger' : ctxFill > 60 ? ' warn' : '');
+
+  // ── Summary bar (always visible) ──
+  document.getElementById('agentCtxShort').textContent = ctxFill + '%';
+  document.getElementById('agentInputShort').textContent = formatTokens(snapshot.totalInputTokens || 0);
+  const cacheVal = snapshot.cacheEfficiency || 0;
+  const cacheShort = document.getElementById('agentCacheShort');
+  cacheShort.textContent = cacheVal + '%';
+  cacheShort.style.color = cacheVal > 50 ? 'var(--ac)' : cacheVal > 20 ? '#fbbf24' : '#f87171';
+  document.getElementById('agentToolShort').textContent = snapshot.toolCallCount || 0;
+
+  // Burn rate
+  const burnRate = snapshot.burnRate || 0;
+  document.getElementById('agentBurnRate').textContent =
+    formatTokens(burnRate) + ' tok/min';
+
+  // ── Savings hero ──
+  const opt = snapshot.optimizationStats || {};
+  const autoSaved = snapshot.autoOptimized ? snapshot.autoOptimized.tokensSaved : 0;
+  const totalSaved = (opt.potentialSavings || 0) + autoSaved + (snapshot.rereadWaste || 0);
+  const totalIn = (snapshot.totalInputTokens || 1);
+  const pct = totalIn > 0 ? Math.round((totalSaved / totalIn) * 100) : 0;
+
+  document.getElementById('agentSavedBig').textContent = formatTokens(totalSaved);
+  document.getElementById('agentSaveShort').textContent = formatTokens(totalSaved);
+  document.getElementById('agentSavingsPct').textContent = pct + '%';
+  document.getElementById('agentSavingsBar').style.width = Math.min(pct, 100) + '%';
+
+  // ── Compact stats ──
   document.getElementById('agentTurns').textContent = snapshot.turns || '0';
   document.getElementById('agentInputTok').textContent = formatTokens(snapshot.totalInputTokens || 0);
-  document.getElementById('agentOutputTok').textContent = formatTokens(snapshot.totalOutputTokens || 0);
-  document.getElementById('agentCost').textContent = '$' + (snapshot.estimatedCost || 0).toFixed(3);
-  document.getElementById('agentToolCount').textContent = (snapshot.toolCallCount || 0) + ' calls';
+  document.getElementById('agentCacheEff').textContent = (snapshot.cacheEfficiency || 0) + '%';
+  document.getElementById('agentToolCount').textContent = snapshot.toolCallCount || 0;
 
-  // Optimization stats
-  const opt = snapshot.optimizationStats;
-  if (opt && opt.totalMessages > 0) {
-    if (opt.potentialSavings > 0) {
-      document.getElementById('agentOptSavings').textContent =
-        `${formatTokens(opt.potentialSavings)} tokens (${opt.percentSavings}%) from ${opt.optimizedMessages}/${opt.totalMessages} msgs`;
+  // Color-code cache
+  const cacheEl = document.getElementById('agentCacheEff');
+  cacheEl.style.color = (snapshot.cacheEfficiency || 0) > 50 ? 'var(--ac)' :
+    (snapshot.cacheEfficiency || 0) > 20 ? '#fbbf24' : '#f87171';
 
-      // Show technique breakdown
-      const breakdownEl = document.getElementById('agentOptBreakdown');
-      const techEl = document.getElementById('agentOptTechniques');
-      if (opt.topTechniques && opt.topTechniques.length > 0) {
-        breakdownEl.classList.remove('hidden');
-        techEl.innerHTML = '';
-        for (const t of opt.topTechniques) {
-          const tag = document.createElement('span');
-          tag.className = 'agent-opt-tech-tag';
-          tag.innerHTML = t.name +
-            '<span class="tag-count">x' + t.count + '</span>' +
-            '<span class="tag-saved">-' + formatTokens(t.tokensSaved) + '</span>';
-          techEl.appendChild(tag);
-        }
-      }
+  // ── Token breakdown by type ──
+  const bd = snapshot.tokenBreakdown || {};
+  const bdTotal = (bd.user || 0) + (bd.assistant || 0) + (bd.tool || 0) || 1;
+  const userPct = Math.round((bd.user || 0) / bdTotal * 100);
+  const asstPct = Math.round((bd.assistant || 0) / bdTotal * 100);
+  const toolPct = Math.round((bd.tool || 0) / bdTotal * 100);
+  document.getElementById('breakdownUser').style.width = userPct + '%';
+  document.getElementById('breakdownAssistant').style.width = asstPct + '%';
+  document.getElementById('breakdownTool').style.width = toolPct + '%';
+  document.getElementById('breakdownUserPct').textContent = userPct + '%';
+  document.getElementById('breakdownAsstPct').textContent = asstPct + '%';
+  document.getElementById('breakdownToolPct').textContent = toolPct + '%';
 
-      // Show recent per-message optimizations
-      const recentEl = document.getElementById('agentOptRecent');
-      if (opt.recentOptimizations && opt.recentOptimizations.length > 0) {
-        recentEl.classList.remove('hidden');
-        recentEl.innerHTML = '';
-        for (const m of opt.recentOptimizations) {
-          if (m.saved <= 0) continue;
-          const div = document.createElement('div');
-          div.className = 'agent-opt-msg';
-          div.innerHTML =
-            '<div class="agent-opt-msg-header">' +
-              '<span class="agent-opt-msg-tokens">' + m.originalTokens + ' → ' + m.optimizedTokens +
-                ' <span class="saved">(-' + m.saved + ', ' + m.percent + '%)</span></span>' +
-            '</div>' +
-            '<div class="agent-opt-msg-before">' + escapeHtml(m.original) + '</div>' +
-            '<div class="agent-opt-msg-after">' + escapeHtml(m.optimized) + '</div>';
-          recentEl.appendChild(div);
-        }
-      }
-    } else {
-      document.getElementById('agentOptSavings').textContent =
-        'No savings found (' + opt.totalMessages + ' msgs analyzed)';
-      document.getElementById('agentOptBreakdown').classList.add('hidden');
-      document.getElementById('agentOptRecent').classList.add('hidden');
+  // ── Insights / Alerts ──
+  const insightsEl = document.getElementById('agentInsights');
+  const insights = [];
+
+  // Context fill warning
+  if (ctxFill > 85) {
+    insights.push({ type: 'alert', icon: '!', text: 'Context nearly full — consider /compact', value: ctxFill + '%' });
+  } else if (ctxFill > 60) {
+    insights.push({ type: 'warn', icon: '!', text: 'Context growing — watch for degradation', value: ctxFill + '%' });
+  }
+
+  // Redundant reads
+  const rereads = snapshot.redundantReads || [];
+  if (rereads.length > 0) {
+    const totalWasted = rereads.reduce((s, r) => s + (r.wastedReads || 0), 0);
+    insights.push({ type: 'warn', icon: '↺', text: `${rereads.length} files re-read (${totalWasted} extra reads)`, value: '~' + formatTokens(snapshot.rereadWaste || 0) });
+  }
+
+  // Large tool results
+  const largeResults = snapshot.largeToolResults || [];
+  if (largeResults.length > 0) {
+    const totalLarge = largeResults.reduce((s, r) => s + r.tokens, 0);
+    insights.push({ type: 'tip', icon: '▤', text: `${largeResults.length} large tool results`, value: formatTokens(totalLarge) });
+  }
+
+  // High tool % warning
+  if (toolPct > 60) {
+    insights.push({ type: 'warn', icon: '⚙', text: 'Tool results dominate context', value: toolPct + '%' });
+  }
+
+  // Prompt optimization potential
+  if (opt.potentialSavings > 0 && opt.optimizedMessages > 0) {
+    insights.push({ type: 'tip', icon: '✎', text: `${opt.optimizedMessages} prompts could be tighter`, value: '-' + formatTokens(opt.potentialSavings) });
+  }
+
+  if (insights.length > 0) {
+    insightsEl.classList.remove('hidden');
+    insightsEl.innerHTML = '';
+    for (const ins of insights.slice(0, 5)) {
+      const div = document.createElement('div');
+      div.className = 'insight-item ' + ins.type;
+      div.innerHTML =
+        '<span class="insight-icon">' + ins.icon + '</span>' +
+        '<span class="insight-text">' + ins.text + '</span>' +
+        '<span class="insight-value">' + ins.value + '</span>';
+      insightsEl.appendChild(div);
     }
   } else {
-    document.getElementById('agentOptSavings').textContent = 'Waiting for user messages...';
+    insightsEl.classList.add('hidden');
   }
 
-  // Activity feed — show last few messages
+  // ── How tokens were saved ──
+  const detailEl = document.getElementById('agentOptDetail');
+  if (opt.optimizedMessages > 0 && opt.potentialSavings > 0) {
+    detailEl.classList.remove('hidden');
+    document.getElementById('agentOptMsgCount').textContent =
+      opt.optimizedMessages + '/' + opt.totalMessages + ' messages optimized';
+
+    // Top techniques (max 4)
+    const techEl = document.getElementById('agentOptTechniques');
+    if (opt.topTechniques && opt.topTechniques.length > 0) {
+      techEl.innerHTML = '';
+      for (const t of opt.topTechniques.slice(0, 4)) {
+        const tag = document.createElement('span');
+        tag.className = 'agent-opt-tech-tag';
+        tag.innerHTML = t.name + ' <span class="tag-saved">-' + formatTokens(t.tokensSaved) + '</span>';
+        techEl.appendChild(tag);
+      }
+    }
+
+    // Before/after examples (max 2)
+    const recentEl = document.getElementById('agentOptRecent');
+    if (opt.recentOptimizations && opt.recentOptimizations.length > 0) {
+      recentEl.classList.remove('hidden');
+      recentEl.innerHTML = '';
+      for (const m of opt.recentOptimizations.slice(-2)) {
+        if (m.saved <= 0) continue;
+        const div = document.createElement('div');
+        div.className = 'agent-opt-msg';
+        div.innerHTML =
+          '<div class="agent-opt-msg-header"><span class="agent-opt-msg-tokens">' +
+            m.originalTokens + ' → ' + m.optimizedTokens +
+            ' <span class="saved">(-' + m.percent + '%)</span></span></div>' +
+          '<div class="agent-opt-msg-before">' + escapeHtml(m.original) + '</div>' +
+          '<div class="agent-opt-msg-after">' + escapeHtml(m.optimized) + '</div>';
+        recentEl.appendChild(div);
+      }
+    } else {
+      recentEl.classList.add('hidden');
+    }
+  } else {
+    detailEl.classList.add('hidden');
+  }
+
+  // ── Warnings (compact) ──
+  const warningsEl = document.getElementById('agentWarnings');
+  const dedupAlerts = snapshot.contextDedupAlerts || [];
+  const rtAlerts = snapshot.redundantToolCalls || [];
+  if (dedupAlerts.length > 0 || rtAlerts.length > 0) {
+    warningsEl.classList.remove('hidden');
+
+    const dedupEl = document.getElementById('agentDedupAlerts');
+    dedupEl.innerHTML = '';
+    for (const a of dedupAlerts.slice(-2)) {
+      const div = document.createElement('div');
+      div.className = 'agent-dedup-alert';
+      div.innerHTML =
+        '<span class="dedup-text">Repeated context: turns ' + a.turnA + '/' + a.turnB +
+          ' (' + a.similarity + '% similar)</span>' +
+        '<span class="dedup-waste">~' + formatTokens(a.wastedTokens) + '</span>';
+      dedupEl.appendChild(div);
+    }
+
+    const rtEl = document.getElementById('agentRedundantTools');
+    rtEl.innerHTML = '';
+    for (const r of rtAlerts.slice(-3)) {
+      const div = document.createElement('div');
+      div.className = 'agent-redundant-tool';
+      div.innerHTML =
+        '<span class="rt-name">' + escapeHtml(r.name) + '</span>' +
+        '<span class="rt-count">x' + r.count + '</span>';
+      rtEl.appendChild(div);
+    }
+  } else {
+    warningsEl.classList.add('hidden');
+  }
+
+  // ── Activity feed with inline optimization ──
   const actEl = document.getElementById('agentActivity');
   const msgs = snapshot.recentMessages || [];
-  const lastFew = msgs.slice(-5);
-  actEl.innerHTML = '';
-  for (const m of lastFew) {
-    const line = document.createElement('div');
-    line.className = 'agent-activity-line ' + (m.role || '');
-    const prefix = m.type === 'tool_use' ? '[tool] ' : m.type === 'tool_result' ? '[result] ' :
-                   m.role === 'user' ? '[you] ' : m.role === 'assistant' ? '[agent] ' : '';
-    line.textContent = prefix + (m.text || '').substring(0, 80);
-    actEl.appendChild(line);
+  const lastFew = msgs.slice(-20);
+  const newKey = lastFew.map(m => (m.role || '') + (m.text || '').substring(0, 30)).join('|');
+  if (actEl.dataset.key !== newKey) {
+    actEl.dataset.key = newKey;
+    actEl.innerHTML = '';
+    const optimizer = window._terseOptimizer;
+    for (const m of lastFew) {
+      const line = document.createElement('div');
+      line.className = 'agent-activity-line ' + (m.role || '');
+      const prefix = m.type === 'tool_use' ? '⚙ ' : m.type === 'tool_result' ? '← ' :
+                     m.role === 'user' ? '→ ' : m.role === 'assistant' ? '◆ ' : '';
+      const text = (m.text || '').substring(0, 120);
+
+      // For user messages: run optimizer and show inline badge
+      if (m.role === 'user' && m.type !== 'tool_result' && optimizer && text.length > 10) {
+        const fullText = m.text || '';
+        const result = optimizer.optimize(fullText);
+        const saved = result.stats.tokensSaved || 0;
+        const pctSaved = result.stats.percentSaved || 0;
+
+        line.innerHTML = prefix + escapeHtml(text);
+        if (saved > 0) {
+          const badge = document.createElement('span');
+          badge.className = 'opt-badge';
+          badge.textContent = '-' + saved + ' tok (' + pctSaved + '%)';
+          line.appendChild(badge);
+
+          // Click to expand before/after
+          line.style.cursor = 'pointer';
+          line.addEventListener('click', () => {
+            const existing = line.nextElementSibling;
+            if (existing && existing.classList.contains('opt-inline-detail')) {
+              existing.remove();
+              return;
+            }
+            const detail = document.createElement('div');
+            detail.className = 'opt-inline-detail';
+            detail.innerHTML =
+              '<div class="opt-inline-before">' + escapeHtml(fullText.substring(0, 200)) + '</div>' +
+              '<div class="opt-inline-after">' + escapeHtml(result.optimized.substring(0, 200)) + '</div>' +
+              '<div class="opt-inline-tags">' +
+              (result.stats.techniquesApplied || []).map(t =>
+                '<span class="opt-inline-tag">' + t + '</span>'
+              ).join('') + '</div>';
+            line.after(detail);
+          });
+        } else {
+          const badge = document.createElement('span');
+          badge.className = 'opt-badge no-save';
+          badge.textContent = '✓';
+          line.appendChild(badge);
+        }
+      } else {
+        line.textContent = prefix + text;
+      }
+      line.title = m.text || '';
+      actEl.appendChild(line);
+    }
+    requestAnimationFrame(() => { actEl.scrollTop = actEl.scrollHeight; });
   }
-  actEl.scrollTop = actEl.scrollHeight;
+  autoResizePopup();
 }
+
+// ── Agent Optimization Analysis ──
+// Run JS optimizer on user messages to calculate real savings
+
+function enrichAgentOptStats(snapshot) {
+  const optimizer = window._terseOptimizer;
+  if (!optimizer) return;
+
+  // Use full user messages from Rust (all history, not just recent display)
+  const userMsgs = snapshot.allUserMessages || [];
+  const toolUses = snapshot.allToolUses || [];
+  const recentMsgs = snapshot.recentMessages || [];
+
+  let totalUserTokens = 0;
+  let potentialSavings = 0;
+  let optimizedCount = 0;
+  let totalMessages = 0;
+  const techniqueCounts = {};
+  const recentOptimizations = [];
+
+  // Also analyze tool results for bloat
+  let toolResultTokens = 0;
+  let toolResultWaste = 0;
+
+  // Detect redundant tool calls
+  const toolCallMap = {};
+  const redundantTools = [];
+
+  // Detect context duplication (similar messages)
+  const userTexts = [];
+  const dedupAlerts = [];
+
+  // Analyze ALL user messages with optimizer
+  for (const m of userMsgs) {
+    const text = m.text || '';
+    if (text.length < 10) continue;
+    totalMessages++;
+
+    const result = optimizer.optimize(text);
+    const origTok = result.stats.originalTokens;
+    const optTok = result.stats.optimizedTokens;
+    const saved = origTok - optTok;
+    totalUserTokens += origTok;
+
+    if (saved > 0) {
+      potentialSavings += saved;
+      optimizedCount++;
+      for (const t of (result.stats.techniquesApplied || [])) {
+        techniqueCounts[t] = (techniqueCounts[t] || 0) + saved;
+      }
+      recentOptimizations.push({
+        original: text.substring(0, 200),
+        optimized: result.optimized.substring(0, 200),
+        originalTokens: origTok,
+        optimizedTokens: optTok,
+        saved,
+        percent: result.stats.percentSaved,
+      });
+    }
+
+    // Context deduplication — compare with previous user messages
+    for (let i = 0; i < userTexts.length; i++) {
+      const similarity = textSimilarity(text, userTexts[i].text);
+      if (similarity > 70) {
+        const wastedTokens = Math.min(origTok, userTexts[i].tokens);
+        dedupAlerts.push({
+          turnA: userTexts[i].idx + 1,
+          turnB: totalMessages,
+          similarity: Math.round(similarity),
+          wastedTokens,
+        });
+      }
+    }
+    userTexts.push({ text, tokens: origTok, idx: totalMessages - 1 });
+  }
+
+  // Analyze tool uses for redundancy and bloat
+  for (const t of toolUses) {
+    if (t.type === 'tool_result') {
+      const tok = t.tokens || estimateTokensJS(t.text || '');
+      toolResultTokens += tok;
+      if (tok > 500) {
+        toolResultWaste += Math.round(tok * 0.3);
+      }
+    }
+    if (t.type === 'tool_use' && t.toolName) {
+      toolCallMap[t.toolName] = (toolCallMap[t.toolName] || 0) + 1;
+    }
+  }
+
+  // Build redundant tool alerts (tools called 3+ times)
+  for (const [name, count] of Object.entries(toolCallMap)) {
+    if (count >= 3) {
+      redundantTools.push({ name, count });
+    }
+  }
+
+  // Sort techniques by tokens saved
+  const topTechniques = Object.entries(techniqueCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, tokensSaved]) => ({ name, tokensSaved }));
+
+  // Write back enriched stats into snapshot
+  snapshot.optimizationStats = {
+    totalUserTokens,
+    potentialSavings,
+    optimizedMessages: optimizedCount,
+    totalMessages,
+    topTechniques,
+    recentOptimizations: recentOptimizations.slice(-3),
+  };
+
+  // Add tool result analysis
+  snapshot.totalWastedTokens = potentialSavings + toolResultWaste;
+  snapshot.contextDedupAlerts = dedupAlerts.slice(-3);
+  snapshot.redundantToolCalls = redundantTools.sort((a, b) => b.count - a.count).slice(0, 5);
+
+  // Calculate conversation bloat percentage
+  const totalConv = (snapshot.totalInputTokens || 0) + (snapshot.totalOutputTokens || 0);
+  if (totalConv > 0) {
+    snapshot.conversationBloat = Math.round(((potentialSavings + toolResultWaste) / totalConv) * 100);
+  }
+}
+
+// Simple text similarity (Jaccard on word trigrams)
+function textSimilarity(a, b) {
+  const trigrams = s => {
+    const words = s.toLowerCase().split(/\s+/);
+    const set = new Set();
+    for (let i = 0; i <= words.length - 3; i++) {
+      set.add(words.slice(i, i + 3).join(' '));
+    }
+    return set;
+  };
+  const sa = trigrams(a);
+  const sb = trigrams(b);
+  if (sa.size === 0 || sb.size === 0) return 0;
+  let intersection = 0;
+  for (const t of sa) { if (sb.has(t)) intersection++; }
+  return (intersection / Math.min(sa.size, sb.size)) * 100;
+}
+
+function estimateTokensJS(text) {
+  const words = text.split(/\s+/).length;
+  const punct = (text.match(/[^\w\s]/g) || []).length;
+  return Math.ceil(words * 1.3 + punct * 0.5);
+}
+
+// Details toggle
+document.getElementById('btnAgentDetails').addEventListener('click', () => {
+  const panel = document.getElementById('agentDetailsPanel');
+  const btn = document.getElementById('btnAgentDetails');
+  panel.classList.toggle('hidden');
+  btn.classList.toggle('open');
+  autoResizePopup();
+});
 
 // Agent event listeners
 T.on('agent-detected', (info) => {
@@ -345,6 +702,8 @@ T.on('agent-disconnected', () => {
 
 T.on('agent-update', (data) => {
   if (data.session && activeAgentType === data.agentType) {
+    // Run JS optimizer on user messages to calculate real savings
+    enrichAgentOptStats(data.session);
     updateAgentPanel(data.session);
     autoResizePopup();
   }

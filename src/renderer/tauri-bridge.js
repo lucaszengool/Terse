@@ -104,16 +104,19 @@ if (window.__TAURI__) {
       const API_BASE = 'https://www.terseai.org';
       try {
         // Get a unique auth token from the server
+        console.log('[terse-auth] starting auth flow...');
         const res = await fetch(`${API_BASE}/api/auth/start`, { method: 'POST' });
         const { token } = await res.json();
+        console.log('[terse-auth] got token:', token?.substring(0, 12) + '...');
         // Open browser to auth callback page
         const url = `${API_BASE}/auth-callback.html?token=${token}&action=${action || 'signin'}`;
         // Open URL in system default browser via Tauri shell plugin
         try {
           const { open } = window.__TAURI__.shell;
           await open(url);
-        } catch {
-          // Fallback
+          console.log('[terse-auth] opened browser via shell.open');
+        } catch (e) {
+          console.warn('[terse-auth] shell.open failed, using window.open:', e);
           window.open(url, '_blank');
         }
         // Poll for auth completion
@@ -121,12 +124,14 @@ if (window.__TAURI__) {
           let attempts = 0;
           const poll = setInterval(async () => {
             attempts++;
-            if (attempts > 120) { clearInterval(poll); resolve(null); return; } // 2 min timeout
+            if (attempts > 180) { clearInterval(poll); console.log('[terse-auth] polling timed out'); resolve(null); return; } // 3 min timeout
             try {
               const r = await fetch(`${API_BASE}/api/auth/poll/${token}`);
               const data = await r.json();
+              if (attempts % 10 === 0) console.log('[terse-auth] poll #' + attempts + ':', data.status);
               if (data.status === 'authenticated') {
                 clearInterval(poll);
+                console.log('[terse-auth] authenticated!', data.clerkUserId, data.email);
                 // Save auth locally
                 await invoke('set_clerk_user', { clerkUserId: data.clerkUserId });
                 await invoke('save_auth', {
@@ -138,9 +143,10 @@ if (window.__TAURI__) {
                 resolve(data);
               } else if (data.status === 'expired') {
                 clearInterval(poll);
+                console.log('[terse-auth] token expired');
                 resolve(null);
               }
-            } catch {}
+            } catch (e) { if (attempts % 10 === 0) console.warn('[terse-auth] poll error:', e); }
           }, 1000);
         });
       } catch (err) {

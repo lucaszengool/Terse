@@ -107,11 +107,12 @@
           window.Clerk.mountSignIn(mountEl, { appearance });
         }
 
-        // Listen for sign-in completion
+        // Listen for sign-in completion via Clerk listener
         window.Clerk.addListener(async () => {
-          if (window.Clerk.user) {
-            window.Clerk.unmountSignIn(mountEl);
-            window.Clerk.unmountSignUp(mountEl);
+          if (window.Clerk.user && !window._authCompleted) {
+            window._authCompleted = true;
+            try { window.Clerk.unmountSignIn(mountEl); } catch {}
+            try { window.Clerk.unmountSignUp(mountEl); } catch {}
             mountEl.remove();
             document.getElementById('loading').querySelector('.spinner').style.display = 'block';
             statusEl.textContent = 'Completing sign-in...';
@@ -119,30 +120,47 @@
           }
         });
 
+        // Also poll Clerk.user every 2s as backup (handles redirect-based flows)
+        const clerkPoll = setInterval(async () => {
+          if (window.Clerk.user && !window._authCompleted) {
+            clearInterval(clerkPoll);
+            window._authCompleted = true;
+            try { window.Clerk.unmountSignIn(mountEl); } catch {}
+            try { window.Clerk.unmountSignUp(mountEl); } catch {}
+            mountEl.remove();
+            document.getElementById('loading').querySelector('.spinner').style.display = 'block';
+            statusEl.textContent = 'Completing sign-in...';
+            await completeAuth(window.Clerk.user);
+          }
+        }, 2000);
+
       } catch (err) {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('error').style.display = 'block';
-        document.getElementById('errorText').textContent = err.message;
-      }
+        document.getElementById('errorText').textContent = 'Error: ' + err.message;
     });
 
     async function completeAuth(user) {
       const statusEl = document.getElementById('statusText');
       try {
-        statusEl.textContent = 'Saving session...';
+        statusEl.textContent = 'Saving session for ' + (user.firstName || user.id) + '...';
+        console.log('[terse-auth] completing auth for', user.id, user.primaryEmailAddress?.emailAddress);
+        const body = {
+          token: authToken,
+          clerkUserId: user.id,
+          email: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || '',
+          imageUrl: user.imageUrl || '',
+          firstName: user.firstName || '',
+        };
+        console.log('[terse-auth] POST /api/auth/complete', JSON.stringify(body));
         const res = await fetch(`${API_BASE}/api/auth/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token: authToken,
-            clerkUserId: user.id,
-            email: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || '',
-            imageUrl: user.imageUrl || '',
-            firstName: user.firstName || '',
-          }),
+          body: JSON.stringify(body),
         });
 
         const data = await res.json();
+        console.log('[terse-auth] response:', JSON.stringify(data));
         if (data.ok) {
           document.getElementById('loading').style.display = 'none';
           document.getElementById('success').style.display = 'block';

@@ -1,10 +1,17 @@
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Emitter, Manager};
+
+const CLAUDE_CODE_DEFAULT_TOOLS: &[&str] = &[
+    "Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent", "WebFetch",
+    "WebSearch", "TodoWrite", "LSP", "Skill", "ToolSearch", "NotebookEdit",
+    "TaskCreate", "TaskGet", "TaskList", "TaskUpdate", "CronCreate",
+    "CronDelete", "CronList", "EnterWorktree", "ExitWorktree",
+];
 
 // ── Agent Definitions ──
 
@@ -49,8 +56,11 @@ fn find_best_claude_session() -> Option<(PathBuf, u32, PathBuf)> {
     let mut seen_cwds = std::collections::HashSet::new();
     pid_cwds.retain(|(_, cwd)| seen_cwds.insert(cwd.clone()));
 
-    // For each unique CWD, find the project dir and its most recent session
-    let mut best: Option<(PathBuf, u32, PathBuf, SystemTime)> = None;
+    // For each unique CWD, find the project dir and its most recent session.
+    // Prefer the Claude instance whose CWD matches the focused terminal.
+    // Use the frontmost terminal app's current directory as a hint.
+    let focused_cwd = get_focused_terminal_cwd();
+    let mut best: Option<(PathBuf, u32, PathBuf, SystemTime, bool)> = None;
 
     for (pid, cwd) in &pid_cwds {
         let mut project_dir_opt: Option<PathBuf> = None;
@@ -66,18 +76,60 @@ fn find_best_claude_session() -> Option<(PathBuf, u32, PathBuf)> {
             None => continue,
         };
 
+        // Check if this PID's CWD matches the focused terminal
+        let is_focused = focused_cwd.as_ref().map_or(false, |fc| cwd == fc);
+
         if let Some(file) = find_latest_session(&project_dir) {
             if let Ok(meta) = fs::metadata(&file) {
                 if let Ok(mtime) = meta.modified() {
-                    if best.as_ref().map_or(true, |(_, _, _, t)| mtime > *t) {
-                        best = Some((project_dir, *pid, file, mtime));
+                    // Prefer focused match over recency
+                    let dominated = best.as_ref().map_or(true, |(_, _, _, t, was_focused)| {
+                        if is_focused && !was_focused { true }
+                        else if !is_focused && *was_focused { false }
+                        else { mtime > *t }
+                    });
+                    if dominated {
+                        best = Some((project_dir, *pid, file, mtime, is_focused));
                     }
                 }
             }
         }
     }
 
-    best.map(|(dir, pid, file, _)| (dir, pid, file))
+    if let Some((_, _, ref file, _, _)) = best {
+        eprintln!("[terse-agent] best_claude_session: {:?}", file);
+    }
+    best.map(|(dir, pid, file, _, _)| (dir, pid, file))
+}
+
+/// Get the CWD of the focused terminal window's foreground process.
+/// Uses lsof on the frontmost app's PID to find which Claude instance is active.
+fn get_focused_terminal_cwd() -> Option<String> {
+    // Find the most recently started claude process (highest PID = newest).
+    let output = std::process::Command::new("lsof")
+        .args(["-c", "claude", "-a", "-d", "cwd", "-Fn"])
+        .output()
+        .ok()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut pid_cwds: Vec<(u32, String)> = Vec::new();
+    let mut current_pid: Option<u32> = None;
+    for line in stdout.lines() {
+        if let Some(pid_str) = line.strip_prefix('p') {
+            current_pid = pid_str.parse().ok();
+        } else if let Some(path) = line.strip_prefix('n') {
+            if let Some(pid) = current_pid {
+                if path.starts_with('/') {
+                    pid_cwds.push((pid, path.to_string()));
+                }
+            }
+        }
+    }
+    // Find the claude PID with the highest PID number (most recently started)
+    pid_cwds.sort_by(|a, b| b.0.cmp(&a.0));
+    pid_cwds.first().map(|(pid, cwd)| {
+        eprintln!("[terse-agent] focused_terminal_cwd: PID {} → {}", pid, cwd);
+        cwd.clone()
+    })
 }
 
 /// Encode a CWD path the same way Claude Code does for project folder names.
@@ -244,6 +296,12 @@ pub struct AgentSessionData {
     pub file_reads: HashMap<String, u32>,  // path → read count
     pub large_results: Vec<(String, u64)>, // (tool_name, tokens)
     pub last_input_tokens: u64,            // most recent API call's input_tokens (= current context size)
+    pub tools_used: HashMap<String, u32>,           // tool_name → call count
+    pub tool_result_total_tokens: u64,              // sum of all tool result tokens
+    pub tool_result_compressible: u64,              // estimated compressible tokens
+    pub duplicate_tool_calls: u64,                  // count of duplicate tool calls
+    pub duplicate_tool_tokens: u64,                 // tokens wasted on duplicate calls
+    tool_call_hashes: HashSet<String>,              // cache keys for duplicate detection
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -281,6 +339,12 @@ impl AgentSessionData {
             file_reads: HashMap::new(),
             large_results: Vec::new(),
             last_input_tokens: 0,
+            tools_used: HashMap::new(),
+            tool_result_total_tokens: 0,
+            tool_result_compressible: 0,
+            duplicate_tool_calls: 0,
+            duplicate_tool_tokens: 0,
+            tool_call_hashes: HashSet::new(),
         }
     }
 
@@ -378,6 +442,12 @@ impl AgentSessionData {
                 "assistant": assistant_tokens,
                 "tool": tool_tokens,
             },
+            "toolManagement": self.get_tool_management_snapshot(),
+            "toolResultStats": self.get_tool_result_stats_snapshot(),
+            "toolCachePotential": {
+                "duplicateCalls": self.duplicate_tool_calls,
+                "duplicateCallTokens": self.duplicate_tool_tokens,
+            },
             "conversationBloat": 0,
             "totalWastedTokens": 0,
             "contextDedupAlerts": [],
@@ -413,6 +483,62 @@ impl AgentSessionData {
         if m.contains("opus") { (0.015, 0.075, 0.0015) }
         else if m.contains("haiku") { (0.0008, 0.004, 0.00008) }
         else { (0.003, 0.015, 0.0003) }
+    }
+
+    fn get_tool_management_snapshot(&self) -> serde_json::Value {
+        let used: serde_json::Map<String, serde_json::Value> = self.tools_used.iter()
+            .map(|(k, v)| (k.clone(), serde_json::json!(*v)))
+            .collect();
+
+        // Unused tool estimate: only count after 5+ turns
+        let (unused_estimate, estimated_overhead) = if self.turns >= 5 {
+            let unused = CLAUDE_CODE_DEFAULT_TOOLS.iter()
+                .filter(|t| !self.tools_used.contains_key(**t))
+                .count() as u64;
+            (unused, unused * 300)
+        } else {
+            (0, 0)
+        };
+
+        serde_json::json!({
+            "used": used,
+            "unusedEstimate": unused_estimate,
+            "estimatedOverhead": estimated_overhead,
+        })
+    }
+
+    fn get_tool_result_stats_snapshot(&self) -> serde_json::Value {
+        let large_count = self.large_results.len() as u64;
+
+        // Build top consumers: aggregate by tool name
+        let mut consumer_map: HashMap<String, (u64, u32)> = HashMap::new();
+        for (tool, tokens) in &self.large_results {
+            let entry = consumer_map.entry(tool.clone()).or_insert((0, 0));
+            entry.0 += tokens;
+            entry.1 += 1;
+        }
+        let mut top_consumers: Vec<serde_json::Value> = consumer_map.iter()
+            .map(|(tool, (total_tokens, call_count))| {
+                serde_json::json!({
+                    "tool": tool,
+                    "totalTokens": total_tokens,
+                    "callCount": call_count,
+                })
+            })
+            .collect();
+        top_consumers.sort_by(|a, b| {
+            let ta = a["totalTokens"].as_u64().unwrap_or(0);
+            let tb = b["totalTokens"].as_u64().unwrap_or(0);
+            tb.cmp(&ta)
+        });
+        top_consumers.truncate(5);
+
+        serde_json::json!({
+            "totalTokens": self.tool_result_total_tokens,
+            "compressibleTokens": self.tool_result_compressible,
+            "largeCount": large_count,
+            "topConsumers": top_consumers,
+        })
     }
 
     fn parse_claude_code_line(&mut self, obj: &serde_json::Value) {
@@ -464,7 +590,7 @@ impl AgentSessionData {
             }
         }
 
-        // Parse content
+        // Parse content — handle both array (assistant messages) and string (user messages)
         if let Some(content) = msg.get("content").and_then(|c| c.as_array()) {
             for block in content {
                 match block.get("type").and_then(|t| t.as_str()) {
@@ -483,6 +609,20 @@ impl AgentSessionData {
                     Some("tool_use") => {
                         let name = block["name"].as_str().unwrap_or("").to_string();
                         self.tool_call_count += 1;
+
+                        // Track tools_used counts
+                        *self.tools_used.entry(name.clone()).or_insert(0) += 1;
+
+                        // Duplicate detection: hash tool_name + first 100 chars of input
+                        let input_text = block.get("input")
+                            .map(|v| v.to_string())
+                            .unwrap_or_default();
+                        let input_prefix = safe_truncate(&input_text, 100);
+                        let cache_key = format!("{}:{}", name, input_prefix);
+                        if !self.tool_call_hashes.insert(cache_key) {
+                            // Already seen this tool+input combo
+                            self.duplicate_tool_calls += 1;
+                        }
 
                         // Track file reads for redundancy detection
                         if name == "Read" || name == "read_file" || name == "cat" {
@@ -515,13 +655,38 @@ impl AgentSessionData {
                         };
                         let result_tokens = estimate_tokens(&result_text);
 
+                        // Get the tool name from the previous message if available
+                        let tool_name = self.messages.iter().rev()
+                            .find(|m| m.msg_type == "tool_use")
+                            .and_then(|m| m.tool_name.clone())
+                            .unwrap_or_else(|| "unknown".to_string());
+
+                        // Track tool result token totals
+                        self.tool_result_total_tokens += result_tokens;
+
+                        // Estimate compressible tokens based on tool type
+                        let compress_rate = match tool_name.as_str() {
+                            "Read" | "read_file" => 0.60,
+                            "Grep" | "rg" => 0.40,
+                            "Bash" => 0.30,
+                            _ => 0.20,
+                        };
+                        self.tool_result_compressible += (result_tokens as f64 * compress_rate) as u64;
+
+                        // Check if this result belongs to a duplicate call — track wasted tokens
+                        // Heuristic: if tool has more calls than unique hashes, extras are duplicates
+                        {
+                            let call_count = self.tools_used.get(&tool_name).copied().unwrap_or(0) as u64;
+                            let unique_count = self.tool_call_hashes.iter()
+                                .filter(|k| k.starts_with(&format!("{}:", tool_name)))
+                                .count() as u64;
+                            if call_count > unique_count {
+                                self.duplicate_tool_tokens += result_tokens;
+                            }
+                        }
+
                         // Track large tool results (>1000 tokens)
                         if result_tokens > 1000 {
-                            // Get the tool name from the previous message if available
-                            let tool_name = self.messages.iter().rev()
-                                .find(|m| m.msg_type == "tool_use")
-                                .and_then(|m| m.tool_name.clone())
-                                .unwrap_or_else(|| "unknown".to_string());
                             self.large_results.push((tool_name, result_tokens));
                         }
 
@@ -603,13 +768,19 @@ impl AgentSessionData {
             }
         }
 
+        let mut parsed = 0u32;
+        let mut failed = 0u32;
         for line in &lines[..lines.len().saturating_sub(1)] {
             let trimmed = line.trim();
             if trimmed.is_empty() { continue; }
             if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
                 self.parse_claude_code_line(&obj);
+                parsed += 1;
+            } else {
+                failed += 1;
             }
         }
+        eprintln!("[terse-agent] read_new_lines: {} lines parsed, {} failed, {} total msgs", parsed, failed, self.messages.len());
     }
 }
 
@@ -689,42 +860,49 @@ impl AgentMonitor {
             &detection.agent_type, &detection.name, &detection.icon, detection.pid,
         );
 
-        // Resolve log dir: for Claude Code, find the session matching the focused VS Code window.
-        // Try the detected PID first, then try all claude PIDs in the same VS Code workspace.
-        let resolved_log_dir = if detection.parser == "claudeCode" {
-            // Try detected PID
-            let mut dir = resolve_claude_log_dir(detection.pid);
-            // If that fails or gives a different project, scan all claude PIDs
-            if dir.is_none() {
-                if let Some((d, pid, _)) = find_best_claude_session() {
-                    session.pid = pid;
-                    dir = Some(d);
-                }
-            }
-            dir.or(detection.log_dir.clone())
-        } else {
-            detection.log_dir.clone()
-        };
-        eprintln!("[terse-agent] accept_agent: resolved log dir = {:?}", resolved_log_dir);
-
-        // Find latest session file
-        if let Some(log_dir) = &resolved_log_dir {
-            if let Some(file) = find_latest_session(log_dir) {
-                // Read existing history
-                if let Ok(content) = fs::read_to_string(&file) {
-                    for line in content.lines() {
-                        let trimmed = line.trim();
-                        if trimmed.is_empty() { continue; }
-                        if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                            session.parse_claude_code_line(&obj);
+        // For Claude Code: find the session JSONL for the active conversation.
+        // Priority: 1) App's own CWD project dir (most reliable)
+        //           2) Detected PID's CWD  3) Most recently written globally
+        let session_file = if detection.parser == "claudeCode" {
+            std::env::current_dir().ok()
+                .and_then(|cwd| {
+                    let home = dirs::home_dir()?;
+                    let projects_dir = home.join(".claude/projects");
+                    for encoded in encode_cwd_for_claude(&cwd.to_string_lossy()) {
+                        let project_dir = projects_dir.join(&encoded);
+                        if project_dir.exists() {
+                            eprintln!("[terse-agent] matched app CWD → {:?}", project_dir);
+                            return find_latest_session(&project_dir);
                         }
                     }
+                    None
+                })
+                .or_else(|| resolve_claude_log_dir(detection.pid).and_then(|d| find_latest_session(&d)))
+                .or_else(|| find_newest_jsonl_globally())
+        } else if let Some(log_dir) = &detection.log_dir {
+            find_latest_session(log_dir)
+        } else {
+            None
+        };
+        eprintln!("[terse-agent] accept_agent: session_file = {:?}", session_file);
+
+        // Read existing history from session file
+        if let Some(ref file) = session_file {
+            if let Ok(content) = fs::read_to_string(file) {
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() { continue; }
+                    if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                        session.parse_claude_code_line(&obj);
+                    }
                 }
-                if let Ok(meta) = fs::metadata(&file) {
-                    session.watcher_offset = meta.len();
-                }
-                session.session_file = Some(file);
             }
+            if let Ok(meta) = fs::metadata(file) {
+                session.watcher_offset = meta.len();
+            }
+            session.session_file = Some(file.clone());
+            eprintln!("[terse-agent] loaded session: {} messages, {} turns, {} input tokens",
+                session.messages.len(), session.turns, session.total_input_tokens);
         }
 
         session.connected = true;
@@ -813,6 +991,44 @@ impl AgentMonitor {
 
         (new_detections, lost_types)
     }
+}
+
+/// Find the most recently written JSONL file across ALL Claude Code project directories
+fn find_newest_jsonl_globally() -> Option<PathBuf> {
+    let home = dirs::home_dir()?;
+    let projects_dir = home.join(".claude/projects");
+    if !projects_dir.exists() { return None; }
+
+    let mut newest: Option<(PathBuf, SystemTime)> = None;
+
+    if let Ok(project_entries) = fs::read_dir(&projects_dir) {
+        for project in project_entries.flatten() {
+            if !project.file_type().map(|t| t.is_dir()).unwrap_or(false) { continue; }
+            if let Ok(files) = fs::read_dir(project.path()) {
+                for file in files.flatten() {
+                    let path = file.path();
+                    if path.extension().and_then(|e| e.to_str()) != Some("jsonl") { continue; }
+                    if let Ok(meta) = fs::metadata(&path) {
+                        if let Ok(mtime) = meta.modified() {
+                            if newest.as_ref().map_or(true, |(_, t)| mtime > *t) {
+                                newest = Some((path, mtime));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Only return if modified in last 10 minutes (active session)
+    if let Some((path, mtime)) = newest {
+        let age = SystemTime::now().duration_since(mtime).unwrap_or(Duration::from_secs(u64::MAX));
+        if age < Duration::from_secs(10 * 60) {
+            eprintln!("[terse-agent] newest JSONL globally: {:?} (age: {}s)", path, age.as_secs());
+            return Some(path);
+        }
+    }
+    None
 }
 
 fn find_latest_session(log_dir: &Path) -> Option<PathBuf> {
@@ -924,9 +1140,10 @@ pub fn start_scanning(app: AppHandle) {
             for agent_type in types {
                 if let Some(session) = monitor.sessions.get_mut(&agent_type) {
                     if !session.connected { continue; }
-                    let prev_msg_count = session.messages.len();
+                    let prev_offset = session.watcher_offset;
                     session.read_new_lines();
-                    if session.messages.len() != prev_msg_count {
+                    // Detect changes by offset growth (msg count may stay at cap of 200)
+                    if session.watcher_offset != prev_offset {
                         updates.push((agent_type.clone(), session.get_snapshot()));
                     }
                 }

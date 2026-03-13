@@ -214,8 +214,19 @@ body.minimized .favicon { display: flex !important; }
 /* Inline optimization badge on user messages */
 .agent-activity-line .opt-badge { font-size: 8px; padding: 0 4px; border-radius: 2px;
   background: var(--acd); color: var(--ac); font-weight: 600; margin-left: 4px;
-  font-family: -apple-system, sans-serif; }
-.agent-activity-line .opt-badge.no-save { background: transparent; color: var(--t3); }
+  font-family: -apple-system, sans-serif; float: right; }
+.agent-activity-line .opt-badge.saveable { background: var(--ac); color: #111; animation: pulse-badge 2s ease-in-out; }
+.agent-activity-line .opt-badge.fixed { background: rgba(96,165,250,0.2); color: #60a5fa; }
+.agent-activity-line .opt-badge.no-save { background: transparent; color: var(--t3); font-weight: 400; }
+.agent-activity-line.has-savings { background: rgba(110,231,183,0.06); border-left: 2px solid var(--ac); padding-left: 4px; }
+@keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:0.6} }
+/* Token count badges on all entries */
+.agent-activity-line .tok-badge { font-size: 8px; padding: 0 3px; border-radius: 2px;
+  font-weight: 600; margin-left: 4px; font-family: -apple-system, sans-serif;
+  float: right; font-variant-numeric: tabular-nums; }
+.tok-badge.dim { color: var(--t3); }
+.tok-badge.ok { color: var(--t3); }
+.tok-badge.warn { color: #fbbf24; background: rgba(251,191,36,0.08); }
 /* Inline optimization detail (expandable on click) */
 .opt-inline-detail { padding: 3px 6px; margin: 1px 0; font-size: 9px;
   background: rgba(110,231,183,0.04); border-left: 2px solid var(--ac);
@@ -292,6 +303,26 @@ body.minimized .favicon { display: flex !important; }
 .insight-icon { flex-shrink: 0; }
 .insight-text { flex: 1; }
 .insight-value { font-weight: 700; color: var(--t1); margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ── Tool Result Breakdown ── */
+.agent-tool-breakdown { padding: 4px 0; }
+.tool-consumer-row { display: flex; align-items: center; gap: 6px; padding: 2px 6px; font-size: 9px; }
+.tool-consumer-name { flex: 0 0 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t2); }
+.tool-consumer-count { color: var(--t3); font-size: 8px; }
+.tool-consumer-bar-wrap { flex: 1; height: 4px; background: var(--bg2); border-radius: 2px; overflow: hidden; }
+.tool-consumer-bar { height: 100%; background: var(--ac); border-radius: 2px; transition: width 0.3s; }
+.tool-consumer-tokens { flex: 0 0 40px; text-align: right; font-weight: 600; color: var(--t1); font-variant-numeric: tabular-nums; }
+
+/* ── Generate CLAUDE.md ── */
+.agent-claudemd-btn { width: 100%; padding: 4px 8px; font-size: 9px; border: 1px solid var(--b); border-radius: 4px;
+  background: var(--bg2); color: var(--t2); cursor: pointer; transition: all 0.15s; }
+.agent-claudemd-btn:hover { background: var(--bg3, var(--bg2)); color: var(--t1); border-color: var(--ac); }
+.claudemd-output { margin-top: 4px; }
+.claudemd-pre { font-size: 8.5px; line-height: 1.5; padding: 6px 8px; background: var(--bg2); border: 1px solid var(--b);
+  border-radius: 4px; color: var(--t2); white-space: pre-wrap; word-break: break-word; margin: 0; max-height: 200px; overflow-y: auto; }
+.claudemd-copy-btn { margin-top: 3px; padding: 2px 10px; font-size: 8.5px; border: 1px solid var(--b); border-radius: 3px;
+  background: var(--bg2); color: var(--t2); cursor: pointer; transition: all 0.15s; }
+.claudemd-copy-btn:hover { color: var(--t1); border-color: var(--ac); }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 body { animation: fadeIn 0.15s ease; }

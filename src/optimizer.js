@@ -95,6 +95,26 @@ function detectLanguage(text) {
   return FRANC_TO_LANG[code] || 'en';
 }
 
+// Split-word typos: words accidentally split by a space (case-insensitive regex)
+const SPLIT_TYPOS = [
+  [/\bint he\b/gi, 'in the'],
+  [/\bth e\b/gi, 'the'],
+  [/\bwit h\b/gi, 'with'],
+  [/\bfro m\b/gi, 'from'],
+  [/\bsom e\b/gi, 'some'],
+  [/\bhav e\b/gi, 'have'],
+  [/\bwhe n\b/gi, 'when'],
+  [/\bthe n\b/gi, 'then'],
+  [/\bthe y\b/gi, 'they'],
+  [/\bthe re\b/gi, 'there'],
+  [/\bthe ir\b/gi, 'their'],
+  [/\bwhe re\b/gi, 'where'],
+  [/\bsho w\b/gi, 'show'],
+  [/\bsho uld\b/gi, 'should'],
+  [/\bcou ld\b/gi, 'could'],
+  [/\bwou ld\b/gi, 'would'],
+];
+
 // Fast-path typo dictionary for the most common prompt/coding typos
 // nspell handles general English; this catches domain-specific + very fast corrections
 const TYPOS = {
@@ -240,8 +260,9 @@ const TYPOS = {
   'wbut':'but',
   'agian':'again','aigan':'again',
   'alredy':'already',
-  'coul':'could','cuold':'could',
-  'hows':'shows',
+  'coul':'could','cuold':'could','oul':'could',
+  'hows':'shows','hsow':'show','shwo':'show','sohw':'show',
+  'redce':'reduce','redcue':'reduce','reudce':'reduce',
   'suse':'use','ues':'use','sue':'use',
   'usr':'sure','srue':'sure','suer':'sure',
   'eit':'it',
@@ -262,8 +283,12 @@ const TYPOS = {
   'everythign':'everything',
   'clcik':'click','clikc':'click',
   'buttn':'button','buton':'button','butotn':'button',
-  'mesage':'message','messgae':'message','messge':'message',
-  'widnow':'window','windwo':'window','winodw':'window',
+  'mesage':'message','messgae':'message','messge':'message','mesages':'messages','mesagse':'messages',
+  'widnow':'window','windwo':'window','winodw':'window','winow':'window',
+  'popu':'popup','poppu':'popup',
+  'sems':'seems','seesm':'seems','sesm':'seems',
+  'worng':'wrong','wrogn':'wrong','wrnog':'wrong',
+  'tyep':'type','tyep':'type','tpye':'type',
   'scrren':'screen','sreen':'screen',
   'dipslay':'display','dispaly':'display','displya':'display',
   // --- programming/tech typos ---
@@ -897,10 +922,21 @@ class PromptOptimizer {
     return Math.ceil(words * 1.3 + punctuation * 0.5);
   }
 
-  // ── Protect code blocks during transformations ──
+  // ── Protect code blocks, inline code, and URLs during transformations ──
   _protectCode(text) {
     const blocks = [];
-    const result = text.replace(/```[\s\S]*?```/g, (m) => {
+    // 1. Triple-backtick code blocks
+    let result = text.replace(/```[\s\S]*?```/g, (m) => {
+      blocks.push(m);
+      return `__CB_${blocks.length - 1}__`;
+    });
+    // 2. Inline code (single backticks)
+    result = result.replace(/`[^`]+`/g, (m) => {
+      blocks.push(m);
+      return `__CB_${blocks.length - 1}__`;
+    });
+    // 3. URLs (http/https/ftp, bare domains like www.example.com)
+    result = result.replace(/(?:https?:\/\/|ftp:\/\/|www\.)[^\s<>\"')\]]+/gi, (m) => {
       blocks.push(m);
       return `__CB_${blocks.length - 1}__`;
     });
@@ -923,8 +959,14 @@ class PromptOptimizer {
     const entry = spellers[lang || 'en'];
     const nspellInst = (entry?.ready && entry.speller) ? entry.speller : null;
 
+    // Fix split-word typos first (e.g. "int he" → "in the")
+    let result = safe;
+    for (const [bad, good] of SPLIT_TYPOS) {
+      result = result.replace(bad, good);
+    }
+
     // Always run TYPOS dictionary first (language-independent — catches common English typos)
-    let result = spellCorrect(safe, TYPOS, isEn ? nspellInst : null);
+    result = spellCorrect(result, TYPOS, isEn ? nspellInst : null);
 
     if (!isEn) {
       // Non-English: also run nspell for the detected language

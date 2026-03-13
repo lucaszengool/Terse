@@ -23,23 +23,979 @@
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-  // src/nspell-shim.js
-  var require_nspell_shim = __commonJS({
-    "src/nspell-shim.js"(exports, module) {
-      module.exports = function nspell() {
-        return {
-          correct: () => true,
-          suggest: () => [],
-          add: () => {
-          }
-        };
+  // electron-backup/node_modules/is-buffer/index.js
+  var require_is_buffer = __commonJS({
+    "electron-backup/node_modules/is-buffer/index.js"(exports, module) {
+      module.exports = function isBuffer(obj) {
+        return obj != null && obj.constructor != null && typeof obj.constructor.isBuffer === "function" && obj.constructor.isBuffer(obj);
       };
     }
   });
 
-  // node_modules/compromise/builds/three/compromise-three.cjs
+  // electron-backup/node_modules/nspell/lib/util/rule-codes.js
+  var require_rule_codes = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/rule-codes.js"(exports, module) {
+      "use strict";
+      module.exports = ruleCodes;
+      var NO_CODES = [];
+      function ruleCodes(flags, value) {
+        var index = 0;
+        var result;
+        if (!value) return NO_CODES;
+        if (flags.FLAG === "long") {
+          result = new Array(Math.ceil(value.length / 2));
+          while (index < value.length) {
+            result[index / 2] = value.slice(index, index + 2);
+            index += 2;
+          }
+          return result;
+        }
+        return value.split(flags.FLAG === "num" ? "," : "");
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/util/affix.js
+  var require_affix = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/affix.js"(exports, module) {
+      "use strict";
+      var parse = require_rule_codes();
+      module.exports = affix;
+      var push = [].push;
+      var alphabet = "etaoinshrdlcumwfgypbvkjxqz".split("");
+      var whiteSpaceExpression = /\s+/;
+      var defaultKeyboardLayout = [
+        "qwertzuop",
+        "yxcvbnm",
+        "qaw",
+        "say",
+        "wse",
+        "dsx",
+        "sy",
+        "edr",
+        "fdc",
+        "dx",
+        "rft",
+        "gfv",
+        "fc",
+        "tgz",
+        "hgb",
+        "gv",
+        "zhu",
+        "jhn",
+        "hb",
+        "uji",
+        "kjm",
+        "jn",
+        "iko",
+        "lkm"
+      ];
+      function affix(doc) {
+        var rules = /* @__PURE__ */ Object.create(null);
+        var compoundRuleCodes = /* @__PURE__ */ Object.create(null);
+        var flags = /* @__PURE__ */ Object.create(null);
+        var replacementTable = [];
+        var conversion = { in: [], out: [] };
+        var compoundRules = [];
+        var aff = doc.toString("utf8");
+        var lines = [];
+        var last = 0;
+        var index = aff.indexOf("\n");
+        var parts;
+        var line;
+        var ruleType;
+        var count;
+        var remove;
+        var add;
+        var source;
+        var entry;
+        var position;
+        var rule;
+        var value;
+        var offset;
+        var character;
+        flags.KEY = [];
+        while (index > -1) {
+          pushLine(aff.slice(last, index));
+          last = index + 1;
+          index = aff.indexOf("\n", last);
+        }
+        pushLine(aff.slice(last));
+        index = -1;
+        while (++index < lines.length) {
+          line = lines[index];
+          parts = line.split(whiteSpaceExpression);
+          ruleType = parts[0];
+          if (ruleType === "REP") {
+            count = index + parseInt(parts[1], 10);
+            while (++index <= count) {
+              parts = lines[index].split(whiteSpaceExpression);
+              replacementTable.push([parts[1], parts[2]]);
+            }
+            index--;
+          } else if (ruleType === "ICONV" || ruleType === "OCONV") {
+            count = index + parseInt(parts[1], 10);
+            entry = conversion[ruleType === "ICONV" ? "in" : "out"];
+            while (++index <= count) {
+              parts = lines[index].split(whiteSpaceExpression);
+              entry.push([new RegExp(parts[1], "g"), parts[2]]);
+            }
+            index--;
+          } else if (ruleType === "COMPOUNDRULE") {
+            count = index + parseInt(parts[1], 10);
+            while (++index <= count) {
+              rule = lines[index].split(whiteSpaceExpression)[1];
+              position = -1;
+              compoundRules.push(rule);
+              while (++position < rule.length) {
+                compoundRuleCodes[rule.charAt(position)] = [];
+              }
+            }
+            index--;
+          } else if (ruleType === "PFX" || ruleType === "SFX") {
+            count = index + parseInt(parts[3], 10);
+            rule = {
+              type: ruleType,
+              combineable: parts[2] === "Y",
+              entries: []
+            };
+            rules[parts[1]] = rule;
+            while (++index <= count) {
+              parts = lines[index].split(whiteSpaceExpression);
+              remove = parts[2];
+              add = parts[3].split("/");
+              source = parts[4];
+              entry = {
+                add: "",
+                remove: "",
+                match: "",
+                continuation: parse(flags, add[1])
+              };
+              if (add && add[0] !== "0") {
+                entry.add = add[0];
+              }
+              try {
+                if (remove !== "0") {
+                  entry.remove = ruleType === "SFX" ? end(remove) : remove;
+                }
+                if (source && source !== ".") {
+                  entry.match = ruleType === "SFX" ? end(source) : start(source);
+                }
+              } catch (_) {
+                entry = null;
+              }
+              if (entry) {
+                rule.entries.push(entry);
+              }
+            }
+            index--;
+          } else if (ruleType === "TRY") {
+            source = parts[1];
+            offset = -1;
+            value = [];
+            while (++offset < source.length) {
+              character = source.charAt(offset);
+              if (character.toLowerCase() === character) {
+                value.push(character);
+              }
+            }
+            offset = -1;
+            while (++offset < alphabet.length) {
+              if (source.indexOf(alphabet[offset]) < 0) {
+                value.push(alphabet[offset]);
+              }
+            }
+            flags[ruleType] = value;
+          } else if (ruleType === "KEY") {
+            push.apply(flags[ruleType], parts[1].split("|"));
+          } else if (ruleType === "COMPOUNDMIN") {
+            flags[ruleType] = Number(parts[1]);
+          } else if (ruleType === "ONLYINCOMPOUND") {
+            flags[ruleType] = parts[1];
+            compoundRuleCodes[parts[1]] = [];
+          } else if (ruleType === "FLAG" || ruleType === "KEEPCASE" || ruleType === "NOSUGGEST" || ruleType === "WORDCHARS") {
+            flags[ruleType] = parts[1];
+          } else {
+            flags[ruleType] = parts[1];
+          }
+        }
+        if (isNaN(flags.COMPOUNDMIN)) {
+          flags.COMPOUNDMIN = 3;
+        }
+        if (!flags.KEY.length) {
+          flags.KEY = defaultKeyboardLayout;
+        }
+        if (!flags.TRY) {
+          flags.TRY = alphabet.concat();
+        }
+        if (!flags.KEEPCASE) {
+          flags.KEEPCASE = false;
+        }
+        return {
+          compoundRuleCodes,
+          replacementTable,
+          conversion,
+          compoundRules,
+          rules,
+          flags
+        };
+        function pushLine(line2) {
+          line2 = line2.trim();
+          if (line2 && line2.charCodeAt(0) !== 35) {
+            lines.push(line2);
+          }
+        }
+      }
+      function end(source) {
+        return new RegExp(source + "$");
+      }
+      function start(source) {
+        return new RegExp("^" + source);
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/util/normalize.js
+  var require_normalize = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/normalize.js"(exports, module) {
+      "use strict";
+      module.exports = normalize2;
+      function normalize2(value, patterns) {
+        var index = -1;
+        while (++index < patterns.length) {
+          value = value.replace(patterns[index][0], patterns[index][1]);
+        }
+        return value;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/util/flag.js
+  var require_flag = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/flag.js"(exports, module) {
+      "use strict";
+      module.exports = flag;
+      function flag(values, value, flags) {
+        return flags && value in values && flags.indexOf(values[value]) > -1;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/util/exact.js
+  var require_exact = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/exact.js"(exports, module) {
+      "use strict";
+      var flag = require_flag();
+      module.exports = exact;
+      function exact(context, value) {
+        var index = -1;
+        if (context.data[value]) {
+          return !flag(context.flags, "ONLYINCOMPOUND", context.data[value]);
+        }
+        if (value.length >= context.flags.COMPOUNDMIN) {
+          while (++index < context.compoundRules.length) {
+            if (context.compoundRules[index].test(value)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/util/form.js
+  var require_form = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/form.js"(exports, module) {
+      "use strict";
+      var normalize2 = require_normalize();
+      var exact = require_exact();
+      var flag = require_flag();
+      module.exports = form;
+      function form(context, value, all) {
+        var normal = value.trim();
+        var alternative;
+        if (!normal) {
+          return null;
+        }
+        normal = normalize2(normal, context.conversion.in);
+        if (exact(context, normal)) {
+          if (!all && flag(context.flags, "FORBIDDENWORD", context.data[normal])) {
+            return null;
+          }
+          return normal;
+        }
+        if (normal.toUpperCase() === normal) {
+          alternative = normal.charAt(0) + normal.slice(1).toLowerCase();
+          if (ignore(context.flags, context.data[alternative], all)) {
+            return null;
+          }
+          if (exact(context, alternative)) {
+            return alternative;
+          }
+        }
+        alternative = normal.toLowerCase();
+        if (alternative !== normal) {
+          if (ignore(context.flags, context.data[alternative], all)) {
+            return null;
+          }
+          if (exact(context, alternative)) {
+            return alternative;
+          }
+        }
+        return null;
+      }
+      function ignore(flags, dict, all) {
+        return flag(flags, "KEEPCASE", dict) || all || flag(flags, "FORBIDDENWORD", dict);
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/correct.js
+  var require_correct = __commonJS({
+    "electron-backup/node_modules/nspell/lib/correct.js"(exports, module) {
+      "use strict";
+      var form = require_form();
+      module.exports = correct;
+      function correct(value) {
+        return Boolean(form(this, value));
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/util/casing.js
+  var require_casing = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/casing.js"(exports, module) {
+      "use strict";
+      module.exports = casing;
+      function casing(value) {
+        var head = exact(value.charAt(0));
+        var rest = value.slice(1);
+        if (!rest) {
+          return head;
+        }
+        rest = exact(rest);
+        if (head === rest) {
+          return head;
+        }
+        if (head === "u" && rest === "l") {
+          return "s";
+        }
+        return null;
+      }
+      function exact(value) {
+        return value === value.toLowerCase() ? "l" : value === value.toUpperCase() ? "u" : null;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/suggest.js
+  var require_suggest = __commonJS({
+    "electron-backup/node_modules/nspell/lib/suggest.js"(exports, module) {
+      "use strict";
+      var casing = require_casing();
+      var normalize2 = require_normalize();
+      var flag = require_flag();
+      var form = require_form();
+      module.exports = suggest;
+      var push = [].push;
+      function suggest(value) {
+        var self2 = this;
+        var charAdded = {};
+        var suggestions = [];
+        var weighted = {};
+        var memory;
+        var replacement;
+        var edits = [];
+        var values;
+        var index;
+        var offset;
+        var position;
+        var count;
+        var otherOffset;
+        var otherCharacter;
+        var character;
+        var group;
+        var before;
+        var after;
+        var upper;
+        var insensitive;
+        var firstLevel;
+        var previous;
+        var next;
+        var nextCharacter;
+        var max;
+        var distance;
+        var size;
+        var normalized;
+        var suggestion;
+        var currentCase;
+        value = normalize2(value.trim(), self2.conversion.in);
+        if (!value || self2.correct(value)) {
+          return [];
+        }
+        currentCase = casing(value);
+        index = -1;
+        while (++index < self2.replacementTable.length) {
+          replacement = self2.replacementTable[index];
+          offset = value.indexOf(replacement[0]);
+          while (offset > -1) {
+            edits.push(value.replace(replacement[0], replacement[1]));
+            offset = value.indexOf(replacement[0], offset + 1);
+          }
+        }
+        index = -1;
+        while (++index < value.length) {
+          character = value.charAt(index);
+          before = value.slice(0, index);
+          after = value.slice(index + 1);
+          insensitive = character.toLowerCase();
+          upper = insensitive !== character;
+          charAdded = {};
+          offset = -1;
+          while (++offset < self2.flags.KEY.length) {
+            group = self2.flags.KEY[offset];
+            position = group.indexOf(insensitive);
+            if (position < 0) {
+              continue;
+            }
+            otherOffset = -1;
+            while (++otherOffset < group.length) {
+              if (otherOffset !== position) {
+                otherCharacter = group.charAt(otherOffset);
+                if (charAdded[otherCharacter]) {
+                  continue;
+                }
+                charAdded[otherCharacter] = true;
+                if (upper) {
+                  otherCharacter = otherCharacter.toUpperCase();
+                }
+                edits.push(before + otherCharacter + after);
+              }
+            }
+          }
+        }
+        index = -1;
+        nextCharacter = value.charAt(0);
+        values = [""];
+        max = 1;
+        distance = 0;
+        while (++index < value.length) {
+          character = nextCharacter;
+          nextCharacter = value.charAt(index + 1);
+          before = value.slice(0, index);
+          replacement = character === nextCharacter ? "" : character + character;
+          offset = -1;
+          count = values.length;
+          while (++offset < count) {
+            if (offset <= max) {
+              values.push(values[offset] + replacement);
+            }
+            values[offset] += character;
+          }
+          if (++distance < 3) {
+            max = values.length;
+          }
+        }
+        push.apply(edits, values);
+        values = [value];
+        replacement = value.toLowerCase();
+        if (value === replacement || currentCase === null) {
+          values.push(value.charAt(0).toUpperCase() + replacement.slice(1));
+        }
+        replacement = value.toUpperCase();
+        if (value !== replacement) {
+          values.push(replacement);
+        }
+        memory = {
+          state: {},
+          weighted,
+          suggestions
+        };
+        firstLevel = generate(self2, memory, values, edits);
+        previous = 0;
+        max = Math.min(firstLevel.length, Math.pow(Math.max(15 - value.length, 3), 3));
+        size = Math.max(Math.pow(10 - value.length, 3), 1);
+        while (!suggestions.length && previous < max) {
+          next = previous + size;
+          generate(self2, memory, firstLevel.slice(previous, next));
+          previous = next;
+        }
+        suggestions.sort(sort3);
+        values = [];
+        normalized = [];
+        index = -1;
+        while (++index < suggestions.length) {
+          suggestion = normalize2(suggestions[index], self2.conversion.out);
+          replacement = suggestion.toLowerCase();
+          if (normalized.indexOf(replacement) < 0) {
+            values.push(suggestion);
+            normalized.push(replacement);
+          }
+        }
+        return values;
+        function sort3(a, b) {
+          return sortWeight(a, b) || sortCasing(a, b) || sortAlpha(a, b);
+        }
+        function sortWeight(a, b) {
+          return weighted[a] === weighted[b] ? 0 : weighted[a] > weighted[b] ? -1 : 1;
+        }
+        function sortCasing(a, b) {
+          var leftCasing = casing(a);
+          var rightCasing = casing(b);
+          return leftCasing === rightCasing ? 0 : leftCasing === currentCase ? -1 : rightCasing === currentCase ? 1 : void 0;
+        }
+        function sortAlpha(a, b) {
+          return a.localeCompare(b);
+        }
+      }
+      function generate(context, memory, words, edits) {
+        var characters = context.flags.TRY;
+        var data2 = context.data;
+        var flags = context.flags;
+        var result = [];
+        var index = -1;
+        var word;
+        var before;
+        var character;
+        var nextCharacter;
+        var nextAfter;
+        var nextNextAfter;
+        var nextUpper;
+        var currentCase;
+        var position;
+        var after;
+        var upper;
+        var inject;
+        var offset;
+        if (edits) {
+          while (++index < edits.length) {
+            check(edits[index], true);
+          }
+        }
+        index = -1;
+        while (++index < words.length) {
+          word = words[index];
+          before = "";
+          character = "";
+          nextCharacter = word.charAt(0);
+          nextAfter = word;
+          nextNextAfter = word.slice(1);
+          nextUpper = nextCharacter.toLowerCase() !== nextCharacter;
+          currentCase = casing(word);
+          position = -1;
+          while (++position <= word.length) {
+            before += character;
+            after = nextAfter;
+            nextAfter = nextNextAfter;
+            nextNextAfter = nextAfter.slice(1);
+            character = nextCharacter;
+            nextCharacter = word.charAt(position + 1);
+            upper = nextUpper;
+            if (nextCharacter) {
+              nextUpper = nextCharacter.toLowerCase() !== nextCharacter;
+            }
+            if (nextAfter && upper !== nextUpper) {
+              check(before + switchCase(nextAfter));
+              check(
+                before + switchCase(nextCharacter) + switchCase(character) + nextNextAfter
+              );
+            }
+            check(before + nextAfter);
+            if (nextAfter) {
+              check(before + nextCharacter + character + nextNextAfter);
+            }
+            offset = -1;
+            while (++offset < characters.length) {
+              inject = characters[offset];
+              if (upper && inject !== inject.toUpperCase()) {
+                if (currentCase !== "s") {
+                  check(before + inject + after);
+                  check(before + inject + nextAfter);
+                }
+                inject = inject.toUpperCase();
+                check(before + inject + after);
+                check(before + inject + nextAfter);
+              } else {
+                check(before + inject + after);
+                check(before + inject + nextAfter);
+              }
+            }
+          }
+        }
+        return result;
+        function check(value, double) {
+          var state = memory.state[value];
+          var corrected;
+          if (state !== Boolean(state)) {
+            result.push(value);
+            corrected = form(context, value);
+            state = corrected && !flag(flags, "NOSUGGEST", data2[corrected]);
+            memory.state[value] = state;
+            if (state) {
+              memory.weighted[value] = double ? 10 : 0;
+              memory.suggestions.push(value);
+            }
+          }
+          if (state) {
+            memory.weighted[value]++;
+          }
+        }
+        function switchCase(fragment) {
+          var first = fragment.charAt(0);
+          return (first.toLowerCase() === first ? first.toUpperCase() : first.toLowerCase()) + fragment.slice(1);
+        }
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/spell.js
+  var require_spell = __commonJS({
+    "electron-backup/node_modules/nspell/lib/spell.js"(exports, module) {
+      "use strict";
+      var form = require_form();
+      var flag = require_flag();
+      module.exports = spell;
+      function spell(word) {
+        var self2 = this;
+        var value = form(self2, word, true);
+        return {
+          correct: self2.correct(word),
+          forbidden: Boolean(
+            value && flag(self2.flags, "FORBIDDENWORD", self2.data[value])
+          ),
+          warn: Boolean(value && flag(self2.flags, "WARN", self2.data[value]))
+        };
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/util/apply.js
+  var require_apply = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/apply.js"(exports, module) {
+      "use strict";
+      module.exports = apply;
+      function apply(value, rule, rules, words) {
+        var index = -1;
+        var entry;
+        var next;
+        var continuationRule;
+        var continuation;
+        var position;
+        while (++index < rule.entries.length) {
+          entry = rule.entries[index];
+          continuation = entry.continuation;
+          position = -1;
+          if (!entry.match || entry.match.test(value)) {
+            next = entry.remove ? value.replace(entry.remove, "") : value;
+            next = rule.type === "SFX" ? next + entry.add : entry.add + next;
+            words.push(next);
+            if (continuation && continuation.length) {
+              while (++position < continuation.length) {
+                continuationRule = rules[continuation[position]];
+                if (continuationRule) {
+                  apply(next, continuationRule, rules, words);
+                }
+              }
+            }
+          }
+        }
+        return words;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/util/add.js
+  var require_add = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/add.js"(exports, module) {
+      "use strict";
+      var apply = require_apply();
+      module.exports = add;
+      var push = [].push;
+      var NO_RULES = [];
+      function addRules(dict, word, rules) {
+        var curr = dict[word];
+        if (word in dict) {
+          if (curr === NO_RULES) {
+            dict[word] = rules.concat();
+          } else {
+            push.apply(curr, rules);
+          }
+        } else {
+          dict[word] = rules.concat();
+        }
+      }
+      function add(dict, word, codes, options) {
+        var position = -1;
+        var rule;
+        var offset;
+        var subposition;
+        var suboffset;
+        var combined;
+        var newWords;
+        var otherNewWords;
+        if (!("NEEDAFFIX" in options.flags) || codes.indexOf(options.flags.NEEDAFFIX) < 0) {
+          addRules(dict, word, codes);
+        }
+        while (++position < codes.length) {
+          rule = options.rules[codes[position]];
+          if (codes[position] in options.compoundRuleCodes) {
+            options.compoundRuleCodes[codes[position]].push(word);
+          }
+          if (rule) {
+            newWords = apply(word, rule, options.rules, []);
+            offset = -1;
+            while (++offset < newWords.length) {
+              if (!(newWords[offset] in dict)) {
+                dict[newWords[offset]] = NO_RULES;
+              }
+              if (rule.combineable) {
+                subposition = position;
+                while (++subposition < codes.length) {
+                  combined = options.rules[codes[subposition]];
+                  if (combined && combined.combineable && rule.type !== combined.type) {
+                    otherNewWords = apply(
+                      newWords[offset],
+                      combined,
+                      options.rules,
+                      []
+                    );
+                    suboffset = -1;
+                    while (++suboffset < otherNewWords.length) {
+                      if (!(otherNewWords[suboffset] in dict)) {
+                        dict[otherNewWords[suboffset]] = NO_RULES;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/add.js
+  var require_add2 = __commonJS({
+    "electron-backup/node_modules/nspell/lib/add.js"(exports, module) {
+      "use strict";
+      var push = require_add();
+      module.exports = add;
+      var NO_CODES = [];
+      function add(value, model) {
+        var self2 = this;
+        push(self2.data, value, self2.data[model] || NO_CODES, self2);
+        return self2;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/remove.js
+  var require_remove = __commonJS({
+    "electron-backup/node_modules/nspell/lib/remove.js"(exports, module) {
+      "use strict";
+      module.exports = remove;
+      function remove(value) {
+        var self2 = this;
+        delete self2.data[value];
+        return self2;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/word-characters.js
+  var require_word_characters = __commonJS({
+    "electron-backup/node_modules/nspell/lib/word-characters.js"(exports, module) {
+      "use strict";
+      module.exports = wordCharacters;
+      function wordCharacters() {
+        return this.flags.WORDCHARS || null;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/util/dictionary.js
+  var require_dictionary = __commonJS({
+    "electron-backup/node_modules/nspell/lib/util/dictionary.js"(exports, module) {
+      "use strict";
+      var parseCodes = require_rule_codes();
+      var add = require_add();
+      module.exports = parse;
+      var whiteSpaceExpression = /\s/g;
+      function parse(buf, options, dict) {
+        var value = buf.toString("utf8");
+        var last = value.indexOf("\n") + 1;
+        var index = value.indexOf("\n", last);
+        while (index > -1) {
+          if (value.charCodeAt(last) !== 9) {
+            parseLine(value.slice(last, index), options, dict);
+          }
+          last = index + 1;
+          index = value.indexOf("\n", last);
+        }
+        parseLine(value.slice(last), options, dict);
+      }
+      function parseLine(line, options, dict) {
+        var slashOffset = line.indexOf("/");
+        var hashOffset = line.indexOf("#");
+        var codes = "";
+        var word;
+        var result;
+        while (slashOffset > -1 && line.charCodeAt(slashOffset - 1) === 92) {
+          line = line.slice(0, slashOffset - 1) + line.slice(slashOffset);
+          slashOffset = line.indexOf("/", slashOffset);
+        }
+        if (hashOffset > -1) {
+          if (slashOffset > -1 && slashOffset < hashOffset) {
+            word = line.slice(0, slashOffset);
+            whiteSpaceExpression.lastIndex = slashOffset + 1;
+            result = whiteSpaceExpression.exec(line);
+            codes = line.slice(slashOffset + 1, result ? result.index : void 0);
+          } else {
+            word = line.slice(0, hashOffset);
+          }
+        } else if (slashOffset > -1) {
+          word = line.slice(0, slashOffset);
+          codes = line.slice(slashOffset + 1);
+        } else {
+          word = line;
+        }
+        word = word.trim();
+        if (word) {
+          add(dict, word, parseCodes(options.flags, codes.trim()), options);
+        }
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/dictionary.js
+  var require_dictionary2 = __commonJS({
+    "electron-backup/node_modules/nspell/lib/dictionary.js"(exports, module) {
+      "use strict";
+      var parse = require_dictionary();
+      module.exports = add;
+      function add(buf) {
+        var self2 = this;
+        var index = -1;
+        var rule;
+        var source;
+        var character;
+        var offset;
+        parse(buf, self2, self2.data);
+        while (++index < self2.compoundRules.length) {
+          rule = self2.compoundRules[index];
+          source = "";
+          offset = -1;
+          while (++offset < rule.length) {
+            character = rule.charAt(offset);
+            source += self2.compoundRuleCodes[character].length ? "(?:" + self2.compoundRuleCodes[character].join("|") + ")" : character;
+          }
+          self2.compoundRules[index] = new RegExp(source, "i");
+        }
+        return self2;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/personal.js
+  var require_personal = __commonJS({
+    "electron-backup/node_modules/nspell/lib/personal.js"(exports, module) {
+      "use strict";
+      module.exports = add;
+      function add(buf) {
+        var self2 = this;
+        var lines = buf.toString("utf8").split("\n");
+        var index = -1;
+        var line;
+        var forbidden;
+        var word;
+        var flag;
+        if (self2.flags.FORBIDDENWORD === void 0) self2.flags.FORBIDDENWORD = false;
+        flag = self2.flags.FORBIDDENWORD;
+        while (++index < lines.length) {
+          line = lines[index].trim();
+          if (!line) {
+            continue;
+          }
+          line = line.split("/");
+          word = line[0];
+          forbidden = word.charAt(0) === "*";
+          if (forbidden) {
+            word = word.slice(1);
+          }
+          self2.add(word, line[1]);
+          if (forbidden) {
+            self2.data[word].push(flag);
+          }
+        }
+        return self2;
+      }
+    }
+  });
+
+  // electron-backup/node_modules/nspell/lib/index.js
+  var require_lib = __commonJS({
+    "electron-backup/node_modules/nspell/lib/index.js"(exports, module) {
+      "use strict";
+      var buffer = require_is_buffer();
+      var affix = require_affix();
+      module.exports = NSpell;
+      var proto = NSpell.prototype;
+      proto.correct = require_correct();
+      proto.suggest = require_suggest();
+      proto.spell = require_spell();
+      proto.add = require_add2();
+      proto.remove = require_remove();
+      proto.wordCharacters = require_word_characters();
+      proto.dictionary = require_dictionary2();
+      proto.personal = require_personal();
+      function NSpell(aff, dic) {
+        var index = -1;
+        var dictionaries;
+        if (!(this instanceof NSpell)) {
+          return new NSpell(aff, dic);
+        }
+        if (typeof aff === "string" || buffer(aff)) {
+          if (typeof dic === "string" || buffer(dic)) {
+            dictionaries = [{ dic }];
+          }
+        } else if (aff) {
+          if ("length" in aff) {
+            dictionaries = aff;
+            aff = aff[0] && aff[0].aff;
+          } else {
+            if (aff.dic) {
+              dictionaries = [aff];
+            }
+            aff = aff.aff;
+          }
+        }
+        if (!aff) {
+          throw new Error("Missing `aff` in dictionary");
+        }
+        aff = affix(aff);
+        this.data = /* @__PURE__ */ Object.create(null);
+        this.compoundRuleCodes = aff.compoundRuleCodes;
+        this.replacementTable = aff.replacementTable;
+        this.conversion = aff.conversion;
+        this.compoundRules = aff.compoundRules;
+        this.rules = aff.rules;
+        this.flags = aff.flags;
+        if (dictionaries) {
+          while (++index < dictionaries.length) {
+            if (dictionaries[index].dic) {
+              this.dictionary(dictionaries[index].dic);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // electron-backup/node_modules/compromise/builds/three/compromise-three.cjs
   var require_compromise_three = __commonJS({
-    "node_modules/compromise/builds/three/compromise-three.cjs"(exports, module) {
+    "electron-backup/node_modules/compromise/builds/three/compromise-three.cjs"(exports, module) {
       !(function(e, t) {
         "object" == typeof exports && "undefined" != typeof module ? module.exports = t() : "function" == typeof define && define.amd ? define(t) : (e = "undefined" != typeof globalThis ? globalThis : e || self).nlp = t();
       })(exports, (function() {
@@ -4961,7 +5917,7 @@
     }
   });
 
-  // node_modules/n-gram/index.js
+  // electron-backup/node_modules/n-gram/index.js
   function nGram(n) {
     if (typeof n !== "number" || Number.isNaN(n) || n < 1 || n === Number.POSITIVE_INFINITY) {
       throw new Error("`" + n + "` is not a valid argument for `n-gram`");
@@ -4985,13 +5941,13 @@
   }
   var bigram, trigram;
   var init_n_gram = __esm({
-    "node_modules/n-gram/index.js"() {
+    "electron-backup/node_modules/n-gram/index.js"() {
       bigram = nGram(2);
       trigram = nGram(3);
     }
   });
 
-  // node_modules/collapse-white-space/index.js
+  // electron-backup/node_modules/collapse-white-space/index.js
   function collapseWhiteSpace(value, options) {
     if (!options) {
       options = {};
@@ -5019,13 +5975,13 @@
   }
   var js, html;
   var init_collapse_white_space = __esm({
-    "node_modules/collapse-white-space/index.js"() {
+    "electron-backup/node_modules/collapse-white-space/index.js"() {
       js = /\s+/g;
       html = /[\t\n\v\f\r ]+/g;
     }
   });
 
-  // node_modules/trigram-utils/index.js
+  // electron-backup/node_modules/trigram-utils/index.js
   function clean(value) {
     if (value === null || value === void 0) {
       return "";
@@ -5065,17 +6021,17 @@
   }
   var own;
   var init_trigram_utils = __esm({
-    "node_modules/trigram-utils/index.js"() {
+    "electron-backup/node_modules/trigram-utils/index.js"() {
       init_n_gram();
       init_collapse_white_space();
       own = {}.hasOwnProperty;
     }
   });
 
-  // node_modules/franc-min/expressions.js
+  // electron-backup/node_modules/franc-min/expressions.js
   var expressions;
   var init_expressions = __esm({
-    "node_modules/franc-min/expressions.js"() {
+    "electron-backup/node_modules/franc-min/expressions.js"() {
       expressions = {
         cmn: /[\u2E80-\u2E99\u2E9B-\u2EF3\u2F00-\u2FD5\u3005\u3007\u3021-\u3029\u3038-\u303B\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFA6D\uFA70-\uFAD9]|\uD81B[\uDFE2\uDFE3\uDFF0\uDFF1]|[\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872\uD874-\uD879\uD880-\uD883\uD885-\uD887][\uDC00-\uDFFF]|\uD869[\uDC00-\uDEDF\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF39\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1\uDEB0-\uDFFF]|\uD87A[\uDC00-\uDFE0]|\uD87E[\uDC00-\uDE1D]|\uD884[\uDC00-\uDF4A\uDF50-\uDFFF]|\uD888[\uDC00-\uDFAF]/g,
         Latin: /[A-Za-z\u00AA\u00BA\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02B8\u02E0-\u02E4\u1D00-\u1D25\u1D2C-\u1D5C\u1D62-\u1D65\u1D6B-\u1D77\u1D79-\u1DBE\u1E00-\u1EFF\u2071\u207F\u2090-\u209C\u212A\u212B\u2132\u214E\u2160-\u2188\u2C60-\u2C7F\uA722-\uA787\uA78B-\uA7CA\uA7D0\uA7D1\uA7D3\uA7D5-\uA7D9\uA7F2-\uA7FF\uAB30-\uAB5A\uAB5C-\uAB64\uAB66-\uAB69\uFB00-\uFB06\uFF21-\uFF3A\uFF41-\uFF5A]|\uD801[\uDF80-\uDF85\uDF87-\uDFB0\uDFB2-\uDFBA]|\uD837[\uDF00-\uDF1E\uDF25-\uDF2A]/g,
@@ -5101,10 +6057,10 @@
     }
   });
 
-  // node_modules/franc-min/data.js
+  // electron-backup/node_modules/franc-min/data.js
   var data;
   var init_data = __esm({
-    "node_modules/franc-min/data.js"() {
+    "electron-backup/node_modules/franc-min/data.js"() {
       data = {
         Latin: {
           spa: " de|de |os | la| a |la | y |\xF3n |i\xF3n|es |ere|rec|ien|o a|der|ci\xF3|cho|ech|en |a p|ent|a l|aci|el |na |ona|e d| co|as |da | to|al |ene| en|tod| pe|e l| el|ho |nte| su|per|a t|ad | ti|ers|tie| se|rso|son|e s| pr|o d|oda|te |cia|n d| es|dad|ida| in|ne |est|ion|cio|s d|con|a e| po|men| li|n e|nci|res|su |to |tra| re| lo|tad| na|los|a s| o |ia |que| pa|r\xE1 |pro| un|s y|ual|s e|lib|nac|do |ra |er |a d|ue | qu|e e|sta|nal|ar |nes|ica|a c|ser|or |ter|se |por|cci|io |del|l d|des|ado|les|one|a a|ndi| so| cu|s p|ale|s n|ame|par|ici|oci|una|ber|s t|rta|com| di|dos|e a|imi|o s|e c|ert|las|o p|ant|dic|nto| al|ara|ibe|enc|o e|s l|cas| as|e p|ten|ali|o t|soc|y l|n c|nta|so |tos|y a|ria|n t|die|a u| fu|no |l p|ial|qui|dis|s o|hos|gua|igu| ig| ca|sar|l t| ma|l e|pre| ac|tiv|s a|re |nad|vid|era| tr|ier|cua|n p|ta |cla|ade|bre|s s|esa|ntr|ecc|a i| le|lid|das|d d|ido|ari|ind|ada|nda|fun|mie|ca |tic|eli|y d|nid|e i|odo|ios|o y|esp|iva|y e|mat|bli|r a|dr\xE1|tri|cti|tal|rim|ont|er\xE1|us |sus|end|pen|tor|ito|ond|ori|uie|lig|n a|ist|rac|lar|rse|tar|mo |omo|ibr|n l|edi|med| me|nio|a y|eda|isf|lo |aso|l m|ias|ico|lic|ple|ste|act|tec|ote|rot|ele|ura| ni|ie |adi|u p|seg|s i|un |und|a n|lqu|alq|o i|inc|sti| si|n s|ern",
@@ -5184,7 +6140,7 @@
     }
   });
 
-  // node_modules/franc-min/index.js
+  // electron-backup/node_modules/franc-min/index.js
   var franc_min_exports = {};
   __export(franc_min_exports, {
     franc: () => franc,
@@ -5300,7 +6256,7 @@
   }
   var MAX_LENGTH, MIN_LENGTH, MAX_DIFFERENCE, own2, script, numericData;
   var init_franc_min = __esm({
-    "node_modules/franc-min/index.js"() {
+    "electron-backup/node_modules/franc-min/index.js"() {
       init_trigram_utils();
       init_expressions();
       init_data();
@@ -5330,10 +6286,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords__123.js
+  // electron-backup/node_modules/stopword/src/stopwords__123.js
   var num123, numFas, numKor, numMya, numTel, _123;
   var init_stopwords_123 = __esm({
-    "node_modules/stopword/src/stopwords__123.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords__123.js"() {
       num123 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
       numFas = ["\u06F1", "\u06F2", "\u06F3", "\u06F4", "\u06F5", "\u06F6", "\u06F7", "\u06F8", "\u06F9", "\u06F0"];
       numKor = ["\uFF10", "\uFF11", "\uFF12", "\uFF13", "\uFF14", "\uFF15", "\uFF16", "\uFF17", "\uFF18", "\uFF19"];
@@ -5343,10 +6299,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_afr.js
+  // electron-backup/node_modules/stopword/src/stopwords_afr.js
   var afr;
   var init_stopwords_afr = __esm({
-    "node_modules/stopword/src/stopwords_afr.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_afr.js"() {
       afr = [
         "die",
         "het",
@@ -5402,10 +6358,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_ara.js
+  // electron-backup/node_modules/stopword/src/stopwords_ara.js
   var ara;
   var init_stopwords_ara = __esm({
-    "node_modules/stopword/src/stopwords_ara.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_ara.js"() {
       ara = [
         "\u060C",
         "\u0651\u0622\u0636",
@@ -5890,10 +6846,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_hye.js
+  // electron-backup/node_modules/stopword/src/stopwords_hye.js
   var hye;
   var init_stopwords_hye = __esm({
-    "node_modules/stopword/src/stopwords_hye.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_hye.js"() {
       hye = [
         "\u0561\u0575\u0564",
         "\u0561\u0575\u056C",
@@ -5944,10 +6900,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_eus.js
+  // electron-backup/node_modules/stopword/src/stopwords_eus.js
   var eus;
   var init_stopwords_eus = __esm({
-    "node_modules/stopword/src/stopwords_eus.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_eus.js"() {
       eus = [
         "al",
         "anitz",
@@ -6051,10 +7007,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_ben.js
+  // electron-backup/node_modules/stopword/src/stopwords_ben.js
   var ben;
   var init_stopwords_ben = __esm({
-    "node_modules/stopword/src/stopwords_ben.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_ben.js"() {
       ben = [
         "\u0985\u09A4\u098F\u09AC",
         "\u0985\u09A5\u099A",
@@ -6458,10 +7414,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_bre.js
+  // electron-backup/node_modules/stopword/src/stopwords_bre.js
   var bre;
   var init_stopwords_bre = __esm({
-    "node_modules/stopword/src/stopwords_bre.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_bre.js"() {
       bre = [
         "'blam",
         "'d",
@@ -7670,10 +8626,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_bul.js
+  // electron-backup/node_modules/stopword/src/stopwords_bul.js
   var bul;
   var init_stopwords_bul = __esm({
-    "node_modules/stopword/src/stopwords_bul.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_bul.js"() {
       bul = [
         "\u0430",
         "\u0430\u0432\u0442\u0435\u043D\u0442\u0438\u0447\u0435\u043D",
@@ -7938,10 +8894,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_cat.js
+  // electron-backup/node_modules/stopword/src/stopwords_cat.js
   var cat;
   var init_stopwords_cat = __esm({
-    "node_modules/stopword/src/stopwords_cat.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_cat.js"() {
       cat = [
         "a",
         "abans",
@@ -8165,10 +9121,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_zho.js
+  // electron-backup/node_modules/stopword/src/stopwords_zho.js
   var zho;
   var init_stopwords_zho = __esm({
-    "node_modules/stopword/src/stopwords_zho.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_zho.js"() {
       zho = [
         "\u7684",
         "\u5730",
@@ -8252,10 +9208,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_hrv.js
+  // electron-backup/node_modules/stopword/src/stopwords_hrv.js
   var hrv;
   var init_stopwords_hrv = __esm({
-    "node_modules/stopword/src/stopwords_hrv.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_hrv.js"() {
       hrv = [
         "a",
         "ako",
@@ -8440,10 +9396,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_ces.js
+  // electron-backup/node_modules/stopword/src/stopwords_ces.js
   var ces;
   var init_stopwords_ces = __esm({
-    "node_modules/stopword/src/stopwords_ces.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_ces.js"() {
       ces = [
         "a",
         "aby",
@@ -8795,10 +9751,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_dan.js
+  // electron-backup/node_modules/stopword/src/stopwords_dan.js
   var dan;
   var init_stopwords_dan = __esm({
-    "node_modules/stopword/src/stopwords_dan.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_dan.js"() {
       dan = [
         "ad",
         "af",
@@ -8974,10 +9930,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_nld.js
+  // electron-backup/node_modules/stopword/src/stopwords_nld.js
   var nld;
   var init_stopwords_nld = __esm({
-    "node_modules/stopword/src/stopwords_nld.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_nld.js"() {
       nld = [
         "aan",
         "af",
@@ -9087,10 +10043,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_eng.js
+  // electron-backup/node_modules/stopword/src/stopwords_eng.js
   var eng;
   var init_stopwords_eng = __esm({
-    "node_modules/stopword/src/stopwords_eng.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_eng.js"() {
       eng = [
         "about",
         "after",
@@ -9204,10 +10160,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_epo.js
+  // electron-backup/node_modules/stopword/src/stopwords_epo.js
   var epo;
   var init_stopwords_epo = __esm({
-    "node_modules/stopword/src/stopwords_epo.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_epo.js"() {
       epo = [
         "adia\u016D",
         "ajn",
@@ -9386,10 +10342,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_est.js
+  // electron-backup/node_modules/stopword/src/stopwords_est.js
   var est;
   var init_stopwords_est = __esm({
-    "node_modules/stopword/src/stopwords_est.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_est.js"() {
       est = [
         "aga",
         "ei",
@@ -9430,10 +10386,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_fin.js
+  // electron-backup/node_modules/stopword/src/stopwords_fin.js
   var fin;
   var init_stopwords_fin = __esm({
-    "node_modules/stopword/src/stopwords_fin.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_fin.js"() {
       fin = [
         "ja",
         "on",
@@ -9512,10 +10468,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_fra.js
+  // electron-backup/node_modules/stopword/src/stopwords_fra.js
   var fra;
   var init_stopwords_fra = __esm({
-    "node_modules/stopword/src/stopwords_fra.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_fra.js"() {
       fra = [
         "\xEAtre",
         "avoir",
@@ -9689,10 +10645,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_glg.js
+  // electron-backup/node_modules/stopword/src/stopwords_glg.js
   var glg;
   var init_stopwords_glg = __esm({
-    "node_modules/stopword/src/stopwords_glg.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_glg.js"() {
       glg = [
         "a",
         "al\xED",
@@ -9858,10 +10814,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_deu.js
+  // electron-backup/node_modules/stopword/src/stopwords_deu.js
   var deu;
   var init_stopwords_deu = __esm({
-    "node_modules/stopword/src/stopwords_deu.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_deu.js"() {
       deu = [
         "a",
         "ab",
@@ -10488,10 +11444,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_ell.js
+  // electron-backup/node_modules/stopword/src/stopwords_ell.js
   var ell;
   var init_stopwords_ell = __esm({
-    "node_modules/stopword/src/stopwords_ell.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_ell.js"() {
       ell = [
         "\u03B1\u03BB\u03BB\u03B1",
         "\u03B1\u03BD",
@@ -10572,10 +11528,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_guj.js
+  // electron-backup/node_modules/stopword/src/stopwords_guj.js
   var guj;
   var init_stopwords_guj = __esm({
-    "node_modules/stopword/src/stopwords_guj.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_guj.js"() {
       guj = [
         "\u0A85\u0A82\u0A97\u0AC7",
         "\u0A85\u0A82\u0AA6\u0AB0",
@@ -10805,10 +11761,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_hau.js
+  // electron-backup/node_modules/stopword/src/stopwords_hau.js
   var hau;
   var init_stopwords_hau = __esm({
-    "node_modules/stopword/src/stopwords_hau.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_hau.js"() {
       hau = [
         "ta",
         "da",
@@ -10864,10 +11820,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_heb.js
+  // electron-backup/node_modules/stopword/src/stopwords_heb.js
   var heb;
   var init_stopwords_heb = __esm({
-    "node_modules/stopword/src/stopwords_heb.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_heb.js"() {
       heb = [
         "\u05D0\u05D1\u05DC",
         "\u05D0\u05D5",
@@ -11067,10 +12023,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_hin.js
+  // electron-backup/node_modules/stopword/src/stopwords_hin.js
   var hin;
   var init_stopwords_hin = __esm({
-    "node_modules/stopword/src/stopwords_hin.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_hin.js"() {
       hin = [
         "\u0905\u0902\u0926\u0930",
         "\u0905\u0924",
@@ -11301,10 +12257,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_gle.js
+  // electron-backup/node_modules/stopword/src/stopwords_gle.js
   var gle;
   var init_stopwords_gle = __esm({
-    "node_modules/stopword/src/stopwords_gle.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_gle.js"() {
       gle = [
         "a",
         "ach",
@@ -11419,10 +12375,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_hun.js
+  // electron-backup/node_modules/stopword/src/stopwords_hun.js
   var hun;
   var init_stopwords_hun = __esm({
-    "node_modules/stopword/src/stopwords_hun.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_hun.js"() {
       hun = [
         "a",
         "abba",
@@ -12209,10 +13165,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_ind.js
+  // electron-backup/node_modules/stopword/src/stopwords_ind.js
   var ind;
   var init_stopwords_ind = __esm({
-    "node_modules/stopword/src/stopwords_ind.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_ind.js"() {
       ind = [
         "ada",
         "adalah",
@@ -12971,10 +13927,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_ita.js
+  // electron-backup/node_modules/stopword/src/stopwords_ita.js
   var ita;
   var init_stopwords_ita = __esm({
-    "node_modules/stopword/src/stopwords_ita.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_ita.js"() {
       ita = [
         "ad",
         "al",
@@ -13259,10 +14215,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_jpn.js
+  // electron-backup/node_modules/stopword/src/stopwords_jpn.js
   var jpn;
   var init_stopwords_jpn = __esm({
-    "node_modules/stopword/src/stopwords_jpn.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_jpn.js"() {
       jpn = [
         "\u306E",
         "\u306B",
@@ -13377,10 +14333,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_kor.js
+  // electron-backup/node_modules/stopword/src/stopwords_kor.js
   var kor;
   var init_stopwords_kor = __esm({
-    "node_modules/stopword/src/stopwords_kor.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_kor.js"() {
       kor = [
         "\uAC00",
         "\uAC00\uAE4C\uC2A4\uB85C",
@@ -13984,10 +14940,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_kur.js
+  // electron-backup/node_modules/stopword/src/stopwords_kur.js
   var kur;
   var init_stopwords_kur = __esm({
-    "node_modules/stopword/src/stopwords_kur.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_kur.js"() {
       kur = [
         "\u0626\u06CE\u0645\u06D5",
         "\u0626\u06CE\u0648\u06D5",
@@ -14055,10 +15011,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_lat.js
+  // electron-backup/node_modules/stopword/src/stopwords_lat.js
   var lat;
   var init_stopwords_lat = __esm({
-    "node_modules/stopword/src/stopwords_lat.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_lat.js"() {
       lat = [
         "a",
         "ab",
@@ -14113,10 +15069,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_lav.js
+  // electron-backup/node_modules/stopword/src/stopwords_lav.js
   var lav;
   var init_stopwords_lav = __esm({
-    "node_modules/stopword/src/stopwords_lav.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_lav.js"() {
       lav = [
         "aiz",
         "ap",
@@ -14283,10 +15239,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_lit.js
+  // electron-backup/node_modules/stopword/src/stopwords_lit.js
   var lit;
   var init_stopwords_lit = __esm({
-    "node_modules/stopword/src/stopwords_lit.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_lit.js"() {
       lit = [
         "abi",
         "abidvi",
@@ -14766,10 +15722,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_lgg.js
+  // electron-backup/node_modules/stopword/src/stopwords_lgg.js
   var lgg;
   var init_stopwords_lgg = __esm({
-    "node_modules/stopword/src/stopwords_lgg.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_lgg.js"() {
       lgg = [
         "\u0301",
         "\u0300",
@@ -14825,10 +15781,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_lggNd.js
+  // electron-backup/node_modules/stopword/src/stopwords_lggNd.js
   var lggNd;
   var init_stopwords_lggNd = __esm({
-    "node_modules/stopword/src/stopwords_lggNd.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_lggNd.js"() {
       lggNd = [
         "ma",
         "ni",
@@ -14884,10 +15840,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_msa.js
+  // electron-backup/node_modules/stopword/src/stopwords_msa.js
   var msa;
   var init_stopwords_msa = __esm({
-    "node_modules/stopword/src/stopwords_msa.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_msa.js"() {
       msa = [
         "abdul",
         "abdullah",
@@ -15368,10 +16324,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_mar.js
+  // electron-backup/node_modules/stopword/src/stopwords_mar.js
   var mar;
   var init_stopwords_mar = __esm({
-    "node_modules/stopword/src/stopwords_mar.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_mar.js"() {
       mar = [
         "\u0905\u0927\u093F\u0915",
         "\u0905\u0928\u0947\u0915",
@@ -15476,10 +16432,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_mya.js
+  // electron-backup/node_modules/stopword/src/stopwords_mya.js
   var mya;
   var init_stopwords_mya = __esm({
-    "node_modules/stopword/src/stopwords_mya.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_mya.js"() {
       mya = [
         "\u1021\u1015\u1031\u102B\u103A",
         "\u1021\u1014\u1000\u103A",
@@ -15760,10 +16716,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_nob.js
+  // electron-backup/node_modules/stopword/src/stopwords_nob.js
   var nob;
   var init_stopwords_nob = __esm({
-    "node_modules/stopword/src/stopwords_nob.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_nob.js"() {
       nob = [
         "og",
         "i",
@@ -15886,10 +16842,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_panGu.js
+  // electron-backup/node_modules/stopword/src/stopwords_panGu.js
   var panGu;
   var init_stopwords_panGu = __esm({
-    "node_modules/stopword/src/stopwords_panGu.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_panGu.js"() {
       panGu = [
         "\u0A26\u0A47",
         "\u0A35\u0A3F\u0A71\u0A1A",
@@ -16347,10 +17303,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_fas.js
+  // electron-backup/node_modules/stopword/src/stopwords_fas.js
   var fas;
   var init_stopwords_fas = __esm({
-    "node_modules/stopword/src/stopwords_fas.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_fas.js"() {
       fas = [
         "\u0627\u0632",
         "\u0628\u0627",
@@ -16404,10 +17360,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_pol.js
+  // electron-backup/node_modules/stopword/src/stopwords_pol.js
   var pol;
   var init_stopwords_pol = __esm({
-    "node_modules/stopword/src/stopwords_pol.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_pol.js"() {
       pol = [
         "a",
         "aby",
@@ -16692,10 +17648,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_por.js
+  // electron-backup/node_modules/stopword/src/stopwords_por.js
   var por;
   var init_stopwords_por = __esm({
-    "node_modules/stopword/src/stopwords_por.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_por.js"() {
       por = [
         "a",
         "\xE0",
@@ -16807,10 +17763,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_porBr.js
+  // electron-backup/node_modules/stopword/src/stopwords_porBr.js
   var porBr;
   var init_stopwords_porBr = __esm({
-    "node_modules/stopword/src/stopwords_porBr.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_porBr.js"() {
       porBr = [
         "a",
         "\xE0",
@@ -17365,10 +18321,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_ron.js
+  // electron-backup/node_modules/stopword/src/stopwords_ron.js
   var ron;
   var init_stopwords_ron = __esm({
-    "node_modules/stopword/src/stopwords_ron.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_ron.js"() {
       ron = [
         "acea",
         "aceasta",
@@ -17656,10 +18612,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_rus.js
+  // electron-backup/node_modules/stopword/src/stopwords_rus.js
   var rus;
   var init_stopwords_rus = __esm({
-    "node_modules/stopword/src/stopwords_rus.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_rus.js"() {
       rus = [
         "\u0438",
         "\u0432",
@@ -17809,10 +18765,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_slk.js
+  // electron-backup/node_modules/stopword/src/stopwords_slk.js
   var slk;
   var init_stopwords_slk = __esm({
-    "node_modules/stopword/src/stopwords_slk.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_slk.js"() {
       slk = [
         "a",
         "aby",
@@ -17928,10 +18884,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_slv.js
+  // electron-backup/node_modules/stopword/src/stopwords_slv.js
   var slv;
   var init_stopwords_slv = __esm({
-    "node_modules/stopword/src/stopwords_slv.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_slv.js"() {
       slv = [
         "a",
         "ali",
@@ -18383,10 +19339,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_som.js
+  // electron-backup/node_modules/stopword/src/stopwords_som.js
   var som;
   var init_stopwords_som = __esm({
-    "node_modules/stopword/src/stopwords_som.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_som.js"() {
       som = [
         "oo",
         "atabo",
@@ -18424,10 +19380,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_sot.js
+  // electron-backup/node_modules/stopword/src/stopwords_sot.js
   var sot;
   var init_stopwords_sot = __esm({
-    "node_modules/stopword/src/stopwords_sot.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_sot.js"() {
       sot = [
         "a",
         "le",
@@ -18470,10 +19426,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_spa.js
+  // electron-backup/node_modules/stopword/src/stopwords_spa.js
   var spa;
   var init_stopwords_spa = __esm({
-    "node_modules/stopword/src/stopwords_spa.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_spa.js"() {
       spa = [
         "a",
         "un",
@@ -18538,10 +19494,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_swa.js
+  // electron-backup/node_modules/stopword/src/stopwords_swa.js
   var swa;
   var init_stopwords_swa = __esm({
-    "node_modules/stopword/src/stopwords_swa.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_swa.js"() {
       swa = [
         "na",
         "ya",
@@ -18692,10 +19648,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_swe.js
+  // electron-backup/node_modules/stopword/src/stopwords_swe.js
   var swe;
   var init_stopwords_swe = __esm({
-    "node_modules/stopword/src/stopwords_swe.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_swe.js"() {
       swe = [
         "aderton",
         "adertonde",
@@ -19119,10 +20075,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_tha.js
+  // electron-backup/node_modules/stopword/src/stopwords_tha.js
   var tha;
   var init_stopwords_tha = __esm({
-    "node_modules/stopword/src/stopwords_tha.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_tha.js"() {
       tha = [
         "\u0E01\u0E25\u0E48\u0E32\u0E27",
         "\u0E01\u0E27\u0E48\u0E32",
@@ -19243,10 +20199,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_tgl.js
+  // electron-backup/node_modules/stopword/src/stopwords_tgl.js
   var tgl;
   var init_stopwords_tgl = __esm({
-    "node_modules/stopword/src/stopwords_tgl.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_tgl.js"() {
       tgl = [
         "akin",
         "aking",
@@ -19399,10 +20355,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_tur.js
+  // electron-backup/node_modules/stopword/src/stopwords_tur.js
   var tur;
   var init_stopwords_tur = __esm({
-    "node_modules/stopword/src/stopwords_tur.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_tur.js"() {
       tur = [
         "acaba",
         "acep",
@@ -19687,10 +20643,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_ukr.js
+  // electron-backup/node_modules/stopword/src/stopwords_ukr.js
   var ukr;
   var init_stopwords_ukr = __esm({
-    "node_modules/stopword/src/stopwords_ukr.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_ukr.js"() {
       ukr = [
         "\u0430",
         "\u0430\u0431\u043E",
@@ -19862,10 +20818,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_urd.js
+  // electron-backup/node_modules/stopword/src/stopwords_urd.js
   var urd;
   var init_stopwords_urd = __esm({
-    "node_modules/stopword/src/stopwords_urd.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_urd.js"() {
       urd = [
         "\u0622\u0626\u06CC",
         "\u0622\u0626\u06D2",
@@ -20388,10 +21344,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_vie.js
+  // electron-backup/node_modules/stopword/src/stopwords_vie.js
   var vie;
   var init_stopwords_vie = __esm({
-    "node_modules/stopword/src/stopwords_vie.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_vie.js"() {
       vie = [
         "b\u1ECB",
         "b\u1EDFi",
@@ -20475,10 +21431,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_yor.js
+  // electron-backup/node_modules/stopword/src/stopwords_yor.js
   var yor;
   var init_stopwords_yor = __esm({
-    "node_modules/stopword/src/stopwords_yor.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_yor.js"() {
       yor = [
         "\xF3",
         "n\xED",
@@ -20544,10 +21500,10 @@
     }
   });
 
-  // node_modules/stopword/src/stopwords_zul.js
+  // electron-backup/node_modules/stopword/src/stopwords_zul.js
   var zul;
   var init_stopwords_zul = __esm({
-    "node_modules/stopword/src/stopwords_zul.js"() {
+    "electron-backup/node_modules/stopword/src/stopwords_zul.js"() {
       zul = [
         "ukuthi",
         "kodwa",
@@ -20587,7 +21543,7 @@
     }
   });
 
-  // node_modules/stopword/src/stopword.js
+  // electron-backup/node_modules/stopword/src/stopword.js
   var stopword_exports = {};
   __export(stopword_exports, {
     _123: () => _123,
@@ -20658,7 +21614,7 @@
   });
   var removeStopwords;
   var init_stopword = __esm({
-    "node_modules/stopword/src/stopword.js"() {
+    "electron-backup/node_modules/stopword/src/stopword.js"() {
       init_stopwords_123();
       init_stopwords_afr();
       init_stopwords_ara();
@@ -22239,7 +23195,7 @@
   // src/optimizer.js
   var require_optimizer = __commonJS({
     "src/optimizer.js"(exports, module) {
-      var nspell = require_nspell_shim();
+      var nspell = require_lib();
       var _nlp = null;
       function nlp(text) {
         if (!_nlp) _nlp = require_compromise_three();
@@ -22426,6 +23382,24 @@
         const code = franc2(text);
         return FRANC_TO_LANG[code] || "en";
       }
+      var SPLIT_TYPOS = [
+        [/\bint he\b/gi, "in the"],
+        [/\bth e\b/gi, "the"],
+        [/\bwit h\b/gi, "with"],
+        [/\bfro m\b/gi, "from"],
+        [/\bsom e\b/gi, "some"],
+        [/\bhav e\b/gi, "have"],
+        [/\bwhe n\b/gi, "when"],
+        [/\bthe n\b/gi, "then"],
+        [/\bthe y\b/gi, "they"],
+        [/\bthe re\b/gi, "there"],
+        [/\bthe ir\b/gi, "their"],
+        [/\bwhe re\b/gi, "where"],
+        [/\bsho w\b/gi, "show"],
+        [/\bsho uld\b/gi, "should"],
+        [/\bcou ld\b/gi, "could"],
+        [/\bwou ld\b/gi, "would"]
+      ];
       var TYPOS = {
         // --- the/that/this/then ---
         "teh": "the",
@@ -22827,7 +23801,14 @@
         "alredy": "already",
         "coul": "could",
         "cuold": "could",
+        "oul": "could",
         "hows": "shows",
+        "hsow": "show",
+        "shwo": "show",
+        "sohw": "show",
+        "redce": "reduce",
+        "redcue": "reduce",
+        "reudce": "reduce",
         "suse": "use",
         "ues": "use",
         "sue": "use",
@@ -22870,9 +23851,23 @@
         "mesage": "message",
         "messgae": "message",
         "messge": "message",
+        "mesages": "messages",
+        "mesagse": "messages",
         "widnow": "window",
         "windwo": "window",
         "winodw": "window",
+        "winow": "window",
+        "popu": "popup",
+        "poppu": "popup",
+        "sems": "seems",
+        "seesm": "seems",
+        "sesm": "seems",
+        "worng": "wrong",
+        "wrogn": "wrong",
+        "wrnog": "wrong",
+        "tyep": "type",
+        "tyep": "type",
+        "tpye": "type",
         "scrren": "screen",
         "sreen": "screen",
         "dipslay": "display",
@@ -23830,10 +24825,18 @@
           }
           return Math.ceil(words * 1.3 + punctuation * 0.5);
         }
-        // ── Protect code blocks during transformations ──
+        // ── Protect code blocks, inline code, and URLs during transformations ──
         _protectCode(text) {
           const blocks = [];
-          const result = text.replace(/```[\s\S]*?```/g, (m) => {
+          let result = text.replace(/```[\s\S]*?```/g, (m) => {
+            blocks.push(m);
+            return `__CB_${blocks.length - 1}__`;
+          });
+          result = result.replace(/`[^`]+`/g, (m) => {
+            blocks.push(m);
+            return `__CB_${blocks.length - 1}__`;
+          });
+          result = result.replace(/(?:https?:\/\/|ftp:\/\/|www\.)[^\s<>\"')\]]+/gi, (m) => {
             blocks.push(m);
             return `__CB_${blocks.length - 1}__`;
           });
@@ -23851,7 +24854,11 @@
           const isEn = !lang || lang === "en";
           const entry = spellers[lang || "en"];
           const nspellInst = entry?.ready && entry.speller ? entry.speller : null;
-          let result = spellCorrect(safe, TYPOS, isEn ? nspellInst : null);
+          let result = safe;
+          for (const [bad, good] of SPLIT_TYPOS) {
+            result = result.replace(bad, good);
+          }
+          result = spellCorrect(result, TYPOS, isEn ? nspellInst : null);
           if (!isEn) {
             result = result.replace(/\b[a-zA-Z\u00C0-\u024F]+\b/g, (word) => {
               const lower = word.toLowerCase();
@@ -24895,3 +25902,13 @@
   window._terseOptimizer = new PromptOptimizer();
   window.PromptOptimizer = PromptOptimizer;
 })();
+/*! Bundled license information:
+
+is-buffer/index.js:
+  (*!
+   * Determine if an object is a Buffer
+   *
+   * @author   Feross Aboukhadijeh <https://feross.org>
+   * @license  MIT
+   *)
+*/

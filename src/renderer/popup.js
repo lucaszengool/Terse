@@ -6,6 +6,21 @@ let minimized = false;
 let agentPanelVisible = false; // true when focused app is an agent host and panel is showing
 let lastShownSessionId = null; // track which session popup is showing to reset on switch
 
+// Global error handler — catches uncaught exceptions
+window.onerror = function(msg, src, line, col, err) {
+  const errMsg = '[UNCAUGHT] ' + msg + ' at ' + src + ':' + line + ':' + col;
+  try {
+    const inv = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
+    if (inv) inv('debug_log', { msg: errMsg }).catch(() => {});
+  } catch(e) {}
+};
+window.addEventListener('unhandledrejection', function(e) {
+  try {
+    const inv = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
+    if (inv) inv('debug_log', { msg: '[UNHANDLED-REJECT] ' + String(e.reason) }).catch(() => {});
+  } catch(ex) {}
+});
+
 // Debug: intercept console.log to write to file via Tauri
 const _origLog = console.log;
 const _origErr = console.error;
@@ -157,14 +172,12 @@ T.on('popup-show', d => {
     document.getElementById('btnReplace').disabled = true;
   }
 
-  // Show agent panel only if this session is the agent host
-  if (activeAgentType && d.sessionId === agentHostSessionId) {
+  // Show agent panel whenever an agent is connected
+  // (agentHostSessionId may not be set yet if agent connected before first popup-show)
+  if (activeAgentType) {
+    if (!agentHostSessionId) agentHostSessionId = d.sessionId;
     document.getElementById('agentPanel').classList.remove('hidden');
     agentPanelVisible = true;
-  } else if (activeAgentType && d.sessionId !== agentHostSessionId) {
-    // Switching to a non-agent session — hide agent panel, show text capture UI
-    document.getElementById('agentPanel').classList.add('hidden');
-    agentPanelVisible = false;
   }
   autoResizePopup();
 });
@@ -286,17 +299,12 @@ function showAgentPanel(snapshot) {
   document.getElementById('agentPanelStatus').textContent = 'Monitoring';
   panel.classList.remove('hidden');
   hideAgentBanner();
-  try { enrichAgentOptStats(snapshot); } catch(e) { console.error('[terse] enrichAgentOptStats error:', e); }
-  try { updateAgentPanel(snapshot); } catch(e) { console.error('[terse] updateAgentPanel error:', e); }
+  try { updateAgentPanel(snapshot); } catch(e) {}
   autoResizePopup();
-  // Debug: log panel dimensions after render
-  requestAnimationFrame(() => {
-    const p = document.getElementById('agentPanel');
-    const b = document.getElementById('bar');
-    console.log('[terse-dbg] showAgentPanel AFTER: panelH=' + p.offsetHeight +
-      ' barH=' + b.offsetHeight + ' panelDisplay=' + getComputedStyle(p).display +
-      ' panelHidden=' + p.classList.contains('hidden'));
-  });
+  // Run enrichment async to avoid freezing UI
+  setTimeout(() => {
+    try { enrichAgentOptStats(snapshot); updateAgentPanel(snapshot); autoResizePopup(); } catch(e) {}
+  }, 200);
 }
 
 function hideAgentPanel() {
@@ -407,6 +415,25 @@ function updateAgentPanel(snapshot) {
     insights.push({ type: 'tip', icon: '✎', text: `${opt.optimizedMessages} prompts could be tighter`, value: '-' + formatTokens(opt.potentialSavings) });
   }
 
+  // Unused tools overhead
+  const tm = snapshot.toolManagement || {};
+  if (tm.unusedEstimate > 3 && (snapshot.turns || 0) > 5) {
+    const overhead = tm.overheadPerTurn || 0;
+    insights.push({ type: 'tip', icon: '⊘', text: `${tm.unusedEstimate} unused tools loaded (~${formatTokens(overhead)} tok/turn overhead)`, value: formatTokens(tm.unusedEstimate) });
+  }
+
+  // Duplicate tool calls
+  const tcp = snapshot.toolCachePotential || {};
+  if (tcp.duplicateCalls > 0) {
+    insights.push({ type: 'warn', icon: '⊜', text: `${tcp.duplicateCalls} duplicate tool calls detected (-${formatTokens(tcp.tokensWasted || 0)} tokens wasted)`, value: '-' + formatTokens(tcp.tokensWasted || 0) });
+  }
+
+  // Compressible tool results
+  const trs = snapshot.toolResultStats || {};
+  if (trs.compressibleTokens > 5000) {
+    insights.push({ type: 'tip', icon: '▤', text: `Tool results ~${formatTokens(trs.compressibleTokens)} compressible`, value: formatTokens(trs.compressibleTokens) });
+  }
+
   if (insights.length > 0) {
     insightsEl.classList.remove('hidden');
     insightsEl.innerHTML = '';
@@ -466,6 +493,91 @@ function updateAgentPanel(snapshot) {
     detailEl.classList.add('hidden');
   }
 
+  // ── Tool result breakdown (top consumers) ──
+  let toolBreakdownEl = document.getElementById('agentToolBreakdown');
+  if (!toolBreakdownEl) {
+    toolBreakdownEl = document.createElement('div');
+    toolBreakdownEl.id = 'agentToolBreakdown';
+    toolBreakdownEl.className = 'agent-tool-breakdown';
+    const insertBefore = document.getElementById('agentWarnings');
+    if (insertBefore) insertBefore.parentNode.insertBefore(toolBreakdownEl, insertBefore);
+  }
+  const toolConsumers = snapshot.toolTokenBreakdown || [];
+  if (toolConsumers.length > 0) {
+    toolBreakdownEl.classList.remove('hidden');
+    toolBreakdownEl.innerHTML = '<div class="opt-detail-header"><span class="opt-detail-title">Top tool consumers</span></div>';
+    const maxTok = toolConsumers[0]?.tokens || 1;
+    for (const tc of toolConsumers.slice(0, 5)) {
+      const pctW = Math.max(Math.round((tc.tokens / maxTok) * 100), 4);
+      const row = document.createElement('div');
+      row.className = 'tool-consumer-row';
+      row.innerHTML =
+        '<span class="tool-consumer-name">' + escapeHtml(tc.name) + ' <span class="tool-consumer-count">x' + tc.calls + '</span></span>' +
+        '<div class="tool-consumer-bar-wrap"><div class="tool-consumer-bar" style="width:' + pctW + '%"></div></div>' +
+        '<span class="tool-consumer-tokens">' + formatTokens(tc.tokens) + '</span>';
+      toolBreakdownEl.appendChild(row);
+    }
+  } else {
+    toolBreakdownEl.classList.add('hidden');
+  }
+
+  // ── Generate CLAUDE.md button ──
+  let claudeMdWrap = document.getElementById('agentClaudeMdWrap');
+  if (!claudeMdWrap) {
+    claudeMdWrap = document.createElement('div');
+    claudeMdWrap.id = 'agentClaudeMdWrap';
+    claudeMdWrap.style.padding = '4px 0';
+    const btn = document.createElement('button');
+    btn.id = 'btnGenClaudeMd';
+    btn.className = 'agent-claudemd-btn';
+    btn.textContent = 'Generate CLAUDE.md rules';
+    btn.addEventListener('click', () => {
+      const outputEl = document.getElementById('claudeMdOutput');
+      if (!outputEl.classList.contains('hidden')) {
+        outputEl.classList.add('hidden');
+        autoResizePopup();
+        return;
+      }
+      const snap = window._lastAgentSnapshot;
+      if (!snap) return;
+      const md = generateClaudeMdSuggestions(snap);
+      document.getElementById('claudeMdContent').textContent = md;
+      outputEl.classList.remove('hidden');
+      autoResizePopup();
+    });
+    claudeMdWrap.appendChild(btn);
+
+    const outputDiv = document.createElement('div');
+    outputDiv.id = 'claudeMdOutput';
+    outputDiv.className = 'claudemd-output hidden';
+    outputDiv.innerHTML =
+      '<pre id="claudeMdContent" class="claudemd-pre"></pre>' +
+      '<button id="btnCopyClaudeMd" class="claudemd-copy-btn">Copy</button>';
+    claudeMdWrap.appendChild(outputDiv);
+
+    // Insert after tool breakdown
+    const insertAfter = toolBreakdownEl || document.getElementById('agentWarnings');
+    if (insertAfter && insertAfter.parentNode) {
+      insertAfter.parentNode.insertBefore(claudeMdWrap, insertAfter.nextSibling);
+    }
+
+    document.getElementById('btnCopyClaudeMd').addEventListener('click', async () => {
+      const text = document.getElementById('claudeMdContent').textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch(e) {
+        // fallback
+        if (T.applyToClipboard) await T.applyToClipboard(text);
+      }
+      const btn2 = document.getElementById('btnCopyClaudeMd');
+      btn2.textContent = 'Copied!';
+      setTimeout(() => { btn2.textContent = 'Copy'; }, 1200);
+    });
+  }
+
+  // Stash snapshot for CLAUDE.md generation
+  window._lastAgentSnapshot = snapshot;
+
   // ── Warnings (compact) ──
   const warningsEl = document.getElementById('agentWarnings');
   const dedupAlerts = snapshot.contextDedupAlerts || [];
@@ -503,7 +615,7 @@ function updateAgentPanel(snapshot) {
   const actEl = document.getElementById('agentActivity');
   const msgs = snapshot.recentMessages || [];
   const lastFew = msgs.slice(-20);
-  const newKey = lastFew.map(m => (m.role || '') + (m.text || '').substring(0, 30)).join('|');
+  const newKey = lastFew.map(m => (m.role || '') + (m.text || '').substring(0, 30) + (m._optSaved || '')).join('|');
   if (actEl.dataset.key !== newKey) {
     actEl.dataset.key = newKey;
     actEl.innerHTML = '';
@@ -516,22 +628,28 @@ function updateAgentPanel(snapshot) {
       const text = (m.text || '').substring(0, 100);
       const tok = m.tokens || 0;
 
-      // ── User messages: run optimizer, show savings badge ──
-      if (m.role === 'user' && m.type !== 'tool_result' && optimizer && (m.text || '').length > 10) {
-        const fullText = m.text || '';
-        const result = optimizer.optimize(fullText);
-        const saved = result.stats.tokensSaved || 0;
-        const pctSaved = result.stats.percentSaved || 0;
-
+      // ── User messages: show with optimization savings ──
+      if (m.role === 'user' && m.type !== 'tool_result') {
         line.innerHTML = prefix + escapeHtml(text);
-        if (saved > 0) {
+        const hasTokenSavings = (m.text || '').length > 10 && m._optSaved > 0;
+        const hasTextChanges = m._optChanged && (m.text || '').length > 10;
+        if (hasTokenSavings || hasTextChanges) {
           const badge = document.createElement('span');
-          badge.className = 'opt-badge';
-          badge.textContent = '-' + saved + ' (' + pctSaved + '%)';
+          if (hasTokenSavings) {
+            badge.className = 'opt-badge saveable';
+            badge.textContent = '-' + m._optSaved + ' tok (' + m._optPct + '%)';
+          } else {
+            // Text improved but no token savings (e.g. typo fixes)
+            badge.className = 'opt-badge fixed';
+            const techs = (m._optTechniques || []).join(', ') || 'improved';
+            badge.textContent = techs;
+          }
           line.appendChild(badge);
-
-          // Click to expand before/after
+          line.classList.add('has-savings');
           line.style.cursor = 'pointer';
+          line.title = 'Click to see before/after optimization';
+          const fullText = m.text;
+          const optText = m._optText || '';
           line.addEventListener('click', () => {
             const existing = line.nextElementSibling;
             if (existing && existing.classList.contains('opt-inline-detail')) {
@@ -540,16 +658,17 @@ function updateAgentPanel(snapshot) {
             const detail = document.createElement('div');
             detail.className = 'opt-inline-detail';
             detail.innerHTML =
-              '<div class="opt-inline-before">' + escapeHtml(fullText.substring(0, 300)) + '</div>' +
-              '<div class="opt-inline-after">' + escapeHtml(result.optimized.substring(0, 300)) + '</div>' +
-              '<div class="opt-inline-tags">' +
-              (result.stats.techniquesApplied || []).map(t =>
-                '<span class="opt-inline-tag">' + t + '</span>'
-              ).join('') + '</div>';
+              '<div class="opt-inline-before">' + escapeHtml((fullText || '').substring(0, 300)) + '</div>' +
+              '<div class="opt-inline-after">' + escapeHtml(optText.substring(0, 300)) + '</div>';
             line.after(detail);
           });
-        } else {
-          addTokenBadge(line, tok, 'ok');
+        } else if ((m.text || '').length > 10) {
+          const badge = document.createElement('span');
+          badge.className = 'opt-badge no-save';
+          badge.textContent = '✓ optimal';
+          line.appendChild(badge);
+        } else if (tok > 0) {
+          addTokenBadge(line, tok, 'dim');
         }
 
       // ── Tool results: show token cost, flag large ones ──
@@ -586,13 +705,15 @@ function updateAgentPanel(snapshot) {
 // Run JS optimizer on user messages to calculate real savings
 
 function enrichAgentOptStats(snapshot) {
+  console.log('[terse-dbg] enrichAgentOptStats START');
   const optimizer = window._terseOptimizer;
-  if (!optimizer) return;
+  if (!optimizer) { console.log('[terse-dbg] no optimizer!'); return; }
 
   // Use full user messages from Rust (all history, not just recent display)
   const userMsgs = snapshot.allUserMessages || [];
   const toolUses = snapshot.allToolUses || [];
   const recentMsgs = snapshot.recentMessages || [];
+  console.log('[terse-dbg] enriching: userMsgs=' + userMsgs.length + ' toolUses=' + toolUses.length);
 
   let totalUserTokens = 0;
   let potentialSavings = 0;
@@ -613,8 +734,10 @@ function enrichAgentOptStats(snapshot) {
   const userTexts = [];
   const dedupAlerts = [];
 
-  // Analyze ALL user messages with optimizer
-  for (const m of userMsgs) {
+  // Analyze user messages with optimizer (limit to last 30 to avoid freezing)
+  const _t0 = performance.now();
+  const limitedMsgs = userMsgs.slice(-30);
+  for (const m of limitedMsgs) {
     const text = m.text || '';
     if (text.length < 10) continue;
     totalMessages++;
@@ -631,31 +754,25 @@ function enrichAgentOptStats(snapshot) {
       for (const t of (result.stats.techniquesApplied || [])) {
         techniqueCounts[t] = (techniqueCounts[t] || 0) + saved;
       }
-      recentOptimizations.push({
-        original: text.substring(0, 200),
-        optimized: result.optimized.substring(0, 200),
-        originalTokens: origTok,
-        optimizedTokens: optTok,
-        saved,
-        percent: result.stats.percentSaved,
-      });
     }
-
-    // Context deduplication — compare with previous user messages
-    for (let i = 0; i < userTexts.length; i++) {
-      const similarity = textSimilarity(text, userTexts[i].text);
-      if (similarity > 70) {
-        const wastedTokens = Math.min(origTok, userTexts[i].tokens);
-        dedupAlerts.push({
-          turnA: userTexts[i].idx + 1,
-          turnB: totalMessages,
-          similarity: Math.round(similarity),
-          wastedTokens,
-        });
-      }
-    }
-    userTexts.push({ text, tokens: origTok, idx: totalMessages - 1 });
   }
+
+  // Also annotate recentMessages so the activity log can show per-message savings
+  let annotated = 0;
+  for (const m of recentMsgs) {
+    if (m.role === 'user' && m.type !== 'tool_result' && (m.text || '').length > 10) {
+      try {
+        const result = optimizer.optimize(m.text);
+        m._optSaved = (result.stats.originalTokens || 0) - (result.stats.optimizedTokens || 0);
+        m._optPct = result.stats.percentSaved || 0;
+        m._optText = result.optimized || '';
+        m._optTechniques = result.stats.techniquesApplied || [];
+        m._optChanged = result.optimized !== m.text; // text changed even if token count same
+        if (m._optSaved > 0 || m._optChanged) annotated++;
+      } catch(e) {}
+    }
+  }
+  console.log('[terse-dbg] enrichment done in ' + Math.round(performance.now() - _t0) + 'ms, ' + annotated + '/' + recentMsgs.length + ' msgs have savings');
 
   // Analyze tool uses for redundancy and bloat
   for (const t of toolUses) {
@@ -704,6 +821,47 @@ function enrichAgentOptStats(snapshot) {
   if (totalConv > 0) {
     snapshot.conversationBloat = Math.round(((potentialSavings + toolResultWaste) / totalConv) * 100);
   }
+}
+
+// ── Generate CLAUDE.md Suggestions ──
+
+function generateClaudeMdSuggestions(snapshot) {
+  const rules = [];
+  const rereads = snapshot.redundantReads || [];
+  const largeResults = snapshot.largeToolResults || [];
+  const ctxFill = snapshot.contextFill || 0;
+  const bd = snapshot.tokenBreakdown || {};
+  const bdTotal = (bd.user || 0) + (bd.assistant || 0) + (bd.tool || 0) || 1;
+  const toolPct = Math.round((bd.tool || 0) / bdTotal * 100);
+
+  if (rereads.length > 0) {
+    rules.push('- Do not re-read files already in context. Track which files have been read and reference them from memory.');
+  }
+  if (largeResults.length > 0) {
+    rules.push('- Use offset/limit when reading files and head_limit for search results. Avoid reading entire files when only a section is needed.');
+  }
+  if (ctxFill > 60) {
+    rules.push('- Be concise. Avoid restating the user\'s question or summarizing what was already said.');
+  }
+  if (toolPct > 50) {
+    rules.push('- Summarize long tool outputs before presenting them. Extract only the relevant lines or data points.');
+  }
+  rules.push('- Keep responses focused and avoid filler phrases. Get straight to the answer or action.');
+
+  const tm = snapshot.toolManagement || {};
+  if (tm.unusedEstimate > 3) {
+    rules.push('- Only request tools you will actually use. Avoid loading unnecessary tool definitions.');
+  }
+
+  const tcp = snapshot.toolCachePotential || {};
+  if (tcp.duplicateCalls > 0) {
+    rules.push('- Cache tool results locally. Do not make the same tool call twice in one session.');
+  }
+
+  let md = '# Agent Optimization Rules\n\n';
+  md += '# Generated by Terse based on observed session patterns\n\n';
+  md += rules.join('\n') + '\n';
+  return md;
 }
 
 // Simple text similarity (Jaccard on word trigrams)
@@ -784,9 +942,11 @@ T.on('agent-disconnected', () => {
 });
 
 T.on('agent-update', (data) => {
+  console.log('[terse-dbg] agent-update received:', data?.agentType, 'activeAgentType:', activeAgentType, 'has session:', !!data?.session);
   if (data.session && activeAgentType === data.agentType) {
-    try { enrichAgentOptStats(data.session); } catch(e) { console.error('[terse] enrich error:', e); }
-    try { updateAgentPanel(data.session); } catch(e) { console.error('[terse] update error:', e); }
+    console.log('[terse-dbg] updating agent panel with', data.session.totalMessages, 'messages');
+    try { enrichAgentOptStats(data.session); } catch(e) { console.error('[terse-dbg] enrichAgentOptStats error:', e); }
+    try { updateAgentPanel(data.session); } catch(e) { console.error('[terse-dbg] updateAgentPanel error:', e); }
     autoResizePopup();
   }
 });

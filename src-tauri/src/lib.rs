@@ -137,6 +137,25 @@ fn is_ax_blind(bundle_id: &str) -> bool {
     ELECTRON_APP_INFO.iter().any(|(bid, _, _)| *bid == bundle_id)
 }
 
+/// Browsers where AX window-walk reads the URL bar instead of page inputs.
+/// These should use key monitor for text capture.
+const BROWSER_BUNDLES: &[&str] = &[
+    "com.google.Chrome",
+    "com.google.Chrome.canary",
+    "com.apple.Safari",
+    "org.mozilla.firefox",
+    "org.mozilla.nightly",
+    "com.brave.Browser",
+    "com.operasoftware.Opera",
+    "com.vivaldi.Vivaldi",
+    "company.thebrowser.Browser",  // Arc
+    "com.microsoft.edgemac",
+];
+
+fn is_browser(bundle_id: &str) -> bool {
+    BROWSER_BUNDLES.iter().any(|b| *b == bundle_id)
+}
+
 fn get_electron_app_info(bundle_id: &str) -> Option<(&'static str, &'static str)> {
     ELECTRON_APP_INFO.iter()
         .find(|(bid, _, _)| *bid == bundle_id)
@@ -468,6 +487,11 @@ async fn replace_in_target(text: String, state: tauri::State<'_, AppState>) -> R
                 } else {
                     capture::write_to_app(&session.name, &text, session.pid).await
                 }
+            } else if session.read_method == "keymonitor" || session.read_method == "keymonitor-cached"
+                || session.bundle_id.contains("com.microsoft.VSCode") {
+                // Terminal/editor without AX access (VS Code terminal, etc.)
+                // Use Ctrl+A (go to start) + Ctrl+K (kill to end) + paste
+                capture::write_via_clipboard_terminal(&text).await
             } else {
                 // For all other apps (browsers, editors, any app) — use clipboard:
                 // Cmd+A to select all, Cmd+V to paste. This is the most reliable
@@ -618,15 +642,19 @@ fn get_agent_detections(state: tauri::State<'_, AppState>) -> Vec<serde_json::Va
 #[tauri::command]
 fn get_agent_sessions(state: tauri::State<'_, AppState>) -> Vec<serde_json::Value> {
     let monitor = lock_or_recover(&state.agent_monitor);
-    monitor.get_connected_sessions()
+    let sessions = monitor.get_connected_sessions();
+    eprintln!("[terse] get_agent_sessions: {} connected", sessions.len());
+    sessions
 }
 
 #[tauri::command]
 async fn accept_agent(agent_type: String, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<Option<serde_json::Value>, String> {
+    eprintln!("[terse] accept_agent called for type={}", agent_type);
     let snapshot = {
         let mut monitor = lock_or_recover(&state.agent_monitor);
         monitor.accept_agent(&agent_type)
     };
+    eprintln!("[terse] accept_agent result: has_snapshot={}", snapshot.is_some());
     if let Some(ref snap) = snapshot {
         let _ = app.emit("agent-connected", serde_json::json!({"session": snap}));
     }
@@ -1010,6 +1038,7 @@ pub fn run() {
             set_popup_minimized,
             move_popup_by,
             resize_popup,
+            debug_log,
             get_agent_detections,
             get_agent_sessions,
             accept_agent,
@@ -1301,15 +1330,65 @@ fn start_polling(app: AppHandle) {
                     }));
                     continue;
                 }
+            } else if is_browser(&session.bundle_id) {
+                // ── Browsers: AX reads URL bar, not page inputs. Use key monitor. ──
+                {
+                    let mut sessions = state.sessions.lock().unwrap_or_else(|e| e.into_inner());
+                    if let Some(s) = sessions.get_mut(&active_id) {
+                        s.read_method = "keymonitor".to_string();
+                    }
+                }
+
+                // Start key monitor if not running
+                if !state.key_monitors.is_running(session.pid) {
+                    let (enter_tx, mut enter_rx) = tokio::sync::mpsc::channel::<String>(8);
+                    state.key_monitors.start_monitor(session.pid, enter_tx);
+
+                    let auto_mode = state.auto_mode.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                    if auto_mode == "send" {
+                        state.key_monitors.set_send_mode(session.pid, true);
+                    }
+
+                    {
+                        let mut sessions = state.sessions.lock().unwrap_or_else(|e| e.into_inner());
+                        if let Some(s) = sessions.get_mut(&active_id) {
+                            s.key_monitor_started = true;
+                        }
+                    }
+
+                    let app2 = app.clone();
+                    let session_id = active_id;
+                    tokio::spawn(async move {
+                        while let Some(text) = enter_rx.recv().await {
+                            handle_send_mode_enter(&text, session_id, &app2).await;
+                        }
+                    });
+                }
+
+                // Read from key monitor buffer
+                if let Some((text, _)) = state.key_monitors.get_buffer(session.pid) {
+                    if text.trim().len() >= 3 {
+                        result = capture::CaptureResult {
+                            text, method: "keymonitor".into(), ok: true, focused: false,
+                        };
+                        user_in_text_input = true;
+                    }
+                }
+                if !user_in_text_input && !session.last_text.is_empty() {
+                    result = capture::CaptureResult {
+                        text: session.last_text.clone(),
+                        method: "keymonitor-cached".into(), ok: true, focused: false,
+                    };
+                    user_in_text_input = true;
+                }
             } else {
-                // ── Any app: try AX first (works for all standard macOS text fields) ──
+                // ── Other apps (Notes, Slack, etc.): AX works reliably ──
                 let ax_result = capture::read_ax_app(
                     session.pid,
                     session.click_pos.map(|p| p.0),
                     session.click_pos.map(|p| p.1),
                 ).await;
 
-                // Accept ANY successful AX result — covers focused, window-walk, position strategies
                 if ax_result.ok && ax_result.text.trim().len() >= 5 {
                     user_in_text_input = true;
                     let method = ax_result.method.clone();
@@ -1319,7 +1398,7 @@ fn start_polling(app: AppHandle) {
                         s.read_method = method;
                     }
                 } else {
-                    // AX couldn't find text — use key monitor buffer if available
+                    // AX failed — fall back to key monitor
                     {
                         let mut sessions = state.sessions.lock().unwrap_or_else(|e| e.into_inner());
                         if let Some(s) = sessions.get_mut(&active_id) {
@@ -1343,8 +1422,7 @@ fn start_polling(app: AppHandle) {
                     }
                 }
 
-                // Always ensure key monitor is running for send/auto mode
-                // (needed for Enter interception even when AX handles text reading)
+                // Ensure key monitor runs for send/auto mode Enter interception
                 let auto_mode = state.auto_mode.lock().unwrap_or_else(|e| e.into_inner()).clone();
                 if auto_mode != "off" && !state.key_monitors.is_running(session.pid) {
                     let (enter_tx, mut enter_rx) = tokio::sync::mpsc::channel::<String>(8);

@@ -442,6 +442,55 @@ pub async fn read_all_via_clipboard(_app_name: &str) -> CaptureResult {
 }
 
 /// Write via clipboard paste — universal method for any app (Cmd+A → Cmd+V)
+/// Write to a terminal input by clearing the current line first, then pasting.
+/// Uses Ctrl+A (go to start of line) + Ctrl+K (kill to end of line) to clear,
+/// then Cmd+V to paste the optimized text.
+pub async fn write_via_clipboard_terminal(text: &str) -> WriteResult {
+    let saved = Command::new("pbpaste").output().await
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+
+    set_clipboard(text).await;
+
+    // Clear terminal input then paste optimized text.
+    // For ink/readline CLIs: End → kill-backward → kill-forward → paste
+    // Also try Home → kill-forward as fallback
+    send_keys_batch(
+        &[
+            "keystroke \"e\" using control down",   // Ctrl+E: go to end
+            "keystroke \"u\" using control down",   // Ctrl+U: kill to start of line
+        ],
+        &[0.02, 0.02],
+    ).await;
+    // Small delay to let the kill register
+    tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+    send_keys_batch(
+        &[
+            "keystroke \"a\" using control down",   // Ctrl+A: go to start
+            "keystroke \"k\" using control down",   // Ctrl+K: kill to end
+        ],
+        &[0.02, 0.02],
+    ).await;
+    tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+    // Now paste the optimized text
+    send_keys_batch(
+        &[
+            "keystroke \"v\" using command down",   // Cmd+V: paste
+        ],
+        &[0.0],
+    ).await;
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    // Restore clipboard
+    let saved_clone = saved;
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        set_clipboard(&saved_clone).await;
+    });
+
+    WriteResult { ok: true, method: "clipboard-terminal".to_string() }
+}
+
 pub async fn write_via_clipboard(app_name: &str, text: &str, skip_activate: bool) -> WriteResult {
     let saved = Command::new("pbpaste").output().await
         .map(|o| String::from_utf8_lossy(&o.stdout).to_string())

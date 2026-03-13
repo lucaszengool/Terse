@@ -476,8 +476,8 @@
 <!-- ═══ HERO ═══ -->
 <section class="hero">
   <div class="hero-glow"></div>
-  <h1 class="rv">Save every token<br><span class="gradient-text">on your AI.</span></h1>
-  <p class="sub rv d1">Cut 40-70% of your AI token costs. Terse auto-compresses every prompt, fixes typos, deduplicates context, and tracks spend — across ChatGPT, Claude Code, Cursor, and OpenClaw.</p>
+  <h1 class="rv">Save every token<br><span class="gradient-text">on any AI usage.</span></h1>
+  <p class="sub rv d1">Cut 40-70% of your AI token costs. Terse monitors agent sessions in real time — compressing prompts, catching duplicate tool calls, detecting redundant file reads, and tracking per-turn cost across Claude Code, OpenClaw, Cursor, and ChatGPT.</p>
   <div class="hero-actions rv d2">
     <a href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse-1.0.0-x86_64.dmg" class="btn-primary" style="text-decoration:none">Download for macOS <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
     <button class="btn-ghost" onclick="document.getElementById('pipeline').scrollIntoView({behavior:'smooth'})">See the pipeline</button>
@@ -686,18 +686,18 @@
     <div class="features-grid">
       <div class="feat rv">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
-        <h3>Compress every prompt</h3>
-        <p>Strips filler, fixes typos, shortens phrases, and compresses verbose text — automatically, before send. You type naturally, the model gets 40-70% fewer input tokens.</p>
+        <h3>Optimize every message</h3>
+        <p>Intercepts prompts and agent commands before they hit the API — strips filler, fixes typos, shortens phrases, compresses verbose text. 20+ techniques, 40-70% fewer input tokens.</p>
       </div>
       <div class="feat rv d1">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
-        <h3>Optimize agent sessions</h3>
-        <p>Terse monitors Claude Code, OpenClaw, and Cursor sessions in real time — compressing your messages, trimming redundant context, tracking tool calls, cache hits, and per-turn cost.</p>
+        <h3>Monitor agent sessions</h3>
+        <p>Auto-detects Claude Code, OpenClaw, Cursor, and Aider. Tails JSONL session logs in real time — tracking input/output tokens, cache efficiency, tool call overhead, duplicate calls, redundant file reads, and per-turn cost with model-aware pricing.</p>
       </div>
       <div class="feat rv d2">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
         <h3>Eliminate wasted tokens</h3>
-        <p>Catches typos before they cause retry loops, deduplicates repeated context across turns, drops low-value pleasantries, and prevents the conversation history bloat that makes agents expensive.</p>
+        <p>Detects duplicate tool calls, flags files read multiple times, estimates compressible tool results, and catches typos that cause costly retry loops. Generates CLAUDE.md rules so agents learn from past waste.</p>
       </div>
       <div class="feat-divider"></div>
       <div class="works-with rv d1">
@@ -724,14 +724,14 @@
     <div class="rvl">
       <div class="label">Agent Token Optimization</div>
       <h2>Every turn optimized,<br><span class="gradient-text">automatically.</span></h2>
-      <p class="desc">Agent sessions are token-intensive — a single task can consume 50x more tokens than a simple chat. Terse attacks this from every angle: compressing your prompts, deduplicating repeated context across turns, catching typos that cause retry loops, and tracking where every token goes.</p>
+      <p class="desc">A single agent task can consume 50x more tokens than a chat message. Terse runs 5 parallel optimization strategies: compressing your prompts, detecting duplicate tool calls, flagging redundant file reads, estimating compressible tool results, and auto-generating CLAUDE.md rules that teach agents to waste fewer tokens next session.</p>
       <ul class="flist">
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Compresses every user message before it hits the API</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Deduplicates context — catches repeated instructions across turns</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Fixes typos before they cause agent retry loops</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tracks input, output, cache reads, tool calls per turn</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Monitors JSONL session logs for real-time cost visibility</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Savings compound — 5-turn session saves 200-400 tokens</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Detects duplicate tool calls — same tool + input = wasted tokens</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Flags files read multiple times (~800 tok wasted per re-read)</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Estimates compressible tool results (Read: 60%, Grep: 40%)</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tracks unused tools — ~300 tok overhead per unused tool per call</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Generates CLAUDE.md rules from session patterns for future savings</li>
       </ul>
       <div class="alts"><span>Claude Code</span><span>OpenClaw</span><span>Aider</span><span>Cursor Agent</span></div>
     </div>
@@ -805,11 +805,11 @@
     <div class="rvl">
       <div class="label">Works Everywhere</div>
       <h2>Runs on<br><span class="gradient-text">any app, automatically.</span></h2>
-      <p class="desc">Connect Terse to Chrome, Cursor, VS Code, OpenClaw, or any terminal — it auto-detects text fields via macOS Accessibility and starts optimizing immediately. No plugins to install, no workflows to change. Just open the app and Terse is already working.</p>
+      <p class="desc">Connect Terse to Chrome, Cursor, VS Code, OpenClaw, or any terminal — it auto-detects text fields via macOS Accessibility and agent sessions via process scanning. No plugins to install. Agent sessions are detected automatically every 5 seconds.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-detects any text input — browsers, IDEs, terminals, agents</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>7-stage pipeline runs on every prompt before send</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Code blocks protected · on-device · zero latency</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-detects agent processes — Claude Code, OpenClaw, Cursor, Aider</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>7-stage pipeline runs on every prompt and agent command</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Code blocks, URLs, inline code all protected · on-device · zero latency</li>
       </ul>
     </div>
     <div class="rvr d1">
@@ -845,18 +845,19 @@
   <div class="s-inner rev">
     <div class="rvr">
       <div class="label">Live Token Optimization</div>
-      <h2>Every prompt<br><span class="gradient-text">rewritten live.</span></h2>
-      <p class="desc">As you type, Terse edits your prompt in real time — fixing typos, stripping filler, compressing verbose phrasing. The optimized version is what gets sent to the model. Fewer tokens per message means lower cost and better responses.</p>
+      <h2>Every message<br><span class="gradient-text">optimized live.</span></h2>
+      <p class="desc">As you type, Terse rewrites your prompt in real time — fixing typos, stripping filler, compressing verbose phrasing. But it doesn't stop there: when agents take actions, Terse optimizes their commands too. Every token saved — from your prompts and agent operations — means lower cost and better responses.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Rewrites every prompt before it's sent — automatically</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Rewrites prompts and agent commands before they're sent</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Context-aware: "what souls I do" → "what should I do"</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Optimizes agent tool calls, file reads, and context passing</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Safe: skips ALL-CAPS, Capitalized, code tokens</li>
       </ul>
     </div>
     <div class="rvl d1">
       <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Spell Correction — Live</span></div>
-        <div class="spell-flow" id="spellViz" style="height:200px;overflow:hidden">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Token Optimization — Live</span></div>
+        <div class="spell-flow" id="spellViz" style="height:220px;overflow:hidden">
           <div class="spell-detect" id="spellDetect"></div>
           <div class="spell-sentence mono" id="spellSentence"></div>
           <div class="spell-stages-mini">
@@ -881,23 +882,23 @@
     <div class="rvl">
       <div class="label">20+ Techniques</div>
       <h2>Every wasted<br><span class="gradient-text">token found.</span></h2>
-      <p class="desc">Filler removal, question-to-imperative, Jaccard deduplication, telegraph compression — each technique targets a different source of token waste in both manual prompts and agent conversations.</p>
+      <p class="desc">Filler removal, question-to-imperative, Jaccard deduplication, telegraph compression — each technique targets a different source of token waste. Applied to your prompts and agent commands alike.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>130+ phrase-shortening rules for verbose prompts</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Semantic dedup — catches repeated questions across turns</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Low-info dropping — removes "thanks" and pleasantries</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>130+ phrase-shortening rules for prompts and agent messages</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Semantic dedup — catches repeated context across agent turns</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tool result compression — flags large Read/Grep results for trimming</li>
       </ul>
     </div>
     <div class="rvr d1">
       <div class="win">
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Techniques — Live</span></div>
         <div class="tech-cards" id="techViz">
-          <div class="tc" id="tc0"><h4>Filler Removal</h4><div class="tc-demo mono" id="td0"></div></div>
+          <div class="tc" id="tc0"><h4>Redundant Read Detection</h4><div class="tc-demo mono" id="td0"></div></div>
           <div class="tc" id="tc1"><h4>Question → Imperative</h4><div class="tc-demo mono" id="td1"></div></div>
-          <div class="tc" id="tc2"><h4>Phrase Shortening</h4><div class="tc-demo mono" id="td2"></div></div>
+          <div class="tc" id="tc2"><h4>Duplicate Tool Call</h4><div class="tc-demo mono" id="td2"></div></div>
           <div class="tc" id="tc3"><h4>Semantic Dedup</h4><div class="tc-demo mono" id="td3"></div></div>
-          <div class="tc" id="tc4"><h4>Telegraph Style</h4><div class="tc-demo mono" id="td4"></div></div>
-          <div class="tc" id="tc5"><h4>Low-Info Drop</h4><div class="tc-demo mono" id="td5"></div></div>
+          <div class="tc" id="tc4"><h4>Filler Removal</h4><div class="tc-demo mono" id="td4"></div></div>
+          <div class="tc" id="tc5"><h4>Unused Tool Overhead</h4><div class="tc-demo mono" id="td5"></div></div>
         </div>
       </div>
     </div>
@@ -912,11 +913,11 @@
     <div class="rvr">
       <div class="label">Three Modes</div>
       <h2>You control<br><span class="gradient-text">how much to save.</span></h2>
-      <p class="desc">Different contexts need different levels. Soft for careful prompts, Normal for everyday use, Aggressive for agent sessions where every token counts against your bill.</p>
+      <p class="desc">Different contexts need different levels. Soft for careful prompts, Normal for everyday chat, Aggressive for agent sessions where a single task can burn through thousands of tokens.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Soft:</strong> Typo-fix only. Perfect for critical prompts.</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Normal:</strong> Strips filler and hedging. Best for chat.</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Aggressive:</strong> Max savings. Ideal for agents + APIs.</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Soft:</strong> Typo-fix + whitespace only. Perfect for critical prompts.</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Normal:</strong> Strips filler, hedging, and meta-language. Best for chat.</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Aggressive:</strong> Max compression + telegraph style. Built for agent sessions.</li>
       </ul>
     </div>
     <div class="rvl d1">
@@ -942,12 +943,14 @@
     <div class="rvl">
       <div class="label">Agent Monitor</div>
       <h2>See everything<br><span class="gradient-text">your agent does.</span></h2>
-      <p class="desc">Terse auto-detects Claude Code, OpenClaw, Aider, and Cursor Agent. It tails session logs in real time — tracking tokens, cost, tool calls, cache hits, typos caught, and cumulative savings.</p>
+      <p class="desc">Terse auto-detects Claude Code, OpenClaw, Aider, and Cursor Agent via process scanning every 5 seconds. It tails JSONL session logs in real time with model-aware pricing (Opus, Sonnet, Haiku) — giving you full visibility into where every token goes.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Live token tracking: input, output, cache reads</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Per-session cost estimation + savings potential</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Spellcheck on every prompt before it's sent</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tool call tracking + activity feed</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Live token tracking: input, output, cache reads, context fill %</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Model-aware cost estimation — Opus/Sonnet/Haiku pricing built in</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Duplicate tool call detection + redundant file read alerts</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Unused tool overhead tracking (~300 tok per unused tool per call)</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Context fill meter — warns at 60% and alerts at 85% to run /compact</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-generates CLAUDE.md optimization rules from session patterns</li>
       </ul>
       <div class="alts"><span>Claude Code</span><span>OpenClaw</span><span>Aider</span><span>Cursor Agent</span></div>
     </div>
@@ -986,22 +989,23 @@
     <div class="rvr">
       <div class="label">Benchmarks</div>
       <h2>Tested on<br><span class="gradient-text">real sessions.</span></h2>
-      <p class="desc">Tested on real ChatGPT prompts, Claude Code sessions, and agent workflows. Clean technical prompts pass through untouched. Verbose prompts and agent messages see 40-70% reduction.</p>
+      <p class="desc">Tested on real ChatGPT prompts, Claude Code agent sessions, and multi-turn agent workflows. Clean technical prompts pass untouched. Verbose prompts and agent messages see 40-70% reduction. Combined with tool overhead savings, total session reduction reaches 30-60%.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Benchmarked across manual prompts and agent turns</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Benchmarked across manual prompts, agent turns, and tool calls</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Clean prompts correctly return 0% — no false changes</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Savings compound: 5-turn agent session saves 200-400+ tokens</li>
       </ul>
     </div>
     <div class="rvl d1">
       <div class="win">
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Benchmarks — Aggressive Mode</span></div>
         <div class="bench-bars" id="benchViz">
-          <div class="bb" data-pct="51"><span class="bb-label">Typo-heavy rambling</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-51%</span></div>
-          <div class="bb" data-pct="60"><span class="bb-label">Verbose Docker Q</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-60%</span></div>
-          <div class="bb" data-pct="46"><span class="bb-label">Chatty debug request</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-46%</span></div>
-          <div class="bb" data-pct="64"><span class="bb-label">Mixed typos + filler</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-64%</span></div>
-          <div class="bb" data-pct="63"><span class="bb-label">Well-written (Normal)</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-63%</span></div>
-          <div class="bb" data-pct="28"><span class="bb-label">Repeated questions</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-28%</span></div>
+          <div class="bb" data-pct="64"><span class="bb-label">Agent: mixed typos + filler</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-64%</span></div>
+          <div class="bb" data-pct="60"><span class="bb-label">Agent: verbose debug prompt</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-60%</span></div>
+          <div class="bb" data-pct="51"><span class="bb-label">Claude Code: typo-heavy</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-51%</span></div>
+          <div class="bb" data-pct="46"><span class="bb-label">OpenClaw: chatty request</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-46%</span></div>
+          <div class="bb" data-pct="35"><span class="bb-label">Tool overhead (unused)</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-35%</span></div>
+          <div class="bb" data-pct="28"><span class="bb-label">Repeated context (dedup)</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-28%</span></div>
           <div class="bb" data-pct="0"><span class="bb-label">Clean technical</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">0%</span></div>
         </div>
       </div>
@@ -1073,12 +1077,12 @@
 <section class="stats-section">
   <div class="stats-inner">
     <h2 class="rv">Built on <span class="gradient-text">research.</span></h2>
-    <p class="rv d1" style="color:var(--t3);font-size:15px;max-width:480px;margin:-40px auto 50px">Grounded in LLMLingua, Norvig spelling, selective context pruning, and real-world prompt analysis.</p>
+    <p class="rv d1" style="color:var(--t3);font-size:15px;max-width:480px;margin:-40px auto 50px">Grounded in LLMLingua, Norvig spelling, selective context pruning, and real-world agent session analysis across thousands of Claude Code turns.</p>
     <div class="stats-grid">
-      <div class="stat-card rv d1"><div class="stat-num" data-t="7" data-s="">0</div><div class="stat-lbl">Pipeline stages</div></div>
+      <div class="stat-card rv d1"><div class="stat-num" data-t="5" data-s="">0</div><div class="stat-lbl">Optimization strategies</div></div>
       <div class="stat-card rv d1"><div class="stat-num" data-t="20" data-s="+">0</div><div class="stat-lbl">Token reduction techniques</div></div>
-      <div class="stat-card rv d2"><div class="stat-num" data-t="400" data-s="+">0</div><div class="stat-lbl">Typo corrections built-in</div></div>
-      <div class="stat-card rv d3"><div class="stat-num" data-t="12" data-s="">0</div><div class="stat-lbl">Apps &amp; agents supported</div></div>
+      <div class="stat-card rv d2"><div class="stat-num" data-t="4" data-s="">0</div><div class="stat-lbl">Agents auto-detected</div></div>
+      <div class="stat-card rv d3"><div class="stat-num" data-t="400" data-s="+">0</div><div class="stat-lbl">Typo corrections built-in</div></div>
     </div>
   </div>
 </section>
@@ -1112,15 +1116,15 @@
       <div class="price-card recommended">
         <div class="price-tier" style="color:var(--ac)">Pro</div>
         <div class="price-amount"><span class="curr">$</span>7<span style="font-size:32px">.99</span><span class="period">/mo</span></div>
-        <p class="price-desc">For developers who optimize every day. Unlimited prompts, multi-session.</p>
+        <p class="price-desc">For developers running agent sessions daily. Unlimited prompts, multi-session monitoring.</p>
         <ul class="price-features">
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;optimizations</li>
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>3 connected sessions</li>
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>2 devices</li>
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>All 3 optimization modes</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Agent monitoring (Claude Code, etc)</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Agent monitoring + duplicate detection</li>
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Auto-replace &amp; Send-mode</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Token statistics dashboard</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>CLAUDE.md rule generation</li>
         </ul>
         <button class="price-btn accent" onclick="handlePricing('pro')">Subscribe to Pro</button>
       </div>
@@ -1135,7 +1139,7 @@
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;connected sessions</li>
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;devices</li>
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>All 3 optimization modes</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Agent monitoring + analytics</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Full agent analytics + rule generation</li>
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Auto-replace &amp; Send-mode</li>
           <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Priority support</li>
         </ul>
@@ -1149,7 +1153,7 @@
 <section class="cta" id="dl">
   <div class="cta-glow"></div>
   <h2 class="rv">Stop wasting<br><span class="gradient-text">tokens and money.</span></h2>
-  <p class="rv d1">Every prompt optimized. Every typo caught. Every agent session tracked. All on your machine — free, private, no cloud required.</p>
+  <p class="rv d1">Every prompt optimized. Every agent turn monitored. Duplicate tool calls caught. Redundant reads flagged. CLAUDE.md rules auto-generated. All on your machine — free, private, no cloud.</p>
   <div class="hero-actions rv d2">
     <a href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse-1.0.0-x86_64.dmg" class="btn-primary" style="text-decoration:none">Download for macOS <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
     <a href="#" class="btn-ghost">GitHub <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></a>
@@ -1167,7 +1171,7 @@
 
 <footer>
   <div class="footer-inner">
-    <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p>Token optimizer + agent monitor. Reduce prompt costs, track sessions, catch typos. All on-device.</p></div>
+    <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p>Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost, generate CLAUDE.md rules. All on-device.</p></div>
     <div class="footer-col"><h4>Product</h4><a href="#pipeline">Pipeline</a><a href="#techniques">Techniques</a><a href="#agents">Agent Monitor</a><a href="#pricing">Pricing</a><a href="#dl">Download</a></div>
     <div class="footer-col"><h4>Techniques</h4><a href="#">Spell Correction</a><a href="#">Pattern Optimization</a><a href="#">NLP Analysis</a><a href="#">Telegraph Compression</a></div>
     <div class="footer-col"><h4>Research</h4><a href="#">LLMLingua (EMNLP 2023)</a><a href="#">Norvig Spelling</a><a href="#">Selective Context</a><a href="#">Docs</a></div>
@@ -1251,17 +1255,17 @@ document.querySelectorAll('.stat-num').forEach(el=>cObs.observe(el));
       {t:400,fn:()=>{showPhase('hwP3');$('hwOptimized').textContent=optimized;$('hwTokAfter').textContent='9 tokens · −83% · $0.006 saved · auto-sent ✔'}},
       {t:450,fn:()=>showPhase('hwP4')},
       {t:180,fn:()=>showAction(0,'Read auth.ts, token.ts (245 lines) — 18 tok cached')},
-      {t:260,fn:()=>showAction(1,'Search: token refresh — deduped vs turn 1 context')},
+      {t:260,fn:()=>showAction(1,'Read auth.ts again — flagged: redundant (~800 tok waste)')},
       {t:260,fn:()=>showAction(2,'Edit auth.ts:47 — applied (tool call tracked)')},
-      {t:260,fn:()=>showAction(3,'Run npm test — 8/8 pass · $0.003 tool cost')},
-      {t:220,fn:()=>showAction(4,'Response: 89 out tok · 24 cache reads · $0.018 total')},
+      {t:260,fn:()=>showAction(3,'Run npm test — 8/8 pass · 3 unused tools = 900 tok overhead')},
+      {t:220,fn:()=>showAction(4,'89 out · 24 cache · $0.018 total · CLAUDE.md rule generated')},
       {t:450,fn:()=>{
         showPhase('hwP5');
         $('hwSTurns').textContent='1';$('hwSIn').textContent='9';$('hwSOut').textContent='89';
         $('hwSCache').textContent='24';$('hwSTools').textContent='3';$('hwSSaved').textContent='43';
         $('hwSTypos').textContent='3';$('hwSCost').textContent='$0.018';
       }},
-      {t:350,fn:()=>{$('hwSavingsBar').textContent='3 typos fixed · 1 dedup · 43 tok saved (−83%) · $0.006 saved · 0 retries · history trimmed';$('hwSavingsBar').classList.add('show')}},
+      {t:350,fn:()=>{$('hwSavingsBar').textContent='3 typos fixed · 1 dedup · 1 redundant read · 3 unused tools · 43 tok saved (−83%) · $0.006 saved · CLAUDE.md updated';$('hwSavingsBar').classList.add('show')}},
       {t:3500,fn:()=>{hwRan=false;runHowViz()}}
     ];
     let delay=0;
@@ -1405,7 +1409,7 @@ function runScene0(){
   }).then(()=>{
     // Session summary
     st.turns=2;st.inTok=18;st.outTok=156;st.cache=41;st.cost=0.041;st.saved=72;updStats();
-    return addTerse('[terse] Session: 2 turns · 80→18 input tok saved · 7 typos caught · $0.006 saved · 0 retries · 0 correction loops',350);
+    return addTerse('[terse] Session: 2 turns · 80→18 input tok · 7 typos · 1 redundant read · 2 unused tools (600 tok overhead) · CLAUDE.md rule generated',350);
   });
 }
 // Shared: panel-based step-by-step scene
@@ -1536,7 +1540,7 @@ function runScene3(){
       document.getElementById('s3cost').textContent='$'+(t*.032).toFixed(3);
     },300);
     setTimeout(()=>{
-      const d=document.createElement('div');d.className='term-line green';d.textContent='[terse] Prompt optimized: 38→14 tokens (-63%)';c.appendChild(d);
+      const d=document.createElement('div');d.className='term-line green';d.textContent='[terse] Prompt optimized: 38→14 tok (-63%) · 2 unused tools flagged · CLAUDE.md updated';c.appendChild(d);
       requestAnimationFrame(()=>d.classList.add('show'));
     },500);
   },3400);
@@ -1558,7 +1562,7 @@ const pipeTexts=[
   {in:"Hey I was just wondering if you could maybe help me wirte a function that takes a list",
    out:"Write function: take list",
    toks:[52,50,50,38,34,28,22,20],
-   env:"Chrome — ChatGPT",
+   env:"Claude Code — Agent Session",
    live:[
      null,
      [{t:'wirte',cls:'pl-fix',r:'write'},{t:'a function that takes a list',cls:'pl-kept'}],
@@ -1669,8 +1673,9 @@ pObs.observe(document.getElementById('pipeViz'));
 // ═══ SPELL ANIM — live detection + correction + result summary ═══
 const spellData=[
   {env:'ChatGPT prompt',words:[{t:'I',ok:true},{t:'want',ok:true},{t:'to',ok:true},{t:'wirte',ok:false,fix:'write',stage:0},{t:'a',ok:true},{t:'fucntion',ok:false,fix:'function',stage:0},{t:'that',ok:true},{t:'retuns',ok:false,fix:'returns',stage:1},{t:'the',ok:true},{t:'sum',ok:true},{t:'of',ok:true},{t:'numbres',ok:false,fix:'numbers',stage:1}]},
+  {env:'Claude Code agent action',words:[{t:'read',ok:true},{t:'the',ok:true},{t:'contens',ok:false,fix:'contents',stage:0},{t:'of',ok:true},{t:'confg.json',ok:false,fix:'config.json',stage:0},{t:'and',ok:true},{t:'chekc',ok:false,fix:'check',stage:1},{t:'the',ok:true},{t:'dependecies',ok:false,fix:'dependencies',stage:1}]},
   {env:'OpenClaw agent turn',words:[{t:'what',ok:true},{t:'souls',ok:false,fix:'should',stage:2},{t:'I',ok:true},{t:'do',ok:true},{t:'to',ok:true},{t:'deplpy',ok:false,fix:'deploy',stage:0},{t:'my',ok:true},{t:'databse',ok:false,fix:'database',stage:0},{t:'to',ok:true},{t:'producton',ok:false,fix:'production',stage:1}]},
-  {env:'Cursor chat',words:[{t:'plz',ok:false,fix:'please',stage:0},{t:'explane',ok:false,fix:'explain',stage:1},{t:'how',ok:true},{t:'to',ok:true},{t:'implment',ok:false,fix:'implement',stage:1},{t:'authetication',ok:false,fix:'authentication',stage:1},{t:'in',ok:true},{t:'reqct',ok:false,fix:'react',stage:0}]},
+  {env:'Cursor agent command',words:[{t:'search',ok:true},{t:'for',ok:true},{t:'all',ok:true},{t:'refereces',ok:false,fix:'references',stage:1},{t:'to',ok:true},{t:'the',ok:true},{t:'depricated',ok:false,fix:'deprecated',stage:0},{t:'endpont',ok:false,fix:'endpoint',stage:0}]},
 ];
 let spellIdx=0;
 function runSpell(){
@@ -1690,8 +1695,8 @@ function runSpell(){
     detectEl.innerHTML='<span class="sd-dot"></span> '+fixes.length+' typos detected in '+data.env+' — fixing...';
     const doFix=()=>{
       if(fi>=fixes.length){
-        detectEl.innerHTML='<span class="sd-dot"></span> All typos fixed — prompt clean ✔';
-        resultEl.textContent=fixes.length+' typos caught · '+fixes.map(f=>f.w.t+'→'+f.w.fix).join(', ')+' · corrected before send';
+        detectEl.innerHTML='<span class="sd-dot"></span> All typos fixed — optimized ✔';
+        resultEl.textContent=fixes.length+' tokens saved · '+fixes.map(f=>f.w.t+'→'+f.w.fix).join(', ')+' · corrected before send';
         resultEl.classList.add('show');
         setTimeout(()=>{spellIdx=(spellIdx+1)%spellData.length;runSpell()},2500);return;
       }
@@ -1714,12 +1719,12 @@ sObs.observe(document.getElementById('spellViz'));
 
 // ═══ TECHNIQUE ANIM — type out before, then transform ═══
 const techDemos=[
-  {before:'I basically think that',after:'(removed)',pause:1200},
+  {before:'Read auth.ts (3rd time)',after:'(flagged: redundant read)',pause:1200},
   {before:'Can you help me write',after:'Write',pause:1200},
-  {before:'due to the fact that',after:'because',pause:1200},
+  {before:'Grep "login" + Grep "login"',after:'(duplicate tool call)',pause:1200},
   {before:'how to learn + how to study',after:'how to learn',pause:1200},
-  {before:'I want to create',after:'create',pause:1200},
-  {before:"I'd appreciate any help",after:'(dropped)',pause:1200},
+  {before:'I basically think that',after:'(removed)',pause:1200},
+  {before:'24 unused tools loaded',after:'~7,200 tok overhead',pause:1200},
 ];
 function runTech(){
   techDemos.forEach((td,i)=>{
@@ -1811,17 +1816,18 @@ function runAgent(){
       {cls:'opt',text:'[terse] prompt optimized: 42→18 tokens (-57%)'},
       {cls:'ast',text:'[agent] Found issue — token expiry check wrong'},
       {cls:'tl',text:'[tool] Edit auth.ts:47 — applied'},
+      {cls:'opt',text:'[terse] ⚠ Read auth.ts again — redundant (~800 tok waste)'},
+      {cls:'opt',text:'[terse] ⚠ 4 unused tools detected — ~1,200 tok overhead/call'},
       {cls:'usr',text:'[you] add rate limmiting to the API endpionts'},
       {cls:'opt',text:'[terse] spell: "limmiting"→"limiting", "endpionts"→"endpoints"'},
       {cls:'opt',text:'[terse] prompt optimized: 38→12 tokens (-68%)'},
       {cls:'tl',text:'[tool] Read server.ts (180 lines) — cached'},
+      {cls:'opt',text:'[terse] ⚠ Grep "auth" duplicated from turn 1 — skipped'},
       {cls:'ast',text:'[agent] Adding express-rate-limit middleware...'},
       {cls:'tl',text:'[tool] Edit server.ts:12 — applied'},
-      {cls:'usr',text:'[you] write tests for both changes'},
-      {cls:'opt',text:'[terse] prompt optimized: 28→14 tokens (-50%)'},
-      {cls:'ast',text:'[agent] Creating test files...'},
-      {cls:'tl',text:'[tool] Write auth.test.ts (52 lines)'},
-      {cls:'opt',text:'[terse] session total: 108→44 tokens saved ($0.008)'},
+      {cls:'opt',text:'[terse] context fill: 62% (124K/200K) — watch for degradation'},
+      {cls:'opt',text:'[terse] → CLAUDE.md rule: "Do not re-read files already in context"'},
+      {cls:'opt',text:'[terse] session: 108→44 tok saved · 1 dup call · 1 re-read · $0.008 saved'},
     ];
     let t=0,fi=0,toolCount=0,typoCount=0,cacheCount=0;
     const iv=setInterval(()=>{

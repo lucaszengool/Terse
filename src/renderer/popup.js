@@ -6,6 +6,28 @@ let minimized = false;
 let agentPanelVisible = false; // true when focused app is an agent host and panel is showing
 let lastShownSessionId = null; // track which session popup is showing to reset on switch
 
+// Debug: intercept console.log to write to file via Tauri
+const _origLog = console.log;
+const _origErr = console.error;
+function _debugLog(...args) {
+  _origLog(...args);
+  try {
+    fetch('http://localhost:0/__terse_debug__', { method: 'POST', body: args.join(' ') }).catch(() => {});
+  } catch(e) {}
+}
+// Override console to also print to stderr via invoke
+const _dbgInvoke = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
+if (_dbgInvoke) {
+  console.log = (...args) => {
+    _origLog(...args);
+    _dbgInvoke('debug_log', { msg: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ') }).catch(() => {});
+  };
+  console.error = (...args) => {
+    _origErr(...args);
+    _dbgInvoke('debug_log', { msg: 'ERROR: ' + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ') }).catch(() => {});
+  };
+}
+
 function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -116,17 +138,10 @@ T.on('popup-update', d => {
 T.on('popup-show', d => {
   document.getElementById('appLabel').textContent = d.app || 'Connected';
 
-  // Reset state when switching to a different session
+  // Reset text optimization UI when switching sessions
   if (d.sessionId !== lastShownSessionId) {
     hasContent = false;
     lastShownSessionId = d.sessionId;
-
-    // Hide agent panel — each text session starts fresh, agent panel
-    // only reappears via explicit agent-connected/agent-update events
-    agentPanelVisible = false;
-    document.getElementById('agentPanel').classList.add('hidden');
-
-    // Reset text optimization UI
     document.getElementById('hintState').classList.remove('hidden');
     document.getElementById('bridgeInstall').classList.add('hidden');
     document.getElementById('optimized').classList.add('hidden');
@@ -140,6 +155,16 @@ T.on('popup-show', d => {
     document.getElementById('hintState').classList.remove('hidden');
     document.getElementById('optimized').classList.add('hidden');
     document.getElementById('btnReplace').disabled = true;
+  }
+
+  // Show agent panel only if this session is the agent host
+  if (activeAgentType && d.sessionId === agentHostSessionId) {
+    document.getElementById('agentPanel').classList.remove('hidden');
+    agentPanelVisible = true;
+  } else if (activeAgentType && d.sessionId !== agentHostSessionId) {
+    // Switching to a non-agent session — hide agent panel, show text capture UI
+    document.getElementById('agentPanel').classList.add('hidden');
+    agentPanelVisible = false;
   }
   autoResizePopup();
 });
@@ -228,6 +253,7 @@ document.getElementById('btnCopy').addEventListener('click', async () => {
 // ── Agent Monitor UI ──
 
 let activeAgentType = null; // currently connected agent type
+let agentHostSessionId = null; // session ID that hosts the agent (e.g. the terminal running Claude Code)
 
 function formatTokens(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
@@ -250,25 +276,42 @@ function hideAgentBanner() {
 }
 
 function showAgentPanel(snapshot) {
+  console.log('[terse-dbg] showAgentPanel called, agentType:', snapshot.agentType, 'turns:', snapshot.turns);
   activeAgentType = snapshot.agentType;
+  agentHostSessionId = lastShownSessionId; // remember which session hosts this agent
+  agentPanelVisible = true;
   const panel = document.getElementById('agentPanel');
   document.getElementById('agentPanelIcon').textContent = snapshot.agentIcon || '';
   document.getElementById('agentPanelName').textContent = snapshot.agentName;
   document.getElementById('agentPanelStatus').textContent = 'Monitoring';
   panel.classList.remove('hidden');
   hideAgentBanner();
-  enrichAgentOptStats(snapshot);
-  updateAgentPanel(snapshot);
+  try { enrichAgentOptStats(snapshot); } catch(e) { console.error('[terse] enrichAgentOptStats error:', e); }
+  try { updateAgentPanel(snapshot); } catch(e) { console.error('[terse] updateAgentPanel error:', e); }
   autoResizePopup();
+  // Debug: log panel dimensions after render
+  requestAnimationFrame(() => {
+    const p = document.getElementById('agentPanel');
+    const b = document.getElementById('bar');
+    console.log('[terse-dbg] showAgentPanel AFTER: panelH=' + p.offsetHeight +
+      ' barH=' + b.offsetHeight + ' panelDisplay=' + getComputedStyle(p).display +
+      ' panelHidden=' + p.classList.contains('hidden'));
+  });
 }
 
 function hideAgentPanel() {
   activeAgentType = null;
+  agentHostSessionId = null;
   document.getElementById('agentPanel').classList.add('hidden');
   autoResizePopup();
 }
 
 function updateAgentPanel(snapshot) {
+  const panel = document.getElementById('agentPanel');
+  console.log('[terse-dbg] updateAgentPanel: hidden=' + panel.classList.contains('hidden') +
+    ' msgs=' + (snapshot.recentMessages || []).length +
+    ' turns=' + snapshot.turns +
+    ' panelH=' + panel.offsetHeight);
   // ── Context fill meter ──
   const ctxFill = snapshot.contextFill || 0;
   const currentCtx = snapshot.currentContext || 0;
@@ -456,7 +499,7 @@ function updateAgentPanel(snapshot) {
     warningsEl.classList.add('hidden');
   }
 
-  // ── Activity feed with inline optimization ──
+  // ── Activity feed with inline token info on every entry ──
   const actEl = document.getElementById('agentActivity');
   const msgs = snapshot.recentMessages || [];
   const lastFew = msgs.slice(-20);
@@ -470,10 +513,11 @@ function updateAgentPanel(snapshot) {
       line.className = 'agent-activity-line ' + (m.role || '');
       const prefix = m.type === 'tool_use' ? '⚙ ' : m.type === 'tool_result' ? '← ' :
                      m.role === 'user' ? '→ ' : m.role === 'assistant' ? '◆ ' : '';
-      const text = (m.text || '').substring(0, 120);
+      const text = (m.text || '').substring(0, 100);
+      const tok = m.tokens || 0;
 
-      // For user messages: run optimizer and show inline badge
-      if (m.role === 'user' && m.type !== 'tool_result' && optimizer && text.length > 10) {
+      // ── User messages: run optimizer, show savings badge ──
+      if (m.role === 'user' && m.type !== 'tool_result' && optimizer && (m.text || '').length > 10) {
         const fullText = m.text || '';
         const result = optimizer.optimize(fullText);
         const saved = result.stats.tokensSaved || 0;
@@ -483,7 +527,7 @@ function updateAgentPanel(snapshot) {
         if (saved > 0) {
           const badge = document.createElement('span');
           badge.className = 'opt-badge';
-          badge.textContent = '-' + saved + ' tok (' + pctSaved + '%)';
+          badge.textContent = '-' + saved + ' (' + pctSaved + '%)';
           line.appendChild(badge);
 
           // Click to expand before/after
@@ -491,14 +535,13 @@ function updateAgentPanel(snapshot) {
           line.addEventListener('click', () => {
             const existing = line.nextElementSibling;
             if (existing && existing.classList.contains('opt-inline-detail')) {
-              existing.remove();
-              return;
+              existing.remove(); return;
             }
             const detail = document.createElement('div');
             detail.className = 'opt-inline-detail';
             detail.innerHTML =
-              '<div class="opt-inline-before">' + escapeHtml(fullText.substring(0, 200)) + '</div>' +
-              '<div class="opt-inline-after">' + escapeHtml(result.optimized.substring(0, 200)) + '</div>' +
+              '<div class="opt-inline-before">' + escapeHtml(fullText.substring(0, 300)) + '</div>' +
+              '<div class="opt-inline-after">' + escapeHtml(result.optimized.substring(0, 300)) + '</div>' +
               '<div class="opt-inline-tags">' +
               (result.stats.techniquesApplied || []).map(t =>
                 '<span class="opt-inline-tag">' + t + '</span>'
@@ -506,14 +549,31 @@ function updateAgentPanel(snapshot) {
             line.after(detail);
           });
         } else {
-          const badge = document.createElement('span');
-          badge.className = 'opt-badge no-save';
-          badge.textContent = '✓';
-          line.appendChild(badge);
+          addTokenBadge(line, tok, 'ok');
         }
+
+      // ── Tool results: show token cost, flag large ones ──
+      } else if (m.type === 'tool_result') {
+        line.innerHTML = prefix + escapeHtml(text);
+        if (tok > 1000) {
+          addTokenBadge(line, tok, 'warn');
+        } else if (tok > 0) {
+          addTokenBadge(line, tok, 'dim');
+        }
+
+      // ── Tool calls: show name ──
+      } else if (m.type === 'tool_use') {
+        line.textContent = prefix + text;
+
+      // ── Assistant messages: show token cost ──
+      } else if (m.role === 'assistant') {
+        line.innerHTML = prefix + escapeHtml(text);
+        if (tok > 0) addTokenBadge(line, tok, 'dim');
+
       } else {
         line.textContent = prefix + text;
       }
+
       line.title = m.text || '';
       actEl.appendChild(line);
     }
@@ -670,6 +730,14 @@ function estimateTokensJS(text) {
   return Math.ceil(words * 1.3 + punct * 0.5);
 }
 
+// Helper: add token count badge to a log line
+function addTokenBadge(line, tokens, style) {
+  const badge = document.createElement('span');
+  badge.className = 'tok-badge ' + style;
+  badge.textContent = formatTokens(tokens);
+  line.appendChild(badge);
+}
+
 // Details toggle
 document.getElementById('btnAgentDetails').addEventListener('click', () => {
   const panel = document.getElementById('agentDetailsPanel');
@@ -679,9 +747,23 @@ document.getElementById('btnAgentDetails').addEventListener('click', () => {
   autoResizePopup();
 });
 
-// Agent event listeners
-T.on('agent-detected', (info) => {
-  if (!activeAgentType) showAgentBanner(info);
+// Agent event listeners — auto-connect when detected
+T.on('agent-detected', async (info) => {
+  console.log('[terse-dbg] agent-detected event:', info.type, 'activeAgentType:', activeAgentType);
+  if (activeAgentType) return;
+  console.log('[terse] agent-detected, auto-connecting:', info.type);
+  try {
+    const session = await T.acceptAgent(info.type);
+    console.log('[terse] acceptAgent result:', !!session);
+    if (session) {
+      showAgentPanel(session);
+    } else {
+      showAgentBanner(info); // fallback to manual connect
+    }
+  } catch (e) {
+    console.error('[terse] auto-connect failed:', e);
+    showAgentBanner(info);
+  }
 });
 
 T.on('agent-lost', (info) => {
@@ -693,6 +775,7 @@ T.on('agent-lost', (info) => {
 });
 
 T.on('agent-connected', (data) => {
+  console.log('[terse-dbg] agent-connected event:', data?.session?.agentType);
   showAgentPanel(data.session);
 });
 
@@ -702,9 +785,8 @@ T.on('agent-disconnected', () => {
 
 T.on('agent-update', (data) => {
   if (data.session && activeAgentType === data.agentType) {
-    // Run JS optimizer on user messages to calculate real savings
-    enrichAgentOptStats(data.session);
-    updateAgentPanel(data.session);
+    try { enrichAgentOptStats(data.session); } catch(e) { console.error('[terse] enrich error:', e); }
+    try { updateAgentPanel(data.session); } catch(e) { console.error('[terse] update error:', e); }
     autoResizePopup();
   }
 });
@@ -742,15 +824,36 @@ document.getElementById('btnAgentDisconnect').addEventListener('click', () => {
 });
 
 // Check for already-connected sessions on load
+// Reset state from previous app run (WebView may cache JS state)
+activeAgentType = null;
+agentPanelVisible = false;
+document.getElementById('agentPanel').classList.add('hidden');
+
+console.log('[terse-dbg] popup.js loaded, checking agent sessions...');
 T.getAgentSessions().then(sessions => {
+  console.log('[terse-dbg] getAgentSessions returned:', sessions.length, 'sessions');
   if (sessions.length > 0) {
+    console.log('[terse-dbg] showing agent panel from getAgentSessions');
     showAgentPanel(sessions[0]);
     return;
   }
-  // No connected sessions — show banner for pending detections (let user choose to connect)
-  T.getAgentDetections().then(detections => {
-    if (detections.length > 0 && !activeAgentType) {
-      showAgentBanner(detections[0]);
+  // No connected sessions — auto-connect to first pending detection
+  T.getAgentDetections().then(async (detections) => {
+    console.log('[terse-dbg] getAgentDetections returned:', detections.length, 'detections');
+    if (detections.length > 0) {
+      console.log('[terse] auto-connecting to detected agent on load:', detections[0].type);
+      try {
+        const session = await T.acceptAgent(detections[0].type);
+        console.log('[terse-dbg] acceptAgent result:', !!session);
+        if (session) {
+          showAgentPanel(session);
+        } else {
+          showAgentBanner(detections[0]);
+        }
+      } catch (e) {
+        console.error('[terse] auto-connect on load failed:', e);
+        showAgentBanner(detections[0]);
+      }
     }
   });
 });

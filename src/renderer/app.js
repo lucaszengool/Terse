@@ -179,6 +179,14 @@ $$('.setting-row input').forEach(cb => cb.addEventListener('change', () => T.upd
 
 $('#btnClose').addEventListener('click', () => T.closeWindow());
 
+// Upgrade button — open in system browser
+$('#btnUpgrade').addEventListener('click', () => {
+  try {
+    const { open } = window.__TAURI__.shell;
+    open('https://www.terseai.org/#pricing');
+  } catch { window.open('https://www.terseai.org/#pricing', '_blank'); }
+});
+
 // ── Auth ──
 $('#btnSignIn').addEventListener('click', () => doAuth('signin'));
 $('#btnSignUp').addEventListener('click', () => doAuth('signup'));

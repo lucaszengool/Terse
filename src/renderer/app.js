@@ -42,8 +42,21 @@ async function updateLicenseBanner() {
     }
   } catch {}
 }
-// Refresh license every 60s
-setInterval(updateLicenseBanner, 60000);
+// Refresh license every 30s
+setInterval(updateLicenseBanner, 30000);
+
+// Also refresh when window gets focus (user returns from browser after payment)
+window.addEventListener('focus', () => {
+  updateLicenseBanner();
+  // Also verify with backend if signed in
+  if (T.getAuth && T.verifyLicense) {
+    T.getAuth().then(auth => {
+      if (auth.signedIn && auth.clerkUserId) {
+        T.verifyLicense(auth.clerkUserId).then(() => updateLicenseBanner());
+      }
+    });
+  }
+});
 
 // ── Sessions ──
 function refreshSessions() {

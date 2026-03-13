@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terse Documentation — Getting Started with Token Optimization</title>
+  <meta name="description" content="Complete documentation for Terse, the on-device token optimizer for AI agents. Learn how to install, configure, and use Terse with Claude Code, ChatGPT, OpenClaw, and Cursor.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://www.terseai.org/docs">
+  <meta property="og:title" content="Terse Documentation — Getting Started with Token Optimization">
+  <meta property="og:description" content="Complete documentation for Terse, the on-device token optimizer for AI agents. Install, configure, and optimize with Claude Code, ChatGPT, Cursor, and more.">
+  <meta property="og:url" content="https://www.terseai.org/docs">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Terse Documentation — Getting Started with Token Optimization">
+  <meta name="twitter:description" content="Complete documentation for Terse. Install, configure, and optimize prompts for Claude Code, ChatGPT, Cursor, and more.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Terse Documentation — Getting Started with Token Optimization",
+    "description": "Complete documentation for Terse, the on-device token optimizer for AI agents. Learn how to install, configure, and use Terse with Claude Code, ChatGPT, OpenClaw, and Cursor.",
+    "author": {
+      "@type": "Organization",
+      "name": "Terse"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Terse",
+      "url": "https://www.terseai.org"
+    },
+    "mainEntityOfPage": "https://www.terseai.org/docs",
+    "datePublished": "2026-03-14",
+    "dateModified": "2026-03-14",
+    "keywords": ["Terse documentation", "token optimizer", "AI agent monitor", "Claude Code", "ChatGPT", "Cursor", "prompt optimization", "macOS app"]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .shortcut-table{width:100%;border-collapse:collapse;margin:16px 0 24px}
+    .shortcut-table th,.shortcut-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .shortcut-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .shortcut-table kbd{background:var(--bg3);border:1px solid var(--bdl);border-radius:5px;padding:3px 8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ac)}
+
+    .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0 24px}
+    .pricing-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px}
+    .pricing-card.featured{border-color:var(--ac);position:relative}
+    .pricing-card h4{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px}
+    .pricing-card .price{font-size:28px;font-weight:900;color:var(--t1);margin:8px 0}
+    .pricing-card .price span{font-size:14px;font-weight:500;color:var(--t3)}
+    .pricing-card ul{list-style:none;margin:12px 0 0;padding:0}
+    .pricing-card li{font-size:13px;color:var(--t2);padding:4px 0;padding-left:18px;position:relative}
+    .pricing-card li::before{content:"";position:absolute;left:0;top:10px;width:6px;height:6px;border-radius:50%;background:var(--ac)}
+
+    @media(max-width:700px){
+      .pricing-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<main class="article">
+  <span class="tag">Documentation</span>
+  <h1>Terse Documentation</h1>
+  <p class="subtitle">Everything you need to install, configure, and use Terse — the on-device token optimizer and agent monitor for macOS.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#getting-started">Getting Started</a></li>
+      <li><a href="#how-terse-works">How Terse Works</a></li>
+      <li><a href="#connecting-apps">Connecting Apps</a></li>
+      <li><a href="#agent-monitoring">Agent Monitoring</a></li>
+      <li><a href="#optimization-modes">Optimization Modes</a></li>
+      <li><a href="#auto-mode-send-mode">Auto-Mode and Send-Mode</a></li>
+      <li><a href="#keyboard-shortcuts">Keyboard Shortcuts</a></li>
+      <li><a href="#privacy-security">Privacy &amp; Security</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#tech-stack">Tech Stack</a></li>
+    </ol>
+  </div>
+
+  <h2 id="getting-started">Getting Started</h2>
+
+  <h3>Download and Install</h3>
+  <p>Terse is distributed as a DMG file from <a href="https://github.com/jamesdevonport/terse/releases">GitHub Releases</a>. Download the latest <code>.dmg</code> file for macOS, open it, and drag the Terse app into your Applications folder.</p>
+
+  <h3>First-Time Setup</h3>
+  <p>Terse is not currently signed with an Apple Developer certificate. On first launch, macOS will block the app. To open it:</p>
+  <ol>
+    <li>Open Finder and navigate to <strong>Applications</strong></li>
+    <li>Right-click (or Control-click) on <strong>Terse</strong></li>
+    <li>Select <strong>Open</strong> from the context menu</li>
+    <li>In the dialog that appears, click <strong>Open</strong> to confirm</li>
+  </ol>
+  <p>You only need to do this once. After the first launch, macOS will remember your choice and Terse will open normally.</p>
+
+  <h3>Grant Accessibility Permissions</h3>
+  <p>Terse uses the macOS Accessibility API to read and write text in other applications. On first launch, macOS will prompt you to grant Accessibility access:</p>
+  <ol>
+    <li>Open <strong>System Settings</strong> &rarr; <strong>Privacy &amp; Security</strong> &rarr; <strong>Accessibility</strong></li>
+    <li>Click the <strong>+</strong> button and add <strong>Terse</strong></li>
+    <li>Ensure the toggle is enabled</li>
+  </ol>
+  <p>Without Accessibility permissions, Terse cannot read text from connected apps or write optimized text back. The optimizer will still work in manual copy-paste mode, but automatic capture and replace will be disabled.</p>
+
+  <h2 id="how-terse-works">How Terse Works</h2>
+  <p>Terse runs as a lightweight macOS application with two windows:</p>
+
+  <h3>The Main Window</h3>
+  <p>The main window is a session manager that lists all connected applications. You can open it at any time with <kbd>Cmd+Shift+T</kbd>. From here you can add or remove sessions, view optimization statistics, and access settings.</p>
+
+  <h3>The Popup Window</h3>
+  <p>The popup is a floating bar that appears at the top of your screen when you focus a connected app. It shows live optimization stats, mode controls, and action buttons (Capture, Replace, Copy). The popup uses <code>alwaysOnTop</code> rendering so it never steals focus from your active application.</p>
+
+  <h3>The 7-Stage Optimization Pipeline</h3>
+  <p>Every prompt that Terse processes passes through a <a href="/#pipeline">7-stage pipeline</a>:</p>
+  <ol>
+    <li><strong>Code block protection</strong> — extracts and preserves code blocks, URLs, and inline code so they are never modified</li>
+    <li><strong><a href="/spell-correction">Spell correction</a></strong> — fixes typos using a hardcoded dictionary for common coding/prompt typos, then runs macOS NSSpellChecker for broader coverage</li>
+    <li><strong>Whitespace normalization</strong> — collapses multiple spaces, removes trailing whitespace, normalizes line breaks</li>
+    <li><strong><a href="/pattern-optimization">Pattern optimization</a></strong> — applies 20+ rule-based transformations to shorten verbose phrases</li>
+    <li><strong><a href="/nlp-analysis">NLP analysis</a></strong> — identifies and removes filler words, hedging language, politeness markers, and meta-language</li>
+    <li><strong><a href="/telegraph-compression">Telegraph compression</a></strong> — removes articles, shortens syntax, applies abbreviations (Aggressive mode only)</li>
+    <li><strong>Code block restoration</strong> — reinserts all protected code blocks in their original positions</li>
+  </ol>
+  <p>The pipeline runs entirely on-device with zero latency from network calls. Typical processing time is under 5 milliseconds for prompts up to 4,000 tokens.</p>
+
+  <h2 id="connecting-apps">Connecting Apps</h2>
+  <p>Terse automatically detects supported applications through a combination of macOS Accessibility API inspection and process scanning. No manual configuration is needed for supported apps.</p>
+
+  <h3>ChatGPT (Chrome / Safari)</h3>
+  <p>Terse detects ChatGPT via the Accessibility API when Chrome or Safari has a ChatGPT tab in focus. It reads the textarea content directly via <code>AXTextArea</code> / <code>AXValue</code>. Both the compose box and conversation history are accessible.</p>
+
+  <h3>Claude Code</h3>
+  <p>Claude Code runs as a terminal process. Terse detects it via process scanning (every 5 seconds) and tails the JSONL conversation log to extract token usage, tool calls, and costs. Prompt optimization is applied via the clipboard, since terminal emulators do not expose editable text fields through Accessibility.</p>
+
+  <h3>Cursor</h3>
+  <p>Cursor is detected through both Accessibility API and process scanning. Terse reads the compose input via Accessibility when available, and falls back to selection-based capture (<kbd>Cmd+C</kbd>) for the Electron canvas editor, similar to VS Code.</p>
+
+  <h3>OpenClaw</h3>
+  <p>OpenClaw is detected via process scanning. Terse tails its conversation logs to extract token metrics and provides optimization for prompts via clipboard integration.</p>
+
+  <h3>Aider</h3>
+  <p>Aider is detected via process scanning. As a terminal-based tool, Terse monitors its process output and provides prompt optimization through clipboard-based capture and replace.</p>
+
+  <h3>VS Code</h3>
+  <p>VS Code uses an Electron canvas renderer for its editor, which means the Accessibility API cannot read editor content directly. Terse detects VS Code via Accessibility and falls back to selection-based capture: it uses <kbd>Cmd+C</kbd> to copy selected text, optimizes it, and can write it back via <kbd>Cmd+A</kbd> + <kbd>Cmd+V</kbd> in the target field.</p>
+
+  <h3>App Detection Notes</h3>
+  <p>Terse prioritizes <code>AXTextArea</code> elements over <code>AXTextField</code> when scanning via Accessibility, since text areas are more likely to be prompt input fields. Results shorter than 5 characters are ignored as they are typically cursor indicators or UI fragments, not actual prompt content.</p>
+
+  <h2 id="agent-monitoring">Agent Monitoring</h2>
+  <p>The <a href="/#agents">agent monitoring</a> system provides real-time visibility into what your AI agents are doing, how much they cost, and where efficiency can be improved.</p>
+
+  <h3>Session Detection</h3>
+  <p>Terse scans running processes every 5 seconds to detect active agent sessions. When a supported agent process is found (Claude Code, Cursor, OpenClaw, Aider), Terse begins monitoring its activity automatically.</p>
+
+  <h3>Metrics Tracked</h3>
+  <ul>
+    <li><strong>Input tokens</strong> — total tokens sent to the model across all turns</li>
+    <li><strong>Output tokens</strong> — total tokens generated by the model</li>
+    <li><strong>Cache read/write</strong> — tokens served from cache vs. freshly computed (for providers that support prompt caching)</li>
+    <li><strong>Tool calls</strong> — count and type of every tool invocation (Read, Edit, Bash, Grep, Glob, etc.)</li>
+    <li><strong>Cost</strong> — per-turn and cumulative session cost, computed from provider pricing</li>
+    <li><strong>Context fill</strong> — percentage of the model's context window currently in use</li>
+  </ul>
+
+  <h3>Insights and Alerts</h3>
+  <p>Terse generates actionable insights based on session activity:</p>
+  <ul>
+    <li><strong>Context fill warnings</strong> — advisory at 60%, critical at 85%, limit warning at 95%</li>
+    <li><strong>Duplicate tool calls</strong> — flags when the agent invokes the same tool with the same arguments multiple times</li>
+    <li><strong>Redundant file reads</strong> — detects when a file is read again without intervening edits</li>
+    <li><strong>Cost spikes</strong> — alerts when a single turn exceeds a configurable cost threshold</li>
+    <li><strong>Cache efficiency</strong> — reports the ratio of cached vs. uncached input tokens</li>
+  </ul>
+
+  <h3>CLAUDE.md Rule Generation</h3>
+  <p>Based on observed patterns in agent sessions, Terse can generate <code>CLAUDE.md</code> rules that teach agents to avoid wasteful behaviors. For example, if an agent repeatedly reads the same configuration files at the start of every session, Terse generates a rule instructing the agent to skip those reads unless the task specifically requires them. Learn more about how this extends <a href="/selective-context">selective context pruning</a> across sessions.</p>
+
+  <h2 id="optimization-modes">Optimization Modes</h2>
+  <p>Terse offers three optimization modes, each applying progressively more aggressive transformations. You can toggle between modes using the popup bar.</p>
+
+  <h3>Soft Mode</h3>
+  <p>The lightest optimization level. Soft mode applies only:</p>
+  <ul>
+    <li><a href="/spell-correction">Spell correction</a> — fixes typos via the hardcoded dictionary and macOS NSSpellChecker</li>
+    <li>Whitespace normalization — collapses extra spaces and blank lines</li>
+  </ul>
+  <p>Soft mode preserves 100% of the original meaning and intent. It is ideal when you want clean, error-free prompts without any content changes. Typical token reduction: 2-5%.</p>
+
+  <h3>Normal Mode</h3>
+  <p>The balanced default. Normal mode includes everything in Soft mode plus:</p>
+  <ul>
+    <li>Filler word removal — strips "just", "actually", "basically", "really", and similar low-information words</li>
+    <li>Hedging removal — removes "I think", "maybe", "perhaps", "it seems like" and other uncertainty markers</li>
+    <li>Politeness pruning — strips "please", "could you kindly", "would you mind", and similar courtesy phrases that LLMs do not need</li>
+    <li>Meta-language removal — removes "I want you to", "what I need is", "the thing is" and other self-referential phrasing</li>
+    <li><a href="/pattern-optimization">Pattern optimization</a> — applies 20+ phrase-shortening rules</li>
+  </ul>
+  <p>Normal mode offers a good balance between compression and readability. The optimized text is still natural-sounding but more concise. Typical token reduction: 15-25%.</p>
+
+  <h3>Aggressive Mode</h3>
+  <p>Maximum compression. Aggressive mode includes everything in Normal mode plus:</p>
+  <ul>
+    <li><a href="/telegraph-compression">Telegraph compression</a> — removes articles ("the", "a", "an"), shortens sentence structure</li>
+    <li>Abbreviation expansion — common phrases shortened to abbreviations where unambiguous</li>
+    <li>Markdown stripping — removes formatting markers that consume tokens without affecting LLM comprehension</li>
+  </ul>
+  <p>Aggressive mode may sacrifice some nuance and readability for maximum token savings. The resulting text reads more like shorthand or technical notes. Typical token reduction: 25-40%.</p>
+
+  <h2 id="auto-mode-send-mode">Auto-Mode and Send-Mode</h2>
+
+  <h3>Auto-Mode</h3>
+  <p>When Auto-Mode is enabled (toggled via the popup bar), Terse automatically monitors the active app's text field and writes the optimized version back whenever a change is detected. The workflow is fully hands-free:</p>
+  <ol>
+    <li>You type or paste a prompt in the connected app</li>
+    <li>Terse detects the change via Accessibility polling</li>
+    <li>The optimization pipeline runs on the new text</li>
+    <li>The optimized text is written back to the app's input field via <code>AXValue</code> (or <kbd>Cmd+A</kbd> + <kbd>Cmd+V</kbd> fallback)</li>
+  </ol>
+  <p>Auto-Mode works best with apps that expose editable text fields via Accessibility (ChatGPT in Chrome/Safari, Cursor's compose box). For terminal-based agents like Claude Code and Aider, manual Send-Mode is recommended.</p>
+
+  <h3>Send-Mode (Manual)</h3>
+  <p>Send-Mode is the default workflow. You control each step:</p>
+  <ul>
+    <li><strong>Capture</strong> — reads the current text from the active app (or use <kbd>Cmd+Shift+C</kbd> to capture selected text)</li>
+    <li><strong>Replace</strong> — writes the optimized text back to the app's input field</li>
+    <li><strong>Copy</strong> — copies the optimized text to your clipboard for manual pasting</li>
+  </ul>
+  <p>Send-Mode gives you full control over when optimization is applied and lets you review the result before committing it.</p>
+
+  <h2 id="keyboard-shortcuts">Keyboard Shortcuts</h2>
+  <table class="shortcut-table">
+    <thead>
+      <tr><th>Shortcut</th><th>Action</th><th>Context</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd></td><td>Toggle main window</td><td>Global — works from any application</td></tr>
+      <tr><td><kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd></td><td>Capture selected text</td><td>Global — captures from the active app and sends to Terse for optimization</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="privacy-security">Privacy &amp; Security</h2>
+  <p>Terse is designed with a strict on-device architecture. Your prompts, text content, and agent session data never leave your machine.</p>
+  <ul>
+    <li><strong>100% on-device processing</strong> — all optimization runs locally. There are no API calls to external services for text processing.</li>
+    <li><strong>No cloud, no telemetry</strong> — Terse does not phone home, does not collect usage analytics, and does not transmit any data over the network (except for license validation, which sends only your license key).</li>
+    <li><strong>No data storage</strong> — Terse does not persist your prompts or conversation content to disk. Text is held in memory only during active optimization and discarded immediately after.</li>
+    <li><strong>Code protection</strong> — code blocks, inline code, and URLs are extracted before optimization and restored after, ensuring they are never modified by the optimization pipeline.</li>
+    <li><strong>Accessibility API only</strong> — Terse reads app content through the official macOS Accessibility API, the same system used by screen readers and assistive technology. It does not inject code, hook processes, or use private APIs.</li>
+  </ul>
+
+  <h2 id="pricing">Pricing</h2>
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <h4>Free</h4>
+      <div class="price">$0<span>/mo</span></div>
+      <ul>
+        <li>50 optimizations per week</li>
+        <li>1 connected session</li>
+        <li>All three optimization modes</li>
+        <li>Spell correction</li>
+        <li>Basic popup interface</li>
+      </ul>
+    </div>
+    <div class="pricing-card featured">
+      <h4>Pro</h4>
+      <div class="price">$7.99<span>/mo</span></div>
+      <ul>
+        <li>Unlimited optimizations</li>
+        <li>3 concurrent sessions</li>
+        <li>Agent monitoring dashboard</li>
+        <li>Context fill warnings</li>
+        <li>Duplicate tool call detection</li>
+        <li>CLAUDE.md rule generation</li>
+      </ul>
+    </div>
+    <div class="pricing-card">
+      <h4>Premium</h4>
+      <div class="price">$99<span>/mo</span></div>
+      <ul>
+        <li>Unlimited everything</li>
+        <li>Unlimited concurrent sessions</li>
+        <li>Advanced agent insights</li>
+        <li>Priority support</li>
+        <li>Early access to new features</li>
+      </ul>
+    </div>
+  </div>
+  <p>All plans include the full on-device optimization pipeline. Paid plans are billed monthly and can be cancelled at any time. Licenses are validated locally and do not require a persistent internet connection after initial activation.</p>
+
+  <h2 id="tech-stack">Tech Stack</h2>
+  <p>Terse is built on a modern, performant stack optimized for macOS:</p>
+  <ul>
+    <li><strong>Tauri</strong> — Rust-based application framework. Handles window management, process scanning, IPC, and the agent monitoring backend. Tauri produces small, fast binaries (~15 MB) compared to Electron alternatives.</li>
+    <li><strong>Rust backend</strong> — the agent monitor, session manager, and JSONL log parser are implemented in Rust for performance and reliability. Token counting, cost computation, and <a href="/selective-context">context analysis</a> run in Rust threads.</li>
+    <li><strong>Web frontend</strong> — the popup and main window UIs are built with vanilla HTML, CSS, and JavaScript. No framework overhead — the popup renders in under 16ms.</li>
+    <li><strong>Swift helper (<code>terse-ax</code>)</strong> — a compiled Swift binary that interfaces with the macOS Accessibility API. Handles reading text from apps (<code>read-app</code>), writing text back (<code>write-pid</code>), and <a href="/spell-correction">spell checking</a> via NSSpellChecker.</li>
+    <li><strong><a href="/norvig-spelling">Norvig-style spelling</a></strong> — the spell correction engine uses a probabilistic approach inspired by Peter Norvig's spell corrector, combined with a hardcoded dictionary for common coding and prompt typos.</li>
+    <li><strong>nspell / Hunspell</strong> — additional dictionary-based spell checking for broader language coverage beyond the hardcoded typo dictionary.</li>
+  </ul>
+
+  <h2>Need Help?</h2>
+  <p>If you run into issues or have questions not covered here, you can:</p>
+  <ul>
+    <li>File an issue on <a href="https://github.com/jamesdevonport/terse/issues">GitHub Issues</a></li>
+    <li>Check the <a href="https://github.com/jamesdevonport/terse/releases">Releases page</a> for the latest version and changelog</li>
+    <li>Explore the technique deep-dives: <a href="/spell-correction">Spell Correction</a>, <a href="/pattern-optimization">Pattern Optimization</a>, <a href="/nlp-analysis">NLP Analysis</a>, <a href="/telegraph-compression">Telegraph Compression</a></li>
+    <li>Read the research pages: <a href="/llmlingua">LLMLingua</a>, <a href="/norvig-spelling">Norvig Spelling</a>, <a href="/selective-context">Selective Context</a></li>
+  </ul>
+
+  <div class="cta-box">
+    <h3>Ready to Optimize?</h3>
+    <p style="color:var(--t2);margin-bottom:8px">Download Terse and start saving tokens in under two minutes. Free tier included.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+</main>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

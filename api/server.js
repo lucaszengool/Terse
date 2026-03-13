@@ -327,7 +327,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // ── Serve landing page ──
-app.use(express.static(path.join(__dirname, '..', 'landing')));
+app.use(express.static(path.join(__dirname, '..', 'landing'), { extensions: ['html'] }));
 
 // SPA fallback
 app.get('*', (req, res) => {

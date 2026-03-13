@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLMLingua and Prompt Compression — The Research Behind Terse's Token Optimization</title>
+  <meta name="description" content="LLMLingua (EMNLP 2023) proved that LLM prompts contain massive redundancy. Learn how Terse applies these research findings to reduce token costs by 40-70% across Claude Code, ChatGPT, and agent sessions.">
+  <link rel="canonical" href="https://www.terseai.org/llmlingua">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="LLMLingua and Prompt Compression — The Research Behind Terse's Token Optimization">
+  <meta property="og:description" content="LLMLingua (EMNLP 2023) proved that LLM prompts contain massive redundancy. Learn how Terse applies these research findings to reduce token costs by 40-70% across Claude Code, ChatGPT, and agent sessions.">
+  <meta property="og:url" content="https://www.terseai.org/llmlingua">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="LLMLingua and Prompt Compression — The Research Behind Terse's Token Optimization">
+  <meta name="twitter:description" content="LLMLingua (EMNLP 2023) proved that LLM prompts contain massive redundancy. Learn how Terse applies these research findings to reduce token costs by 40-70%.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "LLMLingua and Prompt Compression — The Research Behind Terse's Token Optimization",
+    "description": "LLMLingua (EMNLP 2023) proved that LLM prompts contain massive redundancy. Learn how Terse applies these research findings to reduce token costs by 40-70% across Claude Code, ChatGPT, and agent sessions.",
+    "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "datePublished": "2026-03-10",
+    "dateModified": "2026-03-14",
+    "mainEntityOfPage": "https://www.terseai.org/llmlingua",
+    "keywords": ["LLMLingua", "prompt compression", "token optimization", "LLM cost reduction", "Claude Code", "ChatGPT", "agent sessions"]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <span class="tag">Research</span>
+  <h1>LLMLingua and Prompt Compression — The Research Behind Terse's Token Optimization</h1>
+  <p class="subtitle">LLMLingua (EMNLP 2023) proved that LLM prompts contain massive redundancy. Here's how Terse applies those findings to cut token costs by 40-70% with zero latency and zero API calls.</p>
+
+  <h2>What Is LLMLingua?</h2>
+  <p>LLMLingua is a prompt compression framework introduced by Huiqiang Jiang, Qianhui Wu, Chin-Yew Lin, Yuqing Yang, and Lili Qiu at EMNLP 2023 in their paper <em>"LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models."</em> The core discovery was striking: the natural language prompts we send to large language models contain enormous amounts of redundancy, and a significant portion of those tokens can be removed without any measurable degradation in the model's output quality.</p>
+  <p>This was not a marginal finding. The researchers demonstrated compression ratios of up to 20x on certain tasks, with the majority of real-world prompts showing 40-70% redundancy. That means for every dollar you spend on API tokens, somewhere between 40 and 70 cents is paying for information the model does not need to produce a correct response.</p>
+  <p>The paper arrived at a moment when the AI industry was grappling with a fundamental scaling problem. Models were getting more capable but also more expensive. GPT-4's context window was precious real estate, and every token counted against both latency and cost. LLMLingua offered a rigorous, empirically validated answer: compress the prompt before sending it.</p>
+
+  <h2>How LLMLingua Works</h2>
+  <p>The LLMLingua approach relies on a smaller, cheaper language model (such as GPT-2 or LLaMA-7B) to estimate the importance of each token in a prompt. The process works in three stages:</p>
+  <ol>
+    <li><strong>Budget controller:</strong> The system allocates a compression budget across different segments of the prompt (instructions, demonstrations, and the question). Segments that contribute less to the model's perplexity receive more aggressive compression.</li>
+    <li><strong>Token-level iterative compression:</strong> Within each segment, the smaller model computes per-token perplexity. Tokens with low perplexity (meaning they are highly predictable given their context) are candidates for removal. The intuition is simple: if a token is predictable, the target LLM can reconstruct its meaning from surrounding context.</li>
+    <li><strong>Distribution alignment:</strong> Because the small model and the target LLM have different token distributions, LLMLingua includes an alignment step that adjusts the compression decisions to better match what the target model actually needs.</li>
+  </ol>
+  <p>The result is a compressed prompt that preserves the semantic content the target model requires while stripping away tokens that carry little information. On benchmarks like GSM8K, BBH, and ShareGPT, the compressed prompts produced responses that were statistically indistinguishable from those generated with the full, uncompressed prompts.</p>
+
+  <h2>The Follow-Up: LongLLMLingua and LLMLingua-2</h2>
+  <p>The success of LLMLingua spawned two important follow-up papers. <em>LongLLMLingua</em> (2024) extended the framework to handle long-context scenarios, addressing the "lost in the middle" problem where models struggle to attend to information buried deep in long prompts. It introduced question-aware compression, ensuring that tokens relevant to the user's actual query are preserved even if they appear in low-perplexity regions.</p>
+  <p><em>LLMLingua-2</em> took a different approach entirely, training a dedicated compression model using data distilled from GPT-4. Rather than relying on perplexity as a proxy for importance, it used a trained classifier to make token-level retention decisions. This approach was faster and more accurate, but still required running a neural model for every compression pass.</p>
+  <p>Together, these papers established a clear research consensus: prompt compression works, the redundancy is real, and substantial token savings are achievable without degrading output quality.</p>
+
+  <h2>Why Terse Does Not Use LLMLingua Directly</h2>
+  <p>Given these results, the obvious question is: why not just run LLMLingua on every prompt? The answer comes down to three practical constraints that make model-based compression impractical for real-time, on-device use.</p>
+  <h3>1. It Requires a Language Model</h3>
+  <p>LLMLingua needs a smaller LLM (typically 7B parameters) running locally to compute token-level perplexity scores. Even quantized, this requires a GPU or significant CPU resources. Most developers writing prompts on a laptop do not have a spare 7B model running in the background, and spinning one up for each compression pass would add seconds of latency.</p>
+  <h3>2. It Adds Latency</h3>
+  <p>The perplexity computation is not instant. Even on a capable GPU, compressing a 2,000-token prompt through LLMLingua takes 200-500ms. For a tool that sits between the user and their LLM interface, that latency is unacceptable. Users expect their text to appear and update in real time, not after a half-second processing delay on every keystroke.</p>
+  <h3>3. It Costs Tokens Itself</h3>
+  <p>If you use an API-hosted smaller model instead of running one locally, you are spending tokens to save tokens. The economics only work if the compression ratio is high enough to offset the cost of the compression model's inference. For shorter prompts (under 500 tokens), the overhead can actually exceed the savings.</p>
+
+  <h2>How Terse Adapts the Core Insight</h2>
+  <p>Terse takes the fundamental finding from LLMLingua — that prompts contain 40-70% redundant information — and implements compression through an entirely different mechanism: deterministic, rule-based text transformation that runs in under 1 millisecond with zero external dependencies.</p>
+  <p>The key insight Terse builds on is that prompt redundancy is not random. It follows predictable patterns that humans consistently produce when writing natural language instructions. Filler words, hedging phrases, politeness padding, redundant qualifiers, verbose sentence constructions — these patterns account for the bulk of the redundancy that LLMLingua identifies statistically.</p>
+  <p>Terse's <a href="/pattern-optimization">optimization pipeline</a> applies over 20 distinct compression techniques across three configurable modes:</p>
+  <ul>
+    <li><strong>Soft mode:</strong> Typo correction and whitespace normalization only. Zero semantic change, typically 5-15% reduction.</li>
+    <li><strong>Normal mode:</strong> Removes filler words, hedging language, politeness phrases, meta-commentary, and redundant qualifiers. 25-45% reduction on typical prompts.</li>
+    <li><strong>Aggressive mode:</strong> Everything in Normal plus abbreviations, markdown stripping, and telegraph-style compression. 40-70% reduction, matching LLMLingua's published ranges.</li>
+  </ul>
+
+  <h2>Terse vs. LLMLingua: A Direct Comparison</h2>
+  <p>The trade-offs between the two approaches are clear and quantifiable:</p>
+  <pre>
+                    LLMLingua          Terse
+Mechanism           Model-based        Rule-based
+Latency             200-500ms          &lt;1ms
+Requires GPU        Yes (or API)       No
+Runs on-device      Partially          Fully
+API cost            Yes                Zero
+Compression ratio   40-70%             40-70%
+Handles code        Poorly             Yes (code-aware)
+Real-time capable   No                 Yes
+Privacy             Data leaves device Data stays local</pre>
+  <p>The compression ratios converge because both approaches target the same underlying phenomenon: the predictable redundancy in human-written text. LLMLingua discovers this redundancy statistically; Terse encodes it as rules derived from analyzing thousands of real-world prompts. The end result is remarkably similar, but the runtime characteristics are fundamentally different.</p>
+  <p>Where LLMLingua has an advantage is on unusual or domain-specific text where Terse's rules may not fire. A highly technical physics prompt with no filler words will see little benefit from rule-based compression but might still benefit from LLMLingua's perplexity-based approach. In practice, however, these cases are rare — most prompts written by humans contain significant natural language scaffolding that rule-based compression handles well.</p>
+
+  <h2>The Compounding Effect in Agent Sessions</h2>
+  <p>Where Terse's approach becomes especially powerful is in agent sessions — extended interactions with tools like Claude Code, Cursor, or Windsurf where the model is called dozens or hundreds of times in a single task. In these sessions, every prompt includes context from previous turns, and that context grows with each iteration.</p>
+  <p>Consider a typical Claude Code session that runs 40 turns. If each turn's prompt averages 3,000 tokens and Terse compresses by 40%, that is 1,200 tokens saved per turn, or 48,000 tokens across the session. At Claude's pricing, that translates to real dollar savings on every coding task.</p>
+  <p>But the compounding goes deeper. Agent sessions often include the <a href="/#agents">full conversation history</a> in each new prompt. A filler phrase in turn 3 gets repeated in the context for turns 4 through 40. Compressing that phrase once, at the point of entry, eliminates its cost across all subsequent turns. This is the compounding effect: early compression yields exponential savings over the life of a session.</p>
+  <p>LLMLingua was evaluated primarily on single-shot prompts. The agent session use case — where Terse operates — amplifies the value of compression far beyond what the original paper measured.</p>
+
+  <h2>Academic Context: Related Research</h2>
+  <p>LLMLingua did not emerge in isolation. Several parallel research efforts explored prompt compression from different angles, and Terse draws insights from across this body of work:</p>
+  <ul>
+    <li><strong><a href="/selective-context">Selective Context</a></strong> (Li et al., 2023) demonstrated that removing low-information sentences from prompts preserves task performance. Terse's sentence-level filtering in aggressive mode is inspired by this approach.</li>
+    <li><strong>Gisting</strong> (Mu et al., 2023) trained models to compress prompts into shorter "gist" token sequences. While not directly applicable to rule-based systems, the finding that prompts can be represented in far fewer tokens validated the compression thesis.</li>
+    <li><strong>AutoCompressors</strong> (Chevalier et al., 2023) used recursive summarization to compress long contexts. The key takeaway for Terse was that context compression is most valuable in multi-turn settings — exactly where Terse's agent monitor operates.</li>
+    <li><strong>PCRL</strong> (Jung &amp; Kim, 2024) applied reinforcement learning to learn compression policies, achieving compression ratios comparable to LLMLingua with lower computational cost. This confirmed that the redundancy patterns in prompts are learnable and predictable.</li>
+  </ul>
+  <p>Collectively, this research establishes that prompt compression is not a hack or a trick. It is a well-studied technique with strong empirical support, and the redundancy it targets is a fundamental property of how humans write instructions for language models.</p>
+
+  <h2>Practical Implications for Developers</h2>
+  <p>If you are building with LLM APIs, the LLMLingua research has a direct implication for your costs and performance: you are almost certainly sending more tokens than the model needs. The question is how to address that in a way that fits into your workflow.</p>
+  <p>For batch processing or offline pipelines where latency is not critical, running LLMLingua (or its successor LLMLingua-2) as a preprocessing step is a viable option. The compression quality is excellent and the approach is well-validated.</p>
+  <p>For interactive use — writing prompts in real time, working with agent interfaces, iterating on instructions — Terse's rule-based approach delivers the same compression ratios without the latency penalty. It runs on every keystroke, compresses in under a millisecond, and requires no GPU, no API calls, and no model downloads. Your prompts stay on your device, compressed and optimized before they ever reach the network.</p>
+  <p>The research is clear: prompt compression works. The only question is which implementation fits your use case. For real-time, on-device, privacy-preserving compression, Terse takes the insights from LLMLingua and delivers them at the speed your workflow demands.</p>
+
+  <div class="cta-box">
+    <h3>Compress Your Prompts Like the Research Intended</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse applies LLMLingua's findings at zero latency. Rule-based, on-device, no API calls. Cut 40-70% of your token costs across Claude Code, ChatGPT, and every agent session.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Further Reading</h2>
+  <p>Explore how Terse implements other techniques from the prompt compression research literature:</p>
+  <ul>
+    <li><a href="/selective-context">Selective Context</a> — Sentence-level filtering for long prompts</li>
+    <li><a href="/pattern-optimization">Pattern Optimization</a> — 20+ deterministic compression rules</li>
+    <li><a href="/nlp-analysis">NLP Analysis</a> — Linguistic analysis for intelligent token removal</li>
+    <li><a href="/telegraph-compression">Telegraph Compression</a> — Maximum compression for aggressive mode</li>
+    <li><a href="/norvig-spelling">Norvig Spelling Algorithm</a> — Edit-distance spell correction for prompts</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

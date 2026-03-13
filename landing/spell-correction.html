@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spell Correction for AI Prompts — How Terse Catches Typos Before They Cost You Tokens</title>
+<meta name="description" content="Learn how Terse's 4-stage spell correction pipeline catches typos in AI prompts before they reach the model — preventing costly retry loops in Claude Code, ChatGPT, and Cursor sessions.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://www.terseai.org/spell-correction">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spell Correction for AI Prompts — How Terse Catches Typos Before They Cost You Tokens">
+<meta property="og:description" content="Learn how Terse's 4-stage spell correction pipeline catches typos in AI prompts before they reach the model — preventing costly retry loops in Claude Code, ChatGPT, and Cursor sessions.">
+<meta property="og:url" content="https://www.terseai.org/spell-correction">
+<meta property="og:site_name" content="Terse">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Spell Correction for AI Prompts — How Terse Catches Typos Before They Cost You Tokens">
+<meta name="twitter:description" content="Learn how Terse's 4-stage spell correction pipeline catches typos in AI prompts before they reach the model — preventing costly retry loops in Claude Code, ChatGPT, and Cursor sessions.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Spell Correction for AI Prompts — How Terse Catches Typos Before They Cost You Tokens",
+  "description": "Learn how Terse's 4-stage spell correction pipeline catches typos in AI prompts before they reach the model — preventing costly retry loops in Claude Code, ChatGPT, and Cursor sessions.",
+  "url": "https://www.terseai.org/spell-correction",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Terse",
+    "url": "https://www.terseai.org"
+  },
+  "datePublished": "2026-03-14",
+  "dateModified": "2026-03-14",
+  "author": {
+    "@type": "Organization",
+    "name": "Terse"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.terseai.org/spell-correction"
+  }
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+body{background:var(--bg0);color:var(--t2);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-serif;-webkit-font-smoothing:antialiased}
+.article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+.article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+.article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+.article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+.article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+.article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+.article li{margin-bottom:8px}
+.article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+.article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+.article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+.article a:hover{border-color:var(--ac)}
+.article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+.article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+.article .cta-box h3{margin-top:0}
+.article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+</style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<article class="article">
+  <span class="tag">Techniques</span>
+  <h1>Spell Correction for AI Prompts</h1>
+  <p class="subtitle">How Terse's 4-stage pipeline catches typos before they reach the model &mdash; preventing costly retry loops in Claude Code, ChatGPT, and Cursor sessions.</p>
+
+  <h2>Why Typos in AI Prompts Are Expensive</h2>
+  <p>When you send a prompt to an LLM, every token counts. A misspelled word does not simply get auto-corrected by the model. It gets tokenized, processed through attention layers, and billed at full price. Worse, it can cause the model to misunderstand your intent entirely.</p>
+  <p>Consider a common scenario: you type <code>authetication</code> instead of <code>authentication</code> in a prompt asking Claude Code to fix a login bug. The model might interpret this as a novel technical term, spend tokens asking for clarification, or generate code referencing a misspelled variable name that then causes a cascade of errors in subsequent agent turns.</p>
+  <p>In agentic coding sessions, this problem compounds dramatically. Each turn in a Claude Code or Cursor session builds on the previous context. A typo in turn 1 can trigger a retry loop that wastes 10 to 50 times more tokens than the original prompt. The agent reads the misspelled term, generates code with the same misspelling, encounters an error, retries with a different interpretation, and the cycle continues until the context window is saturated with wasted reasoning.</p>
+  <p>At current API pricing, a single typo-induced retry loop can cost between $0.05 and $0.50 depending on the model and context length. Across hundreds of daily prompts, this adds up to real money. More importantly, it wastes time. Every retry loop is 10 to 30 seconds of waiting for a response that should not have been necessary.</p>
+  <p>Browser spellcheck does not help here. Most AI interfaces use custom text fields or web-based editors where browser spellcheck either does not activate or flags technical terms as errors. VS Code's built-in spellcheck is oriented toward code comments, not prompt composition. There is a gap between where you write prompts and where spelling gets checked.</p>
+
+  <h2>How Terse's Spell Correction Pipeline Works</h2>
+  <p>Terse runs a 4-stage spell correction pipeline that executes entirely on-device before any optimization or compression takes place. Every prompt passes through all four stages in sequence, and the entire pipeline completes in under 5 milliseconds for typical prompt lengths. No data leaves your machine. No API calls are made. The corrections happen inline as you type.</p>
+
+  <h3>Stage 1: Hardcoded Typo Dictionary</h3>
+  <p>The first stage is the fastest and most reliable. Terse maintains a curated dictionary of over 400 common typos that appear frequently in coding and AI prompt contexts. These are direct string replacements with zero ambiguity.</p>
+  <p>Examples from the dictionary:</p>
+  <pre>
+"authetication" → "authentication"
+"wirte"         → "write"
+"funciton"      → "function"
+"reponse"       → "response"
+"impelment"     → "implement"
+"retrun"        → "return"
+"lenght"        → "length"
+"widht"         → "width"
+"heigth"        → "height"
+"exmaple"       → "example"</pre>
+  <p>This dictionary was built by analyzing thousands of real prompts sent to coding assistants. The entries are specifically weighted toward developer vocabulary: variable names, API terms, framework keywords, and common instruction verbs. Because these are exact-match replacements, the false positive rate is effectively zero. The word <code>authetication</code> has no legitimate meaning. It is always a typo.</p>
+  <p>Stage 1 runs in constant time per word. It is a hash table lookup, so even prompts with thousands of words complete in microseconds.</p>
+
+  <h3>Stage 2: Norvig Edit-Distance Correction with QWERTY Weighting</h3>
+  <p>For typos not covered by the hardcoded dictionary, Terse uses a modified version of Peter Norvig's statistical spelling corrector. The classic Norvig algorithm generates all words within edit distance 1 or 2 of the misspelled word and selects the most probable candidate based on word frequency data.</p>
+  <p>Terse enhances this with QWERTY keyboard proximity weighting. When scoring candidate corrections, edits involving adjacent keys on a QWERTY layout receive higher probability than edits involving distant keys. The intuition is simple: if you typed <code>wirte</code>, the most likely intended word is <code>write</code> because <code>i</code> and <code>r</code> are adjacent keys that were hit in the wrong order. A substitution of <code>a</code> for <code>q</code> is more probable than <code>a</code> for <code>m</code> because those keys are physically next to each other.</p>
+  <p>This proximity weighting significantly improves accuracy for fast typists who frequently transpose or substitute adjacent keys. For a deeper look at the algorithmic foundations, see our <a href="/norvig-spelling">Norvig Spelling Corrector</a> reference page.</p>
+  <p>The word frequency corpus is tuned for technical and instructional English, not general prose. Words like <code>function</code>, <code>implement</code>, <code>parameter</code>, and <code>configuration</code> have higher base frequencies than they would in a standard English corpus, which means the corrector is more likely to suggest them as replacements.</p>
+
+  <h3>Stage 3: Context-Aware Real-Word Error Detection</h3>
+  <p>Stages 1 and 2 handle non-word errors, where the misspelled word is not a real English word. Stage 3 tackles a harder problem: real-word errors, where the typo produces a valid word that is wrong in context.</p>
+  <p>The classic example: <code>"what souls I do"</code> contains three valid English words, but <code>souls</code> should be <code>should</code>. A traditional spellchecker would not flag this because <code>souls</code> is a real word.</p>
+  <p>Terse detects these errors using bigram probability analysis. It examines each pair of adjacent words and checks whether the pair is statistically improbable given a language model trained on instructional and technical text. The bigram <code>"what souls"</code> has extremely low probability compared to <code>"what should"</code>, so Terse flags it and suggests the correction.</p>
+  <p>This stage is more conservative than the others. It only triggers when the probability ratio between the original bigram and the corrected bigram exceeds a high confidence threshold. This prevents false positives on unusual but intentional word combinations. In practice, it catches errors like:</p>
+  <ul>
+    <li><code>"can you right a function"</code> &rarr; <code>"can you write a function"</code></li>
+    <li><code>"I want too add a feature"</code> &rarr; <code>"I want to add a feature"</code></li>
+    <li><code>"what souls I do next"</code> &rarr; <code>"what should I do next"</code></li>
+    <li><code>"please sent the response"</code> &rarr; <code>"please send the response"</code></li>
+    <li><code>"the filed is required"</code> &rarr; <code>"the field is required"</code></li>
+  </ul>
+
+  <h3>Stage 4: macOS NSSpellChecker Integration</h3>
+  <p>The final stage leverages macOS's built-in <code>NSSpellChecker</code> API through Terse's compiled Swift accessibility helper. This catches anything the first three stages missed, and it supports every language installed on your system.</p>
+  <p>NSSpellChecker has access to Apple's system dictionaries, user-added words, and learned corrections. If you have added technical terms to your macOS dictionary through other apps, Terse will respect those. If you write prompts in German, French, Spanish, or any other language macOS supports, the system spellchecker handles it.</p>
+  <p>This stage runs as a subprocess call to the <code>terse-ax</code> Swift binary, which means it executes natively outside the Electron process. The latency is typically 1 to 3 milliseconds for a full prompt check. Because it runs after the first three stages, it only needs to evaluate words that were not already corrected, keeping the workload minimal.</p>
+
+  <h2>Protecting Code and Technical Terms</h2>
+  <p>A spell corrector that flags your code as errors is worse than useless. Terse applies several filters before any correction stage runs:</p>
+  <ul>
+    <li><strong>ALL-CAPS words</strong> are skipped. Acronyms like <code>API</code>, <code>HTTP</code>, <code>JSON</code>, and <code>SQL</code> are never modified.</li>
+    <li><strong>Capitalized words</strong> (proper nouns, class names) are skipped. <code>React</code>, <code>PostgreSQL</code>, <code>Kubernetes</code> pass through untouched.</li>
+    <li><strong>Inline code blocks</strong> (text between backticks) are preserved exactly as written.</li>
+    <li><strong>URLs and file paths</strong> are detected and excluded from correction.</li>
+    <li><strong>CamelCase and snake_case</strong> identifiers are recognized as code and left alone.</li>
+    <li><strong>Words with numbers</strong> (like <code>v2</code>, <code>h1</code>, <code>utf8</code>) are treated as technical terms and skipped.</li>
+  </ul>
+  <p>These filters mean you can freely mix natural language instructions with code snippets, variable names, and technical jargon in your prompts. Terse corrects the English while leaving everything else untouched.</p>
+
+  <h2>Impact on Agent Sessions</h2>
+  <p>In a typical Claude Code or Cursor session, you send 20 to 50 prompts over 30 to 60 minutes. Each prompt averages 40 to 100 tokens. If even 5% of those prompts contain a typo that causes a single retry or clarification, you are looking at 1 to 3 wasted turns per session, each costing the full context window re-read.</p>
+  <p>For a session with 80,000 tokens of accumulated context, one retry turn costs roughly $0.08 at Claude Sonnet pricing and $0.24 at Opus pricing. Three retries per session, across 5 sessions per day, adds up to $1.20 to $3.60 daily in pure waste. Over a month, that is $25 to $75 in tokens spent on nothing.</p>
+  <p>Terse's spell correction eliminates this category of waste entirely. The pipeline runs before the prompt is sent, so the model always receives clean, correctly-spelled input. No retries. No clarification requests. No misspelled variable names propagating through generated code.</p>
+  <p>This becomes even more critical with <a href="/#agents">agent monitoring</a> enabled. When Terse detects an agent session (Claude Code, Cursor, Windsurf), it monitors each turn's token usage and flags anomalies. Spell correction at the input layer is the first line of defense against the kind of compounding waste that makes agent sessions expensive.</p>
+
+  <h2>How Terse Compares to Other Approaches</h2>
+  <h3>Browser Spellcheck</h3>
+  <p>Built-in browser spellcheck works in standard text inputs and content-editable elements. It does not work in most AI chat interfaces, which use custom components. It also has no understanding of technical vocabulary, frequently flagging words like <code>async</code>, <code>middleware</code>, and <code>webhook</code> as errors. It cannot detect real-word errors and offers no QWERTY proximity weighting.</p>
+
+  <h3>Grammarly and LanguageTool</h3>
+  <p>These tools are designed for long-form prose writing. They focus on grammar, style, and tone. They work well for emails and documents but are too aggressive for AI prompts, where brevity and directness are virtues. They also require cloud connectivity, which means your prompts are sent to a third-party server. For proprietary code discussions or sensitive project details, this is a non-starter.</p>
+  <p>Terse runs entirely on-device. Your prompts never leave your machine.</p>
+
+  <h3>LLM-Based Correction</h3>
+  <p>You could ask the LLM itself to correct your typos, but that means sending the typo-laden prompt first, paying for those tokens, and then paying again for the corrected version. It defeats the purpose. The whole point is to fix errors before they reach the model.</p>
+
+  <h2>Spell Correction in the Optimization Pipeline</h2>
+  <p>Spell correction is Stage 1 of the <a href="/#pipeline">Terse optimization pipeline</a>. It runs before <a href="/pattern-optimization">pattern optimization</a>, <a href="/nlp-analysis">NLP analysis</a>, and <a href="/telegraph-compression">telegraph compression</a>. This ordering is intentional: correcting spelling first ensures that downstream stages operate on clean text, which improves their accuracy.</p>
+  <p>For example, the pattern optimizer has a rule that converts <code>"in order to"</code> to <code>"to"</code>. If a typo produced <code>"in ordor to"</code>, the pattern would not match, and the compression opportunity would be lost. By fixing the spelling first, every downstream optimization has the best possible input to work with.</p>
+  <p>In Soft mode, spell correction is one of the primary operations (along with whitespace compression). It preserves 100% of your intended meaning while fixing mechanical errors. In Normal and Aggressive modes, spell correction still runs first, but the prompt then passes through additional compression stages that reduce token count further.</p>
+
+  <div class="cta-box">
+    <h3>Stop Paying for Typos</h3>
+    <p>Terse catches errors before they cost you tokens. On-device, instant, and aware of your technical vocabulary.</p>
+    <a href="/#pricing" class="btn">Download for macOS</a>
+  </div>
+</article>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

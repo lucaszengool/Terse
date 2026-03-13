@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pattern Optimization — 130+ Rules That Compress Verbose AI Prompts</title>
+<meta name="description" content="Terse applies 130+ phrase-shortening rules to compress verbose AI prompts automatically. Learn how pattern optimization reduces token costs by 20-40% across ChatGPT, Claude Code, and agent sessions.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://www.terseai.org/pattern-optimization">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pattern Optimization — 130+ Rules That Compress Verbose AI Prompts">
+<meta property="og:description" content="Terse applies 130+ phrase-shortening rules to compress verbose AI prompts automatically. Learn how pattern optimization reduces token costs by 20-40% across ChatGPT, Claude Code, and agent sessions.">
+<meta property="og:url" content="https://www.terseai.org/pattern-optimization">
+<meta property="og:site_name" content="Terse">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pattern Optimization — 130+ Rules That Compress Verbose AI Prompts">
+<meta name="twitter:description" content="Terse applies 130+ phrase-shortening rules to compress verbose AI prompts automatically. Learn how pattern optimization reduces token costs by 20-40% across ChatGPT, Claude Code, and agent sessions.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Pattern Optimization — 130+ Rules That Compress Verbose AI Prompts",
+  "description": "Terse applies 130+ phrase-shortening rules to compress verbose AI prompts automatically. Learn how pattern optimization reduces token costs by 20-40% across ChatGPT, Claude Code, and agent sessions.",
+  "url": "https://www.terseai.org/pattern-optimization",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Terse",
+    "url": "https://www.terseai.org"
+  },
+  "datePublished": "2026-03-14",
+  "dateModified": "2026-03-14",
+  "author": {
+    "@type": "Organization",
+    "name": "Terse"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.terseai.org/pattern-optimization"
+  }
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+body{background:var(--bg0);color:var(--t2);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-serif;-webkit-font-smoothing:antialiased}
+.article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+.article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+.article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+.article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+.article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+.article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+.article li{margin-bottom:8px}
+.article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+.article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+.article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+.article a:hover{border-color:var(--ac)}
+.article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+.article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+.article .cta-box h3{margin-top:0}
+.article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+.before-after{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+.before-after div{padding:16px;border-radius:10px;font-size:14px;line-height:1.7}
+.before-after .before{background:hsla(0,60%,40%,0.08);border:1px solid hsla(0,60%,40%,0.15)}
+.before-after .after{background:hsla(160,60%,40%,0.08);border:1px solid hsla(160,60%,40%,0.15)}
+.before-after .label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;display:block}
+.before .label{color:hsla(0,70%,65%,0.9)}
+.after .label{color:var(--ac)}
+@media(max-width:600px){.before-after{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<article class="article">
+  <span class="tag">Techniques</span>
+  <h1>Pattern Optimization</h1>
+  <p class="subtitle">130+ deterministic rules that compress verbose AI prompts by 20&ndash;40%, saving tokens on every turn across ChatGPT, Claude Code, and agent sessions.</p>
+
+  <h2>Why Verbose Prompts Cost More Than You Think</h2>
+  <p>Large language models charge per token. A token is roughly 4 characters or three-quarters of a word. When you write <code>"I was wondering if you could maybe help me write a function that"</code> instead of <code>"Write function that"</code>, you are paying for 16 tokens instead of 4. The model understands both identically.</p>
+  <p>This matters at three levels. First, direct cost: every extra token in your input is billed at the model's per-token rate. At Claude Sonnet pricing, 1,000 unnecessary tokens cost roughly $0.003 on input. That sounds trivial until you multiply by the number of prompts per day.</p>
+  <p>Second, context window consumption. Every model has a finite context window. GPT-4o supports 128K tokens. Claude supports 200K. When your prompts are 40% longer than necessary, you hit the context ceiling 40% sooner. In long agent sessions, this means earlier context truncation and degraded response quality.</p>
+  <p>Third, and most significantly, agent session compounding. In a Claude Code or Cursor session, every prompt you send becomes part of the conversation context. A 40% overhead on turn 1 gets re-read by the model on turn 2, turn 3, turn 4, and every subsequent turn. Across a 30-turn session, that initial verbosity gets billed 30 times. A single wordy prompt that could have been 50 tokens shorter ends up costing 1,500 extra tokens over the session.</p>
+  <p>Pattern optimization addresses this by applying deterministic, rule-based transformations that shorten verbose phrases without changing their meaning. It runs on-device in under 2 milliseconds and requires no API calls.</p>
+
+  <h2>How 130+ Rules Compress Your Prompts</h2>
+  <p>Terse's pattern optimization engine contains over 130 phrase-shortening rules organized into six categories. Each rule is a regex or string match paired with a replacement. The rules are applied in a specific order to avoid conflicts, and each one has been tested against thousands of real AI prompts to verify that it preserves intent.</p>
+
+  <h3>Filler Removal</h3>
+  <p>Filler words and phrases add no information. They are verbal habits carried over from speech into writing. LLMs do not need them and process them at full token cost.</p>
+  <pre>
+"I basically think that we should" → "we should"
+"So essentially what I need is"   → "I need"
+"I just wanted to quickly"        → ""
+"Actually, I think"               → ""
+"To be honest,"                   → ""
+"At the end of the day,"          → ""</pre>
+  <p>These patterns appear in roughly 35% of prompts written in conversational style. Removing them typically saves 3 to 8 tokens per prompt with zero loss of meaning. The model does not need to know that you "basically" think something. It just needs the instruction.</p>
+
+  <h3>Phrase Shortening</h3>
+  <p>English has many multi-word phrases that can be replaced with shorter equivalents. These are not filler; they carry meaning. But the same meaning can be expressed in fewer tokens.</p>
+  <pre>
+"in order to"              → "to"
+"due to the fact that"     → "because"
+"at this point in time"    → "now"
+"in the event that"        → "if"
+"with regard to"           → "about"
+"in the process of"        → "currently"
+"a large number of"        → "many"
+"on a daily basis"         → "daily"
+"has the ability to"       → "can"
+"it is important to note"  → "note:"
+"take into consideration"  → "consider"
+"make sure that"           → "ensure"
+"the vast majority of"     → "most"
+"in close proximity to"    → "near"</pre>
+  <p>These rules are the highest-impact category. A single instance of <code>"due to the fact that"</code> replaced with <code>"because"</code> saves 5 tokens. Across a prompt with three or four such phrases, the savings reach 15 to 25 tokens.</p>
+
+  <h3>Hedging Removal</h3>
+  <p>Hedging language softens statements. In conversation, it is polite. In AI prompts, it is wasted tokens. The model does not have feelings to protect, and hedging often makes instructions ambiguous.</p>
+  <pre>
+"I was wondering if you could maybe"  → ""
+"Would it be possible to perhaps"     → ""
+"I'm not sure but I think maybe"      → ""
+"It might be worth considering"       → "consider"
+"It seems like it could be"           → ""
+"If it's not too much trouble"        → ""</pre>
+  <p>Hedging removal is one of the more aggressive transformations. In Soft mode, Terse leaves hedging intact. In Normal mode, it removes clear hedging patterns. In Aggressive mode, it strips all hedging including partial hedges embedded in longer sentences.</p>
+
+  <h3>Politeness Stripping</h3>
+  <p>Politeness prefixes and suffixes are entirely invisible to the model's instruction-following capabilities. Extensive testing has shown that <code>"Write a function"</code> and <code>"Could you please kindly help me write a function"</code> produce identical outputs from every major LLM.</p>
+  <pre>
+"Could you please help me"    → ""  (imperative follows)
+"Would you mind"              → ""
+"I'd really appreciate if"    → ""
+"Thank you in advance"        → ""
+"Please and thank you"        → ""
+"If you don't mind"           → ""</pre>
+  <p>This category saves an average of 6 to 12 tokens per prompt. In Normal mode, Terse removes obvious politeness wrappers. In Aggressive mode, it converts full polite requests into direct imperatives: <code>"Could you please write a Python function that sorts a list?"</code> becomes <code>"Write Python function: sort list"</code>.</p>
+
+  <h3>Meta-Language Removal</h3>
+  <p>Meta-language is text about the text. It describes what you are about to say rather than saying it. LLMs do not need narration of your thought process.</p>
+  <pre>
+"Let me explain what I need"      → ""
+"As I mentioned earlier"          → ""
+"To give you some context"        → ""
+"What I'm trying to say is"       → ""
+"Here's what I'm looking for"     → ""
+"The thing is"                    → ""
+"The reason I'm asking is"        → ""
+"To put it another way"           → ""</pre>
+  <p>Meta-language is especially common in follow-up prompts within a conversation. Users naturally write <code>"As I mentioned earlier, the function should..."</code> when they could simply write the instruction. The model already has the conversation history. It does not need to be told that something was mentioned earlier.</p>
+
+  <h3>Question-to-Imperative Conversion</h3>
+  <p>Questions addressed to an LLM can almost always be rephrased as imperatives. The question form adds interrogative tokens that carry no additional instruction.</p>
+  <pre>
+"Can you write a function that"     → "Write function:"
+"Could you create a script to"     → "Create script:"
+"Would you be able to explain"     → "Explain"
+"Is it possible to implement"      → "Implement"
+"Do you know how to"               → ""</pre>
+  <p>This conversion is most aggressive in Aggressive mode, where it also strips articles and reduces the instruction to its minimal form. In Normal mode, it converts the question form but preserves the full noun phrases.</p>
+
+  <h2>Before and After: Real Prompt Examples</h2>
+
+  <div class="before-after">
+    <div class="before">
+      <span class="label">Before (87 tokens)</span>
+      Hi there! I was wondering if you could maybe help me out with something. I'm trying to write a Python function that takes in a list of numbers and returns the average, but I'm not sure about the best way to handle the edge case where the list might be empty. Could you please write that function for me? Thank you so much!
+    </div>
+    <div class="after">
+      <span class="label">After (22 tokens)</span>
+      Write Python function: take list of numbers, return average. Handle empty list edge case.
+    </div>
+  </div>
+
+  <p>That is a 75% reduction. The model produces identical output for both prompts. In an agent session where this context gets re-read 20 times, the savings compound to over 1,300 tokens.</p>
+
+  <div class="before-after">
+    <div class="before">
+      <span class="label">Before (62 tokens)</span>
+      So basically what I need is for you to look at the following code and tell me if there are any bugs or issues with it. I think there might be a problem with the error handling, but I'm not entirely sure. Could you take a look and let me know what you think?
+    </div>
+    <div class="after">
+      <span class="label">After (16 tokens)</span>
+      Review this code for bugs. Focus on error handling. List issues found.
+    </div>
+  </div>
+
+  <p>A 74% reduction. The instruction is clearer in the compressed form. There is no ambiguity about what is being asked.</p>
+
+  <div class="before-after">
+    <div class="before">
+      <span class="label">Before (44 tokens)</span>
+      I'd really appreciate it if you could help me refactor this function in order to make it more readable and also to improve the performance, due to the fact that it's currently running quite slowly.
+    </div>
+    <div class="after">
+      <span class="label">After (14 tokens)</span>
+      Refactor this function for readability and performance. Currently slow.
+    </div>
+  </div>
+
+  <p>A 68% reduction. Every phrase-shortening rule contributed: <code>"in order to"</code> became <code>"for"</code>, <code>"due to the fact that"</code> became <code>"because"</code> (then merged into the sentence), and the politeness wrapper was stripped.</p>
+
+  <h2>Three Modes, Three Levels of Compression</h2>
+  <p>Not every prompt needs maximum compression. Sometimes you want to preserve your voice. Terse offers three optimization modes that control which pattern categories are applied.</p>
+
+  <h3>Soft Mode</h3>
+  <p>Soft mode applies only <a href="/spell-correction">spell correction</a> and whitespace normalization. No patterns are applied. Your prompt text stays exactly as written, minus typos and extra spaces. This mode preserves 100% of your intended phrasing and is ideal when you are crafting careful system prompts or few-shot examples where exact wording matters.</p>
+
+  <h3>Normal Mode</h3>
+  <p>Normal mode applies filler removal, phrase shortening, and meta-language removal. It leaves hedging partially intact and does not convert questions to imperatives. This is the default mode and provides a good balance between compression and naturalness. Typical savings: 20 to 30% token reduction.</p>
+
+  <h3>Aggressive Mode</h3>
+  <p>Aggressive mode applies all six pattern categories at full strength, plus <a href="/telegraph-compression">telegraph compression</a> and markdown stripping. Questions become imperatives. Politeness is fully stripped. Hedging is removed. Articles and prepositions are dropped where the meaning survives without them. Typical savings: 35 to 50% token reduction. This mode may alter nuance in complex instructions, so it is best suited for straightforward coding tasks and factual queries.</p>
+
+  <h2>Why Rules Beat LLM-Based Compression</h2>
+  <p>There are research approaches to prompt compression that use a secondary LLM to rewrite prompts in fewer tokens. <a href="/llmlingua">LLMLingua</a> and <a href="/selective-context">Selective Context</a> are notable examples. These methods can achieve high compression ratios, but they have fundamental drawbacks for interactive use.</p>
+  <p>First, latency. Calling an LLM to compress a prompt takes 500 milliseconds to 3 seconds. Terse's pattern engine runs in under 2 milliseconds. When you are typing in a live chat interface, the compression needs to be instant.</p>
+  <p>Second, cost. Using an LLM to compress prompts means paying for the compression itself. If you spend 100 tokens to save 200 tokens, your net savings is only 100 tokens minus the cost of the compression call. For short prompts, the overhead can exceed the savings.</p>
+  <p>Third, determinism. Rule-based patterns produce identical output every time. You can predict exactly what will change. LLM-based compression is stochastic. The same input might produce different compressed versions on different runs, and occasionally the compressed version loses critical information.</p>
+  <p>Fourth, privacy. Rule-based compression runs entirely on-device. Your prompts are never sent anywhere. LLM-based compression requires sending your prompt to an API, which may not be acceptable for proprietary code or sensitive discussions.</p>
+  <p>Terse's approach is to use deterministic rules for the patterns that can be reliably identified and compressed, and to leave everything else untouched. This means the compression ratio is lower than what an LLM might achieve, but the reliability is 100% and the latency is negligible.</p>
+
+  <h2>Pattern Optimization in the Pipeline</h2>
+  <p>Pattern optimization is Stage 2 of the <a href="/#pipeline">Terse optimization pipeline</a>, running after <a href="/spell-correction">spell correction</a> and before <a href="/nlp-analysis">NLP analysis</a>. This ordering ensures that patterns match against correctly-spelled text, maximizing hit rates.</p>
+  <p>After pattern optimization, the <a href="/nlp-analysis">NLP analysis</a> stage examines the remaining text for structural redundancies that require sentence-level understanding, and <a href="/telegraph-compression">telegraph compression</a> performs the final token-level compression in Aggressive mode.</p>
+  <p>All stages are visible in the <a href="/#techniques">Techniques panel</a> of the Terse interface, where you can see exactly which rules fired and how many tokens each one saved. This transparency lets you tune your writing habits over time, learning which verbal patterns cost you the most tokens.</p>
+
+  <div class="cta-box">
+    <h3>Compress Every Prompt Automatically</h3>
+    <p>130+ rules. Under 2ms. Zero API calls. See your token savings in real time.</p>
+    <a href="/#pricing" class="btn">Download for macOS</a>
+  </div>
+</article>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

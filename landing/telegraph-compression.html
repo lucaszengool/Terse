@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Telegraph Compression — Maximum Token Reduction for AI Agent Sessions</title>
+<meta name="description" content="Telegraph compression strips AI prompts to their essential meaning — removing articles, pronouns, and low-information words. Learn how Terse's aggressive mode achieves 40-70% token reduction for agent sessions.">
+<link rel="canonical" href="https://www.terseai.org/telegraph-compression">
+<meta property="og:title" content="Telegraph Compression — Maximum Token Reduction for AI Agent Sessions">
+<meta property="og:description" content="Telegraph compression strips AI prompts to their essential meaning — removing articles, pronouns, and low-information words. Learn how Terse achieves 40-70% token reduction.">
+<meta property="og:url" content="https://www.terseai.org/telegraph-compression">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Terse">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Telegraph Compression — Maximum Token Reduction for AI Agent Sessions">
+<meta name="twitter:description" content="Telegraph compression strips AI prompts to their essential meaning — removing articles, pronouns, and low-information words. Learn how Terse achieves 40-70% token reduction.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Telegraph Compression — Maximum Token Reduction for AI Agent Sessions",
+  "description": "Telegraph compression strips AI prompts to their essential meaning — removing articles, pronouns, and low-information words. Learn how Terse's aggressive mode achieves 40-70% token reduction for agent sessions.",
+  "url": "https://www.terseai.org/telegraph-compression",
+  "datePublished": "2026-03-14",
+  "dateModified": "2026-03-14",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Terse",
+    "url": "https://www.terseai.org"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Terse"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.terseai.org/telegraph-compression"
+  }
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+body{background:var(--bg0);color:var(--t2);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6}
+.article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+.article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+.article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+.article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+.article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+.article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+.article li{margin-bottom:8px}
+.article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+.article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+.article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+.article a:hover{border-color:var(--ac)}
+.article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+.article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+.article .cta-box h3{margin-top:0}
+.article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+</style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<main class="article">
+  <span class="tag">Aggressive Mode</span>
+  <h1>Telegraph Compression</h1>
+  <p class="subtitle">Maximum token reduction for AI agent sessions. Inspired by telegraph-era word economy, Terse's aggressive mode strips prompts to their essential meaning and achieves 40-70% compression.</p>
+
+  <h2>What Is Telegraph Compression?</h2>
+  <p>In the 1850s, sending a telegram cost money per word. This economic pressure created a new dialect: telegraph English. Articles disappeared. Pronouns vanished. Every word that did not carry critical meaning was stripped away. "I am arriving on the morning train on Tuesday" became "ARRIVING MORNING TRAIN TUESDAY." The meaning survived. The cost dropped by half.</p>
+  <p>AI token pricing creates the same economic pressure. Every token in your prompt costs money and consumes context window space. Telegraph compression applies the same principle: strip everything that does not carry meaning, and let the model reconstruct the intent from the essential words that remain.</p>
+  <p>Terse's Aggressive mode implements telegraph compression as the final stage of its optimization pipeline. After <a href="/spell-correction">spell correction</a>, <a href="/pattern-optimization">pattern optimization</a>, and <a href="/nlp-analysis">NLP analysis</a> have already removed structural waste, telegraph compression goes further by removing entire categories of words that carry minimal information in the context of an AI prompt.</p>
+
+  <h2>How Telegraph Compression Works in Terse</h2>
+
+  <h3>Article Removal</h3>
+  <p>English articles ("the", "a", "an") are among the most frequent tokens in any prompt. They help human readers parse sentences but add almost zero information for language models. LLMs are trained on enough text that they can reconstruct the intended meaning without articles in most contexts.</p>
+  <pre>Before: "Fix the bug in the authentication module where the
+         token is not refreshed after the session expires"
+After:  "Fix bug in authentication module where token not
+         refreshed after session expires"
+Saved:  5 tokens
+
+Before: "Create a new endpoint that returns a list of all the
+         active users in the database"
+After:  "Create new endpoint returning list of active users
+         in database"
+Saved:  6 tokens</pre>
+  <p>Terse does not blindly strip every article. Articles inside code blocks, quoted strings, and variable names are preserved. The phrase <code>a = 5</code> keeps its "a" because it is a variable name, not an article. Similarly, articles in strings like <code>"The user has been deleted"</code> are preserved because they are part of output that end users will see.</p>
+
+  <h3>Pronoun Dropping</h3>
+  <p>First-person and second-person pronouns are almost entirely redundant in AI prompts. When you send a message to Claude or GPT-4, the model already knows that "I" refers to the user and "you" refers to the model. These pronouns consume tokens without adding information.</p>
+  <pre>Before: "I want you to refactor this function so that it uses
+         async/await instead of callbacks. I also need you to
+         add error handling."
+After:  "Refactor function to use async/await instead of
+         callbacks. Add error handling."
+Saved:  11 tokens
+
+Before: "Can you explain to me how I should structure my
+         database schema for a multi-tenant application?"
+After:  "Explain database schema structure for multi-tenant
+         application"
+Saved:  9 tokens</pre>
+  <p>Pronoun dropping combines with the implicit context removal from <a href="/nlp-analysis">NLP analysis</a> to eliminate the conversational framing that surrounds most prompts. The result reads more like a command than a conversation, but language models respond equally well to both styles. In many benchmarks, direct commands actually produce better results than polite requests.</p>
+
+  <h3>Stopword Removal</h3>
+  <p>Beyond articles and pronouns, English contains dozens of high-frequency, low-information words: "just", "really", "very", "basically", "actually", "simply", "quite", "rather", "somewhat", "perhaps". These words modulate tone but carry negligible semantic weight in technical prompts.</p>
+  <pre>Before: "I'm just trying to basically understand why this
+         function is actually returning undefined instead of
+         the value I really expected"
+After:  "Why function returning undefined instead of expected
+         value"
+Saved:  14 tokens
+
+Before: "Could you perhaps help me to simply add some very
+         basic input validation to this form?"
+After:  "Add basic input validation to form"
+Saved:  11 tokens</pre>
+  <p>Terse maintains a curated stopword list tuned specifically for AI prompts. Unlike generic NLP stopword lists, Terse's list excludes words that carry important meaning in programming contexts. "Not", "no", "without", and "except" are never removed because negation is semantically critical. "If", "when", "while", and "until" are preserved because they define conditional logic. The list targets only words that serve as conversational filler in the specific context of human-to-AI communication.</p>
+
+  <h3>Markdown Noise Stripping</h3>
+  <p>Many users format their prompts with Markdown: headers, bold markers, bullet points, horizontal rules. When you are typing into a plain text input that gets sent as a prompt, these formatting characters consume tokens without producing any visual formatting. The model processes them as literal characters.</p>
+  <pre>Before: "## Task\n\n**Please** review the following code:\n\n
+         - Check for bugs\n- Check for performance issues\n
+         - Suggest improvements\n\n---\n\n```python\ndef foo()..."
+After:  "Review following code. Check for bugs, performance
+         issues. Suggest improvements.\n\npython\ndef foo()..."
+Saved:  12 tokens</pre>
+  <p>Terse strips Markdown headers (<code>##</code>), bold/italic markers (<code>**</code>, <code>*</code>), horizontal rules (<code>---</code>), and converts bullet lists into comma-separated phrases when the items are short. Code fences are simplified but the code content inside them is never modified. This is a critical safety boundary: telegraph compression operates on natural language only and never touches code tokens.</p>
+
+  <h3>Low-Information Word Removal</h3>
+  <p>The final layer of telegraph compression targets words and phrases that carry minimal information density. These are not stopwords in the traditional sense but rather words that add specificity without changing the model's interpretation of the prompt.</p>
+  <pre>Before: "Write a comprehensive and detailed implementation of
+         a binary search tree data structure in TypeScript
+         with full type annotations"
+After:  "Implement binary search tree TypeScript typed"
+Saved:  14 tokens
+
+Before: "Please provide a thorough explanation of how the
+         JavaScript event loop works, including microtasks
+         and macrotasks"
+After:  "Explain JavaScript event loop, microtasks, macrotasks"
+Saved:  9 tokens</pre>
+  <p>Words like "comprehensive", "detailed", "thorough", and "full" are common in prompts but rarely change the model's output. Claude and GPT-4 default to comprehensive responses regardless of whether you ask for them. Stripping these modifiers saves tokens without measurably affecting response quality.</p>
+
+  <h2>When to Use Telegraph Compression</h2>
+  <p>Telegraph compression is not appropriate for every situation. It is designed for specific use cases where maximum token efficiency outweighs preserving the original style and tone of the prompt.</p>
+
+  <h3>Ideal Use Cases</h3>
+  <ul>
+    <li><strong>Agent sessions:</strong> Multi-turn coding sessions with Claude Code, Cursor, or Copilot where you are sending dozens of prompts and context window pressure is real. Telegraph compression keeps you within limits longer.</li>
+    <li><strong>API batch processing:</strong> When you are sending thousands of prompts through an API, even small per-prompt savings multiply into significant cost reduction. A 50% reduction on 10,000 prompts at $3/million tokens adds up.</li>
+    <li><strong>Context-heavy workflows:</strong> When your system prompt and retrieved context already consume most of the context window, compressing the user prompt with telegraph mode gives the model more room to reason.</li>
+    <li><strong>Rapid iteration:</strong> During development when you are sending the same type of prompt repeatedly with minor variations, telegraph compression removes the ceremony and lets you focus on what changes between iterations.</li>
+  </ul>
+
+  <h3>When NOT to Use Telegraph Compression</h3>
+  <ul>
+    <li><strong>Critical prompts with nuance:</strong> If the exact phrasing matters, such as legal document analysis, medical queries, or safety-critical instructions, use Soft or Normal mode instead. Telegraph compression may strip qualifiers that carry important meaning.</li>
+    <li><strong>Creative writing prompts:</strong> Tone, style, and word choice are the payload in creative prompts. Stripping them defeats the purpose. A prompt asking for "a whimsical, dreamy, slightly melancholic poem" should not become "write poem."</li>
+    <li><strong>Prompts with deliberate emphasis:</strong> If you have intentionally repeated or emphasized certain words to steer the model's attention, telegraph compression may remove that emphasis. Use Normal mode to preserve intentional structure.</li>
+    <li><strong>User-facing outputs:</strong> If the prompt will be shown to end users (e.g., in a chatbot interface), the telegraphic style may appear robotic or unfriendly. Keep the human-readable version for display.</li>
+  </ul>
+
+  <h2>How Terse Protects Sensitive Tokens</h2>
+  <p>The most important design constraint in telegraph compression is knowing what not to remove. Terse implements several protection mechanisms to ensure that compression never corrupts functional content.</p>
+
+  <h3>Code Block Preservation</h3>
+  <p>Everything inside code fences, inline code markers, and indented code blocks is treated as immutable. Telegraph compression operates only on the natural language surrounding code. This means you can safely optimize prompts that contain code snippets, configuration files, error messages, or terminal output without any risk of the code being modified.</p>
+
+  <h3>ALL-CAPS Protection</h3>
+  <p>Words in ALL CAPS are preserved regardless of whether they would normally be stripped. ALL-CAPS words typically indicate emphasis, acronyms, constants, or environment variables. Removing "NOT" from "DO NOT delete the database" would invert the meaning entirely. Terse recognizes that capitalization signals importance and exempts these tokens from all compression.</p>
+
+  <h3>URL and Path Preservation</h3>
+  <p>URLs, file paths, and import statements are detected and protected. The articles and prepositions inside a URL like <code>https://api.example.com/the/users/a/new</code> are part of the path structure, not English grammar. Terse's tokenizer identifies these patterns before compression begins and marks them as immutable regions.</p>
+
+  <h3>Quoted String Preservation</h3>
+  <p>Text inside single quotes, double quotes, and backticks is preserved verbatim. These are typically string literals, error messages, or specific values that the user wants the model to see exactly as written. Telegraph compression skips over quoted regions entirely.</p>
+
+  <h2>Real Examples: Before and After</h2>
+  <p>Here are complete prompt transformations showing the full effect of telegraph compression combined with the earlier pipeline stages.</p>
+
+  <pre>ORIGINAL (87 tokens):
+"Hey, I'm working on a React application and I'm having trouble
+with the useEffect hook. When I navigate to a new page, the
+previous page's useEffect cleanup function doesn't seem to be
+running. Could you help me understand why this might be
+happening and suggest a fix?"
+
+TELEGRAPH (31 tokens):
+"React useEffect cleanup not running on page navigation. Why?
+Fix?"
+
+REDUCTION: 64% (56 tokens saved)</pre>
+
+  <pre>ORIGINAL (104 tokens):
+"I have a Python script that processes a large CSV file (about
+2GB) and it's running really slowly. Currently I'm reading
+the entire file into memory using pandas read_csv. I think
+the issue is that it's loading everything at once. Can you
+suggest a way to process it in chunks or stream it so that
+it uses less memory?"
+
+TELEGRAPH (29 tokens):
+"Python CSV processing 2GB file slow. Using pandas read_csv
+loads all into memory. Suggest chunked/streaming approach,
+reduce memory."
+
+REDUCTION: 72% (75 tokens saved)</pre>
+
+  <pre>ORIGINAL (68 tokens):
+"Please write a comprehensive unit test suite for the
+following TypeScript function. Make sure to cover edge
+cases including null inputs, empty arrays, and very
+large numbers. Use Jest as the testing framework."
+
+TELEGRAPH (22 tokens):
+"Write Jest unit tests for TypeScript function. Cover:
+null inputs, empty arrays, large numbers."
+
+REDUCTION: 68% (46 tokens saved)</pre>
+
+  <h2>Relationship to LLMLingua Research</h2>
+  <p>Microsoft Research's <a href="/llmlingua">LLMLingua</a> system pioneered the idea of using a small language model to score each token's contribution to the prompt's meaning, then dropping low-scoring tokens. This perplexity-based approach achieves impressive compression ratios on long documents and retrieval-augmented generation contexts.</p>
+  <p>Telegraph compression in Terse shares the same goal but uses a fundamentally different mechanism. Instead of scoring tokens with a neural model, it uses categorical rules: articles are always low-information, pronouns are redundant in human-to-AI communication, stopwords modulate tone but not meaning. This rule-based approach has three advantages over perplexity scoring.</p>
+  <p>First, it is deterministic. The same input always produces the same output. There is no model variance, no temperature setting, no randomness. This predictability is essential for automated pipelines where you need to know exactly what the model will receive.</p>
+  <p>Second, it is fast. Telegraph compression runs in under 2 milliseconds on typical prompts. LLMLingua requires a forward pass through a language model for each token, which adds hundreds of milliseconds or more depending on the prompt length. In an interactive agent session where the user expects real-time optimization, this latency difference matters.</p>
+  <p>Third, it runs entirely on-device with zero external dependencies. No GPU, no API call, no model download. Terse's telegraph compression works offline, on any machine, with constant memory usage. This aligns with Terse's core principle that prompt optimization should be a lightweight local tool, not a cloud service.</p>
+  <p>The tradeoff is precision. LLMLingua can identify that a specific adjective is important in context even if it would normally be classified as low-information. Telegraph compression operates on categories rather than context, which means it occasionally strips a word that carries more meaning than its category suggests. This is why Terse offers three modes: users who need precision use Normal mode with <a href="/nlp-analysis">NLP analysis</a>, and users who want maximum compression accept the slight meaning loss of Aggressive mode.</p>
+
+  <h2>Compounding Savings in Agent Sessions</h2>
+  <p>The real power of telegraph compression emerges over the course of a long agent session. Consider a typical 50-turn coding session with an AI assistant. Without optimization, each user turn averages 120 tokens. With telegraph compression, each turn drops to approximately 45 tokens.</p>
+  <p>Over 50 turns, that is 6,000 tokens without optimization versus 2,250 tokens with telegraph compression. The 3,750 tokens saved are not just a cost reduction. They are context window space reclaimed for the model's reasoning. In long sessions where context truncation becomes a factor, this extra headroom can mean the difference between the model remembering a critical detail from turn 5 and losing it.</p>
+  <p>Telegraph compression also reduces the noise in the conversation history that the model reviews on each turn. Cleaner, more direct prompts in the history make it easier for the model to identify what the user actually wants, reducing the likelihood of misinterpretation in later turns. Several Terse users have reported that their agent sessions produce noticeably better results in later turns when telegraph compression is enabled, likely because the model spends less attention budget parsing conversational fluff from earlier turns.</p>
+
+  <div class="cta-box">
+    <h3>Maximize Your Token Efficiency</h3>
+    <p>Terse's Aggressive mode with telegraph compression achieves 40-70% token reduction on real prompts. Runs on-device, works with any AI model, no data leaves your machine.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/pattern-optimization">Pattern Optimization</a> — How Terse replaces verbose phrases with concise alternatives</li>
+    <li><a href="/nlp-analysis">NLP Analysis</a> — Linguistic techniques for structural token reduction</li>
+    <li><a href="/llmlingua">LLMLingua</a> — Perplexity-based prompt compression from Microsoft Research</li>
+    <li><a href="/selective-context">Selective Context</a> — Academic research on context-aware prompt compression</li>
+    <li><a href="/spell-correction">Spell Correction</a> — The first stage of Terse's optimization pipeline</li>
+  </ul>
+</main>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

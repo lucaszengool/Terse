@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Norvig Spelling Algorithm — How Terse Implements Edit-Distance Spell Correction</title>
+  <meta name="description" content="Terse implements Peter Norvig's spelling algorithm with QWERTY proximity weighting and bigram context to catch AI prompt typos. Learn how edit-distance correction prevents costly agent retry loops.">
+  <link rel="canonical" href="https://www.terseai.org/norvig-spelling">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Norvig Spelling Algorithm — How Terse Implements Edit-Distance Spell Correction">
+  <meta property="og:description" content="Terse implements Peter Norvig's spelling algorithm with QWERTY proximity weighting and bigram context to catch AI prompt typos. Learn how edit-distance correction prevents costly agent retry loops.">
+  <meta property="og:url" content="https://www.terseai.org/norvig-spelling">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Norvig Spelling Algorithm — How Terse Implements Edit-Distance Spell Correction">
+  <meta name="twitter:description" content="Terse implements Peter Norvig's spelling algorithm with QWERTY proximity weighting and bigram context to catch AI prompt typos.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Norvig Spelling Algorithm — How Terse Implements Edit-Distance Spell Correction",
+    "description": "Terse implements Peter Norvig's spelling algorithm with QWERTY proximity weighting and bigram context to catch AI prompt typos. Learn how edit-distance correction prevents costly agent retry loops.",
+    "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "datePublished": "2026-03-10",
+    "dateModified": "2026-03-14",
+    "mainEntityOfPage": "https://www.terseai.org/norvig-spelling",
+    "keywords": ["Norvig spelling", "edit distance", "spell correction", "QWERTY proximity", "AI prompt typos", "agent retry loops", "token optimization"]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <span class="tag">Research</span>
+  <h1>Norvig Spelling Algorithm — How Terse Implements Edit-Distance Spell Correction</h1>
+  <p class="subtitle">Peter Norvig's elegant spelling corrector meets QWERTY proximity weighting and bigram context. Here's how Terse catches the typos that standard spellcheck misses — and prevents the costly agent retry loops they cause.</p>
+
+  <h2>The Original Norvig Algorithm</h2>
+  <p>In 2007, Peter Norvig — then Director of Research at Google — published "How to Write a Spelling Corrector," a concise essay that demonstrated how a functional spelling corrector could be built in 21 lines of Python. The algorithm became one of the most widely studied pieces of code in natural language processing, not because it was the most accurate spellchecker ever built, but because it elegantly captured the core principles of probabilistic spell correction.</p>
+  <p>The algorithm works by combining two ideas. First, given a misspelled word, generate all possible corrections within a certain edit distance. Second, rank those corrections by how frequently they appear in a reference corpus. The most probable correction is the one that is both close to the misspelling (low edit distance) and common in real text (high frequency).</p>
+  <p>Formally, the algorithm computes <code>argmax(P(c) * P(w|c))</code> for each candidate correction <code>c</code>, where <code>P(c)</code> is the prior probability of the word (its frequency) and <code>P(w|c)</code> is the likelihood that the user intended to type <code>c</code> but produced <code>w</code> instead. Norvig simplified <code>P(w|c)</code> by assuming all edit-distance-1 errors are equally likely and all edit-distance-2 errors are equally likely but less probable than distance-1 errors.</p>
+
+  <h2>How Edit Distance Works</h2>
+  <p>Edit distance (also called Levenshtein distance) measures the minimum number of single-character operations needed to transform one string into another. The four operations that define the edit space are:</p>
+  <ul>
+    <li><strong>Deletion:</strong> Remove one character. <code>fucntion</code> to <code>funtion</code> (delete the first 'c').</li>
+    <li><strong>Insertion:</strong> Add one character. <code>funtion</code> to <code>function</code> (insert 'c').</li>
+    <li><strong>Substitution:</strong> Replace one character with another. <code>requst</code> to <code>request</code> (substitute 'u' with 'ue' — actually this requires two operations, but <code>recust</code> to <code>request</code> is a single substitution).</li>
+    <li><strong>Transposition:</strong> Swap two adjacent characters. <code>teh</code> to <code>the</code>, <code>reqct</code> to <code>rect</code>.</li>
+  </ul>
+  <p>For a word of length <em>n</em>, there are <code>n</code> possible deletions, <code>26(n+1)</code> insertions, <code>25n</code> substitutions, and <code>n-1</code> transpositions at edit distance 1. That produces a large candidate set — roughly 114 candidates for a 5-letter word. At edit distance 2, the set explodes to over 10,000 candidates. Norvig's insight was that checking these candidates against a word frequency dictionary is fast enough to be practical, making the brute-force generation approach viable.</p>
+
+  <h2>How Terse Enhances Norvig's Approach</h2>
+  <p>Terse uses Norvig's algorithm as its foundation but adds four significant enhancements that make it substantially more accurate for the specific domain of AI prompt correction.</p>
+
+  <h3>QWERTY Keyboard Proximity Weighting</h3>
+  <p>Norvig's original algorithm treats all substitution errors as equally likely. In practice, they are not. A user is far more likely to type <code>r</code> instead of <code>e</code> (adjacent keys on QWERTY) than <code>r</code> instead of <code>m</code> (opposite sides of the keyboard). Terse assigns a proximity score to each key pair based on their physical distance on the QWERTY layout.</p>
+  <p>When ranking correction candidates, substitutions involving adjacent keys receive a higher likelihood score. This means that <code>thr</code> is more likely to be corrected to <code>the</code> (r is adjacent to e) than to <code>thr</code> being treated as a valid but rare word. The proximity map covers the full QWERTY layout including the number row, and the weighting is tuned empirically against a corpus of real developer typos.</p>
+  <pre>
+// Simplified proximity scoring
+const QWERTY_NEIGHBORS = {
+  'q': ['w','a'],      'w': ['q','e','a','s'],
+  'e': ['w','r','s','d'], 'r': ['e','t','d','f'],
+  't': ['r','y','f','g'], ...
+};
+
+function proximityScore(typed, intended) {
+  if (QWERTY_NEIGHBORS[typed]?.includes(intended)) return 0.8;
+  return 0.2; // non-adjacent substitution
+}</pre>
+
+  <h3>Word Frequency Ranking</h3>
+  <p>Terse maintains a frequency-ranked dictionary of over 1,500 common English words, with additional weighting for words that appear frequently in programming and AI contexts. Words like <code>function</code>, <code>authentication</code>, <code>component</code>, <code>configuration</code>, and <code>implementation</code> receive boosted frequency scores because they appear disproportionately often in developer prompts.</p>
+  <p>This domain-specific frequency ranking means that when a typo like <code>authetication</code> generates multiple edit-distance-1 candidates, <code>authentication</code> wins decisively because of its high frequency in the programming domain, even if other valid English words are technically closer by some metrics.</p>
+
+  <h3>nspell/Hunspell Integration</h3>
+  <p>For candidate validation, Terse integrates with nspell (a JavaScript port of Hunspell) to verify that correction candidates are real words. This prevents the algorithm from "correcting" a misspelling to another misspelling that happens to have a high edit-distance score. The Hunspell dictionary provides comprehensive coverage of English (and other languages via system dictionaries), catching edge cases that a frequency-only approach would miss.</p>
+  <p>Additionally, Terse leverages macOS NSSpellChecker through its Swift helper binary. This gives access to the system's full multilingual spell checking capabilities, handling cases where the user writes prompts that mix English with other languages — a common pattern in international development teams.</p>
+
+  <h3>Context-Aware Bigram Probabilities</h3>
+  <p>The most significant enhancement is bigram-based context awareness. Norvig's algorithm corrects each word in isolation, which can produce incorrect results when a misspelling is also a valid word. The classic example: <code>"I went to the stroe"</code> — <code>stroe</code> is clearly <code>store</code>, but what about <code>"I red the book"</code>? The word <code>red</code> is valid, but in this context the user meant <code>read</code>.</p>
+  <p>Terse uses bigram probabilities (the likelihood of two specific words appearing adjacent to each other) to detect and correct these real-word errors. If the bigram <code>"I red"</code> has a much lower probability than <code>"I read"</code>, the system flags it as a potential error and offers the correction. This catches a class of errors that purely edit-distance-based systems miss entirely.</p>
+
+  <h2>Why Standard Spellcheck Fails for AI Prompts</h2>
+  <p>You might wonder why a dedicated spelling correction system is necessary when browsers, IDEs, and operating systems all have built-in spellcheck. The answer is that standard spellcheck has significant blind spots in the contexts where AI prompts are actually written.</p>
+
+  <h3>Browser Spellcheck Only Works in Browsers</h3>
+  <p>Chrome and Safari underline misspelled words in text fields, but many AI interactions happen outside the browser. Terminal-based tools like Claude Code, shell prompts for Copilot CLI, and VS Code's integrated chat panels either lack spellcheck entirely or have it disabled by default. If you type <code>authetication</code> into a terminal prompt, nothing will catch it.</p>
+
+  <h3>Grammarly and Similar Tools Miss Terminals and IDEs</h3>
+  <p>Grammar-checking extensions like Grammarly work well in browsers and some desktop apps, but they do not integrate with terminals, VS Code's editor panels, or command-line interfaces. The places where developers most need spell correction are precisely the places where these tools do not operate.</p>
+
+  <h3>Neither Catches Coding-Specific Typos</h3>
+  <p>Standard spellcheckers are trained on general English text. They do not know that <code>fucntion</code> should be <code>function</code>, that <code>reqct</code> should be <code>react</code>, or that <code>compnent</code> should be <code>component</code>. These words are not in Merriam-Webster, so conventional spellcheckers either ignore them or suggest inappropriate corrections. Terse's domain-specific dictionary handles exactly these cases.</p>
+
+  <h2>The Hardcoded TYPOS Dictionary</h2>
+  <p>Before the Norvig algorithm even runs, Terse applies a hardcoded dictionary of over 400 coding-specific and prompt-specific typos. This dictionary is the fastest path to correction — a direct lookup table with zero ambiguity.</p>
+  <pre>
+// Sample entries from Terse's TYPOS dictionary
+"fucntion"    -> "function"
+"authetication" -> "authentication"
+"reqct"       -> "react"
+"compnent"    -> "component"
+"implmentation" -> "implementation"
+"confguration" -> "configuration"
+"dependncy"   -> "dependency"
+"respnse"     -> "response"
+"asynchrnous" -> "asynchronous"
+"middlewre"    -> "middleware"</pre>
+  <p>The dictionary was compiled by analyzing thousands of real prompts and identifying the typos that appear most frequently in developer workflows. Each entry is a direct mapping — no edit-distance computation, no probability ranking, no ambiguity. If the typo appears in the dictionary, it is corrected instantly.</p>
+  <p>This two-tier approach (hardcoded dictionary first, then Norvig algorithm for everything else) gives Terse both speed and coverage. The most common typos are caught in constant time. Less common typos are caught by the probabilistic algorithm. Together, they achieve correction coverage that exceeds what either approach provides alone.</p>
+
+  <h2>Protecting Code: What Terse Does Not Correct</h2>
+  <p>A spell corrector running on AI prompts must be careful about what it changes. Prompts often contain code snippets, variable names, acronyms, and technical terms that would be mangled by aggressive spell correction. Terse applies several protective heuristics:</p>
+  <ul>
+    <li><strong>ALL-CAPS words</strong> are skipped — they are almost always acronyms (<code>API</code>, <code>HTTP</code>, <code>JSON</code>, <code>URL</code>).</li>
+    <li><strong>Capitalized words</strong> (PascalCase) are skipped — they are likely class names or proper nouns (<code>React</code>, <code>TypeScript</code>, <code>WebSocket</code>).</li>
+    <li><strong>camelCase tokens</strong> are identified and skipped — <code>getElementById</code>, <code>useState</code>, <code>fetchData</code>.</li>
+    <li><strong>Words containing numbers</strong> are skipped — likely variable names or identifiers (<code>v2</code>, <code>config3</code>, <code>user1</code>).</li>
+    <li><strong>URLs and file paths</strong> are detected and excluded from correction entirely.</li>
+    <li><strong>Content inside backtick code blocks</strong> is left untouched.</li>
+  </ul>
+  <p>These rules ensure that spell correction improves the natural language portions of a prompt without interfering with the technical content. The corrector fixes <code>"Please refactor the authetication compnent"</code> to <code>"Please refactor the authentication component"</code> while leaving any code references completely intact.</p>
+
+  <h2>Impact on Agent Sessions</h2>
+  <p>Spell correction might seem like a minor optimization — fixing a few typos saves a handful of tokens at most. But in agent sessions, the impact is dramatically larger because of how AI models process misspelled instructions.</p>
+  <p>When an agent encounters a typo like <code>authetication</code> in a prompt, several things can go wrong. The model might misinterpret the word, generating code that references a misspelled variable or module name. The model might ask for clarification, consuming a full round-trip of tokens. In tool-using agent sessions, the model might execute a search or file read to resolve the ambiguity, costing additional tool-call tokens.</p>
+  <p>Consider this scenario in Claude Code: a developer types <code>"refactor the authetication middlewre to use asynchrnous handlers"</code>. Without correction, Claude might:</p>
+  <ol>
+    <li>Search the codebase for files matching "authetication" (tool call, no results)</li>
+    <li>Search again for "authentication" (another tool call, finds results)</li>
+    <li>Read the file to understand the context (tool call)</li>
+    <li>Generate the refactored code, possibly with "middlewre" appearing in comments</li>
+  </ol>
+  <p>That extra search in step 1 costs tokens for the tool call, the failed result, and the <a href="/#agents">context it adds to the conversation</a>. Multiply this across a 40-turn agent session and the cost of uncorrected typos compounds rapidly. A single typo in turn 3 can cause retry loops, failed tool calls, and wasted context in every subsequent turn.</p>
+  <p>Terse's spell correction runs before the prompt ever reaches the model, eliminating these failure cascades at the source. The corrected prompt <code>"refactor the authentication middleware to use asynchronous handlers"</code> resolves cleanly on the first attempt, saving both tokens and time.</p>
+
+  <h2>The Two-Pass Pipeline</h2>
+  <p>Terse's spell correction operates as the first stage of a multi-pass <a href="/spell-correction">optimization pipeline</a>. The full sequence is:</p>
+  <ol>
+    <li><strong>Pass 1 — Hardcoded TYPOS dictionary:</strong> Direct lookup, constant time. Catches the 400+ most common developer typos with zero false positives.</li>
+    <li><strong>Pass 2 — macOS NSSpellChecker:</strong> System-level spellcheck via the Swift helper binary. Handles multilingual text and words not in the hardcoded dictionary.</li>
+    <li><strong>Pass 3 — Norvig algorithm with enhancements:</strong> QWERTY proximity, frequency ranking, and bigram context for remaining errors.</li>
+    <li><strong>Pass 4+ — <a href="/pattern-optimization">Pattern optimization</a>, <a href="/nlp-analysis">NLP analysis</a>, and <a href="/telegraph-compression">telegraph compression</a></strong> (depending on the selected mode).</li>
+  </ol>
+  <p>Spell correction runs in every mode — Soft, Normal, and Aggressive. Even the lightest compression mode fixes typos, because typo correction never changes the user's intended meaning. It is the safest, most universally beneficial optimization Terse performs.</p>
+
+  <div class="cta-box">
+    <h3>Stop Typos Before They Cost You Tokens</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse catches the typos your spellchecker misses — in terminals, IDEs, and agent interfaces. 400+ hardcoded corrections plus Norvig-enhanced spell correction, all running on-device in under a millisecond.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Further Reading</h2>
+  <p>Learn more about the other stages in Terse's optimization pipeline:</p>
+  <ul>
+    <li><a href="/llmlingua">LLMLingua</a> — The research that proved prompt compression works</li>
+    <li><a href="/spell-correction">Spell Correction</a> — Full overview of Terse's spell correction pipeline</li>
+    <li><a href="/pattern-optimization">Pattern Optimization</a> — 20+ deterministic compression techniques</li>
+    <li><a href="/nlp-analysis">NLP Analysis</a> — Linguistic analysis for intelligent token removal</li>
+    <li><a href="/#agents">Agent Monitor</a> — How Terse tracks and optimizes agent sessions</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NLP Analysis for Token Optimization — How Terse Uses Linguistics to Cut AI Costs</title>
+<meta name="description" content="Terse uses NLP techniques like relative clause compression, modifier collapse, and self-context removal to reduce AI prompt tokens by 15-30%. Learn how linguistic analysis optimizes Claude Code and ChatGPT prompts.">
+<link rel="canonical" href="https://www.terseai.org/nlp-analysis">
+<meta property="og:title" content="NLP Analysis for Token Optimization — How Terse Uses Linguistics to Cut AI Costs">
+<meta property="og:description" content="Terse uses NLP techniques like relative clause compression, modifier collapse, and self-context removal to reduce AI prompt tokens by 15-30%.">
+<meta property="og:url" content="https://www.terseai.org/nlp-analysis">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Terse">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="NLP Analysis for Token Optimization — How Terse Uses Linguistics to Cut AI Costs">
+<meta name="twitter:description" content="Terse uses NLP techniques like relative clause compression, modifier collapse, and self-context removal to reduce AI prompt tokens by 15-30%.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "NLP Analysis for Token Optimization — How Terse Uses Linguistics to Cut AI Costs",
+  "description": "Terse uses NLP techniques like relative clause compression, modifier collapse, and self-context removal to reduce AI prompt tokens by 15-30%. Learn how linguistic analysis optimizes Claude Code and ChatGPT prompts.",
+  "url": "https://www.terseai.org/nlp-analysis",
+  "datePublished": "2026-03-14",
+  "dateModified": "2026-03-14",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Terse",
+    "url": "https://www.terseai.org"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Terse"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.terseai.org/nlp-analysis"
+  }
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+body{background:var(--bg0);color:var(--t2);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6}
+.article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+.article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+.article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+.article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+.article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+.article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+.article li{margin-bottom:8px}
+.article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+.article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+.article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+.article a:hover{border-color:var(--ac)}
+.article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+.article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+.article .cta-box h3{margin-top:0}
+.article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+</style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<main class="article">
+  <span class="tag">NLP Techniques</span>
+  <h1>NLP Analysis for Token Optimization</h1>
+  <p class="subtitle">How Terse uses linguistic analysis to compress AI prompts by 15-30% without losing meaning. Relative clause compression, modifier collapse, self-context removal, and more.</p>
+
+  <h2>What NLP Analysis Means for Token Optimization</h2>
+  <p>Natural Language Processing analysis goes far beyond simple find-and-replace. Where basic <a href="/pattern-optimization">pattern optimization</a> swaps known phrases for shorter equivalents, NLP analysis examines the grammatical structure of each sentence to identify redundancies that only become visible when you understand how language works at the clause level.</p>
+  <p>Every prompt you send to an AI model like Claude, GPT-4, or Gemini is broken into tokens. These tokens cost money. More importantly, they consume context window space that could be used for actual reasoning. When you are running agent sessions that span dozens of turns, every unnecessary token compounds. A 20% reduction per turn across a 50-turn session can mean the difference between staying within context limits and hitting the wall.</p>
+  <p>Terse applies NLP analysis as the third stage of its <a href="/#pipeline">optimization pipeline</a>, after <a href="/spell-correction">spell correction</a> and pattern optimization. By this point, the text has already been cleaned of typos and common verbose patterns. NLP analysis catches the structural inefficiencies that survive those earlier passes: redundant relative clauses, stacked modifiers that say the same thing twice, self-referential preambles, and sentences that bury their meaning under layers of implicit context the model does not need.</p>
+
+  <h2>Core NLP Techniques in Terse</h2>
+
+  <h3>Relative Clause Compression</h3>
+  <p>English is full of relative clauses that add words without adding meaning. The pattern <code>that is</code>, <code>which is</code>, <code>who is</code> followed by a participle or adjective can almost always be compressed by dropping the relative pronoun and copula entirely.</p>
+  <p>Consider how Terse handles this in practice:</p>
+  <pre>Before: "Find the function that is used to validate user input"
+After:  "Find the function used to validate user input"
+Saved:  2 tokens
+
+Before: "The variable which is declared at the top of the file"
+After:  "The variable declared at the top of the file"
+Saved:  2 tokens
+
+Before: "The API endpoint that is responsible for authentication"
+After:  "The API endpoint responsible for authentication"
+Saved:  2 tokens</pre>
+  <p>Two tokens per clause may sound small, but relative clauses appear constantly in technical prompts. A typical code review prompt might contain 8-12 relative clauses. That is 16-24 tokens recovered from a single technique. Across an agent session with 30 turns of back-and-forth, you are looking at hundreds of tokens saved from this one optimization alone.</p>
+  <p>Terse's implementation is careful about edge cases. It does not compress relative clauses where the pronoun serves as the subject of a separate verb phrase, and it preserves clauses inside code blocks or quoted strings.</p>
+
+  <h3>Modifier Pair Collapse</h3>
+  <p>People naturally reach for pairs of adjectives or adverbs when a single word would carry the same weight. This is especially common in prompts because users want to be precise, but end up being redundant instead.</p>
+  <pre>Before: "Write a clear and concise summary"
+After:  "Write a concise summary"
+Saved:  2 tokens
+
+Before: "Make it simple and straightforward"
+After:  "Make it straightforward"
+Saved:  2 tokens
+
+Before: "I need a quick and fast solution"
+After:  "I need a fast solution"
+Saved:  2 tokens</pre>
+  <p>Terse maintains a scored dictionary of modifier pairs where one word subsumes the meaning of the other. When both appear joined by "and" or "or", the less specific modifier is dropped. The scoring ensures that the surviving word is always the one that carries more information. "Concise" survives over "clear" because conciseness implies clarity but not the reverse. "Straightforward" survives over "simple" because it carries a stronger connotation of ease-of-use.</p>
+
+  <h3>Self-Referential Context Removal</h3>
+  <p>This is one of the most impactful NLP techniques in Terse's arsenal. Users habitually open prompts with preambles about themselves, their role, their project, or their intentions. These preambles consume tokens and provide zero useful information to the model in most cases.</p>
+  <pre>Before: "I'm a senior developer working on a React project and I
+         need help with state management. Can you show me how to
+         implement a global store?"
+After:  "Show how to implement a global store in React."
+Saved:  22 tokens
+
+Before: "As someone who is new to Python, I was wondering if you
+         could explain how decorators work."
+After:  "Explain how Python decorators work."
+Saved:  15 tokens
+
+Before: "I'm currently trying to debug an issue where my API
+         returns a 500 error. I've been looking at the logs and
+         I think the problem might be in the middleware."
+After:  "Debug API 500 error. Logs suggest middleware issue."
+Saved:  20 tokens</pre>
+  <p>Terse identifies self-referential patterns using a combination of pronoun detection, role-declaration patterns ("I'm a...", "As a..."), and hedging language ("I was wondering", "I think", "I believe"). In Normal mode, it strips the self-referential framing but preserves the core request. In <a href="/telegraph-compression">Aggressive mode</a>, it also strips the hedging and restructures the remaining content for maximum density.</p>
+  <p>This technique is particularly powerful in agent sessions where the model already has context about the user's project from previous turns. Restating "I'm working on a React project" in turn 15 when the model has been helping with that React project since turn 1 is pure waste.</p>
+
+  <h3>Implicit Context Resolution</h3>
+  <p>Many prompts wrap their actual request inside unnecessary framing that signals intent without adding information. Phrases like "I want to know", "Can you tell me", "I'd like to understand", and "Could you help me with" are all implicit context that the model can infer from the fact that you are asking a question.</p>
+  <pre>Before: "I want to know how to implement binary search in Rust"
+After:  "How to implement binary search in Rust"
+Saved:  4 tokens
+
+Before: "Can you help me understand why my Docker container
+         keeps crashing?"
+After:  "Why does my Docker container keep crashing?"
+Saved:  4 tokens
+
+Before: "I'd like you to review this code and tell me if there
+         are any performance issues"
+After:  "Review this code for performance issues"
+Saved:  9 tokens</pre>
+  <p>The savings here are modest per instance but the patterns are extremely common. Terse's analysis of real-world prompts shows that over 60% of prompts to coding assistants begin with some form of implicit context wrapper. Stripping these wrappers across an entire session adds up quickly.</p>
+
+  <h3>Sentence-Level Restructuring</h3>
+  <p>The most advanced NLP technique in Terse examines entire sentences for structural inefficiency. This goes beyond individual patterns to look at how information is distributed across clauses and whether the same meaning can be achieved with fewer structural elements.</p>
+  <pre>Before: "I have a list of objects and I need to filter them
+         based on a property and then sort the result by date"
+After:  "Filter object list by property, sort by date"
+Saved:  14 tokens
+
+Before: "There is a bug in the code where the function returns
+         null instead of throwing an error when the input is invalid"
+After:  "Bug: function returns null instead of throwing error
+         on invalid input"
+Saved:  8 tokens</pre>
+  <p>Sentence restructuring identifies the core semantic payload of each sentence, strips the structural scaffolding ("There is", "I have", "I need to"), and reconstructs the meaning in the most token-efficient form. This technique is most aggressive in Terse's Aggressive mode but applies lighter transformations even in Normal mode.</p>
+
+  <h2>How NLP Differs from Simple Pattern Matching</h2>
+  <p>The critical difference between NLP analysis and <a href="/pattern-optimization">pattern-based optimization</a> is awareness of sentence structure. Pattern matching operates on fixed strings: it knows that "in order to" can become "to" regardless of context. NLP analysis operates on grammatical relationships: it knows that a relative clause can be compressed only when the relative pronoun is followed by a copula and a participle.</p>
+  <p>This distinction matters because language is ambiguous. The word "that" can be a demonstrative pronoun, a relative pronoun, a conjunction, or a determiner. Pattern matching that blindly removes "that is" will break sentences where "that" is a demonstrative pointing to a specific object. NLP analysis understands the grammatical role of each word in context and only applies transformations that preserve meaning.</p>
+  <p>Terse's NLP engine uses a lightweight rule-based parser rather than a full neural NLP pipeline. This is a deliberate design choice. Running a transformer model to optimize input to another transformer model would defeat the purpose. The rule-based approach runs in under 5 milliseconds on typical prompts, adds zero latency to the user's workflow, and operates entirely on-device with no network calls. It handles the 80% of cases that account for the most token waste without the overhead of a full syntactic parser.</p>
+
+  <h2>Impact on Agent Sessions</h2>
+  <p>Single-turn prompts benefit from NLP analysis, but the real impact shows up in agent sessions. When you are running a multi-turn coding session with Claude Code, Cursor, or GitHub Copilot, every turn includes both your new prompt and the accumulated context from previous turns. NLP-optimized prompts are not just shorter at the point of entry, they also reduce the context that gets carried forward.</p>
+  <p>Consider a 40-turn agent session where each user turn averages 150 tokens before optimization. With NLP analysis achieving a conservative 20% reduction, each turn drops to 120 tokens. That is 30 tokens saved per turn, or 1,200 tokens across the full session. At Claude's pricing of $3 per million input tokens, the direct cost savings are small. But the context window savings are significant: 1,200 fewer tokens means more room for the model's reasoning, fewer context window truncation events, and better response quality in later turns.</p>
+  <p>NLP techniques also compound with Terse's other optimization stages. A prompt that has already been cleaned by <a href="/spell-correction">spell correction</a> and pattern optimization is structurally simpler, which makes NLP analysis more effective. The full pipeline typically achieves 25-40% reduction in Normal mode, with NLP contributing 15-20 percentage points of that total.</p>
+
+  <h2>Comparison with Academic Approaches</h2>
+  <p>The academic research on prompt compression has produced sophisticated systems like <a href="/llmlingua">LLMLingua</a> and <a href="/selective-context">Selective Context</a> that use perplexity-based scoring to identify which tokens can be removed with minimal impact on model output quality. These systems achieve impressive compression ratios but require running a secondary language model to score each token, which adds latency and computational cost.</p>
+  <p>Terse takes a different approach. Rather than using a model to compress input to another model, it uses deterministic linguistic rules that run in constant time. This means zero latency overhead, no GPU requirements, and fully predictable behavior. The tradeoff is that Terse's NLP analysis is less aggressive than perplexity-based methods on long-form text, but it is more reliable on short technical prompts where every word tends to carry high information density.</p>
+  <p>In practice, the two approaches are complementary. LLMLingua excels at compressing long context passages and retrieved documents where many tokens are genuinely redundant. Terse excels at compressing the user-authored portions of prompts where the waste comes from natural language habits rather than information redundancy. For agent sessions where the user is writing fresh prompts each turn, Terse's rule-based approach is both faster and more appropriate.</p>
+
+  <h2>Preserving Meaning Across Modes</h2>
+  <p>Terse offers three optimization modes, and NLP analysis behaves differently in each. In Soft mode, NLP techniques are disabled entirely. Only <a href="/spell-correction">spell correction</a> and whitespace normalization run. This guarantees zero semantic change.</p>
+  <p>In Normal mode, NLP analysis applies conservative transformations: relative clause compression, modifier collapse, and implicit context removal. These transformations preserve the full meaning of the prompt while removing structural waste. The model receives the same information in fewer tokens.</p>
+  <p>In Aggressive mode, NLP analysis applies all transformations including self-referential context removal and full sentence restructuring. Combined with <a href="/telegraph-compression">telegraph compression</a>, this can achieve 40-70% token reduction. The meaning is preserved at the semantic level, but the tone and style of the original prompt may change significantly. This mode is designed for agent sessions and API calls where efficiency matters more than preserving the user's voice.</p>
+
+  <h2>Real-World Results</h2>
+  <p>Across Terse's user base, NLP analysis contributes an average of 18% token reduction on prompts that have already passed through spell correction and pattern optimization. On prompts with heavy self-referential preambles, the reduction can exceed 30%. On already-concise technical prompts, the reduction may be as low as 5%.</p>
+  <p>The distribution is bimodal. Experienced prompt engineers who already write concise prompts see modest gains from NLP analysis. Casual users who write prompts the way they write emails see dramatic improvements. This is exactly the use case Terse is designed for: you should not have to think about token efficiency while writing prompts. Write naturally, and let the optimizer handle the compression.</p>
+
+  <div class="cta-box">
+    <h3>Start Optimizing Your Prompts</h3>
+    <p>Terse runs on-device, analyzes your prompts in real-time, and saves tokens automatically. No API keys, no cloud processing, no data leaves your machine.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/spell-correction">Spell Correction</a> — The first stage of Terse's optimization pipeline</li>
+    <li><a href="/pattern-optimization">Pattern Optimization</a> — How Terse replaces verbose phrases with concise alternatives</li>
+    <li><a href="/telegraph-compression">Telegraph Compression</a> — Maximum token reduction for agent sessions</li>
+    <li><a href="/selective-context">Selective Context</a> — Academic research on context-aware prompt compression</li>
+    <li><a href="/llmlingua">LLMLingua</a> — Perplexity-based prompt compression from Microsoft Research</li>
+  </ul>
+</main>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

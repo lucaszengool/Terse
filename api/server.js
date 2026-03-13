@@ -276,6 +276,51 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
   });
 });
 
+// ── Auth flow for desktop app ──
+// Pending auth tokens: token -> { created, clerkUserId, email, imageUrl }
+const pendingAuth = new Map();
+
+// Desktop app calls this to get a unique auth token, then opens browser
+app.post('/api/auth/start', (req, res) => {
+  const token = require('crypto').randomBytes(24).toString('hex');
+  pendingAuth.set(token, { created: Date.now(), clerkUserId: null });
+  // Clean old tokens (>10 min)
+  for (const [k, v] of pendingAuth) {
+    if (Date.now() - v.created > 600000) pendingAuth.delete(k);
+  }
+  res.json({ token });
+});
+
+// Browser redirects here after Clerk sign-in — stores user info for polling
+app.post('/api/auth/complete', (req, res) => {
+  const { token, clerkUserId, email, imageUrl, firstName } = req.body;
+  if (!token || !clerkUserId) return res.status(400).json({ error: 'Missing token or user' });
+  const pending = pendingAuth.get(token);
+  if (!pending) return res.status(404).json({ error: 'Token expired or invalid' });
+  pending.clerkUserId = clerkUserId;
+  pending.email = email;
+  pending.imageUrl = imageUrl;
+  pending.firstName = firstName;
+  pendingAuth.set(token, pending);
+  res.json({ ok: true });
+});
+
+// Desktop app polls this until user completes sign-in
+app.get('/api/auth/poll/:token', (req, res) => {
+  const pending = pendingAuth.get(req.params.token);
+  if (!pending) return res.json({ status: 'expired' });
+  if (!pending.clerkUserId) return res.json({ status: 'waiting' });
+  // Auth complete — return user info and clean up
+  pendingAuth.delete(req.params.token);
+  res.json({
+    status: 'authenticated',
+    clerkUserId: pending.clerkUserId,
+    email: pending.email,
+    imageUrl: pending.imageUrl,
+    firstName: pending.firstName,
+  });
+});
+
 // ── Health check ──
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });

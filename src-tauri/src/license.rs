@@ -4,6 +4,59 @@ use std::path::PathBuf;
 
 const API_BASE: &str = "https://terse-production.up.railway.app";
 
+// ── Auth State (persisted locally) ──
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AuthState {
+    #[serde(rename = "clerkUserId")]
+    pub clerk_user_id: Option<String>,
+    pub email: Option<String>,
+    #[serde(rename = "imageUrl")]
+    pub image_url: Option<String>,
+    #[serde(rename = "firstName")]
+    pub first_name: Option<String>,
+    #[serde(rename = "signedIn")]
+    pub signed_in: bool,
+}
+
+fn auth_path() -> PathBuf {
+    let home = dirs::home_dir().unwrap_or_default();
+    home.join(".terse").join("auth.json")
+}
+
+impl AuthState {
+    pub fn load() -> Self {
+        let path = auth_path();
+        if path.exists() {
+            if let Ok(data) = fs::read_to_string(&path) {
+                if let Ok(auth) = serde_json::from_str::<AuthState>(&data) {
+                    return auth;
+                }
+            }
+        }
+        AuthState::default()
+    }
+
+    pub fn save(&self) {
+        let path = auth_path();
+        if let Some(dir) = path.parent() {
+            let _ = fs::create_dir_all(dir);
+        }
+        if let Ok(json) = serde_json::to_string_pretty(self) {
+            let _ = fs::write(&path, json);
+        }
+    }
+
+    pub fn sign_out(&mut self) {
+        self.clerk_user_id = None;
+        self.email = None;
+        self.image_url = None;
+        self.first_name = None;
+        self.signed_in = false;
+        self.save();
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct License {
     pub tier: String,

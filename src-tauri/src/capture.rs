@@ -441,7 +441,7 @@ pub async fn read_all_via_clipboard(_app_name: &str) -> CaptureResult {
     }
 }
 
-/// Write via clipboard paste (for terminal/webview inputs)
+/// Write via clipboard paste — universal method for any app (Cmd+A → Cmd+V)
 pub async fn write_via_clipboard(app_name: &str, text: &str, skip_activate: bool) -> WriteResult {
     let saved = Command::new("pbpaste").output().await
         .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
@@ -453,23 +453,17 @@ pub async fn write_via_clipboard(app_name: &str, text: &str, skip_activate: bool
         activate_app(app_name).await;
     }
 
+    // Cmd+A to select all text in the focused field, then Cmd+V to replace
     send_keys_batch(
         &[
-            "keystroke \"e\" using control down",
-            "keystroke \"u\" using control down",
-            "key code 51", // backspace
-            "keystroke \"u\" using control down",
-            "key code 51",
-            "keystroke \"u\" using control down",
-            "key code 51",
-            "keystroke \"u\" using control down",
+            "keystroke \"a\" using command down",
             "keystroke \"v\" using command down",
         ],
-        &[0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.0],
+        &[0.08, 0.0],
     ).await;
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-    // Restore clipboard
+    // Restore clipboard after a brief delay
     let saved_clone = saved;
     tokio::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;

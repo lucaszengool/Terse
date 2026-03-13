@@ -27,6 +27,7 @@
     "core:webview:default",
     "core:webview:allow-set-webview-size",
     "core:webview:allow-webview-position",
-    "core:app:default"
+    "core:app:default",
+    "shell:allow-open"
   ]
 }

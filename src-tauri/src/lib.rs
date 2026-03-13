@@ -90,6 +90,7 @@ pub struct AppState {
     pub agent_monitor: Mutex<agent_monitor::AgentMonitor>,
     pub stats_store: Mutex<stats_store::StatsStore>,
     pub license: Mutex<license::License>,
+    pub auth: Mutex<license::AuthState>,
     pub is_picking: Mutex<bool>,
     pub is_auto_replacing: Mutex<bool>,
     pub auto_replaced: Mutex<bool>,
@@ -113,6 +114,7 @@ impl Default for AppState {
             agent_monitor: Mutex::new(agent_monitor::AgentMonitor::new()),
             stats_store: Mutex::new(stats_store::StatsStore::new()),
             license: Mutex::new(license::License::load()),
+            auth: Mutex::new(license::AuthState::load()),
             is_picking: Mutex::new(false),
             is_auto_replacing: Mutex::new(false),
             auto_replaced: Mutex::new(false),
@@ -139,11 +141,6 @@ fn get_electron_app_info(bundle_id: &str) -> Option<(&'static str, &'static str)
     ELECTRON_APP_INFO.iter()
         .find(|(bid, _, _)| *bid == bundle_id)
         .map(|(_, dir, label)| (*dir, *label))
-}
-
-// Strategies that confirm user is focused on a text input
-fn is_focused_strategy(method: &str) -> bool {
-    method == "ax-focused" || method == "ax-focused-child"
 }
 
 fn now_ms() -> u64 {
@@ -463,9 +460,7 @@ async fn replace_in_target(text: String, state: tauri::State<'_, AppState>) -> R
     match session_info {
         Some(session) => {
             // Use matching write method
-            let result = if session.read_method == "keymonitor" || session.read_method == "clipboard" {
-                capture::write_via_clipboard(&session.name, &text, false).await
-            } else if session.read_method == "bridge" {
+            let result = if session.read_method == "bridge" {
                 let bridge_up = capture::is_bridge_alive().await;
                 if bridge_up {
                     let ok = capture::write_bridge(&text).await;
@@ -474,7 +469,11 @@ async fn replace_in_target(text: String, state: tauri::State<'_, AppState>) -> R
                     capture::write_to_app(&session.name, &text, session.pid).await
                 }
             } else {
-                capture::write_to_app(&session.name, &text, session.pid).await
+                // For all other apps (browsers, editors, any app) — use clipboard:
+                // Cmd+A to select all, Cmd+V to paste. This is the most reliable
+                // write method across all macOS apps. AX value set is unreliable
+                // (Chrome appends instead of replacing, etc.)
+                capture::write_via_clipboard(&session.name, &text, false).await
             };
             Ok(serde_json::json!({"ok": result.ok, "method": result.method}))
         }
@@ -844,6 +843,53 @@ fn check_can_add_session(state: tauri::State<'_, AppState>) -> serde_json::Value
     })
 }
 
+// ── Auth commands ──
+
+#[tauri::command]
+fn get_auth(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let auth = lock_or_recover(&state.auth);
+    serde_json::json!({
+        "signedIn": auth.signed_in,
+        "clerkUserId": auth.clerk_user_id,
+        "email": auth.email,
+        "imageUrl": auth.image_url,
+        "firstName": auth.first_name,
+    })
+}
+
+#[tauri::command]
+fn save_auth(state: tauri::State<'_, AppState>, clerk_user_id: String, email: String, image_url: String, first_name: String) {
+    let mut auth = lock_or_recover(&state.auth);
+    auth.clerk_user_id = Some(clerk_user_id.clone());
+    auth.email = Some(email);
+    auth.image_url = Some(image_url);
+    auth.first_name = Some(first_name);
+    auth.signed_in = true;
+    auth.save();
+
+    // Also update license with clerk user id
+    let mut lic = lock_or_recover(&state.license);
+    lic.clerk_user_id = Some(clerk_user_id);
+    lic.save();
+}
+
+#[tauri::command]
+fn sign_out(state: tauri::State<'_, AppState>) {
+    let mut auth = lock_or_recover(&state.auth);
+    auth.sign_out();
+
+    // Reset license to free
+    let mut lic = lock_or_recover(&state.license);
+    lic.clerk_user_id = None;
+    lic.tier = "free".to_string();
+    lic.limits = license::PlanLimits {
+        optimizations_per_week: 50,
+        max_sessions: 1,
+        max_devices: 1,
+    };
+    lic.save();
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -993,6 +1039,9 @@ pub fn run() {
             check_can_optimize,
             record_optimization_usage,
             check_can_add_session,
+            get_auth,
+            save_auth,
+            sign_out,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -1253,15 +1302,16 @@ fn start_polling(app: AppHandle) {
                     continue;
                 }
             } else {
-                // ── Browser / other apps: AX focused element first ──
+                // ── Any app: try AX first (works for all standard macOS text fields) ──
                 let ax_result = capture::read_ax_app(
                     session.pid,
                     session.click_pos.map(|p| p.0),
                     session.click_pos.map(|p| p.1),
                 ).await;
-                user_in_text_input = is_focused_strategy(&ax_result.method);
 
-                if user_in_text_input {
+                // Accept ANY successful AX result — covers focused, window-walk, position strategies
+                if ax_result.ok && ax_result.text.trim().len() >= 5 {
+                    user_in_text_input = true;
                     let method = ax_result.method.clone();
                     result = ax_result;
                     let mut sessions = state.sessions.lock().unwrap_or_else(|e| e.into_inner());
@@ -1269,39 +1319,13 @@ fn start_polling(app: AppHandle) {
                         s.read_method = method;
                     }
                 } else {
-                    // Fall back to key monitor
+                    // AX couldn't find text — use key monitor buffer if available
                     {
                         let mut sessions = state.sessions.lock().unwrap_or_else(|e| e.into_inner());
                         if let Some(s) = sessions.get_mut(&active_id) {
                             s.read_method = "keymonitor".to_string();
                         }
                     }
-
-                    if !state.key_monitors.is_running(session.pid) {
-                        let (enter_tx, mut enter_rx) = tokio::sync::mpsc::channel::<String>(8);
-                        state.key_monitors.start_monitor(session.pid, enter_tx);
-
-                        let auto_mode = state.auto_mode.lock().unwrap_or_else(|e| e.into_inner()).clone();
-                        if auto_mode == "send" {
-                            state.key_monitors.set_send_mode(session.pid, true);
-                        }
-
-                        {
-                            let mut sessions = state.sessions.lock().unwrap_or_else(|e| e.into_inner());
-                            if let Some(s) = sessions.get_mut(&active_id) {
-                                s.key_monitor_started = true;
-                            }
-                        }
-
-                        let app2 = app.clone();
-                        let session_id = active_id;
-                        tokio::spawn(async move {
-                            while let Some(text) = enter_rx.recv().await {
-                                handle_send_mode_enter(&text, session_id, &app2).await;
-                            }
-                        });
-                    }
-
                     if let Some((text, _)) = state.key_monitors.get_buffer(session.pid) {
                         if text.trim().len() >= 3 {
                             result = capture::CaptureResult {
@@ -1317,6 +1341,33 @@ fn start_polling(app: AppHandle) {
                         };
                         user_in_text_input = true;
                     }
+                }
+
+                // Always ensure key monitor is running for send/auto mode
+                // (needed for Enter interception even when AX handles text reading)
+                let auto_mode = state.auto_mode.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                if auto_mode != "off" && !state.key_monitors.is_running(session.pid) {
+                    let (enter_tx, mut enter_rx) = tokio::sync::mpsc::channel::<String>(8);
+                    state.key_monitors.start_monitor(session.pid, enter_tx);
+
+                    if auto_mode == "send" {
+                        state.key_monitors.set_send_mode(session.pid, true);
+                    }
+
+                    {
+                        let mut sessions = state.sessions.lock().unwrap_or_else(|e| e.into_inner());
+                        if let Some(s) = sessions.get_mut(&active_id) {
+                            s.key_monitor_started = true;
+                        }
+                    }
+
+                    let app2 = app.clone();
+                    let session_id = active_id;
+                    tokio::spawn(async move {
+                        while let Some(text) = enter_rx.recv().await {
+                            handle_send_mode_enter(&text, session_id, &app2).await;
+                        }
+                    });
                 }
             }
 
@@ -1436,7 +1487,17 @@ async fn handle_send_mode_enter(text: &str, session_id: u32, app: &AppHandle) {
         None => return,
     };
 
-    if text.trim().len() < 3 {
+    // Prefer AX-captured text (full content) over key monitor buffer (partial keystrokes)
+    let best_text = {
+        let last_ax = state.last_popup_text.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        if last_ax.trim().len() >= text.trim().len() && last_ax.trim().len() >= 3 {
+            last_ax
+        } else {
+            text.trim().to_string()
+        }
+    };
+
+    if best_text.trim().len() < 3 {
         // Nothing to optimize — just send Enter through
         state.key_monitors.send_enter(session.pid);
         return;
@@ -1444,7 +1505,7 @@ async fn handle_send_mode_enter(text: &str, session_id: u32, app: &AppHandle) {
 
     // Send to webview for optimization via event
     let _ = app.emit("send-mode-optimize", serde_json::json!({
-        "text": text.trim(),
+        "text": best_text.trim(),
         "sessionId": session_id,
         "pid": session.pid,
         "bundleId": session.bundle_id,

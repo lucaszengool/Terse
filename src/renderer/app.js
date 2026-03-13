@@ -179,6 +179,66 @@ $$('.setting-row input').forEach(cb => cb.addEventListener('change', () => T.upd
 
 $('#btnClose').addEventListener('click', () => T.closeWindow());
 
+// ── Auth ──
+$('#btnSignIn').addEventListener('click', () => doAuth('signin'));
+$('#btnSignUp').addEventListener('click', () => doAuth('signup'));
+$('#btnSignOut').addEventListener('click', async () => {
+  if (T.signOut) await T.signOut();
+  updateAuthUI();
+  updateLicenseBanner();
+});
+
+async function doAuth(action) {
+  if (!T.openAuthInBrowser) return;
+  const btn = action === 'signup' ? $('#btnSignUp') : $('#btnSignIn');
+  btn.textContent = 'Opening browser...';
+  btn.disabled = true;
+  const result = await T.openAuthInBrowser(action);
+  if (result) {
+    updateAuthUI();
+    updateLicenseBanner();
+    // Verify license with backend
+    if (T.verifyLicense && result.clerkUserId) {
+      T.verifyLicense(result.clerkUserId).then(() => updateLicenseBanner());
+    }
+    toast('Signed in as ' + (result.email || result.firstName || 'user'));
+  } else {
+    toast('Sign-in cancelled or timed out', true);
+  }
+  btn.textContent = action === 'signup' ? 'Sign Up' : 'Sign In';
+  btn.disabled = false;
+}
+
+async function updateAuthUI() {
+  if (!T.getAuth) return;
+  try {
+    const auth = await T.getAuth();
+    if (auth.signedIn) {
+      $('#signedOutUI').classList.add('hidden');
+      $('#signedInUI').classList.remove('hidden');
+      $('#accountName').textContent = auth.firstName || 'User';
+      $('#accountEmail').textContent = auth.email || '';
+      if (auth.imageUrl) {
+        $('#accountAvatar').src = auth.imageUrl;
+        $('#accountAvatar').style.display = 'block';
+      }
+    } else {
+      $('#signedOutUI').classList.remove('hidden');
+      $('#signedInUI').classList.add('hidden');
+    }
+  } catch {}
+}
+
+// Load auth state on startup
+updateAuthUI().then(() => {
+  // Auto-verify license on launch if signed in
+  T.getAuth && T.getAuth().then(auth => {
+    if (auth.signedIn && auth.clerkUserId && T.verifyLicense) {
+      T.verifyLicense(auth.clerkUserId).then(() => updateLicenseBanner());
+    }
+  });
+});
+
 // ── Helpers ──
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 

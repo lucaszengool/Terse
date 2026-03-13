@@ -99,6 +99,58 @@ if (window.__TAURI__) {
     // Spellcheck via terse-ax
     spellcheck: (text) => invoke('spellcheck', { text }),
 
+    // Auth — open browser for sign-in, poll for completion
+    openAuthInBrowser: async (action) => {
+      const API_BASE = 'https://terse-production.up.railway.app';
+      try {
+        // Get a unique auth token from the server
+        const res = await fetch(`${API_BASE}/api/auth/start`, { method: 'POST' });
+        const { token } = await res.json();
+        // Open browser to auth callback page
+        const url = `${API_BASE}/auth-callback.html?token=${token}&action=${action || 'signin'}`;
+        // Open URL in system default browser via Tauri shell plugin
+        try {
+          const { open } = window.__TAURI__.shell;
+          await open(url);
+        } catch {
+          // Fallback
+          window.open(url, '_blank');
+        }
+        // Poll for auth completion
+        return new Promise((resolve) => {
+          let attempts = 0;
+          const poll = setInterval(async () => {
+            attempts++;
+            if (attempts > 120) { clearInterval(poll); resolve(null); return; } // 2 min timeout
+            try {
+              const r = await fetch(`${API_BASE}/api/auth/poll/${token}`);
+              const data = await r.json();
+              if (data.status === 'authenticated') {
+                clearInterval(poll);
+                // Save auth locally
+                await invoke('set_clerk_user', { clerkUserId: data.clerkUserId });
+                await invoke('save_auth', {
+                  clerkUserId: data.clerkUserId,
+                  email: data.email || '',
+                  imageUrl: data.imageUrl || '',
+                  firstName: data.firstName || '',
+                });
+                resolve(data);
+              } else if (data.status === 'expired') {
+                clearInterval(poll);
+                resolve(null);
+              }
+            } catch {}
+          }, 1000);
+        });
+      } catch (err) {
+        console.error('[terse] auth error:', err);
+        return null;
+      }
+    },
+    getAuth: () => invoke('get_auth'),
+    signOut: () => invoke('sign_out'),
+
     // License
     getLicense: () => invoke('get_license'),
     setClerkUser: (clerkUserId) => invoke('set_clerk_user', { clerkUserId }),

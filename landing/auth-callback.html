@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terse — Signing In...</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0a0a10;color:#fff;font-family:'Inter',-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .card{text-align:center;max-width:400px;padding:48px 32px}
+    .logo{width:48px;height:48px;background:rgba(110,231,183,0.1);border:1px solid rgba(110,231,183,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#6ee7b7;font-weight:800;font-size:20px;margin:0 auto 20px}
+    h1{font-size:22px;font-weight:700;margin-bottom:8px}
+    .sub{color:rgba(255,255,255,0.5);font-size:14px;margin-bottom:24px;line-height:1.6}
+    .spinner{width:32px;height:32px;border:3px solid rgba(110,231,183,0.2);border-top-color:#6ee7b7;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px}
+    .status{font-size:13px;color:rgba(255,255,255,0.4);min-height:20px}
+    .status.success{color:#6ee7b7}
+    .status.error{color:#f87171}
+    .avatar{width:48px;height:48px;border-radius:50%;border:2px solid rgba(110,231,183,0.3);margin:0 auto 12px;display:none}
+    .welcome{display:none}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">T</div>
+    <div id="loading">
+      <div class="spinner"></div>
+      <h1>Connecting to Terse</h1>
+      <p class="sub">Please wait while we sign you in...</p>
+      <p class="status" id="statusText">Loading authentication...</p>
+    </div>
+    <div id="success" class="welcome">
+      <img id="userAvatar" class="avatar" />
+      <h1 id="welcomeText">Signed in!</h1>
+      <p class="sub">You can close this tab and return to the Terse app.</p>
+      <p class="status success">Your app will update automatically.</p>
+    </div>
+    <div id="error" style="display:none">
+      <h1>Something went wrong</h1>
+      <p class="sub" id="errorText">Please try again from the Terse app.</p>
+    </div>
+  </div>
+
+  <script
+    async crossorigin="anonymous"
+    data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck"
+    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
+  <script>
+    const API_BASE = window.location.origin;
+    const params = new URLSearchParams(window.location.search);
+    const authToken = params.get('token');
+    const action = params.get('action') || 'signin';
+
+    if (!authToken) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('errorText').textContent = 'Missing auth token. Please use the Sign In button in the Terse app.';
+    }
+
+    window.addEventListener('load', async () => {
+      if (!authToken) return;
+      const statusEl = document.getElementById('statusText');
+
+      try {
+        await window.Clerk.load();
+        statusEl.textContent = 'Clerk loaded...';
+
+        // If already signed in, complete immediately
+        if (window.Clerk.user) {
+          await completeAuth(window.Clerk.user);
+          return;
+        }
+
+        // Otherwise show sign-in/sign-up UI
+        statusEl.textContent = 'Please sign in below...';
+        document.getElementById('loading').querySelector('.spinner').style.display = 'none';
+
+        const mountEl = document.createElement('div');
+        mountEl.style.marginTop = '16px';
+        document.getElementById('loading').appendChild(mountEl);
+
+        const appearance = {
+          variables: {
+            colorPrimary: '#6ee7b7',
+            colorBackground: '#0f0e1a',
+            colorText: '#ffffff',
+            colorTextSecondary: 'rgba(255,255,255,0.55)',
+            colorInputBackground: '#1a1830',
+            colorInputText: '#ffffff',
+            borderRadius: '12px',
+            fontFamily: "'Inter', -apple-system, sans-serif",
+          },
+          elements: {
+            card: { background: '#0f0e1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', boxShadow: 'none', padding: '24px' },
+            formButtonPrimary: { background: 'linear-gradient(135deg, #6ee7b7 0%, #34d399 100%)', color: '#0f0e1a', fontWeight: '600' },
+            socialButtonsBlockButton: { background: '#1a1830', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' },
+            formFieldInput: { background: '#1a1830', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' },
+            footerActionLink: { color: '#6ee7b7' },
+          }
+        };
+
+        if (action === 'signup') {
+          window.Clerk.mountSignUp(mountEl, { appearance });
+        } else {
+          window.Clerk.mountSignIn(mountEl, { appearance });
+        }
+
+        // Listen for sign-in completion
+        window.Clerk.addListener(async () => {
+          if (window.Clerk.user) {
+            window.Clerk.unmountSignIn(mountEl);
+            window.Clerk.unmountSignUp(mountEl);
+            mountEl.remove();
+            document.getElementById('loading').querySelector('.spinner').style.display = 'block';
+            statusEl.textContent = 'Completing sign-in...';
+            await completeAuth(window.Clerk.user);
+          }
+        });
+
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('errorText').textContent = err.message;
+      }
+    });
+
+    async function completeAuth(user) {
+      const statusEl = document.getElementById('statusText');
+      try {
+        statusEl.textContent = 'Saving session...';
+        const res = await fetch(`${API_BASE}/api/auth/complete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: authToken,
+            clerkUserId: user.id,
+            email: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || '',
+            imageUrl: user.imageUrl || '',
+            firstName: user.firstName || '',
+          }),
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('success').style.display = 'block';
+          if (user.imageUrl) {
+            const avatar = document.getElementById('userAvatar');
+            avatar.src = user.imageUrl;
+            avatar.style.display = 'block';
+          }
+          document.getElementById('welcomeText').textContent =
+            user.firstName ? `Welcome, ${user.firstName}!` : 'Signed in!';
+        } else {
+          statusEl.textContent = 'Error: ' + (data.error || 'Unknown');
+        }
+      } catch (err) {
+        statusEl.textContent = 'Network error: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>

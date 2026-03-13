@@ -106,10 +106,20 @@
       <div class="setting-group">
         <label class="setting-label">Account</label>
         <div id="accountSection">
-          <button id="btnSignIn" class="secondary-btn" style="margin-bottom:6px" onclick="window.open('https://terse-production.up.railway.app/')">Sign In / Sign Up</button>
-          <div id="accountInfo" class="hidden" style="padding:6px 0;font-size:11px;color:var(--t2)">
-            <span id="accountEmail"></span>
-            <span id="accountTier" style="margin-left:8px;padding:2px 6px;background:var(--acd);color:var(--ac);border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase"></span>
+          <div id="signedOutUI">
+            <button id="btnSignIn" class="secondary-btn" style="margin-bottom:4px">Sign In</button>
+            <button id="btnSignUp" class="secondary-btn" style="margin-bottom:6px;background:var(--acd);color:var(--ac);border-color:var(--acm)">Sign Up</button>
+          </div>
+          <div id="signedInUI" class="hidden">
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0">
+              <img id="accountAvatar" style="width:24px;height:24px;border-radius:50%;border:1px solid var(--bd);display:none" />
+              <div>
+                <div id="accountName" style="font-size:11px;font-weight:600;color:var(--t1)"></div>
+                <div id="accountEmail" style="font-size:10px;color:var(--t3)"></div>
+              </div>
+              <span id="accountTier" style="margin-left:auto;padding:2px 6px;background:var(--acd);color:var(--ac);border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase"></span>
+            </div>
+            <button id="btnSignOut" class="secondary-btn" style="margin-top:4px;font-size:10px;color:var(--t3)">Sign Out</button>
           </div>
         </div>
       </div>

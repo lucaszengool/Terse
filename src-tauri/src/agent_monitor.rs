@@ -17,6 +17,82 @@ struct AgentDef {
     parser: &'static str,
 }
 
+/// Find the best Claude Code session across ALL running claude processes.
+/// Returns (project_dir, pid, session_file) for the most recently written session.
+fn find_best_claude_session() -> Option<(PathBuf, u32, PathBuf)> {
+    let home = dirs::home_dir()?;
+    let projects_dir = home.join(".claude/projects");
+
+    // Get all claude PIDs and their CWDs
+    let output = std::process::Command::new("lsof")
+        .args(["-c", "claude", "-a", "-d", "cwd", "-Fn"])
+        .output()
+        .ok()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut pid_cwds: Vec<(u32, String)> = Vec::new();
+    let mut current_pid: Option<u32> = None;
+
+    for line in stdout.lines() {
+        if let Some(pid_str) = line.strip_prefix('p') {
+            current_pid = pid_str.parse().ok();
+        } else if let Some(path) = line.strip_prefix('n') {
+            if let Some(pid) = current_pid {
+                if path.starts_with('/') {
+                    pid_cwds.push((pid, path.to_string()));
+                }
+            }
+        }
+    }
+
+    // Deduplicate by CWD (multiple PIDs may share the same CWD)
+    let mut seen_cwds = std::collections::HashSet::new();
+    pid_cwds.retain(|(_, cwd)| seen_cwds.insert(cwd.clone()));
+
+    // For each unique CWD, find the project dir and its most recent session
+    let mut best: Option<(PathBuf, u32, PathBuf, SystemTime)> = None;
+
+    for (pid, cwd) in &pid_cwds {
+        let mut project_dir_opt: Option<PathBuf> = None;
+        for encoded in encode_cwd_for_claude(cwd) {
+            let candidate = projects_dir.join(&encoded);
+            if candidate.exists() {
+                project_dir_opt = Some(candidate);
+                break;
+            }
+        }
+        let project_dir = match project_dir_opt {
+            Some(d) => d,
+            None => continue,
+        };
+
+        if let Some(file) = find_latest_session(&project_dir) {
+            if let Ok(meta) = fs::metadata(&file) {
+                if let Ok(mtime) = meta.modified() {
+                    if best.as_ref().map_or(true, |(_, _, _, t)| mtime > *t) {
+                        best = Some((project_dir, *pid, file, mtime));
+                    }
+                }
+            }
+        }
+    }
+
+    best.map(|(dir, pid, file, _)| (dir, pid, file))
+}
+
+/// Encode a CWD path the same way Claude Code does for project folder names.
+/// Claude Code replaces '/' with '-' and also may normalize other characters.
+fn encode_cwd_for_claude(cwd: &str) -> Vec<String> {
+    // Primary: just replace / with -
+    let primary = cwd.replace('/', "-");
+    let mut candidates = vec![primary.clone()];
+    // Also try replacing _ with - (Claude Code may normalize underscores)
+    if cwd.contains('_') {
+        candidates.push(cwd.replace('/', "-").replace('_', "-"));
+    }
+    candidates
+}
+
 /// Resolve the Claude Code log directory for a specific PID by reading its CWD
 fn resolve_claude_log_dir(pid: u32) -> Option<PathBuf> {
     let home = dirs::home_dir()?;
@@ -32,11 +108,12 @@ fn resolve_claude_log_dir(pid: u32) -> Option<PathBuf> {
     for line in stdout.lines() {
         if let Some(path) = line.strip_prefix('n') {
             if path.starts_with('/') {
-                let encoded = path.replace('/', "-");
-                let project_dir = projects_dir.join(&encoded);
-                eprintln!("[terse-agent] PID {} cwd={}, checking {:?} exists={}", pid, path, project_dir, project_dir.exists());
-                if project_dir.exists() {
-                    return Some(project_dir);
+                for encoded in encode_cwd_for_claude(path) {
+                    let project_dir = projects_dir.join(&encoded);
+                    eprintln!("[terse-agent] PID {} cwd={}, trying {:?} exists={}", pid, path, project_dir, project_dir.exists());
+                    if project_dir.exists() {
+                        return Some(project_dir);
+                    }
                 }
             }
         }
@@ -612,9 +689,19 @@ impl AgentMonitor {
             &detection.agent_type, &detection.name, &detection.icon, detection.pid,
         );
 
-        // Resolve log dir: for Claude Code, use the PID's CWD to find the right project folder
+        // Resolve log dir: for Claude Code, find the session matching the focused VS Code window.
+        // Try the detected PID first, then try all claude PIDs in the same VS Code workspace.
         let resolved_log_dir = if detection.parser == "claudeCode" {
-            resolve_claude_log_dir(detection.pid).or(detection.log_dir.clone())
+            // Try detected PID
+            let mut dir = resolve_claude_log_dir(detection.pid);
+            // If that fails or gives a different project, scan all claude PIDs
+            if dir.is_none() {
+                if let Some((d, pid, _)) = find_best_claude_session() {
+                    session.pid = pid;
+                    dir = Some(d);
+                }
+            }
+            dir.or(detection.log_dir.clone())
         } else {
             detection.log_dir.clone()
         };

@@ -101,7 +101,7 @@ if (window.__TAURI__) {
 
     // Auth — open browser for sign-in, poll for completion
     openAuthInBrowser: async (action) => {
-      const API_BASE = 'https://terse-production.up.railway.app';
+      const API_BASE = 'https://www.terseai.org';
       try {
         // Get a unique auth token from the server
         const res = await fetch(`${API_BASE}/api/auth/start`, { method: 'POST' });

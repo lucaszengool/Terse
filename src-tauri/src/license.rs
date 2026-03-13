@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-const API_BASE: &str = "https://terse-production.up.railway.app";
+const API_BASE: &str = "https://www.terseai.org";
 
 // ── Auth State (persisted locally) ──
 

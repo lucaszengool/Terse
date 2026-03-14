@@ -3,183 +3,211 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terse — Promotional Video</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Terse — Promo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
     :root{
-      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);
-      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
-      --sf:hsla(0,0%,100%,0.04);
-      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
-      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
-      --gradient:linear-gradient(135deg,#6ee7b7,#3b82f6);
+      --white:#fff;--g50:#fafafa;--g100:#f5f5f5;--g200:#e5e5e5;--g300:#d4d4d4;
+      --g400:#a3a3a3;--g500:#737373;--g600:#525252;--g700:#404040;--g800:#262626;--g900:#171717;
+      --green:#10b981;--greenL:#6ee7b7;--greenD:#059669;--greenBg:rgba(16,185,129,0.06);--greenBd:rgba(16,185,129,0.15);
     }
-    html,body{height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--bg0);color:var(--t1)}
+    html,body{height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--white);color:var(--g900)}
     .mono{font-family:'JetBrains Mono',monospace}
 
-    /* ═══ FULLSCREEN VIDEO CONTAINER ═══ */
-    #video{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+    /* ═══ CAMERA RIG — horizontal pan ═══ */
+    #camera{position:fixed;inset:0;overflow:hidden}
+    #track{display:flex;height:100%;will-change:transform;transition:transform 1.2s cubic-bezier(.77,0,.175,1)}
+    .scene{width:100vw;height:100vh;flex-shrink:0;display:flex;align-items:center;justify-content:center;flex-direction:column;
+      position:relative;overflow:hidden;padding:40px}
 
-    /* ═══ SCENE SYSTEM ═══ */
-    .scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;
-      opacity:0;transform:scale(0.96);transition:opacity 0.8s cubic-bezier(.4,0,.2,1),transform 0.8s cubic-bezier(.4,0,.2,1);
-      pointer-events:none;will-change:opacity,transform}
-    .scene.active{opacity:1;transform:scale(1);pointer-events:auto}
-    .scene.exit{opacity:0;transform:scale(1.04)}
+    /* ═══ FLOATING PARTICLES ═══ */
+    .particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+    .particle{position:absolute;border-radius:50%;background:var(--green);opacity:0;will-change:transform,opacity}
+    @keyframes float{
+      0%{transform:translate(0,0) scale(1);opacity:0}
+      10%{opacity:.12}
+      90%{opacity:.12}
+      100%{transform:translate(var(--dx),var(--dy)) scale(0.5);opacity:0}
+    }
 
-    /* ═══ PROGRESS BAR ═══ */
-    #progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:100;background:rgba(255,255,255,0.05)}
-    #progressFill{height:100%;width:0;background:var(--gradient);transition:width 0.3s linear}
+    /* ═══ PROGRESS ═══ */
+    #progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:200;background:var(--g200)}
+    #progressFill{height:100%;width:0;background:var(--green);transition:width .3s linear}
 
-    /* ═══ SCENE DOTS ═══ */
-    #dots{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:100}
-    .dot{width:8px;height:8px;border-radius:50%;background:var(--sf);border:1px solid var(--bd);cursor:pointer;transition:all .3s}
-    .dot.active{background:var(--ac);border-color:var(--ac);box-shadow:0 0 12px rgba(110,231,183,0.4)}
+    /* ═══ LOGO ═══ */
+    #logo{position:fixed;top:24px;left:28px;z-index:200;display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;color:var(--g900)}
+    #logo .icon{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--white)}
+
+    /* ═══ DOTS ═══ */
+    #dots{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:200}
+    .dot{width:10px;height:10px;border-radius:50%;background:var(--g200);cursor:pointer;transition:all .4s cubic-bezier(.4,0,.2,1)}
+    .dot.active{background:var(--green);box-shadow:0 0 12px rgba(16,185,129,0.4);transform:scale(1.3)}
 
     /* ═══ CONTROLS ═══ */
-    #controls{position:fixed;bottom:28px;right:32px;z-index:100;display:flex;gap:12px;align-items:center}
-    #controls button{background:var(--sf);border:1px solid var(--bd);color:var(--t2);padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
-    #controls button:hover{background:var(--sfh);border-color:var(--bdl);color:var(--t1)}
-    #timer{font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+    #controls{position:fixed;bottom:28px;right:32px;z-index:200;display:flex;gap:10px;align-items:center}
+    #controls button{background:var(--g100);border:1px solid var(--g200);color:var(--g600);padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+    #controls button:hover{background:var(--g200);color:var(--g900)}
+    #timer{font-size:11px;color:var(--g400);font-family:'JetBrains Mono',monospace}
 
-    /* ═══ LOGO WATERMARK ═══ */
-    #logo{position:fixed;top:24px;left:28px;z-index:100;display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
-    #logo .icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    /* ═══ WORD REVEAL ═══ */
+    .wr{overflow:hidden;display:inline-block}
+    .wr .w{display:inline-block;opacity:0;transform:translateY(100%);transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .5s cubic-bezier(.22,1,.36,1)}
+    .wr.show .w{opacity:1;transform:translateY(0)}
 
-    /* ═══ SHARED ELEMENTS ═══ */
-    .hero-title{font-size:clamp(48px,6vw,80px);font-weight:900;letter-spacing:-3px;line-height:1;text-align:center}
-    .hero-sub{font-size:clamp(16px,2vw,22px);color:var(--t2);text-align:center;max-width:680px;line-height:1.7;margin-top:20px}
-    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .label{display:inline-block;padding:5px 14px;border-radius:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:20px}
-    .glow{position:absolute;width:500px;height:500px;border-radius:50%;filter:blur(160px);opacity:.15;pointer-events:none}
-    .glow.green{background:#6ee7b7}.glow.blue{background:#3b82f6}
+    /* ═══ FADE UP ═══ */
+    .fu{opacity:0;transform:translateY(30px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
+    .fu.show{opacity:1;transform:translateY(0)}
 
-    /* ═══ FADE-IN CHILDREN ═══ */
-    .fi{opacity:0;transform:translateY(24px);transition:opacity .6s cubic-bezier(.4,0,.2,1),transform .6s cubic-bezier(.4,0,.2,1)}
-    .fi.show{opacity:1;transform:translateY(0)}
-    .fi.d1{transition-delay:.15s}.fi.d2{transition-delay:.3s}.fi.d3{transition-delay:.45s}
-    .fi.d4{transition-delay:.6s}.fi.d5{transition-delay:.75s}.fi.d6{transition-delay:.9s}
+    /* ═══ SCALE IN ═══ */
+    .si{opacity:0;transform:scale(.85);transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1)}
+    .si.show{opacity:1;transform:scale(1)}
+
+    /* ═══ COUNTER ═══ */
+    .counter{font-weight:900;font-variant-numeric:tabular-nums}
 
     /* ═══ WINDOW CHROME ═══ */
-    .win{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;overflow:hidden;width:min(640px,90vw);box-shadow:0 24px 80px rgba(0,0,0,0.5)}
-    .win-bar{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid var(--bd);background:var(--bg1)}
-    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#f87171}.wd.y{background:#fbbf24}.wd.g{background:#34d399}
-    .win-title{margin-left:8px;font-size:11px;color:var(--t3);font-weight:600}
-    .win-badge{margin-left:auto;font-size:9px;padding:2px 8px;background:var(--acd);color:var(--ac);border-radius:4px;font-weight:700;text-transform:uppercase}
+    .win{background:var(--white);border:1px solid var(--g200);border-radius:16px;overflow:hidden;width:min(600px,85vw);
+      box-shadow:0 20px 60px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.04)}
+    .win-bar{display:flex;align-items:center;gap:7px;padding:12px 16px;border-bottom:1px solid var(--g200);background:var(--g50)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#f87171}.wd.y{background:#fbbf24}.wd.g{background:var(--green)}
+    .win-title{margin-left:10px;font-size:12px;color:var(--g500);font-weight:600}
+    .win-badge{margin-left:auto;font-size:9px;padding:3px 10px;background:var(--greenBg);color:var(--green);border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 
-    /* ═══ TYPING CURSOR ═══ */
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-    .cursor::after{content:'▎';color:var(--ac);animation:blink .8s infinite;margin-left:1px}
+    /* ═══ GREEN ACCENT LINE ═══ */
+    .accent-line{width:40px;height:3px;background:var(--green);border-radius:2px;margin-bottom:20px}
 
-    /* ═══ SCENE-SPECIFIC ═══ */
+    /* ═══ SCENE SPECIFICS ═══ */
 
-    /* Scene 0: Title card */
-    .s0-badge{font-size:14px;color:var(--t3);margin-top:32px;letter-spacing:3px;text-transform:uppercase;font-weight:600}
+    /* S0: Intro */
+    .s0-title{font-size:clamp(52px,7vw,90px);font-weight:900;letter-spacing:-4px;line-height:.95;color:var(--g900)}
+    .s0-title .green{color:var(--green)}
+    .s0-sub{font-size:clamp(16px,2vw,20px);color:var(--g500);max-width:560px;line-height:1.7;margin-top:24px;font-weight:400}
+    .s0-tag{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--g400);font-weight:600;margin-top:40px}
 
-    /* Scene 1: Problem */
-    .s1-cost{font-size:clamp(60px,8vw,120px);font-weight:900;letter-spacing:-4px;color:var(--ac)}
-    .s1-label{font-size:20px;color:var(--t2);margin-top:8px}
+    /* S1: Problem */
+    .s1-num{font-size:clamp(72px,10vw,140px);font-weight:900;letter-spacing:-6px;color:var(--green)}
+    .s1-label{font-size:22px;color:var(--g500);margin-top:8px;font-weight:400}
+    .s1-detail{font-size:16px;color:var(--g400);max-width:500px;text-align:center;line-height:1.8;margin-top:28px}
 
-    /* Scene 2: Pipeline demo */
-    .pipe-body{padding:16px;font-size:12px}
-    .pipe-input{padding:12px;background:var(--bg1);border:1px solid var(--bd);border-radius:8px;margin-bottom:16px;color:var(--t2);line-height:1.6}
-    .pipe-input .cut{color:#f87171;text-decoration:line-through;opacity:.5}
-    .pipe-input .fix{color:var(--ac);font-weight:600}
-    .pipe-stages{display:flex;flex-direction:column;gap:4px;margin-bottom:16px}
-    .pipe-stage{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;font-size:11px;color:var(--t3);transition:all .4s}
-    .pipe-stage.active{background:var(--acd);color:var(--ac)}
-    .pipe-stage.done{color:var(--t2)}
-    .pipe-stage .num{width:18px;height:18px;border-radius:50%;background:var(--sf);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
-    .pipe-stage.active .num{background:var(--ac);color:var(--bg0)}
-    .pipe-stage.done .num{background:var(--acd)}
-    .pipe-output{padding:12px;background:rgba(110,231,183,0.05);border:1px solid var(--acm);border-radius:8px;color:var(--ac);font-weight:600;font-size:13px;opacity:0;transform:translateY(8px);transition:all .4s}
+    /* S2: Pipeline */
+    .pipe-body{padding:20px}
+    .pipe-input{padding:14px;background:var(--g50);border:1px solid var(--g200);border-radius:10px;font-size:13px;color:var(--g600);line-height:1.7;margin-bottom:16px}
+    .pipe-input .cut{color:#ef4444;text-decoration:line-through;opacity:.4}
+    .pipe-input .fix{color:var(--green);font-weight:600}
+    .pipe-stages{display:flex;flex-direction:column;gap:3px;margin-bottom:16px}
+    .pipe-stage{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;font-size:12px;color:var(--g400);transition:all .35s cubic-bezier(.22,1,.36,1)}
+    .pipe-stage.active{background:var(--greenBg);color:var(--green);font-weight:600}
+    .pipe-stage.done{color:var(--g600)}
+    .pipe-stage .num{width:20px;height:20px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;transition:all .35s}
+    .pipe-stage.active .num{background:var(--green);color:var(--white)}
+    .pipe-stage.done .num{background:var(--greenBg);color:var(--green)}
+    .pipe-output{padding:14px;background:var(--greenBg);border:1px solid var(--greenBd);border-radius:10px;font-weight:600;font-size:13px;color:var(--greenD);
+      opacity:0;transform:translateY(10px);transition:all .5s cubic-bezier(.22,1,.36,1)}
     .pipe-output.show{opacity:1;transform:translateY(0)}
-    .pipe-savings{display:inline-block;background:var(--gradient);color:var(--bg0);padding:2px 10px;border-radius:4px;font-size:11px;font-weight:800;margin-left:8px}
+    .pipe-savings{display:inline-block;background:var(--green);color:var(--white);padding:3px 12px;border-radius:20px;font-size:11px;font-weight:800;margin-left:10px}
 
-    /* Scene 3: Spell correction */
-    .spell-body{padding:20px;text-align:center}
-    .spell-word{display:inline-block;padding:4px 6px;margin:2px;border-radius:4px;font-size:15px;transition:all .4s}
-    .spell-word.err{background:rgba(248,113,113,0.15);color:#fca5a5;text-decoration:line-through}
-    .spell-word.fixed{background:rgba(110,231,183,0.12);color:var(--ac);font-weight:600;text-decoration:none}
-    .spell-summary{margin-top:20px;font-size:13px;color:var(--t2);opacity:0;transition:opacity .4s}
-    .spell-summary.show{opacity:1}
+    /* S3: Spellcheck */
+    .spell-body{padding:28px;text-align:center}
+    .spell-word{display:inline-block;padding:6px 8px;margin:3px;border-radius:6px;font-size:16px;transition:all .45s cubic-bezier(.22,1,.36,1)}
+    .spell-word.err{background:rgba(239,68,68,0.08);color:#ef4444;text-decoration:line-through}
+    .spell-word.fixed{background:var(--greenBg);color:var(--green);font-weight:600;text-decoration:none}
+    .spell-summary{margin-top:24px;font-size:13px;color:var(--g500);opacity:0;transform:translateY(8px);transition:all .5s}
+    .spell-summary.show{opacity:1;transform:translateY(0)}
 
-    /* Scene 4: Agent monitor */
-    .agent-body{padding:16px;font-size:11px}
-    .agent-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-    .agent-stat{text-align:center;padding:10px 4px;background:var(--sf);border-radius:8px}
-    .agent-stat .v{font-size:18px;font-weight:800;color:var(--t1);display:block}
-    .agent-stat .l{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;display:block}
-    .agent-feed{display:flex;flex-direction:column;gap:3px;max-height:160px;overflow:hidden}
-    .feed-line{font-size:11px;padding:4px 8px;border-radius:4px;opacity:0;transform:translateX(-12px);transition:all .3s}
+    /* S4: Agent Monitor */
+    .agent-body{padding:20px}
+    .agent-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+    .agent-stat{text-align:center;padding:12px 4px;background:var(--g50);border:1px solid var(--g200);border-radius:10px}
+    .agent-stat .v{font-size:20px;font-weight:800;color:var(--g900);display:block}
+    .agent-stat .l{font-size:9px;color:var(--g400);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;display:block}
+    .agent-feed{display:flex;flex-direction:column;gap:3px;max-height:170px;overflow:hidden}
+    .feed-line{font-size:11px;padding:5px 10px;border-radius:6px;opacity:0;transform:translateX(-16px);transition:all .35s cubic-bezier(.22,1,.36,1)}
     .feed-line.show{opacity:1;transform:translateX(0)}
-    .feed-line.opt{color:var(--ac);background:rgba(110,231,183,0.05)}
-    .feed-line.tl{color:var(--t2);background:var(--sf)}
-    .feed-line.warn{color:#fbbf24;background:rgba(251,191,36,0.06)}
-    .feed-line.usr{color:#93c5fd;background:rgba(147,197,253,0.06)}
+    .feed-line.opt{color:var(--green);background:var(--greenBg)}
+    .feed-line.tl{color:var(--g600);background:var(--g50)}
+    .feed-line.warn{color:#d97706;background:rgba(217,119,6,0.06)}
+    .feed-line.usr{color:#2563eb;background:rgba(37,99,235,0.05)}
 
-    /* Scene 5: Benchmarks */
-    .bench-body{padding:20px 24px;display:flex;flex-direction:column;gap:10px}
-    .bench-row{display:flex;align-items:center;gap:12px}
-    .bench-label{font-size:12px;color:var(--t2);width:180px;flex-shrink:0;text-align:right}
-    .bench-track{flex:1;height:24px;background:var(--sf);border-radius:6px;overflow:hidden}
-    .bench-fill{height:100%;background:var(--gradient);border-radius:6px;width:0;transition:width 1s cubic-bezier(.4,0,.2,1)}
-    .bench-pct{font-size:13px;font-weight:800;color:var(--ac);width:48px}
+    /* S5: Benchmarks */
+    .bench-body{padding:24px}
+    .bench-row{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+    .bench-label{font-size:12px;color:var(--g500);width:200px;flex-shrink:0;text-align:right}
+    .bench-track{flex:1;height:28px;background:var(--g100);border-radius:8px;overflow:hidden}
+    .bench-fill{height:100%;background:var(--green);border-radius:8px;width:0;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+    .bench-pct{font-size:14px;font-weight:800;color:var(--green);width:48px}
 
-    /* Scene 6: Modes */
-    .mode-tabs{display:flex;gap:4px;margin-bottom:16px;padding:0 20px}
-    .mode-tab{padding:8px 20px;border-radius:8px;font-size:12px;font-weight:700;cursor:default;background:var(--sf);color:var(--t3);transition:all .3s}
-    .mode-tab.active{background:var(--acd);color:var(--ac)}
-    .mode-body{padding:0 20px 20px}
-    .mode-input{font-size:12px;padding:12px;background:var(--bg1);border:1px solid var(--bd);border-radius:8px;margin-bottom:12px;color:var(--t2);line-height:1.6}
-    .mode-input .cut{text-decoration:line-through;opacity:.35;color:#f87171}
-    .mode-input .kept{color:var(--ac);font-weight:600}
-    .mode-result{display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(110,231,183,0.05);border:1px solid var(--acm);border-radius:8px;opacity:0;transition:all .4s}
-    .mode-result.show{opacity:1}
-    .mode-result .pct{font-size:28px;font-weight:900;color:var(--ac)}
+    /* S6: Modes */
+    .mode-tabs{display:flex;gap:6px;margin-bottom:16px;padding:0 20px}
+    .mode-tab{padding:10px 24px;border-radius:10px;font-size:13px;font-weight:700;background:var(--g100);color:var(--g400);transition:all .35s}
+    .mode-tab.active{background:var(--green);color:var(--white)}
+    .mode-body{padding:0 20px 24px}
+    .mode-input{font-size:12px;padding:14px;background:var(--g50);border:1px solid var(--g200);border-radius:10px;margin-bottom:14px;color:var(--g600);line-height:1.7}
+    .mode-input .cut{text-decoration:line-through;opacity:.3;color:#ef4444}
+    .mode-input .kept{color:var(--green);font-weight:600}
+    .mode-result{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--greenBg);border:1px solid var(--greenBd);border-radius:10px;
+      opacity:0;transform:translateY(8px);transition:all .45s cubic-bezier(.22,1,.36,1)}
+    .mode-result.show{opacity:1;transform:translateY(0)}
+    .mode-result .pct{font-size:32px;font-weight:900;color:var(--green)}
 
-    /* Scene 7: CTA */
-    .cta-dl{display:inline-block;padding:16px 40px;background:var(--gradient);color:var(--bg0);font-weight:800;font-size:18px;border-radius:14px;margin-top:32px;text-decoration:none;
-      box-shadow:0 8px 40px rgba(110,231,183,0.3);animation:ctaPulse 2s ease-in-out infinite}
-    @keyframes ctaPulse{0%,100%{box-shadow:0 8px 40px rgba(110,231,183,0.3)}50%{box-shadow:0 12px 60px rgba(110,231,183,0.5)}}
-    .cta-features{display:flex;gap:32px;margin-top:40px}
-    .cta-feat{font-size:13px;color:var(--t3);display:flex;align-items:center;gap:8px}
+    /* S7: CTA */
+    .cta-dl{display:inline-block;padding:18px 48px;background:var(--green);color:var(--white);font-weight:800;font-size:18px;border-radius:14px;text-decoration:none;
+      box-shadow:0 8px 40px rgba(16,185,129,0.25);transition:all .3s}
+    .cta-dl:hover{box-shadow:0 12px 50px rgba(16,185,129,0.35);transform:translateY(-2px)}
+    @keyframes ctaPulse{0%,100%{box-shadow:0 8px 40px rgba(16,185,129,0.25)}50%{box-shadow:0 14px 60px rgba(16,185,129,0.4)}}
+    .cta-dl.pulse{animation:ctaPulse 2.5s ease-in-out infinite}
+    .cta-features{display:flex;gap:36px;margin-top:44px}
+    .cta-feat{font-size:13px;color:var(--g400);display:flex;align-items:center;gap:8px;font-weight:500}
+
+    /* ═══ RESPONSIVE ═══ */
+    @media(max-width:768px){
+      .s0-title{letter-spacing:-2px}
+      .bench-label{width:120px;font-size:10px}
+      .agent-stats{grid-template-columns:repeat(2,1fr)}
+      .cta-features{flex-direction:column;gap:12px;align-items:center}
+    }
   </style>
 </head>
 <body>
 
 <div id="logo"><div class="icon">T</div>Terse</div>
-
 <div id="progress"><div id="progressFill"></div></div>
 
-<div id="video">
+<div id="camera">
+<div id="track">
 
-  <!-- ═══ SCENE 0: TITLE CARD ═══ -->
+  <!-- ═══ S0: INTRO ═══ -->
   <div class="scene" id="s0">
-    <div class="glow green" style="top:-200px;left:30%"></div>
-    <div class="glow blue" style="bottom:-200px;right:30%"></div>
-    <div class="label fi">Token Optimizer for AI Agents</div>
-    <h1 class="hero-title fi d1">Save every token<br><span class="gradient-text">on any AI usage.</span></h1>
-    <p class="hero-sub fi d2">Cut 40-70% of your AI token costs. Monitor agent sessions. Catch duplicate tool calls. Generate CLAUDE.md rules. All on-device.</p>
-    <div class="s0-badge fi d3">TERSE</div>
+    <div class="particles" id="particles0"></div>
+    <div class="accent-line fu"></div>
+    <h1 class="s0-title">
+      <span class="wr" id="s0w0"><span class="w">Save</span></span>
+      <span class="wr" id="s0w1"><span class="w">every</span></span>
+      <span class="wr" id="s0w2"><span class="w">token</span></span><br>
+      <span class="wr" id="s0w3"><span class="w green">on</span></span>
+      <span class="wr" id="s0w4"><span class="w green">any</span></span>
+      <span class="wr" id="s0w5"><span class="w green">AI</span></span>
+      <span class="wr" id="s0w6"><span class="w green">usage.</span></span>
+    </h1>
+    <p class="s0-sub fu" id="s0sub">Monitor agent sessions. Compress prompts. Catch duplicate tool calls. All on-device.</p>
+    <div class="s0-tag fu" id="s0tag">TERSE</div>
   </div>
 
-  <!-- ═══ SCENE 1: THE PROBLEM ═══ -->
+  <!-- ═══ S1: THE PROBLEM ═══ -->
   <div class="scene" id="s1">
-    <div class="glow blue" style="top:20%;left:20%"></div>
-    <div class="label fi">The Problem</div>
-    <div class="s1-cost fi d1">$2,847</div>
-    <div class="s1-label fi d2">Average monthly AI token spend per developer</div>
-    <p class="hero-sub fi d3" style="margin-top:32px">Agent sessions consume 50x more tokens than simple chat.<br>Verbose prompts, typo retry loops, duplicate tool calls, redundant file reads<br>&mdash; every wasted token costs you money.</p>
+    <div class="particles" id="particles1"></div>
+    <div class="accent-line fu"></div>
+    <div class="s1-num counter fu" id="s1num">$0</div>
+    <div class="s1-label fu" id="s1label">Average monthly AI token spend per developer</div>
+    <p class="s1-detail fu" id="s1detail">Agent sessions consume 50x more tokens than simple chat. Verbose prompts, typo retry loops, duplicate tool calls &mdash; every wasted token costs money.</p>
   </div>
 
-  <!-- ═══ SCENE 2: PIPELINE DEMO ═══ -->
+  <!-- ═══ S2: PIPELINE ═══ -->
   <div class="scene" id="s2">
-    <div class="glow green" style="top:-100px;right:20%"></div>
-    <div class="label fi">7-Stage Pipeline</div>
-    <h2 class="fi d1" style="font-size:36px;font-weight:900;letter-spacing:-1px;margin-bottom:24px;text-align:center">Every prompt optimized<br><span class="gradient-text">before it hits the API.</span></h2>
-    <div class="win fi d2">
+    <div class="particles" id="particles2"></div>
+    <div class="accent-line fu"></div>
+    <h2 class="fu" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-2px;margin-bottom:24px;text-align:center">Every prompt optimized<br><span style="color:var(--green)">before it hits the API.</span></h2>
+    <div class="win si" id="s2win">
       <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Claude Code &mdash; Agent Session</span><span class="win-badge">Live</span></div>
       <div class="pipe-body">
         <div class="pipe-input mono" id="p2input"></div>
@@ -197,13 +225,13 @@
     </div>
   </div>
 
-  <!-- ═══ SCENE 3: SPELL CORRECTION ═══ -->
+  <!-- ═══ S3: SPELL CORRECTION ═══ -->
   <div class="scene" id="s3">
-    <div class="glow blue" style="bottom:-100px;left:30%"></div>
-    <div class="label fi">Spell Correction</div>
-    <h2 class="fi d1" style="font-size:36px;font-weight:900;letter-spacing:-1px;margin-bottom:24px;text-align:center">Typos caught<br><span class="gradient-text">before they cost you tokens.</span></h2>
-    <div class="win fi d2">
-      <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Token Optimization &mdash; Live</span><span class="win-badge">4-Stage</span></div>
+    <div class="particles" id="particles3"></div>
+    <div class="accent-line fu"></div>
+    <h2 class="fu" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-2px;margin-bottom:24px;text-align:center">Typos caught<br><span style="color:var(--green)">before they cost you.</span></h2>
+    <div class="win si" id="s3win">
+      <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Token Optimization</span><span class="win-badge">4 Stage</span></div>
       <div class="spell-body">
         <div class="mono" id="s3words"></div>
         <div class="spell-summary" id="s3summary"></div>
@@ -211,12 +239,12 @@
     </div>
   </div>
 
-  <!-- ═══ SCENE 4: AGENT MONITOR ═══ -->
+  <!-- ═══ S4: AGENT MONITOR ═══ -->
   <div class="scene" id="s4">
-    <div class="glow green" style="top:10%;right:15%"></div>
-    <div class="label fi">Agent Monitor</div>
-    <h2 class="fi d1" style="font-size:36px;font-weight:900;letter-spacing:-1px;margin-bottom:24px;text-align:center">See everything<br><span class="gradient-text">your agent does.</span></h2>
-    <div class="win fi d2">
+    <div class="particles" id="particles4"></div>
+    <div class="accent-line fu"></div>
+    <h2 class="fu" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-2px;margin-bottom:24px;text-align:center">See everything<br><span style="color:var(--green)">your agent does.</span></h2>
+    <div class="win si" id="s4win">
       <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Agent Monitor &mdash; Claude Code</span><span class="win-badge">Streaming</span></div>
       <div class="agent-body">
         <div class="agent-stats">
@@ -229,37 +257,37 @@
           <div class="agent-stat"><span class="v" id="a4cache">0</span><span class="l">Cache</span></div>
           <div class="agent-stat"><span class="v" id="a4tools">0</span><span class="l">Tools</span></div>
           <div class="agent-stat"><span class="v" id="a4typos">0</span><span class="l">Typos</span></div>
-          <div class="agent-stat"><span class="v" id="a4saved" style="color:var(--ac)">0%</span><span class="l">Saved</span></div>
+          <div class="agent-stat"><span class="v" id="a4saved" style="color:var(--green)">0%</span><span class="l">Saved</span></div>
         </div>
         <div class="agent-feed" id="a4feed"></div>
       </div>
     </div>
   </div>
 
-  <!-- ═══ SCENE 5: BENCHMARKS ═══ -->
+  <!-- ═══ S5: BENCHMARKS ═══ -->
   <div class="scene" id="s5">
-    <div class="glow blue" style="top:-100px;left:25%"></div>
-    <div class="label fi">Benchmarks</div>
-    <h2 class="fi d1" style="font-size:36px;font-weight:900;letter-spacing:-1px;margin-bottom:24px;text-align:center">Tested on<br><span class="gradient-text">real agent sessions.</span></h2>
-    <div class="win fi d2">
-      <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Benchmarks &mdash; Aggressive Mode</span></div>
+    <div class="particles" id="particles5"></div>
+    <div class="accent-line fu"></div>
+    <h2 class="fu" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-2px;margin-bottom:24px;text-align:center">Tested on<br><span style="color:var(--green)">real agent sessions.</span></h2>
+    <div class="win si" id="s5win">
+      <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Benchmarks &mdash; Aggressive</span></div>
       <div class="bench-body" id="s5bars">
-        <div class="bench-row"><span class="bench-label">Agent: mixed typos + filler</span><div class="bench-track"><div class="bench-fill" id="b0"></div></div><span class="bench-pct">-64%</span></div>
-        <div class="bench-row"><span class="bench-label">Agent: verbose debug prompt</span><div class="bench-track"><div class="bench-fill" id="b1"></div></div><span class="bench-pct">-60%</span></div>
-        <div class="bench-row"><span class="bench-label">Claude Code: typo-heavy</span><div class="bench-track"><div class="bench-fill" id="b2"></div></div><span class="bench-pct">-51%</span></div>
-        <div class="bench-row"><span class="bench-label">OpenClaw: chatty request</span><div class="bench-track"><div class="bench-fill" id="b3"></div></div><span class="bench-pct">-46%</span></div>
-        <div class="bench-row"><span class="bench-label">Tool overhead (unused)</span><div class="bench-track"><div class="bench-fill" id="b4"></div></div><span class="bench-pct">-35%</span></div>
+        <div class="bench-row"><span class="bench-label">Agent: typos + filler</span><div class="bench-track"><div class="bench-fill" id="b0"></div></div><span class="bench-pct">-64%</span></div>
+        <div class="bench-row"><span class="bench-label">Verbose debug prompt</span><div class="bench-track"><div class="bench-fill" id="b1"></div></div><span class="bench-pct">-60%</span></div>
+        <div class="bench-row"><span class="bench-label">Claude Code session</span><div class="bench-track"><div class="bench-fill" id="b2"></div></div><span class="bench-pct">-51%</span></div>
+        <div class="bench-row"><span class="bench-label">OpenClaw chatty</span><div class="bench-track"><div class="bench-fill" id="b3"></div></div><span class="bench-pct">-46%</span></div>
+        <div class="bench-row"><span class="bench-label">Unused tool overhead</span><div class="bench-track"><div class="bench-fill" id="b4"></div></div><span class="bench-pct">-35%</span></div>
         <div class="bench-row"><span class="bench-label">Clean technical</span><div class="bench-track"><div class="bench-fill" id="b5"></div></div><span class="bench-pct">0%</span></div>
       </div>
     </div>
   </div>
 
-  <!-- ═══ SCENE 6: THREE MODES ═══ -->
+  <!-- ═══ S6: THREE MODES ═══ -->
   <div class="scene" id="s6">
-    <div class="glow green" style="bottom:0;right:20%"></div>
-    <div class="label fi">Three Modes</div>
-    <h2 class="fi d1" style="font-size:36px;font-weight:900;letter-spacing:-1px;margin-bottom:24px;text-align:center">You control<br><span class="gradient-text">how much to save.</span></h2>
-    <div class="win fi d2">
+    <div class="particles" id="particles6"></div>
+    <div class="accent-line fu"></div>
+    <h2 class="fu" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-2px;margin-bottom:24px;text-align:center">You control<br><span style="color:var(--green)">how much to save.</span></h2>
+    <div class="win si" id="s6win">
       <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Mode Comparison</span></div>
       <div class="mode-tabs" id="s6tabs">
         <div class="mode-tab" id="mt0">Soft</div>
@@ -270,125 +298,147 @@
         <div class="mode-input mono" id="s6input"></div>
         <div class="mode-result" id="s6result">
           <span class="pct" id="s6pct"></span>
-          <span id="s6out" style="font-size:13px;color:var(--t2)"></span>
+          <span id="s6out" style="font-size:13px;color:var(--g500)"></span>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ═══ SCENE 7: CTA ═══ -->
+  <!-- ═══ S7: CTA ═══ -->
   <div class="scene" id="s7">
-    <div class="glow green" style="top:30%;left:40%"></div>
-    <div class="glow blue" style="bottom:20%;right:35%"></div>
-    <div class="label fi">Open Source &middot; On-Device &middot; Free</div>
-    <h1 class="hero-title fi d1">Stop wasting<br><span class="gradient-text">tokens and money.</span></h1>
-    <a href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse-1.0.0-x86_64.dmg" class="cta-dl fi d2">Download for macOS</a>
-    <div class="cta-features fi d3">
-      <span class="cta-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>100% on-device</span>
-      <span class="cta-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>Free &amp; open source</span>
-      <span class="cta-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Zero latency</span>
+    <div class="particles" id="particles7"></div>
+    <div class="accent-line fu"></div>
+    <h1 style="font-size:clamp(48px,6vw,80px);font-weight:900;letter-spacing:-3px;line-height:.95;text-align:center">
+      <span class="wr" id="s7w0"><span class="w">Stop</span></span>
+      <span class="wr" id="s7w1"><span class="w">wasting</span></span><br>
+      <span class="wr" id="s7w2"><span class="w" style="color:var(--green)">tokens</span></span>
+      <span class="wr" id="s7w3"><span class="w" style="color:var(--green)">and</span></span>
+      <span class="wr" id="s7w4"><span class="w" style="color:var(--green)">money.</span></span>
+    </h1>
+    <a href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse-1.0.0-x86_64.dmg" class="cta-dl fu" id="s7dl">Download for macOS</a>
+    <div class="cta-features fu" id="s7feats">
+      <span class="cta-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>100% on-device</span>
+      <span class="cta-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>Free &amp; open source</span>
+      <span class="cta-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Zero latency</span>
     </div>
-    <p class="fi d4" style="margin-top:28px;font-size:14px;color:var(--t3)">terseai.org</p>
+    <p class="fu" id="s7url" style="margin-top:32px;font-size:14px;color:var(--g400)">terseai.org</p>
   </div>
 
+</div>
 </div>
 
 <div id="dots"></div>
 <div id="controls">
   <span id="timer">0:00 / 0:00</span>
-  <button id="btnPause">⏸ Pause</button>
-  <button id="btnRestart">↻ Restart</button>
+  <button id="btnPause">&#9208; Pause</button>
+  <button id="btnRestart">&#8635; Restart</button>
 </div>
 
 <script>
-// ═══ SCENE TIMELINE ENGINE ═══
+// ═══ PARTICLES ═══
+function spawnParticles(containerId, count) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 3 + Math.random() * 5;
+    const x = Math.random() * 100;
+    const y = Math.random() * 100;
+    const dx = (Math.random() - 0.5) * 200;
+    const dy = -100 - Math.random() * 300;
+    const dur = 6 + Math.random() * 10;
+    const del = Math.random() * 12;
+    p.style.cssText = `width:${size}px;height:${size}px;left:${x}%;top:${y}%;--dx:${dx}px;--dy:${dy}px;animation:float ${dur}s ${del}s infinite cubic-bezier(.22,1,.36,1)`;
+    c.appendChild(p);
+  }
+}
+for (let i = 0; i <= 7; i++) spawnParticles('particles' + i, 15);
+
+// ═══ SCENE CONFIG ═══
 const SCENES = [
-  { id: 's0', dur: 5000, enter: enterS0 },
-  { id: 's1', dur: 5000, enter: enterS1 },
-  { id: 's2', dur: 9000, enter: enterS2 },
-  { id: 's3', dur: 7000, enter: enterS3 },
-  { id: 's4', dur: 9000, enter: enterS4 },
-  { id: 's5', dur: 6000, enter: enterS5 },
-  { id: 's6', dur: 8000, enter: enterS6 },
-  { id: 's7', dur: 6000, enter: enterS7 },
+  { id: 's0', dur: 5500, enter: enterS0 },
+  { id: 's1', dur: 5500, enter: enterS1 },
+  { id: 's2', dur: 9500, enter: enterS2 },
+  { id: 's3', dur: 7500, enter: enterS3 },
+  { id: 's4', dur: 9500, enter: enterS4 },
+  { id: 's5', dur: 6500, enter: enterS5 },
+  { id: 's6', dur: 8500, enter: enterS6 },
+  { id: 's7', dur: 6500, enter: enterS7 },
 ];
 const TOTAL = SCENES.reduce((a, s) => a + s.dur, 0);
+let curScene = -1, globalStart = 0, paused = false, pauseTime = 0, timeouts = [];
 
-let curScene = -1;
-let sceneStart = 0;
-let globalStart = 0;
-let paused = false;
-let pauseTime = 0;
-let timeouts = [];
-
-// Build dots
+const track = document.getElementById('track');
 const dotsEl = document.getElementById('dots');
-SCENES.forEach((s, i) => {
+SCENES.forEach((_, i) => {
   const d = document.createElement('div');
   d.className = 'dot';
   d.onclick = () => goToScene(i);
   dotsEl.appendChild(d);
 });
 
-function clearTimeouts() { timeouts.forEach(t => clearTimeout(t)); timeouts = []; }
-function delay(fn, ms) { timeouts.push(setTimeout(fn, ms)); }
+function clearTO() { timeouts.forEach(t => clearTimeout(t)); timeouts = []; }
+function later(fn, ms) { timeouts.push(setTimeout(fn, ms)); }
 function $(id) { return document.getElementById(id); }
 
-function goToScene(idx) {
-  clearTimeouts();
-  // Exit current
-  if (curScene >= 0) {
-    const prev = $(SCENES[curScene].id);
-    prev.classList.remove('active');
-    prev.classList.add('exit');
-    setTimeout(() => prev.classList.remove('exit'), 800);
+// Word reveal helper
+function revealWords(prefix, count, baseDelay) {
+  for (let i = 0; i < count; i++) {
+    later(() => { const wr = $(prefix + i); if (wr) wr.classList.add('show'); }, baseDelay + i * 80);
   }
+}
+
+// Fade-up helper
+function fadeUp(el, delay) {
+  later(() => { if (typeof el === 'string') el = $(el); if (el) el.classList.add('show'); }, delay);
+}
+
+// Reset animatables in a scene
+function resetScene(id) {
+  const scene = $(id);
+  scene.querySelectorAll('.fu,.si').forEach(c => c.classList.remove('show'));
+  scene.querySelectorAll('.wr').forEach(c => c.classList.remove('show'));
+}
+
+function goToScene(idx) {
+  clearTO();
   curScene = idx;
-  sceneStart = performance.now();
+
+  // Camera pan
+  track.style.transform = `translate3d(-${idx * 100}vw, 0, 0)`;
 
   // Update dots
   dotsEl.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === idx));
 
-  // Update global time reference
+  // Update global time
   let elapsed = 0;
   for (let i = 0; i < idx; i++) elapsed += SCENES[i].dur;
   globalStart = performance.now() - elapsed;
 
-  // Activate scene
-  const el = $(SCENES[idx].id);
-  // Reset fi children
-  el.querySelectorAll('.fi').forEach(c => c.classList.remove('show'));
-  el.classList.add('active');
-  requestAnimationFrame(() => {
-    el.querySelectorAll('.fi').forEach(c => c.classList.add('show'));
-  });
-
-  // Run scene enter animation
-  SCENES[idx].enter();
+  // Reset and enter
+  resetScene(SCENES[idx].id);
+  later(() => SCENES[idx].enter(), 150);
 
   // Auto-advance
-  delay(() => {
+  later(() => {
     if (idx < SCENES.length - 1) goToScene(idx + 1);
-    else goToScene(0); // loop
+    else goToScene(0);
   }, SCENES[idx].dur);
 }
 
-// Timer update
-function updateTimer() {
+// Timer
+function tick() {
   if (!paused) {
-    const elapsed = performance.now() - globalStart;
-    const total = TOTAL;
-    const e = Math.min(elapsed, total);
-    const mm = Math.floor(e / 60000);
-    const ss = Math.floor((e % 60000) / 1000);
-    const tmm = Math.floor(total / 60000);
-    const tss = Math.floor((total % 60000) / 1000);
-    $('timer').textContent = `${mm}:${String(ss).padStart(2, '0')} / ${tmm}:${String(tss).padStart(2, '0')}`;
-    $('progressFill').style.width = (e / total * 100) + '%';
+    const e = Math.min(performance.now() - globalStart, TOTAL);
+    const mm = Math.floor(e / 60000), ss = Math.floor((e % 60000) / 1000);
+    const tmm = Math.floor(TOTAL / 60000), tss = Math.floor((TOTAL % 60000) / 1000);
+    $('timer').textContent = mm + ':' + String(ss).padStart(2, '0') + ' / ' + tmm + ':' + String(tss).padStart(2, '0');
+    $('progressFill').style.width = (e / TOTAL * 100) + '%';
   }
-  requestAnimationFrame(updateTimer);
+  requestAnimationFrame(tick);
 }
-requestAnimationFrame(updateTimer);
+requestAnimationFrame(tick);
 
 // Controls
 $('btnPause').onclick = () => {
@@ -396,225 +446,222 @@ $('btnPause').onclick = () => {
     paused = false;
     const offset = performance.now() - pauseTime;
     globalStart += offset;
-    sceneStart += offset;
-    // Restart scene timer
-    const remaining = SCENES[curScene].dur - (pauseTime - sceneStart);
-    delay(() => {
-      if (curScene < SCENES.length - 1) goToScene(curScene + 1);
-      else goToScene(0);
-    }, remaining);
-    $('btnPause').textContent = '⏸ Pause';
+    const remaining = SCENES[curScene].dur - (pauseTime - (globalStart - SCENES.slice(0, curScene).reduce((a, s) => a + s.dur, 0)));
+    later(() => { if (curScene < SCENES.length - 1) goToScene(curScene + 1); else goToScene(0); }, Math.max(remaining, 500));
+    $('btnPause').innerHTML = '&#9208; Pause';
   } else {
-    paused = true;
-    pauseTime = performance.now();
-    clearTimeouts();
-    $('btnPause').textContent = '▶ Play';
+    paused = true; pauseTime = performance.now(); clearTO();
+    $('btnPause').innerHTML = '&#9654; Play';
   }
 };
-$('btnRestart').onclick = () => {
-  paused = false;
-  $('btnPause').textContent = '⏸ Pause';
-  globalStart = performance.now();
-  goToScene(0);
-};
+$('btnRestart').onclick = () => { paused = false; $('btnPause').innerHTML = '&#9208; Pause'; globalStart = performance.now(); goToScene(0); };
 
-// Keyboard
 document.addEventListener('keydown', e => {
   if (e.key === ' ') { e.preventDefault(); $('btnPause').click(); }
   if (e.key === 'ArrowRight' && curScene < SCENES.length - 1) goToScene(curScene + 1);
   if (e.key === 'ArrowLeft' && curScene > 0) goToScene(curScene - 1);
 });
 
-// ═══ SCENE ANIMATIONS ═══
+// ═══ SCENE ENTER FUNCTIONS ═══
 
-// Helper: typewrite into element
 function typeWrite(el, text, speed, cb) {
   el.textContent = '';
   let i = 0;
-  const iv = setInterval(() => {
-    if (i < text.length) { el.textContent += text[i]; i++; }
-    else { clearInterval(iv); if (cb) cb(); }
-  }, speed);
+  const iv = setInterval(() => { if (i < text.length) { el.textContent += text[i]; i++; } else { clearInterval(iv); if (cb) cb(); } }, speed);
   timeouts.push(iv);
 }
 
-// Scene 0: Title
-function enterS0() {}
+// S0: Intro — staggered word reveal
+function enterS0() {
+  const scene = $('s0');
+  // Accent line
+  fadeUp(scene.querySelector('.accent-line'), 200);
+  // Word by word title
+  revealWords('s0w', 7, 400);
+  // Sub + tag
+  fadeUp('s0sub', 1200);
+  fadeUp('s0tag', 1600);
+}
 
-// Scene 1: Problem stats
+// S1: Problem — animated counter
 function enterS1() {
-  const el = $('s1').querySelector('.s1-cost');
-  let v = 0;
-  const iv = setInterval(() => { v += 47; if (v >= 2847) { v = 2847; clearInterval(iv); } el.textContent = '$' + v.toLocaleString(); }, 16);
-  timeouts.push(iv);
-}
-
-// Scene 2: Pipeline
-function enterS2() {
-  const input = $('p2input');
-  const output = $('p2out');
-  const text = "Hey could you maybe help me wirte a function that calculates the factorial of a numbr please";
-  const stages = ['p2s0','p2s1','p2s2','p2s3','p2s4','p2s5','p2s6'];
-  stages.forEach(id => { $(id).classList.remove('active', 'done'); });
-  output.classList.remove('show');
-  output.innerHTML = '';
-  input.innerHTML = '';
-
-  typeWrite(input, text, 18, () => {
-    let si = 0;
-    delay(() => {
-      const iv = setInterval(() => {
-        if (si > 0) $(stages[si - 1]).classList.remove('active'), $(stages[si - 1]).classList.add('done');
-        if (si < stages.length) {
-          $(stages[si]).classList.add('active');
-          // Show word transformations at key stages
-          if (si === 0) input.innerHTML = text.replace('wirte', '<span class="fix">write</span>').replace('numbr', '<span class="fix">number</span>');
-          if (si === 2) input.innerHTML = '<span class="cut">Hey could you maybe help me</span> write a function that calculates the factorial of a number <span class="cut">please</span>';
-          if (si === 4) input.innerHTML = '<span class="cut">Hey could you maybe help me</span> <span class="fix">Write</span> factorial function <span class="cut">please</span>';
-          si++;
-        } else {
-          clearInterval(iv);
-          $(stages[6]).classList.remove('active'); $(stages[6]).classList.add('done');
-          output.innerHTML = 'Write factorial function <span class="pipe-savings">8 tok &middot; -79%</span>';
-          output.classList.add('show');
-        }
-      }, 500);
-      timeouts.push(iv);
-    }, 400);
-  });
-}
-
-// Scene 3: Spell correction
-function enterS3() {
-  const el = $('s3words');
-  const summary = $('s3summary');
-  summary.classList.remove('show');
-  const words = [
-    { t: 'fix', ok: true }, { t: 'the', ok: true }, { t: 'authetication', ok: false, fix: 'authentication' },
-    { t: 'endpont', ok: false, fix: 'endpoint' }, { t: 'for', ok: true }, { t: 'the', ok: true },
-    { t: 'deplpy', ok: false, fix: 'deploy' }, { t: 'comand', ok: false, fix: 'command' },
-  ];
-  el.innerHTML = words.map((w, i) => `<span class="spell-word" id="sw${i}">${w.t}</span>`).join(' ');
-
-  const fixes = words.map((w, i) => ({ i, w })).filter(x => !x.w.ok);
-  let fi = 0;
-  delay(() => {
-    const iv = setInterval(() => {
-      if (fi >= fixes.length) {
-        clearInterval(iv);
-        summary.textContent = `${fixes.length} typos caught · ${fixes.map(f => f.w.t + ' → ' + f.w.fix).join(', ')} · corrected before send`;
-        summary.classList.add('show');
-        return;
-      }
-      const { i, w } = fixes[fi];
-      const span = $('sw' + i);
-      span.classList.add('err');
-      delay(() => {
-        span.textContent = w.fix;
-        span.classList.remove('err');
-        span.classList.add('fixed');
-      }, 500);
-      fi++;
-    }, 800);
+  const scene = $('s1');
+  scene.querySelectorAll('.fu').forEach((el, i) => fadeUp(el, 200 + i * 200));
+  later(() => {
+    let v = 0;
+    const iv = setInterval(() => { v += 53; if (v >= 2847) { v = 2847; clearInterval(iv); } $('s1num').textContent = '$' + v.toLocaleString(); }, 14);
     timeouts.push(iv);
-  }, 800);
-}
-
-// Scene 4: Agent monitor
-function enterS4() {
-  const feed = $('a4feed');
-  feed.innerHTML = '';
-  const feedLines = [
-    { cls: 'usr', text: '[you] fix the auth bug in login.ts' },
-    { cls: 'opt', text: '[terse] spell: "authetication" → "authentication"' },
-    { cls: 'opt', text: '[terse] prompt optimized: 42 → 18 tokens (-57%)' },
-    { cls: 'tl', text: '[tool] Read auth.ts (245 lines) — cached' },
-    { cls: 'tl', text: '[tool] Edit auth.ts:47 — applied' },
-    { cls: 'warn', text: '[terse] ⚠ Read auth.ts again — redundant (~800 tok waste)' },
-    { cls: 'warn', text: '[terse] ⚠ 4 unused tools — ~1,200 tok overhead/call' },
-    { cls: 'usr', text: '[you] add rate limiting to API endpoints' },
-    { cls: 'opt', text: '[terse] prompt optimized: 38 → 12 tokens (-68%)' },
-    { cls: 'warn', text: '[terse] ⚠ Grep duplicated from turn 1 — skipped' },
-    { cls: 'opt', text: '[terse] → CLAUDE.md rule: "Do not re-read files in context"' },
-    { cls: 'opt', text: '[terse] session: 108 → 44 tok saved · $0.008 saved' },
-  ];
-  let t = 0, fi = 0;
-  const iv = setInterval(() => {
-    t++;
-    if (t > 14) { clearInterval(iv); return; }
-    $('a4turns').textContent = Math.min(t, 4);
-    const ik = t * 41; $('a4input').textContent = ik > 999 ? (ik / 1000).toFixed(1) + 'K' : ik;
-    $('a4output').textContent = t * 28;
-    $('a4cost').textContent = '$' + (t * 0.038).toFixed(3);
-    $('a4cache').textContent = Math.min(t * 3, 24);
-    $('a4tools').textContent = Math.min(t, 6);
-    $('a4typos').textContent = Math.min(Math.floor(t / 2), 4);
-    $('a4saved').textContent = Math.min(Math.round(t * 4), 38) + '%';
-
-    if (fi < feedLines.length) {
-      const fl = feedLines[fi];
-      const d = document.createElement('div');
-      d.className = 'feed-line mono ' + fl.cls;
-      d.textContent = fl.text;
-      feed.appendChild(d);
-      requestAnimationFrame(() => d.classList.add('show'));
-      while (feed.children.length > 6) feed.removeChild(feed.firstChild);
-      fi++;
-    }
-  }, 550);
-  timeouts.push(iv);
-}
-
-// Scene 5: Benchmarks
-function enterS5() {
-  const pcts = [64, 60, 51, 46, 35, 0];
-  pcts.forEach((p, i) => { $('b' + i).style.width = '0'; });
-  delay(() => {
-    pcts.forEach((p, i) => {
-      delay(() => { $('b' + i).style.width = p + '%'; }, i * 200);
-    });
   }, 600);
 }
 
-// Scene 6: Three modes
+// S2: Pipeline
+function enterS2() {
+  const scene = $('s2');
+  scene.querySelectorAll('.fu').forEach((el, i) => fadeUp(el, 200 + i * 150));
+  fadeUp('s2win', 500);
+  const text = "Hey could you maybe help me wirte a function that calculates the factorial of a numbr please";
+  const stages = ['p2s0','p2s1','p2s2','p2s3','p2s4','p2s5','p2s6'];
+  stages.forEach(id => { $(id).classList.remove('active', 'done'); });
+  $('p2out').classList.remove('show'); $('p2out').innerHTML = '';
+
+  later(() => {
+    typeWrite($('p2input'), text, 14, () => {
+      let si = 0;
+      later(() => {
+        const iv = setInterval(() => {
+          if (si > 0) { $(stages[si-1]).classList.remove('active'); $(stages[si-1]).classList.add('done'); }
+          if (si < stages.length) {
+            $(stages[si]).classList.add('active');
+            if (si === 0) $('p2input').innerHTML = text.replace('wirte','<span class="fix">write</span>').replace('numbr','<span class="fix">number</span>');
+            if (si === 2) $('p2input').innerHTML = '<span class="cut">Hey could you maybe help me</span> write a function that calculates the factorial of a number <span class="cut">please</span>';
+            if (si === 5) $('p2input').innerHTML = '<span class="cut">Hey could you maybe help me</span> <span class="fix">Write factorial function</span> <span class="cut">please</span>';
+            si++;
+          } else {
+            clearInterval(iv);
+            $(stages[6]).classList.remove('active'); $(stages[6]).classList.add('done');
+            $('p2out').innerHTML = 'Write factorial function <span class="pipe-savings">8 tok &middot; -79%</span>';
+            $('p2out').classList.add('show');
+          }
+        }, 450);
+        timeouts.push(iv);
+      }, 350);
+    });
+  }, 800);
+}
+
+// S3: Spell correction
+function enterS3() {
+  const scene = $('s3');
+  scene.querySelectorAll('.fu').forEach((el, i) => fadeUp(el, 200 + i * 150));
+  fadeUp('s3win', 500);
+  $('s3summary').classList.remove('show');
+
+  const words = [
+    {t:'fix',ok:true},{t:'the',ok:true},{t:'authetication',ok:false,fix:'authentication'},
+    {t:'endpont',ok:false,fix:'endpoint'},{t:'for',ok:true},{t:'the',ok:true},
+    {t:'deplpy',ok:false,fix:'deploy'},{t:'comand',ok:false,fix:'command'},
+  ];
+  later(() => {
+    $('s3words').innerHTML = words.map((w,i) => '<span class="spell-word" id="sw'+i+'">'+w.t+'</span>').join(' ');
+    const fixes = words.map((w,i)=>({i,w})).filter(x=>!x.w.ok);
+    let fi = 0;
+    later(() => {
+      const iv = setInterval(() => {
+        if (fi >= fixes.length) {
+          clearInterval(iv);
+          $('s3summary').textContent = fixes.length + ' typos caught \u00b7 ' + fixes.map(f=>f.w.t+' \u2192 '+f.w.fix).join(', ') + ' \u00b7 corrected before send';
+          $('s3summary').classList.add('show');
+          return;
+        }
+        const {i,w} = fixes[fi];
+        const span = $('sw'+i);
+        span.classList.add('err');
+        later(() => { span.textContent = w.fix; span.classList.remove('err'); span.classList.add('fixed'); }, 450);
+        fi++;
+      }, 700);
+      timeouts.push(iv);
+    }, 600);
+  }, 700);
+}
+
+// S4: Agent Monitor
+function enterS4() {
+  const scene = $('s4');
+  scene.querySelectorAll('.fu').forEach((el, i) => fadeUp(el, 200 + i * 150));
+  fadeUp('s4win', 500);
+  const feed = $('a4feed'); feed.innerHTML = '';
+  const lines = [
+    {cls:'usr',text:'[you] fix the auth bug in login.ts'},
+    {cls:'opt',text:'[terse] spell: authetication \u2192 authentication'},
+    {cls:'opt',text:'[terse] prompt optimized: 42 \u2192 18 tokens (-57%)'},
+    {cls:'tl',text:'[tool] Read auth.ts (245 lines) \u2014 cached'},
+    {cls:'tl',text:'[tool] Edit auth.ts:47 \u2014 applied'},
+    {cls:'warn',text:'[terse] \u26a0 Read auth.ts again \u2014 redundant (~800 tok)'},
+    {cls:'warn',text:'[terse] \u26a0 4 unused tools \u2014 ~1,200 tok overhead'},
+    {cls:'usr',text:'[you] add rate limiting to API endpoints'},
+    {cls:'opt',text:'[terse] prompt optimized: 38 \u2192 12 tokens (-68%)'},
+    {cls:'warn',text:'[terse] \u26a0 Grep duplicated from turn 1'},
+    {cls:'opt',text:'[terse] \u2192 CLAUDE.md rule generated'},
+    {cls:'opt',text:'[terse] session: 108 \u2192 44 tok saved \u00b7 $0.008'},
+  ];
+  let t=0, fi=0;
+  later(() => {
+    const iv = setInterval(() => {
+      t++;
+      if (t > 14) { clearInterval(iv); return; }
+      $('a4turns').textContent = Math.min(t, 4);
+      const ik = t*41; $('a4input').textContent = ik>999?(ik/1000).toFixed(1)+'K':ik;
+      $('a4output').textContent = t*28;
+      $('a4cost').textContent = '$'+(t*.038).toFixed(3);
+      $('a4cache').textContent = Math.min(t*3, 24);
+      $('a4tools').textContent = Math.min(t, 6);
+      $('a4typos').textContent = Math.min(Math.floor(t/2), 4);
+      $('a4saved').textContent = Math.min(Math.round(t*4), 38)+'%';
+      if (fi < lines.length) {
+        const fl = lines[fi];
+        const d = document.createElement('div');
+        d.className = 'feed-line mono '+fl.cls;
+        d.textContent = fl.text;
+        feed.appendChild(d);
+        requestAnimationFrame(()=>d.classList.add('show'));
+        while (feed.children.length > 6) feed.removeChild(feed.firstChild);
+        fi++;
+      }
+    }, 500);
+    timeouts.push(iv);
+  }, 700);
+}
+
+// S5: Benchmarks
+function enterS5() {
+  const scene = $('s5');
+  scene.querySelectorAll('.fu').forEach((el, i) => fadeUp(el, 200 + i * 150));
+  fadeUp('s5win', 500);
+  const pcts = [64,60,51,46,35,0];
+  pcts.forEach((_, i) => { $('b'+i).style.width = '0'; });
+  later(() => { pcts.forEach((p, i) => { later(() => { $('b'+i).style.width = p+'%'; }, i * 180); }); }, 900);
+}
+
+// S6: Three Modes
 function enterS6() {
+  const scene = $('s6');
+  scene.querySelectorAll('.fu').forEach((el, i) => fadeUp(el, 200 + i * 150));
+  fadeUp('s6win', 500);
   const words = 'I was just wondering if you could perhaps help me understand how to implement a binary search tree in Python please?'.split(' ');
   const modes = [
-    { name: 'Soft', keep: [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], pct: '0%', out: 'Typo-fix only — all words preserved', tok: '22 tok' },
-    { name: 'Normal', keep: [0,0,0,0,0,0,0,0,1,1,0,0,1,1,1,1,1,1,1,0], pct: '-55%', out: 'help me implement a binary search tree in Python', tok: '10 tok' },
-    { name: 'Aggressive', keep: [0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1,0,1,0], pct: '-73%', out: 'implement binary search tree Python', tok: '6 tok' },
+    {keep:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],pct:'0%',out:'All words preserved \u00b7 typo-fix only',tok:'22 tok'},
+    {keep:[0,0,0,0,0,0,0,0,1,1,0,0,1,1,1,1,1,1,1,0],pct:'-55%',out:'help me implement a binary search tree in Python',tok:'10 tok'},
+    {keep:[0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1,0,1,0],pct:'-73%',out:'implement binary search tree Python',tok:'6 tok'},
   ];
   let mi = 0;
   function showMode() {
     if (mi >= modes.length) return;
     const m = modes[mi];
-    ['mt0', 'mt1', 'mt2'].forEach((id, i) => $(id).classList.toggle('active', i === mi));
-    const input = $('s6input');
-    input.innerHTML = words.map((w, i) => {
-      if (!m.keep[i]) return '<span class="cut">' + w + '</span>';
-      return '<span class="kept">' + w + '</span>';
-    }).join(' ');
-    delay(() => {
-      const result = $('s6result');
+    ['mt0','mt1','mt2'].forEach((id,i) => $(id).classList.toggle('active', i===mi));
+    $('s6input').innerHTML = words.map((w,i) => !m.keep[i] ? '<span class="cut">'+w+'</span>' : '<span class="kept">'+w+'</span>').join(' ');
+    later(() => {
       $('s6pct').textContent = m.pct;
-      $('s6out').textContent = m.out + ' · ' + m.tok;
-      result.classList.add('show');
-      delay(() => {
-        result.classList.remove('show');
-        mi++;
-        delay(showMode, 300);
-      }, 1800);
-    }, 600);
+      $('s6out').textContent = m.out + ' \u00b7 ' + m.tok;
+      $('s6result').classList.add('show');
+      later(() => { $('s6result').classList.remove('show'); mi++; later(showMode, 250); }, 2000);
+    }, 500);
   }
-  showMode();
+  later(showMode, 900);
 }
 
-// Scene 7: CTA
-function enterS7() {}
+// S7: CTA
+function enterS7() {
+  const scene = $('s7');
+  fadeUp(scene.querySelector('.accent-line'), 200);
+  revealWords('s7w', 5, 400);
+  fadeUp('s7dl', 1200);
+  later(() => $('s7dl').classList.add('pulse'), 1400);
+  fadeUp('s7feats', 1600);
+  fadeUp('s7url', 2000);
+}
 
 // ═══ START ═══
 goToScene(0);
-
 </script>
 </body>
 </html>

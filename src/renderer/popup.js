@@ -133,14 +133,17 @@ T.on('optimize-request', async (d) => {
   }
 
   // Check license quota
+  let canOpt = true;
   try {
     const check = await _invoke('check_can_optimize');
-    if (!check.allowed) return;
-  } catch {}
+    console.log('[terse-popup] check_can_optimize:', JSON.stringify(check));
+    if (!check.allowed) { console.log('[terse-popup] blocked by license'); return; }
+  } catch (e) { console.error('[terse-popup] check_can_optimize error:', e); }
 
   let opt;
   try {
     opt = window._terseOptimizer.optimize(d.text);
+    console.log('[terse-popup] optimized: ' + (opt.optimized||'').substring(0,30) + ' tokens=' + opt.stats?.originalTokens + '→' + opt.stats?.optimizedTokens);
   } catch (e) {
     console.error('[terse-popup] optimizer error:', e);
     return;
@@ -148,6 +151,7 @@ T.on('optimize-request', async (d) => {
   _invoke('record_optimization_usage').catch(() => {});
   const displayOptimized = d.currentWord ? opt.optimized + d.currentWord : opt.optimized;
 
+  console.log('[terse-popup] calling emit_popup_update');
   _invoke('emit_popup_update', { data: {
     app: d.app,
     original: d.text + (d.currentWord || ''),
@@ -156,7 +160,11 @@ T.on('optimize-request', async (d) => {
     suggestions: opt.suggestions,
     method: d.method,
     sessionId: d.sessionId,
-  }}).catch(() => {});
+  }}).then(() => {
+    console.log('[terse-popup] emit_popup_update succeeded');
+  }).catch((e) => {
+    console.error('[terse-popup] emit_popup_update FAILED:', e);
+  });
 
   // Auto-replace: wait until user STOPS typing (only in 'auto' mode)
   if (d.autoMode === 'auto' && !d.isDeleting && !d.autoReplaced && opt.optimized !== d.text) {
@@ -237,6 +245,7 @@ T.on('captured-text', (d) => {
 
 // Live update from main process
 T.on('popup-update', d => {
+  console.log('[terse-popup] popup-update received, app=' + d.app + ' tokens=' + d.stats?.originalTokens + '→' + d.stats?.optimizedTokens);
   try {
     hasContent = true;
     document.getElementById('hintState').classList.add('hidden');

@@ -1892,11 +1892,15 @@ function updateClerkUI() {
   }
 }
 
-function openClerkSignIn() {
+async function openClerkSignIn() {
   const modal = document.getElementById('clerk-modal');
   const mount = document.getElementById('clerk-mount');
   modal.style.display = 'flex';
   mount.innerHTML = '';
+  // Wait for Clerk to be fully loaded with UI components
+  if (window.Clerk && !window.Clerk.loaded) {
+    await window.Clerk.load();
+  }
   const clerkAppearance = {
     variables: {
       colorPrimary: '#6ee7b7',
@@ -1933,11 +1937,14 @@ function openClerkSignIn() {
   modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
 }
 
-function openClerkSignUp() {
+async function openClerkSignUp() {
   const modal = document.getElementById('clerk-modal');
   const mount = document.getElementById('clerk-mount');
   modal.style.display = 'flex';
   mount.innerHTML = '';
+  if (window.Clerk && !window.Clerk.loaded) {
+    await window.Clerk.load();
+  }
   window.Clerk.mountSignUp(mount, { appearance: clerkAppearance });
   modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
 }
@@ -1957,8 +1964,12 @@ function clerkSignOut() {
 // ═══ DOWNLOAD (requires sign-in) ═══
 const DMG_URL = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse-1.0.0-x86_64.dmg';
 
-function handleDownload(e) {
+async function handleDownload(e) {
   e.preventDefault();
+  // If Clerk hasn't loaded yet, wait for it
+  if (window.Clerk && !window.Clerk.loaded) {
+    await window.Clerk.load();
+  }
   if (window.Clerk?.user) {
     // Signed in — start download immediately
     window.location.href = DMG_URL;

@@ -6,6 +6,15 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Auth Gate — shown until user signs in -->
+  <div id="authGate" style="position:fixed;inset:0;z-index:9999;background:#0d0c16;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
+    <div style="width:48px;height:48px;background:linear-gradient(135deg,#6ee7b7,#34d399);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#0d0c16">T</div>
+    <h2 style="color:#fff;font-size:18px;font-weight:700;margin:0">Welcome to Terse</h2>
+    <p style="color:rgba(255,255,255,0.5);font-size:12px;text-align:center;margin:0;line-height:1.6">Sign in to start optimizing<br>your AI token usage</p>
+    <button id="gateSignIn" style="margin-top:8px;padding:10px 28px;background:linear-gradient(135deg,#6ee7b7,#34d399);color:#0d0c16;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Sign In</button>
+    <button id="gateSignUp" style="padding:8px 28px;background:transparent;color:#6ee7b7;border:1px solid rgba(110,231,183,0.3);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">Create Account</button>
+  </div>
+
   <div id="titlebar" data-tauri-drag-region>
     <div class="titlebar-left" data-tauri-drag-region>
       <div class="status-dot" id="statusDot"></div>

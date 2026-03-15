@@ -203,6 +203,8 @@ $('#btnUpgrade').addEventListener('click', () => {
 // ── Auth ──
 $('#btnSignIn').addEventListener('click', () => doAuth('signin'));
 $('#btnSignUp').addEventListener('click', () => doAuth('signup'));
+$('#gateSignIn').addEventListener('click', () => doAuth('signin'));
+$('#gateSignUp').addEventListener('click', () => doAuth('signup'));
 $('#btnSignOut').addEventListener('click', async () => {
   if (T.signOut) await T.signOut();
   updateAuthUI();
@@ -212,8 +214,10 @@ $('#btnSignOut').addEventListener('click', async () => {
 async function doAuth(action) {
   if (!T.openAuthInBrowser) return;
   const btn = action === 'signup' ? $('#btnSignUp') : $('#btnSignIn');
+  const gateBtn = action === 'signup' ? $('#gateSignUp') : $('#gateSignIn');
   btn.textContent = 'Opening browser...';
   btn.disabled = true;
+  if (gateBtn) { gateBtn.textContent = 'Opening browser...'; gateBtn.disabled = true; }
   const result = await T.openAuthInBrowser(action);
   if (result) {
     updateAuthUI();
@@ -228,13 +232,16 @@ async function doAuth(action) {
   }
   btn.textContent = action === 'signup' ? 'Sign Up' : 'Sign In';
   btn.disabled = false;
+  if (gateBtn) { gateBtn.textContent = action === 'signup' ? 'Create Account' : 'Sign In'; gateBtn.disabled = false; }
 }
 
 async function updateAuthUI() {
   if (!T.getAuth) return;
   try {
     const auth = await T.getAuth();
+    const gate = $('#authGate');
     if (auth.signedIn) {
+      if (gate) gate.style.display = 'none';
       $('#signedOutUI').classList.add('hidden');
       $('#signedInUI').classList.remove('hidden');
       $('#accountName').textContent = auth.firstName || 'User';
@@ -244,6 +251,7 @@ async function updateAuthUI() {
         $('#accountAvatar').style.display = 'block';
       }
     } else {
+      if (gate) gate.style.display = 'flex';
       $('#signedOutUI').classList.remove('hidden');
       $('#signedInUI').classList.add('hidden');
     }

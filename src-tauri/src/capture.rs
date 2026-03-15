@@ -5,7 +5,37 @@ use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 
-const AX_BIN: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/helpers/terse-ax");
+/// Dev path (compile-time, used when running via `cargo run`)
+const AX_BIN_DEV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/helpers/terse-ax");
+
+/// Resolve terse-ax binary path: check bundled resource first, then dev path
+fn ax_bin() -> String {
+    // In a bundled .app, the binary is at Contents/MacOS/terse
+    // and resources are at Contents/Resources/helpers/terse-ax
+    if let Ok(exe) = std::env::current_exe() {
+        let resources = exe.parent()
+            .and_then(|p| p.parent()) // Contents/
+            .map(|p| p.join("Resources/helpers/terse-ax"));
+        if let Some(bundled) = resources {
+            if bundled.exists() {
+                return bundled.to_string_lossy().to_string();
+            }
+        }
+    }
+    AX_BIN_DEV.to_string()
+}
+
+/// Lazy-initialized path to terse-ax
+static AX_BIN_PATH: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    let path = ax_bin();
+    eprintln!("[terse] terse-ax path: {}", path);
+    path
+});
+
+/// Get the terse-ax binary path
+fn ax_bin_path() -> &'static str {
+    &AX_BIN_PATH
+}
 const BRIDGE_PORT: u16 = 47821;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,7 +139,7 @@ pub async fn read_ax_app(pid: u32, hint_x: Option<f64>, hint_y: Option<f64>) -> 
         args.push(format!("{}", y as i32));
     }
 
-    match Command::new(AX_BIN)
+    match Command::new(ax_bin_path())
         .args(&args)
         .output()
         .await
@@ -203,7 +233,7 @@ pub async fn write_to_app(app_name: &str, text: &str, pid: u32) -> WriteResult {
 
 /// Write text via AX (direct AXValue set)
 pub async fn write_ax(pid: u32, text: &str) -> WriteResult {
-    let mut child = match Command::new(AX_BIN)
+    let mut child = match Command::new(ax_bin_path())
         .args(["write-pid", &pid.to_string()])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -235,7 +265,7 @@ pub async fn write_ax(pid: u32, text: &str) -> WriteResult {
 
 /// Spellcheck via terse-ax
 pub async fn spellcheck_text(text: &str) -> Result<String, String> {
-    let mut child = Command::new(AX_BIN)
+    let mut child = Command::new(ax_bin_path())
         .arg("spellcheck")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -353,7 +383,7 @@ pub async fn install_bridge() -> serde_json::Value {
 
 /// Enable AX tree on Electron apps (VS Code, Cursor)
 pub async fn enable_ax_for_app(pid: u32) -> bool {
-    match Command::new(AX_BIN)
+    match Command::new(ax_bin_path())
         .args(["enable-ax", &pid.to_string()])
         .output()
         .await
@@ -627,7 +657,7 @@ impl KeyMonitorState {
 
         let state = self.clone();
         tokio::spawn(async move {
-            let mut child = match Command::new(AX_BIN)
+            let mut child = match Command::new(ax_bin_path())
                 .args(["key-monitor", &pid.to_string()])
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())

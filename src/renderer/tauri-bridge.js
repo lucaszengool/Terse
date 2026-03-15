@@ -191,6 +191,20 @@ if (window.__TAURI__) {
   // Expose as window.terse for compatibility with existing app.js, popup.js
   window.terse = T;
 
+  // Forward console.log to Rust stderr for debugging
+  const _origLog = console.log;
+  const _origErr = console.error;
+  console.log = (...args) => {
+    _origLog(...args);
+    const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+    if (msg.includes('[terse')) invoke('debug_log', { msg }).catch(() => {});
+  };
+  console.error = (...args) => {
+    _origErr(...args);
+    const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+    invoke('debug_log', { msg: '[ERROR] ' + msg }).catch(() => {});
+  };
+
   // ── Live optimization pipeline (Tauri-only) ──
   // The Rust backend emits optimize-request events. We optimize in JS and
   // dispatch popup-update locally (NOT via Tauri emit which goes to Rust).
@@ -198,10 +212,13 @@ if (window.__TAURI__) {
   let _settleTimer = null;
   const SETTLE_DELAY = 600;
 
+  console.log('[terse-bridge] registering optimize-request listener, title=' + document.title);
   listen('optimize-request', async (event) => {
+    console.log('[terse-bridge] optimize-request received, title=' + document.title + ' hasOptimizer=' + !!window._terseOptimizer);
     // Only process in popup window to avoid duplicate processing
     if (document.title !== 'Terse Popup') return;
     const d = event.payload;
+    console.log('[terse-bridge] processing optimize-request, text=' + (d.text||'').substring(0,30));
     if (!window._terseOptimizer) {
       console.error('[terse-bridge] no optimizer available!');
       return;

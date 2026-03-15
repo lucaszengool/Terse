@@ -11,14 +11,16 @@ const AX_BIN_DEV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/helpers/te
 /// Resolve terse-ax binary path: check bundled resource first, then dev path
 fn ax_bin() -> String {
     // In a bundled .app, the binary is at Contents/MacOS/terse
-    // and resources are at Contents/Resources/helpers/terse-ax
+    // and resources are at Contents/Resources/terse-ax
     if let Ok(exe) = std::env::current_exe() {
-        let resources = exe.parent()
-            .and_then(|p| p.parent()) // Contents/
-            .map(|p| p.join("Resources/helpers/terse-ax"));
-        if let Some(bundled) = resources {
-            if bundled.exists() {
-                return bundled.to_string_lossy().to_string();
+        if let Some(macos_dir) = exe.parent() {
+            if let Some(contents_dir) = macos_dir.parent() {
+                // Try direct in Resources (Tauri array format)
+                let r1 = contents_dir.join("Resources/terse-ax");
+                if r1.exists() { return r1.to_string_lossy().to_string(); }
+                // Try in helpers subfolder (Tauri object format)
+                let r2 = contents_dir.join("Resources/helpers/terse-ax");
+                if r2.exists() { return r2.to_string_lossy().to_string(); }
             }
         }
     }
@@ -29,6 +31,14 @@ fn ax_bin() -> String {
 static AX_BIN_PATH: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     let path = ax_bin();
     eprintln!("[terse] terse-ax path: {}", path);
+    // Remove macOS quarantine attribute so the helper can execute after DMG install
+    let _ = std::process::Command::new("xattr")
+        .args(["-dr", "com.apple.quarantine", &path])
+        .output();
+    // Ensure executable permission
+    let _ = std::process::Command::new("chmod")
+        .args(["+x", &path])
+        .output();
     path
 });
 

@@ -14,7 +14,7 @@
       "icons/icon.icns"
     ],
     "resources": {
-      "../src/helpers/terse-ax": "helpers/terse-ax"
+      "../src/helpers/terse-ax": "terse-ax"
     }
   },
   "app": {

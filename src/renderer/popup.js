@@ -172,12 +172,16 @@ T.on('popup-show', d => {
     document.getElementById('btnReplace').disabled = true;
   }
 
-  // Show agent panel whenever an agent is connected
-  // (agentHostSessionId may not be set yet if agent connected before first popup-show)
+  // Show agent panel only when this session is the agent host
   if (activeAgentType) {
     if (!agentHostSessionId) agentHostSessionId = d.sessionId;
-    document.getElementById('agentPanel').classList.remove('hidden');
-    agentPanelVisible = true;
+    if (d.sessionId === agentHostSessionId) {
+      document.getElementById('agentPanel').classList.remove('hidden');
+      agentPanelVisible = true;
+    } else {
+      document.getElementById('agentPanel').classList.add('hidden');
+      agentPanelVisible = false;
+    }
   }
   autoResizePopup();
 });
@@ -347,7 +351,10 @@ function updateAgentPanel(snapshot) {
   // ── Savings hero ──
   const opt = snapshot.optimizationStats || {};
   const autoSaved = snapshot.autoOptimized ? snapshot.autoOptimized.tokensSaved : 0;
-  const totalSaved = (opt.potentialSavings || 0) + autoSaved + (snapshot.rereadWaste || 0);
+  const _tcp = snapshot.toolCachePotential || {};
+  const _trs = snapshot.toolResultStats || {};
+  const totalSaved = (opt.potentialSavings || 0) + autoSaved + (snapshot.rereadWaste || 0)
+    + (_tcp.tokensWasted || 0) + (_trs.compressibleTokens || 0);
   const totalIn = (snapshot.totalInputTokens || 1);
   const pct = totalIn > 0 ? Math.round((totalSaved / totalIn) * 100) : 0;
 
@@ -905,23 +912,11 @@ document.getElementById('btnAgentDetails').addEventListener('click', () => {
   autoResizePopup();
 });
 
-// Agent event listeners — auto-connect when detected
+// Agent event listeners — show banner, let user click Connect
 T.on('agent-detected', async (info) => {
   console.log('[terse-dbg] agent-detected event:', info.type, 'activeAgentType:', activeAgentType);
-  if (activeAgentType) return;
-  console.log('[terse] agent-detected, auto-connecting:', info.type);
-  try {
-    const session = await T.acceptAgent(info.type);
-    console.log('[terse] acceptAgent result:', !!session);
-    if (session) {
-      showAgentPanel(session);
-    } else {
-      showAgentBanner(info); // fallback to manual connect
-    }
-  } catch (e) {
-    console.error('[terse] auto-connect failed:', e);
-    showAgentBanner(info);
-  }
+  if (activeAgentType) return; // already connected to one
+  showAgentBanner(info);
 });
 
 T.on('agent-lost', (info) => {
@@ -997,25 +992,19 @@ T.getAgentSessions().then(sessions => {
     showAgentPanel(sessions[0]);
     return;
   }
-  // No connected sessions — auto-connect to first pending detection
-  T.getAgentDetections().then(async (detections) => {
-    console.log('[terse-dbg] getAgentDetections returned:', detections.length, 'detections');
-    if (detections.length > 0) {
-      console.log('[terse] auto-connecting to detected agent on load:', detections[0].type);
-      try {
-        const session = await T.acceptAgent(detections[0].type);
-        console.log('[terse-dbg] acceptAgent result:', !!session);
-        if (session) {
-          showAgentPanel(session);
-        } else {
-          showAgentBanner(detections[0]);
-        }
-      } catch (e) {
-        console.error('[terse] auto-connect on load failed:', e);
+  // No connected sessions — show banner if agent detected, let user click Connect
+  async function checkForAgents(attempts) {
+    for (let i = 0; i < attempts; i++) {
+      const detections = await T.getAgentDetections();
+      console.log('[terse-dbg] getAgentDetections attempt ' + (i+1) + ':', detections.length);
+      if (detections.length > 0) {
         showAgentBanner(detections[0]);
+        return;
       }
+      if (i < attempts - 1) await new Promise(r => setTimeout(r, 3000));
     }
-  });
+  }
+  checkForAgents(5);
 });
 
 // Install Terse Bridge extension

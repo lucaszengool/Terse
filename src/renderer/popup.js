@@ -118,6 +118,123 @@ document.querySelectorAll('.auto-btn').forEach(btn => {
   });
 });
 
+// ── Live optimization pipeline ──
+// Handles optimize-request from Rust polling thread, runs JS optimizer,
+// and emits popup-update back via Rust.
+let _settleTimer = null;
+const SETTLE_DELAY = 600;
+const _invoke = T._invoke || window.__TAURI__?.core?.invoke;
+
+T.on('optimize-request', async (d) => {
+  console.log('[terse-popup] optimize-request received, text=' + (d.text||'').substring(0,30));
+  if (!window._terseOptimizer) {
+    console.error('[terse-popup] no optimizer available!');
+    return;
+  }
+
+  // Check license quota
+  try {
+    const check = await _invoke('check_can_optimize');
+    if (!check.allowed) return;
+  } catch {}
+
+  let opt;
+  try {
+    opt = window._terseOptimizer.optimize(d.text);
+  } catch (e) {
+    console.error('[terse-popup] optimizer error:', e);
+    return;
+  }
+  _invoke('record_optimization_usage').catch(() => {});
+  const displayOptimized = d.currentWord ? opt.optimized + d.currentWord : opt.optimized;
+
+  _invoke('emit_popup_update', { data: {
+    app: d.app,
+    original: d.text + (d.currentWord || ''),
+    optimized: displayOptimized,
+    stats: opt.stats,
+    suggestions: opt.suggestions,
+    method: d.method,
+    sessionId: d.sessionId,
+  }}).catch(() => {});
+
+  // Auto-replace: wait until user STOPS typing (only in 'auto' mode)
+  if (d.autoMode === 'auto' && !d.isDeleting && !d.autoReplaced && opt.optimized !== d.text) {
+    if (_settleTimer) clearTimeout(_settleTimer);
+    _settleTimer = setTimeout(async () => {
+      _settleTimer = null;
+      const freshOpt = window._terseOptimizer.optimize(d.text);
+      if (freshOpt.optimized === d.text) return;
+      const fullReplacement = freshOpt.optimized + (d.currentWord || '');
+      try {
+        await _invoke('replace_in_target', { text: fullReplacement });
+        const src = d.method === 'bridge' ? 'editor' : 'browser';
+        _invoke('record_optimization', {
+          source: src,
+          originalTokens: freshOpt.stats.originalTokens,
+          optimizedTokens: freshOpt.stats.optimizedTokens,
+        }).catch(() => {});
+        _invoke('emit_popup_update', { data: {
+          app: d.app,
+          original: d.text + (d.currentWord || ''),
+          optimized: fullReplacement,
+          stats: freshOpt.stats,
+          suggestions: freshOpt.suggestions,
+          method: 'auto-replace',
+          sessionId: d.sessionId,
+        }}).catch(() => {});
+      } catch (e) {
+        console.error('[terse] auto-replace error:', e);
+      }
+    }, SETTLE_DELAY);
+  }
+});
+
+T.on('send-mode-optimize', async (d) => {
+  if (!window._terseOptimizer) return;
+  const opt = window._terseOptimizer.optimize(d.text);
+  if (opt.optimized !== d.text && opt.optimized.length >= 3) {
+    try {
+      await _invoke('replace_in_target', { text: opt.optimized });
+      await new Promise(r => setTimeout(r, 100));
+      await _invoke('send_enter', { pid: d.pid });
+      const src = d.readMethod === 'bridge' ? 'editor' : 'browser';
+      _invoke('record_optimization', {
+        source: src,
+        originalTokens: opt.stats.originalTokens,
+        optimizedTokens: opt.stats.optimizedTokens,
+      }).catch(() => {});
+      _invoke('emit_popup_update', { data: {
+        app: d.appName,
+        original: d.text,
+        optimized: opt.optimized,
+        stats: opt.stats,
+        suggestions: opt.suggestions,
+        method: 'send-mode',
+        sessionId: d.sessionId,
+      }}).catch(() => {});
+    } catch (e) {
+      console.error('[terse] send-mode error:', e);
+    }
+  } else {
+    _invoke('send_enter', { pid: d.pid }).catch(() => {});
+  }
+});
+
+T.on('captured-text', (d) => {
+  if (!window._terseOptimizer) return;
+  const opt = window._terseOptimizer.optimize(d.text);
+  _invoke('emit_popup_update', { data: {
+    app: d.app,
+    original: d.text,
+    optimized: opt.optimized,
+    stats: opt.stats,
+    suggestions: opt.suggestions,
+    method: d.method,
+    sessionId: d.sessionId,
+  }}).catch(() => {});
+});
+
 // Live update from main process
 T.on('popup-update', d => {
   try {

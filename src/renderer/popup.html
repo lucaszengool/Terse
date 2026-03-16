@@ -176,8 +176,22 @@
       </button>
     </div>
   </div>
-  <script src="tauri-bridge.js"></script>
-  <script src="optimizer-bundle.js"></script>
-  <script src="popup.js"></script>
+  <script>
+    // In production/DMG builds, __TAURI__ may not be ready yet.
+    // Wait for it before loading any Tauri-dependent scripts.
+    function _loadScripts() {
+      if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
+      ['tauri-bridge.js','optimizer-bundle.js','popup.js'].reduce(function(p, src) {
+        return p.then(function() {
+          return new Promise(function(resolve) {
+            var s = document.createElement('script'); s.src = src;
+            s.onload = resolve; s.onerror = resolve;
+            document.body.appendChild(s);
+          });
+        });
+      }, Promise.resolve());
+    }
+    _loadScripts();
+  </script>
 </body>
 </html>

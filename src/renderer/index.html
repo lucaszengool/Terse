@@ -146,8 +146,20 @@
 
     <div id="toast" class="toast hidden"></div>
   </div>
-  <script src="tauri-bridge.js"></script>
-  <script src="optimizer-bundle.js"></script>
-  <script src="app.js"></script>
+  <script>
+    function _loadScripts() {
+      if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
+      ['tauri-bridge.js','optimizer-bundle.js','app.js'].reduce(function(p, src) {
+        return p.then(function() {
+          return new Promise(function(resolve) {
+            var s = document.createElement('script'); s.src = src;
+            s.onload = resolve; s.onerror = resolve;
+            document.body.appendChild(s);
+          });
+        });
+      }, Promise.resolve());
+    }
+    _loadScripts();
+  </script>
 </body>
 </html>

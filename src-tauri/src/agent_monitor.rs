@@ -447,6 +447,7 @@ impl AgentSessionData {
             "toolCachePotential": {
                 "duplicateCalls": self.duplicate_tool_calls,
                 "duplicateCallTokens": self.duplicate_tool_tokens,
+                "tokensWasted": self.duplicate_tool_tokens,
             },
             "conversationBloat": 0,
             "totalWastedTokens": 0,
@@ -504,6 +505,7 @@ impl AgentSessionData {
             "used": used,
             "unusedEstimate": unused_estimate,
             "estimatedOverhead": estimated_overhead,
+            "overheadPerTurn": estimated_overhead,
         })
     }
 

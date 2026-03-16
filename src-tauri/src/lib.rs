@@ -929,6 +929,28 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .manage(AppState::default())
         .setup(|app| {
+            // Remove macOS quarantine & translocation — prevents event system breakage
+            // in DMG-installed apps (see tauri-apps/tauri#9052)
+            if let Ok(exe) = std::env::current_exe() {
+                // Find the .app bundle root (go up from Contents/MacOS/terse)
+                if let Some(app_bundle) = exe.parent()
+                    .and_then(|p| p.parent())
+                    .and_then(|p| p.parent())
+                {
+                    let bundle_path = app_bundle.to_string_lossy();
+                    // Check if running under App Translocation
+                    if bundle_path.contains("/AppTranslocation/") {
+                        eprintln!("[terse] WARNING: Running under App Translocation at {}", bundle_path);
+                        eprintln!("[terse] Please move Terse.app to /Applications folder for full functionality");
+                    }
+                    // Remove quarantine from the entire app bundle
+                    let _ = std::process::Command::new("xattr")
+                        .args(["-r", "-d", "com.apple.quarantine", &*bundle_path])
+                        .output();
+                    eprintln!("[terse] cleared quarantine for {}", bundle_path);
+                }
+            }
+
             // Create popup window
             let monitor = app.primary_monitor()?.unwrap();
             let screen_width = monitor.size().width as f64 / monitor.scale_factor();

@@ -120,30 +120,51 @@ document.querySelectorAll('.auto-btn').forEach(btn => {
 
 // ── Live optimization pipeline ──
 // Handles optimize-request from Rust polling thread, runs JS optimizer,
-// and emits popup-update back via Rust.
+// and updates popup UI directly (no Rust round-trip to avoid IPC deadlock).
 let _settleTimer = null;
 const SETTLE_DELAY = 600;
 const _invoke = T._invoke || window.__TAURI__?.core?.invoke;
 
-T.on('optimize-request', async (d) => {
-  console.log('[terse-popup] optimize-request received, text=' + (d.text||'').substring(0,30));
-  if (!window._terseOptimizer) {
-    console.error('[terse-popup] no optimizer available!');
-    return;
+function _updatePopupUI(d) {
+  try {
+    hasContent = true;
+    document.getElementById('hintState').classList.add('hidden');
+    document.getElementById('bridgeInstall').classList.add('hidden');
+    document.getElementById('optimized').classList.remove('hidden');
+    document.getElementById('appLabel').textContent = d.app || 'Connected';
+    const stats = d.stats || {};
+    document.getElementById('tokBefore').textContent = (stats.originalTokens || 0).toLocaleString();
+    document.getElementById('tokAfter').textContent = (stats.optimizedTokens || 0).toLocaleString();
+    const pct = stats.percentSaved || 0;
+    document.getElementById('tokPct').textContent = pct > 0 ? '-' + pct + '%' : '';
+    const tc = document.getElementById('techniques');
+    tc.innerHTML = '';
+    (stats.techniquesApplied || []).forEach(t => {
+      const s = document.createElement('span');
+      s.className = 'technique-tag';
+      s.textContent = t;
+      tc.appendChild(s);
+    });
+    document.getElementById('optimized').value = d.optimized || '';
+    document.getElementById('btnReplace').disabled = false;
+    autoResizePopup();
+  } catch (e) {
+    console.error('[terse-popup] UI update error:', e);
   }
+}
+
+T.on('optimize-request', async (d) => {
+  if (!window._terseOptimizer) return;
 
   // Check license quota
-  let canOpt = true;
   try {
     const check = await _invoke('check_can_optimize');
-    console.log('[terse-popup] check_can_optimize:', JSON.stringify(check));
-    if (!check.allowed) { console.log('[terse-popup] blocked by license'); return; }
-  } catch (e) { console.error('[terse-popup] check_can_optimize error:', e); }
+    if (!check.allowed) return;
+  } catch {}
 
   let opt;
   try {
     opt = window._terseOptimizer.optimize(d.text);
-    console.log('[terse-popup] optimized: ' + (opt.optimized||'').substring(0,30) + ' tokens=' + opt.stats?.originalTokens + '→' + opt.stats?.optimizedTokens);
   } catch (e) {
     console.error('[terse-popup] optimizer error:', e);
     return;
@@ -151,8 +172,7 @@ T.on('optimize-request', async (d) => {
   _invoke('record_optimization_usage').catch(() => {});
   const displayOptimized = d.currentWord ? opt.optimized + d.currentWord : opt.optimized;
 
-  console.log('[terse-popup] calling emit_popup_update');
-  _invoke('emit_popup_update', { data: {
+  _updatePopupUI({
     app: d.app,
     original: d.text + (d.currentWord || ''),
     optimized: displayOptimized,
@@ -160,10 +180,6 @@ T.on('optimize-request', async (d) => {
     suggestions: opt.suggestions,
     method: d.method,
     sessionId: d.sessionId,
-  }}).then(() => {
-    console.log('[terse-popup] emit_popup_update succeeded');
-  }).catch((e) => {
-    console.error('[terse-popup] emit_popup_update FAILED:', e);
   });
 
   // Auto-replace: wait until user STOPS typing (only in 'auto' mode)
@@ -182,7 +198,7 @@ T.on('optimize-request', async (d) => {
           originalTokens: freshOpt.stats.originalTokens,
           optimizedTokens: freshOpt.stats.optimizedTokens,
         }).catch(() => {});
-        _invoke('emit_popup_update', { data: {
+        _updatePopupUI({
           app: d.app,
           original: d.text + (d.currentWord || ''),
           optimized: fullReplacement,
@@ -190,7 +206,7 @@ T.on('optimize-request', async (d) => {
           suggestions: freshOpt.suggestions,
           method: 'auto-replace',
           sessionId: d.sessionId,
-        }}).catch(() => {});
+        });
       } catch (e) {
         console.error('[terse] auto-replace error:', e);
       }
@@ -212,7 +228,7 @@ T.on('send-mode-optimize', async (d) => {
         originalTokens: opt.stats.originalTokens,
         optimizedTokens: opt.stats.optimizedTokens,
       }).catch(() => {});
-      _invoke('emit_popup_update', { data: {
+      _updatePopupUI({
         app: d.appName,
         original: d.text,
         optimized: opt.optimized,
@@ -220,7 +236,7 @@ T.on('send-mode-optimize', async (d) => {
         suggestions: opt.suggestions,
         method: 'send-mode',
         sessionId: d.sessionId,
-      }}).catch(() => {});
+      });
     } catch (e) {
       console.error('[terse] send-mode error:', e);
     }
@@ -232,7 +248,7 @@ T.on('send-mode-optimize', async (d) => {
 T.on('captured-text', (d) => {
   if (!window._terseOptimizer) return;
   const opt = window._terseOptimizer.optimize(d.text);
-  _invoke('emit_popup_update', { data: {
+  _updatePopupUI({
     app: d.app,
     original: d.text,
     optimized: opt.optimized,
@@ -240,7 +256,7 @@ T.on('captured-text', (d) => {
     suggestions: opt.suggestions,
     method: d.method,
     sessionId: d.sessionId,
-  }}).catch(() => {});
+  });
 });
 
 // Live update from main process

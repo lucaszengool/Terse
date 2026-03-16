@@ -343,10 +343,11 @@ async fn enter_pick_mode(state: tauri::State<'_, AppState>, app: AppHandle) -> R
     for _ in 0..40 {
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         let info = capture::get_front_app().await;
+        let name_lower = info.name.to_lowercase();
         let is_terse = info.name.is_empty()
             || info.name == "?"
-            || info.name == "Terse"
-            || info.name == "Electron"
+            || name_lower == "terse"
+            || name_lower == "electron"
             || info.bundle_id == "com.terse.app"
             || info.bundle_id == "com.github.Electron"
             || info.bundle_id == "com.github.electron";
@@ -636,7 +637,9 @@ fn resize_popup(h: f64, state: tauri::State<'_, AppState>, app: AppHandle) {
 #[tauri::command]
 fn get_agent_detections(state: tauri::State<'_, AppState>) -> Vec<serde_json::Value> {
     let monitor = lock_or_recover(&state.agent_monitor);
-    monitor.get_pending_detections()
+    let d = monitor.get_pending_detections();
+    eprintln!("[terse] get_agent_detections: {} pending", d.len());
+    d
 }
 
 #[tauri::command]

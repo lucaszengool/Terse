@@ -523,8 +523,19 @@ function updateAgentPanel(snapshot) {
   const autoSaved = snapshot.autoOptimized ? snapshot.autoOptimized.tokensSaved : 0;
   const _tcp = snapshot.toolCachePotential || {};
   const _trs = snapshot.toolResultStats || {};
+
+  // Fetch hook stats (RTK-style active compression savings)
+  const hookSaved = window._terseHookStats?.totalSaved || 0;
+  if (T.getHookStats && !window._hookStatsPending) {
+    window._hookStatsPending = true;
+    T.getHookStats().then(hs => {
+      window._terseHookStats = hs;
+      window._hookStatsPending = false;
+    }).catch(() => { window._hookStatsPending = false; });
+  }
+
   const totalSaved = (opt.potentialSavings || 0) + autoSaved + (snapshot.rereadWaste || 0)
-    + (_tcp.tokensWasted || 0) + (_trs.compressibleTokens || 0);
+    + (_tcp.tokensWasted || 0) + (_trs.compressibleTokens || 0) + hookSaved;
   const totalIn = (snapshot.totalInputTokens || 1);
   const pct = totalIn > 0 ? Math.round((totalSaved / totalIn) * 100) : 0;
 
@@ -532,6 +543,21 @@ function updateAgentPanel(snapshot) {
   document.getElementById('agentSaveShort').textContent = formatTokens(totalSaved);
   document.getElementById('agentSavingsPct').textContent = pct + '%';
   document.getElementById('agentSavingsBar').style.width = Math.min(pct, 100) + '%';
+
+  // Show hook compression badge if active
+  let hookBadgeEl = document.getElementById('agentHookBadge');
+  if (!hookBadgeEl) {
+    hookBadgeEl = document.createElement('div');
+    hookBadgeEl.id = 'agentHookBadge';
+    hookBadgeEl.style.cssText = 'font-size:10px;color:var(--ac);padding:2px 8px;display:none';
+    const savingsEl = document.getElementById('agentSavedBig')?.parentElement;
+    if (savingsEl) savingsEl.appendChild(hookBadgeEl);
+  }
+  if (hookSaved > 0) {
+    const hs = window._terseHookStats;
+    hookBadgeEl.textContent = '⚡ Hook: ' + formatTokens(hookSaved) + ' saved (' + (hs?.compressions || 0) + ' compressions, ' + (hs?.percentSaved || 0) + '% avg)';
+    hookBadgeEl.style.display = 'block';
+  }
 
   // ── Compact stats ──
   document.getElementById('agentTurns').textContent = snapshot.turns || '0';
@@ -610,6 +636,12 @@ function updateAgentPanel(snapshot) {
   if (trs.compressibleTokens > 5000) {
     const compPctVal = trs.totalTokens > 0 ? Math.round((trs.compressibleTokens / trs.totalTokens) * 100) : 0;
     insights.push({ type: 'tip', icon: '▤', text: `Tool output ${compPctVal}% compressible (~${formatTokens(trs.compressibleTokens)} saveable)`, value: formatTokens(trs.compressibleTokens) });
+  }
+
+  // Active hook compression (RTK-style)
+  if (hookSaved > 0) {
+    const hs = window._terseHookStats;
+    insights.push({ type: 'tip', icon: '⚡', text: `Hook compressed ${hs?.compressions || 0} outputs (${hs?.percentSaved || 0}% avg)`, value: '-' + formatTokens(hookSaved) });
   }
 
   if (insights.length > 0) {
@@ -856,13 +888,25 @@ function updateAgentPanel(snapshot) {
           addTokenBadge(line, tok, 'dim');
         }
 
-      // ── Tool results: show token cost, flag large ones ──
+      // ── Tool results: show token cost + RTK compression savings ──
       } else if (m.type === 'tool_result') {
+        const toolName = m.tool_name || m.toolName || '';
         line.innerHTML = prefix + escapeHtml(text);
-        if (tok > 1000) {
-          addTokenBadge(line, tok, 'warn');
-        } else if (tok > 0) {
-          addTokenBadge(line, tok, 'dim');
+        if (tok > 0) {
+          const compRate = estimateToolCompressRate(toolName, m.text || '');
+          const savedTok = Math.round(tok * compRate);
+          if (savedTok > 50 && tok > 200) {
+            // Show compressed badge with savings
+            const badge = document.createElement('span');
+            badge.className = 'opt-badge saveable';
+            badge.textContent = tok + ' tok (−' + formatTokens(savedTok) + ' ~' + Math.round(compRate * 100) + '%)';
+            badge.title = toolName + ': RTK compression could save ~' + savedTok + ' tokens';
+            line.appendChild(badge);
+          } else if (tok > 1000) {
+            addTokenBadge(line, tok, 'warn');
+          } else {
+            addTokenBadge(line, tok, 'dim');
+          }
         }
 
       // ── Tool calls: show name ──

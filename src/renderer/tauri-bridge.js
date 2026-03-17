@@ -92,6 +92,10 @@ if (window.__TAURI__) {
     navigateToStats: () => invoke('navigate_to_stats'),
     navigateBack: () => invoke('navigate_back'),
 
+    // Hook (RTK-style compression)
+    checkAgentHook: () => invoke('check_agent_hook'),
+    getHookStats: () => invoke('get_hook_stats'),
+
     // Record optimization stats
     recordOptimization: (source, originalTokens, optimizedTokens) =>
       invoke('record_optimization', { source, originalTokens, optimizedTokens }),

@@ -793,8 +793,15 @@ fn check_agent_hook() -> serde_json::Value {
                 .and_then(|p| p.as_array())
             {
                 let installed = hooks.iter().any(|h| {
-                    h.get("command").and_then(|c| c.as_str())
-                        .map_or(false, |c| c.contains("terse"))
+                    // Check both old format { "command": "..." } and new format { "hooks": [{ "command": "..." }] }
+                    let direct = h.get("command").and_then(|c| c.as_str())
+                        .map_or(false, |c| c.contains("terse"));
+                    let nested = h.get("hooks").and_then(|hs| hs.as_array())
+                        .map_or(false, |hs| hs.iter().any(|inner| {
+                            inner.get("command").and_then(|c| c.as_str())
+                                .map_or(false, |c| c.contains("terse"))
+                        }));
+                    direct || nested
                 });
                 return serde_json::json!({ "installed": installed });
             }

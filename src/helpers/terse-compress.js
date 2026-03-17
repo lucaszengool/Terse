@@ -41,7 +41,7 @@ process.stdin.on('end', () => {
     const os = require('os');
     const path = require('path');
     fs.appendFileSync(path.join(os.tmpdir(), 'terse-compress-stats.jsonl'),
-      JSON.stringify({ ts: Date.now(), orig: origTok, comp: compTok, saved }) + '\n');
+      JSON.stringify({ ts: Date.now(), originalTokens: origTok, optimizedTokens: compTok, saved: origTok - compTok }) + '\n');
   } catch(e) {}
 });
 

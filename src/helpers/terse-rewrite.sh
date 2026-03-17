@@ -92,8 +92,17 @@ COMPRESS_PATTERNS=(
 )
 
 SHOULD_COMPRESS=false
+
+# Normalize: strip leading flags like -C /path for matching
+NORMALIZED_CMD="$COMMAND"
+# Strip git -C <path> to match as git <subcommand>
+if [[ "$COMMAND" == "git -"* ]]; then
+  NORMALIZED_CMD="git $(echo "$COMMAND" | sed 's/^git [^ ]* [^ ]* //')"
+fi
+
 for pattern in "${COMPRESS_PATTERNS[@]}"; do
-  if [[ "$COMMAND" == "$pattern"* ]] || [[ "$COMMAND" == *"| $pattern"* ]]; then
+  if [[ "$COMMAND" == "$pattern"* ]] || [[ "$NORMALIZED_CMD" == "$pattern"* ]] || \
+     [[ "$COMMAND" == *"| $pattern"* ]] || [[ "$COMMAND" == *"&& $pattern"* ]]; then
     SHOULD_COMPRESS=true
     break
   fi

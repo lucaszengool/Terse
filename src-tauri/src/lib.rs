@@ -742,6 +742,11 @@ fn send_enter(pid: u32, state: tauri::State<'_, AppState>) {
     state.key_monitors.send_enter(pid);
 }
 
+#[tauri::command]
+fn clear_popup_state(state: tauri::State<'_, AppState>) {
+    *state.last_popup_text.lock().unwrap_or_else(|e| e.into_inner()) = String::new();
+}
+
 // ── Spellcheck via terse-ax ──
 
 #[tauri::command]
@@ -1078,6 +1083,7 @@ pub fn run() {
             debug_log,
             emit_popup_update,
             send_enter,
+            clear_popup_state,
             spellcheck,
             get_front_app,
             read_ax_app,

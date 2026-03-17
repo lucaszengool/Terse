@@ -237,11 +237,39 @@ T.on('send-mode-optimize', async (d) => {
         method: 'send-mode',
         sessionId: d.sessionId,
       });
+      // Clear popup after send so old optimized text doesn't persist into next message
+      setTimeout(() => {
+        hasContent = false;
+        document.getElementById('optimized').classList.add('hidden');
+        document.getElementById('optimized').value = '';
+        document.getElementById('tokBefore').textContent = '0';
+        document.getElementById('tokAfter').textContent = '0';
+        document.getElementById('tokPct').textContent = '';
+        document.getElementById('techniques').innerHTML = '';
+        document.getElementById('btnReplace').disabled = true;
+        document.getElementById('hintState').classList.remove('hidden');
+        _invoke('clear_popup_state', {}).catch(() => {});
+        autoResizePopup();
+      }, 1500);
     } catch (e) {
       console.error('[terse] send-mode error:', e);
     }
   } else {
     _invoke('send_enter', { pid: d.pid }).catch(() => {});
+    // Clear popup state even when no optimization was needed
+    setTimeout(() => {
+      hasContent = false;
+      document.getElementById('optimized').classList.add('hidden');
+      document.getElementById('optimized').value = '';
+      document.getElementById('tokBefore').textContent = '0';
+      document.getElementById('tokAfter').textContent = '0';
+      document.getElementById('tokPct').textContent = '';
+      document.getElementById('techniques').innerHTML = '';
+      document.getElementById('btnReplace').disabled = true;
+      document.getElementById('hintState').classList.remove('hidden');
+      _invoke('clear_popup_state', {}).catch(() => {});
+      autoResizePopup();
+    }, 500);
   }
 });
 

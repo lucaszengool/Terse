@@ -520,6 +520,30 @@ case "key-monitor":
                 st.lock.unlock()
 
                 if inSendMode && !text.isEmpty {
+                    // Quick AX check: if focused element is AXTextField (URL bar, search bar),
+                    // let Enter through — only suppress for AXTextArea (chat inputs)
+                    let sys = AXUIElementCreateSystemWide()
+                    var focRef: CFTypeRef?
+                    var isTextField = false
+                    if AXUIElementCopyAttributeValue(sys, kAXFocusedUIElementAttribute as CFString, &focRef) == .success {
+                        let focEl = focRef as! AXUIElement
+                        var roleRef: CFTypeRef?
+                        AXUIElementCopyAttributeValue(focEl, kAXRoleAttribute as CFString, &roleRef)
+                        let role = roleRef as? String ?? ""
+                        if role == "AXTextField" || role == "AXComboBox" {
+                            isTextField = true
+                        }
+                    }
+
+                    if isTextField {
+                        // URL bar / search bar — clear buffer and let Enter through
+                        st.lock.lock()
+                        st.buffer = ""
+                        st.lock.unlock()
+                        st.changed = true
+                        return Unmanaged.passUnretained(event)
+                    }
+
                     // Send mode: suppress Enter, report to JS for optimization
                     let escaped = text.replacingOccurrences(of: "\\", with: "\\\\")
                         .replacingOccurrences(of: "\"", with: "\\\"")

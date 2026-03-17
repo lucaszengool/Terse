@@ -666,11 +666,19 @@ impl AgentSessionData {
                         // Track tool result token totals
                         self.tool_result_total_tokens += result_tokens;
 
-                        // Estimate compressible tokens based on tool type
+                        // Estimate compressible tokens using RTK-style analysis
+                        // Different tool outputs have different compression potential:
+                        // - Bash: git/test/build output is 60-90% compressible (RTK achieves 80%+)
+                        // - Read: code files 40-60% (comments, whitespace, function bodies)
+                        // - Grep: search results 40-50% (grouping by file saves tokens)
+                        // - Glob/Find: file listings 50-70% (tree compression)
                         let compress_rate = match tool_name.as_str() {
-                            "Read" | "read_file" => 0.60,
-                            "Grep" | "rg" => 0.40,
-                            "Bash" => 0.30,
+                            "Bash" => estimate_bash_compressibility(&result_text),
+                            "Read" | "read_file" => estimate_read_compressibility(&result_text),
+                            "Grep" | "rg" => 0.45,
+                            "Glob" | "find" => 0.55,
+                            "WebFetch" | "WebSearch" => 0.35,
+                            "Agent" => 0.25,
                             _ => 0.20,
                         };
                         self.tool_result_compressible += (result_tokens as f64 * compress_rate) as u64;
@@ -784,6 +792,111 @@ impl AgentSessionData {
         }
         eprintln!("[terse-agent] read_new_lines: {} lines parsed, {} failed, {} total msgs", parsed, failed, self.messages.len());
     }
+}
+
+/// Estimate compression rate for Bash tool output using RTK-style heuristics.
+/// RTK achieves 60-92% compression on common dev commands.
+fn estimate_bash_compressibility(output: &str) -> f64 {
+    let lines: Vec<&str> = output.lines().collect();
+    let line_count = lines.len();
+    if line_count == 0 { return 0.0; }
+
+    // Detect output type and estimate compression rate
+
+    // Git output: 80-92% compressible (RTK's best category)
+    if output.contains("modified:") || output.contains("Changes not staged")
+        || output.contains("On branch") || output.contains("diff --git")
+        || output.contains("commit ") && output.contains("Author:") {
+        return 0.85;
+    }
+
+    // Test output: 90%+ compressible (failures-only strategy)
+    if output.contains("PASS") || output.contains("FAIL")
+        || output.contains("test result:") || output.contains("Tests:")
+        || output.contains("✓") || output.contains("✗")
+        || output.contains("passed") && output.contains("failed") {
+        return 0.90;
+    }
+
+    // Build/compile output: 80% compressible
+    if output.contains("Compiling") || output.contains("warning[")
+        || output.contains("error[") || output.contains("BUILD")
+        || output.contains("webpack") || output.contains("tsc") {
+        return 0.80;
+    }
+
+    // Log output: 70-85% compressible (deduplication)
+    let mut repeated_lines = 0;
+    let mut seen = std::collections::HashSet::new();
+    for line in &lines {
+        let normalized = line.trim();
+        if normalized.len() > 10 && !seen.insert(normalized) {
+            repeated_lines += 1;
+        }
+    }
+    if repeated_lines > line_count / 4 {
+        return 0.75 + (repeated_lines as f64 / line_count as f64) * 0.15;
+    }
+
+    // JSON output: 80-95% compressible (structure-only)
+    if output.trim_start().starts_with('{') || output.trim_start().starts_with('[') {
+        return 0.85;
+    }
+
+    // Stack traces: 60-80% compressible
+    let stack_frames = lines.iter()
+        .filter(|l| l.trim_start().starts_with("at ") || l.contains("File \""))
+        .count();
+    if stack_frames > 3 {
+        return 0.70;
+    }
+
+    // ANSI/progress output: 85-95% compressible
+    if output.contains("\x1B[") || output.contains("Progress:")
+        || output.contains("Downloading") {
+        return 0.85;
+    }
+
+    // File listings: 50-70% compressible
+    let path_lines = lines.iter()
+        .filter(|l| l.contains('/') && !l.contains(' ') && l.len() < 200)
+        .count();
+    if path_lines > line_count / 2 {
+        return 0.55;
+    }
+
+    // Default for other Bash output
+    0.35
+}
+
+/// Estimate compression rate for Read tool output (source code).
+/// RTK's aggressive mode strips function bodies for 60-90% reduction.
+fn estimate_read_compressibility(content: &str) -> f64 {
+    let lines: Vec<&str> = content.lines().collect();
+    if lines.is_empty() { return 0.0; }
+
+    // Count comment lines and blank lines
+    let mut comments = 0;
+    let mut blanks = 0;
+    for line in &lines {
+        let trimmed = line.trim();
+        if trimmed.is_empty() { blanks += 1; }
+        else if trimmed.starts_with("//") || trimmed.starts_with('#')
+            || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+            comments += 1;
+        }
+    }
+
+    let overhead_ratio = (comments + blanks) as f64 / lines.len() as f64;
+
+    // Large files are more compressible (more function bodies to strip)
+    let size_factor = if lines.len() > 500 { 0.70 }
+        else if lines.len() > 200 { 0.55 }
+        else if lines.len() > 50 { 0.45 }
+        else { 0.30 };
+
+    // Combine: overhead + size factor
+    (overhead_ratio * 0.8 + size_factor * 0.6).min(0.90)
 }
 
 fn estimate_tokens(text: &str) -> u64 {

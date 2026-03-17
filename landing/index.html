@@ -448,6 +448,68 @@
     .price-btn.primary:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 8px 24px hsla(0,0%,100%,0.1)}
     .price-btn.accent{background:var(--gradient);color:var(--bg0);border-color:var(--ac)}
     .price-btn.accent:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 8px 30px rgba(110,231,183,0.2)}
+
+    /* DEMO COMPARISON */
+    .demo-section{padding:100px 40px;background:var(--bg1);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);overflow:hidden}
+    .demo-inner{max-width:1200px;margin:0 auto;text-align:center}
+    .demo-inner h2{font-size:clamp(34px,4.5vw,52px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:10px}
+    .demo-sub{font-size:15px;color:var(--t2);max-width:520px;margin:0 auto 36px;line-height:1.7}
+    .demo-tabs{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
+    .demo-tab{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;background:var(--sf);border:1px solid var(--bd);color:var(--t3);cursor:pointer;transition:all .2s}
+    .demo-tab.active{background:var(--acd);border-color:var(--acm);color:var(--ac)}
+    .demo-tab:hover{border-color:var(--bdl);color:var(--t2)}
+    .demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:left}
+    .demo-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;overflow:hidden;transition:all .3s}
+    .demo-card.after{border-color:var(--acm)}
+    .demo-card-header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:12px;background:hsla(0,0%,100%,0.02)}
+    .demo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .demo-dot.red{background:#f87171}.demo-dot.green{background:var(--ac)}
+    .demo-label{font-weight:700;color:var(--t2)}
+    .demo-tokens{margin-left:auto;color:var(--t3);font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap}
+    .demo-savings{padding:2px 8px;border-radius:100px;background:var(--acd);color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700}
+    .demo-card pre{padding:14px 16px;font-size:11px;line-height:1.6;color:var(--t3);font-family:'JetBrains Mono',monospace;overflow-x:auto;max-height:340px;scrollbar-width:thin;margin:0;white-space:pre-wrap;word-break:break-all}
+    .demo-card.after pre{color:var(--ac3)}
+    .demo-slide{display:none}.demo-slide.active{display:block}
+
+    /* TOKEN USAGE STATS */
+    .usage-section{padding:100px 40px;background:var(--bg0);position:relative;overflow:hidden}
+    .usage-section::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acm),transparent)}
+    .usage-inner{max-width:1000px;margin:0 auto;text-align:center}
+    .usage-inner h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    .usage-sub{font-size:15px;color:var(--t2);max-width:560px;margin:0 auto 40px;line-height:1.7}
+    .usage-callout{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:14px;padding:28px 32px;margin:0 auto 48px;max-width:800px;text-align:center}
+    .usage-headline{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px}
+    .usage-stats-row{display:flex;justify-content:center;gap:48px;margin-bottom:16px;flex-wrap:wrap}
+    .usage-stat{display:flex;flex-direction:column;align-items:center}
+    .usage-num{font-family:'JetBrains Mono',monospace;font-size:clamp(28px,4vw,42px);font-weight:800;color:var(--t1);line-height:1.2}
+    .usage-num.accent{color:var(--ac)}
+    .usage-label{font-size:12px;color:var(--t3);margin-top:4px}
+    .usage-note{font-size:12px;color:var(--t3);max-width:560px;margin:0 auto;line-height:1.5}
+
+    /* TOOL COMPARISON CARDS */
+    .tools-section{padding:80px 40px;background:var(--bg1);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)}
+    .tools-inner{max-width:1200px;margin:0 auto}
+    .tools-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:40px}
+    .tool-card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;transition:all .3s}
+    .tool-card:hover{border-color:var(--bdl);transform:translateY(-3px);box-shadow:0 16px 48px hsla(250,50%,5%,0.5)}
+    .tool-card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--bd)}
+    .tool-card-name{font-weight:700;font-size:15px;color:var(--t1)}
+    .tool-card-type{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;padding:3px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:4px}
+    .tool-card-specs{border-bottom:1px solid var(--bd)}
+    .tool-card-row{display:flex;justify-content:space-between;align-items:center;padding:8px 20px;border-bottom:1px solid var(--sf);font-size:12px}
+    .tool-card-row:last-child{border-bottom:none}
+    .tc-label{color:var(--t3);font-weight:500}
+    .tc-value{color:var(--t2);font-weight:600;text-align:right}
+    .tool-card-impact{padding:12px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--bd)}
+    .impact-badge{display:inline-block;padding:4px 10px;border-radius:100px;font-weight:700;font-size:11px;font-family:'JetBrains Mono',monospace;background:var(--acd);color:var(--ac)}
+    .tool-card-detail{padding:14px 20px;font-size:12px;color:var(--t3);line-height:1.6;background:hsla(110,50%,50%,0.015)}
+
+    @media(max-width:900px){
+      .demo-grid{grid-template-columns:1fr}
+      .usage-stats-row{gap:24px}
+      .tools-grid{grid-template-columns:1fr}
+      .demo-section,.usage-section,.tools-section{padding:60px 20px}
+    }
   </style>
 </head>
 <body>
@@ -677,7 +739,7 @@
       <div class="feat rv">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
         <h3>Optimize every message</h3>
-        <p>Intercepts prompts and agent commands before they hit the API — strips filler, fixes typos, shortens phrases, compresses verbose text. 20+ techniques, 40-70% fewer input tokens.</p>
+        <p>Intercepts prompts and agent commands before they hit the API — strips filler, fixes typos, shortens phrases, compresses verbose text. 30+ techniques including RTK-style output compression: log deduplication, stack trace collapsing, JSON schema extraction, and terminal noise stripping. 40-80% fewer input tokens.</p>
       </div>
       <div class="feat rv d1">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
@@ -687,7 +749,7 @@
       <div class="feat rv d2">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
         <h3>Eliminate wasted tokens</h3>
-        <p>Detects duplicate tool calls, flags files read multiple times, estimates compressible tool results, and catches typos that cause costly retry loops. Generates CLAUDE.md rules so agents learn from past waste.</p>
+        <p>Detects duplicate tool calls, flags files read multiple times, estimates compressible tool results with RTK-style analysis (git 85%, tests 90%, builds 80%), and catches typos that cause costly retry loops. Install a one-click shell hook for automatic command output compression.</p>
       </div>
       <div class="feat-divider"></div>
       <div class="works-with rv d1">
@@ -1005,6 +1067,453 @@
 
 <div class="track" id="t7"></div>
 
+<!-- ═══ SEE THE DIFFERENCE ═══ -->
+<section class="demo-section" id="demo">
+  <div class="demo-inner">
+    <div class="label rv" style="margin:0 auto 18px">See the difference</div>
+    <h2 class="rv">Real outputs, <span class="gradient-text">real savings.</span></h2>
+    <p class="demo-sub rv d1">Side-by-side comparison on actual prompts and agent commands.</p>
+
+    <div class="demo-tabs rv d1">
+      <div class="demo-tab active" data-demo="0">find . -name "*.rs"</div>
+      <div class="demo-tab" data-demo="1">cargo test</div>
+      <div class="demo-tab" data-demo="2">git diff</div>
+      <div class="demo-tab" data-demo="3">git log</div>
+      <div class="demo-tab" data-demo="4">verbose prompt</div>
+      <div class="demo-tab" data-demo="5">agent debug</div>
+    </div>
+
+    <!-- Slide 0: find -->
+    <div class="demo-slide active rv d2" data-demo-slide="0">
+      <div class="demo-grid">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-dot red"></div>
+            <span class="demo-label">find . -name "*.rs"</span>
+            <span class="demo-tokens">~276 tokens</span>
+          </div>
+          <pre>./target/debug/build/serde_core-.../out/private.rs
+./target/debug/build/libsqlite3-sys-.../out/bindgen.rs
+./target/debug/build/serde-.../out/private.rs
+./src/ls.rs
+./src/local_llm.rs
+./src/learn/detector.rs
+./src/learn/report.rs
+./src/learn/mod.rs
+./src/discover/registry.rs
+./src/discover/provider.rs
+./src/discover/report.rs
+./src/discover/mod.rs
+./src/wget_cmd.rs
+./src/npm_cmd.rs
+./src/cargo_cmd.rs
+./src/ccusage.rs
+./src/config.rs
+./src/lint_cmd.rs
+./src/curl_cmd.rs
+./src/prisma_cmd.rs
+./src/cc_economics.rs
+./src/find_cmd.rs
+./src/gain.rs
+./src/git.rs
+... 49 files total</pre>
+        </div>
+        <div class="demo-card after">
+          <div class="demo-card-header">
+            <div class="demo-dot green"></div>
+            <span class="demo-label">Terse optimized</span>
+            <span class="demo-tokens">~149 tokens</span>
+            <span class="demo-savings">-46%</span>
+          </div>
+          <pre>49F 4D:
+
+src/ cargo_cmd.rs cc_economics.rs
+  ccusage.rs config.rs container.rs
+  curl_cmd.rs deps.rs diff_cmd.rs
+  display_helpers.rs env_cmd.rs
+  filter.rs find_cmd.rs gain.rs
+  gh_cmd.rs git.rs grep_cmd.rs
+  init.rs json_cmd.rs lint_cmd.rs
+  local_llm.rs log_cmd.rs ls.rs
+  main.rs ...
+src/discover/ mod.rs provider.rs
+  registry.rs report.rs
+src/learn/ detector.rs mod.rs report.rs
+src/parser/ error.rs formatter.rs
+  mod.rs types.rs</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 1: cargo test -->
+    <div class="demo-slide" data-demo-slide="1">
+      <div class="demo-grid">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-dot red"></div>
+            <span class="demo-label">cargo test</span>
+            <span class="demo-tokens">~4,823 tokens</span>
+          </div>
+          <pre>   Compiling serde v1.0.210
+   Compiling serde_json v1.0.128
+   Compiling tokio v1.40.0
+   Compiling reqwest v0.12.7
+   Compiling my-project v0.1.0 (/Users/dev/project)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 45.23s
+     Running unittests src/main.rs (target/debug/deps/my_project-a1b2c3d4)
+
+running 262 tests
+test config::tests::test_default_config ... ok
+test config::tests::test_parse_env ... ok
+test config::tests::test_merge_configs ... ok
+test git::tests::test_parse_diff ... ok
+test git::tests::test_status_parse ... ok
+... 257 more tests
+test result: ok. 262 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.41s</pre>
+        </div>
+        <div class="demo-card after">
+          <div class="demo-card-header">
+            <div class="demo-dot green"></div>
+            <span class="demo-label">Terse optimized</span>
+            <span class="demo-tokens">~38 tokens</span>
+            <span class="demo-savings">-99%</span>
+          </div>
+          <pre>cargo test: 262 passed, 0 failed
+Built 5 crates in 45.23s
+All tests green.</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 2: git diff -->
+    <div class="demo-slide" data-demo-slide="2">
+      <div class="demo-grid">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-dot red"></div>
+            <span class="demo-label">git diff</span>
+            <span class="demo-tokens">~1,240 tokens</span>
+          </div>
+          <pre>diff --git a/src/optimizer.js b/src/optimizer.js
+index 3a4b5c6..7d8e9f0 100644
+--- a/src/optimizer.js
++++ b/src/optimizer.js
+@@ -142,8 +142,12 @@ class PromptOptimizer {
+     // Remove filler words from text
+-    const fillers = ['just', 'really', 'very', 'actually'];
++    const fillers = ['just', 'really', 'very', 'actually',
++      'basically', 'literally', 'honestly', 'perhaps',
++      'maybe', 'probably', 'simply'];
+     for (const f of fillers) {
+-      text = text.replace(new RegExp(`\\b${f}\\b`, 'gi'), '');
++      text = text.replace(
++        new RegExp(`\\b${f}\\b\\s*`, 'gi'), ''
++      );
+     }
+@@ -165,3 +169,8 @@ class PromptOptimizer {
++  telegraphCompress(text) {
++    return text.replace(/\b(the|a|an)\b/gi, '')
++               .replace(/\s{2,}/g, ' ')
++               .trim();
++  }</pre>
+        </div>
+        <div class="demo-card after">
+          <div class="demo-card-header">
+            <div class="demo-dot green"></div>
+            <span class="demo-label">Terse optimized</span>
+            <span class="demo-tokens">~310 tokens</span>
+            <span class="demo-savings">-75%</span>
+          </div>
+          <pre>src/optimizer.js: 2 hunks, +13 -3
+
+L142: expanded fillers list
+  (7 new: basically, literally, honestly,
+   perhaps, maybe, probably, simply)
+  + regex now strips trailing whitespace
+
+L169: added telegraphCompress()
+  strips articles (the/a/an), collapses spaces</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: git log -->
+    <div class="demo-slide" data-demo-slide="3">
+      <div class="demo-grid">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-dot red"></div>
+            <span class="demo-label">git log --oneline -20</span>
+            <span class="demo-tokens">~520 tokens</span>
+          </div>
+          <pre>a1b2c3d Fix authentication module token refresh handling
+e4f5g6h Update README with new API documentation
+i7j8k9l Refactor optimizer pipeline for better performance
+m0n1o2p Add spellcheck integration with macOS NSSpellChecker
+q3r4s5t Fix duplicate tool call detection edge case
+u6v7w8x Update dependencies: electron 40, node 22
+y9z0a1b Add aggressive mode telegraph compression
+c2d3e4f Fix session manager reconnection bug
+g5h6i7j Implement CLAUDE.md rule generation from patterns
+k8l9m0n Add context fill meter warning at 60% and 85%
+o1p2q3r Fix AX read fallback for Electron editors
+s4t5u6v Add Jaccard similarity dedup for agent turns
+w7x8y9z Refactor capture module for multi-window support
+a0b1c2d Fix popup window focus stealing on macOS
+e3f4g5h Add model-aware pricing for Opus/Sonnet/Haiku
+i6j7k8l Update landing page hero animation
+m9n0o1p Fix shell hook installation path resolution
+q2r3s4t Add RTK-style output compression techniques
+u5v6w7x Fix cache efficiency tracking in agent monitor
+y8z9a0b Initial commit</pre>
+        </div>
+        <div class="demo-card after">
+          <div class="demo-card-header">
+            <div class="demo-dot green"></div>
+            <span class="demo-label">Terse optimized</span>
+            <span class="demo-tokens">~185 tokens</span>
+            <span class="demo-savings">-64%</span>
+          </div>
+          <pre>20 commits, 3 authors
+
+Recent: auth token fix, README update,
+optimizer refactor, spellcheck integration,
+dedup edge case fix
+
+Themes: optimizer (4), agent monitor (3),
+bug fixes (6), features (5), docs (2)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: verbose prompt -->
+    <div class="demo-slide" data-demo-slide="4">
+      <div class="demo-grid">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-dot red"></div>
+            <span class="demo-label">User prompt</span>
+            <span class="demo-tokens">~52 tokens</span>
+          </div>
+          <pre>I was just wondering if you could perhaps maybe help me understand how to implement a binary search tree in Python? I'm not really sure about the best approach to take here and I would really appreciate any guidance you could provide please.</pre>
+        </div>
+        <div class="demo-card after">
+          <div class="demo-card-header">
+            <div class="demo-dot green"></div>
+            <span class="demo-label">Terse optimized</span>
+            <span class="demo-tokens">~11 tokens</span>
+            <span class="demo-savings">-79%</span>
+          </div>
+          <pre>Implement binary search tree in Python. Show best approach.</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 5: agent debug -->
+    <div class="demo-slide" data-demo-slide="5">
+      <div class="demo-grid">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-dot red"></div>
+            <span class="demo-label">Agent debug prompt</span>
+            <span class="demo-tokens">~68 tokens</span>
+          </div>
+          <pre>I don't know if this makes sense but the authetication module is broken again. Could you maybe look into it and try to figure out why the tokne refresh isn't working properly? Like I mentioned earlier, the refresh endpoint keeps returning 401 errors and I really need this fixed as soon as possible please.</pre>
+        </div>
+        <div class="demo-card after">
+          <div class="demo-card-header">
+            <div class="demo-dot green"></div>
+            <span class="demo-label">Terse optimized</span>
+            <span class="demo-tokens">~18 tokens</span>
+            <span class="demo-savings">-74%</span>
+          </div>
+          <pre>Fix authentication module: token refresh returns 401. Debug refresh endpoint. Priority: high.</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="t7b"></div>
+
+<!-- ═══ TOKEN USAGE — NO AI TOOL IS UNLIMITED ═══ -->
+<section class="usage-section" id="usage">
+  <div class="usage-inner">
+    <h2 class="rv">No AI tool offers <span class="gradient-text">unlimited usage.</span></h2>
+    <p class="usage-sub rv d1">Even at $200/mo, every tool has caps. Terse compresses prompts and agent outputs so your limits stretch further.</p>
+
+    <div class="usage-callout rv d2">
+      <div class="usage-headline">A typical 2h coding session with an AI agent:</div>
+      <div class="usage-stats-row">
+        <div class="usage-stat">
+          <div class="usage-num" data-ut="60" data-us="~">0</div>
+          <div class="usage-label">CLI commands run</div>
+        </div>
+        <div class="usage-stat">
+          <div class="usage-num" data-ut="210" data-us="~" data-ue="K">0</div>
+          <div class="usage-label">tokens of prompt + CLI noise</div>
+        </div>
+        <div class="usage-stat">
+          <div class="usage-num accent" data-ut="23" data-us="~" data-ue="K">0</div>
+          <div class="usage-label">with Terse (89% less)</div>
+        </div>
+      </div>
+      <p class="usage-note">Without Terse, CLI output and verbose prompts alone can overflow a 200K context window. Based on avg 3,500 tokens/command measured across real coding sessions.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TOOL COMPARISON CARDS ═══ -->
+<section class="tools-section" id="tool-comparison">
+  <div class="tools-inner" style="text-align:center">
+    <div class="label rv" style="margin:0 auto 18px">Every tool has limits</div>
+    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:10px">Terse stretches <span class="gradient-text">every plan further.</span></h2>
+    <p class="rv d1" style="color:var(--t2);max-width:520px;margin:0 auto 0;font-size:15px;line-height:1.7">No matter which AI tool you use, token limits and rate caps apply. Terse compresses what goes in — so your budget goes further.</p>
+
+    <div class="tools-grid rv d2">
+      <!-- Claude Code -->
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <span class="tool-card-name">Claude Code</span>
+          <span class="tool-card-type">Terminal</span>
+        </div>
+        <div class="tool-card-specs">
+          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">~45 msgs/5h (Pro), 5-20x on Max</span></div>
+          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">200K tokens</span></div>
+        </div>
+        <div class="tool-card-impact">
+          <span class="impact-badge">Sessions ~3x longer</span>
+        </div>
+        <div class="tool-card-detail">Even Max $200/mo (20x Pro) has weekly caps (240-480h). Quota resets every 5h. Terse compresses prompts and CLI outputs by avg 89%, so each message carries less noise and your quota stretches ~3x.</div>
+      </div>
+
+      <!-- Cursor -->
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <span class="tool-card-name">Cursor</span>
+          <span class="tool-card-type">IDE</span>
+        </div>
+        <div class="tool-card-specs">
+          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">$20 credits/mo (Pro), ~225 Claude reqs</span></div>
+          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">Up to 200K (Max mode)</span></div>
+        </div>
+        <div class="tool-card-impact">
+          <span class="impact-badge">Credits go ~2x further</span>
+        </div>
+        <div class="tool-card-detail">Even Ultra $200/mo (20x credits) is capped. Each request consumes credits based on model &mdash; Claude burns 2.4x faster than Gemini. Terse compresses prompts and CLI outputs so each request starts cleaner.</div>
+      </div>
+
+      <!-- OpenAI Codex -->
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <span class="tool-card-name">OpenAI Codex</span>
+          <span class="tool-card-type">Agent</span>
+        </div>
+        <div class="tool-card-specs">
+          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">$20/mo (Plus) &mdash; $200/mo (Pro)</span></div>
+          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">30-1,500 msgs/5h by plan</span></div>
+          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">192K tokens</span></div>
+        </div>
+        <div class="tool-card-impact">
+          <span class="impact-badge">More iterations per cap</span>
+        </div>
+        <div class="tool-card-detail">Included with ChatGPT plans. Pro $200/mo caps at 1,500 msgs/5h. The agent runs commands autonomously &mdash; each output eats your cap. Terse compresses them for more iterations per window.</div>
+      </div>
+
+      <!-- Windsurf -->
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <span class="tool-card-name">Windsurf</span>
+          <span class="tool-card-type">IDE</span>
+        </div>
+        <div class="tool-card-specs">
+          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">$15 &mdash; $60/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">500 credits/mo (Pro)</span></div>
+          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">200K tokens</span></div>
+        </div>
+        <div class="tool-card-impact">
+          <span class="impact-badge">Credits last ~2x longer</span>
+        </div>
+        <div class="tool-card-detail">Enterprise $60/user gets 1,000 credits/mo &mdash; still capped. Cascade consumes credits per prompt. Terse compresses prompts and CLI outputs so each interaction uses fewer tokens, stretching your credits.</div>
+      </div>
+
+      <!-- Gemini CLI -->
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <span class="tool-card-name">Gemini CLI</span>
+          <span class="tool-card-type">Terminal</span>
+        </div>
+        <div class="tool-card-specs">
+          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">Free &mdash; pay-per-token</span></div>
+          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">1,000 req/day, 60 req/min (free)</span></div>
+          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">1M tokens</span></div>
+        </div>
+        <div class="tool-card-impact">
+          <span class="impact-badge">~70% less on token bill</span>
+        </div>
+        <div class="tool-card-detail">Free tier is generous (1,000 req/day) but still rate-limited. Beyond that, you pay per token. Terse compresses prompts and CLI outputs by avg 89%, cutting your bill or freeing rate limit headroom.</div>
+      </div>
+
+      <!-- Aider -->
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <span class="tool-card-name">Aider</span>
+          <span class="tool-card-type">Terminal</span>
+        </div>
+        <div class="tool-card-specs">
+          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">Free + API costs ($5-300+/mo)</span></div>
+          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">Per API provider</span></div>
+          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
+        </div>
+        <div class="tool-card-impact">
+          <span class="impact-badge">~70% less API cost</span>
+        </div>
+        <div class="tool-card-detail">BYO API key &mdash; you pay per token to OpenAI, Anthropic, etc. Terse compresses every prompt and command output before it reaches the model, directly cutting your API bill by ~70% on verbose workflows.</div>
+      </div>
+
+      <!-- GitHub Copilot -->
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <span class="tool-card-name">GitHub Copilot</span>
+          <span class="tool-card-type">IDE</span>
+        </div>
+        <div class="tool-card-specs">
+          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">Free &mdash; $39/mo (Pro+)</span></div>
+          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">50-1,500 premium req/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
+        </div>
+        <div class="tool-card-impact">
+          <span class="impact-badge">Better context quality</span>
+        </div>
+        <div class="tool-card-detail">Enterprise $39/user: 1,000 premium req/mo. Base completions are unlimited, but Chat and the coding agent have caps. Terse keeps terminal output lean so premium requests carry more useful context.</div>
+      </div>
+
+      <!-- Cline / Roo -->
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <span class="tool-card-name">Cline / Roo</span>
+          <span class="tool-card-type">VS Code</span>
+        </div>
+        <div class="tool-card-specs">
+          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">Free + API costs ($0-500+/mo)</span></div>
+          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">Per API provider</span></div>
+          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
+        </div>
+        <div class="tool-card-impact">
+          <span class="impact-badge">~70% less API cost</span>
+        </div>
+        <div class="tool-card-detail">No tool-side limit, but your API provider caps apply. Heavy users report $200-500+/mo. Terse compresses every output by avg 89%, directly cutting your bill and reducing context overflow.</div>
+      </div>
+    </div>
+
+    <p class="rv d3" style="margin-top:24px;font-size:11px;color:var(--t3)">Pricing verified Feb 2026. Limits vary by usage and plan. Terse savings based on avg 89% compression across real prompts and CLI outputs.</p>
+  </div>
+</section>
+
+<div class="track" id="t7c"></div>
+
 <!-- ═══ TESTIMONIALS ═══ -->
 <section class="testimonials-section">
   <div class="testimonials-inner">
@@ -1183,6 +1692,26 @@ document.querySelectorAll('.track').forEach(el=>tObs.observe(el));
 // ═══ Counters ═══
 const cObs=new IntersectionObserver(e=>e.forEach(x=>{if(!x.isIntersecting)return;const el=x.target,t=+el.dataset.t,s=el.dataset.s||'';let c=0;const st=Math.max(1,Math.floor(t/30));const iv=setInterval(()=>{c+=st;if(c>=t){c=t;clearInterval(iv)}el.textContent=c+s},25);cObs.unobserve(el)}),{threshold:.5});
 document.querySelectorAll('.stat-num').forEach(el=>cObs.observe(el));
+
+// ═══ Demo Tabs ═══
+(function(){
+  const tabs=document.querySelectorAll('.demo-tab');
+  const slides=document.querySelectorAll('.demo-slide');
+  tabs.forEach(t=>t.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    slides.forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const s=document.querySelector('[data-demo-slide="'+t.dataset.demo+'"]');
+    if(s)s.classList.add('active');
+  }));
+})();
+
+// ═══ Usage Stat Counters ═══
+const uObs=new IntersectionObserver(e=>e.forEach(x=>{if(!x.isIntersecting)return;const el=x.target,t=+el.dataset.ut,p=el.dataset.us||'',sf=el.dataset.ue||'';let c=0;const st=Math.max(1,Math.floor(t/30));const iv=setInterval(()=>{c+=st;if(c>=t){c=t;clearInterval(iv)}el.textContent=p+c+sf},25);uObs.unobserve(el)}),{threshold:.5});
+document.querySelectorAll('.usage-num[data-ut]').forEach(el=>uObs.observe(el));
+
+// ═══ Tool cards + new tracks ═══
+document.querySelectorAll('#t7b,#t7c').forEach(el=>tObs.observe(el));
 
 // ═══ HOW IT WORKS — COMPREHENSIVE AGENT SESSION ANIMATION ═══
 (function(){
@@ -1964,7 +2493,7 @@ function clerkSignOut() {
 }
 
 // ═══ DOWNLOAD (requires sign-in) ═══
-const DMG_URL = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.1.0_x64.dmg';
+const DMG_URL = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.2.0_x64.dmg';
 
 async function handleDownload(e) {
   e.preventDefault();

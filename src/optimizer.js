@@ -626,11 +626,49 @@ class PromptOptimizer {
         optimized = this.contractFormal(optimized);
         if (optimized !== before) applied.push('Contracted');
       }
-      // "in order to" -> "to"
+      // Safe phrase shortenings that preserve meaning
       {
         const before = optimized;
         optimized = optimized.replace(/\bin order to\b/gi, 'to');
+        optimized = optimized.replace(/\bdue to the fact that\b/gi, 'because');
+        optimized = optimized.replace(/\bfor the purpose of\b/gi, 'for');
+        optimized = optimized.replace(/\bin the event that\b/gi, 'if');
+        optimized = optimized.replace(/\bwith regard to\b/gi, 'about');
+        optimized = optimized.replace(/\bwith respect to\b/gi, 'about');
+        optimized = optimized.replace(/\bin terms of\b/gi, 'for');
+        optimized = optimized.replace(/\ba large number of\b/gi, 'many');
+        optimized = optimized.replace(/\bthe majority of\b/gi, 'most');
+        optimized = optimized.replace(/\bis able to\b/gi, 'can');
+        optimized = optimized.replace(/\bhas the ability to\b/gi, 'can');
+        optimized = optimized.replace(/\bat this point in time\b/gi, 'now');
+        optimized = optimized.replace(/\bat the present time\b/gi, 'now');
+        optimized = optimized.replace(/\bprior to\b/gi, 'before');
+        optimized = optimized.replace(/\bsubsequent to\b/gi, 'after');
+        optimized = optimized.replace(/\bin the near future\b/gi, 'soon');
+        optimized = optimized.replace(/\bas well as\b/gi, 'and');
+        optimized = optimized.replace(/\bin addition to\b/gi, 'and');
+        optimized = optimized.replace(/\bon the other hand\b/gi, 'but');
+        optimized = optimized.replace(/\bin spite of\b/gi, 'despite');
+        optimized = optimized.replace(/\btake into (account|consideration)\b/gi, 'consider');
+        optimized = optimized.replace(/\bmake a decision\b/gi, 'decide');
+        optimized = optimized.replace(/\bgive an explanation\b/gi, 'explain');
+        optimized = optimized.replace(/\bas soon as possible\b/gi, 'ASAP');
+        optimized = optimized.replace(/\bas quickly as possible\b/gi, 'fast');
+        optimized = optimized.replace(/\ba variety of\b/gi, 'various');
+        optimized = optimized.replace(/\ba wide range of\b/gi, 'various');
         if (optimized !== before) applied.push('Shortened phrases');
+      }
+      // Remove redundant "that" after common verbs (meaning preserved)
+      {
+        const before = optimized;
+        optimized = optimized.replace(/\b(think|believe|know|said|feel|found|noticed|realized|understand|assume|hope|sure|guess|suppose|figured|thought|heard|read|saw|meant) that\b/gi, '$1');
+        if (optimized !== before) applied.push('Removed redundant words');
+      }
+      // Remove safe filler words that add no meaning
+      {
+        const before = optimized;
+        optimized = optimized.replace(/\b(just|basically|actually|literally|really|simply|obviously|clearly|of course|naturally|honestly|frankly|definitely|certainly)\b\s*/gi, '');
+        if (optimized !== before) applied.push('Removed filler');
       }
       // Remove greeting at start ("Hi, " / "Hello! " / "Hey there, ")
       {
@@ -654,8 +692,14 @@ class PromptOptimizer {
       // Wordy filler phrases
       {
         const before = optimized;
-        optimized = optimized.replace(/\b(as a matter of fact|at the end of the day|for what it's worth|at this point in time)\b[,]?\s*/gi, '');
+        optimized = optimized.replace(/\b(as a matter of fact|at the end of the day|for what it's worth|at this point in time|the thing is|to be honest|in my opinion|when it comes to)\b[,]?\s*/gi, '');
         if (optimized !== before) applied.push('Removed filler phrases');
+      }
+      // Remove "I think" / "I believe" at start of sentences (in LLM prompts these are noise)
+      {
+        const before = optimized;
+        optimized = optimized.replace(/(^|[.!?]\s+)(I think|I believe|I feel like|I feel that|it seems like|it seems that)\s*/gim, '$1');
+        if (optimized !== before) applied.push('Removed hedging');
       }
       // Re-capitalize after removals
       if (optimized.length > 0 && /^[a-z]/.test(optimized)) {
@@ -863,6 +907,66 @@ class PromptOptimizer {
         optimized = this.dropLowInfoSentences(optimized);
         if (optimized !== before) applied.push('Dropped low-info');
       }
+      // Aggressive: entropy-based low-info word dropping
+      {
+        const before = optimized;
+        optimized = this.entropyCompress(optimized);
+        if (optimized !== before) applied.push('Entropy compressed');
+      }
+    }
+
+    // ── RTK-inspired output compression (all modes) ──
+    // These techniques target pasted command output, logs, errors, and structured
+    // data that users include in prompts — inspired by rtk-ai/rtk's approach
+    // of compressing tool output before it reaches LLM context.
+
+    // Strip ANSI escape codes & progress bar noise from pasted terminal output
+    {
+      const before = optimized;
+      optimized = this.stripTerminalNoise(optimized);
+      if (optimized !== before) applied.push('Stripped terminal noise');
+    }
+
+    // Deduplicate repeated log/output lines with counts (×N)
+    {
+      const before = optimized;
+      optimized = this.deduplicateLogLines(optimized);
+      if (optimized !== before) applied.push('Deduplicated log lines');
+    }
+
+    // Compress pasted file paths into tree structure (balanced+aggressive)
+    if (level !== 'light') {
+      const before = optimized;
+      optimized = this.compressFilePaths(optimized);
+      if (optimized !== before) applied.push('Compressed file paths');
+    }
+
+    // Compress JSON/structured data: strip values, keep schema (balanced+aggressive)
+    if (level !== 'light') {
+      const before = optimized;
+      optimized = this.compressStructuredData(optimized);
+      if (optimized !== before) applied.push('Compressed structured data');
+    }
+
+    // Compress error/stack traces: keep first+last frames, collapse middle
+    {
+      const before = optimized;
+      optimized = this.compressStackTraces(optimized);
+      if (optimized !== before) applied.push('Compressed stack traces');
+    }
+
+    // Aggressive: extract code signatures only (strip function bodies)
+    if (level === 'aggressive') {
+      const before = optimized;
+      optimized = this.extractCodeSignatures(optimized);
+      if (optimized !== before) applied.push('Extracted code signatures');
+    }
+
+    // Compress repeated key-value patterns (e.g., verbose config dumps)
+    if (level !== 'light') {
+      const before = optimized;
+      optimized = this.compressKeyValueBlocks(optimized);
+      if (optimized !== before) applied.push('Compressed key-value blocks');
     }
 
     // Restore code blocks before final cleanup
@@ -1056,8 +1160,9 @@ class PromptOptimizer {
 
   removeFillers(text) {
     const fillers = [
-      /\b(basically|essentially|actually|literally|really|very|quite|rather|somewhat|simply|obviously|clearly|of course|naturally|certainly|definitely|absolutely|totally|completely|entirely|perfectly|honestly|frankly|truthfully)\b\s*/gi,
+      /\b(basically|essentially|actually|literally|really|very|quite|rather|somewhat|simply|obviously|clearly|of course|naturally|certainly|definitely|absolutely|totally|completely|entirely|perfectly|honestly|frankly|truthfully|apparently|evidently|presumably|supposedly|arguably|admittedly|undoubtedly|undeniably|genuinely|truly|surely)\b\s*/gi,
       /\b(I think that|I believe that|I feel like|it seems like|it appears that|it looks like)\s*/gi,
+      /\b(I think|I believe|I feel|I guess|I suppose|I imagine|I assume)\b\s*/gi,
       /\b(in order to)\b/gi,
       /\b(as a matter of fact)\s*/gi,
       /\b(at the end of the day)\s*/gi,
@@ -1070,12 +1175,29 @@ class PromptOptimizer {
       /\b(the fact of the matter is)\s*/gi,
       /\b(when it comes to)\s*/gi,
       /\b(as you (probably |may )?know)\s*/gi,
+      // Common casual filler patterns
+      /\b(you know what I mean|if you know what I mean|you know)\b[,.]?\s*/gi,
+      /\b(I was just wondering|I was wondering)\b\s*/gi,
+      /\b(I just wanted to|I wanted to)\b\s*/gi,
+      /\b(I'm just trying to|I'm trying to)\b\s*/gi,
+      /\b(so yeah|so basically|well basically)\b[,.]?\s*/gi,
+      /\b(or something like that|or something|or whatever)\b\s*/gi,
+      /\b(more or less|kind of|sort of|pretty much)\b\s*/gi,
+      /\b(to be fair|to be clear|to be specific)\b[,]?\s*/gi,
+      /\b(at the same time)\b/gi,
+      /\b(the reality is that|the truth is that|the fact is that)\b\s*/gi,
+      /\b(it's worth noting that|it's important to note that|it's worth mentioning that)\b\s*/gi,
+      // Redundant "that" after common verbs
+      /\b(think|believe|know|said|feel|found|noticed|realized|understand|assume|hope|sure|guess|suppose|figured|thought|heard|read|saw|meant) that\b/gi,
     ];
 
     let result = text;
     for (const pattern of fillers) {
       result = result.replace(pattern, (match) => {
         if (/in order to/i.test(match)) return 'to';
+        // For "verb that" pattern, keep the verb
+        const verbThatMatch = match.match(/^(\w+) that$/i);
+        if (verbThatMatch) return verbThatMatch[1] + ' ';
         return '';
       });
     }
@@ -1121,17 +1243,26 @@ class PromptOptimizer {
   removeHedgingLanguage(text) {
     const hedges = [
       // Only remove hedges that are standalone/don't break grammar
-      /\b(perhaps|possibly|could potentially)\b\s*/gi,
-      /\b(I'm not (entirely )?sure (but|if))\s*[,]?\s*/gi,
+      /\b(perhaps|possibly|could potentially|potentially|probably|likely|maybe|might)\b\s*/gi,
+      /\b(I'm not (entirely |completely |totally |really )?sure (but|if|how|what|whether))\s*[,]?\s*/gi,
       /\b(sort of|kind of|more or less|to some extent|to some degree)\b\s*/gi,
-      // "I was wondering if you could help me" → "Help me" (replace full phrase including verb)
+      // "I was wondering if you could help me" → "Help me"
       /\bI was (just )?wondering if you could\s*/gi,
       /\bI was (just )?wondering if it would be possible (for you )?to\s*/gi,
       /\bI was (just )?wondering if\s*/gi,
-      /\b(I guess|I suppose|I imagine)\b\s*/gi,
+      /\b(I guess|I suppose|I imagine|I assume)\b\s*/gi,
       // "if possible" only at end of clause/sentence
       /[,]?\s*if possible\s*([.!?]|$)/gi,
       /[,]?\s*if that makes sense\s*([.!?]|$)/gi,
+      /[,]?\s*if you (can|could|don't mind)\s*([.!?]|$)/gi,
+      // "I'm not exactly sure" / "I don't really know"
+      /\bI (don't|do not) (really |exactly |quite )?(know|understand|see|get)\b\s*/gi,
+      // "it might be worth" / "it could be helpful"
+      /\bit (might|could|may) be (worth|helpful|useful|good|nice|a good idea) (to |if )\s*/gi,
+      // "from what I can tell" / "as far as I can tell"
+      /\b(from what I can tell|as far as I can tell|as far as I know)\b[,]?\s*/gi,
+      // "correct me if I'm wrong but"
+      /\b(correct me if I'm wrong|if I'm not mistaken)\b[, ]+\s*(but )?\s*/gi,
     ];
 
     let result = text;
@@ -1163,6 +1294,16 @@ class PromptOptimizer {
       /\bhelp me (with (it|this|that)|to)\b\s*/gi,
       /\bwhat (do|should|can|could) I do (to|about|with|next|first|here)\b\s*/gi,
       /\bI don't know (what|how|where) to\b\s*/gi,
+      // More casual meta-language
+      /\bso (my question is|what I want to know is|here's my question)\b[: ,]?\s*/gi,
+      /\b(my question is|the question is)\b[: ,]?\s*/gi,
+      /\bI (just )?have a (quick )?question (about|regarding|for you)\b[: ,]?\s*/gi,
+      /\b(so )?I('m| am) (wondering|curious) (about |if |whether |how |what |why )\s*/gi,
+      /\b(so )?(this is|here's) (what|how|why) (I want|I need|I'm trying)\b\s*/gi,
+      /\blet me (try to |)(explain|describe|tell you)\b\s*/gi,
+      /\b(so )?what I('m| am) (looking|asking) for is\b\s*/gi,
+      /\b(basically |so )?(what|all) I (want|need) is\b\s*/gi,
+      /\bI (also |)(wanted|want|need) to (ask|mention|say|add) (that |)\b\s*/gi,
     ];
 
     let result = text;
@@ -1434,13 +1575,11 @@ class PromptOptimizer {
       const doc = nlp(safe);
 
       // BALANCED + AGGRESSIVE: Remove adverbs that don't add meaning
-      // (compromise tags them as #Adverb)
-      // Keep important adverbs: "not", "never", "always", "only", "also", negations
       const keepAdverbs = new Set([
         'not', 'never', 'always', 'only', 'also', 'still', 'already', 'yet',
         'here', 'there', 'where', 'when', 'how', 'why', 'then', 'now',
         'no', 'too', 'either', 'neither', 'instead', 'otherwise',
-        'first', 'next', 'finally', 'again', 'once',
+        'first', 'next', 'finally', 'again', 'once', 'ever',
       ]);
       doc.adverbs().filter(a => {
         const word = a.text().toLowerCase().trim();
@@ -1450,21 +1589,57 @@ class PromptOptimizer {
       // BALANCED + AGGRESSIVE: Convert passive voice to active
       try { doc.verbs().toActive(); } catch(e) { /* some verbs may fail */ }
 
-      // AGGRESSIVE: Remove determiners ("the", "a", "an") before common nouns in instruction context
+      // BALANCED + AGGRESSIVE: Simplify verb tenses where possible
+      // "I am going to" → "I'll", "I was going to" → removed via other rules
+      try {
+        doc.match('am going to #Verb').replaceWith((m) => {
+          const verb = m.match('#Verb').not('going').text();
+          return "will " + verb;
+        });
+      } catch(e) {}
+
+      // BALANCED + AGGRESSIVE: Remove redundant prepositions / connectors
+      // "in order to" already handled, but NLP catches more
+      try {
+        doc.match('the fact that').remove();
+        doc.match('in order to').replaceWith('to');
+      } catch(e) {}
+
+      // AGGRESSIVE: Remove interjections, determiners in instruction context
       if (level === 'aggressive') {
-        // Remove interjections ("oh", "wow", "well", etc.)
         doc.match('#Interjection').remove();
+        // Remove possessive pronouns before common nouns ("my code" → "code")
+        try {
+          doc.match('(my|your|our|their) #Noun').forEach(m => {
+            const noun = m.match('#Noun').text();
+            m.replaceWith(noun);
+          });
+        } catch(e) {}
       }
 
       let result = doc.text();
 
-      // Clean up artifacts from adverb removal
+      // BALANCED: Algorithmic sentence tightening
+      // Collapse "verb + preposition + noun" patterns that are wordy
       result = result
-        .replace(/\band\s+and\b/gi, 'and')        // "and and" -> "and"
-        .replace(/\bshould\s+and\b/gi, 'should')   // "should and" -> "should"
-        .replace(/\b(and|or)\s+while\b/gi, 'while') // "and while" -> "while"
-        .replace(/\b(and|or)\s+(and|or)\b/gi, '$1') // "and or" -> "and"
-        .replace(/\bmore\s+and\b/gi, 'and')         // "more and" -> "and"
+        .replace(/\bmake use of\b/gi, 'use')
+        .replace(/\btake advantage of\b/gi, 'use')
+        .replace(/\bput emphasis on\b/gi, 'emphasize')
+        .replace(/\bhave an impact on\b/gi, 'affect')
+        .replace(/\bhave an effect on\b/gi, 'affect')
+        .replace(/\bgive rise to\b/gi, 'cause')
+        .replace(/\bplay a role in\b/gi, 'affect')
+        .replace(/\bcome across\b/gi, 'find')
+        .replace(/\bend up\b/gi, '')
+        .replace(/\bturn out to be\b/gi, 'be');
+
+      // Clean up artifacts
+      result = result
+        .replace(/\band\s+and\b/gi, 'and')
+        .replace(/\bshould\s+and\b/gi, 'should')
+        .replace(/\b(and|or)\s+while\b/gi, 'while')
+        .replace(/\b(and|or)\s+(and|or)\b/gi, '$1')
+        .replace(/\bmore\s+and\b/gi, 'and')
         .replace(/ {2,}/g, ' ')
         .trim();
 
@@ -1621,6 +1796,34 @@ class PromptOptimizer {
       [/\bexplanation\b/gi, 'explain'],
       [/\bimplementation\b/gi, 'impl'],
       [/\bperformance\b/gi, 'perf'],
+      [/\binformation\b/gi, 'info'],
+      [/\bapplication(s)?\b/gi, 'app$1'],
+      [/\bdocument(s)?\b/gi, 'doc$1'],
+      [/\bdirectory\b/gi, 'dir'],
+      [/\bconfiguration\b/gi, 'config'],
+      [/\benvironment\b/gi, 'env'],
+      [/\bdevelopment\b/gi, 'dev'],
+      [/\bproduction\b/gi, 'prod'],
+      [/\brepository\b/gi, 'repo'],
+      [/\bfunction(s)?\b/gi, 'fn$1'],
+      [/\bpackage(s)?\b/gi, 'pkg$1'],
+      [/\bproperty\b/gi, 'prop'],
+      [/\bproperties\b/gi, 'props'],
+      [/\bargument(s)?\b/gi, 'arg$1'],
+      [/\bparameter(s)?\b/gi, 'param$1'],
+      [/\bvariable(s)?\b/gi, 'var$1'],
+      [/\breference(s)?\b/gi, 'ref$1'],
+      [/\bdependency\b/gi, 'dep'],
+      [/\bdependencies\b/gi, 'deps'],
+      [/\bauthentication\b/gi, 'auth'],
+      [/\bauthorization\b/gi, 'authz'],
+      [/\bdatabase\b/gi, 'DB'],
+      [/\bwithout\b/gi, 'w/o'],
+      [/\bwith\b/gi, 'w/'],
+      [/\bbecause\b/gi, 'b/c'],
+      [/\bbetween\b/gi, 'b/w'],
+      [/\bthrough\b/gi, 'thru'],
+      [/\bthough\b/gi, 'tho'],
     ];
 
     let result = safe;
@@ -1740,6 +1943,36 @@ class PromptOptimizer {
     // "any advice you could give me" → "advice"
     result = result.replace(/\bany (advice|help|suggestions?|tips?|guidance|feedback) (you could|you can) (give|offer|provide)( me)?\b/gi, '$1');
 
+    // "this is how" → "how", "this is what" → "what"
+    result = result.replace(/\bthis is (how|what|where|when|why)\b/gi, '$1');
+
+    // "is helping you to" → "helps"
+    result = result.replace(/\bis helping (you |me |us )?(to )?/gi, 'helps ');
+
+    // "the way it works is" → ""
+    result = result.replace(/\bthe way (it|this|that) works is\b\s*/gi, '');
+
+    // "what happens is" → ""
+    result = result.replace(/\bwhat happens is (that )?\b/gi, '');
+
+    // "the reason why ... is because" → "because"
+    result = result.replace(/\bthe reason (why |)([\w\s]*?) is (because|that)\b/gi, 'because');
+
+    // Drop "any" before nouns in many contexts
+    result = result.replace(/\b(on|in|for|with) any\b/gi, '$1');
+
+    // "while you" → "when you", shorter
+    result = result.replace(/\bwhile (you|I|we) (click|press|type|tap|hit|submit|send)\b/gi, 'on $2');
+
+    // "it detect" / "it detects" → "detects"
+    result = result.replace(/\bit (detect|detects|finds|shows|displays|creates|generates|sends|reads|writes|runs|checks|monitors)\b/gi, '$1');
+
+    // Compress "the optimized X" → "optimized X"
+    result = result.replace(/\bthe (optimized|compressed|reduced|processed|generated|updated|modified|converted)\b/gi, '$1');
+
+    // "with token reduce" type patterns → "with fewer tokens"
+    result = result.replace(/\bwith (token|tokens?) (reduce|reduction|saving|savings|optimization)\b/gi, 'w/ fewer tokens');
+
     return this._restoreCode(result, blocks).replace(/ {2,}/g, ' ').trim();
   }
 
@@ -1840,6 +2073,84 @@ class PromptOptimizer {
 
     if (kept.length === scored.length) return text;
     return kept.map(item => item.s).join(' ').replace(/ {2,}/g, ' ').trim();
+  }
+
+  // ── Entropy-based compression (aggressive) ──
+  // Inspired by LLMLingua: score each word by information content.
+  // Words with very low information (high-frequency function words, repeated content)
+  // are dropped when LLMs can infer them from context.
+  entropyCompress(text) {
+    const { text: safe, blocks } = this._protectCode(text);
+
+    // Low-info words that LLMs easily infer from context
+    const DROP_WORDS = new Set([
+      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'am', 'be', 'been', 'being',
+      'it', 'its', 'this', 'that', 'these', 'those',
+      'do', 'does', 'did',
+      'has', 'have', 'had',
+      'will', 'would', 'shall', 'should',
+      'can', 'could', 'may', 'might', 'must',
+      'of', 'at', 'by', 'for', 'in', 'on', 'to', 'up',
+      'and', 'but', 'or', 'so', 'yet',
+      'i', 'me', 'my', 'you', 'your', 'we', 'our', 'they', 'their',
+      'just', 'also', 'very', 'really', 'quite',
+      'some', 'any', 'much', 'many',
+    ]);
+
+    // Words that must NEVER be dropped (negation, key meaning)
+    const KEEP = new Set([
+      'not', 'no', 'never', 'none', 'nothing', 'neither', 'nor',
+      'only', 'all', 'every', 'each', 'both',
+      'if', 'else', 'then', 'when', 'while', 'until', 'unless', 'because',
+      'before', 'after', 'between', 'without', 'against',
+      'true', 'false', 'null', 'undefined',
+    ]);
+
+    const words = safe.split(/(\s+)/);
+    const result = [];
+    let contentWordCount = 0;
+    let dropCount = 0;
+
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      // Preserve whitespace tokens
+      if (/^\s+$/.test(w)) { result.push(w); continue; }
+      // Preserve punctuation
+      if (/^[.,!?;:]+$/.test(w)) { result.push(w); continue; }
+      // Preserve code block placeholders
+      if (/__CB_\d+__/.test(w)) { result.push(w); continue; }
+
+      const lower = w.toLowerCase().replace(/[.,!?;:]+$/, '');
+      const punct = w.slice(w.length - (w.length - w.replace(/[.,!?;:]+$/, '').length));
+
+      if (KEEP.has(lower)) {
+        result.push(w);
+        contentWordCount++;
+        continue;
+      }
+
+      if (DROP_WORDS.has(lower) && contentWordCount > 0) {
+        // Don't drop more than ~40% of words to maintain readability
+        if (dropCount / (contentWordCount + dropCount + 1) < 0.35) {
+          // Don't drop if it's the first word of a sentence
+          const prev = result.length > 0 ? result[result.length - 1] : '';
+          if (/[.!?]\s*$/.test(prev) || result.length === 0) {
+            result.push(w);
+            contentWordCount++;
+            continue;
+          }
+          dropCount++;
+          // Keep punctuation even if word is dropped
+          if (punct) result.push(punct);
+          continue;
+        }
+      }
+
+      result.push(w);
+      contentWordCount++;
+    }
+
+    return this._restoreCode(result.join(''), blocks).replace(/ {2,}/g, ' ').trim();
   }
 
   removeRedundantContent(text) {
@@ -1979,6 +2290,423 @@ class PromptOptimizer {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // RTK-inspired output compression methods
+  // Adapted from rtk-ai/rtk's approach of compressing tool/command output
+  // before it reaches LLM context. These target pasted terminal output,
+  // logs, errors, JSON, file trees, and stack traces commonly included
+  // in prompts to coding assistants.
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Strip ANSI escape codes, progress bars, spinner frames, and terminal
+   * control sequences from pasted terminal output.
+   * RTK equivalent: wget/pnpm progress filtering strategy.
+   */
+  stripTerminalNoise(text) {
+    let result = text;
+    // ANSI escape sequences (colors, cursor movement, etc.)
+    result = result.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '');
+    result = result.replace(/\x1B\][^\x07]*\x07/g, ''); // OSC sequences
+    result = result.replace(/\x1B[()][0-9A-B]/g, '');   // charset switches
+    // Carriage return overwrites (progress bars that rewrite the same line)
+    result = result.replace(/\r[^\n]/g, '');
+    // Progress bar patterns: [=====>    ] 45%, ████░░░░, ▓▓▓░░░, etc.
+    result = result.replace(/^\s*[\[({]?[=\->#█▓▒░■□●○◆◇|]{3,}[\])}]?\s*\d*%?\s*$/gm, '');
+    // Percentage progress: "Downloading... 45%", "Progress: 78%"
+    result = result.replace(/^.*(?:progress|downloading|uploading|installing|building|compiling|bundling|processing).*\d+%.*$/gim, '');
+    // Spinner frames: ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏ / - \ |
+    result = result.replace(/^\s*[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷/\\\-|]\s+.*$/gm, '');
+    // npm/yarn/pnpm timing lines: "Done in 3.45s", "added 234 packages in 5s"
+    result = result.replace(/^.*(?:done in|added \d+ packages? in|removed \d+ packages? in|audited \d+ packages? in)\s+[\d.]+\s*[sm]?\s*$/gim, '');
+    // Blank lines left over
+    result = result.replace(/\n{3,}/g, '\n\n');
+    return result;
+  }
+
+  /**
+   * Deduplicate repeated log/output lines, replacing with first occurrence + (×N).
+   * RTK equivalent: log_cmd deduplication strategy.
+   */
+  deduplicateLogLines(text) {
+    const lines = text.split('\n');
+    if (lines.length < 5) return text; // too short to have meaningful repeats
+
+    const result = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // Skip empty lines
+      if (!trimmed) {
+        result.push(line);
+        i++;
+        continue;
+      }
+
+      // Normalize for comparison: strip timestamps, PIDs, line numbers
+      const normalized = trimmed
+        .replace(/^\d{4}[-/]\d{2}[-/]\d{2}[T ]\d{2}:\d{2}:\d{2}[.\d]*Z?\s*/g, '') // ISO timestamps
+        .replace(/^\[\d{2}:\d{2}:\d{2}[.\d]*\]\s*/g, '') // [HH:MM:SS] timestamps
+        .replace(/^\d{2}:\d{2}:\d{2}[.\d]*\s*/g, '')     // HH:MM:SS timestamps
+        .replace(/\b(?:pid|PID)[=: ]\d+/g, 'PID=X')      // PIDs
+        .replace(/\b0x[0-9a-fA-F]+\b/g, '0xADDR')        // hex addresses
+        .replace(/\b\d{5,}\b/g, 'NUM');                   // large numbers
+
+      // Count consecutive duplicates
+      let count = 1;
+      let j = i + 1;
+      while (j < lines.length) {
+        const nextTrimmed = lines[j].trim();
+        if (!nextTrimmed) { j++; continue; } // skip blanks between dupes
+        const nextNorm = nextTrimmed
+          .replace(/^\d{4}[-/]\d{2}[-/]\d{2}[T ]\d{2}:\d{2}:\d{2}[.\d]*Z?\s*/g, '')
+          .replace(/^\[\d{2}:\d{2}:\d{2}[.\d]*\]\s*/g, '')
+          .replace(/^\d{2}:\d{2}:\d{2}[.\d]*\s*/g, '')
+          .replace(/\b(?:pid|PID)[=: ]\d+/g, 'PID=X')
+          .replace(/\b0x[0-9a-fA-F]+\b/g, '0xADDR')
+          .replace(/\b\d{5,}\b/g, 'NUM');
+        if (nextNorm === normalized) {
+          count++;
+          j++;
+        } else {
+          break;
+        }
+      }
+
+      if (count >= 3) {
+        result.push(`${trimmed} (×${count})`);
+      } else {
+        // Push originals for count 1-2
+        for (let k = i; k < j; k++) {
+          if (lines[k].trim() || k === i) result.push(lines[k]);
+        }
+      }
+      i = j;
+    }
+
+    return result.join('\n');
+  }
+
+  /**
+   * Compress pasted file paths/listings into a compact tree.
+   * RTK equivalent: ls tree compression strategy.
+   * Detects lists of file paths and groups by directory.
+   */
+  compressFilePaths(text) {
+    // Find blocks of 4+ consecutive lines that look like file paths
+    const lines = text.split('\n');
+    const pathPattern = /^\s*(?:[-drwx.]{10}\s+)?(?:\d+\s+)?(?:[\w.-]+\s+)?(?:\d+\s+)?(?:\w+\s+\d+\s+[\d:]+\s+)?([a-zA-Z0-9_./-]+\/[a-zA-Z0-9_./-]+)\s*$/;
+    const simplePath = /^\s*([a-zA-Z0-9_./-]+\/[a-zA-Z0-9_./-]+)\s*$/;
+
+    let inBlock = false;
+    let blockStart = -1;
+    const pathBlocks = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const isPath = simplePath.test(lines[i]) || pathPattern.test(lines[i]);
+      if (isPath && !inBlock) {
+        inBlock = true;
+        blockStart = i;
+      } else if (!isPath && inBlock) {
+        if (i - blockStart >= 4) {
+          pathBlocks.push({ start: blockStart, end: i });
+        }
+        inBlock = false;
+      }
+    }
+    if (inBlock && lines.length - blockStart >= 4) {
+      pathBlocks.push({ start: blockStart, end: lines.length });
+    }
+
+    if (pathBlocks.length === 0) return text;
+
+    // Process blocks in reverse to preserve indices
+    const result = [...lines];
+    for (let b = pathBlocks.length - 1; b >= 0; b--) {
+      const block = pathBlocks[b];
+      const paths = [];
+      for (let i = block.start; i < block.end; i++) {
+        const m = lines[i].match(simplePath) || lines[i].match(pathPattern);
+        if (m) paths.push(m[1]);
+      }
+
+      // Group by top-level directory
+      const dirs = {};
+      for (const p of paths) {
+        const parts = p.split('/');
+        const dir = parts.length > 1 ? parts[0] : '.';
+        if (!dirs[dir]) dirs[dir] = [];
+        dirs[dir].push(parts.slice(1).join('/') || parts[0]);
+      }
+
+      // Build compact tree
+      const compressed = [];
+      for (const [dir, files] of Object.entries(dirs)) {
+        if (files.length <= 2) {
+          for (const f of files) compressed.push(`${dir}/${f}`);
+        } else {
+          compressed.push(`${dir}/ (${files.length} files)`);
+        }
+      }
+
+      result.splice(block.start, block.end - block.start, ...compressed);
+    }
+
+    return result.join('\n');
+  }
+
+  /**
+   * Compress JSON/structured data embedded in prompts.
+   * RTK equivalent: json_cmd structure-only strategy.
+   * Strips large string values and array contents, keeps schema/keys.
+   */
+  compressStructuredData(text) {
+    // Match JSON blocks (not inside code fences — those are handled separately)
+    return text.replace(/(?:^|\n)(\s*\{[\s\S]*?\n\s*\})/g, (match, jsonBlock) => {
+      // Only process if it looks like multi-line JSON (4+ lines, has keys)
+      const lines = jsonBlock.split('\n');
+      if (lines.length < 4) return match;
+      if (!/["'][\w]+["']\s*:/.test(jsonBlock)) return match;
+
+      try {
+        // Try to parse and re-serialize with structure only
+        const parsed = JSON.parse(jsonBlock);
+        const schema = this._jsonSchema(parsed, 0);
+        return '\n' + schema;
+      } catch {
+        // Not valid JSON — try line-by-line compression of JSON-like content
+        return match.replace(/"([^"]{80,})"/g, (m, val) => {
+          // Truncate long string values
+          return `"${val.slice(0, 30)}...(${val.length} chars)"`;
+        });
+      }
+    });
+  }
+
+  /**
+   * Extract JSON structure: keys + types, strip values.
+   * Recursive helper for compressStructuredData.
+   */
+  _jsonSchema(obj, depth) {
+    const indent = '  '.repeat(depth);
+    if (obj === null) return 'null';
+    if (typeof obj === 'string') return obj.length > 30 ? `"...(${obj.length} chars)"` : `"${obj}"`;
+    if (typeof obj === 'number') return String(obj);
+    if (typeof obj === 'boolean') return String(obj);
+    if (Array.isArray(obj)) {
+      if (obj.length === 0) return '[]';
+      if (obj.length <= 2) {
+        const items = obj.map(v => this._jsonSchema(v, depth + 1));
+        return `[${items.join(', ')}]`;
+      }
+      // Show first item + count
+      return `[${this._jsonSchema(obj[0], depth + 1)}, ...(${obj.length} items)]`;
+    }
+    if (typeof obj === 'object') {
+      const keys = Object.keys(obj);
+      if (keys.length === 0) return '{}';
+      const entries = keys.slice(0, 8).map(k => {
+        return `${indent}  "${k}": ${this._jsonSchema(obj[k], depth + 1)}`;
+      });
+      let result = `{\n${entries.join(',\n')}`;
+      if (keys.length > 8) result += `,\n${indent}  ...(${keys.length - 8} more keys)`;
+      result += `\n${indent}}`;
+      return result;
+    }
+    return String(obj);
+  }
+
+  /**
+   * Compress error messages and stack traces.
+   * RTK equivalent: runner error-only + failure-focus strategies.
+   * Keeps the error message + first 2 and last 1 stack frames, collapses middle.
+   */
+  compressStackTraces(text) {
+    // Match common stack trace patterns
+    // Node.js: "    at Function.run (/path/file.js:10:5)"
+    // Python:  '  File "/path/file.py", line 10, in func'
+    // Java:    "    at com.example.Class.method(File.java:10)"
+    const stackFramePattern = /^\s+at\s+.+[:(]\d+[,:]\d*\)?/;
+    const pythonFramePattern = /^\s+File\s+"[^"]+",\s+line\s+\d+/;
+    const javaFramePattern = /^\s+at\s+[\w.$]+\([\w.]+:\d+\)/;
+
+    const lines = text.split('\n');
+    const result = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+      const isFrame = stackFramePattern.test(line) ||
+                      pythonFramePattern.test(line) ||
+                      javaFramePattern.test(line);
+
+      if (!isFrame) {
+        result.push(line);
+        i++;
+        continue;
+      }
+
+      // Collect all consecutive stack frames
+      const frames = [];
+      while (i < lines.length) {
+        const l = lines[i];
+        if (stackFramePattern.test(l) || pythonFramePattern.test(l) || javaFramePattern.test(l)) {
+          frames.push(l);
+          i++;
+        } else {
+          break;
+        }
+      }
+
+      if (frames.length <= 4) {
+        // Short stack — keep all frames
+        result.push(...frames);
+      } else {
+        // Keep first 2 + last 1, collapse middle
+        result.push(frames[0]);
+        result.push(frames[1]);
+        result.push(`    ... (${frames.length - 3} frames collapsed)`);
+        result.push(frames[frames.length - 1]);
+      }
+    }
+
+    return result.join('\n');
+  }
+
+  /**
+   * Extract function/class signatures from pasted code, stripping bodies.
+   * RTK equivalent: read aggressive mode (signatures only, 60-90% reduction).
+   * Only runs in aggressive mode on code blocks.
+   */
+  extractCodeSignatures(text) {
+    return text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+      const lines = code.split('\n');
+      if (lines.length < 15) return match; // only compress large code blocks
+
+      const sigLines = [];
+      let braceDepth = 0;
+      let inBody = false;
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+
+        // Always keep: imports, exports, class/function declarations, type definitions
+        if (/^(import|export|from|require|const|let|var|type|interface|enum|class|struct|trait|impl|pub|fn|def|func|function|async|abstract|static|private|public|protected)\b/.test(trimmed)) {
+          sigLines.push(line);
+          // If this line opens a body, track it
+          const opens = (line.match(/\{/g) || []).length;
+          const closes = (line.match(/\}/g) || []).length;
+          braceDepth += opens - closes;
+          if (opens > closes) inBody = true;
+          continue;
+        }
+
+        // Track brace depth
+        const opens = (line.match(/\{/g) || []).length;
+        const closes = (line.match(/\}/g) || []).length;
+
+        if (inBody && braceDepth > 1) {
+          // Skip body internals (depth > 1)
+          braceDepth += opens - closes;
+          if (braceDepth <= 1) {
+            inBody = false;
+            sigLines.push(line.replace(trimmed, '  // ...'));
+          }
+          continue;
+        }
+
+        braceDepth += opens - closes;
+        if (braceDepth < 0) braceDepth = 0;
+
+        // Keep closing braces, decorators, comments at top level
+        if (/^[}\])#@\/]/.test(trimmed) || braceDepth === 0) {
+          sigLines.push(line);
+        }
+      }
+
+      // Only use signatures if we actually compressed significantly
+      if (sigLines.length < lines.length * 0.7) {
+        return '```' + lang + '\n' + sigLines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n```';
+      }
+      return match; // not enough compression, keep original
+    });
+  }
+
+  /**
+   * Compress repeated key-value patterns in config/settings dumps.
+   * RTK equivalent: env_cmd and config compression.
+   * Groups similar key-value lines and summarizes.
+   */
+  compressKeyValueBlocks(text) {
+    const lines = text.split('\n');
+    if (lines.length < 8) return text;
+
+    // Detect key-value patterns: KEY=VALUE, key: value, key = value
+    const kvPattern = /^\s*([\w./-]+)\s*[:=]\s*(.+)$/;
+    let kvCount = 0;
+    for (const line of lines) {
+      if (kvPattern.test(line.trim())) kvCount++;
+    }
+
+    // Only compress if >60% of lines are key-value pairs
+    if (kvCount < lines.length * 0.6 || kvCount < 6) return text;
+
+    const result = [];
+    let inKvBlock = false;
+    let kvLines = [];
+
+    const flushKv = () => {
+      if (kvLines.length < 6) {
+        result.push(...kvLines);
+      } else {
+        // Group by key prefix
+        const groups = {};
+        for (const kv of kvLines) {
+          const m = kv.match(kvPattern);
+          if (m) {
+            const key = m[1];
+            const prefix = key.includes('.') ? key.split('.')[0] :
+                          key.includes('_') ? key.split('_')[0] : key;
+            if (!groups[prefix]) groups[prefix] = [];
+            groups[prefix].push(kv);
+          } else {
+            result.push(kv);
+          }
+        }
+
+        for (const [prefix, items] of Object.entries(groups)) {
+          if (items.length <= 2) {
+            result.push(...items);
+          } else {
+            // Show first item + count
+            result.push(items[0]);
+            result.push(`  ... (${items.length - 1} more ${prefix}.* entries)`);
+          }
+        }
+      }
+      kvLines = [];
+    };
+
+    for (const line of lines) {
+      if (kvPattern.test(line.trim())) {
+        inKvBlock = true;
+        kvLines.push(line);
+      } else {
+        if (inKvBlock) {
+          flushKv();
+          inKvBlock = false;
+        }
+        result.push(line);
+      }
+    }
+    if (inKvBlock) flushKv();
+
+    return result.join('\n');
+  }
+
   generateSuggestions(originalText, applied) {
     const suggestions = [];
 
@@ -2036,6 +2764,21 @@ class PromptOptimizer {
       suggestions.push({
         type: 'routing',
         text: 'Simple prompt — consider routing to a smaller model (Haiku/GPT-4o-mini) for lower cost.',
+      });
+    }
+
+    // RTK-inspired: detect pasted terminal output that could be compressed
+    if (/^\s+at\s+.+[:(]\d+/.test(originalText) || /File "[^"]+", line \d+/.test(originalText)) {
+      suggestions.push({
+        type: 'output',
+        text: 'Stack trace detected — Terse auto-compresses to first/last frames. Consider pasting only the error message.',
+      });
+    }
+
+    if ((originalText.match(/^\s*[\w./-]+\s*[:=]\s*.+$/gm) || []).length > 10) {
+      suggestions.push({
+        type: 'output',
+        text: 'Config/env dump detected — Terse groups by prefix. Include only relevant keys to save more tokens.',
       });
     }
 

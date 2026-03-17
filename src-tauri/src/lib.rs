@@ -685,6 +685,165 @@ fn get_agent_analytics(agent_type: String, state: tauri::State<'_, AppState>) ->
     monitor.get_session_snapshot(&agent_type)
 }
 
+// ── RTK-style Hook Installation ──
+
+/// Install a PreToolUse hook in Claude Code settings that pipes Bash output
+/// through Terse's optimizer for automatic token compression.
+/// Inspired by rtk-ai/rtk's auto-rewrite hook architecture.
+#[tauri::command]
+fn install_agent_hook() -> Result<serde_json::Value, String> {
+    let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+    let claude_dir = home.join(".claude");
+    let hooks_dir = claude_dir.join("hooks");
+    let settings_path = claude_dir.join("settings.json");
+
+    // Ensure hooks dir exists
+    std::fs::create_dir_all(&hooks_dir).map_err(|e| format!("Failed to create hooks dir: {}", e))?;
+
+    // Copy terse-rewrite.sh to ~/.claude/hooks/
+    let hook_src = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        .unwrap_or_default()
+        .join("terse-rewrite.sh");
+
+    // Write the hook script inline if source not found
+    let hook_dest = hooks_dir.join("terse-rewrite.sh");
+    if !hook_src.exists() {
+        let script = include_str!("../../src/helpers/terse-rewrite.sh");
+        std::fs::write(&hook_dest, script)
+            .map_err(|e| format!("Failed to write hook: {}", e))?;
+    } else {
+        std::fs::copy(&hook_src, &hook_dest)
+            .map_err(|e| format!("Failed to copy hook: {}", e))?;
+    }
+
+    // Make executable
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o755);
+        std::fs::set_permissions(&hook_dest, perms)
+            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+    }
+
+    // Update settings.json to register the hook
+    let mut settings: serde_json::Value = if settings_path.exists() {
+        let content = std::fs::read_to_string(&settings_path)
+            .map_err(|e| format!("Failed to read settings: {}", e))?;
+        serde_json::from_str(&content).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    // Check if hook already registered
+    let hooks = settings.as_object_mut().ok_or("Invalid settings format")?;
+    let hook_entry = serde_json::json!({
+        "matcher": "Bash",
+        "command": hook_dest.to_string_lossy()
+    });
+
+    if let Some(pre_hooks) = hooks.get_mut("hooks")
+        .and_then(|h| h.get_mut("PreToolUse"))
+        .and_then(|p| p.as_array_mut())
+    {
+        // Check if already installed
+        let already = pre_hooks.iter().any(|h| {
+            h.get("command").and_then(|c| c.as_str())
+                .map_or(false, |c| c.contains("terse"))
+        });
+        if !already {
+            pre_hooks.push(hook_entry);
+        }
+    } else {
+        // Create hooks structure
+        if !hooks.contains_key("hooks") {
+            hooks.insert("hooks".to_string(), serde_json::json!({}));
+        }
+        let h = hooks.get_mut("hooks").unwrap().as_object_mut().unwrap();
+        h.insert("PreToolUse".to_string(), serde_json::json!([hook_entry]));
+    }
+
+    std::fs::write(&settings_path, serde_json::to_string_pretty(&settings).unwrap())
+        .map_err(|e| format!("Failed to write settings: {}", e))?;
+
+    Ok(serde_json::json!({
+        "installed": true,
+        "hookPath": hook_dest.to_string_lossy(),
+        "settingsPath": settings_path.to_string_lossy(),
+    }))
+}
+
+/// Check if the Terse hook is installed in Claude Code
+#[tauri::command]
+fn check_agent_hook() -> serde_json::Value {
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => return serde_json::json!({ "installed": false }),
+    };
+    let settings_path = home.join(".claude/settings.json");
+    if !settings_path.exists() {
+        return serde_json::json!({ "installed": false });
+    }
+
+    if let Ok(content) = std::fs::read_to_string(&settings_path) {
+        if let Ok(settings) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(hooks) = settings.get("hooks")
+                .and_then(|h| h.get("PreToolUse"))
+                .and_then(|p| p.as_array())
+            {
+                let installed = hooks.iter().any(|h| {
+                    h.get("command").and_then(|c| c.as_str())
+                        .map_or(false, |c| c.contains("terse"))
+                });
+                return serde_json::json!({ "installed": installed });
+            }
+        }
+    }
+
+    serde_json::json!({ "installed": false })
+}
+
+/// Read compression stats from the CLI tool's tracking file
+#[tauri::command]
+fn get_hook_stats() -> serde_json::Value {
+    let stats_file = std::path::PathBuf::from(std::env::temp_dir()).join("terse-compress-stats.jsonl");
+    if !stats_file.exists() {
+        return serde_json::json!({
+            "totalSaved": 0,
+            "totalOriginal": 0,
+            "totalOptimized": 0,
+            "compressions": 0,
+        });
+    }
+
+    let mut total_saved: u64 = 0;
+    let mut total_original: u64 = 0;
+    let mut total_optimized: u64 = 0;
+    let mut count: u64 = 0;
+
+    if let Ok(content) = std::fs::read_to_string(&stats_file) {
+        for line in content.lines() {
+            if let Ok(entry) = serde_json::from_str::<serde_json::Value>(line) {
+                total_saved += entry["saved"].as_u64().unwrap_or(0);
+                total_original += entry["originalTokens"].as_u64().unwrap_or(0);
+                total_optimized += entry["optimizedTokens"].as_u64().unwrap_or(0);
+                count += 1;
+            }
+        }
+    }
+
+    serde_json::json!({
+        "totalSaved": total_saved,
+        "totalOriginal": total_original,
+        "totalOptimized": total_optimized,
+        "compressions": count,
+        "percentSaved": if total_original > 0 {
+            ((total_saved as f64 / total_original as f64) * 100.0).round() as u64
+        } else { 0 },
+    })
+}
+
 // ── Stats Commands ──
 
 #[tauri::command]
@@ -1075,6 +1234,9 @@ pub fn run() {
             dismiss_agent,
             disconnect_agent,
             get_agent_analytics,
+            install_agent_hook,
+            check_agent_hook,
+            get_hook_stats,
             get_stats,
             navigate_to_stats,
             navigate_back,

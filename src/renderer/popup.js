@@ -608,7 +608,8 @@ function updateAgentPanel(snapshot) {
   // Compressible tool results
   const trs = snapshot.toolResultStats || {};
   if (trs.compressibleTokens > 5000) {
-    insights.push({ type: 'tip', icon: '▤', text: `Tool results ~${formatTokens(trs.compressibleTokens)} compressible`, value: formatTokens(trs.compressibleTokens) });
+    const compPctVal = trs.totalTokens > 0 ? Math.round((trs.compressibleTokens / trs.totalTokens) * 100) : 0;
+    insights.push({ type: 'tip', icon: '▤', text: `Tool output ${compPctVal}% compressible (~${formatTokens(trs.compressibleTokens)} saveable)`, value: formatTokens(trs.compressibleTokens) });
   }
 
   if (insights.length > 0) {
@@ -680,18 +681,25 @@ function updateAgentPanel(snapshot) {
     if (insertBefore) insertBefore.parentNode.insertBefore(toolBreakdownEl, insertBefore);
   }
   const toolConsumers = snapshot.toolTokenBreakdown || [];
+  const trsStats = snapshot.toolResultStats || {};
   if (toolConsumers.length > 0) {
     toolBreakdownEl.classList.remove('hidden');
-    toolBreakdownEl.innerHTML = '<div class="opt-detail-header"><span class="opt-detail-title">Top tool consumers</span></div>';
+    const compTotal = trsStats.compressibleTokens || 0;
+    const trsTotal = trsStats.totalTokens || 1;
+    const compPct = trsTotal > 0 ? Math.round((compTotal / trsTotal) * 100) : 0;
+    toolBreakdownEl.innerHTML = '<div class="opt-detail-header"><span class="opt-detail-title">Top tool consumers</span>' +
+      (compTotal > 0 ? '<span class="opt-detail-sub" style="color:var(--ac);font-size:10px;margin-left:auto">' + compPct + '% compressible</span>' : '') +
+      '</div>';
     const maxTok = toolConsumers[0]?.tokens || 1;
     for (const tc of toolConsumers.slice(0, 5)) {
       const pctW = Math.max(Math.round((tc.tokens / maxTok) * 100), 4);
+      const compRate = Math.round(estimateToolCompressRate(tc.name, '') * 100);
       const row = document.createElement('div');
       row.className = 'tool-consumer-row';
       row.innerHTML =
         '<span class="tool-consumer-name">' + escapeHtml(tc.name) + ' <span class="tool-consumer-count">x' + tc.calls + '</span></span>' +
         '<div class="tool-consumer-bar-wrap"><div class="tool-consumer-bar" style="width:' + pctW + '%"></div></div>' +
-        '<span class="tool-consumer-tokens">' + formatTokens(tc.tokens) + '</span>';
+        '<span class="tool-consumer-tokens">' + formatTokens(tc.tokens) + ' <span style="color:var(--ac);font-size:9px">~' + compRate + '%</span></span>';
       toolBreakdownEl.appendChild(row);
     }
   } else {
@@ -951,13 +959,15 @@ function enrichAgentOptStats(snapshot) {
   }
   console.log('[terse-dbg] enrichment done in ' + Math.round(performance.now() - _t0) + 'ms, ' + annotated + '/' + recentMsgs.length + ' msgs have savings');
 
-  // Analyze tool uses for redundancy and bloat
+  // Analyze tool uses for redundancy and bloat (RTK-style per-tool compression rates)
   for (const t of toolUses) {
     if (t.type === 'tool_result') {
       const tok = t.tokens || estimateTokensJS(t.text || '');
       toolResultTokens += tok;
       if (tok > 500) {
-        toolResultWaste += Math.round(tok * 0.3);
+        // Use RTK-style per-tool compression rates matching backend heuristics
+        const rate = estimateToolCompressRate(t.toolName, t.text || '');
+        toolResultWaste += Math.round(tok * rate);
       }
     }
     if (t.type === 'tool_use' && t.toolName) {
@@ -988,8 +998,10 @@ function enrichAgentOptStats(snapshot) {
     recentOptimizations: recentOptimizations.slice(-3),
   };
 
-  // Add tool result analysis
-  snapshot.totalWastedTokens = potentialSavings + toolResultWaste;
+  // Add tool result analysis — prefer backend's RTK-style compressible estimate if available
+  const backendCompressible = (snapshot.toolResultStats || {}).compressibleTokens || 0;
+  const effectiveToolWaste = backendCompressible > 0 ? backendCompressible : toolResultWaste;
+  snapshot.totalWastedTokens = potentialSavings + effectiveToolWaste;
   snapshot.contextDedupAlerts = dedupAlerts.slice(-3);
   snapshot.redundantToolCalls = redundantTools.sort((a, b) => b.count - a.count).slice(0, 5);
 
@@ -1063,6 +1075,38 @@ function estimateTokensJS(text) {
   const words = text.split(/\s+/).length;
   const punct = (text.match(/[^\w\s]/g) || []).length;
   return Math.ceil(words * 1.3 + punct * 0.5);
+}
+
+// RTK-style per-tool compression rate estimation (mirrors backend heuristics)
+function estimateToolCompressRate(toolName, text) {
+  const name = (toolName || '').toLowerCase();
+  if (name === 'bash') {
+    // Git output: 85% compressible
+    if (/modified:|Changes not staged|On branch|diff --git|commit .+Author:/.test(text)) return 0.85;
+    // Test output: 90%
+    if (/PASS|FAIL|test result:|Tests:|passed.*failed/.test(text)) return 0.90;
+    // Build output: 80%
+    if (/Compiling|warning\[|error\[|BUILD|webpack|tsc/.test(text)) return 0.80;
+    // JSON output: 85%
+    if (/^\s*[\[{]/.test(text)) return 0.85;
+    // Stack traces: 70%
+    const stackFrames = (text.match(/^\s+at /gm) || []).length;
+    if (stackFrames > 3) return 0.70;
+    return 0.35;
+  }
+  if (name === 'read' || name === 'read_file') {
+    const lines = text.split('\n');
+    const comments = lines.filter(l => /^\s*(\/\/|#|\/\*|\*)/.test(l)).length;
+    const blanks = lines.filter(l => !l.trim()).length;
+    const overhead = (comments + blanks) / (lines.length || 1);
+    const sizeFactor = lines.length > 500 ? 0.70 : lines.length > 200 ? 0.55 : lines.length > 50 ? 0.45 : 0.30;
+    return Math.min(overhead * 0.8 + sizeFactor * 0.6, 0.90);
+  }
+  if (name === 'grep' || name === 'rg') return 0.45;
+  if (name === 'glob' || name === 'find') return 0.55;
+  if (name === 'webfetch' || name === 'websearch') return 0.35;
+  if (name === 'agent') return 0.25;
+  return 0.20;
 }
 
 // Helper: add token count badge to a log line

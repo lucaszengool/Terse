@@ -1,0 +1,26 @@
+# Terse — Token Optimizer for AI
+# https://www.terseai.org
+
+User-agent: *
+Allow: /
+
+# Allow AI crawlers explicitly
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Block utility pages
+Disallow: /auth-callback.html
+
+Sitemap: https://www.terseai.org/sitemap.xml

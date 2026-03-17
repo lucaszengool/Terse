@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How to Reduce AI API Costs by 60-80% in 2026 — Terse</title>
+  <meta name="description" content="AI API costs are the fastest-growing line item for dev teams. Learn 7 proven strategies to cut Claude, GPT-4o, and Gemini token costs by 60-80% using prompt compression, caching, model routing, and Terse.">
+  <link rel="canonical" href="https://www.terseai.org/reduce-ai-api-costs">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="How to Reduce AI API Costs by 60-80% in 2026">
+  <meta property="og:description" content="AI API costs are the fastest-growing line item for dev teams. Learn 7 proven strategies to cut Claude, GPT-4o, and Gemini token costs by 60-80%.">
+  <meta property="og:url" content="https://www.terseai.org/reduce-ai-api-costs">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to Reduce AI API Costs by 60-80% in 2026">
+  <meta name="twitter:description" content="AI API costs are the fastest-growing line item for dev teams. Learn 7 proven strategies to cut Claude, GPT-4o, and Gemini token costs by 60-80%.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "How to Reduce AI API Costs by 60-80% in 2026",
+    "description": "AI API costs are the fastest-growing line item for dev teams. Learn 7 proven strategies to cut Claude, GPT-4o, and Gemini token costs by 60-80% using prompt compression, caching, model routing, and Terse.",
+    "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "datePublished": "2026-03-18",
+    "dateModified": "2026-03-18",
+    "mainEntityOfPage": "https://www.terseai.org/reduce-ai-api-costs",
+    "keywords": ["reduce AI API costs", "how to reduce OpenAI costs", "cut AI costs", "token optimization", "prompt compression", "Claude pricing", "GPT-4o pricing", "AI cost reduction", "LLM cost optimization"]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <span class="tag">Cost Guide</span>
+  <h1>How to Reduce AI API Costs by 60-80% in 2026</h1>
+  <p class="updated">Last updated: March 2026</p>
+  <p class="subtitle">AI API costs are the fastest-growing line item for development teams in 2026. With Claude Opus at $15/$75 per million tokens and GPT-4o at $2.50/$10, a single agent session can cost $0.50-$5.00. This guide covers 7 proven strategies to cut those costs by 60-80% without sacrificing output quality.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#real-cost">The Real Cost of AI in 2026</a></li>
+      <li><a href="#where-tokens-go">Where Your Tokens Actually Go</a></li>
+      <li><a href="#seven-strategies">7 Proven Strategies to Cut AI Costs</a></li>
+      <li><a href="#token-optimization-deep-dive">Token Optimization Deep Dive</a></li>
+      <li><a href="#cost-calculator">Cost Comparison Calculator</a></li>
+      <li><a href="#getting-started">Getting Started</a></li>
+    </ol>
+  </div>
+
+  <h2 id="real-cost">The Real Cost of AI in 2026</h2>
+  <p>If you are building with large language models in 2026, you already know the sticker shock. API pricing has improved since 2024, but the way we use models has changed dramatically. Agent sessions, multi-turn conversations, tool-heavy workflows, and long context windows mean that the total token volume per task has increased by 5-10x even as per-token prices have dropped.</p>
+  <p>The net effect: most teams are spending more on AI APIs today than they were a year ago, despite cheaper individual calls. A developer running Claude Code for a full workday can easily burn through 2-5 million tokens. A production pipeline processing customer requests through an agent loop can hit 50-100 million tokens per day.</p>
+  <p>Here is what the major providers charge as of March 2026:</p>
+
+  <table class="pricing-table">
+    <thead>
+      <tr><th>Model</th><th>Input (per 1M tokens)</th><th>Output (per 1M tokens)</th><th>Context Window</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Claude Opus 4</td><td>$15.00</td><td>$75.00</td><td>200K</td></tr>
+      <tr><td>Claude Sonnet 4</td><td>$3.00</td><td>$15.00</td><td>200K</td></tr>
+      <tr><td>Claude Haiku 3.5</td><td>$0.80</td><td>$4.00</td><td>200K</td></tr>
+      <tr><td>GPT-4o</td><td>$2.50</td><td>$10.00</td><td>128K</td></tr>
+      <tr><td>GPT-4o mini</td><td>$0.15</td><td>$0.60</td><td>128K</td></tr>
+      <tr><td>Gemini 2.0 Pro</td><td>$1.25</td><td>$5.00</td><td>1M</td></tr>
+      <tr><td>Gemini 2.0 Flash</td><td>$0.075</td><td>$0.30</td><td>1M</td></tr>
+    </tbody>
+  </table>
+
+  <p>The spread is enormous. Claude Opus input tokens cost 200x more than Gemini Flash input tokens. Output tokens cost 250x more. The model you choose and how efficiently you use it determines whether your monthly AI bill is $50 or $5,000.</p>
+  <p>But model selection is only part of the equation. The bigger lever is how many tokens you actually send. And for most teams, the answer is: far more than necessary.</p>
+
+  <h2 id="where-tokens-go">Where Your Tokens Actually Go</h2>
+  <p>Before you can reduce AI API costs, you need to understand where your tokens are being consumed. Most developers assume the prompt they type is the main cost driver. It is not. In a typical agent session or production pipeline, the token breakdown looks like this:</p>
+
+  <div class="cost-card">
+    <h4>Typical Agent Session Token Breakdown</h4>
+    <div class="row"><span class="label">System prompts &amp; instructions</span><span>~20%</span></div>
+    <div class="row"><span class="label">User prompts (what you actually type)</span><span>~15%</span></div>
+    <div class="row"><span class="label">Conversation history &amp; context</span><span>~25%</span></div>
+    <div class="row"><span class="label">Tool call results (file contents, search results, API responses)</span><span>~40%</span></div>
+  </div>
+
+  <p>The user's actual prompt accounts for only about 15% of the total tokens in a typical request. The other 85% is context that gets sent along with every API call: the system prompt, the conversation history from previous turns, and the results of tool calls like file reads, web searches, and code executions.</p>
+  <p>This distribution has critical implications for cost optimization. Compressing just your prompt text is helpful, but compressing the context window — the full payload that gets sent to the model — is where the real savings are. A 40% reduction across the entire context window saves far more than a 40% reduction on just the user prompt.</p>
+  <p>In agent sessions specifically, the compounding effect makes this even more dramatic. Every piece of context from turn 1 gets carried forward to turns 2, 3, 4, and beyond. A verbose tool result in turn 3 gets re-sent in every subsequent API call. Over a 40-turn session, that single tool result might be transmitted 37 times. Compressing it once saves tokens 37 times over.</p>
+  <p>This is why <a href="/what-is-token-optimization">token optimization</a> at the point of entry — before text enters the conversation history — delivers outsized returns compared to any other cost reduction strategy.</p>
+
+  <h2 id="seven-strategies">7 Proven Strategies to Cut AI Costs</h2>
+
+  <h3><span class="strategy-num">1</span> Token Optimization and Prompt Compression</h3>
+  <p>The most direct way to reduce AI API costs is to send fewer tokens. Research from <a href="/llmlingua">LLMLingua (EMNLP 2023)</a> demonstrated that 40-70% of tokens in a typical prompt are redundant — the model can produce identical outputs without them. Filler words, hedging phrases, politeness padding, redundant qualifiers, and verbose sentence constructions account for the bulk of this waste.</p>
+  <p>Token optimization tools compress prompts before they reach the API, stripping redundant tokens while preserving the semantic content the model needs. The savings compound across every turn in a conversation, every retry, and every agent loop iteration.</p>
+  <p><a href="/">Terse</a> implements this as a real-time, on-device optimization pipeline. It applies over 20 compression techniques — from typo correction and whitespace normalization to filler removal, phrase shortening, and telegraph-style compression — in under 1 millisecond with zero API calls. Three configurable modes (Soft, Normal, Aggressive) let you control the compression-quality tradeoff.</p>
+  <p>Typical savings: <strong>25-70% token reduction</strong> depending on the mode and input text. On a 100K tokens/day workflow at Claude Opus rates, that translates to $225-$1,050 saved per month on input tokens alone.</p>
+
+  <h3><span class="strategy-num">2</span> Caching and Cache-Aware Prompting</h3>
+  <p>Anthropic, OpenAI, and Google all offer prompt caching that dramatically reduces the cost of repeated context. Anthropic's prompt caching, for example, charges only 10% of the normal input price for cached tokens after the first request.</p>
+  <p>The key to maximizing cache hits is structuring your prompts so that the static portions (system prompts, instructions, reference documents) come first, and the dynamic portions (user query, current context) come last. This way, the expensive static content is cached and reused across requests.</p>
+  <p>Cache-aware prompting strategies include:</p>
+  <ul>
+    <li><strong>Front-load static content:</strong> Place system prompts, tool definitions, and reference documents at the beginning of the context window where they can be cached.</li>
+    <li><strong>Minimize prefix changes:</strong> Any change to the cached prefix invalidates the cache. Structure prompts so that only the tail varies between requests.</li>
+    <li><strong>Batch similar requests:</strong> Group requests that share the same context prefix to maximize cache reuse.</li>
+    <li><strong>Set appropriate TTLs:</strong> Different providers have different cache lifetimes. Anthropic caches for 5 minutes by default; plan your request patterns accordingly.</li>
+  </ul>
+  <p>Typical savings: <strong>50-90% on cached input tokens</strong>. Combined with token optimization, you can reduce the cost of repeated context to a fraction of list price.</p>
+
+  <h3><span class="strategy-num">3</span> Model Routing — Use Cheaper Models for Simple Tasks</h3>
+  <p>Not every API call needs Claude Opus or GPT-4o. In a typical agent workflow, many tasks are simple enough for a cheaper model: classifying intent, extracting structured data, formatting output, summarizing content, or making binary decisions.</p>
+  <p>Model routing directs each request to the cheapest model capable of handling it. A routing layer evaluates the complexity of each task and selects the appropriate model:</p>
+  <ul>
+    <li><strong>Simple classification/extraction:</strong> Haiku ($0.80/MTok) or GPT-4o mini ($0.15/MTok)</li>
+    <li><strong>Standard generation:</strong> Sonnet ($3.00/MTok) or GPT-4o ($2.50/MTok)</li>
+    <li><strong>Complex reasoning:</strong> Opus ($15.00/MTok) — reserved for tasks that genuinely require it</li>
+  </ul>
+  <p>In practice, 60-70% of API calls in a production pipeline can be handled by the cheapest tier. If you are routing everything through Opus or GPT-4o by default, you are likely overpaying by 10-50x on the majority of your calls.</p>
+  <p>Typical savings: <strong>50-80% on total API spend</strong> when properly routing, depending on the task mix.</p>
+
+  <h3><span class="strategy-num">4</span> Context Window Management</h3>
+  <p>As conversations grow longer, every new API call includes the full conversation history. By turn 20, you might be sending 50,000 tokens of history with each request — most of which the model does not need for the current task.</p>
+  <p>Context window management strategies include:</p>
+  <ul>
+    <li><strong>Sliding window:</strong> Only include the most recent N turns in the context, discarding older history.</li>
+    <li><strong>Summarization:</strong> Periodically summarize older conversation turns into a compact summary, replacing the full history.</li>
+    <li><strong>Relevance filtering:</strong> Before each API call, score conversation turns by relevance to the current query and include only the most relevant ones.</li>
+    <li><strong>Tool result truncation:</strong> Tool results (file contents, search results) are often the largest single component. Truncate them to include only the relevant sections.</li>
+  </ul>
+  <p>Context management is especially critical in agent sessions where tool results dominate the token count. A single file read can inject 5,000-10,000 tokens into the context, and that content gets carried forward through every subsequent turn. Truncating or summarizing tool results immediately after they are used can cut total session costs by 30-50%.</p>
+
+  <h3><span class="strategy-num">5</span> Eliminate Duplicate Tool Calls</h3>
+  <p>AI agents frequently make redundant tool calls — reading the same file multiple times, running the same search query twice, or fetching data they already have in context. Each duplicate call costs tokens both for the request and for the result that gets injected into the context.</p>
+  <p>Terse's <a href="/#agents">agent monitor</a> tracks every tool call in a session and flags duplicates in real time. In a typical 40-turn Claude Code session, we observe 15-25% of tool calls are duplicates that could be eliminated through better context management or caching.</p>
+  <p>Strategies for reducing duplicate tool calls:</p>
+  <ul>
+    <li><strong>Tool result caching:</strong> Cache results of deterministic tool calls (file reads, API lookups) and serve them from cache on repeat requests.</li>
+    <li><strong>Context-aware prompting:</strong> Include a summary of already-fetched data in the system prompt so the model knows what information it already has.</li>
+    <li><strong>Tool call deduplication:</strong> Intercept tool calls before execution and check if the same call was made recently. Return the cached result instead of executing again.</li>
+  </ul>
+  <p>Typical savings: <strong>15-25% reduction in tool call tokens</strong>, which translates to 6-10% of total session cost since tool results account for roughly 40% of total tokens.</p>
+
+  <h3><span class="strategy-num">6</span> Batch Processing</h3>
+  <p>Both Anthropic and OpenAI offer batch APIs with significant discounts — typically 50% off standard pricing. If your workload can tolerate latency (results returned in hours rather than seconds), batch processing cuts your per-token cost in half.</p>
+  <p>Batch processing works well for:</p>
+  <ul>
+    <li>Content generation pipelines</li>
+    <li>Data extraction and classification at scale</li>
+    <li>Evaluation and testing of prompt variations</li>
+    <li>Bulk summarization</li>
+    <li>Embedding generation</li>
+  </ul>
+  <p>The key constraint is latency: batch requests are not suitable for interactive applications or real-time agent sessions. But for any workload where you can queue requests and process results later, the 50% discount is essentially free money.</p>
+  <p>Typical savings: <strong>50% on qualifying workloads</strong>.</p>
+
+  <h3><span class="strategy-num">7</span> Output Length Control</h3>
+  <p>Output tokens are universally more expensive than input tokens — often 3-5x more. Claude Opus charges $75 per million output tokens versus $15 for input. GPT-4o charges $10 versus $2.50. Controlling output length is therefore one of the highest-leverage cost optimizations available.</p>
+  <p>Strategies for controlling output length:</p>
+  <ul>
+    <li><strong>Set max_tokens:</strong> Always set an explicit maximum output length appropriate for the task. A classification task needs 10 tokens, not 4,096.</li>
+    <li><strong>Instruct conciseness:</strong> Add explicit instructions like "respond in under 100 words" or "return only the JSON object, no explanation."</li>
+    <li><strong>Use structured output:</strong> JSON mode or function calling forces the model to return structured data without verbose natural language wrapping.</li>
+    <li><strong>Stop sequences:</strong> Define stop sequences that terminate generation when the useful content is complete, preventing the model from generating unnecessary elaboration.</li>
+  </ul>
+  <p>A model that defaults to 500-token responses when 50 tokens would suffice is costing you 10x more on output than necessary. Across thousands of API calls, this adds up fast.</p>
+  <p>Typical savings: <strong>30-70% on output tokens</strong>, which is the most expensive component of your API bill.</p>
+
+  <h2 id="token-optimization-deep-dive">Token Optimization Deep Dive: How Terse Implements Strategies 1, 4, and 5</h2>
+  <p>Terse is purpose-built to address three of the seven strategies described above: token optimization (strategy 1), context window management (strategy 4), and duplicate tool call elimination (strategy 5). Here is how each works in practice.</p>
+
+  <h3>Real-Time Prompt Compression (Strategy 1)</h3>
+  <p>Terse's <a href="/#pipeline">7-stage optimization pipeline</a> compresses prompts in real time as you type. The pipeline runs entirely on-device with zero network calls, processing a typical prompt in under 1 millisecond. This is fundamentally different from approaches like <a href="/llmlingua">LLMLingua</a> that require a separate language model to compute per-token importance scores.</p>
+  <p>The pipeline applies compression techniques in a carefully ordered sequence:</p>
+  <ol>
+    <li><strong>Code block protection</strong> — Extracts code blocks, URLs, and inline code to prevent modification. Code tokens are semantically dense and should never be compressed.</li>
+    <li><strong>Spell correction</strong> — Fixes typos before optimization so that downstream rules match correctly. Uses a hardcoded dictionary for common coding typos, supplemented by macOS NSSpellChecker.</li>
+    <li><strong>Whitespace normalization</strong> — Collapses multiple spaces, removes trailing whitespace, normalizes line breaks. This alone typically saves 3-8% of tokens.</li>
+    <li><strong>Pattern optimization</strong> — Applies 20+ rule-based transformations: "in order to" becomes "to", "at this point in time" becomes "now", "due to the fact that" becomes "because." These patterns were derived from analyzing thousands of real-world prompts.</li>
+    <li><strong>NLP analysis</strong> — Identifies and removes filler words ("basically", "actually", "just"), hedging language ("I think", "it seems like", "perhaps"), politeness padding ("Could you please kindly"), and meta-commentary ("As I mentioned before").</li>
+    <li><strong>Telegraph compression</strong> — In Aggressive mode, removes articles ("the", "a", "an"), applies abbreviations, and strips markdown formatting for maximum compression.</li>
+    <li><strong>Code block restoration</strong> — Reinserts all protected code blocks in their original positions, untouched.</li>
+  </ol>
+  <p>Three modes give you control over the aggressiveness of compression:</p>
+  <ul>
+    <li><strong>Soft:</strong> Typo correction and whitespace only. 5-15% reduction, zero semantic change.</li>
+    <li><strong>Normal:</strong> Full filler/hedging/politeness removal. 25-45% reduction.</li>
+    <li><strong>Aggressive:</strong> Everything plus telegraph compression. 40-70% reduction.</li>
+  </ul>
+  <p>The critical design choice is that compression happens at the point of entry — before text enters the conversation history. This means compressed text benefits from the compounding effect described earlier: tokens saved in turn 1 remain saved across all subsequent turns that include that content as context.</p>
+
+  <h3>Agent Session Monitoring (Strategies 4 and 5)</h3>
+  <p>Terse's <a href="/#agents">agent monitor</a> provides real-time visibility into context window usage and tool call patterns across Claude Code, Cursor, OpenClaw, and Aider sessions. It tracks input tokens, output tokens, cache reads/writes, every tool invocation, and cumulative cost per session.</p>
+  <p>For context window management (strategy 4), the monitor shows you exactly where your tokens are going on each turn. You can see when tool results are dominating the context, when conversation history is ballooning, and when you are approaching the context window limit. This visibility alone changes behavior — developers who can see the per-turn cost of their agent sessions naturally write more concise prompts and manage context more carefully.</p>
+  <p>For duplicate tool call elimination (strategy 5), the monitor tracks every tool call and flags repeats. When Claude Code reads the same file three times in a session or runs the same grep query twice, Terse surfaces that information so you can understand the waste. In production agent pipelines, this data informs tool-caching strategies that eliminate redundant calls entirely.</p>
+
+  <h2 id="cost-calculator">Cost Comparison Calculator</h2>
+  <p>Let us run the numbers on a concrete scenario. Consider a developer using Claude Opus for agent-assisted coding, consuming 100,000 input tokens per day across multiple sessions.</p>
+
+  <div class="cost-card">
+    <h4>Without Optimization — Claude Opus, 100K input tokens/day</h4>
+    <div class="row"><span class="label">Daily input cost</span><span>$1.50</span></div>
+    <div class="row"><span class="label">Monthly input cost (22 workdays)</span><span>$33.00</span></div>
+    <div class="row"><span class="label">Output tokens (est. 30K/day at $75/MTok)</span><span>$2.25/day</span></div>
+    <div class="row"><span class="label">Monthly output cost</span><span>$49.50</span></div>
+    <div class="row highlight"><span class="label">Total monthly cost</span><span>$82.50</span></div>
+  </div>
+
+  <div class="cost-card">
+    <h4>With Terse (Normal mode, ~40% input reduction)</h4>
+    <div class="row"><span class="label">Effective input tokens</span><span>60,000/day</span></div>
+    <div class="row"><span class="label">Daily input cost</span><span>$0.90</span></div>
+    <div class="row"><span class="label">Monthly input cost</span><span>$19.80</span></div>
+    <div class="row"><span class="label">Output tokens (unchanged)</span><span>$49.50/month</span></div>
+    <div class="row highlight"><span class="label">Total monthly cost</span><span>$69.30</span></div>
+    <div class="row highlight"><span class="label">Monthly savings</span><span>$13.20 (16%)</span></div>
+  </div>
+
+  <div class="cost-card">
+    <h4>With Terse (Aggressive mode, ~60% input reduction) + Caching</h4>
+    <div class="row"><span class="label">Effective input tokens</span><span>40,000/day</span></div>
+    <div class="row"><span class="label">Cached tokens (est. 50% cache hit)</span><span>20,000 at 90% discount</span></div>
+    <div class="row"><span class="label">Daily input cost</span><span>$0.33</span></div>
+    <div class="row"><span class="label">Monthly input cost</span><span>$7.26</span></div>
+    <div class="row"><span class="label">Output tokens (with length control, -40%)</span><span>$29.70/month</span></div>
+    <div class="row highlight"><span class="label">Total monthly cost</span><span>$36.96</span></div>
+    <div class="row highlight"><span class="label">Monthly savings</span><span>$45.54 (55%)</span></div>
+  </div>
+
+  <p>Now scale this to a team of 10 developers. Without optimization: $825/month. With the full optimization stack: $370/month. That is $5,460 saved per year on a single team. For organizations running production agent pipelines at 10-100x this token volume, the savings are proportionally larger — easily reaching tens of thousands of dollars per month.</p>
+  <p>Add model routing (strategy 3) on top of this — redirecting 60% of simple calls to Sonnet or Haiku — and the total cost reduction reaches 70-80%. A team spending $825/month can realistically bring that down to $165-$250/month by combining all seven strategies.</p>
+
+  <p>Here is the same calculation for GPT-4o, which many teams use as their primary model:</p>
+
+  <div class="cost-card">
+    <h4>GPT-4o — 100K input tokens/day, before vs. after optimization</h4>
+    <div class="row"><span class="label">Before: monthly input cost</span><span>$5.50</span></div>
+    <div class="row"><span class="label">Before: monthly output cost (30K/day)</span><span>$6.60</span></div>
+    <div class="row"><span class="label">Before: total monthly</span><span>$12.10</span></div>
+    <div class="row"><span class="label">After (Terse Aggressive + caching + output control)</span><span>$3.87</span></div>
+    <div class="row highlight"><span class="label">Monthly savings</span><span>$8.23 (68%)</span></div>
+  </div>
+
+  <p>GPT-4o's lower base prices mean smaller absolute savings per developer, but the percentage reduction is actually higher because caching discounts are more impactful on already-cheaper tokens. For high-volume production pipelines processing millions of tokens daily, even GPT-4o savings scale into significant budgets.</p>
+
+  <h2 id="getting-started">Getting Started with Cost Reduction</h2>
+  <p>Reducing AI API costs does not require a massive infrastructure overhaul. You can start seeing savings today with a few targeted changes.</p>
+
+  <h3>Step 1: Measure What You Are Spending</h3>
+  <p>Before optimizing, you need visibility. Check your provider dashboards (Anthropic Console, OpenAI Usage, Google Cloud billing) and understand your current token volume, model mix, and cost breakdown. If you are using agent tools like Claude Code, install <a href="/">Terse</a> to get per-session cost tracking and tool call analysis.</p>
+
+  <h3>Step 2: Start with Token Optimization</h3>
+  <p>The easiest win is compressing the tokens you are already sending. <a href="/">Download Terse</a> from the <a href="https://github.com/jamesdevonport/terse/releases">GitHub releases page</a>, install it, and grant Accessibility permissions. Terse runs as a floating overlay that automatically detects when you are using ChatGPT, Claude Code, Cursor, or other supported tools. Start in Normal mode for a good balance of compression and readability.</p>
+  <p>For detailed setup instructions, see the <a href="/docs">Terse documentation</a>.</p>
+
+  <h3>Step 3: Implement Caching</h3>
+  <p>Review your prompt structure and reorganize to maximize cache hits. Put static content first, dynamic content last. If you are using Anthropic's API directly, enable prompt caching and monitor your cache hit rate in the dashboard.</p>
+
+  <h3>Step 4: Evaluate Model Routing</h3>
+  <p>Audit your API calls and classify them by complexity. Any call that a cheaper model can handle — classification, extraction, formatting, simple Q&A — should be routed to Haiku or GPT-4o mini. Reserve expensive models for complex reasoning, creative generation, and tasks where quality meaningfully improves with a more capable model.</p>
+
+  <h3>Step 5: Control Output Length</h3>
+  <p>Set explicit <code>max_tokens</code> on every API call. Add conciseness instructions to your system prompts. Use structured output (JSON mode, function calling) wherever possible. Output tokens are 3-5x more expensive than input tokens — every unnecessary output token is money wasted.</p>
+
+  <h3>Step 6: Monitor and Iterate</h3>
+  <p>Cost optimization is not a one-time project. Token volumes change as your usage patterns evolve, new models launch with different pricing, and agent workflows become more complex. Set up ongoing monitoring, review your costs weekly, and continuously tune your optimization stack.</p>
+
+  <div class="cta-box">
+    <h3>Start Cutting AI Costs Today</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse compresses prompts in real time, monitors agent sessions, and tracks every token and tool call. On-device, zero latency, no API calls. Cut 40-70% of your token costs across Claude Code, ChatGPT, and every AI tool you use.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Further Reading</h2>
+  <p>Explore more about token optimization and AI cost reduction:</p>
+  <ul>
+    <li><a href="/what-is-token-optimization">What Is Token Optimization?</a> — Foundational guide to reducing token costs</li>
+    <li><a href="/ai-token-pricing-comparison">AI Token Pricing Comparison</a> — Detailed pricing breakdown across all major providers</li>
+    <li><a href="/llmlingua">LLMLingua and Prompt Compression</a> — The research behind prompt compression</li>
+    <li><a href="/docs">Terse Documentation</a> — Installation, configuration, and usage guide</li>
+    <li><a href="/pattern-optimization">Pattern Optimization</a> — How Terse's 20+ compression rules work</li>
+    <li><a href="/selective-context">Selective Context</a> — Sentence-level filtering for long prompts</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

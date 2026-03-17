@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What Is Token Optimization? The Complete Guide to Reducing AI Costs — Terse</title>
+  <meta name="description" content="Token optimization is the systematic process of reducing tokens sent to LLMs without degrading output quality. Learn techniques, real-world savings (40-70%), and how to cut AI costs in 2026.">
+  <link rel="canonical" href="https://www.terseai.org/what-is-token-optimization">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="What Is Token Optimization? The Complete Guide to Reducing AI Costs">
+  <meta property="og:description" content="Token optimization is the systematic process of reducing tokens sent to LLMs without degrading output quality. Learn techniques, real-world savings, and how to cut AI costs.">
+  <meta property="og:url" content="https://www.terseai.org/what-is-token-optimization">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="What Is Token Optimization? The Complete Guide to Reducing AI Costs">
+  <meta name="twitter:description" content="Token optimization reduces tokens sent to LLMs by 40-70% without degrading output quality. The complete guide to techniques, savings, and tools.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "What Is Token Optimization? The Complete Guide to Reducing AI Costs",
+    "description": "Token optimization is the systematic process of reducing the number of tokens sent to and received from large language models (LLMs) without degrading output quality. Learn techniques, real-world savings, and tools.",
+    "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "datePublished": "2026-03-18",
+    "dateModified": "2026-03-18",
+    "mainEntityOfPage": "https://www.terseai.org/what-is-token-optimization",
+    "keywords": ["token optimization", "what is token optimization", "AI token optimization", "LLM cost reduction", "prompt compression", "reduce AI costs", "token savings"]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .meta{font-size:13px;color:var(--t3);margin-bottom:32px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .definition{background:var(--bg2);border-left:3px solid var(--ac);padding:20px 24px;border-radius:0 10px 10px 0;margin:24px 0 32px;font-size:17px;line-height:1.8;color:var(--t2)}
+    .article .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0 32px}
+    .article .stat-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px;text-align:center}
+    .article .stat-card .num{font-size:32px;font-weight:900;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .article .stat-card .label{font-size:13px;color:var(--t3);margin-top:4px}
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+    .comparison-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .comparison-table th,.comparison-table td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .comparison-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .comparison-table td:first-child{color:var(--t1);font-weight:600}
+    @media(max-width:600px){
+      .article .stat-grid{grid-template-columns:1fr}
+      .comparison-table{font-size:12px}
+      .comparison-table th,.comparison-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<main class="article">
+  <span class="tag">Guide</span>
+  <h1>What Is Token Optimization? The Complete Guide to Reducing AI Costs</h1>
+  <p class="meta">Last updated: March 2026</p>
+  <p class="subtitle">Every token you send to an LLM costs money. Most prompts contain 40-70% redundant tokens that the model does not need. Token optimization removes them before they hit the API, cutting costs without cutting quality.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#definition">What Is Token Optimization?</a></li>
+      <li><a href="#what-are-tokens">What Are AI Tokens?</a></li>
+      <li><a href="#why-it-matters">Why Token Optimization Matters in 2026</a></li>
+      <li><a href="#how-it-works">How Token Optimization Works</a></li>
+      <li><a href="#vs-prompt-engineering">Token Optimization vs Prompt Engineering</a></li>
+      <li><a href="#real-world-savings">Real-World Savings</a></li>
+      <li><a href="#tools">Tools for Token Optimization</a></li>
+      <li><a href="#getting-started">Getting Started with Terse</a></li>
+    </ol>
+  </div>
+
+  <h2 id="definition">What Is Token Optimization?</h2>
+  <div class="definition">
+    <strong>Token optimization</strong> is the systematic process of reducing the number of tokens sent to and received from large language models (LLMs) without degrading output quality. It applies compression techniques — including filler removal, deduplication, spell correction, and phrase shortening — to prompts and context windows before they reach the model, resulting in lower costs, faster responses, and more efficient use of limited context windows.
+  </div>
+  <p>The concept is straightforward: human-written text is inherently redundant. When we write a prompt to ChatGPT, Claude, or any other LLM, we include filler words, hedging phrases, politeness padding, redundant qualifiers, and verbose constructions that carry little to no information for the model. Research from Microsoft (the <a href="/llmlingua">LLMLingua</a> paper, EMNLP 2023) demonstrated that 40-70% of tokens in typical prompts can be removed without any measurable change in the model's output quality.</p>
+  <p>Token optimization takes that finding and makes it practical. Rather than manually rewriting every prompt to be more concise, token optimization tools automatically detect and remove redundancy — in real time, on every prompt, across every session. The result is that you get the same quality responses from your LLM while paying for significantly fewer tokens.</p>
+  <p>This is not about dumbing down your prompts or removing important context. Token optimization specifically targets the linguistic scaffolding that humans add naturally but that LLMs do not need. Phrases like "I was wondering if you could perhaps" become "can you." The instruction "What I would really like you to do is" becomes a direct request. The meaning is identical; the token cost is not.</p>
+
+  <h2 id="what-are-tokens">What Are AI Tokens?</h2>
+  <p>Before diving deeper into optimization, it helps to understand what tokens actually are and why they matter for cost.</p>
+  <p>A <strong>token</strong> is the fundamental unit that large language models use to process text. Tokens are not words, characters, or sentences — they are subword units generated by a tokenizer (typically BPE, Byte Pair Encoding). In practice, one token corresponds to roughly 3-4 characters of English text, or about 0.75 words. The word "optimization" is two tokens. The word "the" is one token. A short sentence like "Please help me write a function" is about 7 tokens.</p>
+  <p>Every major LLM provider prices their API by tokens:</p>
+  <ul>
+    <li><strong>Input tokens</strong> — the tokens in your prompt, including system instructions, conversation history, and the current message. This is what you send to the model.</li>
+    <li><strong>Output tokens</strong> — the tokens the model generates in its response. These are typically 3-5x more expensive than input tokens.</li>
+    <li><strong>Cached tokens</strong> — some providers (notably Anthropic with Claude) offer reduced pricing for tokens that match previously sent content, incentivizing consistent prompt structures.</li>
+  </ul>
+  <p>Here is how pricing breaks down for the major models in 2026:</p>
+  <pre>
+Model               Input (per 1M tokens)   Output (per 1M tokens)
+Claude Opus 4       $15.00                  $75.00
+Claude Sonnet 4     $3.00                   $15.00
+GPT-4o              $2.50                   $10.00
+GPT-4.5             $75.00                  $150.00
+Gemini 2.5 Pro      $1.25                   $10.00</pre>
+  <p>At these prices, token usage adds up fast. A developer using Claude Opus 4 for a 40-turn coding session might consume 210,000 input tokens and 45,000 output tokens — costing $6.53 for a single task. If token optimization reduces those input tokens by 50%, the session cost drops to $4.96. Run 10 sessions a day, five days a week, and the savings compound to over $300 per month.</p>
+  <p>Context windows add another dimension. Every model has a maximum context length — the total number of tokens it can process in a single request. Claude's 200K context window and Gemini's 1M window are generous, but agent sessions fill them quickly. When your context window fills up, the model either truncates older conversation history (losing information) or the session must be restarted. Token optimization extends how far your context window reaches by fitting more meaningful content into the same token budget.</p>
+
+  <h2 id="why-it-matters">Why Token Optimization Matters in 2026</h2>
+  <p>Token optimization has shifted from a nice-to-have to a necessity for anyone building with or using LLMs at scale. Three trends have converged to make it critical in 2026.</p>
+
+  <h3>1. Agent Sessions Have Exploded Token Usage</h3>
+  <p>The rise of AI coding agents — Claude Code, Cursor, Windsurf, Aider, OpenClaw — has fundamentally changed how tokens are consumed. In 2024, most LLM usage was single-shot: one prompt, one response. In 2026, the dominant pattern is multi-turn agent sessions where the model is called 20, 40, or 100+ times to complete a single task.</p>
+  <p>Each turn in an agent session includes the full conversation history in its prompt. A filler phrase written in turn 3 gets re-sent as context in turns 4 through 40. This creates a compounding effect where early redundancy multiplies across every subsequent API call. A single unnecessary sentence of 15 tokens, repeated across 37 remaining turns, costs 555 tokens — and that is just one sentence in one session.</p>
+  <p>Terse's <a href="/#agents">agent monitor</a> has tracked sessions where cumulative input tokens exceed 500,000 in a single coding task. At Claude Opus 4 pricing, that is $7.50 in input tokens alone for one task. Optimizing those prompts by even 30% saves $2.25 per task — meaningful savings at the scale most development teams operate.</p>
+
+  <h3>2. Enterprise AI Budgets Are Under Scrutiny</h3>
+  <p>As organizations move from AI experimentation to production deployment, finance teams are asking hard questions about API costs. A team of 10 developers each running 5-8 agent sessions per day can easily generate $5,000-$15,000 per month in LLM API costs. Token optimization offers a direct, measurable reduction in that spend without requiring developers to change their workflow or use less capable models.</p>
+  <p>The ROI calculation is simple: if a token optimization tool costs $8/month per seat and saves $200-500/month in API costs, it pays for itself 25-60x over. This is why token optimization has become a line item in AI infrastructure budgets alongside model access, vector databases, and observability tools.</p>
+
+  <h3>3. Context Window Efficiency Determines Agent Quality</h3>
+  <p>Larger context windows were supposed to solve the problem of information loss in long conversations. They did not. Research consistently shows that models perform worse on information buried in the middle of long contexts (the "lost in the middle" problem documented by Liu et al., 2023). More tokens in the context window does not mean better performance — it often means worse performance, as the model struggles to attend to the relevant information amid noise.</p>
+  <p>Token optimization addresses this directly. By removing redundant tokens, the signal-to-noise ratio in the context window improves. The model sees less text, but the text it sees is more information-dense. The result is better attention allocation, more accurate responses, and fewer instances where the model ignores or contradicts earlier context. Token optimization is not just a cost measure — it is a quality measure.</p>
+
+  <h2 id="how-it-works">How Token Optimization Works</h2>
+  <p>Token optimization encompasses a range of techniques, from simple whitespace cleanup to sophisticated linguistic analysis. The most effective approaches combine multiple techniques into a pipeline that processes text in stages. Here is how modern token optimization works, using <a href="/docs">Terse's 7-stage pipeline</a> as a reference implementation.</p>
+
+  <h3>Stage 1: Code Block Protection</h3>
+  <p>Before any optimization begins, the system identifies and extracts content that must never be modified: code blocks (fenced and indented), inline code, URLs, file paths, and command-line arguments. These are replaced with placeholders and restored after optimization. This is critical — token optimization must be safe for technical content. A misplaced optimization inside a code block could introduce bugs or change program behavior.</p>
+
+  <h3>Stage 2: Spell Correction</h3>
+  <p>Typos waste tokens in two ways. First, a misspelled word is often tokenized into more subword units than its correct form (the misspelling "optmization" becomes 3 tokens instead of 2). Second, typos can confuse the model, leading to longer or less accurate responses that consume additional output tokens. <a href="/spell-correction">Spell correction</a> fixes these errors before they reach the model, using a combination of hardcoded dictionaries for common technical typos and system-level spell checkers for broader coverage.</p>
+
+  <h3>Stage 3: Whitespace Normalization</h3>
+  <p>Multiple consecutive spaces, excessive blank lines, trailing whitespace, and inconsistent indentation outside code blocks all consume tokens without adding meaning. Whitespace normalization collapses these into their minimal form. This alone typically saves 2-5% of tokens in real-world prompts, particularly in text pasted from editors or documents with inconsistent formatting.</p>
+
+  <h3>Stage 4: Pattern Optimization</h3>
+  <p><a href="/pattern-optimization">Pattern optimization</a> applies 20+ deterministic text transformations that shorten verbose phrases to concise equivalents. These rules are derived from analyzing thousands of real-world prompts and identifying the most common verbose patterns. Examples include:</p>
+  <ul>
+    <li>"in order to" becomes "to" (saves 2 tokens per occurrence)</li>
+    <li>"a large number of" becomes "many" (saves 4 tokens)</li>
+    <li>"at this point in time" becomes "now" (saves 5 tokens)</li>
+    <li>"due to the fact that" becomes "because" (saves 4 tokens)</li>
+    <li>"in the event that" becomes "if" (saves 4 tokens)</li>
+    <li>"is able to" becomes "can" (saves 2 tokens)</li>
+    <li>"take into consideration" becomes "consider" (saves 2 tokens)</li>
+  </ul>
+  <p>Each individual replacement is small, but they compound across a full prompt. A 500-word prompt typically contains 8-15 of these patterns, yielding a cumulative savings of 30-60 tokens from pattern optimization alone.</p>
+
+  <h3>Stage 5: NLP Analysis</h3>
+  <p>This stage targets four categories of linguistic redundancy that humans add instinctively but that LLMs do not benefit from:</p>
+  <ul>
+    <li><strong>Filler words:</strong> "just", "actually", "basically", "really", "very", "quite", "simply", "literally." These words add emphasis in human conversation but carry zero information for an LLM parsing instructions.</li>
+    <li><strong>Hedging language:</strong> "I think", "maybe", "perhaps", "it seems like", "I believe", "it might be." LLMs do not need you to express uncertainty — they will produce the same response whether you hedge or not.</li>
+    <li><strong>Politeness phrases:</strong> "please", "could you kindly", "would you mind", "I would appreciate if", "thank you in advance." Models are not more helpful when asked politely. These phrases cost tokens without affecting output quality.</li>
+    <li><strong>Meta-language:</strong> "I want you to", "what I need is", "the thing is", "here is what I am looking for." These self-referential framings tell the model what you are about to ask, then you ask it. The framing is redundant.</li>
+  </ul>
+
+  <h3>Stage 6: Telegraph Compression</h3>
+  <p>For maximum compression (available in aggressive mode), <a href="/telegraph-compression">telegraph compression</a> applies techniques borrowed from telegram-era communication: removing articles ("the", "a", "an"), dropping auxiliary verbs where meaning is preserved, shortening common phrases to abbreviations, and converting passive constructions to active voice. The resulting text reads more like shorthand but conveys identical instructions to the model.</p>
+
+  <h3>Stage 7: Code Block Restoration</h3>
+  <p>All protected content from Stage 1 is restored to its exact original form. The final output is a compressed prompt with untouched code, shortened natural language, and correct spelling — ready to send to the model.</p>
+
+  <h2 id="vs-prompt-engineering">Token Optimization vs Prompt Engineering</h2>
+  <p>Token optimization and prompt engineering are complementary but fundamentally different disciplines. Understanding the distinction is important because they solve different problems and operate at different layers.</p>
+
+  <table class="comparison-table">
+    <thead>
+      <tr><th>Dimension</th><th>Token Optimization</th><th>Prompt Engineering</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Goal</td><td>Reduce token count without changing meaning</td><td>Improve output quality through better instructions</td></tr>
+      <tr><td>When it runs</td><td>Automatically, on every prompt</td><td>Manually, during prompt design</td></tr>
+      <tr><td>Scope</td><td>All text — prompts, context, history</td><td>System prompts and templates</td></tr>
+      <tr><td>Skill required</td><td>None (automated)</td><td>Significant (domain expertise needed)</td></tr>
+      <tr><td>Primary benefit</td><td>Cost reduction, context efficiency</td><td>Output quality improvement</td></tr>
+      <tr><td>Composable</td><td>Yes — optimizes any prompt</td><td>Prompt-specific — each template crafted individually</td></tr>
+      <tr><td>Handles user input</td><td>Yes — works on dynamic, free-form text</td><td>No — only affects pre-designed templates</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Prompt engineering</strong> focuses on what you say: choosing the right instructions, structuring few-shot examples, specifying output formats, and designing system prompts that elicit high-quality responses. It is a design-time activity — you craft a prompt template once and reuse it.</p>
+  <p><strong>Token optimization</strong> focuses on how efficiently you say it: removing the linguistic overhead from whatever text is being sent, whether that is a carefully engineered system prompt or a hastily typed user message. It is a runtime activity — it runs on every prompt automatically.</p>
+  <p>The most effective approach uses both. A well-engineered prompt that has also been token-optimized delivers high-quality outputs at minimal token cost. You design the prompt for quality, then let optimization handle the efficiency. The two practices reinforce each other: prompt engineering ensures the right information reaches the model, and token optimization ensures that only the right information reaches the model, without the filler that dilutes the signal.</p>
+  <p>Critically, token optimization handles the text that prompt engineering cannot reach: user-generated input. When a developer types a free-form question into Claude Code or pastes a bug report into ChatGPT, that text has not been prompt-engineered. It contains all the redundancy of natural human writing. Token optimization compresses it automatically, providing savings on the largest and most variable component of API costs.</p>
+
+  <h2 id="real-world-savings">Real-World Savings</h2>
+  <p>The theoretical savings from token optimization are well-established: 40-70% reduction on natural language content, based on both the LLMLingua research and empirical data from Terse deployments. But what do those percentages translate to in practice?</p>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="num">40-70%</div>
+      <div class="label">Token reduction on natural language</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">210K</div>
+      <div class="label">Typical agent session tokens (before)</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">~90K</div>
+      <div class="label">After optimization (57% savings)</div>
+    </div>
+  </div>
+
+  <h3>Case Study: Claude Code Agent Session</h3>
+  <p>A real-world Claude Code session tracked by Terse's agent monitor produced the following metrics over 42 turns of a refactoring task:</p>
+  <pre>
+Metric                Before optimization    After optimization
+Total input tokens    210,847                90,064
+Total output tokens   45,231                 45,231  (unchanged)
+Session cost          $6.54                  $3.74
+Savings               —                      $2.80 (43%)
+Processing time       —                      &lt;12ms total</pre>
+  <p>The output tokens remain unchanged because token optimization only compresses input — the prompts and context you send. The model's response length is determined by the task, not by how verbose your prompt was. This is the key insight: you get identical outputs for significantly less input cost.</p>
+
+  <h3>Cumulative Impact Over Time</h3>
+  <p>For a professional developer running 6 agent sessions per day, 5 days per week, the numbers scale quickly:</p>
+  <ul>
+    <li><strong>Daily savings:</strong> 6 sessions x $2.80 = $16.80/day</li>
+    <li><strong>Monthly savings:</strong> ~$370/month per developer</li>
+    <li><strong>Team of 10:</strong> ~$3,700/month in reduced API costs</li>
+    <li><strong>Annual (team):</strong> ~$44,400 in savings</li>
+  </ul>
+  <p>These figures use conservative estimates (43% compression, Claude Opus 4 pricing). Teams using more expensive models like GPT-4.5 ($75/M input tokens) see proportionally higher savings. A single GPT-4.5 agent session with 210K input tokens costs $15.81 before optimization and $6.76 after — a savings of $9.05 per session.</p>
+
+  <h3>Context Window Efficiency Gains</h3>
+  <p>Beyond direct cost savings, token optimization extends the effective capacity of your context window. In the 210K-token session above, the optimized version used only 90K tokens of context — leaving 110K tokens of additional capacity within Claude's 200K window. That means longer sessions before context truncation, fewer forced restarts, and better model performance on later turns when the context is dense with information rather than padded with filler.</p>
+  <p>Teams using <a href="/selective-context">selective context</a> techniques alongside token optimization have reported sessions that run 60-80% longer before hitting context limits, directly translating to fewer interrupted tasks and less repeated work.</p>
+
+  <h2 id="tools">Tools for Token Optimization</h2>
+  <p>The token optimization landscape in 2026 includes several approaches, each with different trade-offs. Here is how the major options compare.</p>
+
+  <h3>Terse</h3>
+  <p><a href="/">Terse</a> is an on-device token optimizer and agent monitor for macOS. It applies a 7-stage compression pipeline to prompts in real time, achieving 40-70% token reduction with sub-millisecond processing latency. Terse integrates directly with Claude Code, ChatGPT, Cursor, Aider, and other LLM interfaces through the macOS Accessibility API — no browser extensions, API proxies, or code changes required. All processing runs locally on your machine, so your prompts never leave your device.</p>
+  <p>What sets Terse apart is its combination of prompt optimization with agent session monitoring. Beyond compressing tokens, it tracks per-turn costs, detects duplicate tool calls, monitors context window usage, and generates <code>CLAUDE.md</code> rules to prevent wasteful agent behaviors. It is not just reducing tokens — it is providing visibility into how your AI budget is being spent.</p>
+
+  <h3>LLMLingua / LLMLingua-2</h3>
+  <p><a href="/llmlingua">LLMLingua</a> is the academic framework from Microsoft Research that pioneered model-based prompt compression. It uses a smaller LLM to identify and remove low-information tokens. The compression quality is excellent, but it requires a GPU (or API calls to a hosted model), adds 200-500ms of latency per compression pass, and is designed for batch/offline use rather than real-time interactive workflows. LLMLingua-2 improved speed through a trained classifier but still requires neural inference.</p>
+
+  <h3>Manual Prompt Rewriting</h3>
+  <p>The simplest approach: rewrite your prompts to be more concise. This is effective for system prompts and templates that you design once and reuse many times. However, it does not scale to dynamic user input, conversation histories, or agent session contexts that grow with each turn. It requires discipline, domain knowledge, and time — and it only applies to text you control, not text your users generate.</p>
+
+  <h3>API-Level Prompt Caching</h3>
+  <p>Providers like Anthropic offer prompt caching, where repeated prompt prefixes are charged at reduced rates (typically 10% of standard input pricing). This reduces cost for the static portions of your prompts (system messages, few-shot examples) but does not help with the dynamic portions (user input, conversation history) where the most redundancy exists. Token optimization and prompt caching are complementary — optimizing the dynamic content and caching the static content yields the best combined savings.</p>
+
+  <h2 id="getting-started">Getting Started with Terse</h2>
+  <p>Setting up token optimization with Terse takes under two minutes. Here is the quick-start process.</p>
+
+  <h3>Step 1: Download</h3>
+  <p>Download the latest Terse DMG from the <a href="https://github.com/jamesdevonport/terse/releases">GitHub Releases page</a>. Open the DMG and drag Terse into your Applications folder. On first launch, right-click the app and select "Open" to bypass macOS Gatekeeper (Terse is not yet Apple-signed).</p>
+
+  <h3>Step 2: Grant Accessibility Permissions</h3>
+  <p>Terse uses the macOS Accessibility API to read and write text in connected applications. Navigate to <strong>System Settings &rarr; Privacy &amp; Security &rarr; Accessibility</strong>, click the + button, and add Terse. Without this permission, you can still use Terse in manual copy-paste mode, but automatic capture and replace will be disabled.</p>
+
+  <h3>Step 3: Connect Your Apps</h3>
+  <p>Open the Terse main window with <kbd>Cmd+Shift+T</kbd>. Terse automatically detects supported applications — ChatGPT (Chrome/Safari), Claude Code, Cursor, Aider, and OpenClaw. When you focus a connected app, the Terse popup appears at the top of your screen showing live optimization stats.</p>
+
+  <h3>Step 4: Choose Your Mode</h3>
+  <p>Toggle between three optimization levels in the popup bar:</p>
+  <ul>
+    <li><strong>Soft:</strong> Spell correction and whitespace only. 2-5% savings, zero meaning change. Best for when you want clean text without any content modification.</li>
+    <li><strong>Normal:</strong> Removes filler, hedging, politeness, and meta-language. 15-25% savings. The recommended default for everyday use.</li>
+    <li><strong>Aggressive:</strong> Maximum compression including telegraph-style shortening. 25-40% savings. Best for high-volume agent sessions where every token counts.</li>
+  </ul>
+
+  <h3>Step 5: Optimize</h3>
+  <p>With manual mode (the default), click <strong>Capture</strong> to read text from the active app, review the optimization in the popup, then click <strong>Replace</strong> to write the optimized text back or <strong>Copy</strong> to paste it yourself. Enable <strong>Auto-Mode</strong> for hands-free optimization that runs continuously as you type.</p>
+  <p>For detailed configuration options, keyboard shortcuts, and advanced features like agent monitoring and CLAUDE.md rule generation, see the full <a href="/docs">Terse documentation</a>.</p>
+
+  <div class="cta-box">
+    <h3>Start Saving Tokens Today</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse reduces AI token costs by 40-70% with zero latency. On-device, private, and compatible with every major LLM. Free tier available.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Further Reading</h2>
+  <p>Explore the research and techniques behind Terse's token optimization pipeline:</p>
+  <ul>
+    <li><a href="/llmlingua">LLMLingua</a> — The EMNLP 2023 research that proved prompt compression works</li>
+    <li><a href="/selective-context">Selective Context</a> — Sentence-level filtering for long prompts and agent histories</li>
+    <li><a href="/spell-correction">Spell Correction</a> — How typo correction reduces token counts and improves model accuracy</li>
+    <li><a href="/docs">Documentation</a> — Complete guide to installing and configuring Terse</li>
+  </ul>
+</main>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

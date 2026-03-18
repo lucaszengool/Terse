@@ -716,7 +716,8 @@
 </div>
 
 <!-- ═══ HERO ═══ -->
-<section class="hero">
+<main>
+<section class="hero" aria-label="Hero">
   <div class="hero-glow"></div>
   <h1 class="rv">Save every token<br><span class="gradient-text">on any AI usage.</span></h1>
   <p class="sub rv d1">Cut 40-70% of your AI token costs. Terse monitors agent sessions in real time — compressing prompts, catching duplicate tool calls, detecting redundant file reads, and tracking per-turn cost across Claude Code, OpenClaw, Cursor, and ChatGPT.</p>
@@ -883,7 +884,8 @@
 
 <!-- Quotable definition for AI crawlers and GEO -->
 <div style="max-width:800px;margin:0 auto;padding:0 40px 30px;text-align:center">
-  <p style="font-size:14px;color:var(--t3);line-height:1.7"><strong style="color:var(--t2)">Terse</strong> is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider. Built on research from LLMLingua (EMNLP 2023), Norvig spelling correction, and selective context pruning. Updated March 2026.</p>
+  <p style="font-size:14px;color:var(--t3);line-height:1.7"><strong style="color:var(--t2)">Terse</strong> is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider. Built on research from <a href="/llmlingua" style="color:var(--ac)">LLMLingua (EMNLP 2023)</a>, <a href="/norvig-spelling" style="color:var(--ac)">Norvig spelling correction</a>, and <a href="/selective-context" style="color:var(--ac)">selective context pruning</a>.</p>
+  <p style="font-size:11px;color:var(--t3);margin-top:8px;display:inline-flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Updated March 2026 &middot; v1.2.0</p>
 </div>
 
 <!-- ═══ TRUST BAR ═══ -->
@@ -924,7 +926,7 @@
       <div class="feat rv">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
         <h3>Optimize every message</h3>
-        <p>Intercepts prompts and agent commands before they hit the API — strips filler, fixes typos, shortens phrases, compresses verbose text. 30+ techniques including RTK-style output compression: log deduplication, stack trace collapsing, JSON schema extraction, and terminal noise stripping. 40-80% fewer input tokens.</p>
+        <p>Intercepts prompts and agent commands before they hit the API — strips filler, fixes typos, shortens phrases, compresses verbose text. <a href="/what-is-token-optimization" style="color:var(--ac)">20+ techniques</a> including output compression: log deduplication, stack trace collapsing, JSON schema extraction, and terminal noise stripping. 40-80% fewer input tokens.</p>
       </div>
       <div class="feat rv d1">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
@@ -934,7 +936,7 @@
       <div class="feat rv d2">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
         <h3>Eliminate wasted tokens</h3>
-        <p>Detects duplicate tool calls, flags files read multiple times, estimates compressible tool results with RTK-style analysis (git 85%, tests 90%, builds 80%), and catches typos that cause costly retry loops. Install a one-click shell hook for automatic command output compression.</p>
+        <p>Detects duplicate tool calls, flags files read multiple times, estimates compressible tool results (git 85%, tests 90%, builds 80%), and catches typos that cause costly retry loops. <a href="/reduce-ai-api-costs" style="color:var(--ac)">See how to cut AI API costs by 60-80%</a>.</p>
       </div>
       <div class="feat-divider"></div>
       <div class="works-with rv d1">
@@ -1843,35 +1845,35 @@ bug fixes (6), features (5), docs (2)</pre>
     <div class="faq-grid rv d2" style="text-align:left">
       <div class="faq-item">
         <div class="faq-q">What is token optimization?</div>
-        <div class="faq-a">Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 20+ techniques &mdash; including spell correction, filler removal, prompt compression, and semantic deduplication &mdash; to cut token usage by 40-70%, directly lowering AI API costs.</div>
+        <div class="faq-a">Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 20+ techniques &mdash; including <a href="/spell-correction" style="color:var(--ac)">spell correction</a>, filler removal, <a href="/pattern-optimization" style="color:var(--ac)">prompt compression</a>, and semantic deduplication &mdash; to cut token usage by 40-70%, directly lowering AI API costs. <a href="/what-is-token-optimization" style="color:var(--ac)">Read the full guide &rarr;</a></div>
       </div>
       <div class="faq-item">
         <div class="faq-q">How much can Terse save on AI costs?</div>
-        <div class="faq-a">Terse reduces token usage by 40-70% on verbose prompts and agent commands. A typical 2-hour coding session generates ~210K tokens of CLI noise, which Terse compresses to ~23K (89% less). Combined with duplicate detection and redundant read flagging, session costs drop significantly.</div>
+        <div class="faq-a">Terse reduces token usage by 40-70% on verbose prompts and up to 89% on CLI output noise. A typical 2-hour coding session generates ~210K tokens of raw output, which Terse compresses to ~23K. Combined with duplicate detection and redundant read flagging, total session costs drop 3-5x. <a href="/reduce-ai-api-costs" style="color:var(--ac)">See the cost breakdown &rarr;</a></div>
       </div>
       <div class="faq-item">
         <div class="faq-q">Which AI tools does Terse work with?</div>
-        <div class="faq-a">Terse auto-detects Claude Code, Cursor, OpenClaw, Aider, and any terminal-based AI agent. It also works with browser-based tools like ChatGPT, Claude.ai, and Gemini through macOS Accessibility API integration with Chrome and Safari.</div>
+        <div class="faq-a">Terse auto-detects Claude Code, Cursor, OpenClaw, Aider, and any terminal-based AI agent via process scanning. It also works with browser-based tools like ChatGPT, Claude.ai, and Gemini through macOS Accessibility API integration with Chrome and Safari. <a href="#agents" style="color:var(--ac)">See agent monitoring &rarr;</a></div>
       </div>
       <div class="faq-item">
         <div class="faq-q">How does prompt compression work?</div>
-        <div class="faq-a">Terse runs a 7-stage pipeline: spell correction (400+ typo fixes), whitespace normalization, pattern optimization (130+ rules), redundancy elimination, NLP analysis, aggressive compression, and final cleanup. Code blocks, URLs, and technical terms are protected throughout.</div>
+        <div class="faq-a">Terse runs a <a href="#pipeline" style="color:var(--ac)">7-stage pipeline</a>: spell correction (400+ typo fixes), whitespace normalization, pattern optimization (130+ rules), redundancy elimination, <a href="/nlp-analysis" style="color:var(--ac)">NLP analysis</a>, <a href="/telegraph-compression" style="color:var(--ac)">telegraph compression</a>, and final cleanup. Code blocks, URLs, and technical terms are protected throughout.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">Does optimization reduce AI output quality?</div>
-        <div class="faq-a">No. Token optimization removes noise &mdash; filler words, hedging, redundant phrases, typos &mdash; without changing intent. Research from LLMLingua (EMNLP 2023) shows compressed prompts maintain or improve output quality because models receive cleaner instructions.</div>
+        <div class="faq-a">No. Token optimization removes noise &mdash; filler words, hedging, redundant phrases, typos &mdash; without changing intent. Research from <a href="/llmlingua" style="color:var(--ac)">LLMLingua (EMNLP 2023)</a> shows compressed prompts maintain or improve output quality because models receive cleaner, more focused instructions.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">What&rsquo;s the difference from prompt engineering?</div>
-        <div class="faq-a">Prompt engineering focuses on crafting better instructions for better outputs. Token optimization reduces the cost of those instructions by removing waste &mdash; filler, typos, redundancy. Terse handles optimization automatically so you can focus on engineering for quality.</div>
+        <div class="faq-a">Prompt engineering focuses on crafting better instructions for better AI outputs. Token optimization reduces the cost of those instructions by removing waste &mdash; filler, typos, redundancy &mdash; without changing meaning. Terse handles optimization automatically so you can focus on engineering for quality. <a href="/what-is-token-optimization" style="color:var(--ac)">Learn more &rarr;</a></div>
       </div>
       <div class="faq-item">
         <div class="faq-q">Is Terse free to use?</div>
-        <div class="faq-a">Terse offers a free tier with 50 optimizations/week, 1 session, and all 3 modes. Pro ($7.99/mo) adds unlimited optimizations and agent monitoring. Premium ($99/mo) includes unlimited sessions, devices, and priority support.</div>
+        <div class="faq-a">Yes. Terse offers a free tier with 50 optimizations/week, 1 session, and all 3 modes. <a href="#pricing" style="color:var(--ac)">Pro ($7.99/mo)</a> adds unlimited optimizations, agent monitoring, and CLAUDE.md generation. Premium ($99/mo) includes unlimited sessions, devices, and priority support.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">How do AI tokens affect cost?</div>
-        <div class="faq-a">AI models charge per token (~4 characters each). Claude Opus costs $15-$75 per million tokens. A single agent session can consume 200K+ tokens. Heavy users spend $200-500+/month. Terse cuts token count by 40-70%, directly reducing these costs.</div>
+        <div class="faq-a">AI models charge per token (~4 characters each). Claude Opus costs $15-$75 per million tokens, GPT-4o costs $2.50-$10. A single agent session can consume 200K+ tokens, costing $3-$15. Heavy users spend $200-500+/month on API costs alone. <a href="/ai-token-pricing-comparison" style="color:var(--ac)">See the full pricing comparison &rarr;</a></div>
       </div>
     </div>
   </div>
@@ -1896,6 +1898,7 @@ bug fixes (6), features (5), docs (2)</pre>
     <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Zero latency</span>
   </div>
 </section>
+</main>
 
 <footer>
   <div class="footer-inner">

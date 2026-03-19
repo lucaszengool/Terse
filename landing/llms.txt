@@ -1,0 +1,35 @@
+# Terse
+
+> Terse is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider. It runs 100% on-device with zero cloud dependency.
+
+## Key Facts
+- Reduces token usage by 40-70% on verbose prompts and up to 89% on CLI output
+- 20+ optimization techniques in a 7-stage pipeline
+- Auto-detects Claude Code, Cursor, OpenClaw, Aider agent sessions
+- Model-aware pricing: tracks costs for Opus, Sonnet, Haiku, GPT-4o, Gemini
+- 400+ built-in typo corrections, 130+ phrase-shortening rules
+- 3 modes: Soft (typo-fix only), Normal (filler removal), Aggressive (max compression)
+- Pricing: Free (50/week), Pro $7.99/mo (unlimited), Premium $99/mo (teams)
+- macOS only, built with Tauri + Rust + Swift
+
+## Documentation
+- [Getting Started](https://www.terseai.org/docs): Complete usage guide, installation, and configuration
+- [What Is Token Optimization?](https://www.terseai.org/what-is-token-optimization): Full guide to token optimization concepts and techniques
+- [How to Reduce AI API Costs](https://www.terseai.org/reduce-ai-api-costs): 7 proven strategies to cut AI costs by 60-80%
+- [AI Token Pricing Comparison 2026](https://www.terseai.org/ai-token-pricing-comparison): Claude vs GPT vs Gemini complete cost guide
+
+## Techniques
+- [Spell Correction](https://www.terseai.org/spell-correction): Hybrid dictionary + macOS NSSpellChecker pipeline
+- [Pattern Optimization](https://www.terseai.org/pattern-optimization): 130+ phrase-shortening and redundancy rules
+- [NLP Analysis](https://www.terseai.org/nlp-analysis): Filler, hedging, and meta-language removal
+- [Telegraph Compression](https://www.terseai.org/telegraph-compression): Aggressive article/preposition stripping
+
+## Research
+- [LLMLingua (EMNLP 2023)](https://www.terseai.org/llmlingua): How Terse builds on academic prompt compression research
+- [Norvig Spelling](https://www.terseai.org/norvig-spelling): Statistical spelling correction foundation
+- [Selective Context](https://www.terseai.org/selective-context): Context pruning for token reduction
+
+## Pricing
+- Free: 50 optimizations/week, 1 session, all 3 modes, spell correction
+- Pro ($7.99/mo): Unlimited optimizations, 3 sessions, agent monitoring, CLAUDE.md generation
+- Premium ($99/mo): Unlimited everything, unlimited devices, priority support

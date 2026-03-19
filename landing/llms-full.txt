@@ -1,0 +1,126 @@
+# Terse — Intelligent Token Optimizer for LLMs
+
+> Terse is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider.
+
+Updated: March 2026 · Version 1.2.0
+
+---
+
+## What Is Token Optimization?
+
+Token optimization is the systematic process of reducing the number of tokens sent to and received from large language models (LLMs) without degrading output quality. Every AI interaction — from a simple ChatGPT question to a complex Claude Code agent session — is measured and billed in tokens. A token is roughly 4 characters of English text.
+
+Terse automates token optimization using 20+ techniques organized in a 7-stage pipeline that runs on every prompt and agent command before it reaches the AI model.
+
+## The Problem: AI Costs Are Growing Fast
+
+In 2026, AI model pricing varies significantly:
+- Claude Opus 4: $15 input / $75 output per million tokens
+- Claude Sonnet 4: $3 input / $15 output per million tokens
+- Claude Haiku 3.5: $0.80 input / $4 output per million tokens
+- GPT-4o: $2.50 input / $10 output per million tokens
+- GPT-4o-mini: $0.15 input / $0.60 output per million tokens
+- Gemini 2.0 Flash: $0.10 input / $0.40 output per million tokens
+- Gemini 1.5 Pro: $1.25 input / $5 output per million tokens
+
+A typical 2-hour coding session with an AI agent generates approximately 210,000 tokens of CLI output and prompts. At Claude Opus rates, that's $3-15 per session. Heavy users report spending $200-500+ per month on AI API costs.
+
+## How Terse Works
+
+### 7-Stage Optimization Pipeline
+
+1. **Spell Correction**: 400+ built-in typo corrections (e.g., "authetication" → "authentication", "tokne" → "token") plus macOS NSSpellChecker integration. Typos cause costly retry loops when AI misunderstands the intent.
+
+2. **Whitespace Normalization**: Collapses multiple spaces, normalizes line endings, removes trailing whitespace. Zero semantic impact, immediate token savings.
+
+3. **Pattern Optimization**: 130+ phrase-shortening rules. Examples:
+   - "in order to" → "to"
+   - "at this point in time" → "now"
+   - "due to the fact that" → "because"
+   - "I was wondering if you could" → removed (filler)
+
+4. **Redundancy Elimination**: Jaccard similarity-based deduplication catches repeated context across agent turns. If you said it in turn 1, Terse removes it from turn 3.
+
+5. **NLP Analysis**: Removes filler words (just, really, very, actually, basically), hedging language (perhaps, maybe, I think), meta-language (I was wondering, could you maybe), and politeness padding that adds tokens without improving AI output.
+
+6. **Aggressive Compression** (Aggressive mode only): Telegraph-style rewriting strips articles (the, a, an), converts questions to imperatives ("Can you help me implement X?" → "Implement X"), and applies maximum compression.
+
+7. **Final Cleanup**: Normalizes punctuation, removes empty lines, ensures code blocks and URLs are intact.
+
+### Three Optimization Modes
+
+- **Soft**: Typo correction + whitespace only. Preserves 100% of meaning. Perfect for critical prompts where every word matters.
+- **Normal**: Removes filler, hedging, and meta-language. Best for everyday chat and standard agent interactions. Typical savings: 30-50%.
+- **Aggressive**: Maximum compression including telegraph style. Built for agent sessions where a single task can burn thousands of tokens. Typical savings: 50-70%.
+
+### Agent Session Monitoring
+
+Terse auto-detects AI agent processes via scanning every 5 seconds:
+- Claude Code
+- Cursor (AI IDE)
+- OpenClaw
+- Aider
+- Any terminal-based AI agent
+
+For each detected session, Terse tails JSONL session logs in real time and tracks:
+- Input tokens, output tokens, cache read tokens per turn
+- Model identification with pricing (Opus/Sonnet/Haiku/GPT-4o)
+- Tool calls: name, frequency, token cost
+- Duplicate tool call detection (same tool + same input = wasted tokens)
+- Redundant file reads (same file read multiple times, ~800 tokens wasted per re-read)
+- Context fill percentage with warnings at 60% and alerts at 85%
+- Compressible tool results estimation (Read: 60%, Grep: 40%, Bash git: 85%, tests: 90%)
+- Unused tool overhead (~300 tokens per unused tool per API call)
+- Auto-generated CLAUDE.md optimization rules from session patterns
+
+### Active Output Compression (RTK-Style)
+
+Terse includes a PreToolUse hook that intercepts Bash commands in Claude Code and compresses their output before it enters the LLM context:
+- Git status/diff/log: 75-85% compression
+- Test output: 90-92% compression (keeps only failures)
+- Build output: 80% compression (keeps errors + warnings)
+- JSON output: structure-only extraction
+- File listings: directory-grouped summaries
+- Generic output: deduplication + noise removal + truncation
+
+## Real-World Benchmarks
+
+Tested on real prompts and agent sessions:
+- Agent: mixed typos + filler → -64% tokens
+- Agent: verbose debug prompt → -60% tokens
+- Claude Code: typo-heavy → -51% tokens
+- OpenClaw: chatty request → -46% tokens
+- Tool overhead (unused tools) → -35% tokens
+- Repeated context (dedup) → -28% tokens
+- Clean technical prompt → 0% (correctly unchanged)
+
+A typical 2-hour coding session: 210K tokens raw → 23K tokens with Terse (89% reduction).
+
+## Token Optimization vs Prompt Engineering
+
+Prompt engineering focuses on crafting better instructions to get better AI outputs. Token optimization focuses on reducing the cost of those instructions by removing waste — filler, typos, redundancy, verbose phrasing — without changing the intent. They are complementary: use prompt engineering for quality, token optimization for cost.
+
+## Does Token Optimization Reduce Output Quality?
+
+No. Token optimization removes noise (filler words, hedging, redundant phrases, typos) that adds cost without improving results. Research from LLMLingua (EMNLP 2023, Liu et al.) demonstrates that compressed prompts maintain or even improve LLM output quality because the model receives a cleaner, more focused instruction.
+
+## Pricing
+
+- **Free**: 50 optimizations per week, 1 connected session, 1 device, all 3 optimization modes, spell correction
+- **Pro** ($7.99/month): Unlimited optimizations, 3 connected sessions, 2 devices, agent monitoring + duplicate detection, auto-replace & send mode, CLAUDE.md rule generation
+- **Premium** ($99/month): Unlimited optimizations, unlimited sessions, unlimited devices, full agent analytics + rule generation, auto-replace & send mode, priority support
+
+## Technical Stack
+
+- **Platform**: macOS (Tauri + Rust backend, Swift accessibility helper)
+- **Privacy**: 100% on-device processing, zero cloud dependency, no data leaves your machine
+- **Accessibility**: macOS Accessibility API for reading/writing text fields across any app
+- **Agent Detection**: Process scanning every 5 seconds, JSONL session log tailing
+- **Spellcheck**: Hybrid pipeline — hardcoded typo dictionary (fast) + macOS NSSpellChecker (comprehensive)
+
+## Links
+
+- Website: https://www.terseai.org
+- Documentation: https://www.terseai.org/docs
+- Download: https://www.terseai.org/#dl
+- Pricing: https://www.terseai.org/#pricing

@@ -1,0 +1,132 @@
+#!/bin/bash
+# terse-hook-copilot.sh — GitHub Copilot CLI preToolUse hook adapter
+# Copilot CLI hooks receive JSON on stdin: { tool_name, tool_input }
+# Returns JSON: { decision: "approve"|"deny", updatedInput? }
+#
+# Install: Add as a Copilot CLI extension or hook:
+#   ~/.github-copilot/hooks/preToolUse/terse-hook-copilot.sh
+# Or register in copilot CLI config.
+
+set -euo pipefail
+
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // .type // empty' 2>/dev/null)
+
+# Copilot CLI uses "bash", "shell", or "run_command" for shell execution
+if [ "$TOOL_NAME" != "bash" ] && [ "$TOOL_NAME" != "shell" ] && \
+   [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "run_command" ]; then
+  echo '{"decision":"approve"}'
+  exit 0
+fi
+
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // .input.command // .command // empty' 2>/dev/null)
+if [ -z "$COMMAND" ]; then
+  echo '{"decision":"approve"}'
+  exit 0
+fi
+
+# ── Skip list ──
+if [[ "$COMMAND" == *"terse-compress"* ]] || \
+   [[ "$COMMAND" == *"terse-hook"* ]] || \
+   [[ "$COMMAND" == *"<<EOF"* ]] || \
+   [[ "$COMMAND" == *"<<'"* ]] || \
+   [[ "$COMMAND" == "cd "* ]] || \
+   [[ "$COMMAND" == "echo "* ]] || \
+   [[ "$COMMAND" == "export "* ]] || \
+   [[ "$COMMAND" == "mkdir "* ]] || \
+   [[ "$COMMAND" == "chmod "* ]] || \
+   [[ "$COMMAND" == "mv "* ]] || \
+   [[ "$COMMAND" == "cp "* ]] || \
+   [[ "$COMMAND" == "rm "* ]] || \
+   [[ "$COMMAND" == "touch "* ]] || \
+   [[ "$COMMAND" == "which "* ]] || \
+   [[ "$COMMAND" == "pwd"* ]] || \
+   [[ "$COMMAND" == "kill "* ]] || \
+   [[ "$COMMAND" == "pkill "* ]] || \
+   [[ "$COMMAND" == "open "* ]] || \
+   [[ "$COMMAND" == "ssh "* ]] || \
+   [[ "$COMMAND" == "vim "* ]] || \
+   [[ "$COMMAND" == "nano "* ]]; then
+  echo '{"decision":"approve"}'
+  exit 0
+fi
+
+# ── Compress patterns ──
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SHOULD_COMPRESS=false
+
+COMPRESS_PATTERNS=(
+  "git status" "git diff" "git log" "git show" "git branch" "git stash"
+  "git push" "git pull" "git fetch" "git remote" "git blame"
+  "ls " "ls -" "find " "tree" "du " "df "
+  "npm test" "npx " "jest" "vitest" "pytest" "cargo test" "go test" "mocha" "ava"
+  "npm run" "pnpm " "yarn " "bun "
+  "npm install" "npm ci" "pnpm install" "yarn install"
+  "eslint" "tsc " "tsc --" "biome" "prettier" "ruff" "clippy" "golint"
+  "docker ps" "docker images" "docker logs" "docker compose"
+  "kubectl " "helm "
+  "cargo build" "cargo clippy" "cargo check" "go build" "go vet" "make"
+  "pip list" "pip show" "pip install" "pip freeze"
+  "cat " "head " "tail " "wc "
+  "env" "printenv" "set"
+  "ps " "ps aux" "top -" "htop"
+  "curl " "wget "
+  "grep " "rg " "ag " "ack "
+  "brew " "apt " "dnf " "pacman "
+)
+
+NORMALIZED_CMD="$COMMAND"
+if [[ "$COMMAND" == "git -"* ]]; then
+  NORMALIZED_CMD="git $(echo "$COMMAND" | sed 's/^git [^ ]* [^ ]* //')"
+fi
+
+for pattern in "${COMPRESS_PATTERNS[@]}"; do
+  if [[ "$COMMAND" == "$pattern"* ]] || [[ "$NORMALIZED_CMD" == "$pattern"* ]] || \
+     [[ "$COMMAND" == *"| $pattern"* ]] || [[ "$COMMAND" == *"&& $pattern"* ]]; then
+    SHOULD_COMPRESS=true
+    break
+  fi
+done
+
+if [ "$SHOULD_COMPRESS" = false ]; then
+  if [[ "$COMMAND" == *" | "* ]] && [[ ${#COMMAND} -gt 50 ]]; then
+    SHOULD_COMPRESS=true
+  fi
+fi
+
+if [ "$SHOULD_COMPRESS" = false ]; then
+  echo '{"decision":"approve"}'
+  exit 0
+fi
+
+# Find terse-compress
+TERSE_COMPRESS=""
+for candidate in \
+  "$SCRIPT_DIR/../terse-compress.js" \
+  "$SCRIPT_DIR/terse-compress.js" \
+  "$HOME/.terse/terse-compress.js" \
+  "/Applications/Terse.app/Contents/Resources/terse-compress.js"; do
+  if [ -f "$candidate" ]; then
+    TERSE_COMPRESS="$candidate"
+    break
+  fi
+done
+
+if [ -z "$TERSE_COMPRESS" ]; then
+  echo '{"decision":"approve"}'
+  exit 0
+fi
+
+WRAPPED="($COMMAND) 2>&1 | node $TERSE_COMPRESS"
+
+# Copilot CLI hook response format
+jq -n \
+  --arg cmd "$WRAPPED" \
+  '{
+    decision: "approve",
+    updatedInput: {
+      command: $cmd
+    }
+  }'
+
+exit 0

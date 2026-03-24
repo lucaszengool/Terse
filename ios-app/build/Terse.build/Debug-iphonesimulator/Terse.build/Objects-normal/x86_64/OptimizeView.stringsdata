@@ -1,0 +1,40 @@
+{
+  "source": "/Users/James/Desktop/Terse/ios-app/Terse/Views/OptimizeView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "TERSE"
+      },
+      {
+        "comment": "",
+        "key": "Keyboard Auto-Mode"
+      },
+      {
+        "comment": "",
+        "key": "Paste a prompt to optimize..."
+      },
+      {
+        "comment": "",
+        "key": "Optimizing..."
+      },
+      {
+        "comment": "",
+        "key": "Optimize"
+      },
+      {
+        "comment": "",
+        "key": "OPTIMIZED"
+      },
+      {
+        "comment": "",
+        "key": "Copied!"
+      },
+      {
+        "comment": "",
+        "key": "Copy Optimized Text"
+      }
+    ]
+  },
+  "version": 1
+}

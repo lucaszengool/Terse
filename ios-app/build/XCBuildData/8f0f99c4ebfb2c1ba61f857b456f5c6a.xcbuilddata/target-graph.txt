@@ -1,0 +1,6 @@
+Target dependency graph (3 targets)
+Target 'Terse' in project 'Terse'
+➜ Explicit dependency on target 'TerseKeyboard' in project 'Terse'
+➜ Explicit dependency on target 'TerseAction' in project 'Terse'
+Target 'TerseAction' in project 'Terse' (no dependencies)
+Target 'TerseKeyboard' in project 'Terse' (no dependencies)

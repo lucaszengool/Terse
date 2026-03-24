@@ -1,0 +1,34 @@
+/* Terse iOS App — Deutsch */
+
+"app.name" = "Terse";
+"header.saved" = "gespart";
+"header.totalSaved" = "insgesamt gespart";
+"header.pro" = "PRO";
+"header.setupKeyboard" = "Terse Tastatur einrichten";
+"tab.optimize" = "Optimieren";
+"tab.stats" = "Statistiken";
+"tab.settings" = "Einstellungen";
+"optimize.placeholder" = "Prompt zum Optimieren einfügen...";
+"optimize.button" = "Optimieren";
+"optimize.optimizing" = "Optimierung...";
+"optimize.copy" = "Kopieren";
+"optimize.copied" = "Kopiert";
+"stats.today" = "Heute";
+"stats.week" = "Woche";
+"stats.month" = "Monat";
+"stats.allTime" = "Gesamt";
+"stats.shareReceipt" = "Beleg teilen";
+"wallet.tokens" = "Tokens";
+"wallet.myThemes" = "Meine Themen";
+"wallet.themeShop" = "Themen-Shop";
+"wallet.unlock" = "Freischalten (₮100)";
+"wallet.cancel" = "Abbrechen";
+"wallet.done" = "Fertig";
+"settings.title" = "Einstellungen";
+"setup.title" = "Terse Tastatur einrichten";
+"setup.openSettings" = "Einstellungen öffnen";
+"mode.soft" = "Sanft";
+"mode.balanced" = "Ausgewogen";
+"mode.aggressive" = "Aggressiv";
+"quota.leftThisWeek" = "%d/%d diese Woche übrig";
+"quota.unlimited" = "Unbegrenzt";

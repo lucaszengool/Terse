@@ -24,6 +24,11 @@
 
 set -euo pipefail
 
+# Exit immediately if Terse is not running
+if ! pgrep -xiq "Terse"; then
+  exit 0
+fi
+
 # Read tool use event from stdin
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)

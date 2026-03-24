@@ -1,0 +1,101 @@
+/* Terse iOS App — English (Base) */
+
+// Header
+"app.name" = "Terse";
+"header.saved" = "saved";
+"header.totalSaved" = "total saved";
+"header.pro" = "PRO";
+"header.setupKeyboard" = "Set up Terse Keyboard";
+
+// Tabs
+"tab.optimize" = "Optimize";
+"tab.stats" = "Stats";
+"tab.settings" = "Settings";
+
+// Optimize
+"optimize.placeholder" = "Paste a prompt to optimize...";
+"optimize.button" = "Optimize";
+"optimize.optimizing" = "Optimizing...";
+"optimize.copy" = "Copy";
+"optimize.copied" = "Copied";
+"optimize.tokensArrow" = "%d → %d tokens";
+"optimize.reduction" = "reduction";
+
+// Stats — Receipt
+"stats.today" = "Today";
+"stats.week" = "Week";
+"stats.month" = "Month";
+"stats.allTime" = "All Time";
+"stats.receiptTitle" = "TOKEN SAVINGS RECEIPT";
+"stats.tokensReduced" = "TOKENS REDUCED";
+"stats.tokenDetails" = "TOKEN DETAILS";
+"stats.tokensInput" = "Tokens Input";
+"stats.tokensOutput" = "Tokens Output";
+"stats.tokensSaved" = "Tokens Saved";
+"stats.avgSavedPerMsg" = "Avg Saved/Msg";
+"stats.costSavings" = "COST SAVINGS (EST.)";
+"stats.activity" = "ACTIVITY";
+"stats.totalMessages" = "Total Messages";
+"stats.period" = "Period";
+"stats.bestDay" = "Best Day";
+"stats.bySources" = "BY SOURCE";
+"stats.thankYou" = "*** THANK YOU FOR SAVING ***";
+"stats.everyToken" = "Every token saved is money saved.";
+"stats.shareReceipt" = "Share Receipt";
+"stats.efficiency.excellent" = "EXCELLENT";
+"stats.efficiency.great" = "GREAT";
+"stats.efficiency.good" = "GOOD";
+"stats.efficiency.fair" = "FAIR";
+
+// Stats — Wallet / Tokens
+"wallet.tokens" = "tokens";
+"wallet.unlockThemes" = "Unlock themes with saved tokens";
+"wallet.myThemes" = "My Themes";
+"wallet.themeShop" = "Theme Shop";
+"wallet.tokensAvailable" = "%d tokens available";
+"wallet.unlock" = "Unlock (₮100)";
+"wallet.unlockTitle" = "Unlock Theme";
+"wallet.unlockMessage" = "Spend 100 tokens to unlock %@?";
+"wallet.cancel" = "Cancel";
+"wallet.solid" = "Solid";
+"wallet.gradient" = "Gradient";
+"wallet.done" = "Done";
+
+// Settings
+"settings.title" = "Settings";
+"settings.account" = "ACCOUNT";
+"settings.signOut" = "Sign Out";
+"settings.optimization" = "OPTIMIZATION";
+"settings.mode" = "Mode";
+"settings.fillerWords" = "Remove Filler Words";
+"settings.politeness" = "Remove Politeness";
+"settings.hedging" = "Remove Hedging";
+"settings.redundancy" = "Remove Redundancy";
+"settings.theme" = "THEME";
+"settings.keyboard" = "KEYBOARD";
+"settings.setupKeyboard" = "Set Up Keyboard";
+"settings.about" = "ABOUT";
+"settings.version" = "Version";
+"settings.website" = "Website";
+"settings.privacy" = "Privacy Policy";
+
+// Keyboard Setup
+"setup.title" = "Set Up Terse Keyboard";
+"setup.step1.title" = "Open Terse in Settings";
+"setup.step1.detail" = "Tap below to go to Terse's settings page. Then tap \"Keyboards\".";
+"setup.step2.title" = "Enable Terse & Full Access";
+"setup.step2.detail" = "Toggle on \"Terse\" keyboard, then tap it and enable \"Allow Full Access\" so it can read and optimize your text.";
+"setup.step3.title" = "Switch to Terse";
+"setup.step3.detail" = "In any app, tap the globe key on your keyboard to switch to Terse. It will optimize on every Send.";
+"setup.openSettings" = "Open Settings";
+"setup.done" = "Done";
+"setup.verify" = "Verify";
+
+// Modes
+"mode.soft" = "Soft";
+"mode.balanced" = "Balanced";
+"mode.aggressive" = "Aggressive";
+
+// Quota
+"quota.leftThisWeek" = "%d/%d left this week";
+"quota.unlimited" = "Unlimited";

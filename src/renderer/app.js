@@ -45,6 +45,11 @@ async function updateLicenseBanner() {
 // Refresh license every 30s
 setInterval(updateLicenseBanner, 30000);
 
+// Refresh immediately when quota changes (optimization performed)
+if (window.__TAURI__?.event?.listen) {
+  window.__TAURI__.event.listen('quota-updated', () => updateLicenseBanner());
+}
+
 // Also refresh when window gets focus (user returns from browser after payment)
 window.addEventListener('focus', () => {
   updateLicenseBanner();

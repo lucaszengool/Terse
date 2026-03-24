@@ -1,0 +1,25 @@
+/* Terse iOS App — Português (Brasil) */
+"app.name" = "Terse";
+"header.saved" = "economizados";
+"header.setupKeyboard" = "Configurar teclado Terse";
+"tab.optimize" = "Otimizar";
+"tab.stats" = "Estatísticas";
+"tab.settings" = "Configurações";
+"optimize.placeholder" = "Cole um prompt para otimizar...";
+"optimize.button" = "Otimizar";
+"optimize.copy" = "Copiar";
+"optimize.copied" = "Copiado";
+"stats.today" = "Hoje";
+"stats.week" = "Semana";
+"stats.month" = "Mês";
+"stats.allTime" = "Total";
+"stats.shareReceipt" = "Compartilhar recibo";
+"wallet.myThemes" = "Meus Temas";
+"wallet.themeShop" = "Loja de Temas";
+"wallet.done" = "Concluído";
+"settings.title" = "Configurações";
+"setup.openSettings" = "Abrir Configurações";
+"mode.soft" = "Suave";
+"mode.balanced" = "Equilibrado";
+"mode.aggressive" = "Agressivo";
+"quota.leftThisWeek" = "%d/%d restantes esta semana";

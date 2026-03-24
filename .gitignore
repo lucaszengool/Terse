@@ -11,3 +11,12 @@ src-tauri/target/
 
 # Electron backup (legacy)
 electron-backup/
+
+# Landing page build artifacts
+landing/gif-final/
+landing/gif-frames/
+landing/gif-segments/
+landing/live-photos/
+landing/posters/
+landing/promo-video.mp4
+landing/promo-video.gif

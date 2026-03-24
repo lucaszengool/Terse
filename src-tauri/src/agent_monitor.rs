@@ -20,6 +20,9 @@ struct AgentDef {
     name: &'static str,
     icon: &'static str,
     process_names: &'static [&'static str],
+    /// Fallback: also detect by checking if these config/log dirs exist and were
+    /// recently modified (for agents that run inside another process, e.g. Cline in VS Code)
+    config_detect_dirs: Vec<PathBuf>,
     log_dir: Option<PathBuf>,
     parser: &'static str,
 }
@@ -245,6 +248,7 @@ fn agent_defs() -> Vec<(&'static str, AgentDef)> {
             name: "Claude Code",
             icon: "\u{1F916}",
             process_names: &["claude"],
+            config_detect_dirs: vec![],
             log_dir: claude_log_dir,
             parser: "claudeCode",
         }),
@@ -252,6 +256,7 @@ fn agent_defs() -> Vec<(&'static str, AgentDef)> {
             name: "OpenClaw",
             icon: "\u{1F99E}",
             process_names: &["openclaw", "claw"],
+            config_detect_dirs: vec![home.join(".openclaw")],
             log_dir: Some(home.join(".openclaw")),
             parser: "openclaw",
         }),
@@ -259,13 +264,66 @@ fn agent_defs() -> Vec<(&'static str, AgentDef)> {
             name: "Aider",
             icon: "\u{1F527}",
             process_names: &["aider"],
+            config_detect_dirs: vec![],
             log_dir: None,
             parser: "generic",
         }),
         ("cursor-agent", AgentDef {
             name: "Cursor Agent",
             icon: "\u{1F4DD}",
-            process_names: &["Cursor Helper", "Cursor.app"],
+            // Cursor main binary is "Cursor", helpers are "Cursor Helper" etc.
+            // The scan logic already filters out .xpc/ and framework paths.
+            process_names: &["Cursor Helper", "Cursor"],
+            config_detect_dirs: vec![
+                home.join(".cursor"),
+                home.join("Library/Application Support/Cursor"),
+            ],
+            log_dir: None,
+            parser: "generic",
+        }),
+        ("codex", AgentDef {
+            name: "Codex CLI",
+            icon: "\u{1F4AC}",
+            process_names: &["codex"],
+            config_detect_dirs: vec![home.join(".codex")],
+            log_dir: Some(home.join(".codex")),
+            parser: "generic",
+        }),
+        ("copilot", AgentDef {
+            name: "Copilot CLI",
+            icon: "\u{2708}",
+            // Copilot CLI runs as `gh copilot` — process is `gh`.
+            // Also check for dedicated copilot CLI binary names.
+            process_names: &["github-copilot", "copilot-cli", "ghcs"],
+            config_detect_dirs: vec![
+                home.join(".github-copilot"),
+                home.join("Library/Application Support/Code/User/globalStorage/github.copilot-chat"),
+            ],
+            log_dir: Some(home.join(".github-copilot")),
+            parser: "generic",
+        }),
+        ("cline", AgentDef {
+            name: "Cline",
+            icon: "\u{1F50D}",
+            // Cline runs as a VS Code extension — no standalone process.
+            // Detection relies on config dirs being recently modified.
+            process_names: &[],
+            config_detect_dirs: vec![
+                home.join(".cline"),
+                home.join("Documents/Cline"),
+                home.join("Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev"),
+            ],
+            log_dir: Some(home.join(".cline")),
+            parser: "generic",
+        }),
+        ("windsurf", AgentDef {
+            name: "Windsurf",
+            icon: "\u{1F3C4}",
+            process_names: &["Windsurf", "Windsurf Helper"],
+            config_detect_dirs: vec![
+                home.join(".windsurf"),
+                home.join("Library/Application Support/Windsurf"),
+            ],
             log_dir: None,
             parser: "generic",
         }),
@@ -1049,33 +1107,62 @@ impl AgentMonitor {
         let mut new_detections = Vec::new();
 
         for (type_key, def) in &defs {
-            for proc in &procs {
-                let comm_lower = proc.comm.to_lowercase();
-                let matched = def.process_names.iter().any(|name| {
-                    let lname = name.to_lowercase();
-                    let basename = comm_lower.rsplit('/').next().unwrap_or(&comm_lower);
-                    basename == lname || comm_lower.contains(&format!("/{}", lname))
-                        || (comm_lower.contains(&lname) && !comm_lower.contains(".xpc/") && !comm_lower.contains("framework"))
-                });
-                if matched {
-                    now_detected.insert(*type_key);
-                    if !self.detected.contains_key(*type_key)
-                        && !self.sessions.contains_key(*type_key)
-                        && !self.pending.iter().any(|d| d.agent_type == *type_key)
-                    {
-                        self.detected.insert(type_key.to_string(), proc.pid);
-                        let detection = PendingDetection {
-                            agent_type: type_key.to_string(),
-                            name: def.name.to_string(),
-                            icon: def.icon.to_string(),
-                            pid: proc.pid,
-                            log_dir: def.log_dir.clone(),
-                            parser: def.parser.to_string(),
-                        };
-                        self.pending.push(detection.clone());
-                        new_detections.push((*type_key, detection));
+            // Method 1: Process name matching
+            let mut matched_pid: Option<u32> = None;
+            if !def.process_names.is_empty() {
+                for proc in &procs {
+                    let comm_lower = proc.comm.to_lowercase();
+                    let matched = def.process_names.iter().any(|name| {
+                        let lname = name.to_lowercase();
+                        let basename = comm_lower.rsplit('/').next().unwrap_or(&comm_lower);
+                        basename == lname || comm_lower.contains(&format!("/{}", lname))
+                            || (comm_lower.contains(&lname) && !comm_lower.contains(".xpc/") && !comm_lower.contains("framework"))
+                    });
+                    if matched {
+                        matched_pid = Some(proc.pid);
+                        break;
                     }
-                    break;
+                }
+            }
+
+            // Method 2: Config dir detection (for agents like Cline that run inside
+            // another process). Check if any config dir was modified in the last 2 minutes.
+            if matched_pid.is_none() && !def.config_detect_dirs.is_empty() {
+                for dir in &def.config_detect_dirs {
+                    if dir.exists() {
+                        if let Ok(meta) = fs::metadata(dir) {
+                            if let Ok(mtime) = meta.modified() {
+                                let age = SystemTime::now().duration_since(mtime).unwrap_or(Duration::from_secs(u64::MAX));
+                                if age < Duration::from_secs(120) {
+                                    // Config dir recently modified — agent is likely active
+                                    matched_pid = Some(0); // pid 0 = detected via config
+                                    eprintln!("[terse-agent] {} detected via config dir: {:?} (modified {}s ago)",
+                                        def.name, dir, age.as_secs());
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if let Some(pid) = matched_pid {
+                now_detected.insert(*type_key);
+                if !self.detected.contains_key(*type_key)
+                    && !self.sessions.contains_key(*type_key)
+                    && !self.pending.iter().any(|d| d.agent_type == *type_key)
+                {
+                    self.detected.insert(type_key.to_string(), pid);
+                    let detection = PendingDetection {
+                        agent_type: type_key.to_string(),
+                        name: def.name.to_string(),
+                        icon: def.icon.to_string(),
+                        pid,
+                        log_dir: def.log_dir.clone(),
+                        parser: def.parser.to_string(),
+                    };
+                    self.pending.push(detection.clone());
+                    new_detections.push((*type_key, detection));
                 }
             }
         }

@@ -1,0 +1,24 @@
+/* Terse iOS App — العربية */
+"app.name" = "Terse";
+"header.saved" = "تم التوفير";
+"header.setupKeyboard" = "إعداد لوحة مفاتيح Terse";
+"tab.optimize" = "تحسين";
+"tab.stats" = "إحصائيات";
+"tab.settings" = "الإعدادات";
+"optimize.placeholder" = "الصق نصاً لتحسينه...";
+"optimize.button" = "تحسين";
+"optimize.copy" = "نسخ";
+"optimize.copied" = "تم النسخ";
+"stats.today" = "اليوم";
+"stats.week" = "الأسبوع";
+"stats.month" = "الشهر";
+"stats.allTime" = "الكل";
+"stats.shareReceipt" = "مشاركة الإيصال";
+"wallet.myThemes" = "سماتي";
+"wallet.themeShop" = "متجر السمات";
+"wallet.done" = "تم";
+"settings.title" = "الإعدادات";
+"setup.openSettings" = "فتح الإعدادات";
+"mode.soft" = "خفيف";
+"mode.balanced" = "متوازن";
+"mode.aggressive" = "قوي";

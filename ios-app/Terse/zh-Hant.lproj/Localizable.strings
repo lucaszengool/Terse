@@ -1,0 +1,92 @@
+/* Terse iOS App — 繁體中文 */
+
+"app.name" = "Terse";
+"header.saved" = "已節省";
+"header.totalSaved" = "總計節省";
+"header.pro" = "PRO";
+"header.setupKeyboard" = "設定 Terse 鍵盤";
+
+"tab.optimize" = "優化";
+"tab.stats" = "統計";
+"tab.settings" = "設定";
+
+"optimize.placeholder" = "貼上一段提示詞來優化...";
+"optimize.button" = "優化";
+"optimize.optimizing" = "優化中...";
+"optimize.copy" = "複製";
+"optimize.copied" = "已複製";
+"optimize.tokensArrow" = "%d → %d tokens";
+"optimize.reduction" = "縮減";
+
+"stats.today" = "今天";
+"stats.week" = "本週";
+"stats.month" = "本月";
+"stats.allTime" = "全部";
+"stats.receiptTitle" = "TOKEN 節省收據";
+"stats.tokensReduced" = "TOKENS 已縮減";
+"stats.tokenDetails" = "TOKEN 詳情";
+"stats.tokensInput" = "輸入 Tokens";
+"stats.tokensOutput" = "輸出 Tokens";
+"stats.tokensSaved" = "節省 Tokens";
+"stats.avgSavedPerMsg" = "平均每條節省";
+"stats.costSavings" = "預估費用節省";
+"stats.activity" = "活動";
+"stats.totalMessages" = "總訊息數";
+"stats.period" = "時間段";
+"stats.bestDay" = "最佳日";
+"stats.bySources" = "按來源";
+"stats.thankYou" = "*** 感謝您節省 TOKEN ***";
+"stats.everyToken" = "每個節省的 token 都是省下的錢。";
+"stats.shareReceipt" = "分享收據";
+"stats.efficiency.excellent" = "優秀";
+"stats.efficiency.great" = "很好";
+"stats.efficiency.good" = "良好";
+"stats.efficiency.fair" = "一般";
+
+"wallet.tokens" = "tokens";
+"wallet.unlockThemes" = "用節省的 tokens 解鎖主題";
+"wallet.myThemes" = "我的主題";
+"wallet.themeShop" = "主題商店";
+"wallet.tokensAvailable" = "%d tokens 可用";
+"wallet.unlock" = "解鎖 (₮100)";
+"wallet.unlockTitle" = "解鎖主題";
+"wallet.unlockMessage" = "花費 100 tokens 解鎖 %@？";
+"wallet.cancel" = "取消";
+"wallet.solid" = "純色";
+"wallet.gradient" = "漸層";
+"wallet.done" = "完成";
+
+"settings.title" = "設定";
+"settings.account" = "帳戶";
+"settings.signOut" = "登出";
+"settings.optimization" = "優化選項";
+"settings.mode" = "模式";
+"settings.fillerWords" = "去除填充詞";
+"settings.politeness" = "去除客套話";
+"settings.hedging" = "去除模糊語";
+"settings.redundancy" = "去除冗餘";
+"settings.theme" = "主題";
+"settings.keyboard" = "鍵盤";
+"settings.setupKeyboard" = "設定鍵盤";
+"settings.about" = "關於";
+"settings.version" = "版本";
+"settings.website" = "官網";
+"settings.privacy" = "隱私政策";
+
+"setup.title" = "設定 Terse 鍵盤";
+"setup.step1.title" = "在設定中開啟 Terse";
+"setup.step1.detail" = "點擊下方前往 Terse 設定頁面，然後點擊「鍵盤」。";
+"setup.step2.title" = "啟用 Terse 並允許完全存取";
+"setup.step2.detail" = "開啟「Terse」鍵盤，然後點擊它並啟用「允許完全存取」以便讀取和優化您的文字。";
+"setup.step3.title" = "切換到 Terse";
+"setup.step3.detail" = "在任何應用程式中，點擊鍵盤上的地球鍵切換到 Terse。傳送時自動優化。";
+"setup.openSettings" = "開啟設定";
+"setup.done" = "完成";
+"setup.verify" = "驗證";
+
+"mode.soft" = "輕度";
+"mode.balanced" = "均衡";
+"mode.aggressive" = "積極";
+
+"quota.leftThisWeek" = "本週剩餘 %d/%d";
+"quota.unlimited" = "無限";

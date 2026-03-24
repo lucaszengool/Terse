@@ -87,7 +87,7 @@ impl Default for License {
             tier: "free".to_string(),
             status: "active".to_string(),
             limits: PlanLimits {
-                optimizations_per_week: 50,
+                optimizations_per_week: 200,
                 max_sessions: 1,
                 max_devices: 1,
             },
@@ -207,7 +207,7 @@ pub async fn verify_license(clerk_user_id: &str) -> Option<License> {
     let status = v["status"].as_str().unwrap_or("active").to_string();
 
     let limits = PlanLimits {
-        optimizations_per_week: v["limits"]["optimizations_per_week"].as_i64().unwrap_or(50) as i32,
+        optimizations_per_week: v["limits"]["optimizations_per_week"].as_i64().unwrap_or(200) as i32,
         max_sessions: v["limits"]["max_sessions"].as_i64().unwrap_or(1) as i32,
         max_devices: v["limits"]["max_devices"].as_i64().unwrap_or(1) as i32,
     };

@@ -7,12 +7,22 @@
 </head>
 <body>
   <!-- Auth Gate — shown until user signs in -->
-  <div id="authGate" style="position:fixed;inset:0;z-index:9999;background:#0d0c16;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
-    <div style="width:48px;height:48px;background:linear-gradient(135deg,#6ee7b7,#34d399);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#0d0c16">T</div>
-    <h2 style="color:#fff;font-size:18px;font-weight:700;margin:0">Welcome to Terse</h2>
-    <p style="color:rgba(255,255,255,0.5);font-size:12px;text-align:center;margin:0;line-height:1.6">Sign in to start optimizing<br>your AI token usage</p>
-    <button id="gateSignIn" style="margin-top:8px;padding:10px 28px;background:linear-gradient(135deg,#6ee7b7,#34d399);color:#0d0c16;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Sign In</button>
-    <button id="gateSignUp" style="padding:8px 28px;background:transparent;color:#6ee7b7;border:1px solid rgba(110,231,183,0.3);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">Create Account</button>
+  <div id="authGate" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
+    <div style="width:48px;height:48px;background:var(--btn);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--btn-t)">T</div>
+    <h2 style="color:var(--t1);font-size:18px;font-weight:700;margin:0">Welcome to Terse</h2>
+    <p style="color:var(--t3);font-size:12px;text-align:center;margin:0;line-height:1.6">Choose your style</p>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:4px 0">
+      <div class="gate-theme" data-t="lime" style="width:36px;height:36px;border-radius:50%;background:#d1e847;cursor:pointer;border:3px solid var(--t1)"></div>
+      <div class="gate-theme" data-t="lavender" style="width:36px;height:36px;border-radius:50%;background:#c4b5fd;cursor:pointer;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="coral" style="width:36px;height:36px;border-radius:50%;background:#ff8a80;cursor:pointer;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="teal" style="width:36px;height:36px;border-radius:50%;background:#5eead4;cursor:pointer;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="midnight" style="width:36px;height:36px;border-radius:50%;background:#1e293b;cursor:pointer;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="rose" style="width:36px;height:36px;border-radius:50%;background:#fda4af;cursor:pointer;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="sage" style="width:36px;height:36px;border-radius:50%;background:#86efac;cursor:pointer;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="sand" style="width:36px;height:36px;border-radius:50%;background:#fde68a;cursor:pointer;border:3px solid transparent"></div>
+    </div>
+    <button id="gateSignIn" style="margin-top:4px;padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer">Sign In</button>
+    <button id="gateSignUp" style="padding:8px 28px;background:transparent;color:var(--t2);border:none;border-radius:9999px;font-size:12px;font-weight:600;cursor:pointer">Create Account</button>
   </div>
 
   <div id="titlebar" data-tauri-drag-region>
@@ -22,6 +32,9 @@
       <span class="tracking-label" id="trackingLabel"></span>
     </div>
     <div class="titlebar-controls">
+      <button class="titlebar-btn" id="btnTheme" title="Theme">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 000 20 4 4 0 01 0-8 4 4 0 00 0-8"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><circle cx="9" cy="13" r="1.5" fill="currentColor"/></svg>
+      </button>
       <button class="titlebar-btn" id="btnSettings" title="Settings">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       </button>
@@ -132,6 +145,19 @@
           </div>
         </div>
       </div>
+      <div class="setting-group">
+        <label class="setting-label">Theme</label>
+        <div class="theme-picker">
+          <div class="theme-dot" data-t="lime" style="background:#d1e847" title="Lime"></div>
+          <div class="theme-dot" data-t="lavender" style="background:#c4b5fd" title="Lavender"></div>
+          <div class="theme-dot" data-t="coral" style="background:#ff8a80" title="Coral"></div>
+          <div class="theme-dot" data-t="teal" style="background:#5eead4" title="Teal"></div>
+          <div class="theme-dot" data-t="midnight" style="background:#1e293b" title="Midnight"></div>
+          <div class="theme-dot" data-t="rose" style="background:#fda4af" title="Rose"></div>
+          <div class="theme-dot" data-t="sage" style="background:#86efac" title="Sage"></div>
+          <div class="theme-dot" data-t="sand" style="background:#fde68a" title="Sand"></div>
+        </div>
+      </div>
       <button id="btnCloseSettings" class="secondary-btn">Done</button>
     </div>
 
@@ -144,9 +170,60 @@
       <button id="btnUpgrade" class="upgrade-btn">Upgrade</button>
     </div>
 
+    <!-- Theme dropdown -->
+    <div id="themeDropdown" class="theme-dropdown hidden">
+      <div class="theme-dot" data-t="lime" style="background:#d1e847" title="Lime"></div>
+      <div class="theme-dot" data-t="lavender" style="background:#c4b5fd" title="Lavender"></div>
+      <div class="theme-dot" data-t="coral" style="background:#ff8a80" title="Coral"></div>
+      <div class="theme-dot" data-t="teal" style="background:#5eead4" title="Teal"></div>
+      <div class="theme-dot" data-t="midnight" style="background:#1e293b" title="Midnight"></div>
+      <div class="theme-dot" data-t="rose" style="background:#fda4af" title="Rose"></div>
+      <div class="theme-dot" data-t="sage" style="background:#86efac" title="Sage"></div>
+      <div class="theme-dot" data-t="sand" style="background:#fde68a" title="Sand"></div>
+    </div>
     <div id="toast" class="toast hidden"></div>
   </div>
   <script>
+    /* ── Theme System ── */
+    function setTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('terse-theme', t);
+      // Update active states
+      document.querySelectorAll('.theme-dot,.gate-theme').forEach(function(d) {
+        d.style.borderColor = d.dataset.t === t ? 'var(--t1)' : 'transparent';
+      });
+      // Update auth gate background
+      var gate = document.getElementById('authGate');
+      if (gate) gate.style.background = 'var(--bg)';
+    }
+    // Load saved theme
+    (function() {
+      var saved = localStorage.getItem('terse-theme') || 'lime';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+    // Bind theme dots (settings + auth gate)
+    document.addEventListener('click', function(e) {
+      var dot = e.target.closest('.theme-dot,.gate-theme');
+      if (dot && dot.dataset.t) setTheme(dot.dataset.t);
+    });
+
+    // Theme dropdown toggle
+    document.getElementById('btnTheme').addEventListener('click', function() {
+      var dd = document.getElementById('themeDropdown');
+      dd.classList.toggle('hidden');
+      // Update active dot
+      var saved = localStorage.getItem('terse-theme') || 'lime';
+      dd.querySelectorAll('.theme-dot').forEach(function(d) {
+        d.style.borderColor = d.dataset.t === saved ? 'var(--btn-t)' : 'transparent';
+      });
+    });
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#btnTheme') && !e.target.closest('#themeDropdown')) {
+        document.getElementById('themeDropdown').classList.add('hidden');
+      }
+    });
+
     function _loadScripts() {
       if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
       ['tauri-bridge.js','optimizer-bundle.js','app.js'].reduce(function(p, src) {

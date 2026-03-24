@@ -43,6 +43,25 @@ if (_dbgInvoke) {
   };
 }
 
+// ── Quota display ──
+async function updatePopupQuota() {
+  const el = document.getElementById('popupQuota');
+  if (!el) return;
+  try {
+    const lic = await _invoke('get_license');
+    if (lic.remaining < 0) {
+      el.textContent = '';
+    } else {
+      el.textContent = lic.remaining + '/' + lic.limits.optimizationsPerWeek + ' left';
+      el.classList.toggle('low', lic.remaining <= 10);
+    }
+  } catch { el.textContent = ''; }
+}
+updatePopupQuota();
+if (window.__TAURI__?.event?.listen) {
+  window.__TAURI__.event.listen('quota-updated', () => updatePopupQuota());
+}
+
 function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -169,7 +188,11 @@ T.on('optimize-request', async (d) => {
     console.error('[terse-popup] optimizer error:', e);
     return;
   }
-  _invoke('record_optimization_usage').catch(() => {});
+  _invoke('record_optimization_usage').then(() => {
+    if (window.__TAURI__?.event?.emit) {
+      window.__TAURI__.event.emit('quota-updated').catch(() => {});
+    }
+  }).catch(() => {});
   const displayOptimized = d.currentWord ? opt.optimized + d.currentWord : opt.optimized;
 
   _updatePopupUI({
@@ -534,15 +557,38 @@ function updateAgentPanel(snapshot) {
     }).catch(() => { window._hookStatsPending = false; });
   }
 
-  const totalSaved = (opt.potentialSavings || 0) + autoSaved + (snapshot.rereadWaste || 0)
-    + (_tcp.tokensWasted || 0) + (_trs.compressibleTokens || 0) + hookSaved;
+  // Actual savings = hook compression (tokens truly removed from context)
+  const actualSaved = hookSaved + autoSaved;
+  // Potential savings = estimates of what could be saved
+  const potentialSaved = (opt.potentialSavings || 0) + (snapshot.rereadWaste || 0)
+    + (_tcp.tokensWasted || 0) + (_trs.compressibleTokens || 0);
+  const totalSaved = actualSaved + potentialSaved;
   const totalIn = (snapshot.totalInputTokens || 1);
-  const pct = totalIn > 0 ? Math.round((totalSaved / totalIn) * 100) : 0;
 
-  document.getElementById('agentSavedBig').textContent = formatTokens(totalSaved);
-  document.getElementById('agentSaveShort').textContent = formatTokens(totalSaved);
+  // Show "saved" when hook is active, "saveable" when only estimates
+  const hasActual = actualSaved > 0;
+  const displaySaved = hasActual ? actualSaved : totalSaved;
+  const label = hasActual ? 'saved' : 'saveable';
+
+  // When hook is active, show the hook's compression rate (meaningful %)
+  // instead of saved/totalInput which is always ~0% for large conversations
+  const hookPct = window._terseHookStats?.percentSaved || 0;
+  const pct = hasActual && hookPct > 0
+    ? hookPct
+    : (totalIn > 0 ? Math.round((totalSaved / totalIn) * 100) : 0);
+
+  document.getElementById('agentSavedBig').textContent = formatTokens(displaySaved);
+  document.getElementById('agentSaveShort').textContent = formatTokens(displaySaved);
   document.getElementById('agentSavingsPct').textContent = pct + '%';
   document.getElementById('agentSavingsBar').style.width = Math.min(pct, 100) + '%';
+
+  // Update labels dynamically
+  const saveLabelEl = document.getElementById('agentSaveLabel');
+  if (saveLabelEl) saveLabelEl.textContent = label;
+  const savingsUnitEl = document.getElementById('agentSavingsUnit');
+  if (savingsUnitEl) savingsUnitEl.textContent = hasActual
+    ? 'tokens saved' + (potentialSaved > 1000 ? ' (+' + formatTokens(potentialSaved) + ' saveable)' : '')
+    : 'tokens saveable';
 
   // Show hook compression badge if active
   let hookBadgeEl = document.getElementById('agentHookBadge');

@@ -9,5 +9,8 @@
   "dependencies": {
     "express": "^4.21.0",
     "stripe": "^17.5.0"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.39.1"
   }
 }

@@ -1,0 +1,40 @@
+{
+  "source": "/Users/James/Desktop/Terse/ios-app/Terse/Views/StatsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "STATISTICS"
+      },
+      {
+        "comment": "",
+        "key": "USAGE & SAVINGS"
+      },
+      {
+        "comment": "",
+        "key": "BY SOURCE"
+      },
+      {
+        "comment": "",
+        "key": "No source data yet."
+      },
+      {
+        "comment": "",
+        "key": "Tokens Used"
+      },
+      {
+        "comment": "",
+        "key": "Tokens Saved"
+      },
+      {
+        "comment": "",
+        "key": "T"
+      },
+      {
+        "comment": "",
+        "key": "No data yet. Start optimizing to see charts."
+      }
+    ]
+  },
+  "version": 1
+}

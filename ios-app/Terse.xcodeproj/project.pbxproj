@@ -1,0 +1,675 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		PKG0000001 /* KeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = PKG0000002; };
+		PY00000001 /* PinyinDB.swift in Sources */ = {isa = PBXBuildFile; fileRef = PY00000010; };
+		PY00000002 /* hema_db.sqlite in Resources */ = {isa = PBXBuildFile; fileRef = PY00000011; };
+		PY00000003 /* pinyin_dict.db in Resources */ = {isa = PBXBuildFile; fileRef = PY00000012; };
+		PY00000004 /* zh_optimize.db in Resources */ = {isa = PBXBuildFile; fileRef = PY00000013; };
+		ZH00000001 /* ZhOptimizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ZH00000010; };
+		ZH00000002 /* ZhOptimizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ZH00000010; };
+		A100000001 /* TerseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000001; };
+		A100000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000002; };
+		A100000003 /* OptimizeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000003; };
+		A100000004 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000004; };
+		A100000005 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000005; };
+		A100000006 /* KeyboardSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000006; };
+		A100000007 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000007; };
+		L100000001 /* TerseL10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = L100000010; };
+		A100000008 /* TerseOptimizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000020; };
+		A100000009 /* TerseSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000021; };
+		A10000000A /* TerseTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000022; };
+		A10000000B /* TerseKeyboard.appex in Embed */ = {isa = PBXBuildFile; fileRef = C100000001; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A10000000C /* TerseAction.appex in Embed */ = {isa = PBXBuildFile; fileRef = D100000001; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A10000000D /* TerseActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000023; };
+		A10000000F /* TerseAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000024; };
+		A100000010 /* TerseMultiLang.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000025; };
+		A200000001 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000001; };
+		A200000002 /* TerseOptimizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000020; };
+		A200000003 /* TerseSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000021; };
+		A200000004 /* TerseTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000022; };
+		A200000005 /* TerseActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000023; };
+		A200000006 /* TerseMultiLang.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000025; };
+		A300000001 /* ActionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B300000001; };
+		A300000002 /* TerseOptimizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000020; };
+		A300000003 /* TerseSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000021; };
+		A300000004 /* TerseTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000022; };
+		A300000005 /* TerseAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000024; };
+		A300000006 /* TerseMultiLang.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000025; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F100000001;
+			proxyType = 1;
+			remoteGlobalIDString = C100000000;
+			remoteInfo = TerseKeyboard;
+		};
+		E100000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F100000001;
+			proxyType = 1;
+			remoteGlobalIDString = D100000000;
+			remoteInfo = TerseAction;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E200000001 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A10000000B /* TerseKeyboard.appex in Embed */,
+				A10000000C /* TerseAction.appex in Embed */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		B100000001 /* TerseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerseApp.swift; sourceTree = "<group>"; };
+		B100000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B100000003 /* OptimizeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimizeView.swift; sourceTree = "<group>"; };
+		B100000004 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B100000005 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		B100000006 /* KeyboardSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardSetupView.swift; sourceTree = "<group>"; };
+		B100000007 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		L100000010 /* TerseL10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerseL10n.swift; sourceTree = "<group>"; };
+		B100000010 /* Terse.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Terse.entitlements; sourceTree = "<group>"; };
+		B100000020 /* TerseOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerseOptimizer.swift; sourceTree = "<group>"; };
+		B100000021 /* TerseSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerseSettings.swift; sourceTree = "<group>"; };
+		B100000022 /* TerseTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerseTheme.swift; sourceTree = "<group>"; };
+		B100000023 /* TerseActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerseActivityAttributes.swift; sourceTree = "<group>"; };
+		B100000024 /* TerseAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerseAuth.swift; sourceTree = "<group>"; };
+		B100000025 /* TerseMultiLang.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerseMultiLang.swift; sourceTree = "<group>"; };
+		B200000001 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
+		PY00000010 /* PinyinDB.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinyinDB.swift; sourceTree = "<group>"; };
+		PY00000011 /* hema_db.sqlite */ = {isa = PBXFileReference; lastKnownFileType = file; path = hema_db.sqlite; sourceTree = "<group>"; };
+		PY00000012 /* pinyin_dict.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = pinyin_dict.db; sourceTree = "<group>"; };
+		PY00000013 /* zh_optimize.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = zh_optimize.db; sourceTree = "<group>"; };
+		ZH00000010 /* ZhOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhOptimizer.swift; sourceTree = "<group>"; };
+		B200000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B200000011 /* TerseKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TerseKeyboard.entitlements; sourceTree = "<group>"; };
+		B300000001 /* ActionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionViewController.swift; sourceTree = "<group>"; };
+		B300000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B300000011 /* TerseAction.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TerseAction.entitlements; sourceTree = "<group>"; };
+		C100000001 /* TerseKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TerseKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D100000001 /* TerseAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TerseAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F100000002 /* Terse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Terse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C100000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				PKG0000001 /* KeyboardKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D100000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F100000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		G100000001 = {
+			isa = PBXGroup;
+			children = (
+				G100000010 /* Terse */,
+				G100000020 /* Shared */,
+				G100000030 /* TerseKeyboard */,
+				G100000040 /* TerseAction */,
+				G100000050 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		G100000010 /* Terse */ = {
+			isa = PBXGroup;
+			children = (
+				B100000001 /* TerseApp.swift */,
+				B100000010 /* Terse.entitlements */,
+				G100000011 /* Views */,
+			);
+			path = Terse;
+			sourceTree = "<group>";
+		};
+		G100000011 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B100000002 /* ContentView.swift */,
+				B100000003 /* OptimizeView.swift */,
+				B100000004 /* SettingsView.swift */,
+				B100000005 /* StatsView.swift */,
+				B100000006 /* KeyboardSetupView.swift */,
+				B100000007 /* Components.swift */,
+				L100000010 /* TerseL10n.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		G100000020 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				B100000020 /* TerseOptimizer.swift */,
+				B100000021 /* TerseSettings.swift */,
+				B100000022 /* TerseTheme.swift */,
+				B100000023 /* TerseActivityAttributes.swift */,
+				B100000024 /* TerseAuth.swift */,
+				B100000025 /* TerseMultiLang.swift */,
+				ZH00000010 /* ZhOptimizer.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		G100000030 /* TerseKeyboard */ = {
+			isa = PBXGroup;
+			children = (
+				B200000001 /* KeyboardViewController.swift */,
+				PY00000010 /* PinyinDB.swift */,
+				PY00000011 /* hema_db.sqlite */,
+				PY00000012 /* pinyin_dict.db */,
+				PY00000013 /* zh_optimize.db */,
+				B200000010 /* Info.plist */,
+				B200000011 /* TerseKeyboard.entitlements */,
+			);
+			path = TerseKeyboard;
+			sourceTree = "<group>";
+		};
+		G100000040 /* TerseAction */ = {
+			isa = PBXGroup;
+			children = (
+				B300000001 /* ActionViewController.swift */,
+				B300000010 /* Info.plist */,
+				B300000011 /* TerseAction.entitlements */,
+			);
+			path = TerseAction;
+			sourceTree = "<group>";
+		};
+		G100000050 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F100000002 /* Terse.app */,
+				C100000001 /* TerseKeyboard.appex */,
+				D100000001 /* TerseAction.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C100000000 /* TerseKeyboard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C100000010;
+			buildPhases = (
+				C100000003 /* Sources */,
+				C100000004 /* Frameworks */,
+				C100000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TerseKeyboard;
+			packageProductDependencies = (
+				PKG0000002 /* KeyboardKit */,
+			);
+			productName = TerseKeyboard;
+			productReference = C100000001;
+			productType = "com.apple.product-type.app-extension";
+		};
+		D100000000 /* TerseAction */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D100000010;
+			buildPhases = (
+				D100000003 /* Sources */,
+				D100000004 /* Frameworks */,
+				D100000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TerseAction;
+			productName = TerseAction;
+			productReference = D100000001;
+			productType = "com.apple.product-type.app-extension";
+		};
+		F100000000 /* Terse */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F100000010;
+			buildPhases = (
+				F100000003 /* Sources */,
+				F100000004 /* Frameworks */,
+				F100000005 /* Resources */,
+				E200000001 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E100000003 /* PBXTargetDependency */,
+				E100000004 /* PBXTargetDependency */,
+			);
+			name = Terse;
+			productName = Terse;
+			productReference = F100000002;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F100000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1540;
+				LastUpgradeCheck = 1540;
+			};
+			buildConfigurationList = F100000020;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				"zh-Hans",
+				"zh-Hant",
+				ja,
+				ko,
+				es,
+				fr,
+				de,
+				"pt-BR",
+				it,
+				ar,
+			);
+			mainGroup = G100000001;
+			productRefGroup = G100000050;
+			packageReferences = (
+				PKG0000003 /* XCRemoteSwiftPackageReference "KeyboardKit" */,
+			);
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F100000000 /* Terse */,
+				C100000000 /* TerseKeyboard */,
+				D100000000 /* TerseAction */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C100000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				PY00000002 /* hema_db.sqlite in Resources */,
+				PY00000003 /* pinyin_dict.db in Resources */,
+				PY00000004 /* zh_optimize.db in Resources */,
+				PY00000004 /* zh_optimize.db in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D100000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F100000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C100000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A200000001 /* KeyboardViewController.swift in Sources */,
+				A200000002 /* TerseOptimizer.swift in Sources */,
+				A200000006 /* TerseMultiLang.swift in Sources */,
+				PY00000001 /* PinyinDB.swift in Sources */,
+				ZH00000001 /* ZhOptimizer.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D100000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A300000001 /* ActionViewController.swift in Sources */,
+				A300000002 /* TerseOptimizer.swift in Sources */,
+				A300000003 /* TerseSettings.swift in Sources */,
+				A300000004 /* TerseTheme.swift in Sources */,
+				A300000005 /* TerseAuth.swift in Sources */,
+				A300000006 /* TerseMultiLang.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F100000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100000001 /* TerseApp.swift in Sources */,
+				A100000002 /* ContentView.swift in Sources */,
+				A100000003 /* OptimizeView.swift in Sources */,
+				A100000004 /* SettingsView.swift in Sources */,
+				A100000005 /* StatsView.swift in Sources */,
+				A100000006 /* KeyboardSetupView.swift in Sources */,
+				A100000007 /* Components.swift in Sources */,
+				L100000001 /* TerseL10n.swift in Sources */,
+				A100000008 /* TerseOptimizer.swift in Sources */,
+				A100000009 /* TerseSettings.swift in Sources */,
+				A10000000A /* TerseTheme.swift in Sources */,
+				A10000000D /* TerseActivityAttributes.swift in Sources */,
+				A10000000F /* TerseAuth.swift in Sources */,
+				A100000010 /* TerseMultiLang.swift in Sources */,
+				ZH00000002 /* ZhOptimizer.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E100000003 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C100000000;
+			targetProxy = E100000001;
+		};
+		E100000004 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D100000000;
+			targetProxy = E100000002;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		C100000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TerseKeyboard/TerseKeyboard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V976V29W45;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TerseKeyboard/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.terse.ios.keyboard;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		C100000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TerseKeyboard/TerseKeyboard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V976V29W45;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TerseKeyboard/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.terse.ios.keyboard;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		D100000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TerseAction/TerseAction.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V976V29W45;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TerseAction/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.terse.ios.action;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		D100000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TerseAction/TerseAction.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TerseAction/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.terse.ios.action;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		F100000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Terse/Terse.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V976V29W45;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.terse.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		F100000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Terse/Terse.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V976V29W45;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.terse.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		F100000021 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		F100000022 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C100000010 /* Build configuration list for PBXNativeTarget "TerseKeyboard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C100000011 /* Debug */,
+				C100000012 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D100000010 /* Build configuration list for PBXNativeTarget "TerseAction" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D100000011 /* Debug */,
+				D100000012 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F100000010 /* Build configuration list for PBXNativeTarget "Terse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F100000011 /* Debug */,
+				F100000012 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F100000020 /* Build configuration list for PBXProject "Terse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F100000021 /* Debug */,
+				F100000022 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		PKG0000003 /* XCRemoteSwiftPackageReference "KeyboardKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/KeyboardKit/KeyboardKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		PKG0000002 /* KeyboardKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PKG0000003;
+			productName = KeyboardKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = F100000001 /* Project object */;
+}

@@ -1,0 +1,688 @@
+import UIKit
+
+class KeyboardViewController: UIInputViewController {
+
+    // MARK: - State
+
+    private let optimizer = TerseOptimizer()
+    private var debounceTimer: Timer?
+    private var currentOptimized: String?
+    private var isReplacing = false
+    private var shiftOn = true // Start with shift on (like iOS)
+    private var capsLock = false
+    private var numbersMode = false
+    private var symbolsMode = false
+
+    // MARK: - UI References
+
+    private var toolbarView: UIView!
+    private var keysContainer: UIView!
+    private var modeButtons: [UIButton] = []
+    private var autoButtons: [UIButton] = []
+    private var tokLabel: UILabel!
+    private var tokPctLabel: UILabel!
+    private var statusDot: UIView!
+    private var shiftButton: UIButton?
+    private var deleteButton: UIButton?
+    private var quotaLabel: UILabel?
+
+    // Settings from App Group
+    private var aggressiveness: String { loadSetting("aggressiveness") ?? "balanced" }
+    private var autoMode: String { loadSetting("autoMode") ?? "send" }
+    private var terseActive: Bool {
+        UserDefaults(suiteName: "group.com.terse.shared")?.bool(forKey: "terseActive") ?? false
+    }
+    private var dailyLimit: Int {
+        UserDefaults(suiteName: "group.com.terse.shared")?.integer(forKey: "dailyLimit") ?? 500
+    }
+    private var todayOptimizations: Int {
+        let d = UserDefaults(suiteName: "group.com.terse.shared")
+        let lastDate = d?.string(forKey: "lastOptDate") ?? ""
+        let today = Self.todayString()
+        if lastDate != today { return 0 }
+        return d?.integer(forKey: "todayOptCount") ?? 0
+    }
+    private var isOverQuota: Bool {
+        let limit = dailyLimit
+        return limit > 0 && todayOptimizations >= limit
+    }
+
+    // iOS native keyboard colors
+    private var isDark: Bool {
+        traitCollection.userInterfaceStyle == .dark
+    }
+    private var keyBg: UIColor { isDark ? UIColor(white: 0.35, alpha: 1) : .white }
+    private var specialKeyBg: UIColor { isDark ? UIColor(white: 0.23, alpha: 1) : UIColor(red: 0.68, green: 0.70, blue: 0.73, alpha: 1) }
+    private var keyboardBg: UIColor { isDark ? UIColor(white: 0.17, alpha: 1) : UIColor(red: 0.82, green: 0.84, blue: 0.86, alpha: 1) }
+    private var keyTextColor: UIColor { isDark ? .white : .black }
+    private var keyShadowColor: UIColor { isDark ? UIColor(white: 0, alpha: 0.5) : UIColor(red: 0.54, green: 0.54, blue: 0.56, alpha: 1) }
+    private let keyFont = UIFont.systemFont(ofSize: 25, weight: .regular)
+
+    // MARK: - Lifecycle
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        loadOptimizerSettings()
+        setupUI()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadOptimizerSettings()
+        updateToolbarVisibility()
+    }
+
+    override func textDidChange(_ textInput: UITextInput?) {
+        guard terseActive, autoMode == "auto", !isReplacing, !isOverQuota else { return }
+        debounceTimer?.invalidate()
+        debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: false) { [weak self] _ in
+            self?.autoOptimize()
+        }
+    }
+
+    // MARK: - Setup UI
+
+    private func setupUI() {
+        guard let inputView = self.inputView else { return }
+        inputView.allowsSelfSizing = true
+
+        let container = UIStackView()
+        container.axis = .vertical
+        container.spacing = 0
+        container.translatesAutoresizingMaskIntoConstraints = false
+        inputView.addSubview(container)
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: inputView.topAnchor),
+            container.bottomAnchor.constraint(equalTo: inputView.bottomAnchor),
+            container.leadingAnchor.constraint(equalTo: inputView.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: inputView.trailingAnchor),
+        ])
+
+        toolbarView = createToolbar()
+        container.addArrangedSubview(toolbarView)
+
+        keysContainer = UIView()
+        keysContainer.translatesAutoresizingMaskIntoConstraints = false
+        container.addArrangedSubview(keysContainer)
+
+        buildKeyboard()
+        applyNativeTheme()
+    }
+
+    // MARK: - Terse Toolbar (shown when active)
+
+    private func createToolbar() -> UIView {
+        let toolbar = UIView()
+        toolbar.translatesAutoresizingMaskIntoConstraints = false
+        toolbar.heightAnchor.constraint(equalToConstant: 34).isActive = true
+
+        let row = UIStackView()
+        row.axis = .horizontal
+        row.spacing = 6
+        row.alignment = .center
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        // Green dot
+        statusDot = UIView()
+        statusDot.translatesAutoresizingMaskIntoConstraints = false
+        statusDot.widthAnchor.constraint(equalToConstant: 6).isActive = true
+        statusDot.heightAnchor.constraint(equalToConstant: 6).isActive = true
+        statusDot.layer.cornerRadius = 3
+        statusDot.backgroundColor = UIColor.systemGreen
+        row.addArrangedSubview(statusDot)
+
+        let label = UILabel()
+        label.text = "Terse"
+        label.font = .systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = UIColor.darkGray
+        row.addArrangedSubview(label)
+
+        row.addArrangedSubview(createSpacer())
+
+        // Mode pills
+        let modeContainer = createCompactPill(
+            titles: ["S", "N", "A"],
+            values: ["light", "balanced", "aggressive"],
+            action: #selector(modeTapped(_:)),
+            buttons: &modeButtons
+        )
+        row.addArrangedSubview(modeContainer)
+
+        // Auto pills
+        let autoContainer = createCompactPill(
+            titles: ["Off", "Snd", "Auto"],
+            values: ["off", "send", "auto"],
+            action: #selector(autoTapped(_:)),
+            buttons: &autoButtons
+        )
+        row.addArrangedSubview(autoContainer)
+
+        row.addArrangedSubview(createSpacer())
+
+        // Token stats
+        tokLabel = UILabel()
+        tokLabel.text = ""
+        tokLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .medium)
+        tokLabel.textColor = .gray
+        row.addArrangedSubview(tokLabel)
+
+        tokPctLabel = UILabel()
+        tokPctLabel.text = ""
+        tokPctLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .bold)
+        tokPctLabel.textColor = UIColor.systemGreen
+        row.addArrangedSubview(tokPctLabel)
+
+        // Quota warning label (hidden by default)
+        let qLabel = UILabel()
+        qLabel.text = ""
+        qLabel.font = .systemFont(ofSize: 9, weight: .medium)
+        qLabel.textColor = .systemOrange
+        qLabel.isHidden = true
+        row.addArrangedSubview(qLabel)
+        quotaLabel = qLabel
+
+        toolbar.addSubview(row)
+        NSLayoutConstraint.activate([
+            row.topAnchor.constraint(equalTo: toolbar.topAnchor, constant: 4),
+            row.bottomAnchor.constraint(equalTo: toolbar.bottomAnchor, constant: -4),
+            row.leadingAnchor.constraint(equalTo: toolbar.leadingAnchor, constant: 8),
+            row.trailingAnchor.constraint(equalTo: toolbar.trailingAnchor, constant: -8),
+        ])
+
+        return toolbar
+    }
+
+    private func updateToolbarVisibility() {
+        guard toolbarView != nil else { return }
+        let active = terseActive
+        toolbarView.isHidden = false
+        for btn in modeButtons { btn.superview?.isHidden = !active }
+        for btn in autoButtons { btn.superview?.isHidden = !active }
+        tokLabel?.isHidden = !active
+        tokPctLabel?.isHidden = !active
+        statusDot?.backgroundColor = active ? .systemGreen : .systemGray
+        syncModeButtons()
+        updateQuotaDisplay()
+    }
+
+    private func updateQuotaDisplay() {
+        if isOverQuota {
+            statusDot?.backgroundColor = .systemOrange
+            quotaLabel?.text = "Limit reached"
+            quotaLabel?.isHidden = false
+            tokLabel?.isHidden = true
+            tokPctLabel?.isHidden = true
+        } else {
+            statusDot?.backgroundColor = .systemGreen
+            quotaLabel?.isHidden = true
+            tokLabel?.isHidden = false
+            tokPctLabel?.isHidden = false
+        }
+    }
+
+    // MARK: - Native iOS Keyboard Layout
+
+    private func buildKeyboard() {
+        keysContainer.subviews.forEach { $0.removeFromSuperview() }
+
+        let rows: [[String]]
+        if numbersMode {
+            if symbolsMode {
+                rows = [
+                    ["[", "]", "{", "}", "#", "%", "^", "*", "+", "="],
+                    ["_", "\\", "|", "~", "<", ">", "\u{20AC}", "\u{00A3}", "\u{00A5}", "\u{2022}"],
+                    ["123", ".", ",", "?", "!", "'", "\u{232B}"],
+                    ["ABC", "\u{1F310}", " ", "return"],
+                ]
+            } else {
+                rows = [
+                    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+                    ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""],
+                    ["#+=", ".", ",", "?", "!", "'", "\u{232B}"],
+                    ["ABC", "\u{1F310}", " ", "return"],
+                ]
+            }
+        } else {
+            rows = [
+                ["q","w","e","r","t","y","u","i","o","p"],
+                ["a","s","d","f","g","h","j","k","l"],
+                ["\u{21E7}","z","x","c","v","b","n","m","\u{232B}"],
+                ["123","\u{263A}"," ",".","return"],
+            ]
+        }
+
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 8
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        keysContainer.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: keysContainer.topAnchor, constant: 6),
+            stack.bottomAnchor.constraint(equalTo: keysContainer.bottomAnchor, constant: -4),
+            stack.leadingAnchor.constraint(equalTo: keysContainer.leadingAnchor, constant: 3),
+            stack.trailingAnchor.constraint(equalTo: keysContainer.trailingAnchor, constant: -3),
+        ])
+
+        let screenWidth = UIScreen.main.bounds.width
+        let keySpacing: CGFloat = 6.5
+        let sidePadding: CGFloat = 3
+
+        for (rowIdx, row) in rows.enumerated() {
+            let rowStack = UIStackView()
+            rowStack.axis = .horizontal
+            rowStack.spacing = keySpacing
+            rowStack.distribution = .fill
+            rowStack.alignment = .fill
+            rowStack.translatesAutoresizingMaskIntoConstraints = false
+
+            let keyHeight: CGFloat = 46
+
+            for key in row {
+                let btn = UIButton(type: .custom)
+                btn.translatesAutoresizingMaskIntoConstraints = false
+                btn.heightAnchor.constraint(equalToConstant: keyHeight).isActive = true
+                btn.layer.cornerRadius = 8
+                btn.layer.shadowColor = keyShadowColor.cgColor
+                btn.layer.shadowOffset = CGSize(width: 0, height: 1)
+                btn.layer.shadowOpacity = 1.0
+                btn.layer.shadowRadius = 0
+                btn.accessibilityLabel = key
+
+                switch key {
+                case " ":
+                    btn.setTitle("space", for: .normal)
+                    btn.titleLabel?.font = .systemFont(ofSize: 16)
+                    btn.backgroundColor = keyBg
+                    btn.setTitleColor(keyTextColor, for: .normal)
+                    btn.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+                case ".":
+                    btn.setTitle(".", for: .normal)
+                    btn.titleLabel?.font = .systemFont(ofSize: 16)
+                    btn.backgroundColor = keyBg
+                    btn.setTitleColor(keyTextColor, for: .normal)
+                    btn.widthAnchor.constraint(equalToConstant: 42).isActive = true
+
+                case "return":
+                    btn.setTitle(returnKeyTitle(), for: .normal)
+                    btn.titleLabel?.font = .systemFont(ofSize: 16)
+                    btn.backgroundColor = specialKeyBg
+                    btn.setTitleColor(keyTextColor, for: .normal)
+                    btn.widthAnchor.constraint(equalToConstant: 72).isActive = true
+
+                case "\u{21E7}":
+                    let imgName = capsLock ? "capslock.fill" : (shiftOn ? "shift.fill" : "shift")
+                    let img = UIImage(systemName: imgName)?.withConfiguration(
+                        UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+                    )
+                    btn.setImage(img, for: .normal)
+                    btn.tintColor = (shiftOn || capsLock) ? .white : keyTextColor
+                    btn.backgroundColor = (shiftOn || capsLock) ? UIColor(white: 0.45, alpha: 1) : specialKeyBg
+                    btn.widthAnchor.constraint(equalToConstant: 42).isActive = true
+                    shiftButton = btn
+
+                case "\u{232B}":
+                    let img = UIImage(systemName: "delete.left")?.withConfiguration(
+                        UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+                    )
+                    btn.setImage(img, for: .normal)
+                    btn.tintColor = keyTextColor
+                    btn.backgroundColor = specialKeyBg
+                    btn.widthAnchor.constraint(equalToConstant: 42).isActive = true
+                    deleteButton = btn
+                    let longPress = UILongPressGestureRecognizer(target: self, action: #selector(longPressDelete(_:)))
+                    longPress.minimumPressDuration = 0.3
+                    btn.addGestureRecognizer(longPress)
+
+                case "123", "ABC", "#+=":
+                    btn.setTitle(key, for: .normal)
+                    btn.titleLabel?.font = .systemFont(ofSize: 15)
+                    btn.backgroundColor = specialKeyBg
+                    btn.setTitleColor(keyTextColor, for: .normal)
+                    btn.widthAnchor.constraint(equalToConstant: 42).isActive = true
+
+                case "\u{263A}": // Emoji/smiley — switch to next input (globe behavior)
+                    let img = UIImage(systemName: "face.smiling")?.withConfiguration(
+                        UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+                    )
+                    btn.setImage(img, for: .normal)
+                    btn.tintColor = keyTextColor
+                    btn.backgroundColor = specialKeyBg
+                    btn.widthAnchor.constraint(equalToConstant: 42).isActive = true
+
+                default:
+                    let displayChar = (shiftOn || capsLock) && !numbersMode ? key.uppercased() : key
+                    btn.setTitle(displayChar, for: .normal)
+                    btn.titleLabel?.font = keyFont
+                    btn.backgroundColor = keyBg
+                    btn.setTitleColor(keyTextColor, for: .normal)
+
+                    if rowIdx == 0 {
+                        let totalKeys: CGFloat = 10
+                        let totalSpacing = keySpacing * (totalKeys - 1) + sidePadding * 2
+                        let keyW = (screenWidth - totalSpacing) / totalKeys
+                        btn.widthAnchor.constraint(equalToConstant: keyW).isActive = true
+                    } else if rowIdx == 1 {
+                        let totalKeys: CGFloat = 9
+                        let totalSpacing = keySpacing * (totalKeys - 1) + sidePadding * 2 + 16
+                        let keyW = (screenWidth - totalSpacing) / totalKeys
+                        btn.widthAnchor.constraint(equalToConstant: keyW).isActive = true
+                    }
+                }
+
+                btn.addTarget(self, action: #selector(keyTapped(_:)), for: .touchUpInside)
+                btn.addTarget(self, action: #selector(keyDown(_:)), for: .touchDown)
+                rowStack.addArrangedSubview(btn)
+            }
+            stack.addArrangedSubview(rowStack)
+        }
+    }
+
+    // MARK: - Key Handling
+
+    @objc private func keyDown(_ sender: UIButton) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    @objc private func keyTapped(_ sender: UIButton) {
+        guard let key = sender.accessibilityLabel else { return }
+        switch key {
+        case "\u{232B}":
+            textDocumentProxy.deleteBackward()
+        case "\u{21E7}":
+            if shiftOn && !capsLock {
+                shiftOn = false
+            } else if capsLock {
+                capsLock = false
+                shiftOn = false
+            } else {
+                shiftOn = true
+            }
+            rebuildKeys()
+        case "return":
+            handleReturnKey()
+        case " ":
+            textDocumentProxy.insertText(" ")
+        case "123":
+            numbersMode = true
+            symbolsMode = false
+            rebuildKeys()
+        case "ABC":
+            numbersMode = false
+            symbolsMode = false
+            rebuildKeys()
+        case "#+=":
+            symbolsMode = true
+            rebuildKeys()
+        case "\u{263A}":
+            advanceToNextInputMode()
+        case ".":
+            textDocumentProxy.insertText(".")
+        default:
+            let char = (shiftOn || capsLock) && !numbersMode ? key.uppercased() : key
+            textDocumentProxy.insertText(char)
+            if shiftOn && !capsLock {
+                shiftOn = false
+                rebuildKeys()
+            }
+        }
+    }
+
+    private var deleteTimer: Timer?
+
+    @objc private func longPressDelete(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            deleteTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
+                self?.textDocumentProxy.deleteBackward()
+            }
+        case .ended, .cancelled:
+            deleteTimer?.invalidate()
+            deleteTimer = nil
+        default: break
+        }
+    }
+
+    private func handleReturnKey() {
+        if terseActive && !isOverQuota && autoMode == "send" {
+            let text = readFullText()
+            if text.count >= 5 {
+                loadOptimizerSettings()
+                let result = optimizer.optimize(text)
+                if result.stats.tokensSaved > 0 {
+                    replaceAllText(with: result.optimized)
+                    updateStatsDisplay(result)
+                    recordStats(result)
+                    incrementDailyCount()
+                    updateQuotaDisplay()
+                }
+            }
+        }
+        textDocumentProxy.insertText("\n")
+    }
+
+    private func rebuildKeys() {
+        buildKeyboard()
+        applyNativeTheme()
+    }
+
+    // MARK: - Text Read/Write
+
+    private func readFullText() -> String {
+        var before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
+        if !after.isEmpty {
+            let afterLen = after.count
+            textDocumentProxy.adjustTextPosition(byCharacterOffset: afterLen)
+            before = textDocumentProxy.documentContextBeforeInput ?? before
+            textDocumentProxy.adjustTextPosition(byCharacterOffset: -afterLen)
+        }
+        return before + after
+    }
+
+    private func replaceAllText(with replacement: String) {
+        isReplacing = true
+        if let after = textDocumentProxy.documentContextAfterInput, !after.isEmpty {
+            textDocumentProxy.adjustTextPosition(byCharacterOffset: after.count)
+        }
+        var safety = 0
+        while let before = textDocumentProxy.documentContextBeforeInput, !before.isEmpty, safety < 5000 {
+            for _ in 0..<before.count { textDocumentProxy.deleteBackward() }
+            safety += before.count
+        }
+        textDocumentProxy.insertText(replacement)
+        isReplacing = false
+    }
+
+    // MARK: - Optimization
+
+    private func autoOptimize() {
+        guard !isOverQuota else {
+            updateQuotaDisplay()
+            return
+        }
+        let text = readFullText()
+        guard text.count >= 5 else { return }
+        loadOptimizerSettings()
+        let result = optimizer.optimize(text)
+        updateStatsDisplay(result)
+        if autoMode == "auto" && result.stats.tokensSaved > 0 {
+            currentOptimized = result.optimized
+            replaceAllText(with: result.optimized)
+            recordStats(result)
+            incrementDailyCount()
+            updateQuotaDisplay()
+        }
+    }
+
+    private func updateStatsDisplay(_ result: OptimizationResult) {
+        tokLabel?.text = "\(formatTokens(result.stats.originalTokens))\u{2192}\(formatTokens(result.stats.optimizedTokens))"
+        tokPctLabel?.text = result.stats.percentSaved > 0 ? "-\(result.stats.percentSaved)%" : ""
+    }
+
+    // MARK: - Quota Tracking
+
+    private func incrementDailyCount() {
+        let d = UserDefaults(suiteName: "group.com.terse.shared")
+        let today = Self.todayString()
+        let lastDate = d?.string(forKey: "lastOptDate") ?? ""
+        if lastDate != today {
+            d?.set(today, forKey: "lastOptDate")
+            d?.set(1, forKey: "todayOptCount")
+        } else {
+            let count = d?.integer(forKey: "todayOptCount") ?? 0
+            d?.set(count + 1, forKey: "todayOptCount")
+        }
+    }
+
+    private static func todayString() -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt.string(from: Date())
+    }
+
+    // MARK: - Mode Toggles
+
+    @objc private func modeTapped(_ sender: UIButton) {
+        guard let value = sender.accessibilityLabel else { return }
+        saveSetting("aggressiveness", value)
+        syncModeButtons()
+    }
+
+    @objc private func autoTapped(_ sender: UIButton) {
+        guard let value = sender.accessibilityLabel else { return }
+        saveSetting("autoMode", value)
+        syncModeButtons()
+    }
+
+    private func syncModeButtons() {
+        let currentMode = aggressiveness
+        let currentAuto = autoMode
+        for btn in modeButtons {
+            let active = btn.accessibilityLabel == currentMode
+            btn.backgroundColor = active ? UIColor.systemGreen : .clear
+            btn.setTitleColor(active ? .white : .gray, for: .normal)
+        }
+        for btn in autoButtons {
+            let active = btn.accessibilityLabel == currentAuto
+            btn.backgroundColor = active ? UIColor.systemGreen : .clear
+            btn.setTitleColor(active ? .white : .gray, for: .normal)
+        }
+    }
+
+    // MARK: - Theme
+
+    private func applyNativeTheme() {
+        inputView?.backgroundColor = keyboardBg
+        toolbarView?.backgroundColor = keyboardBg
+    }
+
+    // MARK: - Settings
+
+    private func loadOptimizerSettings() {
+        optimizer.aggressiveness = aggressiveness
+        optimizer.removeFillerWords = loadBool("removeFillerWords", default: true)
+        optimizer.removePoliteness = loadBool("removePoliteness", default: true)
+        optimizer.removeHedging = loadBool("removeHedging", default: true)
+        optimizer.removeMetaLanguage = loadBool("removeMetaLanguage", default: true)
+        optimizer.shortenPhrases = loadBool("shortenPhrases", default: true)
+        optimizer.simplifyInstructions = loadBool("simplifyInstructions", default: true)
+        optimizer.removeRedundancy = loadBool("removeRedundancy", default: true)
+        optimizer.compressWhitespace = loadBool("compressWhitespace", default: true)
+        optimizer.compressCodeBlocks = loadBool("compressCodeBlocks", default: true)
+        optimizer.useAbbreviations = loadBool("useAbbreviations", default: true)
+        optimizer.deduplicateContent = loadBool("deduplicateContent", default: true)
+        optimizer.compressLists = loadBool("compressLists", default: true)
+        optimizer.correctTypos = loadBool("correctTypos", default: true)
+    }
+
+    private func loadSetting(_ key: String) -> String? {
+        UserDefaults(suiteName: "group.com.terse.shared")?.string(forKey: key)
+    }
+
+    private func loadBool(_ key: String, default defaultValue: Bool) -> Bool {
+        UserDefaults(suiteName: "group.com.terse.shared")?.object(forKey: key) as? Bool ?? defaultValue
+    }
+
+    private func saveSetting(_ key: String, _ value: String) {
+        UserDefaults(suiteName: "group.com.terse.shared")?.set(value, forKey: key)
+    }
+
+    private func recordStats(_ result: OptimizationResult) {
+        let d = UserDefaults(suiteName: "group.com.terse.shared")
+        let prev = d?.integer(forKey: "totalTokensOptimized") ?? 0
+        d?.set(prev + result.stats.originalTokens, forKey: "totalTokensOptimized")
+        let prevSaved = d?.integer(forKey: "totalTokensSaved") ?? 0
+        d?.set(prevSaved + result.stats.tokensSaved, forKey: "totalTokensSaved")
+        let prevCount = d?.integer(forKey: "totalOptimizations") ?? 0
+        d?.set(prevCount + 1, forKey: "totalOptimizations")
+
+        // Track weekly quota usage
+        let currentWeek = {
+            let cal = Calendar(identifier: .iso8601)
+            let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+            return "\(comps.yearForWeekOfYear ?? 0)\(String(format: "%02d", comps.weekOfYear ?? 0))"
+        }()
+        let savedWeek = d?.string(forKey: "usageWeek") ?? ""
+        if savedWeek != currentWeek {
+            d?.set(currentWeek, forKey: "usageWeek")
+            d?.set(1, forKey: "weeklyUsage")
+        } else {
+            let count = d?.integer(forKey: "weeklyUsage") ?? 0
+            d?.set(count + 1, forKey: "weeklyUsage")
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func returnKeyTitle() -> String {
+        switch textDocumentProxy.returnKeyType {
+        case .send: return "Send"
+        case .go: return "Go"
+        case .search: return "Search"
+        case .done: return "Done"
+        case .next: return "Next"
+        case .join: return "Join"
+        default: return "return"
+        }
+    }
+
+    private func formatTokens(_ n: Int) -> String {
+        if n >= 1_000_000 { return String(format: "%.1fM", Double(n) / 1_000_000) }
+        if n >= 1_000 { return String(format: "%.1fK", Double(n) / 1_000) }
+        return "\(n)"
+    }
+
+    private func createCompactPill(titles: [String], values: [String], action: Selector, buttons: inout [UIButton]) -> UIView {
+        let container = UIStackView()
+        container.axis = .horizontal
+        container.spacing = 1
+        container.layer.cornerRadius = 10
+        container.clipsToBounds = true
+        container.backgroundColor = UIColor.black.withAlphaComponent(0.05)
+        container.layoutMargins = UIEdgeInsets(top: 1, left: 1, bottom: 1, right: 1)
+        container.isLayoutMarginsRelativeArrangement = true
+
+        buttons = []
+        for (i, title) in titles.enumerated() {
+            let btn = UIButton(type: .system)
+            btn.setTitle(title, for: .normal)
+            btn.titleLabel?.font = .systemFont(ofSize: 9, weight: .semibold)
+            btn.layer.cornerRadius = 9
+            btn.contentEdgeInsets = UIEdgeInsets(top: 2, left: 5, bottom: 2, right: 5)
+            btn.accessibilityLabel = values[i]
+            btn.addTarget(self, action: action, for: .touchUpInside)
+            container.addArrangedSubview(btn)
+            buttons.append(btn)
+        }
+        return container
+    }
+
+    private func createSpacer() -> UIView {
+        let v = UIView()
+        v.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        v.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return v
+    }
+}

@@ -63,7 +63,12 @@ if (window.__TAURI__) {
           originalTokens: result.stats.originalTokens,
           optimizedTokens: result.stats.optimizedTokens,
         }).catch(() => {});
-        invoke('record_optimization_usage').catch(() => {});
+        invoke('record_optimization_usage').then(() => {
+          // Emit event so all windows can update quota display live
+          if (window.__TAURI__?.event?.emit) {
+            window.__TAURI__.event.emit('quota-updated').catch(() => {});
+          }
+        }).catch(() => {});
         return result;
       }
       return { optimized: text, stats: { originalTokens: 0, optimizedTokens: 0, percentSaved: 0, techniquesApplied: [] }, suggestions: [] };

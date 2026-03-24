@@ -1,0 +1,48 @@
+{
+  "" : {
+    "diagnostics" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseAction-master.dia",
+    "emit-module-dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseAction-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseAction-master-emit-module.dia",
+    "swift-dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseAction-master.swiftdeps"
+  },
+  "/Users/James/Desktop/Terse/ios-app/Shared/TerseOptimizer.swift" : {
+    "const-values" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseOptimizer.swiftconstvalues",
+    "dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseOptimizer.d",
+    "diagnostics" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseOptimizer.dia",
+    "index-unit-output-path" : "/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseOptimizer.o",
+    "llvm-bc" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseOptimizer.bc",
+    "object" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseOptimizer.o",
+    "swift-dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseOptimizer.swiftdeps",
+    "swiftmodule" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseOptimizer~partial.swiftmodule"
+  },
+  "/Users/James/Desktop/Terse/ios-app/Shared/TerseSettings.swift" : {
+    "const-values" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseSettings.swiftconstvalues",
+    "dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseSettings.d",
+    "diagnostics" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseSettings.dia",
+    "index-unit-output-path" : "/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseSettings.o",
+    "llvm-bc" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseSettings.bc",
+    "object" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseSettings.o",
+    "swift-dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseSettings.swiftdeps",
+    "swiftmodule" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseSettings~partial.swiftmodule"
+  },
+  "/Users/James/Desktop/Terse/ios-app/Shared/TerseTheme.swift" : {
+    "const-values" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseTheme.swiftconstvalues",
+    "dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseTheme.d",
+    "diagnostics" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseTheme.dia",
+    "index-unit-output-path" : "/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseTheme.o",
+    "llvm-bc" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseTheme.bc",
+    "object" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseTheme.o",
+    "swift-dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseTheme.swiftdeps",
+    "swiftmodule" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/TerseTheme~partial.swiftmodule"
+  },
+  "/Users/James/Desktop/Terse/ios-app/TerseAction/ActionViewController.swift" : {
+    "const-values" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/ActionViewController.swiftconstvalues",
+    "dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/ActionViewController.d",
+    "diagnostics" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/ActionViewController.dia",
+    "index-unit-output-path" : "/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/ActionViewController.o",
+    "llvm-bc" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/ActionViewController.bc",
+    "object" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/ActionViewController.o",
+    "swift-dependencies" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/ActionViewController.swiftdeps",
+    "swiftmodule" : "/Users/James/Desktop/Terse/ios-app/build/Terse.build/Debug-iphoneos/TerseAction.build/Objects-normal/arm64/ActionViewController~partial.swiftmodule"
+  }
+}

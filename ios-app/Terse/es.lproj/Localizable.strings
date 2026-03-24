@@ -1,0 +1,37 @@
+/* Terse iOS App — Español */
+
+"app.name" = "Terse";
+"header.saved" = "ahorrados";
+"header.totalSaved" = "total ahorrado";
+"header.pro" = "PRO";
+"header.setupKeyboard" = "Configurar teclado Terse";
+"tab.optimize" = "Optimizar";
+"tab.stats" = "Estadísticas";
+"tab.settings" = "Ajustes";
+"optimize.placeholder" = "Pega un prompt para optimizar...";
+"optimize.button" = "Optimizar";
+"optimize.optimizing" = "Optimizando...";
+"optimize.copy" = "Copiar";
+"optimize.copied" = "Copiado";
+"stats.today" = "Hoy";
+"stats.week" = "Semana";
+"stats.month" = "Mes";
+"stats.allTime" = "Todo";
+"stats.shareReceipt" = "Compartir recibo";
+"stats.thankYou" = "*** GRACIAS POR AHORRAR ***";
+"wallet.tokens" = "tokens";
+"wallet.myThemes" = "Mis Temas";
+"wallet.themeShop" = "Tienda de Temas";
+"wallet.unlock" = "Desbloquear (₮100)";
+"wallet.unlockTitle" = "Desbloquear Tema";
+"wallet.unlockMessage" = "¿Gastar 100 tokens para desbloquear %@?";
+"wallet.cancel" = "Cancelar";
+"wallet.done" = "Hecho";
+"settings.title" = "Ajustes";
+"setup.title" = "Configurar teclado Terse";
+"setup.openSettings" = "Abrir Ajustes";
+"mode.soft" = "Suave";
+"mode.balanced" = "Equilibrado";
+"mode.aggressive" = "Agresivo";
+"quota.leftThisWeek" = "%d/%d restantes esta semana";
+"quota.unlimited" = "Ilimitado";

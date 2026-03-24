@@ -3,62 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <title>Terse — Statistics</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    :root{
-      --bg:rgba(18,18,20,0.95);--bg2:rgba(30,30,34,0.8);--sf:rgba(255,255,255,0.05);
-      --bd:rgba(255,255,255,0.07);--bdl:rgba(255,255,255,0.12);
-      --t1:rgba(255,255,255,0.92);--t2:rgba(255,255,255,0.5);--t3:rgba(255,255,255,0.28);
-      --ac:#6ee7b7;--acd:rgba(110,231,183,0.12);--acm:rgba(110,231,183,0.25);
-      --blue:rgba(59,130,246,0.8);--blued:rgba(59,130,246,0.12);
-      --yellow:rgba(251,191,36,0.8);--yellowd:rgba(251,191,36,0.1);
-      --purple:rgba(168,85,247,0.8);--purpled:rgba(168,85,247,0.1);
-    }
     html,body{height:100%;background:var(--bg);color:var(--t1);
       font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
       font-size:12px;line-height:1.4;-webkit-font-smoothing:antialiased;overflow-y:auto}
-    body{backdrop-filter:blur(48px);-webkit-backdrop-filter:blur(48px);padding:12px}
+    body{padding:14px;border-radius:16px}
 
-    .header{display:flex;align-items:center;gap:8px;margin-bottom:14px;-webkit-app-region:drag}
+    .header{display:flex;align-items:center;gap:8px;margin-bottom:16px;-webkit-app-region:drag}
     .header button{-webkit-app-region:no-drag}
-    .back-btn{width:24px;height:24px;border-radius:5px;border:1px solid var(--bd);
+    .back-btn{width:28px;height:28px;border-radius:50%;border:none;
       background:var(--sf);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center}
-    .back-btn:hover{background:var(--bdl);color:var(--t1)}
-    .header h1{font-size:14px;font-weight:700;flex:1}
+    .back-btn:hover{background:var(--sfh);color:var(--t1)}
+    .header h1{font-size:15px;font-weight:700;flex:1}
 
-    .period-tabs{display:flex;gap:2px;background:var(--sf);border-radius:5px;padding:2px;
-      border:1px solid var(--bd);margin-bottom:14px}
-    .period-tab{padding:5px 14px;font-size:10px;font-weight:600;border:none;background:none;
-      color:var(--t3);cursor:pointer;border-radius:4px}
+    .period-tabs{display:flex;gap:2px;background:var(--sf);border-radius:9999px;padding:3px;
+      border:none;margin-bottom:16px}
+    .period-tab{padding:6px 14px;font-size:10px;font-weight:600;border:none;background:none;
+      color:var(--t3);cursor:pointer;border-radius:9999px}
     .period-tab:hover{color:var(--t2)}
-    .period-tab.active{background:var(--acd);color:var(--ac)}
+    .period-tab.active{background:var(--btn);color:var(--btn-t)}
 
-    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
-    .summary-card{text-align:center;padding:10px 6px;background:var(--sf);border:1px solid var(--bd);border-radius:6px}
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+    .summary-card{text-align:center;padding:12px 6px;background:var(--sf);border:none;border-radius:var(--rs)}
     .summary-num{display:block;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
     .summary-num.accent{color:var(--ac)}
     .summary-label{display:block;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 
-    .section{margin-bottom:14px}
+    .section{margin-bottom:16px}
     .section-title{font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;
       text-transform:uppercase;letter-spacing:.5px}
 
-    .chart-container{background:var(--sf);border:1px solid var(--bd);border-radius:6px;
-      padding:10px;position:relative;height:140px;overflow:hidden}
+    .chart-container{background:var(--sf);border:none;border-radius:var(--rs);
+      padding:12px;position:relative;height:140px;overflow:hidden}
     .chart-bar-row{display:flex;align-items:flex-end;gap:3px;height:100px;padding:0 4px}
     .chart-bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
-    .chart-bar{border-radius:2px 2px 0 0;min-height:1px;width:100%;max-width:20px;transition:height .3s}
-    .chart-bar.tokens{background:var(--blue)}
+    .chart-bar{border-radius:3px 3px 0 0;min-height:1px;width:100%;max-width:20px;transition:height .3s}
+    .chart-bar.tokens{background:var(--t3)}
     .chart-bar.saved{background:var(--ac)}
     .chart-date{font-size:8px;color:var(--t3);text-align:center;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
     .chart-legend{display:flex;gap:12px;justify-content:center;margin-top:8px}
     .chart-legend-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--t2)}
-    .chart-legend-dot{width:8px;height:8px;border-radius:2px}
+    .chart-legend-dot{width:8px;height:8px;border-radius:50%}
 
-    .source-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
-    .source-card{padding:10px;background:var(--sf);border:1px solid var(--bd);border-radius:6px}
+    .source-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .source-card{padding:12px;background:var(--sf);border:none;border-radius:var(--rs)}
     .source-header{display:flex;align-items:center;gap:6px;margin-bottom:6px}
-    .source-icon{width:8px;height:8px;border-radius:2px}
+    .source-icon{width:8px;height:8px;border-radius:50%}
     .source-name{font-size:11px;font-weight:700;color:var(--t1)}
     .source-stats{display:flex;flex-direction:column;gap:3px}
     .source-row{display:flex;justify-content:space-between;font-size:10px}
@@ -66,12 +58,15 @@
     .source-row .value{color:var(--t2);font-weight:600;font-variant-numeric:tabular-nums}
     .source-row .value.green{color:var(--ac)}
 
-    .pct-bar{height:4px;background:var(--sf);border-radius:2px;margin-top:4px;overflow:hidden}
-    .pct-bar-fill{height:100%;border-radius:2px;background:var(--ac);transition:width .3s}
+    .pct-bar{height:4px;background:var(--bd);border-radius:9999px;margin-top:4px;overflow:hidden}
+    .pct-bar-fill{height:100%;border-radius:9999px;background:var(--ac);transition:width .3s}
 
     .empty-state{text-align:center;padding:40px 20px;color:var(--t3);font-size:12px}
     .empty-state p{margin-top:8px;font-size:10px}
   </style>
+  <script>
+    (function(){var s=localStorage.getItem('terse-theme')||'lime';document.documentElement.setAttribute('data-theme',s)})();
+  </script>
 </head>
 <body>
   <div class="header">

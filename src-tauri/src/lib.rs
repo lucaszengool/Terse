@@ -97,6 +97,7 @@ pub struct AppState {
     pub last_text_change_time: Mutex<u64>,
     pub popup_visible_for_text: Mutex<bool>,
     pub key_monitors: capture::KeyMonitorState,
+    pub hook_stats_synced: Mutex<u64>,
 }
 
 impl Default for AppState {
@@ -121,6 +122,7 @@ impl Default for AppState {
             last_text_change_time: Mutex::new(0),
             popup_visible_for_text: Mutex::new(false),
             key_monitors: capture::KeyMonitorState::new(),
+            hook_stats_synced: Mutex::new(0),
         }
     }
 }
@@ -685,37 +687,141 @@ fn get_agent_analytics(agent_type: String, state: tauri::State<'_, AppState>) ->
     monitor.get_session_snapshot(&agent_type)
 }
 
-// ── RTK-style Hook Installation ──
+// ── Multi-Agent Hook Installation ──
+//
+// Supported agents and their hook protocols:
+//   claude-code  — ~/.claude/settings.json  (PreToolUse, matcher: Bash)
+//   cursor       — ~/.cursor/hooks.json     (beforeShellExecution)
+//   cline        — ~/Documents/Cline/Rules/Hooks/  (PreToolUse, matcher: execute_command)
+//   codex        — ~/.codex/codex.toml      (pre_tool_use, matcher: shell)
+//   copilot      — ~/.github-copilot/hooks/ (preToolUse)
+//   openclaw     — ~/.openclaw/hooks/       (tool.execute.before, TypeScript)
 
-/// Install a PreToolUse hook in Claude Code settings that pipes Bash output
-/// through Terse's optimizer for automatic token compression.
-/// Inspired by rtk-ai/rtk's auto-rewrite hook architecture.
-#[tauri::command]
-fn install_agent_hook() -> Result<serde_json::Value, String> {
+/// Per-agent config: hook script filename, settings path, hook key, matcher, install method
+struct AgentHookConfig {
+    hook_script: &'static str,
+    hook_include: &'static str,
+    settings_path: std::path::PathBuf,
+    install_method: AgentInstallMethod,
+}
+
+enum AgentInstallMethod {
+    /// JSON settings file with hooks.{event}[] array (Claude Code, Cursor, Cline)
+    JsonSettings {
+        hook_event: &'static str,
+        matcher: &'static str,
+    },
+    /// TOML config file (Codex CLI)
+    Toml,
+    /// Drop hook file into directory (Copilot CLI, OpenClaw)
+    DropFile,
+}
+
+fn get_agent_hook_config(agent: &str) -> Result<AgentHookConfig, String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory")?;
-    let claude_dir = home.join(".claude");
-    let hooks_dir = claude_dir.join("hooks");
-    let settings_path = claude_dir.join("settings.json");
+    match agent {
+        "claude-code" => Ok(AgentHookConfig {
+            hook_script: "terse-rewrite.sh",
+            hook_include: "../../src/helpers/terse-rewrite.sh",
+            settings_path: home.join(".claude/settings.json"),
+            install_method: AgentInstallMethod::JsonSettings {
+                hook_event: "PreToolUse",
+                matcher: "Bash",
+            },
+        }),
+        "cursor" => Ok(AgentHookConfig {
+            hook_script: "hooks/terse-hook-cursor.sh",
+            hook_include: "../../src/helpers/hooks/terse-hook-cursor.sh",
+            settings_path: home.join(".cursor/hooks.json"),
+            install_method: AgentInstallMethod::JsonSettings {
+                hook_event: "beforeShellExecution",
+                matcher: "shell",
+            },
+        }),
+        "cline" => Ok(AgentHookConfig {
+            hook_script: "hooks/terse-hook-cline.sh",
+            hook_include: "../../src/helpers/hooks/terse-hook-cline.sh",
+            settings_path: home.join(".cline/settings.json"),
+            install_method: AgentInstallMethod::JsonSettings {
+                hook_event: "PreToolUse",
+                matcher: "execute_command",
+            },
+        }),
+        "codex" => Ok(AgentHookConfig {
+            hook_script: "hooks/terse-hook-codex.sh",
+            hook_include: "../../src/helpers/hooks/terse-hook-codex.sh",
+            settings_path: home.join(".codex/codex.toml"),
+            install_method: AgentInstallMethod::Toml,
+        }),
+        "copilot" => Ok(AgentHookConfig {
+            hook_script: "hooks/terse-hook-copilot.sh",
+            hook_include: "../../src/helpers/hooks/terse-hook-copilot.sh",
+            settings_path: home.join(".github-copilot/hooks/preToolUse/terse-hook-copilot.sh"),
+            install_method: AgentInstallMethod::DropFile,
+        }),
+        "openclaw" => Ok(AgentHookConfig {
+            hook_script: "hooks/terse-hook-openclaw.ts",
+            hook_include: "../../src/helpers/hooks/terse-hook-openclaw.ts",
+            settings_path: home.join(".openclaw/hooks/terse-hook-openclaw.ts"),
+            install_method: AgentInstallMethod::DropFile,
+        }),
+        "windsurf" => Ok(AgentHookConfig {
+            hook_script: "hooks/terse-hook-windsurf.sh",
+            hook_include: "../../src/helpers/hooks/terse-hook-windsurf.sh",
+            settings_path: home.join(".windsurf/hooks.json"),
+            install_method: AgentInstallMethod::JsonSettings {
+                hook_event: "preAction",
+                matcher: "shell",
+            },
+        }),
+        _ => Err(format!("Unknown agent: {}. Supported: claude-code, cursor, cline, codex, copilot, openclaw, windsurf", agent)),
+    }
+}
 
-    // Ensure hooks dir exists
-    std::fs::create_dir_all(&hooks_dir).map_err(|e| format!("Failed to create hooks dir: {}", e))?;
+/// Write the hook script to the terse hooks dir and return destination path.
+fn deploy_hook_script(config: &AgentHookConfig) -> Result<std::path::PathBuf, String> {
+    let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+    let terse_dir = home.join(".terse");
+    std::fs::create_dir_all(&terse_dir).map_err(|e| format!("Failed to create ~/.terse: {}", e))?;
 
-    // Copy terse-rewrite.sh to ~/.claude/hooks/
+    // Determine destination
+    let hook_dest = terse_dir.join(config.hook_script);
+    if let Some(parent) = hook_dest.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create hook dir: {}", e))?;
+    }
+
+    // Try to find pre-built script next to the binary first
     let hook_src = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|p| p.to_path_buf()))
         .unwrap_or_default()
-        .join("terse-rewrite.sh");
+        .join(config.hook_script);
 
-    // Write the hook script inline if source not found
-    let hook_dest = hooks_dir.join("terse-rewrite.sh");
-    if !hook_src.exists() {
-        let script = include_str!("../../src/helpers/terse-rewrite.sh");
-        std::fs::write(&hook_dest, script)
-            .map_err(|e| format!("Failed to write hook: {}", e))?;
-    } else {
+    if hook_src.exists() {
         std::fs::copy(&hook_src, &hook_dest)
             .map_err(|e| format!("Failed to copy hook: {}", e))?;
+    } else {
+        // Write from embedded source
+        let script = match config.hook_include {
+            "../../src/helpers/terse-rewrite.sh" => include_str!("../../src/helpers/terse-rewrite.sh"),
+            "../../src/helpers/hooks/terse-hook-cursor.sh" => include_str!("../../src/helpers/hooks/terse-hook-cursor.sh"),
+            "../../src/helpers/hooks/terse-hook-cline.sh" => include_str!("../../src/helpers/hooks/terse-hook-cline.sh"),
+            "../../src/helpers/hooks/terse-hook-codex.sh" => include_str!("../../src/helpers/hooks/terse-hook-codex.sh"),
+            "../../src/helpers/hooks/terse-hook-copilot.sh" => include_str!("../../src/helpers/hooks/terse-hook-copilot.sh"),
+            "../../src/helpers/hooks/terse-hook-openclaw.ts" => include_str!("../../src/helpers/hooks/terse-hook-openclaw.ts"),
+            "../../src/helpers/hooks/terse-hook-windsurf.sh" => include_str!("../../src/helpers/hooks/terse-hook-windsurf.sh"),
+            _ => return Err("Unknown hook script".to_string()),
+        };
+        std::fs::write(&hook_dest, script)
+            .map_err(|e| format!("Failed to write hook: {}", e))?;
+    }
+
+    // Also deploy terse-compress.js alongside the hook
+    let compress_dest = terse_dir.join("terse-compress.js");
+    if !compress_dest.exists() {
+        let compress_src = include_str!("../../src/helpers/terse-compress.js");
+        std::fs::write(&compress_dest, compress_src)
+            .map_err(|e| format!("Failed to write terse-compress.js: {}", e))?;
     }
 
     // Make executable
@@ -723,77 +829,216 @@ fn install_agent_hook() -> Result<serde_json::Value, String> {
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o755);
-        std::fs::set_permissions(&hook_dest, perms)
-            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+        let _ = std::fs::set_permissions(&hook_dest, perms);
     }
 
-    // Update settings.json to register the hook
-    let mut settings: serde_json::Value = if settings_path.exists() {
-        let content = std::fs::read_to_string(&settings_path)
-            .map_err(|e| format!("Failed to read settings: {}", e))?;
-        serde_json::from_str(&content).unwrap_or(serde_json::json!({}))
-    } else {
-        serde_json::json!({})
-    };
-
-    // Check if hook already registered
-    let hooks = settings.as_object_mut().ok_or("Invalid settings format")?;
-    let hook_entry = serde_json::json!({
-        "matcher": "Bash",
-        "command": hook_dest.to_string_lossy()
-    });
-
-    if let Some(pre_hooks) = hooks.get_mut("hooks")
-        .and_then(|h| h.get_mut("PreToolUse"))
-        .and_then(|p| p.as_array_mut())
-    {
-        // Check if already installed
-        let already = pre_hooks.iter().any(|h| {
-            h.get("command").and_then(|c| c.as_str())
-                .map_or(false, |c| c.contains("terse"))
-        });
-        if !already {
-            pre_hooks.push(hook_entry);
-        }
-    } else {
-        // Create hooks structure
-        if !hooks.contains_key("hooks") {
-            hooks.insert("hooks".to_string(), serde_json::json!({}));
-        }
-        let h = hooks.get_mut("hooks").unwrap().as_object_mut().unwrap();
-        h.insert("PreToolUse".to_string(), serde_json::json!([hook_entry]));
-    }
-
-    std::fs::write(&settings_path, serde_json::to_string_pretty(&settings).unwrap())
-        .map_err(|e| format!("Failed to write settings: {}", e))?;
-
-    Ok(serde_json::json!({
-        "installed": true,
-        "hookPath": hook_dest.to_string_lossy(),
-        "settingsPath": settings_path.to_string_lossy(),
-    }))
+    Ok(hook_dest)
 }
 
-/// Check if the Terse hook is installed in Claude Code
+/// Install Terse hook for any supported agent.
 #[tauri::command]
-fn check_agent_hook() -> serde_json::Value {
+fn install_agent_hook(agent: Option<String>) -> Result<serde_json::Value, String> {
+    let agent_id = agent.as_deref().unwrap_or("claude-code");
+    let config = get_agent_hook_config(agent_id)?;
+    let hook_dest = deploy_hook_script(&config)?;
+
+    match config.install_method {
+        AgentInstallMethod::JsonSettings { hook_event, matcher } => {
+            // Ensure settings dir exists
+            if let Some(parent) = config.settings_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("Failed to create settings dir: {}", e))?;
+            }
+
+            let mut settings: serde_json::Value = if config.settings_path.exists() {
+                let content = std::fs::read_to_string(&config.settings_path)
+                    .map_err(|e| format!("Failed to read settings: {}", e))?;
+                serde_json::from_str(&content).unwrap_or(serde_json::json!({}))
+            } else {
+                serde_json::json!({})
+            };
+
+            let hook_entry = serde_json::json!({
+                "matcher": matcher,
+                "command": hook_dest.to_string_lossy()
+            });
+
+            let obj = settings.as_object_mut().ok_or("Invalid settings format")?;
+
+            if let Some(pre_hooks) = obj.get_mut("hooks")
+                .and_then(|h| h.get_mut(hook_event))
+                .and_then(|p| p.as_array_mut())
+            {
+                let already = pre_hooks.iter().any(|h| {
+                    let direct = h.get("command").and_then(|c| c.as_str())
+                        .map_or(false, |c| c.contains("terse"));
+                    let nested = h.get("hooks").and_then(|hs| hs.as_array())
+                        .map_or(false, |hs| hs.iter().any(|inner| {
+                            inner.get("command").and_then(|c| c.as_str())
+                                .map_or(false, |c| c.contains("terse"))
+                        }));
+                    direct || nested
+                });
+                if !already {
+                    pre_hooks.push(hook_entry);
+                }
+            } else {
+                if !obj.contains_key("hooks") {
+                    obj.insert("hooks".to_string(), serde_json::json!({}));
+                }
+                let h = obj.get_mut("hooks").unwrap().as_object_mut().unwrap();
+                h.insert(hook_event.to_string(), serde_json::json!([hook_entry]));
+            }
+
+            std::fs::write(&config.settings_path, serde_json::to_string_pretty(&settings).unwrap())
+                .map_err(|e| format!("Failed to write settings: {}", e))?;
+
+            Ok(serde_json::json!({
+                "installed": true,
+                "agent": agent_id,
+                "hookPath": hook_dest.to_string_lossy(),
+                "settingsPath": config.settings_path.to_string_lossy(),
+            }))
+        }
+
+        AgentInstallMethod::Toml => {
+            // Codex CLI: append hook config to codex.toml
+            if let Some(parent) = config.settings_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("Failed to create codex dir: {}", e))?;
+            }
+
+            let existing = if config.settings_path.exists() {
+                std::fs::read_to_string(&config.settings_path).unwrap_or_default()
+            } else {
+                String::new()
+            };
+
+            if existing.contains("terse-hook") {
+                return Ok(serde_json::json!({
+                    "installed": true,
+                    "agent": agent_id,
+                    "hookPath": hook_dest.to_string_lossy(),
+                    "settingsPath": config.settings_path.to_string_lossy(),
+                    "alreadyInstalled": true,
+                }));
+            }
+
+            let toml_entry = format!(
+                "\n\n# Terse token compression hook\n[[hooks.pre_tool_use]]\nmatcher = \"shell\"\ncommand = \"{}\"\n",
+                hook_dest.to_string_lossy()
+            );
+
+            std::fs::write(&config.settings_path, existing + &toml_entry)
+                .map_err(|e| format!("Failed to write codex.toml: {}", e))?;
+
+            Ok(serde_json::json!({
+                "installed": true,
+                "agent": agent_id,
+                "hookPath": hook_dest.to_string_lossy(),
+                "settingsPath": config.settings_path.to_string_lossy(),
+            }))
+        }
+
+        AgentInstallMethod::DropFile => {
+            // Copilot CLI / OpenClaw: just copy the hook to the target directory
+            if let Some(parent) = config.settings_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("Failed to create hooks dir: {}", e))?;
+            }
+
+            std::fs::copy(&hook_dest, &config.settings_path)
+                .map_err(|e| format!("Failed to install hook: {}", e))?;
+
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let perms = std::fs::Permissions::from_mode(0o755);
+                let _ = std::fs::set_permissions(&config.settings_path, perms);
+            }
+
+            Ok(serde_json::json!({
+                "installed": true,
+                "agent": agent_id,
+                "hookPath": config.settings_path.to_string_lossy(),
+            }))
+        }
+    }
+}
+
+/// Check if the Terse hook is installed for a given agent (or all agents).
+#[tauri::command]
+fn check_agent_hook(agent: Option<String>) -> serde_json::Value {
     let home = match dirs::home_dir() {
         Some(h) => h,
         None => return serde_json::json!({ "installed": false }),
     };
-    let settings_path = home.join(".claude/settings.json");
+
+    // If a specific agent is requested, check just that one
+    if let Some(ref agent_id) = agent {
+        return check_single_agent_hook(&home, agent_id);
+    }
+
+    // Otherwise check all agents
+    let agents = ["claude-code", "cursor", "cline", "codex", "copilot", "openclaw", "windsurf"];
+    let mut results = serde_json::Map::new();
+    for a in &agents {
+        let status = check_single_agent_hook(&home, a);
+        results.insert(a.to_string(), status);
+    }
+    serde_json::Value::Object(results)
+}
+
+fn check_single_agent_hook(home: &std::path::Path, agent: &str) -> serde_json::Value {
+    match agent {
+        "claude-code" => {
+            let settings_path = home.join(".claude/settings.json");
+            check_json_hook(&settings_path, "PreToolUse")
+        }
+        "cursor" => {
+            let settings_path = home.join(".cursor/hooks.json");
+            check_json_hook(&settings_path, "beforeShellExecution")
+        }
+        "cline" => {
+            let settings_path = home.join(".cline/settings.json");
+            check_json_hook(&settings_path, "PreToolUse")
+        }
+        "codex" => {
+            let toml_path = home.join(".codex/codex.toml");
+            if toml_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&toml_path) {
+                    return serde_json::json!({ "installed": content.contains("terse-hook") });
+                }
+            }
+            serde_json::json!({ "installed": false })
+        }
+        "copilot" => {
+            let hook_path = home.join(".github-copilot/hooks/preToolUse/terse-hook-copilot.sh");
+            serde_json::json!({ "installed": hook_path.exists() })
+        }
+        "openclaw" => {
+            let hook_path = home.join(".openclaw/hooks/terse-hook-openclaw.ts");
+            serde_json::json!({ "installed": hook_path.exists() })
+        }
+        "windsurf" => {
+            let settings_path = home.join(".windsurf/hooks.json");
+            check_json_hook(&settings_path, "preAction")
+        }
+        _ => serde_json::json!({ "installed": false, "error": "unknown agent" }),
+    }
+}
+
+fn check_json_hook(settings_path: &std::path::Path, hook_event: &str) -> serde_json::Value {
     if !settings_path.exists() {
         return serde_json::json!({ "installed": false });
     }
-
-    if let Ok(content) = std::fs::read_to_string(&settings_path) {
+    if let Ok(content) = std::fs::read_to_string(settings_path) {
         if let Ok(settings) = serde_json::from_str::<serde_json::Value>(&content) {
             if let Some(hooks) = settings.get("hooks")
-                .and_then(|h| h.get("PreToolUse"))
+                .and_then(|h| h.get(hook_event))
                 .and_then(|p| p.as_array())
             {
                 let installed = hooks.iter().any(|h| {
-                    // Check both old format { "command": "..." } and new format { "hooks": [{ "command": "..." }] }
                     let direct = h.get("command").and_then(|c| c.as_str())
                         .map_or(false, |c| c.contains("terse"));
                     let nested = h.get("hooks").and_then(|hs| hs.as_array())
@@ -807,13 +1052,12 @@ fn check_agent_hook() -> serde_json::Value {
             }
         }
     }
-
     serde_json::json!({ "installed": false })
 }
 
-/// Read compression stats from the CLI tool's tracking file
+/// Read compression stats from the CLI tool's tracking file and sync to stats_store
 #[tauri::command]
-fn get_hook_stats() -> serde_json::Value {
+fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_json::Value {
     let stats_file = std::path::PathBuf::from(std::env::temp_dir()).join("terse-compress-stats.jsonl");
     if !stats_file.exists() {
         return serde_json::json!({
@@ -828,16 +1072,47 @@ fn get_hook_stats() -> serde_json::Value {
     let mut total_original: u64 = 0;
     let mut total_optimized: u64 = 0;
     let mut count: u64 = 0;
+    // Track new entries since last sync
+    let mut new_original: u64 = 0;
+    let mut new_optimized: u64 = 0;
+
+    let last_synced = state.hook_stats_synced.lock().unwrap_or_else(|e| e.into_inner()).clone();
 
     if let Ok(content) = std::fs::read_to_string(&stats_file) {
         for line in content.lines() {
             if let Ok(entry) = serde_json::from_str::<serde_json::Value>(line) {
-                total_saved += entry["saved"].as_u64().unwrap_or(0);
-                total_original += entry["originalTokens"].as_u64().unwrap_or(0);
-                total_optimized += entry["optimizedTokens"].as_u64().unwrap_or(0);
+                let saved = entry["saved"].as_u64().unwrap_or(0);
+                let orig = entry["originalTokens"].as_u64().unwrap_or(0);
+                let opt = entry["optimizedTokens"].as_u64().unwrap_or(0);
+                total_saved += saved;
+                total_original += orig;
+                total_optimized += opt;
                 count += 1;
+                // Entries beyond what we previously synced are new
+                if count > last_synced {
+                    new_original += orig;
+                    new_optimized += opt;
+                }
             }
         }
+    }
+
+    // Sync new entries into stats_store and consume quota (1 per compression)
+    let new_count = count.saturating_sub(last_synced);
+    if new_count > 0 && new_original > 0 {
+        let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+        store.record_optimization("agent", new_original, new_optimized);
+
+        // Each hook compression = 1 quota
+        let mut lic = state.license.lock().unwrap_or_else(|e| e.into_inner());
+        for _ in 0..new_count {
+            lic.record_optimization();
+        }
+
+        *state.hook_stats_synced.lock().unwrap_or_else(|e| e.into_inner()) = count;
+
+        // Notify frontend to refresh quota display
+        let _ = app.emit("quota-updated", ());
     }
 
     serde_json::json!({
@@ -1085,7 +1360,7 @@ fn sign_out(state: tauri::State<'_, AppState>) {
     lic.clerk_user_id = None;
     lic.tier = "free".to_string();
     lic.limits = license::PlanLimits {
-        optimizations_per_week: 50,
+        optimizations_per_week: 200,
         max_sessions: 1,
         max_devices: 1,
     };
@@ -1136,12 +1411,42 @@ pub fn run() {
                 .transparent(true)
                 .always_on_top(true)
                 .resizable(false)
-                .shadow(true)
+                .shadow(false)
                 .skip_taskbar(true)
                 .focused(false)
                 .visible_on_all_workspaces(true)
                 .visible(false)
                 .build()?;
+
+            // macOS: force transparent bg + rounded corners on both windows
+            #[cfg(target_os = "macos")]
+            {
+                use cocoa::appkit::{NSWindow, NSColor, NSView};
+                use cocoa::base::{nil, id, YES, NO};
+                use cocoa::foundation::NSRect;
+                use objc::{msg_send, sel, sel_impl, class};
+
+                fn make_rounded(win: &tauri::WebviewWindow, radius: f64) {
+                    if let Ok(raw) = win.ns_window() {
+                        let ns_win = raw as id;
+                        unsafe {
+                            // Make window background transparent
+                            ns_win.setBackgroundColor_(NSColor::clearColor(nil));
+                            ns_win.setOpaque_(NO);
+                            ns_win.setHasShadow_(YES);
+
+                            // Get content view and set corner radius via CALayer
+                            let content_view: id = msg_send![ns_win, contentView];
+                            let _: () = msg_send![content_view, setWantsLayer: YES];
+                            let layer: id = msg_send![content_view, layer];
+                            let _: () = msg_send![layer, setCornerRadius: radius];
+                            let _: () = msg_send![layer, setMasksToBounds: YES];
+                        }
+                    }
+                }
+                if let Some(w) = app.get_webview_window("main") { make_rounded(&w, 16.0); }
+                if let Some(w) = app.get_webview_window("popup") { make_rounded(&w, 16.0); }
+            }
 
             // Tray icon
             let _tray = TrayIconBuilder::new()

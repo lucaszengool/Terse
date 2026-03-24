@@ -1,0 +1,28 @@
+{
+  "source": "/Users/James/Desktop/Terse/ios-app/Terse/Views/SettingsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Terse v1.0.0"
+      },
+      {
+        "comment": "",
+        "key": "SETTINGS"
+      },
+      {
+        "comment": "",
+        "key": "Setup Terse Keyboard"
+      },
+      {
+        "comment": "",
+        "key": "Enable the keyboard extension to optimize prompts inline"
+      },
+      {
+        "comment": "",
+        "key": "Sign In"
+      }
+    ]
+  },
+  "version": 1
+}

@@ -9,8 +9,8 @@
   <!-- Minimized favicon -->
   <div id="favicon" class="favicon" title="Show Terse">
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-      <rect x="2" y="2" width="20" height="20" rx="5" fill="rgba(110,231,183,0.12)" stroke="rgba(110,231,183,0.4)" stroke-width="1"/>
-      <text x="12" y="17" text-anchor="middle" fill="#6ee7b7" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="14" font-weight="700">T</text>
+      <rect x="2" y="2" width="20" height="20" rx="5" fill="white" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
+      <text x="12" y="17" text-anchor="middle" fill="currentColor" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="14" font-weight="700">T</text>
     </svg>
   </div>
 
@@ -38,6 +38,7 @@
     </div>
     <div class="bar-stats-row">
       <div id="techniques" class="techniques"></div>
+      <span id="popupQuota" class="popup-quota"></span>
       <div class="bar-stats">
         <span id="tokBefore">0</span>
         <span class="arrow">→</span>
@@ -86,7 +87,7 @@
         <span class="sum-sep">|</span>
         <span class="sum-item"><span class="sum-label">Tools</span> <span id="agentToolShort" class="sum-val">0</span></span>
         <span class="sum-sep">|</span>
-        <span class="sum-item sum-save"><span id="agentSaveShort" class="sum-val">0</span> saveable</span>
+        <span class="sum-item sum-save"><span id="agentSaveShort" class="sum-val">0</span> <span id="agentSaveLabel">saveable</span></span>
       </div>
 
       <!-- Context fill bar (always visible, compact) -->
@@ -132,7 +133,7 @@
         <div class="agent-savings-hero">
           <div class="savings-big">
             <span id="agentSavedBig" class="savings-num">0</span>
-            <span class="savings-unit">tokens saveable</span>
+            <span class="savings-unit" id="agentSavingsUnit">tokens saveable</span>
           </div>
           <div class="savings-bar-wrap">
             <div class="savings-bar"><div class="savings-bar-fill" id="agentSavingsBar"></div></div>
@@ -177,6 +178,24 @@
     </div>
   </div>
   <script>
+    // Load saved theme + sync across windows
+    (function() {
+      var saved = localStorage.getItem('terse-theme') || 'lime';
+      document.documentElement.setAttribute('data-theme', saved);
+      // Listen for theme changes from main window
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'terse-theme' && e.newValue) {
+          document.documentElement.setAttribute('data-theme', e.newValue);
+        }
+      });
+      // Also poll every 500ms in case storage event doesn't fire (same-origin Tauri)
+      setInterval(function() {
+        var t = localStorage.getItem('terse-theme') || 'lime';
+        if (document.documentElement.getAttribute('data-theme') !== t) {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      }, 500);
+    })();
     // In production/DMG builds, __TAURI__ may not be ready yet.
     // Wait for it before loading any Tauri-dependent scripts.
     function _loadScripts() {

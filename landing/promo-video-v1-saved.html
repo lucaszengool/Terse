@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080a12;overflow:hidden;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;color:#fff}
+.mono{font-family:'JetBrains Mono',monospace}
+:root{--ac:#6ee7b7;--ease:cubic-bezier(.22,1,.36,1)}
+
+/* ── LAYERS (stacked via z-index, opacity-toggled) ── */
+
+/* REVEAL */
+#L0{position:fixed;inset:0;z-index:60;background:#080a12;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .5s}
+#L0.off{opacity:0;pointer-events:none}
+@keyframes pop{to{opacity:1;transform:scale(1)}}
+@keyframes up{to{opacity:1;transform:translateY(0)}}
+@keyframes glo{0%,100%{text-shadow:0 0 10px rgba(110,231,183,.2)}50%{text-shadow:0 0 20px rgba(110,231,183,.5)}}
+@keyframes spn{to{transform:rotate(360deg)}}
+#L0 .icon{width:160px;height:160px;border-radius:36px;background:#0c0c14;border:1px solid rgba(110,231,183,.08);display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;opacity:0;transform:scale(.3);animation:pop .5s .1s var(--ease) forwards}
+#L0 .icon::before{content:'';position:absolute;inset:-3px;border-radius:39px;background:conic-gradient(transparent,var(--ac),transparent);animation:spn 8s linear infinite;opacity:.1}
+#L0 .icon::after{content:'';position:absolute;inset:0;border-radius:36px;background:#0c0c14}
+#L0 .icon b{font-size:72px;font-weight:900;color:var(--ac);position:relative;z-index:1;animation:glo 3s ease-in-out infinite}
+#L0 h1{font-size:56px;font-weight:900;letter-spacing:3px;opacity:0;transform:translateY(12px);animation:up .4s .3s forwards}
+#L0 h2{font-size:32px;font-weight:800;letter-spacing:8px;text-transform:uppercase;margin-top:4px;opacity:0;transform:translateY(8px);animation:up .4s .5s forwards}
+#L0 .badge{margin-top:20px;padding:10px 26px;border:1px solid rgba(255,255,255,.06);border-radius:10px;display:flex;align-items:center;gap:12px;font-size:16px;opacity:0;transform:translateY(8px);animation:up .4s .7s forwards}
+#L0 .badge small{font-size:8px;color:rgba(255,255,255,.2);display:block;letter-spacing:.8px;text-transform:uppercase}
+#L0 .sub{margin-top:20px;font-size:13px;color:rgba(110,231,183,.2);letter-spacing:3px;text-transform:uppercase;opacity:0;animation:up .4s .9s forwards;transform:translateY(6px)}
+
+/* MAC DESKTOP */
+#L1{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:#080a12;opacity:0;
+  perspective:800px;perspective-origin:50% 50%;
+  transition:opacity .5s,perspective 2.5s var(--ease),perspective-origin 2.5s var(--ease)}
+#L1.on{opacity:1}
+#L1.off{opacity:0;pointer-events:none;transition:opacity 1.2s}
+#L1.tilt3d{perspective:700px;perspective-origin:50% 55%;transition:perspective 3s var(--ease),perspective-origin 3s var(--ease)}
+/* The mac frame zooms into Terse icon at dock */
+.macFrame{transition:transform 2.5s var(--ease);transform-origin:50% 50%;transform-style:preserve-3d}
+.macFrame.zoomT{transform:scale(8);transform-origin:54% 96%}
+.macBox{transform-style:preserve-3d}
+.mscr{transform-style:preserve-3d}
+/* TILT: mac rotates to become the floor — THE KEY 3D TRANSITION */
+.macFrame.tilt{transform:scale(1) rotateX(55deg) translateY(120px);transform-origin:center 40%;transition:transform 3s var(--ease)}
+/* Add neon grid overlay when tilted */
+.macFrame.tilt .macBox{border-color:rgba(110,231,183,.08);box-shadow:0 0 40px rgba(110,231,183,.03)}
+.macFrame.tilt .mscr::after{content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(110,231,183,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(110,231,183,.03) 1px,transparent 1px);
+  background-size:60px 60px;pointer-events:none;opacity:1;animation:gs2 4s linear infinite}
+@keyframes gs2{to{background-position:0 60px}}
+.macBox{width:900px;border-radius:10px;overflow:visible;border:1px solid rgba(255,255,255,.06);box-shadow:0 15px 50px rgba(0,0,0,.4);transform-style:preserve-3d}
+/* Menubar */
+.mbar{display:flex;align-items:center;padding:5px 14px;background:rgba(20,20,28,.98);font-size:11px;gap:10px;border-bottom:1px solid rgba(255,255,255,.04)}
+.mbar .right{margin-left:auto;font-size:10px;color:rgba(255,255,255,.2)}
+/* Screen area */
+.mscr{background:#0c0e16;height:480px;position:relative;padding:10px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;grid-template-areas:"chr trm" "trs ocl";padding-bottom:48px;transform-style:preserve-3d;overflow:visible}
+/* Each app window */
+.app{border-radius:6px;border:1px solid rgba(255,255,255,.06);background:rgba(14,16,24,.98);overflow:visible;display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(0,0,0,.2);
+  transform:translateZ(0);transition:transform .8s var(--ease),border-color .5s,box-shadow .5s}
+/* Windows FLOAT UP, counter-rotate to face viewer flat */
+.app.float{transform:translateZ(40px) rotateX(-20deg);border-color:rgba(110,231,183,.06);box-shadow:0 8px 30px rgba(0,0,0,.2);transition:transform 1s var(--ease),border-color .5s,box-shadow .5s}
+/* Float to center — auto height so content isn't squeezed */
+.app.float-high{border-color:rgba(110,231,183,.15);box-shadow:0 15px 50px rgba(0,0,0,.4),0 0 25px rgba(110,231,183,.04);transition:transform 1.2s var(--ease),border-color .5s,box-shadow .5s;z-index:10;overflow:visible;height:auto;min-height:0}
+/* Chrome (top-left) → center, shifted UP so bottom content visible */
+.app-chr.float-high{transform:translateZ(120px) rotateX(-55deg) scale(.75) translate(55%,-15%)}
+/* Terminal (top-right) → center */
+.app-trm.float-high{transform:translateZ(120px) rotateX(-55deg) scale(.75) translate(-55%,-15%)}
+/* Terse (bottom-left) → center */
+.app-trs.float-high{transform:translateZ(120px) rotateX(-55deg) scale(.75) translate(55%,-70%)}
+/* OpenClaw (bottom-right) → center */
+.app-ocl.float-high{transform:translateZ(120px) rotateX(-55deg) scale(.75) translate(-55%,-70%)}
+/* Back down to desk — smooth return */
+.app.down{transform:translateZ(0) rotateX(0deg) scale(1) translate(0,0);border-color:rgba(255,255,255,.06);box-shadow:0 2px 8px rgba(0,0,0,.2);transition:transform 1s var(--ease),border-color .3s,box-shadow .3s}
+.app-bar{display:flex;align-items:center;gap:3px;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.03);background:rgba(255,255,255,.008);flex-shrink:0}
+.app-bar .d{width:6px;height:6px;border-radius:50%}.r{background:#ff5f57}.y{background:#ffbd2e}.g{background:#28c840}
+.app-bar .t{margin-left:4px;font-size:9px;color:rgba(255,255,255,.35)}
+.app-bar .b{margin-left:auto;font-size:6px;font-weight:700;color:var(--ac);background:rgba(110,231,183,.06);padding:1px 4px;border-radius:2px}
+.app-body{flex:1;padding:6px;overflow:visible;font-size:9px;line-height:1.6;color:rgba(255,255,255,.3);min-height:0}
+.app.float-high .app-body{flex:none}
+/* Chrome */
+.app-chr{grid-area:chr}
+.chr-m{padding:3px 6px;border-radius:4px;margin-bottom:3px;max-width:80%}
+.chr-u{background:rgba(110,231,183,.04);color:rgba(110,231,183,.3);margin-left:auto}
+.chr-a{background:rgba(255,255,255,.02);color:rgba(255,255,255,.18)}
+/* Terminal */
+.app-trm{grid-area:trm}
+.app-trm .app-body{color:rgba(110,231,183,.18)}
+.app-trm .pr{color:rgba(110,231,183,.25);font-weight:700}
+.app-trm .ok{color:rgba(110,231,183,.22)}
+@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
+.app-trm .blink{animation:cursorBlink .8s step-end infinite;color:var(--ac)}
+/* Terse */
+.app-trs{grid-area:trs;border-color:rgba(110,231,183,.06)}
+.app-trs .app-bar{background:rgba(110,231,183,.01)}
+.app-trs .t{color:rgba(110,231,183,.2)!important}
+.ts{display:flex;align-items:center;gap:4px;padding:3px 5px;margin-bottom:2px;border-radius:3px;background:rgba(110,231,183,.01);border:1px solid rgba(110,231,183,.015);font-size:8px;color:rgba(110,231,183,.15)}
+.ts .dot{width:4px;height:4px;border-radius:50%;background:rgba(110,231,183,.3);box-shadow:0 0 3px rgba(110,231,183,.2)}
+.ts .badge{margin-left:auto;font-size:5px;color:rgba(110,231,183,.12);background:rgba(110,231,183,.02);padding:0 3px;border-radius:1px;font-weight:700}
+.trs-stats{display:flex;gap:3px;margin-top:4px}
+.trs-stat{flex:1;text-align:center;padding:3px;background:rgba(110,231,183,.008);border-radius:2px;font-size:11px;font-weight:800;color:rgba(110,231,183,.2);border:1px solid rgba(110,231,183,.015)}
+.trs-stat small{font-size:4px;display:block;font-weight:400;color:rgba(110,231,183,.1);margin-top:1px}
+/* Animate stats counting up */
+@keyframes statPulse{0%{color:rgba(110,231,183,.2)}50%{color:rgba(110,231,183,.4)}100%{color:rgba(110,231,183,.2)}}
+.trs-stat.counting{animation:statPulse 1s ease-in-out}
+/* OpenClaw */
+.app-ocl{grid-area:ocl}
+.oc-m{padding:3px 5px;border-radius:3px;margin-bottom:2px;font-size:8px}
+.oc-u{background:rgba(110,231,183,.015);color:rgba(110,231,183,.12)}
+.oc-a{background:rgba(255,255,255,.008);color:rgba(255,255,255,.1)}
+/* Dock */
+.dock2{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:4px;padding:4px 10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:10px;backdrop-filter:blur(8px)}
+.di{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;position:relative}
+.di.fi{background:linear-gradient(135deg,#4a9eff,#2060d0)}.di.ch{background:linear-gradient(135deg,#ea4335,#fbbc05,#34a853,#4285f4);font-size:5px}.di.tm{background:#16161c;color:rgba(110,231,183,.3);border:1px solid rgba(255,255,255,.04);font-size:7px}
+.di.te{background:#080812;border:1px solid rgba(110,231,183,.15);color:var(--ac);font-weight:900;font-size:12px;box-shadow:0 0 6px rgba(110,231,183,.08)}
+.di.te.glow{box-shadow:0 0 20px rgba(110,231,183,.3);border-color:rgba(110,231,183,.4)}
+.di.te.glow::after{content:'';position:absolute;inset:-6px;border-radius:12px;border:1.5px solid var(--ac);opacity:0;animation:rng 1s ease-out 3 forwards}
+@keyframes rng{0%{transform:scale(1);opacity:.8}100%{transform:scale(2);opacity:0}}
+
+/* ── FLOATING PANELS (overlay on tilted mac) ── */
+#L2{position:fixed;inset:0;z-index:55;
+  display:flex;align-items:flex-start;justify-content:center;
+  pointer-events:none;opacity:0;transition:opacity .8s}
+#L2.on{opacity:1}
+.panels-wrap{width:100%;max-width:1200px;display:flex;flex-wrap:wrap;gap:20px;justify-content:center;padding:30px 24px;align-content:flex-start}
+/* PANELS — flat 2D positioned overlays that appear above the tilted desktop */
+.pnl{opacity:0;transition:opacity .6s var(--ease),transform .6s var(--ease);transform:translateY(20px)}
+.pnl.on{opacity:1;transform:translateY(0)}
+/* Holographic panel style */
+.hcard{background:rgba(6,10,18,.88);border:1px solid rgba(110,231,183,.12);border-radius:10px;backdrop-filter:blur(12px);box-shadow:0 0 25px rgba(110,231,183,.04),0 0 50px rgba(110,231,183,.015),inset 0 1px 0 rgba(110,231,183,.06);overflow:hidden;position:relative}
+.hcard::before{content:'';position:absolute;top:0;left:3%;right:3%;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);box-shadow:0 0 8px rgba(110,231,183,.4)}
+.hcard::after{content:'';position:absolute;bottom:0;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(110,231,183,.15),transparent)}
+.hbar{display:flex;align-items:center;gap:4px;padding:8px 12px;border-bottom:1px solid rgba(110,231,183,.06);background:rgba(0,0,0,.25)}
+.hbar .dot{width:5px;height:5px;border-radius:50%;background:var(--ac);box-shadow:0 0 6px var(--ac),0 0 12px rgba(110,231,183,.2);animation:dotP 2s ease-in-out infinite}
+@keyframes dotP{0%,100%{box-shadow:0 0 6px var(--ac)}50%{box-shadow:0 0 12px var(--ac),0 0 20px rgba(110,231,183,.3)}}
+.hbar .ht{font-size:11px;color:rgba(110,231,183,.4);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-left:3px}
+.hbar .hb{margin-left:auto;font-size:7px;font-weight:700;color:var(--ac);background:rgba(110,231,183,.06);padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.5px;border:1px solid rgba(110,231,183,.08)}
+.hbody{padding:12px}
+/* Session items in holo */
+.hs2{display:flex;align-items:center;gap:6px;padding:8px 10px;margin-bottom:4px;border-radius:5px;background:rgba(110,231,183,.015);border:1px solid rgba(110,231,183,.02);font-size:13px;opacity:0;transform:translateX(10px);transition:all .25s var(--ease)}
+.hs2.on{opacity:1;transform:translateX(0)}
+.hs2 .n{flex:1;color:rgba(255,255,255,.4)}.hs2 .b{font-size:8px;color:var(--ac);background:rgba(110,231,183,.05);padding:2px 5px;border-radius:2px;font-weight:700;letter-spacing:.5px}
+/* Token */
+.pipe7{display:flex;gap:2px;margin:6px 0}.pipe7 div{flex:1;height:4px;background:rgba(255,255,255,.02);border-radius:2px;overflow:hidden}
+.pipe7 div span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ac),#06b6d4);border-radius:2px;transition:width .15s;box-shadow:0 0 3px rgba(110,231,183,.3)}
+.tkw{display:inline;font-size:11px;color:rgba(255,255,255,.25);line-height:1.8;transition:all .15s var(--ease)}
+.tkw.x{color:#ff006e;text-decoration:line-through;opacity:.4;text-shadow:0 0 3px rgba(255,0,110,.15)}.tkw.f{color:var(--ac);font-weight:600;text-shadow:0 0 3px rgba(110,231,183,.15)}.tkw.g{opacity:0;font-size:0}
+.tkr{padding:8px 10px;background:rgba(110,231,183,.03);border:1px solid rgba(110,231,183,.04);border-radius:5px;margin-top:6px;opacity:0;transition:all .2s var(--ease)}
+.tkr.on{opacity:1}
+.tkr .a{font-size:12px;color:var(--ac);font-weight:600;line-height:1.4}.tkr .b{font-size:8px;color:rgba(110,231,183,.25);margin-top:2px}
+.tkbig{font-size:32px;font-weight:900;text-align:center;margin-top:6px;background:linear-gradient(135deg,var(--ac),#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0;transform:scale(1.5);transition:all .3s var(--ease);filter:drop-shadow(0 0 8px rgba(110,231,183,.2))}
+.tkbig.on{opacity:1;transform:scale(1)}
+/* Agent */
+.agl{font-size:11px;line-height:1.8;color:rgba(255,255,255,.2);opacity:0;transition:all .08s}.agl.on{opacity:1}
+.agl .p{color:var(--ac);font-weight:700}.agl .g2{color:var(--ac)}.agl .w{color:#f59e0b}.agl .c{color:#06b6d4}.agl .pk{color:#ff006e}
+.agg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px}
+.ags{text-align:center;padding:6px;background:rgba(0,0,0,.2);border-radius:4px;border:1px solid rgba(110,231,183,.02)}
+.ags .v{font-size:16px;font-weight:900;color:#fff;display:block}.ags .v.g2{color:var(--ac);text-shadow:0 0 6px rgba(110,231,183,.2)}
+.ags .l{font-size:6px;color:rgba(110,231,183,.2);text-transform:uppercase;display:block;margin-top:2px;letter-spacing:.5px}
+.agbar{margin-top:6px;padding:6px 10px;background:linear-gradient(90deg,rgba(110,231,183,.02),rgba(6,182,212,.01));border:1px solid rgba(110,231,183,.04);border-radius:4px;display:flex;justify-content:space-between;align-items:center;opacity:0;transition:all .15s}
+.agbar.on{opacity:1}
+.agbar span:first-child{font-size:8px;color:rgba(255,255,255,.15);text-transform:uppercase;letter-spacing:.5px}.agbar span:last-child{font-size:14px;font-weight:900;color:var(--ac);text-shadow:0 0 6px rgba(110,231,183,.15)}
+/* Browser */
+.bm{padding:6px 8px;border-radius:5px;font-size:11px;line-height:1.5;margin-bottom:4px;opacity:0;transition:all .12s var(--ease)}
+.bm.on{opacity:1}
+.bm.u{background:rgba(110,231,183,.015);border:1px solid rgba(110,231,183,.02);color:var(--ac);text-align:right}
+.bm.a{background:rgba(255,255,255,.008);border:1px solid rgba(255,255,255,.015);color:rgba(255,255,255,.25)}
+.bm .s{text-decoration:line-through;opacity:.3;color:#ff006e;font-size:9px;display:block;margin-bottom:2px}
+.bm .o{color:var(--ac);display:block}
+.bm .t{font-size:7px;color:var(--ac);opacity:.3;display:block;margin-top:2px}
+
+/* FINAL */
+#L3{position:fixed;inset:0;z-index:70;background:#080a12;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .5s}
+#L3.on{opacity:1}
+#L3 .fs{display:flex;gap:8px;margin-bottom:28px;flex-wrap:wrap;justify-content:center}
+#L3 .f{padding:8px 18px;border:1px solid rgba(255,255,255,.04);border-radius:14px;font-size:14px;font-weight:600;color:var(--ac);opacity:0;transform:translateY(4px)}
+#L3 .icon2{width:100px;height:100px;border-radius:24px;background:#0c0c14;border:1px solid rgba(110,231,183,.05);display:flex;align-items:center;justify-content:center;margin-bottom:10px;position:relative}
+#L3 .icon2::before{content:'';position:absolute;inset:-2px;border-radius:26px;background:conic-gradient(transparent,var(--ac),transparent);animation:spn 8s linear infinite;opacity:.06}
+#L3 .icon2::after{content:'';position:absolute;inset:0;border-radius:24px;background:#0c0c14}
+#L3 .icon2 b{font-size:46px;font-weight:900;color:var(--ac);position:relative;z-index:1;animation:glo 3s ease-in-out infinite}
+#L3 .tg{font-size:32px;font-weight:900;opacity:0;letter-spacing:1px}
+#L3 .sb{font-size:14px;color:rgba(255,255,255,.15);margin-top:6px;letter-spacing:2px;opacity:0}
+#L3 .ur{font-size:18px;font-weight:700;color:var(--ac);margin-top:14px;letter-spacing:3px;opacity:0;text-shadow:0 0 10px rgba(110,231,183,.15)}
+
+.prog{position:fixed;top:0;left:0;height:2px;background:var(--ac);z-index:9999;transition:width .3s}
+.ctrl{position:fixed;bottom:4px;right:4px;z-index:9999;display:flex;gap:2px}
+.ctrl button{padding:2px 5px;background:none;border:1px solid rgba(255,255,255,.03);border-radius:2px;color:rgba(255,255,255,.12);font-size:7px;cursor:pointer;font-family:inherit}
+.ctrl button:hover{color:var(--ac)}.ctrl .on{color:var(--ac)}
+</style>
+</head>
+<body>
+
+<div class="prog" id="prog"></div>
+
+<!-- L0: REVEAL -->
+<div id="L0">
+  <h1>现已推出</h1>
+  <div class="icon"><b>T</b></div>
+  <h2>Terse</h2>
+  <div class="badge"><span style="font-size:16px">&#63743;</span><div><small>Download on the</small><span>App Store</span></div></div>
+  <div class="sub">节省每一个 AI Token</div>
+</div>
+
+<!-- L1: MAC DESKTOP -->
+<div id="L1">
+  <div class="macFrame" id="mf">
+    <div class="macBox">
+      <div class="mbar">
+        <span style="font-size:13px;opacity:.35">&#63743;</span>
+        <span style="font-weight:600;color:rgba(255,255,255,.25)">Finder</span>
+        <span style="color:rgba(255,255,255,.12)">File</span>
+        <span style="color:rgba(255,255,255,.12)">Edit</span>
+        <span style="color:rgba(255,255,255,.12)">View</span>
+        <span class="right mono">Wed 18:23</span>
+      </div>
+      <div class="mscr">
+        <!-- CHROME -->
+        <div class="app app-chr">
+          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t">Chrome — ChatGPT</span><span class="b">AI CHAT</span></div>
+          <div class="app-body" style="display:flex;flex-direction:column;gap:3px">
+            <div class="chr-m chr-u">So basiclly could you pleas help me optimize database quereis for better performence?</div>
+            <div class="chr-m chr-a">Here are key strategies: 1) Use proper indexing on frequently queried columns, 2) Avoid SELECT *...</div>
+            <div class="chr-m chr-u">Show me indexing examples pleas</div>
+            <div class="chr-m chr-a">CREATE INDEX idx_users_email ON users(email); This reduces lookup from O(n) to O(log n).</div>
+          </div>
+        </div>
+        <!-- TERMINAL -->
+        <div class="app app-trm">
+          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t mono">Terminal — claude-code</span><span class="b">RUNNING</span></div>
+          <div class="app-body mono">
+            <div><span class="pr">❯ </span>claude "fix the authetication module token refresh"</div>
+            <div>⏺ Reading src/auth.js...</div>
+            <div>⏺ Reading package.json...</div>
+            <div>⏺ Reading src/auth.js... <span style="color:rgba(255,170,0,.15)">(dup)</span></div>
+            <div>⏺ Writing src/auth.js (+12 -3)</div>
+            <div>⏺ Running npm test...</div>
+            <div class="ok">✓ 262 passed, 0 failed (3.41s)</div>
+            <div><span class="pr">❯ </span><span class="blink">█</span></div>
+          </div>
+        </div>
+        <!-- TERSE -->
+        <div class="app app-trs">
+          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t">Terse</span><span class="b">MONITORING</span></div>
+          <div class="app-body">
+            <div class="ts"><div class="dot"></div>Chrome — ChatGPT<div class="badge">BROWSER</div></div>
+            <div class="ts"><div class="dot"></div>Claude Code<div class="badge">AGENT</div></div>
+            <div class="ts"><div class="dot"></div>OpenClaw<div class="badge">AGENT</div></div>
+            <div class="trs-stats">
+              <div class="trs-stat">7<small>Turns</small></div>
+              <div class="trs-stat">-71%<small>Saved</small></div>
+              <div class="trs-stat">$0.42<small>Cost</small></div>
+            </div>
+          </div>
+        </div>
+        <!-- OPENCLAW -->
+        <div class="app app-ocl">
+          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t">OpenClaw — claude-sonnet</span></div>
+          <div class="app-body" style="display:flex;flex-direction:column;gap:2px">
+            <div class="oc-m oc-u">Debug the authentication 500 error on POST</div>
+            <div class="oc-m oc-a">Investigating POST handler. Checking request validation...</div>
+            <div class="oc-m oc-u">Fix the token refresh logic</div>
+            <div class="oc-m oc-a">JWT verification was using expired keys. Fixed and verified.</div>
+          </div>
+        </div>
+        <!-- DOCK -->
+        <div class="dock2">
+          <div class="di fi">Fi</div>
+          <div class="di ch">Ch</div>
+          <div class="di tm">>_</div>
+          <div class="di te" id="dkT">T</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- L2: FLOATING PANELS (overlay, above tilted mac) -->
+<div id="L2">
+  <div class="panels-wrap">
+    <!-- Panel 0: Sessions -->
+    <div class="pnl" id="P0" style="width:360px">
+      <div class="hcard">
+        <div class="hbar"><div class="dot"></div><span class="ht">Terse Sessions</span><span class="hb">Active</span></div>
+        <div class="hbody">
+          <div class="hs2" id="h1"><div class="dot"></div><span class="n">Google Chrome</span><span class="b">Browser</span></div>
+          <div class="hs2" id="h2"><div class="dot"></div><span class="n">Claude Code</span><span class="b">Agent</span></div>
+          <div class="hs2" id="h3"><div class="dot"></div><span class="n">OpenClaw</span><span class="b">Agent</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Panel 1: Token Optimization -->
+    <div class="pnl" id="P1" style="width:420px">
+      <div class="hcard">
+        <div class="hbar"><div class="dot"></div><span class="ht">Token Optimization</span><span class="hb">7-Stage</span></div>
+        <div class="hbody">
+          <div class="pipe7" id="pipe7"></div>
+          <div id="tokT" class="mono" style="min-height:20px"></div>
+          <div class="tkr" id="tokR"><div class="a" id="tokA"></div><div class="b" id="tokB2"></div></div>
+          <div class="tkbig mono" id="tokBig"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Panel 2: Agent Monitor -->
+    <div class="pnl" id="P2" style="width:400px">
+      <div class="hcard">
+        <div class="hbar"><div class="dot"></div><span class="ht">Agent Monitor</span><span class="hb">Live</span></div>
+        <div class="hbody">
+          <div id="agL" style="min-height:50px"></div>
+          <div class="agg"><div class="ags"><span class="v" id="v1">0</span><span class="l">Turns</span></div><div class="ags"><span class="v" id="v2">0</span><span class="l">Input</span></div><div class="ags"><span class="v" id="v3">0</span><span class="l">Output</span></div><div class="ags"><span class="v g2" id="v4">$0</span><span class="l">Cost</span></div><div class="ags"><span class="v g2" id="v5">0</span><span class="l">Saved</span></div><div class="ags"><span class="v" id="v6">0%</span><span class="l">Cache</span></div></div>
+          <div class="agbar" id="agB"><span>Total Savings</span><span>210K→23K · 89%</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Panel 3: Browser -->
+    <div class="pnl" id="P3" style="width:360px">
+      <div class="hcard">
+        <div class="hbar"><div class="dot"></div><span class="ht">Browser Auto-Optimize</span><span class="hb">Live</span></div>
+        <div class="hbody" id="bpM"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- L3: FINAL -->
+<div id="L3">
+  <div class="fs"><div class="f">节省 40-70% Token</div><div class="f">7 阶段管线</div><div class="f">20+ 技术</div><div class="f">适配所有 AI</div><div class="f">100% 本地</div></div>
+  <div class="icon2"><b>T</b></div>
+  <div class="tg" id="ft">节省每一个 Token</div>
+  <div class="sb" id="fs2">Save every token on any AI usage.</div>
+  <div class="ur" id="fu">terseai.org</div>
+</div>
+
+<div class="ctrl"><button onclick="restart()">⟳</button><button class="on" id="ba" onclick="togA()">▶</button></div>
+
+<script>
+// Build pipe
+const pipe7=document.getElementById('pipe7');
+for(let i=0;i<7;i++){const d=document.createElement('div');d.innerHTML='<span id="pf'+i+'"></span>';pipe7.appendChild(d)}
+
+const STEPS=[
+  {dur:2800,fn:'s0'},  // reveal
+  {dur:3500,fn:'s1'},  // desktop with live content
+  {dur:3000,fn:'s2'},  // pulse+zoom terse
+  {dur:2500,fn:'s3'},  // tilt to 3D + Chrome floats up first
+  {dur:5500,fn:'s3c'}, // Chrome shows token optimization, then down
+  {dur:3800,fn:'s3b'}, // Terse floats up, shows live activity, then down
+  {dur:5000,fn:'s6'},  // Terminal floats up, agent monitor
+  {dur:1500,fn:'s6b'}, // Terminal goes down
+  {dur:4500,fn:'s7'},  // OpenClaw floats up, auto-optimize
+  {dur:1500,fn:'s7b'}, // OpenClaw goes down
+  {dur:4000,fn:'s8'},  // final
+];
+
+let cur=0,auto=true,tmr=null;
+function go(n){if(n>=STEPS.length)return;cur=n;
+  document.getElementById('prog').style.width=((n+1)/STEPS.length*100)+'%';
+  try{window[STEPS[n].fn]()}catch(e){console.error(e)}
+  if(auto&&n<STEPS.length-1){clearTimeout(tmr);tmr=setTimeout(()=>go(n+1),STEPS[n].dur)}
+}
+
+function restart(){
+  clearTimeout(tmr);
+  document.getElementById('L0').classList.remove('off');
+  document.getElementById('L1').className='';
+  document.getElementById('L1').classList.remove('tilt3d');
+  document.getElementById('L2').className='';
+  // Reset floating windows
+  document.querySelectorAll('.app').forEach(a=>{a.classList.remove('float','float-high','down')});
+  // Remove injected Terse panels from windows
+  document.querySelectorAll('.app-chr .app-body > div:last-child').forEach(d=>{if(d.style&&d.style.marginTop)d.remove()});
+  document.querySelectorAll('.app-trm .app-body > div:last-child').forEach(d=>{if(d.style&&d.style.marginTop)d.remove()});
+  document.querySelectorAll('.app-ocl .app-body > div:last-child').forEach(d=>{if(d.style&&d.style.marginTop)d.remove()});
+  document.getElementById('L3').className='';
+  document.getElementById('mf').classList.remove('zoomT');
+  document.getElementById('mf').classList.remove('tilt');
+  document.getElementById('mf').style.transition='none';
+  void document.getElementById('mf').offsetWidth;
+  document.getElementById('mf').style.transition='';
+  document.getElementById('dkT').classList.remove('glow');
+  ['P0','P1','P2','P3'].forEach(i=>document.getElementById(i).classList.remove('on'));
+  ['h1','h2','h3'].forEach(i=>document.getElementById(i).classList.remove('on'));
+  document.getElementById('tokT').innerHTML='';
+  document.getElementById('tokR').classList.remove('on');
+  document.getElementById('tokBig').classList.remove('on');
+  document.getElementById('agL').innerHTML='';
+  document.getElementById('agB').classList.remove('on');
+  document.getElementById('bpM').innerHTML='';
+  for(let i=0;i<7;i++){const f=document.getElementById('pf'+i);if(f)f.style.width='0'}
+  ['v1','v2','v3','v4','v5'].forEach(i=>document.getElementById(i).textContent='0');
+  document.getElementById('v6').textContent='0%';
+  go(0);
+}
+function togA(){auto=!auto;const b=document.getElementById('ba');if(auto){b.classList.add('on');b.textContent='▶';clearTimeout(tmr);tmr=setTimeout(()=>go(cur+1),500)}else{b.classList.remove('on');b.textContent='⏸';clearTimeout(tmr)}}
+
+// ── STEPS ──
+function s0(){/* reveal shows via initial state */}
+
+function s1(){
+  document.getElementById('L0').classList.add('off');
+  document.getElementById('L1').className='on';
+  // Animate desktop content appearing live
+  // Terminal: lines appear one by one
+  const trmBody=document.querySelector('.app-trm .app-body');
+  const trmLines=trmBody.querySelectorAll('div');
+  trmLines.forEach((l,i)=>{l.style.opacity='0';l.style.transition='opacity .3s';setTimeout(()=>l.style.opacity='1',300+i*250)});
+  // Chrome: messages appear
+  const chrMsgs=document.querySelectorAll('.chr-m');
+  chrMsgs.forEach((m,i)=>{m.style.opacity='0';m.style.transform='translateY(4px)';m.style.transition='all .3s var(--ease)';setTimeout(()=>{m.style.opacity='1';m.style.transform='translateY(0)'},400+i*350)});
+  // Terse: sessions appear one by one
+  const tsSess=document.querySelectorAll('.app-trs .ts');
+  tsSess.forEach((s,i)=>{s.style.opacity='0';s.style.transform='translateX(8px)';s.style.transition='all .3s var(--ease)';setTimeout(()=>{s.style.opacity='1';s.style.transform='translateX(0)'},600+i*300)});
+  // Terse stats count up
+  const stats=document.querySelectorAll('.trs-stat');
+  stats.forEach((s,i)=>{s.style.opacity='0';s.style.transition='opacity .3s';setTimeout(()=>{s.style.opacity='1';s.classList.add('counting')},1800+i*200)});
+  // OpenClaw: messages appear like typing
+  const ocMsgs=document.querySelectorAll('.oc-m');
+  ocMsgs.forEach((m,i)=>{m.style.opacity='0';m.style.transform='translateY(4px)';m.style.transition='all .3s var(--ease)';setTimeout(()=>{m.style.opacity='1';m.style.transform='translateY(0)'},500+i*400)});
+}
+
+function s2(){
+  document.getElementById('dkT').classList.add('glow');
+  setTimeout(()=>document.getElementById('mf').classList.add('zoomT'),1200);
+}
+
+function s3(){
+  // THE KEY MOMENT: mac desktop TILTS
+  document.getElementById('mf').classList.remove('zoomT');
+  document.getElementById('mf').classList.add('tilt');
+  document.getElementById('L1').classList.add('tilt3d');
+  // Chrome floats up FIRST after tilt settles
+  setTimeout(()=>document.querySelector('.app-chr').classList.add('float-high'),1800);
+}
+
+function s3c(){
+  // Chrome shows token optimization (same as old s5), then goes down
+  const chrBody=document.querySelector('.app-chr .app-body');
+  const tBar=document.createElement('div');
+  tBar.style.cssText='margin-top:6px;padding:4px 6px;background:rgba(110,231,183,.03);border:1px solid rgba(110,231,183,.05);border-radius:4px;opacity:0;transition:opacity .4s';
+  tBar.innerHTML='<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px"><div style="width:4px;height:4px;border-radius:50%;background:var(--ac);box-shadow:0 0 4px var(--ac)"></div><span style="font-size:7px;color:rgba(110,231,183,.3);letter-spacing:1px;font-weight:700">TERSE OPTIMIZING</span></div><div class="pipe7" id="pipe7b"></div><div style="font-size:8px;color:rgba(255,255,255,.15);margin-top:3px" class="mono" id="tokT2"></div><div style="padding:3px 5px;background:rgba(110,231,183,.025);border:1px solid rgba(110,231,183,.03);border-radius:3px;margin-top:3px;opacity:0;transition:opacity .2s" id="tokR2"></div><div style="font-size:18px;font-weight:900;text-align:center;margin-top:3px;color:var(--ac);opacity:0;transition:all .3s" id="tokBig2"></div>';
+  chrBody.appendChild(tBar);
+  setTimeout(()=>tBar.style.opacity='1',200);
+  const pp=document.getElementById('pipe7b');
+  if(pp){pp.innerHTML='';for(let i=0;i<7;i++){const d=document.createElement('div');d.innerHTML='<span id="pf2_'+i+'"></span>';pp.appendChild(d)}}
+  const txt=document.getElementById('tokT2');
+  if(!txt)return;
+  txt.innerHTML='';
+  const words=[{t:'So',c:'g'},{t:' basiclly',c:'x',f:' basically'},{t:' could',c:''},{t:' you',c:'g'},{t:' pleas',c:'x',f:' please'},{t:' help',c:''},{t:' me',c:'g'},{t:' optimize',c:''},{t:' quereis',c:'x',f:' queries'},{t:' for',c:''},{t:' better',c:'g'},{t:' performence?',c:'x',f:' performance?'}];
+  setTimeout(()=>{words.forEach(w=>{const s=document.createElement('span');s.className='tkw mono';s.textContent=w.t;s.dataset.c=w.c;if(w.f!==undefined)s.dataset.f=w.f;txt.appendChild(s)})},400);
+  setTimeout(()=>{for(let i=0;i<2;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .15s';f.style.width='100%'}}txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='x'){w.classList.add('x');if(w.dataset.f){const fx=document.createElement('span');fx.className='tkw mono f';fx.textContent=w.dataset.f;w.after(fx)}}})},1200);
+  setTimeout(()=>{for(let i=2;i<5;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .15s';f.style.width='100%'}}txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='g')w.classList.add('g')})},2200);
+  setTimeout(()=>{for(let i=5;i<7;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .15s';f.style.width='100%'}}},2800);
+  setTimeout(()=>{const r=document.getElementById('tokR2');if(r){r.innerHTML='<div style="font-size:9px;color:var(--ac);font-weight:600">Optimize queries for performance.</div><div style="font-size:6px;color:rgba(110,231,183,.2)">38→12 tokens · 3 typos · $0.01 saved</div>';r.style.opacity='1'}},3200);
+  setTimeout(()=>{const b=document.getElementById('tokBig2');if(b){b.textContent='-68%';b.style.opacity='1'}},4300);
+  // Chrome goes back down
+  setTimeout(()=>{document.querySelector('.app-chr').classList.remove('float-high');document.querySelector('.app-chr').classList.add('down')},5000);
+}
+
+function s3b(){
+  // Terse window floats up
+  document.querySelector('.app-trs').classList.add('float-high');
+  // Inject live Terse activity into the floating Terse window
+  const trsBody=document.querySelector('.app-trs .app-body');
+  // Add a live activity section
+  const live=document.createElement('div');
+  live.style.cssText='margin-top:4px;padding:4px 5px;background:rgba(110,231,183,.015);border:1px solid rgba(110,231,183,.025);border-radius:3px;font-size:7px;color:rgba(110,231,183,.15);opacity:0;transition:opacity .3s';
+  live.innerHTML='<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px"><div style="width:3px;height:3px;border-radius:50%;background:var(--ac);box-shadow:0 0 3px var(--ac)"></div><span style="font-size:6px;color:rgba(110,231,183,.2);letter-spacing:.5px;font-weight:700">LIVE ACTIVITY</span></div><div id="trsLive" class="mono" style="line-height:1.6"></div>';
+  trsBody.appendChild(live);
+  setTimeout(()=>live.style.opacity='1',200);
+  // Animate live feed
+  const feed=document.getElementById('trsLive');
+  if(feed){
+    [{t:300,h:'<span style="color:var(--ac)">●</span> Chrome: optimized prompt -68%'},{t:800,h:'<span style="color:var(--ac)">●</span> Claude Code: 42→12 tok (-71%)'},{t:1300,h:'<span style="color:#f59e0b">●</span> Dup detected: src/auth.js'},{t:1800,h:'<span style="color:var(--ac)">●</span> OpenClaw: auto-compress -65%'}].forEach(d=>setTimeout(()=>{const e=document.createElement('div');e.style.cssText='opacity:0;transition:opacity .15s';e.innerHTML=d.h;feed.appendChild(e);setTimeout(()=>e.style.opacity='1',10)},d.t));
+  }
+  // Go back down after showing
+  setTimeout(()=>{
+    document.querySelector('.app-trs').classList.remove('float-high');
+    document.querySelector('.app-trs').classList.add('down');
+  },2800);
+}
+
+function s5(){
+  // Chrome floats up to center alone
+  document.querySelector('.app-chr').classList.add('float-high');
+  // Inject Terse optimization bar into Chrome
+  const chrBody=document.querySelector('.app-chr .app-body');
+  const tBar=document.createElement('div');
+  tBar.style.cssText='margin-top:6px;padding:4px 6px;background:rgba(110,231,183,.03);border:1px solid rgba(110,231,183,.05);border-radius:4px;opacity:0;transition:opacity .4s';
+  tBar.innerHTML='<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px"><div style="width:4px;height:4px;border-radius:50%;background:var(--ac);box-shadow:0 0 4px var(--ac)"></div><span style="font-size:7px;color:rgba(110,231,183,.3);letter-spacing:1px;font-weight:700">TERSE OPTIMIZING</span></div><div class="pipe7" id="pipe7b"></div><div style="font-size:8px;color:rgba(255,255,255,.15);margin-top:3px" class="mono" id="tokT2"></div><div style="padding:3px 5px;background:rgba(110,231,183,.025);border:1px solid rgba(110,231,183,.03);border-radius:3px;margin-top:3px;opacity:0;transition:opacity .2s" id="tokR2"></div><div style="font-size:18px;font-weight:900;text-align:center;margin-top:3px;color:var(--ac);opacity:0;transition:all .3s" id="tokBig2"></div>';
+  chrBody.appendChild(tBar);
+  setTimeout(()=>tBar.style.opacity='1',200);
+  // Build pipe
+  const pp=document.getElementById('pipe7b');
+  if(pp){pp.innerHTML='';for(let i=0;i<7;i++){const d=document.createElement('div');d.innerHTML='<span id="pf2_'+i+'"></span>';pp.appendChild(d)}}
+  const txt=document.getElementById('tokT2');
+  if(!txt)return;
+  txt.innerHTML='';
+  const tokR=document.getElementById('tokR2');
+  const tokBig=document.getElementById('tokBig2');
+  if(tokR)tokR.style.opacity='0';
+  if(tokBig)tokBig.style.opacity='0';
+
+  const words=[{t:'So',c:'g'},{t:' basiclly',c:'x',f:' basically'},{t:' could',c:''},{t:' you',c:'g'},{t:' pleas',c:'x',f:' please'},{t:' help',c:''},{t:' me',c:'g'},{t:' optimize',c:''},{t:' quereis',c:'x',f:' queries'},{t:' for',c:''},{t:' better',c:'g'},{t:' performence?',c:'x',f:' performance?'}];
+
+  setTimeout(()=>{words.forEach(w=>{const s=document.createElement('span');s.className='tkw mono';s.textContent=w.t;s.dataset.c=w.c;if(w.f!==undefined)s.dataset.f=w.f;txt.appendChild(s)})},400);
+
+  setTimeout(()=>{for(let i=0;i<2;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .15s';f.style.width='100%'}}
+    txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='x'){w.classList.add('x');if(w.dataset.f){const fx=document.createElement('span');fx.className='tkw mono f';fx.textContent=w.dataset.f;w.after(fx)}}})},1200);
+
+  setTimeout(()=>{for(let i=2;i<5;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .15s';f.style.width='100%'}}
+    txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='g')w.classList.add('g')})},2200);
+
+  setTimeout(()=>{for(let i=5;i<7;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .15s';f.style.width='100%'}}},2800);
+
+  setTimeout(()=>{if(tokR){tokR.innerHTML='<div style="font-size:9px;color:var(--ac);font-weight:600">Optimize queries for performance.</div><div style="font-size:6px;color:rgba(110,231,183,.2)">38→12 tokens · 3 typos · $0.01 saved</div>';tokR.style.opacity='1'}},3200);
+
+  setTimeout(()=>{if(tokBig){tokBig.textContent='-68%';tokBig.style.opacity='1';tokBig.style.transform='scale(1)'}},4300);
+}
+
+function s5b(){
+  // Chrome goes back down
+  document.querySelector('.app-chr').classList.remove('float-high');
+  document.querySelector('.app-chr').classList.add('down');
+}
+
+function s6(){
+  // Terminal floats up to center alone
+  document.querySelector('.app-trm').classList.add('float-high');
+  // Inject Terse agent monitor into terminal
+  const trmBody=document.querySelector('.app-trm .app-body');
+  const panel=document.createElement('div');
+  panel.style.cssText='margin-top:6px;padding:4px 6px;background:rgba(110,231,183,.02);border:1px solid rgba(110,231,183,.04);border-radius:4px;opacity:0;transition:opacity .4s';
+  panel.innerHTML='<div style="display:flex;align-items:center;gap:3px;margin-bottom:4px"><div style="width:4px;height:4px;border-radius:50%;background:var(--ac);box-shadow:0 0 4px var(--ac)"></div><span style="font-size:7px;color:rgba(110,231,183,.25);letter-spacing:1px;font-weight:700">TERSE AGENT MONITOR</span></div><div id="trsLines" style="font-size:8px;line-height:1.6;color:rgba(255,255,255,.15);min-height:30px" class="mono"></div><div id="trsStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:4px"></div><div id="trsSave" style="margin-top:3px;padding:3px 5px;background:rgba(110,231,183,.015);border:1px solid rgba(110,231,183,.02);border-radius:2px;display:flex;justify-content:space-between;font-size:7px;opacity:0;transition:opacity .2s"><span style="color:rgba(255,255,255,.1)">SAVINGS</span><span style="color:var(--ac);font-weight:900;font-size:9px">210K→23K · 89%</span></div>';
+  trmBody.appendChild(panel);
+  setTimeout(()=>panel.style.opacity='1',200);
+
+  const lines=document.getElementById('trsLines');
+  if(!lines)return;
+  [{t:400,h:'<span style="color:var(--ac)">[terse]</span> 42→12 tok (-71%)'},{t:700,h:'<span style="color:#f59e0b">⚠ Dup: Read src/auth.js · ~800 wasted</span>'},{t:1100,h:'<span style="color:var(--ac)">[terse]</span> test 4,823→38 (-99%)'},{t:1500,h:'<span style="color:var(--ac)">[terse]</span> diff 1,240→310 (-75%)'}].forEach(d=>setTimeout(()=>{const e=document.createElement('div');e.style.cssText='opacity:0;transition:opacity .1s';e.innerHTML=d.h;lines.appendChild(e);setTimeout(()=>e.style.opacity='1',10)},d.t));
+
+  const stats=document.getElementById('trsStats');
+  if(stats)setTimeout(()=>{stats.innerHTML='<div style="text-align:center;padding:2px;background:rgba(0,0,0,.12);border-radius:2px"><span style="font-size:10px;font-weight:900;color:#fff;display:block">7</span><span style="font-size:4px;color:rgba(110,231,183,.15)">TURNS</span></div><div style="text-align:center;padding:2px;background:rgba(0,0,0,.12);border-radius:2px"><span style="font-size:10px;font-weight:900;color:var(--ac);display:block">$0.42</span><span style="font-size:4px;color:rgba(110,231,183,.15)">COST</span></div><div style="text-align:center;padding:2px;background:rgba(0,0,0,.12);border-radius:2px"><span style="font-size:10px;font-weight:900;color:var(--ac);display:block">8.4K</span><span style="font-size:4px;color:rgba(110,231,183,.15)">SAVED</span></div>'},2200);
+
+  const save=document.getElementById('trsSave');
+  if(save)setTimeout(()=>save.style.opacity='1',3000);
+}
+
+function s6b(){
+  // Terminal goes back down
+  document.querySelector('.app-trm').classList.remove('float-high');
+  document.querySelector('.app-trm').classList.add('down');
+}
+
+function s7(){
+  // OpenClaw floats up to center alone
+  document.querySelector('.app-ocl').classList.add('float-high');
+  // Inject Terse optimization into OpenClaw
+  const ocBody=document.querySelector('.app-ocl .app-body');
+  const terseOc=document.createElement('div');
+  terseOc.style.cssText='margin-top:6px;padding:4px 6px;background:rgba(110,231,183,.02);border:1px solid rgba(110,231,183,.04);border-radius:4px;opacity:0;transition:opacity .4s;font-size:7px';
+  terseOc.innerHTML='<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px"><div style="width:4px;height:4px;border-radius:50%;background:var(--ac);box-shadow:0 0 4px var(--ac)"></div><span style="color:rgba(110,231,183,.25);letter-spacing:1px;font-weight:700">TERSE</span><span style="margin-left:auto;font-size:6px;color:var(--ac)">AUTO-OPTIMIZE ON</span></div><div style="color:rgba(255,255,255,.12);line-height:1.6" class="mono" id="ocTerse"></div>';
+  ocBody.appendChild(terseOc);
+  setTimeout(()=>terseOc.style.opacity='1',300);
+
+  const ocT=document.getElementById('ocTerse');
+  if(!ocT)return;
+  [{t:500,h:'<span style="color:var(--pk);text-decoration:line-through;opacity:.3">Debug the authentication 500 error</span>'},{t:900,h:'<span style="color:var(--ac)">→ Fix auth 500 on POST</span> <span style="color:rgba(110,231,183,.2)">(-71%)</span>'},{t:1400,h:'<span style="color:var(--pk);text-decoration:line-through;opacity:.3">Fix the token refresh logic</span>'},{t:1800,h:'<span style="color:var(--ac)">→ Fix token refresh</span> <span style="color:rgba(110,231,183,.2)">(-65%)</span>'},{t:2300,h:'<div style="margin-top:3px;font-size:9px;font-weight:900;color:var(--ac);text-align:center">Total: -68% tokens saved</div>'}].forEach(d=>setTimeout(()=>{const e=document.createElement('div');e.style.cssText='opacity:0;transition:opacity .15s';e.innerHTML=d.h;ocT.appendChild(e);setTimeout(()=>e.style.opacity='1',10)},d.t));
+}
+
+function s7b(){
+  // OpenClaw goes back down
+  document.querySelector('.app-ocl').classList.remove('float-high');
+  document.querySelector('.app-ocl').classList.add('down');
+}
+
+function s8(){
+  document.getElementById('L3').classList.add('on');
+  document.querySelectorAll('#L3 .f').forEach((f,i)=>{f.style.opacity='0';f.style.transform='translateY(3px)';setTimeout(()=>{f.style.transition='all .2s var(--ease)';f.style.opacity='1';f.style.transform='translateY(0)'},40+i*40)});
+  ['ft','fs2','fu'].forEach((id,i)=>{const e=document.getElementById(id);e.style.opacity='0';setTimeout(()=>{e.style.transition='opacity .3s';e.style.opacity='1'},300+i*100)});
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();clearTimeout(tmr);if(cur<STEPS.length-1)go(cur+1)}
+  if(e.key==='ArrowLeft'){clearTimeout(tmr);if(cur>0)go(cur-1)}
+  if(e.key==='r')restart();
+});
+go(0);
+</script>
+</body>
+</html>

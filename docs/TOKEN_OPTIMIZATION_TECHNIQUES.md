@@ -305,3 +305,4 @@ User sees: token counts, waste alerts, optimization suggestions
 3. Token counts are estimated using tiktoken-compatible heuristics
 4. The frontend receives structured data and runs the five analysis strategies
 5. Results are displayed in the popup window with real-time updates
+1

@@ -1,0 +1,56 @@
+{
+  "source": "/Users/James/Desktop/Terse/ios-app/Terse/Views/KeyboardSetupView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Done"
+      },
+      {
+        "comment": "",
+        "key": "T"
+      },
+      {
+        "comment": "",
+        "key": "Enable Terse Keyboard"
+      },
+      {
+        "comment": "",
+        "key": "Just tap each step — we'll take you right there."
+      },
+      {
+        "comment": "",
+        "key": "After adding the keyboard, come back and tap \"Check Now\""
+      },
+      {
+        "comment": "",
+        "key": "Quick Setup — Open Settings"
+      },
+      {
+        "comment": "",
+        "key": "Terse Keyboard is Ready!"
+      },
+      {
+        "comment": "",
+        "key": "Switch to Terse by tapping the globe key on any keyboard. Your prompts will be optimized automatically."
+      },
+      {
+        "comment": "",
+        "key": "Get Started"
+      },
+      {
+        "comment": "",
+        "key": "Full Access is required so Terse can read and optimize your text. All processing happens on-device. No data is sent to any server."
+      },
+      {
+        "comment": "",
+        "key": "Privacy Note"
+      },
+      {
+        "comment": "",
+        "key": "%lld"
+      }
+    ]
+  },
+  "version": 1
+}

@@ -260,11 +260,17 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
     }
   }
 
+  // Dev/test account overrides
+  const ACCOUNT_OVERRIDES = {
+    'user_3BP20FfLSljVdFW6tKgC2Vxmi6P': { optimizations_per_week: 1500, max_sessions: 3, max_devices: 2 },
+  };
+
   if (!license || license.status === 'cancelled') {
+    const override = ACCOUNT_OVERRIDES[clerkUserId];
     return res.json({
       tier: 'free',
       status: 'active',
-      limits: PLAN_LIMITS.free,
+      limits: override || PLAN_LIMITS.free,
     });
   }
 

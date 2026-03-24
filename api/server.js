@@ -22,7 +22,7 @@ const PRICES = {
 
 // Plan limits
 const PLAN_LIMITS = {
-  free: { optimizations_per_week: 200, max_sessions: 1, max_devices: 1 },
+  free: { optimizations_per_week: 1000, max_sessions: 1, max_devices: 1 },
   pro: { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
   premium: { optimizations_per_week: -1, max_sessions: -1, max_devices: -1 },
 };

@@ -66,9 +66,9 @@ pub struct License {
     pub clerk_user_id: Option<String>,
     #[serde(rename = "expiresAt")]
     pub expires_at: Option<String>,
-    /// Optimizations used this week (tracked locally)
+    /// Optimizations used this week (tracked locally, supports fractional costs)
     #[serde(default)]
-    pub weekly_usage: u32,
+    pub weekly_usage: f64,
     /// Week number when usage was last reset
     #[serde(default)]
     pub usage_week: u32,
@@ -87,13 +87,13 @@ impl Default for License {
             tier: "free".to_string(),
             status: "active".to_string(),
             limits: PlanLimits {
-                optimizations_per_week: 200,
+                optimizations_per_week: 1000,
                 max_sessions: 1,
                 max_devices: 1,
             },
             clerk_user_id: None,
             expires_at: None,
-            weekly_usage: 0,
+            weekly_usage: 0.0,
             usage_week: current_week(),
         }
     }
@@ -118,7 +118,7 @@ impl License {
                     // Reset weekly usage if new week
                     let week = current_week();
                     if license.usage_week != week {
-                        license.weekly_usage = 0;
+                        license.weekly_usage = 0.0;
                         license.usage_week = week;
                         license.save();
                     }
@@ -143,16 +143,20 @@ impl License {
         if self.limits.optimizations_per_week < 0 {
             return true; // unlimited
         }
-        self.weekly_usage < self.limits.optimizations_per_week as u32
+        self.weekly_usage < self.limits.optimizations_per_week as f64
     }
 
     pub fn record_optimization(&mut self) {
+        self.record_optimization_cost(1.0);
+    }
+
+    pub fn record_optimization_cost(&mut self, cost: f64) {
         let week = current_week();
         if self.usage_week != week {
-            self.weekly_usage = 0;
+            self.weekly_usage = 0.0;
             self.usage_week = week;
         }
-        self.weekly_usage += 1;
+        self.weekly_usage += cost;
         self.save();
     }
 
@@ -167,7 +171,7 @@ impl License {
         if self.limits.optimizations_per_week < 0 {
             return -1; // unlimited
         }
-        (self.limits.optimizations_per_week - self.weekly_usage as i32).max(0)
+        ((self.limits.optimizations_per_week as f64 - self.weekly_usage).max(0.0)) as i32
     }
 
     pub fn get_snapshot(&self) -> serde_json::Value {
@@ -212,7 +216,8 @@ pub async fn verify_license(clerk_user_id: &str) -> Option<License> {
         max_devices: v["limits"]["max_devices"].as_i64().unwrap_or(1) as i32,
     };
 
-    // Load existing local data to preserve weekly_usage
+    // Load existing local data to preserve weekly_usage across sign-ins
+    // Quota is per-device, not per-user — prevents creating new accounts to bypass limits
     let mut existing = License::load();
     existing.tier = tier;
     existing.status = status;

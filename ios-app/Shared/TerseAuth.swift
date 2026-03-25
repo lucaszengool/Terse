@@ -33,7 +33,7 @@ class TerseAuth: ObservableObject {
     }
 
     init() {
-        self.defaults = UserDefaults(suiteName: "group.com.terse.shared") ?? .standard
+        self.defaults = UserDefaults(suiteName: "group.com.terseai.shared") ?? .standard
         loadAuth()
         loadLicense()
     }

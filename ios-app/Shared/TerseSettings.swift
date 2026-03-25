@@ -136,7 +136,7 @@ class TerseSettings: ObservableObject {
     // MARK: - Init
 
     init() {
-        let d = UserDefaults(suiteName: "group.com.terse.shared") ?? .standard
+        let d = UserDefaults(suiteName: "group.com.terseai.shared") ?? .standard
         self.defaults = d
 
         self.aggressiveness = AggressivenessMode(rawValue: d.string(forKey: "aggressiveness") ?? "balanced") ?? .balanced

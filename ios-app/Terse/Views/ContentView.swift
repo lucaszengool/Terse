@@ -277,7 +277,7 @@ struct ContentView: View {
             keyboardInstalled = installed
         }
         // Always keep Terse active — keyboard optimizes automatically
-        UserDefaults(suiteName: "group.com.terse.shared")?.set(true, forKey: "terseActive")
+        UserDefaults(suiteName: "group.com.terseai.shared")?.set(true, forKey: "terseActive")
 
         if !installed && !settings.hasSeenSetup {
             showKeyboardSetup = true
@@ -291,11 +291,11 @@ struct ContentView: View {
         let inputModes = UITextInputMode.activeInputModes
         for mode in inputModes {
             if let identifier = mode.value(forKey: "identifier") as? String {
-                if identifier.contains("com.terse.ios") { return true }
+                if identifier.contains("com.terseai.app") { return true }
             }
         }
         if let keyboards = UserDefaults.standard.object(forKey: "AppleKeyboards") as? [String] {
-            if keyboards.contains(where: { $0.contains("com.terse.ios") }) { return true }
+            if keyboards.contains(where: { $0.contains("com.terseai.app") }) { return true }
         }
         return false
     }

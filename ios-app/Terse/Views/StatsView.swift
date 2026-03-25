@@ -21,7 +21,7 @@ struct StatsView: View {
         settings.totalTokensSaved
     }
     private var spentTokens: Int {
-        let d = UserDefaults(suiteName: "group.com.terse.shared")
+        let d = UserDefaults(suiteName: "group.com.terseai.shared")
         return d?.integer(forKey: "spentTokens") ?? 0
     }
     private var availableTokens: Int {
@@ -33,7 +33,7 @@ struct StatsView: View {
     ]
 
     private var unlockedThemes: Set<String> {
-        let d = UserDefaults(suiteName: "group.com.terse.shared")
+        let d = UserDefaults(suiteName: "group.com.terseai.shared")
         let unlocked = d?.stringArray(forKey: "unlockedThemes") ?? []
         return Self.freeThemes.union(unlocked)
     }
@@ -812,7 +812,7 @@ struct StatsView: View {
 
     private func unlockTheme() {
         guard let target = unlockTarget, availableTokens >= 100 else { return }
-        let d = UserDefaults(suiteName: "group.com.terse.shared")
+        let d = UserDefaults(suiteName: "group.com.terseai.shared")
 
         // Spend tokens
         d?.set(spentTokens + 100, forKey: "spentTokens")

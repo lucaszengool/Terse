@@ -314,7 +314,7 @@ class TerseStats {
     private let defaults: UserDefaults
 
     init() {
-        defaults = UserDefaults(suiteName: "group.com.terse.shared") ?? .standard
+        defaults = UserDefaults(suiteName: "group.com.terseai.shared") ?? .standard
     }
 
     private var entries: [[String: Any]] {

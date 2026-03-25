@@ -327,14 +327,14 @@ struct KeyboardSetupView: View {
         let inputModes = UITextInputMode.activeInputModes
         for mode in inputModes {
             if let identifier = mode.value(forKey: "identifier") as? String {
-                if identifier.contains("com.terse.ios") {
+                if identifier.contains("com.terseai.app") {
                     return true
                 }
             }
         }
         // Check registered keyboards
         if let keyboards = UserDefaults.standard.object(forKey: "AppleKeyboards") as? [String] {
-            if keyboards.contains(where: { $0.contains("com.terse.ios") }) {
+            if keyboards.contains(where: { $0.contains("com.terseai.app") }) {
                 return true
             }
         }

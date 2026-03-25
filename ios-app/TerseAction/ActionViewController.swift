@@ -13,7 +13,7 @@ class ActionViewController: UIViewController {
     private var doneButton: UIButton!
 
     private var currentTheme: TerseTheme {
-        let name = UserDefaults(suiteName: "group.com.terse.shared")?.string(forKey: "theme") ?? "lime"
+        let name = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "theme") ?? "lime"
         return TerseTheme.theme(for: TerseThemeName(rawValue: name) ?? .lime)
     }
 
@@ -44,7 +44,7 @@ class ActionViewController: UIViewController {
     }
 
     private func loadOptimizerSettings() {
-        let d = UserDefaults(suiteName: "group.com.terse.shared")
+        let d = UserDefaults(suiteName: "group.com.terseai.shared")
         optimizer.aggressiveness = d?.string(forKey: "aggressiveness") ?? "balanced"
         optimizer.removeFillerWords = d?.object(forKey: "removeFillerWords") as? Bool ?? true
         optimizer.removePoliteness = d?.object(forKey: "removePoliteness") as? Bool ?? true
@@ -163,7 +163,7 @@ class ActionViewController: UIViewController {
         statsLabel.text = "\(result.stats.originalTokens) \u{2192} \(result.stats.optimizedTokens) tokens (\(result.stats.percentSaved)% saved)"
 
         // Record stats
-        let d = UserDefaults(suiteName: "group.com.terse.shared")
+        let d = UserDefaults(suiteName: "group.com.terseai.shared")
         let prev = d?.integer(forKey: "totalTokensOptimized") ?? 0
         d?.set(prev + result.stats.originalTokens, forKey: "totalTokensOptimized")
         let prevSaved = d?.integer(forKey: "totalTokensSaved") ?? 0

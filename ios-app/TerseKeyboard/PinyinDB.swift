@@ -59,14 +59,16 @@ class PinyinDB {
             results.append(word); seen.insert(word)
         }
 
-        // 2. Sentence composition via Forward Maximum Matching
+        // 2. DAG-based optimal sentence composition (Viterbi algorithm)
         let sentence = composeSentence(from: py)
         if !sentence.isEmpty && !seen.contains(sentence) {
-            results.insert(seen.isEmpty ? sentence : sentence, at: min(1, results.count))
+            // Insert sentence at position 0 or 1 (highest priority for multi-syllable input)
+            let insertAt = results.isEmpty ? 0 : min(1, results.count)
+            results.insert(sentence, at: insertAt)
             seen.insert(sentence)
         }
 
-        // 3. Alternative sentence compositions (shorter words)
+        // 3. Alternative segmentation (prefers 2-char words)
         let altSentence = composeSentenceAlt(from: py)
         if !altSentence.isEmpty && !seen.contains(altSentence) {
             results.append(altSentence); seen.insert(altSentence)
@@ -83,6 +85,29 @@ class PinyinDB {
                 let fuzzySentence = composeSentence(from: variant)
                 if !fuzzySentence.isEmpty && !seen.contains(fuzzySentence) {
                     results.append(fuzzySentence); seen.insert(fuzzySentence)
+                }
+            }
+        }
+
+        // 3.55 QWERTY typo correction: "mi" adjacent to "ni" → also show 你
+        if results.count < 5 {
+            // Try typo variants for each syllable in the split
+            let syllables = splitPinyin(py)
+            for syl in syllables {
+                for variant in typoVariants(syl) {
+                    let typoResults = queryWords(pinyin: variant, exact: true, limit: 3)
+                    for (word, _) in typoResults where !seen.contains(word) {
+                        results.append(word); seen.insert(word)
+                    }
+                }
+            }
+            // Also try typo variants on the full string for sentence composition
+            if syllables.isEmpty {
+                for variant in typoVariants(py) {
+                    let sentence = composeSentence(from: variant)
+                    if !sentence.isEmpty && !seen.contains(sentence) {
+                        results.append(sentence); seen.insert(sentence)
+                    }
                 }
             }
         }
@@ -210,7 +235,7 @@ class PinyinDB {
     }
 
     private func openWritableDB() -> OpaquePointer? {
-        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.terse.shared") else { return nil }
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.terseai.shared") else { return nil }
         let path = container.appendingPathComponent("user_pinyin.db").path
         var wdb: OpaquePointer?
         if sqlite3_open(path, &wdb) == SQLITE_OK {
@@ -221,74 +246,100 @@ class PinyinDB {
         return nil
     }
 
-    // MARK: - Sentence Composition (Forward Maximum Matching)
+    // MARK: - Sentence Composition (DAG-based Optimal Segmentation)
+    // Uses Directed Acyclic Graph + Viterbi-style optimal path with frequency weighting
+    // Same algorithm family as jieba, Sogou Pinyin, Google Pinyin
 
-    /// Compose a full sentence from continuous pinyin using longest-word-first matching
-    /// e.g., "wohenkaixin" → "我很开心"
+    /// Compose optimal sentence from continuous pinyin using DAG shortest path
     private func composeSentence(from input: String) -> String {
         let syllables = splitPinyin(input)
         guard syllables.count >= 2 else { return "" }
+        let n = syllables.count
 
-        // Try to greedily match longest phrases first
-        var result = ""
-        var i = 0
+        // Build DAG: for each position i, find all possible word matches ending at j
+        // Edge (i, j) = word spanning syllables[i..<j] with its frequency score
+        struct Edge {
+            let word: String
+            let endIdx: Int
+            let score: Double
+        }
 
-        while i < syllables.count {
-            var bestWord = ""
-            var bestLen = 0
+        var dag: [[Edge]] = Array(repeating: [], count: n)
 
-            // Try matching 4, 3, 2, 1 syllables (longest first)
-            for len in stride(from: min(4, syllables.count - i), through: 1, by: -1) {
+        for i in 0..<n {
+            for len in 1...min(5, n - i) {
                 let combined = syllables[i..<(i+len)].joined()
-                let matches = queryWords(pinyin: combined, exact: true, limit: 1)
-                if let first = matches.first {
-                    bestWord = first.0
-                    bestLen = len
-                    break
+                let matches = queryWords(pinyin: combined, exact: true, limit: 3)
+                for (word, freq) in matches {
+                    // Score: log(freq) + bonus for multi-char words (prefer phrases)
+                    let score = log(max(freq, 1.0)) + Double(len - 1) * 2.0
+                    dag[i].append(Edge(word: word, endIdx: i + len, score: score))
                 }
             }
+            // If no match for single syllable, add unknown character fallback
+            if dag[i].isEmpty || !dag[i].contains(where: { $0.endIdx == i + 1 }) {
+                let chars = queryWords(pinyin: syllables[i], exact: true, limit: 1)
+                let fallback = chars.first?.0 ?? syllables[i]
+                dag[i].append(Edge(word: fallback, endIdx: i + 1, score: 0))
+            }
+        }
 
-            if bestLen > 0 {
-                result += bestWord
-                i += bestLen
-            } else {
-                // No match — use first character of the syllable
+        // Viterbi: find optimal path through DAG (highest total score)
+        var bestScore = Array(repeating: -Double.infinity, count: n + 1)
+        var bestPrev = Array(repeating: -1, count: n + 1)
+        var bestWord = Array(repeating: "", count: n + 1)
+        bestScore[0] = 0
+
+        for i in 0..<n {
+            guard bestScore[i] > -Double.infinity else { continue }
+            for edge in dag[i] {
+                let newScore = bestScore[i] + edge.score
+                if newScore > bestScore[edge.endIdx] {
+                    bestScore[edge.endIdx] = newScore
+                    bestPrev[edge.endIdx] = i
+                    bestWord[edge.endIdx] = edge.word
+                }
+            }
+        }
+
+        // Reconstruct path
+        guard bestScore[n] > -Double.infinity else { return "" }
+        var path: [String] = []
+        var pos = n
+        while pos > 0 {
+            path.insert(bestWord[pos], at: 0)
+            pos = bestPrev[pos]
+        }
+
+        return path.joined()
+    }
+
+    /// Alternative: generate multiple sentence candidates with different segmentations
+    private func composeSentenceAlt(from input: String) -> String {
+        let syllables = splitPinyin(input)
+        guard syllables.count >= 2 else { return "" }
+
+        // Try a different strategy: prefer 2-char words (most common phrase length)
+        var result = ""
+        var i = 0
+        while i < syllables.count {
+            var found = false
+            // Try 2-syllable combinations first
+            if i + 1 < syllables.count {
+                let combined = syllables[i] + syllables[i+1]
+                let matches = queryWords(pinyin: combined, exact: true, limit: 1)
+                if let first = matches.first {
+                    result += first.0
+                    i += 2
+                    found = true
+                }
+            }
+            if !found {
                 let chars = queryWords(pinyin: syllables[i], exact: true, limit: 1)
                 result += chars.first?.0 ?? syllables[i]
                 i += 1
             }
         }
-
-        return result
-    }
-
-    /// Alternative composition: prefer 2-char words (common in Chinese)
-    private func composeSentenceAlt(from input: String) -> String {
-        let syllables = splitPinyin(input)
-        guard syllables.count >= 2 else { return "" }
-
-        var result = ""
-        var i = 0
-
-        while i < syllables.count {
-            // Try 2-syllable words first (most common phrase length)
-            if i + 1 < syllables.count {
-                let combined = syllables[i] + syllables[i+1]
-                let matches = queryWords(pinyin: combined, exact: true, limit: 1)
-                if let first = matches.first, first.0.count == 2 {
-                    result += first.0
-                    i += 2
-                    continue
-                }
-            }
-            // Fall back to single char
-            let chars = queryWords(pinyin: syllables[i], exact: true, limit: 1)
-            if let first = chars.first, first.0.count == 1 {
-                result += first.0
-            }
-            i += 1
-        }
-
         return result
     }
 
@@ -463,6 +514,55 @@ class PinyinDB {
                 variants.append(py.replacingOccurrences(of: from, with: to))
             }
         }
+        return variants
+    }
+
+    // MARK: - QWERTY Adjacent Key Typo Correction
+    // "m" and "n" are adjacent → "wohaoxiangmi" also matches "wohaoxiangni"
+
+    private static let adjacentKeys: [Character: [Character]] = [
+        "q": ["w","a"],           "w": ["q","e","a","s"],     "e": ["w","r","s","d"],
+        "r": ["e","t","d","f"],   "t": ["r","y","f","g"],     "y": ["t","u","g","h"],
+        "u": ["y","i","h","j"],   "i": ["u","o","j","k"],     "o": ["i","p","k","l"],
+        "p": ["o","l"],
+        "a": ["q","w","s","z"],   "s": ["a","w","e","d","z","x"],
+        "d": ["s","e","r","f","x","c"], "f": ["d","r","t","g","c","v"],
+        "g": ["f","t","y","h","v","b"], "h": ["g","y","u","j","b","n"],
+        "j": ["h","u","i","k","n","m"], "k": ["j","i","o","l","m"],
+        "l": ["k","o","p"],
+        "z": ["a","s","x"],       "x": ["z","s","d","c"],     "c": ["x","d","f","v"],
+        "v": ["c","f","g","b"],   "b": ["v","g","h","n"],     "n": ["b","h","j","m"],
+        "m": ["n","j","k"],
+    ]
+
+    /// Generate typo variants by replacing each character with adjacent keys
+    private func typoVariants(_ pinyin: String) -> [String] {
+        let chars = Array(pinyin.lowercased())
+        var variants: [String] = []
+
+        // For each position, try replacing with adjacent keys
+        for i in 0..<chars.count {
+            guard let adjacent = Self.adjacentKeys[chars[i]] else { continue }
+            for adj in adjacent {
+                var newChars = chars
+                newChars[i] = adj
+                let variant = String(newChars)
+                if variant != pinyin {
+                    variants.append(variant)
+                }
+            }
+        }
+
+        // Also try swapping adjacent characters (transposition typo)
+        for i in 0..<(chars.count - 1) {
+            var newChars = chars
+            newChars.swapAt(i, i + 1)
+            let variant = String(newChars)
+            if variant != pinyin {
+                variants.append(variant)
+            }
+        }
+
         return variants
     }
 

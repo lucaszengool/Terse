@@ -22,7 +22,13 @@
       "../src/helpers/hooks/terse-hook-codex.sh": "hooks/terse-hook-codex.sh",
       "../src/helpers/hooks/terse-hook-copilot.sh": "hooks/terse-hook-copilot.sh",
       "../src/helpers/hooks/terse-hook-openclaw.ts": "hooks/terse-hook-openclaw.ts",
-      "../src/helpers/hooks/terse-hook-windsurf.sh": "hooks/terse-hook-windsurf.sh"
+      "../src/helpers/hooks/terse-hook-windsurf.sh": "hooks/terse-hook-windsurf.sh",
+      "../src/helpers/terse-optimize-tools.sh": "terse-optimize-tools.sh",
+      "../src/helpers/hooks/terse-tool-optimizer-cursor.sh": "hooks/terse-tool-optimizer-cursor.sh",
+      "../src/helpers/hooks/terse-tool-optimizer-codex.sh": "hooks/terse-tool-optimizer-codex.sh",
+      "../src/helpers/hooks/terse-tool-optimizer-cline.sh": "hooks/terse-tool-optimizer-cline.sh",
+      "../src/helpers/hooks/terse-tool-optimizer-windsurf.sh": "hooks/terse-tool-optimizer-windsurf.sh",
+      "../src/helpers/hooks/terse-tool-optimizer-copilot.sh": "hooks/terse-tool-optimizer-copilot.sh"
     }
   },
   "app": {

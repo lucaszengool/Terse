@@ -48,6 +48,23 @@ setInterval(updateLicenseBanner, 30000);
 // Refresh immediately when quota changes (optimization performed)
 if (window.__TAURI__?.event?.listen) {
   window.__TAURI__.event.listen('quota-updated', () => updateLicenseBanner());
+  window.__TAURI__.event.listen('quota-exhausted', (event) => {
+    updateLicenseBanner();
+    // Show exhausted banner in main window
+    const banner = document.getElementById('licenseBanner');
+    if (banner) {
+      banner.classList.add('limit-warning');
+      const usage = document.getElementById('licenseUsage');
+      if (usage) usage.textContent = '0 left — upgrade or wait until next week';
+    }
+    // Disconnect all sessions in UI
+    if (T.getAgentSessions) {
+      T.getAgentSessions().then(sessions => {
+        // Sessions already disconnected server-side; refresh UI
+        if (typeof renderSessions === 'function') renderSessions();
+      }).catch(() => {});
+    }
+  });
 }
 
 // Also refresh when window gets focus (user returns from browser after payment)

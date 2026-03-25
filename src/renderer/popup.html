@@ -77,6 +77,25 @@
         </button>
       </div>
 
+      <!-- Plan & Usage row -->
+      <div id="agentPlanRow" class="agent-plan-row hidden">
+        <span id="agentPlanBadge" class="plan-badge">Pro</span>
+        <div class="usage-bars">
+          <div class="usage-bar-wrap" id="usageShortWrap">
+            <span class="usage-label" id="usageShortLabel">5h</span>
+            <div class="usage-bar"><div class="usage-bar-fill" id="usageShortBar"></div></div>
+            <span class="usage-pct" id="usageShortPct">0%</span>
+          </div>
+          <div class="usage-bar-wrap" id="usageLongWrap" style="display:none">
+            <span class="usage-label" id="usageLongLabel">7d</span>
+            <div class="usage-bar"><div class="usage-bar-fill" id="usageLongBar"></div></div>
+            <span class="usage-pct" id="usageLongPct">0%</span>
+          </div>
+        </div>
+        <span id="agentResetTimer" class="reset-timer"></span>
+        <span id="agentSavingsUSD" class="savings-usd"></span>
+      </div>
+
       <!-- Compact summary bar (always visible) -->
       <div class="agent-summary-bar">
         <span class="sum-item"><span class="sum-label">Ctx</span> <span id="agentCtxShort" class="sum-val">0%</span></span>

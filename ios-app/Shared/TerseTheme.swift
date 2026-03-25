@@ -1,6 +1,7 @@
 import SwiftUI
 
-enum TerseThemeName: String, CaseIterable, Codable {
+enum TerseThemeName: String, CaseIterable, Codable, Identifiable {
+    var id: String { rawValue }
     // Original 8 solid
     case lime, lavender, coral, teal, midnight, rose, sage, sand
     // 8 new solid

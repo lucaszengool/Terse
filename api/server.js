@@ -20,9 +20,15 @@ const PRICES = {
   premium: process.env.STRIPE_PRICE_PREMIUM || 'price_1TAMciGf9QijP49FHTr9DuAB',
 };
 
-// Plan limits
+// Plan limits (per platform)
 const PLAN_LIMITS = {
-  free: { optimizations_per_week: 1000, max_sessions: 1, max_devices: 1 },
+  free: { optimizations_per_week: 1500, max_sessions: 1, max_devices: 1 },
+  pro: { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
+  premium: { optimizations_per_week: -1, max_sessions: -1, max_devices: -1 },
+};
+
+const PLAN_LIMITS_IOS = {
+  free: { optimizations_per_week: 120, max_sessions: 1, max_devices: 1 },
   pro: { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
   premium: { optimizations_per_week: -1, max_sessions: -1, max_devices: -1 },
 };
@@ -224,6 +230,9 @@ app.post('/api/portal', async (req, res) => {
 // ── License Verification (called by Tauri app) ──
 app.get('/api/license/:clerkUserId', async (req, res) => {
   const { clerkUserId } = req.params;
+  const platform = (req.query.platform || '').toLowerCase();
+  const isIOS = platform === 'ios';
+  const planLimits = isIOS ? PLAN_LIMITS_IOS : PLAN_LIMITS;
 
   // Check cache first
   let license = licenseCache.get(clerkUserId);
@@ -270,14 +279,14 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
     return res.json({
       tier: 'free',
       status: 'active',
-      limits: override || PLAN_LIMITS.free,
+      limits: override || planLimits.free,
     });
   }
 
   res.json({
     tier: license.tier,
     status: license.status,
-    limits: PLAN_LIMITS[license.tier] || PLAN_LIMITS.free,
+    limits: planLimits[license.tier] || planLimits.free,
     expiresAt: license.expiresAt,
   });
 });

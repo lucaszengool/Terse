@@ -244,6 +244,28 @@ body.minimized .favicon { display: flex !important; }
 .opt-inline-tag { font-size: 7px; padding: 1px 5px; border-radius: 9999px;
   background: var(--sf); color: var(--t2); font-weight: 600; }
 
+/* ── Plan & Usage Row ── */
+.agent-plan-row { display: flex; align-items: center; gap: 6px; padding: 3px 8px;
+  background: var(--sf); border-radius: 8px; margin-bottom: 4px; font-size: 9px; }
+.agent-plan-row.hidden { display: none; }
+.plan-badge { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+  white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px;
+  background: rgba(99,102,241,0.12); color: #6366f1; }
+.plan-badge.free { background: rgba(156,163,175,0.12); color: #9ca3af; }
+.plan-badge.pro { background: rgba(99,102,241,0.12); color: #6366f1; }
+.plan-badge.max { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.usage-bars { flex: 1; display: flex; gap: 6px; }
+.usage-bar-wrap { display: flex; align-items: center; gap: 3px; flex: 1; }
+.usage-label { font-size: 8px; color: var(--t2); min-width: 16px; }
+.usage-bar { flex: 1; height: 4px; background: rgba(0,0,0,0.06); border-radius: 2px; overflow: hidden; }
+.usage-bar-fill { height: 100%; border-radius: 2px; background: var(--ac); transition: width 0.3s; }
+.usage-bar-fill.warn { background: #fbbf24; }
+.usage-bar-fill.danger { background: #f87171; }
+.usage-pct { font-size: 8px; color: var(--t2); min-width: 22px; text-align: right;
+  font-variant-numeric: tabular-nums; }
+.reset-timer { font-size: 8px; color: var(--t2); white-space: nowrap; }
+.savings-usd { font-size: 9px; font-weight: 700; color: var(--ac); white-space: nowrap; }
+
 /* ── Agent Summary Bar (always visible) ── */
 .agent-summary-bar { display: flex; align-items: center; gap: 4px; padding: 4px 8px;
   background: var(--sf); border-radius: 8px; margin-bottom: 4px;

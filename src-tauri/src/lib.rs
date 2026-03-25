@@ -655,6 +655,19 @@ fn get_agent_sessions(state: tauri::State<'_, AppState>) -> Vec<serde_json::Valu
 #[tauri::command]
 async fn accept_agent(agent_type: String, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<Option<serde_json::Value>, String> {
     eprintln!("[terse] accept_agent called for type={}", agent_type);
+
+    // Block new connections if quota is exhausted
+    {
+        let lic = lock_or_recover(&state.license);
+        if !lic.can_optimize() {
+            let _ = app.emit("quota-exhausted", serde_json::json!({
+                "remaining": 0,
+                "message": "Weekly optimization quota reached. Upgrade your plan or wait until next week."
+            }));
+            return Err("Quota exhausted. Upgrade your plan or wait until next week.".to_string());
+        }
+    }
+
     let snapshot = {
         let mut monitor = lock_or_recover(&state.agent_monitor);
         monitor.accept_agent(&agent_type)
@@ -687,6 +700,34 @@ fn get_agent_analytics(agent_type: String, state: tauri::State<'_, AppState>) ->
     monitor.get_session_snapshot(&agent_type)
 }
 
+#[tauri::command]
+async fn get_agent_plan_info(agent_type: String, state: tauri::State<'_, AppState>) -> Result<Option<serde_json::Value>, String> {
+    // Check cache first
+    {
+        let monitor = lock_or_recover(&state.agent_monitor);
+        if let Some(cached) = monitor.get_cached_plan_info(&agent_type) {
+            return Ok(Some(serde_json::to_value(cached).unwrap_or_default()));
+        }
+    }
+
+    // Fetch in background thread (blocking I/O: keychain, curl, sqlite3)
+    let at = agent_type.clone();
+    let info = tokio::task::spawn_blocking(move || {
+        match at.as_str() {
+            "claude-code" => agent_monitor::fetch_claude_plan_info(),
+            "cursor-agent" | "cursor" => agent_monitor::fetch_cursor_plan_info(),
+            _ => None,
+        }
+    }).await.map_err(|e| e.to_string())?;
+
+    if let Some(ref plan_info) = info {
+        let mut monitor = lock_or_recover(&state.agent_monitor);
+        monitor.set_plan_info(&agent_type, plan_info.clone());
+    }
+
+    Ok(info.map(|i| serde_json::to_value(i).unwrap_or_default()))
+}
+
 // ── Multi-Agent Hook Installation ──
 //
 // Supported agents and their hook protocols:
@@ -703,6 +744,15 @@ struct AgentHookConfig {
     hook_include: &'static str,
     settings_path: std::path::PathBuf,
     install_method: AgentInstallMethod,
+    /// Optional tool optimizer hook (for Read/Grep/file tools)
+    tool_optimizer: Option<ToolOptimizerConfig>,
+}
+
+struct ToolOptimizerConfig {
+    script: &'static str,
+    include: &'static str,
+    matcher: &'static str,
+    hook_event: &'static str,
 }
 
 enum AgentInstallMethod {
@@ -728,15 +778,27 @@ fn get_agent_hook_config(agent: &str) -> Result<AgentHookConfig, String> {
                 hook_event: "PreToolUse",
                 matcher: "Bash",
             },
+            tool_optimizer: Some(ToolOptimizerConfig {
+                script: "terse-optimize-tools.sh",
+                include: "../../src/helpers/terse-optimize-tools.sh",
+                matcher: "Read|Grep",
+                hook_event: "PreToolUse",
+            }),
         }),
         "cursor" => Ok(AgentHookConfig {
             hook_script: "hooks/terse-hook-cursor.sh",
             hook_include: "../../src/helpers/hooks/terse-hook-cursor.sh",
             settings_path: home.join(".cursor/hooks.json"),
             install_method: AgentInstallMethod::JsonSettings {
-                hook_event: "beforeShellExecution",
-                matcher: "shell",
+                hook_event: "preToolUse",
+                matcher: "run_terminal_command",
             },
+            tool_optimizer: Some(ToolOptimizerConfig {
+                script: "hooks/terse-tool-optimizer-cursor.sh",
+                include: "../../src/helpers/hooks/terse-tool-optimizer-cursor.sh",
+                matcher: "read_file|grep_search",
+                hook_event: "preToolUse",
+            }),
         }),
         "cline" => Ok(AgentHookConfig {
             hook_script: "hooks/terse-hook-cline.sh",
@@ -746,33 +808,58 @@ fn get_agent_hook_config(agent: &str) -> Result<AgentHookConfig, String> {
                 hook_event: "PreToolUse",
                 matcher: "execute_command",
             },
+            tool_optimizer: Some(ToolOptimizerConfig {
+                script: "hooks/terse-tool-optimizer-cline.sh",
+                include: "../../src/helpers/hooks/terse-tool-optimizer-cline.sh",
+                matcher: "read_file|list_files",
+                hook_event: "PreToolUse",
+            }),
         }),
         "codex" => Ok(AgentHookConfig {
             hook_script: "hooks/terse-hook-codex.sh",
             hook_include: "../../src/helpers/hooks/terse-hook-codex.sh",
             settings_path: home.join(".codex/codex.toml"),
             install_method: AgentInstallMethod::Toml,
+            tool_optimizer: Some(ToolOptimizerConfig {
+                script: "hooks/terse-tool-optimizer-codex.sh",
+                include: "../../src/helpers/hooks/terse-tool-optimizer-codex.sh",
+                matcher: "read_file|search|view",
+                hook_event: "pre_tool_use",
+            }),
         }),
         "copilot" => Ok(AgentHookConfig {
             hook_script: "hooks/terse-hook-copilot.sh",
             hook_include: "../../src/helpers/hooks/terse-hook-copilot.sh",
             settings_path: home.join(".github-copilot/hooks/preToolUse/terse-hook-copilot.sh"),
             install_method: AgentInstallMethod::DropFile,
+            tool_optimizer: Some(ToolOptimizerConfig {
+                script: "hooks/terse-tool-optimizer-copilot.sh",
+                include: "../../src/helpers/hooks/terse-tool-optimizer-copilot.sh",
+                matcher: "view|grep|search",
+                hook_event: "preToolUse",
+            }),
         }),
         "openclaw" => Ok(AgentHookConfig {
             hook_script: "hooks/terse-hook-openclaw.ts",
             hook_include: "../../src/helpers/hooks/terse-hook-openclaw.ts",
             settings_path: home.join(".openclaw/hooks/terse-hook-openclaw.ts"),
             install_method: AgentInstallMethod::DropFile,
+            tool_optimizer: None, // OpenClaw doesn't support pre-tool hooks yet
         }),
         "windsurf" => Ok(AgentHookConfig {
             hook_script: "hooks/terse-hook-windsurf.sh",
             hook_include: "../../src/helpers/hooks/terse-hook-windsurf.sh",
             settings_path: home.join(".windsurf/hooks.json"),
             install_method: AgentInstallMethod::JsonSettings {
-                hook_event: "preAction",
+                hook_event: "pre_tool_use",
                 matcher: "shell",
             },
+            tool_optimizer: Some(ToolOptimizerConfig {
+                script: "hooks/terse-tool-optimizer-windsurf.sh",
+                include: "../../src/helpers/hooks/terse-tool-optimizer-windsurf.sh",
+                matcher: "read_file|view_file",
+                hook_event: "pre_tool_use",
+            }),
         }),
         _ => Err(format!("Unknown agent: {}. Supported: claude-code, cursor, cline, codex, copilot, openclaw, windsurf", agent)),
     }
@@ -842,6 +929,35 @@ fn install_agent_hook(agent: Option<String>) -> Result<serde_json::Value, String
     let config = get_agent_hook_config(agent_id)?;
     let hook_dest = deploy_hook_script(&config)?;
 
+    // Deploy tool optimizer hook if this agent supports it
+    if let Some(ref tool_opt) = config.tool_optimizer {
+        let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+        let terse_dir = home.join(".terse");
+        let tool_hook_dest = terse_dir.join(tool_opt.script);
+        if let Some(parent) = tool_hook_dest.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        // Try source tree first, then bundled resources
+        let tool_hook_src = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(tool_opt.include);
+        if tool_hook_src.exists() {
+            let _ = std::fs::copy(&tool_hook_src, &tool_hook_dest);
+        } else if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(res_dir) = exe_path.parent().and_then(|p| p.parent()).map(|p| p.join("Resources")) {
+                let bundled = res_dir.join(tool_opt.script);
+                if bundled.exists() {
+                    let _ = std::fs::copy(&bundled, &tool_hook_dest);
+                }
+            }
+        }
+        #[cfg(unix)]
+        if tool_hook_dest.exists() {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(&tool_hook_dest, std::fs::Permissions::from_mode(0o755));
+        }
+    }
+
     match config.install_method {
         AgentInstallMethod::JsonSettings { hook_event, matcher } => {
             // Ensure settings dir exists
@@ -888,6 +1004,37 @@ fn install_agent_hook(agent: Option<String>) -> Result<serde_json::Value, String
                 }
                 let h = obj.get_mut("hooks").unwrap().as_object_mut().unwrap();
                 h.insert(hook_event.to_string(), serde_json::json!([hook_entry]));
+            }
+
+            // Register the tool optimizer hook entry if this agent supports it
+            if let Some(ref tool_opt) = config.tool_optimizer {
+                let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+                let tool_hook_path = home.join(".terse").join(tool_opt.script);
+                if tool_hook_path.exists() {
+                    let tool_event = tool_opt.hook_event;
+                    let tool_entry = serde_json::json!({
+                        "matcher": tool_opt.matcher,
+                        "hooks": [{
+                            "type": "command",
+                            "command": tool_hook_path.to_string_lossy()
+                        }]
+                    });
+                    // Ensure hooks.{tool_event} array exists
+                    let hooks_obj = obj.entry("hooks").or_insert_with(|| serde_json::json!({}));
+                    if let Some(hooks_map) = hooks_obj.as_object_mut() {
+                        let event_arr = hooks_map.entry(tool_event)
+                            .or_insert_with(|| serde_json::json!([]));
+                        if let Some(arr) = event_arr.as_array_mut() {
+                            let has_tool_hook = arr.iter().any(|h| {
+                                h.get("matcher").and_then(|m| m.as_str())
+                                    .map_or(false, |m| m.contains(&tool_opt.matcher[..3]))
+                            });
+                            if !has_tool_hook {
+                                arr.push(tool_entry);
+                            }
+                        }
+                    }
+                }
             }
 
             std::fs::write(&config.settings_path, serde_json::to_string_pretty(&settings).unwrap())
@@ -1055,11 +1202,17 @@ fn check_json_hook(settings_path: &std::path::Path, hook_event: &str) -> serde_j
     serde_json::json!({ "installed": false })
 }
 
-/// Read compression stats from the CLI tool's tracking file and sync to stats_store
+/// Read compression stats from both hook tracking files and sync to stats_store
 #[tauri::command]
 fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_json::Value {
-    let stats_file = std::path::PathBuf::from(std::env::temp_dir()).join("terse-compress-stats.jsonl");
-    if !stats_file.exists() {
+    let tmp = std::env::temp_dir();
+    let stats_files = [
+        tmp.join("terse-compress-stats.jsonl"),       // Bash compression
+        tmp.join("terse-tool-optimize-stats.jsonl"),   // Read/Grep optimization
+    ];
+
+    let any_exists = stats_files.iter().any(|f| f.exists());
+    if !any_exists {
         return serde_json::json!({
             "totalSaved": 0,
             "totalOriginal": 0,
@@ -1078,20 +1231,21 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
 
     let last_synced = state.hook_stats_synced.lock().unwrap_or_else(|e| e.into_inner()).clone();
 
-    if let Ok(content) = std::fs::read_to_string(&stats_file) {
-        for line in content.lines() {
-            if let Ok(entry) = serde_json::from_str::<serde_json::Value>(line) {
-                let saved = entry["saved"].as_u64().unwrap_or(0);
-                let orig = entry["originalTokens"].as_u64().unwrap_or(0);
-                let opt = entry["optimizedTokens"].as_u64().unwrap_or(0);
-                total_saved += saved;
-                total_original += orig;
-                total_optimized += opt;
-                count += 1;
-                // Entries beyond what we previously synced are new
-                if count > last_synced {
-                    new_original += orig;
-                    new_optimized += opt;
+    for stats_file in &stats_files {
+        if let Ok(content) = std::fs::read_to_string(stats_file) {
+            for line in content.lines() {
+                if let Ok(entry) = serde_json::from_str::<serde_json::Value>(line) {
+                    let saved = entry["saved"].as_u64().unwrap_or(0);
+                    let orig = entry["originalTokens"].as_u64().unwrap_or(0);
+                    let opt = entry["optimizedTokens"].as_u64().unwrap_or(0);
+                    total_saved += saved;
+                    total_original += orig;
+                    total_optimized += opt;
+                    count += 1;
+                    if count > last_synced {
+                        new_original += orig;
+                        new_optimized += opt;
+                    }
                 }
             }
         }
@@ -1103,16 +1257,30 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
         let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
         store.record_optimization("agent", new_original, new_optimized);
 
-        // Each hook compression = 1 quota
+        // Each hook compression costs 0.3 quota
         let mut lic = state.license.lock().unwrap_or_else(|e| e.into_inner());
         for _ in 0..new_count {
-            lic.record_optimization();
+            lic.record_optimization_cost(0.3);
         }
+        let exhausted = !lic.can_optimize();
+        let remaining = lic.remaining_optimizations();
+        drop(lic);
 
         *state.hook_stats_synced.lock().unwrap_or_else(|e| e.into_inner()) = count;
 
-        // Notify frontend to refresh quota display
         let _ = app.emit("quota-updated", ());
+
+        if exhausted {
+            let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+            let types: Vec<String> = monitor.sessions.keys().cloned().collect();
+            for t in &types {
+                monitor.disconnect_agent(t);
+            }
+            let _ = app.emit("quota-exhausted", serde_json::json!({
+                "remaining": remaining,
+                "message": "Weekly optimization quota reached. Upgrade your plan or wait until next week."
+            }));
+        }
     }
 
     serde_json::json!({
@@ -1303,9 +1471,25 @@ fn check_can_optimize(state: tauri::State<'_, AppState>) -> serde_json::Value {
 }
 
 #[tauri::command]
-fn record_optimization_usage(state: tauri::State<'_, AppState>) {
+fn record_optimization_usage(state: tauri::State<'_, AppState>, app: AppHandle) {
     let mut lic = lock_or_recover(&state.license);
-    lic.record_optimization();
+    // Each user-initiated optimization (Send click, Optimize button) costs 0.5 quota
+    lic.record_optimization_cost(0.5);
+    let exhausted = !lic.can_optimize();
+    let remaining = lic.remaining_optimizations();
+    drop(lic);
+
+    if exhausted {
+        let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+        let types: Vec<String> = monitor.sessions.keys().cloned().collect();
+        for t in &types {
+            monitor.disconnect_agent(t);
+        }
+        let _ = app.emit("quota-exhausted", serde_json::json!({
+            "remaining": remaining,
+            "message": "Weekly optimization quota reached. Upgrade your plan or wait until next week."
+        }));
+    }
 }
 
 #[tauri::command]
@@ -1546,6 +1730,7 @@ pub fn run() {
             dismiss_agent,
             disconnect_agent,
             get_agent_analytics,
+            get_agent_plan_info,
             install_agent_hook,
             check_agent_hook,
             get_hook_stats,
@@ -2060,6 +2245,19 @@ fn start_polling(app: AppHandle) {
 /// Handle Enter intercepted in "Send" mode — optimize then submit
 async fn handle_send_mode_enter(text: &str, session_id: u32, app: &AppHandle) {
     let state = app.state::<AppState>();
+
+    // Skip optimization if an agent session is active — agent mode is monitor-only,
+    // pressing Enter in a terminal with an agent connected should pass through normally
+    {
+        let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+        if !monitor.sessions.is_empty() {
+            // Agent connected — don't intercept, let Enter pass through
+            if let Some(session) = state.sessions.lock().unwrap_or_else(|e| e.into_inner()).get(&session_id) {
+                state.key_monitors.send_enter(session.pid);
+            }
+            return;
+        }
+    }
 
     let session = {
         let sessions = state.sessions.lock().unwrap_or_else(|e| e.into_inner());

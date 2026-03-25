@@ -8,8 +8,10 @@ struct StatsView: View {
     @State private var isTapped = false
     @State private var appeared = false
     @State private var showAllThemes = false
+    @State private var shopIndex = 0
     @State private var unlockTarget: TerseThemeName? = nil
     @State private var showUnlockConfirm = false
+    @State private var selectedCard: TerseThemeName? = nil
     @Environment(\.displayScale) private var displayScale
 
     var theme: TerseTheme { settings.currentTheme }
@@ -36,8 +38,11 @@ struct StatsView: View {
         return Self.freeThemes.union(unlocked)
     }
 
+    // Cost estimate: avg conversation = ~$0.15 (multi-turn, input+output, premium models)
+    // Each optimized message saves reduction% of that conversation cost
     private var moneySaved: Double {
-        Double(statsData.tokensSaved) * 0.003 / 1000.0
+        guard statsData.percentSaved > 0, statsData.messagesTotal > 0 else { return 0 }
+        return Double(statsData.messagesTotal) * 0.15 * Double(statsData.percentSaved) / 100.0
     }
 
     private var avgTokensPerMsg: Int {
@@ -141,15 +146,44 @@ struct StatsView: View {
                 .padding(.horizontal, 24)
                 .opacity(appeared ? 1 : 0)
 
-                // ── Coins Balance ──
+                // ── Token Balance ──
                 coinBalanceView
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
 
-                // ── Theme Wallet (Apple Wallet style) ──
+                // ── Theme Wallet ──
                 walletHeader
                     .padding(.horizontal, 24)
                     .padding(.top, 16)
+
+                // Shop button — above cards
+                Button { showAllThemes = true } label: {
+                    HStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(theme.accent)
+                                .frame(width: 28, height: 28)
+                            Image(systemName: "plus")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(TL.s("wallet.themeShop"))
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(theme.t1)
+                            Text(TL.s("wallet.unlockHint"))
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(theme.t3.opacity(0.5))
+                        }
+                        Spacer()
+                        Text("₮100")
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                            .foregroundColor(Color(hex: 0xf7931a))
+                    }
+                    .padding(14)
+                    .glassCard(cornerRadius: 14)
+                }
+                .padding(.horizontal, 24)
 
                 walletCardStack
                     .padding(.horizontal, 24)
@@ -172,8 +206,11 @@ struct StatsView: View {
                 ShareSheetView(image: image)
             }
         }
-        .sheet(isPresented: $showAllThemes) {
+        .fullScreenCover(isPresented: $showAllThemes) {
             allThemesSheet
+        }
+        .fullScreenCover(item: $selectedCard) { name in
+            cardDetailView(for: name)
         }
         .alert("Unlock Theme", isPresented: $showUnlockConfirm) {
             Button("Unlock (₮100)") { unlockTheme() }
@@ -232,37 +269,23 @@ struct StatsView: View {
     // MARK: - Wallet Header
 
     private var walletHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(TL.s("wallet.myThemes"))
-                    .font(.system(size: 16, weight: .black))
-                    .foregroundColor(theme.t1)
+        HStack {
+            Text(TL.s("wallet.myThemes"))
+                .font(.system(size: 16, weight: .black))
+                .foregroundColor(theme.t1)
 
-                Text("\(unlockedThemes.count)/\(TerseThemeName.allCases.count)")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundColor(theme.t3.opacity(0.5))
-
-                Spacer()
-
-                Button { showAllThemes = true } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .bold))
-                        Text(TL.s("wallet.themeShop"))
-                            .font(.system(size: 11, weight: .bold))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(theme.accent)
-                    .clipShape(Capsule())
-                }
-            }
-
-            // Hint text
-            Text(TL.s("wallet.unlockHint"))
-                .font(.system(size: 10, weight: .medium))
+            Text("\(unlockedThemes.count)/\(TerseThemeName.allCases.count)")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundColor(theme.t3.opacity(0.5))
+
+            Spacer()
+
+            // + button at top right of card section
+            Button { showAllThemes = true } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(theme.accent)
+            }
         }
     }
 
@@ -279,35 +302,36 @@ struct StatsView: View {
                     .offset(y: -offset)
                     .zIndex(Double(index))
                     .onTapGesture {
-                        withAnimation(.spring(response: 0.3)) {
-                            settings.theme = name
-                        }
+                        selectedCard = name
                     }
             }
         }
-        .frame(height: CGFloat(min(owned.count, 8)) * 28 + 80)
+        .frame(height: CGFloat(owned.count) * 28 + 80)
     }
 
     private func themeCard(name: TerseThemeName, theme t: TerseTheme, isActive: Bool) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
                 Text(name.rawValue.uppercased())
-                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .font(.system(size: 14, weight: .black, design: .rounded))
                     .tracking(1)
 
-                if t.isGradient {
-                    Text("GRADIENT")
-                        .font(.system(size: 8, weight: .bold))
-                        .tracking(0.5)
-                        .opacity(0.5)
-                }
+                Text(t.isGradient ? "GRADIENT" : "SOLID")
+                    .font(.system(size: 8, weight: .bold))
+                    .tracking(0.5)
+                    .opacity(0.4)
             }
 
             Spacer()
 
             if isActive {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 16))
+                Text("ACTIVE")
+                    .font(.system(size: 9, weight: .black))
+                    .tracking(0.5)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.white.opacity(0.25))
+                    .clipShape(Capsule())
             }
         }
         .foregroundColor(t.t1)
@@ -316,7 +340,253 @@ struct StatsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 80)
         .background(
-            Group {
+            ZStack {
+                if let grad = t.bgGradient {
+                    LinearGradient(colors: grad, startPoint: .topLeading, endPoint: .bottomTrailing)
+                } else {
+                    t.bg
+                }
+                // Subtle shine overlay
+                LinearGradient(colors: [Color.white.opacity(0.15), Color.clear], startPoint: .topLeading, endPoint: .center)
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: Color.black.opacity(0.12), radius: 6, y: 3)
+    }
+
+    // MARK: - Card Detail View
+
+    @State private var showingKeyboardPreview = false
+
+    private func cardDetailView(for name: TerseThemeName) -> some View {
+        let t = TerseTheme.theme(for: name)
+        let isActive = settings.theme == name
+
+        return VStack(spacing: 0) {
+            // Close bar
+            HStack {
+                Spacer()
+                Button { selectedCard = nil } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
+            .padding(20)
+
+            Spacer()
+
+            // Flippable card — tap to toggle between card face & keyboard preview
+            VStack(spacing: 20) {
+                ZStack {
+                    if !showingKeyboardPreview {
+                        // Card face
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(
+                                    t.bgGradient != nil
+                                        ? AnyShapeStyle(LinearGradient(colors: t.bgGradient!, startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        : AnyShapeStyle(t.bg)
+                                )
+                                .frame(height: 220)
+                                .overlay(
+                                    LinearGradient(colors: [Color.white.opacity(0.3), Color.clear, Color.white.opacity(0.1)],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                )
+                                .shadow(color: t.bg.opacity(0.4), radius: 20, y: 10)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(name.rawValue.uppercased())
+                                            .font(.system(size: 22, weight: .black, design: .rounded))
+                                            .tracking(2)
+                                        Text(t.isGradient ? "GRADIENT KEYBOARD" : "SOLID KEYBOARD")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .tracking(1).opacity(0.5)
+                                    }
+                                    Spacer()
+                                    Text("₮").font(.system(size: 28, weight: .black, design: .rounded)).opacity(0.2)
+                                }
+                                Spacer()
+                                HStack {
+                                    Text("TAP TO PREVIEW KEYBOARD")
+                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .tracking(1).opacity(0.4)
+                                    Spacer()
+                                    if isActive {
+                                        HStack(spacing: 4) {
+                                            Circle().fill(Color.white).frame(width: 6, height: 6)
+                                            Text("ACTIVE").font(.system(size: 9, weight: .black))
+                                        }.opacity(0.6)
+                                    }
+                                }
+                            }
+                            .foregroundColor(t.t1)
+                            .padding(24)
+                        }
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    } else {
+                        // Keyboard preview
+                        VStack(spacing: 6) {
+                            Text("KEYBOARD PREVIEW")
+                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .tracking(1)
+                                .foregroundColor(.white.opacity(0.4))
+
+                            miniKeyboardPreview(for: name)
+                                .frame(height: 190)
+
+                            Text("TAP TO GO BACK")
+                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .tracking(1)
+                                .foregroundColor(.white.opacity(0.3))
+                        }
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    }
+                }
+                .frame(height: 230)
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                        showingKeyboardPreview.toggle()
+                    }
+                }
+                .padding(.horizontal, 30)
+
+                // Action button
+                Button {
+                    withAnimation(.spring(response: 0.3)) {
+                        settings.theme = name
+                    }
+                } label: {
+                    Text(isActive ? "Currently In Use" : "Use This Keyboard")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(isActive ? .white.opacity(0.5) : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(isActive ? Color.white.opacity(0.15) : t.accent)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .disabled(isActive)
+                .padding(.horizontal, 30)
+
+                // Color swatches
+                HStack(spacing: 12) {
+                    colorSwatch("BG", color: t.bg)
+                    colorSwatch("Accent", color: t.accent)
+                    colorSwatch("Text", color: t.t1)
+                    colorSwatch("Surface", color: t.surface)
+                }
+                .padding(.horizontal, 30)
+            }
+
+            Spacer()
+        }
+        .background(
+            ZStack {
+                Color.black
+                if let grad = t.bgGradient {
+                    LinearGradient(colors: grad, startPoint: .topLeading, endPoint: .bottomTrailing)
+                        .opacity(0.3)
+                } else {
+                    t.bg.opacity(0.3)
+                }
+            }
+            .ignoresSafeArea()
+        )
+    }
+
+    // MARK: - Mini Keyboard Preview
+
+    private func miniKeyboardPreview(for name: TerseThemeName) -> some View {
+        let t = TerseTheme.theme(for: name)
+        let isDark = ["midnight", "indigo", "charcoal", "ocean", "aurora", "neon", "ember", "frost", "velvet", "cosmic"].contains(name.rawValue)
+        let keyColor = isDark ? Color.white.opacity(0.13) : Color.white.opacity(0.5)
+        let keyText = isDark ? Color.white.opacity(0.8) : Color.black.opacity(0.7)
+        let modColor = isDark ? Color.white.opacity(0.07) : Color.white.opacity(0.28)
+
+        let rows = [
+            ["Q","W","E","R","T","Y","U","I","O","P"],
+            ["A","S","D","F","G","H","J","K","L"],
+            ["Z","X","C","V","B","N","M"]
+        ]
+
+        return VStack(spacing: 0) {
+            // Toolbar
+            HStack {
+                Circle().fill(t.accent).frame(width: 5, height: 5)
+                Text("Terse").font(.system(size: 8, weight: .bold)).foregroundColor(keyText)
+                Spacer()
+                HStack(spacing: 1) {
+                    ForEach(["S","N","A"], id: \.self) { m in
+                        Text(m).font(.system(size: 6, weight: .bold))
+                            .foregroundColor(m == "N" ? .white : keyText.opacity(0.5))
+                            .frame(width: 14, height: 12)
+                            .background(m == "N" ? t.accent : Color.clear)
+                            .cornerRadius(5)
+                    }
+                }
+                .background(Color.black.opacity(0.1))
+                .cornerRadius(6)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+
+            // Key rows
+            ForEach(rows, id: \.self) { row in
+                HStack(spacing: 3) {
+                    if row.count == 7 {
+                        // Shift key
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(modColor)
+                            .frame(width: 22, height: 22)
+                            .overlay(Image(systemName: "shift").font(.system(size: 7)).foregroundColor(keyText))
+                    }
+                    ForEach(row, id: \.self) { key in
+                        Text(key)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(keyText)
+                            .frame(maxWidth: .infinity, minHeight: 22)
+                            .background(keyColor)
+                            .cornerRadius(3)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .stroke(Color.white.opacity(isDark ? 0.08 : 0.35), lineWidth: 0.3)
+                            )
+                    }
+                    if row.count == 7 {
+                        // Backspace
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(modColor)
+                            .frame(width: 22, height: 22)
+                            .overlay(Image(systemName: "delete.left").font(.system(size: 7)).foregroundColor(keyText))
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+
+            // Bottom row
+            HStack(spacing: 3) {
+                Text("123").font(.system(size: 7, weight: .bold)).foregroundColor(keyText)
+                    .frame(width: 28, height: 22).background(modColor).cornerRadius(3)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(keyColor)
+                    .frame(height: 22)
+                    .overlay(Text("space").font(.system(size: 8)).foregroundColor(keyText))
+                Text("send").font(.system(size: 7, weight: .bold)).foregroundColor(.white)
+                    .frame(width: 38, height: 22).background(t.accent).cornerRadius(3)
+            }
+            .padding(.horizontal, 4)
+            .padding(.bottom, 4)
+        }
+        .padding(.vertical, 4)
+        .background(
+            ZStack {
                 if let grad = t.bgGradient {
                     LinearGradient(colors: grad, startPoint: .topLeading, endPoint: .bottomTrailing)
                 } else {
@@ -324,95 +594,216 @@ struct StatsView: View {
                 }
             }
         )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: Color.black.opacity(0.12), radius: 6, y: 3)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+        )
+    }
+
+    private func colorSwatch(_ label: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(color)
+                .frame(width: 40, height: 40)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.2), lineWidth: 0.5))
+            Text(label)
+                .font(.system(size: 8, weight: .medium))
+                .foregroundColor(.white.opacity(0.4))
+        }
     }
 
     // MARK: - All Themes Sheet
 
     private var allThemesSheet: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 12) {
-                    // Token balance at top
-                    HStack(spacing: 8) {
-                        ZStack {
-                            Circle()
-                                .fill(LinearGradient(colors: [Color(hex: 0xf7931a), Color(hex: 0xe8850a)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                .frame(width: 24, height: 24)
+        let locked = TerseThemeName.allCases.filter { !unlockedThemes.contains($0.rawValue) }
+
+        return ZStack {
+            Color.black.ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(TL.s("wallet.themeShop"))
+                            .font(.system(size: 20, weight: .black))
+                            .foregroundColor(.white)
+                        HStack(spacing: 6) {
                             Text("₮")
                                 .font(.system(size: 12, weight: .black, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundColor(Color(hex: 0xf7931a))
+                            Text("\(availableTokens) tokens")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.white.opacity(0.7))
+                            Text("·")
+                                .foregroundColor(.white.opacity(0.3))
+                            Text("\(locked.count) locked")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.white.opacity(0.5))
                         }
-                        Text("\(availableTokens) tokens available")
-                            .font(.system(size: 15, weight: .bold))
-                        Spacer()
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
 
-                    ForEach(TerseThemeName.allCases, id: \.self) { name in
-                        let t = TerseTheme.theme(for: name)
-                        let owned = unlockedThemes.contains(name.rawValue)
+                    Spacer()
 
-                        HStack(spacing: 14) {
-                            // Color preview
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(
-                                    t.bgGradient != nil
-                                        ? AnyShapeStyle(LinearGradient(colors: t.bgGradient!, startPoint: .topLeading, endPoint: .bottomTrailing))
-                                        : AnyShapeStyle(t.bg)
-                                )
-                                .frame(width: 44, height: 44)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
-                                )
+                    Button { showAllThemes = false } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(name.rawValue.capitalized)
-                                    .font(.system(size: 14, weight: .bold))
-                                Text(t.isGradient ? "Gradient" : "Solid")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                            }
+                // Subtitle + swipe hint
+                Text(TL.s("wallet.shopSubtitle"))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.5))
+                    .padding(.horizontal, 24)
 
-                            Spacer()
+                Text("← swipe →")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white.opacity(0.2))
 
-                            if owned {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                            } else {
-                                Button {
-                                    unlockTarget = name
-                                    showUnlockConfirm = true
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Text("₮")
-                                            .font(.system(size: 11, weight: .black))
-                                        Text("100")
-                                            .font(.system(size: 12, weight: .bold))
-                                    }
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(availableTokens >= 100 ? Color(hex: 0xf7931a) : Color.gray)
-                                    .clipShape(Capsule())
+                // Swipeable card carousel
+                if locked.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(Color(hex: 0xf7931a))
+                        Text("All keyboards unlocked!")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    // Card carousel (swipe area)
+                    TabView(selection: $shopIndex) {
+                        ForEach(Array(locked.enumerated()), id: \.element) { idx, name in
+                            shopCardPreview(for: name)
+                                .tag(idx)
+                                .padding(.horizontal, 16)
+                        }
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .automatic))
+                    .frame(height: 380)
+
+                    // Unlock button BELOW the swipe area — always tappable
+                    let currentName = locked.indices.contains(shopIndex) ? locked[shopIndex] : locked[0]
+                    Button {
+                        unlockTarget = currentName
+                        showUnlockConfirm = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text("₮")
+                                .font(.system(size: 14, weight: .black, design: .rounded))
+                                .foregroundColor(Color(hex: 0xf7931a))
+                            Text("Unlock \(currentName.rawValue.capitalized) · ₮100")
+                                .font(.system(size: 15, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            availableTokens >= 100
+                                ? LinearGradient(colors: [Color(hex: 0xf7931a), Color(hex: 0xe8850a)], startPoint: .leading, endPoint: .trailing)
+                                : LinearGradient(colors: [Color.gray, Color.gray], startPoint: .leading, endPoint: .trailing)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .shadow(color: availableTokens >= 100 ? Color(hex: 0xf7931a).opacity(0.4) : .clear, radius: 10, y: 4)
+                    }
+                    .disabled(availableTokens < 100)
+                    .padding(.horizontal, 24)
+
+                    if availableTokens < 100 {
+                        Text("Need \(100 - availableTokens) more tokens — keep saving!")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                }
+
+                Spacer(minLength: 20)
+            }
+        }
+    }
+
+    @State private var shopPreviewIndex: TerseThemeName? = nil
+
+    private func shopCardPreview(for name: TerseThemeName) -> some View {
+        let t = TerseTheme.theme(for: name)
+        let showKB = shopPreviewIndex == name
+
+        return VStack(spacing: 16) {
+            ZStack {
+                if !showKB {
+                    // Card face
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(
+                                t.bgGradient != nil
+                                    ? AnyShapeStyle(LinearGradient(colors: t.bgGradient!, startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    : AnyShapeStyle(t.bg)
+                            )
+                            .overlay(
+                                LinearGradient(colors: [Color.white.opacity(0.3), Color.clear, Color.white.opacity(0.08)],
+                                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                            .shadow(color: t.bg.opacity(0.5), radius: 24, y: 12)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(name.rawValue.uppercased())
+                                        .font(.system(size: 24, weight: .black, design: .rounded))
+                                        .tracking(2)
+                                    Text(t.isGradient ? "GRADIENT KEYBOARD" : "SOLID KEYBOARD")
+                                        .font(.system(size: 10, weight: .bold)).tracking(1).opacity(0.5)
                                 }
-                                .disabled(availableTokens < 100)
+                                Spacer()
+                                Image(systemName: "lock.fill").font(.system(size: 18)).opacity(0.3)
+                            }
+                            Spacer()
+                            HStack {
+                                Text("TAP TO PREVIEW")
+                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .tracking(1).opacity(0.4)
+                                Spacer()
+                                Text("₮").font(.system(size: 24, weight: .black, design: .rounded)).opacity(0.15)
                             }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
+                        .foregroundColor(t.t1)
+                        .padding(24)
                     }
+                    .transition(.opacity)
+                } else {
+                    // Keyboard preview
+                    VStack(spacing: 6) {
+                        Text("KEYBOARD PREVIEW").font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .tracking(1).foregroundColor(.white.opacity(0.4))
+                        miniKeyboardPreview(for: name)
+                        Text("TAP TO GO BACK").font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .tracking(1).foregroundColor(.white.opacity(0.3))
+                    }
+                    .transition(.opacity)
                 }
             }
-            .navigationTitle(TL.s("wallet.themeShop"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(TL.s("wallet.done")) { showAllThemes = false }
+            .frame(height: 240)
+            .onTapGesture {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                    shopPreviewIndex = showKB ? nil : name
                 }
+            }
+
+            // Swatches
+            HStack(spacing: 12) {
+                colorSwatch("BG", color: t.bg)
+                colorSwatch("Accent", color: t.accent)
+                colorSwatch("Text", color: t.t1)
+                colorSwatch("Surface", color: t.surface)
             }
         }
     }
@@ -508,18 +899,18 @@ struct StatsView: View {
                     sectionHeader("COST SAVINGS (EST.)")
 
                     VStack(spacing: 4) {
-                        Text(String(format: "$%.2f", moneySaved))
+                        Text(formatMoney(moneySaved))
                             .font(.system(size: 34, weight: .black, design: .rounded))
                             .foregroundColor(Color.black.opacity(0.8))
 
                         VStack(spacing: 2) {
-                            costRow("GPT-4o", rate: 0.0025)
-                            costRow("GPT-4", rate: 0.03)
-                            costRow("Claude Sonnet", rate: 0.003)
+                            costRow("GPT-4o", msgCost: 0.08)
+                            costRow("GPT-4 / Opus", msgCost: 0.25)
+                            costRow("Claude Sonnet", msgCost: 0.15)
                         }
                         .padding(.top, 4)
 
-                        Text("* based on input token pricing per 1K")
+                        Text("* avg conversation cost × messages × reduction%")
                             .font(.system(size: 7, weight: .regular, design: .monospaced))
                             .foregroundColor(Color.black.opacity(0.2))
                             .padding(.top, 2)
@@ -665,20 +1056,27 @@ struct StatsView: View {
         }
     }
 
-    private func costRow(_ model: String, rate: Double) -> some View {
-        let saved = Double(statsData.tokensSaved) * rate / 1000.0
+    private func formatMoney(_ amount: Double) -> String {
+        if amount >= 0.01 { return String(format: "$%.2f", amount) }
+        if amount > 0 { return String(format: "$%.4f", amount) }
+        return "$0.00"
+    }
+
+    private func costRow(_ model: String, msgCost: Double) -> some View {
+        let pct = Double(statsData.percentSaved) / 100.0
+        let saved = Double(statsData.messagesTotal) * msgCost * pct
         return HStack {
             Text(model)
                 .font(.system(size: 9, weight: .regular, design: .monospaced))
                 .foregroundColor(Color.black.opacity(0.35))
             Spacer()
-            Text("~$\(String(format: "%.2f", rate))/1K")
+            Text("~$\(String(format: "%.2f", msgCost))/msg")
                 .font(.system(size: 8, weight: .regular, design: .monospaced))
                 .foregroundColor(Color.black.opacity(0.25))
-            Text(String(format: "$%.2f", saved))
+            Text(formatMoney(saved))
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundColor(Color.black.opacity(0.6))
-                .frame(width: 60, alignment: .trailing)
+                .frame(width: 70, alignment: .trailing)
         }
     }
 
@@ -794,9 +1192,9 @@ struct ReceiptRenderView: View {
                     .font(.system(size: 28, weight: .black, design: .rounded)).foregroundColor(.black.opacity(0.8))
 
                 VStack(spacing: 2) {
-                    costRow("GPT-4o", rate: 0.0025)
-                    costRow("GPT-4", rate: 0.03)
-                    costRow("Claude", rate: 0.003)
+                    costRow("GPT-4o", msgCost: 0.08)
+                    costRow("GPT-4/Opus", msgCost: 0.25)
+                    costRow("Claude", msgCost: 0.15)
                 }
 
                 if !statsData.bySource.isEmpty {
@@ -835,12 +1233,14 @@ struct ReceiptRenderView: View {
         }
     }
 
-    private func costRow(_ model: String, rate: Double) -> some View {
-        let saved = Double(statsData.tokensSaved) * rate / 1000.0
+    private func costRow(_ model: String, msgCost: Double) -> some View {
+        let pct = Double(statsData.percentSaved) / 100.0
+        let saved = Double(statsData.messagesTotal) * msgCost * pct
         return HStack {
             Text(model).font(.system(size: 8, design: .monospaced)).foregroundColor(.black.opacity(0.3))
             Spacer()
-            Text(String(format: "$%.2f", saved)).font(.system(size: 9, weight: .bold, design: .monospaced))
+            Text(saved >= 0.01 ? String(format: "$%.2f", saved) : String(format: "$%.4f", saved))
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
                 .foregroundColor(.black.opacity(0.6))
         }
     }

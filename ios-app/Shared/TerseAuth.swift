@@ -16,9 +16,9 @@ class TerseAuth: ObservableObject {
     @Published var tier: String = "free"
     @Published var status: String = "active"
     @Published var weeklyUsage: Int = 0
-    @Published var optimizationsPerWeek: Int = 500
+    @Published var optimizationsPerWeek: Int = 120
     @Published var maxSessions: Int = 1
-    @Published var remaining: Int = 500
+    @Published var remaining: Int = 120
 
     var isUnlimited: Bool { optimizationsPerWeek < 0 }
     var canOptimize: Bool { isUnlimited || remaining > 0 }
@@ -168,7 +168,7 @@ class TerseAuth: ObservableObject {
             print("[TerseAuth] No clerkUserId, skipping license verify")
             return
         }
-        guard let url = URL(string: "\(apiBase)/api/license/\(userId)") else { return }
+        guard let url = URL(string: "\(apiBase)/api/license/\(userId)?platform=ios") else { return }
         print("[TerseAuth] Verifying license for: \(userId)")
 
         URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
@@ -198,7 +198,7 @@ class TerseAuth: ObservableObject {
                 print("[TerseAuth] Tier: \(self.tier), Status: \(self.status)")
 
                 if let limits = json["limits"] as? [String: Any] {
-                    self.optimizationsPerWeek = limits["optimizations_per_week"] as? Int ?? 500
+                    self.optimizationsPerWeek = limits["optimizations_per_week"] as? Int ?? 120
                     self.maxSessions = limits["max_sessions"] as? Int ?? 1
                     print("[TerseAuth] Limits: \(self.optimizationsPerWeek) opt/week, \(self.maxSessions) sessions")
                 }
@@ -250,7 +250,7 @@ class TerseAuth: ObservableObject {
 
     private func loadLicense() {
         tier = defaults.string(forKey: "licenseTier") ?? "free"
-        optimizationsPerWeek = defaults.object(forKey: "optimizationsPerWeek") as? Int ?? 500
+        optimizationsPerWeek = defaults.object(forKey: "optimizationsPerWeek") as? Int ?? 120
         maxSessions = defaults.object(forKey: "maxSessions") as? Int ?? 1
         loadWeeklyUsage()
     }

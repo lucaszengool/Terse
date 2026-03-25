@@ -990,6 +990,30 @@ pub struct AgentMonitor {
     pub pending: Vec<PendingDetection>,
     detected: HashMap<String, u32>, // type → pid
     miss_count: HashMap<String, u32>,
+    plan_cache: HashMap<String, (AgentPlanInfo, std::time::Instant)>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AgentPlanInfo {
+    pub plan: String,
+    #[serde(rename = "rateLimitTier")]
+    pub rate_limit_tier: Option<String>,
+    #[serde(rename = "shortTerm")]
+    pub short_term: Option<UsagePeriod>,
+    #[serde(rename = "longTerm")]
+    pub long_term: Option<UsagePeriod>,
+    #[serde(rename = "requestsUsed")]
+    pub requests_used: Option<u64>,
+    #[serde(rename = "requestsMax")]
+    pub requests_max: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UsagePeriod {
+    pub utilization: f64,
+    #[serde(rename = "resetsAt")]
+    pub resets_at: Option<String>,
+    pub label: String,
 }
 
 impl AgentMonitor {
@@ -999,7 +1023,21 @@ impl AgentMonitor {
             pending: Vec::new(),
             detected: HashMap::new(),
             miss_count: HashMap::new(),
+            plan_cache: HashMap::new(),
         }
+    }
+
+    pub fn get_cached_plan_info(&self, agent_type: &str) -> Option<&AgentPlanInfo> {
+        if let Some((info, fetched_at)) = self.plan_cache.get(agent_type) {
+            if fetched_at.elapsed() < Duration::from_secs(300) {
+                return Some(info);
+            }
+        }
+        None
+    }
+
+    pub fn set_plan_info(&mut self, agent_type: &str, info: AgentPlanInfo) {
+        self.plan_cache.insert(agent_type.to_string(), (info, std::time::Instant::now()));
     }
 
     pub fn get_pending_detections(&self) -> Vec<serde_json::Value> {
@@ -1360,4 +1398,142 @@ pub fn start_scanning(app: AppHandle) {
             }));
         }
     }
+}
+
+// ── Plan/Usage Detection ──
+
+pub fn fetch_claude_plan_info() -> Option<AgentPlanInfo> {
+    // Read OAuth token from macOS Keychain
+    let keychain_output = std::process::Command::new("security")
+        .args(["find-generic-password", "-s", "Claude Code-credentials", "-w"])
+        .output().ok()?;
+    if !keychain_output.status.success() { return None; }
+
+    let cred_json: serde_json::Value = serde_json::from_slice(&keychain_output.stdout).ok()?;
+    let access_token = cred_json["accessToken"].as_str()?;
+    let rate_limit_tier = cred_json.get("rateLimitTier")
+        .and_then(|v| v.as_str()).map(String::from);
+
+    // Derive plan name from rateLimitTier
+    let plan = match rate_limit_tier.as_deref() {
+        Some(t) if t.contains("max_20x") => "max_20x".to_string(),
+        Some(t) if t.contains("max_5x") => "max_5x".to_string(),
+        Some(t) if t.contains("max") => "max".to_string(),
+        Some(t) if t.contains("pro") => "pro".to_string(),
+        Some(t) if t.contains("free") => "free".to_string(),
+        Some(t) => t.to_string(),
+        None => {
+            // Fallback: try `claude auth status`
+            let auth_out = std::process::Command::new("claude")
+                .args(["auth", "status", "--json"])
+                .output().ok();
+            if let Some(out) = auth_out {
+                if let Ok(v) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+                    v["subscriptionType"].as_str().unwrap_or("unknown").to_string()
+                } else { "unknown".to_string() }
+            } else { "unknown".to_string() }
+        }
+    };
+
+    // Call usage API
+    let usage_output = std::process::Command::new("curl")
+        .args(["-s", "--connect-timeout", "5", "--max-time", "10",
+               "-H", &format!("Authorization: Bearer {}", access_token),
+               "-H", "anthropic-beta: oauth-2025-04-20",
+               "https://api.anthropic.com/api/oauth/usage"])
+        .output().ok();
+
+    let mut short_term = None;
+    let mut long_term = None;
+
+    if let Some(out) = usage_output {
+        if let Ok(usage) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+            short_term = usage.get("five_hour").map(|v| UsagePeriod {
+                utilization: v["utilization"].as_f64().unwrap_or(0.0),
+                resets_at: v["resets_at"].as_str().map(String::from),
+                label: "5h".into(),
+            });
+            long_term = usage.get("seven_day").map(|v| UsagePeriod {
+                utilization: v["utilization"].as_f64().unwrap_or(0.0),
+                resets_at: v["resets_at"].as_str().map(String::from),
+                label: "7d".into(),
+            });
+        }
+    }
+
+    Some(AgentPlanInfo {
+        plan,
+        rate_limit_tier,
+        short_term,
+        long_term,
+        requests_used: None,
+        requests_max: None,
+    })
+}
+
+pub fn fetch_cursor_plan_info() -> Option<AgentPlanInfo> {
+    let home = dirs::home_dir()?;
+    let db_path = home.join("Library/Application Support/Cursor/User/globalStorage/state.vscdb");
+    if !db_path.exists() { return None; }
+    let db_str = db_path.to_str()?;
+
+    // Read plan type
+    let plan_output = std::process::Command::new("sqlite3")
+        .args(["-readonly", db_str,
+               "SELECT value FROM ItemTable WHERE key='cursorAuth/stripeMembershipType'"])
+        .output().ok()?;
+    let plan = String::from_utf8_lossy(&plan_output.stdout).trim().to_string();
+    if plan.is_empty() { return None; }
+
+    // Read userId and accessToken for API call
+    let uid_output = std::process::Command::new("sqlite3")
+        .args(["-readonly", db_str,
+               "SELECT value FROM ItemTable WHERE key='cursorAuth/cachedUserId'"])
+        .output().ok();
+    let token_output = std::process::Command::new("sqlite3")
+        .args(["-readonly", db_str,
+               "SELECT value FROM ItemTable WHERE key='cursorAuth/accessToken'"])
+        .output().ok();
+
+    let user_id = uid_output.map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default();
+    let access_token = token_output.map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default();
+
+    let mut requests_used = None;
+    let mut requests_max = None;
+    let mut short_term = None;
+
+    if !access_token.is_empty() && !user_id.is_empty() {
+        let usage_output = std::process::Command::new("curl")
+            .args(["-s", "--connect-timeout", "5", "--max-time", "10",
+                   "-H", &format!("Cookie: WorkosCursorSessionToken={}", access_token),
+                   &format!("https://www.cursor.com/api/usage?user={}", user_id)])
+            .output().ok();
+
+        if let Some(out) = usage_output {
+            if let Ok(usage) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+                let used = usage["gpt-4"]["numRequests"].as_u64();
+                let max_req = usage["gpt-4"]["maxRequestUsage"].as_u64();
+                requests_used = used;
+                requests_max = max_req;
+                if let (Some(u), Some(m)) = (used, max_req) {
+                    short_term = Some(UsagePeriod {
+                        utilization: if m > 0 { (u as f64 / m as f64) * 100.0 } else { 0.0 },
+                        resets_at: usage["startOfMonth"].as_str().map(String::from),
+                        label: "Monthly".into(),
+                    });
+                }
+            }
+        }
+    }
+
+    Some(AgentPlanInfo {
+        plan,
+        rate_limit_tier: None,
+        short_term,
+        long_term: None,
+        requests_used,
+        requests_max,
+    })
 }

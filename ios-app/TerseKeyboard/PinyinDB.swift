@@ -72,6 +72,37 @@ class PinyinDB {
             results.append(altSentence); seen.insert(altSentence)
         }
 
+        // 3.5 Fuzzy pinyin matching (模糊拼音): try confusion pairs
+        if results.count < 5 {
+            for variant in fuzzyVariants(py) {
+                let fuzzyResults = queryWords(pinyin: variant, exact: true, limit: 5)
+                for (word, _) in fuzzyResults where !seen.contains(word) {
+                    results.append(word); seen.insert(word)
+                }
+                // Also try sentence composition with fuzzy variant
+                let fuzzySentence = composeSentence(from: variant)
+                if !fuzzySentence.isEmpty && !seen.contains(fuzzySentence) {
+                    results.append(fuzzySentence); seen.insert(fuzzySentence)
+                }
+            }
+        }
+
+        // 3.6 Abbreviated pinyin (首字母): "nhpl" → look up each initial
+        if results.isEmpty || splitPinyin(py).isEmpty {
+            let abbrevResults = lookupAbbreviatedPinyin(py)
+            for word in abbrevResults where !seen.contains(word) {
+                results.append(word); seen.insert(word)
+            }
+        }
+
+        // 3.6 Partial sentence: "nihaopiaol" → try prefix match "nihaopiaoliang"
+        if results.count < 5 {
+            let partialResults = lookupPartialSentence(py)
+            for word in partialResults where !seen.contains(word) {
+                results.append(word); seen.insert(word)
+            }
+        }
+
         // 4. Partial/prefix matches for single chars
         if results.count < 10 {
             if let syllable = longestMatchingSyllable(py) {
@@ -98,7 +129,96 @@ class PinyinDB {
             }
         }
 
+        // 7. User dictionary (learned words get priority boost)
+        let userResults = queryUserDict(pinyin: py)
+        for word in userResults where !seen.contains(word) {
+            results.insert(word, at: min(1, results.count)) // Insert near top
+            seen.insert(word)
+        }
+
         return results
+    }
+
+    // MARK: - Context-Aware Next Word Prediction
+
+    /// Given the last word/character, predict what comes next
+    func predictNextWord(after lastWord: String) -> [String] {
+        guard let db = db, !lastWord.isEmpty else { return [] }
+        var results: [String] = []
+        var stmt: OpaquePointer?
+        let sql = "SELECT word2, freq FROM bigrams WHERE word1 = ? ORDER BY freq DESC LIMIT 10"
+        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+            sqlite3_bind_text(stmt, 1, (lastWord as NSString).utf8String, -1, nil)
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let c = sqlite3_column_text(stmt, 0) {
+                    results.append(String(cString: c))
+                }
+            }
+        }
+        sqlite3_finalize(stmt)
+        return results
+    }
+
+    // MARK: - User Dictionary (Learn from user selections)
+
+    /// Record a user's word selection to boost it in future
+    func learnWord(_ word: String, pinyin: String) {
+        guard let db = db else { return }
+        // Use a writable copy for user dict
+        guard let writableDB = openWritableDB() else { return }
+        var stmt: OpaquePointer?
+        let sql = "INSERT INTO user_dict (word, pinyin, freq) VALUES (?, ?, 1) ON CONFLICT(word) DO UPDATE SET freq = freq + 1"
+        if sqlite3_prepare_v2(writableDB, sql, -1, &stmt, nil) == SQLITE_OK {
+            sqlite3_bind_text(stmt, 1, (word as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(stmt, 2, (pinyin as NSString).utf8String, -1, nil)
+            sqlite3_step(stmt)
+        }
+        sqlite3_finalize(stmt)
+        sqlite3_close(writableDB)
+    }
+
+    private func queryUserDict(pinyin: String) -> [String] {
+        // User dict is stored in app group shared container
+        guard let writableDB = openWritableDB() else { return [] }
+        var results: [String] = []
+        var stmt: OpaquePointer?
+
+        // Check if user_dict table exists
+        let checkSQL = "SELECT name FROM sqlite_master WHERE type='table' AND name='user_dict'"
+        if sqlite3_prepare_v2(writableDB, checkSQL, -1, &stmt, nil) == SQLITE_OK {
+            if sqlite3_step(stmt) != SQLITE_ROW {
+                sqlite3_finalize(stmt)
+                sqlite3_close(writableDB)
+                return []
+            }
+        }
+        sqlite3_finalize(stmt)
+        stmt = nil
+
+        let sql = "SELECT word FROM user_dict WHERE pinyin = ? ORDER BY freq DESC LIMIT 5"
+        if sqlite3_prepare_v2(writableDB, sql, -1, &stmt, nil) == SQLITE_OK {
+            sqlite3_bind_text(stmt, 1, (pinyin as NSString).utf8String, -1, nil)
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let c = sqlite3_column_text(stmt, 0) {
+                    results.append(String(cString: c))
+                }
+            }
+        }
+        sqlite3_finalize(stmt)
+        sqlite3_close(writableDB)
+        return results
+    }
+
+    private func openWritableDB() -> OpaquePointer? {
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.terse.shared") else { return nil }
+        let path = container.appendingPathComponent("user_pinyin.db").path
+        var wdb: OpaquePointer?
+        if sqlite3_open(path, &wdb) == SQLITE_OK {
+            sqlite3_exec(wdb, "CREATE TABLE IF NOT EXISTS user_dict (word TEXT PRIMARY KEY, pinyin TEXT, freq INTEGER DEFAULT 1)", nil, nil, nil)
+            sqlite3_exec(wdb, "CREATE INDEX IF NOT EXISTS idx_ud ON user_dict(pinyin)", nil, nil, nil)
+            return wdb
+        }
+        return nil
     }
 
     // MARK: - Sentence Composition (Forward Maximum Matching)
@@ -208,6 +328,144 @@ class PinyinDB {
         return results
     }
 
+    // MARK: - Abbreviated Pinyin (首字母输入)
+    // Handles "nhpl" → treat each consonant as initial of a syllable
+    // n→你/那/能, h→好/很/会, p→漂/跑/朋, l→亮/了/来
+
+    /// All valid pinyin initials (声母)
+    private static let pinyinInitials: Set<Character> = Set("bpmfdtnlgkhjqxzcsryw")
+
+    private func lookupAbbreviatedPinyin(_ input: String) -> [String] {
+        guard let db = db else { return [] }
+        let chars = Array(input.lowercased())
+
+        // Check if this looks like abbreviated pinyin (mostly single consonants)
+        let isAbbrev = chars.allSatisfy { Self.pinyinInitials.contains($0) || "aeiou".contains($0) }
+        guard isAbbrev && chars.count >= 2 else { return [] }
+
+        // Build SQL LIKE pattern: "nhpl" → "n%h%p%l%"
+        let likePattern = chars.map { "\($0)%" }.joined()
+
+        var results: [String] = []
+        var stmt: OpaquePointer?
+        // Search for phrases whose pinyin matches the abbreviation pattern
+        let sql = "SELECT simplified, frequency FROM entries WHERE pinyin_search LIKE ? AND char_count = ? ORDER BY frequency DESC LIMIT 15"
+
+        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+            sqlite3_bind_text(stmt, 1, (likePattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_int(stmt, 2, Int32(chars.count))
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let c = sqlite3_column_text(stmt, 0) {
+                    results.append(String(cString: c))
+                }
+            }
+        }
+        sqlite3_finalize(stmt)
+
+        // Also try without char_count constraint for longer phrases
+        if results.count < 5 {
+            if sqlite3_prepare_v2(db, "SELECT simplified, frequency FROM entries WHERE pinyin_search LIKE ? ORDER BY frequency DESC LIMIT 10", -1, &stmt, nil) == SQLITE_OK {
+                sqlite3_bind_text(stmt, 1, (likePattern as NSString).utf8String, -1, nil)
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    if let c = sqlite3_column_text(stmt, 0) {
+                        let word = String(cString: c)
+                        if !results.contains(word) { results.append(word) }
+                    }
+                }
+            }
+            sqlite3_finalize(stmt)
+        }
+
+        return results
+    }
+
+    // MARK: - Partial Sentence Completion
+    // Handles "nihaopiaol" → find "nihaopiaoliang" → 你好漂亮
+
+    private func lookupPartialSentence(_ input: String) -> [String] {
+        guard let db = db else { return [] }
+        let py = input.lowercased()
+
+        // Try splitting what we can, leaving trailing partial
+        let syllables = splitPinyin(py)
+        let matchedLen = syllables.joined().count
+
+        if matchedLen < py.count && matchedLen > 0 {
+            // There's a trailing partial: e.g., "nihaopiaol" → syllables=["ni","hao","piao"] + trailing "l"
+            let trailing = String(py.suffix(py.count - matchedLen))
+
+            // Build the sentence from matched syllables
+            let matchedSentence = composeSentence(from: syllables.joined())
+
+            // Search for words starting with the trailing partial
+            var stmt: OpaquePointer?
+            let sql = "SELECT simplified, frequency FROM entries WHERE pinyin_search LIKE ? AND char_count <= 3 ORDER BY frequency DESC LIMIT 10"
+            let trailingPattern = "\(trailing)%"
+
+            var completions: [String] = []
+            if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                sqlite3_bind_text(stmt, 1, (trailingPattern as NSString).utf8String, -1, nil)
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    if let c = sqlite3_column_text(stmt, 0) {
+                        completions.append(String(cString: c))
+                    }
+                }
+            }
+            sqlite3_finalize(stmt)
+
+            // Combine matched sentence + completions
+            var results: [String] = []
+            if !matchedSentence.isEmpty {
+                for comp in completions.prefix(5) {
+                    results.append(matchedSentence + comp)
+                }
+            }
+            return results
+        }
+
+        // Also try prefix match on full pinyin (e.g., "nihaopiaoliang" starts with "nihaopiaol")
+        var stmt: OpaquePointer?
+        var results: [String] = []
+        let sql = "SELECT simplified, frequency FROM entries WHERE pinyin_search LIKE ? ORDER BY frequency DESC LIMIT 10"
+        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+            sqlite3_bind_text(stmt, 1, ("\(py)%" as NSString).utf8String, -1, nil)
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let c = sqlite3_column_text(stmt, 0) {
+                    results.append(String(cString: c))
+                }
+            }
+        }
+        sqlite3_finalize(stmt)
+
+        return results
+    }
+
+    // MARK: - Fuzzy Pinyin (模糊拼音)
+    // Handles common pronunciation confusion pairs
+
+    private static let fuzzyPairs: [(String, String)] = [
+        ("zh", "z"), ("ch", "c"), ("sh", "s"),   // 平翘舌
+        ("z", "zh"), ("c", "ch"), ("s", "sh"),
+        ("n", "l"), ("l", "n"),                   // n/l 混淆
+        ("ang", "an"), ("an", "ang"),             // 前后鼻音
+        ("eng", "en"), ("en", "eng"),
+        ("ing", "in"), ("in", "ing"),
+        ("ong", "on"), ("on", "ong"),
+        ("h", "f"), ("f", "h"),                   // h/f 混淆
+    ]
+
+    /// Generate fuzzy variants of a pinyin string
+    private func fuzzyVariants(_ pinyin: String) -> [String] {
+        var variants: [String] = []
+        let py = pinyin.lowercased()
+        for (from, to) in Self.fuzzyPairs {
+            if py.contains(from) {
+                variants.append(py.replacingOccurrences(of: from, with: to))
+            }
+        }
+        return variants
+    }
+
     // MARK: - English Detection
 
     private static let commonEnglish: Set<String> = [
@@ -223,6 +481,11 @@ class PinyinDB {
     private func isLikelyEnglish(_ text: String) -> Bool {
         let lower = text.lowercased()
         if Self.commonEnglish.contains(lower) { return true }
+        // Don't flag as English if it could be abbreviated pinyin (all consonants)
+        let chars = Array(lower)
+        if chars.allSatisfy({ Self.pinyinInitials.contains($0) || "aeiou".contains($0) }) {
+            return false
+        }
         // If no valid pinyin syllable matches, likely English
         if longestMatchingSyllable(lower) == nil && lower.count >= 3 { return true }
         return false

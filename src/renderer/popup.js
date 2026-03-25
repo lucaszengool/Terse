@@ -60,6 +60,41 @@ async function updatePopupQuota() {
 updatePopupQuota();
 if (window.__TAURI__?.event?.listen) {
   window.__TAURI__.event.listen('quota-updated', () => updatePopupQuota());
+  window.__TAURI__.event.listen('quota-exhausted', (event) => {
+    showQuotaExhaustedPopup(event.payload);
+  });
+}
+
+function showQuotaExhaustedPopup(data) {
+  // Remove existing popup if any
+  const existing = document.getElementById('quotaExhaustedOverlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'quotaExhaustedOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML = `
+    <div style="background:var(--bg);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+      <div style="font-size:32px;margin-bottom:8px;">0</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--t1);">Quota Reached</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:16px;line-height:1.5;">
+        Your weekly optimization quota has been used up. All sessions have been disconnected.
+        <br><br>Upgrade your plan for unlimited optimizations, or wait until next week.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button onclick="this.closest('#quotaExhaustedOverlay').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t1);font-size:12px;font-weight:600;cursor:pointer;">
+          Dismiss
+        </button>
+        <button onclick="window.terse?.navigateTo?.('upgrade');this.closest('#quotaExhaustedOverlay').remove()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">
+          Upgrade
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Update quota display
+  updatePopupQuota();
 }
 
 function escapeHtml(s) {
@@ -174,6 +209,8 @@ function _updatePopupUI(d) {
 
 T.on('optimize-request', async (d) => {
   if (!window._terseOptimizer) return;
+  // Don't run optimization when agent panel is showing
+  if (agentPanelVisible) return;
 
   // Check license quota
   try {
@@ -239,6 +276,8 @@ T.on('optimize-request', async (d) => {
 
 T.on('send-mode-optimize', async (d) => {
   if (!window._terseOptimizer) return;
+  // Don't optimize when agent panel is showing — agent mode is monitor-only
+  if (agentPanelVisible) return;
   const opt = window._terseOptimizer.optimize(d.text);
   if (opt.optimized !== d.text && opt.optimized.length >= 3) {
     try {
@@ -485,11 +524,152 @@ function hideAgentBanner() {
   autoResizePopup();
 }
 
+// ── Plan Info & Savings ──
+let _planInfoCache = null;
+let _planInfoFetchedAt = 0;
+const PLAN_FETCH_INTERVAL = 60000;
+
+// Cost per million INPUT tokens by agent+model (USD)
+const TOKEN_PRICING = {
+  'claude-code': {
+    'claude-opus-4-6': { input: 5.00, output: 25.00 },
+    'claude-sonnet-4-6': { input: 3.00, output: 15.00 },
+    'claude-haiku-4-5': { input: 1.00, output: 5.00 },
+    'default': { input: 3.00, output: 15.00 }, // Sonnet as default
+  },
+  'cursor-agent': {
+    'auto': { input: 1.25, output: 6.00 },
+    'claude-sonnet': { input: 3.00, output: 15.00 },
+    'claude-opus': { input: 5.00, output: 25.00 },
+    'default': { input: 3.00, output: 15.00 },
+  },
+  'codex': {
+    'gpt-4o': { input: 2.50, output: 10.00 },
+    'o3': { input: 2.00, output: 8.00 },
+    'default': { input: 2.50, output: 10.00 },
+  },
+  'copilot': {
+    'default': { input: 3.00, output: 15.00 },
+  },
+  'default': { input: 3.00, output: 15.00 },
+};
+
+function estimateSavingsUSD(agentType, model, tokensSaved) {
+  const agentPricing = TOKEN_PRICING[agentType] || TOKEN_PRICING['default'];
+  const modelKey = model ? Object.keys(agentPricing).find(k => model.toLowerCase().includes(k)) : null;
+  const pricing = agentPricing[modelKey] || agentPricing['default'] || TOKEN_PRICING['default'];
+  return (tokensSaved / 1000000) * pricing.input;
+}
+
+function formatUSD(amount) {
+  if (amount >= 1) return '$' + amount.toFixed(2);
+  if (amount >= 0.01) return '$' + amount.toFixed(2);
+  if (amount >= 0.001) return '$' + amount.toFixed(3);
+  return '<$0.001';
+}
+
+async function fetchAndShowPlanInfo(agentType) {
+  const now = Date.now();
+  if (_planInfoCache && (now - _planInfoFetchedAt) < PLAN_FETCH_INTERVAL) {
+    renderPlanInfo(_planInfoCache);
+    return;
+  }
+  try {
+    const info = await T.getAgentPlanInfo(agentType);
+    if (info) {
+      _planInfoCache = info;
+      _planInfoFetchedAt = now;
+      renderPlanInfo(info);
+    }
+  } catch (e) { console.warn('[terse] plan info fetch failed:', e); }
+}
+
+function renderPlanInfo(info) {
+  const row = document.getElementById('agentPlanRow');
+  if (!info || !info.plan || info.plan === 'unknown') { row?.classList.add('hidden'); return; }
+  row.classList.remove('hidden');
+
+  // Plan badge
+  const badge = document.getElementById('agentPlanBadge');
+  const p = (info.rateLimitTier || info.plan).toLowerCase();
+  let label = info.plan, cls = 'plan-badge';
+  if (p.includes('max_20x') || p.includes('max20x')) { label = 'Max 20x'; cls += ' max'; }
+  else if (p.includes('max_5x') || p.includes('max5x')) { label = 'Max 5x'; cls += ' max'; }
+  else if (p.includes('max')) { label = 'Max'; cls += ' max'; }
+  else if (p.includes('pro')) { label = 'Pro'; cls += ' pro'; }
+  else if (p.includes('free') || p.includes('hobby')) { label = 'Free'; cls += ' free'; }
+  else if (p.includes('business')) { label = 'Business'; cls += ' pro'; }
+  else { label = info.plan; }
+  badge.textContent = label;
+  badge.className = cls;
+
+  // Short-term usage bar
+  const shortWrap = document.getElementById('usageShortWrap');
+  if (info.shortTerm) {
+    shortWrap.style.display = '';
+    document.getElementById('usageShortLabel').textContent = info.shortTerm.label;
+    const pct = Math.round(info.shortTerm.utilization);
+    const bar = document.getElementById('usageShortBar');
+    bar.style.width = Math.min(pct, 100) + '%';
+    bar.className = 'usage-bar-fill' + (pct > 85 ? ' danger' : pct > 60 ? ' warn' : '');
+    document.getElementById('usageShortPct').textContent = pct + '%';
+  } else { shortWrap.style.display = 'none'; }
+
+  // Long-term usage bar
+  const longWrap = document.getElementById('usageLongWrap');
+  if (info.longTerm) {
+    longWrap.style.display = '';
+    document.getElementById('usageLongLabel').textContent = info.longTerm.label;
+    const pct = Math.round(info.longTerm.utilization);
+    const bar = document.getElementById('usageLongBar');
+    bar.style.width = Math.min(pct, 100) + '%';
+    bar.className = 'usage-bar-fill' + (pct > 85 ? ' danger' : pct > 60 ? ' warn' : '');
+    document.getElementById('usageLongPct').textContent = pct + '%';
+  } else { longWrap.style.display = 'none'; }
+
+  // Reset timer / requests
+  const timer = document.getElementById('agentResetTimer');
+  if (info.requestsUsed != null && info.requestsMax != null) {
+    timer.textContent = info.requestsUsed + '/' + info.requestsMax + ' reqs';
+  } else {
+    const resetAt = info.shortTerm?.resetsAt;
+    if (resetAt) {
+      const delta = new Date(resetAt) - new Date();
+      if (delta > 0) {
+        const h = Math.floor(delta / 3600000);
+        const m = Math.floor((delta % 3600000) / 60000);
+        timer.textContent = 'resets ' + (h > 0 ? h + 'h ' : '') + m + 'm';
+      } else { timer.textContent = ''; }
+    } else { timer.textContent = ''; }
+  }
+
+  // Dollar savings based on hook stats + plan pricing
+  const usdEl = document.getElementById('agentSavingsUSD');
+  const hookSaved = window._terseHookStats?.totalSaved || 0;
+  if (hookSaved > 0 && activeAgentType) {
+    const model = _planInfoCache?.rateLimitTier || null;
+    const usd = estimateSavingsUSD(activeAgentType, model, hookSaved);
+    usdEl.textContent = formatUSD(usd) + ' saved';
+  } else { usdEl.textContent = ''; }
+}
+
 function showAgentPanel(snapshot) {
   console.log('[terse-dbg] showAgentPanel called, agentType:', snapshot.agentType, 'turns:', snapshot.turns);
   activeAgentType = snapshot.agentType;
   agentHostSessionId = lastShownSessionId; // remember which session hosts this agent
   agentPanelVisible = true;
+
+  // Clear any stale optimization state — agent mode is monitor-only
+  hasContent = false;
+  document.getElementById('optimized').classList.add('hidden');
+  document.getElementById('optimized').value = '';
+  document.getElementById('tokBefore').textContent = '0';
+  document.getElementById('tokAfter').textContent = '0';
+  document.getElementById('tokPct').textContent = '';
+  document.getElementById('techniques').innerHTML = '';
+  document.getElementById('btnReplace').disabled = true;
+  _invoke('clear_popup_state', {}).catch(() => {});
+
   const panel = document.getElementById('agentPanel');
   document.getElementById('agentPanelIcon').textContent = snapshot.agentIcon || '';
   document.getElementById('agentPanelName').textContent = snapshot.agentName;
@@ -498,6 +678,8 @@ function showAgentPanel(snapshot) {
   hideAgentBanner();
   try { updateAgentPanel(snapshot); } catch(e) {}
   autoResizePopup();
+  // Fetch plan info (async, cached)
+  fetchAndShowPlanInfo(snapshot.agentType);
   // Run enrichment async to avoid freezing UI
   setTimeout(() => {
     try { enrichAgentOptStats(snapshot); updateAgentPanel(snapshot); autoResizePopup(); } catch(e) {}
@@ -507,7 +689,9 @@ function showAgentPanel(snapshot) {
 function hideAgentPanel() {
   activeAgentType = null;
   agentHostSessionId = null;
+  _planInfoCache = null;
   document.getElementById('agentPanel').classList.add('hidden');
+  document.getElementById('agentPlanRow')?.classList.add('hidden');
   autoResizePopup();
 }
 
@@ -586,9 +770,18 @@ function updateAgentPanel(snapshot) {
   const saveLabelEl = document.getElementById('agentSaveLabel');
   if (saveLabelEl) saveLabelEl.textContent = label;
   const savingsUnitEl = document.getElementById('agentSavingsUnit');
-  if (savingsUnitEl) savingsUnitEl.textContent = hasActual
-    ? 'tokens saved' + (potentialSaved > 1000 ? ' (+' + formatTokens(potentialSaved) + ' saveable)' : '')
-    : 'tokens saveable';
+  if (savingsUnitEl) {
+    let unitText = hasActual
+      ? 'tokens saved' + (potentialSaved > 1000 ? ' (+' + formatTokens(potentialSaved) + ' saveable)' : '')
+      : 'tokens saveable';
+    // Append dollar estimate if we have actual savings
+    if (hasActual && actualSaved > 100 && activeAgentType) {
+      const model = _planInfoCache?.rateLimitTier || snapshot.detectedModel || null;
+      const usd = estimateSavingsUSD(activeAgentType, model, actualSaved);
+      if (usd >= 0.001) unitText += ' ≈ ' + formatUSD(usd);
+    }
+    savingsUnitEl.textContent = unitText;
+  }
 
   // Show hook compression badge if active
   let hookBadgeEl = document.getElementById('agentHookBadge');

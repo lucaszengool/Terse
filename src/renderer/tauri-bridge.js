@@ -91,6 +91,7 @@ if (window.__TAURI__) {
     disconnectAgent: (agentType) => invoke('disconnect_agent', { agentType }),
     analyzeAgentSession: (agentType) => invoke('get_agent_analytics', { agentType }),
     getAgentAnalytics: (agentType) => invoke('get_agent_analytics', { agentType }),
+    getAgentPlanInfo: (agentType) => invoke('get_agent_plan_info', { agentType }),
 
     // Stats
     getStats: (period) => invoke('get_stats', { period }),

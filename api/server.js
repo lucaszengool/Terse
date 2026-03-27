@@ -336,6 +336,68 @@ app.get('/api/auth/poll/:token', (req, res) => {
   });
 });
 
+// Apple Sign In — iOS sends Apple identity token, we create/find user via Clerk
+app.post('/api/auth/apple', async (req, res) => {
+  try {
+    const { identityToken, email, firstName, lastName } = req.body;
+    if (!identityToken) return res.status(400).json({ error: 'Missing identityToken' });
+
+    // Decode the Apple identity token (JWT) to get the subject (Apple user ID)
+    const parts = identityToken.split('.');
+    if (parts.length !== 3) return res.status(400).json({ error: 'Invalid token format' });
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+    const appleUserId = payload.sub;
+    const appleEmail = payload.email || email;
+
+    if (!appleUserId) return res.status(400).json({ error: 'No subject in token' });
+
+    // Try to find existing Clerk user by Apple ID (stored in external accounts)
+    // or by email, or create a new one
+    const headers = { Authorization: `Bearer ${CLERK_SECRET}`, 'Content-Type': 'application/json' };
+
+    // Search for existing user by email
+    let clerkUser = null;
+    if (appleEmail) {
+      const searchRes = await fetch(`https://api.clerk.com/v1/users?email_address=${encodeURIComponent(appleEmail)}`, { headers });
+      const users = await searchRes.json();
+      if (Array.isArray(users) && users.length > 0) {
+        clerkUser = users[0];
+      }
+    }
+
+    // If no user found, create one
+    if (!clerkUser) {
+      const createBody = {
+        external_id: `apple_${appleUserId}`,
+      };
+      if (appleEmail) createBody.email_address = [appleEmail];
+      if (firstName) createBody.first_name = firstName;
+      if (lastName) createBody.last_name = lastName;
+
+      const createRes = await fetch('https://api.clerk.com/v1/users', {
+        method: 'POST', headers, body: JSON.stringify(createBody),
+      });
+      clerkUser = await createRes.json();
+      if (clerkUser.errors) {
+        console.error('[Apple Auth] Clerk create error:', clerkUser.errors);
+        return res.status(500).json({ error: 'Failed to create user', details: clerkUser.errors });
+      }
+    }
+
+    // Return user info in the same format as /api/auth/poll
+    res.json({
+      status: 'authenticated',
+      clerkUserId: clerkUser.id,
+      email: clerkUser.email_addresses?.[0]?.email_address || appleEmail || '',
+      imageUrl: clerkUser.image_url || null,
+      firstName: clerkUser.first_name || firstName || null,
+    });
+  } catch (err) {
+    console.error('[Apple Auth] Error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── Health check ──
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });

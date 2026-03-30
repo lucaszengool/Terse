@@ -459,6 +459,28 @@ app.post('/api/iap/verify', (req, res) => {
   res.json({ ok: true, tier });
 });
 
+// ── Account Deletion ──
+app.post('/api/auth/delete', async (req, res) => {
+  const { clerkUserId } = req.body;
+  if (!clerkUserId) return res.status(400).json({ error: 'Missing clerkUserId' });
+
+  console.log(`[Account] Deletion requested for ${clerkUserId}`);
+
+  // Remove from license cache
+  licenseCache.delete(clerkUserId);
+
+  // Delete from Clerk
+  try {
+    const headers = { Authorization: `Bearer ${CLERK_SECRET}` };
+    await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, { method: 'DELETE', headers });
+    console.log(`[Account] Deleted Clerk user ${clerkUserId}`);
+  } catch (err) {
+    console.error(`[Account] Clerk deletion error: ${err.message}`);
+  }
+
+  res.json({ ok: true });
+});
+
 // ── Health check ──
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });

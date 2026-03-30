@@ -185,7 +185,10 @@ app.post('/api/checkout', async (req, res) => {
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      payment_method_types: ['card'],
+      // Let Stripe dynamically show all enabled payment methods
+      // (card, Link, Alipay, WeChat Pay, etc.) based on dashboard config.
+      // Alipay/WeChat only work for one-time payments, so Stripe will
+      // auto-filter to compatible methods for subscriptions.
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
       success_url: `${baseUrl}/?checkout=success&tier=${tier}`,
@@ -350,41 +353,76 @@ app.post('/api/auth/apple', async (req, res) => {
     const appleEmail = payload.email || email;
 
     if (!appleUserId) return res.status(400).json({ error: 'No subject in token' });
+    console.log(`[Apple Auth] sub=${appleUserId}, email=${appleEmail || 'none'}, firstName=${firstName || 'none'}`);
 
-    // Try to find existing Clerk user by Apple ID (stored in external accounts)
-    // or by email, or create a new one
     const headers = { Authorization: `Bearer ${CLERK_SECRET}`, 'Content-Type': 'application/json' };
 
-    // Search for existing user by email
     let clerkUser = null;
-    if (appleEmail) {
-      const searchRes = await fetch(`https://api.clerk.com/v1/users?email_address=${encodeURIComponent(appleEmail)}`, { headers });
-      const users = await searchRes.json();
-      if (Array.isArray(users) && users.length > 0) {
-        clerkUser = users[0];
+
+    // 1) Search by external_id (apple_<sub>) — works even without email on repeat sign-ins
+    try {
+      const extRes = await fetch(`https://api.clerk.com/v1/users?external_id=apple_${appleUserId}`, { headers });
+      const extUsers = await extRes.json();
+      if (Array.isArray(extUsers) && extUsers.length > 0) {
+        clerkUser = extUsers[0];
+        console.log(`[Apple Auth] Found user by external_id: ${clerkUser.id}`);
       }
+    } catch (e) { console.error('[Apple Auth] external_id search failed:', e.message); }
+
+    // 2) Search by email if not found
+    if (!clerkUser && appleEmail) {
+      try {
+        const searchRes = await fetch(`https://api.clerk.com/v1/users?email_address=${encodeURIComponent(appleEmail)}`, { headers });
+        const users = await searchRes.json();
+        if (Array.isArray(users) && users.length > 0) {
+          clerkUser = users[0];
+          console.log(`[Apple Auth] Found user by email: ${clerkUser.id}`);
+          // Tag with external_id for future lookups without email
+          if (!clerkUser.external_id) {
+            await fetch(`https://api.clerk.com/v1/users/${clerkUser.id}`, {
+              method: 'PATCH', headers, body: JSON.stringify({ external_id: `apple_${appleUserId}` }),
+            }).catch(() => {});
+          }
+        }
+      } catch (e) { console.error('[Apple Auth] email search failed:', e.message); }
     }
 
-    // If no user found, create one
+    // 3) Create new user if not found
     if (!clerkUser) {
-      const createBody = {
-        external_id: `apple_${appleUserId}`,
-      };
+      console.log('[Apple Auth] Creating new Clerk user...');
+      const createBody = { external_id: `apple_${appleUserId}` };
       if (appleEmail) createBody.email_address = [appleEmail];
       if (firstName) createBody.first_name = firstName;
       if (lastName) createBody.last_name = lastName;
+      // skip_password_requirement since this is an Apple Sign In user
+      createBody.skip_password_requirement = true;
 
       const createRes = await fetch('https://api.clerk.com/v1/users', {
         method: 'POST', headers, body: JSON.stringify(createBody),
       });
       clerkUser = await createRes.json();
+
       if (clerkUser.errors) {
-        console.error('[Apple Auth] Clerk create error:', clerkUser.errors);
-        return res.status(500).json({ error: 'Failed to create user', details: clerkUser.errors });
+        console.error('[Apple Auth] Clerk create error:', JSON.stringify(clerkUser.errors));
+        // If email already taken (race condition), try searching again
+        if (appleEmail && clerkUser.errors.some(e => e.code === 'form_identifier_exists')) {
+          const retryRes = await fetch(`https://api.clerk.com/v1/users?email_address=${encodeURIComponent(appleEmail)}`, { headers });
+          const retryUsers = await retryRes.json();
+          if (Array.isArray(retryUsers) && retryUsers.length > 0) {
+            clerkUser = retryUsers[0];
+            console.log(`[Apple Auth] Found user on retry: ${clerkUser.id}`);
+          } else {
+            return res.status(500).json({ error: 'Failed to create user', details: clerkUser.errors });
+          }
+        } else {
+          return res.status(500).json({ error: 'Failed to create user', details: clerkUser.errors });
+        }
+      } else {
+        console.log(`[Apple Auth] Created user: ${clerkUser.id}`);
       }
     }
 
-    // Return user info in the same format as /api/auth/poll
+    // Return user info
     res.json({
       status: 'authenticated',
       clerkUserId: clerkUser.id,

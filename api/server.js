@@ -436,6 +436,29 @@ app.post('/api/auth/apple', async (req, res) => {
   }
 });
 
+// ── IAP Verification (iOS StoreKit) ──
+app.post('/api/iap/verify', (req, res) => {
+  const { clerkUserId, productId, transactionId, originalTransactionId, expirationDate } = req.body;
+  if (!clerkUserId || !productId) return res.status(400).json({ error: 'Missing fields' });
+
+  // Map product ID to tier
+  let tier = 'free';
+  if (productId === 'com.terseai.pro.monthly') tier = 'pro';
+
+  const expDate = expirationDate ? new Date(expirationDate * 1000).toISOString() : null;
+
+  licenseCache.set(clerkUserId, {
+    tier,
+    stripeCustomerId: null,
+    subscriptionId: `iap_${originalTransactionId || transactionId}`,
+    status: 'active',
+    expiresAt: expDate,
+  });
+
+  console.log(`[IAP] Verified ${tier} for ${clerkUserId} (txn: ${transactionId}, expires: ${expDate})`);
+  res.json({ ok: true, tier });
+});
+
 // ── Health check ──
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });

@@ -152,11 +152,17 @@ async function handleProxy(req, res) {
   const startTime = Date.now();
 
   // 1. Authenticate buyer via virtual key
+  // Support both Authorization: Bearer <key> (OpenAI-style) and x-api-key: <key> (Anthropic-style)
+  let rawKey;
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: { message: 'Missing API key' } });
+  const xApiKey = req.headers['x-api-key'];
+  if (xApiKey) {
+    rawKey = xApiKey;
+  } else if (authHeader?.startsWith('Bearer ')) {
+    rawKey = authHeader.slice(7);
+  } else {
+    return res.status(401).json({ error: { message: 'Missing API key. Set x-api-key or Authorization: Bearer header.' } });
   }
-  const rawKey = authHeader.slice(7);
   const keyHash = db.hashKey(rawKey);
   const buyerKey = db.findBuyerByHash.get(keyHash);
 
@@ -306,6 +312,8 @@ async function handleProxy(req, res) {
     const reader = providerRes.body.getReader();
     const decoder = new TextDecoder();
     let fullResponse = '';
+    let streamInputTokens = preOptTokens;
+    let streamOutputTokens = 0;
 
     try {
       while (true) {
@@ -314,6 +322,32 @@ async function handleProxy(req, res) {
         const chunk = decoder.decode(value, { stream: true });
         fullResponse += chunk;
         res.write(chunk);
+
+        // Parse SSE events to extract actual usage from Anthropic's message_delta/message_stop
+        // Anthropic streams: event: message_delta, data: {"type":"message_delta","usage":{"output_tokens":123}}
+        // OpenAI streams: final chunk has usage field
+        try {
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') continue;
+            const evt = JSON.parse(jsonStr);
+            // Anthropic: message_delta has usage.output_tokens
+            if (evt.type === 'message_delta' && evt.usage) {
+              streamOutputTokens = evt.usage.output_tokens || streamOutputTokens;
+            }
+            // Anthropic: message_start has usage.input_tokens
+            if (evt.type === 'message_start' && evt.message?.usage) {
+              streamInputTokens = evt.message.usage.input_tokens || streamInputTokens;
+            }
+            // OpenAI: final chunk may have usage
+            if (evt.usage) {
+              streamInputTokens = evt.usage.prompt_tokens || streamInputTokens;
+              streamOutputTokens = evt.usage.completion_tokens || streamOutputTokens;
+            }
+          }
+        } catch (parseErr) { /* SSE parse non-critical */ }
       }
       res.end();
     } catch (err) {
@@ -321,9 +355,9 @@ async function handleProxy(req, res) {
       res.end();
     }
 
-    // Estimate output tokens from streamed response
-    const outputTokens = estimateTokens(fullResponse);
-    recordTransaction(buyerKey, sellerKey, buyer, provider, model, preOptTokens, outputTokens, postOptTokens);
+    // Use actual token counts if captured, fallback to estimate
+    if (streamOutputTokens === 0) streamOutputTokens = estimateTokens(fullResponse);
+    recordTransaction(buyerKey, sellerKey, buyer, provider, model, streamInputTokens, streamOutputTokens, postOptTokens);
     return;
   }
 

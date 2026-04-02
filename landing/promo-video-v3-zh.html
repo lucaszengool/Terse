@@ -196,36 +196,49 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
   </div>
 </div>
 
-<!-- S4: Agent Monitor (matching mac_zh_04) -->
+<!-- S4: Agent Session Optimization — full process -->
 <div class="slide" id="s4">
-  <div class="headline">监控 AI 代理成本</div>
-  <div class="subline">实时追踪 Claude Code 等的 Token 用量</div>
+  <div class="headline">Agent 会话优化</div>
+  <div class="subline">每一轮对话，每一个 Token，自动压缩</div>
   <div class="mac">
-    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE — Agent Monitor</span><span class="mac-badge">MONITORING</span></div>
-    <div class="mac-body" style="padding:12px;font-size:12px">
-      <!-- Popup bar at top -->
-      <div class="popup-bar" style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;font-size:11px">
-        <div class="mode-tabs" style="margin:0;flex:none;border:none;gap:2px">
-          <span style="padding:4px 10px;border-radius:4px;font-size:10px;font-weight:600;color:rgba(0,0,0,.3)">Soft</span>
-          <span style="padding:4px 10px;border-radius:4px;font-size:10px;font-weight:700;background:#fff;color:var(--dark)">Normal</span>
-          <span style="padding:4px 10px;border-radius:4px;font-size:10px;font-weight:600;color:rgba(0,0,0,.3)">Aggr</span>
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body" style="padding:14px;font-size:12px">
+      <!-- User prompt (before) -->
+      <div id="s4phase1" style="opacity:0;transition:opacity .5s">
+        <div style="font-size:9px;font-weight:700;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">你的提示词</div>
+        <div style="background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.06);border-radius:8px;padding:10px 12px;font-size:12px;color:rgba(0,0,0,.6);line-height:1.6;position:relative" id="s4prompt">
+          <span id="s4w1">So basically </span><span id="s4w2">I was just wondering if </span><span id="s4w3">you could maybe </span><span id="s4w4">help me </span><span id="s4w5">refacter </span><span id="s4w6">the authetication module </span><span id="s4w7">like I mentioned earlier </span><span id="s4w8">so that it handles tokne refresh </span><span id="s4w9">properly please?</span>
+          <span class="mono" style="position:absolute;top:6px;right:8px;font-size:9px;color:rgba(0,0,0,.2)" id="s4tokBefore">52 tok</span>
         </div>
-        <span class="mono" style="color:var(--green);font-weight:700">21.3K saved</span>
       </div>
-      <!-- Claude Code session -->
-      <div style="background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.04);border-radius:8px;padding:10px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-weight:700">🤖 Claude Code</span><span style="font-size:10px;color:rgba(0,0,0,.35)">Monitoring</span></div>
-        <div style="font-size:10px;color:rgba(0,0,0,.4);margin-bottom:8px">Ctx 56% | in 7.6M | Cache 88% | Tools 65</div>
-        <div id="s4log" style="min-height:60px"></div>
-        <div style="margin-top:8px;font-size:10px;color:rgba(0,0,0,.35)">CONTEXT <span class="mono" style="font-weight:700;color:var(--dark)">113.5K / 200K (56%)</span></div>
-        <div class="bar-track" style="margin-top:4px"><div class="bar-fill" id="s4bar"></div></div>
+      <!-- Terse optimization pipeline -->
+      <div id="s4phase2" style="margin-top:8px;opacity:0;transition:opacity .5s">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(5,150,105,.4)"></div>
+          <span style="font-size:9px;font-weight:700;color:var(--green);letter-spacing:1px">TERSE 优化中</span>
+        </div>
+        <div style="display:flex;gap:3px;margin-bottom:8px" id="s4pipe"></div>
+        <div id="s4steps" style="font-size:10px;color:rgba(0,0,0,.45);line-height:1.8"></div>
       </div>
-      <!-- Stats -->
-      <div class="stat-grid" id="s4stats">
-        <div class="stat-card"><div class="stat-num" id="s4turns">0</div><div class="stat-label">Turns</div></div>
-        <div class="stat-card"><div class="stat-num" id="s4input">0</div><div class="stat-label">Input</div></div>
-        <div class="stat-card"><div class="stat-num" id="s4cache">0%</div><div class="stat-label">Cache</div></div>
-        <div class="stat-card"><div class="stat-num" id="s4saved" style="color:var(--green)">0</div><div class="stat-label">Saved</div></div>
+      <!-- Optimized result -->
+      <div id="s4phase3" style="margin-top:8px;opacity:0;transition:opacity .5s">
+        <div style="font-size:9px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">优化后 · 自动发送</div>
+        <div style="background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.12);border-radius:8px;padding:10px 12px;font-size:13px;font-weight:600;color:var(--dark)">
+          Refactor authentication module: handle token refresh
+          <span class="mono" style="float:right;font-size:9px;color:var(--green);font-weight:700" id="s4tokAfter">9 tok · −83%</span>
+        </div>
+      </div>
+      <!-- Agent actions + tool compression -->
+      <div id="s4phase4" style="margin-top:8px;opacity:0;transition:opacity .5s">
+        <div style="font-size:9px;font-weight:700;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Agent 执行 — Terse 实时追踪</div>
+        <div id="s4actions" style="font-size:10px;line-height:1.6"></div>
+      </div>
+      <!-- Bottom stats -->
+      <div id="s4phase5" style="margin-top:10px;display:flex;gap:6px;opacity:0;transition:opacity .5s">
+        <div class="stat-card" style="flex:1;padding:8px"><div class="stat-num" style="font-size:16px" id="s4turns">0</div><div class="stat-label">Turns</div></div>
+        <div class="stat-card" style="flex:1;padding:8px"><div class="stat-num" style="font-size:16px" id="s4saved">0</div><div class="stat-label">Tok Saved</div></div>
+        <div class="stat-card" style="flex:1;padding:8px"><div class="stat-num" style="font-size:16px" id="s4typos">0</div><div class="stat-label">Typos</div></div>
+        <div class="stat-card" style="flex:1;padding:8px"><div class="stat-num" style="font-size:16px;color:var(--green)" id="s4pct">0%</div><div class="stat-label">Saved</div></div>
       </div>
     </div>
   </div>
@@ -356,7 +369,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 <script>
 const STEPS=[
   {dur:3500,fn:a0},{dur:3500,fn:a1},{dur:3500,fn:a2},{dur:3500,fn:a3},
-  {dur:5000,fn:a4},{dur:4000,fn:a5},{dur:4000,fn:a6},{dur:5000,fn:a7},
+  {dur:8000,fn:a4},{dur:4000,fn:a5},{dur:4000,fn:a6},{dur:5000,fn:a7},
   {dur:5500,fn:a8},{dur:6000,fn:a9},{dur:4000,fn:a10}
 ];
 let cur=0,auto=true,tmr=null;const T=STEPS.length;
@@ -402,13 +415,65 @@ function a3(){
 }
 
 function a4(){
-  cap('<span class="a">Agent 监控</span> — 实时追踪每个 Token');
-  const log=document.getElementById('s4log');log.innerHTML='';
-  [{t:500,h:'<span class="g">[terse]</span> prompt: 42→12 tok (-71%)'},{t:1000,h:'<span class="w">⚠ Dup:</span> Read auth.ts — ~800 tok wasted'},{t:1500,h:'<span class="g">[terse]</span> test: 4,823→38 (-99%)'},{t:2000,h:'<span class="g">[terse]</span> CLAUDE.md rule generated ✓'}].forEach(l=>{setTimeout(()=>{const d=document.createElement('div');d.className='log-line';d.innerHTML=l.h;log.appendChild(d);setTimeout(()=>d.classList.add('show'),20)},l.t)});
-  countTo('s4turns',28,'',600,1200);countTo('s4input',7.6,'M',800,1200);
-  setTimeout(()=>document.getElementById('s4cache').textContent='88%',1400);
-  countTo('s4saved',21300,'',1000,1800);
-  setTimeout(()=>document.getElementById('s4bar').style.width='56%',800);
+  cap('<span class="a">Agent 优化</span> — 拦截 · 压缩 · 追踪 · 节省');
+
+  // Phase 1: Show the verbose user prompt
+  setTimeout(()=>document.getElementById('s4phase1').style.opacity='1',300);
+
+  // Phase 2: Terse intercepts — show pipeline
+  setTimeout(()=>{
+    document.getElementById('s4phase2').style.opacity='1';
+    // Build 7-stage pipeline bars
+    const pipe=document.getElementById('s4pipe');pipe.innerHTML='';
+    for(let i=0;i<7;i++){const d=document.createElement('div');d.style.cssText='flex:1;height:4px;background:rgba(0,0,0,.06);border-radius:2px;overflow:hidden';d.innerHTML='<div id="s4pf'+i+'" style="height:100%;width:0;background:var(--green);border-radius:2px;transition:width .4s var(--ease-out)"></div>';pipe.appendChild(d)}
+    // Animate pipeline stages + strike through words
+    const steps=document.getElementById('s4steps');steps.innerHTML='';
+    const stageData=[
+      {t:200, fill:0, h:'<span class="g">1 拼写纠正</span> authetication→authentication · tokne→token · refacter→refactor', strike:['s4w5','s4w6','s4w8']},
+      {t:600, fill:1, h:'<span class="g">2 上下文去重</span> "like I mentioned earlier" — 已在上下文中，移除', strike:['s4w7']},
+      {t:1000, fill:2, h:'<span class="g">3 废话移除</span> "So basically" "I was just wondering if" — 移除', strike:['s4w1','s4w2']},
+      {t:1400, fill:3, h:'<span class="g">4 提示压缩</span> "could you maybe help me" → 祈使句', strike:['s4w3','s4w4']},
+      {t:1800, fill:4, h:'<span class="g">5 历史裁剪</span> 去除重复系统上下文'},
+      {t:2100, fill:5, h:'<span class="g">6 祈使改写</span> 问句→指令'},
+      {t:2400, fill:6, h:'<span class="g">7 最终清理</span> 52→9 tok · <span style="color:var(--green);font-weight:700">−83%</span>', strike:['s4w9']},
+    ];
+    stageData.forEach(s=>{
+      setTimeout(()=>{
+        // Fill pipeline bar
+        const pf=document.getElementById('s4pf'+s.fill);if(pf)pf.style.width='100%';
+        // Add step log
+        const d=document.createElement('div');d.className='log-line';d.innerHTML=s.h;steps.appendChild(d);setTimeout(()=>d.classList.add('show'),20);
+        // Strike through words in prompt
+        if(s.strike)s.strike.forEach(id=>{const w=document.getElementById(id);if(w){w.style.transition='all .4s';w.style.color='rgba(0,0,0,.15)';w.style.textDecoration='line-through'}});
+      },s.t);
+    });
+  },1200);
+
+  // Phase 3: Show optimized result
+  setTimeout(()=>document.getElementById('s4phase3').style.opacity='1',4200);
+
+  // Phase 4: Agent runs — tool actions with compression
+  setTimeout(()=>{
+    document.getElementById('s4phase4').style.opacity='1';
+    const actions=document.getElementById('s4actions');actions.innerHTML='';
+    const actData=[
+      {t:200, h:'<span style="color:var(--green)">⚙</span> Read auth.ts, token.ts (245 lines) — <span class="mono" style="color:var(--green)">18 tok cached</span>'},
+      {t:600, h:'<span style="color:#d97706">⚙</span> Read auth.ts again — <span style="color:#d97706;font-weight:700">重复! ~800 tok 浪费</span>'},
+      {t:1000, h:'<span style="color:var(--green)">✎</span> Edit auth.ts:47 — applied'},
+      {t:1400, h:'<span style="color:var(--green)">▶</span> npm test — 8/8 pass · <span style="color:#d97706">3 unused tools = 900 tok overhead</span>'},
+      {t:1800, h:'<span style="color:var(--green)">✓</span> CLAUDE.md rule generated: <span class="mono" style="font-size:9px">"不要重复读取已在上下文中的文件"</span>'},
+    ];
+    actData.forEach(a=>{setTimeout(()=>{const d=document.createElement('div');d.className='log-line';d.innerHTML=a.h;actions.appendChild(d);setTimeout(()=>d.classList.add('show'),20)},a.t)});
+  },4800);
+
+  // Phase 5: Stats
+  setTimeout(()=>{
+    document.getElementById('s4phase5').style.opacity='1';
+    countTo('s4turns',1,'',0,300);
+    countTo('s4saved',43,'',200,800);
+    countTo('s4typos',3,'',400,600);
+    setTimeout(()=>document.getElementById('s4pct').textContent='−83%',600);
+  },6500);
 }
 
 function a5(){

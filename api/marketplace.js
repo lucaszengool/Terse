@@ -465,4 +465,88 @@ router.post('/notifications/:id/read', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// Temporary test endpoint
+router.post('/admin/seed-test', async (req, res) => {
+  const secret = req.headers['x-admin-secret'];
+  if (!secret || secret !== process.env.ADMIN_TEST_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const { seller_api_key, provider } = req.body;
+  if (!seller_api_key || !provider) return res.status(400).json({ error: 'Missing seller_api_key or provider' });
+
+  try {
+    const { encrypt } = require('./crypto-utils');
+    const sellerId = 'test_seller_001';
+    db.ensureUser(sellerId, 'test-seller@test.com');
+
+    const { encrypted, iv, tag } = encrypt(seller_api_key);
+    const id = crypto.randomUUID();
+    db.addSellerKey.run({
+      id, user_id: sellerId, provider,
+      encrypted_key: encrypted, key_iv: iv, key_tag: tag,
+      label: `Test ${provider} key`,
+      price_per_1m_input: 50, price_per_1m_output: 250,
+      spending_cap_cents: null, models_allowed: null,
+      optimization_mode: 'normal',
+      token_cap_total: 10000000, token_cap_hourly: 500000, token_cap_daily: 5000000,
+      rate_limit_hourly_cents: null, rate_limit_daily_cents: null,
+      key_verified: 1,
+    });
+
+    // Also add an OpenAI test listing
+    const id2 = crypto.randomUUID();
+    const { encrypted: enc2, iv: iv2, tag: tag2 } = encrypt('sk-test-fake-openai-key');
+    db.addSellerKey.run({
+      id: id2, user_id: sellerId, provider: 'openai',
+      encrypted_key: enc2, key_iv: iv2, key_tag: tag2,
+      label: 'Test OpenAI key',
+      price_per_1m_input: 125, price_per_1m_output: 500,
+      spending_cap_cents: null, models_allowed: null,
+      optimization_mode: 'soft',
+      token_cap_total: 50000000, token_cap_hourly: 1000000, token_cap_daily: 10000000,
+      rate_limit_hourly_cents: null, rate_limit_daily_cents: null,
+      key_verified: 1,
+    });
+
+    // Add a Google test listing
+    const id3 = crypto.randomUUID();
+    const { encrypted: enc3, iv: iv3, tag: tag3 } = encrypt('AIzaSy-test-fake-google-key');
+    db.addSellerKey.run({
+      id: id3, user_id: sellerId, provider: 'google',
+      encrypted_key: enc3, key_iv: iv3, key_tag: tag3,
+      label: 'Test Gemini key',
+      price_per_1m_input: 20, price_per_1m_output: 150,
+      spending_cap_cents: null, models_allowed: null,
+      optimization_mode: 'normal',
+      token_cap_total: null, token_cap_hourly: null, token_cap_daily: null,
+      rate_limit_hourly_cents: null, rate_limit_daily_cents: null,
+      key_verified: 1,
+    });
+
+    // Create buyer with balance
+    const buyerId = 'test_buyer_001';
+    db.ensureUser(buyerId, 'test-buyer@test.com');
+    db.creditBuyerBalance.run(1000, buyerId);
+    const rawKey = `terse_bk_${crypto.randomBytes(24).toString('hex')}`;
+    const keyHash = db.hashKey(rawKey);
+    db.addBuyerKey.run({ id: crypto.randomUUID(), user_id: buyerId, key_hash: keyHash, label: 'Test key' });
+
+    res.json({ message: 'Seeded 3 provider listings + buyer', buyer_key: rawKey });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/admin/cleanup-test', async (req, res) => {
+  const secret = req.headers['x-admin-secret'];
+  if (!secret || secret !== process.env.ADMIN_TEST_SECRET) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    db.db.exec("DELETE FROM transactions WHERE buyer_id = 'test_buyer_001' OR seller_id = 'test_seller_001'");
+    db.db.exec("DELETE FROM buyer_keys WHERE user_id = 'test_buyer_001'");
+    db.db.exec("DELETE FROM seller_keys WHERE user_id = 'test_seller_001'");
+    db.db.exec("DELETE FROM users WHERE id IN ('test_buyer_001', 'test_seller_001')");
+    res.json({ message: 'Cleaned up' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = { router, requireAuth, COMMISSION_PERCENT, PROVIDER_LIST_PRICES };

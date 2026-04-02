@@ -330,7 +330,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <script>
 const SCENES=[
-  {dur:3500,fn:a0},{dur:3500,fn:a1},{dur:4000,fn:a2},{dur:3500,fn:a3},
+  {dur:4500,fn:a0},{dur:3500,fn:a1},{dur:4000,fn:a2},{dur:3500,fn:a3},
   {dur:5000,fn:a4},{dur:4000,fn:a5},{dur:3500,fn:a6},{dur:4000,fn:a7},
   {dur:4500,fn:a8},{dur:3500,fn:a9},{dur:5500,fn:a10},{dur:6000,fn:a11},
   {dur:4000,fn:a12}
@@ -364,8 +364,23 @@ function typeText(id,text,ms){setTimeout(()=>{const el=document.getElementById(i
 // ── SCENE ANIMATIONS ──
 
 function a0(){
-  animEl('i-title',300);animEl('i-sub',600);
-  setTimeout(()=>{const p=document.getElementById('i-pills');if(p){p.style.transition='opacity .6s';p.style.opacity='1'}},900);
+  // Spawn particles
+  const pc=document.getElementById('particles');
+  if(pc){pc.innerHTML='';for(let i=0;i<40;i++){const p=document.createElement('div');p.className='particle';p.style.left=Math.random()*100+'%';p.style.top=40+Math.random()*40+'%';p.style.width=(2+Math.random()*4)+'px';p.style.height=p.style.width;p.style.animationDelay=(Math.random()*2)+'s';setTimeout(()=>p.classList.add('on'),200+Math.random()*1500);pc.appendChild(p)}}
+  // Spotlight
+  setTimeout(()=>document.getElementById('i-spot')?.classList.add('on'),100);
+  // Badge
+  setTimeout(()=>document.getElementById('i-badge')?.classList.add('on'),400);
+  // Icon 3D pop
+  setTimeout(()=>document.getElementById('i-icon')?.classList.add('on'),600);
+  // Title wipe
+  setTimeout(()=>document.getElementById('i-title')?.classList.add('on'),1200);
+  // Subtitle
+  setTimeout(()=>document.getElementById('i-sub')?.classList.add('on'),1600);
+  // Download button
+  setTimeout(()=>document.getElementById('i-dl')?.classList.add('on'),2000);
+  // Feature pills staggered
+  ['ip0','ip1','ip2','ip3'].forEach((id,i)=>setTimeout(()=>document.getElementById(id)?.classList.add('on'),2400+i*150));
 }
 
 function a1(){showAfter('o1a',600);showAfter('o1b',1200)}

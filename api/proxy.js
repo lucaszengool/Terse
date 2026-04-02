@@ -215,45 +215,35 @@ async function handleProxy(req, res) {
     return res.status(500).json({ error: { message: 'Internal key error' } });
   }
 
-  // 7. Forward to provider
+  // 7. Forward to provider — pass through full request body, only replacing messages
+  //    This ensures compatibility with Claude Code, Cursor, and any SDK features
+  //    (thinking, tools, metadata, stop_sequences, etc.)
   let providerRes;
   try {
     if (provider === 'anthropic') {
-      // Build Anthropic request
-      const anthropicBody = {
-        model,
-        max_tokens: body.max_tokens || 4096,
-        messages: optimizedMessages,
+      // Pass through entire body, only swap messages for optimized version
+      const anthropicBody = { ...body, messages: optimizedMessages };
+      if (!anthropicBody.max_tokens) anthropicBody.max_tokens = 4096;
+
+      // Forward relevant anthropic-* headers from the client
+      const anthropicHeaders = {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': req.headers['anthropic-version'] || '2023-06-01',
       };
-      if (body.system) anthropicBody.system = body.system;
-      if (body.temperature !== undefined) anthropicBody.temperature = body.temperature;
-      if (body.top_p !== undefined) anthropicBody.top_p = body.top_p;
-      if (body.tools) anthropicBody.tools = body.tools;
-      if (body.tool_choice) anthropicBody.tool_choice = body.tool_choice;
-      if (stream) anthropicBody.stream = true;
+      // Pass through anthropic-beta header (needed for extended thinking, etc.)
+      if (req.headers['anthropic-beta']) {
+        anthropicHeaders['anthropic-beta'] = req.headers['anthropic-beta'];
+      }
 
       providerRes = await fetch(PROVIDER_ENDPOINTS.anthropic, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': req.headers['anthropic-version'] || '2023-06-01',
-        },
+        headers: anthropicHeaders,
         body: JSON.stringify(anthropicBody),
       });
     } else if (provider === 'openai') {
-      // Build OpenAI request
-      const openaiBody = {
-        model,
-        messages: optimizedMessages,
-      };
-      if (body.max_tokens !== undefined) openaiBody.max_tokens = body.max_tokens;
-      if (body.temperature !== undefined) openaiBody.temperature = body.temperature;
-      if (body.top_p !== undefined) openaiBody.top_p = body.top_p;
-      if (body.tools) openaiBody.tools = body.tools;
-      if (body.tool_choice) openaiBody.tool_choice = body.tool_choice;
-      if (stream) openaiBody.stream = true;
-      if (body.response_format) openaiBody.response_format = body.response_format;
+      // Pass through entire body, only swap messages
+      const openaiBody = { ...body, messages: optimizedMessages };
 
       providerRes = await fetch(PROVIDER_ENDPOINTS.openai, {
         method: 'POST',
@@ -264,7 +254,7 @@ async function handleProxy(req, res) {
         body: JSON.stringify(openaiBody),
       });
     } else if (provider === 'google') {
-      // Gemini — translate to Google's format
+      // Gemini requires format translation
       const geminiBody = {
         contents: optimizedMessages.map(m => ({
           role: m.role === 'assistant' ? 'model' : 'user',

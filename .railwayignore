@@ -1,0 +1,13 @@
+ios-app/
+src/
+src-tauri/
+electron-backup/
+vscode-extension/
+mac-screenshots/
+docs/
+assets/
+data/
+*.cer
+*.py
+TODO.md
+.git/

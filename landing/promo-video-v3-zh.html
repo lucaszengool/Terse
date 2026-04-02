@@ -300,13 +300,13 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
   <div class="headline">Token 交易市场 — 卖家</div>
   <div class="subline">闲置 API 额度变现，3 步上架</div>
   <div class="mac">
-    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">terseai.org/marketplace</span><span class="mac-badge" style="color:#fbbf24;background:rgba(251,191,36,.08)">EXCHANGE</span></div>
-    <div class="mac-body" style="background:#0f0e1a;color:#fff;padding:16px">
-      <div style="font-size:13px;font-weight:800;color:#6ee7b7;margin-bottom:12px">卖家 — 上架闲置额度</div>
-      <div class="ex-step" id="ex1"><div class="ex-num">1</div><div style="flex:1"><span style="color:rgba(255,255,255,.7);font-weight:600">选择供应商</span></div><div style="display:flex;gap:4px"><span style="padding:3px 8px;background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.2);border-radius:4px;font-size:9px;color:#6ee7b7;font-weight:700">Anthropic</span><span style="padding:3px 8px;background:rgba(255,255,255,.03);border-radius:4px;font-size:9px;color:rgba(255,255,255,.2)">OpenAI</span><span style="padding:3px 8px;background:rgba(255,255,255,.03);border-radius:4px;font-size:9px;color:rgba(255,255,255,.2)">Google</span></div></div>
-      <div class="ex-step" id="ex2"><div class="ex-num">2</div><div style="flex:1"><span style="color:rgba(255,255,255,.7);font-weight:600">粘贴 API 密钥</span><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(110,231,183,.4);margin-top:2px" id="exKey">sk-ant-</div></div><span style="font-size:8px;color:#6ee7b7;background:rgba(110,231,183,.06);padding:2px 6px;border-radius:3px">AES-256</span></div>
-      <div class="ex-step" id="ex3"><div class="ex-num">3</div><div style="flex:1"><span style="color:rgba(255,255,255,.7);font-weight:600">设置折扣</span></div><div style="display:flex;align-items:center;gap:6px"><div style="width:80px;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden"><div id="exBar" style="width:0;height:100%;background:#6ee7b7;transition:width 1.5s var(--ease-out)"></div></div><span style="font-size:14px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#6ee7b7" id="exPct">0%</span></div></div>
-      <div class="ex-step" id="ex4" style="border:1px solid rgba(110,231,183,.15);background:rgba(110,231,183,.04);border-radius:6px;padding:8px 10px"><div style="color:#6ee7b7;font-size:12px">✓</div><span style="color:#6ee7b7;font-weight:700;font-size:11px">密钥已验证！预计月收入 $<span id="exEarn">0</span></span></div>
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body">
+      <div style="font-size:13px;font-weight:800;color:var(--dark);margin-bottom:14px">卖家 — 上架闲置额度</div>
+      <div class="ex-step" id="ex1"><div class="ex-num" style="background:var(--dark);color:var(--lime)">1</div><div style="flex:1"><span style="color:var(--dark);font-weight:600">选择供应商</span></div><div style="display:flex;gap:4px"><span style="padding:4px 10px;background:var(--dark);border-radius:6px;font-size:10px;color:var(--lime);font-weight:700">Anthropic</span><span style="padding:4px 10px;background:rgba(0,0,0,.04);border-radius:6px;font-size:10px;color:rgba(0,0,0,.25)">OpenAI</span><span style="padding:4px 10px;background:rgba(0,0,0,.04);border-radius:6px;font-size:10px;color:rgba(0,0,0,.25)">Google</span></div></div>
+      <div class="ex-step" id="ex2"><div class="ex-num" style="background:var(--dark);color:var(--lime)">2</div><div style="flex:1"><span style="color:var(--dark);font-weight:600">粘贴 API 密钥</span><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(0,0,0,.3);margin-top:2px" id="exKey">sk-ant-</div></div><span style="font-size:8px;color:var(--dark);background:rgba(0,0,0,.06);padding:2px 8px;border-radius:4px;font-weight:700">AES-256</span></div>
+      <div class="ex-step" id="ex3"><div class="ex-num" style="background:var(--dark);color:var(--lime)">3</div><div style="flex:1"><span style="color:var(--dark);font-weight:600">设置折扣</span></div><div style="display:flex;align-items:center;gap:8px"><div style="width:100px;height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden"><div id="exBar" style="width:0;height:100%;background:var(--dark);transition:width 1.5s var(--ease-out)"></div></div><span style="font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--dark)" id="exPct">0%</span></div></div>
+      <div class="ex-step" id="ex4" style="border:1px solid rgba(0,0,0,.1);background:rgba(0,0,0,.04);border-radius:8px;padding:10px 12px"><div style="color:var(--green);font-size:14px">✓</div><span style="color:var(--dark);font-weight:700;font-size:12px">密钥已验证！预计月收入 $<span id="exEarn">0</span></span></div>
     </div>
   </div>
 </div>
@@ -316,18 +316,20 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
   <div class="headline">一条命令，立省 50%</div>
   <div class="subline">和原版 API 一模一样 — 只是更便宜</div>
   <div class="mac">
-    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">Terminal</span></div>
-    <div class="mac-body" style="background:#0f0e1a;color:#fff;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2">
-      <div><span style="color:rgba(255,255,255,.3)">$</span> <span style="color:#6ee7b7">export</span> ANTHROPIC_API_KEY=<span style="color:#fbbf24" id="bKey"></span><span class="cursor-blink"></span></div>
-      <div><span style="color:rgba(255,255,255,.3)">$</span> <span style="color:#6ee7b7">export</span> ANTHROPIC_BASE_URL=<span style="color:#fbbf24" id="bUrl"></span></div>
-      <div><span style="color:rgba(255,255,255,.3)">$</span> <span style="color:#6ee7b7">claude</span> <span style="color:rgba(255,255,255,.6)" id="bCmd"></span></div>
-      <div id="bResult" style="margin-top:8px;opacity:0;transition:opacity .5s"><span style="color:#6ee7b7">Claude Code v1.2.0</span> — <span style="color:rgba(255,255,255,.3)">routed via Terse proxy</span><br><span style="color:rgba(255,255,255,.3)"># optimized + 35% cheaper than retail ✓</span></div>
-      <div id="bSavings" style="display:flex;gap:8px;margin-top:12px;opacity:0;transition:opacity .6s">
-        <div style="text-align:center;padding:8px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px"><div style="font-size:16px;font-weight:900;color:rgba(255,255,255,.2);text-decoration:line-through">$100</div><div style="font-size:8px;color:rgba(255,255,255,.2)">零售</div></div>
-        <div style="align-self:center;color:rgba(255,255,255,.1)">→</div>
-        <div style="text-align:center;padding:8px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px"><div style="font-size:16px;font-weight:900;color:#6ee7b7">$42</div><div style="font-size:8px;color:rgba(255,255,255,.2)">交易+优化</div></div>
-        <div style="align-self:center;color:rgba(255,255,255,.1)">=</div>
-        <div style="text-align:center;padding:8px 14px;background:rgba(110,231,183,.06);border:1px solid rgba(110,231,183,.1);border-radius:6px"><div style="font-size:16px;font-weight:900;color:#6ee7b7">省 $58</div><div style="font-size:8px;color:rgba(110,231,183,.3)">每月</div></div>
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body">
+      <div style="background:var(--dark);border-radius:10px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:2;color:rgba(255,255,255,.6);margin-bottom:14px">
+        <div><span style="color:rgba(255,255,255,.25)">$</span> <span style="color:var(--lime)">export</span> ANTHROPIC_API_KEY=<span style="color:#fbbf24" id="bKey"></span><span class="cursor-blink"></span></div>
+        <div><span style="color:rgba(255,255,255,.25)">$</span> <span style="color:var(--lime)">export</span> ANTHROPIC_BASE_URL=<span style="color:#fbbf24" id="bUrl"></span></div>
+        <div><span style="color:rgba(255,255,255,.25)">$</span> <span style="color:var(--lime)">claude</span> <span style="color:rgba(255,255,255,.5)" id="bCmd"></span></div>
+        <div id="bResult" style="margin-top:6px;opacity:0;transition:opacity .5s"><span style="color:var(--lime)">Claude Code v1.2.0</span> — <span style="color:rgba(255,255,255,.25)">via Terse proxy</span><br><span style="color:rgba(255,255,255,.2)"># optimized + 35% cheaper ✓</span></div>
+      </div>
+      <div id="bSavings" style="display:flex;gap:8px;justify-content:center;opacity:0;transition:opacity .6s">
+        <div style="text-align:center;padding:10px 16px;background:rgba(0,0,0,.04);border-radius:8px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:rgba(0,0,0,.15);text-decoration:line-through">$100</div><div style="font-size:8px;color:rgba(0,0,0,.2)">零售</div></div>
+        <div style="align-self:center;color:rgba(0,0,0,.1);font-size:18px">→</div>
+        <div style="text-align:center;padding:10px 16px;background:rgba(0,0,0,.04);border-radius:8px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green)">$42</div><div style="font-size:8px;color:rgba(0,0,0,.2)">交易+优化</div></div>
+        <div style="align-self:center;color:rgba(0,0,0,.1);font-size:18px">=</div>
+        <div style="text-align:center;padding:10px 16px;background:var(--dark);border-radius:8px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--lime)">省 $58</div><div style="font-size:8px;color:rgba(209,232,71,.4)">每月</div></div>
       </div>
     </div>
   </div>

@@ -389,13 +389,17 @@
                 <input type="hidden" id="sk-provider" required>
               </div>
 
-              <!-- Step 2: Paste key -->
+              <!-- Step 2: Paste key with provider console links -->
               <div class="form-group">
                 <label class="form-label">Step 2 — Paste your API key</label>
                 <input class="form-input" type="password" id="sk-apikey" placeholder="sk-ant-... or sk-..." required>
                 <div class="form-hint" style="display:flex;align-items:center;gap:4px">
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect width="10" height="10" rx="2" fill="rgba(110,231,183,0.2)"/><path d="M3 5L4.5 6.5L7 3.5" stroke="#6ee7b7" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   Encrypted with AES-256. Never visible to buyers.
+                </div>
+                <div class="api-key-links" id="api-key-links" style="display:none;margin-top:8px;padding:10px 12px;background:var(--sf);border-radius:8px;font-size:12px">
+                  <div style="color:var(--t2);margin-bottom:6px;font-weight:600">Don't have a key yet? Get one here:</div>
+                  <div id="api-key-link-content"></div>
                 </div>
               </div>
 
@@ -772,6 +776,27 @@ async function loadProviders() {
 // ═══ SELLER — Simplified provider picker + discount slider ═══
 let selectedProvider = null;
 
+const PROVIDER_CONSOLE_LINKS = {
+  anthropic: {
+    name: 'Anthropic Console',
+    url: 'https://console.anthropic.com/settings/keys',
+    icon: '&#9672;',
+    steps: 'Go to Settings → API Keys → Create Key',
+  },
+  openai: {
+    name: 'OpenAI Platform',
+    url: 'https://platform.openai.com/api-keys',
+    icon: '&#9672;',
+    steps: 'Go to API Keys → Create new secret key',
+  },
+  google: {
+    name: 'Google AI Studio',
+    url: 'https://aistudio.google.com/apikey',
+    icon: '&#9672;',
+    steps: 'Click "Create API key" → Select project',
+  },
+};
+
 function pickProvider(provider) {
   selectedProvider = provider;
   document.getElementById('sk-provider').value = provider;
@@ -779,6 +804,26 @@ function pickProvider(provider) {
   document.querySelector(`.provider-btn[data-provider="${provider}"]`).classList.add('selected');
   document.getElementById('sell-submit-btn').disabled = false;
   document.getElementById('sell-submit-btn').textContent = 'List Key on Marketplace';
+
+  // Show API key console link
+  const link = PROVIDER_CONSOLE_LINKS[provider];
+  const linksEl = document.getElementById('api-key-links');
+  const contentEl = document.getElementById('api-key-link-content');
+  if (link) {
+    linksEl.style.display = 'block';
+    contentEl.innerHTML = `
+      <a href="${link.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg1);border:1px solid var(--bd);border-radius:8px;color:var(--ac);font-weight:600;transition:all .2s;text-decoration:none;margin-bottom:4px" onmouseover="this.style.borderColor='var(--ac)'" onmouseout="this.style.borderColor='var(--bd)'">
+        <span style="font-size:16px">${link.icon}</span>
+        <span style="flex:1">
+          <span style="display:block;font-size:13px">${link.name}</span>
+          <span style="display:block;font-size:11px;color:var(--t3);font-weight:400">${link.steps}</span>
+        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+      </a>`;
+  } else {
+    linksEl.style.display = 'none';
+  }
+
   updateDiscount();
 }
 

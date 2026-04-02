@@ -191,8 +191,53 @@
       .tab{flex:1;text-align:center;padding:10px 16px}
     }
 
+    /* PROVIDER PICKER */
+    .provider-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .provider-btn{padding:14px 8px;background:var(--bg1);border:1px solid var(--bd);border-radius:10px;cursor:pointer;text-align:center;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:2px}
+    .provider-btn:hover{border-color:var(--bdl);background:var(--sfh)}
+    .provider-btn.selected{border-color:var(--ac);background:var(--acd);box-shadow:0 0 0 2px rgba(110,231,183,0.15)}
+    .provider-btn-name{font-size:13px;font-weight:700;color:var(--t1)}
+    .provider-btn-sub{font-size:10px;color:var(--t3)}
+
+    /* DISCOUNT SLIDER */
+    .discount-slider-wrap{display:flex;align-items:center;gap:16px}
+    .discount-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:var(--bg3);outline:none}
+    .discount-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--ac);cursor:pointer;border:2px solid var(--bg0);box-shadow:0 2px 8px rgba(110,231,183,0.3)}
+    .discount-display{text-align:center;min-width:70px}
+    .discount-pct{font-size:24px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac);display:block;line-height:1}
+    .discount-label{font-size:10px;color:var(--t3)}
+    .discount-preview{margin-top:10px;padding:10px 12px;background:var(--sf);border-radius:8px;font-size:12px;color:var(--t2);line-height:1.8}
+    .discount-preview .price-row{display:flex;justify-content:space-between;align-items:center}
+    .discount-preview .retail{color:var(--t3);text-decoration:line-through;font-size:11px}
+    .discount-preview .your-price{color:var(--ac);font-weight:700;font-family:'JetBrains Mono',monospace}
+
+    /* SPENDING CAP BUTTONS */
+    .cap-btn{padding:8px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+    .cap-btn:hover{border-color:var(--bdl)}
+    .cap-btn.active{border-color:var(--ac);background:var(--acd);color:var(--ac)}
+
+    /* OPTIONAL SETTINGS */
+    .optional-settings{margin-top:12px}
+    .optional-settings summary{font-size:12px;color:var(--t3);cursor:pointer;padding:8px 0;list-style:none;display:flex;align-items:center;gap:6px}
+    .optional-settings summary::before{content:'+ ';color:var(--ac);font-weight:700}
+    .optional-settings[open] summary::before{content:'- '}
+
+    /* SETUP GRID (buyer) */
+    .setup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+    .setup-card{padding:18px 12px;background:var(--bg1);border:1px solid var(--bd);border-radius:12px;text-align:center;cursor:pointer;transition:all .2s}
+    .setup-card:hover{border-color:var(--bdl);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+    .setup-card.selected{border-color:var(--ac);background:var(--acd)}
+    .setup-icon{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac);margin-bottom:6px}
+    .setup-name{font-size:13px;font-weight:700;color:var(--t1)}
+    .setup-desc{font-size:10px;color:var(--t3);margin-top:2px}
+
     /* Clerk Modal — same as landing */
     #clerk-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);align-items:center;justify-content:center}
+
+    @media(max-width:600px){
+      .setup-grid{grid-template-columns:repeat(2,1fr)}
+      .provider-picker{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
@@ -280,52 +325,84 @@
     <div class="tab-content active" id="tab-sell">
       <div class="panel-grid">
 
-        <!-- Sidebar: Add Key Form -->
+        <!-- Sidebar: Simplified Add Key Form -->
         <div class="panel-sidebar">
           <div class="card">
             <div class="card-header">
-              <div class="card-title">Add API Key</div>
+              <div class="card-title">Start Selling</div>
+              <div class="card-badge badge-green">3 steps</div>
             </div>
             <form id="add-key-form" onsubmit="addSellerKey(event)">
+              <!-- Step 1: Provider -->
               <div class="form-group">
-                <label class="form-label">Provider</label>
-                <select class="form-select" id="sk-provider" required>
-                  <option value="">Select provider...</option>
-                  <option value="anthropic">Anthropic (Claude)</option>
-                  <option value="openai">OpenAI (GPT)</option>
-                  <option value="google">Google (Gemini)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">API Key</label>
-                <input class="form-input" type="password" id="sk-apikey" placeholder="sk-ant-..." required>
-                <div class="form-hint">Encrypted with AES-256-GCM. Never exposed.</div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Label</label>
-                <input class="form-input" id="sk-label" placeholder="e.g. My spare Claude key">
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Price / 1M input</label>
-                  <input class="form-input" type="number" id="sk-price-in" placeholder="200" required min="1">
-                  <div class="form-hint">cents (retail reference shown below)</div>
+                <label class="form-label">Step 1 — Provider</label>
+                <div class="provider-picker" id="provider-picker">
+                  <button type="button" class="provider-btn" data-provider="anthropic" onclick="pickProvider('anthropic')">
+                    <span class="provider-btn-name">Anthropic</span><span class="provider-btn-sub">Claude</span>
+                  </button>
+                  <button type="button" class="provider-btn" data-provider="openai" onclick="pickProvider('openai')">
+                    <span class="provider-btn-name">OpenAI</span><span class="provider-btn-sub">GPT</span>
+                  </button>
+                  <button type="button" class="provider-btn" data-provider="google" onclick="pickProvider('google')">
+                    <span class="provider-btn-name">Google</span><span class="provider-btn-sub">Gemini</span>
+                  </button>
                 </div>
-                <div class="form-group">
-                  <label class="form-label">Price / 1M output</label>
-                  <input class="form-input" type="number" id="sk-price-out" placeholder="800" required min="1">
-                  <div class="form-hint">cents</div>
+                <input type="hidden" id="sk-provider" required>
+              </div>
+
+              <!-- Step 2: Paste key -->
+              <div class="form-group">
+                <label class="form-label">Step 2 — Paste your API key</label>
+                <input class="form-input" type="password" id="sk-apikey" placeholder="sk-ant-... or sk-..." required>
+                <div class="form-hint" style="display:flex;align-items:center;gap:4px">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect width="10" height="10" rx="2" fill="rgba(110,231,183,0.2)"/><path d="M3 5L4.5 6.5L7 3.5" stroke="#6ee7b7" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Encrypted with AES-256. Never visible to buyers.
                 </div>
               </div>
-              <div id="price-reference" style="font-size:11px;color:var(--t3);margin-bottom:12px;padding:8px 10px;background:var(--sf);border-radius:8px;display:none">
-                <!-- filled by JS -->
-              </div>
+
+              <!-- Step 3: Discount slider -->
               <div class="form-group">
-                <label class="form-label">Spending Cap (optional)</label>
-                <input class="form-input" type="number" id="sk-cap" placeholder="e.g. 5000 ($50)">
-                <div class="form-hint">Max total spend in cents. Leave empty for unlimited.</div>
+                <label class="form-label">Step 3 — Set your discount</label>
+                <div class="discount-slider-wrap">
+                  <input type="range" id="sk-discount" class="discount-slider" min="5" max="60" value="30" oninput="updateDiscount()">
+                  <div class="discount-display">
+                    <span class="discount-pct" id="discount-pct">30%</span>
+                    <span class="discount-label">off retail</span>
+                  </div>
+                </div>
+                <div class="discount-preview" id="discount-preview" style="display:none">
+                  <!-- auto-filled by JS -->
+                </div>
               </div>
-              <button class="btn btn-primary btn-full" type="submit" style="margin-top:8px">Add Key to Marketplace</button>
+
+              <!-- Hidden fields auto-calculated -->
+              <input type="hidden" id="sk-price-in">
+              <input type="hidden" id="sk-price-out">
+
+              <!-- Optional: spending cap (collapsed) -->
+              <details class="optional-settings">
+                <summary>Optional settings</summary>
+                <div style="padding-top:12px">
+                  <div class="form-group">
+                    <label class="form-label">Monthly spending cap</label>
+                    <div style="display:flex;gap:8px">
+                      <button type="button" class="cap-btn" onclick="setCap(2000)">$20</button>
+                      <button type="button" class="cap-btn" onclick="setCap(5000)">$50</button>
+                      <button type="button" class="cap-btn" onclick="setCap(10000)">$100</button>
+                      <button type="button" class="cap-btn active" onclick="setCap(null)">No limit</button>
+                    </div>
+                    <input type="hidden" id="sk-cap" value="">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Label (optional)</label>
+                    <input class="form-input" id="sk-label" placeholder="e.g. My spare key">
+                  </div>
+                </div>
+              </details>
+
+              <button class="btn btn-primary btn-full" type="submit" id="sell-submit-btn" style="margin-top:16px;padding:14px;font-size:15px" disabled>
+                Select a provider to continue
+              </button>
             </form>
           </div>
         </div>
@@ -402,54 +479,52 @@
             <div class="stat-card"><div class="stat-value" id="b-balance">$0.00</div><div class="stat-label">Balance</div></div>
           </div>
 
-          <!-- Usage Instructions -->
+          <!-- Usage Instructions — Simplified one-click setup -->
           <div class="section">
-            <div class="section-title">Quick Start</div>
-            <p style="font-size:13px;color:var(--t2);margin-bottom:16px">Use your Terse key exactly like the original API. Just change the base URL:</p>
+            <div class="section-title">Set Up in One Click</div>
+            <p style="font-size:13px;color:var(--t2);margin-bottom:20px">Pick your platform. We'll give you a single command to paste in your terminal — that's it.</p>
 
-            <div style="margin-bottom:12px;font-size:12px;font-weight:700;color:var(--t2)">Python (Anthropic)</div>
-            <div class="code-block">
-              <button class="code-copy" onclick="copyCode(this)">Copy</button>
-<span class="comment"># pip install anthropic</span>
-import anthropic
-
-client = anthropic.Anthropic(
-    api_key=<span class="string">"terse_bk_your_key_here"</span>,
-    base_url=<span class="string">"https://www.terseai.org/api/proxy"</span>,
-)
-
-msg = client.messages.create(
-    model=<span class="string">"claude-sonnet-4-20250514"</span>,
-    max_tokens=1024,
-    messages=[{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: <span class="string">"Hello!"</span>}]
-)
+            <div class="setup-grid" id="setup-grid">
+              <div class="setup-card" onclick="showSetup('terminal')">
+                <div class="setup-icon">$_</div>
+                <div class="setup-name">Terminal / CLI</div>
+                <div class="setup-desc">Works with any tool</div>
+              </div>
+              <div class="setup-card" onclick="showSetup('claude-code')">
+                <div class="setup-icon">C</div>
+                <div class="setup-name">Claude Code</div>
+                <div class="setup-desc">Auto-configure</div>
+              </div>
+              <div class="setup-card" onclick="showSetup('cursor')">
+                <div class="setup-icon">&gt;</div>
+                <div class="setup-name">Cursor</div>
+                <div class="setup-desc">Override API settings</div>
+              </div>
+              <div class="setup-card" onclick="showSetup('python')">
+                <div class="setup-icon">Py</div>
+                <div class="setup-name">Python</div>
+                <div class="setup-desc">pip + 2 lines</div>
+              </div>
+              <div class="setup-card" onclick="showSetup('node')">
+                <div class="setup-icon">JS</div>
+                <div class="setup-name">Node.js</div>
+                <div class="setup-desc">npm + 2 lines</div>
+              </div>
+              <div class="setup-card" onclick="showSetup('curl')">
+                <div class="setup-icon">{ }</div>
+                <div class="setup-name">cURL / REST</div>
+                <div class="setup-desc">Direct API call</div>
+              </div>
             </div>
 
-            <div style="margin:16px 0 12px;font-size:12px;font-weight:700;color:var(--t2)">Python (OpenAI)</div>
-            <div class="code-block">
-              <button class="code-copy" onclick="copyCode(this)">Copy</button>
-<span class="comment"># pip install openai</span>
-from openai import OpenAI
-
-client = OpenAI(
-    api_key=<span class="string">"terse_bk_your_key_here"</span>,
-    base_url=<span class="string">"https://www.terseai.org/api/proxy/v1"</span>,
-)
-
-resp = client.chat.completions.create(
-    model=<span class="string">"gpt-4o"</span>,
-    messages=[{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: <span class="string">"Hello!"</span>}]
-)
-            </div>
-
-            <div style="margin:16px 0 12px;font-size:12px;font-weight:700;color:var(--t2)">cURL</div>
-            <div class="code-block">
-              <button class="code-copy" onclick="copyCode(this)">Copy</button>
-curl https://www.terseai.org/api/proxy/v1/messages \
-  -H <span class="string">"Authorization: Bearer terse_bk_your_key_here"</span> \
-  -H <span class="string">"Content-Type: application/json"</span> \
-  -H <span class="string">"anthropic-version: 2023-06-01"</span> \
-  -d <span class="string">'{"model":"claude-sonnet-4-20250514","max_tokens":1024,"messages":[{"role":"user","content":"Hello!"}]}'</span>
+            <!-- Setup result: shown after clicking a card -->
+            <div id="setup-result" style="display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div style="font-size:13px;font-weight:700;color:var(--t2)" id="setup-result-title"></div>
+                <button class="btn btn-primary btn-sm" onclick="copySetupCommand()" id="setup-copy-btn">Copy Command</button>
+              </div>
+              <div class="code-block mono" id="setup-result-code" style="font-size:12px;line-height:1.8;white-space:pre-wrap"></div>
+              <div style="margin-top:10px;font-size:12px;color:var(--t3)" id="setup-result-note"></div>
             </div>
           </div>
 
@@ -465,15 +540,21 @@ curl https://www.terseai.org/api/proxy/v1/messages \
   </div><!-- /dashboard -->
 </div><!-- /page -->
 
-<!-- Key Reveal Modal -->
+<!-- Key Reveal Modal — with instant setup -->
 <div class="modal-overlay" id="key-modal">
-  <div class="modal">
-    <div class="modal-title">Your API Key</div>
-    <div class="modal-sub">Copy this key now — it won't be shown again.</div>
-    <div class="code-block mono" id="key-reveal" style="word-break:break-all;font-size:13px;user-select:all"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeKeyModal()">Close</button>
-      <button class="btn btn-primary" onclick="copyRevealedKey()">Copy Key</button>
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">You're all set!</div>
+    <div class="modal-sub">Your key is ready. Pick how you want to use it:</div>
+
+    <div class="code-block mono" id="key-reveal" style="word-break:break-all;font-size:13px;user-select:all;margin-bottom:16px"></div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Quick setup — paste in your terminal:</div>
+    <div class="code-block mono" id="modal-setup-cmd" style="font-size:11px;line-height:1.7;white-space:pre-wrap;background:var(--bg0);cursor:pointer" onclick="copyModalSetup()"></div>
+    <div style="font-size:11px;color:var(--t3);margin-top:6px" id="modal-setup-note">Sets env vars so any SDK/tool picks up your Terse key automatically.</div>
+
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn btn-secondary" onclick="closeKeyModal()">Done</button>
+      <button class="btn btn-primary" onclick="copyModalSetup()">Copy Setup Command</button>
     </div>
   </div>
 </div>
@@ -646,16 +727,54 @@ async function loadProviders() {
   } catch (e) {}
 }
 
-// Provider price reference
-document.getElementById('sk-provider')?.addEventListener('change', () => {
-  const provider = document.getElementById('sk-provider').value;
-  const ref = document.getElementById('price-reference');
-  if (!provider || !providerPrices[provider]) { ref.style.display = 'none'; return; }
-  const models = providerPrices[provider];
-  ref.style.display = 'block';
-  ref.innerHTML = '<strong style="color:var(--t2)">Retail prices (cents/1M):</strong><br>' +
-    Object.entries(models).map(([m, p]) => `${m}: in=${p.input}&#162; out=${p.output}&#162;`).join('<br>');
-});
+// ═══ SELLER — Simplified provider picker + discount slider ═══
+let selectedProvider = null;
+
+function pickProvider(provider) {
+  selectedProvider = provider;
+  document.getElementById('sk-provider').value = provider;
+  document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelector(`.provider-btn[data-provider="${provider}"]`).classList.add('selected');
+  document.getElementById('sell-submit-btn').disabled = false;
+  document.getElementById('sell-submit-btn').textContent = 'List Key on Marketplace';
+  updateDiscount();
+}
+
+function updateDiscount() {
+  const discount = parseInt(document.getElementById('sk-discount').value);
+  document.getElementById('discount-pct').textContent = discount + '%';
+  const preview = document.getElementById('discount-preview');
+
+  if (!selectedProvider || !providerPrices[selectedProvider]) {
+    preview.style.display = 'none';
+    return;
+  }
+
+  const models = providerPrices[selectedProvider];
+  const firstModelKey = Object.keys(models)[0];
+  const first = models[firstModelKey];
+  const mult = (100 - discount) / 100;
+
+  // Set hidden price fields (using first model as reference)
+  document.getElementById('sk-price-in').value = Math.round(first.input * mult);
+  document.getElementById('sk-price-out').value = Math.round(first.output * mult);
+
+  // Show preview
+  preview.style.display = 'block';
+  preview.innerHTML = Object.entries(models).slice(0, 3).map(([model, prices]) => {
+    const shortName = model.replace(/-.*/g, '').replace('claude', 'Claude').replace('gpt', 'GPT').replace('gemini', 'Gemini');
+    return `<div class="price-row">
+      <span>${model}</span>
+      <span><span class="retail">$${(prices.input / 100).toFixed(2)}</span> → <span class="your-price">$${(prices.input * mult / 100).toFixed(2)}</span> /1M in</span>
+    </div>`;
+  }).join('');
+}
+
+function setCap(cents) {
+  document.getElementById('sk-cap').value = cents || '';
+  document.querySelectorAll('.cap-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
 
 // ═══ SELLER ═══
 async function loadSellerData() {
@@ -699,19 +818,28 @@ function renderSellerKeys(keys) {
 
 async function addSellerKey(e) {
   e.preventDefault();
+  const provider = document.getElementById('sk-provider').value;
+  const apiKey = document.getElementById('sk-apikey').value;
+  if (!provider) return toast('Pick a provider first', 'error');
+  if (!apiKey) return toast('Paste your API key', 'error');
+
   const body = {
-    provider: document.getElementById('sk-provider').value,
-    apiKey: document.getElementById('sk-apikey').value,
-    label: document.getElementById('sk-label').value,
+    provider,
+    apiKey,
+    label: document.getElementById('sk-label').value || provider + ' key',
     price_per_1m_input: parseInt(document.getElementById('sk-price-in').value),
     price_per_1m_output: parseInt(document.getElementById('sk-price-out').value),
     spending_cap_cents: document.getElementById('sk-cap').value ? parseInt(document.getElementById('sk-cap').value) : null,
   };
   const res = await authFetch(API + '/seller/keys', { method: 'POST', body });
   if (res.error) return toast(res.error, 'error');
-  toast('Key added to marketplace!');
+  toast('Key listed! You\'ll earn money as buyers use it.');
   document.getElementById('add-key-form').reset();
-  document.getElementById('price-reference').style.display = 'none';
+  document.getElementById('discount-preview').style.display = 'none';
+  document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('sell-submit-btn').disabled = true;
+  document.getElementById('sell-submit-btn').textContent = 'Select a provider to continue';
+  selectedProvider = null;
   loadSellerData();
   loadListings();
 }
@@ -771,10 +899,16 @@ function renderBuyerKeys(keys) {
   `).join('');
 }
 
+let lastGeneratedKey = null;
+
 async function generateBuyerKey() {
   const res = await authFetch(API + '/buyer/keys', { method: 'POST', body: { label: 'Key ' + new Date().toLocaleDateString() } });
   if (res.error) return toast(res.error, 'error');
+  lastGeneratedKey = res.key;
   document.getElementById('key-reveal').textContent = res.key;
+  // Show terminal setup command in the modal
+  const cmd = `export ANTHROPIC_API_KEY="${res.key}"\nexport ANTHROPIC_BASE_URL="https://www.terseai.org/api/proxy"\nexport OPENAI_API_KEY="${res.key}"\nexport OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`;
+  document.getElementById('modal-setup-cmd').textContent = cmd;
   document.getElementById('key-modal').classList.add('show');
   loadBuyerData();
 }
@@ -823,6 +957,110 @@ function renderTransactions(txns, containerId, role) {
   </table></div>`;
 }
 
+// ═══ SETUP COMMANDS (Buyer one-click) ═══
+function getKeyPlaceholder() {
+  return lastGeneratedKey || 'terse_bk_YOUR_KEY_HERE';
+}
+
+const SETUP_CONFIGS = {
+  'terminal': {
+    title: 'Terminal — paste this, then use any SDK normally',
+    note: 'Sets env vars so Anthropic/OpenAI SDKs auto-detect your Terse key. Works in current shell session. Add to ~/.bashrc or ~/.zshrc to persist.',
+    cmd: (key) => `# Paste in terminal — all SDKs will use Terse automatically
+export ANTHROPIC_API_KEY="${key}"
+export ANTHROPIC_BASE_URL="https://www.terseai.org/api/proxy"
+export OPENAI_API_KEY="${key}"
+export OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`,
+  },
+  'claude-code': {
+    title: 'Claude Code — paste in terminal before running',
+    note: 'Claude Code reads ANTHROPIC_API_KEY and ANTHROPIC_BASE_URL from env. This routes all requests through Terse.',
+    cmd: (key) => `export ANTHROPIC_API_KEY="${key}"
+export ANTHROPIC_BASE_URL="https://www.terseai.org/api/proxy"
+# Then just run claude as normal`,
+  },
+  'cursor': {
+    title: 'Cursor — add to Settings > Models > OpenAI',
+    note: 'In Cursor, go to Settings > Models. Set the API key and override the base URL.',
+    cmd: (key) => `API Key: ${key}
+Base URL: https://www.terseai.org/api/proxy/v1
+
+# Or via terminal before launching Cursor:
+export OPENAI_API_KEY="${key}"
+export OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`,
+  },
+  'python': {
+    title: 'Python — 2 lines to change',
+    note: 'Works with both anthropic and openai packages.',
+    cmd: (key) => `# Anthropic
+import anthropic
+client = anthropic.Anthropic(
+    api_key="${key}",
+    base_url="https://www.terseai.org/api/proxy",
+)
+
+# OpenAI
+from openai import OpenAI
+client = OpenAI(
+    api_key="${key}",
+    base_url="https://www.terseai.org/api/proxy/v1",
+)`,
+  },
+  'node': {
+    title: 'Node.js — 2 lines to change',
+    note: 'Works with both @anthropic-ai/sdk and openai packages.',
+    cmd: (key) => `// Anthropic
+import Anthropic from "@anthropic-ai/sdk";
+const client = new Anthropic({
+  apiKey: "${key}",
+  baseURL: "https://www.terseai.org/api/proxy",
+});
+
+// OpenAI
+import OpenAI from "openai";
+const client = new OpenAI({
+  apiKey: "${key}",
+  baseURL: "https://www.terseai.org/api/proxy/v1",
+});`,
+  },
+  'curl': {
+    title: 'cURL — direct API call',
+    note: 'Standard Anthropic/OpenAI API format, just different URL.',
+    cmd: (key) => `curl https://www.terseai.org/api/proxy/v1/messages \\
+  -H "Authorization: Bearer ${key}" \\
+  -H "Content-Type: application/json" \\
+  -H "anthropic-version: 2023-06-01" \\
+  -d '{"model":"claude-sonnet-4-20250514","max_tokens":1024,"messages":[{"role":"user","content":"Hello!"}]}'`,
+  },
+};
+
+function showSetup(platform) {
+  const config = SETUP_CONFIGS[platform];
+  if (!config) return;
+  document.querySelectorAll('.setup-card').forEach(c => c.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  const result = document.getElementById('setup-result');
+  result.style.display = 'block';
+  document.getElementById('setup-result-title').textContent = config.title;
+  document.getElementById('setup-result-code').textContent = config.cmd(getKeyPlaceholder());
+  document.getElementById('setup-result-note').textContent = config.note;
+}
+
+function copySetupCommand() {
+  const code = document.getElementById('setup-result-code').textContent;
+  navigator.clipboard.writeText(code);
+  const btn = document.getElementById('setup-copy-btn');
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy Command', 2000);
+  toast('Command copied!');
+}
+
+function copyModalSetup() {
+  const code = document.getElementById('modal-setup-cmd').textContent;
+  navigator.clipboard.writeText(code);
+  toast('Setup command copied — paste in your terminal!');
+}
+
 // ═══ HELPERS ═══
 function formatTokens(n) {
   if (!n) return '0';
@@ -841,12 +1079,6 @@ function copyCode(btn) {
 
 function closeKeyModal() {
   document.getElementById('key-modal').classList.remove('show');
-}
-
-function copyRevealedKey() {
-  const key = document.getElementById('key-reveal').textContent;
-  navigator.clipboard.writeText(key);
-  toast('Key copied to clipboard!');
 }
 
 // Nav scroll

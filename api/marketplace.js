@@ -100,8 +100,8 @@ router.get('/seller/keys', requireAuth, (req, res) => {
   res.json({ keys });
 });
 
-router.post('/seller/keys', requireAuth, (req, res) => {
-  const { provider, apiKey, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed, optimization_mode } = req.body;
+router.post('/seller/keys', requireAuth, async (req, res) => {
+  const { provider, apiKey, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed, optimization_mode, rate_limit_hourly_cents, rate_limit_daily_cents } = req.body;
 
   if (!provider || !apiKey) return res.status(400).json({ error: 'Missing provider or apiKey' });
   if (!['anthropic', 'openai', 'google'].includes(provider)) return res.status(400).json({ error: 'Invalid provider. Use: anthropic, openai, google' });
@@ -109,6 +109,22 @@ router.post('/seller/keys', requireAuth, (req, res) => {
 
   const validModes = ['off', 'soft', 'normal', 'aggressive'];
   const mode = validModes.includes(optimization_mode) ? optimization_mode : 'normal';
+
+  // Validate the API key works by making a minimal test call
+  let keyVerified = 0;
+  let rateLimitInfo = null;
+  try {
+    const testResult = await validateApiKey(provider, apiKey);
+    keyVerified = testResult.valid ? 1 : 0;
+    rateLimitInfo = testResult.rateLimits ? JSON.stringify(testResult.rateLimits) : null;
+    if (!testResult.valid) {
+      return res.status(400).json({ error: `Invalid API key: ${testResult.error || 'key did not authenticate'}` });
+    }
+  } catch (e) {
+    console.error('[validate] key test error:', e.message);
+    // Allow adding even if validation fails (network issues, etc.)
+    keyVerified = 0;
+  }
 
   // Encrypt the API key
   const { encrypted, iv, tag } = encrypt(apiKey);
@@ -127,13 +143,66 @@ router.post('/seller/keys', requireAuth, (req, res) => {
     spending_cap_cents: spending_cap_cents ? Math.round(spending_cap_cents) : null,
     models_allowed: models_allowed ? JSON.stringify(models_allowed) : null,
     optimization_mode: mode,
+    rate_limit_hourly_cents: rate_limit_hourly_cents ? Math.round(rate_limit_hourly_cents) : null,
+    rate_limit_daily_cents: rate_limit_daily_cents ? Math.round(rate_limit_daily_cents) : null,
+    key_verified: keyVerified,
   });
+
+  if (rateLimitInfo) {
+    db.updateRateLimitInfo.run(rateLimitInfo, id);
+  }
 
   // Notify seller
   notifications.notifyKeyListed(req.userId, provider);
 
-  res.json({ id, message: 'Key added successfully' });
+  res.json({ id, verified: !!keyVerified, rate_limits: rateLimitInfo ? JSON.parse(rateLimitInfo) : null, message: keyVerified ? 'Key verified and listed!' : 'Key added (verification pending)' });
 });
+
+// Validate an API key by making a minimal test call
+async function validateApiKey(provider, apiKey) {
+  try {
+    if (provider === 'anthropic') {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-haiku-4-20250414', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+      });
+      const rateLimits = {
+        requests_limit: res.headers.get('anthropic-ratelimit-requests-limit'),
+        requests_remaining: res.headers.get('anthropic-ratelimit-requests-remaining'),
+        tokens_limit: res.headers.get('anthropic-ratelimit-tokens-limit'),
+        tokens_remaining: res.headers.get('anthropic-ratelimit-tokens-remaining'),
+        input_tokens_limit: res.headers.get('anthropic-ratelimit-input-tokens-limit'),
+        input_tokens_remaining: res.headers.get('anthropic-ratelimit-input-tokens-remaining'),
+        output_tokens_limit: res.headers.get('anthropic-ratelimit-output-tokens-limit'),
+        output_tokens_remaining: res.headers.get('anthropic-ratelimit-output-tokens-remaining'),
+      };
+      if (res.status === 401) return { valid: false, error: 'Invalid API key' };
+      return { valid: res.ok || res.status === 429, rateLimits };
+    } else if (provider === 'openai') {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+      });
+      const rateLimits = {
+        requests_limit: res.headers.get('x-ratelimit-limit-requests'),
+        requests_remaining: res.headers.get('x-ratelimit-remaining-requests'),
+        tokens_limit: res.headers.get('x-ratelimit-limit-tokens'),
+        tokens_remaining: res.headers.get('x-ratelimit-remaining-tokens'),
+      };
+      if (res.status === 401) return { valid: false, error: 'Invalid API key' };
+      return { valid: res.ok || res.status === 429, rateLimits };
+    } else if (provider === 'google') {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      if (res.status === 400 || res.status === 403) return { valid: false, error: 'Invalid API key' };
+      return { valid: res.ok, rateLimits: null };
+    }
+    return { valid: false, error: 'Unknown provider' };
+  } catch (e) {
+    return { valid: false, error: e.message };
+  }
+}
 
 router.patch('/seller/keys/:id', requireAuth, (req, res) => {
   const existing = db.getSellerKeyFull.get(req.params.id, req.userId);
@@ -148,6 +217,8 @@ router.patch('/seller/keys/:id', requireAuth, (req, res) => {
     is_active: req.body.is_active !== undefined ? (req.body.is_active ? 1 : 0) : existing.is_active,
     models_allowed: req.body.models_allowed !== undefined ? JSON.stringify(req.body.models_allowed) : existing.models_allowed,
     optimization_mode: req.body.optimization_mode ?? existing.optimization_mode ?? 'normal',
+    rate_limit_hourly_cents: req.body.rate_limit_hourly_cents !== undefined ? req.body.rate_limit_hourly_cents : existing.rate_limit_hourly_cents,
+    rate_limit_daily_cents: req.body.rate_limit_daily_cents !== undefined ? req.body.rate_limit_daily_cents : existing.rate_limit_daily_cents,
   });
 
   res.json({ ok: true });

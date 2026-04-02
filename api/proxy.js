@@ -278,6 +278,25 @@ async function handleProxy(req, res) {
     return res.status(502).json({ error: { message: 'Failed to reach provider' } });
   }
 
+  // 7b. Capture rate limit headers from provider (non-blocking)
+  try {
+    const rl = {};
+    if (provider === 'anthropic') {
+      rl.requests_remaining = providerRes.headers.get('anthropic-ratelimit-requests-remaining');
+      rl.tokens_remaining = providerRes.headers.get('anthropic-ratelimit-tokens-remaining');
+      rl.requests_limit = providerRes.headers.get('anthropic-ratelimit-requests-limit');
+      rl.tokens_limit = providerRes.headers.get('anthropic-ratelimit-tokens-limit');
+    } else if (provider === 'openai') {
+      rl.requests_remaining = providerRes.headers.get('x-ratelimit-remaining-requests');
+      rl.tokens_remaining = providerRes.headers.get('x-ratelimit-remaining-tokens');
+      rl.requests_limit = providerRes.headers.get('x-ratelimit-limit-requests');
+      rl.tokens_limit = providerRes.headers.get('x-ratelimit-limit-tokens');
+    }
+    if (rl.requests_remaining || rl.tokens_remaining) {
+      db.updateRateLimitInfo.run(JSON.stringify(rl), sellerKey.id);
+    }
+  } catch (e) { /* non-critical */ }
+
   // 8. Handle streaming
   if (stream && providerRes.ok) {
     res.setHeader('Content-Type', providerRes.headers.get('content-type') || 'text/event-stream');
@@ -390,9 +409,20 @@ function recordTransaction(buyerKey, sellerKey, buyer, provider, model, inputTok
       actual_api_cost_cents: actualCost,
     });
 
+    // Track hourly/daily spend (with auto-reset)
+    const now = new Date().toISOString();
+    if (!sellerKey.hourly_reset_at || now > sellerKey.hourly_reset_at) {
+      db.resetHourlySpend.run(sellerKey.id);
+    }
+    if (!sellerKey.daily_reset_at || now > sellerKey.daily_reset_at) {
+      db.resetDailySpend.run(sellerKey.id);
+    }
+    db.incrementHourlySpend.run(actualCost, sellerKey.id);
+    db.incrementDailySpend.run(actualCost, sellerKey.id);
+
     console.log(`[proxy] txn=${txnId} buyer=${buyer.id} seller=${sellerKey.user_id} model=${model} in=${inputTokens} out=${outputTokens} cost=${totalBuyerCost}¢ fee=${terseFee}¢`);
 
-    // Check if seller hit spending cap
+    // Check if seller hit any cap
     const updatedKey = db.getSellerKeyFull.get(sellerKey.id, sellerKey.user_id);
     if (updatedKey?.spending_cap_cents && updatedKey.total_spent_cents >= updatedKey.spending_cap_cents) {
       notifications.notifyCapReached(sellerKey.user_id, sellerKey.label || sellerKey.provider);

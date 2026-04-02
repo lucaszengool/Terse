@@ -215,6 +215,7 @@
     .cap-btn{padding:8px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
     .cap-btn:hover{border-color:var(--bdl)}
     .cap-btn.active{border-color:var(--ac);background:var(--acd);color:var(--ac)}
+    .cap-btn-sm{padding:5px 10px;font-size:11px}
 
     /* OPTIONAL SETTINGS */
     .optional-settings{margin-top:12px}
@@ -479,22 +480,50 @@
                 <input type="hidden" id="sk-opt-mode" value="normal">
               </div>
 
-              <!-- Optional: spending cap (collapsed) -->
-              <details class="optional-settings">
-                <summary>Optional settings</summary>
+              <!-- Spending & rate limits -->
+              <details class="optional-settings" open>
+                <summary>Spending limits</summary>
                 <div style="padding-top:12px">
                   <div class="form-group">
-                    <label class="form-label">Monthly spending cap</label>
-                    <div style="display:flex;gap:8px">
+                    <label class="form-label">Total spending cap</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
                       <button type="button" class="cap-btn" onclick="setCap(2000)">$20</button>
                       <button type="button" class="cap-btn" onclick="setCap(5000)">$50</button>
                       <button type="button" class="cap-btn" onclick="setCap(10000)">$100</button>
                       <button type="button" class="cap-btn active" onclick="setCap(null)">No limit</button>
                     </div>
                     <input type="hidden" id="sk-cap" value="">
+                    <div class="form-hint">Once hit, your key is automatically paused.</div>
                   </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Max per hour</label>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setHourlyCap(100)">$1</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setHourlyCap(500)">$5</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setHourlyCap(1000)">$10</button>
+                        <button type="button" class="cap-btn cap-btn-sm active" onclick="setHourlyCap(null)">None</button>
+                      </div>
+                      <input type="hidden" id="sk-hourly-cap" value="">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Max per day</label>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setDailyCap(500)">$5</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setDailyCap(1000)">$10</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setDailyCap(2500)">$25</button>
+                        <button type="button" class="cap-btn cap-btn-sm active" onclick="setDailyCap(null)">None</button>
+                      </div>
+                      <input type="hidden" id="sk-daily-cap" value="">
+                    </div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="optional-settings">
+                <summary>Label</summary>
+                <div style="padding-top:12px">
                   <div class="form-group">
-                    <label class="form-label">Label (optional)</label>
                     <input class="form-input" id="sk-label" placeholder="e.g. My spare key">
                   </div>
                 </div>
@@ -927,7 +956,22 @@ function updateDiscount() {
 
 function setCap(cents) {
   document.getElementById('sk-cap').value = cents || '';
-  document.querySelectorAll('.cap-btn').forEach(b => b.classList.remove('active'));
+  const parent = event.target.parentElement;
+  parent.querySelectorAll('.cap-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function setHourlyCap(cents) {
+  document.getElementById('sk-hourly-cap').value = cents || '';
+  const parent = event.target.parentElement;
+  parent.querySelectorAll('.cap-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function setDailyCap(cents) {
+  document.getElementById('sk-daily-cap').value = cents || '';
+  const parent = event.target.parentElement;
+  parent.querySelectorAll('.cap-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
 }
 
@@ -963,24 +1007,50 @@ function renderSellerKeys(keys) {
   const providerNames = { anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google' };
   const modeLabels = { off: 'Off', soft: 'Soft', normal: 'Normal', aggressive: 'Aggr' };
   const modeColors = { off: 'var(--t3)', soft: 'var(--blue)', normal: 'var(--ac)', aggressive: 'var(--yellow)' };
-  container.innerHTML = `<div class="table-wrap"><table>
-    <tr><th>Provider</th><th>Label</th><th>Input $/1M</th><th>Output $/1M</th><th>Opt</th><th>Cap</th><th>Used</th><th>Active</th><th></th></tr>
-    ${keys.map(k => {
-      const mode = k.optimization_mode || 'normal';
-      return `<tr>
-      <td><span class="provider provider-${k.provider}">${providerNames[k.provider] || k.provider}</span></td>
-      <td style="color:var(--t1);font-weight:600">${k.label || '—'}</td>
-      <td class="mono">$${(k.price_per_1m_input / 100).toFixed(2)}</td>
-      <td class="mono">$${(k.price_per_1m_output / 100).toFixed(2)}</td>
-      <td><span style="font-size:11px;font-weight:700;color:${modeColors[mode]}">${modeLabels[mode]}</span></td>
-      <td class="mono">${k.spending_cap_cents ? '$' + (k.spending_cap_cents / 100).toFixed(2) : '&#8734;'}</td>
-      <td class="mono">$${(k.total_spent_cents / 100).toFixed(2)}</td>
-      <td>
-        <label class="toggle"><input type="checkbox" ${k.is_active ? 'checked' : ''} onchange="toggleKey('${k.id}', this.checked)"><span class="toggle-track"></span><span class="toggle-knob"></span></label>
-      </td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteKey('${k.id}')">Remove</button></td>
-    </tr>`;}).join('')}
-  </table></div>`;
+  container.innerHTML = keys.map(k => {
+    const mode = k.optimization_mode || 'normal';
+    const rl = k.rate_limit_info ? JSON.parse(k.rate_limit_info) : null;
+    const capPct = k.spending_cap_cents ? Math.min(100, Math.round(k.total_spent_cents / k.spending_cap_cents * 100)) : 0;
+    return `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="provider provider-${k.provider}">${providerNames[k.provider] || k.provider}</span>
+          <span style="font-weight:700;font-size:14px">${k.label || '—'}</span>
+          ${k.key_verified ? '<span style="color:var(--ac);font-size:11px" title="Key verified">&#10003; verified</span>' : '<span style="color:var(--yellow);font-size:11px">&#9888; unverified</span>'}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;font-weight:700;color:${modeColors[mode]};padding:3px 8px;background:var(--sf);border-radius:6px">${modeLabels[mode]}</span>
+          <label class="toggle"><input type="checkbox" ${k.is_active ? 'checked' : ''} onchange="toggleKey('${k.id}', this.checked)"><span class="toggle-track"></span><span class="toggle-knob"></span></label>
+          <button class="btn btn-danger btn-sm" onclick="deleteKey('${k.id}')">Remove</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;font-size:12px">
+        <div style="background:var(--sf);padding:8px 10px;border-radius:8px">
+          <div style="color:var(--t3);font-size:10px">INPUT $/1M</div>
+          <div class="mono" style="font-weight:700">$${(k.price_per_1m_input / 100).toFixed(2)}</div>
+        </div>
+        <div style="background:var(--sf);padding:8px 10px;border-radius:8px">
+          <div style="color:var(--t3);font-size:10px">OUTPUT $/1M</div>
+          <div class="mono" style="font-weight:700">$${(k.price_per_1m_output / 100).toFixed(2)}</div>
+        </div>
+        <div style="background:var(--sf);padding:8px 10px;border-radius:8px">
+          <div style="color:var(--t3);font-size:10px">TOTAL USED</div>
+          <div class="mono" style="font-weight:700">$${(k.total_spent_cents / 100).toFixed(2)}${k.spending_cap_cents ? ' / $' + (k.spending_cap_cents / 100).toFixed(2) : ''}</div>
+          ${k.spending_cap_cents ? `<div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:4px;overflow:hidden"><div style="height:100%;width:${capPct}%;background:${capPct > 80 ? 'var(--red)' : 'var(--ac)'};border-radius:2px"></div></div>` : ''}
+        </div>
+        <div style="background:var(--sf);padding:8px 10px;border-radius:8px">
+          <div style="color:var(--t3);font-size:10px">HOURLY / DAILY</div>
+          <div class="mono" style="font-weight:700;font-size:11px">${k.rate_limit_hourly_cents ? '$' + (k.rate_limit_hourly_cents / 100).toFixed(0) + '/hr' : '&#8734;'} &middot; ${k.rate_limit_daily_cents ? '$' + (k.rate_limit_daily_cents / 100).toFixed(0) + '/day' : '&#8734;'}</div>
+          <div class="mono" style="font-size:10px;color:var(--t3)">used: $${((k.hourly_spent_cents || 0) / 100).toFixed(2)}/hr &middot; $${((k.daily_spent_cents || 0) / 100).toFixed(2)}/day</div>
+        </div>
+      </div>
+      ${rl ? `<div style="margin-top:8px;padding:6px 10px;background:var(--sf);border-radius:6px;font-size:10px;color:var(--t3);display:flex;gap:12px;flex-wrap:wrap">
+        <span>Provider limits:</span>
+        ${rl.requests_remaining ? `<span>Req: <span style="color:var(--t2)">${rl.requests_remaining}/${rl.requests_limit}</span></span>` : ''}
+        ${rl.tokens_remaining ? `<span>Tokens: <span style="color:var(--t2)">${Number(rl.tokens_remaining).toLocaleString()}/${Number(rl.tokens_limit).toLocaleString()}</span></span>` : ''}
+      </div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 async function addSellerKey(e) {
@@ -998,6 +1068,8 @@ async function addSellerKey(e) {
     price_per_1m_output: parseInt(document.getElementById('sk-price-out').value),
     spending_cap_cents: document.getElementById('sk-cap').value ? parseInt(document.getElementById('sk-cap').value) : null,
     optimization_mode: document.getElementById('sk-opt-mode').value || 'normal',
+    rate_limit_hourly_cents: document.getElementById('sk-hourly-cap').value ? parseInt(document.getElementById('sk-hourly-cap').value) : null,
+    rate_limit_daily_cents: document.getElementById('sk-daily-cap').value ? parseInt(document.getElementById('sk-daily-cap').value) : null,
   };
   const res = await authFetch(API + '/seller/keys', { method: 'POST', body });
   if (res.error) return toast(res.error, 'error');

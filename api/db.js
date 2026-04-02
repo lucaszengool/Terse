@@ -45,6 +45,14 @@ db.exec(`
     is_active INTEGER DEFAULT 1,
     models_allowed TEXT,
     optimization_mode TEXT DEFAULT 'normal',
+    rate_limit_hourly_cents INTEGER,
+    rate_limit_daily_cents INTEGER,
+    hourly_spent_cents INTEGER DEFAULT 0,
+    daily_spent_cents INTEGER DEFAULT 0,
+    hourly_reset_at TEXT,
+    daily_reset_at TEXT,
+    rate_limit_info TEXT,
+    key_verified INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -138,20 +146,28 @@ const updateStripeConnect = db.prepare('UPDATE users SET stripe_connect_id = ? W
 
 // ── Seller key helpers ──
 const addSellerKey = db.prepare(`
-  INSERT INTO seller_keys (id, user_id, provider, encrypted_key, key_iv, key_tag, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed, optimization_mode)
-  VALUES (@id, @user_id, @provider, @encrypted_key, @key_iv, @key_tag, @label, @price_per_1m_input, @price_per_1m_output, @spending_cap_cents, @models_allowed, @optimization_mode)
+  INSERT INTO seller_keys (id, user_id, provider, encrypted_key, key_iv, key_tag, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed, optimization_mode, rate_limit_hourly_cents, rate_limit_daily_cents, key_verified)
+  VALUES (@id, @user_id, @provider, @encrypted_key, @key_iv, @key_tag, @label, @price_per_1m_input, @price_per_1m_output, @spending_cap_cents, @models_allowed, @optimization_mode, @rate_limit_hourly_cents, @rate_limit_daily_cents, @key_verified)
 `);
 
-const getSellerKeys = db.prepare('SELECT id, user_id, provider, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, total_spent_cents, is_active, models_allowed, optimization_mode, created_at FROM seller_keys WHERE user_id = ?');
+const getSellerKeys = db.prepare('SELECT id, user_id, provider, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, total_spent_cents, is_active, models_allowed, optimization_mode, rate_limit_hourly_cents, rate_limit_daily_cents, hourly_spent_cents, daily_spent_cents, rate_limit_info, key_verified, created_at FROM seller_keys WHERE user_id = ?');
 const getSellerKeyFull = db.prepare('SELECT * FROM seller_keys WHERE id = ? AND user_id = ?');
-const updateSellerKey = db.prepare('UPDATE seller_keys SET price_per_1m_input = @price_per_1m_input, price_per_1m_output = @price_per_1m_output, spending_cap_cents = @spending_cap_cents, is_active = @is_active, models_allowed = @models_allowed, optimization_mode = @optimization_mode WHERE id = @id AND user_id = @user_id');
+const updateSellerKey = db.prepare('UPDATE seller_keys SET price_per_1m_input = @price_per_1m_input, price_per_1m_output = @price_per_1m_output, spending_cap_cents = @spending_cap_cents, is_active = @is_active, models_allowed = @models_allowed, optimization_mode = @optimization_mode, rate_limit_hourly_cents = @rate_limit_hourly_cents, rate_limit_daily_cents = @rate_limit_daily_cents WHERE id = @id AND user_id = @user_id');
 const deleteSellerKey = db.prepare('DELETE FROM seller_keys WHERE id = ? AND user_id = ?');
+const updateRateLimitInfo = db.prepare('UPDATE seller_keys SET rate_limit_info = ? WHERE id = ?');
+const markKeyVerified = db.prepare('UPDATE seller_keys SET key_verified = 1 WHERE id = ?');
+const incrementHourlySpend = db.prepare('UPDATE seller_keys SET hourly_spent_cents = hourly_spent_cents + ? WHERE id = ?');
+const incrementDailySpend = db.prepare('UPDATE seller_keys SET daily_spent_cents = daily_spent_cents + ? WHERE id = ?');
+const resetHourlySpend = db.prepare("UPDATE seller_keys SET hourly_spent_cents = 0, hourly_reset_at = datetime('now', '+1 hour') WHERE id = ?");
+const resetDailySpend = db.prepare("UPDATE seller_keys SET daily_spent_cents = 0, daily_reset_at = datetime('now', '+1 day') WHERE id = ?");
 
-// Find cheapest active seller key for a provider
+// Find cheapest active seller key for a provider (respects all limits)
 const findCheapestKey = db.prepare(`
   SELECT * FROM seller_keys
   WHERE provider = ? AND is_active = 1
     AND (spending_cap_cents IS NULL OR total_spent_cents < spending_cap_cents)
+    AND (rate_limit_hourly_cents IS NULL OR hourly_spent_cents < rate_limit_hourly_cents)
+    AND (rate_limit_daily_cents IS NULL OR daily_spent_cents < rate_limit_daily_cents)
   ORDER BY price_per_1m_input ASC
   LIMIT 1
 `);
@@ -238,6 +254,8 @@ module.exports = {
   upsertUser, getUser, ensureUser, updateStripeConnect,
   addSellerKey, getSellerKeys, getSellerKeyFull, updateSellerKey, deleteSellerKey,
   findCheapestKey, incrementSellerSpend,
+  updateRateLimitInfo, markKeyVerified,
+  incrementHourlySpend, incrementDailySpend, resetHourlySpend, resetDailySpend,
   addBuyerKey, getBuyerKeys, findBuyerByHash, deactivateBuyerKey, hashKey,
   creditBuyerBalance, debitBuyerBalance, creditSellerBalance, debitSellerBalance,
   addTransaction, getTransactionsByBuyer, getTransactionsBySeller,

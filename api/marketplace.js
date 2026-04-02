@@ -8,6 +8,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { encrypt } = require('./crypto-utils');
 const db = require('./db');
+const notifications = require('./notify');
 
 const router = express.Router();
 
@@ -100,11 +101,14 @@ router.get('/seller/keys', requireAuth, (req, res) => {
 });
 
 router.post('/seller/keys', requireAuth, (req, res) => {
-  const { provider, apiKey, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed } = req.body;
+  const { provider, apiKey, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed, optimization_mode } = req.body;
 
   if (!provider || !apiKey) return res.status(400).json({ error: 'Missing provider or apiKey' });
   if (!['anthropic', 'openai', 'google'].includes(provider)) return res.status(400).json({ error: 'Invalid provider. Use: anthropic, openai, google' });
   if (!price_per_1m_input || !price_per_1m_output) return res.status(400).json({ error: 'Missing pricing' });
+
+  const validModes = ['off', 'soft', 'normal', 'aggressive'];
+  const mode = validModes.includes(optimization_mode) ? optimization_mode : 'normal';
 
   // Encrypt the API key
   const { encrypted, iv, tag } = encrypt(apiKey);
@@ -122,7 +126,11 @@ router.post('/seller/keys', requireAuth, (req, res) => {
     price_per_1m_output: Math.round(price_per_1m_output),
     spending_cap_cents: spending_cap_cents ? Math.round(spending_cap_cents) : null,
     models_allowed: models_allowed ? JSON.stringify(models_allowed) : null,
+    optimization_mode: mode,
   });
+
+  // Notify seller
+  notifications.notifyKeyListed(req.userId, provider);
 
   res.json({ id, message: 'Key added successfully' });
 });
@@ -139,6 +147,7 @@ router.patch('/seller/keys/:id', requireAuth, (req, res) => {
     spending_cap_cents: req.body.spending_cap_cents !== undefined ? req.body.spending_cap_cents : existing.spending_cap_cents,
     is_active: req.body.is_active !== undefined ? (req.body.is_active ? 1 : 0) : existing.is_active,
     models_allowed: req.body.models_allowed !== undefined ? JSON.stringify(req.body.models_allowed) : existing.models_allowed,
+    optimization_mode: req.body.optimization_mode ?? existing.optimization_mode ?? 'normal',
   });
 
   res.json({ ok: true });
@@ -178,6 +187,7 @@ router.post('/seller/withdraw', requireAuth, (req, res) => {
   db.debitSellerBalance.run(amount, req.userId);
   db.addPayout.run({ id: payoutId, user_id: req.userId, amount_cents: amount, status: 'pending' });
 
+  notifications.notifyWithdrawal(req.userId, amount);
   res.json({ payout_id: payoutId, amount_cents: amount, status: 'pending', message: 'Payout requested. Processing within 3-5 business days.' });
 });
 
@@ -271,6 +281,20 @@ router.get('/buyer/usage', requireAuth, (req, res) => {
     ...spending,
     recent_transactions: recent,
   });
+});
+
+// ════════════════════════════════════════
+//  NOTIFICATIONS
+// ════════════════════════════════════════
+router.get('/notifications', requireAuth, (req, res) => {
+  const items = notifications.getNotifications(req.userId, 30);
+  const unread = notifications.getUnreadCount(req.userId);
+  res.json({ notifications: items, unread });
+});
+
+router.post('/notifications/:id/read', requireAuth, (req, res) => {
+  notifications.markRead(req.params.id, req.userId);
+  res.json({ ok: true });
 });
 
 module.exports = { router, requireAuth, COMMISSION_PERCENT, PROVIDER_LIST_PRICES };

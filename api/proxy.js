@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const { decrypt } = require('./crypto-utils');
 const db = require('./db');
 const { COMMISSION_PERCENT, PROVIDER_LIST_PRICES } = require('./marketplace');
+const notifications = require('./notify');
 
 const router = express.Router();
 
@@ -39,46 +40,79 @@ function extractUserText(messages) {
   return text.trim();
 }
 
-// Simple prompt optimization (lightweight version for proxy — no heavy NLP deps)
-function optimizePrompt(text) {
-  if (!text || text.length < 20) return text;
+// ── Optimization modes ──
+// Soft: whitespace only. Normal: fillers + politeness. Aggressive: everything.
+const SOFT_RULES = [
+  /[ \t]+/g,          // collapse spaces
+  /\n{3,}/g,          // collapse blank lines
+];
+
+const NORMAL_FILLERS = [
+  /\b(basically|essentially|actually|literally|honestly|frankly|obviously|clearly)\b/gi,
+  /\b(I think|I believe|I feel like|in my opinion|it seems like)\b/gi,
+  /\b(please|kindly|if you could|would you mind|could you please)\b/gi,
+  /\b(just|really|very|quite|pretty much|sort of|kind of)\b/gi,
+  /\b(as a matter of fact|at the end of the day|in order to|for the purpose of)\b/gi,
+  /\b(I would like you to|I want you to|I need you to)\b/gi,
+];
+
+const AGGRESSIVE_RULES = [
+  /\b(the thing is|what I mean is|let me explain|to be honest|in other words)\b/gi,
+  /\b(I was wondering if|do you think you could|it would be great if)\b/gi,
+  /\b(take a look at|have a look at|check out)\b/gi,
+  /\b(a lot of|lots of)\b/gi,
+  /\b(in the event that)\b/gi,
+  /\b(due to the fact that)\b/gi,
+  /\b(at this point in time)\b/gi,
+];
+
+function optimizePrompt(text, mode) {
+  if (!text || text.length < 20 || mode === 'off') return text;
 
   let result = text;
 
-  // Remove filler words/phrases
-  const fillers = [
-    /\b(basically|essentially|actually|literally|honestly|frankly|obviously|clearly)\b/gi,
-    /\b(I think|I believe|I feel like|in my opinion|it seems like)\b/gi,
-    /\b(please|kindly|if you could|would you mind|could you please)\b/gi,
-    /\b(just|really|very|quite|pretty much|sort of|kind of)\b/gi,
-    /\b(as a matter of fact|at the end of the day|in order to|for the purpose of)\b/gi,
-    /\b(I would like you to|I want you to|I need you to)\b/gi,
-  ];
-  for (const filler of fillers) {
+  // Soft: whitespace compression only
+  result = result.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/^\s+$/gm, '');
+
+  if (mode === 'soft') return result.trim();
+
+  // Normal: remove fillers + politeness
+  for (const filler of NORMAL_FILLERS) {
     result = result.replace(filler, '');
   }
 
-  // Compress whitespace
-  result = result.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  if (mode === 'normal') return result.replace(/[ \t]+/g, ' ').trim();
 
-  // Remove redundant line breaks
-  result = result.replace(/^\s+$/gm, '');
+  // Aggressive: everything above + more patterns + abbreviations
+  for (const rule of AGGRESSIVE_RULES) {
+    result = result.replace(rule, '');
+  }
+  // Shorten common phrases
+  result = result
+    .replace(/\bin order to\b/gi, 'to')
+    .replace(/\bfor the purpose of\b/gi, 'for')
+    .replace(/\bdue to the fact that\b/gi, 'because')
+    .replace(/\bin the event that\b/gi, 'if')
+    .replace(/\bat this point in time\b/gi, 'now')
+    .replace(/\ba large number of\b/gi, 'many')
+    .replace(/\bin the near future\b/gi, 'soon');
 
-  return result;
+  return result.replace(/[ \t]+/g, ' ').trim();
 }
 
 // Apply optimization to messages (only user messages)
-function optimizeMessages(messages) {
+function optimizeMessages(messages, mode) {
+  if (mode === 'off') return messages;
   return messages.map(msg => {
     if (msg.role !== 'user') return msg;
     if (typeof msg.content === 'string') {
-      return { ...msg, content: optimizePrompt(msg.content) };
+      return { ...msg, content: optimizePrompt(msg.content, mode) };
     }
     if (Array.isArray(msg.content)) {
       return {
         ...msg,
         content: msg.content.map(part =>
-          part.type === 'text' ? { ...part, text: optimizePrompt(part.text) } : part
+          part.type === 'text' ? { ...part, text: optimizePrompt(part.text, mode) } : part
         ),
       };
     }
@@ -160,8 +194,9 @@ async function handleProxy(req, res) {
   const preOptText = extractUserText(messages);
   const preOptTokens = estimateTokens(preOptText);
 
-  // 5. Optimize messages
-  const optimizedMessages = optimizeMessages(messages);
+  // 5. Optimize messages (using seller's chosen mode)
+  const optMode = sellerKey.optimization_mode || 'normal';
+  const optimizedMessages = optimizeMessages(messages, optMode);
   const postOptText = extractUserText(optimizedMessages);
   const postOptTokens = estimateTokens(postOptText);
 
@@ -356,6 +391,18 @@ function recordTransaction(buyerKey, sellerKey, buyer, provider, model, inputTok
     });
 
     console.log(`[proxy] txn=${txnId} buyer=${buyer.id} seller=${sellerKey.user_id} model=${model} in=${inputTokens} out=${outputTokens} cost=${totalBuyerCost}¢ fee=${terseFee}¢`);
+
+    // Check if seller hit spending cap
+    const updatedKey = db.getSellerKeyFull.get(sellerKey.id, sellerKey.user_id);
+    if (updatedKey?.spending_cap_cents && updatedKey.total_spent_cents >= updatedKey.spending_cap_cents) {
+      notifications.notifyCapReached(sellerKey.user_id, sellerKey.label || sellerKey.provider);
+    }
+
+    // Notify seller + buyer (batch: only send email every 10th request to avoid spam)
+    if (Math.random() < 0.1) {
+      notifications.notifySale(sellerKey.user_id, model, inputTokens, outputTokens, sellerReceives);
+      notifications.notifyPurchase(buyer.id, model, totalBuyerCost);
+    }
   } catch (err) {
     console.error('[proxy] transaction recording error:', err.message);
   }

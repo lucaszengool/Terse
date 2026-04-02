@@ -73,6 +73,9 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
             db.creditBuyerBalance.run(amount, userId);
             const topupId = require('crypto').randomUUID();
             db.addTopup.run({ id: topupId, user_id: userId, amount_cents: amount, stripe_payment_id: session.payment_intent });
+            // Send notification
+            const { notifyTopup } = require('./notify');
+            notifyTopup(userId, amount);
             console.log(`[marketplace] top-up $${(amount / 100).toFixed(2)} for ${userId}`);
           }
           break;

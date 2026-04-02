@@ -44,8 +44,22 @@ db.exec(`
     total_spent_cents INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,
     models_allowed TEXT,
+    optimization_mode TEXT DEFAULT 'normal',
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT,
+    email_sent INTEGER DEFAULT 0,
+    read INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at);
 
   CREATE TABLE IF NOT EXISTS buyer_keys (
     id TEXT PRIMARY KEY,
@@ -122,13 +136,13 @@ function ensureUser(id, email) {
 
 // ── Seller key helpers ──
 const addSellerKey = db.prepare(`
-  INSERT INTO seller_keys (id, user_id, provider, encrypted_key, key_iv, key_tag, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed)
-  VALUES (@id, @user_id, @provider, @encrypted_key, @key_iv, @key_tag, @label, @price_per_1m_input, @price_per_1m_output, @spending_cap_cents, @models_allowed)
+  INSERT INTO seller_keys (id, user_id, provider, encrypted_key, key_iv, key_tag, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed, optimization_mode)
+  VALUES (@id, @user_id, @provider, @encrypted_key, @key_iv, @key_tag, @label, @price_per_1m_input, @price_per_1m_output, @spending_cap_cents, @models_allowed, @optimization_mode)
 `);
 
-const getSellerKeys = db.prepare('SELECT id, user_id, provider, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, total_spent_cents, is_active, models_allowed, created_at FROM seller_keys WHERE user_id = ?');
+const getSellerKeys = db.prepare('SELECT id, user_id, provider, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, total_spent_cents, is_active, models_allowed, optimization_mode, created_at FROM seller_keys WHERE user_id = ?');
 const getSellerKeyFull = db.prepare('SELECT * FROM seller_keys WHERE id = ? AND user_id = ?');
-const updateSellerKey = db.prepare('UPDATE seller_keys SET price_per_1m_input = @price_per_1m_input, price_per_1m_output = @price_per_1m_output, spending_cap_cents = @spending_cap_cents, is_active = @is_active, models_allowed = @models_allowed WHERE id = @id AND user_id = @user_id');
+const updateSellerKey = db.prepare('UPDATE seller_keys SET price_per_1m_input = @price_per_1m_input, price_per_1m_output = @price_per_1m_output, spending_cap_cents = @spending_cap_cents, is_active = @is_active, models_allowed = @models_allowed, optimization_mode = @optimization_mode WHERE id = @id AND user_id = @user_id');
 const deleteSellerKey = db.prepare('DELETE FROM seller_keys WHERE id = ? AND user_id = ?');
 
 // Find cheapest active seller key for a provider
@@ -207,6 +221,16 @@ const getListings = db.prepare(`
   GROUP BY provider
 `);
 
+// ── Notification helpers ──
+const addNotification = db.prepare(`
+  INSERT INTO notifications (id, user_id, type, title, body)
+  VALUES (@id, @user_id, @type, @title, @body)
+`);
+const getNotifications = db.prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?');
+const markNotificationRead = db.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?');
+const markNotificationEmailed = db.prepare('UPDATE notifications SET email_sent = 1 WHERE id = ?');
+const getUnreadCount = db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND read = 0');
+
 module.exports = {
   db,
   upsertUser, getUser, ensureUser,
@@ -218,4 +242,5 @@ module.exports = {
   getSellerEarnings, getBuyerSpending,
   addTopup, addPayout, updatePayoutStatus,
   getListings,
+  addNotification, getNotifications, markNotificationRead, markNotificationEmailed, getUnreadCount,
 };

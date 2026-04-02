@@ -503,87 +503,138 @@ router.post('/notifications/:id/read', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// Temporary test endpoint
-router.post('/admin/seed-test', async (req, res) => {
+// Admin: seed realistic marketplace data
+router.post('/admin/seed-demo', async (req, res) => {
   const secret = req.headers['x-admin-secret'];
   if (!secret || secret !== process.env.ADMIN_TEST_SECRET) {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  const { seller_api_key, provider } = req.body;
-  if (!seller_api_key || !provider) return res.status(400).json({ error: 'Missing seller_api_key or provider' });
 
   try {
     const { encrypt } = require('./crypto-utils');
-    const sellerId = 'test_seller_001';
-    db.ensureUser(sellerId, 'test-seller@test.com');
 
-    const { encrypted, iv, tag } = encrypt(seller_api_key);
-    const id = crypto.randomUUID();
-    db.addSellerKey.run({
-      id, user_id: sellerId, provider,
-      encrypted_key: encrypted, key_iv: iv, key_tag: tag,
-      label: `Test ${provider} key`,
-      price_per_1m_input: 50, price_per_1m_output: 250,
-      spending_cap_cents: null, models_allowed: null,
-      optimization_mode: 'normal',
-      token_cap_total: 10000000, token_cap_hourly: 500000, token_cap_daily: 5000000,
-      rate_limit_hourly_cents: null, rate_limit_daily_cents: null,
-      key_verified: 1,
-    });
+    // 30 realistic seller profiles
+    const sellers = [
+      { id: 'user_2nKp8xR3mTvY', email: 'marcus.chen@gmail.com', name: 'Marcus C.', provider: 'anthropic', label: 'Spare Claude Opus credits', discount: 0.30, mode: 'normal', capTotal: 50000000, capHourly: 1000000, capDaily: 10000000, verified: 1 },
+      { id: 'user_2mLq9yS4nUwZ', email: 'sarah.kim@outlook.com', name: 'Sarah K.', provider: 'anthropic', label: 'Unused Sonnet allocation', discount: 0.25, mode: 'soft', capTotal: 100000000, capHourly: 2000000, capDaily: 20000000, verified: 1 },
+      { id: 'user_2oMr0zT5oVxA', email: 'jdevries@proton.me', name: 'Johan D.', provider: 'openai', label: 'GPT-4o enterprise surplus', discount: 0.35, mode: 'normal', capTotal: 80000000, capHourly: 1500000, capDaily: 15000000, verified: 1 },
+      { id: 'user_2pNs1AU6pWyB', email: 'aisha.rahman@gmail.com', name: 'Aisha R.', provider: 'google', label: 'Gemini Pro leftover tokens', discount: 0.40, mode: 'aggressive', capTotal: null, capHourly: 500000, capDaily: 5000000, verified: 1 },
+      { id: 'user_2qOt2BV7qXzC', email: 'tom.wilson@hey.com', name: 'Tom W.', provider: 'anthropic', label: 'Claude team plan excess', discount: 0.20, mode: 'soft', capTotal: 200000000, capHourly: 5000000, capDaily: 50000000, verified: 1 },
+      { id: 'user_2rPu3CW8rYAD', email: 'lina.petrov@yandex.com', name: 'Lina P.', provider: 'openai', label: 'o3 research credits', discount: 0.28, mode: 'normal', capTotal: 30000000, capHourly: 800000, capDaily: 8000000, verified: 1 },
+      { id: 'user_2sQv4DX9sZBE', email: 'kenji.tanaka@icloud.com', name: 'Kenji T.', provider: 'anthropic', label: 'Haiku batch credits', discount: 0.45, mode: 'aggressive', capTotal: null, capHourly: 3000000, capDaily: 30000000, verified: 1 },
+      { id: 'user_2tRw5EY0tACF', email: 'elena.garcia@gmail.com', name: 'Elena G.', provider: 'google', label: 'Gemini Flash API key', discount: 0.50, mode: 'normal', capTotal: 150000000, capHourly: null, capDaily: null, verified: 1 },
+      { id: 'user_2uSx6FZ1uBDG', email: 'alex.novak@tutanota.com', name: 'Alex N.', provider: 'openai', label: 'GPT-4o-mini high volume', discount: 0.30, mode: 'soft', capTotal: null, capHourly: 2000000, capDaily: 25000000, verified: 1 },
+      { id: 'user_2vTy7GA2vCEH', email: 'priya.sharma@gmail.com', name: 'Priya S.', provider: 'anthropic', label: 'Opus enterprise key', discount: 0.15, mode: 'off', capTotal: 20000000, capHourly: 500000, capDaily: 5000000, verified: 1 },
+      { id: 'user_2wUz8HB3wDFI', email: 'daniel.oconnor@pm.me', name: 'Daniel O.', provider: 'openai', label: 'Startup GPT-4.1 credits', discount: 0.32, mode: 'normal', capTotal: 60000000, capHourly: 1200000, capDaily: 12000000, verified: 1 },
+      { id: 'user_2xVA9IC4xEGJ', email: 'yuki.sato@gmail.com', name: 'Yuki S.', provider: 'google', label: 'Gemini Pro enterprise', discount: 0.35, mode: 'soft', capTotal: 90000000, capHourly: 1800000, capDaily: 18000000, verified: 1 },
+      { id: 'user_2yWB0JD5yFHK', email: 'omar.hassan@outlook.com', name: 'Omar H.', provider: 'anthropic', label: 'Claude Sonnet dev key', discount: 0.22, mode: 'normal', capTotal: 40000000, capHourly: 800000, capDaily: 8000000, verified: 1 },
+      { id: 'user_2zXC1KE6zGIL', email: 'maria.silva@gmail.com', name: 'Maria S.', provider: 'openai', label: 'GPT-4o team surplus', discount: 0.38, mode: 'aggressive', capTotal: 70000000, capHourly: null, capDaily: 15000000, verified: 1 },
+      { id: 'user_30YD2LF70HJM', email: 'james.okafor@icloud.com', name: 'James O.', provider: 'google', label: 'Flash high-throughput', discount: 0.55, mode: 'aggressive', capTotal: null, capHourly: 5000000, capDaily: null, verified: 1 },
+      { id: 'user_31ZE3MG81IKN', email: 'anna.muller@web.de', name: 'Anna M.', provider: 'anthropic', label: 'Haiku production spare', discount: 0.40, mode: 'normal', capTotal: 120000000, capHourly: 2500000, capDaily: 25000000, verified: 1 },
+      { id: 'user_32AF4NH92JLO', email: 'ravi.patel@gmail.com', name: 'Ravi P.', provider: 'openai', label: 'o3 reasoning credits', discount: 0.18, mode: 'off', capTotal: 15000000, capHourly: 400000, capDaily: 4000000, verified: 1 },
+      { id: 'user_33BG5OI03KMP', email: 'claire.dubois@free.fr', name: 'Claire D.', provider: 'anthropic', label: 'Opus research allocation', discount: 0.25, mode: 'soft', capTotal: 35000000, capHourly: 700000, capDaily: 7000000, verified: 1 },
+      { id: 'user_34CH6PJ14LNQ', email: 'david.lee@gmail.com', name: 'David L.', provider: 'google', label: 'Gemini Pro batch key', discount: 0.42, mode: 'normal', capTotal: 200000000, capHourly: null, capDaily: 40000000, verified: 1 },
+      { id: 'user_35DI7QK25MOR', email: 'nina.kowalski@wp.pl', name: 'Nina K.', provider: 'openai', label: 'Mini high-volume key', discount: 0.48, mode: 'aggressive', capTotal: null, capHourly: 4000000, capDaily: 50000000, verified: 1 },
+      { id: 'user_36EJ8RL36NPS', email: 'lucas.berg@gmail.com', name: 'Lucas B.', provider: 'anthropic', label: 'Sonnet startup credits', discount: 0.28, mode: 'normal', capTotal: 55000000, capHourly: 1100000, capDaily: 11000000, verified: 1 },
+      { id: 'user_37FK9SM47OQT', email: 'fatima.al-rashid@gmail.com', name: 'Fatima A.', provider: 'openai', label: 'GPT-4o research key', discount: 0.20, mode: 'soft', capTotal: 45000000, capHourly: 900000, capDaily: 9000000, verified: 1 },
+      { id: 'user_38GL0TN58PRU', email: 'erik.johansson@live.se', name: 'Erik J.', provider: 'google', label: 'Flash dev environment', discount: 0.60, mode: 'aggressive', capTotal: null, capHourly: null, capDaily: null, verified: 1 },
+      { id: 'user_39HM1UO69QSV', email: 'sophie.martin@gmail.com', name: 'Sophie M.', provider: 'anthropic', label: 'Haiku CI/CD pipeline key', discount: 0.35, mode: 'normal', capTotal: 80000000, capHourly: 1600000, capDaily: 16000000, verified: 1 },
+      { id: 'user_40IN2VP70RTW', email: 'carlos.mendez@hotmail.com', name: 'Carlos M.', provider: 'openai', label: 'GPT-4.1 enterprise', discount: 0.24, mode: 'soft', capTotal: 65000000, capHourly: 1300000, capDaily: 13000000, verified: 1 },
+      { id: 'user_41JO3WQ81SUX', email: 'mei.wong@gmail.com', name: 'Mei W.', provider: 'google', label: 'Pro research credits', discount: 0.30, mode: 'normal', capTotal: 110000000, capHourly: 2200000, capDaily: 22000000, verified: 1 },
+      { id: 'user_42KP4XR92TVY', email: 'ivan.volkov@mail.ru', name: 'Ivan V.', provider: 'anthropic', label: 'Opus high-tier key', discount: 0.12, mode: 'off', capTotal: 10000000, capHourly: 300000, capDaily: 3000000, verified: 1 },
+      { id: 'user_43LQ5YS03UWZ', email: 'rachel.huang@yahoo.com', name: 'Rachel H.', provider: 'openai', label: 'Team plan overflow', discount: 0.33, mode: 'normal', capTotal: 75000000, capHourly: 1500000, capDaily: 15000000, verified: 1 },
+      { id: 'user_44MR6ZT14VXA', email: 'andreas.schmidt@gmx.de', name: 'Andreas S.', provider: 'anthropic', label: 'Sonnet production key', discount: 0.27, mode: 'normal', capTotal: 95000000, capHourly: 1900000, capDaily: 19000000, verified: 1 },
+      { id: 'user_45NS7AU25WYB', email: 'jenny.park@naver.com', name: 'Jenny P.', provider: 'google', label: 'Gemini Flash unlimited', discount: 0.52, mode: 'aggressive', capTotal: null, capHourly: 6000000, capDaily: null, verified: 1 },
+    ];
 
-    // Also add an OpenAI test listing
-    const id2 = crypto.randomUUID();
-    const { encrypted: enc2, iv: iv2, tag: tag2 } = encrypt('sk-test-fake-openai-key');
-    db.addSellerKey.run({
-      id: id2, user_id: sellerId, provider: 'openai',
-      encrypted_key: enc2, key_iv: iv2, key_tag: tag2,
-      label: 'Test OpenAI key',
-      price_per_1m_input: 125, price_per_1m_output: 500,
-      spending_cap_cents: null, models_allowed: null,
-      optimization_mode: 'soft',
-      token_cap_total: 50000000, token_cap_hourly: 1000000, token_cap_daily: 10000000,
-      rate_limit_hourly_cents: null, rate_limit_daily_cents: null,
-      key_verified: 1,
-    });
+    // Model-to-price mapping for each provider
+    const providerModels = {
+      anthropic: [
+        { model: 'claude-opus-4-20250514', input: 500, output: 2500 },
+        { model: 'claude-sonnet-4-20250514', input: 300, output: 1500 },
+        { model: 'claude-haiku-4-20250414', input: 100, output: 500 },
+      ],
+      openai: [
+        { model: 'gpt-4o', input: 250, output: 1000 },
+        { model: 'gpt-4o-mini', input: 15, output: 60 },
+        { model: 'gpt-4.1', input: 200, output: 800 },
+        { model: 'o3', input: 200, output: 800 },
+      ],
+      google: [
+        { model: 'gemini-2.5-pro', input: 125, output: 1000 },
+        { model: 'gemini-2.5-flash', input: 30, output: 250 },
+      ],
+    };
 
-    // Add a Google test listing
-    const id3 = crypto.randomUUID();
-    const { encrypted: enc3, iv: iv3, tag: tag3 } = encrypt('AIzaSy-test-fake-google-key');
-    db.addSellerKey.run({
-      id: id3, user_id: sellerId, provider: 'google',
-      encrypted_key: enc3, key_iv: iv3, key_tag: tag3,
-      label: 'Test Gemini key',
-      price_per_1m_input: 20, price_per_1m_output: 150,
-      spending_cap_cents: null, models_allowed: null,
-      optimization_mode: 'normal',
-      token_cap_total: null, token_cap_hourly: null, token_cap_daily: null,
-      rate_limit_hourly_cents: null, rate_limit_daily_cents: null,
-      key_verified: 1,
-    });
+    let count = 0;
+    for (const s of sellers) {
+      db.ensureUser(s.id, s.email);
 
-    // Create buyer with balance
-    const buyerId = 'test_buyer_001';
-    db.ensureUser(buyerId, 'test-buyer@test.com');
-    db.creditBuyerBalance.run(1000, buyerId);
-    const rawKey = `terse_bk_${crypto.randomBytes(24).toString('hex')}`;
-    const keyHash = db.hashKey(rawKey);
-    db.addBuyerKey.run({ id: crypto.randomUUID(), user_id: buyerId, key_hash: keyHash, label: 'Test key' });
+      // Pick a reference model for pricing (first model of provider)
+      const models = providerModels[s.provider];
+      const refModel = models[0];
+      const priceInput = Math.round(refModel.input * (1 - s.discount));
+      const priceOutput = Math.round(refModel.output * (1 - s.discount));
 
-    res.json({ message: 'Seeded 3 provider listings + buyer', buyer_key: rawKey });
+      // Generate fake encrypted key (not a real key — just placeholder data)
+      const fakeKey = `fake_${s.provider}_${crypto.randomBytes(16).toString('hex')}`;
+      const { encrypted, iv, tag } = encrypt(fakeKey);
+
+      // Randomize some usage to make it look lived-in
+      const totalUsed = Math.floor(Math.random() * (s.capTotal || 50000000) * 0.4);
+      const hourlyUsed = s.capHourly ? Math.floor(Math.random() * s.capHourly * 0.3) : 0;
+      const dailyUsed = s.capDaily ? Math.floor(Math.random() * s.capDaily * 0.25) : 0;
+
+      const keyId = crypto.randomUUID();
+      db.addSellerKey.run({
+        id: keyId,
+        user_id: s.id,
+        provider: s.provider,
+        encrypted_key: encrypted,
+        key_iv: iv,
+        key_tag: tag,
+        label: s.label,
+        price_per_1m_input: priceInput,
+        price_per_1m_output: priceOutput,
+        spending_cap_cents: null,
+        models_allowed: null,
+        optimization_mode: s.mode,
+        token_cap_total: s.capTotal,
+        token_cap_hourly: s.capHourly,
+        token_cap_daily: s.capDaily,
+        rate_limit_hourly_cents: null,
+        rate_limit_daily_cents: null,
+        key_verified: s.verified,
+      });
+
+      // Set usage stats
+      db.db.prepare('UPDATE seller_keys SET total_tokens_used = ?, hourly_tokens_used = ?, daily_tokens_used = ? WHERE id = ?')
+        .run(totalUsed, hourlyUsed, dailyUsed, keyId);
+
+      count++;
+    }
+
+    res.json({ message: `Seeded ${count} realistic listings`, count });
   } catch (err) {
+    console.error('[admin/seed-demo] error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/admin/cleanup-test', async (req, res) => {
+// Admin cleanup
+router.post('/admin/cleanup-demo', async (req, res) => {
   const secret = req.headers['x-admin-secret'];
   if (!secret || secret !== process.env.ADMIN_TEST_SECRET) return res.status(403).json({ error: 'Forbidden' });
   try {
-    db.db.exec("DELETE FROM transactions WHERE buyer_id = 'test_buyer_001' OR seller_id = 'test_seller_001'");
-    db.db.exec("DELETE FROM buyer_keys WHERE user_id = 'test_buyer_001'");
-    db.db.exec("DELETE FROM seller_keys WHERE user_id = 'test_seller_001'");
-    db.db.exec("DELETE FROM users WHERE id IN ('test_buyer_001', 'test_seller_001')");
-    res.json({ message: 'Cleaned up' });
+    const demoIds = db.db.prepare("SELECT id FROM users WHERE id LIKE 'user_%'").all().map(r => r.id);
+    if (demoIds.length) {
+      const placeholders = demoIds.map(() => '?').join(',');
+      db.db.prepare(`DELETE FROM transactions WHERE buyer_id IN (${placeholders}) OR seller_id IN (${placeholders})`).run(...demoIds, ...demoIds);
+      db.db.prepare(`DELETE FROM buyer_keys WHERE user_id IN (${placeholders})`).run(...demoIds);
+      db.db.prepare(`DELETE FROM seller_keys WHERE user_id IN (${placeholders})`).run(...demoIds);
+      db.db.prepare(`DELETE FROM users WHERE id IN (${placeholders})`).run(...demoIds);
+    }
+    res.json({ message: `Cleaned up ${demoIds.length} demo users` });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

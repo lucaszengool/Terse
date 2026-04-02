@@ -15,21 +15,22 @@ const router = express.Router();
 const COMMISSION_PERCENT = parseFloat(process.env.TERSE_COMMISSION_PERCENT || '15');
 
 // Known provider list prices (cents per 1M tokens) — for reference/validation
+// Retail list prices in cents per 1M tokens (updated April 2026)
 const PROVIDER_LIST_PRICES = {
   anthropic: {
+    'claude-opus-4-20250514':   { input: 500, output: 2500 },
     'claude-sonnet-4-20250514': { input: 300, output: 1500 },
-    'claude-haiku-4-20250414': { input: 80, output: 400 },
-    'claude-opus-4-20250514': { input: 1500, output: 7500 },
+    'claude-haiku-4-20250414':  { input: 100, output: 500 },
   },
   openai: {
-    'gpt-4o': { input: 250, output: 1000 },
-    'gpt-4o-mini': { input: 15, output: 60 },
-    'gpt-4.1': { input: 200, output: 800 },
-    'o3': { input: 1000, output: 4000 },
+    'gpt-4o':      { input: 250, output: 1000 },
+    'gpt-4o-mini': { input: 15,  output: 60 },
+    'gpt-4.1':     { input: 200, output: 800 },
+    'o3':          { input: 200, output: 800 },
   },
   google: {
-    'gemini-2.5-pro': { input: 125, output: 1000 },
-    'gemini-2.5-flash': { input: 15, output: 60 },
+    'gemini-2.5-pro':   { input: 125, output: 1000 },
+    'gemini-2.5-flash': { input: 30,  output: 250 },
   },
 };
 

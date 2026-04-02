@@ -611,6 +611,8 @@
       .tech-cards{grid-template-columns:1fr 1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}
       .footer-inner{grid-template-columns:1fr 1fr}nav{padding:12px 20px}.nav-links{display:none}
       .hero{padding:120px 20px 60px}.section{padding:60px 20px}.vscode-body{grid-template-columns:1fr}
+      #exchange .rv[style*="grid-template-columns:repeat(3"]{grid-template-columns:1fr !important}
+      #exchange .rv[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important}
       .vscode-sidebar{display:none}.ap-grid{grid-template-columns:repeat(2,1fr)}
       .features-grid{grid-template-columns:1fr;gap:24px}.features-section{padding:50px 20px}
       .how-step p{max-width:100%}
@@ -747,7 +749,7 @@
 <section class="hero" aria-label="Hero">
   <div class="hero-glow"></div>
   <h1 class="rv">Save every token<br><span class="gradient-text">on any AI usage.</span></h1>
-  <p class="sub rv d1">Cut 40-70% of your AI token costs. Terse monitors agent sessions in real time — compressing prompts, catching duplicate tool calls, detecting redundant file reads, and tracking per-turn cost across Claude Code, OpenClaw, Cursor, and ChatGPT.</p>
+  <p class="sub rv d1">Cut 40-70% of your AI token costs. Optimize prompts, monitor agent sessions, detect duplicates &mdash; or trade unused API tokens on the <a href="#exchange" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Token Exchange</a> at up to 50% off retail.</p>
   <div class="hero-actions rv d2">
     <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none">Download for macOS <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
     <button class="btn-ghost" onclick="document.getElementById('pipeline').scrollIntoView({behavior:'smooth'})">See the pipeline</button>
@@ -1862,6 +1864,81 @@ bug fixes (6), features (5), docs (2)</pre>
   </div>
 </section>
 
+<!-- ═══ TOKEN EXCHANGE ═══ -->
+<section class="section" id="exchange" style="background:var(--bg1);border-top:1px solid var(--bd);padding:100px 40px">
+  <div style="max-width:1100px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:56px">
+      <div class="label rv" style="margin:0 auto 18px;background:rgba(251,191,36,0.08);color:#fbbf24;border-color:rgba(251,191,36,0.15)">New</div>
+      <h2 class="rv" style="font-size:clamp(36px,6vw,52px);font-weight:900;letter-spacing:-2px;margin-bottom:14px">Token <span class="gradient-text">Exchange</span></h2>
+      <p class="rv d1" style="color:var(--t2);max-width:600px;margin:0 auto;font-size:16px;line-height:1.7">Buy AI tokens at up to 50% off retail. Or sell your unused API credits and earn money. Terse optimizes every request for maximum savings.</p>
+    </div>
+
+    <!-- How it works — 3 cards -->
+    <div class="rv d1" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:48px">
+      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:28px;text-align:center">
+        <div style="width:44px;height:44px;border-radius:50%;background:rgba(110,231,183,0.1);color:var(--ac);font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">1</div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:6px">Sellers list keys</h3>
+        <p style="font-size:13px;color:var(--t3);line-height:1.6">Paste your API key, drag a slider to set your discount, done. Keys are encrypted with AES-256.</p>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:28px;text-align:center">
+        <div style="width:44px;height:44px;border-radius:50%;background:rgba(110,231,183,0.1);color:var(--ac);font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">2</div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:6px">Buyers get a key</h3>
+        <p style="font-size:13px;color:var(--t3);line-height:1.6">Top up balance, generate a Terse API key. One terminal command to set up &mdash; works with any SDK.</p>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:28px;text-align:center">
+        <div style="width:44px;height:44px;border-radius:50%;background:rgba(110,231,183,0.1);color:var(--ac);font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">3</div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:6px">Terse optimizes</h3>
+        <p style="font-size:13px;color:var(--t3);line-height:1.6">Every request is compressed before forwarding, saving 30-60% in actual token usage. Everyone wins.</p>
+      </div>
+    </div>
+
+    <!-- Comparison table -->
+    <div class="rv d2" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:48px">
+      <!-- For sellers -->
+      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:28px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ac);margin-bottom:12px">For sellers</div>
+        <h3 style="font-size:20px;font-weight:800;margin-bottom:8px">Unused tokens? Earn money.</h3>
+        <p style="font-size:13px;color:var(--t3);line-height:1.7;margin-bottom:16px">If you have Anthropic, OpenAI, or Google API credits sitting idle, list them on the exchange. You set the price and cap &mdash; full control over how much you sell.</p>
+        <ul style="list-style:none;font-size:13px;color:var(--t2);line-height:2">
+          <li style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Set your own price (discount slider)</li>
+          <li style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Set a spending cap to control risk</li>
+          <li style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Pause or remove anytime</li>
+          <li style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Withdraw earnings to your bank</li>
+        </ul>
+      </div>
+      <!-- For buyers -->
+      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:28px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#60a5fa;margin-bottom:12px">For buyers</div>
+        <h3 style="font-size:20px;font-weight:800;margin-bottom:8px">Same API. Up to 50% cheaper.</h3>
+        <p style="font-size:13px;color:var(--t3);line-height:1.7;margin-bottom:16px">Get a Terse API key that works exactly like the real thing &mdash; Claude, GPT, Gemini, all supported. Just point your SDK at our proxy and save.</p>
+        <ul style="list-style:none;font-size:13px;color:var(--t2);line-height:2">
+          <li style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>One command to set up (any SDK)</li>
+          <li style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Works with Claude Code, Cursor, Python</li>
+          <li style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Terse optimizer compresses every request</li>
+          <li style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Top up with card &mdash; pay as you go</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Code example -->
+    <div class="rv d3" style="max-width:600px;margin:0 auto 40px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">One command. Any tool picks it up automatically.</div>
+      <div style="background:var(--bg0);border:1px solid var(--bd);border-radius:10px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ac);line-height:1.8;cursor:pointer" onclick="navigator.clipboard.writeText('export ANTHROPIC_API_KEY=terse_bk_YOUR_KEY\nexport ANTHROPIC_BASE_URL=https://www.terseai.org/api/proxy');this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.style.borderColor=''},1500)">
+        <span style="color:var(--t3)">$</span> export ANTHROPIC_API_KEY=<span style="color:#fbbf24">terse_bk_YOUR_KEY</span><br>
+        <span style="color:var(--t3)">$</span> export ANTHROPIC_BASE_URL=<span style="color:#fbbf24">https://www.terseai.org/api/proxy</span><br>
+        <span style="color:var(--t3)"># Now run claude, cursor, python — all routed through Terse</span>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--t3);margin-top:8px">Click to copy &middot; Works with Claude Code, Cursor, any OpenAI/Anthropic SDK</div>
+    </div>
+
+    <!-- CTA -->
+    <div class="rv d3" style="text-align:center">
+      <a href="/marketplace" class="btn-primary" style="text-decoration:none;font-size:16px;padding:14px 36px">Open Token Exchange <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:4px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+      <p style="font-size:12px;color:var(--t3);margin-top:12px">15% commission per transaction &middot; AES-256 encrypted keys &middot; Withdraw anytime</p>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ FAQ ═══ -->
 <section class="faq-section" id="faq">
   <div class="faq-inner" style="text-align:center">
@@ -1902,6 +1979,14 @@ bug fixes (6), features (5), docs (2)</pre>
         <div class="faq-q">How do AI tokens affect cost?</div>
         <div class="faq-a">AI models charge per token (~4 characters each). Claude Opus costs $15-$75 per million tokens, GPT-4o costs $2.50-$10. A single agent session can consume 200K+ tokens, costing $3-$15. Heavy users spend $200-500+/month on API costs alone. <a href="/ai-token-pricing-comparison" style="color:var(--ac)">See the full pricing comparison &rarr;</a></div>
       </div>
+      <div class="faq-item">
+        <div class="faq-q">What is the Token Exchange?</div>
+        <div class="faq-a">The <a href="/marketplace" style="color:var(--ac)">Token Exchange</a> is a marketplace where users trade unused AI API tokens. Sellers list their API keys at a discount, buyers get cheaper access. Terse runs a proxy that optimizes every request before forwarding, so the actual API cost is 30-60% less. Terse takes a 15% commission. Your API keys are encrypted with AES-256 and never exposed to buyers.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">How do I buy or sell tokens?</div>
+        <div class="faq-a">Sign in at <a href="/marketplace" style="color:var(--ac)">terseai.org/marketplace</a>. To sell: paste your API key, drag a slider to set your discount, done. To buy: top up your balance, generate a Terse API key, and use it in any SDK &mdash; just set the base URL to Terse's proxy. One terminal command to configure.</div>
+      </div>
     </div>
   </div>
 </section>
@@ -1910,9 +1995,10 @@ bug fixes (6), features (5), docs (2)</pre>
 <section class="cta" id="dl">
   <div class="cta-glow"></div>
   <h2 class="rv">Stop wasting<br><span class="gradient-text">tokens and money.</span></h2>
-  <p class="rv d1">Every prompt optimized. Every agent turn monitored. Duplicate tool calls caught. Redundant reads flagged. CLAUDE.md rules auto-generated. All on your machine — private, no cloud.</p>
+  <p class="rv d1">Every prompt optimized. Every agent turn monitored. Duplicate tool calls caught. Redundant reads flagged. Or buy tokens at up to 50% off on the Token Exchange.</p>
   <div class="hero-actions rv d2">
     <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none">Download for macOS <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
+    <a href="/marketplace" class="btn-ghost" style="text-decoration:none">Token Exchange <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
   </div>
   <p style="font-size:15px;color:var(--ac);text-align:center;margin-top:16px;position:relative;z-index:1;font-weight:600;line-height:1.6">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>

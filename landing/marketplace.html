@@ -281,18 +281,37 @@
     <div class="how-card">
       <div class="how-num">1</div>
       <h3>Sellers List Keys</h3>
-      <p>Add your API key, set your price (below retail), and a spending cap. Your key stays encrypted on our servers.</p>
+      <p>Add your API key, drag a slider to set your discount, done. Keys encrypted with AES-256.</p>
     </div>
     <div class="how-card">
       <div class="how-num">2</div>
       <h3>Buyers Get a Key</h3>
-      <p>Top up your balance, get a Terse API key. Point your SDK at our proxy — works like the real API.</p>
+      <p>Top up balance, generate a Terse key, paste one command in terminal. Works with any SDK.</p>
     </div>
     <div class="how-card">
       <div class="how-num">3</div>
       <h3>Terse Optimizes</h3>
-      <p>Every request is compressed by Terse's optimizer before forwarding — saving 30-60% in actual token usage. Everyone wins.</p>
+      <p>Every request is compressed before forwarding — 30-60% less actual token usage. Everyone wins.</p>
     </div>
+  </div>
+
+  <!-- Pricing Reference -->
+  <div class="section" style="margin-bottom:32px">
+    <div class="section-title">Retail API Prices <span style="font-size:12px;font-weight:400;color:var(--t3);margin-left:8px">(per 1M tokens, April 2026)</span></div>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Provider</th><th>Model</th><th>Input</th><th>Output</th><th style="color:var(--ac)">Suggested Sell Price</th></tr>
+        <tr><td><span class="provider provider-anthropic">Anthropic</span></td><td class="mono" style="font-size:12px">claude-opus-4</td><td class="mono">$5.00</td><td class="mono">$25.00</td><td class="mono" style="color:var(--ac)">$3.00 - $4.00 in / $15 - $20 out</td></tr>
+        <tr><td><span class="provider provider-anthropic">Anthropic</span></td><td class="mono" style="font-size:12px">claude-sonnet-4</td><td class="mono">$3.00</td><td class="mono">$15.00</td><td class="mono" style="color:var(--ac)">$1.80 - $2.40 in / $9 - $12 out</td></tr>
+        <tr><td><span class="provider provider-anthropic">Anthropic</span></td><td class="mono" style="font-size:12px">claude-haiku-4</td><td class="mono">$1.00</td><td class="mono">$5.00</td><td class="mono" style="color:var(--ac)">$0.60 - $0.80 in / $3 - $4 out</td></tr>
+        <tr><td><span class="provider provider-openai">OpenAI</span></td><td class="mono" style="font-size:12px">gpt-4o</td><td class="mono">$2.50</td><td class="mono">$10.00</td><td class="mono" style="color:var(--ac)">$1.50 - $2.00 in / $6 - $8 out</td></tr>
+        <tr><td><span class="provider provider-openai">OpenAI</span></td><td class="mono" style="font-size:12px">gpt-4.1 / o3</td><td class="mono">$2.00</td><td class="mono">$8.00</td><td class="mono" style="color:var(--ac)">$1.20 - $1.60 in / $5 - $6.50 out</td></tr>
+        <tr><td><span class="provider provider-openai">OpenAI</span></td><td class="mono" style="font-size:12px">gpt-4o-mini</td><td class="mono">$0.15</td><td class="mono">$0.60</td><td class="mono" style="color:var(--ac)">$0.09 - $0.12 in / $0.35 - $0.48 out</td></tr>
+        <tr><td><span class="provider provider-google">Google</span></td><td class="mono" style="font-size:12px">gemini-2.5-pro</td><td class="mono">$1.25</td><td class="mono">$10.00</td><td class="mono" style="color:var(--ac)">$0.75 - $1.00 in / $6 - $8 out</td></tr>
+        <tr><td><span class="provider provider-google">Google</span></td><td class="mono" style="font-size:12px">gemini-2.5-flash</td><td class="mono">$0.30</td><td class="mono">$2.50</td><td class="mono" style="color:var(--ac)">$0.18 - $0.24 in / $1.50 - $2 out</td></tr>
+      </table>
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center">Suggested sell prices are 20-40% below retail. Terse takes 15% commission. Buyers save, sellers earn, Terse optimizes every request for extra margin.</div>
   </div>
 
   <!-- PUBLIC: Live Listings -->
@@ -306,11 +325,31 @@
     </div>
   </div>
 
-  <!-- AUTH REQUIRED: Dashboard -->
-  <div id="auth-prompt" class="auth-prompt" style="display:none">
-    <h2>Sign in to start trading</h2>
-    <p>Create an account to sell your unused API tokens or buy them at a discount.</p>
-    <button class="btn btn-primary" onclick="openClerkSignIn()" style="font-size:16px;padding:14px 36px">Get Started</button>
+  <!-- AUTH REQUIRED: Sign-in prompt (shown when not logged in) -->
+  <div id="auth-prompt" style="display:none">
+    <div style="text-align:center;padding:40px 20px 20px">
+      <div style="display:inline-flex;gap:12px;margin-bottom:32px">
+        <button class="btn btn-primary" onclick="openClerkSignIn()" style="font-size:16px;padding:14px 36px">Sign In to Start</button>
+        <button class="btn btn-secondary" onclick="openClerkSignUp()" style="font-size:16px;padding:14px 36px">Create Account</button>
+      </div>
+      <p style="font-size:13px;color:var(--t3)">Sign in to sell your unused API keys or buy tokens at a discount.</p>
+    </div>
+
+    <!-- Preview of what's inside (blurred teaser) -->
+    <div style="position:relative;overflow:hidden;border-radius:14px;border:1px solid var(--bd);margin-top:20px">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,var(--bg0) 90%);z-index:2;display:flex;align-items:flex-end;justify-content:center;padding-bottom:40px">
+        <button class="btn btn-primary" onclick="openClerkSignIn()" style="font-size:15px;padding:12px 32px">Sign in to access the exchange</button>
+      </div>
+      <div style="filter:blur(4px);opacity:0.5;pointer-events:none;padding:32px">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+          <div style="background:var(--bg2);border-radius:12px;padding:20px;text-align:center"><div style="font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac)">$42.50</div><div style="font-size:11px;color:var(--t3);margin-top:4px">TOTAL EARNED</div></div>
+          <div style="background:var(--bg2);border-radius:12px;padding:20px;text-align:center"><div style="font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac)">$18.20</div><div style="font-size:11px;color:var(--t3);margin-top:4px">AVAILABLE</div></div>
+          <div style="background:var(--bg2);border-radius:12px;padding:20px;text-align:center"><div style="font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac)">347</div><div style="font-size:11px;color:var(--t3);margin-top:4px">REQUESTS SERVED</div></div>
+          <div style="background:var(--bg2);border-radius:12px;padding:20px;text-align:center"><div style="font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac)">2.1M</div><div style="font-size:11px;color:var(--t3);margin-top:4px">TOKENS SERVED</div></div>
+        </div>
+        <div style="background:var(--bg2);border-radius:12px;padding:20px;height:120px"></div>
+      </div>
+    </div>
   </div>
 
   <div id="dashboard" style="display:none">
@@ -618,14 +657,17 @@ function updateAuthUI() {
     document.getElementById('clerk-avatar').src = user.imageUrl;
     document.getElementById('auth-prompt').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('listings-section').style.display = 'block';
     loadSellerData();
     loadBuyerData();
   } else {
     currentUser = null;
     signBtns.forEach(b => b.style.display = '');
     userEl.style.display = 'none';
-    document.getElementById('auth-prompt').style.display = '';
+    document.getElementById('auth-prompt').style.display = 'block';
     document.getElementById('dashboard').style.display = 'none';
+    // Still show listings publicly as a teaser
+    document.getElementById('listings-section').style.display = 'block';
   }
 }
 

@@ -802,7 +802,12 @@ async function authFetch(url, opts = {}) {
   opts.headers = { ...opts.headers, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
   if (opts.body && typeof opts.body === 'object') opts.body = JSON.stringify(opts.body);
   const res = await fetch(url, opts);
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: `Server error (${res.status}): ${text.slice(0, 200)}` };
+  }
 }
 
 // ═══ TABS ═══
@@ -1060,6 +1065,11 @@ async function addSellerKey(e) {
   if (!provider) return toast('Pick a provider first', 'error');
   if (!apiKey) return toast('Paste your API key', 'error');
 
+  const btn = document.getElementById('sell-submit-btn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Verifying key & listing...';
+
   const body = {
     provider,
     apiKey,
@@ -1071,17 +1081,28 @@ async function addSellerKey(e) {
     rate_limit_hourly_cents: document.getElementById('sk-hourly-cap').value ? parseInt(document.getElementById('sk-hourly-cap').value) : null,
     rate_limit_daily_cents: document.getElementById('sk-daily-cap').value ? parseInt(document.getElementById('sk-daily-cap').value) : null,
   };
-  const res = await authFetch(API + '/seller/keys', { method: 'POST', body });
-  if (res.error) return toast(res.error, 'error');
-  toast('Key listed! You\'ll earn money as buyers use it.');
-  document.getElementById('add-key-form').reset();
-  document.getElementById('discount-preview').style.display = 'none';
-  document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById('sell-submit-btn').disabled = true;
-  document.getElementById('sell-submit-btn').textContent = 'Select a provider to continue';
-  selectedProvider = null;
-  loadSellerData();
-  loadListings();
+
+  try {
+    const res = await authFetch(API + '/seller/keys', { method: 'POST', body });
+    if (res.error) {
+      btn.disabled = false;
+      btn.textContent = origText;
+      return toast(res.error, 'error');
+    }
+    toast(res.verified ? 'Key verified and listed!' : 'Key added (verification pending). You\'ll earn money as buyers use it.');
+    document.getElementById('add-key-form').reset();
+    document.getElementById('discount-preview').style.display = 'none';
+    document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('selected'));
+    btn.disabled = true;
+    btn.textContent = 'Select a provider to continue';
+    selectedProvider = null;
+    loadSellerData();
+    loadListings();
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = origText;
+    toast('Failed to list key: ' + (err.message || 'Network error'), 'error');
+  }
 }
 
 async function toggleKey(id, active) {

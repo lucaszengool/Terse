@@ -101,7 +101,7 @@ router.get('/seller/keys', requireAuth, (req, res) => {
 });
 
 router.post('/seller/keys', requireAuth, async (req, res) => {
-  const { provider, apiKey, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed, optimization_mode, rate_limit_hourly_cents, rate_limit_daily_cents } = req.body;
+  const { provider, apiKey, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed, optimization_mode, token_cap_total, token_cap_hourly, token_cap_daily, rate_limit_hourly_cents, rate_limit_daily_cents } = req.body;
 
   if (!provider || !apiKey) return res.status(400).json({ error: 'Missing provider or apiKey' });
   if (!['anthropic', 'openai', 'google'].includes(provider)) return res.status(400).json({ error: 'Invalid provider. Use: anthropic, openai, google' });
@@ -143,6 +143,9 @@ router.post('/seller/keys', requireAuth, async (req, res) => {
     spending_cap_cents: spending_cap_cents ? Math.round(spending_cap_cents) : null,
     models_allowed: models_allowed ? JSON.stringify(models_allowed) : null,
     optimization_mode: mode,
+    token_cap_total: token_cap_total ? Math.round(token_cap_total) : null,
+    token_cap_hourly: token_cap_hourly ? Math.round(token_cap_hourly) : null,
+    token_cap_daily: token_cap_daily ? Math.round(token_cap_daily) : null,
     rate_limit_hourly_cents: rate_limit_hourly_cents ? Math.round(rate_limit_hourly_cents) : null,
     rate_limit_daily_cents: rate_limit_daily_cents ? Math.round(rate_limit_daily_cents) : null,
     key_verified: keyVerified,
@@ -217,6 +220,9 @@ router.patch('/seller/keys/:id', requireAuth, (req, res) => {
     is_active: req.body.is_active !== undefined ? (req.body.is_active ? 1 : 0) : existing.is_active,
     models_allowed: req.body.models_allowed !== undefined ? JSON.stringify(req.body.models_allowed) : existing.models_allowed,
     optimization_mode: req.body.optimization_mode ?? existing.optimization_mode ?? 'normal',
+    token_cap_total: req.body.token_cap_total !== undefined ? req.body.token_cap_total : existing.token_cap_total,
+    token_cap_hourly: req.body.token_cap_hourly !== undefined ? req.body.token_cap_hourly : existing.token_cap_hourly,
+    token_cap_daily: req.body.token_cap_daily !== undefined ? req.body.token_cap_daily : existing.token_cap_daily,
     rate_limit_hourly_cents: req.body.rate_limit_hourly_cents !== undefined ? req.body.rate_limit_hourly_cents : existing.rate_limit_hourly_cents,
     rate_limit_daily_cents: req.body.rate_limit_daily_cents !== undefined ? req.body.rate_limit_daily_cents : existing.rate_limit_daily_cents,
   });

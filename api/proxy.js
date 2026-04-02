@@ -200,6 +200,37 @@ async function handleProxy(req, res) {
   const preOptText = extractUserText(messages);
   const preOptTokens = estimateTokens(preOptText);
 
+  // 4b. Pre-check: reset expired hourly/daily windows, estimate if request fits within limits
+  const now = new Date().toISOString();
+  if (sellerKey.hourly_reset_at && now > sellerKey.hourly_reset_at) {
+    db.resetHourlySpend.run(sellerKey.id);
+    sellerKey.hourly_tokens_used = 0;
+  }
+  if (sellerKey.daily_reset_at && now > sellerKey.daily_reset_at) {
+    db.resetDailySpend.run(sellerKey.id);
+    sellerKey.daily_tokens_used = 0;
+  }
+
+  // Estimate total tokens for this request (input + estimated output)
+  const estimatedRequestTokens = preOptTokens + (body.max_tokens || 4096);
+
+  // Check token limits before making the API call
+  if (sellerKey.token_cap_total && (sellerKey.total_tokens_used + estimatedRequestTokens) > sellerKey.token_cap_total * 1.1) {
+    return res.status(503).json({ error: { message: 'Seller key has reached its total token limit. Try again later.' } });
+  }
+  if (sellerKey.token_cap_hourly && (sellerKey.hourly_tokens_used + estimatedRequestTokens) > sellerKey.token_cap_hourly * 1.1) {
+    return res.status(429).json({ error: { message: 'Seller key hourly token limit reached. Try again later.' } });
+  }
+  if (sellerKey.token_cap_daily && (sellerKey.daily_tokens_used + estimatedRequestTokens) > sellerKey.token_cap_daily * 1.1) {
+    return res.status(429).json({ error: { message: 'Seller key daily token limit reached. Try again later.' } });
+  }
+
+  // Check buyer can afford estimated cost
+  const estimatedCostCents = Math.ceil((preOptTokens / 1_000_000) * sellerKey.price_per_1m_input + ((body.max_tokens || 4096) / 1_000_000) * sellerKey.price_per_1m_output);
+  if (buyer.buyer_balance_cents < estimatedCostCents && buyer.buyer_balance_cents < 10) {
+    return res.status(402).json({ error: { message: 'Insufficient balance. Top up at https://www.terseai.org/marketplace' } });
+  }
+
   // 5. Optimize messages (using seller's chosen mode)
   const optMode = sellerKey.optimization_mode || 'normal';
   const optimizedMessages = optimizeMessages(messages, optMode);
@@ -433,7 +464,11 @@ function recordTransaction(buyerKey, sellerKey, buyer, provider, model, inputTok
       actual_api_cost_cents: actualCost,
     });
 
-    // Track hourly/daily spend (with auto-reset)
+    // Track token usage (input + output)
+    const totalTokensUsed = inputTokens + outputTokens;
+    db.incrementTokenUsage.run(totalTokensUsed, totalTokensUsed, totalTokensUsed, sellerKey.id);
+
+    // Track hourly/daily spend in cents (with auto-reset)
     const now = new Date().toISOString();
     if (!sellerKey.hourly_reset_at || now > sellerKey.hourly_reset_at) {
       db.resetHourlySpend.run(sellerKey.id);

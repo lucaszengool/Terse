@@ -482,41 +482,42 @@
 
               <!-- Spending & rate limits -->
               <details class="optional-settings" open>
-                <summary>Spending limits</summary>
+                <summary>Token limits</summary>
                 <div style="padding-top:12px">
                   <div class="form-group">
-                    <label class="form-label">Total spending cap</label>
+                    <label class="form-label">Total token cap</label>
                     <div style="display:flex;gap:8px;flex-wrap:wrap">
-                      <button type="button" class="cap-btn" onclick="setCap(2000)">$20</button>
-                      <button type="button" class="cap-btn" onclick="setCap(5000)">$50</button>
-                      <button type="button" class="cap-btn" onclick="setCap(10000)">$100</button>
-                      <button type="button" class="cap-btn active" onclick="setCap(null)">No limit</button>
+                      <button type="button" class="cap-btn" onclick="setTokenCap(1000000)">1M</button>
+                      <button type="button" class="cap-btn" onclick="setTokenCap(10000000)">10M</button>
+                      <button type="button" class="cap-btn" onclick="setTokenCap(100000000)">100M</button>
+                      <button type="button" class="cap-btn active" onclick="setTokenCap(null)">No limit</button>
                     </div>
-                    <input type="hidden" id="sk-cap" value="">
-                    <div class="form-hint">Once hit, your key is automatically paused.</div>
+                    <input type="hidden" id="sk-token-cap" value="">
+                    <div class="form-hint">Total tokens (input+output) your key will serve. Auto-pauses when hit.</div>
                   </div>
                   <div class="form-row">
                     <div class="form-group">
-                      <label class="form-label">Max per hour</label>
+                      <label class="form-label">Max tokens/hour</label>
                       <div style="display:flex;gap:6px;flex-wrap:wrap">
-                        <button type="button" class="cap-btn cap-btn-sm" onclick="setHourlyCap(100)">$1</button>
-                        <button type="button" class="cap-btn cap-btn-sm" onclick="setHourlyCap(500)">$5</button>
-                        <button type="button" class="cap-btn cap-btn-sm" onclick="setHourlyCap(1000)">$10</button>
-                        <button type="button" class="cap-btn cap-btn-sm active" onclick="setHourlyCap(null)">None</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setHourlyTokenCap(100000)">100K</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setHourlyTokenCap(500000)">500K</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setHourlyTokenCap(1000000)">1M</button>
+                        <button type="button" class="cap-btn cap-btn-sm active" onclick="setHourlyTokenCap(null)">None</button>
                       </div>
-                      <input type="hidden" id="sk-hourly-cap" value="">
+                      <input type="hidden" id="sk-hourly-token-cap" value="">
                     </div>
                     <div class="form-group">
-                      <label class="form-label">Max per day</label>
+                      <label class="form-label">Max tokens/day</label>
                       <div style="display:flex;gap:6px;flex-wrap:wrap">
-                        <button type="button" class="cap-btn cap-btn-sm" onclick="setDailyCap(500)">$5</button>
-                        <button type="button" class="cap-btn cap-btn-sm" onclick="setDailyCap(1000)">$10</button>
-                        <button type="button" class="cap-btn cap-btn-sm" onclick="setDailyCap(2500)">$25</button>
-                        <button type="button" class="cap-btn cap-btn-sm active" onclick="setDailyCap(null)">None</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setDailyTokenCap(1000000)">1M</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setDailyTokenCap(5000000)">5M</button>
+                        <button type="button" class="cap-btn cap-btn-sm" onclick="setDailyTokenCap(10000000)">10M</button>
+                        <button type="button" class="cap-btn cap-btn-sm active" onclick="setDailyTokenCap(null)">None</button>
                       </div>
-                      <input type="hidden" id="sk-daily-cap" value="">
+                      <input type="hidden" id="sk-daily-token-cap" value="">
                     </div>
                   </div>
+                  <div class="form-hint" style="margin-top:8px;color:var(--t3)">Resets automatically every hour/day. Prevents runaway usage on your key.</div>
                 </div>
               </details>
 
@@ -959,22 +960,22 @@ function updateDiscount() {
   }).join('');
 }
 
-function setCap(cents) {
-  document.getElementById('sk-cap').value = cents || '';
+function setTokenCap(tokens) {
+  document.getElementById('sk-token-cap').value = tokens || '';
   const parent = event.target.parentElement;
   parent.querySelectorAll('.cap-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
 }
 
-function setHourlyCap(cents) {
-  document.getElementById('sk-hourly-cap').value = cents || '';
+function setHourlyTokenCap(tokens) {
+  document.getElementById('sk-hourly-token-cap').value = tokens || '';
   const parent = event.target.parentElement;
   parent.querySelectorAll('.cap-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
 }
 
-function setDailyCap(cents) {
-  document.getElementById('sk-daily-cap').value = cents || '';
+function setDailyTokenCap(tokens) {
+  document.getElementById('sk-daily-token-cap').value = tokens || '';
   const parent = event.target.parentElement;
   parent.querySelectorAll('.cap-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
@@ -1015,7 +1016,8 @@ function renderSellerKeys(keys) {
   container.innerHTML = keys.map(k => {
     const mode = k.optimization_mode || 'normal';
     const rl = k.rate_limit_info ? JSON.parse(k.rate_limit_info) : null;
-    const capPct = k.spending_cap_cents ? Math.min(100, Math.round(k.total_spent_cents / k.spending_cap_cents * 100)) : 0;
+    const fmt = (n) => n >= 1000000 ? (n/1000000).toFixed(1) + 'M' : n >= 1000 ? (n/1000).toFixed(0) + 'K' : n.toString();
+    const capPct = k.token_cap_total ? Math.min(100, Math.round((k.total_tokens_used || 0) / k.token_cap_total * 100)) : 0;
     return `<div class="card" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:10px">
@@ -1039,14 +1041,14 @@ function renderSellerKeys(keys) {
           <div class="mono" style="font-weight:700">$${(k.price_per_1m_output / 100).toFixed(2)}</div>
         </div>
         <div style="background:var(--sf);padding:8px 10px;border-radius:8px">
-          <div style="color:var(--t3);font-size:10px">TOTAL USED</div>
-          <div class="mono" style="font-weight:700">$${(k.total_spent_cents / 100).toFixed(2)}${k.spending_cap_cents ? ' / $' + (k.spending_cap_cents / 100).toFixed(2) : ''}</div>
-          ${k.spending_cap_cents ? `<div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:4px;overflow:hidden"><div style="height:100%;width:${capPct}%;background:${capPct > 80 ? 'var(--red)' : 'var(--ac)'};border-radius:2px"></div></div>` : ''}
+          <div style="color:var(--t3);font-size:10px">TOKENS USED</div>
+          <div class="mono" style="font-weight:700">${fmt(k.total_tokens_used || 0)}${k.token_cap_total ? ' / ' + fmt(k.token_cap_total) : ''}</div>
+          ${k.token_cap_total ? `<div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:4px;overflow:hidden"><div style="height:100%;width:${capPct}%;background:${capPct > 80 ? 'var(--red)' : 'var(--ac)'};border-radius:2px"></div></div>` : ''}
         </div>
         <div style="background:var(--sf);padding:8px 10px;border-radius:8px">
           <div style="color:var(--t3);font-size:10px">HOURLY / DAILY</div>
-          <div class="mono" style="font-weight:700;font-size:11px">${k.rate_limit_hourly_cents ? '$' + (k.rate_limit_hourly_cents / 100).toFixed(0) + '/hr' : '&#8734;'} &middot; ${k.rate_limit_daily_cents ? '$' + (k.rate_limit_daily_cents / 100).toFixed(0) + '/day' : '&#8734;'}</div>
-          <div class="mono" style="font-size:10px;color:var(--t3)">used: $${((k.hourly_spent_cents || 0) / 100).toFixed(2)}/hr &middot; $${((k.daily_spent_cents || 0) / 100).toFixed(2)}/day</div>
+          <div class="mono" style="font-weight:700;font-size:11px">${k.token_cap_hourly ? fmt(k.token_cap_hourly) + '/hr' : '&#8734;'} &middot; ${k.token_cap_daily ? fmt(k.token_cap_daily) + '/day' : '&#8734;'}</div>
+          <div class="mono" style="font-size:10px;color:var(--t3)">used: ${fmt(k.hourly_tokens_used || 0)}/hr &middot; ${fmt(k.daily_tokens_used || 0)}/day</div>
         </div>
       </div>
       ${rl ? `<div style="margin-top:8px;padding:6px 10px;background:var(--sf);border-radius:6px;font-size:10px;color:var(--t3);display:flex;gap:12px;flex-wrap:wrap">
@@ -1076,10 +1078,10 @@ async function addSellerKey(e) {
     label: document.getElementById('sk-label').value || provider + ' key',
     price_per_1m_input: parseInt(document.getElementById('sk-price-in').value),
     price_per_1m_output: parseInt(document.getElementById('sk-price-out').value),
-    spending_cap_cents: document.getElementById('sk-cap').value ? parseInt(document.getElementById('sk-cap').value) : null,
     optimization_mode: document.getElementById('sk-opt-mode').value || 'normal',
-    rate_limit_hourly_cents: document.getElementById('sk-hourly-cap').value ? parseInt(document.getElementById('sk-hourly-cap').value) : null,
-    rate_limit_daily_cents: document.getElementById('sk-daily-cap').value ? parseInt(document.getElementById('sk-daily-cap').value) : null,
+    token_cap_total: document.getElementById('sk-token-cap').value ? parseInt(document.getElementById('sk-token-cap').value) : null,
+    token_cap_hourly: document.getElementById('sk-hourly-token-cap').value ? parseInt(document.getElementById('sk-hourly-token-cap').value) : null,
+    token_cap_daily: document.getElementById('sk-daily-token-cap').value ? parseInt(document.getElementById('sk-daily-token-cap').value) : null,
   };
 
   try {

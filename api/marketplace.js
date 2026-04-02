@@ -87,6 +87,44 @@ router.get('/listings', (req, res) => {
   });
 });
 
+// Detailed listings — individual keys with pricing, capacity, trust signals
+router.get('/listings/detailed', (req, res) => {
+  const keys = db.getDetailedListings.all();
+  const fmt = (n) => n >= 1000000 ? (n/1000000).toFixed(1) + 'M' : n >= 1000 ? Math.round(n/1000) + 'K' : String(n);
+  res.json({
+    listings: keys.map(k => {
+      const listPrices = PROVIDER_LIST_PRICES[k.provider] || {};
+      const firstModel = Object.entries(listPrices)[0];
+      const discount = firstModel ? Math.round((1 - k.price_per_1m_input / firstModel[1].input) * 100) : null;
+      // Capacity: how much headroom is left
+      const totalCapacity = k.token_cap_total ? Math.max(0, k.token_cap_total - (k.total_tokens_used || 0)) : null;
+      const hourlyCapacity = k.token_cap_hourly ? Math.max(0, k.token_cap_hourly - (k.hourly_tokens_used || 0)) : null;
+      return {
+        id: k.id,
+        provider: k.provider,
+        label: k.label,
+        price_per_1m_input: k.price_per_1m_input,
+        price_per_1m_output: k.price_per_1m_output,
+        optimization_mode: k.optimization_mode,
+        verified: !!k.key_verified,
+        discount_pct: discount,
+        models: Object.keys(listPrices),
+        list_prices: listPrices,
+        capacity: {
+          total_remaining: totalCapacity,
+          total_remaining_fmt: totalCapacity !== null ? fmt(totalCapacity) : null,
+          hourly_remaining: hourlyCapacity,
+          hourly_remaining_fmt: hourlyCapacity !== null ? fmt(hourlyCapacity) : null,
+        },
+        provider_limits: k.rate_limit_info ? JSON.parse(k.rate_limit_info) : null,
+        created_at: k.created_at,
+      };
+    }),
+    providers: PROVIDER_LIST_PRICES,
+    commission_percent: COMMISSION_PERCENT,
+  });
+});
+
 // Provider reference prices
 router.get('/providers', (req, res) => {
   res.json({ providers: PROVIDER_LIST_PRICES, commission_percent: COMMISSION_PERCENT });
@@ -254,7 +292,7 @@ router.post('/seller/connect', requireAuth, async (req, res) => {
   try {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     const user = db.getUser.get(req.userId);
-    const baseUrl = process.env.APP_URL || 'https://www.terseai.org';
+    const baseUrl = process.env.APP_URL || 'https://www.pruneai.com';
 
     let connectId = user?.stripe_connect_id;
 
@@ -408,7 +446,7 @@ router.post('/buyer/topup', requireAuth, async (req, res) => {
 
   try {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    const baseUrl = process.env.APP_URL || 'https://www.terseai.org';
+    const baseUrl = process.env.APP_URL || 'https://www.pruneai.com';
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',

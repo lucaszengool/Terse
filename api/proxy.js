@@ -172,7 +172,7 @@ async function handleProxy(req, res) {
 
   const buyer = db.getUser.get(buyerKey.user_id);
   if (!buyer || buyer.buyer_balance_cents <= 0) {
-    return res.status(402).json({ error: { message: 'Insufficient balance. Top up at https://www.terseai.org/marketplace' } });
+    return res.status(402).json({ error: { message: 'Insufficient balance. Top up at https://www.pruneai.com/marketplace' } });
   }
 
   // 2. Parse request
@@ -228,7 +228,7 @@ async function handleProxy(req, res) {
   // Check buyer can afford estimated cost
   const estimatedCostCents = Math.ceil((preOptTokens / 1_000_000) * sellerKey.price_per_1m_input + ((body.max_tokens || 4096) / 1_000_000) * sellerKey.price_per_1m_output);
   if (buyer.buyer_balance_cents < estimatedCostCents && buyer.buyer_balance_cents < 10) {
-    return res.status(402).json({ error: { message: 'Insufficient balance. Top up at https://www.terseai.org/marketplace' } });
+    return res.status(402).json({ error: { message: 'Insufficient balance. Top up at https://www.pruneai.com/marketplace' } });
   }
 
   // 5. Optimize messages (using seller's chosen mode)

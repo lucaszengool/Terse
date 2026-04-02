@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terse Token Exchange — Buy & Sell AI API Tokens</title>
+  <title>PruneAI Token Exchange — Buy & Sell AI API Tokens</title>
   <meta name="description" content="Trade unused AI API tokens at a discount. Sell your Anthropic, OpenAI, or Google API capacity. Buy tokens at up to 50% off list price.">
   <meta name="theme-color" content="#0b0d17">
   <link rel="icon" href="/favicon.ico" sizes="16x16 32x32">
@@ -134,18 +134,62 @@
     .panel-grid{display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start}
     .panel-sidebar{position:sticky;top:90px}
 
-    /* LISTING CARDS */
-    .listing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px}
-    .listing-card{background:var(--bg1);border:1px solid var(--bd);border-radius:14px;padding:24px;transition:all .3s}
-    .listing-card:hover{border-color:var(--bdl);transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,0.3)}
-    .listing-provider{font-size:20px;font-weight:800;margin-bottom:4px}
-    .listing-keys{font-size:12px;color:var(--t3);margin-bottom:16px}
-    .listing-prices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .listing-price{background:var(--sf);border-radius:8px;padding:10px;text-align:center}
-    .listing-price-label{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
-    .listing-price-value{font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac)}
-    .listing-price-retail{font-size:10px;color:var(--t3);text-decoration:line-through;margin-top:1px}
-    .listing-discount{margin-top:12px;text-align:center;font-size:13px;font-weight:700;color:var(--ac);padding:6px;background:var(--acd);border-radius:8px}
+    /* ═══ MARKETPLACE LISTINGS (Trading-style) ═══ */
+    .market-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+    .market-search{flex:1;min-width:200px;padding:10px 16px 10px 40px;background:var(--bg1);border:1px solid var(--bd);border-radius:10px;color:var(--t1);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s;background-image:url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center}
+    .market-search:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(110,231,183,0.1)}
+    .market-search::placeholder{color:var(--t3)}
+    .filter-chips{display:flex;gap:6px;flex-wrap:wrap}
+    .filter-chip{padding:6px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:100px;font-size:12px;font-weight:600;color:var(--t3);cursor:pointer;transition:all .2s;white-space:nowrap}
+    .filter-chip:hover{color:var(--t2);border-color:var(--bdl)}
+    .filter-chip.active{background:var(--acd);border-color:var(--acm);color:var(--ac)}
+    .market-sort{padding:7px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;color:var(--t2);font-size:12px;font-family:inherit;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.38)' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+
+    .listing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:32px}
+    .listing-card{background:var(--bg1);border:1px solid var(--bd);border-radius:16px;padding:0;transition:all .3s;overflow:hidden;position:relative}
+    .listing-card:hover{border-color:var(--acm);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.35)}
+    .listing-card-header{padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between}
+    .listing-card-provider{display:flex;align-items:center;gap:10px}
+    .listing-card-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+    .listing-card-icon.anthropic{background:rgba(204,169,114,0.12);color:#cca972}
+    .listing-card-icon.openai{background:rgba(116,185,143,0.12);color:#74b98f}
+    .listing-card-icon.google{background:rgba(96,165,250,0.12);color:#60a5fa}
+    .listing-card-name{font-size:15px;font-weight:700}
+    .listing-card-sub{font-size:11px;color:var(--t3)}
+    .listing-discount-badge{padding:4px 10px;border-radius:100px;font-size:12px;font-weight:800;background:var(--acd);color:var(--ac)}
+    .listing-discount-badge.hot{background:rgba(255,107,107,0.12);color:#ff6b6b;animation:pulse-badge 2s infinite}
+    @keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.7}}
+
+    .listing-card-body{padding:16px 20px}
+    .listing-price-row{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+    .listing-price-current{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+    .listing-price-was{font-size:13px;color:var(--t3);text-decoration:line-through}
+    .listing-price-unit{font-size:11px;color:var(--t3)}
+    .listing-prices-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+    .listing-price-cell{background:var(--sf);border-radius:8px;padding:10px 12px}
+    .listing-price-cell-label{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;font-weight:600}
+    .listing-price-cell-val{font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-top:2px}
+    .listing-price-cell-was{font-size:10px;color:var(--t3);text-decoration:line-through}
+
+    .listing-card-footer{padding:0 20px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .listing-tags{display:flex;gap:6px;flex-wrap:wrap}
+    .listing-tag{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:var(--sf);border-radius:6px;font-size:10px;color:var(--t3);font-weight:500}
+    .listing-tag.verified{color:var(--ac);background:var(--acd)}
+    .listing-tag.opt{color:var(--blue);background:rgba(96,165,250,0.08)}
+    .listing-capacity{margin-top:10px;padding:0 20px 16px}
+    .listing-capacity-label{font-size:10px;color:var(--t3);margin-bottom:4px;display:flex;justify-content:space-between}
+    .listing-capacity-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+    .listing-capacity-fill{height:100%;border-radius:2px;transition:width .5s}
+    .listing-models{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+    .listing-model-tag{padding:2px 7px;background:var(--sf);border-radius:4px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--t3)}
+
+    .market-stats{display:flex;gap:28px;margin-bottom:20px;padding:16px 20px;background:var(--bg1);border:1px solid var(--bd);border-radius:12px;flex-wrap:wrap}
+    .market-stat-val{font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+    .market-stat-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+
+    .market-view-toggle{display:flex;gap:2px;background:var(--sf);border-radius:8px;padding:2px}
+    .view-btn{padding:5px 10px;border:none;background:none;color:var(--t3);cursor:pointer;border-radius:6px;font-size:12px;transition:all .2s}
+    .view-btn.active{background:var(--bg2);color:var(--t1)}
 
     /* EMPTY STATE */
     .empty{text-align:center;padding:48px 20px;color:var(--t3)}
@@ -267,7 +311,7 @@
 <body>
 
 <nav id="nav">
-  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>PruneAI</a>
   <div class="nav-links">
     <a href="/">Home</a>
     <a href="/marketplace" class="active">Token Exchange</a>
@@ -310,7 +354,7 @@
   <!-- HERO -->
   <div class="hero-mini">
     <h1>Token <span class="gradient-text">Exchange</span></h1>
-    <p class="sub">Trade unused AI API tokens at a discount. Sellers list spare capacity, buyers get cheaper access. Terse optimizes every request for maximum savings.</p>
+    <p class="sub">Trade unused AI API tokens at a discount. Sellers list spare capacity, buyers get cheaper access. PruneAI optimizes every request for maximum savings.</p>
   </div>
 
   <!-- PUBLIC: How It Works -->
@@ -323,11 +367,11 @@
     <div class="how-card">
       <div class="how-num">2</div>
       <h3>Buyers Get a Key</h3>
-      <p>Top up balance, generate a Terse key, paste one command in terminal. Works with any SDK.</p>
+      <p>Top up balance, generate a PruneAI key, paste one command in terminal. Works with any SDK.</p>
     </div>
     <div class="how-card">
       <div class="how-num">3</div>
-      <h3>Terse Optimizes</h3>
+      <h3>PruneAI Optimizes</h3>
       <p>Every request is compressed before forwarding — 30-60% less actual token usage. Everyone wins.</p>
     </div>
   </div>
@@ -348,12 +392,33 @@
         <tr><td><span class="provider provider-google">Google</span></td><td class="mono" style="font-size:12px">gemini-2.5-flash</td><td class="mono">$0.30</td><td class="mono">$2.50</td><td class="mono" style="color:var(--ac)">$0.18 - $0.24 in / $1.50 - $2 out</td></tr>
       </table>
     </div>
-    <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center">Suggested sell prices are 20-40% below retail. Terse takes 15% commission. Buyers save, sellers earn, Terse optimizes every request for extra margin.</div>
+    <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center">Suggested sell prices are 20-40% below retail. PruneAI takes 15% commission. Buyers save, sellers earn, PruneAI optimizes every request for extra margin.</div>
   </div>
 
-  <!-- PUBLIC: Live Listings -->
+  <!-- PUBLIC: Live Marketplace -->
   <div class="section" id="listings-section">
-    <div class="section-title">Available Now</div>
+    <!-- Market stats bar -->
+    <div class="market-stats" id="market-stats" style="display:none"></div>
+
+    <!-- Toolbar: search + filters + sort -->
+    <div class="market-toolbar">
+      <input class="market-search" id="market-search" placeholder="Search by provider, model, or label..." oninput="filterListings()">
+      <div class="filter-chips">
+        <button class="filter-chip active" onclick="setProviderFilter('all', this)">All</button>
+        <button class="filter-chip" onclick="setProviderFilter('anthropic', this)">Anthropic</button>
+        <button class="filter-chip" onclick="setProviderFilter('openai', this)">OpenAI</button>
+        <button class="filter-chip" onclick="setProviderFilter('google', this)">Google</button>
+      </div>
+      <select class="market-sort" id="market-sort" onchange="filterListings()">
+        <option value="price-asc">Price: Low to High</option>
+        <option value="price-desc">Price: High to Low</option>
+        <option value="discount">Biggest Discount</option>
+        <option value="capacity">Most Capacity</option>
+        <option value="newest">Newest First</option>
+      </select>
+    </div>
+
+    <!-- Listings grid -->
     <div class="listing-grid" id="listings-grid">
       <div class="empty">
         <div class="empty-icon">&#9202;</div>
@@ -462,7 +527,7 @@
               <!-- Optimization mode -->
               <div class="form-group" style="margin-top:12px">
                 <label class="form-label">Optimization level</label>
-                <div class="form-hint" style="margin-bottom:8px">Terse compresses requests before using your key, reducing actual token spend.</div>
+                <div class="form-hint" style="margin-bottom:8px">PruneAI compresses requests before using your key, reducing actual token spend.</div>
                 <div class="opt-mode-picker" id="opt-mode-picker">
                   <button type="button" class="opt-btn" data-mode="off" onclick="pickOptMode('off')">
                     <span class="opt-btn-name">Off</span><span class="opt-btn-desc">No optimization</span>
@@ -690,7 +755,7 @@
 
     <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Quick setup — paste in your terminal:</div>
     <div class="code-block mono" id="modal-setup-cmd" style="font-size:11px;line-height:1.7;white-space:pre-wrap;background:var(--bg0);cursor:pointer" onclick="copyModalSetup()"></div>
-    <div style="font-size:11px;color:var(--t3);margin-top:6px" id="modal-setup-note">Sets env vars so any SDK/tool picks up your Terse key automatically.</div>
+    <div style="font-size:11px;color:var(--t3);margin-top:6px" id="modal-setup-note">Sets env vars so any SDK/tool picks up your PruneAI key automatically.</div>
 
     <div class="modal-actions" style="margin-top:20px">
       <button class="btn btn-secondary" onclick="closeKeyModal()">Done</button>
@@ -703,11 +768,11 @@
 <div class="toast" id="toast"></div>
 
 <footer style="padding:40px;border-top:1px solid var(--bd);text-align:center;font-size:12px;color:var(--t3);margin-top:40px">
-  &copy; 2026 Terse &middot; <a href="/" style="color:var(--ac)">Home</a> &middot; <a href="/privacy" style="color:var(--ac)">Privacy</a> &middot; Terse takes a <span class="mono" style="color:var(--ac)">15%</span> commission on each transaction
+  &copy; 2026 PruneAI &middot; <a href="/" style="color:var(--ac)">Home</a> &middot; <a href="/privacy" style="color:var(--ac)">Privacy</a> &middot; PruneAI takes a <span class="mono" style="color:var(--ac)">15%</span> commission on each transaction
 </footer>
 
 <!-- Clerk -->
-<script async crossorigin="anonymous" data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck" src="https://clerk.terseai.org/npm/@clerk/clerk-js@5/dist/clerk.browser.js" type="text/javascript"></script>
+<script async crossorigin="anonymous" data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck" src="https://clerk.pruneai.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js" type="text/javascript"></script>
 
 <script>
 // ═══ STATE ═══
@@ -827,45 +892,162 @@ function toast(msg, type = 'success') {
   setTimeout(() => el.classList.remove('show'), 3500);
 }
 
-// ═══ LISTINGS (PUBLIC) ═══
+// ═══ LISTINGS (PUBLIC — Trading-style) ═══
+let allListings = [];
+let currentProviderFilter = 'all';
+
 async function loadListings() {
   try {
-    const res = await fetch(API + '/listings');
+    const res = await fetch(API + '/listings/detailed');
     const data = await res.json();
-    const grid = document.getElementById('listings-grid');
-    if (!data.listings?.length) {
-      grid.innerHTML = `<div class="empty"><div class="empty-icon">&#128722;</div><div class="empty-text">No listings yet. Be the first seller!</div></div>`;
-      return;
+    allListings = data.listings || [];
+    renderMarketStats(allListings);
+    filterListings();
+  } catch (e) {
+    // Fallback to old endpoint
+    try {
+      const res = await fetch(API + '/listings');
+      const data = await res.json();
+      allListings = (data.listings || []).map(l => ({
+        provider: l.provider, label: l.provider + ' keys',
+        price_per_1m_input: l.min_price_input, price_per_1m_output: l.min_price_output,
+        discount_pct: null, verified: true, optimization_mode: 'normal',
+        models: Object.keys(l.list_prices || {}), list_prices: l.list_prices || {},
+        capacity: { total_remaining: null }, created_at: null,
+      }));
+      filterListings();
+    } catch (e2) { console.error('loadListings:', e2); }
+  }
+}
+
+function renderMarketStats(listings) {
+  const statsEl = document.getElementById('market-stats');
+  if (!listings.length) { statsEl.style.display = 'none'; return; }
+  const providers = new Set(listings.map(l => l.provider));
+  const avgDiscount = listings.filter(l => l.discount_pct > 0).reduce((a, l) => a + l.discount_pct, 0) / Math.max(1, listings.filter(l => l.discount_pct > 0).length);
+  const bestDiscount = Math.max(0, ...listings.map(l => l.discount_pct || 0));
+  statsEl.style.display = 'flex';
+  statsEl.innerHTML = `
+    <div><div class="market-stat-val">${listings.length}</div><div class="market-stat-lbl">Active Keys</div></div>
+    <div><div class="market-stat-val">${providers.size}</div><div class="market-stat-lbl">Providers</div></div>
+    <div><div class="market-stat-val">${Math.round(avgDiscount)}%</div><div class="market-stat-lbl">Avg Discount</div></div>
+    <div><div class="market-stat-val" style="color:var(--red)">${bestDiscount}%</div><div class="market-stat-lbl">Best Deal</div></div>
+  `;
+}
+
+function setProviderFilter(provider, btn) {
+  currentProviderFilter = provider;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  filterListings();
+}
+
+function filterListings() {
+  const query = (document.getElementById('market-search').value || '').toLowerCase();
+  const sort = document.getElementById('market-sort').value;
+  const providerNames = { anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google' };
+  const providerIcons = { anthropic: 'A', openai: 'O', google: 'G' };
+  const modeLabels = { off: 'No opt', soft: 'Soft', normal: 'Normal', aggressive: 'Max' };
+  const fmt = (n) => n >= 1000000 ? (n/1000000).toFixed(1) + 'M' : n >= 1000 ? Math.round(n/1000) + 'K' : String(n || 0);
+
+  let filtered = allListings.filter(l => {
+    if (currentProviderFilter !== 'all' && l.provider !== currentProviderFilter) return false;
+    if (query) {
+      const searchable = [l.provider, l.label, ...(l.models || [])].join(' ').toLowerCase();
+      if (!searchable.includes(query)) return false;
     }
-    grid.innerHTML = data.listings.map(l => {
-      const providerNames = { anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google' };
-      const providerClass = 'provider-' + l.provider;
-      // Get first model retail price for discount calc
-      const models = l.list_prices || {};
-      const firstModel = Object.values(models)[0];
-      const discount = firstModel ? Math.round((1 - l.min_price_input / firstModel.input) * 100) : null;
-      return `
-        <div class="listing-card">
-          <div class="listing-provider"><span class="provider ${providerClass}">${providerNames[l.provider] || l.provider}</span></div>
-          <div class="listing-keys">${l.available_keys} key${l.available_keys > 1 ? 's' : ''} available</div>
-          <div class="listing-prices">
-            <div class="listing-price">
-              <div class="listing-price-label">Input / 1M</div>
-              <div class="listing-price-value">$${(l.min_price_input / 100).toFixed(2)}</div>
-              ${firstModel ? `<div class="listing-price-retail">$${(firstModel.input / 100).toFixed(2)}</div>` : ''}
-            </div>
-            <div class="listing-price">
-              <div class="listing-price-label">Output / 1M</div>
-              <div class="listing-price-value">$${(l.min_price_output / 100).toFixed(2)}</div>
-              ${firstModel ? `<div class="listing-price-retail">$${(firstModel.output / 100).toFixed(2)}</div>` : ''}
+    return true;
+  });
+
+  // Sort
+  if (sort === 'price-asc') filtered.sort((a, b) => a.price_per_1m_input - b.price_per_1m_input);
+  else if (sort === 'price-desc') filtered.sort((a, b) => b.price_per_1m_input - a.price_per_1m_input);
+  else if (sort === 'discount') filtered.sort((a, b) => (b.discount_pct || 0) - (a.discount_pct || 0));
+  else if (sort === 'capacity') filtered.sort((a, b) => (b.capacity?.total_remaining || Infinity) - (a.capacity?.total_remaining || Infinity));
+  else if (sort === 'newest') filtered.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+
+  const grid = document.getElementById('listings-grid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">&#128722;</div><div class="empty-text">${allListings.length ? 'No listings match your filters' : 'No listings yet. Be the first seller!'}</div></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(l => {
+    const firstModel = Object.entries(l.list_prices || {})[0];
+    const retailInput = firstModel ? firstModel[1].input : null;
+    const retailOutput = firstModel ? firstModel[1].output : null;
+    const discount = l.discount_pct || 0;
+    const isHot = discount >= 40;
+    const capTotal = l.capacity?.total_remaining;
+    const capPct = (l.capacity?.total_remaining !== null && l.capacity?.total_remaining !== undefined)
+      ? Math.min(100, Math.round((1 - l.capacity.total_remaining / (l.capacity.total_remaining + 1)) * 100)) : null;
+    // Better capacity calc: used / total
+    let usedPct = null;
+    if (capTotal !== null && capTotal !== undefined) {
+      // We only have remaining, estimate used ratio
+      usedPct = 0; // capacity bar shows remaining
+    }
+
+    return `
+      <div class="listing-card">
+        <div class="listing-card-header">
+          <div class="listing-card-provider">
+            <div class="listing-card-icon ${l.provider}">${providerIcons[l.provider] || '?'}</div>
+            <div>
+              <div class="listing-card-name">${providerNames[l.provider] || l.provider}</div>
+              <div class="listing-card-sub">${l.label || 'API Key'}</div>
             </div>
           </div>
-          ${discount > 0 ? `<div class="listing-discount">Up to ${discount}% off retail</div>` : ''}
-        </div>`;
-    }).join('');
-  } catch (e) {
-    console.error('loadListings:', e);
-  }
+          ${discount > 0 ? `<div class="listing-discount-badge${isHot ? ' hot' : ''}">${isHot ? 'HOT ' : ''}${discount}% off</div>` : ''}
+        </div>
+
+        <div class="listing-card-body">
+          <div class="listing-price-row">
+            <span class="listing-price-current">$${(l.price_per_1m_input / 100).toFixed(2)}</span>
+            ${retailInput ? `<span class="listing-price-was">$${(retailInput / 100).toFixed(2)}</span>` : ''}
+            <span class="listing-price-unit">/ 1M input tokens</span>
+          </div>
+
+          <div class="listing-prices-grid">
+            <div class="listing-price-cell">
+              <div class="listing-price-cell-label">Input / 1M</div>
+              <div class="listing-price-cell-val" style="color:var(--ac)">$${(l.price_per_1m_input / 100).toFixed(2)}</div>
+              ${retailInput ? `<div class="listing-price-cell-was">$${(retailInput / 100).toFixed(2)}</div>` : ''}
+            </div>
+            <div class="listing-price-cell">
+              <div class="listing-price-cell-label">Output / 1M</div>
+              <div class="listing-price-cell-val" style="color:var(--ac)">$${(l.price_per_1m_output / 100).toFixed(2)}</div>
+              ${retailOutput ? `<div class="listing-price-cell-was">$${(retailOutput / 100).toFixed(2)}</div>` : ''}
+            </div>
+          </div>
+
+          <div class="listing-models">
+            ${(l.models || []).slice(0, 4).map(m => `<span class="listing-model-tag">${m.replace(/-\d{8}$/, '')}</span>`).join('')}
+            ${(l.models || []).length > 4 ? `<span class="listing-model-tag">+${l.models.length - 4}</span>` : ''}
+          </div>
+        </div>
+
+        ${capTotal !== null ? `
+        <div class="listing-capacity">
+          <div class="listing-capacity-label">
+            <span>Capacity remaining</span>
+            <span style="color:var(--ac)">${l.capacity.total_remaining_fmt || fmt(capTotal)} tokens</span>
+          </div>
+          <div class="listing-capacity-bar">
+            <div class="listing-capacity-fill" style="width:85%;background:var(--ac)"></div>
+          </div>
+        </div>` : ''}
+
+        <div class="listing-card-footer">
+          <div class="listing-tags">
+            ${l.verified ? '<span class="listing-tag verified">&#10003; Verified</span>' : '<span class="listing-tag">Unverified</span>'}
+            <span class="listing-tag opt">${modeLabels[l.optimization_mode] || 'Normal'} opt</span>
+            ${l.capacity?.hourly_remaining_fmt ? `<span class="listing-tag">${l.capacity.hourly_remaining_fmt}/hr</span>` : ''}
+          </div>
+          ${discount > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--ac)">Save $${((retailInput - l.price_per_1m_input) / 100).toFixed(2)}/1M</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 async function loadProviders() {
@@ -1214,7 +1396,7 @@ async function generateBuyerKey() {
   lastGeneratedKey = res.key;
   document.getElementById('key-reveal').textContent = res.key;
   // Show terminal setup command in the modal
-  const cmd = `export ANTHROPIC_API_KEY="${res.key}"\nexport ANTHROPIC_BASE_URL="https://www.terseai.org/api/proxy"\nexport OPENAI_API_KEY="${res.key}"\nexport OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`;
+  const cmd = `export ANTHROPIC_API_KEY="${res.key}"\nexport ANTHROPIC_BASE_URL="https://www.pruneai.com/api/proxy"\nexport OPENAI_API_KEY="${res.key}"\nexport OPENAI_BASE_URL="https://www.pruneai.com/api/proxy/v1"`;
   document.getElementById('modal-setup-cmd').textContent = cmd;
   document.getElementById('key-modal').classList.add('show');
   loadBuyerData();
@@ -1272,29 +1454,29 @@ function getKeyPlaceholder() {
 const SETUP_CONFIGS = {
   'terminal': {
     title: 'Terminal — paste this, then use any SDK normally',
-    note: 'Sets env vars so Anthropic/OpenAI SDKs auto-detect your Terse key. Works in current shell session. Add to ~/.bashrc or ~/.zshrc to persist.',
-    cmd: (key) => `# Paste in terminal — all SDKs will use Terse automatically
+    note: 'Sets env vars so Anthropic/OpenAI SDKs auto-detect your PruneAI key. Works in current shell session. Add to ~/.bashrc or ~/.zshrc to persist.',
+    cmd: (key) => `# Paste in terminal — all SDKs will use PruneAI automatically
 export ANTHROPIC_API_KEY="${key}"
-export ANTHROPIC_BASE_URL="https://www.terseai.org/api/proxy"
+export ANTHROPIC_BASE_URL="https://www.pruneai.com/api/proxy"
 export OPENAI_API_KEY="${key}"
-export OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`,
+export OPENAI_BASE_URL="https://www.pruneai.com/api/proxy/v1"`,
   },
   'claude-code': {
     title: 'Claude Code — paste in terminal before running',
-    note: 'Claude Code reads ANTHROPIC_API_KEY and ANTHROPIC_BASE_URL from env. This routes all requests through Terse.',
+    note: 'Claude Code reads ANTHROPIC_API_KEY and ANTHROPIC_BASE_URL from env. This routes all requests through PruneAI.',
     cmd: (key) => `export ANTHROPIC_API_KEY="${key}"
-export ANTHROPIC_BASE_URL="https://www.terseai.org/api/proxy"
+export ANTHROPIC_BASE_URL="https://www.pruneai.com/api/proxy"
 # Then just run claude as normal`,
   },
   'cursor': {
     title: 'Cursor — add to Settings > Models > OpenAI',
     note: 'In Cursor, go to Settings > Models. Set the API key and override the base URL.',
     cmd: (key) => `API Key: ${key}
-Base URL: https://www.terseai.org/api/proxy/v1
+Base URL: https://www.pruneai.com/api/proxy/v1
 
 # Or via terminal before launching Cursor:
 export OPENAI_API_KEY="${key}"
-export OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`,
+export OPENAI_BASE_URL="https://www.pruneai.com/api/proxy/v1"`,
   },
   'python': {
     title: 'Python — 2 lines to change',
@@ -1303,14 +1485,14 @@ export OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`,
 import anthropic
 client = anthropic.Anthropic(
     api_key="${key}",
-    base_url="https://www.terseai.org/api/proxy",
+    base_url="https://www.pruneai.com/api/proxy",
 )
 
 # OpenAI
 from openai import OpenAI
 client = OpenAI(
     api_key="${key}",
-    base_url="https://www.terseai.org/api/proxy/v1",
+    base_url="https://www.pruneai.com/api/proxy/v1",
 )`,
   },
   'node': {
@@ -1320,20 +1502,20 @@ client = OpenAI(
 import Anthropic from "@anthropic-ai/sdk";
 const client = new Anthropic({
   apiKey: "${key}",
-  baseURL: "https://www.terseai.org/api/proxy",
+  baseURL: "https://www.pruneai.com/api/proxy",
 });
 
 // OpenAI
 import OpenAI from "openai";
 const client = new OpenAI({
   apiKey: "${key}",
-  baseURL: "https://www.terseai.org/api/proxy/v1",
+  baseURL: "https://www.pruneai.com/api/proxy/v1",
 });`,
   },
   'curl': {
     title: 'cURL — direct API call',
     note: 'Standard Anthropic/OpenAI API format, just different URL.',
-    cmd: (key) => `curl https://www.terseai.org/api/proxy/v1/messages \\
+    cmd: (key) => `curl https://www.pruneai.com/api/proxy/v1/messages \\
   -H "Authorization: Bearer ${key}" \\
   -H "Content-Type: application/json" \\
   -H "anthropic-version: 2023-06-01" \\

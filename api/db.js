@@ -253,6 +253,21 @@ const getListings = db.prepare(`
   GROUP BY provider
 `);
 
+// ── Detailed listings (public, per-key, no secrets exposed) ──
+const getDetailedListings = db.prepare(`
+  SELECT
+    id, provider, label, price_per_1m_input, price_per_1m_output,
+    optimization_mode, key_verified,
+    token_cap_total, token_cap_hourly, token_cap_daily,
+    total_tokens_used, hourly_tokens_used, daily_tokens_used,
+    rate_limit_info, created_at
+  FROM seller_keys
+  WHERE is_active = 1
+    AND (spending_cap_cents IS NULL OR total_spent_cents < spending_cap_cents)
+    AND (token_cap_total IS NULL OR total_tokens_used < token_cap_total)
+  ORDER BY price_per_1m_input ASC
+`);
+
 // ── Notification helpers ──
 const addNotification = db.prepare(`
   INSERT INTO notifications (id, user_id, type, title, body)
@@ -275,6 +290,6 @@ module.exports = {
   addTransaction, getTransactionsByBuyer, getTransactionsBySeller,
   getSellerEarnings, getBuyerSpending,
   addTopup, addPayout, updatePayoutStatus,
-  getListings,
+  getListings, getDetailedListings,
   addNotification, getNotifications, markNotificationRead, markNotificationEmailed, getUnreadCount,
 };

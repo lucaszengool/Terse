@@ -6,6 +6,9 @@ Thumbs.db
 *.log
 .env
 
+# Marketplace database
+data/
+
 # Tauri build artifacts
 src-tauri/target/
 

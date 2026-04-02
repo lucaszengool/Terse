@@ -1,9 +1,15 @@
 const express = require('express');
 const Stripe = require('stripe');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Marketplace modules
+const { router: marketplaceRouter } = require('./marketplace');
+const proxyRouter = require('./proxy');
+const db = require('./db');
 
 // Stripe setup
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
@@ -58,6 +64,20 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     switch (type) {
       case 'checkout.session.completed': {
         const session = data.object;
+        // Handle marketplace top-up
+        if (session.metadata?.type === 'marketplace_topup') {
+          const userId = session.metadata.clerk_user_id;
+          const amount = parseInt(session.metadata.amount_cents);
+          if (userId && amount > 0) {
+            db.ensureUser(userId);
+            db.creditBuyerBalance.run(amount, userId);
+            const topupId = require('crypto').randomUUID();
+            db.addTopup.run({ id: topupId, user_id: userId, amount_cents: amount, stripe_payment_id: session.payment_intent });
+            console.log(`[marketplace] top-up $${(amount / 100).toFixed(2)} for ${userId}`);
+          }
+          break;
+        }
+        // Handle subscription checkout
         const clerkUserId = session.metadata?.clerk_user_id;
         const tier = session.metadata?.tier;
         if (clerkUserId && tier) {
@@ -146,11 +166,11 @@ async function syncSubscription(sub) {
 // JSON body for all other routes
 app.use(express.json());
 
-// CORS for Tauri app
+// CORS for Tauri app + marketplace
 app.use('/api', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, anthropic-version');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -481,6 +501,19 @@ app.post('/api/auth/delete', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Marketplace API routes ──
+app.use('/api/marketplace', marketplaceRouter);
+
+// ── LLM Proxy (rate-limited) ──
+const proxyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: { error: { message: 'Rate limit exceeded. Max 120 requests/minute.' } },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/proxy', proxyLimiter, proxyRouter);
+
 // ── Health check ──
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
@@ -489,7 +522,7 @@ app.get('/api/health', (req, res) => {
 // ── Serve landing page ──
 app.use(express.static(path.join(__dirname, '..', 'landing'), { extensions: ['html'] }));
 
-// SPA fallback
+// SPA fallback — but not for marketplace (it has its own HTML)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'landing', 'index.html'));
 });

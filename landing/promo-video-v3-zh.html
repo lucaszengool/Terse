@@ -25,7 +25,8 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 .slide.active{opacity:1;pointer-events:auto}
 
 /* Screenshot as background — fills entire viewport */
-.scene-bg{position:absolute;inset:0;background-size:contain;background-repeat:no-repeat;background-position:center}
+.scene-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.scene-bg img{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
 
 /* Animated overlays positioned on top of screenshots */
 .overlay{position:absolute;opacity:0;transition:all .6s var(--ease-out);pointer-events:none}
@@ -111,7 +112,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <!-- S1: Welcome (mac_zh_01) -->
 <div class="slide" id="s1">
-  <div class="scene-bg" style="background-image:url(/mac-screenshots/zh/mac_zh_01.png)"></div>
+  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_01.png" alt=""></div>
   <!-- Animated: color dots pulse one by one -->
   <div class="overlay" id="o1a" style="top:42%;left:40%;"><div class="pulse-ring"></div></div>
   <div class="overlay" id="o1b" style="bottom:12%;right:8%">
@@ -121,7 +122,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <!-- S2: Main UI (mac_zh_02) -->
 <div class="slide" id="s2">
-  <div class="scene-bg" style="background-image:url(/mac-screenshots/zh/mac_zh_02.png)"></div>
+  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_02.png" alt=""></div>
   <div class="overlay" id="o2a" style="top:56%;left:50%;transform:translateX(-50%)">
     <div class="callout no-arrow" style="text-align:center">粘贴提示词 → 点击优化 → <span class="accent">立省 40-70%</span><div class="sub">免费用户每周 1500 次优化</div></div>
   </div>
@@ -133,7 +134,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <!-- S3: Connect (mac_zh_03) -->
 <div class="slide" id="s3">
-  <div class="scene-bg" style="background-image:url(/mac-screenshots/zh/mac_zh_03.png)"></div>
+  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_03.png" alt=""></div>
   <div class="overlay" id="o3a" style="top:36%;left:50%;transform:translateX(-50%)">
     <div class="pulse-ring"></div>
   </div>
@@ -144,7 +145,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <!-- S4: Agent Monitor (mac_zh_04) -->
 <div class="slide" id="s4">
-  <div class="scene-bg" style="background-image:url(/mac-screenshots/zh/mac_zh_04.png)"></div>
+  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_04.png" alt=""></div>
   <!-- Animated live feed -->
   <div class="overlay" id="o4a" style="top:10%;right:5%;width:320px">
     <div class="ex-card" style="max-width:320px">
@@ -162,7 +163,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <!-- S5: Popup Bar (mac_zh_05) -->
 <div class="slide" id="s5">
-  <div class="scene-bg" style="background-image:url(/mac-screenshots/zh/mac_zh_05.png)"></div>
+  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_05.png" alt=""></div>
   <div class="overlay" id="o5a" style="top:24%;right:8%">
     <div class="callout arrow-top arrow-right"><span class="accent">3 种模式</span> — Soft · Normal · Aggr<div class="sub">不同场景用不同压缩级别</div></div>
   </div>
@@ -173,7 +174,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <!-- S6: Settings (mac_zh_06) -->
 <div class="slide" id="s6">
-  <div class="scene-bg" style="background-image:url(/mac-screenshots/zh/mac_zh_06.png)"></div>
+  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_06.png" alt=""></div>
   <div class="overlay" id="o6a" style="top:30%;right:5%">
     <div class="callout arrow-right"><span class="accent">9 个开关</span>，精准控制<div class="sub">去废话 · 去客气 · 去犹豫 · 缩短短语 · 压缩代码...</div></div>
   </div>
@@ -181,7 +182,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <!-- S7: Full View (mac_zh_07) -->
 <div class="slide" id="s7">
-  <div class="scene-bg" style="background-image:url(/mac-screenshots/zh/mac_zh_07.png)"></div>
+  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_07.png" alt=""></div>
   <div class="overlay" id="o7a" style="top:8%;left:50%;transform:translateX(-50%)">
     <div class="callout no-arrow" style="text-align:center"><span class="accent">会话管理 + 代理监控</span> 并排显示<div class="sub">左边管理连接，右边实时追踪 Claude Code 的每一步</div></div>
   </div>
@@ -189,7 +190,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <!-- S8: Stats (mac_zh_09 — shows 21.3K saved) -->
 <div class="slide" id="s8">
-  <div class="scene-bg" style="background-image:url(/mac-screenshots/zh/mac_zh_09.png)"></div>
+  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_09.png" alt=""></div>
   <div class="overlay" id="o8a" style="bottom:10%;left:50%;transform:translateX(-50%)">
     <div style="display:flex;gap:12px">
       <div class="counter-box"><div class="counter-val" id="c8s" style="font-size:32px">0</div><div class="counter-label">tokens saved</div></div>
@@ -201,7 +202,7 @@ body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-appl
 
 <!-- S9: Privacy (mac_zh_10) -->
 <div class="slide" id="s9">
-  <div class="scene-bg" style="background-image:url(/mac-screenshots/zh/mac_zh_10.png)"></div>
+  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_10.png" alt=""></div>
   <div class="overlay" id="o9a" style="bottom:12%;left:50%;transform:translateX(-50%)">
     <div class="callout no-arrow" style="text-align:center;font-size:15px"><span class="accent">100% 本地运行</span> — 零云端，零追踪<div class="sub">你的代码和提示词绝不离开你的 Mac。没有服务器，没有日志。</div></div>
   </div>

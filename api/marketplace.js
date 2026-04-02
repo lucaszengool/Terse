@@ -459,4 +459,92 @@ router.post('/notifications/:id/read', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ════════════════════════════════════════
+//  ADMIN TEST — seeds test seller + buyer data for e2e testing
+//  Protected by ADMIN_TEST_SECRET env var. Remove after testing.
+// ════════════════════════════════════════
+router.post('/admin/seed-test', async (req, res) => {
+  const secret = req.headers['x-admin-secret'];
+  if (!secret || secret !== process.env.ADMIN_TEST_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const { seller_api_key, provider } = req.body;
+  if (!seller_api_key || !provider) {
+    return res.status(400).json({ error: 'Missing seller_api_key or provider' });
+  }
+
+  try {
+    // 1. Create test seller user
+    const sellerId = 'test_seller_001';
+    db.ensureUser(sellerId, 'test-seller@test.com');
+
+    // 2. Encrypt and add seller key with discount pricing (50% off list)
+    const { encrypted, iv, tag } = encrypt(seller_api_key);
+    const sellerKeyId = crypto.randomUUID();
+    db.addSellerKey.run({
+      id: sellerKeyId,
+      user_id: sellerId,
+      provider,
+      encrypted_key: encrypted,
+      key_iv: iv,
+      key_tag: tag,
+      label: `Test ${provider} key`,
+      price_per_1m_input: 50,   // 50 cents per 1M input
+      price_per_1m_output: 250, // $2.50 per 1M output
+      spending_cap_cents: 10000, // $100 cap
+      models_allowed: null,
+      optimization_mode: 'normal',
+      rate_limit_hourly_cents: null,
+      rate_limit_daily_cents: null,
+      key_verified: 1,
+    });
+
+    // 3. Create test buyer user with $10 balance
+    const buyerId = 'test_buyer_001';
+    db.ensureUser(buyerId, 'test-buyer@test.com');
+    db.creditBuyerBalance.run(1000, buyerId); // $10
+
+    // 4. Generate buyer key
+    const rawKey = `terse_bk_${crypto.randomBytes(24).toString('hex')}`;
+    const keyHash = db.hashKey(rawKey);
+    const buyerKeyId = crypto.randomUUID();
+    db.addBuyerKey.run({
+      id: buyerKeyId,
+      user_id: buyerId,
+      key_hash: keyHash,
+      label: 'Test buyer key',
+    });
+
+    res.json({
+      message: 'Test data seeded successfully',
+      buyer_key: rawKey,
+      seller_key_id: sellerKeyId,
+      buyer_balance_cents: 1000,
+      instructions: `Test with: curl https://www.terseai.org/api/proxy/v1/messages -H "x-api-key: ${rawKey}" -H "content-type: application/json" -H "anthropic-version: 2023-06-01" -d '{"model":"claude-haiku-4-20250414","max_tokens":50,"messages":[{"role":"user","content":"Say hi"}]}'`,
+    });
+  } catch (err) {
+    console.error('[admin/seed-test] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin test cleanup
+router.post('/admin/cleanup-test', async (req, res) => {
+  const secret = req.headers['x-admin-secret'];
+  if (!secret || secret !== process.env.ADMIN_TEST_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  try {
+    db.db.exec("DELETE FROM transactions WHERE buyer_id = 'test_buyer_001' OR seller_id = 'test_seller_001'");
+    db.db.exec("DELETE FROM buyer_keys WHERE user_id = 'test_buyer_001'");
+    db.db.exec("DELETE FROM seller_keys WHERE user_id = 'test_seller_001'");
+    db.db.exec("DELETE FROM users WHERE id IN ('test_buyer_001', 'test_seller_001')");
+    res.json({ message: 'Test data cleaned up' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = { router, requireAuth, COMMISSION_PERCENT, PROVIDER_LIST_PRICES };

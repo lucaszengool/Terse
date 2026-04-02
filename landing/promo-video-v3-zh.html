@@ -3,765 +3,450 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terse</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<title>Terse — AI Token 优化器 + Token 交易市场</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#d1e847;overflow:hidden;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased;color:#1a1a1a}
-#L0,#L1,#L2,#L3,.macFrame,.app,.caption-bar,.pnl{-webkit-transform:translateZ(0);transform:translateZ(0)}
-/* Subtle ambient background blobs */
-.amb-bg{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.amb-blob{position:absolute;border-radius:50%;filter:blur(150px);animation:blobFloat 25s ease-in-out infinite alternate}
-.amb-blob.b1{width:700px;height:700px;background:#a3c928;top:-15%;left:-10%;animation-delay:0s;opacity:.25}
-.amb-blob.b2{width:600px;height:600px;background:#e8f57a;top:50%;right:-10%;animation-delay:5s;opacity:.2}
-.amb-blob.b3{width:550px;height:550px;background:#b8d430;bottom:-10%;left:25%;animation-delay:10s;opacity:.15}
-.amb-blob.b4{width:500px;height:500px;background:#f0fa8c;top:20%;left:60%;animation-delay:15s;opacity:.12}
-@keyframes blobFloat{0%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.05)}66%{transform:translate(-20px,15px) scale(.95)}100%{transform:translate(10px,-10px) scale(1.02)}}
-/* Subtle dot grid pattern */
-.dot-grid{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.06;background-image:radial-gradient(circle,rgba(0,0,0,.08) .8px,transparent .8px);background-size:28px 28px}
+body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;color:#1a1a1a;width:100vw;height:100vh}
 .mono{font-family:'JetBrains Mono',monospace}
-:root{--ac:#1a1a1a;--ac2:#3d5a00;--lime:#d1e847;--ease:cubic-bezier(.25,.46,.45,.94);--ease-out:cubic-bezier(.16,1,.3,1);--ease-smooth:cubic-bezier(.4,0,.2,1)}
+:root{--lime:#d1e847;--dark:#1a1a1a;--green:#059669;--ease-out:cubic-bezier(.16,1,.3,1);--ease-smooth:cubic-bezier(.4,0,.2,1)}
 
-/* ── LAYERS (stacked via z-index, opacity-toggled) ── */
+/* Ambient background */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden}
+.bg-blob{position:absolute;border-radius:50%;filter:blur(150px);animation:bf 20s ease-in-out infinite alternate}
+.bg-blob.b1{width:600px;height:600px;background:#b8d430;top:-10%;left:-5%;opacity:.2}
+.bg-blob.b2{width:500px;height:500px;background:#e8f57a;bottom:-10%;right:-5%;opacity:.15;animation-delay:7s}
+@keyframes bf{0%{transform:translate(0,0)}100%{transform:translate(15px,-10px)}}
+.dot-grid{position:fixed;inset:0;z-index:1;opacity:.04;background-image:radial-gradient(circle,rgba(0,0,0,.08) .8px,transparent .8px);background-size:28px 28px}
 
-/* REVEAL */
-#L0{position:fixed;inset:0;z-index:60;background:#d1e847;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .8s var(--ease-smooth);will-change:opacity}
-#L0.off{opacity:0;pointer-events:none}
-@keyframes pop{to{opacity:1;transform:scale(1) translateZ(0)}}
-@keyframes up{to{opacity:1;transform:translateY(0) translateZ(0)}}
-@keyframes glo{0%,100%{text-shadow:0 0 10px rgba(209,232,71,.3)}50%{text-shadow:0 0 20px rgba(209,232,71,.6)}}
-@keyframes spn{to{transform:rotate(360deg)}}
-#L0 .icon{width:140px;height:140px;border-radius:32px;background:#1a1a1a;border:none;display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;opacity:0;transform:scale(.3);animation:pop .8s .1s var(--ease-out) forwards;box-shadow:0 20px 60px rgba(0,0,0,.15);will-change:transform,opacity}
-#L0 .icon::before{content:'';position:absolute;inset:-2px;border-radius:34px;background:conic-gradient(transparent,#1a1a1a,transparent);animation:spn 8s linear infinite;opacity:.08}
-#L0 .icon::after{content:'';position:absolute;inset:0;border-radius:32px;background:#1a1a1a}
-#L0 .icon b{font-size:60px;font-weight:900;color:var(--lime);position:relative;z-index:1;animation:glo 3s ease-in-out infinite}
-#L0 h1{font-size:48px;font-weight:800;letter-spacing:1px;color:#1a1a1a;opacity:0;transform:translateY(12px);animation:up .7s .3s var(--ease-out) forwards}
-#L0 h2{font-size:28px;font-weight:700;letter-spacing:6px;color:#1a1a1a;text-transform:uppercase;margin-top:4px;opacity:0;transform:translateY(8px);animation:up .7s .5s var(--ease-out) forwards}
-#L0 .badge{margin-top:20px;padding:12px 28px;border:none;border-radius:40px;color:#d1e847;background:#1a1a1a;display:flex;align-items:center;gap:12px;font-size:16px;font-weight:700;opacity:0;transform:translateY(8px);animation:up .7s .7s var(--ease-out) forwards;box-shadow:0 8px 30px rgba(0,0,0,.12)}
-#L0 .badge small{font-size:8px;color:rgba(209,232,71,.6);display:block;letter-spacing:.8px;text-transform:uppercase}
-#L0 .sub{margin-top:20px;font-size:14px;color:rgba(0,0,0,.35);letter-spacing:3px;text-transform:uppercase;opacity:0;animation:up .7s .9s var(--ease-out) forwards;transform:translateY(6px)}
+/* Progress */
+.prog{position:fixed;top:0;left:0;height:3px;background:var(--dark);z-index:9999;transition:width .8s var(--ease-out)}
 
-/* MAC DESKTOP */
-#L1{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:#d1e847;opacity:0;
-  perspective:800px;perspective-origin:50% 50%;
-  transition:opacity .7s var(--ease-smooth),perspective 2s var(--ease-out),perspective-origin 2s var(--ease-out);will-change:opacity}
-#L1.on{opacity:1}
-#L1.off{opacity:0;pointer-events:none;transition:opacity 1s var(--ease-smooth)}
-#L1.tilt3d{perspective:700px;perspective-origin:50% 55%;transition:perspective 2s var(--ease-out),perspective-origin 2s var(--ease-out)}
-/* The mac frame zooms into Terse icon at dock */
-.macFrame{transition:transform 1.8s var(--ease-out);transform-origin:50% 50%;transform-style:preserve-3d;will-change:transform}
-.macFrame.zoomT{transform:scale(8);transform-origin:54% 96%;transition:transform 1.6s var(--ease-out)}
-.macBox{transform-style:preserve-3d}
-.mscr{transform-style:preserve-3d}
-/* TILT: mac rotates to become the floor — THE KEY 3D TRANSITION */
-.macFrame.tilt{transform:scale(1) rotateX(55deg) translateY(120px);transform-origin:center 40%;transition:transform 2s var(--ease-out)}
-/* Add neon grid overlay when tilted */
-.macFrame.tilt .macBox{border-color:rgba(0,0,0,.15);box-shadow:0 30px 80px rgba(0,0,0,.3)}
-.macFrame.tilt .mscr::after{content:'';position:absolute;inset:0;
-  background-image:linear-gradient(rgba(0,0,0,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.04) 1px,transparent 1px);
-  background-size:60px 60px;pointer-events:none;opacity:1;animation:gs2 4s linear infinite}
-@keyframes gs2{to{background-position:0 60px}}
-.macBox{width:960px;border-radius:16px;overflow:visible;border:1px solid rgba(0,0,0,.1);box-shadow:0 25px 80px rgba(0,0,0,.2),0 0 1px rgba(0,0,0,.1);transform-style:preserve-3d}
-/* Menubar — realistic macOS dark mode */
-.mbar{display:flex;align-items:center;padding:0 16px;height:28px;background:rgba(255,255,255,.85);backdrop-filter:blur(20px);font-size:14px;gap:16px;border-bottom:1px solid rgba(0,0,0,.06);border-radius:16px 16px 0 0}
-.mbar span{font-size:13px;color:rgba(0,0,0,.85)}
-.mbar .dim{color:rgba(0,0,0,.45);font-size:13px}
-.mbar .right{margin-left:auto;font-size:12px;color:rgba(0,0,0,.45);display:flex;align-items:center;gap:12px}
-.mbar .right .wifi{font-size:11px}.mbar .right .batt{font-size:11px}
-/* Screen area — macOS Sonoma wallpaper gradient */
-.mscr{background:linear-gradient(135deg,#e8e0f0,#d4c8e8,#c0d4e8,#b8d0e0,#d0d8e8,#e0d4ec);height:500px;position:relative;padding:12px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;grid-template-areas:"chr trm" "trs ocl";padding-bottom:52px;transform-style:preserve-3d;overflow:visible;border-radius:0 0 16px 16px}
-/* Each app window */
-/* Frosted glass windows */
-.app{border-radius:12px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);overflow:visible;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,.06);
-  transform:translateZ(0);transition:transform 1s var(--ease-out),border-color .4s var(--ease-smooth),box-shadow .4s var(--ease-smooth),margin-top 1s var(--ease-out);will-change:transform}
-.app.float{transform:translateZ(40px) rotateX(-20deg);box-shadow:0 8px 30px rgba(0,0,0,.08);transition:transform 1s var(--ease-out),border-color .4s var(--ease-smooth),box-shadow .4s var(--ease-smooth)}
-/* Float up: counter-rotate desktop tilt so window faces viewer */
-.app.float-high{border-color:rgba(0,0,0,.12);box-shadow:0 20px 60px rgba(0,0,0,.15);transition:transform 1.2s var(--ease-out),border-color .4s var(--ease-smooth),box-shadow .4s var(--ease-smooth),margin-top 1.2s var(--ease-out);z-index:10;overflow:visible;height:auto;min-height:0}
-.app-chr.float-high,.app-trm.float-high{transform:translateZ(140px) rotateX(-55deg) scale(.65)}
-/* Terse (bottom-left): shift right + up to center */
-.app-trs.float-high{transform:translateZ(140px) rotateX(-55deg) scale(.55) translateX(45%);margin-top:-300px}
-/* OpenClaw (bottom-right): shift left + up to center */
-.app-ocl.float-high{transform:translateZ(140px) rotateX(-55deg) scale(.55) translateX(-45%);margin-top:-300px}
-/* Back down */
-.app.down{transform:translateZ(0) rotateX(0deg) scale(1) translate(0,0);border-color:rgba(255,255,255,.5);box-shadow:0 4px 20px rgba(0,0,0,.06);transition:transform 1s var(--ease-out),border-color .4s var(--ease-smooth),box-shadow .4s var(--ease-smooth),margin-top 1s var(--ease-out);margin-top:0}
-/* Frosted glass title bar */
-.app-bar{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid rgba(0,0,0,.04);background:rgba(255,255,255,.5);flex-shrink:0;border-radius:12px 12px 0 0}
-.app-bar .d{width:13px;height:13px;border-radius:50%;position:relative}
-.r{background:#ff5f57}.y{background:#ffbd2e}.g{background:#28c840}
-.app-bar .t{margin-left:8px;font-size:14px;color:rgba(0,0,0,.6);font-weight:500}
-.app-bar .b{margin-left:auto;font-size:11px;font-weight:600;color:#059669;background:rgba(16,185,129,.08);padding:3px 10px;border-radius:5px;letter-spacing:.3px}
-.app-body{flex:1;padding:12px;overflow:visible;font-size:13px;line-height:1.6;color:rgba(0,0,0,.6);min-height:0;background:rgba(255,255,255,.4);border-radius:0 0 12px 12px}
-.app.float-high .app-body{flex:none}
-/* When floating — clean shadow */
-.app.float-high{border-color:rgba(0,0,0,.1);box-shadow:0 20px 60px rgba(0,0,0,.15)}
-/* ═══ ALL WINDOWS: White frosted glass with clear text ═══ */
+/* Caption bar */
+.caption{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-10px);z-index:9998;padding:12px 32px;background:var(--dark);border-radius:40px;font-size:18px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.5px;opacity:0;transition:all .6s var(--ease-out);pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.15);white-space:nowrap}
+.caption.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.caption .a{color:var(--lime);font-weight:800}
 
-/* CHROME / ChatGPT */
-.app-chr{grid-area:chr}
-.app-chr .app-bar .t{color:rgba(0,0,0,.7)}
-.app-chr .app-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
-.chr-m{padding:8px 14px;border-radius:16px;margin-bottom:4px;max-width:82%;font-size:13px;line-height:1.55}
-.chr-u{background:rgba(0,0,0,.03);color:rgba(0,0,0,.7);margin-left:auto}
-.chr-a{background:transparent;color:rgba(0,0,0,.6);padding:4px 0;border-radius:0;max-width:90%;font-size:13px}
+/* Slides */
+.slides{position:fixed;inset:0;z-index:10}
+.slide{position:absolute;top:0;left:0;width:100vw;height:100vh;opacity:0;transition:opacity .7s var(--ease-smooth);pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.slide.active{opacity:1;pointer-events:auto}
 
-/* TERMINAL / Claude Code */
-.app-trm{grid-area:trm}
-.app-trm .app-bar .t{color:rgba(0,0,0,.5);font-family:'JetBrains Mono',monospace}
-.app-trm .app-body{color:rgba(0,0,0,.6);font-size:13px;padding:12px 14px}
-.app-trm .pr{color:#059669;font-weight:700}
-.app-trm .ok{color:#059669}
-.app-trm .dim{color:rgba(0,0,0,.3)}
-.app-trm .warn{color:#d97706}
-@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
-.app-trm .blink{animation:cursorBlink .8s step-end infinite;color:#059669}
+/* Mac laptop frame */
+.mac{width:min(90vw,960px);border-radius:14px;overflow:hidden;border:1px solid rgba(0,0,0,.08);box-shadow:0 25px 80px rgba(0,0,0,.18);opacity:0;transform:translateY(30px) scale(.95);transition:all .8s var(--ease-out)}
+.slide.active .mac{opacity:1;transform:translateY(0) scale(1)}
+.mac-bar{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(255,255,255,.85);border-bottom:1px solid rgba(0,0,0,.06)}
+.mac-dot{width:10px;height:10px;border-radius:50%}.dr{background:#ff5f57}.dy{background:#ffbd2e}.dg{background:#28c840}
+.mac-title{margin-left:8px;font-size:12px;color:rgba(0,0,0,.45)}
+.mac-badge{margin-left:auto;font-size:9px;font-weight:700;color:var(--green);background:rgba(16,185,129,.08);padding:2px 8px;border-radius:4px}
+.mac-body{background:#e8e4a8;min-height:400px;position:relative;overflow:hidden;padding:20px}
 
-/* TERSE */
-.app-trs{grid-area:trs}
-.app-trs .app-bar .t{color:#059669!important;font-weight:600}
-.ts{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:4px;border-radius:6px;background:rgba(16,185,129,.04);border:1px solid rgba(16,185,129,.08);font-size:13px;color:rgba(0,0,0,.55)}
-.ts .dot{width:6px;height:6px;border-radius:50%;background:#10b981}
-.ts .badge{margin-left:auto;font-size:10px;color:#059669;background:rgba(16,185,129,.08);padding:3px 8px;border-radius:4px;font-weight:700}
-.trs-stats{display:flex;gap:4px;margin-top:6px}
-.trs-stat{flex:1;text-align:center;padding:8px;background:rgba(16,185,129,.04);border-radius:6px;font-size:16px;font-weight:800;color:#059669;border:1px solid rgba(16,185,129,.08)}
-.trs-stat small{font-size:8px;display:block;font-weight:400;color:rgba(0,0,0,.25);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
-@keyframes statPulse{0%{color:#059669}50%{color:#10b981}100%{color:#059669}}
-.trs-stat.counting{animation:statPulse 1s ease-in-out}
+/* Headline above mac */
+.headline{font-size:clamp(32px,5vw,48px);font-weight:900;text-align:center;letter-spacing:-1px;margin-bottom:6px;opacity:0;transform:translateY(10px);transition:all .6s var(--ease-out) .1s}
+.subline{font-size:clamp(14px,2vw,18px);color:rgba(26,26,26,.4);text-align:center;margin-bottom:20px;opacity:0;transform:translateY(8px);transition:all .6s var(--ease-out) .3s}
+.slide.active .headline,.slide.active .subline{opacity:1;transform:translateY(0)}
 
-/* OPENCLAW */
-.app-ocl{grid-area:ocl}
-.app-ocl .app-bar .t{color:rgba(0,0,0,.5)}
-.app-ocl .app-body{display:flex;flex-direction:column;gap:3px}
-.oc-m{padding:8px 12px;border-radius:8px;margin-bottom:3px;font-size:12px;line-height:1.5}
-.oc-u{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.08);color:#059669;margin-left:auto;max-width:85%}
-.oc-a{background:rgba(0,0,0,.02);color:rgba(0,0,0,.45);max-width:85%}
-/* Dock */
-.dock2{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px 12px;background:rgba(255,255,255,.55);border:1px solid rgba(0,0,0,.06);border-radius:16px;backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px)}
-.di{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;position:relative;box-shadow:0 2px 6px rgba(0,0,0,.12)}
-/* Finder — blue gradient */
-.di.fi{background:linear-gradient(180deg,#5ac8fa,#007aff);font-size:14px;color:#fff}
-/* Chrome — multicolor */
-.di.ch{background:linear-gradient(135deg,#ea4335 25%,#fbbc05 25%,#fbbc05 50%,#34a853 50%,#34a853 75%,#4285f4 75%);font-size:8px;color:#fff}
-/* Terminal — dark with white text */
-.di.tm{background:linear-gradient(180deg,#4a4a4a,#1a1a1a);color:#fff;font-size:11px;font-family:'JetBrains Mono',monospace}
-/* Terse — dark with green T */
-.di.te{background:linear-gradient(145deg,#0d1117,#161b22);border:1px solid rgba(209,232,71,.2);color:var(--lime);font-weight:900;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
-.di.te.glow{box-shadow:0 0 20px rgba(209,232,71,.4);border-color:rgba(209,232,71,.5)}
-.di.te.glow::after{content:'';position:absolute;inset:-6px;border-radius:12px;border:1.5px solid var(--lime);opacity:0;animation:rng 1s ease-out 3 forwards}
-@keyframes rng{0%{transform:scale(1);opacity:.8}100%{transform:scale(2);opacity:0}}
+/* App UI elements inside mac-body */
+.app-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.app-logo{display:flex;align-items:center;gap:6px;font-weight:800;font-size:14px;color:var(--dark)}
+.app-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
 
-/* ── FLOATING PANELS (overlay on tilted mac) ── */
-#L2{position:fixed;inset:0;z-index:55;
-  display:flex;align-items:flex-start;justify-content:center;
-  pointer-events:none;opacity:0;transition:opacity 1s var(--ease-smooth)}
-#L2.on{opacity:1}
-.panels-wrap{width:100%;max-width:1200px;display:flex;flex-wrap:wrap;gap:20px;justify-content:center;padding:30px 24px;align-content:flex-start}
-/* PANELS — flat 2D positioned overlays that appear above the tilted desktop */
-.pnl{opacity:0;transition:opacity .8s var(--ease-out),transform .8s var(--ease-out);transform:translateY(20px)}
-.pnl.on{opacity:1;transform:translateY(0)}
-/* Holographic panel style */
-.hcard{background:rgba(6,10,18,.88);border:1px solid rgba(110,231,183,.12);border-radius:10px;backdrop-filter:blur(12px);box-shadow:0 0 25px rgba(110,231,183,.04),0 0 50px rgba(110,231,183,.015),inset 0 1px 0 rgba(110,231,183,.06);overflow:hidden;position:relative}
-.hcard::before{content:'';position:absolute;top:0;left:3%;right:3%;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);box-shadow:0 0 8px rgba(110,231,183,.4)}
-.hcard::after{content:'';position:absolute;bottom:0;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(110,231,183,.15),transparent)}
-.hbar{display:flex;align-items:center;gap:4px;padding:8px 12px;border-bottom:1px solid rgba(110,231,183,.06);background:rgba(0,0,0,.25)}
-.hbar .dot{width:5px;height:5px;border-radius:50%;background:var(--ac);box-shadow:0 0 6px var(--ac),0 0 12px rgba(110,231,183,.2);animation:dotP 2s ease-in-out infinite}
-@keyframes dotP{0%,100%{box-shadow:0 0 6px var(--ac)}50%{box-shadow:0 0 12px var(--ac),0 0 20px rgba(110,231,183,.3)}}
-.hbar .ht{font-size:11px;color:rgba(110,231,183,.4);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-left:3px}
-.hbar .hb{margin-left:auto;font-size:7px;font-weight:700;color:var(--ac);background:rgba(110,231,183,.06);padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.5px;border:1px solid rgba(110,231,183,.08)}
-.hbody{padding:12px}
-/* Session items in holo */
-.hs2{display:flex;align-items:center;gap:6px;padding:8px 10px;margin-bottom:4px;border-radius:5px;background:rgba(110,231,183,.015);border:1px solid rgba(110,231,183,.02);font-size:13px;opacity:0;transform:translateX(10px);transition:all .5s var(--ease-out)}
-.hs2.on{opacity:1;transform:translateX(0)}
-.hs2 .n{flex:1;color:rgba(255,255,255,.4)}.hs2 .b{font-size:8px;color:var(--ac);background:rgba(110,231,183,.05);padding:2px 5px;border-radius:2px;font-weight:700;letter-spacing:.5px}
-/* Token */
-.pipe7{display:flex;gap:3px;margin:8px 0}.pipe7 div{flex:1;height:5px;background:rgba(0,0,0,.04);border-radius:2px;overflow:hidden}
-.pipe7 div span{display:block;height:100%;width:0;background:linear-gradient(90deg,#3d5a00,#059669);border-radius:2px;transition:width .6s var(--ease-out)}
-.tkw{display:inline;font-size:13px;color:rgba(0,0,0,.55);line-height:1.8;transition:all .4s var(--ease-out)}
-.tkw.x{color:#dc2626;text-decoration:line-through;opacity:.5}.tkw.f{color:#059669;font-weight:700}.tkw.g{opacity:0;font-size:0}
-.tkr{padding:8px 10px;background:rgba(110,231,183,.03);border:1px solid rgba(110,231,183,.04);border-radius:5px;margin-top:6px;opacity:0;transition:all .5s var(--ease-out)}
-.tkr.on{opacity:1}
-.tkr .a{font-size:12px;color:var(--ac);font-weight:600;line-height:1.4}.tkr .b{font-size:8px;color:rgba(110,231,183,.25);margin-top:2px}
-.tkbig{font-size:32px;font-weight:900;text-align:center;margin-top:6px;background:linear-gradient(135deg,#1a1a1a,#3d5a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0;transform:scale(1.5);transition:all .6s var(--ease-out)}
-.tkbig.on{opacity:1;transform:scale(1)}
-/* Agent */
-.agl{font-size:11px;line-height:1.8;color:rgba(255,255,255,.2);opacity:0;transition:all .4s var(--ease-out)}.agl.on{opacity:1}
-.agl .p{color:var(--ac);font-weight:700}.agl .g2{color:var(--ac)}.agl .w{color:#f59e0b}.agl .c{color:#06b6d4}.agl .pk{color:#ff006e}
-.agg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px}
-.ags{text-align:center;padding:6px;background:rgba(0,0,0,.2);border-radius:4px;border:1px solid rgba(110,231,183,.02)}
-.ags .v{font-size:16px;font-weight:900;color:#fff;display:block}.ags .v.g2{color:var(--ac);text-shadow:0 0 6px rgba(110,231,183,.2)}
-.ags .l{font-size:6px;color:rgba(110,231,183,.2);text-transform:uppercase;display:block;margin-top:2px;letter-spacing:.5px}
-.agbar{margin-top:6px;padding:6px 10px;background:linear-gradient(90deg,rgba(110,231,183,.02),rgba(6,182,212,.01));border:1px solid rgba(110,231,183,.04);border-radius:4px;display:flex;justify-content:space-between;align-items:center;opacity:0;transition:all .5s var(--ease-out)}
-.agbar.on{opacity:1}
-.agbar span:first-child{font-size:8px;color:rgba(255,255,255,.15);text-transform:uppercase;letter-spacing:.5px}.agbar span:last-child{font-size:14px;font-weight:900;color:var(--ac);text-shadow:0 0 6px rgba(110,231,183,.15)}
-/* Browser */
-.bm{padding:6px 8px;border-radius:5px;font-size:11px;line-height:1.5;margin-bottom:4px;opacity:0;transition:all .4s var(--ease-out)}
-.bm.on{opacity:1}
-.bm.u{background:rgba(110,231,183,.015);border:1px solid rgba(110,231,183,.02);color:var(--ac);text-align:right}
-.bm.a{background:rgba(255,255,255,.008);border:1px solid rgba(255,255,255,.015);color:rgba(255,255,255,.25)}
-.bm .s{text-decoration:line-through;opacity:.3;color:#ff006e;font-size:9px;display:block;margin-bottom:2px}
-.bm .o{color:var(--ac);display:block}
-.bm .t{font-size:7px;color:var(--ac);opacity:.3;display:block;margin-top:2px}
+/* Buttons & inputs */
+.ui-btn{padding:10px;background:#fff;border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:var(--dark);box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:default}
+.ui-input{padding:10px 14px;background:rgba(255,255,255,.5);border:1px solid rgba(0,0,0,.06);border-radius:8px;font-size:12px;color:rgba(0,0,0,.4);font-family:inherit}
+.ui-badge{display:inline-block;padding:3px 10px;background:#fff;border-radius:4px;font-size:10px;font-weight:700;color:var(--dark)}
 
-/* FINAL */
-#L3{position:fixed;inset:0;z-index:70;background:#d1e847;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .8s var(--ease-smooth);will-change:opacity}
-#L3.on{opacity:1}
-#L3 .fs{display:flex;gap:8px;margin-bottom:28px;flex-wrap:wrap;justify-content:center}
-#L3 .f{padding:10px 22px;border:none;border-radius:40px;font-size:13px;font-weight:700;color:#d1e847;opacity:0;transform:translateY(4px);background:#1a1a1a}
-#L3 .icon2{width:90px;height:90px;border-radius:22px;background:#1a1a1a;border:none;display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;box-shadow:0 12px 40px rgba(0,0,0,.15)}
-#L3 .icon2::before{content:'';position:absolute;inset:-2px;border-radius:24px;background:conic-gradient(transparent,#1a1a1a,transparent);animation:spn 8s linear infinite;opacity:.06}
-#L3 .icon2::after{content:'';position:absolute;inset:0;border-radius:22px;background:#1a1a1a}
-#L3 .icon2 b{font-size:40px;font-weight:900;color:var(--lime);position:relative;z-index:1;animation:glo 3s ease-in-out infinite}
-#L3 .tg{font-size:30px;font-weight:800;opacity:0;letter-spacing:.5px;color:#1a1a1a}
-#L3 .sb{font-size:15px;color:rgba(0,0,0,.35);margin-top:8px;letter-spacing:1.5px;opacity:0}
-#L3 .ur{font-size:16px;font-weight:700;color:#1a1a1a;margin-top:16px;letter-spacing:2px;opacity:0;background:#1a1a1a;color:#d1e847;padding:10px 28px;border-radius:40px}
+/* Toggle switch */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:13px;color:rgba(0,0,0,.6)}
+.toggle-sw{width:36px;height:20px;border-radius:10px;background:rgba(0,0,0,.15);position:relative;transition:background .3s}
+.toggle-sw.on{background:var(--dark)}
+.toggle-sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .3s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.toggle-sw.on::after{transform:translateX(16px)}
 
-/* No clone overlay — windows float directly */
-/* ── CAPTION BAR ── */
-.caption-bar{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-12px);z-index:9998;padding:14px 36px;background:#1a1a1a;border:none;border-radius:40px;font-size:20px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:1px;white-space:nowrap;opacity:0;transition:opacity .6s var(--ease-smooth),transform .6s var(--ease-out);pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.15);will-change:transform,opacity}
-.caption-bar.on{opacity:1;transform:translateX(-50%) translateY(0)}
-.caption-bar .cap-accent{color:var(--lime);font-weight:800}
-.caption-bar .cap-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--lime);margin-right:12px;box-shadow:0 0 10px rgba(209,232,71,.4);vertical-align:middle}
-.prog{position:fixed;top:0;left:0;height:3px;background:#1a1a1a;z-index:9999;transition:width .8s var(--ease-out)}
-.ctrl{position:fixed;bottom:4px;right:4px;z-index:9999;display:flex;gap:2px}
-.ctrl button{padding:3px 8px;background:#1a1a1a;border:none;border-radius:20px;color:rgba(255,255,255,.5);font-size:8px;cursor:pointer;font-family:inherit}
+/* Mode tabs */
+.mode-tabs{display:flex;border-radius:8px;overflow:hidden;border:1px solid rgba(0,0,0,.06);margin-bottom:16px}
+.mode-tab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;background:rgba(255,255,255,.3);color:rgba(0,0,0,.4);transition:all .3s}
+.mode-tab.active{background:#fff;color:var(--dark)}
+
+/* Popup bar (floating optimizer) */
+.popup-bar{background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.06);border-radius:10px;padding:10px 16px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+
+/* Stats numbers */
+.stat-num{font-size:24px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green)}
+.stat-label{font-size:9px;color:rgba(0,0,0,.3);text-transform:uppercase;margin-top:2px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+.stat-card{background:rgba(255,255,255,.5);border:1px solid rgba(0,0,0,.04);border-radius:8px;padding:10px}
+
+/* Progress bar */
+.bar-track{height:6px;background:rgba(0,0,0,.06);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--green),#10b981);border-radius:3px;width:0;transition:width 1.5s var(--ease-out)}
+
+/* Agent session log */
+.log-line{font-size:11px;font-family:'JetBrains Mono',monospace;padding:3px 0;color:rgba(0,0,0,.45);opacity:0;transform:translateX(-6px);transition:all .4s var(--ease-out)}
+.log-line.show{opacity:1;transform:translateX(0)}
+.log-line .g{color:var(--green);font-weight:700}
+.log-line .w{color:#d97706;font-weight:700}
+
+/* Animated elements */
+.anim-el{opacity:0;transform:translateY(8px);transition:all .5s var(--ease-out)}
+.anim-el.show{opacity:1;transform:translateY(0)}
+
+/* Exchange card */
+.ex-card{background:rgba(0,0,0,.85);border:1px solid rgba(110,231,183,.1);border-radius:12px;padding:16px;color:#fff}
+.ex-step{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:rgba(255,255,255,.5);opacity:0;transform:translateX(-8px);transition:all .4s var(--ease-out)}
+.ex-step.show{opacity:1;transform:translateX(0)}
+.ex-num{width:20px;height:20px;border-radius:50%;background:rgba(110,231,183,.12);color:var(--lime);font-weight:800;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* Controls */
+.ctrl{position:fixed;bottom:8px;right:8px;z-index:9999;display:flex;gap:3px}
+.ctrl button{padding:4px 10px;background:var(--dark);border:none;border-radius:16px;color:rgba(255,255,255,.5);font-size:10px;cursor:pointer;font-family:inherit}
 .ctrl button:hover{color:var(--lime)}.ctrl .on{color:var(--lime)}
+
+@keyframes glo{0%,100%{text-shadow:0 0 8px rgba(209,232,71,.2)}50%{text-shadow:0 0 16px rgba(209,232,71,.5)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.cursor-blink{display:inline-block;width:2px;height:12px;background:var(--green);animation:blink .6s step-end infinite;vertical-align:middle}
 </style>
 </head>
 <body>
-<div class="amb-bg"><div class="amb-blob b1"></div><div class="amb-blob b2"></div><div class="amb-blob b3"></div><div class="amb-blob b4"></div></div>
+<div class="bg"><div class="bg-blob b1"></div><div class="bg-blob b2"></div></div>
 <div class="dot-grid"></div>
 <div class="prog" id="prog"></div>
-<div class="caption-bar" id="capBar"><span class="cap-dot"></span><span id="capText">Terse — Token 优化器</span></div>
+<div class="caption" id="cap"><span id="capTxt"></span></div>
 
-<!-- L0: REVEAL -->
-<div id="L0">
-  <h1>现已推出</h1>
-  <div class="icon"><b>T</b></div>
-  <h2>Terse</h2>
-  <div class="badge"><span style="font-size:16px">&#63743;</span><div><small>Download on the</small><span>App Store</span></div></div>
-  <div class="sub">节省每一个 AI Token</div>
+<div class="slides">
+
+<!-- S0: INTRO -->
+<div class="slide" id="s0">
+  <div style="width:120px;height:120px;border-radius:28px;background:var(--dark);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 20px 60px rgba(0,0,0,.15)"><span style="font-size:56px;font-weight:900;color:var(--lime);animation:glo 3s ease-in-out infinite">T</span></div>
+  <div class="headline" style="font-size:20px;letter-spacing:4px;opacity:1;transform:none;margin-bottom:4px">现已推出</div>
+  <div class="headline" style="opacity:1;transform:none">节省每一个 Token。<br><span style="color:rgba(26,26,26,.5)">交易剩余额度。</span></div>
+  <div class="subline" style="margin-top:12px;opacity:1;transform:none">AI Token 优化器 + Token 交易市场</div>
 </div>
 
-<!-- L1: MAC DESKTOP -->
-<div id="L1">
-  <div class="macFrame" id="mf">
-    <div class="macBox">
-      <div class="mbar">
-        <span style="font-size:14px">&#63743;</span>
-        <span style="font-weight:600">Finder</span>
-        <span class="dim">File</span>
-        <span class="dim">Edit</span>
-        <span class="dim">View</span>
-        <span class="dim">Go</span>
-        <span class="dim">Window</span>
-        <span class="right"><span class="wifi">Wi-Fi</span><span class="batt">100%</span><span class="mono">Wed 6:23 PM</span></span>
+<!-- S1: Welcome (matching mac_zh_01) -->
+<div class="slide" id="s1">
+  <div class="headline">欢迎使用 Terse。</div>
+  <div class="subline">选择风格，登录，开始省钱。</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:420px">
+      <div style="width:60px;height:60px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)"><span style="font-size:28px;font-weight:900">T</span></div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:4px">Welcome to Terse</div>
+      <div style="font-size:12px;color:rgba(0,0,0,.4);margin-bottom:16px">Choose your style</div>
+      <div id="colorDots" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:220px;margin-bottom:20px"></div>
+      <div class="ui-btn anim-el" id="s1btn" style="width:160px">Sign In</div>
+      <div class="anim-el" id="s1create" style="margin-top:10px;font-size:12px;color:rgba(0,0,0,.4)">Create Account</div>
+    </div>
+  </div>
+</div>
+
+<!-- S2: Main UI (matching mac_zh_02) -->
+<div class="slide" id="s2">
+  <div class="headline">省 Token。省钱。</div>
+  <div class="subline">为 AI 高级用户打造的智能优化器</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE</span></div>
+    <div class="mac-body">
+      <div class="app-header"><div class="app-logo"><div class="dot"></div>TERSE</div></div>
+      <div style="font-weight:600;font-size:13px;margin-bottom:12px">Connected Sessions</div>
+      <div style="text-align:center;padding:30px;color:rgba(0,0,0,.3);font-size:12px" class="anim-el" id="s2empty">
+        <div style="font-size:24px;opacity:.3;margin-bottom:6px">T</div>
+        No connections yet<br><span style="font-size:11px">Click + to connect to a chat input</span>
       </div>
-      <div class="mscr">
-        <!-- CHROME -->
-        <div class="app app-chr">
-          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t">Chrome — ChatGPT</span><span class="b">AI CHAT</span></div>
-          <div class="app-body" style="display:flex;flex-direction:column;gap:3px">
-            <div class="chr-m chr-u">So basiclly could you pleas help me optimize database quereis for better performence?</div>
-            <div class="chr-m chr-a">Here are key strategies: 1) Use proper indexing on frequently queried columns, 2) Avoid SELECT *...</div>
-            <div class="chr-m chr-u">Show me indexing examples pleas</div>
-            <div class="chr-m chr-a">CREATE INDEX idx_users_email ON users(email); This reduces lookup from O(n) to O(log n).</div>
-          </div>
+      <div class="ui-btn anim-el" id="s2stats" style="margin-bottom:8px">📊 Statistics</div>
+      <div style="font-size:11px;color:rgba(0,0,0,.35);text-align:center;margin-bottom:8px">or paste below</div>
+      <div class="ui-input anim-el" id="s2input" style="width:100%;margin-bottom:8px">Paste a prompt to optimize...</div>
+      <div class="ui-btn anim-el" id="s2opt">Optimize</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px" class="anim-el" id="s2plan">
+        <div><span class="ui-badge">FREE</span> <span style="font-size:11px;color:rgba(0,0,0,.35)">1230/1500 left this week</span></div>
+        <div class="ui-btn" style="padding:5px 12px;font-size:11px">Upgrade</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S3: Connect (matching mac_zh_03) -->
+<div class="slide" id="s3">
+  <div class="headline">一键连接。零配置。</div>
+  <div class="subline">即刻连接任何 AI 应用</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE</span></div>
+    <div class="mac-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:380px">
+      <div id="s3spinner" style="width:40px;height:40px;border:3px solid rgba(0,0,0,.08);border-top-color:rgba(0,0,0,.4);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:14px"></div>
+      <div style="font-size:14px;font-weight:600">Click on a chat input area...</div>
+      <div style="font-size:11px;color:rgba(0,0,0,.35);margin-top:4px">Terse will connect and monitor it live</div>
+      <div class="ui-btn anim-el" id="s3cancel" style="margin-top:14px;padding:6px 20px;font-size:12px;color:rgba(0,0,0,.4);background:transparent;box-shadow:none">Cancel</div>
+    </div>
+  </div>
+</div>
+
+<!-- S4: Agent Monitor (matching mac_zh_04) -->
+<div class="slide" id="s4">
+  <div class="headline">监控 AI 代理成本</div>
+  <div class="subline">实时追踪 Claude Code 等的 Token 用量</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE — Agent Monitor</span><span class="mac-badge">MONITORING</span></div>
+    <div class="mac-body" style="padding:12px;font-size:12px">
+      <!-- Popup bar at top -->
+      <div class="popup-bar" style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;font-size:11px">
+        <div class="mode-tabs" style="margin:0;flex:none;border:none;gap:2px">
+          <span style="padding:4px 10px;border-radius:4px;font-size:10px;font-weight:600;color:rgba(0,0,0,.3)">Soft</span>
+          <span style="padding:4px 10px;border-radius:4px;font-size:10px;font-weight:700;background:#fff;color:var(--dark)">Normal</span>
+          <span style="padding:4px 10px;border-radius:4px;font-size:10px;font-weight:600;color:rgba(0,0,0,.3)">Aggr</span>
         </div>
-        <!-- TERMINAL -->
-        <div class="app app-trm">
-          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t mono">Terminal — claude-code</span><span class="b">RUNNING</span></div>
-          <div class="app-body mono">
-            <div><span class="pr">❯ </span>claude "fix the authetication module token refresh"</div>
-            <div>⏺ Reading src/auth.js...</div>
-            <div>⏺ Reading package.json...</div>
-            <div>⏺ Reading src/auth.js... <span style="color:rgba(255,170,0,.15)">(dup)</span></div>
-            <div>⏺ Writing src/auth.js (+12 -3)</div>
-            <div>⏺ Running npm test...</div>
-            <div class="ok">✓ 262 passed, 0 failed (3.41s)</div>
-            <div><span class="pr">❯ </span><span class="blink">█</span></div>
-          </div>
+        <span class="mono" style="color:var(--green);font-weight:700">21.3K saved</span>
+      </div>
+      <!-- Claude Code session -->
+      <div style="background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.04);border-radius:8px;padding:10px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-weight:700">🤖 Claude Code</span><span style="font-size:10px;color:rgba(0,0,0,.35)">Monitoring</span></div>
+        <div style="font-size:10px;color:rgba(0,0,0,.4);margin-bottom:8px">Ctx 56% | in 7.6M | Cache 88% | Tools 65</div>
+        <div id="s4log" style="min-height:60px"></div>
+        <div style="margin-top:8px;font-size:10px;color:rgba(0,0,0,.35)">CONTEXT <span class="mono" style="font-weight:700;color:var(--dark)">113.5K / 200K (56%)</span></div>
+        <div class="bar-track" style="margin-top:4px"><div class="bar-fill" id="s4bar"></div></div>
+      </div>
+      <!-- Stats -->
+      <div class="stat-grid" id="s4stats">
+        <div class="stat-card"><div class="stat-num" id="s4turns">0</div><div class="stat-label">Turns</div></div>
+        <div class="stat-card"><div class="stat-num" id="s4input">0</div><div class="stat-label">Input</div></div>
+        <div class="stat-card"><div class="stat-num" id="s4cache">0%</div><div class="stat-label">Cache</div></div>
+        <div class="stat-card"><div class="stat-num" id="s4saved" style="color:var(--green)">0</div><div class="stat-label">Saved</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S5: Popup (matching mac_zh_05) -->
+<div class="slide" id="s5">
+  <div class="headline">悬浮优化栏</div>
+  <div class="subline">始终置顶，捕获、优化、替换</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body" style="min-height:440px;display:flex;flex-direction:column">
+      <!-- Floating popup bar -->
+      <div class="popup-bar" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div><span style="font-size:11px;color:rgba(0,0,0,.5)">App Store Connect - Google C...</span></div>
+          <div class="mode-tabs" style="margin:0;border:none;gap:2px;flex:none"><span style="padding:3px 8px;font-size:9px;color:rgba(0,0,0,.3)">Soft</span><span style="padding:3px 8px;font-size:9px;font-weight:700;background:#fff;border-radius:3px">Normal</span><span style="padding:3px 8px;font-size:9px;color:rgba(0,0,0,.3)">Aggr</span><span style="padding:3px 8px;font-size:9px;color:rgba(0,0,0,.3)">Off</span><span style="padding:3px 8px;font-size:9px;font-weight:700;background:#fff;border-radius:3px">Send</span><span style="padding:3px 8px;font-size:9px;color:rgba(0,0,0,.3)">Auto</span></div>
         </div>
-        <!-- TERSE -->
-        <div class="app app-trs">
-          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t">Terse</span><span class="b">MONITORING</span></div>
-          <div class="app-body">
-            <div class="ts"><div class="dot"></div>Chrome — ChatGPT<div class="badge">BROWSER</div></div>
-            <div class="ts"><div class="dot"></div>Claude Code<div class="badge">AGENT</div></div>
-            <div class="ts"><div class="dot"></div>OpenClaw<div class="badge">AGENT</div></div>
-            <div class="trs-stats">
-              <div class="trs-stat">7<small>Turns</small></div>
-              <div class="trs-stat">-71%<small>Saved</small></div>
-              <div class="trs-stat">$0.42<small>Cost</small></div>
-            </div>
-          </div>
-        </div>
-        <!-- OPENCLAW -->
-        <div class="app app-ocl">
-          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t">OpenClaw — claude-sonnet</span></div>
-          <div class="app-body" style="display:flex;flex-direction:column;gap:2px">
-            <div class="oc-m oc-u">Debug the authentication 500 error on POST</div>
-            <div class="oc-m oc-a">Investigating POST handler. Checking request validation...</div>
-            <div class="oc-m oc-u">Fix the token refresh logic</div>
-            <div class="oc-m oc-a">JWT verification was using expired keys. Fixed and verified.</div>
-          </div>
-        </div>
-        <!-- DOCK -->
-        <div class="dock2">
-          <div class="di fi">Fi</div>
-          <div class="di ch">Ch</div>
-          <div class="di tm">>_</div>
-          <div class="di te" id="dkT">T</div>
+        <div style="font-size:10px;color:rgba(0,0,0,.3);text-align:center;margin-bottom:4px">685/1500 left <span class="mono" style="float:right;color:var(--green);font-weight:700">5 → <span id="s5tok">5</span></span></div>
+        <div class="ui-input" style="margin-bottom:6px"><span id="s5text" class="mono">Welcom to Terse! e</span><span class="cursor-blink"></span></div>
+        <div style="display:flex;gap:6px">
+          <div class="ui-btn anim-el" id="s5cap" style="flex:none;padding:8px 16px;font-size:12px">↻ Capture</div>
+          <div class="ui-btn anim-el" id="s5rep" style="flex:1;padding:8px 16px;font-size:12px;background:var(--lime)">✓ Replace</div>
+          <div class="ui-btn anim-el" id="s5copy" style="flex:none;padding:8px 16px;font-size:12px">📋</div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- L2: FLOATING PANELS (overlay, above tilted mac) -->
-<div id="L2">
-  <div class="panels-wrap">
-    <!-- Panel 0: Sessions -->
-    <div class="pnl" id="P0" style="width:360px">
-      <div class="hcard">
-        <div class="hbar"><div class="dot"></div><span class="ht">Terse Sessions</span><span class="hb">Active</span></div>
-        <div class="hbody">
-          <div class="hs2" id="h1"><div class="dot"></div><span class="n">Google Chrome</span><span class="b">Browser</span></div>
-          <div class="hs2" id="h2"><div class="dot"></div><span class="n">Claude Code</span><span class="b">Agent</span></div>
-          <div class="hs2" id="h3"><div class="dot"></div><span class="n">OpenClaw</span><span class="b">Agent</span></div>
-        </div>
-      </div>
+<!-- S6: Settings (matching mac_zh_06) -->
+<div class="slide" id="s6">
+  <div class="headline">完全掌控。随心定制。</div>
+  <div class="subline">9 个开关，3 种模式，你的规则</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE — Settings</span></div>
+    <div class="mac-body">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px">Settings</div>
+      <div style="font-size:9px;color:rgba(0,0,0,.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">AGGRESSIVENESS</div>
+      <div class="mode-tabs"><div class="mode-tab">Light</div><div class="mode-tab active">Balanced</div><div class="mode-tab">Aggressive</div></div>
+      <div id="s6toggles"></div>
     </div>
-    <!-- Panel 1: Token Optimization -->
-    <div class="pnl" id="P1" style="width:420px">
-      <div class="hcard">
-        <div class="hbar"><div class="dot"></div><span class="ht">Token Optimization</span><span class="hb">7-Stage</span></div>
-        <div class="hbody">
-          <div class="pipe7" id="pipe7"></div>
-          <div id="tokT" class="mono" style="min-height:20px"></div>
-          <div class="tkr" id="tokR"><div class="a" id="tokA"></div><div class="b" id="tokB2"></div></div>
-          <div class="tkbig mono" id="tokBig"></div>
-        </div>
+  </div>
+</div>
+
+<!-- S7: Stats (matching mac_zh_09) -->
+<div class="slide" id="s7">
+  <div class="headline">已省 21K Token。平均 66%。</div>
+  <div class="subline">真实代理会话的实时压缩统计</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE — Agent Monitor</span><span class="mac-badge">MONITORING</span></div>
+    <div class="mac-body" style="padding:14px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-size:32px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green)" id="s7saved">0</span>
+        <span style="font-size:12px;color:rgba(0,0,0,.4)">tokens saved</span>
       </div>
-    </div>
-    <!-- Panel 2: Agent Monitor -->
-    <div class="pnl" id="P2" style="width:400px">
-      <div class="hcard">
-        <div class="hbar"><div class="dot"></div><span class="ht">Agent Monitor</span><span class="hb">Live</span></div>
-        <div class="hbody">
-          <div id="agL" style="min-height:50px"></div>
-          <div class="agg"><div class="ags"><span class="v" id="v1">0</span><span class="l">Turns</span></div><div class="ags"><span class="v" id="v2">0</span><span class="l">Input</span></div><div class="ags"><span class="v" id="v3">0</span><span class="l">Output</span></div><div class="ags"><span class="v g2" id="v4">$0</span><span class="l">Cost</span></div><div class="ags"><span class="v g2" id="v5">0</span><span class="l">Saved</span></div><div class="ags"><span class="v" id="v6">0%</span><span class="l">Cache</span></div></div>
-          <div class="agbar" id="agB"><span>Total Savings</span><span>210K→23K · 89%</span></div>
-        </div>
-      </div>
-    </div>
-    <!-- Panel 3: Browser -->
-    <div class="pnl" id="P3" style="width:360px">
-      <div class="hcard">
-        <div class="hbar"><div class="dot"></div><span class="ht">Browser Auto-Optimize</span><span class="hb">Live</span></div>
-        <div class="hbody" id="bpM"></div>
+      <div class="bar-track" style="margin-bottom:12px;height:8px"><div class="bar-fill" id="s7bar" style="transition:width 2s var(--ease-out)"></div></div>
+      <div style="text-align:right;font-size:14px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green);margin-bottom:12px" id="s7pct">0%</div>
+      <div style="font-size:11px;color:rgba(0,0,0,.45);line-height:1.8" id="s7details">
+        <div class="anim-el" id="s7d1">📊 2 large tool results <span style="float:right;font-weight:700">4.2K</span></div>
+        <div class="anim-el" id="s7d2">↘ 8 prompts could be tighter <span style="float:right;font-weight:700">-314</span></div>
+        <div class="anim-el" id="s7d3">⚠ 17 unused tools loaded <span style="float:right;font-weight:700">17</span></div>
+        <div class="anim-el" id="s7d4">🔁 7 duplicate tool calls <span style="float:right;font-weight:700;color:var(--green)">-2.4K</span></div>
+        <div class="anim-el" id="s7d5">🪝 Hook compressed 269 outputs <span style="float:right;font-weight:700;color:var(--green)">-21.3K</span></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- L4: TOKEN EXCHANGE (overlays on tilted mac or standalone) -->
-<div id="L4" style="position:fixed;inset:0;z-index:58;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .8s var(--ease-smooth);pointer-events:none">
-  <!-- Exchange marketplace mock window -->
-  <div id="exWin" style="width:720px;background:rgba(6,10,18,.94);border:1px solid rgba(110,231,183,.12);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.4);overflow:hidden;transform:translateY(20px) scale(.95);transition:all .8s var(--ease-out)">
-    <div style="display:flex;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid rgba(110,231,183,.06);background:rgba(0,0,0,.3)">
-      <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57"></div>
-      <div style="width:10px;height:10px;border-radius:50%;background:#ffbd2e"></div>
-      <div style="width:10px;height:10px;border-radius:50%;background:#28c840"></div>
-      <span style="margin-left:8px;font-size:12px;color:rgba(255,255,255,.3)">terseai.org/marketplace — Token 交易市场</span>
-      <span style="margin-left:auto;font-size:9px;color:var(--ac);background:rgba(110,231,183,.06);padding:2px 8px;border-radius:3px;font-weight:700">EXCHANGE</span>
+<!-- S8: Token Exchange — Seller -->
+<div class="slide" id="s8">
+  <div class="headline">Token 交易市场 — 卖家</div>
+  <div class="subline">闲置 API 额度变现，3 步上架</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">terseai.org/marketplace</span><span class="mac-badge" style="color:#fbbf24;background:rgba(251,191,36,.08)">EXCHANGE</span></div>
+    <div class="mac-body" style="background:#0f0e1a;color:#fff;padding:16px">
+      <div style="font-size:13px;font-weight:800;color:#6ee7b7;margin-bottom:12px">卖家 — 上架闲置额度</div>
+      <div class="ex-step" id="ex1"><div class="ex-num">1</div><div style="flex:1"><span style="color:rgba(255,255,255,.7);font-weight:600">选择供应商</span></div><div style="display:flex;gap:4px"><span style="padding:3px 8px;background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.2);border-radius:4px;font-size:9px;color:#6ee7b7;font-weight:700">Anthropic</span><span style="padding:3px 8px;background:rgba(255,255,255,.03);border-radius:4px;font-size:9px;color:rgba(255,255,255,.2)">OpenAI</span><span style="padding:3px 8px;background:rgba(255,255,255,.03);border-radius:4px;font-size:9px;color:rgba(255,255,255,.2)">Google</span></div></div>
+      <div class="ex-step" id="ex2"><div class="ex-num">2</div><div style="flex:1"><span style="color:rgba(255,255,255,.7);font-weight:600">粘贴 API 密钥</span><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(110,231,183,.4);margin-top:2px" id="exKey">sk-ant-</div></div><span style="font-size:8px;color:#6ee7b7;background:rgba(110,231,183,.06);padding:2px 6px;border-radius:3px">AES-256</span></div>
+      <div class="ex-step" id="ex3"><div class="ex-num">3</div><div style="flex:1"><span style="color:rgba(255,255,255,.7);font-weight:600">设置折扣</span></div><div style="display:flex;align-items:center;gap:6px"><div style="width:80px;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden"><div id="exBar" style="width:0;height:100%;background:#6ee7b7;transition:width 1.5s var(--ease-out)"></div></div><span style="font-size:14px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#6ee7b7" id="exPct">0%</span></div></div>
+      <div class="ex-step" id="ex4" style="border:1px solid rgba(110,231,183,.15);background:rgba(110,231,183,.04);border-radius:6px;padding:8px 10px"><div style="color:#6ee7b7;font-size:12px">✓</div><span style="color:#6ee7b7;font-weight:700;font-size:11px">密钥已验证！预计月收入 $<span id="exEarn">0</span></span></div>
     </div>
-    <div style="padding:20px" id="exBody">
-      <!-- Seller flow -->
-      <div id="exSeller" style="display:none">
-        <div style="font-size:14px;font-weight:800;color:var(--ac);margin-bottom:14px">卖家 — 上架闲置 API 额度</div>
-        <div id="exStep1" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(110,231,183,.02);border:1px solid rgba(110,231,183,.04);border-radius:8px;margin-bottom:8px;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
-          <div style="width:24px;height:24px;border-radius:50%;background:rgba(110,231,183,.1);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
-          <div><div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7)">选择供应商</div></div>
-          <div style="margin-left:auto;display:flex;gap:4px">
-            <span id="exProv1" style="padding:4px 10px;background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.15);border-radius:5px;font-size:10px;color:var(--ac);font-weight:700;transition:all .3s">Anthropic</span>
-            <span style="padding:4px 10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:5px;font-size:10px;color:rgba(255,255,255,.2)">OpenAI</span>
-            <span style="padding:4px 10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:5px;font-size:10px;color:rgba(255,255,255,.2)">Google</span>
-          </div>
-        </div>
-        <div id="exStep2" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(110,231,183,.02);border:1px solid rgba(110,231,183,.04);border-radius:8px;margin-bottom:8px;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
-          <div style="width:24px;height:24px;border-radius:50%;background:rgba(110,231,183,.1);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
-          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7)">粘贴 API 密钥</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(110,231,183,.4);margin-top:3px" id="exKeyType">sk-ant-</div></div>
-          <span style="font-size:8px;color:var(--ac);background:rgba(110,231,183,.06);padding:2px 6px;border-radius:3px">AES-256</span>
-        </div>
-        <div id="exStep3" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(110,231,183,.02);border:1px solid rgba(110,231,183,.04);border-radius:8px;margin-bottom:8px;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
-          <div style="width:24px;height:24px;border-radius:50%;background:rgba(110,231,183,.1);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
-          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7)">设置折扣</div></div>
-          <div style="display:flex;align-items:center;gap:8px"><div style="width:100px;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden"><div id="exSlider" style="width:0%;height:100%;background:var(--ac);border-radius:2px;transition:width 1.5s var(--ease-out)"></div></div><span style="font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac)" id="exPct">0%</span></div>
-        </div>
-        <div id="exResult" style="padding:10px 14px;background:rgba(110,231,183,.05);border:1px solid rgba(110,231,183,.1);border-radius:8px;display:flex;align-items:center;gap:8px;opacity:0;transition:all .5s var(--ease-out)">
-          <span style="color:var(--ac);font-size:14px">✓</span>
-          <span style="font-size:11px;color:var(--ac);font-weight:700">密钥已验证并上架！预计月收入 $<span id="exEarn">0</span></span>
-        </div>
-      </div>
-      <!-- Buyer flow -->
-      <div id="exBuyer" style="display:none">
-        <div style="font-size:14px;font-weight:800;color:#60a5fa;margin-bottom:14px">买家 — 一条命令，立省 50%</div>
-        <div id="exBStep1" style="padding:10px 14px;background:rgba(96,165,250,.03);border:1px solid rgba(96,165,250,.06);border-radius:8px;margin-bottom:8px;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:4px">生成 Terse API 密钥:</div>
-          <div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#60a5fa" id="exBKey">terse_bk_</div>
-        </div>
-        <div id="exBStep2" style="padding:10px 14px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.04);border-radius:8px;margin-bottom:8px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
-          <span style="color:rgba(255,255,255,.3)">$</span> <span style="color:var(--ac)">export</span> ANTHROPIC_API_KEY=<span style="color:#fbbf24" id="exBKeyVal"></span><br>
-          <span style="color:rgba(255,255,255,.3)">$</span> <span style="color:var(--ac)">export</span> ANTHROPIC_BASE_URL=<span style="color:#fbbf24" id="exBUrl"></span><br>
-          <span style="color:rgba(255,255,255,.3)">$</span> <span style="color:var(--ac)">claude</span> <span style="color:rgba(255,255,255,.5)" id="exBRun"></span>
-        </div>
-        <div id="exBSave" style="display:flex;gap:8px;justify-content:center;opacity:0;transition:all .5s var(--ease-out)">
-          <div style="text-align:center;padding:8px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.2);text-decoration:line-through">$100</div><div style="font-size:7px;color:rgba(255,255,255,.2)">零售</div></div>
-          <div style="align-self:center;color:rgba(255,255,255,.1)">→</div>
-          <div style="text-align:center;padding:8px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac)">$42</div><div style="font-size:7px;color:rgba(255,255,255,.2)">交易+优化</div></div>
-          <div style="align-self:center;color:rgba(255,255,255,.1)">=</div>
-          <div style="text-align:center;padding:8px 16px;background:rgba(110,231,183,.06);border:1px solid rgba(110,231,183,.1);border-radius:6px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac)">省 $58</div><div style="font-size:7px;color:rgba(110,231,183,.3)">每月</div></div>
-        </div>
+  </div>
+</div>
+
+<!-- S9: Token Exchange — Buyer -->
+<div class="slide" id="s9">
+  <div class="headline">一条命令，立省 50%</div>
+  <div class="subline">和原版 API 一模一样 — 只是更便宜</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">Terminal</span></div>
+    <div class="mac-body" style="background:#0f0e1a;color:#fff;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2">
+      <div><span style="color:rgba(255,255,255,.3)">$</span> <span style="color:#6ee7b7">export</span> ANTHROPIC_API_KEY=<span style="color:#fbbf24" id="bKey"></span><span class="cursor-blink"></span></div>
+      <div><span style="color:rgba(255,255,255,.3)">$</span> <span style="color:#6ee7b7">export</span> ANTHROPIC_BASE_URL=<span style="color:#fbbf24" id="bUrl"></span></div>
+      <div><span style="color:rgba(255,255,255,.3)">$</span> <span style="color:#6ee7b7">claude</span> <span style="color:rgba(255,255,255,.6)" id="bCmd"></span></div>
+      <div id="bResult" style="margin-top:8px;opacity:0;transition:opacity .5s"><span style="color:#6ee7b7">Claude Code v1.2.0</span> — <span style="color:rgba(255,255,255,.3)">routed via Terse proxy</span><br><span style="color:rgba(255,255,255,.3)"># optimized + 35% cheaper than retail ✓</span></div>
+      <div id="bSavings" style="display:flex;gap:8px;margin-top:12px;opacity:0;transition:opacity .6s">
+        <div style="text-align:center;padding:8px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px"><div style="font-size:16px;font-weight:900;color:rgba(255,255,255,.2);text-decoration:line-through">$100</div><div style="font-size:8px;color:rgba(255,255,255,.2)">零售</div></div>
+        <div style="align-self:center;color:rgba(255,255,255,.1)">→</div>
+        <div style="text-align:center;padding:8px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px"><div style="font-size:16px;font-weight:900;color:#6ee7b7">$42</div><div style="font-size:8px;color:rgba(255,255,255,.2)">交易+优化</div></div>
+        <div style="align-self:center;color:rgba(255,255,255,.1)">=</div>
+        <div style="text-align:center;padding:8px 14px;background:rgba(110,231,183,.06);border:1px solid rgba(110,231,183,.1);border-radius:6px"><div style="font-size:16px;font-weight:900;color:#6ee7b7">省 $58</div><div style="font-size:8px;color:rgba(110,231,183,.3)">每月</div></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- L3: FINAL -->
-<div id="L3">
-  <div class="fs"><div class="f">节省 40-70% Token</div><div class="f">7 阶段管线</div><div class="f">20+ 技术</div><div class="f">Token 交易市场</div><div class="f">100% 本地</div></div>
-  <div class="icon2"><b>T</b></div>
-  <div class="tg" id="ft">节省每一个 Token。交易剩余额度。</div>
-  <div class="sb" id="fs2">AI Token 优化器 + Token 交易市场</div>
-  <div class="ur" id="fu">terseai.org</div>
+<!-- S10: FINAL -->
+<div class="slide" id="s10">
+  <div id="fPills" style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;justify-content:center"></div>
+  <div style="width:90px;height:90px;border-radius:20px;background:var(--dark);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 12px 40px rgba(0,0,0,.15)"><span style="font-size:40px;font-weight:900;color:var(--lime);animation:glo 3s ease-in-out infinite">T</span></div>
+  <div class="headline" id="fTitle" style="font-size:36px">节省每一个 Token。交易剩余额度。</div>
+  <div class="subline" id="fSub">优化 + 交易 — 双重省钱，一个平台。</div>
+  <div class="subline" id="fUrl" style="margin-top:12px;padding:10px 28px;background:var(--dark);color:var(--lime);border-radius:30px;font-weight:700;font-size:14px">terseai.org</div>
 </div>
 
-<div class="ctrl"><button onclick="restart()">⟳</button><button class="on" id="ba" onclick="togA()">▶</button></div>
+</div>
+
+<div class="ctrl">
+  <button onclick="prev()">←</button>
+  <button onclick="restart()">↻</button>
+  <button class="on" id="ba" onclick="togA()">▶</button>
+  <button onclick="next()">→</button>
+</div>
 
 <script>
-// Build pipe
-const pipe7=document.getElementById('pipe7');
-for(let i=0;i<7;i++){const d=document.createElement('div');d.innerHTML='<span id="pf'+i+'"></span>';pipe7.appendChild(d)}
-
 const STEPS=[
-  {dur:2800,fn:'s0'},  // reveal
-  {dur:3500,fn:'s1'},  // desktop with live content
-  {dur:3000,fn:'s2'},  // pulse+zoom terse
-  {dur:2500,fn:'s3'},  // tilt to 3D + Chrome floats up first
-  {dur:5500,fn:'s3c'}, // Chrome shows token optimization, then down
-  {dur:3800,fn:'s3b'}, // Terse floats up, shows live activity, then down
-  {dur:5000,fn:'s6'},  // Terminal floats up, agent monitor
-  {dur:1500,fn:'s6b'}, // Terminal goes down
-  {dur:4500,fn:'s7'},  // OpenClaw floats up, auto-optimize
-  {dur:1500,fn:'s7b'}, // OpenClaw goes down
-  {dur:5500,fn:'sEx1'}, // Token Exchange — seller flow
-  {dur:5500,fn:'sEx2'}, // Token Exchange — buyer flow
-  {dur:4000,fn:'s8'},  // final
+  {dur:3500,fn:a0},{dur:3500,fn:a1},{dur:3500,fn:a2},{dur:3500,fn:a3},
+  {dur:5000,fn:a4},{dur:4000,fn:a5},{dur:4000,fn:a6},{dur:5000,fn:a7},
+  {dur:5500,fn:a8},{dur:6000,fn:a9},{dur:4000,fn:a10}
 ];
+let cur=0,auto=true,tmr=null;const T=STEPS.length;
 
-let cur=0,auto=true,tmr=null;
-function go(n){if(n>=STEPS.length)return;cur=n;
-  document.getElementById('prog').style.width=((n+1)/STEPS.length*100)+'%';
-  try{window[STEPS[n].fn]()}catch(e){console.error(e)}
-  if(auto&&n<STEPS.length-1){clearTimeout(tmr);tmr=setTimeout(()=>go(n+1),STEPS[n].dur)}
+function go(n){if(n<0||n>=T)return;cur=n;
+  document.getElementById('prog').style.width=((n+1)/T*100)+'%';
+  document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s'+n)?.classList.add('active');
+  STEPS[n].fn();
+  if(auto&&n<T-1){clearTimeout(tmr);tmr=setTimeout(()=>go(n+1),STEPS[n].dur)}
 }
-
-function restart(){
-  clearTimeout(tmr);
-  document.getElementById('L0').classList.remove('off');
-  document.getElementById('L1').className='';
-  document.getElementById('L1').classList.remove('tilt3d');
-  document.getElementById('L2').className='';
-  // Reset floating windows
-  document.querySelectorAll('.app').forEach(a=>{a.classList.remove('float','float-high','down')});
-  // Remove injected Terse panels from windows
-  document.querySelectorAll('.app-chr .app-body > div:last-child').forEach(d=>{if(d.style&&d.style.marginTop)d.remove()});
-  document.querySelectorAll('.app-trm .app-body > div:last-child').forEach(d=>{if(d.style&&d.style.marginTop)d.remove()});
-  document.querySelectorAll('.app-ocl .app-body > div:last-child').forEach(d=>{if(d.style&&d.style.marginTop)d.remove()});
-  document.getElementById('L3').className='';
-  document.getElementById('L4').style.opacity='0';
-  document.getElementById('exSeller').style.display='none';
-  document.getElementById('exBuyer').style.display='none';
-  ['exStep1','exStep2','exStep3','exResult','exBStep1','exBStep2','exBSave'].forEach(id=>{const e=document.getElementById(id);if(e){e.style.opacity='0';e.style.transform='translateX(-10px)'}});
-  document.getElementById('exSlider').style.width='0%';
-  document.getElementById('exPct').textContent='0%';
-  document.getElementById('exKeyType').textContent='sk-ant-';
-  document.getElementById('exBKey').textContent='terse_bk_';
-  document.getElementById('exBKeyVal').textContent='';
-  document.getElementById('exBUrl').textContent='';
-  document.getElementById('exBRun').textContent='';
-  document.getElementById('exEarn').textContent='0';
-  document.getElementById('mf').classList.remove('zoomT');
-  document.getElementById('mf').classList.remove('tilt');
-  document.getElementById('mf').style.transition='none';
-  void document.getElementById('mf').offsetWidth;
-  document.getElementById('mf').style.transition='';
-  document.getElementById('dkT').classList.remove('glow');
-  ['P0','P1','P2','P3'].forEach(i=>document.getElementById(i).classList.remove('on'));
-  ['h1','h2','h3'].forEach(i=>document.getElementById(i).classList.remove('on'));
-  document.getElementById('tokT').innerHTML='';
-  document.getElementById('tokR').classList.remove('on');
-  document.getElementById('tokBig').classList.remove('on');
-  document.getElementById('agL').innerHTML='';
-  document.getElementById('agB').classList.remove('on');
-  document.getElementById('bpM').innerHTML='';
-  for(let i=0;i<7;i++){const f=document.getElementById('pf'+i);if(f)f.style.width='0'}
-  ['v1','v2','v3','v4','v5'].forEach(i=>document.getElementById(i).textContent='0');
-  document.getElementById('v6').textContent='0%';
-  capOff();
-  go(0);
-}
+function next(){go(Math.min(cur+1,T-1))}
+function prev(){go(Math.max(cur-1,0))}
+function restart(){clearTimeout(tmr);go(0)}
 function togA(){auto=!auto;const b=document.getElementById('ba');if(auto){b.classList.add('on');b.textContent='▶';clearTimeout(tmr);tmr=setTimeout(()=>go(cur+1),500)}else{b.classList.remove('on');b.textContent='⏸';clearTimeout(tmr)}}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();next()}if(e.key==='ArrowLeft'){e.preventDefault();prev()}if(e.key==='r')restart();if(e.key==='p')togA()});
 
-// ── STEPS ──
-function cap(t){const b=document.getElementById('capBar'),tx=document.getElementById('capText');if(!b||!tx)return;b.classList.remove('on');setTimeout(()=>{tx.innerHTML=t;b.classList.add('on')},150)}
-function capOff(){const b=document.getElementById('capBar');if(b)b.classList.remove('on')}
+function cap(t){const c=document.getElementById('cap'),tx=document.getElementById('capTxt');c.classList.remove('on');setTimeout(()=>{tx.innerHTML=t;c.classList.add('on')},150)}
+function capOff(){document.getElementById('cap').classList.remove('on')}
+function showEl(id,ms){setTimeout(()=>{const e=document.getElementById(id);if(e)e.classList.add('show')},ms)}
+function countTo(id,val,suffix,ms,dur){setTimeout(()=>{const el=document.getElementById(id);if(!el)return;let v=0;const s=val/(dur/30);const iv=setInterval(()=>{v+=s;if(v>=val){v=val;clearInterval(iv)}el.textContent=(Number.isInteger(val)?Math.round(v):v.toFixed(1))+(suffix||'')},30)},ms)}
+function typeText(id,text,ms){setTimeout(()=>{const el=document.getElementById(id);if(!el)return;el.textContent='';let i=0;const iv=setInterval(()=>{if(i<text.length)el.textContent+=text[i++];else clearInterval(iv)},35)},ms)}
 
-function s0(){capOff()}
+function a0(){capOff()}
 
-function s1(){
-  cap('<span class="cap-accent">你的桌面</span> — 多个 AI 应用同时运行');
-  document.getElementById('L0').classList.add('off');
-  document.getElementById('L1').className='on';
-  // Animate desktop content appearing live
-  // Terminal: lines appear one by one
-  const trmBody=document.querySelector('.app-trm .app-body');
-  const trmLines=trmBody.querySelectorAll('div');
-  trmLines.forEach((l,i)=>{l.style.opacity='0';l.style.transition='opacity .6s var(--ease-out)';setTimeout(()=>l.style.opacity='1',300+i*250)});
-  // Chrome: messages appear
-  const chrMsgs=document.querySelectorAll('.chr-m');
-  chrMsgs.forEach((m,i)=>{m.style.opacity='0';m.style.transform='translateY(4px)';m.style.transition='all .6s var(--ease-out)';setTimeout(()=>{m.style.opacity='1';m.style.transform='translateY(0)'},400+i*350)});
-  // Terse: sessions appear one by one
-  const tsSess=document.querySelectorAll('.app-trs .ts');
-  tsSess.forEach((s,i)=>{s.style.opacity='0';s.style.transform='translateX(8px)';s.style.transition='all .6s var(--ease-out)';setTimeout(()=>{s.style.opacity='1';s.style.transform='translateX(0)'},600+i*300)});
-  // Terse stats count up
-  const stats=document.querySelectorAll('.trs-stat');
-  stats.forEach((s,i)=>{s.style.opacity='0';s.style.transition='opacity .6s var(--ease-out)';setTimeout(()=>{s.style.opacity='1';s.classList.add('counting')},1800+i*200)});
-  // OpenClaw: messages appear like typing
-  const ocMsgs=document.querySelectorAll('.oc-m');
-  ocMsgs.forEach((m,i)=>{m.style.opacity='0';m.style.transform='translateY(4px)';m.style.transition='all .6s var(--ease-out)';setTimeout(()=>{m.style.opacity='1';m.style.transform='translateY(0)'},500+i*400)});
+function a1(){
+  cap('<span class="a">欢迎</span> — 选择风格，一键登录');
+  const dots=document.getElementById('colorDots');
+  dots.innerHTML='';
+  const colors=['#fff','#c4b5fd','#fca5a5','#67e8f9','#1a1a1a','#f9a8d4','#6ee7b7','#fde68a'];
+  colors.forEach((c,i)=>{const d=document.createElement('div');d.style.cssText=`width:36px;height:36px;border-radius:50%;background:${c};opacity:0;transform:scale(.5);transition:all .4s var(--ease-out);box-shadow:0 1px 4px rgba(0,0,0,.08);${c==='#fff'?'border:2px solid rgba(0,0,0,.1)':''}`;setTimeout(()=>{d.style.opacity='1';d.style.transform='scale(1)'},300+i*80);dots.appendChild(d)});
+  showEl('s1btn',1000);showEl('s1create',1200);
 }
 
-function s2(){
-  cap('<span class="cap-accent">Terse</span> — 时刻监控，自动节省');
-  document.getElementById('dkT').classList.add('glow');
-  setTimeout(()=>document.getElementById('mf').classList.add('zoomT'),1200);
+function a2(){
+  cap('<span class="a">主界面</span> — 粘贴提示词，一键优化');
+  showEl('s2empty',400);showEl('s2stats',700);showEl('s2input',1000);showEl('s2opt',1200);showEl('s2plan',1400);
 }
 
-function s3(){
-  cap('<span class="cap-accent">终端层面</span> — 减少所有应用 Token');
-  document.getElementById('mf').classList.remove('zoomT');
-  document.getElementById('mf').classList.add('tilt');
-  document.getElementById('L1').classList.add('tilt3d');
-  // Chrome highlights on tilted desktop
-  setTimeout(()=>document.querySelector('.app-chr').classList.add('float-high'),1800);
+function a3(){
+  cap('<span class="a">连接</span> — 点击聊天输入框即可连接');
+  showEl('s3cancel',1500);
 }
 
-function s3c(){
-  cap('<span class="cap-accent">浏览器</span> — 修正拼写 &amp; 压缩提示词');
-  const chrBody=document.querySelector('.app-chr .app-body');
-  const tBar=document.createElement('div');
-  tBar.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;opacity:0;transition:opacity .6s var(--ease-out)';
-  tBar.innerHTML='<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="font-size:8px;color:#059669;letter-spacing:1px;font-weight:700">TERSE OPTIMIZING</span></div><div class="pipe7" id="pipe7b"></div><div style="font-size:10px;color:rgba(0,0,0,.5);margin-top:4px" class="mono" id="tokT2"></div><div style="padding:4px 6px;background:rgba(16,185,129,.03);border:1px solid rgba(16,185,129,.08);border-radius:4px;margin-top:4px;opacity:0;transition:opacity .5s var(--ease-out)" id="tokR2"></div><div style="font-size:20px;font-weight:900;text-align:center;margin-top:4px;color:#059669;opacity:0;transition:all .5s var(--ease-out)" id="tokBig2"></div>';
-  chrBody.appendChild(tBar);
-  setTimeout(()=>tBar.style.opacity='1',200);
-  const pp=document.getElementById('pipe7b');
-  if(pp){pp.innerHTML='';for(let i=0;i<7;i++){const d=document.createElement('div');d.innerHTML='<span id="pf2_'+i+'"></span>';pp.appendChild(d)}}
-  const txt=document.getElementById('tokT2');
-  if(!txt)return;
-  txt.innerHTML='';
-  const words=[{t:'So',c:'g'},{t:' basiclly',c:'x',f:' basically'},{t:' could',c:''},{t:' you',c:'g'},{t:' pleas',c:'x',f:' please'},{t:' help',c:''},{t:' me',c:'g'},{t:' optimize',c:''},{t:' quereis',c:'x',f:' queries'},{t:' for',c:''},{t:' better',c:'g'},{t:' performence?',c:'x',f:' performance?'}];
-  setTimeout(()=>{words.forEach(w=>{const s=document.createElement('span');s.className='tkw mono';s.textContent=w.t;s.dataset.c=w.c;if(w.f!==undefined)s.dataset.f=w.f;txt.appendChild(s)})},400);
-  setTimeout(()=>{for(let i=0;i<2;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='x'){w.classList.add('x');if(w.dataset.f){const fx=document.createElement('span');fx.className='tkw mono f';fx.textContent=w.dataset.f;w.after(fx)}}})},1200);
-  setTimeout(()=>{for(let i=2;i<5;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='g')w.classList.add('g')})},2200);
-  setTimeout(()=>{for(let i=5;i<7;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}},2800);
-  setTimeout(()=>{const r=document.getElementById('tokR2');if(r){r.innerHTML='<div style="font-size:9px;color:var(--ac);font-weight:600">Optimize queries for performance.</div><div style="font-size:6px;color:rgba(110,231,183,.2)">38→12 tokens · 3 typos · $0.01 saved</div>';r.style.opacity='1'}},3200);
-  setTimeout(()=>{const b=document.getElementById('tokBig2');if(b){b.textContent='-68%';b.style.opacity='1'}},4300);
-  setTimeout(()=>{document.querySelector('.app-chr').classList.remove('float-high');document.querySelector('.app-chr').classList.add('down')},5000);
+function a4(){
+  cap('<span class="a">Agent 监控</span> — 实时追踪每个 Token');
+  const log=document.getElementById('s4log');log.innerHTML='';
+  [{t:500,h:'<span class="g">[terse]</span> prompt: 42→12 tok (-71%)'},{t:1000,h:'<span class="w">⚠ Dup:</span> Read auth.ts — ~800 tok wasted'},{t:1500,h:'<span class="g">[terse]</span> test: 4,823→38 (-99%)'},{t:2000,h:'<span class="g">[terse]</span> CLAUDE.md rule generated ✓'}].forEach(l=>{setTimeout(()=>{const d=document.createElement('div');d.className='log-line';d.innerHTML=l.h;log.appendChild(d);setTimeout(()=>d.classList.add('show'),20)},l.t)});
+  countTo('s4turns',28,'',600,1200);countTo('s4input',7.6,'M',800,1200);
+  setTimeout(()=>document.getElementById('s4cache').textContent='88%',1400);
+  countTo('s4saved',21300,'',1000,1800);
+  setTimeout(()=>document.getElementById('s4bar').style.width='56%',800);
 }
 
-function s3b(){
-  cap('<span class="cap-accent">Terse 面板</span> — 实时会话监控');
-  document.querySelector('.app-trs').classList.add('float-high');
-  const trsBody=document.querySelector('.app-trs .app-body');
-  // Add a live activity section
-  const live=document.createElement('div');
-  live.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;font-size:9px;color:rgba(0,0,0,.45);opacity:0;transition:opacity .5s var(--ease-out)';
-  live.innerHTML='<div style="display:flex;align-items:center;gap:3px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="font-size:8px;color:#059669;letter-spacing:.5px;font-weight:700">LIVE ACTIVITY</span></div><div id="trsLive" class="mono" style="line-height:1.6;color:rgba(0,0,0,.45)"></div>';
-  trsBody.appendChild(live);
-  setTimeout(()=>live.style.opacity='1',200);
-  // Animate live feed
-  const feed=document.getElementById('trsLive');
-  if(feed){
-    [{t:300,h:'<span style="color:#10b981">●</span> Chrome: optimized prompt -68%'},{t:800,h:'<span style="color:#10b981">●</span> Claude Code: 42→12 tok (-71%)'},{t:1300,h:'<span style="color:#d97706">●</span> Dup detected: src/auth.js'},{t:1800,h:'<span style="color:#10b981">●</span> OpenClaw: auto-compress -65%'}].forEach(d=>setTimeout(()=>{const e=document.createElement('div');e.style.cssText='opacity:0;transition:opacity .4s var(--ease-out)';e.innerHTML=d.h;feed.appendChild(e);setTimeout(()=>e.style.opacity='1',10)},d.t));
-  }
-  setTimeout(()=>{
-    document.querySelector('.app-trs').classList.remove('float-high');
-    document.querySelector('.app-trs').classList.add('down');
-  },2800);
+function a5(){
+  cap('<span class="a">悬浮栏</span> — 捕获 → 优化 → 一键替换');
+  showEl('s5cap',600);showEl('s5rep',800);showEl('s5copy',1000);
+  // Simulate optimization
+  setTimeout(()=>{document.getElementById('s5text').textContent='Welcome to Terse!';document.getElementById('s5tok').textContent='4'},2000);
 }
 
-function s5(){
-  // Chrome floats up to center alone
-  document.querySelector('.app-chr').classList.add('float-high');
-  // Inject Terse optimization bar into Chrome
-  const chrBody=document.querySelector('.app-chr .app-body');
-  const tBar=document.createElement('div');
-  tBar.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;opacity:0;transition:opacity .6s var(--ease-out)';
-  tBar.innerHTML='<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="font-size:8px;color:#059669;letter-spacing:1px;font-weight:700">TERSE OPTIMIZING</span></div><div class="pipe7" id="pipe7b"></div><div style="font-size:10px;color:rgba(0,0,0,.5);margin-top:4px" class="mono" id="tokT2"></div><div style="padding:4px 6px;background:rgba(16,185,129,.03);border:1px solid rgba(16,185,129,.08);border-radius:4px;margin-top:4px;opacity:0;transition:opacity .5s var(--ease-out)" id="tokR2"></div><div style="font-size:20px;font-weight:900;text-align:center;margin-top:4px;color:#059669;opacity:0;transition:all .5s var(--ease-out)" id="tokBig2"></div>';
-  chrBody.appendChild(tBar);
-  setTimeout(()=>tBar.style.opacity='1',200);
-  // Build pipe
-  const pp=document.getElementById('pipe7b');
-  if(pp){pp.innerHTML='';for(let i=0;i<7;i++){const d=document.createElement('div');d.innerHTML='<span id="pf2_'+i+'"></span>';pp.appendChild(d)}}
-  const txt=document.getElementById('tokT2');
-  if(!txt)return;
-  txt.innerHTML='';
-  const tokR=document.getElementById('tokR2');
-  const tokBig=document.getElementById('tokBig2');
-  if(tokR)tokR.style.opacity='0';
-  if(tokBig)tokBig.style.opacity='0';
-
-  const words=[{t:'So',c:'g'},{t:' basiclly',c:'x',f:' basically'},{t:' could',c:''},{t:' you',c:'g'},{t:' pleas',c:'x',f:' please'},{t:' help',c:''},{t:' me',c:'g'},{t:' optimize',c:''},{t:' quereis',c:'x',f:' queries'},{t:' for',c:''},{t:' better',c:'g'},{t:' performence?',c:'x',f:' performance?'}];
-
-  setTimeout(()=>{words.forEach(w=>{const s=document.createElement('span');s.className='tkw mono';s.textContent=w.t;s.dataset.c=w.c;if(w.f!==undefined)s.dataset.f=w.f;txt.appendChild(s)})},400);
-
-  setTimeout(()=>{for(let i=0;i<2;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}
-    txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='x'){w.classList.add('x');if(w.dataset.f){const fx=document.createElement('span');fx.className='tkw mono f';fx.textContent=w.dataset.f;w.after(fx)}}})},1200);
-
-  setTimeout(()=>{for(let i=2;i<5;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}
-    txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='g')w.classList.add('g')})},2200);
-
-  setTimeout(()=>{for(let i=5;i<7;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}},2800);
-
-  setTimeout(()=>{if(tokR){tokR.innerHTML='<div style="font-size:11px;color:#059669;font-weight:600">Optimize queries for performance.</div><div style="font-size:8px;color:rgba(0,0,0,.35);margin-top:2px">38→12 tokens · 3 typos · $0.01 saved</div>';tokR.style.opacity='1'}},3200);
-
-  setTimeout(()=>{if(tokBig){tokBig.textContent='-68%';tokBig.style.opacity='1';tokBig.style.transform='scale(1)'}},4300);
+function a6(){
+  cap('<span class="a">设置</span> — 9 个开关精准控制每种优化');
+  const c=document.getElementById('s6toggles');c.innerHTML='';
+  ['Remove filler words','Remove politeness','Remove hedging','Remove meta-language','Shorten phrases','Simplify vocabulary','Remove redundancy','Compress whitespace','Compress code'].forEach((name,i)=>{
+    const r=document.createElement('div');r.className='toggle-row anim-el';r.id='t6_'+i;
+    r.innerHTML=name+'<div class="toggle-sw'+(i<6?' on':'')+'"></div>';
+    c.appendChild(r);showEl('t6_'+i,400+i*120);
+  });
 }
 
-function s5b(){
-  // Chrome goes back down
-  document.querySelector('.app-chr').classList.remove('float-high');
-  document.querySelector('.app-chr').classList.add('down');
+function a7(){
+  cap('<span class="a">统计</span> — 已省 21.3K Token，平均 66%');
+  countTo('s7saved',21300,'',500,1800);
+  setTimeout(()=>document.getElementById('s7bar').style.width='66%',600);
+  setTimeout(()=>{let v=0;const el=document.getElementById('s7pct');const iv=setInterval(()=>{v+=2;if(v>=66){v=66;clearInterval(iv)}el.textContent=v+'%'},40)},800);
+  ['s7d1','s7d2','s7d3','s7d4','s7d5'].forEach((id,i)=>showEl(id,1200+i*300));
 }
 
-function s6(){
-  cap('<span class="cap-accent">Agent 监控</span> — 实时追踪 Token 用量');
-  document.querySelector('.app-trm').classList.add('float-high');
-  const trmBody=document.querySelector('.app-trm .app-body');
-  const panel=document.createElement('div');
-  panel.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;opacity:0;transition:opacity .6s var(--ease-out)';
-  panel.innerHTML='<div style="display:flex;align-items:center;gap:3px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="font-size:8px;color:#059669;letter-spacing:1px;font-weight:700">TERSE AGENT MONITOR</span></div><div id="trsLines" style="font-size:10px;line-height:1.6;color:rgba(0,0,0,.45);min-height:30px" class="mono"></div><div id="trsStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:4px"></div><div id="trsSave" style="margin-top:4px;padding:4px 6px;background:rgba(16,185,129,.02);border:1px solid rgba(16,185,129,.06);border-radius:4px;display:flex;justify-content:space-between;font-size:8px;opacity:0;transition:opacity .5s var(--ease-out)"><span style="color:rgba(0,0,0,.3)">SAVINGS</span><span style="color:#059669;font-weight:900;font-size:11px">210K→23K · 89%</span></div>';
-  trmBody.appendChild(panel);
-  setTimeout(()=>panel.style.opacity='1',200);
-
-  const lines=document.getElementById('trsLines');
-  if(!lines)return;
-  [{t:400,h:'<span style="color:#059669;font-weight:600">[terse]</span> 42→12 tok (-71%)'},{t:700,h:'<span style="color:#d97706;font-weight:600">⚠ Dup: Read src/auth.js · ~800 wasted</span>'},{t:1100,h:'<span style="color:#059669;font-weight:600">[terse]</span> test 4,823→38 (-99%)'},{t:1500,h:'<span style="color:#059669;font-weight:600">[terse]</span> diff 1,240→310 (-75%)'}].forEach(d=>setTimeout(()=>{const e=document.createElement('div');e.style.cssText='opacity:0;transition:opacity .4s var(--ease-out)';e.innerHTML=d.h;lines.appendChild(e);setTimeout(()=>e.style.opacity='1',10)},d.t));
-
-  const stats=document.getElementById('trsStats');
-  if(stats)setTimeout(()=>{stats.innerHTML='<div style="text-align:center;padding:4px;background:rgba(16,185,129,.04);border-radius:4px;border:1px solid rgba(16,185,129,.08)"><span style="font-size:12px;font-weight:900;color:rgba(0,0,0,.7);display:block">7</span><span style="font-size:5px;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:.5px">TURNS</span></div><div style="text-align:center;padding:4px;background:rgba(16,185,129,.04);border-radius:4px;border:1px solid rgba(16,185,129,.08)"><span style="font-size:12px;font-weight:900;color:#059669;display:block">$0.42</span><span style="font-size:5px;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:.5px">COST</span></div><div style="text-align:center;padding:4px;background:rgba(16,185,129,.04);border-radius:4px;border:1px solid rgba(16,185,129,.08)"><span style="font-size:12px;font-weight:900;color:#059669;display:block">8.4K</span><span style="font-size:5px;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:.5px">SAVED</span></div>'},2200);
-
-  const save=document.getElementById('trsSave');
-  if(save)setTimeout(()=>save.style.opacity='1',3000);
+function a8(){
+  cap('<span class="a">Token 交易市场</span> — 卖家 3 步上架');
+  ['ex1','ex2','ex3'].forEach((id,i)=>{setTimeout(()=>{const e=document.getElementById(id);e.classList.add('show')},400+i*700)});
+  // Typewriter key
+  setTimeout(()=>{const el=document.getElementById('exKey');const full='sk-ant-api03-xxxx...xxxx';let i=7;const iv=setInterval(()=>{if(i<full.length)el.textContent=full.slice(0,++i);else clearInterval(iv)},40)},1400);
+  // Slider
+  setTimeout(()=>{document.getElementById('exBar').style.width='50%';let p=0;const el=document.getElementById('exPct');const iv=setInterval(()=>{p++;el.textContent=p+'%';if(p>=30)clearInterval(iv)},50)},2400);
+  // Result
+  setTimeout(()=>{document.getElementById('ex4').classList.add('show');let e=0;const el=document.getElementById('exEarn');const iv=setInterval(()=>{e++;el.textContent=e;if(e>=25)clearInterval(iv)},60)},3800);
 }
 
-function s6b(){
-  cap('<span class="cap-accent">切换中</span> — 下一个应用');
-  document.querySelector('.app-trm').classList.remove('float-high');
-  document.querySelector('.app-trm').classList.add('down');
+function a9(){
+  cap('<span class="a">Token 交易市场</span> — 买家一条命令省 50%');
+  typeText('bKey','terse_bk_a7f3...x9d2',600);
+  typeText('bUrl','https://www.terseai.org/api/proxy',1800);
+  typeText('bCmd','"fix the auth bug"',3200);
+  setTimeout(()=>document.getElementById('bResult').style.opacity='1',4200);
+  setTimeout(()=>document.getElementById('bSavings').style.opacity='1',4800);
 }
 
-function s7(){
-  cap('<span class="cap-accent">自动优化</span> — 每条提示词，自动压缩');
-  document.querySelector('.app-ocl').classList.add('float-high');
-  const ocBody=document.querySelector('.app-ocl .app-body');
-  const terseOc=document.createElement('div');
-  terseOc.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;opacity:0;transition:opacity .4s;font-size:9px';
-  terseOc.innerHTML='<div style="display:flex;align-items:center;gap:3px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="color:#059669;letter-spacing:1px;font-weight:700;font-size:8px">TERSE</span><span style="margin-left:auto;font-size:7px;color:#059669">AUTO-OPTIMIZE ON</span></div><div style="color:rgba(0,0,0,.45);line-height:1.6" class="mono" id="ocTerse"></div>';
-  ocBody.appendChild(terseOc);
-  setTimeout(()=>terseOc.style.opacity='1',300);
-
-  const ocT=document.getElementById('ocTerse');
-  if(!ocT)return;
-  [{t:500,h:'<span style="color:#dc2626;text-decoration:line-through;opacity:.45">Debug the authentication 500 error</span>'},{t:900,h:'<span style="color:#059669;font-weight:600">→ Fix auth 500 on POST</span> <span style="color:rgba(0,0,0,.25)">(-71%)</span>'},{t:1400,h:'<span style="color:#dc2626;text-decoration:line-through;opacity:.45">Fix the token refresh logic</span>'},{t:1800,h:'<span style="color:#059669;font-weight:600">→ Fix token refresh</span> <span style="color:rgba(0,0,0,.25)">(-65%)</span>'},{t:2300,h:'<div style="margin-top:4px;font-size:12px;font-weight:900;color:#059669;text-align:center">Total: -68% tokens saved</div>'}].forEach(d=>setTimeout(()=>{const e=document.createElement('div');e.style.cssText='opacity:0;transition:opacity .4s var(--ease-out)';e.innerHTML=d.h;ocT.appendChild(e);setTimeout(()=>e.style.opacity='1',10)},d.t));
-}
-
-function s7b(){
-  cap('<span class="cap-accent">成果</span> — 查看你的节省');
-  document.querySelector('.app-ocl').classList.remove('float-high');
-  document.querySelector('.app-ocl').classList.add('down');
-}
-
-// ═══ TOKEN EXCHANGE SCENES ═══
-function sEx1(){
-  cap('<span class="cap-accent">Token 交易市场</span> — 卖家上架闲置额度');
-  // Hide tilted mac, show exchange
-  document.getElementById('L1').classList.add('off');
-  document.getElementById('L2').className='';
-  const l4=document.getElementById('L4');
-  l4.style.opacity='1';
-  const win=document.getElementById('exWin');
-  win.style.transform='translateY(0) scale(1)';
-  // Show seller flow
-  document.getElementById('exSeller').style.display='block';
-  document.getElementById('exBuyer').style.display='none';
-  // Animate steps
-  setTimeout(()=>{const e=document.getElementById('exStep1');e.style.opacity='1';e.style.transform='translateX(0)'},400);
-  setTimeout(()=>{const e=document.getElementById('exStep2');e.style.opacity='1';e.style.transform='translateX(0)';
-    // Typewriter key
-    const kt=document.getElementById('exKeyType');let k='sk-ant-',full='sk-ant-api03-xxxx...xxxx';let i=k.length;
-    const iv=setInterval(()=>{if(i<full.length){kt.textContent=full.slice(0,++i)}else clearInterval(iv)},40);
-  },1000);
-  setTimeout(()=>{const e=document.getElementById('exStep3');e.style.opacity='1';e.style.transform='translateX(0)';
-    // Animate slider
-    document.getElementById('exSlider').style.width='50%';
-    let p=0;const pEl=document.getElementById('exPct');
-    const iv=setInterval(()=>{p++;pEl.textContent=p+'%';if(p>=30)clearInterval(iv)},50);
-  },2000);
-  setTimeout(()=>{document.getElementById('exResult').style.opacity='1';
-    let e=0;const eEl=document.getElementById('exEarn');
-    const iv=setInterval(()=>{e++;eEl.textContent=e;if(e>=25)clearInterval(iv)},60);
-  },3500);
-}
-
-function sEx2(){
-  cap('<span class="cap-accent">Token 交易市场</span> — 买家一条命令省 50%');
-  document.getElementById('exSeller').style.display='none';
-  document.getElementById('exBuyer').style.display='block';
-  // Animate buyer steps
-  setTimeout(()=>{const e=document.getElementById('exBStep1');e.style.opacity='1';e.style.transform='translateX(0)';
-    const kt=document.getElementById('exBKey');let k='terse_bk_',full='terse_bk_a7f3...x9d2';let i=k.length;
-    const iv=setInterval(()=>{if(i<full.length){kt.textContent=full.slice(0,++i)}else clearInterval(iv)},40);
-  },300);
-  setTimeout(()=>{const e=document.getElementById('exBStep2');e.style.opacity='1';e.style.transform='translateX(0)';
-    // Typewriter command
-    const key='terse_bk_a7f3...x9d2';
-    let i=0;const kv=document.getElementById('exBKeyVal');
-    const iv1=setInterval(()=>{if(i<key.length){kv.textContent=key.slice(0,++i)}else clearInterval(iv1)},35);
-    setTimeout(()=>{const url='https://www.terseai.org/api/proxy';let j=0;const uv=document.getElementById('exBUrl');
-      const iv2=setInterval(()=>{if(j<url.length){uv.textContent=url.slice(0,++j)}else clearInterval(iv2)},25);
-    },800);
-    setTimeout(()=>{const cmd='"fix the auth bug"';let j=0;const rv=document.getElementById('exBRun');
-      const iv3=setInterval(()=>{if(j<cmd.length){rv.textContent=cmd.slice(0,++j)}else clearInterval(iv3)},40);
-    },2000);
-  },1200);
-  setTimeout(()=>{document.getElementById('exBSave').style.opacity='1'},3800);
-}
-
-function s8(){
+function a10(){
   capOff();
-  // Hide exchange
-  document.getElementById('L4').style.opacity='0';
-  document.getElementById('L3').classList.add('on');
-  document.querySelectorAll('#L3 .f').forEach((f,i)=>{f.style.opacity='0';f.style.transform='translateY(3px)';setTimeout(()=>{f.style.transition='all .2s var(--ease)';f.style.opacity='1';f.style.transform='translateY(0)'},40+i*40)});
-  ['ft','fs2','fu'].forEach((id,i)=>{const e=document.getElementById(id);e.style.opacity='0';setTimeout(()=>{e.style.transition='opacity .3s';e.style.opacity='1'},300+i*100)});
+  const pills=['省 40-70% Token','7 阶段管线','20+ 技术','Token 交易市场','100% 本地'];
+  const c=document.getElementById('fPills');c.innerHTML='';
+  pills.forEach((p,i)=>{const s=document.createElement('span');s.style.cssText='padding:6px 14px;background:var(--dark);color:var(--lime);border-radius:20px;font-size:11px;font-weight:700;opacity:0;transform:translateY(4px);transition:all .3s var(--ease-out)';s.textContent=p;c.appendChild(s);setTimeout(()=>{s.style.opacity='1';s.style.transform='translateY(0)'},200+i*80)});
 }
 
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();clearTimeout(tmr);if(cur<STEPS.length-1)go(cur+1)}
-  if(e.key==='ArrowLeft'){clearTimeout(tmr);if(cur>0)go(cur-1)}
-  if(e.key==='r')restart();
-});
 go(0);
 </script>
 </body>

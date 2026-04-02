@@ -242,7 +242,22 @@ app.post('/api/portal', async (req, res) => {
     const { clerkUserId } = req.body;
     if (!clerkUserId) return res.status(400).json({ error: 'Missing clerkUserId' });
 
-    const license = licenseCache.get(clerkUserId);
+    let license = licenseCache.get(clerkUserId);
+
+    // If not in cache, look up customer in Stripe
+    if (!license?.stripeCustomerId) {
+      try {
+        const customers = await stripe.customers.search({
+          query: `metadata["clerk_user_id"]:"${clerkUserId}"`,
+        });
+        if (customers.data.length > 0) {
+          license = { stripeCustomerId: customers.data[0].id };
+        }
+      } catch (e) {
+        console.error('[portal] stripe lookup error:', e.message);
+      }
+    }
+
     if (!license?.stripeCustomerId) {
       return res.status(404).json({ error: 'No subscription found' });
     }
@@ -482,7 +497,7 @@ app.post('/api/iap/verify', (req, res) => {
 
   // Map product ID to tier
   let tier = 'free';
-  if (productId === 'com.terseai.pro.monthly') tier = 'pro';
+  if (productId === 'com.pruneai.pro.monthly') tier = 'pro';
 
   const expDate = expirationDate ? new Date(expirationDate * 1000).toISOString() : null;
 
@@ -547,5 +562,16 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[terse-api] running on port ${PORT}`);
+  console.log(`[pruneai-api] running on port ${PORT}`);
+  // Auto-seed marketplace if empty
+  try {
+    const count = db.getListings.all();
+    const totalKeys = count.reduce((sum, r) => sum + r.available_keys, 0);
+    if (totalKeys === 0) {
+      console.log('[seed] No marketplace listings found, seeding...');
+      require('./seed-listings');
+    } else {
+      console.log(`[seed] ${totalKeys} marketplace listings already exist`);
+    }
+  } catch (e) { console.error('[seed] error:', e.message); }
 });

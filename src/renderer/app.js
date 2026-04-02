@@ -18,6 +18,7 @@ function show(name) {
   show('sessions');
   refreshSessions();
   updateLicenseBanner();
+  checkPaywall();
 })();
 
 // ── License ──
@@ -28,22 +29,89 @@ async function updateLicenseBanner() {
     const banner = $('#licenseBanner');
     if (!banner) return;
     banner.classList.remove('hidden');
-    $('#licenseTier').textContent = lic.tier.charAt(0).toUpperCase() + lic.tier.slice(1);
+    banner.classList.remove('limit-warning');
+
+    const tierLabel = lic.tier.charAt(0).toUpperCase() + lic.tier.slice(1);
+
+    if (lic.tier === 'expired' || lic.status === 'cancelled' || lic.status === 'none') {
+      // No active subscription — must start a trial
+      $('#licenseTier').textContent = 'No Plan';
+      $('#licenseUsage').textContent = 'Start a free trial to use Terse';
+      banner.classList.add('limit-warning');
+      $('#btnUpgrade').textContent = 'Start Free Trial';
+      return;
+    }
+
+    if (lic.status === 'trialing') {
+      // Show trial info with days remaining
+      const trialEnd = lic.trialEnd ? new Date(lic.trialEnd) : null;
+      const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - Date.now()) / 86400000)) : '?';
+      $('#licenseTier').textContent = tierLabel + ' (Trial)';
+      $('#licenseUsage').textContent = daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' left in trial';
+      if (daysLeft <= 3) banner.classList.add('limit-warning');
+      $('#btnUpgrade').textContent = 'Manage';
+      return;
+    }
+
+    // Active paid subscription
+    $('#licenseTier').textContent = tierLabel;
     if (lic.remaining >= 0) {
       $('#licenseUsage').textContent = lic.remaining + '/' + lic.limits.optimizationsPerWeek + ' left this week';
       if (lic.remaining <= 10) banner.classList.add('limit-warning');
-      else banner.classList.remove('limit-warning');
     } else {
       $('#licenseUsage').textContent = 'Unlimited';
-      banner.classList.remove('limit-warning');
     }
-    if (lic.tier !== 'free') {
-      $('#btnUpgrade').textContent = 'Manage';
+    $('#btnUpgrade').textContent = 'Manage';
+  } catch {}
+}
+// ── Paywall Gate ──
+async function checkPaywall() {
+  if (!T.getLicense || !T.getAuth) return;
+  try {
+    const auth = await T.getAuth();
+    if (!auth.signedIn) return; // auth gate handles this
+    const lic = await T.getLicense();
+    const gate = $('#paywallGate');
+    if (!gate) return;
+    if (lic.tier === 'expired' || lic.status === 'cancelled' || lic.status === 'none') {
+      gate.classList.remove('hidden');
+      gate.style.display = 'flex';
+    } else {
+      gate.classList.add('hidden');
+      gate.style.display = 'none';
     }
   } catch {}
 }
+
+async function startTrialCheckout(tier) {
+  const auth = await T.getAuth();
+  if (!auth.signedIn || !auth.clerkUserId) return;
+  const API_BASE = 'https://www.terseai.org';
+  try {
+    const res = await fetch(`${API_BASE}/api/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier, clerkUserId: auth.clerkUserId, clerkUserEmail: auth.email }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      try { const { open } = window.__TAURI__.shell; open(data.url); }
+      catch { window.open(data.url, '_blank'); }
+    } else {
+      toast('Error: ' + (data.error || 'Failed'), true);
+    }
+  } catch { toast('Network error', true); }
+}
+
+if ($('#paywallProBtn')) {
+  $('#paywallProBtn').addEventListener('click', () => startTrialCheckout('pro'));
+}
+if ($('#paywallPremiumBtn')) {
+  $('#paywallPremiumBtn').addEventListener('click', () => startTrialCheckout('premium'));
+}
+
 // Refresh license every 30s
-setInterval(updateLicenseBanner, 30000);
+setInterval(() => { updateLicenseBanner(); checkPaywall(); }, 30000);
 
 // Refresh immediately when quota changes (optimization performed)
 if (window.__TAURI__?.event?.listen) {
@@ -55,7 +123,7 @@ if (window.__TAURI__?.event?.listen) {
     if (banner) {
       banner.classList.add('limit-warning');
       const usage = document.getElementById('licenseUsage');
-      if (usage) usage.textContent = '0 left — upgrade or wait until next week';
+      if (usage) usage.textContent = 'No active plan — start a free trial';
     }
     // Disconnect all sessions in UI
     if (T.getAgentSessions) {
@@ -70,11 +138,12 @@ if (window.__TAURI__?.event?.listen) {
 // Also refresh when window gets focus (user returns from browser after payment)
 window.addEventListener('focus', () => {
   updateLicenseBanner();
+  checkPaywall();
   // Also verify with backend if signed in
   if (T.getAuth && T.verifyLicense) {
     T.getAuth().then(auth => {
       if (auth.signedIn && auth.clerkUserId) {
-        T.verifyLicense(auth.clerkUserId).then(() => updateLicenseBanner());
+        T.verifyLicense(auth.clerkUserId).then(() => { updateLicenseBanner(); checkPaywall(); });
       }
     });
   }
@@ -214,11 +283,47 @@ $$('.setting-row input').forEach(cb => cb.addEventListener('change', () => T.upd
 
 $('#btnClose').addEventListener('click', () => T.closeWindow());
 
-// Upgrade button — open in system browser
-$('#btnUpgrade').addEventListener('click', () => {
+// Upgrade / Start Trial button — open in system browser
+$('#btnUpgrade').addEventListener('click', async () => {
   try {
-    const { open } = window.__TAURI__.shell;
-    open('https://www.terseai.org/#pricing');
+    const lic = await T.getLicense();
+    const auth = await T.getAuth();
+    const API_BASE = 'https://www.terseai.org';
+    const openUrl = (url) => {
+      try { window.__TAURI__.shell.open(url); } catch { window.open(url, '_blank'); }
+    };
+
+    if (!auth.signedIn || !auth.clerkUserId) {
+      openUrl(`${API_BASE}/#pricing`);
+      return;
+    }
+
+    // If user has no subscription, go straight to Pro checkout
+    if (lic.tier === 'expired' || lic.status === 'none' || lic.status === 'cancelled') {
+      try {
+        const res = await fetch(`${API_BASE}/api/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier: 'pro', clerkUserId: auth.clerkUserId, clerkUserEmail: auth.email }),
+        });
+        const data = await res.json();
+        if (data.url) { openUrl(data.url); return; }
+      } catch {}
+      openUrl(`${API_BASE}/#pricing`);
+      return;
+    }
+
+    // Active/trialing subscription — open Stripe billing portal to manage/cancel
+    try {
+      const res = await fetch(`${API_BASE}/api/portal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clerkUserId: auth.clerkUserId }),
+      });
+      const data = await res.json();
+      if (data.url) { openUrl(data.url); return; }
+    } catch {}
+    openUrl(`${API_BASE}/#pricing`);
   } catch { window.open('https://www.terseai.org/#pricing', '_blank'); }
 });
 
@@ -285,7 +390,7 @@ updateAuthUI().then(() => {
   // Auto-verify license on launch if signed in
   T.getAuth && T.getAuth().then(auth => {
     if (auth.signedIn && auth.clerkUserId && T.verifyLicense) {
-      T.verifyLicense(auth.clerkUserId).then(() => updateLicenseBanner());
+      T.verifyLicense(auth.clerkUserId).then(() => { updateLicenseBanner(); checkPaywall(); });
     }
   });
 });

@@ -4,6 +4,7 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
+app.set('trust proxy', 1); // Railway runs behind a reverse proxy
 const PORT = process.env.PORT || 3000;
 
 // Marketplace modules
@@ -19,22 +20,22 @@ const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const CLERK_PK = process.env.CLERK_PUBLISHABLE_KEY || 'pk_live_Y2xlcmsudGVyc2VhaS5vcmck';
 const CLERK_SECRET = process.env.CLERK_SECRET_KEY;
 
-// Price IDs
+// Price IDs (no free plan — all plans have 30-day free trial)
 const PRICES = {
-  free: process.env.STRIPE_PRICE_FREE || 'price_1TAMaHGf9QijP49FYUwP3nZq',
-  pro: process.env.STRIPE_PRICE_PRO || 'price_1TAMb6Gf9QijP49FKhRQYUSf',
+  pro: process.env.STRIPE_PRICE_PRO || 'price_1THjoHGf9QijP49FBJr4407W',
   premium: process.env.STRIPE_PRICE_PREMIUM || 'price_1TAMciGf9QijP49FHTr9DuAB',
 };
 
+// 30-day free trial on all plans
+const TRIAL_DAYS = 30;
+
 // Plan limits (per platform)
 const PLAN_LIMITS = {
-  free: { optimizations_per_week: 1500, max_sessions: 1, max_devices: 1 },
   pro: { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
   premium: { optimizations_per_week: -1, max_sessions: -1, max_devices: -1 },
 };
 
 const PLAN_LIMITS_IOS = {
-  free: { optimizations_per_week: 120, max_sessions: 1, max_devices: 1 },
   pro: { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
   premium: { optimizations_per_week: -1, max_sessions: -1, max_devices: -1 },
 };
@@ -105,7 +106,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         const clerkUserId = sub.metadata?.clerk_user_id;
         if (clerkUserId) {
           licenseCache.set(clerkUserId, {
-            tier: 'free',
+            tier: 'expired',
             stripeCustomerId: sub.customer,
             subscriptionId: null,
             status: 'cancelled',
@@ -150,20 +151,25 @@ async function syncSubscription(sub) {
   const clerkUserId = sub.metadata?.clerk_user_id;
   if (!clerkUserId) return;
 
-  // Determine tier from price
+  // Determine tier from price (also recognize legacy price IDs for existing subscribers)
   const priceId = sub.items?.data?.[0]?.price?.id;
-  let tier = 'free';
-  if (priceId === PRICES.pro) tier = 'pro';
+  const LEGACY_PRO_PRICE = 'price_1TAMb6Gf9QijP49FKhRQYUSf';
+  let tier = 'expired';
+  if (priceId === PRICES.pro || priceId === LEGACY_PRO_PRICE) tier = 'pro';
   else if (priceId === PRICES.premium) tier = 'premium';
+
+  // Compute trial end date if in trial
+  const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
 
   licenseCache.set(clerkUserId, {
     tier,
     stripeCustomerId: sub.customer,
     subscriptionId: sub.id,
-    status: sub.status,
+    status: sub.status, // 'trialing', 'active', 'past_due', etc.
     expiresAt: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+    trialEnd,
   });
-  console.log(`[license] synced ${tier} (${sub.status}) for ${clerkUserId}`);
+  console.log(`[license] synced ${tier} (${sub.status}) for ${clerkUserId}${trialEnd ? ' trial until ' + trialEnd : ''}`);
 }
 
 // JSON body for all other routes
@@ -218,6 +224,7 @@ app.post('/api/checkout', async (req, res) => {
       cancel_url: `${baseUrl}/?checkout=cancelled`,
       metadata: { clerk_user_id: clerkUserId, tier },
       subscription_data: {
+        trial_period_days: TRIAL_DAYS,
         metadata: { clerk_user_id: clerkUserId, tier },
       },
     });
@@ -278,11 +285,13 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
 
       if (allCustomers.data.length > 0) {
         const customer = allCustomers.data[0];
+        // Check for active or trialing subscriptions
         const subs = await stripe.subscriptions.list({
           customer: customer.id,
-          status: 'active',
-          limit: 1,
+          limit: 5,
         });
+        // Filter to active or trialing
+        subs.data = subs.data.filter(s => s.status === 'active' || s.status === 'trialing');
 
         if (subs.data.length > 0) {
           const sub = subs.data[0];
@@ -297,23 +306,30 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
 
   // Dev/test account overrides
   const ACCOUNT_OVERRIDES = {
-    'user_3BP20FfLSljVdFW6tKgC2Vxmi6P': { optimizations_per_week: 1500, max_sessions: 3, max_devices: 2 },
+    'user_3BP20FfLSljVdFW6tKgC2Vxmi6P': { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
   };
 
   if (!license || license.status === 'cancelled') {
     const override = ACCOUNT_OVERRIDES[clerkUserId];
+    if (override) {
+      return res.json({ tier: 'pro', status: 'active', limits: override });
+    }
     return res.json({
-      tier: 'free',
-      status: 'active',
-      limits: override || planLimits.free,
+      tier: 'expired',
+      status: 'cancelled',
+      limits: { optimizations_per_week: 0, max_sessions: 0, max_devices: 0 },
     });
   }
 
+  // Both 'trialing' and 'active' get full plan limits
+  const effectiveStatus = (license.status === 'trialing' || license.status === 'active') ? license.status : license.status;
+
   res.json({
     tier: license.tier,
-    status: license.status,
-    limits: planLimits[license.tier] || planLimits.free,
+    status: effectiveStatus,
+    limits: planLimits[license.tier] || { optimizations_per_week: 0, max_sessions: 0, max_devices: 0 },
     expiresAt: license.expiresAt,
+    trialEnd: license.trialEnd || null,
   });
 });
 

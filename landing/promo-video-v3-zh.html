@@ -3,448 +3,765 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terse — AI Token 优化器 + Token 交易市场</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<title>Terse</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#d1e847;overflow:hidden;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;color:#1a1a1a;width:100vw;height:100vh}
+body{background:#d1e847;overflow:hidden;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased;color:#1a1a1a}
+#L0,#L1,#L2,#L3,.macFrame,.app,.caption-bar,.pnl{-webkit-transform:translateZ(0);transform:translateZ(0)}
+/* Subtle ambient background blobs */
+.amb-bg{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.amb-blob{position:absolute;border-radius:50%;filter:blur(150px);animation:blobFloat 25s ease-in-out infinite alternate}
+.amb-blob.b1{width:700px;height:700px;background:#a3c928;top:-15%;left:-10%;animation-delay:0s;opacity:.25}
+.amb-blob.b2{width:600px;height:600px;background:#e8f57a;top:50%;right:-10%;animation-delay:5s;opacity:.2}
+.amb-blob.b3{width:550px;height:550px;background:#b8d430;bottom:-10%;left:25%;animation-delay:10s;opacity:.15}
+.amb-blob.b4{width:500px;height:500px;background:#f0fa8c;top:20%;left:60%;animation-delay:15s;opacity:.12}
+@keyframes blobFloat{0%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.05)}66%{transform:translate(-20px,15px) scale(.95)}100%{transform:translate(10px,-10px) scale(1.02)}}
+/* Subtle dot grid pattern */
+.dot-grid{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.06;background-image:radial-gradient(circle,rgba(0,0,0,.08) .8px,transparent .8px);background-size:28px 28px}
 .mono{font-family:'JetBrains Mono',monospace}
-:root{--lime:#d1e847;--dark:#1a1a1a;--green:#059669;--ease-out:cubic-bezier(.16,1,.3,1);--ease-smooth:cubic-bezier(.4,0,.2,1)}
+:root{--ac:#1a1a1a;--ac2:#3d5a00;--lime:#d1e847;--ease:cubic-bezier(.25,.46,.45,.94);--ease-out:cubic-bezier(.16,1,.3,1);--ease-smooth:cubic-bezier(.4,0,.2,1)}
 
-.bg{position:fixed;inset:0;z-index:0;overflow:hidden}
-.bg-blob{position:absolute;border-radius:50%;filter:blur(150px);animation:bf 20s ease-in-out infinite alternate}
-.bg-blob.b1{width:600px;height:600px;background:#b8d430;top:-10%;left:-5%;opacity:.2}
-.bg-blob.b2{width:500px;height:500px;background:#e8f57a;bottom:-10%;right:-5%;opacity:.15;animation-delay:7s}
-@keyframes bf{0%{transform:translate(0,0) scale(1)}100%{transform:translate(15px,-10px) scale(1.03)}}
-.dot-grid{position:fixed;inset:0;z-index:1;opacity:.04;background-image:radial-gradient(circle,rgba(0,0,0,.1) .8px,transparent .8px);background-size:28px 28px}
-.prog{position:fixed;top:0;left:0;height:4px;background:var(--dark);z-index:9999;transition:width .8s var(--ease-out);border-radius:0 2px 2px 0}
+/* ── LAYERS (stacked via z-index, opacity-toggled) ── */
 
-/* Slides */
-.slides{position:fixed;inset:0;z-index:10}
-.slide{position:absolute;top:0;left:0;width:100vw;height:100vh;opacity:0;transition:opacity .7s var(--ease-smooth);pointer-events:none;overflow:hidden}
-.slide.active{opacity:1;pointer-events:auto}
+/* REVEAL */
+#L0{position:fixed;inset:0;z-index:60;background:#d1e847;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .8s var(--ease-smooth);will-change:opacity}
+#L0.off{opacity:0;pointer-events:none}
+@keyframes pop{to{opacity:1;transform:scale(1) translateZ(0)}}
+@keyframes up{to{opacity:1;transform:translateY(0) translateZ(0)}}
+@keyframes glo{0%,100%{text-shadow:0 0 10px rgba(209,232,71,.3)}50%{text-shadow:0 0 20px rgba(209,232,71,.6)}}
+@keyframes spn{to{transform:rotate(360deg)}}
+#L0 .icon{width:140px;height:140px;border-radius:32px;background:#1a1a1a;border:none;display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;opacity:0;transform:scale(.3);animation:pop .8s .1s var(--ease-out) forwards;box-shadow:0 20px 60px rgba(0,0,0,.15);will-change:transform,opacity}
+#L0 .icon::before{content:'';position:absolute;inset:-2px;border-radius:34px;background:conic-gradient(transparent,#1a1a1a,transparent);animation:spn 8s linear infinite;opacity:.08}
+#L0 .icon::after{content:'';position:absolute;inset:0;border-radius:32px;background:#1a1a1a}
+#L0 .icon b{font-size:60px;font-weight:900;color:var(--lime);position:relative;z-index:1;animation:glo 3s ease-in-out infinite}
+#L0 h1{font-size:48px;font-weight:800;letter-spacing:1px;color:#1a1a1a;opacity:0;transform:translateY(12px);animation:up .7s .3s var(--ease-out) forwards}
+#L0 h2{font-size:28px;font-weight:700;letter-spacing:6px;color:#1a1a1a;text-transform:uppercase;margin-top:4px;opacity:0;transform:translateY(8px);animation:up .7s .5s var(--ease-out) forwards}
+#L0 .badge{margin-top:20px;padding:12px 28px;border:none;border-radius:40px;color:#d1e847;background:#1a1a1a;display:flex;align-items:center;gap:12px;font-size:16px;font-weight:700;opacity:0;transform:translateY(8px);animation:up .7s .7s var(--ease-out) forwards;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+#L0 .badge small{font-size:8px;color:rgba(209,232,71,.6);display:block;letter-spacing:.8px;text-transform:uppercase}
+#L0 .sub{margin-top:20px;font-size:14px;color:rgba(0,0,0,.35);letter-spacing:3px;text-transform:uppercase;opacity:0;animation:up .7s .9s var(--ease-out) forwards;transform:translateY(6px)}
 
-/* Screenshot fills entire slide */
-.scene-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;overflow:hidden}
-.scene-bg img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;object-position:center;border:2px solid red}
+/* MAC DESKTOP */
+#L1{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:#d1e847;opacity:0;
+  perspective:800px;perspective-origin:50% 50%;
+  transition:opacity .7s var(--ease-smooth),perspective 2s var(--ease-out),perspective-origin 2s var(--ease-out);will-change:opacity}
+#L1.on{opacity:1}
+#L1.off{opacity:0;pointer-events:none;transition:opacity 1s var(--ease-smooth)}
+#L1.tilt3d{perspective:700px;perspective-origin:50% 55%;transition:perspective 2s var(--ease-out),perspective-origin 2s var(--ease-out)}
+/* The mac frame zooms into Terse icon at dock */
+.macFrame{transition:transform 1.8s var(--ease-out);transform-origin:50% 50%;transform-style:preserve-3d;will-change:transform}
+.macFrame.zoomT{transform:scale(8);transform-origin:54% 96%;transition:transform 1.6s var(--ease-out)}
+.macBox{transform-style:preserve-3d}
+.mscr{transform-style:preserve-3d}
+/* TILT: mac rotates to become the floor — THE KEY 3D TRANSITION */
+.macFrame.tilt{transform:scale(1) rotateX(55deg) translateY(120px);transform-origin:center 40%;transition:transform 2s var(--ease-out)}
+/* Add neon grid overlay when tilted */
+.macFrame.tilt .macBox{border-color:rgba(0,0,0,.15);box-shadow:0 30px 80px rgba(0,0,0,.3)}
+.macFrame.tilt .mscr::after{content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(0,0,0,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.04) 1px,transparent 1px);
+  background-size:60px 60px;pointer-events:none;opacity:1;animation:gs2 4s linear infinite}
+@keyframes gs2{to{background-position:0 60px}}
+.macBox{width:960px;border-radius:16px;overflow:visible;border:1px solid rgba(0,0,0,.1);box-shadow:0 25px 80px rgba(0,0,0,.2),0 0 1px rgba(0,0,0,.1);transform-style:preserve-3d}
+/* Menubar — realistic macOS dark mode */
+.mbar{display:flex;align-items:center;padding:0 16px;height:28px;background:rgba(255,255,255,.85);backdrop-filter:blur(20px);font-size:14px;gap:16px;border-bottom:1px solid rgba(0,0,0,.06);border-radius:16px 16px 0 0}
+.mbar span{font-size:13px;color:rgba(0,0,0,.85)}
+.mbar .dim{color:rgba(0,0,0,.45);font-size:13px}
+.mbar .right{margin-left:auto;font-size:12px;color:rgba(0,0,0,.45);display:flex;align-items:center;gap:12px}
+.mbar .right .wifi{font-size:11px}.mbar .right .batt{font-size:11px}
+/* Screen area — macOS Sonoma wallpaper gradient */
+.mscr{background:linear-gradient(135deg,#e8e0f0,#d4c8e8,#c0d4e8,#b8d0e0,#d0d8e8,#e0d4ec);height:500px;position:relative;padding:12px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;grid-template-areas:"chr trm" "trs ocl";padding-bottom:52px;transform-style:preserve-3d;overflow:visible;border-radius:0 0 16px 16px}
+/* Each app window */
+/* Frosted glass windows */
+.app{border-radius:12px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);overflow:visible;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,.06);
+  transform:translateZ(0);transition:transform 1s var(--ease-out),border-color .4s var(--ease-smooth),box-shadow .4s var(--ease-smooth),margin-top 1s var(--ease-out);will-change:transform}
+.app.float{transform:translateZ(40px) rotateX(-20deg);box-shadow:0 8px 30px rgba(0,0,0,.08);transition:transform 1s var(--ease-out),border-color .4s var(--ease-smooth),box-shadow .4s var(--ease-smooth)}
+/* Float up: counter-rotate desktop tilt so window faces viewer */
+.app.float-high{border-color:rgba(0,0,0,.12);box-shadow:0 20px 60px rgba(0,0,0,.15);transition:transform 1.2s var(--ease-out),border-color .4s var(--ease-smooth),box-shadow .4s var(--ease-smooth),margin-top 1.2s var(--ease-out);z-index:10;overflow:visible;height:auto;min-height:0}
+.app-chr.float-high,.app-trm.float-high{transform:translateZ(140px) rotateX(-55deg) scale(.65)}
+/* Terse (bottom-left): shift right + up to center */
+.app-trs.float-high{transform:translateZ(140px) rotateX(-55deg) scale(.55) translateX(45%);margin-top:-300px}
+/* OpenClaw (bottom-right): shift left + up to center */
+.app-ocl.float-high{transform:translateZ(140px) rotateX(-55deg) scale(.55) translateX(-45%);margin-top:-300px}
+/* Back down */
+.app.down{transform:translateZ(0) rotateX(0deg) scale(1) translate(0,0);border-color:rgba(255,255,255,.5);box-shadow:0 4px 20px rgba(0,0,0,.06);transition:transform 1s var(--ease-out),border-color .4s var(--ease-smooth),box-shadow .4s var(--ease-smooth),margin-top 1s var(--ease-out);margin-top:0}
+/* Frosted glass title bar */
+.app-bar{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid rgba(0,0,0,.04);background:rgba(255,255,255,.5);flex-shrink:0;border-radius:12px 12px 0 0}
+.app-bar .d{width:13px;height:13px;border-radius:50%;position:relative}
+.r{background:#ff5f57}.y{background:#ffbd2e}.g{background:#28c840}
+.app-bar .t{margin-left:8px;font-size:14px;color:rgba(0,0,0,.6);font-weight:500}
+.app-bar .b{margin-left:auto;font-size:11px;font-weight:600;color:#059669;background:rgba(16,185,129,.08);padding:3px 10px;border-radius:5px;letter-spacing:.3px}
+.app-body{flex:1;padding:12px;overflow:visible;font-size:13px;line-height:1.6;color:rgba(0,0,0,.6);min-height:0;background:rgba(255,255,255,.4);border-radius:0 0 12px 12px}
+.app.float-high .app-body{flex:none}
+/* When floating — clean shadow */
+.app.float-high{border-color:rgba(0,0,0,.1);box-shadow:0 20px 60px rgba(0,0,0,.15)}
+/* ═══ ALL WINDOWS: White frosted glass with clear text ═══ */
 
-/* Animated overlays positioned on top of screenshots */
-.overlay{position:absolute;z-index:5;opacity:0;transition:all .6s var(--ease-out);pointer-events:none}
-.overlay.show{opacity:1}
+/* CHROME / ChatGPT */
+.app-chr{grid-area:chr}
+.app-chr .app-bar .t{color:rgba(0,0,0,.7)}
+.app-chr .app-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.chr-m{padding:8px 14px;border-radius:16px;margin-bottom:4px;max-width:82%;font-size:13px;line-height:1.55}
+.chr-u{background:rgba(0,0,0,.03);color:rgba(0,0,0,.7);margin-left:auto}
+.chr-a{background:transparent;color:rgba(0,0,0,.6);padding:4px 0;border-radius:0;max-width:90%;font-size:13px}
 
-/* Callout bubble */
-.callout{padding:10px 16px;background:rgba(26,26,26,.92);color:#fff;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.2);backdrop-filter:blur(8px);border:1px solid rgba(209,232,71,.15);max-width:280px;transform:translateY(8px);white-space:nowrap}
-.callout.show{transform:translateY(0)}
-.callout .accent{color:var(--lime);font-weight:800}
-.callout .sub{font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;font-weight:400;white-space:normal}
-.callout::after{content:'';position:absolute;bottom:-6px;left:20px;width:12px;height:12px;background:rgba(26,26,26,.92);transform:rotate(45deg);border-radius:2px}
-.callout.arrow-top::after{top:-6px;bottom:auto}
-.callout.arrow-right::after{right:20px;left:auto}
-.callout.no-arrow::after{display:none}
+/* TERMINAL / Claude Code */
+.app-trm{grid-area:trm}
+.app-trm .app-bar .t{color:rgba(0,0,0,.5);font-family:'JetBrains Mono',monospace}
+.app-trm .app-body{color:rgba(0,0,0,.6);font-size:13px;padding:12px 14px}
+.app-trm .pr{color:#059669;font-weight:700}
+.app-trm .ok{color:#059669}
+.app-trm .dim{color:rgba(0,0,0,.3)}
+.app-trm .warn{color:#d97706}
+@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
+.app-trm .blink{animation:cursorBlink .8s step-end infinite;color:#059669}
 
-/* Pulse ring */
-.pulse-ring{width:40px;height:40px;border-radius:50%;border:2px solid var(--lime);animation:pring 1.5s ease-out infinite;position:absolute}
-@keyframes pring{0%{transform:scale(.8);opacity:.8}100%{transform:scale(2.5);opacity:0}}
-.pulse-dot{width:12px;height:12px;border-radius:50%;background:var(--lime);position:absolute;box-shadow:0 0 12px rgba(209,232,71,.6)}
+/* TERSE */
+.app-trs{grid-area:trs}
+.app-trs .app-bar .t{color:#059669!important;font-weight:600}
+.ts{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:4px;border-radius:6px;background:rgba(16,185,129,.04);border:1px solid rgba(16,185,129,.08);font-size:13px;color:rgba(0,0,0,.55)}
+.ts .dot{width:6px;height:6px;border-radius:50%;background:#10b981}
+.ts .badge{margin-left:auto;font-size:10px;color:#059669;background:rgba(16,185,129,.08);padding:3px 8px;border-radius:4px;font-weight:700}
+.trs-stats{display:flex;gap:4px;margin-top:6px}
+.trs-stat{flex:1;text-align:center;padding:8px;background:rgba(16,185,129,.04);border-radius:6px;font-size:16px;font-weight:800;color:#059669;border:1px solid rgba(16,185,129,.08)}
+.trs-stat small{font-size:8px;display:block;font-weight:400;color:rgba(0,0,0,.25);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+@keyframes statPulse{0%{color:#059669}50%{color:#10b981}100%{color:#059669}}
+.trs-stat.counting{animation:statPulse 1s ease-in-out}
 
-/* Counter animation */
-.counter-box{padding:12px 20px;background:rgba(26,26,26,.92);border-radius:12px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.2);border:1px solid rgba(209,232,71,.12)}
-.counter-val{font-size:28px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--lime)}
-.counter-label{font-size:9px;color:rgba(209,232,71,.5);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+/* OPENCLAW */
+.app-ocl{grid-area:ocl}
+.app-ocl .app-bar .t{color:rgba(0,0,0,.5)}
+.app-ocl .app-body{display:flex;flex-direction:column;gap:3px}
+.oc-m{padding:8px 12px;border-radius:8px;margin-bottom:3px;font-size:12px;line-height:1.5}
+.oc-u{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.08);color:#059669;margin-left:auto;max-width:85%}
+.oc-a{background:rgba(0,0,0,.02);color:rgba(0,0,0,.45);max-width:85%}
+/* Dock */
+.dock2{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px 12px;background:rgba(255,255,255,.55);border:1px solid rgba(0,0,0,.06);border-radius:16px;backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px)}
+.di{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;position:relative;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+/* Finder — blue gradient */
+.di.fi{background:linear-gradient(180deg,#5ac8fa,#007aff);font-size:14px;color:#fff}
+/* Chrome — multicolor */
+.di.ch{background:linear-gradient(135deg,#ea4335 25%,#fbbc05 25%,#fbbc05 50%,#34a853 50%,#34a853 75%,#4285f4 75%);font-size:8px;color:#fff}
+/* Terminal — dark with white text */
+.di.tm{background:linear-gradient(180deg,#4a4a4a,#1a1a1a);color:#fff;font-size:11px;font-family:'JetBrains Mono',monospace}
+/* Terse — dark with green T */
+.di.te{background:linear-gradient(145deg,#0d1117,#161b22);border:1px solid rgba(209,232,71,.2);color:var(--lime);font-weight:900;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.di.te.glow{box-shadow:0 0 20px rgba(209,232,71,.4);border-color:rgba(209,232,71,.5)}
+.di.te.glow::after{content:'';position:absolute;inset:-6px;border-radius:12px;border:1.5px solid var(--lime);opacity:0;animation:rng 1s ease-out 3 forwards}
+@keyframes rng{0%{transform:scale(1);opacity:.8}100%{transform:scale(2);opacity:0}}
 
-/* Typing cursor */
-.cursor{display:inline-block;width:2px;height:14px;background:var(--green);animation:blink .6s step-end infinite;vertical-align:middle;margin-left:2px}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+/* ── FLOATING PANELS (overlay on tilted mac) ── */
+#L2{position:fixed;inset:0;z-index:55;
+  display:flex;align-items:flex-start;justify-content:center;
+  pointer-events:none;opacity:0;transition:opacity 1s var(--ease-smooth)}
+#L2.on{opacity:1}
+.panels-wrap{width:100%;max-width:1200px;display:flex;flex-wrap:wrap;gap:20px;justify-content:center;padding:30px 24px;align-content:flex-start}
+/* PANELS — flat 2D positioned overlays that appear above the tilted desktop */
+.pnl{opacity:0;transition:opacity .8s var(--ease-out),transform .8s var(--ease-out);transform:translateY(20px)}
+.pnl.on{opacity:1;transform:translateY(0)}
+/* Holographic panel style */
+.hcard{background:rgba(6,10,18,.88);border:1px solid rgba(110,231,183,.12);border-radius:10px;backdrop-filter:blur(12px);box-shadow:0 0 25px rgba(110,231,183,.04),0 0 50px rgba(110,231,183,.015),inset 0 1px 0 rgba(110,231,183,.06);overflow:hidden;position:relative}
+.hcard::before{content:'';position:absolute;top:0;left:3%;right:3%;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);box-shadow:0 0 8px rgba(110,231,183,.4)}
+.hcard::after{content:'';position:absolute;bottom:0;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(110,231,183,.15),transparent)}
+.hbar{display:flex;align-items:center;gap:4px;padding:8px 12px;border-bottom:1px solid rgba(110,231,183,.06);background:rgba(0,0,0,.25)}
+.hbar .dot{width:5px;height:5px;border-radius:50%;background:var(--ac);box-shadow:0 0 6px var(--ac),0 0 12px rgba(110,231,183,.2);animation:dotP 2s ease-in-out infinite}
+@keyframes dotP{0%,100%{box-shadow:0 0 6px var(--ac)}50%{box-shadow:0 0 12px var(--ac),0 0 20px rgba(110,231,183,.3)}}
+.hbar .ht{font-size:11px;color:rgba(110,231,183,.4);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-left:3px}
+.hbar .hb{margin-left:auto;font-size:7px;font-weight:700;color:var(--ac);background:rgba(110,231,183,.06);padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.5px;border:1px solid rgba(110,231,183,.08)}
+.hbody{padding:12px}
+/* Session items in holo */
+.hs2{display:flex;align-items:center;gap:6px;padding:8px 10px;margin-bottom:4px;border-radius:5px;background:rgba(110,231,183,.015);border:1px solid rgba(110,231,183,.02);font-size:13px;opacity:0;transform:translateX(10px);transition:all .5s var(--ease-out)}
+.hs2.on{opacity:1;transform:translateX(0)}
+.hs2 .n{flex:1;color:rgba(255,255,255,.4)}.hs2 .b{font-size:8px;color:var(--ac);background:rgba(110,231,183,.05);padding:2px 5px;border-radius:2px;font-weight:700;letter-spacing:.5px}
+/* Token */
+.pipe7{display:flex;gap:3px;margin:8px 0}.pipe7 div{flex:1;height:5px;background:rgba(0,0,0,.04);border-radius:2px;overflow:hidden}
+.pipe7 div span{display:block;height:100%;width:0;background:linear-gradient(90deg,#3d5a00,#059669);border-radius:2px;transition:width .6s var(--ease-out)}
+.tkw{display:inline;font-size:13px;color:rgba(0,0,0,.55);line-height:1.8;transition:all .4s var(--ease-out)}
+.tkw.x{color:#dc2626;text-decoration:line-through;opacity:.5}.tkw.f{color:#059669;font-weight:700}.tkw.g{opacity:0;font-size:0}
+.tkr{padding:8px 10px;background:rgba(110,231,183,.03);border:1px solid rgba(110,231,183,.04);border-radius:5px;margin-top:6px;opacity:0;transition:all .5s var(--ease-out)}
+.tkr.on{opacity:1}
+.tkr .a{font-size:12px;color:var(--ac);font-weight:600;line-height:1.4}.tkr .b{font-size:8px;color:rgba(110,231,183,.25);margin-top:2px}
+.tkbig{font-size:32px;font-weight:900;text-align:center;margin-top:6px;background:linear-gradient(135deg,#1a1a1a,#3d5a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0;transform:scale(1.5);transition:all .6s var(--ease-out)}
+.tkbig.on{opacity:1;transform:scale(1)}
+/* Agent */
+.agl{font-size:11px;line-height:1.8;color:rgba(255,255,255,.2);opacity:0;transition:all .4s var(--ease-out)}.agl.on{opacity:1}
+.agl .p{color:var(--ac);font-weight:700}.agl .g2{color:var(--ac)}.agl .w{color:#f59e0b}.agl .c{color:#06b6d4}.agl .pk{color:#ff006e}
+.agg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px}
+.ags{text-align:center;padding:6px;background:rgba(0,0,0,.2);border-radius:4px;border:1px solid rgba(110,231,183,.02)}
+.ags .v{font-size:16px;font-weight:900;color:#fff;display:block}.ags .v.g2{color:var(--ac);text-shadow:0 0 6px rgba(110,231,183,.2)}
+.ags .l{font-size:6px;color:rgba(110,231,183,.2);text-transform:uppercase;display:block;margin-top:2px;letter-spacing:.5px}
+.agbar{margin-top:6px;padding:6px 10px;background:linear-gradient(90deg,rgba(110,231,183,.02),rgba(6,182,212,.01));border:1px solid rgba(110,231,183,.04);border-radius:4px;display:flex;justify-content:space-between;align-items:center;opacity:0;transition:all .5s var(--ease-out)}
+.agbar.on{opacity:1}
+.agbar span:first-child{font-size:8px;color:rgba(255,255,255,.15);text-transform:uppercase;letter-spacing:.5px}.agbar span:last-child{font-size:14px;font-weight:900;color:var(--ac);text-shadow:0 0 6px rgba(110,231,183,.15)}
+/* Browser */
+.bm{padding:6px 8px;border-radius:5px;font-size:11px;line-height:1.5;margin-bottom:4px;opacity:0;transition:all .4s var(--ease-out)}
+.bm.on{opacity:1}
+.bm.u{background:rgba(110,231,183,.015);border:1px solid rgba(110,231,183,.02);color:var(--ac);text-align:right}
+.bm.a{background:rgba(255,255,255,.008);border:1px solid rgba(255,255,255,.015);color:rgba(255,255,255,.25)}
+.bm .s{text-decoration:line-through;opacity:.3;color:#ff006e;font-size:9px;display:block;margin-bottom:2px}
+.bm .o{color:var(--ac);display:block}
+.bm .t{font-size:7px;color:var(--ac);opacity:.3;display:block;margin-top:2px}
 
-/* Progress bar (inside overlay) */
-.mini-prog{height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;width:100%}
-.mini-prog-fill{height:100%;background:linear-gradient(90deg,var(--lime),var(--green));border-radius:2px;width:0;transition:width 1.5s var(--ease-out)}
+/* FINAL */
+#L3{position:fixed;inset:0;z-index:70;background:#d1e847;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .8s var(--ease-smooth);will-change:opacity}
+#L3.on{opacity:1}
+#L3 .fs{display:flex;gap:8px;margin-bottom:28px;flex-wrap:wrap;justify-content:center}
+#L3 .f{padding:10px 22px;border:none;border-radius:40px;font-size:13px;font-weight:700;color:#d1e847;opacity:0;transform:translateY(4px);background:#1a1a1a}
+#L3 .icon2{width:90px;height:90px;border-radius:22px;background:#1a1a1a;border:none;display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;box-shadow:0 12px 40px rgba(0,0,0,.15)}
+#L3 .icon2::before{content:'';position:absolute;inset:-2px;border-radius:24px;background:conic-gradient(transparent,#1a1a1a,transparent);animation:spn 8s linear infinite;opacity:.06}
+#L3 .icon2::after{content:'';position:absolute;inset:0;border-radius:22px;background:#1a1a1a}
+#L3 .icon2 b{font-size:40px;font-weight:900;color:var(--lime);position:relative;z-index:1;animation:glo 3s ease-in-out infinite}
+#L3 .tg{font-size:30px;font-weight:800;opacity:0;letter-spacing:.5px;color:#1a1a1a}
+#L3 .sb{font-size:15px;color:rgba(0,0,0,.35);margin-top:8px;letter-spacing:1.5px;opacity:0}
+#L3 .ur{font-size:16px;font-weight:700;color:#1a1a1a;margin-top:16px;letter-spacing:2px;opacity:0;background:#1a1a1a;color:#d1e847;padding:10px 28px;border-radius:40px}
 
-/* Live feed line */
-.feed-line{font-size:11px;font-family:'JetBrains Mono',monospace;padding:3px 0;opacity:0;transform:translateX(-8px);transition:all .4s var(--ease-out);color:rgba(255,255,255,.5)}
-.feed-line.show{opacity:1;transform:translateX(0)}
-.feed-line .g{color:var(--lime);font-weight:700}
-.feed-line .w{color:#fbbf24;font-weight:700}
-.feed-line .r{color:#ff6b6b}
-
-/* Token Exchange overlay card */
-.ex-card{padding:16px 20px;background:rgba(26,26,26,.94);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);border:1px solid rgba(209,232,71,.1);color:#fff;max-width:360px}
-.ex-card .title{font-size:14px;font-weight:800;margin-bottom:8px;color:var(--lime)}
-.ex-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12px;color:rgba(255,255,255,.6);border-bottom:1px solid rgba(255,255,255,.04)}
-.ex-row:last-child{border:none}
-.ex-row .num{width:20px;height:20px;border-radius:50%;background:rgba(209,232,71,.15);color:var(--lime);font-weight:800;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ex-row.done{color:var(--lime)}
-.ex-savings{margin-top:10px;text-align:center;font-size:20px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--lime)}
-
-/* Controls */
-.ctrl{position:fixed;bottom:12px;right:12px;z-index:9999;display:flex;gap:4px}
-.ctrl button{padding:6px 14px;background:var(--dark);border:none;border-radius:20px;color:rgba(255,255,255,.5);font-size:11px;cursor:pointer;font-family:inherit;transition:color .2s}
+/* No clone overlay — windows float directly */
+/* ── CAPTION BAR ── */
+.caption-bar{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-12px);z-index:9998;padding:14px 36px;background:#1a1a1a;border:none;border-radius:40px;font-size:20px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:1px;white-space:nowrap;opacity:0;transition:opacity .6s var(--ease-smooth),transform .6s var(--ease-out);pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.15);will-change:transform,opacity}
+.caption-bar.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.caption-bar .cap-accent{color:var(--lime);font-weight:800}
+.caption-bar .cap-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--lime);margin-right:12px;box-shadow:0 0 10px rgba(209,232,71,.4);vertical-align:middle}
+.prog{position:fixed;top:0;left:0;height:3px;background:#1a1a1a;z-index:9999;transition:width .8s var(--ease-out)}
+.ctrl{position:fixed;bottom:4px;right:4px;z-index:9999;display:flex;gap:2px}
+.ctrl button{padding:3px 8px;background:#1a1a1a;border:none;border-radius:20px;color:rgba(255,255,255,.5);font-size:8px;cursor:pointer;font-family:inherit}
 .ctrl button:hover{color:var(--lime)}.ctrl .on{color:var(--lime)}
-.slide-counter{position:fixed;bottom:12px;left:12px;z-index:9999;font-size:11px;color:rgba(26,26,26,.25);font-family:'JetBrains Mono',monospace}
-
-@keyframes glo{0%,100%{text-shadow:0 0 8px rgba(209,232,71,.2)}50%{text-shadow:0 0 16px rgba(209,232,71,.5)}}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
-
-/* ═══ INTRO SCENE — Cinematic App Store Style ═══ */
-.intro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
-
-/* Spotlight glow behind icon */
-.intro-spotlight{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(209,232,71,.25) 0%,transparent 70%);filter:blur(60px);opacity:0;transition:opacity 1.5s;pointer-events:none}
-.intro-spotlight.on{opacity:1;animation:spotPulse 3s ease-in-out infinite}
-@keyframes spotPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.15);opacity:1}}
-
-/* App Icon — 3D pop with shadow */
-.intro-icon{width:140px;height:140px;border-radius:32px;background:var(--dark);display:flex;align-items:center;justify-content:center;position:relative;opacity:0;transform:scale(.3) rotateY(90deg);transition:all 1s var(--ease-out);box-shadow:0 30px 80px rgba(0,0,0,.25);z-index:2}
-.intro-icon.on{opacity:1;transform:scale(1) rotateY(0deg)}
-.intro-icon::before{content:'';position:absolute;inset:-3px;border-radius:35px;background:conic-gradient(from 0deg,transparent,rgba(209,232,71,.3),transparent,rgba(209,232,71,.15),transparent);animation:iconSpin 6s linear infinite;opacity:0;transition:opacity 1s .5s}
-.intro-icon.on::before{opacity:1}
-@keyframes iconSpin{to{transform:rotate(360deg)}}
-.intro-icon b{font-size:64px;font-weight:900;color:var(--lime);position:relative;z-index:1}
-/* Screen-on glow flash */
-.intro-icon.on b{animation:glo 3s ease-in-out infinite,iconFlash .6s .3s}
-@keyframes iconFlash{0%{filter:brightness(1)}50%{filter:brightness(2)}100%{filter:brightness(1)}}
-
-/* "现已推出" badge */
-.intro-badge{padding:8px 20px;background:var(--dark);color:var(--lime);border-radius:30px;font-size:13px;font-weight:700;letter-spacing:2px;opacity:0;transform:translateY(8px) scale(.9);transition:all .7s var(--ease-out);margin-bottom:24px;box-shadow:0 4px 20px rgba(0,0,0,.1);display:flex;align-items:center;gap:8px}
-.intro-badge.on{opacity:1;transform:translateY(0) scale(1)}
-.intro-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px rgba(209,232,71,.6);animation:dotBlink 1.5s ease-in-out infinite}
-@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:.4}}
-
-/* Title with clip-path wipe reveal */
-.intro-title{font-size:clamp(40px,7vw,64px);font-weight:900;text-align:center;letter-spacing:-2px;line-height:1.1;margin-top:20px;opacity:0;clip-path:inset(0 100% 0 0);transition:clip-path 1s var(--ease-out),opacity .5s}
-.intro-title.on{opacity:1;clip-path:inset(0 0 0 0)}
-.intro-title .line2{display:block;color:rgba(26,26,26,.6);font-size:clamp(28px,4.5vw,42px);margin-top:4px;letter-spacing:0}
-
-/* Subtitle */
-.intro-sub{font-size:clamp(15px,2vw,20px);color:rgba(26,26,26,.35);margin-top:14px;opacity:0;transform:translateY(8px);transition:all .7s var(--ease-out) .3s;letter-spacing:1px}
-.intro-sub.on{opacity:1;transform:translateY(0)}
-
-/* App Store download button */
-.intro-dl{margin-top:24px;padding:12px 28px;background:var(--dark);color:var(--lime);border-radius:40px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(10px);transition:all .7s var(--ease-out);box-shadow:0 8px 30px rgba(0,0,0,.15)}
-.intro-dl.on{opacity:1;transform:translateY(0)}
-.intro-dl .apple{font-size:20px}
-
-/* Feature pills row */
-.intro-pills{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;justify-content:center}
-.intro-pill{padding:7px 16px;background:rgba(26,26,26,.06);border:1px solid rgba(26,26,26,.08);border-radius:20px;font-size:12px;font-weight:600;color:rgba(26,26,26,.5);opacity:0;transform:translateY(6px);transition:all .5s var(--ease-out)}
-.intro-pill.on{opacity:1;transform:translateY(0)}
-
-/* Particles */
-.particles{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.particle{position:absolute;width:4px;height:4px;border-radius:50%;background:rgba(26,26,26,.08);opacity:0}
-.particle.on{animation:particleUp 2.5s var(--ease-out) forwards}
-@keyframes particleUp{0%{opacity:0;transform:translateY(20px) scale(0)}20%{opacity:.6;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-100px) scale(.5)}}
 </style>
 </head>
 <body>
-<div class="bg"><div class="bg-blob b1"></div><div class="bg-blob b2"></div></div>
+<div class="amb-bg"><div class="amb-blob b1"></div><div class="amb-blob b2"></div><div class="amb-blob b3"></div><div class="amb-blob b4"></div></div>
 <div class="dot-grid"></div>
 <div class="prog" id="prog"></div>
-<div class="slide-counter" id="sc">1 / 12</div>
+<div class="caption-bar" id="capBar"><span class="cap-dot"></span><span id="capText">Terse — Token 优化器</span></div>
 
-<div class="slides" id="slides">
-
-<!-- S0: INTRO — Cinematic App Store Reveal -->
-<div class="slide" id="s0">
-  <div class="intro">
-    <!-- Particle field -->
-    <div class="particles" id="particles"></div>
-    <!-- Spotlight glow -->
-    <div class="intro-spotlight" id="i-spot"></div>
-    <!-- "现已推出" badge -->
-    <div class="intro-badge" id="i-badge"><div class="dot"></div>现已推出</div>
-    <!-- App icon with 3D pop -->
-    <div class="intro-icon" id="i-icon"><b>T</b></div>
-    <!-- Title with clip-path wipe -->
-    <div class="intro-title" id="i-title">节省每一个 Token。<span class="line2">交易剩余额度。</span></div>
-    <!-- Subtitle -->
-    <div class="intro-sub" id="i-sub">AI Token 优化器 + Token 交易市场</div>
-    <!-- App Store download button -->
-    <div class="intro-dl" id="i-dl"><span class="apple">&#63743;</span>Download on the App Store</div>
-    <!-- Feature pills -->
-    <div class="intro-pills" id="i-pills">
-      <span class="intro-pill" id="ip0">省 40-70% Token</span>
-      <span class="intro-pill" id="ip1">代理会话监控</span>
-      <span class="intro-pill" id="ip2">Token 交易市场</span>
-      <span class="intro-pill" id="ip3">100% 本地运行</span>
-    </div>
-  </div>
+<!-- L0: REVEAL -->
+<div id="L0">
+  <h1>现已推出</h1>
+  <div class="icon"><b>T</b></div>
+  <h2>Terse</h2>
+  <div class="badge"><span style="font-size:16px">&#63743;</span><div><small>Download on the</small><span>App Store</span></div></div>
+  <div class="sub">节省每一个 AI Token</div>
 </div>
 
-<!-- S1: Welcome (mac_zh_01) -->
-<div class="slide" id="s1">
-  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_01.png" alt=""></div>
-  <!-- Animated: color dots pulse one by one -->
-  <div class="overlay" id="o1a" style="top:42%;left:40%;"><div class="pulse-ring"></div></div>
-  <div class="overlay" id="o1b" style="bottom:12%;right:8%">
-    <div class="callout no-arrow">选择你的风格，<span class="accent">一键登录</span><div class="sub">支持 Google、GitHub、邮箱注册</div></div>
-  </div>
-</div>
-
-<!-- S2: Main UI (mac_zh_02) -->
-<div class="slide" id="s2">
-  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_02.png" alt=""></div>
-  <div class="overlay" id="o2a" style="top:56%;left:50%;transform:translateX(-50%)">
-    <div class="callout no-arrow" style="text-align:center">粘贴提示词 → 点击优化 → <span class="accent">立省 40-70%</span><div class="sub">免费用户每周 1500 次优化</div></div>
-  </div>
-  <!-- Animated token counter -->
-  <div class="overlay" id="o2b" style="bottom:8%;right:8%">
-    <div class="counter-box"><div class="counter-val" id="c2v">0</div><div class="counter-label">tokens saved</div></div>
-  </div>
-</div>
-
-<!-- S3: Connect (mac_zh_03) -->
-<div class="slide" id="s3">
-  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_03.png" alt=""></div>
-  <div class="overlay" id="o3a" style="top:36%;left:50%;transform:translateX(-50%)">
-    <div class="pulse-ring"></div>
-  </div>
-  <div class="overlay" id="o3b" style="bottom:10%;left:50%;transform:translateX(-50%)">
-    <div class="callout no-arrow" style="text-align:center">点击 AI 输入框 → Terse <span class="accent">自动连接</span><div class="sub">支持 ChatGPT、Claude.ai、Gemini 等所有浏览器应用</div></div>
-  </div>
-</div>
-
-<!-- S4: Agent Monitor (mac_zh_04) -->
-<div class="slide" id="s4">
-  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_04.png" alt=""></div>
-  <!-- Animated live feed -->
-  <div class="overlay" id="o4a" style="top:10%;right:5%;width:320px">
-    <div class="ex-card" style="max-width:320px">
-      <div class="title" style="font-size:12px">实时监控中...</div>
-      <div id="feed4" style="min-height:60px"></div>
-      <div class="mini-prog" style="margin-top:8px"><div class="mini-prog-fill" id="prog4"></div></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <div class="counter-box" style="flex:1;padding:6px"><div class="counter-val" style="font-size:16px" id="c4t">0</div><div class="counter-label">turns</div></div>
-        <div class="counter-box" style="flex:1;padding:6px"><div class="counter-val" style="font-size:16px" id="c4s">0</div><div class="counter-label">saved</div></div>
-        <div class="counter-box" style="flex:1;padding:6px"><div class="counter-val" style="font-size:16px" id="c4c">$0</div><div class="counter-label">cost</div></div>
+<!-- L1: MAC DESKTOP -->
+<div id="L1">
+  <div class="macFrame" id="mf">
+    <div class="macBox">
+      <div class="mbar">
+        <span style="font-size:14px">&#63743;</span>
+        <span style="font-weight:600">Finder</span>
+        <span class="dim">File</span>
+        <span class="dim">Edit</span>
+        <span class="dim">View</span>
+        <span class="dim">Go</span>
+        <span class="dim">Window</span>
+        <span class="right"><span class="wifi">Wi-Fi</span><span class="batt">100%</span><span class="mono">Wed 6:23 PM</span></span>
+      </div>
+      <div class="mscr">
+        <!-- CHROME -->
+        <div class="app app-chr">
+          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t">Chrome — ChatGPT</span><span class="b">AI CHAT</span></div>
+          <div class="app-body" style="display:flex;flex-direction:column;gap:3px">
+            <div class="chr-m chr-u">So basiclly could you pleas help me optimize database quereis for better performence?</div>
+            <div class="chr-m chr-a">Here are key strategies: 1) Use proper indexing on frequently queried columns, 2) Avoid SELECT *...</div>
+            <div class="chr-m chr-u">Show me indexing examples pleas</div>
+            <div class="chr-m chr-a">CREATE INDEX idx_users_email ON users(email); This reduces lookup from O(n) to O(log n).</div>
+          </div>
+        </div>
+        <!-- TERMINAL -->
+        <div class="app app-trm">
+          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t mono">Terminal — claude-code</span><span class="b">RUNNING</span></div>
+          <div class="app-body mono">
+            <div><span class="pr">❯ </span>claude "fix the authetication module token refresh"</div>
+            <div>⏺ Reading src/auth.js...</div>
+            <div>⏺ Reading package.json...</div>
+            <div>⏺ Reading src/auth.js... <span style="color:rgba(255,170,0,.15)">(dup)</span></div>
+            <div>⏺ Writing src/auth.js (+12 -3)</div>
+            <div>⏺ Running npm test...</div>
+            <div class="ok">✓ 262 passed, 0 failed (3.41s)</div>
+            <div><span class="pr">❯ </span><span class="blink">█</span></div>
+          </div>
+        </div>
+        <!-- TERSE -->
+        <div class="app app-trs">
+          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t">Terse</span><span class="b">MONITORING</span></div>
+          <div class="app-body">
+            <div class="ts"><div class="dot"></div>Chrome — ChatGPT<div class="badge">BROWSER</div></div>
+            <div class="ts"><div class="dot"></div>Claude Code<div class="badge">AGENT</div></div>
+            <div class="ts"><div class="dot"></div>OpenClaw<div class="badge">AGENT</div></div>
+            <div class="trs-stats">
+              <div class="trs-stat">7<small>Turns</small></div>
+              <div class="trs-stat">-71%<small>Saved</small></div>
+              <div class="trs-stat">$0.42<small>Cost</small></div>
+            </div>
+          </div>
+        </div>
+        <!-- OPENCLAW -->
+        <div class="app app-ocl">
+          <div class="app-bar"><div class="d r"></div><div class="d y"></div><div class="d g"></div><span class="t">OpenClaw — claude-sonnet</span></div>
+          <div class="app-body" style="display:flex;flex-direction:column;gap:2px">
+            <div class="oc-m oc-u">Debug the authentication 500 error on POST</div>
+            <div class="oc-m oc-a">Investigating POST handler. Checking request validation...</div>
+            <div class="oc-m oc-u">Fix the token refresh logic</div>
+            <div class="oc-m oc-a">JWT verification was using expired keys. Fixed and verified.</div>
+          </div>
+        </div>
+        <!-- DOCK -->
+        <div class="dock2">
+          <div class="di fi">Fi</div>
+          <div class="di ch">Ch</div>
+          <div class="di tm">>_</div>
+          <div class="di te" id="dkT">T</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- S5: Popup Bar (mac_zh_05) -->
-<div class="slide" id="s5">
-  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_05.png" alt=""></div>
-  <div class="overlay" id="o5a" style="top:24%;right:8%">
-    <div class="callout arrow-top arrow-right"><span class="accent">3 种模式</span> — Soft · Normal · Aggr<div class="sub">不同场景用不同压缩级别</div></div>
-  </div>
-  <div class="overlay" id="o5b" style="top:50%;left:8%">
-    <div class="callout">捕获 → 优化 → <span class="accent">一键替换</span><div class="sub">始终置顶，不抢焦点，不碍事</div></div>
-  </div>
-</div>
-
-<!-- S6: Settings (mac_zh_06) -->
-<div class="slide" id="s6">
-  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_06.png" alt=""></div>
-  <div class="overlay" id="o6a" style="top:30%;right:5%">
-    <div class="callout arrow-right"><span class="accent">9 个开关</span>，精准控制<div class="sub">去废话 · 去客气 · 去犹豫 · 缩短短语 · 压缩代码...</div></div>
-  </div>
-</div>
-
-<!-- S7: Full View (mac_zh_07) -->
-<div class="slide" id="s7">
-  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_07.png" alt=""></div>
-  <div class="overlay" id="o7a" style="top:8%;left:50%;transform:translateX(-50%)">
-    <div class="callout no-arrow" style="text-align:center"><span class="accent">会话管理 + 代理监控</span> 并排显示<div class="sub">左边管理连接，右边实时追踪 Claude Code 的每一步</div></div>
-  </div>
-</div>
-
-<!-- S8: Stats (mac_zh_09 — shows 21.3K saved) -->
-<div class="slide" id="s8">
-  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_09.png" alt=""></div>
-  <div class="overlay" id="o8a" style="bottom:10%;left:50%;transform:translateX(-50%)">
-    <div style="display:flex;gap:12px">
-      <div class="counter-box"><div class="counter-val" id="c8s" style="font-size:32px">0</div><div class="counter-label">tokens saved</div></div>
-      <div class="counter-box"><div class="counter-val" id="c8p" style="font-size:32px">0%</div><div class="counter-label">avg compression</div></div>
-      <div class="counter-box"><div class="counter-val" style="font-size:32px;color:#fbbf24">$$$</div><div class="counter-label">money saved</div></div>
+<!-- L2: FLOATING PANELS (overlay, above tilted mac) -->
+<div id="L2">
+  <div class="panels-wrap">
+    <!-- Panel 0: Sessions -->
+    <div class="pnl" id="P0" style="width:360px">
+      <div class="hcard">
+        <div class="hbar"><div class="dot"></div><span class="ht">Terse Sessions</span><span class="hb">Active</span></div>
+        <div class="hbody">
+          <div class="hs2" id="h1"><div class="dot"></div><span class="n">Google Chrome</span><span class="b">Browser</span></div>
+          <div class="hs2" id="h2"><div class="dot"></div><span class="n">Claude Code</span><span class="b">Agent</span></div>
+          <div class="hs2" id="h3"><div class="dot"></div><span class="n">OpenClaw</span><span class="b">Agent</span></div>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-
-<!-- S9: Privacy (mac_zh_10) -->
-<div class="slide" id="s9">
-  <div class="scene-bg"><img src="/mac-screenshots/zh/mac_zh_10.png" alt=""></div>
-  <div class="overlay" id="o9a" style="bottom:12%;left:50%;transform:translateX(-50%)">
-    <div class="callout no-arrow" style="text-align:center;font-size:15px"><span class="accent">100% 本地运行</span> — 零云端，零追踪<div class="sub">你的代码和提示词绝不离开你的 Mac。没有服务器，没有日志。</div></div>
-  </div>
-</div>
-
-<!-- S10: Token Exchange — Problem + Solution -->
-<div class="slide" id="s10">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px">
-    <div id="ex-title" style="font-size:48px;font-weight:900;text-align:center;opacity:0;transform:translateY(12px)"><span style="color:#c0392b">40%</span> 的 API 额度被浪费。</div>
-    <div id="ex-sub" style="font-size:18px;color:rgba(26,26,26,.4);margin-top:10px;text-align:center;opacity:0;transform:translateY(8px)">Token 交易市场 — 卖闲置，买折扣</div>
-    <div id="ex-flow" style="margin-top:32px;width:100%;max-width:600px">
-      <div class="ex-card" style="max-width:600px;width:100%;background:rgba(26,26,26,.92)">
-        <div class="title" style="font-size:16px">卖家 — 3 步上架</div>
-        <div class="ex-row" id="exr1"><div class="num">1</div>选择供应商 (Anthropic / OpenAI / Google)</div>
-        <div class="ex-row" id="exr2"><div class="num">2</div>粘贴 API 密钥 — AES-256 加密</div>
-        <div class="ex-row" id="exr3"><div class="num">3</div>拖动折扣滑块 → 上架完成！</div>
-        <div class="ex-row done" id="exr4" style="opacity:0">✓ 密钥已验证 · 预计月收入 $25+ · Stripe 提现到银行</div>
-        <div class="ex-savings" id="exr5" style="opacity:0">闲置额度 → 被动收入</div>
+    <!-- Panel 1: Token Optimization -->
+    <div class="pnl" id="P1" style="width:420px">
+      <div class="hcard">
+        <div class="hbar"><div class="dot"></div><span class="ht">Token Optimization</span><span class="hb">7-Stage</span></div>
+        <div class="hbody">
+          <div class="pipe7" id="pipe7"></div>
+          <div id="tokT" class="mono" style="min-height:20px"></div>
+          <div class="tkr" id="tokR"><div class="a" id="tokA"></div><div class="b" id="tokB2"></div></div>
+          <div class="tkbig mono" id="tokBig"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Panel 2: Agent Monitor -->
+    <div class="pnl" id="P2" style="width:400px">
+      <div class="hcard">
+        <div class="hbar"><div class="dot"></div><span class="ht">Agent Monitor</span><span class="hb">Live</span></div>
+        <div class="hbody">
+          <div id="agL" style="min-height:50px"></div>
+          <div class="agg"><div class="ags"><span class="v" id="v1">0</span><span class="l">Turns</span></div><div class="ags"><span class="v" id="v2">0</span><span class="l">Input</span></div><div class="ags"><span class="v" id="v3">0</span><span class="l">Output</span></div><div class="ags"><span class="v g2" id="v4">$0</span><span class="l">Cost</span></div><div class="ags"><span class="v g2" id="v5">0</span><span class="l">Saved</span></div><div class="ags"><span class="v" id="v6">0%</span><span class="l">Cache</span></div></div>
+          <div class="agbar" id="agB"><span>Total Savings</span><span>210K→23K · 89%</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Panel 3: Browser -->
+    <div class="pnl" id="P3" style="width:360px">
+      <div class="hcard">
+        <div class="hbar"><div class="dot"></div><span class="ht">Browser Auto-Optimize</span><span class="hb">Live</span></div>
+        <div class="hbody" id="bpM"></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- S11: Token Exchange — Buyer -->
-<div class="slide" id="s11">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px">
-    <div id="buy-title" style="font-size:48px;font-weight:900;text-align:center;opacity:0;transform:translateY(12px)">一条命令，<span style="color:var(--green)">立省 50%</span></div>
-    <div id="buy-sub" style="font-size:18px;color:rgba(26,26,26,.4);margin-top:10px;text-align:center;opacity:0;transform:translateY(8px)">和原版 API 一模一样 — 只是更便宜</div>
-    <div id="buy-cmd" style="margin-top:28px;padding:20px 28px;background:var(--dark);border-radius:14px;font-family:'JetBrains Mono',monospace;font-size:14px;color:rgba(255,255,255,.5);line-height:2;max-width:650px;width:100%;box-shadow:0 16px 50px rgba(0,0,0,.2);opacity:0">
-      <span style="color:rgba(255,255,255,.3)">$</span> <span style="color:var(--lime)">export</span> ANTHROPIC_API_KEY=<span style="color:#fbbf24" id="buy-key"></span><span class="cursor"></span><br>
-      <span style="color:rgba(255,255,255,.3)">$</span> <span style="color:var(--lime)">export</span> ANTHROPIC_BASE_URL=<span style="color:#fbbf24" id="buy-url"></span><br>
-      <span style="color:rgba(255,255,255,.3)">$</span> <span style="color:var(--lime)">claude</span> <span style="color:rgba(255,255,255,.7)" id="buy-run"></span>
+<!-- L4: TOKEN EXCHANGE (overlays on tilted mac or standalone) -->
+<div id="L4" style="position:fixed;inset:0;z-index:58;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .8s var(--ease-smooth);pointer-events:none">
+  <!-- Exchange marketplace mock window -->
+  <div id="exWin" style="width:720px;background:rgba(6,10,18,.94);border:1px solid rgba(110,231,183,.12);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.4);overflow:hidden;transform:translateY(20px) scale(.95);transition:all .8s var(--ease-out)">
+    <div style="display:flex;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid rgba(110,231,183,.06);background:rgba(0,0,0,.3)">
+      <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57"></div>
+      <div style="width:10px;height:10px;border-radius:50%;background:#ffbd2e"></div>
+      <div style="width:10px;height:10px;border-radius:50%;background:#28c840"></div>
+      <span style="margin-left:8px;font-size:12px;color:rgba(255,255,255,.3)">terseai.org/marketplace — Token 交易市场</span>
+      <span style="margin-left:auto;font-size:9px;color:var(--ac);background:rgba(110,231,183,.06);padding:2px 8px;border-radius:3px;font-weight:700">EXCHANGE</span>
     </div>
-    <div id="buy-savings" style="margin-top:20px;display:flex;gap:16px;opacity:0">
-      <div style="text-align:center;padding:12px 24px;background:rgba(26,26,26,.06);border-radius:12px"><div style="font-size:28px;font-weight:900;font-family:'JetBrains Mono',monospace;color:rgba(26,26,26,.2);text-decoration:line-through">$100</div><div style="font-size:10px;color:rgba(26,26,26,.3)">零售价</div></div>
-      <div style="font-size:24px;color:rgba(26,26,26,.15);align-self:center">→</div>
-      <div style="text-align:center;padding:12px 24px;background:rgba(26,26,26,.06);border-radius:12px"><div style="font-size:28px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green)">$42</div><div style="font-size:10px;color:rgba(26,26,26,.3)">交易+优化</div></div>
-      <div style="font-size:24px;color:rgba(26,26,26,.15);align-self:center">=</div>
-      <div style="text-align:center;padding:12px 24px;background:var(--dark);border-radius:12px"><div style="font-size:28px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--lime)">省 $58</div><div style="font-size:10px;color:rgba(209,232,71,.5)">每月</div></div>
+    <div style="padding:20px" id="exBody">
+      <!-- Seller flow -->
+      <div id="exSeller" style="display:none">
+        <div style="font-size:14px;font-weight:800;color:var(--ac);margin-bottom:14px">卖家 — 上架闲置 API 额度</div>
+        <div id="exStep1" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(110,231,183,.02);border:1px solid rgba(110,231,183,.04);border-radius:8px;margin-bottom:8px;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
+          <div style="width:24px;height:24px;border-radius:50%;background:rgba(110,231,183,.1);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+          <div><div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7)">选择供应商</div></div>
+          <div style="margin-left:auto;display:flex;gap:4px">
+            <span id="exProv1" style="padding:4px 10px;background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.15);border-radius:5px;font-size:10px;color:var(--ac);font-weight:700;transition:all .3s">Anthropic</span>
+            <span style="padding:4px 10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:5px;font-size:10px;color:rgba(255,255,255,.2)">OpenAI</span>
+            <span style="padding:4px 10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:5px;font-size:10px;color:rgba(255,255,255,.2)">Google</span>
+          </div>
+        </div>
+        <div id="exStep2" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(110,231,183,.02);border:1px solid rgba(110,231,183,.04);border-radius:8px;margin-bottom:8px;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
+          <div style="width:24px;height:24px;border-radius:50%;background:rgba(110,231,183,.1);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7)">粘贴 API 密钥</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(110,231,183,.4);margin-top:3px" id="exKeyType">sk-ant-</div></div>
+          <span style="font-size:8px;color:var(--ac);background:rgba(110,231,183,.06);padding:2px 6px;border-radius:3px">AES-256</span>
+        </div>
+        <div id="exStep3" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(110,231,183,.02);border:1px solid rgba(110,231,183,.04);border-radius:8px;margin-bottom:8px;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
+          <div style="width:24px;height:24px;border-radius:50%;background:rgba(110,231,183,.1);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7)">设置折扣</div></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:100px;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden"><div id="exSlider" style="width:0%;height:100%;background:var(--ac);border-radius:2px;transition:width 1.5s var(--ease-out)"></div></div><span style="font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac)" id="exPct">0%</span></div>
+        </div>
+        <div id="exResult" style="padding:10px 14px;background:rgba(110,231,183,.05);border:1px solid rgba(110,231,183,.1);border-radius:8px;display:flex;align-items:center;gap:8px;opacity:0;transition:all .5s var(--ease-out)">
+          <span style="color:var(--ac);font-size:14px">✓</span>
+          <span style="font-size:11px;color:var(--ac);font-weight:700">密钥已验证并上架！预计月收入 $<span id="exEarn">0</span></span>
+        </div>
+      </div>
+      <!-- Buyer flow -->
+      <div id="exBuyer" style="display:none">
+        <div style="font-size:14px;font-weight:800;color:#60a5fa;margin-bottom:14px">买家 — 一条命令，立省 50%</div>
+        <div id="exBStep1" style="padding:10px 14px;background:rgba(96,165,250,.03);border:1px solid rgba(96,165,250,.06);border-radius:8px;margin-bottom:8px;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:4px">生成 Terse API 密钥:</div>
+          <div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#60a5fa" id="exBKey">terse_bk_</div>
+        </div>
+        <div id="exBStep2" style="padding:10px 14px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.04);border-radius:8px;margin-bottom:8px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;opacity:0;transform:translateX(-10px);transition:all .5s var(--ease-out)">
+          <span style="color:rgba(255,255,255,.3)">$</span> <span style="color:var(--ac)">export</span> ANTHROPIC_API_KEY=<span style="color:#fbbf24" id="exBKeyVal"></span><br>
+          <span style="color:rgba(255,255,255,.3)">$</span> <span style="color:var(--ac)">export</span> ANTHROPIC_BASE_URL=<span style="color:#fbbf24" id="exBUrl"></span><br>
+          <span style="color:rgba(255,255,255,.3)">$</span> <span style="color:var(--ac)">claude</span> <span style="color:rgba(255,255,255,.5)" id="exBRun"></span>
+        </div>
+        <div id="exBSave" style="display:flex;gap:8px;justify-content:center;opacity:0;transition:all .5s var(--ease-out)">
+          <div style="text-align:center;padding:8px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.2);text-decoration:line-through">$100</div><div style="font-size:7px;color:rgba(255,255,255,.2)">零售</div></div>
+          <div style="align-self:center;color:rgba(255,255,255,.1)">→</div>
+          <div style="text-align:center;padding:8px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac)">$42</div><div style="font-size:7px;color:rgba(255,255,255,.2)">交易+优化</div></div>
+          <div style="align-self:center;color:rgba(255,255,255,.1)">=</div>
+          <div style="text-align:center;padding:8px 16px;background:rgba(110,231,183,.06);border:1px solid rgba(110,231,183,.1);border-radius:6px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac)">省 $58</div><div style="font-size:7px;color:rgba(110,231,183,.3)">每月</div></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- S12: FINAL -->
-<div class="slide" id="s12">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%">
-    <div id="f-pills" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;justify-content:center;opacity:0"></div>
-    <div style="width:100px;height:100px;border-radius:24px;background:var(--dark);display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 16px 50px rgba(0,0,0,.15)"><span style="font-size:48px;font-weight:900;color:var(--lime);animation:glo 3s ease-in-out infinite">T</span></div>
-    <div id="f-title" style="font-size:44px;font-weight:900;text-align:center;opacity:0">节省每一个 Token。<br>交易剩余额度。</div>
-    <div id="f-sub" style="font-size:16px;color:rgba(26,26,26,.35);margin-top:10px;opacity:0">优化 + 交易 — 双重省钱，一个平台。</div>
-    <div id="f-cta" style="margin-top:24px;padding:14px 36px;background:var(--dark);color:var(--lime);border-radius:40px;font-size:16px;font-weight:700;box-shadow:0 8px 30px rgba(0,0,0,.12);opacity:0">terseai.org</div>
-  </div>
+<!-- L3: FINAL -->
+<div id="L3">
+  <div class="fs"><div class="f">节省 40-70% Token</div><div class="f">7 阶段管线</div><div class="f">20+ 技术</div><div class="f">Token 交易市场</div><div class="f">100% 本地</div></div>
+  <div class="icon2"><b>T</b></div>
+  <div class="tg" id="ft">节省每一个 Token。交易剩余额度。</div>
+  <div class="sb" id="fs2">AI Token 优化器 + Token 交易市场</div>
+  <div class="ur" id="fu">terseai.org</div>
 </div>
 
-</div>
-
-<div class="ctrl">
-  <button onclick="prev()">&larr;</button>
-  <button onclick="restart()">&#x21BB;</button>
-  <button class="on" id="ba" onclick="togA()">&#9654;</button>
-  <button onclick="next()">&rarr;</button>
-</div>
+<div class="ctrl"><button onclick="restart()">⟳</button><button class="on" id="ba" onclick="togA()">▶</button></div>
 
 <script>
-const SCENES=[
-  {dur:4500,fn:a0},{dur:3500,fn:a1},{dur:4000,fn:a2},{dur:3500,fn:a3},
-  {dur:5000,fn:a4},{dur:4000,fn:a5},{dur:3500,fn:a6},{dur:4000,fn:a7},
-  {dur:4500,fn:a8},{dur:3500,fn:a9},{dur:5500,fn:a10},{dur:6000,fn:a11},
-  {dur:4000,fn:a12}
+// Build pipe
+const pipe7=document.getElementById('pipe7');
+for(let i=0;i<7;i++){const d=document.createElement('div');d.innerHTML='<span id="pf'+i+'"></span>';pipe7.appendChild(d)}
+
+const STEPS=[
+  {dur:2800,fn:'s0'},  // reveal
+  {dur:3500,fn:'s1'},  // desktop with live content
+  {dur:3000,fn:'s2'},  // pulse+zoom terse
+  {dur:2500,fn:'s3'},  // tilt to 3D + Chrome floats up first
+  {dur:5500,fn:'s3c'}, // Chrome shows token optimization, then down
+  {dur:3800,fn:'s3b'}, // Terse floats up, shows live activity, then down
+  {dur:5000,fn:'s6'},  // Terminal floats up, agent monitor
+  {dur:1500,fn:'s6b'}, // Terminal goes down
+  {dur:4500,fn:'s7'},  // OpenClaw floats up, auto-optimize
+  {dur:1500,fn:'s7b'}, // OpenClaw goes down
+  {dur:5500,fn:'sEx1'}, // Token Exchange — seller flow
+  {dur:5500,fn:'sEx2'}, // Token Exchange — buyer flow
+  {dur:4000,fn:'s8'},  // final
 ];
+
 let cur=0,auto=true,tmr=null;
-const T=SCENES.length;
-
-function go(n){
-  if(n<0||n>=T)return;cur=n;
-  document.getElementById('prog').style.width=((n+1)/T*100)+'%';
-  document.getElementById('sc').textContent=(n+1)+' / '+T;
-  document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));
-  document.getElementById('s'+n)?.classList.add('active');
-  // Reset overlays
-  document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('show'));
-  SCENES[n].fn();
-  if(auto&&n<T-1){clearTimeout(tmr);tmr=setTimeout(()=>go(n+1),SCENES[n].dur)}
+function go(n){if(n>=STEPS.length)return;cur=n;
+  document.getElementById('prog').style.width=((n+1)/STEPS.length*100)+'%';
+  try{window[STEPS[n].fn]()}catch(e){console.error(e)}
+  if(auto&&n<STEPS.length-1){clearTimeout(tmr);tmr=setTimeout(()=>go(n+1),STEPS[n].dur)}
 }
 
-function next(){go(Math.min(cur+1,T-1))}
-function prev(){go(Math.max(cur-1,0))}
-function restart(){clearTimeout(tmr);go(0)}
-function togA(){auto=!auto;const b=document.getElementById('ba');if(auto){b.classList.add('on');b.innerHTML='&#9654;';clearTimeout(tmr);tmr=setTimeout(()=>go(cur+1),500)}else{b.classList.remove('on');b.innerHTML='&#9646;&#9646;';clearTimeout(tmr)}}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();next()}if(e.key==='ArrowLeft'){e.preventDefault();prev()}if(e.key==='r')restart();if(e.key==='p')togA()});
+function restart(){
+  clearTimeout(tmr);
+  document.getElementById('L0').classList.remove('off');
+  document.getElementById('L1').className='';
+  document.getElementById('L1').classList.remove('tilt3d');
+  document.getElementById('L2').className='';
+  // Reset floating windows
+  document.querySelectorAll('.app').forEach(a=>{a.classList.remove('float','float-high','down')});
+  // Remove injected Terse panels from windows
+  document.querySelectorAll('.app-chr .app-body > div:last-child').forEach(d=>{if(d.style&&d.style.marginTop)d.remove()});
+  document.querySelectorAll('.app-trm .app-body > div:last-child').forEach(d=>{if(d.style&&d.style.marginTop)d.remove()});
+  document.querySelectorAll('.app-ocl .app-body > div:last-child').forEach(d=>{if(d.style&&d.style.marginTop)d.remove()});
+  document.getElementById('L3').className='';
+  document.getElementById('L4').style.opacity='0';
+  document.getElementById('exSeller').style.display='none';
+  document.getElementById('exBuyer').style.display='none';
+  ['exStep1','exStep2','exStep3','exResult','exBStep1','exBStep2','exBSave'].forEach(id=>{const e=document.getElementById(id);if(e){e.style.opacity='0';e.style.transform='translateX(-10px)'}});
+  document.getElementById('exSlider').style.width='0%';
+  document.getElementById('exPct').textContent='0%';
+  document.getElementById('exKeyType').textContent='sk-ant-';
+  document.getElementById('exBKey').textContent='terse_bk_';
+  document.getElementById('exBKeyVal').textContent='';
+  document.getElementById('exBUrl').textContent='';
+  document.getElementById('exBRun').textContent='';
+  document.getElementById('exEarn').textContent='0';
+  document.getElementById('mf').classList.remove('zoomT');
+  document.getElementById('mf').classList.remove('tilt');
+  document.getElementById('mf').style.transition='none';
+  void document.getElementById('mf').offsetWidth;
+  document.getElementById('mf').style.transition='';
+  document.getElementById('dkT').classList.remove('glow');
+  ['P0','P1','P2','P3'].forEach(i=>document.getElementById(i).classList.remove('on'));
+  ['h1','h2','h3'].forEach(i=>document.getElementById(i).classList.remove('on'));
+  document.getElementById('tokT').innerHTML='';
+  document.getElementById('tokR').classList.remove('on');
+  document.getElementById('tokBig').classList.remove('on');
+  document.getElementById('agL').innerHTML='';
+  document.getElementById('agB').classList.remove('on');
+  document.getElementById('bpM').innerHTML='';
+  for(let i=0;i<7;i++){const f=document.getElementById('pf'+i);if(f)f.style.width='0'}
+  ['v1','v2','v3','v4','v5'].forEach(i=>document.getElementById(i).textContent='0');
+  document.getElementById('v6').textContent='0%';
+  capOff();
+  go(0);
+}
+function togA(){auto=!auto;const b=document.getElementById('ba');if(auto){b.classList.add('on');b.textContent='▶';clearTimeout(tmr);tmr=setTimeout(()=>go(cur+1),500)}else{b.classList.remove('on');b.textContent='⏸';clearTimeout(tmr)}}
 
-function showAfter(id,ms){setTimeout(()=>document.getElementById(id)?.classList.add('show'),ms)}
-function animEl(id,ms){setTimeout(()=>{const e=document.getElementById(id);if(e){e.style.transition='all .6s var(--ease-out)';e.style.opacity='1';e.style.transform='translateY(0)'}},ms)}
-function countTo(id,target,suffix,ms,dur){setTimeout(()=>{const el=document.getElementById(id);if(!el)return;let v=0;const step=target/(dur/30);const iv=setInterval(()=>{v+=step;if(v>=target){v=target;clearInterval(iv)}el.textContent=(Number.isInteger(target)?Math.round(v):v.toFixed(1))+(suffix||'')},30)},ms)}
-function typeText(id,text,ms){setTimeout(()=>{const el=document.getElementById(id);if(!el)return;let i=0;el.textContent='';const iv=setInterval(()=>{if(i<text.length){el.textContent+=text[i++]}else clearInterval(iv)},35)},ms)}
+// ── STEPS ──
+function cap(t){const b=document.getElementById('capBar'),tx=document.getElementById('capText');if(!b||!tx)return;b.classList.remove('on');setTimeout(()=>{tx.innerHTML=t;b.classList.add('on')},150)}
+function capOff(){const b=document.getElementById('capBar');if(b)b.classList.remove('on')}
 
-// ── SCENE ANIMATIONS ──
+function s0(){capOff()}
 
-function a0(){
-  // Spawn particles
-  const pc=document.getElementById('particles');
-  if(pc){pc.innerHTML='';for(let i=0;i<40;i++){const p=document.createElement('div');p.className='particle';p.style.left=Math.random()*100+'%';p.style.top=40+Math.random()*40+'%';p.style.width=(2+Math.random()*4)+'px';p.style.height=p.style.width;p.style.animationDelay=(Math.random()*2)+'s';setTimeout(()=>p.classList.add('on'),200+Math.random()*1500);pc.appendChild(p)}}
-  // Spotlight
-  setTimeout(()=>document.getElementById('i-spot')?.classList.add('on'),100);
-  // Badge
-  setTimeout(()=>document.getElementById('i-badge')?.classList.add('on'),400);
-  // Icon 3D pop
-  setTimeout(()=>document.getElementById('i-icon')?.classList.add('on'),600);
-  // Title wipe
-  setTimeout(()=>document.getElementById('i-title')?.classList.add('on'),1200);
-  // Subtitle
-  setTimeout(()=>document.getElementById('i-sub')?.classList.add('on'),1600);
-  // Download button
-  setTimeout(()=>document.getElementById('i-dl')?.classList.add('on'),2000);
-  // Feature pills staggered
-  ['ip0','ip1','ip2','ip3'].forEach((id,i)=>setTimeout(()=>document.getElementById(id)?.classList.add('on'),2400+i*150));
+function s1(){
+  cap('<span class="cap-accent">你的桌面</span> — 多个 AI 应用同时运行');
+  document.getElementById('L0').classList.add('off');
+  document.getElementById('L1').className='on';
+  // Animate desktop content appearing live
+  // Terminal: lines appear one by one
+  const trmBody=document.querySelector('.app-trm .app-body');
+  const trmLines=trmBody.querySelectorAll('div');
+  trmLines.forEach((l,i)=>{l.style.opacity='0';l.style.transition='opacity .6s var(--ease-out)';setTimeout(()=>l.style.opacity='1',300+i*250)});
+  // Chrome: messages appear
+  const chrMsgs=document.querySelectorAll('.chr-m');
+  chrMsgs.forEach((m,i)=>{m.style.opacity='0';m.style.transform='translateY(4px)';m.style.transition='all .6s var(--ease-out)';setTimeout(()=>{m.style.opacity='1';m.style.transform='translateY(0)'},400+i*350)});
+  // Terse: sessions appear one by one
+  const tsSess=document.querySelectorAll('.app-trs .ts');
+  tsSess.forEach((s,i)=>{s.style.opacity='0';s.style.transform='translateX(8px)';s.style.transition='all .6s var(--ease-out)';setTimeout(()=>{s.style.opacity='1';s.style.transform='translateX(0)'},600+i*300)});
+  // Terse stats count up
+  const stats=document.querySelectorAll('.trs-stat');
+  stats.forEach((s,i)=>{s.style.opacity='0';s.style.transition='opacity .6s var(--ease-out)';setTimeout(()=>{s.style.opacity='1';s.classList.add('counting')},1800+i*200)});
+  // OpenClaw: messages appear like typing
+  const ocMsgs=document.querySelectorAll('.oc-m');
+  ocMsgs.forEach((m,i)=>{m.style.opacity='0';m.style.transform='translateY(4px)';m.style.transition='all .6s var(--ease-out)';setTimeout(()=>{m.style.opacity='1';m.style.transform='translateY(0)'},500+i*400)});
 }
 
-function a1(){showAfter('o1a',600);showAfter('o1b',1200)}
-
-function a2(){
-  showAfter('o2a',500);showAfter('o2b',1000);
-  countTo('c2v',4823,'',1200,1500);
+function s2(){
+  cap('<span class="cap-accent">Terse</span> — 时刻监控，自动节省');
+  document.getElementById('dkT').classList.add('glow');
+  setTimeout(()=>document.getElementById('mf').classList.add('zoomT'),1200);
 }
 
-function a3(){showAfter('o3a',400);showAfter('o3b',900)}
-
-function a4(){
-  showAfter('o4a',400);
-  const f=document.getElementById('feed4');if(f)f.innerHTML='';
-  const lines=[
-    {t:600,h:'<span class="g">[terse]</span> prompt: 42→12 tok <span class="g">(-71%)</span>'},
-    {t:1100,h:'<span class="w">⚠ Dup:</span> Read auth.js — ~800 tok wasted'},
-    {t:1600,h:'<span class="g">[terse]</span> test output: 4,823→38 <span class="g">(-99%)</span>'},
-    {t:2100,h:'<span class="g">[terse]</span> diff: 1,240→310 <span class="g">(-75%)</span>'},
-    {t:2600,h:'<span class="g">[terse]</span> CLAUDE.md rule generated ✓'},
-  ];
-  lines.forEach(l=>setTimeout(()=>{if(!f)return;const d=document.createElement('div');d.className='feed-line';d.innerHTML=l.h;f.appendChild(d);setTimeout(()=>d.classList.add('show'),20)},l.t));
-  countTo('c4t',28,'',800,1200);countTo('c4s',21300,'',1200,1800);
-  setTimeout(()=>{const el=document.getElementById('c4c');if(el)el.textContent='$0.68'},2000);
-  setTimeout(()=>{const p=document.getElementById('prog4');if(p)p.style.width='66%'},1500);
+function s3(){
+  cap('<span class="cap-accent">终端层面</span> — 减少所有应用 Token');
+  document.getElementById('mf').classList.remove('zoomT');
+  document.getElementById('mf').classList.add('tilt');
+  document.getElementById('L1').classList.add('tilt3d');
+  // Chrome highlights on tilted desktop
+  setTimeout(()=>document.querySelector('.app-chr').classList.add('float-high'),1800);
 }
 
-function a5(){showAfter('o5a',500);showAfter('o5b',1000)}
-function a6(){showAfter('o6a',600)}
-function a7(){showAfter('o7a',500)}
-
-function a8(){
-  showAfter('o8a',500);
-  countTo('c8s',21300,'',800,1500);
-  setTimeout(()=>{const el=document.getElementById('c8p');if(el){let v=0;const iv=setInterval(()=>{v+=2;if(v>=66){v=66;clearInterval(iv)}el.textContent=v+'%'},40)}},1000);
+function s3c(){
+  cap('<span class="cap-accent">浏览器</span> — 修正拼写 &amp; 压缩提示词');
+  const chrBody=document.querySelector('.app-chr .app-body');
+  const tBar=document.createElement('div');
+  tBar.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;opacity:0;transition:opacity .6s var(--ease-out)';
+  tBar.innerHTML='<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="font-size:8px;color:#059669;letter-spacing:1px;font-weight:700">TERSE OPTIMIZING</span></div><div class="pipe7" id="pipe7b"></div><div style="font-size:10px;color:rgba(0,0,0,.5);margin-top:4px" class="mono" id="tokT2"></div><div style="padding:4px 6px;background:rgba(16,185,129,.03);border:1px solid rgba(16,185,129,.08);border-radius:4px;margin-top:4px;opacity:0;transition:opacity .5s var(--ease-out)" id="tokR2"></div><div style="font-size:20px;font-weight:900;text-align:center;margin-top:4px;color:#059669;opacity:0;transition:all .5s var(--ease-out)" id="tokBig2"></div>';
+  chrBody.appendChild(tBar);
+  setTimeout(()=>tBar.style.opacity='1',200);
+  const pp=document.getElementById('pipe7b');
+  if(pp){pp.innerHTML='';for(let i=0;i<7;i++){const d=document.createElement('div');d.innerHTML='<span id="pf2_'+i+'"></span>';pp.appendChild(d)}}
+  const txt=document.getElementById('tokT2');
+  if(!txt)return;
+  txt.innerHTML='';
+  const words=[{t:'So',c:'g'},{t:' basiclly',c:'x',f:' basically'},{t:' could',c:''},{t:' you',c:'g'},{t:' pleas',c:'x',f:' please'},{t:' help',c:''},{t:' me',c:'g'},{t:' optimize',c:''},{t:' quereis',c:'x',f:' queries'},{t:' for',c:''},{t:' better',c:'g'},{t:' performence?',c:'x',f:' performance?'}];
+  setTimeout(()=>{words.forEach(w=>{const s=document.createElement('span');s.className='tkw mono';s.textContent=w.t;s.dataset.c=w.c;if(w.f!==undefined)s.dataset.f=w.f;txt.appendChild(s)})},400);
+  setTimeout(()=>{for(let i=0;i<2;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='x'){w.classList.add('x');if(w.dataset.f){const fx=document.createElement('span');fx.className='tkw mono f';fx.textContent=w.dataset.f;w.after(fx)}}})},1200);
+  setTimeout(()=>{for(let i=2;i<5;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='g')w.classList.add('g')})},2200);
+  setTimeout(()=>{for(let i=5;i<7;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}},2800);
+  setTimeout(()=>{const r=document.getElementById('tokR2');if(r){r.innerHTML='<div style="font-size:9px;color:var(--ac);font-weight:600">Optimize queries for performance.</div><div style="font-size:6px;color:rgba(110,231,183,.2)">38→12 tokens · 3 typos · $0.01 saved</div>';r.style.opacity='1'}},3200);
+  setTimeout(()=>{const b=document.getElementById('tokBig2');if(b){b.textContent='-68%';b.style.opacity='1'}},4300);
+  setTimeout(()=>{document.querySelector('.app-chr').classList.remove('float-high');document.querySelector('.app-chr').classList.add('down')},5000);
 }
 
-function a9(){showAfter('o9a',600)}
-
-function a10(){
-  animEl('ex-title',300);animEl('ex-sub',600);
-  setTimeout(()=>{const f=document.getElementById('ex-flow');if(f){f.style.transition='opacity .6s';f.style.opacity='1'}},800);
-  ['exr1','exr2','exr3'].forEach((id,i)=>{
-    setTimeout(()=>{const el=document.getElementById(id);if(el){el.style.transition='all .4s var(--ease-out)';el.style.background='rgba(209,232,71,.08)';setTimeout(()=>el.style.background='',400)}},1200+i*700);
-  });
-  setTimeout(()=>{const el=document.getElementById('exr4');if(el){el.style.transition='opacity .5s';el.style.opacity='1'}},3500);
-  setTimeout(()=>{const el=document.getElementById('exr5');if(el){el.style.transition='opacity .5s';el.style.opacity='1'}},4200);
+function s3b(){
+  cap('<span class="cap-accent">Terse 面板</span> — 实时会话监控');
+  document.querySelector('.app-trs').classList.add('float-high');
+  const trsBody=document.querySelector('.app-trs .app-body');
+  // Add a live activity section
+  const live=document.createElement('div');
+  live.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;font-size:9px;color:rgba(0,0,0,.45);opacity:0;transition:opacity .5s var(--ease-out)';
+  live.innerHTML='<div style="display:flex;align-items:center;gap:3px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="font-size:8px;color:#059669;letter-spacing:.5px;font-weight:700">LIVE ACTIVITY</span></div><div id="trsLive" class="mono" style="line-height:1.6;color:rgba(0,0,0,.45)"></div>';
+  trsBody.appendChild(live);
+  setTimeout(()=>live.style.opacity='1',200);
+  // Animate live feed
+  const feed=document.getElementById('trsLive');
+  if(feed){
+    [{t:300,h:'<span style="color:#10b981">●</span> Chrome: optimized prompt -68%'},{t:800,h:'<span style="color:#10b981">●</span> Claude Code: 42→12 tok (-71%)'},{t:1300,h:'<span style="color:#d97706">●</span> Dup detected: src/auth.js'},{t:1800,h:'<span style="color:#10b981">●</span> OpenClaw: auto-compress -65%'}].forEach(d=>setTimeout(()=>{const e=document.createElement('div');e.style.cssText='opacity:0;transition:opacity .4s var(--ease-out)';e.innerHTML=d.h;feed.appendChild(e);setTimeout(()=>e.style.opacity='1',10)},d.t));
+  }
+  setTimeout(()=>{
+    document.querySelector('.app-trs').classList.remove('float-high');
+    document.querySelector('.app-trs').classList.add('down');
+  },2800);
 }
 
-function a11(){
-  animEl('buy-title',300);animEl('buy-sub',600);
-  setTimeout(()=>{const el=document.getElementById('buy-cmd');if(el){el.style.transition='opacity .6s';el.style.opacity='1'}},800);
-  typeText('buy-key','terse_bk_a7f3...x9d2',1200);
-  typeText('buy-url','https://www.terseai.org/api/proxy',2200);
-  typeText('buy-run','"fix the auth bug"',3500);
-  setTimeout(()=>{const el=document.getElementById('buy-savings');if(el){el.style.transition='opacity .6s';el.style.opacity='1'}},4500);
+function s5(){
+  // Chrome floats up to center alone
+  document.querySelector('.app-chr').classList.add('float-high');
+  // Inject Terse optimization bar into Chrome
+  const chrBody=document.querySelector('.app-chr .app-body');
+  const tBar=document.createElement('div');
+  tBar.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;opacity:0;transition:opacity .6s var(--ease-out)';
+  tBar.innerHTML='<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="font-size:8px;color:#059669;letter-spacing:1px;font-weight:700">TERSE OPTIMIZING</span></div><div class="pipe7" id="pipe7b"></div><div style="font-size:10px;color:rgba(0,0,0,.5);margin-top:4px" class="mono" id="tokT2"></div><div style="padding:4px 6px;background:rgba(16,185,129,.03);border:1px solid rgba(16,185,129,.08);border-radius:4px;margin-top:4px;opacity:0;transition:opacity .5s var(--ease-out)" id="tokR2"></div><div style="font-size:20px;font-weight:900;text-align:center;margin-top:4px;color:#059669;opacity:0;transition:all .5s var(--ease-out)" id="tokBig2"></div>';
+  chrBody.appendChild(tBar);
+  setTimeout(()=>tBar.style.opacity='1',200);
+  // Build pipe
+  const pp=document.getElementById('pipe7b');
+  if(pp){pp.innerHTML='';for(let i=0;i<7;i++){const d=document.createElement('div');d.innerHTML='<span id="pf2_'+i+'"></span>';pp.appendChild(d)}}
+  const txt=document.getElementById('tokT2');
+  if(!txt)return;
+  txt.innerHTML='';
+  const tokR=document.getElementById('tokR2');
+  const tokBig=document.getElementById('tokBig2');
+  if(tokR)tokR.style.opacity='0';
+  if(tokBig)tokBig.style.opacity='0';
+
+  const words=[{t:'So',c:'g'},{t:' basiclly',c:'x',f:' basically'},{t:' could',c:''},{t:' you',c:'g'},{t:' pleas',c:'x',f:' please'},{t:' help',c:''},{t:' me',c:'g'},{t:' optimize',c:''},{t:' quereis',c:'x',f:' queries'},{t:' for',c:''},{t:' better',c:'g'},{t:' performence?',c:'x',f:' performance?'}];
+
+  setTimeout(()=>{words.forEach(w=>{const s=document.createElement('span');s.className='tkw mono';s.textContent=w.t;s.dataset.c=w.c;if(w.f!==undefined)s.dataset.f=w.f;txt.appendChild(s)})},400);
+
+  setTimeout(()=>{for(let i=0;i<2;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}
+    txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='x'){w.classList.add('x');if(w.dataset.f){const fx=document.createElement('span');fx.className='tkw mono f';fx.textContent=w.dataset.f;w.after(fx)}}})},1200);
+
+  setTimeout(()=>{for(let i=2;i<5;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}
+    txt.querySelectorAll('.tkw').forEach(w=>{if(w.dataset.c==='g')w.classList.add('g')})},2200);
+
+  setTimeout(()=>{for(let i=5;i<7;i++){const f=document.getElementById('pf2_'+i);if(f){f.style.transition='width .5s var(--ease-out)';f.style.width='100%'}}},2800);
+
+  setTimeout(()=>{if(tokR){tokR.innerHTML='<div style="font-size:11px;color:#059669;font-weight:600">Optimize queries for performance.</div><div style="font-size:8px;color:rgba(0,0,0,.35);margin-top:2px">38→12 tokens · 3 typos · $0.01 saved</div>';tokR.style.opacity='1'}},3200);
+
+  setTimeout(()=>{if(tokBig){tokBig.textContent='-68%';tokBig.style.opacity='1';tokBig.style.transform='scale(1)'}},4300);
 }
 
-function a12(){
-  const pills=['省 40-70% Token','7 阶段管线','20+ 技术','Token 交易市场','100% 本地'];
-  const c=document.getElementById('f-pills');if(c){c.innerHTML='';pills.forEach((p,i)=>{const s=document.createElement('span');s.style.cssText='padding:8px 18px;background:var(--dark);color:var(--lime);border-radius:30px;font-size:13px;font-weight:700;opacity:0;transform:translateY(4px);transition:all .3s var(--ease-out)';s.textContent=p;c.appendChild(s);setTimeout(()=>{s.style.opacity='1';s.style.transform='translateY(0)'},200+i*80)});c.style.opacity='1'}
-  animEl('f-title',500);animEl('f-sub',700);animEl('f-cta',900);
+function s5b(){
+  // Chrome goes back down
+  document.querySelector('.app-chr').classList.remove('float-high');
+  document.querySelector('.app-chr').classList.add('down');
 }
 
+function s6(){
+  cap('<span class="cap-accent">Agent 监控</span> — 实时追踪 Token 用量');
+  document.querySelector('.app-trm').classList.add('float-high');
+  const trmBody=document.querySelector('.app-trm .app-body');
+  const panel=document.createElement('div');
+  panel.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;opacity:0;transition:opacity .6s var(--ease-out)';
+  panel.innerHTML='<div style="display:flex;align-items:center;gap:3px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="font-size:8px;color:#059669;letter-spacing:1px;font-weight:700">TERSE AGENT MONITOR</span></div><div id="trsLines" style="font-size:10px;line-height:1.6;color:rgba(0,0,0,.45);min-height:30px" class="mono"></div><div id="trsStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:4px"></div><div id="trsSave" style="margin-top:4px;padding:4px 6px;background:rgba(16,185,129,.02);border:1px solid rgba(16,185,129,.06);border-radius:4px;display:flex;justify-content:space-between;font-size:8px;opacity:0;transition:opacity .5s var(--ease-out)"><span style="color:rgba(0,0,0,.3)">SAVINGS</span><span style="color:#059669;font-weight:900;font-size:11px">210K→23K · 89%</span></div>';
+  trmBody.appendChild(panel);
+  setTimeout(()=>panel.style.opacity='1',200);
+
+  const lines=document.getElementById('trsLines');
+  if(!lines)return;
+  [{t:400,h:'<span style="color:#059669;font-weight:600">[terse]</span> 42→12 tok (-71%)'},{t:700,h:'<span style="color:#d97706;font-weight:600">⚠ Dup: Read src/auth.js · ~800 wasted</span>'},{t:1100,h:'<span style="color:#059669;font-weight:600">[terse]</span> test 4,823→38 (-99%)'},{t:1500,h:'<span style="color:#059669;font-weight:600">[terse]</span> diff 1,240→310 (-75%)'}].forEach(d=>setTimeout(()=>{const e=document.createElement('div');e.style.cssText='opacity:0;transition:opacity .4s var(--ease-out)';e.innerHTML=d.h;lines.appendChild(e);setTimeout(()=>e.style.opacity='1',10)},d.t));
+
+  const stats=document.getElementById('trsStats');
+  if(stats)setTimeout(()=>{stats.innerHTML='<div style="text-align:center;padding:4px;background:rgba(16,185,129,.04);border-radius:4px;border:1px solid rgba(16,185,129,.08)"><span style="font-size:12px;font-weight:900;color:rgba(0,0,0,.7);display:block">7</span><span style="font-size:5px;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:.5px">TURNS</span></div><div style="text-align:center;padding:4px;background:rgba(16,185,129,.04);border-radius:4px;border:1px solid rgba(16,185,129,.08)"><span style="font-size:12px;font-weight:900;color:#059669;display:block">$0.42</span><span style="font-size:5px;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:.5px">COST</span></div><div style="text-align:center;padding:4px;background:rgba(16,185,129,.04);border-radius:4px;border:1px solid rgba(16,185,129,.08)"><span style="font-size:12px;font-weight:900;color:#059669;display:block">8.4K</span><span style="font-size:5px;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:.5px">SAVED</span></div>'},2200);
+
+  const save=document.getElementById('trsSave');
+  if(save)setTimeout(()=>save.style.opacity='1',3000);
+}
+
+function s6b(){
+  cap('<span class="cap-accent">切换中</span> — 下一个应用');
+  document.querySelector('.app-trm').classList.remove('float-high');
+  document.querySelector('.app-trm').classList.add('down');
+}
+
+function s7(){
+  cap('<span class="cap-accent">自动优化</span> — 每条提示词，自动压缩');
+  document.querySelector('.app-ocl').classList.add('float-high');
+  const ocBody=document.querySelector('.app-ocl .app-body');
+  const terseOc=document.createElement('div');
+  terseOc.style.cssText='margin-top:6px;padding:6px 8px;background:transparent;border:1px solid rgba(16,185,129,.12);border-radius:6px;opacity:0;transition:opacity .4s;font-size:9px';
+  terseOc.innerHTML='<div style="display:flex;align-items:center;gap:3px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10b981"></div><span style="color:#059669;letter-spacing:1px;font-weight:700;font-size:8px">TERSE</span><span style="margin-left:auto;font-size:7px;color:#059669">AUTO-OPTIMIZE ON</span></div><div style="color:rgba(0,0,0,.45);line-height:1.6" class="mono" id="ocTerse"></div>';
+  ocBody.appendChild(terseOc);
+  setTimeout(()=>terseOc.style.opacity='1',300);
+
+  const ocT=document.getElementById('ocTerse');
+  if(!ocT)return;
+  [{t:500,h:'<span style="color:#dc2626;text-decoration:line-through;opacity:.45">Debug the authentication 500 error</span>'},{t:900,h:'<span style="color:#059669;font-weight:600">→ Fix auth 500 on POST</span> <span style="color:rgba(0,0,0,.25)">(-71%)</span>'},{t:1400,h:'<span style="color:#dc2626;text-decoration:line-through;opacity:.45">Fix the token refresh logic</span>'},{t:1800,h:'<span style="color:#059669;font-weight:600">→ Fix token refresh</span> <span style="color:rgba(0,0,0,.25)">(-65%)</span>'},{t:2300,h:'<div style="margin-top:4px;font-size:12px;font-weight:900;color:#059669;text-align:center">Total: -68% tokens saved</div>'}].forEach(d=>setTimeout(()=>{const e=document.createElement('div');e.style.cssText='opacity:0;transition:opacity .4s var(--ease-out)';e.innerHTML=d.h;ocT.appendChild(e);setTimeout(()=>e.style.opacity='1',10)},d.t));
+}
+
+function s7b(){
+  cap('<span class="cap-accent">成果</span> — 查看你的节省');
+  document.querySelector('.app-ocl').classList.remove('float-high');
+  document.querySelector('.app-ocl').classList.add('down');
+}
+
+// ═══ TOKEN EXCHANGE SCENES ═══
+function sEx1(){
+  cap('<span class="cap-accent">Token 交易市场</span> — 卖家上架闲置额度');
+  // Hide tilted mac, show exchange
+  document.getElementById('L1').classList.add('off');
+  document.getElementById('L2').className='';
+  const l4=document.getElementById('L4');
+  l4.style.opacity='1';
+  const win=document.getElementById('exWin');
+  win.style.transform='translateY(0) scale(1)';
+  // Show seller flow
+  document.getElementById('exSeller').style.display='block';
+  document.getElementById('exBuyer').style.display='none';
+  // Animate steps
+  setTimeout(()=>{const e=document.getElementById('exStep1');e.style.opacity='1';e.style.transform='translateX(0)'},400);
+  setTimeout(()=>{const e=document.getElementById('exStep2');e.style.opacity='1';e.style.transform='translateX(0)';
+    // Typewriter key
+    const kt=document.getElementById('exKeyType');let k='sk-ant-',full='sk-ant-api03-xxxx...xxxx';let i=k.length;
+    const iv=setInterval(()=>{if(i<full.length){kt.textContent=full.slice(0,++i)}else clearInterval(iv)},40);
+  },1000);
+  setTimeout(()=>{const e=document.getElementById('exStep3');e.style.opacity='1';e.style.transform='translateX(0)';
+    // Animate slider
+    document.getElementById('exSlider').style.width='50%';
+    let p=0;const pEl=document.getElementById('exPct');
+    const iv=setInterval(()=>{p++;pEl.textContent=p+'%';if(p>=30)clearInterval(iv)},50);
+  },2000);
+  setTimeout(()=>{document.getElementById('exResult').style.opacity='1';
+    let e=0;const eEl=document.getElementById('exEarn');
+    const iv=setInterval(()=>{e++;eEl.textContent=e;if(e>=25)clearInterval(iv)},60);
+  },3500);
+}
+
+function sEx2(){
+  cap('<span class="cap-accent">Token 交易市场</span> — 买家一条命令省 50%');
+  document.getElementById('exSeller').style.display='none';
+  document.getElementById('exBuyer').style.display='block';
+  // Animate buyer steps
+  setTimeout(()=>{const e=document.getElementById('exBStep1');e.style.opacity='1';e.style.transform='translateX(0)';
+    const kt=document.getElementById('exBKey');let k='terse_bk_',full='terse_bk_a7f3...x9d2';let i=k.length;
+    const iv=setInterval(()=>{if(i<full.length){kt.textContent=full.slice(0,++i)}else clearInterval(iv)},40);
+  },300);
+  setTimeout(()=>{const e=document.getElementById('exBStep2');e.style.opacity='1';e.style.transform='translateX(0)';
+    // Typewriter command
+    const key='terse_bk_a7f3...x9d2';
+    let i=0;const kv=document.getElementById('exBKeyVal');
+    const iv1=setInterval(()=>{if(i<key.length){kv.textContent=key.slice(0,++i)}else clearInterval(iv1)},35);
+    setTimeout(()=>{const url='https://www.terseai.org/api/proxy';let j=0;const uv=document.getElementById('exBUrl');
+      const iv2=setInterval(()=>{if(j<url.length){uv.textContent=url.slice(0,++j)}else clearInterval(iv2)},25);
+    },800);
+    setTimeout(()=>{const cmd='"fix the auth bug"';let j=0;const rv=document.getElementById('exBRun');
+      const iv3=setInterval(()=>{if(j<cmd.length){rv.textContent=cmd.slice(0,++j)}else clearInterval(iv3)},40);
+    },2000);
+  },1200);
+  setTimeout(()=>{document.getElementById('exBSave').style.opacity='1'},3800);
+}
+
+function s8(){
+  capOff();
+  // Hide exchange
+  document.getElementById('L4').style.opacity='0';
+  document.getElementById('L3').classList.add('on');
+  document.querySelectorAll('#L3 .f').forEach((f,i)=>{f.style.opacity='0';f.style.transform='translateY(3px)';setTimeout(()=>{f.style.transition='all .2s var(--ease)';f.style.opacity='1';f.style.transform='translateY(0)'},40+i*40)});
+  ['ft','fs2','fu'].forEach((id,i)=>{const e=document.getElementById(id);e.style.opacity='0';setTimeout(()=>{e.style.transition='opacity .3s';e.style.opacity='1'},300+i*100)});
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();clearTimeout(tmr);if(cur<STEPS.length-1)go(cur+1)}
+  if(e.key==='ArrowLeft'){clearTimeout(tmr);if(cur>0)go(cur-1)}
+  if(e.key==='r')restart();
+});
 go(0);
 </script>
 </body>

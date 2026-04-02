@@ -134,6 +134,8 @@ function ensureUser(id, email) {
   return user;
 }
 
+const updateStripeConnect = db.prepare('UPDATE users SET stripe_connect_id = ? WHERE id = ?');
+
 // ── Seller key helpers ──
 const addSellerKey = db.prepare(`
   INSERT INTO seller_keys (id, user_id, provider, encrypted_key, key_iv, key_tag, label, price_per_1m_input, price_per_1m_output, spending_cap_cents, models_allowed, optimization_mode)
@@ -233,7 +235,7 @@ const getUnreadCount = db.prepare('SELECT COUNT(*) as count FROM notifications W
 
 module.exports = {
   db,
-  upsertUser, getUser, ensureUser,
+  upsertUser, getUser, ensureUser, updateStripeConnect,
   addSellerKey, getSellerKeys, getSellerKeyFull, updateSellerKey, deleteSellerKey,
   findCheapestKey, incrementSellerSpend,
   addBuyerKey, getBuyerKeys, findBuyerByHash, deactivateBuyerKey, hashKey,

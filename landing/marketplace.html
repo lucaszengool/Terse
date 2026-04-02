@@ -517,9 +517,19 @@
             <div class="stat-card"><div class="stat-value" id="s-tokens">0</div><div class="stat-label">Tokens Served</div></div>
           </div>
 
+          <!-- Payout setup + withdraw -->
+          <div class="card" style="margin-bottom:20px" id="payout-card">
+            <div class="card-header">
+              <div class="card-title">Payouts</div>
+              <div id="payout-status-badge"></div>
+            </div>
+            <div id="payout-content">
+              <!-- Filled by JS based on Connect status -->
+            </div>
+          </div>
+
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
             <div class="section-title" style="margin:0">Your Keys</div>
-            <button class="btn btn-secondary btn-sm" onclick="withdrawEarnings()" id="withdraw-btn" disabled>Withdraw</button>
           </div>
 
           <div id="seller-keys-table">
@@ -938,7 +948,8 @@ async function loadSellerData() {
   document.getElementById('s-balance').textContent = '$' + ((earnings.balance_cents || 0) / 100).toFixed(2);
   document.getElementById('s-requests').textContent = (earnings.total_requests || 0).toLocaleString();
   document.getElementById('s-tokens').textContent = formatTokens(earnings.total_input_tokens + earnings.total_output_tokens);
-  document.getElementById('withdraw-btn').disabled = (earnings.balance_cents || 0) < 500;
+  // Load payout status
+  loadPayoutStatus();
   // Recent txns
   renderTransactions(earnings.recent_transactions || [], 'seller-txns', 'seller');
 }
@@ -1015,11 +1026,55 @@ async function deleteKey(id) {
   loadListings();
 }
 
+async function loadPayoutStatus() {
+  const earnings = await authFetch(API + '/seller/earnings');
+  const balance = earnings.balance_cents || 0;
+  const statusRes = await authFetch(API + '/seller/connect/status');
+  const container = document.getElementById('payout-content');
+  const badge = document.getElementById('payout-status-badge');
+
+  if (!statusRes.connected) {
+    // Not connected — show setup button
+    badge.innerHTML = '<span class="card-badge" style="background:rgba(255,107,107,0.1);color:var(--red)">Not set up</span>';
+    container.innerHTML = `
+      <p style="font-size:13px;color:var(--t2);margin-bottom:14px">Connect your bank account to receive payouts when buyers use your tokens.</p>
+      <button class="btn btn-primary" onclick="setupPayouts()">Set Up Payouts</button>
+      <div style="font-size:11px;color:var(--t3);margin-top:8px">Powered by Stripe. Takes ~2 minutes. Supports bank accounts in 40+ countries.</div>`;
+  } else if (!statusRes.payouts_enabled) {
+    // Connected but not fully onboarded
+    badge.innerHTML = '<span class="card-badge badge-yellow">Pending</span>';
+    container.innerHTML = `
+      <p style="font-size:13px;color:var(--t2);margin-bottom:14px">Your payout account needs more information. Complete the setup to start receiving money.</p>
+      <button class="btn btn-primary" onclick="setupPayouts()">Complete Setup</button>`;
+  } else {
+    // Fully connected — show balance + withdraw
+    badge.innerHTML = '<span class="card-badge badge-green">Active</span>';
+    container.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:12px;color:var(--t3)">Available to withdraw</div>
+          <div style="font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac)">$${(balance / 100).toFixed(2)}</div>
+        </div>
+        <button class="btn btn-primary" onclick="withdrawEarnings()" ${balance < 500 ? 'disabled' : ''}>
+          Withdraw to Bank
+        </button>
+      </div>
+      ${balance < 500 && balance > 0 ? '<div style="font-size:11px;color:var(--t3);margin-top:8px">Minimum withdrawal: $5.00</div>' : ''}
+      ${balance === 0 ? '<div style="font-size:11px;color:var(--t3);margin-top:8px">Start earning by listing your API keys above.</div>' : ''}`;
+  }
+}
+
+async function setupPayouts() {
+  const res = await authFetch(API + '/seller/connect', { method: 'POST' });
+  if (res.error) return toast(res.error, 'error');
+  if (res.url) window.open(res.url, '_blank');
+}
+
 async function withdrawEarnings() {
-  if (!confirm('Withdraw all available earnings?')) return;
+  if (!confirm('Withdraw all available earnings to your bank account?')) return;
   const res = await authFetch(API + '/seller/withdraw', { method: 'POST', body: {} });
   if (res.error) return toast(res.error, 'error');
-  toast(`Withdrawal of $${(res.amount_cents / 100).toFixed(2)} requested!`);
+  toast(`$${(res.amount_cents / 100).toFixed(2)} transferred to your bank! Arrives in 2-3 business days.`);
   loadSellerData();
 }
 

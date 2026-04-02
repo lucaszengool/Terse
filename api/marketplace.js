@@ -166,29 +166,120 @@ router.get('/seller/earnings', requireAuth, (req, res) => {
   const recent = db.getTransactionsBySeller.all(req.userId, 50);
   res.json({
     balance_cents: user?.seller_balance_cents || 0,
+    stripe_connect_id: user?.stripe_connect_id || null,
     ...earnings,
     recent_transactions: recent,
   });
 });
 
-// Request payout
-router.post('/seller/withdraw', requireAuth, (req, res) => {
+// Stripe Connect onboarding — seller sets up bank account to receive payouts
+router.post('/seller/connect', requireAuth, async (req, res) => {
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const user = db.getUser.get(req.userId);
+    const baseUrl = process.env.APP_URL || 'https://www.terseai.org';
+
+    let connectId = user?.stripe_connect_id;
+
+    // Create Connect Express account if not exists
+    if (!connectId) {
+      const account = await stripe.accounts.create({
+        type: 'express',
+        email: user?.email || undefined,
+        metadata: { clerk_user_id: req.userId },
+        capabilities: {
+          transfers: { requested: true },
+        },
+      });
+      connectId = account.id;
+      db.updateStripeConnect.run(connectId, req.userId);
+    }
+
+    // Create onboarding link
+    const link = await stripe.accountLinks.create({
+      account: connectId,
+      refresh_url: `${baseUrl}/marketplace?connect=refresh`,
+      return_url: `${baseUrl}/marketplace?connect=success`,
+      type: 'account_onboarding',
+    });
+
+    res.json({ url: link.url });
+  } catch (err) {
+    console.error('[connect] error:', err.message);
+    res.status(500).json({ error: 'Failed to set up payouts: ' + err.message });
+  }
+});
+
+// Check Connect account status
+router.get('/seller/connect/status', requireAuth, async (req, res) => {
+  const user = db.getUser.get(req.userId);
+  if (!user?.stripe_connect_id) {
+    return res.json({ connected: false });
+  }
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const account = await stripe.accounts.retrieve(user.stripe_connect_id);
+    res.json({
+      connected: true,
+      payouts_enabled: account.payouts_enabled,
+      charges_enabled: account.charges_enabled,
+      details_submitted: account.details_submitted,
+    });
+  } catch (err) {
+    res.json({ connected: false, error: err.message });
+  }
+});
+
+// Withdraw — transfer from Terse platform to seller's bank via Stripe Connect
+router.post('/seller/withdraw', requireAuth, async (req, res) => {
   const user = db.getUser.get(req.userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
+
+  if (!user.stripe_connect_id) {
+    return res.status(400).json({ error: 'Set up payouts first. Click "Set Up Payouts" to connect your bank account.' });
+  }
 
   const amount = req.body.amount_cents || user.seller_balance_cents;
   if (amount <= 0) return res.status(400).json({ error: 'Nothing to withdraw' });
   if (amount > user.seller_balance_cents) return res.status(400).json({ error: 'Insufficient balance' });
-
-  // Min payout $5
   if (amount < 500) return res.status(400).json({ error: 'Minimum withdrawal is $5.00' });
 
-  const payoutId = crypto.randomUUID();
-  db.debitSellerBalance.run(amount, req.userId);
-  db.addPayout.run({ id: payoutId, user_id: req.userId, amount_cents: amount, status: 'pending' });
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-  notifications.notifyWithdrawal(req.userId, amount);
-  res.json({ payout_id: payoutId, amount_cents: amount, status: 'pending', message: 'Payout requested. Processing within 3-5 business days.' });
+    // Verify the Connect account can receive payouts
+    const account = await stripe.accounts.retrieve(user.stripe_connect_id);
+    if (!account.payouts_enabled) {
+      return res.status(400).json({ error: 'Your payout account is not fully set up. Click "Set Up Payouts" to complete onboarding.' });
+    }
+
+    // Create transfer to seller's Connect account
+    const transfer = await stripe.transfers.create({
+      amount,
+      currency: 'usd',
+      destination: user.stripe_connect_id,
+      description: `Terse Token Exchange payout`,
+      metadata: { clerk_user_id: req.userId },
+    });
+
+    // Debit seller balance and record payout
+    const payoutId = crypto.randomUUID();
+    db.debitSellerBalance.run(amount, req.userId);
+    db.addPayout.run({ id: payoutId, user_id: req.userId, amount_cents: amount, status: 'completed' });
+    db.updatePayoutStatus.run('completed', transfer.id, payoutId);
+
+    notifications.notifyWithdrawal(req.userId, amount);
+
+    res.json({
+      payout_id: payoutId,
+      amount_cents: amount,
+      status: 'completed',
+      message: `$${(amount / 100).toFixed(2)} transferred to your bank account. Arrives in 2-3 business days.`,
+    });
+  } catch (err) {
+    console.error('[withdraw] stripe error:', err.message);
+    res.status(500).json({ error: 'Transfer failed: ' + err.message });
+  }
 });
 
 // ════════════════════════════════════════

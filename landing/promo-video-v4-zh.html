@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse — AI Token 优化器 + Token 交易市场</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#FFED29;overflow:hidden;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;color:#1a1800;width:100vw;height:100vh}
+.mono{font-family:'JetBrains Mono',monospace}
+:root{--lime:#FFED29;--dark:#1a1800;--green:#8A8016;--ease-out:cubic-bezier(.16,1,.3,1);--ease-smooth:cubic-bezier(.4,0,.2,1)}
+
+/* Ambient background */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden}
+.bg-blob{position:absolute;border-radius:50%;filter:blur(150px);animation:bf 20s ease-in-out infinite alternate}
+.bg-blob.b1{width:600px;height:600px;background:#ffe066;top:-10%;left:-5%;opacity:.2}
+.bg-blob.b2{width:500px;height:500px;background:#fff59d;bottom:-10%;right:-5%;opacity:.15;animation-delay:7s}
+@keyframes bf{0%{transform:translate(0,0)}100%{transform:translate(15px,-10px)}}
+.dot-grid{position:fixed;inset:0;z-index:1;opacity:.04;background-image:radial-gradient(circle,rgba(0,0,0,.08) .8px,transparent .8px);background-size:28px 28px}
+
+/* Progress */
+.prog{position:fixed;top:0;left:0;height:3px;background:var(--dark);z-index:9999;transition:width .8s var(--ease-out)}
+
+/* Caption bar */
+.caption{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-10px);z-index:9998;padding:12px 32px;background:var(--dark);border-radius:40px;font-size:18px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.5px;opacity:0;transition:all .6s var(--ease-out);pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.15);white-space:nowrap}
+.caption.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.caption .a{color:#FFED29;font-weight:800}
+
+/* Slides */
+.slides{position:fixed;inset:0;z-index:10}
+.slide{position:absolute;top:0;left:0;width:100vw;height:100vh;opacity:0;transition:opacity .7s var(--ease-smooth);pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.slide.active{opacity:1;pointer-events:auto}
+
+/* Mac laptop frame — realistic dark bezel MacBook */
+.mac{width:min(96vw,1100px);background:#2d2d2d;border-radius:16px;padding:10px 10px 16px;box-shadow:0 30px 80px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.05);opacity:0;transform:translateY(20px) scale(.97);transition:all .8s var(--ease-out);overflow:hidden}
+.slide.active .mac{opacity:1;transform:translateY(0) scale(1)}
+.mac-bar{display:none}
+.mac-dot{width:0;height:0}.dr,.dy,.dg{background:none}
+.mac-title,.mac-badge{display:none}
+.mac-body{background:var(--lime);min-height:500px;position:relative;overflow:hidden;padding:28px;border-radius:6px}
+
+/* ═══ 现已推出 INTRO ═══ */
+@keyframes pop{to{opacity:1;transform:scale(1)}}
+@keyframes up{to{opacity:1;transform:translateY(0)}}
+@keyframes spn{to{transform:rotate(360deg)}}
+#s0 .intro-icon{width:140px;height:140px;border-radius:32px;background:var(--dark);display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;opacity:0;transform:scale(.3);animation:pop .8s .1s var(--ease-out) forwards;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+#s0 .intro-icon::before{content:'';position:absolute;inset:-2px;border-radius:34px;background:conic-gradient(transparent,#1a1a1a,transparent);animation:spn 8s linear infinite;opacity:.08}
+#s0 .intro-icon::after{content:'';position:absolute;inset:0;border-radius:32px;background:#1a1a1a}
+#s0 .intro-icon b{font-size:60px;font-weight:900;color:var(--lime);position:relative;z-index:1;animation:glo 3s ease-in-out infinite}
+#s0 .intro-h1{font-size:48px;font-weight:800;letter-spacing:1px;opacity:0;transform:translateY(12px);animation:up .7s .3s var(--ease-out) forwards}
+#s0 .intro-h2{font-size:28px;font-weight:700;letter-spacing:6px;text-transform:uppercase;margin-top:4px;opacity:0;transform:translateY(8px);animation:up .7s .5s var(--ease-out) forwards}
+#s0 .intro-badge{margin-top:20px;padding:12px 28px;border-radius:40px;color:var(--lime);background:var(--dark);display:flex;align-items:center;gap:12px;font-size:16px;font-weight:700;opacity:0;transform:translateY(8px);animation:up .7s .7s var(--ease-out) forwards;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+#s0 .intro-badge small{font-size:8px;color:rgba(255,237,41,.6);display:block;letter-spacing:.8px;text-transform:uppercase}
+#s0 .intro-sub{margin-top:20px;font-size:14px;color:rgba(26,24,0,.35);letter-spacing:3px;text-transform:uppercase;opacity:0;animation:up .7s .9s var(--ease-out) forwards;transform:translateY(6px)}
+
+/* Headlines hidden — titles shown via caption bar instead */
+.headline,.subline{display:none}
+
+/* App UI elements inside mac-body */
+.app-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.app-logo{display:flex;align-items:center;gap:6px;font-weight:800;font-size:14px;color:var(--dark)}
+.app-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+
+/* Buttons & inputs */
+.ui-btn{padding:10px;background:#fff;border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:var(--dark);box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:default}
+.ui-input{padding:10px 14px;background:rgba(255,255,255,.5);border:1px solid rgba(0,0,0,.06);border-radius:8px;font-size:12px;color:rgba(0,0,0,.4);font-family:inherit}
+.ui-badge{display:inline-block;padding:3px 10px;background:#fff;border-radius:4px;font-size:10px;font-weight:700;color:var(--dark)}
+
+/* Toggle switch */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:13px;color:rgba(0,0,0,.6)}
+.toggle-sw{width:36px;height:20px;border-radius:10px;background:rgba(0,0,0,.15);position:relative;transition:background .3s}
+.toggle-sw.on{background:var(--dark)}
+.toggle-sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .3s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.toggle-sw.on::after{transform:translateX(16px)}
+
+/* Mode tabs */
+.mode-tabs{display:flex;border-radius:8px;overflow:hidden;border:1px solid rgba(0,0,0,.06);margin-bottom:16px}
+.mode-tab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;background:rgba(255,255,255,.3);color:rgba(0,0,0,.4);transition:all .3s}
+.mode-tab.active{background:#fff;color:var(--dark)}
+
+/* Popup bar (floating optimizer) */
+.popup-bar{background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.06);border-radius:10px;padding:10px 16px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+
+/* Stats numbers */
+.stat-num{font-size:24px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green)}
+.stat-label{font-size:9px;color:rgba(0,0,0,.3);text-transform:uppercase;margin-top:2px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+.stat-card{background:rgba(255,255,255,.5);border:1px solid rgba(0,0,0,.04);border-radius:8px;padding:10px}
+
+/* Progress bar */
+.bar-track{height:6px;background:rgba(0,0,0,.06);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--green),#10b981);border-radius:3px;width:0;transition:width 1.5s var(--ease-out)}
+
+/* Agent session log */
+.log-line{font-size:11px;font-family:'JetBrains Mono',monospace;padding:3px 0;color:rgba(0,0,0,.45);opacity:0;transform:translateX(-6px);transition:all .4s var(--ease-out)}
+.log-line.show{opacity:1;transform:translateX(0)}
+.log-line .g{color:var(--green);font-weight:700}
+.log-line .w{color:#d97706;font-weight:700}
+
+/* Animated elements */
+.anim-el{opacity:0;transform:translateY(8px);transition:all .5s var(--ease-out)}
+.anim-el.show{opacity:1;transform:translateY(0)}
+
+/* Exchange card */
+.ex-card{background:rgba(0,0,0,.85);border:1px solid rgba(110,231,183,.1);border-radius:12px;padding:16px;color:#fff}
+.ex-step{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:rgba(255,255,255,.5);opacity:0;transform:translateX(-8px);transition:all .4s var(--ease-out)}
+.ex-step.show{opacity:1;transform:translateX(0)}
+.ex-num{width:20px;height:20px;border-radius:50%;background:rgba(110,231,183,.12);color:var(--lime);font-weight:800;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* Controls */
+.ctrl{position:fixed;bottom:8px;right:8px;z-index:9999;display:flex;gap:3px}
+.ctrl button{padding:4px 10px;background:var(--dark);border:none;border-radius:16px;color:rgba(255,255,255,.5);font-size:10px;cursor:pointer;font-family:inherit}
+.ctrl button:hover{color:var(--lime)}.ctrl .on{color:var(--lime)}
+
+@keyframes glo{0%,100%{text-shadow:0 0 8px rgba(209,232,71,.2)}50%{text-shadow:0 0 16px rgba(209,232,71,.5)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.cursor-blink{display:inline-block;width:2px;height:12px;background:var(--green);animation:blink .6s step-end infinite;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="bg"><div class="bg-blob b1"></div><div class="bg-blob b2"></div></div>
+<div class="dot-grid"></div>
+<div class="prog" id="prog"></div>
+<div class="caption" id="cap"><span id="capTxt"></span></div>
+
+<div class="slides">
+
+<!-- S0: 现已推出 INTRO -->
+<div class="slide" id="s0">
+  <div class="intro-h1">现已推出</div>
+  <div class="intro-icon"><b>T</b></div>
+  <div class="intro-h2">Terse</div>
+  <div class="intro-badge"><span style="font-size:16px">&#63743;</span><div><small>Download on the</small><span>App Store</span></div></div>
+  <div class="intro-sub">节省每一个 AI Token · 交易剩余额度</div>
+</div>
+
+<!-- S1: Welcome (matching mac_zh_01) -->
+<div class="slide" id="s1">
+  <div class="headline">欢迎使用 Terse。</div>
+  <div class="subline">选择风格，登录，开始省钱。</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:420px">
+      <div style="width:60px;height:60px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)"><span style="font-size:28px;font-weight:900">T</span></div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:4px">Welcome to Terse</div>
+      <div style="font-size:12px;color:rgba(0,0,0,.4);margin-bottom:16px">Choose your style</div>
+      <div id="colorDots" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:220px;margin-bottom:20px"></div>
+      <div class="ui-btn anim-el" id="s1btn" style="width:160px">Sign In</div>
+      <div class="anim-el" id="s1create" style="margin-top:10px;font-size:12px;color:rgba(0,0,0,.4)">Create Account</div>
+    </div>
+  </div>
+</div>
+
+<!-- S2: Main UI (matching mac_zh_02) -->
+<div class="slide" id="s2">
+  <div class="headline">省 Token。省钱。</div>
+  <div class="subline">为 AI 高级用户打造的智能优化器</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE</span></div>
+    <div class="mac-body">
+      <div class="app-header"><div class="app-logo"><div class="dot"></div>TERSE</div></div>
+      <div style="font-weight:600;font-size:13px;margin-bottom:12px">Connected Sessions</div>
+      <div style="text-align:center;padding:30px;color:rgba(0,0,0,.3);font-size:12px" class="anim-el" id="s2empty">
+        <div style="font-size:24px;opacity:.3;margin-bottom:6px">T</div>
+        No connections yet<br><span style="font-size:11px">Click + to connect to a chat input</span>
+      </div>
+      <div class="ui-btn anim-el" id="s2stats" style="margin-bottom:8px">📊 Statistics</div>
+      <div style="font-size:11px;color:rgba(0,0,0,.35);text-align:center;margin-bottom:8px">or paste below</div>
+      <div class="ui-input anim-el" id="s2input" style="width:100%;margin-bottom:8px">Paste a prompt to optimize...</div>
+      <div class="ui-btn anim-el" id="s2opt">Optimize</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px" class="anim-el" id="s2plan">
+        <div><span class="ui-badge">FREE</span> <span style="font-size:11px;color:rgba(0,0,0,.35)">1230/1500 left this week</span></div>
+        <div class="ui-btn" style="padding:5px 12px;font-size:11px">Upgrade</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S3: Connect (matching mac_zh_03) -->
+<div class="slide" id="s3">
+  <div class="headline">一键连接。零配置。</div>
+  <div class="subline">即刻连接任何 AI 应用</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE</span></div>
+    <div class="mac-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:380px">
+      <div id="s3spinner" style="width:40px;height:40px;border:3px solid rgba(0,0,0,.08);border-top-color:rgba(0,0,0,.4);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:14px"></div>
+      <div style="font-size:14px;font-weight:600">Click on a chat input area...</div>
+      <div style="font-size:11px;color:rgba(0,0,0,.35);margin-top:4px">Terse will connect and monitor it live</div>
+      <div class="ui-btn anim-el" id="s3cancel" style="margin-top:14px;padding:6px 20px;font-size:12px;color:rgba(0,0,0,.4);background:transparent;box-shadow:none">Cancel</div>
+    </div>
+  </div>
+</div>
+
+<!-- S4: Agent Session Optimization — full process -->
+<div class="slide" id="s4">
+  <div class="headline">Agent 会话优化</div>
+  <div class="subline">每一轮对话，每一个 Token，自动压缩</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body" style="padding:14px;font-size:12px">
+      <!-- User prompt (before) -->
+      <div id="s4phase1" style="opacity:0;transition:opacity .5s">
+        <div style="font-size:9px;font-weight:700;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">你的提示词</div>
+        <div style="background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.06);border-radius:8px;padding:10px 12px;font-size:12px;color:rgba(0,0,0,.6);line-height:1.6;position:relative" id="s4prompt">
+          <span id="s4w1">So basically </span><span id="s4w2">I was just wondering if </span><span id="s4w3">you could maybe </span><span id="s4w4">help me </span><span id="s4w5">refacter </span><span id="s4w6">the authetication module </span><span id="s4w7">like I mentioned earlier </span><span id="s4w8">so that it handles tokne refresh </span><span id="s4w9">properly please?</span>
+          <span class="mono" style="position:absolute;top:6px;right:8px;font-size:9px;color:rgba(0,0,0,.2)" id="s4tokBefore">52 tok</span>
+        </div>
+      </div>
+      <!-- Terse optimization pipeline -->
+      <div id="s4phase2" style="margin-top:8px;opacity:0;transition:opacity .5s">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(5,150,105,.4)"></div>
+          <span style="font-size:9px;font-weight:700;color:var(--green);letter-spacing:1px">TERSE 优化中</span>
+        </div>
+        <div style="display:flex;gap:3px;margin-bottom:8px" id="s4pipe"></div>
+        <div id="s4steps" style="font-size:10px;color:rgba(0,0,0,.45);line-height:1.8"></div>
+      </div>
+      <!-- Optimized result -->
+      <div id="s4phase3" style="margin-top:8px;opacity:0;transition:opacity .5s">
+        <div style="font-size:9px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">优化后 · 自动发送</div>
+        <div style="background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.12);border-radius:8px;padding:10px 12px;font-size:13px;font-weight:600;color:var(--dark)">
+          Refactor authentication module: handle token refresh
+          <span class="mono" style="float:right;font-size:9px;color:var(--green);font-weight:700" id="s4tokAfter">9 tok · −83%</span>
+        </div>
+      </div>
+      <!-- Agent actions + tool compression -->
+      <div id="s4phase4" style="margin-top:8px;opacity:0;transition:opacity .5s">
+        <div style="font-size:9px;font-weight:700;color:rgba(0,0,0,.25);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Agent 执行 — Terse 实时追踪</div>
+        <div id="s4actions" style="font-size:10px;line-height:1.6"></div>
+      </div>
+      <!-- Bottom stats -->
+      <div id="s4phase5" style="margin-top:10px;display:flex;gap:6px;opacity:0;transition:opacity .5s">
+        <div class="stat-card" style="flex:1;padding:8px"><div class="stat-num" style="font-size:16px" id="s4turns">0</div><div class="stat-label">Turns</div></div>
+        <div class="stat-card" style="flex:1;padding:8px"><div class="stat-num" style="font-size:16px" id="s4saved">0</div><div class="stat-label">Tok Saved</div></div>
+        <div class="stat-card" style="flex:1;padding:8px"><div class="stat-num" style="font-size:16px" id="s4typos">0</div><div class="stat-label">Typos</div></div>
+        <div class="stat-card" style="flex:1;padding:8px"><div class="stat-num" style="font-size:16px;color:var(--green)" id="s4pct">0%</div><div class="stat-label">Saved</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S5: Popup (matching mac_zh_05) -->
+<div class="slide" id="s5">
+  <div class="headline">悬浮优化栏</div>
+  <div class="subline">始终置顶，捕获、优化、替换</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body" style="min-height:440px;display:flex;flex-direction:column">
+      <!-- Floating popup bar -->
+      <div class="popup-bar" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div><span style="font-size:11px;color:rgba(0,0,0,.5)">App Store Connect - Google C...</span></div>
+          <div class="mode-tabs" style="margin:0;border:none;gap:2px;flex:none"><span style="padding:3px 8px;font-size:9px;color:rgba(0,0,0,.3)">Soft</span><span style="padding:3px 8px;font-size:9px;font-weight:700;background:#fff;border-radius:3px">Normal</span><span style="padding:3px 8px;font-size:9px;color:rgba(0,0,0,.3)">Aggr</span><span style="padding:3px 8px;font-size:9px;color:rgba(0,0,0,.3)">Off</span><span style="padding:3px 8px;font-size:9px;font-weight:700;background:#fff;border-radius:3px">Send</span><span style="padding:3px 8px;font-size:9px;color:rgba(0,0,0,.3)">Auto</span></div>
+        </div>
+        <div style="font-size:10px;color:rgba(0,0,0,.3);text-align:center;margin-bottom:4px">685/1500 left <span class="mono" style="float:right;color:var(--green);font-weight:700">5 → <span id="s5tok">5</span></span></div>
+        <div class="ui-input" style="margin-bottom:6px"><span id="s5text" class="mono">Welcom to Terse! e</span><span class="cursor-blink"></span></div>
+        <div style="display:flex;gap:6px">
+          <div class="ui-btn anim-el" id="s5cap" style="flex:none;padding:8px 16px;font-size:12px">↻ Capture</div>
+          <div class="ui-btn anim-el" id="s5rep" style="flex:1;padding:8px 16px;font-size:12px;background:var(--lime)">✓ Replace</div>
+          <div class="ui-btn anim-el" id="s5copy" style="flex:none;padding:8px 16px;font-size:12px">📋</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S6: Settings (matching mac_zh_06) -->
+<div class="slide" id="s6">
+  <div class="headline">完全掌控。随心定制。</div>
+  <div class="subline">9 个开关，3 种模式，你的规则</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE — Settings</span></div>
+    <div class="mac-body">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px">Settings</div>
+      <div style="font-size:9px;color:rgba(0,0,0,.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">AGGRESSIVENESS</div>
+      <div class="mode-tabs"><div class="mode-tab">Light</div><div class="mode-tab active">Balanced</div><div class="mode-tab">Aggressive</div></div>
+      <div id="s6toggles"></div>
+    </div>
+  </div>
+</div>
+
+<!-- S7: Stats (matching mac_zh_09) -->
+<div class="slide" id="s7">
+  <div class="headline">已省 21K Token。平均 66%。</div>
+  <div class="subline">真实代理会话的实时压缩统计</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div><span class="mac-title">TERSE — Agent Monitor</span><span class="mac-badge">MONITORING</span></div>
+    <div class="mac-body" style="padding:14px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-size:32px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green)" id="s7saved">0</span>
+        <span style="font-size:12px;color:rgba(0,0,0,.4)">tokens saved</span>
+      </div>
+      <div class="bar-track" style="margin-bottom:12px;height:8px"><div class="bar-fill" id="s7bar" style="transition:width 2s var(--ease-out)"></div></div>
+      <div style="text-align:right;font-size:14px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green);margin-bottom:12px" id="s7pct">0%</div>
+      <div style="font-size:11px;color:rgba(0,0,0,.45);line-height:1.8" id="s7details">
+        <div class="anim-el" id="s7d1">📊 2 large tool results <span style="float:right;font-weight:700">4.2K</span></div>
+        <div class="anim-el" id="s7d2">↘ 8 prompts could be tighter <span style="float:right;font-weight:700">-314</span></div>
+        <div class="anim-el" id="s7d3">⚠ 17 unused tools loaded <span style="float:right;font-weight:700">17</span></div>
+        <div class="anim-el" id="s7d4">🔁 7 duplicate tool calls <span style="float:right;font-weight:700;color:var(--green)">-2.4K</span></div>
+        <div class="anim-el" id="s7d5">🪝 Hook compressed 269 outputs <span style="float:right;font-weight:700;color:var(--green)">-21.3K</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S8: Token Exchange — Seller -->
+<div class="slide" id="s8">
+  <div class="headline">Token 交易市场 — 卖家</div>
+  <div class="subline">闲置 API 额度变现，3 步上架</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body">
+      <div style="font-size:13px;font-weight:800;color:var(--dark);margin-bottom:14px">卖家 — 上架闲置额度</div>
+      <div class="ex-step" id="ex1"><div class="ex-num" style="background:var(--dark);color:var(--lime)">1</div><div style="flex:1"><span style="color:var(--dark);font-weight:600">选择供应商</span></div><div style="display:flex;gap:4px"><span style="padding:4px 10px;background:var(--dark);border-radius:6px;font-size:10px;color:var(--lime);font-weight:700">Anthropic</span><span style="padding:4px 10px;background:rgba(0,0,0,.04);border-radius:6px;font-size:10px;color:rgba(0,0,0,.25)">OpenAI</span><span style="padding:4px 10px;background:rgba(0,0,0,.04);border-radius:6px;font-size:10px;color:rgba(0,0,0,.25)">Google</span></div></div>
+      <div class="ex-step" id="ex2"><div class="ex-num" style="background:var(--dark);color:var(--lime)">2</div><div style="flex:1"><span style="color:var(--dark);font-weight:600">粘贴 API 密钥</span><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(0,0,0,.3);margin-top:2px" id="exKey">sk-ant-</div></div><span style="font-size:8px;color:var(--dark);background:rgba(0,0,0,.06);padding:2px 8px;border-radius:4px;font-weight:700">AES-256</span></div>
+      <div class="ex-step" id="ex3"><div class="ex-num" style="background:var(--dark);color:var(--lime)">3</div><div style="flex:1"><span style="color:var(--dark);font-weight:600">设置折扣</span></div><div style="display:flex;align-items:center;gap:8px"><div style="width:100px;height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden"><div id="exBar" style="width:0;height:100%;background:var(--dark);transition:width 1.5s var(--ease-out)"></div></div><span style="font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--dark)" id="exPct">0%</span></div></div>
+      <div class="ex-step" id="ex4" style="border:1px solid rgba(0,0,0,.1);background:rgba(0,0,0,.04);border-radius:8px;padding:10px 12px"><div style="color:var(--green);font-size:14px">✓</div><span style="color:var(--dark);font-weight:700;font-size:12px">密钥已验证！预计月收入 $<span id="exEarn">0</span></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- S9: Token Exchange — Buyer -->
+<div class="slide" id="s9">
+  <div class="headline">一条命令，立省 50%</div>
+  <div class="subline">和原版 API 一模一样 — 只是更便宜</div>
+  <div class="mac">
+    <div class="mac-bar"><div class="mac-dot dr"></div><div class="mac-dot dy"></div><div class="mac-dot dg"></div></div>
+    <div class="mac-body">
+      <div style="background:var(--dark);border-radius:10px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:2;color:rgba(255,255,255,.6);margin-bottom:14px">
+        <div><span style="color:rgba(255,255,255,.25)">$</span> <span style="color:var(--lime)">export</span> ANTHROPIC_API_KEY=<span style="color:#fbbf24" id="bKey"></span><span class="cursor-blink"></span></div>
+        <div><span style="color:rgba(255,255,255,.25)">$</span> <span style="color:var(--lime)">export</span> ANTHROPIC_BASE_URL=<span style="color:#fbbf24" id="bUrl"></span></div>
+        <div><span style="color:rgba(255,255,255,.25)">$</span> <span style="color:var(--lime)">claude</span> <span style="color:rgba(255,255,255,.5)" id="bCmd"></span></div>
+        <div id="bResult" style="margin-top:6px;opacity:0;transition:opacity .5s"><span style="color:var(--lime)">Claude Code v1.2.0</span> — <span style="color:rgba(255,255,255,.25)">via Terse proxy</span><br><span style="color:rgba(255,255,255,.2)"># optimized + 35% cheaper ✓</span></div>
+      </div>
+      <div id="bSavings" style="display:flex;gap:8px;justify-content:center;opacity:0;transition:opacity .6s">
+        <div style="text-align:center;padding:10px 16px;background:rgba(0,0,0,.04);border-radius:8px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:rgba(0,0,0,.15);text-decoration:line-through">$100</div><div style="font-size:8px;color:rgba(0,0,0,.2)">零售</div></div>
+        <div style="align-self:center;color:rgba(0,0,0,.1);font-size:18px">→</div>
+        <div style="text-align:center;padding:10px 16px;background:rgba(0,0,0,.04);border-radius:8px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green)">$42</div><div style="font-size:8px;color:rgba(0,0,0,.2)">交易+优化</div></div>
+        <div style="align-self:center;color:rgba(0,0,0,.1);font-size:18px">=</div>
+        <div style="text-align:center;padding:10px 16px;background:var(--dark);border-radius:8px"><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--lime)">省 $58</div><div style="font-size:8px;color:rgba(209,232,71,.4)">每月</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S10: FINAL -->
+<div class="slide" id="s10">
+  <div id="fPills" style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;justify-content:center"></div>
+  <div style="width:90px;height:90px;border-radius:20px;background:var(--dark);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 12px 40px rgba(0,0,0,.15)"><span style="font-size:40px;font-weight:900;color:var(--lime);animation:glo 3s ease-in-out infinite">T</span></div>
+  <div class="headline" id="fTitle" style="font-size:36px">节省每一个 Token。交易剩余额度。</div>
+  <div class="subline" id="fSub">优化 + 交易 — 双重省钱，一个平台。</div>
+  <div class="subline" id="fUrl" style="margin-top:12px;padding:10px 28px;background:var(--dark);color:var(--lime);border-radius:30px;font-weight:700;font-size:14px">terseai.org</div>
+</div>
+
+</div>
+
+<div class="ctrl">
+  <button onclick="prev()">←</button>
+  <button onclick="restart()">↻</button>
+  <button class="on" id="ba" onclick="togA()">▶</button>
+  <button onclick="next()">→</button>
+</div>
+
+<script>
+const STEPS=[
+  {dur:3500,fn:a0},{dur:3500,fn:a1},{dur:3500,fn:a2},{dur:3500,fn:a3},
+  {dur:8000,fn:a4},{dur:4000,fn:a5},{dur:4000,fn:a6},{dur:5000,fn:a7},
+  {dur:5500,fn:a8},{dur:6000,fn:a9},{dur:4000,fn:a10}
+];
+let cur=0,auto=true,tmr=null;const T=STEPS.length;
+
+function go(n){if(n<0||n>=T)return;cur=n;
+  document.getElementById('prog').style.width=((n+1)/T*100)+'%';
+  document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s'+n)?.classList.add('active');
+  STEPS[n].fn();
+  if(auto&&n<T-1){clearTimeout(tmr);tmr=setTimeout(()=>go(n+1),STEPS[n].dur)}
+}
+function next(){go(Math.min(cur+1,T-1))}
+function prev(){go(Math.max(cur-1,0))}
+function restart(){clearTimeout(tmr);go(0)}
+function togA(){auto=!auto;const b=document.getElementById('ba');if(auto){b.classList.add('on');b.textContent='▶';clearTimeout(tmr);tmr=setTimeout(()=>go(cur+1),500)}else{b.classList.remove('on');b.textContent='⏸';clearTimeout(tmr)}}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();next()}if(e.key==='ArrowLeft'){e.preventDefault();prev()}if(e.key==='r')restart();if(e.key==='p')togA()});
+
+function cap(t){const c=document.getElementById('cap'),tx=document.getElementById('capTxt');c.classList.remove('on');setTimeout(()=>{tx.innerHTML=t;c.classList.add('on')},150)}
+function capOff(){document.getElementById('cap').classList.remove('on')}
+function showEl(id,ms){setTimeout(()=>{const e=document.getElementById(id);if(e)e.classList.add('show')},ms)}
+function countTo(id,val,suffix,ms,dur){setTimeout(()=>{const el=document.getElementById(id);if(!el)return;let v=0;const s=val/(dur/30);const iv=setInterval(()=>{v+=s;if(v>=val){v=val;clearInterval(iv)}el.textContent=(Number.isInteger(val)?Math.round(v):v.toFixed(1))+(suffix||'')},30)},ms)}
+function typeText(id,text,ms){setTimeout(()=>{const el=document.getElementById(id);if(!el)return;el.textContent='';let i=0;const iv=setInterval(()=>{if(i<text.length)el.textContent+=text[i++];else clearInterval(iv)},35)},ms)}
+
+function a0(){capOff()}
+
+function a1(){
+  cap('<span class="a">欢迎</span> — 选择风格，一键登录');
+  const dots=document.getElementById('colorDots');
+  dots.innerHTML='';
+  const colors=['#fff','#c4b5fd','#fca5a5','#67e8f9','#1a1a1a','#f9a8d4','#6ee7b7','#fde68a'];
+  colors.forEach((c,i)=>{const d=document.createElement('div');d.style.cssText=`width:36px;height:36px;border-radius:50%;background:${c};opacity:0;transform:scale(.5);transition:all .4s var(--ease-out);box-shadow:0 1px 4px rgba(0,0,0,.08);${c==='#fff'?'border:2px solid rgba(0,0,0,.1)':''}`;setTimeout(()=>{d.style.opacity='1';d.style.transform='scale(1)'},300+i*80);dots.appendChild(d)});
+  showEl('s1btn',1000);showEl('s1create',1200);
+}
+
+function a2(){
+  cap('<span class="a">主界面</span> — 粘贴提示词，一键优化');
+  showEl('s2empty',400);showEl('s2stats',700);showEl('s2input',1000);showEl('s2opt',1200);showEl('s2plan',1400);
+}
+
+function a3(){
+  cap('<span class="a">连接</span> — 点击聊天输入框即可连接');
+  showEl('s3cancel',1500);
+}
+
+function a4(){
+  cap('<span class="a">Agent 优化</span> — 拦截 · 压缩 · 追踪 · 节省');
+
+  // Phase 1: Show the verbose user prompt
+  setTimeout(()=>document.getElementById('s4phase1').style.opacity='1',300);
+
+  // Phase 2: Terse intercepts — show pipeline
+  setTimeout(()=>{
+    document.getElementById('s4phase2').style.opacity='1';
+    // Build 7-stage pipeline bars
+    const pipe=document.getElementById('s4pipe');pipe.innerHTML='';
+    for(let i=0;i<7;i++){const d=document.createElement('div');d.style.cssText='flex:1;height:4px;background:rgba(0,0,0,.06);border-radius:2px;overflow:hidden';d.innerHTML='<div id="s4pf'+i+'" style="height:100%;width:0;background:var(--green);border-radius:2px;transition:width .4s var(--ease-out)"></div>';pipe.appendChild(d)}
+    // Animate pipeline stages + strike through words
+    const steps=document.getElementById('s4steps');steps.innerHTML='';
+    const stageData=[
+      {t:200, fill:0, h:'<span class="g">1 拼写纠正</span> authetication→authentication · tokne→token · refacter→refactor', strike:['s4w5','s4w6','s4w8']},
+      {t:600, fill:1, h:'<span class="g">2 上下文去重</span> "like I mentioned earlier" — 已在上下文中，移除', strike:['s4w7']},
+      {t:1000, fill:2, h:'<span class="g">3 废话移除</span> "So basically" "I was just wondering if" — 移除', strike:['s4w1','s4w2']},
+      {t:1400, fill:3, h:'<span class="g">4 提示压缩</span> "could you maybe help me" → 祈使句', strike:['s4w3','s4w4']},
+      {t:1800, fill:4, h:'<span class="g">5 历史裁剪</span> 去除重复系统上下文'},
+      {t:2100, fill:5, h:'<span class="g">6 祈使改写</span> 问句→指令'},
+      {t:2400, fill:6, h:'<span class="g">7 最终清理</span> 52→9 tok · <span style="color:var(--green);font-weight:700">−83%</span>', strike:['s4w9']},
+    ];
+    stageData.forEach(s=>{
+      setTimeout(()=>{
+        // Fill pipeline bar
+        const pf=document.getElementById('s4pf'+s.fill);if(pf)pf.style.width='100%';
+        // Add step log
+        const d=document.createElement('div');d.className='log-line';d.innerHTML=s.h;steps.appendChild(d);setTimeout(()=>d.classList.add('show'),20);
+        // Strike through words in prompt
+        if(s.strike)s.strike.forEach(id=>{const w=document.getElementById(id);if(w){w.style.transition='all .4s';w.style.color='rgba(0,0,0,.15)';w.style.textDecoration='line-through'}});
+      },s.t);
+    });
+  },1200);
+
+  // Phase 3: Show optimized result
+  setTimeout(()=>document.getElementById('s4phase3').style.opacity='1',4200);
+
+  // Phase 4: Agent runs — tool actions with compression
+  setTimeout(()=>{
+    document.getElementById('s4phase4').style.opacity='1';
+    const actions=document.getElementById('s4actions');actions.innerHTML='';
+    const actData=[
+      {t:200, h:'<span style="color:var(--green)">⚙</span> Read auth.ts, token.ts (245 lines) — <span class="mono" style="color:var(--green)">18 tok cached</span>'},
+      {t:600, h:'<span style="color:#d97706">⚙</span> Read auth.ts again — <span style="color:#d97706;font-weight:700">重复! ~800 tok 浪费</span>'},
+      {t:1000, h:'<span style="color:var(--green)">✎</span> Edit auth.ts:47 — applied'},
+      {t:1400, h:'<span style="color:var(--green)">▶</span> npm test — 8/8 pass · <span style="color:#d97706">3 unused tools = 900 tok overhead</span>'},
+      {t:1800, h:'<span style="color:var(--green)">✓</span> CLAUDE.md rule generated: <span class="mono" style="font-size:9px">"不要重复读取已在上下文中的文件"</span>'},
+    ];
+    actData.forEach(a=>{setTimeout(()=>{const d=document.createElement('div');d.className='log-line';d.innerHTML=a.h;actions.appendChild(d);setTimeout(()=>d.classList.add('show'),20)},a.t)});
+  },4800);
+
+  // Phase 5: Stats
+  setTimeout(()=>{
+    document.getElementById('s4phase5').style.opacity='1';
+    countTo('s4turns',1,'',0,300);
+    countTo('s4saved',43,'',200,800);
+    countTo('s4typos',3,'',400,600);
+    setTimeout(()=>document.getElementById('s4pct').textContent='−83%',600);
+  },6500);
+}
+
+function a5(){
+  cap('<span class="a">悬浮栏</span> — 捕获 → 优化 → 一键替换');
+  showEl('s5cap',600);showEl('s5rep',800);showEl('s5copy',1000);
+  // Simulate optimization
+  setTimeout(()=>{document.getElementById('s5text').textContent='Welcome to Terse!';document.getElementById('s5tok').textContent='4'},2000);
+}
+
+function a6(){
+  cap('<span class="a">设置</span> — 9 个开关精准控制每种优化');
+  const c=document.getElementById('s6toggles');c.innerHTML='';
+  ['Remove filler words','Remove politeness','Remove hedging','Remove meta-language','Shorten phrases','Simplify vocabulary','Remove redundancy','Compress whitespace','Compress code'].forEach((name,i)=>{
+    const r=document.createElement('div');r.className='toggle-row anim-el';r.id='t6_'+i;
+    r.innerHTML=name+'<div class="toggle-sw'+(i<6?' on':'')+'"></div>';
+    c.appendChild(r);showEl('t6_'+i,400+i*120);
+  });
+}
+
+function a7(){
+  cap('<span class="a">统计</span> — 已省 21.3K Token，平均 66%');
+  countTo('s7saved',21300,'',500,1800);
+  setTimeout(()=>document.getElementById('s7bar').style.width='66%',600);
+  setTimeout(()=>{let v=0;const el=document.getElementById('s7pct');const iv=setInterval(()=>{v+=2;if(v>=66){v=66;clearInterval(iv)}el.textContent=v+'%'},40)},800);
+  ['s7d1','s7d2','s7d3','s7d4','s7d5'].forEach((id,i)=>showEl(id,1200+i*300));
+}
+
+function a8(){
+  cap('<span class="a">Token 交易市场</span> — 卖家 3 步上架');
+  ['ex1','ex2','ex3'].forEach((id,i)=>{setTimeout(()=>{const e=document.getElementById(id);e.classList.add('show')},400+i*700)});
+  // Typewriter key
+  setTimeout(()=>{const el=document.getElementById('exKey');const full='sk-ant-api03-xxxx...xxxx';let i=7;const iv=setInterval(()=>{if(i<full.length)el.textContent=full.slice(0,++i);else clearInterval(iv)},40)},1400);
+  // Slider
+  setTimeout(()=>{document.getElementById('exBar').style.width='50%';let p=0;const el=document.getElementById('exPct');const iv=setInterval(()=>{p++;el.textContent=p+'%';if(p>=30)clearInterval(iv)},50)},2400);
+  // Result
+  setTimeout(()=>{document.getElementById('ex4').classList.add('show');let e=0;const el=document.getElementById('exEarn');const iv=setInterval(()=>{e++;el.textContent=e;if(e>=25)clearInterval(iv)},60)},3800);
+}
+
+function a9(){
+  cap('<span class="a">Token 交易市场</span> — 买家一条命令省 50%');
+  typeText('bKey','terse_bk_a7f3...x9d2',600);
+  typeText('bUrl','https://www.terseai.org/api/proxy',1800);
+  typeText('bCmd','"fix the auth bug"',3200);
+  setTimeout(()=>document.getElementById('bResult').style.opacity='1',4200);
+  setTimeout(()=>document.getElementById('bSavings').style.opacity='1',4800);
+}
+
+function a10(){
+  capOff();
+  const pills=['省 40-70% Token','7 阶段管线','20+ 技术','Token 交易市场','100% 本地'];
+  const c=document.getElementById('fPills');c.innerHTML='';
+  pills.forEach((p,i)=>{const s=document.createElement('span');s.style.cssText='padding:6px 14px;background:var(--dark);color:var(--lime);border-radius:20px;font-size:11px;font-weight:700;opacity:0;transform:translateY(4px);transition:all .3s var(--ease-out)';s.textContent=p;c.appendChild(s);setTimeout(()=>{s.style.opacity='1';s.style.transform='translateY(0)'},200+i*80)});
+}
+
+go(0);
+</script>
+</body>
+</html>

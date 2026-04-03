@@ -10,12 +10,17 @@
 html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;overflow:hidden}
 .mono{font-family:'JetBrains Mono',monospace}
 .page{width:100%;height:100%;position:relative;display:flex;flex-direction:column;padding:4vh 5vw}
-.counter{position:absolute;top:3vh;right:4vw;width:44px;height:44px;border-radius:50%;background:rgba(26,24,0,.1);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:rgba(26,24,0,.45)}
+
 .title{font-size:clamp(32px,5vw,64px);font-weight:900;color:#1a1800;letter-spacing:-2px;line-height:1.1;margin-bottom:4px}
 .subtitle{font-size:clamp(14px,1.8vw,22px);color:rgba(26,24,0,.3);font-weight:500}
 .mac-area{flex:1;display:flex;align-items:flex-end;justify-content:center;padding-top:1vh}
-.mac-wrap{width:min(92%,900px);transform:perspective(1200px) rotateY(-5deg) rotateX(2deg);transform-origin:60% 100%}
-.mac{background:#2d2d2d;border-radius:14px;padding:8px 8px 14px;box-shadow:0 30px 80px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.04),-12px 0 40px rgba(0,0,0,.08)}
+.mac-wrap{
+  position:fixed;top:6%;left:46%;
+  transform:translateX(-38%) perspective(1800px) rotateY(-8deg) rotateX(2deg);
+  transform-origin:65% 40%;width:120%;max-width:1500px;z-index:10;
+  filter:drop-shadow(-25px 35px 55px rgba(0,0,0,.2))}
+.mac::before{content:'';display:block;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#555 30%,#333);margin:0 auto 8px;box-shadow:0 0 0 2px rgba(0,0,0,.06)}
+.mac{background:linear-gradient(160deg,#fafafa,#e8e8e8,#f2f2f2);border-radius:20px 20px 0 0;padding:12px 12px 0;border:1px solid rgba(255,255,255,.8);border-bottom:none;position:relative;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset -1px 0 0 rgba(255,255,255,.6),inset 1px 0 0 rgba(0,0,0,.03)}
 .mac-screen{background:#FFED29;border-radius:4px;overflow:hidden;padding:22px}
 .ex-step{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(26,24,0,.03);border:1px solid rgba(26,24,0,.04);border-radius:10px;margin-bottom:8px}
 .ex-num{width:30px;height:30px;border-radius:50%;background:#1a1800;color:#FFED29;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -32,7 +37,6 @@ html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','
 </head>
 <body>
 <div class="page">
-  <div class="counter">4/6</div>
   <div class="title">Token 交易市场。<br>3 步上架。</div>
   <div class="subtitle">闲置 API 额度变现 — 你定价，你掌控</div>
   <div class="mac-area">

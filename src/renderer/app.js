@@ -285,46 +285,31 @@ $('#btnClose').addEventListener('click', () => T.closeWindow());
 
 // Upgrade / Start Trial button — open in system browser
 $('#btnUpgrade').addEventListener('click', async () => {
+  const API_BASE = 'https://www.terseai.org';
+  const openUrl = (url) => {
+    try { window.__TAURI__.shell.open(url); } catch { window.open(url, '_blank'); }
+  };
+
   try {
     const lic = await T.getLicense();
     const auth = await T.getAuth();
-    const API_BASE = 'https://www.terseai.org';
-    const openUrl = (url) => {
-      try { window.__TAURI__.shell.open(url); } catch { window.open(url, '_blank'); }
-    };
+    const userId = auth.clerkUserId || lic.clerkUserId;
 
-    if (!auth.signedIn || !auth.clerkUserId) {
-      openUrl(`${API_BASE}/#pricing`);
+    // Has active plan — open server-side portal redirect (no fetch needed)
+    if (userId && lic.tier && lic.tier !== 'free' && lic.tier !== 'expired' && lic.status !== 'none' && lic.status !== 'cancelled') {
+      openUrl(`${API_BASE}/api/portal/redirect?uid=${encodeURIComponent(userId)}`);
       return;
     }
 
-    // If user has no subscription, go straight to Pro checkout
-    if (lic.tier === 'expired' || lic.status === 'none' || lic.status === 'cancelled') {
-      try {
-        const res = await fetch(`${API_BASE}/api/checkout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tier: 'pro', clerkUserId: auth.clerkUserId, clerkUserEmail: auth.email }),
-        });
-        const data = await res.json();
-        if (data.url) { openUrl(data.url); return; }
-      } catch {}
-      openUrl(`${API_BASE}/#pricing`);
+    // No plan — go to checkout
+    if (userId) {
+      openUrl(`${API_BASE}/api/portal/redirect?uid=${encodeURIComponent(userId)}`);
       return;
     }
+  } catch {}
 
-    // Active/trialing subscription — open Stripe billing portal to manage/cancel
-    try {
-      const res = await fetch(`${API_BASE}/api/portal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkUserId: auth.clerkUserId }),
-      });
-      const data = await res.json();
-      if (data.url) { openUrl(data.url); return; }
-    } catch {}
-    openUrl(`${API_BASE}/#pricing`);
-  } catch { window.open('https://www.terseai.org/#pricing', '_blank'); }
+  // Fallback
+  openUrl(`${API_BASE}/#pricing`);
 });
 
 // ── Auth ──

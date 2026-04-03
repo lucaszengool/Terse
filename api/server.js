@@ -275,6 +275,37 @@ app.post('/api/portal', async (req, res) => {
   }
 });
 
+// ── Portal redirect (GET — opens in browser, redirects to Stripe) ──
+app.get('/api/portal/redirect', async (req, res) => {
+  const uid = req.query.uid;
+  if (!uid) return res.redirect('/#pricing');
+
+  try {
+    // Find Stripe customer
+    let customerId = licenseCache.get(uid)?.stripeCustomerId;
+
+    if (!customerId) {
+      const customers = await stripe.customers.search({
+        query: `metadata["clerk_user_id"]:"${uid}"`,
+      });
+      if (customers.data.length > 0) customerId = customers.data[0].id;
+    }
+
+    if (!customerId) return res.redirect('/#pricing');
+
+    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: baseUrl,
+    });
+
+    res.redirect(session.url);
+  } catch (err) {
+    console.error('[portal/redirect] error:', err.message);
+    res.redirect('/#pricing');
+  }
+});
+
 // ── License Verification (called by Tauri app) ──
 app.get('/api/license/:clerkUserId', async (req, res) => {
   const { clerkUserId } = req.params;

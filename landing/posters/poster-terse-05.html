@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse Poster 5 — Buyer</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;overflow:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+.page{width:100%;height:100%;position:relative;display:flex;flex-direction:column;padding:4vh 5vw}
+.counter{position:absolute;top:3vh;right:4vw;width:44px;height:44px;border-radius:50%;background:rgba(26,24,0,.1);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:rgba(26,24,0,.45)}
+.title{font-size:clamp(32px,5vw,64px);font-weight:900;color:#1a1800;letter-spacing:-2px;line-height:1.1;margin-bottom:4px}
+.subtitle{font-size:clamp(14px,1.8vw,22px);color:rgba(26,24,0,.3);font-weight:500}
+.mac-area{flex:1;display:flex;align-items:flex-end;justify-content:center;padding-top:1vh}
+.mac-wrap{width:min(92%,900px);transform:perspective(1200px) rotateY(4deg) rotateX(2deg);transform-origin:45% 100%}
+.mac{background:#2d2d2d;border-radius:14px;padding:8px 8px 14px;box-shadow:0 30px 80px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.04),10px 0 40px rgba(0,0,0,.08)}
+.mac-screen{background:#FFED29;border-radius:4px;overflow:hidden;padding:22px}
+.terminal{background:#1a1800;border-radius:10px;padding:18px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:2;color:rgba(255,255,255,.5);margin-bottom:16px}
+.terminal .p{color:rgba(255,255,255,.2)}.terminal .c{color:#FFED29}.terminal .v{color:#fbbf24}.terminal .o{color:rgba(255,255,255,.25);font-size:11px}
+.sav-row{display:flex;gap:8px;justify-content:center}
+.sav{text-align:center;padding:10px 18px;border-radius:10px}
+.sav.dim{background:rgba(26,24,0,.04)}.sav.dim .n{font-size:22px;font-weight:900;font-family:'JetBrains Mono',monospace;color:rgba(26,24,0,.12);text-decoration:line-through}.sav.dim .l{font-size:9px;color:rgba(26,24,0,.18)}
+.sav.mid{background:rgba(26,24,0,.04)}.sav.mid .n{font-size:22px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#8A8016}.sav.mid .l{font-size:9px;color:rgba(26,24,0,.18)}
+.sav.hl{background:#1a1800}.sav.hl .n{font-size:22px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#FFED29}.sav.hl .l{font-size:9px;color:rgba(255,237,41,.35)}
+.arr{align-self:center;font-size:20px;color:rgba(26,24,0,.1)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="counter">5/6</div>
+  <div class="title">一条命令。<br>立省 50%。</div>
+  <div class="subtitle">和原版 API 一模一样 — 只是更便宜</div>
+  <div class="mac-area">
+    <div class="mac-wrap"><div class="mac"><div class="mac-screen">
+      <div class="terminal">
+        <div><span class="p">$</span> <span class="c">export</span> ANTHROPIC_API_KEY=<span class="v">terse_bk_a7f3...x9d2</span></div>
+        <div><span class="p">$</span> <span class="c">export</span> ANTHROPIC_BASE_URL=<span class="v">https://www.terseai.org/api/proxy</span></div>
+        <div><span class="p">$</span> <span class="c">claude</span> "fix the auth bug"</div>
+        <div style="margin-top:6px"><span class="c">Claude Code v1.2.0</span> — <span class="o">via Terse proxy ✓</span></div>
+      </div>
+      <div class="sav-row">
+        <div class="sav dim"><div class="n">$100</div><div class="l">零售价</div></div>
+        <div class="arr">→</div>
+        <div class="sav mid"><div class="n">$42</div><div class="l">交易+优化</div></div>
+        <div class="arr">=</div>
+        <div class="sav hl"><div class="n">省 $58</div><div class="l">每月</div></div>
+      </div>
+    </div></div></div>
+  </div>
+</div>
+</body>
+</html>

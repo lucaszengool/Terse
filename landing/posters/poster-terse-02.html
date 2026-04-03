@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse Poster 2 — Agent Optimization</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;overflow:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+.page{width:100%;height:100%;position:relative;display:flex;flex-direction:column;padding:4vh 5vw}
+.counter{position:absolute;top:3vh;right:4vw;width:44px;height:44px;border-radius:50%;background:rgba(26,24,0,.1);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:rgba(26,24,0,.45)}
+.title{font-size:clamp(32px,5vw,64px);font-weight:900;color:#1a1800;letter-spacing:-2px;line-height:1.1;margin-bottom:4px}
+.subtitle{font-size:clamp(14px,1.8vw,22px);color:rgba(26,24,0,.3);font-weight:500}
+.mac-area{flex:1;display:flex;align-items:flex-end;justify-content:center;padding-top:1vh;overflow:visible}
+.mac-wrap{width:min(95%,950px);transform:perspective(1200px) rotateY(5deg) rotateX(2deg);transform-origin:40% 100%}
+.mac{background:#2d2d2d;border-radius:14px;padding:8px 8px 14px;box-shadow:0 30px 80px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.04),12px 0 40px rgba(0,0,0,.08)}
+.mac-screen{background:#FFED29;border-radius:4px;overflow:hidden;padding:16px;font-size:11px}
+.pipe{display:flex;gap:2px;margin:6px 0}.pipe div{flex:1;height:4px;background:rgba(26,24,0,.06);border-radius:2px;overflow:hidden}.pipe div span{display:block;height:100%;background:#8A8016;border-radius:2px}
+.prompt{background:rgba(26,24,0,.04);border:1px solid rgba(26,24,0,.05);border-radius:8px;padding:10px;margin-bottom:8px;line-height:1.6;color:rgba(26,24,0,.55);font-size:11px}
+.prompt .x{color:rgba(26,24,0,.12);text-decoration:line-through}
+.result{background:rgba(138,128,22,.07);border:1px solid rgba(138,128,22,.12);border-radius:8px;padding:10px;font-weight:600;color:#1a1800;margin-bottom:8px;font-size:12px}
+.step{font-size:10px;color:rgba(26,24,0,.35);padding:2px 0}.step .g{color:#8A8016;font-weight:700}
+.action{font-size:10px;color:rgba(26,24,0,.35);padding:3px 0}.action .w{color:#b8860b;font-weight:700}
+.stats{display:flex;gap:6px;margin-top:8px}.stat{flex:1;text-align:center;padding:8px;background:rgba(255,255,255,.4);border-radius:6px}.stat-v{font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#1a1800}.stat-l{font-size:7px;color:rgba(26,24,0,.25);text-transform:uppercase;margin-top:1px}
+.lbl{font-size:8px;font-weight:700;color:rgba(26,24,0,.18);text-transform:uppercase;letter-spacing:1px;margin:6px 0 4px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="counter">2/6</div>
+  <div class="title">Agent 会话优化。</div>
+  <div class="subtitle">拦截 · 压缩 · 追踪 · 节省</div>
+  <div class="mac-area">
+    <div class="mac-wrap">
+      <div class="mac"><div class="mac-screen">
+        <div class="lbl">你的提示词 · 52 tok</div>
+        <div class="prompt"><span class="x">So basically </span><span class="x">I was just wondering if </span><span class="x">you could maybe </span>help me <span class="x">refacter </span>the <span class="x">authetication</span> module <span class="x">like I mentioned earlier </span>so that it handles <span class="x">tokne</span> refresh <span class="x">properly please?</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:5px;height:5px;border-radius:50%;background:#8A8016"></div><span style="font-size:8px;font-weight:700;color:#8A8016;letter-spacing:.5px">TERSE 7-STAGE PIPELINE</span></div>
+        <div class="pipe"><div><span style="width:100%"></span></div><div><span style="width:100%"></span></div><div><span style="width:100%"></span></div><div><span style="width:100%"></span></div><div><span style="width:100%"></span></div><div><span style="width:100%"></span></div><div><span style="width:100%"></span></div></div>
+        <div class="step"><span class="g">1</span> 拼写: authetication→authentication</div>
+        <div class="step"><span class="g">2</span> 去重: "like I mentioned" 移除</div>
+        <div class="step"><span class="g">3</span> 废话: "So basically" 移除</div>
+        <div class="step"><span class="g">7</span> 清理: 52→9 tok · <b style="color:#8A8016">−83%</b></div>
+        <div class="lbl" style="color:#8A8016">优化后 · 自动发送 ✓</div>
+        <div class="result">Refactor authentication module: handle token refresh <span class="mono" style="float:right;font-size:9px;color:#8A8016">9 tok</span></div>
+        <div class="lbl">Agent 执行 — Terse 追踪</div>
+        <div class="action"><span class="g">⚙</span> Read auth.ts — 18 tok cached</div>
+        <div class="action"><span class="w">⚙</span> Read auth.ts again — <span class="w">重复!</span></div>
+        <div class="action"><span class="g">✎</span> Edit auth.ts:47</div>
+        <div class="action"><span class="g">✓</span> CLAUDE.md rule generated</div>
+        <div class="stats"><div class="stat"><div class="stat-v">1</div><div class="stat-l">Turn</div></div><div class="stat"><div class="stat-v">43</div><div class="stat-l">Saved</div></div><div class="stat"><div class="stat-v">3</div><div class="stat-l">Typos</div></div><div class="stat"><div class="stat-v" style="color:#8A8016">−83%</div><div class="stat-l">Compressed</div></div></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

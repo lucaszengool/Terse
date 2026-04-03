@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse Poster 3 — Stats</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;overflow:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+
+.page{width:100%;height:100%;position:relative;display:flex;flex-direction:column;padding:4vh 5vw}
+
+.counter{position:absolute;top:3vh;right:4vw;width:44px;height:44px;border-radius:50%;background:rgba(26,24,0,.1);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:rgba(26,24,0,.45)}
+
+.title{font-size:clamp(32px,5vw,64px);font-weight:900;color:#1a1800;letter-spacing:-2px;line-height:1.1;margin-bottom:4px}
+.subtitle{font-size:clamp(14px,1.8vw,22px);color:rgba(26,24,0,.3);font-weight:500}
+
+.mac-area{flex:1;display:flex;align-items:flex-end;justify-content:center;padding-top:2vh;overflow:visible}
+
+/* 3D Mac with perspective tilt */
+.mac-wrap{width:min(95%,900px);transform:perspective(1200px) rotateY(-6deg) rotateX(3deg);transform-origin:60% 100%}
+.mac{background:#2d2d2d;border-radius:14px;padding:8px 8px 14px;box-shadow:0 30px 80px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.04),-12px 0 40px rgba(0,0,0,.08)}
+.mac-screen{background:#FFED29;border-radius:4px;overflow:hidden;padding:20px}
+
+/* Content */
+.big-num{font-size:clamp(36px,5vw,56px);font-weight:900;font-family:'JetBrains Mono',monospace;color:#1a1800}
+.big-label{font-size:12px;color:rgba(26,24,0,.3)}
+.bar-track{height:8px;background:rgba(26,24,0,.06);border-radius:4px;overflow:hidden;margin:12px 0}
+.bar-fill{height:100%;background:linear-gradient(90deg,#8A8016,#b8a81e);border-radius:4px}
+.pct{font-size:22px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#8A8016;text-align:right;margin-bottom:10px}
+.detail{font-size:11px;color:rgba(26,24,0,.4);padding:5px 0;display:flex;justify-content:space-between;border-bottom:1px solid rgba(26,24,0,.03)}
+.detail .v{font-weight:700;font-family:'JetBrains Mono',monospace;color:#1a1800}
+.detail .v.g{color:#8A8016}
+.how-t{font-size:9px;font-weight:700;color:rgba(26,24,0,.2);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px}
+.tag{display:inline-block;padding:3px 8px;background:rgba(26,24,0,.04);border-radius:4px;font-size:10px;color:rgba(26,24,0,.4);margin:2px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="counter">3/6</div>
+  <div class="title">已省 21K Token。<br>平均 66%。</div>
+  <div class="subtitle">真实代理会话的压缩统计</div>
+
+  <div class="mac-area">
+    <div class="mac-wrap">
+      <div class="mac">
+        <div class="mac-screen">
+          <div class="big-num">21.3K</div>
+          <div class="big-label">tokens saved (+5.4K saveable)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:66%"></div></div>
+          <div class="pct">66%</div>
+          <div class="detail"><span>📊 2 large tool results</span><span class="v">4.2K</span></div>
+          <div class="detail"><span>↘ 8 prompts could be tighter</span><span class="v">-314</span></div>
+          <div class="detail"><span>⚠ 17 unused tools loaded</span><span class="v">17</span></div>
+          <div class="detail"><span>🔁 7 duplicate tool calls</span><span class="v g">-2.4K</span></div>
+          <div class="detail"><span>🪝 Hook compressed 269 outputs</span><span class="v g">-21.3K</span></div>
+          <div class="how-t">How tokens were saved · 8/26 optimized</div>
+          <div><span class="tag">Removed redundancy -311</span><span class="tag">Merged clauses -309</span><span class="tag">Whitespace -261</span><span class="tag">Politeness -259</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

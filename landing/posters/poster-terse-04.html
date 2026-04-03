@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse Poster 4 — Token Exchange Seller</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;overflow:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+.page{width:100%;height:100%;position:relative;display:flex;flex-direction:column;padding:4vh 5vw}
+.counter{position:absolute;top:3vh;right:4vw;width:44px;height:44px;border-radius:50%;background:rgba(26,24,0,.1);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:rgba(26,24,0,.45)}
+.title{font-size:clamp(32px,5vw,64px);font-weight:900;color:#1a1800;letter-spacing:-2px;line-height:1.1;margin-bottom:4px}
+.subtitle{font-size:clamp(14px,1.8vw,22px);color:rgba(26,24,0,.3);font-weight:500}
+.mac-area{flex:1;display:flex;align-items:flex-end;justify-content:center;padding-top:1vh}
+.mac-wrap{width:min(92%,900px);transform:perspective(1200px) rotateY(-5deg) rotateX(2deg);transform-origin:60% 100%}
+.mac{background:#2d2d2d;border-radius:14px;padding:8px 8px 14px;box-shadow:0 30px 80px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.04),-12px 0 40px rgba(0,0,0,.08)}
+.mac-screen{background:#FFED29;border-radius:4px;overflow:hidden;padding:22px}
+.ex-step{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(26,24,0,.03);border:1px solid rgba(26,24,0,.04);border-radius:10px;margin-bottom:8px}
+.ex-num{width:30px;height:30px;border-radius:50%;background:#1a1800;color:#FFED29;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ex-t{font-size:14px;font-weight:700;color:#1a1800}
+.ex-d{font-size:11px;color:rgba(26,24,0,.3);margin-top:1px}
+.prov{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700}
+.prov.a{background:#1a1800;color:#FFED29}
+.prov.d{background:rgba(26,24,0,.04);color:rgba(26,24,0,.18)}
+.slider{width:100px;height:4px;background:rgba(26,24,0,.06);border-radius:2px;overflow:hidden}.slider-f{height:100%;background:#1a1800;width:50%}
+.pct{font-size:20px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#1a1800}
+.result{padding:12px 14px;background:rgba(138,128,22,.06);border:1px solid rgba(138,128,22,.12);border-radius:10px;display:flex;align-items:center;gap:8px;margin-top:8px}
+.check{width:28px;height:28px;border-radius:50%;background:#8A8016;color:#FFED29;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="counter">4/6</div>
+  <div class="title">Token 交易市场。<br>3 步上架。</div>
+  <div class="subtitle">闲置 API 额度变现 — 你定价，你掌控</div>
+  <div class="mac-area">
+    <div class="mac-wrap"><div class="mac"><div class="mac-screen">
+      <div style="font-size:15px;font-weight:800;color:#1a1800;margin-bottom:14px">卖家 — 上架闲置额度</div>
+      <div class="ex-step"><div class="ex-num">1</div><div style="flex:1"><div class="ex-t">选择供应商</div></div><div style="display:flex;gap:3px"><span class="prov a">Anthropic</span><span class="prov d">OpenAI</span><span class="prov d">Google</span></div></div>
+      <div class="ex-step"><div class="ex-num">2</div><div style="flex:1"><div class="ex-t">粘贴 API 密钥</div><div class="ex-d mono">sk-ant-api03-xxxx...xxxx</div></div><span style="font-size:9px;font-weight:700;color:#1a1800;background:rgba(26,24,0,.05);padding:3px 8px;border-radius:4px">AES-256</span></div>
+      <div class="ex-step"><div class="ex-num">3</div><div style="flex:1"><div class="ex-t">设置折扣</div></div><div style="display:flex;align-items:center;gap:8px"><div class="slider"><div class="slider-f"></div></div><div class="pct">30%</div></div></div>
+      <div class="result"><div class="check">✓</div><div><div style="font-size:14px;font-weight:700;color:#8A8016">密钥已验证并上架！</div><div style="font-size:11px;color:rgba(26,24,0,.3);margin-top:1px">预计月收入 $25+ · Stripe 提现</div></div></div>
+    </div></div></div>
+  </div>
+</div>
+</body>
+</html>

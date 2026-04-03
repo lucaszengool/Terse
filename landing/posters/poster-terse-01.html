@@ -9,89 +9,87 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;overflow:hidden}
 
-/* MacBook — white/silver 3D frame, huge, tilted, bottom+side cropped */
+/* 3D MacBook with visible thickness */
 .mac-wrap{
-  position:fixed;
-  top:6%;
-  left:48%;
-  transform:translateX(-40%) perspective(1800px) rotateY(-12deg) rotateX(2deg);
-  transform-origin:60% 40%;
-  width:120%;
-  max-width:1500px;
-  z-index:10;
-  filter:drop-shadow(-30px 40px 60px rgba(0,0,0,.2));
+  position:fixed;top:5%;left:46%;
+  transform:translateX(-40%) perspective(2000px) rotateY(-14deg) rotateX(3deg);
+  transform-origin:60% 30%;transform-style:preserve-3d;
+  width:115%;max-width:1400px;z-index:10;
 }
-.mac-bezel{
-  background:linear-gradient(160deg,#fafafa,#e8e8e8,#f2f2f2);
-  border-radius:20px 20px 0 0;
-  padding:12px 12px 0;
-  border:1px solid rgba(255,255,255,.8);
-  border-bottom:none;
+/* Front face — white bezel */
+.mac-front{
+  background:linear-gradient(165deg,#fcfcfc,#efefef,#f5f5f5);
+  border-radius:22px 22px 0 0;
+  padding:14px 16px 0;
   position:relative;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset -1px 0 0 rgba(255,255,255,.6),inset 1px 0 0 rgba(0,0,0,.03);
+  border:1px solid rgba(0,0,0,.04);
+  box-shadow:0 60px 120px rgba(0,0,0,.15),0 0 0 1px rgba(255,255,255,.5);
 }
-/* Camera notch */
-.mac-bezel::before{
-  content:'';display:block;width:8px;height:8px;border-radius:50%;
-  background:radial-gradient(circle,#555 30%,#333 60%,#222);
-  margin:0 auto 10px;
-  box-shadow:0 0 0 2px rgba(0,0,0,.08);
+/* Right side thickness */
+.mac-front::after{
+  content:'';position:absolute;top:0;right:-8px;width:8px;height:100%;
+  background:linear-gradient(180deg,#e0e0e0,#d0d0d0,#c8c8c8);
+  border-radius:0 6px 0 0;
+  transform:rotateY(90deg);transform-origin:left;
 }
+/* Bottom thickness */
+.mac-front::before{
+  content:'';position:absolute;bottom:-6px;left:0;right:0;height:6px;
+  background:linear-gradient(90deg,#e8e8e8,#ddd,#d8d8d8);
+  border-radius:0 0 4px 4px;
+  transform:rotateX(-90deg);transform-origin:top;
+}
+/* Camera */
+.cam{width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#666 25%,#444 50%,#333);margin:0 auto 10px;box-shadow:0 0 0 2px rgba(0,0,0,.05)}
+/* Screen */
 .mac-screen{
-  background:#FFED29;
-  border-radius:4px 4px 0 0;
-  min-height:85vh;
-  padding:36px 40px;
-  position:relative;
+  background:#FFED29;border-radius:4px 4px 0 0;
+  min-height:90vh;padding:32px 40px;position:relative;
 }
-/* Menu bar inside screen */
-.menubar{
-  display:flex;align-items:center;gap:14px;margin-bottom:28px;
-  font-size:13px;color:rgba(26,24,0,.35);
-}
-.menubar .apple{font-size:16px;color:rgba(26,24,0,.6)}
-.menubar .bold{font-weight:600;color:rgba(26,24,0,.55)}
-.menubar .right{margin-left:auto;font-size:12px;display:flex;align-items:center;gap:10px}
+/* macOS menubar */
+.mbar{display:flex;align-items:center;gap:14px;margin-bottom:24px;font-size:13px;color:rgba(26,24,0,.3)}
+.mbar .a{font-size:16px;color:rgba(26,24,0,.5)}
+.mbar .b{font-weight:600;color:rgba(26,24,0,.45)}
+.mbar .r{margin-left:auto;font-size:11px;display:flex;gap:10px}
 
-/* App content */
-.app-center{display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:6vh}
-.app-icon{width:80px;height:80px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 4px 20px rgba(0,0,0,.05)}
-.app-icon span{font-size:38px;font-weight:900;color:#1a1800}
-.app-t{font-size:22px;font-weight:700;color:#1a1800;margin-bottom:6px}
-.app-s{font-size:14px;color:rgba(26,24,0,.3);margin-bottom:28px}
+/* App */
+.center{display:flex;flex-direction:column;align-items:center;padding-top:8vh}
+.icon{width:80px;height:80px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 4px 20px rgba(0,0,0,.04)}
+.icon span{font-size:38px;font-weight:900;color:#1a1800}
+.t1{font-size:22px;font-weight:700;color:#1a1800;margin-bottom:6px}
+.t2{font-size:14px;color:rgba(26,24,0,.28);margin-bottom:30px}
 .dots{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:280px;margin-bottom:32px}
-.dot{width:48px;height:48px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.06);transition:transform .2s}
-.btn{padding:14px 44px;background:#fff;border-radius:50px;font-size:16px;font-weight:700;color:#1a1800;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-bottom:12px}
-.link{font-size:14px;color:rgba(26,24,0,.3)}
+.d{width:48px;height:48px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.btn{padding:14px 48px;background:#fff;border-radius:50px;font-size:16px;font-weight:700;color:#1a1800;box-shadow:0 2px 10px rgba(0,0,0,.03);margin-bottom:12px}
+.lnk{font-size:13px;color:rgba(26,24,0,.25)}
 </style>
 </head>
 <body>
 
 <div class="mac-wrap">
-  <div class="mac-bezel">
+  <div class="mac-front">
+    <div class="cam"></div>
     <div class="mac-screen">
-      <div class="menubar">
-        <span class="apple">&#63743;</span>
-        <span class="bold">Finder</span>
-        <span>File</span><span>Edit</span><span>View</span>
-        <span class="right"><span>Wi-Fi</span><span>100%</span><span style="font-family:'JetBrains Mono',monospace">3:42 PM</span></span>
+      <div class="mbar">
+        <span class="a">&#63743;</span><span class="b">Finder</span><span>File</span><span>Edit</span><span>View</span>
+        <span class="r"><span>Wi-Fi</span><span>100%</span><span>3:42 PM</span></span>
       </div>
-      <div class="app-center">
-        <div class="app-icon"><span>T</span></div>
-        <div class="app-t">Welcome to Terse</div>
-        <div class="app-s">Choose your style</div>
+      <div class="center">
+        <div class="icon"><span>T</span></div>
+        <div class="t1">Welcome to Terse</div>
+        <div class="t2">Choose your style</div>
         <div class="dots">
-          <div class="dot" style="background:#fff;border:2px solid rgba(0,0,0,.06)"></div>
-          <div class="dot" style="background:#c4b5fd"></div>
-          <div class="dot" style="background:#fca5a5"></div>
-          <div class="dot" style="background:#67e8f9"></div>
-          <div class="dot" style="background:#1a1800"></div>
-          <div class="dot" style="background:#f9a8d4"></div>
-          <div class="dot" style="background:#6ee7b7"></div>
-          <div class="dot" style="background:#fde68a"></div>
+          <div class="d" style="background:#fff;border:2px solid rgba(0,0,0,.06)"></div>
+          <div class="d" style="background:#c4b5fd"></div>
+          <div class="d" style="background:#fca5a5"></div>
+          <div class="d" style="background:#67e8f9"></div>
+          <div class="d" style="background:#1a1800"></div>
+          <div class="d" style="background:#f9a8d4"></div>
+          <div class="d" style="background:#6ee7b7"></div>
+          <div class="d" style="background:#fde68a"></div>
         </div>
         <div class="btn">Sign In</div>
-        <div class="link">Create Account</div>
+        <div class="lnk">Create Account</div>
       </div>
     </div>
   </div>

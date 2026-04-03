@@ -19,15 +19,31 @@ html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','
 
 .mac-area{flex:1;display:flex;align-items:flex-end;justify-content:center;padding-top:2vh;overflow:visible}
 
-/* 3D Mac with perspective tilt */
+/* 3D MacBook with visible thickness */
 .mac-wrap{
-  position:fixed;top:6%;left:52%;
-  transform:translateX(-55%) perspective(1800px) rotateY(10deg) rotateX(3deg);
-  transform-origin:40% 40%;width:120%;max-width:1500px;z-index:10;
-  filter:drop-shadow(25px 40px 60px rgba(0,0,0,.2))}
-.mac::before{content:'';display:block;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#555 30%,#333);margin:0 auto 8px;box-shadow:0 0 0 2px rgba(0,0,0,.06)}
-.mac{background:linear-gradient(160deg,#fafafa,#e8e8e8,#f2f2f2);border-radius:20px 20px 0 0;padding:12px 12px 0;border:1px solid rgba(255,255,255,.8);border-bottom:none;position:relative;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset -1px 0 0 rgba(255,255,255,.6),inset 1px 0 0 rgba(0,0,0,.03)}
-.mac-screen{background:#FFED29;border-radius:4px;overflow:hidden;padding:20px}
+  position:fixed;top:5%;left:54%;
+  transform:translateX(-58%) perspective(2000px) rotateY(14deg) rotateX(3deg);
+  transform-origin:35% 30%;transform-style:preserve-3d;
+  width:115%;max-width:1400px;z-index:10;
+}
+.mac-front{
+  background:linear-gradient(165deg,#fcfcfc,#efefef,#f5f5f5);
+  border-radius:22px 22px 0 0;padding:14px 16px 0;position:relative;
+  border:1px solid rgba(0,0,0,.04);
+  box-shadow:0 60px 120px rgba(0,0,0,.15),0 0 0 1px rgba(255,255,255,.5);
+}
+.mac-front::after{
+  content:'';position:absolute;top:0;left:-8px;width:8px;height:100%;
+  background:linear-gradient(180deg,#e0e0e0,#d0d0d0,#c8c8c8);
+  border-radius:0 6px 0 0;transform:rotateY(-90deg);transform-origin:right;
+}
+.mac-front::before{
+  content:'';position:absolute;bottom:-6px;left:0;right:0;height:6px;
+  background:linear-gradient(90deg,#e8e8e8,#ddd,#d8d8d8);
+  border-radius:0 0 4px 4px;transform:rotateX(-90deg);transform-origin:top;
+}
+.cam{width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#666 25%,#444 50%,#333);margin:0 auto 10px;box-shadow:0 0 0 2px rgba(0,0,0,.05)}
+.mac-screen{background:#FFED29;border-radius:4px 4px 0 0;min-height:90vh;padding:32px 40px;position:relative}
 
 /* Content */
 .big-num{font-size:clamp(36px,5vw,56px);font-weight:900;font-family:'JetBrains Mono',monospace;color:#1a1800}
@@ -44,12 +60,9 @@ html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','
 </head>
 <body>
 <div class="page">
-  <div class="title">已省 21K Token。<br>平均 66%。</div>
-  <div class="subtitle">真实代理会话的压缩统计</div>
-
   <div class="mac-area">
     <div class="mac-wrap">
-      <div class="mac">
+      <div class="mac-front"><div class="cam"></div>
         <div class="mac-screen">
           <div class="big-num">21.3K</div>
           <div class="big-label">tokens saved (+5.4K saveable)</div>

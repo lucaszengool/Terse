@@ -3,97 +3,109 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terse Poster 1</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<title>Terse — Welcome</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;background:#FFED29;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;overflow:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
 
-/* 3D MacBook with visible thickness */
 .mac-wrap{
-  position:fixed;top:5%;left:46%;
-  transform:translateX(-40%) perspective(2000px) rotateY(-14deg) rotateX(3deg);
-  transform-origin:60% 30%;transform-style:preserve-3d;
-  width:115%;max-width:1400px;z-index:10;
+  position:fixed;top:4%;left:44%;
+  transform:translateX(-35%) perspective(1400px) rotateY(-18deg) rotateX(4deg);
+  transform-origin:65% 35%;transform-style:preserve-3d;
+  width:110%;max-width:1400px;z-index:10;
 }
-/* Front face — white bezel */
-.mac-front{
-  background:linear-gradient(165deg,#fcfcfc,#efefef,#f5f5f5);
-  border-radius:22px 22px 0 0;
-  padding:14px 16px 0;
+/* Front face — thick white bezel */
+.mac-f{
+  background:linear-gradient(170deg,#fefefe,#f0f0f0,#f6f6f6);
+  border-radius:24px 24px 0 0;
+  padding:16px 18px 0;
   position:relative;
-  border:1px solid rgba(0,0,0,.04);
-  box-shadow:0 60px 120px rgba(0,0,0,.15),0 0 0 1px rgba(255,255,255,.5);
+  transform-style:preserve-3d;
+  box-shadow:0 60px 120px rgba(0,0,0,.18);
 }
-/* Right side thickness */
-.mac-front::after{
-  content:'';position:absolute;top:0;right:-8px;width:8px;height:100%;
-  background:linear-gradient(180deg,#e0e0e0,#d0d0d0,#c8c8c8);
-  border-radius:0 6px 0 0;
-  transform:rotateY(90deg);transform-origin:left;
+/* Side edge — visible 3D thickness */
+.mac-f::after{
+  content:'';position:absolute;top:0;width:10px;height:100%;
+  border-radius:0 4px 0 0;
+  right:-10px;transform:rotateY(90deg);transform-origin:left;background:linear-gradient(180deg,#eee,#ddd,#ccc);
 }
-/* Bottom thickness */
-.mac-front::before{
-  content:'';position:absolute;bottom:-6px;left:0;right:0;height:6px;
-  background:linear-gradient(90deg,#e8e8e8,#ddd,#d8d8d8);
-  border-radius:0 0 4px 4px;
+/* Bottom edge */
+.mac-f::before{
+  content:'';position:absolute;bottom:-8px;left:4px;right:4px;height:8px;
+  background:linear-gradient(90deg,#e0e0e0,#d5d5d5,#ddd);
+  border-radius:0 0 6px 6px;
   transform:rotateX(-90deg);transform-origin:top;
 }
-/* Camera */
-.cam{width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#666 25%,#444 50%,#333);margin:0 auto 10px;box-shadow:0 0 0 2px rgba(0,0,0,.05)}
+/* Camera dot */
+.cam{width:8px;height:8px;border-radius:50%;background:radial-gradient(#777,#444);margin:0 auto 10px;box-shadow:0 0 0 2px rgba(0,0,0,.04)}
 /* Screen */
-.mac-screen{
+.scr{
   background:#FFED29;border-radius:4px 4px 0 0;
-  min-height:90vh;padding:32px 40px;position:relative;
+  min-height:92vh;padding:28px 36px;position:relative;
 }
-/* macOS menubar */
-.mbar{display:flex;align-items:center;gap:14px;margin-bottom:24px;font-size:13px;color:rgba(26,24,0,.3)}
-.mbar .a{font-size:16px;color:rgba(26,24,0,.5)}
-.mbar .b{font-weight:600;color:rgba(26,24,0,.45)}
-.mbar .r{margin-left:auto;font-size:11px;display:flex;gap:10px}
+/* Menu bar */
+.mb{display:flex;align-items:center;gap:12px;margin-bottom:20px;font-size:12px;color:rgba(26,24,0,.25)}
+.mb .a{font-size:15px;color:rgba(26,24,0,.4)}
+.mb .b{font-weight:600;color:rgba(26,24,0,.35)}
+.mb .r{margin-left:auto;font-size:11px;display:flex;gap:8px}
 
-/* App */
-.center{display:flex;flex-direction:column;align-items:center;padding-top:8vh}
-.icon{width:80px;height:80px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 4px 20px rgba(0,0,0,.04)}
-.icon span{font-size:38px;font-weight:900;color:#1a1800}
-.t1{font-size:22px;font-weight:700;color:#1a1800;margin-bottom:6px}
-.t2{font-size:14px;color:rgba(26,24,0,.28);margin-bottom:30px}
-.dots{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:280px;margin-bottom:32px}
-.d{width:48px;height:48px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-.btn{padding:14px 48px;background:#fff;border-radius:50px;font-size:16px;font-weight:700;color:#1a1800;box-shadow:0 2px 10px rgba(0,0,0,.03);margin-bottom:12px}
-.lnk{font-size:13px;color:rgba(26,24,0,.25)}
+/* Shared UI */
+.ui-btn{padding:12px 20px;background:rgba(255,255,255,.5);border-radius:10px;font-size:13px;font-weight:600;color:rgba(26,24,0,.6);text-align:center;margin-bottom:6px}
+.ui-input{padding:10px 14px;background:rgba(255,255,255,.35);border:1px solid rgba(26,24,0,.04);border-radius:8px;font-size:12px;color:rgba(26,24,0,.35)}
+.stat{text-align:center;padding:10px;background:rgba(255,255,255,.4);border-radius:8px}
+.stat-v{font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#1a1800}
+.stat-l{font-size:7px;color:rgba(26,24,0,.2);text-transform:uppercase;margin-top:1px}
+.ex-step{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(26,24,0,.025);border:1px solid rgba(26,24,0,.03);border-radius:10px;margin-bottom:6px;font-size:13px;color:rgba(26,24,0,.55)}
+.ex-num{width:28px;height:28px;border-radius:50%;background:#1a1800;color:#FFED29;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pipe{display:flex;gap:2px;margin:4px 0}.pipe div{flex:1;height:4px;background:rgba(26,24,0,.04);border-radius:2px;overflow:hidden}.pipe div span{display:block;height:100%;background:#8A8016;border-radius:2px;width:100%}
+.lbl{font-size:8px;font-weight:700;color:rgba(26,24,0,.15);text-transform:uppercase;letter-spacing:1px;margin:8px 0 4px}
+.prompt{background:rgba(26,24,0,.03);border-radius:8px;padding:10px;font-size:11px;line-height:1.6;color:rgba(26,24,0,.5);margin-bottom:6px}
+.prompt .x{color:rgba(26,24,0,.1);text-decoration:line-through}
+.result{background:rgba(138,128,22,.06);border:1px solid rgba(138,128,22,.1);border-radius:8px;padding:10px;font-weight:600;color:#1a1800;font-size:12px;margin-bottom:6px}
+.step{font-size:10px;color:rgba(26,24,0,.3);padding:2px 0}.step .g{color:#8A8016;font-weight:700}
+.action{font-size:10px;color:rgba(26,24,0,.3);padding:2px 0}.action .w{color:#b8860b;font-weight:700}
+.bar-t{height:8px;background:rgba(26,24,0,.04);border-radius:4px;overflow:hidden;margin:8px 0}.bar-f{height:100%;background:#8A8016;border-radius:4px}
+.tag{display:inline-block;padding:3px 8px;background:rgba(26,24,0,.03);border-radius:4px;font-size:9px;color:rgba(26,24,0,.35);margin:2px}
+.toggle{width:36px;height:20px;border-radius:10px;position:relative;flex-shrink:0}
+.toggle.on{background:#1a1800}.toggle.off{background:rgba(26,24,0,.08)}
+.toggle::after{content:'';position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.toggle.on::after{right:2px}.toggle.off::after{left:2px}
+.tr{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:12px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.02)}
+.modes{display:flex;border-radius:8px;overflow:hidden;border:1px solid rgba(26,24,0,.04);margin-bottom:12px}
+.mode{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;background:rgba(255,255,255,.25);color:rgba(26,24,0,.2)}
+.mode.a{background:#fff;color:#1a1800}
+.terminal{background:#1a1800;border-radius:10px;padding:18px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;color:rgba(255,255,255,.45);margin-bottom:14px}
+.terminal .c{color:#FFED29}.terminal .v{color:#fbbf24}.terminal .p{color:rgba(255,255,255,.15)}
+.sav-row{display:flex;gap:6px;justify-content:center}
+.sav{text-align:center;padding:10px 16px;border-radius:8px}
+.sav.dim{background:rgba(26,24,0,.03)}.sav.dim .n{font-size:20px;font-weight:900;font-family:'JetBrains Mono',monospace;color:rgba(26,24,0,.1);text-decoration:line-through}.sav.dim .l{font-size:8px;color:rgba(26,24,0,.15)}
+.sav.mid{background:rgba(26,24,0,.03)}.sav.mid .n{font-size:20px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#8A8016}.sav.mid .l{font-size:8px;color:rgba(26,24,0,.15)}
+.sav.hl{background:#1a1800}.sav.hl .n{font-size:20px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#FFED29}.sav.hl .l{font-size:8px;color:rgba(255,237,41,.3)}
+.arr{align-self:center;color:rgba(26,24,0,.08);font-size:18px}
 </style>
 </head>
 <body>
-
-<div class="mac-wrap">
-  <div class="mac-front">
-    <div class="cam"></div>
-    <div class="mac-screen">
-      <div class="mbar">
-        <span class="a">&#63743;</span><span class="b">Finder</span><span>File</span><span>Edit</span><span>View</span>
-        <span class="r"><span>Wi-Fi</span><span>100%</span><span>3:42 PM</span></span>
-      </div>
-      <div class="center">
-        <div class="icon"><span>T</span></div>
-        <div class="t1">Welcome to Terse</div>
-        <div class="t2">Choose your style</div>
-        <div class="dots">
-          <div class="d" style="background:#fff;border:2px solid rgba(0,0,0,.06)"></div>
-          <div class="d" style="background:#c4b5fd"></div>
-          <div class="d" style="background:#fca5a5"></div>
-          <div class="d" style="background:#67e8f9"></div>
-          <div class="d" style="background:#1a1800"></div>
-          <div class="d" style="background:#f9a8d4"></div>
-          <div class="d" style="background:#6ee7b7"></div>
-          <div class="d" style="background:#fde68a"></div>
-        </div>
-        <div class="btn">Sign In</div>
-        <div class="lnk">Create Account</div>
-      </div>
-    </div>
+<div class="mac-wrap"><div class="mac-f"><div class="cam"></div><div class="scr">
+  <div class="mb"><span class="a">&#63743;</span><span class="b">Terse</span><span>File</span><span>Edit</span><span class="r"><span>Wi-Fi</span><span>3:42 PM</span></span></div>
+  <div style="display:flex;flex-direction:column;align-items:center;padding-top:8vh">
+  <div style="width:80px;height:80px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 4px 20px rgba(0,0,0,.04)"><span style="font-size:38px;font-weight:900;color:#1a1800">T</span></div>
+  <div style="font-size:22px;font-weight:700;color:#1a1800;margin-bottom:6px">Welcome to Terse</div>
+  <div style="font-size:14px;color:rgba(26,24,0,.25);margin-bottom:28px">Choose your style</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;max-width:270px;margin-bottom:30px">
+    <div style="width:46px;height:46px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.05);box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+    <div style="width:46px;height:46px;border-radius:50%;background:#c4b5fd;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+    <div style="width:46px;height:46px;border-radius:50%;background:#fca5a5;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+    <div style="width:46px;height:46px;border-radius:50%;background:#67e8f9;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+    <div style="width:46px;height:46px;border-radius:50%;background:#1a1800;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+    <div style="width:46px;height:46px;border-radius:50%;background:#f9a8d4;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+    <div style="width:46px;height:46px;border-radius:50%;background:#6ee7b7;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+    <div style="width:46px;height:46px;border-radius:50%;background:#fde68a;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
   </div>
+  <div style="padding:13px 44px;background:#fff;border-radius:50px;font-size:15px;font-weight:700;color:#1a1800;box-shadow:0 2px 8px rgba(0,0,0,.03);margin-bottom:10px">Sign In</div>
+  <div style="font-size:13px;color:rgba(26,24,0,.22)">Create Account</div>
 </div>
-
+</div></div></div>
 </body>
 </html>

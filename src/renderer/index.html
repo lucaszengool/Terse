@@ -7,7 +7,7 @@
 </head>
 <body>
   <!-- Auth Gate — shown until user signs in -->
-  <div id="authGate" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
+  <div id="authGate" data-tauri-drag-region style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
     <div style="width:48px;height:48px;background:var(--btn);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--btn-t)">T</div>
     <h2 style="color:var(--t1);font-size:18px;font-weight:700;margin:0">Welcome to Terse</h2>
     <p style="color:var(--t3);font-size:12px;text-align:center;margin:0;line-height:1.6">Choose your style</p>
@@ -164,7 +164,7 @@
     <!-- License Banner -->
     <div id="licenseBanner" class="license-banner hidden">
       <div class="license-info">
-        <span id="licenseTier" class="license-tier">Free</span>
+        <span id="licenseTier" class="license-tier">No Plan</span>
         <span id="licenseUsage" class="license-usage"></span>
       </div>
       <button id="btnUpgrade" class="upgrade-btn">Upgrade</button>
@@ -182,6 +182,16 @@
       <div class="theme-dot" data-t="sand" style="background:#fde68a" title="Sand"></div>
     </div>
     <div id="toast" class="toast hidden"></div>
+
+    <!-- Paywall Gate — blocks app when no active subscription/trial -->
+    <div id="paywallGate" class="hidden" data-tauri-drag-region style="position:fixed;inset:0;z-index:9998;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px">
+      <div style="width:48px;height:48px;background:var(--btn);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--btn-t)">T</div>
+      <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0">No Active Plan</h2>
+      <p style="color:var(--t3);font-size:11px;text-align:center;margin:0;line-height:1.6;max-width:240px">Start a 30-day free trial to use Terse. No charge until your trial ends.</p>
+      <button id="paywallProBtn" style="margin-top:4px;padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;width:200px">Start Pro Trial — $4.99/mo</button>
+      <button id="paywallPremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Premium Trial — $99/mo</button>
+      <p style="color:var(--t3);font-size:9px;text-align:center;margin:4px 0 0;opacity:0.6">Cancel anytime during your 30-day trial</p>
+    </div>
   </div>
   <script>
     /* ── Theme System ── */

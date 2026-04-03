@@ -49,7 +49,7 @@ if (window.__TAURI__) {
             stats: { originalTokens: 0, optimizedTokens: 0, percentSaved: 0, techniquesApplied: [] },
             suggestions: [],
             blocked: true,
-            reason: 'Weekly optimization limit reached. Upgrade to Pro for unlimited.',
+            reason: 'No active subscription. Start a free trial to use Terse.',
           });
         }
       } catch {}

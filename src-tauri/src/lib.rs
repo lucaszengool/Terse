@@ -662,7 +662,7 @@ async fn accept_agent(agent_type: String, state: tauri::State<'_, AppState>, app
         if !lic.can_optimize() {
             let _ = app.emit("quota-exhausted", serde_json::json!({
                 "remaining": 0,
-                "message": "Weekly optimization quota reached. Upgrade your plan or wait until next week."
+                "message": "No active subscription. Start a free trial to use Terse."
             }));
             return Err("Quota exhausted. Upgrade your plan or wait until next week.".to_string());
         }
@@ -711,18 +711,23 @@ async fn get_agent_plan_info(agent_type: String, state: tauri::State<'_, AppStat
     }
 
     // Fetch in background thread (blocking I/O: keychain, curl, sqlite3)
+    eprintln!("[terse] get_agent_plan_info called for: {}", agent_type);
     let at = agent_type.clone();
     let info = tokio::task::spawn_blocking(move || {
-        match at.as_str() {
+        eprintln!("[terse] fetching plan info for: {}", at);
+        let result = match at.as_str() {
             "claude-code" => agent_monitor::fetch_claude_plan_info(),
             "cursor-agent" | "cursor" => agent_monitor::fetch_cursor_plan_info(),
             _ => None,
-        }
+        };
+        eprintln!("[terse] plan info result: {:?}", result.is_some());
+        result
     }).await.map_err(|e| e.to_string())?;
 
     if let Some(ref plan_info) = info {
         let mut monitor = lock_or_recover(&state.agent_monitor);
         monitor.set_plan_info(&agent_type, plan_info.clone());
+        eprintln!("[terse] plan info cached: plan={}", plan_info.plan);
     }
 
     Ok(info.map(|i| serde_json::to_value(i).unwrap_or_default()))
@@ -1278,7 +1283,7 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
             }
             let _ = app.emit("quota-exhausted", serde_json::json!({
                 "remaining": remaining,
-                "message": "Weekly optimization quota reached. Upgrade your plan or wait until next week."
+                "message": "No active subscription. Start a free trial to use Terse."
             }));
         }
     }
@@ -1487,7 +1492,7 @@ fn record_optimization_usage(state: tauri::State<'_, AppState>, app: AppHandle) 
         }
         let _ = app.emit("quota-exhausted", serde_json::json!({
             "remaining": remaining,
-            "message": "Weekly optimization quota reached. Upgrade your plan or wait until next week."
+            "message": "No active subscription. Start a free trial to use Terse."
         }));
     }
 }
@@ -1539,15 +1544,17 @@ fn sign_out(state: tauri::State<'_, AppState>) {
     let mut auth = lock_or_recover(&state.auth);
     auth.sign_out();
 
-    // Reset license to free
+    // Reset license to expired (no free plan)
     let mut lic = lock_or_recover(&state.license);
     lic.clerk_user_id = None;
-    lic.tier = "free".to_string();
+    lic.tier = "expired".to_string();
+    lic.status = "none".to_string();
     lic.limits = license::PlanLimits {
-        optimizations_per_week: 200,
-        max_sessions: 1,
-        max_devices: 1,
+        optimizations_per_week: 0,
+        max_sessions: 0,
+        max_devices: 0,
     };
+    lic.trial_end = None;
     lic.save();
 }
 
@@ -1559,25 +1566,54 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .manage(AppState::default())
         .setup(|app| {
-            // Remove macOS quarantine & translocation — prevents event system breakage
-            // in DMG-installed apps (see tauri-apps/tauri#9052)
+            // Remove macOS quarantine & handle App Translocation
+            // DMG-installed apps get quarantine + translocation which breaks events,
+            // keychain access, and file reads (see tauri-apps/tauri#9052)
             if let Ok(exe) = std::env::current_exe() {
-                // Find the .app bundle root (go up from Contents/MacOS/terse)
                 if let Some(app_bundle) = exe.parent()
                     .and_then(|p| p.parent())
                     .and_then(|p| p.parent())
                 {
-                    let bundle_path = app_bundle.to_string_lossy();
-                    // Check if running under App Translocation
+                    let bundle_path = app_bundle.to_string_lossy().to_string();
+
+                    // Check if running under App Translocation — auto-install to /Applications
                     if bundle_path.contains("/AppTranslocation/") {
-                        eprintln!("[terse] WARNING: Running under App Translocation at {}", bundle_path);
-                        eprintln!("[terse] Please move Terse.app to /Applications folder for full functionality");
+                        eprintln!("[terse] App Translocation detected: {}", bundle_path);
+                        let dest = "/Applications/Terse.app";
+                        // Remove old install if exists, copy ourselves there
+                        let _ = std::process::Command::new("rm").args(["-rf", dest]).output();
+                        let copy_result = std::process::Command::new("cp")
+                            .args(["-R", &bundle_path, dest])
+                            .output();
+                        if copy_result.map(|o| o.status.success()).unwrap_or(false) {
+                            eprintln!("[terse] Auto-installed to {}", dest);
+                            // Clear quarantine on the installed copy
+                            let _ = std::process::Command::new("xattr")
+                                .args(["-r", "-d", "com.apple.quarantine", dest])
+                                .output();
+                            // Relaunch from /Applications
+                            let _ = std::process::Command::new("open")
+                                .args(["-n", dest])
+                                .spawn();
+                            std::process::exit(0);
+                        } else {
+                            eprintln!("[terse] WARNING: Could not auto-install to /Applications");
+                            eprintln!("[terse] Please drag Terse.app to /Applications for full functionality");
+                        }
+                    } else {
+                        // Not translocated — just clear quarantine
+                        let _ = std::process::Command::new("xattr")
+                            .args(["-r", "-d", "com.apple.quarantine", &*bundle_path])
+                            .output();
+                        eprintln!("[terse] cleared quarantine for {}", bundle_path);
                     }
-                    // Remove quarantine from the entire app bundle
-                    let _ = std::process::Command::new("xattr")
-                        .args(["-r", "-d", "com.apple.quarantine", &*bundle_path])
-                        .output();
-                    eprintln!("[terse] cleared quarantine for {}", bundle_path);
+                }
+            }
+
+            // Ensure HOME is set (may be missing when launched via Finder/Spotlight)
+            if std::env::var("HOME").is_err() {
+                if let Some(home) = dirs::home_dir() {
+                    std::env::set_var("HOME", home);
                 }
             }
 

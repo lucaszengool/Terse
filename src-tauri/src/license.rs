@@ -66,6 +66,9 @@ pub struct License {
     pub clerk_user_id: Option<String>,
     #[serde(rename = "expiresAt")]
     pub expires_at: Option<String>,
+    /// End of trial period (ISO 8601), None if not trialing
+    #[serde(rename = "trialEnd", default)]
+    pub trial_end: Option<String>,
     /// Optimizations used this week (tracked locally, supports fractional costs)
     #[serde(default)]
     pub weekly_usage: f64,
@@ -84,15 +87,16 @@ pub struct PlanLimits {
 impl Default for License {
     fn default() -> Self {
         License {
-            tier: "free".to_string(),
-            status: "active".to_string(),
+            tier: "expired".to_string(),
+            status: "none".to_string(),
             limits: PlanLimits {
-                optimizations_per_week: 1000,
-                max_sessions: 1,
-                max_devices: 1,
+                optimizations_per_week: 0,
+                max_sessions: 0,
+                max_devices: 0,
             },
             clerk_user_id: None,
             expires_at: None,
+            trial_end: None,
             weekly_usage: 0.0,
             usage_week: current_week(),
         }
@@ -140,6 +144,10 @@ impl License {
     }
 
     pub fn can_optimize(&self) -> bool {
+        // Expired/cancelled users cannot optimize
+        if self.tier == "expired" || self.status == "cancelled" || self.status == "none" {
+            return false;
+        }
         if self.limits.optimizations_per_week < 0 {
             return true; // unlimited
         }
@@ -174,6 +182,10 @@ impl License {
         ((self.limits.optimizations_per_week as f64 - self.weekly_usage).max(0.0)) as i32
     }
 
+    pub fn is_trialing(&self) -> bool {
+        self.status == "trialing"
+    }
+
     pub fn get_snapshot(&self) -> serde_json::Value {
         serde_json::json!({
             "tier": self.tier,
@@ -187,6 +199,7 @@ impl License {
             "remaining": self.remaining_optimizations(),
             "clerkUserId": self.clerk_user_id,
             "expiresAt": self.expires_at,
+            "trialEnd": self.trial_end,
         })
     }
 }
@@ -224,6 +237,7 @@ pub async fn verify_license(clerk_user_id: &str) -> Option<License> {
     existing.limits = limits;
     existing.clerk_user_id = Some(clerk_user_id.to_string());
     existing.expires_at = v["expiresAt"].as_str().map(|s| s.to_string());
+    existing.trial_end = v["trialEnd"].as_str().map(|s| s.to_string());
     existing.save();
 
     Some(existing)

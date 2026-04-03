@@ -75,18 +75,18 @@ function showQuotaExhaustedPopup(data) {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
   overlay.innerHTML = `
     <div style="background:var(--bg);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-      <div style="font-size:32px;margin-bottom:8px;">0</div>
-      <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--t1);">Quota Reached</div>
+      <div style="font-size:32px;margin-bottom:8px;">T</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--t1);">No Active Plan</div>
       <div style="font-size:11px;color:var(--t2);margin-bottom:16px;line-height:1.5;">
-        Your weekly optimization quota has been used up. All sessions have been disconnected.
-        <br><br>Upgrade your plan for unlimited optimizations, or wait until next week.
+        No active subscription. All sessions have been disconnected.
+        <br><br>Start a free trial to continue using Terse.
       </div>
       <div style="display:flex;gap:8px;justify-content:center;">
         <button onclick="this.closest('#quotaExhaustedOverlay').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t1);font-size:12px;font-weight:600;cursor:pointer;">
           Dismiss
         </button>
         <button onclick="window.terse?.navigateTo?.('upgrade');this.closest('#quotaExhaustedOverlay').remove()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">
-          Upgrade
+          Start Free Trial
         </button>
       </div>
     </div>
@@ -178,6 +178,8 @@ document.querySelectorAll('.auto-btn').forEach(btn => {
 let _settleTimer = null;
 const SETTLE_DELAY = 600;
 const _invoke = T._invoke || window.__TAURI__?.core?.invoke;
+// Cooldown after Send/Replace to prevent re-reading the just-written optimized text
+let _sendCooldownUntil = 0;
 
 function _updatePopupUI(d) {
   try {
@@ -209,8 +211,8 @@ function _updatePopupUI(d) {
 
 T.on('optimize-request', async (d) => {
   if (!window._terseOptimizer) return;
-  // Don't run optimization when agent panel is showing
-  if (agentPanelVisible) return;
+  // Cooldown after Send/Replace — ignore polling for 2s to avoid re-reading optimized text
+  if (Date.now() < _sendCooldownUntil) return;
 
   // Check license quota
   try {
@@ -225,11 +227,7 @@ T.on('optimize-request', async (d) => {
     console.error('[terse-popup] optimizer error:', e);
     return;
   }
-  _invoke('record_optimization_usage').then(() => {
-    if (window.__TAURI__?.event?.emit) {
-      window.__TAURI__.event.emit('quota-updated').catch(() => {});
-    }
-  }).catch(() => {});
+  // Quota is consumed on Send/Replace click only, NOT on every keystroke
   const displayOptimized = d.currentWord ? opt.optimized + d.currentWord : opt.optimized;
 
   _updatePopupUI({
@@ -276,14 +274,19 @@ T.on('optimize-request', async (d) => {
 
 T.on('send-mode-optimize', async (d) => {
   if (!window._terseOptimizer) return;
-  // Don't optimize when agent panel is showing — agent mode is monitor-only
-  if (agentPanelVisible) return;
   const opt = window._terseOptimizer.optimize(d.text);
   if (opt.optimized !== d.text && opt.optimized.length >= 3) {
     try {
       await _invoke('replace_in_target', { text: opt.optimized });
       await new Promise(r => setTimeout(r, 100));
       await _invoke('send_enter', { pid: d.pid });
+      _sendCooldownUntil = Date.now() + 2000; // 2s cooldown
+      // Consume 0.5 quota on Send
+      _invoke('record_optimization_usage').then(() => {
+        if (window.__TAURI__?.event?.emit) {
+          window.__TAURI__.event.emit('quota-updated').catch(() => {});
+        }
+      }).catch(() => {});
       const src = d.readMethod === 'bridge' ? 'editor' : 'browser';
       _invoke('record_optimization', {
         source: src,
@@ -424,7 +427,7 @@ T.on('popup-hide', () => {
 });
 
 T.on('popup-hint', d => {
-  if (hasContent || agentPanelVisible) return;
+  if (hasContent) return;
   document.getElementById('appLabel').textContent = d.app || 'Connected';
   const hint = document.getElementById('hintState');
   const bridgeDiv = document.getElementById('bridgeInstall');
@@ -444,8 +447,6 @@ T.on('popup-hint', d => {
 
 T.on('popup-clear', () => {
   hasContent = false;
-  // Don't show hint or resize if agent panel is showing for this app
-  if (agentPanelVisible) return;
   document.getElementById('hintState').classList.remove('hidden');
   document.getElementById('bridgeInstall').classList.add('hidden');
   document.getElementById('optimized').classList.add('hidden');
@@ -479,6 +480,13 @@ document.getElementById('btnReplace').addEventListener('click', async () => {
   if (!text) return;
   const btn = document.getElementById('btnReplace');
   btn.textContent = '...'; btn.disabled = true;
+  _sendCooldownUntil = Date.now() + 2000; // 2s cooldown
+  // Consume 0.5 quota on Replace click
+  _invoke('record_optimization_usage').then(() => {
+    if (window.__TAURI__?.event?.emit) {
+      window.__TAURI__.event.emit('quota-updated').catch(() => {});
+    }
+  }).catch(() => {});
   await T.replaceInTarget(text);
   btn.innerHTML = '&#10003;'; btn.classList.add('success');
   setTimeout(() => {
@@ -529,36 +537,75 @@ let _planInfoCache = null;
 let _planInfoFetchedAt = 0;
 const PLAN_FETCH_INTERVAL = 60000;
 
-// Cost per million INPUT tokens by agent+model (USD)
+// Cost per million tokens by agent+model (USD) — Anthropic API pricing
 const TOKEN_PRICING = {
   'claude-code': {
-    'claude-opus-4-6': { input: 5.00, output: 25.00 },
-    'claude-sonnet-4-6': { input: 3.00, output: 15.00 },
-    'claude-haiku-4-5': { input: 1.00, output: 5.00 },
-    'default': { input: 3.00, output: 15.00 }, // Sonnet as default
+    'claude-opus-4-6': { input: 15.00, output: 75.00, cacheRead: 1.50, cacheWrite: 18.75 },
+    'opus': { input: 15.00, output: 75.00, cacheRead: 1.50, cacheWrite: 18.75 },
+    'claude-sonnet-4-6': { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
+    'sonnet': { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
+    'claude-haiku-4-5': { input: 0.80, output: 4.00, cacheRead: 0.08, cacheWrite: 1.00 },
+    'haiku': { input: 0.80, output: 4.00, cacheRead: 0.08, cacheWrite: 1.00 },
+    'default': { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
   },
   'cursor-agent': {
-    'auto': { input: 1.25, output: 6.00 },
-    'claude-sonnet': { input: 3.00, output: 15.00 },
-    'claude-opus': { input: 5.00, output: 25.00 },
-    'default': { input: 3.00, output: 15.00 },
+    'auto': { input: 1.25, output: 6.00, cacheRead: 0.13, cacheWrite: 1.56 },
+    'claude-sonnet': { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
+    'claude-opus': { input: 15.00, output: 75.00, cacheRead: 1.50, cacheWrite: 18.75 },
+    'default': { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
   },
   'codex': {
-    'gpt-4o': { input: 2.50, output: 10.00 },
-    'o3': { input: 2.00, output: 8.00 },
-    'default': { input: 2.50, output: 10.00 },
+    'gpt-4o': { input: 2.50, output: 10.00, cacheRead: 1.25, cacheWrite: 2.50 },
+    'o3': { input: 2.00, output: 8.00, cacheRead: 1.00, cacheWrite: 2.00 },
+    'default': { input: 2.50, output: 10.00, cacheRead: 1.25, cacheWrite: 2.50 },
   },
   'copilot': {
-    'default': { input: 3.00, output: 15.00 },
+    'default': { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
   },
-  'default': { input: 3.00, output: 15.00 },
+  'default': { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
 };
 
+function getModelPricing(agentType, model) {
+  const agentPricing = TOKEN_PRICING[agentType] || TOKEN_PRICING;
+  if (!model) return agentPricing['default'] || TOKEN_PRICING['default'];
+  const ml = model.toLowerCase();
+  const modelKey = Object.keys(agentPricing).find(k => ml.includes(k));
+  return agentPricing[modelKey] || agentPricing['default'] || TOKEN_PRICING['default'];
+}
+
+// Calculate precise conversation cost from actual token counts
+function calculateConversationCost(snapshot) {
+  const model = _planInfoCache?.rateLimitTier || snapshot.detectedModel || snapshot.model || null;
+  const pricing = getModelPricing(activeAgentType, model);
+
+  const inputTok = snapshot.totalInputTokens || 0;
+  const outputTok = snapshot.totalOutputTokens || 0;
+  const cacheReadTok = snapshot.totalCacheReadTokens || 0;
+  const cacheWriteTok = snapshot.totalCacheCreateTokens || 0;
+  // Fresh input = total input - cache reads (cache reads are cheaper)
+  const freshInput = Math.max(0, inputTok - cacheReadTok);
+
+  const cost = (freshInput / 1e6) * pricing.input
+    + (cacheReadTok / 1e6) * pricing.cacheRead
+    + (cacheWriteTok / 1e6) * pricing.cacheWrite
+    + (outputTok / 1e6) * pricing.output;
+
+  // Cache savings = what it would have cost without cache
+  const cacheSavings = (cacheReadTok / 1e6) * (pricing.input - pricing.cacheRead);
+
+  return { cost, cacheSavings, pricing, model };
+}
+
+// Calculate precise dollar savings from hook compression
+function calculateHookSavingsUSD(tokensSaved) {
+  const pricing = getModelPricing(activeAgentType, _planInfoCache?.rateLimitTier || null);
+  // Saved tokens would have been input tokens (context that was compressed)
+  return (tokensSaved / 1e6) * pricing.input;
+}
+
 function estimateSavingsUSD(agentType, model, tokensSaved) {
-  const agentPricing = TOKEN_PRICING[agentType] || TOKEN_PRICING['default'];
-  const modelKey = model ? Object.keys(agentPricing).find(k => model.toLowerCase().includes(k)) : null;
-  const pricing = agentPricing[modelKey] || agentPricing['default'] || TOKEN_PRICING['default'];
-  return (tokensSaved / 1000000) * pricing.input;
+  const pricing = getModelPricing(agentType, model);
+  return (tokensSaved / 1e6) * pricing.input;
 }
 
 function formatUSD(amount) {
@@ -569,19 +616,23 @@ function formatUSD(amount) {
 }
 
 async function fetchAndShowPlanInfo(agentType) {
+  console.log('[terse] fetchAndShowPlanInfo called, agentType:', agentType);
+  if (!agentType) return;
   const now = Date.now();
   if (_planInfoCache && (now - _planInfoFetchedAt) < PLAN_FETCH_INTERVAL) {
     renderPlanInfo(_planInfoCache);
     return;
   }
   try {
-    const info = await T.getAgentPlanInfo(agentType);
+    if (!_invoke) { console.error('[terse] _invoke not available'); return; }
+    const info = await _invoke('get_agent_plan_info', { agentType });
+    console.log('[terse] plan info result:', JSON.stringify(info));
     if (info) {
       _planInfoCache = info;
       _planInfoFetchedAt = now;
       renderPlanInfo(info);
     }
-  } catch (e) { console.warn('[terse] plan info fetch failed:', e); }
+  } catch (e) { console.error('[terse] plan info fetch failed:', e); }
 }
 
 function renderPlanInfo(info) {
@@ -643,12 +694,11 @@ function renderPlanInfo(info) {
     } else { timer.textContent = ''; }
   }
 
-  // Dollar savings based on hook stats + plan pricing
+  // Precise dollar savings using plan pricing
   const usdEl = document.getElementById('agentSavingsUSD');
   const hookSaved = window._terseHookStats?.totalSaved || 0;
   if (hookSaved > 0 && activeAgentType) {
-    const model = _planInfoCache?.rateLimitTier || null;
-    const usd = estimateSavingsUSD(activeAgentType, model, hookSaved);
+    const usd = calculateHookSavingsUSD(hookSaved);
     usdEl.textContent = formatUSD(usd) + ' saved';
   } else { usdEl.textContent = ''; }
 }
@@ -659,16 +709,8 @@ function showAgentPanel(snapshot) {
   agentHostSessionId = lastShownSessionId; // remember which session hosts this agent
   agentPanelVisible = true;
 
-  // Clear any stale optimization state — agent mode is monitor-only
-  hasContent = false;
-  document.getElementById('optimized').classList.add('hidden');
-  document.getElementById('optimized').value = '';
-  document.getElementById('tokBefore').textContent = '0';
-  document.getElementById('tokAfter').textContent = '0';
-  document.getElementById('tokPct').textContent = '';
-  document.getElementById('techniques').innerHTML = '';
-  document.getElementById('btnReplace').disabled = true;
-  _invoke('clear_popup_state', {}).catch(() => {});
+  // Fetch plan info early (async, cached) — must not be blocked by DOM errors
+  try { fetchAndShowPlanInfo(snapshot.agentType); } catch(e) { console.error('[terse] plan fetch error:', e); }
 
   const panel = document.getElementById('agentPanel');
   document.getElementById('agentPanelIcon').textContent = snapshot.agentIcon || '';
@@ -676,10 +718,8 @@ function showAgentPanel(snapshot) {
   document.getElementById('agentPanelStatus').textContent = 'Monitoring';
   panel.classList.remove('hidden');
   hideAgentBanner();
-  try { updateAgentPanel(snapshot); } catch(e) {}
+  try { updateAgentPanel(snapshot); } catch(e) { console.error('[terse] updateAgentPanel error:', e); }
   autoResizePopup();
-  // Fetch plan info (async, cached)
-  fetchAndShowPlanInfo(snapshot.agentType);
   // Run enrichment async to avoid freezing UI
   setTimeout(() => {
     try { enrichAgentOptStats(snapshot); updateAgentPanel(snapshot); autoResizePopup(); } catch(e) {}
@@ -766,7 +806,7 @@ function updateAgentPanel(snapshot) {
   document.getElementById('agentSavingsPct').textContent = pct + '%';
   document.getElementById('agentSavingsBar').style.width = Math.min(pct, 100) + '%';
 
-  // Update labels dynamically
+  // Update labels dynamically with precise cost calculations
   const saveLabelEl = document.getElementById('agentSaveLabel');
   if (saveLabelEl) saveLabelEl.textContent = label;
   const savingsUnitEl = document.getElementById('agentSavingsUnit');
@@ -774,13 +814,30 @@ function updateAgentPanel(snapshot) {
     let unitText = hasActual
       ? 'tokens saved' + (potentialSaved > 1000 ? ' (+' + formatTokens(potentialSaved) + ' saveable)' : '')
       : 'tokens saveable';
-    // Append dollar estimate if we have actual savings
+    // Precise dollar savings using actual plan pricing
     if (hasActual && actualSaved > 100 && activeAgentType) {
-      const model = _planInfoCache?.rateLimitTier || snapshot.detectedModel || null;
-      const usd = estimateSavingsUSD(activeAgentType, model, actualSaved);
+      const usd = calculateHookSavingsUSD(actualSaved);
       if (usd >= 0.001) unitText += ' ≈ ' + formatUSD(usd);
     }
     savingsUnitEl.textContent = unitText;
+  }
+
+  // Precise conversation cost + cache savings
+  const costInfo = calculateConversationCost(snapshot);
+  let costEl = document.getElementById('agentConvCost');
+  if (!costEl) {
+    costEl = document.createElement('div');
+    costEl.id = 'agentConvCost';
+    costEl.style.cssText = 'font-size:10px;color:#999;padding:0 8px 2px;display:flex;justify-content:space-between';
+    const savingsEl = document.getElementById('agentSavedBig')?.parentElement;
+    if (savingsEl) savingsEl.appendChild(costEl);
+  }
+  if (costInfo.cost >= 0.001) {
+    let costText = 'Session cost: ' + formatUSD(costInfo.cost);
+    if (costInfo.cacheSavings >= 0.001) {
+      costText += ' (cache saved ' + formatUSD(costInfo.cacheSavings) + ')';
+    }
+    costEl.textContent = costText;
   }
 
   // Show hook compression badge if active
@@ -1071,7 +1128,10 @@ function updateAgentPanel(snapshot) {
   const actEl = document.getElementById('agentActivity');
   const msgs = snapshot.recentMessages || [];
   const lastFew = msgs.slice(-20);
-  const newKey = lastFew.map(m => (m.role || '') + (m.text || '').substring(0, 30) + (m._optSaved || '')).join('|');
+  // Use message count + last message text + turns for reliable change detection
+  const lastMsg = lastFew[lastFew.length - 1];
+  const newKey = lastFew.length + '|' + (snapshot.turns || 0) + '|' + (snapshot.toolCallCount || 0) + '|' +
+    (lastMsg ? (lastMsg.role || '') + (lastMsg.text || '').substring(0, 50) + (lastMsg.tokens || 0) : '');
   if (actEl.dataset.key !== newKey) {
     actEl.dataset.key = newKey;
     actEl.innerHTML = '';

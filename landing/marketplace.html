@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PruneAI Token Exchange — Buy & Sell AI API Tokens</title>
+  <title>Terse Token Exchange — Buy & Sell AI API Tokens</title>
   <meta name="description" content="Trade unused AI API tokens at a discount. Sell your Anthropic, OpenAI, or Google API capacity. Buy tokens at up to 50% off list price.">
   <meta name="theme-color" content="#0b0d17">
   <link rel="icon" href="/favicon.ico" sizes="16x16 32x32">
@@ -311,7 +311,7 @@
 <body>
 
 <nav id="nav">
-  <a href="/" class="nav-logo"><div class="logo-icon">T</div>PruneAI</a>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
   <div class="nav-links">
     <a href="/">Home</a>
     <a href="/marketplace" class="active">Token Exchange</a>
@@ -354,7 +354,7 @@
   <!-- HERO -->
   <div class="hero-mini">
     <h1>Token <span class="gradient-text">Exchange</span></h1>
-    <p class="sub">Trade unused AI API tokens at a discount. Sellers list spare capacity, buyers get cheaper access. PruneAI optimizes every request for maximum savings.</p>
+    <p class="sub">Trade unused AI API tokens at a discount. Sellers list spare capacity, buyers get cheaper access. Terse optimizes every request for maximum savings.</p>
   </div>
 
   <!-- PUBLIC: How It Works -->
@@ -367,11 +367,11 @@
     <div class="how-card">
       <div class="how-num">2</div>
       <h3>Buyers Get a Key</h3>
-      <p>Top up balance, generate a PruneAI key, paste one command in terminal. Works with any SDK.</p>
+      <p>Top up balance, generate a Terse key, paste one command in terminal. Works with any SDK.</p>
     </div>
     <div class="how-card">
       <div class="how-num">3</div>
-      <h3>PruneAI Optimizes</h3>
+      <h3>Terse Optimizes</h3>
       <p>Every request is compressed before forwarding — 30-60% less actual token usage. Everyone wins.</p>
     </div>
   </div>
@@ -392,7 +392,7 @@
         <tr><td><span class="provider provider-google">Google</span></td><td class="mono" style="font-size:12px">gemini-2.5-flash</td><td class="mono">$0.30</td><td class="mono">$2.50</td><td class="mono" style="color:var(--ac)">$0.18 - $0.24 in / $1.50 - $2 out</td></tr>
       </table>
     </div>
-    <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center">Suggested sell prices are 20-40% below retail. PruneAI takes 15% commission. Buyers save, sellers earn, PruneAI optimizes every request for extra margin.</div>
+    <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center">Suggested sell prices are 20-40% below retail. Terse takes 15% commission. Buyers save, sellers earn, Terse optimizes every request for extra margin.</div>
   </div>
 
   <!-- PUBLIC: Live Marketplace -->
@@ -527,7 +527,7 @@
               <!-- Optimization mode -->
               <div class="form-group" style="margin-top:12px">
                 <label class="form-label">Optimization level</label>
-                <div class="form-hint" style="margin-bottom:8px">PruneAI compresses requests before using your key, reducing actual token spend.</div>
+                <div class="form-hint" style="margin-bottom:8px">Terse compresses requests before using your key, reducing actual token spend.</div>
                 <div class="opt-mode-picker" id="opt-mode-picker">
                   <button type="button" class="opt-btn" data-mode="off" onclick="pickOptMode('off')">
                     <span class="opt-btn-name">Off</span><span class="opt-btn-desc">No optimization</span>
@@ -755,7 +755,7 @@
 
     <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Quick setup — paste in your terminal:</div>
     <div class="code-block mono" id="modal-setup-cmd" style="font-size:11px;line-height:1.7;white-space:pre-wrap;background:var(--bg0);cursor:pointer" onclick="copyModalSetup()"></div>
-    <div style="font-size:11px;color:var(--t3);margin-top:6px" id="modal-setup-note">Sets env vars so any SDK/tool picks up your PruneAI key automatically.</div>
+    <div style="font-size:11px;color:var(--t3);margin-top:6px" id="modal-setup-note">Sets env vars so any SDK/tool picks up your Terse key automatically.</div>
 
     <div class="modal-actions" style="margin-top:20px">
       <button class="btn btn-secondary" onclick="closeKeyModal()">Done</button>
@@ -764,15 +764,37 @@
   </div>
 </div>
 
+<!-- Buy Modal -->
+<div class="modal-overlay" id="buy-modal" style="display:none">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title" id="buy-modal-title">Buy Tokens</div>
+    <div id="buy-modal-details" style="margin:16px 0;font-size:13px;color:var(--t2);line-height:1.8"></div>
+    <div style="margin:16px 0">
+      <label style="font-size:12px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Amount to spend ($)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="buy-amount-btn" onclick="setBuyAmount(5)" style="padding:6px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;color:var(--t1);font-size:13px;font-weight:600;cursor:pointer">$5</button>
+        <button class="buy-amount-btn" onclick="setBuyAmount(10)" style="padding:6px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;color:var(--t1);font-size:13px;font-weight:600;cursor:pointer">$10</button>
+        <button class="buy-amount-btn" onclick="setBuyAmount(25)" style="padding:6px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;color:var(--t1);font-size:13px;font-weight:600;cursor:pointer">$25</button>
+        <button class="buy-amount-btn" onclick="setBuyAmount(50)" style="padding:6px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;color:var(--t1);font-size:13px;font-weight:600;cursor:pointer">$50</button>
+      </div>
+      <div id="buy-estimate" style="font-size:12px;color:var(--ac);font-weight:600"></div>
+    </div>
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn btn-secondary" onclick="closeBuyModal()">Cancel</button>
+      <button class="btn btn-primary" id="buy-confirm-btn" onclick="confirmBuy()">Top Up & Buy</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <footer style="padding:40px;border-top:1px solid var(--bd);text-align:center;font-size:12px;color:var(--t3);margin-top:40px">
-  &copy; 2026 PruneAI &middot; <a href="/" style="color:var(--ac)">Home</a> &middot; <a href="/privacy" style="color:var(--ac)">Privacy</a> &middot; PruneAI takes a <span class="mono" style="color:var(--ac)">15%</span> commission on each transaction
+  &copy; 2026 Terse &middot; <a href="/" style="color:var(--ac)">Home</a> &middot; <a href="/privacy" style="color:var(--ac)">Privacy</a> &middot; Terse takes a <span class="mono" style="color:var(--ac)">15%</span> commission on each transaction
 </footer>
 
 <!-- Clerk -->
-<script async crossorigin="anonymous" data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck" src="https://clerk.pruneai.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js" type="text/javascript"></script>
+<script async crossorigin="anonymous" data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck" src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js" type="text/javascript"></script>
 
 <script>
 // ═══ STATE ═══
@@ -942,6 +964,86 @@ function setProviderFilter(provider, btn) {
   filterListings();
 }
 
+// ═══ BUY LISTING ═══
+let buyTarget = null;
+let buyAmount = 10;
+
+function buyListing(id, provider, label, inputPrice, outputPrice) {
+  if (!window.Clerk?.user) {
+    openClerkSignIn();
+    return;
+  }
+  buyTarget = { id, provider, label, inputPrice, outputPrice };
+  const modal = document.getElementById('buy-modal');
+  document.getElementById('buy-modal-title').textContent = `Buy from: ${label}`;
+  document.getElementById('buy-modal-details').innerHTML = `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><span>Provider</span><span style="font-weight:700">${provider.charAt(0).toUpperCase() + provider.slice(1)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><span>Input price</span><span style="color:var(--ac);font-weight:700">$${(inputPrice / 100).toFixed(2)} / 1M tokens</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0"><span>Output price</span><span style="color:var(--ac);font-weight:700">$${(outputPrice / 100).toFixed(2)} / 1M tokens</span></div>
+  `;
+  setBuyAmount(10);
+  modal.style.display = 'flex';
+}
+
+function setBuyAmount(amt) {
+  buyAmount = amt;
+  document.querySelectorAll('.buy-amount-btn').forEach(b => {
+    b.style.borderColor = b.textContent.includes('$' + amt) ? 'var(--ac)' : 'var(--bd)';
+    b.style.background = b.textContent.includes('$' + amt) ? 'var(--acd)' : 'var(--sf)';
+  });
+  if (buyTarget) {
+    const tokensEst = Math.round(amt / (buyTarget.inputPrice / 100) * 1000000);
+    const fmt = tokensEst >= 1000000 ? (tokensEst / 1000000).toFixed(1) + 'M' : Math.round(tokensEst / 1000) + 'K';
+    document.getElementById('buy-estimate').textContent = `≈ ${fmt} input tokens for $${amt}`;
+  }
+}
+
+function closeBuyModal() {
+  document.getElementById('buy-modal').style.display = 'none';
+  buyTarget = null;
+}
+
+async function confirmBuy() {
+  if (!window.Clerk?.user || !buyTarget) return;
+  const btn = document.getElementById('buy-confirm-btn');
+  btn.textContent = 'Processing...';
+  btn.disabled = true;
+  try {
+    const token = await window.Clerk.session.getToken();
+    // Top up balance
+    const topupRes = await fetch(API + '/buyer/topup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ amount_cents: buyAmount * 100 }),
+    });
+    const topupData = await topupRes.json();
+    if (topupData.url) {
+      // Redirect to Stripe checkout for top-up
+      window.location.href = topupData.url;
+      return;
+    }
+    // If already has balance, generate a key locked to this seller's provider
+    const keyRes = await fetch(API + '/buyer/keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ provider: buyTarget.provider }),
+    });
+    const keyData = await keyRes.json();
+    if (keyData.key) {
+      closeBuyModal();
+      showToast('Key generated! Set up in the Buy Tokens tab below.');
+      switchTab('buy');
+      loadBuyerInfo();
+    } else {
+      showToast(keyData.error || 'Failed to generate key');
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  }
+  btn.textContent = 'Top Up & Buy';
+  btn.disabled = false;
+}
+
 function filterListings() {
   const query = (document.getElementById('market-search').value || '').toLowerCase();
   const sort = document.getElementById('market-sort').value;
@@ -1045,6 +1147,7 @@ function filterListings() {
             ${l.capacity?.hourly_remaining_fmt ? `<span class="listing-tag">${l.capacity.hourly_remaining_fmt}/hr</span>` : ''}
           </div>
           ${discount > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--ac)">Save $${((retailInput - l.price_per_1m_input) / 100).toFixed(2)}/1M</span>` : ''}
+          <button class="listing-buy-btn" onclick="buyListing('${l.id}', '${l.provider}', '${(l.label || '').replace(/'/g, "\\'")}', ${l.price_per_1m_input}, ${l.price_per_1m_output})" style="padding:6px 16px;background:var(--gradient);color:var(--bg0);border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Buy</button>
         </div>
       </div>`;
   }).join('');
@@ -1396,7 +1499,7 @@ async function generateBuyerKey() {
   lastGeneratedKey = res.key;
   document.getElementById('key-reveal').textContent = res.key;
   // Show terminal setup command in the modal
-  const cmd = `export ANTHROPIC_API_KEY="${res.key}"\nexport ANTHROPIC_BASE_URL="https://www.pruneai.com/api/proxy"\nexport OPENAI_API_KEY="${res.key}"\nexport OPENAI_BASE_URL="https://www.pruneai.com/api/proxy/v1"`;
+  const cmd = `export ANTHROPIC_API_KEY="${res.key}"\nexport ANTHROPIC_BASE_URL="https://www.terseai.org/api/proxy"\nexport OPENAI_API_KEY="${res.key}"\nexport OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`;
   document.getElementById('modal-setup-cmd').textContent = cmd;
   document.getElementById('key-modal').classList.add('show');
   loadBuyerData();
@@ -1454,29 +1557,29 @@ function getKeyPlaceholder() {
 const SETUP_CONFIGS = {
   'terminal': {
     title: 'Terminal — paste this, then use any SDK normally',
-    note: 'Sets env vars so Anthropic/OpenAI SDKs auto-detect your PruneAI key. Works in current shell session. Add to ~/.bashrc or ~/.zshrc to persist.',
-    cmd: (key) => `# Paste in terminal — all SDKs will use PruneAI automatically
+    note: 'Sets env vars so Anthropic/OpenAI SDKs auto-detect your Terse key. Works in current shell session. Add to ~/.bashrc or ~/.zshrc to persist.',
+    cmd: (key) => `# Paste in terminal — all SDKs will use Terse automatically
 export ANTHROPIC_API_KEY="${key}"
-export ANTHROPIC_BASE_URL="https://www.pruneai.com/api/proxy"
+export ANTHROPIC_BASE_URL="https://www.terseai.org/api/proxy"
 export OPENAI_API_KEY="${key}"
-export OPENAI_BASE_URL="https://www.pruneai.com/api/proxy/v1"`,
+export OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`,
   },
   'claude-code': {
     title: 'Claude Code — paste in terminal before running',
-    note: 'Claude Code reads ANTHROPIC_API_KEY and ANTHROPIC_BASE_URL from env. This routes all requests through PruneAI.',
+    note: 'Claude Code reads ANTHROPIC_API_KEY and ANTHROPIC_BASE_URL from env. This routes all requests through Terse.',
     cmd: (key) => `export ANTHROPIC_API_KEY="${key}"
-export ANTHROPIC_BASE_URL="https://www.pruneai.com/api/proxy"
+export ANTHROPIC_BASE_URL="https://www.terseai.org/api/proxy"
 # Then just run claude as normal`,
   },
   'cursor': {
     title: 'Cursor — add to Settings > Models > OpenAI',
     note: 'In Cursor, go to Settings > Models. Set the API key and override the base URL.',
     cmd: (key) => `API Key: ${key}
-Base URL: https://www.pruneai.com/api/proxy/v1
+Base URL: https://www.terseai.org/api/proxy/v1
 
 # Or via terminal before launching Cursor:
 export OPENAI_API_KEY="${key}"
-export OPENAI_BASE_URL="https://www.pruneai.com/api/proxy/v1"`,
+export OPENAI_BASE_URL="https://www.terseai.org/api/proxy/v1"`,
   },
   'python': {
     title: 'Python — 2 lines to change',
@@ -1485,14 +1588,14 @@ export OPENAI_BASE_URL="https://www.pruneai.com/api/proxy/v1"`,
 import anthropic
 client = anthropic.Anthropic(
     api_key="${key}",
-    base_url="https://www.pruneai.com/api/proxy",
+    base_url="https://www.terseai.org/api/proxy",
 )
 
 # OpenAI
 from openai import OpenAI
 client = OpenAI(
     api_key="${key}",
-    base_url="https://www.pruneai.com/api/proxy/v1",
+    base_url="https://www.terseai.org/api/proxy/v1",
 )`,
   },
   'node': {
@@ -1502,20 +1605,20 @@ client = OpenAI(
 import Anthropic from "@anthropic-ai/sdk";
 const client = new Anthropic({
   apiKey: "${key}",
-  baseURL: "https://www.pruneai.com/api/proxy",
+  baseURL: "https://www.terseai.org/api/proxy",
 });
 
 // OpenAI
 import OpenAI from "openai";
 const client = new OpenAI({
   apiKey: "${key}",
-  baseURL: "https://www.pruneai.com/api/proxy/v1",
+  baseURL: "https://www.terseai.org/api/proxy/v1",
 });`,
   },
   'curl': {
     title: 'cURL — direct API call',
     note: 'Standard Anthropic/OpenAI API format, just different URL.',
-    cmd: (key) => `curl https://www.pruneai.com/api/proxy/v1/messages \\
+    cmd: (key) => `curl https://www.terseai.org/api/proxy/v1/messages \\
   -H "Authorization: Bearer ${key}" \\
   -H "Content-Type: application/json" \\
   -H "anthropic-version: 2023-06-01" \\

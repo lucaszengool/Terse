@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse — Exchange Buyer</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#0D1117;font-family:'Noto Sans SC','Inter',-apple-system,sans-serif;overflow:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+
+.mac-wrap{
+  position:fixed;top:4%;left:48%;
+  transform:translateX(-42%) perspective(1400px) rotateY(-8deg) rotateX(6deg);
+  transform-origin:55% 25%;transform-style:preserve-3d;
+  width:110%;max-width:1400px;z-index:10;
+}
+.mac-f{
+  background:linear-gradient(170deg,#fefefe,#f0f0f0,#f6f6f6);
+  border-radius:24px 24px 0 0;
+  padding:16px 18px 0;
+  position:relative;
+  transform-style:preserve-3d;
+  box-shadow:0 60px 120px rgba(0,0,0,.35);
+}
+.mac-f::after{
+  content:'';position:absolute;top:0;width:10px;height:100%;
+  border-radius:0 4px 0 0;
+  right:-10px;transform:rotateY(90deg);transform-origin:left;background:linear-gradient(180deg,#eee,#ddd,#ccc);
+}
+.mac-f::before{
+  content:'';position:absolute;bottom:-8px;left:4px;right:4px;height:8px;
+  background:linear-gradient(90deg,#e0e0e0,#d5d5d5,#ddd);
+  border-radius:0 0 6px 6px;
+  transform:rotateX(-90deg);transform-origin:top;
+}
+.cam{width:8px;height:8px;border-radius:50%;background:radial-gradient(#777,#444);margin:0 auto 10px;box-shadow:0 0 0 2px rgba(0,0,0,.04)}
+.scr{
+  background:#FFED29;border-radius:4px 4px 0 0;
+  min-height:92vh;padding:28px 36px;position:relative;
+}
+.mb{display:flex;align-items:center;gap:12px;margin-bottom:20px;font-size:12px;color:rgba(26,24,0,.25)}
+.mb .a{font-size:15px;color:rgba(26,24,0,.4)}
+.mb .b{font-weight:600;color:rgba(26,24,0,.35)}
+.mb .r{margin-left:auto;font-size:11px;display:flex;gap:8px}
+
+.ui-btn{padding:12px 20px;background:rgba(255,255,255,.5);border-radius:10px;font-size:13px;font-weight:600;color:rgba(26,24,0,.6);text-align:center;margin-bottom:6px}
+.ui-input{padding:10px 14px;background:rgba(255,255,255,.35);border:1px solid rgba(26,24,0,.04);border-radius:8px;font-size:12px;color:rgba(26,24,0,.35)}
+.stat{text-align:center;padding:10px;background:rgba(255,255,255,.4);border-radius:8px}
+.stat-v{font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#1a1800}
+.stat-l{font-size:7px;color:rgba(26,24,0,.2);text-transform:uppercase;margin-top:1px}
+.ex-step{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(26,24,0,.025);border:1px solid rgba(26,24,0,.03);border-radius:10px;margin-bottom:6px;font-size:13px;color:rgba(26,24,0,.55)}
+.ex-num{width:28px;height:28px;border-radius:50%;background:#1a1800;color:#FFED29;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pipe{display:flex;gap:2px;margin:4px 0}.pipe div{flex:1;height:4px;background:rgba(26,24,0,.04);border-radius:2px;overflow:hidden}.pipe div span{display:block;height:100%;background:#8A8016;border-radius:2px;width:100%}
+.lbl{font-size:8px;font-weight:700;color:rgba(26,24,0,.15);text-transform:uppercase;letter-spacing:1px;margin:8px 0 4px}
+.prompt{background:rgba(26,24,0,.03);border-radius:8px;padding:10px;font-size:11px;line-height:1.6;color:rgba(26,24,0,.5);margin-bottom:6px}
+.prompt .x{color:rgba(26,24,0,.1);text-decoration:line-through}
+.result{background:rgba(138,128,22,.06);border:1px solid rgba(138,128,22,.1);border-radius:8px;padding:10px;font-weight:600;color:#1a1800;font-size:12px;margin-bottom:6px}
+.step{font-size:10px;color:rgba(26,24,0,.3);padding:2px 0}.step .g{color:#8A8016;font-weight:700}
+.action{font-size:10px;color:rgba(26,24,0,.3);padding:2px 0}.action .w{color:#b8860b;font-weight:700}
+.bar-t{height:8px;background:rgba(26,24,0,.04);border-radius:4px;overflow:hidden;margin:8px 0}.bar-f{height:100%;background:#8A8016;border-radius:4px}
+.tag{display:inline-block;padding:3px 8px;background:rgba(26,24,0,.03);border-radius:4px;font-size:9px;color:rgba(26,24,0,.35);margin:2px}
+.toggle{width:36px;height:20px;border-radius:10px;position:relative;flex-shrink:0}
+.toggle.on{background:#1a1800}.toggle.off{background:rgba(26,24,0,.08)}
+.toggle::after{content:'';position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.toggle.on::after{right:2px}.toggle.off::after{left:2px}
+.tr{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:12px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.02)}
+.modes{display:flex;border-radius:8px;overflow:hidden;border:1px solid rgba(26,24,0,.04);margin-bottom:12px}
+.mode{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;background:rgba(255,255,255,.25);color:rgba(26,24,0,.2)}
+.mode.a{background:#fff;color:#1a1800}
+.terminal{background:#1a1800;border-radius:10px;padding:18px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;color:rgba(255,255,255,.45);margin-bottom:14px}
+.terminal .c{color:#FFED29}.terminal .v{color:#fbbf24}.terminal .p{color:rgba(255,255,255,.15)}
+.sav-row{display:flex;gap:6px;justify-content:center}
+.sav{text-align:center;padding:10px 16px;border-radius:8px}
+.sav.dim{background:rgba(26,24,0,.03)}.sav.dim .n{font-size:20px;font-weight:900;font-family:'JetBrains Mono',monospace;color:rgba(26,24,0,.1);text-decoration:line-through}.sav.dim .l{font-size:8px;color:rgba(26,24,0,.15)}
+.sav.mid{background:rgba(26,24,0,.03)}.sav.mid .n{font-size:20px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#8A8016}.sav.mid .l{font-size:8px;color:rgba(26,24,0,.15)}
+.sav.hl{background:#1a1800}.sav.hl .n{font-size:20px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#FFED29}.sav.hl .l{font-size:8px;color:rgba(255,237,41,.3)}
+.arr{align-self:center;color:rgba(26,24,0,.08);font-size:18px}
+</style>
+</head>
+<body>
+<div class="mac-wrap"><div class="mac-f"><div class="cam"></div><div class="scr">
+  <div class="mb"><span class="a">&#63743;</span><span class="b">Terse</span><span>File</span><span>Edit</span><span class="r"><span>Wi-Fi</span><span>3:42 PM</span></span></div>
+  <div class="terminal">
+<div><span class="p">$</span> <span class="c">export</span> ANTHROPIC_API_KEY=<span class="v">terse_bk_a7f3...x9d2</span></div>
+<div><span class="p">$</span> <span class="c">export</span> ANTHROPIC_BASE_URL=<span class="v">https://www.terseai.org/api/proxy</span></div>
+<div><span class="p">$</span> <span class="c">claude</span> "fix the auth bug"</div>
+<div style="margin-top:6px"><span class="c">Claude Code v1.2.0</span> — <span style="color:rgba(255,255,255,.2)">via Terse proxy ✓</span></div>
+</div>
+<div class="sav-row">
+  <div class="sav dim"><div class="n">$100</div><div class="l">零售价</div></div>
+  <div class="arr">→</div>
+  <div class="sav mid"><div class="n">$42</div><div class="l">交易+优化</div></div>
+  <div class="arr">=</div>
+  <div class="sav hl"><div class="n">省 $58</div><div class="l">每月</div></div>
+</div>
+
+</div></div></div>
+</body>
+</html>

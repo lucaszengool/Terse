@@ -708,9 +708,9 @@ fn activate_session(session_id: Option<u32>, agent_type: Option<String>, state: 
             label = agent.clone();
         }
     } else if let Some(sid) = session_id {
-        // Manual session — find by ID
+        // Manual session — find by ID in HashMap<u32, Session>
         let sessions = lock_or_recover(&state.sessions);
-        if let Some(s) = sessions.iter().find(|s| s.id == sid) {
+        if let Some(s) = sessions.get(&sid) {
             label = if s.title.is_empty() { s.name.clone() } else { s.title.clone() };
         }
     }

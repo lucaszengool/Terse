@@ -31,9 +31,12 @@ async function updateLicenseBanner() {
     banner.classList.remove('hidden');
     banner.classList.remove('limit-warning');
 
-    const tierLabel = lic.tier.charAt(0).toUpperCase() + lic.tier.slice(1);
+    const tier = (lic.tier || '').toLowerCase();
+    const status = (lic.status || '').toLowerCase();
+    const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+    const noActivePlan = !tier || tier === 'expired' || tier === 'free' || status === 'cancelled' || status === 'none';
 
-    if (lic.tier === 'expired' || lic.status === 'cancelled' || lic.status === 'none') {
+    if (noActivePlan) {
       // No active subscription — must start a trial
       $('#licenseTier').textContent = 'No Plan';
       $('#licenseUsage').textContent = 'Start a free trial to use Terse';
@@ -42,7 +45,7 @@ async function updateLicenseBanner() {
       return;
     }
 
-    if (lic.status === 'trialing') {
+    if (status === 'trialing') {
       // Show trial info with days remaining
       const trialEnd = lic.trialEnd ? new Date(lic.trialEnd) : null;
       const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - Date.now()) / 86400000)) : '?';
@@ -55,7 +58,7 @@ async function updateLicenseBanner() {
 
     // Active paid subscription
     $('#licenseTier').textContent = tierLabel;
-    if (lic.remaining >= 0) {
+    if (lic.limits?.optimizationsPerWeek > 0 && lic.remaining >= 0) {
       $('#licenseUsage').textContent = lic.remaining + '/' + lic.limits.optimizationsPerWeek + ' left this week';
       if (lic.remaining <= 10) banner.classList.add('limit-warning');
     } else {
@@ -283,7 +286,7 @@ $$('.setting-row input').forEach(cb => cb.addEventListener('change', () => T.upd
 
 $('#btnClose').addEventListener('click', () => T.closeWindow());
 
-// Upgrade / Start Trial button — open in system browser
+// Upgrade / Start Trial / Manage button — open in system browser
 $('#btnUpgrade').addEventListener('click', async () => {
   const API_BASE = 'https://www.terseai.org';
   const openUrl = (url) => {
@@ -294,22 +297,35 @@ $('#btnUpgrade').addEventListener('click', async () => {
     const lic = await T.getLicense();
     const auth = await T.getAuth();
     const userId = auth.clerkUserId || lic.clerkUserId;
+    const tier = (lic.tier || '').toLowerCase();
+    const status = (lic.status || '').toLowerCase();
+    const noActivePlan = !tier || tier === 'expired' || tier === 'free' || status === 'cancelled' || status === 'none';
 
-    // Has active plan — open server-side portal redirect (no fetch needed)
-    if (userId && lic.tier && lic.tier !== 'free' && lic.tier !== 'expired' && lic.status !== 'none' && lic.status !== 'cancelled') {
-      openUrl(`${API_BASE}/api/portal/redirect?uid=${encodeURIComponent(userId)}`);
+    if (!userId) {
+      openUrl(`${API_BASE}/#pricing`);
       return;
     }
 
-    // No plan — go to checkout
-    if (userId) {
-      openUrl(`${API_BASE}/api/portal/redirect?uid=${encodeURIComponent(userId)}`);
+    if (noActivePlan) {
+      // No plan — go to checkout for free trial
+      try {
+        const res = await fetch(`${API_BASE}/api/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier: 'pro', clerkUserId: userId, clerkUserEmail: auth.email }),
+        });
+        const data = await res.json();
+        if (data.url) { openUrl(data.url); return; }
+      } catch {}
+      openUrl(`${API_BASE}/#pricing`);
       return;
     }
-  } catch {}
 
-  // Fallback
-  openUrl(`${API_BASE}/#pricing`);
+    // Has active plan — open Stripe billing portal
+    openUrl(`${API_BASE}/api/portal/redirect?uid=${encodeURIComponent(userId)}`);
+  } catch {
+    window.open(`${API_BASE}/#pricing`, '_blank');
+  }
 });
 
 // ── Auth ──

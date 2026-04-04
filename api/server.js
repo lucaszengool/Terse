@@ -124,6 +124,16 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         }
         break;
       }
+      case 'invoice.finalized': {
+        // For send_invoice subscriptions (WeChat/Alipay), email the hosted invoice URL
+        const invoice = data.object;
+        if (invoice.collection_method === 'send_invoice' && invoice.hosted_invoice_url) {
+          console.log(`[invoice] finalized send_invoice: ${invoice.id}, hosted URL: ${invoice.hosted_invoice_url}`);
+          // Stripe automatically emails the invoice to the customer
+          // The hosted invoice page will show WeChat Pay / Alipay as payment options
+        }
+        break;
+      }
       case 'invoice.payment_failed': {
         const invoice = data.object;
         const sub = invoice.subscription
@@ -226,24 +236,57 @@ app.post('/api/checkout', async (req, res) => {
 
     const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      // Let Stripe dynamically show all enabled payment methods
-      // (card, Link, Alipay, WeChat Pay, etc.) based on dashboard config.
-      // Alipay/WeChat only work for one-time payments, so Stripe will
-      // auto-filter to compatible methods for subscriptions.
-      line_items: [{ price: priceId, quantity: 1 }],
-      mode: 'subscription',
-      success_url: `${baseUrl}/?checkout=success&tier=${tier}`,
-      cancel_url: `${baseUrl}/?checkout=cancelled`,
-      metadata: { clerk_user_id: clerkUserId, tier },
-      subscription_data: {
+    // WeChat Pay / Alipay don't support subscription mode in Checkout.
+    // For these, create a send_invoice subscription with trial directly,
+    // then redirect user to pay the first post-trial invoice via hosted page.
+    const paymentMethod = req.body.paymentMethod; // 'wechat_pay' or undefined (default)
+    const isSendInvoice = paymentMethod === 'wechat_pay';
+
+    if (isSendInvoice) {
+      // Create subscription with send_invoice — no payment needed during trial
+      const sub = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        collection_method: 'send_invoice',
+        days_until_due: 7,
         trial_period_days: TRIAL_DAYS,
         metadata: { clerk_user_id: clerkUserId, tier },
-      },
-    });
+        payment_settings: {
+          payment_method_types: [paymentMethod],
+        },
+      });
 
-    res.json({ url: session.url, sessionId: session.id });
+      // Activate trial in license cache immediately
+      const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+      licenseCache.set(clerkUserId, {
+        tier,
+        stripeCustomerId: customerId,
+        subscriptionId: sub.id,
+        status: 'trialing',
+        expiresAt: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+        trialEnd,
+      });
+      console.log(`[license] trial activated (${paymentMethod}) ${tier} for ${clerkUserId}`);
+
+      // No checkout page needed — trial is free. Redirect to success.
+      res.json({ url: `${baseUrl}/?checkout=success&tier=${tier}`, sessionId: null });
+    } else {
+      // Default: card/Link via Stripe Checkout (WeChat/Alipay use send_invoice path above)
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: 'subscription',
+        success_url: `${baseUrl}/?checkout=success&tier=${tier}`,
+        cancel_url: `${baseUrl}/?checkout=cancelled`,
+        metadata: { clerk_user_id: clerkUserId, tier },
+        subscription_data: {
+          trial_period_days: TRIAL_DAYS,
+          metadata: { clerk_user_id: clerkUserId, tier },
+        },
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    }
   } catch (err) {
     console.error('[checkout] error:', err);
     res.status(500).json({ error: err.message });

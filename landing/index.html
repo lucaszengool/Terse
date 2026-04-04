@@ -720,7 +720,8 @@
   <div class="nav-links"><a href="#how-it-works">How It Works</a><a href="#pipeline">Pipeline</a><a href="#agents">Agent Monitor</a><a href="#benchmarks">Benchmarks</a><a href="#pricing">Pricing</a><a href="/marketplace">Token Exchange</a><a href="#faq">FAQ</a></div>
   <div style="display:flex;gap:10px;align-items:center">
     <button class="nav-sign-in" onclick="openClerkSignIn()" style="padding:8px 16px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s">Sign In</button>
-    <button class="nav-cta" onclick="openClerkSignUp()">Sign Up</button>
+    <!-- Sign Up hidden — users sign up via Sign In flow -->
+    <button class="nav-cta" onclick="openClerkSignUp()" style="display:none">Sign Up</button>
     <div id="clerk-user" style="display:none;align-items:center;gap:8px">
       <img id="clerk-avatar" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--bd)" />
       <button onclick="clerkSignOut()" style="padding:6px 14px;background:transparent;color:var(--t3);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer">Sign Out</button>

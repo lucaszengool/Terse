@@ -67,7 +67,7 @@ async function updateLicenseBanner() {
     $('#btnUpgrade').textContent = 'Manage';
   } catch {}
 }
-// ── Paywall Gate ──
+// ── Paywall Gate — blocks app until user starts a free trial ──
 async function checkPaywall() {
   if (!T.getLicense || !T.getAuth) return;
   try {
@@ -76,7 +76,10 @@ async function checkPaywall() {
     const lic = await T.getLicense();
     const gate = $('#paywallGate');
     if (!gate) return;
-    if (lic.tier === 'expired' || lic.status === 'cancelled' || lic.status === 'none') {
+    const tier = (lic.tier || '').toLowerCase();
+    const status = (lic.status || '').toLowerCase();
+    const noActivePlan = !tier || tier === 'expired' || tier === 'free' || status === 'cancelled' || status === 'none';
+    if (noActivePlan) {
       gate.classList.remove('hidden');
       gate.style.display = 'flex';
     } else {
@@ -111,6 +114,17 @@ if ($('#paywallProBtn')) {
 }
 if ($('#paywallPremiumBtn')) {
   $('#paywallPremiumBtn').addEventListener('click', () => startTrialCheckout('premium'));
+}
+if ($('#paywallSwitchBtn')) {
+  $('#paywallSwitchBtn').addEventListener('click', async () => {
+    // Sign out current account, show auth gate to sign in with different account
+    if (T.signOut) await T.signOut();
+    const gate = $('#paywallGate');
+    if (gate) { gate.classList.add('hidden'); gate.style.display = 'none'; }
+    const authGate = $('#authGate');
+    if (authGate) authGate.style.display = 'flex';
+    updateAuthUI();
+  });
 }
 
 // Refresh license every 30s

@@ -340,6 +340,8 @@ pub struct AgentSessionData {
     pub pid: u32,
     pub connected: bool,
     pub session_file: Option<PathBuf>,
+    /// Multiple watched JSONL files (path → read offset) for multi-terminal monitoring
+    pub watched_files: Vec<(PathBuf, u64)>,
     pub total_input_tokens: u64,
     pub total_output_tokens: u64,
     pub total_cache_read_tokens: u64,
@@ -383,6 +385,7 @@ impl AgentSessionData {
             pid,
             connected: false,
             session_file: None,
+            watched_files: Vec::new(),
             total_input_tokens: 0,
             total_output_tokens: 0,
             total_cache_read_tokens: 0,
@@ -476,6 +479,7 @@ impl AgentSessionData {
             "agentIcon": self.agent_icon,
             "connected": self.connected,
             "model": self.detected_model,
+            "watchedFiles": self.watched_files.len(),
             "turns": self.turns,
             "totalInputTokens": self.total_input_tokens,
             "totalOutputTokens": self.total_output_tokens,
@@ -799,40 +803,102 @@ impl AgentSessionData {
 
     /// Read new lines from session file
     fn read_new_lines(&mut self) {
+        // Read from all watched files (multi-terminal support)
+        if !self.watched_files.is_empty() {
+            self.read_new_lines_multi();
+            return;
+        }
+        // Legacy single-file path
         let file_path = match &self.session_file {
             Some(p) => p.clone(),
             None => return,
         };
+        self.read_file_from_offset(&file_path, &mut self.watcher_offset.clone());
+    }
 
-        let metadata = match fs::metadata(&file_path) {
+    fn read_new_lines_multi(&mut self) {
+        // Also discover any new JSONL files that appeared since last scan
+        if self.agent_type == "claude-code" {
+            let all_files = find_all_active_jsonl_globally();
+            for file in all_files {
+                if !self.watched_files.iter().any(|(p, _)| *p == file) {
+                    // New file — start reading from beginning to catch up
+                    eprintln!("[terse-agent] new session file: {:?}", file.file_name().unwrap_or_default());
+                    self.watched_files.push((file, 0));
+                }
+            }
+        }
+
+        let mut total_parsed = 0u32;
+        let mut total_failed = 0u32;
+        for i in 0..self.watched_files.len() {
+            let (path, offset) = self.watched_files[i].clone();
+            let metadata = match fs::metadata(&path) {
+                Ok(m) => m,
+                Err(_) => continue,
+            };
+            let file_size = metadata.len();
+            if file_size <= offset { continue; }
+
+            let mut file = match fs::File::open(&path) {
+                Ok(f) => f,
+                Err(_) => continue,
+            };
+            let _ = file.seek(SeekFrom::Start(offset));
+            let len = (file_size - offset) as usize;
+            let mut buf = vec![0u8; len];
+            if file.read_exact(&mut buf).is_err() { continue; }
+
+            let mut new_offset = file_size;
+            let text = String::from_utf8_lossy(&buf);
+            let lines: Vec<&str> = text.split('\n').collect();
+            if let Some(last) = lines.last() {
+                if !last.is_empty() {
+                    new_offset -= last.len() as u64;
+                }
+            }
+            self.watched_files[i].1 = new_offset;
+
+            for line in &lines[..lines.len().saturating_sub(1)] {
+                let trimmed = line.trim();
+                if trimmed.is_empty() { continue; }
+                if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                    self.parse_claude_code_line(&obj);
+                    total_parsed += 1;
+                } else {
+                    total_failed += 1;
+                }
+            }
+        }
+        if total_parsed > 0 || total_failed > 0 {
+            eprintln!("[terse-agent] read_new_lines_multi: {} parsed, {} failed, {} files, {} total msgs",
+                total_parsed, total_failed, self.watched_files.len(), self.messages.len());
+        }
+    }
+
+    fn read_file_from_offset(&mut self, file_path: &Path, offset: &mut u64) {
+        let metadata = match fs::metadata(file_path) {
             Ok(m) => m,
             Err(_) => return,
         };
         let file_size = metadata.len();
-        if file_size <= self.watcher_offset {
-            return;
-        }
+        if file_size <= *offset { return; }
 
-        let mut file = match fs::File::open(&file_path) {
+        let mut file = match fs::File::open(file_path) {
             Ok(f) => f,
             Err(_) => return,
         };
-        let _ = file.seek(SeekFrom::Start(self.watcher_offset));
-
-        let len = (file_size - self.watcher_offset) as usize;
+        let _ = file.seek(SeekFrom::Start(*offset));
+        let len = (file_size - *offset) as usize;
         let mut buf = vec![0u8; len];
-        if file.read_exact(&mut buf).is_err() {
-            return;
-        }
-        self.watcher_offset = file_size;
+        if file.read_exact(&mut buf).is_err() { return; }
+        *offset = file_size;
 
         let text = String::from_utf8_lossy(&buf);
         let lines: Vec<&str> = text.split('\n').collect();
-
-        // Handle incomplete last line
         if let Some(last) = lines.last() {
             if !last.is_empty() {
-                self.watcher_offset -= last.len() as u64;
+                *offset -= last.len() as u64;
             }
         }
 
@@ -848,7 +914,9 @@ impl AgentSessionData {
                 failed += 1;
             }
         }
-        eprintln!("[terse-agent] read_new_lines: {} lines parsed, {} failed, {} total msgs", parsed, failed, self.messages.len());
+        if parsed > 0 {
+            eprintln!("[terse-agent] read_new_lines: {} parsed, {} failed, {} total msgs", parsed, failed, self.messages.len());
+        }
     }
 }
 
@@ -1071,49 +1139,53 @@ impl AgentMonitor {
             &detection.agent_type, &detection.name, &detection.icon, detection.pid,
         );
 
-        // For Claude Code: find the session JSONL for the active conversation.
-        // Priority: 1) App's own CWD project dir (most reliable)
-        //           2) Detected PID's CWD  3) Most recently written globally
-        let session_file = if detection.parser == "claudeCode" {
-            std::env::current_dir().ok()
-                .and_then(|cwd| {
-                    let home = dirs::home_dir()?;
-                    let projects_dir = home.join(".claude/projects");
-                    for encoded in encode_cwd_for_claude(&cwd.to_string_lossy()) {
-                        let project_dir = projects_dir.join(&encoded);
-                        if project_dir.exists() {
-                            eprintln!("[terse-agent] matched app CWD → {:?}", project_dir);
-                            return find_latest_session(&project_dir);
+        if detection.parser == "claudeCode" {
+            // Multi-terminal: find ALL active JSONL files across all Claude Code sessions
+            let all_files = find_all_active_jsonl_globally();
+            eprintln!("[terse-agent] accept_agent: found {} active JSONL files", all_files.len());
+
+            // Read existing history from all files
+            for file in &all_files {
+                if let Ok(content) = fs::read_to_string(file) {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.is_empty() { continue; }
+                        if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                            session.parse_claude_code_line(&obj);
                         }
                     }
-                    None
-                })
-                .or_else(|| resolve_claude_log_dir(detection.pid).and_then(|d| find_latest_session(&d)))
-                .or_else(|| find_newest_jsonl_globally())
-        } else if let Some(log_dir) = &detection.log_dir {
-            find_latest_session(log_dir)
+                }
+                let offset = fs::metadata(file).map(|m| m.len()).unwrap_or(0);
+                session.watched_files.push((file.clone(), offset));
+            }
+            // Also set session_file to newest for backward compat
+            session.session_file = all_files.first().cloned();
+            eprintln!("[terse-agent] loaded {} files: {} messages, {} turns, {} input tokens",
+                all_files.len(), session.messages.len(), session.turns, session.total_input_tokens);
         } else {
-            None
-        };
-        eprintln!("[terse-agent] accept_agent: session_file = {:?}", session_file);
+            // Single-file path for other agents
+            let session_file = if let Some(log_dir) = &detection.log_dir {
+                find_latest_session(log_dir)
+            } else {
+                None
+            };
+            eprintln!("[terse-agent] accept_agent: session_file = {:?}", session_file);
 
-        // Read existing history from session file
-        if let Some(ref file) = session_file {
-            if let Ok(content) = fs::read_to_string(file) {
-                for line in content.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.is_empty() { continue; }
-                    if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                        session.parse_claude_code_line(&obj);
+            if let Some(ref file) = session_file {
+                if let Ok(content) = fs::read_to_string(file) {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.is_empty() { continue; }
+                        if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                            session.parse_claude_code_line(&obj);
+                        }
                     }
                 }
+                if let Ok(meta) = fs::metadata(file) {
+                    session.watcher_offset = meta.len();
+                }
+                session.session_file = Some(file.clone());
             }
-            if let Ok(meta) = fs::metadata(file) {
-                session.watcher_offset = meta.len();
-            }
-            session.session_file = Some(file.clone());
-            eprintln!("[terse-agent] loaded session: {} messages, {} turns, {} input tokens",
-                session.messages.len(), session.turns, session.total_input_tokens);
         }
 
         session.connected = true;
@@ -1131,6 +1203,8 @@ impl AgentMonitor {
             session.connected = false;
         }
         self.sessions.remove(agent_type);
+        // Also clear from detected so it can be re-detected on next scan
+        self.detected.remove(agent_type);
     }
 
     /// Scan for running agent processes. Returns (new_detections, lost_agent_types)
@@ -1235,11 +1309,20 @@ impl AgentMonitor {
 
 /// Find the most recently written JSONL file across ALL Claude Code project directories
 fn find_newest_jsonl_globally() -> Option<PathBuf> {
-    let home = dirs::home_dir()?;
-    let projects_dir = home.join(".claude/projects");
-    if !projects_dir.exists() { return None; }
+    find_all_active_jsonl_globally().into_iter().next()
+}
 
-    let mut newest: Option<(PathBuf, SystemTime)> = None;
+/// Find ALL active JSONL session files across all Claude Code project dirs.
+/// Returns files modified within the last 30 minutes, sorted newest first.
+fn find_all_active_jsonl_globally() -> Vec<PathBuf> {
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => return Vec::new(),
+    };
+    let projects_dir = home.join(".claude/projects");
+    if !projects_dir.exists() { return Vec::new(); }
+
+    let mut active: Vec<(PathBuf, SystemTime)> = Vec::new();
 
     if let Ok(project_entries) = fs::read_dir(&projects_dir) {
         for project in project_entries.flatten() {
@@ -1250,8 +1333,9 @@ fn find_newest_jsonl_globally() -> Option<PathBuf> {
                     if path.extension().and_then(|e| e.to_str()) != Some("jsonl") { continue; }
                     if let Ok(meta) = fs::metadata(&path) {
                         if let Ok(mtime) = meta.modified() {
-                            if newest.as_ref().map_or(true, |(_, t)| mtime > *t) {
-                                newest = Some((path, mtime));
+                            let age = SystemTime::now().duration_since(mtime).unwrap_or(Duration::from_secs(u64::MAX));
+                            if age < Duration::from_secs(30 * 60) {
+                                active.push((path, mtime));
                             }
                         }
                     }
@@ -1260,15 +1344,15 @@ fn find_newest_jsonl_globally() -> Option<PathBuf> {
         }
     }
 
-    // Only return if modified in last 10 minutes (active session)
-    if let Some((path, mtime)) = newest {
-        let age = SystemTime::now().duration_since(mtime).unwrap_or(Duration::from_secs(u64::MAX));
-        if age < Duration::from_secs(10 * 60) {
-            eprintln!("[terse-agent] newest JSONL globally: {:?} (age: {}s)", path, age.as_secs());
-            return Some(path);
-        }
+    // Sort newest first
+    active.sort_by(|a, b| b.1.cmp(&a.1));
+    // Only log on first call or count change (avoid spam)
+    static LAST_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let prev = LAST_COUNT.swap(active.len(), std::sync::atomic::Ordering::Relaxed);
+    if !active.is_empty() && active.len() != prev {
+        eprintln!("[terse-agent] found {} active JSONL files globally", active.len());
     }
-    None
+    active.into_iter().map(|(p, _)| p).collect()
 }
 
 fn find_latest_session(log_dir: &Path) -> Option<PathBuf> {
@@ -1357,7 +1441,16 @@ pub fn start_scanning(app: AppHandle) {
             eprintln!("[terse-agent] detected {} new agents", new_detections.len());
         }
 
+        // Auto-connect Claude Code sessions (skip manual accept)
         for (_, detection) in &new_detections {
+            if detection.agent_type == "claude-code" {
+                let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+                if let Some(snap) = monitor.accept_agent("claude-code") {
+                    eprintln!("[terse-agent] auto-connected claude-code");
+                    let _ = app.emit("agent-connected", serde_json::json!({"session": snap}));
+                }
+                continue;
+            }
             let _ = app.emit("agent-detected", serde_json::json!({
                 "type": detection.agent_type,
                 "name": detection.name,
@@ -1380,10 +1473,12 @@ pub fn start_scanning(app: AppHandle) {
             for agent_type in types {
                 if let Some(session) = monitor.sessions.get_mut(&agent_type) {
                     if !session.connected { continue; }
-                    let prev_offset = session.watcher_offset;
+                    let prev_msg_count = session.messages.len();
+                    let prev_tokens = session.total_input_tokens + session.total_output_tokens;
                     session.read_new_lines();
-                    // Detect changes by offset growth (msg count may stay at cap of 200)
-                    if session.watcher_offset != prev_offset {
+                    // Detect changes by message count or token growth
+                    let new_tokens = session.total_input_tokens + session.total_output_tokens;
+                    if session.messages.len() != prev_msg_count || new_tokens != prev_tokens {
                         updates.push((agent_type.clone(), session.get_snapshot()));
                     }
                 }
@@ -1410,8 +1505,10 @@ pub fn fetch_claude_plan_info() -> Option<AgentPlanInfo> {
     if !keychain_output.status.success() { return None; }
 
     let cred_json: serde_json::Value = serde_json::from_slice(&keychain_output.stdout).ok()?;
-    let access_token = cred_json["accessToken"].as_str()?;
-    let rate_limit_tier = cred_json.get("rateLimitTier")
+    // Token is nested under claudeAiOauth
+    let oauth = &cred_json["claudeAiOauth"];
+    let access_token = oauth["accessToken"].as_str()?;
+    let rate_limit_tier = oauth.get("rateLimitTier")
         .and_then(|v| v.as_str()).map(String::from);
 
     // Derive plan name from rateLimitTier

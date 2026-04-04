@@ -151,6 +151,20 @@ async function syncSubscription(sub) {
   const clerkUserId = sub.metadata?.clerk_user_id;
   if (!clerkUserId) return;
 
+  // Immediate cancellation: if user cancelled (cancel_at_period_end), revoke access now
+  if (sub.cancel_at_period_end || sub.status === 'canceled' || sub.status === 'cancelled') {
+    licenseCache.set(clerkUserId, {
+      tier: 'expired',
+      stripeCustomerId: sub.customer,
+      subscriptionId: null,
+      status: 'cancelled',
+      expiresAt: null,
+      trialEnd: null,
+    });
+    console.log(`[license] immediately cancelled for ${clerkUserId}`);
+    return;
+  }
+
   // Determine tier from price (also recognize legacy price IDs for existing subscribers)
   const priceId = sub.items?.data?.[0]?.price?.id;
   const LEGACY_PRO_PRICE = 'price_1TAMb6Gf9QijP49FKhRQYUSf';

@@ -695,6 +695,47 @@ fn disconnect_agent(agent_type: String, state: tauri::State<'_, AppState>, app: 
 }
 
 #[tauri::command]
+fn activate_session(session_id: Option<u32>, agent_type: Option<String>, state: tauri::State<'_, AppState>, app: AppHandle) -> bool {
+    // Activate a session by ID (manual) or agent_type (agent session) and show its popup
+    let mut label = String::new();
+
+    if let Some(agent) = &agent_type {
+        // Agent session — find its name
+        let monitor = lock_or_recover(&state.agent_monitor);
+        if let Some(snapshot) = monitor.get_session_snapshot(agent) {
+            label = snapshot["agentName"].as_str().unwrap_or(agent).to_string();
+        } else {
+            label = agent.clone();
+        }
+    } else if let Some(sid) = session_id {
+        // Manual session — find by ID
+        let sessions = lock_or_recover(&state.sessions);
+        if let Some(s) = sessions.iter().find(|s| s.id == sid) {
+            label = if s.title.is_empty() { s.name.clone() } else { s.title.clone() };
+        }
+    }
+
+    // Set active session
+    if let Some(sid) = session_id {
+        *state.active_session_id.lock().unwrap_or_else(|e| e.into_inner()) = Some(sid);
+        *state.candidate_session_id.lock().unwrap_or_else(|e| e.into_inner()) = Some(sid);
+    }
+    *state.popup_visible_for_text.lock().unwrap_or_else(|e| e.into_inner()) = true;
+    *state.last_popup_text.lock().unwrap_or_else(|e| e.into_inner()) = String::new();
+
+    // Show popup
+    let _ = app.emit("popup-show", serde_json::json!({
+        "app": label,
+        "sessionId": session_id,
+        "agentType": agent_type,
+    }));
+    if let Some(popup) = app.get_webview_window("popup") {
+        let _ = popup.show();
+    }
+    true
+}
+
+#[tauri::command]
 fn get_agent_analytics(agent_type: String, state: tauri::State<'_, AppState>) -> Option<serde_json::Value> {
     let monitor = lock_or_recover(&state.agent_monitor);
     monitor.get_session_snapshot(&agent_type)
@@ -1765,6 +1806,7 @@ pub fn run() {
             accept_agent,
             dismiss_agent,
             disconnect_agent,
+            activate_session,
             get_agent_analytics,
             get_agent_plan_info,
             install_agent_hook,

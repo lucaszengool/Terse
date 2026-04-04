@@ -204,6 +204,11 @@ function refreshSessions() {
         T.disconnectAgent(e.currentTarget.dataset.type);
         refreshSessions();
       });
+      // Click session to activate and show popup
+      item.style.cursor = 'pointer';
+      item.addEventListener('click', () => {
+        if (T.activateSession) T.activateSession(null, a.agentType);
+      });
       list.appendChild(item);
     });
 
@@ -224,6 +229,11 @@ function refreshSessions() {
       item.querySelector('.session-remove').addEventListener('click', (e) => {
         e.stopPropagation();
         T.removeSession(s.id);
+      });
+      // Click session to activate and show popup
+      item.style.cursor = 'pointer';
+      item.addEventListener('click', () => {
+        if (T.activateSession) T.activateSession(s.id, null);
       });
       list.appendChild(item);
     });

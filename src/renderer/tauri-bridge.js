@@ -89,6 +89,7 @@ if (window.__TAURI__) {
     acceptAgent: (agentType) => invoke('accept_agent', { agentType }),
     dismissAgent: (agentType) => invoke('dismiss_agent', { agentType }),
     disconnectAgent: (agentType) => invoke('disconnect_agent', { agentType }),
+    activateSession: (sessionId, agentType) => invoke('activate_session', { sessionId: sessionId || null, agentType: agentType || null }),
     analyzeAgentSession: (agentType) => invoke('get_agent_analytics', { agentType }),
     getAgentAnalytics: (agentType) => invoke('get_agent_analytics', { agentType }),
     getAgentPlanInfo: (agentType) => invoke('get_agent_plan_info', { agentType }),

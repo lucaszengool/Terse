@@ -450,14 +450,15 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
     'user_3BP20FfLSljVdFW6tKgC2Vxmi6P': { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
   };
 
-  if (!license || license.status === 'cancelled') {
+  if (!license || license.status === 'cancelled' || license.status === 'past_due') {
     const override = ACCOUNT_OVERRIDES[clerkUserId];
     if (override) {
       return res.json({ tier: 'pro', status: 'active', limits: override });
     }
+    // past_due = unpaid invoice (WeChat/Alipay), treat as no plan
     return res.json({
       tier: 'expired',
-      status: 'cancelled',
+      status: license?.status === 'past_due' ? 'past_due' : 'cancelled',
       limits: { optimizations_per_week: 0, max_sessions: 0, max_devices: 0 },
     });
   }

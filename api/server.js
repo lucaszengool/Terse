@@ -236,37 +236,40 @@ app.post('/api/checkout', async (req, res) => {
 
     const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
 
-    // WeChat Pay / Alipay: free trial via send_invoice subscription.
-    // Flow: 30-day free trial starts immediately → after trial, Stripe sends
-    // invoice with WeChat/Alipay as payment option → user pays to continue.
+    // WeChat Pay / Alipay: one-time CNY payment (no free trial).
+    // Stripe doesn't support recurring for these methods, so each month
+    // a new invoice is sent via send_invoice subscription.
     const paymentMethod = req.body.paymentMethod; // 'wechat_pay', 'alipay', or undefined
     const isChinaPay = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
 
     if (isChinaPay) {
+      // Create send_invoice subscription with NO trial — first invoice due immediately
       const sub = await stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
         collection_method: 'send_invoice',
-        days_until_due: 7,
-        trial_period_days: TRIAL_DAYS,
+        days_until_due: 3,
         metadata: { clerk_user_id: clerkUserId, tier },
         payment_settings: {
           payment_method_types: [paymentMethod],
         },
       });
 
-      const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+      // Activate license immediately (paid on first invoice)
       licenseCache.set(clerkUserId, {
         tier,
         stripeCustomerId: customerId,
         subscriptionId: sub.id,
-        status: 'trialing',
+        status: 'active',
         expiresAt: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
-        trialEnd,
       });
-      console.log(`[license] trial activated (${paymentMethod}) ${tier} for ${clerkUserId}`);
+      console.log(`[license] china-pay subscription (${paymentMethod}) ${tier} for ${clerkUserId}`);
 
-      res.json({ url: `${baseUrl}/?checkout=success&tier=${tier}&method=${paymentMethod}`, sessionId: null });
+      // Get the first invoice URL so user can pay immediately
+      const invoices = await stripe.invoices.list({ subscription: sub.id, limit: 1 });
+      const invoiceUrl = invoices.data[0]?.hosted_invoice_url || `${baseUrl}/?checkout=success&tier=${tier}`;
+
+      res.json({ url: invoiceUrl, sessionId: null });
     } else {
       // Default: card/Link via Stripe Checkout (WeChat/Alipay use send_invoice path above)
       const session = await stripe.checkout.sessions.create({

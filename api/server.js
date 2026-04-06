@@ -185,15 +185,29 @@ async function syncSubscription(sub) {
   // Compute trial end date if in trial
   const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
 
+  // For send_invoice subscriptions, Stripe marks as 'active' before payment.
+  // Check if the latest invoice is actually paid before granting access.
+  let effectiveStatus = sub.status;
+  if (sub.collection_method === 'send_invoice' && sub.status === 'active' && !sub.trial_end) {
+    try {
+      const invoices = await stripe.invoices.list({ subscription: sub.id, limit: 1 });
+      const latest = invoices.data[0];
+      if (latest && latest.status !== 'paid') {
+        effectiveStatus = 'past_due'; // Don't grant access until paid
+        console.log(`[license] send_invoice sub ${sub.id} invoice ${latest.id} not paid (${latest.status}), blocking access`);
+      }
+    } catch (e) { console.error('[license] invoice check failed:', e.message); }
+  }
+
   licenseCache.set(clerkUserId, {
     tier,
     stripeCustomerId: sub.customer,
     subscriptionId: sub.id,
-    status: sub.status, // 'trialing', 'active', 'past_due', etc.
+    status: effectiveStatus,
     expiresAt: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
     trialEnd,
   });
-  console.log(`[license] synced ${tier} (${sub.status}) for ${clerkUserId}${trialEnd ? ' trial until ' + trialEnd : ''}`);
+  console.log(`[license] synced ${tier} (${effectiveStatus}) for ${clerkUserId}${trialEnd ? ' trial until ' + trialEnd : ''}`);
 }
 
 // JSON body for all other routes

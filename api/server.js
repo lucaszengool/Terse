@@ -255,12 +255,13 @@ app.post('/api/checkout', async (req, res) => {
         },
       });
 
-      // Set license as active — invoice payment tracked via webhook
+      // Don't activate yet — wait for invoice.paid webhook to confirm payment
+      // Set as 'past_due' so app knows payment is pending
       licenseCache.set(clerkUserId, {
         tier,
         stripeCustomerId: customerId,
         subscriptionId: sub.id,
-        status: 'active',
+        status: 'past_due',
         expiresAt: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
       });
       console.log(`[license] china-pay subscription (${paymentMethod}) ${tier} for ${clerkUserId}`);

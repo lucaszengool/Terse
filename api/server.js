@@ -265,13 +265,18 @@ app.post('/api/checkout', async (req, res) => {
       });
       console.log(`[license] china-pay subscription (${paymentMethod}) ${tier} for ${clerkUserId}`);
 
-      // Get the first invoice, finalize it, and return the hosted payment URL
+      // Get the first invoice, add free-trial note, finalize, and return payment URL
       const invoices = await stripe.invoices.list({ subscription: sub.id, limit: 1 });
       let invoiceUrl = `${baseUrl}/?checkout=success&tier=${tier}`;
       if (invoices.data[0]) {
         let invoice = invoices.data[0];
-        // Finalize if still draft
+        // Add note about free trial being card-only
         if (invoice.status === 'draft') {
+          await stripe.invoices.update(invoice.id, {
+            description: paymentMethod === 'wechat_pay'
+              ? 'Terse Pro 月度订阅。免费试用仅支持银行卡支付，微信支付需直接付款。\nTerse Pro monthly subscription. Free trial is only available with bank card payment.'
+              : 'Terse Pro 月度订阅。免费试用仅支持银行卡支付，支付宝需直接付款。\nTerse Pro monthly subscription. Free trial is only available with bank card payment.',
+          });
           invoice = await stripe.invoices.finalizeInvoice(invoice.id);
         }
         invoiceUrl = invoice.hosted_invoice_url || invoiceUrl;

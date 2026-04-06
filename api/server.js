@@ -255,7 +255,7 @@ app.post('/api/checkout', async (req, res) => {
         },
       });
 
-      // Activate license immediately (paid on first invoice)
+      // Set license as active — invoice payment tracked via webhook
       licenseCache.set(clerkUserId, {
         tier,
         stripeCustomerId: customerId,
@@ -265,9 +265,18 @@ app.post('/api/checkout', async (req, res) => {
       });
       console.log(`[license] china-pay subscription (${paymentMethod}) ${tier} for ${clerkUserId}`);
 
-      // Get the first invoice URL so user can pay immediately
+      // Get the first invoice, finalize it, and return the hosted payment URL
       const invoices = await stripe.invoices.list({ subscription: sub.id, limit: 1 });
-      const invoiceUrl = invoices.data[0]?.hosted_invoice_url || `${baseUrl}/?checkout=success&tier=${tier}`;
+      let invoiceUrl = `${baseUrl}/?checkout=success&tier=${tier}`;
+      if (invoices.data[0]) {
+        let invoice = invoices.data[0];
+        // Finalize if still draft
+        if (invoice.status === 'draft') {
+          invoice = await stripe.invoices.finalizeInvoice(invoice.id);
+        }
+        invoiceUrl = invoice.hosted_invoice_url || invoiceUrl;
+        console.log(`[license] invoice ${invoice.id} status=${invoice.status} url=${invoiceUrl}`);
+      }
 
       res.json({ url: invoiceUrl, sessionId: null });
     } else {

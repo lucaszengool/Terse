@@ -239,8 +239,8 @@ app.post('/api/checkout', async (req, res) => {
     // WeChat Pay / Alipay don't support subscription mode in Checkout.
     // For these, create a send_invoice subscription with trial directly,
     // then redirect user to pay the first post-trial invoice via hosted page.
-    const paymentMethod = req.body.paymentMethod; // 'wechat_pay' or undefined (default)
-    const isSendInvoice = paymentMethod === 'wechat_pay';
+    const paymentMethod = req.body.paymentMethod; // 'wechat_pay', 'alipay', or undefined (default)
+    const isSendInvoice = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
 
     if (isSendInvoice) {
       // Create subscription with send_invoice — no payment needed during trial

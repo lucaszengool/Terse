@@ -236,40 +236,51 @@ app.post('/api/checkout', async (req, res) => {
 
     const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
 
-    // WeChat Pay / Alipay don't support subscription mode in Checkout.
-    // For these, create a send_invoice subscription with trial directly,
-    // then redirect user to pay the first post-trial invoice via hosted page.
-    const paymentMethod = req.body.paymentMethod; // 'wechat_pay', 'alipay', or undefined (default)
-    const isSendInvoice = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
+    // WeChat Pay / Alipay: use one-time CNY payment via Checkout (payment mode)
+    // with setup_future_usage to save payment method for recurring charges.
+    // After payment, we create the subscription server-side via webhook.
+    const paymentMethod = req.body.paymentMethod; // 'wechat_pay', 'alipay', or undefined
+    const isChinaPay = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
 
-    if (isSendInvoice) {
-      // Create subscription with send_invoice — no payment needed during trial
-      const sub = await stripe.subscriptions.create({
+    if (isChinaPay) {
+      // Look up the price to get the amount
+      const price = await stripe.prices.retrieve(priceId);
+      const amountUSD = price.unit_amount; // in cents
+      // Convert to CNY (approximate — Stripe Adaptive Pricing handles exact rate)
+      const amountCNY = Math.round(amountUSD * 7.2); // ~7.2 CNY per USD
+
+      const session = await stripe.checkout.sessions.create({
         customer: customerId,
-        items: [{ price: priceId }],
-        collection_method: 'send_invoice',
-        days_until_due: 7,
-        trial_period_days: TRIAL_DAYS,
-        metadata: { clerk_user_id: clerkUserId, tier },
-        payment_settings: {
-          payment_method_types: [paymentMethod],
+        mode: 'payment',
+        payment_method_types: [paymentMethod, 'card'],
+        line_items: [{
+          price_data: {
+            currency: 'cny',
+            product_data: { name: `Terse ${tier.charAt(0).toUpperCase() + tier.slice(1)} — First Month` },
+            unit_amount: amountCNY,
+          },
+          quantity: 1,
+        }],
+        payment_intent_data: {
+          setup_future_usage: 'off_session',
+          metadata: { clerk_user_id: clerkUserId, tier, setup_subscription: 'true' },
         },
+        success_url: `${baseUrl}/?checkout=success&tier=${tier}`,
+        cancel_url: `${baseUrl}/?checkout=cancelled`,
+        metadata: { clerk_user_id: clerkUserId, tier, setup_subscription: 'true' },
       });
 
-      // Activate trial in license cache immediately
-      const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+      // Activate trial immediately (webhook will create subscription after payment)
       licenseCache.set(clerkUserId, {
         tier,
         stripeCustomerId: customerId,
-        subscriptionId: sub.id,
         status: 'trialing',
-        expiresAt: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
-        trialEnd,
+        trialEnd: new Date(Date.now() + TRIAL_DAYS * 86400000).toISOString(),
+        expiresAt: new Date(Date.now() + TRIAL_DAYS * 86400000).toISOString(),
       });
-      console.log(`[license] trial activated (${paymentMethod}) ${tier} for ${clerkUserId}`);
+      console.log(`[license] china-pay checkout (${paymentMethod}) ${tier} for ${clerkUserId}`);
 
-      // No checkout page needed — trial is free. Redirect to success.
-      res.json({ url: `${baseUrl}/?checkout=success&tier=${tier}`, sessionId: null });
+      res.json({ url: session.url, sessionId: session.id });
     } else {
       // Default: card/Link via Stripe Checkout (WeChat/Alipay use send_invoice path above)
       const session = await stripe.checkout.sessions.create({

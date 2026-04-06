@@ -402,8 +402,9 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
   // Check cache first
   let license = licenseCache.get(clerkUserId);
 
-  // If not in cache, check Stripe for existing subscriptions
-  if (!license) {
+  // Always re-verify with Stripe if cached status looks active but might be unpaid send_invoice
+  const needsRecheck = !license || license.status === 'active' || license.status === 'past_due';
+  if (needsRecheck) {
     try {
       const customers = await stripe.customers.list({
         limit: 1,
@@ -429,6 +430,14 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
           const sub = subs.data[0];
           await syncSubscription(sub);
           license = licenseCache.get(clerkUserId);
+        } else {
+          // No active subs found — clear any stale cache
+          licenseCache.set(clerkUserId, {
+            tier: 'expired', status: 'none', stripeCustomerId: allCustomers.data[0]?.id,
+            subscriptionId: null, expiresAt: null, trialEnd: null,
+          });
+          license = licenseCache.get(clerkUserId);
+          console.log(`[license] no active subs for ${clerkUserId}, cleared cache`);
         }
       }
     } catch (err) {

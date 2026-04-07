@@ -268,6 +268,16 @@
     'agentMonitor.detected': 'Claude Code detected — monitor session?',
     'agentMonitor.connect': 'Connect',
 
+    // Model Routing section
+    'routing.label': 'Auto Model Routing',
+    'routing.heading': 'Opus billed.<br><span class="gradient-text">Sonnet delivered.</span>',
+    'routing.desc': 'Terse runs a local proxy on port 7860 that intercepts every API call. Simple tasks — short prompts, lookups, edits — are silently rerouted from Opus ($15/MTok) to Sonnet ($3/MTok). Complex tasks stay on Opus. You pay 80% less with zero code changes.',
+    'routing.f1': 'Complexity scoring — short prompts, lookups, edits → Sonnet',
+    'routing.f2': 'Architecture, security reviews, deep refactors → stay on Opus',
+    'routing.f3': 'Transparent — zero changes to Claude Code, Cursor, or Codex',
+    'routing.f4': 'Auto-configured on launch — ANTHROPIC_BASE_URL set in settings.json',
+    'routing.f5': 'Cleans up on exit — no stale URLs left behind',
+
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessions ~3x longer',
     'tools.cursor.impact': 'Credits go ~2x further',
@@ -569,6 +579,16 @@
     'agentMonitor.f6': '根据会话模式自动生成 CLAUDE.md 优化规则',
     'agentMonitor.detected': '检测到 Claude Code——监控会话？',
     'agentMonitor.connect': '连接',
+
+    // Model Routing section
+    'routing.label': '自动模型路由',
+    'routing.heading': 'Opus 计费。<br><span class="gradient-text">Sonnet 响应。</span>',
+    'routing.desc': 'Terse 在 7860 端口运行本地代理，拦截每个 API 请求。简单任务——短提示词、查询、编辑——自动从 Opus（$15/MTok）路由到 Sonnet（$3/MTok）。复杂任务保留 Opus。无需修改任何代码，费用减少 80%。',
+    'routing.f1': '复杂度评分——短提示词、查询、编辑 → Sonnet',
+    'routing.f2': '架构设计、安全审查、深度重构 → 保留 Opus',
+    'routing.f3': '透明无感——Claude Code、Cursor、Codex 无需任何改动',
+    'routing.f4': '启动自动配置——ANTHROPIC_BASE_URL 写入 settings.json',
+    'routing.f5': '退出自动清理——不留任何无效 URL',
 
     // Tool comparison details
     'tools.claudeCode.impact': '会话时长约 3 倍',
@@ -872,6 +892,16 @@
     'agentMonitor.detected': '偵測到 Claude Code——監控工作階段？',
     'agentMonitor.connect': '連線',
 
+    // Model Routing section
+    'routing.label': '自動模型路由',
+    'routing.heading': 'Opus 計費。<br><span class="gradient-text">Sonnet 回應。</span>',
+    'routing.desc': 'Terse 在 7860 連接埠執行本地代理，攔截每個 API 請求。簡單任務——短提示詞、查詢、編輯——自動從 Opus（$15/MTok）路由到 Sonnet（$3/MTok）。複雜任務保留 Opus。無需修改任何程式碼，費用減少 80%。',
+    'routing.f1': '複雜度評分——短提示詞、查詢、編輯 → Sonnet',
+    'routing.f2': '架構設計、安全審查、深度重構 → 保留 Opus',
+    'routing.f3': '透明無感——Claude Code、Cursor、Codex 無需任何改動',
+    'routing.f4': '啟動自動設定——ANTHROPIC_BASE_URL 寫入 settings.json',
+    'routing.f5': '退出自動清理——不留任何無效 URL',
+
     // Tool comparison details
     'tools.claudeCode.impact': '工作階段時長約 3 倍',
     'tools.cursor.impact': '額度使用效率約 2 倍',
@@ -1173,6 +1203,16 @@
     'agentMonitor.f6': 'セッションパターンからCLAUDE.md最適化ルールを自動生成',
     'agentMonitor.detected': 'Claude Codeを検出——セッションを監視しますか？',
     'agentMonitor.connect': '接続',
+
+    // Model Routing section
+    'routing.label': '自動モデルルーティング',
+    'routing.heading': 'Opus で課金。<br><span class="gradient-text">Sonnet で応答。</span>',
+    'routing.desc': 'Terse はポート 7860 にローカルプロキシを起動し、全 API コールを傍受します。短いプロンプト・検索・編集などの単純タスクは Opus（$15/MTok）から Sonnet（$3/MTok）へ自動ルーティング。複雑なタスクは Opus を維持。コード変更ゼロでコストを 80% 削減。',
+    'routing.f1': '複雑度スコアリング——短いプロンプト・検索・編集 → Sonnet',
+    'routing.f2': 'アーキテクチャ設計・セキュリティレビュー・大規模リファクタ → Opus を維持',
+    'routing.f3': '透過的——Claude Code・Cursor・Codex への変更不要',
+    'routing.f4': '起動時に自動設定——ANTHROPIC_BASE_URL を settings.json に書き込み',
+    'routing.f5': '終了時に自動クリーンアップ——無効な URL を残さない',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'セッションが約3倍長く',
@@ -1476,6 +1516,16 @@
     'agentMonitor.detected': 'Claude Code 감지됨 — 세션을 모니터링할까요?',
     'agentMonitor.connect': '연결',
 
+    // Model Routing section
+    'routing.label': '자동 모델 라우팅',
+    'routing.heading': 'Opus 과금。<br><span class="gradient-text">Sonnet 응답。</span>',
+    'routing.desc': 'Terse는 포트 7860에 로컬 프록시를 실행해 모든 API 호출을 가로챕니다. 짧은 프롬프트·조회·편집 같은 단순 작업은 Opus($15/MTok)에서 Sonnet($3/MTok)으로 자동 라우팅됩니다. 복잡한 작업은 Opus를 유지합니다. 코드 변경 없이 80% 절약。',
+    'routing.f1': '복잡도 점수 — 짧은 프롬프트·조회·편집 → Sonnet',
+    'routing.f2': '아키텍처 설계·보안 검토·대규모 리팩터 → Opus 유지',
+    'routing.f3': '투명성 — Claude Code·Cursor·Codex 변경 불필요',
+    'routing.f4': '시작 시 자동 설정 — settings.json에 ANTHROPIC_BASE_URL 기록',
+    'routing.f5': '종료 시 자동 정리 — 유효하지 않은 URL 남기지 않음',
+
     // Tool comparison details
     'tools.claudeCode.impact': '세션이 약 3배 더 길어짐',
     'tools.cursor.impact': '크레딧이 약 2배 더 오래 지속',
@@ -1777,6 +1827,16 @@
     'agentMonitor.f6': 'Genera automáticamente reglas de optimización CLAUDE.md a partir de patrones de sesión',
     'agentMonitor.detected': 'Claude Code detectado: ¿monitorizar sesión?',
     'agentMonitor.connect': 'Conectar',
+
+    // Model Routing section
+    'routing.label': 'Enrutamiento automático de modelos',
+    'routing.heading': 'Facturado con Opus.<br><span class="gradient-text">Entregado con Sonnet.</span>',
+    'routing.desc': 'Terse ejecuta un proxy local en el puerto 7860 que intercepta cada llamada a la API. Las tareas simples —prompts cortos, consultas, ediciones— se redirigen silenciosamente de Opus ($15/MTok) a Sonnet ($3/MTok). Las tareas complejas permanecen en Opus. Pagas un 80% menos sin cambiar nada en tu código.',
+    'routing.f1': 'Puntuación de complejidad — prompts cortos, consultas, ediciones → Sonnet',
+    'routing.f2': 'Arquitectura, revisiones de seguridad, refactorizaciones profundas → Opus',
+    'routing.f3': 'Transparente — sin cambios en Claude Code, Cursor ni Codex',
+    'routing.f4': 'Configurado automáticamente al iniciar — ANTHROPIC_BASE_URL en settings.json',
+    'routing.f5': 'Limpieza al salir — sin URLs obsoletas',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sesiones ~3 veces más largas',
@@ -2080,6 +2140,16 @@
     'agentMonitor.detected': 'Claude Code détecté — surveiller la session ?',
     'agentMonitor.connect': 'Connecter',
 
+    // Model Routing section
+    'routing.label': 'Routage automatique de modèles',
+    'routing.heading': 'Facturé avec Opus.<br><span class="gradient-text">Livré avec Sonnet.</span>',
+    'routing.desc': 'Terse exécute un proxy local sur le port 7860 qui intercepte chaque appel API. Les tâches simples — prompts courts, recherches, éditions — sont redirigées silencieusement d\'Opus ($15/MTok) vers Sonnet ($3/MTok). Les tâches complexes restent sur Opus. Vous payez 80% moins sans aucun changement de code.',
+    'routing.f1': 'Score de complexité — prompts courts, recherches, éditions → Sonnet',
+    'routing.f2': 'Architecture, revues de sécurité, refactorisations profondes → Opus',
+    'routing.f3': 'Transparent — aucun changement pour Claude Code, Cursor ou Codex',
+    'routing.f4': 'Configuré automatiquement au démarrage — ANTHROPIC_BASE_URL dans settings.json',
+    'routing.f5': 'Nettoyage à la fermeture — aucune URL obsolète',
+
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessions ~3 fois plus longues',
     'tools.cursor.impact': 'Crédits ~2 fois plus durables',
@@ -2381,6 +2451,16 @@
     'agentMonitor.f6': 'Generiert automatisch CLAUDE.md-Optimierungsregeln aus Sitzungsmustern',
     'agentMonitor.detected': 'Claude Code erkannt — Sitzung überwachen?',
     'agentMonitor.connect': 'Verbinden',
+
+    // Model Routing section
+    'routing.label': 'Automatisches Modell-Routing',
+    'routing.heading': 'Mit Opus abgerechnet.<br><span class="gradient-text">Mit Sonnet geliefert.</span>',
+    'routing.desc': 'Terse betreibt einen lokalen Proxy auf Port 7860, der jeden API-Aufruf abfängt. Einfache Aufgaben — kurze Prompts, Suchen, Bearbeitungen — werden lautlos von Opus ($15/MTok) zu Sonnet ($3/MTok) umgeleitet. Komplexe Aufgaben bleiben bei Opus. 80% weniger Kosten ohne Codeänderungen.',
+    'routing.f1': 'Komplexitätsbewertung — kurze Prompts, Suchen, Bearbeitungen → Sonnet',
+    'routing.f2': 'Architektur, Sicherheitsprüfungen, tiefe Refactorings → Opus',
+    'routing.f3': 'Transparent — keine Änderungen an Claude Code, Cursor oder Codex',
+    'routing.f4': 'Automatisch konfiguriert beim Start — ANTHROPIC_BASE_URL in settings.json',
+    'routing.f5': 'Bereinigung beim Beenden — keine veralteten URLs',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sitzungen ~3x länger',
@@ -2684,6 +2764,16 @@
     'agentMonitor.detected': 'تم اكتشاف Claude Code — هل تريد مراقبة الجلسة؟',
     'agentMonitor.connect': 'اتصال',
 
+    // Model Routing section
+    'routing.label': 'توجيه النماذج التلقائي',
+    'routing.heading': 'الفوترة بـ Opus.<br><span class="gradient-text">التسليم بـ Sonnet.</span>',
+    'routing.desc': 'يشغّل Terse وكيلاً محلياً على المنفذ 7860 يعترض كل استدعاء API. المهام البسيطة — الطلبات القصيرة والاستعلامات والتعديلات — تُحوَّل بصمت من Opus (15$/MTok) إلى Sonnet (3$/MTok). المهام المعقدة تبقى على Opus. وفّر 80% دون أي تغيير في الكود.',
+    'routing.f1': 'نقاط التعقيد — الطلبات القصيرة والاستعلامات والتعديلات → Sonnet',
+    'routing.f2': 'الهندسة المعمارية ومراجعات الأمان وإعادة الهيكلة العميقة → Opus',
+    'routing.f3': 'شفاف — لا تغييرات على Claude Code أو Cursor أو Codex',
+    'routing.f4': 'تهيئة تلقائية عند التشغيل — ANTHROPIC_BASE_URL في settings.json',
+    'routing.f5': 'تنظيف عند الإغلاق — لا عناوين URL قديمة',
+
     // Tool comparison details
     'tools.claudeCode.impact': 'الجلسات أطول بـ 3 أضعاف تقريبًا',
     'tools.cursor.impact': 'الأرصدة تدوم ضعفين تقريبًا',
@@ -2986,6 +3076,16 @@
     'agentMonitor.detected': 'Claude Code rilevato — monitorare la sessione?',
     'agentMonitor.connect': 'Connetti',
 
+    // Model Routing section
+    'routing.label': 'Routing automatico dei modelli',
+    'routing.heading': 'Fatturato con Opus.<br><span class="gradient-text">Consegnato con Sonnet.</span>',
+    'routing.desc': 'Terse esegue un proxy locale sulla porta 7860 che intercetta ogni chiamata API. I compiti semplici — prompt brevi, ricerche, modifiche — vengono reindirizzati silenziosamente da Opus ($15/MTok) a Sonnet ($3/MTok). I compiti complessi rimangono su Opus. Paghi l\'80% in meno senza modifiche al codice.',
+    'routing.f1': 'Punteggio di complessità — prompt brevi, ricerche, modifiche → Sonnet',
+    'routing.f2': 'Architettura, revisioni di sicurezza, refactoring profondi → Opus',
+    'routing.f3': 'Trasparente — nessuna modifica a Claude Code, Cursor o Codex',
+    'routing.f4': 'Configurato automaticamente all\'avvio — ANTHROPIC_BASE_URL in settings.json',
+    'routing.f5': 'Pulizia all\'uscita — nessun URL obsoleto',
+
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessioni ~3 volte più lunghe',
     'tools.cursor.impact': 'Crediti ~2 volte più duraturi',
@@ -3287,6 +3387,16 @@
     'agentMonitor.f6': 'Gera automaticamente regras de otimização CLAUDE.md a partir de padrões de sessão',
     'agentMonitor.detected': 'Claude Code detectado — monitorar sessão?',
     'agentMonitor.connect': 'Conectar',
+
+    // Model Routing section
+    'routing.label': 'Roteamento automático de modelos',
+    'routing.heading': 'Cobrado com Opus.<br><span class="gradient-text">Entregue com Sonnet.</span>',
+    'routing.desc': 'Terse executa um proxy local na porta 7860 que intercepta cada chamada de API. Tarefas simples — prompts curtos, consultas, edições — são redirecionadas silenciosamente do Opus ($15/MTok) para o Sonnet ($3/MTok). Tarefas complexas permanecem no Opus. Você paga 80% menos sem nenhuma alteração no código.',
+    'routing.f1': 'Pontuação de complexidade — prompts curtos, consultas, edições → Sonnet',
+    'routing.f2': 'Arquitetura, revisões de segurança, refatorações profundas → Opus',
+    'routing.f3': 'Transparente — sem alterações no Claude Code, Cursor ou Codex',
+    'routing.f4': 'Configurado automaticamente na inicialização — ANTHROPIC_BASE_URL em settings.json',
+    'routing.f5': 'Limpeza ao sair — sem URLs obsoletas',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessões ~3x mais longas',

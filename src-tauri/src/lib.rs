@@ -1815,6 +1815,21 @@ pub fn run() {
                 start_polling(app_handle4);
             });
 
+            // Kill any existing proxy (from previous session or older Terse version)
+            // so the new proxy can bind port 7860 and re-configure settings.json.
+            {
+                let home = dirs::home_dir().unwrap_or_default();
+                let pid_file = home.join(".terse").join("proxy.pid");
+                if let Ok(pid_str) = std::fs::read_to_string(&pid_file) {
+                    if let Ok(pid) = pid_str.trim().parse::<u32>() {
+                        let _ = std::process::Command::new("kill")
+                            .args(["-TERM", &pid.to_string()])
+                            .output();
+                        std::thread::sleep(std::time::Duration::from_millis(400));
+                    }
+                }
+            }
+
             // Clean up any stale proxy config from previous crash
             cleanup_proxy_configs();
 

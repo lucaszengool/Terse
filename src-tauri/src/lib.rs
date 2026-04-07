@@ -670,6 +670,8 @@ async fn accept_agent(agent_type: String, state: tauri::State<'_, AppState>, app
 
     let snapshot = {
         let mut monitor = lock_or_recover(&state.agent_monitor);
+        // Clear suppression so this agent can be detected again
+        monitor.unsuppress_agent(&agent_type);
         monitor.accept_agent(&agent_type)
     };
     eprintln!("[terse] accept_agent result: has_snapshot={}", snapshot.is_some());
@@ -1599,6 +1601,35 @@ fn sign_out(state: tauri::State<'_, AppState>) {
     lic.save();
 }
 
+/// Remove ANTHROPIC_BASE_URL from ~/.claude/settings.json if it points to our proxy.
+/// Called on app startup (cleanup from previous crash) and when proxy exits.
+fn cleanup_proxy_configs() {
+    let home = dirs::home_dir().unwrap_or_default();
+    let settings_file = home.join(".claude").join("settings.json");
+    if settings_file.exists() {
+        if let Ok(data) = std::fs::read_to_string(&settings_file) {
+            if let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&data) {
+                if let Some(env) = json.get_mut("env").and_then(|e| e.as_object_mut()) {
+                    if let Some(url) = env.get("ANTHROPIC_BASE_URL").and_then(|v| v.as_str()) {
+                        if url.contains("127.0.0.1") {
+                            env.remove("ANTHROPIC_BASE_URL");
+                            if env.is_empty() {
+                                json.as_object_mut().map(|o| o.remove("env"));
+                            }
+                            if let Ok(out) = serde_json::to_string_pretty(&json) {
+                                let _ = std::fs::write(&settings_file, out);
+                                eprintln!("[terse] cleaned up proxy config from ~/.claude/settings.json");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Also clean up PID file
+    let _ = std::fs::remove_file(home.join(".terse").join("proxy.pid"));
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -1782,6 +1813,80 @@ pub fn run() {
             let app_handle4 = app.handle().clone();
             std::thread::spawn(move || {
                 start_polling(app_handle4);
+            });
+
+            // Clean up any stale proxy config from previous crash
+            cleanup_proxy_configs();
+
+            // Start local API proxy for auto model routing
+            std::thread::spawn(move || {
+                let home = dirs::home_dir().unwrap_or_default();
+                let proxy_script = home.join(".terse").join("terse-local-proxy.js");
+                // Deploy proxy script if not present or outdated
+                let proxy_src = include_str!("../../src/helpers/terse-local-proxy.js");
+                let _ = std::fs::create_dir_all(home.join(".terse"));
+                let _ = std::fs::write(&proxy_script, proxy_src);
+                // Find node binary (Finder-launched apps don't inherit user PATH)
+                // Find node: check common install paths, then NVM default alias
+                let mut candidates: Vec<String> = vec![
+                    "/usr/local/bin/node".into(),
+                    "/opt/homebrew/bin/node".into(),
+                    "/usr/bin/node".into(),
+                    format!("{}/miniconda3/bin/node", home.display()),
+                ];
+                // NVM: resolve default alias symlink, then glob for latest installed version
+                let nvm_default = format!("{}/.nvm/alias/default", home.display());
+                if let Ok(ver) = std::fs::read_to_string(&nvm_default) {
+                    let ver = ver.trim().to_string();
+                    // Try exact version first, then as prefix glob
+                    candidates.push(format!("{}/.nvm/versions/node/v{}/bin/node", home.display(), ver));
+                }
+                // Also check most common NVM versions
+                if let Ok(entries) = std::fs::read_dir(format!("{}/.nvm/versions/node", home.display())) {
+                    let mut versions: Vec<_> = entries.filter_map(|e| e.ok())
+                        .filter(|e| e.path().join("bin/node").exists())
+                        .map(|e| e.path().join("bin/node").to_string_lossy().to_string())
+                        .collect();
+                    versions.sort(); // Alphabetical ≈ version order for vNN.x.x
+                    if let Some(latest) = versions.pop() {
+                        candidates.push(latest);
+                    }
+                }
+                let node_bin = candidates.iter().find(|p| std::path::Path::new(p.as_str()).exists()).cloned();
+                let node = match node_bin {
+                    Some(n) => n,
+                    None => { eprintln!("[terse] node not found, skipping local proxy"); return; }
+                };
+                // Start proxy on port 7860
+                match std::process::Command::new(&node)
+                    .arg(&proxy_script)
+                    .arg("--port").arg("7860")
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::piped())
+                    .spawn()
+                {
+                    Ok(mut child) => {
+                        eprintln!("[terse] local proxy started on port 7860");
+                        // Log stderr in background
+                        if let Some(stderr) = child.stderr.take() {
+                            std::thread::spawn(move || {
+                                use std::io::BufRead;
+                                let reader = std::io::BufReader::new(stderr);
+                                for line in reader.lines().map_while(Result::ok) {
+                                    eprintln!("[terse-proxy] {}", line);
+                                }
+                            });
+                        }
+                        // Wait for child (keeps it alive until app exits)
+                        let _ = child.wait();
+                        // Proxy exited — ALWAYS clean up agent configs
+                        eprintln!("[terse] proxy exited — cleaning up agent configs");
+                        cleanup_proxy_configs();
+                    }
+                    Err(e) => {
+                        eprintln!("[terse] failed to start local proxy: {}", e);
+                    }
+                }
             });
 
             Ok(())

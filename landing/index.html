@@ -444,7 +444,7 @@
     .agent-term{background:hsla(0,0%,0%,0.3);border-radius:8px;padding:10px;margin-bottom:10px;min-height:60px}
     .at-line{font-size:11px;line-height:1.8;opacity:0;transition:opacity .3s}
     .at-line.show{opacity:1}
-    .at-line.cmd{color:var(--t1)}.at-line.out{color:var(--t3)}.at-line.pruneai{color:var(--ac)}
+    .at-line.cmd{color:var(--t1)}.at-line.out{color:var(--t3)}.at-line.pruneai{color:var(--ac)}.at-line.opt{color:var(--ac)}.at-line.warn{color:#fbbf24}
     .agent-connect-banner{padding:8px 12px;background:var(--acd);border:1px solid var(--acm);border-radius:6px;display:flex;align-items:center;gap:8px;margin-bottom:10px;
       opacity:0;transform:scale(.96);transition:all .4s}
     .agent-connect-banner.show{opacity:1;transform:scale(1)}
@@ -463,7 +463,7 @@
     .ap-model-status{color:var(--ac);font-size:9px;font-weight:600}
     .ap-fl{opacity:0;transition:opacity .3s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .ap-fl.show{opacity:1}
-    .ap-fl.usr{color:var(--t1)}.ap-fl.ast{color:var(--t2)}.ap-fl.tl{color:var(--t3)}.ap-fl.opt{color:var(--ac)}
+    .ap-fl.usr{color:var(--t1)}.ap-fl.ast{color:var(--t2)}.ap-fl.tl{color:var(--t3)}.ap-fl.opt{color:var(--ac)}.ap-fl.warn{color:#fbbf24}
 
     /* BENCH ANIM */
     .bench-bars{padding:14px;display:flex;flex-direction:column;gap:8px}
@@ -1343,6 +1343,45 @@
 </section>
 
 <div class="track" id="t6"></div>
+
+<!-- ═══ MODEL ROUTING ═══ -->
+<section class="section" id="routing" style="background:var(--bg2)">
+  <div class="glow" style="top:0;left:-200px"></div>
+  <div class="s-inner rev">
+    <div class="rvl">
+      <div class="label" data-i18n="routing.label">Auto Model Routing</div>
+      <h2 data-i18n-html="routing.heading">Opus billed.<br><span class="gradient-text">Sonnet delivered.</span></h2>
+      <p class="desc" data-i18n="routing.desc">Terse runs a local proxy on port 7860 that intercepts every API call. Simple tasks — short prompts, lookups, edits — are silently rerouted from Opus ($15/MTok) to Sonnet ($3/MTok). Complex tasks stay on Opus. You pay 80% less with zero code changes.</p>
+      <ul class="flist">
+        <li data-i18n="routing.f1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Complexity scoring — short prompts, lookups, edits → Sonnet</li>
+        <li data-i18n="routing.f2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Architecture, security reviews, deep refactors → stay on Opus</li>
+        <li data-i18n="routing.f3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Transparent — zero changes to Claude Code, Cursor, or Codex</li>
+        <li data-i18n="routing.f4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-configured on launch — ANTHROPIC_BASE_URL set in settings.json</li>
+        <li data-i18n="routing.f5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Cleans up on exit — no stale URLs left behind</li>
+      </ul>
+      <div class="alts"><span>Claude Code</span><span>Cursor</span><span>Codex</span><span>Any OpenAI-compat client</span></div>
+    </div>
+    <div class="rvr d1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Terse Proxy — Live Routing</span><span class="win-badge">port 7860</span></div>
+        <div class="agent-full" id="routingViz">
+          <div class="agent-term mono" id="rtTerm" style="min-height:180px"></div>
+          <div class="agent-panel-anim" id="rtPanel" style="border-top:1px solid var(--bd)">
+            <div class="ap-grid" style="grid-template-columns:repeat(4,1fr)">
+              <div class="ap-stat"><span class="ap-v" id="rtTotal">0</span><span class="ap-l">Requests</span></div>
+              <div class="ap-stat"><span class="ap-v" id="rtRouted">0</span><span class="ap-l">Routed</span></div>
+              <div class="ap-stat"><span class="ap-v" id="rtSaved">$0</span><span class="ap-l">Saved</span></div>
+              <div class="ap-stat"><span class="ap-v" id="rtPct">0%</span><span class="ap-l">Route rate</span></div>
+            </div>
+            <div class="ap-feed mono" id="rtFeed"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="t6b"></div>
 
 <!-- ═══ BENCHMARKS ═══ -->
 <section class="section" id="benchmarks" style="background:var(--bg2)">
@@ -2813,6 +2852,79 @@ function runAgent(){
 }
 const aObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runAgent();aObs.unobserve(x.target)}}),{threshold:.3});
 aObs.observe(document.getElementById('agentViz'));
+
+// ═══ MODEL ROUTING ANIM ═══
+function runRouting(){
+  const term=document.getElementById('rtTerm'),panel=document.getElementById('rtPanel'),feed=document.getElementById('rtFeed');
+  if(!term)return;
+  term.innerHTML='';feed.innerHTML='';panel.classList.remove('show');
+  ['rtTotal','rtRouted','rtSaved','rtPct'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=id==='rtSaved'?'$0':id==='rtPct'?'0%':'0'});
+
+  const requests=[
+    {model:'claude-opus-4-6[1m]',msg:'what is 2+2?',score:-4,route:true,reasons:'short,simple'},
+    {model:'claude-opus-4-6[1m]',msg:'rename UserAuth to AuthUser in auth.ts',score:-5,route:true,reasons:'simple-edit,short'},
+    {model:'claude-opus-4-6[1m]',msg:'fix the typo in README',score:-6,route:true,reasons:'fix-typo,short'},
+    {model:'claude-opus-4-6[1m]',msg:'design a distributed caching architecture',score:4,route:false,reasons:'complex:architect'},
+    {model:'claude-opus-4-6[1m]',msg:'add a test for the login function',score:-4,route:true,reasons:'write-test,short'},
+    {model:'claude-opus-4-6[1m]',msg:'security review the entire auth system',score:5,route:false,reasons:'complex:security'},
+    {model:'claude-opus-4-6[1m]',msg:'where is the config file loaded?',score:-5,route:true,reasons:'lookup,short'},
+  ];
+
+  let reqIdx=0,total=0,routed=0,savedCents=0;
+
+  function nextRequest(){
+    if(reqIdx>=requests.length){setTimeout(runRouting,3000);return;}
+    const r=requests[reqIdx++];
+    total++;
+
+    // Step 1: intercept line
+    addLine(term,'cmd','→ '+r.model+' ('+total+' msg'+(total>1?'s':'')+')');
+    setTimeout(()=>{
+      // Step 2: analyzing
+      addLine(term,'out','  analyze: "'+r.msg.slice(0,38)+(r.msg.length>38?'…':'')+'"');
+    },200);
+    setTimeout(()=>{
+      // Step 3: decision
+      if(r.route){
+        routed++;
+        savedCents+=r.score<=-5?38:28;
+        addLine(term,'opt','  ROUTE → claude-sonnet-4-6 (score='+r.score+', '+r.reasons+')');
+      } else {
+        addLine(term,'warn','  KEEP  → claude-opus-4-6 (score='+r.score+', '+r.reasons+')');
+      }
+      // Update stats
+      panel.classList.add('show');
+      document.getElementById('rtTotal').textContent=total;
+      document.getElementById('rtRouted').textContent=routed;
+      document.getElementById('rtSaved').textContent='$'+(savedCents/100).toFixed(2);
+      document.getElementById('rtPct').textContent=Math.round(routed/total*100)+'%';
+      // Feed line
+      const fd=document.createElement('div');
+      fd.className='ap-fl mono '+(r.route?'opt':'warn');
+      fd.textContent=(r.route?'✓ ROUTE ':'✗ KEEP  ')+r.model.replace('[1m]','')+'  →  '+(r.route?'sonnet':'opus')+'  ('+r.reasons+')';
+      feed.appendChild(fd);
+      requestAnimationFrame(()=>fd.classList.add('show'));
+      while(feed.children.length>5)feed.removeChild(feed.firstChild);
+      // Trim terminal
+      while(term.children.length>9)term.removeChild(term.firstChild);
+    },500);
+    setTimeout(nextRequest,1100);
+  }
+
+  // Startup lines
+  addLine(term,'cmd','$ terse-proxy --port 7860');
+  setTimeout(()=>addLine(term,'out','Proxy ready — auto-configured for Claude Code'),400);
+  setTimeout(()=>addLine(term,'out','Routing: opus→sonnet · gpt-4→gpt-4o-mini'),700);
+  setTimeout(nextRequest,1400);
+
+  function addLine(container,cls,text){
+    const d=document.createElement('div');d.className='at-line '+cls;d.textContent=text;
+    container.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'));
+  }
+}
+const rtObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runRouting();rtObs.unobserve(x.target)}}),{threshold:.3});
+const rtViz=document.getElementById('routingViz');
+if(rtViz)rtObs.observe(rtViz);
 
 // ═══ BENCH BARS ANIM ═══
 const bObs=new IntersectionObserver(e=>e.forEach(x=>{if(!x.isIntersecting)return;

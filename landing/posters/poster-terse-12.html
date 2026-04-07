@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse — App Showcase</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1350px;font-family:'Inter',-apple-system,sans-serif;overflow:hidden;position:relative;background:#FFED29}
+
+/* Background stripes (like Bouncie's purple stripes but in yellow) */
+.stripe{position:absolute;background:rgba(255,255,255,.55);border-radius:0}
+.s1{width:120px;height:100%;top:0;right:160px}
+.s2{width:120px;height:100%;top:0;right:320px}
+.s3{width:100%;height:120px;bottom:160px;left:0}
+
+/* Logo top-right */
+.logo{position:absolute;top:50px;right:60px;z-index:20}
+.logo .name{font-size:64px;font-weight:900;color:#1a1800;letter-spacing:-2px;line-height:1}
+.logo .ver{position:absolute;top:-8px;right:-24px;font-size:18px;font-weight:800;color:#1a1800}
+
+/* iPhone frame */
+.phone{
+  position:absolute;top:120px;left:50%;transform:translateX(-50%);
+  width:380px;
+  background:#1a1800;border-radius:52px;padding:14px;
+  z-index:10;
+  box-shadow:0 30px 80px rgba(0,0,0,.2),0 10px 30px rgba(0,0,0,.1);
+}
+.phone-screen{
+  background:#FAF8F1;border-radius:40px;overflow:hidden;
+  height:780px;position:relative;
+}
+/* Notch */
+.phone-notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:120px;height:28px;background:#1a1800;border-radius:0 0 18px 18px;z-index:5;
+}
+/* Status bar */
+.ph-status{display:flex;justify-content:space-between;align-items:center;padding:10px 24px 6px;font-size:14px;font-weight:600;color:#1a1800;position:relative;z-index:2}
+
+/* App content inside phone */
+.app{padding:0 20px;position:relative;z-index:1}
+.app-nav{display:flex;justify-content:space-between;align-items:center;padding:8px 0 4px}
+.app-nav .back{font-size:22px;color:#1a1800}
+.app-nav .share{font-size:18px;color:rgba(26,24,0,.3)}
+
+/* Top cards row */
+.top-cards{display:flex;gap:10px;margin-bottom:12px}
+.card-time{flex:1.2;background:linear-gradient(135deg,#e8e4a0,#d4cf70);border-radius:18px;padding:16px;position:relative}
+.card-time .dur{font-size:36px;font-weight:900;color:#1a1800;line-height:1}
+.card-time .dur-label{font-size:14px;font-weight:600;color:rgba(26,24,0,.5);display:inline}
+.card-time .type{font-size:14px;color:rgba(26,24,0,.4);margin-top:4px}
+.card-time .clock{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:11px;color:rgba(26,24,0,.3)}
+.card-count{flex:1;background:#fff;border-radius:18px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.card-count .label{font-size:12px;font-weight:700;color:#1a1800;margin-bottom:8px;display:flex;align-items:center;gap:4px}
+/* Token dots grid */
+.dots-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.dots-grid .dot{width:14px;height:14px;border-radius:50%}
+.dots-grid .dot.on{background:#8cc63f}
+.dots-grid .dot.off{background:rgba(26,24,0,.06)}
+
+/* Effort bar */
+.effort{margin-bottom:12px;position:relative}
+.effort-bar{height:14px;background:rgba(26,24,0,.04);border-radius:7px;overflow:hidden;display:flex}
+.effort-bar .seg{height:100%}
+.effort-bar .seg.green{background:#8cc63f;flex:3}
+.effort-bar .seg.dark{background:#3a5a1a;flex:2}
+.effort-label{position:absolute;right:0;top:-2px;padding:3px 10px;background:#1a1800;border-radius:4px;font-size:10px;font-weight:700;color:#fff}
+
+/* Comment */
+.comment{padding:12px 0;border-top:1px solid rgba(26,24,0,.04);font-size:15px;color:#1a1800;margin-bottom:4px}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 40px}
+.stat-item{padding:6px 0}
+.stat-item .sl{font-size:12px;color:rgba(26,24,0,.3);font-weight:600}
+.stat-item .sv{font-size:32px;font-weight:900;color:#1a1800;line-height:1.1}
+.stat-item .sv .unit{font-size:16px;font-weight:600;color:rgba(26,24,0,.3)}
+.stat-item .emoji{font-size:32px}
+
+/* HR zones */
+.hr-zones{margin-top:4px}
+.hr-zones .zl{font-size:12px;color:rgba(26,24,0,.3);font-weight:600;margin-bottom:6px}
+.zone{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.zone-bar{height:16px;border-radius:3px}
+.zone-bar.z1{background:#8cc63f;width:20px}
+.zone-bar.z2{background:#FFED29;width:120px}
+.zone-bar.z3{background:#7ec8e3;width:120px}
+.zone-info{font-size:12px;color:#1a1800;font-weight:700}
+.zone-info .pct{font-size:11px;color:rgba(26,24,0,.25);font-weight:500}
+
+/* Bottom cute T-token balls (like Bouncie tennis balls) */
+.balls{position:absolute;bottom:0;left:0;right:0;height:180px;z-index:5;overflow:hidden}
+.ball{position:absolute;bottom:-20px;border-radius:50%;background:linear-gradient(145deg,#FFED29,#e8d620);display:flex;align-items:center;justify-content:center;font-weight:900;color:#1a1800;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+/* Cute faces on balls */
+.ball .face{position:absolute;display:flex;flex-direction:column;align-items:center}
+.ball .eyes{display:flex;gap:6px}
+.ball .eye{width:5px;height:5px;border-radius:50%;background:#1a1800}
+.ball .eye.wink{width:7px;height:2px;border-radius:1px;background:#1a1800;margin-top:2px}
+.ball .mouth{margin-top:3px}
+.ball .mouth.smile{width:10px;height:5px;border-radius:0 0 6px 6px;border:2px solid #1a1800;border-top:0}
+.ball .mouth.open{width:8px;height:8px;border-radius:50%;background:#1a1800}
+.ball .mouth.flat{width:8px;height:2px;background:#1a1800;border-radius:1px}
+.ball .mouth.grin{width:12px;height:6px;border-radius:0 0 8px 8px;background:#1a1800}
+.ball .blush{position:absolute;width:6px;height:4px;border-radius:50%;background:#f9a8d4}
+</style>
+</head>
+<body>
+
+<!-- Background stripes -->
+<div class="stripe s1"></div>
+<div class="stripe s2"></div>
+<div class="stripe s3"></div>
+
+<!-- Logo top-right (like Bouncie) -->
+<div class="logo">
+  <div class="name">Terse</div>
+</div>
+
+<!-- iPhone (no frame — just the app content card) -->
+<div class="phone">
+  <div class="phone-screen">
+    <div class="phone-notch"></div>
+    <div class="ph-status"><span>9:41</span><span style="font-size:12px">⁕⁕ 📶 🔋</span></div>
+
+    <div class="app">
+      <!-- Nav -->
+      <div class="app-nav"><span class="back">‹</span><span class="share">⎙</span></div>
+
+      <!-- Top cards -->
+      <div class="top-cards">
+        <div class="card-time">
+          <div><span class="dur">1:00</span> <span class="dur-label">hours</span></div>
+          <div class="type">Optimize session 😊</div>
+          <div class="clock">⏱ Today, 16:41-17:44</div>
+        </div>
+        <div class="card-count">
+          <div class="label">🏆 6th session this month!</div>
+          <div class="dots-grid">
+            <div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div>
+            <div class="dot on"></div><div class="dot off"></div><div class="dot off"></div><div class="dot off"></div><div class="dot off"></div>
+            <div class="dot off"></div><div class="dot off"></div><div class="dot off"></div><div class="dot off"></div><div class="dot off"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Effort bar -->
+      <div class="effort">
+        <div class="effort-bar"><div class="seg green"></div><div class="seg dark"></div></div>
+        <div class="effort-label">Very intense</div>
+      </div>
+
+      <!-- Comment -->
+      <div class="comment">Saved a lot today — prompts are way cleaner now!</div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-item"><div class="sl">Total time</div><div class="sv">1:05:34</div></div>
+        <div class="stat-item"><div class="sl">Tokens saved</div><div class="sv">1.81<span class="unit">K</span></div></div>
+        <div class="stat-item"><div class="sl">Cost saved</div><div class="sv">$4.65</div></div>
+        <div class="stat-item"><div class="sl">Equivalent to</div><div class="emoji">🍔</div></div>
+        <div class="stat-item"><div class="sl">Avg compression</div><div class="sv">72<span class="unit">%</span></div></div>
+        <div class="stat-item"><div class="sl">Peak compression</div><div class="sv">83<span class="unit">%</span></div></div>
+      </div>
+
+      <!-- HR-style zones (repurposed as compression zones) -->
+      <div class="hr-zones">
+        <div class="zl">Compression zones</div>
+        <div class="zone"><div class="zone-bar z1"></div><div class="zone-info">0 prompts <span class="pct">0%</span></div></div>
+        <div class="zone"><div class="zone-bar z2"></div><div class="zone-info">19 prompts <span class="pct">29%</span></div></div>
+        <div class="zone"><div class="zone-bar z3"></div><div class="zone-info">19 prompts <span class="pct">29%</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cute T-token balls at bottom (like Bouncie's tennis balls) -->
+<div class="balls">
+  <!-- Ball 1: shy -->
+  <div class="ball" style="width:100px;height:100px;left:30px;bottom:10px;transform:rotate(-8deg)">
+    <div class="face" style="top:30px"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth smile"></div></div>
+    <div class="blush" style="top:38px;left:18px"></div><div class="blush" style="top:38px;right:18px"></div>
+  </div>
+  <!-- Ball 2: wink -->
+  <div class="ball" style="width:110px;height:110px;left:160px;bottom:20px">
+    <div class="face" style="top:34px"><div class="eyes"><div class="eye"></div><div class="eye wink"></div></div><div class="mouth grin"></div></div>
+  </div>
+  <!-- Ball 3: surprised -->
+  <div class="ball" style="width:90px;height:90px;left:300px;bottom:5px;transform:rotate(5deg)">
+    <div class="face" style="top:26px"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth open"></div></div>
+  </div>
+  <!-- Ball 4: happy (yellow highlight) -->
+  <div class="ball" style="width:120px;height:120px;right:220px;bottom:15px;background:linear-gradient(145deg,#fff,#ffd);border:3px solid rgba(26,24,0,.06)">
+    <div class="face" style="top:38px"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth grin"></div></div>
+    <div class="blush" style="top:48px;left:22px"></div><div class="blush" style="top:48px;right:22px"></div>
+  </div>
+  <!-- Ball 5: smirk -->
+  <div class="ball" style="width:95px;height:95px;right:90px;bottom:8px;transform:rotate(10deg)">
+    <div class="face" style="top:28px"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth flat"></div></div>
+  </div>
+  <!-- Ball 6: tiny -->
+  <div class="ball" style="width:70px;height:70px;right:10px;bottom:25px">
+    <div class="face" style="top:20px"><div class="eyes" style="gap:4px"><div class="eye" style="width:4px;height:4px"></div><div class="eye" style="width:4px;height:4px"></div></div><div class="mouth smile" style="width:8px;height:4px"></div></div>
+  </div>
+</div>
+
+</body>
+</html>

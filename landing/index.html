@@ -717,14 +717,21 @@
 
 <nav id="nav">
   <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
-  <div class="nav-links"><a href="#how-it-works">How It Works</a><a href="#pipeline">Pipeline</a><a href="#agents">Agent Monitor</a><a href="#benchmarks">Benchmarks</a><a href="#pricing">Pricing</a><a href="/marketplace">Token Exchange</a><a href="#faq">FAQ</a></div>
+  <div class="nav-links"><a href="#how-it-works" data-i18n="nav.howItWorks">How It Works</a><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="#benchmarks" data-i18n="nav.benchmarks">Benchmarks</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#faq" data-i18n="nav.faq">FAQ</a></div>
   <div style="display:flex;gap:10px;align-items:center">
-    <button class="nav-sign-in" onclick="openClerkSignIn()" style="padding:8px 16px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s">Sign In</button>
+    <div style="position:relative" id="lang-switcher">
+      <button onclick="document.getElementById('lang-menu').style.display=document.getElementById('lang-menu').style.display==='block'?'none':'block'" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        <span id="current-lang-label">EN</span>
+      </button>
+      <div id="lang-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:6px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:999;max-height:300px;overflow-y:auto"></div>
+    </div>
+    <button class="nav-sign-in" onclick="openClerkSignIn()" style="padding:8px 16px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s" data-i18n="nav.signIn">Sign In</button>
     <!-- Sign Up hidden — users sign up via Sign In flow -->
     <button class="nav-cta" onclick="openClerkSignUp()" style="display:none">Sign Up</button>
     <div id="clerk-user" style="display:none;align-items:center;gap:8px">
       <img id="clerk-avatar" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--bd)" />
-      <button onclick="clerkSignOut()" style="padding:6px 14px;background:transparent;color:var(--t3);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer">Sign Out</button>
+      <button onclick="clerkSignOut()" style="padding:6px 14px;background:transparent;color:var(--t3);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer" data-i18n="nav.signOut">Sign Out</button>
     </div>
   </div>
 </nav>
@@ -741,17 +748,17 @@
 <main>
 <section class="hero" aria-label="Hero">
   <div class="hero-glow"></div>
-  <h1 class="rv">Save every token.<br><span class="gradient-text">Trade the rest.</span></h1>
-  <p class="sub rv d1">Cut 40-70% of your AI token costs with on-device optimization &mdash; or buy tokens at up to 50% off retail on the <a href="#exchange" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Token Exchange</a>. Sell what you don't use. Stop wasting money on idle API credits.</p>
+  <h1 class="rv"><span data-i18n="hero.title1">Save every token.</span><br><span class="gradient-text" data-i18n="hero.title2">Trade the rest.</span></h1>
+  <p class="sub rv d1" data-i18n-html="hero.subtitle">Cut 40-70% of your AI token costs with on-device optimization &mdash; or buy tokens at up to 50% off retail on the <a href="#exchange" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Token Exchange</a>. Sell what you don't use. Stop wasting money on idle API credits.</p>
   <div class="hero-actions rv d2">
-    <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none">Download Optimizer <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
-    <a href="/marketplace" class="btn-ghost" style="text-decoration:none">Buy / Sell Tokens <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none"><span data-i18n="hero.download">Download Optimizer</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
+    <a href="/marketplace" class="btn-ghost" style="text-decoration:none"><span data-i18n="hero.exchange">Buy / Sell Tokens</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
   </div>
   <p class="rv d2" style="font-size:15px;color:var(--ac);text-align:center;margin:-28px auto 36px;max-width:480px;position:relative;z-index:1;font-weight:600;line-height:1.6">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-    After installing, drag Terse to <strong>Applications</strong>, then paste this in <strong>Terminal</strong>:
+    <span data-i18n-html="hero.installNote">After installing, drag Terse to <strong>Applications</strong>, then paste this in <strong>Terminal</strong>:</span>
     <br><code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 14px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:400;color:var(--ac);cursor:pointer;word-break:break-all;position:relative;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null & <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:6px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
-    <br><span style="font-size:13px;font-weight:400;color:var(--t2)">macOS blocks unsigned apps by default &mdash; this command clears it. Only needed once after install.</span>
+    <br><span style="font-size:13px;font-weight:400;color:var(--t2)" data-i18n="hero.installWarning">macOS blocks unsigned apps by default &mdash; this command clears it. Only needed once after install.</span>
   </p>
 
   <div class="hero-stage rv d3">
@@ -1319,13 +1326,13 @@
 <section class="section" id="benchmarks" style="background:var(--bg2)">
   <div class="s-inner rev">
     <div class="rvr">
-      <div class="label">Benchmarks</div>
-      <h2>Tested on<br><span class="gradient-text">real sessions.</span></h2>
-      <p class="desc">Tested on real ChatGPT prompts, Claude Code agent sessions, and multi-turn agent workflows. Clean technical prompts pass untouched. Verbose prompts and agent messages see 40-70% reduction. Combined with tool overhead savings, total session reduction reaches 30-60%.</p>
+      <div class="label" data-i18n="benchmarks.sectionTitle">Benchmarks</div>
+      <h2 data-i18n-html="benchmarks.heading">Tested on<br><span class="gradient-text">real sessions.</span></h2>
+      <p class="desc" data-i18n="features.description">Tested on real ChatGPT prompts, Claude Code agent sessions, and multi-turn agent workflows. Clean technical prompts pass untouched. Verbose prompts and agent messages see 40-70% reduction. Combined with tool overhead savings, total session reduction reaches 30-60%.</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Benchmarked across manual prompts, agent turns, and tool calls</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Clean prompts correctly return 0% — no false changes</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Savings compound: 5-turn agent session saves 200-400+ tokens</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench1">Benchmarked across manual prompts, agent turns, and tool calls</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench2">Clean prompts correctly return 0% — no false changes</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench3">Savings compound: 5-turn agent session saves 200-400+ tokens</span></li>
       </ul>
     </div>
     <div class="rvl d1">
@@ -1350,9 +1357,9 @@
 <!-- ═══ SEE THE DIFFERENCE ═══ -->
 <section class="demo-section" id="demo">
   <div class="demo-inner">
-    <div class="label rv" style="margin:0 auto 18px">See the difference</div>
-    <h2 class="rv">Real outputs, <span class="gradient-text">real savings.</span></h2>
-    <p class="demo-sub rv d1">Side-by-side comparison on actual prompts and agent commands.</p>
+    <div class="label rv" style="margin:0 auto 18px" data-i18n="pipeline.sectionTitle">See the difference</div>
+    <h2 class="rv" data-i18n-html="pipeline.subtitle">Real outputs, <span class="gradient-text">real savings.</span></h2>
+    <p class="demo-sub rv d1" data-i18n="pipeline.description">Side-by-side comparison on actual prompts and agent commands.</p>
 
     <div class="demo-tabs rv d1">
       <div class="demo-tab active" data-demo="0">find . -name "*.rs"</div>
@@ -1619,23 +1626,23 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ TOKEN USAGE — NO AI TOOL IS UNLIMITED ═══ -->
 <section class="usage-section" id="usage">
   <div class="usage-inner">
-    <h2 class="rv">No AI tool offers <span class="gradient-text">unlimited usage.</span></h2>
-    <p class="usage-sub rv d1">Even at $200/mo, every tool has caps. Terse compresses prompts so your limits stretch further &mdash; and the <a href="#exchange" style="color:var(--ac)">Token Exchange</a> lets you buy extra capacity at up to 50% off, or sell what you don't use.</p>
+    <h2 class="rv" data-i18n-html="usage.heading">No AI tool offers <span class="gradient-text">unlimited usage.</span></h2>
+    <p class="usage-sub rv d1" data-i18n-html="usage.subtitle">Even at $200/mo, every tool has caps. Terse compresses prompts so your limits stretch further &mdash; and the <a href="#exchange" style="color:var(--ac)">Token Exchange</a> lets you buy extra capacity at up to 50% off, or sell what you don't use.</p>
 
     <div class="usage-callout rv d2">
-      <div class="usage-headline">A typical 2h coding session with an AI agent:</div>
+      <div class="usage-headline" data-i18n="usage.calloutTitle">A typical 2h coding session with an AI agent:</div>
       <div class="usage-stats-row">
         <div class="usage-stat">
           <div class="usage-num" data-ut="60" data-us="~">0</div>
-          <div class="usage-label">CLI commands run</div>
+          <div class="usage-label" data-i18n="usage.stat1">CLI commands run</div>
         </div>
         <div class="usage-stat">
           <div class="usage-num" data-ut="210" data-us="~" data-ue="K">0</div>
-          <div class="usage-label">tokens of prompt + CLI noise</div>
+          <div class="usage-label" data-i18n="usage.stat2">tokens of prompt + CLI noise</div>
         </div>
         <div class="usage-stat">
           <div class="usage-num accent" data-ut="23" data-us="~" data-ue="K">0</div>
-          <div class="usage-label">with Terse (89% less)</div>
+          <div class="usage-label" data-i18n="usage.stat3">with Terse (89% less)</div>
         </div>
       </div>
       <p class="usage-note">Without Terse, CLI output and verbose prompts alone can overflow a 200K context window. Based on avg 3,500 tokens/command measured across real coding sessions.</p>
@@ -1646,9 +1653,9 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ TOOL COMPARISON CARDS ═══ -->
 <section class="tools-section" id="tool-comparison">
   <div class="tools-inner" style="text-align:center">
-    <div class="label rv" style="margin:0 auto 18px">Every tool has limits</div>
-    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:10px">Terse stretches <span class="gradient-text">every plan further.</span></h2>
-    <p class="rv d1" style="color:var(--t2);max-width:580px;margin:0 auto 0;font-size:15px;line-height:1.7">No matter which AI tool you use, token limits and rate caps apply. Terse compresses what goes in &mdash; and the <a href="#exchange" style="color:var(--ac)">Token Exchange</a> lets you buy extra tokens at a fraction of the retail price.</p>
+    <div class="label rv" style="margin:0 auto 18px" data-i18n="tools.sectionTitle">Every tool has limits</div>
+    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:10px" data-i18n-html="tools.heading">Terse stretches <span class="gradient-text">every plan further.</span></h2>
+    <p class="rv d1" style="color:var(--t2);max-width:580px;margin:0 auto 0;font-size:15px;line-height:1.7" data-i18n-html="tools.description">No matter which AI tool you use, token limits and rate caps apply. Terse compresses what goes in &mdash; and the <a href="#exchange" style="color:var(--ac)">Token Exchange</a> lets you buy extra tokens at a fraction of the retail price.</p>
 
     <div class="tools-grid rv d2">
       <!-- Claude Code -->
@@ -1658,9 +1665,9 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">Terminal</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">~45 msgs/5h (Pro), 5-20x on Max</span></div>
-          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">200K tokens</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">~45 msgs/5h (Pro), 5-20x on Max</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">200K tokens</span></div>
         </div>
         <div class="tool-card-impact">
           <span class="impact-badge">Sessions ~3x longer</span>
@@ -1675,9 +1682,9 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">IDE</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">$20 credits/mo (Pro), ~225 Claude reqs</span></div>
-          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">Up to 200K (Max mode)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">$20 credits/mo (Pro), ~225 Claude reqs</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">Up to 200K (Max mode)</span></div>
         </div>
         <div class="tool-card-impact">
           <span class="impact-badge">Credits go ~2x further</span>
@@ -1692,9 +1699,9 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">Agent</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">$20/mo (Plus) &mdash; $200/mo (Pro)</span></div>
-          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">30-1,500 msgs/5h by plan</span></div>
-          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">192K tokens</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">$20/mo (Plus) &mdash; $200/mo (Pro)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">30-1,500 msgs/5h by plan</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">192K tokens</span></div>
         </div>
         <div class="tool-card-impact">
           <span class="impact-badge">More iterations per cap</span>
@@ -1709,9 +1716,9 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">IDE</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">$15 &mdash; $60/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">500 credits/mo (Pro)</span></div>
-          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">200K tokens</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">$15 &mdash; $60/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">500 credits/mo (Pro)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">200K tokens</span></div>
         </div>
         <div class="tool-card-impact">
           <span class="impact-badge">Credits last ~2x longer</span>
@@ -1726,9 +1733,9 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">Terminal</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">Free &mdash; pay-per-token</span></div>
-          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">1,000 req/day, 60 req/min (free)</span></div>
-          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">1M tokens</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">Free &mdash; pay-per-token</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">1,000 req/day, 60 req/min (free)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">1M tokens</span></div>
         </div>
         <div class="tool-card-impact">
           <span class="impact-badge">~70% less on token bill</span>
@@ -1743,9 +1750,9 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">Terminal</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">Free + API costs ($5-300+/mo)</span></div>
-          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">Per API provider</span></div>
-          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">Free + API costs ($5-300+/mo)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">Per API provider</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
         </div>
         <div class="tool-card-impact">
           <span class="impact-badge">~70% less API cost</span>
@@ -1760,9 +1767,9 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">IDE</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">Free &mdash; $39/mo (Pro+)</span></div>
-          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">50-1,500 premium req/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">Free &mdash; $39/mo (Pro+)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">50-1,500 premium req/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
         </div>
         <div class="tool-card-impact">
           <span class="impact-badge">Better context quality</span>
@@ -1777,9 +1784,9 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">VS Code</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label">Price</span><span class="tc-value">Free + API costs ($0-500+/mo)</span></div>
-          <div class="tool-card-row"><span class="tc-label">Limits</span><span class="tc-value">Per API provider</span></div>
-          <div class="tool-card-row"><span class="tc-label">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">Free + API costs ($0-500+/mo)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">Per API provider</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
         </div>
         <div class="tool-card-impact">
           <span class="impact-badge">~70% less API cost</span>
@@ -1797,8 +1804,8 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ TESTIMONIALS ═══ -->
 <section class="testimonials-section">
   <div class="testimonials-inner">
-    <h2 class="rv">...and loved by <span class="gradient-text">developers</span></h2>
-    <p class="testimonials-sub rv d1">Engineers and AI power users cutting costs and gaining visibility into their token usage.</p>
+    <h2 class="rv" data-i18n-html="testimonials.heading">...and loved by <span class="gradient-text">developers</span></h2>
+    <p class="testimonials-sub rv d1" data-i18n="testimonials.subtitle">Engineers and AI power users cutting costs and gaining visibility into their token usage.</p>
     <div class="testimonials-track">
       <div class="testi-card">
         <div class="testi-header">
@@ -1871,13 +1878,13 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ STATS ═══ -->
 <section class="stats-section">
   <div class="stats-inner">
-    <h2 class="rv">Built on <span class="gradient-text">research.</span></h2>
-    <p class="rv d1" style="color:var(--t3);font-size:15px;max-width:480px;margin:-40px auto 50px">Grounded in LLMLingua, Norvig spelling, selective context pruning, and real-world agent session analysis across thousands of Claude Code turns.</p>
+    <h2 class="rv" data-i18n-html="stats.heading">Built on <span class="gradient-text">research.</span></h2>
+    <p class="rv d1" style="color:var(--t3);font-size:15px;max-width:480px;margin:-40px auto 50px" data-i18n="stats.subtitle">Grounded in LLMLingua, Norvig spelling, selective context pruning, and real-world agent session analysis across thousands of Claude Code turns.</p>
     <div class="stats-grid">
-      <div class="stat-card rv d1"><div class="stat-num" data-t="5" data-s="">0</div><div class="stat-lbl">Optimization strategies</div></div>
-      <div class="stat-card rv d1"><div class="stat-num" data-t="20" data-s="+">0</div><div class="stat-lbl">Token reduction techniques</div></div>
-      <div class="stat-card rv d2"><div class="stat-num" data-t="3" data-s="">0</div><div class="stat-lbl">API providers supported</div></div>
-      <div class="stat-card rv d3"><div class="stat-num" data-t="50" data-s="">0</div><div class="stat-lbl">% max discount on Exchange</div></div>
+      <div class="stat-card rv d1"><div class="stat-num" data-t="5" data-s="">0</div><div class="stat-lbl" data-i18n="stats.strategies">Optimization strategies</div></div>
+      <div class="stat-card rv d1"><div class="stat-num" data-t="20" data-s="+">0</div><div class="stat-lbl" data-i18n="stats.techniques">Token reduction techniques</div></div>
+      <div class="stat-card rv d2"><div class="stat-num" data-t="3" data-s="">0</div><div class="stat-lbl" data-i18n="stats.providers">API providers supported</div></div>
+      <div class="stat-card rv d3"><div class="stat-num" data-t="50" data-s="">0</div><div class="stat-lbl" data-i18n="stats.discount">% max discount on Exchange</div></div>
     </div>
   </div>
 </section>
@@ -1885,45 +1892,45 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ PRICING ═══ -->
 <section class="section" id="pricing" style="background:var(--bg0)">
   <div style="max-width:1200px;margin:0 auto;text-align:center">
-    <div class="label rv" style="margin:0 auto 18px">Pricing</div>
-    <h2 class="rv" style="margin-bottom:12px;text-align:center">Simple, transparent plans</h2>
-    <p class="rv" style="color:var(--t2);max-width:520px;margin:0 auto 48px;text-align:center;font-size:15px;line-height:1.7">Every plan includes a <strong>30-day free trial</strong>. No charge until your trial ends.</p>
+    <div class="label rv" style="margin:0 auto 18px" data-i18n="pricing.sectionTitle">Pricing</div>
+    <h2 class="rv" style="margin-bottom:12px;text-align:center" data-i18n="pricing.heading">Simple, transparent plans</h2>
+    <p class="rv" style="color:var(--t2);max-width:520px;margin:0 auto 48px;text-align:center;font-size:15px;line-height:1.7" data-i18n-html="pricing.trialNote">Every plan includes a <strong>30-day free trial</strong>. No charge until your trial ends.</p>
 
     <div class="pricing-grid rv d1">
       <!-- PRO -->
       <div class="price-card recommended">
-        <div class="price-tier" style="color:var(--ac)">Pro</div>
+        <div class="price-tier" style="color:var(--ac)" data-i18n="pricing.pro">Pro</div>
         <div class="price-amount"><span class="curr">$</span>4<span style="font-size:32px">.99</span><span class="period">/mo</span></div>
-        <p class="price-desc">For developers running agent sessions daily. Unlimited prompts, multi-session monitoring.</p>
-        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)">30-day free trial &mdash; cancel anytime</div>
+        <p class="price-desc" data-i18n="pricing.proDesc">For developers running agent sessions daily. Unlimited prompts, multi-session monitoring.</p>
+        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)" data-i18n="pricing.proTrial">30-day free trial &mdash; cancel anytime</div>
         <ul class="price-features">
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;optimizations</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>3 connected sessions</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>2 devices</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>All 3 optimization modes</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Agent monitoring + duplicate detection</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Auto-replace &amp; Send-mode</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>CLAUDE.md rule generation</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.proF1"><strong>Unlimited</strong>&nbsp;optimizations</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF2">3 connected sessions</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF3">2 devices</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF4">All 3 optimization modes</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF5">Agent monitoring + duplicate detection</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF6">Auto-replace &amp; Send-mode</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF7">CLAUDE.md rule generation</span></li>
         </ul>
-        <button class="price-btn accent" onclick="handlePricing('pro')">Start Free Trial</button>
+        <button class="price-btn accent" onclick="handlePricing('pro')" data-i18n="pricing.startTrial">Start Free Trial</button>
       </div>
 
       <!-- PREMIUM -->
       <div class="price-card">
-        <div class="price-tier" style="color:var(--ac)">Premium</div>
+        <div class="price-tier" style="color:var(--ac)" data-i18n="pricing.premium">Premium</div>
         <div class="price-amount"><span class="curr">$</span>99<span class="period">/mo</span></div>
-        <p class="price-desc">For teams and power users. Unlimited everything, priority support.</p>
-        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)">30-day free trial &mdash; cancel anytime</div>
+        <p class="price-desc" data-i18n="pricing.premiumDesc">For teams and power users. Unlimited everything, priority support.</p>
+        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)" data-i18n="pricing.proTrial">30-day free trial &mdash; cancel anytime</div>
         <ul class="price-features">
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;optimizations</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;connected sessions</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><strong>Unlimited</strong>&nbsp;devices</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>All 3 optimization modes</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Full agent analytics + rule generation</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Auto-replace &amp; Send-mode</li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Priority support</li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.proF1"><strong>Unlimited</strong>&nbsp;optimizations</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.premiumF2"><strong>Unlimited</strong>&nbsp;connected sessions</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.premiumF3"><strong>Unlimited</strong>&nbsp;devices</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF4">All 3 optimization modes</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.premiumF5">Full agent analytics + rule generation</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF6">Auto-replace &amp; Send-mode</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.premiumF7">Priority support</span></li>
         </ul>
-        <button class="price-btn primary" onclick="handlePricing('premium')">Start Free Trial</button>
+        <button class="price-btn primary" onclick="handlePricing('premium')" data-i18n="pricing.startTrial">Start Free Trial</button>
       </div>
     </div>
   </div>
@@ -1932,50 +1939,50 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ FAQ ═══ -->
 <section class="faq-section" id="faq">
   <div class="faq-inner" style="text-align:center">
-    <div class="label rv" style="margin:0 auto 18px">FAQ</div>
-    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:6px">Frequently asked <span class="gradient-text">questions</span></h2>
-    <p class="rv d1" style="color:var(--t2);font-size:15px;max-width:520px;margin:0 auto">Everything you need to know about token optimization and how Terse saves you money.</p>
+    <div class="label rv" style="margin:0 auto 18px" data-i18n="faq.sectionTitle">FAQ</div>
+    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:6px" data-i18n-html="faq.heading">Frequently asked <span class="gradient-text">questions</span></h2>
+    <p class="rv d1" style="color:var(--t2);font-size:15px;max-width:520px;margin:0 auto" data-i18n="faq.subtitle">Everything you need to know about token optimization and how Terse saves you money.</p>
 
     <div class="faq-grid rv d2" style="text-align:left">
       <div class="faq-item">
-        <div class="faq-q">What is token optimization?</div>
-        <div class="faq-a">Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 20+ techniques &mdash; including <a href="/spell-correction" style="color:var(--ac)">spell correction</a>, filler removal, <a href="/pattern-optimization" style="color:var(--ac)">prompt compression</a>, and semantic deduplication &mdash; to cut token usage by 40-70%, directly lowering AI API costs. <a href="/what-is-token-optimization" style="color:var(--ac)">Read the full guide &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q1">What is token optimization?</div>
+        <div class="faq-a" data-i18n-html="faq.a1">Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 20+ techniques &mdash; including <a href="/spell-correction" style="color:var(--ac)">spell correction</a>, filler removal, <a href="/pattern-optimization" style="color:var(--ac)">prompt compression</a>, and semantic deduplication &mdash; to cut token usage by 40-70%, directly lowering AI API costs. <a href="/what-is-token-optimization" style="color:var(--ac)">Read the full guide &rarr;</a></div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">How much can Terse save on AI costs?</div>
-        <div class="faq-a">Terse reduces token usage by 40-70% on verbose prompts and up to 89% on CLI output noise. A typical 2-hour coding session generates ~210K tokens of raw output, which Terse compresses to ~23K. Combined with duplicate detection and redundant read flagging, total session costs drop 3-5x. <a href="/reduce-ai-api-costs" style="color:var(--ac)">See the cost breakdown &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q2">How much can Terse save on AI costs?</div>
+        <div class="faq-a" data-i18n="faq.a2">Terse reduces token usage by 40-70% on verbose prompts and up to 89% on CLI output noise. A typical 2-hour coding session generates ~210K tokens of raw output, which Terse compresses to ~23K. Combined with duplicate detection and redundant read flagging, total session costs drop 3-5x. <a href="/reduce-ai-api-costs" style="color:var(--ac)">See the cost breakdown &rarr;</a></div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">Which AI tools does Terse work with?</div>
-        <div class="faq-a">Terse auto-detects Claude Code, Cursor, OpenClaw, Aider, and any terminal-based AI agent via process scanning. It also works with browser-based tools like ChatGPT, Claude.ai, and Gemini through macOS Accessibility API integration with Chrome and Safari. <a href="#agents" style="color:var(--ac)">See agent monitoring &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q3">Which AI tools does Terse work with?</div>
+        <div class="faq-a" data-i18n="faq.a3">Terse auto-detects Claude Code, Cursor, OpenClaw, Aider, and any terminal-based AI agent via process scanning. It also works with browser-based tools like ChatGPT, Claude.ai, and Gemini through macOS Accessibility API integration with Chrome and Safari. <a href="#agents" style="color:var(--ac)">See agent monitoring &rarr;</a></div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">How does prompt compression work?</div>
-        <div class="faq-a">Terse runs a <a href="#pipeline" style="color:var(--ac)">7-stage pipeline</a>: spell correction (400+ typo fixes), whitespace normalization, pattern optimization (130+ rules), redundancy elimination, <a href="/nlp-analysis" style="color:var(--ac)">NLP analysis</a>, <a href="/telegraph-compression" style="color:var(--ac)">telegraph compression</a>, and final cleanup. Code blocks, URLs, and technical terms are protected throughout.</div>
+        <div class="faq-q" data-i18n="faq.q4">How does prompt compression work?</div>
+        <div class="faq-a" data-i18n="faq.a4">Terse runs a <a href="#pipeline" style="color:var(--ac)">7-stage pipeline</a>: spell correction (400+ typo fixes), whitespace normalization, pattern optimization (130+ rules), redundancy elimination, <a href="/nlp-analysis" style="color:var(--ac)">NLP analysis</a>, <a href="/telegraph-compression" style="color:var(--ac)">telegraph compression</a>, and final cleanup. Code blocks, URLs, and technical terms are protected throughout.</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">Does optimization reduce AI output quality?</div>
-        <div class="faq-a">No. Token optimization removes noise &mdash; filler words, hedging, redundant phrases, typos &mdash; without changing intent. Research from <a href="/llmlingua" style="color:var(--ac)">LLMLingua (EMNLP 2023)</a> shows compressed prompts maintain or improve output quality because models receive cleaner, more focused instructions.</div>
+        <div class="faq-q" data-i18n="faq.q5">Does optimization reduce AI output quality?</div>
+        <div class="faq-a" data-i18n="faq.a5">No. Token optimization removes noise &mdash; filler words, hedging, redundant phrases, typos &mdash; without changing intent. Research from <a href="/llmlingua" style="color:var(--ac)">LLMLingua (EMNLP 2023)</a> shows compressed prompts maintain or improve output quality because models receive cleaner, more focused instructions.</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">What&rsquo;s the difference from prompt engineering?</div>
-        <div class="faq-a">Prompt engineering focuses on crafting better instructions for better AI outputs. Token optimization reduces the cost of those instructions by removing waste &mdash; filler, typos, redundancy &mdash; without changing meaning. Terse handles optimization automatically so you can focus on engineering for quality. <a href="/what-is-token-optimization" style="color:var(--ac)">Learn more &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q6">What&rsquo;s the difference from prompt engineering?</div>
+        <div class="faq-a" data-i18n="faq.a6">Prompt engineering focuses on crafting better instructions for better AI outputs. Token optimization reduces the cost of those instructions by removing waste &mdash; filler, typos, redundancy &mdash; without changing meaning. Terse handles optimization automatically so you can focus on engineering for quality. <a href="/what-is-token-optimization" style="color:var(--ac)">Learn more &rarr;</a></div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">Is Terse free to use?</div>
-        <div class="faq-a">Yes. Both plans include a 30-day free trial &mdash; no charge until your trial ends. <a href="#pricing" style="color:var(--ac)">Pro ($4.99/mo)</a> includes unlimited optimizations, 3 sessions, agent monitoring, and CLAUDE.md generation. Premium ($99/mo) includes unlimited sessions, devices, and priority support. Cancel anytime.</div>
+        <div class="faq-q" data-i18n="faq.q7">Is Terse free to use?</div>
+        <div class="faq-a" data-i18n="faq.a7">Yes. Both plans include a 30-day free trial &mdash; no charge until your trial ends. <a href="#pricing" style="color:var(--ac)">Pro ($4.99/mo)</a> includes unlimited optimizations, 3 sessions, agent monitoring, and CLAUDE.md generation. Premium ($99/mo) includes unlimited sessions, devices, and priority support. Cancel anytime.</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">How do AI tokens affect cost?</div>
-        <div class="faq-a">AI models charge per token (~4 characters each). Claude Opus costs $15-$75 per million tokens, GPT-4o costs $2.50-$10. A single agent session can consume 200K+ tokens, costing $3-$15. Heavy users spend $200-500+/month on API costs alone. <a href="/ai-token-pricing-comparison" style="color:var(--ac)">See the full pricing comparison &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q8">How do AI tokens affect cost?</div>
+        <div class="faq-a" data-i18n="faq.a8">AI models charge per token (~4 characters each). Claude Opus costs $15-$75 per million tokens, GPT-4o costs $2.50-$10. A single agent session can consume 200K+ tokens, costing $3-$15. Heavy users spend $200-500+/month on API costs alone. <a href="/ai-token-pricing-comparison" style="color:var(--ac)">See the full pricing comparison &rarr;</a></div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">What is the Token Exchange?</div>
-        <div class="faq-a">The <a href="/marketplace" style="color:var(--ac)">Token Exchange</a> is a marketplace where users trade unused AI API tokens. Sellers list their API keys at a discount, buyers get cheaper access. Terse runs a proxy that optimizes every request before forwarding, so the actual API cost is 30-60% less. Terse takes a 15% commission. Your API keys are encrypted with AES-256 and never exposed to buyers.</div>
+        <div class="faq-q" data-i18n="faq.q9">What is the Token Exchange?</div>
+        <div class="faq-a" data-i18n="faq.a9">The <a href="/marketplace" style="color:var(--ac)">Token Exchange</a> is a marketplace where users trade unused AI API tokens. Sellers list their API keys at a discount, buyers get cheaper access. Terse runs a proxy that optimizes every request before forwarding, so the actual API cost is 30-60% less. Terse takes a 15% commission. Your API keys are encrypted with AES-256 and never exposed to buyers.</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">How do I buy or sell tokens?</div>
-        <div class="faq-a">Sign in at <a href="/marketplace" style="color:var(--ac)">terseai.org/marketplace</a>. To sell: paste your API key, drag a slider to set your discount, done. To buy: top up your balance, generate a Terse API key, and use it in any SDK &mdash; just set the base URL to Terse's proxy. One terminal command to configure.</div>
+        <div class="faq-q" data-i18n="faq.q10">How do I buy or sell tokens?</div>
+        <div class="faq-a" data-i18n="faq.a10">Sign in at <a href="/marketplace" style="color:var(--ac)">terseai.org/marketplace</a>. To sell: paste your API key, drag a slider to set your discount, done. To buy: top up your balance, generate a Terse API key, and use it in any SDK &mdash; just set the base URL to Terse's proxy. One terminal command to configure.</div>
       </div>
     </div>
   </div>
@@ -1984,33 +1991,33 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ CTA ═══ -->
 <section class="cta" id="dl">
   <div class="cta-glow"></div>
-  <h2 class="rv">Stop wasting<br><span class="gradient-text">tokens and money.</span></h2>
-  <p class="rv d1">Optimize every prompt. Monitor every agent session. And trade unused tokens on the Exchange &mdash; buy at up to 50% off, or sell your idle credits and earn.</p>
+  <h2 class="rv" data-i18n-html="cta.heading">Stop wasting<br><span class="gradient-text">tokens and money.</span></h2>
+  <p class="rv d1" data-i18n="cta.subtitle">Optimize every prompt. Monitor every agent session. And trade unused tokens on the Exchange &mdash; buy at up to 50% off, or sell your idle credits and earn.</p>
   <div class="hero-actions rv d2" style="flex-wrap:wrap;justify-content:center">
-    <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none">Download Optimizer <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
-    <a href="/marketplace" class="btn-ghost" style="text-decoration:none">Buy / Sell Tokens <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none"><span data-i18n="hero.download">Download Optimizer</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
+    <a href="/marketplace" class="btn-ghost" style="text-decoration:none"><span data-i18n="hero.exchange">Buy / Sell Tokens</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
   </div>
   <p style="font-size:15px;color:var(--ac);text-align:center;margin-top:16px;position:relative;z-index:1;font-weight:600;line-height:1.6">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-    After installing, drag Terse to <strong>Applications</strong>, then paste this in <strong>Terminal</strong>:
+    <span data-i18n-html="hero.installNote">After installing, drag Terse to <strong>Applications</strong>, then paste this in <strong>Terminal</strong>:</span>
     <br><code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 14px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:400;color:var(--ac);cursor:pointer;word-break:break-all;position:relative;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null & <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:6px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
-    <br><span style="font-size:13px;font-weight:400;color:var(--t2)">macOS blocks unsigned apps by default &mdash; this command clears it. Only needed once after install.</span>
+    <br><span style="font-size:13px;font-weight:400;color:var(--t2)" data-i18n="hero.installWarning">macOS blocks unsigned apps by default &mdash; this command clears it. Only needed once after install.</span>
   </p>
   <div class="rv d3" style="margin-top:40px;display:flex;justify-content:center;gap:32px;position:relative;z-index:1">
-    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>100% on-device</span>
-    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Zero latency</span>
+    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span data-i18n="cta.onDevice">100% on-device</span></span>
+    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><span data-i18n="cta.zeroLatency">Zero latency</span></span>
   </div>
 </section>
 </main>
 
 <footer>
   <div class="footer-inner">
-    <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p>Token optimizer + marketplace. Compress prompts, monitor agent sessions, detect duplicates &mdash; and trade unused API tokens on the Token Exchange. Save &amp; earn.</p></div>
-    <div class="footer-col"><h4>Product</h4><a href="#pipeline">Pipeline</a><a href="#techniques">Techniques</a><a href="#agents">Agent Monitor</a><a href="/marketplace">Token Exchange</a><a href="#pricing">Pricing</a><a href="#dl">Download</a></div>
-    <div class="footer-col"><h4>Techniques</h4><a href="/spell-correction">Spell Correction</a><a href="/pattern-optimization">Pattern Optimization</a><a href="/nlp-analysis">NLP Analysis</a><a href="/telegraph-compression">Telegraph Compression</a></div>
-    <div class="footer-col"><h4>Learn</h4><a href="/what-is-token-optimization">What Is Token Optimization?</a><a href="/reduce-ai-api-costs">How to Reduce AI API Costs</a><a href="/ai-token-pricing-comparison">AI Token Pricing Comparison</a><a href="/llmlingua">LLMLingua (EMNLP 2023)</a><a href="/docs">Docs</a></div>
+    <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">Token optimizer + marketplace. Compress prompts, monitor agent sessions, detect duplicates &mdash; and trade unused API tokens on the Token Exchange. Save &amp; earn.</p></div>
+    <div class="footer-col"><h4 data-i18n="footer.product">Product</h4><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#techniques" data-i18n="footer.techniques">Techniques</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="#dl" data-i18n="footer.download">Download</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.techniques">Techniques</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">Spell Correction</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">Pattern Optimization</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP Analysis</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">Telegraph Compression</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/what-is-token-optimization" data-i18n="footer.whatIsTokenOpt">What Is Token Optimization?</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="/ai-token-pricing-comparison" data-i18n="footer.pricingComparison">AI Token Pricing Comparison</a><a href="/llmlingua">LLMLingua (EMNLP 2023)</a><a href="/docs">Docs</a></div>
   </div>
-  <div class="footer-bottom"><span>&copy; 2026 Terse &middot; Last updated March 2026</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+  <div class="footer-bottom"><span data-i18n="footer.copyright">&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
 </footer>
 
 <script>
@@ -2949,19 +2956,72 @@ async function handlePricing(tier) {
 async function startCheckout(tier) {
   const user = window.Clerk.user;
   if (!user) return;
+  showPaymentMethodPicker(tier);
+}
+
+function showPaymentMethodPicker(tier) {
+  // Remove existing picker if any
+  const existing = document.getElementById('payment-method-picker');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'payment-method-picker';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)';
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--bg2,#1e1e22);border:1px solid var(--bdl,#333);border-radius:16px;padding:32px;max-width:400px;width:90%;color:var(--t1,#fff);font-family:inherit';
+  modal.innerHTML = `
+    <h3 style="margin:0 0 8px;font-size:18px" data-i18n="payment.heading">Choose Payment Method</h3>
+    <p style="margin:0 0 20px;font-size:13px;color:var(--t2,#aaa)" data-i18n="payment.subtitle">Select how you'd like to pay after your 30-day free trial:</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button data-method="card" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:1px solid var(--bdl,#444);background:var(--bg3,#28282c);color:var(--t1,#fff);cursor:pointer;font-size:14px;transition:border-color .2s">
+        <span style="font-size:20px">&#x1F4B3;</span>
+        <span><strong data-i18n="payment.card">Card / Link</strong><br><span style="font-size:12px;color:var(--t2,#aaa)" data-i18n="payment.cardDesc">Visa, Mastercard, JCB, etc.</span></span>
+      </button>
+      <button data-method="wechat_pay" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:1px solid var(--bdl,#444);background:var(--bg3,#28282c);color:var(--t1,#fff);cursor:pointer;font-size:14px;transition:border-color .2s">
+        <span style="font-size:20px">💬</span>
+        <span><strong data-i18n="payment.wechat">WeChat Pay</strong> <span style="font-size:11px;color:var(--t2,#aaa)">&#x5FAE;&#x4FE1;&#x652F;&#x4ED8;</span><br><span style="font-size:12px;color:var(--t2,#aaa)" data-i18n="payment.wechatDesc">Invoice sent each billing cycle</span></span>
+      </button>
+    </div>
+    <p style="margin:16px 0 0;font-size:11px;color:var(--t2,#888);text-align:center" data-i18n="payment.trialNote">No charge during 30-day trial. Cancel anytime.</p>
+  `;
+
+  // Hover effect
+  modal.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('mouseenter', () => btn.style.borderColor = '#09f');
+    btn.addEventListener('mouseleave', () => btn.style.borderColor = 'var(--bdl,#444)');
+    btn.addEventListener('click', () => {
+      overlay.remove();
+      doCheckout(tier, btn.dataset.method);
+    });
+  });
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+async function doCheckout(tier, paymentMethod) {
+  const user = window.Clerk.user;
+  if (!user) return;
 
   const btn = document.querySelector(`[onclick="handlePricing('${tier}')"]`);
   if (btn) { btn.textContent = 'Loading...'; btn.disabled = true; }
 
   try {
+    const body = {
+      tier,
+      clerkUserId: user.id,
+      clerkUserEmail: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress,
+    };
+    if (paymentMethod && paymentMethod !== 'card') {
+      body.paymentMethod = paymentMethod;
+    }
+
     const res = await fetch(`${API_BASE}/api/checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tier,
-        clerkUserId: user.id,
-        clerkUserEmail: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress,
-      }),
+      body: JSON.stringify(body),
     });
 
     const data = await res.json();
@@ -3015,6 +3075,36 @@ updateClerkUI = function() {
     window.history.replaceState({}, '', window.location.pathname);
   }
 })();
+</script>
+<script src="i18n.js"></script>
+<script>
+// Language switcher
+function initLangSwitcher(){
+  const menu = document.getElementById('lang-menu');
+  const label = document.getElementById('current-lang-label');
+  if(!menu || !window.i18n) return;
+  menu.innerHTML = '';
+  window.i18n.languages.forEach(l => {
+    const btn = document.createElement('button');
+    btn.textContent = l.native;
+    btn.style.cssText = 'display:block;width:100%;padding:8px 12px;background:transparent;border:none;color:var(--t1);font-size:13px;font-weight:500;cursor:pointer;text-align:left;border-radius:6px;font-family:inherit';
+    btn.onmouseenter = ()=>btn.style.background='var(--s)';
+    btn.onmouseleave = ()=>btn.style.background='transparent';
+    btn.onclick = ()=>{
+      window.i18n.setLang(l.code);
+      label.textContent = l.code.split('-')[0].toUpperCase();
+      menu.style.display='none';
+    };
+    menu.appendChild(btn);
+  });
+  label.textContent = window.i18n.lang.split('-')[0].toUpperCase();
+  // Close on outside click
+  document.addEventListener('click',e=>{
+    if(!document.getElementById('lang-switcher').contains(e.target)) menu.style.display='none';
+  });
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initLangSwitcher);
+else initLangSwitcher();
 </script>
 </body>
 </html>

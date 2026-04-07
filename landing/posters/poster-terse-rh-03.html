@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<title>Terse RH 03 — AI Agent Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1350px;overflow:hidden;background:#d1e847;font-family:'Inter',sans-serif;color:#1a1800}
+.canvas{width:960px;height:600px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:40px 48px;display:flex;flex-direction:column;background:#d1e847;border-radius:12px;overflow:hidden}
+
+/* POPUP BAR */
+.popup{background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:22px 26px 18px}
+.popup-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.popup-app{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;flex:1;min-width:180px}
+.dot{width:9px;height:9px;border-radius:50%;background:#1a1800}
+.pills{display:flex;background:rgba(0,0,0,.04);border-radius:8px;overflow:hidden;font-size:12px;font-weight:600}
+.pill{padding:6px 14px;color:rgba(0,0,0,.4)}
+.pill.active{background:#fff;color:#1a1800;border-radius:8px}
+.popup-meta{display:flex;gap:16px;font-size:13px;color:rgba(0,0,0,.4);font-family:'JetBrains Mono',monospace;margin-top:10px}
+.popup-meta .green{color:#00C805}
+
+/* AGENT CARD */
+.agent{background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.04);border-radius:16px;padding:26px 28px;flex:1;overflow:hidden;display:flex;flex-direction:column}
+.agent-header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.agent-title{font-size:20px;font-weight:700;flex:1}
+.agent-controls{font-size:13px;color:rgba(0,0,0,.4);display:flex;gap:8px}
+.agent-saved{color:#00C805;font-size:14px;font-weight:700}
+.agent-ctx-line{font-size:12px;color:rgba(0,0,0,.35);font-family:'JetBrains Mono',monospace;margin:10px 0 16px}
+
+.log{font-size:13px;font-family:'JetBrains Mono',monospace;line-height:1.7;margin-bottom:16px;max-height:170px;overflow:hidden}
+.log .dim{color:rgba(0,0,0,.3)}
+.log .green{color:#00C805}
+.log .white{color:rgba(255,255,255,.75)}
+.log .token{color:rgba(0,0,0,.25);font-size:11px}
+
+.section-label{font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(0,0,0,.3);margin-bottom:10px;text-transform:uppercase}
+
+/* CONTEXT BAR */
+.ctx-bar-wrap{margin-bottom:18px}
+.ctx-bar-header{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.ctx-bar-title{font-size:14px;font-weight:700}
+.ctx-bar-val{font-size:14px;font-family:'JetBrains Mono',monospace;color:rgba(0,0,0,.4)}
+.ctx-bar{height:10px;background:rgba(0,0,0,.05);border-radius:5px;overflow:hidden}
+.ctx-bar-fill{height:100%;background:#1a1800;border-radius:5px;width:56%}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat{background:rgba(0,0,0,.03);border-radius:10px;padding:14px 12px;text-align:center}
+.stat-val{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:2px}
+.stat-label{font-size:10px;font-weight:600;letter-spacing:1.5px;color:rgba(0,0,0,.35);text-transform:uppercase}
+
+/* USAGE */
+.usage{font-size:13px;color:rgba(0,0,0,.4);margin-bottom:18px;font-family:'JetBrains Mono',monospace}
+.usage span{color:rgba(255,255,255,.6)}
+
+/* SAVINGS */
+.savings-header{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.savings-title{font-size:14px;font-weight:700;color:#00C805}
+.savings-sub{font-size:12px;color:rgba(0,0,0,.35)}
+.savings-bar{height:8px;background:rgba(0,0,0,.05);border-radius:4px;overflow:hidden;margin-bottom:14px}
+.savings-bar-fill{height:100%;background:#1a1800;border-radius:4px;width:66%}
+
+.savings-list{font-size:12px;font-family:'JetBrains Mono',monospace;color:rgba(0,0,0,.4);line-height:2;margin-bottom:14px}
+.savings-list .val{color:#00C805;float:right}
+
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tag{background:rgba(0,0,0,.08);color:#00C805;font-size:11px;font-weight:600;padding:5px 12px;border-radius:7px}
+
+.mac-cam{width:7px;height:7px;border-radius:50%;background:radial-gradient(#666,#444);margin:0 auto 7px}
+.mac-screen{
+  background:#d1e847;border-radius:3px;overflow:hidden;
+  padding:28px 32px 24px;
+  max-height:700px;overflow-y:auto;
+}
+.mac-chin{width:88%;margin:0 auto;height:12px;background:linear-gradient(180deg,#3a3a3a,#2a2a2a);border-radius:0 0 6px 6px}
+.mac-base{width:104%;margin-left:-2%;height:8px;background:linear-gradient(180deg,#d0d0d0,#b0b0b0,#c0c0c0);border-radius:0 0 8px 8px;box-shadow:0 2px 4px rgba(0,0,0,.06)}
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <!-- POPUP -->
+  <div class="popup">
+    <div class="popup-row">
+      <div class="popup-app"><div class="dot"></div><span>test.py — mercury</span></div>
+      <div class="pills"><div class="pill">Soft</div><div class="pill active">Normal</div><div class="pill">Aggr</div></div>
+      <div style="width:12px"></div>
+      <div class="pills"><div class="pill">Off</div><div class="pill active">Send</div><div class="pill">Auto</div></div>
+    </div>
+    <div class="popup-meta"><span class="green">692/1500 left</span><span>0 → 0</span></div>
+  </div>
+
+  <!-- AGENT CARD -->
+  <div class="agent">
+    <div class="agent-header">
+      <span style="font-size:22px"></span>
+      <div class="agent-title">Claude Code</div>
+      <div class="agent-controls">Monitoring &and; &times;</div>
+      <div class="agent-saved">21.3K saved</div>
+    </div>
+    <div class="agent-ctx-line">Ctx 56% | in 7.6M | Cache 88% | Tools 65</div>
+
+    <div class="log">
+      <div class="dim">→ Result:</div>
+      <div class="white">● Now I see the exact style — lime green background... <span class="token">[+342]</span></div>
+      <div class="dim">● Tool: Bash</div>
+      <div class="dim">  → ls /Users/James/Desktop/Terse/landing/posters/</div>
+      <div class="dim">  → Result: anim-floating.html, anim-hero.html...</div>
+    </div>
+
+    <div class="section-label">Context</div>
+    <div class="ctx-bar-wrap">
+      <div class="ctx-bar-header">
+        <div class="ctx-bar-title" style="color:#00C805">113.5K / 200K (56%)</div>
+      </div>
+      <div class="ctx-bar"><div class="ctx-bar-fill"></div></div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-val">28</div><div class="stat-label">Turns</div></div>
+      <div class="stat"><div class="stat-val">7.6M</div><div class="stat-label">Input</div></div>
+      <div class="stat"><div class="stat-val">88%</div><div class="stat-label">Cache</div></div>
+      <div class="stat"><div class="stat-val">65</div><div class="stat-label">Tools</div></div>
+    </div>
+
+    <div class="usage"><span>User 9%</span> &bull; <span>Asst 32%</span> &bull; <span>Tools 59%</span></div>
+
+    <div class="savings-header">
+      <div class="savings-title">21.3K tokens saved</div>
+      <div class="savings-sub">(+5.4K saveable)</div>
+    </div>
+    <div class="savings-bar"><div class="savings-bar-fill"></div></div>
+
+    <div class="savings-list">
+      <div>2 large tool results <span class="val">4.2K</span></div>
+      <div>8 prompts tighter <span class="val">-314</span></div>
+      <div>17 unused tools <span class="val">-17</span></div>
+      <div>7 duplicate calls <span class="val">-2.4K</span></div>
+      <div>Hook compressed 269 outputs <span class="val">-21.3K</span></div>
+    </div>
+
+    <div class="tags">
+      <div class="tag">Removed redundancy -311</div>
+      <div class="tag">Merged similar clauses -309</div>
+      <div class="tag">Compressed whitespace -261</div>
+      <div class="tag">Removed politeness -259</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

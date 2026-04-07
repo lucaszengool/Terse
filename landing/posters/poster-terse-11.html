@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse 5/5</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1350px;background:#FAF8F1;font-family:'Inter',-apple-system,sans-serif;overflow:hidden;position:relative}
+
+/* Yellow diagonal */
+.ybg{position:absolute;top:-250px;right:-180px;width:650px;height:1300px;background:#FFED29;transform:rotate(-28deg);border-radius:50px;z-index:1}
+
+/* Dots */
+.dot{position:absolute;border-radius:50%;background:#FFED29;z-index:5}
+.d1{width:52px;height:52px;top:105px;right:310px}
+.d2{width:36px;height:36px;bottom:150px;right:100px}
+
+/* ═══ SHARED 3D GROUND PLANE ═══ */
+.ground{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  z-index:10;perspective:1800px;perspective-origin:50% 30%;
+}
+.surface{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  transform-style:preserve-3d;transform:rotateX(48deg);
+}
+
+/* iPad device — white frame */
+.ipad{position:absolute;transform-style:preserve-3d}
+.front{
+  background:linear-gradient(160deg,#ffffff,#f5f5f5,#fafafa);
+  border-radius:18px;padding:10px;position:relative;
+  transform-style:preserve-3d;box-shadow:0 8px 30px rgba(0,0,0,.1);
+}
+.screen{border-radius:12px;overflow:hidden}
+.cam{position:absolute;top:13px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:radial-gradient(circle,#ccc,#aaa);z-index:5}
+.edge-r{position:absolute;top:3px;bottom:3px;right:0;width:8px;background:linear-gradient(180deg,#f0f0f0,#e8e8e8,#ededed,#f0f0f0);border-radius:0 4px 4px 0;transform:translateX(100%) rotateY(90deg);transform-origin:left}
+.edge-l{position:absolute;top:3px;bottom:3px;left:0;width:8px;background:linear-gradient(180deg,#f0f0f0,#e8e8e8,#ededed,#f0f0f0);border-radius:4px 0 0 4px;transform:translateX(-100%) rotateY(-90deg);transform-origin:right}
+.edge-b{position:absolute;bottom:0;left:3px;right:3px;height:8px;background:linear-gradient(90deg,#eeeeee,#e5e5e5,#eeeeee);border-radius:0 0 4px 4px;transform:translateY(100%) rotateX(-90deg);transform-origin:top}
+
+/* iPad sizes — MAX for clarity */
+.ipad-1{left:-10px;top:40px;width:640px;transform:rotateZ(-24deg);z-index:3}
+.ipad-1 .screen{width:620px;height:440px}
+.ipad-2{left:10px;top:560px;width:630px;transform:rotateZ(-13deg);z-index:2}
+.ipad-2 .screen{width:610px;height:430px}
+.ipad-3{left:490px;top:260px;width:660px;transform:rotateZ(13deg);z-index:4}
+.ipad-3 .screen{width:640px;height:450px}
+
+/* ═══ iOS App UI Components ═══ */
+.ios-screen{width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column}
+
+/* Status bar */
+.ios-status{display:flex;justify-content:space-between;align-items:center;padding:8px 18px;font-size:13px;font-weight:600;color:#1a1800}
+.ios-status .bat{display:flex;align-items:center;gap:5px;font-size:11px}
+.ios-status .bat .b{padding:2px 6px;background:#4ade80;border-radius:4px;color:#fff;font-size:10px;font-weight:800}
+.ios-status .notch{width:100px;height:22px;background:#1a1800;border-radius:0 0 14px 14px;position:absolute;top:0;left:50%;transform:translateX(-50%)}
+
+/* App header */
+.ios-header{padding:4px 20px 8px;display:flex;justify-content:space-between;align-items:center}
+.ios-header .title{display:flex;align-items:center;gap:8px}
+.ios-header .title .dot-g{width:10px;height:10px;border-radius:50%;background:#4ade80}
+.ios-header .title h1{font-size:22px;font-weight:900;color:#1a1800}
+.ios-header .pro{padding:4px 12px;background:#4ade80;border-radius:6px;font-size:11px;font-weight:800;color:#fff;letter-spacing:.5px}
+
+/* Quota */
+.ios-quota{padding:0 20px 10px;font-size:12px;color:rgba(26,24,0,.3);font-family:'JetBrains Mono',monospace}
+
+/* Mode picker */
+.ios-modes{display:flex;margin:0 20px 12px;border-radius:10px;overflow:hidden;border:1.5px solid rgba(26,24,0,.06)}
+.ios-modes div{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:600;color:rgba(26,24,0,.25);background:rgba(255,255,255,.3)}
+.ios-modes div.active{background:#fff;color:#1a1800;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+
+/* Text area */
+.ios-textarea{margin:0 20px;flex:1;background:rgba(200,210,140,.2);border-radius:14px;padding:16px 18px;font-size:14px;color:rgba(26,24,0,.25);min-height:80px}
+
+/* Optimize button */
+.ios-btn{margin:12px 20px;padding:14px;background:#6d8c2a;border-radius:14px;text-align:center;font-size:16px;font-weight:700;color:#fff;letter-spacing:.3px}
+
+/* Spacer */
+.ios-spacer{flex:1}
+
+/* Tab bar icons */
+.ios-tabs{display:flex;justify-content:space-around;padding:8px 20px;border-top:1px solid rgba(26,24,0,.03)}
+.ios-tabs .tab{width:28px;height:28px;border-radius:6px;background:rgba(26,24,0,.04);display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(26,24,0,.15)}
+.ios-tabs .tab.active{background:rgba(109,140,42,.12);color:#6d8c2a}
+
+/* Keyboard */
+.ios-kb{background:linear-gradient(180deg,#e2e8c0,#d8deb0);padding:6px 4px 4px;border-top:1px solid rgba(26,24,0,.06)}
+.ios-kb-bar{display:flex;justify-content:space-between;align-items:center;padding:4px 10px 6px;font-size:11px;color:rgba(26,24,0,.3)}
+.ios-kb-bar .terse-badge{display:flex;align-items:center;gap:5px;font-weight:700;color:rgba(26,24,0,.5)}
+.ios-kb-bar .terse-badge .d{width:7px;height:7px;border-radius:50%;background:#4ade80}
+.ios-kb-bar .sna{display:flex;gap:2px}
+.ios-kb-bar .sna span{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:rgba(26,24,0,.3);background:rgba(255,255,255,.3)}
+.ios-kb-bar .sna span.act{background:#4ade80;color:#fff}
+.kb-row{display:flex;gap:4px;justify-content:center;margin-bottom:4px}
+.kb-key{min-width:36px;height:34px;background:rgba(255,255,255,.55);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;color:#1a1800;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.kb-key.sm{min-width:30px;font-size:13px}
+.kb-key.wide{min-width:44px;font-size:11px;font-weight:700;color:rgba(26,24,0,.3)}
+.kb-key.space{flex:1;font-size:12px;color:rgba(26,24,0,.3)}
+.kb-key.send{min-width:54px;background:#4ade80;color:#fff;font-size:12px;font-weight:800}
+.kb-key.num{min-width:36px;font-size:11px;font-weight:700;color:rgba(26,24,0,.3)}
+.kb-bottom{display:flex;justify-content:space-between;align-items:center;padding:4px 12px 2px;font-size:16px;color:rgba(26,24,0,.2)}
+</style>
+</head>
+<body>
+
+<div class="ybg"></div>
+<div class="dot d1"></div>
+<div class="dot d2"></div>
+
+<!-- Shared 3D ground plane -->
+<div class="ground">
+  <div class="surface">
+
+    <!-- ═══ IPAD 1: Welcome screen (yellow) ═══ -->
+    <div class="ipad ipad-1">
+      <div class="front">
+        <div class="cam"></div>
+        <div class="edge-r"></div>
+        <div class="edge-b"></div>
+        <div class="screen"><div style="width:100%;height:100%;background:#FFED29;padding:16px 20px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:11px;color:rgba(26,24,0,.25)"><span style="font-size:14px;color:rgba(26,24,0,.4)">&#63743;</span><span style="font-weight:600;color:rgba(26,24,0,.35)">Terse</span><span>File</span><span>Edit</span><span style="margin-left:auto">Wi-Fi</span><span>3:42 PM</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;padding-top:10px">
+            <div style="width:84px;height:84px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:14px;box-shadow:0 4px 16px rgba(0,0,0,.04)"><span style="font-size:42px;font-weight:900;color:#1a1800">T</span></div>
+            <div style="font-size:28px;font-weight:800;color:#1a1800;margin-bottom:6px">Welcome to Terse</div>
+            <div style="font-size:16px;color:rgba(26,24,0,.25);margin-bottom:24px">Choose your style</div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:360px;margin-bottom:24px">
+              <div style="width:48px;height:48px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.05);box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+              <div style="width:48px;height:48px;border-radius:50%;background:#c4b5fd;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+              <div style="width:48px;height:48px;border-radius:50%;background:#fca5a5;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+              <div style="width:48px;height:48px;border-radius:50%;background:#67e8f9;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+              <div style="width:48px;height:48px;border-radius:50%;background:#1a1800;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+              <div style="width:48px;height:48px;border-radius:50%;background:#f9a8d4;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+              <div style="width:48px;height:48px;border-radius:50%;background:#6ee7b7;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+              <div style="width:48px;height:48px;border-radius:50%;background:#fde68a;box-shadow:0 2px 6px rgba(0,0,0,.04)"></div>
+            </div>
+            <div style="padding:14px 48px;background:#fff;border-radius:50px;font-size:17px;font-weight:700;color:#1a1800;box-shadow:0 2px 8px rgba(0,0,0,.03);margin-bottom:8px">Sign In</div>
+            <div style="font-size:14px;color:rgba(26,24,0,.22)">Create Account</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- ═══ IPAD 2: iOS Optimize view (from screenshot_02) ═══ -->
+    <div class="ipad ipad-2">
+      <div class="front">
+        <div class="cam"></div>
+        <div class="edge-r"></div>
+        <div class="edge-b"></div>
+        <div class="screen"><div class="ios-screen" style="background:#FAF8F1">
+          <!-- Status bar -->
+          <div style="position:relative">
+            <div class="ios-status"><span>23:54</span><div class="notch"></div><div class="bat">· ⁕ <span class="b">97⚡</span></div></div>
+          </div>
+          <!-- Header -->
+          <div class="ios-header"><div class="title"><div class="dot-g"></div><h1>Terse</h1></div><div class="pro">PRO</div></div>
+          <div class="ios-quota">120/120 left this week</div>
+          <!-- Mode picker -->
+          <div class="ios-modes"><div>Light</div><div class="active">Balanced</div><div>Aggressive</div></div>
+          <!-- Text area -->
+          <div class="ios-textarea">Paste a prompt to optimize...</div>
+          <!-- Optimize button -->
+          <div class="ios-btn">Optimize</div>
+          <div class="ios-spacer"></div>
+          <!-- Terse Keyboard -->
+          <div class="ios-kb">
+            <div class="ios-kb-bar">
+              <div class="terse-badge"><div class="d"></div>Terse 🍪</div>
+              <div class="sna"><span>S</span><span class="act">N</span><span>A</span><span style="font-size:10px;background:none">EN</span></div>
+              <div style="font-size:10px;color:rgba(26,24,0,.2)">Send = Optimize</div>
+            </div>
+            <div class="kb-row"><div class="kb-key">q</div><div class="kb-key">w</div><div class="kb-key">e</div><div class="kb-key">r</div><div class="kb-key">t</div><div class="kb-key">y</div><div class="kb-key">u</div><div class="kb-key">i</div><div class="kb-key">o</div><div class="kb-key">p</div></div>
+            <div class="kb-row"><div class="kb-key sm">a</div><div class="kb-key sm">s</div><div class="kb-key sm">d</div><div class="kb-key sm">f</div><div class="kb-key sm">g</div><div class="kb-key sm">h</div><div class="kb-key sm">j</div><div class="kb-key sm">k</div><div class="kb-key sm">l</div></div>
+            <div class="kb-row"><div class="kb-key wide">⇧</div><div class="kb-key sm">z</div><div class="kb-key sm">x</div><div class="kb-key sm">c</div><div class="kb-key sm">v</div><div class="kb-key sm">b</div><div class="kb-key sm">n</div><div class="kb-key sm">m</div><div class="kb-key wide">⌫</div></div>
+            <div class="kb-row"><div class="kb-key num">123</div><div class="kb-key space">space</div><div class="kb-key send">Send</div></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- ═══ IPAD 3: Settings (warm honey cream) ═══ -->
+    <div class="ipad ipad-3">
+      <div class="front">
+        <div class="cam"></div>
+        <div class="edge-l"></div>
+        <div class="edge-b"></div>
+        <div class="screen"><div style="width:100%;height:100%;background:linear-gradient(160deg,#FFF8E7,#FFF3D6);padding:16px 20px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:11px;color:rgba(26,24,0,.25)"><span style="font-size:14px;color:rgba(26,24,0,.4)">&#63743;</span><span style="font-weight:600;color:rgba(26,24,0,.35)">Terse</span><span>File</span><span>Edit</span><span style="margin-left:auto">Wi-Fi</span><span>3:42 PM</span></div>
+          <div style="font-size:26px;font-weight:700;margin-bottom:14px;color:#1a1800">Settings</div>
+          <div style="font-size:10px;font-weight:700;color:rgba(26,24,0,.15);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">AGGRESSIVENESS</div>
+          <div style="display:flex;border-radius:10px;overflow:hidden;border:1px solid rgba(26,24,0,.04);margin-bottom:14px"><div style="flex:1;padding:10px;text-align:center;font-size:14px;font-weight:600;background:rgba(255,255,255,.25);color:rgba(26,24,0,.2)">Light</div><div style="flex:1;padding:10px;text-align:center;font-size:14px;font-weight:700;background:#fff;color:#1a1800">Balanced</div><div style="flex:1;padding:10px;text-align:center;font-size:14px;font-weight:600;background:rgba(255,255,255,.25);color:rgba(26,24,0,.2)">Aggressive</div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.03)">Remove filler words<div style="width:40px;height:22px;border-radius:11px;background:#1a1800;position:relative"><div style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff"></div></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.03)">Remove politeness<div style="width:40px;height:22px;border-radius:11px;background:#1a1800;position:relative"><div style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff"></div></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.03)">Remove hedging<div style="width:40px;height:22px;border-radius:11px;background:#1a1800;position:relative"><div style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff"></div></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.03)">Remove meta-language<div style="width:40px;height:22px;border-radius:11px;background:#1a1800;position:relative"><div style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff"></div></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.03)">Shorten phrases<div style="width:40px;height:22px;border-radius:11px;background:#1a1800;position:relative"><div style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff"></div></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.03)">Simplify vocabulary<div style="width:40px;height:22px;border-radius:11px;background:#1a1800;position:relative"><div style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff"></div></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.03)">Remove redundancy<div style="width:40px;height:22px;border-radius:11px;background:rgba(26,24,0,.08);position:relative"><div style="position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff"></div></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px;color:rgba(26,24,0,.5);border-bottom:1px solid rgba(26,24,0,.03)">Compress whitespace<div style="width:40px;height:22px;border-radius:11px;background:#1a1800;position:relative"><div style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff"></div></div></div>
+          <div style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:8px 12px;background:rgba(26,24,0,.03);border-radius:8px;font-size:12px;color:rgba(26,24,0,.3)">🔒 100% on-device · Zero cloud</div>
+        </div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Floating keyboard keys -->
+<div style="position:absolute;top:180px;left:120px;z-index:3;width:36px;height:36px;background:#fff;border-radius:8px;box-shadow:0 3px 8px rgba(0,0,0,.06),inset 0 -2px 0 rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:rgba(26,24,0,.2);transform:rotate(-12deg)">T</div>
+<div style="position:absolute;top:300px;left:460px;z-index:3;width:32px;height:32px;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,.06),inset 0 -2px 0 rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(26,24,0,.15);transform:rotate(8deg)">⌘</div>
+<div style="position:absolute;bottom:320px;left:80px;z-index:3;width:34px;height:34px;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,.06),inset 0 -2px 0 rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(26,24,0,.15);transform:rotate(-6deg)">⌫</div>
+<div style="position:absolute;bottom:200px;right:180px;z-index:3;width:30px;height:30px;background:#FFED29;border-radius:7px;box-shadow:0 3px 8px rgba(200,180,0,.12),inset 0 -2px 0 rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1a1800;transform:rotate(15deg)">⏎</div>
+<div style="position:absolute;top:600px;left:440px;z-index:3;width:28px;height:28px;background:#fff;border-radius:6px;box-shadow:0 3px 8px rgba(0,0,0,.06),inset 0 -2px 0 rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:rgba(26,24,0,.12);transform:rotate(-18deg)">⇧</div>
+<div style="position:absolute;top:140px;right:350px;z-index:3;width:50px;height:30px;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,.06),inset 0 -2px 0 rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:rgba(26,24,0,.12);transform:rotate(5deg)">space</div>
+<div style="position:absolute;bottom:110px;left:300px;z-index:3;width:34px;height:34px;background:#FFED29;border-radius:7px;box-shadow:0 3px 8px rgba(200,180,0,.12),inset 0 -2px 0 rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#1a1800;transform:rotate(-8deg)">T</div>
+
+<!-- Terse logo -->
+<div style="position:fixed;bottom:32px;left:0;right:0;z-index:99999;text-align:center;pointer-events:none">
+  <div style="display:inline-flex;align-items:center;gap:10px;padding:8px 28px;background:rgba(250,248,241,.85);backdrop-filter:blur(16px);border-radius:50px;box-shadow:0 4px 20px rgba(0,0,0,.06)">
+    <div style="width:28px;height:28px;border-radius:8px;background:#FFED29;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#1a1800;box-shadow:0 2px 6px rgba(255,237,41,.3)">T</div>
+    <div style="font-size:36px;font-weight:900;color:#1a1800;letter-spacing:-1.5px">Terse</div>
+  </div>
+</div>
+
+</body>
+</html>

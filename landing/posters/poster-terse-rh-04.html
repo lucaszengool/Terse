@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<title>Terse RH 04 — Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1350px;overflow:hidden;background:#d1e847;font-family:'Inter',sans-serif;color:#1a1800}
+.canvas{width:960px;height:600px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:40px 48px;display:flex;flex-direction:column;background:#d1e847;border-radius:12px;overflow:hidden}
+
+.header{display:flex;align-items:center;margin-bottom:48px}
+.green-dot{width:14px;height:14px;border-radius:50%;background:#fff;margin-right:14px}
+.logo{font-size:22px;font-weight:700;letter-spacing:4px}
+.sessions{font-size:14px;color:rgba(0,0,0,.35);margin-left:16px;flex:1}
+.close{font-size:22px;color:rgba(0,0,0,.4)}
+
+.page-title{font-size:28px;font-weight:700;margin-bottom:36px}
+
+.label{font-size:12px;font-weight:700;letter-spacing:2.5px;color:rgba(0,0,0,.35);text-transform:uppercase;margin-bottom:16px}
+
+.mode-selector{display:flex;gap:0;background:rgba(0,0,0,.04);border-radius:12px;overflow:hidden;margin-bottom:40px}
+.mode{flex:1;padding:16px;text-align:center;font-size:16px;font-weight:600;color:rgba(0,0,0,.4);cursor:pointer}
+.mode.active{background:#fff;color:#1a1800;border-radius:12px}
+
+.toggle-row{display:flex;align-items:center;padding:18px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.toggle-row:last-of-type{border-bottom:none}
+.toggle-label{flex:1;font-size:17px;font-weight:500}
+.toggle{width:52px;height:30px;border-radius:15px;position:relative;cursor:pointer;flex-shrink:0}
+.toggle.on{background:#1a1800}
+.toggle.off{background:rgba(0,0,0,.08)}
+.toggle::after{content:'';position:absolute;width:24px;height:24px;border-radius:50%;background:#fff;top:3px;transition:.2s}
+.toggle.on::after{right:3px}
+.toggle.off::after{left:3px}
+
+.account-section{margin-top:40px}
+.account-card{display:flex;align-items:center;gap:18px;padding:22px 0}
+.avatar{width:52px;height:52px;border-radius:50%;background:#fff;color:#1a1800;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.account-info{flex:1}
+.account-name{font-size:17px;font-weight:600;margin-bottom:3px}
+.account-email{font-size:14px;color:rgba(0,0,0,.4)}
+.signout{padding:10px 22px;border-radius:10px;background:rgba(0,0,0,.05);color:#1a1800;font-size:14px;font-weight:600;font-family:'Inter',sans-serif;border:none;cursor:pointer}
+
+.mac-cam{width:7px;height:7px;border-radius:50%;background:radial-gradient(#666,#444);margin:0 auto 7px}
+.mac-screen{
+  background:#d1e847;border-radius:3px;overflow:hidden;
+  padding:28px 32px 24px;
+  max-height:700px;overflow-y:auto;
+}
+.mac-chin{width:88%;margin:0 auto;height:12px;background:linear-gradient(180deg,#3a3a3a,#2a2a2a);border-radius:0 0 6px 6px}
+.mac-base{width:104%;margin-left:-2%;height:8px;background:linear-gradient(180deg,#d0d0d0,#b0b0b0,#c0c0c0);border-radius:0 0 8px 8px;box-shadow:0 2px 4px rgba(0,0,0,.06)}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="header">
+    <div class="green-dot"></div>
+    <div class="logo">TERSE</div>
+    <div class="sessions">3 sessions</div>
+    <div class="close">✕</div>
+  </div>
+
+  <div class="page-title">Settings</div>
+
+  <div class="label">Aggressiveness</div>
+  <div class="mode-selector">
+    <div class="mode">Light</div>
+    <div class="mode active">Balanced</div>
+    <div class="mode">Aggressive</div>
+  </div>
+
+  <div class="toggle-row"><span class="toggle-label">Remove filler words</span><div class="toggle on"></div></div>
+  <div class="toggle-row"><span class="toggle-label">Remove politeness</span><div class="toggle on"></div></div>
+  <div class="toggle-row"><span class="toggle-label">Remove hedging</span><div class="toggle on"></div></div>
+  <div class="toggle-row"><span class="toggle-label">Remove meta-language</span><div class="toggle on"></div></div>
+  <div class="toggle-row"><span class="toggle-label">Shorten phrases</span><div class="toggle on"></div></div>
+  <div class="toggle-row"><span class="toggle-label">Simplify vocabulary</span><div class="toggle on"></div></div>
+  <div class="toggle-row"><span class="toggle-label">Remove redundancy</span><div class="toggle off"></div></div>
+  <div class="toggle-row"><span class="toggle-label">Compress whitespace</span><div class="toggle on"></div></div>
+  <div class="toggle-row"><span class="toggle-label">Compress code</span><div class="toggle off"></div></div>
+
+  <div class="account-section">
+    <div class="label">Account</div>
+    <div class="account-card">
+      <div class="avatar">Y</div>
+      <div class="account-info">
+        <div class="account-name">You</div>
+        <div class="account-email">your@email.com</div>
+      </div>
+      <button class="signout">Sign Out</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse — AI Agent Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1350px;font-family:'Inter',-apple-system,sans-serif;overflow:hidden;position:relative;background:#FFED29}
+
+.stripe{position:absolute;background:rgba(255,255,255,.55);border-radius:0}
+.s1{width:120px;height:100%;top:0;right:160px}
+.s2{width:120px;height:100%;top:0;right:320px}
+.s3{width:100%;height:120px;bottom:160px;left:0}
+
+.logo{position:absolute;top:50px;right:60px;z-index:20}
+.logo .name{font-size:64px;font-weight:900;color:#1a1800;letter-spacing:-2px;line-height:1}
+
+.card{
+  position:absolute;top:130px;left:50%;transform:translateX(-50%);
+  width:800px;background:#FFED29;border-radius:16px;
+  box-shadow:0 30px 80px rgba(0,0,0,.18),0 10px 30px rgba(0,0,0,.08);
+  z-index:10;overflow:hidden;
+}
+
+/* Popup bar */
+.popup-bar{
+  background:rgba(26,24,0,.92);border-radius:12px;margin-bottom:16px;color:#fff;overflow:hidden;
+}
+.popup-top{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.08);
+}
+.popup-app{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:rgba(255,255,255,.7);flex:1;min-width:0}
+.popup-app .dot{width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0}
+.popup-app .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mode-btns{display:flex;background:rgba(255,255,255,.1);border-radius:6px;overflow:hidden;margin:0 10px}
+.mode-btn{padding:5px 11px;font-size:11px;font-weight:600;color:rgba(255,255,255,.4)}
+.mode-btn.active{background:rgba(255,255,255,.2);color:#fff}
+.auto-btns{display:flex;background:rgba(255,255,255,.1);border-radius:6px;overflow:hidden}
+.auto-btn{padding:5px 10px;font-size:11px;font-weight:600;color:rgba(255,255,255,.4)}
+.auto-btn.active{background:rgba(255,255,255,.2);color:#fff}
+.popup-meta{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 14px 10px;font-size:11px;color:rgba(255,255,255,.35);
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* Session card */
+.session-card{
+  background:rgba(26,24,0,.06);border-radius:12px;overflow:hidden;
+}
+.session-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:rgba(26,24,0,.06);
+}
+.session-left{display:flex;align-items:center;gap:10px}
+.session-icon{
+  width:28px;height:28px;border-radius:7px;background:#1a1800;color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;
+}
+.session-name{font-size:14px;font-weight:700;color:#1a1800}
+.session-actions{font-size:12px;color:rgba(26,24,0,.4);display:flex;align-items:center;gap:6px}
+.session-actions span{cursor:pointer}
+.monitor-badge{
+  display:inline-flex;align-items:center;gap:4px;padding:3px 10px;
+  background:rgba(26,24,0,.08);border-radius:6px;font-size:11px;font-weight:600;color:#1a1800;
+}
+
+/* Context bar */
+.ctx-bar{padding:10px 16px;display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(26,24,0,.5);font-family:'JetBrains Mono',monospace;flex-wrap:wrap}
+.ctx-bar .sep{color:rgba(26,24,0,.15)}
+.saved-badge{
+  margin-left:auto;padding:3px 10px;background:rgba(74,222,128,.2);border-radius:6px;
+  font-size:11px;font-weight:700;color:#16a34a;
+}
+
+/* Log lines */
+.log{padding:4px 16px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8}
+.log-line{color:rgba(26,24,0,.4)}
+.log-line.highlight{color:#1a1800;font-weight:600}
+.log-line .arrow{color:rgba(26,24,0,.25)}
+.log-line .bullet{color:#1a1800;font-weight:700}
+.log-line .tool{color:#d97706;font-weight:600}
+.log-line .count{color:rgba(26,24,0,.3);font-size:10px}
+
+/* Context progress */
+.ctx-section{padding:10px 16px;border-top:1px solid rgba(26,24,0,.06)}
+.ctx-label{font-size:11px;font-weight:700;color:#1a1800;margin-bottom:6px;font-family:'JetBrains Mono',monospace}
+.ctx-progress{height:10px;background:rgba(26,24,0,.06);border-radius:5px;overflow:hidden;margin-bottom:4px}
+.ctx-fill{height:100%;background:linear-gradient(90deg,#1a1800,#8A8016);border-radius:5px;width:56%}
+.ctx-detail{font-size:10px;color:rgba(26,24,0,.35);font-family:'JetBrains Mono',monospace}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 16px}
+.stat-box{background:rgba(26,24,0,.04);border-radius:8px;padding:10px;text-align:center}
+.stat-label{font-size:9px;font-weight:700;color:rgba(26,24,0,.35);letter-spacing:1px;margin-bottom:4px}
+.stat-val{font-size:18px;font-weight:900;color:#1a1800;font-family:'JetBrains Mono',monospace}
+.stat-val .unit{font-size:11px;font-weight:600;color:rgba(26,24,0,.3)}
+
+/* Savings section */
+.savings{padding:12px 16px;border-top:1px solid rgba(26,24,0,.06)}
+.savings-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.savings-title{font-size:12px;font-weight:700;color:#1a1800}
+.savings-bar{height:8px;background:rgba(26,24,0,.06);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.savings-fill{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);border-radius:4px;width:66%}
+.savings-pct{font-size:10px;color:rgba(26,24,0,.35);font-family:'JetBrains Mono',monospace;margin-bottom:10px}
+
+.breakdown{font-size:11px;line-height:1.9;font-family:'JetBrains Mono',monospace}
+.breakdown-line{display:flex;justify-content:space-between;color:rgba(26,24,0,.5)}
+.breakdown-line .val{color:#16a34a;font-weight:600}
+.breakdown-line .val.neg{color:#dc2626}
+
+/* Tags */
+.tags{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px 14px}
+.tag{
+  padding:5px 12px;background:rgba(26,24,0,.06);border-radius:20px;
+  font-size:10px;font-weight:600;color:rgba(26,24,0,.5);
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* Balls */
+.balls{position:absolute;bottom:0;left:0;right:0;height:180px;z-index:5;overflow:hidden}
+.ball{position:absolute;bottom:-20px;border-radius:50%;background:linear-gradient(145deg,#FFED29,#e8d620);display:flex;align-items:center;justify-content:center;font-weight:900;color:#1a1800;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.ball .face{position:absolute;display:flex;flex-direction:column;align-items:center}
+.ball .eyes{display:flex;gap:6px}
+.ball .eye{width:5px;height:5px;border-radius:50%;background:#1a1800}
+.ball .eye.wink{width:7px;height:2px;border-radius:1px;background:#1a1800;margin-top:2px}
+.ball .mouth{margin-top:3px}
+.ball .mouth.smile{width:10px;height:5px;border-radius:0 0 6px 6px;border:2px solid #1a1800;border-top:0}
+.ball .mouth.open{width:8px;height:8px;border-radius:50%;background:#1a1800}
+.ball .mouth.flat{width:8px;height:2px;background:#1a1800;border-radius:1px}
+.ball .mouth.grin{width:12px;height:6px;border-radius:0 0 8px 8px;background:#1a1800}
+.ball .blush{position:absolute;width:6px;height:4px;border-radius:50%;background:#f9a8d4}
+</style>
+</head>
+<body>
+
+<div class="stripe s1"></div>
+<div class="stripe s2"></div>
+<div class="stripe s3"></div>
+
+<div class="logo">
+  <div class="name">Terse</div>
+</div>
+
+<div class="card">
+  <!-- Popup bar -->
+  <div class="popup-bar">
+    <div class="popup-top">
+      <div class="popup-app">
+        <div class="dot"></div>
+        <div class="name">test.py — mercury — 已删除</div>
+      </div>
+      <div class="mode-btns">
+        <div class="mode-btn">Soft</div>
+        <div class="mode-btn active">Normal</div>
+        <div class="mode-btn">Aggr</div>
+      </div>
+      <div class="auto-btns">
+        <div class="auto-btn active">Off</div>
+        <div class="auto-btn">Send</div>
+        <div class="auto-btn">Auto</div>
+      </div>
+    </div>
+    <div class="popup-meta">
+      <span>692/1500 left</span>
+      <span>0 → 0</span>
+    </div>
+  </div>
+
+  <!-- Session card -->
+  <div class="session-card">
+    <div class="session-header">
+      <div class="session-left">
+        <div class="session-icon">C</div>
+        <div class="session-name">Claude Code</div>
+        <div class="monitor-badge">Monitoring</div>
+      </div>
+      <div class="session-actions">
+        <span>∧</span>
+        <span>×</span>
+      </div>
+    </div>
+
+    <div class="ctx-bar">
+      <span>Ctx 56%</span><span class="sep">|</span>
+      <span>in 7.6M</span><span class="sep">|</span>
+      <span>Cache 88%</span><span class="sep">|</span>
+      <span>Tools 65</span>
+      <span class="saved-badge">21.3K saved</span>
+    </div>
+
+    <div class="log">
+      <div class="log-line"><span class="arrow">→</span> Result:</div>
+      <div class="log-line"><span class="arrow">→</span> Result:</div>
+      <div class="log-line"><span class="arrow">→</span> Result:</div>
+      <div class="log-line highlight"><span class="bullet">●</span> Now I see the exact style... <span class="count">70</span></div>
+      <div class="log-line"><span class="bullet tool">●</span> <span class="tool">Tool: Bash</span></div>
+      <div class="log-line"><span class="arrow">→</span> Result:</div>
+      <div class="log-line"><span class="arrow">→</span> Result:</div>
+    </div>
+
+    <div class="ctx-section">
+      <div class="ctx-label">CONTEXT: 113.5K / 200K (56%)</div>
+      <div class="ctx-progress"><div class="ctx-fill"></div></div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">TURNS</div>
+        <div class="stat-val">28</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">INPUT</div>
+        <div class="stat-val">7.6<span class="unit">M</span></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">CACHE</div>
+        <div class="stat-val">88<span class="unit">%</span></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">TOOLS</div>
+        <div class="stat-val">65</div>
+      </div>
+    </div>
+
+    <div class="savings">
+      <div class="savings-header">
+        <div class="savings-title">21.3K tokens saved (+5.4K saveable)</div>
+      </div>
+      <div class="savings-bar"><div class="savings-fill"></div></div>
+      <div class="savings-pct">66% optimization applied</div>
+
+      <div class="breakdown">
+        <div class="breakdown-line"><span>2 large tool results</span><span class="val">4.2K</span></div>
+        <div class="breakdown-line"><span>8 prompts could be tighter</span><span class="val neg">-314</span></div>
+      </div>
+    </div>
+
+    <div class="ctx-section" style="padding-top:8px">
+      <div class="ctx-label" style="font-size:10px;color:rgba(26,24,0,.35);margin-bottom:8px">How tokens were saved</div>
+      <div class="tags">
+        <div class="tag">Removed redundancy -311</div>
+        <div class="tag">Merged similar clauses -309</div>
+        <div class="tag">Compressed whitespace -261</div>
+        <div class="tag">Removed politeness -259</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="balls">
+  <div class="ball" style="width:100px;height:100px;left:30px;bottom:10px;transform:rotate(-8deg)">
+    <div class="face" style="top:30px"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth smile"></div></div>
+    <div class="blush" style="top:38px;left:18px"></div><div class="blush" style="top:38px;right:18px"></div>
+  </div>
+  <div class="ball" style="width:110px;height:110px;left:160px;bottom:20px">
+    <div class="face" style="top:34px"><div class="eyes"><div class="eye"></div><div class="eye wink"></div></div><div class="mouth grin"></div></div>
+  </div>
+  <div class="ball" style="width:90px;height:90px;left:300px;bottom:5px;transform:rotate(5deg)">
+    <div class="face" style="top:26px"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth open"></div></div>
+  </div>
+  <div class="ball" style="width:120px;height:120px;right:220px;bottom:15px;background:linear-gradient(145deg,#fff,#ffd);border:3px solid rgba(26,24,0,.06)">
+    <div class="face" style="top:38px"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth grin"></div></div>
+    <div class="blush" style="top:48px;left:22px"></div><div class="blush" style="top:48px;right:22px"></div>
+  </div>
+  <div class="ball" style="width:95px;height:95px;right:90px;bottom:8px;transform:rotate(10deg)">
+    <div class="face" style="top:28px"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth flat"></div></div>
+  </div>
+  <div class="ball" style="width:70px;height:70px;right:10px;bottom:25px">
+    <div class="face" style="top:20px"><div class="eyes" style="gap:4px"><div class="eye" style="width:4px;height:4px"></div><div class="eye" style="width:4px;height:4px"></div></div><div class="mouth smile" style="width:8px;height:4px"></div></div>
+  </div>
+</div>
+
+</body>
+</html>

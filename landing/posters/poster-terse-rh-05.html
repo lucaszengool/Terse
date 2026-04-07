@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<title>Terse RH 05 — Welcome Screen</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1350px;overflow:hidden;background:#d1e847;font-family:'Inter',sans-serif;color:#1a1800}
+.canvas{width:960px;height:600px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:40px 48px;display:flex;flex-direction:column;background:#d1e847;border-radius:12px;overflow:hidden}
+
+.app-icon{width:120px;height:120px;border-radius:28px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:48px}
+.app-icon span{font-size:52px;font-weight:700;color:#1a1a1a}
+
+.title{font-size:36px;font-weight:700;margin-bottom:14px;text-align:center}
+.subtitle{font-size:18px;color:rgba(0,0,0,.4);margin-bottom:48px;text-align:center}
+
+.colors{display:flex;flex-wrap:wrap;justify-content:center;gap:24px;margin-bottom:56px;max-width:400px}
+.color-circle{width:64px;height:64px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.15s}
+.color-circle.selected{border-color:#00C805;box-shadow:0 0 0 3px rgba(0,200,5,.3)}
+.c-white{background:#ffffff}
+.c-olive{background:#8B9A46}
+.c-pink{background:#E8758A}
+.c-cyan{background:#5BC4C8}
+.c-dark{background:#3A3A3A}
+.c-rose{background:#D4687A}
+.c-mint{background:#7ECDA0}
+.c-peach{background:#E8A87C}
+
+.signin-btn{padding:18px 64px;border-radius:50px;background:#fff;color:#1a1800;font-size:18px;font-weight:700;font-family:'Inter',sans-serif;border:none;cursor:pointer;margin-bottom:24px;letter-spacing:.5px}
+
+.create-link{font-size:16px;color:rgba(0,0,0,.4);cursor:pointer;text-decoration:none}
+.create-link:hover{color:rgba(255,255,255,.65)}
+
+.mac-cam{width:7px;height:7px;border-radius:50%;background:radial-gradient(#666,#444);margin:0 auto 7px}
+.mac-screen{
+  background:#d1e847;border-radius:3px;overflow:hidden;
+  padding:28px 32px 24px;
+  max-height:700px;overflow-y:auto;
+}
+.mac-chin{width:88%;margin:0 auto;height:12px;background:linear-gradient(180deg,#3a3a3a,#2a2a2a);border-radius:0 0 6px 6px}
+.mac-base{width:104%;margin-left:-2%;height:8px;background:linear-gradient(180deg,#d0d0d0,#b0b0b0,#c0c0c0);border-radius:0 0 8px 8px;box-shadow:0 2px 4px rgba(0,0,0,.06)}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="app-icon"><span>T</span></div>
+  <div class="title">Welcome to Terse</div>
+  <div class="subtitle">Choose your style</div>
+
+  <div class="colors">
+    <div class="color-circle c-white selected"></div>
+    <div class="color-circle c-olive"></div>
+    <div class="color-circle c-pink"></div>
+    <div class="color-circle c-cyan"></div>
+    <div class="color-circle c-dark"></div>
+    <div class="color-circle c-rose"></div>
+    <div class="color-circle c-mint"></div>
+    <div class="color-circle c-peach"></div>
+  </div>
+
+  <button class="signin-btn">Sign In</button>
+  <a class="create-link">Create Account</a>
+</div>
+</body>
+</html>

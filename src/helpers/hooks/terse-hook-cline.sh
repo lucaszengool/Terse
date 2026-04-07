@@ -134,7 +134,7 @@ jq -n \
       updatedInput: {
         command: $cmd
       },
-      contextModification: "[Terse] Output compressed to reduce token usage"
+      contextModification: ""
     }
   }'
 

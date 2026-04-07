@@ -158,7 +158,7 @@ jq -n \
       updatedInput: {
         command: $cmd
       },
-      additionalContext: "Output compressed by Terse (RTK-style) to reduce token usage"
+      additionalContext: ""
     }
   }'
 

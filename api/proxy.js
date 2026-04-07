@@ -231,6 +231,30 @@ async function handleProxy(req, res) {
     return res.status(402).json({ error: { message: 'Insufficient balance. Top up at https://www.pruneai.com/marketplace' } });
   }
 
+  // 4c. Auto model routing — downgrade expensive models for simple tasks
+  let effectiveModel = model;
+  const autoRoute = sellerKey.auto_model_routing !== 0; // default on
+  if (autoRoute) {
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    const userText = lastUserMsg ? (typeof lastUserMsg.content === 'string' ? lastUserMsg.content : (lastUserMsg.content || []).filter(p => p.type === 'text').map(p => p.text).join(' ')) : '';
+    const isExpensive = /opus|o3|gpt-4(?!o-mini)/i.test(model);
+    const isSimple = userText.length < 300 && !/\b(architect|design|refactor|complex|analyze|reason|step.by.step|review.*entire|full.*audit)\b/i.test(userText);
+    const hasTools = body.tools && body.tools.length > 0;
+    // Simple prompt + expensive model + not using complex tool patterns → downgrade
+    if (isExpensive && isSimple && messages.length <= 4) {
+      if (/claude.*opus/i.test(model)) {
+        effectiveModel = 'claude-sonnet-4-6-20250514';
+      } else if (/gpt-4(?!o-mini)/i.test(model) && !/gpt-4o-mini/.test(model)) {
+        effectiveModel = 'gpt-4o-mini';
+      } else if (/o3/i.test(model)) {
+        effectiveModel = 'gpt-4o';
+      }
+      if (effectiveModel !== model) {
+        console.log(`[proxy] auto-route: ${model} → ${effectiveModel} (simple prompt, ${userText.length} chars)`);
+      }
+    }
+  }
+
   // 5. Optimize messages (using seller's chosen mode)
   const optMode = sellerKey.optimization_mode || 'normal';
   const optimizedMessages = optimizeMessages(messages, optMode);
@@ -252,8 +276,8 @@ async function handleProxy(req, res) {
   let providerRes;
   try {
     if (provider === 'anthropic') {
-      // Pass through entire body, only swap messages for optimized version
-      const anthropicBody = { ...body, messages: optimizedMessages };
+      // Pass through entire body, swap messages + model for optimized/routed version
+      const anthropicBody = { ...body, messages: optimizedMessages, model: effectiveModel };
       if (!anthropicBody.max_tokens) anthropicBody.max_tokens = 4096;
 
       // Forward relevant anthropic-* headers from the client
@@ -273,8 +297,8 @@ async function handleProxy(req, res) {
         body: JSON.stringify(anthropicBody),
       });
     } else if (provider === 'openai') {
-      // Pass through entire body, only swap messages
-      const openaiBody = { ...body, messages: optimizedMessages };
+      // Pass through entire body, swap messages + model for optimized/routed version
+      const openaiBody = { ...body, messages: optimizedMessages, model: effectiveModel };
 
       providerRes = await fetch(PROVIDER_ENDPOINTS.openai, {
         method: 'POST',

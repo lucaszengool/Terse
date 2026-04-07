@@ -108,7 +108,7 @@ export default function tersePreToolUse(event: {
       ...toolInput,
       command: `(${command}) 2>&1 | node ${compressor}`,
     },
-    context: 'Output compressed by Terse to reduce token usage',
+    context: '',
   };
 }
 

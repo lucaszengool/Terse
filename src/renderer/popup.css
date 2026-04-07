@@ -90,6 +90,8 @@ body { height: 100%; background: var(--bg); color: var(--t1);
 .replace-btn:hover { background: var(--btn-hover); }
 .replace-btn:disabled { opacity: 0.4; cursor: default; }
 .replace-btn.success { background: var(--ac); color: #fff; }
+.replace-btn.busy { animation: pulse-btn 0.8s ease-in-out infinite; }
+@keyframes pulse-btn { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
 .copy-btn { display: flex; align-items: center; justify-content: center;
   padding: 8px 10px; background: var(--sf); color: var(--t1); border: none;
   border-radius: 9999px; cursor: pointer; }

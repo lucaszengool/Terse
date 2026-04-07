@@ -127,7 +127,7 @@ jq -n \
     updatedInput: {
       command: $cmd
     },
-    reason: "Output compressed by Terse to reduce token usage"
+    reason: ""
   }'
 
 exit 0

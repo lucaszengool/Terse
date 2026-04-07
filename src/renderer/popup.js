@@ -193,14 +193,19 @@ function _updatePopupUI(d) {
     document.getElementById('tokAfter').textContent = (stats.optimizedTokens || 0).toLocaleString();
     const pct = stats.percentSaved || 0;
     document.getElementById('tokPct').textContent = pct > 0 ? '-' + pct + '%' : '';
+    // Hide stats row when no savings
+    const statsRow = document.querySelector('.bar-stats-row');
+    if (statsRow) statsRow.style.opacity = pct > 0 ? '1' : '0.3';
     const tc = document.getElementById('techniques');
     tc.innerHTML = '';
-    (stats.techniquesApplied || []).forEach(t => {
-      const s = document.createElement('span');
-      s.className = 'technique-tag';
-      s.textContent = t;
-      tc.appendChild(s);
-    });
+    if (pct > 0) {
+      (stats.techniquesApplied || []).forEach(t => {
+        const s = document.createElement('span');
+        s.className = 'technique-tag';
+        s.textContent = t;
+        tc.appendChild(s);
+      });
+    }
     document.getElementById('optimized').value = d.optimized || '';
     document.getElementById('btnReplace').disabled = false;
     autoResizePopup();
@@ -211,6 +216,7 @@ function _updatePopupUI(d) {
 
 T.on('optimize-request', async (d) => {
   if (!window._terseOptimizer) return;
+  window._terseLastOriginal = d.text; // save for undo
   // Cooldown after Send/Replace — ignore polling for 2s to avoid re-reading optimized text
   if (Date.now() < _sendCooldownUntil) return;
 
@@ -474,12 +480,15 @@ document.getElementById('btnCapture').addEventListener('click', async () => {
   btn.classList.remove('busy');
 });
 
-// Replace
+// Replace (with undo support)
+let _lastOriginalText = null; // for undo
 document.getElementById('btnReplace').addEventListener('click', async () => {
   const text = document.getElementById('optimized').value;
   if (!text) return;
   const btn = document.getElementById('btnReplace');
-  btn.textContent = '...'; btn.disabled = true;
+  // Save original for undo (stored from last optimize-request)
+  _lastOriginalText = window._terseLastOriginal || null;
+  btn.textContent = '...'; btn.disabled = true; btn.classList.add('busy');
   _sendCooldownUntil = Date.now() + 2000; // 2s cooldown
   // Consume 0.5 quota on Replace click
   _invoke('record_optimization_usage').then(() => {
@@ -489,10 +498,23 @@ document.getElementById('btnReplace').addEventListener('click', async () => {
   }).catch(() => {});
   await T.replaceInTarget(text);
   btn.innerHTML = '&#10003;'; btn.classList.add('success');
+  // Show undo button briefly
+  if (_lastOriginalText) {
+    const undoBtn = document.getElementById('btnUndo');
+    if (undoBtn) { undoBtn.classList.remove('hidden'); undoBtn.style.display = ''; }
+  }
   setTimeout(() => {
     btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Replace';
-    btn.disabled = false; btn.classList.remove('success');
+    btn.disabled = false; btn.classList.remove('success'); btn.classList.remove('busy');
   }, 1200);
+});
+
+// Undo — restore original text after Replace
+document.getElementById('btnUndo').addEventListener('click', async () => {
+  if (!_lastOriginalText) return;
+  await T.replaceInTarget(_lastOriginalText);
+  document.getElementById('btnUndo').style.display = 'none';
+  _lastOriginalText = null;
 });
 
 // Copy
@@ -921,6 +943,21 @@ function updateAgentPanel(snapshot) {
     insights.push({ type: 'tip', icon: '⊘', text: `${tm.unusedEstimate} unused tools loaded (~${formatTokens(overhead)} tok/turn overhead)`, value: formatTokens(tm.unusedEstimate) });
   }
 
+  // Model routing suggestion — detect simple tasks on expensive models
+  const detectedModel = _planInfoCache?.rateLimitTier || snapshot.detectedModel || snapshot.model || '';
+  const isExpensiveModel = /opus|max_20x|max_5x/i.test(detectedModel);
+  const avgUserMsgLen = snapshot.allUserMessages?.length > 0
+    ? snapshot.allUserMessages.reduce((s, m) => s + (m.text || '').length, 0) / snapshot.allUserMessages.length
+    : 0;
+  if (isExpensiveModel && avgUserMsgLen < 200 && (snapshot.turns || 0) > 3) {
+    const pricing = getModelPricing(activeAgentType, detectedModel);
+    const sonnetPrice = 3.00; // Sonnet input $/M
+    const savings = Math.round((1 - sonnetPrice / pricing.input) * 100);
+    if (savings > 30) {
+      insights.push({ type: 'tip', icon: '💡', text: `Simple prompts detected — Sonnet could save ~${savings}% vs ${detectedModel}`, value: '-' + savings + '%' });
+    }
+  }
+
   // Duplicate tool calls
   const tcp = snapshot.toolCachePotential || {};
   if (tcp.duplicateCalls > 0) {
@@ -932,6 +969,14 @@ function updateAgentPanel(snapshot) {
   if (trs.compressibleTokens > 5000) {
     const compPctVal = trs.totalTokens > 0 ? Math.round((trs.compressibleTokens / trs.totalTokens) * 100) : 0;
     insights.push({ type: 'tip', icon: '▤', text: `Tool output ${compPctVal}% compressible (~${formatTokens(trs.compressibleTokens)} saveable)`, value: formatTokens(trs.compressibleTokens) });
+  }
+
+  // Output token cost warning (output is 5x more expensive than input)
+  const outputTok = snapshot.totalOutputTokens || 0;
+  const inputTok = snapshot.totalInputTokens || 1;
+  if (outputTok > 0 && outputTok > inputTok * 0.3) {
+    const outputPct = Math.round(outputTok / inputTok * 100);
+    insights.push({ type: 'warn', icon: '$', text: `Output tokens ${outputPct}% of input — output costs 5x more. Add conciseness rules.`, value: formatTokens(outputTok) });
   }
 
   // Active hook compression (RTK-style)
@@ -1380,6 +1425,11 @@ function generateClaudeMdSuggestions(snapshot) {
   }
   rules.push('- Keep responses focused and avoid filler phrases. Get straight to the answer or action.');
 
+  // Output token reduction rules (output tokens are 5x more expensive than input)
+  rules.push('- Minimize output length. Do not repeat code you did not change. Show only the diff or changed section.');
+  rules.push('- Do not add explanatory summaries after completing a task unless explicitly asked.');
+  rules.push('- When showing file contents, use line ranges. Never dump entire files in responses.');
+
   const tm = snapshot.toolManagement || {};
   if (tm.unusedEstimate > 3) {
     rules.push('- Only request tools you will actually use. Avoid loading unnecessary tool definitions.');
@@ -1390,8 +1440,11 @@ function generateClaudeMdSuggestions(snapshot) {
     rules.push('- Cache tool results locally. Do not make the same tool call twice in one session.');
   }
 
+  // Prompt caching preservation rules
+  rules.push('- Do not modify system prompt or tool definitions mid-session to preserve prompt cache.');
+
   let md = '# Agent Optimization Rules\n\n';
-  md += '# Generated by Terse based on observed session patterns\n\n';
+  md += '# Generated by Terse — reduces output tokens (5x more expensive) and preserves prompt cache\n\n';
   md += rules.join('\n') + '\n';
   return md;
 }

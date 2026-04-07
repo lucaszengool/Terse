@@ -106,7 +106,7 @@ async function startTrialCheckout(tier) {
     } else {
       toast('Error: ' + (data.error || 'Failed'), true);
     }
-  } catch { toast('Network error', true); }
+  } catch (e) { toast('Network error — check your connection', true); }
 }
 
 if ($('#paywallProBtn')) {
@@ -153,7 +153,12 @@ if (window.__TAURI__?.event?.listen) {
 }
 
 // Also refresh when window gets focus (user returns from browser after payment)
+// Debounced to avoid spamming server
+let _lastLicenseCheck = 0;
 window.addEventListener('focus', () => {
+  const now = Date.now();
+  if (now - _lastLicenseCheck < 10000) return; // skip if checked <10s ago
+  _lastLicenseCheck = now;
   updateLicenseBanner();
   checkPaywall();
   // Also verify with backend if signed in
@@ -212,8 +217,9 @@ function refreshSessions() {
       list.appendChild(item);
     });
 
-    // Show manual sessions
-    sessions.forEach(s => {
+    // Show manual sessions (cap at 20 to prevent DOM bloat)
+    const maxSessions = 20;
+    sessions.slice(0, maxSessions).forEach(s => {
       const item = document.createElement('div');
       item.className = 'session-item' + (s.active ? ' active' : '');
       item.innerHTML = `
@@ -237,6 +243,13 @@ function refreshSessions() {
       });
       list.appendChild(item);
     });
+    if (sessions.length > maxSessions) {
+      const more = document.createElement('div');
+      more.className = 'session-item';
+      more.style.cssText = 'text-align:center;font-size:10px;color:var(--t3);padding:6px';
+      more.textContent = '+ ' + (sessions.length - maxSessions) + ' more sessions';
+      list.appendChild(more);
+    }
   });
 }
 
@@ -270,7 +283,7 @@ T.on('toast', d => toast(d.msg, d.error));
 // ── Manual optimize ──
 $('#btnManualOpt').addEventListener('click', async () => {
   const text = $('#manualInput').value.trim();
-  if (text.length < 5) return;
+  if (text.length < 5) { toast('Text too short — need at least 5 characters'); return; }
   const r = await T.optimizeText(text);
   show('manual');
   $('#manStatBefore').textContent = r.stats.originalTokens.toLocaleString();

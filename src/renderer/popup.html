@@ -194,6 +194,10 @@
       <button id="btnCopy" class="copy-btn" title="Copy">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
       </button>
+      <button id="btnUndo" class="undo-btn hidden" title="Undo Replace" style="display:none;padding:4px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;font-size:10px;font-weight:600;color:var(--t2);cursor:pointer">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-8.36L1 10"/></svg>
+        Undo
+      </button>
     </div>
   </div>
   <script>
@@ -230,6 +234,11 @@
       }, Promise.resolve());
     }
     _loadScripts();
+
+    // i18n — purely additive, no changes to existing code
+    var i18nScript = document.createElement('script');
+    i18nScript.src = 'i18n.js';
+    document.body.appendChild(i18nScript);
   </script>
 </body>
 </html>

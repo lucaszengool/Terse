@@ -127,7 +127,7 @@
             "name": "What is token optimization?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 20+ techniques — including spell correction, filler removal, prompt compression, and semantic deduplication — to cut token usage by 40-70%, directly lowering AI API costs and extending context windows."
+              "text": "Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 35+ techniques — including spell correction, filler removal, prompt compression, and semantic deduplication — to cut token usage by 40-70%, directly lowering AI API costs and extending context windows."
             }
           },
           {
@@ -913,7 +913,7 @@
 
 <!-- Quotable definition for AI crawlers and GEO -->
 <div style="max-width:800px;margin:0 auto;padding:0 40px 30px;text-align:center">
-  <p style="font-size:14px;color:var(--t3);line-height:1.7"><strong style="color:var(--t2)">Terse</strong> is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider. Built on research from <a href="/llmlingua" style="color:var(--ac)">LLMLingua (EMNLP 2023)</a>, <a href="/norvig-spelling" style="color:var(--ac)">Norvig spelling correction</a>, and <a href="/selective-context" style="color:var(--ac)">selective context pruning</a>.</p>
+  <p style="font-size:14px;color:var(--t3);line-height:1.7"><strong style="color:var(--t2)">Terse</strong> is a macOS &amp; iOS token optimization tool that reduces AI prompt costs by 40-70% through 35+ intelligent compression techniques — including git diff compression, prompt caching awareness, conversation history summarization, model-specific optimization, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider. Built on research from <a href="/llmlingua" style="color:var(--ac)">LLMLingua (EMNLP 2023)</a>, <a href="/norvig-spelling" style="color:var(--ac)">Norvig spelling correction</a>, and <a href="/selective-context" style="color:var(--ac)">selective context pruning</a>.</p>
   <p style="font-size:11px;color:var(--t3);margin-top:8px;display:inline-flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Updated March 2026 &middot; v1.2.0</p>
 </div>
 
@@ -955,7 +955,7 @@
       <div class="feat rv">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
         <h3 data-i18n="features.optimizeTitle">Optimize every message</h3>
-        <p data-i18n="features.optimizeDesc">Intercepts prompts and agent commands before they hit the API — strips filler, fixes typos, shortens phrases, compresses verbose text. <a href="/what-is-token-optimization" style="color:var(--ac)">20+ techniques</a> including output compression: log deduplication, stack trace collapsing, JSON schema extraction, and terminal noise stripping. 40-80% fewer input tokens.</p>
+        <p data-i18n="features.optimizeDesc">Intercepts prompts and agent commands before they hit the API — strips filler, fixes typos, shortens phrases, compresses verbose text. <a href="/what-is-token-optimization" style="color:var(--ac)">35+ techniques</a> including output compression: log deduplication, stack trace collapsing, JSON schema extraction, and terminal noise stripping. 40-80% fewer input tokens.</p>
       </div>
       <div class="feat rv d1">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
@@ -966,6 +966,26 @@
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
         <h3 data-i18n="features.eliminateTitle">Eliminate wasted tokens</h3>
         <p data-i18n="features.eliminateDesc">Detects duplicate tool calls, flags files read multiple times, estimates compressible tool results (git 85%, tests 90%, builds 80%), and catches typos that cause costly retry loops. <a href="/reduce-ai-api-costs" style="color:var(--ac)">See how to cut AI API costs by 60-80%</a>.</p>
+      </div>
+      <div class="feat rv d1">
+        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+        <h3>Git diff compression</h3>
+        <p>Detects git diff output and compresses to only changed lines + 1 line of context. Typical 70% reduction — critical for Claude Code and Cursor workflows where diffs dominate tool output.</p>
+      </div>
+      <div class="feat rv d2">
+        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <h3>Prompt caching awareness</h3>
+        <p>Detects stable prefixes and repeated content blocks that benefit from prompt caching — the #1 cost reduction technique in 2026. Saves 50-90% on repeated context across agent turns.</p>
+      </div>
+      <div class="feat rv d2">
+        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <h3>Conversation history summarization</h3>
+        <p>Auto-summarizes old turns in long agent sessions: "User: A B C, Assistant: X Y Z" → "Earlier: Discussed A, concluded X." Massive savings in multi-turn workflows — up to 80% on history context.</p>
+      </div>
+      <div class="feat rv d2">
+        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+        <h3>Model-specific optimization</h3>
+        <p>Claude handles implicit reasoning — Terse compresses more aggressively. GPT-4 needs explicit instructions — Terse preserves structure. Automatic model detection adapts compression strategy per provider.</p>
       </div>
       <div class="feat-divider"></div>
       <div class="works-with rv d1">
@@ -1219,7 +1239,7 @@
   <div class="glow" style="bottom:-100px;left:-150px"></div>
   <div class="s-inner">
     <div class="rvl">
-      <div class="label" data-i18n="techniques.label">20+ Techniques</div>
+      <div class="label" data-i18n="techniques.label">35+ Techniques</div>
       <h2 data-i18n-html="techniques.heading">Every wasted<br><span class="gradient-text">token found.</span></h2>
       <p class="desc" data-i18n="techniques.desc">Filler removal, question-to-imperative, Jaccard deduplication, telegraph compression — each technique targets a different source of token waste. Applied to your prompts and agent commands alike.</p>
       <ul class="flist">
@@ -1245,6 +1265,76 @@
 </section>
 
 <div class="track" id="t4"></div>
+
+<!-- ═══ TERSE vs RTK ═══ -->
+<section class="section" style="background:var(--bg0);border-top:1px solid var(--bd)">
+  <div class="s-inner" style="max-width:900px">
+    <div style="text-align:center;margin-bottom:48px">
+      <div class="label">Why Terse</div>
+      <h2>Terse vs RTK &amp; other token libraries</h2>
+      <p class="desc">RTK (Reduce Token Kit) and similar libraries offer basic prompt trimming. Terse goes far beyond with agent-aware optimization, real-time monitoring, and output compression — techniques RTK doesn't support.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--bd);border-radius:16px;overflow:hidden;background:var(--bg1)">
+      <!-- Header row -->
+      <div style="padding:16px 20px;font-size:13px;font-weight:700;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--bd)">Feature</div>
+      <div style="padding:16px 20px;font-size:14px;font-weight:800;color:var(--ac);background:var(--bg2);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Terse</div>
+      <div style="padding:16px 20px;font-size:14px;font-weight:700;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">RTK / Others</div>
+      <!-- Rows -->
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Optimization techniques</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">35+</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">5-10</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Tool output compression</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ RTK-style + more</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Basic</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Git diff compression</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ 70% reduction</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Prompt caching awareness</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ 50-90% on repeats</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Agent session monitoring</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Real-time</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Duplicate tool call detection</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">History summarization</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Auto-compress</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Model-specific optimization</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Claude / GPT modes</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Multilingual support</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ 11 languages</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">English only</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Spellcheck pipeline</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Dict + Norvig + macOS</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Basic / None</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Code protection</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Backtick-aware</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Partial</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)">Token Exchange marketplace</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Buy/sell tokens</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
+
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2)">On-device / privacy</div>
+      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-left:1px solid var(--bd);text-align:center">✓ 100% local</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-left:1px solid var(--bd);text-align:center">Varies</div>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--t3);margin-top:16px">RTK = Reduce Token Kit. Comparison based on publicly documented features as of March 2026.</p>
+  </div>
+</section>
 
 <!-- ═══ MODES ═══ -->
 <section class="section" style="background:var(--bg2)">
@@ -1946,7 +2036,7 @@ bug fixes (6), features (5), docs (2)</pre>
     <div class="faq-grid rv d2" style="text-align:left">
       <div class="faq-item">
         <div class="faq-q" data-i18n="faq.q1">What is token optimization?</div>
-        <div class="faq-a" data-i18n-html="faq.a1">Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 20+ techniques &mdash; including <a href="/spell-correction" style="color:var(--ac)">spell correction</a>, filler removal, <a href="/pattern-optimization" style="color:var(--ac)">prompt compression</a>, and semantic deduplication &mdash; to cut token usage by 40-70%, directly lowering AI API costs. <a href="/what-is-token-optimization" style="color:var(--ac)">Read the full guide &rarr;</a></div>
+        <div class="faq-a" data-i18n-html="faq.a1">Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 35+ techniques &mdash; including <a href="/spell-correction" style="color:var(--ac)">spell correction</a>, filler removal, <a href="/pattern-optimization" style="color:var(--ac)">prompt compression</a>, and semantic deduplication &mdash; to cut token usage by 40-70%, directly lowering AI API costs. <a href="/what-is-token-optimization" style="color:var(--ac)">Read the full guide &rarr;</a></div>
       </div>
       <div class="faq-item">
         <div class="faq-q" data-i18n="faq.q2">How much can Terse save on AI costs?</div>

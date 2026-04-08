@@ -275,8 +275,6 @@
     'routing.f1': 'Complexity scoring — short prompts, lookups, edits → Sonnet',
     'routing.f2': 'Architecture, security reviews, deep refactors → stay on Opus',
     'routing.f3': 'Transparent — zero changes to Claude Code, Cursor, or Codex',
-    'routing.f4': 'Auto-configured on launch — ANTHROPIC_BASE_URL set in settings.json',
-    'routing.f5': 'Cleans up on exit — no stale URLs left behind',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessions ~3x longer',
@@ -587,8 +585,6 @@
     'routing.f1': '复杂度评分——短提示词、查询、编辑 → Sonnet',
     'routing.f2': '架构设计、安全审查、深度重构 → 保留 Opus',
     'routing.f3': '透明无感——Claude Code、Cursor、Codex 无需任何改动',
-    'routing.f4': '启动自动配置——ANTHROPIC_BASE_URL 写入 settings.json',
-    'routing.f5': '退出自动清理——不留任何无效 URL',
 
     // Tool comparison details
     'tools.claudeCode.impact': '会话时长约 3 倍',
@@ -899,8 +895,6 @@
     'routing.f1': '複雜度評分——短提示詞、查詢、編輯 → Sonnet',
     'routing.f2': '架構設計、安全審查、深度重構 → 保留 Opus',
     'routing.f3': '透明無感——Claude Code、Cursor、Codex 無需任何改動',
-    'routing.f4': '啟動自動設定——ANTHROPIC_BASE_URL 寫入 settings.json',
-    'routing.f5': '退出自動清理——不留任何無效 URL',
 
     // Tool comparison details
     'tools.claudeCode.impact': '工作階段時長約 3 倍',
@@ -1211,8 +1205,6 @@
     'routing.f1': '複雑度スコアリング——短いプロンプト・検索・編集 → Sonnet',
     'routing.f2': 'アーキテクチャ設計・セキュリティレビュー・大規模リファクタ → Opus を維持',
     'routing.f3': '透過的——Claude Code・Cursor・Codex への変更不要',
-    'routing.f4': '起動時に自動設定——ANTHROPIC_BASE_URL を settings.json に書き込み',
-    'routing.f5': '終了時に自動クリーンアップ——無効な URL を残さない',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'セッションが約3倍長く',
@@ -1523,8 +1515,6 @@
     'routing.f1': '복잡도 점수 — 짧은 프롬프트·조회·편집 → Sonnet',
     'routing.f2': '아키텍처 설계·보안 검토·대규모 리팩터 → Opus 유지',
     'routing.f3': '투명성 — Claude Code·Cursor·Codex 변경 불필요',
-    'routing.f4': '시작 시 자동 설정 — settings.json에 ANTHROPIC_BASE_URL 기록',
-    'routing.f5': '종료 시 자동 정리 — 유효하지 않은 URL 남기지 않음',
 
     // Tool comparison details
     'tools.claudeCode.impact': '세션이 약 3배 더 길어짐',
@@ -1835,8 +1825,6 @@
     'routing.f1': 'Puntuación de complejidad — prompts cortos, consultas, ediciones → Sonnet',
     'routing.f2': 'Arquitectura, revisiones de seguridad, refactorizaciones profundas → Opus',
     'routing.f3': 'Transparente — sin cambios en Claude Code, Cursor ni Codex',
-    'routing.f4': 'Configurado automáticamente al iniciar — ANTHROPIC_BASE_URL en settings.json',
-    'routing.f5': 'Limpieza al salir — sin URLs obsoletas',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sesiones ~3 veces más largas',
@@ -2147,8 +2135,6 @@
     'routing.f1': 'Score de complexité — prompts courts, recherches, éditions → Sonnet',
     'routing.f2': 'Architecture, revues de sécurité, refactorisations profondes → Opus',
     'routing.f3': 'Transparent — aucun changement pour Claude Code, Cursor ou Codex',
-    'routing.f4': 'Configuré automatiquement au démarrage — ANTHROPIC_BASE_URL dans settings.json',
-    'routing.f5': 'Nettoyage à la fermeture — aucune URL obsolète',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessions ~3 fois plus longues',
@@ -2459,8 +2445,6 @@
     'routing.f1': 'Komplexitätsbewertung — kurze Prompts, Suchen, Bearbeitungen → Sonnet',
     'routing.f2': 'Architektur, Sicherheitsprüfungen, tiefe Refactorings → Opus',
     'routing.f3': 'Transparent — keine Änderungen an Claude Code, Cursor oder Codex',
-    'routing.f4': 'Automatisch konfiguriert beim Start — ANTHROPIC_BASE_URL in settings.json',
-    'routing.f5': 'Bereinigung beim Beenden — keine veralteten URLs',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sitzungen ~3x länger',
@@ -2771,8 +2755,6 @@
     'routing.f1': 'نقاط التعقيد — الطلبات القصيرة والاستعلامات والتعديلات → Sonnet',
     'routing.f2': 'الهندسة المعمارية ومراجعات الأمان وإعادة الهيكلة العميقة → Opus',
     'routing.f3': 'شفاف — لا تغييرات على Claude Code أو Cursor أو Codex',
-    'routing.f4': 'تهيئة تلقائية عند التشغيل — ANTHROPIC_BASE_URL في settings.json',
-    'routing.f5': 'تنظيف عند الإغلاق — لا عناوين URL قديمة',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'الجلسات أطول بـ 3 أضعاف تقريبًا',
@@ -3083,8 +3065,6 @@
     'routing.f1': 'Punteggio di complessità — prompt brevi, ricerche, modifiche → Sonnet',
     'routing.f2': 'Architettura, revisioni di sicurezza, refactoring profondi → Opus',
     'routing.f3': 'Trasparente — nessuna modifica a Claude Code, Cursor o Codex',
-    'routing.f4': 'Configurato automaticamente all\'avvio — ANTHROPIC_BASE_URL in settings.json',
-    'routing.f5': 'Pulizia all\'uscita — nessun URL obsoleto',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessioni ~3 volte più lunghe',
@@ -3395,8 +3375,6 @@
     'routing.f1': 'Pontuação de complexidade — prompts curtos, consultas, edições → Sonnet',
     'routing.f2': 'Arquitetura, revisões de segurança, refatorações profundas → Opus',
     'routing.f3': 'Transparente — sem alterações no Claude Code, Cursor ou Codex',
-    'routing.f4': 'Configurado automaticamente na inicialização — ANTHROPIC_BASE_URL em settings.json',
-    'routing.f5': 'Limpeza ao sair — sem URLs obsoletas',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessões ~3x mais longas',

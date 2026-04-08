@@ -3214,16 +3214,20 @@ async function doCheckout(tier, paymentMethod) {
   if (btn) { btn.textContent = 'Loading...'; btn.disabled = true; }
 
   try {
-    const body = {
-      tier,
-      clerkUserId: user.id,
-      clerkUserEmail: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress,
-    };
-    if (paymentMethod && paymentMethod !== 'card') {
+    const clerkUserId = user.id;
+    const clerkUserEmail = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress;
+
+    // WeChat Pay + Alipay → Paddle (true recurring + 30-day free trial)
+    // Card/Link → Stripe (existing flow)
+    const isChinaPay = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
+    const endpoint = isChinaPay ? '/api/paddle/checkout' : '/api/checkout';
+
+    const body = { tier, clerkUserId, clerkUserEmail };
+    if (!isChinaPay && paymentMethod && paymentMethod !== 'card') {
       body.paymentMethod = paymentMethod;
     }
 
-    const res = await fetch(`${API_BASE}/api/checkout`, {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

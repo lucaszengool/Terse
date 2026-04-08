@@ -12,6 +12,9 @@ const { router: marketplaceRouter } = require('./marketplace');
 const proxyRouter = require('./proxy');
 const db = require('./db');
 
+// Paddle module (WeChat Pay + Alipay recurring)
+const paddleModule = require('./paddle');
+
 // Stripe setup
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -41,8 +44,11 @@ const PLAN_LIMITS_IOS = {
 };
 
 // In-memory license cache (production: use Redis/DB)
-// Maps clerkUserId -> { tier, stripeCustomerId, subscriptionId, status, expiresAt }
+// Maps clerkUserId -> { tier, stripeCustomerId/paddleCustomerId, subscriptionId, status, expiresAt, provider }
 const licenseCache = new Map();
+
+// Share the license cache with Paddle module so both can read/write it
+paddleModule.licenseCache = licenseCache;
 
 // Stripe webhook needs raw body
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -674,6 +680,11 @@ const proxyLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api/proxy', proxyLimiter, proxyRouter);
+
+// ── Paddle routes (WeChat Pay + Alipay recurring) ──
+// Note: paddle webhook needs raw body — must be registered BEFORE express.json()
+// It's registered here but paddle.js registers its own raw body parser per-route
+app.use(paddleModule.router);
 
 // ── Health check ──
 app.get('/api/health', (req, res) => {

@@ -276,6 +276,17 @@
     'routing.f2': 'Architecture, security reviews, deep refactors → stay on Opus',
     'routing.f3': 'Transparent — zero changes to Claude Code, Cursor, or Codex',
 
+    // Setup section
+    'setup.label': 'Works in seconds',
+    'setup.heading': 'Download. Click connect.<br><span class="gradient-text">Everything just works.</span>',
+    'setup.desc': 'No config files. No API keys to paste. No terminal commands. Open Terse, see your running agent, click Connect — optimization starts immediately.',
+    'setup.f1': 'Auto-detects Claude Code, Cursor Agent, Aider, OpenClaw via process scan',
+    'setup.f2': 'One click to connect — optimization starts on the next message',
+    'setup.f3': 'Live popup bar shows savings on every single turn',
+    'setup.f4': 'Works with existing sessions — no restart required',
+    'setup.detected': 'Claude Code detected — monitor session?',
+    'setup.connect': 'Connect',
+
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessions ~3x longer',
     'tools.cursor.impact': 'Credits go ~2x further',
@@ -585,6 +596,17 @@
     'routing.f1': '复杂度评分——短提示词、查询、编辑 → Sonnet',
     'routing.f2': '架构设计、安全审查、深度重构 → 保留 Opus',
     'routing.f3': '透明无感——Claude Code、Cursor、Codex 无需任何改动',
+
+    // Setup section
+    'setup.label': '秒级上手',
+    'setup.heading': '下载，点击连接。<br><span class="gradient-text">一切开箱即用。</span>',
+    'setup.desc': '无需配置文件，无需粘贴 API 密钥，无需终端命令。打开 Terse，看到正在运行的 Agent，点击连接——优化立即开始。',
+    'setup.f1': '通过进程扫描自动检测 Claude Code、Cursor Agent、Aider、OpenClaw',
+    'setup.f2': '一键连接——下一条消息即开始优化',
+    'setup.f3': '实时弹出栏显示每轮节省情况',
+    'setup.f4': '兼容现有会话——无需重启',
+    'setup.detected': '检测到 Claude Code — 监控此会话？',
+    'setup.connect': '连接',
 
     // Tool comparison details
     'tools.claudeCode.impact': '会话时长约 3 倍',
@@ -896,6 +918,17 @@
     'routing.f2': '架構設計、安全審查、深度重構 → 保留 Opus',
     'routing.f3': '透明無感——Claude Code、Cursor、Codex 無需任何改動',
 
+    // Setup section
+    'setup.label': '秒級上手',
+    'setup.heading': '下載，點擊連接。<br><span class="gradient-text">一切開箱即用。</span>',
+    'setup.desc': '無需設定檔，無需貼上 API 金鑰，無需終端機指令。開啟 Terse，看到正在執行的 Agent，點擊連接——優化立即開始。',
+    'setup.f1': '透過進程掃描自動偵測 Claude Code、Cursor Agent、Aider、OpenClaw',
+    'setup.f2': '一鍵連接——下一條訊息即開始優化',
+    'setup.f3': '即時彈出列顯示每輪節省情況',
+    'setup.f4': '相容現有工作階段——無需重新啟動',
+    'setup.detected': '偵測到 Claude Code — 監控此工作階段？',
+    'setup.connect': '連接',
+
     // Tool comparison details
     'tools.claudeCode.impact': '工作階段時長約 3 倍',
     'tools.cursor.impact': '額度使用效率約 2 倍',
@@ -1205,6 +1238,17 @@
     'routing.f1': '複雑度スコアリング——短いプロンプト・検索・編集 → Sonnet',
     'routing.f2': 'アーキテクチャ設計・セキュリティレビュー・大規模リファクタ → Opus を維持',
     'routing.f3': '透過的——Claude Code・Cursor・Codex への変更不要',
+
+    // Setup section
+    'setup.label': '数秒で起動',
+    'setup.heading': 'ダウンロードして接続するだけ。<br><span class="gradient-text">すべて即動作。</span>',
+    'setup.desc': '設定ファイル不要。APIキーのコピペ不要。ターミナル操作不要。Terseを開いて、実行中のAgentを確認し、接続をクリック——即座に最適化が始まります。',
+    'setup.f1': 'プロセススキャンで Claude Code・Cursor Agent・Aider・OpenClaw を自動検出',
+    'setup.f2': 'ワンクリック接続——次のメッセージから最適化開始',
+    'setup.f3': 'ライブポップアップバーで毎ターンの節約を表示',
+    'setup.f4': '既存セッションにも対応——再起動不要',
+    'setup.detected': 'Claude Code を検出 — このセッションを監視しますか？',
+    'setup.connect': '接続',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'セッションが約3倍長く',
@@ -1516,6 +1560,17 @@
     'routing.f2': '아키텍처 설계·보안 검토·대규모 리팩터 → Opus 유지',
     'routing.f3': '투명성 — Claude Code·Cursor·Codex 변경 불필요',
 
+    // Setup section
+    'setup.label': '몇 초면 시작',
+    'setup.heading': '다운로드 후 연결 클릭.<br><span class="gradient-text">모든 게 바로 작동합니다.</span>',
+    'setup.desc': '설정 파일 없음. API 키 붙여넣기 없음. 터미널 명령 없음. Terse를 열고, 실행 중인 Agent를 확인하고, 연결을 클릭하면——즉시 최적화가 시작됩니다.',
+    'setup.f1': '프로세스 스캔으로 Claude Code·Cursor Agent·Aider·OpenClaw 자동 감지',
+    'setup.f2': '원클릭 연결——다음 메시지부터 최적화 시작',
+    'setup.f3': '라이브 팝업 바로 매 턴 절감액 표시',
+    'setup.f4': '기존 세션 호환——재시작 불필요',
+    'setup.detected': 'Claude Code 감지됨 — 이 세션을 모니터링할까요?',
+    'setup.connect': '연결',
+
     // Tool comparison details
     'tools.claudeCode.impact': '세션이 약 3배 더 길어짐',
     'tools.cursor.impact': '크레딧이 약 2배 더 오래 지속',
@@ -1825,6 +1880,17 @@
     'routing.f1': 'Puntuación de complejidad — prompts cortos, consultas, ediciones → Sonnet',
     'routing.f2': 'Arquitectura, revisiones de seguridad, refactorizaciones profundas → Opus',
     'routing.f3': 'Transparente — sin cambios en Claude Code, Cursor ni Codex',
+
+    // Setup section
+    'setup.label': 'Listo en segundos',
+    'setup.heading': 'Descarga. Haz clic en conectar.<br><span class="gradient-text">Todo funciona al instante.</span>',
+    'setup.desc': 'Sin archivos de configuración. Sin pegar claves API. Sin comandos de terminal. Abre Terse, ve tu agente en ejecución, haz clic en Conectar — la optimización comienza de inmediato.',
+    'setup.f1': 'Detecta automáticamente Claude Code, Cursor Agent, Aider y OpenClaw mediante escaneo de procesos',
+    'setup.f2': 'Un clic para conectar — la optimización inicia en el próximo mensaje',
+    'setup.f3': 'Barra emergente en vivo muestra el ahorro en cada turno',
+    'setup.f4': 'Compatible con sesiones existentes — sin reinicio requerido',
+    'setup.detected': 'Claude Code detectado — ¿monitorear esta sesión?',
+    'setup.connect': 'Conectar',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sesiones ~3 veces más largas',
@@ -2136,6 +2202,17 @@
     'routing.f2': 'Architecture, revues de sécurité, refactorisations profondes → Opus',
     'routing.f3': 'Transparent — aucun changement pour Claude Code, Cursor ou Codex',
 
+    // Setup section
+    'setup.label': 'Prêt en quelques secondes',
+    'setup.heading': 'Téléchargez. Cliquez sur connecter.<br><span class="gradient-text">Tout fonctionne immédiatement.</span>',
+    'setup.desc': 'Aucun fichier de configuration. Aucune clé API à coller. Aucune commande terminal. Ouvrez Terse, voyez votre agent en cours, cliquez sur Connecter — l\'optimisation démarre immédiatement.',
+    'setup.f1': 'Détecte automatiquement Claude Code, Cursor Agent, Aider, OpenClaw via analyse des processus',
+    'setup.f2': 'Un clic pour connecter — l\'optimisation commence dès le prochain message',
+    'setup.f3': 'Barre popup en direct affiche les économies à chaque tour',
+    'setup.f4': 'Compatible avec les sessions existantes — aucun redémarrage requis',
+    'setup.detected': 'Claude Code détecté — surveiller cette session ?',
+    'setup.connect': 'Connecter',
+
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessions ~3 fois plus longues',
     'tools.cursor.impact': 'Crédits ~2 fois plus durables',
@@ -2445,6 +2522,17 @@
     'routing.f1': 'Komplexitätsbewertung — kurze Prompts, Suchen, Bearbeitungen → Sonnet',
     'routing.f2': 'Architektur, Sicherheitsprüfungen, tiefe Refactorings → Opus',
     'routing.f3': 'Transparent — keine Änderungen an Claude Code, Cursor oder Codex',
+
+    // Setup section
+    'setup.label': 'In Sekunden startklar',
+    'setup.heading': 'Herunterladen. Verbinden klicken.<br><span class="gradient-text">Alles funktioniert sofort.</span>',
+    'setup.desc': 'Keine Konfigurationsdateien. Keine API-Schlüssel einfügen. Keine Terminal-Befehle. Terse öffnen, laufenden Agent sehen, Verbinden klicken — Optimierung startet sofort.',
+    'setup.f1': 'Erkennt automatisch Claude Code, Cursor Agent, Aider, OpenClaw per Prozess-Scan',
+    'setup.f2': 'Ein Klick zum Verbinden — Optimierung beginnt mit der nächsten Nachricht',
+    'setup.f3': 'Live-Popup-Leiste zeigt Einsparungen bei jedem Zug',
+    'setup.f4': 'Kompatibel mit bestehenden Sitzungen — kein Neustart erforderlich',
+    'setup.detected': 'Claude Code erkannt — Sitzung überwachen?',
+    'setup.connect': 'Verbinden',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sitzungen ~3x länger',
@@ -2756,6 +2844,17 @@
     'routing.f2': 'الهندسة المعمارية ومراجعات الأمان وإعادة الهيكلة العميقة → Opus',
     'routing.f3': 'شفاف — لا تغييرات على Claude Code أو Cursor أو Codex',
 
+    // Setup section
+    'setup.label': 'جاهز في ثوانٍ',
+    'setup.heading': 'نزّل. انقر للاتصال.<br><span class="gradient-text">كل شيء يعمل فورًا.</span>',
+    'setup.desc': 'لا ملفات إعداد. لا نسخ لمفاتيح API. لا أوامر طرفية. افتح Terse، شاهد الوكيل يعمل، انقر اتصال — يبدأ التحسين فورًا.',
+    'setup.f1': 'يكتشف تلقائيًا Claude Code وCursor Agent وAider وOpenClaw عبر فحص العمليات',
+    'setup.f2': 'نقرة واحدة للاتصال — يبدأ التحسين من الرسالة التالية',
+    'setup.f3': 'شريط منبثق مباشر يعرض الوفورات في كل دور',
+    'setup.f4': 'يعمل مع الجلسات الحالية — لا إعادة تشغيل مطلوبة',
+    'setup.detected': 'تم اكتشاف Claude Code — مراقبة هذه الجلسة؟',
+    'setup.connect': 'اتصال',
+
     // Tool comparison details
     'tools.claudeCode.impact': 'الجلسات أطول بـ 3 أضعاف تقريبًا',
     'tools.cursor.impact': 'الأرصدة تدوم ضعفين تقريبًا',
@@ -3066,6 +3165,17 @@
     'routing.f2': 'Architettura, revisioni di sicurezza, refactoring profondi → Opus',
     'routing.f3': 'Trasparente — nessuna modifica a Claude Code, Cursor o Codex',
 
+    // Setup section
+    'setup.label': 'Pronto in secondi',
+    'setup.heading': 'Scarica. Clicca connetti.<br><span class="gradient-text">Tutto funziona subito.</span>',
+    'setup.desc': 'Nessun file di configurazione. Nessuna chiave API da incollare. Nessun comando terminal. Apri Terse, vedi il tuo agente in esecuzione, clicca Connetti — l\'ottimizzazione inizia immediatamente.',
+    'setup.f1': 'Rileva automaticamente Claude Code, Cursor Agent, Aider, OpenClaw tramite scansione processi',
+    'setup.f2': 'Un clic per connettere — l\'ottimizzazione inizia al prossimo messaggio',
+    'setup.f3': 'Barra popup live mostra i risparmi ad ogni turno',
+    'setup.f4': 'Funziona con sessioni esistenti — nessun riavvio richiesto',
+    'setup.detected': 'Claude Code rilevato — monitorare questa sessione?',
+    'setup.connect': 'Connetti',
+
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessioni ~3 volte più lunghe',
     'tools.cursor.impact': 'Crediti ~2 volte più duraturi',
@@ -3375,6 +3485,17 @@
     'routing.f1': 'Pontuação de complexidade — prompts curtos, consultas, edições → Sonnet',
     'routing.f2': 'Arquitetura, revisões de segurança, refatorações profundas → Opus',
     'routing.f3': 'Transparente — sem alterações no Claude Code, Cursor ou Codex',
+
+    // Setup section
+    'setup.label': 'Pronto em segundos',
+    'setup.heading': 'Baixe. Clique em conectar.<br><span class="gradient-text">Tudo funciona imediatamente.</span>',
+    'setup.desc': 'Sem arquivos de configuração. Sem colar chaves de API. Sem comandos no terminal. Abra o Terse, veja seu agente em execução, clique em Conectar — a otimização começa imediatamente.',
+    'setup.f1': 'Detecta automaticamente Claude Code, Cursor Agent, Aider, OpenClaw via varredura de processos',
+    'setup.f2': 'Um clique para conectar — a otimização começa na próxima mensagem',
+    'setup.f3': 'Barra popup ao vivo mostra economia a cada turno',
+    'setup.f4': 'Funciona com sessões existentes — sem necessidade de reiniciar',
+    'setup.detected': 'Claude Code detectado — monitorar esta sessão?',
+    'setup.connect': 'Conectar',
 
     // Tool comparison details
     'tools.claudeCode.impact': 'Sessões ~3x mais longas',

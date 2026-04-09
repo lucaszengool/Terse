@@ -1005,6 +1005,49 @@
   </div>
 </section>
 
+<!-- ═══ SETUP: DOWNLOAD & CONNECT ═══ -->
+<section class="section" id="setup" style="background:var(--bg1);border-top:1px solid var(--bd)">
+  <div class="glow" style="top:0;left:-200px"></div>
+  <div class="s-inner">
+    <div class="rvl">
+      <div class="label">Works in seconds</div>
+      <h2>Download. Click connect.<br><span class="gradient-text">Everything just works.</span></h2>
+      <p class="desc">No config files. No API keys to paste. No terminal commands. Open Terse, see your running agent, click Connect — optimization starts immediately. Every message compressed, every session tracked, every wasted token flagged.</p>
+      <ul class="flist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-detects Claude Code, Cursor Agent, Aider, OpenClaw via process scan</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>One click to connect — optimization starts on the next message</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Live popup bar shows savings on every single turn</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Works with existing sessions — no restart required</li>
+      </ul>
+      <div class="alts"><span>Claude Code</span><span>Cursor Agent</span><span>Aider</span><span>OpenClaw</span></div>
+    </div>
+    <div class="rvr d1">
+      <div class="win">
+        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Terse — Connect Agent</span></div>
+        <div class="agent-full" id="setupViz">
+          <div class="agent-term mono" id="setupTerm" style="min-height:160px"></div>
+          <div class="agent-connect-banner" id="setupBanner">
+            <div class="prune-dot"></div>
+            <span style="font-size:11px;flex:1">Claude Code detected — monitor session?</span>
+            <span class="agent-connect-btn" id="setupConnectBtn">Connect</span>
+          </div>
+          <div class="agent-panel-anim" id="setupPanel">
+            <div class="ap-grid" style="grid-template-columns:repeat(4,1fr)">
+              <div class="ap-stat"><span class="ap-v" id="spTurns">0</span><span class="ap-l">Turns</span></div>
+              <div class="ap-stat"><span class="ap-v" id="spSaved">0</span><span class="ap-l">Tok saved</span></div>
+              <div class="ap-stat"><span class="ap-v" id="spCost">$0</span><span class="ap-l">Cost</span></div>
+              <div class="ap-stat"><span class="ap-v" id="spCache">0%</span><span class="ap-l">Cache hit</span></div>
+            </div>
+            <div class="ap-feed mono" id="setupFeed"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="track" id="tSetup"></div>
+
 <!-- ═══ HOW IT WORKS: AGENT TOKEN REDUCTION — FULL WALKTHROUGH ═══ -->
 <section class="section" id="how-it-works" style="background:var(--bg0);border-top:1px solid var(--bd)">
   <div class="glow" style="top:-100px;right:-200px"></div>
@@ -2184,6 +2227,79 @@ document.querySelectorAll('.usage-num[data-ut]').forEach(el=>uObs.observe(el));
 
 // ═══ Tool cards + new tracks ═══
 document.querySelectorAll('#t7b,#t7c').forEach(el=>tObs.observe(el));
+
+// ═══ SETUP — DOWNLOAD & CONNECT ANIMATION ═══
+function runSetupViz(){
+  const term=document.getElementById('setupTerm');
+  const banner=document.getElementById('setupBanner');
+  const panel=document.getElementById('setupPanel');
+  const feed=document.getElementById('setupFeed');
+  if(!term)return;
+  term.innerHTML='';feed.innerHTML='';
+  banner.classList.remove('show');panel.classList.remove('show');
+  ['spTurns','spSaved','spCost','spCache'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.textContent=id==='spCost'?'$0':id==='spCache'?'0%':'0';
+  });
+
+  function addLine(cls,text){
+    const d=document.createElement('div');d.className='at-line '+cls;d.textContent=text;
+    term.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'));
+    while(term.children.length>8)term.removeChild(term.firstChild);
+  }
+  function addFeed(cls,text){
+    const d=document.createElement('div');d.className='ap-fl mono '+cls;d.textContent=text;
+    feed.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'));
+    while(feed.children.length>5)feed.removeChild(feed.firstChild);
+  }
+
+  // Step 1: app opens, scans processes
+  setTimeout(()=>addLine('out','Terse started — scanning processes...'),200);
+  setTimeout(()=>addLine('out','Detected: claude (pid 31492) ✓'),700);
+  setTimeout(()=>addLine('out','Detected: cursor-agent (pid 31811) ✓'),1100);
+  setTimeout(()=>addLine('out','Proxy ready on 127.0.0.1:7860'),1500);
+
+  // Step 2: banner appears
+  setTimeout(()=>banner.classList.add('show'),2000);
+
+  // Step 3: user clicks connect (auto-simulate)
+  setTimeout(()=>{
+    banner.classList.remove('show');
+    addLine('cmd','Connected to Claude Code session');
+    addLine('opt','Optimization active — watching every turn');
+  },3200);
+
+  // Step 4: panel + live feed
+  setTimeout(()=>{
+    panel.classList.add('show');
+    let turns=0,saved=0,cost=0,cache=72;
+    const feedItems=[
+      ['opt','[turn 1] "I dont know if this makes sence..." → 52→9 tok (−83%)'],
+      ['opt','[typo] authetication→authentication, tokne→token'],
+      ['tl', '[tool] Read auth.ts (245 lines) — cached'],
+      ['opt','[turn 2] filler removed + imperative rewrite → −61%'],
+      ['opt','⚠ Read auth.ts again — redundant (~800 tok waste)'],
+      ['tl', '[tool] Edit auth.ts:47 — applied'],
+      ['opt','[turn 3] context dedup — "as mentioned earlier" removed'],
+      ['opt','session: 3 turns · 312 tok saved · $0.004 saved so far'],
+    ];
+    let fi=0;
+    const iv=setInterval(()=>{
+      turns++;saved+=Math.round(80+Math.random()*60);cost+=0.0038;cache=Math.min(91,cache+1);
+      document.getElementById('spTurns').textContent=turns;
+      document.getElementById('spSaved').textContent=saved>999?(saved/1000).toFixed(1)+'K':saved;
+      document.getElementById('spCost').textContent='$'+cost.toFixed(3);
+      document.getElementById('spCache').textContent=cache+'%';
+      if(fi<feedItems.length){addFeed(feedItems[fi][0],feedItems[fi][1]);fi++;}
+      if(turns>=8){clearInterval(iv);setTimeout(runSetupViz,3000);}
+    },600);
+  },3800);
+}
+const setupObs=new IntersectionObserver(e=>e.forEach(x=>{
+  if(x.isIntersecting){runSetupViz();setupObs.unobserve(x.target);}
+}),{threshold:.3});
+const setupViz=document.getElementById('setupViz');
+if(setupViz)setupObs.observe(setupViz);
 
 // ═══ HOW IT WORKS — COMPREHENSIVE AGENT SESSION ANIMATION ═══
 (function(){

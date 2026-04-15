@@ -256,6 +256,20 @@ app.post('/api/checkout', async (req, res) => {
 
     const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
 
+    // ── Trial abuse prevention: check if this email already used a trial ──
+    // Look up ALL customers with this email, check for any prior subscription
+    const allEmailCustomers = await stripe.customers.list({ email: clerkUserEmail, limit: 10 });
+    for (const c of allEmailCustomers.data) {
+      const prevSubs = await stripe.subscriptions.list({ customer: c.id, limit: 10, status: 'all' });
+      const usedTrial = prevSubs.data.some(s =>
+        ['trialing', 'active', 'canceled', 'past_due', 'unpaid'].includes(s.status)
+      );
+      if (usedTrial) {
+        console.log(`[checkout] trial already used for email ${clerkUserEmail} (customer ${c.id})`);
+        return res.status(400).json({ error: 'trial_already_used', message: 'A free trial has already been used for this account.' });
+      }
+    }
+
     // WeChat Pay / Alipay: one-time CNY payment (no free trial).
     // Stripe doesn't support recurring for these methods, so each month
     // a new invoice is sent via send_invoice subscription.

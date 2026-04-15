@@ -103,6 +103,8 @@ async function startTrialCheckout(tier) {
     if (data.url) {
       try { const { open } = window.__TAURI__.shell; open(data.url); }
       catch { window.open(data.url, '_blank'); }
+    } else if (data.error === 'trial_already_used') {
+      toast('You\'ve already used your free trial — please subscribe directly.', true);
     } else {
       toast('Error: ' + (data.error || 'Failed'), true);
     }
@@ -279,6 +281,11 @@ T.on('session-added', () => {
 });
 
 T.on('toast', d => toast(d.msg, d.error));
+T.on('ax-status', d => {
+  if (d && !d.trusted) {
+    toast('⚠ Accessibility permission reset by macOS — go to System Settings → Privacy → Accessibility and re-enable Terse', true);
+  }
+});
 
 // ── Manual optimize ──
 $('#btnManualOpt').addEventListener('click', async () => {
@@ -353,6 +360,10 @@ $('#btnUpgrade').addEventListener('click', async () => {
         });
         const data = await res.json();
         if (data.url) { openUrl(data.url); return; }
+        if (data.error === 'trial_already_used') {
+          openUrl(`${API_BASE}/#pricing`);
+          return;
+        }
       } catch {}
       openUrl(`${API_BASE}/#pricing`);
       return;

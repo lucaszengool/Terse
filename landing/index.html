@@ -717,7 +717,7 @@
 
 <nav id="nav">
   <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
-  <div class="nav-links"><a href="#how-it-works" data-i18n="nav.howItWorks">How It Works</a><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="#benchmarks" data-i18n="nav.benchmarks">Benchmarks</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#faq" data-i18n="nav.faq">FAQ</a></div>
+  <div class="nav-links"><a href="#how-it-works" data-i18n="nav.howItWorks">How It Works</a><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="#benchmarks" data-i18n="nav.benchmarks">Benchmarks</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="#faq" data-i18n="nav.faq">FAQ</a></div>
   <div style="display:flex;gap:10px;align-items:center">
     <div style="position:relative" id="lang-switcher">
       <button onclick="document.getElementById('lang-menu').style.display=document.getElementById('lang-menu').style.display==='block'?'none':'block'" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px">
@@ -752,7 +752,6 @@
   <p class="sub rv d1" data-i18n-html="hero.subtitle">Cut 40-70% of your AI token costs with on-device optimization &mdash; or buy tokens at up to 50% off retail on the <a href="#exchange" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Token Exchange</a>. Sell what you don't use. Stop wasting money on idle API credits.</p>
   <div class="hero-actions rv d2">
     <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none"><span data-i18n="hero.download">Download Optimizer</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
-    <a href="/marketplace" class="btn-ghost" style="text-decoration:none"><span data-i18n="hero.exchange">Buy / Sell Tokens</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
   </div>
   <p class="rv d2" style="font-size:15px;color:var(--ac);text-align:center;margin:-28px auto 36px;max-width:480px;position:relative;z-index:1;font-weight:600;line-height:1.6">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -2092,7 +2091,7 @@ bug fixes (6), features (5), docs (2)</pre>
 </section>
 
 <!-- ═══ TOKEN EXCHANGE — ANIMATED DEMO ═══ -->
-<section class="section" id="exchange" style="background:var(--bg0);padding:80px 40px;border-top:1px solid var(--bd)">
+<section class="section" id="exchange" style="display:none;background:var(--bg0);padding:80px 40px;border-top:1px solid var(--bd)">
   <div style="max-width:1100px;margin:0 auto">
     <div style="text-align:center;margin-bottom:48px">
       <div class="label rv" style="margin:0 auto 18px" data-i18n="exchange.label">Token Exchange</div>
@@ -2170,7 +2169,6 @@ bug fixes (6), features (5), docs (2)</pre>
   <p class="rv d1" data-i18n="cta.subtitle">Optimize every prompt. Monitor every agent session. And trade unused tokens on the Exchange &mdash; buy at up to 50% off, or sell your idle credits and earn.</p>
   <div class="hero-actions rv d2" style="flex-wrap:wrap;justify-content:center">
     <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none"><span data-i18n="hero.download">Download Optimizer</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
-    <a href="/marketplace" class="btn-ghost" style="text-decoration:none"><span data-i18n="hero.exchange">Buy / Sell Tokens</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
   </div>
   <p style="font-size:15px;color:var(--ac);text-align:center;margin-top:16px;position:relative;z-index:1;font-weight:600;line-height:1.6">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -3352,6 +3350,9 @@ async function doCheckout(tier, paymentMethod) {
     const data = await res.json();
     if (data.url) {
       window.location.href = data.url;
+    } else if (data.error === 'trial_already_used') {
+      showPricingToast('You\'ve already used your free trial — please subscribe directly.');
+      if (btn) { btn.textContent = 'Start Free Trial'; btn.disabled = false; }
     } else {
       showPricingToast('Error: ' + (data.error || 'Failed to create checkout'));
       if (btn) { btn.textContent = 'Start Free Trial'; btn.disabled = false; }

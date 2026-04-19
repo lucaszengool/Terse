@@ -753,12 +753,57 @@
   <div class="hero-actions rv d2">
     <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none"><span data-i18n="hero.download">Download Optimizer</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
   </div>
-  <p class="rv d2" style="font-size:15px;color:var(--ac);text-align:center;margin:-28px auto 36px;max-width:480px;position:relative;z-index:1;font-weight:600;line-height:1.6">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-    <span data-i18n-html="hero.installNote">After installing, drag Terse to <strong>Applications</strong>, then paste this in <strong>Terminal</strong>:</span>
-    <br><code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 14px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:400;color:var(--ac);cursor:pointer;word-break:break-all;position:relative;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null & <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:6px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
-    <br><span style="font-size:13px;font-weight:400;color:var(--t2)" data-i18n="hero.installWarning">macOS blocks unsigned apps by default &mdash; this command clears it. Only needed once after install.</span>
-  </p>
+  <div class="rv d2" style="margin:-28px auto 36px;max-width:560px;position:relative;z-index:1">
+    <div style="background:rgba(110,231,183,0.06);border:1px solid rgba(110,231,183,0.18);border-radius:12px;padding:18px 20px;text-align:left">
+      <p style="font-size:14px;font-weight:700;color:var(--ac);margin:0 0 12px;display:flex;align-items:center;gap:8px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        First Launch &mdash; macOS Security Step (one-time only)
+      </p>
+      <p style="font-size:13px;color:var(--t2);margin:0 0 10px">macOS blocks unsigned apps by default. Pick whichever method works for you:</p>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <!-- Method A -->
+        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
+            <span style="background:var(--ac);color:#000;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">A</span>
+            System Settings <span style="color:var(--t3);font-weight:400">&mdash; easiest, no Terminal needed</span>
+          </summary>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
+            1. Open Terse &mdash; click <strong style="color:var(--t1)">OK</strong> on the security warning<br>
+            2. Open <strong style="color:var(--t1)">System Settings → Privacy &amp; Security</strong><br>
+            3. Scroll to the Security section &mdash; click <strong style="color:var(--ac)">"Open Anyway"</strong> next to Terse<br>
+            4. Confirm in the popup &mdash; done. Terse opens normally from now on.
+          </div>
+        </details>
+
+        <!-- Method B -->
+        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
+            <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">B</span>
+            Right-click to open <span style="color:var(--t3);font-weight:400">&mdash; works on macOS Ventura and earlier</span>
+          </summary>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
+            1. In Finder, <strong style="color:var(--t1)">right-click</strong> (or Control+click) on Terse.app<br>
+            2. Choose <strong style="color:var(--t1)">Open</strong> from the menu<br>
+            3. Click <strong style="color:var(--ac)">Open</strong> in the dialog that appears<br>
+            <span style="color:var(--t3);font-size:12px">Note: macOS Sequoia (15+) removed this option — use Method A instead.</span>
+          </div>
+        </details>
+
+        <!-- Method C -->
+        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
+            <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">C</span>
+            Terminal command <span style="color:var(--t3);font-weight:400">&mdash; one command, works on all versions</span>
+          </summary>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
+            Drag Terse to <strong style="color:var(--t1)">/Applications</strong>, then paste this in Terminal:<br>
+            <code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 12px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ac);cursor:pointer;word-break:break-all;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app &amp;&amp; /Applications/Terse.app/Contents/MacOS/terse 2&gt;/dev/null &amp; <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:5px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
 
   <div class="hero-stage rv d3">
     <!-- Scene 0: OpenClaw — comprehensive agent auto-reduction demo -->
@@ -2170,12 +2215,54 @@ bug fixes (6), features (5), docs (2)</pre>
   <div class="hero-actions rv d2" style="flex-wrap:wrap;justify-content:center">
     <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none"><span data-i18n="hero.download">Download Optimizer</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
   </div>
-  <p style="font-size:15px;color:var(--ac);text-align:center;margin-top:16px;position:relative;z-index:1;font-weight:600;line-height:1.6">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-    <span data-i18n-html="hero.installNote">After installing, drag Terse to <strong>Applications</strong>, then paste this in <strong>Terminal</strong>:</span>
-    <br><code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 14px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:400;color:var(--ac);cursor:pointer;word-break:break-all;position:relative;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null & <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:6px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
-    <br><span style="font-size:13px;font-weight:400;color:var(--t2)" data-i18n="hero.installWarning">macOS blocks unsigned apps by default &mdash; this command clears it. Only needed once after install.</span>
-  </p>
+  <div style="margin:20px auto 0;max-width:560px;position:relative;z-index:1">
+    <div style="background:rgba(110,231,183,0.06);border:1px solid rgba(110,231,183,0.18);border-radius:12px;padding:18px 20px;text-align:left">
+      <p style="font-size:14px;font-weight:700;color:var(--ac);margin:0 0 12px;display:flex;align-items:center;gap:8px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        First Launch &mdash; macOS Security Step (one-time only)
+      </p>
+      <p style="font-size:13px;color:var(--t2);margin:0 0 10px">macOS blocks unsigned apps by default. Pick whichever method works for you:</p>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
+            <span style="background:var(--ac);color:#000;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">A</span>
+            System Settings <span style="color:var(--t3);font-weight:400">&mdash; easiest, no Terminal needed</span>
+          </summary>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
+            1. Open Terse &mdash; click <strong style="color:var(--t1)">OK</strong> on the security warning<br>
+            2. Open <strong style="color:var(--t1)">System Settings → Privacy &amp; Security</strong><br>
+            3. Scroll to the Security section &mdash; click <strong style="color:var(--ac)">"Open Anyway"</strong> next to Terse<br>
+            4. Confirm in the popup &mdash; done. Terse opens normally from now on.
+          </div>
+        </details>
+
+        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
+            <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">B</span>
+            Right-click to open <span style="color:var(--t3);font-weight:400">&mdash; works on macOS Ventura and earlier</span>
+          </summary>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
+            1. In Finder, <strong style="color:var(--t1)">right-click</strong> (or Control+click) on Terse.app<br>
+            2. Choose <strong style="color:var(--t1)">Open</strong> from the menu<br>
+            3. Click <strong style="color:var(--ac)">Open</strong> in the dialog that appears<br>
+            <span style="color:var(--t3);font-size:12px">Note: macOS Sequoia (15+) removed this option — use Method A instead.</span>
+          </div>
+        </details>
+
+        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
+            <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">C</span>
+            Terminal command <span style="color:var(--t3);font-weight:400">&mdash; one command, works on all versions</span>
+          </summary>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
+            Drag Terse to <strong style="color:var(--t1)">/Applications</strong>, then paste this in Terminal:<br>
+            <code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 12px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ac);cursor:pointer;word-break:break-all;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app &amp;&amp; /Applications/Terse.app/Contents/MacOS/terse 2&gt;/dev/null &amp; <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:5px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
   <div class="rv d3" style="margin-top:40px;display:flex;justify-content:center;gap:32px;position:relative;z-index:1">
     <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span data-i18n="cta.onDevice">100% on-device</span></span>
     <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><span data-i18n="cta.zeroLatency">Zero latency</span></span>

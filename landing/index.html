@@ -3164,7 +3164,7 @@ function updateClerkUI() {
       setTimeout(() => { window.location.href = DMG_URL; }, 500);
     }
   } else {
-    signBtns.forEach(b => b.style.display = '');
+    document.querySelectorAll('.nav-sign-in').forEach(b => b.style.display = '');
     userEl.style.display = 'none';
   }
 }

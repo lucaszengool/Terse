@@ -22,6 +22,19 @@
     'hero.installNote': 'After installing, drag Terse to <strong>Applications</strong>, then paste this in <strong>Terminal</strong>:',
     'hero.installWarning': 'macOS blocks unsigned apps by default — this command clears it. Only needed once after install.',
 
+    // Security section
+    'security.heading': 'First Launch \u2014 macOS Security Step (one-time only)',
+    'security.subtitle': 'macOS blocks unsigned apps by default. Pick whichever method works for you:',
+    'security.methodA': 'System Settings',
+    'security.methodATag': '\u2014 easiest, no Terminal needed',
+    'security.methodASteps': '1. Open Terse \u2014 click <strong style="color:var(--t1)">OK</strong> on the security warning<br>2. Open <strong style="color:var(--t1)">System Settings \u2192 Privacy &amp; Security</strong><br>3. Scroll to the Security section \u2014 click <strong style="color:var(--ac)">\u201cOpen Anyway\u201d</strong> next to Terse<br>4. Confirm in the popup \u2014 done. Terse opens normally from now on.',
+    'security.methodB': 'Right-click to open',
+    'security.methodBTag': '\u2014 works on macOS Ventura and earlier',
+    'security.methodBSteps': '1. In Finder, <strong style="color:var(--t1)">right-click</strong> (or Control+click) on Terse.app<br>2. Choose <strong style="color:var(--t1)">Open</strong> from the menu<br>3. Click <strong style="color:var(--ac)">Open</strong> in the dialog that appears<br><span style="color:var(--t3);font-size:12px">Note: macOS Sequoia (15+) removed this option \u2014 use Method A instead.</span>',
+    'security.methodC': 'Terminal command',
+    'security.methodCTag': '\u2014 one command, works on all versions',
+    'security.methodCStep': 'Drag Terse to <strong style="color:var(--t1)">/Applications</strong>, then paste this in Terminal:',
+
     // Features
     'features.bench1': 'Benchmarked across manual prompts, agent turns, and tool calls',
     'features.bench2': 'Clean prompts correctly return 0% — no false changes',
@@ -342,6 +355,19 @@
     'hero.exchange': '买卖 Token',
     'hero.installNote': '安装后，将 Terse 拖入<strong>应用程序</strong>文件夹，然后在<strong>终端</strong>中粘贴以下命令：',
     'hero.installWarning': 'macOS 默认阻止未签名应用——此命令可解除限制，安装后仅需执行一次。',
+
+    // Security section
+    'security.heading': '\u9996\u6b21\u542f\u52a8 \u2014 macOS \u5b89\u5168\u6b65\u9aa4\uff08\u4ec5\u9700\u4e00\u6b21\uff09',
+    'security.subtitle': 'macOS \u9ed8\u8ba4\u963b\u6b62\u672a\u7b7e\u540d\u7684\u5e94\u7528\u7a0b\u5e8f\u3002\u8bf7\u9009\u62e9\u9002\u5408\u60a8\u7684\u65b9\u6cd5\uff1a',
+    'security.methodA': '\u7cfb\u7edf\u8bbe\u7f6e',
+    'security.methodATag': '\u2014 \u6700\u7b80\u5355\uff0c\u65e0\u9700\u7ec8\u7aef',
+    'security.methodASteps': '1. \u6253\u5f00 Terse \u2014 \u5728\u5b89\u5168\u8b66\u544a\u4e0a\u70b9\u51fb<strong style="color:var(--t1)">\u597d</strong><br>2. \u6253\u5f00<strong style="color:var(--t1)">\u7cfb\u7edf\u8bbe\u7f6e \u2192 \u9690\u79c1\u4e0e\u5b89\u5168\u6027</strong><br>3. \u6eda\u52a8\u5230\u5b89\u5168\u6027\u90e8\u5206 \u2014 \u70b9\u51fb Terse \u65c1\u8fb9\u7684<strong style="color:var(--ac)">\u201c\u4ecd\u8981\u6253\u5f00\u201d</strong><br>4. \u5728\u5f39\u7a97\u4e2d\u786e\u8ba4 \u2014 \u5b8c\u6210\u3002\u6b64\u540e Terse \u53ef\u6b63\u5e38\u542f\u52a8\u3002',
+    'security.methodB': '\u53f3\u952e\u70b9\u51fb\u6253\u5f00',
+    'security.methodBTag': '\u2014 \u9002\u7528\u4e8e macOS Ventura \u53ca\u66f4\u65e9\u7248\u672c',
+    'security.methodBSteps': '1. \u5728 Finder \u4e2d\uff0c<strong style="color:var(--t1)">\u53f3\u952e\u70b9\u51fb</strong>\uff08\u6216 Control+\u70b9\u51fb\uff09Terse.app<br>2. \u4ece\u83dc\u5355\u4e2d\u9009\u62e9<strong style="color:var(--t1)">\u6253\u5f00</strong><br>3. \u5728\u5f39\u51fa\u7684\u5bf9\u8bdd\u6846\u4e2d\u70b9\u51fb<strong style="color:var(--ac)">\u6253\u5f00</strong><br><span style="color:var(--t3);font-size:12px">\u6ce8\u610f\uff1amacOS Sequoia\uff0815+\uff09\u5df2\u79fb\u9664\u6b64\u9009\u9879 \u2014 \u8bf7\u4f7f\u7528\u65b9\u6cd5 A\u3002</span>',
+    'security.methodC': '\u7ec8\u7aef\u547d\u4ee4',
+    'security.methodCTag': '\u2014 \u4e00\u6761\u547d\u4ee4\uff0c\u9002\u7528\u6240\u6709\u7248\u672c',
+    'security.methodCStep': '\u5c06 Terse \u62d6\u5230<strong style="color:var(--t1)">/Applications</strong>\uff0c\u7136\u540e\u5728\u7ec8\u7aef\u4e2d\u7c98\u8d34\u4ee5\u4e0b\u547d\u4ee4\uff1a',
 
     // Features
     'features.bench1': '覆盖手动提示、Agent 对话轮次及工具调用的基准测试',
@@ -664,6 +690,19 @@
     'hero.installNote': '安裝後，將 Terse 拖入<strong>應用程式</strong>資料夾，然後在<strong>終端機</strong>中貼上以下指令：',
     'hero.installWarning': 'macOS 預設會阻擋未簽署的應用程式——此指令可解除限制，安裝後僅需執行一次。',
 
+    // Security section
+    'security.heading': '\u9996\u6b21\u555f\u52d5 \u2014 macOS \u5b89\u5168\u6b65\u9a5f\uff08\u50c5\u9700\u4e00\u6b21\uff09',
+    'security.subtitle': 'macOS \u9810\u8a2d\u6703\u963b\u64cb\u672a\u7c3d\u7f72\u7684\u61c9\u7528\u7a0b\u5f0f\u3002\u8acb\u9078\u64c7\u9069\u5408\u60a8\u7684\u65b9\u6cd5\uff1a',
+    'security.methodA': '\u7cfb\u7d71\u8a2d\u5b9a',
+    'security.methodATag': '\u2014 \u6700\u7c21\u55ae\uff0c\u7121\u9700\u7d42\u7aef\u6a5f',
+    'security.methodASteps': '1. \u958b\u555f Terse \u2014 \u5728\u5b89\u5168\u8b66\u544a\u4e0a\u9ede\u6309<strong style="color:var(--t1)">\u597d</strong><br>2. \u958b\u555f<strong style="color:var(--t1)">\u7cfb\u7d71\u8a2d\u5b9a \u2192 \u96b1\u79c1\u6b0a\u8207\u5b89\u5168\u6027</strong><br>3. \u6377\u52d5\u81f3\u5b89\u5168\u6027\u5340\u6bb5 \u2014 \u9ede\u6309 Terse \u65c1\u908a\u7684<strong style="color:var(--ac)">\u300c\u4ecd\u8981\u958b\u555f\u300d</strong><br>4. \u5728\u5373\u6642\u8996\u7a97\u4e2d\u78ba\u8a8d \u2014 \u5b8c\u6210\u3002\u6b64\u5f8c Terse \u53ef\u6b63\u5e38\u555f\u52d5\u3002',
+    'security.methodB': '\u53f3\u9375\u9ede\u6309\u958b\u555f',
+    'security.methodBTag': '\u2014 \u9069\u7528\u65bc macOS Ventura \u53ca\u66f4\u820a\u7248\u672c',
+    'security.methodBSteps': '1. \u5728 Finder \u4e2d\uff0c<strong style="color:var(--t1)">\u53f3\u9375\u9ede\u6309</strong>\uff08\u6216 Control+\u9ede\u6309\uff09Terse.app<br>2. \u5f9e\u9078\u55ae\u4e2d\u9078\u64c7<strong style="color:var(--t1)">\u958b\u555f</strong><br>3. \u5728\u51fa\u73fe\u7684\u5c0d\u8a71\u6846\u4e2d\u9ede\u6309<strong style="color:var(--ac)">\u958b\u555f</strong><br><span style="color:var(--t3);font-size:12px">\u6ce8\u610f\uff1amacOS Sequoia\uff0815+\uff09\u5df2\u79fb\u9664\u6b64\u9078\u9805 \u2014 \u8acb\u4f7f\u7528\u65b9\u6cd5 A\u3002</span>',
+    'security.methodC': '\u7d42\u7aef\u6a5f\u6307\u4ee4',
+    'security.methodCTag': '\u2014 \u4e00\u689d\u6307\u4ee4\uff0c\u9069\u7528\u6240\u6709\u7248\u672c',
+    'security.methodCStep': '\u5c07 Terse \u62d6\u79fb\u5230<strong style="color:var(--t1)">/Applications</strong>\uff0c\u7136\u5f8c\u5728\u7d42\u7aef\u6a5f\u4e2d\u8cbc\u4e0a\u4ee5\u4e0b\u6307\u4ee4\uff1a',
+
     // Features
     'features.bench1': '涵蓋手動提示、Agent 對話輪次及工具呼叫的基準測試',
     'features.bench2': '簡潔提示正確回傳 0%——不會產生誤改',
@@ -984,6 +1023,19 @@
     'hero.exchange': 'トークンの売買',
     'hero.installNote': 'インストール後、Terseを<strong>アプリケーション</strong>にドラッグし、<strong>ターミナル</strong>で以下を実行してください：',
     'hero.installWarning': 'macOSは未署名のアプリをデフォルトでブロックします。このコマンドで解除できます。インストール後1回だけ実行してください。',
+
+    // Security section
+    'security.heading': '\u521d\u56de\u8d77\u52d5 \u2014 macOS\u30bb\u30ad\u30e5\u30ea\u30c6\u30a3\u624b\u9806\uff08\u4e00\u5ea6\u306e\u307f\uff09',
+    'security.subtitle': 'macOS\u306f\u672a\u7f72\u540d\u30a2\u30d7\u30ea\u3092\u30c7\u30d5\u30a9\u30eb\u30c8\u3067\u30d6\u30ed\u30c3\u30af\u3057\u307e\u3059\u3002\u304a\u597d\u307f\u306e\u65b9\u6cd5\u3092\u9078\u3093\u3067\u304f\u3060\u3055\u3044\uff1a',
+    'security.methodA': '\u30b7\u30b9\u30c6\u30e0\u8a2d\u5b9a',
+    'security.methodATag': '\u2014 \u6700\u3082\u7c21\u5358\u3001Terminal\u4e0d\u8981',
+    'security.methodASteps': '1. Terse\u3092\u958b\u304f \u2014 \u30bb\u30ad\u30e5\u30ea\u30c6\u30a3\u8b66\u544a\u3067<strong style="color:var(--t1)">OK</strong>\u3092\u30af\u30ea\u30c3\u30af<br>2. <strong style="color:var(--t1)">\u30b7\u30b9\u30c6\u30e0\u8a2d\u5b9a \u2192 \u30d7\u30e9\u30a4\u30d0\u30b7\u30fc\u3068\u30bb\u30ad\u30e5\u30ea\u30c6\u30a3</strong>\u3092\u958b\u304f<br>3. \u30bb\u30ad\u30e5\u30ea\u30c6\u30a3\u30bb\u30af\u30b7\u30e7\u30f3\u307e\u3067\u30b9\u30af\u30ed\u30fc\u30eb \u2014 Terse\u306e\u6a2a\u306e<strong style="color:var(--ac)">\u300c\u3053\u306e\u307e\u307e\u958b\u304f\u300d</strong>\u3092\u30af\u30ea\u30c3\u30af<br>4. \u30dd\u30c3\u30d7\u30a2\u30c3\u30d7\u3067\u78ba\u8a8d \u2014 \u5b8c\u4e86\u3002\u4ee5\u964d\u3001Terse\u306f\u901a\u5e38\u901a\u308a\u8d77\u52d5\u3057\u307e\u3059\u3002',
+    'security.methodB': '\u53f3\u30af\u30ea\u30c3\u30af\u3067\u958b\u304f',
+    'security.methodBTag': '\u2014 macOS Ventura\u4ee5\u524d\u3067\u52d5\u4f5c',
+    'security.methodBSteps': '1. Finder\u3067Terse.app\u3092<strong style="color:var(--t1)">\u53f3\u30af\u30ea\u30c3\u30af</strong>\uff08\u307e\u305f\u306fControl+\u30af\u30ea\u30c3\u30af\uff09<br>2. \u30e1\u30cb\u30e5\u30fc\u304b\u3089<strong style="color:var(--t1)">\u958b\u304f</strong>\u3092\u9078\u629e<br>3. \u8868\u793a\u3055\u308c\u305f\u30c0\u30a4\u30a2\u30ed\u30b0\u3067<strong style="color:var(--ac)">\u958b\u304f</strong>\u3092\u30af\u30ea\u30c3\u30af<br><span style="color:var(--t3);font-size:12px">\u6ce8\u610f\uff1amacOS Sequoia\uff0815+\uff09\u3067\u306f\u3053\u306e\u30aa\u30d7\u30b7\u30e7\u30f3\u304c\u524a\u9664\u3055\u308c\u307e\u3057\u305f \u2014 \u65b9\u6cd5A\u3092\u4f7f\u7528\u3057\u3066\u304f\u3060\u3055\u3044\u3002</span>',
+    'security.methodC': 'Terminal\u30b3\u30de\u30f3\u30c9',
+    'security.methodCTag': '\u2014 1\u30b3\u30de\u30f3\u30c9\u3001\u5168\u30d0\u30fc\u30b8\u30e7\u30f3\u5bfe\u5fdc',
+    'security.methodCStep': 'Terse\u3092<strong style="color:var(--t1)">/Applications</strong>\u306b\u30c9\u30e9\u30c3\u30b0\u3057\u3001Terminal\u306b\u8cbc\u308a\u4ed8\u3051\u3066\u304f\u3060\u3055\u3044\uff1a',
 
     // Features
     'features.bench1': '手動プロンプト、エージェントのターン、ツール呼び出しを対象にベンチマーク済み',
@@ -1306,6 +1358,19 @@
     'hero.installNote': '설치 후 Terse를 <strong>응용 프로그램</strong>으로 드래그한 다음 <strong>터미널</strong>에서 다음을 붙여넣으세요:',
     'hero.installWarning': 'macOS는 서명되지 않은 앱을 기본적으로 차단합니다. 이 명령으로 해제할 수 있으며, 설치 후 한 번만 실행하면 됩니다.',
 
+    // Security section
+    'security.heading': '\uccab \uc2e4\ud589 \u2014 macOS \ubcf4\uc548 \ub2e8\uacc4 (\ucd5c\ucd08 1\ud68c)',
+    'security.subtitle': 'macOS\ub294 \uae30\ubcf8\uc801\uc73c\ub85c \uc11c\uba85\ub418\uc9c0 \uc54a\uc740 \uc571\uc744 \ucc28\ub2e8\ud569\ub2c8\ub2e4. \uc6d0\ud558\ub294 \ubc29\ubc95\uc744 \uc120\ud0dd\ud558\uc138\uc694:',
+    'security.methodA': '\uc2dc\uc2a4\ud15c \uc124\uc815',
+    'security.methodATag': '\u2014 \uac00\uc7a5 \uac04\ub2e8, \ud130\ubbf8\ub110 \ubd88\ud544\uc694',
+    'security.methodASteps': '1. Terse \uc5f4\uae30 \u2014 \ubcf4\uc548 \uacbd\uace0\uc5d0\uc11c <strong style="color:var(--t1)">\ud655\uc778</strong> \ud074\ub9ad<br>2. <strong style="color:var(--t1)">\uc2dc\uc2a4\ud15c \uc124\uc815 \u2192 \uac1c\uc778 \uc815\ubcf4 \ubcf4\ud638 \ubc0f \ubcf4\uc548</strong> \uc5f4\uae30<br>3. \ubcf4\uc548 \uc139\uc158\uc73c\ub85c \uc2a4\ud06c\ub864 \u2014 Terse \uc606\uc758 <strong style="color:var(--ac)">\"\uc5b4\uc798\ub4e0 \uc5f4\uae30\"</strong> \ud074\ub9ad<br>4. \ud31d\uc5c5\uc5d0\uc11c \ud655\uc778 \u2014 \uc644\ub8cc. \uc774\uc81c Terse\uac00 \uc815\uc0c1\uc801\uc73c\ub85c \uc2e4\ud589\ub429\ub2c8\ub2e4.',
+    'security.methodB': '\uc6b0\ud074\ub9ad\uc73c\ub85c \uc5f4\uae30',
+    'security.methodBTag': '\u2014 macOS Ventura \uc774\ud558\uc5d0\uc11c \uc0ac\uc6a9 \uac00\ub2a5',
+    'security.methodBSteps': '1. Finder\uc5d0\uc11c Terse.app\uc744 <strong style="color:var(--t1)">\uc6b0\ud074\ub9ad</strong> (\ub610\ub294 Control+\ud074\ub9ad)<br>2. \uba54\ub274\uc5d0\uc11c <strong style="color:var(--t1)">\uc5f4\uae30</strong> \uc120\ud0dd<br>3. \ub098\ud0c0\ub098\ub294 \ub300\ud654\uc0c1\uc790\uc5d0\uc11c <strong style="color:var(--ac)">\uc5f4\uae30</strong> \ud074\ub9ad<br><span style="color:var(--t3);font-size:12px">\uc0f8\uace0: macOS Sequoia (15+)\uc5d0\uc11c \uc774 \uc635\uc158\uc774 \uc81c\uac70\ub418\uc5c8\uc2b5\ub2c8\ub2e4 \u2014 \ubc29\ubc95 A\ub97c \uc0ac\uc6a9\ud558\uc138\uc694.</span>',
+    'security.methodC': '\ud130\ubbf8\ub110 \uba85\ub839\uc5b4',
+    'security.methodCTag': '\u2014 \uba85\ub839\uc5b4 \ud558\ub098, \ubaa8\ub4e0 \ubc84\uc804 \uc9c0\uc6d0',
+    'security.methodCStep': 'Terse\ub97c <strong style="color:var(--t1)">/Applications</strong>\uc5d0 \ub4dc\ub798\uadf8\ud55c \ud6c4 \ud130\ubbf8\ub110\uc5d0 \ubd99\uc5ec\ub123\uae30:',
+
     // Features
     'features.bench1': '수동 프롬프트, 에이전트 턴, 도구 호출을 대상으로 벤치마크 완료',
     'features.bench2': '깨끗한 프롬프트는 정확히 0%를 반환합니다 — 잘못된 변경 없음',
@@ -1626,6 +1691,19 @@
     'hero.exchange': 'Comprar / Vender tokens',
     'hero.installNote': 'Después de instalar, arrastre Terse a <strong>Aplicaciones</strong> y luego pegue esto en la <strong>Terminal</strong>:',
     'hero.installWarning': 'macOS bloquea las aplicaciones no firmadas por defecto — este comando lo desactiva. Solo es necesario una vez después de la instalación.',
+
+    // Security section
+    'security.heading': 'Primer lanzamiento \u2014 Paso de seguridad de macOS (solo una vez)',
+    'security.subtitle': 'macOS bloquea las aplicaciones no firmadas por defecto. Elige el m\u00e9todo que prefieras:',
+    'security.methodA': 'Configuraci\u00f3n del sistema',
+    'security.methodATag': '\u2014 lo m\u00e1s f\u00e1cil, sin Terminal',
+    'security.methodASteps': '1. Abre Terse \u2014 haz clic en <strong style="color:var(--t1)">OK</strong> en la advertencia de seguridad<br>2. Abre <strong style="color:var(--t1)">Configuraci\u00f3n del sistema \u2192 Privacidad y seguridad</strong><br>3. Despl\u00e1zate a la secci\u00f3n Seguridad \u2014 haz clic en <strong style="color:var(--ac)">\u201cAbrir de todos modos\u201d</strong> junto a Terse<br>4. Confirma en el popup \u2014 listo. Terse se abrir\u00e1 normalmente de ahora en adelante.',
+    'security.methodB': 'Clic derecho para abrir',
+    'security.methodBTag': '\u2014 funciona en macOS Ventura y anteriores',
+    'security.methodBSteps': '1. En Finder, <strong style="color:var(--t1)">haz clic derecho</strong> (o Control+clic) en Terse.app<br>2. Elige <strong style="color:var(--t1)">Abrir</strong> del men\u00fa<br>3. Haz clic en <strong style="color:var(--ac)">Abrir</strong> en el cuadro de di\u00e1logo<br><span style="color:var(--t3);font-size:12px">Nota: macOS Sequoia (15+) elimin\u00f3 esta opci\u00f3n \u2014 usa el M\u00e9todo A.</span>',
+    'security.methodC': 'Comando de Terminal',
+    'security.methodCTag': '\u2014 un comando, funciona en todas las versiones',
+    'security.methodCStep': 'Arrastra Terse a <strong style="color:var(--t1)">/Applications</strong>, luego pega esto en Terminal:',
 
     // Features
     'features.bench1': 'Evaluado en prompts manuales, turnos de agentes y llamadas a herramientas',
@@ -1948,6 +2026,19 @@
     'hero.installNote': 'Après l\'installation, glissez Terse dans <strong>Applications</strong>, puis collez ceci dans le <strong>Terminal</strong> :',
     'hero.installWarning': 'macOS bloque les applications non signées par défaut — cette commande lève la restriction. À exécuter une seule fois après l\'installation.',
 
+    // Security section
+    'security.heading': 'Premier lancement \u2014 \u00c9tape de s\u00e9curit\u00e9 macOS (une seule fois)',
+    'security.subtitle': 'macOS bloque les applications non sign\u00e9es par d\u00e9faut. Choisissez la m\u00e9thode qui vous convient\u00a0:',
+    'security.methodA': 'R\u00e9glages syst\u00e8me',
+    'security.methodATag': '\u2014 le plus simple, sans Terminal',
+    'security.methodASteps': '1. Ouvrez Terse \u2014 cliquez sur <strong style="color:var(--t1)">OK</strong> dans l\'avertissement de s\u00e9curit\u00e9<br>2. Ouvrez <strong style="color:var(--t1)">R\u00e9glages syst\u00e8me \u2192 Confidentialit\u00e9 et s\u00e9curit\u00e9</strong><br>3. Faites d\u00e9filer jusqu\'\u00e0 la section S\u00e9curit\u00e9 \u2014 cliquez sur <strong style="color:var(--ac)">\u00ab\u00a0Ouvrir quand m\u00eame\u00a0\u00bb</strong> \u00e0 c\u00f4t\u00e9 de Terse<br>4. Confirmez dans la popup \u2014 termin\u00e9. Terse s\'ouvre normalement d\u00e9sormais.',
+    'security.methodB': 'Clic droit pour ouvrir',
+    'security.methodBTag': '\u2014 fonctionne sur macOS Ventura et versions ant\u00e9rieures',
+    'security.methodBSteps': '1. Dans le Finder, faites <strong style="color:var(--t1)">clic droit</strong> (ou Control+clic) sur Terse.app<br>2. Choisissez <strong style="color:var(--t1)">Ouvrir</strong> dans le menu<br>3. Cliquez sur <strong style="color:var(--ac)">Ouvrir</strong> dans la bo\u00eete de dialogue<br><span style="color:var(--t3);font-size:12px">Note\u00a0: macOS Sequoia (15+) a supprim\u00e9 cette option \u2014 utilisez la m\u00e9thode A.</span>',
+    'security.methodC': 'Commande Terminal',
+    'security.methodCTag': '\u2014 une commande, fonctionne sur toutes les versions',
+    'security.methodCStep': 'Glissez Terse dans <strong style="color:var(--t1)">/Applications</strong>, puis collez ceci dans le Terminal\u00a0:',
+
     // Features
     'features.bench1': 'Évalué sur des prompts manuels, des tours d\'agent et des appels d\'outils',
     'features.bench2': 'Les prompts propres renvoient correctement 0 % — aucune modification erronée',
@@ -2268,6 +2359,19 @@
     'hero.exchange': 'Token kaufen / verkaufen',
     'hero.installNote': 'Ziehen Sie Terse nach der Installation in den <strong>Programme</strong>-Ordner und fügen Sie dann Folgendes im <strong>Terminal</strong> ein:',
     'hero.installWarning': 'macOS blockiert nicht signierte Apps standardmäßig — dieser Befehl hebt die Sperre auf. Nur einmal nach der Installation nötig.',
+
+    // Security section
+    'security.heading': 'Erster Start \u2014 macOS-Sicherheitsschritt (nur einmal)',
+    'security.subtitle': 'macOS blockiert nicht signierte Apps standardm\u00e4\u00dfig. W\u00e4hle die Methode, die f\u00fcr dich funktioniert:',
+    'security.methodA': 'Systemeinstellungen',
+    'security.methodATag': '\u2014 am einfachsten, kein Terminal n\u00f6tig',
+    'security.methodASteps': '1. \u00d6ffne Terse \u2014 klicke auf <strong style="color:var(--t1)">OK</strong> in der Sicherheitswarnung<br>2. \u00d6ffne <strong style="color:var(--t1)">Systemeinstellungen \u2192 Datenschutz &amp; Sicherheit</strong><br>3. Scrolle zum Bereich Sicherheit \u2014 klicke neben Terse auf <strong style="color:var(--ac)">\u201eTrotzdem \u00f6ffnen\u201c</strong><br>4. Im Popup best\u00e4tigen \u2014 fertig. Terse \u00f6ffnet sich ab jetzt normal.',
+    'security.methodB': 'Rechtsklick zum \u00d6ffnen',
+    'security.methodBTag': '\u2014 funktioniert auf macOS Ventura und \u00e4lter',
+    'security.methodBSteps': '1. Im Finder <strong style="color:var(--t1)">rechtsklicke</strong> (oder Control+Klick) auf Terse.app<br>2. W\u00e4hle <strong style="color:var(--t1)">\u00d6ffnen</strong> aus dem Men\u00fc<br>3. Klicke auf <strong style="color:var(--ac)">\u00d6ffnen</strong> im Dialog<br><span style="color:var(--t3);font-size:12px">Hinweis: macOS Sequoia (15+) hat diese Option entfernt \u2014 nutze Methode A.</span>',
+    'security.methodC': 'Terminal-Befehl',
+    'security.methodCTag': '\u2014 ein Befehl, funktioniert auf allen Versionen',
+    'security.methodCStep': 'Ziehe Terse in <strong style="color:var(--t1)">/Applications</strong>, dann f\u00fcge dies im Terminal ein:',
 
     // Features
     'features.bench1': 'Getestet mit manuellen Prompts, Agent-Durchläufen und Tool-Aufrufen',
@@ -2590,6 +2694,19 @@
     'hero.installNote': 'بعد التثبيت، اسحب Terse إلى مجلد <strong>التطبيقات</strong>، ثم الصق هذا الأمر في <strong>الطرفية</strong>:',
     'hero.installWarning': 'يحظر macOS التطبيقات غير الموقّعة افتراضيًا — هذا الأمر يرفع الحظر. مطلوب مرة واحدة فقط بعد التثبيت.',
 
+    // Security section
+    'security.heading': '\u0627\u0644\u0625\u0637\u0644\u0627\u0642 \u0627\u0644\u0623\u0648\u0644 \u2014 \u062e\u0637\u0648\u0629 \u0623\u0645\u0627\u0646 macOS (\u0645\u0631\u0629 \u0648\u0627\u062d\u062f\u0629 \u0641\u0642\u0637)',
+    'security.subtitle': '\u064a\u062d\u0638\u0631 macOS \u0627\u0644\u062a\u0637\u0628\u064a\u0642\u0627\u062a \u063a\u064a\u0631 \u0627\u0644\u0645\u0648\u0642\u0651\u0639\u0629 \u0627\u0641\u062a\u0631\u0627\u0636\u064a\u064b\u0627. \u0627\u062e\u062a\u0631 \u0627\u0644\u0637\u0631\u064a\u0642\u0629 \u0627\u0644\u062a\u064a \u062a\u0646\u0627\u0633\u0628\u0643:',
+    'security.methodA': '\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u0646\u0638\u0627\u0645',
+    'security.methodATag': '\u2014 \u0627\u0644\u0623\u0633\u0647\u0644\u060c \u062f\u0648\u0646 \u0627\u0644\u062d\u0627\u062c\u0629 \u0625\u0644\u0649 Terminal',
+    'security.methodASteps': '1. \u0627\u0641\u062a\u062d Terse \u2014 \u0627\u0646\u0642\u0631 <strong style="color:var(--t1)">\u0645\u0648\u0627\u0641\u0642</strong> \u0639\u0644\u0649 \u062a\u062d\u0630\u064a\u0631 \u0627\u0644\u0623\u0645\u0627\u0646<br>2. \u0627\u0641\u062a\u062d <strong style="color:var(--t1)">\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u0646\u0638\u0627\u0645 \u2192 \u0627\u0644\u062e\u0635\u0648\u0635\u064a\u0629 \u0648\u0627\u0644\u0623\u0645\u0627\u0646</strong><br>3. \u0627\u0646\u062a\u0642\u0644 \u0625\u0644\u0649 \u0642\u0633\u0645 \u0627\u0644\u0623\u0645\u0627\u0646 \u2014 \u0627\u0646\u0642\u0631 <strong style="color:var(--ac)">\u00ab\u0641\u062a\u062d \u0639\u0644\u0649 \u0623\u064a \u062d\u0627\u0644\u00bb</strong> \u0628\u062c\u0627\u0646\u0628 Terse<br>4. \u0623\u0643\u0651\u062f \u0641\u064a \u0627\u0644\u0646\u0627\u0641\u0630\u0629 \u0627\u0644\u0645\u0646\u0628\u062b\u0642\u0629 \u2014 \u062a\u0645. \u0633\u064a\u0641\u062a\u062d Terse \u0628\u0634\u0643\u0644 \u0637\u0628\u064a\u0639\u064a \u0645\u0646 \u0627\u0644\u0622\u0646 \u0641\u0635\u0627\u0639\u062f\u064b\u0627.',
+    'security.methodB': '\u0646\u0642\u0631 \u0628\u0627\u0644\u0632\u0631 \u0627\u0644\u0623\u064a\u0645\u0646 \u0644\u0644\u0641\u062a\u062d',
+    'security.methodBTag': '\u2014 \u064a\u0639\u0645\u0644 \u0639\u0644\u0649 macOS Ventura \u0648\u0623\u0642\u062f\u0645',
+    'security.methodBSteps': '1. \u0641\u064a Finder\u060c <strong style="color:var(--t1)">\u0627\u0646\u0642\u0631 \u0628\u0627\u0644\u0632\u0631 \u0627\u0644\u0623\u064a\u0645\u0646</strong> (\u0623\u0648 Control+\u0646\u0642\u0631) \u0639\u0644\u0649 Terse.app<br>2. \u0627\u062e\u062a\u0631 <strong style="color:var(--t1)">\u0641\u062a\u062d</strong> \u0645\u0646 \u0627\u0644\u0642\u0627\u0626\u0645\u0629<br>3. \u0627\u0646\u0642\u0631 <strong style="color:var(--ac)">\u0641\u062a\u062d</strong> \u0641\u064a \u0645\u0631\u0628\u0639 \u0627\u0644\u062d\u0648\u0627\u0631<br><span style="color:var(--t3);font-size:12px">\u0645\u0644\u0627\u062d\u0638\u0629: \u0623\u0632\u0627\u0644 macOS Sequoia (15+) \u0647\u0630\u0627 \u0627\u0644\u062e\u064a\u0627\u0631 \u2014 \u0627\u0633\u062a\u062e\u062f\u0645 \u0627\u0644\u0637\u0631\u064a\u0642\u0629 A.</span>',
+    'security.methodC': '\u0623\u0645\u0631 Terminal',
+    'security.methodCTag': '\u2014 \u0623\u0645\u0631 \u0648\u0627\u062d\u062f\u060c \u064a\u0639\u0645\u0644 \u0639\u0644\u0649 \u062c\u0645\u064a\u0639 \u0627\u0644\u0625\u0635\u062f\u0627\u0631\u0627\u062a',
+    'security.methodCStep': '\u0627\u0633\u062d\u0628 Terse \u0625\u0644\u0649 <strong style="color:var(--t1)">/Applications</strong>\u060c \u062b\u0645 \u0627\u0644\u0635\u0642 \u0647\u0630\u0627 \u0641\u064a Terminal:',
+
     // Features
     'features.bench1': 'اختبارات شاملة على الأوامر اليدوية وجلسات الوكيل واستدعاءات الأدوات',
     'features.bench2': 'الأوامر النظيفة تعيد 0% بشكل صحيح — بدون تغييرات خاطئة',
@@ -2911,6 +3028,19 @@
     'hero.installNote': 'Dopo l\'installazione, trascini Terse nella cartella <strong>Applicazioni</strong>, poi incolli questo comando nel <strong>Terminale</strong>:',
     'hero.installWarning': 'macOS blocca le app non firmate per impostazione predefinita — questo comando rimuove il blocco. Necessario solo una volta dopo l\'installazione.',
 
+    // Security section
+    'security.heading': 'Primo avvio \u2014 Passaggio di sicurezza macOS (una sola volta)',
+    'security.subtitle': 'macOS blocca le app non firmate per impostazione predefinita. Scegli il metodo che preferisci:',
+    'security.methodA': 'Impostazioni di sistema',
+    'security.methodATag': '\u2014 il pi\u00f9 semplice, senza Terminal',
+    'security.methodASteps': '1. Apri Terse \u2014 clicca <strong style="color:var(--t1)">OK</strong> sull\'avviso di sicurezza<br>2. Apri <strong style="color:var(--t1)">Impostazioni di sistema \u2192 Privacy e sicurezza</strong><br>3. Scorri fino alla sezione Sicurezza \u2014 clicca <strong style="color:var(--ac)">\u201cApri comunque\u201d</strong> accanto a Terse<br>4. Conferma nel popup \u2014 fatto. Terse si apre normalmente d\'ora in poi.',
+    'security.methodB': 'Clic destro per aprire',
+    'security.methodBTag': '\u2014 funziona su macOS Ventura e precedenti',
+    'security.methodBSteps': '1. Nel Finder, <strong style="color:var(--t1)">fai clic destro</strong> (o Control+clic) su Terse.app<br>2. Scegli <strong style="color:var(--t1)">Apri</strong> dal menu<br>3. Clicca <strong style="color:var(--ac)">Apri</strong> nel dialogo<br><span style="color:var(--t3);font-size:12px">Nota: macOS Sequoia (15+) ha rimosso questa opzione \u2014 usa il Metodo A.</span>',
+    'security.methodC': 'Comando Terminal',
+    'security.methodCTag': '\u2014 un comando, funziona su tutte le versioni',
+    'security.methodCStep': 'Trascina Terse in <strong style="color:var(--t1)">/Applications</strong>, poi incolla questo nel Terminal:',
+
     // Features
     'features.bench1': 'Testato su prompt manuali, turni di agente e chiamate a strumenti',
     'features.bench2': 'I prompt puliti restituiscono correttamente 0% — nessuna modifica errata',
@@ -3231,6 +3361,19 @@
     'hero.exchange': 'Comprar / Vender Tokens',
     'hero.installNote': 'Após instalar, arraste o Terse para <strong>Aplicativos</strong> e cole este comando no <strong>Terminal</strong>:',
     'hero.installWarning': 'O macOS bloqueia apps não assinados por padrão — este comando remove o bloqueio. Necessário apenas uma vez após a instalação.',
+
+    // Security section
+    'security.heading': 'Primeiro lan\u00e7amento \u2014 Etapa de seguran\u00e7a do macOS (apenas uma vez)',
+    'security.subtitle': 'O macOS bloqueia apps n\u00e3o assinados por padr\u00e3o. Escolha o m\u00e9todo que preferir:',
+    'security.methodA': 'Ajustes do sistema',
+    'security.methodATag': '\u2014 mais f\u00e1cil, sem Terminal',
+    'security.methodASteps': '1. Abra o Terse \u2014 clique em <strong style="color:var(--t1)">OK</strong> no aviso de seguran\u00e7a<br>2. Abra <strong style="color:var(--t1)">Ajustes do sistema \u2192 Privacidade e seguran\u00e7a</strong><br>3. Role at\u00e9 a se\u00e7\u00e3o Seguran\u00e7a \u2014 clique em <strong style="color:var(--ac)">\u201cAbrir mesmo assim\u201d</strong> ao lado do Terse<br>4. Confirme no popup \u2014 pronto. O Terse abrir\u00e1 normalmente de agora em diante.',
+    'security.methodB': 'Clique direito para abrir',
+    'security.methodBTag': '\u2014 funciona no macOS Ventura e anteriores',
+    'security.methodBSteps': '1. No Finder, <strong style="color:var(--t1)">clique com o bot\u00e3o direito</strong> (ou Control+clique) em Terse.app<br>2. Escolha <strong style="color:var(--t1)">Abrir</strong> no menu<br>3. Clique em <strong style="color:var(--ac)">Abrir</strong> na caixa de di\u00e1logo<br><span style="color:var(--t3);font-size:12px">Nota: o macOS Sequoia (15+) removeu essa op\u00e7\u00e3o \u2014 use o M\u00e9todo A.</span>',
+    'security.methodC': 'Comando de Terminal',
+    'security.methodCTag': '\u2014 um comando, funciona em todas as vers\u00f5es',
+    'security.methodCStep': 'Arraste o Terse para <strong style="color:var(--t1)">/Applications</strong>, depois cole isso no Terminal:',
 
     // Features
     'features.bench1': 'Testado com prompts manuais, turnos de agente e chamadas de ferramentas',

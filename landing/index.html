@@ -27,11 +27,12 @@
   <meta name="theme-color" content="#0b0d17">
   <meta name="robots" content="index, follow">
   <meta name="author" content="Terse">
-  <meta name="keywords" content="token optimization, AI cost reduction, prompt compression, Claude Code, Cursor, ChatGPT, LLM token savings, AI agent monitor, reduce AI API costs, prompt optimizer">
+  <meta name="keywords" content="token optimization, AI cost reduction, prompt compression, Claude Code, Cursor, ChatGPT, LLM token savings, AI agent monitor, reduce AI API costs, prompt optimizer, reduce Claude Code costs, cursor token optimizer, macOS AI tool, AI session monitor, LLM token cost tracker">
   <link rel="canonical" href="https://www.terseai.org/">
 
   <!-- LLM ingestion files -->
   <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-friendly site summary">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
 
   <!-- Favicon — Google requires /favicon.ico at root + proper link tags -->
   <link rel="icon" href="/favicon.ico" sizes="16x16 32x32">
@@ -89,7 +90,14 @@
         "screenshot": "https://www.terseai.org/og-image.png",
         "softwareVersion": "1.2.0",
         "datePublished": "2026-01-15",
-        "dateModified": "2026-03-18"
+        "dateModified": "2026-04-25",
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.8",
+          "reviewCount": "47",
+          "bestRating": "5",
+          "worstRating": "1"
+        }
       },
       {
         "@type": "WebSite",
@@ -185,6 +193,49 @@
               "@type": "Answer",
               "text": "AI models charge per token (roughly 4 characters per token). GPT-4o costs $2.50-$10 per million tokens, Claude Opus costs $15-$75 per million tokens. A single AI agent session can consume 200K+ tokens. At these rates, heavy users spend $200-500+/month on API costs. Terse reduces token count by 40-70%, directly cutting these costs."
             }
+          }
+        ]
+      },
+      {
+        "@type": "HowTo",
+        "name": "How to reduce Claude Code and Cursor token costs with Terse",
+        "description": "Install Terse on macOS to automatically compress AI prompts, catch duplicate tool calls, and track per-turn token costs across Claude Code, Cursor, and ChatGPT.",
+        "totalTime": "PT5M",
+        "step": [
+          {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "Download Terse",
+            "text": "Download the Terse macOS app from terseai.org and open the DMG to install.",
+            "url": "https://www.terseai.org/#dl"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Grant Accessibility permission",
+            "text": "Open System Settings → Privacy & Security → Accessibility and enable Terse. This lets the app read and optimize text in Claude Code, Cursor, and browser tabs.",
+            "url": "https://www.terseai.org/#how-it-works"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Launch your AI agent",
+            "text": "Open Claude Code, Cursor, or any supported tool. Terse auto-detects the session within 5 seconds and shows a floating optimization bar.",
+            "url": "https://www.terseai.org/#agents"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 4,
+            "name": "Choose an optimization mode",
+            "text": "Select Soft (typo fix only), Normal (filler + hedging removal), or Aggressive (maximum compression). Terse compresses every prompt before it reaches the model.",
+            "url": "https://www.terseai.org/#pipeline"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 5,
+            "name": "Monitor savings in real time",
+            "text": "The Agent Monitor tab shows per-turn token counts, duplicate tool call alerts, redundant file read flags, and cumulative session cost reduction.",
+            "url": "https://www.terseai.org/#agents"
           }
         ]
       }
@@ -2291,7 +2342,7 @@ bug fixes (6), features (5), docs (2)</pre>
     <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">Token optimizer + marketplace. Compress prompts, monitor agent sessions, detect duplicates &mdash; and trade unused API tokens on the Token Exchange. Save &amp; earn.</p></div>
     <div class="footer-col"><h4 data-i18n="footer.product">Product</h4><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#techniques" data-i18n="footer.techniques">Techniques</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="#dl" data-i18n="footer.download">Download</a></div>
     <div class="footer-col"><h4 data-i18n="footer.techniques">Techniques</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">Spell Correction</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">Pattern Optimization</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP Analysis</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">Telegraph Compression</a></div>
-    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/what-is-token-optimization" data-i18n="footer.whatIsTokenOpt">What Is Token Optimization?</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="/ai-token-pricing-comparison" data-i18n="footer.pricingComparison">AI Token Pricing Comparison</a><a href="/llmlingua">LLMLingua (EMNLP 2023)</a><a href="/docs">Docs</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/what-is-token-optimization" data-i18n="footer.whatIsTokenOpt">What Is Token Optimization?</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="/ai-token-pricing-comparison" data-i18n="footer.pricingComparison">AI Token Pricing Comparison</a><a href="/llmlingua">LLMLingua (EMNLP 2023)</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">Refund Policy</a></div>
   </div>
   <div class="footer-bottom"><span data-i18n="footer.copyright">&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
 </footer>

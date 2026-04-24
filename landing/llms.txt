@@ -25,7 +25,7 @@
 - [Telegraph Compression](https://www.terseai.org/telegraph-compression): Aggressive article/preposition stripping
 
 ## Research
-- [LLMLingua (EMNLP 2023)](https://www.terseai.org/llmlingua): How Terse builds on academic prompt compression research
+- [LLMLingua (EMNLP 2023)](https://www.terseai.org/llmlingua): How PruneAI builds on academic prompt compression research
 - [Norvig Spelling](https://www.terseai.org/norvig-spelling): Statistical spelling correction foundation
 - [Selective Context](https://www.terseai.org/selective-context): Context pruning for token reduction
 

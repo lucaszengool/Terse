@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reduce Cursor Token Costs — Terse for Cursor</title>
+  <meta name="description" content="Terse cuts Cursor AI token costs by 40-70%. Real-time prompt compression in the Cursor chat and composer — auto-appears when you focus Cursor, compresses before you send. 30-day free trial.">
+  <link rel="canonical" href="https://www.terseai.org/for-cursor">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Reduce Cursor Token Costs — Terse for Cursor">
+  <meta property="og:description" content="Terse cuts Cursor AI token costs by 40-70%. Real-time prompt compression in the Cursor chat and composer. Auto-appears when Cursor is focused.">
+  <meta property="og:url" content="https://www.terseai.org/for-cursor">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Reduce Cursor Token Costs — Terse for Cursor">
+  <meta name="twitter:description" content="Terse cuts Cursor AI token costs by 40-70%. Real-time prompt compression in the Cursor chat and composer.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "Reduce Cursor Token Costs — Terse for Cursor",
+        "url": "https://www.terseai.org/for-cursor",
+        "description": "Terse reduces Cursor AI token costs by 40-70% through real-time prompt compression in the Cursor chat and composer.",
+        "dateModified": "2026-04-25",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "For Cursor", "item": "https://www.terseai.org/for-cursor"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How does Terse work with Cursor?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse uses macOS Accessibility APIs to read text from Cursor's chat and Composer panels. When you focus Cursor, a floating Terse bar auto-appears at the top of your screen. As you type a prompt, Terse shows the optimized version and its token savings. You can replace your draft with the compressed version with one click, or enable Auto mode to compress every message automatically."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why is Cursor so expensive?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Cursor sends a large context window with every request — your full codebase index, conversation history, and system prompts all count toward your token usage. Each message in Cursor Agent mode can consume 5,000-20,000 tokens before you've typed a single word. Terse compresses the editable portions (your prompts and instructions) by 40-70%, directly reducing per-request cost."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse work with Cursor's Composer and Chat?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse reads from Cursor's Chat panel and Composer textarea via macOS Accessibility APIs. Both modes are supported. The Terse floating bar shows live token counts and savings as you type in either interface."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Will Terse break my Cursor prompts?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Terse uses three compression modes — Soft (typo fix only), Normal (filler and hedging removal), and Aggressive (maximum compression). In Soft and Normal modes, the meaning of your prompt is fully preserved. Code blocks, variable names, file paths, and technical terms are always protected from modification."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse affect Cursor's codebase context?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Terse only optimizes the text you type in the chat and Composer panels. It does not modify Cursor's codebase index, file context, or system prompts. The context Cursor adds automatically is separate from what Terse compresses."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg2:hsl(250,21%,11%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .hero{padding:140px 40px 80px;text-align:center;max-width:900px;margin:0 auto;position:relative}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07),transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:600px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:600px}
+    .divider{height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .demo-box{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;max-width:760px;margin:0 auto 40px}
+    .demo-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .demo-title{margin-left:8px;font-size:11px;color:var(--t3);flex:1}
+    .demo-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+    .cursor-body{display:grid;grid-template-columns:200px 1fr;min-height:240px}
+    .cursor-sidebar{background:hsla(0,0%,100%,0.015);border-right:1px solid var(--bd);padding:10px;font-size:11px;color:var(--t3)}
+    .cursor-file{padding:4px 8px;border-radius:4px;margin-bottom:2px}
+    .cursor-file.active{background:var(--sf);color:var(--t1)}
+    .cursor-chat{display:flex;flex-direction:column;height:100%}
+    .cursor-chat-header{padding:10px 14px;border-bottom:1px solid var(--bd);font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+    .cursor-messages{flex:1;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+    .cursor-msg{padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.5;max-width:85%}
+    .cursor-msg.user{background:var(--acd);border:1px solid var(--acm);align-self:flex-end;color:var(--t1)}
+    .cursor-msg.ai{background:var(--sf);border:1px solid var(--bd);color:var(--t2)}
+    .cursor-msg.user .original{text-decoration:line-through;opacity:.35;font-size:10px;display:block;margin-bottom:2px}
+    .cursor-msg.user .sent{display:block}
+    .cursor-msg.user .savings{font-size:9px;color:var(--ac);font-weight:700;margin-top:3px;display:block}
+    .cursor-input-row{padding:10px 14px;border-top:1px solid var(--bd);display:flex;gap:8px;align-items:center}
+    .cursor-input{flex:1;font-size:12px;color:var(--t2);font-family:'JetBrains Mono',monospace}
+    .terse-popup{padding:8px 14px;background:var(--bg0);border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;opacity:0;transition:opacity .4s}
+    .terse-popup.show{opacity:1}
+    .tp-dot{width:5px;height:5px;border-radius:50%;background:var(--ac)}
+    .tp-text{flex:1;font-size:10px;color:var(--t3)}
+    .tp-savings{font-size:11px;font-weight:800;color:var(--ac)}
+    .cursor-msg{opacity:0;transition:opacity .3s}.cursor-msg.show{opacity:1}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+      .cursor-body{grid-template-columns:1fr}.cursor-sidebar{display:none}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#pipeline">Pipeline</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Cursor</div>
+  <h1>Cursor Getting <span class="gradient-text">Too Expensive?</span></h1>
+  <p class="sub">Terse auto-appears when you focus Cursor, compresses your prompts in real time, and shows you the savings before you send. 40–70% fewer tokens per message.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
+    <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">prompt token reduction</span></div>
+    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">appears on Cursor focus</span></div>
+    <div class="stat-pill"><span class="val">3</span><span class="lbl">compression modes</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">data leaves device</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>How Terse Works with <span class="gradient-text">Cursor</span></h2>
+  <p class="section-sub">Terse reads from Cursor's Chat and Composer panels via macOS Accessibility APIs, compresses on-device, and shows the result before you hit send.</p>
+
+  <div class="demo-box">
+    <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Cursor — Composer</div><div class="demo-badge">Terse Active</div></div>
+    <div class="cursor-body">
+      <div class="cursor-sidebar">
+        <div class="cursor-file active">📄 auth.ts</div>
+        <div class="cursor-file">📄 middleware.ts</div>
+        <div class="cursor-file">📄 routes.ts</div>
+        <div class="cursor-file">📄 types.ts</div>
+      </div>
+      <div class="cursor-chat">
+        <div class="cursor-chat-header">Composer</div>
+        <div class="cursor-messages">
+          <div class="cursor-msg ai show">I can help you refactor the auth middleware. What changes do you need?</div>
+          <div class="cursor-msg user" id="cursorMsg">
+            <span class="original">Could you please possibly help me refactor this authentication middleware so that it would hopefully use asynchronous handlers? I think it would be really good if you could also make sure that it maintains backwards compatibility with existing API consumers.</span>
+            <span class="sent">Refactor auth middleware to use async handlers. Maintain backwards compatibility with existing API consumers.</span>
+            <span class="savings">Terse: 67 → 22 tokens · saved 67% · Normal mode</span>
+          </div>
+        </div>
+        <div class="terse-popup" id="cursorPopup">
+          <div class="tp-dot"></div>
+          <div class="tp-text">Terse compressed your message — removed filler &amp; hedging, preserved intent</div>
+          <div class="tp-savings">−67%</div>
+        </div>
+        <div class="cursor-input-row">
+          <div class="cursor-input" style="color:var(--t3)">Type a message…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">👁️</div>
+      <h3>Focus-Triggered Popup</h3>
+      <p>When you click into Cursor's Chat or Composer, Terse auto-appears at the top of your screen — without stealing focus or interrupting your flow.</p>
+      <span class="tag">Auto-detect</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">✂️</div>
+      <h3>Filler & Hedging Removal</h3>
+      <p>Phrases like "Could you possibly help me…", "I was hoping you could…", and "It would be great if…" add tokens without adding meaning. Terse removes them automatically.</p>
+      <span class="tag">Normal Mode</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <h3>Code Block Protection</h3>
+      <p>Variable names, file paths, and backtick code blocks are always excluded from compression. Only natural language prose is touched — never your code.</p>
+      <span class="tag">Always Safe</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔄</div>
+      <h3>Auto Mode</h3>
+      <p>Enable Auto in the Terse popup to automatically replace every Cursor prompt with its optimized version before you send. Zero extra clicks.</p>
+      <span class="tag">One-Click</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💰</div>
+      <h3>Live Token Counter</h3>
+      <p>See the before and after token count for every prompt in real time. Know exactly how much you're saving on each Cursor request.</p>
+      <span class="tag">Real-time</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔧</div>
+      <h3>3 Compression Modes</h3>
+      <p>Soft (typo fix only), Normal (filler removal), and Aggressive (maximum compression). Switch modes per-prompt depending on how much context precision you need.</p>
+      <span class="tag">Flexible</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Why Cursor <span class="gradient-text">Costs So Much</span></h2>
+  <p class="section-sub">Cursor's cost isn't just your prompts — it's everything Cursor adds automatically before your words even reach the model.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px">
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">Token breakdown — Cursor Agent message</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Cursor system prompt</span><span style="font-weight:600">~2,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Codebase index &amp; context</span><span style="font-weight:600">~8,000–15,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Conversation history</span><span style="font-weight:600">~2,000–5,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2);font-style:italic">Your prompt (verbose)</span><span style="color:#f87171;font-weight:700">~200–800 tokens</span></div>
+        <div style="height:1px;background:var(--bd);margin:4px 0"></div>
+        <div style="font-size:12px;color:var(--t3)">Your prompt is the only part you control. Terse cuts it by 40–70%.</div>
+      </div>
+    </div>
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--acm);border-radius:14px;background:linear-gradient(160deg,rgba(110,231,183,0.05),var(--bg2))">
+      <div style="font-size:12px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">What Terse does</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Removes filler phrases ("could you please", "I was hoping", "it would be great if")</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Fixes typos that cause misinterpretation and re-prompting</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Removes hedging language that doesn't change the instruction</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Compresses redundant phrasing while preserving full meaning</span></div>
+        <div style="margin-top:8px;padding:10px 14px;background:var(--acd);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)">Result: 40–70% fewer tokens on every prompt you type</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about using Terse with Cursor.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">How does Terse work with Cursor?</div>
+      <div class="faq-a">Terse reads from Cursor's Chat and Composer via macOS Accessibility APIs. A floating bar auto-appears when you focus Cursor, showing live token counts and the compressed version of your prompt. One click to replace, or enable Auto mode for hands-free compression.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Why is Cursor so expensive?</div>
+      <div class="faq-a">Cursor sends a large context window per request — codebase index, conversation history, and system prompts all count toward your bill. Your typed prompts are the only part you can control. Terse compresses them by 40–70% per message.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse work with Cursor Composer and Chat?</div>
+      <div class="faq-a">Yes. Both the Chat panel and Composer textarea are supported. The Terse floating bar shows live token counts and savings as you type in either interface.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Will Terse break my Cursor prompts?</div>
+      <div class="faq-a">No. In Soft and Normal modes, meaning is fully preserved — only filler, hedging, and typos are removed. Code blocks, variable names, and technical terms are always protected. You can preview the compressed version before applying.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse affect Cursor's codebase context?</div>
+      <div class="faq-a">No. Terse only compresses the text you type. Cursor's codebase index, file context, and system prompts are not touched by Terse.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Is there a free trial?</div>
+      <div class="faq-a">Yes — both Pro ($4.99/mo) and Premium ($99/mo) include a 30-day free trial. No credit card charge until your trial ends. Cancel anytime.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">Terse supports every major AI coding tool and browser-based AI assistant.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card"><span style="font-size:18px">⚡</span><span>Claude Code — CLI Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-chatgpt" class="also-card"><span style="font-size:18px">💬</span><span>ChatGPT — Browser</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/#agents" class="also-card"><span style="font-size:18px">🤖</span><span>Aider, OpenClaw, Copilot CLI</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/#agents" class="also-card"><span style="font-size:18px">🌐</span><span>Claude.ai, Gemini — Browser</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Make Every Cursor Prompt <span class="gradient-text">Leaner</span></h2>
+  <p>30-day free trial. No credit card required until your trial ends. Cancel anytime.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Prompt optimizer for AI coding tools. Compress prompts, cut costs, ship faster. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-chatgpt">ChatGPT</a><a href="/#agents">All Tools</a></div>
+    <div class="footer-col"><h4>Techniques</h4><a href="/spell-correction">Spell Correction</a><a href="/nlp-analysis">NLP Analysis</a><a href="/telegraph-compression">Telegraph Compression</a><a href="/selective-context">Selective Context</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Rust · Swift</span></div>
+</footer>
+
+<script>
+(function(){
+  const msg = document.getElementById('cursorMsg');
+  const popup = document.getElementById('cursorPopup');
+  let started = false;
+  function run(){
+    if(started) return; started = true;
+    setTimeout(()=>msg.classList.add('show'), 600);
+    setTimeout(()=>popup.classList.add('show'), 1200);
+  }
+  const obs = new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)run();}),{threshold:0.3});
+  obs.observe(document.querySelector('.demo-box'));
+})();
+</script>
+</body>
+</html>

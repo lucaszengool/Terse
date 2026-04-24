@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reduce ChatGPT Token Costs — Terse for ChatGPT</title>
+  <meta name="description" content="Terse compresses ChatGPT prompts by 40-70% directly in the browser. Works with ChatGPT, Claude.ai, and Gemini via macOS Accessibility APIs. No extension needed. 30-day free trial.">
+  <link rel="canonical" href="https://www.terseai.org/for-chatgpt">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Reduce ChatGPT Token Costs — Terse for ChatGPT">
+  <meta property="og:description" content="Terse compresses ChatGPT prompts by 40-70% directly in the browser. Works with ChatGPT, Claude.ai, and Gemini via macOS Accessibility APIs.">
+  <meta property="og:url" content="https://www.terseai.org/for-chatgpt">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Reduce ChatGPT Token Costs — Terse for ChatGPT">
+  <meta name="twitter:description" content="Terse compresses ChatGPT prompts by 40-70% directly in the browser via macOS Accessibility APIs. No extension needed.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "Reduce ChatGPT Token Costs — Terse for ChatGPT",
+        "url": "https://www.terseai.org/for-chatgpt",
+        "description": "Terse reduces ChatGPT token costs by 40-70% through real-time prompt compression in the browser via macOS Accessibility APIs.",
+        "dateModified": "2026-04-25",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "For ChatGPT", "item": "https://www.terseai.org/for-chatgpt"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How does Terse work with ChatGPT?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse uses macOS Accessibility APIs to read text from your browser's ChatGPT textarea. When you focus the ChatGPT tab in Chrome or Safari, a floating Terse bar appears showing the optimized version of your prompt and how many tokens it saves. You can replace your draft with one click, or enable Auto mode to compress every message automatically before sending."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse need a browser extension for ChatGPT?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Terse is a native macOS app that reads browser text fields using macOS Accessibility APIs — the same technology that powers screen readers and system-level text tools. No browser extension is required, and it works with Chrome, Safari, and other macOS browsers."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse work with Claude.ai and Gemini too?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse works with any browser-based AI assistant that uses a standard textarea element, including ChatGPT, Claude.ai, Gemini, Perplexity, and others. The same floating optimization bar appears automatically when you focus any supported AI chat interface in your browser."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much can Terse save on ChatGPT costs?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "GPT-4o costs $2.50 per million input tokens and $10 per million output tokens. Terse reduces your prompt token count by 40-70%, directly cutting the input cost portion. For heavy users sending 100+ messages per day, this translates to $15-50/month in savings on GPT-4o API costs, and more on GPT-4o with higher usage."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Terse safe to use with ChatGPT?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse processes all text locally on your device using a Rust engine. No text is sent to Terse's servers. The app reads from your browser's accessibility tree and writes back to the same textarea — nothing is intercepted, logged, or transmitted. Your ChatGPT conversations remain private."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg2:hsl(250,21%,11%);
+      --sf:hsla(0,0%,100%,0.04);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .hero{padding:140px 40px 80px;text-align:center;max-width:900px;margin:0 auto;position:relative}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07),transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:620px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:600px}
+    .divider{height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .browser-demo{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;max-width:760px;margin:0 auto 40px}
+    .browser-chrome{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .browser-url{flex:1;margin:0 12px;padding:5px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+    .browser-body{display:flex;flex-direction:column;height:260px}
+    .chat-messages{flex:1;padding:16px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+    .chat-msg{padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.5;max-width:80%}
+    .chat-msg.user{background:hsl(217,91%,30%);align-self:flex-end;color:#fff}
+    .chat-msg.ai{background:var(--sf);border:1px solid var(--bd);color:var(--t2)}
+    .chat-msg.user .original{text-decoration:line-through;opacity:.35;font-size:11px;display:block;margin-bottom:3px}
+    .chat-msg.user .sent{display:block}
+    .chat-msg.user .savings{font-size:10px;color:#93c5fd;font-weight:700;margin-top:4px;display:block}
+    .chat-input-row{padding:10px 14px;border-top:1px solid var(--bd);display:flex;gap:8px;align-items:flex-end}
+    .chat-input{flex:1;padding:8px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;font-size:12px;color:var(--t3)}
+    .chat-send{width:32px;height:32px;border-radius:8px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .terse-bar{margin:0;padding:7px 14px;background:hsla(0,0%,0%,0.2);border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;opacity:0;transition:opacity .4s}
+    .terse-bar.show{opacity:1}
+    .terse-dot{width:5px;height:5px;border-radius:50%;background:var(--ac)}
+    .terse-info{flex:1;font-size:10px;color:var(--t3)}
+    .terse-pct{font-size:11px;font-weight:800;color:var(--ac)}
+    .chat-msg{opacity:0;transition:opacity .3s}.chat-msg.show{opacity:1}
+
+    .compat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:32px}
+    .compat-card{padding:16px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;text-align:center;transition:all .3s}
+    .compat-card:hover{border-color:var(--bdl)}
+    .compat-icon{font-size:24px;margin-bottom:8px}
+    .compat-name{font-size:12px;font-weight:700}
+    .compat-sub{font-size:10px;color:var(--t3);margin-top:2px}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+      .compat-grid{grid-template-columns:repeat(2,1fr)}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#pipeline">Pipeline</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">ChatGPT · Claude.ai · Gemini</div>
+  <h1>Compress Your <span class="gradient-text">Browser AI</span> Prompts</h1>
+  <p class="sub">Terse reads from ChatGPT, Claude.ai, and Gemini via macOS Accessibility APIs — no extension needed. Compresses prompts by 40–70% before you send. Fully on-device.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
+    <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">prompt compression</span></div>
+    <div class="stat-pill"><span class="val">No</span><span class="lbl">extension required</span></div>
+    <div class="stat-pill"><span class="val">4+</span><span class="lbl">AI chat apps supported</span></div>
+    <div class="stat-pill"><span class="val">100%</span><span class="lbl">on-device, private</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>How Terse Works with <span class="gradient-text">Browser AI</span></h2>
+  <p class="section-sub">Terse uses macOS Accessibility APIs — the same technology as screen readers — to read and optimize text in your browser tabs without any extension.</p>
+
+  <div class="browser-demo">
+    <div class="browser-chrome">
+      <div class="wd r"></div><div class="wd y"></div><div class="wd g"></div>
+      <div class="browser-url">chatgpt.com</div>
+      <div style="font-size:9px;padding:2px 8px;background:var(--acd);border:1px solid var(--acm);border-radius:3px;color:var(--ac);font-weight:700">Terse Active</div>
+    </div>
+    <div class="browser-body">
+      <div class="chat-messages">
+        <div class="chat-msg ai show">Hello! I'm ChatGPT. How can I help you today?</div>
+        <div class="chat-msg user" id="chatMsg">
+          <span class="original">I was wondering if you could possibly help me understand how I might go about implementing a rate limiting solution for my REST API? I think it would be really helpful if you could explain the different approaches that might be available.</span>
+          <span class="sent">Explain rate limiting approaches for REST APIs. What implementation options exist?</span>
+          <span class="savings">Terse: 58 → 17 tokens · saved 71% · Normal mode</span>
+        </div>
+      </div>
+      <div class="terse-bar" id="chatBar">
+        <div class="terse-dot"></div>
+        <div class="terse-info">Terse compressed before sending — filler &amp; hedging removed, meaning preserved</div>
+        <div class="terse-pct">−71% tokens</div>
+      </div>
+      <div class="chat-input-row">
+        <div class="chat-input">Message ChatGPT…</div>
+        <div class="chat-send">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--bg0)" stroke-width="3"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🌐</div>
+      <h3>No Extension Needed</h3>
+      <p>Terse is a native macOS app using Accessibility APIs — not a browser extension. Works with Chrome, Safari, and any macOS browser without installation or permissions in the browser itself.</p>
+      <span class="tag">Native macOS</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">👁️</div>
+      <h3>Auto-Detects AI Tabs</h3>
+      <p>When you switch to a ChatGPT, Claude.ai, or Gemini tab, Terse auto-detects the textarea and shows the floating optimizer bar — no manual activation needed.</p>
+      <span class="tag">Auto-detect</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <h3>Fully Private</h3>
+      <p>All compression happens on your device using a Rust engine. Your prompts and conversations are never sent to Terse's servers. Zero data leaves your Mac.</p>
+      <span class="tag">On-Device</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <h3>Instant Compression</h3>
+      <p>Terse processes your prompt in under a millisecond. The optimized version appears in the floating bar before you've finished typing, with live token count and savings percentage.</p>
+      <span class="tag">&lt;1ms</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔄</div>
+      <h3>One-Click Replace</h3>
+      <p>Hit Replace in the Terse bar to swap your draft with the compressed version. Or enable Auto mode to compress every message automatically before it's sent.</p>
+      <span class="tag">Frictionless</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">✏️</div>
+      <h3>3 Compression Modes</h3>
+      <p>Soft (typo fix only), Normal (filler and hedging removal), Aggressive (maximum compression). Choose per-session based on how much precision your prompts need.</p>
+      <span class="tag">Flexible</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Works with All Major <span class="gradient-text">AI Chat Apps</span></h2>
+  <p class="section-sub">One app, every browser-based AI assistant on macOS.</p>
+  <div class="compat-grid">
+    <div class="compat-card">
+      <div class="compat-icon">💬</div>
+      <div class="compat-name">ChatGPT</div>
+      <div class="compat-sub">chatgpt.com</div>
+    </div>
+    <div class="compat-card">
+      <div class="compat-icon">🤖</div>
+      <div class="compat-name">Claude.ai</div>
+      <div class="compat-sub">claude.ai</div>
+    </div>
+    <div class="compat-card">
+      <div class="compat-icon">✨</div>
+      <div class="compat-name">Gemini</div>
+      <div class="compat-sub">gemini.google.com</div>
+    </div>
+    <div class="compat-card">
+      <div class="compat-icon">🔍</div>
+      <div class="compat-name">Perplexity</div>
+      <div class="compat-sub">perplexity.ai</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about using Terse with browser-based AI.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">How does Terse work with ChatGPT?</div>
+      <div class="faq-a">Terse uses macOS Accessibility APIs to read text from your browser's ChatGPT textarea. When you focus the tab, a floating bar shows the compressed version. One click replaces your draft, or Auto mode compresses every message automatically.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse need a browser extension?</div>
+      <div class="faq-a">No. Terse is a native macOS app using Accessibility APIs — the same technology as screen readers. No browser extension required. Works with Chrome, Safari, and all macOS browsers.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does it work with Claude.ai and Gemini too?</div>
+      <div class="faq-a">Yes. Terse works with any browser-based AI assistant using a standard textarea, including ChatGPT, Claude.ai, Gemini, and Perplexity. The same floating bar appears automatically for each.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How much can Terse save on ChatGPT costs?</div>
+      <div class="faq-a">GPT-4o costs $2.50/M input tokens. Terse reduces prompt token count by 40–70%, directly cutting that input cost. For heavy users sending 100+ messages/day, this translates to $15–50/month in savings on API costs.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Is Terse safe to use with ChatGPT?</div>
+      <div class="faq-a">Yes. All text processing is 100% on-device using a Rust engine. Nothing is sent to Terse's servers. Your prompts and conversations remain completely private.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Is there a free trial?</div>
+      <div class="faq-a">Yes — both plans include a 30-day free trial with no charge until the trial ends. Pro is $4.99/mo, Premium is $99/mo. Cancel anytime.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">Terse supports AI coding tools alongside browser-based AI assistants.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card"><span style="font-size:18px">⚡</span><span>Claude Code — CLI Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-cursor" class="also-card"><span style="font-size:18px">⌨️</span><span>Cursor — AI Code Editor</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/#agents" class="also-card"><span style="font-size:18px">🤖</span><span>Aider, OpenClaw, Copilot CLI</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Smarter Prompts, <span class="gradient-text">Lower Bills</span></h2>
+  <p>30-day free trial. No credit card required until your trial ends. Works with ChatGPT, Claude.ai, Gemini, and more.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Prompt optimizer for browser AI and coding tools. Compress prompts, cut costs, stay private. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-chatgpt">ChatGPT</a><a href="/#agents">All Tools</a></div>
+    <div class="footer-col"><h4>Techniques</h4><a href="/spell-correction">Spell Correction</a><a href="/nlp-analysis">NLP Analysis</a><a href="/telegraph-compression">Telegraph Compression</a><a href="/selective-context">Selective Context</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Rust · Swift</span></div>
+</footer>
+
+<script>
+(function(){
+  const msg = document.getElementById('chatMsg');
+  const bar = document.getElementById('chatBar');
+  let started = false;
+  function run(){
+    if(started) return; started = true;
+    setTimeout(()=>msg.classList.add('show'), 600);
+    setTimeout(()=>bar.classList.add('show'), 1300);
+  }
+  const obs = new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)run();}),{threshold:0.3});
+  obs.observe(document.querySelector('.browser-demo'));
+})();
+</script>
+</body>
+</html>

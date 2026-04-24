@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reduce Claude Code Token Costs — Terse for Claude Code</title>
+  <meta name="description" content="Terse cuts Claude Code token costs by 40-89%. Auto-detects sessions, compresses prompts, catches duplicate tool calls, flags redundant file reads, and generates CLAUDE.md rules. Try free for 30 days.">
+  <link rel="canonical" href="https://www.terseai.org/for-claude-code">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Reduce Claude Code Token Costs — Terse for Claude Code">
+  <meta property="og:description" content="Terse cuts Claude Code token costs by 40-89%. Auto-detects sessions, compresses prompts, catches duplicate tool calls, and generates CLAUDE.md rules.">
+  <meta property="og:url" content="https://www.terseai.org/for-claude-code">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Reduce Claude Code Token Costs — Terse for Claude Code">
+  <meta name="twitter:description" content="Terse cuts Claude Code token costs by 40-89%. Auto-detects sessions, compresses prompts, catches duplicate tool calls, and generates CLAUDE.md rules.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "Reduce Claude Code Token Costs — Terse for Claude Code",
+        "url": "https://www.terseai.org/for-claude-code",
+        "description": "Terse reduces Claude Code token costs by 40-89% through prompt compression, duplicate tool call detection, and CLAUDE.md rule generation.",
+        "dateModified": "2026-04-25",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "For Claude Code", "item": "https://www.terseai.org/for-claude-code"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How does Terse reduce Claude Code token costs?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse auto-detects Claude Code sessions via process scanning and attaches a floating optimizer bar. It compresses every prompt you type (removing filler, typos, and redundancy), detects when Claude Code makes duplicate tool calls, flags redundant file reads, and tracks per-turn token costs in real time. In a typical 2-hour session, this reduces total token usage by 40-89%."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse work with Claude Code automatically?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse scans running processes every 5 seconds and auto-detects Claude Code as soon as it launches. A floating optimization bar appears above your terminal. You do not need to configure anything — detection is fully automatic."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is CLAUDE.md rule generation?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "After monitoring a Claude Code session, Terse analyzes patterns — repeated tool calls, common prompt structures, redundant context — and generates CLAUDE.md rules that prevent these inefficiencies in future sessions. Placing these rules in your project's CLAUDE.md file trains Claude Code to behave more efficiently from the start of each session."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does a Claude Code session cost without Terse?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A typical 2-hour Claude Code session with Claude Opus generates approximately 210,000 tokens of CLI output noise (file reads, tool calls, repeated context). At Claude Opus pricing of $15-$75 per million tokens, that is $3–$15 per session. Heavy users doing 3-4 sessions per day spend $200-500/month. Terse compresses this output by 40-89%, directly reducing that cost."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse intercept or send my Claude Code prompts anywhere?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Terse is 100% on-device. It reads text from your terminal using macOS Accessibility APIs, processes it locally using a Rust engine, and writes the optimized text back to the same terminal. No text is sent to any server. Your code and prompts never leave your machine."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is a duplicate tool call in Claude Code?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A duplicate tool call happens when Claude Code reads the same file multiple times in one session, or runs the same search query twice. Each tool call consumes tokens for the call itself plus the result in context. Terse's Agent Monitor detects these patterns in real time and alerts you, so you can interrupt and redirect Claude before the wasted tokens accumulate."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--ac3:#a7f3d0;
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+
+    .hero{padding:140px 40px 80px;text-align:center;position:relative;overflow:hidden;max-width:900px;margin:0 auto}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07) 0%,transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:600px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:0}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    section .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:600px}
+    .divider{max-width:100%;height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .demo-box{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;max-width:760px;margin:0 auto}
+    .demo-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .demo-title{margin-left:8px;font-size:11px;color:var(--t3);flex:1}
+    .demo-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+    .demo-body{padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px}
+    .term-line{line-height:1.8;opacity:0;transition:opacity .3s}
+    .term-line.show{opacity:1}
+    .term-line.cmd{color:#fff}
+    .term-line.out{color:var(--t3)}
+    .term-line.green{color:var(--ac)}
+    .term-line.warn{color:#fbbf24}
+    .terse-banner{margin-top:10px;padding:10px 14px;background:var(--acd);border:1px solid var(--acm);border-radius:8px;display:flex;align-items:center;gap:10px;opacity:0;transition:opacity .4s}
+    .terse-banner.show{opacity:1}
+    .terse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;opacity:0;transition:opacity .4s}
+    .terse-stats.show{opacity:1}
+    .ts-box{background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:8px;text-align:center}
+    .ts-val{font-size:13px;font-weight:800;display:block;color:var(--ac)}
+    .ts-lbl{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+      .stats-row{gap:8px}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#pipeline">Pipeline</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Claude Code</div>
+  <h1>Cut Your <span class="gradient-text">Claude Code</span> Bill by 40–89%</h1>
+  <p class="sub">Terse auto-detects Claude Code sessions, compresses every prompt, catches duplicate tool calls, and generates CLAUDE.md rules — so you spend less and ship faster.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
+    <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">89%</span><span class="lbl">CLI noise reduction</span></div>
+    <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">prompt compression</span></div>
+    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">session detection</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">data leaves device</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>How Terse Works with <span class="gradient-text">Claude Code</span></h2>
+  <p class="section-sub">A 2-hour Claude Code session generates ~210,000 tokens of output noise. Terse intercepts, compresses, and monitors every turn — automatically.</p>
+
+  <div style="margin-bottom:40px">
+    <div class="demo-box">
+      <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Terminal — Claude Code Session</div><div class="demo-badge">Terse Active</div></div>
+      <div class="demo-body" id="ccDemo">
+        <div class="term-line cmd">$ claude</div>
+        <div class="term-line out">Claude Code v1.2.4 — type /help for commands</div>
+        <div class="term-line out" style="color:var(--ac);font-size:10px">● Terse detected — monitoring session (Opus · $15/M tokens)</div>
+        <div class="term-line cmd" style="margin-top:8px">&gt; refactor the authetication middlewre to use asynchrnous handlers</div>
+        <div class="terse-banner" id="ccBanner">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0"></div>
+          <div style="flex:1;font-size:10px;color:var(--t2)">Terse optimized: <span style="text-decoration:line-through;opacity:.4">authetication middlewre asynchrnous</span> → <span style="color:var(--ac)">authentication middleware asynchronous</span> · saved 3 tokens · prevented 2 retry tool calls</div>
+        </div>
+        <div class="term-line out" style="margin-top:8px">Reading: src/middleware/authentication.ts [847 tokens]</div>
+        <div class="term-line warn" id="ccWarn">⚠ Terse: duplicate file read detected (3rd time this session) · flagging for CLAUDE.md rule</div>
+        <div class="terse-stats" id="ccStats">
+          <div class="ts-box"><span class="ts-val">23.4K</span><span class="ts-lbl">tokens used</span></div>
+          <div class="ts-box"><span class="ts-val" style="color:#fbbf24">210K</span><span class="ts-lbl">without Terse</span></div>
+          <div class="ts-box"><span class="ts-val">89%</span><span class="ts-lbl">compressed</span></div>
+          <div class="ts-box"><span class="ts-val">$0.31</span><span class="ts-lbl">session cost</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <h3>Auto Session Detection</h3>
+      <p>Terse scans processes every 5 seconds. The moment Claude Code launches, a floating monitor bar appears — no setup, no config required.</p>
+      <span class="tag">Automatic</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🗜️</div>
+      <h3>Prompt Compression</h3>
+      <p>Every prompt you type goes through a 7-stage pipeline: typo fix, whitespace normalization, filler removal, pattern optimization, and more. Code blocks are always protected.</p>
+      <span class="tag">7-Stage Pipeline</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔍</div>
+      <h3>Duplicate Tool Call Detection</h3>
+      <p>Terse watches for repeated <code>Read</code>, <code>Bash</code>, and <code>Search</code> calls within a session. Each duplicate is flagged in real time before it burns tokens.</p>
+      <span class="tag">Agent Monitor</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📁</div>
+      <h3>Redundant File Read Flagging</h3>
+      <p>When Claude Code reads the same file multiple times — a very common pattern — Terse highlights it and logs it for the CLAUDE.md rule generator.</p>
+      <span class="tag">Session Analysis</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📋</div>
+      <h3>CLAUDE.md Rule Generation</h3>
+      <p>After each session, Terse analyzes patterns and writes CLAUDE.md rules that prevent the same inefficiencies from happening again. Your sessions get cheaper over time.</p>
+      <span class="tag">Unique to Terse</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💰</div>
+      <h3>Per-Turn Cost Tracking</h3>
+      <p>See exactly how many tokens each turn costs, in real time. Know instantly when a single prompt is burning $0.50 and redirect before the session gets expensive.</p>
+      <span class="tag">Live Tracking</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>The Claude Code Token Problem</h2>
+  <p class="section-sub">Most of your token spend isn't your prompts — it's the invisible overhead Claude Code generates in every turn.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px">
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">Without Terse — 2 hour session</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">CLI output noise</span><span style="color:#f87171;font-weight:700">~150,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Duplicate file reads</span><span style="color:#f87171;font-weight:700">~30,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Verbose prompts</span><span style="color:#f87171;font-weight:700">~30,000 tokens</span></div>
+        <div style="height:1px;background:var(--bd);margin:4px 0"></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800"><span>Total</span><span style="color:#f87171">~210,000 tokens</span></div>
+        <div style="font-size:12px;color:var(--t3)">~$3.15 with Opus · $0.63 with Sonnet</div>
+      </div>
+    </div>
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--acm);border-radius:14px;background:linear-gradient(160deg,rgba(110,231,183,0.05),var(--bg2))">
+      <div style="font-size:12px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">With Terse — same session</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">CLI output noise</span><span style="color:var(--ac);font-weight:700">~16,500 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Duplicate file reads</span><span style="color:var(--ac);font-weight:700">~3,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Compressed prompts</span><span style="color:var(--ac);font-weight:700">~9,000–18,000 tokens</span></div>
+        <div style="height:1px;background:var(--bd);margin:4px 0"></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800"><span>Total</span><span style="color:var(--ac)">~23,000–37,000 tokens</span></div>
+        <div style="font-size:12px;color:var(--t3)">~$0.35–$0.55 with Opus · $0.07–$0.11 with Sonnet</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about using Terse with Claude Code.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">How does Terse reduce Claude Code token costs?</div>
+      <div class="faq-a">Terse auto-detects Claude Code via process scanning and attaches a floating optimizer. It compresses every prompt (removing filler, typos, redundancy), detects duplicate tool calls, flags redundant file reads, and tracks per-turn costs in real time. In a typical 2-hour session, total token usage drops by 40–89%.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse work with Claude Code automatically?</div>
+      <div class="faq-a">Yes. Terse scans running processes every 5 seconds and auto-detects Claude Code as soon as it launches. The floating monitor appears above your terminal with no setup required.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">What is CLAUDE.md rule generation?</div>
+      <div class="faq-a">After monitoring a session, Terse analyzes patterns — repeated tool calls, common prompt structures, redundant context — and generates CLAUDE.md rules. Placing these in your project trains Claude Code to behave more efficiently from the start of every future session.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse send my Claude Code prompts anywhere?</div>
+      <div class="faq-a">No. Terse is 100% on-device. It reads text via macOS Accessibility APIs, compresses locally with a Rust engine, and writes back to the terminal. Your code and prompts never leave your machine.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">What is a duplicate tool call?</div>
+      <div class="faq-a">A duplicate tool call happens when Claude Code reads the same file multiple times, or runs the same search twice. Each costs tokens for the call plus the result in context. Terse's Agent Monitor flags these in real time so you can interrupt before costs accumulate.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How much does a Claude Code session cost without Terse?</div>
+      <div class="faq-a">A typical 2-hour Claude Opus session generates ~210,000 tokens of CLI noise. At $15–$75/M tokens, that's $3–$15 per session. Heavy users spend $200–500/month. Terse compresses this by 40–89%.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">Terse supports every major AI coding tool and browser-based AI assistant.</p>
+  <div class="also-grid">
+    <a href="/for-cursor" class="also-card">
+      <span style="font-size:18px">⌨️</span>
+      <span>Cursor — AI Code Editor</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-chatgpt" class="also-card">
+      <span style="font-size:18px">💬</span>
+      <span>ChatGPT — Browser</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a class="also-card" href="/#agents">
+      <span style="font-size:18px">🤖</span>
+      <span>Aider, OpenClaw, Copilot CLI</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a class="also-card" href="/#agents">
+      <span style="font-size:18px">🌐</span>
+      <span>Claude.ai, Gemini — Browser</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Stop Burning Tokens on <span class="gradient-text">Noise</span></h2>
+  <p>30-day free trial. No credit card required until your trial ends. Cancel anytime.</p>
+  <div class="hero-actions" style="justify-content:center">
+    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent session optimizer. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-chatgpt">ChatGPT</a><a href="/#agents">All Tools</a></div>
+    <div class="footer-col"><h4>Techniques</h4><a href="/spell-correction">Spell Correction</a><a href="/nlp-analysis">NLP Analysis</a><a href="/telegraph-compression">Telegraph Compression</a><a href="/selective-context">Selective Context</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Rust · Swift</span></div>
+</footer>
+
+<script>
+(function(){
+  const lines = document.querySelectorAll('#ccDemo .term-line');
+  const banner = document.getElementById('ccBanner');
+  const warn = document.getElementById('ccWarn');
+  const stats = document.getElementById('ccStats');
+  let started = false;
+
+  function run() {
+    if (started) return;
+    started = true;
+    lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), i * 400));
+    setTimeout(() => banner.classList.add('show'), lines.length * 400 + 200);
+    setTimeout(() => warn.classList.add('show'), lines.length * 400 + 900);
+    setTimeout(() => stats.classList.add('show'), lines.length * 400 + 1400);
+  }
+
+  const obs = new IntersectionObserver(e => e.forEach(x => { if (x.isIntersecting) run(); }), { threshold: 0.3 });
+  obs.observe(document.querySelector('.demo-box'));
+})();
+</script>
+</body>
+</html>

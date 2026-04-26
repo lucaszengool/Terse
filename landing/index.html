@@ -3459,7 +3459,7 @@ function showPaymentMethodPicker(tier) {
       </button>
       <button data-method="wechat_pay" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:1px solid var(--bdl,#444);background:var(--bg3,#28282c);color:var(--t1,#fff);cursor:pointer;font-size:14px;transition:border-color .2s">
         <span style="font-size:20px">💬</span>
-        <span><strong data-i18n="payment.wechat">WeChat Pay</strong> <span style="font-size:11px;color:var(--t2,#aaa)">&#x5FAE;&#x4FE1;&#x652F;&#x4ED8;</span><br><span style="font-size:12px;color:var(--t2,#aaa)" data-i18n="payment.wechatDesc">Invoice sent each billing cycle</span></span>
+        <span><strong data-i18n="payment.wechat">WeChat Pay</strong> <span style="font-size:11px;color:var(--t2,#aaa)">&#x5FAE;&#x4FE1;&#x652F;&#x4ED8;</span><br><span style="font-size:12px;color:var(--t2,#aaa)" data-i18n="payment.wechatDesc">Pay via WeChat QR code · no trial</span></span>
       </button>
     </div>
     <p style="margin:16px 0 0;font-size:11px;color:var(--t2,#888);text-align:center" data-i18n="payment.trialNote">No charge during 30-day trial. Cancel anytime.</p>
@@ -3490,15 +3490,11 @@ async function doCheckout(tier, paymentMethod) {
     const clerkUserId = user.id;
     const clerkUserEmail = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress;
 
-    // WeChat Pay + Alipay → Paddle (true recurring + 30-day free trial)
-    // Card/Link → Stripe (existing flow)
-    const isChinaPay = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
-    const endpoint = isChinaPay ? '/api/paddle/checkout' : '/api/checkout';
-
     const body = { tier, clerkUserId, clerkUserEmail };
-    if (!isChinaPay && paymentMethod && paymentMethod !== 'card') {
+    if (paymentMethod && paymentMethod !== 'card') {
       body.paymentMethod = paymentMethod;
     }
+    const endpoint = '/api/checkout';
 
     const res = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',

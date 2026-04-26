@@ -3316,11 +3316,21 @@ function updateClerkUI() {
     signBtns.forEach(b => b.style.display = 'none');
     userEl.style.display = 'flex';
     document.getElementById('clerk-avatar').src = user.imageUrl;
-    // If user just signed in and had a pending download, trigger it
-    if (window._pendingDownload) {
-      window._pendingDownload = false;
+    // Check for pending action (persisted in sessionStorage so OAuth redirects don't lose it)
+    const pending = sessionStorage.getItem('pendingAction');
+    if (pending) {
+      sessionStorage.removeItem('pendingAction');
       closeClerkModal();
-      setTimeout(() => { window.location.href = DMG_URL; }, 500);
+      if (pending === 'download') {
+        setTimeout(() => { window.location.href = DMG_URL; }, 300);
+      } else if (pending === 'vscode') {
+        setTimeout(() => { window.open('https://marketplace.visualstudio.com/items?itemName=LucasZeng.terse-optimizer', '_blank'); }, 300);
+      } else if (pending === 'chrome') {
+        setTimeout(() => { window.open('https://chromewebstore.google.com/detail/terse-%E2%80%94-token-optimizer-f/lgnkdlpgfcogkmdhckmglleigmnnmmff', '_blank'); }, 300);
+      } else if (pending.startsWith('pricing:')) {
+        const tier = pending.slice(8);
+        setTimeout(() => startCheckout(tier), 300);
+      }
     }
   } else {
     document.querySelectorAll('.nav-sign-in').forEach(b => b.style.display = '');
@@ -3328,16 +3338,7 @@ function updateClerkUI() {
   }
 }
 
-async function openClerkSignIn() {
-  const modal = document.getElementById('clerk-modal');
-  const mount = document.getElementById('clerk-mount');
-  modal.style.display = 'flex';
-  mount.innerHTML = '';
-  // Wait for Clerk to be fully loaded with UI components
-  if (window.Clerk && !window.Clerk.loaded) {
-    await window.Clerk.load();
-  }
-  const clerkAppearance = {
+const clerkAppearance = {
     variables: {
       colorPrimary: '#6ee7b7',
       colorBackground: '#0f0e1a',
@@ -3369,6 +3370,12 @@ async function openClerkSignIn() {
       footer: { '& + div': { background: 'transparent' } }
     }
   };
+async function openClerkSignIn() {
+  const modal = document.getElementById('clerk-modal');
+  const mount = document.getElementById('clerk-mount');
+  modal.style.display = 'flex';
+  mount.innerHTML = '';
+  if (window.Clerk && !window.Clerk.loaded) await window.Clerk.load();
   window.Clerk.mountSignIn(mount, { appearance: clerkAppearance });
   modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
 }
@@ -3378,9 +3385,7 @@ async function openClerkSignUp() {
   const mount = document.getElementById('clerk-mount');
   modal.style.display = 'flex';
   mount.innerHTML = '';
-  if (window.Clerk && !window.Clerk.loaded) {
-    await window.Clerk.load();
-  }
+  if (window.Clerk && !window.Clerk.loaded) await window.Clerk.load();
   window.Clerk.mountSignUp(mount, { appearance: clerkAppearance });
   modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
 }
@@ -3407,11 +3412,9 @@ async function handleDownload(e) {
     await window.Clerk.load();
   }
   if (window.Clerk?.user) {
-    // Signed in — start download immediately
     window.location.href = DMG_URL;
   } else {
-    // Not signed in — show sign-in modal, download after auth
-    window._pendingDownload = true;
+    sessionStorage.setItem('pendingAction', 'download');
     openClerkSignIn();
   }
 }
@@ -3422,8 +3425,7 @@ const API_BASE = window.location.origin;
 async function handlePricing(tier) {
   // Must be signed in to start a trial
   if (!window.Clerk?.user) {
-    // Store desired tier, sign up first
-    window._pendingTier = tier;
+    sessionStorage.setItem('pendingAction', 'pricing:' + tier);
     openClerkSignUp();
     return;
   }
@@ -3531,17 +3533,6 @@ function showPricingToast(msg) {
   setTimeout(() => toast.style.opacity = '0', 3000);
 }
 
-// After Clerk sign-in, check if there was a pending tier selection
-const _origUpdateClerkUI = updateClerkUI;
-updateClerkUI = function() {
-  _origUpdateClerkUI();
-  if (window.Clerk?.user && window._pendingTier) {
-    const tier = window._pendingTier;
-    window._pendingTier = null;
-    closeClerkModal();
-    setTimeout(() => startCheckout(tier), 500);
-  }
-};
 
 // Check URL for checkout success/cancel
 (function checkCheckoutResult() {

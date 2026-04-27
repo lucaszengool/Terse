@@ -282,12 +282,14 @@ fn agent_defs() -> Vec<(&'static str, AgentDef)> {
             parser: "generic",
         }),
         ("codex", AgentDef {
-            name: "Codex CLI",
-            icon: "\u{1F4AC}",
+            name: "OpenAI Codex",
+            icon: "\u{1F9E0}",
             process_names: &["codex"],
-            config_detect_dirs: vec![home.join(".codex")],
-            log_dir: Some(home.join(".codex")),
-            parser: "generic",
+            // ~/.codex/sessions mtime updates on every turn
+            config_detect_dirs: vec![home.join(".codex/sessions"), home.join(".codex")],
+            // log_dir is None — we use find_codex_session() instead of find_latest_session()
+            log_dir: None,
+            parser: "codex",
         }),
         ("copilot", AgentDef {
             name: "Copilot CLI",
@@ -538,6 +540,9 @@ impl AgentSessionData {
                 "optimizedMessages": 0,
             },
             "autoOptimized": { "count": 0, "tokensSaved": 0 },
+            // tokenCountApprox: true when token counts are estimated from text length
+            // (Cursor stores tokens server-side; we estimate from message byte lengths)
+            "tokenCountApprox": self.agent_type == "cursor-agent",
         })
     }
 
@@ -801,8 +806,273 @@ impl AgentSessionData {
         }
     }
 
+    /// Codex CLI JSONL parser.
+    /// Events: thread.started, turn.started, turn.completed (with usage), item.started/completed
+    fn parse_codex_line(&mut self, obj: &serde_json::Value) {
+        let event_type = obj.get("type")
+            .or_else(|| obj.get("event_type"))
+            .and_then(|t| t.as_str())
+            .unwrap_or("");
+
+        let ts = obj.get("timestamp")
+            .and_then(|t| t.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Model detection from turn_context
+        if let Some(model) = obj.get("turn_context")
+            .and_then(|tc| tc.get("model"))
+            .and_then(|m| m.as_str())
+        {
+            self.detected_model = Some(model.to_string());
+        }
+        if let Some(model) = obj.get("model").and_then(|m| m.as_str()) {
+            self.detected_model = Some(model.to_string());
+        }
+
+        match event_type {
+            "turn.started" => {
+                self.turns += 1;
+            }
+
+            "turn.completed" => {
+                // usage: { input_tokens, cached_input_tokens, output_tokens }
+                let u = obj.get("usage")
+                    .or_else(|| obj.get("payload").and_then(|p| p.get("usage")))
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+
+                let input = u["input_tokens"].as_u64().unwrap_or(0);
+                let cached = u["cached_input_tokens"].as_u64().unwrap_or(0);
+                let output = u["output_tokens"].as_u64().unwrap_or(0);
+
+                // Codex reports cumulative totals per session — take the max to avoid backwards steps
+                let new_total = input + cached + output;
+                let cur_total = self.total_input_tokens + self.total_output_tokens;
+                if new_total > cur_total {
+                    self.total_input_tokens = input + cached;
+                    self.total_cache_read_tokens = cached;
+                    self.total_output_tokens = output;
+                    self.last_input_tokens = input + cached;
+                    if self.total_input_tokens > 0 {
+                        self.cache_efficiency = ((self.total_cache_read_tokens as f64
+                            / self.total_input_tokens as f64) * 100.0) as u32;
+                    }
+                }
+            }
+
+            "item.started" => {
+                let item = obj.get("item")
+                    .or_else(|| obj.get("payload").and_then(|p| p.get("item")))
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+                let itype = item["type"].as_str().unwrap_or("");
+                if codex_is_tool(itype) {
+                    let name = item["name"].as_str()
+                        .unwrap_or_else(|| codex_tool_display_name(itype))
+                        .to_string();
+                    self.tool_call_count += 1;
+                    *self.tools_used.entry(name.clone()).or_insert(0) += 1;
+                    let arg = codex_extract_arg(&item);
+                    self.messages.push(AgentMessage {
+                        role: "tool".to_string(),
+                        text: format!("Tool: {}", name),
+                        tokens: 0,
+                        timestamp: ts.clone(),
+                        msg_type: "tool_use".to_string(),
+                        tool_name: Some(name),
+                    });
+                    let _ = arg; // stored in text above
+                }
+            }
+
+            "item.completed" | "item.added" | "item.updated" => {
+                let item = obj.get("item")
+                    .or_else(|| obj.get("payload").and_then(|p| p.get("item")))
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+                let itype = item["type"].as_str().unwrap_or("");
+
+                match itype {
+                    "message" | "agent_message" | "reasoning" => {
+                        let text = item["text"].as_str()
+                            .or_else(|| item["content"].as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        if !text.is_empty() {
+                            let tokens = estimate_tokens(&text);
+                            self.messages.push(AgentMessage {
+                                role: "assistant".to_string(),
+                                text,
+                                tokens,
+                                timestamp: ts.clone(),
+                                msg_type: "text".to_string(),
+                                tool_name: None,
+                            });
+                        }
+                    }
+                    "input_message" => {
+                        let text = item["content"].as_str()
+                            .or_else(|| item["text"].as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        if !text.is_empty() {
+                            let tokens = estimate_tokens(&text);
+                            self.messages.push(AgentMessage {
+                                role: "user".to_string(),
+                                text,
+                                tokens,
+                                timestamp: ts.clone(),
+                                msg_type: "text".to_string(),
+                                tool_name: None,
+                            });
+                        }
+                    }
+                    t if codex_is_tool(t) => {
+                        let name = item["name"].as_str()
+                            .unwrap_or_else(|| codex_tool_display_name(t))
+                            .to_string();
+                        let output = item["output"].as_str()
+                            .or_else(|| item["content"].as_str())
+                            .unwrap_or("");
+                        let result_tokens = estimate_tokens(output);
+                        self.tool_result_total_tokens += result_tokens;
+                        if result_tokens > 1000 {
+                            self.large_results.push((name, result_tokens));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            _ => {} // thread.started, error, etc. — no data needed
+        }
+
+        if self.messages.len() > 200 {
+            self.messages = self.messages.split_off(self.messages.len() - 200);
+        }
+    }
+
+    /// Generic JSONL parser for agents that use OpenAI API format.
+    /// Handles: {"role","content","usage":{"prompt_tokens","completion_tokens"}}
+    /// and also {"role","content","usage":{"input_tokens","output_tokens"}}
+    fn parse_generic_line(&mut self, obj: &serde_json::Value) {
+        // If this looks like Claude Code format, delegate
+        if obj.get("message").is_some() {
+            self.parse_claude_code_line(obj);
+            return;
+        }
+
+        let role = match obj.get("role").and_then(|r| r.as_str()) {
+            Some(r) => r.to_string(),
+            None => return,
+        };
+
+        let ts = obj.get("timestamp").or_else(|| obj.get("ts"))
+            .and_then(|t| t.as_str()).unwrap_or("").to_string();
+
+        // Model detection
+        if let Some(m) = obj.get("model").and_then(|m| m.as_str()) {
+            self.detected_model = Some(m.to_string());
+        }
+
+        // Token tracking — support both OpenAI naming (prompt/completion) and Anthropic (input/output)
+        if let Some(usage) = obj.get("usage") {
+            let input = usage["prompt_tokens"].as_u64()
+                .or_else(|| usage["input_tokens"].as_u64())
+                .unwrap_or(0);
+            let output = usage["completion_tokens"].as_u64()
+                .or_else(|| usage["output_tokens"].as_u64())
+                .unwrap_or(0);
+            if input > 0 || output > 0 {
+                self.total_input_tokens += input;
+                self.total_output_tokens += output;
+                if input > 0 { self.last_input_tokens = input; }
+                if self.total_input_tokens > 0 {
+                    self.cache_efficiency = ((self.total_cache_read_tokens as f64
+                        / self.total_input_tokens as f64) * 100.0) as u32;
+                }
+            }
+        }
+
+        // Tool calls (OpenAI function-calling format)
+        if let Some(calls) = obj.get("tool_calls").and_then(|c| c.as_array()) {
+            for call in calls {
+                let name = call.get("function")
+                    .and_then(|f| f.get("name"))
+                    .and_then(|n| n.as_str())
+                    .unwrap_or("tool")
+                    .to_string();
+                self.tool_call_count += 1;
+                *self.tools_used.entry(name.clone()).or_insert(0) += 1;
+                self.messages.push(AgentMessage {
+                    role: role.clone(),
+                    text: format!("[{}]", name),
+                    tokens: 10,
+                    timestamp: ts.clone(),
+                    msg_type: "tool_use".to_string(),
+                    tool_name: Some(name),
+                });
+            }
+        }
+
+        // Content as string or array
+        let text = match obj.get("content") {
+            Some(c) if c.is_string() => c.as_str().unwrap_or("").to_string(),
+            Some(c) if c.is_array() => {
+                c.as_array().unwrap().iter()
+                    .filter_map(|b| {
+                        b.get("text").and_then(|t| t.as_str())
+                            .or_else(|| b.as_str())
+                    })
+                    .collect::<Vec<_>>()
+                    .join("")
+            }
+            _ => String::new(),
+        };
+
+        if !text.is_empty() {
+            let tokens = estimate_tokens(&text);
+            self.messages.push(AgentMessage {
+                role: role.clone(),
+                text,
+                tokens,
+                timestamp: ts,
+                msg_type: "text".to_string(),
+                tool_name: None,
+            });
+        }
+
+        // Turn counting: each user message = 1 turn
+        if role == "user" {
+            self.turns += 1;
+        }
+
+        // Cap messages
+        if self.messages.len() > 200 {
+            self.messages = self.messages.split_off(self.messages.len() - 200);
+        }
+    }
+
     /// Read new lines from session file
     fn read_new_lines(&mut self) {
+        // Cursor: re-read from SQLite to pick up new messages
+        if self.agent_type == "cursor-agent" && self.session_file.is_none() && self.watched_files.is_empty() {
+            let msgs = read_cursor_conversations();
+            let new_count = msgs.len();
+            if new_count > self.messages.len() {
+                // Append only new messages (by index, since they're sorted by timestamp)
+                let prev = self.messages.len();
+                for (role, text, ts) in msgs.into_iter().skip(prev) {
+                    let msg_type = if role == "tool" { "tool_use" } else { "text" }.to_string();
+                    let tokens = estimate_tokens(&text);
+                    self.messages.push(AgentMessage { role: role.clone(), text, tokens, timestamp: ts, msg_type, tool_name: None });
+                    if role == "user" { self.turns += 1; }
+                }
+                self.total_input_tokens = self.messages.iter().map(|m| m.tokens).sum();
+            }
+            return;
+        }
         // Read from all watched files (multi-terminal support)
         if !self.watched_files.is_empty() {
             self.read_new_lines_multi();
@@ -813,7 +1083,9 @@ impl AgentSessionData {
             Some(p) => p.clone(),
             None => return,
         };
-        self.read_file_from_offset(&file_path, &mut self.watcher_offset.clone());
+        let mut offset = self.watcher_offset;
+        self.read_file_from_offset(&file_path, &mut offset);
+        self.watcher_offset = offset;
     }
 
     fn read_new_lines_multi(&mut self) {
@@ -863,7 +1135,11 @@ impl AgentSessionData {
                 let trimmed = line.trim();
                 if trimmed.is_empty() { continue; }
                 if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                    self.parse_claude_code_line(&obj);
+                    match self.agent_type.as_str() {
+                        "claude-code" => self.parse_claude_code_line(&obj),
+                        "codex"       => self.parse_codex_line(&obj),
+                        _             => self.parse_generic_line(&obj),
+                    }
                     total_parsed += 1;
                 } else {
                     total_failed += 1;
@@ -908,7 +1184,11 @@ impl AgentSessionData {
             let trimmed = line.trim();
             if trimmed.is_empty() { continue; }
             if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                self.parse_claude_code_line(&obj);
+                match self.agent_type.as_str() {
+                    "claude-code" => self.parse_claude_code_line(&obj),
+                    "codex"       => self.parse_codex_line(&obj),
+                    _             => self.parse_generic_line(&obj),
+                }
                 parsed += 1;
             } else {
                 failed += 1;
@@ -916,6 +1196,17 @@ impl AgentSessionData {
         }
         if parsed > 0 {
             eprintln!("[terse-agent] read_new_lines: {} parsed, {} failed, {} total msgs", parsed, failed, self.messages.len());
+        }
+
+        // For codex: if session_file changed (new run started), switch to the new file
+        if self.agent_type == "codex" {
+            if let Some(new_file) = find_codex_session() {
+                if self.session_file.as_ref() != Some(&new_file) {
+                    eprintln!("[terse-agent] codex: switching to new session file {:?}", new_file);
+                    self.session_file = Some(new_file);
+                    *offset = 0;
+                }
+            }
         }
     }
 }
@@ -1025,6 +1316,33 @@ fn estimate_read_compressibility(content: &str) -> f64 {
     (overhead_ratio * 0.8 + size_factor * 0.6).min(0.90)
 }
 
+fn codex_is_tool(itype: &str) -> bool {
+    matches!(itype, "command_execution" | "function_call" | "local_shell_call"
+                  | "web_search_call" | "mcp_call" | "file_read" | "code_execution")
+}
+
+fn codex_tool_display_name(itype: &str) -> &'static str {
+    match itype {
+        "command_execution" | "local_shell_call" => "shell",
+        "web_search_call" => "web_search",
+        "file_read" => "read",
+        "code_execution" => "code",
+        "mcp_call" => "mcp",
+        _ => "tool",
+    }
+}
+
+fn codex_extract_arg(item: &serde_json::Value) -> String {
+    if let Some(s) = item["command"].as_str() { return s.to_string(); }
+    if let Some(s) = item["query"].as_str() { return s.to_string(); }
+    if let Some(s) = item["path"].as_str() { return s.to_string(); }
+    if let Some(v) = item.get("arguments") {
+        if let Some(s) = v.as_str() { return s.to_string(); }
+        return v.to_string();
+    }
+    String::new()
+}
+
 fn estimate_tokens(text: &str) -> u64 {
     let words = text.split_whitespace().count();
     let punct = text.chars().filter(|c| !c.is_alphanumeric() && !c.is_whitespace()).count();
@@ -1059,6 +1377,8 @@ pub struct AgentMonitor {
     detected: HashMap<String, u32>, // type → pid
     miss_count: HashMap<String, u32>,
     plan_cache: HashMap<String, (AgentPlanInfo, std::time::Instant)>,
+    /// Agents manually disconnected by user — suppressed from auto-detection until explicit reconnect
+    suppressed: std::collections::HashSet<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1092,6 +1412,7 @@ impl AgentMonitor {
             detected: HashMap::new(),
             miss_count: HashMap::new(),
             plan_cache: HashMap::new(),
+            suppressed: std::collections::HashSet::new(),
         }
     }
 
@@ -1120,7 +1441,14 @@ impl AgentMonitor {
     }
 
     pub fn get_connected_sessions(&self) -> Vec<serde_json::Value> {
-        self.sessions.values().filter(|s| s.connected).map(|s| s.get_snapshot()).collect()
+        // Sort by data richness so Claude Code (with JSONL logs) always comes first,
+        // preventing Cursor/Codex (hook-only, zero token stats) from being sessions[0]
+        let mut sessions: Vec<&AgentSessionData> = self.sessions.values().filter(|s| s.connected).collect();
+        sessions.sort_by(|a, b| {
+            let score = |s: &&AgentSessionData| s.total_input_tokens + s.turns as u64 * 1000;
+            score(b).cmp(&score(a))
+        });
+        sessions.iter().map(|s| s.get_snapshot()).collect()
     }
 
     pub fn has_any_connected(&self) -> bool {
@@ -1162,8 +1490,42 @@ impl AgentMonitor {
             session.session_file = all_files.first().cloned();
             eprintln!("[terse-agent] loaded {} files: {} messages, {} turns, {} input tokens",
                 all_files.len(), session.messages.len(), session.turns, session.total_input_tokens);
+        } else if agent_type == "cursor-agent" {
+            // Cursor stores conversations in SQLite (cursorDiskKV table), not JSONL files.
+            // Read the most recent conversation from the global Cursor DB.
+            let msgs = read_cursor_conversations();
+            eprintln!("[terse-agent] cursor-agent: loaded {} messages from SQLite", msgs.len());
+            for (role, text, ts) in msgs {
+                let msg_type = if role == "tool" { "tool_use" } else { "text" }.to_string();
+                let tokens = estimate_tokens(&text);
+                session.messages.push(AgentMessage { role: role.clone(), text, tokens, timestamp: ts, msg_type, tool_name: None });
+                if role == "user" { session.turns += 1; }
+                // Estimate input tokens from user message sizes (no server-side count available)
+                session.total_input_tokens = session.messages.iter().map(|m| m.tokens).sum();
+            }
+            // Mark as cursor-db sourced (has some data, just no exact token counts)
+            // session_file stays None (SQLite, not a file we tail)
+        } else if detection.parser == "codex" {
+            // Codex: find rollout file in ~/.codex/sessions/YYYY/MM/DD/
+            let session_file = find_codex_session();
+            eprintln!("[terse-agent] accept_agent codex: session_file = {:?}", session_file);
+            if let Some(ref file) = session_file {
+                if let Ok(content) = fs::read_to_string(file) {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.is_empty() { continue; }
+                        if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                            session.parse_codex_line(&obj);
+                        }
+                    }
+                }
+                if let Ok(meta) = fs::metadata(file) {
+                    session.watcher_offset = meta.len();
+                }
+                session.session_file = Some(file.clone());
+            }
         } else {
-            // Single-file path for other agents
+            // Single-file path for other agents (Aider, etc.)
             let session_file = if let Some(log_dir) = &detection.log_dir {
                 find_latest_session(log_dir)
             } else {
@@ -1177,7 +1539,7 @@ impl AgentMonitor {
                         let trimmed = line.trim();
                         if trimmed.is_empty() { continue; }
                         if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                            session.parse_claude_code_line(&obj);
+                            session.parse_generic_line(&obj);
                         }
                     }
                 }
@@ -1203,7 +1565,13 @@ impl AgentMonitor {
             session.connected = false;
         }
         self.sessions.remove(agent_type);
-        // Also clear from detected so it can be re-detected on next scan
+        // Suppress auto-reconnection until user explicitly reconnects via +
+        self.suppressed.insert(agent_type.to_string());
+    }
+
+    /// Clear suppression for an agent type (called when user clicks + to reconnect)
+    pub fn unsuppress_agent(&mut self, agent_type: &str) {
+        self.suppressed.remove(agent_type);
         self.detected.remove(agent_type);
     }
 
@@ -1263,6 +1631,7 @@ impl AgentMonitor {
                 if !self.detected.contains_key(*type_key)
                     && !self.sessions.contains_key(*type_key)
                     && !self.pending.iter().any(|d| d.agent_type == *type_key)
+                    && !self.suppressed.contains(*type_key)
                 {
                     self.detected.insert(type_key.to_string(), pid);
                     let detection = PendingDetection {
@@ -1355,6 +1724,52 @@ fn find_all_active_jsonl_globally() -> Vec<PathBuf> {
     active.into_iter().map(|(p, _)| p).collect()
 }
 
+/// Find the most recent active Codex rollout JSONL file.
+/// Codex stores sessions at: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
+fn find_codex_session() -> Option<PathBuf> {
+    let home = dirs::home_dir()?;
+    let sessions_dir = home.join(".codex/sessions");
+    if !sessions_dir.exists() { return None; }
+
+    let mut newest: Option<(PathBuf, SystemTime)> = None;
+
+    let Ok(years) = fs::read_dir(&sessions_dir) else { return None };
+    for year in years.flatten() {
+        if !year.file_type().map(|t| t.is_dir()).unwrap_or(false) { continue; }
+        let Ok(months) = fs::read_dir(year.path()) else { continue };
+        for month in months.flatten() {
+            if !month.file_type().map(|t| t.is_dir()).unwrap_or(false) { continue; }
+            let Ok(days) = fs::read_dir(month.path()) else { continue };
+            for day in days.flatten() {
+                if !day.file_type().map(|t| t.is_dir()).unwrap_or(false) { continue; }
+                let Ok(files) = fs::read_dir(day.path()) else { continue };
+                for file in files.flatten() {
+                    let p = file.path();
+                    let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    if !name.starts_with("rollout-") || !name.ends_with(".jsonl") { continue; }
+                    if let Ok(meta) = fs::metadata(&p) {
+                        if let Ok(mtime) = meta.modified() {
+                            if newest.as_ref().map_or(true, |(_, t)| mtime > *t) {
+                                newest = Some((p, mtime));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Only return if modified in last 30 minutes
+    if let Some((path, mtime)) = newest {
+        let age = SystemTime::now().duration_since(mtime).unwrap_or(Duration::from_secs(u64::MAX));
+        if age < Duration::from_secs(30 * 60) {
+            eprintln!("[terse-agent] codex session: {:?}", path);
+            return Some(path);
+        }
+    }
+    None
+}
+
 fn find_latest_session(log_dir: &Path) -> Option<PathBuf> {
     if !log_dir.exists() { return None; }
 
@@ -1421,6 +1836,150 @@ fn list_processes() -> Option<Vec<ProcessInfo>> {
     Some(procs)
 }
 
+/// Read recent Cursor conversations from the cursorDiskKV SQLite table.
+/// Returns vec of (role, text, timestamp_ms_string).
+/// Cursor stores messages as bubbleId:<composerUUID>:<bubbleUUID> keys in state.vscdb.
+/// type=1 → user, type=2 → assistant
+fn read_cursor_conversations() -> Vec<(String, String, String)> {
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => return Vec::new(),
+    };
+
+    // Prefer global storage (has most conversation data based on empirical testing)
+    let global_db = home.join("Library/Application Support/Cursor/User/globalStorage/state.vscdb");
+    // Also check workspace storage dirs — pick the most recently modified one
+    let ws_root = home.join("Library/Application Support/Cursor/User/workspaceStorage");
+    let mut dbs_to_try: Vec<PathBuf> = vec![global_db];
+
+    if let Ok(entries) = fs::read_dir(&ws_root) {
+        let mut ws_dbs: Vec<(PathBuf, SystemTime)> = entries.flatten()
+            .filter_map(|e| {
+                let db = e.path().join("state.vscdb");
+                let mtime = fs::metadata(&db).ok()?.modified().ok()?;
+                Some((db, mtime))
+            })
+            .collect();
+        ws_dbs.sort_by(|a, b| b.1.cmp(&a.1)); // newest first
+        dbs_to_try.extend(ws_dbs.into_iter().map(|(p, _)| p));
+    }
+
+    let mut all_msgs: Vec<(String, String, String)> = Vec::new();
+
+    for db_path in &dbs_to_try {
+        if !db_path.exists() { continue; }
+
+        // Use sqlite3 CLI to read bubble data (avoids adding rusqlite dependency)
+        let output = match std::process::Command::new("sqlite3")
+            .arg("-json")
+            .arg(db_path)
+            // Grab all bubbleId entries with content, ordered by rowid (insertion order)
+            .arg("SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId%' AND length(value) > 50 ORDER BY rowid LIMIT 1000;")
+            .output()
+        {
+            Ok(o) => o,
+            Err(_) => continue,
+        };
+
+        if !output.status.success() { continue; }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let rows: Vec<serde_json::Value> = match serde_json::from_str(&stdout) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        for row in &rows {
+            let value_str = match row["value"].as_str() {
+                Some(v) => v,
+                None => continue,
+            };
+            let bubble: serde_json::Value = match serde_json::from_str(value_str) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+
+            let bubble_type = bubble["type"].as_u64().unwrap_or(0);
+            let role = match bubble_type {
+                1 => "user",
+                2 => "assistant",
+                _ => continue,
+            };
+            let ts = bubble["createdAt"].as_u64().unwrap_or(0).to_string();
+
+            // Extract text from Lexical richText JSON (user messages)
+            // or from text/rawText field (AI messages)
+            let text = extract_cursor_bubble_text(&bubble);
+            if text.is_empty() && bubble_type == 2 {
+                // AI response text may not be stored locally — show placeholder
+                // Skip entirely to avoid polluting the message list
+                continue;
+            }
+
+            // Tool results — count as tool messages
+            if let Some(tool_results) = bubble["toolResults"].as_array() {
+                for tr in tool_results {
+                    let tool_name = tr["toolName"].as_str()
+                        .or_else(|| tr["name"].as_str())
+                        .unwrap_or("tool");
+                    let tool_text = tr["output"].as_str()
+                        .or_else(|| tr["result"].as_str())
+                        .unwrap_or("");
+                    all_msgs.push(("tool".to_string(), format!("[{}] {}", tool_name, &tool_text[..tool_text.len().min(200)]), ts.clone()));
+                }
+            }
+
+            if !text.is_empty() {
+                all_msgs.push((role.to_string(), text, ts));
+            }
+        }
+
+        if !all_msgs.is_empty() { break; } // found data in this DB, stop searching
+    }
+
+    // Sort by timestamp
+    all_msgs.sort_by(|a, b| a.2.cmp(&b.2));
+    all_msgs
+}
+
+/// Extract plain text from a Cursor bubble's richText (Lexical editor JSON) or text fields.
+fn extract_cursor_bubble_text(bubble: &serde_json::Value) -> String {
+    // Try richText first (Lexical JSON for user messages)
+    if let Some(rich) = bubble["richText"].as_str() {
+        if !rich.is_empty() && rich.starts_with('{') {
+            if let Ok(rt) = serde_json::from_str::<serde_json::Value>(rich) {
+                let text = extract_lexical_text(&rt);
+                if !text.is_empty() { return text; }
+            }
+        }
+    }
+    // Fallback: direct text/rawText fields
+    if let Some(t) = bubble["text"].as_str() {
+        if !t.is_empty() { return t.to_string(); }
+    }
+    if let Some(t) = bubble["rawText"].as_str() {
+        if !t.is_empty() { return t.to_string(); }
+    }
+    String::new()
+}
+
+/// Recursively extract all text nodes from a Lexical editor JSON tree.
+fn extract_lexical_text(node: &serde_json::Value) -> String {
+    if let Some(text) = node["text"].as_str() {
+        return text.to_string();
+    }
+    let mut out = String::new();
+    if let Some(children) = node["children"].as_array() {
+        for child in children {
+            let t = extract_lexical_text(child);
+            if !t.is_empty() {
+                if !out.is_empty() { out.push(' '); }
+                out.push_str(&t);
+            }
+        }
+    }
+    out
+}
+
 /// Background scanning thread
 pub fn start_scanning(app: AppHandle) {
     use crate::AppState;
@@ -1441,12 +2000,16 @@ pub fn start_scanning(app: AppHandle) {
             eprintln!("[terse-agent] detected {} new agents", new_detections.len());
         }
 
-        // Auto-connect Claude Code sessions (skip manual accept)
+        // Auto-connect these agents (skip manual accept banner)
+        // claude-code: always auto-connect (primary use case)
+        // cursor-agent: auto-connect when Cursor IDE is open (user opted in by installing hook)
+        // codex: auto-connect when codex process is running
+        const AUTO_CONNECT: &[&str] = &["claude-code", "cursor-agent", "codex"];
         for (_, detection) in &new_detections {
-            if detection.agent_type == "claude-code" {
+            if AUTO_CONNECT.contains(&detection.agent_type.as_str()) {
                 let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
-                if let Some(snap) = monitor.accept_agent("claude-code") {
-                    eprintln!("[terse-agent] auto-connected claude-code");
+                if let Some(snap) = monitor.accept_agent(&detection.agent_type) {
+                    eprintln!("[terse-agent] auto-connected {}", detection.agent_type);
                     let _ = app.emit("agent-connected", serde_json::json!({"session": snap}));
                 }
                 continue;

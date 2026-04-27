@@ -46,12 +46,8 @@ async function updateLicenseBanner() {
     }
 
     if (status === 'trialing') {
-      // Show trial info with days remaining
-      const trialEnd = lic.trialEnd ? new Date(lic.trialEnd) : null;
-      const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - Date.now()) / 86400000)) : '?';
-      $('#licenseTier').textContent = tierLabel + ' (Trial)';
-      $('#licenseUsage').textContent = daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' left in trial';
-      if (daysLeft <= 3) banner.classList.add('limit-warning');
+      $('#licenseTier').textContent = tierLabel;
+      $('#licenseUsage').textContent = 'Trial active';
       $('#btnUpgrade').textContent = 'Manage';
       return;
     }
@@ -89,33 +85,61 @@ async function checkPaywall() {
   } catch {}
 }
 
-async function startTrialCheckout(tier) {
-  const auth = await T.getAuth();
-  if (!auth.signedIn || !auth.clerkUserId) return;
+async function startTrialCheckout(tier, noTrial = false, paymentMethod = null) {
+  toast('Starting checkout…');
+  let auth;
+  try { auth = await T.getAuth(); } catch (e) { toast('Auth error: ' + e, true); return; }
+  if (!auth.signedIn || !auth.clerkUserId) { toast('Not signed in (signedIn=' + auth.signedIn + ')', true); return; }
+  toast('Fetching checkout URL…');
   const API_BASE = 'https://www.terseai.org';
   try {
+    const body = { tier, clerkUserId: auth.clerkUserId, clerkUserEmail: auth.email };
+    if (noTrial) body.noTrial = true;
+    if (paymentMethod) body.paymentMethod = paymentMethod;
     const res = await fetch(`${API_BASE}/api/checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tier, clerkUserId: auth.clerkUserId, clerkUserEmail: auth.email }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (data.url) {
-      try { const { open } = window.__TAURI__.shell; open(data.url); }
-      catch { window.open(data.url, '_blank'); }
+      toast('Opening browser…');
+      try {
+        if (!window.__TAURI__?.shell) throw new Error('no shell');
+        await window.__TAURI__.shell.open(data.url);
+      } catch (e) {
+        toast('shell.open failed: ' + e + ' — trying window.open', true);
+        window.open(data.url, '_blank');
+      }
     } else if (data.error === 'trial_already_used') {
-      toast('You\'ve already used your free trial — please subscribe directly.', true);
+      // Switch paywall gate to subscribe-directly mode
+      const trialSection = $('#paywallTrialSection');
+      const subscribeSection = $('#paywallSubscribeSection');
+      if (trialSection) trialSection.style.display = 'none';
+      if (subscribeSection) subscribeSection.style.display = 'flex';
     } else {
       toast('Error: ' + (data.error || 'Failed'), true);
     }
-  } catch (e) { toast('Network error — check your connection', true); }
+  } catch (e) { toast('Network error: ' + e, true); }
 }
 
 if ($('#paywallProBtn')) {
-  $('#paywallProBtn').addEventListener('click', () => startTrialCheckout('pro'));
+  $('#paywallProBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('pro'); });
 }
 if ($('#paywallPremiumBtn')) {
-  $('#paywallPremiumBtn').addEventListener('click', () => startTrialCheckout('premium'));
+  $('#paywallPremiumBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('premium'); });
+}
+if ($('#paywallSubscribeProBtn')) {
+  $('#paywallSubscribeProBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('pro', true); });
+}
+if ($('#paywallSubscribePremiumBtn')) {
+  $('#paywallSubscribePremiumBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('premium', true); });
+}
+if ($('#paywallSubscribeWechatBtn')) {
+  $('#paywallSubscribeWechatBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('pro', true, 'wechat_pay'); });
+}
+if ($('#paywallSubscribeAlipayBtn')) {
+  $('#paywallSubscribeAlipayBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('pro', true, 'alipay'); });
 }
 if ($('#paywallSwitchBtn')) {
   $('#paywallSwitchBtn').addEventListener('click', async () => {

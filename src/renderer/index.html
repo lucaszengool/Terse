@@ -32,6 +32,9 @@
       <span class="tracking-label" id="trackingLabel"></span>
     </div>
     <div class="titlebar-controls">
+      <button class="titlebar-btn" id="btnLang" title="Language">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      </button>
       <button class="titlebar-btn" id="btnTheme" title="Theme">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 000 20 4 4 0 01 0-8 4 4 0 00 0-8"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><circle cx="9" cy="13" r="1.5" fill="currentColor"/></svg>
       </button>
@@ -184,14 +187,33 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- Paywall Gate — blocks app when no active subscription/trial -->
-    <div id="paywallGate" class="hidden" data-tauri-drag-region style="position:fixed;inset:0;z-index:9998;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px">
+    <div id="paywallGate" class="hidden" style="position:fixed;inset:0;z-index:9998;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px">
       <div style="width:48px;height:48px;background:var(--btn);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--btn-t)">T</div>
-      <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0">No Active Plan</h2>
-      <p style="color:var(--t3);font-size:11px;text-align:center;margin:0;line-height:1.6;max-width:240px">Start a 30-day free trial to use Terse. No charge until your trial ends.</p>
-      <button id="paywallProBtn" style="margin-top:4px;padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;width:200px">Start Pro Trial — $4.99/mo</button>
-      <button id="paywallPremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Premium Trial — $99/mo</button>
-      <p style="color:var(--t3);font-size:9px;text-align:center;margin:4px 0 0;opacity:0.6">Cancel anytime during your 30-day trial</p>
-      <button id="paywallSwitchBtn" style="margin-top:12px;padding:6px 20px;background:transparent;color:var(--t3);border:none;font-size:11px;font-weight:500;cursor:pointer;text-decoration:underline">Switch Account</button>
+      <!-- Trial mode (default) -->
+      <div id="paywallTrialSection">
+        <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">No Active Plan</h2>
+        <p style="color:var(--t3);font-size:11px;text-align:center;margin:8px 0 0;line-height:1.6;max-width:240px">Start a 30-day free trial to use Terse. No charge until your trial ends.</p>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px">
+          <button id="paywallProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;width:200px">Start Pro Trial — $4.99/mo</button>
+          <p id="paywallChinaNote" style="color:var(--t1);font-size:12px;font-weight:600;text-align:center;margin:4px 0 0;opacity:0.7">Free trial only with card. WeChat/Alipay pay monthly:</p>
+          <button id="paywallWechatBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'wechat_pay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">WeChat Pay / 微信支付 — $4.99/mo</button>
+          <button id="paywallAlipayBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'alipay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Alipay / 支付宝 — $4.99/mo</button>
+          <button id="paywallPremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Premium Trial — $99/mo</button>
+          <p id="paywallTrialNote" style="color:var(--t1);font-size:11px;font-weight:500;text-align:center;margin:2px 0 0;opacity:0.6">Cancel anytime during your 30-day trial (card only)</p>
+        </div>
+      </div>
+      <!-- Subscribe-directly mode (shown after trial_already_used) -->
+      <div id="paywallSubscribeSection" style="display:none;flex-direction:column;align-items:center;gap:10px">
+        <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Subscribe to Continue</h2>
+        <p style="color:var(--t3);font-size:11px;text-align:center;margin:0;line-height:1.6;max-width:240px">Your free trial has been used. Subscribe directly to keep using Terse.</p>
+        <button id="paywallSubscribeProBtn" style="margin-top:4px;padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;width:200px">Subscribe Pro — $4.99/mo</button>
+        <button id="paywallSubscribePremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Subscribe Premium — $99/mo</button>
+        <p style="color:var(--t1);font-size:12px;font-weight:600;text-align:center;margin:4px 0 0;opacity:0.7">Or pay with:</p>
+        <button id="paywallSubscribeWechatBtn" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">WeChat Pay / 微信支付 — $4.99/mo</button>
+        <button id="paywallSubscribeAlipayBtn" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Alipay / 支付宝 — $4.99/mo</button>
+        <p style="color:var(--t1);font-size:11px;font-weight:500;text-align:center;margin:2px 0 0;opacity:0.6">Billed monthly, cancel anytime</p>
+      </div>
+      <button id="paywallSwitchBtn" style="margin-top:4px;padding:6px 20px;background:transparent;color:var(--t3);border:none;font-size:11px;font-weight:500;cursor:pointer;text-decoration:underline">Switch Account</button>
     </div>
   </div>
   <script>
@@ -248,6 +270,33 @@
       }, Promise.resolve());
     }
     _loadScripts();
+
+    // i18n — load after everything, purely additive (no changes to existing code)
+    var i18nScript = document.createElement('script');
+    i18nScript.src = 'i18n.js';
+    document.body.appendChild(i18nScript);
+
+    // Language picker — uses stopPropagation to avoid drag region issues
+    document.getElementById('btnLang').addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (window.i18n) window.i18n.createLangPicker(document.getElementById('btnLang'));
+    });
+
+    // Translate paywall notes based on locale
+    function _translatePaywallNotes() {
+      var lang = (navigator.language || '').toLowerCase();
+      var isChinese = lang.startsWith('zh');
+      if (window.i18n) {
+        var l = window.i18n.getLang();
+        isChinese = l === 'zh-Hans' || l === 'zh-Hant';
+      }
+      var note1 = document.getElementById('paywallChinaNote');
+      var note2 = document.getElementById('paywallTrialNote');
+      if (isChinese && note1) note1.textContent = '免费试用仅支持银行卡。微信/支付宝需按月付费：';
+      if (isChinese && note2) note2.textContent = '银行卡支付可享受30天免费试用，随时取消';
+    }
+    _translatePaywallNotes();
+    window.addEventListener('terse-lang-changed', _translatePaywallNotes);
   </script>
 </body>
 </html>

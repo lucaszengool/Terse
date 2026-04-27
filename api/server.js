@@ -231,7 +231,7 @@ app.use('/api', (req, res, next) => {
 // ── Create Checkout Session ──
 app.post('/api/checkout', async (req, res) => {
   try {
-    const { tier, clerkUserId, clerkUserEmail } = req.body;
+    const { tier, clerkUserId, clerkUserEmail, noTrial } = req.body;
     if (!tier || !clerkUserId) {
       return res.status(400).json({ error: 'Missing tier or clerkUserId' });
     }
@@ -256,27 +256,42 @@ app.post('/api/checkout', async (req, res) => {
 
     const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
 
-    // ── Trial abuse prevention: check if this email already used a trial ──
-    // Look up ALL customers with this email, check for any prior subscription
-    const allEmailCustomers = await stripe.customers.list({ email: clerkUserEmail, limit: 10 });
-    for (const c of allEmailCustomers.data) {
-      const prevSubs = await stripe.subscriptions.list({ customer: c.id, limit: 10, status: 'all' });
-      const usedTrial = prevSubs.data.some(s =>
-        ['trialing', 'active', 'canceled', 'past_due', 'unpaid'].includes(s.status)
-      );
-      if (usedTrial) {
-        console.log(`[checkout] trial already used for email ${clerkUserEmail} (customer ${c.id})`);
-        return res.status(400).json({ error: 'trial_already_used', message: 'A free trial has already been used for this account.' });
-      }
-    }
-
-    // WeChat Pay / Alipay: one-time CNY payment (no free trial).
-    // Stripe doesn't support recurring for these methods, so each month
-    // a new invoice is sent via send_invoice subscription.
+    // WeChat Pay / Alipay: one-time payment (no free trial, ever).
     const paymentMethod = req.body.paymentMethod; // 'wechat_pay', 'alipay', or undefined
     const isChinaPay = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
 
+    // ── Trial abuse prevention ──
+    // Skip when: noTrial=true (direct subscribe) OR isChinaPay (never had a trial)
+    if (!noTrial && !isChinaPay) {
+      const allEmailCustomers = await stripe.customers.list({ email: clerkUserEmail, limit: 10 });
+      for (const c of allEmailCustomers.data) {
+        const prevSubs = await stripe.subscriptions.list({ customer: c.id, limit: 10, status: 'all' });
+        const usedTrial = prevSubs.data.some(s =>
+          ['trialing', 'active', 'canceled', 'past_due', 'unpaid'].includes(s.status)
+        );
+        if (usedTrial) {
+          console.log(`[checkout] trial already used for email ${clerkUserEmail} (customer ${c.id})`);
+          return res.status(400).json({ error: 'trial_already_used', message: 'A free trial has already been used for this account.' });
+        }
+      }
+    }
+
     if (isChinaPay) {
+      // Guard: if customer already has an active/pending subscription, return its invoice URL
+      // instead of creating a duplicate (prevents rapid double-click from creating multiple subs)
+      const existingSubs = await stripe.subscriptions.list({ customer: customerId, limit: 5, status: 'all' });
+      const pendingSub = existingSubs.data.find(s =>
+        ['active', 'past_due', 'trialing', 'unpaid'].includes(s.status)
+      );
+      if (pendingSub) {
+        const existingInvoices = await stripe.invoices.list({ subscription: pendingSub.id, limit: 1 });
+        const existingInvoice = existingInvoices.data[0];
+        if (existingInvoice?.hosted_invoice_url) {
+          console.log(`[checkout] returning existing invoice for ${clerkUserId} sub=${pendingSub.id}`);
+          return res.json({ url: existingInvoice.hosted_invoice_url, sessionId: null });
+        }
+      }
+
       // Create send_invoice subscription with NO trial — first invoice due immediately
       const sub = await stripe.subscriptions.create({
         customer: customerId,
@@ -321,6 +336,8 @@ app.post('/api/checkout', async (req, res) => {
       res.json({ url: invoiceUrl, sessionId: null });
     } else {
       // Default: card/Link via Stripe Checkout (WeChat/Alipay use send_invoice path above)
+      const subscriptionData = { metadata: { clerk_user_id: clerkUserId, tier } };
+      if (!noTrial) subscriptionData.trial_period_days = TRIAL_DAYS;
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
@@ -328,10 +345,7 @@ app.post('/api/checkout', async (req, res) => {
         success_url: `${baseUrl}/?checkout=success&tier=${tier}`,
         cancel_url: `${baseUrl}/?checkout=cancelled`,
         metadata: { clerk_user_id: clerkUserId, tier },
-        subscription_data: {
-          trial_period_days: TRIAL_DAYS,
-          metadata: { clerk_user_id: clerkUserId, tier },
-        },
+        subscription_data: subscriptionData,
       });
 
       res.json({ url: session.url, sessionId: session.id });

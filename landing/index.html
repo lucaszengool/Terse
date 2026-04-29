@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Terse — Intelligent Token Optimizer for LLMs</title>
@@ -3371,6 +3379,7 @@ const clerkAppearance = {
     }
   };
 async function openClerkSignIn() {
+  gtag('event', 'sign_in_started');
   const modal = document.getElementById('clerk-modal');
   const mount = document.getElementById('clerk-mount');
   modal.style.display = 'flex';
@@ -3381,6 +3390,7 @@ async function openClerkSignIn() {
 }
 
 async function openClerkSignUp() {
+  gtag('event', 'sign_up_started');
   const modal = document.getElementById('clerk-modal');
   const mount = document.getElementById('clerk-mount');
   modal.style.display = 'flex';
@@ -3407,11 +3417,12 @@ const DMG_URL = 'https://github.com/lucaszengool/Terse/releases/latest/download/
 
 async function handleDownload(e) {
   e.preventDefault();
-  // If Clerk hasn't loaded yet, wait for it
+  gtag('event', 'download_click');
   if (window.Clerk && !window.Clerk.loaded) {
     await window.Clerk.load();
   }
   if (window.Clerk?.user) {
+    gtag('event', 'download_started', { user_id: window.Clerk.user.id });
     window.location.href = DMG_URL;
   } else {
     sessionStorage.setItem('pendingAction', 'download');
@@ -3423,7 +3434,7 @@ async function handleDownload(e) {
 const API_BASE = window.location.origin;
 
 async function handlePricing(tier) {
-  // Must be signed in to start a trial
+  gtag('event', 'pricing_click', { tier });
   if (!window.Clerk?.user) {
     sessionStorage.setItem('pendingAction', 'pricing:' + tier);
     openClerkSignUp();
@@ -3472,6 +3483,7 @@ function showPaymentMethodPicker(tier) {
     btn.addEventListener('mouseenter', () => btn.style.borderColor = '#09f');
     btn.addEventListener('mouseleave', () => btn.style.borderColor = 'var(--bdl,#444)');
     btn.addEventListener('click', () => {
+      gtag('event', 'payment_method_selected', { tier, payment_method: btn.dataset.method });
       overlay.remove();
       doCheckout(tier, btn.dataset.method);
     });
@@ -3497,6 +3509,7 @@ async function doCheckout(tier, paymentMethod) {
       body.paymentMethod = paymentMethod;
     }
     const endpoint = '/api/checkout';
+    gtag('event', 'checkout_started', { tier, payment_method: paymentMethod || 'card', user_id: clerkUserId });
 
     const res = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
@@ -3540,6 +3553,7 @@ function showPricingToast(msg) {
   const checkout = params.get('checkout');
   if (checkout === 'success') {
     const tier = params.get('tier') || 'pro';
+    gtag('event', 'purchase', { tier, value: tier === 'premium' ? 99 : 4.99, currency: 'USD' });
     setTimeout(() => showPricingToast(`${tier.charAt(0).toUpperCase() + tier.slice(1)} plan activated! You can now use Terse with full features.`), 1000);
     window.history.replaceState({}, '', window.location.pathname);
   } else if (checkout === 'cancelled') {

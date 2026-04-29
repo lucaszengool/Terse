@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse — 商业计划书 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --black: #0a0a0a;
+    --gray1: #1a1a1a;
+    --gray2: #2a2a2a;
+    --gray3: #555;
+    --gray4: #888;
+    --gray5: #bbb;
+    --gray6: #e8e8e8;
+    --gray7: #f5f5f5;
+    --white: #ffffff;
+    --line: #e2e2e2;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--white);
+    color: var(--black);
+    font-size: 11px;
+    line-height: 1.7;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 18mm 18mm 16mm;
+    position: relative;
+    page-break-after: always;
+    background: white;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  /* ── COVER ── */
+  .cover { display: flex; flex-direction: column; justify-content: space-between; min-height: 260mm; }
+  .wordmark { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .cover-tag { font-size: 9.5px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gray4); margin-bottom: 6mm; }
+  .cover-title { font-size: 50px; font-weight: 700; line-height: 1.0; letter-spacing: -0.03em; margin-bottom: 5mm; }
+  .cover-sub { font-size: 13px; font-weight: 300; color: var(--gray3); line-height: 1.6; max-width: 125mm; margin-bottom: 10mm; }
+  .cover-divider { width: 8mm; height: 2px; background: var(--black); margin-bottom: 7mm; }
+  .cover-stats { display: flex; gap: 10mm; }
+  .cover-stat .num { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+  .cover-stat .lbl { font-size: 9px; color: var(--gray4); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 1px; }
+  .cover-footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--line); padding-top: 5mm; font-size: 9px; color: var(--gray4); letter-spacing: 0.04em; }
+
+  /* ── PAGE CHROME ── */
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9mm; padding-bottom: 4mm; border-bottom: 1px solid var(--line); }
+  .page-section-label { font-size: 8.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gray4); }
+  .page-num { font-size: 8.5px; color: var(--gray5); }
+
+  /* ── TYPE ── */
+  .section-title { font-size: 25px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 4mm; }
+  .section-sub { font-size: 10.5px; color: var(--gray3); font-weight: 400; line-height: 1.7; margin-bottom: 7mm; max-width: 145mm; }
+
+  /* ── GRIDS ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 3.5mm; }
+
+  /* ── CARDS ── */
+  .card { background: var(--gray7); border-radius: 3px; padding: 4.5mm; }
+  .card-black { background: var(--black); color: var(--white); border-radius: 3px; padding: 4.5mm; }
+  .card-outline { border: 1px solid var(--line); border-radius: 3px; padding: 4.5mm; }
+  .card-title { font-size: 8.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gray3); margin-bottom: 2mm; }
+  .card-black .card-title { color: #666; }
+  .card-num { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; margin-bottom: 1.5mm; }
+  .card-black .card-num { color: white; }
+  .card-desc { font-size: 9.5px; color: var(--gray3); line-height: 1.55; }
+  .card-black .card-desc { color: #888; }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  thead tr { border-bottom: 2px solid var(--black); }
+  thead th { text-align: left; font-size: 8.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gray3); padding: 0 0 2.5mm; }
+  tbody tr { border-bottom: 1px solid var(--line); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody td { padding: 2.5mm 0; vertical-align: top; line-height: 1.5; }
+  td.label { font-weight: 500; color: var(--black); width: 38%; }
+  td.val { color: var(--gray3); }
+  td.strong { font-weight: 600; color: var(--black); }
+  td.muted { color: var(--gray4); font-size: 9.5px; }
+  td.center { text-align: center; }
+
+  /* ── LISTS ── */
+  .bullet-list { list-style: none; padding: 0; }
+  .bullet-list li { display: flex; gap: 3mm; padding: 2.5mm 0; border-bottom: 1px solid var(--line); font-size: 10.5px; color: var(--gray2); line-height: 1.55; }
+  .bullet-list li:last-child { border-bottom: none; }
+  .bullet-list li::before { content: '—'; color: var(--gray4); flex-shrink: 0; }
+
+  /* ── TAGS ── */
+  .tag { display: inline-block; background: var(--gray6); color: var(--gray3); font-size: 8px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; padding: 1px 4px; border-radius: 2px; vertical-align: middle; }
+  .tag-dark { background: var(--black); color: white; }
+  .tag-live { background: #0a0a0a; color: white; }
+
+  /* ── BAR CHART ── */
+  .bar-chart { margin-top: 3mm; }
+  .bar-row { display: flex; align-items: center; gap: 3mm; margin-bottom: 2.5mm; }
+  .bar-label { width: 30mm; font-size: 9.5px; color: var(--gray3); flex-shrink: 0; }
+  .bar-track { flex: 1; height: 5px; background: var(--gray6); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--black); border-radius: 2px; }
+  .bar-val { width: 14mm; text-align: right; font-size: 9.5px; font-weight: 600; color: var(--black); }
+
+  /* ── TIMELINE ── */
+  .timeline { position: relative; padding-left: 6mm; }
+  .timeline::before { content: ''; position: absolute; left: 2mm; top: 2mm; bottom: 2mm; width: 1px; background: var(--line); }
+  .tl-item { position: relative; margin-bottom: 5mm; }
+  .tl-dot { position: absolute; left: -5.5mm; top: 1.5mm; width: 3.5mm; height: 3.5mm; border-radius: 50%; background: var(--black); }
+  .tl-dot.open { background: white; border: 1.5px solid var(--gray4); }
+  .tl-quarter { font-size: 8.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gray4); margin-bottom: 1mm; }
+  .tl-title { font-size: 11px; font-weight: 600; color: var(--black); margin-bottom: 1mm; }
+  .tl-desc { font-size: 9.5px; color: var(--gray3); line-height: 1.55; }
+
+  /* ── HIGHLIGHT ── */
+  .highlight-row { display: flex; gap: 5mm; background: var(--black); border-radius: 3px; padding: 5mm 6mm; color: white; align-items: center; margin-bottom: 4mm; }
+  .highlight-row .big { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0; }
+  .highlight-row .desc { font-size: 10px; color: #999; line-height: 1.6; }
+
+  /* ── UTILS ── */
+  .mt2 { margin-top: 2mm; }
+  .mt4 { margin-top: 4mm; }
+  .mt6 { margin-top: 6mm; }
+  .mt8 { margin-top: 8mm; }
+  .footnote { font-size: 8.5px; color: var(--gray4); border-top: 1px solid var(--line); padding-top: 3mm; margin-top: 5mm; line-height: 1.6; }
+
+  @media print {
+    body { background: white; }
+    .page { margin: 0; padding: 15mm 16mm 13mm; }
+  }
+  @page { size: A4; margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ 封面 ══════════════════ -->
+<div class="page">
+  <div class="cover">
+
+    <div style="padding-top:6mm">
+      <div class="wordmark">Terse</div>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:18mm 0 14mm">
+      <div class="cover-tag">商业计划书 · 天使轮 · 2026</div>
+      <div class="cover-title">停止为<br>无效Token<br>付钱。</div>
+      <div class="cover-sub">Terse 是一款跨平台 AI 成本控制工具 —— 实时压缩每一条发送给 AI 的消息，监控 Agent 会话，并提供企业级 Token 管理服务。已支持 macOS、Windows，以及 VS Code / Cursor 插件。</div>
+      <div class="cover-divider"></div>
+      <div class="cover-stats">
+        <div class="cover-stat">
+          <div class="num">40–70%</div>
+          <div class="lbl">Token 节省率</div>
+        </div>
+        <div class="cover-stat">
+          <div class="num">$60B+</div>
+          <div class="lbl">AI API 全球市场(2026)</div>
+        </div>
+        <div class="cover-stat">
+          <div class="num">ToC + ToB</div>
+          <div class="lbl">双引擎商业模式</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <span>保密文件 · 禁止外传</span>
+      <span>terse.dev · Lucas Zeng</span>
+      <span>2026 年 4 月</span>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════ 01 问题与市场 ══════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <span class="page-section-label">问题与市场</span>
+    <span class="page-num">01</span>
+  </div>
+
+  <div class="section-title">AI 成本正在失控，<br>而开发者对此一无所知。</div>
+  <div class="section-sub">无论是个人开发者还是企业工程团队，都在以惊人的速度烧掉 API 预算 —— 而其中 40–70% 的 Token 根本没有信息量：重复上下文、格式噪音、冗余工具输出。没有人看得见，也没有工具能阻止它。</div>
+
+  <div class="grid-3 mt4">
+    <div class="card-black">
+      <div class="card-title">浪费的 Token</div>
+      <div class="card-num">40–70%</div>
+      <div class="card-desc">每次 API 调用中属于冗余内容：重复引用、无效格式、Agent 工具输出堆叠</div>
+    </div>
+    <div class="card-black">
+      <div class="card-title">个人开发者月均 API 支出</div>
+      <div class="card-num">$200+</div>
+      <div class="card-desc">重度 Claude / GPT-4 用户每月实际账单，订阅费之外的额外 API 消耗</div>
+    </div>
+    <div class="card-black">
+      <div class="card-title">企业可见性</div>
+      <div class="card-num">几乎零</div>
+      <div class="card-desc">工程团队对哪个 Agent 在烧钱、哪个会话上下文超载没有任何实时监控手段</div>
+    </div>
+  </div>
+
+  <div class="mt8">
+    <div style="font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--gray3);margin-bottom:4mm">市场规模</div>
+    <div class="bar-chart">
+      <div class="bar-row">
+        <div class="bar-label">全球 AI API 市场</div>
+        <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
+        <div class="bar-val">$62B</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">开发者工具 SaaS</div>
+        <div class="bar-track"><div class="bar-fill" style="width:60%"></div></div>
+        <div class="bar-val">$38B</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">AI 成本管理工具</div>
+        <div class="bar-track"><div class="bar-fill" style="width:22%"></div></div>
+        <div class="bar-val">$1.4B</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">第 3 年目标 ARR</div>
+        <div class="bar-track"><div class="bar-fill" style="width:4%"></div></div>
+        <div class="bar-val">$5M</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt8">
+    <table>
+      <thead>
+        <tr>
+          <th>客群</th>
+          <th>画像</th>
+          <th>核心痛点</th>
+          <th>月付意愿</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="label">个人开发者（ToC）</td>
+          <td class="val">Claude Max / Cursor Pro 用户</td>
+          <td class="val">API 账单超预算，不知道钱花哪了</td>
+          <td class="strong">$15–29</td>
+        </tr>
+        <tr>
+          <td class="label">工程团队（SMB）</td>
+          <td class="val">5–50 人研发团队，日常跑 Agent</td>
+          <td class="val">无法审计 AI 成本，无法分配给项目</td>
+          <td class="strong">$49–99 / 席位</td>
+        </tr>
+        <tr>
+          <td class="label">企业客户（ToB）</td>
+          <td class="val">金融、法律、政府、AI 原生公司</td>
+          <td class="val">数据合规 + 成本治理双重需求</td>
+          <td class="strong">定制 / $2K–$20K 年</td>
+        </tr>
+        <tr>
+          <td class="label">Token 交易者</td>
+          <td class="val">API 重度买家、闲置额度持有者</td>
+          <td class="val">闲置额度无法变现，采购无法折扣</td>
+          <td class="strong">交易手续费</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footnote">TAM 数据来源：a16z AI Spending Report 2026，Stack Overflow Developer Survey，IDC Developer Tools Forecast 2025–2027。</div>
+</div>
+
+
+<!-- ══════════════════ 02 产品 ══════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <span class="page-section-label">产品</span>
+    <span class="page-num">02</span>
+  </div>
+
+  <div class="section-title">四层产品，<br>一次安装。</div>
+  <div class="section-sub">Terse 以轻量级系统层运行，无需云端代理，无需 API Key。支持 macOS、Windows 桌面端，以及 VS Code / Cursor 浏览器插件。在发送给 AI 之前，静默压缩、监控、管理每一条消息。</div>
+
+  <div class="mt2">
+    <div class="card-outline" style="margin-bottom:3mm">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1;padding-right:6mm">
+          <div class="card-title">层 01 — 优化器（跨平台）</div>
+          <div style="font-size:12px;font-weight:600;color:var(--black);margin:1.5mm 0">Token 压缩引擎</div>
+          <div class="card-desc" style="color:var(--gray2)">macOS 悬浮窗 + Windows 系统托盘 + VS Code / Cursor 插件，三端统一。发送前静默压缩：轻度（拼写纠错+空白压缩）、标准（去填充词、缩短短语）、激进（缩写+去 Markdown）。20+ 压缩技术，完全本地运行，零延迟。</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em">40–70%</div>
+          <div style="font-size:8.5px;color:var(--gray4);text-transform:uppercase;letter-spacing:0.1em">Token 节省</div>
+          <div style="margin-top:2mm"><span class="tag tag-dark">已上线</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-outline" style="margin-bottom:3mm">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1;padding-right:6mm">
+          <div class="card-title">层 02 — Agent 监控</div>
+          <div style="font-size:12px;font-weight:600;color:var(--black);margin:1.5mm 0">实时会话智能面板</div>
+          <div class="card-desc" style="color:var(--gray2)">直接读取 Claude Code（JSONL 日志）、Cursor（SQLite）、Codex（Hook）的本地数据，实时展示：上下文填充率、Token 燃烧速率、缓存命中率、工具调用分布、重复文件读取浪费、估算成本。无代理，无网络。</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em">3 款</div>
+          <div style="font-size:8.5px;color:var(--gray4);text-transform:uppercase;letter-spacing:0.1em">Agent 已接入</div>
+          <div style="margin-top:2mm"><span class="tag tag-dark">已上线</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-outline" style="margin-bottom:3mm">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1;padding-right:6mm">
+          <div class="card-title">层 03 — Token 交易所</div>
+          <div style="font-size:12px;font-weight:600;color:var(--black);margin:1.5mm 0">P2P API 额度市场</div>
+          <div class="card-desc" style="color:var(--gray2)">开发者买卖闲置 Claude / GPT-4 / Gemini API 额度，成交价通常为官方售价的 5–7 折。Terse 收取 6% 平台手续费。支持 Paddle 全球支付、微信支付、支付宝。面向中国及东南亚市场已本地化。</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em">6%</div>
+          <div style="font-size:8.5px;color:var(--gray4);text-transform:uppercase;letter-spacing:0.1em">交易手续费</div>
+          <div style="margin-top:2mm"><span class="tag tag-dark">已上线</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-outline">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1;padding-right:6mm">
+          <div class="card-title">层 04 — 企业管理台（ToB）</div>
+          <div style="font-size:12px;font-weight:600;color:var(--black);margin:1.5mm 0">团队 AI 成本治理平台</div>
+          <div class="card-desc" style="color:var(--gray2)">多席位仪表盘：按项目 / 成员分配 Token 预算，设置告警阈值，导出审计日志，SSO 单点登录，Slack 推送。私有化部署（On-Prem）版本满足金融、法律、政府等合规场景，数据不出内网。</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em">Q3</div>
+          <div style="font-size:8.5px;color:var(--gray4);text-transform:uppercase;letter-spacing:0.1em">2026 上线</div>
+          <div style="margin-top:2mm"><span class="tag">开发中</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════ 03 商业模式 ══════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <span class="page-section-label">商业模式</span>
+    <span class="page-num">03</span>
+  </div>
+
+  <div class="section-title">四条收入，<br>互相强化。</div>
+
+  <div class="grid-4 mt4">
+    <div class="card">
+      <div class="card-title">ToC 订阅</div>
+      <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em">$19</div>
+      <div style="font-size:8.5px;color:var(--gray4);margin-bottom:2mm">/ 用户 / 月</div>
+      <div class="card-desc">优化器 + Agent 监控。年付 $149（节省 35%）</div>
+    </div>
+    <div class="card">
+      <div class="card-title">交易所手续费</div>
+      <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em">6%</div>
+      <div style="font-size:8.5px;color:var(--gray4);margin-bottom:2mm">/ 笔交易</div>
+      <div class="card-desc">Token 买卖撮合，买方折扣 + Terse 抽佣</div>
+    </div>
+    <div class="card">
+      <div class="card-title">SMB 团队版</div>
+      <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em">$79</div>
+      <div style="font-size:8.5px;color:var(--gray4);margin-bottom:2mm">/ 席位 / 月</div>
+      <div class="card-desc">团队仪表盘、成本分配、Slack 告警，最低 3 席位</div>
+    </div>
+    <div class="card">
+      <div class="card-title">企业年框</div>
+      <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em">定制</div>
+      <div style="font-size:8.5px;color:var(--gray4);margin-bottom:2mm">$2K–$20K / 年</div>
+      <div class="card-desc">私有化部署、审计日志、SSO、专属支持</div>
+    </div>
+  </div>
+
+  <div class="mt8">
+    <table>
+      <thead>
+        <tr>
+          <th>财务预测</th>
+          <th>第 1 年</th>
+          <th>第 2 年</th>
+          <th>第 3 年</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="label">ToC 付费用户</td>
+          <td class="val">600</td>
+          <td class="val">3,800</td>
+          <td class="val">12,000</td>
+        </tr>
+        <tr>
+          <td class="label">ToC 订阅 ARR</td>
+          <td class="val">$137K</td>
+          <td class="val">$868K</td>
+          <td class="val">$2.74M</td>
+        </tr>
+        <tr>
+          <td class="label">交易所收入</td>
+          <td class="val">$18K</td>
+          <td class="val">$108K</td>
+          <td class="val">$432K</td>
+        </tr>
+        <tr>
+          <td class="label">SMB 团队版 ARR</td>
+          <td class="val">—</td>
+          <td class="val">$190K</td>
+          <td class="val">$860K</td>
+        </tr>
+        <tr>
+          <td class="label">企业年框</td>
+          <td class="val">—</td>
+          <td class="val">$80K</td>
+          <td class="val">$980K</td>
+        </tr>
+        <tr>
+          <td class="label" style="font-weight:700">总收入</td>
+          <td class="strong">$155K</td>
+          <td class="strong">$1.25M</td>
+          <td class="strong">$5.01M</td>
+        </tr>
+        <tr>
+          <td class="label">毛利率</td>
+          <td class="val">82%</td>
+          <td class="val">86%</td>
+          <td class="val">89%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt6">
+    <div class="grid-4">
+      <div class="card-outline">
+        <div class="card-title">CAC</div>
+        <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em">$22</div>
+        <div class="card-desc">主要靠口碑 / Product Hunt / 开发者社区</div>
+      </div>
+      <div class="card-outline">
+        <div class="card-title">LTV</div>
+        <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em">$310</div>
+        <div class="card-desc">ToC 用户平均留存 16 个月</div>
+      </div>
+      <div class="card-outline">
+        <div class="card-title">LTV : CAC</div>
+        <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em">14 : 1</div>
+        <div class="card-desc">低 CAC 驱动，口碑裂变效应强</div>
+      </div>
+      <div class="card-outline">
+        <div class="card-title">回收周期</div>
+        <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em">1.2 月</div>
+        <div class="card-desc">首次付款后快速回收获客成本</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">预测基于每月 28% 用户增长（第 1 年），逐渐降至第 3 年 10%。企业合同平均 ACV $8,000，签约周期 60 天。</div>
+</div>
+
+
+<!-- ══════════════════ 04 增长策略 ══════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <span class="page-section-label">增长策略</span>
+    <span class="page-num">04</span>
+  </div>
+
+  <div class="section-title">ToC 引流，<br>ToB 放大。</div>
+  <div class="section-sub">Terse 的核心增长逻辑：产品驱动的底层裂变（PLG）将用户带入 ToC 漏斗，团队版和企业合同放大收入天花板。两个引擎彼此独立，相互强化。</div>
+
+  <div class="mt4">
+    <div class="timeline">
+
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-quarter">现在 — 2026 Q2</div>
+        <div class="tl-title">产品驱动冷启动（PLG）</div>
+        <div class="tl-desc">免费试用 + Product Hunt 发布 + Hacker News Show HN。主打 Claude Code 和 Cursor 重度用户社群（X / Discord / 知乎 / 即刻）。目标：3,000 安装，300 付费转化。VS Code / Cursor 插件进入官方市场，免费版入口，付费解锁高级功能。</div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-quarter">2026 Q3</div>
+        <div class="tl-title">内容护城河 + 中国市场深耕</div>
+        <div class="tl-desc">每周发布 Token 成本优化教程、模型价格对比、Agent 效率基准报告。SEO 矩阵（已有 12 个页面收录）。微信公众号 + B站视频频道针对国内开发者社区。微信支付 / 支付宝接入完成，面向中国市场正式商业化。</div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-quarter">2026 Q3–Q4</div>
+        <div class="tl-title">SMB 团队版上线 + 企业销售启动</div>
+        <div class="tl-desc">多席位团队版发布，主打 5–50 人 AI 原生创业公司。通过 ToC 用户反向触达其所在公司（Bottom-Up）。配置 1 名 BD，专攻金融科技、法律科技、AI 服务商的企业年框合同。目标：20 家 SMB，3 家企业签约。</div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot open"></div>
+        <div class="tl-quarter">2027</div>
+        <div class="tl-title">私有化部署 + 生态集成</div>
+        <div class="tl-desc">On-Prem 版本面向金融、政府、法律合规客户。与国内大模型厂商（文心、通义、混元）建立 Token 成本优化合作。交易所 API 开放给机构买家，GMV 放大至 $1,000 万 / 年。</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="mt6">
+    <table>
+      <thead>
+        <tr>
+          <th>获客渠道</th>
+          <th>预估 CAC</th>
+          <th>规模</th>
+          <th>备注</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="label">口碑 / 自然裂变</td>
+          <td class="strong">$0</td>
+          <td class="val">高</td>
+          <td class="muted">省钱效果可见 → 用户主动分享</td>
+        </tr>
+        <tr>
+          <td class="label">VS Code / Cursor 插件市场</td>
+          <td class="val">$5</td>
+          <td class="val">高</td>
+          <td class="muted">插件搜索自带流量，免费版漏斗</td>
+        </tr>
+        <tr>
+          <td class="label">Product Hunt / HN</td>
+          <td class="val">$8</td>
+          <td class="val">爆发式</td>
+          <td class="muted">发布日峰值 + 长尾搜索收录</td>
+        </tr>
+        <tr>
+          <td class="label">微信 / B站 / 即刻</td>
+          <td class="val">$10–18</td>
+          <td class="val">中高</td>
+          <td class="muted">中国开发者社区，竞争少</td>
+        </tr>
+        <tr>
+          <td class="label">企业 BD（线下拜访）</td>
+          <td class="val">$800–2,000</td>
+          <td class="val">精准</td>
+          <td class="muted">ACV $8K–$20K，LTV 极高</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ══════════════════ 05 护城河与团队 ══════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <span class="page-section-label">竞争优势与团队</span>
+    <span class="page-num">05</span>
+  </div>
+
+  <div class="section-title">难以复制，<br>容易留存。</div>
+  <div class="section-sub">本地压缩引擎 + 实时 Agent 日志解析 + 双边 Token 市场 + 企业合规部署，四层能力的组合，任何单一功能产品都无法在 12 个月内追平。</div>
+
+  <div class="mt2">
+    <ul class="bullet-list">
+      <li><strong>本地优先架构。</strong>&nbsp;数据不出本地，零云端延迟。对合规要求严格的企业（金融、法律、政府）是硬性准入条件，也是销售中最强的差异化论据。</li>
+      <li><strong>深度 Agent 集成。</strong>&nbsp;读取 Claude Code JSONL 日志、Cursor SQLite 数据库、Codex Hook 输出，每一个 Agent 的接入都需要逆向工程，竞争对手需要重复相同的工作量。</li>
+      <li><strong>交易所网络效应。</strong>&nbsp;买方带来卖方，流动性自我增强。$50 万 GMV 以上的双边市场极难被替代。</li>
+      <li><strong>11 语言国际化。</strong>&nbsp;已上线中、英、日、韩、阿、法、德、西、葡、意，西方同类工具几乎不覆盖亚太市场，Terse 在中国及东南亚几乎没有直接竞争者。</li>
+      <li><strong>插件生态入口。</strong>&nbsp;VS Code 插件市场拥有 3,500 万活跃用户。插件免费版即是病毒式分发渠道，也是企业客户导入的低摩擦入口。</li>
+      <li><strong>自研智能路由引擎（数据飞轮壁垒）。</strong>&nbsp;基于自主微调的 DistilBERT 模型，实时对每条 Prompt 进行复杂度分类（验证集准确率 98.16%），将简单请求自动路由至低成本模型（如 claude-opus-4-6 → claude-sonnet-4-6，gpt-4o → gpt-4o-mini），平均节省 60–80% 推理成本，用户无感知。训练数据融合 Code Alpaca、Alpaca 52k、CodeSearchNet 及手工标注锚样本；随着用户规模扩大，真实 Prompt 持续回流训练集，模型识别精度将螺旋式提升——竞争对手越晚入场，数据差距越难追平。量化部署（INT8 ONNX，64 MB），本地推理延迟 &lt;80 ms，全程离线，无隐私泄露风险。</li>
+    </ul>
+  </div>
+
+  <div class="mt4" style="background:var(--gray6);border-radius:3mm;padding:4mm 5mm">
+    <div style="font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--gray3);margin-bottom:3mm">智能路由映射 · 自动降本示例</div>
+    <table style="font-size:9px">
+      <thead>
+        <tr>
+          <th>用户原始调用模型</th>
+          <th>Terse 路由至（简单请求）</th>
+          <th>预估节省</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="label">claude-opus-4-6</td><td class="val">claude-sonnet-4-6</td><td class="strong">~80%</td></tr>
+        <tr><td class="label">gpt-4 / gpt-4o</td><td class="val">gpt-4o-mini</td><td class="strong">~75%</td></tr>
+        <tr><td class="label">o3</td><td class="val">gpt-4o</td><td class="strong">~60%</td></tr>
+      </tbody>
+    </table>
+    <div style="font-size:8.5px;color:var(--gray3);margin-top:2.5mm">路由决策本地完成，&lt;80 ms；用户 Prompt 数据持续优化分类边界，形成竞争壁垒。</div>
+  </div>
+
+  <div class="mt6">
+    <table>
+      <thead>
+        <tr>
+          <th>对比竞品</th>
+          <th>Token 压缩</th>
+          <th>Agent 监控</th>
+          <th>Token 交易所</th>
+          <th>本地 / 合规</th>
+          <th>企业管理台</th>
+          <th>插件</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="label" style="font-weight:700">Terse</td>
+          <td class="strong">✓</td><td class="strong">✓</td><td class="strong">✓</td><td class="strong">✓</td><td class="strong">✓</td><td class="strong">✓</td>
+        </tr>
+        <tr>
+          <td class="label">LLMLingua / PromptComp</td>
+          <td class="val">✓</td><td class="muted">✗</td><td class="muted">✗</td><td class="val">✓</td><td class="muted">✗</td><td class="muted">✗</td>
+        </tr>
+        <tr>
+          <td class="label">Helicone / LangSmith</td>
+          <td class="muted">✗</td><td class="val">部分</td><td class="muted">✗</td><td class="muted">云端</td><td class="val">部分</td><td class="muted">✗</td>
+        </tr>
+        <tr>
+          <td class="label">OpenAI / Anthropic 控制台</td>
+          <td class="muted">✗</td><td class="muted">✗</td><td class="muted">✗</td><td class="muted">云端</td><td class="val">基础</td><td class="muted">✗</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt6">
+    <div style="font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--gray3);margin-bottom:4mm">团队</div>
+    <div class="grid-2">
+      <div class="card-outline">
+        <div style="font-size:12px;font-weight:600;color:var(--black);margin-bottom:1mm">Lucas Zeng &nbsp;<span class="tag">联合创始人 · CEO</span></div>
+        <div class="card-desc" style="color:var(--gray2)">全栈工程师 + 产品设计师。伯克利计算机本科，宾大数据科学硕士，曾任北美对冲基金基金经理，负责深度学习量化策略。</div>
+      </div>
+      <div class="card-outline">
+        <div style="font-size:12px;font-weight:600;color:var(--black);margin-bottom:1mm">Letian Yu &nbsp;<span class="tag">联合创始人 · CTO</span></div>
+        <div class="card-desc" style="color:var(--gray2)">布朗大学数据科学硕士，现任职高盛量化金融组。负责 Terse 数据架构、Token 定价模型与交易所风控策略。量化背景为 Token Exchange 定价算法与企业成本分析模块提供核心技术支撑。</div>
+      </div>
+    </div>
+    <div style="margin-top:3mm">
+      <div class="card-outline">
+        <div style="font-size:12px;font-weight:600;color:var(--black);margin-bottom:1mm">Wenyu Yang &nbsp;<span class="tag">联合创始人 · COO</span></div>
+        <div class="card-desc" style="color:var(--gray2)">加州大学伯克利分校经济学本科，布朗大学数据科学硕士。现任腾讯数据中心，全面负责大中华地区算力基础设施运维与选址规划。深度掌握国内 AI 算力供应链与数据中心生态，是 Terse 打入国内企业市场与大模型厂商合作的关键资源。</div>
+      </div>
+    </div>
+    <div style="margin-top:3mm">
+      <div class="card-outline">
+        <div style="font-size:12px;font-weight:600;color:var(--black);margin-bottom:1mm">Kitty &nbsp;<span class="tag">联合创始人 · 量化策略负责人</span></div>
+        <div class="card-desc" style="color:var(--gray2)">布朗大学数据科学硕士。现任九坤投资（Ubiquant）中央优化部门，主导风险模型构建与市场冲击组合优化。深度量化研究背景为 Token Exchange 的流动性定价、套利风控及企业级 Token 预算优化算法提供核心建模支撑。</div>
+      </div>
+    </div>
+    <div style="margin-top:3mm">
+      <div class="card-outline">
+        <div style="font-size:12px;font-weight:600;color:var(--black);margin-bottom:1mm">招聘计划 &nbsp;<span class="tag tag-dark">2026 Q3</span></div>
+        <div class="card-desc" style="color:var(--gray2)">增长工程师（PLG、SEO 自动化、推荐裂变），以及一名 BD 专攻中国及东南亚企业合同。两个职位均由本轮融资覆盖。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════ 06 融资与路线图 ══════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <span class="page-section-label">融资计划与路线图</span>
+    <span class="page-num">06</span>
+  </div>
+
+  <div class="section-title">$30 万天使轮，<br>12 个月冲量，<br>18 个月盈亏平衡。</div>
+
+  <div class="mt4">
+    <div class="highlight-row">
+      <div class="big">$300,000</div>
+      <div class="desc">
+        天使轮 · Pre-money 估值 $200 万 · SAFE 票据 · MFN 条款 · 18 个月 Runway<br>
+        目标：第 12 个月月收入突破 $25K，第 18 个月达到盈亏平衡
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title">研发（60%）</div>
+        <div style="font-size:18px;font-weight:700">$180K</div>
+        <div class="card-desc">Windows 端、VS Code 插件完善、企业管理台、Agent Monitor v2、On-Prem 架构</div>
+      </div>
+      <div class="card">
+        <div class="card-title">市场与增长（25%）</div>
+        <div style="font-size:18px;font-weight:700">$75K</div>
+        <div class="card-desc">内容生产、付费测试、开发者活动、中国市场本地化运营、企业 BD 启动</div>
+      </div>
+      <div class="card">
+        <div class="card-title">运营与法务（15%）</div>
+        <div style="font-size:18px;font-weight:700">$45K</div>
+        <div class="card-desc">实体架构、交易所合规、支付基础设施、会计、知识产权</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt8">
+    <table>
+      <thead>
+        <tr>
+          <th>里程碑</th>
+          <th>状态</th>
+          <th>战略意义</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="label">macOS v1.3 — 优化器 + Agent 监控</td>
+          <td><span class="tag tag-live">已上线</span></td>
+          <td class="val">核心留存驱动，真实节省可见</td>
+        </tr>
+        <tr>
+          <td class="label">Claude Code / Cursor / Codex 接入</td>
+          <td><span class="tag tag-live">已上线</span></td>
+          <td class="val">覆盖 Top 3 Agent 工具的用户群</td>
+        </tr>
+        <tr>
+          <td class="label">Token 交易所（Paddle + 微信 / 支付宝）</td>
+          <td><span class="tag tag-live">已上线</span></td>
+          <td class="val">第二收入流激活</td>
+        </tr>
+        <tr>
+          <td class="label">11 语言国际化</td>
+          <td><span class="tag tag-live">已上线</span></td>
+          <td class="val">Day 1 进入亚太市场</td>
+        </tr>
+        <tr>
+          <td class="label">Windows 桌面端</td>
+          <td><span class="tag">Q2 2026</span></td>
+          <td class="val">可寻址平台市场扩大 3 倍</td>
+        </tr>
+        <tr>
+          <td class="label">VS Code / Cursor 插件（正式版）</td>
+          <td><span class="tag">Q2 2026</span></td>
+          <td class="val">进入 3,500 万活跃用户的插件市场</td>
+        </tr>
+        <tr>
+          <td class="label">企业团队仪表盘（多席位）</td>
+          <td><span class="tag">Q3 2026</span></td>
+          <td class="val">解锁企业销售，ARPU 提升 5 倍</td>
+        </tr>
+        <tr>
+          <td class="label">Copilot / Gemini CLI 接入</td>
+          <td><span class="tag">Q3 2026</span></td>
+          <td class="val">Agent 用户覆盖率 +40%</td>
+        </tr>
+        <tr>
+          <td class="label">On-Prem 私有化部署版本</td>
+          <td><span class="tag">Q4 2026</span></td>
+          <td class="val">金融 / 法律 / 政府合规场景</td>
+        </tr>
+        <tr>
+          <td class="label">国内大模型（文心 / 通义 / 混元）对接</td>
+          <td><span class="tag">2027</span></td>
+          <td class="val">中国市场差异化 + 本地合规</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt6" style="padding:4mm 5mm;background:var(--gray7);border-radius:3px">
+    <div style="font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--gray3);margin-bottom:2.5mm">主要风险与应对</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:3mm 7mm;">
+      <div style="font-size:9.5px;color:var(--gray2);line-height:1.55"><strong>Anthropic / OpenAI 推出内置压缩功能</strong> —— Terse 同时覆盖所有模型；本地合规属性不可被云端替代。</div>
+      <div style="font-size:9.5px;color:var(--gray2);line-height:1.55"><strong>交易所监管风险</strong> —— Token 属于非金融数字商品，Paddle 在 200+ 市场合规运营；已完成法律评估。</div>
+      <div style="font-size:9.5px;color:var(--gray2);line-height:1.55"><strong>团队协作风险</strong> —— 五位联合创始人覆盖技术、产品、量化、运营与市场，分工明确，避免单点依赖。</div>
+      <div style="font-size:9.5px;color:var(--gray2);line-height:1.55"><strong>企业合同周期长</strong> —— ToC 订阅支撑短期现金流，企业合同为中长期增量，两者相互独立。</div>
+    </div>
+  </div>
+
+  <div class="mt6" style="border-top:2px solid var(--black);padding-top:6mm;display:flex;justify-content:space-between;align-items:flex-end">
+    <div>
+      <div style="font-size:9px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--gray4);margin-bottom:2.5mm">联系我们</div>
+      <div style="font-size:12.5px;font-weight:700;letter-spacing:-0.01em">lucaszengool@outlook.com</div>
+      <div style="font-size:11px;color:var(--gray3);margin-top:1mm">terse.dev &nbsp;·&nbsp; Lucas Zeng</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:9px;color:var(--gray4);margin-bottom:1mm">本文件仅供被邀请方阅读</div>
+      <div style="font-size:9px;color:var(--gray4)">Terse · 天使轮 · 2026 年 4 月</div>
+    </div>
+  </div>
+
+  <div class="footnote">本文件包含前瞻性陈述，所有财务预测均为估算，不构成证券发售要约。</div>
+</div>
+
+</body>
+</html>

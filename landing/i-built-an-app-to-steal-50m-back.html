@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I Built an App to Steal $50M Back from Claude Code — Terse</title>
+  <meta name="description" content="How I cut my Claude Code bill from $180 to $31/month. A deep-dive into Terse — the Rust/Tauri macOS tool that compresses prompts, monitors agent sessions, and catches token waste in real time.">
+  <link rel="canonical" href="https://www.terseai.org/i-built-an-app-to-steal-50m-back">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="I Built an App to Steal $50M Back from Claude Code">
+  <meta property="og:description" content="How I cut my Claude Code bill from $180 to $31/month with a Rust-powered Tauri app that compresses prompts and monitors agent sessions.">
+  <meta property="og:url" content="https://www.terseai.org/i-built-an-app-to-steal-50m-back">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="I Built an App to Steal $50M Back from Claude Code">
+  <meta name="twitter:description" content="How I cut my Claude Code bill from $180 to $31/month. Deep technical dive into prompt compression and agent monitoring.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "I Built an App to Steal $50M Back from Claude Code",
+    "description": "How I cut my Claude Code bill from $180 to $31/month with a Rust/Tauri macOS tool that compresses prompts and monitors AI agent sessions.",
+    "author": {"@type": "Person", "name": "Terse Team"},
+    "publisher": {"@type": "Organization", "name": "Terse", "url": "https://www.terseai.org"},
+    "datePublished": "2026-04-29",
+    "dateModified": "2026-04-29",
+    "url": "https://www.terseai.org/i-built-an-app-to-steal-50m-back",
+    "image": "https://www.terseai.org/og-image.png",
+    "mainEntityOfPage": {"@type": "WebPage", "@id": "https://www.terseai.org/i-built-an-app-to-steal-50m-back"}
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--ac3:#a7f3d0;
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+      --warn:#fbbf24;--warnd:rgba(251,191,36,0.12);
+      --err:#f87171;--errd:rgba(248,113,113,0.12);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:var(--ac);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .mono{font-family:'JetBrains Mono','SF Mono',Menlo,monospace}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    /* NAV */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 40px;display:flex;align-items:center;justify-content:space-between;
+      background:hsla(250,24%,5%,0.85);backdrop-filter:blur(24px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;color:var(--t1);text-decoration:none}
+    .logo-icon{width:28px;height:28px;background:var(--acd);border:1px solid var(--acm);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--ac);font-weight:800;font-size:13px}
+    .nav-cta{padding:8px 20px;background:var(--t1);color:var(--bg0);border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block}
+    .nav-cta:hover{opacity:.9;text-decoration:none}
+
+    /* ARTICLE LAYOUT */
+    .article-wrap{max-width:760px;margin:0 auto;padding:120px 24px 80px}
+    .article-meta{display:flex;align-items:center;gap:12px;margin-bottom:32px;flex-wrap:wrap}
+    .meta-tag{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:var(--acd);color:var(--ac);border:1px solid var(--acm)}
+    .meta-date{font-size:13px;color:var(--t3)}
+    .meta-read{font-size:13px;color:var(--t3)}
+    .article-title{font-size:clamp(32px,6vw,54px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px}
+    .article-sub{font-size:19px;color:var(--t2);line-height:1.6;margin-bottom:40px;border-bottom:1px solid var(--bd);padding-bottom:32px}
+
+    /* PROSE */
+    .prose h2{font-size:26px;font-weight:800;letter-spacing:-0.5px;margin:52px 0 16px;line-height:1.2}
+    .prose h3{font-size:18px;font-weight:700;margin:32px 0 12px;color:var(--t2)}
+    .prose p{color:var(--t2);line-height:1.75;margin-bottom:18px}
+    .prose p strong{color:var(--t1)}
+    .prose ul,.prose ol{color:var(--t2);margin:0 0 18px 20px;line-height:1.75}
+    .prose li{margin-bottom:6px}
+    .prose blockquote{margin:24px 0;padding:14px 20px;border-left:3px solid var(--ac);background:var(--sf);border-radius:0 8px 8px 0;color:var(--t2);font-style:italic}
+    .prose blockquote em{color:var(--t3)}
+    .prose code{font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--bg3);border:1px solid var(--bd);padding:2px 6px;border-radius:4px;color:var(--ac)}
+    .prose pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;overflow-x:auto;margin:20px 0;font-size:13px;line-height:1.7;color:var(--t2)}
+    .prose pre code{background:none;border:none;padding:0;font-size:13px}
+    .prose hr{border:none;border-top:1px solid var(--bd);margin:48px 0}
+
+    /* TABLES */
+    .tbl-wrap{overflow-x:auto;margin:24px 0}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th{text-align:left;padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--bd)}
+    td{padding:10px 16px;border-bottom:1px solid var(--bd);color:var(--t2);line-height:1.5}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:var(--sf)}
+    td strong{color:var(--t1)}
+    td .tag-green{color:var(--ac);font-weight:700}
+    td .tag-warn{color:var(--warn);font-weight:700}
+    td .tag-err{color:var(--err);font-weight:700}
+
+    /* DEMO CARDS */
+    .demo-card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin:32px 0;box-shadow:0 20px 60px hsla(250,50%,5%,0.5)}
+    .demo-bar{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .demo-dot{width:10px;height:10px;border-radius:50%}
+    .demo-title{margin-left:8px;font-size:11px;color:var(--t3);font-weight:500}
+    .demo-badge{margin-left:auto;padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+    .demo-body{padding:20px}
+
+    /* CALLOUT BOXES */
+    .callout{padding:16px 20px;border-radius:10px;margin:24px 0;display:flex;gap:14px;align-items:flex-start}
+    .callout.green{background:var(--acd);border:1px solid var(--acm)}
+    .callout.warn{background:var(--warnd);border:1px solid rgba(251,191,36,0.25)}
+    .callout.err{background:var(--errd);border:1px solid rgba(248,113,113,0.2)}
+    .callout-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+    .callout-text{font-size:14px;color:var(--t2);line-height:1.6}
+    .callout-text strong{color:var(--t1)}
+
+    /* STATS ROW */
+    .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:28px 0}
+    .stat-box{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:16px;text-align:center}
+    .stat-val{font-size:28px;font-weight:900;display:block;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .stat-label{font-size:12px;color:var(--t3);display:block;margin-top:2px}
+
+    /* PIPELINE ANIM */
+    .pipe-wrap{display:flex;flex-direction:column;gap:6px}
+    .pipe-step{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:var(--sf);border:1px solid var(--bd);transition:all .35s;opacity:.35}
+    .pipe-step.active{opacity:1;background:var(--acd);border-color:var(--acm)}
+    .pipe-step.done{opacity:.65}
+    .pipe-n{width:22px;height:22px;border-radius:50%;background:var(--bg3);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--t3);flex-shrink:0;transition:all .35s}
+    .pipe-step.active .pipe-n{background:var(--acm);border-color:var(--ac);color:var(--ac)}
+    .pipe-step.done .pipe-n{background:var(--acd);border-color:var(--acm);color:var(--ac)}
+    .pipe-nm{font-size:13px;font-weight:600;color:var(--t2);flex:1}
+    .pipe-step.active .pipe-nm{color:var(--t1)}
+    .pipe-tok{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t3)}
+    .pipe-step.active .pipe-tok,.pipe-step.done .pipe-tok{color:var(--ac)}
+    .pipe-text-box{background:var(--bg3);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.6;margin-top:12px;min-height:52px;color:var(--t2);transition:all .3s;font-family:'JetBrains Mono',monospace}
+
+    /* SPELL STAGES */
+    .spell-pills{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    .spell-pill{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;background:var(--sf);color:var(--t3);border:1px solid var(--bd);transition:all .35s}
+    .spell-pill.active{background:var(--acd);color:var(--ac);border-color:var(--acm)}
+
+    /* AGENT MONITOR ANIM */
+    .am-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+    .am-stat{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center}
+    .am-val{font-size:22px;font-weight:900;display:block;color:var(--t1);font-family:'JetBrains Mono',monospace;transition:color .4s}
+    .am-val.warn{color:var(--warn)}
+    .am-val.err{color:var(--err)}
+    .am-label{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;display:block;margin-top:2px}
+    .ctx-bar-wrap{background:var(--sf);border-radius:4px;height:6px;overflow:hidden;margin-top:6px}
+    .ctx-bar-fill{height:100%;border-radius:4px;background:var(--gradient);width:0%;transition:width 1.2s ease}
+    .ctx-bar-fill.warn{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+    .ctx-bar-fill.err{background:linear-gradient(90deg,#f87171,#ef4444)}
+
+    .tool-event{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:var(--sf);border:1px solid var(--bd);margin-bottom:6px;font-size:12px;opacity:0;transition:opacity .35s}
+    .tool-event.show{opacity:1}
+    .tool-event.dup{background:var(--warnd);border-color:rgba(251,191,36,0.3)}
+    .tool-event.bad{background:var(--errd);border-color:rgba(248,113,113,0.3)}
+    .te-badge{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;background:var(--sf);color:var(--t3)}
+    .tool-event.dup .te-badge{background:var(--warnd);color:var(--warn)}
+    .tool-event.bad .te-badge{background:var(--errd);color:var(--err)}
+    .te-name{color:var(--t2);font-family:'JetBrains Mono',monospace;flex:1}
+    .te-cost{font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+
+    /* COMPRESS RATES */
+    .cr-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .cr-name{font-size:13px;font-weight:600;color:var(--t2);width:80px;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+    .cr-bar-wrap{flex:1;background:var(--sf);border-radius:4px;height:8px;overflow:hidden}
+    .cr-bar{height:100%;border-radius:4px;background:var(--gradient);width:0%;transition:width 1.4s ease}
+    .cr-pct{font-size:12px;font-weight:700;color:var(--ac);width:42px;text-align:right;font-family:'JetBrains Mono',monospace}
+
+    /* TOKEN WASTE VIS */
+    .waste-tokens{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0}
+    .tok{padding:4px 8px;border-radius:4px;font-size:12px;font-family:'JetBrains Mono',monospace;background:var(--bg3);border:1px solid var(--bd);color:var(--t2);transition:all .4s}
+    .tok.waste{background:rgba(248,113,113,0.15);border-color:rgba(248,113,113,0.3);color:var(--err)}
+    .tok.kept{background:var(--acd);border-color:var(--acm);color:var(--ac)}
+
+    /* CTA SECTION */
+    .cta-section{background:var(--bg1);border:1px solid var(--bd);border-radius:16px;padding:40px;text-align:center;margin:56px 0 32px}
+    .cta-section h2{font-size:28px;font-weight:800;letter-spacing:-1px;margin-bottom:12px}
+    .cta-section p{color:var(--t2);margin-bottom:28px;font-size:15px}
+    .dl-buttons{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .btn-dl{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;text-decoration:none}
+    .btn-dl:hover{opacity:.88;transform:translateY(-1px);text-decoration:none}
+    .btn-dl.primary{background:var(--t1);color:var(--bg0)}
+    .btn-dl.ghost{background:transparent;color:var(--t1);border:1px solid var(--bd)}
+    .btn-dl.ghost:hover{background:var(--sf);border-color:var(--bdl)}
+    .dl-note{font-size:12px;color:var(--t3);margin-top:14px}
+
+    /* READING PROGRESS */
+    .progress-bar{position:fixed;top:0;left:0;height:2px;background:var(--gradient);z-index:200;transition:width .1s linear;width:0%}
+
+    /* ANIMATIONS */
+    @keyframes dotpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(1.5)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+    .rv.visible{opacity:1;transform:translateY(0)}
+
+    /* FOOTNOTE */
+    .article-footer{border-top:1px solid var(--bd);padding-top:32px;margin-top:48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:gap;gap:12px}
+    .article-footer-left{font-size:13px;color:var(--t3)}
+    .share-btn{padding:8px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+    .share-btn:hover{background:var(--sfh);border-color:var(--bdl)}
+
+    @media(max-width:640px){
+      nav{padding:12px 20px}
+      .article-wrap{padding:96px 20px 60px}
+      .am-grid{grid-template-columns:1fr 1fr}
+      .stats-row{grid-template-columns:1fr}
+      .dl-buttons{flex-direction:column;align-items:center}
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress"></div>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div> Terse</a>
+  <a href="/#dl" class="nav-cta">Download Free →</a>
+</nav>
+
+<div class="article-wrap">
+
+  <!-- Meta -->
+  <div class="article-meta rv">
+    <span class="meta-tag">Deep Dive</span>
+    <span class="meta-tag">macOS</span>
+    <span class="meta-date">April 29, 2026</span>
+    <span class="meta-read">· 16 min read</span>
+  </div>
+
+  <h1 class="article-title rv">I Built an App to <span class="gradient-text">Steal $50M Back</span> from Claude Code</h1>
+  <p class="article-sub rv">How I cut my Claude Code bill from $180 to $31/month — and what the Agent Monitor revealed about how AI coding tools <em>actually</em> waste your money.</p>
+
+  <div class="prose">
+
+    <!-- Section 1 -->
+    <h2 class="rv">The 35% Problem</h2>
+    <p class="rv">I pulled three months of Claude Code session logs and analyzed them. The result was uncomfortable.</p>
+
+    <blockquote class="rv">
+      <em>"Could you please help me with…"</em><br>
+      <em>"If it's not too much trouble…"</em><br>
+      <em>"I was wondering if you might be able to…"</em><br>
+      <em>"What I'd like you to do here is just…"</em>
+    </blockquote>
+
+    <p class="rv">Roughly <strong>35% of my input tokens went to content that provided zero signal to the model.</strong> I was talking to Claude like a nervous intern I didn't want to offend. Claude doesn't have feelings. It doesn't try harder because you said "please." The politeness tax is 100% yours.</p>
+
+    <!-- DEMO: Token waste visualizer -->
+    <div class="demo-card rv">
+      <div class="demo-bar">
+        <div class="demo-dot" style="background:#ff5f57"></div>
+        <div class="demo-dot" style="background:#ffbd2e"></div>
+        <div class="demo-dot" style="background:#28c840"></div>
+        <span class="demo-title">Token Waste Visualizer</span>
+        <span class="demo-badge" id="wasteBadge">analyzing...</span>
+      </div>
+      <div class="demo-body">
+        <p style="font-size:12px;color:var(--t3);margin-bottom:10px;font-family:'JetBrains Mono',monospace">Your prompt, tokenized:</p>
+        <div class="waste-tokens" id="wasteTokens"></div>
+        <div style="display:flex;gap:16px;margin-top:14px;font-size:12px;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(248,113,113,0.3);border:1px solid rgba(248,113,113,0.5);display:inline-block"></span><span style="color:var(--t3)">Wasted (noise)</span></span>
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:var(--acd);border:1px solid var(--acm);display:inline-block"></span><span style="color:var(--t3)">Signal (kept)</span></span>
+          <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--warn)" id="wastePercent"></span>
+        </div>
+      </div>
+    </div>
+
+    <p class="rv">Claude Sonnet 4.5 is priced at <strong>$3 per million input tokens</strong>. But that's not the number that matters. Every message in a long session re-sends the <em>entire conversation history</em>. Message 50 costs 200 tokens <em>plus 49 previous messages</em>. Context compounds. That 35% noise compounds with it.</p>
+
+    <div class="stats-row rv">
+      <div class="stat-box"><span class="stat-val">35%</span><span class="stat-label">avg. token waste</span></div>
+      <div class="stat-box"><span class="stat-val">$180→$31</span><span class="stat-label">monthly bill reduction</span></div>
+      <div class="stat-box"><span class="stat-val">11×</span><span class="stat-label">same file re-read in one session</span></div>
+    </div>
+
+    <hr>
+
+    <!-- Section 2 -->
+    <h2 class="rv">What Terse Is — and What It's Built With</h2>
+    <p class="rv"><a href="https://terseai.org">Terse</a> is a macOS application that sits between your keyboard and your AI tools. It reads what you're typing, compresses it locally, and replaces it before you send. No servers. No third parties. Your prompts never leave your machine.</p>
+
+    <p class="rv">One thing worth getting right immediately: <strong>Terse is not an Electron app.</strong> It's built on <strong>Tauri</strong> — a framework that uses Rust for the backend and the system's native WKWebView for the frontend.</p>
+
+<p class="rv">Using Rust wasn't aesthetic. The performance requirements for real-time text processing, file system watching, and process introspection made a compiled systems language the right call. The NLP optimizer runs in a Node.js sidecar, but all system-level operations — agent monitoring, capture pipeline, IPC — are native Rust.</p>
+
+    <hr>
+
+    <!-- Section 3 -->
+    <h2 class="rv">How Text Capture Works: The <code>terse-ax</code> Swift Helper</h2>
+    <p class="rv">The core challenge: reading from and writing to arbitrary third-party apps requires access to their text fields — owned by other processes. On macOS, the answer is the <strong>Accessibility API</strong>.</p>
+
+    <p class="rv">Terse ships a compiled Swift binary called <code>terse-ax</code>. When Terse starts, Rust resolves the path from the Tauri bundle structure:</p>
+
+    <pre class="rv">// Contents/MacOS/ — main binary
+// Contents/Resources/terse-ax — Swift helper
+let r1 = contents_dir.join("Resources/terse-ax");
+if r1.exists() { return r1.to_string_lossy().to_string(); }</pre>
+
+    <p class="rv">On first run, two things happen automatically:</p>
+
+    <pre class="rv">// Remove macOS quarantine (set on all DMG-installed binaries)
+Command::new("xattr").args(["-dr", "com.apple.quarantine", &path]);
+
+// Ensure executable bit is set
+Command::new("chmod").args(["+x", &path]);</pre>
+
+    <p class="rv">Without quarantine removal, Gatekeeper would block the Swift helper even after the user grants accessibility permissions — a common DMG distribution pitfall.</p>
+
+    <div class="demo-card rv">
+      <div class="demo-bar">
+        <div class="demo-dot" style="background:#ff5f57"></div>
+        <div class="demo-dot" style="background:#ffbd2e"></div>
+        <div class="demo-dot" style="background:#28c840"></div>
+        <span class="demo-title">terse-ax · Accessibility Capture Pipeline</span>
+        <span class="demo-badge">live</span>
+      </div>
+      <div class="demo-body">
+        <div style="display:flex;flex-direction:column;gap:8px" id="axPipeline">
+          <div class="pipe-step" id="axS0"><span class="pipe-n">1</span><span class="pipe-nm">Get frontmost app (JXA + NSWorkspace)</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step" id="axS1"><span class="pipe-n">2</span><span class="pipe-nm">Traverse AX element hierarchy</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step" id="axS2"><span class="pipe-n">3</span><span class="pipe-nm">Find AXTextArea / AXTextField</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step" id="axS3"><span class="pipe-n">4</span><span class="pipe-nm">Read via AXValue</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step" id="axS4"><span class="pipe-n">5</span><span class="pipe-nm">Run 7-stage optimizer</span><span class="pipe-tok"></span></div>
+          <div class="pipe-step" id="axS5"><span class="pipe-n">6</span><span class="pipe-nm">Write back via AXValue (fallback: Cmd+A Cmd+V)</span><span class="pipe-tok"></span></div>
+        </div>
+        <div class="callout warn" style="margin-top:16px;margin-bottom:0">
+          <span class="callout-icon">⚡</span>
+          <div class="callout-text"><strong>VS Code / Canvas edge case:</strong> Electron-based editors render on Canvas — AX can't read it. Terse falls back to selection capture (<code>Cmd+C</code> → compress → <code>Cmd+V</code>). The UI shows which method is active.</div>
+        </div>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Section 4: Compression Pipeline -->
+    <h2 class="rv">The 7-Stage Compression Pipeline</h2>
+    <p class="rv">Before any compression logic runs, a three-stage spellcheck fires first.</p>
+
+    <h3 class="rv">Spellcheck Pipeline (runs before everything)</h3>
+
+    <div class="demo-card rv">
+      <div class="demo-bar">
+        <div class="demo-dot" style="background:#ff5f57"></div>
+        <div class="demo-dot" style="background:#ffbd2e"></div>
+        <div class="demo-dot" style="background:#28c840"></div>
+        <span class="demo-title">Spellcheck — 3 Stages</span>
+        <span class="demo-badge">live</span>
+      </div>
+      <div class="demo-body">
+        <div class="spell-pills">
+          <div class="spell-pill" id="sp1">TYPOS Dict</div>
+          <div class="spell-pill" id="sp2">Norvig Edit-Distance</div>
+          <div class="spell-pill" id="sp3">QWERTY Proximity</div>
+          <div class="spell-pill" id="sp4">nspell / Hunspell</div>
+        </div>
+        <div class="pipe-text-box mono" id="spellBox">what shoudl I do to deplpy my databse to producton</div>
+        <div style="margin-top:8px;font-size:11px;color:var(--ac);font-family:'JetBrains Mono',monospace" id="spellFixes"></div>
+      </div>
+    </div>
+
+    <p class="rv"><strong>Stage 1 — Hardcoded TYPOS dictionary (~600 entries).</strong> O(1) lookups for the most common developer typos: <code>fucntion → function</code>, <code>algortihm → algorithm</code>, <code>databse → database</code>. A <code>TECH_WORDS</code> allowlist (~100 entries: <code>async</code>, <code>jwt</code>, <code>kubernetes</code>…) prevents downstream stages from mangling valid tech vocabulary.</p>
+
+    <p class="rv"><strong>Stage 2 — Norvig edit-distance with QWERTY proximity weighting.</strong> Generates candidate corrections at edit distance 1–2, filters to known words, ranks by frequency. The QWERTY weight means <code>teh</code> scores higher confidence than <code>zeh</code> as a correction of <code>the</code> — adjacent-key errors are structurally more likely.</p>
+
+    <p class="rv"><strong>Stage 3 — nspell (Hunspell-backed).</strong> Same dictionaries as Firefox and LibreOffice. Catches anything the first two stages miss.</p>
+
+    <h3 class="rv">The 7 Compression Stages</h3>
+    <p class="rv">After spellcheck, code blocks are extracted and vaulted (restored verbatim at the end). Then compression runs:</p>
+
+    <!-- Pipeline animation -->
+    <div class="demo-card rv">
+      <div class="demo-bar">
+        <div class="demo-dot" style="background:#ff5f57"></div>
+        <div class="demo-dot" style="background:#ffbd2e"></div>
+        <div class="demo-dot" style="background:#28c840"></div>
+        <span class="demo-title">7-Stage Optimizer — Normal Mode</span>
+        <span class="demo-badge" id="pipeBadge">ready</span>
+      </div>
+      <div class="demo-body">
+        <div class="pipe-wrap" id="pipeWrap">
+          <div class="pipe-step" id="ps0"><span class="pipe-n">1</span><span class="pipe-nm">Spell Correction</span><span class="pipe-tok" id="pt0"></span></div>
+          <div class="pipe-step" id="ps1"><span class="pipe-n">2</span><span class="pipe-nm">Whitespace Normalization</span><span class="pipe-tok" id="pt1"></span></div>
+          <div class="pipe-step" id="ps2"><span class="pipe-n">3</span><span class="pipe-nm">Pattern Optimization (130+ rules)</span><span class="pipe-tok" id="pt2"></span></div>
+          <div class="pipe-step" id="ps3"><span class="pipe-n">4</span><span class="pipe-nm">Redundancy Elimination</span><span class="pipe-tok" id="pt3"></span></div>
+          <div class="pipe-step" id="ps4"><span class="pipe-n">5</span><span class="pipe-nm">NLP Analysis — filler + hedging</span><span class="pipe-tok" id="pt4"></span></div>
+          <div class="pipe-step" id="ps5"><span class="pipe-n">6</span><span class="pipe-nm">Aggressive Compression</span><span class="pipe-tok" id="pt5"></span></div>
+          <div class="pipe-step" id="ps6"><span class="pipe-n">7</span><span class="pipe-nm">Final Cleanup</span><span class="pipe-tok" id="pt6"></span></div>
+        </div>
+        <div class="pipe-text-box" id="pipeText">Could you please help me refactor this function? I was wondering if you might be able to improve it. It's basically a utility that just handles user authentication.</div>
+      </div>
+    </div>
+
+    <!-- Mode table -->
+    <div class="tbl-wrap rv">
+      <table>
+        <thead><tr><th>Mode</th><th>Reduction</th><th>What it removes</th><th>Best for</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>🟢 Soft</strong></td>
+            <td class="tag-green">5–15%</td>
+            <td>Contractions, verbose phrases, filler adverbs, greetings</td>
+            <td>Precise technical conversations</td>
+          </tr>
+          <tr>
+            <td><strong>🟡 Normal</strong></td>
+            <td class="tag-green">20–35%</td>
+            <td>Politeness wrappers, meta-language, hedging, redundancy</td>
+            <td>Daily coding — default mode</td>
+          </tr>
+          <tr>
+            <td><strong>🔴 Aggressive</strong></td>
+            <td class="tag-green">40–70%</td>
+            <td>Articles, prepositions, markdown, all social scaffolding</td>
+            <td>Batch Agent tasks, pipelines</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <!-- Section 5: Agent Monitor -->
+    <h2 class="rv">The Agent Monitor: Where the Real Money Is</h2>
+    <p class="rv">Prompt compression is linear savings. The Agent Monitor catches <strong>geometric waste</strong> — the kind that can run up hundreds of turns before you notice.</p>
+
+    <p class="rv">When a Claude Code session runs long, the context window fills. At high fill percentages, agents start thrashing: re-reading files already processed, re-calling tools used 20 steps ago, generating filler text to "stay busy." This is invisible in a terminal — tool calls scroll by, costs accumulate silently.</p>
+
+    <h3 class="rv">Session File Discovery (Rust)</h3>
+    <p class="rv">Claude Code stores every session as a JSONL file under <code>~/.claude/projects/&lt;encoded-cwd&gt;/</code>. The directory name is the working directory with <code>/</code> replaced by <code>-</code>. Terse finds the right session by:</p>
+
+    <pre class="rv">// 1. lsof to get CWD of every running 'claude' process
+Command::new("lsof").args(["-c", "claude", "-a", "-d", "cwd", "-Fn"])
+
+// 2. Encode CWD to match Claude's project dir naming
+let encoded = cwd.replace('/', "-");
+
+// 3. Prefer the session matching the focused terminal
+// (highest PID = most recently started claude process)
+if is_focused && !was_focused { true }   // focused wins over recency
+else if mtime > prev_mtime { true }       // recency as tiebreaker</pre>
+
+    <h3 class="rv">What the JSONL Parser Tracks</h3>
+
+    <!-- Agent Monitor live demo -->
+    <div class="demo-card rv">
+      <div class="demo-bar">
+        <div class="demo-dot" style="background:#ff5f57"></div>
+        <div class="demo-dot" style="background:#ffbd2e"></div>
+        <div class="demo-dot" style="background:#28c840"></div>
+        <span class="demo-title">Agent Monitor — Claude Code · claude-sonnet-4-6</span>
+        <span class="demo-badge" id="amBadge">● live</span>
+      </div>
+      <div class="demo-body">
+        <div class="am-grid">
+          <div class="am-stat">
+            <span class="am-val" id="amTokens">0</span>
+            <span class="am-label">total tokens</span>
+          </div>
+          <div class="am-stat">
+            <span class="am-val" id="amCost">$0.000</span>
+            <span class="am-label">est. cost</span>
+          </div>
+          <div class="am-stat">
+            <span class="am-val" id="amBurn">0</span>
+            <span class="am-label">tokens / min</span>
+          </div>
+          <div class="am-stat">
+            <span class="am-val" id="amDups">0</span>
+            <span class="am-label">duplicate calls</span>
+          </div>
+        </div>
+        <!-- Context fill bar -->
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Context fill</span>
+            <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t2)" id="ctxPct">0%</span>
+          </div>
+          <div class="ctx-bar-wrap"><div class="ctx-bar-fill" id="ctxBar"></div></div>
+        </div>
+        <!-- Tool call feed -->
+        <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Tool call log</div>
+        <div id="toolFeed"></div>
+        <!-- Redundant reads -->
+        <div id="rereadAlert" style="display:none;margin-top:10px;padding:10px 12px;background:var(--warnd);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:12px;color:var(--warn)">
+          ⚠ <strong>Redundant read detected:</strong> <span id="rereadFile"></span> — read <span id="rereadCount"></span>× this session (~<span id="rereadWaste"></span> tokens wasted)
+        </div>
+      </div>
+    </div>
+
+    <p class="rv">Duplicate detection uses a hash of <code>tool_name + first 100 chars of input</code>. If a hash is already in the seen set, the call is flagged:</p>
+
+    <pre class="rv">let cache_key = format!("{}:{}", name, input_prefix);
+if !self.tool_call_hashes.insert(cache_key) {
+    // Already seen this tool+input combo — flag it
+    self.duplicate_tool_calls += 1;
+}</pre>
+
+    <p class="rv">Redundant file reads are tracked separately with a <code>HashMap&lt;String, u32&gt;</code> — any file with count ≥ 2 is flagged. Wasted tokens estimated at ~800 per redundant read (average file size in a typical project).</p>
+
+    <h3 class="rv">Tool Result Compressibility</h3>
+    <p class="rv">Not all tool output is equally dense. Terse estimates how compressible each tool's results are:</p>
+
+    <!-- Compressibility bars -->
+    <div class="demo-card rv">
+      <div class="demo-bar">
+        <div class="demo-dot" style="background:#ff5f57"></div>
+        <div class="demo-dot" style="background:#ffbd2e"></div>
+        <div class="demo-dot" style="background:#28c840"></div>
+        <span class="demo-title">Tool Result Compressibility Estimates</span>
+        <span class="demo-badge">RTK analysis</span>
+      </div>
+      <div class="demo-body" id="crBody">
+        <div class="cr-row"><span class="cr-name">Bash</span><div class="cr-bar-wrap"><div class="cr-bar" data-pct="85" style="background:linear-gradient(90deg,#6ee7b7,#34d399)"></div></div><span class="cr-pct">60–90%</span></div>
+        <div class="cr-row"><span class="cr-name">Glob</span><div class="cr-bar-wrap"><div class="cr-bar" data-pct="55" style="background:linear-gradient(90deg,#6ee7b7,#34d399)"></div></div><span class="cr-pct">50–70%</span></div>
+        <div class="cr-row"><span class="cr-name">Read</span><div class="cr-bar-wrap"><div class="cr-bar" data-pct="50" style="background:linear-gradient(90deg,#6ee7b7,#34d399)"></div></div><span class="cr-pct">40–60%</span></div>
+        <div class="cr-row"><span class="cr-name">Grep</span><div class="cr-bar-wrap"><div class="cr-bar" data-pct="45" style="background:linear-gradient(90deg,#6ee7b7,#34d399)"></div></div><span class="cr-pct">40–50%</span></div>
+        <div class="cr-row"><span class="cr-name">WebFetch</span><div class="cr-bar-wrap"><div class="cr-bar" data-pct="35" style="background:linear-gradient(90deg,#a78bfa,#7c3aed)"></div></div><span class="cr-pct">30–40%</span></div>
+        <div class="cr-row"><span class="cr-name">Agent</span><div class="cr-bar-wrap"><div class="cr-bar" data-pct="25" style="background:linear-gradient(90deg,#fbbf24,#f59e0b)"></div></div><span class="cr-pct">~25%</span></div>
+        <p style="font-size:11px;color:var(--t3);margin-top:12px;margin-bottom:0">Bash output is most compressible: git logs, test runners, build output — lots of structure that tokenizes poorly but compresses well.</p>
+      </div>
+    </div>
+
+    <h3 class="rv">Multi-Agent Support</h3>
+    <p class="rv">The monitor isn't Claude Code-specific. Terse detects any of these agents automatically:</p>
+
+    <div class="tbl-wrap rv">
+      <table>
+        <thead><tr><th>Agent</th><th>Detection Method</th><th>Parser</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Claude Code</strong> 🤖</td><td><code>lsof</code> CWD → <code>~/.claude/projects/</code> JSONL</td><td>claudeCode</td></tr>
+          <tr><td><strong>Cursor Agent</strong> 📝</td><td>Process scan (<code>Cursor Helper</code>) + <code>~/.cursor</code></td><td>generic</td></tr>
+          <tr><td><strong>Cline</strong> 🔍</td><td>VS Code extension storage mtime</td><td>generic</td></tr>
+          <tr><td><strong>Windsurf</strong> 🏄</td><td>Process scan (<code>Windsurf Helper</code>) + <code>~/.windsurf</code></td><td>generic</td></tr>
+          <tr><td><strong>Aider</strong> 🔧</td><td>Process scan (<code>aider</code>)</td><td>generic</td></tr>
+          <tr><td><strong>OpenAI Codex</strong> 🧠</td><td><code>~/.codex/sessions</code> mtime</td><td>codex</td></tr>
+          <tr><td><strong>Copilot CLI</strong> ✈</td><td>Process scan (<code>ghcs</code>, <code>copilot-cli</code>)</td><td>generic</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="rv">For VS Code extensions (Cline, Copilot Chat) with no standalone process, Terse checks whether the extension's storage directory has been recently modified — a modification means the extension is active.</p>
+
+    <hr>
+
+    <!-- Section 6: Real numbers -->
+    <h2 class="rv">Actual Results</h2>
+    <p class="rv">My Claude Code monthly spend: <strong>$180 → $31</strong> over three months of daily use.</p>
+
+    <div class="tbl-wrap rv">
+      <table>
+        <thead><tr><th>Savings driver</th><th>Type</th><th>Mechanism</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Prompt compression</strong></td><td>Linear</td><td>Normal mode, 20–35% per message × thousands of messages</td></tr>
+          <tr><td><strong>Interrupted degenerate sessions</strong></td><td>Non-linear</td><td>Agent Monitor flags thrashing → <code>/compact</code> or restart</td></tr>
+          <tr><td><strong>Behavior change</strong></td><td>Compounding</td><td>Live token counter changes how you write prompts</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout green rv">
+      <span class="callout-icon">💡</span>
+      <div class="callout-text"><strong>The meter is motivating.</strong> When you watch a live token counter tick up with every turn, you write differently. You use <code>/compact</code> earlier. You start fresh sessions more readily. A monthly invoice tells you nothing actionable. A live counter changes behavior.</div>
+    </div>
+
+    <hr>
+
+    <!-- Section 7: Honest limitations -->
+    <h2 class="rv">Honest Limitations</h2>
+
+    <div class="tbl-wrap rv">
+      <table>
+        <thead><tr><th>Limitation</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td><strong>macOS only</strong></td><td>AX API is mature and consistent on macOS. Windows UIA is unreliable across Electron apps. Roadmap.</td></tr>
+          <tr><td><strong>No browser-terminal Claude Code</strong></td><td>Desktop client and VS Code terminal only. Browser-based terminal isn't AX-readable.</td></tr>
+          <tr><td><strong>Aggressive mode loses precision</strong></td><td>By design. For batch Agent automation, not nuanced technical discussions.</td></tr>
+          <tr><td><strong>Agent Monitor requires local Claude Code</strong></td><td>Reads <code>~/.claude/projects/</code> JSONL. Remote/SSH sessions not watched.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <!-- Section 8: Why Tauri -->
+    <h2 class="rv">Why Tauri and Not Electron</h2>
+    <p class="rv">A background tool that quietly consumes 300 MB of RAM and 15% CPU is one that gets force-quit. Terse runs alongside Claude Code, Cursor, and whatever else you have open — it can't be the memory hog.</p>
+
+    <p class="rv">Tauri eliminates bundled Chromium by using WKWebView. The Rust backend handles all system-level operations with memory-safe compiled code. The app binary is ~6 MB, starts in under half a second, and idles at 15–30 MB — numbers that matter when your AI tools are already hungry.</p>
+
+    <hr>
+
+    <!-- Final thoughts -->
+    <h2 class="rv">The Economics of Prompt Hygiene</h2>
+    <p class="rv">Most advice about AI productivity focuses on outputs: better prompts, better responses. Almost none focuses on the input side — what you're actually sending, how much is noise, what that noise costs at scale.</p>
+
+    <p class="rv">Heavy AI users send millions of tokens per month. At those volumes, 35% waste is a real number. Fixing it doesn't require understanding transformer architecture. It requires acknowledging that habits built for human communication don't apply to language models — and running a tool that enforces that awareness automatically.</p>
+
+  </div><!-- /prose -->
+
+  <!-- CTA -->
+  <div class="cta-section rv">
+    <h2>Free for 30 Days — <span class="gradient-text">Unlimited Access</span></h2>
+    <p>Full access, no limits, no credit card. Every feature unlocked for 30 days. Install, watch your bill.</p>
+    <div class="dl-buttons">
+      <a href="/#dl" class="btn-dl primary" onclick="return openSignup('mac')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        Download for macOS
+      </a>
+      <a href="/#dl" class="btn-dl ghost" onclick="return openSignup('vscode')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 19.988V4.011a1.5 1.5 0 0 0-.85-1.424zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>
+        VS Code Extension
+      </a>
+      <a href="/#dl" class="btn-dl ghost" onclick="return openSignup('chrome')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/></svg>
+        Chrome Extension
+      </a>
+    </div>
+    <p class="dl-note">30 days free · Unlimited access · No credit card required · $4.99/mo after trial</p>
+  </div>
+
+  <div class="article-footer rv">
+    <div class="article-footer-left">Originally posted on <a href="https://medium.com/@terseaiofficial/i-built-an-app-to-steal-50m-back-from-claude-code-e4544fe16e12">Medium</a> · <a href="/">terseai.org</a></div>
+    <button class="share-btn" onclick="copyLink()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      <span id="copyLabel">Copy link</span>
+    </button>
+  </div>
+
+</div><!-- /article-wrap -->
+
+<!-- Sign-up modal -->
+<div id="signupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:300;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:36px;max-width:420px;width:100%;position:relative">
+    <button onclick="closeSignup()" style="position:absolute;top:16px;right:16px;background:var(--sf);border:1px solid var(--bd);color:var(--t2);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">×</button>
+    <div style="margin-bottom:20px">
+      <div style="font-size:22px;font-weight:800;margin-bottom:6px" id="modalTitle">Download Terse</div>
+      <div style="font-size:14px;color:var(--t2)" id="modalSub">Create a free account to download.</div>
+    </div>
+    <form id="signupForm" onsubmit="submitSignup(event)">
+      <input type="email" id="signupEmail" placeholder="your@email.com" required
+        style="width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--bd);border-radius:8px;color:var(--t1);font-size:14px;margin-bottom:12px;outline:none;transition:border .2s"
+        onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd)'">
+      <button type="submit" style="width:100%;padding:12px;background:var(--t1);color:var(--bg0);border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s">
+        Get Free Download →
+      </button>
+    </form>
+    <p style="font-size:11px;color:var(--t3);margin-top:12px;text-align:center">30 days free · Unlimited access · No credit card · Cancel anytime</p>
+  </div>
+</div>
+
+<script>
+// Reading progress
+window.addEventListener('scroll', () => {
+  const d = document.documentElement;
+  const pct = (d.scrollTop / (d.scrollHeight - d.clientHeight)) * 100;
+  document.getElementById('progress').style.width = pct + '%';
+});
+
+// Intersection observer for .rv
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.12 });
+document.querySelectorAll('.rv').forEach(el => obs.observe(el));
+
+// ── Token waste demo ──
+const wasteMsg = [
+  {t:'Could',w:true},{t:'you',w:true},{t:'please',w:true},{t:'help',w:false},
+  {t:'me',w:false},{t:'refactor',w:false},{t:'this',w:false},{t:'function',w:false},
+  {t:'?',w:false},{t:'I',w:true},{t:'was',w:true},{t:'wondering',w:true},{t:'if',w:true},
+  {t:'you',w:true},{t:'might',w:true},{t:'be',w:true},{t:'able',w:true},{t:'to',w:true},
+  {t:'improve',w:false},{t:'it',w:false},{t:'.',w:false}
+];
+function renderWaste() {
+  const wrap = document.getElementById('wasteTokens');
+  const badge = document.getElementById('wasteBadge');
+  const pctEl = document.getElementById('wastePercent');
+  wrap.innerHTML = '';
+  let shown = 0, waste = 0;
+  function showNext() {
+    if (shown >= wasteMsg.length) {
+      const p = Math.round((waste / wasteMsg.length) * 100);
+      badge.textContent = p + '% wasted';
+      pctEl.textContent = p + '% noise → removed by Terse';
+      return;
+    }
+    const tok = wasteMsg[shown];
+    const el = document.createElement('div');
+    el.className = 'tok';
+    el.textContent = tok.t;
+    wrap.appendChild(el);
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        el.className = 'tok ' + (tok.w ? 'waste' : 'kept');
+        if (tok.w) waste++;
+        shown++;
+        setTimeout(showNext, 90);
+      }, 60);
+    });
+  }
+  badge.textContent = 'analyzing...';
+  pctEl.textContent = '';
+  showNext();
+}
+// Re-run on scroll into view
+const wasteObs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) { wasteObs.disconnect(); setTimeout(renderWaste, 400); }
+}, {threshold:0.5});
+const wCard = document.querySelector('#wasteTokens').closest('.demo-card');
+if (wCard) wasteObs.observe(wCard);
+
+// ── AX Pipeline animation ──
+function runAxPipeline() {
+  const steps = ['axS0','axS1','axS2','axS3','axS4','axS5'];
+  const labels = ['found com.cursor.ide · PID 4821','walking AX tree…','AXTextArea found','reading AXValue…','running optimizer…','writing back ✓'];
+  let i = 0;
+  function next() {
+    if (i >= steps.length) return;
+    const prev = i > 0 ? document.getElementById(steps[i-1]) : null;
+    if (prev) { prev.classList.remove('active'); prev.classList.add('done'); prev.querySelector('.pipe-tok').textContent = '✓'; }
+    const el = document.getElementById(steps[i]);
+    el.classList.add('active');
+    el.querySelector('.pipe-tok').textContent = labels[i];
+    i++;
+    setTimeout(next, 800);
+  }
+  next();
+}
+const axObs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) { axObs.disconnect(); setTimeout(runAxPipeline, 500); }
+}, {threshold:0.5});
+const axCard = document.getElementById('axS0')?.closest('.demo-card');
+if (axCard) axObs.observe(axCard);
+
+// ── Spellcheck animation ──
+const spellStages = [
+  { id:'sp1', fixes:'shoudl→should, deplpy→deploy, databse→database, producton→production', result:'what should I do to deploy my database to production' },
+  { id:'sp2', fixes:'Norvig: 0 additional corrections', result:'what should I do to deploy my database to production' },
+  { id:'sp3', fixes:'QWERTY: 0 additional corrections', result:'what should I do to deploy my database to production' },
+  { id:'sp4', fixes:'nspell: confirmed clean', result:'what should I do to deploy my database to production' },
+];
+function runSpell() {
+  let i = 0;
+  function next() {
+    if (i >= spellStages.length) return;
+    const s = spellStages[i];
+    document.querySelectorAll('.spell-pill').forEach(p => p.classList.remove('active'));
+    document.getElementById(s.id).classList.add('active');
+    document.getElementById('spellBox').textContent = s.result;
+    document.getElementById('spellFixes').textContent = s.fixes;
+    i++;
+    setTimeout(next, 1000);
+  }
+  next();
+}
+const spellObs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) { spellObs.disconnect(); setTimeout(runSpell, 400); }
+}, {threshold:0.5});
+const spellCard = document.getElementById('sp1')?.closest('.demo-card');
+if (spellCard) spellObs.observe(spellCard);
+
+// ── 7-stage pipeline animation ──
+const pipeStages = [
+  { text: 'what should I do to deploy my database to production?', tok: '−0 tokens' },
+  { text: 'what should I do to deploy my database to production?', tok: '−0 tokens' },
+  { text: 'what should I do to deploy my database to production? It\'s a utility that handles user authentication.', tok: '−4 tokens (in order to→to, basically→∅)' },
+  { text: 'Deploy my database to production? Utility that handles user auth.', tok: '−6 tokens (dedup removed)' },
+  { text: 'Deploy my database to production? Utility that handles user auth.', tok: '−3 tokens (filler removed)' },
+  { text: 'Deploy database to production? Auth utility.', tok: '−5 tokens' },
+  { text: 'Deploy database to production? Auth utility.', tok: '−1 token · total: −19 tokens (32%)' },
+];
+const pipeInput = 'Could you please help me refactor this function? I was wondering if you might be able to improve it. It\'s basically a utility that just handles user authentication.';
+function runPipeline() {
+  document.getElementById('pipeText').textContent = pipeInput;
+  document.getElementById('pipeBadge').textContent = 'running…';
+  let i = 0;
+  function next() {
+    if (i >= 7) { document.getElementById('pipeBadge').textContent = '−32% saved ✓'; return; }
+    const prev = i > 0 ? document.getElementById('ps'+(i-1)) : null;
+    if (prev) { prev.classList.remove('active'); prev.classList.add('done'); }
+    const el = document.getElementById('ps'+i);
+    el.classList.add('active');
+    document.getElementById('pt'+i).textContent = pipeStages[i].tok;
+    document.getElementById('pipeText').textContent = pipeStages[i].text;
+    i++;
+    setTimeout(next, 900);
+  }
+  next();
+}
+const pipeObs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) { pipeObs.disconnect(); setTimeout(runPipeline, 400); }
+}, {threshold:0.5});
+const pipeCard = document.getElementById('ps0')?.closest('.demo-card');
+if (pipeCard) pipeObs.observe(pipeCard);
+
+// ── Agent Monitor animation ──
+const toolEvents = [
+  { type:'', name:'Read', arg:'src/optimizer.js', cost:'+1,240 tok' },
+  { type:'', name:'Bash', arg:'npm test', cost:'+3,100 tok' },
+  { type:'', name:'Read', arg:'src/optimizer.js', cost:'+1,240 tok', dup:true },
+  { type:'', name:'Grep', arg:'"optimize"', cost:'+280 tok' },
+  { type:'', name:'Read', arg:'src/optimizer.js', cost:'+1,240 tok', bad:true },
+  { type:'', name:'Read', arg:'src/capture.rs', cost:'+890 tok' },
+  { type:'', name:'Bash', arg:'cargo build', cost:'+4,200 tok' },
+  { type:'', name:'Read', arg:'src/optimizer.js', cost:'+1,240 tok', bad:true },
+];
+let amRunning = false;
+function runAgentMonitor() {
+  if (amRunning) return;
+  amRunning = true;
+  let totalTok = 0, cost = 0, burnTok = 0, dups = 0, fileReads = {};
+  const feed = document.getElementById('toolFeed');
+  feed.innerHTML = '';
+  let i = 0;
+  const burnInterval = setInterval(() => {
+    burnTok = Math.round(totalTok / Math.max(1, i * 0.3));
+    document.getElementById('amBurn').textContent = burnTok.toLocaleString();
+    const fill = Math.min(100, Math.round((totalTok / 200000) * 100));
+    document.getElementById('ctxPct').textContent = fill + '%';
+    const bar = document.getElementById('ctxBar');
+    bar.style.width = fill + '%';
+    bar.className = 'ctx-bar-fill' + (fill > 70 ? ' err' : fill > 45 ? ' warn' : '');
+  }, 500);
+  function addEvent() {
+    if (i >= toolEvents.length) { clearInterval(burnInterval); return; }
+    const ev = toolEvents[i];
+    const add = parseInt(ev.cost.replace(/[^0-9]/g,''));
+    totalTok += add;
+    cost = (totalTok * 0.000003).toFixed(3);
+    if (ev.dup || ev.bad) dups++;
+
+    // Track file reads
+    if (ev.name === 'Read') {
+      fileReads[ev.arg] = (fileReads[ev.arg]||0)+1;
+      if (fileReads[ev.arg] >= 3) {
+        const alert = document.getElementById('rereadAlert');
+        alert.style.display = 'block';
+        document.getElementById('rereadFile').textContent = ev.arg;
+        document.getElementById('rereadCount').textContent = fileReads[ev.arg];
+        document.getElementById('rereadWaste').textContent = ((fileReads[ev.arg]-1)*1240).toLocaleString();
+      }
+    }
+
+    // Update stats
+    document.getElementById('amTokens').textContent = totalTok.toLocaleString();
+    const costEl = document.getElementById('amCost');
+    costEl.textContent = '$' + cost;
+    costEl.className = 'am-val' + (parseFloat(cost) > 0.5 ? ' warn' : '');
+    const dupEl = document.getElementById('amDups');
+    dupEl.textContent = dups;
+    dupEl.className = 'am-val' + (dups > 0 ? ' warn' : '');
+
+    // Add to feed (keep last 5)
+    const row = document.createElement('div');
+    row.className = 'tool-event' + (ev.bad ? ' bad' : ev.dup ? ' dup' : '');
+    row.innerHTML = `<span class="te-badge">${ev.dup ? '⚠ DUP' : ev.bad ? '🔴 3RD' : 'CALL'}</span><span class="te-name">${ev.name}("${ev.arg}")</span><span class="te-cost">${ev.cost}</span>`;
+    feed.appendChild(row);
+    if (feed.children.length > 5) feed.removeChild(feed.firstChild);
+    setTimeout(() => row.classList.add('show'), 20);
+    i++;
+    setTimeout(addEvent, 700 + Math.random()*400);
+  }
+  setTimeout(addEvent, 300);
+}
+const amObs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) { amObs.disconnect(); runAgentMonitor(); }
+}, {threshold:0.4});
+const amCard = document.getElementById('amTokens')?.closest('.demo-card');
+if (amCard) amObs.observe(amCard);
+
+// ── Compressibility bars ──
+const crObs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) {
+    crObs.disconnect();
+    document.querySelectorAll('.cr-bar').forEach(bar => {
+      setTimeout(() => { bar.style.width = bar.dataset.pct + '%'; }, 200);
+    });
+  }
+}, {threshold:0.5});
+const crCard = document.getElementById('crBody')?.closest('.demo-card');
+if (crCard) crObs.observe(crCard);
+
+// ── Download / signup modal ──
+let pendingPlatform = 'mac';
+function openSignup(platform) {
+  pendingPlatform = platform;
+  const modal = document.getElementById('signupModal');
+  const titles = { mac:'Download Terse for macOS', vscode:'Get the VS Code Extension', chrome:'Get the Chrome Extension' };
+  document.getElementById('modalTitle').textContent = titles[platform] || 'Download Terse';
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('signupEmail').focus(), 100);
+  return false;
+}
+function closeSignup() {
+  document.getElementById('signupModal').style.display = 'none';
+}
+function submitSignup(e) {
+  e.preventDefault();
+  const email = document.getElementById('signupEmail').value;
+  // Redirect to main download page with email pre-filled
+  window.location.href = '/?email=' + encodeURIComponent(email) + '&platform=' + pendingPlatform + '#dl';
+}
+document.getElementById('signupModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSignup();
+});
+
+// ── Copy link ──
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    document.getElementById('copyLabel').textContent = 'Copied!';
+    setTimeout(() => document.getElementById('copyLabel').textContent = 'Copy link', 2000);
+  });
+}
+</script>
+</body>
+</html>

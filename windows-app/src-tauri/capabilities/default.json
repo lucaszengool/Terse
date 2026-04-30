@@ -1,0 +1,33 @@
+{
+  "identifier": "default",
+  "description": "Default capability for Terse windows",
+  "windows": ["main", "popup"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:event:allow-listen",
+    "core:event:allow-emit",
+    "core:window:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position",
+    "core:window:allow-set-focus",
+    "core:window:allow-is-visible",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-outer-position",
+    "core:window:allow-inner-size",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-minimize",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-decorations",
+    "core:window:allow-set-skip-taskbar",
+    "core:window:allow-scale-factor",
+    "core:webview:default",
+    "core:webview:allow-set-webview-size",
+    "core:webview:allow-webview-position",
+    "core:app:default",
+    "shell:allow-open"
+  ]
+}

@@ -96,10 +96,13 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Upload to GitHub Release (on tag)
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v1.3.1
+          name: Terse v1.3.1
+          draft: false
+          prerelease: false
           files: |
             windows-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
             windows-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi

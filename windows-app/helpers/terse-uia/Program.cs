@@ -41,6 +41,7 @@ namespace TerseUIA
             return JsonSerializer.Serialize(d);
         }
 
+        [STAThread]
         static void Main(string[] args)
         {
             if (args.Length < 1)

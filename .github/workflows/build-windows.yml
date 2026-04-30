@@ -32,15 +32,14 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Build terse-uia.exe
-        working-directory: windows-app/helpers/terse-uia
         run: |
-          dotnet publish terse-uia.csproj `
+          dotnet publish windows-app\helpers\terse-uia\terse-uia.csproj `
             -c Release `
             -r win-x64 `
             --self-contained true `
             /p:PublishSingleFile=true `
             /p:PublishTrimmed=true `
-            -o ../
+            -o windows-app\helpers\
 
       - name: Verify terse-uia.exe
         run: |
@@ -69,8 +68,7 @@ jobs:
           }
 
       - name: Build Tauri Windows installer
-        working-directory: windows-app/src-tauri
-        run: cargo tauri build --target x86_64-pc-windows-msvc
+        run: cargo tauri build --config windows-app\src-tauri\tauri.conf.json --target x86_64-pc-windows-msvc
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""

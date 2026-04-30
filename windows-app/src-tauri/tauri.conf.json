@@ -1,0 +1,65 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicehash/tauri/refs/heads/dev/crates/tauri-utils/schema.json",
+  "productName": "Terse",
+  "version": "1.3.1",
+  "identifier": "com.pruneai.app",
+  "build": {
+    "frontendDist": "../../src/renderer"
+  },
+  "bundle": {
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/256x256.png",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../../ml/model/complexity-vocab.json": "ml/complexity-vocab.json",
+      "../../src/helpers/terse-compress.js": "terse-compress.js",
+      "../helpers/terse-rewrite.ps1": "terse-rewrite.ps1",
+      "../helpers/hooks/terse-hook-cursor.ps1": "hooks/terse-hook-cursor.ps1",
+      "../helpers/hooks/terse-hook-cline.ps1": "hooks/terse-hook-cline.ps1",
+      "../helpers/hooks/terse-hook-codex.ps1": "hooks/terse-hook-codex.ps1",
+      "../helpers/hooks/terse-hook-copilot.ps1": "hooks/terse-hook-copilot.ps1",
+      "../helpers/hooks/terse-hook-openclaw.ts": "hooks/terse-hook-openclaw.ts",
+      "../helpers/hooks/terse-hook-windsurf.ps1": "hooks/terse-hook-windsurf.ps1",
+      "../helpers/terse-optimize-tools.ps1": "terse-optimize-tools.ps1",
+      "../helpers/hooks/terse-tool-optimizer-cursor.ps1": "hooks/terse-tool-optimizer-cursor.ps1",
+      "../helpers/hooks/terse-tool-optimizer-codex.ps1": "hooks/terse-tool-optimizer-codex.ps1",
+      "../helpers/hooks/terse-tool-optimizer-cline.ps1": "hooks/terse-tool-optimizer-cline.ps1",
+      "../helpers/hooks/terse-tool-optimizer-windsurf.ps1": "hooks/terse-tool-optimizer-windsurf.ps1",
+      "../helpers/hooks/terse-tool-optimizer-copilot.ps1": "hooks/terse-tool-optimizer-copilot.ps1",
+      "../helpers/terse-uia.exe": "terse-uia.exe"
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Terse",
+        "url": "index.html",
+        "width": 340,
+        "height": 460,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "resizable": true,
+        "shadow": true,
+        "visible": true
+      }
+    ],
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": false
+    },
+    "security": {
+      "csp": null
+    }
+  }
+}

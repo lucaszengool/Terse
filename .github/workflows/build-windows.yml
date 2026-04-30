@@ -38,7 +38,8 @@ jobs:
             -r win-x64 `
             --self-contained true `
             /p:PublishSingleFile=true `
-            -o windows-app\helpers\
+            -o windows-app\helpers\ `
+            -v normal 2>&1
 
       - name: Verify terse-uia.exe
         run: |

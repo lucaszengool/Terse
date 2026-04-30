@@ -70,7 +70,7 @@ jobs:
       - name: Build Tauri Windows installer
         run: |
           cd windows-app\src-tauri
-          cargo tauri build --target x86_64-pc-windows-msvc
+          cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""

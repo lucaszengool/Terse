@@ -815,7 +815,8 @@
   <h1 class="rv"><span data-i18n="hero.title1">Save every token.</span><br><span class="gradient-text" data-i18n="hero.title2">Trade the rest.</span></h1>
   <p class="sub rv d1" data-i18n-html="hero.subtitle">Cut 40-70% of your AI token costs with on-device optimization &mdash; or buy tokens at up to 50% off retail on the <a href="#exchange" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Token Exchange</a>. Sell what you don't use. Stop wasting money on idle API credits.</p>
   <div class="hero-actions rv d2" style="flex-wrap:wrap;gap:10px">
-    <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none"><span data-i18n="hero.download">Download Optimizer</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
+    <a href="#" onclick="handleDownload(event,'mac')" class="btn-primary" style="text-decoration:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> macOS</a>
+    <a href="#" onclick="handleDownload(event,'windows')" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M3 3h9v9H3zm0 9h9v9H3zm9-9h9v9h-9zm0 9h9v9h-9z"/></svg> Windows</a>
     <a href="https://marketplace.visualstudio.com/items?itemName=LucasZeng.terse-optimizer" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
       <svg width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M75 4.5L50 29.5 25 8.5 4 24.5l21 25.5-21 25.5 21 16 25-21.5L75 95.5l21-14-21-31 21-31-21-15z" fill="currentColor"/></svg>
       VS Code
@@ -2285,7 +2286,8 @@ bug fixes (6), features (5), docs (2)</pre>
   <h2 class="rv" data-i18n-html="cta.heading">Stop wasting<br><span class="gradient-text">tokens and money.</span></h2>
   <p class="rv d1" data-i18n="cta.subtitle">Optimize every prompt. Monitor every agent session. And trade unused tokens on the Exchange &mdash; buy at up to 50% off, or sell your idle credits and earn.</p>
   <div class="hero-actions rv d2" style="flex-wrap:wrap;justify-content:center;gap:10px">
-    <a href="#" onclick="handleDownload(event)" class="btn-primary" style="text-decoration:none"><span data-i18n="hero.download">Download Optimizer</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
+    <a href="#" onclick="handleDownload(event,'mac')" class="btn-primary" style="text-decoration:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> macOS</a>
+    <a href="#" onclick="handleDownload(event,'windows')" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M3 3h9v9H3zm0 9h9v9H3zm9-9h9v9h-9zm0 9h9v9h-9z"/></svg> Windows</a>
     <a href="https://marketplace.visualstudio.com/items?itemName=LucasZeng.terse-optimizer" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
       <svg width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M75 4.5L50 29.5 25 8.5 4 24.5l21 25.5-21 25.5 21 16 25-21.5L75 95.5l21-14-21-31 21-31-21-15z" fill="currentColor"/></svg>
       VS Code
@@ -3329,8 +3331,10 @@ function updateClerkUI() {
     if (pending) {
       sessionStorage.removeItem('pendingAction');
       closeClerkModal();
-      if (pending === 'download') {
+      if (pending === 'download_mac' || pending === 'download') {
         setTimeout(() => { window.location.href = DMG_URL; }, 300);
+      } else if (pending === 'download_windows') {
+        setTimeout(() => { window.location.href = EXE_URL; }, 300);
       } else if (pending === 'vscode') {
         setTimeout(() => { window.open('https://marketplace.visualstudio.com/items?itemName=LucasZeng.terse-optimizer', '_blank'); }, 300);
       } else if (pending === 'chrome') {
@@ -3414,18 +3418,20 @@ function clerkSignOut() {
 
 // ═══ DOWNLOAD (requires sign-in) ═══
 const DMG_URL = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.1_x64.dmg';
+const EXE_URL = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.1_x64-setup.exe';
 
-async function handleDownload(e) {
+async function handleDownload(e, platform) {
   e.preventDefault();
-  gtag('event', 'download_click');
+  const url = platform === 'windows' ? EXE_URL : DMG_URL;
+  gtag('event', 'download_click', { platform: platform || 'mac' });
   if (window.Clerk && !window.Clerk.loaded) {
     await window.Clerk.load();
   }
   if (window.Clerk?.user) {
-    gtag('event', 'download_started', { user_id: window.Clerk.user.id });
-    window.location.href = DMG_URL;
+    gtag('event', 'download_started', { user_id: window.Clerk.user.id, platform: platform || 'mac' });
+    window.location.href = url;
   } else {
-    sessionStorage.setItem('pendingAction', 'download');
+    sessionStorage.setItem('pendingAction', 'download_' + (platform || 'mac'));
     openClerkSignIn();
   }
 }

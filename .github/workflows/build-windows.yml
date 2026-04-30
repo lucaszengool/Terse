@@ -68,24 +68,23 @@ jobs:
           }
 
       - name: Build Tauri Windows installer
-        run: cargo tauri build --config windows-app\src-tauri\tauri.conf.json --target x86_64-pc-windows-msvc
+        run: |
+          cd windows-app\src-tauri
+          cargo tauri build --target x86_64-pc-windows-msvc
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
 
-      - name: Find installer
-        id: find_installer
+      - name: Find and list installer
         run: |
-          $nsis = Get-ChildItem -Recurse "windows-app/src-tauri/target" -Filter "*.exe" |
-            Where-Object { $_.Name -like "*setup*" -or $_.Name -like "*installer*" -or $_.DirectoryName -like "*bundle*nsis*" -or $_.DirectoryName -like "*bundle*msi*" } |
-            Select-Object -First 1
-          if (-not $nsis) {
-            $nsis = Get-ChildItem -Recurse "windows-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle" -Include "*.exe","*.msi" |
-              Select-Object -First 1
+          $bundles = Get-ChildItem -Recurse "windows-app\src-tauri\target" -Include "*.exe","*.msi" |
+            Where-Object { $_.FullName -match "bundle" }
+          if ($bundles) {
+            $bundles | ForEach-Object { Write-Host "Found: $($_.FullName)" }
+          } else {
+            Write-Host "No bundle files found — listing target dir:"
+            Get-ChildItem -Recurse "windows-app\src-tauri\target\x86_64-pc-windows-msvc\release" -Depth 3 | Select-Object FullName
           }
-          Write-Host "Installer: $($nsis.FullName)"
-          echo "path=$($nsis.FullName)" >> $env:GITHUB_OUTPUT
-          echo "name=$($nsis.Name)" >> $env:GITHUB_OUTPUT
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4

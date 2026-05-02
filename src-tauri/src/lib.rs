@@ -135,8 +135,16 @@ const ELECTRON_APP_INFO: &[(&str, &str, &str)] = &[
     ("com.todesktop.230313mzl4w4u92", "Cursor", "Cursor"),
 ];
 
+// Electron/WebView apps that need clipboard capture but have no VS Code bridge.
+// Listed separately so auto_setup_electron_ax (which installs the VS Code extension)
+// is NOT triggered for them.
+const AX_BLIND_BUNDLES: &[&str] = &[
+    "com.anthropic.claudefordesktop",  // Claude Desktop App (Claude Code window)
+];
+
 fn is_ax_blind(bundle_id: &str) -> bool {
     ELECTRON_APP_INFO.iter().any(|(bid, _, _)| *bid == bundle_id)
+        || AX_BLIND_BUNDLES.iter().any(|b| *b == bundle_id)
 }
 
 /// Browsers where AX window-walk reads the URL bar instead of page inputs.
@@ -490,10 +498,12 @@ async fn replace_in_target(text: String, state: tauri::State<'_, AppState>) -> R
                 } else {
                     capture::write_to_app(&session.name, &text, session.pid).await
                 }
+            } else if AX_BLIND_BUNDLES.iter().any(|b| session.bundle_id.contains(b)) {
+                // Chat-input Electron apps (Claude Desktop, etc.): Cmd+A + Cmd+V
+                capture::write_via_clipboard(&session.name, &text, false).await
             } else if session.read_method == "keymonitor" || session.read_method == "keymonitor-cached"
                 || session.bundle_id.contains("com.microsoft.VSCode") {
                 // Terminal/editor without AX access (VS Code terminal, etc.)
-                // Use Ctrl+A (go to start) + Ctrl+K (kill to end) + paste
                 capture::write_via_clipboard_terminal(&text).await
             } else {
                 // For all other apps (browsers, editors, any app) — use clipboard:
@@ -1566,6 +1576,63 @@ fn get_auth(state: tauri::State<'_, AppState>) -> serde_json::Value {
     })
 }
 
+/// Download the ONNX complexity model to ~/.terse/ml/ in a background thread.
+/// Called on first sign-in so the DMG stays small and the model arrives after activation.
+fn trigger_ml_model_download() {
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => return,
+    };
+    let ml_dir   = home.join(".terse").join("ml");
+    let model_dst = ml_dir.join("complexity-model.onnx");
+
+    // Skip if already downloaded
+    if model_dst.exists() && model_dst.metadata().map(|m| m.len()).unwrap_or(0) > 10_000_000 {
+        return;
+    }
+
+    std::thread::spawn(move || {
+        let _ = std::fs::create_dir_all(&ml_dir);
+
+        // URLs to try in order (GitHub release asset → fallback CDN)
+        let urls = [
+            "https://github.com/lucaszengool/Terse/releases/download/v1.3.1/complexity-model.onnx",
+        ];
+
+        let tmp = ml_dir.join("complexity-model.onnx.part");
+
+        for url in &urls {
+            eprintln!("[terse-ml] downloading model from {}", url);
+            let status = std::process::Command::new("curl")
+                .args([
+                    "-L", "--silent", "--show-error",
+                    "--retry", "3", "--retry-delay", "2",
+                    "-o", &tmp.to_string_lossy(),
+                    url,
+                ])
+                .status();
+
+            match status {
+                Ok(s) if s.success() => {
+                    // Verify size (model should be > 10 MB)
+                    let size = std::fs::metadata(&tmp).map(|m| m.len()).unwrap_or(0);
+                    if size > 10_000_000 {
+                        let _ = std::fs::rename(&tmp, &model_dst);
+                        eprintln!("[terse-ml] model downloaded ({:.1} MB) — ML routing active", size as f64 / 1e6);
+                        return;
+                    } else {
+                        eprintln!("[terse-ml] download too small ({} bytes), retrying next URL", size);
+                        let _ = std::fs::remove_file(&tmp);
+                    }
+                }
+                Ok(s)  => eprintln!("[terse-ml] curl exited {}", s),
+                Err(e) => eprintln!("[terse-ml] curl failed: {}", e),
+            }
+        }
+        eprintln!("[terse-ml] model download failed — keyword routing will be used");
+    });
+}
+
 #[tauri::command]
 fn save_auth(state: tauri::State<'_, AppState>, clerk_user_id: String, email: String, image_url: String, first_name: String) {
     let mut auth = lock_or_recover(&state.auth);
@@ -1580,6 +1647,16 @@ fn save_auth(state: tauri::State<'_, AppState>, clerk_user_id: String, email: St
     let mut lic = lock_or_recover(&state.license);
     lic.clerk_user_id = Some(clerk_user_id);
     lic.save();
+
+    // Kick off ML model download in background (only runs if model not already present)
+    trigger_ml_model_download();
+}
+
+#[tauri::command]
+fn check_ax_permission() -> bool {
+    // Synchronously check + request AX permission.
+    // Returns true if already trusted. If not trusted, opens System Settings.
+    capture::is_ax_trusted_sync()
 }
 
 #[tauri::command]
@@ -1803,6 +1880,17 @@ pub fn run() {
                 });
             })?;
 
+            // If user is already signed in, kick off ML model download now
+            {
+                let app_state = app.state::<AppState>();
+                let auth = lock_or_recover(&app_state.auth);
+                let already_signed_in = auth.signed_in;
+                drop(auth);
+                if already_signed_in {
+                    trigger_ml_model_download();
+                }
+            }
+
             // Start agent monitor scanning
             let app_handle3 = app.handle().clone();
             std::thread::spawn(move || {
@@ -1813,6 +1901,18 @@ pub fn run() {
             let app_handle4 = app.handle().clone();
             std::thread::spawn(move || {
                 start_polling(app_handle4);
+            });
+
+            // Proactive AX permission check — runs 2s after startup so the dialog
+            // appears at launch (with context) rather than mid-session (confusing).
+            // If permission was revoked by macOS (common after OS updates), this
+            // opens System Settings > Accessibility so the user can re-enable it.
+            let app_handle5 = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                let trusted = capture::is_ax_trusted_sync();
+                eprintln!("[terse] AX trusted at startup: {}", trusted);
+                let _ = app_handle5.emit("ax-status", serde_json::json!({"trusted": trusted}));
             });
 
             // Kill any existing proxy (from previous session or older Terse version)
@@ -1841,6 +1941,68 @@ pub fn run() {
                 let proxy_src = include_str!("../../src/helpers/terse-local-proxy.js");
                 let _ = std::fs::create_dir_all(home.join(".terse"));
                 let _ = std::fs::write(&proxy_script, proxy_src);
+                // Deploy ML classifier module alongside proxy (used when model is available)
+                let clf_src = include_str!("../../src/helpers/terse-complexity-classifier.js");
+                let clf_script = home.join(".terse").join("terse-complexity-classifier.js");
+                let _ = std::fs::write(&clf_script, clf_src);
+                // Deploy bundled vocab to ~/.terse/ml/ (vocab is small, bundled in app)
+                let ml_dir = home.join(".terse").join("ml");
+                let _ = std::fs::create_dir_all(&ml_dir);
+                if let Ok(exe) = std::env::current_exe() {
+                    let res_dir = exe
+                        .parent()
+                        .and_then(|p| p.parent())
+                        .map(|p| p.join("Resources"));
+                    if let Some(res) = res_dir {
+                        let vocab_src = res.join("ml/complexity-vocab.json");
+                        let vocab_dst = ml_dir.join("complexity-vocab.json");
+                        if vocab_src.exists() && !vocab_dst.exists() {
+                            let _ = std::fs::copy(&vocab_src, &vocab_dst);
+                            eprintln!("[terse] deployed complexity-vocab.json");
+                        }
+                    }
+                }
+                // Auto-install onnxruntime-node on first launch (silent, background)
+                // This makes ML model routing work out-of-box after DMG install.
+                let ort_check = home.join(".terse").join("node_modules").join("onnxruntime-node");
+                let npm_flag  = home.join(".terse").join(".ort-install-done");
+                if !ort_check.exists() && !npm_flag.exists() {
+                    let home2 = home.clone();
+                    std::thread::spawn(move || {
+                        // Find npm alongside node
+                        let npm_candidates = [
+                            "/opt/homebrew/bin/npm",
+                            "/usr/local/bin/npm",
+                            "/usr/bin/npm",
+                        ];
+                        let npm = npm_candidates.iter().find(|p| std::path::Path::new(p).exists());
+                        if let Some(npm_bin) = npm {
+                            eprintln!("[terse] installing onnxruntime-node for ML routing…");
+                            let terse_dir = home2.join(".terse");
+                            // Ensure a package.json exists so npm installs locally
+                            let pkg = terse_dir.join("package.json");
+                            if !pkg.exists() {
+                                let _ = std::fs::write(&pkg, r#"{"name":"terse-runtime","private":true}"#);
+                            }
+                            let status = std::process::Command::new(npm_bin)
+                                .args(["install", "onnxruntime-node", "--prefer-offline", "--no-audit", "--no-fund"])
+                                .current_dir(&terse_dir)
+                                .stdout(std::process::Stdio::null())
+                                .stderr(std::process::Stdio::null())
+                                .status();
+                            match status {
+                                Ok(s) if s.success() => {
+                                    eprintln!("[terse] onnxruntime-node installed — ML routing active on next request");
+                                    let _ = std::fs::write(&npm_flag, "1");
+                                }
+                                Ok(s) => eprintln!("[terse] onnxruntime-node install exited {}", s),
+                                Err(e) => eprintln!("[terse] onnxruntime-node install failed: {}", e),
+                            }
+                        } else {
+                            eprintln!("[terse] npm not found — ML routing will use keyword fallback");
+                        }
+                    });
+                }
                 // Find node binary (Finder-launched apps don't inherit user PATH)
                 // Find node: check common install paths, then NVM default alias
                 let mut candidates: Vec<String> = vec![
@@ -1936,6 +2098,7 @@ pub fn run() {
             navigate_to_stats,
             navigate_back,
             record_optimization,
+            check_ax_permission,
             request_accessibility,
             debug_log,
             emit_popup_update,

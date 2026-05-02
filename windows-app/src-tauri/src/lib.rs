@@ -133,6 +133,7 @@ const ELECTRON_APP_INFO: &[(&str, &str, &str)] = &[
     ("Code - Insiders.exe", "Code - Insiders", "VS Code Insiders"),
     ("code-oss.exe", "Code - OSS", "VS Code OSS"),
     ("Cursor.exe", "Cursor", "Cursor"),
+    ("Claude.exe", "Claude", "Claude Code"),
 ];
 
 fn is_ax_blind(bundle_id: &str) -> bool {

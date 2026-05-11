@@ -1,5 +1,5 @@
 /**
- * Terse Notification System
+ * PruneAI Notification System
  * Sends email notifications to sellers and buyers on trade events.
  * Uses Clerk API to send emails (no extra SMTP config needed).
  */
@@ -49,7 +49,7 @@ async function sendEmail(userId, subject, body) {
       body: JSON.stringify({
         from_email_name: 'exchange',
         email_address_id: user.email_addresses[0].id,
-        subject: `Terse Exchange: ${subject}`,
+        subject: `PruneAI Exchange: ${subject}`,
         body: formatEmailBody(subject, body),
       }),
     });
@@ -67,16 +67,16 @@ function formatEmailBody(subject, body) {
 <div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:20px">
   <div style="text-align:center;margin-bottom:20px">
     <span style="display:inline-block;width:30px;height:30px;background:rgba(110,231,183,0.1);border:1px solid rgba(110,231,183,0.2);border-radius:7px;line-height:30px;color:#6ee7b7;font-weight:800;font-size:14px">T</span>
-    <span style="font-weight:800;font-size:18px;margin-left:8px;color:#fff">Terse Token Exchange</span>
+    <span style="font-weight:800;font-size:18px;margin-left:8px;color:#fff">PruneAI Token Exchange</span>
   </div>
   <div style="background:#1a1830;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px;color:#fff">
     <h2 style="margin:0 0 12px;font-size:18px;font-weight:700">${subject}</h2>
     <p style="color:rgba(255,255,255,0.7);font-size:14px;line-height:1.6;margin:0">${body}</p>
   </div>
   <div style="text-align:center;margin-top:20px">
-    <a href="https://www.terseai.org/marketplace" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg,#6ee7b7,#34d399);color:#0f0e1a;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none">Open Token Exchange</a>
+    <a href="https://www.pruneai.com/marketplace" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg,#6ee7b7,#34d399);color:#0f0e1a;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none">Open Token Exchange</a>
   </div>
-  <p style="text-align:center;font-size:11px;color:rgba(255,255,255,0.3);margin-top:16px">&copy; 2026 Terse &middot; terseai.org</p>
+  <p style="text-align:center;font-size:11px;color:rgba(255,255,255,0.3);margin-top:16px">&copy; 2026 PruneAI &middot; pruneai.com</p>
 </div>`;
 }
 

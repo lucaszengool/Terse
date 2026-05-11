@@ -192,6 +192,8 @@ window.addEventListener('focus', () => {
     T.getAuth().then(auth => {
       if (auth.signedIn && auth.clerkUserId) {
         T.verifyLicense(auth.clerkUserId).then(() => { updateLicenseBanner(); checkPaywall(); });
+        // Sync Stripe-purchased pets from server
+        if (T.syncPetPurchases) T.syncPetPurchases();
       }
     });
   }
@@ -450,12 +452,373 @@ async function updateAuthUI() {
         $('#accountAvatar').src = auth.imageUrl;
         $('#accountAvatar').style.display = 'block';
       }
+      // After sign-in, prompt user to pick a starter pet (once).
+      maybeShowPetPicker();
     } else {
       if (gate) gate.style.display = 'flex';
       $('#signedOutUI').classList.remove('hidden');
       $('#signedInUI').classList.add('hidden');
     }
   } catch {}
+}
+
+// ── Pet picker overlay ──────────────────────────────────────────────
+async function maybeShowPetPicker() {
+  if (!T.getPetState || !window.TERSE_PALS) return;
+  let state;
+  try { state = await T.getPetState(); } catch { return; }
+  if (!state || state.data.starterPicked) return;
+  renderPetPickerGrid(state);
+  const overlay = $('#petPicker');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+// ── Pals inventory (Phase 5) ─────────────────────────────────────
+function openPalsPage() {
+  const page = $('#palsPage');
+  if (!page) return;
+  page.style.display = 'flex';
+  refreshPalsPage();
+}
+function closePalsPage() {
+  const page = $('#palsPage');
+  if (page) page.style.display = 'none';
+}
+async function refreshPalsPage() {
+  if (!T.getPetState || !window.TERSE_PALS) return;
+  const state = await T.getPetState();
+  if (!state) return;
+  const { KEKE, kekeSVG, SKINS, kekeSkinSVG } = window.TERSE_PALS;
+  const owned = new Set(state.data.ownedPets || []);
+  const equipped = state.data.equippedPet;
+  const ownedSkins = state.data.ownedSkins || {};
+  const equippedSkins = state.data.equippedSkins || {};
+  const balance = state.spendableBalance || 0;
+  const cost = state.unlockCostPet || 1000;
+  const skinCost = state.unlockCostSkin || 1000;
+
+  $('#palsBalance').textContent = `Coins: ${balance.toLocaleString()} 🪙 · Skins: ${skinCost} 🪙 each · Pets: $1 each`;
+
+  const scroll = $('#palsScroll');
+  scroll.innerHTML = '';
+
+  // ── Pet behavior settings card ──
+  const s = state.data.settings || { showBubbles:true, eatAnimation:true, milestoneAnimation:true, idleAnimation:true };
+  const settingsCard = document.createElement('div');
+  settingsCard.style.cssText = 'background:var(--sf);border-radius:12px;padding:10px;margin-bottom:10px';
+  const row = (key, label, sub) => `
+    <label style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:600;color:var(--t1)">${label}</div>
+        <div style="font-size:9px;color:var(--t3);margin-top:1px">${sub}</div>
+      </div>
+      <input type="checkbox" data-setting="${key}" ${s[key] ? 'checked' : ''} style="width:32px;height:18px;cursor:pointer;flex-shrink:0">
+    </label>`;
+  settingsCard.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--t1);margin-bottom:4px">Pet behavior</div>
+    ${row('idleAnimation', 'Idle animation', 'Continuous breathing/bob')}
+    ${row('eatAnimation', 'Eat on token save', 'Chomp + crumb when prompts get optimized')}
+    ${row('milestoneAnimation', 'Milestone celebration', 'Happy bounce + sparkles every 1,000 tokens')}
+    ${row('showBubbles', 'Speech bubbles', 'Show "+N tokens 🍪" / unlock messages')}
+  `;
+  scroll.appendChild(settingsCard);
+  settingsCard.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      const next = {
+        showBubbles: settingsCard.querySelector('[data-setting=showBubbles]').checked,
+        eatAnimation: settingsCard.querySelector('[data-setting=eatAnimation]').checked,
+        milestoneAnimation: settingsCard.querySelector('[data-setting=milestoneAnimation]').checked,
+        idleAnimation: settingsCard.querySelector('[data-setting=idleAnimation]').checked,
+      };
+      try { await T.setPetSettings(next); } catch (e) { toast('Settings save failed: ' + e, true); }
+    });
+  });
+
+  KEKE.forEach(pal => {
+    const isOwned = owned.has(pal.id);
+    const isEquipped = pal.id === equipped;
+    const card = document.createElement('div');
+    if (!isOwned) {
+      card.className = 'pals-locked-card';
+      card.dataset.pet = pal.id;
+      card.style.cursor = 'pointer';
+    }
+    card.style.cssText += 'background:var(--sf);border-radius:12px;padding:8px;margin-bottom:8px;border:2px solid ' + (isEquipped ? 'var(--btn)' : 'transparent');
+    const SIZE = 50;
+    const equippedSkinId = equippedSkins[pal.id] || 'default';
+    const equippedSkinOverlay = isOwned ? kekeSkinSVG(equippedSkinId, pal, SIZE) : '';
+    const headerBtn = isEquipped
+      ? '<span style="font-size:9px;font-weight:700;padding:2px 8px;background:var(--btn);color:var(--btn-t);border-radius:8px">EQUIPPED</span>'
+      : (isOwned
+        ? `<button class="pals-equip-btn" data-pet="${pal.id}" style="border:none;background:var(--btn);color:var(--btn-t);font-size:9px;font-weight:700;padding:3px 9px;border-radius:8px;cursor:pointer">EQUIP</button>`
+        : `<button class="pals-buy-btn" data-pet="${pal.id}" style="border:none;background:#22a559;color:#fff;font-size:9px;font-weight:700;padding:3px 9px;border-radius:8px;cursor:pointer">Buy $1 💳</button>`);
+
+    let skinsRow = '';
+    if (isOwned) {
+      const palOwnedSkins = new Set(ownedSkins[pal.id] || ['default']);
+      const skinCells = SKINS.map(skin => {
+        const sOwned = palOwnedSkins.has(skin.id);
+        const sEquipped = equippedSkins[pal.id] === skin.id;
+        const overlay = kekeSkinSVG(skin.id, pal, 40);
+        const sCard = `<svg width="40" height="40" viewBox="-6 -6 52 52" style="display:block;margin:0 auto">${kekeSVG(pal, 40)}${overlay}</svg>`;
+        const border = sEquipped ? 'var(--btn)' : (sOwned ? 'rgba(0,0,0,.08)' : 'rgba(0,0,0,.10)');
+        const bg = sEquipped ? 'rgba(var(--btn-rgb,80,120,255),.10)' : 'var(--sf2,rgba(0,0,0,.03))';
+        const opacity = sOwned ? 1 : 0.55;
+        const subLabel = sEquipped ? 'Equipped' : (sOwned ? 'Tap to preview' : `🔒 ${skinCost} 🪙`);
+        const subColor = sEquipped ? 'var(--btn)' : 'var(--t3)';
+        return `<div class="pals-skin-cell" data-action="preview-skin" data-pet="${pal.id}" data-skin="${skin.id}" title="${skin.name}" style="border:2px solid ${border};border-radius:10px;padding:6px 4px;cursor:pointer;opacity:${opacity};position:relative;background:${bg};text-align:center;transition:transform .12s,border-color .12s">
+          ${sCard}
+          <div style="font-size:9px;font-weight:700;color:var(--t1);margin-top:3px;line-height:1.1">${skin.emoji} ${skin.name}</div>
+          <div style="font-size:8px;color:${subColor};margin-top:1px">${subLabel}</div>
+          ${!sOwned ? '<div style="position:absolute;top:4px;right:4px;font-size:10px">🔒</div>' : ''}
+        </div>`;
+      }).join('');
+      skinsRow = `
+        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.10)">
+          <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:6px">Skins (${skinCost} 🪙 each · click to preview)</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">${skinCells}</div>
+        </div>`;
+    }
+
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:50px;height:50px;flex-shrink:0;opacity:${isOwned?1:0.45}">
+          <svg width="${SIZE}" height="${SIZE}" viewBox="-8 -8 ${SIZE+16} ${SIZE+16}" style="display:block">${kekeSVG(pal, SIZE)}${equippedSkinOverlay}</svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:700;color:var(--t1)">${pal.name}</div>
+          <div style="font-size:9px;color:var(--t3)">${pal.sub}</div>
+        </div>
+        ${headerBtn}
+      </div>
+      ${skinsRow}
+    `;
+    scroll.appendChild(card);
+  });
+
+  // Wire up unlock/equip buttons via delegation
+  scroll.querySelectorAll('.pals-equip-btn').forEach(b => {
+    b.addEventListener('click', async () => {
+      try { await T.equipPet(b.dataset.pet); refreshPalsPage(); } catch (e) { console.warn(e); }
+    });
+  });
+  // Buy pet via Stripe $1
+  scroll.querySelectorAll('.pals-buy-btn').forEach(b => {
+    b.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      const petId = b.dataset.pet;
+      const pal = KEKE.find(p => p.id === petId);
+      if (pal) { _showPetPreview(pal, cost, balance); return; }
+      _startPetBuy(b, petId);
+    });
+  });
+  // Skin cells → preview modal (animate + equip/unlock from there)
+  scroll.querySelectorAll('.pals-skin-cell').forEach(c => {
+    c.addEventListener('click', async () => {
+      if (c.dataset.action !== 'preview-skin') return;
+      const petId = c.dataset.pet;
+      const skinId = c.dataset.skin;
+      const state2 = await T.getPetState();
+      const ownedSkins2 = state2?.data?.ownedSkins || {};
+      const equippedSkins2 = state2?.data?.equippedSkins || {};
+      const pal = KEKE.find(p => p.id === petId);
+      const skin = SKINS.find(s => s.id === skinId);
+      if (!pal || !skin) return;
+      const sOwned = (ownedSkins2[petId] || []).includes(skinId);
+      const sEquipped = equippedSkins2[petId] === skinId;
+      const skinBal = state2.spendableBalance || 0;
+      const sCost = state2.unlockCostSkin || 1000;
+      _showSkinPreview(pal, skin, sOwned, sEquipped, skinBal, sCost);
+    });
+  });
+
+  // Locked pet cards → preview modal on click
+  scroll.querySelectorAll('.pals-locked-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const petId = card.dataset.pet;
+      const pal = KEKE.find(p => p.id === petId);
+      if (!pal) return;
+      _showPetPreview(pal, cost, balance);
+    });
+  });
+}
+
+async function _startPetBuy(btn, petId) {
+  const orig = btn.textContent;
+  btn.textContent = 'Opening…';
+  btn.disabled = true;
+  try {
+    await T.buyPet(petId);
+    refreshPalsPage();
+    toast('Pet unlocked!');
+  } catch (e) {
+    toast('Purchase failed: ' + e, true);
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+function _showPetPreview(pal, cost, balance) {
+  const { kekeSVG } = window.TERSE_PALS;
+  const existing = document.getElementById('palPreviewOverlay');
+  if (existing) existing.remove();
+  const SIZE = 130;
+  const W = SIZE + 32;
+  const overlay = document.createElement('div');
+  overlay.id = 'palPreviewOverlay';
+  overlay.style.cssText = [
+    'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center',
+    'background:rgba(0,0,0,.45);backdrop-filter:blur(4px)',
+    'animation:fadeIn .18s ease',
+  ].join(';');
+
+  overlay.innerHTML = `
+    <style>
+      @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+      @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+      @keyframes previewBob{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-5px) scaleY(1.03)}}
+      #palPreviewSheet{animation:slideUp .22s cubic-bezier(.34,1.56,.64,1)}
+      #palPreviewPet svg{animation:${pal.anim || 'previewBob'} ${pal.spd || 2.4}s ease-in-out infinite;transform-origin:50% 100%}
+    </style>
+    <div id="palPreviewSheet" style="background:var(--bg,#fff);border-radius:20px 20px 0 0;padding:20px 20px 28px;width:100%;max-width:320px;text-align:center">
+      <div style="width:32px;height:3px;background:rgba(0,0,0,.15);border-radius:2px;margin:0 auto 16px"></div>
+      <div id="palPreviewPet" style="display:inline-block;margin-bottom:8px">
+        <svg width="${W}" height="${W}" viewBox="-16 -16 ${SIZE+32} ${SIZE+32}" style="display:block;overflow:visible">${kekeSVG(pal, SIZE)}</svg>
+      </div>
+      <div style="font-size:16px;font-weight:800;color:var(--t1,#111)">${pal.name}</div>
+      <div style="font-size:11px;color:var(--t3,#888);margin-top:3px">${pal.sub}</div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+        <button id="palPreviewClose" style="border:1px solid rgba(0,0,0,.12);background:var(--sf,#f5f5f5);color:var(--t2,#444);font-size:12px;font-weight:600;padding:8px 18px;border-radius:10px;cursor:pointer">Close</button>
+        <button id="palPreviewBuy" data-pet="${pal.id}" style="border:none;background:#22a559;color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:10px;cursor:pointer">Buy $1 💳</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#palPreviewClose').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  const buyBtn = overlay.querySelector('#palPreviewBuy');
+  buyBtn.addEventListener('click', async () => {
+    buyBtn.textContent = 'Opening Stripe…';
+    buyBtn.disabled = true;
+    try {
+      await T.buyPet(buyBtn.dataset.pet);
+      overlay.remove();
+      refreshPalsPage();
+      toast('Pet unlocked!');
+    } catch (e) {
+      toast('Purchase failed: ' + e, true);
+      buyBtn.textContent = 'Buy $1 💳';
+      buyBtn.disabled = false;
+    }
+  });
+}
+
+function _showSkinPreview(pal, skin, sOwned, sEquipped, balance, skinCost) {
+  const { kekeSVG, kekeSkinSVG } = window.TERSE_PALS;
+  const existing = document.getElementById('skinPreviewOverlay');
+  if (existing) existing.remove();
+  const SIZE = 120;
+  const W = SIZE + 32;
+  const overlay = document.createElement('div');
+  overlay.id = 'skinPreviewOverlay';
+  overlay.style.cssText = [
+    'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center',
+    'background:rgba(0,0,0,.45);backdrop-filter:blur(4px)',
+    'animation:fadeIn .18s ease',
+  ].join(';');
+
+  const canAfford = balance >= skinCost;
+  const actionBtn = sEquipped
+    ? `<span style="font-size:12px;font-weight:700;padding:8px 18px;background:var(--btn,#4a7cff);color:#fff;border-radius:10px;opacity:.6">Equipped</span>`
+    : (sOwned
+      ? `<button id="skinPreviewEquip" style="border:none;background:var(--btn,#4a7cff);color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:10px;cursor:pointer">Equip</button>`
+      : (canAfford
+        ? `<button id="skinPreviewUnlock" style="border:none;background:var(--btn,#4a7cff);color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:10px;cursor:pointer">Unlock · ${skinCost} 🪙</button>`
+        : `<span style="font-size:11px;color:var(--t3,#888);padding:8px 12px">🔒 Need ${(skinCost - balance).toLocaleString()} more 🪙</span>`));
+
+  overlay.innerHTML = `
+    <style>
+      @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+      @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+      #skinPreviewSheet{animation:slideUp .22s cubic-bezier(.34,1.56,.64,1)}
+      #skinPreviewPet svg{animation:${pal.anim || 'k-breathe'} ${pal.spd || 2.4}s ease-in-out infinite;transform-origin:50% 100%}
+    </style>
+    <div id="skinPreviewSheet" style="background:var(--bg,#fff);border-radius:20px 20px 0 0;padding:20px 20px 28px;width:100%;max-width:320px;text-align:center">
+      <div style="width:32px;height:3px;background:rgba(0,0,0,.15);border-radius:2px;margin:0 auto 16px"></div>
+      <div id="skinPreviewPet" style="display:inline-block;margin-bottom:8px">
+        <svg width="${W}" height="${W}" viewBox="-16 -16 ${SIZE+32} ${SIZE+32}" style="display:block;overflow:visible">
+          ${kekeSVG(pal, SIZE)}${kekeSkinSVG(skin.id, pal, SIZE)}
+        </svg>
+      </div>
+      <div style="font-size:14px;font-weight:800;color:var(--t1,#111)">${skin.emoji} ${skin.name}</div>
+      <div style="font-size:10px;color:var(--t3,#888);margin-top:2px">${pal.name} · ${pal.sub}</div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+        <button id="skinPreviewClose" style="border:1px solid rgba(0,0,0,.12);background:var(--sf,#f5f5f5);color:var(--t2,#444);font-size:12px;font-weight:600;padding:8px 18px;border-radius:10px;cursor:pointer">Close</button>
+        ${actionBtn}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#skinPreviewClose').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  const equipBtn = overlay.querySelector('#skinPreviewEquip');
+  if (equipBtn) {
+    equipBtn.addEventListener('click', async () => {
+      try { await T.equipSkin(pal.id, skin.id); overlay.remove(); refreshPalsPage(); }
+      catch (e) { toast('Equip failed: ' + e, true); }
+    });
+  }
+  const unlockBtn = overlay.querySelector('#skinPreviewUnlock');
+  if (unlockBtn) {
+    unlockBtn.addEventListener('click', async () => {
+      unlockBtn.textContent = 'Unlocking…';
+      unlockBtn.disabled = true;
+      try { await T.unlockSkin(pal.id, skin.id); overlay.remove(); refreshPalsPage(); }
+      catch (e) { toast('Unlock failed: ' + e, true); unlockBtn.textContent = `Unlock · ${skinCost} 🪙`; unlockBtn.disabled = false; }
+    });
+  }
+}
+// Wire button + back button (idempotent — guard so this runs once)
+(function _wirePalsButtons() {
+  const tryWire = () => {
+    const btn = document.getElementById('btnPals');
+    const titleBtn = document.getElementById('btnPalsTitle');
+    const back = document.getElementById('palsBackBtn');
+    if (btn && !btn._wired) { btn._wired = true; btn.addEventListener('click', openPalsPage); }
+    if (titleBtn && !titleBtn._wired) { titleBtn._wired = true; titleBtn.addEventListener('click', openPalsPage); }
+    if (back && !back._wired) { back._wired = true; back.addEventListener('click', closePalsPage); }
+    if (!titleBtn || !back) setTimeout(tryWire, 200);
+  };
+  tryWire();
+})();
+
+function renderPetPickerGrid(state) {
+  const { KEKE, kekeSVG } = window.TERSE_PALS;
+  const grid = $('#petPickerGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const SIZE = 56;
+  KEKE.forEach(pal => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--sf);border-radius:12px;padding:6px 4px 4px;cursor:pointer;text-align:center;border:2px solid transparent;transition:transform .15s,border-color .15s';
+    card.innerHTML = `
+      <svg width="${SIZE}" height="${SIZE}" viewBox="-8 -8 ${SIZE+16} ${SIZE+16}" style="display:block;margin:0 auto">${kekeSVG(pal, SIZE)}</svg>
+      <div style="font-size:9px;font-weight:700;color:var(--t1);margin-top:2px">${pal.name}</div>
+      <div style="font-size:7.5px;color:var(--t3);line-height:1.1">${pal.sub}</div>
+    `;
+    card.addEventListener('mouseenter', () => { card.style.transform='translateY(-2px)'; card.style.borderColor='var(--btn)'; });
+    card.addEventListener('mouseleave', () => { card.style.transform=''; card.style.borderColor='transparent'; });
+    card.addEventListener('click', async () => {
+      try {
+        await T.pickStarterPet(pal.id);
+        const overlay = $('#petPicker');
+        if (overlay) overlay.style.display = 'none';
+        // Notify popup window so it can render the equipped pet
+        if (window.__TAURI__?.event?.emit) {
+          window.__TAURI__.event.emit('pet-equipped', { petId: pal.id });
+        }
+      } catch (e) { console.warn('[pet-picker] pick failed:', e); }
+    });
+    grid.appendChild(card);
+  });
 }
 
 // Load auth state on startup

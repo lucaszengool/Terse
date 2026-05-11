@@ -5,6 +5,7 @@ let autoMode = 'send';
 let minimized = false;
 let agentPanelVisible = false; // true when focused app is an agent host and panel is showing
 let lastShownSessionId = null; // track which session popup is showing to reset on switch
+let activeSessionScore = 0; // richness score of currently shown agent session (tokens + turns*1000)
 
 // Global error handler — catches uncaught exceptions
 window.onerror = function(msg, src, line, col, err) {
@@ -413,17 +414,23 @@ T.on('popup-show', d => {
     document.getElementById('btnReplace').disabled = true;
   }
 
-  // Show agent panel only when this session is the agent host
-  if (activeAgentType) {
-    if (!agentHostSessionId) agentHostSessionId = d.sessionId;
-    if (d.sessionId === agentHostSessionId) {
+  // Show agent panel — pick the most relevant agent for the focused app
+  const bestAgent = pickAgentForApp(d.app);
+  if (bestAgent && connectedAgents[bestAgent]) {
+    const snap = connectedAgents[bestAgent];
+    if (activeAgentType !== bestAgent) {
+      // Switching to a different agent — update the panel
+      showAgentPanel(snap);
+    } else {
       document.getElementById('agentPanel').classList.remove('hidden');
       agentPanelVisible = true;
-    } else {
-      document.getElementById('agentPanel').classList.add('hidden');
-      agentPanelVisible = false;
     }
+  } else if (Object.keys(connectedAgents).length === 0) {
+    document.getElementById('agentPanel').classList.add('hidden');
+    agentPanelVisible = false;
   }
+  // If there are connected agents but none match this app, keep current panel visible
+  // (agent panel is always useful context regardless of which app is focused)
   autoResizePopup();
 });
 
@@ -531,8 +538,33 @@ document.getElementById('btnCopy').addEventListener('click', async () => {
 
 // ── Agent Monitor UI ──
 
-let activeAgentType = null; // currently connected agent type
-let agentHostSessionId = null; // session ID that hosts the agent (e.g. the terminal running Claude Code)
+let activeAgentType = null; // currently displayed agent type
+let agentHostSessionId = null; // kept for compat but no longer drives visibility
+let connectedAgents = {}; // agentType → latest snapshot, for all connected agents
+
+// Map app name patterns to agent types (used in popup-show to pick the right panel)
+const AGENT_APP_MAP = {
+  'cursor-agent': ['cursor'],
+  'codex':        ['codex'],
+  'aider':        ['aider'],
+  'claude-code':  ['claude', 'terminal', 'iterm', 'warp', 'alacritty', 'kitty', 'hyper'],
+};
+
+function pickAgentForApp(appName) {
+  const name = (appName || '').toLowerCase();
+  for (const [agentType, patterns] of Object.entries(AGENT_APP_MAP)) {
+    if (connectedAgents[agentType] && patterns.some(p => name.includes(p))) {
+      return agentType;
+    }
+  }
+  // Default: pick the richest connected agent (most turns/tokens)
+  let best = null, bestScore = -1;
+  for (const [type, snap] of Object.entries(connectedAgents)) {
+    const score = (snap.totalInputTokens || 0) + (snap.turns || 0) * 1000;
+    if (score > bestScore) { bestScore = score; best = type; }
+  }
+  return best;
+}
 
 function formatTokens(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
@@ -728,6 +760,7 @@ function renderPlanInfo(info) {
 function showAgentPanel(snapshot) {
   console.log('[terse-dbg] showAgentPanel called, agentType:', snapshot.agentType, 'turns:', snapshot.turns);
   activeAgentType = snapshot.agentType;
+  activeSessionScore = (snapshot.totalInputTokens || 0) + (snapshot.turns || 0) * 1000;
   agentHostSessionId = lastShownSessionId; // remember which session hosts this agent
   agentPanelVisible = true;
 
@@ -751,7 +784,9 @@ function showAgentPanel(snapshot) {
 function hideAgentPanel() {
   activeAgentType = null;
   agentHostSessionId = null;
+  activeSessionScore = 0;
   _planInfoCache = null;
+  // Don't clear connectedAgents — they're still running, just panel is hidden
   document.getElementById('agentPanel').classList.add('hidden');
   document.getElementById('agentPlanRow')?.classList.add('hidden');
   autoResizePopup();
@@ -763,19 +798,31 @@ function updateAgentPanel(snapshot) {
     ' msgs=' + (snapshot.recentMessages || []).length +
     ' turns=' + snapshot.turns +
     ' panelH=' + panel.offsetHeight);
+
+  // tokenCountApprox: Cursor reads message text from SQLite but token counts are estimated
+  const approx = snapshot.tokenCountApprox === true;
+  const approxNote = document.getElementById('agentHookOnlyNote');
+  if (approxNote) {
+    approxNote.style.display = approx ? '' : 'none';
+    const n2 = document.getElementById('agentPanelName2');
+    if (n2) n2.textContent = snapshot.agentName || 'Cursor';
+  }
+
   // ── Context fill meter ──
   const ctxFill = snapshot.contextFill || 0;
   const currentCtx = snapshot.currentContext || 0;
   const ctxBar = document.getElementById('agentContextBar');
-  document.getElementById('agentContextPct').textContent =
-    formatTokens(currentCtx) + ' / 200K (' + ctxFill + '%)';
+  document.getElementById('agentContextPct').textContent = approx
+    ? '— (token counts stored server-side)'
+    : formatTokens(currentCtx) + ' / 200K (' + ctxFill + '%)';
   ctxBar.style.width = Math.min(ctxFill, 100) + '%';
   ctxBar.className = 'context-fill-bar-fill' +
     (ctxFill > 85 ? ' danger' : ctxFill > 60 ? ' warn' : '');
 
   // ── Summary bar (always visible) ──
-  document.getElementById('agentCtxShort').textContent = ctxFill + '%';
-  document.getElementById('agentInputShort').textContent = formatTokens(snapshot.totalInputTokens || 0);
+  const approxPrefix = approx ? '~' : '';
+  document.getElementById('agentCtxShort').textContent = approx ? '—' : ctxFill + '%';
+  document.getElementById('agentInputShort').textContent = approxPrefix + formatTokens(snapshot.totalInputTokens || 0);
   const cacheVal = snapshot.cacheEfficiency || 0;
   const cacheShort = document.getElementById('agentCacheShort');
   cacheShort.textContent = cacheVal + '%';
@@ -1178,9 +1225,14 @@ function updateAgentPanel(snapshot) {
   const newKey = lastFew.length + '|' + (snapshot.turns || 0) + '|' + (snapshot.toolCallCount || 0) + '|' +
     (lastMsg ? (lastMsg.role || '') + (lastMsg.text || '').substring(0, 50) + (lastMsg.tokens || 0) : '');
   if (actEl.dataset.key !== newKey) {
+    const prevToolCallCount = parseInt(actEl.dataset.toolCallCount || '0', 10);
+    const snapToolCount = snapshot.toolCallCount || 0;
     actEl.dataset.key = newKey;
     actEl.innerHTML = '';
     const optimizer = window._terseOptimizer;
+    let newSaveableCount = 0;
+    let newSaveableTokens = 0;
+    let newToolCount = 0;
     for (const m of lastFew) {
       const line = document.createElement('div');
       line.className = 'agent-activity-line ' + (m.role || '');
@@ -1239,6 +1291,7 @@ function updateAgentPanel(snapshot) {
         if (tok > 0) {
           const compRate = estimateToolCompressRate(toolName, m.text || '');
           const savedTok = Math.round(tok * compRate);
+          newToolCount++;
           if (savedTok > 50 && tok > 200) {
             // Show compressed badge with savings
             const badge = document.createElement('span');
@@ -1246,6 +1299,8 @@ function updateAgentPanel(snapshot) {
             badge.textContent = tok + ' tok (−' + formatTokens(savedTok) + ' ~' + Math.round(compRate * 100) + '%)';
             badge.title = toolName + ': RTK compression could save ~' + savedTok + ' tokens';
             line.appendChild(badge);
+            newSaveableCount++;
+            newSaveableTokens += savedTok;
           } else if (tok > 1000) {
             addTokenBadge(line, tok, 'warn');
           } else {
@@ -1256,6 +1311,7 @@ function updateAgentPanel(snapshot) {
       // ── Tool calls: show name ──
       } else if (m.type === 'tool_use') {
         line.textContent = prefix + text;
+        newToolCount++;
 
       // ── Assistant messages: show token cost ──
       } else if (m.role === 'assistant') {
@@ -1270,6 +1326,11 @@ function updateAgentPanel(snapshot) {
       actEl.appendChild(line);
     }
     requestAnimationFrame(() => { actEl.scrollTop = actEl.scrollHeight; });
+    // Fire pet for new tool calls — toolCallCount is monotonically increasing so no 20-msg cap issue
+    actEl.dataset.toolCallCount = String(snapToolCount);
+    if (prevToolCallCount > 0 && snapToolCount > prevToolCallCount && window.terse && window.terse.petWorkDetected) {
+      window.terse.petWorkDetected(newSaveableTokens).catch(() => {});
+    }
   }
   autoResizePopup();
 }
@@ -1530,16 +1591,46 @@ T.on('agent-detected', async (info) => {
 });
 
 T.on('agent-lost', (info) => {
+  delete connectedAgents[info.type];
   if (activeAgentType === info.type) {
-    hideAgentPanel();
-    document.getElementById('agentPanelStatus').textContent = 'Disconnected';
+    // Try to fall back to another connected agent
+    const fallback = Object.keys(connectedAgents)[0];
+    if (fallback) {
+      showAgentPanel(connectedAgents[fallback]);
+    } else {
+      hideAgentPanel();
+      document.getElementById('agentPanelStatus').textContent = 'Disconnected';
+    }
   }
   hideAgentBanner();
 });
 
+// AX permission lost — macOS TCC revoked accessibility (common after OS updates)
+T.on('ax-status', (data) => {
+  if (data && !data.trusted) {
+    console.warn('[terse] AX permission not granted — re-enable in System Settings → Privacy & Security → Accessibility');
+    // Re-use the hint state to surface this in the popup
+    const hint = document.getElementById('hintState');
+    if (hint && !hasContent) {
+      hint.classList.remove('hidden');
+      hint.innerHTML = '<span style="color:#e55">⚠ Accessibility permission reset by macOS.<br>Go to <b>System Settings → Privacy → Accessibility</b> and re-enable Terse, then relaunch.</span>';
+    }
+  }
+});
+
 T.on('agent-connected', (data) => {
-  console.log('[terse-dbg] agent-connected event:', data?.session?.agentType);
-  showAgentPanel(data.session);
+  const incoming = data?.session;
+  if (!incoming) return;
+  console.log('[terse-dbg] agent-connected event:', incoming.agentType, 'turns:', incoming.turns);
+  // Register in connectedAgents map
+  connectedAgents[incoming.agentType] = incoming;
+  // Show this agent panel if none is currently shown, or if it's richer than current
+  const incomingScore = (incoming.totalInputTokens || 0) + (incoming.turns || 0) * 1000;
+  if (!agentPanelVisible || incomingScore >= activeSessionScore) {
+    showAgentPanel(incoming);
+  } else {
+    console.log('[terse-dbg] agent-connected: registered ' + incoming.agentType + ' but keeping current panel');
+  }
 });
 
 T.on('agent-disconnected', () => {
@@ -1547,9 +1638,11 @@ T.on('agent-disconnected', () => {
 });
 
 T.on('agent-update', (data) => {
-  console.log('[terse-dbg] agent-update received:', data?.agentType, 'activeAgentType:', activeAgentType, 'has session:', !!data?.session);
-  if (data.session && activeAgentType === data.agentType) {
-    console.log('[terse-dbg] updating agent panel with', data.session.totalMessages, 'messages');
+  if (!data?.session) return;
+  // Always update the connectedAgents map so switching shows fresh data
+  connectedAgents[data.agentType] = data.session;
+  console.log('[terse-dbg] agent-update received:', data.agentType, 'active:', activeAgentType);
+  if (activeAgentType === data.agentType) {
     try { enrichAgentOptStats(data.session); } catch(e) { console.error('[terse-dbg] enrichAgentOptStats error:', e); }
     try { updateAgentPanel(data.session); } catch(e) { console.error('[terse-dbg] updateAgentPanel error:', e); }
     autoResizePopup();
@@ -1566,6 +1659,7 @@ document.getElementById('btnAgentAccept').addEventListener('click', async () => 
   try {
     const session = await T.acceptAgent(type);
     if (session) {
+      connectedAgents[session.agentType] = session;
       showAgentPanel(session);
     } else {
       btn.textContent = 'Failed';
@@ -1584,7 +1678,10 @@ document.getElementById('btnAgentDismiss').addEventListener('click', () => {
 });
 
 document.getElementById('btnAgentDisconnect').addEventListener('click', () => {
-  if (activeAgentType) T.disconnectAgent(activeAgentType);
+  if (activeAgentType) {
+    T.disconnectAgent(activeAgentType);
+    delete connectedAgents[activeAgentType];
+  }
   hideAgentPanel();
 });
 
@@ -1592,14 +1689,24 @@ document.getElementById('btnAgentDisconnect').addEventListener('click', () => {
 // Reset state from previous app run (WebView may cache JS state)
 activeAgentType = null;
 agentPanelVisible = false;
+connectedAgents = {};
 document.getElementById('agentPanel').classList.add('hidden');
 
 console.log('[terse-dbg] popup.js loaded, checking agent sessions...');
 T.getAgentSessions().then(sessions => {
   console.log('[terse-dbg] getAgentSessions returned:', sessions.length, 'sessions');
   if (sessions.length > 0) {
-    console.log('[terse-dbg] showing agent panel from getAgentSessions');
-    showAgentPanel(sessions[0]);
+    // Populate connectedAgents map from all returned sessions
+    for (const s of sessions) {
+      if (s.agentType) connectedAgents[s.agentType] = s;
+    }
+    // Display the richest session (most turns/tokens)
+    const best = sessions.reduce((a, b) =>
+      ((a.totalInputTokens || 0) + (a.turns || 0) * 1000) >=
+      ((b.totalInputTokens || 0) + (b.turns || 0) * 1000) ? a : b
+    );
+    console.log('[terse-dbg] showing agent panel from getAgentSessions, best:', best.agentType, 'turns:', best.turns);
+    showAgentPanel(best);
     return;
   }
   // No connected sessions — show banner if agent detected, let user click Connect
@@ -1641,3 +1748,33 @@ document.getElementById('btnInstallBridge').addEventListener('click', async () =
     setTimeout(() => { btn.textContent = 'Install Extension'; }, 3000);
   }
 });
+
+// ── Proxy status polling ──
+let _proxyLastStats = null;
+function pollProxyStatus() {
+  fetch('http://127.0.0.1:7860/health', { signal: AbortSignal.timeout(2000) })
+    .then(r => r.json())
+    .then(data => {
+      const bar = document.getElementById('proxyStatusBar');
+      if (!bar) return;
+      bar.style.display = 'flex';
+      document.getElementById('proxyReqs').textContent = data.stats?.total || 0;
+      document.getElementById('proxyRouted').textContent = data.stats?.routed || 0;
+      // Show which model is active
+      const model = _planInfoCache?.rateLimitTier || '';
+      if (model) {
+        const routed = data.routing?.[model];
+        document.getElementById('proxyModel').textContent = routed
+          ? model + ' → ' + routed.replace('claude-', '').replace('-20250514', '')
+          : model;
+      }
+      _proxyLastStats = data.stats;
+    })
+    .catch(() => {
+      const bar = document.getElementById('proxyStatusBar');
+      if (bar) bar.style.display = 'none';
+    });
+}
+// Poll every 5 seconds
+setInterval(pollProxyStatus, 5000);
+pollProxyStatus();

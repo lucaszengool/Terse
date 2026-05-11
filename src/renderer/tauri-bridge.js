@@ -78,6 +78,7 @@ if (window.__TAURI__) {
     closeWindow: () => invoke('close_window'),
     setAutoMode: (mode) => invoke('set_auto_mode', { mode }),
     requestAccessibility: () => invoke('request_accessibility'),
+    checkAxPermission: () => invoke('check_ax_permission'),
     installBridge: () => invoke('install_bridge'),
     setPopupMinimized: (on) => invoke('set_popup_minimized', { on }),
     resizePopup: (h) => invoke('resize_popup', { h }),
@@ -99,9 +100,76 @@ if (window.__TAURI__) {
     navigateToStats: () => invoke('navigate_to_stats'),
     navigateBack: () => invoke('navigate_back'),
 
+    // Pets (Phase 1 — picker + foundation)
+    getPetState: () => invoke('get_pet_state'),
+    pickStarterPet: (petId) => invoke('pick_starter_pet', { petId }),
+    unlockPet: (petId) => invoke('unlock_pet', { petId }),
+    markPetPurchased: (petId) => invoke('mark_pet_purchased', { petId }),
+    equipPet: (petId) => invoke('equip_pet', { petId }),
+    unlockSkin: (petId, skinId) => invoke('unlock_skin', { petId, skinId }),
+    equipSkin: (petId, skinId) => invoke('equip_skin', { petId, skinId }),
+    setPetSettings: (settings) => invoke('set_pet_settings', { settings }),
+
+    // Buy a pet via Stripe $1 checkout: opens system browser, polls until paid.
+    buyPet: async (petId) => {
+      const API_BASE = 'https://www.terseai.org';
+      const auth = await invoke('get_auth');
+      const clerkUserId = auth?.clerk_user_id;
+      const clerkUserEmail = auth?.email;
+      if (!clerkUserId) throw new Error('Not signed in');
+
+      const res = await fetch(`${API_BASE}/api/pet-checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ petId, clerkUserId, clerkUserEmail }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Checkout failed'); }
+      const { url } = await res.json();
+
+      // Open Stripe checkout in system browser
+      try { await window.__TAURI__.shell.open(url); } catch { window.open(url, '_blank'); }
+
+      // Poll for ownership confirmation (up to 8 min)
+      return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const poll = setInterval(async () => {
+          attempts++;
+          if (attempts > 96) { clearInterval(poll); reject(new Error('Payment not confirmed after 8 minutes')); return; }
+          try {
+            const r = await fetch(`${API_BASE}/api/pet-owned/${clerkUserId}`);
+            const data = await r.json();
+            if ((data.pets || []).includes(petId)) {
+              clearInterval(poll);
+              await invoke('mark_pet_purchased', { petId });
+              resolve();
+            }
+          } catch {}
+        }, 5000);
+      });
+    },
+
+    // Sync all server-purchased pets to local pet_store (call on startup).
+    syncPetPurchases: async () => {
+      const API_BASE = 'https://www.terseai.org';
+      try {
+        const auth = await invoke('get_auth');
+        const clerkUserId = auth?.clerk_user_id;
+        if (!clerkUserId) return;
+        const r = await fetch(`${API_BASE}/api/pet-owned/${clerkUserId}`);
+        const data = await r.json();
+        for (const petId of (data.pets || [])) {
+          await invoke('mark_pet_purchased', { petId });
+        }
+      } catch (e) { console.warn('[terse] syncPetPurchases failed:', e); }
+    },
+    // Pet window (Phase 2)
+    showPetWindow: () => invoke('show_pet_window'),
+    hidePetWindow: () => invoke('hide_pet_window'),
+
     // Hook (RTK-style compression)
     checkAgentHook: () => invoke('check_agent_hook'),
     getHookStats: () => invoke('get_hook_stats'),
+    petWorkDetected: (savedEstimate) => invoke('pet_work_detected', { savedEstimate }),
 
     // Record optimization stats
     recordOptimization: (source, originalTokens, optimizedTokens) =>

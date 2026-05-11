@@ -124,6 +124,68 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_buyer_keys_hash ON buyer_keys(key_hash);
   CREATE INDEX IF NOT EXISTS idx_transactions_buyer ON transactions(buyer_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_transactions_seller ON transactions(seller_id, created_at);
+
+  -- ── Terse Pals purchases ──
+  CREATE TABLE IF NOT EXISTS pet_purchases (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    pet_id TEXT NOT NULL,
+    stripe_session_id TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, pet_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_pet_purchases_user ON pet_purchases(user_id);
+
+  -- ── Terse Cloud (teams) ──
+  CREATE TABLE IF NOT EXISTS cloud_teams (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    owner_user_id TEXT NOT NULL,
+    plan TEXT DEFAULT 'team',
+    seats INTEGER DEFAULT 5,
+    company TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS cloud_team_members (
+    id TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL REFERENCES cloud_teams(id) ON DELETE CASCADE,
+    user_email TEXT NOT NULL,
+    user_id TEXT,
+    role TEXT DEFAULT 'member',
+    joined_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(team_id, user_email)
+  );
+
+  CREATE TABLE IF NOT EXISTS cloud_team_tokens (
+    id TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL REFERENCES cloud_teams(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    label TEXT,
+    last_used_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS cloud_events (
+    id TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL REFERENCES cloud_teams(id) ON DELETE CASCADE,
+    user_email TEXT,
+    tool TEXT,            -- mac, windows, chrome, vscode, ios
+    source TEXT,          -- browser, agent, editor, manual
+    project TEXT,
+    model TEXT,
+    optimization_mode TEXT,
+    tokens_in INTEGER DEFAULT 0,
+    tokens_out INTEGER DEFAULT 0,
+    tokens_saved INTEGER DEFAULT 0,
+    occurred_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_cloud_team_members_team ON cloud_team_members(team_id);
+  CREATE INDEX IF NOT EXISTS idx_cloud_team_tokens_hash ON cloud_team_tokens(token_hash);
+  CREATE INDEX IF NOT EXISTS idx_cloud_events_team ON cloud_events(team_id, occurred_at);
+  CREATE INDEX IF NOT EXISTS idx_cloud_events_user ON cloud_events(team_id, user_email, occurred_at);
 `);
 
 // ── User helpers ──
@@ -278,6 +340,146 @@ const markNotificationRead = db.prepare('UPDATE notifications SET read = 1 WHERE
 const markNotificationEmailed = db.prepare('UPDATE notifications SET email_sent = 1 WHERE id = ?');
 const getUnreadCount = db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND read = 0');
 
+// ── Terse Cloud helpers ──
+const createTeam = db.prepare(`
+  INSERT INTO cloud_teams (id, name, slug, owner_user_id, plan, seats, company)
+  VALUES (@id, @name, @slug, @owner_user_id, @plan, @seats, @company)
+`);
+const getTeamById = db.prepare('SELECT * FROM cloud_teams WHERE id = ?');
+const getTeamBySlug = db.prepare('SELECT * FROM cloud_teams WHERE slug = ?');
+const getTeamsByOwner = db.prepare('SELECT * FROM cloud_teams WHERE owner_user_id = ? ORDER BY created_at DESC');
+const getTeamsByMemberEmail = db.prepare(`
+  SELECT t.*, m.role AS member_role FROM cloud_teams t
+  JOIN cloud_team_members m ON m.team_id = t.id
+  WHERE m.user_email = ?
+  ORDER BY t.created_at DESC
+`);
+const getTeamsByMemberUserId = db.prepare(`
+  SELECT t.*, m.role AS member_role FROM cloud_teams t
+  JOIN cloud_team_members m ON m.team_id = t.id
+  WHERE m.user_id = ?
+  ORDER BY t.created_at DESC
+`);
+const updateTeam = db.prepare('UPDATE cloud_teams SET name = @name, company = @company, seats = @seats WHERE id = @id');
+const deleteTeam = db.prepare('DELETE FROM cloud_teams WHERE id = ? AND owner_user_id = ?');
+const setMemberUserId = db.prepare('UPDATE cloud_team_members SET user_id = ? WHERE user_email = ? AND user_id IS NULL');
+
+const addTeamMember = db.prepare(`
+  INSERT OR IGNORE INTO cloud_team_members (id, team_id, user_email, user_id, role)
+  VALUES (@id, @team_id, @user_email, @user_id, @role)
+`);
+const getTeamMembers = db.prepare('SELECT * FROM cloud_team_members WHERE team_id = ? ORDER BY joined_at ASC');
+const removeTeamMember = db.prepare('DELETE FROM cloud_team_members WHERE id = ? AND team_id = ?');
+const getMemberByEmail = db.prepare('SELECT * FROM cloud_team_members WHERE team_id = ? AND user_email = ?');
+
+const addTeamToken = db.prepare(`
+  INSERT INTO cloud_team_tokens (id, team_id, token_hash, label)
+  VALUES (@id, @team_id, @token_hash, @label)
+`);
+const findTeamByToken = db.prepare(`
+  SELECT t.* FROM cloud_teams t
+  JOIN cloud_team_tokens tk ON tk.team_id = t.id
+  WHERE tk.token_hash = ?
+`);
+const touchTeamToken = db.prepare("UPDATE cloud_team_tokens SET last_used_at = datetime('now') WHERE token_hash = ?");
+const getTeamTokens = db.prepare('SELECT id, label, last_used_at, created_at FROM cloud_team_tokens WHERE team_id = ?');
+const deleteTeamToken = db.prepare('DELETE FROM cloud_team_tokens WHERE id = ? AND team_id = ?');
+
+const addCloudEvent = db.prepare(`
+  INSERT INTO cloud_events (id, team_id, user_email, tool, source, project, model, optimization_mode, tokens_in, tokens_out, tokens_saved)
+  VALUES (@id, @team_id, @user_email, @tool, @source, @project, @model, @optimization_mode, @tokens_in, @tokens_out, @tokens_saved)
+`);
+
+const getTeamEvents = db.prepare(`
+  SELECT * FROM cloud_events
+  WHERE team_id = ? AND occurred_at >= ?
+  ORDER BY occurred_at DESC LIMIT ?
+`);
+
+const getTeamSummary = db.prepare(`
+  SELECT
+    COUNT(*) as total_events,
+    COALESCE(SUM(tokens_in), 0) as total_tokens_in,
+    COALESCE(SUM(tokens_out), 0) as total_tokens_out,
+    COALESCE(SUM(tokens_saved), 0) as total_tokens_saved,
+    COUNT(DISTINCT user_email) as active_developers
+  FROM cloud_events
+  WHERE team_id = ? AND occurred_at >= ?
+`);
+
+const getTeamByDeveloper = db.prepare(`
+  SELECT user_email,
+    COUNT(*) as events,
+    COALESCE(SUM(tokens_in), 0) as tokens_in,
+    COALESCE(SUM(tokens_saved), 0) as tokens_saved
+  FROM cloud_events
+  WHERE team_id = ? AND occurred_at >= ?
+  GROUP BY user_email
+  ORDER BY tokens_saved DESC
+`);
+
+const getTeamByTool = db.prepare(`
+  SELECT tool,
+    COUNT(*) as events,
+    COALESCE(SUM(tokens_in), 0) as tokens_in,
+    COALESCE(SUM(tokens_saved), 0) as tokens_saved
+  FROM cloud_events
+  WHERE team_id = ? AND occurred_at >= ?
+  GROUP BY tool
+  ORDER BY tokens_saved DESC
+`);
+
+const getTeamByProject = db.prepare(`
+  SELECT project,
+    COUNT(*) as events,
+    COALESCE(SUM(tokens_in), 0) as tokens_in,
+    COALESCE(SUM(tokens_saved), 0) as tokens_saved
+  FROM cloud_events
+  WHERE team_id = ? AND occurred_at >= ? AND project IS NOT NULL AND project != ''
+  GROUP BY project
+  ORDER BY tokens_saved DESC
+`);
+
+const getTeamDaily = db.prepare(`
+  SELECT substr(occurred_at, 1, 10) as date,
+    COUNT(*) as events,
+    COALESCE(SUM(tokens_in), 0) as tokens_in,
+    COALESCE(SUM(tokens_saved), 0) as tokens_saved
+  FROM cloud_events
+  WHERE team_id = ? AND occurred_at >= ?
+  GROUP BY substr(occurred_at, 1, 10)
+  ORDER BY date ASC
+`);
+
+const getTeamByModel = db.prepare(`
+  SELECT model,
+    COUNT(*) as events,
+    COALESCE(SUM(tokens_in), 0) as tokens_in,
+    COALESCE(SUM(tokens_saved), 0) as tokens_saved
+  FROM cloud_events
+  WHERE team_id = ? AND occurred_at >= ? AND model IS NOT NULL AND model != ''
+  GROUP BY model
+  ORDER BY tokens_in DESC
+`);
+
+const getTeamByMode = db.prepare(`
+  SELECT optimization_mode as mode,
+    COUNT(*) as events,
+    COALESCE(SUM(tokens_in), 0) as tokens_in,
+    COALESCE(SUM(tokens_saved), 0) as tokens_saved
+  FROM cloud_events
+  WHERE team_id = ? AND occurred_at >= ? AND optimization_mode IS NOT NULL AND optimization_mode != ''
+  GROUP BY optimization_mode
+  ORDER BY tokens_in DESC
+`);
+
+// ── Pet purchase helpers ──
+const addPetPurchase = db.prepare(`
+  INSERT OR IGNORE INTO pet_purchases (id, user_id, pet_id, stripe_session_id)
+  VALUES (@id, @user_id, @pet_id, @stripe_session_id)
+`);
+const getPetPurchases = db.prepare('SELECT pet_id FROM pet_purchases WHERE user_id = ?');
+
 module.exports = {
   db,
   upsertUser, getUser, ensureUser, updateStripeConnect,
@@ -292,4 +494,12 @@ module.exports = {
   addTopup, addPayout, updatePayoutStatus,
   getListings, getDetailedListings,
   addNotification, getNotifications, markNotificationRead, markNotificationEmailed, getUnreadCount,
+  addPetPurchase, getPetPurchases,
+  // Terse Cloud
+  createTeam, getTeamById, getTeamBySlug, getTeamsByOwner, getTeamsByMemberEmail, getTeamsByMemberUserId, updateTeam, deleteTeam,
+  addTeamMember, getTeamMembers, removeTeamMember, getMemberByEmail, setMemberUserId,
+  addTeamToken, findTeamByToken, touchTeamToken, getTeamTokens, deleteTeamToken,
+  addCloudEvent, getTeamEvents, getTeamSummary,
+  getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
+  getTeamByModel, getTeamByMode,
 };

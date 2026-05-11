@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 // Marketplace modules
 const { router: marketplaceRouter } = require('./marketplace');
 const proxyRouter = require('./proxy');
+const cloudRouter = require('./cloud');
 const db = require('./db');
 
 // Paddle module (WeChat Pay + Alipay recurring)
@@ -71,6 +72,17 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     switch (type) {
       case 'checkout.session.completed': {
         const session = data.object;
+        // Handle pet unlock purchase
+        if (session.metadata?.type === 'pet_unlock') {
+          const userId = session.metadata.clerk_user_id;
+          const petId = session.metadata.pet_id;
+          if (userId && petId) {
+            db.ensureUser(userId);
+            db.addPetPurchase.run({ id: require('crypto').randomUUID(), user_id: userId, pet_id: petId, stripe_session_id: session.id });
+            console.log(`[pets] unlocked pet ${petId} for ${userId}`);
+          }
+          break;
+        }
         // Handle marketplace top-up
         if (session.metadata?.type === 'marketplace_topup') {
           const userId = session.metadata.clerk_user_id;
@@ -426,6 +438,74 @@ app.get('/api/portal/redirect', async (req, res) => {
   }
 });
 
+// ── Pet Unlock (Stripe $1 one-time payment) ──
+
+// Lazy-init: create the pet unlock product+price on first checkout if not set in env.
+let petUnlockPriceId = process.env.STRIPE_PRICE_PET_UNLOCK || 'price_1TVvifGf9QijP49FNYBr6umS';
+async function ensurePetUnlockPrice() {
+  if (petUnlockPriceId) return petUnlockPriceId;
+  // Search for existing product first
+  const products = await stripe.products.search({ query: 'name:"Terse Pals – Pet Unlock"', limit: 1 });
+  let productId;
+  if (products.data.length > 0) {
+    productId = products.data[0].id;
+    const prices = await stripe.prices.list({ product: productId, active: true, limit: 1 });
+    if (prices.data.length > 0) { petUnlockPriceId = prices.data[0].id; return petUnlockPriceId; }
+  } else {
+    const product = await stripe.products.create({ name: 'Terse Pals – Pet Unlock', description: 'Unlock one pet companion in Terse' });
+    productId = product.id;
+  }
+  const price = await stripe.prices.create({ unit_amount: 100, currency: 'usd', product: productId });
+  petUnlockPriceId = price.id;
+  console.log(`[pets] created pet unlock price: ${petUnlockPriceId} — set STRIPE_PRICE_PET_UNLOCK=${petUnlockPriceId} to skip auto-create`);
+  return petUnlockPriceId;
+}
+
+app.post('/api/pet-checkout', express.json(), async (req, res) => {
+  try {
+    const { petId, clerkUserId, clerkUserEmail } = req.body;
+    if (!petId || !clerkUserId) return res.status(400).json({ error: 'Missing petId or clerkUserId' });
+
+    const priceId = await ensurePetUnlockPrice();
+    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+
+    // Find or create customer
+    let customerId;
+    if (clerkUserEmail) {
+      const existing = await stripe.customers.list({ email: clerkUserEmail, limit: 1 });
+      if (existing.data.length > 0) customerId = existing.data[0].id;
+    }
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: clerkUserEmail || undefined,
+        metadata: { clerk_user_id: clerkUserId },
+      });
+      customerId = customer.id;
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: { type: 'pet_unlock', clerk_user_id: clerkUserId, pet_id: petId },
+      success_url: `${baseUrl}/pet-success.html?pet=${petId}`,
+      cancel_url: `${baseUrl}/`,
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('[pet-checkout] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Returns the list of pet_ids a user has purchased (used by the app to sync ownership).
+app.get('/api/pet-owned/:clerkUserId', (req, res) => {
+  const { clerkUserId } = req.params;
+  const rows = db.getPetPurchases.all(clerkUserId);
+  res.json({ pets: rows.map(r => r.pet_id) });
+});
+
 // ── License Verification (called by Tauri app) ──
 app.get('/api/license/:clerkUserId', async (req, res) => {
   const { clerkUserId } = req.params;
@@ -699,6 +779,16 @@ app.post('/api/auth/delete', async (req, res) => {
 // ── Marketplace API routes ──
 app.use('/api/marketplace', marketplaceRouter);
 
+// ── Terse Cloud (teams) routes ──
+const cloudIngestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 600, // bursty telemetry: 10/s/team is plenty
+  message: { error: 'Rate limit exceeded' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/cloud', cloudIngestLimiter, cloudRouter);
+
 // ── LLM Proxy (rate-limited) ──
 const proxyLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -721,6 +811,11 @@ app.get('/api/health', (req, res) => {
 
 // ── Serve landing page ──
 app.use(express.static(path.join(__dirname, '..', 'landing'), { extensions: ['html'] }));
+
+// /teams/:id → serve the dashboard page (loads team via API client-side)
+app.get(['/teams', '/teams/:id'], (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'teams.html'));
+});
 
 // SPA fallback — but not for marketplace (it has its own HTML)
 app.get('*', (req, res) => {

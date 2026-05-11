@@ -2,6 +2,7 @@ mod capture;
 mod agent_monitor;
 mod stats_store;
 mod license;
+mod pet_store;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -89,6 +90,7 @@ pub struct AppState {
     pub last_front_bundle_id: Mutex<String>,
     pub agent_monitor: Mutex<agent_monitor::AgentMonitor>,
     pub stats_store: Mutex<stats_store::StatsStore>,
+    pub pet_store: Mutex<pet_store::PetStore>,
     pub license: Mutex<license::License>,
     pub auth: Mutex<license::AuthState>,
     pub is_picking: Mutex<bool>,
@@ -114,6 +116,7 @@ impl Default for AppState {
             last_front_bundle_id: Mutex::new(String::new()),
             agent_monitor: Mutex::new(agent_monitor::AgentMonitor::new()),
             stats_store: Mutex::new(stats_store::StatsStore::new()),
+            pet_store: Mutex::new(pet_store::PetStore::new()),
             license: Mutex::new(license::License::load()),
             auth: Mutex::new(license::AuthState::load()),
             is_picking: Mutex::new(false),
@@ -1312,8 +1315,18 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
     // Sync new entries into stats_store and consume quota (1 per compression)
     let new_count = count.saturating_sub(last_synced);
     if new_count > 0 && new_original > 0 {
-        let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
-        store.record_optimization("agent", new_original, new_optimized);
+        let new_saved = new_original.saturating_sub(new_optimized);
+
+        // Snapshot total BEFORE recording (needed for milestone delta check)
+        let prev_total = {
+            let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+            store.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0)
+        };
+
+        {
+            let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+            store.record_optimization("agent", new_original, new_optimized);
+        }
 
         // Each hook compression costs 0.3 quota
         let mut lic = state.license.lock().unwrap_or_else(|e| e.into_inner());
@@ -1326,7 +1339,38 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
 
         *state.hook_stats_synced.lock().unwrap_or_else(|e| e.into_inner()) = count;
 
+        // 1 coin per new compression regardless of tokens saved
+        {
+            let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+            pet_store.add_coins(new_count);
+        }
+
         let _ = app.emit("quota-updated", ());
+
+        // Feed the pet — agent work triggers eat animation
+        if new_saved > 0 {
+            let total = {
+                let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+                store.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0)
+            };
+            let _ = app.emit("pet-fed", serde_json::json!({
+                "saved": new_saved,
+                "totalSaved": total,
+                "source": "agent",
+                "compressions": new_count,
+            }));
+            let coin_bal = {
+                let pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+                pet_store.coin_balance()
+            };
+            let prev_coin_bal = coin_bal.saturating_sub(new_count);
+            if coin_bal / pet_store::UNLOCK_COST_PET > prev_coin_bal / pet_store::UNLOCK_COST_PET {
+                let _ = app.emit("pet-milestone", serde_json::json!({
+                    "kind": "unlock-available",
+                    "text": format!("New unlock available! ({} coins)", coin_bal),
+                }));
+            }
+        }
 
         if exhausted {
             let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
@@ -1383,10 +1427,189 @@ fn navigate_back(app: AppHandle) {
     }
 }
 
+// ── Pet Window control ──
+
 #[tauri::command]
-fn record_optimization(source: String, original_tokens: u64, optimized_tokens: u64, state: tauri::State<'_, AppState>) {
-    let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
-    store.record_optimization(&source, original_tokens, optimized_tokens);
+fn show_pet_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("pet") {
+        w.show().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_pet_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("pet") {
+        w.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+// ── Pet Commands ──
+
+/// Returns full pet state + coin balance (1 coin earned per optimization call)
+#[tauri::command]
+fn get_pet_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+    let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+    let lifetime_saved = stats.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0);
+    let coin_balance = pet_store.coin_balance();
+    serde_json::json!({
+        "data": pet_store.data(),
+        "lifetimeTokensSaved": lifetime_saved,
+        "spendableBalance": coin_balance,
+        "unlockCostPet": pet_store::UNLOCK_COST_PET,
+        "unlockCostSkin": pet_store::UNLOCK_COST_SKIN,
+    })
+}
+
+#[tauri::command]
+fn pick_starter_pet(pet_id: String, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<bool, String> {
+    let picked = {
+        let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        pet_store.pick_starter(&pet_id)
+    };
+    if picked {
+        // Show pet window + emit event so popup + pet windows refresh
+        if let Some(w) = app.get_webview_window("pet") { let _ = w.show(); }
+        let _ = app.emit("pet-equipped", serde_json::json!({ "petId": pet_id }));
+    }
+    Ok(picked)
+}
+
+#[tauri::command]
+fn unlock_pet(pet_id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+    let lifetime_saved = stats.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0);
+    drop(stats); // release before locking pet_store
+    let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+    let spent = pet_store.data().tokens_spent;
+    let available = lifetime_saved.saturating_sub(spent);
+    pet_store.unlock_pet(&pet_id, available)
+}
+
+/// Called after a confirmed Stripe purchase — marks pet owned without spending coins.
+#[tauri::command]
+fn mark_pet_purchased(pet_id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+    pet_store.mark_pet_purchased(&pet_id);
+    Ok(())
+}
+
+#[tauri::command]
+fn equip_pet(pet_id: String, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<(), String> {
+    {
+        let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        pet_store.equip_pet(&pet_id)?;
+    }
+    if let Some(w) = app.get_webview_window("pet") { let _ = w.show(); }
+    let _ = app.emit("pet-equipped", serde_json::json!({ "petId": pet_id }));
+    Ok(())
+}
+
+#[tauri::command]
+fn unlock_skin(pet_id: String, skin_id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+    let lifetime_saved = stats.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0);
+    drop(stats);
+    let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+    let spent = pet_store.data().tokens_spent;
+    let available = lifetime_saved.saturating_sub(spent);
+    pet_store.unlock_skin(&pet_id, &skin_id, available)
+}
+
+#[tauri::command]
+fn equip_skin(pet_id: String, skin_id: String, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<(), String> {
+    {
+        let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        pet_store.equip_skin(&pet_id, &skin_id)?;
+    }
+    let _ = app.emit("skin-equipped", serde_json::json!({ "petId": pet_id, "skinId": skin_id }));
+    Ok(())
+}
+
+#[tauri::command]
+fn set_pet_settings(settings: pet_store::PetSettings, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<(), String> {
+    {
+        let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        pet_store.set_settings(settings.clone());
+    }
+    let _ = app.emit("pet-settings-updated", serde_json::to_value(&settings).unwrap_or_default());
+    Ok(())
+}
+
+#[tauri::command]
+fn record_optimization(source: String, original_tokens: u64, optimized_tokens: u64, state: tauri::State<'_, AppState>, app: AppHandle) {
+    let saved = original_tokens.saturating_sub(optimized_tokens);
+    let prev_total = {
+        let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+        store.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0)
+    };
+    {
+        let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+        store.record_optimization(&source, original_tokens, optimized_tokens);
+    }
+    // 1 coin per optimization call regardless of tokens saved
+    {
+        let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        pet_store.add_coins(1);
+    }
+    if saved > 0 {
+        // Feed the pet
+        let total = {
+            let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+            store.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0)
+        };
+        let _ = app.emit("pet-fed", serde_json::json!({
+            "saved": saved,
+            "totalSaved": total,
+            "source": source,
+        }));
+        // Milestone: every time coin balance crosses UNLOCK_COST_PET boundary
+        let prev_coins = {
+            let pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+            pet_store.coin_balance().saturating_sub(1) // before this coin
+        };
+        let new_coins = {
+            let pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+            pet_store.coin_balance()
+        };
+        let prev_unlocks = prev_coins / pet_store::UNLOCK_COST_PET;
+        let new_unlocks = new_coins / pet_store::UNLOCK_COST_PET;
+        if new_unlocks > prev_unlocks {
+            let _ = app.emit("pet-milestone", serde_json::json!({
+                "kind": "unlock-available",
+                "text": format!("New unlock available! ({} coins)", new_coins),
+            }));
+        }
+    }
+}
+
+/// Called from popup.js when it detects a saveable tool result during monitoring.
+/// Adds 1 coin and fires pet-fed without touching stats (avoids double-counting).
+#[tauri::command]
+fn pet_work_detected(state: tauri::State<'_, AppState>, app: AppHandle, saved_estimate: u64) {
+    {
+        let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        pet_store.add_coins(1);
+        let coins = pet_store.coin_balance();
+        let prev_coins = coins.saturating_sub(1);
+        if coins / pet_store::UNLOCK_COST_PET > prev_coins / pet_store::UNLOCK_COST_PET {
+            let _ = app.emit("pet-milestone", serde_json::json!({
+                "kind": "unlock-available",
+                "text": format!("New unlock available! ({} coins)", coins),
+            }));
+        }
+    }
+    let total = {
+        let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+        store.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0)
+    };
+    let _ = app.emit("pet-fed", serde_json::json!({
+        "saved": saved_estimate,
+        "totalSaved": total,
+        "source": "monitor",
+    }));
 }
 
 #[tauri::command]
@@ -1787,6 +2010,35 @@ pub fn run() {
                 .visible(false)
                 .build()?;
 
+            // ── Floating pet companion window (Phase 2) ──
+            // Shimeji-style large pet (~200px) in a 240×260 transparent
+            // always-on-top window pinned to the bottom-right of the screen.
+            let pet_w = 240.0;
+            let pet_h = 260.0;
+            let monitor_h = monitor.size().height as f64 / monitor.scale_factor();
+            let pet_x = (screen_width - pet_w - 24.0) as f64;
+            let pet_y = (monitor_h - pet_h - 60.0) as f64;
+            let pet_visible = {
+                let st = app.state::<AppState>();
+                let pet_store = st.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+                pet_store.data().equipped_pet.is_some()
+            };
+            let _pet_win = WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("pet.html".into()))
+                .title("Terse Pet")
+                .inner_size(pet_w, pet_h)
+                .position(pet_x, pet_y)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible_on_all_workspaces(true)
+                .visible(pet_visible)
+                .build()?;
+
             // macOS: force transparent bg + rounded corners on both windows
             #[cfg(target_os = "macos")]
             {
@@ -2098,8 +2350,21 @@ pub fn run() {
             navigate_to_stats,
             navigate_back,
             record_optimization,
+            // Pet commands (Phase 1)
+            get_pet_state,
+            pick_starter_pet,
+            unlock_pet,
+            mark_pet_purchased,
+            equip_pet,
+            unlock_skin,
+            equip_skin,
+            set_pet_settings,
+            // Pet window control (Phase 2)
+            show_pet_window,
+            hide_pet_window,
             check_ax_permission,
             request_accessibility,
+            pet_work_detected,
             debug_log,
             emit_popup_update,
             send_enter,

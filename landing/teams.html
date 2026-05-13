@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-LNCSLGTN76');</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terse Cloud — Team Token Analytics</title>
+  <meta name="description" content="Visibility and control over your team's AI coding costs. See who's using what, how much is saved, and where tokens are wasted — across every tool.">
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32">
+  <link rel="icon" type="image/png" href="/favicon-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--ac3:#a7f3d0;
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+      --danger:#fda4af;--dangerd:rgba(253,164,175,0.12);
+    }
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh}
+    a{color:inherit;text-decoration:none}
+    .mono{font-family:'JetBrains Mono','SF Mono',Menlo,monospace}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    nav{position:sticky;top:0;z-index:100;padding:14px 40px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
+    .logo-icon{width:32px;height:32px;background:var(--acd);border:1px solid var(--acm);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ac);font-weight:800;font-size:14px}
+    .nav-links{display:flex;gap:28px}
+    .nav-links a{color:var(--t3);font-size:14px;font-weight:500;transition:color .2s}
+    .nav-links a:hover{color:var(--t1)}
+    .nav-right{display:flex;gap:14px;align-items:center;font-size:13px}
+    #nav-user{display:flex;align-items:center;gap:10px}
+    #nav-avatar{width:28px;height:28px;border-radius:50%;border:1px solid var(--bd)}
+    #nav-email{font-size:12px;color:var(--t3)}
+    @media(max-width:680px){.nav-links{display:none}nav{padding:12px 20px}}
+
+    main{max-width:1200px;margin:0 auto;padding:48px 40px 100px}
+    @media(max-width:680px){main{padding:32px 20px 60px}}
+    h1{font-size:32px;font-weight:800;letter-spacing:-1px;margin-bottom:6px}
+    h2{font-size:16px;font-weight:700;margin-bottom:14px;color:var(--t2)}
+    .subhead{color:var(--t3);font-size:14px;margin-bottom:32px}
+
+    .card{background:var(--bg1);border:1px solid var(--bd);border-radius:14px;padding:22px;margin-bottom:18px}
+    .card h2{margin-bottom:18px}
+
+    .input,select,textarea{background:var(--bg0);border:1px solid var(--bd);border-radius:9px;padding:10px 13px;color:var(--t1);font-family:inherit;font-size:14px;width:100%;outline:none;transition:border-color .2s}
+    .input:focus,select:focus,textarea:focus{border-color:var(--acm)}
+    label{display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+    .form-row{margin-bottom:16px}
+    .btn{padding:10px 22px;background:var(--ac);color:var(--bg0);border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+    .btn:hover{opacity:.9}
+    .btn-ghost{background:transparent;color:var(--t1);border:1px solid var(--bd)}
+    .btn-ghost:hover{background:var(--sf)}
+    .btn-danger{background:var(--dangerd);color:var(--danger);border:1px solid rgba(253,164,175,0.3)}
+    .btn-sm{padding:6px 12px;font-size:12px}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+    .stat{background:var(--bg1);border:1px solid var(--bd);border-radius:12px;padding:18px}
+    .stat-label{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+    .stat-val{font-size:30px;font-weight:800;margin-top:6px;letter-spacing:-1px}
+    .stat-val.acc{color:var(--ac)}
+    .stat-sub{font-size:12px;color:var(--t3);margin-top:4px}
+
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+    @media(max-width:780px){.row{grid-template-columns:1fr}}
+
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{text-align:left;padding:10px 12px;color:var(--t3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--bd)}
+    td{padding:11px 12px;border-bottom:1px solid var(--bd);color:var(--t2)}
+    tr:last-child td{border-bottom:none}
+    td.acc{color:var(--ac);font-weight:700;font-variant-numeric:tabular-nums}
+    .empty{color:var(--t3);font-size:13px;padding:20px;text-align:center}
+
+    .token-pill{background:var(--bg0);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:10px;margin-bottom:8px;word-break:break-all}
+    .token-pill .action{margin-left:auto;color:var(--ac);font-size:11px;cursor:pointer;flex-shrink:0;font-weight:600}
+    .token-pill .action.danger{color:var(--danger)}
+    .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;background:var(--acd);color:var(--ac)}
+    .badge.tool{background:var(--sf);color:var(--t2)}
+    .badge.owner-badge{background:rgba(110,231,183,0.15);color:var(--ac)}
+    .badge.member-badge{background:var(--sf);color:var(--t3)}
+
+    .period-tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg1);border:1px solid var(--bd);border-radius:10px;padding:4px;width:fit-content}
+    .period-tab{padding:6px 14px;font-size:13px;color:var(--t3);cursor:pointer;border-radius:7px;transition:all .15s}
+    .period-tab.active{background:var(--acd);color:var(--ac)}
+
+    .alert-box{background:rgba(253,164,175,0.08);border:1px solid rgba(253,164,175,0.25);border-radius:10px;padding:12px 16px;margin-bottom:8px;font-size:13px;color:var(--danger)}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--ac);border-radius:10px;padding:11px 20px;color:var(--ac);font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
+    .toast.show{opacity:1}
+
+    .chart-wrap{position:relative;height:240px}
+    .hidden{display:none!important}
+    .loading{color:var(--t3);text-align:center;padding:60px;font-size:14px}
+
+    /* Auth gate */
+    #auth-gate{display:flex;align-items:center;justify-content:center;min-height:70vh;flex-direction:column;gap:16px;text-align:center}
+    #auth-gate h1{font-size:26px}
+    #auth-gate p{color:var(--t3);font-size:14px;max-width:360px}
+
+    /* Team list cards */
+    .team-card{background:var(--bg1);border:1px solid var(--bd);border-radius:14px;padding:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:border-color .2s;text-decoration:none}
+    .team-card:hover{border-color:var(--acm)}
+    .team-card-info h3{font-size:15px;font-weight:700;margin-bottom:4px}
+    .team-card-info p{font-size:12px;color:var(--t3)}
+
+    /* Edit modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+    .modal{background:var(--bg1);border:1px solid var(--bdl);border-radius:16px;padding:28px;width:min(480px,94vw);position:relative}
+    .modal h2{font-size:18px;margin-bottom:20px}
+    .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;line-height:1}
+    .modal-close:hover{color:var(--t1)}
+
+    .info-banner{background:var(--acd);border:1px solid var(--acm);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--ac);margin-bottom:16px}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/teams" style="color:var(--ac)">Cloud</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <div class="nav-right">
+    <div id="nav-user" class="hidden">
+      <img id="nav-avatar" src="" alt="">
+      <span id="nav-email"></span>
+      <button class="btn btn-ghost btn-sm" onclick="clerkSignOut()">Sign out</button>
+    </div>
+    <button id="nav-signin-btn" class="btn btn-ghost btn-sm hidden" onclick="openSignIn()">Sign in</button>
+  </div>
+</nav>
+
+<main>
+  <!-- Auth gate: shown when not signed in -->
+  <div id="auth-gate" class="hidden">
+    <div class="logo-icon" style="width:64px;height:64px;font-size:30px;border-radius:16px">T</div>
+    <h1 style="font-size:clamp(32px,5vw,52px);font-weight:900;letter-spacing:-2px">Terse <span class="gradient-text">Cloud</span></h1>
+    <p style="color:var(--t3);font-size:15px;max-width:400px;line-height:1.65">Team token analytics — by developer, project, and tool. Sign in to create or view your team dashboard.</p>
+    <button class="btn" style="font-size:15px;padding:12px 28px" onclick="openSignIn()">Sign in to continue</button>
+  </div>
+
+  <!-- Team list view -->
+  <section id="list-view" class="hidden">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px">Terse <span class="gradient-text">Cloud</span></h1>
+        <p class="subhead" style="margin-bottom:0">Your teams and token analytics</p>
+      </div>
+      <button class="btn" onclick="showCreateModal()">+ New team</button>
+    </div>
+    <div id="teams-list"><div class="loading">Loading teams…</div></div>
+  </section>
+
+  <!-- Dashboard view -->
+  <section id="dashboard-view" class="hidden">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 id="team-name-h" style="font-size:clamp(24px,3.5vw,36px);font-weight:900;letter-spacing:-1px">Team</h1>
+        <p class="subhead" style="margin-bottom:0" id="team-meta">—</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span id="role-badge" class="badge"></span>
+        <button class="btn btn-ghost btn-sm" id="edit-team-btn" style="display:none" onclick="showEditModal()">Edit team</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyText(window.location.href)">Copy link</button>
+        <button class="btn btn-ghost btn-sm" onclick="goBack()">← All teams</button>
+      </div>
+    </div>
+
+    <div id="member-info-banner" class="info-banner hidden">
+      You're viewing your personal stats for this team. Contact the owner to see team-wide analytics.
+    </div>
+
+    <div class="period-tabs">
+      <div class="period-tab" data-period="day">24h</div>
+      <div class="period-tab active" data-period="week">7 days</div>
+      <div class="period-tab" data-period="month">30 days</div>
+      <div class="period-tab" data-period="year">1 year</div>
+    </div>
+
+    <div id="alerts-block" class="hidden" style="margin-bottom:18px"></div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">Tokens saved</div><div class="stat-val acc mono" id="kpi-saved">—</div><div class="stat-sub" id="kpi-saved-sub">—</div></div>
+      <div class="stat"><div class="stat-label">USD saved (est.)</div><div class="stat-val acc mono" id="kpi-dollars">—</div><div class="stat-sub">Blended $3/1M input tokens</div></div>
+      <div class="stat"><div class="stat-label">Save rate</div><div class="stat-val acc mono" id="kpi-saverate">—</div><div class="stat-sub">tokens compressed</div></div>
+      <div class="stat"><div class="stat-label">Active developers</div><div class="stat-val mono" id="kpi-devs">—</div><div class="stat-sub" id="kpi-devs-sub">in period</div></div>
+      <div class="stat"><div class="stat-label">Coverage</div><div class="stat-val mono" id="kpi-coverage">—</div><div class="stat-sub" id="kpi-coverage-sub">sending data</div></div>
+      <div class="stat"><div class="stat-label">Total events</div><div class="stat-val mono" id="kpi-events">—</div><div class="stat-sub">Optimizations recorded</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Daily savings <span style="font-size:12px;font-weight:400;color:var(--t3);margin-left:8px">bars = tokens · line = save rate %</span></h2>
+      <div class="chart-wrap"><canvas id="daily-chart"></canvas></div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h2>By developer</h2>
+        <div id="by-dev"></div>
+      </div>
+      <div class="card">
+        <h2>By tool</h2>
+        <div id="by-tool"></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h2>By project</h2>
+        <div id="by-project"></div>
+      </div>
+      <div class="card">
+        <h2>By model</h2>
+        <div id="by-model"></div>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:480px">
+      <h2>By optimization mode</h2>
+      <div id="by-mode"></div>
+    </div>
+
+    <!-- Management section (owner only) -->
+    <div id="management-section" class="hidden">
+      <div class="row">
+        <div class="card">
+          <h2>Members <span class="badge tool" id="seats-badge">— seats</span></h2>
+          <div id="members-list"></div>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <input class="input" id="new-member-email" placeholder="developer@company.com">
+            <button class="btn btn-sm" id="add-member-btn">Invite</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Team tokens <span class="badge tool" id="token-count">—</span></h2>
+          <p style="color:var(--t3);font-size:12px;margin-bottom:14px">Paste a token into each developer's Terse client (Mac, Windows, Chrome, VS Code) to start collecting analytics.</p>
+          <div id="tokens-list"></div>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <input class="input" id="new-token-label" placeholder="label (e.g. backend-team)">
+            <button class="btn btn-sm" id="new-token-btn">Mint</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:transparent;border-style:dashed">
+        <h2>Client setup</h2>
+        <p style="color:var(--t3);font-size:13px;margin-bottom:14px">Each developer pastes a team token into their Terse client. The token is shown once on creation — copy from the row above or mint a fresh one.</p>
+        <pre class="token-pill" style="display:block;white-space:pre-wrap;font-family:'JetBrains Mono',monospace;font-size:12px" id="setup-snippet"># Mac / Windows (Tauri)
+mkdir -p ~/.terse && echo '{"team_token":"YOUR_TOKEN","user_email":"you@company.com"}' > ~/.terse/cloud.json
+
+# VS Code — Preferences → Settings → search "Terse"
+# Terse: Team Token   →  paste token
+# Terse: Team Email   →  your email
+
+# Chrome extension — Options → Terse Cloud → paste token + email</pre>
+      </div>
+
+      <div class="card" style="border-color:rgba(253,164,175,0.2);background:rgba(253,164,175,0.02)">
+        <h2 style="color:var(--danger)">Danger zone</h2>
+        <p style="color:var(--t3);font-size:13px;margin-bottom:14px">Permanently delete this team and all its data. This cannot be undone.</p>
+        <button class="btn btn-danger" onclick="deleteTeam()">Delete team</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Clerk sign-in modal -->
+<div id="clerk-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);backdrop-filter:blur(12px);align-items:center;justify-content:center">
+  <div style="position:relative;width:min(440px,94vw)">
+    <button onclick="closeSignInModal()" style="position:absolute;top:-44px;right:0;background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center">&times;</button>
+    <div id="clerk-mount"></div>
+  </div>
+</div>
+
+<!-- Edit team modal -->
+<div id="edit-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditModal()">&times;</button>
+    <h2>Edit team</h2>
+    <div class="form-row">
+      <label>Team name</label>
+      <input class="input" id="edit-name" placeholder="Acme Engineering">
+    </div>
+    <div class="form-row">
+      <label>Company (optional)</label>
+      <input class="input" id="edit-company" placeholder="Acme Inc.">
+    </div>
+    <div class="form-row">
+      <label>Seats</label>
+      <input class="input" id="edit-seats" type="number" min="1" max="500" placeholder="5">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+      <button class="btn" onclick="saveTeamEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create team modal -->
+<div id="create-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+    <h2>Create a team</h2>
+    <div class="form-row">
+      <label>Team name</label>
+      <input class="input" id="create-name" placeholder="Acme Engineering">
+    </div>
+    <div class="form-row">
+      <label>Company (optional)</label>
+      <input class="input" id="create-company" placeholder="Acme Inc.">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeCreateModal()">Cancel</button>
+      <button class="btn" id="create-submit-btn" onclick="submitCreateTeam()">Create team</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script
+  async
+  crossorigin="anonymous"
+  data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck"
+  src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+  type="text/javascript"
+></script>
+<script>
+const API = window.location.origin;
+const $ = id => document.getElementById(id);
+const toast = (msg, ms=2500) => {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('show'), ms);
+};
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+
+const path = window.location.pathname;
+const teamId = path.startsWith('/teams/') ? path.replace(/^\/teams\//, '').split('?')[0].split('#')[0] : null;
+let currentPeriod = 'week';
+let chart = null;
+let currentTeam = null;
+let currentUser = null;
+
+// ── Clerk ──
+const clerkAppearance = {
+  variables: {
+    colorPrimary:'#6ee7b7', colorBackground:'#0f0e1a', colorText:'#ffffff',
+    colorTextSecondary:'rgba(255,255,255,0.55)', colorInputBackground:'#1a1830',
+    colorInputText:'#ffffff', colorDanger:'#ff6b6b', borderRadius:'12px',
+    fontFamily:"'Inter',-apple-system,sans-serif", fontSize:'14px',
+  },
+  elements: {
+    card:{background:'#0f0e1a',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'20px',boxShadow:'0 24px 80px rgba(0,0,0,0.5)',padding:'32px'},
+    formButtonPrimary:{background:'linear-gradient(135deg,#6ee7b7 0%,#34d399 100%)',borderRadius:'10px',color:'#0f0e1a',fontWeight:'600'},
+    socialButtonsBlockButton:{background:'#1a1830',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'#fff'},
+    formFieldInput:{background:'#1a1830',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'#fff'},
+    footerActionLink:{color:'#6ee7b7',fontWeight:'600'},
+  }
+};
+
+window.addEventListener('load', async () => {
+  if (!window.Clerk) return;
+  await window.Clerk.load();
+  window.Clerk.addListener(onAuthChange);
+  onAuthChange();
+});
+
+function onAuthChange() {
+  const user = window.Clerk?.user;
+  currentUser = user || null;
+  if (user) {
+    show('nav-user');
+    hide('nav-signin-btn');
+    $('nav-avatar').src = user.imageUrl || '';
+    $('nav-email').textContent = user.primaryEmailAddress?.emailAddress || '';
+    closeSignInModal();
+    if (teamId) {
+      loadDashboard();
+    } else {
+      showListView();
+    }
+  } else {
+    hide('nav-user');
+    show('nav-signin-btn');
+    hide('list-view');
+    hide('dashboard-view');
+    show('auth-gate');
+  }
+}
+
+function openSignIn() {
+  const modal = $('clerk-modal');
+  modal.style.display = 'flex';
+  $('clerk-mount').innerHTML = '';
+  window.Clerk.mountSignIn($('clerk-mount'), { appearance: clerkAppearance });
+  modal.onclick = e => { if (e.target === modal) closeSignInModal(); };
+}
+function closeSignInModal() {
+  $('clerk-modal').style.display = 'none';
+  try { window.Clerk.unmountSignIn($('clerk-mount')); window.Clerk.unmountSignUp($('clerk-mount')); } catch{}
+}
+function clerkSignOut() { window.Clerk.signOut(); }
+
+// ── Helpers ──
+function fmt(n) {
+  n = Number(n||0);
+  if (n>=1e9) return (n/1e9).toFixed(1)+'B';
+  if (n>=1e6) return (n/1e6).toFixed(1)+'M';
+  if (n>=1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toLocaleString();
+}
+function labelFor(p){return p==='day'?'24h':p==='week'?'7 days':p==='month'?'30 days':'1 year';}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function userEmail(){return currentUser?.primaryEmailAddress?.emailAddress || '';}
+function copyText(txt){navigator.clipboard.writeText(txt).catch(()=>{}); toast('Copied to clipboard');}
+
+// Get a short-lived Clerk session JWT to send in Authorization header
+async function authHeaders(extra={}) {
+  const token = await window.Clerk?.session?.getToken();
+  return { ...extra, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+}
+// email QS — only used for member-row backfill on the backend (no user ID in URL)
+function emailQS(){return `email=${encodeURIComponent(userEmail())}`;}
+
+function goBack(){window.history.pushState({},'','/teams'); teamId && location.assign('/teams');}
+
+// ── Team list ──
+async function showListView() {
+  hide('auth-gate'); hide('dashboard-view');
+  show('list-view');
+  const r = await fetch(`${API}/api/cloud/teams?${emailQS()}`, { headers: await authHeaders() });
+  if (!r.ok){$('teams-list').innerHTML='<div class="empty">Failed to load teams.</div>';return;}
+  const {teams} = await r.json();
+  if(!teams||!teams.length){
+    $('teams-list').innerHTML=`
+      <div style="text-align:center;padding:60px 0">
+        <p style="color:var(--t3);font-size:14px;margin-bottom:20px">No teams yet. Create one to start collecting analytics.</p>
+        <button class="btn" onclick="showCreateModal()">+ Create your first team</button>
+      </div>`;
+    return;
+  }
+  $('teams-list').innerHTML = teams.map(t=>`
+    <a class="team-card" href="/teams/${t.id}" style="display:flex;margin-bottom:12px">
+      <div class="team-card-info">
+        <h3>${escapeHtml(t.name)} <span class="badge ${t.is_owner?'owner-badge':'member-badge'}">${t.member_role||'owner'}</span></h3>
+        <p>${t.company?escapeHtml(t.company)+' · ':''}<span class="mono" style="font-size:11px">${escapeHtml(t.id)}</span></p>
+      </div>
+      <span style="color:var(--t3);font-size:20px;margin-left:auto;align-self:center">›</span>
+    </a>`).join('');
+}
+
+// ── Create team modal ──
+function showCreateModal(){$('create-name').value='';$('create-company').value='';show('create-modal');}
+function closeCreateModal(){hide('create-modal');}
+
+async function submitCreateTeam(){
+  const name = $('create-name').value.trim();
+  const company = $('create-company').value.trim()||null;
+  if(!name) return toast('Enter a team name');
+  const btn = $('create-submit-btn'); btn.disabled=true; btn.textContent='Creating…';
+  const r = await fetch(`${API}/api/cloud/teams`,{
+    method:'POST',
+    headers: await authHeaders({'Content-Type':'application/json'}),
+    body:JSON.stringify({ownerEmail:userEmail(),name,company}),
+  });
+  btn.disabled=false; btn.textContent='Create team';
+  const data = await r.json();
+  if(!r.ok) return toast(data.error||'Create failed');
+  // Store the new token (shown once)
+  try{localStorage.setItem(`terse_cloud_token_${data.team.id}`, data.token);}catch{}
+  closeCreateModal();
+  window.location.href = `/teams/${data.team.id}`;
+}
+
+// ── Dashboard ──
+async function loadDashboard(){
+  hide('auth-gate'); hide('list-view');
+  show('dashboard-view');
+
+  const url = `${API}/api/cloud/teams/${teamId}/stats?period=${currentPeriod}&${emailQS()}`;
+  const r = await fetch(url, { headers: await authHeaders() });
+  if(r.status===401||r.status===403){show('auth-gate');hide('dashboard-view');toast('Not authorized for this team');return;}
+  if(!r.ok){toast('Failed to load dashboard');return;}
+  const data = await r.json();
+  currentTeam = data.team;
+
+  $('team-name-h').textContent = data.team.name;
+  $('team-meta').textContent = [data.team.company, `team/${data.team.slug}`].filter(Boolean).join(' · ');
+  $('kpi-saved').textContent = fmt(data.summary.total_tokens_saved);
+  $('kpi-saved-sub').textContent = `of ${fmt(data.summary.total_tokens_in)} in`;
+  $('kpi-dollars').textContent = '$' + (data.summary.dollars_saved||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const saveRate = data.summary.total_tokens_in > 0
+    ? ((data.summary.total_tokens_saved / data.summary.total_tokens_in) * 100).toFixed(1)
+    : '0.0';
+  $('kpi-saverate').textContent = saveRate + '%';
+  $('kpi-devs').textContent = data.summary.active_developers;
+  $('kpi-devs-sub').textContent = `in last ${labelFor(currentPeriod)}`;
+  const totalMembers = data.summary.total_members;
+  if(totalMembers != null){
+    $('kpi-coverage').textContent = `${data.summary.active_developers}/${totalMembers}`;
+    $('kpi-coverage-sub').textContent = `of ${totalMembers} member${totalMembers===1?'':'s'} active`;
+  } else {
+    $('kpi-coverage').textContent = data.summary.active_developers;
+    $('kpi-coverage-sub').textContent = 'sending data';
+  }
+  $('kpi-events').textContent = fmt(data.summary.total_events);
+
+  renderTable('by-dev', data.by_developer,
+    ['user_email','tokens_in','tokens_saved','save_rate','cost_usd'],
+    ['Developer','Input','Saved','Rate','Cost est.'], {computeSaveRate:true, computeCost:true});
+  renderTable('by-tool', data.by_tool,
+    ['tool','tokens_in','tokens_saved','save_rate'],
+    ['Tool','Input','Saved','Rate'], {computeSaveRate:true});
+  renderTable('by-project', data.by_project,
+    ['project','tokens_in','tokens_saved','save_rate'],
+    ['Project','Input','Saved','Rate'], {computeSaveRate:true});
+  renderTable('by-model', data.by_model||[],
+    ['model','tokens_in','tokens_saved','save_rate'],
+    ['Model','Input','Saved','Rate'], {computeSaveRate:true});
+  renderTable('by-mode', data.by_mode||[],
+    ['mode','events','tokens_in','tokens_saved'],
+    ['Mode','Events','Input','Saved']);
+  renderDaily(data.daily);
+
+  const isOwner = data.role === 'owner';
+  const roleBadge = $('role-badge');
+  roleBadge.textContent = isOwner ? 'Owner' : 'Member';
+  roleBadge.className = 'badge ' + (isOwner ? 'owner-badge' : 'member-badge');
+
+  if(isOwner){
+    show('management-section');
+    $('edit-team-btn').style.display = '';
+    hide('member-info-banner');
+    $('seats-badge').textContent = `${data.team.seats} seats`;
+    // Load members + tokens
+    const r2 = await fetch(`${API}/api/cloud/teams/${teamId}?${emailQS()}`, { headers: await authHeaders() });
+    if(r2.ok){
+      const d2 = await r2.json();
+      renderMembers(d2.members||[]);
+      renderTokens(d2.tokens||[]);
+    }
+    loadAlerts();
+  } else {
+    hide('management-section');
+    $('edit-team-btn').style.display = 'none';
+    show('member-info-banner');
+  }
+}
+
+// ── Alerts (owner only) ──
+async function loadAlerts(){
+  try{
+    const r = await fetch(`${API}/api/cloud/teams/${teamId}/alerts`, { headers: await authHeaders() });
+    if(!r.ok) return;
+    const {alerts} = await r.json();
+    const el = $('alerts-block');
+    if(alerts?.length){
+      el.classList.remove('hidden');
+      el.innerHTML = alerts.map(a=>`<div class="alert-box">${escapeHtml(a.message)}</div>`).join('');
+    } else el.classList.add('hidden');
+  }catch{}
+}
+
+// ── Tables ──
+function renderTable(targetId, rows, keys, headers, opts={}){
+  const el = $(targetId);
+  if(!rows||!rows.length){el.innerHTML='<div class="empty">No data yet — install a client and start optimizing.</div>';return;}
+  const augmented = rows.map(r=>{
+    const out = {...r};
+    if(opts.computeSaveRate) out.save_rate = r.tokens_in > 0 ? ((r.tokens_saved/r.tokens_in)*100).toFixed(1)+'%' : '—';
+    if(opts.computeCost) out.cost_usd = '$' + ((r.tokens_in/1_000_000)*3).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    return out;
+  });
+  el.innerHTML=`<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${
+    augmented.map(r=>`<tr>${keys.map((k,i)=>{
+      const v=r[k];
+      const isAcc = k==='tokens_saved'||k==='save_rate'||k==='cost_usd';
+      const cell = typeof v === 'number' ? fmt(v) : escapeHtml(v??'—');
+      return `<td${isAcc?' class="acc"':''}>${cell}</td>`;
+    }).join('')}</tr>`).join('')
+  }</tbody></table>`;
+}
+
+// ── Members ──
+function renderMembers(members){
+  const el = $('members-list');
+  if(!members.length){el.innerHTML='<div class="empty">Just you so far.</div>';return;}
+  el.innerHTML = members.map(m=>`
+    <div class="token-pill">
+      <span>${escapeHtml(m.user_email)} <span class="badge ${m.role==='owner'?'owner-badge':'tool'}" style="margin-left:6px">${m.role}</span></span>
+      ${m.role!=='owner'?`<a class="action danger" onclick="removeMember('${m.id}')">Remove</a>`:''}
+    </div>`).join('');
+}
+
+window.removeMember = async id => {
+  if(!confirm('Remove this member from the team?')) return;
+  const r = await fetch(`${API}/api/cloud/teams/${teamId}/members/${id}`,{method:'DELETE',headers:await authHeaders()});
+  if(r.ok) loadDashboard();
+  else toast('Failed to remove member');
+};
+
+$('add-member-btn')?.addEventListener('click', async()=>{
+  const email = $('new-member-email').value.trim();
+  if(!email) return;
+  const r = await fetch(`${API}/api/cloud/teams/${teamId}/members`,{
+    method:'POST',
+    headers: await authHeaders({'Content-Type':'application/json'}),
+    body:JSON.stringify({email}),
+  });
+  if(r.ok){$('new-member-email').value='';loadDashboard();}
+  else toast('Failed to add member');
+});
+
+// ── Tokens ──
+function renderTokens(tokens){
+  const el = $('tokens-list');
+  $('token-count').textContent=`${tokens.length} active`;
+  let justMinted='';
+  try{justMinted=localStorage.getItem(`terse_cloud_token_${teamId}`);}catch{}
+  let html='';
+  if(justMinted){
+    html+=`<div class="token-pill" style="border-color:var(--ac);background:var(--acd)">
+      <span class="mono" style="font-size:12px"><strong>New token (shown once):</strong> ${escapeHtml(justMinted)}</span>
+      <a class="action" onclick="copyToken('${justMinted}')">Copy</a>
+    </div>`;
+  }
+  if(!tokens.length){el.innerHTML=html||'<div class="empty">No tokens yet.</div>';return;}
+  html+=tokens.map(t=>`
+    <div class="token-pill">
+      <span>${escapeHtml(t.label||'token')} <span style="color:var(--t3);font-size:11px">· ${(t.created_at||'').slice(0,10)}${t.last_used_at?' · used '+t.last_used_at.slice(0,10):' · never used'}</span></span>
+      <a class="action danger" onclick="revokeToken('${t.id}')">Revoke</a>
+    </div>`).join('');
+  el.innerHTML=html;
+}
+
+window.copyToken = txt => { copyText(txt); try{localStorage.removeItem(`terse_cloud_token_${teamId}`);}catch{} };
+window.revokeToken = async id=>{
+  if(!confirm('Revoke this token? Clients using it will stop reporting.')) return;
+  const r = await fetch(`${API}/api/cloud/teams/${teamId}/tokens/${id}`,{method:'DELETE',headers:await authHeaders()});
+  if(r.ok) loadDashboard();
+  else toast('Failed to revoke');
+};
+
+$('new-token-btn')?.addEventListener('click', async()=>{
+  const label = $('new-token-label').value.trim()||'token';
+  const r = await fetch(`${API}/api/cloud/teams/${teamId}/tokens`,{
+    method:'POST',
+    headers: await authHeaders({'Content-Type':'application/json'}),
+    body:JSON.stringify({label}),
+  });
+  if(!r.ok) return toast('Failed to mint token');
+  const d = await r.json();
+  try{localStorage.setItem(`terse_cloud_token_${teamId}`, d.token);}catch{}
+  $('new-token-label').value='';
+  loadDashboard();
+});
+
+// ── Edit team modal ──
+function showEditModal(){
+  if(!currentTeam) return;
+  $('edit-name').value = currentTeam.name||'';
+  $('edit-company').value = currentTeam.company||'';
+  $('edit-seats').value = currentTeam.seats||5;
+  show('edit-modal');
+}
+function closeEditModal(){hide('edit-modal');}
+async function saveTeamEdit(){
+  const name = $('edit-name').value.trim();
+  const company = $('edit-company').value.trim()||null;
+  const seats = parseInt($('edit-seats').value,10)||5;
+  if(!name) return toast('Team name required');
+  const r = await fetch(`${API}/api/cloud/teams/${teamId}`,{
+    method:'PATCH',
+    headers: await authHeaders({'Content-Type':'application/json'}),
+    body:JSON.stringify({name,company,seats}),
+  });
+  if(!r.ok) return toast('Failed to update');
+  closeEditModal();
+  loadDashboard();
+}
+
+// ── Delete team ──
+async function deleteTeam(){
+  if(!confirm(`Delete "${currentTeam?.name||'this team'}"? All data will be permanently removed.`)) return;
+  const r = await fetch(`${API}/api/cloud/teams/${teamId}`,{method:'DELETE',headers:await authHeaders()});
+  if(r.ok) window.location.href='/teams';
+  else toast('Failed to delete team');
+}
+
+// ── Period tabs ──
+document.querySelectorAll('.period-tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.period-tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    currentPeriod = t.dataset.period;
+    if(teamId) loadDashboard();
+  });
+});
+
+// ── Chart ──
+function renderDaily(daily){
+  const ctx = $('daily-chart').getContext('2d');
+  const labels = daily.map(d=>d.date);
+  const saved = daily.map(d=>d.tokens_saved);
+  const ins = daily.map(d=>d.tokens_in);
+  const rates = daily.map(d=>d.tokens_in>0?Math.round((d.tokens_saved/d.tokens_in)*100):0);
+  if(chart) chart.destroy();
+  chart = new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Tokens saved',data:saved,backgroundColor:'rgba(110,231,183,0.80)',borderRadius:4,yAxisID:'y'},
+      {label:'Tokens in',data:ins,backgroundColor:'rgba(255,255,255,0.09)',borderRadius:4,yAxisID:'y'},
+      {type:'line',label:'Save rate %',data:rates,borderColor:'rgba(110,231,183,0.9)',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#6ee7b7',tension:0.35,yAxisID:'y2'},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'rgba(255,255,255,0.45)',font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:'rgba(255,255,255,0.30)',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'rgba(255,255,255,0.30)',font:{size:10},callback:v=>fmt(v)},grid:{color:'rgba(255,255,255,0.04)'}},
+        y2:{position:'right',min:0,max:100,ticks:{color:'rgba(110,231,183,0.5)',font:{size:10},callback:v=>v+'%'},grid:{display:false}},
+      },
+    },
+  });
+}
+
+// Close modals on overlay click
+$('edit-modal').addEventListener('click', e=>{ if(e.target===$('edit-modal')) closeEditModal(); });
+$('create-modal').addEventListener('click', e=>{ if(e.target===$('create-modal')) closeCreateModal(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terse — Live Interactive Demo</title>
+  <meta name="description" content="Try every Terse feature live in your browser — prompt optimizer, agent monitor, model router, git diff compressor, and Token Exchange. No install required.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://www.terseai.org/demo">
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"WebPage","name":"Terse Live Demo","url":"https://www.terseai.org/demo","description":"Interactive demo of all Terse token optimization features — try the prompt optimizer, agent monitor, model router, git diff compressor, and Token Exchange live in your browser."}
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--ac3:#a7f3d0;
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+      --red:#f87171;--yellow:#fbbf24;--blue:#60a5fa;--purple:#a78bfa;
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    .mono{font-family:'JetBrains Mono','SF Mono',Menlo,monospace}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    a{color:inherit;text-decoration:none}
+
+    /* NAV */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 40px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:28px;height:28px;background:var(--acd);border:1px solid var(--acm);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--ac);font-weight:800;font-size:13px}
+    .nav-links{display:flex;gap:22px;align-items:center}
+    .nav-links a{color:var(--t3);font-size:13px;font-weight:500;transition:color .2s}
+    .nav-links a:hover{color:var(--t1)}
+    .demo-pill{background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px}
+    .nav-cta{padding:7px 18px;background:var(--t1);color:var(--bg0);border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s}
+    .nav-cta:hover{opacity:.9}
+
+    /* HERO */
+    .demo-hero{padding:108px 40px 40px;text-align:center;background:var(--bg0);position:relative;overflow:hidden}
+    .demo-hero::before{content:'';position:absolute;top:-180px;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(ellipse,rgba(110,231,183,0.07) 0%,transparent 65%);pointer-events:none}
+    .demo-hero h1{font-size:clamp(34px,5vw,60px);font-weight:900;letter-spacing:-2.5px;line-height:1.05;margin-bottom:12px;position:relative;z-index:1}
+    .demo-hero p{font-size:15px;color:var(--t2);max-width:500px;margin:0 auto 22px;position:relative;z-index:1}
+    .hero-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1}
+    .hero-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:20px;font-size:12px;color:var(--t2)}
+    .chip-dot{width:6px;height:6px;border-radius:50%;background:var(--ac)}
+
+    /* LIVE METRICS BAR */
+    .metrics-bar{position:sticky;top:57px;z-index:90;background:var(--bg1);border-bottom:1px solid var(--bd);padding:0 40px;display:flex;align-items:stretch}
+    .metric-item{display:flex;align-items:center;gap:12px;padding:12px 24px;border-right:1px solid var(--bd);min-width:160px}
+    .metric-item:first-child{padding-left:0}
+    .metric-item:last-child{border-right:none}
+    .metric-icon{width:32px;height:32px;border-radius:8px;background:var(--acd);border:1px solid var(--acm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .metric-text{}
+    .metric-label{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+    .metric-value{font-size:20px;font-weight:800;color:var(--ac);font-variant-numeric:tabular-nums;line-height:1.1;transition:transform .15s}
+    .metric-value.bump{animation:bump .25s ease}
+    @keyframes bump{0%{transform:scale(1)}50%{transform:scale(1.18);color:#fff}100%{transform:scale(1)}}
+    .metrics-live{display:flex;align-items:center;gap:6px;margin-left:auto;padding-left:24px;font-size:11px;color:var(--t3)}
+    .live-dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:ldot 2s ease-in-out infinite}
+    @keyframes ldot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+    /* DEMO BODY */
+    .demo-body{max-width:1380px;margin:0 auto;padding:28px 40px 80px}
+
+    /* TABS */
+    .demo-tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg1);border:1px solid var(--bd);border-radius:12px;padding:5px}
+    .demo-tab-btn{flex:1;padding:9px 14px;background:transparent;border:none;border-radius:8px;color:var(--t3);font-size:13px;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;font-family:inherit}
+    .demo-tab-btn:hover{color:var(--t2);background:var(--sf)}
+    .demo-tab-btn.active{background:var(--bg2);color:var(--t1);border:1px solid var(--bd)}
+    .demo-panel{display:none}
+    .demo-panel.active{display:block}
+
+    /* SHARED BOX */
+    .dbox{background:var(--bg1);border:1px solid var(--bd);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+    .dbox-hdr{padding:11px 16px;border-bottom:1px solid var(--bd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);display:flex;align-items:center;justify-content:space-between;background:hsla(0,0%,100%,0.02)}
+    .dbox-hdr-val{font-size:12px;font-weight:700;color:var(--ac);text-transform:none;letter-spacing:0}
+    .dbox-foot{padding:10px 16px;border-top:1px solid var(--bd);background:var(--bg2);display:flex;align-items:center;gap:10px;flex-shrink:0}
+
+    /* WINDOW CHROME */
+    .win-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02);flex-shrink:0}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .win-title{margin-left:6px;font-size:11px;color:var(--t3);flex:1}
+    .win-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+
+    /* === OPTIMIZER TAB === */
+    .opt-grid{display:grid;grid-template-columns:1fr 240px 1fr;gap:14px;height:540px}
+    .opt-textarea{flex:1;width:100%;background:transparent;border:none;outline:none;padding:16px;font-family:'Inter',-apple-system,sans-serif;font-size:14px;line-height:1.75;color:var(--t1);resize:none}
+    .opt-textarea::placeholder{color:var(--t3)}
+    .opt-output{flex:1;padding:16px;font-size:14px;line-height:1.75;overflow-y:auto;word-break:break-word}
+    .examples-row{padding:9px 14px;border-top:1px solid var(--bd);display:flex;gap:5px;flex-wrap:wrap;background:var(--bg2);align-items:center;flex-shrink:0}
+    .ex-chip{padding:3px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;font-size:11px;color:var(--t2);cursor:pointer;transition:all .12s;font-family:inherit}
+    .ex-chip:hover{border-color:var(--acm);color:var(--ac)}
+    .tok-stat{font-size:12px;color:var(--t2);display:flex;align-items:center;gap:5px}
+    .tok-stat b{font-weight:700;font-variant-numeric:tabular-nums}
+    .pct-pill{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700}
+    .pct-pill.green{background:var(--acd);color:var(--ac)}
+    .pct-pill.dim{background:var(--sf);color:var(--t3)}
+    .saved-label{font-size:11px;font-weight:700;color:var(--ac);margin-left:auto}
+
+    /* Pipeline */
+    .mode-row{display:flex;gap:4px;padding:9px 10px;border-bottom:1px solid var(--bd);flex-shrink:0}
+    .mode-btn{flex:1;padding:6px 6px;background:transparent;border:1px solid var(--bd);border-radius:6px;color:var(--t3);font-size:11px;font-weight:700;cursor:pointer;transition:all .12s;font-family:inherit}
+    .mode-btn:hover{color:var(--t2)}
+    .mode-btn.active{background:var(--acd);border-color:var(--acm);color:var(--ac)}
+    .stage-list{flex:1;overflow-y:auto;padding:8px}
+    .stage-item{display:flex;align-items:flex-start;gap:8px;padding:7px 8px;border-radius:7px;margin-bottom:3px;transition:background .2s;font-size:12px}
+    .stage-item.running{background:rgba(110,231,183,0.07)}
+    .stage-item.done{opacity:.75}
+    .stage-item.skip{opacity:.28}
+    .stage-num{width:18px;height:18px;border-radius:50%;background:var(--sf);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;color:var(--t3);transition:all .2s;margin-top:1px}
+    .stage-item.running .stage-num{background:var(--acm);border-color:var(--ac);color:var(--ac)}
+    .stage-item.done .stage-num{background:var(--acd);border-color:var(--ac);color:var(--ac)}
+    .stage-body{flex:1}
+    .stage-name{font-weight:600;color:var(--t1);font-size:11.5px}
+    .stage-desc{color:var(--t3);font-size:10.5px;margin-top:2px;line-height:1.45}
+    .stage-check{opacity:0;transition:opacity .2s;color:var(--ac);flex-shrink:0;margin-top:1px}
+    .stage-item.done .stage-check{opacity:1}
+    .pipe-summary{padding:10px 12px;border-top:1px solid var(--bd);font-size:11px;color:var(--t3);text-align:center;background:var(--bg2);flex-shrink:0}
+
+    /* Diff highlight */
+    .diff-del{background:rgba(248,113,113,.12);color:var(--red);text-decoration:line-through;border-radius:3px;padding:0 2px}
+    .diff-ins{background:rgba(110,231,183,.1);color:var(--ac);border-radius:3px;padding:0 2px}
+    .diff-fix{background:rgba(96,165,250,.1);color:var(--blue);border-radius:3px;padding:0 2px}
+
+    /* === AGENT MONITOR TAB === */
+    .agent-grid{display:grid;grid-template-columns:1fr 300px;gap:14px;height:560px}
+    .terminal-body{flex:1;overflow-y:auto;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7}
+    .t-line{display:block;margin-bottom:1px}
+    .t-user{color:var(--t1)}
+    .t-user::before{content:'> ';color:var(--ac);font-weight:700}
+    .t-agent{color:var(--t2)}
+    .t-terse{color:var(--ac)}
+    .t-terse::before{content:'[terse] '}
+    .t-tool{color:var(--blue)}
+    .t-tool::before{content:'⚙ '}
+    .t-warn{color:var(--yellow)}
+    .t-warn::before{content:'⚠ '}
+    .t-ok{color:var(--ac)}
+    .t-ok::before{content:'✓ '}
+    .t-cursor{display:inline-block;width:8px;height:14px;background:var(--ac);vertical-align:-2px;animation:blink 1s step-end infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+    .agent-controls{padding:11px 16px;border-top:1px solid var(--bd);background:var(--bg2);display:flex;gap:8px;flex-shrink:0}
+    .ctrl-btn{padding:6px 14px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+    .ctrl-btn:hover{border-color:var(--bdl);color:var(--t1)}
+    .ctrl-btn.pri{background:var(--acd);border-color:var(--acm);color:var(--ac)}
+    .ctrl-btn.pri:hover{background:var(--acm)}
+    .agent-stats-col{display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+    .stat-card{background:var(--bg1);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+    .stat-card-hdr{padding:10px 14px;border-bottom:1px solid var(--bd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3)}
+    .stat-row{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;font-size:12px;border-bottom:1px solid hsla(0,0%,100%,.04)}
+    .stat-row:last-child{border-bottom:none}
+    .sr-label{color:var(--t2)}
+    .sr-val{font-weight:700;font-variant-numeric:tabular-nums;color:var(--t1)}
+    .sr-val.green{color:var(--ac)}.sr-val.red{color:var(--red)}.sr-val.yellow{color:var(--yellow)}
+    .turn-tbl{width:100%;border-collapse:collapse;font-size:11px}
+    .turn-tbl th{color:var(--t3);font-weight:600;padding:5px 8px;text-align:left;border-bottom:1px solid var(--bd)}
+    .turn-tbl td{padding:5px 8px;border-bottom:1px solid hsla(0,0%,100%,.04);color:var(--t2);font-variant-numeric:tabular-nums}
+    .turn-tbl .hl{color:var(--ac);font-weight:700}
+
+    /* === MODEL ROUTER TAB === */
+    .router-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;height:480px}
+    .score-bars{padding:14px 16px;display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto}
+    .sbar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-bottom:4px}
+    .sbar-track{height:5px;background:var(--sf);border-radius:3px;overflow:hidden}
+    .sbar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+    .sbar-fill.pos{background:var(--ac)}
+    .sbar-fill.neg{background:var(--red)}
+    .routing-verdict{margin:0 16px 14px;padding:16px;border-radius:10px;border:1px solid var(--bd);background:var(--bg2);text-align:center;transition:all .3s}
+    .rv-arrow{font-size:11px;color:var(--t3);margin-bottom:6px}
+    .rv-model{font-size:22px;font-weight:900;letter-spacing:-1px;margin-bottom:4px}
+    .rv-price{font-size:12px;color:var(--t3)}
+    .rv-reason{font-size:11px;color:var(--t2);margin-top:8px;background:var(--sf);padding:6px 10px;border-radius:6px}
+    .cost-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 14px}
+    .cost-card{padding:12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);text-align:center;transition:all .3s}
+    .cost-card.sel{border-color:var(--acm);background:var(--acd)}
+    .cost-lbl{font-size:10px;color:var(--t3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+    .cost-val{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+    .cost-sub{font-size:10px;color:var(--t3);margin-top:2px}
+
+    /* === GIT DIFF TAB === */
+    .diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;height:520px}
+    .diff-body{flex:1;overflow-y:auto;padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.65;white-space:pre-wrap;word-break:break-all}
+    .dl{display:block}
+    .dl.add{color:#4ade80;background:rgba(74,222,128,.05)}
+    .dl.del{color:var(--red);background:rgba(248,113,113,.05)}
+    .dl.hdr{color:var(--blue)}
+    .dl.ctx{color:var(--t3)}
+    .dl.meta{color:var(--purple)}
+    .diff-stat-bar{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--bd);background:var(--bg2);font-size:12px;flex-shrink:0;align-items:center}
+    .diff-stat-item{display:flex;align-items:center;gap:5px}
+    .diff-stat-item span:first-child{color:var(--t3)}
+
+    /* === CLOUD TAB === */
+    .cloud-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+    .cloud-card{background:var(--bg1);border:1px solid var(--bd);border-radius:12px;padding:18px 20px}
+    .cloud-card h4{font-size:10px;color:var(--t3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+    .cloud-val{font-size:28px;font-weight:900;letter-spacing:-1px;line-height:1}
+    .cloud-sub{font-size:11px;color:var(--t3);margin-top:4px}
+    .cloud-trend{font-size:11px;color:var(--ac);font-weight:700;margin-top:2px}
+    .cloud-body{display:grid;grid-template-columns:1fr 340px;gap:14px}
+    .listings{background:var(--bg1);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+    .listing-hdr{padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+    .listing-hdr h3{font-size:13px;font-weight:700}
+    .listing-hdr span{font-size:11px;color:var(--t3)}
+    .listing-card{padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .15s}
+    .listing-card:last-child{border-bottom:none}
+    .listing-card:hover{background:var(--sf)}
+    .listing-icon{width:34px;height:34px;border-radius:8px;background:var(--bg2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--t2);flex-shrink:0}
+    .listing-info{flex:1}
+    .listing-name{font-size:13px;font-weight:600;margin-bottom:2px}
+    .listing-meta{font-size:11px;color:var(--t3)}
+    .listing-price{text-align:right}
+    .l-price{font-size:15px;font-weight:800}
+    .l-disc{font-size:11px;color:var(--ac);font-weight:700}
+    .l-orig{font-size:11px;color:var(--t3);text-decoration:line-through}
+    .buy-btn{padding:5px 13px;background:var(--acd);border:1px solid var(--acm);border-radius:6px;color:var(--ac);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap}
+    .buy-btn:hover{background:var(--acm)}
+    .exchange-panel{background:var(--bg1);border:1px solid var(--bd);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+    .exc-hdr{padding:12px 16px;border-bottom:1px solid var(--bd);font-size:13px;font-weight:700}
+    .exc-body{padding:16px;flex:1;display:flex;flex-direction:column;gap:12px}
+    .exc-input-group{display:flex;flex-direction:column;gap:5px}
+    .exc-label{font-size:11px;color:var(--t3);font-weight:600}
+    .exc-input{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;color:var(--t1);font-size:13px;outline:none;font-family:inherit;transition:border-color .15s}
+    .exc-input:focus{border-color:var(--acm)}
+    .exc-slider-row{display:flex;align-items:center;gap:10px}
+    .exc-slider{flex:1;accent-color:var(--ac);cursor:pointer}
+    .exc-slider-val{font-size:13px;font-weight:700;color:var(--ac);width:36px;text-align:right}
+    .exc-cta{padding:11px;background:var(--gradient);border:none;border-radius:8px;color:#000;font-size:13px;font-weight:800;cursor:pointer;transition:opacity .15s;font-family:inherit}
+    .exc-cta:hover{opacity:.9}
+    .exc-notice{font-size:11px;color:var(--t3);text-align:center;line-height:1.5}
+
+    /* Activity feed */
+    .activity-feed{background:var(--bg1);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-top:14px}
+    .act-hdr{padding:11px 16px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+    .act-hdr h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3)}
+    .act-item{padding:9px 16px;border-bottom:1px solid hsla(0,0%,100%,.04);display:flex;align-items:center;gap:10px;font-size:12px}
+    .act-item:last-child{border-bottom:none}
+    .act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .act-dot.g{background:var(--ac)}.act-dot.b{background:var(--blue)}.act-dot.y{background:var(--yellow)}
+    .act-text{flex:1;color:var(--t2)}
+    .act-time{color:var(--t3);font-size:10px;white-space:nowrap}
+    .act-save{font-weight:700;color:var(--ac);font-size:11px;white-space:nowrap}
+
+    /* RESPONSIVE */
+    @media(max-width:960px){
+      nav{padding:12px 20px}.demo-hero{padding:88px 20px 32px}
+      .metrics-bar{padding:0 20px;overflow-x:auto}.metric-item{min-width:120px;padding:12px 14px}
+      .demo-body{padding:20px 20px 60px}
+      .demo-tab-btn{font-size:11px;gap:4px;padding:8px 8px}
+      .opt-grid,.agent-grid,.router-grid,.diff-grid{grid-template-columns:1fr;height:auto}
+      .cloud-stats{grid-template-columns:1fr 1fr}.cloud-body{grid-template-columns:1fr}
+      .nav-links{display:none}
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#pipeline">Pipeline</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/demo" style="color:var(--t1)">Demo <span class="demo-pill">LIVE</span></a>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="/" style="padding:7px 14px;border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:600;color:var(--t2);transition:all .15s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='hsla(0,0%,100%,.72)'">← Back</a>
+    <button class="nav-cta" onclick="window.location.href='/#dl'">Download</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="demo-hero">
+  <h1>Try Terse<br><span class="gradient-text">live in your browser.</span></h1>
+  <p>Every feature, fully interactive. No install, no account needed.<br>Share this link — clients can play with everything here.</p>
+  <div class="hero-chips">
+    <span class="hero-chip"><span class="chip-dot"></span>Real optimization engine</span>
+    <span class="hero-chip"><span class="chip-dot"></span>Live token counting</span>
+    <span class="hero-chip"><span class="chip-dot"></span>Agent session simulation</span>
+    <span class="hero-chip"><span class="chip-dot"></span>Token Exchange marketplace</span>
+  </div>
+</div>
+
+<!-- LIVE METRICS BAR -->
+<div class="metrics-bar">
+  <div class="metric-item">
+    <div class="metric-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <div class="metric-text">
+      <div class="metric-label">Tokens Saved</div>
+      <div class="metric-value" id="m-tokens">0</div>
+    </div>
+  </div>
+  <div class="metric-item">
+    <div class="metric-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+    </div>
+    <div class="metric-text">
+      <div class="metric-label">Cost Saved</div>
+      <div class="metric-value" id="m-cost">$0.000</div>
+    </div>
+  </div>
+  <div class="metric-item">
+    <div class="metric-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    </div>
+    <div class="metric-text">
+      <div class="metric-label">Typos Fixed</div>
+      <div class="metric-value" id="m-typos">0</div>
+    </div>
+  </div>
+  <div class="metric-item">
+    <div class="metric-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
+    <div class="metric-text">
+      <div class="metric-label">Compressions</div>
+      <div class="metric-value" id="m-ops">0</div>
+    </div>
+  </div>
+  <div class="metric-item">
+    <div class="metric-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    </div>
+    <div class="metric-text">
+      <div class="metric-label">Best Reduction</div>
+      <div class="metric-value" id="m-best">—</div>
+    </div>
+  </div>
+  <div class="metrics-live">
+    <span class="live-dot"></span>Live session
+  </div>
+</div>
+
+<!-- DEMO BODY -->
+<div class="demo-body">
+
+  <!-- TABS -->
+  <div class="demo-tabs">
+    <button class="demo-tab-btn active" data-tab="optimizer">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      Prompt Optimizer
+    </button>
+    <button class="demo-tab-btn" data-tab="agent">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Agent Monitor
+    </button>
+    <button class="demo-tab-btn" data-tab="router">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+      Model Router
+    </button>
+    <button class="demo-tab-btn" data-tab="diff">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+      Git Diff
+    </button>
+    <button class="demo-tab-btn" data-tab="cloud">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
+      Cloud &amp; Exchange
+    </button>
+  </div>
+
+  <!-- ═══ OPTIMIZER PANEL ═══ -->
+  <div class="demo-panel active" id="panel-optimizer">
+    <div class="opt-grid">
+
+      <!-- Input -->
+      <div class="dbox">
+        <div class="dbox-hdr">
+          Input Prompt
+          <span class="dbox-hdr-val" id="in-tok">0 tok</span>
+        </div>
+        <textarea class="opt-textarea" id="opt-input" placeholder="Type or paste your AI prompt here...
+
+Examples to try:
+• So basically I've been struggling to figure out why my authetication endpoint keeps returning a 500 error, could you please help me?
+• Hey could you maybe wirte a Python function that calculates the factorial of a numbr please?
+• I was just wondering if you could perhaps help me understand how to implement a binary search tree if that makes sense"></textarea>
+        <div class="examples-row">
+          <span style="font-size:10px;color:var(--t3);white-space:nowrap;margin-right:2px">TRY:</span>
+          <button class="ex-chip" data-ex="0">Auth bug</button>
+          <button class="ex-chip" data-ex="1">Factorial fn</button>
+          <button class="ex-chip" data-ex="2">Binary tree</button>
+          <button class="ex-chip" data-ex="3">Typo-heavy</button>
+          <button class="ex-chip" data-ex="4">Verbose agent</button>
+        </div>
+      </div>
+
+      <!-- Pipeline -->
+      <div class="dbox">
+        <div class="dbox-hdr" style="justify-content:center">7-Stage Pipeline</div>
+        <div class="mode-row">
+          <button class="mode-btn" data-mode="soft">Soft</button>
+          <button class="mode-btn active" data-mode="normal">Normal</button>
+          <button class="mode-btn" data-mode="aggressive">Aggr</button>
+        </div>
+        <div class="stage-list" id="stage-list">
+          <!-- populated by JS -->
+        </div>
+        <div class="pipe-summary" id="pipe-summary">Type a prompt to run the pipeline</div>
+      </div>
+
+      <!-- Output -->
+      <div class="dbox">
+        <div class="dbox-hdr">
+          Optimized Output
+          <span class="dbox-hdr-val" id="out-tok" style="color:var(--t3)">—</span>
+        </div>
+        <div class="opt-output" id="opt-output" style="color:var(--t3);font-style:italic">Optimized prompt will appear here...</div>
+        <div class="dbox-foot">
+          <span class="tok-stat"><b id="f-in">—</b> in</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span class="tok-stat"><b id="f-out">—</b> out</span>
+          <span class="pct-pill dim" id="f-pct">—</span>
+          <span class="saved-label" id="f-saved">—</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ AGENT MONITOR PANEL ═══ -->
+  <div class="demo-panel" id="panel-agent">
+    <div class="agent-grid">
+
+      <!-- Terminal -->
+      <div class="dbox">
+        <div class="win-bar">
+          <div class="wd r"></div><div class="wd y"></div><div class="wd g"></div>
+          <span class="win-title">Claude Code — Agent Session</span>
+          <span class="win-badge" id="agent-status">CONNECTED</span>
+        </div>
+        <div class="terminal-body" id="agent-term"></div>
+        <div class="agent-controls">
+          <button class="ctrl-btn pri" id="agent-play-btn" onclick="agentPlay()">▶ Play Session</button>
+          <button class="ctrl-btn" onclick="agentReset()">↺ Reset</button>
+          <span style="margin-left:auto;font-size:11px;color:var(--t3)" id="agent-turn-label">Turn 0 / 3</span>
+        </div>
+      </div>
+
+      <!-- Stats Panel -->
+      <div class="agent-stats-col">
+        <div class="stat-card">
+          <div class="stat-card-hdr">Session Stats</div>
+          <div class="stat-row"><span class="sr-label">Model</span><span class="sr-val">claude-opus-4-6</span></div>
+          <div class="stat-row"><span class="sr-label">Input tokens</span><span class="sr-val green" id="as-in">0</span></div>
+          <div class="stat-row"><span class="sr-label">Output tokens</span><span class="sr-val" id="as-out">0</span></div>
+          <div class="stat-row"><span class="sr-label">Cache hits</span><span class="sr-val green" id="as-cache">0</span></div>
+          <div class="stat-row"><span class="sr-label">Typos fixed</span><span class="sr-val yellow" id="as-typos">0</span></div>
+          <div class="stat-row"><span class="sr-label">Tokens saved</span><span class="sr-val green" id="as-saved">0</span></div>
+          <div class="stat-row"><span class="sr-label">Est. cost</span><span class="sr-val" id="as-cost">$0.000</span></div>
+          <div class="stat-row"><span class="sr-label">Redundant reads</span><span class="sr-val red" id="as-redup">0</span></div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-hdr">Per-Turn Breakdown</div>
+          <table class="turn-tbl" id="turn-tbl">
+            <thead><tr><th>#</th><th>In</th><th>Out</th><th>Saved</th><th>Cost</th></tr></thead>
+            <tbody id="turn-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="stat-card" style="padding:14px 14px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:8px">Terse Recommendations</div>
+          <div id="agent-recs" style="font-size:11px;color:var(--t3)">Run a session to generate recommendations...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MODEL ROUTER PANEL ═══ -->
+  <div class="demo-panel" id="panel-router">
+    <div class="router-grid">
+
+      <!-- Left: Input + Scores -->
+      <div class="dbox">
+        <div class="dbox-hdr">Describe Your Task</div>
+        <div style="padding:14px 16px;border-bottom:1px solid var(--bd);flex-shrink:0">
+          <textarea id="router-input" style="width:100%;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;color:var(--t1);font-size:13px;line-height:1.6;font-family:inherit;outline:none;resize:none;transition:border-color .15s;height:80px" placeholder="e.g. Design a distributed caching system for high traffic..." oninput="routerAnalyze()"></textarea>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            <button class="ex-chip" onclick="routerSetExample(0)">Simple fix</button>
+            <button class="ex-chip" onclick="routerSetExample(1)">Security review</button>
+            <button class="ex-chip" onclick="routerSetExample(2)">Write a test</button>
+            <button class="ex-chip" onclick="routerSetExample(3)">Architecture design</button>
+            <button class="ex-chip" onclick="routerSetExample(4)">Rename variable</button>
+          </div>
+        </div>
+        <div class="score-bars" id="score-bars">
+          <div style="font-size:12px;color:var(--t3);text-align:center;padding:20px 0">Enter a task to see complexity scoring</div>
+        </div>
+        <div class="dbox-foot" style="font-size:11px;color:var(--t3)">
+          Complexity score: <b id="complexity-score" style="color:var(--t1);margin-left:4px">—</b>
+        </div>
+      </div>
+
+      <!-- Right: Decision + Cost -->
+      <div class="dbox">
+        <div class="dbox-hdr">Routing Decision</div>
+        <div style="padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:0">
+          <div class="routing-verdict" id="routing-verdict">
+            <div class="rv-arrow">claude-opus-4-6 →</div>
+            <div class="rv-model" id="rv-model" style="color:var(--t3)">—</div>
+            <div class="rv-price" id="rv-price">Enter a task above</div>
+            <div class="rv-reason" id="rv-reason" style="display:none"></div>
+          </div>
+          <div style="padding:12px 0;font-size:11px;color:var(--t3);text-align:center">Estimated cost per 1,000 requests (avg. 500 tok/req)</div>
+          <div class="cost-row" id="cost-row">
+            <div class="cost-card" id="cc-opus">
+              <div class="cost-lbl">Opus 4</div>
+              <div class="cost-val" id="cv-opus">$7.50</div>
+              <div class="cost-sub">$15/MTok input</div>
+            </div>
+            <div class="cost-card sel" id="cc-sonnet">
+              <div class="cost-lbl">Sonnet 4.6</div>
+              <div class="cost-val" id="cv-sonnet">$1.50</div>
+              <div class="cost-sub">$3/MTok input</div>
+            </div>
+          </div>
+          <div style="margin:12px 16px 0;padding:12px;background:var(--bg2);border-radius:8px;font-size:12px;color:var(--t2);line-height:1.6">
+            <b style="color:var(--t1)">How it works:</b> Terse runs a local proxy on port 7860 that scores every incoming request. Simple tasks — short prompts, lookups, test writes — are silently rerouted to Sonnet at <b style="color:var(--ac)">1/5th the cost</b>. Complex tasks stay on Opus. Zero code changes needed.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ GIT DIFF PANEL ═══ -->
+  <div class="demo-panel" id="panel-diff">
+    <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:13px;color:var(--t2)">Paste a <code style="background:var(--sf);padding:2px 7px;border-radius:5px;font-family:monospace;font-size:12px;color:var(--ac)">git diff</code> output below, or use the built-in example:</span>
+      <button class="ex-chip" onclick="loadExampleDiff()">Load example diff</button>
+      <button class="ctrl-btn pri" onclick="compressDiff()" style="margin-left:auto">Compress →</button>
+    </div>
+    <div class="diff-grid">
+
+      <div class="dbox">
+        <div class="dbox-hdr">
+          Raw git diff
+          <span class="dbox-hdr-val" id="diff-in-tok" style="color:var(--t3)">0 tok</span>
+        </div>
+        <textarea id="diff-input" class="diff-body" style="flex:1;border:none;outline:none;resize:none;background:transparent;color:var(--t2);font-family:'JetBrains Mono',monospace;font-size:11.5px;width:100%" placeholder="Paste git diff output here..."></textarea>
+        <div class="diff-stat-bar">
+          <div class="diff-stat-item"><span>Lines:</span><b id="diff-in-lines">0</b></div>
+          <div class="diff-stat-item"><span>+</span><b id="diff-in-add" style="color:#4ade80">0</b></div>
+          <div class="diff-stat-item"><span>−</span><b id="diff-in-del" style="color:var(--red)">0</b></div>
+        </div>
+      </div>
+
+      <div class="dbox">
+        <div class="dbox-hdr">
+          Terse Compressed
+          <span class="dbox-hdr-val" id="diff-out-tok">—</span>
+        </div>
+        <div class="diff-body" id="diff-output" style="color:var(--t3);font-style:italic">Compressed diff will appear here...<br><br>Terse strips unchanged context lines, keeping only modified lines + 1 line of context per hunk — typically 60-75% token reduction.</div>
+        <div class="diff-stat-bar">
+          <div class="diff-stat-item"><span>Saved:</span><b id="diff-saved" style="color:var(--ac)">—</b></div>
+          <div class="diff-stat-item"><span>Reduction:</span><b id="diff-pct" style="color:var(--ac)">—</b></div>
+          <div style="margin-left:auto;font-size:11px;color:var(--t3)">Context: ±1 line</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ CLOUD PANEL ═══ -->
+  <div class="demo-panel" id="panel-cloud">
+
+    <div class="cloud-stats">
+      <div class="cloud-card">
+        <h4>Total Saved (30d)</h4>
+        <div class="cloud-val" style="color:var(--ac)">$142.80</div>
+        <div class="cloud-sub">across 3 sessions</div>
+        <div class="cloud-trend">↑ +23% vs last month</div>
+      </div>
+      <div class="cloud-card">
+        <h4>Tokens Optimized</h4>
+        <div class="cloud-val">9.4M</div>
+        <div class="cloud-sub">12.1M → 2.7M raw</div>
+        <div class="cloud-trend">↑ 77.7% avg reduction</div>
+      </div>
+      <div class="cloud-card">
+        <h4>Cache Hit Rate</h4>
+        <div class="cloud-val" style="color:var(--yellow)">68%</div>
+        <div class="cloud-sub">Claude Code sessions</div>
+        <div class="cloud-trend">↑ +12% this week</div>
+      </div>
+      <div class="cloud-card">
+        <h4>Exchange Balance</h4>
+        <div class="cloud-val" style="color:var(--blue)">$24.50</div>
+        <div class="cloud-sub">available to spend</div>
+        <div class="cloud-trend">2 active listings</div>
+      </div>
+    </div>
+
+    <div class="cloud-body">
+
+      <!-- Listings -->
+      <div class="listings">
+        <div class="listing-hdr">
+          <h3>Token Exchange — Buy at Discount</h3>
+          <span>14 active listings</span>
+        </div>
+        <div class="listing-card">
+          <div class="listing-icon" style="color:#6ee7b7">C</div>
+          <div class="listing-info">
+            <div class="listing-name">Claude API — Anthropic</div>
+            <div class="listing-meta">claude-opus-4-6 · claude-sonnet-4-6 · Haiku · $180 available</div>
+          </div>
+          <div class="listing-price">
+            <div class="l-price">$9.75<span style="font-size:11px;font-weight:400;color:var(--t3)">/MTok</span></div>
+            <div class="l-disc">35% off</div>
+            <div class="l-orig">$15.00/MTok</div>
+          </div>
+          <button class="buy-btn" onclick="simulateBuy('Claude API', '$9.75/MTok', '35%')">Buy</button>
+        </div>
+        <div class="listing-card">
+          <div class="listing-icon" style="color:#60a5fa">OA</div>
+          <div class="listing-info">
+            <div class="listing-name">OpenAI API — GPT-4o</div>
+            <div class="listing-meta">gpt-4o · gpt-4o-mini · o1 · $240 available</div>
+          </div>
+          <div class="listing-price">
+            <div class="l-price">$1.63<span style="font-size:11px;font-weight:400;color:var(--t3)">/MTok</span></div>
+            <div class="l-disc">40% off</div>
+            <div class="l-orig">$2.50/MTok</div>
+          </div>
+          <button class="buy-btn" onclick="simulateBuy('OpenAI GPT-4o', '$1.63/MTok', '40%')">Buy</button>
+        </div>
+        <div class="listing-card">
+          <div class="listing-icon" style="color:#a78bfa">G</div>
+          <div class="listing-info">
+            <div class="listing-name">Google Gemini API</div>
+            <div class="listing-meta">gemini-2.0-flash · gemini-pro · $95 available</div>
+          </div>
+          <div class="listing-price">
+            <div class="l-price">$0.05<span style="font-size:11px;font-weight:400;color:var(--t3)">/MTok</span></div>
+            <div class="l-disc">50% off</div>
+            <div class="l-orig">$0.10/MTok</div>
+          </div>
+          <button class="buy-btn" onclick="simulateBuy('Gemini API', '$0.05/MTok', '50%')">Buy</button>
+        </div>
+        <div class="listing-card">
+          <div class="listing-icon" style="color:#fbbf24">Mi</div>
+          <div class="listing-info">
+            <div class="listing-name">Mistral API — Large</div>
+            <div class="listing-meta">mistral-large · mistral-small · $60 available</div>
+          </div>
+          <div class="listing-price">
+            <div class="l-price">$1.20<span style="font-size:11px;font-weight:400;color:var(--t3)">/MTok</span></div>
+            <div class="l-disc">40% off</div>
+            <div class="l-orig">$2.00/MTok</div>
+          </div>
+          <button class="buy-btn" onclick="simulateBuy('Mistral Large', '$1.20/MTok', '40%')">Buy</button>
+        </div>
+        <div class="listing-card">
+          <div class="listing-icon" style="color:#f87171">xA</div>
+          <div class="listing-info">
+            <div class="listing-name">xAI — Grok API</div>
+            <div class="listing-meta">grok-3 · grok-3-mini · $120 available</div>
+          </div>
+          <div class="listing-price">
+            <div class="l-price">$9.00<span style="font-size:11px;font-weight:400;color:var(--t3)">/MTok</span></div>
+            <div class="l-disc">25% off</div>
+            <div class="l-orig">$12.00/MTok</div>
+          </div>
+          <button class="buy-btn" onclick="simulateBuy('xAI Grok', '$9.00/MTok', '25%')">Buy</button>
+        </div>
+      </div>
+
+      <!-- Sell panel -->
+      <div class="exchange-panel">
+        <div class="exc-hdr">Sell Your Unused Credits</div>
+        <div class="exc-body">
+          <div class="exc-input-group">
+            <label class="exc-label">Provider</label>
+            <select class="exc-input" id="sell-provider" style="cursor:pointer">
+              <option>Anthropic Claude</option>
+              <option>OpenAI</option>
+              <option>Google Gemini</option>
+              <option>Mistral</option>
+              <option>xAI Grok</option>
+              <option>Other OpenAI-compat</option>
+            </select>
+          </div>
+          <div class="exc-input-group">
+            <label class="exc-label">Available Credits (USD)</label>
+            <input type="number" class="exc-input" id="sell-amount" placeholder="e.g. 50" min="5" max="500" oninput="updateSellPreview()">
+          </div>
+          <div class="exc-input-group">
+            <label class="exc-label">Discount: <span id="disc-label" style="color:var(--ac);font-weight:700">30%</span></label>
+            <div class="exc-slider-row">
+              <span style="font-size:10px;color:var(--t3)">10%</span>
+              <input type="range" class="exc-slider" id="disc-slider" min="10" max="60" value="30" oninput="updateSellPreview()">
+              <span style="font-size:10px;color:var(--t3)">60%</span>
+            </div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:12px;font-size:12px" id="sell-preview">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--t3)">You earn</span><b id="sell-earn" style="color:var(--ac)">—</b></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--t3)">Buyer pays</span><b id="sell-buyer">—</b></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t3)">Terse fee (15%)</span><b id="sell-fee" style="color:var(--t3)">—</b></div>
+          </div>
+          <button class="exc-cta" onclick="simulateSellListing()">List for Sale →</button>
+          <div class="exc-notice">Your API key is encrypted with AES-256 and never exposed to buyers. Terse proxies all requests. You can delist at any time.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Feed -->
+    <div class="activity-feed" style="margin-top:14px">
+      <div class="act-hdr">
+        <h4>Session Activity</h4>
+        <span style="font-size:11px;color:var(--t3)" id="act-count">0 events</span>
+      </div>
+      <div id="activity-list">
+        <div style="padding:20px;text-align:center;font-size:12px;color:var(--t3)">Interact with any feature to see live activity here</div>
+      </div>
+    </div>
+
+  </div><!-- /cloud panel -->
+
+</div><!-- /demo-body -->
+
+<!-- BUY MODAL -->
+<div id="buy-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);backdrop-filter:blur(12px);align-items:center;justify-content:center">
+  <div style="background:var(--bg1);border:1px solid var(--bdl);border-radius:16px;padding:28px;max-width:380px;width:90%">
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px" id="modal-title">Buy Claude API Tokens</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:20px" id="modal-sub">claude-opus-4-6 · $9.75/MTok · 35% off</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center;cursor:pointer" onclick="selectTopup(10)">
+          <div style="font-size:18px;font-weight:800">$10</div>
+          <div style="font-size:11px;color:var(--t3)">~1M tokens</div>
+        </div>
+        <div style="flex:1;background:var(--acd);border:1px solid var(--acm);border-radius:8px;padding:12px;text-align:center;cursor:pointer" onclick="selectTopup(25)">
+          <div style="font-size:18px;font-weight:800;color:var(--ac)">$25</div>
+          <div style="font-size:11px;color:var(--ac)">~2.5M tokens</div>
+        </div>
+        <div style="flex:1;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center;cursor:pointer" onclick="selectTopup(50)">
+          <div style="font-size:18px;font-weight:800">$50</div>
+          <div style="font-size:11px;color:var(--t3)">~5M tokens</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--t3);text-align:center">Top up your Terse balance — use with any Terse-proxied key</div>
+    </div>
+    <button onclick="document.getElementById('buy-modal').style.display='none'" style="width:100%;padding:11px;background:var(--gradient);border:none;border-radius:8px;color:#000;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Sign In to Purchase →</button>
+    <button onclick="document.getElementById('buy-modal').style.display='none'" style="width:100%;padding:8px;background:transparent;border:none;color:var(--t3);font-size:12px;cursor:pointer;margin-top:8px;font-family:inherit">Cancel</button>
+  </div>
+</div>
+
+<script>
+/* ═══ GLOBALS ═══ */
+const session = {tokens:0, cost:0, typos:0, ops:0, best:0};
+let optMode = 'normal';
+let agentPlaying = false;
+let agentTimer = null;
+let agentTurn = 0;
+
+function bumpMetric(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('bump');
+  void el.offsetWidth;
+  el.classList.add('bump');
+}
+
+function updateMetrics() {
+  document.getElementById('m-tokens').textContent = session.tokens.toLocaleString();
+  document.getElementById('m-cost').textContent = '$' + session.cost.toFixed(3);
+  document.getElementById('m-typos').textContent = session.typos;
+  document.getElementById('m-ops').textContent = session.ops;
+  document.getElementById('m-best').textContent = session.best > 0 ? '-' + session.best + '%' : '—';
+}
+
+function addActivity(color, text, saved) {
+  const list = document.getElementById('activity-list');
+  const cnt = document.getElementById('act-count');
+  const now = new Date();
+  const ts = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+  const empty = list.querySelector('div[style*="text-align:center"]');
+  if (empty) empty.remove();
+  const item = document.createElement('div');
+  item.className = 'act-item';
+  item.innerHTML = `<span class="act-dot ${color}"></span><span class="act-text">${text}</span><span class="act-time">${ts}</span>${saved?`<span class="act-save">${saved}</span>`:''}`;
+  list.insertBefore(item, list.firstChild);
+  while (list.children.length > 12) list.removeChild(list.lastChild);
+  const n = list.children.length;
+  cnt.textContent = n + ' event' + (n!==1?'s':'');
+}
+
+/* ═══ TYPO MAP ═══ */
+const TYPOS = {
+  'authetication':'authentication','authenication':'authentication','atuhentication':'authentication',
+  'refacter':'refactor','refactring':'refactoring','functoin':'function','funcion':'function',
+  'wirte':'write','wrtie':'write','retun':'return','reutrn':'return','varialbe':'variable',
+  'paramter':'parameter','arguement':'argument','synax':'syntax','teh':'the','adn':'and',
+  'hte':'the','recieve':'receive','seperate':'separate','seprate':'separate',
+  'occured':'occurred','occurance':'occurrence','thansk':'thanks','tahnks':'thanks',
+  'aslo':'also','problme':'problem','probelm':'problem','middlewear':'middleware',
+  'tokne':'token','corectly':'correctly','limmiting':'limiting','limmit':'limit',
+  'endpionts':'endpoints','endpoitns':'endpoints','becuase':'because','becasue':'because',
+  'definately':'definitely','definatly':'definitely','existance':'existence',
+  'expirience':'experience','experiance':'experience','enviroment':'environment',
+  'feautre':'feature','featuer':'feature','implemnet':'implement','implament':'implement',
+  'cheking':'checking','wether':'whether','untill':'until','wierd':'weird',
+  'databse':'database','numbr':'number','cashe':'cache','dont':"don't",
+  'cant':"can't",'wont':"won't",'shouldnt':"shouldn't",'wouldnt':"wouldn't",
+  'couldnt':"couldn't",'isnt':"isn't",'doesnt':"doesn't",'wasnt':"wasn't",
+  'havent':"haven't",'hasnt':"hasn't",'didnt':"didn't",'im':"I'm",
+  'repositry':'repository','breanch':'branch','mergre':'merge',
+  'committ':'commit','comit':'commit','calcualte':'calculate','calulate':'calculate',
+  'reponse':'response','authroize':'authorize','authentcate':'authenticate',
+};
+
+function correctSpelling(text) {
+  const changes = [];
+  const result = text.replace(/\b([a-zA-Z']+)\b/g, (word) => {
+    const lower = word.toLowerCase();
+    if (TYPOS[lower]) {
+      const corrected = TYPOS[lower];
+      const isCapitalized = word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase();
+      const fixed = isCapitalized ? corrected.charAt(0).toUpperCase() + corrected.slice(1) : corrected;
+      if (fixed !== word) { changes.push({from:word, to:fixed}); return fixed; }
+    }
+    return word;
+  });
+  return {text:result, changes};
+}
+
+function normWS(t) {
+  return t.replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').replace(/\s([.,!?;:])/g,'$1').trim();
+}
+
+const FILLER_NORMAL = [
+  {re:/\bso basically,?\s*/gi,rep:'',desc:'discourse marker "so basically"'},
+  {re:/\bbasically,?\s*/gi,rep:'',desc:'filler "basically"'},
+  {re:/\bI've been (trying|struggling|working) to figure out\s*/gi,rep:'',desc:'meta-language'},
+  {re:/\bI('m| am) (trying|struggling) to (figure out|understand)\s*/gi,rep:'',desc:'meta-language'},
+  {re:/\bcould you (please |maybe |possibly )?(help me |assist me )?(to )?\s*/gi,rep:'',desc:'hedging phrase'},
+  {re:/\bwould you (mind |be able to |please )?\s*/gi,rep:'',desc:'hedging phrase'},
+  {re:/\bcan you (please |maybe )?\s*/gi,rep:'',desc:'hedging phrase'},
+  {re:/\bif that (makes sense|is (ok|fine|clear))\b[?.]?\s*/gi,rep:'',desc:'closing filler'},
+  {re:/\bplease\b\s*/gi,rep:'',desc:'politeness marker'},
+  {re:/\bthank(s| you)( (so much|a lot))?( for (your help|helping))?\s*/gi,rep:'',desc:'pleasantry'},
+  {re:/\bjust (wondering|checking|wanted to ask)\s*/gi,rep:'',desc:'hedging opener'},
+  {re:/\byou know[,.]?\s*/gi,rep:'',desc:'filler "you know"'},
+  {re:/\bI mean[,.]?\s*/gi,rep:'',desc:'filler "I mean"'},
+  {re:/\bkind of\s*/gi,rep:'',desc:'filler "kind of"'},
+  {re:/\bsort of\s*/gi,rep:'',desc:'filler "sort of"'},
+  {re:/\bto be honest(ly)?[,.]?\s*/gi,rep:'',desc:'meta-commentary'},
+  {re:/\bhonestly[,.]?\s*/gi,rep:'',desc:'meta-commentary'},
+  {re:/\b(as I mentioned|as I said) (before|earlier)[,.]?\s*/gi,rep:'',desc:'repetition marker'},
+  {re:/\bthe thing is[,.]?\s*/gi,rep:'',desc:'filler opener'},
+  {re:/\bif that's (ok|fine|alright)\b[?.]?\s*/gi,rep:'',desc:'closing filler'},
+  {re:/\bI (hope this|this) (makes|is) (sense|clear)\.?\s*/gi,rep:'',desc:'filler closing'},
+  {re:/\bI'm not sure (if|whether|how|why|what)\s*/gi,rep:'',desc:'hedging opener'},
+  {re:/\bI (really |truly )?(need|want) (some )?(help|assistance)\s*(with|on|to)?\s*/gi,rep:'',desc:'meta-request'},
+  {re:/\bin my (humble |honest )?(opinion|view)[,.]?\s*/gi,rep:'',desc:'opinion marker'},
+];
+
+const FILLER_AGGRESSIVE = [
+  ...FILLER_NORMAL,
+  {re:/\bI (want|need|would like|am trying) to\s*/gi,rep:'',desc:'verbose preamble'},
+  {re:/\b(currently|at the moment|right now|at this (point|time))\b\s*/gi,rep:'',desc:'temporal filler'},
+  {re:/\bin order to\b/gi,rep:'to',desc:'"in order to" → "to"'},
+  {re:/\bdue to the fact that\b/gi,rep:'because',desc:'"due to the fact that" → "because"'},
+  {re:/\bat this point in time\b/gi,rep:'now',desc:'"at this point in time" → "now"'},
+  {re:/\bin the event that\b/gi,rep:'if',desc:'"in the event that" → "if"'},
+  {re:/\bfor the purpose of\b/gi,rep:'for',desc:'"for the purpose of" → "for"'},
+  {re:/\bmake use of\b/gi,rep:'use',desc:'"make use of" → "use"'},
+  {re:/\bhas the ability to\b/gi,rep:'can',desc:'"has the ability to" → "can"'},
+  {re:/\b(a large number of|a lot of)\b/gi,rep:'many',desc:'"a lot of" → "many"'},
+  {re:/\bit is important to note that\s*/gi,rep:'',desc:'meta-note'},
+  {re:/\bI was wondering\s*/gi,rep:'',desc:'hedging opener'},
+  {re:/\bI (also )?think\b\s*/gi,rep:'',desc:'opinion hedge'},
+  {re:/\bI believe\b\s*/gi,rep:'',desc:'opinion hedge'},
+  {re:/\bactually\b\s*/gi,rep:'',desc:'discourse filler'},
+  {re:/\bvery\s+/gi,rep:'',desc:'intensifier removal'},
+  {re:/\breally\s+/gi,rep:'',desc:'intensifier removal'},
+  {re:/\bjust\s+/gi,rep:'',desc:'minimizer removal'},
+];
+
+function questionToImperative(text) {
+  let changed = false;
+  let result = text;
+  result = result.replace(/^(Can you|Could you|Would you|Will you)\s+(please\s+)?([A-Za-z].*?)([?.]?)$/i,
+    (_,__,_p,rest) => { changed=true; return rest.charAt(0).toUpperCase()+rest.slice(1)+'.'; });
+  if (!changed) result = result.replace(/^How (can|do) I\s+([A-Za-z].*?)([?.]?)$/i,
+    (_,__,rest) => { changed=true; return 'How to '+rest+'.'; });
+  return {text:result, changed};
+}
+
+function applyFiller(text, patterns) {
+  const changes = [];
+  let result = text;
+  for (const p of patterns) {
+    const before = result;
+    result = result.replace(p.re, p.rep);
+    if (result !== before) changes.push({desc:p.desc});
+  }
+  return {text:normWS(result), changes};
+}
+
+function countTokens(t) {
+  if (!t) return 0;
+  const words = t.match(/\w+|[^\w\s]/g)||[];
+  return Math.max(1, Math.ceil(words.length*0.75));
+}
+
+/* Build HTML diff output */
+function buildDiffHTML(original, result, spellChanges) {
+  let html = result;
+  // Highlight spell-corrected words
+  for (const c of spellChanges) {
+    const escaped = c.to.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    html = html.replace(new RegExp('\\b'+escaped+'\\b'), `<span class="diff-fix" title="Fixed: ${c.from}">${c.to}</span>`);
+  }
+  return html;
+}
+
+/* ═══ MAIN OPTIMIZER ═══ */
+function optimize(text, mode) {
+  if (!text.trim()) return null;
+  const stages = [];
+  let current = text;
+
+  // Stage 1: Spell
+  const s1 = correctSpelling(current);
+  const s1c = s1.text !== current;
+  stages.push({n:1,name:'Spell Correction',
+    desc: s1c ? s1.changes.slice(0,4).map(c=>`${c.from}→${c.to}`).join(', ')+(s1.changes.length>4?' + more':'') : 'No typos detected',
+    changed:s1c, skipped:false, typos:s1.changes});
+  current = s1.text;
+
+  // Stage 2: Whitespace
+  const s2 = normWS(current);
+  const s2c = s2 !== current;
+  stages.push({n:2,name:'Whitespace',desc:s2c?'Normalized spacing & punctuation':'Already normalized',changed:s2c,skipped:false});
+  current = s2;
+
+  if (mode === 'soft') {
+    stages.push({n:3,name:'Filler Removal',desc:'Skipped (Soft mode)',skipped:true,changed:false});
+    stages.push({n:4,name:'Imperative Rewrite',desc:'Skipped (Soft mode)',skipped:true,changed:false});
+    stages.push({n:5,name:'NLP Analysis',desc:'Skipped (Soft mode)',skipped:true,changed:false});
+    stages.push({n:6,name:'Telegraph',desc:'Skipped (Soft mode)',skipped:true,changed:false});
+    stages.push({n:7,name:'Final Cleanup',desc:'Capitalisation & punctuation',changed:false,skipped:false});
+    const final = current.charAt(0).toUpperCase()+current.slice(1);
+    return {stages, result:final, spellChanges:s1.changes, mode};
+  }
+
+  // Stage 3: Filler
+  const patterns = mode==='aggressive' ? FILLER_AGGRESSIVE : FILLER_NORMAL;
+  const s3 = applyFiller(current, patterns);
+  const s3c = s3.text !== current;
+  stages.push({n:3,name:'Filler Removal',
+    desc:s3c?s3.changes.slice(0,3).map(c=>c.desc).join('; '):'No filler found',
+    changed:s3c,skipped:false});
+  current = s3.text;
+
+  // Stage 4: Imperative
+  const s4 = questionToImperative(current);
+  stages.push({n:4,name:'Imperative Rewrite',desc:s4.changed?'Question → imperative form':'Not applicable',changed:s4.changed,skipped:false});
+  current = s4.text;
+
+  // Stage 5: NLP
+  const s5 = normWS(current);
+  const s5c = s5 !== current;
+  stages.push({n:5,name:'NLP Analysis',desc:s5c?'Semantic cleanup applied':'No changes needed',changed:s5c,skipped:false});
+  current = s5;
+
+  // Stage 6: Telegraph
+  if (mode === 'aggressive') {
+    const s6before = current;
+    let s6 = current.replace(/\b(the |a |an )(?=\b[A-Z])/g,'');
+    s6 = normWS(s6);
+    const s6c = s6 !== s6before;
+    stages.push({n:6,name:'Telegraph',desc:s6c?'Redundant articles & structures compressed':'Already compact',changed:s6c,skipped:false});
+    current = s6;
+  } else {
+    stages.push({n:6,name:'Telegraph',desc:'Skipped ('+mode+' mode)',skipped:true,changed:false});
+  }
+
+  // Stage 7: Cleanup
+  let final = normWS(current);
+  final = final.charAt(0).toUpperCase()+final.slice(1);
+  if (final && !final.match(/[.!?]$/)) final += '.';
+  stages.push({n:7,name:'Final Cleanup',desc:'Capitalisation & punctuation',changed:final!==current,skipped:false});
+
+  return {stages, result:final, spellChanges:s1.changes, mode};
+}
+
+/* ═══ RENDER PIPELINE ═══ */
+function renderPipeline(stages, idx) {
+  const list = document.getElementById('stage-list');
+  list.innerHTML = '';
+  for (let i=0; i<stages.length; i++) {
+    const s = stages[i];
+    let cls = 'stage-item';
+    if (i < idx) cls += ' done';
+    else if (i === idx) cls += ' running';
+    else if (s.skipped) cls += ' skip';
+    list.innerHTML += `<div class="${cls}">
+      <div class="stage-num">${s.n}</div>
+      <div class="stage-body">
+        <div class="stage-name">${s.name}${s.skipped?'':''}</div>
+        <div class="stage-desc">${s.desc||''}</div>
+      </div>
+      <svg class="stage-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>`;
+  }
+}
+
+/* ═══ OPTIMIZER TAB ═══ */
+const EXAMPLES = [
+  "So basically I've been struggling to figure out why my authetication endpoint keeps returning a 500 error when I try to POST data to it, could you please help me?",
+  "Hey could you maybe wirte a Python function that calculates the factorial of a numbr please, if that makes sense?",
+  "I was just wondering if you could perhaps help me understand how to implement a binary search tree in Python if that's ok?",
+  "ok thansk but I aslo think theres a problme with the middlewear where its not cheking the tokne expiry corectly, could you check that aslo?",
+  "I don't know if this makes sense but I basically need help figuring out how I might go about refactoring this component to maybe use TypeScript generics, just wondering if you could help with that sort of thing",
+];
+
+document.querySelectorAll('.ex-chip[data-ex]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const i = parseInt(btn.dataset.ex);
+    document.getElementById('opt-input').value = EXAMPLES[i];
+    runOptimizer();
+  });
+});
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    optMode = btn.dataset.mode;
+    runOptimizer();
+  });
+});
+
+let optDebounce = null;
+document.getElementById('opt-input').addEventListener('input', () => {
+  clearTimeout(optDebounce);
+  const val = document.getElementById('opt-input').value;
+  const inTok = countTokens(val);
+  document.getElementById('in-tok').textContent = inTok + ' tok';
+  optDebounce = setTimeout(runOptimizer, 380);
+});
+
+function runOptimizer() {
+  const text = document.getElementById('opt-input').value.trim();
+  if (!text) {
+    document.getElementById('opt-output').innerHTML = '<span style="color:var(--t3);font-style:italic">Optimized prompt will appear here...</span>';
+    document.getElementById('out-tok').textContent = '—';
+    document.getElementById('f-in').textContent = '—';
+    document.getElementById('f-out').textContent = '—';
+    document.getElementById('f-pct').textContent = '—';
+    document.getElementById('f-pct').className = 'pct-pill dim';
+    document.getElementById('f-saved').textContent = '—';
+    document.getElementById('pipe-summary').textContent = 'Type a prompt to run the pipeline';
+    document.getElementById('stage-list').innerHTML = '';
+    return;
+  }
+
+  const res = optimize(text, optMode);
+  if (!res) return;
+
+  const inTok = countTokens(text);
+  const outTok = countTokens(res.result);
+  const saved = inTok - outTok;
+  const pct = inTok > 0 ? Math.round((saved/inTok)*100) : 0;
+  const costSaved = (saved / 1000000) * 15; // Opus pricing
+
+  // Animate pipeline
+  let i = 0;
+  function tick() {
+    if (i <= res.stages.length) {
+      renderPipeline(res.stages, i-1);
+      i++;
+      setTimeout(tick, 120);
+    } else {
+      // Done — update output
+      const html = buildDiffHTML(text, res.result, res.spellChanges);
+      document.getElementById('opt-output').innerHTML = html || '<span style="color:var(--t3)">No changes needed.</span>';
+      document.getElementById('out-tok').textContent = outTok + ' tok';
+      document.getElementById('f-in').textContent = inTok;
+      document.getElementById('f-out').textContent = outTok;
+      document.getElementById('f-pct').textContent = pct > 0 ? '-'+pct+'%' : '0%';
+      document.getElementById('f-pct').className = 'pct-pill ' + (pct > 5 ? 'green' : 'dim');
+      document.getElementById('f-saved').textContent = pct > 0 ? '$'+costSaved.toFixed(4)+' saved' : 'No change';
+
+      const summParts = [];
+      if (res.spellChanges.length) summParts.push(res.spellChanges.length + ' typo'+(res.spellChanges.length>1?'s':'')+' fixed');
+      if (saved > 0) summParts.push(saved + ' tokens removed');
+      document.getElementById('pipe-summary').textContent = summParts.length ? summParts.join(' · ') : 'No changes in '+optMode+' mode';
+
+      // Update global metrics
+      if (saved > 0) {
+        session.tokens += saved;
+        session.cost += costSaved;
+        session.typos += res.spellChanges.length;
+        session.ops++;
+        if (pct > session.best) session.best = pct;
+        bumpMetric('m-tokens'); bumpMetric('m-cost'); bumpMetric('m-ops');
+        if (res.spellChanges.length) bumpMetric('m-typos');
+        updateMetrics();
+        addActivity('g',
+          `Prompt optimized (${optMode} mode): ${inTok}→${outTok} tok`,
+          '-'+pct+'%'
+        );
+      }
+    }
+  }
+  tick();
+}
+
+/* ═══ AGENT MONITOR ═══ */
+const AGENT_SCRIPT = [
+  {delay:0, cls:'t-user', text:'fix the authetication bug in login.ts'},
+  {delay:400, cls:'t-terse', text:'spell: "authetication"→"authentication"'},
+  {delay:600, cls:'t-terse', text:'prompt optimized: 38→12 tok (−68%) · auto-sent ✔'},
+  {delay:1100, cls:'t-tool', text:'Read auth.ts (180 lines) — 14 tok cached'},
+  {delay:1500, cls:'t-tool', text:'Read login.ts (92 lines) — 8 tok'},
+  {delay:1900, cls:'t-tool', text:'Read auth.ts — ⚠ flagged: redundant read (~800 tok waste)'},
+  {delay:2300, cls:'t-agent', text:'Found the issue — token expiry check on line 47 uses < instead of <=. Fixing...'},
+  {delay:2700, cls:'t-ok', text:'Edit login.ts:47 — expiry comparison fixed'},
+  {delay:3000, cls:'t-terse', text:'Turn 1: 38→12 in tok · 1 typo · 1 redundant read flagged · $0.004 saved'},
+  {delay:3800, cls:'t-user', text:'aslo add rate limmiting to the API endpionts'},
+  {delay:4200, cls:'t-terse', text:'spell: "aslo"→"also", "limmiting"→"limiting", "endpionts"→"endpoints" (3 typos)'},
+  {delay:4400, cls:'t-terse', text:'prompt optimized: 32→9 tok (−72%) · auto-sent ✔'},
+  {delay:4900, cls:'t-tool', text:'Read server.ts (240 lines) — 22 tok'},
+  {delay:5300, cls:'t-tool', text:'Grep "rateLimit" server.ts — 0 matches'},
+  {delay:5700, cls:'t-agent', text:'Adding rate limiting middleware using express-rate-limit...'},
+  {delay:6100, cls:'t-ok', text:'Edit server.ts — rate limiter added (100 req/15min per IP)'},
+  {delay:6500, cls:'t-ok', text:'Run npm test -- auth.test.ts · All 8 tests pass'},
+  {delay:6800, cls:'t-terse', text:'Turn 2: 32→9 in tok · 3 typos · 0 redundant reads · $0.003 saved'},
+  {delay:7600, cls:'t-user', text:'thansk, aslo can you make it more strict for auth routes'},
+  {delay:7900, cls:'t-terse', text:'spell: "thansk"→"thanks", "aslo"→"also" (2 typos)'},
+  {delay:8100, cls:'t-terse', text:'dedup: similar to turn 2 intent — merged context · 28→7 tok (−75%)'},
+  {delay:8500, cls:'t-tool', text:'Read server.ts — ⚠ flagged: 3rd read of this file (redundant)'},
+  {delay:8900, cls:'t-agent', text:'Applying stricter limits to /auth/* routes: 10 req/15min...'},
+  {delay:9300, cls:'t-ok', text:'Edit server.ts — auth route limiter tightened'},
+  {delay:9600, cls:'t-terse', text:'Session: 3 turns · 98→28 input tok · 6 typos · 2 redundant reads · $0.012 saved'},
+  {delay:9900, cls:'t-terse', text:'CLAUDE.md rule generated: "Always read server.ts once per session"'},
+];
+
+const AGENT_STATS = [
+  {turn:1, in:12, out:180, cache:14, cost:0.004, saved:26, typos:1},
+  {turn:2, in:9,  out:120, cache:22, cost:0.003, saved:23, typos:3},
+  {turn:3, in:7,  out:95,  cache:0,  cost:0.003, saved:21, typos:2},
+];
+
+let agentLines = 0;
+
+function agentAddLine(cls, text) {
+  const term = document.getElementById('agent-term');
+  const line = document.createElement('span');
+  line.className = 't-line ' + cls;
+  line.textContent = text;
+  term.appendChild(line);
+  term.appendChild(document.createElement('br'));
+  term.scrollTop = term.scrollHeight;
+}
+
+function agentUpdateStats(turnIdx) {
+  let totalIn=0, totalOut=0, totalCache=0, totalCost=0, totalSaved=0, totalTypos=0;
+  const tbody = document.getElementById('turn-tbody');
+  tbody.innerHTML='';
+  for (let i=0; i<=turnIdx && i<AGENT_STATS.length; i++) {
+    const s = AGENT_STATS[i];
+    totalIn+=s.in; totalOut+=s.out; totalCache+=s.cache;
+    totalCost+=s.cost; totalSaved+=s.saved; totalTypos+=s.typos;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${s.turn}</td><td class="hl">${s.in}</td><td>${s.out}</td><td class="hl">-${s.saved}</td><td>$${s.cost.toFixed(3)}</td>`;
+    tbody.appendChild(tr);
+  }
+  document.getElementById('as-in').textContent = totalIn;
+  document.getElementById('as-out').textContent = totalOut;
+  document.getElementById('as-cache').textContent = totalCache;
+  document.getElementById('as-typos').textContent = totalTypos;
+  document.getElementById('as-saved').textContent = totalSaved;
+  document.getElementById('as-cost').textContent = '$' + totalCost.toFixed(3);
+  document.getElementById('as-redup').textContent = turnIdx >= 1 ? (turnIdx >= 2 ? 2 : 1) : 0;
+
+  // Global metrics
+  session.tokens += AGENT_STATS[turnIdx].saved;
+  session.typos += AGENT_STATS[turnIdx].typos;
+  session.cost += AGENT_STATS[turnIdx].cost;
+  session.ops++;
+  if (((AGENT_STATS[turnIdx].saved / (AGENT_STATS[turnIdx].in + AGENT_STATS[turnIdx].saved))*100|0) > session.best) {
+    session.best = (AGENT_STATS[turnIdx].saved / (AGENT_STATS[turnIdx].in + AGENT_STATS[turnIdx].saved))*100|0;
+  }
+  bumpMetric('m-tokens'); bumpMetric('m-cost'); bumpMetric('m-typos'); bumpMetric('m-ops');
+  updateMetrics();
+  document.getElementById('agent-turn-label').textContent = 'Turn '+(turnIdx+1)+' / 3';
+  addActivity('b', 'Agent turn '+(turnIdx+1)+' completed', '-'+((AGENT_STATS[turnIdx].saved/(AGENT_STATS[turnIdx].in+AGENT_STATS[turnIdx].saved)*100)|0)+'%');
+}
+
+function agentPlay() {
+  if (agentPlaying) return;
+  agentPlaying = true;
+  document.getElementById('agent-play-btn').textContent = '⏸ Playing...';
+  document.getElementById('agent-play-btn').disabled = true;
+
+  let statsUpdated = [false,false,false];
+  AGENT_SCRIPT.forEach((line, i) => {
+    agentTimer = setTimeout(() => {
+      agentAddLine(line.cls, line.text);
+      if (line.text.includes('Turn 1') && !statsUpdated[0]) { agentUpdateStats(0); statsUpdated[0]=true; }
+      if (line.text.includes('Turn 2') && !statsUpdated[1]) { agentUpdateStats(1); statsUpdated[1]=true; }
+      if (line.text.includes('Session:') && !statsUpdated[2]) { agentUpdateStats(2); statsUpdated[2]=true; }
+      if (i === AGENT_SCRIPT.length-1) {
+        agentPlaying = false;
+        document.getElementById('agent-play-btn').textContent = '✓ Session Complete';
+        document.getElementById('agent-recs').innerHTML = `
+          <div style="color:var(--ac);margin-bottom:6px">✓ Generated CLAUDE.md rule: read server.ts once per session</div>
+          <div style="color:var(--yellow);margin-bottom:6px">⚠ 2 redundant file reads detected — add caching reminder</div>
+          <div style="color:var(--t2)">💡 Enable aggressive mode for higher savings on repetitive prompts</div>`;
+      }
+    }, line.delay);
+  });
+}
+
+function agentReset() {
+  if (agentTimer) clearTimeout(agentTimer);
+  agentPlaying = false;
+  document.getElementById('agent-term').innerHTML = '<span class="t-line t-terse">Terse started — scanning processes...</span><br><span class="t-line t-ok">Detected: claude (pid 31492) · Proxy ready on 127.0.0.1:7860</span><br><span class="t-line t-ok">Connected — monitoring every turn</span><br><span class="t-cursor"></span>';
+  document.getElementById('agent-play-btn').textContent = '▶ Play Session';
+  document.getElementById('agent-play-btn').disabled = false;
+  document.getElementById('turn-tbody').innerHTML = '';
+  document.getElementById('agent-recs').textContent = 'Run a session to generate recommendations...';
+  document.getElementById('agent-turn-label').textContent = 'Turn 0 / 3';
+  ['as-in','as-out','as-cache','as-typos','as-saved','as-redup'].forEach(id => document.getElementById(id).textContent = '0');
+  document.getElementById('as-cost').textContent = '$0.000';
+}
+
+/* ═══ MODEL ROUTER ═══ */
+const OPUS_SIGNALS = ['architect','design','security','review','complex','system','infrastructure','analyze','analysis','performance','optimize','strategy','evaluate','compare','multi','distributed','concurrent','large','entire','all','comprehensive','security'];
+const SONNET_SIGNALS = ['fix','test','rename','format','style','lint','simple','small','quick','add','remove','delete','update','change','edit','write','create','generate','translate','convert','sort','list','print'];
+const ROUTER_EXAMPLES = [
+  'Fix the off-by-one bug in the pagination function',
+  'Design a complete security review of our authentication system',
+  'Write a unit test for the login function',
+  'Design a distributed caching architecture for 10M concurrent users',
+  'Rename the variable userList to activeUsers',
+];
+
+function routerSetExample(i) { document.getElementById('router-input').value = ROUTER_EXAMPLES[i]; routerAnalyze(); }
+
+function routerAnalyze() {
+  const text = document.getElementById('router-input').value.trim();
+  if (!text) { document.getElementById('score-bars').innerHTML = '<div style="font-size:12px;color:var(--t3);text-align:center;padding:20px 0">Enter a task to see complexity scoring</div>'; return; }
+  const words = text.toLowerCase().split(/\W+/);
+  const tokens = countTokens(text);
+  let score = 0;
+  const signals = [];
+  for (const w of words) {
+    if (OPUS_SIGNALS.includes(w)) { score++; signals.push({w,dir:'opus'}); }
+    if (SONNET_SIGNALS.includes(w)) { score--; signals.push({w,dir:'sonnet'}); }
+  }
+  if (tokens < 12) score -= 2;
+  if (tokens > 80) score += 2;
+  score = Math.max(-5, Math.min(5, score));
+
+  const useSonnet = score < 1;
+  const pctScore = ((score + 5) / 10 * 100).toFixed(0);
+
+  const barsHTML = [
+    {label:'Token count', val: Math.min(tokens/3, 100).toFixed(0), pos: tokens > 30, desc: tokens + ' tokens'},
+    {label:'Complexity keywords', val: Math.min(signals.filter(s=>s.dir==='opus').length*25, 100).toFixed(0), pos:true, desc: signals.filter(s=>s.dir==='opus').map(s=>s.w).join(', ')||'none'},
+    {label:'Simple-task keywords', val: Math.min(signals.filter(s=>s.dir==='sonnet').length*25, 100).toFixed(0), pos:false, desc: signals.filter(s=>s.dir==='sonnet').map(s=>s.w).join(', ')||'none'},
+    {label:'Overall complexity score', val: pctScore, pos:score>=0, desc: score > 0 ? 'Favors Opus' : 'Favors Sonnet'},
+  ].map(b => `<div>
+    <div class="sbar-label"><span>${b.label}</span><span style="color:var(--t1);font-weight:700">${b.desc}</span></div>
+    <div class="sbar-track"><div class="sbar-fill ${b.pos?'pos':'neg'}" style="width:${b.val}%"></div></div>
+  </div>`).join('');
+  document.getElementById('score-bars').innerHTML = barsHTML;
+  document.getElementById('complexity-score').textContent = (score > 0 ? '+' : '') + score + ' / 5';
+  document.getElementById('complexity-score').style.color = score >= 1 ? 'var(--red)' : 'var(--ac)';
+
+  const modelName = useSonnet ? 'claude-sonnet-4-6' : 'claude-opus-4-6';
+  const modelPrice = useSonnet ? '$3/MTok' : '$15/MTok';
+  const reasonText = useSonnet
+    ? (score < -2 ? 'Simple task — routed to Sonnet (strong signal)' : 'Low complexity — routed to Sonnet')
+    : (score > 2 ? 'Complex task — keeping on Opus (strong signal)' : 'Moderate complexity — keeping on Opus');
+  document.getElementById('rv-model').textContent = modelName;
+  document.getElementById('rv-model').style.color = useSonnet ? 'var(--ac)' : 'var(--yellow)';
+  document.getElementById('rv-price').textContent = modelPrice + ' input';
+  const rvReason = document.getElementById('rv-reason');
+  rvReason.textContent = reasonText;
+  rvReason.style.display = 'block';
+
+  const ccOpus = document.getElementById('cc-opus');
+  const ccSon = document.getElementById('cc-sonnet');
+  ccOpus.className = 'cost-card' + (useSonnet ? '' : ' sel');
+  ccSon.className = 'cost-card' + (useSonnet ? ' sel' : '');
+  document.getElementById('cv-opus').style.color = useSonnet ? 'var(--t1)' : 'var(--ac)';
+  document.getElementById('cv-sonnet').style.color = useSonnet ? 'var(--ac)' : 'var(--t1)';
+
+  addActivity(useSonnet?'g':'y',
+    `Model router: "${text.substring(0,40)}..." → ${modelName}`,
+    useSonnet ? '80% less' : null
+  );
+  session.ops++; updateMetrics();
+}
+
+/* ═══ GIT DIFF ═══ */
+const EXAMPLE_DIFF = `diff --git a/src/auth/middleware.ts b/src/auth/middleware.ts
+index a3f1b2c..d4e5f6a 100644
+--- a/src/auth/middleware.ts
++++ b/src/auth/middleware.ts
+@@ -1,8 +1,6 @@
+ import { Request, Response, NextFunction } from 'express';
+-import { decode, verify } from 'jsonwebtoken';
++import { verify } from 'jsonwebtoken';
+ import { AuthError } from './errors';
+-import { logger } from '../utils/logger';
+-import { config } from '../config';
+
+ export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+   const token = req.headers.authorization?.split(' ')[1];
+@@ -10,20 +8,12 @@
+     throw new AuthError('No token provided');
+   }
+   try {
+-    const decoded = verify(token, process.env.JWT_SECRET as string);
+-    if (!decoded || typeof decoded !== 'object') {
+-      logger.warn('Invalid token structure');
+-      throw new AuthError('Invalid token');
+-    }
+-    const now = Math.floor(Date.now() / 1000);
+-    if (decoded.exp && decoded.exp < now) {
+-      logger.warn('Token expired', { userId: decoded.sub });
+-      throw new AuthError('Token expired');
+-    }
+-    req.user = decoded;
++    req.user = verify(token, process.env.JWT_SECRET as string);
+     next();
+   } catch (err) {
+-    logger.error('Auth failed', { err });
+-    res.status(401).json({ error: 'Unauthorized' });
++    res.status(401).json({ error: 'Unauthorized' });
+   }
+ }
+diff --git a/src/auth/login.ts b/src/auth/login.ts
+index b1c2d3e..e4f5g6h 100644
+--- a/src/auth/login.ts
++++ b/src/auth/login.ts
+@@ -1,15 +1,10 @@
+ import bcrypt from 'bcrypt';
+-import { sign } from 'jsonwebtoken';
+-import { db } from '../db';
+-import { User } from '../models/User';
+-import { logger } from '../utils/logger';
++import { sign } from 'jsonwebtoken'; import { db } from '../db';
+
+ export async function login(email: string, password: string) {
+   const user = await db.users.findOne({ email });
+-  if (!user) {
+-    logger.warn('Login attempt for unknown user', { email });
+-    throw new Error('User not found');
+-  }
++  if (!user) throw new Error('User not found');
+   const valid = await bcrypt.compare(password, user.passwordHash);
+-  if (!valid) {
+-    logger.warn('Invalid password attempt', { email });
+-    throw new Error('Invalid password');
+-  }
++  if (!valid) throw new Error('Invalid password');
+   return sign({ sub: user.id, email }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+ }`;
+
+function loadExampleDiff() {
+  document.getElementById('diff-input').value = EXAMPLE_DIFF;
+  analyzeDiffInput();
+}
+
+document.getElementById('diff-input').addEventListener('input', analyzeDiffInput);
+
+function analyzeDiffInput() {
+  const text = document.getElementById('diff-input').value;
+  const lines = text.split('\n');
+  const addLines = lines.filter(l=>l.startsWith('+')).length;
+  const delLines = lines.filter(l=>l.startsWith('-')).length;
+  document.getElementById('diff-in-lines').textContent = lines.length;
+  document.getElementById('diff-in-add').textContent = addLines;
+  document.getElementById('diff-in-del').textContent = delLines;
+  document.getElementById('diff-in-tok').textContent = countTokens(text) + ' tok';
+}
+
+function compressDiff() {
+  const text = document.getElementById('diff-input').value.trim();
+  if (!text) { alert('Paste a git diff first, or click "Load example diff"'); return; }
+  analyzeDiffInput();
+
+  const lines = text.split('\n');
+  const compressed = [];
+  let contextBuffer = [];
+  let inHunk = false;
+  const CONTEXT = 1;
+
+  for (let i=0; i<lines.length; i++) {
+    const l = lines[i];
+    if (l.startsWith('diff ') || l.startsWith('index ') || l.startsWith('--- ') || l.startsWith('+++ ')) {
+      compressed.push(l); continue;
+    }
+    if (l.startsWith('@@')) {
+      if (contextBuffer.length) { compressed.push(...contextBuffer.slice(-CONTEXT)); contextBuffer=[]; }
+      compressed.push(l); inHunk=true; continue;
+    }
+    if (inHunk) {
+      if (l.startsWith('+') || l.startsWith('-')) {
+        if (contextBuffer.length) { compressed.push(...contextBuffer.slice(-CONTEXT)); contextBuffer=[]; }
+        compressed.push(l);
+      } else {
+        contextBuffer.push(l);
+        if (contextBuffer.length > CONTEXT*2) {
+          const keep = contextBuffer.slice(0, CONTEXT);
+          compressed.push(...keep);
+          contextBuffer = [];
+          inHunk = false;
+        }
+      }
+    }
+  }
+  if (contextBuffer.length && inHunk) compressed.push(...contextBuffer.slice(0,CONTEXT));
+
+  const compressedText = compressed.join('\n');
+  const outLines = compressed.length;
+  const inTok = countTokens(text);
+  const outTok = countTokens(compressedText);
+  const saved = inTok - outTok;
+  const pct = inTok > 0 ? Math.round((saved/inTok)*100) : 0;
+
+  // Render
+  const diffOut = document.getElementById('diff-output');
+  diffOut.innerHTML = compressed.map(l => {
+    let cls = 'dl ctx';
+    if (l.startsWith('+') && !l.startsWith('+++')) cls = 'dl add';
+    else if (l.startsWith('-') && !l.startsWith('---')) cls = 'dl del';
+    else if (l.startsWith('@@')) cls = 'dl hdr';
+    else if (l.startsWith('diff ') || l.startsWith('index ') || l.startsWith('---') || l.startsWith('+++')) cls = 'dl meta';
+    const escaped = l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<span class="${cls}">${escaped}</span>`;
+  }).join('\n');
+
+  document.getElementById('diff-out-tok').textContent = outTok + ' tok';
+  document.getElementById('diff-saved').textContent = saved + ' tok';
+  document.getElementById('diff-pct').textContent = '-' + pct + '%';
+
+  if (saved > 0) {
+    session.tokens += saved;
+    session.cost += (saved/1000000)*15;
+    session.ops++;
+    if (pct > session.best) session.best = pct;
+    bumpMetric('m-tokens'); bumpMetric('m-cost'); bumpMetric('m-ops');
+    updateMetrics();
+    addActivity('g', `Git diff compressed: ${inTok}→${outTok} tok (${outLines} lines kept)`, '-'+pct+'%');
+  }
+}
+
+/* ═══ TOKEN EXCHANGE ═══ */
+function simulateBuy(provider, price, disc) {
+  document.getElementById('modal-title').textContent = 'Buy ' + provider + ' Tokens';
+  document.getElementById('modal-sub').textContent = price + ' · ' + disc + ' off retail price';
+  document.getElementById('buy-modal').style.display = 'flex';
+  addActivity('b', `Viewed ${provider} listing (${price}, ${disc} off)`, null);
+}
+function selectTopup(amount) {
+  document.querySelector('#buy-modal button.gradient-btn, #buy-modal button[onclick*="Sign In"]').textContent = 'Sign In to Confirm $'+amount+' Top-up →';
+}
+
+function updateSellPreview() {
+  const amount = parseFloat(document.getElementById('sell-amount').value) || 0;
+  const disc = parseInt(document.getElementById('disc-slider').value);
+  document.getElementById('disc-label').textContent = disc + '%';
+  if (!amount) {
+    document.getElementById('sell-earn').textContent = '—';
+    document.getElementById('sell-buyer').textContent = '—';
+    document.getElementById('sell-fee').textContent = '—';
+    return;
+  }
+  const buyerPays = amount * (1 - disc/100);
+  const terseeFee = buyerPays * 0.15;
+  const youEarn = buyerPays - terseeFee;
+  document.getElementById('sell-earn').textContent = '$' + youEarn.toFixed(2);
+  document.getElementById('sell-buyer').textContent = '$' + buyerPays.toFixed(2);
+  document.getElementById('sell-fee').textContent = '$' + terseeFee.toFixed(2);
+}
+
+function simulateSellListing() {
+  const amount = document.getElementById('sell-amount').value;
+  const disc = document.getElementById('disc-slider').value;
+  const provider = document.getElementById('sell-provider').value;
+  if (!amount) { document.getElementById('sell-amount').style.borderColor='var(--red)'; setTimeout(()=>document.getElementById('sell-amount').style.borderColor='',1200); return; }
+  addActivity('y', `Listed ${provider} · $${amount} at ${disc}% off`, null);
+  alert('Sign in at terseai.org to complete your listing!');
+}
+
+/* ═══ TABS ═══ */
+document.querySelectorAll('.demo-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.demo-tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.demo-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'agent' && document.getElementById('agent-term').innerHTML === '') agentReset();
+  });
+});
+
+/* ═══ INIT ═══ */
+agentReset();
+updateMetrics();
+
+// Pre-populate diff with example on page load
+setTimeout(() => {
+  if (!document.getElementById('diff-input').value) loadExampleDiff();
+}, 200);
+</script>
+</body>
+</html>

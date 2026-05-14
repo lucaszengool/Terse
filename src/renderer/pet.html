@@ -159,17 +159,17 @@
       0%,55%,100%{transform:translateY(0) scaleY(1)}
       25%        {transform:translateY(-3px) scaleY(1.03)}
     }
-    /* Leg walk-cycle — 2-frame stepped gallop */
+    /* Leg walk-cycle — gentle pendulum from hip */
     @keyframes k-leg-A{
-      0%,49%   {transform:translate(-2px,0) rotate(-22deg)}
-      50%,100% {transform:translate(2px,-1px) rotate(22deg)}
+      0%,100%{transform:rotate(-7deg)}
+      50%    {transform:rotate(7deg)}
     }
     @keyframes k-leg-B{
-      0%,49%   {transform:translate(2px,-1px) rotate(22deg)}
-      50%,100% {transform:translate(-2px,0) rotate(-22deg)}
+      0%,100%{transform:rotate(7deg)}
+      50%    {transform:rotate(-7deg)}
     }
-    .leg-A{animation:k-leg-A .32s steps(1,end) infinite}
-    .leg-B{animation:k-leg-B .32s steps(1,end) infinite}
+    .leg-A{animation:k-leg-A .55s ease-in-out infinite}
+    .leg-B{animation:k-leg-B .55s ease-in-out infinite}
     /* Part-level continuous animations */
     @keyframes k-tail-wag{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
     @keyframes k-ear-twitch{0%,80%,100%{transform:rotate(0)}90%{transform:rotate(-12deg)}95%{transform:rotate(8deg)}}
@@ -180,6 +180,7 @@
     .ear-R   {transform-box:fill-box;transform-origin:50% 100%;animation:k-ear-twitch 5.3s ease-in-out .8s infinite}
     .eyeshut {transform-box:fill-box;transform-origin:center;animation:k-blink 5.4s linear infinite}
     .tongue  {transform-box:fill-box;transform-origin:50% 0%;animation:k-tongue-loll 1.2s ease-in-out infinite}
+
 
     /* Entry bounce */
     @keyframes pet-enter{
@@ -251,6 +252,360 @@
       40%{opacity:1;transform:scale(1.2) rotate(20deg)}
       100%{opacity:0;transform:scale(.8) rotate(40deg) translateY(-20px)}
     }
+    /* ── Work overlay system ─────────────────────────────────────── */
+    .work-overlay{position:fixed;pointer-events:none;z-index:200}
+
+    /* BASH: mini terminal */
+    .wo-terminal{
+      background:#1a1a2e;border:1.5px solid #44ff88;border-radius:6px;
+      padding:5px 8px;font-family:'SF Mono',Menlo,monospace;font-size:10px;color:#44ff88;
+      min-width:120px;line-height:1.5;box-shadow:0 0 12px rgba(68,255,136,.35);
+      animation:wo-terminal-in .25s cubic-bezier(.34,1.56,.64,1) forwards,
+                wo-fade-up 1.8s .4s ease-out forwards}
+    @keyframes wo-terminal-in{from{opacity:0;transform:scale(.6) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+    .wo-cursor{display:inline-block;width:6px;height:11px;background:#44ff88;vertical-align:middle;animation:wo-blink .6s steps(1) infinite}
+    @keyframes wo-blink{0%,100%{opacity:1}50%{opacity:0}}
+    .wo-cmd-char{display:inline;animation:wo-type .04s ease forwards;opacity:0}
+    @keyframes wo-type{to{opacity:1}}
+
+    /* READ: scan beam */
+    .wo-scanbeam{
+      width:80px;height:3px;
+      background:linear-gradient(90deg,transparent,rgba(80,160,255,.9),transparent);
+      box-shadow:0 0 8px rgba(80,160,255,.7);border-radius:2px;
+      animation:wo-scan 1.4s cubic-bezier(.4,0,.6,1) forwards}
+    @keyframes wo-scan{
+      0%{opacity:0;transform:translateY(-30px) scaleX(.3)}
+      15%{opacity:1;transform:translateY(-20px) scaleX(1)}
+      50%{opacity:.9;transform:translateY(30px) scaleX(1)}
+      85%{opacity:.6;transform:translateY(80px) scaleX(.8)}
+      100%{opacity:0;transform:translateY(100px) scaleX(.2)}}
+    .wo-codeline{
+      width:0;height:2px;border-radius:1px;
+      animation:wo-codeline-grow .35s ease-out forwards,wo-codeline-fade .4s .6s ease forwards}
+    @keyframes wo-codeline-grow{to{width:var(--w,50px)}}
+    @keyframes wo-codeline-fade{to{opacity:0;transform:translateY(-8px)}}
+
+    /* WRITE: pencil trail */
+    .wo-pencil{
+      font-size:20px;
+      animation:wo-pencil-slide 1.2s cubic-bezier(.4,0,.6,1) forwards}
+    @keyframes wo-pencil-slide{
+      0%{opacity:0;transform:translateX(-30px) rotate(-20deg)}
+      20%{opacity:1;transform:translateX(-10px) rotate(-20deg)}
+      70%{opacity:1;transform:translateX(35px) rotate(-20deg)}
+      100%{opacity:0;transform:translateX(50px) rotate(-20deg)}}
+    .wo-writeline{
+      height:2px;width:0;border-radius:1px;
+      animation:wo-writeline-grow 1.0s .1s ease-out forwards}
+    @keyframes wo-writeline-grow{to{width:var(--w,55px)}}
+
+    /* EDIT: diff flash */
+    .wo-diff{
+      font-family:'SF Mono',Menlo,monospace;font-size:9px;line-height:1.6;
+      border-radius:5px;padding:3px 7px;min-width:80px;
+      animation:wo-diff-in .2s ease forwards,wo-fade-up 1.6s .5s ease forwards}
+    @keyframes wo-diff-in{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+    .wo-diff-del{color:#ff6b6b;background:rgba(255,80,80,.10)}
+    .wo-diff-add{color:#51cf66;background:rgba(60,220,90,.10)}
+    .wo-scissors{font-size:18px;animation:wo-snip .5s cubic-bezier(.34,1.56,.64,1) forwards,wo-fade-up 1.0s .6s ease forwards}
+    @keyframes wo-snip{0%{opacity:0;transform:scale(.4) rotate(-45deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+
+    /* GREP: magnifying glass sweep */
+    .wo-glass{
+      font-size:22px;
+      animation:wo-glass-sweep 1.5s cubic-bezier(.4,0,.6,1) forwards}
+    @keyframes wo-glass-sweep{
+      0%{opacity:0;transform:translateX(-20px) rotate(-15deg)}
+      15%{opacity:1;transform:translateX(-10px) rotate(-10deg)}
+      50%{opacity:1;transform:translateX(20px) rotate(10deg)}
+      75%{opacity:.8;transform:translateX(-5px) rotate(-5deg)}
+      100%{opacity:0;transform:translateX(10px) rotate(5deg)}}
+    .wo-match{
+      font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;
+      background:#fff3bf;color:#8a6800;border:1px solid #ffd43b;
+      animation:wo-match-pop .3s .8s cubic-bezier(.34,1.56,.64,1) both,wo-fade-up .5s 1.3s ease forwards}
+    @keyframes wo-match-pop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+
+    /* WEB: globe + signal */
+    .wo-globe{font-size:24px;animation:wo-globe-spin 1.5s ease-in-out forwards}
+    @keyframes wo-globe-spin{
+      0%{opacity:0;transform:scale(.4) rotate(-180deg)}
+      25%{opacity:1;transform:scale(1.1) rotate(0)}
+      70%{opacity:1;transform:scale(1) rotate(30deg)}
+      100%{opacity:0;transform:scale(.7) rotate(60deg) translateY(-15px)}}
+    .wo-signal{
+      width:var(--sz,14px);height:var(--sz,14px);border-radius:50%;
+      border:2px solid rgba(80,160,255,.7);
+      animation:wo-signal-ring 1.2s var(--delay,0s) ease-out forwards}
+    @keyframes wo-signal-ring{
+      0%{opacity:.9;transform:scale(.3)}
+      100%{opacity:0;transform:scale(1.8)}}
+    .wo-arrow{font-size:14px;animation:wo-arrow-bounce .5s .3s ease-out forwards,wo-fade-up .4s .9s ease forwards}
+    @keyframes wo-arrow-bounce{
+      0%{opacity:0;transform:translateY(8px)}50%{opacity:1;transform:translateY(-4px)}100%{opacity:1;transform:translateY(0)}}
+
+    /* AGENT: mini-clone burst */
+    .wo-clone{
+      font-size:var(--sz,16px);
+      animation:wo-clone-burst var(--dur,1.0s) var(--delay,0s) cubic-bezier(.34,1.56,.64,1) forwards}
+    @keyframes wo-clone-burst{
+      0%{opacity:0;transform:translate(0,0) scale(.3)}
+      30%{opacity:1;transform:translate(var(--tx,10px),var(--ty,-20px)) scale(1.1)}
+      70%{opacity:.8;transform:translate(var(--tx2,15px),var(--ty2,-30px)) scale(1)}
+      100%{opacity:0;transform:translate(var(--tx3,20px),var(--ty3,-45px)) scale(.4)}}
+    .wo-bolt{font-size:16px;animation:wo-bolt-flash .25s .1s ease forwards,wo-fade-up .5s .3s ease forwards}
+    @keyframes wo-bolt-flash{0%{opacity:0;transform:scale(.5)}50%{opacity:1;transform:scale(1.3)}100%{opacity:1;transform:scale(1)}}
+
+    /* TODO: checkbox ticks */
+    .wo-check{
+      display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
+      background:rgba(255,255,255,.95);border-radius:5px;padding:2px 6px;
+      border:1px solid rgba(0,0,0,.08);
+      animation:wo-check-in .25s var(--delay,0s) cubic-bezier(.34,1.56,.64,1) both,
+                wo-fade-up .4s var(--fade,1.0s) ease forwards}
+    @keyframes wo-check-in{from{opacity:0;transform:translateX(-12px) scale(.7)}to{opacity:1;transform:none}}
+    .wo-check-box{width:11px;height:11px;border-radius:2px;border:1.5px solid #51cf66;
+      display:flex;align-items:center;justify-content:center;font-size:8px;
+      animation:wo-tick-fill .2s var(--tick,.1s) ease forwards;background:transparent}
+    @keyframes wo-tick-fill{to{background:#51cf66;color:#fff}}
+
+    /* TOKEN SAVE: coin rain */
+    .wo-coin{
+      font-size:var(--sz,14px);
+      animation:wo-coin-fall var(--dur,0.8s) var(--delay,0s) ease-in forwards}
+    @keyframes wo-coin-fall{
+      0%{opacity:0;transform:translateY(var(--start,-50px)) rotate(0) scale(.6)}
+      20%{opacity:1}
+      80%{opacity:.8;transform:translateY(var(--end,30px)) rotate(360deg) scale(1)}
+      100%{opacity:0;transform:translateY(var(--end2,40px)) rotate(400deg) scale(.4)}}
+
+    /* MCP: circuit pulse */
+    .wo-circuit{
+      font-size:20px;
+      animation:wo-circuit-on .3s cubic-bezier(.34,1.56,.64,1) forwards,wo-fade-up 1.2s .6s ease forwards}
+    @keyframes wo-circuit-on{
+      0%{opacity:0;transform:scale(.4) rotate(-30deg)}
+      60%{transform:scale(1.2) rotate(5deg)}
+      100%{opacity:1;transform:scale(1) rotate(0)}}
+    .wo-pulse{
+      width:var(--sz,12px);height:var(--sz,12px);border-radius:50%;
+      background:rgba(180,100,255,.8);
+      animation:wo-pulse-out .8s var(--delay,0s) ease-out forwards}
+    @keyframes wo-pulse-out{
+      0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(2.5)}}
+
+    /* shared fade-up exit */
+    @keyframes wo-fade-up{to{opacity:0;transform:translateY(-18px)}}
+
+    /* ── KEYBOARD overlay ─────────────────────────────────────────── */
+    .wo-keyboard{
+      background:#1a1a2e;border:1.5px solid #555;border-radius:5px;
+      padding:4px 5px;box-shadow:0 4px 12px rgba(0,0,0,.5);
+      animation:wo-kb-in .2s cubic-bezier(.34,1.56,.64,1) forwards,wo-fade-up 1.8s .7s ease forwards}
+    @keyframes wo-kb-in{from{opacity:0;transform:translateY(8px) scale(.8)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .wo-kb-row{display:flex;gap:2px;margin-bottom:2px;justify-content:center}
+    .wo-key{
+      background:#2e2e4a;color:#aaa;font-size:6px;border-radius:2px;
+      padding:2px 3px;border-bottom:1.5px solid #111;min-width:10px;text-align:center;
+      animation:wo-keypress .32s ease-in-out infinite}
+    .wo-key.a1{animation-delay:.0s}.wo-key.a2{animation-delay:.11s}.wo-key.a3{animation-delay:.22s}
+    @keyframes wo-keypress{0%,60%,100%{transform:translateY(0);border-bottom-width:1.5px}30%{transform:translateY(1px);border-bottom-width:.5px}}
+    .wo-space{min-width:52px;font-size:5px;letter-spacing:1px}
+
+    /* ── BOOK overlay ─────────────────────────────────────────────── */
+    .wo-book{
+      display:flex;gap:2px;align-items:stretch;
+      animation:wo-book-open .35s cubic-bezier(.34,1.56,.64,1) forwards,wo-fade-up 1.8s .4s ease forwards}
+    @keyframes wo-book-open{from{opacity:0;transform:scale(.6) rotate(-5deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+    .wo-book-spine{width:4px;background:linear-gradient(180deg,#c87941,#a05a28);border-radius:1px}
+    .wo-book-page{background:#fffff0;border:1px solid #d4b896;border-radius:0 3px 3px 0;padding:5px 6px;width:54px}
+    .wo-book-left{border-radius:3px 0 0 3px}
+    .wo-bline{height:1.5px;background:#888;border-radius:1px;margin-bottom:3px;animation:wo-bscan .9s ease infinite}
+    .wo-bline.short{width:60%}
+    @keyframes wo-bscan{0%,100%{opacity:.4}50%{opacity:1;background:#2255cc}}
+
+    /* ── NOTEPAD overlay ──────────────────────────────────────────── */
+    .wo-notepad{
+      background:#fffff8;border:1px solid #d0c8a0;border-radius:3px;padding:5px 8px;
+      box-shadow:2px 2px 6px rgba(0,0,0,.2);min-width:90px;
+      animation:wo-diff-in .2s ease forwards,wo-fade-up 1.8s .2s ease forwards}
+    .wo-pad-lines{display:flex;flex-direction:column;gap:4px}
+    .wo-pline{height:1.5px;background:linear-gradient(90deg,#2255cc,#74c0fc);border-radius:1px;
+      width:0;animation:wo-pline-grow .5s ease-out forwards}
+    .wo-pline{animation-delay:var(--d,0ms)}
+    @keyframes wo-pline-grow{to{width:var(--w,80%)}}
+
+    /* ── GREP spotlight ───────────────────────────────────────────── */
+    .wo-spotlight{
+      font-size:26px;
+      animation:wo-spotlight-sweep 1.6s cubic-bezier(.4,0,.6,1) forwards}
+    @keyframes wo-spotlight-sweep{
+      0%{opacity:0;transform:translateX(0) rotate(-20deg)}
+      10%{opacity:1}
+      50%{transform:translateX(130px) rotate(20deg)}
+      90%{opacity:.8}
+      100%{opacity:0;transform:translateX(160px) rotate(30deg)}}
+
+    /* ── BROWSER overlay ──────────────────────────────────────────── */
+    .wo-browser{
+      background:#1e1e2e;border:1.5px solid #444;border-radius:6px;overflow:hidden;
+      box-shadow:0 6px 16px rgba(0,0,0,.4);
+      animation:wo-terminal-in .25s ease forwards,wo-fade-up 2.0s .3s ease forwards}
+    .wo-browser-bar{display:flex;align-items:center;gap:4px;background:#2a2a3e;padding:4px 6px}
+    .wo-browser-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+    .d1{background:#ff5f57}.d2{background:#febc2e}.d3{background:#28c840}
+    .wo-browser-url{font-size:7px;color:#888;margin-left:4px;flex:1}
+    .wo-browser-body{padding:5px 8px}
+    .wo-loadbar{height:2px;background:linear-gradient(90deg,#4dabf7,#74c0fc);border-radius:1px;
+      width:0;animation:wo-pline-grow 1.2s ease-out forwards;--w:100%}
+    .wo-browser-content{margin-top:5px;font-size:18px;text-align:center}
+    .wo-bline2{display:block;height:1.5px;background:#444;border-radius:1px;margin-top:3px;
+      animation:wo-pline-grow .6s .8s ease forwards;--w:90%}
+    .wo-bline2.short2{--w:60%}
+
+    /* ── AGENT bots ───────────────────────────────────────────────── */
+    .wo-agentbot{
+      font-size:22px;position:fixed;
+      animation:wo-agent-burst var(--dur,1.1s) var(--delay,0ms) ease-out forwards}
+    @keyframes wo-agent-burst{
+      0%{opacity:0;transform:translate(0,0) scale(.4)}
+      20%{opacity:1;transform:translate(calc(var(--tx)/2),calc(var(--ty)/2)) scale(1.1)}
+      70%{opacity:1;transform:translate(var(--tx),var(--ty)) scale(1)}
+      100%{opacity:0;transform:translate(var(--tx),calc(var(--ty) - 20px)) scale(.8)}}
+
+    /* ── CHECKLIST ────────────────────────────────────────────────── */
+    .wo-checklist{
+      background:rgba(255,255,255,.96);border:1.5px solid #ddd;border-radius:6px;
+      padding:5px 8px;box-shadow:0 4px 10px rgba(0,0,0,.15);
+      animation:wo-diff-in .2s ease forwards,wo-fade-up 2.2s .2s ease forwards}
+    .wo-checkrow{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
+      color:#333;padding:1px 0;opacity:0;animation:wo-check-appear .25s var(--delay,0ms) ease-out forwards}
+    @keyframes wo-check-appear{to{opacity:1}}
+    .wo-check-icon{font-size:11px;width:14px}
+
+    /* ── CHIP BOARD ───────────────────────────────────────────────── */
+    .wo-chipboard{
+      background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:6px 10px;
+      display:flex;align-items:center;gap:8px;
+      animation:wo-terminal-in .2s ease forwards,wo-fade-up 1.8s .2s ease forwards}
+    .wo-chip-icon{font-size:20px}
+    .wo-chip-lines{display:flex;flex-direction:column;gap:4px}
+    .wo-chip-line{height:2px;background:linear-gradient(90deg,#58a6ff,transparent);border-radius:1px;
+      width:0;animation:wo-pline-grow .4s ease-out forwards;--w:48px}
+    .wo-chip-line{animation-delay:var(--d,0ms)}
+
+    /* ── LAB chart ────────────────────────────────────────────────── */
+    .wo-lab{
+      background:rgba(10,12,20,.95);border:1px solid #2a2a4a;border-radius:6px;padding:5px 8px;
+      animation:wo-terminal-in .2s ease forwards,wo-fade-up 2.0s .2s ease forwards}
+    .wo-lab-title{font-size:9px;color:#74c0fc;margin-bottom:5px}
+    .wo-lab-chart{display:flex;align-items:flex-end;gap:4px;height:35px}
+    .wo-bar{width:12px;border-radius:2px 2px 0 0;opacity:0;
+      animation:wo-bar-rise .35s var(--d,0ms) ease-out forwards}
+    @keyframes wo-bar-rise{from{opacity:0;height:0!important}to{opacity:1}}
+
+    /* ── BIG FOLDER + file scatter ────────────────────────────────── */
+    .wo-folderbig{font-size:28px;animation:wo-snip .3s ease forwards,wo-fade-up 1.6s .3s ease forwards}
+    .wo-filescatter{
+      font-size:14px;position:fixed;
+      animation:wo-scatter var(--delay,0ms) .5s ease-out forwards}
+    @keyframes wo-scatter{
+      0%{opacity:0;transform:translate(0,0) scale(.4)}
+      30%{opacity:1;transform:translate(calc(var(--tx)*.5),calc(var(--ty)*.5)) scale(1.1)}
+      100%{opacity:.9;transform:translate(var(--tx),var(--ty)) scale(1)}}
+
+    /* ── THOUGHT BUBBLE ───────────────────────────────────────────── */
+    .wo-thoughtbubble{
+      background:rgba(255,255,255,.96);border:2px solid #e0e0e0;border-radius:16px;
+      padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,.15);
+      animation:wo-diff-in .25s ease forwards,wo-fade-up 2.2s .3s ease forwards}
+    .wo-thought-dots{display:flex;gap:4px;justify-content:center;margin-bottom:6px}
+    .wo-td{font-size:16px;color:#aaa;animation:wo-dot-pulse 1.2s ease-in-out infinite}
+    .wo-td:nth-child(2){animation-delay:.2s}.wo-td:nth-child(3){animation-delay:.4s}
+    @keyframes wo-dot-pulse{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+    .wo-thought-ideas{display:flex;gap:8px;justify-content:center}
+    .wo-idea{font-size:18px;opacity:0;animation:wo-idea-pop .3s var(--d,0ms) cubic-bezier(.34,1.56,.64,1) forwards}
+    @keyframes wo-idea-pop{to{opacity:1;transform:scale(1)}from{transform:scale(0) rotate(-20deg)}}
+
+    /* ── FOOD FALL (tokens eaten) ──────────────────────────────────── */
+    .wo-foodfall{
+      font-size:18px;position:fixed;
+      animation:wo-foodfall-arc var(--dur,.7s) var(--delay,0ms) cubic-bezier(.5,0,.5,1) forwards}
+    @keyframes wo-foodfall-arc{
+      0%{opacity:0;transform:translate(0,0) scale(.5) rotate(0deg)}
+      25%{opacity:1;transform:translate(calc(var(--tx)*.3),calc(var(--ty)*.3)) scale(1.1) rotate(30deg)}
+      85%{opacity:1;transform:translate(calc(var(--tx)*.9),calc(var(--ty)*.9)) scale(1) rotate(180deg)}
+      100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(.3) rotate(240deg)}}
+
+    /* ── GENERIC PROP (emoji-driven variants, used by many categories) ─
+       Pops into the scene with bounce, floats, then fades up.
+       Per-instance vars: --d (delay), --sz (font-size), --sway (sway distance px) */
+    .wo-prop{
+      position:fixed;font-size:var(--sz,22px);pointer-events:none;
+      filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));
+      animation:wo-prop-in .3s var(--d,0ms) cubic-bezier(.34,1.56,.64,1) both,
+                wo-prop-sway 2.0s var(--d,0ms) ease-in-out infinite,
+                wo-fade-up 1.6s calc(var(--d,0ms) + 1.2s) ease forwards}
+    @keyframes wo-prop-in{from{opacity:0;transform:scale(.3) rotate(-30deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+    @keyframes wo-prop-sway{
+      0%,100%{transform:translateX(0) rotate(-3deg)}
+      50%{transform:translateX(var(--sway,4px)) rotate(3deg)}}
+
+    /* Tiny tags / sticky notes / chips — colored mini-cards */
+    .wo-tag{
+      position:fixed;font-size:8px;font-weight:800;padding:2px 5px;border-radius:4px;
+      background:rgba(255,255,255,.95);color:#333;border:1px solid rgba(0,0,0,.08);
+      box-shadow:0 2px 4px rgba(0,0,0,.18);white-space:nowrap;
+      animation:wo-tag-in .3s var(--d,0ms) cubic-bezier(.34,1.56,.64,1) both,
+                wo-fade-up 1.4s calc(var(--d,0ms) + 1.0s) ease forwards}
+    @keyframes wo-tag-in{from{opacity:0;transform:translateY(8px) scale(.6)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .wo-tag.yellow{background:#fff3bf;color:#8a6800;border-color:#ffd43b}
+    .wo-tag.green {background:#d3f9d8;color:#2b8a3e;border-color:#69db7c}
+    .wo-tag.blue  {background:#d0ebff;color:#1864ab;border-color:#74c0fc}
+    .wo-tag.pink  {background:#ffdeeb;color:#a61e4d;border-color:#faa2c1}
+    .wo-tag.purple{background:#e5dbff;color:#5f3dc4;border-color:#b197fc}
+
+    /* Lines connecting nodes (flowchart) — animated draw */
+    .wo-line{position:fixed;height:2px;background:rgba(100,160,255,.7);transform-origin:0 50%;
+      width:0;animation:wo-pline-grow .4s var(--d,0ms) ease-out forwards,
+                wo-fade-up 1.4s calc(var(--d,0ms) + 1.0s) ease forwards}
+
+    /* Pulsing ring (used by many: radar, signal, brain) */
+    .wo-ring{position:fixed;border-radius:50%;border:2px solid rgba(100,200,255,.85);
+      width:var(--sz,16px);height:var(--sz,16px);
+      animation:wo-ring-pulse 1.4s var(--d,0ms) ease-out infinite}
+    @keyframes wo-ring-pulse{
+      0%{opacity:.9;transform:scale(.3)}
+      80%{opacity:.5;transform:scale(1.8)}
+      100%{opacity:0;transform:scale(2.2)}}
+
+    /* Bubble (beaker bubbles, soda fizz) */
+    .wo-bubble{position:fixed;border-radius:50%;width:var(--sz,6px);height:var(--sz,6px);
+      background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.9),rgba(180,220,255,.5));
+      animation:wo-bubble-rise 1.2s var(--d,0ms) ease-out forwards}
+    @keyframes wo-bubble-rise{
+      0%{opacity:0;transform:translateY(0) scale(.4)}
+      30%{opacity:1}
+      100%{opacity:0;transform:translateY(-30px) scale(1.2)}}
+
+    /* ── FOOD ARC (continuous: spawned on every tool call) ─────────────
+       Three-keyframe arc: emerge → apex (mid) → land at mouth.
+       Uses --mtx/--mty for the arc apex and --tx/--ty for the mouth target,
+       so each food traces a graceful curve instead of a straight line.
+       Lands with a tiny squash-pop so it visibly "lands" in the mouth. */
+    .food-arc{
+      font-size:20px;position:fixed;will-change:transform,opacity;
+      filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));
+      animation:food-arc-fly var(--dur,1s) var(--delay,0ms) cubic-bezier(.45,.05,.55,.95) forwards}
+    @keyframes food-arc-fly{
+      0%   {opacity:0;transform:translate(0,0) scale(.4) rotate(0deg)}
+      15%  {opacity:1;transform:translate(calc(var(--mtx)*.5),calc(var(--mty)*.5 - 6px)) scale(1) rotate(calc(var(--rot)*.3))}
+      55%  {opacity:1;transform:translate(var(--mtx),var(--mty)) scale(1.08) rotate(calc(var(--rot)*.7))}
+      88%  {opacity:1;transform:translate(var(--tx),var(--ty)) scale(.95) rotate(var(--rot))}
+      94%  {opacity:.9;transform:translate(var(--tx),calc(var(--ty) + 2px)) scale(1.15,.7) rotate(var(--rot))}
+      100% {opacity:0;transform:translate(var(--tx),calc(var(--ty) + 4px)) scale(.3) rotate(var(--rot))}}
+
     /* Hide button */
     #hide-btn{position:fixed;bottom:6px;right:6px;width:20px;height:20px;border-radius:50%;
       background:rgba(0,0,0,.18);border:none;color:rgba(255,255,255,.8);font-size:11px;

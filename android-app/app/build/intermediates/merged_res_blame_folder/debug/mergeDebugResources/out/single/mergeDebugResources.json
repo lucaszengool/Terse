@@ -1,0 +1,18 @@
+[
+    {
+        "merged": "com.pruneai.terse.app-debug-66:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.pruneai.terse.app-main-68:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.pruneai.terse.app-debug-66:/xml_keyboard_method.xml.flat",
+        "source": "com.pruneai.terse.app-main-68:/xml/keyboard_method.xml"
+    },
+    {
+        "merged": "com.pruneai.terse.app-debug-66:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.pruneai.terse.app-main-68:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.pruneai.terse.app-debug-66:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.pruneai.terse.app-main-68:/drawable/ic_launcher_foreground.xml"
+    }
+]

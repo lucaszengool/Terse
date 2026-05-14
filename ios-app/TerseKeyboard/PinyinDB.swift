@@ -235,7 +235,7 @@ class PinyinDB {
     }
 
     private func openWritableDB() -> OpaquePointer? {
-        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.terseai.shared") else { return nil }
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.pruneai.shared") else { return nil }
         let path = container.appendingPathComponent("user_pinyin.db").path
         var wdb: OpaquePointer?
         if sqlite3_open(path, &wdb) == SQLITE_OK {

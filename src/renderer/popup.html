@@ -96,6 +96,16 @@
         <span id="agentSavingsUSD" class="savings-usd"></span>
       </div>
 
+      <!-- Proxy status bar -->
+      <div id="proxyStatusBar" class="proxy-status-bar" style="display:none;padding:3px 8px;font-size:9px;display:flex;align-items:center;gap:6px;background:rgba(16,185,129,0.08);border-radius:4px;margin:2px 0">
+        <span style="width:6px;height:6px;border-radius:50%;background:#10b981;flex-shrink:0"></span>
+        <span>Proxy</span>
+        <span id="proxyReqs" style="font-weight:700">0</span><span>reqs</span>
+        <span class="sum-sep">|</span>
+        <span id="proxyRouted" style="font-weight:700;color:var(--ac)">0</span><span>routed</span>
+        <span id="proxyModel" style="margin-left:auto;opacity:0.6"></span>
+      </div>
+
       <!-- Compact summary bar (always visible) -->
       <div class="agent-summary-bar">
         <span class="sum-item"><span class="sum-label">Ctx</span> <span id="agentCtxShort" class="sum-val">0%</span></span>
@@ -111,6 +121,11 @@
 
       <!-- Context fill bar (always visible, compact) -->
       <div class="context-fill-bar-mini"><div class="context-fill-bar-fill" id="agentContextBar"></div></div>
+
+      <!-- Approx-token note (shown for Cursor: messages read from SQLite, tokens estimated) -->
+      <div id="agentHookOnlyNote" style="display:none;font-size:10px;color:#888;padding:4px 8px 2px;line-height:1.4">
+        <span id="agentPanelName2"></span> stores token counts server-side — shown values are estimates. Messages and turns are accurate.
+      </div>
 
       <!-- ═══ Activity log with inline optimization (PRIMARY VIEW) ═══ -->
       <div id="agentActivity" class="agent-activity"></div>
@@ -239,6 +254,7 @@
     var i18nScript = document.createElement('script');
     i18nScript.src = 'i18n.js';
     document.body.appendChild(i18nScript);
+
   </script>
 </body>
 </html>

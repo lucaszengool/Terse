@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Terse</string>
+    <string name="tab_optimize">优化</string>
+    <string name="tab_stats">统计</string>
+    <string name="tab_settings">设置</string>
+    <string name="sign_in_subtitle">优化您的AI提示词，节省Token。</string>
+    <string name="sign_in_google">使用Google账号登录</string>
+    <string name="optimize_placeholder">粘贴提示词以优化…</string>
+    <string name="optimize_button">优化</string>
+    <string name="copy_button">复制</string>
+    <string name="copied">已复制！</string>
+    <string name="mode_light">轻度</string>
+    <string name="mode_balanced">均衡</string>
+    <string name="mode_aggressive">强力</string>
+    <string name="settings_upgrade_pro">升级到专业版</string>
+    <string name="settings_sign_out">退出登录</string>
+    <string name="settings_delete_account">删除账户</string>
+    <string name="keyboard_setup_title">键盘设置</string>
+    <string name="keyboard_setup_open_settings">打开设置</string>
+    <string name="keyboard_setup_privacy">所有优化均在本地设备上处理，文本不会离开您的手机。</string>
+</resources>

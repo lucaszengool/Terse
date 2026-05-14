@@ -1,0 +1,4 @@
+-keep class com.pruneai.terse.** { *; }
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-keep class androidx.credentials.** { *; }
+-dontwarn com.android.billingclient.**

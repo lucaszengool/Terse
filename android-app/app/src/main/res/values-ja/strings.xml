@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Terse</string>
+    <string name="tab_optimize">最適化</string>
+    <string name="tab_stats">統計</string>
+    <string name="tab_settings">設定</string>
+    <string name="sign_in_subtitle">AIプロンプトを最適化してトークンを節約。</string>
+    <string name="sign_in_google">Googleでログイン</string>
+    <string name="optimize_placeholder">最適化するプロンプトを貼り付けてください…</string>
+    <string name="optimize_button">最適化</string>
+    <string name="copy_button">コピー</string>
+    <string name="copied">コピーしました！</string>
+    <string name="mode_light">軽度</string>
+    <string name="mode_balanced">バランス</string>
+    <string name="mode_aggressive">強力</string>
+    <string name="settings_upgrade_pro">Proにアップグレード</string>
+    <string name="settings_sign_out">サインアウト</string>
+    <string name="settings_delete_account">アカウントを削除</string>
+    <string name="keyboard_setup_title">キーボード設定</string>
+    <string name="keyboard_setup_open_settings">設定を開く</string>
+    <string name="keyboard_setup_privacy">すべての最適化はデバイス上で処理されます。テキストがデバイスの外に送信されることはありません。</string>
+</resources>

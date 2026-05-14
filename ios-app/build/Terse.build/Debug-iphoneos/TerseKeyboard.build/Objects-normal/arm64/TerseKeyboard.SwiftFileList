@@ -1,4 +1,6 @@
 /Users/James/Desktop/Terse/ios-app/TerseKeyboard/KeyboardViewController.swift
 /Users/James/Desktop/Terse/ios-app/Shared/TerseOptimizer.swift
-/Users/James/Desktop/Terse/ios-app/Shared/TerseSettings.swift
-/Users/James/Desktop/Terse/ios-app/Shared/TerseTheme.swift
+/Users/James/Desktop/Terse/ios-app/Shared/TerseMultiLang.swift
+/Users/James/Desktop/Terse/ios-app/TerseKeyboard/PinyinDB.swift
+/Users/James/Desktop/Terse/ios-app/Shared/ZhOptimizer.swift
+/Users/James/Desktop/Terse/ios-app/TerseKeyboard/RimeService.swift

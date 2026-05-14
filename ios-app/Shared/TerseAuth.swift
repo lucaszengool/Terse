@@ -1,12 +1,16 @@
 import Foundation
+import AuthenticationServices
 
 class TerseAuth: ObservableObject {
     static let shared = TerseAuth()
 
-    private let apiBase = "https://www.terseai.org"
+    private let apiBase = "https://www.pruneai.com"
     private let defaults: UserDefaults
+    private var webAuthSession: ASWebAuthenticationSession?
+    private let contextProvider = WebAuthContextProvider()
 
     @Published var isSignedIn: Bool = false
+    @Published var signInError: String?
     @Published var clerkUserId: String?
     @Published var email: String?
     @Published var firstName: String?
@@ -33,37 +37,120 @@ class TerseAuth: ObservableObject {
     }
 
     init() {
-        self.defaults = UserDefaults(suiteName: "group.com.terseai.shared") ?? .standard
+        self.defaults = UserDefaults(suiteName: "group.com.pruneai.shared") ?? .standard
         loadAuth()
         loadLicense()
     }
 
-    // MARK: - Auth Flow
+    // MARK: - Sign in with Apple
 
-    func startSignIn(completion: @escaping (URL?) -> Void) {
-        guard let url = URL(string: "\(apiBase)/api/auth/start") else {
-            completion(nil)
+    func signInWithApple(credential: ASAuthorizationAppleIDCredential) {
+        guard let tokenData = credential.identityToken,
+              let identityToken = String(data: tokenData, encoding: .utf8) else {
+            print("[TerseAuth] No identity token from Apple")
             return
         }
+
+        let appleEmail = credential.email
+        let fullName = credential.fullName
+        let firstName = fullName?.givenName
+        let lastName = fullName?.familyName
+
+        // Save Apple name locally (Apple only sends it on first sign-in)
+        if let fn = firstName {
+            defaults.set(fn, forKey: "appleFirstName")
+        }
+        if let ln = lastName {
+            defaults.set(ln, forKey: "appleLastName")
+        }
+
+        let savedFirstName = firstName ?? defaults.string(forKey: "appleFirstName")
+        let savedLastName = lastName ?? defaults.string(forKey: "appleLastName")
+
+        guard let url = URL(string: "\(apiBase)/api/auth/apple") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        URLSession.shared.dataTask(with: request) { data, _, error in
-            guard let data = data,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let token = json["token"] as? String else {
-                DispatchQueue.main.async { completion(nil) }
+        var body: [String: Any] = ["identityToken": identityToken]
+        if let e = appleEmail { body["email"] = e }
+        if let fn = savedFirstName { body["firstName"] = fn }
+        if let ln = savedLastName { body["lastName"] = ln }
+
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        print("[TerseAuth] Sending Apple token to server...")
+        DispatchQueue.main.async { self.signInError = nil }
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+
+            if let error = error {
+                print("[TerseAuth] Apple auth network error: \(error.localizedDescription)")
+                DispatchQueue.main.async { self.signInError = "Network error. Please try again." }
                 return
             }
 
-            // Save token for polling
+            let httpStatus = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let rawStr = data.flatMap { String(data: $0, encoding: .utf8) } ?? "nil"
+            print("[TerseAuth] Apple auth response (\(httpStatus)): \(rawStr)")
+
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let status = json["status"] as? String,
+                  status == "authenticated" else {
+                print("[TerseAuth] Apple auth API failed or not authenticated")
+                DispatchQueue.main.async { self.signInError = "Sign in failed. Please try again." }
+                return
+            }
+
+            let userId = json["clerkUserId"] as? String ?? ""
+            let email = json["email"] as? String ?? ""
+            let imageUrl = json["imageUrl"] as? String
+            let name = json["firstName"] as? String ?? savedFirstName
+
+            print("[TerseAuth] Apple Sign In completed! User: \(userId)")
+
+            DispatchQueue.main.async {
+                self.signInError = nil
+                self.saveAuth(clerkUserId: userId, email: email, imageUrl: imageUrl, firstName: name)
+                self.verifyLicense()
+            }
+        }.resume()
+    }
+
+    // MARK: - Web Auth Flow (fallback)
+
+    func startSignIn() {
+        guard let url = URL(string: "\(apiBase)/api/auth/start") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
+            guard let self = self,
+                  let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let token = json["token"] as? String else { return }
+
             self.defaults.set(token, forKey: "authToken")
             self.defaults.set(false, forKey: "authCompleted")
 
-            let authURL = URL(string: "\(self.apiBase)/auth-callback.html?token=\(token)&action=signin")
-            DispatchQueue.main.async { completion(authURL) }
+            guard let authURL = URL(string: "\(self.apiBase)/auth-callback.html?token=\(token)&action=signin") else { return }
 
-            // Start polling
+            DispatchQueue.main.async {
+                let session = ASWebAuthenticationSession(
+                    url: authURL,
+                    callbackURLScheme: "terseauth"
+                ) { _, _ in
+                    // User dismissed or callback received — check if auth completed
+                    self.checkPendingAuth()
+                }
+                session.presentationContextProvider = self.contextProvider
+                session.prefersEphemeralWebBrowserSession = false
+                session.start()
+                self.webAuthSession = session
+            }
+
             self.pollForAuth(token: token)
         }.resume()
     }
@@ -101,6 +188,8 @@ class TerseAuth: ObservableObject {
                     print("[TerseAuth] Auth completed! User: \(userId ?? "nil")")
 
                     DispatchQueue.main.async {
+                        self.webAuthSession?.cancel()
+                        self.webAuthSession = nil
                         self.saveAuth(
                             clerkUserId: userId ?? "",
                             email: email ?? "",
@@ -161,6 +250,41 @@ class TerseAuth: ObservableObject {
         saveLicense()
     }
 
+    func deleteAccount() {
+        guard let userId = clerkUserId, !userId.isEmpty else {
+            signOut()
+            return
+        }
+
+        // Call server to delete account
+        guard let url = URL(string: "\(apiBase)/api/auth/delete") else {
+            signOut()
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["clerkUserId": userId])
+
+        URLSession.shared.dataTask(with: request) { _, _, _ in
+            print("[TerseAuth] Account deletion requested for \(userId)")
+        }.resume()
+
+        // Clear all local data
+        signOut()
+        defaults.removeObject(forKey: "stats_entries")
+        defaults.removeObject(forKey: "totalTokensSaved")
+        defaults.removeObject(forKey: "totalTokensOptimized")
+        defaults.removeObject(forKey: "totalOptimizations")
+        defaults.removeObject(forKey: "weeklyUsage")
+        defaults.removeObject(forKey: "usageWeek")
+        defaults.removeObject(forKey: "spentTokens")
+        defaults.removeObject(forKey: "unlockedThemes")
+        defaults.removeObject(forKey: "appleFirstName")
+        defaults.removeObject(forKey: "appleLastName")
+        defaults.synchronize()
+    }
+
     // MARK: - License
 
     func verifyLicense() {
@@ -193,20 +317,38 @@ class TerseAuth: ObservableObject {
             }
 
             DispatchQueue.main.async {
-                self.tier = json["tier"] as? String ?? "free"
+                let serverTier = json["tier"] as? String ?? "free"
                 self.status = json["status"] as? String ?? "active"
-                print("[TerseAuth] Tier: \(self.tier), Status: \(self.status)")
 
-                if let limits = json["limits"] as? [String: Any] {
-                    self.optimizationsPerWeek = limits["optimizations_per_week"] as? Int ?? 120
-                    self.maxSessions = limits["max_sessions"] as? Int ?? 1
-                    print("[TerseAuth] Limits: \(self.optimizationsPerWeek) opt/week, \(self.maxSessions) sessions")
+                // Don't downgrade from Pro if local UserDefaults says user has active subscription
+                let localTier = self.defaults.string(forKey: "licenseTier") ?? "free"
+                let localOptPerWeek = self.defaults.integer(forKey: "optimizationsPerWeek")
+                if localTier == "pro" && localOptPerWeek == -1 && serverTier == "free" {
+                    // StoreKit has active subscription — keep Pro, server will catch up
+                    self.tier = "pro"
+                    self.optimizationsPerWeek = -1
+                    self.remaining = -1
+                    print("[TerseAuth] Server says free but StoreKit says Pro — keeping Pro")
+                } else {
+                    self.tier = serverTier
+                    if let limits = json["limits"] as? [String: Any] {
+                        self.optimizationsPerWeek = limits["optimizations_per_week"] as? Int ?? 120
+                        self.maxSessions = limits["max_sessions"] as? Int ?? 1
+                    }
+                    print("[TerseAuth] Tier: \(self.tier), Status: \(self.status)")
                 }
 
                 self.loadWeeklyUsage()
                 self.saveLicense()
             }
         }.resume()
+    }
+
+    /// Reload usage from UserDefaults (keyboard extension writes here)
+    func reloadUsage() {
+        defaults.synchronize()
+        loadWeeklyUsage()
+        objectWillChange.send()
     }
 
     private func loadWeeklyUsage() {
@@ -259,5 +401,13 @@ class TerseAuth: ObservableObject {
         let cal = Calendar(identifier: .iso8601)
         let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
         return "\(comps.yearForWeekOfYear ?? 0)\(String(format: "%02d", comps.weekOfYear ?? 0))"
+    }
+}
+
+// MARK: - ASWebAuthenticationSession Context Provider
+
+class WebAuthContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        return ASPresentationAnchor()
     }
 }

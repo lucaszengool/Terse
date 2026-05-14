@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Terse</string>
+    <string name="tab_optimize">Optimizar</string>
+    <string name="tab_stats">Estadísticas</string>
+    <string name="tab_settings">Ajustes</string>
+    <string name="sign_in_subtitle">Optimiza tus prompts de IA. Ahorra tokens.</string>
+    <string name="sign_in_google">Continuar con Google</string>
+    <string name="optimize_placeholder">Pega un prompt para optimizar…</string>
+    <string name="optimize_button">Optimizar</string>
+    <string name="copy_button">Copiar</string>
+    <string name="copied">¡Copiado!</string>
+    <string name="mode_light">Ligero</string>
+    <string name="mode_balanced">Equilibrado</string>
+    <string name="mode_aggressive">Agresivo</string>
+    <string name="settings_upgrade_pro">Actualizar a Pro</string>
+    <string name="settings_sign_out">Cerrar sesión</string>
+    <string name="settings_delete_account">Eliminar cuenta</string>
+    <string name="keyboard_setup_title">Configurar teclado</string>
+    <string name="keyboard_setup_open_settings">Abrir ajustes</string>
+    <string name="keyboard_setup_privacy">Todo el procesamiento es 100%% local. Ningún texto sale de tu dispositivo.</string>
+</resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Terse</string>
+    <string name="copied">Copié !</string>
+    <string name="copy_button">Copier</string>
+    <string name="keyboard_setup_open_settings">Ouvrir les paramètres</string>
+    <string name="keyboard_setup_privacy">Tout le traitement est 100%% local. Aucun texte ne quitte votre appareil.</string>
+    <string name="keyboard_setup_title">Configuration du clavier</string>
+    <string name="mode_aggressive">Agressif</string>
+    <string name="mode_balanced">Équilibré</string>
+    <string name="mode_light">Léger</string>
+    <string name="optimize_button">Optimiser</string>
+    <string name="optimize_placeholder">Collez un prompt à optimiser…</string>
+    <string name="settings_delete_account">Supprimer le compte</string>
+    <string name="settings_sign_out">Se déconnecter</string>
+    <string name="settings_upgrade_pro">Passer à Pro</string>
+    <string name="sign_in_google">Continuer avec Google</string>
+    <string name="sign_in_subtitle">Optimisez vos prompts IA. Économisez des tokens.</string>
+    <string name="tab_optimize">Optimiser</string>
+    <string name="tab_settings">Paramètres</string>
+    <string name="tab_stats">Statistiques</string>
+</resources>

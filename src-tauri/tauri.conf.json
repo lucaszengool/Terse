@@ -7,6 +7,11 @@
     "frontendDist": "../src/renderer"
   },
   "bundle": {
+    "active": true,
+    "targets": ["dmg"],
+    "macOS": {
+      "entitlements": "../src-tauri/Entitlements.plist"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -14,6 +19,7 @@
       "icons/icon.icns"
     ],
     "resources": {
+      "../ml/model/complexity-vocab.json": "ml/complexity-vocab.json",
       "../src/helpers/terse-ax": "terse-ax",
       "../src/helpers/terse-compress.js": "terse-compress.js",
       "../src/helpers/terse-rewrite.sh": "terse-rewrite.sh",

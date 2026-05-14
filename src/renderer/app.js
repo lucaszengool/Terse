@@ -354,6 +354,7 @@ $$('.toggle-btn').forEach(b => b.addEventListener('click', () => {
 }));
 $$('.setting-row input').forEach(cb => cb.addEventListener('change', () => T.updateSettings({ [cb.dataset.key]: cb.checked })));
 
+$('#btnMinimize').addEventListener('click', () => T.minimizeWindow());
 $('#btnClose').addEventListener('click', () => T.closeWindow());
 
 // Upgrade / Start Trial / Manage button — open in system browser
@@ -497,7 +498,8 @@ async function refreshPalsPage() {
   const cost = state.unlockCostPet || 1000;
   const skinCost = state.unlockCostSkin || 1000;
 
-  $('#palsBalance').textContent = `Coins: ${balance.toLocaleString()} 🪙 · Skins: ${skinCost} 🪙 each · Pets: $1 each`;
+  const pt = (key, p) => window.i18n ? window.i18n.t(key, p) : (p ? key : key);
+  $('#palsBalance').textContent = pt('pals_balance', { coins: balance.toLocaleString(), skin_cost: skinCost });
 
   const scroll = $('#palsScroll');
   scroll.innerHTML = '';
@@ -515,11 +517,11 @@ async function refreshPalsPage() {
       <input type="checkbox" data-setting="${key}" ${s[key] ? 'checked' : ''} style="width:32px;height:18px;cursor:pointer;flex-shrink:0">
     </label>`;
   settingsCard.innerHTML = `
-    <div style="font-size:11px;font-weight:700;color:var(--t1);margin-bottom:4px">Pet behavior</div>
-    ${row('idleAnimation', 'Idle animation', 'Continuous breathing/bob')}
-    ${row('eatAnimation', 'Eat on token save', 'Chomp + crumb when prompts get optimized')}
-    ${row('milestoneAnimation', 'Milestone celebration', 'Happy bounce + sparkles every 1,000 tokens')}
-    ${row('showBubbles', 'Speech bubbles', 'Show "+N tokens 🍪" / unlock messages')}
+    <div style="font-size:11px;font-weight:700;color:var(--t1);margin-bottom:4px">${pt('pet_behavior')}</div>
+    ${row('idleAnimation', pt('idle_animation'), pt('idle_animation_desc'))}
+    ${row('eatAnimation', pt('eat_on_save'), pt('eat_on_save_desc'))}
+    ${row('milestoneAnimation', pt('milestone_celebration'), pt('milestone_celebration_desc'))}
+    ${row('showBubbles', pt('speech_bubbles'), pt('speech_bubbles_desc'))}
   `;
   scroll.appendChild(settingsCard);
   settingsCard.querySelectorAll('input[type=checkbox]').forEach(cb => {
@@ -548,10 +550,10 @@ async function refreshPalsPage() {
     const equippedSkinId = equippedSkins[pal.id] || 'default';
     const equippedSkinOverlay = isOwned ? kekeSkinSVG(equippedSkinId, pal, SIZE) : '';
     const headerBtn = isEquipped
-      ? '<span style="font-size:9px;font-weight:700;padding:2px 8px;background:var(--btn);color:var(--btn-t);border-radius:8px">EQUIPPED</span>'
+      ? `<span style="font-size:9px;font-weight:700;padding:2px 8px;background:var(--btn);color:var(--btn-t);border-radius:8px">${pt('equipped')}</span>`
       : (isOwned
-        ? `<button class="pals-equip-btn" data-pet="${pal.id}" style="border:none;background:var(--btn);color:var(--btn-t);font-size:9px;font-weight:700;padding:3px 9px;border-radius:8px;cursor:pointer">EQUIP</button>`
-        : `<button class="pals-buy-btn" data-pet="${pal.id}" style="border:none;background:#22a559;color:#fff;font-size:9px;font-weight:700;padding:3px 9px;border-radius:8px;cursor:pointer">Buy $1 💳</button>`);
+        ? `<button class="pals-equip-btn" data-pet="${pal.id}" style="border:none;background:var(--btn);color:var(--btn-t);font-size:9px;font-weight:700;padding:3px 9px;border-radius:8px;cursor:pointer">${pt('equip')}</button>`
+        : `<button class="pals-buy-btn" data-pet="${pal.id}" style="border:none;background:#22a559;color:#fff;font-size:9px;font-weight:700;padding:3px 9px;border-radius:8px;cursor:pointer">${pt('buy_pet')}</button>`);
 
     let skinsRow = '';
     if (isOwned) {
@@ -564,7 +566,7 @@ async function refreshPalsPage() {
         const border = sEquipped ? 'var(--btn)' : (sOwned ? 'rgba(0,0,0,.08)' : 'rgba(0,0,0,.10)');
         const bg = sEquipped ? 'rgba(var(--btn-rgb,80,120,255),.10)' : 'var(--sf2,rgba(0,0,0,.03))';
         const opacity = sOwned ? 1 : 0.55;
-        const subLabel = sEquipped ? 'Equipped' : (sOwned ? 'Tap to preview' : `🔒 ${skinCost} 🪙`);
+        const subLabel = sEquipped ? pt('skin_equipped_label') : (sOwned ? pt('tap_to_preview') : `🔒 ${skinCost} 🪙`);
         const subColor = sEquipped ? 'var(--btn)' : 'var(--t3)';
         return `<div class="pals-skin-cell" data-action="preview-skin" data-pet="${pal.id}" data-skin="${skin.id}" title="${skin.name}" style="border:2px solid ${border};border-radius:10px;padding:6px 4px;cursor:pointer;opacity:${opacity};position:relative;background:${bg};text-align:center;transition:transform .12s,border-color .12s">
           ${sCard}
@@ -575,7 +577,7 @@ async function refreshPalsPage() {
       }).join('');
       skinsRow = `
         <div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.10)">
-          <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:6px">Skins (${skinCost} 🪙 each · click to preview)</div>
+          <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:6px">${pt('skins_header', { cost: skinCost })}</div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">${skinCells}</div>
         </div>`;
     }
@@ -730,10 +732,10 @@ function _showSkinPreview(pal, skin, sOwned, sEquipped, balance, skinCost) {
   const actionBtn = sEquipped
     ? `<span style="font-size:12px;font-weight:700;padding:8px 18px;background:var(--btn,#4a7cff);color:#fff;border-radius:10px;opacity:.6">Equipped</span>`
     : (sOwned
-      ? `<button id="skinPreviewEquip" style="border:none;background:var(--btn,#4a7cff);color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:10px;cursor:pointer">Equip</button>`
+      ? `<button id="skinPreviewEquip" style="border:none;background:#4a7cff;color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:10px;cursor:pointer">Equip</button>`
       : (canAfford
-        ? `<button id="skinPreviewUnlock" style="border:none;background:var(--btn,#4a7cff);color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:10px;cursor:pointer">Unlock · ${skinCost} 🪙</button>`
-        : `<span style="font-size:11px;color:var(--t3,#888);padding:8px 12px">🔒 Need ${(skinCost - balance).toLocaleString()} more 🪙</span>`));
+        ? `<button id="skinPreviewUnlock" style="border:none;background:#4a7cff;color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:10px;cursor:pointer">Unlock · ${skinCost} 🪙</button>`
+        : `<span style="font-size:11px;color:#888;padding:8px 12px;background:rgba(0,0,0,.06);border-radius:10px">🔒 Need ${(skinCost - balance).toLocaleString()} more 🪙</span>`));
 
   overlay.innerHTML = `
     <style>

@@ -7,6 +7,29 @@
 </head>
 <body>
   <!-- Auth Gate — shown until user signs in -->
+  <!-- Pet Picker Overlay — shown after sign-in if no starter pet picked -->
+  <div id="petPicker" data-tauri-drag-region style="display:none;position:fixed;inset:0;z-index:9998;background:var(--bg);flex-direction:column;align-items:center;padding:18px 12px 12px;overflow:hidden">
+    <div data-tauri-drag-region style="text-align:center;margin-bottom:8px">
+      <h2 style="color:var(--t1);font-size:15px;font-weight:700;margin:0 0 2px">Pick your Terse Pal</h2>
+      <p style="color:var(--t3);font-size:10px;margin:0;line-height:1.4">Your starter is free.<br>Save 1000 tokens to unlock each new pal.</p>
+    </div>
+    <div id="petPickerGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%;max-height:340px;overflow-y:auto;padding:4px"></div>
+    <div id="petPickerHint" style="margin-top:6px;font-size:9.5px;color:var(--t3);text-align:center">Tap one to choose</div>
+  </div>
+
+  <!-- Pals Inventory — collection of pets + skins, unlock with saved tokens -->
+  <div id="palsPage" data-tauri-drag-region style="display:none;position:fixed;inset:0;z-index:9997;background:var(--bg);flex-direction:column;padding:12px 10px 10px;overflow:hidden">
+    <div data-tauri-drag-region style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-shrink:0">
+      <button id="palsBackBtn" style="border:none;background:var(--sf);color:var(--t1);width:26px;height:26px;border-radius:50%;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center">←</button>
+      <div data-tauri-drag-region style="text-align:center;flex:1">
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">Your Pals</div>
+        <div id="palsBalance" style="font-size:10px;color:var(--t3);margin-top:1px">Balance: 0 tokens</div>
+      </div>
+      <div style="width:26px"></div>
+    </div>
+    <div id="palsScroll" style="flex:1;overflow-y:auto;padding-right:2px"></div>
+  </div>
+
   <div id="authGate" data-tauri-drag-region style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
     <div style="width:48px;height:48px;background:var(--btn);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--btn-t)">T</div>
     <h2 style="color:var(--t1);font-size:18px;font-weight:700;margin:0">Welcome to Terse</h2>
@@ -38,8 +61,14 @@
       <button class="titlebar-btn" id="btnTheme" title="Theme">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 000 20 4 4 0 01 0-8 4 4 0 00 0-8"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><circle cx="9" cy="13" r="1.5" fill="currentColor"/></svg>
       </button>
+      <button class="titlebar-btn" id="btnPalsTitle" title="Pals">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.2" fill="currentColor"/><circle cx="15" cy="10" r="1.2" fill="currentColor"/><path d="M9 15c.6.6 1.6 1 3 1s2.4-.4 3-1"/></svg>
+      </button>
       <button class="titlebar-btn" id="btnSettings" title="Settings">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+      <button class="titlebar-btn" id="btnMinimize" title="Minimize">
+        <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
       <button class="titlebar-btn" id="btnClose" title="Hide">
         <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1.2"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1.2"/></svg>
@@ -259,7 +288,7 @@
 
     function _loadScripts() {
       if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
-      ['tauri-bridge.js','optimizer-bundle.js','app.js'].reduce(function(p, src) {
+      ['tauri-bridge.js','pals.js','optimizer-bundle.js','app.js'].reduce(function(p, src) {
         return p.then(function() {
           return new Promise(function(resolve) {
             var s = document.createElement('script'); s.src = src;

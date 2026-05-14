@@ -25,10 +25,10 @@ enum TL {
     ]
 
     private static let en: [String: String] = [
-        "app.name": "Terse",
+        "app.name": "PruneAI",
         "header.saved": "saved",
         "header.pro": "PRO",
-        "header.setupKeyboard": "Set up Terse Keyboard",
+        "header.setupKeyboard": "Set up PruneAI Keyboard",
         "tab.optimize": "Optimize",
         "tab.stats": "Stats",
         "tab.settings": "Settings",
@@ -64,10 +64,10 @@ enum TL {
     ]
 
     private static let zhHans: [String: String] = [
-        "app.name": "Terse",
+        "app.name": "PruneAI",
         "header.saved": "已节省",
         "header.pro": "PRO",
-        "header.setupKeyboard": "设置 Terse 键盘",
+        "header.setupKeyboard": "设置 PruneAI 键盘",
         "tab.optimize": "优化",
         "tab.stats": "统计",
         "tab.settings": "设置",
@@ -103,10 +103,10 @@ enum TL {
     ]
 
     private static let zhHant: [String: String] = [
-        "app.name": "Terse",
+        "app.name": "PruneAI",
         "header.saved": "已節省",
         "header.pro": "PRO",
-        "header.setupKeyboard": "設定 Terse 鍵盤",
+        "header.setupKeyboard": "設定 PruneAI 鍵盤",
         "tab.optimize": "優化",
         "tab.stats": "統計",
         "tab.settings": "設定",
@@ -137,7 +137,7 @@ enum TL {
 
     private static let ja: [String: String] = [
         "header.saved": "節約",
-        "header.setupKeyboard": "Terse キーボードを設定",
+        "header.setupKeyboard": "PruneAI キーボードを設定",
         "tab.optimize": "最適化",
         "tab.stats": "統計",
         "tab.settings": "設定",

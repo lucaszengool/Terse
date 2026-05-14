@@ -1,120 +1,125 @@
-# Terse — App Store Listing (ASO/AEO Optimized)
+# PruneAI — App Store Listing
 
-## App Name (already set)
+## App Name
 ```
-Terse - Token Saver
+PruneAI — Prompt Compressor
 ```
 
 ## Subtitle (30 chars) — paste in App Store Connect
 ```
-Cut AI Costs With Every Message
+Smarter prompts. Lower costs.
 ```
 
 ## Keywords (100 chars, comma-separated) — paste in App Store Connect
 ```
-token,optimizer,AI,prompt,ChatGPT,Claude,GPT,keyboard,save,cost,LLM,compress,reduce,API,efficient
+prompt,compress,AI,LLM,cost,keyboard,writing,reduce,efficient,smart,token,chat,assistant,productivity
 ```
 
 ## Category
 - Primary: **Productivity**
 - Secondary: **Utilities**
 
+## Promotional Text (170 chars)
+```
+Cut your AI costs instantly. PruneAI compresses prompts before you send — same meaning, fewer words. Built for ChatGPT, Claude, Gemini & every AI tool. 100% on-device.
+```
+
 ## Description (English) — paste in App Store Connect
 
-Stop overpaying for AI. Terse is a smart iOS keyboard that automatically optimizes your prompts before sending — reducing token usage by 15-40% on ChatGPT, Claude, Gemini, and any LLM.
+Your AI prompts are longer than they need to be. PruneAI fixes that.
+
+PruneAI is a keyboard that automatically compresses your prompts before sending. Filler, fluff, and redundancy are stripped away — your message stays intact, but costs less to process. One tap. Zero effort.
 
 HOW IT WORKS
-Type your message normally. When you tap Send, Terse instantly compresses your text — removing filler words, redundancy, and unnecessary verbosity — while keeping your meaning 100% intact. One tap. Zero effort.
+Write your prompt normally. When you hit Send, PruneAI instantly rewrites it — shorter, tighter, same meaning. You save on every single message.
 
-WHY TERSE SAVES YOU MONEY
-AI APIs charge per token. Shorter prompts = lower bills. Terse typically cuts 15-40% of tokens from every message, which adds up fast across hundreds of daily conversations. Track your exact savings in real-time.
+THREE MODES
+- Light — Fixes typos, cleans whitespace. Your voice stays untouched.
+- Balanced — Trims filler words, hedging, and fluff. Great for daily use.
+- Aggressive — Maximum compression. Every word earns its place.
 
-THREE OPTIMIZATION MODES
-• Soft — Typo correction and whitespace only. Preserves everything.
-• Balanced — Removes filler, politeness, hedging. Best everyday mode.
-• Aggressive — Maximum compression. Strips everything non-essential.
+WHAT YOU GET
+- Compression Keyboard — Rewrites prompts on Send. No extra steps.
+- Usage Dashboard — See how much you've saved over time.
+- Shareable Report — Export your savings as a clean summary card.
+- 27 Keyboard Styles — Unlock new looks as you use the app.
+- 11 Languages — English, Chinese, Spanish, French, German, Portuguese, Japanese, Korean, Arabic, Italian, and more.
+- Private by Design — Everything runs on your device. Nothing is uploaded.
 
-FEATURES THAT MATTER
-• Smart Keyboard — Optimizes automatically on Send. No copy-paste needed.
-• Real-Time Savings Tracker — See tokens saved, estimated dollars saved, per model (GPT-4, Claude, GPT-4o).
-• Shareable Receipt — Beautiful paper-style savings receipt you can share with friends.
-• Collectible Keyboard Themes — 26 stunning keyboard styles (solid colors + gradients). Earn tokens, unlock new looks.
-• Token Economy — Every 100 tokens saved = unlock a new premium keyboard style. Save more, collect more.
-• Multi-Language — English, Chinese, Spanish, French, German, Portuguese, Japanese, Korean, and more.
-• Privacy First — All optimization runs 100% on-device. Your text never leaves your phone. No servers. No tracking.
+WORKS EVERYWHERE
+Use PruneAI with ChatGPT, Claude, Gemini, Copilot, Perplexity, or any AI assistant. If you can type there, PruneAI can compress there.
 
-SUPPORTED MODELS & APPS
-Works with any app where you type prompts: ChatGPT, Claude, Gemini, Perplexity, Copilot, API playgrounds, and more. Savings calculated for GPT-4, GPT-4o, Claude Sonnet, and Claude Opus pricing.
-
-SAVE TOKENS. SAVE MONEY. TYPE LESS. SAY MORE.
-
-Download Terse and start cutting your AI costs today.
+WRITE LESS. SPEND LESS.
 
 ## Description (简体中文) — paste for Chinese localization
 
-别再为 AI 多花冤枉钱。Terse 是一款智能 iOS 键盘，在发送前自动优化您的提示词 — 在 ChatGPT、Claude、Gemini 等任何大语言模型上减少 15-40% 的 token 用量。
+你发给 AI 的提示词比实际需要的更长。PruneAI 帮你解决这个问题。
 
-工作原理
-正常输入消息，点击发送。Terse 瞬间压缩文本 — 去除填充词、冗余表达和不必要的啰嗦 — 同时 100% 保持原意。一键操作，零额外步骤。
+PruneAI 是一款智能键盘，在你发送前自动压缩提示词。去除冗余、填充词和重复表达——意思不变，花费更少。一键操作，零额外步骤。
 
-为什么 Terse 帮你省钱
-AI API 按 token 收费。更短的提示词 = 更低的账单。Terse 通常每条消息减少 15-40% 的 token，日积月累省下大笔开支。实时追踪您的精确节省金额。
+使用方式
+照常输入提示词。点击发送时，PruneAI 瞬间重写——更短、更精炼、同样的意思。每条消息都帮你省钱。
 
-三种优化模式
-• 轻度 — 仅纠错和空白压缩，完整保留原文
-• 均衡 — 去除填充词、客套话、模糊语。日常最佳模式
-• 激进 — 最大压缩，剥离一切非必要内容
+三种模式
+- 轻度 — 纠错整理，完全保留原文风格
+- 均衡 — 去除填充词、模糊语和冗余，日常首选
+- 精简 — 极致压缩，每个字都物尽其用
 
 核心功能
-• 智能键盘 — 发送时自动优化，无需复制粘贴
-• 实时节省追踪 — 查看节省的 token 数量和预估金额（GPT-4、Claude、GPT-4o）
-• 可分享小票 — 精美纸质风格节省收据，可分享给朋友
-• 可收集键盘主题 — 26 种精美键盘配色（纯色 + 渐变），节省 token 解锁新外观
-• Token 经济 — 每节省 100 个 token = 解锁一个新键盘配色。省得越多，收集越多
-• 多语言 — 支持英语、中文、西班牙语、法语、德语、葡萄牙语、日语、韩语等
-• 隐私优先 — 所有优化 100% 在设备本地运行。文本绝不离开手机。
+- 压缩键盘 — 发送时自动重写提示词，无需额外操作
+- 使用面板 — 查看你随时间节省了多少
+- 分享报告 — 导出你的节省数据为精美卡片
+- 27 种键盘样式 — 使用越多，解锁越多
+- 11 种语言 — 支持英语、中文、西班牙语、法语、德语等
+- 隐私优先 — 所有处理 100% 在设备本地完成
 
-省 Token。省钱。少打字。多表达。
-立即下载 Terse，开始削减 AI 成本。
+适用于所有 AI
+PruneAI 适用于 ChatGPT、Claude、Gemini、Copilot、Perplexity 等所有 AI 应用。
 
-## Promotional Text (170 chars)
+少打字。少花钱。
+
+## Promotional Text — Chinese
 ```
-Save 15-40% on AI tokens automatically. Smart keyboard optimizes every prompt before sending. Track savings, collect keyboard themes. Privacy-first, 100% on-device.
+AI 省钱利器。智能键盘自动压缩提示词——更少文字，同样效果。支持所有 AI 应用。100% 本地处理。
 ```
 
 ## What's New (Version 1.0)
 ```
-Welcome to Terse! Smart AI keyboard that saves tokens and money on every message. Features: 3 optimization modes, real-time savings tracker, shareable receipts, 26 collectible keyboard themes, multi-language support, and 100% on-device privacy.
+First release. Compression keyboard with 3 modes, 27 styles, 11 languages, usage dashboard, and shareable reports. All processing on-device.
 ```
-
-## Screenshots Needed (6 required for 6.7" iPhone)
-You need to take these screenshots on iPhone 15 Pro Max or use the 6.7" simulator:
-
-1. Main app showing the Optimize tab with text input
-2. Receipt/Stats view showing token savings and cost estimates
-3. Keyboard in action inside a chat app (e.g., WeChat or Messages)
-4. Keyboard Shop showing collectible theme cards
-5. Card detail showing keyboard preview with a gradient theme
-6. Settings showing the theme picker with all 26 themes
-
-Take screenshots in the iOS Simulator:
-- Cmd+S in Simulator saves screenshot to Desktop
-- Use 6.7" iPhone 15 Pro Max simulator
 
 ## Privacy Policy URL
 ```
-https://www.terseai.org/privacy
+https://www.pruneai.com/privacy
 ```
 
 ## Support URL
 ```
-https://www.terseai.org
+https://www.pruneai.com
 ```
 
 ## Copyright
 ```
-2024-2026 Terse AI
+2026 PruneAI
 ```
 
 ## Age Rating
 4+ (No objectionable content)
+
+## App Review Notes
+```
+PruneAI is a prompt compression keyboard for AI users. It automatically shortens text before sending to reduce processing costs with AI services like ChatGPT and Claude.
+
+Key differentiators:
+- Unique prompt compression technology with 3 configurable modes (light/balanced/aggressive)
+- 20+ compression techniques including filler removal, hedging removal, phrase shortening, vocabulary simplification
+- Real-time usage dashboard tracking savings over time
+- Gamified theme unlock system — users earn tokens by optimizing and spend them to unlock keyboard styles
+- Multi-language support with specialized Chinese pinyin input
+
+All text processing runs 100% on-device using custom NLP algorithms. No external API calls for text processing. The app connects to our server only for authentication (Sign in with Apple) and subscription verification.
+
+Built from scratch — no templates, SDKs, or white-label solutions. This is original software.
+
+Demo: Type any prompt in the keyboard, tap Send, and observe the compression. The app also includes a manual optimizer where you can paste text to see before/after results.
+```

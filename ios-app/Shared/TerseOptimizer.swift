@@ -240,7 +240,7 @@ class TerseOptimizer {
     private func applyLight(_ t: inout String, _ a: inout [String]) {
         var b = t; t = contractFormal(t); if t != b { a.append("Contracted") }
         b = t; t = rx(t, "\\bin order to\\b", "to", [.caseInsensitive]); if t != b { a.append("Shortened phrases") }
-        b = t; t = rx(t, "^(hi|hello|hey)\\s*(there|assistant|AI|Claude|GPT|ChatGPT)?[,!.]?\\s*", "", [.caseInsensitive]); if t != b { a.append("Removed greeting") }
+        b = t; t = rx(t, "^(hi|hello|hey)\\s*(there|assistant|AI)?[,!.]?\\s*", "", [.caseInsensitive]); if t != b { a.append("Removed greeting") }
         b = t; t = rx(t, "\\b(thanks in advance|thank you in advance|thanks so much|thank you so much)\\b[^.!?\\n]*[.!?]?\\s*$", "", [.caseInsensitive, .anchorsMatchLines]); t = rx(t, "\\b(thanks!?|thank you!?)\\s*[.!]?\\s*$", "", [.caseInsensitive, .anchorsMatchLines]); if t != b { a.append("Removed closing thanks") }
         b = t; t = rx(t, "\\bI hope you('re| are) doing well\\s*(\\w+)?\\s*[.!]?\\s*", "", [.caseInsensitive]); if t != b { a.append("Removed fluff") }
         b = t; t = rx(t, "\\b(as a matter of fact|at the end of the day|for what it's worth|at this point in time)\\b[,]?\\s*", "", [.caseInsensitive]); if t != b { a.append("Removed filler phrases") }

@@ -1,19 +1,210 @@
 {
-  "name": "terse-bridge",
-  "displayName": "Terse Bridge",
-  "description": "Bridges VS Code editor content to the Terse prompt optimizer",
-  "version": "0.1.0",
-  "publisher": "terse",
-  "engines": { "vscode": "^1.80.0" },
-  "categories": ["Other"],
-  "activationEvents": ["onStartupFinished"],
-  "main": "./extension.js",
+  "name": "terse-optimizer",
+  "displayName": "Terse \u2014 AI Agent Monitor & Token Optimizer",
+  "description": "Monitor Claude Code, Copilot & Cursor live. Token counts, cost, cache efficiency, burn rate per session. Compress prompts 20\u201340% with 20+ techniques. Auto-routing suggestions.",
+  "version": "1.1.6",
+  "publisher": "LucasZeng",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "AI",
+    "prompt",
+    "optimizer",
+    "tokens",
+    "LLM",
+    "Claude",
+    "ChatGPT",
+    "GPT",
+    "compress",
+    "token saver"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/terse-app/terse-vscode"
+  },
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "terse.status",
-        "title": "Terse: Show Bridge Status"
+        "command": "terse.showPanel",
+        "title": "Terse: Show Panel",
+        "icon": "$(circuit-board)"
+      },
+      {
+        "command": "terse.optimize",
+        "title": "Terse: Optimize Selection",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "terse.optimizeReplace",
+        "title": "Terse: Optimize & Replace",
+        "icon": "$(replace)"
+      },
+      {
+        "command": "terse.copyOptimized",
+        "title": "Terse: Copy Optimized",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "terse.setMode",
+        "title": "Terse: Set Optimization Mode"
+      },
+      {
+        "command": "terse.toggleAutoMode",
+        "title": "Terse: Toggle Auto Mode"
+      },
+      {
+        "command": "terse.signin",
+        "title": "Terse: Sign In"
+      },
+      {
+        "command": "terse.signout",
+        "title": "Terse: Sign Out"
+      },
+      {
+        "command": "terse.upgrade",
+        "title": "Terse: Upgrade Plan"
       }
-    ]
+    ],
+    "keybindings": [
+      {
+        "command": "terse.optimizeReplace",
+        "key": "ctrl+shift+o",
+        "mac": "cmd+shift+o",
+        "when": "editorHasSelection && editorTextFocus"
+      },
+      {
+        "command": "terse.copyOptimized",
+        "key": "ctrl+shift+y",
+        "mac": "cmd+shift+y",
+        "when": "editorHasSelection && editorTextFocus"
+      },
+      {
+        "command": "terse.showPanel",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorHasSelection",
+          "command": "terse.optimize",
+          "group": "1_terse@1"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "terse.optimizeReplace",
+          "group": "1_terse@2"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "terse.copyOptimized",
+          "group": "1_terse@3"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "terse.showPanel",
+          "group": "navigation",
+          "when": "config.terse.showTitleBarButton"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "terse-sidebar",
+          "title": "Terse Optimizer",
+          "icon": "media/icon-mono.svg"
+        }
+      ]
+    },
+    "views": {
+      "terse-sidebar": [
+        {
+          "type": "webview",
+          "id": "terse.panel",
+          "name": "Optimizer"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Terse",
+      "properties": {
+        "terse.mode": {
+          "type": "string",
+          "enum": [
+            "soft",
+            "normal",
+            "aggressive"
+          ],
+          "enumDescriptions": [
+            "Soft: contractions + whitespace only. 100% meaning-preserving.",
+            "Normal: removes filler, hedging, politeness, meta-language.",
+            "Aggressive: everything in Normal + abbreviations + telegraph style."
+          ],
+          "default": "normal",
+          "description": "Default optimization aggressiveness."
+        },
+        "terse.autoMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-optimize selection as you type (debounced 600ms)."
+        },
+        "terse.autoReplace": {
+          "type": "boolean",
+          "default": false,
+          "description": "When autoMode is on, automatically replace selection with optimized text."
+        },
+        "terse.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show token count in the status bar."
+        },
+        "terse.showTitleBarButton": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show Terse button in editor title bar."
+        },
+        "terse.debounceMs": {
+          "type": "number",
+          "default": 600,
+          "description": "Debounce delay in ms for auto-mode."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "npm run build && vsce package",
+    "publish": "npm run build && vsce publish"
+  },
+  "dependencies": {
+    "nspell": "^2.1.5",
+    "dictionary-en": "^4.0.0",
+    "compromise": "^14.14.4",
+    "franc-min": "^6.2.0",
+    "stopword": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0"
   }
 }

@@ -34,21 +34,25 @@ struct KeyboardSetupView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         // Title
-                        VStack(spacing: 8) {
-                            Text("T")
-                                .font(.system(size: 40, weight: .heavy, design: .rounded))
+                        VStack(spacing: 12) {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(theme.accent)
+                                .frame(width: 56, height: 56)
+                                .overlay(
+                                    Text("P")
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                )
+
+                            Text("Enable PruneAI Keyboard")
+                                .font(.system(size: 22, weight: .bold))
                                 .foregroundColor(theme.t1)
 
-                            Text("Enable Terse Keyboard")
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(theme.t1)
-
-                            Text("Just tap each step — we'll take you right there.")
+                            Text("Follow each step below")
                                 .font(.system(size: 13))
                                 .foregroundColor(theme.t3)
-                                .multilineTextAlignment(.center)
                         }
-                        .padding(.top, 12)
+                        .padding(.top, 16)
 
                         // Steps — each one is tappable and opens the right place
                         VStack(spacing: 0) {
@@ -125,8 +129,8 @@ struct KeyboardSetupView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
-                                .background(theme.btn)
-                                .foregroundColor(theme.btnText)
+                                .background(theme.accent)
+                                .foregroundColor(.white)
                                 .clipShape(Capsule())
                             }
 
@@ -144,11 +148,11 @@ struct KeyboardSetupView: View {
                                     .font(.system(size: 40))
                                     .foregroundColor(theme.accent)
 
-                                Text("Terse Keyboard is Ready!")
+                                Text("PruneAI Keyboard is Ready!")
                                     .font(.system(size: 16, weight: .bold))
                                     .foregroundColor(theme.t1)
 
-                                Text("Switch to Terse by tapping the globe key on any keyboard. Your prompts will be optimized automatically.")
+                                Text("Switch to PruneAI by tapping the globe key on any keyboard. Your prompts will be optimized automatically.")
                                     .font(.system(size: 12))
                                     .foregroundColor(theme.t3)
                                     .multilineTextAlignment(.center)
@@ -178,14 +182,14 @@ struct KeyboardSetupView: View {
                         VStack(spacing: 6) {
                             HStack(spacing: 4) {
                                 Image(systemName: "lock.shield.fill")
-                                    .font(.system(size: 10))
+                                    .font(.system(size: 9))
                                 Text("Privacy Note")
-                                    .font(.system(size: 10, weight: .bold))
+                                    .font(.system(size: 9, weight: .bold))
                             }
                             .foregroundColor(theme.t3)
 
                             Text("Full Access is required so Terse can read and optimize your text. All processing happens on-device. No data is sent to any server.")
-                                .font(.system(size: 10))
+                                .font(.system(size: 9))
                                 .foregroundColor(theme.t3)
                                 .multilineTextAlignment(.center)
                         }
@@ -222,17 +226,17 @@ struct KeyboardSetupView: View {
                 // Step number
                 ZStack {
                     Circle()
-                        .fill(completedSteps.contains(index) || isSuccess ? theme.accent : theme.btn)
-                        .frame(width: 32, height: 32)
+                        .fill(completedSteps.contains(index) || isSuccess ? theme.accent : theme.sf)
+                        .frame(width: 28, height: 28)
 
                     if completedSteps.contains(index) || isSuccess {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
                     } else {
                         Text("\(index + 1)")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(theme.btnText)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(theme.t2)
                     }
                 }
 
@@ -254,19 +258,15 @@ struct KeyboardSetupView: View {
 
                 Spacer()
 
-                // Action arrow/button
+                // Action indicator
                 if !isSuccess {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 3) {
                         Text(actionLabel)
-                            .font(.system(size: 11, weight: .semibold))
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 11, weight: .medium))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
                     }
                     .foregroundColor(theme.accent)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(theme.accent.opacity(0.12))
-                    .clipShape(Capsule())
                 } else {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20))
@@ -282,7 +282,7 @@ struct KeyboardSetupView: View {
 
     private func connector() -> some View {
         HStack {
-            Spacer().frame(width: 35)
+            Spacer().frame(width: 33)
             Rectangle()
                 .fill(theme.border)
                 .frame(width: 2, height: 16)
@@ -327,14 +327,14 @@ struct KeyboardSetupView: View {
         let inputModes = UITextInputMode.activeInputModes
         for mode in inputModes {
             if let identifier = mode.value(forKey: "identifier") as? String {
-                if identifier.contains("com.terseai.app") {
+                if identifier.contains("com.pruneai.ios") {
                     return true
                 }
             }
         }
         // Check registered keyboards
         if let keyboards = UserDefaults.standard.object(forKey: "AppleKeyboards") as? [String] {
-            if keyboards.contains(where: { $0.contains("com.terseai.app") }) {
+            if keyboards.contains(where: { $0.contains("com.pruneai.ios") }) {
                 return true
             }
         }

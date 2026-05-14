@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Terse</string>
+    <string name="copied">복사됨!</string>
+    <string name="copy_button">복사</string>
+    <string name="keyboard_setup_open_settings">설정 열기</string>
+    <string name="keyboard_setup_privacy">모든 최적화는 기기에서 처리됩니다. 텍스트가 기기 밖으로 나가지 않습니다.</string>
+    <string name="keyboard_setup_title">키보드 설정</string>
+    <string name="mode_aggressive">강력</string>
+    <string name="mode_balanced">균형</string>
+    <string name="mode_light">가벼움</string>
+    <string name="optimize_button">최적화</string>
+    <string name="optimize_placeholder">최적화할 프롬프트를 붙여넣으세요…</string>
+    <string name="settings_delete_account">계정 삭제</string>
+    <string name="settings_sign_out">로그아웃</string>
+    <string name="settings_upgrade_pro">Pro로 업그레이드</string>
+    <string name="sign_in_google">Google로 계속하기</string>
+    <string name="sign_in_subtitle">AI 프롬프트를 최적화하여 토큰을 절약하세요.</string>
+    <string name="tab_optimize">최적화</string>
+    <string name="tab_settings">설정</string>
+    <string name="tab_stats">통계</string>
+</resources>

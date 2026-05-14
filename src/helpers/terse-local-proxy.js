@@ -4,6 +4,10 @@
  * Runs on localhost, intercepts LLM API calls, and routes to cheaper models
  * for simple tasks automatically.
  *
+ * Routing strategy (in priority order):
+ *   1. ML classifier  — fine-tuned DistilBERT ONNX model (if available)
+ *   2. Keyword rules  — pattern-based heuristic fallback (always available)
+ *
  * Usage:
  *   node terse-local-proxy.js [--port 7860]
  *
@@ -12,11 +16,39 @@
  *   export OPENAI_BASE_URL=http://localhost:7860
  *
  * Works with: Claude Code, Cursor, Codex, Windsurf, Cline, Aider
+ *
+ * ML model setup (optional — enables semantic routing beyond keyword matching):
+ *   1. Run: python ml/train.py
+ *   2. Copy: cp ml/model/model_quantized.onnx ~/.terse/ml/complexity-model.onnx
+ *            cp ml/model/complexity-vocab.json ~/.terse/ml/complexity-vocab.json
+ *   3. Install runtime: cd ~/.terse && npm install onnxruntime-node
+ *   4. Restart Terse — ML routing activates automatically.
  */
 
 const http = require('http');
 const https = require('https');
 const { URL } = require('url');
+
+// ── ML complexity classifier (optional — gracefully disabled if unavailable) ──
+// Loaded from same dir as this script (when installed via Terse) or source dir.
+let mlClassifier = null;
+(function loadMLClassifier() {
+  const path = require('path');
+  const candidates = [
+    path.join(__dirname, 'terse-complexity-classifier.js'),
+    path.join(require('os').homedir(), '.terse', 'terse-complexity-classifier.js'),
+  ];
+  for (const p of candidates) {
+    try {
+      if (require('fs').existsSync(p)) {
+        mlClassifier = require(p);
+        break;
+      }
+    } catch (e) {
+      // Non-critical — fall back to keyword rules
+    }
+  }
+})();
 
 // ── Configuration ──
 const PORT = parseInt(process.argv.find((a, i) => process.argv[i - 1] === '--port') || '7860');
@@ -191,22 +223,50 @@ function analyzeComplexity(userText, messages, body) {
   return { score, reasons };
 }
 
-function shouldRoute(model, messages, body) {
+async function shouldRoute(model, messages, body) {
   // Check if model is expensive (static map + dynamic detection)
   const cheaperModel = getRouteForModel(model);
   if (!cheaperModel) return null;
 
   const userText = extractLastUserMessage(messages);
+
+  // ── 1. ML classifier (fine-tuned DistilBERT) ────────────────────────────
+  // If the model is loaded, it takes priority over keyword rules.
+  // Confidence < 0.60 → fall through to keyword rules (uncertain prediction).
+  if (mlClassifier && mlClassifier.isAvailable && userText.length > 5) {
+    try {
+      const mlResult = await mlClassifier.classify(userText);
+      if (mlResult && mlResult.confidence >= 0.60) {
+        const isComplex = mlResult.label === 'complex';
+        const tag = `ml:${mlResult.label}(${(mlResult.confidence * 100).toFixed(0)}%)`;
+        if (isComplex) {
+          log(`KEEP ${model} [${tag}]`);
+          return null;
+        } else {
+          log(`ROUTE ${model}→${cheaperModel} [${tag}]`);
+          return cheaperModel;
+        }
+      }
+      // Low confidence — fall through to keyword rules
+      if (mlResult) {
+        log(`ML low-confidence (${(mlResult.confidence * 100).toFixed(0)}%) — falling back to keyword rules`);
+      }
+    } catch (e) {
+      // ML inference error — fall through silently
+    }
+  }
+
+  // ── 2. Keyword rules (always available, zero latency) ────────────────────
   const { score, reasons } = analyzeComplexity(userText, messages, body);
 
   // Score > 0 means complex → keep expensive model
   // Score <= 0 means simple → route to cheaper model
   if (score > 0) {
-    log(`KEEP ${model} (score=${score}, reasons=${reasons.join(',')})`);
+    log(`KEEP ${model} [keywords] (score=${score}, reasons=${reasons.join(',')})`);
     return null;
   }
 
-  log(`ROUTE ${model}→${cheaperModel} (score=${score}, reasons=${reasons.join(',')})`);
+  log(`ROUTE ${model}→${cheaperModel} [keywords] (score=${score}, reasons=${reasons.join(',')})`);
   return cheaperModel;
 }
 
@@ -308,7 +368,7 @@ const server = http.createServer((req, res) => {
   // Collect request body
   const chunks = [];
   req.on('data', (chunk) => chunks.push(chunk));
-  req.on('end', () => {
+  req.on('end', async () => {
     const bodyBuf = Buffer.concat(chunks);
 
     const provider = detectProvider(req.url, req.headers);
@@ -324,7 +384,7 @@ const server = http.createServer((req, res) => {
       body = JSON.parse(bodyBuf.toString());
     } catch (e) {
       // Forward as-is if can't parse
-      forwardRequest(provider, req, bodyBuf, body?.model || 'unknown', res);
+      forwardRequest(provider, req, bodyBuf, 'unknown', res);
       return;
     }
 
@@ -334,8 +394,8 @@ const server = http.createServer((req, res) => {
     // Normalize model name — strip Claude Code suffixes like [1m] that Anthropic's API rejects
     const normalizedModel = model.replace(/\[.*?\]$/, '');
 
-    // Check if we should route to a cheaper model
-    const routedModel = shouldRoute(normalizedModel, messages, body);
+    // Check if we should route to a cheaper model (async — ML + keyword fallback)
+    const routedModel = await shouldRoute(normalizedModel, messages, body);
     const effectiveModel = routedModel || normalizedModel;
 
     forwardRequest(provider, req, bodyBuf, effectiveModel, res);

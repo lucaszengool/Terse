@@ -2,8 +2,8 @@ import SwiftUI
 
 enum TerseThemeName: String, CaseIterable, Codable, Identifiable {
     var id: String { rawValue }
-    // Original 8 solid
-    case lime, lavender, coral, teal, midnight, rose, sage, sand
+    // Original 8 solid (cream is default)
+    case cream, lime, lavender, coral, teal, midnight, rose, sage, sand
     // 8 new solid
     case arctic, peach, indigo, mint, charcoal, blush, ocean, amber
     // 10 gradient
@@ -43,6 +43,12 @@ struct TerseTheme {
 
     static func theme(for name: TerseThemeName) -> TerseTheme {
         switch name {
+        case .cream:
+            return TerseTheme(
+                bg: Color(hex: 0xFFED29), t1: Color(hex: 0x1A1800), t2: Color(hex: 0x3D3A10), t3: Color(hex: 0x6B6530),
+                btn: Color(hex: 0x1A1800), btnText: Color(hex: 0xFFED29), accent: Color(hex: 0x8A8016),
+                surface: Color.white.opacity(0.45), surfaceHover: Color.white.opacity(0.6),
+                border: Color(hex: 0x1A1800).opacity(0.10))
         case .lime:
             return TerseTheme(
                 bg: Color(hex: 0xd1e847), t1: Color(hex: 0x0a0a0a), t2: Color(hex: 0x333333), t3: Color(hex: 0x555555),

@@ -16,7 +16,7 @@ class KeyboardViewController: KeyboardInputViewController {
         let systemLang = Locale.current.language.languageCode?.identifier ?? "en"
         let supportedLocales = ["en", "zh-Hans"]
         let defaultLocale = supportedLocales.contains(systemLang) ? systemLang : "en"
-        let savedLocale = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "keyboardLocale") ?? defaultLocale
+        let savedLocale = UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "keyboardLocale") ?? defaultLocale
         let initialLocale = Locale(identifier: savedLocale)
 
         // Set up autocomplete with pinyin support, synced to current locale
@@ -58,13 +58,18 @@ class KeyboardViewController: KeyboardInputViewController {
                         toolbar: { _ in EmptyView() }
                     )
                 }
+
+                // Block keyboard when quota is used up
+                if KeyboardViewController.shared?.isOverQuota == true {
+                    TerseQuotaBlockView()
+                }
             }
         }
     }
 
     func updateViewBackground() {
-        let t = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "theme") ?? "lime"
-        let hex = TerseToolbarView.bgColors[t] ?? 0xd1e847
+        let t = UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "theme") ?? "cream"
+        let hex = TerseToolbarView.bgColors[t] ?? 0xFFED29
         let r = CGFloat((hex >> 16) & 0xFF) / 255
         let g = CGFloat((hex >> 8) & 0xFF) / 255
         let b = CGFloat(hex & 0xFF) / 255
@@ -75,7 +80,7 @@ class KeyboardViewController: KeyboardInputViewController {
     }
 
     func loadOptimizerSettings() {
-        let d = UserDefaults(suiteName: "group.com.terseai.shared")
+        let d = UserDefaults(suiteName: "group.com.pruneai.shared")
         optimizer.aggressiveness = d?.string(forKey: "aggressiveness") ?? "balanced"
         optimizer.removeFillerWords = d?.object(forKey: "removeFillerWords") as? Bool ?? true
         optimizer.removePoliteness = d?.object(forKey: "removePoliteness") as? Bool ?? true
@@ -93,7 +98,7 @@ class KeyboardViewController: KeyboardInputViewController {
     }
 
     var isOverQuota: Bool {
-        let d = UserDefaults(suiteName: "group.com.terseai.shared")
+        let d = UserDefaults(suiteName: "group.com.pruneai.shared")
         let weeklyLimit = d?.object(forKey: "optimizationsPerWeek") as? Int ?? 120
         if weeklyLimit < 0 { return false } // unlimited
         let currentWeek = Self.currentWeekString()
@@ -104,7 +109,7 @@ class KeyboardViewController: KeyboardInputViewController {
     }
 
     func incrementDailyCount() {
-        let d = UserDefaults(suiteName: "group.com.terseai.shared")
+        let d = UserDefaults(suiteName: "group.com.pruneai.shared")
 
         // Increment weekly usage (same keys as TerseAuth.recordOptimization)
         let currentWeek = Self.currentWeekString()
@@ -115,6 +120,7 @@ class KeyboardViewController: KeyboardInputViewController {
         } else {
             d?.set((d?.integer(forKey: "weeklyUsage") ?? 0) + 1, forKey: "weeklyUsage")
         }
+        d?.synchronize()
     }
 
     private static func currentWeekString() -> String {
@@ -123,24 +129,6 @@ class KeyboardViewController: KeyboardInputViewController {
         return "\(comps.yearForWeekOfYear ?? 0)\(String(format: "%02d", comps.weekOfYear ?? 0))"
     }
 
-    func recordStats(_ result: OptimizationResult) {
-        let d = UserDefaults(suiteName: "group.com.terseai.shared")
-        // Update simple counters (read by header banner)
-        d?.set((d?.integer(forKey: "totalTokensOptimized") ?? 0) + result.stats.originalTokens, forKey: "totalTokensOptimized")
-        d?.set((d?.integer(forKey: "totalTokensSaved") ?? 0) + result.stats.tokensSaved, forKey: "totalTokensSaved")
-        d?.set((d?.integer(forKey: "totalOptimizations") ?? 0) + 1, forKey: "totalOptimizations")
-
-        // Append to stats_entries array (read by Stats tab)
-        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
-        var entries = d?.array(forKey: "stats_entries") as? [[String: Any]] ?? []
-        entries.append([
-            "date": fmt.string(from: Date()),
-            "tokensIn": result.stats.originalTokens,
-            "tokensSaved": result.stats.tokensSaved,
-            "source": "keyboard"
-        ])
-        d?.set(entries, forKey: "stats_entries")
-    }
 }
 
 // MARK: - Autocomplete (UITextChecker + Chinese Pinyin)
@@ -167,7 +155,7 @@ class TerseAutocompleteService: AutocompleteService {
 
     private func suggestionsSync(for text: String) -> [Autocomplete.Suggestion] {
         // Always read current locale from UserDefaults (most reliable)
-        let savedLocale = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "keyboardLocale") ?? "en"
+        let savedLocale = UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "keyboardLocale") ?? "en"
         let isChinese = savedLocale.hasPrefix("zh")
         let lang = isChinese ? "zh" : (locale.language.languageCode?.identifier ?? "en")
 
@@ -199,29 +187,41 @@ class TerseAutocompleteService: AutocompleteService {
 
     // MARK: - Chinese Pinyin → Character conversion
 
+    private var rimeStarted = false
+
+    private func ensureRimeStarted() {
+        // RimeService disabled — librime not yet linked for iOS
+    }
+
     private func pinyinSuggestions(for text: String) -> [Autocomplete.Suggestion] {
         let pinyin = extractWord(from: text).lowercased()
+
+        // Ensure rime is initializing in background
+        ensureRimeStarted()
 
         // No pinyin typed → show next-word predictions based on last Chinese character
         if pinyin.isEmpty {
             let lastChar = extractLastChineseWord(from: text)
             if !lastChar.isEmpty {
+                // Try Rime context-based prediction first, fall back to PinyinDB bigrams
                 let predictions = PinyinDB.shared.predictNextWord(after: lastChar)
                 return predictions.map { .init(text: $0) }
             }
             return []
         }
 
-        // Query comprehensive pinyin database
+        // PinyinDB lookup (Rime disabled — librime not yet linked for iOS)
         let candidates = PinyinDB.shared.lookup(pinyin: pinyin)
+
         var results: [Autocomplete.Suggestion] = []
 
         // First candidate is autocorrect (auto-inserts on space)
-        for (i, c) in candidates.enumerated() {
+        // Pass more candidates to the bar for horizontal scrolling
+        for (i, c) in candidates.prefix(20).enumerated() {
             results.append(.init(text: c, type: i == 0 ? .autocorrect : .regular))
         }
 
-        // Show raw pinyin as fallback option
+        // Show raw pinyin as last fallback option
         if !candidates.isEmpty {
             results.append(.init(text: pinyin, title: "\"\(pinyin)\""))
         }
@@ -275,16 +275,27 @@ class TerseActionHandler: KeyboardAction.StandardHandler {
     }
 
     private var isChinese: Bool {
-        (UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "keyboardLocale") ?? "en").hasPrefix("zh")
+        (UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "keyboardLocale") ?? "en").hasPrefix("zh")
     }
 
     /// When true, trailing English letters were committed by Send — don't convert on next Space
     private var pinyinCommittedAsEnglish = false
 
+    /// When true, text was just optimized — next Send tap will actually send
+    private var justOptimized = false
+
     override func handle(_ gesture: Keyboard.Gesture, on action: KeyboardAction, replaced: Bool) {
-        // Reset committed flag when user types a new character
+        // Block input when quota is used up (but allow switching keyboards and dismissing)
+        if let vc = terseVC, vc.isOverQuota {
+            if case .nextKeyboard = action { } // allow
+            else if case .dismissKeyboard = action { } // allow
+            else { return } // block everything else
+        }
+
+        // Reset flags when user types a new character
         if gesture == .release, case .character = action {
             pinyinCommittedAsEnglish = false
+            justOptimized = false
         }
 
         // Chinese mode: space behavior
@@ -314,35 +325,33 @@ class TerseActionHandler: KeyboardAction.StandardHandler {
             return
         }
 
-        // Send button behavior
+        // Send button — TWO STEP: 1st tap = optimize text, 2nd tap = send
         if gesture == .release, case .primary = action, let vc = terseVC {
             if isChinese {
                 let before = vc.textDocumentProxy.documentContextBeforeInput ?? ""
                 let trailingPinyin = extractTrailingPinyin(from: before)
-
                 if !trailingPinyin.isEmpty {
-                    // There's unconverted pinyin → commit as English letters (don't send)
-                    // Insert a space after to separate from future pinyin input
                     vc.textDocumentProxy.insertText(" ")
                     vc.state.autocompleteContext.suggestions = []
                     pinyinCommittedAsEnglish = true
                     return
                 }
+            }
 
-                // No trailing pinyin — optimize Chinese text then send
-                let hasChinese = before.unicodeScalars.contains { (0x4e00...0x9fff).contains($0.value) }
-                if hasChinese && !vc.isOverQuota {
+            // 1st tap: optimize and replace text (don't send yet)
+            if !justOptimized && !vc.isOverQuota {
+                let before = vc.textDocumentProxy.documentContextBeforeInput ?? ""
+                let after = vc.textDocumentProxy.documentContextAfterInput ?? ""
+                if (before + after).count >= 3 {
                     optimizeText(vc)
-                }
-            } else {
-                // English mode: optimize
-                if !vc.isOverQuota {
-                    optimizeText(vc)
+                    justOptimized = true
+                    return  // Stop here — text replaced, user sees optimized version
                 }
             }
-            // Let the default primary action fire (this is what actually "sends" in apps)
-            // Use super.handle which triggers the app's native send behavior
-            super.handle(gesture, on: action, replaced: true)
+
+            // 2nd tap (or nothing to optimize): send normally
+            justOptimized = false
+            super.handle(gesture, on: action, replaced: false)
             return
         }
 
@@ -452,9 +461,9 @@ class TerseActionHandler: KeyboardAction.StandardHandler {
                 : result.stats.percentSaved
 
             // Record stats with actual savings (syncs to main app via shared UserDefaults)
-            let d = UserDefaults(suiteName: "group.com.terseai.shared")
+            let d = UserDefaults(suiteName: "group.com.pruneai.shared")
             d?.set((d?.integer(forKey: "totalTokensOptimized") ?? 0) + vc.optimizer.estimateTokens(fullText), forKey: "totalTokensOptimized")
-            d?.set((d?.integer(forKey: "totalTokensSaved") ?? 0) + actualSaved, forKey: "totalTokensSaved")
+            d?.set((d?.integer(forKey: "totalTokensSaved") ?? 0) + 1, forKey: "totalTokensSaved")
             d?.set((d?.integer(forKey: "totalOptimizations") ?? 0) + 1, forKey: "totalOptimizations")
             let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
             var entries = d?.array(forKey: "stats_entries") as? [[String: Any]] ?? []
@@ -465,6 +474,7 @@ class TerseActionHandler: KeyboardAction.StandardHandler {
                 "source": "keyboard"
             ])
             d?.set(entries, forKey: "stats_entries")
+            d?.synchronize()  // Force write to disk so main app sees changes immediately
             vc.incrementDailyCount()
 
             // Show stats in toolbar
@@ -490,10 +500,10 @@ class TerseActionHandler: KeyboardAction.StandardHandler {
 class TerseStyleService: KeyboardStyle.StandardService {
 
     private var theme: String {
-        UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "theme") ?? "lime"
+        UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "theme") ?? "cream"
     }
     private var themeAccent: Color {
-        Color(hex: TerseToolbarView.accentColors[theme] ?? 0x2d8b00)
+        Color(hex: TerseToolbarView.accentColors[theme] ?? 0xB8860B)
     }
     private static let darkThemes: Set<String> = [
         "midnight", "indigo", "charcoal", "ocean", "aurora", "neon", "ember", "frost", "velvet", "cosmic"
@@ -564,11 +574,11 @@ class TerseStyleService: KeyboardStyle.StandardService {
 // MARK: - Glass Background
 
 struct TerseGlassBackground: View {
-    @State private var theme = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "theme") ?? "lime"
+    @State private var theme = UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "theme") ?? "cream"
 
     var body: some View {
-        let bg = Color(hex: TerseToolbarView.bgColors[theme] ?? 0xd1e847)
-        let accent = Color(hex: TerseToolbarView.accentColors[theme] ?? 0x2d8b00)
+        let bg = Color(hex: TerseToolbarView.bgColors[theme] ?? 0xFFED29)
+        let accent = Color(hex: TerseToolbarView.accentColors[theme] ?? 0xB8860B)
         let isDark = theme == "midnight"
 
         ZStack {
@@ -599,21 +609,45 @@ struct TerseGlassBackground: View {
         }
         .ignoresSafeArea()
         .onReceive(NotificationCenter.default.publisher(for: .terseThemeChanged)) { _ in
-            theme = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "theme") ?? "lime"
+            theme = UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "theme") ?? "cream"
         }
+    }
+}
+
+// MARK: - Quota Block Overlay
+
+struct TerseQuotaBlockView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 28))
+                .foregroundColor(.white.opacity(0.9))
+            Text("Weekly quota reached")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white)
+            Text("Upgrade to Pro for unlimited optimizations")
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+            Text("Switch to another keyboard to continue typing")
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.5))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.85))
     }
 }
 
 // MARK: - Toolbar (Theme + Mode Selector)
 
 struct TerseToolbarView: View {
-    @State private var theme = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "theme") ?? "lime"
-    @State private var mode = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "aggressiveness") ?? "balanced"
+    @State private var theme = UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "theme") ?? "cream"
+    @State private var mode = UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "aggressiveness") ?? "balanced"
     @State private var statsText: String = ""
     @State private var showCoin = false
     @State private var coinScale: CGFloat = 1.0
     @State private var coinOffset: CGFloat = 0
-    @State private var currentLang = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "keyboardLocale") ?? (Locale.current.language.languageCode?.identifier ?? "en")
+    @State private var currentLang = UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "keyboardLocale") ?? (Locale.current.language.languageCode?.identifier ?? "en")
 
     private static let supportedLangs = ["en", "zh-Hans"]
     private static let langLabels: [String: String] = [
@@ -621,8 +655,8 @@ struct TerseToolbarView: View {
     ]
 
     static let bgColors: [String: UInt] = [
-        // Original 8
-        "lime": 0xd1e847, "lavender": 0xc4b5fd, "coral": 0xff8a80, "teal": 0x5eead4,
+        // Original 9
+        "cream": 0xFFED29, "lime": 0xd1e847, "lavender": 0xc4b5fd, "coral": 0xff8a80, "teal": 0x5eead4,
         "midnight": 0x1e293b, "rose": 0xfda4af, "sage": 0x86efac, "sand": 0xfde68a,
         // 8 new solid
         "arctic": 0xe0f2fe, "peach": 0xffd7be, "indigo": 0x312e81, "mint": 0xc7f9cc,
@@ -633,7 +667,7 @@ struct TerseToolbarView: View {
         "dawn": 0xffecd2, "cosmic": 0x0f0c29,
     ]
     static let accentColors: [String: UInt] = [
-        "lime": 0x2d8b00, "lavender": 0x6d28d9, "coral": 0xb91c1c, "teal": 0x0f766e,
+        "cream": 0xB8860B, "lime": 0x2d8b00, "lavender": 0x6d28d9, "coral": 0xb91c1c, "teal": 0x0f766e,
         "midnight": 0x38bdf8, "rose": 0xbe123c, "sage": 0x15803d, "sand": 0xb45309,
         "arctic": 0x0284c7, "peach": 0xe8590c, "indigo": 0x818cf8, "mint": 0x22c55e,
         "charcoal": 0xf59e0b, "blush": 0xec4899, "ocean": 0x06b6d4, "amber": 0xd97706,
@@ -642,17 +676,17 @@ struct TerseToolbarView: View {
         "dawn": 0xe8590c, "cosmic": 0x818cf8,
     ]
     static let darkText: Set<String> = [
-        "lime", "coral", "teal", "rose", "sage", "sand", "lavender",
+        "cream", "lime", "coral", "teal", "rose", "sage", "sand", "lavender",
         "arctic", "peach", "mint", "blush", "amber", "sakura", "dawn",
     ]
 
     // Free themes (always available) + unlocked from UserDefaults
     static let freeThemes: Set<String> = [
-        "lime", "lavender", "coral", "teal", "midnight", "rose", "sage", "sand"
+        "cream", "lime", "lavender", "coral", "teal", "midnight", "rose", "sage", "sand"
     ]
 
     static var unlockedNames: [String] {
-        let d = UserDefaults(suiteName: "group.com.terseai.shared")
+        let d = UserDefaults(suiteName: "group.com.pruneai.shared")
         let extra = d?.stringArray(forKey: "unlockedThemes") ?? []
         let all = freeThemes.union(extra)
         // Return in a stable order matching bgColors keys
@@ -660,13 +694,13 @@ struct TerseToolbarView: View {
     }
 
     static func currentBgColor() -> Color {
-        let t = UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "theme") ?? "lime"
-        return Color(hex: bgColors[t] ?? 0xd1e847).opacity(0.3)
+        let t = UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "theme") ?? "cream"
+        return Color(hex: bgColors[t] ?? 0xFFED29).opacity(0.3)
     }
 
     var body: some View {
-        let bg = Color(hex: Self.bgColors[theme] ?? 0xd1e847)
-        let accent = Color(hex: Self.accentColors[theme] ?? 0x2d8b00)
+        let bg = Color(hex: Self.bgColors[theme] ?? 0xFFED29)
+        let accent = Color(hex: Self.accentColors[theme] ?? 0xB8860B)
         let fg: Color = Self.darkText.contains(theme) ? Color(hex: 0x0a0a0a) : Color(hex: 0xe2e8f0)
 
         HStack(spacing: 6) {
@@ -775,7 +809,7 @@ struct TerseToolbarView: View {
     private func modeBtn(_ label: String, _ value: String, _ accent: Color, _ fg: Color) -> some View {
         Button(action: {
             mode = value
-            UserDefaults(suiteName: "group.com.terseai.shared")?.set(value, forKey: "aggressiveness")
+            UserDefaults(suiteName: "group.com.pruneai.shared")?.set(value, forKey: "aggressiveness")
         }) {
             Text(label).font(.system(size: 9, weight: .semibold))
                 .foregroundColor(mode == value ? .white : fg.opacity(0.5))
@@ -790,7 +824,7 @@ struct TerseToolbarView: View {
         guard !available.isEmpty else { return }
         let idx = available.firstIndex(of: theme) ?? 0
         theme = available[(idx + 1) % available.count]
-        UserDefaults(suiteName: "group.com.terseai.shared")?.set(theme, forKey: "theme")
+        UserDefaults(suiteName: "group.com.pruneai.shared")?.set(theme, forKey: "theme")
         KeyboardViewController.shared?.updateViewBackground()
         NotificationCenter.default.post(name: .terseThemeChanged, object: nil)
     }
@@ -800,7 +834,7 @@ struct TerseToolbarView: View {
         let idx = langs.firstIndex(of: currentLang) ?? 0
         let next = langs[(idx + 1) % langs.count]
         currentLang = next
-        UserDefaults(suiteName: "group.com.terseai.shared")?.set(next, forKey: "keyboardLocale")
+        UserDefaults(suiteName: "group.com.pruneai.shared")?.set(next, forKey: "keyboardLocale")
         // Update KeyboardKit locale + autocomplete service locale
         let newLocale = Locale(identifier: next)
         KeyboardViewController.shared?.state.keyboardContext.locale = newLocale
@@ -829,7 +863,7 @@ struct TerseCandidateBar: View {
     @State private var expanded = false
 
     private var isChinese: Bool {
-        (UserDefaults(suiteName: "group.com.terseai.shared")?.string(forKey: "keyboardLocale") ?? "en").hasPrefix("zh")
+        (UserDefaults(suiteName: "group.com.pruneai.shared")?.string(forKey: "keyboardLocale") ?? "en").hasPrefix("zh")
     }
 
     var body: some View {
@@ -841,12 +875,43 @@ struct TerseCandidateBar: View {
         }
     }
 
-    // Normal suggestion bar with expand button — always visible
+    // Horizontally scrollable suggestion bar (iOS-native style)
     private func collapsedView(_ suggestions: [Autocomplete.Suggestion]) -> some View {
         HStack(spacing: 0) {
             if suggestions.isEmpty {
                 Spacer()
+            } else if isChinese {
+                // Chinese mode: scrollable candidates like iOS native pinyin keyboard
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 2) {
+                        ForEach(Array(suggestions.enumerated()), id: \.offset) { idx, suggestion in
+                            Button(action: { actionHandler.handle(suggestion) }) {
+                                Text(suggestion.title)
+                                    .font(.system(size: 17, weight: idx == 0 ? .semibold : .regular))
+                                    .foregroundColor(idx == 0 ? Color.accentColor : Color.primary)
+                                    .padding(.horizontal, 12)
+                                    .frame(height: 40)
+                            }
+                            if idx < suggestions.count - 1 {
+                                Divider().frame(height: 20).opacity(0.4)
+                            }
+                        }
+                    }
+                    .padding(.leading, 4)
+                }
+
+                // Expand button
+                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { expanded = true } }) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary.opacity(0.5))
+                        .frame(width: 36, height: 40)
+                        .background(Color(UIColor.systemFill).opacity(0.2))
+                        .cornerRadius(6)
+                }
+                .padding(.trailing, 4)
             } else {
+                // English mode: original 3-column layout
                 ForEach(Array(suggestions.prefix(3).enumerated()), id: \.offset) { idx, suggestion in
                     Button(action: { actionHandler.handle(suggestion) }) {
                         Text(suggestion.title)
@@ -859,31 +924,29 @@ struct TerseCandidateBar: View {
                         Divider().frame(height: 20)
                     }
                 }
-
-                // ALWAYS show expand button when there are suggestions (∨)
-                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { expanded = true } }) {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.6))
-                        .frame(width: 44, height: 40)
-                        .background(Color(UIColor.systemFill).opacity(0.3))
-                        .cornerRadius(6)
+                if suggestions.count > 3 {
+                    Button(action: { withAnimation(.easeInOut(duration: 0.2)) { expanded = true } }) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary.opacity(0.6))
+                            .frame(width: 44, height: 40)
+                            .background(Color(UIColor.systemFill).opacity(0.3))
+                            .cornerRadius(6)
+                    }
+                    .padding(.trailing, 4)
                 }
-                .padding(.trailing, 4)
             }
         }
         .background(Color(UIColor.systemBackground).opacity(0.9))
         .frame(height: 40)
     }
 
-    // Expanded grid showing ALL candidates (queries PinyinDB directly for more)
+    // Expanded grid showing ALL candidates
     private func expandedView(_ suggestions: [Autocomplete.Suggestion]) -> some View {
-        // Build full list: start with autocomplete suggestions, add more from PinyinDB
+        // Build full list: start with autocomplete suggestions, add more from Rime/PinyinDB
         let allSuggestions: [Autocomplete.Suggestion] = {
             var all = suggestions
-            // In Chinese mode, query PinyinDB for additional candidates
-            if isChinese, let first = suggestions.first {
-                // Get the pinyin that generated these suggestions
+            if isChinese {
                 let before = KeyboardViewController.shared?.textDocumentProxy.documentContextBeforeInput ?? ""
                 var pinyin = ""
                 for ch in before.reversed() {
@@ -891,9 +954,16 @@ struct TerseCandidateBar: View {
                     else { break }
                 }
                 if !pinyin.isEmpty {
-                    let moreCandidates = PinyinDB.shared.lookup(pinyin: pinyin.lowercased())
+                    // Get deep candidates from PinyinDB (Rime disabled)
+                    let moreCandidates = PinyinDB.shared.lookup(pinyin: pinyin.lowercased()).suffix(50)
                     let existing = Set(all.map { $0.text })
                     for c in moreCandidates where !existing.contains(c) {
+                        all.append(.init(text: c))
+                    }
+                    // Also supplement from PinyinDB
+                    let dbCandidates = PinyinDB.shared.lookup(pinyin: pinyin.lowercased())
+                    let existing2 = Set(all.map { $0.text })
+                    for c in dbCandidates where !existing2.contains(c) {
                         all.append(.init(text: c))
                     }
                 }
@@ -904,7 +974,7 @@ struct TerseCandidateBar: View {
         return VStack(spacing: 0) {
             // Collapse button at top
             HStack {
-                Text(isChinese ? "全部候选" : "All suggestions")
+                Text(isChinese ? "全部候选 (\(allSuggestions.count))" : "All suggestions")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
                 Spacer()
@@ -930,7 +1000,7 @@ struct TerseCandidateBar: View {
                         }) {
                             Text(suggestion.title)
                                 .font(.system(size: isChinese ? 18 : 15))
-                                .foregroundColor(Color.primary)
+                                .foregroundColor(idx == 0 ? Color.accentColor : Color.primary)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 36)
                                 .background(Color(UIColor.systemBackground).opacity(0.8))
@@ -940,7 +1010,7 @@ struct TerseCandidateBar: View {
                 }
                 .padding(.horizontal, 8)
             }
-            .frame(maxHeight: 160) // Max 4 rows visible
+            .frame(maxHeight: 200) // 5 rows visible
         }
         .background(Color(UIColor.secondarySystemBackground).opacity(0.95))
     }

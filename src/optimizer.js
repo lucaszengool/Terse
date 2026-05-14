@@ -61,6 +61,17 @@ async function getSpeller(lang) {
 // Pre-load English on startup
 getSpeller('en');
 
+// ── Language detection memoization ──
+const _langCache = new Map();
+function detectLanguageCached(text) {
+  const key = text.substring(0, 200); // cache on first 200 chars
+  if (_langCache.has(key)) return _langCache.get(key);
+  const lang = detectLanguage(text);
+  if (_langCache.size > 50) _langCache.clear(); // prevent memory leak
+  _langCache.set(key, lang);
+  return lang;
+}
+
 // ── Language detection ──
 // franc returns ISO 639-3 codes; map to our 2-letter codes
 const FRANC_TO_LANG = {
@@ -592,7 +603,7 @@ class PromptOptimizer {
     const level = this.settings.aggressiveness;
 
     // Detect language
-    const lang = detectLanguage(text);
+    const lang = detectLanguageCached(text);
     const isEnglish = lang === 'en';
 
     // Ensure speller is loaded for detected language
@@ -927,6 +938,20 @@ class PromptOptimizer {
       if (optimized !== before) applied.push('Stripped terminal noise');
     }
 
+    // Git diff compression
+    {
+      const before = optimized;
+      optimized = this.compressGitDiff(optimized);
+      if (optimized !== before) applied.push('Compressed git diff');
+    }
+
+    // Conversation history compression (balanced+aggressive)
+    if (level !== 'light') {
+      const before = optimized;
+      optimized = this.compressConversationHistory(optimized);
+      if (optimized !== before) applied.push('Compressed conversation history');
+    }
+
     // Deduplicate repeated log/output lines with counts (×N)
     {
       const before = optimized;
@@ -1016,14 +1041,24 @@ class PromptOptimizer {
   }
 
   estimateTokens(text) {
+    if (!text) return 0;
+    // Better estimation based on cl100k_base tokenizer patterns
+    // Average token is ~4 chars for English, ~1.5 chars for CJK
+    const cjkCount = (text.match(/[\u3040-\u9fff\uac00-\ud7af\u4e00-\u9fef]/g) || []).length;
+    const nonCjk = text.length - cjkCount;
+    // Count whitespace-separated words
     const words = text.split(/\s+/).filter(Boolean).length;
+    // Subword splits: punctuation, camelCase, special chars each add tokens
     const punctuation = (text.match(/[^\w\s]/g) || []).length;
-    // CJK characters are ~1-2 tokens each (not space-delimited)
-    const cjkCount = (text.match(/[\u3040-\u9fff\uac00-\ud7af]/g) || []).length;
-    if (cjkCount > 0) {
-      return Math.ceil(cjkCount * 1.5 + words * 1.3 + punctuation * 0.5);
-    }
-    return Math.ceil(words * 1.3 + punctuation * 0.5);
+    const camelSplits = (text.match(/[a-z][A-Z]/g) || []).length;
+    const numbers = (text.match(/\d+/g) || []).length;
+    // Base: ~1 token per 4 chars for English text
+    const baseTokens = Math.ceil(nonCjk / 4);
+    // CJK: ~1 token per 1-2 chars
+    const cjkTokens = Math.ceil(cjkCount * 0.7);
+    // Adjustments for structure
+    const structureTokens = Math.ceil(camelSplits * 0.5 + numbers * 0.3);
+    return Math.max(1, baseTokens + cjkTokens + structureTokens);
   }
 
   // ── Protect code blocks, inline code, and URLs during transformations ──
@@ -1032,24 +1067,29 @@ class PromptOptimizer {
     // 1. Triple-backtick code blocks
     let result = text.replace(/```[\s\S]*?```/g, (m) => {
       blocks.push(m);
-      return `__CB_${blocks.length - 1}__`;
+      return `\x00TERSECB_${blocks.length - 1}__`;
+    });
+    // 1b. Indented code blocks (4+ spaces or tab at start of line, 3+ consecutive lines)
+    result = result.replace(/(?:^|\n)((?:(?:    |\t)[^\n]+\n){3,})/g, (m) => {
+      blocks.push(m);
+      return `\x00TERSECB_${blocks.length - 1}__`;
     });
     // 2. Inline code (single backticks)
     result = result.replace(/`[^`]+`/g, (m) => {
       blocks.push(m);
-      return `__CB_${blocks.length - 1}__`;
+      return `\x00TERSECB_${blocks.length - 1}__`;
     });
     // 3. URLs (http/https/ftp, bare domains like www.example.com)
     result = result.replace(/(?:https?:\/\/|ftp:\/\/|www\.)[^\s<>\"')\]]+/gi, (m) => {
       blocks.push(m);
-      return `__CB_${blocks.length - 1}__`;
+      return `\x00TERSECB_${blocks.length - 1}__`;
     });
     return { text: result, blocks };
   }
 
   _restoreCode(text, blocks) {
     if (!blocks.length) return text;
-    return text.replace(/__CB_(\d+)__/g, (m, i) => {
+    return text.replace(/\x00TERSECB_(\d+)__/g, (m, i) => {
       const idx = parseInt(i);
       return idx < blocks.length ? blocks[idx] : m;
     });
@@ -1099,7 +1139,7 @@ class PromptOptimizer {
       // "I'm currently working on a project." — only when followed by generic nouns, not specific technical content
       /\bI('m| am) (currently )?(working on|building|creating|developing|writing) (a |an |my |this |the )?(project|app|application|website|tool|thing|something|task)\b[^.!?\n]*[.!?]\s*/gi,
       // "I have a project where I need..." — strip preamble, keep the need
-      /\bI have (a |an )?(project|task|problem|issue|question|situation)\b[^.!?\n]*?(where |that |and )(I need|I want|I('m| am))\s*/gi,
+      /\bI have (a |an )?(project|task|problem|issue|question|situation) (where|that|and) /gi,
       // "My goal is to" -> ""
       /\b(my goal is to|my objective is to|what I'm trying to do is)\s*/gi,
       // "I'm looking for a way to" -> ""
@@ -1863,6 +1903,9 @@ class PromptOptimizer {
     const { text: safe, blocks } = this._protectCode(text);
     let result = safe;
 
+    // Protect contractions with negations from being split
+    result = result.replace(/\b(can't|won't|don't|isn't|aren't|wasn't|weren't|hasn't|haven't|hadn't|couldn't|wouldn't|shouldn't|didn't|doesn't)\b/gi, (m) => m.toUpperCase()); // Temporarily uppercase to protect
+
     // Remove subject pronouns before verbs (LLMs infer the speaker)
     // "I want" → "want", "I need" → "need", "I have" → "have"
     result = result.replace(/\bI (want|need|have|think|believe|know|see|feel|like|love|hate|hope|wish|expect|prefer|suggest|recommend|assume|understand|mean|guess|suppose|wonder|notice|remember|forget|realize|imagine|consider|tried?)\b/gi, '$1');
@@ -1972,6 +2015,9 @@ class PromptOptimizer {
 
     // "with token reduce" type patterns → "with fewer tokens"
     result = result.replace(/\bwith (token|tokens?) (reduce|reduction|saving|savings|optimization)\b/gi, 'w/ fewer tokens');
+
+    // Restore protected negation contractions
+    result = result.replace(/\b(CAN'T|WON'T|DON'T|ISN'T|AREN'T|WASN'T|WEREN'T|HASN'T|HAVEN'T|HADN'T|COULDN'T|WOULDN'T|SHOULDN'T|DIDN'T|DOESN'T)\b/g, (m) => m.toLowerCase());
 
     return this._restoreCode(result, blocks).replace(/ {2,}/g, ' ').trim();
   }
@@ -2118,7 +2164,7 @@ class PromptOptimizer {
       // Preserve punctuation
       if (/^[.,!?;:]+$/.test(w)) { result.push(w); continue; }
       // Preserve code block placeholders
-      if (/__CB_\d+__/.test(w)) { result.push(w); continue; }
+      if (/\x00TERSECB_\d+__/.test(w)) { result.push(w); continue; }
 
       const lower = w.toLowerCase().replace(/[.,!?;:]+$/, '');
       const punct = w.slice(w.length - (w.length - w.replace(/[.,!?;:]+$/, '').length));
@@ -2705,6 +2751,91 @@ class PromptOptimizer {
     if (inKvBlock) flushKv();
 
     return result.join('\n');
+  }
+
+  /**
+   * Compress git diff output to only changed lines + minimal context.
+   * Detects unified diff format and strips unchanged context lines.
+   */
+  compressGitDiff(text) {
+    // Detect if text contains git diff output
+    if (!/^diff --git|^---\s+a\/|^\+\+\+\s+b\//m.test(text)) return text;
+
+    const lines = text.split('\n');
+    const result = [];
+    let inDiff = false;
+    let fileHeader = '';
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Keep diff headers
+      if (/^diff --git/.test(line)) {
+        inDiff = true;
+        fileHeader = line;
+        result.push(line);
+        continue;
+      }
+      if (/^(---|\+\+\+|@@)/.test(line)) {
+        result.push(line);
+        continue;
+      }
+
+      if (inDiff) {
+        // Keep added/removed lines
+        if (/^[+-]/.test(line)) {
+          result.push(line);
+        } else if (/^\\/.test(line)) {
+          // "\ No newline at end of file"
+          result.push(line);
+        } else if (line === '') {
+          inDiff = false;
+          result.push(line);
+        }
+        // Skip context lines (lines starting with space) — only keep 1 line before/after changes
+        else {
+          // Look ahead to see if next line is a change
+          const nextIsChange = i + 1 < lines.length && /^[+-@]/.test(lines[i + 1]);
+          // Look back to see if prev line was a change
+          const prevIsChange = i > 0 && /^[+-]/.test(lines[i - 1]);
+          if (nextIsChange || prevIsChange) {
+            result.push(line); // keep context adjacent to changes
+          }
+          // else skip this context line
+        }
+      } else {
+        result.push(line);
+      }
+    }
+
+    return result.join('\n');
+  }
+
+  /**
+   * Compress conversation history by summarizing old turns.
+   * Detects User:/Assistant: or Human:/AI: patterns.
+   */
+  compressConversationHistory(text) {
+    // Detect conversation format
+    const turnPattern = /^(User|Human|Assistant|AI|System):\s*/gm;
+    const turns = text.split(/(?=^(?:User|Human|Assistant|AI|System):\s*)/gm);
+
+    if (turns.length < 6) return text; // too few turns to compress
+
+    // Keep last 3 turns verbatim, summarize older ones
+    const keepCount = 3;
+    const oldTurns = turns.slice(0, -keepCount);
+    const recentTurns = turns.slice(-keepCount);
+
+    // Summarize old turns: extract first sentence of each
+    const summary = oldTurns.map(t => {
+      const firstLine = t.split(/[.!?\n]/)[0].trim();
+      return firstLine.length > 80 ? firstLine.substring(0, 77) + '...' : firstLine;
+    }).filter(s => s.length > 5).join('; ');
+
+    if (!summary) return text;
+
+    return '[Earlier conversation: ' + summary + ']\n\n' + recentTurns.join('');
   }
 
   generateSuggestions(originalText, applied) {

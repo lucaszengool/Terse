@@ -1233,6 +1233,7 @@ function updateAgentPanel(snapshot) {
     let newSaveableCount = 0;
     let newSaveableTokens = 0;
     let newToolCount = 0;
+    let lastNewToolName = '';
     for (const m of lastFew) {
       const line = document.createElement('div');
       line.className = 'agent-activity-line ' + (m.role || '');
@@ -1312,6 +1313,7 @@ function updateAgentPanel(snapshot) {
       } else if (m.type === 'tool_use') {
         line.textContent = prefix + text;
         newToolCount++;
+        lastNewToolName = m.tool_name || m.toolName || m.text || '';
 
       // ── Assistant messages: show token cost ──
       } else if (m.role === 'assistant') {
@@ -1328,8 +1330,8 @@ function updateAgentPanel(snapshot) {
     requestAnimationFrame(() => { actEl.scrollTop = actEl.scrollHeight; });
     // Fire pet for new tool calls — toolCallCount is monotonically increasing so no 20-msg cap issue
     actEl.dataset.toolCallCount = String(snapToolCount);
-    if (prevToolCallCount > 0 && snapToolCount > prevToolCallCount && window.terse && window.terse.petWorkDetected) {
-      window.terse.petWorkDetected(newSaveableTokens).catch(() => {});
+    if (snapToolCount > prevToolCallCount && window.terse && window.terse.petWorkDetected) {
+      window.terse.petWorkDetected(newSaveableTokens, lastNewToolName).catch(() => {});
     }
   }
   autoResizePopup();

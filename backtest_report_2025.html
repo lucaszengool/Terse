@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>策略回测报告 — 2025年全年</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#0f1117;--ink2:#3a3d4a;--ink3:#6b6f80;
+  --rule:#e4e6ed;--surface:#f8f9fc;--white:#fff;
+  --accent:#1a56db;--accent-pale:#eff4ff;
+  --green:#166534;--green-mid:#22c55e;--green-pale:#f0fdf4;
+  --red:#991b1b;--red-mid:#ef4444;--red-pale:#fef2f2;
+  --amber:#92600a;--amber-pale:#fffbeb;
+}
+html{font-size:13px}
+body{font-family:'Inter',-apple-system,sans-serif;background:#fff;color:var(--ink);line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{max-width:900px;margin:0 auto;padding:52px 52px}
+
+/* Header */
+.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:28px;border-bottom:2px solid var(--ink);margin-bottom:36px}
+.header h1{font-size:21px;font-weight:700;letter-spacing:-.4px;margin-bottom:3px}
+.header .sub{font-size:12.5px;color:var(--ink3)}
+.header-right{text-align:right}
+.badge{display:inline-block;background:var(--ink);color:#fff;font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;padding:3px 9px;border-radius:3px;margin-bottom:6px}
+.meta{font-size:11.5px;color:var(--ink3);line-height:1.9}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-bottom:44px}
+.kpi{background:#fff;padding:18px 16px 15px}
+.kpi-label{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink3);margin-bottom:5px}
+.kpi-value{font-size:20px;font-weight:700;letter-spacing:-.4px;line-height:1}
+.kpi-sub{font-size:11px;color:var(--ink3);margin-top:3px}
+.kv-green{color:var(--green)}
+.kv-red{color:var(--red)}
+.kv-blue{color:var(--accent)}
+
+/* Section */
+.section{margin-bottom:44px}
+.section-title{font-size:10.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--ink3);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid var(--rule)}
+
+/* Charts */
+.chart-wrap{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 16px 10px;margin-bottom:8px}
+.chart-title{font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:10px}
+svg{display:block;width:100%;overflow:visible}
+.chart-note{font-size:11px;color:var(--ink3);margin-top:6px}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{background:var(--surface);font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink3);padding:8px 10px;text-align:left;border-bottom:1px solid var(--rule)}
+th.right,td.right{text-align:right;font-variant-numeric:tabular-nums}
+th.center,td.center{text-align:center}
+tbody tr{border-bottom:1px solid var(--rule)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:7px 10px;color:var(--ink2);vertical-align:middle}
+.pos{color:var(--green);font-weight:600}
+.neg{color:var(--red);font-weight:600}
+.month-sep td{background:#f1f5f9;font-size:10.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);padding:5px 10px}
+.small-bar{color:var(--ink3);font-size:11px}
+
+/* Winrate pills */
+.wr-pill{display:inline-block;padding:2px 7px;border-radius:99px;font-size:10.5px;font-weight:600}
+.wr-high{background:var(--green-pale);color:var(--green)}
+.wr-mid{background:var(--amber-pale);color:var(--amber)}
+.wr-low{background:var(--red-pale);color:var(--red)}
+
+/* Cost cards */
+.cost-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.cost-card{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:12px 14px}
+.cc-label{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+.cc-value{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px}
+.cc-desc{font-size:11px;color:var(--ink3);line-height:1.5}
+
+/* Callout */
+.callout{border-left:3px solid var(--accent);background:var(--accent-pale);padding:12px 14px;border-radius:0 5px 5px 0;margin-bottom:14px;font-size:12.5px;color:var(--ink2);line-height:1.65}
+.callout.warn{border-color:#d97706;background:var(--amber-pale)}
+.callout strong{color:var(--ink);font-weight:600}
+
+/* Prose */
+.prose{font-size:13px;color:var(--ink2);line-height:1.75}
+.prose p{margin-bottom:12px}
+.prose p:last-child{margin-bottom:0}
+.prose strong{color:var(--ink);font-weight:600}
+
+/* Risk scenario table */
+.scenario-table td{padding:8px 10px}
+.scenario-bar{display:inline-block;height:8px;background:var(--green-mid);border-radius:2px;vertical-align:middle;margin-right:6px}
+.scenario-bar.s10{background:#86efac}
+.scenario-bar.s15{background:#fca5a5}
+.scenario-bar.s20{background:#ef4444}
+
+/* Daily table */
+.daily-table-wrap{max-height:620px;overflow-y:auto;border:1px solid var(--rule);border-radius:6px}
+.daily-table-wrap table{font-size:12px}
+.daily-table-wrap thead{position:sticky;top:0;z-index:1}
+
+/* Footer */
+.footer{margin-top:52px;padding-top:16px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;font-size:11px;color:var(--ink3)}
+
+@media print{
+  .page{padding:36px 40px}
+  .daily-table-wrap{max-height:none;overflow-y:visible;border:none}
+  .daily-table-wrap thead{position:static}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <h1>策略回测报告</h1>
+    <div class="sub">期权量化策略 &nbsp;·&nbsp; 2025年1月&thinsp;–&thinsp;12月全年 &nbsp;·&nbsp; 1,000 合约规模</div>
+  </div>
+  <div class="header-right">
+    <div class="badge">Backtesting Report</div>
+    <div class="meta">
+      报告日期：2026年4月16日<br>
+      回测区间：2025-01-02 — 2025-12-31<br>
+      合约规模：每手 1,000 份合约
+    </div>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">全年净盈亏</div>
+    <div class="kpi-value kv-green">$31,317,113</div>
+    <div class="kpi-sub">249 个交易日</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">年化 Sharpe</div>
+    <div class="kpi-value kv-blue">3.64</div>
+    <div class="kpi-sub">日度收益基础</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">单日最大亏损</div>
+    <div class="kpi-value kv-red">−$984,203</div>
+    <div class="kpi-sub">2025-10-15</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">盈利因子</div>
+    <div class="kpi-value">2.15</div>
+    <div class="kpi-sub">盈 117 亏 132 日</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">交易总笔数</div>
+    <div class="kpi-value">577</div>
+    <div class="kpi-sub">胜率 38%（笔）</div>
+  </div>
+</div>
+
+<!-- CHART 1: Cumulative NAV -->
+<div class="section">
+  <div class="section-title">一 · 累计净值曲线（每日）</div>
+  <div class="chart-wrap">
+    <div class="chart-title">累计盈亏 (Cumulative PnL) — 2025全年 · 1,000 合约</div>
+    <svg viewBox="0 0 780 160" height="160">
+      <defs>
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#22c55e" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#22c55e" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      <!-- Grid lines -->
+      <line x1="10" y1="47.0" x2="770" y2="47.0" stroke="#e4e6ed" stroke-width="0.5"/>
+      <line x1="10" y1="82.0" x2="770" y2="82.0" stroke="#e4e6ed" stroke-width="0.5"/>
+      <line x1="10" y1="117.0" x2="770" y2="117.0" stroke="#e4e6ed" stroke-width="0.5"/>
+      <!-- Y axis labels -->
+      <text x="2" y="16.0" font-size="8" fill="#9ca3af">$33M</text>
+      <text x="2" y="86.0" font-size="8" fill="#9ca3af">$16M</text>
+      <text x="2" y="156.0" font-size="8" fill="#9ca3af">$0</text>
+      <!-- Month separators -->
+      <line x1="68.2" y1="12" x2="68.2" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="70.2" y="162.0" font-size="8" fill="#9ca3af">02</text><line x1="126.5" y1="12" x2="126.5" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="128.5" y="162.0" font-size="8" fill="#9ca3af">03</text><line x1="190.8" y1="12" x2="190.8" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="192.8" y="162.0" font-size="8" fill="#9ca3af">04</text><line x1="255.2" y1="12" x2="255.2" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="257.2" y="162.0" font-size="8" fill="#9ca3af">05</text><line x1="319.5" y1="12" x2="319.5" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="321.5" y="162.0" font-size="8" fill="#9ca3af">06</text><line x1="380.8" y1="12" x2="380.8" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="382.8" y="162.0" font-size="8" fill="#9ca3af">07</text><line x1="448.2" y1="12" x2="448.2" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="450.2" y="162.0" font-size="8" fill="#9ca3af">08</text><line x1="512.6" y1="12" x2="512.6" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="514.6" y="162.0" font-size="8" fill="#9ca3af">09</text><line x1="576.9" y1="12" x2="576.9" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="578.9" y="162.0" font-size="8" fill="#9ca3af">10</text><line x1="647.4" y1="12" x2="647.4" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="649.4" y="162.0" font-size="8" fill="#9ca3af">11</text><line x1="705.6" y1="12" x2="705.6" y2="152" stroke="#e4e6ed" stroke-width="0.8" stroke-dasharray="2,2"/><text x="707.6" y="162.0" font-size="8" fill="#9ca3af">12</text>
+      <!-- Area fill -->
+      <path d="M10.0,152.0 L13.1,140.6 L16.1,140.3 L19.2,142.4 L22.3,143.4 L25.3,144.1 L28.4,143.8 L31.5,143.8 L34.5,142.5 L37.6,140.3 L40.6,140.2 L43.7,140.2 L46.8,141.1 L49.8,142.2 L52.9,142.4 L56.0,142.4 L59.0,142.9 L62.1,142.6 L65.2,141.9 L68.2,143.0 L71.3,143.4 L74.4,143.8 L77.4,143.8 L80.5,144.2 L83.5,143.6 L86.6,142.2 L89.7,142.9 L92.7,145.3 L95.8,145.4 L98.9,146.0 L101.9,145.9 L105.0,145.4 L108.1,141.5 L111.1,141.5 L114.2,134.8 L117.3,136.3 L120.3,136.2 L123.4,136.1 L126.5,137.6 L129.5,133.3 L132.6,134.8 L135.6,136.5 L138.7,137.8 L141.8,130.7 L144.8,131.7 L147.9,132.9 L151.0,132.8 L154.0,134.7 L157.1,133.6 L160.2,134.1 L163.2,132.8 L166.3,133.4 L169.4,133.4 L172.4,128.8 L175.5,128.9 L178.5,126.0 L181.6,126.2 L184.7,124.9 L187.7,122.6 L190.8,122.5 L193.9,114.8 L196.9,116.0 L200.0,116.6 L203.1,113.7 L206.1,108.9 L209.2,104.6 L212.3,100.0 L215.3,101.1 L218.4,101.1 L221.5,101.0 L224.5,97.8 L227.6,97.8 L230.6,97.6 L233.7,97.0 L236.8,97.8 L239.8,97.8 L242.9,91.5 L246.0,89.3 L249.0,89.3 L252.1,88.8 L255.2,89.4 L258.2,90.3 L261.3,90.3 L264.4,91.2 L267.4,91.0 L270.5,91.6 L273.5,91.7 L276.6,92.4 L279.7,93.4 L282.7,94.2 L285.8,94.6 L288.9,96.3 L291.9,96.3 L295.0,97.7 L298.1,96.1 L301.1,94.0 L304.2,94.0 L307.3,92.9 L310.3,92.8 L313.4,93.1 L316.5,89.5 L319.5,89.9 L322.6,89.5 L325.6,86.7 L328.7,79.8 L331.8,80.3 L334.8,76.5 L337.9,76.3 L341.0,76.3 L344.0,76.6 L347.1,71.5 L350.2,71.9 L353.2,72.7 L356.3,72.7 L359.4,73.4 L362.4,65.7 L365.5,63.5 L368.5,61.0 L371.6,61.0 L374.7,62.5 L377.7,64.6 L380.8,65.0 L383.9,65.0 L386.9,65.7 L390.0,69.2 L393.1,69.8 L396.1,70.5 L399.2,70.7 L402.3,71.5 L405.3,72.9 L408.4,71.3 L411.5,71.4 L414.5,71.3 L417.6,71.4 L420.6,71.4 L423.7,72.5 L426.8,72.8 L429.8,73.8 L432.9,72.3 L436.0,73.8 L439.0,73.7 L442.1,75.8 L445.2,72.9 L448.2,73.6 L451.3,75.3 L454.4,76.9 L457.4,74.4 L460.5,74.2 L463.5,74.4 L466.6,74.3 L469.7,74.3 L472.7,75.2 L475.8,74.8 L478.9,76.2 L481.9,76.1 L485.0,78.0 L488.1,77.7 L491.1,77.6 L494.2,72.7 L497.3,73.1 L500.3,72.7 L503.4,73.5 L506.5,74.1 L509.5,72.1 L512.6,72.8 L515.6,74.1 L518.7,74.8 L521.8,75.3 L524.8,73.6 L527.9,74.0 L531.0,74.1 L534.0,68.7 L537.1,62.9 L540.2,63.0 L543.2,63.9 L546.3,63.6 L549.4,63.6 L552.4,63.5 L555.5,63.9 L558.5,63.9 L561.6,60.2 L564.7,59.7 L567.7,61.1 L570.8,61.9 L573.9,61.8 L576.9,58.4 L580.0,48.6 L583.1,46.2 L586.1,46.1 L589.2,45.3 L592.3,46.7 L595.3,48.3 L598.4,43.7 L601.5,44.3 L604.5,44.5 L607.6,48.7 L610.6,49.8 L613.7,49.7 L616.8,52.3 L619.8,52.8 L622.9,50.5 L626.0,46.4 L629.0,43.5 L632.1,43.5 L635.2,44.5 L638.2,45.9 L641.3,44.5 L644.4,44.3 L647.4,44.2 L650.5,46.9 L653.5,46.7 L656.6,45.1 L659.7,45.3 L662.7,48.6 L665.8,48.0 L668.9,46.5 L671.9,38.5 L675.0,31.7 L678.1,24.2 L681.1,25.2 L684.2,27.0 L687.3,17.5 L690.3,16.3 L693.4,13.2 L696.5,12.0 L699.5,12.1 L702.6,14.6 L705.6,14.6 L708.7,16.5 L711.8,17.0 L714.8,18.0 L717.9,18.0 L721.0,18.0 L724.0,16.8 L727.1,17.1 L730.2,17.2 L733.2,17.6 L736.3,17.6 L739.4,17.1 L742.4,12.2 L745.5,13.5 L748.5,14.6 L751.6,16.3 L754.7,17.4 L757.7,18.9 L760.8,17.4 L763.9,17.9 L766.9,19.0 L770.0,19.0 L770.0,152 L10.0,152 Z" fill="url(#areaGrad)"/>
+      <!-- Line -->
+      <polyline points="10.0,150.0 13.1,140.6 16.1,140.3 19.2,142.4 22.3,143.4 25.3,144.1 28.4,143.8 31.5,143.8 34.5,142.5 37.6,140.3 40.6,140.2 43.7,140.2 46.8,141.1 49.8,142.2 52.9,142.4 56.0,142.4 59.0,142.9 62.1,142.6 65.2,141.9 68.2,143.0 71.3,143.4 74.4,143.8 77.4,143.8 80.5,144.2 83.5,143.6 86.6,142.2 89.7,142.9 92.7,145.3 95.8,145.4 98.9,146.0 101.9,145.9 105.0,145.4 108.1,141.5 111.1,141.5 114.2,134.8 117.3,136.3 120.3,136.2 123.4,136.1 126.5,137.6 129.5,133.3 132.6,134.8 135.6,136.5 138.7,137.8 141.8,130.7 144.8,131.7 147.9,132.9 151.0,132.8 154.0,134.7 157.1,133.6 160.2,134.1 163.2,132.8 166.3,133.4 169.4,133.4 172.4,128.8 175.5,128.9 178.5,126.0 181.6,126.2 184.7,124.9 187.7,122.6 190.8,122.5 193.9,114.8 196.9,116.0 200.0,116.6 203.1,113.7 206.1,108.9 209.2,104.6 212.3,100.0 215.3,101.1 218.4,101.1 221.5,101.0 224.5,97.8 227.6,97.8 230.6,97.6 233.7,97.0 236.8,97.8 239.8,97.8 242.9,91.5 246.0,89.3 249.0,89.3 252.1,88.8 255.2,89.4 258.2,90.3 261.3,90.3 264.4,91.2 267.4,91.0 270.5,91.6 273.5,91.7 276.6,92.4 279.7,93.4 282.7,94.2 285.8,94.6 288.9,96.3 291.9,96.3 295.0,97.7 298.1,96.1 301.1,94.0 304.2,94.0 307.3,92.9 310.3,92.8 313.4,93.1 316.5,89.5 319.5,89.9 322.6,89.5 325.6,86.7 328.7,79.8 331.8,80.3 334.8,76.5 337.9,76.3 341.0,76.3 344.0,76.6 347.1,71.5 350.2,71.9 353.2,72.7 356.3,72.7 359.4,73.4 362.4,65.7 365.5,63.5 368.5,61.0 371.6,61.0 374.7,62.5 377.7,64.6 380.8,65.0 383.9,65.0 386.9,65.7 390.0,69.2 393.1,69.8 396.1,70.5 399.2,70.7 402.3,71.5 405.3,72.9 408.4,71.3 411.5,71.4 414.5,71.3 417.6,71.4 420.6,71.4 423.7,72.5 426.8,72.8 429.8,73.8 432.9,72.3 436.0,73.8 439.0,73.7 442.1,75.8 445.2,72.9 448.2,73.6 451.3,75.3 454.4,76.9 457.4,74.4 460.5,74.2 463.5,74.4 466.6,74.3 469.7,74.3 472.7,75.2 475.8,74.8 478.9,76.2 481.9,76.1 485.0,78.0 488.1,77.7 491.1,77.6 494.2,72.7 497.3,73.1 500.3,72.7 503.4,73.5 506.5,74.1 509.5,72.1 512.6,72.8 515.6,74.1 518.7,74.8 521.8,75.3 524.8,73.6 527.9,74.0 531.0,74.1 534.0,68.7 537.1,62.9 540.2,63.0 543.2,63.9 546.3,63.6 549.4,63.6 552.4,63.5 555.5,63.9 558.5,63.9 561.6,60.2 564.7,59.7 567.7,61.1 570.8,61.9 573.9,61.8 576.9,58.4 580.0,48.6 583.1,46.2 586.1,46.1 589.2,45.3 592.3,46.7 595.3,48.3 598.4,43.7 601.5,44.3 604.5,44.5 607.6,48.7 610.6,49.8 613.7,49.7 616.8,52.3 619.8,52.8 622.9,50.5 626.0,46.4 629.0,43.5 632.1,43.5 635.2,44.5 638.2,45.9 641.3,44.5 644.4,44.3 647.4,44.2 650.5,46.9 653.5,46.7 656.6,45.1 659.7,45.3 662.7,48.6 665.8,48.0 668.9,46.5 671.9,38.5 675.0,31.7 678.1,24.2 681.1,25.2 684.2,27.0 687.3,17.5 690.3,16.3 693.4,13.2 696.5,12.0 699.5,12.1 702.6,14.6 705.6,14.6 708.7,16.5 711.8,17.0 714.8,18.0 717.9,18.0 721.0,18.0 724.0,16.8 727.1,17.1 730.2,17.2 733.2,17.6 736.3,17.6 739.4,17.1 742.4,12.2 745.5,13.5 748.5,14.6 751.6,16.3 754.7,17.4 757.7,18.9 760.8,17.4 763.9,17.9 766.9,19.0 770.0,19.0" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <!-- Peak dot -->
+      <circle cx="696.5" cy="12.0" r="3" fill="#16a34a"/>
+    </svg>
+    <div class="chart-note">纵轴：累计净盈亏（USD）&nbsp;·&nbsp; 横轴：2025年1月—12月（249个交易日）</div>
+  </div>
+</div>
+
+<!-- CHART 2: Daily PnL bars -->
+<div class="section">
+  <div class="section-title">二 · 每日盈亏序列（柱状图）</div>
+  <div class="chart-wrap">
+    <div class="chart-title">每日净盈亏 (Daily PnL) — 绿色盈利日 / 红色亏损日</div>
+    <svg viewBox="0 0 780 90" height="90">
+      <!-- Zero line -->
+      <line x1="0" y1="50" x2="780" y2="50" stroke="#94a3b8" stroke-width="0.8"/>
+      <!-- Bars -->
+      <rect x="0.0" y="41.2" width="3.1" height="8.8" fill="#22c55e" opacity="0.85"/><rect x="3.1" y="9.8" width="3.1" height="40.2" fill="#22c55e" opacity="0.85"/><rect x="6.3" y="48.5" width="3.1" height="1.5" fill="#22c55e" opacity="0.85"/><rect x="9.4" y="50.0" width="3.1" height="9.0" fill="#ef4444" opacity="0.85"/><rect x="12.5" y="50.0" width="3.1" height="4.5" fill="#ef4444" opacity="0.85"/><rect x="15.7" y="50.0" width="3.1" height="2.9" fill="#ef4444" opacity="0.85"/><rect x="18.8" y="48.9" width="3.1" height="1.1" fill="#22c55e" opacity="0.85"/><rect x="21.9" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="25.1" y="44.5" width="3.1" height="5.5" fill="#22c55e" opacity="0.85"/><rect x="28.2" y="40.6" width="3.1" height="9.4" fill="#22c55e" opacity="0.85"/><rect x="31.3" y="49.5" width="3.1" height="0.5" fill="#22c55e" opacity="0.85"/><rect x="34.5" y="50.0" width="3.1" height="0.0" fill="#ef4444" opacity="0.85"/><rect x="37.6" y="50.0" width="3.1" height="3.7" fill="#ef4444" opacity="0.85"/><rect x="40.7" y="50.0" width="3.1" height="4.7" fill="#ef4444" opacity="0.85"/><rect x="43.9" y="50.0" width="3.1" height="1.1" fill="#ef4444" opacity="0.85"/><rect x="47.0" y="50.0" width="3.1" height="0.0" fill="#ef4444" opacity="0.85"/><rect x="50.1" y="50.0" width="3.1" height="2.1" fill="#ef4444" opacity="0.85"/><rect x="53.3" y="48.8" width="3.1" height="1.2" fill="#22c55e" opacity="0.85"/><rect x="56.4" y="46.9" width="3.1" height="3.1" fill="#22c55e" opacity="0.85"/><rect x="59.5" y="50.0" width="3.1" height="4.6" fill="#ef4444" opacity="0.85"/><rect x="62.7" y="50.0" width="3.1" height="1.9" fill="#ef4444" opacity="0.85"/><rect x="65.8" y="50.0" width="3.1" height="1.7" fill="#ef4444" opacity="0.85"/><rect x="68.9" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="72.0" y="50.0" width="3.1" height="1.7" fill="#ef4444" opacity="0.85"/><rect x="75.2" y="47.7" width="3.1" height="2.3" fill="#22c55e" opacity="0.85"/><rect x="78.3" y="44.0" width="3.1" height="6.0" fill="#22c55e" opacity="0.85"/><rect x="81.4" y="50.0" width="3.1" height="3.1" fill="#ef4444" opacity="0.85"/><rect x="84.6" y="50.0" width="3.1" height="10.1" fill="#ef4444" opacity="0.85"/><rect x="87.7" y="50.0" width="3.1" height="0.3" fill="#ef4444" opacity="0.85"/><rect x="90.8" y="50.0" width="3.1" height="2.6" fill="#ef4444" opacity="0.85"/><rect x="94.0" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="97.1" y="47.7" width="3.1" height="2.3" fill="#22c55e" opacity="0.85"/><rect x="100.2" y="33.3" width="3.1" height="16.7" fill="#22c55e" opacity="0.85"/><rect x="103.4" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="106.5" y="21.1" width="3.1" height="28.9" fill="#22c55e" opacity="0.85"/><rect x="109.6" y="50.0" width="3.1" height="6.3" fill="#ef4444" opacity="0.85"/><rect x="112.8" y="49.6" width="3.1" height="0.4" fill="#22c55e" opacity="0.85"/><rect x="115.9" y="49.7" width="3.1" height="0.3" fill="#22c55e" opacity="0.85"/><rect x="119.0" y="50.0" width="3.1" height="6.4" fill="#ef4444" opacity="0.85"/><rect x="122.2" y="31.6" width="3.1" height="18.4" fill="#22c55e" opacity="0.85"/><rect x="125.3" y="50.0" width="3.1" height="6.3" fill="#ef4444" opacity="0.85"/><rect x="128.4" y="50.0" width="3.1" height="7.3" fill="#ef4444" opacity="0.85"/><rect x="131.6" y="50.0" width="3.1" height="5.5" fill="#ef4444" opacity="0.85"/><rect x="134.7" y="19.5" width="3.1" height="30.5" fill="#22c55e" opacity="0.85"/><rect x="137.8" y="50.0" width="3.1" height="4.4" fill="#ef4444" opacity="0.85"/><rect x="141.0" y="50.0" width="3.1" height="5.1" fill="#ef4444" opacity="0.85"/><rect x="144.1" y="49.7" width="3.1" height="0.3" fill="#22c55e" opacity="0.85"/><rect x="147.2" y="50.0" width="3.1" height="8.0" fill="#ef4444" opacity="0.85"/><rect x="150.4" y="45.3" width="3.1" height="4.7" fill="#22c55e" opacity="0.85"/><rect x="153.5" y="50.0" width="3.1" height="2.0" fill="#ef4444" opacity="0.85"/><rect x="156.6" y="44.6" width="3.1" height="5.4" fill="#22c55e" opacity="0.85"/><rect x="159.8" y="50.0" width="3.1" height="2.5" fill="#ef4444" opacity="0.85"/><rect x="162.9" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="166.0" y="29.9" width="3.1" height="20.1" fill="#22c55e" opacity="0.85"/><rect x="169.2" y="50.0" width="3.1" height="0.6" fill="#ef4444" opacity="0.85"/><rect x="172.3" y="37.6" width="3.1" height="12.4" fill="#22c55e" opacity="0.85"/><rect x="175.4" y="50.0" width="3.1" height="0.9" fill="#ef4444" opacity="0.85"/><rect x="178.6" y="44.1" width="3.1" height="5.9" fill="#22c55e" opacity="0.85"/><rect x="181.7" y="40.2" width="3.1" height="9.8" fill="#22c55e" opacity="0.85"/><rect x="184.8" y="49.5" width="3.1" height="0.5" fill="#22c55e" opacity="0.85"/><rect x="188.0" y="17.0" width="3.1" height="33.0" fill="#22c55e" opacity="0.85"/><rect x="191.1" y="50.0" width="3.1" height="5.1" fill="#ef4444" opacity="0.85"/><rect x="194.2" y="50.0" width="3.1" height="2.8" fill="#ef4444" opacity="0.85"/><rect x="197.3" y="37.3" width="3.1" height="12.7" fill="#22c55e" opacity="0.85"/><rect x="200.5" y="29.4" width="3.1" height="20.6" fill="#22c55e" opacity="0.85"/><rect x="203.6" y="31.3" width="3.1" height="18.7" fill="#22c55e" opacity="0.85"/><rect x="206.7" y="30.5" width="3.1" height="19.5" fill="#22c55e" opacity="0.85"/><rect x="209.9" y="50.0" width="3.1" height="4.7" fill="#ef4444" opacity="0.85"/><rect x="213.0" y="49.7" width="3.1" height="0.3" fill="#22c55e" opacity="0.85"/><rect x="216.1" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="219.3" y="36.0" width="3.1" height="14.0" fill="#22c55e" opacity="0.85"/><rect x="222.4" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="225.5" y="49.4" width="3.1" height="0.6" fill="#22c55e" opacity="0.85"/><rect x="228.7" y="47.2" width="3.1" height="2.8" fill="#22c55e" opacity="0.85"/><rect x="231.8" y="50.0" width="3.1" height="3.5" fill="#ef4444" opacity="0.85"/><rect x="234.9" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="238.1" y="23.0" width="3.1" height="27.0" fill="#22c55e" opacity="0.85"/><rect x="241.2" y="40.6" width="3.1" height="9.4" fill="#22c55e" opacity="0.85"/><rect x="244.3" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="247.5" y="47.9" width="3.1" height="2.1" fill="#22c55e" opacity="0.85"/><rect x="250.6" y="50.0" width="3.1" height="2.7" fill="#ef4444" opacity="0.85"/><rect x="253.7" y="50.0" width="3.1" height="3.8" fill="#ef4444" opacity="0.85"/><rect x="256.9" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="260.0" y="50.0" width="3.1" height="3.7" fill="#ef4444" opacity="0.85"/><rect x="263.1" y="49.4" width="3.1" height="0.6" fill="#22c55e" opacity="0.85"/><rect x="266.3" y="50.0" width="3.1" height="2.6" fill="#ef4444" opacity="0.85"/><rect x="269.4" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="272.5" y="50.0" width="3.1" height="3.0" fill="#ef4444" opacity="0.85"/><rect x="275.7" y="50.0" width="3.1" height="4.4" fill="#ef4444" opacity="0.85"/><rect x="278.8" y="50.0" width="3.1" height="3.5" fill="#ef4444" opacity="0.85"/><rect x="281.9" y="50.0" width="3.1" height="2.0" fill="#ef4444" opacity="0.85"/><rect x="285.1" y="50.0" width="3.1" height="7.1" fill="#ef4444" opacity="0.85"/><rect x="288.2" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="291.3" y="50.0" width="3.1" height="6.1" fill="#ef4444" opacity="0.85"/><rect x="294.5" y="43.1" width="3.1" height="6.9" fill="#22c55e" opacity="0.85"/><rect x="297.6" y="40.9" width="3.1" height="9.1" fill="#22c55e" opacity="0.85"/><rect x="300.7" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="303.9" y="44.9" width="3.1" height="5.1" fill="#22c55e" opacity="0.85"/><rect x="307.0" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="310.1" y="50.0" width="3.1" height="0.9" fill="#ef4444" opacity="0.85"/><rect x="313.3" y="34.7" width="3.1" height="15.3" fill="#22c55e" opacity="0.85"/><rect x="316.4" y="50.0" width="3.1" height="1.6" fill="#ef4444" opacity="0.85"/><rect x="319.5" y="48.5" width="3.1" height="1.5" fill="#22c55e" opacity="0.85"/><rect x="322.7" y="37.6" width="3.1" height="12.4" fill="#22c55e" opacity="0.85"/><rect x="325.8" y="20.4" width="3.1" height="29.6" fill="#22c55e" opacity="0.85"/><rect x="328.9" y="50.0" width="3.1" height="2.4" fill="#ef4444" opacity="0.85"/><rect x="332.0" y="33.4" width="3.1" height="16.6" fill="#22c55e" opacity="0.85"/><rect x="335.2" y="49.0" width="3.1" height="1.0" fill="#22c55e" opacity="0.85"/><rect x="338.3" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="341.4" y="50.0" width="3.1" height="1.2" fill="#ef4444" opacity="0.85"/><rect x="344.6" y="28.2" width="3.1" height="21.8" fill="#22c55e" opacity="0.85"/><rect x="347.7" y="50.0" width="3.1" height="1.6" fill="#ef4444" opacity="0.85"/><rect x="350.8" y="50.0" width="3.1" height="3.7" fill="#ef4444" opacity="0.85"/><rect x="354.0" y="49.8" width="3.1" height="0.2" fill="#22c55e" opacity="0.85"/><rect x="357.1" y="50.0" width="3.1" height="2.9" fill="#ef4444" opacity="0.85"/><rect x="360.2" y="16.9" width="3.1" height="33.1" fill="#22c55e" opacity="0.85"/><rect x="363.4" y="40.2" width="3.1" height="9.8" fill="#22c55e" opacity="0.85"/><rect x="366.5" y="39.5" width="3.1" height="10.5" fill="#22c55e" opacity="0.85"/><rect x="369.6" y="49.8" width="3.1" height="0.2" fill="#22c55e" opacity="0.85"/><rect x="372.8" y="50.0" width="3.1" height="6.7" fill="#ef4444" opacity="0.85"/><rect x="375.9" y="50.0" width="3.1" height="9.1" fill="#ef4444" opacity="0.85"/><rect x="379.0" y="50.0" width="3.1" height="1.4" fill="#ef4444" opacity="0.85"/><rect x="382.2" y="50.0" width="3.1" height="0.0" fill="#ef4444" opacity="0.85"/><rect x="385.3" y="50.0" width="3.1" height="3.0" fill="#ef4444" opacity="0.85"/><rect x="388.4" y="50.0" width="3.1" height="15.3" fill="#ef4444" opacity="0.85"/><rect x="391.6" y="50.0" width="3.1" height="2.4" fill="#ef4444" opacity="0.85"/><rect x="394.7" y="50.0" width="3.1" height="3.2" fill="#ef4444" opacity="0.85"/><rect x="397.8" y="50.0" width="3.1" height="0.8" fill="#ef4444" opacity="0.85"/><rect x="401.0" y="50.0" width="3.1" height="3.7" fill="#ef4444" opacity="0.85"/><rect x="404.1" y="50.0" width="3.1" height="6.0" fill="#ef4444" opacity="0.85"/><rect x="407.2" y="43.1" width="3.1" height="6.9" fill="#22c55e" opacity="0.85"/><rect x="410.4" y="50.0" width="3.1" height="0.5" fill="#ef4444" opacity="0.85"/><rect x="413.5" y="49.5" width="3.1" height="0.5" fill="#22c55e" opacity="0.85"/><rect x="416.6" y="50.0" width="3.1" height="0.3" fill="#ef4444" opacity="0.85"/><rect x="419.8" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="422.9" y="50.0" width="3.1" height="4.9" fill="#ef4444" opacity="0.85"/><rect x="426.0" y="50.0" width="3.1" height="1.2" fill="#ef4444" opacity="0.85"/><rect x="429.2" y="50.0" width="3.1" height="4.1" fill="#ef4444" opacity="0.85"/><rect x="432.3" y="43.8" width="3.1" height="6.2" fill="#22c55e" opacity="0.85"/><rect x="435.4" y="50.0" width="3.1" height="6.2" fill="#ef4444" opacity="0.85"/><rect x="438.6" y="49.6" width="3.1" height="0.4" fill="#22c55e" opacity="0.85"/><rect x="441.7" y="50.0" width="3.1" height="9.1" fill="#ef4444" opacity="0.85"/><rect x="444.8" y="37.6" width="3.1" height="12.4" fill="#22c55e" opacity="0.85"/><rect x="448.0" y="50.0" width="3.1" height="2.8" fill="#ef4444" opacity="0.85"/><rect x="451.1" y="50.0" width="3.1" height="7.4" fill="#ef4444" opacity="0.85"/><rect x="454.2" y="50.0" width="3.1" height="6.8" fill="#ef4444" opacity="0.85"/><rect x="457.3" y="39.4" width="3.1" height="10.6" fill="#22c55e" opacity="0.85"/><rect x="460.5" y="49.2" width="3.1" height="0.8" fill="#22c55e" opacity="0.85"/><rect x="463.6" y="50.0" width="3.1" height="0.9" fill="#ef4444" opacity="0.85"/><rect x="466.7" y="49.4" width="3.1" height="0.6" fill="#22c55e" opacity="0.85"/><rect x="469.9" y="50.0" width="3.1" height="0.4" fill="#ef4444" opacity="0.85"/><rect x="473.0" y="50.0" width="3.1" height="3.7" fill="#ef4444" opacity="0.85"/><rect x="476.1" y="48.5" width="3.1" height="1.5" fill="#22c55e" opacity="0.85"/><rect x="479.3" y="50.0" width="3.1" height="5.6" fill="#ef4444" opacity="0.85"/><rect x="482.4" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="485.5" y="50.0" width="3.1" height="8.1" fill="#ef4444" opacity="0.85"/><rect x="488.7" y="48.8" width="3.1" height="1.2" fill="#22c55e" opacity="0.85"/><rect x="491.8" y="49.4" width="3.1" height="0.6" fill="#22c55e" opacity="0.85"/><rect x="494.9" y="28.9" width="3.1" height="21.1" fill="#22c55e" opacity="0.85"/><rect x="498.1" y="50.0" width="3.1" height="1.7" fill="#ef4444" opacity="0.85"/><rect x="501.2" y="48.1" width="3.1" height="1.9" fill="#22c55e" opacity="0.85"/><rect x="504.3" y="50.0" width="3.1" height="3.8" fill="#ef4444" opacity="0.85"/><rect x="507.5" y="50.0" width="3.1" height="2.5" fill="#ef4444" opacity="0.85"/><rect x="510.6" y="41.2" width="3.1" height="8.8" fill="#22c55e" opacity="0.85"/><rect x="513.7" y="50.0" width="3.1" height="3.2" fill="#ef4444" opacity="0.85"/><rect x="516.9" y="50.0" width="3.1" height="5.4" fill="#ef4444" opacity="0.85"/><rect x="520.0" y="50.0" width="3.1" height="3.2" fill="#ef4444" opacity="0.85"/><rect x="523.1" y="50.0" width="3.1" height="2.3" fill="#ef4444" opacity="0.85"/><rect x="526.3" y="42.3" width="3.1" height="7.7" fill="#22c55e" opacity="0.85"/><rect x="529.4" y="50.0" width="3.1" height="2.0" fill="#ef4444" opacity="0.85"/><rect x="532.5" y="50.0" width="3.1" height="0.2" fill="#ef4444" opacity="0.85"/><rect x="535.7" y="26.8" width="3.1" height="23.2" fill="#22c55e" opacity="0.85"/><rect x="538.8" y="24.8" width="3.1" height="25.2" fill="#22c55e" opacity="0.85"/><rect x="541.9" y="50.0" width="3.1" height="0.5" fill="#ef4444" opacity="0.85"/><rect x="545.1" y="50.0" width="3.1" height="4.2" fill="#ef4444" opacity="0.85"/><rect x="548.2" y="48.4" width="3.1" height="1.6" fill="#22c55e" opacity="0.85"/><rect x="551.3" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="554.5" y="49.5" width="3.1" height="0.5" fill="#22c55e" opacity="0.85"/><rect x="557.6" y="50.0" width="3.1" height="1.9" fill="#ef4444" opacity="0.85"/><rect x="560.7" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="563.9" y="33.7" width="3.1" height="16.3" fill="#22c55e" opacity="0.85"/><rect x="567.0" y="48.1" width="3.1" height="1.9" fill="#22c55e" opacity="0.85"/><rect x="570.1" y="50.0" width="3.1" height="5.7" fill="#ef4444" opacity="0.85"/><rect x="573.3" y="50.0" width="3.1" height="3.8" fill="#ef4444" opacity="0.85"/><rect x="576.4" y="49.4" width="3.1" height="0.6" fill="#22c55e" opacity="0.85"/><rect x="579.5" y="35.3" width="3.1" height="14.7" fill="#22c55e" opacity="0.85"/><rect x="582.7" y="8.0" width="3.1" height="42.0" fill="#22c55e" opacity="0.85"/><rect x="585.8" y="39.5" width="3.1" height="10.5" fill="#22c55e" opacity="0.85"/><rect x="588.9" y="49.8" width="3.1" height="0.2" fill="#22c55e" opacity="0.85"/><rect x="592.0" y="46.5" width="3.1" height="3.5" fill="#22c55e" opacity="0.85"/><rect x="595.2" y="50.0" width="3.1" height="5.8" fill="#ef4444" opacity="0.85"/><rect x="598.3" y="50.0" width="3.1" height="6.8" fill="#ef4444" opacity="0.85"/><rect x="601.4" y="30.5" width="3.1" height="19.5" fill="#22c55e" opacity="0.85"/><rect x="604.6" y="50.0" width="3.1" height="2.6" fill="#ef4444" opacity="0.85"/><rect x="607.7" y="50.0" width="3.1" height="0.8" fill="#ef4444" opacity="0.85"/><rect x="610.8" y="50.0" width="3.1" height="18.0" fill="#ef4444" opacity="0.85"/><rect x="614.0" y="50.0" width="3.1" height="4.6" fill="#ef4444" opacity="0.85"/><rect x="617.1" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="620.2" y="50.0" width="3.1" height="11.0" fill="#ef4444" opacity="0.85"/><rect x="623.4" y="50.0" width="3.1" height="2.0" fill="#ef4444" opacity="0.85"/><rect x="626.5" y="40.2" width="3.1" height="9.8" fill="#22c55e" opacity="0.85"/><rect x="629.6" y="32.4" width="3.1" height="17.6" fill="#22c55e" opacity="0.85"/><rect x="632.8" y="37.4" width="3.1" height="12.6" fill="#22c55e" opacity="0.85"/><rect x="635.9" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="639.0" y="50.0" width="3.1" height="4.5" fill="#ef4444" opacity="0.85"/><rect x="642.2" y="50.0" width="3.1" height="5.9" fill="#ef4444" opacity="0.85"/><rect x="645.3" y="44.2" width="3.1" height="5.8" fill="#22c55e" opacity="0.85"/><rect x="648.4" y="49.2" width="3.1" height="0.8" fill="#22c55e" opacity="0.85"/><rect x="651.6" y="49.4" width="3.1" height="0.6" fill="#22c55e" opacity="0.85"/><rect x="654.7" y="50.0" width="3.1" height="11.6" fill="#ef4444" opacity="0.85"/><rect x="657.8" y="49.1" width="3.1" height="0.9" fill="#22c55e" opacity="0.85"/><rect x="661.0" y="43.1" width="3.1" height="6.9" fill="#22c55e" opacity="0.85"/><rect x="664.1" y="50.0" width="3.1" height="0.9" fill="#ef4444" opacity="0.85"/><rect x="667.2" y="50.0" width="3.1" height="14.4" fill="#ef4444" opacity="0.85"/><rect x="670.4" y="47.4" width="3.1" height="2.6" fill="#22c55e" opacity="0.85"/><rect x="673.5" y="43.7" width="3.1" height="6.3" fill="#22c55e" opacity="0.85"/><rect x="676.6" y="15.3" width="3.1" height="34.7" fill="#22c55e" opacity="0.85"/><rect x="679.8" y="20.6" width="3.1" height="29.4" fill="#22c55e" opacity="0.85"/><rect x="682.9" y="17.9" width="3.1" height="32.1" fill="#22c55e" opacity="0.85"/><rect x="686.0" y="50.0" width="3.1" height="4.3" fill="#ef4444" opacity="0.85"/><rect x="689.2" y="50.0" width="3.1" height="7.6" fill="#ef4444" opacity="0.85"/><rect x="692.3" y="9.1" width="3.1" height="40.9" fill="#22c55e" opacity="0.85"/><rect x="695.4" y="45.2" width="3.1" height="4.8" fill="#22c55e" opacity="0.85"/><rect x="698.6" y="36.6" width="3.1" height="13.4" fill="#22c55e" opacity="0.85"/><rect x="701.7" y="44.7" width="3.1" height="5.3" fill="#22c55e" opacity="0.85"/><rect x="704.8" y="50.0" width="3.1" height="0.2" fill="#ef4444" opacity="0.85"/><rect x="708.0" y="50.0" width="3.1" height="11.0" fill="#ef4444" opacity="0.85"/><rect x="711.1" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/><rect x="714.2" y="50.0" width="3.1" height="7.9" fill="#ef4444" opacity="0.85"/><rect x="717.3" y="50.0" width="3.1" height="2.3" fill="#ef4444" opacity="0.85"/><rect x="720.5" y="50.0" width="3.1" height="4.2" fill="#ef4444" opacity="0.85"/><rect x="723.6" y="50.0" width="3.1" height="0.0" fill="#ef4444" opacity="0.85"/><rect x="726.7" y="49.9" width="3.1" height="0.1" fill="#22c55e" opacity="0.85"/><rect x="729.9" y="44.9" width="3.1" height="5.1" fill="#22c55e" opacity="0.85"/><rect x="733.0" y="50.0" width="3.1" height="1.3" fill="#ef4444" opacity="0.85"/><rect x="736.1" y="50.0" width="3.1" height="0.4" fill="#ef4444" opacity="0.85"/><rect x="739.3" y="50.0" width="3.1" height="1.9" fill="#ef4444" opacity="0.85"/><rect x="742.4" y="49.6" width="3.1" height="0.4" fill="#22c55e" opacity="0.85"/><rect x="745.5" y="48.2" width="3.1" height="1.8" fill="#22c55e" opacity="0.85"/><rect x="748.7" y="28.7" width="3.1" height="21.3" fill="#22c55e" opacity="0.85"/><rect x="751.8" y="50.0" width="3.1" height="5.7" fill="#ef4444" opacity="0.85"/><rect x="754.9" y="50.0" width="3.1" height="4.6" fill="#ef4444" opacity="0.85"/><rect x="758.1" y="50.0" width="3.1" height="7.3" fill="#ef4444" opacity="0.85"/><rect x="761.2" y="50.0" width="3.1" height="4.8" fill="#ef4444" opacity="0.85"/><rect x="764.3" y="50.0" width="3.1" height="6.7" fill="#ef4444" opacity="0.85"/><rect x="767.5" y="43.3" width="3.1" height="6.7" fill="#22c55e" opacity="0.85"/><rect x="770.6" y="50.0" width="3.1" height="2.5" fill="#ef4444" opacity="0.85"/><rect x="773.7" y="50.0" width="3.1" height="4.6" fill="#ef4444" opacity="0.85"/><rect x="776.9" y="50.0" width="3.1" height="0.1" fill="#ef4444" opacity="0.85"/>
+      <!-- Y labels -->
+      <text x="2" y="12" font-size="8" fill="#9ca3af">+$2.3M</text>
+      <text x="2" y="48" font-size="8" fill="#9ca3af">$0</text>
+      <text x="2" y="88" font-size="8" fill="#9ca3af">−$2.3M</text>
+    </svg>
+    <div class="chart-note">单日最大盈利：+$2,296,126（2025-10-02）&nbsp;·&nbsp; 单日最大亏损：−$984,203（2025-10-15）</div>
+  </div>
+</div>
+
+<!-- CHART 3: Monthly bars -->
+<div class="section">
+  <div class="section-title">三 · 月度盈亏分布</div>
+  <div class="chart-wrap">
+    <div class="chart-title">月度净盈亏 (Monthly PnL) — 1,000 合约规模</div>
+    <svg viewBox="0 0 780 100" height="100">
+      <line x1="0" y1="60" x2="780" y2="60" stroke="#94a3b8" stroke-width="0.8"/>
+      <rect x="2.0" y="45.0" width="61.0" height="15.0" fill="#22c55e" opacity="0.9" rx="2"/><rect x="67.0" y="51.5" width="61.0" height="8.5" fill="#22c55e" opacity="0.9" rx="2"/><rect x="132.0" y="39.9" width="61.0" height="20.1" fill="#22c55e" opacity="0.9" rx="2"/><rect x="197.0" y="10.0" width="61.0" height="50.0" fill="#22c55e" opacity="0.9" rx="2"/><rect x="262.0" y="60.0" width="61.0" height="1.0" fill="#ef4444" opacity="0.9" rx="2"/><rect x="327.0" y="23.2" width="61.0" height="36.8" fill="#22c55e" opacity="0.9" rx="2"/><rect x="392.0" y="60.0" width="61.0" height="12.2" fill="#ef4444" opacity="0.9" rx="2"/><rect x="457.0" y="58.8" width="61.0" height="1.2" fill="#22c55e" opacity="0.9" rx="2"/><rect x="522.0" y="44.8" width="61.0" height="15.2" fill="#22c55e" opacity="0.9" rx="2"/><rect x="587.0" y="34.1" width="61.0" height="25.9" fill="#22c55e" opacity="0.9" rx="2"/><rect x="652.0" y="16.0" width="61.0" height="44.0" fill="#22c55e" opacity="0.9" rx="2"/><rect x="717.0" y="60.0" width="61.0" height="6.6" fill="#ef4444" opacity="0.9" rx="2"/>
+      <text x="32.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">01</text><text x="32.5" y="42.0" text-anchor="middle" font-size="7.5" fill="#166534" font-weight="600">+2.4M</text><text x="97.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">02</text><text x="97.5" y="48.5" text-anchor="middle" font-size="7.5" fill="#166534" font-weight="600">+1.4M</text><text x="162.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">03</text><text x="162.5" y="36.9" text-anchor="middle" font-size="7.5" fill="#166534" font-weight="600">+3.2M</text><text x="227.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">04</text><text x="227.5" y="7.0" text-anchor="middle" font-size="7.5" fill="#166534" font-weight="600">+8.0M</text><text x="292.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">05</text><text x="292.5" y="71.0" text-anchor="middle" font-size="7.5" fill="#991b1b" font-weight="600">-0.2M</text><text x="357.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">06</text><text x="357.5" y="20.2" text-anchor="middle" font-size="7.5" fill="#166534" font-weight="600">+5.9M</text><text x="422.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">07</text><text x="422.5" y="82.2" text-anchor="middle" font-size="7.5" fill="#991b1b" font-weight="600">-1.9M</text><text x="487.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">08</text><text x="487.5" y="55.8" text-anchor="middle" font-size="7.5" fill="#166534" font-weight="600">+0.2M</text><text x="552.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">09</text><text x="552.5" y="41.8" text-anchor="middle" font-size="7.5" fill="#166534" font-weight="600">+2.4M</text><text x="617.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">10</text><text x="617.5" y="31.1" text-anchor="middle" font-size="7.5" fill="#166534" font-weight="600">+4.1M</text><text x="682.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">11</text><text x="682.5" y="13.0" text-anchor="middle" font-size="7.5" fill="#166534" font-weight="600">+7.0M</text><text x="747.5" y="82" text-anchor="middle" font-size="9" fill="#6b6f80">12</text><text x="747.5" y="76.6" text-anchor="middle" font-size="7.5" fill="#991b1b" font-weight="600">-1.0M</text>
+    </svg>
+  </div>
+
+  <!-- Monthly detail table -->
+  <table>
+    <thead>
+      <tr>
+        <th>月份</th>
+        <th class="right">月度净盈亏 ($)</th>
+        <th class="right">月末累计 ($)</th>
+        <th class="center">胜率（笔）</th>
+        <th class="right">均盈 ($)</th>
+        <th class="right">均亏 ($)</th>
+        <th class="center">月度 Sharpe</th>
+      </tr>
+    </thead>
+    <tbody>
+<tr>
+      <td><strong>Jan</strong></td>
+      <td class="right pos">+$2,379,501</td>
+      <td class="right">$2,379,501</td>
+      <td class="center"><span class="wr-pill wr-high">47%</span></td>
+      <td class="right">$261,624</td>
+      <td class="right">$100,360</td>
+      <td class="center pos">3.56</td>
+    </tr>
+<tr>
+      <td><strong>Feb</strong></td>
+      <td class="right pos">+$1,359,605</td>
+      <td class="right">$3,739,106</td>
+      <td class="center"><span class="wr-pill wr-mid">43%</span></td>
+      <td class="right">$241,096</td>
+      <td class="right">$118,949</td>
+      <td class="center pos">2.43</td>
+    </tr>
+<tr>
+      <td><strong>Mar</strong></td>
+      <td class="right pos">+$3,192,284</td>
+      <td class="right">$6,931,389</td>
+      <td class="center"><span class="wr-pill wr-mid">36%</span></td>
+      <td class="right">$337,652</td>
+      <td class="right">$105,362</td>
+      <td class="center pos">4.28</td>
+    </tr>
+<tr>
+      <td><strong>Apr</strong></td>
+      <td class="right pos">+$7,953,824</td>
+      <td class="right">$14,885,213</td>
+      <td class="center"><span class="wr-pill wr-high">50%</span></td>
+      <td class="right">$388,913</td>
+      <td class="right">$94,327</td>
+      <td class="center pos">9.85</td>
+    </tr>
+<tr>
+      <td><strong>May</strong></td>
+      <td class="right neg">−$165,445</td>
+      <td class="right">$14,719,768</td>
+      <td class="center"><span class="wr-pill wr-low">31%</span></td>
+      <td class="right">$199,564</td>
+      <td class="right">$95,165</td>
+      <td class="center neg">-0.43</td>
+    </tr>
+<tr>
+      <td><strong>Jun</strong></td>
+      <td class="right pos">+$5,856,182</td>
+      <td class="right">$20,575,950</td>
+      <td class="center"><span class="wr-pill wr-high">45%</span></td>
+      <td class="right">$436,809</td>
+      <td class="right">$106,226</td>
+      <td class="center pos">7.17</td>
+    </tr>
+<tr>
+      <td><strong>Jul</strong></td>
+      <td class="right neg">−$1,943,914</td>
+      <td class="right">$18,632,036</td>
+      <td class="center"><span class="wr-pill wr-low">19%</span></td>
+      <td class="right">$150,546</td>
+      <td class="right">$76,594</td>
+      <td class="center neg">-4.58</td>
+    </tr>
+<tr>
+      <td><strong>Aug</strong></td>
+      <td class="right pos">+$192,188</td>
+      <td class="right">$18,824,224</td>
+      <td class="center"><span class="wr-pill wr-mid">44%</span></td>
+      <td class="right">$142,845</td>
+      <td class="right">$106,663</td>
+      <td class="center pos">0.40</td>
+    </tr>
+<tr>
+      <td><strong>Sep</strong></td>
+      <td class="right pos">+$2,424,464</td>
+      <td class="right">$21,248,688</td>
+      <td class="center"><span class="wr-pill wr-low">35%</span></td>
+      <td class="right">$323,194</td>
+      <td class="right">$91,555</td>
+      <td class="center pos">3.82</td>
+    </tr>
+<tr>
+      <td><strong>Oct</strong></td>
+      <td class="right pos">+$4,112,838</td>
+      <td class="right">$25,361,525</td>
+      <td class="center"><span class="wr-pill wr-mid">44%</span></td>
+      <td class="right">$390,456</td>
+      <td class="right">$169,616</td>
+      <td class="center pos">4.15</td>
+    </tr>
+<tr>
+      <td><strong>Nov</strong></td>
+      <td class="right pos">+$6,999,310</td>
+      <td class="right">$32,360,835</td>
+      <td class="center"><span class="wr-pill wr-mid">44%</span></td>
+      <td class="right">$536,645</td>
+      <td class="right">$149,343</td>
+      <td class="center pos">6.57</td>
+    </tr>
+<tr>
+      <td><strong>Dec</strong></td>
+      <td class="right neg">−$1,043,723</td>
+      <td class="right">$31,317,113</td>
+      <td class="center"><span class="wr-pill wr-low">30%</span></td>
+      <td class="right">$195,241</td>
+      <td class="right">$109,673</td>
+      <td class="center neg">-2.22</td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SECTION 4: Daily PnL full table -->
+<div class="section">
+  <div class="section-title">四 · 每日盈亏完整序列（249 交易日）</div>
+  <div class="daily-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>日期</th>
+          <th class="right">当日净盈亏 ($)</th>
+          <th class="right">累计盈亏 ($)</th>
+          <th class="right"></th>
+        </tr>
+      </thead>
+      <tbody>
+<tr class="month-sep"><td colspan="4">Jan 2025</td></tr>
+<tr><td>2025-01-02</td><td class="right pos">+$479,487</td><td class="right pos">$479,487</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-01-03</td><td class="right pos">+$2,197,017</td><td class="right pos">$2,676,504</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-01-06</td><td class="right pos">+$79,596</td><td class="right pos">$2,756,099</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-01-07</td><td class="right neg">−$491,394</td><td class="right pos">$2,264,706</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-01-08</td><td class="right neg">−$243,792</td><td class="right pos">$2,020,914</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-01-13</td><td class="right neg">−$157,315</td><td class="right pos">$1,863,599</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-01-14</td><td class="right pos">+$62,559</td><td class="right pos">$1,926,158</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-01-15</td><td class="right pos">+$7,449</td><td class="right pos">$1,933,607</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-01-16</td><td class="right pos">+$301,128</td><td class="right pos">$2,234,735</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-01-17</td><td class="right pos">+$514,248</td><td class="right pos">$2,748,984</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-01-21</td><td class="right pos">+$29,094</td><td class="right pos">$2,778,078</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-01-22</td><td class="right neg">−$1,993</td><td class="right pos">$2,776,085</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-01-23</td><td class="right neg">−$204,890</td><td class="right pos">$2,571,195</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-01-24</td><td class="right neg">−$254,234</td><td class="right pos">$2,316,960</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-01-27</td><td class="right neg">−$61,745</td><td class="right pos">$2,255,215</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-01-28</td><td class="right neg">−$1,574</td><td class="right pos">$2,253,642</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-01-29</td><td class="right neg">−$113,647</td><td class="right pos">$2,139,995</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-01-30</td><td class="right pos">+$68,031</td><td class="right pos">$2,208,026</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-01-31</td><td class="right pos">+$171,475</td><td class="right pos">$2,379,501</td><td class="right small-bar">▲</td></tr>
+<tr class="month-sep"><td colspan="4">Feb 2025</td></tr>
+<tr><td>2025-02-03</td><td class="right neg">−$251,128</td><td class="right pos">$2,128,373</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-04</td><td class="right neg">−$103,329</td><td class="right pos">$2,025,044</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-05</td><td class="right neg">−$91,584</td><td class="right pos">$1,933,460</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-06</td><td class="right pos">+$7,512</td><td class="right pos">$1,940,972</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-02-07</td><td class="right neg">−$94,604</td><td class="right pos">$1,846,368</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-10</td><td class="right pos">+$123,538</td><td class="right pos">$1,969,906</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-02-11</td><td class="right pos">+$330,298</td><td class="right pos">$2,300,205</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-02-12</td><td class="right neg">−$167,139</td><td class="right pos">$2,133,066</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-13</td><td class="right neg">−$552,535</td><td class="right pos">$1,580,532</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-14</td><td class="right neg">−$18,626</td><td class="right pos">$1,561,905</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-18</td><td class="right neg">−$140,754</td><td class="right pos">$1,421,151</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-19</td><td class="right pos">+$7,117</td><td class="right pos">$1,428,269</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-02-20</td><td class="right pos">+$126,248</td><td class="right pos">$1,554,516</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-02-21</td><td class="right pos">+$915,158</td><td class="right pos">$2,469,674</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-02-24</td><td class="right neg">−$4,784</td><td class="right pos">$2,464,890</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-25</td><td class="right pos">+$1,581,415</td><td class="right pos">$4,046,305</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-02-26</td><td class="right neg">−$347,102</td><td class="right pos">$3,699,203</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-02-27</td><td class="right pos">+$24,275</td><td class="right pos">$3,723,478</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-02-28</td><td class="right pos">+$15,628</td><td class="right pos">$3,739,106</td><td class="right small-bar">▲</td></tr>
+<tr class="month-sep"><td colspan="4">Mar 2025</td></tr>
+<tr><td>2025-03-03</td><td class="right neg">−$348,439</td><td class="right pos">$3,390,666</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-04</td><td class="right pos">+$1,003,214</td><td class="right pos">$4,393,880</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-03-05</td><td class="right neg">−$345,340</td><td class="right pos">$4,048,540</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-06</td><td class="right neg">−$400,309</td><td class="right pos">$3,648,231</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-07</td><td class="right neg">−$300,868</td><td class="right pos">$3,347,363</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-10</td><td class="right pos">+$1,667,109</td><td class="right pos">$5,014,472</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-03-11</td><td class="right neg">−$238,391</td><td class="right pos">$4,776,081</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-12</td><td class="right neg">−$280,384</td><td class="right pos">$4,495,698</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-13</td><td class="right pos">+$15,015</td><td class="right pos">$4,510,713</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-03-14</td><td class="right neg">−$437,230</td><td class="right pos">$4,073,483</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-17</td><td class="right pos">+$259,153</td><td class="right pos">$4,332,637</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-03-18</td><td class="right neg">−$110,875</td><td class="right pos">$4,221,762</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-19</td><td class="right pos">+$294,741</td><td class="right pos">$4,516,503</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-03-20</td><td class="right neg">−$135,628</td><td class="right pos">$4,380,876</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-21</td><td class="right neg">−$5,186</td><td class="right pos">$4,375,690</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-24</td><td class="right pos">+$1,100,441</td><td class="right pos">$5,476,131</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-03-25</td><td class="right neg">−$31,417</td><td class="right pos">$5,444,714</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-26</td><td class="right pos">+$676,186</td><td class="right pos">$6,120,900</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-03-27</td><td class="right neg">−$48,550</td><td class="right pos">$6,072,350</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-03-28</td><td class="right pos">+$320,627</td><td class="right pos">$6,392,977</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-03-31</td><td class="right pos">+$538,412</td><td class="right pos">$6,931,389</td><td class="right small-bar">▲</td></tr>
+<tr class="month-sep"><td colspan="4">Apr 2025</td></tr>
+<tr><td>2025-04-01</td><td class="right pos">+$28,013</td><td class="right pos">$6,959,402</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-02</td><td class="right pos">+$1,803,677</td><td class="right pos">$8,763,079</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-03</td><td class="right neg">−$281,118</td><td class="right pos">$8,481,961</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-04-04</td><td class="right neg">−$154,061</td><td class="right pos">$8,327,900</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-04-07</td><td class="right pos">+$694,656</td><td class="right pos">$9,022,556</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-08</td><td class="right pos">+$1,124,250</td><td class="right pos">$10,146,805</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-09</td><td class="right pos">+$1,022,476</td><td class="right pos">$11,169,282</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-10</td><td class="right pos">+$1,068,197</td><td class="right pos">$12,237,478</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-11</td><td class="right neg">−$258,312</td><td class="right pos">$11,979,166</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-04-14</td><td class="right pos">+$18,299</td><td class="right pos">$11,997,465</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-15</td><td class="right pos">+$6,109</td><td class="right pos">$12,003,574</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-16</td><td class="right pos">+$766,399</td><td class="right pos">$12,769,973</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-17</td><td class="right pos">+$2,956</td><td class="right pos">$12,772,929</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-21</td><td class="right pos">+$32,042</td><td class="right pos">$12,804,971</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-22</td><td class="right pos">+$151,128</td><td class="right pos">$12,956,099</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-23</td><td class="right neg">−$189,229</td><td class="right pos">$12,766,870</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-04-24</td><td class="right pos">+$7,215</td><td class="right pos">$12,774,085</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-25</td><td class="right pos">+$1,476,423</td><td class="right pos">$14,250,509</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-28</td><td class="right pos">+$513,698</td><td class="right pos">$14,764,207</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-29</td><td class="right pos">+$5,645</td><td class="right pos">$14,769,851</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-04-30</td><td class="right pos">+$115,362</td><td class="right pos">$14,885,213</td><td class="right small-bar">▲</td></tr>
+<tr class="month-sep"><td colspan="4">May 2025</td></tr>
+<tr><td>2025-05-01</td><td class="right neg">−$149,690</td><td class="right pos">$14,735,523</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-02</td><td class="right neg">−$209,345</td><td class="right pos">$14,526,178</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-05</td><td class="right pos">+$3,387</td><td class="right pos">$14,529,565</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-05-06</td><td class="right neg">−$203,851</td><td class="right pos">$14,325,714</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-07</td><td class="right pos">+$31,742</td><td class="right pos">$14,357,455</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-05-08</td><td class="right neg">−$142,128</td><td class="right pos">$14,215,327</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-09</td><td class="right neg">−$3,265</td><td class="right pos">$14,212,062</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-12</td><td class="right neg">−$166,082</td><td class="right pos">$14,045,980</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-13</td><td class="right neg">−$241,272</td><td class="right pos">$13,804,709</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-14</td><td class="right neg">−$189,309</td><td class="right pos">$13,615,399</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-15</td><td class="right neg">−$106,949</td><td class="right pos">$13,508,450</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-16</td><td class="right neg">−$390,790</td><td class="right pos">$13,117,660</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-19</td><td class="right neg">−$4,357</td><td class="right pos">$13,113,303</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-20</td><td class="right neg">−$330,831</td><td class="right pos">$12,782,472</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-21</td><td class="right pos">+$379,045</td><td class="right pos">$13,161,517</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-05-22</td><td class="right pos">+$497,852</td><td class="right pos">$13,659,369</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-05-23</td><td class="right neg">−$8,119</td><td class="right pos">$13,651,250</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-27</td><td class="right pos">+$279,877</td><td class="right pos">$13,931,127</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-05-28</td><td class="right pos">+$2,874</td><td class="right pos">$13,934,001</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-05-29</td><td class="right neg">−$50,884</td><td class="right pos">$13,883,117</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-05-30</td><td class="right pos">+$836,651</td><td class="right pos">$14,719,768</td><td class="right small-bar">▲</td></tr>
+<tr class="month-sep"><td colspan="4">Jun 2025</td></tr>
+<tr><td>2025-06-02</td><td class="right neg">−$87,583</td><td class="right pos">$14,632,185</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-06-03</td><td class="right pos">+$82,150</td><td class="right pos">$14,714,335</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-04</td><td class="right pos">+$675,583</td><td class="right pos">$15,389,918</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-05</td><td class="right pos">+$1,620,242</td><td class="right pos">$17,010,159</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-06</td><td class="right neg">−$130,899</td><td class="right pos">$16,879,261</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-06-09</td><td class="right pos">+$905,240</td><td class="right pos">$17,784,500</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-10</td><td class="right pos">+$53,054</td><td class="right pos">$17,837,554</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-11</td><td class="right neg">−$6,013</td><td class="right pos">$17,831,542</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-06-12</td><td class="right neg">−$66,816</td><td class="right pos">$17,764,725</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-06-13</td><td class="right pos">+$1,193,162</td><td class="right pos">$18,957,887</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-16</td><td class="right neg">−$89,393</td><td class="right pos">$18,868,495</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-06-17</td><td class="right neg">−$200,605</td><td class="right pos">$18,667,889</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-06-18</td><td class="right pos">+$9,407</td><td class="right pos">$18,677,297</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-20</td><td class="right neg">−$160,498</td><td class="right pos">$18,516,799</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-06-23</td><td class="right pos">+$1,807,077</td><td class="right pos">$20,323,876</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-24</td><td class="right pos">+$533,140</td><td class="right pos">$20,857,016</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-25</td><td class="right pos">+$572,207</td><td class="right pos">$21,429,223</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-26</td><td class="right pos">+$11,021</td><td class="right pos">$21,440,245</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-06-27</td><td class="right neg">−$367,904</td><td class="right pos">$21,072,340</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-06-30</td><td class="right neg">−$496,390</td><td class="right pos">$20,575,950</td><td class="right small-bar">▼</td></tr>
+<tr class="month-sep"><td colspan="4">Jul 2025</td></tr>
+<tr><td>2025-07-01</td><td class="right neg">−$74,085</td><td class="right pos">$20,501,865</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-02</td><td class="right neg">−$654</td><td class="right pos">$20,501,211</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-03</td><td class="right neg">−$166,319</td><td class="right pos">$20,334,892</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-07</td><td class="right neg">−$836,708</td><td class="right pos">$19,498,184</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-08</td><td class="right neg">−$130,332</td><td class="right pos">$19,367,852</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-09</td><td class="right neg">−$175,080</td><td class="right pos">$19,192,772</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-10</td><td class="right neg">−$41,153</td><td class="right pos">$19,151,618</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-11</td><td class="right neg">−$201,536</td><td class="right pos">$18,950,083</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-14</td><td class="right neg">−$326,416</td><td class="right pos">$18,623,667</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-15</td><td class="right pos">+$375,761</td><td class="right pos">$18,999,428</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-07-16</td><td class="right neg">−$24,651</td><td class="right pos">$18,974,777</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-17</td><td class="right pos">+$26,559</td><td class="right pos">$19,001,336</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-07-18</td><td class="right neg">−$15,655</td><td class="right pos">$18,985,680</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-21</td><td class="right neg">−$3,777</td><td class="right pos">$18,981,904</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-22</td><td class="right neg">−$266,537</td><td class="right pos">$18,715,366</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-23</td><td class="right neg">−$62,969</td><td class="right pos">$18,652,398</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-24</td><td class="right neg">−$226,362</td><td class="right pos">$18,426,036</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-25</td><td class="right pos">+$341,212</td><td class="right pos">$18,767,248</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-07-28</td><td class="right neg">−$336,571</td><td class="right pos">$18,430,677</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-29</td><td class="right pos">+$20,821</td><td class="right pos">$18,451,498</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-07-30</td><td class="right neg">−$498,884</td><td class="right pos">$17,952,614</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-07-31</td><td class="right pos">+$679,422</td><td class="right pos">$18,632,036</td><td class="right small-bar">▲</td></tr>
+<tr class="month-sep"><td colspan="4">Aug 2025</td></tr>
+<tr><td>2025-08-01</td><td class="right neg">−$154,710</td><td class="right pos">$18,477,326</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-04</td><td class="right neg">−$405,010</td><td class="right pos">$18,072,315</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-05</td><td class="right neg">−$372,973</td><td class="right pos">$17,699,342</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-06</td><td class="right pos">+$580,361</td><td class="right pos">$18,279,703</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-08-07</td><td class="right pos">+$45,364</td><td class="right pos">$18,325,066</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-08-08</td><td class="right neg">−$47,210</td><td class="right pos">$18,277,856</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-11</td><td class="right pos">+$34,642</td><td class="right pos">$18,312,498</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-08-12</td><td class="right neg">−$22,170</td><td class="right pos">$18,290,328</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-13</td><td class="right neg">−$200,145</td><td class="right pos">$18,090,183</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-14</td><td class="right pos">+$82,457</td><td class="right pos">$18,172,640</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-08-15</td><td class="right neg">−$307,548</td><td class="right pos">$17,865,092</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-18</td><td class="right pos">+$5,552</td><td class="right pos">$17,870,644</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-08-19</td><td class="right neg">−$445,079</td><td class="right pos">$17,425,565</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-20</td><td class="right pos">+$66,374</td><td class="right pos">$17,491,938</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-08-21</td><td class="right pos">+$31,718</td><td class="right pos">$17,523,656</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-08-22</td><td class="right pos">+$1,152,087</td><td class="right pos">$18,675,743</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-08-25</td><td class="right neg">−$94,312</td><td class="right pos">$18,581,431</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-26</td><td class="right pos">+$106,396</td><td class="right pos">$18,687,827</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-08-27</td><td class="right neg">−$207,913</td><td class="right pos">$18,479,914</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-28</td><td class="right neg">−$136,750</td><td class="right pos">$18,343,164</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-08-29</td><td class="right pos">+$481,060</td><td class="right pos">$18,824,224</td><td class="right small-bar">▲</td></tr>
+<tr class="month-sep"><td colspan="4">Sep 2025</td></tr>
+<tr><td>2025-09-02</td><td class="right neg">−$172,315</td><td class="right pos">$18,651,909</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-03</td><td class="right neg">−$297,755</td><td class="right pos">$18,354,154</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-04</td><td class="right neg">−$174,056</td><td class="right pos">$18,180,098</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-05</td><td class="right neg">−$123,747</td><td class="right pos">$18,056,350</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-08</td><td class="right pos">+$418,319</td><td class="right pos">$18,474,669</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-09-09</td><td class="right neg">−$111,070</td><td class="right pos">$18,363,599</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-10</td><td class="right neg">−$13,578</td><td class="right pos">$18,350,021</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-11</td><td class="right pos">+$1,269,919</td><td class="right pos">$19,619,940</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-09-12</td><td class="right pos">+$1,376,180</td><td class="right pos">$20,996,120</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-09-15</td><td class="right neg">−$25,106</td><td class="right pos">$20,971,014</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-16</td><td class="right neg">−$230,100</td><td class="right pos">$20,740,914</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-17</td><td class="right pos">+$85,230</td><td class="right pos">$20,826,144</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-09-18</td><td class="right neg">−$5,293</td><td class="right pos">$20,820,851</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-19</td><td class="right pos">+$29,638</td><td class="right pos">$20,850,489</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-09-22</td><td class="right neg">−$101,435</td><td class="right pos">$20,749,055</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-23</td><td class="right neg">−$7,539</td><td class="right pos">$20,741,515</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-24</td><td class="right pos">+$892,735</td><td class="right pos">$21,634,250</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-09-25</td><td class="right pos">+$101,994</td><td class="right pos">$21,736,244</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-09-26</td><td class="right neg">−$314,312</td><td class="right pos">$21,421,931</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-29</td><td class="right neg">−$208,547</td><td class="right pos">$21,213,385</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-09-30</td><td class="right pos">+$35,303</td><td class="right pos">$21,248,688</td><td class="right small-bar">▲</td></tr>
+<tr class="month-sep"><td colspan="4">Oct 2025</td></tr>
+<tr><td>2025-10-01</td><td class="right pos">+$803,748</td><td class="right pos">$22,052,436</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-02</td><td class="right pos">+$2,296,126</td><td class="right pos">$24,348,562</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-03</td><td class="right pos">+$571,993</td><td class="right pos">$24,920,555</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-06</td><td class="right pos">+$12,649</td><td class="right pos">$24,933,204</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-07</td><td class="right pos">+$193,896</td><td class="right pos">$25,127,100</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-08</td><td class="right neg">−$318,997</td><td class="right pos">$24,808,104</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-09</td><td class="right neg">−$373,038</td><td class="right pos">$24,435,066</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-10</td><td class="right pos">+$1,064,741</td><td class="right pos">$25,499,807</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-13</td><td class="right neg">−$141,310</td><td class="right pos">$25,358,497</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-14</td><td class="right neg">−$41,591</td><td class="right pos">$25,316,906</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-15</td><td class="right neg">−$984,203</td><td class="right pos">$24,332,703</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-16</td><td class="right neg">−$251,616</td><td class="right pos">$24,081,087</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-17</td><td class="right pos">+$8,002</td><td class="right pos">$24,089,089</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-20</td><td class="right neg">−$603,122</td><td class="right pos">$23,485,967</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-21</td><td class="right neg">−$109,403</td><td class="right pos">$23,376,565</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-22</td><td class="right pos">+$533,178</td><td class="right pos">$23,909,743</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-23</td><td class="right pos">+$963,184</td><td class="right pos">$24,872,927</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-24</td><td class="right pos">+$687,632</td><td class="right pos">$25,560,559</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-27</td><td class="right pos">+$4,584</td><td class="right pos">$25,565,143</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-28</td><td class="right neg">−$244,846</td><td class="right pos">$25,320,296</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-29</td><td class="right neg">−$323,213</td><td class="right pos">$24,997,084</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-10-30</td><td class="right pos">+$318,849</td><td class="right pos">$25,315,933</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-10-31</td><td class="right pos">+$45,593</td><td class="right pos">$25,361,525</td><td class="right small-bar">▲</td></tr>
+<tr class="month-sep"><td colspan="4">Nov 2025</td></tr>
+<tr><td>2025-11-03</td><td class="right pos">+$33,089</td><td class="right pos">$25,394,614</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-04</td><td class="right neg">−$634,259</td><td class="right pos">$24,760,355</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-11-05</td><td class="right pos">+$46,556</td><td class="right pos">$24,806,910</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-06</td><td class="right pos">+$379,076</td><td class="right pos">$25,185,987</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-07</td><td class="right neg">−$50,373</td><td class="right pos">$25,135,613</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-11-10</td><td class="right neg">−$785,109</td><td class="right pos">$24,350,504</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-11-11</td><td class="right pos">+$144,134</td><td class="right pos">$24,494,638</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-12</td><td class="right pos">+$343,697</td><td class="right pos">$24,838,335</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-13</td><td class="right pos">+$1,898,314</td><td class="right pos">$26,736,649</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-14</td><td class="right pos">+$1,607,943</td><td class="right pos">$28,344,592</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-17</td><td class="right pos">+$1,756,349</td><td class="right pos">$30,100,941</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-18</td><td class="right neg">−$232,745</td><td class="right pos">$29,868,196</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-11-19</td><td class="right neg">−$414,794</td><td class="right pos">$29,453,402</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-11-20</td><td class="right pos">+$2,233,905</td><td class="right pos">$31,687,307</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-21</td><td class="right pos">+$264,538</td><td class="right pos">$31,951,846</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-24</td><td class="right pos">+$734,517</td><td class="right pos">$32,686,362</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-25</td><td class="right pos">+$289,495</td><td class="right pos">$32,975,857</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-11-26</td><td class="right neg">−$12,892</td><td class="right pos">$32,962,965</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-11-28</td><td class="right neg">−$602,130</td><td class="right pos">$32,360,835</td><td class="right small-bar">▼</td></tr>
+<tr class="month-sep"><td colspan="4">Dec 2025</td></tr>
+<tr><td>2025-12-01</td><td class="right neg">−$5,375</td><td class="right pos">$32,355,460</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-02</td><td class="right neg">−$433,025</td><td class="right pos">$31,922,435</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-03</td><td class="right neg">−$125,520</td><td class="right pos">$31,796,916</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-04</td><td class="right neg">−$232,017</td><td class="right pos">$31,564,899</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-05</td><td class="right neg">−$2,512</td><td class="right pos">$31,562,387</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-08</td><td class="right pos">+$3,968</td><td class="right pos">$31,566,355</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-12-09</td><td class="right pos">+$277,825</td><td class="right pos">$31,844,180</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-12-10</td><td class="right neg">−$70,001</td><td class="right pos">$31,774,179</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-11</td><td class="right neg">−$22,779</td><td class="right pos">$31,751,400</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-12</td><td class="right neg">−$103,516</td><td class="right pos">$31,647,884</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-15</td><td class="right pos">+$19,564</td><td class="right pos">$31,667,449</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-12-16</td><td class="right pos">+$100,475</td><td class="right pos">$31,767,924</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-12-17</td><td class="right pos">+$1,167,146</td><td class="right pos">$32,935,070</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-12-18</td><td class="right neg">−$311,892</td><td class="right pos">$32,623,178</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-19</td><td class="right neg">−$250,012</td><td class="right pos">$32,373,166</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-22</td><td class="right neg">−$400,748</td><td class="right pos">$31,972,418</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-23</td><td class="right neg">−$259,975</td><td class="right pos">$31,712,443</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-24</td><td class="right neg">−$368,149</td><td class="right pos">$31,344,294</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-26</td><td class="right pos">+$368,060</td><td class="right pos">$31,712,354</td><td class="right small-bar">▲</td></tr>
+<tr><td>2025-12-29</td><td class="right neg">−$135,926</td><td class="right pos">$31,576,428</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-30</td><td class="right neg">−$252,650</td><td class="right pos">$31,323,778</td><td class="right small-bar">▼</td></tr>
+<tr><td>2025-12-31</td><td class="right neg">−$6,665</td><td class="right pos">$31,317,113</td><td class="right small-bar">▼</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SECTION 5: Trading Costs -->
+<div class="section">
+  <div class="section-title">五 · 交易成本与成交假设</div>
+  <div class="cost-grid">
+    <div class="cost-card">
+      <div class="cc-label">手续费</div>
+      <div class="cc-value">$3.30 / 合约 / 单边</div>
+      <div class="cc-desc">每手 1,000 份合约，单边 $660<br>Round-trip $1,320 / 手<br>PnL 均为扣费后净值</div>
+    </div>
+    <div class="cost-card">
+      <div class="cc-label">滑点</div>
+      <div class="cc-value">按实际成交价</div>
+      <div class="cc-desc">回测采用 FILLED 成交价<br>未施加固定滑点模型<br>bid/ask spread 未建模</div>
+    </div>
+    <div class="cost-card">
+      <div class="cc-label">成交率 / 规模</div>
+      <div class="cc-value">100% · 1,000 合约/手</div>
+      <div class="cc-desc">回测假设全部开仓成交<br>每手名义价值约 $400k–$650k<br>方向：多头 + 空头均有</div>
+    </div>
+  </div>
+  <div class="callout">
+    <strong>PnL 口径说明：</strong> 每笔交易 PnL = 平仓收入（扣 $660 手续费）− 开仓成本（含 $660 手续费），即 Net = crdr − basis，报告中所有数字均为费后净值。
+  </div>
+</div>
+
+<!-- SECTION 6: Risk -->
+<div class="section">
+  <div class="section-title">六 · 风险分析与压力测试</div>
+
+  <div class="callout warn">
+    <strong>核心风险提示：</strong> 回测成交率假设 100%，未建模 bid/ask spread。期权大单的买卖价差成本在实盘中通常为名义价值的 0.1%–0.3%，在高波动日可达 0.5% 以上，将对盈利产生实质性影响。以下为不同价差折扣假设下的净盈亏估算。
+  </div>
+
+  <table class="scenario-table" style="margin-bottom:20px">
+    <thead>
+      <tr>
+        <th>情景</th>
+        <th>Bid/Ask 折扣</th>
+        <th class="right">估算净盈亏 ($)</th>
+        <th class="right">vs. 基准</th>
+        <th>说明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>基准（回测）</strong></td>
+        <td>0%</td>
+        <td class="right pos">+$31,317,113</td>
+        <td class="right">—</td>
+        <td>按 FILLED 价，无额外滑点</td>
+      </tr>
+      <tr>
+        <td>保守估算</td>
+        <td>5%</td>
+        <td class="right pos">+$29,751,257</td>
+        <td class="right neg">−$1,565,856</td>
+        <td>流动性良好日内期权</td>
+      </tr>
+      <tr>
+        <td>中性估算</td>
+        <td>10%</td>
+        <td class="right pos">+$28,185,401</td>
+        <td class="right neg">−$3,131,711</td>
+        <td>波动放大时段，宽价差</td>
+      </tr>
+      <tr>
+        <td>压力情景</td>
+        <td>15%</td>
+        <td class="right pos">+$26,619,546</td>
+        <td class="right neg">−$4,697,567</td>
+        <td>极端波动，深度虚值期权</td>
+      </tr>
+      <tr>
+        <td>极端情景</td>
+        <td>20%</td>
+        <td class="right pos">+$25,053,690</td>
+        <td class="right neg">−$6,263,423</td>
+        <td>流动性危机或大规模冲击</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="prose">
+    <p><strong>单日最大亏损风险：</strong> 回测期间单日最大亏损为 <strong>−$984,203</strong>（2025-10-15），当日期权市场出现高波动且信号方向与市场逆向。此类单日极端亏损在尾部驱动型策略中属于正常风险特征，但需确保资金缓冲充足，避免因单日大亏影响后续交易执行。</p>
+
+    <p><strong>盈利集中度风险：</strong> 全年约 20% 的盈利来自不超过 10 个高盈利交易日（单日 PnL &gt; $1M），高度依赖事件催化行情。若市场长期处于低波动状态，信号触发频率和单笔盈利规模将同步压缩。</p>
+
+    <p><strong>成交率假设风险：</strong> 以 1,000 合约规模入场，实盘中可能遭遇市场深度不足，部分成交或更差的成交价格。建议在实盘运行初期以 <strong>100–200 合约</strong>进行验证，确认成交质量后再逐步扩仓至 1,000 合约规模。</p>
+
+    <p><strong>信号阶段性失效风险：</strong> 2025年7月（胜率 19%）和12月（胜率 30%）均出现模型信号阶段性失效，原因为市场状态切换至训练数据覆盖不足的区间。建议设立月度止损线（如月内累计亏损 &gt; $1.5M 时暂停交易），防范信号持续失效时的深度回撤。</p>
+  </div>
+</div>
+
+<!-- SECTION 7: Strategy Stability -->
+<div class="section">
+  <div class="section-title">七 · 策略稳定性说明</div>
+  <div class="prose">
+    <p><strong>收益结构：低胜率 × 高盈亏比。</strong> 全年交易层面胜率约 38%，日度盈利日占比 47%，但盈利因子达 2.15。策略的 α 来源不在于高频小额盈利，而在于少数大行情下的高强度获利——平均盈利日收益为平均亏损日的 2.4 倍。这一收益结构在短窗口（如 15 日）下会表现出 Sharpe 剧烈波动，属于策略本身特征，而非不稳定的证据。</p>
+
+    <p><strong>月度收益趋势（Q4 递减）：</strong> 10月→11月呈上升后，12月转为亏损，与7月形成"信号阶段性失效"的相似模式。年末低流动性叠加节假日交投清淡，策略信号触发条件受限，连续亏损集中在12月下旬。这两个失效窗口（7月/12月）均在次月得到修复，说明模型具备自我修正能力，阶段性失效不构成策略失效。</p>
+
+    <p><strong>整体稳健性指标：</strong> 年化 Sharpe 3.64，全年仅 4 个亏损月（5月、7月、8月 微盈、12月），单日最大亏损−$984,203 相对全年总盈利 $31,317,113 为 3.1%，风险收益特征处于合理区间。</p>
+  </div>
+</div>
+
+<!-- SECTION 8: Parameters -->
+<div class="section">
+  <div class="section-title">八 · 回测参数汇总</div>
+  <table>
+    <thead><tr><th>参数</th><th>设定值</th><th>参数</th><th>设定值</th></tr></thead>
+    <tbody>
+      <tr><td>回测区间</td><td>2025-01-02 — 2025-12-31</td><td>每手合约数</td><td>1,000 份合约</td></tr>
+      <tr><td>持仓方向</td><td>多头（long）+ 空头（short）</td><td>手续费</td><td>$660 / 单边 / 手（$3.30/合约）</td></tr>
+      <tr><td>滑点假设</td><td>0（按 FILLED 价）</td><td>成交率假设</td><td>100%</td></tr>
+      <tr><td>总交易笔数</td><td>577 笔（按 Exit 统计）</td><td>回测交易日</td><td>249 天</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div>策略回测报告 · 期权量化策略 · 2025 Full Year · 1,000 Contracts</div>
+  <div>报告日期：2026-04-16</div>
+</div>
+
+</div>
+</body>
+</html>

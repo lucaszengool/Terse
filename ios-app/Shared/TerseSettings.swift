@@ -112,19 +112,16 @@ class TerseSettings: ObservableObject {
 
     // MARK: - Stats (shared with keyboard extension)
 
-    var totalTokensOptimized: Int {
-        get { defaults.integer(forKey: "totalTokensOptimized") }
-        set { defaults.set(newValue, forKey: "totalTokensOptimized") }
+    @Published var totalTokensOptimized: Int = 0 {
+        didSet { defaults.set(totalTokensOptimized, forKey: "totalTokensOptimized") }
     }
 
-    var totalTokensSaved: Int {
-        get { defaults.integer(forKey: "totalTokensSaved") }
-        set { defaults.set(newValue, forKey: "totalTokensSaved") }
+    @Published var totalTokensSaved: Int = 0 {
+        didSet { defaults.set(totalTokensSaved, forKey: "totalTokensSaved") }
     }
 
-    var totalOptimizations: Int {
-        get { defaults.integer(forKey: "totalOptimizations") }
-        set { defaults.set(newValue, forKey: "totalOptimizations") }
+    @Published var totalOptimizations: Int = 0 {
+        didSet { defaults.set(totalOptimizations, forKey: "totalOptimizations") }
     }
 
     // MARK: - Computed
@@ -136,11 +133,11 @@ class TerseSettings: ObservableObject {
     // MARK: - Init
 
     init() {
-        let d = UserDefaults(suiteName: "group.com.terseai.shared") ?? .standard
+        let d = UserDefaults(suiteName: "group.com.pruneai.shared") ?? .standard
         self.defaults = d
 
         self.aggressiveness = AggressivenessMode(rawValue: d.string(forKey: "aggressiveness") ?? "balanced") ?? .balanced
-        self.theme = TerseThemeName(rawValue: d.string(forKey: "theme") ?? "lime") ?? .lime
+        self.theme = TerseThemeName(rawValue: d.string(forKey: "theme") ?? "cream") ?? .cream
         self.autoMode = d.string(forKey: "autoMode") ?? "send"
 
         self.removeFillerWords = d.object(forKey: "removeFillerWords") as? Bool ?? true
@@ -161,6 +158,11 @@ class TerseSettings: ObservableObject {
         self.showTokenCount = d.object(forKey: "showTokenCount") as? Bool ?? true
         self.autoOptimizeOnPaste = d.object(forKey: "autoOptimizeOnPaste") as? Bool ?? false
         self.hasSeenSetup = d.bool(forKey: "hasSeenSetup")
+
+        // Load stats
+        self.totalTokensOptimized = d.integer(forKey: "totalTokensOptimized")
+        self.totalTokensSaved = d.integer(forKey: "totalTokensSaved")
+        self.totalOptimizations = d.integer(forKey: "totalOptimizations")
     }
 
     // MARK: - Apply Settings to Optimizer
@@ -187,7 +189,7 @@ class TerseSettings: ObservableObject {
     func reload() {
         defaults.synchronize()
         aggressiveness = AggressivenessMode(rawValue: defaults.string(forKey: "aggressiveness") ?? "balanced") ?? .balanced
-        theme = TerseThemeName(rawValue: defaults.string(forKey: "theme") ?? "lime") ?? .lime
+        theme = TerseThemeName(rawValue: defaults.string(forKey: "theme") ?? "cream") ?? .cream
         autoMode = defaults.string(forKey: "autoMode") ?? "send"
         removeFillerWords = defaults.object(forKey: "removeFillerWords") as? Bool ?? true
         removePoliteness = defaults.object(forKey: "removePoliteness") as? Bool ?? true
@@ -205,13 +207,20 @@ class TerseSettings: ObservableObject {
         hapticFeedback = defaults.object(forKey: "hapticFeedback") as? Bool ?? true
         showTokenCount = defaults.object(forKey: "showTokenCount") as? Bool ?? true
         autoOptimizeOnPaste = defaults.object(forKey: "autoOptimizeOnPaste") as? Bool ?? false
+
+        // Reload stats from keyboard extension
+        totalTokensOptimized = defaults.integer(forKey: "totalTokensOptimized")
+        totalTokensSaved = defaults.integer(forKey: "totalTokensSaved")
+        totalOptimizations = defaults.integer(forKey: "totalOptimizations")
+
+        objectWillChange.send()
     }
 
     // MARK: - Record Stats
 
     func recordOptimization(tokensBefore: Int, tokensAfter: Int) {
         totalTokensOptimized += tokensBefore
-        totalTokensSaved += max(0, tokensBefore - tokensAfter)
+        totalTokensSaved += 1
         totalOptimizations += 1
     }
 
@@ -219,7 +228,7 @@ class TerseSettings: ObservableObject {
 
     func resetToDefaults() {
         aggressiveness = .balanced
-        theme = .lime
+        theme = .cream
         autoMode = "send"
         removeFillerWords = true
         removePoliteness = true

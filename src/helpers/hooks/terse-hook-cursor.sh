@@ -11,8 +11,10 @@ set -euo pipefail
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // .type // empty' 2>/dev/null)
 
-# Cursor uses "shell" or "terminal" for shell execution hooks
-if [ "$TOOL_NAME" != "shell" ] && [ "$TOOL_NAME" != "terminal" ] && [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "" ]; then
+# Cursor Agent uses "run_terminal_command"; older Cursor may use "shell"/"terminal"
+if [ "$TOOL_NAME" != "shell" ] && [ "$TOOL_NAME" != "terminal" ] && \
+   [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "run_terminal_command" ] && \
+   [ "$TOOL_NAME" != "" ]; then
   echo '{"decision":"allow"}'
   exit 0
 fi

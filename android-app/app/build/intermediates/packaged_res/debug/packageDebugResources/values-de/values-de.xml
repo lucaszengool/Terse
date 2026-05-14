@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Terse</string>
+    <string name="copied">Kopiert!</string>
+    <string name="copy_button">Kopieren</string>
+    <string name="keyboard_setup_open_settings">Einstellungen öffnen</string>
+    <string name="keyboard_setup_privacy">Alle Optimierungen laufen lokal. Kein Text verlässt dein Gerät.</string>
+    <string name="keyboard_setup_title">Tastatur einrichten</string>
+    <string name="mode_aggressive">Aggressiv</string>
+    <string name="mode_balanced">Ausgewogen</string>
+    <string name="mode_light">Leicht</string>
+    <string name="optimize_button">Optimieren</string>
+    <string name="optimize_placeholder">Füge einen Prompt zum Optimieren ein…</string>
+    <string name="settings_delete_account">Konto löschen</string>
+    <string name="settings_sign_out">Abmelden</string>
+    <string name="settings_upgrade_pro">Auf Pro upgraden</string>
+    <string name="sign_in_google">Mit Google fortfahren</string>
+    <string name="sign_in_subtitle">Optimiere deine KI-Prompts. Spare Tokens.</string>
+    <string name="tab_optimize">Optimieren</string>
+    <string name="tab_settings">Einstellungen</string>
+    <string name="tab_stats">Statistiken</string>
+</resources>

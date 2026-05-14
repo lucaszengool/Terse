@@ -598,6 +598,13 @@ fn close_window(app: AppHandle) {
 }
 
 #[tauri::command]
+fn minimize_window(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.minimize();
+    }
+}
+
+#[tauri::command]
 fn set_popup_minimized(on: bool, state: tauri::State<'_, AppState>, app: AppHandle) -> bool {
     let mut minimized = state.popup_minimized.lock().unwrap_or_else(|e| e.into_inner());
     *minimized = on;
@@ -1585,10 +1592,10 @@ fn record_optimization(source: String, original_tokens: u64, optimized_tokens: u
     }
 }
 
-/// Called from popup.js when it detects a saveable tool result during monitoring.
-/// Adds 1 coin and fires pet-fed without touching stats (avoids double-counting).
+/// Called from popup.js when it detects a new tool call during monitoring.
+/// Adds 1 coin and fires pet-fed with the tool name so the pet can react contextually.
 #[tauri::command]
-fn pet_work_detected(state: tauri::State<'_, AppState>, app: AppHandle, saved_estimate: u64) {
+fn pet_work_detected(state: tauri::State<'_, AppState>, app: AppHandle, saved_estimate: u64, tool_name: Option<String>) {
     {
         let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
         pet_store.add_coins(1);
@@ -1609,6 +1616,7 @@ fn pet_work_detected(state: tauri::State<'_, AppState>, app: AppHandle, saved_es
         "saved": saved_estimate,
         "totalSaved": total,
         "source": "monitor",
+        "toolName": tool_name.unwrap_or_default(),
     }));
 }
 
@@ -2331,6 +2339,7 @@ pub fn run() {
             update_settings,
             set_auto_mode,
             close_window,
+            minimize_window,
             set_popup_minimized,
             move_popup_by,
             resize_popup,

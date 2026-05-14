@@ -1,7 +1,7 @@
 {
   "identifier": "default",
   "description": "Default capability for Terse windows",
-  "windows": ["main", "popup"],
+  "windows": ["main", "popup", "pet"],
   "permissions": [
     "core:default",
     "core:event:default",

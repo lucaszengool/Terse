@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Terse</string>
+    <string name="keyboard_name">Terse Keyboard</string>
+    <string name="share_activity_label">Optimize with Terse</string>
+    <string name="subtype_en">English (US)</string>
+    <string name="subtype_zh">Chinese (Simplified)</string>
+
+    <!-- Tabs -->
+    <string name="tab_optimize">Optimize</string>
+    <string name="tab_stats">Stats</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Sign In -->
+    <string name="sign_in_title">Terse</string>
+    <string name="sign_in_subtitle">Optimize your AI prompts. Save tokens.</string>
+    <string name="sign_in_google">Continue with Google</string>
+    <string name="sign_in_web">Sign in with Email</string>
+    <string name="sign_in_error">Sign in failed. Please try again.</string>
+    <string name="sign_in_network_error">Network error. Please try again.</string>
+
+    <!-- Optimize -->
+    <string name="optimize_placeholder">Paste a prompt to optimize…</string>
+    <string name="optimize_button">Optimize</string>
+    <string name="copy_button">Copy</string>
+    <string name="copied">Copied!</string>
+    <string name="tokens_saved">%1$d%% saved</string>
+    <string name="mode_light">Light</string>
+    <string name="mode_balanced">Balanced</string>
+    <string name="mode_aggressive">Aggressive</string>
+    <string name="mode_light_desc">Typo correction and whitespace only.</string>
+    <string name="mode_balanced_desc">Removes filler, politeness, hedging.</string>
+    <string name="mode_aggressive_desc">Maximum compression.</string>
+    <string name="techniques_applied">Techniques applied</string>
+    <string name="original_tokens">%1$d tokens</string>
+    <string name="optimized_tokens">%1$d tokens</string>
+
+    <!-- Stats -->
+    <string name="stats_title">Your Stats</string>
+    <string name="stats_today">Today</string>
+    <string name="stats_week">This Week</string>
+    <string name="stats_month">This Month</string>
+    <string name="stats_all_time">All Time</string>
+    <string name="stats_tokens_saved">Tokens Saved</string>
+    <string name="stats_optimizations">Optimizations</string>
+    <string name="stats_avg_savings">Avg Savings</string>
+    <string name="stats_empty">No optimizations yet.\nStart optimizing prompts to see your stats!</string>
+
+    <!-- Settings -->
+    <string name="settings_account">Account</string>
+    <string name="settings_tier_free">Free</string>
+    <string name="settings_tier_pro">Pro</string>
+    <string name="settings_tier_enterprise">Enterprise</string>
+    <string name="settings_upgrade_pro">Upgrade to Pro</string>
+    <string name="settings_restore">Restore Purchases</string>
+    <string name="settings_weekly_usage">%1$s left this week</string>
+    <string name="settings_unlimited">Unlimited</string>
+    <string name="settings_optimization_mode">Optimization Mode</string>
+    <string name="settings_toggles">Optimization Features</string>
+    <string name="settings_remove_filler">Remove filler words</string>
+    <string name="settings_remove_politeness">Remove politeness</string>
+    <string name="settings_remove_hedging">Remove hedging</string>
+    <string name="settings_remove_meta">Remove meta-language</string>
+    <string name="settings_shorten_phrases">Shorten phrases</string>
+    <string name="settings_simplify_vocab">Simplify vocabulary</string>
+    <string name="settings_remove_redundancy">Remove redundancy</string>
+    <string name="settings_compress_whitespace">Compress whitespace</string>
+    <string name="settings_compress_code">Compress code blocks</string>
+    <string name="settings_use_abbreviations">Use abbreviations</string>
+    <string name="settings_deduplicate">Deduplicate content</string>
+    <string name="settings_compress_lists">Compress lists</string>
+    <string name="settings_correct_typos">Correct typos</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_haptics">Haptic feedback</string>
+    <string name="settings_show_token_count">Show token count</string>
+    <string name="settings_auto_optimize_paste">Auto-optimize on paste</string>
+    <string name="settings_terms">Terms of Use</string>
+    <string name="settings_privacy">Privacy Policy</string>
+    <string name="settings_sign_out">Sign Out</string>
+    <string name="settings_delete_account">Delete Account</string>
+    <string name="settings_delete_confirm">Are you sure you want to delete your account? This cannot be undone.</string>
+    <string name="settings_delete_confirm_yes">Delete</string>
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_version">Version %1$s</string>
+
+    <!-- Keyboard Setup -->
+    <string name="keyboard_setup_title">Keyboard Setup</string>
+    <string name="keyboard_setup_subtitle">Follow these steps to enable the Terse keyboard.</string>
+    <string name="keyboard_setup_step1">Open Settings</string>
+    <string name="keyboard_setup_step1_desc">Go to Settings → General → Keyboard → Keyboards → Add New Keyboard</string>
+    <string name="keyboard_setup_step2">Add Terse</string>
+    <string name="keyboard_setup_step2_desc">Tap \"Terse Keyboard\" from the list of available keyboards.</string>
+    <string name="keyboard_setup_step3">Enable the keyboard</string>
+    <string name="keyboard_setup_step3_desc">Tap the globe icon when typing to switch to Terse Keyboard.</string>
+    <string name="keyboard_setup_open_settings">Open Settings</string>
+    <string name="keyboard_setup_done">Keyboard is active!</string>
+    <string name="keyboard_setup_privacy">All optimization is 100%% on-device. No text ever leaves your phone.</string>
+
+    <!-- Keyboard -->
+    <string name="keyboard_send">Send</string>
+    <string name="keyboard_optimize_send">Optimize → Send</string>
+    <string name="keyboard_quota_reached">Weekly quota reached</string>
+    <string name="keyboard_upgrade">Upgrade to Pro for unlimited</string>
+</resources>

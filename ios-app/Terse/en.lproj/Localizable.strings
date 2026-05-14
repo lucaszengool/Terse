@@ -1,7 +1,7 @@
 /* Terse iOS App — English (Base) */
 
 // Header
-"app.name" = "Terse";
+"app.name" = "PruneAI";
 "header.saved" = "saved";
 "header.totalSaved" = "total saved";
 "header.pro" = "PRO";

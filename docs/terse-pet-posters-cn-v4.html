@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse · Shiro V4</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#5A8C58;font-family:-apple-system,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;padding:40px 20px 80px;}
+.posters{display:flex;flex-direction:column;align-items:center;gap:52px;max-width:420px;margin:0 auto;}
+
+/* every poster: fixed height, clips overflow, scene fills it */
+.poster{width:390px;border-radius:28px;overflow:hidden;box-shadow:0 16px 60px rgba(0,0,0,.32);position:relative;}
+
+/* full-bleed background svg */
+.bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;}
+
+/* all floating content layers */
+.abs{position:absolute;z-index:4;}
+
+/* page badge */
+.pb{position:absolute;top:16px;right:16px;z-index:20;background:rgba(0,0,0,.22);color:rgba(255,255,255,.90);border-radius:20px;padding:4px 13px;font-size:.68rem;font-weight:600;letter-spacing:.4px;}
+
+/* text helpers */
+.sky-h{color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.28);font-weight:900;line-height:1.25;text-align:center;}
+.sky-sub{color:rgba(255,255,255,.88);text-shadow:0 1px 6px rgba(0,0,0,.22);font-weight:600;text-align:center;}
+.dark-h{color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.55);font-weight:900;line-height:1.25;text-align:center;}
+.dark-sub{color:rgba(255,255,255,.75);text-shadow:0 1px 5px rgba(0,0,0,.50);text-align:center;}
+
+/* flow arrow pill — very faint glass */
+.fpill{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;
+  background:rgba(255,255,255,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  font-size:.70rem;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.25);}
+.farr{color:rgba(255,255,255,.55);font-size:.80rem;margin:0 1px;}
+
+/* token number floats */
+.tok-before{font-size:2.4rem;font-weight:900;color:rgba(255,255,255,.45);text-shadow:0 2px 6px rgba(0,0,0,.20);line-height:1;}
+.tok-after{font-size:2.4rem;font-weight:900;color:#7EE87A;text-shadow:0 2px 10px rgba(0,0,0,.35);line-height:1;}
+.tok-label{font-size:.58rem;font-weight:700;color:rgba(255,255,255,.60);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.tok-save{font-size:.72rem;font-weight:800;color:#7EE87A;text-shadow:0 1px 4px rgba(0,0,0,.30);}
+
+/* feature row */
+.frow{display:flex;align-items:flex-start;gap:10px;padding:6px 0;}
+.frow-ico{font-size:1.15rem;line-height:1;flex-shrink:0;margin-top:1px;}
+.frow-name{font-size:.84rem;font-weight:800;color:#fff;text-shadow:0 1px 5px rgba(0,0,0,.30);line-height:1.3;}
+.frow-desc{font-size:.62rem;color:rgba(255,255,255,.70);text-shadow:0 1px 3px rgba(0,0,0,.25);margin-top:2px;line-height:1.4;}
+
+/* agent tool row */
+.arow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);}
+.arow:last-child{border-bottom:none;}
+.aico{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.0rem;flex-shrink:0;}
+.aname{font-size:.82rem;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.40);}
+.adesc{font-size:.60rem;color:rgba(255,255,255,.60);margin-top:2px;}
+.abadge{margin-left:auto;background:rgba(126,232,122,.20);border:1px solid rgba(126,232,122,.40);border-radius:10px;padding:3px 9px;font-size:.62rem;font-weight:800;color:#7EE87A;white-space:nowrap;}
+
+/* progress */
+.prog-label{font-size:.60rem;font-weight:700;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;text-shadow:0 1px 3px rgba(0,0,0,.25);}
+.prog-num{font-size:1.6rem;font-weight:900;color:#F5C840;text-shadow:0 2px 8px rgba(0,0,0,.35);line-height:1;}
+.prog-track{height:10px;border-radius:8px;background:rgba(255,255,255,.22);overflow:hidden;margin:6px 0 8px;}
+.prog-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#F5A020,#F5D840);}
+
+/* parade */
+.parade-wrap{overflow:hidden;width:100%;}
+.parade-track{display:flex;animation:parade-scroll 24s linear infinite;width:max-content;}
+@keyframes parade-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* animal thumb */
+.pal{display:inline-block;position:relative;}
+
+/* food items */
+.fi{position:absolute;z-index:6;pointer-events:none;}
+
+@keyframes k-breathe{0%,100%{transform:scaleY(1) scaleX(1)}50%{transform:scaleY(1.04) scaleX(.98)}}
+@keyframes k-jiggle{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)}}
+@keyframes k-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes k-hop{0%,100%{transform:translateY(0)}45%{transform:translateY(-15px)}60%{transform:translateY(-15px)}}
+@keyframes k-walk{0%,100%{transform:translateX(0) rotate(0deg)}25%{transform:translateX(2px) rotate(1.5deg)}75%{transform:translateX(-2px) rotate(-1.5deg)}}
+@keyframes k-run{0%,100%{transform:translateX(0) scaleY(1)}50%{transform:translateX(3px) scaleY(.95)}}
+@keyframes k-peek{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes k-paddle{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@keyframes food-drop{0%{transform:translateY(-30px);opacity:0}35%{opacity:1}80%{transform:translateY(8px);opacity:.85}100%{transform:translateY(-30px);opacity:0}}
+@keyframes twinkle{0%,100%{opacity:.25}50%{opacity:.90}}
+@keyframes float-up{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes glow-pulse{0%,100%{opacity:.5}50%{opacity:1}}
+</style>
+</head>
+<body>
+<div class="posters">
+
+<!-- ══════════════════════════════════════
+  P1 · INTRO — warm sand, squircle bear
+══════════════════════════════════════ -->
+<div class="poster" style="height:560px;">
+  <div class="pb">1 / 7</div>
+
+  <!-- full-bleed background -->
+  <svg class="bg" viewBox="0 0 390 560" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#F0EBE3"/>
+        <stop offset="100%" stop-color="#E2D9CE"/>
+      </linearGradient>
+    </defs>
+    <rect width="390" height="560" fill="url(#bg1)"/>
+    <!-- large soft letterform watermark -->
+    <text x="-20" y="500" font-size="420" font-weight="900" fill="rgba(0,0,0,.035)" font-family="Georgia,serif" style="user-select:none;">「</text>
+    <!-- subtle scattered dots -->
+    <circle cx="340" cy="60" r="3" fill="rgba(0,0,0,.06)"/>
+    <circle cx="360" cy="90" r="2" fill="rgba(0,0,0,.05)"/>
+    <circle cx="50" cy="480" r="4" fill="rgba(0,0,0,.05)"/>
+    <circle cx="30" cy="510" r="2" fill="rgba(0,0,0,.04)"/>
+  </svg>
+
+  <!-- squircle bear — face-fill like Finch -->
+  <div class="abs" style="left:50%;top:60px;transform:translateX(-50%);">
+    <div style="width:220px;height:220px;border-radius:26%;background:#C8956A;overflow:hidden;position:relative;box-shadow:0 12px 48px rgba(0,0,0,.20);">
+      <svg width="220" height="220" viewBox="20 28 122 122" data-pal="shiro"
+           style="position:absolute;top:0;left:0;animation:k-breathe 5s ease-in-out infinite;"></svg>
+    </div>
+  </div>
+
+  <!-- title -->
+  <div class="abs" style="left:0;right:0;top:308px;text-align:center;">
+    <div style="font-size:3.4rem;font-weight:900;color:#1A1410;letter-spacing:-.5px;line-height:1;">Terse</div>
+  </div>
+
+  <!-- tagline -->
+  <div class="abs" style="left:0;right:0;top:376px;text-align:center;padding:0 40px;">
+    <div style="font-size:1.05rem;font-weight:600;color:#7A6A5A;line-height:1.6;">用省下的 Token<br>养一只小白熊 🐻</div>
+  </div>
+
+  <!-- badge row -->
+  <div class="abs" style="left:0;right:0;top:450px;text-align:center;display:flex;justify-content:center;gap:8px;">
+    <span style="background:#1A1410;color:#F0EBE3;border-radius:20px;padding:5px 14px;font-size:.68rem;font-weight:700;letter-spacing:.4px;">for macOS</span>
+    <span style="background:rgba(26,20,16,.08);color:#7A6A5A;border-radius:20px;padding:5px 14px;font-size:.68rem;font-weight:600;">Claude Code · Cursor · ChatGPT</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  P2 · FEEDING — sky + grass, no cards
+══════════════════════════════════════ -->
+<div class="poster" style="height:740px;">
+  <div class="pb">2 / 7</div>
+
+  <!-- full-bleed scene -->
+  <svg class="bg" viewBox="0 0 390 740" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#5EB8F0"/>
+        <stop offset="55%" stop-color="#9DD4F4"/>
+        <stop offset="100%" stop-color="#C8EAF8"/>
+      </linearGradient>
+    </defs>
+    <!-- sky -->
+    <rect width="390" height="740" fill="url(#sky2)"/>
+    <!-- sun -->
+    <circle cx="330" cy="75" r="36" fill="#FDED6A" opacity=".85"/>
+    <circle cx="330" cy="75" r="27" fill="#FAE040"/>
+    <!-- clouds -->
+    <ellipse cx="55" cy="62" rx="44" ry="22" fill="white" opacity=".85"/>
+    <ellipse cx="88" cy="53" rx="30" ry="18" fill="white" opacity=".85"/>
+    <ellipse cx="200" cy="36" rx="28" ry="14" fill="white" opacity=".55"/>
+    <ellipse cx="228" cy="30" rx="18" ry="11" fill="white" opacity=".55"/>
+    <ellipse cx="300" cy="108" rx="32" ry="16" fill="white" opacity=".70"/>
+    <!-- distant hills -->
+    <ellipse cx="80" cy="490" rx="220" ry="90" fill="#3A7232"/>
+    <ellipse cx="310" cy="500" rx="240" ry="96" fill="#478B3C"/>
+    <!-- main grass ground -->
+    <rect y="510" width="390" height="230" fill="#4A9B46"/>
+    <ellipse cx="195" cy="512" rx="270" ry="32" fill="#5CB050"/>
+    <!-- ground darker bottom -->
+    <rect y="600" width="390" height="140" fill="#3A8030"/>
+    <ellipse cx="195" cy="600" rx="270" ry="20" fill="#4A9B46"/>
+    <!-- tree left -->
+    <rect x="28" y="350" width="11" height="130" fill="#5A3A18"/>
+    <ellipse cx="34" cy="336" rx="28" ry="36" fill="#2A6226"/>
+    <ellipse cx="34" cy="318" rx="22" ry="27" fill="#368030"/>
+    <!-- tree right -->
+    <rect x="344" y="360" width="10" height="118" fill="#5A3A18"/>
+    <ellipse cx="349" cy="348" rx="25" ry="32" fill="#2A6226"/>
+    <ellipse cx="349" cy="332" rx="19" ry="24" fill="#348030"/>
+    <!-- mid-ground trees small -->
+    <rect x="138" y="400" width="7" height="84" fill="#5A3A18"/>
+    <ellipse cx="142" cy="390" rx="16" ry="21" fill="#2A6226"/>
+    <rect x="250" y="406" width="7" height="78" fill="#5A3A18"/>
+    <ellipse cx="254" cy="396" rx="15" ry="19" fill="#328030"/>
+    <!-- flowers -->
+    <circle cx="88" cy="534" r="5" fill="#FFD0E0" opacity=".90"/>
+    <circle cx="112" cy="542" r="3" fill="#FFE888" opacity=".85"/>
+    <circle cx="268" cy="538" r="4" fill="#FFD0E0" opacity=".80"/>
+    <circle cx="300" cy="550" r="3" fill="white" opacity=".70"/>
+    <circle cx="170" cy="555" r="3" fill="#FFD0E0" opacity=".75"/>
+  </svg>
+
+  <!-- headline: sky area -->
+  <div class="abs sky-h" style="left:0;right:0;top:44px;font-size:1.85rem;padding:0 28px;">
+    每省一个 Token
+  </div>
+  <div class="abs sky-h" style="left:0;right:0;top:88px;font-size:1.85rem;padding:0 28px;">
+    Shiro 就吃一口 🍪
+  </div>
+
+  <!-- flow row — faint glass pills in sky -->
+  <div class="abs" style="left:0;right:0;top:148px;display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:4px;padding:0 18px;">
+    <span class="fpill">你写提示词</span>
+    <span class="farr">→</span>
+    <span class="fpill" style="background:rgba(245,160,32,.30);">Terse 压缩</span>
+    <span class="farr">→</span>
+    <span class="fpill" style="background:rgba(78,184,72,.28);">省下 Token</span>
+    <span class="farr">→</span>
+    <span class="fpill">🍪 开吃</span>
+  </div>
+
+  <!-- before number — floats left in sky -->
+  <div class="abs" style="left:28px;top:228px;text-align:left;">
+    <div class="tok-label">发送前</div>
+    <div class="tok-before">1,240</div>
+    <div style="font-size:.60rem;color:rgba(255,255,255,.55);text-shadow:0 1px 3px rgba(0,0,0,.20);">tokens</div>
+  </div>
+
+  <!-- after number — floats right -->
+  <div class="abs" style="right:28px;top:228px;text-align:right;">
+    <div class="tok-label" style="text-align:right;color:rgba(126,232,122,.90);">压缩后</div>
+    <div class="tok-after">620</div>
+    <div class="tok-save">省了 50% 🎉</div>
+  </div>
+
+  <!-- divider arrow between numbers -->
+  <div class="abs" style="left:50%;top:248px;transform:translateX(-50%);font-size:1.4rem;color:rgba(255,255,255,.35);text-shadow:0 1px 4px rgba(0,0,0,.20);">→</div>
+
+  <!-- food items falling from sky toward Shiro -->
+  <span class="fi" style="left:140px;top:340px;font-size:1.6rem;animation:food-drop 1.9s 0.0s ease-in-out infinite;">🍪</span>
+  <span class="fi" style="left:192px;top:320px;font-size:1.2rem;animation:food-drop 1.9s 0.5s ease-in-out infinite;">⭐</span>
+  <span class="fi" style="left:234px;top:345px;font-size:1.3rem;animation:food-drop 1.9s 1.0s ease-in-out infinite;">🍩</span>
+  <span class="fi" style="left:108px;top:328px;font-size:1.1rem;animation:food-drop 1.9s 1.5s ease-in-out infinite;">🍣</span>
+
+  <!-- Shiro sitting on grass -->
+  <div class="abs pal" style="left:50%;bottom:108px;transform:translateX(-50%);animation:k-jiggle .7s ease-in-out infinite;">
+    <svg width="150" height="150" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  P3 · FEATURES — twilight sky
+══════════════════════════════════════ -->
+<div class="poster" style="height:720px;">
+  <div class="pb" style="background:rgba(0,0,0,.30);">3 / 7</div>
+
+  <svg class="bg" viewBox="0 0 390 720" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sky3" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3C6FC2"/>
+        <stop offset="45%" stop-color="#6A9AD8"/>
+        <stop offset="75%" stop-color="#9BC0E8"/>
+        <stop offset="100%" stop-color="#C4DDF2"/>
+      </linearGradient>
+    </defs>
+    <rect width="390" height="720" fill="url(#sky3)"/>
+    <!-- clouds faint -->
+    <ellipse cx="60" cy="55" rx="40" ry="18" fill="white" opacity=".35"/>
+    <ellipse cx="90" cy="47" rx="26" ry="14" fill="white" opacity=".35"/>
+    <ellipse cx="310" cy="44" rx="35" ry="16" fill="white" opacity=".30"/>
+    <!-- warm horizon glow -->
+    <ellipse cx="195" cy="580" rx="300" ry="120" fill="#E8A050" opacity=".18"/>
+    <!-- rolling green hills -->
+    <ellipse cx="80" cy="580" rx="250" ry="110" fill="#2D5E28"/>
+    <ellipse cx="310" cy="590" rx="260" ry="118" fill="#367030"/>
+    <rect y="600" width="390" height="120" fill="#3A7832"/>
+    <ellipse cx="195" cy="602" rx="270" ry="30" fill="#428040"/>
+    <!-- foreground dark ground -->
+    <rect y="670" width="390" height="50" fill="#2A5E24"/>
+  </svg>
+
+  <!-- headline -->
+  <div class="abs sky-h" style="left:0;right:0;top:34px;font-size:1.75rem;padding:0 24px;">
+    Shiro 不只可爱
+  </div>
+  <div class="abs sky-h" style="left:0;right:0;top:76px;font-size:1.75rem;padding:0 24px;color:rgba(255,255,255,.85);">
+    他还帮你干活
+  </div>
+
+  <!-- 6 feature rows floating in sky — no background boxes -->
+  <div class="abs" style="left:28px;right:28px;top:136px;">
+    <div class="frow">
+      <span class="frow-ico">✍️</span>
+      <div><div class="frow-name">自动修错字</div><div class="frow-desc">每条提示词拼写全检查，不用反复校对</div></div>
+    </div>
+    <div class="frow" style="margin-top:2px;">
+      <span class="frow-ico">✂️</span>
+      <div><div class="frow-name">压缩空白</div><div class="frow-desc">多余换行、空格、缩进一次清干净</div></div>
+    </div>
+    <div class="frow" style="margin-top:2px;">
+      <span class="frow-ico">🗑️</span>
+      <div><div class="frow-name">删废话</div><div class="frow-desc">"我希望你能帮我…" 直接删，意思不变</div></div>
+    </div>
+    <div class="frow" style="margin-top:2px;">
+      <span class="frow-ico">⚡</span>
+      <div><div class="frow-name">最大压缩</div><div class="frow-desc">缩写 + 去 Markdown，极限省 token</div></div>
+    </div>
+    <div class="frow" style="margin-top:2px;">
+      <span class="frow-ico">📊</span>
+      <div><div class="frow-name">每日统计</div><div class="frow-desc">今天省了多少，本周累计，一眼看清</div></div>
+    </div>
+    <div class="frow" style="margin-top:2px;">
+      <span class="frow-ico">🏅</span>
+      <div><div class="frow-name">解锁新伙伴</div><div class="frow-desc">攒 1,000 Token 解锁新动物，共 20 种</div></div>
+    </div>
+  </div>
+
+  <!-- Shiro small on hill -->
+  <div class="abs pal" style="left:50%;bottom:72px;transform:translateX(-50%);animation:k-breathe 5s ease-in-out infinite;opacity:.92;">
+    <svg width="110" height="110" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  P4 · AGENT CALLS — deep night sky
+══════════════════════════════════════ -->
+<div class="poster" style="height:700px;">
+  <div class="pb" style="background:rgba(255,255,255,.12);">4 / 7</div>
+
+  <svg class="bg" viewBox="0 0 390 700" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sky4" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0D1B3E"/>
+        <stop offset="60%" stop-color="#162B5C"/>
+        <stop offset="100%" stop-color="#1E3A5F"/>
+      </linearGradient>
+      <radialGradient id="glow4" cx="50%" cy="85%" r="40%">
+        <stop offset="0%" stop-color="#3A7EE8" stop-opacity=".30"/>
+        <stop offset="100%" stop-color="#0D1B3E" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="390" height="700" fill="url(#sky4)"/>
+    <!-- glow under Shiro -->
+    <ellipse cx="195" cy="620" rx="200" ry="80" fill="url(#glow4)"/>
+    <!-- stars -->
+    <circle cx="40" cy="30" r="1.5" fill="white" style="animation:twinkle 2.0s 0.0s ease-in-out infinite;"/>
+    <circle cx="80" cy="18" r="1.0" fill="white" style="animation:twinkle 2.0s 0.4s ease-in-out infinite;"/>
+    <circle cx="130" cy="35" r="1.5" fill="white" style="animation:twinkle 2.0s 0.8s ease-in-out infinite;"/>
+    <circle cx="180" cy="15" r="1.0" fill="white" style="animation:twinkle 2.0s 0.2s ease-in-out infinite;"/>
+    <circle cx="240" cy="28" r="1.5" fill="white" style="animation:twinkle 2.0s 0.6s ease-in-out infinite;"/>
+    <circle cx="295" cy="12" r="1.0" fill="white" style="animation:twinkle 2.0s 1.0s ease-in-out infinite;"/>
+    <circle cx="350" cy="40" r="1.5" fill="white" style="animation:twinkle 2.0s 0.3s ease-in-out infinite;"/>
+    <circle cx="370" cy="22" r="1.0" fill="white" style="animation:twinkle 2.0s 0.7s ease-in-out infinite;"/>
+    <circle cx="60" cy="60" r="1.0" fill="white" style="animation:twinkle 2.0s 1.2s ease-in-out infinite;"/>
+    <circle cx="310" cy="55" r="1.5" fill="white" style="animation:twinkle 2.0s 0.9s ease-in-out infinite;"/>
+    <circle cx="155" cy="68" r="1.0" fill="white" style="animation:twinkle 2.0s 1.4s ease-in-out infinite;"/>
+    <!-- dark ground -->
+    <rect y="600" width="390" height="100" fill="#0A1428"/>
+    <ellipse cx="195" cy="600" rx="280" ry="22" fill="#122040"/>
+    <!-- ground edge highlight -->
+    <ellipse cx="195" cy="596" rx="200" ry="6" fill="#2A4E8A" opacity=".30"/>
+  </svg>
+
+  <!-- headline -->
+  <div class="abs dark-h" style="left:0;right:0;top:40px;font-size:1.70rem;padding:0 28px;">
+    Claude Code 每次调用工具
+  </div>
+  <div class="abs dark-sub" style="left:0;right:0;top:84px;font-size:1.0rem;padding:0 28px;font-weight:700;">
+    Shiro 都悄悄帮你省一点
+  </div>
+
+  <!-- 4 tool rows floating in the dark sky — no card background -->
+  <div class="abs" style="left:26px;right:26px;top:148px;">
+    <div class="arow">
+      <div class="aico" style="background:rgba(78,140,232,.25);color:#7AB8F8;">📖</div>
+      <div>
+        <div class="aname">读文件</div>
+        <div class="adesc">read_file · 路径压缩 · 去冗余</div>
+      </div>
+      <div class="abadge">−32 tok</div>
+    </div>
+    <div class="arow">
+      <div class="aico" style="background:rgba(232,140,60,.25);color:#F8C07A;">✂️</div>
+      <div>
+        <div class="aname">改代码</div>
+        <div class="adesc">edit · 注释删减 · 格式压缩</div>
+      </div>
+      <div class="abadge">−86 tok</div>
+    </div>
+    <div class="arow">
+      <div class="aico" style="background:rgba(78,200,160,.25);color:#7AE8C8;">🔍</div>
+      <div>
+        <div class="aname">搜索</div>
+        <div class="adesc">search · 关键词精简</div>
+      </div>
+      <div class="abadge">−24 tok</div>
+    </div>
+    <div class="arow">
+      <div class="aico" style="background:rgba(160,100,232,.25);color:#C8A0F8;">💻</div>
+      <div>
+        <div class="aname">跑命令</div>
+        <div class="adesc">bash · 参数整理</div>
+      </div>
+      <div class="abadge">−18 tok</div>
+    </div>
+  </div>
+
+  <!-- Shiro glowing on dark ground -->
+  <div class="abs pal" style="left:50%;bottom:68px;transform:translateX(-50%);animation:float-up 3s ease-in-out infinite;">
+    <svg width="140" height="140" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  P5 · UNLOCK — sunny meadow
+══════════════════════════════════════ -->
+<div class="poster" style="height:700px;">
+  <div class="pb">5 / 7</div>
+
+  <svg class="bg" viewBox="0 0 390 700" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sky5" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#7AC8F0"/>
+        <stop offset="55%" stop-color="#A8D8F5"/>
+        <stop offset="100%" stop-color="#CCEAF8"/>
+      </linearGradient>
+    </defs>
+    <rect width="390" height="700" fill="url(#sky5)"/>
+    <!-- sun -->
+    <circle cx="58" cy="68" r="34" fill="#FDE840" opacity=".88"/>
+    <circle cx="58" cy="68" r="25" fill="#FAD820"/>
+    <!-- clouds -->
+    <ellipse cx="175" cy="48" rx="38" ry="18" fill="white" opacity=".82"/>
+    <ellipse cx="207" cy="40" rx="26" ry="14" fill="white" opacity=".82"/>
+    <ellipse cx="320" cy="65" rx="32" ry="15" fill="white" opacity=".70"/>
+    <ellipse cx="348" cy="58" rx="20" ry="12" fill="white" opacity=".70"/>
+    <!-- hills -->
+    <ellipse cx="90" cy="500" rx="230" ry="95" fill="#3B7A34"/>
+    <ellipse cx="300" cy="510" rx="240" ry="100" fill="#479440"/>
+    <!-- ground -->
+    <rect y="520" width="390" height="180" fill="#4EA84A"/>
+    <ellipse cx="195" cy="522" rx="270" ry="30" fill="#5CBE56"/>
+    <rect y="610" width="390" height="90" fill="#3E8E3A"/>
+    <!-- flowers scattered -->
+    <circle cx="70" cy="548" r="5" fill="#FFD0E0" opacity=".90"/>
+    <circle cx="100" cy="558" r="3" fill="#FFEE88" opacity=".85"/>
+    <circle cx="290" cy="542" r="5" fill="#FFD0E0" opacity=".88"/>
+    <circle cx="320" cy="555" r="3" fill="white" opacity=".75"/>
+    <circle cx="180" cy="562" r="3" fill="#FFD0E0" opacity=".70"/>
+    <circle cx="240" cy="568" r="4" fill="#FFEE88" opacity=".80"/>
+  </svg>
+
+  <!-- headline -->
+  <div class="abs sky-h" style="left:0;right:0;top:36px;font-size:1.75rem;padding:0 28px;">
+    每攒 1,000 个 Token
+  </div>
+  <div class="abs sky-h" style="left:0;right:0;top:78px;font-size:1.75rem;padding:0 28px;">
+    解锁一个新伙伴 🐾
+  </div>
+
+  <!-- progress section floating in sky — no card -->
+  <div class="abs" style="left:30px;right:30px;top:148px;">
+    <div class="prog-label">下一个解锁</div>
+    <div class="prog-num">640 <span style="font-size:1.1rem;font-weight:700;color:rgba(245,200,64,.80);">/ 1,000 🍪</span></div>
+    <div class="prog-track" style="width:100%;">
+      <div class="prog-fill" style="width:64%;"></div>
+    </div>
+    <div style="font-size:.70rem;color:rgba(255,255,255,.75);text-shadow:0 1px 3px rgba(0,0,0,.25);">再省 360 个 token 就能解锁</div>
+  </div>
+
+  <!-- next animal: Koko panda -->
+  <div class="abs" style="left:50%;top:258px;transform:translateX(-50%);text-align:center;">
+    <div class="pal" style="animation:k-bob 3.6s ease-in-out infinite;">
+      <svg width="120" height="120" viewBox="-21 -21 202 202" data-pal="koko"></svg>
+    </div>
+    <div style="font-size:.78rem;font-weight:800;color:#fff;text-shadow:0 1px 5px rgba(0,0,0,.28);margin-top:4px;">Koko · 大熊猫</div>
+  </div>
+
+  <!-- locked previews on horizon -->
+  <div class="abs" style="left:0;right:0;bottom:175px;display:flex;justify-content:center;gap:18px;">
+    <div style="text-align:center;opacity:.55;">
+      <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.20);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin:0 auto;">🔒</div>
+      <div style="font-size:.58rem;color:rgba(255,255,255,.70);margin-top:4px;text-shadow:0 1px 3px rgba(0,0,0,.20);">Momo</div>
+    </div>
+    <div style="text-align:center;opacity:.55;">
+      <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.20);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin:0 auto;">🔒</div>
+      <div style="font-size:.58rem;color:rgba(255,255,255,.70);margin-top:4px;text-shadow:0 1px 3px rgba(0,0,0,.20);">Fafa</div>
+    </div>
+    <div style="text-align:center;opacity:.55;">
+      <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.20);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin:0 auto;">🔒</div>
+      <div style="font-size:.58rem;color:rgba(255,255,255,.70);margin-top:4px;text-shadow:0 1px 3px rgba(0,0,0,.20);">Toro</div>
+    </div>
+    <div style="text-align:center;opacity:.55;">
+      <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.20);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin:0 auto;">🔒</div>
+      <div style="font-size:.58rem;color:rgba(255,255,255,.70);margin-top:4px;text-shadow:0 1px 3px rgba(0,0,0,.20);">Nene</div>
+    </div>
+  </div>
+
+  <!-- Shiro on grass -->
+  <div class="abs pal" style="left:50%;bottom:70px;transform:translateX(-50%);animation:k-breathe 5s ease-in-out infinite;">
+    <svg width="118" height="118" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  P6 · CTA — warm sunset
+══════════════════════════════════════ -->
+<div class="poster" style="height:580px;">
+  <div class="pb" style="background:rgba(0,0,0,.22);">6 / 7</div>
+
+  <svg class="bg" viewBox="0 0 390 580" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sky6" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#E86030"/>
+        <stop offset="35%" stop-color="#F08840"/>
+        <stop offset="65%" stop-color="#F8C060"/>
+        <stop offset="100%" stop-color="#FDE888"/>
+      </linearGradient>
+    </defs>
+    <rect width="390" height="580" fill="url(#sky6)"/>
+    <!-- sun near horizon -->
+    <circle cx="195" cy="310" r="70" fill="#FDE040" opacity=".28"/>
+    <circle cx="195" cy="310" r="50" fill="#FAC820" opacity=".22"/>
+    <!-- light clouds -->
+    <ellipse cx="60" cy="90" rx="40" ry="18" fill="white" opacity=".30"/>
+    <ellipse cx="88" cy="82" rx="28" ry="14" fill="white" opacity=".30"/>
+    <ellipse cx="305" cy="74" rx="36" ry="16" fill="white" opacity=".25"/>
+    <!-- silhouette hills -->
+    <ellipse cx="80" cy="430" rx="240" ry="100" fill="#2A5220"/>
+    <ellipse cx="310" cy="440" rx="250" ry="108" fill="#2E6028"/>
+    <!-- ground -->
+    <rect y="450" width="390" height="130" fill="#358030"/>
+    <ellipse cx="195" cy="452" rx="270" ry="28" fill="#409838"/>
+    <rect y="520" width="390" height="60" fill="#2A6824"/>
+  </svg>
+
+  <!-- big CTA text in sky -->
+  <div class="abs" style="left:0;right:0;top:42px;text-align:center;padding:0 28px;">
+    <div style="font-size:2.6rem;font-weight:900;color:#fff;text-shadow:0 3px 14px rgba(0,0,0,.28);line-height:1.1;">现在就开始</div>
+  </div>
+  <div class="abs" style="left:0;right:0;top:106px;text-align:center;padding:0 28px;">
+    <div style="font-size:1.0rem;font-weight:700;color:rgba(255,255,255,.88);text-shadow:0 2px 8px rgba(0,0,0,.22);">下载 Terse，喂饱 Shiro</div>
+  </div>
+
+  <!-- Shiro large center -->
+  <div class="abs pal" style="left:50%;top:155px;transform:translateX(-50%);animation:k-breathe 5s ease-in-out infinite;">
+    <svg width="180" height="180" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+  </div>
+
+  <!-- bottom label row -->
+  <div class="abs" style="left:0;right:0;bottom:32px;text-align:center;">
+    <div style="font-size:.68rem;color:rgba(255,255,255,.65);text-shadow:0 1px 3px rgba(0,0,0,.25);">Claude Code · Codex · Cursor · ChatGPT</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  P7 · PARADE — 20 friends on the meadow
+══════════════════════════════════════ -->
+<div class="poster" style="height:520px;">
+  <div class="pb">7 / 7</div>
+
+  <svg class="bg" viewBox="0 0 390 520" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sky7" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#78C8F0"/>
+        <stop offset="50%" stop-color="#A8D8F5"/>
+        <stop offset="100%" stop-color="#C8EAF8"/>
+      </linearGradient>
+    </defs>
+    <rect width="390" height="520" fill="url(#sky7)"/>
+    <!-- sun -->
+    <circle cx="340" cy="62" r="30" fill="#FDE840" opacity=".88"/>
+    <circle cx="340" cy="62" r="22" fill="#FAD820"/>
+    <!-- clouds -->
+    <ellipse cx="58" cy="48" rx="38" ry="18" fill="white" opacity=".82"/>
+    <ellipse cx="88" cy="40" rx="25" ry="14" fill="white" opacity=".82"/>
+    <ellipse cx="195" cy="30" rx="22" ry="11" fill="white" opacity=".55"/>
+    <!-- distant hills -->
+    <ellipse cx="100" cy="330" rx="240" ry="90" fill="#3A7832"/>
+    <ellipse cx="290" cy="340" rx="250" ry="96" fill="#458C3C"/>
+    <!-- main ground — parade walks here -->
+    <rect y="360" width="390" height="160" fill="#4EA848"/>
+    <ellipse cx="195" cy="362" rx="270" ry="28" fill="#5CBE54"/>
+    <rect y="440" width="390" height="80" fill="#3E8838"/>
+    <!-- flowers on ground -->
+    <circle cx="50" cy="384" r="4" fill="#FFD0E0" opacity=".88"/>
+    <circle cx="75" cy="392" r="3" fill="#FFE880" opacity=".80"/>
+    <circle cx="310" cy="388" r="4" fill="#FFD0E0" opacity=".85"/>
+    <circle cx="335" cy="396" r="3" fill="white" opacity=".72"/>
+    <circle cx="180" cy="398" r="3" fill="#FFD0E0" opacity=".70"/>
+  </svg>
+
+  <!-- headline in sky -->
+  <div class="abs sky-h" style="left:0;right:0;top:36px;font-size:1.70rem;padding:0 24px;">
+    20 种伙伴，等你解锁
+  </div>
+  <div class="abs sky-sub" style="left:0;right:0;top:78px;font-size:.78rem;padding:0 28px;">
+    每攒 1,000 Token 解锁一个 · 喂得越多，朋友越多
+  </div>
+
+  <!-- parade strip — walks on the grass -->
+  <div class="abs parade-wrap" style="left:0;right:0;bottom:62px;">
+    <div class="parade-track" id="parade-track"></div>
+  </div>
+</div>
+
+
+</div><!-- end .posters -->
+
+<script>
+const KEKE=[
+  {id:'shiro',name:'Shiro',sub:'White Bear',body:'#C8956A',belly:'#F0C8A0',anim:'k-breathe',spd:5.0,shape:'fluff',ear:'round',tail:'puff',tongue:true,mouth:'open'},
+  {id:'boba',name:'Boba',sub:'Honey Bear',body:'#D49860',belly:'#F0D8B0',anim:'k-breathe',spd:5.4,shape:'fluff',ear:'round',tail:'puff',tongue:true,mouth:'open'},
+  {id:'koko',name:'Koko',sub:'Panda',body:'#FFFFFF',belly:'#FFFFFF',anim:'k-bob',spd:4.6,shape:'panda',ear:'panda',tail:'puff',tongue:false,mouth:'w'},
+  {id:'momo',name:'Momo',sub:'Pink Cat',body:'#FFB8CA',belly:'#FFE0E8',anim:'k-walk',spd:2.8,shape:'cat',ear:'cat',tail:'curl',tongue:false,mouth:'w'},
+  {id:'kumo',name:'Kumo',sub:'Cloud Sheep',body:'#FAF6F0',belly:'#FAF6F0',anim:'k-bob',spd:5.6,shape:'cloud',ear:'tiny',tail:'puff',tongue:false,mouth:'smile',face:'#3A2820'},
+  {id:'goma',name:'Goma',sub:'Dalmatian',body:'#FFFFFF',belly:'#FFFFFF',anim:'k-walk',spd:2.4,shape:'corgi',ear:'flop',tail:'puff',tongue:true,mouth:'open',spots:true},
+  {id:'toro',name:'Toro',sub:'Fox',body:'#F07840',belly:'#FFF0E0',anim:'k-run',spd:1.8,shape:'corgi',ear:'point',tail:'fox',tongue:true,mouth:'open'},
+  {id:'fafa',name:'Fafa',sub:'Tree Frog',body:'#7AD080',belly:'#F8FFE8',anim:'k-hop',spd:2.6,shape:'frog',ear:'frog',tail:'none',tongue:false,mouth:'smile'},
+  {id:'mimi',name:'Mimi',sub:'Rabbit',body:'#FBEDF0',belly:'#FFFFFF',anim:'k-hop',spd:2.6,shape:'fluff',ear:'long',tail:'puff',tongue:false,mouth:'w'},
+  {id:'nene',name:'Nene',sub:'Penguin',body:'#3A4866',belly:'#FFF8E8',anim:'k-walk',spd:2.0,shape:'penguin',ear:'none',tail:'none',tongue:false,mouth:'smile',beak:'#F5A020'},
+  {id:'yuki',name:'Yuki',sub:'Duck',body:'#FCE07A',belly:'#FFEFB0',anim:'k-walk',spd:2.2,shape:'fluff',ear:'none',tail:'puff',tongue:false,mouth:'none',beak:'#F09030'},
+  {id:'piyo',name:'Piyo',sub:'Baby Chick',body:'#FCE870',belly:'#FFF8D0',anim:'k-bob',spd:1.6,shape:'chick',ear:'none',tail:'none',tongue:false,mouth:'none',beak:'#F09030'},
+  {id:'maru',name:'Maru',sub:'Hamster',body:'#E8B880',belly:'#F8DEB8',anim:'k-jiggle',spd:1.6,shape:'fluff',ear:'tiny',tail:'none',tongue:false,mouth:'w'},
+  {id:'nori',name:'Nori',sub:'Harp Seal',body:'#F4F0EC',belly:'#FFFFFF',anim:'k-paddle',spd:3.6,shape:'seal',ear:'none',tail:'fin',tongue:false,mouth:'smile'},
+  {id:'coco',name:'Coco',sub:'Koala',body:'#A8A4B8',belly:'#D0CCD8',anim:'k-peek',spd:4.6,shape:'fluff',ear:'koala',tail:'none',tongue:false,mouth:'w',nose:'#181818'},
+  {id:'piko',name:'Piko',sub:'Piglet',body:'#FFB8C0',belly:'#FFD8DC',anim:'k-jiggle',spd:2.4,shape:'fluff',ear:'pig',tail:'curl',tongue:false,mouth:'w',snout:'pig'},
+  {id:'zoro',name:'Zoro',sub:'Raccoon',body:'#B8B4C2',belly:'#EAE6F0',anim:'k-walk',spd:2.6,shape:'corgi',ear:'point',tail:'fox',tongue:true,mouth:'open',mask:true},
+  {id:'hana',name:'Hana',sub:'Baby Fawn',body:'#E0B878',belly:'#FFF4E2',anim:'k-bob',spd:3.0,shape:'corgi',ear:'long',tail:'puff',tongue:false,mouth:'w',spots:true},
+  {id:'suika',name:'Suika',sub:'Capybara',body:'#C0A068',belly:'#E0C898',anim:'k-breathe',spd:6.2,shape:'capy',ear:'tiny',tail:'none',tongue:false,mouth:'line'},
+  {id:'riri',name:'Riri',sub:'Axolotl',body:'#F8A8C0',belly:'#FFD0E0',anim:'k-paddle',spd:3.4,shape:'salamander',ear:'gill',tail:'fin',tongue:false,mouth:'w'},
+];
+
+function kekeSVG(p,s){const cx=s*.50,cy=s*.62,r=s*.30;const F=n=>n.toFixed(2);const BODY=p.body,BELLY=p.belly||p.body,FACE=p.face||'#3a2a20',BLUSH='#FF9DBA',TONGUE='#FF7A95';const fid=`wc-${p.id}-${Math.random().toString(36).slice(2,7)}`;const path=(d,fill,ex='')=>`<path d="${d}" fill="${fill}"${ex?' '+ex:''}/>`;const ell=(x,y,rx,ry,fill,ex='')=>`<ellipse cx="${F(x)}" cy="${F(y)}" rx="${F(rx)}" ry="${F(ry)}" fill="${fill}"${ex?' '+ex:''}/>`;const cir=(x,y,rad,fill,ex='')=>`<circle cx="${F(x)}" cy="${F(y)}" r="${F(rad)}" fill="${fill}"${ex?' '+ex:''}/>`;let legCount=0;function legStub(x,y,w,h,col,style){style=style||'paw';const cls=(legCount++%2===0)?'leg-A':'leg-B';const ox=F(x),oy=F(y-h*.55);let inner='';if(style==='paw'){inner=path(`M${F(x-w*.85)},${F(y-h)} Q${F(x-w)},${F(y+h*.5)} ${F(x-w*.7)},${F(y+h*.85)} Q${F(x)},${F(y+h)} ${F(x+w*.7)},${F(y+h*.85)} Q${F(x+w)},${F(y+h*.5)} ${F(x+w*.85)},${F(y-h)} Z`,col)+ell(x,y+h*.85,w*.85,h*.18,BELLY,` opacity=".95"`)+cir(x-w*.35,y+h*.92,w*.16,FACE,` opacity=".70"`)+cir(x+w*.20,y+h*.92,w*.16,FACE,` opacity=".70"`);}else if(style==='thick-paw'){inner=ell(x,y,w*1.05,h,col)+ell(x,y+h*.78,w*.95,h*.20,FACE,` opacity=".70"`)+cir(x-w*.40,y+h*.78,w*.16,FACE,` opacity=".85"`)+cir(x+w*.40,y+h*.78,w*.16,FACE,` opacity=".85"`)+cir(x,y+h*.78,w*.16,FACE,` opacity=".85"`);}else if(style==='sock'){inner=ell(x,y-h*.25,w*.95,h*.85,col)+ell(x,y+h*.50,w,h*.45,'#2a1a14',` opacity=".95"`)+ell(x,y+h*.85,w*.85,h*.13,'#1a0a04');}else if(style==='spot'){inner=ell(x,y,w,h,col)+cir(x+w*.1,y+h*.3,w*.32,'#181818',` opacity=".88"`)+ell(x,y+h*.85,w*.85,h*.18,'#181818',` opacity=".60"`);}else if(style==='hoof'){inner=path(`M${F(x-w*.55)},${F(y-h)} L${F(x-w*.55)},${F(y+h*.7)} L${F(x+w*.55)},${F(y+h*.7)} L${F(x+w*.55)},${F(y-h)} Z`,'#3A2820')+path(`M${F(x-w*.75)},${F(y+h*.7)} Q${F(x-w*.75)},${F(y+h*1.05)} ${F(x)},${F(y+h*1.05)} Q${F(x+w*.75)},${F(y+h*1.05)} ${F(x+w*.75)},${F(y+h*.7)} Z`,'#1a0a04');}else if(style==='thin-hoof'){inner=path(`M${F(x-w*.45)},${F(y-h)} Q${F(x)},${F(y-h*.5)} ${F(x-w*.55)},${F(y+h*.7)} Q${F(x)},${F(y+h*.95)} ${F(x+w*.55)},${F(y+h*.7)} Q${F(x)},${F(y-h*.5)} ${F(x+w*.45)},${F(y-h)} Z`,col)+ell(x,y+h*.92,w*.65,h*.13,'#3A2820');}else if(style==='stubby'){inner=ell(x,y+h*.20,w*1.1,h*.70,col)+ell(x,y+h*.75,w*.95,h*.13,FACE,` opacity=".75"`);}else if(style==='pig'){inner=ell(x,y,w*.95,h*.95,col)+path(`M${F(x-w*.55)},${F(y+h*.6)} L${F(x-w*.55)},${F(y+h*.95)} L${F(x-w*.05)},${F(y+h*.95)} L${F(x-w*.05)},${F(y+h*.6)} Z`,'#1a0a04')+path(`M${F(x+w*.05)},${F(y+h*.6)} L${F(x+w*.05)},${F(y+h*.95)} L${F(x+w*.55)},${F(y+h*.95)} L${F(x+w*.55)},${F(y+h*.6)} Z`,'#1a0a04');}else if(style==='cat-paw'){inner=path(`M${F(x-w*.55)},${F(y-h)} Q${F(x-w*.65)},${F(y+h*.4)} ${F(x-w*.55)},${F(y+h*.78)} Q${F(x)},${F(y+h*.95)} ${F(x+w*.55)},${F(y+h*.78)} Q${F(x+w*.65)},${F(y+h*.4)} ${F(x+w*.55)},${F(y-h)} Z`,col)+ell(x,y+h*.85,w*.85,h*.18,BELLY,` opacity=".95"`)+cir(x-w*.25,y+h*.92,w*.12,BLUSH,` opacity=".85"`)+cir(x+w*.10,y+h*.92,w*.12,BLUSH,` opacity=".85"`);}else if(style==='panda-paw'){inner=ell(x,y,w*1.05,h,'#181818')+cir(x-w*.30,y+h*.78,w*.16,'#3a2820')+cir(x+w*.30,y+h*.78,w*.16,'#3a2820');}else if(style==='tiny-paw'){inner=ell(x,y+h*.20,w*.90,h*.78,col)+ell(x,y+h*.65,w*.70,h*.12,FACE,` opacity=".60"`);}else if(style==='koala-arm'){inner=ell(x,y,w,h*.95,col)+ell(x,y+h*.70,w*.80,h*.20,'#3a2820',` opacity=".80"`)+cir(x-w*.22,y+h*.85,w*.10,'#1a1212')+cir(x+w*.22,y+h*.85,w*.10,'#1a1212');}else if(style==='bunny'){inner=ell(x,y+h*.10,w*.95,h*.85,col)+ell(x,y+h*.78,w*.85,h*.15,BLUSH,` opacity=".60"`);}else{inner=ell(x,y,w,h,col);}return `<g class="${cls}" style="transform-origin:${ox}px ${oy}px;">${inner}</g>`;}function legPair(pX,pY,w,h,col,style){function shade(hex,amt){const m=hex.match(/^#([0-9a-f]{6})/i);if(!m)return hex;const n=parseInt(m[1],16);const c=[(n>>16)&255,(n>>8)&255,n&255].map(v=>{const t=amt<0?v*(1+amt):v+(255-v)*amt;return Math.max(0,Math.min(255,Math.round(t)));});return'#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');}const fX=pX+(pX<cx?w*.6:-w*.6),fY=pY-h*.05;return legStub(fX,fY,w*.85,h*.95,shade(col,-.15),style)+legStub(pX,pY,w,h,col,style);}function tinyFace(hx,hy,hr,opts={}){const eR=hr*.10,ex=hr*.30,ey=hy-hr*.05;let g=cir(hx-ex,ey,eR,FACE)+cir(hx+ex,ey,eR,FACE)+cir(hx-ex+eR*.3,ey-eR*.3,eR*.4,'white')+cir(hx+ex+eR*.3,ey-eR*.3,eR*.4,'white')+ell(hx-ex-hr*.18,ey+hr*.20,hr*.16,hr*.08,BLUSH,` opacity=".55"`)+ell(hx+ex+hr*.18,ey+hr*.20,hr*.16,hr*.08,BLUSH,` opacity=".55"`);const my=ey+hr*.30,mouth=opts.mouth||p.mouth;if(mouth==='open'){g+=path(`M${F(hx-hr*.14)},${F(my)} Q${F(hx)},${F(my+hr*.24)} ${F(hx+hr*.14)},${F(my)} Q${F(hx)},${F(my+hr*.10)} ${F(hx-hr*.14)},${F(my)} Z`,FACE,`opacity=".88"`)+path(`M${F(hx+hr*.04)},${F(my+hr*.08)} Q${F(hx+hr*.20)},${F(my+hr*.24)} ${F(hx+hr*.22)},${F(my+hr*.14)} Q${F(hx+hr*.18)},${F(my+hr*.04)} ${F(hx+hr*.06)},${F(my+hr*.04)} Z`,TONGUE,`class="tongue"`);}else if(mouth==='w'){g+=`<path d="M${F(hx-hr*.13)},${F(my)} Q${F(hx-hr*.06)},${F(my+hr*.08)} ${F(hx)},${F(my+hr*.03)} Q${F(hx+hr*.06)},${F(my+hr*.08)} ${F(hx+hr*.13)},${F(my)}" stroke="${FACE}" stroke-width="${F(hr*.05)}" fill="none" stroke-linecap="round"/>`;}else if(mouth==='smile'){g+=`<path d="M${F(hx-hr*.12)},${F(my)} Q${F(hx)},${F(my+hr*.13)} ${F(hx+hr*.12)},${F(my)}" stroke="${FACE}" stroke-width="${F(hr*.055)}" fill="none" stroke-linecap="round"/>`;}else if(mouth==='line'){g+=`<line x1="${F(hx-hr*.07)}" y1="${F(my)}" x2="${F(hx+hr*.07)}" y2="${F(my)}" stroke="${FACE}" stroke-width="${F(hr*.045)}" stroke-linecap="round"/>`;}if(opts.nose)g+=ell(hx,my-hr*.05,hr*.07,hr*.045,FACE);return g;}function render(){let g='';const LC={shiro:{style:'thick-paw',w:.18,h:.16,gait:'pair'},boba:{style:'thick-paw',w:.18,h:.16,gait:'pair'},koko:{style:'panda-paw',w:.18,h:.16,gait:'pair'},goma:{style:'spot',w:.13,h:.24,gait:'pair'},toro:{style:'sock',w:.10,h:.26,gait:'single'},zoro:{style:'sock',w:.12,h:.20,gait:'pair'},momo:{style:'cat-paw',w:.10,h:.22,gait:'single'},mimi:{style:'bunny',w:.10,h:.14,gait:'bunny'},kumo:{style:'hoof',w:.08,h:.22,gait:'pair'},hana:{style:'thin-hoof',w:.07,h:.32,gait:'pair'},maru:{style:'tiny-paw',w:.10,h:.07,gait:'pair'},suika:{style:'stubby',w:.13,h:.10,gait:'pair'},coco:{style:'koala-arm',w:.14,h:.14,gait:'sit'},piko:{style:'pig',w:.12,h:.13,gait:'pair'}};const lc=LC[p.id]||{style:'paw',w:.13,h:.18,gait:'pair'};const lw=r*lc.w,lh=r*lc.h,gy=cy+r*.78;const fi=`<defs><filter id="${fid}" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="1.4"/></filter></defs>`;if(p.shape==='corgi'||p.shape==='dog'){const by_=gy-lh-r*.45,bx=cx-r*.05,by=by_,bw=r*1.05,bh=r*.50,hx=cx+r*.70,hy=by-r*.32,hr=r*.42;g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}${cir(hx,hy,hr,BODY)}</g>`;g+=path(`M${F(cx-r*.95)},${F(by-r*.05)} Q${F(cx-r*1.20)},${F(by-r*.45)} ${F(cx-r*.95)},${F(by-r*.60)} Q${F(cx-r*.78)},${F(by-r*.35)} ${F(cx-r*.85)},${F(by-r*.05)} Z`,BODY);const ly=gy;if(lc.gait==='single')g+=legStub(cx-r*.40,ly,lw,lh,BODY,lc.style);else g+=legPair(cx-r*.45,ly,lw,lh,BODY,lc.style);g+=ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.4,bw*.7,bh*.5,BELLY,` opacity=".90"`);if(lc.gait==='single')g+=legStub(cx+r*.40,ly,lw,lh,BODY,lc.style);else g+=legPair(cx+r*.45,ly,lw,lh,BODY,lc.style);if(p.ear==='flop'){g+=ell(hx-r*.30,hy+r*.10,r*.15,r*.30,BODY)+ell(hx+r*.30,hy+r*.10,r*.15,r*.30,BODY);}else if(p.ear==='long'){g+=ell(hx-r*.18,hy-r*.45,r*.10,r*.36,BODY)+ell(hx+r*.18,hy-r*.45,r*.10,r*.36,BODY)+ell(hx-r*.18,hy-r*.45,r*.04,r*.24,BLUSH,` opacity=".50"`)+ell(hx+r*.18,hy-r*.45,r*.04,r*.24,BLUSH,` opacity=".50"`);}else{g+=path(`M${F(hx-r*.32)},${F(hy-r*.05)} L${F(hx-r*.20)},${F(hy-r*.50)} L${F(hx-r*.05)},${F(hy-r*.10)} Z`,BODY)+path(`M${F(hx+r*.05)},${F(hy-r*.10)} L${F(hx+r*.20)},${F(hy-r*.50)} L${F(hx+r*.32)},${F(hy-r*.05)} Z`,BODY);}g+=cir(hx,hy,hr,BODY);if(p.spots){const dc=p.id==='goma'?'#181818':'white';const dots=p.id==='goma'?[[-0.30,-0.05],[0.10,0.05],[-0.10,0.30],[0.40,0.20],[-0.55,0.20]]:[[-0.40,0.10],[-0.10,-0.05],[0.20,0.20]];dots.forEach(([dx,dy])=>g+=cir(bx+r*dx,by+r*dy,r*.06,dc,` opacity=".90"`));}if(p.mask){g+=ell(hx-r*.18,hy-r*.05,r*.18,r*.12,FACE,` opacity=".75"`)+ell(hx+r*.18,hy-r*.05,r*.18,r*.12,FACE,` opacity=".75"`);}if(p.tail==='fox')g+=ell(cx-r*.93,cy-r*.45,r*.09,r*.10,'white');g+=tinyFace(hx,hy,hr);if(p.mask){const eR=hr*.10,ex=hr*.30,ey=hy-hr*.05;g+=cir(hx-ex,ey,eR*.7,'white')+cir(hx+ex,ey,eR*.7,'white')+cir(hx-ex,ey,eR*.55,FACE)+cir(hx+ex,ey,eR*.55,FACE);}return fi+g;}if(p.shape==='cat'){const by_=gy-lh-r*.45,bx=cx,by=by_,bw=r*.80,bh=r*.50,hx=cx+r*.55,hy=by-r*.32,hr=r*.40;g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}${cir(hx,hy,hr,BODY)}</g>`;g+=`<path d="M${F(cx-r*.78)},${F(by-r*.05)} q${F(-r*.30)},${F(-r*.10)} ${F(-r*.20)},${F(-r*.45)} q${F(r*.20)},${F(-r*.20)} ${F(r*.05)},${F(-r*.20)}" stroke="${BODY}" stroke-width="${F(r*.18)}" fill="none" stroke-linecap="round"/>`;g+=legStub(cx-r*.40,gy,lw,lh,BODY,lc.style)+ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.35,bw*.65,bh*.50,BELLY,` opacity=".90"`)+legStub(cx+r*.40,gy,lw,lh,BODY,lc.style);g+=path(`M${F(hx-r*.32)},${F(hy-r*.05)} L${F(hx-r*.18)},${F(hy-r*.48)} L${F(hx-r*.02)},${F(hy-r*.10)} Z`,BODY)+path(`M${F(hx+r*.02)},${F(hy-r*.10)} L${F(hx+r*.18)},${F(hy-r*.48)} L${F(hx+r*.32)},${F(hy-r*.05)} Z`,BODY);g+=path(`M${F(hx-r*.22)},${F(hy-r*.10)} L${F(hx-r*.16)},${F(hy-r*.32)} L${F(hx-r*.08)},${F(hy-r*.14)} Z`,BLUSH,` opacity=".60"`)+path(`M${F(hx+r*.08)},${F(hy-r*.14)} L${F(hx+r*.16)},${F(hy-r*.32)} L${F(hx+r*.22)},${F(hy-r*.10)} Z`,BLUSH,` opacity=".60"`);g+=cir(hx,hy,hr,BODY)+tinyFace(hx,hy,hr);return fi+g;}if(p.shape==='panda'){const BLK='#1a1a1a',by_=gy-lh-r*.40,bx=cx,by=by_,bw=r*.78,bh=r*.52,hx=cx,hy=by-r*.46,hr=r*.52;g+=`<g opacity=".22" filter="url(#${fid})">${ell(bx,by,bw,bh,'#FFFFFF')}${cir(hx,hy,hr,'#FFFFFF')}</g>`;g+=cir(cx-r*.72,by+r*.05,r*.08,BLK)+legPair(cx-r*.32,gy,lw,lh,BLK,'panda-paw')+ell(bx,by,bw,bh,'#FFFFFF');g+=`<path d="M${F(bx-bw*.95)},${F(by-bh*.10)} Q${F(bx)},${F(by-bh*.65)} ${F(bx+bw*.95)},${F(by-bh*.10)} Q${F(bx+bw*.95)},${F(by+bh*.20)} ${F(bx)},${F(by-bh*.05)} Q${F(bx-bw*.95)},${F(by+bh*.20)} ${F(bx-bw*.95)},${F(by-bh*.10)} Z" fill="${BLK}"/>`;g+=ell(bx,by+bh*.40,bw*.55,bh*.40,'#FFFFFF')+legPair(cx+r*.32,gy,lw,lh,BLK,'panda-paw');g+=cir(hx-r*.36,hy-r*.34,r*.18,BLK)+cir(hx+r*.36,hy-r*.34,r*.18,BLK)+cir(hx,hy,hr,'#FFFFFF');g+=`<ellipse cx="${F(hx-r*.22)}" cy="${F(hy-r*.06)}" rx="${F(r*.16)}" ry="${F(r*.20)}" fill="${BLK}" transform="rotate(-12,${F(hx-r*.22)},${F(hy-r*.06)})"/><ellipse cx="${F(hx+r*.22)}" cy="${F(hy-r*.06)}" rx="${F(r*.16)}" ry="${F(r*.20)}" fill="${BLK}" transform="rotate(12,${F(hx+r*.22)},${F(hy-r*.06)})"/>`;g+=cir(hx-r*.22,hy-r*.04,r*.06,'#FFFFFF')+cir(hx+r*.22,hy-r*.04,r*.06,'#FFFFFF')+cir(hx-r*.22,hy-r*.04,r*.035,BLK)+cir(hx+r*.22,hy-r*.04,r*.035,BLK)+cir(hx-r*.215,hy-r*.05,r*.012,'#FFFFFF')+cir(hx+r*.225,hy-r*.05,r*.012,'#FFFFFF');g+=ell(hx,hy+r*.16,r*.05,r*.035,BLK)+`<path d="M${F(hx-r*.06)},${F(hy+r*.24)} Q${F(hx-r*.03)},${F(hy+r*.30)} ${F(hx)},${F(hy+r*.27)} Q${F(hx+r*.03)},${F(hy+r*.30)} ${F(hx+r*.06)},${F(hy+r*.24)}" stroke="${BLK}" stroke-width="${F(r*.025)}" fill="none" stroke-linecap="round"/>`;g+=ell(hx-r*.40,hy+r*.14,r*.10,r*.05,BLUSH,` opacity=".60"`)+ell(hx+r*.40,hy+r*.14,r*.10,r*.05,BLUSH,` opacity=".60"`);return fi+g;}if(p.shape==='fluff'){const by_=gy-lh-r*.40,bx=cx,by=by_,bw=r*.72,bh=r*.50,hx=cx,hy=by-r*.42,hr=r*.50;g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}${cir(hx,hy,hr,BODY)}</g>`;if(p.tail==='puff')g+=cir(cx-r*.70,by+r*.10,r*.10,BODY);const ly=gy;if(lc.gait==='single')g+=legStub(cx-r*.30,ly,lw,lh,BODY,lc.style);else if(lc.gait==='bunny'){g+=ell(cx-r*.28,gy-r*.05,r*.24,r*.10,BODY)+ell(cx-r*.28,gy-r*.01,r*.16,r*.05,BLUSH,` opacity=".60"`);}else if(lc.gait==='sit')g+=ell(cx-r*.30,by+bh*.55,r*.20,r*.14,BODY);else g+=legPair(cx-r*.32,ly,lw,lh,BODY,lc.style);g+=ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.3,bw*.6,bh*.55,BELLY,` opacity=".90"`);if(lc.gait==='single')g+=legStub(cx+r*.30,ly,lw,lh,BODY,lc.style);else if(lc.gait==='bunny')g+=legStub(cx+r*.25,ly,r*.10,r*.16,BODY,'paw');else if(lc.gait==='sit')g+=ell(cx+r*.30,by+bh*.55,r*.20,r*.14,BODY);else g+=legPair(cx+r*.32,ly,lw,lh,BODY,lc.style);if(p.ear==='round'){g+=cir(hx-r*.34,hy-r*.32,r*.16,BODY)+cir(hx+r*.34,hy-r*.32,r*.16,BODY)+cir(hx-r*.34,hy-r*.32,r*.08,BLUSH,` opacity=".55"`)+cir(hx+r*.34,hy-r*.32,r*.08,BLUSH,` opacity=".55"`);}else if(p.ear==='koala'){g+=cir(hx-r*.46,hy-r*.20,r*.24,BODY)+cir(hx+r*.46,hy-r*.20,r*.24,BODY)+cir(hx-r*.46,hy-r*.20,r*.16,BELLY)+cir(hx+r*.46,hy-r*.20,r*.16,BELLY);}else if(p.ear==='long'){g+=ell(hx-r*.20,hy-r*.55,r*.10,r*.40,BODY)+ell(hx+r*.20,hy-r*.55,r*.10,r*.40,BODY)+ell(hx-r*.20,hy-r*.55,r*.04,r*.28,BLUSH,` opacity=".55"`)+ell(hx+r*.20,hy-r*.55,r*.04,r*.28,BLUSH,` opacity=".55"`);}else if(p.ear==='pig'){g+=path(`M${F(hx-r*.30)},${F(hy-r*.15)} L${F(hx-r*.18)},${F(hy-r*.45)} L${F(hx-r*.05)},${F(hy-r*.18)} Z`,BODY)+path(`M${F(hx+r*.05)},${F(hy-r*.18)} L${F(hx+r*.18)},${F(hy-r*.45)} L${F(hx+r*.30)},${F(hy-r*.15)} Z`,BODY);}else if(p.ear==='tiny'){g+=cir(hx-r*.30,hy-r*.30,r*.08,BODY)+cir(hx+r*.30,hy-r*.30,r*.08,BODY);}g+=cir(hx,hy,hr,BODY);if(p.snout==='pig'){g+=ell(hx,hy+r*.18,r*.14,r*.10,BLUSH)+cir(hx-r*.04,hy+r*.18,r*.020,FACE)+cir(hx+r*.04,hy+r*.18,r*.020,FACE);}if(p.nose)g+=ell(hx,hy+r*.18,r*.14,r*.11,p.nose);if(p.beak&&p.id==='yuki')g+=ell(hx+r*.20,hy+r*.05,r*.22,r*.10,p.beak);g+=tinyFace(hx,hy,hr);return fi+g;}if(p.shape==='cloud'){const bx=cx,by=cy+r*.20,bw=r*.85,bh=r*.55;g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}</g>`;g+=legPair(cx-r*.32,gy,lw,lh,FACE,lc.style)+legPair(cx+r*.32,gy,lw,lh,FACE,lc.style);[[bx-r*.55,by-r*.05,r*.30],[bx-r*.20,by-r*.30,r*.34],[bx+r*.18,by-r*.30,r*.34],[bx+r*.55,by-r*.05,r*.30],[bx,by+r*.10,r*.45]].forEach(([x,y,rad])=>g+=cir(x,y,rad,BODY));const hx=cx+r*.45,hy=cy-r*.30,hr=r*.22;g+=cir(hx,hy,hr,FACE)+ell(hx-r*.18,hy+r*.05,r*.08,r*.12,FACE)+ell(hx+r*.18,hy+r*.05,r*.08,r*.12,FACE);g+=cir(hx-r*.07,hy-r*.03,r*.035,'white')+cir(hx+r*.07,hy-r*.03,r*.035,'white')+cir(hx-r*.07,hy-r*.03,r*.018,FACE)+cir(hx+r*.07,hy-r*.03,r*.018,FACE);g+=`<path d="M${F(hx-r*.05)},${F(hy+r*.08)} Q${F(hx)},${F(hy+r*.13)} ${F(hx+r*.05)},${F(hy+r*.08)}" stroke="white" stroke-width="${F(r*.025)}" fill="none" stroke-linecap="round"/>`;return g;}if(p.shape==='penguin'){const bx=cx,by=cy,bw=r*.78,bh=r*.95;g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}</g>`;g+=path(`M${F(cx-r*.34)},${F(cy+r*.92)} Q${F(cx-r*.18)},${F(cy+r*1.05)} ${F(cx)},${F(cy+r*.92)} Z`,p.beak||'#F5A020')+path(`M${F(cx)},${F(cy+r*.92)} Q${F(cx+r*.18)},${F(cy+r*1.05)} ${F(cx+r*.34)},${F(cy+r*.92)} Z`,p.beak||'#F5A020');g+=`<path d="M${F(cx)},${F(cy-r*.95)} C${F(cx+r*.78)},${F(cy-r*.92)} ${F(cx+r*.84)},${F(cy-r*.10)} ${F(cx+r*.78)},${F(cy+r*.40)} C${F(cx+r*.70)},${F(cy+r*.85)} ${F(cx-r*.70)},${F(cy+r*.85)} ${F(cx-r*.78)},${F(cy+r*.40)} C${F(cx-r*.84)},${F(cy-r*.10)} ${F(cx-r*.78)},${F(cy-r*.92)} ${F(cx)},${F(cy-r*.95)} Z" fill="${BODY}"/>`;g+=`<path d="M${F(cx-r*.22)},${F(cy-r*.45)} C${F(cx-r*.62)},${F(cy-r*.20)} ${F(cx-r*.60)},${F(cy+r*.55)} ${F(cx)},${F(cy+r*.70)} C${F(cx+r*.60)},${F(cy+r*.55)} ${F(cx+r*.62)},${F(cy-r*.20)} ${F(cx+r*.22)},${F(cy-r*.45)} C${F(cx+r*.10)},${F(cy-r*.55)} ${F(cx-r*.10)},${F(cy-r*.55)} ${F(cx-r*.22)},${F(cy-r*.45)} Z" fill="${BELLY}"/>`;g+=ell(cx-r*.78,cy+r*.10,r*.12,r*.30,BODY)+ell(cx+r*.78,cy+r*.10,r*.12,r*.30,BODY)+path(`M${F(cx-r*.10)},${F(cy-r*.55)} L${F(cx)},${F(cy-r*.35)} L${F(cx+r*.10)},${F(cy-r*.55)} Z`,p.beak||'#F5A020');const hx=cx,hy=cy-r*.70;g+=cir(hx-r*.13,hy,r*.045,FACE)+cir(hx+r*.13,hy,r*.045,FACE)+cir(hx-r*.13+r*.018,hy-r*.018,r*.020,'white')+cir(hx+r*.13+r*.018,hy-r*.018,r*.020,'white');g+=ell(hx-r*.25,hy+r*.10,r*.10,r*.05,BLUSH,` opacity=".55"`)+ell(hx+r*.25,hy+r*.10,r*.10,r*.05,BLUSH,` opacity=".55"`);return g;}if(p.shape==='chick'){const bx=cx,by=cy,bw=r*.62,bh=r*.62;g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}</g>`;g+=ell(cx-r*.18,cy+r*.65,r*.07,r*.05,p.beak||'#F09030')+ell(cx+r*.18,cy+r*.65,r*.07,r*.05,p.beak||'#F09030')+cir(cx,cy,r*.62,BODY)+ell(cx-r*.40,cy+r*.05,r*.13,r*.20,BODY);g+=`<path d="M${F(cx-r*.06)},${F(cy-r*.58)} q${F(r*.04)},${F(-r*.20)} ${F(r*.18)},${F(-r*.06)}" stroke="${BODY}" stroke-width="${F(r*.10)}" fill="none" stroke-linecap="round"/>`;g+=path(`M${F(cx-r*.08)},${F(cy-r*.05)} L${F(cx)},${F(cy+r*.08)} L${F(cx+r*.08)},${F(cy-r*.05)} Z`,p.beak||'#F09030')+tinyFace(cx,cy-r*.20,r*.40);return g;}if(p.shape==='frog'){g+=`<g opacity=".26" filter="url(#${fid})">${ell(cx,cy+r*.05,r*.95,r*.65,BODY)}</g>`;g+=path(`M${F(cx-r*1.0)},${F(cy+r*.55)} Q${F(cx-r*1.20)},${F(cy)} ${F(cx-r*.65)},${F(cy-r*.10)} Z`,BODY)+path(`M${F(cx+r*.65)},${F(cy-r*.10)} Q${F(cx+r*1.20)},${F(cy)} ${F(cx+r*1.0)},${F(cy+r*.55)} Z`,BODY);[-1.0,-.85,-.70,.70,.85,1.0].forEach(o=>g+=cir(cx+r*o,cy+r*.62,r*.06,BODY));g+=`<path d="M${F(cx-r*.85)},${F(cy+r*.50)} Q${F(cx-r*.95)},${F(cy-r*.30)} ${F(cx-r*.30)},${F(cy-r*.55)} Q${F(cx)},${F(cy-r*.65)} ${F(cx+r*.30)},${F(cy-r*.55)} Q${F(cx+r*.95)},${F(cy-r*.30)} ${F(cx+r*.85)},${F(cy+r*.50)} Q${F(cx)},${F(cy+r*.65)} ${F(cx-r*.85)},${F(cy+r*.50)} Z" fill="${BODY}"/>`;g+=ell(cx,cy+r*.20,r*.50,r*.32,BELLY,` opacity=".90"`)+cir(cx-r*.30,cy-r*.62,r*.20,BODY)+cir(cx+r*.30,cy-r*.62,r*.20,BODY)+cir(cx-r*.30,cy-r*.60,r*.13,'white')+cir(cx+r*.30,cy-r*.60,r*.13,'white')+cir(cx-r*.30,cy-r*.58,r*.07,FACE)+cir(cx+r*.30,cy-r*.58,r*.07,FACE);g+=`<path d="M${F(cx-r*.20)},${F(cy-r*.20)} Q${F(cx)},${F(cy-r*.05)} ${F(cx+r*.20)},${F(cy-r*.20)}" stroke="${FACE}" stroke-width="${F(r*.05)}" fill="none" stroke-linecap="round"/>`;g+=ell(cx-r*.45,cy-r*.20,r*.13,r*.07,BLUSH,` opacity=".50"`)+ell(cx+r*.45,cy-r*.20,r*.13,r*.07,BLUSH,` opacity=".50"`);return g;}if(p.shape==='seal'){const bx=cx,by=cy+r*.10,bw=r*1.30,bh=r*.45;g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}</g>`;g+=path(`M${F(cx-r*1.20)},${F(cy)} L${F(cx-r*1.55)},${F(cy-r*.30)} L${F(cx-r*1.40)},${F(cy)} L${F(cx-r*1.55)},${F(cy+r*.30)} Z`,BODY)+ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.4,bw*.85,bh*.5,BELLY,` opacity=".90"`);g+=ell(cx-r*.15,cy+r*.50,r*.20,r*.10,BODY)+ell(cx+r*.45,cy+r*.50,r*.20,r*.10,BODY);const hx=cx+r*.95,hy=cy-r*.15;g+=cir(hx,hy,r*.32,BODY)+`<path d="M${F(hx-r*.15)},${F(hy)} Q${F(hx-r*.10)},${F(hy-r*.06)} ${F(hx-r*.05)},${F(hy)}" stroke="${FACE}" stroke-width="${F(r*.04)}" fill="none" stroke-linecap="round"/>`;g+=`<path d="M${F(hx+r*.05)},${F(hy)} Q${F(hx+r*.10)},${F(hy-r*.06)} ${F(hx+r*.15)},${F(hy)}" stroke="${FACE}" stroke-width="${F(r*.04)}" fill="none" stroke-linecap="round"/>`;g+=`<path d="M${F(hx-r*.06)},${F(hy+r*.10)} Q${F(hx)},${F(hy+r*.16)} ${F(hx+r*.06)},${F(hy+r*.10)}" stroke="${FACE}" stroke-width="${F(r*.04)}" fill="none" stroke-linecap="round"/>`;g+=ell(hx-r*.20,hy+r*.10,r*.08,r*.04,BLUSH,` opacity=".55"`)+ell(hx+r*.20,hy+r*.10,r*.08,r*.04,BLUSH,` opacity=".55"`);return g;}if(p.shape==='capy'){const bx=cx-r*.10,by=cy+r*.20,bw=r*1.05,bh=r*.50,hx=cx+r*.78,hy=cy-r*.10,hr=r*.40;g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}${cir(hx,hy,hr,BODY)}</g>`;g+=legPair(cx-r*.40,gy,lw,lh,BODY,lc.style)+ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.35,bw*.7,bh*.50,BELLY,` opacity=".90"`)+legPair(cx+r*.40,gy,lw,lh,BODY,lc.style);g+=cir(hx-r*.22,hy-r*.32,r*.08,BODY)+cir(hx+r*.22,hy-r*.32,r*.08,BODY)+cir(hx,hy,hr,BODY)+tinyFace(hx,hy,hr);return g;}if(p.shape==='salamander'){g+=`<g opacity=".26" filter="url(#${fid})">${ell(cx-r*.10,cy+r*.05,r,r*.45,BODY)}</g>`;g+=`<path d="M${F(cx+r*.85)},${F(cy-r*.10)} Q${F(cx+r*1.30)},${F(cy)} ${F(cx+r*.85)},${F(cy+r*.30)} Z" fill="${BODY}"/>`;g+=ell(cx-r*.65,cy+r*.45,r*.18,r*.08,BODY,` transform="rotate(20,${F(cx-r*.65)},${F(cy+r*.45)})"`)+ ell(cx-r*.20,cy+r*.55,r*.18,r*.08,BODY)+ell(cx+r*.30,cy+r*.55,r*.18,r*.08,BODY)+ell(cx+r*.65,cy+r*.45,r*.18,r*.08,BODY,` transform="rotate(-20,${F(cx+r*.65)},${F(cy+r*.45)})"`);;g+=`<path d="M${F(cx-r*.85)},${F(cy)} C${F(cx-r*.95)},${F(cy-r*.50)} ${F(cx-r*.20)},${F(cy-r*.65)} ${F(cx)},${F(cy-r*.55)} C${F(cx+r*.40)},${F(cy-r*.60)} ${F(cx+r*.78)},${F(cy-r*.40)} ${F(cx+r*.85)},${F(cy)} C${F(cx+r*.78)},${F(cy+r*.50)} ${F(cx-r*.78)},${F(cy+r*.50)} ${F(cx-r*.85)},${F(cy)} Z" fill="${BODY}"/>`;g+=ell(cx,cy+r*.10,r*.55,r*.25,BELLY,` opacity=".88"`);[-.45,-.20,.05].forEach(o=>g+=ell(cx+r*o,cy-r*.55,r*.08,r*.16,'#FF9DBA',` opacity=".88"`));const hx=cx-r*.10,hy=cy-r*.20;g+=cir(hx-r*.13,hy,r*.05,FACE)+cir(hx+r*.13,hy,r*.05,FACE)+cir(hx-r*.10,hy-r*.02,r*.020,'white')+cir(hx+r*.16,hy-r*.02,r*.020,'white');g+=`<path d="M${F(hx-r*.10)},${F(hy+r*.13)} Q${F(hx-r*.05)},${F(hy+r*.20)} ${F(hx)},${F(hy+r*.16)} Q${F(hx+r*.05)},${F(hy+r*.20)} ${F(hx+r*.10)},${F(hy+r*.13)}" stroke="${FACE}" stroke-width="${F(r*.04)}" fill="none" stroke-linecap="round"/>`;g+=ell(hx-r*.25,hy+r*.13,r*.10,r*.05,BLUSH,` opacity=".55"`)+ell(hx+r*.25,hy+r*.13,r*.10,r*.05,BLUSH,` opacity=".55"`);return g;}g+=cir(cx,cy,r*.7,BODY)+tinyFace(cx,cy,r*.5);return g;}return render();}
+
+document.querySelectorAll('svg[data-pal]').forEach(svg=>{
+  const id=svg.getAttribute('data-pal');
+  const pal=KEKE.find(p=>p.id===id);
+  if(pal) svg.innerHTML=kekeSVG(pal,160);
+});
+
+const track=document.getElementById('parade-track');
+if(track){
+  const PS=62;
+  [...KEKE,...KEKE].forEach(p=>{
+    const w=document.createElement('div');
+    w.style.cssText='display:inline-flex;flex-direction:column;align-items:center;flex-shrink:0;padding:0 3px;';
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('width',PS+8);svg.setAttribute('height',PS+8);
+    svg.setAttribute('viewBox',`-7 -7 ${PS+14} ${PS+14}`);
+    svg.innerHTML=kekeSVG(p,PS);
+    w.appendChild(svg);track.appendChild(w);
+  });
+}
+</script>
+</body>
+</html>

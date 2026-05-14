@@ -22,44 +22,54 @@ struct OptimizeView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 20) {
-                // Mode selector — minimal
-                HStack {
-                    ToggleGroup(
-                        options: AggressivenessMode.allCases.map { $0.label },
-                        selected: settings.aggressiveness.label,
-                        theme: theme
-                    ) { label in
-                        if let mode = AggressivenessMode.allCases.first(where: { $0.label == label }) {
+                // Mode selector — underline style
+                HStack(spacing: 20) {
+                    ForEach(AggressivenessMode.allCases, id: \.self) { mode in
+                        Button {
                             settings.aggressiveness = mode
+                        } label: {
+                            VStack(spacing: 4) {
+                                Text(mode.label)
+                                    .font(.system(size: 13, weight: settings.aggressiveness == mode ? .bold : .medium))
+                                    .foregroundColor(settings.aggressiveness == mode ? theme.t1 : theme.t3)
+                                Rectangle()
+                                    .fill(settings.aggressiveness == mode ? theme.accent : Color.clear)
+                                    .frame(height: 2)
+                            }
                         }
                     }
                     Spacer()
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 4)
+                .padding(.top, 8)
 
-                // Input area — clean glass card
+                // Input area — clean bordered rectangle
                 VStack(alignment: .leading, spacing: 12) {
                     ZStack(alignment: .topLeading) {
                         if inputText.isEmpty {
                             Text(TL.s("optimize.placeholder"))
-                                .font(.system(size: 15, weight: .regular))
+                                .font(.system(size: 15))
                                 .foregroundColor(theme.t3.opacity(0.5))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 14)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 16)
                         }
 
                         TextEditor(text: $inputText)
                             .font(.system(size: 15))
                             .foregroundColor(theme.t1)
                             .scrollContentBackground(.hidden)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .frame(minHeight: 130, maxHeight: 200)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(minHeight: 140, maxHeight: 220)
                     }
-                    .glassCard(cornerRadius: 14)
+                    .background(theme.sf)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(theme.border, lineWidth: 0.5)
+                    )
 
-                    // Optimize button — prominent
+                    // Optimize button
                     Button {
                         optimize()
                     } label: {
@@ -69,13 +79,10 @@ struct OptimizeView: View {
                             .padding(.vertical, 15)
                             .background(theme.accent)
                             .foregroundColor(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .shadow(color: theme.accent.opacity(0.35), radius: 12, y: 5)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isOptimizing)
                     .opacity(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1)
-                    .scaleEffect(isOptimizing ? 0.97 : 1.0)
-                    .animation(.spring(response: 0.3), value: isOptimizing)
                 }
                 .padding(.horizontal, 20)
 
@@ -83,36 +90,16 @@ struct OptimizeView: View {
                 if hasResult {
                     VStack(spacing: 16) {
                         // Big savings number
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text("-\(savedPercent)%")
-                                .font(.system(size: 42, weight: .black, design: .rounded))
-                                .foregroundColor(theme.accent)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("\(beforeTokens) → \(afterTokens) tokens")
-                                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                    .foregroundColor(theme.t3)
-                            }
-                            Spacer()
+                                .font(.system(size: 44, weight: .bold, design: .rounded))
+                                .foregroundColor(theme.t1)
+                            Text("\(beforeTokens) → \(afterTokens) tokens")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(theme.t3)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 20)
-
-                        // Technique pills
-                        if !techniques.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 6) {
-                                    ForEach(techniques, id: \.self) { t in
-                                        Text(t)
-                                            .font(.system(size: 10, weight: .semibold))
-                                            .foregroundColor(theme.t2)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 5)
-                                            .background(.ultraThinMaterial, in: Capsule())
-                                    }
-                                }
-                                .padding(.horizontal, 20)
-                            }
-                        }
 
                         // Optimized output
                         VStack(alignment: .leading, spacing: 8) {
@@ -121,10 +108,15 @@ struct OptimizeView: View {
                                 .foregroundColor(theme.t1)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(14)
-                                .glassCard(cornerRadius: 12)
+                                .background(theme.sf)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(theme.border, lineWidth: 0.5)
+                                )
                                 .textSelection(.enabled)
 
-                            // Copy button — minimal
+                            // Copy button
                             Button {
                                 UIPasteboard.general.string = optimizedText
                                 withAnimation(.spring(response: 0.3)) { copied = true }
@@ -145,7 +137,7 @@ struct OptimizeView: View {
                                     if copied {
                                         RoundedRectangle(cornerRadius: 12, style: .continuous).fill(theme.accent)
                                     } else {
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.ultraThinMaterial)
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.25))
                                     }
                                 }
                             }

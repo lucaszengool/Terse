@@ -63,7 +63,7 @@ struct ToggleGroup: View {
             }
         }
         .padding(3)
-        .background(.ultraThinMaterial, in: Capsule())
+        .background(Color.white.opacity(0.25), in: Capsule())
     }
 }
 
@@ -82,7 +82,7 @@ struct TechniqueTags: View {
                         .foregroundColor(theme.t2)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(.ultraThinMaterial, in: Capsule())
+                        .background(Color.white.opacity(0.25), in: Capsule())
                 }
             }
         }
@@ -154,10 +154,9 @@ struct ThemePicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Solid themes
-            Text("SOLID")
-                .font(.system(size: 9, weight: .bold))
-                .tracking(0.5)
-                .foregroundColor(theme.t3.opacity(0.5))
+            Text("Solid")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(theme.t3)
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 8), spacing: 12) {
                 ForEach(themes.filter { $0.colors.count == 1 }, id: \.id) { t in
@@ -166,10 +165,9 @@ struct ThemePicker: View {
             }
 
             // Gradient themes
-            Text("GRADIENT")
-                .font(.system(size: 9, weight: .bold))
-                .tracking(0.5)
-                .foregroundColor(theme.t3.opacity(0.5))
+            Text("Gradient")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(theme.t3)
                 .padding(.top, 4)
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 5), spacing: 12) {
@@ -203,7 +201,6 @@ struct ThemePicker: View {
                         .foregroundColor(.white)
                 }
             }
-            .shadow(color: t.colors[0].opacity(0.3), radius: 3, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -216,12 +213,7 @@ struct GlassCard: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
-            )
-            .shadow(color: Color.black.opacity(0.08), radius: 8, y: 4)
+            .background(Color.white.opacity(0.3), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }
 
@@ -235,76 +227,23 @@ extension View {
 
 struct GlassAppBackground: View {
     let theme: TerseTheme
-    @State private var animate = false
 
     var body: some View {
-        ZStack {
-            // Base: solid or gradient
+        Group {
             if let grad = theme.bgGradient {
                 LinearGradient(colors: grad, startPoint: .topLeading, endPoint: .bottomTrailing)
             } else {
                 theme.bg
             }
-
-            // Animated blurred shapes for glass depth
-            Circle()
-                .fill(Color.white.opacity(0.3))
-                .frame(width: 280, height: 280)
-                .blur(radius: 80)
-                .offset(x: animate ? -60 : -120, y: animate ? -180 : -220)
-
-            Circle()
-                .fill(theme.accent.opacity(0.25))
-                .frame(width: 220, height: 220)
-                .blur(radius: 70)
-                .offset(x: animate ? 140 : 80, y: animate ? 60 : 120)
-
-            Ellipse()
-                .fill(Color.white.opacity(0.18))
-                .frame(width: 320, height: 160)
-                .blur(radius: 50)
-                .offset(x: animate ? 20 : 60, y: animate ? -320 : -360)
         }
         .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
-                animate = true
-            }
-        }
     }
 }
 
-// MARK: - Shimmer Effect (for premium buttons)
-
-struct ShimmerModifier: ViewModifier {
-    @State private var phase: CGFloat = 0
-
-    func body(content: Content) -> some View {
-        content
-            .overlay(
-                GeometryReader { geo in
-                    LinearGradient(
-                        colors: [.clear, Color.white.opacity(0.25), .clear],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .frame(width: geo.size.width * 0.4)
-                    .offset(x: phase * geo.size.width * 1.4 - geo.size.width * 0.2)
-                    .mask(content)
-                }
-            )
-            .onAppear {
-                withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: false)) {
-                    phase = 1
-                }
-            }
-    }
-}
+// MARK: - Shimmer Effect (kept for compatibility)
 
 extension View {
-    func shimmer() -> some View {
-        modifier(ShimmerModifier())
-    }
+    func shimmer() -> some View { self }
 }
 
 // MARK: - TerseStats (local stats storage)
@@ -314,7 +253,7 @@ class TerseStats {
     private let defaults: UserDefaults
 
     init() {
-        defaults = UserDefaults(suiteName: "group.com.terseai.shared") ?? .standard
+        defaults = UserDefaults(suiteName: "group.com.pruneai.shared") ?? .standard
     }
 
     private var entries: [[String: Any]] {

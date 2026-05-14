@@ -1,12 +1,14 @@
 import SwiftUI
-import ActivityKit
+import AuthenticationServices
+import StoreKit
 
 struct ContentView: View {
     @EnvironmentObject var settings: TerseSettings
     @EnvironmentObject var auth: TerseAuth
+    @StateObject private var store = TerseStore.shared
     @State private var selectedTab: Tab = .optimize
-    @State private var currentActivity: Activity<TerseActivityAttributes>?
     @State private var showKeyboardSetup = false
+    @State private var showSubscription = false
     @State private var keyboardInstalled = false
 
     enum Tab: String, CaseIterable {
@@ -16,9 +18,9 @@ struct ContentView: View {
 
         var icon: String {
             switch self {
-            case .optimize: return "wand.and.stars"
-            case .stats: return "chart.bar.fill"
-            case .settings: return "gearshape.fill"
+            case .optimize: return "sparkles"
+            case .stats: return "chart.line.uptrend.xyaxis"
+            case .settings: return "slider.horizontal.3"
             }
         }
     }
@@ -39,10 +41,29 @@ struct ContentView: View {
             KeyboardSetupView()
                 .environmentObject(settings)
         }
+        .sheet(isPresented: $showSubscription) {
+            if #available(iOS 17.0, *) {
+                SubscriptionStoreView(productIDs: ["com.pruneai.pro.monthly"])
+                    .subscriptionStoreControlStyle(.prominentPicker)
+                    .storeButton(.visible, for: .redeemCode)
+                    .onInAppPurchaseCompletion { _, result in
+                        if case .success(.success) = result {
+                            Task {
+                                await store.updatePurchasedProducts()
+                                await store.syncLatestTransaction()
+                                TerseAuth.shared.verifyLicense()
+                            }
+                            showSubscription = false
+                        }
+                    }
+            } else {
+                Text("Please update to iOS 17 or later to subscribe.")
+                    .padding()
+            }
+        }
         .onAppear {
             if auth.isSignedIn {
                 auth.verifyLicense()
-                restoreLiveActivity()
                 checkKeyboardAndPrompt()
             }
         }
@@ -54,8 +75,9 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             if auth.isSignedIn {
-                auth.verifyLicense()
+                auth.reloadUsage()
                 settings.reload()
+                auth.verifyLicense()
                 checkKeyboardAndPrompt()
             } else {
                 auth.checkPendingAuth()
@@ -67,69 +89,97 @@ struct ContentView: View {
 
     @ViewBuilder
     private var signInView: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 0) {
             Spacer()
 
-            // Logo
-            VStack(spacing: 8) {
-                Text(TL.s( "app.name"))
-                    .font(.system(size: 42, weight: .black))
-                    .foregroundColor(theme.t1)
-                Text("Prompt Optimizer")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(theme.t3)
-            }
+            // Clean logo mark
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(theme.accent)
+                .frame(width: 64, height: 64)
+                .overlay(
+                    Text("P")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                )
+                .padding(.bottom, 20)
 
-            // Description
-            VStack(spacing: 12) {
-                featureRow(icon: "bolt.fill", text: "Reduce token usage up to 70%")
-                featureRow(icon: "globe", text: "Works with any language")
-                featureRow(icon: "square.and.arrow.up", text: "Optimize from any app via Share")
-            }
-            .padding(.vertical, 20)
+            Text(TL.s("app.name"))
+                .font(.system(size: 34, weight: .bold))
+                .foregroundColor(theme.t1)
 
-            // Sign In Button
-            Button {
-                auth.startSignIn { url in
-                    if let url = url {
-                        UIApplication.shared.open(url)
+            Text("Smart prompt compression")
+                .font(.system(size: 15))
+                .foregroundColor(theme.t3)
+                .padding(.bottom, 48)
+
+            // Features
+            VStack(spacing: 20) {
+                featureRow(icon: "bolt.fill", title: "Save up to 70%", detail: "on every AI prompt")
+                featureRow(icon: "globe", title: "11 languages", detail: "works everywhere you type")
+                featureRow(icon: "lock.fill", title: "100% on-device", detail: "your words never leave")
+            }
+            .padding(.bottom, 48)
+
+            // Sign in with Apple
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.email, .fullName]
+            } onCompletion: { result in
+                switch result {
+                case .success(let authorization):
+                    if let credential = authorization.credential as? ASAuthorizationAppleIDCredential {
+                        auth.signInWithApple(credential: credential)
                     }
+                case .failure(let error):
+                    print("[Apple Sign In] Error: \(error.localizedDescription)")
                 }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 18))
-                    Text("Sign In to Get Started")
-                        .font(.system(size: 16, weight: .bold))
-                }
-                .foregroundColor(theme.btnText)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(theme.btn)
-                .cornerRadius(14)
             }
-            .padding(.horizontal, 40)
+            .signInWithAppleButtonStyle(.black)
+            .frame(height: 52)
+            .cornerRadius(12)
+            .padding(.horizontal, 32)
 
-            Text("Free: 500 optimizations/week")
+            if let error = auth.signInError {
+                Text(error)
+                    .font(.system(size: 13))
+                    .foregroundColor(.red)
+                    .padding(.top, 12)
+            }
+
+            Text("500 free optimizations per week")
                 .font(.system(size: 12))
                 .foregroundColor(theme.t3)
+                .padding(.top, 16)
 
+            Spacer()
             Spacer()
         }
     }
 
     private func featureRow(icon: String, text: String) -> some View {
-        HStack(spacing: 12) {
+        featureRow(icon: icon, title: text, detail: "")
+    }
+
+    private func featureRow(icon: String, title: String, detail: String) -> some View {
+        HStack(spacing: 14) {
             Image(systemName: icon)
                 .font(.system(size: 14))
                 .foregroundColor(theme.accent)
-                .frame(width: 24)
-            Text(text)
-                .font(.system(size: 14))
-                .foregroundColor(theme.t2)
+                .frame(width: 32, height: 32)
+                .background(theme.accent.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(theme.t1)
+                if !detail.isEmpty {
+                    Text(detail)
+                        .font(.system(size: 13))
+                        .foregroundColor(theme.t3)
+                }
+            }
             Spacer()
         }
-        .padding(.horizontal, 40)
+        .padding(.horizontal, 32)
     }
 
     // MARK: - Main View (after sign in)
@@ -140,7 +190,7 @@ struct ContentView: View {
             GlassAppBackground(theme: theme)
 
             VStack(spacing: 0) {
-                // Hero header — compact, one line
+                // Hero header
                 heroHeader
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
@@ -159,7 +209,7 @@ struct ContentView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
-                // Minimal tab bar — icons only, glass pill
+                // Minimal tab bar
                 HStack(spacing: 0) {
                     ForEach(Tab.allCases, id: \.self) { tab in
                         Button {
@@ -184,7 +234,6 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 40)
                 .padding(.bottom, 6)
-                .background(.ultraThinMaterial)
             }
         }
     }
@@ -194,77 +243,86 @@ struct ContentView: View {
     @ViewBuilder
     private var heroHeader: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                // Status dot
-                Circle()
-                    .fill(keyboardInstalled ? theme.accent : Color.orange)
-                    .frame(width: 8, height: 8)
-                    .shadow(color: keyboardInstalled ? theme.accent.opacity(0.6) : Color.orange.opacity(0.6), radius: 6)
-
-                // App name
-                Text(TL.s( "app.name"))
-                    .font(.system(size: 22, weight: .black))
-                    .foregroundColor(theme.t1)
+            // Top row
+            HStack(alignment: .center) {
+                // App icon + name
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(theme.accent)
+                        .frame(width: 28, height: 28)
+                        .overlay(
+                            Text("P")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                        )
+                    Text(TL.s("app.name"))
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(theme.t1)
+                }
 
                 Spacer()
 
-                // Saved count
-                if settings.totalTokensSaved > 0 {
-                    HStack(spacing: 4) {
-                        Text("\(settings.totalTokensSaved)")
-                            .font(.system(size: 15, weight: .black, design: .rounded))
-                            .foregroundColor(theme.accent)
-                        Text(TL.s("header.saved"))
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(theme.t3.opacity(0.5))
-                    }
+                // Status dot
+                if !keyboardInstalled {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 8, height: 8)
                 }
 
-                // Upgrade pill (free only)
-                if auth.tier == "free" {
+                // Pro pill
+                if auth.tier == "free" && !store.isPro {
                     Button {
-                        if let url = URL(string: "https://www.terseai.org/#pricing") {
-                            UIApplication.shared.open(url)
-                        }
+                        showSubscription = true
                     } label: {
-                        Text(TL.s("header.pro"))
-                            .font(.system(size: 10, weight: .black))
+                        Text("PRO")
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
-                            .background(theme.accent.opacity(0.8))
+                            .background(theme.accent)
                             .clipShape(Capsule())
                     }
                 }
             }
 
-            // Keyboard not installed banner
+            // Stats
+            if settings.totalOptimizations > 0 {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(settings.totalOptimizations)")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(theme.t1)
+                    Text(TL.s("header.saved"))
+                        .font(.system(size: 13))
+                        .foregroundColor(theme.t3)
+                    Spacer()
+                }
+            }
+
+            // Quota
+            Text(auth.usageText)
+                .font(.system(size: 12))
+                .foregroundColor(theme.t3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Keyboard setup
             if !keyboardInstalled {
                 Button {
                     showKeyboardSetup = true
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "keyboard")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 13))
                         Text(TL.s("header.setupKeyboard"))
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 13, weight: .medium))
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 11))
                     }
                     .foregroundColor(theme.accent)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
-                    .glassCard(cornerRadius: 12)
+                    .padding(12)
+                    .background(theme.accent.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-            }
-
-            // Quota bar
-            HStack {
-                Text(auth.usageText)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundColor(theme.t3.opacity(0.6))
-                Spacer()
             }
         }
     }
@@ -277,65 +335,27 @@ struct ContentView: View {
             keyboardInstalled = installed
         }
         // Always keep Terse active — keyboard optimizes automatically
-        UserDefaults(suiteName: "group.com.terseai.shared")?.set(true, forKey: "terseActive")
+        UserDefaults(suiteName: "group.com.pruneai.shared")?.set(true, forKey: "terseActive")
 
         if !installed && !settings.hasSeenSetup {
             showKeyboardSetup = true
         }
 
-        // Start/refresh live activity
-        startLiveActivity()
     }
 
     private func isKeyboardExtensionEnabled() -> Bool {
         let inputModes = UITextInputMode.activeInputModes
         for mode in inputModes {
             if let identifier = mode.value(forKey: "identifier") as? String {
-                if identifier.contains("com.terseai.app") { return true }
+                if identifier.contains("com.pruneai.ios") { return true }
             }
         }
         if let keyboards = UserDefaults.standard.object(forKey: "AppleKeyboards") as? [String] {
-            if keyboards.contains(where: { $0.contains("com.terseai.app") }) { return true }
+            if keyboards.contains(where: { $0.contains("com.pruneai.ios") }) { return true }
         }
         return false
     }
 
-    private func startLiveActivity() {
-        guard #available(iOS 16.2, *) else { return }
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-
-        let attributes = TerseActivityAttributes(startTime: Date())
-        let pct = settings.totalTokensOptimized > 0
-            ? Int(Double(settings.totalTokensSaved) / Double(settings.totalTokensOptimized) * 100)
-            : 0
-        let state = TerseActivityAttributes.ContentState(
-            tokensSaved: settings.totalTokensSaved,
-            totalOptimizations: settings.totalOptimizations,
-            mode: settings.aggressiveness.rawValue,
-            autoMode: settings.autoMode,
-            percentSaved: pct,
-            isActive: true
-        )
-
-        do {
-            let activity = try Activity.request(
-                attributes: attributes,
-                content: .init(state: state, staleDate: nil),
-                pushType: nil
-            )
-            currentActivity = activity
-        } catch {
-            print("Live Activity error: \(error)")
-        }
-    }
-
-    private func restoreLiveActivity() {
-        if #available(iOS 16.2, *) {
-            if let existing = Activity<TerseActivityAttributes>.activities.first {
-                currentActivity = existing
-            }
-        }
-    }
 }
 
 #Preview {

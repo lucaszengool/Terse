@@ -15,10 +15,11 @@
 
     // Hero
     'hero.title1': 'Save every token.',
-    'hero.title2': 'Trade the rest.',
-    'hero.subtitle': 'Cut 40-70% of your AI token costs with on-device optimization — or buy tokens at up to 50% off retail on the Token Exchange. Sell what you don\'t use. Stop wasting money on idle API credits.',
+    'hero.title2': 'Power your team.',
+    'hero.subtitle': 'Cut 40-70% of your AI token costs with on-device optimization — then give your whole team full visibility with <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Token analytics by developer, project, and tool.',
     'hero.download': 'Download Optimizer',
     'hero.exchange': 'Buy / Sell Tokens',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'After installing, drag Terse to <strong>Applications</strong>, then paste this in <strong>Terminal</strong>:',
     'hero.installWarning': 'macOS blocks unsigned apps by default — this command clears it. Only needed once after install.',
 
@@ -53,7 +54,7 @@
 
     // Usage
     'usage.heading': 'No AI tool offers unlimited usage.',
-    'usage.subtitle': 'Even at $200/mo, every tool has caps. Terse compresses prompts so your limits stretch further — and the Token Exchange lets you buy extra capacity at up to 50% off, or sell what you don\'t use.',
+    'usage.subtitle': 'Even at $200/mo, every tool has caps. Terse compresses prompts so your limits stretch further — and <a href="/teams" style="color:var(--ac)">Terse Cloud</a> gives your team full visibility into exactly where tokens are going.',
     'usage.calloutTitle': 'A typical 2h coding session with an AI agent:',
     'usage.stat1': 'CLI commands run',
     'usage.stat2': 'tokens of prompt + CLI noise',
@@ -62,7 +63,7 @@
     // Tools
     'tools.sectionTitle': 'Every tool has limits',
     'tools.heading': 'Terse stretches every plan further.',
-    'tools.description': 'No matter which AI tool you use, token limits and rate caps apply. Terse compresses what goes in — and the Token Exchange lets you buy extra tokens at a fraction of the retail price.',
+    'tools.description': 'No matter which AI tool your team uses, token costs add up fast. Terse compresses what goes in — and <a href="/teams" style="color:var(--ac)">Terse Cloud</a> gives you team-wide analytics to track spend by developer, project, and tool.',
     'tools.price': 'Price',
     'tools.limits': 'Limits',
     'tools.context': 'Context',
@@ -130,12 +131,12 @@
 
     // CTA
     'cta.heading': 'Stop wasting tokens and money.',
-    'cta.subtitle': 'Optimize every prompt. Monitor every session. Trade unused tokens — buy at 50% off or sell idle credits.',
+    'cta.subtitle': 'Optimize every prompt. Monitor every agent session. And give your whole team visibility with Terse Cloud — analytics by developer, project, and tool.',
     'cta.onDevice': '100% on-device',
     'cta.zeroLatency': 'Zero latency',
 
     // Footer
-    'footer.tagline': 'Token optimizer + marketplace. Compress prompts, monitor agents, detect duplicates — trade unused API tokens.',
+    'footer.tagline': 'Token optimizer + team analytics. Compress prompts, monitor agents, detect duplicates — track your team\'s AI spend with Terse Cloud.',
     'footer.product': 'Product',
     'footer.techniques': 'Techniques',
     'footer.learn': 'Learn',
@@ -349,10 +350,11 @@
 
     // Hero
     'hero.title1': '节省每一个 token。',
-    'hero.title2': '交易剩余额度。',
-    'hero.subtitle': '通过本地优化削减 40-70% 的 AI token 开销——或在 Token 交易所以低至五折的价格购买 token。卖掉闲置额度，不再为用不完的 API 余额浪费钱。',
+    'hero.title2': '赋能你的团队。',
+    'hero.subtitle': '通过本地优化削减 40-70% 的 AI token 开销——再用 <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a> 让全团队掌握完整用量可视化。按开发者、项目和工具分析 token 开销。',
     'hero.download': '下载优化器',
     'hero.exchange': '买卖 Token',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': '安装后，将 Terse 拖入<strong>应用程序</strong>文件夹，然后在<strong>终端</strong>中粘贴以下命令：',
     'hero.installWarning': 'macOS 默认阻止未签名应用——此命令可解除限制，安装后仅需执行一次。',
 
@@ -387,7 +389,7 @@
 
     // Usage
     'usage.heading': '没有任何 AI 工具提供无限使用。',
-    'usage.subtitle': '即使每月 200 美元的方案也有上限。Terse 压缩提示让额度用得更久——Token 交易所还能以低至五折的价格购买额外容量，或出售闲置额度。',
+    'usage.subtitle': '即使每月 200 美元的方案也有上限。Terse 压缩提示让额度用得更久——<a href="/teams" style="color:var(--ac)">Terse Cloud</a> 让你的团队清晰掌握每个 token 的去向。',
     'usage.calloutTitle': '一次典型的 2 小时 AI Agent 编程会话：',
     'usage.stat1': '条 CLI 命令执行',
     'usage.stat2': '个 token 的提示 + CLI 噪声',
@@ -396,7 +398,7 @@
     // Tools
     'tools.sectionTitle': '每款工具都有限制',
     'tools.heading': 'Terse 让每个方案都更耐用。',
-    'tools.description': '无论使用哪款 AI 工具，token 限额和速率限制都存在。Terse 压缩输入内容——Token 交易所让你以远低于官方的价格购买额外 token。',
+    'tools.description': '无论团队使用哪款 AI 工具，token 成本都会快速累积。Terse 压缩输入内容——<a href="/teams" style="color:var(--ac)">Terse Cloud</a> 提供团队级分析，按开发者、项目和工具追踪开销。',
     'tools.price': '价格',
     'tools.limits': '限制',
     'tools.context': '上下文',
@@ -464,12 +466,12 @@
 
     // CTA
     'cta.heading': '别再浪费 token 和金钱。',
-    'cta.subtitle': '优化每一条提示，监控每一个会话。交易闲置 token——五折购入或出售闲置额度。',
+    'cta.subtitle': '优化每一条提示，监控每一个会话。用 Terse Cloud 为全团队提供可视化——按开发者、项目和工具分析。',
     'cta.onDevice': '100% 本地运行',
     'cta.zeroLatency': '零延迟',
 
     // Footer
-    'footer.tagline': 'Token 优化器 + 交易市场。压缩提示、监控 Agent、检测重复——交易闲置 API token。',
+    'footer.tagline': 'Token 优化器 + 团队分析。压缩提示、监控 Agent、检测重复——用 Terse Cloud 追踪团队 AI 开销。',
     'footer.product': '产品',
     'footer.techniques': '技术',
     'footer.learn': '了解更多',
@@ -683,10 +685,11 @@
 
     // Hero
     'hero.title1': '節省每一個 token。',
-    'hero.title2': '交易剩餘額度。',
-    'hero.subtitle': '透過本機優化削減 40-70% 的 AI token 開銷——或在 Token 交易所以低至五折的價格購買 token。賣掉閒置額度，不再為用不完的 API 餘額浪費錢。',
+    'hero.title2': '賦能你的團隊。',
+    'hero.subtitle': '透過本機優化削減 40-70% 的 AI token 開銷——再用 <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a> 讓全團隊掌握完整用量可視化。依開發者、專案和工具分析 token 開銷。',
     'hero.download': '下載優化器',
     'hero.exchange': '買賣 Token',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': '安裝後，將 Terse 拖入<strong>應用程式</strong>資料夾，然後在<strong>終端機</strong>中貼上以下指令：',
     'hero.installWarning': 'macOS 預設會阻擋未簽署的應用程式——此指令可解除限制，安裝後僅需執行一次。',
 
@@ -721,7 +724,7 @@
 
     // Usage
     'usage.heading': '沒有任何 AI 工具提供無限使用。',
-    'usage.subtitle': '即使每月 200 美元的方案也有上限。Terse 壓縮提示讓額度用得更久——Token 交易所還能以低至五折的價格購買額外容量，或出售閒置額度。',
+    'usage.subtitle': '即使每月 200 美元的方案也有上限。Terse 壓縮提示讓額度用得更久——<a href="/teams" style="color:var(--ac)">Terse Cloud</a> 讓你的團隊清楚掌握每個 token 的去向。',
     'usage.calloutTitle': '一次典型的 2 小時 AI Agent 程式設計工作階段：',
     'usage.stat1': '條 CLI 指令執行',
     'usage.stat2': '個 token 的提示 + CLI 雜訊',
@@ -730,7 +733,7 @@
     // Tools
     'tools.sectionTitle': '每款工具都有限制',
     'tools.heading': 'Terse 讓每個方案都更耐用。',
-    'tools.description': '無論使用哪款 AI 工具，token 限額和速率限制都存在。Terse 壓縮輸入內容——Token 交易所讓你以遠低於官方的價格購買額外 token。',
+    'tools.description': '無論團隊使用哪款 AI 工具，token 成本都會快速累積。Terse 壓縮輸入內容——<a href="/teams" style="color:var(--ac)">Terse Cloud</a> 提供團隊級分析，依開發者、專案和工具追蹤開銷。',
     'tools.price': '價格',
     'tools.limits': '限制',
     'tools.context': '上下文',
@@ -798,12 +801,12 @@
 
     // CTA
     'cta.heading': '別再浪費 token 和金錢。',
-    'cta.subtitle': '優化每一條提示，監控每一個工作階段。交易閒置 token——五折購入或出售閒置額度。',
+    'cta.subtitle': '優化每一條提示，監控每一個工作階段。用 Terse Cloud 為全團隊提供可視化——依開發者、專案和工具分析。',
     'cta.onDevice': '100% 本機執行',
     'cta.zeroLatency': '零延遲',
 
     // Footer
-    'footer.tagline': 'Token 優化器 + 交易市場。壓縮提示、監控 Agent、偵測重複——交易閒置 API token。',
+    'footer.tagline': 'Token 優化器 + 團隊分析。壓縮提示、監控 Agent、偵測重複——用 Terse Cloud 追蹤團隊 AI 開銷。',
     'footer.product': '產品',
     'footer.techniques': '技術',
     'footer.learn': '瞭解更多',
@@ -1017,10 +1020,11 @@
 
     // Hero
     'hero.title1': 'すべてのトークンを節約。',
-    'hero.title2': '余った分は取引。',
-    'hero.subtitle': 'オンデバイス最適化でAIトークンコストを40〜70%削減。またはトークン取引所で最大50%オフで購入できます。使わないクレジットは売却して、無駄な出費をなくしましょう。',
+    'hero.title2': 'チームを強化する。',
+    'hero.subtitle': 'オンデバイス最適化でAIトークンコストを40〜70%削減。そして <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a> でチーム全体に完全な可視性を。開発者・プロジェクト・ツール別のトークン分析。',
     'hero.download': 'オプティマイザをダウンロード',
     'hero.exchange': 'トークンの売買',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'インストール後、Terseを<strong>アプリケーション</strong>にドラッグし、<strong>ターミナル</strong>で以下を実行してください：',
     'hero.installWarning': 'macOSは未署名のアプリをデフォルトでブロックします。このコマンドで解除できます。インストール後1回だけ実行してください。',
 
@@ -1055,7 +1059,7 @@
 
     // Usage
     'usage.heading': '無制限のAIツールは存在しません。',
-    'usage.subtitle': '月額200ドルのプランでも制限があります。Terseはプロンプトを圧縮して制限をより長く活用でき、トークン取引所では最大50%オフで追加容量を購入、または余ったクレジットを売却できます。',
+    'usage.subtitle': '月額200ドルのプランでも制限があります。Terseはプロンプトを圧縮して制限をより長く活用でき、<a href="/teams" style="color:var(--ac)">Terse Cloud</a> でトークンがどこに使われているかチーム全体で把握できます。',
     'usage.calloutTitle': '典型的な2時間のAIエージェントコーディングセッション：',
     'usage.stat1': '件のCLIコマンドを実行',
     'usage.stat2': 'トークンのプロンプト + CLIノイズ',
@@ -1064,7 +1068,7 @@
     // Tools
     'tools.sectionTitle': 'すべてのツールに制限があります',
     'tools.heading': 'Terseはあらゆるプランをさらに活用します。',
-    'tools.description': 'どのAIツールをお使いでも、トークン制限とレート制限が適用されます。Terseは入力を圧縮し、トークン取引所では通常価格の数分の一で追加トークンを購入できます。',
+    'tools.description': 'チームがどのAIツールを使っても、トークンコストは積み上がります。Terseは入力を圧縮し、<a href="/teams" style="color:var(--ac)">Terse Cloud</a> で開発者・プロジェクト・ツール別にコストを追跡できます。',
     'tools.price': '料金',
     'tools.limits': '制限',
     'tools.context': 'コンテキスト',
@@ -1132,12 +1136,12 @@
 
     // CTA
     'cta.heading': 'トークンとコストの無駄をなくしましょう。',
-    'cta.subtitle': 'すべてのプロンプトを最適化。すべてのセッションを監視。余ったトークンを取引 — 50%オフで購入、または余剰クレジットを売却。',
+    'cta.subtitle': 'すべてのプロンプトを最適化。すべてのセッションを監視。Terse Cloud でチーム全体に可視性を — 開発者・プロジェクト・ツール別分析。',
     'cta.onDevice': '100%オンデバイス',
     'cta.zeroLatency': 'ゼロレイテンシー',
 
     // Footer
-    'footer.tagline': 'トークンオプティマイザ + マーケットプレイス。プロンプト圧縮、エージェント監視、重複検出 — 未使用APIトークンの取引。',
+    'footer.tagline': 'トークン最適化 + チーム分析。プロンプト圧縮、エージェント監視、重複検出 — Terse Cloud でチームのAIコストを追跡。',
     'footer.product': '製品',
     'footer.techniques': '技術',
     'footer.learn': '詳しく見る',
@@ -1351,10 +1355,11 @@
 
     // Hero
     'hero.title1': '모든 토큰을 절약하세요.',
-    'hero.title2': '나머지는 거래하세요.',
-    'hero.subtitle': '온디바이스 최적화로 AI 토큰 비용을 40~70% 절감하거나, 토큰 거래소에서 최대 50% 할인된 가격으로 토큰을 구매하세요. 사용하지 않는 크레딧은 판매하세요. 더 이상 유휴 API 크레딧에 돈을 낭비하지 마세요.',
+    'hero.title2': '팀을 강화하세요.',
+    'hero.subtitle': '온디바이스 최적화로 AI 토큰 비용을 40~70% 절감하고, <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>로 팀 전체에 완전한 가시성을 제공하세요. 개발자·프로젝트·도구별 토큰 분석.',
     'hero.download': '옵티마이저 다운로드',
     'hero.exchange': '토큰 매매',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': '설치 후 Terse를 <strong>응용 프로그램</strong>으로 드래그한 다음 <strong>터미널</strong>에서 다음을 붙여넣으세요:',
     'hero.installWarning': 'macOS는 서명되지 않은 앱을 기본적으로 차단합니다. 이 명령으로 해제할 수 있으며, 설치 후 한 번만 실행하면 됩니다.',
 
@@ -1389,7 +1394,7 @@
 
     // Usage
     'usage.heading': '무제한 사용을 제공하는 AI 도구는 없습니다.',
-    'usage.subtitle': '월 200달러 요금제도 제한이 있습니다. Terse는 프롬프트를 압축하여 한도를 더 오래 사용할 수 있게 하며, 토큰 거래소에서 최대 50% 할인된 가격으로 추가 용량을 구매하거나 사용하지 않는 크레딧을 판매할 수 있습니다.',
+    'usage.subtitle': '월 200달러 요금제도 제한이 있습니다. Terse는 프롬프트를 압축하여 한도를 더 오래 사용할 수 있게 하며, <a href="/teams" style="color:var(--ac)">Terse Cloud</a>로 팀 전체의 토큰 사용 현황을 파악할 수 있습니다.',
     'usage.calloutTitle': '일반적인 2시간 AI 에이전트 코딩 세션:',
     'usage.stat1': '개의 CLI 명령 실행',
     'usage.stat2': '토큰의 프롬프트 + CLI 노이즈',
@@ -1398,7 +1403,7 @@
     // Tools
     'tools.sectionTitle': '모든 도구에는 제한이 있습니다',
     'tools.heading': 'Terse는 모든 요금제를 더 효율적으로 만듭니다.',
-    'tools.description': '어떤 AI 도구를 사용하든 토큰 한도와 속도 제한이 적용됩니다. Terse는 입력을 압축하고, 토큰 거래소에서는 정가보다 훨씬 저렴하게 추가 토큰을 구매할 수 있습니다.',
+    'tools.description': '팀이 어떤 AI 도구를 사용하든 토큰 비용은 쌓입니다. Terse는 입력을 압축하고, <a href="/teams" style="color:var(--ac)">Terse Cloud</a>로 개발자·프로젝트·도구별 팀 전체 분석을 제공합니다.',
     'tools.price': '가격',
     'tools.limits': '제한',
     'tools.context': '컨텍스트',
@@ -1466,12 +1471,12 @@
 
     // CTA
     'cta.heading': '토큰과 비용 낭비를 멈추세요.',
-    'cta.subtitle': '모든 프롬프트를 최적화하고 모든 세션을 모니터링하세요. 남는 토큰을 거래하세요 — 50% 할인으로 구매하거나 유휴 크레딧을 판매하세요.',
+    'cta.subtitle': '모든 프롬프트를 최적화하고 모든 세션을 모니터링하세요. Terse Cloud로 팀 전체에 가시성을 — 개발자·프로젝트·도구별 분석.',
     'cta.onDevice': '100% 온디바이스',
     'cta.zeroLatency': '제로 레이턴시',
 
     // Footer
-    'footer.tagline': '토큰 옵티마이저 + 마켓플레이스. 프롬프트 압축, 에이전트 모니터링, 중복 감지 — 미사용 API 토큰 거래.',
+    'footer.tagline': '토큰 최적화 + 팀 분석. 프롬프트 압축, 에이전트 모니터링, 중복 감지 — Terse Cloud로 팀 AI 비용 추적.',
     'footer.product': '제품',
     'footer.techniques': '기술',
     'footer.learn': '자세히 보기',
@@ -1685,10 +1690,11 @@
 
     // Hero
     'hero.title1': 'Ahorre cada token.',
-    'hero.title2': 'Intercambie el resto.',
-    'hero.subtitle': 'Reduzca entre un 40 y un 70% de sus costos de tokens de IA con optimización en el dispositivo, o compre tokens con hasta un 50% de descuento en el Token Exchange. Venda lo que no utilice. Deje de desperdiciar dinero en créditos de API inactivos.',
+    'hero.title2': 'Potencia tu equipo.',
+    'hero.subtitle': 'Reduzca entre un 40 y un 70% de sus costos de tokens de IA con optimización en el dispositivo — y dé a todo su equipo visibilidad completa con <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Análisis de tokens por desarrollador, proyecto y herramienta.',
     'hero.download': 'Descargar optimizador',
     'hero.exchange': 'Comprar / Vender tokens',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Después de instalar, arrastre Terse a <strong>Aplicaciones</strong> y luego pegue esto en la <strong>Terminal</strong>:',
     'hero.installWarning': 'macOS bloquea las aplicaciones no firmadas por defecto — este comando lo desactiva. Solo es necesario una vez después de la instalación.',
 
@@ -1723,7 +1729,7 @@
 
     // Usage
     'usage.heading': 'Ninguna herramienta de IA ofrece uso ilimitado.',
-    'usage.subtitle': 'Incluso a $200/mes, todas las herramientas tienen límites. Terse comprime los prompts para que sus límites rindan más — y el Token Exchange le permite comprar capacidad extra con hasta un 50% de descuento o vender lo que no utilice.',
+    'usage.subtitle': 'Incluso a $200/mes, todas las herramientas tienen límites. Terse comprime los prompts para que sus límites rindan más — y <a href="/teams" style="color:var(--ac)">Terse Cloud</a> da a su equipo visibilidad completa sobre a dónde van los tokens.',
     'usage.calloutTitle': 'Una sesión típica de 2 horas de codificación con un agente de IA:',
     'usage.stat1': 'comandos CLI ejecutados',
     'usage.stat2': 'tokens de prompt + ruido de CLI',
@@ -1732,7 +1738,7 @@
     // Tools
     'tools.sectionTitle': 'Todas las herramientas tienen límites',
     'tools.heading': 'Terse aprovecha al máximo cada plan.',
-    'tools.description': 'Sin importar qué herramienta de IA utilicen, se aplican límites de tokens y de velocidad. Terse comprime lo que se envía — y el Token Exchange les permite comprar tokens adicionales a una fracción del precio.',
+    'tools.description': 'Sin importar qué herramienta de IA use su equipo, los costos de tokens se acumulan rápido. Terse comprime lo que se envía — y <a href="/teams" style="color:var(--ac)">Terse Cloud</a> ofrece análisis de equipo por desarrollador, proyecto y herramienta.',
     'tools.price': 'Precio',
     'tools.limits': 'Límites',
     'tools.context': 'Contexto',
@@ -1800,12 +1806,12 @@
 
     // CTA
     'cta.heading': 'Dejen de desperdiciar tokens y dinero.',
-    'cta.subtitle': 'Optimicen cada prompt. Monitoreen cada sesión. Intercambien tokens no utilizados — compren con un 50% de descuento o vendan créditos inactivos.',
+    'cta.subtitle': 'Optimicen cada prompt. Monitoreen cada sesión. Y den a todo su equipo visibilidad con Terse Cloud — análisis por desarrollador, proyecto y herramienta.',
     'cta.onDevice': '100% en el dispositivo',
     'cta.zeroLatency': 'Cero latencia',
 
     // Footer
-    'footer.tagline': 'Optimizador de tokens + marketplace. Compriman prompts, monitoreen agentes, detecten duplicados — intercambien tokens de API no utilizados.',
+    'footer.tagline': 'Optimizador de tokens + analítica de equipo. Compriman prompts, monitoreen agentes, detecten duplicados — rastreen el gasto en IA de su equipo con Terse Cloud.',
     'footer.product': 'Producto',
     'footer.techniques': 'Técnicas',
     'footer.learn': 'Aprender',
@@ -2019,10 +2025,11 @@
 
     // Hero
     'hero.title1': 'Économisez chaque token.',
-    'hero.title2': 'Échangez le reste.',
-    'hero.subtitle': 'Réduisez de 40 à 70 % vos coûts de tokens IA grâce à l\'optimisation sur l\'appareil — ou achetez des tokens jusqu\'à 50 % moins cher sur le Token Exchange. Vendez ce que vous n\'utilisez pas. Cessez de gaspiller de l\'argent en crédits API inutilisés.',
+    'hero.title2': 'Dynamisez votre équipe.',
+    'hero.subtitle': 'Réduisez de 40 à 70 % vos coûts de tokens IA grâce à l\'optimisation sur l\'appareil — puis donnez à toute votre équipe une visibilité complète avec <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Analytique par développeur, projet et outil.',
     'hero.download': 'Télécharger l\'optimiseur',
     'hero.exchange': 'Acheter / Vendre des tokens',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Après l\'installation, glissez Terse dans <strong>Applications</strong>, puis collez ceci dans le <strong>Terminal</strong> :',
     'hero.installWarning': 'macOS bloque les applications non signées par défaut — cette commande lève la restriction. À exécuter une seule fois après l\'installation.',
 
@@ -2057,7 +2064,7 @@
 
     // Usage
     'usage.heading': 'Aucun outil IA n\'offre un usage illimité.',
-    'usage.subtitle': 'Même à 200 $/mois, chaque outil a des limites. Terse compresse vos prompts pour prolonger vos quotas — et le Token Exchange vous permet d\'acheter de la capacité supplémentaire jusqu\'à 50 % moins cher, ou de vendre vos crédits inutilisés.',
+    'usage.subtitle': 'Même à 200 $/mois, chaque outil a des limites. Terse compresse vos prompts pour prolonger vos quotas — et <a href="/teams" style="color:var(--ac)">Terse Cloud</a> donne à votre équipe une visibilité complète sur l\'utilisation des tokens.',
     'usage.calloutTitle': 'Une session de codage typique de 2 h avec un agent IA :',
     'usage.stat1': 'commandes CLI exécutées',
     'usage.stat2': 'tokens de prompt + bruit CLI',
@@ -2066,7 +2073,7 @@
     // Tools
     'tools.sectionTitle': 'Chaque outil a ses limites',
     'tools.heading': 'Terse optimise chaque forfait.',
-    'tools.description': 'Quel que soit l\'outil IA que vous utilisez, des limites de tokens et de débit s\'appliquent. Terse compresse les entrées — et le Token Exchange vous permet d\'acheter des tokens supplémentaires à une fraction du prix.',
+    'tools.description': 'Quel que soit l\'outil IA utilisé par votre équipe, les coûts de tokens s\'accumulent vite. Terse compresse les entrées — et <a href="/teams" style="color:var(--ac)">Terse Cloud</a> fournit une analytique d\'équipe par développeur, projet et outil.',
     'tools.price': 'Prix',
     'tools.limits': 'Limites',
     'tools.context': 'Contexte',
@@ -2134,12 +2141,12 @@
 
     // CTA
     'cta.heading': 'Cessez de gaspiller des tokens et de l\'argent.',
-    'cta.subtitle': 'Optimisez chaque prompt. Surveillez chaque session. Échangez vos tokens inutilisés — achetez à 50 % de remise ou vendez vos crédits inactifs.',
+    'cta.subtitle': 'Optimisez chaque prompt. Surveillez chaque session. Et donnez à toute votre équipe la visibilité avec Terse Cloud — analytique par développeur, projet et outil.',
     'cta.onDevice': '100 % sur l\'appareil',
     'cta.zeroLatency': 'Zéro latence',
 
     // Footer
-    'footer.tagline': 'Optimiseur de tokens + place de marché. Compressez les prompts, surveillez les agents, détectez les doublons — échangez vos tokens API inutilisés.',
+    'footer.tagline': 'Optimiseur de tokens + analytique d\'équipe. Compressez les prompts, surveillez les agents, détectez les doublons — suivez les coûts IA de votre équipe avec Terse Cloud.',
     'footer.product': 'Produit',
     'footer.techniques': 'Techniques',
     'footer.learn': 'En savoir plus',
@@ -2353,10 +2360,11 @@
 
     // Hero
     'hero.title1': 'Jeden Token sparen.',
-    'hero.title2': 'Den Rest handeln.',
-    'hero.subtitle': 'Reduzieren Sie 40–70 % Ihrer AI-Token-Kosten durch On-Device-Optimierung — oder kaufen Sie Token auf der Token-Börse mit bis zu 50 % Rabatt. Verkaufen Sie, was Sie nicht nutzen. Verschwenden Sie kein Geld mehr für ungenutzte API-Guthaben.',
+    'hero.title2': 'Stärken Sie Ihr Team.',
+    'hero.subtitle': 'Reduzieren Sie 40–70 % Ihrer AI-Token-Kosten durch On-Device-Optimierung — und geben Sie Ihrem gesamten Team vollständige Transparenz mit <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Token-Analysen nach Entwickler, Projekt und Tool.',
     'hero.download': 'Optimierer herunterladen',
     'hero.exchange': 'Token kaufen / verkaufen',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Ziehen Sie Terse nach der Installation in den <strong>Programme</strong>-Ordner und fügen Sie dann Folgendes im <strong>Terminal</strong> ein:',
     'hero.installWarning': 'macOS blockiert nicht signierte Apps standardmäßig — dieser Befehl hebt die Sperre auf. Nur einmal nach der Installation nötig.',
 
@@ -2391,7 +2399,7 @@
 
     // Usage
     'usage.heading': 'Kein AI-Tool bietet unbegrenzte Nutzung.',
-    'usage.subtitle': 'Selbst bei $200/Monat hat jedes Tool Limits. Terse komprimiert Prompts, damit Ihr Kontingent länger reicht — und auf der Token-Börse kaufen Sie zusätzliche Kapazität mit bis zu 50 % Rabatt oder verkaufen ungenutztes Guthaben.',
+    'usage.subtitle': 'Selbst bei $200/Monat hat jedes Tool Limits. Terse komprimiert Prompts, damit Ihr Kontingent länger reicht — und <a href="/teams" style="color:var(--ac)">Terse Cloud</a> gibt Ihrem Team vollständige Transparenz darüber, wohin die Tokens fließen.',
     'usage.calloutTitle': 'Eine typische 2-Stunden-Coding-Session mit einem AI-Agent:',
     'usage.stat1': 'CLI-Befehle ausgeführt',
     'usage.stat2': 'Token an Prompt- + CLI-Rauschen',
@@ -2400,7 +2408,7 @@
     // Tools
     'tools.sectionTitle': 'Jedes Tool hat Grenzen',
     'tools.heading': 'Terse holt mehr aus jedem Tarif heraus.',
-    'tools.description': 'Egal welches AI-Tool Sie nutzen — Token-Limits und Ratenbegrenzungen gelten überall. Terse komprimiert die Eingabe — und die Token-Börse ermöglicht den Kauf zusätzlicher Token zu einem Bruchteil des regulären Preises.',
+    'tools.description': 'Egal welches AI-Tool Ihr Team nutzt — Token-Kosten summieren sich schnell. Terse komprimiert die Eingabe — und <a href="/teams" style="color:var(--ac)">Terse Cloud</a> bietet teamweite Analysen nach Entwickler, Projekt und Tool.',
     'tools.price': 'Preis',
     'tools.limits': 'Limits',
     'tools.context': 'Kontext',
@@ -2468,12 +2476,12 @@
 
     // CTA
     'cta.heading': 'Verschwenden Sie keine Token und kein Geld mehr.',
-    'cta.subtitle': 'Jeden Prompt optimieren. Jede Sitzung überwachen. Ungenutzte Token handeln — mit 50 % Rabatt kaufen oder ungenutztes Guthaben verkaufen.',
+    'cta.subtitle': 'Jeden Prompt optimieren. Jede Sitzung überwachen. Und Ihrem gesamten Team Transparenz geben mit Terse Cloud — Analysen nach Entwickler, Projekt und Tool.',
     'cta.onDevice': '100 % lokal auf dem Gerät',
     'cta.zeroLatency': 'Keine Latenz',
 
     // Footer
-    'footer.tagline': 'Token-Optimierer + Marktplatz. Prompts komprimieren, Agents überwachen, Duplikate erkennen — ungenutzte API-Token handeln.',
+    'footer.tagline': 'Token-Optimierer + Team-Analysen. Prompts komprimieren, Agents überwachen, Duplikate erkennen — KI-Kosten Ihres Teams mit Terse Cloud verfolgen.',
     'footer.product': 'Produkt',
     'footer.techniques': 'Techniken',
     'footer.learn': 'Wissen',
@@ -2687,10 +2695,11 @@
 
     // Hero
     'hero.title1': 'وفّر كل توكن.',
-    'hero.title2': 'تاجر بالباقي.',
-    'hero.subtitle': 'خفّض 40–70% من تكاليف توكنات الذكاء الاصطناعي عبر التحسين المحلي على الجهاز — أو اشترِ توكنات بخصم يصل إلى 50% عبر بورصة التوكنات. بِع ما لا تستخدمه. توقف عن إهدار المال على أرصدة API غير مستخدمة.',
+    'hero.title2': 'عزّز فريقك.',
+    'hero.subtitle': 'خفّض 40–70% من تكاليف توكنات الذكاء الاصطناعي عبر التحسين المحلي على الجهاز — ثم أعطِ فريقك بأكمله رؤية كاملة مع <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. تحليلات التوكنات حسب المطور والمشروع والأداة.',
     'hero.download': 'تنزيل المُحسّن',
     'hero.exchange': 'شراء / بيع التوكنات',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'بعد التثبيت، اسحب Terse إلى مجلد <strong>التطبيقات</strong>، ثم الصق هذا الأمر في <strong>الطرفية</strong>:',
     'hero.installWarning': 'يحظر macOS التطبيقات غير الموقّعة افتراضيًا — هذا الأمر يرفع الحظر. مطلوب مرة واحدة فقط بعد التثبيت.',
 
@@ -2725,7 +2734,7 @@
 
     // Usage
     'usage.heading': 'لا توجد أداة ذكاء اصطناعي توفر استخدامًا غير محدود.',
-    'usage.subtitle': 'حتى بسعر $200/شهريًا، كل أداة لها حدود. Terse يضغط الأوامر لتمديد حدودك — وبورصة التوكنات تتيح لك شراء سعة إضافية بخصم يصل إلى 50%، أو بيع الرصيد غير المستخدم.',
+    'usage.subtitle': 'حتى بسعر $200/شهريًا، كل أداة لها حدود. Terse يضغط الأوامر لتمديد حدودك — و<a href="/teams" style="color:var(--ac)">Terse Cloud</a> يمنح فريقك رؤية كاملة على أين تذهب التوكنات.',
     'usage.calloutTitle': 'جلسة برمجة نموذجية لمدة ساعتين مع وكيل ذكاء اصطناعي:',
     'usage.stat1': 'أمر CLI مُنفّذ',
     'usage.stat2': 'توكن من الأوامر + ضوضاء CLI',
@@ -2734,7 +2743,7 @@
     // Tools
     'tools.sectionTitle': 'كل أداة لها حدود',
     'tools.heading': 'Terse يمدّد كل خطة إلى أبعد.',
-    'tools.description': 'مهما كانت أداة الذكاء الاصطناعي التي تستخدمها، حدود التوكنات والمعدلات تنطبق دائمًا. Terse يضغط المدخلات — وبورصة التوكنات تتيح لك شراء توكنات إضافية بجزء من السعر العادي.',
+    'tools.description': 'مهما كانت أداة الذكاء الاصطناعي التي يستخدمها فريقك، تتراكم تكاليف التوكنات بسرعة. Terse يضغط المدخلات — و<a href="/teams" style="color:var(--ac)">Terse Cloud</a> يوفر تحليلات على مستوى الفريق حسب المطور والمشروع والأداة.',
     'tools.price': 'السعر',
     'tools.limits': 'الحدود',
     'tools.context': 'السياق',
@@ -2802,12 +2811,12 @@
 
     // CTA
     'cta.heading': 'توقف عن إهدار التوكنات والمال.',
-    'cta.subtitle': 'حسّن كل أمر. راقب كل جلسة. تاجر بالتوكنات غير المستخدمة — اشترِ بخصم 50% أو بِع الرصيد الفائض.',
+    'cta.subtitle': 'حسّن كل أمر. راقب كل جلسة. وأعطِ فريقك بأكمله رؤية مع Terse Cloud — تحليلات حسب المطور والمشروع والأداة.',
     'cta.onDevice': '100% على الجهاز',
     'cta.zeroLatency': 'بدون تأخير',
 
     // Footer
-    'footer.tagline': 'مُحسّن توكنات + سوق. اضغط الأوامر، راقب الوكلاء، اكشف التكرار — تاجر بتوكنات API غير المستخدمة.',
+    'footer.tagline': 'مُحسّن توكنات + تحليلات الفريق. اضغط الأوامر، راقب الوكلاء، اكشف التكرار — تتبّع إنفاق فريقك على الذكاء الاصطناعي مع Terse Cloud.',
     'footer.product': 'المنتج',
     'footer.techniques': 'التقنيات',
     'footer.learn': 'تعلّم',
@@ -3021,10 +3030,11 @@
 
     // Hero
     'hero.title1': 'Risparmia ogni token.',
-    'hero.title2': 'Scambia il resto.',
-    'hero.subtitle': 'Riduca del 40-70% i costi dei token AI con l\'ottimizzazione on-device — oppure acquisti token con sconti fino al 50% sulla Borsa Token. Venda ciò che non usa. Smetta di sprecare soldi in crediti API inutilizzati.',
+    'hero.title2': 'Potenzia il tuo team.',
+    'hero.subtitle': 'Riduca del 40-70% i costi dei token AI con l\'ottimizzazione on-device — poi dia a tutto il suo team visibilità completa con <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Analisi dei token per sviluppatore, progetto e strumento.',
     'hero.download': 'Scarica l\'ottimizzatore',
     'hero.exchange': 'Compra / Vendi Token',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Dopo l\'installazione, trascini Terse nella cartella <strong>Applicazioni</strong>, poi incolli questo comando nel <strong>Terminale</strong>:',
     'hero.installWarning': 'macOS blocca le app non firmate per impostazione predefinita — questo comando rimuove il blocco. Necessario solo una volta dopo l\'installazione.',
 
@@ -3059,7 +3069,7 @@
 
     // Usage
     'usage.heading': 'Nessuno strumento AI offre un utilizzo illimitato.',
-    'usage.subtitle': 'Anche a $200/mese, ogni strumento ha dei limiti. Terse comprime i prompt per far durare di più le quote — e la Borsa Token consente di acquistare capacità extra con sconti fino al 50%, o di vendere il credito inutilizzato.',
+    'usage.subtitle': 'Anche a $200/mese, ogni strumento ha dei limiti. Terse comprime i prompt per far durare di più le quote — e <a href="/teams" style="color:var(--ac)">Terse Cloud</a> dà al suo team piena visibilità su dove vanno i token.',
     'usage.calloutTitle': 'Una tipica sessione di coding di 2 ore con un agente AI:',
     'usage.stat1': 'comandi CLI eseguiti',
     'usage.stat2': 'token di prompt + rumore CLI',
@@ -3068,7 +3078,7 @@
     // Tools
     'tools.sectionTitle': 'Ogni strumento ha dei limiti',
     'tools.heading': 'Terse fa rendere di più ogni piano.',
-    'tools.description': 'Qualunque strumento AI si utilizzi, i limiti di token e le restrizioni di frequenza si applicano sempre. Terse comprime gli input — e la Borsa Token consente di acquistare token aggiuntivi a una frazione del prezzo di listino.',
+    'tools.description': 'Qualunque strumento AI utilizzi il suo team, i costi dei token si accumulano in fretta. Terse comprime gli input — e <a href="/teams" style="color:var(--ac)">Terse Cloud</a> fornisce analisi di team per sviluppatore, progetto e strumento.',
     'tools.price': 'Prezzo',
     'tools.limits': 'Limiti',
     'tools.context': 'Contesto',
@@ -3136,12 +3146,12 @@
 
     // CTA
     'cta.heading': 'Smetta di sprecare token e denaro.',
-    'cta.subtitle': 'Ottimizzi ogni prompt. Monitori ogni sessione. Scambi token inutilizzati — acquisti con il 50% di sconto o venda i crediti inutilizzati.',
+    'cta.subtitle': 'Ottimizzi ogni prompt. Monitori ogni sessione. E dia a tutto il suo team visibilità con Terse Cloud — analisi per sviluppatore, progetto e strumento.',
     'cta.onDevice': '100% sul dispositivo',
     'cta.zeroLatency': 'Zero latenza',
 
     // Footer
-    'footer.tagline': 'Ottimizzatore token + marketplace. Comprimi prompt, monitora agenti, rileva duplicati — scambia token API inutilizzati.',
+    'footer.tagline': 'Ottimizzatore token + analisi di team. Comprimi prompt, monitora agenti, rileva duplicati — monitora i costi IA del tuo team con Terse Cloud.',
     'footer.product': 'Prodotto',
     'footer.techniques': 'Tecniche',
     'footer.learn': 'Risorse',
@@ -3355,10 +3365,11 @@
 
     // Hero
     'hero.title1': 'Economize cada token.',
-    'hero.title2': 'Negocie o restante.',
-    'hero.subtitle': 'Reduza 40-70% dos custos de tokens de IA com otimização no dispositivo — ou compre tokens com até 50% de desconto na Bolsa de Tokens. Venda o que não usar. Pare de desperdiçar dinheiro com créditos de API ociosos.',
+    'hero.title2': 'Potencialize sua equipe.',
+    'hero.subtitle': 'Reduza 40-70% dos custos de tokens de IA com otimização no dispositivo — e dê a toda a sua equipe visibilidade completa com <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Análise de tokens por desenvolvedor, projeto e ferramenta.',
     'hero.download': 'Baixar otimizador',
     'hero.exchange': 'Comprar / Vender Tokens',
+    'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Após instalar, arraste o Terse para <strong>Aplicativos</strong> e cole este comando no <strong>Terminal</strong>:',
     'hero.installWarning': 'O macOS bloqueia apps não assinados por padrão — este comando remove o bloqueio. Necessário apenas uma vez após a instalação.',
 
@@ -3393,7 +3404,7 @@
 
     // Usage
     'usage.heading': 'Nenhuma ferramenta de IA oferece uso ilimitado.',
-    'usage.subtitle': 'Mesmo a $200/mês, toda ferramenta tem limites. O Terse comprime prompts para suas cotas durarem mais — e a Bolsa de Tokens permite comprar capacidade extra com até 50% de desconto, ou vender créditos ociosos.',
+    'usage.subtitle': 'Mesmo a $200/mês, toda ferramenta tem limites. O Terse comprime prompts para suas cotas durarem mais — e o <a href="/teams" style="color:var(--ac)">Terse Cloud</a> dá à sua equipe visibilidade completa sobre para onde vão os tokens.',
     'usage.calloutTitle': 'Uma sessão típica de 2 horas de programação com um agente de IA:',
     'usage.stat1': 'comandos CLI executados',
     'usage.stat2': 'tokens de prompt + ruído de CLI',
@@ -3402,7 +3413,7 @@
     // Tools
     'tools.sectionTitle': 'Toda ferramenta tem limites',
     'tools.heading': 'O Terse faz cada plano render mais.',
-    'tools.description': 'Independentemente da ferramenta de IA que você usa, limites de tokens e de taxa sempre se aplicam. O Terse comprime as entradas — e a Bolsa de Tokens permite comprar tokens extras por uma fração do preço.',
+    'tools.description': 'Independentemente da ferramenta de IA que sua equipe usa, os custos de tokens se acumulam rápido. O Terse comprime as entradas — e o <a href="/teams" style="color:var(--ac)">Terse Cloud</a> fornece análises de equipe por desenvolvedor, projeto e ferramenta.',
     'tools.price': 'Preço',
     'tools.limits': 'Limites',
     'tools.context': 'Contexto',
@@ -3470,12 +3481,12 @@
 
     // CTA
     'cta.heading': 'Pare de desperdiçar tokens e dinheiro.',
-    'cta.subtitle': 'Otimize cada prompt. Monitore cada sessão. Negocie tokens não utilizados — compre com 50% de desconto ou venda créditos ociosos.',
+    'cta.subtitle': 'Otimize cada prompt. Monitore cada sessão. E dê a toda a sua equipe visibilidade com o Terse Cloud — análises por desenvolvedor, projeto e ferramenta.',
     'cta.onDevice': '100% no dispositivo',
     'cta.zeroLatency': 'Zero latência',
 
     // Footer
-    'footer.tagline': 'Otimizador de tokens + marketplace. Comprima prompts, monitore agentes, detecte duplicatas — negocie tokens de API não utilizados.',
+    'footer.tagline': 'Otimizador de tokens + análise de equipe. Comprima prompts, monitore agentes, detecte duplicatas — monitore os custos de IA da sua equipe com o Terse Cloud.',
     'footer.product': 'Produto',
     'footer.techniques': 'Técnicas',
     'footer.learn': 'Aprenda',

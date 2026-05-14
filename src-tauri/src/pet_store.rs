@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 // Cost in coins to unlock a pet or a skin (1 coin = 1 optimization call)
 pub const UNLOCK_COST_PET: u64 = 20;
-pub const UNLOCK_COST_SKIN: u64 = 20;
+pub const UNLOCK_COST_SKIN: u64 = 400;
 
 // Default skin id every owned pet gets for free.
 pub const DEFAULT_SKIN: &str = "default";

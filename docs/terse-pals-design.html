@@ -1,0 +1,1172 @@
+r<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse Pals</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#fff;font-family:-apple-system,'Helvetica Neue',sans-serif;}
+header{text-align:center;padding:56px 24px 44px;}
+h1{font-size:2rem;font-weight:800;color:#111;letter-spacing:-.5px;}
+.sub{font-size:.88rem;color:#aaa;margin-top:6px;}
+.wrap{max-width:1140px;margin:0 auto;padding:0 20px 72px;}
+.sh{font-size:.66rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ccc;margin-bottom:18px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-bottom:56px;}
+.card{background:#fff;border-radius:22px;padding:16px 8px 14px;text-align:center;
+      box-shadow:0 1px 8px rgba(0,0,0,.07),0 0 0 1px rgba(0,0,0,.04);cursor:pointer;}
+.pal{display:inline-block;will-change:transform;transform-origin:center bottom;}
+.cname{font-size:.80rem;font-weight:700;color:#222;margin-top:6px;}
+.csub{font-size:.66rem;color:#ccc;margin-top:1px;}
+
+/* ── idle animations ──────────────────────────────────────────────── */
+@keyframes axie-drift{
+  0%  {transform:translate(0,0) rotate(0)}
+  20% {transform:translate(4px,-9px) rotate(3.5deg)}
+  45% {transform:translate(1px,-12px) rotate(0)}
+  65% {transform:translate(-5px,-7px) rotate(-3.5deg)}
+  85% {transform:translate(-2px,-3px) rotate(-1deg)}
+  100%{transform:translate(0,0) rotate(0)}
+}
+@keyframes capy-zen{
+  0%,100%{transform:translateY(0) rotate(0)}
+  50%    {transform:translateY(-2px) rotate(.3deg)}
+}
+@keyframes shibu-zoomies{
+  0%,100%{transform:translateY(0) rotate(0)}
+  10%    {transform:translateY(-13px) rotate(-7deg)}
+  22%    {transform:translateY(-20px) rotate(7deg)}
+  34%    {transform:translateY(-14px) rotate(-5deg)}
+  46%    {transform:translateY(-19px) rotate(5deg)}
+  60%    {transform:translateY(-9px) rotate(-2deg)}
+  76%    {transform:translateY(-3px) rotate(1deg)}
+}
+@keyframes roro-tumble{
+  0%,100%{transform:translateY(0) rotate(0)}
+  25%    {transform:translateY(-13px) rotate(-9deg)}
+  50%    {transform:translateY(-16px) rotate(0)}
+  75%    {transform:translateY(-12px) rotate(9deg)}
+}
+@keyframes waddle-toe{
+  0%,100%{transform:rotate(-11deg) translateY(1px)}
+  50%    {transform:rotate(11deg) translateY(1px)}
+}
+@keyframes quack-bob{
+  0%,100%{transform:translateY(0) rotate(0)}
+  18%    {transform:translateY(-8px) rotate(-10deg)}
+  45%    {transform:translateY(-5px) rotate(0)}
+  68%    {transform:translateY(-8px) rotate(10deg)}
+}
+@keyframes mochi-loaf{
+  0%,100%{transform:scale(1,1)}
+  35%    {transform:scale(1.05,.93)}
+  65%    {transform:scale(1.07,.90)}
+}
+@keyframes frog-hop{
+  0%,100%{transform:translateY(0) scaleX(1) scaleY(1)}
+  10%    {transform:translateY(5px) scaleX(1.18) scaleY(.78)}
+  28%    {transform:translateY(-26px) scaleX(.84) scaleY(1.18)}
+  48%    {transform:translateY(4px) scaleX(1.14) scaleY(.82)}
+  64%    {transform:translateY(-10px) scaleX(.93) scaleY(1.08)}
+  82%    {transform:translateY(0) scaleX(1.03) scaleY(.97)}
+}
+@keyframes bun-hop{
+  0%,100%{transform:translateY(0) scaleX(1) scaleY(1)}
+  28%    {transform:translateY(-11px) rotate(-2deg) scaleX(.93) scaleY(1.08)}
+  50%    {transform:translateY(-14px) rotate(0) scaleX(.91) scaleY(1.11)}
+  70%    {transform:translateY(-9px) rotate(2deg) scaleX(.94) scaleY(1.07)}
+  85%    {transform:translateY(2px) scaleX(1.07) scaleY(.92)}
+}
+@keyframes kuma-nap{
+  0%,100%{transform:translateY(0) scale(1)}
+  30%    {transform:translateY(-3px) scale(1.02,1)}
+  55%    {transform:translateY(-5px) scale(1.03,.97)}
+  75%    {transform:translateY(-3px) scale(1.02,1)}
+}
+@keyframes kitsune-play{
+  0%,100%{transform:translateY(0) rotate(0)}
+  6%     {transform:translateY(0) rotate(-17deg)}
+  13%    {transform:translateY(0) rotate(17deg)}
+  20%    {transform:translateY(0) rotate(-10deg)}
+  27%    {transform:translateY(0) rotate(0)}
+  42%    {transform:translateY(-13px) rotate(-3deg)}
+  58%    {transform:translateY(-15px) rotate(3deg)}
+  74%    {transform:translateY(-7px) rotate(0)}
+}
+@keyframes maru-munch{
+  0%,100%{transform:rotate(0) scaleX(1)}
+  12%    {transform:rotate(-5deg) scaleX(1.10)}
+  25%    {transform:rotate(5deg) scaleX(.92)}
+  38%    {transform:rotate(-5deg) scaleX(1.10)}
+  50%    {transform:rotate(5deg) scaleX(.92)}
+  62%    {transform:rotate(-2.5deg) scaleX(1.04)}
+  75%    {transform:rotate(0) scaleX(1)}
+}
+
+/* ── idle animations (new 20) ──────────────────────────────────── */
+@keyframes narwhal-drift{
+  0%,100%{transform:translate(0,0) rotate(0)}
+  22%    {transform:translate(-7px,-14px) rotate(-5deg)}
+  45%    {transform:translate(2px,-18px) rotate(2deg)}
+  68%    {transform:translate(6px,-10px) rotate(4deg)}
+}
+@keyframes corgi-trot{
+  0%,100%{transform:translateY(0) rotate(0)}
+  15%    {transform:translateY(-7px) rotate(-4deg)}
+  30%    {transform:translateY(-3px) rotate(0)}
+  45%    {transform:translateY(-8px) rotate(4deg)}
+  60%    {transform:translateY(-3px) rotate(0)}
+}
+@keyframes sheep-graze{
+  0%,55%,100%{transform:translateY(0) rotate(0)}
+  70%        {transform:translateY(5px) rotate(-4deg)}
+  85%        {transform:translateY(6px) rotate(-5deg)}
+}
+@keyframes persian-purr{
+  0%,100%{transform:scale(1,1)}
+  38%    {transform:scale(1.05,.93)}
+  68%    {transform:scale(.96,1.04)}
+}
+@keyframes tanuki-waddle{
+  0%,100%{transform:translateY(0) rotate(0)}
+  25%    {transform:translateY(-9px) rotate(-8deg)}
+  50%    {transform:translateY(-13px) rotate(0)}
+  75%    {transform:translateY(-9px) rotate(8deg)}
+}
+@keyframes deer-prance{
+  0%,100%{transform:translateY(0) rotate(0)}
+  20%    {transform:translateY(-16px) rotate(-3deg)}
+  40%    {transform:translateY(-20px) rotate(0)}
+  60%    {transform:translateY(-16px) rotate(3deg)}
+  80%    {transform:translateY(-5px) rotate(0)}
+}
+@keyframes nemu-nap{
+  0%,100%{transform:translateY(0) scale(1)}
+  45%    {transform:translateY(-2px) scale(1.03,.96)}
+}
+@keyframes koi-swim{
+  0%,100%{transform:translateX(0) rotate(0)}
+  22%    {transform:translateX(-9px) rotate(-7deg)}
+  44%    {transform:translateX(5px) rotate(5deg)}
+  66%    {transform:translateX(10px) rotate(7deg)}
+  84%    {transform:translateX(-4px) rotate(-3deg)}
+}
+@keyframes arctic-play{
+  0%,100%{transform:translateY(0) rotate(0)}
+  14%    {transform:translateY(-11px) rotate(-14deg)}
+  30%    {transform:translateY(-7px) rotate(10deg)}
+  46%    {transform:translateY(-13px) rotate(-8deg)}
+  65%    {transform:translateY(-4px) rotate(2deg)}
+}
+@keyframes seal-bob{
+  0%,100%{transform:translateY(0) rotate(0)}
+  30%    {transform:translateY(-4px) rotate(-3deg)}
+  60%    {transform:translateY(-6px) rotate(3deg)}
+}
+@keyframes pom-bounce{
+  0%,100%{transform:translateY(0) scaleX(1) scaleY(1)}
+  14%    {transform:translateY(3px) scaleX(1.12) scaleY(.84)}
+  30%    {transform:translateY(-17px) scaleX(.88) scaleY(1.14)}
+  50%    {transform:translateY(2px) scaleX(1.10) scaleY(.86)}
+  66%    {transform:translateY(-8px) scaleX(.95) scaleY(1.06)}
+  82%    {transform:translateY(0) scaleX(1.02) scaleY(.98)}
+}
+@keyframes panda-munch{
+  0%,100%{transform:rotate(0) scaleX(1)}
+  16%    {transform:rotate(-4deg) scaleX(1.08)}
+  33%    {transform:rotate(4deg) scaleX(.93)}
+  52%    {transform:rotate(-2deg) scaleX(1.04)}
+  70%    {transform:rotate(0) scaleX(1)}
+}
+@keyframes cockatiel-bob{
+  0%,100%{transform:translateY(0) rotate(0)}
+  22%    {transform:translateY(-7px) rotate(-7deg)}
+  44%    {transform:translateY(-4px) rotate(0)}
+  66%    {transform:translateY(-8px) rotate(7deg)}
+}
+@keyframes owl-sway{
+  0%,100%{transform:rotate(0)}
+  35%    {transform:rotate(-4deg)}
+  65%    {transform:rotate(4deg)}
+}
+@keyframes jelly-pulse{
+  0%,100%{transform:scaleX(1) scaleY(1) translateY(0)}
+  32%    {transform:scaleX(1.12) scaleY(.86) translateY(3px)}
+  62%    {transform:scaleX(.90) scaleY(1.12) translateY(-5px)}
+}
+@keyframes puff-inflate{
+  0%,100%{transform:scale(1)}
+  50%    {transform:scale(1.16,.90)}
+}
+@keyframes monkey-swing{
+  0%,100%{transform:translateY(0) rotate(0)}
+  25%    {transform:translateY(-10px) rotate(-12deg)}
+  50%    {transform:translateY(-14px) rotate(0)}
+  75%    {transform:translateY(-10px) rotate(12deg)}
+}
+@keyframes chick-peep{
+  0%,100%{transform:translateY(0) scaleX(1) scaleY(1)}
+  20%    {transform:translateY(-10px) scaleX(.90) scaleY(1.12)}
+  40%    {transform:translateY(-14px) rotate(-3deg)}
+  60%    {transform:translateY(-10px) rotate(3deg) scaleX(.92) scaleY(1.10)}
+  80%    {transform:translateY(-2px) scaleX(1.05) scaleY(.95)}
+}
+@keyframes sloth-hang{
+  0%,100%{transform:rotate(-7deg) translateY(0)}
+  50%    {transform:rotate(7deg) translateY(-3px)}
+}
+@keyframes otter-roll{
+  0%,100%{transform:translateY(0) rotate(0)}
+  25%    {transform:translateY(-8px) rotate(-16deg)}
+  50%    {transform:translateY(-10px) rotate(0)}
+  75%    {transform:translateY(-8px) rotate(16deg)}
+}
+
+/* ── hover jelly ─────────────────────────────────────────────────── */
+@keyframes jelly{
+  0%  {transform:translateY(0) scaleX(1) scaleY(1)}
+  10% {transform:translateY(4px) scaleX(1.15) scaleY(.80)}
+  26% {transform:translateY(-24px) scaleX(.86) scaleY(1.16)}
+  44% {transform:translateY(3px) scaleX(1.11) scaleY(.85)}
+  58% {transform:translateY(-11px) scaleX(.95) scaleY(1.06)}
+  70% {transform:translateY(1px) scaleX(1.04) scaleY(.96)}
+  82% {transform:translateY(-5px) scaleX(.98) scaleY(1.02)}
+  100%{transform:translateY(0) scaleX(1) scaleY(1)}
+}
+
+/* ── sub-element CSS animations ──────────────────────────────────── */
+@keyframes tail-wag{
+  0%,100%{transform:rotate(-30deg)}
+  50%    {transform:rotate(30deg)}
+}
+.shibu-tail{transform-box:fill-box;transform-origin:15% 85%;
+            animation:tail-wag .50s ease-in-out infinite;}
+
+@keyframes gill-sway{
+  0%,100%{transform:scaleY(1)}
+  50%    {transform:scaleY(1.28)}
+}
+.axie-gill-L{transform-box:fill-box;transform-origin:50% 100%;
+             animation:gill-sway 1.7s ease-in-out 0s infinite;}
+.axie-gill-C{transform-box:fill-box;transform-origin:50% 100%;
+             animation:gill-sway 1.7s ease-in-out .32s infinite;}
+.axie-gill-R{transform-box:fill-box;transform-origin:50% 100%;
+             animation:gill-sway 1.7s ease-in-out .64s infinite;}
+
+@keyframes ear-L-twitch{
+  0%,55%,100%{transform:rotate(-9deg)}
+  28%        {transform:rotate(-26deg)}
+}
+@keyframes ear-R-twitch{
+  0%,18%,100%{transform:rotate(9deg)}
+  48%        {transform:rotate(26deg)}
+}
+.bun-ear-L{transform-box:fill-box;transform-origin:50% 88%;
+           animation:ear-L-twitch 3.0s ease-in-out 0s infinite;}
+.bun-ear-R{transform-box:fill-box;transform-origin:50% 88%;
+           animation:ear-R-twitch 3.6s ease-in-out .8s infinite;}
+
+@keyframes mochi-tail-flick{
+  0%,60%,100%{transform:rotate(0)}
+  72%        {transform:rotate(-42deg)}
+  86%        {transform:rotate(16deg)}
+}
+.mochi-tail{transform-box:fill-box;transform-origin:95% 50%;
+            animation:mochi-tail-flick 4.2s ease-in-out infinite;}
+
+@keyframes roro-tail-sway{
+  0%,100%{transform:rotate(-20deg)}
+  50%    {transform:rotate(-4deg)}
+}
+.roro-tail{transform-box:fill-box;transform-origin:50% 90%;
+           animation:roro-tail-sway 2.1s ease-in-out infinite;}
+
+@keyframes kitsune-tail-sway{
+  0%,100%{transform:rotate(0)}
+  50%    {transform:rotate(14deg)}
+}
+.kt0{transform-box:fill-box;transform-origin:50% 90%;
+     animation:kitsune-tail-sway 1.5s ease-in-out 0.0s infinite;}
+.kt1{transform-box:fill-box;transform-origin:50% 90%;
+     animation:kitsune-tail-sway 1.5s ease-in-out 0.22s infinite;}
+.kt2{transform-box:fill-box;transform-origin:50% 90%;
+     animation:kitsune-tail-sway 1.5s ease-in-out 0.44s infinite;}
+
+.maru-cheek{transform-box:fill-box;transform-origin:center;transition:transform .28s ease;}
+
+/* stages */
+.stages{display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px;}
+.stg{flex:0 0 auto;text-align:center;}
+.stg-lbl{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#ddd;margin-bottom:6px;}
+.stg-cst{font-size:.64rem;font-weight:700;color:#f0a020;margin-top:5px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Terse Pals</h1>
+  <p class="sub">养成系统 · grow your companion with every token you save</p>
+</header>
+<div class="wrap">
+  <div class="sh">32 companions</div>
+  <div class="grid" id="grid"></div>
+  <div class="sh">growth stages</div>
+  <div class="stages" id="stages"></div>
+</div>
+<script>
+const dk=(h,f)=>'#'+[16,8,0].map(s=>Math.max(0,Math.round(((parseInt(h.slice(1),16)>>s)&255)*f)).toString(16).padStart(2,'0')).join('');
+const lt=(h,f)=>'#'+[16,8,0].map(s=>Math.min(255,Math.round(((parseInt(h.slice(1),16)>>s)&255)*f)).toString(16).padStart(2,'0')).join('');
+
+const PALS=[
+  {id:'axie',   name:'Axie',   sub:'Axolotl',   body:'#F2A8C4',earIn:'#FCDAE8',acc:'#B890E0',anim:'axie-drift',   spd:3.6},
+  {id:'capy',   name:'Capy',   sub:'Capybara',  body:'#D4A870',earIn:'#EAD0A8',acc:'#F0B020',anim:'capy-zen',     spd:6.2},
+  {id:'shibu',  name:'Shibu',  sub:'Shiba Inu', body:'#F0A040',earIn:'#F8CC88',acc:'#E8C840',anim:'shibu-zoomies',spd:2.3},
+  {id:'roro',   name:'Roro',   sub:'Red Panda', body:'#E07060',earIn:'#F0B0A0',acc:'#E8C030',anim:'roro-tumble',  spd:3.0},
+  {id:'waddle', name:'Waddle', sub:'Penguin',   body:'#4870A0',earIn:'#8090A8',acc:'#E03030',anim:'waddle-toe',   spd:1.6},
+  {id:'quack',  name:'Quack',  sub:'Duck',      body:'#F4CC40',earIn:'#F8E898',acc:'#F09030',anim:'quack-bob',    spd:2.2},
+  {id:'mochi',  name:'Mochi',  sub:'Fold Cat',  body:'#A8A4C4',earIn:'#CCCCE0',acc:'#C0B8D8',anim:'mochi-loaf',  spd:4.2},
+  {id:'rivet',  name:'Rivet',  sub:'Tree Frog', body:'#50B870',earIn:'#88D0A0',acc:'#D8D040',anim:'frog-hop',     spd:1.9},
+  {id:'bun',    name:'Bun',    sub:'Bunny',     body:'#ECD8D4',earIn:'#F8ECEC',acc:'#EFAAB8',anim:'bun-hop',      spd:3.1},
+  {id:'kuma',   name:'Kuma',   sub:'Brown Bear',body:'#C09060',earIn:'#D8B888',acc:'#F0C040',anim:'kuma-nap',     spd:4.8},
+  {id:'kitsune',name:'Kitsune',sub:'Fox',       body:'#E888B0',earIn:'#F4BAD0',acc:'#5C9C50',anim:'kitsune-play', spd:4.0},
+  {id:'maru',   name:'Maru',   sub:'Hamster',   body:'#E8A870',earIn:'#F4C8A8',acc:'#8B6234',anim:'maru-munch',   spd:1.2},
+  {id:'panda',  name:'Panda',  sub:'Giant Panda',body:'#F0EEE8',earIn:'#E8E4DC',acc:'#1A1020',anim:'panda-munch',  spd:5.0},
+  {id:'otter',  name:'Otter',  sub:'Sea Otter',  body:'#A87850',earIn:'#C8A878',acc:'#E8D0A0',anim:'otter-roll',   spd:4.4},
+  {id:'sloth',  name:'Sloth',  sub:'Three-Toed', body:'#B0A090',earIn:'#C8BAA8',acc:'#6A9050',anim:'sloth-hang',   spd:7.0},
+  {id:'corgi',  name:'Corgi',  sub:'Pembroke',   body:'#E8A850',earIn:'#F4C888',acc:'#F8E8D0',anim:'corgi-trot',   spd:1.8},
+  {id:'seal',   name:'Seal',   sub:'Harp Seal',  body:'#F0EEE8',earIn:'#FAFAF8',acc:'#90B8D0',anim:'seal-bob',     spd:2.6},
+  {id:'tanuki', name:'Tanuki', sub:'Raccoon Dog', body:'#C0987A',earIn:'#D8C0A0',acc:'#6A4A28',anim:'tanuki-waddle',spd:3.8},
+  {id:'sheep',  name:'Sheep',  sub:'Baby Sheep',  body:'#F4F0E8',earIn:'#FFFCF8',acc:'#C8B8A0',anim:'sheep-graze', spd:5.5},
+  {id:'persian',name:'Persian',sub:'Persian Cat', body:'#B8B4C0',earIn:'#D0CCE0',acc:'#F0C8D0',anim:'persian-purr',spd:4.8},
+  {id:'deer',   name:'Deer',   sub:'Baby Fawn',   body:'#D4A870',earIn:'#E8C898',acc:'#FFFFFF', anim:'deer-prance', spd:3.0},
+  {id:'nemu',   name:'Nemu',   sub:'Sleepy Cat',  body:'#6A6878',earIn:'#8888A0',acc:'#F0C8C8',anim:'nemu-nap',    spd:6.0},
+  {id:'koi',    name:'Koi',    sub:'Koi Fish',    body:'#E04030',earIn:'#F08070',acc:'#F8F8F0',anim:'koi-swim',    spd:3.4},
+  {id:'arctic', name:'Arctic', sub:'Arctic Fox',  body:'#F0F0F0',earIn:'#FAFAFA',acc:'#A8C0D8',anim:'arctic-play', spd:2.8},
+  {id:'pom',    name:'Pom',    sub:'Pomeranian',  body:'#F0A848',earIn:'#F8CC80',acc:'#E89040',anim:'pom-bounce',  spd:1.6},
+  {id:'tiel',   name:'Tiel',   sub:'Cockatiel',   body:'#F4D060',earIn:'#F8E898',acc:'#E87040',anim:'cockatiel-bob',spd:2.2},
+  {id:'owl',    name:'Owl',    sub:'Little Owl',  body:'#B09060',earIn:'#C8B080',acc:'#F0C840',anim:'owl-sway',    spd:4.0},
+  {id:'jelly',  name:'Jelly',  sub:'Moon Jelly',  body:'#E8A8D0',earIn:'#F0C8E0',acc:'#C888C0',anim:'jelly-pulse', spd:3.6},
+  {id:'puff',   name:'Puff',   sub:'Pufferfish',  body:'#70B8A8',earIn:'#98D0C0',acc:'#F0D850',anim:'puff-inflate',spd:4.0},
+  {id:'monkey', name:'Monkey', sub:'Baby Monkey', body:'#C09068',earIn:'#D8B890',acc:'#E8C8A0',anim:'monkey-swing',spd:2.4},
+  {id:'chick',  name:'Chick',  sub:'Baby Chick',  body:'#F8D850',earIn:'#FCE898',acc:'#F09040',anim:'chick-peep',  spd:2.0},
+  {id:'narwhal',name:'Narwhal',sub:'Narwhal',     body:'#A8C8E0',earIn:'#C8E0F0',acc:'#E0F0F8',anim:'narwhal-drift',spd:4.8},
+];
+
+const EYE='#1A1020';
+
+function palSVG(p,s,stg){
+  const SCALES=[.42,.56,.69,.82,.94,1.05];
+  const sc=SCALES[Math.min(stg,5)];
+  const cx=s*.50, cy=s*.57, r=s*.358;
+  const bDk=dk(p.body,.66);
+  let g='';
+
+  /* ── body shape params ── */
+  let bRx=r, bRy=r, bodyEl=null, topY, botY;
+  if(p.id==='capy'){
+    bRx=r*1.30; bRy=r*0.75;
+    bodyEl=`<ellipse cx="${cx}" cy="${cy}" rx="${bRx}" ry="${bRy}" fill="${p.body}"/>`;
+  } else if(p.id==='rivet'){
+    bRx=r*1.14; bRy=r*0.88;
+    bodyEl=`<ellipse cx="${cx}" cy="${cy}" rx="${bRx}" ry="${bRy}" fill="${p.body}"/>`;
+  } else if(p.id==='bun'){
+    bRx=r*0.91; bRy=r*1.08;
+    bodyEl=`<ellipse cx="${cx}" cy="${cy}" rx="${bRx}" ry="${bRy}" fill="${p.body}"/>`;
+  } else if(p.id==='waddle'){
+    // egg: narrow top, wide bottom
+    const w=r*0.87, ht=r;
+    bodyEl=`<path d="M${cx},${cy-ht} C${cx+w*.54},${cy-ht} ${cx+w},${cy-ht*.12} ${cx+w},${cy+ht*.32} C${cx+w},${cy+ht*1.05} ${cx+w*.60},${cy+ht} ${cx},${cy+ht} C${cx-w*.60},${cy+ht} ${cx-w},${cy+ht*1.05} ${cx-w},${cy+ht*.32} C${cx-w},${cy-ht*.12} ${cx-w*.54},${cy-ht} ${cx},${cy-ht} Z" fill="${p.body}"/>`;
+    bRx=w; bRy=ht;
+  } else if(p.id==='mochi'){
+    // cat loaf: rounded rectangle
+    const ww=r*1.10, hh=r*0.84, rr=r*0.46;
+    bodyEl=`<rect x="${cx-ww}" y="${cy-hh}" width="${ww*2}" height="${hh*2}" rx="${rr}" ry="${rr}" fill="${p.body}"/>`;
+    bRx=ww; bRy=hh;
+  } else if(p.id==='roro'){
+    // pear: slightly bottom-heavy
+    const w=r*0.96, ht=r, hb=r*1.05;
+    bodyEl=`<path d="M${cx},${cy-ht} C${cx+w*.54},${cy-ht} ${cx+w},${cy-ht*.28} ${cx+w},${cy+hb*.18} C${cx+w},${cy+hb} ${cx+w*.64},${cy+hb} ${cx},${cy+hb} C${cx-w*.64},${cy+hb} ${cx-w},${cy+hb} ${cx-w},${cy+hb*.18} C${cx-w},${cy-ht*.28} ${cx-w*.54},${cy-ht} ${cx},${cy-ht} Z" fill="${p.body}"/>`;
+    bRx=w; bRy=ht;
+  } else if(p.id==='maru'){
+    // wide round body — cheeks protrude as separate circles
+    bRx=r; bRy=r;
+    bodyEl=null;
+  } else if(p.id==='corgi'){
+    bRx=r*1.05; bRy=r*0.90;
+    bodyEl=`<ellipse cx="${cx}" cy="${cy}" rx="${bRx}" ry="${bRy}" fill="${p.body}"/>`;
+  } else if(p.id==='narwhal'||p.id==='koi'){
+    bRx=r*1.22; bRy=r*0.78;
+    bodyEl=`<ellipse cx="${cx}" cy="${cy}" rx="${bRx}" ry="${bRy}" fill="${p.body}"/>`;
+  } else if(p.id==='jelly'){
+    const bw=r*1.06, bh=r*0.68;
+    bodyEl=`<path d="M${cx-bw},${cy} C${cx-bw},${cy-bh*1.55} ${cx+bw},${cy-bh*1.55} ${cx+bw},${cy} C${cx+bw},${cy+bh*.35} ${cx+bw*.60},${cy+bh*.68} ${cx},${cy+bh*.68} C${cx-bw*.60},${cy+bh*.68} ${cx-bw},${cy+bh*.35} ${cx-bw},${cy} Z" fill="${p.body}" opacity=".90"/>`;
+    bRx=bw; bRy=bh;
+  } else if(p.id==='sheep'){
+    bRx=r*1.06; bRy=r*1.02;
+    bodyEl=`<ellipse cx="${cx}" cy="${cy}" rx="${bRx}" ry="${bRy}" fill="${p.body}"/>`;
+  } else if(p.id==='owl'){
+    bRx=r*0.94; bRy=r*1.06;
+    bodyEl=`<ellipse cx="${cx}" cy="${cy}" rx="${bRx}" ry="${bRy}" fill="${p.body}"/>`;
+  }
+  topY = cy - bRy;
+  botY = cy + bRy;
+  // roro pear bottom is slightly lower
+  if(p.id==='roro') botY = cy + r*1.05;
+
+  /* ── LAYER 1: behind body ── */
+
+  // Roro ringed tail
+  if(p.id==='roro'){
+    const tx=cx+bRx*.80, ty=cy+bRy*.44, tR=r*.52;
+    g+=`<g class="roro-tail">`;
+    g+=`<ellipse cx="${tx}" cy="${ty}" rx="${tR*.46}" ry="${tR}" fill="${p.body}" transform="rotate(-20,${tx},${ty})"/>`;
+    [-0.72,-0.34,0.06,0.46].forEach(o=>{
+      g+=`<ellipse cx="${tx}" cy="${ty+tR*o}" rx="${tR*.44}" ry="${tR*.098}" fill="${dk(p.body,.60)}" opacity=".65" transform="rotate(-20,${tx},${ty})"/>`;
+    });
+    g+=`<ellipse cx="${tx}" cy="${ty-tR*.78}" rx="${tR*.30}" ry="${tR*.22}" fill="white" opacity=".86" transform="rotate(-20,${tx},${ty})"/>`;
+    g+=`</g>`;
+  }
+
+  // Kitsune 3 tails
+  if(p.id==='kitsune'){
+    [[-22,'kt0'],[-7,'kt1'],[9,'kt2']].forEach(([ang,cls])=>{
+      const tx=cx+r*.60, ty=cy+r*.36, tL=r*.76;
+      g+=`<g class="${cls}">`;
+      g+=`<ellipse cx="${tx}" cy="${ty}" rx="${r*.22}" ry="${tL}" fill="${p.body}" transform="rotate(${ang-8},${tx},${ty+tL*.44})"/>`;
+      g+=`<ellipse cx="${tx}" cy="${ty-tL*.65}" rx="${r*.16}" ry="${r*.19}" fill="white" opacity=".82" transform="rotate(${ang-8},${tx},${ty+tL*.44})"/>`;
+      g+=`</g>`;
+    });
+  }
+
+  // Shibu curled tail
+  if(p.id==='shibu'){
+    g+=`<g class="shibu-tail">`;
+    g+=`<path d="M${cx+r*.64},${cy+r*.38} Q${cx+r*1.22},${cy+r*.06} ${cx+r*.92},${cy-r*.28} Q${cx+r*.62},${cy-r*.56} ${cx+r*.40},${cy-r*.36}" fill="none" stroke="${lt(p.body,1.10)}" stroke-width="${r*.30}" stroke-linecap="round"/>`;
+    g+=`<path d="M${cx+r*.64},${cy+r*.38} Q${cx+r*1.22},${cy+r*.06} ${cx+r*.92},${cy-r*.28} Q${cx+r*.62},${cy-r*.56} ${cx+r*.40},${cy-r*.36}" fill="none" stroke="${lt(p.body,1.26)}" stroke-width="${r*.14}" stroke-linecap="round"/>`;
+    g+=`</g>`;
+  }
+
+  // Maru cheek blobs behind body
+  if(p.id==='maru'){
+    g+=`<circle cx="${cx-r*.84}" cy="${cy+r*.06}" r="${r*.48}" fill="${p.body}" class="maru-cheek"/>`;
+    g+=`<circle cx="${cx+r*.84}" cy="${cy+r*.06}" r="${r*.48}" fill="${p.body}" class="maru-cheek"/>`;
+  }
+
+  // Quack wings
+  if(p.id==='quack'){
+    g+=`<path d="M${cx-r},${cy+r*.04} Q${cx-r*1.36},${cy-r*.22} ${cx-r*1.16},${cy+r*.38}" fill="${dk(p.body,.85)}" opacity=".93"/>`;
+    g+=`<path d="M${cx+r},${cy+r*.04} Q${cx+r*1.36},${cy-r*.22} ${cx+r*1.16},${cy+r*.38}" fill="${dk(p.body,.85)}" opacity=".93"/>`;
+  }
+
+  // Mochi tail behind body
+  if(p.id==='mochi'){
+    g+=`<g class="mochi-tail">`;
+    g+=`<path d="M${cx-bRx*.68},${cy+bRy*.52} Q${cx-bRx*1.20},${cy+bRy*.18} ${cx-bRx*1.12},${cy-bRy*.24}" fill="none" stroke="${lt(p.body,1.10)}" stroke-width="${r*.28}" stroke-linecap="round"/>`;
+    g+=`<path d="M${cx-bRx*.68},${cy+bRy*.52} Q${cx-bRx*1.20},${cy+bRy*.18} ${cx-bRx*1.12},${cy-bRy*.24}" fill="none" stroke="${lt(p.body,1.22)}" stroke-width="${r*.13}" stroke-linecap="round"/>`;
+    g+=`</g>`;
+  }
+  // Panda black ears (behind body circle)
+  if(p.id==='panda'){
+    const eR=r*.34, eHSp=r*.52;
+    g+=`<circle cx="${cx-eHSp}" cy="${topY+r*.12}" r="${eR}" fill="${p.acc}"/>`;
+    g+=`<circle cx="${cx+eHSp}" cy="${topY+r*.12}" r="${eR}" fill="${p.acc}"/>`;
+  }
+  // Corgi stub tail
+  if(p.id==='corgi'){
+    g+=`<path d="M${cx+bRx*.86},${cy-r*.12} Q${cx+bRx*1.26},${cy-r*.46} ${cx+bRx*1.06},${cy-r*.72}" fill="none" stroke="${lt(p.body,1.16)}" stroke-width="${r*.26}" stroke-linecap="round"/>`;
+    g+=`<path d="M${cx+bRx*.86},${cy-r*.12} Q${cx+bRx*1.26},${cy-r*.46} ${cx+bRx*1.06},${cy-r*.72}" fill="none" stroke="white" stroke-width="${r*.10}" stroke-linecap="round"/>`;
+  }
+  // Jelly tentacles
+  if(p.id==='jelly'){
+    const ty=cy+bRy*.62;
+    for(const [ox,wv,ln] of [[-r*.52,r*.18,r*.80],[-r*.24,-r*.14,r*.62],[r*.10,r*.16,r*.72],[r*.40,-r*.12,r*.56]]){
+      g+=`<path d="M${cx+ox},${ty} Q${cx+ox+wv},${ty+ln*.50} ${cx+ox+wv*.30},${ty+ln}" fill="none" stroke="${lt(p.body,1.24)}" stroke-width="${r*.07}" stroke-linecap="round" opacity=".75"/>`;
+    }
+  }
+  // Puff spines
+  if(p.id==='puff'){
+    for(let i=0;i<12;i++){
+      const a=(i/12)*Math.PI*2, x1=cx+Math.cos(a)*r, y1=cy+Math.sin(a)*r;
+      const x2=cx+Math.cos(a)*r*1.46, y2=cy+Math.sin(a)*r*1.46;
+      g+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${dk(p.body,.70)}" stroke-width="${(r*.08).toFixed(1)}" stroke-linecap="round"/>`;
+    }
+  }
+  // Narwhal horn + tail flukes
+  if(p.id==='narwhal'){
+    const hx=cx-r*.08, hy=topY;
+    g+=`<path d="M${hx-r*.14},${hy} L${hx},${hy-r*1.02} L${hx+r*.14},${hy}" fill="${lt(p.body,1.28)}" opacity=".92"/>`;
+    g+=`<path d="M${cx+bRx*.88},${cy-r*.08} Q${cx+bRx*1.28},${cy-r*.30} ${cx+bRx*1.46},${cy-r*.16}" fill="none" stroke="${p.body}" stroke-width="${r*.24}" stroke-linecap="round"/>`;
+    g+=`<path d="M${cx+bRx*.88},${cy+r*.08} Q${cx+bRx*1.28},${cy+r*.30} ${cx+bRx*1.46},${cy+r*.16}" fill="none" stroke="${p.body}" stroke-width="${r*.24}" stroke-linecap="round"/>`;
+  }
+  // Koi tail + side fins
+  if(p.id==='koi'){
+    g+=`<path d="M${cx+bRx*.88},${cy} Q${cx+bRx*1.28},${cy-r*.36} ${cx+bRx*1.52},${cy-r*.16}" fill="${dk(p.body,.78)}" opacity=".92"/>`;
+    g+=`<path d="M${cx+bRx*.88},${cy} Q${cx+bRx*1.28},${cy+r*.36} ${cx+bRx*1.52},${cy+r*.16}" fill="${dk(p.body,.78)}" opacity=".92"/>`;
+    g+=`<path d="M${cx-r*.10},${cy+bRy*.76} Q${cx+r*.30},${cy+bRy*1.28} ${cx+r*.50},${cy+bRy*.88}" fill="${p.body}" opacity=".60"/>`;
+  }
+  // Sloth long arms (hanging style)
+  if(p.id==='sloth'){
+    g+=`<path d="M${cx-r*.72},${cy-r*.22} Q${cx-r*1.20},${cy-r*.04} ${cx-r*1.30},${cy+r*.36}" fill="none" stroke="${lt(p.body,1.10)}" stroke-width="${r*.22}" stroke-linecap="round"/>`;
+    g+=`<path d="M${cx+r*.72},${cy-r*.22} Q${cx+r*1.20},${cy-r*.04} ${cx+r*1.30},${cy+r*.36}" fill="none" stroke="${lt(p.body,1.10)}" stroke-width="${r*.22}" stroke-linecap="round"/>`;
+  }
+
+  /* ── LAYER 2: ears ── */
+  if(p.id==='bun'){
+    const eRx=r*.192, eRy=r*.760, eCy=topY-eRy*.40;
+    const lx=cx-bRx*.375, rx2=cx+bRx*.375;
+    g+=`<g class="bun-ear-L">`;
+    g+=`<ellipse cx="${lx}" cy="${eCy}" rx="${eRx}" ry="${eRy}" fill="${p.body}" transform="rotate(-9,${lx},${eCy+eRy*.62})"/>`;
+    g+=`<ellipse cx="${lx}" cy="${eCy}" rx="${eRx*.44}" ry="${eRy*.80}" fill="${p.earIn}" opacity=".80" transform="rotate(-9,${lx},${eCy+eRy*.62})"/>`;
+    g+=`</g>`;
+    g+=`<g class="bun-ear-R">`;
+    g+=`<ellipse cx="${rx2}" cy="${eCy}" rx="${eRx}" ry="${eRy}" fill="${p.body}" transform="rotate(9,${rx2},${eCy+eRy*.62})"/>`;
+    g+=`<ellipse cx="${rx2}" cy="${eCy}" rx="${eRx*.44}" ry="${eRy*.80}" fill="${p.earIn}" opacity=".80" transform="rotate(9,${rx2},${eCy+eRy*.62})"/>`;
+    g+=`</g>`;
+  } else if(p.id==='kitsune'){
+    const ex=r*.44, ey=topY+s*.022, tipY=ey-r*.72, bW2=r*.26, tipR=r*.14;
+    for(const ox of [cx-ex,cx+ex]){
+      g+=`<path d="M${ox-bW2},${ey} C${ox-bW2},${ey-r*.36} ${ox-tipR},${tipY} ${ox},${tipY} C${ox+tipR},${tipY} ${ox+bW2},${ey-r*.36} ${ox+bW2},${ey} Z" fill="${p.body}"/>`;
+      g+=`<path d="M${ox-bW2*.52},${ey-r*.04} C${ox-bW2*.52},${ey-r*.38} ${ox-tipR*.48},${tipY+r*.08} ${ox},${tipY+r*.08} C${ox+tipR*.48},${tipY+r*.08} ${ox+bW2*.52},${ey-r*.38} ${ox+bW2*.52},${ey-r*.04} Z" fill="${p.earIn}" opacity=".72"/>`;
+    }
+  } else if(p.id==='axie'){
+    // feathery gills (CSS animated individually)
+    const gY=topY-r*.08;
+    g+=`<ellipse cx="${cx-r*.40}" cy="${gY}" rx="${r*.112}" ry="${r*.36}" fill="${p.acc}" class="axie-gill-L" transform="rotate(-16,${cx-r*.40},${gY+r*.30})"/>`;
+    g+=`<ellipse cx="${cx}"       cy="${gY-r*.08}" rx="${r*.112}" ry="${r*.38}" fill="${p.acc}" class="axie-gill-C"/>`;
+    g+=`<ellipse cx="${cx+r*.40}" cy="${gY}" rx="${r*.112}" ry="${r*.36}" fill="${p.acc}" class="axie-gill-R" transform="rotate(16,${cx+r*.40},${gY+r*.30})"/>`;
+    for(const [gcx,rot,gyo] of [[cx-r*.40,-16,0],[cx,0,-r*.08],[cx+r*.40,16,0]]){
+      g+=`<circle cx="${gcx}" cy="${gY+gyo-r*.26}" r="${r*.058}" fill="${lt(p.acc,1.48)}" opacity=".92"/>`;
+    }
+  } else if(p.id==='rivet'){
+    // top-mounted eye bumps
+    g+=`<circle cx="${cx-bRx*.26}" cy="${topY+bRy*.04}" r="${r*.215}" fill="white"/>`;
+    g+=`<circle cx="${cx+bRx*.26}" cy="${topY+bRy*.04}" r="${r*.215}" fill="white"/>`;
+  } else if(p.id==='mochi'){
+    g+=`<ellipse cx="${cx-bRx*.50}" cy="${topY+r*.04}" rx="${r*.22}" ry="${r*.14}" fill="${p.body}" transform="rotate(-10,${cx-bRx*.50},${topY+r*.04})"/>`;
+    g+=`<ellipse cx="${cx+bRx*.50}" cy="${topY+r*.04}" rx="${r*.22}" ry="${r*.14}" fill="${p.body}" transform="rotate(10,${cx+bRx*.50},${topY+r*.04})"/>`;
+    g+=`<ellipse cx="${cx-bRx*.50}" cy="${topY+r*.04}" rx="${r*.12}" ry="${r*.07}" fill="${p.earIn}" opacity=".65" transform="rotate(-10,${cx-bRx*.50},${topY+r*.04})"/>`;
+    g+=`<ellipse cx="${cx+bRx*.50}" cy="${topY+r*.04}" rx="${r*.12}" ry="${r*.07}" fill="${p.earIn}" opacity=".65" transform="rotate(10,${cx+bRx*.50},${topY+r*.04})"/>`;
+  } else if(p.id==='capy'){
+    g+=`<circle cx="${cx-bRx*.82}" cy="${topY+r*.14}" r="${r*.16}" fill="${p.body}"/>`;
+    g+=`<circle cx="${cx+bRx*.82}" cy="${topY+r*.14}" r="${r*.16}" fill="${p.body}"/>`;
+    g+=`<circle cx="${cx-bRx*.82}" cy="${topY+r*.14}" r="${r*.09}" fill="${p.earIn}" opacity=".65"/>`;
+    g+=`<circle cx="${cx+bRx*.82}" cy="${topY+r*.14}" r="${r*.09}" fill="${p.earIn}" opacity=".65"/>`;
+  } else if(p.id==='panda'){
+    // inner ear circles on top of black ear circles (drawn in layer1)
+    const eHSp=r*.52;
+    g+=`<circle cx="${cx-eHSp}" cy="${topY+r*.12}" r="${r*.20}" fill="${lt(p.acc,1.40)}" opacity=".25"/>`;
+    g+=`<circle cx="${cx+eHSp}" cy="${topY+r*.12}" r="${r*.20}" fill="${lt(p.acc,1.40)}" opacity=".25"/>`;
+  } else if(p.id==='corgi'){
+    const eSp=r*.50, eH=r*.42, eW=r*.22;
+    for(const [ox,d] of [[cx-eSp,-1],[cx+eSp,1]]){
+      g+=`<path d="M${ox-eW*d*.6},${topY+r*.12} L${ox},${topY-eH} L${ox+eW*d*.6},${topY+r*.12} Z" fill="${p.body}"/>`;
+      g+=`<path d="M${ox-eW*d*.36},${topY+r*.08} L${ox},${topY-eH*.64} L${ox+eW*d*.36},${topY+r*.08} Z" fill="${p.earIn}" opacity=".60"/>`;
+    }
+  } else if(p.id==='sheep'){
+    const sEr=r*.26, sEy=cy-r*.46;
+    g+=`<ellipse cx="${cx-r*.84}" cy="${sEy}" rx="${sEr*.52}" ry="${sEr}" fill="${p.body}" transform="rotate(-14,${cx-r*.84},${sEy})"/>`;
+    g+=`<ellipse cx="${cx+r*.84}" cy="${sEy}" rx="${sEr*.52}" ry="${sEr}" fill="${p.body}" transform="rotate(14,${cx+r*.84},${sEy})"/>`;
+    g+=`<ellipse cx="${cx-r*.84}" cy="${sEy}" rx="${sEr*.28}" ry="${sEr*.64}" fill="${p.earIn}" opacity=".50" transform="rotate(-14,${cx-r*.84},${sEy})"/>`;
+    g+=`<ellipse cx="${cx+r*.84}" cy="${sEy}" rx="${sEr*.28}" ry="${sEr*.64}" fill="${p.earIn}" opacity=".50" transform="rotate(14,${cx+r*.84},${sEy})"/>`;
+  } else if(p.id==='deer'){
+    const dEx=r*.62, dEy=topY+r*.08;
+    for(const [ox,rot] of [[cx-dEx,-18],[cx+dEx,18]]){
+      g+=`<path d="M${ox-r*.12},${dEy} C${ox-r*.12},${dEy-r*.48} ${ox},${dEy-r*.86} ${ox+r*.04},${dEy-r*.86} C${ox+r*.16},${dEy-r*.86} ${ox+r*.26},${dEy-r*.48} ${ox+r*.26},${dEy} Z" fill="${p.body}" transform="rotate(${rot},${ox},${dEy})"/>`;
+      g+=`<path d="M${ox-r*.06},${dEy-r*.04} C${ox-r*.06},${dEy-r*.44} ${ox+r*.02},${dEy-r*.72} ${ox+r*.05},${dEy-r*.72} C${ox+r*.11},${dEy-r*.72} ${ox+r*.16},${dEy-r*.44} ${ox+r*.16},${dEy-r*.04} Z" fill="${p.earIn}" opacity=".55" transform="rotate(${rot},${ox},${dEy})"/>`;
+    }
+  } else if(p.id==='tiel'){
+    // crest feathers
+    const cY=topY-r*.02;
+    g+=`<path d="M${cx},${cY} Q${cx-r*.06},${cY-r*.50} ${cx-r*.02},${cY-r*.74}" fill="none" stroke="${p.acc}" stroke-width="${r*.12}" stroke-linecap="round"/>`;
+    g+=`<path d="M${cx},${cY} Q${cx+r*.10},${cY-r*.44} ${cx+r*.09},${cY-r*.68}" fill="none" stroke="${p.acc}" stroke-width="${r*.10}" stroke-linecap="round"/>`;
+    g+=`<path d="M${cx},${cY} Q${cx+r*.22},${cY-r*.36} ${cx+r*.26},${cY-r*.58}" fill="none" stroke="${lt(p.acc,1.30)}" stroke-width="${r*.08}" stroke-linecap="round"/>`;
+  } else if(p.id==='owl'){
+    // ear tufts
+    for(const [ox,rot] of [[cx-r*.38,-10],[cx+r*.38,10]]){
+      g+=`<path d="M${ox-r*.09},${topY+r*.10} L${ox},${topY-r*.26} L${ox+r*.09},${topY+r*.10} Z" fill="${p.body}" transform="rotate(${rot},${ox},${topY+r*.10})"/>`;
+      g+=`<path d="M${ox-r*.05},${topY+r*.07} L${ox},${topY-r*.16} L${ox+r*.05},${topY+r*.07} Z" fill="${dk(p.body,.76)}" opacity=".65" transform="rotate(${rot},${ox},${topY+r*.10})"/>`;
+    }
+  } else if(['narwhal','koi','jelly','puff','seal','chick'].includes(p.id)){
+    // no ears
+  } else if(p.id!=='waddle'&&p.id!=='quack'){
+    const eR=r*.295, eHSp=r*.580;
+    for(const [ex,rot] of [[cx-eHSp,-7],[cx+eHSp,7]]){
+      g+=`<circle cx="${ex}" cy="${topY+r*.04}" r="${eR}" fill="${p.body}" transform="rotate(${rot},${ex},${topY+r*.04+eR*.4})"/>`;
+      g+=`<circle cx="${ex}" cy="${topY+r*.04}" r="${eR*.56}" fill="${p.earIn}" opacity=".72" transform="rotate(${rot},${ex},${topY+r*.04+eR*.4})"/>`;
+    }
+  }
+
+  /* ── LAYER 3: main body ── */
+  if(bodyEl){
+    g+=bodyEl;
+  } else {
+    g+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${p.body}"/>`;
+  }
+
+  // body markings
+  if(p.id==='waddle')
+    g+=`<ellipse cx="${cx}" cy="${cy+bRy*.20}" rx="${bRx*.68}" ry="${bRy*.65}" fill="#ccdaea"/>`;
+  if(p.id==='kuma')
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.26}" rx="${r*.44}" ry="${r*.36}" fill="${lt(p.body,1.24)}" opacity=".76"/>`;
+  if(p.id==='roro'){
+    g+=`<ellipse cx="${cx-r*.30}" cy="${cy+r*.08}" rx="${r*.188}" ry="${r*.170}" fill="${dk(p.body,.55)}" opacity=".52"/>`;
+    g+=`<ellipse cx="${cx+r*.30}" cy="${cy+r*.08}" rx="${r*.188}" ry="${r*.170}" fill="${dk(p.body,.55)}" opacity=".52"/>`;
+  }
+  if(p.id==='mochi'){
+    const pY=cy+bRy*.73;
+    g+=`<circle cx="${cx-r*.26}" cy="${pY}" r="${r*.115}" fill="${lt(p.body,1.14)}" opacity=".80"/>`;
+    g+=`<circle cx="${cx}"       cy="${pY+r*.04}" r="${r*.115}" fill="${lt(p.body,1.14)}" opacity=".80"/>`;
+    g+=`<circle cx="${cx+r*.26}" cy="${pY}" r="${r*.115}" fill="${lt(p.body,1.14)}" opacity=".80"/>`;
+  }
+  if(p.id==='bun'){
+    g+=`<ellipse cx="${cx-r*.12}" cy="${cy+bRy*.67}" rx="${r*.19}" ry="${r*.125}" fill="${lt(p.body,1.12)}" opacity=".82" transform="rotate(-22,${cx-r*.12},${cy+bRy*.67})"/>`;
+    g+=`<ellipse cx="${cx+r*.14}" cy="${cy+bRy*.63}" rx="${r*.19}" ry="${r*.125}" fill="${lt(p.body,1.12)}" opacity=".82" transform="rotate(22,${cx+r*.14},${cy+bRy*.63})"/>`;
+  }
+  if(p.id==='maru'){
+    g+=`<circle cx="${cx-r*.84}" cy="${cy+r*.04}" r="${r*.30}" fill="${lt(p.body,1.12)}" opacity=".50" class="maru-cheek"/>`;
+    g+=`<circle cx="${cx+r*.84}" cy="${cy+r*.04}" r="${r*.30}" fill="${lt(p.body,1.12)}" opacity=".50" class="maru-cheek"/>`;
+  }
+  if(p.id==='axie'){
+    g+=`<circle cx="${cx-r*.28}" cy="${cy+r*.20}" r="${r*.08}" fill="${lt(p.acc,1.22)}" opacity=".44"/>`;
+    g+=`<circle cx="${cx+r*.32}" cy="${cy+r*.08}" r="${r*.06}" fill="${lt(p.acc,1.22)}" opacity=".34"/>`;
+    g+=`<circle cx="${cx+r*.10}" cy="${cy+r*.38}" r="${r*.055}" fill="${lt(p.acc,1.22)}" opacity=".30"/>`;
+  }
+  if(p.id==='shibu')
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.30}" rx="${r*.38}" ry="${r*.28}" fill="${lt(p.body,1.18)}" opacity=".50"/>`;
+  // Panda black eye patches + muzzle
+  if(p.id==='panda'){
+    g+=`<ellipse cx="${cx-r*.26}" cy="${cy+r*.02}" rx="${r*.20}" ry="${r*.18}" fill="${p.acc}" opacity=".90"/>`;
+    g+=`<ellipse cx="${cx+r*.26}" cy="${cy+r*.02}" rx="${r*.20}" ry="${r*.18}" fill="${p.acc}" opacity=".90"/>`;
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.28}" rx="${r*.32}" ry="${r*.24}" fill="${lt(p.body,1.06)}" opacity=".80"/>`;
+  }
+  // Tanuki dark mask + big belly
+  if(p.id==='tanuki'){
+    g+=`<ellipse cx="${cx-r*.24}" cy="${cy-r*.04}" rx="${r*.22}" ry="${r*.20}" fill="${dk(p.body,.58)}" opacity=".46"/>`;
+    g+=`<ellipse cx="${cx+r*.24}" cy="${cy-r*.04}" rx="${r*.22}" ry="${r*.20}" fill="${dk(p.body,.58)}" opacity=".46"/>`;
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.28}" rx="${r*.46}" ry="${r*.36}" fill="${lt(p.body,1.28)}" opacity=".65"/>`;
+  }
+  // Owl facial disc
+  if(p.id==='owl'){
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.04}" rx="${r*.62}" ry="${r*.58}" fill="${lt(p.body,1.22)}" opacity=".55"/>`;
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.04}" rx="${r*.46}" ry="${r*.42}" fill="${lt(p.body,1.36)}" opacity=".40"/>`;
+  }
+  // Koi two-color pattern
+  if(p.id==='koi'){
+    g+=`<ellipse cx="${cx-bRx*.28}" cy="${cy-bRy*.30}" rx="${r*.38}" ry="${r*.34}" fill="${p.acc}" opacity=".92"/>`;
+    g+=`<ellipse cx="${cx+bRx*.22}" cy="${cy+bRy*.25}" rx="${r*.32}" ry="${r*.28}" fill="${p.acc}" opacity=".78"/>`;
+  }
+  // Sheep fluffy texture bumps
+  if(p.id==='sheep'){
+    const bR=r*.30;
+    for(const [ox,oy,or] of [[-r*.44,-r*.32,.88],[r*.40,-r*.36,.88],[0,-r*.58,.92],[-r*.72,-.10,.80],[r*.68,-.08,.80],[-r*.34,r*.18,.72],[r*.32,r*.22,.72]]){
+      g+=`<circle cx="${cx+ox}" cy="${cy+oy}" r="${bR*or}" fill="${lt(p.body,1.04)}" opacity=".60"/>`;
+    }
+  }
+  // Deer spots
+  if(p.id==='deer'){
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.30}" rx="${r*.38}" ry="${r*.26}" fill="${lt(p.body,1.26)}" opacity=".65"/>`;
+    for(const [ox,oy,sr] of [[-r*.20,-r*.08,.092],[r*.18,-r*.14,.078],[-r*.08,r*.06,.068],[r*.28,r*.04,.062]]){
+      g+=`<circle cx="${cx+ox}" cy="${cy+oy}" r="${r*sr}" fill="white" opacity=".88"/>`;
+    }
+  }
+  // Otter lighter belly
+  if(p.id==='otter'){
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.22}" rx="${r*.46}" ry="${r*.52}" fill="${lt(p.body,1.38)}" opacity=".65"/>`;
+  }
+  // Persian flat muzzle
+  if(p.id==='persian'){
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.18}" rx="${r*.50}" ry="${r*.38}" fill="${lt(p.body,1.28)}" opacity=".62"/>`;
+  }
+  // Monkey muzzle circle
+  if(p.id==='monkey'){
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.26}" rx="${r*.40}" ry="${r*.34}" fill="${lt(p.body,1.32)}" opacity=".72"/>`;
+  }
+  // Pom fluffy rings
+  if(p.id==='pom'){
+    g+=`<circle cx="${cx}" cy="${cy}" r="${r*1.18}" fill="${lt(p.body,1.08)}" opacity=".28"/>`;
+    g+=`<circle cx="${cx}" cy="${cy}" r="${r*1.06}" fill="${lt(p.body,1.04)}" opacity=".22"/>`;
+  }
+  // Tiel orange cheek patch
+  if(p.id==='tiel'){
+    g+=`<circle cx="${cx-r*.32}" cy="${cy+r*.08}" r="${r*.22}" fill="${p.acc}" opacity=".82"/>`;
+    g+=`<circle cx="${cx+r*.32}" cy="${cy+r*.08}" r="${r*.22}" fill="${p.acc}" opacity=".82"/>`;
+  }
+  // Jelly inner bell shimmer
+  if(p.id==='jelly'){
+    g+=`<ellipse cx="${cx}" cy="${cy-bRy*.28}" rx="${bRx*.54}" ry="${bRy*.46}" fill="white" opacity=".22"/>`;
+    g+=`<ellipse cx="${cx}" cy="${cy-bRy*.40}" rx="${bRx*.32}" ry="${bRy*.22}" fill="white" opacity=".18"/>`;
+  }
+  // Narwhal belly
+  if(p.id==='narwhal'){
+    g+=`<ellipse cx="${cx-bRx*.16}" cy="${cy+bRy*.40}" rx="${bRx*.62}" ry="${bRy*.36}" fill="white" opacity=".60"/>`;
+  }
+  // Sloth face mask
+  if(p.id==='sloth'){
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.08}" rx="${r*.52}" ry="${r*.44}" fill="${lt(p.body,1.28)}" opacity=".60"/>`;
+  }
+  // Seal spots
+  if(p.id==='seal'){
+    for(const [ox,oy,sr] of [[r*.30,r*.28,.07],[-r*.28,r*.36,.06],[r*.10,r*.46,.055],[-r*.14,r*.22,.065],[r*.42,r*.10,.058]]){
+      g+=`<circle cx="${cx+ox}" cy="${cy+oy}" r="${r*sr}" fill="${dk(p.body,.72)}" opacity=".42"/>`;
+    }
+  }
+
+  /* ── LAYER 4: face ── */
+  const eyeR=r*.116;
+  let eyeY=cy+r*.10, eGap=r*.280;
+  if(p.id==='capy')    { eyeY=cy-bRy*.04; eGap=bRx*.44; }
+  if(p.id==='maru')    { eyeY=cy+r*.06; eGap=r*.215; }
+  if(p.id==='mochi')   { eyeY=cy+r*.08; eGap=r*.300; }
+  if(p.id==='rivet')   { eyeY=topY+bRy*.04; eGap=bRx*.26; }
+  if(p.id==='owl')     { eyeY=cy-r*.08; eGap=r*.300; }
+  if(p.id==='panda')   { eyeY=cy; eGap=r*.265; }
+  if(p.id==='narwhal') { eyeY=cy-bRy*.12; eGap=bRx*.30; }
+  if(p.id==='koi')     { eyeY=cy-bRy*.20; eGap=bRx*.28; }
+  if(p.id==='jelly')   { eyeY=cy-bRy*.40; eGap=r*.220; }
+  if(p.id==='tiel')    { eyeY=cy-r*.04; eGap=r*.255; }
+  if(p.id==='loris')   { eGap=r*.265; }
+  const eX1=cx-eGap, eX2=cx+eGap;
+
+  if(p.id==='rivet'){
+    g+=`<circle cx="${cx-bRx*.26}" cy="${topY+bRy*.04}" r="${r*.118}" fill="${EYE}" class="eye" data-ox="${cx-bRx*.26}" data-oy="${topY+bRy*.04}"/>`;
+    g+=`<circle cx="${cx+bRx*.26}" cy="${topY+bRy*.04}" r="${r*.118}" fill="${EYE}" class="eye" data-ox="${cx+bRx*.26}" data-oy="${topY+bRy*.04}"/>`;
+    g+=`<circle cx="${cx-bRx*.286}" cy="${topY+bRy*.02}" r="${r*.040}" fill="white"/>`;
+    g+=`<circle cx="${cx+bRx*.234}" cy="${topY+bRy*.02}" r="${r*.040}" fill="white"/>`;
+  } else if(p.id==='capy'){
+    g+=`<circle cx="${eX1}" cy="${eyeY}" r="${r*.068}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX2}" cy="${eyeY}" r="${r*.068}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX1-r*.02}" cy="${eyeY-r*.03}" r="${r*.022}" fill="white"/>`;
+    g+=`<circle cx="${eX2-r*.02}" cy="${eyeY-r*.03}" r="${r*.022}" fill="white"/>`;
+  } else if(p.id==='maru'){
+    const cR=r*.092;
+    g+=`<path d="M${eX1-cR},${eyeY} Q${eX1},${eyeY+cR*.82} ${eX1+cR},${eyeY}" stroke="${EYE}" stroke-width="${(cR*.58).toFixed(1)}" fill="none" stroke-linecap="round" class="eye"/>`;
+    g+=`<path d="M${eX2-cR},${eyeY} Q${eX2},${eyeY+cR*.82} ${eX2+cR},${eyeY}" stroke="${EYE}" stroke-width="${(cR*.58).toFixed(1)}" fill="none" stroke-linecap="round" class="eye"/>`;
+  } else if(p.id==='mochi'){
+    const m=eyeR;
+    g+=`<path d="M${eX1-m},${eyeY} A${m},${m} 0 1 1 ${eX1+m},${eyeY} Z" fill="${EYE}" class="eye"/>`;
+    g+=`<path d="M${eX2-m},${eyeY} A${m},${m} 0 1 1 ${eX2+m},${eyeY} Z" fill="${EYE}" class="eye"/>`;
+  } else if(p.id==='shibu'){
+    g+=`<ellipse cx="${eX1}" cy="${eyeY}" rx="${eyeR*1.28}" ry="${eyeR}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY}" transform="rotate(-22,${eX1},${eyeY})"/>`;
+    g+=`<ellipse cx="${eX2}" cy="${eyeY}" rx="${eyeR*1.28}" ry="${eyeR}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}" transform="rotate(22,${eX2},${eyeY})"/>`;
+    g+=`<circle cx="${eX1-eyeR*.26}" cy="${eyeY-eyeR*.32}" r="${eyeR*.36}" fill="white"/>`;
+    g+=`<circle cx="${eX2-eyeR*.26}" cy="${eyeY-eyeR*.32}" r="${eyeR*.36}" fill="white"/>`;
+  } else if(p.id==='roro'||p.id==='kitsune'){
+    g+=`<ellipse cx="${eX2}" cy="${eyeY}" rx="${eyeR}" ry="${eyeR}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX2-eyeR*.28}" cy="${eyeY-eyeR*.30}" r="${eyeR*.36}" fill="white"/>`;
+    g+=`<path d="M${eX1-eyeR},${eyeY-eyeR*.14} Q${eX1},${eyeY+eyeR*.72} ${eX1+eyeR},${eyeY-eyeR*.14}" stroke="${EYE}" stroke-width="${(eyeR*.56).toFixed(1)}" fill="none" stroke-linecap="round" class="eye"/>`;
+  } else if(p.id==='quack'){
+    g+=`<ellipse cx="${eX1}" cy="${eyeY-eyeR*.22}" rx="${eyeR*1.12}" ry="${eyeR*1.12}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY-eyeR*.22}"/>`;
+    g+=`<ellipse cx="${eX2}" cy="${eyeY}"           rx="${eyeR}"      ry="${eyeR}"      fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX1-eyeR*.28}" cy="${eyeY-eyeR*.52}" r="${eyeR*.34}" fill="white"/>`;
+    g+=`<circle cx="${eX2-eyeR*.28}" cy="${eyeY-eyeR*.30}" r="${eyeR*.34}" fill="white"/>`;
+  } else if(p.id==='nemu'){
+    // sleeping closed eyes
+    const cR=r*.095;
+    g+=`<path d="M${eX1-cR},${eyeY} A${cR},${cR*0.5} 0 0 0 ${eX1+cR},${eyeY}" stroke="${EYE}" stroke-width="${(cR*.62).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+    g+=`<path d="M${eX2-cR},${eyeY} A${cR},${cR*0.5} 0 0 0 ${eX2+cR},${eyeY}" stroke="${EYE}" stroke-width="${(cR*.62).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+  } else if(p.id==='owl'){
+    // large round disc eyes
+    const oR=eyeR*1.44;
+    g+=`<circle cx="${eX1}" cy="${eyeY}" r="${oR}" fill="${lt(p.earIn,1.04)}" opacity=".90"/>`;
+    g+=`<circle cx="${eX2}" cy="${eyeY}" r="${oR}" fill="${lt(p.earIn,1.04)}" opacity=".90"/>`;
+    g+=`<circle cx="${eX1}" cy="${eyeY}" r="${eyeR}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX2}" cy="${eyeY}" r="${eyeR}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX1-eyeR*.28}" cy="${eyeY-eyeR*.30}" r="${eyeR*.36}" fill="white"/>`;
+    g+=`<circle cx="${eX2-eyeR*.28}" cy="${eyeY-eyeR*.30}" r="${eyeR*.36}" fill="white"/>`;
+  } else if(p.id==='panda'){
+    // eyes inside black patches (white highlight)
+    g+=`<circle cx="${eX1}" cy="${eyeY}" r="${eyeR}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX2}" cy="${eyeY}" r="${eyeR}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX1-eyeR*.26}" cy="${eyeY-eyeR*.30}" r="${eyeR*.36}" fill="white"/>`;
+    g+=`<circle cx="${eX2-eyeR*.26}" cy="${eyeY-eyeR*.30}" r="${eyeR*.36}" fill="white"/>`;
+  } else if(p.id==='chick'){
+    g+=`<circle cx="${eX1}" cy="${eyeY}" r="${eyeR*.88}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX2}" cy="${eyeY}" r="${eyeR*.88}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX1-eyeR*.24}" cy="${eyeY-eyeR*.28}" r="${eyeR*.30}" fill="white"/>`;
+    g+=`<circle cx="${eX2-eyeR*.24}" cy="${eyeY-eyeR*.28}" r="${eyeR*.30}" fill="white"/>`;
+  } else if(p.id==='puff'){
+    // wide surprised eyes
+    const pR=eyeR*1.22;
+    g+=`<circle cx="${eX1}" cy="${eyeY}" r="${pR}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX2}" cy="${eyeY}" r="${pR}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX1-pR*.28}" cy="${eyeY-pR*.28}" r="${pR*.38}" fill="white"/>`;
+    g+=`<circle cx="${eX2-pR*.28}" cy="${eyeY-pR*.28}" r="${pR*.38}" fill="white"/>`;
+  } else if(p.id==='jelly'){
+    // tiny dotty eyes
+    g+=`<circle cx="${eX1}" cy="${eyeY}" r="${eyeR*.60}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX2}" cy="${eyeY}" r="${eyeR*.60}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+  } else if(p.id==='tiel'){
+    g+=`<circle cx="${eX1}" cy="${eyeY}" r="${eyeR*.82}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX2}" cy="${eyeY}" r="${eyeR*.82}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX1-eyeR*.20}" cy="${eyeY-eyeR*.22}" r="${eyeR*.26}" fill="white"/>`;
+    g+=`<circle cx="${eX2-eyeR*.20}" cy="${eyeY-eyeR*.22}" r="${eyeR*.26}" fill="white"/>`;
+  } else {
+    const eR2=(p.id==='bun'||p.id==='axie')?eyeR*.90:
+               (p.id==='loris')?eyeR*1.48:eyeR;
+    g+=`<ellipse cx="${eX1}" cy="${eyeY}" rx="${eR2}" ry="${eR2}" fill="${EYE}" class="eye" data-ox="${eX1}" data-oy="${eyeY}"/>`;
+    g+=`<ellipse cx="${eX2}" cy="${eyeY}" rx="${eR2}" ry="${eR2}" fill="${EYE}" class="eye" data-ox="${eX2}" data-oy="${eyeY}"/>`;
+    g+=`<circle cx="${eX1-eR2*.28}" cy="${eyeY-eR2*.30}" r="${eR2*.36}" fill="white"/>`;
+    g+=`<circle cx="${eX2-eR2*.28}" cy="${eyeY-eR2*.30}" r="${eR2*.36}" fill="white"/>`;
+  }
+
+  // special nose/bill
+  if(p.id==='quack')
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.60}" rx="${r*.22}" ry="${r*.126}" fill="${p.acc}"/>`;
+  if(p.id==='kuma')
+    g+=`<circle cx="${cx}" cy="${cy+r*.10}" r="${r*.06}" fill="${dk(p.body,.62)}" opacity=".70"/>`;
+  if(p.id==='axie')
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.28}" rx="${r*.06}" ry="${r*.04}" fill="${dk(p.body,.70)}" opacity=".68"/>`;
+  // rivet tongue stub
+  if(p.id==='rivet')
+    g+=`<ellipse cx="${cx}" cy="${cy+bRy*.62}" rx="${r*.10}" ry="${r*.06}" fill="#E84860" opacity=".90" class="rivet-tongue"/>`;
+  // chick orange beak
+  if(p.id==='chick'){
+    g+=`<path d="M${cx-r*.10},${cy+r*.30} L${cx},${cy+r*.54} L${cx+r*.10},${cy+r*.30} Z" fill="${p.acc}"/>`;
+    g+=`<line x1="${cx-r*.10}" y1="${cy+r*.38}" x2="${cx+r*.10}" y2="${cy+r*.38}" stroke="${dk(p.acc,.78)}" stroke-width="${(r*.036).toFixed(1)}"/>`;
+  }
+  // tiel beak
+  if(p.id==='tiel')
+    g+=`<path d="M${cx-r*.06},${cy+r*.24} L${cx},${cy+r*.38} L${cx+r*.06},${cy+r*.24} Q${cx},${cy+r*.28} ${cx-r*.06},${cy+r*.24} Z" fill="${dk(p.acc,.82)}"/>`;
+  // owl hooked beak
+  if(p.id==='owl')
+    g+=`<path d="M${cx-r*.06},${cy+r*.14} Q${cx+r*.10},${cy+r*.24} ${cx},${cy+r*.34}" fill="${dk(p.body,.74)}" opacity=".85"/>`;
+  // narwhal cute dot nose
+  if(p.id==='narwhal')
+    g+=`<circle cx="${cx-bRx*.16}" cy="${cy-bRy*.04}" r="${r*.048}" fill="${dk(p.body,.62)}" opacity=".70"/>`;
+  // panda nose
+  if(p.id==='panda')
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.22}" rx="${r*.072}" ry="${r*.052}" fill="${dk(p.body,.60)}" opacity=".75"/>`;
+  // seal big button nose
+  if(p.id==='seal')
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.18}" rx="${r*.088}" ry="${r*.060}" fill="${dk(p.body,.64)}" opacity=".70"/>`;
+  // jelly wavy mouth override (drawn below instead of standard path)
+  // monkey nose
+  if(p.id==='monkey')
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.22}" rx="${r*.12}" ry="${r*.08}" fill="${dk(p.body,.72)}" opacity=".65"/>`;
+  // puff tiny round nose
+  if(p.id==='puff')
+    g+=`<circle cx="${cx}" cy="${cy+r*.18}" r="${r*.056}" fill="${dk(p.body,.68)}" opacity=".72"/>`;
+
+  // blush
+  const blR=r*.094, blY=eyeY+r*.155;
+  const blOp=['roro','capy','maru'].includes(p.id)?.13:.21;
+  const blOff=p.id==='capy'?r*.14:r*.06;
+  g+=`<circle cx="${eX1-blOff}" cy="${blY}" r="${blR}" fill="rgba(255,110,110,${blOp})"/>`;
+  g+=`<circle cx="${eX2+blOff}" cy="${blY}" r="${blR}" fill="rgba(255,110,110,${blOp})"/>`;
+
+  // mouth
+  const smY=cy+r*.38;
+  const smW={capy:r*.11,maru:r*.08,mochi:r*.24,shibu:r*.40,rivet:r*.44,bun:r*.28,kuma:r*.34,axie:r*.38,quack:r*.28,roro:r*.42,kitsune:r*.40,waddle:r*.36,
+             panda:r*.30,otter:r*.34,sloth:r*.22,corgi:r*.40,seal:r*.24,tanuki:r*.34,sheep:r*.28,persian:r*.14,deer:r*.24,nemu:r*.18,koi:r*.14,arctic:r*.36,pom:r*.34,tiel:0,owl:0,jelly:r*.26,puff:r*.16,monkey:r*.44,chick:0,narwhal:r*.12}[p.id]??r*.34;
+  const smD={capy:0,maru:0,mochi:r*.08,shibu:r*.16,rivet:r*.18,bun:r*.10,kuma:r*.12,axie:r*.14,quack:r*.11,roro:r*.15,kitsune:r*.15,waddle:r*.13,
+             panda:r*.13,otter:r*.14,sloth:r*.08,corgi:r*.16,seal:r*.10,tanuki:r*.14,sheep:r*.10,persian:r*.06,deer:r*.10,nemu:0,koi:r*.04,arctic:r*.14,pom:r*.13,tiel:0,owl:0,jelly:r*.10,puff:r*.04,monkey:r*.18,chick:0,narwhal:0}[p.id]??r*.12;
+  if(p.id==='capy')
+    g+=`<line x1="${cx-smW}" y1="${smY}" x2="${cx+smW}" y2="${smY}" stroke="${bDk}" stroke-width="${(r*.056).toFixed(1)}" stroke-linecap="round"/>`;
+  else if(p.id==='nemu')
+    g+=`<path d="M${cx-smW},${smY} Q${cx},${smY-r*.04} ${cx+smW},${smY}" stroke="${bDk}" stroke-width="${(r*.054).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+  else if(smW>0)
+    g+=`<path d="M${cx-smW},${smY} Q${cx},${smY+smD} ${cx+smW},${smY}" stroke="${bDk}" stroke-width="${(r*.066).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+
+  /* ── LAYER 5: accessories ── */
+  // Capy yuzu
+  if(p.id==='capy'){
+    const yY=topY-r*.08;
+    g+=`<circle cx="${cx}" cy="${yY}" r="${r*.155}" fill="#F0B020"/>`;
+    g+=`<ellipse cx="${cx+r*.08}" cy="${yY-r*.16}" rx="${r*.10}" ry="${r*.054}" fill="#5CAF5C" transform="rotate(-28,${cx+r*.08},${yY-r*.16})"/>`;
+  }
+  // Waddle scarf + fish
+  if(p.id==='waddle'){
+    const sY=cy-bRy*.10;
+    g+=`<path d="M${cx-bRx*.90},${sY} Q${cx},${sY+r*.04} ${cx+bRx*.90},${sY}" stroke="#D82020" stroke-width="${(r*.14).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+    g+=`<path d="M${cx-bRx*.74},${sY+r*.06} Q${cx-bRx*.40},${sY+r*.24} ${cx-bRx*.18},${sY+r*.46}" stroke="#D82020" stroke-width="${(r*.11).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+    g+=`<ellipse cx="${cx+r*.16}" cy="${cy+bRy*.60}" rx="${r*.15}" ry="${r*.08}" fill="#90C0D0"/>`;
+    g+=`<path d="M${cx+r*.30},${cy+bRy*.60} L${cx+r*.38},${cy+bRy*.52} L${cx+r*.38},${cy+bRy*.68} Z" fill="#90C0D0"/>`;
+  }
+  // Quack sailor hat
+  if(p.id==='quack'){
+    const hY=topY-r*.10;
+    g+=`<ellipse cx="${cx}" cy="${hY+r*.08}" rx="${r*.46}" ry="${r*.11}" fill="white"/>`;
+    g+=`<rect x="${cx-r*.26}" y="${hY-r*.28}" width="${r*.52}" height="${r*.34}" rx="${r*.05}" fill="white"/>`;
+    g+=`<rect x="${cx-r*.26}" y="${hY-r*.04}" width="${r*.52}" height="${r*.10}" fill="#2060C0"/>`;
+    g+=`<circle cx="${cx}" cy="${hY-r*.28}" r="${r*.06}" fill="#2060C0"/>`;
+  }
+  // Kitsune leaf on head
+  if(p.id==='kitsune'){
+    const lY=topY-r*.08;
+    g+=`<ellipse cx="${cx}" cy="${lY}" rx="${r*.26}" ry="${r*.155}" fill="${p.acc}" transform="rotate(-18,${cx},${lY})"/>`;
+    g+=`<path d="M${cx-r*.22},${lY+r*.08} Q${cx},${lY-r*.05} ${cx+r*.22},${lY-r*.05}" stroke="${lt(p.acc,1.5)}" stroke-width="${(r*.028).toFixed(1)}" fill="none" opacity=".60" transform="rotate(-18,${cx},${lY})"/>`;
+  }
+  // Kuma honey pot
+  if(p.id==='kuma'){
+    const pX=cx+r*.62, pY=cy+r*.40;
+    g+=`<ellipse cx="${pX}" cy="${pY+r*.04}" rx="${r*.18}" ry="${r*.22}" fill="#E8A820"/>`;
+    g+=`<rect x="${pX-r*.20}" y="${pY-r*.22}" width="${r*.40}" height="${r*.08}" rx="${r*.04}" fill="${dk('#E8A820',.82)}"/>`;
+    g+=`<circle cx="${pX}" cy="${pY+r*.26}" r="${r*.06}" fill="#E8C040"/>`;
+  }
+  // Maru sunflower seed
+  if(p.id==='maru'){
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.54}" rx="${r*.064}" ry="${r*.130}" fill="${p.acc}"/>`;
+    g+=`<ellipse cx="${cx}" cy="${cy+r*.54}" rx="${r*.028}" ry="${r*.082}" fill="${lt(p.acc,1.3)}" opacity=".70"/>`;
+  }
+  // Rivet leaf umbrella
+  if(p.id==='rivet'){
+    const lX=cx+r*.14, lY=topY-r*.20;
+    g+=`<ellipse cx="${lX}" cy="${lY}" rx="${r*.36}" ry="${r*.20}" fill="#58C068" transform="rotate(-10,${lX},${lY})"/>`;
+    g+=`<path d="M${lX-r*.30},${lY+r*.14} Q${lX},${lY-r*.06} ${lX+r*.30},${lY+r*.06}" stroke="${lt('#58C068',1.4)}" stroke-width="${(r*.030).toFixed(1)}" fill="none" opacity=".60" transform="rotate(-10,${lX},${lY})"/>`;
+    g+=`<line x1="${lX+r*.04}" y1="${lY+r*.18}" x2="${lX+r*.04}" y2="${lY+r*.46}" stroke="#6B4B2A" stroke-width="${(r*.044).toFixed(1)}" stroke-linecap="round"/>`;
+  }
+  // Panda bamboo
+  if(p.id==='panda'){
+    const bX=cx+r*.72, bY=cy+r*.52;
+    g+=`<rect x="${bX-r*.06}" y="${bY-r*.50}" width="${r*.12}" height="${r*.54}" rx="${r*.06}" fill="#7CB87C"/>`;
+    g+=`<ellipse cx="${bX}" cy="${bY-r*.28}" rx="${r*.14}" ry="${r*.06}" fill="#64A064" opacity=".80"/>`;
+    g+=`<ellipse cx="${bX}" cy="${bY}" rx="${r*.14}" ry="${r*.06}" fill="#64A064" opacity=".80"/>`;
+  }
+  // Tanuki magic leaf (tanuki kasa)
+  if(p.id==='tanuki'){
+    const lY=topY-r*.08;
+    g+=`<path d="M${cx-r*.38},${lY} Q${cx},${lY-r*.46} ${cx+r*.38},${lY}" fill="#68B460" opacity=".92"/>`;
+    g+=`<path d="M${cx-r*.32},${lY} Q${cx},${lY-r*.22} ${cx+r*.32},${lY}" stroke="${lt('#68B460',1.40)}" stroke-width="${(r*.024).toFixed(1)}" fill="none" opacity=".55"/>`;
+  }
+  // Deer star sparkle
+  if(p.id==='deer'){
+    const sX=cx+r*.76, sY=topY+r*.06, sR=r*.10;
+    for(let i=0;i<5;i++){const a=i*Math.PI*.4-Math.PI*.5;g+=`<line x1="${sX}" y1="${sY}" x2="${(sX+Math.cos(a)*sR).toFixed(1)}" y2="${(sY+Math.sin(a)*sR).toFixed(1)}" stroke="${p.acc}" stroke-width="${(r*.04).toFixed(1)}" stroke-linecap="round"/>`;}
+    g+=`<circle cx="${sX}" cy="${sY}" r="${sR*.35}" fill="${p.acc}" opacity=".90"/>`;
+  }
+  // Otter shell on belly
+  if(p.id==='otter'){
+    const sX=cx, sY=cy+r*.28;
+    g+=`<ellipse cx="${sX}" cy="${sY}" rx="${r*.18}" ry="${r*.12}" fill="${lt(p.acc,1.08)}" opacity=".85"/>`;
+    g+=`<path d="M${sX-r*.16},${sY} Q${sX},${sY-r*.14} ${sX+r*.16},${sY}" stroke="${dk(p.acc,.82)}" stroke-width="${(r*.028).toFixed(1)}" fill="none" opacity=".60"/>`;
+  }
+  // Seal balancing ball
+  if(p.id==='seal'){
+    g+=`<circle cx="${cx}" cy="${topY-r*.22}" r="${r*.20}" fill="${p.acc}" opacity=".85"/>`;
+    g+=`<circle cx="${cx-r*.06}" cy="${topY-r*.28}" r="${r*.06}" fill="white" opacity=".55"/>`;
+  }
+  // Arctic snowflake
+  if(p.id==='arctic'){
+    const sfX=cx+r*.72, sfY=topY+r*.04;
+    for(let i=0;i<6;i++){const a=i*Math.PI/3;g+=`<line x1="${sfX}" y1="${sfY}" x2="${(sfX+Math.cos(a)*r*.14).toFixed(1)}" y2="${(sfY+Math.sin(a)*r*.14).toFixed(1)}" stroke="${p.acc}" stroke-width="${(r*.046).toFixed(1)}" stroke-linecap="round"/>`;}
+    g+=`<circle cx="${sfX}" cy="${sfY}" r="${r*.036}" fill="${p.acc}"/>`;
+  }
+  // Monkey banana
+  if(p.id==='monkey'){
+    const bX=cx-r*.70, bY=cy+r*.36;
+    g+=`<path d="M${bX-r*.14},${bY-r*.28} Q${bX+r*.22},${bY-r*.38} ${bX+r*.30},${bY+r*.16}" fill="none" stroke="#F0D030" stroke-width="${r*.18}" stroke-linecap="round"/>`;
+    g+=`<circle cx="${bX-r*.14}" cy="${bY-r*.28}" r="${r*.06}" fill="#C8A030"/>`;
+  }
+  // Chick egg shell piece
+  if(p.id==='chick'){
+    const eY=botY-r*.06;
+    g+=`<path d="M${cx-r*.34},${eY} Q${cx-r*.40},${eY-r*.30} ${cx-r*.10},${eY-r*.40} Q${cx+r*.10},${eY-r*.40} ${cx+r*.34},${eY}" fill="${lt(p.body,1.12)}" opacity=".70"/>`;
+    g+=`<path d="M${cx-r*.34},${eY} Q${cx-r*.40},${eY-r*.30} ${cx-r*.10},${eY-r*.40} Q${cx+r*.10},${eY-r*.40} ${cx+r*.34},${eY}" fill="none" stroke="${dk(p.body,.72)}" stroke-width="${(r*.050).toFixed(1)}" stroke-linecap="round"/>`;
+  }
+  // Sloth branch above
+  if(p.id==='sloth'){
+    const brY=topY-r*.10;
+    g+=`<path d="M${cx-r*1.10},${brY} Q${cx},${brY+r*.08} ${cx+r*1.10},${brY}" fill="none" stroke="#8B6234" stroke-width="${r*.16}" stroke-linecap="round"/>`;
+    g+=`<ellipse cx="${cx-r*.60}" cy="${brY}" rx="${r*.08}" ry="${r*.04}" fill="#5C9050" opacity=".70"/>`;
+    g+=`<ellipse cx="${cx+r*.44}" cy="${brY-r*.02}" rx="${r*.08}" ry="${r*.04}" fill="#5C9050" opacity=".70"/>`;
+  }
+  // Pom little bow
+  if(p.id==='pom'){
+    const bX=cx+r*.62, bY=topY+r*.12;
+    g+=`<path d="M${bX},${bY} L${bX+r*.16},${bY-r*.12} L${bX+r*.20},${bY+r*.02} Z" fill="${p.acc}" opacity=".85"/>`;
+    g+=`<path d="M${bX},${bY} L${bX+r*.16},${bY+r*.14} L${bX+r*.20},${bY+r*.02} Z" fill="${dk(p.acc,.84)}" opacity=".85"/>`;
+    g+=`<circle cx="${bX+r*.04}" cy="${bY+r*.02}" r="${r*.048}" fill="${lt(p.acc,1.30)}" opacity=".90"/>`;
+  }
+  // Owl star badge
+  if(p.id==='owl'){
+    const sX=cx+r*.62, sY=cy+r*.44;
+    g+=`<circle cx="${sX}" cy="${sY}" r="${r*.15}" fill="${p.acc}" opacity=".90"/>`;
+    g+=`<circle cx="${sX}" cy="${sY}" r="${r*.08}" fill="${lt(p.acc,1.40)}" opacity=".80"/>`;
+  }
+  // Persian bow ribbon
+  if(p.id==='persian'){
+    const bX=cx, bY=topY-r*.02;
+    g+=`<path d="M${bX},${bY} L${bX-r*.18},${bY-r*.12} L${bX-r*.22},${bY+r*.02} Z" fill="${p.acc}" opacity=".85"/>`;
+    g+=`<path d="M${bX},${bY} L${bX+r*.18},${bY-r*.12} L${bX+r*.22},${bY+r*.02} Z" fill="${p.acc}" opacity=".85"/>`;
+    g+=`<path d="M${bX},${bY} L${bX-r*.18},${bY+r*.14} L${bX-r*.22},${bY+r*.02} Z" fill="${dk(p.acc,.84)}" opacity=".85"/>`;
+    g+=`<path d="M${bX},${bY} L${bX+r*.18},${bY+r*.14} L${bX+r*.22},${bY+r*.02} Z" fill="${dk(p.acc,.84)}" opacity=".85"/>`;
+    g+=`<circle cx="${bX}" cy="${bY}" r="${r*.056}" fill="${lt(p.acc,1.30)}" opacity=".90"/>`;
+  }
+  // Tiel seed stick (millet)
+  if(p.id==='tiel'){
+    const sX=cx+r*.66, sY=cy+r*.30;
+    g+=`<line x1="${sX}" y1="${sY-r*.30}" x2="${sX}" y2="${sY+r*.28}" stroke="#B8A050" stroke-width="${(r*.06).toFixed(1)}" stroke-linecap="round"/>`;
+    for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2, rx=sX+Math.cos(a)*r*.10, ry=(sY-r*.12)+Math.sin(a)*r*.12;g+=`<circle cx="${rx.toFixed(1)}" cy="${ry.toFixed(1)}" r="${(r*.044).toFixed(1)}" fill="#E0C840" opacity=".88"/>`;}
+  }
+
+  const ancY=botY;
+  return `<g transform="translate(${(cx*(1-sc)).toFixed(2)},${(ancY*(1-sc)).toFixed(2)}) scale(${sc})">${g}</g>`;
+}
+
+/* ── render grid ── */
+const S=108;
+const grid=document.getElementById('grid');
+PALS.forEach((p,i)=>{
+  const div=document.createElement('div');
+  div.className='card';
+  const n=parseInt(p.body.slice(1),16);
+  div.style.background=`rgb(${[16,8,0].map(s=>Math.round(((n>>s)&255)*.14+255*.86)).join(',')})`;
+  div.innerHTML=`
+    <div class="pal" style="animation:${p.anim} ${p.spd}s ease-in-out ${(i*.17).toFixed(2)}s infinite;">
+      <svg width="${S}" height="${S+8}" viewBox="-22 -24 ${S+44} ${S+32}"
+           style="display:block;margin:0 auto;overflow:visible;">
+        ${palSVG(p,S,5)}
+      </svg>
+    </div>
+    <div class="cname">${p.name}</div>
+    <div class="csub">${p.sub}</div>`;
+  grid.appendChild(div);
+});
+
+/* ── hover jelly ── */
+document.querySelectorAll('.card').forEach((card,i)=>{
+  const pal=card.querySelector('.pal');
+  const p=PALS[i];
+  const idle=`${p.anim} ${p.spd}s ease-in-out ${(i*.17).toFixed(2)}s infinite`;
+  card.addEventListener('mouseenter',()=>{
+    pal.style.animation='jelly .82s cubic-bezier(.34,1.56,.64,1)';
+    pal.addEventListener('animationend',()=>{pal.style.animation=idle;},{once:true});
+  });
+});
+
+/* ── blink ── */
+function scheduleBlink(el,origRy){
+  setTimeout(()=>{
+    let f=0;const N=14;
+    const go=()=>{
+      f++;const t=f/N;
+      const ry=t<.35?origRy*(1-t/.35):t<.55?origRy*.04:origRy*((t-.55)/.45);
+      el.setAttribute('ry',ry.toFixed(2));
+      if(f<N) requestAnimationFrame(go);
+      else{el.setAttribute('ry',origRy);scheduleBlink(el,origRy);}
+    };
+    requestAnimationFrame(go);
+  },2400+Math.random()*3600);
+}
+document.querySelectorAll('.eye').forEach(el=>{
+  if(el.tagName!=='ellipse') return;
+  const ry=parseFloat(el.getAttribute('ry')||el.getAttribute('rx')||0);
+  if(ry<1) return;
+  setTimeout(()=>scheduleBlink(el,ry),Math.random()*5000);
+});
+
+/* ── look-around ── */
+document.querySelectorAll('.card').forEach(card=>{
+  const eyes=[...card.querySelectorAll('.eye[data-ox]')];
+  if(!eyes.length) return;
+  function glance(){
+    const dx=(Math.random()-.5)*5.5, dy=(Math.random()-.5)*2.5;
+    eyes.forEach(e=>{
+      e.setAttribute('cx',(+e.getAttribute('data-ox')+dx).toFixed(2));
+      e.setAttribute('cy',(+e.getAttribute('data-oy')+dy).toFixed(2));
+    });
+    setTimeout(()=>{
+      eyes.forEach(e=>{
+        e.setAttribute('cx',e.getAttribute('data-ox'));
+        e.setAttribute('cy',e.getAttribute('data-oy'));
+      });
+      setTimeout(glance,3200+Math.random()*4000);
+    },520+Math.random()*580);
+  }
+  setTimeout(glance,1200+Math.random()*5000);
+});
+
+/* ── Maru cheek puff ── */
+const maruCheeks=document.querySelectorAll('.maru-cheek');
+if(maruCheeks.length){
+  function puff(){
+    const sc=1+Math.random()*.24;
+    maruCheeks.forEach(c=>c.style.transform=`scale(${sc.toFixed(2)})`);
+    setTimeout(()=>{
+      maruCheeks.forEach(c=>c.style.transform='scale(1)');
+      setTimeout(puff,1100+Math.random()*2000);
+    },550+Math.random()*380);
+  }
+  setTimeout(puff,500);
+}
+
+/* ── Rivet tongue flick ── */
+const rivetTongue=document.querySelector('.rivet-tongue');
+if(rivetTongue){
+  const origRy=parseFloat(rivetTongue.getAttribute('ry'));
+  function flickTongue(){
+    let f=0;const N=12;
+    const go=()=>{
+      f++;const t=f/N;
+      const ry=t<.4?origRy*(t/.4)*2.4:t<.62?origRy*2.4:origRy*2.4*((1-t)/.38);
+      rivetTongue.setAttribute('ry',Math.max(0,ry).toFixed(2));
+      if(f<N) requestAnimationFrame(go);
+      else{rivetTongue.setAttribute('ry',origRy);setTimeout(flickTongue,2800+Math.random()*4500);}
+    };
+    requestAnimationFrame(go);
+  }
+  setTimeout(flickTongue,1800+Math.random()*3000);
+}
+
+/* ── Capy random sneeze ── */
+document.querySelectorAll('.card').forEach((card,i)=>{
+  if(PALS[i].id!=='capy') return;
+  const pal=card.querySelector('.pal');
+  const idle=`capy-zen ${PALS[i].spd}s ease-in-out ${(i*.17).toFixed(2)}s infinite`;
+  function sneeze(){
+    pal.style.animation='none';
+    const kfs=[
+      [.10, 0,  1, -1],
+      [.20, 1, -3,  0],
+      [.38,-1,  9,  3],
+      [.56, 0, -2, -1],
+      [.74, 0,  0,  0],
+    ];
+    let f=0;const N=20;
+    const go=()=>{
+      f++;const t=f/N;
+      let best=kfs[0];
+      for(const k of kfs) if(k[0]<=t) best=k;
+      pal.style.transform=`translateX(${best[1]}px) translateY(${best[2]}px) rotate(${best[3]}deg)`;
+      if(f<N) requestAnimationFrame(go);
+      else{pal.style.transform='';pal.style.animation=idle;setTimeout(sneeze,11000+Math.random()*18000);}
+    };
+    requestAnimationFrame(go);
+  }
+  setTimeout(sneeze,5000+Math.random()*8000);
+});
+
+/* ── growth stages ── */
+const axie=PALS[0];
+const stRow=document.getElementById('stages');
+const SDEFS=[
+  {lbl:'Egg',   cost:'—'},
+  {lbl:'Hatch', cost:'100🪙'},
+  {lbl:'Baby',  cost:'500🪙'},
+  {lbl:'Child', cost:'2,000🪙'},
+  {lbl:'Adult', cost:'8,000🪙'},
+  {lbl:'Legend',cost:'25k🪙'},
+];
+SDEFS.forEach((st,i)=>{
+  const div=document.createElement('div');
+  div.className='stg';
+  const h=58+i*12;
+  if(i===0){
+    div.innerHTML=`<div class="stg-lbl">${st.lbl}</div>
+      <svg width="54" height="${h}" viewBox="0 0 54 ${h}" style="display:block;margin:0 auto;">
+        <ellipse cx="27" cy="${h-14}" rx="15" ry="19" fill="${axie.body}"/>
+        <ellipse cx="21" cy="${h-20}" rx="3.5" ry="5" fill="${axie.earIn}" opacity=".45"/>
+      </svg>
+      <div class="stg-cst">${st.cost}</div>`;
+  } else {
+    const ss=54;
+    div.innerHTML=`<div class="stg-lbl">${st.lbl}</div>
+      <svg width="${ss}" height="${h}" viewBox="-18 -22 ${ss+36} ${h+28}" style="display:block;margin:0 auto;overflow:visible;">
+        ${palSVG(axie,ss,i-1)}
+      </svg>
+      <div class="stg-cst">${st.cost}</div>`;
+  }
+  stRow.appendChild(div);
+});
+</script>
+</body>
+</html>

@@ -19,7 +19,14 @@ if [ "$TOOL_NAME" != "shell" ] && [ "$TOOL_NAME" != "Shell" ] && [ "$TOOL_NAME" 
   exit 0
 fi
 
-COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // .input.command // .command // empty' 2>/dev/null)
+# Codex CLI uses "cmd" as the field name in tool_input; also support "command" for compatibility
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.cmd // .tool_input.command // .input.cmd // .input.command // .cmd // .command // empty' 2>/dev/null)
+# Detect which field name Codex is using so we return the right key in updatedInput
+CMD_FIELD="cmd"
+if echo "$INPUT" | jq -e '.tool_input.command // .input.command // .command' > /dev/null 2>&1 && \
+   ! echo "$INPUT" | jq -e '.tool_input.cmd // .input.cmd // .cmd' > /dev/null 2>&1; then
+  CMD_FIELD="command"
+fi
 if [ -z "$COMMAND" ]; then
   echo '{"decision":"Proceed"}'
   exit 0
@@ -119,14 +126,14 @@ fi
 
 WRAPPED="($COMMAND) 2>&1 | node $TERSE_COMPRESS"
 
-# Codex uses Modify decision to rewrite the tool input
+# Codex uses Modify decision to rewrite the tool input.
+# Use the same field name (cmd or command) that was in the input.
 jq -n \
   --arg cmd "$WRAPPED" \
+  --arg field "$CMD_FIELD" \
   '{
     decision: "Modify",
-    updatedInput: {
-      command: $cmd
-    },
+    updatedInput: {($field): $cmd},
     reason: ""
   }'
 

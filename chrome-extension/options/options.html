@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Terse Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">T</div>
+      <h1>Terse Settings</h1>
+    </div>
+
+    <!-- Optimization Settings -->
+    <div class="section">
+      <h2>Optimization</h2>
+      <div class="setting-group">
+        <label class="setting-label">Aggressiveness</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" data-level="light">Light</button>
+          <button class="toggle-btn active" data-level="balanced">Balanced</button>
+          <button class="toggle-btn" data-level="aggressive">Aggressive</button>
+        </div>
+        <p class="setting-desc">Light = typos only. Balanced = remove fillers. Aggressive = max compression.</p>
+      </div>
+
+      <div class="checkboxes">
+        <label class="check-row"><input type="checkbox" data-key="removeFillerWords" checked><span>Remove filler words</span></label>
+        <label class="check-row"><input type="checkbox" data-key="removePoliteness" checked><span>Remove politeness</span></label>
+        <label class="check-row"><input type="checkbox" data-key="removeHedging" checked><span>Remove hedging</span></label>
+        <label class="check-row"><input type="checkbox" data-key="removeMetaLanguage" checked><span>Remove meta-language</span></label>
+        <label class="check-row"><input type="checkbox" data-key="shortenPhrases" checked><span>Shorten phrases</span></label>
+        <label class="check-row"><input type="checkbox" data-key="simplifyInstructions" checked><span>Simplify vocabulary</span></label>
+        <label class="check-row"><input type="checkbox" data-key="removeRedundancy" checked><span>Remove redundancy</span></label>
+        <label class="check-row"><input type="checkbox" data-key="compressWhitespace" checked><span>Compress whitespace</span></label>
+        <label class="check-row"><input type="checkbox" data-key="compressCodeBlocks" checked><span>Compress code blocks</span></label>
+      </div>
+    </div>
+
+    <!-- Auto Mode Settings -->
+    <div class="section">
+      <h2>Auto Mode</h2>
+      <div class="setting-group">
+        <label class="setting-label">Default behavior</label>
+        <div class="toggle-group">
+          <button class="toggle-btn auto-mode-btn" data-auto="off">Off</button>
+          <button class="toggle-btn auto-mode-btn active" data-auto="send">Send</button>
+          <button class="toggle-btn auto-mode-btn" data-auto="auto">Auto</button>
+        </div>
+        <p class="setting-desc">Off = manual only. Send = optimize on Enter. Auto = live replace as you type.</p>
+      </div>
+    </div>
+
+    <!-- Theme -->
+    <div class="section">
+      <h2>Theme</h2>
+      <div class="theme-picker">
+        <div class="theme-dot" data-t="lime" style="background:#d1e847" title="Lime"></div>
+        <div class="theme-dot" data-t="lavender" style="background:#c4b5fd" title="Lavender"></div>
+        <div class="theme-dot" data-t="coral" style="background:#ff8a80" title="Coral"></div>
+        <div class="theme-dot" data-t="teal" style="background:#5eead4" title="Teal"></div>
+        <div class="theme-dot" data-t="midnight" style="background:#1e293b" title="Midnight"></div>
+        <div class="theme-dot" data-t="rose" style="background:#fda4af" title="Rose"></div>
+        <div class="theme-dot" data-t="sage" style="background:#86efac" title="Sage"></div>
+        <div class="theme-dot" data-t="sand" style="background:#fde68a" title="Sand"></div>
+      </div>
+    </div>
+
+    <!-- Account -->
+    <div class="section">
+      <h2>Account</h2>
+      <div id="signedOutUI">
+        <p class="setting-desc">Sign in to sync your subscription and usage.</p>
+        <button id="btnSignIn" class="primary-btn">Sign In</button>
+        <button id="btnSignUp" class="secondary-btn">Create Account</button>
+      </div>
+      <div id="signedInUI" class="hidden">
+        <div class="account-row">
+          <div>
+            <span id="accountName" class="account-name"></span>
+            <span id="accountEmail" class="account-email"></span>
+          </div>
+          <span id="accountTier" class="tier-badge"></span>
+        </div>
+        <div class="account-row">
+          <span id="licenseInfo" class="license-info"></span>
+        </div>
+        <button id="btnStartTrial" class="primary-btn hidden">Start Free Trial</button>
+        <button id="btnSignOut" class="secondary-btn">Sign Out</button>
+      </div>
+
+      <div class="mac-app-note">
+        <strong>Agent token optimization?</strong><br>
+        Download the <a href="https://www.terseai.org" target="_blank">Terse Mac app</a> — sign in with the same account to optimize prompts directly in VS Code, Claude, and other AI tools.
+      </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="section">
+      <h2>Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-num" id="statOpts">0</span>
+          <span class="stat-label">Optimizations</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num" id="statSaved">0</span>
+          <span class="stat-label">Tokens Saved</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num" id="statPct">0%</span>
+          <span class="stat-label">Avg Savings</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts -->
+    <div class="section">
+      <h2>Keyboard Shortcuts</h2>
+      <div class="shortcut-row">
+        <kbd>Cmd+Shift+T</kbd>
+        <span>Optimize selected text</span>
+      </div>
+      <div class="shortcut-row">
+        <kbd>Cmd+Shift+R</kbd>
+        <span>Optimize and replace in place</span>
+      </div>
+      <p class="setting-desc">Customize shortcuts at <code>chrome://extensions/shortcuts</code></p>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

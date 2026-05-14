@@ -76,6 +76,7 @@ if (window.__TAURI__) {
     getSettings: () => invoke('get_settings'),
     updateSettings: (s) => invoke('update_settings', { s }),
     closeWindow: () => invoke('close_window'),
+    minimizeWindow: () => invoke('minimize_window'),
     setAutoMode: (mode) => invoke('set_auto_mode', { mode }),
     requestAccessibility: () => invoke('request_accessibility'),
     checkAxPermission: () => invoke('check_ax_permission'),
@@ -114,16 +115,25 @@ if (window.__TAURI__) {
     buyPet: async (petId) => {
       const API_BASE = 'https://www.terseai.org';
       const auth = await invoke('get_auth');
-      const clerkUserId = auth?.clerk_user_id;
+      const clerkUserId = auth?.clerkUserId;
       const clerkUserEmail = auth?.email;
-      if (!clerkUserId) throw new Error('Not signed in');
+      if (!clerkUserId) throw new Error('Not signed in — please sign in first');
 
-      const res = await fetch(`${API_BASE}/api/pet-checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ petId, clerkUserId, clerkUserEmail }),
-      });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Checkout failed'); }
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/api/pet-checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ petId, clerkUserId, clerkUserEmail }),
+        });
+      } catch (netErr) {
+        throw new Error('Could not reach server — check your connection and try again');
+      }
+      if (!res.ok) {
+        let msg = `Server error (${res.status})`;
+        try { msg = (await res.json()).error || msg; } catch {}
+        throw new Error(msg);
+      }
       const { url } = await res.json();
 
       // Open Stripe checkout in system browser
@@ -169,7 +179,7 @@ if (window.__TAURI__) {
     // Hook (RTK-style compression)
     checkAgentHook: () => invoke('check_agent_hook'),
     getHookStats: () => invoke('get_hook_stats'),
-    petWorkDetected: (savedEstimate) => invoke('pet_work_detected', { savedEstimate }),
+    petWorkDetected: (savedEstimate, toolName) => invoke('pet_work_detected', { savedEstimate, toolName: toolName || '' }),
 
     // Record optimization stats
     recordOptimization: (source, originalTokens, optimizedTokens) =>

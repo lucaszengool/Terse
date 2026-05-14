@@ -299,6 +299,25 @@ pub async fn spellcheck_text(text: &str) -> Result<String, String> {
     }
 }
 
+/// Check if AX permission is granted (no dialog shown).
+/// Returns true if trusted, false if not.
+pub fn is_ax_trusted_sync() -> bool {
+    // Run terse-ax check synchronously — it prints {"trusted": bool}
+    // and if not trusted, opens System Settings Accessibility pane.
+    match std::process::Command::new(ax_bin_path())
+        .arg("check")
+        .output()
+    {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            serde_json::from_str::<serde_json::Value>(stdout.trim())
+                .map(|v| v["trusted"].as_bool().unwrap_or(false))
+                .unwrap_or(false)
+        }
+        Err(_) => false,
+    }
+}
+
 /// Check if VS Code bridge is alive
 pub async fn is_bridge_alive() -> bool {
     match reqwest_lite(&format!("http://127.0.0.1:{}/ping", BRIDGE_PORT)).await {

@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse · Shiro Promo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:#d4c9bb;
+  font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;
+  padding:40px 20px 80px;
+}
+.posters{display:flex;flex-direction:column;align-items:center;gap:52px;max-width:420px;margin:0 auto;}
+
+/* ── Poster shell ── */
+.poster{
+  width:390px;background:#f5ede0;
+  border-radius:28px;overflow:hidden;
+  box-shadow:0 12px 52px rgba(0,0,0,.18);
+}
+
+/* ── Header ── */
+.ph{padding:36px 28px 16px;}
+.pno{font-size:.58rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#c0ae9e;margin-bottom:10px;}
+.pt{font-size:2.55rem;font-weight:900;color:#1a1410;line-height:1.06;letter-spacing:-.5px;}
+.ps{font-size:.96rem;color:#8a7a6a;margin-top:8px;font-weight:500;line-height:1.55;}
+
+/* ── Scene cards ── */
+.scenes{padding:0 16px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.g1{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px;}
+.sc{
+  background:rgba(255,255,255,.55);border-radius:18px;
+  padding:14px 10px 12px;text-align:center;
+  position:relative;overflow:hidden;
+  min-height:150px;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+}
+.sc-label{font-size:.70rem;color:#8a7a6a;margin-top:7px;font-weight:600;line-height:1.3;}
+
+/* ── Caption / tag ── */
+.pcap{padding:10px 28px 26px;font-size:.88rem;color:#8a7a6a;line-height:1.72;}
+.pcap strong{color:#3a2a18;}
+.ptag{padding:0 28px 18px;font-size:.60rem;color:#c0b0a0;}
+
+/* ── Pal ── */
+.pal{display:inline-block;position:relative;z-index:2;}
+
+/* ── Overlays ── */
+.bubble{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  background:white;border-radius:12px;padding:5px 11px;
+  font-size:.68rem;font-weight:700;color:#2a1a0a;
+  white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.10);z-index:4;
+}
+.bubble::after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid white;}
+.night-tint{position:absolute;inset:0;background:linear-gradient(180deg,rgba(80,100,160,.18) 0%,transparent 100%);border-radius:18px;pointer-events:none;z-index:1;}
+.fitem,.spark{position:absolute;z-index:3;pointer-events:none;}
+
+/* ── Token badge ── */
+.tbadge{
+  display:inline-block;
+  background:#e55d2b;color:white;
+  border-radius:10px;padding:3px 10px;
+  font-size:.65rem;font-weight:800;
+}
+.tbadge-green{background:#3daa6a;}
+.tbadge-gray{background:#a09080;}
+
+/* ── Feature list ── */
+.feat-row{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:11px 14px;
+  border-bottom:1px solid rgba(0,0,0,.06);
+}
+.feat-row:last-child{border-bottom:none;}
+.feat-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px;}
+.feat-text{flex:1;}
+.feat-name{font-size:.80rem;font-weight:700;color:#1a1410;line-height:1.3;}
+.feat-desc{font-size:.68rem;color:#8a7a6a;margin-top:1px;line-height:1.4;}
+
+/* ── Mode cards ── */
+.mode-card{
+  background:rgba(255,255,255,.55);border-radius:16px;
+  padding:14px 14px 12px;position:relative;overflow:hidden;
+}
+.mode-tag{display:inline-block;border-radius:8px;padding:2px 9px;font-size:.60rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;}
+.mode-before{font-size:.62rem;color:#a09080;line-height:1.5;padding:6px 8px;background:rgba(0,0,0,.04);border-radius:8px;margin-bottom:5px;}
+.mode-after{font-size:.62rem;color:#3a2a18;line-height:1.5;padding:6px 8px;background:rgba(61,170,106,.12);border-radius:8px;}
+.mode-save{font-size:.65rem;font-weight:800;color:#3daa6a;margin-top:6px;}
+
+/* ── Platform row ── */
+.plat-row{display:flex;gap:10px;margin-bottom:12px;}
+.plat-card{
+  flex:1;background:rgba(255,255,255,.55);border-radius:16px;
+  padding:14px 10px;text-align:center;
+}
+.plat-icon{font-size:1.8rem;}
+.plat-name{font-size:.72rem;font-weight:800;color:#1a1410;margin-top:6px;}
+.plat-desc{font-size:.60rem;color:#8a7a6a;margin-top:2px;line-height:1.4;}
+
+/* ── Parade strip ── */
+.parade-strip{overflow:hidden;height:86px;background:rgba(255,255,255,.28);position:relative;margin-bottom:12px;}
+.parade-track{position:absolute;left:0;top:0;height:100%;display:flex;align-items:flex-end;gap:10px;padding:0 10px;animation:parade-scroll 32s linear infinite;white-space:nowrap;}
+@keyframes parade-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ── CTA button ── */
+.cta-btn{
+  display:block;margin:0 16px 22px;
+  background:#1a1410;color:#f5ede0;
+  border-radius:16px;padding:16px 20px;text-align:center;
+}
+.cta-sub{font-size:.70rem;opacity:.55;margin-bottom:4px;}
+.cta-main{font-size:1.15rem;font-weight:800;letter-spacing:.3px;}
+
+/* ── Info highlight ── */
+.info-hl{
+  background:rgba(255,255,255,.55);border-radius:18px;
+  padding:18px 18px;margin:0 0 12px;
+}
+.info-big{font-size:1.55rem;font-weight:900;color:#1a1410;line-height:1.2;}
+.info-sm{font-size:.80rem;color:#8a7a6a;margin-top:5px;line-height:1.5;}
+
+/* ── Before/after token block ── */
+.ba-wrap{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.55);border-radius:18px;
+  padding:16px 16px;margin-bottom:10px;
+}
+.ba-col{flex:1;text-align:center;}
+.ba-label{font-size:.60rem;color:#a09080;font-weight:600;text-transform:uppercase;letter-spacing:.8px;}
+.ba-num{font-size:1.6rem;font-weight:900;line-height:1.1;margin-top:2px;}
+.ba-arrow{font-size:1.2rem;color:#c0ae9e;flex-shrink:0;}
+.ba-saved{font-size:.68rem;color:#3daa6a;font-weight:700;margin-top:2px;}
+.ba-prompt{font-size:.58rem;color:#8a7a6a;margin-top:4px;line-height:1.4;text-align:left;padding:6px 8px;background:rgba(0,0,0,.04);border-radius:8px;}
+
+/* ── Animations ── */
+@keyframes k-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.025,.97)}}
+@keyframes k-bob{0%,100%{transform:translateY(0) rotate(-1deg)}25%{transform:translateY(-3px) rotate(0)}50%{transform:translateY(0) rotate(1deg)}75%{transform:translateY(-3px) rotate(0)}}
+@keyframes k-hop{0%,84%,100%{transform:translateY(0) scaleY(1) scaleX(1)}10%{transform:translateY(2px) scaleY(.86) scaleX(1.10)}30%{transform:translateY(-20px) scaleY(1.10) scaleX(.92) rotate(-3deg)}50%{transform:translateY(-24px) scaleY(1.08) scaleX(.94) rotate(3deg)}70%{transform:translateY(-6px) scaleY(.96) scaleX(1.04)}}
+@keyframes k-jiggle{0%,100%{transform:translateX(0) rotate(0)}15%{transform:translateX(-3px) rotate(-3deg)}35%{transform:translateX(3px) rotate(3deg)}55%{transform:translateX(-2px) rotate(-2deg)}75%{transform:translateX(2px) rotate(2deg)}}
+@keyframes k-walk{0%,100%{transform:translateX(0) translateY(0)}25%{transform:translateX(2px) translateY(-2px)}50%{transform:translateX(0)}75%{transform:translateX(-2px) translateY(-2px)}}
+@keyframes k-spin{0%{transform:rotate(0deg) scale(1)}35%{transform:rotate(220deg) scale(1.12)}70%{transform:rotate(340deg) scale(1.05)}100%{transform:rotate(360deg) scale(1)}}
+@keyframes zzz{0%{opacity:0;transform:translateY(0) scale(.7)}25%{opacity:1}80%{opacity:.8}100%{opacity:0;transform:translateY(-32px) scale(1.2)}}
+@keyframes sparkle-pop{0%{opacity:0;transform:scale(0) translateY(0)}40%{opacity:1;transform:scale(1.2) translateY(-4px)}100%{opacity:0;transform:scale(.9) translateY(-18px)}}
+@keyframes food-drop{0%{opacity:0;transform:translateY(-20px) rotate(-10deg)}20%{opacity:1}70%{opacity:1;transform:translateY(30px) rotate(15deg)}100%{opacity:0;transform:translateY(50px) rotate(30deg) scale(.7)}}
+@keyframes k-tail-wag{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
+@keyframes k-ear-twitch{0%,80%,100%{transform:rotate(0)}90%{transform:rotate(-12deg)}95%{transform:rotate(8deg)}}
+@keyframes k-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.10)}}
+.tail{transform-box:fill-box;transform-origin:left center;animation:k-tail-wag 1.6s ease-in-out infinite;}
+.ear-L{transform-box:fill-box;transform-origin:50% 100%;animation:k-ear-twitch 4.6s ease-in-out infinite;}
+.ear-R{transform-box:fill-box;transform-origin:50% 100%;animation:k-ear-twitch 5.3s ease-in-out .8s infinite;}
+.tongue{transform-box:fill-box;transform-origin:50% 0%;animation:k-tongue 1.2s ease-in-out infinite;}
+@keyframes k-tongue{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(.5px) rotate(2deg)}}
+@keyframes k-leg-A{0%,49%{transform:translate(-2px,0) rotate(-22deg)}50%,100%{transform:translate(2px,-1px) rotate(22deg)}}
+@keyframes k-leg-B{0%,49%{transform:translate(2px,-1px) rotate(22deg)}50%,100%{transform:translate(-2px,0) rotate(-22deg)}}
+.leg-A{animation:k-leg-A .32s steps(1,end) infinite;}
+.leg-B{animation:k-leg-B .32s steps(1,end) infinite;}
+@keyframes k-gallop-bob{0%,49%{transform:translateY(0)}50%,100%{transform:translateY(-2.5px)}}
+</style>
+</head>
+<body>
+<div class="posters">
+
+<!-- ══════════════════════════════════════
+  POSTER 1 · INTRO
+═══════════════════════════════════════ -->
+<div class="poster">
+  <div class="ph">
+    <div class="pno">01 / 05</div>
+    <div class="pt">A Little Bear<br>That Eats<br>Tokens</div>
+    <div class="ps">His name is Shiro · he lives on your Mac</div>
+  </div>
+  <div class="scenes">
+    <!-- Hero scene: Shiro hungry + fed -->
+    <div class="g1">
+      <div class="sc" style="min-height:190px;flex-direction:row;justify-content:space-evenly;align-items:center;padding:20px 18px;">
+        <!-- Hungry state -->
+        <div style="text-align:center;">
+          <div class="pal" style="animation:k-bob 3.8s ease-in-out infinite;opacity:.55;">
+            <svg width="148" height="148" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+          </div>
+          <div style="margin-top:6px;">
+            <span class="tbadge tbadge-gray" style="font-size:.58rem;">Nothing to eat</span>
+          </div>
+          <div style="font-size:.65rem;color:#a09080;margin-top:4px;">Hungry... 🥺</div>
+        </div>
+        <!-- Arrow -->
+        <div style="font-size:1.3rem;color:#c0ae9e;">→</div>
+        <!-- Fed state -->
+        <div style="text-align:center;position:relative;">
+          <span class="fitem" style="top:-16px;left:10px;font-size:1.1rem;animation:food-drop 1.5s 0s ease-in-out infinite;">🍪</span>
+          <span class="fitem" style="top:-20px;left:30px;font-size:.9rem;animation:food-drop 1.5s .45s ease-in-out infinite;">⭐</span>
+          <span class="fitem" style="top:-14px;left:52px;font-size:1.0rem;animation:food-drop 1.5s .9s ease-in-out infinite;">🍩</span>
+          <div class="pal" style="animation:k-jiggle .6s ease-in-out infinite;">
+            <svg width="148" height="148" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+          </div>
+          <div style="margin-top:6px;">
+            <span class="tbadge" style="font-size:.58rem;">Fed!</span>
+          </div>
+          <div style="font-size:.65rem;color:#e55d2b;margin-top:4px;">NOM NOM 🍪</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Core mechanic -->
+    <div style="background:rgba(255,255,255,.55);border-radius:18px;padding:16px 18px;margin-bottom:12px;">
+      <div style="font-size:1.38rem;font-weight:900;color:#1a1410;line-height:1.25;">His food is Tokens<br>The more you save, the more he eats</div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:.75rem;color:#8a7a6a;">You write a prompt</span>
+        <span style="font-size:.75rem;color:#c0ae9e;">→</span>
+        <span style="font-size:.75rem;font-weight:700;color:#1a1410;">Terse compresses</span>
+        <span style="font-size:.75rem;color:#c0ae9e;">→</span>
+        <span style="font-size:.75rem;color:#3daa6a;font-weight:700;">Tokens saved</span>
+        <span style="font-size:.75rem;color:#c0ae9e;">→</span>
+        <span style="font-size:.75rem;font-weight:700;color:#e55d2b;">Shiro eats</span>
+      </div>
+    </div>
+  </div>
+  <div class="pcap">He never complains, but he's always hungry<br><strong>Every token you save with Terse goes straight to him</strong></div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  POSTER 2 · HOW IT WORKS
+═══════════════════════════════════════ -->
+<div class="poster">
+  <div class="ph">
+    <div class="pno">02 / 05</div>
+    <div class="pt">How Does It<br>Save Tokens?</div>
+    <div class="ps">Three compression modes · how hungry do you want Shiro?</div>
+  </div>
+  <div class="scenes">
+
+    <!-- Before/After example -->
+    <div class="ba-wrap">
+      <div class="ba-col">
+        <div class="ba-label">Before</div>
+        <div class="ba-num" style="color:#a09080;">1,240</div>
+        <div style="font-size:.60rem;color:#a09080;">tokens</div>
+        <div class="ba-prompt">Hello, I was hoping you could help me write some code to handle user-uploaded files. I need it to automatically detect...</div>
+      </div>
+      <div class="ba-arrow">→</div>
+      <div class="ba-col">
+        <div class="ba-label">After</div>
+        <div class="ba-num" style="color:#3daa6a;">620</div>
+        <div style="font-size:.60rem;color:#3daa6a;">tokens</div>
+        <div class="ba-saved">Saved 620 ↓50%</div>
+        <div style="text-align:center;margin-top:6px;">
+          <span class="fitem" style="position:relative;font-size:1.1rem;animation:food-drop 1.5s .2s ease-in-out infinite;top:auto;left:auto;display:inline-block;">🍪🍪🍪</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 modes -->
+    <div class="g1">
+      <div class="mode-card" style="margin-bottom:10px;">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="flex:1;">
+            <div class="mode-tag" style="background:rgba(100,160,240,.15);color:#3a7ac8;">🌿 Soft</div>
+            <div class="mode-before">Hello,  I   hope  you  can  help  me  code...</div>
+            <div class="mode-after">Hello, I hope you can help me code...</div>
+            <div class="mode-save">✓ Typo fix · whitespace compression</div>
+          </div>
+          <div style="font-size:.72rem;color:#8a7a6a;text-align:center;flex-shrink:0;padding-top:16px;">
+            <span class="fitem" style="position:relative;top:auto;left:auto;display:block;font-size:1.0rem;animation:none;">🍪</span>
+            <div style="margin-top:2px;">Snack</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mode-card" style="margin-bottom:10px;">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="flex:1;">
+            <div class="mode-tag" style="background:rgba(229,93,43,.12);color:#c04a1a;">🔥 Normal</div>
+            <div class="mode-before">I was hoping you could perhaps help me deal with this issue, thank you so much...</div>
+            <div class="mode-after">Fix this issue:</div>
+            <div class="mode-save">✓ Strip filler · tighten phrasing</div>
+          </div>
+          <div style="font-size:.72rem;color:#8a7a6a;text-align:center;flex-shrink:0;padding-top:16px;">
+            <span style="display:block;font-size:1.0rem;">🍪🍪</span>
+            <div style="margin-top:2px;">Big meal</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mode-card" style="margin-bottom:0;">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="flex:1;">
+            <div class="mode-tag" style="background:rgba(160,80,200,.12);color:#8040b0;">⚡ Aggressive</div>
+            <div class="mode-before">## Requirements\nPlease **carefully** help me write...</div>
+            <div class="mode-after">Write:</div>
+            <div class="mode-save">✓ Abbreviate · strip Markdown · max compression</div>
+          </div>
+          <div style="font-size:.72rem;color:#8a7a6a;text-align:center;flex-shrink:0;padding-top:16px;">
+            <span style="display:block;font-size:1.0rem;">🍪🍪🍪</span>
+            <div style="margin-top:2px;">Stuffed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="pcap"><strong>The more you save, the happier he eats</strong><br>More aggressive mode = more tokens saved</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  POSTER 3 · FEATURES
+═══════════════════════════════════════ -->
+<div class="poster">
+  <div class="ph">
+    <div class="pno">03 / 05</div>
+    <div class="pt">Everything<br>Shiro Can<br>Do For You</div>
+    <div class="ps">Not just a cute pet — your prompt efficiency manager</div>
+  </div>
+
+  <!-- Pet + badge hero -->
+  <div style="padding:0 16px;margin-bottom:12px;">
+    <div style="background:rgba(255,255,255,.55);border-radius:18px;padding:16px 18px;display:flex;align-items:center;gap:14px;">
+      <div class="pal" style="animation:k-breathe 5s ease-in-out infinite;flex-shrink:0;">
+        <svg width="120" height="120" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+      </div>
+      <div>
+        <div style="font-size:.62rem;color:#a09080;font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;">His day job</div>
+        <div style="font-size:1.15rem;font-weight:900;color:#1a1410;line-height:1.3;">Slim down your prompts<br>Then eat every token he saves</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature list -->
+  <div style="padding:0 16px;margin-bottom:12px;">
+    <div style="background:rgba(255,255,255,.55);border-radius:18px;overflow:hidden;">
+
+      <div style="padding:10px 14px 6px;font-size:.60rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#c0ae9e;">✦ Text Optimization</div>
+
+      <div class="feat-row">
+        <div class="feat-icon">✍️</div>
+        <div class="feat-text">
+          <div class="feat-name">Auto-fix typos</div>
+          <div class="feat-desc">Every typo caught automatically — no more proofreading</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="feat-icon">⬜</div>
+        <div class="feat-text">
+          <div class="feat-name">Compress whitespace</div>
+          <div class="feat-desc">Extra line breaks, spaces, and indents — gone</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="feat-icon">🗑️</div>
+        <div class="feat-text">
+          <div class="feat-name">Strip filler words</div>
+          <div class="feat-desc">"I was hoping you could perhaps…" → "Please" · politeness stripped</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="feat-icon">✂️</div>
+        <div class="feat-text">
+          <div class="feat-name">Shorten phrases</div>
+          <div class="feat-desc">Long-winded phrasing swapped for compact equivalents, same meaning</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="feat-icon">🔤</div>
+        <div class="feat-text">
+          <div class="feat-name">Smart abbreviations <span style="font-size:.60rem;background:rgba(160,80,200,.12);color:#8040b0;border-radius:4px;padding:1px 5px;font-weight:700;">Aggressive</span></div>
+          <div class="feat-desc">Common words auto-abbreviated for maximum token reduction</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="feat-icon">📝</div>
+        <div class="feat-text">
+          <div class="feat-name">Strip Markdown <span style="font-size:.60rem;background:rgba(160,80,200,.12);color:#8040b0;border-radius:4px;padding:1px 5px;font-weight:700;">Aggressive</span></div>
+          <div class="feat-desc">**Bold**, ## headers, `code blocks` — all removed</div>
+        </div>
+      </div>
+
+      <div style="padding:10px 14px 6px;font-size:.60rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#c0ae9e;">✦ Stats & Tracking</div>
+
+      <div class="feat-row">
+        <div class="feat-icon">📊</div>
+        <div class="feat-text">
+          <div class="feat-name">Daily token savings</div>
+          <div class="feat-desc">Today's savings, this week's total — at a glance</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="feat-icon">🗂️</div>
+        <div class="feat-text">
+          <div class="feat-name">Multi-source breakdown</div>
+          <div class="feat-desc">Browser / Claude Code / Editor — tracked separately</div>
+        </div>
+      </div>
+
+      <div style="padding:10px 14px 6px;font-size:.60rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#c0ae9e;">✦ Pet Bond</div>
+
+      <div class="feat-row">
+        <div class="feat-icon">🤝</div>
+        <div class="feat-text">
+          <div class="feat-name">Live feeding on every optimization</div>
+          <div class="feat-desc">Save tokens → Shiro eats instantly, with reactions and lines</div>
+        </div>
+      </div>
+      <div class="feat-row" style="border-bottom:none;">
+        <div class="feat-icon">🏅</div>
+        <div class="feat-text">
+          <div class="feat-name">Token milestones unlock rewards</div>
+          <div class="feat-desc">Every 1,000 tokens unlocks a new companion or skin</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pcap"><strong>Someone's keeping track of every token you save</strong></div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  POSTER 4 · PLATFORMS
+═══════════════════════════════════════ -->
+<div class="poster">
+  <div class="ph">
+    <div class="pno">04 / 05</div>
+    <div class="pt">Wherever<br>There's a Prompt<br>He's Saving</div>
+    <div class="ps">Every platform covered · no token escapes</div>
+  </div>
+  <div class="scenes">
+
+    <!-- Platforms -->
+    <div class="plat-row">
+      <div class="plat-card">
+        <div class="plat-icon">🌐</div>
+        <div class="plat-name">Browser</div>
+        <div class="plat-desc">ChatGPT · Claude.ai · Gemini and all web UIs</div>
+      </div>
+      <div class="plat-card">
+        <div class="plat-icon">🤖</div>
+        <div class="plat-name">Claude Code</div>
+        <div class="plat-desc">Every agent tool call monitored and optimized in real time</div>
+      </div>
+    </div>
+    <div class="plat-row">
+      <div class="plat-card">
+        <div class="plat-icon">💻</div>
+        <div class="plat-name">Editor</div>
+        <div class="plat-desc">VS Code · Cursor · any macOS input field</div>
+      </div>
+      <div class="plat-card">
+        <div class="plat-icon">⌨️</div>
+        <div class="plat-name">Manual</div>
+        <div class="plat-desc">Select any text, compress with a keyboard shortcut</div>
+      </div>
+    </div>
+
+    <!-- Claude Code special -->
+    <div style="background:rgba(255,255,255,.55);border-radius:18px;padding:16px 18px;margin-bottom:12px;">
+      <div style="font-size:.62rem;color:#a09080;font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">★ Claude Code Special Bonus</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="font-size:.72rem;color:#1a1410;font-weight:600;">💻 Run commands</div>
+        <div style="font-size:.72rem;color:#1a1410;font-weight:600;">📖 Read files</div>
+        <div style="font-size:.72rem;color:#1a1410;font-weight:600;">✂️ Edit code</div>
+        <div style="font-size:.72rem;color:#1a1410;font-weight:600;">🔍 Search</div>
+        <div style="font-size:.72rem;color:#1a1410;font-weight:600;">🤖 Call agents</div>
+        <div style="font-size:.72rem;color:#1a1410;font-weight:600;">🧠 Plan tasks</div>
+      </div>
+      <div style="font-size:.68rem;color:#8a7a6a;margin-top:8px;line-height:1.5;">Shiro has a unique reaction + line for every single action<br>You're never coding alone again</div>
+    </div>
+
+    <!-- Shiro reacting -->
+    <div class="g2">
+      <div class="sc" style="min-height:130px;">
+        <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#161624;border-radius:8px;padding:5px 10px;font-family:monospace;font-size:.50rem;color:#4eff94;white-space:nowrap;z-index:4;">
+          <div style="opacity:.4;margin-bottom:2px;">● ● ●</div>
+          $ npm run build
+        </div>
+        <div class="pal" style="animation:k-jiggle .38s ease-in-out infinite;margin-top:16px;">
+          <svg width="130" height="130" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+        </div>
+        <div class="sc-label">Busy while you code</div>
+      </div>
+      <div class="sc" style="min-height:130px;">
+        <div class="bubble" style="font-size:.62rem;top:8px;">−520 tokens! 🍪</div>
+        <span class="spark" style="top:28px;left:20px;font-size:.9rem;animation:sparkle-pop 1.6s .2s ease-in-out infinite;">✨</span>
+        <span class="spark" style="top:22px;right:18px;font-size:.8rem;animation:sparkle-pop 1.6s .8s ease-in-out infinite;">⭐</span>
+        <div class="pal" style="animation:k-hop 2.0s ease-in-out infinite;margin-top:12px;">
+          <svg width="130" height="130" viewBox="-21 -21 202 202" data-pal="shiro"></svg>
+        </div>
+        <div class="sc-label">Happy when tokens drop</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="pcap"><strong>Wherever you use AI, Shiro is saving tokens</strong></div>
+  <div class="ptag">*Powered by Claude Code Hooks</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+  POSTER 5 · OTHER PETS
+═══════════════════════════════════════ -->
+<div class="poster">
+  <div class="ph">
+    <div class="pno">05 / 05</div>
+    <div class="pt">19 More<br>Friends<br>Waiting to Be Fed</div>
+    <div class="ps">Save tokens to unlock · they're all hungry</div>
+  </div>
+
+  <!-- Parade -->
+  <div class="parade-strip" id="parade">
+    <div class="parade-track" id="parade-track"></div>
+  </div>
+
+  <!-- Unlock mechanic -->
+  <div style="padding:0 16px;margin-bottom:12px;">
+    <div style="background:rgba(255,255,255,.55);border-radius:18px;padding:16px 18px;">
+      <div style="font-size:1.25rem;font-weight:900;color:#1a1410;line-height:1.3;margin-bottom:12px;">Every 1,000 Tokens<br>Unlocks a New Companion</div>
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1;background:rgba(229,93,43,.08);border-radius:12px;padding:10px;text-align:center;">
+          <div style="font-size:1.4rem;">🐾</div>
+          <div style="font-size:.72rem;font-weight:800;color:#1a1410;margin-top:4px;">20 companions</div>
+          <div style="font-size:.60rem;color:#8a7a6a;margin-top:2px;">Bear · Cat · Dog · Frog<br>Penguin · Panda · more…</div>
+        </div>
+        <div style="flex:1;background:rgba(61,170,106,.08);border-radius:12px;padding:10px;text-align:center;">
+          <div style="font-size:1.4rem;">👗</div>
+          <div style="font-size:.72rem;font-weight:800;color:#1a1410;margin-top:4px;">7 skins each</div>
+          <div style="font-size:.60rem;color:#8a7a6a;margin-top:2px;">Holiday · Halloween<br>Christmas · more themes</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:.78rem;color:#8a7a6a;line-height:1.6;">
+        Every single token you save counts<br>
+        <strong style="color:#3a2a18;">Save tokens = raise pets = build your collection</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sample pets preview -->
+  <div class="scenes">
+    <div class="g2">
+      <div class="sc" style="min-height:110px;">
+        <div class="pal" style="animation:k-bob 4.6s ease-in-out infinite;">
+          <svg width="96" height="96" viewBox="-21 -21 202 202" data-pal="koko"></svg>
+        </div>
+        <div class="sc-label">Koko · Giant Panda</div>
+      </div>
+      <div class="sc" style="min-height:110px;">
+        <div class="pal" style="animation:k-walk 2.8s ease-in-out infinite;">
+          <svg width="96" height="96" viewBox="-21 -21 202 202" data-pal="momo"></svg>
+        </div>
+        <div class="sc-label">Momo · Pink Cat</div>
+      </div>
+      <div class="sc" style="min-height:110px;">
+        <div class="pal" style="animation:k-hop 2.6s ease-in-out infinite;">
+          <svg width="96" height="96" viewBox="-21 -21 202 202" data-pal="fafa"></svg>
+        </div>
+        <div class="sc-label">Fafa · Tree Frog</div>
+      </div>
+      <div class="sc" style="min-height:110px;">
+        <div class="pal" style="animation:k-run 1.8s ease-in-out infinite;">
+          <svg width="96" height="96" viewBox="-21 -21 202 202" data-pal="toro"></svg>
+        </div>
+        <div class="sc-label">Toro · Fox</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pcap">They're all waiting — hungry and hopeful<br><strong>Every day you save tokens, you're growing them</strong></div>
+
+  <div class="cta-btn">
+    <div class="cta-sub">Adopt your first one today</div>
+    <div class="cta-main">Download Terse, start feeding Shiro →</div>
+  </div>
+</div>
+
+</div><!-- .posters -->
+
+<script>
+// ── Full kekeSVG renderer ──
+const KEKE=[
+  {id:'shiro',name:'Shiro',sub:'White Bear',body:'#C8956A',belly:'#F0C8A0',anim:'k-breathe',spd:5.0,shape:'fluff',ear:'round',tail:'puff',tongue:true,mouth:'open'},
+  {id:'boba',name:'Boba',sub:'Honey Bear',body:'#D49860',belly:'#F0D8B0',anim:'k-breathe',spd:5.4,shape:'fluff',ear:'round',tail:'puff',tongue:true,mouth:'open'},
+  {id:'koko',name:'Koko',sub:'Panda',body:'#FFFFFF',belly:'#FFFFFF',anim:'k-bob',spd:4.6,shape:'panda',ear:'panda',tail:'puff',tongue:false,mouth:'w'},
+  {id:'momo',name:'Momo',sub:'Pink Cat',body:'#FFB8CA',belly:'#FFE0E8',anim:'k-walk',spd:2.8,shape:'cat',ear:'cat',tail:'curl',tongue:false,mouth:'w'},
+  {id:'kumo',name:'Kumo',sub:'Cloud Sheep',body:'#FAF6F0',belly:'#FAF6F0',anim:'k-bob',spd:5.6,shape:'cloud',ear:'tiny',tail:'puff',tongue:false,mouth:'smile',face:'#3A2820'},
+  {id:'goma',name:'Goma',sub:'Dalmatian',body:'#FFFFFF',belly:'#FFFFFF',anim:'k-walk',spd:2.4,shape:'corgi',ear:'flop',tail:'puff',tongue:true,mouth:'open',spots:true},
+  {id:'toro',name:'Toro',sub:'Fox',body:'#F07840',belly:'#FFF0E0',anim:'k-run',spd:1.8,shape:'corgi',ear:'point',tail:'fox',tongue:true,mouth:'open'},
+  {id:'fafa',name:'Fafa',sub:'Tree Frog',body:'#7AD080',belly:'#F8FFE8',anim:'k-hop',spd:2.6,shape:'frog',ear:'frog',tail:'none',tongue:false,mouth:'smile'},
+  {id:'mimi',name:'Mimi',sub:'Rabbit',body:'#FBEDF0',belly:'#FFFFFF',anim:'k-hop',spd:2.6,shape:'fluff',ear:'long',tail:'puff',tongue:false,mouth:'w'},
+  {id:'nene',name:'Nene',sub:'Penguin',body:'#3A4866',belly:'#FFF8E8',anim:'k-walk',spd:2.0,shape:'penguin',ear:'none',tail:'none',tongue:false,mouth:'smile',beak:'#F5A020'},
+  {id:'yuki',name:'Yuki',sub:'Duck',body:'#FCE07A',belly:'#FFEFB0',anim:'k-walk',spd:2.2,shape:'fluff',ear:'none',tail:'puff',tongue:false,mouth:'none',beak:'#F09030'},
+  {id:'piyo',name:'Piyo',sub:'Baby Chick',body:'#FCE870',belly:'#FFF8D0',anim:'k-bob',spd:1.6,shape:'chick',ear:'none',tail:'none',tongue:false,mouth:'none',beak:'#F09030'},
+  {id:'maru',name:'Maru',sub:'Hamster',body:'#E8B880',belly:'#F8DEB8',anim:'k-jiggle',spd:1.6,shape:'fluff',ear:'tiny',tail:'none',tongue:false,mouth:'w'},
+  {id:'nori',name:'Nori',sub:'Harp Seal',body:'#F4F0EC',belly:'#FFFFFF',anim:'k-paddle',spd:3.6,shape:'seal',ear:'none',tail:'fin',tongue:false,mouth:'smile'},
+  {id:'coco',name:'Coco',sub:'Koala',body:'#A8A4B8',belly:'#D0CCD8',anim:'k-peek',spd:4.6,shape:'fluff',ear:'koala',tail:'none',tongue:false,mouth:'w',nose:'#181818'},
+  {id:'piko',name:'Piko',sub:'Piglet',body:'#FFB8C0',belly:'#FFD8DC',anim:'k-jiggle',spd:2.4,shape:'fluff',ear:'pig',tail:'curl',tongue:false,mouth:'w',snout:'pig'},
+  {id:'zoro',name:'Zoro',sub:'Raccoon',body:'#B8B4C2',belly:'#EAE6F0',anim:'k-walk',spd:2.6,shape:'corgi',ear:'point',tail:'fox',tongue:true,mouth:'open',mask:true},
+  {id:'hana',name:'Hana',sub:'Baby Fawn',body:'#E0B878',belly:'#FFF4E2',anim:'k-bob',spd:3.0,shape:'corgi',ear:'long',tail:'puff',tongue:false,mouth:'w',spots:true},
+  {id:'suika',name:'Suika',sub:'Capybara',body:'#C0A068',belly:'#E0C898',anim:'k-breathe',spd:6.2,shape:'capy',ear:'tiny',tail:'none',tongue:false,mouth:'line'},
+  {id:'riri',name:'Riri',sub:'Axolotl',body:'#F8A8C0',belly:'#FFD0E0',anim:'k-paddle',spd:3.4,shape:'salamander',ear:'gill',tail:'fin',tongue:false,mouth:'w'},
+];
+
+function kekeSVG(p,s){
+  const cx=s*.50,cy=s*.62,r=s*.30;
+  const F=n=>n.toFixed(2);
+  const BODY=p.body,BELLY=p.belly||p.body,FACE=p.face||'#3a2a20',BLUSH='#FF9DBA',TONGUE='#FF7A95';
+  const fid=`wc-${p.id}-${Math.random().toString(36).slice(2,7)}`;
+  const path=(d,fill,ex='')=>`<path d="${d}" fill="${fill}"${ex?' '+ex:''}/>`;
+  const ell=(x,y,rx,ry,fill,ex='')=>`<ellipse cx="${F(x)}" cy="${F(y)}" rx="${F(rx)}" ry="${F(ry)}" fill="${fill}"${ex?' '+ex:''}/>`;
+  const cir=(x,y,rad,fill,ex='')=>`<circle cx="${F(x)}" cy="${F(y)}" r="${F(rad)}" fill="${fill}"${ex?' '+ex:''}/>`;
+  let legCount=0;
+  function legStub(x,y,w,h,col,style){
+    style=style||'paw';const cls=(legCount++%2===0)?'leg-A':'leg-B';
+    const ox=F(x),oy=F(y-h*.55);let inner='';
+    if(style==='paw'){inner=path(`M${F(x-w*.85)},${F(y-h)} Q${F(x-w)},${F(y+h*.5)} ${F(x-w*.7)},${F(y+h*.85)} Q${F(x)},${F(y+h)} ${F(x+w*.7)},${F(y+h*.85)} Q${F(x+w)},${F(y+h*.5)} ${F(x+w*.85)},${F(y-h)} Z`,col)+ell(x,y+h*.85,w*.85,h*.18,BELLY,` opacity=".95"`)+cir(x-w*.35,y+h*.92,w*.16,FACE,` opacity=".70"`)+cir(x+w*.20,y+h*.92,w*.16,FACE,` opacity=".70"`);}
+    else if(style==='thick-paw'){inner=ell(x,y,w*1.05,h,col)+ell(x,y+h*.78,w*.95,h*.20,FACE,` opacity=".70"`)+cir(x-w*.40,y+h*.78,w*.16,FACE,` opacity=".85"`)+cir(x+w*.40,y+h*.78,w*.16,FACE,` opacity=".85"`)+cir(x,y+h*.78,w*.16,FACE,` opacity=".85"`);}
+    else if(style==='sock'){inner=ell(x,y-h*.25,w*.95,h*.85,col)+ell(x,y+h*.50,w,h*.45,'#2a1a14',` opacity=".95"`)+ell(x,y+h*.85,w*.85,h*.13,'#1a0a04');}
+    else if(style==='spot'){inner=ell(x,y,w,h,col)+cir(x+w*.1,y+h*.3,w*.32,'#181818',` opacity=".88"`)+ell(x,y+h*.85,w*.85,h*.18,'#181818',` opacity=".60"`);}
+    else if(style==='hoof'){inner=path(`M${F(x-w*.55)},${F(y-h)} L${F(x-w*.55)},${F(y+h*.7)} L${F(x+w*.55)},${F(y+h*.7)} L${F(x+w*.55)},${F(y-h)} Z`,'#3A2820')+path(`M${F(x-w*.75)},${F(y+h*.7)} Q${F(x-w*.75)},${F(y+h*1.05)} ${F(x)},${F(y+h*1.05)} Q${F(x+w*.75)},${F(y+h*1.05)} ${F(x+w*.75)},${F(y+h*.7)} Z`,'#1a0a04');}
+    else if(style==='thin-hoof'){inner=path(`M${F(x-w*.45)},${F(y-h)} Q${F(x)},${F(y-h*.5)} ${F(x-w*.55)},${F(y+h*.7)} Q${F(x)},${F(y+h*.95)} ${F(x+w*.55)},${F(y+h*.7)} Q${F(x)},${F(y-h*.5)} ${F(x+w*.45)},${F(y-h)} Z`,col)+ell(x,y+h*.92,w*.65,h*.13,'#3A2820');}
+    else if(style==='stubby'){inner=ell(x,y+h*.20,w*1.1,h*.70,col)+ell(x,y+h*.75,w*.95,h*.13,FACE,` opacity=".75"`);}
+    else if(style==='pig'){inner=ell(x,y,w*.95,h*.95,col)+path(`M${F(x-w*.55)},${F(y+h*.6)} L${F(x-w*.55)},${F(y+h*.95)} L${F(x-w*.05)},${F(y+h*.95)} L${F(x-w*.05)},${F(y+h*.6)} Z`,'#1a0a04')+path(`M${F(x+w*.05)},${F(y+h*.6)} L${F(x+w*.05)},${F(y+h*.95)} L${F(x+w*.55)},${F(y+h*.95)} L${F(x+w*.55)},${F(y+h*.6)} Z`,'#1a0a04');}
+    else if(style==='cat-paw'){inner=path(`M${F(x-w*.55)},${F(y-h)} Q${F(x-w*.65)},${F(y+h*.4)} ${F(x-w*.55)},${F(y+h*.78)} Q${F(x)},${F(y+h*.95)} ${F(x+w*.55)},${F(y+h*.78)} Q${F(x+w*.65)},${F(y+h*.4)} ${F(x+w*.55)},${F(y-h)} Z`,col)+ell(x,y+h*.85,w*.85,h*.18,BELLY,` opacity=".95"`)+cir(x-w*.25,y+h*.92,w*.12,BLUSH,` opacity=".85"`)+cir(x+w*.10,y+h*.92,w*.12,BLUSH,` opacity=".85"`);}
+    else if(style==='panda-paw'){inner=ell(x,y,w*1.05,h,'#181818')+cir(x-w*.30,y+h*.78,w*.16,'#3a2820')+cir(x+w*.30,y+h*.78,w*.16,'#3a2820');}
+    else if(style==='tiny-paw'){inner=ell(x,y+h*.20,w*.90,h*.78,col)+ell(x,y+h*.65,w*.70,h*.12,FACE,` opacity=".60"`);}
+    else if(style==='koala-arm'){inner=ell(x,y,w,h*.95,col)+ell(x,y+h*.70,w*.80,h*.20,'#3a2820',` opacity=".80"`)+cir(x-w*.22,y+h*.85,w*.10,'#1a1212')+cir(x+w*.22,y+h*.85,w*.10,'#1a1212');}
+    else if(style==='bunny'){inner=ell(x,y+h*.10,w*.95,h*.85,col)+ell(x,y+h*.78,w*.85,h*.15,BLUSH,` opacity=".60"`);}
+    else{inner=ell(x,y,w,h,col);}
+    return `<g class="${cls}" style="transform-origin:${ox}px ${oy}px;">${inner}</g>`;
+  }
+  function legPair(pX,pY,w,h,col,style){
+    function shade(hex,amt){const m=hex.match(/^#([0-9a-f]{6})/i);if(!m)return hex;const n=parseInt(m[1],16);const c=[(n>>16)&255,(n>>8)&255,n&255].map(v=>{const t=amt<0?v*(1+amt):v+(255-v)*amt;return Math.max(0,Math.min(255,Math.round(t)));});return'#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');}
+    const fX=pX+(pX<cx?w*.6:-w*.6),fY=pY-h*.05;
+    return legStub(fX,fY,w*.85,h*.95,shade(col,-.15),style)+legStub(pX,pY,w,h,col,style);
+  }
+  function tinyFace(hx,hy,hr,opts={}){
+    const eR=hr*.10,ex=hr*.30,ey=hy-hr*.05;
+    let g=cir(hx-ex,ey,eR,FACE)+cir(hx+ex,ey,eR,FACE)+cir(hx-ex+eR*.3,ey-eR*.3,eR*.4,'white')+cir(hx+ex+eR*.3,ey-eR*.3,eR*.4,'white')+ell(hx-ex-hr*.18,ey+hr*.20,hr*.16,hr*.08,BLUSH,` opacity=".55"`)+ell(hx+ex+hr*.18,ey+hr*.20,hr*.16,hr*.08,BLUSH,` opacity=".55"`);
+    const my=ey+hr*.30,mouth=opts.mouth||p.mouth;
+    if(mouth==='open'){g+=path(`M${F(hx-hr*.14)},${F(my)} Q${F(hx)},${F(my+hr*.24)} ${F(hx+hr*.14)},${F(my)} Q${F(hx)},${F(my+hr*.10)} ${F(hx-hr*.14)},${F(my)} Z`,FACE,`opacity=".88"`)+path(`M${F(hx+hr*.04)},${F(my+hr*.08)} Q${F(hx+hr*.20)},${F(my+hr*.24)} ${F(hx+hr*.22)},${F(my+hr*.14)} Q${F(hx+hr*.18)},${F(my+hr*.04)} ${F(hx+hr*.06)},${F(my+hr*.04)} Z`,TONGUE,`class="tongue"`);}
+    else if(mouth==='w'){g+=`<path d="M${F(hx-hr*.13)},${F(my)} Q${F(hx-hr*.06)},${F(my+hr*.08)} ${F(hx)},${F(my+hr*.03)} Q${F(hx+hr*.06)},${F(my+hr*.08)} ${F(hx+hr*.13)},${F(my)}" stroke="${FACE}" stroke-width="${F(hr*.05)}" fill="none" stroke-linecap="round"/>`;}
+    else if(mouth==='smile'){g+=`<path d="M${F(hx-hr*.12)},${F(my)} Q${F(hx)},${F(my+hr*.13)} ${F(hx+hr*.12)},${F(my)}" stroke="${FACE}" stroke-width="${F(hr*.055)}" fill="none" stroke-linecap="round"/>`;}
+    else if(mouth==='line'){g+=`<line x1="${F(hx-hr*.07)}" y1="${F(my)}" x2="${F(hx+hr*.07)}" y2="${F(my)}" stroke="${FACE}" stroke-width="${F(hr*.045)}" stroke-linecap="round"/>`;}
+    if(opts.nose)g+=ell(hx,my-hr*.05,hr*.07,hr*.045,FACE);
+    return g;
+  }
+  function render(){
+    let g='';
+    const LC={shiro:{style:'thick-paw',w:.18,h:.16,gait:'pair'},boba:{style:'thick-paw',w:.18,h:.16,gait:'pair'},koko:{style:'panda-paw',w:.18,h:.16,gait:'pair'},goma:{style:'spot',w:.13,h:.24,gait:'pair'},toro:{style:'sock',w:.10,h:.26,gait:'single'},zoro:{style:'sock',w:.12,h:.20,gait:'pair'},momo:{style:'cat-paw',w:.10,h:.22,gait:'single'},mimi:{style:'bunny',w:.10,h:.14,gait:'bunny'},kumo:{style:'hoof',w:.08,h:.22,gait:'pair'},hana:{style:'thin-hoof',w:.07,h:.32,gait:'pair'},maru:{style:'tiny-paw',w:.10,h:.07,gait:'pair'},suika:{style:'stubby',w:.13,h:.10,gait:'pair'},coco:{style:'koala-arm',w:.14,h:.14,gait:'sit'},piko:{style:'pig',w:.12,h:.13,gait:'pair'}};
+    const lc=LC[p.id]||{style:'paw',w:.13,h:.18,gait:'pair'};
+    const lw=r*lc.w,lh=r*lc.h,gy=cy+r*.78;
+    const fi=`<defs><filter id="${fid}" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="1.4"/></filter></defs>`;
+
+    if(p.shape==='corgi'||p.shape==='dog'){
+      const by_=gy-lh-r*.45,bx=cx-r*.05,by=by_,bw=r*1.05,bh=r*.50,hx=cx+r*.70,hy=by-r*.32,hr=r*.42;
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}${cir(hx,hy,hr,BODY)}</g>`;
+      g+=path(`M${F(cx-r*.95)},${F(by-r*.05)} Q${F(cx-r*1.20)},${F(by-r*.45)} ${F(cx-r*.95)},${F(by-r*.60)} Q${F(cx-r*.78)},${F(by-r*.35)} ${F(cx-r*.85)},${F(by-r*.05)} Z`,BODY);
+      const ly=gy;
+      if(lc.gait==='single')g+=legStub(cx-r*.40,ly,lw,lh,BODY,lc.style);
+      else g+=legPair(cx-r*.45,ly,lw,lh,BODY,lc.style);
+      g+=ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.4,bw*.7,bh*.5,BELLY,` opacity=".90"`);
+      if(lc.gait==='single')g+=legStub(cx+r*.40,ly,lw,lh,BODY,lc.style);
+      else g+=legPair(cx+r*.45,ly,lw,lh,BODY,lc.style);
+      if(p.ear==='flop'){g+=ell(hx-r*.30,hy+r*.10,r*.15,r*.30,BODY)+ell(hx+r*.30,hy+r*.10,r*.15,r*.30,BODY);}
+      else if(p.ear==='long'){g+=ell(hx-r*.18,hy-r*.45,r*.10,r*.36,BODY)+ell(hx+r*.18,hy-r*.45,r*.10,r*.36,BODY)+ell(hx-r*.18,hy-r*.45,r*.04,r*.24,BLUSH,` opacity=".50"`)+ell(hx+r*.18,hy-r*.45,r*.04,r*.24,BLUSH,` opacity=".50"`);}
+      else{g+=path(`M${F(hx-r*.32)},${F(hy-r*.05)} L${F(hx-r*.20)},${F(hy-r*.50)} L${F(hx-r*.05)},${F(hy-r*.10)} Z`,BODY)+path(`M${F(hx+r*.05)},${F(hy-r*.10)} L${F(hx+r*.20)},${F(hy-r*.50)} L${F(hx+r*.32)},${F(hy-r*.05)} Z`,BODY);}
+      g+=cir(hx,hy,hr,BODY);
+      if(p.spots){const dc=p.id==='goma'?'#181818':'white';const dots=p.id==='goma'?[[-0.30,-0.05],[0.10,0.05],[-0.10,0.30],[0.40,0.20],[-0.55,0.20]]:[[-0.40,0.10],[-0.10,-0.05],[0.20,0.20]];dots.forEach(([dx,dy])=>g+=cir(bx+r*dx,by+r*dy,r*.06,dc,` opacity=".90"`));}
+      if(p.mask){g+=ell(hx-r*.18,hy-r*.05,r*.18,r*.12,FACE,` opacity=".75"`)+ell(hx+r*.18,hy-r*.05,r*.18,r*.12,FACE,` opacity=".75"`);}
+      if(p.tail==='fox')g+=ell(cx-r*.93,cy-r*.45,r*.09,r*.10,'white');
+      g+=tinyFace(hx,hy,hr);
+      if(p.mask){const eR=hr*.10,ex=hr*.30,ey=hy-hr*.05;g+=cir(hx-ex,ey,eR*.7,'white')+cir(hx+ex,ey,eR*.7,'white')+cir(hx-ex,ey,eR*.55,FACE)+cir(hx+ex,ey,eR*.55,FACE);}
+      return fi+g;
+    }
+    if(p.shape==='cat'){
+      const by_=gy-lh-r*.45,bx=cx,by=by_,bw=r*.80,bh=r*.50,hx=cx+r*.55,hy=by-r*.32,hr=r*.40;
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}${cir(hx,hy,hr,BODY)}</g>`;
+      g+=`<path d="M${F(cx-r*.78)},${F(by-r*.05)} q${F(-r*.30)},${F(-r*.10)} ${F(-r*.20)},${F(-r*.45)} q${F(r*.20)},${F(-r*.20)} ${F(r*.05)},${F(-r*.20)}" stroke="${BODY}" stroke-width="${F(r*.18)}" fill="none" stroke-linecap="round"/>`;
+      g+=legStub(cx-r*.40,gy,lw,lh,BODY,lc.style)+ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.35,bw*.65,bh*.50,BELLY,` opacity=".90"`)+legStub(cx+r*.40,gy,lw,lh,BODY,lc.style);
+      g+=path(`M${F(hx-r*.32)},${F(hy-r*.05)} L${F(hx-r*.18)},${F(hy-r*.48)} L${F(hx-r*.02)},${F(hy-r*.10)} Z`,BODY)+path(`M${F(hx+r*.02)},${F(hy-r*.10)} L${F(hx+r*.18)},${F(hy-r*.48)} L${F(hx+r*.32)},${F(hy-r*.05)} Z`,BODY);
+      g+=path(`M${F(hx-r*.22)},${F(hy-r*.10)} L${F(hx-r*.16)},${F(hy-r*.32)} L${F(hx-r*.08)},${F(hy-r*.14)} Z`,BLUSH,` opacity=".60"`)+path(`M${F(hx+r*.08)},${F(hy-r*.14)} L${F(hx+r*.16)},${F(hy-r*.32)} L${F(hx+r*.22)},${F(hy-r*.10)} Z`,BLUSH,` opacity=".60"`);
+      g+=cir(hx,hy,hr,BODY)+tinyFace(hx,hy,hr);
+      return fi+g;
+    }
+    if(p.shape==='panda'){
+      const BLK='#1a1a1a',by_=gy-lh-r*.40,bx=cx,by=by_,bw=r*.78,bh=r*.52,hx=cx,hy=by-r*.46,hr=r*.52;
+      g+=`<g opacity=".22" filter="url(#${fid})">${ell(bx,by,bw,bh,'#FFFFFF')}${cir(hx,hy,hr,'#FFFFFF')}</g>`;
+      g+=cir(cx-r*.72,by+r*.05,r*.08,BLK)+legPair(cx-r*.32,gy,lw,lh,BLK,'panda-paw')+ell(bx,by,bw,bh,'#FFFFFF');
+      g+=`<path d="M${F(bx-bw*.95)},${F(by-bh*.10)} Q${F(bx)},${F(by-bh*.65)} ${F(bx+bw*.95)},${F(by-bh*.10)} Q${F(bx+bw*.95)},${F(by+bh*.20)} ${F(bx)},${F(by-bh*.05)} Q${F(bx-bw*.95)},${F(by+bh*.20)} ${F(bx-bw*.95)},${F(by-bh*.10)} Z" fill="${BLK}"/>`;
+      g+=ell(bx,by+bh*.40,bw*.55,bh*.40,'#FFFFFF')+legPair(cx+r*.32,gy,lw,lh,BLK,'panda-paw');
+      g+=cir(hx-r*.36,hy-r*.34,r*.18,BLK)+cir(hx+r*.36,hy-r*.34,r*.18,BLK)+cir(hx,hy,hr,'#FFFFFF');
+      g+=`<ellipse cx="${F(hx-r*.22)}" cy="${F(hy-r*.06)}" rx="${F(r*.16)}" ry="${F(r*.20)}" fill="${BLK}" transform="rotate(-12,${F(hx-r*.22)},${F(hy-r*.06)})"/><ellipse cx="${F(hx+r*.22)}" cy="${F(hy-r*.06)}" rx="${F(r*.16)}" ry="${F(r*.20)}" fill="${BLK}" transform="rotate(12,${F(hx+r*.22)},${F(hy-r*.06)})"/>`;
+      g+=cir(hx-r*.22,hy-r*.04,r*.06,'#FFFFFF')+cir(hx+r*.22,hy-r*.04,r*.06,'#FFFFFF')+cir(hx-r*.22,hy-r*.04,r*.035,BLK)+cir(hx+r*.22,hy-r*.04,r*.035,BLK)+cir(hx-r*.215,hy-r*.05,r*.012,'#FFFFFF')+cir(hx+r*.225,hy-r*.05,r*.012,'#FFFFFF');
+      g+=ell(hx,hy+r*.16,r*.05,r*.035,BLK)+`<path d="M${F(hx-r*.06)},${F(hy+r*.24)} Q${F(hx-r*.03)},${F(hy+r*.30)} ${F(hx)},${F(hy+r*.27)} Q${F(hx+r*.03)},${F(hy+r*.30)} ${F(hx+r*.06)},${F(hy+r*.24)}" stroke="${BLK}" stroke-width="${F(r*.025)}" fill="none" stroke-linecap="round"/>`;
+      g+=ell(hx-r*.40,hy+r*.14,r*.10,r*.05,BLUSH,` opacity=".60"`)+ell(hx+r*.40,hy+r*.14,r*.10,r*.05,BLUSH,` opacity=".60"`);
+      return fi+g;
+    }
+    if(p.shape==='fluff'){
+      const by_=gy-lh-r*.40,bx=cx,by=by_,bw=r*.72,bh=r*.50,hx=cx,hy=by-r*.42,hr=r*.50;
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}${cir(hx,hy,hr,BODY)}</g>`;
+      if(p.tail==='puff')g+=cir(cx-r*.70,by+r*.10,r*.10,BODY);
+      const ly=gy;
+      if(lc.gait==='single')g+=legStub(cx-r*.30,ly,lw,lh,BODY,lc.style);
+      else if(lc.gait==='bunny'){g+=ell(cx-r*.28,gy-r*.05,r*.24,r*.10,BODY)+ell(cx-r*.28,gy-r*.01,r*.16,r*.05,BLUSH,` opacity=".60"`);}
+      else if(lc.gait==='sit')g+=ell(cx-r*.30,by+bh*.55,r*.20,r*.14,BODY);
+      else g+=legPair(cx-r*.32,ly,lw,lh,BODY,lc.style);
+      g+=ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.3,bw*.6,bh*.55,BELLY,` opacity=".90"`);
+      if(lc.gait==='single')g+=legStub(cx+r*.30,ly,lw,lh,BODY,lc.style);
+      else if(lc.gait==='bunny')g+=legStub(cx+r*.25,ly,r*.10,r*.16,BODY,'paw');
+      else if(lc.gait==='sit')g+=ell(cx+r*.30,by+bh*.55,r*.20,r*.14,BODY);
+      else g+=legPair(cx+r*.32,ly,lw,lh,BODY,lc.style);
+      if(p.ear==='round'){g+=cir(hx-r*.34,hy-r*.32,r*.16,BODY)+cir(hx+r*.34,hy-r*.32,r*.16,BODY)+cir(hx-r*.34,hy-r*.32,r*.08,BLUSH,` opacity=".55"`)+cir(hx+r*.34,hy-r*.32,r*.08,BLUSH,` opacity=".55"`);}
+      else if(p.ear==='koala'){g+=cir(hx-r*.46,hy-r*.20,r*.24,BODY)+cir(hx+r*.46,hy-r*.20,r*.24,BODY)+cir(hx-r*.46,hy-r*.20,r*.16,BELLY)+cir(hx+r*.46,hy-r*.20,r*.16,BELLY);}
+      else if(p.ear==='long'){g+=ell(hx-r*.20,hy-r*.55,r*.10,r*.40,BODY)+ell(hx+r*.20,hy-r*.55,r*.10,r*.40,BODY)+ell(hx-r*.20,hy-r*.55,r*.04,r*.28,BLUSH,` opacity=".55"`)+ell(hx+r*.20,hy-r*.55,r*.04,r*.28,BLUSH,` opacity=".55"`);}
+      else if(p.ear==='pig'){g+=path(`M${F(hx-r*.30)},${F(hy-r*.15)} L${F(hx-r*.18)},${F(hy-r*.45)} L${F(hx-r*.05)},${F(hy-r*.18)} Z`,BODY)+path(`M${F(hx+r*.05)},${F(hy-r*.18)} L${F(hx+r*.18)},${F(hy-r*.45)} L${F(hx+r*.30)},${F(hy-r*.15)} Z`,BODY);}
+      else if(p.ear==='tiny'){g+=cir(hx-r*.30,hy-r*.30,r*.08,BODY)+cir(hx+r*.30,hy-r*.30,r*.08,BODY);}
+      g+=cir(hx,hy,hr,BODY);
+      if(p.snout==='pig'){g+=ell(hx,hy+r*.18,r*.14,r*.10,BLUSH)+cir(hx-r*.04,hy+r*.18,r*.020,FACE)+cir(hx+r*.04,hy+r*.18,r*.020,FACE);}
+      if(p.nose)g+=ell(hx,hy+r*.18,r*.14,r*.11,p.nose);
+      if(p.beak&&p.id==='yuki')g+=ell(hx+r*.20,hy+r*.05,r*.22,r*.10,p.beak);
+      g+=tinyFace(hx,hy,hr);
+      return fi+g;
+    }
+    if(p.shape==='cloud'){
+      const bx=cx,by=cy+r*.20,bw=r*.85,bh=r*.55;
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}</g>`;
+      g+=legPair(cx-r*.32,gy,lw,lh,FACE,lc.style)+legPair(cx+r*.32,gy,lw,lh,FACE,lc.style);
+      [[bx-r*.55,by-r*.05,r*.30],[bx-r*.20,by-r*.30,r*.34],[bx+r*.18,by-r*.30,r*.34],[bx+r*.55,by-r*.05,r*.30],[bx,by+r*.10,r*.45]].forEach(([x,y,rad])=>g+=cir(x,y,rad,BODY));
+      const hx=cx+r*.45,hy=cy-r*.30,hr=r*.22;
+      g+=cir(hx,hy,hr,FACE)+ell(hx-r*.18,hy+r*.05,r*.08,r*.12,FACE)+ell(hx+r*.18,hy+r*.05,r*.08,r*.12,FACE);
+      g+=cir(hx-r*.07,hy-r*.03,r*.035,'white')+cir(hx+r*.07,hy-r*.03,r*.035,'white')+cir(hx-r*.07,hy-r*.03,r*.018,FACE)+cir(hx+r*.07,hy-r*.03,r*.018,FACE);
+      g+=`<path d="M${F(hx-r*.05)},${F(hy+r*.08)} Q${F(hx)},${F(hy+r*.13)} ${F(hx+r*.05)},${F(hy+r*.08)}" stroke="white" stroke-width="${F(r*.025)}" fill="none" stroke-linecap="round"/>`;
+      return g;
+    }
+    if(p.shape==='penguin'){
+      const bx=cx,by=cy,bw=r*.78,bh=r*.95;
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}</g>`;
+      g+=path(`M${F(cx-r*.34)},${F(cy+r*.92)} Q${F(cx-r*.18)},${F(cy+r*1.05)} ${F(cx)},${F(cy+r*.92)} Z`,p.beak||'#F5A020')+path(`M${F(cx)},${F(cy+r*.92)} Q${F(cx+r*.18)},${F(cy+r*1.05)} ${F(cx+r*.34)},${F(cy+r*.92)} Z`,p.beak||'#F5A020');
+      g+=`<path d="M${F(cx)},${F(cy-r*.95)} C${F(cx+r*.78)},${F(cy-r*.92)} ${F(cx+r*.84)},${F(cy-r*.10)} ${F(cx+r*.78)},${F(cy+r*.40)} C${F(cx+r*.70)},${F(cy+r*.85)} ${F(cx-r*.70)},${F(cy+r*.85)} ${F(cx-r*.78)},${F(cy+r*.40)} C${F(cx-r*.84)},${F(cy-r*.10)} ${F(cx-r*.78)},${F(cy-r*.92)} ${F(cx)},${F(cy-r*.95)} Z" fill="${BODY}"/>`;
+      g+=`<path d="M${F(cx-r*.22)},${F(cy-r*.45)} C${F(cx-r*.62)},${F(cy-r*.20)} ${F(cx-r*.60)},${F(cy+r*.55)} ${F(cx)},${F(cy+r*.70)} C${F(cx+r*.60)},${F(cy+r*.55)} ${F(cx+r*.62)},${F(cy-r*.20)} ${F(cx+r*.22)},${F(cy-r*.45)} C${F(cx+r*.10)},${F(cy-r*.55)} ${F(cx-r*.10)},${F(cy-r*.55)} ${F(cx-r*.22)},${F(cy-r*.45)} Z" fill="${BELLY}"/>`;
+      g+=ell(cx-r*.78,cy+r*.10,r*.12,r*.30,BODY)+ell(cx+r*.78,cy+r*.10,r*.12,r*.30,BODY)+path(`M${F(cx-r*.10)},${F(cy-r*.55)} L${F(cx)},${F(cy-r*.35)} L${F(cx+r*.10)},${F(cy-r*.55)} Z`,p.beak||'#F5A020');
+      const hx=cx,hy=cy-r*.70;
+      g+=cir(hx-r*.13,hy,r*.045,FACE)+cir(hx+r*.13,hy,r*.045,FACE)+cir(hx-r*.13+r*.018,hy-r*.018,r*.020,'white')+cir(hx+r*.13+r*.018,hy-r*.018,r*.020,'white');
+      g+=ell(hx-r*.25,hy+r*.10,r*.10,r*.05,BLUSH,` opacity=".55"`)+ell(hx+r*.25,hy+r*.10,r*.10,r*.05,BLUSH,` opacity=".55"`);
+      return g;
+    }
+    if(p.shape==='chick'){
+      const bx=cx,by=cy,bw=r*.62,bh=r*.62;
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}</g>`;
+      g+=ell(cx-r*.18,cy+r*.65,r*.07,r*.05,p.beak||'#F09030')+ell(cx+r*.18,cy+r*.65,r*.07,r*.05,p.beak||'#F09030')+cir(cx,cy,r*.62,BODY)+ell(cx-r*.40,cy+r*.05,r*.13,r*.20,BODY);
+      g+=`<path d="M${F(cx-r*.06)},${F(cy-r*.58)} q${F(r*.04)},${F(-r*.20)} ${F(r*.18)},${F(-r*.06)}" stroke="${BODY}" stroke-width="${F(r*.10)}" fill="none" stroke-linecap="round"/>`;
+      g+=path(`M${F(cx-r*.08)},${F(cy-r*.05)} L${F(cx)},${F(cy+r*.08)} L${F(cx+r*.08)},${F(cy-r*.05)} Z`,p.beak||'#F09030')+tinyFace(cx,cy-r*.20,r*.40);
+      return g;
+    }
+    if(p.shape==='frog'){
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(cx,cy+r*.05,r*.95,r*.65,BODY)}</g>`;
+      g+=path(`M${F(cx-r*1.0)},${F(cy+r*.55)} Q${F(cx-r*1.20)},${F(cy)} ${F(cx-r*.65)},${F(cy-r*.10)} Z`,BODY)+path(`M${F(cx+r*.65)},${F(cy-r*.10)} Q${F(cx+r*1.20)},${F(cy)} ${F(cx+r*1.0)},${F(cy+r*.55)} Z`,BODY);
+      [-1.0,-.85,-.70,.70,.85,1.0].forEach(o=>g+=cir(cx+r*o,cy+r*.62,r*.06,BODY));
+      g+=`<path d="M${F(cx-r*.85)},${F(cy+r*.50)} Q${F(cx-r*.95)},${F(cy-r*.30)} ${F(cx-r*.30)},${F(cy-r*.55)} Q${F(cx)},${F(cy-r*.65)} ${F(cx+r*.30)},${F(cy-r*.55)} Q${F(cx+r*.95)},${F(cy-r*.30)} ${F(cx+r*.85)},${F(cy+r*.50)} Q${F(cx)},${F(cy+r*.65)} ${F(cx-r*.85)},${F(cy+r*.50)} Z" fill="${BODY}"/>`;
+      g+=ell(cx,cy+r*.20,r*.50,r*.32,BELLY,` opacity=".90"`)+cir(cx-r*.30,cy-r*.62,r*.20,BODY)+cir(cx+r*.30,cy-r*.62,r*.20,BODY)+cir(cx-r*.30,cy-r*.60,r*.13,'white')+cir(cx+r*.30,cy-r*.60,r*.13,'white')+cir(cx-r*.30,cy-r*.58,r*.07,FACE)+cir(cx+r*.30,cy-r*.58,r*.07,FACE);
+      g+=`<path d="M${F(cx-r*.20)},${F(cy-r*.20)} Q${F(cx)},${F(cy-r*.05)} ${F(cx+r*.20)},${F(cy-r*.20)}" stroke="${FACE}" stroke-width="${F(r*.05)}" fill="none" stroke-linecap="round"/>`;
+      g+=ell(cx-r*.45,cy-r*.20,r*.13,r*.07,BLUSH,` opacity=".50"`)+ell(cx+r*.45,cy-r*.20,r*.13,r*.07,BLUSH,` opacity=".50"`);
+      return g;
+    }
+    if(p.shape==='seal'){
+      const bx=cx,by=cy+r*.10,bw=r*1.30,bh=r*.45;
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}</g>`;
+      g+=path(`M${F(cx-r*1.20)},${F(cy)} L${F(cx-r*1.55)},${F(cy-r*.30)} L${F(cx-r*1.40)},${F(cy)} L${F(cx-r*1.55)},${F(cy+r*.30)} Z`,BODY)+ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.4,bw*.85,bh*.5,BELLY,` opacity=".90"`);
+      g+=ell(cx-r*.15,cy+r*.50,r*.20,r*.10,BODY)+ell(cx+r*.45,cy+r*.50,r*.20,r*.10,BODY);
+      const hx=cx+r*.95,hy=cy-r*.15;
+      g+=cir(hx,hy,r*.32,BODY)+`<path d="M${F(hx-r*.15)},${F(hy)} Q${F(hx-r*.10)},${F(hy-r*.06)} ${F(hx-r*.05)},${F(hy)}" stroke="${FACE}" stroke-width="${F(r*.04)}" fill="none" stroke-linecap="round"/>`;
+      g+=`<path d="M${F(hx+r*.05)},${F(hy)} Q${F(hx+r*.10)},${F(hy-r*.06)} ${F(hx+r*.15)},${F(hy)}" stroke="${FACE}" stroke-width="${F(r*.04)}" fill="none" stroke-linecap="round"/>`;
+      g+=`<path d="M${F(hx-r*.06)},${F(hy+r*.10)} Q${F(hx)},${F(hy+r*.16)} ${F(hx+r*.06)},${F(hy+r*.10)}" stroke="${FACE}" stroke-width="${F(r*.04)}" fill="none" stroke-linecap="round"/>`;
+      g+=ell(hx-r*.20,hy+r*.10,r*.08,r*.04,BLUSH,` opacity=".55"`)+ell(hx+r*.20,hy+r*.10,r*.08,r*.04,BLUSH,` opacity=".55"`);
+      return g;
+    }
+    if(p.shape==='capy'){
+      const bx=cx-r*.10,by=cy+r*.20,bw=r*1.05,bh=r*.50,hx=cx+r*.78,hy=cy-r*.10,hr=r*.40;
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(bx,by,bw,bh,BODY)}${cir(hx,hy,hr,BODY)}</g>`;
+      g+=legPair(cx-r*.40,gy,lw,lh,BODY,lc.style)+ell(bx,by,bw,bh,BODY)+ell(bx,by+bh*.35,bw*.7,bh*.50,BELLY,` opacity=".90"`)+legPair(cx+r*.40,gy,lw,lh,BODY,lc.style);
+      g+=cir(hx-r*.22,hy-r*.32,r*.08,BODY)+cir(hx+r*.22,hy-r*.32,r*.08,BODY)+cir(hx,hy,hr,BODY)+tinyFace(hx,hy,hr);
+      return g;
+    }
+    if(p.shape==='salamander'){
+      g+=`<g opacity=".26" filter="url(#${fid})">${ell(cx-r*.10,cy+r*.05,r,r*.45,BODY)}</g>`;
+      g+=`<path d="M${F(cx+r*.85)},${F(cy-r*.10)} Q${F(cx+r*1.30)},${F(cy)} ${F(cx+r*.85)},${F(cy+r*.30)} Z" fill="${BODY}"/>`;
+      g+=ell(cx-r*.65,cy+r*.45,r*.18,r*.08,BODY,` transform="rotate(20,${F(cx-r*.65)},${F(cy+r*.45)})"`)+ ell(cx-r*.20,cy+r*.55,r*.18,r*.08,BODY)+ell(cx+r*.30,cy+r*.55,r*.18,r*.08,BODY)+ell(cx+r*.65,cy+r*.45,r*.18,r*.08,BODY,` transform="rotate(-20,${F(cx+r*.65)},${F(cy+r*.45)})"`);;
+      g+=`<path d="M${F(cx-r*.85)},${F(cy)} C${F(cx-r*.95)},${F(cy-r*.50)} ${F(cx-r*.20)},${F(cy-r*.65)} ${F(cx)},${F(cy-r*.55)} C${F(cx+r*.40)},${F(cy-r*.60)} ${F(cx+r*.78)},${F(cy-r*.40)} ${F(cx+r*.85)},${F(cy)} C${F(cx+r*.78)},${F(cy+r*.50)} ${F(cx-r*.78)},${F(cy+r*.50)} ${F(cx-r*.85)},${F(cy)} Z" fill="${BODY}"/>`;
+      g+=ell(cx,cy+r*.10,r*.55,r*.25,BELLY,` opacity=".88"`);
+      [-.45,-.20,.05].forEach(o=>g+=ell(cx+r*o,cy-r*.55,r*.08,r*.16,'#FF9DBA',` opacity=".88"`));
+      const hx=cx-r*.10,hy=cy-r*.20;
+      g+=cir(hx-r*.13,hy,r*.05,FACE)+cir(hx+r*.13,hy,r*.05,FACE)+cir(hx-r*.10,hy-r*.02,r*.020,'white')+cir(hx+r*.16,hy-r*.02,r*.020,'white');
+      g+=`<path d="M${F(hx-r*.10)},${F(hy+r*.13)} Q${F(hx-r*.05)},${F(hy+r*.20)} ${F(hx)},${F(hy+r*.16)} Q${F(hx+r*.05)},${F(hy+r*.20)} ${F(hx+r*.10)},${F(hy+r*.13)}" stroke="${FACE}" stroke-width="${F(r*.04)}" fill="none" stroke-linecap="round"/>`;
+      g+=ell(hx-r*.25,hy+r*.13,r*.10,r*.05,BLUSH,` opacity=".55"`)+ell(hx+r*.25,hy+r*.13,r*.10,r*.05,BLUSH,` opacity=".55"`);
+      return g;
+    }
+    g+=cir(cx,cy,r*.7,BODY)+tinyFace(cx,cy,r*.5);
+    return g;
+  }
+  return render();
+}
+
+// Render all [data-pal] SVGs
+document.querySelectorAll('svg[data-pal]').forEach(svg=>{
+  const id=svg.getAttribute('data-pal');
+  const pal=KEKE.find(p=>p.id===id);
+  if(pal) svg.innerHTML=kekeSVG(pal,160);
+});
+
+// Parade strip
+const track=document.getElementById('parade-track');
+if(track){
+  const PS=68;
+  [...KEKE,...KEKE].forEach(p=>{
+    const w=document.createElement('div');
+    w.style.cssText='display:inline-flex;flex-direction:column;align-items:center;flex-shrink:0;';
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('width',PS+14);svg.setAttribute('height',PS+14);
+    svg.setAttribute('viewBox',`-7 -7 ${PS+14} ${PS+14}`);
+    svg.style.animation='k-gallop-bob .32s steps(1,end) infinite';
+    svg.innerHTML=kekeSVG(p,PS);
+    w.appendChild(svg);track.appendChild(w);
+  });
+}
+</script>
+</body>
+</html>

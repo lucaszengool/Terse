@@ -86,8 +86,11 @@ const MODEL_ROUTES = {
   'gpt-4': 'gpt-4o-mini',
   'gpt-4-turbo': 'gpt-4o-mini',
   'gpt-4o': 'gpt-4o-mini',
-  'o3': 'gpt-4o',
-  'o3-mini': 'gpt-4o-mini',
+  'o3': 'o4-mini',
+  'o3-mini': 'o4-mini',
+  // ── OpenAI Codex models ──
+  'o4': 'o4-mini',
+  'codex-davinci-002': 'o4-mini',
 };
 
 // Also match models dynamically (for aliases we haven't seen yet)
@@ -146,6 +149,39 @@ const SIMPLE_PATTERNS = [
 // Track routing stats
 let stats = { total: 0, routed: 0, savedEstimate: 0 };
 
+// Cumulative Codex/OpenAI token stats extracted from SSE response streams
+let codexTokenStats = { inputTokens: 0, outputTokens: 0, cachedTokens: 0, calls: 0 };
+
+// Write codex token stats to a file so the Rust backend can read them
+function flushCodexTokenStats() {
+  try {
+    const path = require('path');
+    const statsFile = path.join(require('os').homedir(), '.terse', 'codex-proxy-tokens.json');
+    require('fs').writeFileSync(statsFile, JSON.stringify(codexTokenStats));
+  } catch (e) {}
+}
+
+// Parse a single SSE data line and extract token usage from response.done events
+function extractTokensFromSSELine(line) {
+  if (!line.startsWith('data: ')) return null;
+  const json = line.slice(6).trim();
+  if (json === '[DONE]') return null;
+  try {
+    const obj = JSON.parse(json);
+    // Responses API: response.done event
+    const usage = (obj.type === 'response.done' && obj.response?.usage)
+      ? obj.response.usage
+      // Also handle top-level usage for non-streaming responses
+      : (obj.usage && (obj.usage.input_tokens !== undefined) ? obj.usage : null);
+    if (!usage) return null;
+    return {
+      input: usage.input_tokens || 0,
+      output: usage.output_tokens || 0,
+      cached: usage.input_token_details?.cached_tokens || usage.cached_tokens || 0,
+    };
+  } catch (e) { return null; }
+}
+
 // Provider endpoints
 const PROVIDERS = {
   anthropic: { host: 'api.anthropic.com', basePath: '/v1' },
@@ -154,15 +190,19 @@ const PROVIDERS = {
 
 function detectProvider(path, headers) {
   if (headers['anthropic-version'] || path.includes('/messages')) return 'anthropic';
-  if (path.includes('/chat/completions')) return 'openai';
+  if (path.includes('/chat/completions') || path.includes('/responses')) return 'openai';
   return null;
 }
 
-function extractLastUserMessage(messages) {
-  if (!Array.isArray(messages)) return '';
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') {
-      const c = messages[i].content;
+function extractLastUserMessage(messages, body) {
+  // Support both Chat Completions (messages array) and Responses API (input array)
+  const arr = Array.isArray(messages) && messages.length > 0
+    ? messages
+    : (body && Array.isArray(body.input) ? body.input : null);
+  if (!arr) return '';
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i].role === 'user') {
+      const c = arr[i].content;
       let raw = '';
       if (typeof c === 'string') raw = c;
       else if (Array.isArray(c)) raw = c.filter(p => p.type === 'text').map(p => p.text).join(' ');
@@ -228,7 +268,7 @@ async function shouldRoute(model, messages, body) {
   const cheaperModel = getRouteForModel(model);
   if (!cheaperModel) return null;
 
-  const userText = extractLastUserMessage(messages);
+  const userText = extractLastUserMessage(messages, body);
 
   // ── 1. ML classifier (fine-tuned DistilBERT) ────────────────────────────
   // If the model is loaded, it takes priority over keyword rules.
@@ -286,25 +326,27 @@ function forwardRequest(provider, originalReq, bodyBuf, effectiveModel, res) {
     return;
   }
 
-  // Parse and modify body to use effective model
-  let body;
+  // Parse body to potentially swap the model; fall back to raw passthrough if not JSON
+  let body = null;
+  let sendBuf = bodyBuf;
   try {
-    body = JSON.parse(bodyBuf.toString());
+    if (bodyBuf.length > 0) body = JSON.parse(bodyBuf.toString());
   } catch (e) {
-    res.writeHead(400, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: { message: 'Invalid JSON body' } }));
-    return;
+    // Non-JSON body (empty ping, multipart, etc.) — forward raw without modification
+    body = null;
   }
 
-  const originalModel = body.model;
-  body.model = effectiveModel;
-  const modifiedBody = JSON.stringify(body);
+  if (body && effectiveModel && effectiveModel !== 'unknown') {
+    body.model = effectiveModel;
+    sendBuf = Buffer.from(JSON.stringify(body));
+  }
+  const originalModel = (body && body.model) || effectiveModel;
 
   // Forward headers, replacing host
   const headers = { ...originalReq.headers };
   delete headers.host;
   delete headers['content-length'];
-  headers['content-length'] = Buffer.byteLength(modifiedBody);
+  headers['content-length'] = sendBuf.length;
 
   const options = {
     hostname: providerInfo.host,
@@ -314,10 +356,35 @@ function forwardRequest(provider, originalReq, bodyBuf, effectiveModel, res) {
     headers,
   };
 
+  const isResponsesApi = originalReq.url.includes('/responses');
+
   const proxyReq = https.request(options, (proxyRes) => {
-    // Stream response back to client
     res.writeHead(proxyRes.statusCode, proxyRes.headers);
-    proxyRes.pipe(res);
+
+    if (isResponsesApi && proxyRes.statusCode === 200) {
+      // Tap the SSE stream to extract token usage from response.done events
+      let sseBuffer = '';
+      proxyRes.on('data', (chunk) => {
+        res.write(chunk);
+        sseBuffer += chunk.toString();
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop() || '';
+        for (const line of lines) {
+          const tokens = extractTokensFromSSELine(line.trim());
+          if (tokens && (tokens.input > 0 || tokens.output > 0)) {
+            codexTokenStats.inputTokens += tokens.input;
+            codexTokenStats.outputTokens += tokens.output;
+            codexTokenStats.cachedTokens += tokens.cached;
+            codexTokenStats.calls++;
+            flushCodexTokenStats();
+            log(`Codex tokens: in=${tokens.input} out=${tokens.output} cached=${tokens.cached} (total in=${codexTokenStats.inputTokens})`);
+          }
+        }
+      });
+      proxyRes.on('end', () => { res.end(); });
+    } else {
+      proxyRes.pipe(res);
+    }
   });
 
   proxyReq.on('error', (e) => {
@@ -328,14 +395,15 @@ function forwardRequest(provider, originalReq, bodyBuf, effectiveModel, res) {
     }
   });
 
-  proxyReq.write(modifiedBody);
+  if (sendBuf.length > 0) proxyReq.write(sendBuf);
   proxyReq.end();
 
-  if (effectiveModel !== originalModel) {
-    log(`ROUTED: ${originalModel} → ${effectiveModel} (${body.messages?.length || 0} msgs)`);
+  const msgCount = body?.messages?.length || body?.input?.length || 0;
+  if (body && effectiveModel && effectiveModel !== originalModel) {
+    log(`ROUTED: ${originalModel} → ${effectiveModel} (${msgCount} msgs)`);
     stats.routed++;
   } else {
-    log(`PASS: ${originalModel} (${body.messages?.length || 0} msgs)`);
+    log(`PASS: ${originalModel || 'raw'} (${msgCount} msgs)`);
   }
   stats.total++;
 }
@@ -360,6 +428,7 @@ const server = http.createServer((req, res) => {
       status: 'ok',
       port: PORT,
       stats,
+      codexTokens: codexTokenStats,
       routing: MODEL_ROUTES,
     }));
     return;
@@ -378,13 +447,14 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Parse body to check model routing
-    let body;
+    // Try to parse body for model routing; non-JSON bodies pass through untouched
+    let body = null;
     try {
-      body = JSON.parse(bodyBuf.toString());
-    } catch (e) {
-      // Forward as-is if can't parse
-      forwardRequest(provider, req, bodyBuf, 'unknown', res);
+      if (bodyBuf.length > 0) body = JSON.parse(bodyBuf.toString());
+    } catch (e) { /* non-JSON — passthrough */ }
+
+    if (!body) {
+      forwardRequest(provider, req, bodyBuf, null, res);
       return;
     }
 
@@ -446,6 +516,26 @@ function configureAgents() {
     log('Configured Claude Code: ANTHROPIC_BASE_URL=' + proxyUrl);
   } catch (e) { log('Claude Code config failed: ' + e.message); }
 
+  // Write openai_base_url to ~/.codex/config.toml for Codex Desktop routing
+  try {
+    const codexDir = path.join(home, '.codex');
+    const codexConfig = path.join(codexDir, 'config.toml');
+    fs.mkdirSync(codexDir, { recursive: true });
+    let content = '';
+    try { content = fs.readFileSync(codexConfig, 'utf8'); } catch (e) {}
+    // Remove any stale terse-managed openai_base_url pointing to 127.0.0.1
+    content = content.replace(/^openai_base_url\s*=\s*"[^"]*127\.0\.0\.1[^"]*"[^\n]*\n/m, '');
+    // Only inject if the user hasn't set their own openai_base_url
+    if (!content.match(/^\s*openai_base_url\s*=/m)) {
+      content = `openai_base_url = "${proxyUrl}/v1"\n` + content;
+      fs.writeFileSync(codexConfig, content);
+      log('Configured Codex: openai_base_url=' + proxyUrl + '/v1');
+    } else {
+      // User has their own — just write back cleaned content if stale line was removed
+      fs.writeFileSync(codexConfig, content);
+    }
+  } catch (e) { log('Codex config failed: ' + e.message); }
+
   // Write PID file so Rust watchdog knows we're alive
   try {
     fs.writeFileSync(path.join(home, '.terse', 'proxy.pid'), String(process.pid));
@@ -504,6 +594,22 @@ function cleanupOnExit() {
       }
     }
   } catch (e) {}
+
+  // Remove openai_base_url from ~/.codex/config.toml
+  try {
+    const codexConfig = path.join(home, '.codex', 'config.toml');
+    if (fs.existsSync(codexConfig)) {
+      const content = fs.readFileSync(codexConfig, 'utf8');
+      const cleaned = content.replace(/^openai_base_url\s*=\s*"[^"]*127\.0\.0\.1[^"]*"[^\n]*\n/m, '');
+      if (cleaned !== content) {
+        fs.writeFileSync(codexConfig, cleaned);
+        log('Cleaned up openai_base_url from ~/.codex/config.toml');
+      }
+    }
+  } catch (e) {}
+
+  // Remove Codex token stats file (stale after proxy stops)
+  try { fs.unlinkSync(path.join(home, '.terse', 'codex-proxy-tokens.json')); } catch (e) {}
 
   // Remove PID file
   try { fs.unlinkSync(path.join(home, '.terse', 'proxy.pid')); } catch (e) {}

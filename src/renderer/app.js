@@ -309,7 +309,7 @@ T.on('session-added', () => {
 T.on('toast', d => toast(d.msg, d.error));
 T.on('ax-status', d => {
   if (d && !d.trusted) {
-    toast('⚠ Accessibility permission reset by macOS — go to System Settings → Privacy → Accessibility and re-enable Terse', true);
+    console.warn('[terse] AX permission not granted');
   }
 });
 
@@ -329,6 +329,15 @@ $('#btnManualOpt').addEventListener('click', async () => {
   r.stats.techniquesApplied.forEach(t => {
     const s = document.createElement('span'); s.className = 'technique-tag'; s.textContent = t; tc.appendChild(s);
   });
+  // Record manual optimization stats
+  if ((r.stats.originalTokens || 0) > 0) {
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (invoke) invoke('record_optimization', {
+      source: 'manual',
+      originalTokens: r.stats.originalTokens,
+      optimizedTokens: r.stats.optimizedTokens,
+    }).catch(() => {});
+  }
 });
 $('#manualInput').addEventListener('keydown', e => {
   if (e.metaKey && e.key === 'Enter') { e.preventDefault(); $('#btnManualOpt').click(); }

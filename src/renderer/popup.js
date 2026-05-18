@@ -181,10 +181,16 @@ const SETTLE_DELAY = 600;
 const _invoke = T._invoke || window.__TAURI__?.core?.invoke;
 // Cooldown after Send/Replace to prevent re-reading the just-written optimized text
 let _sendCooldownUntil = 0;
+// Track the last optimization result so Replace button can record stats
+let _lastOptStats = null;
+let _lastOptMethod = 'browser';
 
 function _updatePopupUI(d) {
   try {
     hasContent = true;
+    // Store for Replace button stats recording
+    if (d.stats) _lastOptStats = d.stats;
+    if (d.method !== undefined) _lastOptMethod = (d.method === 'bridge') ? 'editor' : 'browser';
     document.getElementById('hintState').classList.add('hidden');
     document.getElementById('bridgeInstall').classList.add('hidden');
     document.getElementById('optimized').classList.remove('hidden');
@@ -364,6 +370,10 @@ T.on('popup-update', d => {
   console.log('[terse-popup] popup-update received, app=' + d.app + ' tokens=' + d.stats?.originalTokens + '→' + d.stats?.optimizedTokens);
   try {
     hasContent = true;
+    // Track stats so Replace button can record them
+    if (d.stats) _lastOptStats = d.stats;
+    if (d.method !== undefined) _lastOptMethod = (d.method === 'bridge') ? 'editor' : 'browser';
+
     document.getElementById('hintState').classList.add('hidden');
     document.getElementById('bridgeInstall').classList.add('hidden');
     document.getElementById('optimized').classList.remove('hidden');
@@ -505,6 +515,14 @@ document.getElementById('btnReplace').addEventListener('click', async () => {
   }).catch(() => {});
   await T.replaceInTarget(text);
   btn.innerHTML = '&#10003;'; btn.classList.add('success');
+  // Record stats for the manual Replace click (auto-replace and send-mode record separately)
+  if (_lastOptStats && (_lastOptStats.originalTokens || 0) > 0) {
+    _invoke('record_optimization', {
+      source: _lastOptMethod,
+      originalTokens: _lastOptStats.originalTokens || 0,
+      optimizedTokens: _lastOptStats.optimizedTokens || 0,
+    }).catch(() => {});
+  }
   // Show undo button briefly
   if (_lastOriginalText) {
     const undoBtn = document.getElementById('btnUndo');
@@ -1610,13 +1628,7 @@ T.on('agent-lost', (info) => {
 // AX permission lost — macOS TCC revoked accessibility (common after OS updates)
 T.on('ax-status', (data) => {
   if (data && !data.trusted) {
-    console.warn('[terse] AX permission not granted — re-enable in System Settings → Privacy & Security → Accessibility');
-    // Re-use the hint state to surface this in the popup
-    const hint = document.getElementById('hintState');
-    if (hint && !hasContent) {
-      hint.classList.remove('hidden');
-      hint.innerHTML = '<span style="color:#e55">⚠ Accessibility permission reset by macOS.<br>Go to <b>System Settings → Privacy → Accessibility</b> and re-enable Terse, then relaunch.</span>';
-    }
+    console.warn('[terse] AX permission not granted');
   }
 });
 

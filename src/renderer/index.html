@@ -220,26 +220,44 @@
       <div style="width:48px;height:48px;background:var(--btn);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--btn-t)">T</div>
       <!-- Trial mode (default) -->
       <div id="paywallTrialSection">
-        <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">No Active Plan</h2>
-        <p style="color:var(--t3);font-size:11px;text-align:center;margin:8px 0 0;line-height:1.6;max-width:240px">Start a 30-day free trial to use Terse. No charge until your trial ends.</p>
+        <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Try Terse Free</h2>
+        <p style="color:var(--t3);font-size:11px;text-align:center;margin:8px 0 0;line-height:1.6;max-width:240px">30-day free trial — no charge until your trial ends.</p>
         <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px">
-          <button id="paywallProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;width:200px">Start Pro Trial — $4.99/mo</button>
-          <p id="paywallChinaNote" style="color:var(--t1);font-size:12px;font-weight:600;text-align:center;margin:4px 0 0;opacity:0.7">Free trial only with card. WeChat/Alipay pay monthly:</p>
-          <button id="paywallWechatBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'wechat_pay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">WeChat Pay / 微信支付 — $4.99/mo</button>
-          <button id="paywallAlipayBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'alipay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Alipay / 支付宝 — $4.99/mo</button>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+            <button id="paywallProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:14px;font-weight:800;cursor:pointer;width:200px">Start Free — $0</button>
+            <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">then $4.99 USD / month after trial</span>
+          </div>
+          <p id="paywallChinaNote" style="color:var(--t1);font-size:12px;font-weight:600;text-align:center;margin:4px 0 0;opacity:0.7">WeChat/Alipay pay monthly:</p>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+            <button id="paywallWechatBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'wechat_pay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">WeChat Pay / 微信支付</button>
+            <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+            <button id="paywallAlipayBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'alipay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Alipay / 支付宝</button>
+            <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
+          </div>
           <button id="paywallPremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Premium Trial — $99/mo</button>
-          <p id="paywallTrialNote" style="color:var(--t1);font-size:11px;font-weight:500;text-align:center;margin:2px 0 0;opacity:0.6">Cancel anytime during your 30-day trial (card only)</p>
+          <p id="paywallTrialNote" style="color:var(--t1);font-size:10px;font-weight:400;text-align:center;margin:2px 0 0;opacity:0.5">Cancel anytime · Card required for free trial</p>
         </div>
       </div>
       <!-- Subscribe-directly mode (shown after trial_already_used) -->
       <div id="paywallSubscribeSection" style="display:none;flex-direction:column;align-items:center;gap:10px">
         <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Subscribe to Continue</h2>
-        <p style="color:var(--t3);font-size:11px;text-align:center;margin:0;line-height:1.6;max-width:240px">Your free trial has been used. Subscribe directly to keep using Terse.</p>
-        <button id="paywallSubscribeProBtn" style="margin-top:4px;padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;width:200px">Subscribe Pro — $4.99/mo</button>
+        <p style="color:var(--t3);font-size:11px;text-align:center;margin:0;line-height:1.6;max-width:240px">Your free trial has been used. Subscribe to keep using Terse.</p>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-top:4px">
+          <button id="paywallSubscribeProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;width:200px">Subscribe Pro</button>
+          <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
+        </div>
         <button id="paywallSubscribePremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Subscribe Premium — $99/mo</button>
         <p style="color:var(--t1);font-size:12px;font-weight:600;text-align:center;margin:4px 0 0;opacity:0.7">Or pay with:</p>
-        <button id="paywallSubscribeWechatBtn" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">WeChat Pay / 微信支付 — $4.99/mo</button>
-        <button id="paywallSubscribeAlipayBtn" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Alipay / 支付宝 — $4.99/mo</button>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+          <button id="paywallSubscribeWechatBtn" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">WeChat Pay / 微信支付</button>
+          <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+          <button id="paywallSubscribeAlipayBtn" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Alipay / 支付宝</button>
+          <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
+        </div>
         <p style="color:var(--t1);font-size:11px;font-weight:500;text-align:center;margin:2px 0 0;opacity:0.6">Billed monthly, cancel anytime</p>
       </div>
       <button id="paywallSwitchBtn" style="margin-top:4px;padding:6px 20px;background:transparent;color:var(--t3);border:none;font-size:11px;font-weight:500;cursor:pointer;text-decoration:underline">Switch Account</button>

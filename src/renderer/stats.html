@@ -11,30 +11,46 @@
       font-size:12px;line-height:1.4;-webkit-font-smoothing:antialiased;overflow-y:auto}
     body{padding:14px;border-radius:16px}
 
-    .header{display:flex;align-items:center;gap:8px;margin-bottom:16px;-webkit-app-region:drag}
+    .header{display:flex;align-items:center;gap:8px;margin-bottom:12px;-webkit-app-region:drag}
     .header button{-webkit-app-region:no-drag}
-    .back-btn{width:28px;height:28px;border-radius:50%;border:none;
+    .back-btn{width:28px;height:28px;border-radius:50%;border:none;flex-shrink:0;
       background:var(--sf);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center}
     .back-btn:hover{background:var(--sfh);color:var(--t1)}
     .header h1{font-size:15px;font-weight:700;flex:1}
+    .view-toggle{display:flex;gap:2px;background:var(--sf);border-radius:9999px;padding:2px}
+    .view-btn{padding:4px 10px;font-size:10px;font-weight:600;border:none;background:none;
+      color:var(--t3);cursor:pointer;border-radius:9999px;white-space:nowrap}
+    .view-btn.active{background:var(--btn);color:var(--btn-t)}
 
     .period-tabs{display:flex;gap:2px;background:var(--sf);border-radius:9999px;padding:3px;
-      border:none;margin-bottom:16px}
-    .period-tab{padding:6px 14px;font-size:10px;font-weight:600;border:none;background:none;
-      color:var(--t3);cursor:pointer;border-radius:9999px}
-    .period-tab:hover{color:var(--t2)}
+      border:none;margin-bottom:14px}
+    .period-tab{padding:6px 0;font-size:10px;font-weight:600;border:none;background:none;
+      color:var(--t3);cursor:pointer;border-radius:9999px;flex:1;text-align:center}
     .period-tab.active{background:var(--btn);color:var(--btn-t)}
 
+    /* Receipt */
+    #viewReceipt{display:flex;flex-direction:column;align-items:center;gap:12px}
+    #receiptCanvas{display:block;border-radius:2px;
+      box-shadow:0 4px 24px rgba(0,0,0,.18),0 1px 4px rgba(0,0,0,.1)}
+    .share-btn{width:100%;padding:11px;border:none;border-radius:var(--rs);
+      background:var(--btn);color:var(--btn-t);
+      font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.02em}
+    .share-btn:hover{opacity:.88}
+    .share-toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);
+      background:#111;color:#fff;padding:8px 18px;border-radius:20px;
+      font-size:11px;opacity:0;transition:opacity .3s;pointer-events:none;
+      white-space:nowrap;z-index:99}
+    .share-toast.show{opacity:1}
+
+    /* Charts */
     .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
     .summary-card{text-align:center;padding:12px 6px;background:var(--sf);border:none;border-radius:var(--rs)}
     .summary-num{display:block;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
     .summary-num.accent{color:var(--ac)}
     .summary-label{display:block;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
-
     .section{margin-bottom:16px}
     .section-title{font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;
       text-transform:uppercase;letter-spacing:.5px}
-
     .chart-container{background:var(--sf);border:none;border-radius:var(--rs);
       padding:12px;position:relative;height:140px;overflow:hidden}
     .chart-bar-row{display:flex;align-items:flex-end;gap:3px;height:100px;padding:0 4px}
@@ -42,11 +58,11 @@
     .chart-bar{border-radius:3px 3px 0 0;min-height:1px;width:100%;max-width:20px;transition:height .3s}
     .chart-bar.tokens{background:var(--t3)}
     .chart-bar.saved{background:var(--ac)}
-    .chart-date{font-size:8px;color:var(--t3);text-align:center;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+    .chart-date{font-size:8px;color:var(--t3);text-align:center;margin-top:4px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
     .chart-legend{display:flex;gap:12px;justify-content:center;margin-top:8px}
     .chart-legend-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--t2)}
     .chart-legend-dot{width:8px;height:8px;border-radius:50%}
-
     .source-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
     .source-card{padding:12px;background:var(--sf);border:none;border-radius:var(--rs)}
     .source-header{display:flex;align-items:center;gap:6px;margin-bottom:6px}
@@ -57,134 +73,327 @@
     .source-row .label{color:var(--t3)}
     .source-row .value{color:var(--t2);font-weight:600;font-variant-numeric:tabular-nums}
     .source-row .value.green{color:var(--ac)}
-
     .pct-bar{height:4px;background:var(--bd);border-radius:9999px;margin-top:4px;overflow:hidden}
     .pct-bar-fill{height:100%;border-radius:9999px;background:var(--ac);transition:width .3s}
-
     .empty-state{text-align:center;padding:40px 20px;color:var(--t3);font-size:12px}
     .empty-state p{margin-top:8px;font-size:10px}
   </style>
-  <script>
-    (function(){var s=localStorage.getItem('terse-theme')||'lime';document.documentElement.setAttribute('data-theme',s)})();
-  </script>
+  <script>(function(){var s=localStorage.getItem('terse-theme')||'lime';document.documentElement.setAttribute('data-theme',s)})();</script>
 </head>
 <body>
   <div class="header">
-    <button class="back-btn" id="btnBack" title="Back to sessions">
+    <button class="back-btn" id="btnBack" title="Back">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
-    <h1>Token Statistics</h1>
+    <h1>Statistics</h1>
+    <div class="view-toggle">
+      <button class="view-btn active" data-view="receipt">小票</button>
+      <button class="view-btn" data-view="charts">图表</button>
+    </div>
   </div>
 
   <div class="period-tabs" id="periodTabs">
-    <button class="period-tab" data-period="day">Today</button>
-    <button class="period-tab" data-period="week">Week</button>
-    <button class="period-tab active" data-period="month">Month</button>
-    <button class="period-tab" data-period="all">All Time</button>
+    <button class="period-tab" data-period="day">今天</button>
+    <button class="period-tab" data-period="week">本周</button>
+    <button class="period-tab active" data-period="month">本月</button>
+    <button class="period-tab" data-period="all">全部</button>
   </div>
 
-  <div class="summary-grid" id="summaryGrid">
-    <div class="summary-card">
-      <span class="summary-num" id="sumTokensIn">0</span>
-      <span class="summary-label">Tokens Used</span>
-    </div>
-    <div class="summary-card">
-      <span class="summary-num accent" id="sumSaved">0</span>
-      <span class="summary-label">Tokens Saved</span>
-    </div>
-    <div class="summary-card">
-      <span class="summary-num accent" id="sumPct">0%</span>
-      <span class="summary-label">Reduction</span>
-    </div>
-    <div class="summary-card">
-      <span class="summary-num" id="sumMsgs">0</span>
-      <span class="summary-label">Messages</span>
-    </div>
+  <!-- Receipt view (default) -->
+  <div id="viewReceipt">
+    <canvas id="receiptCanvas"></canvas>
+    <button class="share-btn" id="btnShare">分享小票</button>
   </div>
 
-  <div class="section">
-    <div class="section-title">Usage & Savings Over Time</div>
-    <div class="chart-container">
-      <div class="chart-bar-row" id="chartBars"></div>
-      <div class="chart-legend">
-        <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--blue)"></div>Tokens Used</div>
-        <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--ac)"></div>Tokens Saved</div>
+  <!-- Charts view -->
+  <div id="viewCharts" style="display:none">
+    <div class="summary-grid" id="summaryGrid">
+      <div class="summary-card">
+        <span class="summary-num" id="sumTokensIn">0</span>
+        <span class="summary-label">Tokens Used</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-num accent" id="sumSaved">0</span>
+        <span class="summary-label">Tokens Saved</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-num accent" id="sumPct">0%</span>
+        <span class="summary-label">Reduction</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-num" id="sumMsgs">0</span>
+        <span class="summary-label">Messages</span>
       </div>
     </div>
+    <div class="section">
+      <div class="section-title">Usage Over Time</div>
+      <div class="chart-container">
+        <div class="chart-bar-row" id="chartBars"></div>
+        <div class="chart-legend">
+          <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--blue)"></div>Used</div>
+          <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--ac)"></div>Saved</div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">By Source</div>
+      <div class="source-grid" id="sourceGrid"></div>
+    </div>
+    <div id="emptyState" class="empty-state" style="display:none">
+      <div style="font-size:32px;opacity:0.3">T</div>
+      <p>No stats yet. Start optimizing prompts to see data here.</p>
+    </div>
   </div>
 
-  <div class="section">
-    <div class="section-title">By Source</div>
-    <div class="source-grid" id="sourceGrid"></div>
-  </div>
-
-  <div id="emptyState" class="empty-state" style="display:none">
-    <div style="font-size:32px;opacity:0.3">T</div>
-    <p>No stats yet. Start optimizing prompts to see data here.</p>
-  </div>
+  <div class="share-toast" id="shareToast"></div>
 
   <script src="tauri-bridge.js"></script>
   <script>
     const T = window.terse;
     let currentPeriod = 'month';
+    let currentView = 'receipt';
+    let lastData = null;
 
     function fmtTok(n) {
+      if (!n) return '0';
       if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
       if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
       return String(n);
     }
 
     function fmtDate(d, period) {
-      const parts = d.split('-');
-      if (period === 'day') return parts[2];
-      return parts[1] + '/' + parts[2];
+      const p = d.split('-');
+      if (period === 'day') return p[2];
+      return p[1] + '/' + p[2];
     }
 
     const SOURCE_META = {
-      browser: { name: 'Browser', color: 'var(--blue)', colorBg: 'var(--blued)' },
-      agent:   { name: 'Agent',   color: 'var(--ac)',   colorBg: 'var(--acd)' },
-      editor:  { name: 'Editor',  color: 'var(--purple)', colorBg: 'var(--purpled)' },
-      manual:  { name: 'Manual',  color: 'var(--yellow)', colorBg: 'var(--yellowd)' },
+      browser: { name: 'Browser', color: '#4A9EFF' },
+      agent:   { name: 'Agent',   color: '#4CAF50' },
+      editor:  { name: 'Editor',  color: '#9C27B0' },
+      manual:  { name: 'Manual',  color: '#FF9800' },
     };
 
-    async function render() {
-      const data = await T.getStats(currentPeriod);
-      if (!data) return;
+    // ── Receipt canvas drawing ─────────────────────────────────────
+    function drawReceipt(data) {
+      const canvas = document.getElementById('receiptCanvas');
+      const DPR = window.devicePixelRatio || 2;
+      const W = 288;
+      const PAD = 22;
+      const MONO = '"Courier New", Courier, monospace';
 
+      const sources = Object.entries(SOURCE_META)
+        .map(([key, meta]) => ({ key, meta, s: data.bySource[key] || {} }))
+        .filter(({ s }) => (s.tokensIn || 0) > 0);
+
+      // Calculate canvas height
+      const ROLLER = 20;
+      const H = ROLLER + 30   // roller + top gap
+        + 54                  // T logo
+        + 18                  // title
+        + 58                  // order/date/period + gap
+        + (sources.length > 0 ? 14 + 30 + sources.length * 22 + 6 : 0) // dash + headers + rows
+        + 16                  // single dash before TOTAL
+        + 42                  // TOTAL
+        + 3 * 18 + 8          // summary rows
+        + 16                  // dash
+        + 44;                 // footer + bottom pad
+
+      canvas.width  = Math.round(W * DPR);
+      canvas.height = Math.round(H * DPR);
+      canvas.style.width  = W + 'px';
+      canvas.style.height = H + 'px';
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(DPR, DPR);
+
+      // White paper
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, W, H);
+
+      // Printer roller
+      const rg = ctx.createLinearGradient(0, 0, 0, ROLLER);
+      rg.addColorStop(0, '#333');
+      rg.addColorStop(0.5, '#1a1a1a');
+      rg.addColorStop(1, '#0d0d0d');
+      ctx.fillStyle = rg;
+      const rr = 5;
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(W, 0);
+      ctx.lineTo(W, ROLLER - rr); ctx.quadraticCurveTo(W, ROLLER, W - rr, ROLLER);
+      ctx.lineTo(rr, ROLLER); ctx.quadraticCurveTo(0, ROLLER, 0, ROLLER - rr);
+      ctx.closePath(); ctx.fill();
+      // grip lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = 1;
+      for (let x = 16; x < W - 16; x += 10) {
+        ctx.beginPath(); ctx.moveTo(x, 4); ctx.lineTo(x, ROLLER - 4); ctx.stroke();
+      }
+
+      let y = ROLLER + 30;
+
+      // Logo — big bold T
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 38px ' + MONO;
+      ctx.fillStyle = '#000';
+      ctx.fillText('T', W / 2, y + 28);
+      // 5 small dots below
+      const dotY = y + 40, ds = 7;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.arc(W / 2 - 14 + i * ds, dotY, i === 2 ? 2 : 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = i === 2 ? '#000' : '#aaa';
+        ctx.fill();
+      }
+      ctx.restore();
+      y += 54;
+
+      // "TOKEN  RECEIPT"
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 14px ' + MONO;
+      ctx.fillStyle = '#000';
+      ctx.fillText('TOKEN  RECEIPT', W / 2, y);
+      ctx.restore();
+      y += 18;
+
+      // Order / Date / Period
+      const now = new Date();
+      const MO = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+      const dateStr = MO[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
+      const periodLabel = { day:'TODAY', week:'THIS WEEK', month:'THIS MONTH', all:'ALL TIME' }[currentPeriod] || '';
+      const orderNum = String(((data.summary.messagesTotal || 1) * 37 + 4721) % 9000 + 1000);
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = '10px ' + MONO;
+      ctx.fillStyle = '#555';
+      ctx.fillText('ORDER: #' + orderNum, W / 2, y);       y += 14;
+      ctx.fillText(dateStr,               W / 2, y);       y += 14;
+      ctx.fillText(periodLabel,           W / 2, y);
+      ctx.restore();
+      y += 20;
+
+      // Column headers + source rows (only if data exists)
+      if (sources.length > 0) {
+        dash(ctx, PAD, y, W - PAD); y += 14;
+        ctx.save();
+        ctx.font = 'bold 8.5px ' + MONO;
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'left';  ctx.fillText('SOURCE',   PAD, y);
+        ctx.textAlign = 'right'; ctx.fillText('IN',       W / 2 + 4, y);
+        ctx.textAlign = 'right'; ctx.fillText('SAVED',    W / 2 + 52, y);
+        ctx.textAlign = 'right'; ctx.fillText('PCT',      W - PAD, y);
+        ctx.restore();
+        y += 8;
+        dash(ctx, PAD, y, W - PAD); y += 14;
+
+        for (const { meta, s } of sources) {
+          const pct = s.tokensIn > 0 ? Math.round((s.tokensSaved / s.tokensIn) * 100) : 0;
+          // color dot
+          ctx.beginPath();
+          ctx.arc(PAD + 4, y - 3.5, 4, 0, Math.PI * 2);
+          ctx.fillStyle = meta.color;
+          ctx.fill();
+          ctx.font = '10.5px ' + MONO;
+          ctx.fillStyle = '#000';
+          ctx.textAlign = 'left';  ctx.fillText(meta.name.toUpperCase(), PAD + 13, y);
+          ctx.textAlign = 'right'; ctx.fillText(fmtTok(s.tokensIn),    W / 2 + 4,  y);
+          ctx.textAlign = 'right'; ctx.fillText(fmtTok(s.tokensSaved), W / 2 + 52, y);
+          ctx.fillStyle = pct >= 30 ? '#16a34a' : pct >= 15 ? '#d97706' : '#dc2626';
+          ctx.textAlign = 'right'; ctx.fillText(pct + '%',             W - PAD,    y);
+          y += 22;
+        }
+        y += 6;
+      }
+
+      dash(ctx, PAD, y, W - PAD); y += 16;
+
+      // TOTAL
+      ctx.save();
+      ctx.font = 'bold 11px ' + MONO;
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'left';
+      ctx.fillText('TOTAL:', PAD, y + 14);
+      ctx.font = 'bold 26px ' + MONO;
+      ctx.textAlign = 'right';
+      ctx.fillText(fmtTok(data.summary.tokensSaved), W - PAD, y + 18);
+      ctx.font = '9px ' + MONO;
+      ctx.fillStyle = '#888';
+      ctx.textAlign = 'right';
+      ctx.fillText('tokens saved', W - PAD, y + 31);
+      ctx.restore();
+      y += 42;
+
+      // Summary rows
+      const rows = [
+        ['TOKENS USED',  fmtTok(data.summary.tokensIn)],
+        ['REDUCTION',    (data.summary.percentSaved || 0) + '%'],
+        ['MESSAGES',     String(data.summary.messagesTotal || 0)],
+      ];
+      ctx.save();
+      ctx.font = '10.5px ' + MONO;
+      for (const [lbl, val] of rows) {
+        ctx.fillStyle = '#666'; ctx.textAlign = 'left';  ctx.fillText(lbl, PAD,     y);
+        ctx.fillStyle = '#000'; ctx.textAlign = 'right'; ctx.fillText(val, W - PAD, y);
+        y += 18;
+      }
+      ctx.restore();
+      y += 8;
+
+      dash(ctx, PAD, y, W - PAD); y += 16;
+
+      // Footer
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 9.5px ' + MONO;
+      ctx.fillStyle = '#000';
+      ctx.fillText('*  *  *  TERSE.SO  *  *  *', W / 2, y); y += 16;
+      ctx.font = '8px ' + MONO;
+      ctx.fillStyle = '#aaa';
+      ctx.fillText('KEEP  FOR  YOUR  RECORDS', W / 2, y);
+      ctx.restore();
+    }
+
+    function dash(ctx, x1, y, x2) {
+      ctx.save();
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 0.75;
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // ── Charts ──────────────────────────────────────────────────────
+    function renderCharts(data) {
       const { summary, bySource, byDay } = data;
       const hasData = summary.tokensIn > 0 || summary.tokensSaved > 0;
-
       document.getElementById('emptyState').style.display = hasData ? 'none' : 'block';
-
-      // Summary
       document.getElementById('sumTokensIn').textContent = fmtTok(summary.tokensIn);
-      document.getElementById('sumSaved').textContent = fmtTok(summary.tokensSaved);
-      document.getElementById('sumPct').textContent = summary.percentSaved + '%';
-      document.getElementById('sumMsgs').textContent = fmtTok(summary.messagesTotal);
+      document.getElementById('sumSaved').textContent    = fmtTok(summary.tokensSaved);
+      document.getElementById('sumPct').textContent      = summary.percentSaved + '%';
+      document.getElementById('sumMsgs').textContent     = fmtTok(summary.messagesTotal);
 
-      // Chart
       const chartEl = document.getElementById('chartBars');
       chartEl.innerHTML = '';
       if (byDay.length > 0) {
         const maxTok = Math.max(...byDay.map(d => Math.max(d.tokensIn, d.tokensSaved, 1)));
-        const maxBars = 14;
-        const days = byDay.slice(-maxBars);
-        for (const d of days) {
+        for (const d of byDay.slice(-14)) {
           const grp = document.createElement('div');
           grp.className = 'chart-bar-group';
-          const h1 = Math.max(1, Math.round((d.tokensIn / maxTok) * 90));
+          const h1 = Math.max(1, Math.round((d.tokensIn    / maxTok) * 90));
           const h2 = Math.max(1, Math.round((d.tokensSaved / maxTok) * 90));
           grp.innerHTML =
             '<div style="display:flex;gap:1px;align-items:flex-end;height:90px;width:100%">' +
-              '<div class="chart-bar tokens" style="height:' + h1 + 'px" title="' + fmtTok(d.tokensIn) + ' tokens"></div>' +
-              '<div class="chart-bar saved" style="height:' + h2 + 'px" title="' + fmtTok(d.tokensSaved) + ' saved"></div>' +
-            '</div>' +
-            '<div class="chart-date">' + fmtDate(d.date, currentPeriod) + '</div>';
+              '<div class="chart-bar tokens" style="height:' + h1 + 'px"></div>' +
+              '<div class="chart-bar saved"  style="height:' + h2 + 'px"></div>' +
+            '</div><div class="chart-date">' + fmtDate(d.date, currentPeriod) + '</div>';
           chartEl.appendChild(grp);
         }
       }
 
-      // Source breakdown
       const srcEl = document.getElementById('sourceGrid');
       srcEl.innerHTML = '';
       for (const [key, meta] of Object.entries(SOURCE_META)) {
@@ -202,15 +411,38 @@
             '<div class="source-row"><span class="label">Tokens</span><span class="value">' + fmtTok(s.tokensIn) + '</span></div>' +
             '<div class="source-row"><span class="label">Saved</span><span class="value green">' + fmtTok(s.tokensSaved) + ' (' + pct + '%)</span></div>' +
             '<div class="source-row"><span class="label">Messages</span><span class="value">' + (s.messagesTotal || 0) + '</span></div>' +
-            (s.toolCalls > 0 ? '<div class="source-row"><span class="label">Tool Calls</span><span class="value">' + s.toolCalls + '</span></div>' : '') +
           '</div>' +
           '<div class="pct-bar"><div class="pct-bar-fill" style="width:' + pct + '%"></div></div>';
         srcEl.appendChild(card);
       }
     }
 
+    // ── Main render ─────────────────────────────────────────────────
+    async function render() {
+      const data = await T.getStats(currentPeriod);
+      if (!data) return;
+      lastData = data;
+      if (currentView === 'receipt') drawReceipt(data);
+      else renderCharts(data);
+    }
+
+    // View toggle
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentView = btn.dataset.view;
+        document.getElementById('viewReceipt').style.display = currentView === 'receipt' ? 'flex' : 'none';
+        document.getElementById('viewCharts').style.display  = currentView === 'charts'  ? 'block' : 'none';
+        if (lastData) {
+          if (currentView === 'receipt') drawReceipt(lastData);
+          else renderCharts(lastData);
+        }
+      });
+    });
+
     // Period tabs
-    document.getElementById('periodTabs').addEventListener('click', (e) => {
+    document.getElementById('periodTabs').addEventListener('click', e => {
       const tab = e.target.closest('.period-tab');
       if (!tab) return;
       document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
@@ -219,14 +451,35 @@
       render();
     });
 
-    // Back button
-    document.getElementById('btnBack').addEventListener('click', () => {
-      T.navigateBack();
+    // Share — copy canvas image to clipboard (paste into WeChat)
+    document.getElementById('btnShare').addEventListener('click', async () => {
+      const canvas = document.getElementById('receiptCanvas');
+      try {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('已复制！打开微信粘贴即可发送 ✓');
+      } catch (e) {
+        const url = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url; a.download = 'terse-receipt.png'; a.click();
+        showToast('已保存图片 ✓');
+      }
     });
 
+    function showToast(msg) {
+      const t = document.getElementById('shareToast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    document.getElementById('btnBack').addEventListener('click', () => T.navigateBack());
+
     render();
-    // Refresh every 10s
     setInterval(render, 10000);
+    if (window.__TAURI__?.event?.listen) {
+      window.__TAURI__.event.listen('stats-updated', () => render());
+    }
   </script>
 </body>
 </html>

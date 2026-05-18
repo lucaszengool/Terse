@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Terse · Shiro V3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;padding:40px 20px 80px;}
@@ -83,6 +84,30 @@ body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans G
 @keyframes reaction-pop{0%,55%,100%{transform:scale(0);opacity:0}25%{transform:scale(1.2);opacity:1}45%{transform:scale(1.0);opacity:.9}}
 @keyframes wobble{0%,100%{transform:rotate(0)}20%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}80%{transform:rotate(-5deg)}}
 @keyframes heart-float{0%{transform:translateY(0) scale(0);opacity:0}20%{transform:translateY(-8px) scale(1.1);opacity:1}80%{transform:translateY(-28px) scale(.9);opacity:.7}100%{transform:translateY(-40px) scale(.8);opacity:0}}
+/* EATING — dramatic lunge 42px down + 35° tilt, HOLD while chewing, lift back */
+@keyframes k-eat{0%,100%{transform:translateY(0) rotate(0) scale(1)}18%{transform:translateY(42px) rotate(35deg) scale(.88)}38%,52%{transform:translateY(40px) rotate(33deg) scale(.90)}68%{transform:translateY(0) rotate(0) scale(1)}}
+/* MUNCH — rapid double-peck, clearly pecking at food */
+@keyframes k-munch{0%,100%{transform:translateY(0) rotate(0)}12%{transform:translateY(26px) rotate(28deg)}24%{transform:translateY(6px) rotate(8deg)}36%{transform:translateY(26px) rotate(28deg)}48%{transform:translateY(6px) rotate(8deg)}62%{transform:translateY(0) rotate(0)}}
+/* WRITING — big left→right sweep with forward lean, like drawing a line */
+@keyframes k-write{0%,100%{transform:translateX(0) translateY(0) rotate(0)}20%{transform:translateX(-26px) translateY(12px) rotate(-18deg)}50%{transform:translateX(26px) translateY(10px) rotate(14deg)}75%{transform:translateX(-10px) translateY(6px) rotate(-8deg)}}
+/* READING — deep tilt left HOLD, then tilt right HOLD — clearly reading */
+@keyframes k-scan{0%,100%{transform:rotate(0) translateY(0)}12%,28%{transform:rotate(-26deg) translateY(-8px)}42%{transform:rotate(0) translateY(0)}55%,70%{transform:rotate(22deg) translateY(-6px)}85%{transform:rotate(0) translateY(0)}}
+/* CHEER — massive 48px hop, arm-raise spin, clearly celebrating */
+@keyframes k-cheer{0%,100%{transform:translateY(0) rotate(0) scale(1)}22%{transform:translateY(-48px) rotate(-20deg) scale(1.14)}46%{transform:translateY(-44px) rotate(20deg) scale(1.14)}65%{transform:translateY(-10px) rotate(0) scale(1.04)}80%{transform:translateY(0)}}
+/* TYPING — clear left-paw/right-paw alternation, squash on strike */
+@keyframes k-tap{0%,100%{transform:translateY(0) rotate(0) scaleX(1)}8%{transform:translateY(-14px) rotate(-14deg) scaleX(.92)}16%{transform:translateY(5px) rotate(-3deg)}24%{transform:translateY(-14px) rotate(14deg) scaleX(.92)}32%{transform:translateY(5px) rotate(3deg)}40%{transform:translateY(-12px) rotate(-12deg) scaleX(.93)}48%{transform:translateY(5px) rotate(-2deg)}56%{transform:translateY(-12px) rotate(12deg) scaleX(.93)}64%{transform:translateY(0) rotate(0)}100%{transform:translateY(0) rotate(0) scaleX(1)}}
+/* THINKING — slow tilt+hold, nod confirmation, tilt other way+hold */
+@keyframes k-think{0%,100%{transform:rotate(0) translateY(0)}12%,24%{transform:rotate(-22deg) translateY(-8px)}36%{transform:rotate(0) translateY(-3px)}48%{transform:rotate(-5deg) translateY(-2px)}60%,72%{transform:rotate(19deg) translateY(-6px)}85%{transform:rotate(0) translateY(0)}}
+/* FOOD EATEN — food shrinks and disappears as pet reaches it */
+@keyframes food-eaten{0%,14%{transform:scale(1) translateY(0);opacity:1}32%{transform:scale(.2) translateY(18px);opacity:0}33%,100%{transform:scale(0);opacity:0}}
+/* TOKEN POP — number bursts into view then fades */
+@keyframes tok-pop{0%{transform:scale(0) translateY(0);opacity:0}20%{transform:scale(1.3) translateY(-10px);opacity:1}50%{transform:scale(1.0) translateY(-20px);opacity:.9}100%{transform:scale(.8) translateY(-45px);opacity:0}}
+/* PEN DRAW — pen sweeps across a paper line */
+@keyframes pen-draw{0%{transform:translateX(-60px) translateY(0)}100%{transform:translateX(60px) translateY(4px)}}
+/* LINE GROW — paper line grows as pen moves */
+@keyframes line-grow{0%{width:0}100%{width:120px}}
+/* KEY LIGHT — key glows bright then dims */
+@keyframes key-light{0%,60%,100%{background:#5A3010;box-shadow:none}20%,35%{background:#F5C840;box-shadow:0 0 10px rgba(245,200,60,.80)}}
 </style>
 </head>
 <body>
@@ -172,15 +197,20 @@ body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans G
     <div style="font-size:1rem;font-weight:700;color:rgba(255,255,255,.85);text-shadow:0 1px 6px rgba(0,0,0,.18);">Piyo 就吃一口 🍪</div>
   </div>
 
-  <!-- Shiro on grass with food -->
-  <div class="content" style="text-align:center;padding-top:10px;position:relative;">
-    <span class="fitem" style="top:-44px;left:calc(50% - 55px);font-size:1.5rem;animation:food-drop 1.8s 0s ease-in-out infinite;">🍪</span>
-    <span class="fitem" style="top:-54px;left:calc(50% + 2px);font-size:1.1rem;animation:food-drop 1.8s .5s ease-in-out infinite;">⭐</span>
-    <span class="fitem" style="top:-40px;left:calc(50% + 42px);font-size:1.2rem;animation:food-drop 1.8s 1.0s ease-in-out infinite;">🍩</span>
-    <span class="fitem" style="top:-48px;left:calc(50% - 90px);font-size:1.0rem;animation:food-drop 1.8s 1.4s ease-in-out infinite;">🍣</span>
-    <div class="pal" style="animation:k-peck 1.0s ease-in-out infinite;">
+  <!-- Piyo eating — food at beak height so lunge visibly reaches it -->
+  <div class="content" style="text-align:center;padding-top:10px;position:relative;overflow:visible;">
+    <!-- token savings pop up AFTER each bite -->
+    <span class="p2-tok" style="position:absolute;top:80px;left:calc(50% - 100px);font-size:1.0rem;font-weight:900;color:#2A7010;text-shadow:0 2px 6px rgba(0,0,0,.20);opacity:0;pointer-events:none;">+48 tok</span>
+    <span class="p2-tok" style="position:absolute;top:60px;left:calc(50% + 45px);font-size:.90rem;font-weight:900;color:#2A7010;text-shadow:0 2px 6px rgba(0,0,0,.20);opacity:0;pointer-events:none;">+32 tok</span>
+    <!-- food items near the bowl — Piyo lunges DOWN to meet them -->
+    <span class="p2-food" style="position:absolute;top:218px;left:calc(50% - 28px);font-size:1.5rem;pointer-events:none;">🍪</span>
+    <span class="p2-food" style="position:absolute;top:222px;left:calc(50% + 24px);font-size:1.3rem;pointer-events:none;">🍩</span>
+    <span class="p2-food" style="position:absolute;top:220px;left:calc(50% - 72px);font-size:1.1rem;pointer-events:none;">🍣</span>
+    <div class="pal" style="display:inline-block;">
       <svg width="250" height="250" viewBox="-21 -21 202 202" data-pal="piyo"></svg>
     </div>
+    <!-- food bowl right at feet -->
+    <div class="p2-bowl" style="font-size:2.2rem;margin-top:-28px;position:relative;z-index:3;">🍜</div>
   </div>
 
   <!-- before/after: wooden signs + Koko watching -->
@@ -203,7 +233,7 @@ body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans G
     <div style="flex-shrink:0;position:relative;">
       <!-- heart floats up from Koko toward the food -->
       <span style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:1rem;animation:heart-float 2.2s .4s ease-out infinite;">❤️</span>
-      <div class="pal" style="animation:wobble 1.4s ease-in-out infinite;transform:scaleX(-1);">
+      <div class="pal" style="transform:scaleX(-1);">
         <svg width="100" height="100" viewBox="-21 -21 202 202" data-pal="koko"></svg>
       </div>
     </div>
@@ -245,7 +275,7 @@ body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans G
 
   <!-- Piyo + three mode visual bars -->
   <div class="content" style="text-align:center;padding-top:28px;">
-    <div class="pal" style="animation:k-bob 3.5s ease-in-out infinite;">
+    <div class="pal" style="animation:k-scan 2.8s ease-in-out infinite;">
       <svg width="215" height="215" viewBox="-21 -21 202 202" data-pal="piyo"></svg>
     </div>
   </div>
@@ -299,16 +329,28 @@ body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans G
     </div>
   </div>
 
-  <!-- Momo + Boba facing each other with shared cookie -->
+  <!-- Momo writing on clipboard + Boba eating cookie reward -->
   <div class="content" style="display:flex;justify-content:center;align-items:flex-end;gap:6px;padding:4px 24px 28px;">
-    <!-- Momo walks right (default faces right — toward Boba) -->
-    <div class="pal" style="animation:k-walk 2.4s ease-in-out infinite;">
-      <svg width="115" height="115" viewBox="-21 -21 202 202" data-pal="momo"></svg>
+    <!-- Momo writing — clipboard below her with a line drawing across -->
+    <div style="position:relative;">
+      <!-- clipboard + animated writing line -->
+      <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:90px;">
+        <div style="background:#F5E8C0;border-radius:6px;padding:5px 6px;box-shadow:1px 2px 6px rgba(0,0,0,.22);overflow:hidden;position:relative;height:28px;">
+          <div style="height:3px;background:#A09070;border-radius:2px;margin-bottom:4px;width:60%;"></div>
+          <!-- animated pen line -->
+          <div style="height:2px;background:#3A6A10;border-radius:1px;animation:line-grow 1.8s ease-in-out infinite;"></div>
+        </div>
+      </div>
+      <!-- pen emoji that moves with Momo's sweep -->
+      <span style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:1.1rem;animation:k-write 1.8s ease-in-out infinite;">✏️</span>
+      <div class="pal" style="animation:k-write 1.8s ease-in-out infinite;">
+        <svg width="115" height="115" viewBox="-21 -21 202 202" data-pal="momo"></svg>
+      </div>
     </div>
     <!-- shared cookie between them -->
     <div style="align-self:center;font-size:1.4rem;animation:food-drop 1.6s .2s ease-in-out infinite;flex-shrink:0;">🍪</div>
     <!-- Boba flipped to face left (toward Momo) -->
-    <div class="pal" style="animation:k-bob 2.2s .6s ease-in-out infinite;transform:scaleX(-1);">
+    <div class="pal" style="animation:k-munch 0.85s 0.3s ease-in-out infinite;transform:scaleX(-1);">
       <svg width="90" height="90" viewBox="-21 -21 202 202" data-pal="boba"></svg>
     </div>
   </div>
@@ -355,77 +397,159 @@ body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans G
     <div style="font-size:1.15rem;font-weight:900;color:white;text-shadow:0 2px 10px rgba(0,0,0,.22);line-height:1.3;">Piyo 不只可爱<br><span style="font-size:.88rem;font-weight:600;color:rgba(255,255,255,.82);">他还帮你干活</span></div>
   </div>
 
-  <!-- Piyo typing at keyboard -->
+  <!-- Piyo sitting ON the keyboard — body overlaps keys -->
   <div class="content" style="text-align:center;padding:16px 0 0;position:relative;">
-    <div class="pal" style="animation:k-type .8s ease-in-out infinite;display:inline-block;position:relative;z-index:3;">
+    <!-- output text appearing above — simulates Terse processing -->
+    <div style="display:inline-block;background:rgba(0,0,0,.28);border-radius:10px;padding:6px 14px;margin-bottom:4px;font-family:monospace;font-size:.58rem;color:#A0F070;text-align:left;">
+      <span style="animation:reaction-pop 2.4s 0s ease-in-out infinite;display:inline-block;">✓ −48 tok</span>
+      <span style="animation:reaction-pop 2.4s .8s ease-in-out infinite;display:inline-block;margin-left:8px;">✓ −32 tok</span>
+    </div>
+    <!-- Piyo body overlaps keyboard by ~45px -->
+    <div class="pal" style="animation:k-tap 0.55s ease-in-out infinite;display:inline-block;position:relative;z-index:3;margin-bottom:-45px;">
       <svg width="225" height="225" viewBox="-21 -21 202 202" data-pal="piyo"></svg>
     </div>
-    <!-- log-slab keyboard — bark colors match golden scene -->
-    <svg width="240" height="72" viewBox="0 0 240 72" style="display:block;margin:-12px auto 0;position:relative;z-index:2;">
-      <!-- log slab base -->
-      <rect width="240" height="72" rx="12" fill="#6B3E18"/>
-      <rect x="2" y="2" width="236" height="68" rx="10" fill="#7A4820"/>
-      <!-- wood grain lines -->
-      <ellipse cx="120" cy="36" rx="110" ry="28" fill="none" stroke="#8A5828" stroke-width="1" opacity=".40"/>
-      <ellipse cx="120" cy="36" rx="90" ry="22" fill="none" stroke="#8A5828" stroke-width="1" opacity=".25"/>
-      <!-- key row 1 -->
-      <rect x="8" y="7" width="26" height="15" rx="4" fill="#5A3010"/>
-      <rect x="40" y="7" width="26" height="15" rx="4" fill="#5A3010"/>
-      <rect x="72" y="7" width="26" height="15" rx="4" fill="#C87830" style="animation:key-press .8s .1s ease-in-out infinite"/>
-      <rect x="104" y="7" width="26" height="15" rx="4" fill="#5A3010"/>
-      <rect x="136" y="7" width="26" height="15" rx="4" fill="#5A3010"/>
-      <rect x="168" y="7" width="64" height="15" rx="4" fill="#5A3010"/>
+    <!-- log-slab keyboard — Piyo's feet land ON these keys -->
+    <svg width="260" height="72" viewBox="0 0 260 72" style="display:block;margin:0 auto;position:relative;z-index:2;">
+      <rect width="260" height="72" rx="12" fill="#6B3E18"/>
+      <rect x="2" y="2" width="256" height="68" rx="10" fill="#7A4820"/>
+      <ellipse cx="130" cy="36" rx="118" ry="28" fill="none" stroke="#8A5828" stroke-width="1" opacity=".40"/>
+      <!-- key row 1: 8 keys, sequential lighting left→right on each tap -->
+      <rect x="8"   y="7" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .00s ease-in-out infinite"/>
+      <rect x="36"  y="7" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .07s ease-in-out infinite"/>
+      <rect x="64"  y="7" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .14s ease-in-out infinite"/>
+      <rect x="92"  y="7" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .21s ease-in-out infinite"/>
+      <rect x="120" y="7" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .28s ease-in-out infinite"/>
+      <rect x="148" y="7" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .35s ease-in-out infinite"/>
+      <rect x="176" y="7" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .42s ease-in-out infinite"/>
+      <rect x="204" y="7" width="48" height="15" rx="4" fill="#5A3010"/>
       <!-- key row 2 -->
-      <rect x="14" y="28" width="26" height="15" rx="4" fill="#5A3010"/>
-      <rect x="46" y="28" width="26" height="15" rx="4" fill="#C87830" style="animation:key-press .8s .28s ease-in-out infinite"/>
-      <rect x="78" y="28" width="26" height="15" rx="4" fill="#5A3010"/>
-      <rect x="110" y="28" width="26" height="15" rx="4" fill="#5A3010"/>
-      <rect x="142" y="28" width="90" height="15" rx="4" fill="#5A3010"/>
-      <!-- key row 3: spacebar -->
-      <rect x="8" y="50" width="40" height="15" rx="4" fill="#5A3010"/>
-      <rect x="54" y="50" width="132" height="15" rx="4" fill="#5A3010"/>
-      <rect x="192" y="50" width="40" height="15" rx="4" fill="#5A3010"/>
+      <rect x="14"  y="28" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .28s ease-in-out infinite"/>
+      <rect x="42"  y="28" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .07s ease-in-out infinite"/>
+      <rect x="70"  y="28" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .42s ease-in-out infinite"/>
+      <rect x="98"  y="28" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .14s ease-in-out infinite"/>
+      <rect x="126" y="28" width="24" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .35s ease-in-out infinite"/>
+      <rect x="154" y="28" width="96" height="15" rx="4" fill="#5A3010"/>
+      <!-- spacebar -->
+      <rect x="8"   y="50" width="40" height="15" rx="4" fill="#5A3010"/>
+      <rect x="54"  y="50" width="152" height="15" rx="4" style="fill:#5A3010;animation:key-light .55s .27s ease-in-out infinite"/>
+      <rect x="212" y="50" width="40" height="15" rx="4" fill="#5A3010"/>
     </svg>
   </div>
 
-  <!-- feature grid — icons + names only, no descriptions -->
-  <div class="content" style="padding:18px 24px 8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 10px;text-align:center;">
+  <!-- feature grid — custom wood-tone SVG icons matching the golden scene -->
+  <div class="content" style="padding:18px 24px 8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px 10px;text-align:center;">
+
+    <!-- 修错字: wooden pencil writing a line -->
     <div>
-      <div style="font-size:1.5rem;">✍️</div>
-      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.25);margin-top:4px;">修错字</div>
+      <svg width="38" height="38" viewBox="0 0 38 38" style="display:block;margin:0 auto;">
+        <circle cx="19" cy="19" r="18" fill="#6B3E18" opacity=".28"/>
+        <!-- pencil body diagonal -->
+        <path d="M10,28 L21,9 L26,12 L15,31 Z" fill="#F5D060"/>
+        <!-- pencil tip (dark wood) -->
+        <path d="M10,28 L15,31 L12,34 Z" fill="#3A2010"/>
+        <!-- metal band -->
+        <path d="M10,28 L15,31 L16,29 L11,26 Z" fill="#C09040"/>
+        <!-- eraser (earthy red) -->
+        <path d="M21,9 L26,12 L27,9 L22,6 Z" fill="#C06040" rx="1"/>
+        <!-- written line -->
+        <path d="M20,24 L28,20" stroke="#F5D060" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+      </svg>
+      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.28);margin-top:5px;">修错字</div>
     </div>
+
+    <!-- 压空白: two arrows pressing inward (compress whitespace) -->
     <div>
-      <div style="font-size:1.5rem;">✂️</div>
-      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.25);margin-top:4px;">压空白</div>
+      <svg width="38" height="38" viewBox="0 0 38 38" style="display:block;margin:0 auto;">
+        <circle cx="19" cy="19" r="18" fill="#6B3E18" opacity=".28"/>
+        <!-- left arrow pointing right -->
+        <path d="M6,16 L14,16 L14,13 L20,19 L14,25 L14,22 L6,22 Z" fill="#F5D060"/>
+        <!-- right arrow pointing left -->
+        <path d="M32,16 L24,16 L24,13 L18,19 L24,25 L24,22 L32,22 Z" fill="#F5D060" opacity=".75"/>
+      </svg>
+      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.28);margin-top:5px;">压空白</div>
     </div>
+
+    <!-- 删废话: text lines struck through (delete filler words) -->
     <div>
-      <div style="font-size:1.5rem;">🗑️</div>
-      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.25);margin-top:4px;">删废话</div>
+      <svg width="38" height="38" viewBox="0 0 38 38" style="display:block;margin:0 auto;">
+        <circle cx="19" cy="19" r="18" fill="#6B3E18" opacity=".28"/>
+        <!-- 3 text lines -->
+        <path d="M9,12 L29,12" stroke="#F5D060" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M9,19 L29,19" stroke="#F5D060" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M9,26 L22,26" stroke="#F5D060" stroke-width="2.2" stroke-linecap="round" opacity=".7"/>
+        <!-- diagonal strikethrough -->
+        <path d="M8,30 L30,8" stroke="#C05028" stroke-width="2.8" stroke-linecap="round" opacity=".90"/>
+      </svg>
+      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.28);margin-top:5px;">删废话</div>
     </div>
+
+    <!-- 极限压缩: lightning bolt carved in wood (extreme / fast) -->
     <div>
-      <div style="font-size:1.5rem;">⚡</div>
-      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.25);margin-top:4px;">极限压缩</div>
+      <svg width="38" height="38" viewBox="0 0 38 38" style="display:block;margin:0 auto;">
+        <circle cx="19" cy="19" r="18" fill="#6B3E18" opacity=".28"/>
+        <!-- lightning bolt -->
+        <path d="M23,5 L13,20 L19,20 L15,33 L25,18 L19,18 Z" fill="#F5D060"/>
+        <!-- inner highlight -->
+        <path d="M21,9 L15,20 L19,20 L17,27 L23,18 L19,18 Z" fill="#FFF0A0" opacity=".45"/>
+      </svg>
+      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.28);margin-top:5px;">极限压缩</div>
     </div>
+
+    <!-- 每日统计: bar chart as wooden fence posts -->
     <div>
-      <div style="font-size:1.5rem;">📊</div>
-      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.25);margin-top:4px;">每日统计</div>
+      <svg width="38" height="38" viewBox="0 0 38 38" style="display:block;margin:0 auto;">
+        <circle cx="19" cy="19" r="18" fill="#6B3E18" opacity=".28"/>
+        <!-- ground line -->
+        <path d="M7,30 L31,30" stroke="#F5D060" stroke-width="1.4" stroke-linecap="round" opacity=".50"/>
+        <!-- bar 1 (short) -->
+        <rect x="8"  y="23" width="6" height="7" rx="1.5" fill="#F5D060" opacity=".80"/>
+        <!-- bar 2 (medium) -->
+        <rect x="16" y="16" width="6" height="14" rx="1.5" fill="#F5D060"/>
+        <!-- bar 3 (tall) -->
+        <rect x="24" y="10" width="6" height="20" rx="1.5" fill="#F5D060"/>
+        <!-- pointed tops like fence posts -->
+        <polygon points="8,23 11,19 14,23" fill="#F5D060" opacity=".80"/>
+        <polygon points="16,16 19,12 22,16" fill="#F5D060"/>
+        <polygon points="24,10 27,6 30,10" fill="#F5D060"/>
+      </svg>
+      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.28);margin-top:5px;">每日统计</div>
     </div>
+
+    <!-- 解锁伙伴: paw print (unlock a companion) -->
     <div>
-      <div style="font-size:1.5rem;">🏅</div>
-      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.25);margin-top:4px;">解锁伙伴</div>
+      <svg width="38" height="38" viewBox="0 0 38 38" style="display:block;margin:0 auto;">
+        <circle cx="19" cy="19" r="18" fill="#6B3E18" opacity=".28"/>
+        <!-- main pad -->
+        <ellipse cx="19" cy="23" rx="7" ry="6" fill="#F5D060"/>
+        <!-- 3 toe pads -->
+        <circle cx="12" cy="16" r="3.2" fill="#F5D060"/>
+        <circle cx="19" cy="13" r="3.2" fill="#F5D060"/>
+        <circle cx="26" cy="16" r="3.2" fill="#F5D060"/>
+        <!-- small sparkle above -->
+        <path d="M29,9 L30,6 L31,9 L28,10 Z" fill="#FFF0A0" opacity=".80"/>
+      </svg>
+      <div style="font-size:.72rem;font-weight:800;color:white;text-shadow:0 1px 5px rgba(0,0,0,.28);margin-top:5px;">解锁伙伴</div>
     </div>
+
   </div>
 
   <!-- Piyo typing + Toro watching with admiration -->
   <div class="content" style="display:flex;justify-content:center;align-items:flex-end;gap:4px;padding-top:12px;padding-bottom:26px;">
     <!-- Toro faces right (default) toward Piyo, nodding at the keyboard -->
     <div style="position:relative;flex-shrink:0;">
-      <span style="position:absolute;top:-10px;right:0;font-size:1.0rem;animation:reaction-pop 2.0s .5s ease-in-out infinite;">⭐</span>
-      <div class="pal" style="animation:k-nod 1.8s ease-in-out infinite;">
+      <svg width="26" height="16" viewBox="0 0 26 16" style="position:absolute;top:-14px;right:2px;animation:reaction-pop 2.0s .5s ease-in-out infinite;">
+        <ellipse cx="7" cy="8" rx="6" ry="7" fill="white" opacity=".90"/>
+        <circle cx="7" cy="9" r="4" fill="#3A2010"/>
+        <circle cx="8.5" cy="7.5" r="1.5" fill="white"/>
+        <ellipse cx="19" cy="8" rx="6" ry="7" fill="white" opacity=".90"/>
+        <circle cx="19" cy="9" r="4" fill="#3A2010"/>
+        <circle cx="20.5" cy="7.5" r="1.5" fill="white"/>
+      </svg>
+      <div class="pal" style="animation:k-scan 2.2s ease-in-out infinite;">
         <svg width="100" height="100" viewBox="-21 -21 202 202" data-pal="toro"></svg>
       </div>
     </div>
-    <div class="pal" style="animation:k-hop 1.8s ease-in-out infinite;">
+    <div class="pal" style="animation:k-tap 0.7s 0.3s ease-in-out infinite;">
       <svg width="190" height="190" viewBox="-21 -21 202 202" data-pal="piyo"></svg>
     </div>
   </div>
@@ -491,21 +615,24 @@ body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans G
     <div style="background:#7A4A20;border-radius:12px;padding:14px 16px 12px;box-shadow:3px 6px 18px rgba(0,0,0,.28);border-top:4px solid #A06830;position:relative;overflow:hidden;">
       <!-- wood grain -->
       <div style="position:absolute;top:0;left:0;right:0;bottom:0;border-radius:12px;background:repeating-linear-gradient(175deg,transparent,transparent 22px,rgba(0,0,0,.04) 22px,rgba(0,0,0,.04) 23px);pointer-events:none;"></div>
-      <!-- action rows -->
+      <!-- action rows — checkmark pops in after each saving appears -->
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;position:relative;">
         <span style="font-size:1.1rem;">📖</span>
         <span style="font-size:.68rem;font-weight:700;color:#F0D090;flex:1;">read_file</span>
         <span style="font-size:.82rem;font-weight:900;color:#F5E060;text-shadow:0 1px 6px rgba(0,0,0,.30);">−48 tok</span>
+        <span style="font-size:.9rem;animation:reaction-pop 2.4s 0.0s ease-in-out infinite;">✅</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;position:relative;">
         <span style="font-size:1.1rem;">✂️</span>
         <span style="font-size:.68rem;font-weight:700;color:#F0D090;flex:1;">edit</span>
         <span style="font-size:.82rem;font-weight:900;color:#A0F070;text-shadow:0 1px 6px rgba(0,0,0,.30);">−86 tok</span>
+        <span style="font-size:.9rem;animation:reaction-pop 2.4s 0.8s ease-in-out infinite;">✅</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px;position:relative;">
         <span style="font-size:1.1rem;">🔍</span>
         <span style="font-size:.68rem;font-weight:700;color:#F0D090;flex:1;">search</span>
         <span style="font-size:.82rem;font-weight:900;color:#F5E060;text-shadow:0 1px 6px rgba(0,0,0,.30);">−24 tok</span>
+        <span style="font-size:.9rem;animation:reaction-pop 2.4s 1.6s ease-in-out infinite;">✅</span>
       </div>
     </div>
   </div>
@@ -519,13 +646,13 @@ body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans G
       <div style="position:absolute;top:40px;left:-30px;font-size:.78rem;font-weight:900;color:#1A6A40;text-shadow:0 2px 6px rgba(0,0,0,.18);animation:float-up 2.4s 1.4s ease-in-out infinite;white-space:nowrap;">−24</div>
       <!-- Nori looks up at the floating numbers, flipped to face Piyo -->
       <div style="position:relative;">
-        <span style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:.9rem;animation:reaction-pop 2.8s 1.2s ease-in-out infinite;">😮</span>
-        <div class="pal" style="animation:k-peek 2.0s .4s ease-in-out infinite;transform:scaleX(-1);">
+        <span style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:.9rem;animation:reaction-pop 2.8s 1.2s ease-in-out infinite;">🔢</span>
+        <div class="pal" style="animation:k-scan 2.4s 0.5s ease-in-out infinite;transform:scaleX(-1);">
           <svg width="108" height="108" viewBox="-21 -21 202 202" data-pal="nori"></svg>
         </div>
       </div>
       <!-- Piyo -->
-      <div class="pal" style="animation:k-jiggle .55s ease-in-out infinite;position:relative;z-index:2;">
+      <div class="pal" style="animation:k-think 2.2s ease-in-out infinite;position:relative;z-index:2;">
         <svg width="215" height="215" viewBox="-21 -21 202 202" data-pal="piyo"></svg>
       </div>
       <!-- soft ground shadow -->
@@ -573,16 +700,22 @@ body{background:#6A9E68;font-family:-apple-system,'PingFang SC','Hiragino Sans G
     <div style="font-size:.80rem;color:rgba(255,255,255,.80);font-weight:600;margin-bottom:14px;">tokens 🎉</div>
   </div>
 
-  <!-- Piyo + Fafa celebrating together facing each other -->
-  <div class="content" style="display:flex;justify-content:center;align-items:flex-end;gap:2px;padding:4px 0 8px;">
-    <!-- Fafa faces right (default) toward Piyo -->
-    <div class="pal" style="animation:k-hop 2.0s .25s ease-in-out infinite;">
+  <!-- Piyo + Fafa celebrating — confetti raining, big hops -->
+  <div class="content" style="position:relative;display:flex;justify-content:center;align-items:flex-end;gap:2px;padding:4px 0 8px;">
+    <!-- confetti raining down -->
+    <span style="position:absolute;top:-10px;left:20%;font-size:1.2rem;animation:tok-pop 1.6s 0.0s ease-in-out infinite;pointer-events:none;">🎉</span>
+    <span style="position:absolute;top:-10px;left:50%;font-size:1.0rem;animation:tok-pop 1.6s 0.5s ease-in-out infinite;pointer-events:none;">🎊</span>
+    <span style="position:absolute;top:-10px;right:18%;font-size:1.1rem;animation:tok-pop 1.6s 1.0s ease-in-out infinite;pointer-events:none;">🎉</span>
+    <span style="position:absolute;top:10px;left:10%;font-size:.9rem;animation:tok-pop 1.6s 0.8s ease-in-out infinite;pointer-events:none;">⭐</span>
+    <span style="position:absolute;top:10px;right:10%;font-size:.9rem;animation:tok-pop 1.6s 0.3s ease-in-out infinite;pointer-events:none;">✨</span>
+    <!-- Fafa faces right (default) toward Piyo — big cheer -->
+    <div class="pal" style="animation:k-cheer 1.6s .2s ease-in-out infinite;">
       <svg width="108" height="108" viewBox="-21 -21 202 202" data-pal="fafa"></svg>
     </div>
-    <!-- sparkle between them -->
-    <div style="align-self:flex-end;padding-bottom:30px;font-size:1.3rem;animation:sparkle-pop 1.2s .1s ease-in-out infinite;flex-shrink:0;">✨</div>
-    <!-- Piyo flipped to face left (toward Fafa) -->
-    <div class="pal" style="animation:k-hop 2.0s ease-in-out infinite;transform:scaleX(-1);">
+    <!-- sparkle between them — pulses big -->
+    <div style="align-self:flex-end;padding-bottom:40px;font-size:1.8rem;animation:sparkle-pop 0.8s .1s ease-in-out infinite;flex-shrink:0;">🎊</div>
+    <!-- Piyo flipped to face left (toward Fafa) — offset hop -->
+    <div class="pal" style="animation:k-cheer 1.6s 0.6s ease-in-out infinite;transform:scaleX(-1);">
       <svg width="215" height="215" viewBox="-21 -21 202 202" data-pal="piyo"></svg>
     </div>
   </div>
@@ -770,6 +903,345 @@ if(track){
     w.appendChild(svg);track.appendChild(w);
   });
 }
+</script>
+
+<!-- ══ GSAP: beak morph + food-arc + live context cards ══ -->
+<script>
+window.addEventListener('load', function () {
+
+  const posters = document.querySelectorAll('.poster');
+
+  function noCSS(el){ if(el){ el.style.animation='none'; el.style.transform='none'; } }
+
+  // inject a blink-cursor keyframe once
+  const blinkSt = document.createElement('style');
+  blinkSt.textContent = '@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}';
+  document.head.appendChild(blinkSt);
+
+  // ════════════════════════════════════════════════════════════
+  // P2 · EATING — Piyo lunges down to bowl, food rises to meet beak
+  // ════════════════════════════════════════════════════════════
+  (function(){
+    const p = posters[1]; if(!p) return;
+    const piyoWrap = p.querySelector('.pal');
+    const kokoWrap = p.querySelectorAll('.pal')[1];
+    const foods    = [...p.querySelectorAll('.p2-food')];
+    const toks     = [...p.querySelectorAll('.p2-tok')];
+
+    noCSS(piyoWrap);
+    if(kokoWrap) noCSS(kokoWrap);
+
+    // ── Find beak path (orange fill) — scale it open/shut, no d-morph ──
+    let beak = null;
+    piyoWrap.querySelector('svg').querySelectorAll('path').forEach(path => {
+      if(path.getAttribute('fill') === '#F09030') beak = path;
+    });
+    if(beak){ beak.style.transformBox = 'fill-box'; beak.style.transformOrigin = '50% 0%'; }
+
+    // ── Small score badge BELOW Piyo, near the bowl ──
+    const contentArea = piyoWrap.closest('.content') || piyoWrap.parentElement;
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:absolute;bottom:32px;left:50%;transform:translateX(-50%);z-index:20;background:rgba(15,50,5,.82);border:1.5px solid rgba(100,200,50,.50);border-radius:20px;padding:3px 12px;font-family:monospace;font-size:.68rem;color:#90F060;font-weight:900;white-space:nowrap;pointer-events:none;';
+    badge.innerHTML = '✨ 已省 <span id="p2c">0</span> tok';
+    contentArea.appendChild(badge);
+    let saved = 0;
+
+    // ── Food: gentle wobble in place near bowl ──
+    const bobTweens = foods.map((f, i) =>
+      gsap.to(f, { y:-8, duration:0.7+i*0.12, ease:'sine.inOut', repeat:-1, yoyo:true, delay:i*0.22 })
+    );
+
+    // ── Eat cycle: Piyo dives down, food rises to meet beak ──
+    function eatCycle(){
+      bobTweens.forEach(t => t.pause());
+
+      const tl = gsap.timeline({ onComplete:() => {
+        gsap.set(foods, { x:0, y:0, scale:1, opacity:1 });
+        bobTweens.forEach(t => t.restart());
+        gsap.delayedCall(0.6, eatCycle);
+      }});
+
+      // Anticipation: cute little squat
+      tl.to(piyoWrap, { scaleY:0.80, scaleX:1.18, transformOrigin:'50% 100%', duration:0.12, ease:'power2.in' })
+
+      // Dive: body lunges straight down toward the bowl
+        .to(piyoWrap, { y:48, scaleY:0.92, scaleX:1.06, transformOrigin:'50% 95%',
+                        duration:0.22, ease:'power3.in' })
+
+      // Beak opens: scaleY stretches the triangle downward from its tip
+        .to(beak, { scaleY:2.4, duration:0.12, ease:'power2.in' }, '-=0.10')
+
+      // Food rises up from bowl, little arc toward beak, then eaten
+        .to(foods, { y:-28, scale:1.15, stagger:0.04, duration:0.12, ease:'power1.out' }, '-=0.08')
+        .to(foods, { y:-60, scale:0.10, opacity:0, stagger:0.04, duration:0.14, ease:'power3.in' })
+
+      // Beak snaps shut — quick cute chomp
+        .to(beak, { scaleY:1, duration:0.10, ease:'power3.out' })
+
+      // Badge: counter ticks up with a bounce
+        .add(() => {
+          saved += 48;
+          const c = document.getElementById('p2c');
+          if(c) c.textContent = saved;
+          gsap.fromTo(badge, { scale:1.4, color:'#FFFFFF' }, { scale:1, color:'#90F060', duration:0.30, ease:'elastic.out(2,0.4)' });
+        })
+
+      // Token numbers pop up beside Piyo
+        .to(toks, { opacity:1, y:-22, scale:1.20, stagger:0.08, duration:0.18, ease:'back.out(2.5)' }, '-=0.05')
+
+      // Elastic snap back up — rubber-band feel
+        .to(piyoWrap, { y:0, scaleY:1.24, scaleX:0.80,
+                        transformOrigin:'50% 100%', duration:0.50, ease:'elastic.out(1.2,0.42)' })
+        .to(piyoWrap, { scaleY:1, scaleX:1, duration:0.22, ease:'power2.out' })
+
+      // Toks drift up and fade
+        .to(toks, { opacity:0, y:-48, scale:0.75, duration:0.26, ease:'power1.in' }, '-=0.32');
+    }
+
+    gsap.delayedCall(0.5, eatCycle);
+
+    // Koko: rapid double-peck, fully independent
+    if(kokoWrap){
+      gsap.timeline({ repeat:-1, repeatDelay:0.25, delay:0.4 })
+        .to(kokoWrap, { scaleY:0.84, scaleX:1.12, transformOrigin:'50% 100%', duration:0.08, ease:'power2.in' })
+        .to(kokoWrap, { y:22, rotation:-20, duration:0.15, ease:'power2.in' })
+        .to(kokoWrap, { y:5,  rotation:-4,  duration:0.10, ease:'power1.out' })
+        .to(kokoWrap, { y:22, rotation:-20, duration:0.13, ease:'power2.in' })
+        .to(kokoWrap, { y:0,  rotation:0, scaleY:1.12, scaleX:0.90, duration:0.26, ease:'elastic.out(1.1,0.5)' })
+        .to(kokoWrap, { scaleY:1, scaleX:1, duration:0.14 });
+    }
+  })();
+
+  // ════════════════════════════════════════════════════════════
+  // P3 · WRITING MODES — compression card + sweeping Momo
+  // ════════════════════════════════════════════════════════════
+  (function(){
+    const p = posters[2]; if(!p) return;
+    const pals = p.querySelectorAll('.pal');
+    const piyo = pals[0];
+    const momo = pals[1];
+    const boba = pals[2];
+    noCSS(piyo); noCSS(momo); noCSS(boba);
+
+    // Floating compression card: shows before → after text morphing
+    const card = document.createElement('div');
+    card.style.cssText = 'position:absolute;bottom:22px;right:8px;z-index:20;background:rgba(12,8,4,.78);border:1px solid rgba(200,160,60,.40);border-radius:10px;padding:7px 10px;font-family:monospace;font-size:.50rem;line-height:1.7;min-width:148px;backdrop-filter:blur(4px);opacity:0;pointer-events:none;';
+    card.innerHTML =
+      '<div style="color:#F0C070;font-weight:700;margin-bottom:2px;font-size:.52rem;">✂ 正在压缩</div>' +
+      '<div class="c-before" style="color:#FF9090;text-decoration:line-through;opacity:.85;white-space:nowrap;overflow:hidden;max-width:130px;">Hello, could you please kindly</div>' +
+      '<div class="c-after"  style="color:#80FF80;white-space:nowrap;overflow:hidden;width:0;">Hi,</div>';
+    const firstContent = p.querySelector('.content');
+    firstContent.style.position='relative';
+    firstContent.appendChild(card);
+
+    function showCard(){
+      const after = card.querySelector('.c-after');
+      gsap.set(after, { width:0 });
+      gsap.set(card, { y:18, x:8 });
+      gsap.timeline({ onComplete:()=>gsap.delayedCall(1.8, showCard) })
+        .to(card, { opacity:1, y:0, x:0, duration:0.40, ease:'back.out(1.8)' })
+        .to(after, { width:'auto', duration:0.55, ease:'steps(3)' }, '+=0.35')
+        .to({}, { duration:1.4 })
+        .to(card, { opacity:0, y:8, duration:0.25, ease:'power2.in' });
+    }
+    gsap.delayedCall(0.3, showCard);
+
+    // Piyo: reading tilt — deep hold on each side
+    gsap.timeline({ repeat:-1, repeatDelay:0.2 })
+      .to(piyo, { rotation:-22, transformOrigin:'50% 60%', duration:0.35, ease:'power2.inOut' })
+      .to(piyo, { rotation:-22, duration:0.60 })
+      .to(piyo, { rotation:16, duration:0.35, ease:'power2.inOut' })
+      .to(piyo, { rotation:16, duration:0.50 })
+      .to(piyo, { rotation:0, duration:0.25, ease:'back.out(1.4)' })
+      .to(piyo, { y:-8, duration:0.14, ease:'power1.out' })
+      .to(piyo, { y:0, duration:0.18, ease:'bounce.out' });
+
+    // Momo: big arm-sweep writing stroke
+    gsap.timeline({ repeat:-1, repeatDelay:0.12 })
+      .to(momo, { x:-30, y:12, rotation:-18, scaleX:0.90, transformOrigin:'50% 80%', duration:0.52, ease:'power1.inOut' })
+      .to(momo, { x:30, y:9, rotation:15, scaleX:0.90, duration:0.52, ease:'power1.inOut' })
+      .to(momo, { x:-20, y:14, rotation:-13, duration:0.42, ease:'power1.inOut' })
+      .to(momo, { x:0, y:0, rotation:0, scaleX:1, duration:0.34, ease:'back.out(1.5)' });
+
+    // Boba: double-munch cookie
+    gsap.timeline({ repeat:-1, repeatDelay:0.15, delay:0.55 })
+      .to(boba, { y:22, rotation:-24, scaleY:0.86, transformOrigin:'50% 90%', duration:0.14, ease:'power2.in' })
+      .to(boba, { y:5,  rotation:-6,  scaleY:1.06, duration:0.18, ease:'power2.out' })
+      .to(boba, { y:22, rotation:-24, scaleY:0.86, duration:0.14, ease:'power2.in' })
+      .to(boba, { y:0,  rotation:0,   scaleY:1, duration:0.24, ease:'elastic.out(1.2,0.5)' });
+  })();
+
+  // ════════════════════════════════════════════════════════════
+  // P4 · TYPING — live terminal window + key-hammer squash
+  // ════════════════════════════════════════════════════════════
+  (function(){
+    const p = posters[3]; if(!p) return;
+    const pals = p.querySelectorAll('.pal');
+    const piyo = pals[0];
+    const toro = pals[1];
+    noCSS(piyo);
+    if(toro && toro !== piyo) noCSS(toro);
+
+    // ── Inject live terminal window — floats BELOW Piyo, above keyboard ──
+    const term = document.createElement('div');
+    term.style.cssText = 'position:absolute;bottom:78px;left:6px;z-index:20;background:rgba(4,14,4,.85);border:1px solid rgba(90,200,50,.40);border-radius:9px;padding:7px 9px;min-width:148px;backdrop-filter:blur(4px);pointer-events:none;';
+    term.innerHTML =
+      '<div style="display:flex;gap:4px;margin-bottom:5px;">' +
+        '<span style="width:7px;height:7px;border-radius:50%;background:#B03030;display:inline-block;"></span>' +
+        '<span style="width:7px;height:7px;border-radius:50%;background:#B09030;display:inline-block;"></span>' +
+        '<span style="width:7px;height:7px;border-radius:50%;background:#308030;display:inline-block;"></span>' +
+      '</div>' +
+      '<div style="font-family:monospace;font-size:.46rem;line-height:1.75;color:#70CC50;">' +
+        '<div class="tl1" style="overflow:hidden;white-space:nowrap;width:0;">$ terse optimize</div>' +
+        '<div class="tl2" style="overflow:hidden;white-space:nowrap;width:0;color:#C0F080;">✓ −248 tokens (36%)</div>' +
+        '<div class="tl3" style="overflow:hidden;white-space:nowrap;width:0;color:#70AAFF;">→ prompt sent</div>' +
+        '<span style="animation:blink 0.85s step-end infinite;">▌</span>' +
+      '</div>';
+    p.querySelector('.content').appendChild(term);
+
+    function runTerm(){
+      const lines = [term.querySelector('.tl1'), term.querySelector('.tl2'), term.querySelector('.tl3')];
+      lines.forEach(l => { l.style.width='0'; l.style.opacity='1'; });
+      gsap.timeline({ onComplete:()=>gsap.delayedCall(1.0, runTerm) })
+        .to(lines[0], { width:'auto', duration:0.55, ease:'steps(16)' })
+        .to(lines[1], { width:'auto', duration:0.48, ease:'steps(19)' }, '+=0.15')
+        .to(lines[2], { width:'auto', duration:0.52, ease:'steps(14)' }, '+=0.12')
+        .to({}, { duration:1.1 })
+        .to(lines,  { opacity:0, stagger:0.06, duration:0.20 });
+    }
+    gsap.delayedCall(0.25, runTerm);
+
+    // ── Piyo: 8-keystroke burst with alternating squash ──
+    function tapBurst(el, delay){
+      const tl = gsap.timeline({ repeat:-1, delay });
+      [1,-1,1,-1,1,-1,1,-1].forEach(d => {
+        tl.to(el, { y:-15, x:d*11, rotation:d*16, scaleY:0.85, scaleX:1.13,
+                    transformOrigin:'50% 100%', duration:0.062, ease:'power2.in' })
+          .to(el, { y:5,  x:0,    rotation:0,    scaleY:0.74, scaleX:1.22,
+                    transformOrigin:'50% 100%', duration:0.062, ease:'power3.out' })
+          .to(el, { y:0, scaleY:1.06, scaleX:0.95, duration:0.07, ease:'power1.out' })
+          .to(el, { scaleY:1, scaleX:1, duration:0.04 });
+      });
+      tl.to({}, { duration:0.5 });
+    }
+    tapBurst(piyo, 0);
+
+    // Toro scans output — deep tilt holds
+    if(toro && toro !== piyo){
+      gsap.timeline({ repeat:-1, repeatDelay:0.3, delay:0.2 })
+        .to(toro, { rotation:-20, transformOrigin:'50% 50%', duration:0.28, ease:'power2.inOut' })
+        .to(toro, { rotation:-20, duration:0.55 })
+        .to(toro, { rotation:15, duration:0.28, ease:'power2.inOut' })
+        .to(toro, { rotation:15, duration:0.45 })
+        .to(toro, { rotation:0, duration:0.2, ease:'back.out(1.5)' })
+        .to(toro, { y:-7, duration:0.1 })
+        .to(toro, { y:0, duration:0.16, ease:'bounce.out' });
+    }
+  })();
+
+  // ════════════════════════════════════════════════════════════
+  // P5 · CLAUDE CODE — tool-call cards slide in one by one
+  // ════════════════════════════════════════════════════════════
+  (function(){
+    const p = posters[4]; if(!p) return;
+    const pals = p.querySelectorAll('.pal');
+    const nori = pals[0];
+    const piyo = pals[1];
+    noCSS(piyo); noCSS(nori);
+
+    // ── Inject sliding tool-call cards — appear beside the signboard ──
+    const deck = document.createElement('div');
+    deck.style.cssText = 'position:absolute;bottom:18px;right:6px;z-index:20;display:flex;flex-direction:column;gap:5px;pointer-events:none;';
+    p.querySelector('.content').appendChild(deck);
+
+    const toolData = [
+      { icon:'📖', label:'read_file', tok:'−48 tok', col:'#F0C070' },
+      { icon:'✂',  label:'edit',     tok:'−86 tok', col:'#90F070' },
+      { icon:'🔍', label:'search',   tok:'−24 tok', col:'#F0C070' },
+    ];
+    const cards = toolData.map(td => {
+      const c = document.createElement('div');
+      c.style.cssText = 'background:rgba(8,24,8,.82);border:1px solid rgba(140,200,70,.38);border-radius:8px;padding:5px 9px;font-family:monospace;font-size:.48rem;display:flex;align-items:center;gap:7px;backdrop-filter:blur(3px);opacity:0;transform:translateX(-35px);min-width:138px;';
+      c.innerHTML = `<span style="font-size:.75rem;">${td.icon}</span><span style="color:#C8E890;font-weight:700;">${td.label}</span><span style="color:${td.col};margin-left:auto;font-weight:900;">${td.tok}</span>`;
+      deck.appendChild(c);
+      return c;
+    });
+
+    function showCards(){
+      gsap.set(cards, { opacity:0, x:30, y:0 });
+      const tl = gsap.timeline({ onComplete:()=>gsap.delayedCall(0.9, showCards) });
+      cards.forEach((c, i) => {
+        tl.to(c, { opacity:1, x:0, duration:0.30, ease:'back.out(1.8)' }, `+=${i===0?0:0.36}`)
+          .to(c, { background:'rgba(30,70,15,.95)', duration:0.12 }, `+=${0.20}`)
+          .to(c, { background:'rgba(8,24,8,.82)', duration:0.18 });
+      });
+      tl.to({}, { duration:0.70 })
+        .to(cards, { opacity:0, x:28, stagger:0.05, duration:0.20, ease:'power2.in' });
+    }
+    gsap.delayedCall(0.15, showCards);
+
+    // Piyo: slow thinker tilt → decisive nod + hop
+    gsap.timeline({ repeat:-1, repeatDelay:0.4 })
+      .to(piyo, { rotation:-18, y:-6, transformOrigin:'50% 60%', duration:0.50, ease:'power2.inOut' })
+      .to(piyo, { rotation:-18, y:-6, duration:0.70 })
+      .to(piyo, { rotation:10,  y:-3, duration:0.35, ease:'power2.inOut' })
+      .to(piyo, { rotation:0,   y:0,  duration:0.24, ease:'back.out(2)' })
+      .to(piyo, { y:-11, scaleY:1.12, scaleX:0.90, transformOrigin:'50% 100%', duration:0.20, ease:'power2.out' })
+      .to(piyo, { y:0,   scaleY:0.86, scaleX:1.12, duration:0.14, ease:'power2.in' })
+      .to(piyo, { scaleY:1, scaleX:1, duration:0.22, ease:'elastic.out(1.5,0.4)' });
+
+    // Nori: tilts toward each card as it appears
+    if(nori){
+      gsap.timeline({ repeat:-1, repeatDelay:0.3 })
+        .to(nori, { rotation:22, y:-5, transformOrigin:'50% 60%', duration:0.26, ease:'power2.out' })
+        .to(nori, { rotation:22, duration:0.48 })
+        .to(nori, { rotation:6,  duration:0.20, ease:'power1.inOut' })
+        .to(nori, { rotation:6,  duration:0.48 })
+        .to(nori, { rotation:-9, duration:0.20, ease:'power1.inOut' })
+        .to(nori, { rotation:-9, duration:0.48 })
+        .to(nori, { rotation:0, y:0, scaleY:0.80, scaleX:1.16, transformOrigin:'50% 100%', duration:0.14, ease:'power2.in' })
+        .to(nori, { y:-16, scaleY:1.18, scaleX:0.86, duration:0.22, ease:'power2.out' })
+        .to(nori, { y:0,   scaleY:0.84, scaleX:1.14, duration:0.14, ease:'power3.in' })
+        .to(nori, { scaleY:1, scaleX:1, duration:0.22, ease:'elastic.out(1.5,0.4)' });
+    }
+  })();
+
+  // ════════════════════════════════════════════════════════════
+  // P6 · CELEBRATING — full squash & stretch physics
+  // ════════════════════════════════════════════════════════════
+  (function(){
+    const p = posters[5]; if(!p) return;
+    p.querySelectorAll('.pal').forEach((pal, i) => {
+      noCSS(pal);
+      gsap.timeline({ repeat:-1, delay: i * 0.48 })
+        .to(pal, { scaleY:0.70, scaleX:1.24, transformOrigin:'50% 100%', duration:0.13, ease:'power3.in' })
+        .to(pal, { y:-65, scaleY:1.30, scaleX:0.78, transformOrigin:'50% 100%', duration:0.31, ease:'power3.out' })
+        .to(pal, { scaleY:1, scaleX:1, duration:0.10 })
+        .to(pal, { y:0, scaleY:1.24, scaleX:0.82, transformOrigin:'50% 100%', duration:0.27, ease:'power3.in' })
+        .to(pal, { scaleY:0.66, scaleX:1.30, duration:0.08, ease:'power2.in' })
+        .to(pal, { scaleY:1.14, scaleX:0.90, duration:0.16, ease:'power2.out' })
+        .to(pal, { scaleY:1, scaleX:1, duration:0.22, ease:'elastic.out(2.5,0.4)' })
+        .to({}, { duration:0.42 });
+    });
+  })();
+
+  // ════════════════════════════════════════════════════════════
+  // P7 · PARADE — step-bounce walk cycle
+  // ════════════════════════════════════════════════════════════
+  (function(){
+    const p = posters[6]; if(!p) return;
+    const track = p.querySelector('#parade-track');
+    if(!track) return;
+    track.querySelectorAll('svg').forEach((svg, i) => {
+      gsap.timeline({ repeat:-1, delay: i * 0.12 })
+        .to(svg, { y:-5, scaleY:1.07, scaleX:0.94, transformOrigin:'50% 100%', duration:0.22, ease:'power2.out' })
+        .to(svg, { y:0,  scaleY:0.92, scaleX:1.06, duration:0.15, ease:'power2.in' })
+        .to(svg, { scaleY:1, scaleX:1, duration:0.12, ease:'power1.out' })
+        .to({}, { duration:0.28 });
+    });
+  })();
+
+});
 </script>
 </body>
 </html>

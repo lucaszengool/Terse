@@ -837,6 +837,8 @@ enum AgentInstallMethod {
 
 fn get_agent_hook_config(agent: &str) -> Result<AgentHookConfig, String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+    // Accept both "cursor" and "cursor-agent" (agent monitor uses "cursor-agent", UI may pass either)
+    let agent = if agent == "cursor-agent" { "cursor" } else { agent };
     match agent {
         "claude-code" => Ok(AgentHookConfig {
             hook_script: "terse-rewrite.sh",
@@ -858,14 +860,14 @@ fn get_agent_hook_config(agent: &str) -> Result<AgentHookConfig, String> {
             hook_include: "../../src/helpers/hooks/terse-hook-cursor.sh",
             settings_path: home.join(".cursor/hooks.json"),
             install_method: AgentInstallMethod::JsonSettings {
-                hook_event: "preToolUse",
+                hook_event: "PostToolUse",
                 matcher: "run_terminal_command",
             },
             tool_optimizer: Some(ToolOptimizerConfig {
                 script: "hooks/terse-tool-optimizer-cursor.sh",
                 include: "../../src/helpers/hooks/terse-tool-optimizer-cursor.sh",
                 matcher: "read_file|grep_search",
-                hook_event: "preToolUse",
+                hook_event: "PostToolUse",
             }),
         }),
         "cline" => Ok(AgentHookConfig {
@@ -990,10 +992,19 @@ fn deploy_hook_script(config: &AgentHookConfig) -> Result<std::path::PathBuf, St
     Ok(hook_dest)
 }
 
+/// Install Terse hook for any supported agent (callable from other modules).
+pub fn install_agent_hook_inner(agent_id: &str) -> Result<serde_json::Value, String> {
+    install_agent_hook_impl(agent_id)
+}
+
 /// Install Terse hook for any supported agent.
 #[tauri::command]
 fn install_agent_hook(agent: Option<String>) -> Result<serde_json::Value, String> {
     let agent_id = agent.as_deref().unwrap_or("claude-code");
+    install_agent_hook_impl(agent_id)
+}
+
+fn install_agent_hook_impl(agent_id: &str) -> Result<serde_json::Value, String> {
     let config = get_agent_hook_config(agent_id)?;
     let hook_dest = deploy_hook_script(&config)?;
 
@@ -1044,7 +1055,10 @@ fn install_agent_hook(agent: Option<String>) -> Result<serde_json::Value, String
 
             let hook_entry = serde_json::json!({
                 "matcher": matcher,
-                "command": hook_dest.to_string_lossy()
+                "hooks": [{
+                    "type": "command",
+                    "command": hook_dest.to_string_lossy()
+                }]
             });
 
             let obj = settings.as_object_mut().ok_or("Invalid settings format")?;
@@ -1205,6 +1219,7 @@ fn check_agent_hook(agent: Option<String>) -> serde_json::Value {
 }
 
 fn check_single_agent_hook(home: &std::path::Path, agent: &str) -> serde_json::Value {
+    let agent = if agent == "cursor-agent" { "cursor" } else { agent };
     match agent {
         "claude-code" => {
             let settings_path = home.join(".claude/settings.json");
@@ -1556,6 +1571,7 @@ fn record_optimization(source: String, original_tokens: u64, optimized_tokens: u
         let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
         store.record_optimization(&source, original_tokens, optimized_tokens);
     }
+    let _ = app.emit("stats-updated", ());
     // 1 coin per optimization call regardless of tokens saved
     {
         let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
@@ -1934,6 +1950,23 @@ fn cleanup_proxy_configs() {
             }
         }
     }
+    // Remove openai_base_url from ~/.codex/config.toml if it points to our proxy
+    let codex_config = home.join(".codex").join("config.toml");
+    if codex_config.exists() {
+        if let Ok(content) = std::fs::read_to_string(&codex_config) {
+            if content.contains("127.0.0.1") && content.contains("openai_base_url") {
+                let cleaned: String = content
+                    .lines()
+                    .filter(|l| !(l.contains("openai_base_url") && l.contains("127.0.0.1")))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let cleaned = if cleaned.ends_with('\n') { cleaned } else { cleaned + "\n" };
+                let _ = std::fs::write(&codex_config, cleaned);
+                eprintln!("[terse] cleaned up openai_base_url from ~/.codex/config.toml");
+            }
+        }
+    }
+
     // Also clean up PID file
     let _ = std::fs::remove_file(home.join(".terse").join("proxy.pid"));
 }

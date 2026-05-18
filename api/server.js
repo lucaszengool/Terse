@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 const { router: marketplaceRouter } = require('./marketplace');
 const proxyRouter = require('./proxy');
 const cloudRouter = require('./cloud');
+const terseApiRouter = require('./terse-api');
 const db = require('./db');
 
 // Paddle module (WeChat Pay + Alipay recurring)
@@ -804,6 +805,9 @@ app.use('/api/proxy', proxyLimiter, proxyRouter);
 // It's registered here but paddle.js registers its own raw body parser per-route
 app.use(paddleModule.router);
 
+// ── Terse Developer API ──
+app.use('/api/v1', terseApiRouter);
+
 // ── Health check ──
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
@@ -815,6 +819,16 @@ app.use(express.static(path.join(__dirname, '..', 'landing'), { extensions: ['ht
 // /teams/:id → serve the dashboard page (loads team via API client-side)
 app.get(['/teams', '/teams/:id'], (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'landing', 'teams.html'));
+});
+
+// /api-docs → developer API documentation
+app.get('/api-docs', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'api-docs.html'));
+});
+
+// /vibe-projects → vibe coding projects platform
+app.get('/vibe-projects', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'vibe-projects.html'));
 });
 
 // SPA fallback — but not for marketplace (it has its own HTML)

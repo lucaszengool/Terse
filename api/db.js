@@ -186,7 +186,60 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_cloud_team_tokens_hash ON cloud_team_tokens(token_hash);
   CREATE INDEX IF NOT EXISTS idx_cloud_events_team ON cloud_events(team_id, occurred_at);
   CREATE INDEX IF NOT EXISTS idx_cloud_events_user ON cloud_events(team_id, user_email, occurred_at);
+
+  -- ── Terse Developer API Keys ──
+  CREATE TABLE IF NOT EXISTS developer_api_keys (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    key_hash TEXT NOT NULL UNIQUE,
+    key_prefix TEXT NOT NULL,
+    label TEXT,
+    is_active INTEGER DEFAULT 1,
+    requests_total INTEGER DEFAULT 0,
+    tokens_optimized INTEGER DEFAULT 0,
+    last_used_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_dev_api_keys_hash ON developer_api_keys(key_hash);
+  CREATE INDEX IF NOT EXISTS idx_dev_api_keys_user ON developer_api_keys(user_id);
+
+  -- ── Vibe Coding Projects Platform ──
+  CREATE TABLE IF NOT EXISTS vibe_projects (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    github_url TEXT,
+    website_url TEXT,
+    tags TEXT,
+    tokens_saved_monthly INTEGER DEFAULT 0,
+    cost_saved_monthly_cents INTEGER DEFAULT 0,
+    upvotes INTEGER DEFAULT 0,
+    is_published INTEGER DEFAULT 1,
+    is_featured INTEGER DEFAULT 0,
+    submitted_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_vibe_projects_published ON vibe_projects(is_published, submitted_at);
 `);
+
+// ── Developer API key helpers ──
+const addDevApiKey = db.prepare(`
+  INSERT INTO developer_api_keys (id, user_id, key_hash, key_prefix, label)
+  VALUES (@id, @user_id, @key_hash, @key_prefix, @label)
+`);
+const getDevApiKeysByUser = db.prepare('SELECT id, key_prefix, label, is_active, requests_total, tokens_optimized, last_used_at, created_at FROM developer_api_keys WHERE user_id = ? ORDER BY created_at DESC');
+const findDevApiKeyByHash = db.prepare('SELECT * FROM developer_api_keys WHERE key_hash = ? AND is_active = 1');
+const revokeDevApiKey = db.prepare('UPDATE developer_api_keys SET is_active = 0 WHERE id = ? AND user_id = ?');
+const touchDevApiKey = db.prepare(`UPDATE developer_api_keys SET last_used_at = datetime('now'), requests_total = requests_total + 1, tokens_optimized = tokens_optimized + ? WHERE key_hash = ?`);
+
+// ── Vibe projects helpers ──
+const addVibeProject = db.prepare(`
+  INSERT INTO vibe_projects (id, user_id, name, description, github_url, website_url, tags, tokens_saved_monthly, cost_saved_monthly_cents)
+  VALUES (@id, @user_id, @name, @description, @github_url, @website_url, @tags, @tokens_saved_monthly, @cost_saved_monthly_cents)
+`);
+const getVibeProjects = db.prepare('SELECT * FROM vibe_projects WHERE is_published = 1 ORDER BY is_featured DESC, upvotes DESC, submitted_at DESC LIMIT ?');
+const getVibeProjectsByUser = db.prepare('SELECT * FROM vibe_projects WHERE user_id = ? ORDER BY submitted_at DESC');
+const upvoteVibeProject = db.prepare('UPDATE vibe_projects SET upvotes = upvotes + 1 WHERE id = ?');
 
 // ── User helpers ──
 const upsertUser = db.prepare(`
@@ -502,4 +555,8 @@ module.exports = {
   addCloudEvent, getTeamEvents, getTeamSummary,
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
   getTeamByModel, getTeamByMode,
+  // Developer API
+  addDevApiKey, getDevApiKeysByUser, findDevApiKeyByHash, revokeDevApiKey, touchDevApiKey,
+  // Vibe Projects Platform
+  addVibeProject, getVibeProjects, getVibeProjectsByUser, upvoteVibeProject,
 };

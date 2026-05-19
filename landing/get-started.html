@@ -41,7 +41,23 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 80px 24px 40px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -30%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 500px;
+      background: radial-gradient(ellipse at center, rgba(110,231,183,0.07) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 0;
     }
 
     /* Loading state */
@@ -50,6 +66,8 @@
       flex-direction: column;
       align-items: center;
       gap: 16px;
+      position: relative;
+      z-index: 1;
     }
     .spinner {
       width: 32px; height: 32px;
@@ -66,41 +84,53 @@
       flex-direction: column;
       align-items: center;
       width: 100%;
-      max-width: 480px;
+      max-width: 460px;
+      position: relative;
+      z-index: 1;
     }
 
     /* Logo */
     .logo-badge {
-      width: 56px; height: 56px;
+      width: 60px; height: 60px;
       background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
-      border-radius: 16px;
+      border-radius: 18px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 26px; font-weight: 900;
+      font-size: 28px; font-weight: 900;
       color: #0b0d17;
-      box-shadow: 0 8px 32px rgba(110,231,183,0.3);
-      margin-bottom: 20px;
+      box-shadow: 0 8px 40px rgba(110,231,183,0.35), 0 2px 8px rgba(0,0,0,0.4);
+      margin-bottom: 22px;
+      flex-shrink: 0;
     }
 
     .welcome-tag {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       background: var(--acd);
       color: var(--ac);
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      padding: 4px 12px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 5px 14px;
       border-radius: 99px;
-      border: 1px solid rgba(110,231,183,0.25);
-      margin-bottom: 12px;
+      border: 1px solid rgba(110,231,183,0.28);
+      margin-bottom: 14px;
+    }
+    .welcome-tag::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--ac);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--ac);
     }
 
     h1 {
-      font-size: clamp(22px, 5vw, 28px);
+      font-size: clamp(24px, 5vw, 30px);
       font-weight: 800;
       text-align: center;
       line-height: 1.2;
-      margin-bottom: 8px;
-      background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.75) 100%);
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.72) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -110,23 +140,46 @@
       font-size: 14px;
       color: var(--t3);
       text-align: center;
-      line-height: 1.6;
-      margin-bottom: 32px;
+      line-height: 1.65;
+      margin-bottom: 8px;
     }
+    .subtitle2 {
+      font-size: 13px;
+      color: var(--t3);
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    /* Guarantee strip */
+    .guarantee {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: rgba(110,231,183,0.06);
+      border: 1px solid rgba(110,231,183,0.14);
+      border-radius: 10px;
+      padding: 9px 16px;
+      margin-bottom: 28px;
+      font-size: 12.5px;
+      color: var(--ac);
+      width: 100%;
+    }
+    .guarantee svg { flex-shrink: 0; opacity: 0.85; }
 
     /* Option cards */
     .options {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       width: 100%;
     }
 
     .option-card {
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 18px 20px;
+      gap: 14px;
+      padding: 16px 18px;
       background: var(--bg2);
       border: 1px solid var(--bd);
       border-radius: 16px;
@@ -147,42 +200,60 @@
       transition: opacity 0.2s;
       border-radius: inherit;
     }
-    .option-card.card-option::before  { background: radial-gradient(ellipse at 30% 50%, rgba(110,231,183,0.06), transparent 70%); }
-    .option-card.wechat-option::before { background: radial-gradient(ellipse at 30% 50%, rgba(7,193,96,0.06), transparent 70%); }
-    .option-card.alipay-option::before { background: radial-gradient(ellipse at 30% 50%, rgba(22,119,255,0.06), transparent 70%); }
+    .option-card.card-option  { border-color: rgba(110,231,183,0.22); background: rgba(110,231,183,0.04); }
+    .option-card.card-option::before  { background: radial-gradient(ellipse at 20% 50%, rgba(110,231,183,0.08), transparent 65%); }
+    .option-card.wechat-option::before { background: radial-gradient(ellipse at 20% 50%, rgba(7,193,96,0.06), transparent 65%); }
+    .option-card.alipay-option::before { background: radial-gradient(ellipse at 20% 50%, rgba(22,119,255,0.06), transparent 65%); }
 
     .option-card:hover { transform: translateY(-2px); }
     .option-card:hover::before { opacity: 1; }
-    .option-card.card-option:hover  { border-color: rgba(110,231,183,0.45); box-shadow: 0 8px 32px rgba(110,231,183,0.1); }
-    .option-card.wechat-option:hover { border-color: rgba(7,193,96,0.45);  box-shadow: 0 8px 32px rgba(7,193,96,0.1); }
-    .option-card.alipay-option:hover { border-color: rgba(22,119,255,0.45); box-shadow: 0 8px 32px rgba(22,119,255,0.1); }
+    .option-card.card-option:hover  { border-color: rgba(110,231,183,0.5); box-shadow: 0 6px 28px rgba(110,231,183,0.12); }
+    .option-card.wechat-option:hover { border-color: rgba(7,193,96,0.45); box-shadow: 0 6px 28px rgba(7,193,96,0.10); }
+    .option-card.alipay-option:hover { border-color: rgba(22,119,255,0.45); box-shadow: 0 6px 28px rgba(22,119,255,0.10); }
     .option-card:active { transform: translateY(0); }
-    .option-card:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .option-card:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    /* Recommended label above card-option */
+    .recommended-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--ac);
+      text-align: center;
+      margin-bottom: 4px;
+      opacity: 0.85;
+    }
 
     .option-icon {
-      width: 44px; height: 44px;
+      width: 42px; height: 42px;
       border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
       font-size: 20px;
       flex-shrink: 0;
     }
-    .card-option .option-icon  { background: rgba(110,231,183,0.12); }
+    .card-option .option-icon  { background: rgba(110,231,183,0.14); }
     .wechat-option .option-icon { background: rgba(7,193,96,0.12); }
     .alipay-option .option-icon { background: rgba(22,119,255,0.12); }
 
     .option-text { flex: 1; min-width: 0; }
     .option-title {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 700;
       margin-bottom: 3px;
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
     .option-desc {
       font-size: 12px;
       color: var(--t3);
       line-height: 1.5;
+    }
+    .option-subdesc {
+      font-size: 11px;
+      color: rgba(255,255,255,0.28);
+      margin-top: 2px;
     }
 
     .badge-trial {
@@ -192,10 +263,11 @@
       color: var(--ac);
       font-size: 10px;
       font-weight: 700;
-      letter-spacing: 0.05em;
-      padding: 2px 7px;
+      letter-spacing: 0.04em;
+      padding: 2px 8px;
       border-radius: 99px;
-      border: 1px solid rgba(110,231,183,0.2);
+      border: 1px solid rgba(110,231,183,0.22);
+      white-space: nowrap;
     }
 
     .option-arrow {
@@ -207,11 +279,11 @@
     .option-card:hover .option-arrow { color: var(--t2); transform: translateX(3px); }
 
     .footnote {
-      margin-top: 24px;
+      margin-top: 22px;
       font-size: 12px;
       color: var(--t3);
       text-align: center;
-      line-height: 1.7;
+      line-height: 1.75;
     }
     .footnote a { color: var(--t2); text-decoration: none; }
     .footnote a:hover { color: var(--t1); }
@@ -231,34 +303,23 @@
       font-size: 13px;
       z-index: 999;
       white-space: nowrap;
+      max-width: 90vw;
+      text-align: center;
     }
 
-    /* User chip (top-right) */
-    #user-chip {
-      display: none;
+    /* Fixed top bar */
+    .top-bar {
       position: fixed;
-      top: 20px;
-      right: 20px;
+      top: 0; left: 0; right: 0;
+      display: flex;
       align-items: center;
-      gap: 8px;
-      background: var(--bg2);
-      border: 1px solid var(--bd);
-      border-radius: 99px;
-      padding: 6px 14px 6px 8px;
+      justify-content: space-between;
+      padding: 14px 20px;
+      z-index: 100;
+      background: linear-gradient(to bottom, rgba(11,13,23,0.9) 0%, transparent 100%);
     }
-    #user-chip img { width: 24px; height: 24px; border-radius: 50%; }
-    #user-email { font-size: 12px; color: var(--t2); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #sign-out-btn {
-      background: none; border: none; color: var(--t3); font-size: 12px; cursor: pointer; padding: 0; margin-left: 4px;
-      transition: color 0.15s;
-    }
-    #sign-out-btn:hover { color: var(--t1); }
 
-    /* Back link */
     .back-link {
-      position: fixed;
-      top: 20px;
-      left: 20px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -268,66 +329,168 @@
       transition: color 0.15s;
     }
     .back-link:hover { color: var(--t1); }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Language switcher */
+    #lang-switcher-gs {
+      position: relative;
+    }
+    #lang-btn-gs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      background: transparent;
+      border: 1px solid var(--bd);
+      border-radius: 8px;
+      color: var(--t3);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+    #lang-btn-gs:hover { border-color: var(--bdh); color: var(--t2); }
+    #lang-menu-gs {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: #1a1c32;
+      border: 1px solid var(--bd);
+      border-radius: 10px;
+      padding: 6px;
+      min-width: 170px;
+      max-height: 280px;
+      overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      z-index: 999;
+    }
+    #lang-menu-gs button {
+      display: block; width: 100%; padding: 7px 12px;
+      background: transparent; border: none;
+      color: var(--t1); font-size: 13px; font-weight: 500;
+      cursor: pointer; text-align: left; border-radius: 6px;
+      font-family: inherit; transition: background 0.1s;
+    }
+    #lang-menu-gs button:hover { background: rgba(255,255,255,0.07); }
+
+    /* User chip */
+    #user-chip {
+      display: none;
+      align-items: center;
+      gap: 7px;
+      background: var(--bg2);
+      border: 1px solid var(--bd);
+      border-radius: 99px;
+      padding: 5px 12px 5px 6px;
+    }
+    #user-chip img { width: 22px; height: 22px; border-radius: 50%; }
+    #user-email { font-size: 12px; color: var(--t2); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #sign-out-btn {
+      background: none; border: none; color: var(--t3); font-size: 12px;
+      cursor: pointer; padding: 0; margin-left: 2px; transition: color 0.15s;
+      font-family: inherit;
+    }
+    #sign-out-btn:hover { color: var(--t1); }
   </style>
 </head>
 <body>
 
-  <a href="/" class="back-link">&#8592; Back</a>
-
-  <div id="user-chip">
-    <img id="user-avatar" src="" alt="">
-    <span id="user-email"></span>
-    <button id="sign-out-btn" onclick="handleSignOut()">Sign out</button>
+  <!-- Top bar: back + lang switcher + user chip -->
+  <div class="top-bar">
+    <a href="/" class="back-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      <span data-i18n="gs.back">← Back</span>
+    </a>
+    <div class="top-right">
+      <!-- Language switcher -->
+      <div id="lang-switcher-gs">
+        <button id="lang-btn-gs" onclick="toggleLangMenu()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <span id="lang-label-gs">EN</span>
+        </button>
+        <div id="lang-menu-gs"></div>
+      </div>
+      <!-- User chip -->
+      <div id="user-chip">
+        <img id="user-avatar" src="" alt="">
+        <span id="user-email"></span>
+        <button id="sign-out-btn" onclick="handleSignOut()" data-i18n="gs.signout">Sign out</button>
+      </div>
+    </div>
   </div>
 
   <!-- Loading -->
   <div id="loading">
     <div class="spinner"></div>
-    <p style="font-size:13px;color:var(--t3)">Loading your account…</p>
+    <p style="font-size:13px;color:var(--t3)" data-i18n="gs.loading">Loading your account…</p>
   </div>
 
   <!-- Main content -->
   <div id="main-card">
     <div class="logo-badge">T</div>
-    <span class="welcome-tag">Account created</span>
-    <h1>Start Your Free Trial</h1>
-    <p class="subtitle">30-day free trial &mdash; no charge until your trial ends.<br>Choose how you'd like to pay after the trial:</p>
+    <span class="welcome-tag" data-i18n="gs.welcome">Account created</span>
+    <h1 data-i18n="gs.title">Start Your Free Trial</h1>
+    <p class="subtitle" data-i18n="gs.subtitle">30-day free trial — no charge until your trial ends.</p>
+    <p class="subtitle2" data-i18n="gs.subtitle2">Choose how you'd like to pay after the trial:</p>
+
+    <!-- Guarantee strip -->
+    <div class="guarantee">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      No charge today &nbsp;·&nbsp; Cancel anytime before day 30 &nbsp;·&nbsp; $4.99/mo after
+    </div>
 
     <div class="options">
 
-      <!-- Bank Card -->
+      <!-- Bank Card (recommended) -->
+      <div class="recommended-label" data-i18n="gs.recommended">RECOMMENDED</div>
       <button class="option-card card-option" id="btn-card" onclick="startCheckout('card')">
-        <div class="option-icon">&#x1F4B3;</div>
+        <div class="option-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        </div>
         <div class="option-text">
           <div class="option-title">
-            Bank Card
-            <span class="badge-trial">30-day free trial</span>
+            <span data-i18n="gs.card.title">Bank Card</span>
+            <span class="badge-trial" data-i18n="gs.card.badge">30-day free trial</span>
           </div>
-          <div class="option-desc">Visa, Mastercard, JCB, Amex &mdash; card required to activate trial<br>Then $4.99 / month, cancel anytime</div>
+          <div class="option-desc" data-i18n="gs.card.desc">Visa, Mastercard, JCB, Amex — card required to activate trial</div>
+          <div class="option-subdesc" data-i18n="gs.card.subdesc">Then $4.99 / month, cancel anytime</div>
         </div>
         <span class="option-arrow">&#8250;</span>
       </button>
 
       <!-- WeChat Pay -->
       <button class="option-card wechat-option" id="btn-wechat" onclick="startCheckout('wechat_pay')">
-        <div class="option-icon" style="font-size:22px">&#x1F4AC;</div>
+        <div class="option-icon" style="font-size:22px;color:#07C160">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9.5 2C5.36 2 2 4.91 2 8.5c0 2.02 1.03 3.82 2.64 5.02L4 16l2.5-1.25C7.27 14.91 8.37 15 9.5 15c4.14 0 7.5-2.91 7.5-6.5S13.64 2 9.5 2z" fill="#07C160"/><circle cx="7" cy="8.5" r="1" fill="white"/><circle cx="9.5" cy="8.5" r="1" fill="white"/><circle cx="12" cy="8.5" r="1" fill="white"/><path d="M22 12.5c0-2.49-2.01-4.5-4.5-4.5S13 10.01 13 12.5c0 1.22.5 2.33 1.3 3.14L14 18l2-1c.46.13.95.2 1.5.2 2.49 0 4.5-2.01 4.5-4.7z" fill="#07C160"/></svg>
+        </div>
         <div class="option-text">
           <div class="option-title" style="color:#07C160">
-            WeChat Pay &nbsp;<span style="font-weight:400;font-size:13px;color:var(--t2)">微信支付</span>
+            WeChat Pay &thinsp;<span style="font-weight:400;font-size:12.5px;color:var(--t2)">微信支付</span>
           </div>
-          <div class="option-desc">Pay via WeChat QR code &mdash; $4.99 / month<br>No trial period, billed immediately</div>
+          <div class="option-desc" data-i18n="gs.wechat.desc">Pay via WeChat QR code — $4.99 / month</div>
+          <div class="option-subdesc" data-i18n="gs.wechat.subdesc">No trial period, billed immediately</div>
         </div>
         <span class="option-arrow">&#8250;</span>
       </button>
 
       <!-- Alipay -->
       <button class="option-card alipay-option" id="btn-alipay" onclick="startCheckout('alipay')">
-        <div class="option-icon" style="font-size:22px">&#x1F4B0;</div>
+        <div class="option-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#1677FF"/><path d="M12 4.5C7.86 4.5 4.5 7.86 4.5 12S7.86 19.5 12 19.5 19.5 16.14 19.5 12c0-.48-.05-.95-.14-1.4-1.28.58-3.5 1.54-4.9 1.95-.38.12-.79.18-1.22.12-.9-.13-1.74-.7-2.14-1.5-.57-1.14-.15-2.53 1-3.1.56-.27 1.18-.3 1.73-.1l.07.03c.82.35 1.26 1.17 1.13 2.01 1.05-.36 2.27-.85 3.25-1.27C17.78 7.26 15.14 4.5 12 4.5z" fill="white"/></svg>
+        </div>
         <div class="option-text">
           <div class="option-title" style="color:#1677FF">
-            Alipay &nbsp;<span style="font-weight:400;font-size:13px;color:var(--t2)">支付宝</span>
+            Alipay &thinsp;<span style="font-weight:400;font-size:12.5px;color:var(--t2)">支付宝</span>
           </div>
-          <div class="option-desc">Pay via Alipay QR code &mdash; $4.99 / month<br>No trial period, billed immediately</div>
+          <div class="option-desc" data-i18n="gs.alipay.desc">Pay via Alipay QR code — $4.99 / month</div>
+          <div class="option-subdesc" data-i18n="gs.alipay.subdesc">No trial period, billed immediately</div>
         </div>
         <span class="option-arrow">&#8250;</span>
       </button>
@@ -335,8 +498,8 @@
     </div>
 
     <p class="footnote">
-      By continuing you agree to our <a href="/terms-and-conditions.html">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.<br>
-      Questions? <a href="mailto:support@terseai.org">support@terseai.org</a>
+      <span data-i18n-html="gs.footnote">By continuing you agree to our <a href="/terms-and-conditions.html">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.</span><br>
+      <span data-i18n-html="gs.questions">Questions? <a href="mailto:support@terseai.org">support@terseai.org</a></span>
     </p>
   </div>
 
@@ -351,15 +514,51 @@
     type="text/javascript"
   ></script>
 
+  <!-- i18n -->
+  <script src="/i18n.js"></script>
+
   <script>
     const API_BASE = window.location.origin;
 
+    // Language switcher
+    function toggleLangMenu() {
+      const m = document.getElementById('lang-menu-gs');
+      m.style.display = m.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function initLangSwitcherGs() {
+      if (!window.i18n) return;
+      const menu = document.getElementById('lang-menu-gs');
+      const label = document.getElementById('lang-label-gs');
+      menu.innerHTML = '';
+      window.i18n.languages.forEach(l => {
+        const btn = document.createElement('button');
+        btn.textContent = l.native;
+        btn.onclick = () => {
+          window.i18n.setLang(l.code);
+          label.textContent = l.code.split('-')[0].toUpperCase();
+          menu.style.display = 'none';
+        };
+        menu.appendChild(btn);
+      });
+      label.textContent = window.i18n.lang.split('-')[0].toUpperCase();
+      document.addEventListener('click', e => {
+        if (!document.getElementById('lang-switcher-gs').contains(e.target))
+          menu.style.display = 'none';
+      });
+    }
+
     window.addEventListener('load', async () => {
+      // Init i18n first so translations apply before showing content
+      if (window.i18n) {
+        window.i18n.init();
+        initLangSwitcherGs();
+      }
+
       await window.Clerk.load();
       const user = window.Clerk.user;
 
       if (!user) {
-        // Not signed in — send back to homepage to sign up
         window.location.replace('/');
         return;
       }
@@ -372,7 +571,9 @@
     function showUser(user) {
       const chip = document.getElementById('user-chip');
       chip.style.display = 'flex';
-      document.getElementById('user-avatar').src = user.imageUrl || '';
+      const avatar = document.getElementById('user-avatar');
+      if (user.imageUrl) { avatar.src = user.imageUrl; avatar.style.display = ''; }
+      else avatar.style.display = 'none';
       const email = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || '';
       document.getElementById('user-email').textContent = email;
     }
@@ -388,9 +589,10 @@
 
       const btnId = method === 'card' ? 'btn-card' : method === 'wechat_pay' ? 'btn-wechat' : 'btn-alipay';
       const btn = document.getElementById(btnId);
-      const originalContent = btn.innerHTML;
+      const arrow = btn.querySelector('.option-arrow');
+      const originalArrow = arrow.innerHTML;
       btn.disabled = true;
-      btn.querySelector('.option-arrow').innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0"></div>';
+      arrow.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;margin:0"></div>';
 
       gtag('event', 'trial_payment_selected', { payment_method: method });
 
@@ -414,16 +616,16 @@
           window.location.href = data.url;
         } else if (data.error === 'trial_already_used') {
           showToast('You\'ve already used your free trial — please subscribe directly.');
-          btn.innerHTML = originalContent;
+          arrow.innerHTML = originalArrow;
           btn.disabled = false;
         } else {
           showToast('Error: ' + (data.error || 'Something went wrong. Please try again.'));
-          btn.innerHTML = originalContent;
+          arrow.innerHTML = originalArrow;
           btn.disabled = false;
         }
       } catch (err) {
         showToast('Network error. Please check your connection and try again.');
-        btn.innerHTML = originalContent;
+        arrow.innerHTML = originalArrow;
         btn.disabled = false;
       }
     }

@@ -4123,11 +4123,9 @@ function updateClerkUI() {
       }
       return;
     }
-    // After fresh sign-up (no other pending action), show payment picker
+    // After sign-up flow, redirect to trial selection page
     const flowType = sessionStorage.getItem('clerkFlowType');
-    const createdAt = user.createdAt ? new Date(user.createdAt).getTime() : 0;
-    const isNewUser = (Date.now() - createdAt) < 120000;
-    if (flowType === 'signup' && isNewUser) {
+    if (flowType === 'signup') {
       sessionStorage.removeItem('clerkFlowType');
       window.location.href = '/get-started';
     }
@@ -4167,7 +4165,9 @@ const clerkAppearance = {
       identityPreviewEditButton: { color: '#6ee7b7' },
       formFieldInputShowPasswordButton: { color: 'rgba(255,255,255,0.4)', '&:hover': { color: '#fff' } },
       otpCodeFieldInput: { background: '#1a1830', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' },
-      footer: { '& + div': { background: 'transparent' } }
+      footer: { '& + div': { background: 'transparent' } },
+      formField__firstName: { display: 'none' },
+      formField__lastName: { display: 'none' }
     }
   };
 async function openClerkSignIn() {

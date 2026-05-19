@@ -4172,24 +4172,30 @@ const clerkAppearance = {
   };
 async function openClerkSignIn() {
   gtag('event', 'sign_up_started');
+  // Only set the sessionStorage fallback when no download/install action is pending
+  const hasPendingAction = !!sessionStorage.getItem('pendingAction');
+  if (!hasPendingAction) sessionStorage.setItem('clerkFlowType', 'signup');
+  const modal = document.getElementById('clerk-modal');
+  const mount = document.getElementById('clerk-mount');
+  modal.style.display = 'flex';
+  mount.innerHTML = '';
+  if (window.Clerk && !window.Clerk.loaded) await window.Clerk.load();
+  // afterSignUpUrl tells Clerk where to redirect after sign-up, surviving email verification in new tabs
+  const signUpOpts = { appearance: clerkAppearance };
+  if (!hasPendingAction) signUpOpts.afterSignUpUrl = '/get-started';
+  window.Clerk.mountSignUp(mount, signUpOpts);
+  modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
+}
+
+async function openClerkSignUp() {
+  gtag('event', 'sign_up_started');
   sessionStorage.setItem('clerkFlowType', 'signup');
   const modal = document.getElementById('clerk-modal');
   const mount = document.getElementById('clerk-mount');
   modal.style.display = 'flex';
   mount.innerHTML = '';
   if (window.Clerk && !window.Clerk.loaded) await window.Clerk.load();
-  window.Clerk.mountSignUp(mount, { appearance: clerkAppearance });
-  modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
-}
-
-async function openClerkSignUp() {
-  gtag('event', 'sign_up_started');
-  const modal = document.getElementById('clerk-modal');
-  const mount = document.getElementById('clerk-mount');
-  modal.style.display = 'flex';
-  mount.innerHTML = '';
-  if (window.Clerk && !window.Clerk.loaded) await window.Clerk.load();
-  window.Clerk.mountSignUp(mount, { appearance: clerkAppearance });
+  window.Clerk.mountSignUp(mount, { appearance: clerkAppearance, afterSignUpUrl: '/get-started' });
   modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
 }
 

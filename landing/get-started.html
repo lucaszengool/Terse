@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-LNCSLGTN76');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Start Your Free Trial — Terse</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32">
+  <link rel="icon" type="image/png" href="/favicon-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg0: #0b0d17;
+      --bg1: #0f1120;
+      --bg2: #14162a;
+      --bg3: #1a1c32;
+      --bd:  rgba(255,255,255,0.08);
+      --bdh: rgba(255,255,255,0.15);
+      --t1:  #ffffff;
+      --t2:  rgba(255,255,255,0.65);
+      --t3:  rgba(255,255,255,0.38);
+      --ac:  #6ee7b7;
+      --acd: rgba(110,231,183,0.12);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg0);
+      color: var(--t1);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* Loading state */
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--bd);
+      border-top-color: var(--ac);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Main card */
+    #main-card {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    /* Logo */
+    .logo-badge {
+      width: 56px; height: 56px;
+      background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 900;
+      color: #0b0d17;
+      box-shadow: 0 8px 32px rgba(110,231,183,0.3);
+      margin-bottom: 20px;
+    }
+
+    .welcome-tag {
+      display: inline-block;
+      background: var(--acd);
+      color: var(--ac);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      border-radius: 99px;
+      border: 1px solid rgba(110,231,183,0.25);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: clamp(22px, 5vw, 28px);
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.2;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.75) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--t3);
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    /* Option cards */
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .option-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 20px;
+      background: var(--bg2);
+      border: 1px solid var(--bd);
+      border-radius: 16px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s;
+      text-align: left;
+      width: 100%;
+      color: var(--t1);
+      font-family: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+    .option-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.2s;
+      border-radius: inherit;
+    }
+    .option-card.card-option::before  { background: radial-gradient(ellipse at 30% 50%, rgba(110,231,183,0.06), transparent 70%); }
+    .option-card.wechat-option::before { background: radial-gradient(ellipse at 30% 50%, rgba(7,193,96,0.06), transparent 70%); }
+    .option-card.alipay-option::before { background: radial-gradient(ellipse at 30% 50%, rgba(22,119,255,0.06), transparent 70%); }
+
+    .option-card:hover { transform: translateY(-2px); }
+    .option-card:hover::before { opacity: 1; }
+    .option-card.card-option:hover  { border-color: rgba(110,231,183,0.45); box-shadow: 0 8px 32px rgba(110,231,183,0.1); }
+    .option-card.wechat-option:hover { border-color: rgba(7,193,96,0.45);  box-shadow: 0 8px 32px rgba(7,193,96,0.1); }
+    .option-card.alipay-option:hover { border-color: rgba(22,119,255,0.45); box-shadow: 0 8px 32px rgba(22,119,255,0.1); }
+    .option-card:active { transform: translateY(0); }
+    .option-card:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .option-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .card-option .option-icon  { background: rgba(110,231,183,0.12); }
+    .wechat-option .option-icon { background: rgba(7,193,96,0.12); }
+    .alipay-option .option-icon { background: rgba(22,119,255,0.12); }
+
+    .option-text { flex: 1; min-width: 0; }
+    .option-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .option-desc {
+      font-size: 12px;
+      color: var(--t3);
+      line-height: 1.5;
+    }
+
+    .badge-trial {
+      display: inline-flex;
+      align-items: center;
+      background: var(--acd);
+      color: var(--ac);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 99px;
+      border: 1px solid rgba(110,231,183,0.2);
+    }
+
+    .option-arrow {
+      color: var(--t3);
+      font-size: 18px;
+      flex-shrink: 0;
+      transition: color 0.2s, transform 0.2s;
+    }
+    .option-card:hover .option-arrow { color: var(--t2); transform: translateX(3px); }
+
+    .footnote {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--t3);
+      text-align: center;
+      line-height: 1.7;
+    }
+    .footnote a { color: var(--t2); text-decoration: none; }
+    .footnote a:hover { color: var(--t1); }
+
+    /* Error/toast */
+    #toast {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2d1b1b;
+      border: 1px solid rgba(255,100,100,0.3);
+      color: #fca5a5;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      z-index: 999;
+      white-space: nowrap;
+    }
+
+    /* User chip (top-right) */
+    #user-chip {
+      display: none;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg2);
+      border: 1px solid var(--bd);
+      border-radius: 99px;
+      padding: 6px 14px 6px 8px;
+    }
+    #user-chip img { width: 24px; height: 24px; border-radius: 50%; }
+    #user-email { font-size: 12px; color: var(--t2); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #sign-out-btn {
+      background: none; border: none; color: var(--t3); font-size: 12px; cursor: pointer; padding: 0; margin-left: 4px;
+      transition: color 0.15s;
+    }
+    #sign-out-btn:hover { color: var(--t1); }
+
+    /* Back link */
+    .back-link {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--t3);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .back-link:hover { color: var(--t1); }
+  </style>
+</head>
+<body>
+
+  <a href="/" class="back-link">&#8592; Back</a>
+
+  <div id="user-chip">
+    <img id="user-avatar" src="" alt="">
+    <span id="user-email"></span>
+    <button id="sign-out-btn" onclick="handleSignOut()">Sign out</button>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p style="font-size:13px;color:var(--t3)">Loading your account…</p>
+  </div>
+
+  <!-- Main content -->
+  <div id="main-card">
+    <div class="logo-badge">T</div>
+    <span class="welcome-tag">Account created</span>
+    <h1>Start Your Free Trial</h1>
+    <p class="subtitle">30-day free trial &mdash; no charge until your trial ends.<br>Choose how you'd like to pay after the trial:</p>
+
+    <div class="options">
+
+      <!-- Bank Card -->
+      <button class="option-card card-option" id="btn-card" onclick="startCheckout('card')">
+        <div class="option-icon">&#x1F4B3;</div>
+        <div class="option-text">
+          <div class="option-title">
+            Bank Card
+            <span class="badge-trial">30-day free trial</span>
+          </div>
+          <div class="option-desc">Visa, Mastercard, JCB, Amex &mdash; card required to activate trial<br>Then $4.99 / month, cancel anytime</div>
+        </div>
+        <span class="option-arrow">&#8250;</span>
+      </button>
+
+      <!-- WeChat Pay -->
+      <button class="option-card wechat-option" id="btn-wechat" onclick="startCheckout('wechat_pay')">
+        <div class="option-icon" style="font-size:22px">&#x1F4AC;</div>
+        <div class="option-text">
+          <div class="option-title" style="color:#07C160">
+            WeChat Pay &nbsp;<span style="font-weight:400;font-size:13px;color:var(--t2)">微信支付</span>
+          </div>
+          <div class="option-desc">Pay via WeChat QR code &mdash; $4.99 / month<br>No trial period, billed immediately</div>
+        </div>
+        <span class="option-arrow">&#8250;</span>
+      </button>
+
+      <!-- Alipay -->
+      <button class="option-card alipay-option" id="btn-alipay" onclick="startCheckout('alipay')">
+        <div class="option-icon" style="font-size:22px">&#x1F4B0;</div>
+        <div class="option-text">
+          <div class="option-title" style="color:#1677FF">
+            Alipay &nbsp;<span style="font-weight:400;font-size:13px;color:var(--t2)">支付宝</span>
+          </div>
+          <div class="option-desc">Pay via Alipay QR code &mdash; $4.99 / month<br>No trial period, billed immediately</div>
+        </div>
+        <span class="option-arrow">&#8250;</span>
+      </button>
+
+    </div>
+
+    <p class="footnote">
+      By continuing you agree to our <a href="/terms-and-conditions.html">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.<br>
+      Questions? <a href="mailto:support@terseai.org">support@terseai.org</a>
+    </p>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- Clerk -->
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck"
+    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    window.addEventListener('load', async () => {
+      await window.Clerk.load();
+      const user = window.Clerk.user;
+
+      if (!user) {
+        // Not signed in — send back to homepage to sign up
+        window.location.replace('/');
+        return;
+      }
+
+      showUser(user);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('main-card').style.display = 'flex';
+    });
+
+    function showUser(user) {
+      const chip = document.getElementById('user-chip');
+      chip.style.display = 'flex';
+      document.getElementById('user-avatar').src = user.imageUrl || '';
+      const email = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || '';
+      document.getElementById('user-email').textContent = email;
+    }
+
+    async function handleSignOut() {
+      await window.Clerk.signOut();
+      window.location.replace('/');
+    }
+
+    async function startCheckout(method) {
+      const user = window.Clerk.user;
+      if (!user) { window.location.replace('/'); return; }
+
+      const btnId = method === 'card' ? 'btn-card' : method === 'wechat_pay' ? 'btn-wechat' : 'btn-alipay';
+      const btn = document.getElementById(btnId);
+      const originalContent = btn.innerHTML;
+      btn.disabled = true;
+      btn.querySelector('.option-arrow').innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0"></div>';
+
+      gtag('event', 'trial_payment_selected', { payment_method: method });
+
+      try {
+        const clerkUserId = user.id;
+        const clerkUserEmail = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress;
+
+        const body = { tier: 'pro', clerkUserId, clerkUserEmail };
+        if (method !== 'card') body.paymentMethod = method;
+
+        const res = await fetch(`${API_BASE}/api/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+
+        if (data.url) {
+          gtag('event', 'checkout_redirect', { payment_method: method });
+          window.location.href = data.url;
+        } else if (data.error === 'trial_already_used') {
+          showToast('You\'ve already used your free trial — please subscribe directly.');
+          btn.innerHTML = originalContent;
+          btn.disabled = false;
+        } else {
+          showToast('Error: ' + (data.error || 'Something went wrong. Please try again.'));
+          btn.innerHTML = originalContent;
+          btn.disabled = false;
+        }
+      } catch (err) {
+        showToast('Network error. Please check your connection and try again.');
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 5000);
+    }
+  </script>
+</body>
+</html>

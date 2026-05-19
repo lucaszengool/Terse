@@ -3008,6 +3008,51 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
   </div>
 </section>
 
+<!-- ═══ NEWSLETTER ═══ -->
+<section style="padding:80px 24px;background:linear-gradient(180deg,var(--bg1,#0f1120) 0%,var(--bg0,#0b0d17) 100%)" id="newsletter" aria-label="Newsletter signup">
+  <div style="max-width:560px;margin:0 auto;text-align:center">
+    <div class="label rv" style="margin:0 auto 18px">Weekly Newsletter</div>
+    <h2 class="rv" style="font-size:clamp(24px,3.5vw,40px);font-weight:900;letter-spacing:-1.2px;margin-bottom:12px">Get the <span class="gradient-text">token savings playbook</span><br>in your inbox.</h2>
+    <p class="rv d1" style="color:var(--t2);font-size:15px;margin:0 auto 32px;max-width:440px">Practical techniques — prompt caching, model routing, context compression — delivered weekly. No fluff.</p>
+    <form class="rv d2" id="nl-form" onsubmit="handleNewsletterSubmit(event)" style="display:flex;gap:10px;max-width:420px;margin:0 auto">
+      <input type="email" id="nl-email" placeholder="your@email.com" required
+        style="flex:1;padding:13px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;font-family:inherit;transition:border-color .2s"
+        onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+      <button type="submit" id="nl-btn"
+        style="padding:13px 22px;background:var(--ac,#6ee7b7);color:#0b0d17;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;transition:opacity .2s"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Subscribe</button>
+    </form>
+    <p class="rv d3" style="color:var(--t3);font-size:12px;margin-top:14px">Join developers cutting AI costs every week. Unsubscribe anytime.</p>
+  </div>
+</section>
+<script>
+async function handleNewsletterSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('nl-email').value;
+  const btn = document.getElementById('nl-btn');
+  const form = document.getElementById('nl-form');
+  btn.textContent = '...';
+  btn.disabled = true;
+  gtag && gtag('event', 'newsletter_subscribe_started', { email_provided: true });
+  try {
+    const r = await fetch('https://buttondown.com/api/emails/embed-subscribe/terseai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    if (r.ok || r.status === 201) {
+      form.innerHTML = '<p style="color:var(--ac);font-weight:700;font-size:15px;margin:0;padding:13px 0">Check your inbox to confirm your subscription.</p>';
+    } else {
+      throw new Error(r.status);
+    }
+  } catch {
+    btn.textContent = 'Subscribe';
+    btn.disabled = false;
+    window.open('https://buttondown.com/terseai', '_blank');
+  }
+}
+</script>
+
 <!-- ═══ CTA ═══ -->
 <section class="cta" id="dl">
   <div class="cta-glow"></div>
@@ -3089,7 +3134,7 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
     <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">Token optimizer + team analytics. Compress prompts, monitor agent sessions, detect duplicates &mdash; and track your whole team's AI spend with Terse Cloud.</p></div>
     <div class="footer-col"><h4 data-i18n="footer.product">Product</h4><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#techniques" data-i18n="footer.techniques">Techniques</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="#dl" data-i18n="footer.download">Download</a></div>
     <div class="footer-col"><h4 data-i18n="footer.techniques">Techniques</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">Spell Correction</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">Pattern Optimization</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP Analysis</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">Telegraph Compression</a></div>
-    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="#news">News &amp; Insights</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">Refund Policy</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="#news">News &amp; Insights</a><a href="https://buttondown.com/terseai" target="_blank" rel="noopener">Newsletter</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">Refund Policy</a></div>
   </div>
   <div class="footer-bottom"><span data-i18n="footer.copyright">&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
 </footer>
@@ -4062,6 +4107,7 @@ function updateClerkUI() {
     const pending = sessionStorage.getItem('pendingAction');
     if (pending) {
       sessionStorage.removeItem('pendingAction');
+      sessionStorage.removeItem('clerkFlowType');
       closeClerkModal();
       if (pending === 'download_mac' || pending === 'download') {
         setTimeout(() => { window.location.href = DMG_URL; }, 300);
@@ -4075,10 +4121,20 @@ function updateClerkUI() {
         const tier = pending.slice(8);
         setTimeout(() => startCheckout(tier), 300);
       }
+      return;
+    }
+    // After fresh sign-up (no other pending action), show payment picker
+    const flowType = sessionStorage.getItem('clerkFlowType');
+    const createdAt = user.createdAt ? new Date(user.createdAt).getTime() : 0;
+    const isNewUser = (Date.now() - createdAt) < 120000;
+    if (flowType === 'signup' && isNewUser) {
+      sessionStorage.removeItem('clerkFlowType');
+      window.location.href = '/get-started';
     }
   } else {
     document.querySelectorAll('.nav-sign-in').forEach(b => b.style.display = '');
     userEl.style.display = 'none';
+    sessionStorage.removeItem('clerkFlowType');
   }
 }
 
@@ -4115,13 +4171,14 @@ const clerkAppearance = {
     }
   };
 async function openClerkSignIn() {
-  gtag('event', 'sign_in_started');
+  gtag('event', 'sign_up_started');
+  sessionStorage.setItem('clerkFlowType', 'signup');
   const modal = document.getElementById('clerk-modal');
   const mount = document.getElementById('clerk-mount');
   modal.style.display = 'flex';
   mount.innerHTML = '';
   if (window.Clerk && !window.Clerk.loaded) await window.Clerk.load();
-  window.Clerk.mountSignIn(mount, { appearance: clerkAppearance });
+  window.Clerk.mountSignUp(mount, { appearance: clerkAppearance });
   modal.onclick = (e) => { if (e.target === modal) closeClerkModal(); };
 }
 
@@ -4201,19 +4258,23 @@ function showPaymentMethodPicker(tier) {
   const modal = document.createElement('div');
   modal.style.cssText = 'background:var(--bg2,#1e1e22);border:1px solid var(--bdl,#333);border-radius:16px;padding:32px;max-width:400px;width:90%;color:var(--t1,#fff);font-family:inherit';
   modal.innerHTML = `
-    <h3 style="margin:0 0 8px;font-size:18px" data-i18n="payment.heading">Choose Payment Method</h3>
-    <p style="margin:0 0 20px;font-size:13px;color:var(--t2,#aaa)" data-i18n="payment.subtitle">Select how you'd like to pay after your 30-day free trial:</p>
+    <h3 style="margin:0 0 8px;font-size:18px">Start Your Free Trial</h3>
+    <p style="margin:0 0 20px;font-size:13px;color:var(--t2,#aaa)">30-day free trial &mdash; no charge until your trial ends. Choose how you'd like to pay:</p>
     <div style="display:flex;flex-direction:column;gap:10px">
       <button data-method="card" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:1px solid var(--bdl,#444);background:var(--bg3,#28282c);color:var(--t1,#fff);cursor:pointer;font-size:14px;transition:border-color .2s">
         <span style="font-size:20px">&#x1F4B3;</span>
-        <span><strong data-i18n="payment.card">Card / Link</strong><br><span style="font-size:12px;color:var(--t2,#aaa)" data-i18n="payment.cardDesc">Visa, Mastercard, JCB, etc.</span></span>
+        <span><strong>Bank Card</strong><br><span style="font-size:12px;color:var(--t2,#aaa)">Visa, Mastercard, JCB &mdash; card required for trial</span></span>
       </button>
       <button data-method="wechat_pay" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:1px solid var(--bdl,#444);background:var(--bg3,#28282c);color:var(--t1,#fff);cursor:pointer;font-size:14px;transition:border-color .2s">
-        <span style="font-size:20px">💬</span>
-        <span><strong data-i18n="payment.wechat">WeChat Pay</strong> <span style="font-size:11px;color:var(--t2,#aaa)">&#x5FAE;&#x4FE1;&#x652F;&#x4ED8;</span><br><span style="font-size:12px;color:var(--t2,#aaa)" data-i18n="payment.wechatDesc">Pay via WeChat QR code · no trial</span></span>
+        <span style="font-size:22px" style="color:#07C160">&#x1F4AC;</span>
+        <span><strong style="color:#07C160">WeChat Pay</strong> <span style="font-size:11px;color:var(--t2,#aaa)">&#x5FAE;&#x4FE1;&#x652F;&#x4ED8;</span><br><span style="font-size:12px;color:var(--t2,#aaa)">Pay via WeChat QR &mdash; $4.99/mo, no trial</span></span>
+      </button>
+      <button data-method="alipay" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:1px solid var(--bdl,#444);background:var(--bg3,#28282c);color:var(--t1,#fff);cursor:pointer;font-size:14px;transition:border-color .2s">
+        <span style="font-size:22px">&#x1F4B0;</span>
+        <span><strong style="color:#1677FF">Alipay</strong> <span style="font-size:11px;color:var(--t2,#aaa)">&#x652F;&#x4ED8;&#x5B9D;</span><br><span style="font-size:12px;color:var(--t2,#aaa)">Pay via Alipay QR &mdash; $4.99/mo, no trial</span></span>
       </button>
     </div>
-    <p style="margin:16px 0 0;font-size:11px;color:var(--t2,#888);text-align:center" data-i18n="payment.trialNote">No charge during 30-day trial. Cancel anytime.</p>
+    <p style="margin:16px 0 0;font-size:11px;color:var(--t2,#888);text-align:center">Cancel anytime &middot; $4.99 USD / month after trial</p>
   `;
 
   // Hover effect

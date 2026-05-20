@@ -4110,13 +4110,10 @@ function updateClerkUI() {
       sessionStorage.removeItem('clerkFlowType');
       closeClerkModal();
       function triggerDownload(url) {
-        const a = document.createElement('a');
-        a.href = url;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Use location.href — not window.open/_blank — so the browser treats it
+        // as a first-party navigation. When the server responds with
+        // Content-Disposition: attachment the download starts and the page stays.
+        window.location.href = url;
       }
       function openTab(url) {
         const a = document.createElement('a');
@@ -4129,10 +4126,10 @@ function updateClerkUI() {
       }
       if (pending === 'download_mac' || pending === 'download') {
         triggerDownload(DMG_URL);
-        setTimeout(() => { window.location.href = '/get-started'; }, 300);
+        setTimeout(() => { window.location.href = '/get-started'; }, 1500);
       } else if (pending === 'download_windows') {
         triggerDownload(EXE_URL);
-        setTimeout(() => { window.location.href = '/get-started'; }, 300);
+        setTimeout(() => { window.location.href = '/get-started'; }, 1500);
       } else if (pending === 'vscode') {
         openTab('https://marketplace.visualstudio.com/items?itemName=LucasZeng.terse-optimizer');
         setTimeout(() => { window.location.href = '/get-started'; }, 300);

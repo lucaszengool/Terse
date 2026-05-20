@@ -356,6 +356,7 @@ $('#btnSettings').addEventListener('click', () => {
   $('#settingsPanel').classList.contains('hidden') ? show('settings') : show(prevView);
 });
 $('#btnStats').addEventListener('click', () => T.navigateToStats());
+$('#btnFarm').addEventListener('click', () => T.showFarmWindow());
 $('#btnCloseSettings').addEventListener('click', () => show(prevView));
 $$('.toggle-btn').forEach(b => b.addEventListener('click', () => {
   $$('.toggle-btn').forEach(x => x.classList.remove('active')); b.classList.add('active');

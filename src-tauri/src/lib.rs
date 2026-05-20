@@ -3,6 +3,7 @@ mod agent_monitor;
 mod stats_store;
 mod license;
 mod pet_store;
+mod farm_store;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -91,6 +92,7 @@ pub struct AppState {
     pub agent_monitor: Mutex<agent_monitor::AgentMonitor>,
     pub stats_store: Mutex<stats_store::StatsStore>,
     pub pet_store: Mutex<pet_store::PetStore>,
+    pub farm_store: Mutex<farm_store::FarmStore>,
     pub license: Mutex<license::License>,
     pub auth: Mutex<license::AuthState>,
     pub is_picking: Mutex<bool>,
@@ -117,6 +119,7 @@ impl Default for AppState {
             agent_monitor: Mutex::new(agent_monitor::AgentMonitor::new()),
             stats_store: Mutex::new(stats_store::StatsStore::new()),
             pet_store: Mutex::new(pet_store::PetStore::new()),
+            farm_store: Mutex::new(farm_store::FarmStore::new()),
             license: Mutex::new(license::License::load()),
             auth: Mutex::new(license::AuthState::load()),
             is_picking: Mutex::new(false),
@@ -1449,6 +1452,130 @@ fn navigate_back(app: AppHandle) {
     }
 }
 
+// ── Farm Window control ──
+
+#[tauri::command]
+fn show_farm_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("farm") {
+        w.show().map_err(|e| e.to_string())?;
+        w.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_farm_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("farm") {
+        w.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+// ── Farm Commands ──
+
+#[tauri::command]
+fn get_farm_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    let coin_bal = {
+        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        let farm_spent = farm.data.coins_spent_farm;
+        let earned = pet.data().coins_earned;
+        let pet_spent = pet.data().coins_spent;
+        earned.saturating_sub(pet_spent).saturating_sub(farm_spent)
+    };
+    farm.get_state(coin_bal)
+}
+
+#[tauri::command]
+fn farm_plant(tile_idx: usize, crop_id: String, state: tauri::State<'_, AppState>) -> Result<u64, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    let coin_bal = {
+        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
+        pet.data().coins_earned.saturating_sub(spent)
+    };
+    farm.plant(tile_idx, &crop_id, coin_bal)
+}
+
+#[tauri::command]
+fn farm_water(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.water(tile_idx)
+}
+
+#[tauri::command]
+fn farm_fertilize(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<u64, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    let coin_bal = {
+        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
+        pet.data().coins_earned.saturating_sub(spent)
+    };
+    farm.fertilize(tile_idx, coin_bal)
+}
+
+#[tauri::command]
+fn farm_harvest(tile_idx: usize, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<serde_json::Value, String> {
+    let result = {
+        let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+        farm.harvest(tile_idx)?
+    };
+    let coins = result["coins"].as_u64().unwrap_or(0);
+    // Credit the earned coins to the pet_store so they appear in the shared balance
+    {
+        let mut pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        pet.add_coins(coins);
+    }
+    let _ = app.emit("farm-harvest", serde_json::json!({ "tileIdx": tile_idx, "coins": coins }));
+    Ok(result)
+}
+
+#[tauri::command]
+fn farm_clear(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.clear_tile(tile_idx)
+}
+
+#[tauri::command]
+fn farm_expand(state: tauri::State<'_, AppState>, app: AppHandle) -> Result<u64, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    let coin_bal = {
+        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
+        pet.data().coins_earned.saturating_sub(spent)
+    };
+    let cost = farm.expand_land(coin_bal)?;
+    let _ = app.emit("farm-updated", serde_json::json!({}));
+    Ok(cost)
+}
+
+#[tauri::command]
+fn farm_buy_tile_skin(tile_idx: usize, skin_id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.buy_tile_skin(tile_idx, &skin_id)
+}
+
+#[tauri::command]
+fn farm_buy_decoration(dec_id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.buy_decoration(&dec_id)
+}
+
+#[tauri::command]
+fn farm_sell_crops(crop_id: String, amount: u64, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<u64, String> {
+    let coins = {
+        let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+        farm.sell_crops(&crop_id, amount)?
+    };
+    // Credit the earned coins to the pet_store so they appear in the shared balance
+    {
+        let mut pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        pet.add_coins(coins);
+    }
+    let _ = app.emit("farm-sell", serde_json::json!({ "cropId": crop_id, "amount": amount, "coins": coins }));
+    Ok(coins)
+}
+
 // ── Pet Window control ──
 
 #[tauri::command]
@@ -2080,6 +2207,24 @@ pub fn run() {
                 .visible(pet_visible)
                 .build()?;
 
+            // ── Farm window (hidden until user opens it) ──
+            let farm_x = (screen_width / 2.0 - 450.0) as f64;
+            let farm_y = 80.0_f64;
+            let _farm_win = WebviewWindowBuilder::new(app, "farm", WebviewUrl::App("farm.html".into()))
+                .title("Terse Farm")
+                .inner_size(900.0, 640.0)
+                .min_inner_size(700.0, 500.0)
+                .position(farm_x, farm_y)
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true)
+                .always_on_top(false)
+                .resizable(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible(false)
+                .build()?;
+
             // macOS: force transparent bg + rounded corners on both windows
             #[cfg(target_os = "macos")]
             {
@@ -2108,6 +2253,7 @@ pub fn run() {
                 }
                 if let Some(w) = app.get_webview_window("main") { make_rounded(&w, 16.0); }
                 if let Some(w) = app.get_webview_window("popup") { make_rounded(&w, 16.0); }
+                if let Some(w) = app.get_webview_window("farm") { make_rounded(&w, 20.0); }
             }
 
             // Tray icon
@@ -2404,10 +2550,22 @@ pub fn run() {
             // Pet window control (Phase 2)
             show_pet_window,
             hide_pet_window,
+            // Farm commands
+            get_farm_state,
+            farm_plant,
+            farm_water,
+            farm_fertilize,
+            farm_harvest,
+            farm_clear,
+            farm_expand,
+            farm_buy_tile_skin,
+            farm_buy_decoration,
+            farm_sell_crops,
+            show_farm_window,
+            hide_farm_window,
             check_ax_permission,
             request_accessibility,
             pet_work_detected,
-            debug_log,
             emit_popup_update,
             send_enter,
             clear_popup_state,

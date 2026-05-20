@@ -4109,17 +4109,33 @@ function updateClerkUI() {
       sessionStorage.removeItem('pendingAction');
       sessionStorage.removeItem('clerkFlowType');
       closeClerkModal();
+      function triggerDownload(url) {
+        const a = document.createElement('a');
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      function openTab(url) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
       if (pending === 'download_mac' || pending === 'download') {
-        window.open(DMG_URL, '_blank');
+        triggerDownload(DMG_URL);
         setTimeout(() => { window.location.href = '/get-started'; }, 300);
       } else if (pending === 'download_windows') {
-        window.open(EXE_URL, '_blank');
+        triggerDownload(EXE_URL);
         setTimeout(() => { window.location.href = '/get-started'; }, 300);
       } else if (pending === 'vscode') {
-        window.open('https://marketplace.visualstudio.com/items?itemName=LucasZeng.terse-optimizer', '_blank');
+        openTab('https://marketplace.visualstudio.com/items?itemName=LucasZeng.terse-optimizer');
         setTimeout(() => { window.location.href = '/get-started'; }, 300);
       } else if (pending === 'chrome') {
-        window.open('https://chromewebstore.google.com/detail/terse-%E2%80%94-token-optimizer-f/lgnkdlpgfcogkmdhckmglleigmnnmmff', '_blank');
+        openTab('https://chromewebstore.google.com/detail/terse-%E2%80%94-token-optimizer-f/lgnkdlpgfcogkmdhckmglleigmnnmmff');
         setTimeout(() => { window.location.href = '/get-started'; }, 300);
       } else if (pending.startsWith('pricing:')) {
         const tier = pending.slice(8);

@@ -13,6 +13,11 @@ const CLAUDE_CODE_DEFAULT_TOOLS: &[&str] = &[
     "CronDelete", "CronList", "EnterWorktree", "ExitWorktree",
 ];
 
+const CODEX_DEFAULT_TOOLS: &[&str] = &[
+    "shell", "read", "web_search", "code", "mcp",
+    "command_execution", "local_shell_call", "file_read",
+];
+
 // ── Agent Definitions ──
 
 #[derive(Debug, Clone)]
@@ -364,6 +369,10 @@ pub struct AgentSessionData {
     pub duplicate_tool_calls: u64,                  // count of duplicate tool calls
     pub duplicate_tool_tokens: u64,                 // tokens wasted on duplicate calls
     tool_call_hashes: HashSet<String>,              // cache keys for duplicate detection
+    // Codex Desktop: per-turn accumulators (Desktop JSONL has no token usage fields)
+    codex_pending_input: u64,
+    codex_pending_output: u64,
+    pub context_window: u64,                        // from model_context_window in task_started
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -408,6 +417,9 @@ impl AgentSessionData {
             duplicate_tool_calls: 0,
             duplicate_tool_tokens: 0,
             tool_call_hashes: HashSet::new(),
+            codex_pending_input: 0,
+            codex_pending_output: 0,
+            context_window: 0,
         }
     }
 
@@ -419,7 +431,7 @@ impl AgentSessionData {
             + (self.total_cache_read_tokens as f64 / 1000.0) * pricing.2;
 
         // Context fill: use last API call's input_tokens as current context size
-        let context_max: u64 = 200_000;
+        let context_max: u64 = if self.context_window > 0 { self.context_window } else { 200_000 };
         let current_context = self.last_input_tokens;
         let context_fill = if current_context > 0 {
             ((current_context as f64 / context_max as f64) * 100.0).min(100.0) as u32
@@ -541,16 +553,26 @@ impl AgentSessionData {
             },
             "autoOptimized": { "count": 0, "tokensSaved": 0 },
             // tokenCountApprox: true when token counts are estimated from text length
-            // (Cursor stores tokens server-side; we estimate from message byte lengths)
-            "tokenCountApprox": self.agent_type == "cursor-agent",
+            // Codex Desktop JSONL has no usage fields — counts estimated from content length
+            "tokenCountApprox": self.agent_type == "cursor-agent" || self.agent_type == "codex",
         })
     }
 
     fn get_model_pricing(&self) -> (f64, f64, f64) {
         let m = self.detected_model.as_deref().unwrap_or("").to_lowercase();
-        if m.contains("opus") { (0.015, 0.075, 0.0015) }
-        else if m.contains("haiku") { (0.0008, 0.004, 0.00008) }
-        else { (0.003, 0.015, 0.0003) }
+        // Claude
+        if m.contains("opus") { return (0.015, 0.075, 0.0015); }
+        if m.contains("haiku") { return (0.0008, 0.004, 0.00008); }
+        if m.contains("claude") { return (0.003, 0.015, 0.0003); }
+        // OpenAI (Codex uses GPT-4o / o-series / GPT-5)
+        if m.contains("o3") || m.contains("gpt-5") { return (0.010, 0.040, 0.005); }
+        if m.contains("o4-mini") || m.contains("o1-mini") { return (0.0011, 0.0044, 0.00055); }
+        if m.contains("o1") || m.contains("o3-mini") { return (0.003, 0.012, 0.0015); }
+        if m.contains("gpt-4o-mini") { return (0.00015, 0.0006, 0.000075); }
+        if m.contains("gpt-4o") { return (0.0025, 0.010, 0.00125); }
+        // Codex agent with no model detected — use GPT-4o as default for cost estimate
+        if self.agent_type == "codex" { return (0.0025, 0.010, 0.00125); }
+        (0.003, 0.015, 0.0003)
     }
 
     fn get_tool_management_snapshot(&self) -> serde_json::Value {
@@ -559,8 +581,13 @@ impl AgentSessionData {
             .collect();
 
         // Unused tool estimate: only count after 5+ turns
+        let default_tools: &[&str] = if self.agent_type == "codex" {
+            CODEX_DEFAULT_TOOLS
+        } else {
+            CLAUDE_CODE_DEFAULT_TOOLS
+        };
         let (unused_estimate, estimated_overhead) = if self.turns >= 5 {
-            let unused = CLAUDE_CODE_DEFAULT_TOOLS.iter()
+            let unused = default_tools.iter()
                 .filter(|t| !self.tools_used.contains_key(**t))
                 .count() as u64;
             (unused, unused * 300)
@@ -848,9 +875,23 @@ impl AgentSessionData {
             match pt {
                 "task_started" => {
                     self.turns += 1;
+                    self.codex_pending_input = 0;
+                    self.codex_pending_output = 0;
+                    if let Some(ctx) = payload.get("model_context_window").and_then(|v| v.as_u64()) {
+                        self.context_window = ctx;
+                    }
                 }
                 "task_complete" => {
-                    // Turn finished — no token data in Desktop format (comes from proxy SSE tap)
+                    // Flush accumulated per-turn token estimates (Desktop JSONL has no usage fields)
+                    if self.codex_pending_input > self.total_input_tokens {
+                        self.total_input_tokens = self.codex_pending_input;
+                        self.last_input_tokens = self.codex_pending_input;
+                    }
+                    if self.codex_pending_output > self.total_output_tokens {
+                        self.total_output_tokens = self.codex_pending_output;
+                    }
+                    self.codex_pending_input = 0;
+                    self.codex_pending_output = 0;
                 }
                 "user_message" => {
                     let text = payload.get("message")
@@ -874,11 +915,27 @@ impl AgentSessionData {
             return;
         }
 
-        // ── New Desktop format: response_item → assistant messages ──
+        // ── New Desktop format: response_item → messages + token accumulation ──
         if event_type == "response_item" {
             let payload = obj.get("payload").cloned().unwrap_or(serde_json::Value::Null);
             let pt = payload.get("type").and_then(|v| v.as_str()).unwrap_or("");
             let role = payload.get("role").and_then(|v| v.as_str()).unwrap_or("");
+
+            // Accumulate token estimates from all content items in this message.
+            // Desktop JSONL has no usage fields — we estimate from content length.
+            let content_tokens: u64 = payload.get("content")
+                .and_then(|c| c.as_array())
+                .map(|arr| arr.iter().filter_map(|item| {
+                    item.get("text").and_then(|t| t.as_str()).map(|s| estimate_tokens(s))
+                }).sum())
+                .unwrap_or(0);
+
+            match role {
+                "developer" | "user" => self.codex_pending_input += content_tokens,
+                "assistant" => self.codex_pending_output += content_tokens,
+                _ => {}
+            }
+
             if pt == "message" && role == "assistant" {
                 let content = payload.get("content").and_then(|c| c.as_array());
                 let text = content.map(|arr| {
@@ -900,6 +957,68 @@ impl AgentSessionData {
                     });
                 }
             }
+
+            // Desktop function_call items — tool use + duplicate detection
+            if pt == "function_call" {
+                let name = payload.get("name").and_then(|v| v.as_str()).unwrap_or("tool").to_string();
+                let args = payload.get("arguments").map(|v| v.to_string()).unwrap_or_default();
+                let input_prefix = safe_truncate(&args, 100);
+                let cache_key = format!("{}:{}", name, input_prefix);
+                self.tool_call_count += 1;
+                *self.tools_used.entry(name.clone()).or_insert(0) += 1;
+                if !self.tool_call_hashes.insert(cache_key) {
+                    self.duplicate_tool_calls += 1;
+                }
+                // File read detection
+                if name == "read_file" || name == "read" {
+                    if let Some(path) = payload.get("arguments")
+                        .and_then(|a| a.get("path").or_else(|| a.get("file_path")))
+                        .and_then(|v| v.as_str())
+                    {
+                        *self.file_reads.entry(path.to_string()).or_insert(0) += 1;
+                    }
+                }
+                self.messages.push(AgentMessage {
+                    role: "tool".to_string(),
+                    text: format!("Tool: {}", name),
+                    tokens: 0,
+                    timestamp: ts.clone(),
+                    msg_type: "tool_use".to_string(),
+                    tool_name: Some(name),
+                });
+            }
+
+            // Desktop function_call_output — tool result with compression + duplicate tokens
+            if pt == "function_call_output" {
+                let output = payload.get("output").and_then(|v| v.as_str()).unwrap_or("");
+                let result_tokens = estimate_tokens(output);
+                let tool_name = self.messages.iter().rev()
+                    .find(|m| m.msg_type == "tool_use")
+                    .and_then(|m| m.tool_name.clone())
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                self.tool_result_total_tokens += result_tokens;
+                let compress_rate = match tool_name.as_str() {
+                    "shell" | "bash" => estimate_bash_compressibility(output),
+                    "read_file" | "read" => estimate_read_compressibility(output),
+                    "web_search" => 0.35,
+                    _ => 0.20,
+                };
+                self.tool_result_compressible += (result_tokens as f64 * compress_rate) as u64;
+                {
+                    let call_count = self.tools_used.get(&tool_name).copied().unwrap_or(0) as u64;
+                    let unique_count = self.tool_call_hashes.iter()
+                        .filter(|k| k.starts_with(&format!("{}:", tool_name)))
+                        .count() as u64;
+                    if call_count > unique_count {
+                        self.duplicate_tool_tokens += result_tokens;
+                    }
+                }
+                if result_tokens > 1000 {
+                    self.large_results.push((tool_name, result_tokens));
+                }
+            }
+
             return;
         }
 
@@ -986,7 +1105,23 @@ impl AgentSessionData {
                         .to_string();
                     self.tool_call_count += 1;
                     *self.tools_used.entry(name.clone()).or_insert(0) += 1;
+
+                    // Duplicate detection: hash tool name + first 100 chars of arg
                     let arg = codex_extract_arg(&item);
+                    let input_prefix = safe_truncate(&arg, 100);
+                    let cache_key = format!("{}:{}", name, input_prefix);
+                    if !self.tool_call_hashes.insert(cache_key) {
+                        self.duplicate_tool_calls += 1;
+                    }
+
+                    // Track file reads for redundancy detection
+                    if itype == "file_read" || name == "read" {
+                        let path = item["path"].as_str().unwrap_or("");
+                        if !path.is_empty() {
+                            *self.file_reads.entry(path.to_string()).or_insert(0) += 1;
+                        }
+                    }
+
                     self.messages.push(AgentMessage {
                         role: "tool".to_string(),
                         text: format!("Tool: {}", name),
@@ -995,7 +1130,6 @@ impl AgentSessionData {
                         msg_type: "tool_use".to_string(),
                         tool_name: Some(name),
                     });
-                    let _ = arg; // stored in text above
                 }
             }
 
@@ -1050,6 +1184,30 @@ impl AgentSessionData {
                             .unwrap_or("");
                         let result_tokens = estimate_tokens(output);
                         self.tool_result_total_tokens += result_tokens;
+
+                        // Compression estimation — same logic as Claude Code
+                        let compress_rate = match name.as_str() {
+                            "shell" | "command_execution" | "local_shell_call" =>
+                                estimate_bash_compressibility(output),
+                            "read" | "file_read" =>
+                                estimate_read_compressibility(output),
+                            "web_search" | "web_search_call" => 0.35,
+                            "mcp" | "mcp_call" => 0.20,
+                            _ => 0.20,
+                        };
+                        self.tool_result_compressible += (result_tokens as f64 * compress_rate) as u64;
+
+                        // Duplicate token tracking
+                        {
+                            let call_count = self.tools_used.get(&name).copied().unwrap_or(0) as u64;
+                            let unique_count = self.tool_call_hashes.iter()
+                                .filter(|k| k.starts_with(&format!("{}:", name)))
+                                .count() as u64;
+                            if call_count > unique_count {
+                                self.duplicate_tool_tokens += result_tokens;
+                            }
+                        }
+
                         if result_tokens > 1000 {
                             self.large_results.push((name, result_tokens));
                         }
@@ -1190,6 +1348,15 @@ impl AgentSessionData {
         if !self.watched_files.is_empty() {
             self.read_new_lines_multi();
             return;
+        }
+        // Codex: if session_file is None (was stale on connect), check again now.
+        // The file becomes active when the user starts a task, so pick it up here.
+        if self.agent_type == "codex" && self.session_file.is_none() {
+            if let Some(new_file) = find_codex_session() {
+                eprintln!("[terse-agent] codex: found session file (was stale on connect): {:?}", new_file);
+                self.session_file = Some(new_file);
+                self.watcher_offset = 0;
+            }
         }
         // Legacy single-file path
         let file_path = match &self.session_file {
@@ -1931,10 +2098,11 @@ fn find_codex_session() -> Option<PathBuf> {
         }
     }
 
-    // Only return if modified in last 30 minutes
+    // Return if modified in last 24 hours — Codex Desktop keeps one session file open all day,
+    // so 30 min was too tight. Process detection already guards against truly stale sessions.
     if let Some((path, mtime)) = newest {
         let age = SystemTime::now().duration_since(mtime).unwrap_or(Duration::from_secs(u64::MAX));
-        if age < Duration::from_secs(30 * 60) {
+        if age < Duration::from_secs(24 * 60 * 60) {
             eprintln!("[terse-agent] codex session: {:?}", path);
             return Some(path);
         }

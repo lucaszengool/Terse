@@ -175,6 +175,9 @@ if (window.__TAURI__) {
     // Pet window (Phase 2)
     showPetWindow: () => invoke('show_pet_window'),
     hidePetWindow: () => invoke('hide_pet_window'),
+    // Farm window
+    showFarmWindow: () => invoke('show_farm_window'),
+    hideFarmWindow: () => invoke('hide_farm_window'),
 
     // Hook (RTK-style compression)
     checkAgentHook: () => invoke('check_agent_hook'),

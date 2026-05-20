@@ -520,6 +520,14 @@
   <script>
     const API_BASE = window.location.origin;
 
+    // Trigger download if redirected here from post-signup flow
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const dl = params.get('dl');
+      if (dl === 'mac') window.location.href = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.3_x64.dmg';
+      if (dl === 'win') window.location.href = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.1_x64-setup.exe';
+    })();
+
     // Language switcher
     function toggleLangMenu() {
       const m = document.getElementById('lang-menu-gs');

@@ -25,14 +25,19 @@ const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const CLERK_PK = process.env.CLERK_PUBLISHABLE_KEY || 'pk_live_Y2xlcmsudGVyc2VhaS5vcmck';
 const CLERK_SECRET = process.env.CLERK_SECRET_KEY;
 
-// Price IDs (no free plan — all plans have 30-day free trial)
+// ── macOS app price IDs (30-day free trial, separate from API) ────────────
 const PRICES = {
-  pro: process.env.STRIPE_PRICE_PRO || 'price_1THjoHGf9QijP49FBJr4407W',
+  pro:     process.env.STRIPE_PRICE_PRO     || 'price_1THjoHGf9QijP49FBJr4407W',
   premium: process.env.STRIPE_PRICE_PREMIUM || 'price_1TAMciGf9QijP49FHTr9DuAB',
 };
 
-// 30-day free trial on all plans
+// 30-day free trial on all APP plans
 const TRIAL_DAYS = 30;
+
+// ── API price IDs (NO free trial — pay immediately, separate product) ─────
+const API_PRICES = {
+  api_pro: process.env.STRIPE_API_PRICE_PRO || 'price_1Tc5rbGf9QijP49FQTiQ77Br',
+};
 
 // Plan limits (per platform)
 const PLAN_LIMITS = {
@@ -104,17 +109,24 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         const clerkUserId = session.metadata?.clerk_user_id;
         const tier = session.metadata?.tier;
         if (clerkUserId && tier) {
-          licenseCache.set(clerkUserId, {
-            tier,
-            stripeCustomerId: session.customer,
-            subscriptionId: session.subscription,
-            status: 'active',
-            expiresAt: null,
-          });
-          // Persist tier to DB so tsk_... API keys get updated limits immediately
-          db.ensureUser(clerkUserId);
-          db.updateUserTier.run(tier, session.subscription, session.customer, 'active', null, clerkUserId);
-          console.log(`[license] activated ${tier} for ${clerkUserId}`);
+          if (tier === 'api_pro') {
+            // ── API subscription — update api_tier only, do NOT touch app tier ──
+            db.ensureUser(clerkUserId);
+            db.updateApiTier.run('api_pro', session.subscription, session.customer, clerkUserId);
+            console.log(`[api-license] activated api_pro for ${clerkUserId}`);
+          } else {
+            // ── App subscription — update app tier only, do NOT touch api_tier ──
+            licenseCache.set(clerkUserId, {
+              tier,
+              stripeCustomerId: session.customer,
+              subscriptionId: session.subscription,
+              status: 'active',
+              expiresAt: null,
+            });
+            db.ensureUser(clerkUserId);
+            db.updateUserTier.run(tier, session.subscription, session.customer, 'active', null, clerkUserId);
+            console.log(`[license] activated ${tier} for ${clerkUserId}`);
+          }
         }
         break;
       }
@@ -197,9 +209,24 @@ async function syncSubscription(sub) {
     return;
   }
 
-  // Determine tier from price (also recognize legacy price IDs for existing subscribers)
+  // Determine tier from price ID
   const priceId = sub.items?.data?.[0]?.price?.id;
   const LEGACY_PRO_PRICE = 'price_1TAMb6Gf9QijP49FKhRQYUSf';
+
+  // ── API subscription? Handle separately, don't touch app tier ──
+  const isApiSubscription = Object.values(API_PRICES).includes(priceId);
+  if (isApiSubscription) {
+    const apiTier = priceId === API_PRICES.api_pro ? 'api_pro' : 'free';
+    const isCancelled = sub.cancel_at_period_end || sub.status === 'canceled' || sub.status === 'cancelled';
+    try {
+      db.ensureUser(clerkUserId);
+      db.updateApiTier.run(isCancelled ? 'free' : apiTier, isCancelled ? null : sub.id, sub.customer, clerkUserId);
+    } catch (e) { console.error('[api-license] db sync failed:', e.message); }
+    console.log(`[api-license] synced ${isCancelled ? 'free (cancelled)' : apiTier} for ${clerkUserId}`);
+    return;
+  }
+
+  // ── App subscription ──
   let tier = 'expired';
   if (priceId === PRICES.pro || priceId === LEGACY_PRO_PRICE) tier = 'pro';
   else if (priceId === PRICES.premium) tier = 'premium';
@@ -446,6 +473,48 @@ app.get('/api/portal/redirect', async (req, res) => {
   } catch (err) {
     console.error('[portal/redirect] error:', err.message);
     res.redirect('/#pricing');
+  }
+});
+
+// ── Terse API checkout (POST /api/api-checkout) ──────────────────────────
+// Completely separate from /api/checkout (macOS app).
+// No free trial. No WeChat/Alipay. Card only. Immediate billing.
+app.post('/api/api-checkout', async (req, res) => {
+  try {
+    const { tier, clerkUserId, clerkUserEmail } = req.body || {};
+    if (!tier || !clerkUserId) return res.status(400).json({ error: 'Missing tier or clerkUserId' });
+
+    const priceId = API_PRICES[tier];
+    if (!priceId) return res.status(400).json({ error: 'Invalid API tier: ' + tier });
+
+    // Find or create Stripe customer (may share customer with app subscription — that is fine)
+    let customerId;
+    const existing = await stripe.customers.list({ email: clerkUserEmail, limit: 1 });
+    if (existing.data.length > 0) {
+      customerId = existing.data[0].id;
+    } else {
+      const customer = await stripe.customers.create({
+        email: clerkUserEmail,
+        metadata: { clerk_user_id: clerkUserId },
+      });
+      customerId = customer.id;
+    }
+
+    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    // NO trial_period_days — API plans have no free trial
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode: 'subscription',
+      success_url: `${baseUrl}/dashboard?api_upgraded=1`,
+      cancel_url:  `${baseUrl}/#api-pricing`,
+      metadata: { clerk_user_id: clerkUserId, tier },
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('[api-checkout]', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 

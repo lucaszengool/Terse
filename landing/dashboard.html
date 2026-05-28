@@ -184,24 +184,19 @@ async function loadUsage() {
     const data = await res.json();
 
     const user = window.Clerk.user;
-    // Determine tier from metadata or DB
-    const tierRes = await fetch(`${API_BASE}/api/license`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clerkUserId: user.id }),
-    });
-    const tierData = await tierRes.json().catch(() => ({}));
-    const tier = tierData.tier || 'free';
+    // Fetch API tier (separate from app tier) via /api/v1/me which returns api_tier
+    const tier = data.api_tier || 'free';
 
     const badge = document.getElementById('plan-badge');
     badge.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
     badge.className = 'tier-badge' + (tier === 'premium' ? ' premium' : '');
 
-    const limits = { free: { label: '500K tokens/month · 60 req/min', max: 500_000 }, pro: { label: '50M tokens/month · 600 req/min', max: 50_000_000 }, premium: { label: 'Unlimited tokens · 6,000 req/min', max: -1 } };
+    // API tiers are separate from app tiers
+    const limits = { free: { label: '500K tokens/month · 60 req/min', max: 500_000 }, api_pro: { label: '50M tokens/month · 600 req/min', max: 50_000_000 } };
     const lim = limits[tier] || limits.free;
     document.getElementById('plan-desc').textContent = lim.label;
 
-    const used = data.total_tokens_optimized || 0;
+    const used = data.api_tokens_this_month || 0;
     document.getElementById('tokens-used').textContent = used >= 1_000_000 ? (used / 1_000_000).toFixed(1) + 'M' : used >= 1000 ? Math.round(used / 1000) + 'K' : used;
 
     const pct = lim.max < 0 ? 0 : Math.min(100, Math.round((used / lim.max) * 100));
@@ -281,13 +276,15 @@ async function revokeKey(id) {
 async function handleUpgrade() {
   const user = window.Clerk.user;
   if (!user) return;
-  const res = await fetch(`${API_BASE}/api/checkout`, {
+  // Use /api/api-checkout (no trial — separate from macOS app checkout)
+  const res = await fetch(`${API_BASE}/api/api-checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tier: 'pro', clerkUserId: user.id, clerkUserEmail: user.primaryEmailAddress?.emailAddress }),
+    body: JSON.stringify({ tier: 'api_pro', clerkUserId: user.id, clerkUserEmail: user.primaryEmailAddress?.emailAddress }),
   });
   const data = await res.json();
   if (data.url) window.location.href = data.url;
+  else alert(data.error || 'Checkout failed.');
 }
 
 async function openBillingPortal() {

@@ -18,14 +18,14 @@ const { optimize: optimizeText, estimateTokens } = require('./optimizer-lite');
 // ────────────────────────────────────────
 //  Tier limits
 // ────────────────────────────────────────
-const TIER_LIMITS = {
+// API tiers are separate from the macOS app subscription tiers
+const API_TIER_LIMITS = {
   free:    { req_per_min: 60,    tokens_per_month: 500_000 },
-  pro:     { req_per_min: 600,   tokens_per_month: 50_000_000 },
-  premium: { req_per_min: 6_000, tokens_per_month: -1 },
+  api_pro: { req_per_min: 600,   tokens_per_month: 50_000_000 },
 };
 
-function tierLimits(tier) {
-  return TIER_LIMITS[tier] || TIER_LIMITS.free;
+function tierLimits(api_tier) {
+  return API_TIER_LIMITS[api_tier] || API_TIER_LIMITS.free;
 }
 
 function currentMonth() {
@@ -58,20 +58,20 @@ function requireApiKey(req, res, next) {
   }
 
   const hash = crypto.createHash('sha256').update(rawKey).digest('hex');
-  // Use tier-aware join so we can enforce per-plan limits
+  // Join with users to get api_tier (separate from app subscription tier)
   const keyRow = db.findDevApiKeyWithUser.get(hash);
   if (!keyRow) return res.status(401).json({ error: 'Invalid API key' });
 
-  const limits = tierLimits(keyRow.tier);
+  const limits = tierLimits(keyRow.api_tier);
 
   if (!checkRateLimit(hash, limits.req_per_min)) {
     return res.status(429).json({
-      error: `Rate limit exceeded (${limits.req_per_min} req/min on ${keyRow.tier} plan).`,
-      upgrade: 'https://terseai.org/#pricing',
+      error: `Rate limit exceeded (${limits.req_per_min} req/min on ${keyRow.api_tier || 'free'} plan).`,
+      upgrade: 'https://terseai.org/#api-pricing',
     });
   }
 
-  // Monthly quota check + reset
+  // Monthly quota check + auto-reset each calendar month
   const month = currentMonth();
   if (keyRow.api_month_key !== month) {
     db.resetApiTokens.run(0, month, keyRow.user_id);
@@ -79,16 +79,16 @@ function requireApiKey(req, res, next) {
   }
   if (limits.tokens_per_month > 0 && keyRow.api_tokens_this_month >= limits.tokens_per_month) {
     return res.status(429).json({
-      error: `Monthly token quota exceeded (${limits.tokens_per_month.toLocaleString()} tokens on ${keyRow.tier} plan).`,
+      error: `Monthly token quota exceeded (${limits.tokens_per_month.toLocaleString()} tokens on ${keyRow.api_tier || 'free'} plan).`,
       tokens_used: keyRow.api_tokens_this_month,
       tokens_limit: limits.tokens_per_month,
-      upgrade: 'https://terseai.org/#pricing',
+      upgrade: 'https://terseai.org/#api-pricing',
     });
   }
 
   req.apiKey = keyRow;
   req.apiKeyHash = hash;
-  req.apiTier = keyRow.tier;
+  req.apiTier = keyRow.api_tier || 'free';
   next();
 }
 
@@ -147,16 +147,20 @@ router.delete('/keys/:id', requireClerkAuth, (req, res) => {
 
 // GET /api/v1/me — user connection status (is API connected, has usage, has published projects)
 router.get('/me', requireClerkAuth, (req, res) => {
-  const keys = db.getDevApiKeysByUser.all(req.userId);
+  const keys    = db.getDevApiKeysByUser.all(req.userId);
   const projects = db.getVibeProjectsByUser.all(req.userId);
+  const user    = db.getUser.get(req.userId);
   const activeKeys = keys.filter(k => k.is_active);
   const connectedKey = activeKeys.find(k => k.requests_total > 0) || activeKeys[0] || null;
   res.json({
-    connected: activeKeys.length > 0,
-    has_usage: activeKeys.some(k => k.requests_total > 0),
-    total_requests: activeKeys.reduce((a, k) => a + k.requests_total, 0),
+    connected:             activeKeys.length > 0,
+    has_usage:             activeKeys.some(k => k.requests_total > 0),
+    total_requests:        activeKeys.reduce((a, k) => a + k.requests_total, 0),
     total_tokens_optimized: activeKeys.reduce((a, k) => a + k.tokens_optimized, 0),
-    active_keys: activeKeys.length,
+    active_keys:           activeKeys.length,
+    // api_tier is separate from app tier
+    api_tier:              user?.api_tier || 'free',
+    api_tokens_this_month: user?.api_tokens_this_month || 0,
     connected_key: connectedKey ? { prefix: connectedKey.key_prefix, label: connectedKey.label, requests_total: connectedKey.requests_total, tokens_optimized: connectedKey.tokens_optimized } : null,
     published_projects: projects.length,
     projects: projects.map(p => ({ id: p.id, name: p.name, is_published: !!p.is_published, upvotes: p.upvotes })),

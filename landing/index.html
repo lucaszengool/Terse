@@ -2547,20 +2547,20 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
           <button onclick="handleApiKeySignup()" style="margin-top:20px;padding:10px 0;width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:9px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.background='rgba(255,255,255,.13)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">Get free API key →</button>
         </div>
 
-        <!-- Pro -->
+        <!-- API Pro -->
         <div class="rv d2" style="background:rgba(110,231,183,.05);border:1px solid var(--acm);border-radius:16px;padding:24px;display:flex;flex-direction:column;position:relative">
           <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ac);color:#000;font-size:9px;font-weight:800;padding:3px 13px;border-radius:20px;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap">Most Popular</div>
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin-bottom:12px">Pro</div>
-          <div style="font-size:30px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px">$4<span style="font-size:16px">.99</span><span style="font-size:15px;font-weight:400;color:var(--t3)">/mo</span></div>
-          <p style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:18px">30-day free trial. Cancel anytime.</p>
+          <div style="font-size:30px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px">$29<span style="font-size:15px;font-weight:400;color:var(--t3)">/mo</span></div>
+          <p style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:18px">Cancel anytime. No trial.</p>
           <ul style="list-style:none;padding:0;margin:0 0 auto;display:flex;flex-direction:column;gap:9px">
             <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><strong style="color:var(--ac)">50M</strong>&nbsp;tokens / month</li>
             <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>600 requests / minute</li>
             <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Batch compression</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Usage analytics</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Email support + Mac app</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Usage analytics dashboard</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Email support</li>
           </ul>
-          <button onclick="handlePricing('pro')" style="margin-top:20px;padding:10px 0;width:100%;background:var(--gradient);border:none;border-radius:9px;color:#000;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.boxShadow='0 0 24px rgba(110,231,183,.3)'" onmouseout="this.style.boxShadow='none'">Start 30-day free trial</button>
+          <button onclick="handleApiCheckout('api_pro')" style="margin-top:20px;padding:10px 0;width:100%;background:var(--gradient);border:none;border-radius:9px;color:#000;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.boxShadow='0 0 24px rgba(110,231,183,.3)'" onmouseout="this.style.boxShadow='none'">Subscribe — $29/mo</button>
         </div>
 
         <!-- Enterprise -->
@@ -4184,6 +4184,9 @@ function updateClerkUI() {
         setTimeout(() => { window.location.href = '/get-started'; }, 300);
       } else if (pending === 'api_key') {
         setTimeout(() => showApiKeyModal(), 300);
+      } else if (pending.startsWith('api_checkout:')) {
+        const apiTier = pending.slice(13);
+        setTimeout(() => handleApiCheckout(apiTier), 300);
       } else if (pending.startsWith('pricing:')) {
         const tier = pending.slice(8);
         setTimeout(() => startCheckout(tier), 300);
@@ -4317,6 +4320,37 @@ function handleApiKeySignup() {
     return;
   }
   showApiKeyModal();
+}
+
+// ── API Pro checkout (separate from app checkout — no trial) ──────────────
+async function handleApiCheckout(tier) {
+  gtag('event', 'api_checkout_click', { tier });
+  if (!window.Clerk?.user) {
+    sessionStorage.setItem('pendingAction', 'api_checkout:' + tier);
+    openClerkSignUp();
+    return;
+  }
+  const user = window.Clerk.user;
+  const email = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress;
+  const btn = document.querySelector(`[onclick="handleApiCheckout('${tier}')"]`);
+  if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
+  try {
+    const res = await fetch(`${API_BASE}/api/api-checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier, clerkUserId: user.id, clerkUserEmail: email }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert(data.error || 'Checkout failed. Please try again.');
+      if (btn) { btn.textContent = 'Subscribe — $29/mo'; btn.disabled = false; }
+    }
+  } catch {
+    alert('Network error. Please try again.');
+    if (btn) { btn.textContent = 'Subscribe — $29/mo'; btn.disabled = false; }
+  }
 }
 
 async function showApiKeyModal() {

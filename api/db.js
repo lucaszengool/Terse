@@ -222,7 +222,10 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_vibe_projects_published ON vibe_projects(is_published, submitted_at);
 `);
 
-// ── Monthly API token tracking (safe migration — ignore if columns exist) ──
+// ── API-specific columns (safe migration) ─────────────────────────────────
+// api_tier is separate from tier (app subscription) — different Stripe products
+try { db.exec(`ALTER TABLE users ADD COLUMN api_tier TEXT DEFAULT 'free'`); } catch {}
+try { db.exec(`ALTER TABLE users ADD COLUMN api_subscription_id TEXT`); } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN api_tokens_this_month INTEGER DEFAULT 0`); } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN api_month_key TEXT DEFAULT ''`); } catch {}
 
@@ -233,9 +236,9 @@ const addDevApiKey = db.prepare(`
 `);
 const getDevApiKeysByUser = db.prepare('SELECT id, key_prefix, label, is_active, requests_total, tokens_optimized, last_used_at, created_at FROM developer_api_keys WHERE user_id = ? ORDER BY created_at DESC');
 const findDevApiKeyByHash = db.prepare('SELECT * FROM developer_api_keys WHERE key_hash = ? AND is_active = 1');
-// Tier-aware lookup — joins users so terse-api.js can enforce per-tier limits
+// Tier-aware lookup — uses api_tier (separate from the app subscription tier)
 const findDevApiKeyWithUser = db.prepare(`
-  SELECT k.*, u.tier, u.api_tokens_this_month, u.api_month_key
+  SELECT k.*, u.api_tier, u.api_tokens_this_month, u.api_month_key
   FROM developer_api_keys k JOIN users u ON k.user_id = u.id
   WHERE k.key_hash = ? AND k.is_active = 1
 `);
@@ -244,6 +247,8 @@ const touchDevApiKey = db.prepare(`UPDATE developer_api_keys SET last_used_at = 
 const incrementApiTokens = db.prepare(`UPDATE users SET api_tokens_this_month = api_tokens_this_month + ?, api_month_key = ? WHERE id = ?`);
 const resetApiTokens    = db.prepare(`UPDATE users SET api_tokens_this_month = ?, api_month_key = ? WHERE id = ?`);
 const updateUserTier    = db.prepare(`UPDATE users SET tier = ?, subscription_id = ?, stripe_customer_id = ?, status = ?, expires_at = ? WHERE id = ?`);
+// API tier is tracked separately — does not touch the app tier column
+const updateApiTier     = db.prepare(`UPDATE users SET api_tier = ?, api_subscription_id = ?, stripe_customer_id = COALESCE(?, stripe_customer_id) WHERE id = ?`);
 
 // ── Vibe projects helpers ──
 const addVibeProject = db.prepare(`
@@ -570,7 +575,8 @@ module.exports = {
   getTeamByModel, getTeamByMode,
   // Developer API
   addDevApiKey, getDevApiKeysByUser, findDevApiKeyByHash, findDevApiKeyWithUser,
-  revokeDevApiKey, touchDevApiKey, incrementApiTokens, resetApiTokens, updateUserTier,
+  revokeDevApiKey, touchDevApiKey, incrementApiTokens, resetApiTokens,
+  updateUserTier, updateApiTier,
   // Vibe Projects Platform
   addVibeProject, getVibeProjects, getVibeProjectsByUser, upvoteVibeProject,
 };

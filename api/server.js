@@ -111,6 +111,9 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
             status: 'active',
             expiresAt: null,
           });
+          // Persist tier to DB so tsk_... API keys get updated limits immediately
+          db.ensureUser(clerkUserId);
+          db.updateUserTier.run(tier, session.subscription, session.customer, 'active', null, clerkUserId);
           console.log(`[license] activated ${tier} for ${clerkUserId}`);
         }
         break;
@@ -218,14 +221,21 @@ async function syncSubscription(sub) {
     } catch (e) { console.error('[license] invoice check failed:', e.message); }
   }
 
+  const expiresAt = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
   licenseCache.set(clerkUserId, {
     tier,
     stripeCustomerId: sub.customer,
     subscriptionId: sub.id,
     status: effectiveStatus,
-    expiresAt: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+    expiresAt,
     trialEnd,
   });
+  // Persist tier to DB so tsk_... developer keys get updated rate limits without restart
+  try {
+    db.ensureUser(clerkUserId);
+    const dbTier = effectiveStatus === 'active' || effectiveStatus === 'trialing' ? tier : 'free';
+    db.updateUserTier.run(dbTier, sub.id, sub.customer, effectiveStatus, expiresAt, clerkUserId);
+  } catch (e) { console.error('[license] db tier sync failed:', e.message); }
   console.log(`[license] synced ${tier} (${effectiveStatus}) for ${clerkUserId}${trialEnd ? ' trial until ' + trialEnd : ''}`);
 }
 
@@ -436,6 +446,28 @@ app.get('/api/portal/redirect', async (req, res) => {
   } catch (err) {
     console.error('[portal/redirect] error:', err.message);
     res.redirect('/#pricing');
+  }
+});
+
+// ── Dashboard billing portal (POST /api/billing-portal) ──
+app.post('/api/billing-portal', async (req, res) => {
+  const { clerkUserId } = req.body || {};
+  if (!clerkUserId) return res.status(400).json({ error: 'Missing clerkUserId' });
+  try {
+    let customerId = licenseCache.get(clerkUserId)?.stripeCustomerId;
+    if (!customerId) {
+      const user = db.getUser.get(clerkUserId);
+      customerId = user?.stripe_customer_id;
+    }
+    if (!customerId) return res.status(404).json({ error: 'No billing account found. Subscribe first.' });
+    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${baseUrl}/dashboard`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -807,6 +839,36 @@ app.use(paddleModule.router);
 
 // ── Terse Developer API ──
 app.use('/api/v1', terseApiRouter);
+
+// ── Newsletter subscribe (proxies to Buttondown with server-side API key) ──
+app.post('/api/newsletter/subscribe', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'invalid_email' });
+  }
+  const key = process.env.BUTTONDOWN_API_KEY;
+  if (!key) return res.status(503).json({ error: 'newsletter_unavailable' });
+  try {
+    const r = await fetch('https://api.buttondown.email/v1/subscribers', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email_address: email, tags: ['landing'] }),
+    });
+    const data = await r.json();
+    if (r.ok || r.status === 201) return res.json({ ok: true });
+    // 400 with "already subscribed" is still a success from the user's perspective
+    const detail = JSON.stringify(data);
+    if (detail.includes('already_subscribed') || detail.includes('You are already subscribed')) {
+      return res.json({ ok: true, already: true });
+    }
+    return res.status(400).json({ error: data });
+  } catch {
+    return res.status(502).json({ error: 'upstream_error' });
+  }
+});
 
 // ── Health check ──
 app.get('/api/health', (req, res) => {

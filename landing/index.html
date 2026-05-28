@@ -2527,8 +2527,61 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
       </div>
     </div>
 
+    <!-- ── API Pricing ── -->
+    <div style="margin-top:52px" id="api-pricing">
+      <h3 class="rv" style="text-align:center;font-size:clamp(20px,2.5vw,28px);font-weight:900;letter-spacing:-1px;margin-bottom:10px">API Pricing</h3>
+      <p class="rv d1" style="text-align:center;color:var(--t2);font-size:14px;max-width:500px;margin:0 auto 36px;line-height:1.6">Free tier included with every account. No credit card for free. Upgrade for higher limits and batch access.</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:860px;margin:0 auto">
+
+        <!-- Free -->
+        <div class="rv d1" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px;display:flex;flex-direction:column">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t3);margin-bottom:12px">Free</div>
+          <div style="font-size:30px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px">$0<span style="font-size:15px;font-weight:400;color:var(--t3)">/mo</span></div>
+          <p style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:18px">No credit card needed.</p>
+          <ul style="list-style:none;padding:0;margin:0 0 auto;display:flex;flex-direction:column;gap:9px">
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>500K tokens / month</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>60 requests / minute</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>All 3 compression modes</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Community support</li>
+          </ul>
+          <button onclick="handleApiKeySignup()" style="margin-top:20px;padding:10px 0;width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:9px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.background='rgba(255,255,255,.13)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">Get free API key →</button>
+        </div>
+
+        <!-- Pro -->
+        <div class="rv d2" style="background:rgba(110,231,183,.05);border:1px solid var(--acm);border-radius:16px;padding:24px;display:flex;flex-direction:column;position:relative">
+          <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ac);color:#000;font-size:9px;font-weight:800;padding:3px 13px;border-radius:20px;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap">Most Popular</div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin-bottom:12px">Pro</div>
+          <div style="font-size:30px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px">$4<span style="font-size:16px">.99</span><span style="font-size:15px;font-weight:400;color:var(--t3)">/mo</span></div>
+          <p style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:18px">30-day free trial. Cancel anytime.</p>
+          <ul style="list-style:none;padding:0;margin:0 0 auto;display:flex;flex-direction:column;gap:9px">
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><strong style="color:var(--ac)">50M</strong>&nbsp;tokens / month</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>600 requests / minute</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Batch compression</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Usage analytics</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Email support + Mac app</li>
+          </ul>
+          <button onclick="handlePricing('pro')" style="margin-top:20px;padding:10px 0;width:100%;background:var(--gradient);border:none;border-radius:9px;color:#000;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.boxShadow='0 0 24px rgba(110,231,183,.3)'" onmouseout="this.style.boxShadow='none'">Start 30-day free trial</button>
+        </div>
+
+        <!-- Enterprise -->
+        <div class="rv d3" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px;display:flex;flex-direction:column">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t3);margin-bottom:12px">Enterprise</div>
+          <div style="font-size:30px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px">Custom</div>
+          <p style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:18px">Teams &amp; high-volume use.</p>
+          <ul style="list-style:none;padding:0;margin:0 0 auto;display:flex;flex-direction:column;gap:9px">
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><strong>Unlimited</strong>&nbsp;tokens</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Custom rate limits</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Dedicated endpoints</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>SLA + priority support</li>
+            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Team management + audit logs</li>
+          </ul>
+          <a href="mailto:hello@terseai.org" style="display:block;margin-top:20px;padding:10px 0;width:100%;background:transparent;border:1px solid rgba(255,255,255,.14);border-radius:9px;color:rgba(255,255,255,.65);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;text-align:center;text-decoration:none;font-family:inherit" onmouseover="this.style.borderColor='rgba(255,255,255,.35)';this.style.color='#fff'" onmouseout="this.style.borderColor='rgba(255,255,255,.14)';this.style.color='rgba(255,255,255,.65)'">Contact us →</a>
+        </div>
+      </div>
+    </div>
+
     <!-- Response example + savings highlight -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px">
       <div class="rv d3" style="background:rgba(110,231,183,0.06);border:1px solid var(--acm);border-radius:14px;padding:20px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ac);margin-bottom:10px">Modes</div>
         <div style="display:flex;flex-direction:column;gap:8px">
@@ -3035,20 +3088,21 @@ async function handleNewsletterSubmit(e) {
   btn.disabled = true;
   gtag && gtag('event', 'newsletter_subscribe_started', { email_provided: true });
   try {
-    const r = await fetch('https://buttondown.com/api/emails/embed-subscribe/terseai', {
+    const r = await fetch('/api/newsletter/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
     });
-    if (r.ok || r.status === 201) {
-      form.innerHTML = '<p style="color:var(--ac);font-weight:700;font-size:15px;margin:0;padding:13px 0">Check your inbox to confirm your subscription.</p>';
+    if (r.ok) {
+      gtag && gtag('event', 'newsletter_subscribe_success');
+      form.innerHTML = '<p style="color:var(--ac);font-weight:700;font-size:15px;margin:0;padding:13px 0">You\'re in. Check your inbox to confirm.</p>';
     } else {
       throw new Error(r.status);
     }
   } catch {
     btn.textContent = 'Subscribe';
     btn.disabled = false;
-    window.open('https://buttondown.com/terseai', '_blank');
+    window.open('https://buttondown.com/terseai?email=' + encodeURIComponent(email), '_blank');
   }
 }
 </script>
@@ -4128,6 +4182,8 @@ function updateClerkUI() {
       } else if (pending === 'chrome') {
         openTab('https://chromewebstore.google.com/detail/terse-%E2%80%94-token-optimizer-f/lgnkdlpgfcogkmdhckmglleigmnnmmff');
         setTimeout(() => { window.location.href = '/get-started'; }, 300);
+      } else if (pending === 'api_key') {
+        setTimeout(() => showApiKeyModal(), 300);
       } else if (pending.startsWith('pricing:')) {
         const tier = pending.slice(8);
         setTimeout(() => startCheckout(tier), 300);
@@ -4251,6 +4307,88 @@ async function handleDownload(e, platform) {
 
 // ═══ PRICING & STRIPE CHECKOUT ═══
 const API_BASE = window.location.origin;
+
+// ── API key signup / modal ─────────────────────────────────────────────────
+function handleApiKeySignup() {
+  gtag('event', 'api_key_signup_click');
+  if (!window.Clerk?.user) {
+    sessionStorage.setItem('pendingAction', 'api_key');
+    openClerkSignUp();
+    return;
+  }
+  showApiKeyModal();
+}
+
+async function showApiKeyModal() {
+  const user = window.Clerk?.user;
+  if (!user) { handleApiKeySignup(); return; }
+  const clerkToken = await user.getToken();
+
+  // Overlay
+  const existing = document.getElementById('api-key-modal');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'api-key-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10001;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg2,#1a1a22);border:1px solid var(--bd,#2a2a35);border-radius:18px;padding:32px;max-width:480px;width:90%;color:#fff;font-family:inherit';
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 style="margin:0;font-size:17px;font-weight:800;letter-spacing:-.5px">Your API Key</h3>
+      <button onclick="document.getElementById('api-key-modal').remove()" style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:18px;line-height:1;padding:0">✕</button>
+    </div>
+    <div id="akm-body" style="min-height:80px;display:flex;align-items:center;justify-content:center">
+      <div style="font-size:13px;color:rgba(255,255,255,.4)">Loading…</div>
+    </div>`;
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  try {
+    // Fetch existing keys
+    const res = await fetch(`${API_BASE}/api/v1/keys`, { headers: { Authorization: `Bearer ${clerkToken}` } });
+    const data = await res.json();
+    const keys = data.keys || [];
+    const body = document.getElementById('akm-body');
+
+    if (keys.length === 0) {
+      // Create first key automatically
+      const cr = await fetch(`${API_BASE}/api/v1/keys`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${clerkToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: 'Default' }),
+      });
+      const created = await cr.json();
+      if (created.key) {
+        body.innerHTML = `
+          <div style="width:100%">
+            <p style="font-size:12px;color:rgba(255,255,255,.5);margin:0 0 8px">Your new key — <strong style="color:#fbbf24">copy it now, it won't be shown again.</strong></p>
+            <div style="display:flex;gap:8px;align-items:center">
+              <code style="flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac,#6ee7b7);background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2);padding:10px 12px;border-radius:8px;word-break:break-all">${created.key}</code>
+              <button onclick="navigator.clipboard.writeText('${created.key}');this.textContent='✓ Copied!';setTimeout(()=>this.textContent='Copy',2000)" style="padding:10px 14px;background:var(--gradient);border:none;border-radius:8px;color:#000;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Copy</button>
+            </div>
+            <p style="font-size:11px;color:rgba(255,255,255,.35);margin:12px 0 0">Free tier: 500K tokens/month · 60 req/min. <a href="/#pricing" style="color:var(--ac)">Upgrade for more →</a></p>
+          </div>`;
+      } else {
+        body.innerHTML = `<p style="color:#f87171;font-size:13px">${created.error || 'Failed to create key.'}</p>`;
+      }
+    } else {
+      const k = keys[0];
+      body.innerHTML = `
+        <div style="width:100%">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+            <code style="flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ac,#6ee7b7);background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2);padding:10px 12px;border-radius:8px">${k.key_prefix}••••••••••••</code>
+            <a href="/dashboard" style="padding:10px 14px;background:var(--gradient);border:none;border-radius:8px;color:#000;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none">Dashboard</a>
+          </div>
+          <p style="font-size:11px;color:rgba(255,255,255,.35);margin:0">To see the full key, create a new one in your <a href="/dashboard" style="color:var(--ac)">dashboard</a>.</p>
+          <p style="font-size:11px;color:rgba(255,255,255,.35);margin:6px 0 0">Free tier: 500K tokens/month · 60 req/min. <a href="/#pricing" style="color:var(--ac)">Upgrade for more →</a></p>
+        </div>`;
+    }
+  } catch (err) {
+    document.getElementById('akm-body').innerHTML = `<p style="color:#f87171;font-size:13px">Error loading API key. Please try again.</p>`;
+  }
+}
 
 async function handlePricing(tier) {
   gtag('event', 'pricing_click', { tier });

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Dashboard — Terse API</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-LNCSLGTN76");</script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0b0d0f;--bg1:#111317;--bg2:#1a1c22;--bg3:#22242c;--bd:rgba(255,255,255,.1);--ac:#6ee7b7;--acm:rgba(110,231,183,.3);--acd:rgba(110,231,183,.08);--t1:#fff;--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);--gradient:linear-gradient(135deg,#6ee7b7,#22d3ee)}
+body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+nav{height:58px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--bg);z-index:100}
+.logo{font-weight:900;font-size:16px;letter-spacing:-.5px;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px}
+.logo-icon{width:28px;height:28px;border-radius:7px;background:var(--acd);border:1px solid var(--acm);display:grid;place-items:center;font-size:13px;font-weight:900;color:var(--ac)}
+.main{max-width:900px;margin:0 auto;padding:40px 24px}
+h1{font-size:26px;font-weight:900;letter-spacing:-1px;margin-bottom:6px}
+.sub{font-size:14px;color:var(--t2);margin-bottom:36px}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:24px;margin-bottom:20px}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--t3);margin-bottom:16px}
+.tier-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--acd);border:1px solid var(--acm);border-radius:20px;font-size:12px;font-weight:700;color:var(--ac);text-transform:capitalize;letter-spacing:.5px}
+.tier-badge.premium{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.3);color:#fbbf24}
+.meter-bg{background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;margin:8px 0 4px}
+.meter-fill{height:100%;border-radius:4px;background:var(--gradient);transition:width .6s ease}
+.key-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg3);border:1px solid var(--bd);border-radius:10px;margin-bottom:10px}
+.key-code{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ac)}
+.btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit;border:none}
+.btn-primary{background:var(--gradient);color:#000}
+.btn-primary:hover{box-shadow:0 0 20px rgba(110,231,183,.25)}
+.btn-ghost{background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);border:1px solid var(--bd)}
+.btn-ghost:hover{background:rgba(255,255,255,.12);color:#fff}
+.btn-danger{background:rgba(248,81,73,.1);color:#f85149;border:1px solid rgba(248,81,73,.2)}
+.btn-danger:hover{background:rgba(248,81,73,.18)}
+.tag{display:inline-block;padding:2px 8px;font-size:10px;font-weight:700;border-radius:6px;text-transform:uppercase;letter-spacing:.5px}
+.tag-free{background:rgba(255,255,255,.07);color:var(--t3)}
+.tag-active{background:rgba(110,231,183,.1);color:var(--ac)}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.stat-label{font-size:12px;color:var(--t3)}
+.stat-val{font-size:20px;font-weight:800;letter-spacing:-1px}
+#loading{text-align:center;padding:80px 0;color:var(--t3);font-size:14px}
+#not-signed-in{text-align:center;padding:80px 24px}
+#not-signed-in h2{font-size:22px;font-weight:800;margin-bottom:10px}
+#not-signed-in p{color:var(--t2);margin-bottom:24px}
+.new-key-form{display:flex;gap:10px;margin-top:14px}
+.new-key-form input{flex:1;padding:10px 14px;background:var(--bg3);border:1px solid var(--bd);border-radius:8px;color:#fff;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+.new-key-form input:focus{border-color:var(--acm)}
+.new-key-reveal{padding:12px 14px;background:rgba(110,231,183,.06);border:1px solid var(--acm);border-radius:10px;margin-bottom:12px}
+.new-key-reveal code{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ac);word-break:break-all}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo"><div class="logo-icon">T</div>Terse</a>
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="/#terse-api" style="font-size:12px;color:var(--t2);text-decoration:none">API Docs</a>
+    <a href="/#pricing" style="font-size:12px;color:var(--t2);text-decoration:none">Pricing</a>
+    <div id="nav-user" style="display:none;align-items:center;gap:8px">
+      <img id="nav-avatar" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--bd)" src="" alt="">
+      <button id="sign-out-btn" class="btn btn-ghost" style="font-size:11px;padding:6px 12px">Sign out</button>
+    </div>
+  </div>
+</nav>
+
+<div class="main">
+  <div id="loading">Loading your dashboard…</div>
+  <div id="not-signed-in" style="display:none">
+    <h2>Sign in to access your dashboard</h2>
+    <p>Create a free API key and manage your usage.</p>
+    <button onclick="openSignIn()" class="btn btn-primary" style="font-size:14px;padding:12px 28px">Sign in / Sign up</button>
+  </div>
+  <div id="dashboard-content" style="display:none">
+    <h1>API Dashboard</h1>
+    <p class="sub">Manage your API keys, track usage, and upgrade your plan.</p>
+
+    <!-- Plan & Usage -->
+    <div class="card">
+      <div class="card-title">Current Plan</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div id="plan-badge" class="tier-badge">Free</div>
+          <p id="plan-desc" style="font-size:12px;color:var(--t3);margin-top:6px">500K tokens/month · 60 req/min</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="upgrade-btn" onclick="handleUpgrade()" class="btn btn-primary" style="display:none">Upgrade to Pro</button>
+          <button id="billing-btn" onclick="openBillingPortal()" class="btn btn-ghost" style="display:none">Manage billing</button>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <div class="stat-row">
+          <span class="stat-label">Tokens used this month</span>
+          <span id="tokens-used" class="stat-val">—</span>
+        </div>
+        <div class="meter-bg"><div id="usage-meter" class="meter-fill" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--t3)" id="usage-pct">0%</span><span style="font-size:11px;color:var(--t3)" id="usage-limit">of 500K</span></div>
+      </div>
+    </div>
+
+    <!-- API Keys -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>API Keys</span>
+        <button onclick="showCreateKey()" class="btn btn-ghost" style="font-size:11px;padding:6px 12px">+ New key</button>
+      </div>
+
+      <div id="new-key-reveal" style="display:none" class="new-key-reveal">
+        <p style="font-size:11px;color:#fbbf24;font-weight:700;margin-bottom:8px">⚠ Save this key now — it won't be shown again.</p>
+        <div style="display:flex;align-items:center;gap:8px">
+          <code id="new-key-value" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ac);word-break:break-all"></code>
+          <button onclick="copyNewKey()" id="copy-new-key-btn" class="btn btn-primary" style="white-space:nowrap">Copy</button>
+        </div>
+      </div>
+
+      <div id="create-key-form" style="display:none">
+        <div class="new-key-form">
+          <input id="new-key-label" type="text" placeholder="Key label (e.g. production)" maxlength="60">
+          <button onclick="createKey()" class="btn btn-primary">Create</button>
+          <button onclick="hideCreateKey()" class="btn btn-ghost">Cancel</button>
+        </div>
+      </div>
+
+      <div id="keys-list" style="margin-top:4px">
+        <div style="font-size:13px;color:var(--t3);padding:20px 0;text-align:center">Loading keys…</div>
+      </div>
+    </div>
+
+    <!-- Quick Start -->
+    <div class="card">
+      <div class="card-title">Quick Start</div>
+      <pre style="background:var(--bg3);border:1px solid var(--bd);border-radius:10px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t2);overflow-x:auto;line-height:1.7"><span style="color:var(--t3)"># Replace YOUR_KEY with your key above</span>
+curl -X POST https://www.terseai.org/api/v1/optimize \
+  -H <span style="color:#a3e635">"Authorization: Bearer YOUR_KEY"</span> \
+  -H <span style="color:#a3e635">"Content-Type: application/json"</span> \
+  -d <span style="color:#a3e635">'{"text":"Can you please help me with this?","mode":"normal"}'</span>
+
+<span style="color:var(--t3)"># → { "optimized": "Help with this.", "tokens_saved": 7, "reduction_pct": 54 }</span></pre>
+      <p style="margin-top:12px;font-size:12px;color:var(--t3)">Full docs at <a href="/api-docs" style="color:var(--ac)">/api-docs</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- Clerk -->
+<script async crossorigin="anonymous"
+  data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck"
+  src="https://clerk.terseai.org/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+  type="text/javascript">
+</script>
+<script>
+const API_BASE = '';
+let clerkToken = null;
+
+window.addEventListener('load', async () => {
+  await window.Clerk.load();
+  const user = window.Clerk.user;
+  document.getElementById('loading').style.display = 'none';
+
+  if (!user) {
+    document.getElementById('not-signed-in').style.display = 'block';
+    return;
+  }
+
+  // Show nav user
+  const navUser = document.getElementById('nav-user');
+  navUser.style.display = 'flex';
+  document.getElementById('nav-avatar').src = user.imageUrl || '';
+  document.getElementById('sign-out-btn').onclick = () => window.Clerk.signOut().then(() => location.reload());
+
+  document.getElementById('dashboard-content').style.display = 'block';
+  clerkToken = await user.getToken();
+  await loadDashboard();
+});
+
+function openSignIn() {
+  window.Clerk.openSignIn({ redirectUrl: '/dashboard' });
+}
+
+async function loadDashboard() {
+  await Promise.all([loadUsage(), loadKeys()]);
+}
+
+async function loadUsage() {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/me`, { headers: { Authorization: `Bearer ${clerkToken}` } });
+    const data = await res.json();
+
+    const user = window.Clerk.user;
+    // Determine tier from metadata or DB
+    const tierRes = await fetch(`${API_BASE}/api/license`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clerkUserId: user.id }),
+    });
+    const tierData = await tierRes.json().catch(() => ({}));
+    const tier = tierData.tier || 'free';
+
+    const badge = document.getElementById('plan-badge');
+    badge.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
+    badge.className = 'tier-badge' + (tier === 'premium' ? ' premium' : '');
+
+    const limits = { free: { label: '500K tokens/month · 60 req/min', max: 500_000 }, pro: { label: '50M tokens/month · 600 req/min', max: 50_000_000 }, premium: { label: 'Unlimited tokens · 6,000 req/min', max: -1 } };
+    const lim = limits[tier] || limits.free;
+    document.getElementById('plan-desc').textContent = lim.label;
+
+    const used = data.total_tokens_optimized || 0;
+    document.getElementById('tokens-used').textContent = used >= 1_000_000 ? (used / 1_000_000).toFixed(1) + 'M' : used >= 1000 ? Math.round(used / 1000) + 'K' : used;
+
+    const pct = lim.max < 0 ? 0 : Math.min(100, Math.round((used / lim.max) * 100));
+    document.getElementById('usage-meter').style.width = pct + '%';
+    document.getElementById('usage-pct').textContent = lim.max < 0 ? 'Unlimited' : pct + '%';
+    document.getElementById('usage-limit').textContent = lim.max < 0 ? '' : 'of ' + (lim.max >= 1_000_000 ? (lim.max / 1_000_000) + 'M' : (lim.max / 1000) + 'K');
+
+    if (tier === 'free') document.getElementById('upgrade-btn').style.display = '';
+    else document.getElementById('billing-btn').style.display = '';
+  } catch (e) { console.error('loadUsage', e); }
+}
+
+async function loadKeys() {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/keys`, { headers: { Authorization: `Bearer ${clerkToken}` } });
+    const data = await res.json();
+    const list = document.getElementById('keys-list');
+    const keys = data.keys || [];
+    if (keys.length === 0) {
+      list.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:20px 0;text-align:center">No keys yet. Create your first key above.</div>';
+      return;
+    }
+    list.innerHTML = keys.map(k => `
+      <div class="key-row">
+        <span class="key-code">${k.key_prefix}••••••••••</span>
+        <span style="font-size:11px;color:var(--t3);white-space:nowrap">${k.label || 'Default'}</span>
+        <span class="tag ${k.is_active ? 'tag-active' : 'tag-free'}">${k.is_active ? 'Active' : 'Revoked'}</span>
+        <span style="font-size:10px;color:var(--t3);white-space:nowrap">${k.requests_total} req</span>
+        ${k.is_active ? `<button onclick="revokeKey('${k.id}')" class="btn btn-danger" style="font-size:10px;padding:4px 10px">Revoke</button>` : ''}
+      </div>`).join('');
+  } catch (e) { console.error('loadKeys', e); }
+}
+
+function showCreateKey() {
+  document.getElementById('create-key-form').style.display = 'block';
+  document.getElementById('new-key-label').focus();
+}
+function hideCreateKey() {
+  document.getElementById('create-key-form').style.display = 'none';
+  document.getElementById('new-key-label').value = '';
+}
+
+async function createKey() {
+  const label = document.getElementById('new-key-label').value.trim() || 'Default';
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/keys`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${clerkToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label }),
+    });
+    const data = await res.json();
+    if (data.key) {
+      document.getElementById('new-key-value').textContent = data.key;
+      document.getElementById('new-key-reveal').style.display = 'block';
+      hideCreateKey();
+      await loadKeys();
+    } else {
+      alert(data.error || 'Failed to create key.');
+    }
+  } catch (e) { alert('Network error.'); }
+}
+
+function copyNewKey() {
+  const val = document.getElementById('new-key-value').textContent;
+  navigator.clipboard.writeText(val);
+  const btn = document.getElementById('copy-new-key-btn');
+  btn.textContent = '✓ Copied!';
+  setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+}
+
+async function revokeKey(id) {
+  if (!confirm('Revoke this key? It will stop working immediately.')) return;
+  await fetch(`${API_BASE}/api/v1/keys/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${clerkToken}` } });
+  await loadKeys();
+}
+
+async function handleUpgrade() {
+  const user = window.Clerk.user;
+  if (!user) return;
+  const res = await fetch(`${API_BASE}/api/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tier: 'pro', clerkUserId: user.id, clerkUserEmail: user.primaryEmailAddress?.emailAddress }),
+  });
+  const data = await res.json();
+  if (data.url) window.location.href = data.url;
+}
+
+async function openBillingPortal() {
+  const user = window.Clerk.user;
+  if (!user) return;
+  const res = await fetch(`${API_BASE}/api/billing-portal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clerkUserId: user.id }),
+  });
+  const data = await res.json();
+  if (data.url) window.location.href = data.url;
+}
+</script>
+</body>
+</html>

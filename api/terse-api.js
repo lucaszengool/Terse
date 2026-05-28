@@ -16,13 +16,26 @@ const router = express.Router();
 const { optimize: optimizeText, estimateTokens } = require('./optimizer-lite');
 
 // ────────────────────────────────────────
-//  Rate limits (simple in-memory, per key)
+//  Tier limits
 // ────────────────────────────────────────
+const TIER_LIMITS = {
+  free:    { req_per_min: 60,    tokens_per_month: 500_000 },
+  pro:     { req_per_min: 600,   tokens_per_month: 50_000_000 },
+  premium: { req_per_min: 6_000, tokens_per_month: -1 },
+};
+
+function tierLimits(tier) {
+  return TIER_LIMITS[tier] || TIER_LIMITS.free;
+}
+
+function currentMonth() {
+  return new Date().toISOString().slice(0, 7); // YYYY-MM
+}
+
 const rateLimitMap = new Map(); // key_hash → { count, resetAt }
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX = 60; // 60 requests / minute per key
 
-function checkRateLimit(keyHash) {
+function checkRateLimit(keyHash, maxPerMin) {
   const now = Date.now();
   let entry = rateLimitMap.get(keyHash);
   if (!entry || now > entry.resetAt) {
@@ -30,7 +43,7 @@ function checkRateLimit(keyHash) {
     rateLimitMap.set(keyHash, entry);
   }
   entry.count++;
-  return entry.count <= RATE_LIMIT_MAX;
+  return entry.count <= maxPerMin;
 }
 
 // ── Auth middleware ──
@@ -45,15 +58,37 @@ function requireApiKey(req, res, next) {
   }
 
   const hash = crypto.createHash('sha256').update(rawKey).digest('hex');
-  const keyRow = db.findDevApiKeyByHash.get(hash);
+  // Use tier-aware join so we can enforce per-plan limits
+  const keyRow = db.findDevApiKeyWithUser.get(hash);
   if (!keyRow) return res.status(401).json({ error: 'Invalid API key' });
 
-  if (!checkRateLimit(hash)) {
-    return res.status(429).json({ error: 'Rate limit exceeded (60 req/min). Upgrade for higher limits.' });
+  const limits = tierLimits(keyRow.tier);
+
+  if (!checkRateLimit(hash, limits.req_per_min)) {
+    return res.status(429).json({
+      error: `Rate limit exceeded (${limits.req_per_min} req/min on ${keyRow.tier} plan).`,
+      upgrade: 'https://terseai.org/#pricing',
+    });
+  }
+
+  // Monthly quota check + reset
+  const month = currentMonth();
+  if (keyRow.api_month_key !== month) {
+    db.resetApiTokens.run(0, month, keyRow.user_id);
+    keyRow.api_tokens_this_month = 0;
+  }
+  if (limits.tokens_per_month > 0 && keyRow.api_tokens_this_month >= limits.tokens_per_month) {
+    return res.status(429).json({
+      error: `Monthly token quota exceeded (${limits.tokens_per_month.toLocaleString()} tokens on ${keyRow.tier} plan).`,
+      tokens_used: keyRow.api_tokens_this_month,
+      tokens_limit: limits.tokens_per_month,
+      upgrade: 'https://terseai.org/#pricing',
+    });
   }
 
   req.apiKey = keyRow;
   req.apiKeyHash = hash;
+  req.apiTier = keyRow.tier;
   next();
 }
 
@@ -149,6 +184,8 @@ router.post('/optimize', express.json({ limit: '500kb' }), requireApiKey, async 
   try {
     const result = optimizeText(text, safeMode);
     db.touchDevApiKey.run(result.tokens_saved, req.apiKeyHash);
+    // Track monthly usage for quota enforcement
+    db.incrementApiTokens.run(result.tokens_original || estimateTokens(text), currentMonth(), req.apiKey.user_id);
     res.json({
       original: text,
       optimized: result.optimized,

@@ -53,7 +53,7 @@ h1{font-size:26px;font-weight:900;letter-spacing:-1px;margin-bottom:6px}
 <nav>
   <a href="/" class="logo"><div class="logo-icon">T</div>Terse</a>
   <div style="display:flex;gap:10px;align-items:center">
-    <a href="/#terse-api" style="font-size:12px;color:var(--t2);text-decoration:none">API Docs</a>
+    <a href="/api-docs" style="font-size:12px;color:var(--t2);text-decoration:none">API Docs</a>
     <a href="/#pricing" style="font-size:12px;color:var(--t2);text-decoration:none">Pricing</a>
     <div id="nav-user" style="display:none;align-items:center;gap:8px">
       <img id="nav-avatar" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--bd)" src="" alt="">
@@ -188,8 +188,9 @@ async function loadUsage() {
     const tier = data.api_tier || 'free';
 
     const badge = document.getElementById('plan-badge');
-    badge.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
-    badge.className = 'tier-badge' + (tier === 'premium' ? ' premium' : '');
+    const TIER_LABELS = { free: 'Free', api_pro: 'Pro' };
+    badge.textContent = TIER_LABELS[tier] || tier.charAt(0).toUpperCase() + tier.slice(1);
+    badge.className = 'tier-badge' + (tier === 'api_pro' ? ' premium' : '');
 
     // API tiers are separate from app tiers
     const limits = { free: { label: '500K tokens/month · 60 req/min', max: 500_000 }, api_pro: { label: '50M tokens/month · 600 req/min', max: 50_000_000 } };

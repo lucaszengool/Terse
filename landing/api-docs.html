@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terse API Docs — Token Optimization for Vibe Coding Projects</title>
+  <meta name="description" content="Integrate Terse token optimization into your vibe coding project. Full API reference for /optimize, /scan, and the Vibe Projects platform.">
+  <link rel="icon" href="/favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg0:#0e0e10;--bg1:#131316;--bg2:#1a1a1f;--bg3:#222228;
+      --bd:#2e2e38;--t1:#f0f0f2;--t2:#a0a0b0;--t3:#606070;
+      --ac:#6ee7b7;--acd:rgba(110,231,183,.1);--acm:rgba(110,231,183,.25);
+      --gradient:linear-gradient(135deg,#6ee7b7,#3b82f6);
+      --mono:'JetBrains Mono',monospace;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',sans-serif;line-height:1.6}
+    a{color:var(--ac);text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    /* Nav */
+    nav{position:sticky;top:0;z-index:100;background:rgba(14,14,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);padding:14px 32px;display:flex;align-items:center;gap:24px}
+    .nav-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;color:var(--t1);text-decoration:none}
+    .logo-icon{width:28px;height:28px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#000}
+    .nav-badge{font-size:10px;font-weight:700;padding:2px 8px;background:var(--acd);border:1px solid var(--acm);color:var(--ac);border-radius:20px;letter-spacing:.5px}
+
+    /* Layout */
+    .docs-layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 57px)}
+    .sidebar{position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;border-right:1px solid var(--bd);padding:24px 0}
+    .sidebar-section{padding:0 16px;margin-bottom:20px}
+    .sidebar-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3);margin-bottom:10px;padding:0 8px}
+    .sidebar-link{display:block;padding:6px 8px;border-radius:7px;font-size:13px;color:var(--t2);transition:all .15s}
+    .sidebar-link:hover{background:var(--bg2);color:var(--t1);text-decoration:none}
+    .sidebar-link.active{background:var(--acd);color:var(--ac)}
+    .sidebar-method{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;margin-right:5px}
+    .method-post{background:rgba(96,165,250,.15);color:#60a5fa}
+    .method-get{background:rgba(110,231,183,.15);color:var(--ac)}
+    .method-delete{background:rgba(248,113,113,.15);color:#f87171}
+
+    /* Main */
+    .docs-main{padding:48px 56px;max-width:860px}
+    h1{font-size:36px;font-weight:900;letter-spacing:-1.5px;margin-bottom:10px}
+    h2{font-size:22px;font-weight:800;letter-spacing:-.8px;margin:52px 0 16px;padding-top:52px;border-top:1px solid var(--bd)}
+    h2:first-of-type{border-top:none;padding-top:0;margin-top:28px}
+    h3{font-size:16px;font-weight:700;margin:28px 0 10px;color:var(--t1)}
+    p{color:var(--t2);font-size:14px;line-height:1.75;margin-bottom:14px}
+    p:last-child{margin-bottom:0}
+    ul,ol{color:var(--t2);font-size:14px;line-height:1.75;padding-left:20px;margin-bottom:14px}
+    li{margin-bottom:6px}
+    strong{color:var(--t1);font-weight:600}
+
+    /* Code */
+    pre{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 22px;overflow-x:auto;margin:14px 0;font-family:var(--mono);font-size:13px;line-height:1.7}
+    code{font-family:var(--mono);font-size:12px;background:var(--bg3);padding:2px 6px;border-radius:5px;color:var(--ac)}
+    pre code{background:none;padding:0;color:var(--t2)}
+
+    /* Endpoint blocks */
+    .endpoint{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:22px 24px;margin:20px 0}
+    .endpoint-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+    .endpoint-method{font-family:var(--mono);font-size:12px;font-weight:700;padding:4px 10px;border-radius:7px}
+    .endpoint-path{font-family:var(--mono);font-size:15px;color:var(--t1);font-weight:600}
+    .endpoint-desc{font-size:13px;color:var(--t2);margin-bottom:16px}
+    .param-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+    .param-table th{text-align:left;padding:8px 10px;background:var(--bg3);color:var(--t3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--bd)}
+    .param-table td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--t2);vertical-align:top}
+    .param-table tr:last-child td{border-bottom:none}
+    .param-req{color:#f87171;font-size:10px;font-weight:700}
+    .param-opt{color:var(--t3);font-size:10px}
+    .param-type{font-family:var(--mono);font-size:11px;color:#60a5fa}
+
+    /* Tabs */
+    .code-tabs{border-radius:12px;overflow:hidden;border:1px solid var(--bd);margin:14px 0}
+    .code-tabs-header{display:flex;background:var(--bg3);border-bottom:1px solid var(--bd)}
+    .code-tab-btn{padding:9px 16px;font-size:12px;font-weight:700;font-family:var(--mono);background:transparent;color:var(--t3);border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s}
+    .code-tab-btn.active{background:var(--acd);color:var(--ac);border-bottom-color:var(--ac)}
+    .code-tab-pane{display:none;padding:20px 22px;font-family:var(--mono);font-size:13px;line-height:1.7;overflow-x:auto}
+    .code-tab-pane.active{display:block}
+
+    /* Alert box */
+    .alert{background:rgba(110,231,183,.06);border:1px solid var(--acm);border-radius:10px;padding:14px 18px;font-size:13px;color:var(--t2);margin:16px 0}
+    .alert strong{color:var(--ac)}
+
+    /* Tags */
+    .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;background:var(--acd);color:var(--ac)}
+
+    /* Key example */
+    .key-pill{font-family:var(--mono);font-size:13px;background:var(--bg3);border:1px solid var(--bd);padding:8px 14px;border-radius:8px;display:inline-block;color:var(--t1)}
+
+    @media(max-width:800px){
+      .docs-layout{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .docs-main{padding:32px 20px}
+      h1{font-size:28px}
+      h2{font-size:19px}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <span class="nav-badge">Developer API</span>
+  <div style="margin-left:auto;display:flex;gap:16px;align-items:center">
+    <a href="/" style="font-size:13px;color:var(--t2)">← Back to terseai.org</a>
+  </div>
+</nav>
+
+<div class="docs-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting started</div>
+      <a href="#overview" class="sidebar-link active">Overview</a>
+      <a href="#quickstart" class="sidebar-link">Quickstart</a>
+      <a href="#authentication" class="sidebar-link">Authentication</a>
+      <a href="#modes" class="sidebar-link">Optimization modes</a>
+      <a href="#rate-limits" class="sidebar-link">Rate limits</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Endpoints</div>
+      <a href="#optimize" class="sidebar-link"><span class="sidebar-method method-post">POST</span>/optimize</a>
+      <a href="#scan" class="sidebar-link"><span class="sidebar-method method-post">POST</span>/scan</a>
+      <a href="#keys-create" class="sidebar-link"><span class="sidebar-method method-post">POST</span>/keys</a>
+      <a href="#keys-list" class="sidebar-link"><span class="sidebar-method method-get">GET</span>/keys</a>
+      <a href="#keys-delete" class="sidebar-link"><span class="sidebar-method method-delete">DELETE</span>/keys/:id</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label" id="projects">Vibe Projects Platform</div>
+      <a href="#projects-list" class="sidebar-link"><span class="sidebar-method method-get">GET</span>/projects</a>
+      <a href="#projects-submit" class="sidebar-link"><span class="sidebar-method method-post">POST</span>/projects</a>
+      <a href="#projects-upvote" class="sidebar-link"><span class="sidebar-method method-post">POST</span>/projects/:id/upvote</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Guides</div>
+      <a href="#guide-wrapper" class="sidebar-link">Wrapper pattern</a>
+      <a href="#guide-scan" class="sidebar-link">Project scanning</a>
+      <a href="#guide-platform" class="sidebar-link">Publishing your project</a>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="docs-main">
+
+    <div class="tag" style="margin-bottom:14px">v1</div>
+    <h1>Terse API</h1>
+    <p style="font-size:16px;color:var(--t2)">Token optimization for vibe coding projects. Reduce LLM API costs by 30–60% with one call — the same engine powering the Terse Mac app.</p>
+
+    <h2 id="overview">Overview</h2>
+    <p>The Terse API lets you integrate the same token optimization engine from the Terse Mac Tauri app directly into your own project. It exposes three core capabilities:</p>
+    <ul>
+      <li><strong>Optimize</strong> — send a prompt string, get back a compressed version with token counts</li>
+      <li><strong>Scan</strong> — pass source code to detect every LLM API call site and get recommendations</li>
+      <li><strong>Projects platform</strong> — publish your project to the Terse showcase for community discovery</li>
+    </ul>
+    <p>The optimizer uses the same three-mode pipeline as the Mac app: <code>soft</code> (typo fix + phrase shortening), <code>normal</code> (+ filler/hedging removal, question→imperative), and <code>aggressive</code> (+ abbreviations, markdown strip, telegraph compression).</p>
+
+    <div class="alert">
+      <strong>Base URL:</strong> <code>https://www.terseai.org/api/v1</code>
+    </div>
+
+    <h2 id="quickstart">Quickstart</h2>
+    <p>Get your API key, then optimize your first prompt in under 60 seconds:</p>
+
+    <div class="code-tabs">
+      <div class="code-tabs-header">
+        <button class="code-tab-btn active" onclick="tabSwitch(this,'qs-node')">Node.js</button>
+        <button class="code-tab-btn" onclick="tabSwitch(this,'qs-python')">Python</button>
+        <button class="code-tab-btn" onclick="tabSwitch(this,'qs-curl')">cURL</button>
+      </div>
+      <div class="code-tab-pane active" id="qs-node">
+<span style="color:var(--t3)">// No package install — just fetch</span>
+<span style="color:#60a5fa">const</span> res = <span style="color:#60a5fa">await</span> fetch(<span style="color:#a3e635">'https://www.terseai.org/api/v1/optimize'</span>, {
+  method: <span style="color:#a3e635">'POST'</span>,
+  headers: {
+    <span style="color:#a3e635">'Authorization'</span>: <span style="color:#a3e635">`Bearer ${process.env.TERSE_API_KEY}`</span>,
+    <span style="color:#a3e635">'Content-Type'</span>: <span style="color:#a3e635">'application/json'</span>,
+  },
+  body: JSON.stringify({ text: myPrompt, mode: <span style="color:#a3e635">'normal'</span> }),
+});
+<span style="color:#60a5fa">const</span> { optimized, tokens_saved } = <span style="color:#60a5fa">await</span> res.json();
+<span style="color:var(--t3)">// Pass `optimized` to your Anthropic/OpenAI/Gemini call</span>
+      </div>
+      <div class="code-tab-pane" id="qs-python">
+<span style="color:var(--t3"># pip install requests</span>
+<span style="color:#60a5fa">import</span> requests, os
+
+res = requests.post(
+    <span style="color:#a3e635">"https://www.terseai.org/api/v1/optimize"</span>,
+    headers={<span style="color:#a3e635">"Authorization"</span>: <span style="color:#a3e635">f"Bearer {os.environ['TERSE_API_KEY']}"</span>},
+    json={<span style="color:#a3e635">"text"</span>: my_prompt, <span style="color:#a3e635">"mode"</span>: <span style="color:#a3e635">"normal"</span>},
+)
+data = res.json()
+optimized = data[<span style="color:#a3e635">"optimized"</span>]
+      </div>
+      <div class="code-tab-pane" id="qs-curl">
+curl -X POST https://www.terseai.org/api/v1/optimize \
+  -H <span style="color:#a3e635">"Authorization: Bearer $TERSE_API_KEY"</span> \
+  -H <span style="color:#a3e635">"Content-Type: application/json"</span> \
+  -d <span style="color:#a3e635">'{
+    "text": "Can you please help me understand how the authentication middleware works in this Express application?",
+    "mode": "normal"
+  }'</span>
+      </div>
+    </div>
+
+    <h2 id="authentication">Authentication</h2>
+    <p>All API endpoints require an API key passed as a Bearer token in the <code>Authorization</code> header:</p>
+    <pre><code>Authorization: Bearer tsk_your_key_here</code></pre>
+    <p>Alternatively, pass the key in the <code>X-Api-Key</code> header:</p>
+    <pre><code>X-Api-Key: tsk_your_key_here</code></pre>
+    <p>Keys follow the format <span class="key-pill">tsk_&lt;28-char random&gt;</span>. They are hashed before storage — if you lose a key, revoke it and create a new one.</p>
+
+    <h3>Getting a key</h3>
+    <p>Sign in at <a href="/">terseai.org</a>, then call <code>POST /api/v1/keys</code> with your Clerk session token, or use the dashboard on the landing page. Keys are scoped to your account and track usage stats.</p>
+
+    <h2 id="modes">Optimization modes</h2>
+    <p>Every optimize call accepts a <code>mode</code> parameter:</p>
+    <table class="param-table" style="margin-top:14px">
+      <tr><th>Mode</th><th>What it does</th><th>Typical reduction</th></tr>
+      <tr>
+        <td><code>soft</code></td>
+        <td>Typo correction, whitespace compression, safe phrase shortening ("in order to" → "to"), contraction, greeting/thanks removal. Meaning 100% preserved.</td>
+        <td>10–25%</td>
+      </tr>
+      <tr>
+        <td><code>normal</code></td>
+        <td>Everything in soft, plus: politeness removal, hedging removal ("I think", "maybe"), question→imperative ("Can you explain..." → "Explain..."), meta-language removal, redundant modifier collapse, sentence deduplication, numeralize.</td>
+        <td>30–50%</td>
+      </tr>
+      <tr>
+        <td><code>aggressive</code></td>
+        <td>Everything in normal, plus: abbreviations (w/, bc, fn, db...), markdown header/bold strip, article removal in instruction contexts, telegraph compression, low-info sentence dropping.</td>
+        <td>50–70%</td>
+      </tr>
+    </table>
+
+    <h2 id="rate-limits">Plans &amp; limits</h2>
+    <p>Every account starts on the <strong>Free</strong> plan — no credit card required. The API plan is separate from the Terse macOS app subscription. Two limits are enforced on every request:</p>
+    <table class="param-table" style="margin-top:14px">
+      <tr><th>Plan</th><th>Rate limit</th><th>Monthly tokens</th><th>Price</th></tr>
+      <tr><td><strong>Free</strong></td><td>60 requests / min</td><td>500,000 tokens</td><td>$0 — no card needed</td></tr>
+      <tr><td><strong>Pro</strong></td><td>600 requests / min</td><td>50,000,000 tokens</td><td>$29 / mo, no trial</td></tr>
+    </table>
+    <p style="margin-top:14px">The monthly token counter resets automatically at the start of each calendar month (UTC). Upgrade any time at <a href="/#api-pricing">terseai.org/#api-pricing</a> or from your <a href="/dashboard">dashboard</a>.</p>
+
+    <h3>When a limit is hit</h3>
+    <p>Both limits return HTTP <code>429</code> with a JSON body explaining which limit was exceeded:</p>
+    <pre><code>// Rate limit (too many requests this minute)
+{ "error": "Rate limit exceeded (60 req/min on free plan).",
+  "upgrade": "https://terseai.org/#api-pricing" }
+
+// Monthly token quota exceeded
+{ "error": "Monthly token quota exceeded (500,000 tokens on free plan).",
+  "tokens_used": 500000, "tokens_limit": 500000,
+  "upgrade": "https://terseai.org/#api-pricing" }</code></pre>
+    <p>On a 429, back off and retry after the minute window, or upgrade for higher limits. Token usage counts the <strong>original</strong> (input) token count of each request, and is visible any time on your <a href="/dashboard">dashboard</a>.</p>
+
+    <!-- ═══ ENDPOINTS ═══ -->
+
+    <h2 id="optimize">POST /optimize</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="endpoint-method method-post">POST</span>
+        <span class="endpoint-path">/api/v1/optimize</span>
+      </div>
+      <p class="endpoint-desc">Optimize a prompt or text string. Returns the compressed version plus token stats. This is the core endpoint — call it before every LLM API call to reduce costs.</p>
+
+      <h3>Request body</h3>
+      <table class="param-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>text</td><td class="param-type">string</td><td><span class="param-req">required</span></td><td>The prompt or text to optimize. Max 50,000 characters.</td></tr>
+        <tr><td>mode</td><td class="param-type">string</td><td><span class="param-opt">optional</span></td><td>One of <code>soft</code>, <code>normal</code>, <code>aggressive</code>. Default: <code>normal</code>.</td></tr>
+      </table>
+
+      <h3>Response</h3>
+      <pre><code>{
+  "original": "Can you please help me understand how the auth middleware works?",
+  "optimized": "Explain the auth middleware.",
+  "tokens_original": 16,
+  "tokens_optimized": 6,
+  "tokens_saved": 10,
+  "reduction_pct": 62,
+  "techniques": ["phrase_optimization", "filler_removal"],
+  "mode": "normal"
+}</code></pre>
+
+      <h3>Example</h3>
+      <div class="code-tabs">
+        <div class="code-tabs-header">
+          <button class="code-tab-btn active" onclick="tabSwitch(this,'opt-node')">Node.js</button>
+          <button class="code-tab-btn" onclick="tabSwitch(this,'opt-python')">Python</button>
+        </div>
+        <div class="code-tab-pane active" id="opt-node">
+<span style="color:var(--t3)">// Wrap your LLM call with Terse optimization</span>
+<span style="color:#60a5fa">async function</span> optimizeAndSend(userMessage) {
+  <span style="color:var(--t3)">// 1. Optimize the prompt</span>
+  <span style="color:#60a5fa">const</span> terseRes = <span style="color:#60a5fa">await</span> fetch(<span style="color:#a3e635">'https://www.terseai.org/api/v1/optimize'</span>, {
+    method: <span style="color:#a3e635">'POST'</span>,
+    headers: {
+      <span style="color:#a3e635">'Authorization'</span>: <span style="color:#a3e635">`Bearer ${process.env.TERSE_API_KEY}`</span>,
+      <span style="color:#a3e635">'Content-Type'</span>: <span style="color:#a3e635">'application/json'</span>,
+    },
+    body: JSON.stringify({ text: userMessage, mode: <span style="color:#a3e635">'normal'</span> }),
+  });
+  <span style="color:#60a5fa">const</span> { optimized, tokens_saved } = <span style="color:#60a5fa">await</span> terseRes.json();
+  console.log(<span style="color:#a3e635">`Saved ${tokens_saved} tokens`</span>);
+
+  <span style="color:var(--t3)">// 2. Send the optimized prompt to your LLM</span>
+  <span style="color:#60a5fa">const</span> response = <span style="color:#60a5fa">await</span> anthropic.messages.create({
+    model: <span style="color:#a3e635">'claude-opus-4-20250514'</span>,
+    max_tokens: <span style="color:#f59e0b">1024</span>,
+    messages: [{ role: <span style="color:#a3e635">'user'</span>, content: optimized }],
+  });
+  <span style="color:#60a5fa">return</span> response;
+}
+        </div>
+        <div class="code-tab-pane" id="opt-python">
+<span style="color:var(--t3"># Wrapper function for any LLM call</span>
+<span style="color:#60a5fa">import</span> requests, anthropic
+
+terse = requests.Session()
+terse.headers.update({<span style="color:#a3e635">"Authorization"</span>: <span style="color:#a3e635">f"Bearer {TERSE_API_KEY}"</span>})
+
+<span style="color:#60a5fa">def</span> optimize_and_send(user_message: str):
+    <span style="color:var(--t3)"># 1. Optimize</span>
+    r = terse.post(
+        <span style="color:#a3e635">"https://www.terseai.org/api/v1/optimize"</span>,
+        json={<span style="color:#a3e635">"text"</span>: user_message, <span style="color:#a3e635">"mode"</span>: <span style="color:#a3e635">"normal"</span>},
+    )
+    optimized = r.json()[<span style="color:#a3e635">"optimized"</span>]
+
+    <span style="color:var(--t3)"># 2. Call LLM with the optimized prompt</span>
+    client = anthropic.Anthropic()
+    return client.messages.create(
+        model=<span style="color:#a3e635">"claude-opus-4-20250514"</span>,
+        max_tokens=<span style="color:#f59e0b">1024</span>,
+        messages=[{<span style="color:#a3e635">"role"</span>: <span style="color:#a3e635">"user"</span>, <span style="color:#a3e635">"content"</span>: optimized}],
+    )
+        </div>
+      </div>
+    </div>
+
+    <h2 id="scan">POST /scan</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="endpoint-method method-post">POST</span>
+        <span class="endpoint-path">/api/v1/scan</span>
+      </div>
+      <p class="endpoint-desc">Scan source code to detect LLM API call sites. Returns a list of findings with line numbers, types, and specific recommendations for each call site. Use this during development to audit where tokens are being spent.</p>
+
+      <h3>Request body</h3>
+      <table class="param-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>code</td><td class="param-type">string</td><td><span class="param-req">required</span></td><td>Source code to scan. Max 500,000 characters.</td></tr>
+        <tr><td>language</td><td class="param-type">string</td><td><span class="param-opt">optional</span></td><td>One of <code>javascript</code>, <code>typescript</code>, <code>python</code>. Default: <code>javascript</code>.</td></tr>
+      </table>
+
+      <h3>Detected call site types</h3>
+      <ul>
+        <li><code>anthropic_messages</code> — <code>client.messages.create()</code> calls</li>
+        <li><code>openai_chat</code> — <code>client.chat.completions.create()</code> calls</li>
+        <li><code>google_gemini</code> — Gemini API calls</li>
+        <li><code>anthropic_http</code> / <code>openai_http</code> — raw HTTP fetch to API endpoints</li>
+        <li><code>system_prompt</code> / <code>user_prompt</code> — prompt variable assignments</li>
+        <li><code>messages_array</code> — <code>"messages":</code> array construction sites</li>
+      </ul>
+
+      <h3>Response</h3>
+      <pre><code>{
+  "findings": [
+    {
+      "line": 12,
+      "type": "anthropic_messages",
+      "preview": "const response = await client.messages.create({",
+      "estimated_tokens": 85,
+      "potential_savings_pct": 35,
+      "recommendation": "Wrap this call with Terse to auto-optimize the 'content' field before it reaches the API."
+    },
+    {
+      "line": 34,
+      "type": "system_prompt",
+      "preview": "const system_prompt = `You are a helpful assistant...",
+      "estimated_tokens": 140,
+      "potential_savings_pct": 45,
+      "recommendation": "System prompts are ideal candidates for aggressive mode (removes filler, compresses markdown)."
+    }
+  ],
+  "total_findings": 2,
+  "estimated_monthly_savings_tokens": 78540,
+  "recommendation": "Found 2 optimization opportunities. Wrapping these calls with Terse could save ~78540 tokens/month."
+}</code></pre>
+
+      <h3>Example — scan a whole file</h3>
+      <pre><code>const fs = require('fs');
+const code = fs.readFileSync('./src/agent.js', 'utf8');
+
+const res = await fetch('https://www.terseai.org/api/v1/scan', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.TERSE_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ code, language: 'javascript' }),
+});
+
+const result = await res.json();
+console.log(`Found ${result.total_findings} LLM calls`);
+result.findings.forEach(f => {
+  console.log(`  Line ${f.line} [${f.type}]: ${f.recommendation}`);
+});</code></pre>
+    </div>
+
+    <h2 id="keys-create">POST /keys</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="endpoint-method method-post">POST</span>
+        <span class="endpoint-path">/api/v1/keys</span>
+      </div>
+      <p class="endpoint-desc">Create a new developer API key. Requires a valid Clerk session token (sign in at terseai.org first). The full key is only returned once — store it securely.</p>
+
+      <h3>Headers</h3>
+      <p>Pass your Clerk session JWT as <code>Authorization: Bearer &lt;clerk_token&gt;</code> (not a tsk_ key — this endpoint uses your account login token).</p>
+
+      <h3>Request body</h3>
+      <table class="param-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>label</td><td class="param-type">string</td><td><span class="param-opt">optional</span></td><td>Human-readable label for this key. Max 60 chars. Default: "Default".</td></tr>
+      </table>
+
+      <h3>Response</h3>
+      <pre><code>{
+  "key": "tsk_AbCdEfGhIjKlMnOpQrStUvWxYz12345",
+  "prefix": "tsk_AbCdEfGh...",
+  "label": "My vibe project",
+  "id": "uuid-here",
+  "created_at": "2026-05-15T12:00:00.000Z"
+}</code></pre>
+    </div>
+
+    <h2 id="keys-list">GET /keys</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="endpoint-method method-get">GET</span>
+        <span class="endpoint-path">/api/v1/keys</span>
+      </div>
+      <p class="endpoint-desc">List all API keys for your account. Returns metadata only — full key values are never returned after creation.</p>
+      <h3>Response</h3>
+      <pre><code>{
+  "keys": [
+    {
+      "id": "uuid",
+      "key_prefix": "tsk_AbCdEfGh...",
+      "label": "My vibe project",
+      "is_active": 1,
+      "requests_total": 1247,
+      "tokens_optimized": 892430,
+      "last_used_at": "2026-05-15T11:22:00",
+      "created_at": "2026-05-01T09:00:00"
+    }
+  ]
+}</code></pre>
+    </div>
+
+    <h2 id="keys-delete">DELETE /keys/:id</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="endpoint-method method-delete">DELETE</span>
+        <span class="endpoint-path">/api/v1/keys/:id</span>
+      </div>
+      <p class="endpoint-desc">Revoke an API key. Requests made with the revoked key will immediately return 401. Use the key ID from GET /keys.</p>
+      <h3>Response</h3>
+      <pre><code>{ "ok": true }</code></pre>
+    </div>
+
+    <h2 id="projects-list">GET /projects</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="endpoint-method method-get">GET</span>
+        <span class="endpoint-path">/api/v1/projects</span>
+      </div>
+      <p class="endpoint-desc">List published vibe coding projects from the platform. No auth required. Featured projects appear first, then sorted by upvotes.</p>
+
+      <h3>Query parameters</h3>
+      <table class="param-table">
+        <tr><th>Param</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>limit</td><td class="param-type">number</td><td><span class="param-opt">optional</span></td><td>Max results (1–100). Default: 50.</td></tr>
+      </table>
+
+      <h3>Response</h3>
+      <pre><code>{
+  "projects": [
+    {
+      "id": "uuid",
+      "name": "ClaudeFlow",
+      "description": "Multi-agent workflow builder...",
+      "github_url": "https://github.com/...",
+      "website_url": "https://claudeflow.dev",
+      "tags": ["Node.js", "Agents"],
+      "tokens_saved_monthly": 38000,
+      "cost_saved_monthly_cents": 570,
+      "upvotes": 247,
+      "is_featured": true,
+      "submitted_at": "2026-05-10T08:00:00"
+    }
+  ]
+}</code></pre>
+    </div>
+
+    <h2 id="projects-submit">POST /projects</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="endpoint-method method-post">POST</span>
+        <span class="endpoint-path">/api/v1/projects</span>
+      </div>
+      <p class="endpoint-desc">Submit your vibe coding project to the showcase. Accepts either a Clerk session token or a developer API key (<code>tsk_...</code>). Projects are reviewed before being featured.</p>
+
+      <h3>Request body</h3>
+      <table class="param-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>name</td><td class="param-type">string</td><td><span class="param-req">required</span></td><td>Project name. Max 100 chars.</td></tr>
+        <tr><td>description</td><td class="param-type">string</td><td><span class="param-req">required</span></td><td>What it does and how Terse helps. Max 500 chars.</td></tr>
+        <tr><td>github_url</td><td class="param-type">string</td><td><span class="param-opt">optional</span></td><td>GitHub repository URL.</td></tr>
+        <tr><td>website_url</td><td class="param-type">string</td><td><span class="param-opt">optional</span></td><td>Live project or landing page URL.</td></tr>
+        <tr><td>tags</td><td class="param-type">string[]</td><td><span class="param-opt">optional</span></td><td>Array of tags (max 5, each max 30 chars). e.g. <code>["Python", "Agents", "RAG"]</code>.</td></tr>
+        <tr><td>tokens_saved_monthly</td><td class="param-type">number</td><td><span class="param-opt">optional</span></td><td>Estimated tokens saved per month using Terse.</td></tr>
+        <tr><td>cost_saved_monthly_cents</td><td class="param-type">number</td><td><span class="param-opt">optional</span></td><td>Estimated cost saved per month in cents.</td></tr>
+      </table>
+
+      <h3>Response</h3>
+      <pre><code>{ "ok": true, "id": "uuid" }</code></pre>
+
+      <h3>Submit via API key (programmatic)</h3>
+      <pre><code>const res = await fetch('https://www.terseai.org/api/v1/projects', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.TERSE_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'My Vibe Project',
+    description: 'An AI coding tool that uses Terse to cut API costs by 40%.',
+    github_url: 'https://github.com/you/myproject',
+    tags: ['TypeScript', 'Agents'],
+    tokens_saved_monthly: 50000,
+  }),
+});</code></pre>
+    </div>
+
+    <h2 id="projects-upvote">POST /projects/:id/upvote</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="endpoint-method method-post">POST</span>
+        <span class="endpoint-path">/api/v1/projects/:id/upvote</span>
+      </div>
+      <p class="endpoint-desc">Upvote a project. No auth required. Pass the project ID from GET /projects.</p>
+      <h3>Response</h3>
+      <pre><code>{ "ok": true }</code></pre>
+    </div>
+
+    <!-- ═══ GUIDES ═══ -->
+
+    <h2 id="guide-wrapper">Guide: Wrapper pattern</h2>
+    <p>The simplest integration is a thin wrapper around your LLM client. Optimize every prompt before it's sent:</p>
+
+    <div class="code-tabs">
+      <div class="code-tabs-header">
+        <button class="code-tab-btn active" onclick="tabSwitch(this,'gw-node')">Node.js</button>
+        <button class="code-tab-btn" onclick="tabSwitch(this,'gw-python')">Python</button>
+      </div>
+      <div class="code-tab-pane active" id="gw-node">
+<span style="color:var(--t3)">// terse-wrapper.js — drop-in replacement for your LLM client</span>
+<span style="color:#60a5fa">const</span> Anthropic = require(<span style="color:#a3e635">'@anthropic-ai/sdk'</span>);
+
+<span style="color:#60a5fa">async function</span> terseOptimize(text, mode = <span style="color:#a3e635">'normal'</span>) {
+  <span style="color:#60a5fa">const</span> res = <span style="color:#60a5fa">await</span> fetch(<span style="color:#a3e635">'https://www.terseai.org/api/v1/optimize'</span>, {
+    method: <span style="color:#a3e635">'POST'</span>,
+    headers: {
+      Authorization: <span style="color:#a3e635">`Bearer ${process.env.TERSE_API_KEY}`</span>,
+      <span style="color:#a3e635">'Content-Type'</span>: <span style="color:#a3e635">'application/json'</span>,
+    },
+    body: JSON.stringify({ text, mode }),
+  });
+  <span style="color:#60a5fa">const</span> data = <span style="color:#60a5fa">await</span> res.json();
+  <span style="color:#60a5fa">return</span> data.optimized ?? text;
+}
+
+<span style="color:var(--t3)">// Wrap the Anthropic client</span>
+<span style="color:#60a5fa">const</span> base = <span style="color:#60a5fa">new</span> Anthropic();
+<span style="color:#60a5fa">const</span> anthropic = {
+  messages: {
+    create: <span style="color:#60a5fa">async</span> (params) => {
+      <span style="color:var(--t3)">// Optimize user messages in-place</span>
+      <span style="color:#60a5fa">const</span> optimized = await Promise.all(
+        params.messages.map(<span style="color:#60a5fa">async</span> m => ({
+          ...m,
+          content: m.role === <span style="color:#a3e635">'user'</span>
+            ? <span style="color:#60a5fa">await</span> terseOptimize(m.content)
+            : m.content,
+        }))
+      );
+      <span style="color:#60a5fa">return</span> base.messages.create({ ...params, messages: optimized });
+    },
+  },
+};
+
+module.exports = { anthropic };
+      </div>
+      <div class="code-tab-pane" id="gw-python">
+<span style="color:var(--t3)"># terse_wrapper.py — wraps any Anthropic/OpenAI call</span>
+<span style="color:#60a5fa">import</span> requests, anthropic, os
+
+_session = requests.Session()
+_session.headers[<span style="color:#a3e635">"Authorization"</span>] = <span style="color:#a3e635">f"Bearer {os.environ['TERSE_API_KEY']}"</span>
+
+<span style="color:#60a5fa">def</span> terse_optimize(text: str, mode: str = <span style="color:#a3e635">"normal"</span>) -> str:
+    r = _session.post(
+        <span style="color:#a3e635">"https://www.terseai.org/api/v1/optimize"</span>,
+        json={<span style="color:#a3e635">"text"</span>: text, <span style="color:#a3e635">"mode"</span>: mode},
+        timeout=<span style="color:#f59e0b">5</span>,
+    )
+    <span style="color:#60a5fa">return</span> r.json().get(<span style="color:#a3e635">"optimized"</span>, text)
+
+
+<span style="color:#60a5fa">def</span> create_message(messages: list, **kwargs):
+    <span style="color:var(--t3)"># Optimize every user message before sending</span>
+    optimized = [
+        {**m, <span style="color:#a3e635">"content"</span>: terse_optimize(m[<span style="color:#a3e635">"content"</span>]) <span style="color:#60a5fa">if</span> m[<span style="color:#a3e635">"role"</span>] == <span style="color:#a3e635">"user"</span> <span style="color:#60a5fa">else</span> m[<span style="color:#a3e635">"content"</span>]}
+        <span style="color:#60a5fa">for</span> m <span style="color:#60a5fa">in</span> messages
+    ]
+    client = anthropic.Anthropic()
+    <span style="color:#60a5fa">return</span> client.messages.create(messages=optimized, **kwargs)
+      </div>
+    </div>
+
+    <h2 id="guide-scan">Guide: Scan your project</h2>
+    <p>Use the scan endpoint as a pre-commit hook or CI step to audit every LLM call site in your codebase:</p>
+    <pre><code>// audit-llm-calls.js — run with: node audit-llm-calls.js
+const fs = require('fs');
+const path = require('path');
+const { globSync } = require('glob'); // or any file walker
+
+const API_KEY = process.env.TERSE_API_KEY;
+const files = globSync('./src/**/*.{js,ts}');
+
+let totalFindings = 0;
+
+for (const file of files) {
+  const code = fs.readFileSync(file, 'utf8');
+  const res = await fetch('https://www.terseai.org/api/v1/scan', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ code, language: path.extname(file).slice(1) }),
+  });
+  const result = await res.json();
+  if (result.total_findings > 0) {
+    console.log(`\n${file} — ${result.total_findings} LLM call(s):`);
+    result.findings.forEach(f => {
+      console.log(`  Line ${f.line} [${f.type}] ~${f.estimated_tokens} tokens`);
+      console.log(`    → ${f.recommendation}`);
+    });
+    totalFindings += result.total_findings;
+  }
+}
+
+console.log(`\nTotal: ${totalFindings} call sites across ${files.length} files.`);</code></pre>
+
+    <h2 id="guide-platform">Guide: Publishing to the platform</h2>
+    <p>Once your project uses the Terse API, submit it to the showcase to get traffic from the Terse developer community. Projects are visible on the <a href="/#vibe-platform">landing page</a> and searchable by other developers looking for vibe coding tools.</p>
+
+    <div class="alert">
+      <strong>What gets featured:</strong> Open-source projects, production apps, and dev tools that meaningfully integrate Terse optimization. Include your GitHub URL and estimated token savings for higher visibility.
+    </div>
+
+    <p>Submit via the API using your <code>tsk_...</code> key, or use the <a href="/#vibe-platform">Submit your project</a> button on the landing page:</p>
+    <pre><code>// Submitting programmatically
+const res = await fetch('https://www.terseai.org/api/v1/projects', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.TERSE_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'VibeFlow',
+    description: 'A CLI tool that orchestrates Claude Code agents for full-stack feature development. Integrates Terse API to compress prompts between agent turns, reducing session cost by ~42%.',
+    github_url: 'https://github.com/yourname/vibeflow',
+    website_url: 'https://vibeflow.dev',
+    tags: ['CLI', 'Agents', 'TypeScript'],
+    tokens_saved_monthly: 65000,
+  }),
+});</code></pre>
+
+    <div style="margin-top:60px;padding-top:32px;border-top:1px solid var(--bd)">
+      <p style="font-size:13px;color:var(--t3)">Questions? Open an issue on <a href="https://github.com/anthropics/claude-code/issues">GitHub</a> or reach out at <a href="mailto:hello@terseai.org">hello@terseai.org</a>.</p>
+    </div>
+
+  </main>
+</div>
+
+<script>
+function tabSwitch(btn, paneId) {
+  const container = btn.closest('.code-tabs');
+  container.querySelectorAll('.code-tab-btn').forEach(b => b.classList.remove('active'));
+  container.querySelectorAll('.code-tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(paneId).classList.add('active');
+}
+
+// Sidebar active on scroll
+const sections = document.querySelectorAll('[id]');
+const links = document.querySelectorAll('.sidebar-link');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const match = document.querySelector(`.sidebar-link[href="#${e.target.id}"]`);
+      if (match) match.classList.add('active');
+    }
+  });
+}, { threshold: 0.6 });
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

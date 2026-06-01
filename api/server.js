@@ -316,8 +316,13 @@ app.post('/api/checkout', async (req, res) => {
       const allEmailCustomers = await stripe.customers.list({ email: clerkUserEmail, limit: 10 });
       for (const c of allEmailCustomers.data) {
         const prevSubs = await stripe.subscriptions.list({ customer: c.id, limit: 10, status: 'all' });
+        // Only count it as "trial used" if a trial was actually granted, or the
+        // user currently has a live subscription. Canceled/past_due/unpaid subs
+        // that never received a trial (e.g. an unpaid WeChat/Alipay invoice) must
+        // NOT block the card free trial the user never actually used.
         const usedTrial = prevSubs.data.some(s =>
-          ['trialing', 'active', 'canceled', 'past_due', 'unpaid'].includes(s.status)
+          s.trial_end != null ||
+          ['trialing', 'active'].includes(s.status)
         );
         if (usedTrial) {
           console.log(`[checkout] trial already used for email ${clerkUserEmail} (customer ${c.id})`);

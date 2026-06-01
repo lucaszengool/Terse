@@ -76,6 +76,20 @@ async function checkPaywall() {
     const status = (lic.status || '').toLowerCase();
     const noActivePlan = !tier || tier === 'expired' || tier === 'free' || status === 'cancelled' || status === 'none';
     if (noActivePlan) {
+      // Onboarding order: pick a starter pet BEFORE the paywall. The pet picker
+      // and this gate share z-index:9998, and the gate is later in the DOM, so it
+      // would otherwise paint on top of an unfinished pet selection. Defer until
+      // the starter pet is picked (the pet-pick handler re-calls checkPaywall()).
+      try {
+        if (T.getPetState) {
+          const pet = await T.getPetState();
+          if (pet && pet.data && !pet.data.starterPicked) {
+            gate.classList.add('hidden');
+            gate.style.display = 'none';
+            return;
+          }
+        }
+      } catch {}
       gate.classList.remove('hidden');
       gate.style.display = 'flex';
     } else {
@@ -827,6 +841,8 @@ function renderPetPickerGrid(state) {
         if (window.__TAURI__?.event?.emit) {
           window.__TAURI__.event.emit('pet-equipped', { petId: pal.id });
         }
+        // Starter pet picked — now the paywall may appear (it was deferred during onboarding).
+        checkPaywall();
       } catch (e) { console.warn('[pet-picker] pick failed:', e); }
     });
     grid.appendChild(card);

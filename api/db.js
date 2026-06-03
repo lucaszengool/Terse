@@ -220,6 +220,77 @@ db.exec(`
     submitted_at TEXT DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_vibe_projects_published ON vibe_projects(is_published, submitted_at);
+
+  -- ── Terse Cowork (collaborative multi-agent office) ──
+  -- One row per live coding-agent session, upserted as the agent works.
+  CREATE TABLE IF NOT EXISTS cowork_sessions (
+    id TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL REFERENCES cloud_teams(id) ON DELETE CASCADE,
+    user_email TEXT,
+    device TEXT,            -- mac, windows, api
+    agent_type TEXT,        -- claude-code, cursor, codex, aider, ...
+    agent_name TEXT,
+    project TEXT,
+    model TEXT,
+    status TEXT DEFAULT 'active',  -- active, idle, ended
+    task TEXT,              -- current one-line activity summary
+    context_window INTEGER DEFAULT 0,
+    context_used INTEGER DEFAULT 0,
+    tokens_in INTEGER DEFAULT 0,
+    tokens_out INTEGER DEFAULT 0,
+    tokens_saved INTEGER DEFAULT 0,
+    tool_calls INTEGER DEFAULT 0,
+    turns INTEGER DEFAULT 0,
+    seq INTEGER DEFAULT 0,  -- highest log seq seen for this session
+    started_at TEXT DEFAULT (datetime('now')),
+    last_seen_at TEXT DEFAULT (datetime('now')),
+    ended_at TEXT,
+    UNIQUE(team_id, user_email, device, agent_type, project)
+  );
+
+  -- Append-only working-log entries streamed from each session.
+  CREATE TABLE IF NOT EXISTS cowork_log (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES cowork_sessions(id) ON DELETE CASCADE,
+    team_id TEXT NOT NULL,
+    seq INTEGER NOT NULL,
+    role TEXT,              -- user, assistant, tool, system
+    kind TEXT,              -- message, tool_call, tool_result, notice
+    tool TEXT,
+    text TEXT,
+    tokens INTEGER DEFAULT 0,
+    occurred_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Team chat / @mention / handoff messages.
+  CREATE TABLE IF NOT EXISTS cowork_messages (
+    id TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL REFERENCES cloud_teams(id) ON DELETE CASCADE,
+    from_email TEXT,
+    to_email TEXT,          -- NULL = broadcast to whole team
+    session_id TEXT,        -- optional: attached to an agent session
+    kind TEXT DEFAULT 'chat', -- chat, mention, handoff, ask
+    body TEXT,
+    status TEXT DEFAULT 'open', -- open, ack, done
+    created_at TEXT DEFAULT (datetime('now')),
+    resolved_at TEXT
+  );
+
+  -- Member presence per team.
+  CREATE TABLE IF NOT EXISTS cowork_presence (
+    team_id TEXT NOT NULL,
+    user_email TEXT NOT NULL,
+    status TEXT DEFAULT 'online',  -- online, away, offline
+    device TEXT,
+    last_seen_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (team_id, user_email)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_cowork_sessions_team ON cowork_sessions(team_id, last_seen_at);
+  CREATE INDEX IF NOT EXISTS idx_cowork_log_session ON cowork_log(session_id, seq);
+  CREATE INDEX IF NOT EXISTS idx_cowork_log_team ON cowork_log(team_id, occurred_at);
+  CREATE INDEX IF NOT EXISTS idx_cowork_messages_team ON cowork_messages(team_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_cowork_messages_inbox ON cowork_messages(team_id, to_email, status);
 `);
 
 // ── API-specific columns (safe migration) ─────────────────────────────────
@@ -544,6 +615,94 @@ const getTeamByMode = db.prepare(`
   ORDER BY tokens_in DESC
 `);
 
+// ── Terse Cowork helpers ──
+// Upsert a live agent session keyed by (team, member, device, agent, project).
+const upsertCoworkSession = db.prepare(`
+  INSERT INTO cowork_sessions
+    (id, team_id, user_email, device, agent_type, agent_name, project, model, status, task,
+     context_window, context_used, tokens_in, tokens_out, tokens_saved, tool_calls, turns, seq, last_seen_at)
+  VALUES
+    (@id, @team_id, @user_email, @device, @agent_type, @agent_name, @project, @model, @status, @task,
+     @context_window, @context_used, @tokens_in, @tokens_out, @tokens_saved, @tool_calls, @turns, @seq, datetime('now'))
+  ON CONFLICT(team_id, user_email, device, agent_type, project) DO UPDATE SET
+    agent_name = @agent_name,
+    model = @model,
+    status = @status,
+    task = @task,
+    context_window = @context_window,
+    context_used = @context_used,
+    tokens_in = @tokens_in,
+    tokens_out = @tokens_out,
+    tokens_saved = @tokens_saved,
+    tool_calls = @tool_calls,
+    turns = @turns,
+    seq = MAX(seq, @seq),
+    last_seen_at = datetime('now'),
+    ended_at = CASE WHEN @status = 'ended' THEN datetime('now') ELSE NULL END
+`);
+const getCoworkSessionByKey = db.prepare(`
+  SELECT * FROM cowork_sessions
+  WHERE team_id = ? AND user_email = ? AND device = ? AND agent_type = ? AND project = ?
+`);
+const getCoworkSession = db.prepare('SELECT * FROM cowork_sessions WHERE id = ?');
+const getCoworkSessions = db.prepare(`
+  SELECT * FROM cowork_sessions
+  WHERE team_id = ? AND status != 'ended'
+  ORDER BY last_seen_at DESC
+`);
+const bumpCoworkSessionSeq = db.prepare('UPDATE cowork_sessions SET seq = ? WHERE id = ?');
+const endStaleCoworkSessions = db.prepare(`
+  UPDATE cowork_sessions SET status = 'ended', ended_at = datetime('now')
+  WHERE status != 'ended' AND last_seen_at < datetime('now', ?)
+`);
+const idleStaleCoworkSessions = db.prepare(`
+  UPDATE cowork_sessions SET status = 'idle'
+  WHERE status = 'active' AND last_seen_at < datetime('now', ?)
+`);
+
+const addCoworkLog = db.prepare(`
+  INSERT INTO cowork_log (id, session_id, team_id, seq, role, kind, tool, text, tokens)
+  VALUES (@id, @session_id, @team_id, @seq, @role, @kind, @tool, @text, @tokens)
+`);
+const getCoworkLog = db.prepare(`
+  SELECT * FROM cowork_log WHERE session_id = ? AND seq > ? ORDER BY seq ASC LIMIT 500
+`);
+const getCoworkFeed = db.prepare(`
+  SELECT l.*, s.user_email, s.agent_type, s.agent_name, s.project
+  FROM cowork_log l JOIN cowork_sessions s ON s.id = l.session_id
+  WHERE l.team_id = ? AND l.occurred_at > ?
+  ORDER BY l.occurred_at DESC LIMIT 200
+`);
+
+const addCoworkMessage = db.prepare(`
+  INSERT INTO cowork_messages (id, team_id, from_email, to_email, session_id, kind, body, status)
+  VALUES (@id, @team_id, @from_email, @to_email, @session_id, @kind, @body, @status)
+`);
+const getCoworkMessage = db.prepare('SELECT * FROM cowork_messages WHERE id = ?');
+const getCoworkMessages = db.prepare(`
+  SELECT * FROM cowork_messages WHERE team_id = ? AND created_at > ?
+  ORDER BY created_at DESC LIMIT 200
+`);
+const getCoworkInbox = db.prepare(`
+  SELECT * FROM cowork_messages
+  WHERE team_id = ? AND (to_email = ? OR to_email IS NULL) AND status != 'done'
+  ORDER BY created_at DESC LIMIT 100
+`);
+const resolveCoworkMessage = db.prepare(`
+  UPDATE cowork_messages SET status = ?, resolved_at = datetime('now')
+  WHERE id = ? AND team_id = ?
+`);
+
+const upsertCoworkPresence = db.prepare(`
+  INSERT INTO cowork_presence (team_id, user_email, status, device, last_seen_at)
+  VALUES (@team_id, @user_email, @status, @device, datetime('now'))
+  ON CONFLICT(team_id, user_email) DO UPDATE SET
+    status = @status, device = @device, last_seen_at = datetime('now')
+`);
+const getCoworkPresence = db.prepare(`
+  SELECT * FROM cowork_presence WHERE team_id = ? ORDER BY last_seen_at DESC
+`);
+
 // ── Pet purchase helpers ──
 const addPetPurchase = db.prepare(`
   INSERT OR IGNORE INTO pet_purchases (id, user_id, pet_id, stripe_session_id)
@@ -573,6 +732,12 @@ module.exports = {
   addCloudEvent, getTeamEvents, getTeamSummary,
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
   getTeamByModel, getTeamByMode,
+  // Terse Cowork
+  upsertCoworkSession, getCoworkSessionByKey, getCoworkSession, getCoworkSessions,
+  bumpCoworkSessionSeq, endStaleCoworkSessions, idleStaleCoworkSessions,
+  addCoworkLog, getCoworkLog, getCoworkFeed,
+  addCoworkMessage, getCoworkMessage, getCoworkMessages, getCoworkInbox, resolveCoworkMessage,
+  upsertCoworkPresence, getCoworkPresence,
   // Developer API
   addDevApiKey, getDevApiKeysByUser, findDevApiKeyByHash, findDevApiKeyWithUser,
   revokeDevApiKey, touchDevApiKey, incrementApiTokens, resetApiTokens,

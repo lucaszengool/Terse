@@ -659,6 +659,15 @@ const idleStaleCoworkSessions = db.prepare(`
   UPDATE cowork_sessions SET status = 'idle'
   WHERE status = 'active' AND last_seen_at < datetime('now', ?)
 `);
+// Rows about to be transitioned by a sweep — selected first so the change can be broadcast.
+const getStaleActiveSessions = db.prepare(`
+  SELECT * FROM cowork_sessions
+  WHERE status != 'ended' AND last_seen_at < datetime('now', ?)
+`);
+const getFreshlyIdleSessions = db.prepare(`
+  SELECT * FROM cowork_sessions
+  WHERE status = 'active' AND last_seen_at < datetime('now', ?)
+`);
 
 const addCoworkLog = db.prepare(`
   INSERT INTO cowork_log (id, session_id, team_id, seq, role, kind, tool, text, tokens)
@@ -702,6 +711,12 @@ const upsertCoworkPresence = db.prepare(`
 const getCoworkPresence = db.prepare(`
   SELECT * FROM cowork_presence WHERE team_id = ? ORDER BY last_seen_at DESC
 `);
+const getStalePresence = db.prepare(`
+  SELECT * FROM cowork_presence WHERE status = ? AND last_seen_at < datetime('now', ?)
+`);
+const setPresenceStatus = db.prepare(`
+  UPDATE cowork_presence SET status = ? WHERE team_id = ? AND user_email = ?
+`);
 
 // ── Pet purchase helpers ──
 const addPetPurchase = db.prepare(`
@@ -735,9 +750,10 @@ module.exports = {
   // Terse Cowork
   upsertCoworkSession, getCoworkSessionByKey, getCoworkSession, getCoworkSessions,
   bumpCoworkSessionSeq, endStaleCoworkSessions, idleStaleCoworkSessions,
+  getStaleActiveSessions, getFreshlyIdleSessions,
   addCoworkLog, getCoworkLog, getCoworkFeed,
   addCoworkMessage, getCoworkMessage, getCoworkMessages, getCoworkInbox, resolveCoworkMessage,
-  upsertCoworkPresence, getCoworkPresence,
+  upsertCoworkPresence, getCoworkPresence, getStalePresence, setPresenceStatus,
   // Developer API
   addDevApiKey, getDevApiKeysByUser, findDevApiKeyByHash, findDevApiKeyWithUser,
   revokeDevApiKey, touchDevApiKey, incrementApiTokens, resetApiTokens,

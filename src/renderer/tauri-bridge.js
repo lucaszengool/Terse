@@ -101,6 +101,13 @@ if (window.__TAURI__) {
     navigateToStats: () => invoke('navigate_to_stats'),
     navigateBack: () => invoke('navigate_back'),
 
+    // Cowork (team collaboration)
+    navigateToCowork: () => invoke('navigate_to_cowork'),
+    getCoworkConfig: () => invoke('get_cowork_config'),
+    setCoworkToken: (token) => invoke('set_cowork_token', { token }),
+    setCoworkShareLogs: (enabled) => invoke('set_cowork_share_logs', { enabled }),
+    clearCoworkToken: () => invoke('clear_cowork_token'),
+
     // Pets (Phase 1 — picker + foundation)
     getPetState: () => invoke('get_pet_state'),
     pickStarterPet: (petId) => invoke('pick_starter_pet', { petId }),

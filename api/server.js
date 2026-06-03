@@ -903,13 +903,8 @@ app.use('/api/cloud', cloudIngestLimiter, cloudRouter);
 app.use('/api/cloud/mcp', mcpRouter);
 app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
 
-// Sweep stale cowork sessions: idle after 90s of silence, ended after 5 min.
-setInterval(() => {
-  try {
-    db.idleStaleCoworkSessions.run('-90 seconds');
-    db.endStaleCoworkSessions.run('-5 minutes');
-  } catch (e) { console.error('[cowork] sweep error:', e.message); }
-}, 30 * 1000).unref();
+// Sweep stale cowork sessions + presence every 30s (broadcasts changes over SSE).
+setInterval(() => coworkRouter.sweepStale(), 30 * 1000).unref();
 
 // ── LLM Proxy (rate-limited) ──
 const proxyLimiter = rateLimit({

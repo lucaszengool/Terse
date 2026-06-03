@@ -1,7 +1,10 @@
+#![recursion_limit = "512"]
+
 mod capture;
 mod agent_monitor;
 mod stats_store;
 mod license;
+mod cowork;
 mod pet_store;
 mod farm_store;
 
@@ -95,6 +98,7 @@ pub struct AppState {
     pub farm_store: Mutex<farm_store::FarmStore>,
     pub license: Mutex<license::License>,
     pub auth: Mutex<license::AuthState>,
+    pub cowork: Mutex<cowork::CoworkState>,
     pub is_picking: Mutex<bool>,
     pub is_auto_replacing: Mutex<bool>,
     pub auto_replaced: Mutex<bool>,
@@ -122,6 +126,7 @@ impl Default for AppState {
             farm_store: Mutex::new(farm_store::FarmStore::new()),
             license: Mutex::new(license::License::load()),
             auth: Mutex::new(license::AuthState::load()),
+            cowork: Mutex::new(cowork::CoworkState::new()),
             is_picking: Mutex::new(false),
             is_auto_replacing: Mutex::new(false),
             auto_replaced: Mutex::new(false),
@@ -764,6 +769,51 @@ fn activate_session(session_id: Option<u32>, agent_type: Option<String>, state: 
 fn get_agent_analytics(agent_type: String, state: tauri::State<'_, AppState>) -> Option<serde_json::Value> {
     let monitor = lock_or_recover(&state.agent_monitor);
     monitor.get_session_snapshot(&agent_type)
+}
+
+// ── Terse Cowork (team collaboration) ──
+
+#[tauri::command]
+fn get_cowork_config(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let cw = lock_or_recover(&state.cowork);
+    let mut snap = cw.config.snapshot();
+    // Include the signed-in member's email so the Team window can identify itself,
+    // and the team token so it can open the SSE stream (this is the local machine's
+    // own webview — the token already lives in ~/.terse/cowork.json).
+    let email = lock_or_recover(&state.auth).email.clone();
+    snap["userEmail"] = serde_json::json!(email);
+    snap["teamToken"] = serde_json::json!(cw.config.team_token);
+    snap
+}
+
+/// Join a team by pasting its team token. Resolves the team via the cloud and persists it.
+#[tauri::command]
+fn set_cowork_token(token: String, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let token = token.trim().to_string();
+    if token.is_empty() { return Err("Empty token".into()); }
+    let snap = cowork::resolve_and_save_token(&token)?;
+    // Reload config into runtime state so publishing starts immediately.
+    let mut cw = lock_or_recover(&state.cowork);
+    cw.config = cowork::CoworkConfig::load();
+    Ok(snap)
+}
+
+#[tauri::command]
+fn set_cowork_share_logs(enabled: bool, state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let mut cw = lock_or_recover(&state.cowork);
+    cw.config.share_logs = enabled;
+    cw.config.save();
+    cw.config.snapshot()
+}
+
+#[tauri::command]
+fn clear_cowork_token(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let mut cw = lock_or_recover(&state.cowork);
+    cw.config.team_id = None;
+    cw.config.team_name = None;
+    cw.config.team_token = None;
+    cw.config.save();
+    cw.config.snapshot()
 }
 
 #[tauri::command]
@@ -1452,6 +1502,17 @@ fn navigate_back(app: AppHandle) {
     }
 }
 
+#[tauri::command]
+fn navigate_to_cowork(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Ok(url) = "tauri://localhost/cowork.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/cowork.html');");
+        }
+    }
+}
+
 // ── Farm Window control ──
 
 #[tauri::command]
@@ -1471,6 +1532,21 @@ fn hide_farm_window(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// ── Farm Window mini mode ──
+#[tauri::command]
+fn farm_set_mini(mini: bool, app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("farm") {
+        if mini {
+            w.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 110.0, height: 110.0 }))
+                .map_err(|e| e.to_string())?;
+        } else {
+            w.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 1366.0, height: 768.0 }))
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 // ── Farm Commands ──
 
 #[tauri::command]
@@ -1483,11 +1559,15 @@ fn get_farm_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
         let pet_spent = pet.data().coins_spent;
         earned.saturating_sub(pet_spent).saturating_sub(farm_spent)
     };
-    farm.get_state(coin_bal)
+    let saved_token_bal = {
+        let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+        stats.total_tokens_saved().saturating_sub(farm.data.saved_tokens_spent_farm)
+    };
+    farm.get_state(coin_bal, saved_token_bal)
 }
 
 #[tauri::command]
-fn farm_plant(tile_idx: usize, crop_id: String, state: tauri::State<'_, AppState>) -> Result<u64, String> {
+fn farm_plant(tile_idx: usize, crop_id: String, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
     let coin_bal = {
         let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
@@ -1498,7 +1578,7 @@ fn farm_plant(tile_idx: usize, crop_id: String, state: tauri::State<'_, AppState
 }
 
 #[tauri::command]
-fn farm_water(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<(), String> {
+fn farm_water(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
     farm.water(tile_idx)
 }
@@ -1520,31 +1600,34 @@ fn farm_harvest(tile_idx: usize, state: tauri::State<'_, AppState>, app: AppHand
         let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
         farm.harvest(tile_idx)?
     };
-    let coins = result["coins"].as_u64().unwrap_or(0);
-    // Credit the earned coins to the pet_store so they appear in the shared balance
-    {
-        let mut pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-        pet.add_coins(coins);
-    }
-    let _ = app.emit("farm-harvest", serde_json::json!({ "tileIdx": tile_idx, "coins": coins }));
+    let units = result["units"].as_u64().unwrap_or(0);
+    let xp = result["xpGained"].as_u64().unwrap_or(0);
+    let _ = app.emit("farm-harvest", serde_json::json!({ "tileIdx": tile_idx, "units": units, "xpGained": xp }));
     Ok(result)
 }
 
 #[tauri::command]
-fn farm_clear(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<(), String> {
+fn farm_clear(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
     farm.clear_tile(tile_idx)
 }
 
 #[tauri::command]
+fn farm_remove_pest(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.remove_pest(tile_idx)
+}
+
+#[tauri::command]
+fn farm_remove_weed(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.remove_weed(tile_idx)
+}
+
+#[tauri::command]
 fn farm_expand(state: tauri::State<'_, AppState>, app: AppHandle) -> Result<u64, String> {
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
-    let coin_bal = {
-        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
-        pet.data().coins_earned.saturating_sub(spent)
-    };
-    let cost = farm.expand_land(coin_bal)?;
+    let cost = farm.expand_land()?;
     let _ = app.emit("farm-updated", serde_json::json!({}));
     Ok(cost)
 }
@@ -1563,17 +1646,61 @@ fn farm_buy_decoration(dec_id: String, state: tauri::State<'_, AppState>) -> Res
 
 #[tauri::command]
 fn farm_sell_crops(crop_id: String, amount: u64, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<u64, String> {
-    let coins = {
+    let gained = {
         let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
         farm.sell_crops(&crop_id, amount)?
     };
-    // Credit the earned coins to the pet_store so they appear in the shared balance
-    {
-        let mut pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-        pet.add_coins(coins);
-    }
-    let _ = app.emit("farm-sell", serde_json::json!({ "cropId": crop_id, "amount": amount, "coins": coins }));
-    Ok(coins)
+    let _ = app.emit("farm-sell", serde_json::json!({ "cropId": crop_id, "amount": amount, "harvestCoins": gained }));
+    Ok(gained)
+}
+
+// ── Pool tile commands ──
+
+#[tauri::command]
+fn farm_pool_plant(pool_idx: usize, crop_id: String, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    let coin_bal = {
+        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
+        pet.data().coins_earned.saturating_sub(spent)
+    };
+    farm.pool_plant(pool_idx, &crop_id, coin_bal)
+}
+
+#[tauri::command]
+fn farm_pool_water(pool_idx: usize, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.pool_water(pool_idx)
+}
+
+#[tauri::command]
+fn farm_pool_harvest(pool_idx: usize, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.pool_harvest(pool_idx)
+}
+
+#[tauri::command]
+fn farm_pool_fertilize(pool_idx: usize, state: tauri::State<'_, AppState>) -> Result<u64, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    let coin_bal = {
+        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
+        pet.data().coins_earned.saturating_sub(spent)
+    };
+    farm.pool_fertilize(pool_idx, coin_bal)
+}
+
+#[tauri::command]
+fn farm_pool_clear(pool_idx: usize, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.pool_clear(pool_idx)
+}
+
+#[tauri::command]
+fn farm_add_fishing_coins(amount: u64, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    farm.add_fishing_coins(amount);
+    Ok(())
 }
 
 // ── Pet Window control ──
@@ -2212,8 +2339,8 @@ pub fn run() {
             let farm_y = 80.0_f64;
             let _farm_win = WebviewWindowBuilder::new(app, "farm", WebviewUrl::App("farm.html".into()))
                 .title("Terse Farm")
-                .inner_size(900.0, 640.0)
-                .min_inner_size(700.0, 500.0)
+                .inner_size(1366.0, 768.0)
+                .min_inner_size(1100.0, 618.0)
                 .position(farm_x, farm_y)
                 .title_bar_style(tauri::TitleBarStyle::Overlay)
                 .hidden_title(true)
@@ -2531,12 +2658,17 @@ pub fn run() {
             activate_session,
             get_agent_analytics,
             get_agent_plan_info,
+            get_cowork_config,
+            set_cowork_token,
+            set_cowork_share_logs,
+            clear_cowork_token,
             install_agent_hook,
             check_agent_hook,
             get_hook_stats,
             get_stats,
             navigate_to_stats,
             navigate_back,
+            navigate_to_cowork,
             record_optimization,
             // Pet commands (Phase 1)
             get_pet_state,
@@ -2557,12 +2689,21 @@ pub fn run() {
             farm_fertilize,
             farm_harvest,
             farm_clear,
+            farm_remove_pest,
+            farm_remove_weed,
             farm_expand,
             farm_buy_tile_skin,
             farm_buy_decoration,
             farm_sell_crops,
+            farm_pool_plant,
+            farm_pool_water,
+            farm_pool_harvest,
+            farm_pool_fertilize,
+            farm_pool_clear,
+            farm_add_fishing_coins,
             show_farm_window,
             hide_farm_window,
+            farm_set_mini,
             check_ax_permission,
             request_accessibility,
             pet_work_detected,

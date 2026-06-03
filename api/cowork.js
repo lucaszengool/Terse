@@ -285,4 +285,38 @@ router.post('/presence', requireTeamToken, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Stale sweep (called on an interval from server.js) ──
+// Transitions sessions active→idle (90s) and →ended (5m), and presence
+// online→away (2m) and →offline (10m), broadcasting each change over SSE so
+// live dashboards update without waiting for a reconnect.
+function sweepStale() {
+  try {
+    // Sessions: mark freshly-idle and broadcast.
+    for (const s of db.getFreshlyIdleSessions.all('-90 seconds')) {
+      bus.emit(s.team_id, { type: 'session', session: { ...s, status: 'idle' } });
+    }
+    db.idleStaleCoworkSessions.run('-90 seconds');
+
+    // Sessions: end the long-silent ones and broadcast removal.
+    const ending = db.getStaleActiveSessions.all('-5 minutes');
+    db.endStaleCoworkSessions.run('-5 minutes');
+    for (const s of ending) {
+      bus.emit(s.team_id, { type: 'session', session: { ...s, status: 'ended' } });
+    }
+
+    // Presence: online→away, away→offline.
+    for (const p of db.getStalePresence.all('online', '-2 minutes')) {
+      db.setPresenceStatus.run('away', p.team_id, p.user_email);
+      bus.emit(p.team_id, { type: 'presence', presence: { ...p, status: 'away' } });
+    }
+    for (const p of db.getStalePresence.all('away', '-10 minutes')) {
+      db.setPresenceStatus.run('offline', p.team_id, p.user_email);
+      bus.emit(p.team_id, { type: 'presence', presence: { ...p, status: 'offline' } });
+    }
+  } catch (e) {
+    console.error('[cowork] sweep error:', e.message);
+  }
+}
+
 module.exports = router;
+module.exports.sweepStale = sweepStale;

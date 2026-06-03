@@ -346,6 +346,8 @@ pub struct AgentSessionData {
     pub agent_icon: String,
     pub pid: u32,
     pub connected: bool,
+    /// Working directory basename of the agent's project (from the log's `cwd`), for cowork.
+    pub project: String,
     pub session_file: Option<PathBuf>,
     /// Multiple watched JSONL files (path → read offset) for multi-terminal monitoring
     pub watched_files: Vec<(PathBuf, u64)>,
@@ -395,6 +397,7 @@ impl AgentSessionData {
             agent_icon: icon.to_string(),
             pid,
             connected: false,
+            project: String::new(),
             session_file: None,
             watched_files: Vec::new(),
             total_input_tokens: 0,
@@ -492,6 +495,7 @@ impl AgentSessionData {
             "agentName": self.agent_name,
             "agentIcon": self.agent_icon,
             "connected": self.connected,
+            "project": self.project,
             "model": self.detected_model,
             "watchedFiles": self.watched_files.len(),
             "turns": self.turns,
@@ -654,6 +658,13 @@ impl AgentSessionData {
             .and_then(|t| t.as_str())
             .unwrap_or("")
             .to_string();
+
+        // Capture the project (working-directory basename) for cowork session grouping.
+        if let Some(cwd) = obj.get("cwd").and_then(|c| c.as_str()) {
+            if let Some(name) = cwd.trim_end_matches('/').rsplit('/').next() {
+                if !name.is_empty() { self.project = name.to_string(); }
+            }
+        }
 
         // Detect model
         if let Some(m) = msg.get("model").and_then(|m| m.as_str()) {
@@ -2408,10 +2419,19 @@ pub fn start_scanning(app: AppHandle) {
             }));
         }
 
+        // Member email (for cowork attribution), fetched cheaply each tick.
+        let member_email: Option<String> = {
+            let auth = state.auth.lock().unwrap_or_else(|e| e.into_inner());
+            auth.email.clone()
+        };
+
         for agent_type in &lost_types {
             let _ = app.emit("agent-lost", serde_json::json!({
                 "type": agent_type,
             }));
+            // Tell teammates this agent session ended.
+            let mut cw = state.cowork.lock().unwrap_or_else(|e| e.into_inner());
+            crate::cowork::publish_ended(&mut cw, agent_type, member_email.as_deref());
         }
 
         // Read new lines from connected sessions
@@ -2435,11 +2455,25 @@ pub fn start_scanning(app: AppHandle) {
             updates
         };
 
+        let had_updates = !updates.is_empty();
         for (agent_type, snapshot) in updates {
+            // Publish this agent's live state + new log entries to Terse cloud first
+            // (no-op unless a team token is configured and sharing is on), then emit
+            // locally — the emit moves `snapshot` into the event payload.
+            {
+                let mut cw = state.cowork.lock().unwrap_or_else(|e| e.into_inner());
+                crate::cowork::publish_snapshot(&mut cw, &snapshot, member_email.as_deref());
+            }
             let _ = app.emit("agent-update", serde_json::json!({
                 "agentType": agent_type,
                 "session": snapshot,
             }));
+        }
+
+        // Heartbeat presence whenever something is happening, so teammates see us online.
+        if had_updates {
+            let cw = state.cowork.lock().unwrap_or_else(|e| e.into_inner());
+            crate::cowork::publish_presence(&cw, member_email.as_deref());
         }
     }
 }

@@ -371,6 +371,7 @@ $('#btnSettings').addEventListener('click', () => {
 });
 $('#btnStats').addEventListener('click', () => T.navigateToStats());
 $('#btnFarm').addEventListener('click', () => T.showFarmWindow());
+$('#btnCowork')?.addEventListener('click', () => T.navigateToCowork());
 $('#btnCloseSettings').addEventListener('click', () => show(prevView));
 $$('.toggle-btn').forEach(b => b.addEventListener('click', () => {
   $$('.toggle-btn').forEach(x => x.classList.remove('active')); b.classList.add('active');

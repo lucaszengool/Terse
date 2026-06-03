@@ -11,6 +11,8 @@ const PORT = process.env.PORT || 3000;
 const { router: marketplaceRouter } = require('./marketplace');
 const proxyRouter = require('./proxy');
 const cloudRouter = require('./cloud');
+const coworkRouter = require('./cowork');
+const mcpRouter = require('./mcp');
 const terseApiRouter = require('./terse-api');
 const db = require('./db');
 
@@ -272,7 +274,7 @@ app.use(express.json());
 // CORS for Tauri app + marketplace
 app.use('/api', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -896,6 +898,19 @@ const cloudIngestLimiter = rateLimit({
 });
 app.use('/api/cloud', cloudIngestLimiter, cloudRouter);
 
+// ── Terse Cowork (collaborative multi-agent office) ──
+// MCP server mounted first so JSON-RPC isn't subject to the telemetry limiter.
+app.use('/api/cloud/mcp', mcpRouter);
+app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
+
+// Sweep stale cowork sessions: idle after 90s of silence, ended after 5 min.
+setInterval(() => {
+  try {
+    db.idleStaleCoworkSessions.run('-90 seconds');
+    db.endStaleCoworkSessions.run('-5 minutes');
+  } catch (e) { console.error('[cowork] sweep error:', e.message); }
+}, 30 * 1000).unref();
+
 // ── LLM Proxy (rate-limited) ──
 const proxyLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -940,6 +955,65 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
     }
     return res.status(400).json({ error: data });
   } catch {
+    return res.status(502).json({ error: 'upstream_error' });
+  }
+});
+
+// ── Support / QA (proxies user questions to Slack via Incoming Webhook) ──
+// Mirrors the newsletter proxy above: the webhook secret lives server-side in
+// SLACK_QA_WEBHOOK_URL and is never exposed to the browser.
+const supportLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 6, // 6 questions/min/IP — plenty for a human, blocks spam bots
+  message: { error: 'Too many requests. Please wait a minute and try again.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Frontend reads the public Slack invite link (if set) for the "Join our Slack" button.
+app.get('/api/support/config', (req, res) => {
+  res.json({ inviteUrl: process.env.SLACK_INVITE_URL || null });
+});
+
+app.post('/api/support', supportLimiter, async (req, res) => {
+  const { email, message, page } = req.body || {};
+  const text = (message || '').toString().trim();
+  if (!text) return res.status(400).json({ error: 'empty_message' });
+  if (text.length > 3000) return res.status(400).json({ error: 'message_too_long' });
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'invalid_email' });
+  }
+  const webhook = process.env.SLACK_QA_WEBHOOK_URL;
+  if (!webhook) return res.status(503).json({ error: 'support_unavailable' });
+
+  // Escape Slack mrkdwn control chars so user input can't inject formatting.
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const from = email ? esc(email) : 'anonymous (no email left)';
+  const src = page ? esc(page.toString().slice(0, 200)) : 'website';
+
+  try {
+    const r = await fetch(webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: `New question from ${from}`,
+        blocks: [
+          { type: 'header', text: { type: 'plain_text', text: '💬 New question from the website', emoji: true } },
+          { type: 'section', fields: [
+            { type: 'mrkdwn', text: `*From:*\n${from}` },
+            { type: 'mrkdwn', text: `*Page:*\n${src}` },
+          ] },
+          { type: 'section', text: { type: 'mrkdwn', text: esc(text) } },
+        ],
+      }),
+    });
+    if (!r.ok) {
+      console.error('[support] slack webhook error:', r.status, await r.text().catch(() => ''));
+      return res.status(502).json({ error: 'slack_error' });
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('[support] error:', e.message);
     return res.status(502).json({ error: 'upstream_error' });
   }
 });

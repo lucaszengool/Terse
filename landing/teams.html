@@ -188,6 +188,11 @@
 
     <div id="alerts-block" class="hidden" style="margin-bottom:18px"></div>
 
+    <div class="card" id="live-card">
+      <h2>Live agents <span id="live-dot" style="font-size:11px;font-weight:700;color:#34c759;margin-left:8px">● live</span></h2>
+      <div id="live-sessions"><p style="color:var(--t3);font-size:13px">Connecting…</p></div>
+    </div>
+
     <div class="stat-grid">
       <div class="stat"><div class="stat-label">Tokens saved</div><div class="stat-val acc mono" id="kpi-saved">—</div><div class="stat-sub" id="kpi-saved-sub">—</div></div>
       <div class="stat"><div class="stat-label">USD saved (est.)</div><div class="stat-val acc mono" id="kpi-dollars">—</div><div class="stat-sub">Blended $3/1M input tokens</div></div>
@@ -493,6 +498,7 @@ async function loadDashboard(){
   if(!r.ok){toast('Failed to load dashboard');return;}
   const data = await r.json();
   currentTeam = data.team;
+  startLiveStream();
 
   $('team-name-h').textContent = data.team.name;
   $('team-meta').textContent = [data.team.company, `team/${data.team.slug}`].filter(Boolean).join(' · ');
@@ -734,9 +740,71 @@ function renderDaily(daily){
   });
 }
 
+// ── Live agents (real-time SSE via fetch + Clerk auth) ──
+let liveAbort=null, liveStartedFor=null;
+const liveSessions=new Map(), livePresence=new Map();
+function liveEsc(s){return s==null?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function startLiveStream(){
+  if(liveStartedFor===teamId) return;          // already streaming this team
+  liveStartedFor=teamId;
+  if(liveAbort) liveAbort.abort();
+  liveAbort=new AbortController();
+  liveSessions.clear(); livePresence.clear(); renderLive();
+  try{
+    const headers=await authHeaders();
+    const r=await fetch(`${API}/api/cloud/teams/${teamId}/stream`,{headers,signal:liveAbort.signal});
+    if(!r.ok||!r.body){ $('live-dot').style.display='none'; return; }
+    const reader=r.body.getReader(); const dec=new TextDecoder(); let buf='';
+    while(true){
+      const {done,value}=await reader.read();
+      if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      let i;
+      while((i=buf.indexOf('\n\n'))>=0){
+        const frame=buf.slice(0,i); buf=buf.slice(i+2);
+        const line=frame.split('\n').find(l=>l.startsWith('data: '));
+        if(!line) continue;
+        let m; try{ m=JSON.parse(line.slice(6)); }catch{ continue; }
+        handleLive(m);
+      }
+    }
+  }catch(e){ /* aborted on team switch, or network drop */ }
+}
+function handleLive(m){
+  if(m.type==='snapshot'){
+    liveSessions.clear(); (m.sessions||[]).forEach(s=>liveSessions.set(s.id,s));
+    livePresence.clear(); (m.presence||[]).forEach(p=>livePresence.set(p.user_email,p));
+  } else if(m.type==='session'){
+    if(m.session.status==='ended') liveSessions.delete(m.session.id);
+    else liveSessions.set(m.session.id,m.session);
+  } else if(m.type==='presence'){
+    livePresence.set(m.presence.user_email,{...livePresence.get(m.presence.user_email),...m.presence});
+  } else return;
+  renderLive();
+}
+function renderLive(){
+  const el=$('live-sessions'); if(!el) return;
+  const list=[...liveSessions.values()].sort((a,b)=>(b.last_seen_at||'').localeCompare(a.last_seen_at||''));
+  if(!list.length){ el.innerHTML='<p style="color:var(--t3);font-size:13px">No active agent sessions right now. They appear here the moment a teammate\'s coding agent starts working.</p>'; return; }
+  el.innerHTML='<table><thead><tr><th>Developer</th><th>Agent</th><th>Project</th><th>Model</th><th>Doing</th><th>Ctx</th><th>Tokens in</th></tr></thead><tbody>'+
+    list.map(s=>{
+      const fill=s.context_window?Math.min(100,Math.round((s.context_used/s.context_window)*100)):0;
+      const dot=s.status==='active'?'#34c759':s.status==='idle'?'#ff9f0a':'#888';
+      return `<tr><td><span style="color:${dot}">●</span> ${liveEsc((s.user_email||'—').split('@')[0])}</td>`+
+        `<td>${liveEsc(s.agent_name||s.agent_type||'')}</td>`+
+        `<td>${liveEsc(s.project||'—')}</td>`+
+        `<td>${liveEsc(s.model||'—')}</td>`+
+        `<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${liveEsc(s.task||'')}</td>`+
+        `<td class="acc">${s.context_window?fill+'%':'—'}</td>`+
+        `<td class="acc">${(s.tokens_in||0).toLocaleString()}</td></tr>`;
+    }).join('')+'</tbody></table>';
+}
+
 // Close modals on overlay click
 $('edit-modal').addEventListener('click', e=>{ if(e.target===$('edit-modal')) closeEditModal(); });
 $('create-modal').addEventListener('click', e=>{ if(e.target===$('create-modal')) closeCreateModal(); });
 </script>
+  <!-- Support / QA widget -->
+  <script src="/support-widget.js" defer></script>
 </body>
 </html>

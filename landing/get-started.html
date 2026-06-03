@@ -472,7 +472,7 @@
         </div>
         <div class="option-text">
           <div class="option-title" style="color:#07C160">
-            WeChat Pay &thinsp;<span style="font-weight:400;font-size:12.5px;color:var(--t2)">微信支付</span>
+            WeChat Pay
           </div>
           <div class="option-desc" data-i18n="gs.wechat.desc">Pay via WeChat QR code — $4.99 / month</div>
           <div class="option-subdesc" data-i18n="gs.wechat.subdesc">No trial period, billed immediately</div>
@@ -487,7 +487,7 @@
         </div>
         <div class="option-text">
           <div class="option-title" style="color:#1677FF">
-            Alipay &thinsp;<span style="font-weight:400;font-size:12.5px;color:var(--t2)">支付宝</span>
+            Alipay
           </div>
           <div class="option-desc" data-i18n="gs.alipay.desc">Pay via Alipay QR code — $4.99 / month</div>
           <div class="option-subdesc" data-i18n="gs.alipay.subdesc">No trial period, billed immediately</div>
@@ -499,7 +499,8 @@
 
     <p class="footnote">
       <span data-i18n-html="gs.footnote">By continuing you agree to our <a href="/terms-and-conditions.html">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.</span><br>
-      <span data-i18n-html="gs.questions">Questions? <a href="mailto:support@terseai.org">support@terseai.org</a></span>
+      <span data-i18n-html="gs.questions">Questions? <a href="mailto:support@terseai.org">support@terseai.org</a></span><br>
+      <a href="#" onclick="window.terseSupport&&terseSupport.open();return false;">Ask us a question or join our Slack →</a>
     </p>
   </div>
 
@@ -645,5 +646,8 @@
       setTimeout(() => { toast.style.display = 'none'; }, 5000);
     }
   </script>
+
+  <!-- Support / QA widget -->
+  <script src="/support-widget.js" defer></script>
 </body>
 </html>

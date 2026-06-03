@@ -759,7 +759,7 @@
 
     /* FOOTER */
     footer{padding:50px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)}
-    .footer-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:2fr repeat(3,1fr);gap:50px}
+    .footer-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:2fr repeat(4,1fr);gap:40px}
     .footer-brand p{font-size:12px;color:var(--t3);max-width:220px;line-height:1.6;margin-top:12px}
     .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
     .footer-col a{display:block;font-size:12px;color:var(--t3);padding:3px 0;transition:color .2s}
@@ -3189,6 +3189,7 @@ async function handleNewsletterSubmit(e) {
     <div class="footer-col"><h4 data-i18n="footer.product">Product</h4><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#techniques" data-i18n="footer.techniques">Techniques</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="#dl" data-i18n="footer.download">Download</a></div>
     <div class="footer-col"><h4 data-i18n="footer.techniques">Techniques</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">Spell Correction</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">Pattern Optimization</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP Analysis</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">Telegraph Compression</a></div>
     <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="#news">News &amp; Insights</a><a href="https://buttondown.com/terseai" target="_blank" rel="noopener">Newsletter</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">Refund Policy</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.support">Support</h4><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Ask a question</a><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Join our Slack</a><a href="mailto:support@terseai.org">Email support</a></div>
   </div>
   <div class="footer-bottom"><span data-i18n="footer.copyright">&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
 </footer>
@@ -4715,5 +4716,7 @@ if (document.readyState === 'loading') {
   loadVibeProjects();
 }
 </script>
+  <!-- Support / QA widget -->
+  <script src="/support-widget.js" defer></script>
 </body>
 </html>

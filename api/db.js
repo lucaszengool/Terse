@@ -291,6 +291,78 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_cowork_log_team ON cowork_log(team_id, occurred_at);
   CREATE INDEX IF NOT EXISTS idx_cowork_messages_team ON cowork_messages(team_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_cowork_messages_inbox ON cowork_messages(team_id, to_email, status);
+
+  -- ── Terse Docs (Google-style collaborative documents) ──
+  -- A standalone, shareable file (document | sheet | slides) that humans AND
+  -- multiple people's agents co-edit live. The authoritative content is a JSON
+  -- snapshot bumped one version per applied op; ops are appended to doc_ops and
+  -- fanned out over SSE (cowork-bus). Sharing is by per-doc token, no team needed.
+  CREATE TABLE IF NOT EXISTS docs (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,                  -- document | sheet | slides
+    title TEXT DEFAULT 'Untitled',
+    owner_user_id TEXT,
+    owner_email TEXT,
+    content TEXT NOT NULL,               -- JSON document model (authoritative)
+    version INTEGER DEFAULT 0,           -- increments once per applied op
+    share_token TEXT UNIQUE,             -- anyone with it joins via link
+    share_role TEXT DEFAULT 'editor',    -- role the link grants: viewer | editor
+    agents_paused INTEGER DEFAULT 0,     -- global "stop all agents" switch
+    is_trashed INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS doc_ops (
+    id TEXT PRIMARY KEY,
+    doc_id TEXT NOT NULL REFERENCES docs(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL,            -- document version AFTER this op
+    actor TEXT,                          -- display name / email
+    actor_kind TEXT DEFAULT 'human',     -- human | agent
+    op TEXT NOT NULL,                    -- JSON op
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS doc_collaborators (
+    id TEXT PRIMARY KEY,
+    doc_id TEXT NOT NULL REFERENCES docs(id) ON DELETE CASCADE,
+    email TEXT,
+    user_id TEXT,
+    role TEXT DEFAULT 'editor',          -- owner | editor | viewer
+    invited_by TEXT,
+    invited_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(doc_id, email)
+  );
+
+  CREATE TABLE IF NOT EXISTS doc_presence (
+    doc_id TEXT NOT NULL,
+    actor_id TEXT NOT NULL,              -- stable per-collaborator id
+    name TEXT,
+    kind TEXT DEFAULT 'human',           -- human | agent
+    color TEXT,
+    cursor TEXT,                         -- JSON {block / cell / slide}
+    paused INTEGER DEFAULT 0,            -- per-agent stop flag
+    status TEXT DEFAULT 'online',        -- online | away | offline
+    last_seen_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (doc_id, actor_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS doc_comments (
+    id TEXT PRIMARY KEY,
+    doc_id TEXT NOT NULL REFERENCES docs(id) ON DELETE CASCADE,
+    anchor TEXT,                         -- blockId / cell ref / slide:block
+    author TEXT,
+    author_kind TEXT DEFAULT 'human',
+    body TEXT,
+    resolved INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_docs_owner ON docs(owner_user_id, updated_at);
+  CREATE INDEX IF NOT EXISTS idx_doc_ops_doc ON doc_ops(doc_id, version);
+  CREATE INDEX IF NOT EXISTS idx_doc_collab_doc ON doc_collaborators(doc_id);
+  CREATE INDEX IF NOT EXISTS idx_doc_collab_email ON doc_collaborators(email);
+  CREATE INDEX IF NOT EXISTS idx_doc_comments_doc ON doc_comments(doc_id, created_at);
 `);
 
 // ── API-specific columns (safe migration) ─────────────────────────────────
@@ -718,6 +790,66 @@ const setPresenceStatus = db.prepare(`
   UPDATE cowork_presence SET status = ? WHERE team_id = ? AND user_email = ?
 `);
 
+// ── Terse Docs helpers ──
+const createDoc = db.prepare(`
+  INSERT INTO docs (id, kind, title, owner_user_id, owner_email, content, share_token, share_role)
+  VALUES (@id, @kind, @title, @owner_user_id, @owner_email, @content, @share_token, @share_role)
+`);
+const getDoc = db.prepare('SELECT * FROM docs WHERE id = ?');
+const getDocByShareToken = db.prepare('SELECT * FROM docs WHERE share_token = ?');
+const getDocsByOwner = db.prepare(`
+  SELECT id, kind, title, owner_email, version, share_role, is_trashed, created_at, updated_at
+  FROM docs WHERE owner_user_id = ? AND is_trashed = 0 ORDER BY updated_at DESC LIMIT 200
+`);
+const getDocsSharedWith = db.prepare(`
+  SELECT d.id, d.kind, d.title, d.owner_email, d.version, c.role AS member_role, d.updated_at
+  FROM docs d JOIN doc_collaborators c ON c.doc_id = d.id
+  WHERE c.email = ? AND d.is_trashed = 0 AND d.owner_user_id IS NOT ?
+  ORDER BY d.updated_at DESC LIMIT 200
+`);
+const updateDocContent = db.prepare(`
+  UPDATE docs SET content = @content, version = @version, updated_at = datetime('now') WHERE id = @id
+`);
+const renameDoc = db.prepare("UPDATE docs SET title = ?, updated_at = datetime('now') WHERE id = ?");
+const setDocShareRole = db.prepare('UPDATE docs SET share_role = ? WHERE id = ?');
+const setDocAgentsPaused = db.prepare('UPDATE docs SET agents_paused = ? WHERE id = ?');
+const trashDoc = db.prepare('UPDATE docs SET is_trashed = 1 WHERE id = ? AND owner_user_id = ?');
+
+const addDocOp = db.prepare(`
+  INSERT INTO doc_ops (id, doc_id, version, actor, actor_kind, op)
+  VALUES (@id, @doc_id, @version, @actor, @actor_kind, @op)
+`);
+const getDocOps = db.prepare('SELECT * FROM doc_ops WHERE doc_id = ? AND version > ? ORDER BY version ASC LIMIT 1000');
+
+const addDocCollaborator = db.prepare(`
+  INSERT INTO doc_collaborators (id, doc_id, email, user_id, role, invited_by)
+  VALUES (@id, @doc_id, @email, @user_id, @role, @invited_by)
+  ON CONFLICT(doc_id, email) DO UPDATE SET role = @role
+`);
+const getDocCollaborators = db.prepare('SELECT * FROM doc_collaborators WHERE doc_id = ? ORDER BY invited_at ASC');
+const getDocCollaborator = db.prepare('SELECT * FROM doc_collaborators WHERE doc_id = ? AND email = ?');
+const removeDocCollaborator = db.prepare('DELETE FROM doc_collaborators WHERE doc_id = ? AND email = ?');
+
+const upsertDocPresence = db.prepare(`
+  INSERT INTO doc_presence (doc_id, actor_id, name, kind, color, cursor, status, last_seen_at)
+  VALUES (@doc_id, @actor_id, @name, @kind, @color, @cursor, @status, datetime('now'))
+  ON CONFLICT(doc_id, actor_id) DO UPDATE SET
+    name = @name, kind = @kind, color = @color, cursor = @cursor,
+    status = @status, last_seen_at = datetime('now')
+`);
+const getDocPresence = db.prepare("SELECT * FROM doc_presence WHERE doc_id = ? AND last_seen_at > datetime('now', '-2 minutes') ORDER BY last_seen_at DESC");
+const getDocPresenceActor = db.prepare('SELECT * FROM doc_presence WHERE doc_id = ? AND actor_id = ?');
+const setDocPresencePaused = db.prepare('UPDATE doc_presence SET paused = ? WHERE doc_id = ? AND actor_id = ?');
+const setDocAgentsPausedPresence = db.prepare("UPDATE doc_presence SET paused = ? WHERE doc_id = ? AND kind = 'agent'");
+const removeDocPresence = db.prepare('DELETE FROM doc_presence WHERE doc_id = ? AND actor_id = ?');
+
+const addDocComment = db.prepare(`
+  INSERT INTO doc_comments (id, doc_id, anchor, author, author_kind, body)
+  VALUES (@id, @doc_id, @anchor, @author, @author_kind, @body)
+`);
+const getDocComments = db.prepare('SELECT * FROM doc_comments WHERE doc_id = ? ORDER BY created_at ASC LIMIT 500');
+const resolveDocComment = db.prepare('UPDATE doc_comments SET resolved = 1 WHERE id = ? AND doc_id = ?');
+
 // ── Pet purchase helpers ──
 const addPetPurchase = db.prepare(`
   INSERT OR IGNORE INTO pet_purchases (id, user_id, pet_id, stripe_session_id)
@@ -760,4 +892,12 @@ module.exports = {
   updateUserTier, updateApiTier,
   // Vibe Projects Platform
   addVibeProject, getVibeProjects, getVibeProjectsByUser, upvoteVibeProject,
+  // Terse Docs
+  createDoc, getDoc, getDocByShareToken, getDocsByOwner, getDocsSharedWith,
+  updateDocContent, renameDoc, setDocShareRole, setDocAgentsPaused, trashDoc,
+  addDocOp, getDocOps,
+  addDocCollaborator, getDocCollaborators, getDocCollaborator, removeDocCollaborator,
+  upsertDocPresence, getDocPresence, getDocPresenceActor, setDocPresencePaused,
+  setDocAgentsPausedPresence, removeDocPresence,
+  addDocComment, getDocComments, resolveDocComment,
 };

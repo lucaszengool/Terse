@@ -12,6 +12,7 @@ const { router: marketplaceRouter } = require('./marketplace');
 const proxyRouter = require('./proxy');
 const cloudRouter = require('./cloud');
 const coworkRouter = require('./cowork');
+const docsRouter = require('./docs');
 const mcpRouter = require('./mcp');
 const terseApiRouter = require('./terse-api');
 const db = require('./db');
@@ -274,7 +275,7 @@ app.use(express.json());
 // CORS for Tauri app + marketplace
 app.use('/api', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -906,6 +907,9 @@ app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
 // Sweep stale cowork sessions + presence every 30s (broadcasts changes over SSE).
 setInterval(() => coworkRouter.sweepStale(), 30 * 1000).unref();
 
+// ── Terse Docs (Google-style collaborative documents) ──
+app.use('/api/docs', docsRouter);
+
 // ── LLM Proxy (rate-limited) ──
 const proxyLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -1034,6 +1038,15 @@ app.get('/api-docs', (req, res) => {
 // /vibe-projects → vibe coding projects platform
 app.get('/vibe-projects', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'landing', 'vibe-projects.html'));
+});
+
+// ── Terse Docs portal + editor ──
+// /workspace → Drive-style portal; /d/:id → live collaborative editor
+app.get(['/workspace', '/docs-app'], (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'workspace.html'));
+});
+app.get('/d/:id', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'doc.html'));
 });
 
 // SPA fallback — but not for marketplace (it has its own HTML)

@@ -19,12 +19,14 @@ const express = require('express');
 const crypto = require('crypto');
 const db = require('./db');
 const bus = require('./cowork-bus');
+const model = require('./doc-model');
 
 const router = express.Router();
 
 const PROTOCOL_VERSION = '2025-06-18';
 function hashToken(raw) { return crypto.createHash('sha256').update(raw).digest('hex'); }
 function lc(s) { return (s || '').toString().toLowerCase() || null; }
+function docChan(id) { return `doc:${id}`; }
 
 // ── Tool definitions ──
 const TOOLS = [
@@ -76,6 +78,66 @@ const TOOLS = [
     name: 'terse_inbox',
     description: 'Messages addressed to you (and team broadcasts) that are still open — @mentions, handoffs and asks from teammates.',
     inputSchema: { type: 'object', properties: {} },
+  },
+];
+
+// ── Doc tools (available when an x-terse-doc-token is supplied) ──
+// These let an agent co-edit a shared Terse Doc/Sheet/Slides live alongside
+// humans and other people's agents. Humans can pause this agent from the editor;
+// terse_edit_doc then refuses until resumed.
+const OP_HELP = [
+  'Edit ops by document kind:',
+  'document: {"t":"block.set","id":"<blockId>","html":"...","type":"p|h1|h2|h3|ul|ol|quote|code"}',
+  '          {"t":"block.insert","after":"<blockId>","blockType":"p","html":"..."}',
+  '          {"t":"block.delete","id":"<blockId>"}',
+  'sheet:    {"t":"cell.set","r":<row#0based>,"c":<col#0based>,"v":"value","f":"=A1*2 (optional)"}',
+  'slides:   {"t":"slide.add","after":"<slideId>"} | {"t":"slide.delete","id":"<slideId>"}',
+  '          {"t":"block.set","slide":"<slideId>","id":"<blockId>","html":"...","type":"title|subtitle|body|bullet"}',
+  '          {"t":"block.insert","slide":"<slideId>","blockType":"body","html":"..."}',
+  'Read the doc first with terse_read_doc to get current block/slide ids.',
+].join('\n');
+
+const DOC_TOOLS = [
+  {
+    name: 'terse_doc_info',
+    description: 'Get the shared doc you are connected to: kind (document/sheet/slides), title, version, who is editing live right now (humans + agents, with presence), and whether agents are paused by a human.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'terse_read_doc',
+    description: 'Read the full current content of the shared doc as structured text — every block/cell/slide with its id, so you know exactly what to edit. Call this before terse_edit_doc.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'terse_edit_doc',
+    description: 'Apply one or more edit ops to the shared doc. Changes appear live for every human and agent watching. ' + OP_HELP,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ops: { type: 'array', items: { type: 'object' }, description: 'Array of edit ops (see the op reference in this tool description).' },
+      },
+      required: ['ops'],
+    },
+  },
+  {
+    name: 'terse_doc_changes',
+    description: 'See what changed in the shared doc since a given version — useful to watch what a human or the other person\'s agent just edited and coordinate with them.',
+    inputSchema: {
+      type: 'object',
+      properties: { since: { type: 'number', description: 'Return ops with version greater than this (default 0).' } },
+    },
+  },
+  {
+    name: 'terse_comment_doc',
+    description: 'Post a comment/note on the shared doc — e.g. to draft a plan together with the other agent or leave a note for the humans. Appears in the editor comment thread.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        body: { type: 'string', description: 'Comment text.' },
+        anchor: { type: 'string', description: 'Optional block id / cell ref the comment is about.' },
+      },
+      required: ['body'],
+    },
   },
 ];
 
@@ -154,32 +216,135 @@ const HANDLERS = {
   },
 };
 
+// ── Doc tool implementations (scoped to req.doc / agent email) ──
+function agentActorId(email) { return 'agent:' + (email || 'anon'); }
+
+function renderDocContent(doc) {
+  const content = JSON.parse(doc.content);
+  if (doc.kind === 'sheet') {
+    const cells = content.cells || {};
+    const rows = {};
+    for (const k of Object.keys(cells)) {
+      const [r, c] = k.split(',');
+      (rows[r] = rows[r] || []).push({ cell: colLetter(+c) + (+r + 1), r: +r, c: +c, ...cells[k] });
+    }
+    return { kind: 'sheet', cells: Object.values(rows).flat().sort((a, b) => a.r - b.r || a.c - b.c) };
+  }
+  if (doc.kind === 'slides') {
+    return { kind: 'slides', slides: (content.slides || []).map((s, i) => ({
+      number: i + 1, id: s.id,
+      blocks: (s.blocks || []).map(b => ({ id: b.id, type: b.type, text: stripHtml(b.html) })),
+    })) };
+  }
+  return { kind: 'document', blocks: (content.blocks || []).map(b => ({ id: b.id, type: b.type, text: stripHtml(b.html) })) };
+}
+function stripHtml(h) { return (h || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim(); }
+function colLetter(n) { let s = ''; n += 1; while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; }
+
+const DOC_HANDLERS = {
+  terse_doc_info(doc, email) {
+    const fresh = db.getDoc.get(doc.id);
+    return textResult({
+      id: fresh.id, kind: fresh.kind, title: fresh.title, version: fresh.version,
+      agents_paused: !!fresh.agents_paused,
+      live: db.getDocPresence.all(fresh.id).map(p => ({ name: p.name, kind: p.kind, paused: !!p.paused, status: p.status })),
+      collaborators: db.getDocCollaborators.all(fresh.id).map(c => ({ email: c.email, role: c.role })),
+      you: { email, paused: !!db.getDocPresenceActor.get(fresh.id, agentActorId(email))?.paused },
+      op_reference: OP_HELP,
+    });
+  },
+  terse_read_doc(doc, email) {
+    const fresh = db.getDoc.get(doc.id);
+    // Register/refresh agent presence so humans see this agent in the editor.
+    touchAgentPresence(fresh, email);
+    return textResult({ version: fresh.version, ...renderDocContent(fresh) });
+  },
+  terse_edit_doc(doc, email, args) {
+    let fresh = db.getDoc.get(doc.id);
+    if (fresh.agents_paused) return textResult({ error: 'paused', message: 'A human has paused all agents on this doc. Stop editing until resumed.' });
+    const presence = db.getDocPresenceActor.get(fresh.id, agentActorId(email));
+    if (presence?.paused) return textResult({ error: 'paused', message: 'A human has paused you on this doc. Stop editing until resumed.' });
+
+    const ops = Array.isArray(args.ops) ? args.ops : [];
+    if (!ops.length) return textResult({ error: 'Provide an ops array. ' + OP_HELP });
+
+    let content = JSON.parse(fresh.content);
+    let version = fresh.version;
+    const applied = [];
+    for (const op of ops.slice(0, 200)) {
+      const r = model.applyOp(content, op, fresh.kind);
+      if (!r.ok) { applied.push({ op, error: r.error }); continue; }
+      content = r.content; version += 1;
+      db.addDocOp.run({ id: crypto.randomUUID(), doc_id: fresh.id, version, actor: email || 'agent', actor_kind: 'agent', op: JSON.stringify(op) });
+      bus.emit(docChan(fresh.id), { type: 'op', version, op, actor: email || 'agent', actor_kind: 'agent' });
+      applied.push({ op, version });
+    }
+    db.updateDocContent.run({ id: fresh.id, content: JSON.stringify(content), version });
+    touchAgentPresence(db.getDoc.get(fresh.id), email);
+    return textResult({ ok: true, version, applied });
+  },
+  terse_doc_changes(doc, _email, args) {
+    const since = Math.max(0, parseInt(args.since, 10) || 0);
+    const ops = db.getDocOps.all(doc.id, since).map(o => ({ version: o.version, actor: o.actor, actor_kind: o.actor_kind, op: JSON.parse(o.op), at: o.created_at }));
+    return textResult({ since, changes: ops });
+  },
+  terse_comment_doc(doc, email, args) {
+    const body = (args.body || '').toString().trim().slice(0, 4000);
+    if (!body) return textResult({ error: 'body is required.' });
+    const row = { id: crypto.randomUUID(), doc_id: doc.id, anchor: (args.anchor || '').slice(0, 120) || null, author: email || 'agent', author_kind: 'agent', body };
+    db.addDocComment.run(row);
+    bus.emit(docChan(doc.id), { type: 'comment', comment: { ...row, resolved: 0, created_at: new Date().toISOString() } });
+    return textResult({ ok: true });
+  },
+};
+
+function touchAgentPresence(doc, email) {
+  const actorId = agentActorId(email);
+  const colors = ['#a142f4', '#ff6d01', '#46bdc6', '#34a853'];
+  let h = 0; for (let i = 0; i < actorId.length; i++) h = (h * 31 + actorId.charCodeAt(i)) >>> 0;
+  db.upsertDocPresence.run({
+    doc_id: doc.id, actor_id: actorId,
+    name: (email || 'Agent') + ' (agent)', kind: 'agent',
+    color: colors[h % colors.length], cursor: null, status: 'online',
+  });
+  bus.emit(docChan(doc.id), { type: 'presence', presence: db.getDocPresenceActor.get(doc.id, actorId) });
+}
+
 // ── JSON-RPC dispatch ──
 function rpcResult(id, result) { return { jsonrpc: '2.0', id, result }; }
 function rpcError(id, code, message) { return { jsonrpc: '2.0', id, error: { code, message } }; }
 
-function handleRpc(msg, team, userEmail) {
+function handleRpc(msg, ctx) {
   const { id, method, params } = msg || {};
+  const { team, doc, userEmail } = ctx;
   switch (method) {
     case 'initialize':
       return rpcResult(id, {
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: {} },
-        serverInfo: { name: 'terse-cowork', version: '1.0.0' },
+        serverInfo: { name: 'terse-cowork', version: '1.1.0' },
       });
     case 'notifications/initialized':
     case 'notifications/cancelled':
       return null; // notification — no response
     case 'ping':
       return rpcResult(id, {});
-    case 'tools/list':
-      return rpcResult(id, { tools: TOOLS });
+    case 'tools/list': {
+      const tools = [...(team ? TOOLS : []), ...(doc ? DOC_TOOLS : [])];
+      return rpcResult(id, { tools });
+    }
     case 'tools/call': {
       const name = params?.name;
-      const handler = HANDLERS[name];
-      if (!handler) return rpcError(id, -32602, `Unknown tool: ${name}`);
       try {
-        return rpcResult(id, handler(team, userEmail, params?.arguments || {}));
+        if (DOC_HANDLERS[name]) {
+          if (!doc) return rpcError(id, -32602, 'No doc connected. Set x-terse-doc-token to a Terse Doc share token.');
+          return rpcResult(id, DOC_HANDLERS[name](doc, userEmail, params?.arguments || {}));
+        }
+        if (HANDLERS[name]) {
+          if (!team) return rpcError(id, -32602, 'No team connected. Set x-terse-team-token.');
+          return rpcResult(id, HANDLERS[name](team, userEmail, params?.arguments || {}));
+        }
+        return rpcError(id, -32602, `Unknown tool: ${name}`);
       } catch (err) {
         return rpcResult(id, { ...textResult({ error: err.message }), isError: true });
       }
@@ -190,21 +355,35 @@ function handleRpc(msg, team, userEmail) {
 }
 
 router.post('/', express.json({ limit: '256kb' }), (req, res) => {
-  const raw = req.headers['x-terse-team-token']
-    || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
-  if (!raw) return res.status(401).json({ error: 'Missing team token (x-terse-team-token).' });
-  const team = db.findTeamByToken.get(hashToken(raw));
-  if (!team) return res.status(401).json({ error: 'Invalid team token.' });
-  db.touchTeamToken.run(hashToken(raw));
+  // Two independent credentials may be present: a team token (cowork tools) and/or
+  // a doc token (doc co-editing tools). At least one is required.
+  const bearer = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null;
+  const teamRaw = req.headers['x-terse-team-token'] || (bearer && !bearer.startsWith('dtk_') ? bearer : null);
+  const docRaw = req.headers['x-terse-doc-token'] || (bearer && bearer.startsWith('dtk_') ? bearer : null);
+
+  let team = null, doc = null;
+  if (teamRaw) {
+    team = db.findTeamByToken.get(hashToken(teamRaw));
+    if (team) db.touchTeamToken.run(hashToken(teamRaw));
+  }
+  if (docRaw) doc = db.getDocByShareToken.get(docRaw) || null;
+  if (doc && (doc.is_trashed || doc.share_role === 'viewer')) {
+    // viewer-only link can still read; mark so edit tools refuse politely
+    if (doc.is_trashed) doc = null;
+  }
+
+  if (!team && !doc) {
+    return res.status(401).json({ error: 'Provide x-terse-team-token (team cowork) and/or x-terse-doc-token (a Terse Doc share token).' });
+  }
   const userEmail = lc(req.headers['x-terse-user-email']);
+  const ctx = { team, doc, userEmail };
 
   const body = req.body;
-  // Support JSON-RPC batches and single messages.
   if (Array.isArray(body)) {
-    const out = body.map(m => handleRpc(m, team, userEmail)).filter(Boolean);
+    const out = body.map(m => handleRpc(m, ctx)).filter(Boolean);
     return res.json(out);
   }
-  const result = handleRpc(body, team, userEmail);
+  const result = handleRpc(body, ctx);
   if (result === null) return res.status(202).end(); // notification
   res.json(result);
 });

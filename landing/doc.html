@@ -98,6 +98,10 @@
   .people{margin-top:14px} .person{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
   .agent-snippet{background:#202124;color:#e8eaed;border-radius:10px;padding:14px;font-family:'Roboto Mono',monospace;font-size:11.5px;white-space:pre-wrap;line-height:1.5;margin-top:10px;position:relative}
   .agent-snippet .cp{position:absolute;top:8px;right:8px;background:#3c4043;border:0;color:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px}
+  .oneclick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .oc-btn{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:12px 14px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--t1);text-decoration:none;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+  .oc-btn:hover{border-color:var(--blue);box-shadow:var(--shadow)}
+  .oc-ic{font-family:'Roboto Mono',monospace;font-weight:700;font-size:14px;width:20px;text-align:center}
   .tabbar{display:flex;gap:6px;margin-bottom:12px;border-bottom:1px solid var(--line)}
   .tabbar div{padding:8px 12px;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent}
   .tabbar div.on{color:var(--blue);border-color:var(--blue)}
@@ -169,11 +173,20 @@
     </div>
     <div id="share-agents" style="display:none">
       <h3 style="margin:0 0 6px">Connect another person's agent</h3>
-      <p style="font-size:13px;color:var(--t2);margin:0 0 4px;line-height:1.5">
-        Any coding agent (Claude Code, Cursor, …) can co-edit this file live through the Terse MCP server.
-        Add this to the agent's <code>.mcp.json</code>. The agent gets tools to read &amp; edit; you can pause it anytime from the avatar bar.</p>
-      <div class="agent-snippet" id="mcp-snippet"><button class="cp" onclick="copyMcp()">Copy</button></div>
-      <p style="font-size:12px;color:var(--t2);margin-top:10px">The token grants <b id="agent-access">edit</b> access — change it under "General access".</p>
+      <p style="font-size:13px;color:var(--t2);margin:0 0 12px;line-height:1.5">
+        One click adds this file to a local coding agent. Your editor asks <b>your</b> permission, then auto-connects —
+        the agent gets tools to read &amp; edit live. Pause it anytime from the avatar bar.</p>
+      <div class="row-inv" style="margin-bottom:12px">
+        <input id="agent-email" placeholder="Agent label / email (optional, e.g. teammate@co.com)" oninput="updateAgentLinks()"/>
+      </div>
+      <div class="oneclick" id="oneclick">
+        <a class="oc-btn" id="oc-cursor" href="#"><span class="oc-ic">▷_</span> Add to Cursor</a>
+        <a class="oc-btn" id="oc-vscode" href="#"><span class="oc-ic" style="color:#2496ed">⧉</span> Add to VS Code</a>
+        <button class="oc-btn" onclick="copyClaude()"><span class="oc-ic" style="color:#d97757">✳</span> Copy Claude Code command</button>
+        <button class="oc-btn" onclick="toggleManual()"><span class="oc-ic">{}</span> Manual config (.mcp.json)</button>
+      </div>
+      <div class="agent-snippet" id="mcp-snippet" style="display:none"><button class="cp" onclick="copyMcp()">Copy</button></div>
+      <p style="font-size:12px;color:var(--t2);margin-top:12px">The link grants <b id="agent-access">edit</b> access — change it under the <b>People</b> tab → "General access". Don't have one-click? VS Code/Cursor must be installed; otherwise use Manual config.</p>
     </div>
     <div style="text-align:right;margin-top:18px"><button class="btn btn-primary" onclick="closeModal('share-bg')">Done</button></div>
   </div>
@@ -586,23 +599,49 @@ async function invite(){
 async function removePerson(email){ await fetch(`${API}/api/docs/${docId}/collaborators/${encodeURIComponent(email)}`,{method:'DELETE',headers:await authHeaders()}); collaborators=collaborators.filter(c=>c.email!==email); renderPeople(); }
 async function setLinkRole(){ const role=$('link-role').value; const r=await fetch(`${API}/api/docs/${docId}/share`,{method:'POST',headers:await authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({share_role:role})}); if(r.ok){doc.share_role=role; renderMcp(); toast('Link access updated');} else toast('Only the owner can change this'); }
 function copyShareLink(){ navigator.clipboard.writeText(shareUrl()).catch(()=>{}); toast('Link copied'); }
-function renderMcp(){
-  $('agent-access').textContent=doc.share_role==='viewer'?'view':'edit';
-  const snippet=`{
+const MCP_URL = `${location.origin}/api/cloud/mcp`;
+const SERVER_NAME = 'terse-doc';
+function agentEmail(){ return ($('agent-email')?.value||'').trim()||'agent@terse'; }
+function b64(s){ return btoa(unescape(encodeURIComponent(s))); } // UTF-8 safe base64
+// The inner server config shared by all targets
+function serverConfig(){
+  return { url: MCP_URL, headers: { 'x-terse-doc-token': doc.share_token||'', 'x-terse-user-email': agentEmail() } };
+}
+function manualSnippet(){
+  return `{
   "mcpServers": {
-    "terse-doc": {
+    "${SERVER_NAME}": {
       "type": "http",
-      "url": "${location.origin}/api/cloud/mcp",
+      "url": "${MCP_URL}",
       "headers": {
         "x-terse-doc-token": "${doc.share_token||'<owner must enable link sharing>'}",
-        "x-terse-user-email": "agent@yourname.com"
+        "x-terse-user-email": "${agentEmail()}"
       }
     }
   }
 }`;
-  const el=$('mcp-snippet'); el.innerHTML=`<button class="cp" onclick="copyMcp()">Copy</button>`+esc(snippet);
 }
-function copyMcp(){ navigator.clipboard.writeText($('mcp-snippet').innerText.replace(/^Copy\n?/,'')).catch(()=>{}); toast('MCP config copied'); }
+// Cursor: cursor://anysphere.cursor-deeplink/mcp/install?name=NAME&config=BASE64(serverConfig)
+function cursorLink(){ return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(SERVER_NAME)}&config=${encodeURIComponent(b64(JSON.stringify(serverConfig())))}`; }
+// VS Code: vscode:mcp/install?ENCODED({name,type:'http',url,headers})
+function vscodeLink(){ const cfg={name:SERVER_NAME,type:'http',url:MCP_URL,headers:serverConfig().headers}; return `vscode:mcp/install?${encodeURIComponent(JSON.stringify(cfg))}`; }
+// Claude Code: one CLI line (no deeplink exists)
+function claudeCmd(){ return `claude mcp add --transport http ${SERVER_NAME} ${MCP_URL} -H "x-terse-doc-token: ${doc.share_token||''}" -H "x-terse-user-email: ${agentEmail()}"`; }
+
+function renderMcp(){
+  $('agent-access').textContent=doc.share_role==='viewer'?'view':'edit';
+  updateAgentLinks();
+  const el=$('mcp-snippet'); el.innerHTML=`<button class="cp" onclick="copyMcp()">Copy</button>`+esc(manualSnippet());
+}
+function updateAgentLinks(){
+  if(!doc?.share_token){ return; }
+  $('oc-cursor').href=cursorLink();
+  $('oc-vscode').href=vscodeLink();
+  const el=$('mcp-snippet'); if(el && el.style.display!=='none') el.innerHTML=`<button class="cp" onclick="copyMcp()">Copy</button>`+esc(manualSnippet());
+}
+function toggleManual(){ const el=$('mcp-snippet'); const show=el.style.display==='none'; el.style.display=show?'block':'none'; if(show)el.innerHTML=`<button class="cp" onclick="copyMcp()">Copy</button>`+esc(manualSnippet()); }
+function copyClaude(){ navigator.clipboard.writeText(claudeCmd()).catch(()=>{}); toast('Claude Code command copied — paste it in your terminal'); }
+function copyMcp(){ navigator.clipboard.writeText(manualSnippet()).catch(()=>{}); toast('MCP config copied'); }
 
 // ════════════════════════ DOWNLOAD ════════════════════════
 function openDownload(ev){

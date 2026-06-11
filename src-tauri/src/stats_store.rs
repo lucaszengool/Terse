@@ -185,6 +185,13 @@ impl StatsStore {
         })
     }
 
+    pub fn total_tokens_saved(&self) -> u64 {
+        self.data.days.values()
+            .flat_map(|day| day.values())
+            .map(|s| s.tokens_saved)
+            .sum()
+    }
+
     fn maybe_save(&mut self) {
         if !self.dirty { return; }
         let dir = self.file_path.parent().unwrap();

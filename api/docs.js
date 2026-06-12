@@ -168,9 +168,13 @@ router.post('/:id/ops', loadDoc, (req, res) => {
     if (!r.ok) continue;
     content = r.content;
     version += 1;
-    const row = { id: uuid(), doc_id: req.doc.id, version, actor, actor_kind: actorKind, op: JSON.stringify(op) };
+    // sheet.snapshot payloads are MBs — persist/broadcast only a marker; the
+    // snapshot itself lives in doc.content and clients already applied the
+    // underlying mutations live.
+    const wireOp = op.t === 'sheet.snapshot' ? { t: 'sheet.snapshot' } : op;
+    const row = { id: uuid(), doc_id: req.doc.id, version, actor, actor_kind: actorKind, op: JSON.stringify(wireOp) };
     db.addDocOp.run(row);
-    applied.push({ version, op, actor, actor_kind: actorKind });
+    applied.push({ version, op: wireOp, actor, actor_kind: actorKind });
   }
   if (!applied.length) return res.json({ ok: true, version, applied: 0 });
 

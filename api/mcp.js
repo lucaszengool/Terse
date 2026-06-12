@@ -87,13 +87,15 @@ const TOOLS = [
 // terse_edit_doc then refuses until resumed.
 const OP_HELP = [
   'Edit ops by document kind:',
-  'document: {"t":"block.set","id":"<blockId>","html":"...","type":"p|h1|h2|h3|ul|ol|quote|code"}',
+  'document: {"t":"block.set","id":"<blockId>","html":"...","type":"p|h1|h2|h3|title|subtitle|ul|ol|check|quote|code","align":"left|center|right|justify (optional)","indent":0-8,"checked":0|1}',
   '          {"t":"block.insert","after":"<blockId>","blockType":"p","html":"..."}',
   '          {"t":"block.delete","id":"<blockId>"}',
   'sheet:    {"t":"cell.set","r":<row#0based>,"c":<col#0based>,"v":"value","f":"=A1*2 (optional)"}',
-  'slides:   {"t":"slide.add","after":"<slideId>"} | {"t":"slide.delete","id":"<slideId>"}',
-  '          {"t":"block.set","slide":"<slideId>","id":"<blockId>","html":"...","type":"title|subtitle|body|bullet"}',
-  '          {"t":"block.insert","slide":"<slideId>","blockType":"body","html":"..."}',
+  '          {"t":"range.set","r":<topRow>,"c":<leftCol>,"cells":[[{"v":"a"},{"v":"b"}],[{"v":"1"},null]]}  (bulk write; null clears)',
+  'slides:   16:9 canvas, 960x540 px. {"t":"slide.add","after":"<slideId>","layout":"title|body|blank"} | {"t":"slide.delete","id":"<slideId>"}',
+  '          {"t":"slide.set","id":"<slideId>","bg":"#rrggbb","notes":"speaker notes"}',
+  '          {"t":"block.set","slide":"<slideId>","id":"<blockId>","html":"...","type":"title|subtitle|body|bullet|text|shape|image","frame":{"x":50,"y":120,"w":860,"h":380},"style":{"fontSize":18,"color":"#222","bold":true,"align":"center","bg":"#4285f4 (shape fill)"},"shape":"rect|round|ellipse|triangle|diamond|arrow|line","src":"image url or data: URI"}',
+  '          {"t":"block.insert","slide":"<slideId>","blockType":"text","html":"...","frame":{...}}',
   'Read the doc first with terse_read_doc to get current block/slide ids.',
 ].join('\n');
 
@@ -233,10 +235,18 @@ function renderDocContent(doc) {
   if (doc.kind === 'slides') {
     return { kind: 'slides', slides: (content.slides || []).map((s, i) => ({
       number: i + 1, id: s.id,
-      blocks: (s.blocks || []).map(b => ({ id: b.id, type: b.type, text: stripHtml(b.html) })),
+      ...(s.bg ? { bg: s.bg } : {}), ...(s.notes ? { notes: s.notes } : {}),
+      blocks: (s.blocks || []).map(b => ({
+        id: b.id, type: b.type, text: stripHtml(b.html),
+        ...(b.frame ? { frame: b.frame } : {}), ...(b.shape ? { shape: b.shape } : {}),
+        ...(b.style ? { style: b.style } : {}), ...(b.src ? { src: String(b.src).slice(0, 120) + (b.src.length > 120 ? '…' : '') } : {}),
+      })),
     })) };
   }
-  return { kind: 'document', blocks: (content.blocks || []).map(b => ({ id: b.id, type: b.type, text: stripHtml(b.html) })) };
+  return { kind: 'document', blocks: (content.blocks || []).map(b => ({
+    id: b.id, type: b.type, text: stripHtml(b.html),
+    ...(b.align ? { align: b.align } : {}), ...(b.checked ? { checked: 1 } : {}),
+  })) };
 }
 function stripHtml(h) { return (h || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim(); }
 function colLetter(n) { let s = ''; n += 1; while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; }

@@ -146,7 +146,8 @@ function htmlToText(html) {
 // ──────────────────────────────────────────────────────────────────────────
 //  DOCX
 // ──────────────────────────────────────────────────────────────────────────
-const DOCX_HEAD = { h1: 48, h2: 36, h3: 28 };
+const DOCX_HEAD = { title: 60, subtitle: 32, h1: 48, h2: 36, h3: 28 };
+const DOCX_JC = { center: 'center', right: 'right', justify: 'both' };
 
 function docParagraph(block) {
   const runs = htmlToRuns(block.html || '');
@@ -154,11 +155,14 @@ function docParagraph(block) {
   const isCode = block.type === 'code';
   const isQuote = block.type === 'quote';
   const isList = block.type === 'ul' || block.type === 'ol';
+  const isCheck = block.type === 'check';
 
-  let pPr = '';
-  if (heading) pPr = `<w:pPr><w:spacing w:before="160" w:after="80"/></w:pPr>`;
-  else if (isQuote) pPr = `<w:pPr><w:ind w:left="480"/></w:pPr>`;
-  else if (isList) pPr = `<w:pPr><w:ind w:left="360"/></w:pPr>`;
+  const pPr = [];
+  if (heading) pPr.push('<w:spacing w:before="160" w:after="80"/>');
+  const indent = (block.indent | 0) * 720 + (isQuote ? 480 : 0) + (isList || isCheck ? 360 : 0);
+  if (indent) pPr.push(`<w:ind w:left="${indent}"/>`);
+  if (DOCX_JC[block.align]) pPr.push(`<w:jc w:val="${DOCX_JC[block.align]}"/>`);
+  const pPrXml = pPr.length ? `<w:pPr>${pPr.join('')}</w:pPr>` : '';
 
   let runsXml = runs.map(r => {
     if (r.br) return '<w:r><w:br/></w:r>';
@@ -167,14 +171,16 @@ function docParagraph(block) {
     if (r.i) rPr.push('<w:i/>');
     if (r.u) rPr.push('<w:u w:val="single"/>');
     if (heading) rPr.push(`<w:sz w:val="${heading}"/><w:szCs w:val="${heading}"/>`);
+    if (block.type === 'subtitle') rPr.push('<w:color w:val="666666"/>');
     if (isCode) rPr.push('<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/>');
     const rPrXml = rPr.length ? `<w:rPr>${rPr.join('')}</w:rPr>` : '';
     return `<w:r>${rPrXml}<w:t xml:space="preserve">${xmlEsc(r.text)}</w:t></w:r>`;
   }).join('');
 
   if (isList) runsXml = `<w:r><w:t xml:space="preserve">• </w:t></w:r>` + runsXml;
+  if (isCheck) runsXml = `<w:r><w:t xml:space="preserve">${block.checked ? '☑ ' : '☐ '}</w:t></w:r>` + runsXml;
   if (!runsXml) runsXml = '<w:r><w:t/></w:r>';
-  return `<w:p>${pPr}${runsXml}</w:p>`;
+  return `<w:p>${pPrXml}${runsXml}</w:p>`;
 }
 
 function buildDocx(doc) {
@@ -298,54 +304,105 @@ const PML = 'http://schemas.openxmlformats.org/presentationml/2006/main';
 const DML = 'http://schemas.openxmlformats.org/drawingml/2006/main';
 const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 
+// Slide canvas px (960×540, 16:9) → EMU. 12192000/960 = exactly 12700 EMU/px.
+const EMU_PER_PX = 12700;
+const pxEmu = px => Math.round((Number(px) || 0) * EMU_PER_PX);
+function hexClr(c) { const m = /^#?([0-9a-fA-F]{6})$/.exec(String(c || '').trim()); return m ? m[1].toUpperCase() : null; }
+
 // One text body paragraph list from a slide block's html.
-function pptParas(html, sizePt) {
+function pptParas(html, sizePt, style) {
   const text = htmlToText(html) || '';
   const lines = text.split('\n');
-  const szAttr = sizePt ? ` sz="${sizePt * 100}"` : '';
+  const st = style || {};
+  const algn = { center: 'ctr', right: 'r', justify: 'just' }[st.align];
+  const pPr = algn ? `<a:pPr algn="${algn}"/>` : '';
+  const rPr = [];
+  if (sizePt) rPr.push(`sz="${Math.round(sizePt * 100)}"`);
+  if (st.bold) rPr.push('b="1"');
+  if (st.italic) rPr.push('i="1"');
+  const color = hexClr(st.color);
+  const fill = color ? `<a:solidFill><a:srgbClr val="${color}"/></a:solidFill>` : '';
   return lines.map(line =>
-    `<a:p><a:r><a:rPr lang="en-US"${szAttr} dirty="0"/><a:t>${xmlEsc(line)}</a:t></a:r></a:p>`
+    `<a:p>${pPr}<a:r><a:rPr lang="en-US" ${rPr.join(' ')} dirty="0">${fill}</a:rPr><a:t>${xmlEsc(line)}</a:t></a:r></a:p>`
   ).join('') || '<a:p/>';
 }
 
-function pptShape(id, name, phType, idx, x, y, cx, cy, html, sizePt) {
-  const ph = phType === 'title'
-    ? `<p:ph type="title"/>`
-    : phType === 'ctrTitle'
-      ? `<p:ph type="ctrTitle"/>`
-      : phType === 'subTitle'
-        ? `<p:ph type="subTitle" idx="1"/>`
-        : `<p:ph idx="${idx}"/>`;
-  return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${xmlEsc(name)}"/>` +
-    `<p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr>${ph}</p:nvPr></p:nvSpPr>` +
-    `<p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm></p:spPr>` +
-    `<p:txBody><a:bodyPr/><a:lstStyle/>${pptParas(html, sizePt)}</p:txBody></p:sp>`;
+// ── positioned (frame-based) slide elements ──
+const PPT_GEOM = { rect: 'rect', round: 'roundRect', ellipse: 'ellipse', triangle: 'triangle', diamond: 'diamond', arrow: 'rightArrow', line: 'rect' };
+// Default frames for legacy blocks that predate the positioned editor.
+const LEGACY_FRAMES = {
+  title: { x: 50, y: 30, w: 860, h: 80 },
+  subtitle: { x: 50, y: 130, w: 860, h: 50 },
+  body: { x: 50, y: 130, w: 860, h: 370 },
+  bullet: { x: 50, y: 130, w: 860, h: 370 },
+};
+const LEGACY_SIZE_PT = { title: 28, subtitle: 16, body: 14, bullet: 14 };
+
+function pptTextBox(id, block) {
+  const f = block.frame || LEGACY_FRAMES[block.type] || { x: 50, y: 130, w: 860, h: 100 };
+  const st = block.style || {};
+  const sizePt = st.fontSize ? st.fontSize * 0.75 : (LEGACY_SIZE_PT[block.type] || 14);
+  const boldStyle = block.type === 'title' ? { ...st, bold: st.bold !== false } : st;
+  const isShape = block.type === 'shape';
+  const geom = isShape ? (PPT_GEOM[block.shape] || 'rect') : 'rect';
+  const fillHex = isShape ? (hexClr(st.bg) || '4285F4') : hexClr(st.bg);
+  const fill = fillHex ? `<a:solidFill><a:srgbClr val="${fillHex}"/></a:solidFill>` : '<a:noFill/>';
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${isShape ? 'Shape' : 'TextBox'} ${id}"/>` +
+    `<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
+    `<p:spPr><a:xfrm><a:off x="${pxEmu(f.x)}" y="${pxEmu(f.y)}"/><a:ext cx="${pxEmu(f.w)}" cy="${pxEmu(f.h)}"/></a:xfrm>` +
+    `<a:prstGeom prst="${geom}"><a:avLst/></a:prstGeom>${fill}</p:spPr>` +
+    `<p:txBody><a:bodyPr wrap="square"${isShape ? ' anchor="ctr"' : ''}><a:normAutofit/></a:bodyPr><a:lstStyle/>` +
+    pptParas(block.html, sizePt, isShape ? { align: 'center', ...boldStyle } : boldStyle) +
+    `</p:txBody></p:sp>`;
 }
 
-function buildSlideXml(slide, isFirst) {
+function pptPicture(id, block, relId) {
+  const f = block.frame || { x: 200, y: 120, w: 400, h: 300 };
+  return `<p:pic><p:nvPicPr><p:cNvPr id="${id}" name="Image ${id}"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr>` +
+    `<p:blipFill><a:blip r:embed="${relId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+    `<p:spPr><a:xfrm><a:off x="${pxEmu(f.x)}" y="${pxEmu(f.y)}"/><a:ext cx="${pxEmu(f.w)}" cy="${pxEmu(f.h)}"/></a:xfrm>` +
+    `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
+}
+
+function parseDataUrl(src) {
+  const m = /^data:image\/(png|jpeg|jpg|gif|webp);base64,(.+)$/.exec(String(src || ''));
+  if (!m) return null;
+  const ext = m[1] === 'jpg' ? 'jpeg' : m[1];
+  try { return { ext, buffer: Buffer.from(m[2], 'base64') }; } catch { return null; }
+}
+
+// Build one slide. `media` collects { name, data } image parts; returns
+// { xml, rels } where rels are extra relationship entries for this slide.
+function buildSlideXml(slide, slideIndex, media) {
   const blocks = slide.blocks || [];
-  const title = blocks.find(b => b.type === 'title');
-  const subtitle = blocks.find(b => b.type === 'subtitle');
-  const bodies = blocks.filter(b => b !== title && b !== subtitle);
-
   const shapes = [];
-  let id = 2;
-  // Title (full-width near top)
-  shapes.push(pptShape(id++, 'Title', isFirst ? 'ctrTitle' : 'title', 0,
-    838200, 365125, 7772400, 1470025, title ? title.html : '', null));
-  if (subtitle) {
-    shapes.push(pptShape(id++, 'Subtitle', 'subTitle', 1,
-      838200, 1825625, 7772400, 1325563, subtitle.html, null));
-  }
-  const bodyHtml = bodies.map(b => htmlToText(b.html)).filter(Boolean).join('\n');
-  if (bodyHtml && !subtitle) {
-    shapes.push(pptShape(id++, 'Content', 'body', 1,
-      838200, 1825625, 7772400, 4351338, bodyHtml, 18));
+  const rels = [];
+  let id = 2, relN = 2; // rId1 = layout
+
+  for (const block of blocks) {
+    if (block.type === 'image' && block.src) {
+      const img = parseDataUrl(block.src);
+      if (img) {
+        const name = `image_s${slideIndex + 1}_${media.length + 1}.${img.ext}`;
+        media.push({ name: `ppt/media/${name}`, data: img.buffer, ext: img.ext });
+        const relId = `rId${relN++}`;
+        rels.push(`<Relationship Id="${relId}" Type="${REL}/image" Target="../media/${name}"/>`);
+        shapes.push(pptPicture(id++, block, relId));
+      }
+      continue; // remote-URL images can't be embedded offline — skipped
+    }
+    if (!htmlToText(block.html) && block.type !== 'shape') continue;
+    shapes.push(pptTextBox(id++, block));
   }
 
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+  const bgHex = hexClr(slide.bg);
+  const bg = bgHex
+    ? `<p:bg><p:bgPr><a:solidFill><a:srgbClr val="${bgHex}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>`
+    : '';
+
+  const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<p:sld xmlns:a="${DML}" xmlns:r="${REL}" xmlns:p="${PML}">` +
-    `<p:cSld><p:spTree>` +
+    `<p:cSld>${bg}<p:spTree>` +
     `<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>` +
     `<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/>` +
     `<a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>` +
@@ -354,6 +411,7 @@ function buildSlideXml(slide, isFirst) {
     `bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" ` +
     `accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" ` +
     `hlink="hlink" folHlink="folHlink"/></p:clrMapOvr></p:sld>`;
+  return { xml, rels };
 }
 
 const PPTX_THEME =
@@ -405,17 +463,21 @@ function buildPptx(doc) {
   const slides = (doc.content?.slides) || [{ id: 's1', blocks: [] }];
 
   const files = [];
+  const media = [];
 
-  // Slides + their rels (each → the single layout)
+  // Slides + their rels (each → the single layout, plus any embedded images)
   slides.forEach((slide, i) => {
-    files.push({ name: `ppt/slides/slide${i + 1}.xml`, data: buildSlideXml(slide, i === 0) });
+    const { xml, rels } = buildSlideXml(slide, i, media);
+    files.push({ name: `ppt/slides/slide${i + 1}.xml`, data: xml });
     files.push({
       name: `ppt/slides/_rels/slide${i + 1}.xml.rels`,
       data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
         `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-        `<Relationship Id="rId1" Type="${REL}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`,
+        `<Relationship Id="rId1" Type="${REL}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>` +
+        rels.join('') + `</Relationships>`,
     });
   });
+  for (const m of media) files.push({ name: m.name, data: m.data });
 
   // presentation.xml
   const sldIds = slides.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 2}"/>`).join('');
@@ -425,7 +487,7 @@ function buildPptx(doc) {
       `<p:presentation xmlns:a="${DML}" xmlns:r="${REL}" xmlns:p="${PML}">` +
       `<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>` +
       `<p:sldIdLst>${sldIds}</p:sldIdLst>` +
-      `<p:sldSz cx="9144000" cy="6858000" type="screen4x3"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`,
+      `<p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`,
   });
 
   // presentation rels: rId1 = master, rId2.. = slides
@@ -468,6 +530,10 @@ function buildPptx(doc) {
       `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
       `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
       `<Default Extension="xml" ContentType="application/xml"/>` +
+      `<Default Extension="png" ContentType="image/png"/>` +
+      `<Default Extension="jpeg" ContentType="image/jpeg"/>` +
+      `<Default Extension="gif" ContentType="image/gif"/>` +
+      `<Default Extension="webp" ContentType="image/webp"/>` +
       `<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>` +
       `<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>` +
       `<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>` +

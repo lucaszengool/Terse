@@ -269,7 +269,9 @@ async function syncSubscription(sub) {
   console.log(`[license] synced ${tier} (${effectiveStatus}) for ${clerkUserId}${trialEnd ? ' trial until ' + trialEnd : ''}`);
 }
 
-// JSON body for all other routes
+// JSON body for all other routes. Docs ops can carry Univer sheet snapshots
+// (styles, merges, col widths…) which exceed the 100kb default by far.
+app.use('/api/docs', express.json({ limit: '6mb' }));
 app.use(express.json());
 
 // CORS for Tauri app + marketplace

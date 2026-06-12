@@ -223,8 +223,161 @@ function colLetter(n) {
   return s;
 }
 
+// ── styled, multi-sheet export from a Univer workbook snapshot ──
+// Style fields (see Univer IStyleData): bl bold, it italic, ul underline,
+// st strikethrough, fs font size (pt), ff font family, cl {rgb} font color,
+// bg {rgb} fill, ht horizontal align (1 L, 2 C, 3 R, 4 J), vt vertical
+// (1 top, 2 middle, 3 bottom), tb wrap strategy (3 = wrap).
+const XLSX_HALIGN = { 1: 'left', 2: 'center', 3: 'right', 4: 'justify' };
+const XLSX_VALIGN = { 1: 'top', 2: 'center', 3: 'bottom' };
+function argb(c) { const m = /^#?([0-9a-fA-F]{6})/.exec(String(c?.rgb ?? c ?? '')); return m ? 'FF' + m[1].toUpperCase() : null; }
+
+function buildXlsxFromUniver(doc, snap) {
+  const stylePool = snap.styles || {};
+  const resolveStyle = s => (typeof s === 'string' ? stylePool[s] : s) || null;
+
+  // Deduplicated style registry → styles.xml
+  const fonts = ['<font><sz val="11"/><name val="Calibri"/></font>'];
+  const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'];
+  const xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'];
+  const xfIndex = new Map();
+  const intern = (arr, xml) => { let i = arr.indexOf(xml); if (i < 0) { arr.push(xml); i = arr.length - 1; } return i; };
+  function xfFor(s) {
+    if (!s) return 0;
+    const key = JSON.stringify([s.bl, s.it, s.ul && s.ul.s, s.st && s.st.s, s.fs, s.ff, argb(s.cl), argb(s.bg), s.ht, s.vt, s.tb]);
+    if (xfIndex.has(key)) return xfIndex.get(key);
+    const f = [];
+    if (s.bl) f.push('<b/>');
+    if (s.it) f.push('<i/>');
+    if (s.ul && s.ul.s) f.push('<u/>');
+    if (s.st && s.st.s) f.push('<strike/>');
+    f.push(`<sz val="${Number(s.fs) > 0 ? Math.min(409, Number(s.fs)) : 11}"/>`);
+    const cl = argb(s.cl); if (cl) f.push(`<color rgb="${cl}"/>`);
+    f.push(`<name val="${xmlEsc(s.ff || 'Calibri')}"/>`);
+    const fontId = intern(fonts, `<font>${f.join('')}</font>`);
+    const bg = argb(s.bg);
+    const fillId = bg ? intern(fills, `<fill><patternFill patternType="solid"><fgColor rgb="${bg}"/><bgColor rgb="${bg}"/></patternFill></fill>`) : 0;
+    const al = [];
+    if (XLSX_HALIGN[s.ht]) al.push(`horizontal="${XLSX_HALIGN[s.ht]}"`);
+    if (XLSX_VALIGN[s.vt]) al.push(`vertical="${XLSX_VALIGN[s.vt]}"`);
+    if (s.tb === 3) al.push('wrapText="1"');
+    const xf = `<xf numFmtId="0" fontId="${fontId}" fillId="${fillId}" borderId="0"` +
+      ` applyFont="1"${fillId ? ' applyFill="1"' : ''}` +
+      (al.length ? ` applyAlignment="1"><alignment ${al.join(' ')}/></xf>` : '/>');
+    const id = intern(xfs, xf);
+    xfIndex.set(key, id);
+    return id;
+  }
+
+  const order = (Array.isArray(snap.sheetOrder) && snap.sheetOrder.length ? snap.sheetOrder : Object.keys(snap.sheets || {}))
+    .filter(id => snap.sheets && snap.sheets[id]);
+  const sheetXmls = order.map(sid => {
+    const ws = snap.sheets[sid];
+    const cellData = ws.cellData || {};
+    let maxRow = 0, maxCol = 0;
+    const rowsXml = Object.keys(cellData).map(Number).sort((a, b) => a - b).map(r => {
+      const row = cellData[r]; if (!row || typeof row !== 'object') return '';
+      const cols = Object.keys(row).map(Number).sort((a, b) => a - b).map(c => {
+        const cell = row[c]; if (!cell || typeof cell !== 'object') return '';
+        if (r > maxRow) maxRow = r; if (c > maxCol) maxCol = c;
+        const ref = `${colLetter(c)}${r + 1}`;
+        const sAttr = (() => { const id = xfFor(resolveStyle(cell.s)); return id ? ` s="${id}"` : ''; })();
+        const raw = cell.v == null ? '' : String(cell.v);
+        if (cell.f) {
+          const cached = /^-?\d+(\.\d+)?$/.test(raw) ? raw : '0';
+          return `<c r="${ref}"${sAttr}><f>${xmlEsc(String(cell.f).replace(/^=/, ''))}</f><v>${xmlEsc(cached)}</v></c>`;
+        }
+        if (raw !== '' && /^-?\d+(\.\d+)?$/.test(raw)) return `<c r="${ref}"${sAttr}><v>${raw}</v></c>`;
+        if (raw === '') return sAttr ? `<c r="${ref}"${sAttr}/>` : '';
+        return `<c r="${ref}"${sAttr} t="inlineStr"><is><t xml:space="preserve">${xmlEsc(raw)}</t></is></c>`;
+      }).join('');
+      if (!cols) return '';
+      const rh = ws.rowData && ws.rowData[r] && Number(ws.rowData[r].h);
+      const hAttr = rh > 0 ? ` ht="${Math.round(rh * 0.75 * 100) / 100}" customHeight="1"` : '';
+      return `<row r="${r + 1}"${hAttr}>${cols}</row>`;
+    }).join('');
+
+    const colsXml = (() => {
+      const cd = ws.columnData || {};
+      const entries = Object.keys(cd).map(Number).sort((a, b) => a - b)
+        .filter(c => Number(cd[c] && cd[c].w) > 0)
+        .map(c => `<col min="${c + 1}" max="${c + 1}" width="${Math.round(((Number(cd[c].w) - 5) / 7) * 100) / 100}" customWidth="1"/>`);
+      return entries.length ? `<cols>${entries.join('')}</cols>` : '';
+    })();
+    const merges = (Array.isArray(ws.mergeData) ? ws.mergeData : [])
+      .map(m => `<mergeCell ref="${colLetter(m.startColumn)}${m.startRow + 1}:${colLetter(m.endColumn)}${m.endRow + 1}"/>`);
+    const mergeXml = merges.length ? `<mergeCells count="${merges.length}">${merges.join('')}</mergeCells>` : '';
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+      `<dimension ref="A1:${colLetter(Math.max(maxCol, 0))}${maxRow + 1}"/>` +
+      colsXml + `<sheetData>${rowsXml}</sheetData>` + mergeXml + `</worksheet>`;
+  });
+
+  const stylesXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+    `<fonts count="${fonts.length}">${fonts.join('')}</fonts>` +
+    `<fills count="${fills.length}">${fills.join('')}</fills>` +
+    `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>` +
+    `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
+    `<cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs></styleSheet>`;
+
+  const usedNames = new Set();
+  const sheetMeta = order.map((sid, i) => {
+    let name = String(snap.sheets[sid].name || `Sheet${i + 1}`).replace(/[\\/?*[\]:]/g, ' ').slice(0, 31).trim() || `Sheet${i + 1}`;
+    while (usedNames.has(name.toLowerCase())) name = (name.slice(0, 28) + '_' + i).slice(0, 31);
+    usedNames.add(name.toLowerCase());
+    return { name, file: `sheet${i + 1}.xml`, rid: `rId${i + 1}` };
+  });
+  const stylesRid = `rId${order.length + 1}`;
+
+  const workbookXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ` +
+    `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+    `<sheets>${sheetMeta.map((s, i) => `<sheet name="${xmlEsc(s.name)}" sheetId="${i + 1}" r:id="${s.rid}"/>`).join('')}</sheets></workbook>`;
+
+  const workbookRels =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    sheetMeta.map(s => `<Relationship Id="${s.rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/${s.file}"/>`).join('') +
+    `<Relationship Id="${stylesRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    `</Relationships>`;
+
+  const contentTypes =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+    `<Default Extension="xml" ContentType="application/xml"/>` +
+    `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+    `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
+    sheetMeta.map(s => `<Override PartName="/xl/worksheets/${s.file}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') +
+    `</Types>`;
+
+  const rels =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
+    `</Relationships>`;
+
+  return zip([
+    { name: '[Content_Types].xml', data: contentTypes },
+    { name: '_rels/.rels', data: rels },
+    { name: 'xl/workbook.xml', data: workbookXml },
+    { name: 'xl/_rels/workbook.xml.rels', data: workbookRels },
+    { name: 'xl/styles.xml', data: stylesXml },
+    ...sheetXmls.map((data, i) => ({ name: `xl/worksheets/${sheetMeta[i].file}`, data })),
+  ]);
+}
+
 function buildXlsx(doc) {
   const content = doc.content || {};
+  // Univer snapshot present → styled, multi-sheet export
+  if (content.univer && content.univer.sheets && Object.keys(content.univer.sheets).length) {
+    try { return buildXlsxFromUniver(doc, content.univer); }
+    catch (e) { console.error('[ooxml] univer xlsx failed, falling back to plain cells:', e.message); }
+  }
   const cells = content.cells || {};
   // Group cells by row.
   const rowMap = new Map();

@@ -225,11 +225,12 @@
       <div class="oneclick" id="oneclick">
         <a class="oc-btn" id="oc-cursor" href="#"><span class="oc-ic">▷_</span> Add to Cursor</a>
         <a class="oc-btn" id="oc-vscode" href="#"><span class="oc-ic" style="color:#2496ed">⧉</span> Add to VS Code</a>
-        <button class="oc-btn" onclick="copyClaude()"><span class="oc-ic" style="color:#d97757">✳</span> Copy Claude Code command</button>
+        <button class="oc-btn" onclick="copyClaude()" title="Works for the Claude Code CLI and desktop app (they share MCP config)"><span class="oc-ic" style="color:#d97757">✳</span> Claude Code (CLI + app)</button>
+        <button class="oc-btn" onclick="copyCodex()" title="Codex has no install link — paste this into ~/.codex/config.toml"><span class="oc-ic" style="color:#10a37f">◎</span> Codex (config.toml)</button>
         <button class="oc-btn" onclick="toggleManual()"><span class="oc-ic">{}</span> Manual config (.mcp.json)</button>
       </div>
       <div class="agent-snippet" id="mcp-snippet" style="display:none"><button class="cp" onclick="copyMcp()">Copy</button></div>
-      <p style="font-size:12px;color:var(--t2);margin-top:12px">The link grants <b id="agent-access">edit</b> access — change it under the <b>People</b> tab → "General access". Don't have one-click? VS Code/Cursor must be installed; otherwise use Manual config.</p>
+      <p style="font-size:12px;color:var(--t2);margin-top:12px">The link grants <b id="agent-access">edit</b> access — change it under the <b>People</b> tab → "General access". Cursor/VS Code open the editor for approval; Claude Code &amp; Codex have no install link, so those buttons copy a ready-to-paste command/config. Anything else: Manual config.</p>
     </div>
     <div style="text-align:right;margin-top:18px"><button class="btn btn-primary" onclick="closeModal('share-bg')">Done</button></div>
   </div>
@@ -497,8 +498,18 @@ function manualSnippet(){
 function cursorLink(){ return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(SERVER_NAME)}&config=${encodeURIComponent(b64(JSON.stringify(serverConfig())))}`; }
 // VS Code: vscode:mcp/install?ENCODED({name,type:'http',url,headers})
 function vscodeLink(){ const cfg={name:SERVER_NAME,type:'http',url:MCP_URL,headers:serverConfig().headers}; return `vscode:mcp/install?${encodeURIComponent(JSON.stringify(cfg))}`; }
-// Claude Code: one CLI line (no deeplink exists)
+// Claude Code: one CLI line (no deeplink exists). The desktop app shares MCP
+// config with the CLI, so this covers both.
 function claudeCmd(){ return `claude mcp add --transport http ${SERVER_NAME} ${MCP_URL} -H "x-terse-doc-token: ${doc.share_token||''}" -H "x-terse-user-email: ${agentEmail()}"`; }
+// Codex: no deeplink and `codex mcp add` is stdio-only — HTTP servers with
+// headers go in ~/.codex/config.toml ([mcp_servers.*] url + http_headers).
+function codexSnippet(){
+  return `# Terse Doc — append to ~/.codex/config.toml, then check /mcp inside codex
+[mcp_servers.terse_doc]
+url = "${MCP_URL}"
+http_headers = { "x-terse-doc-token" = "${doc.share_token||''}", "x-terse-user-email" = "${agentEmail()}" }`;
+}
+function copyCodex(){ navigator.clipboard.writeText(codexSnippet()).catch(()=>{}); toast('Codex config copied — paste it into ~/.codex/config.toml'); }
 
 function renderMcp(){
   $('agent-access').textContent=doc.share_role==='viewer'?'view':'edit';

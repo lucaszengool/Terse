@@ -484,7 +484,8 @@ async function submitCreateTeam(){
   // Store the new token (shown once)
   try{localStorage.setItem(`terse_cloud_token_${data.team.id}`, data.token);}catch{}
   closeCreateModal();
-  window.location.href = `/teams/${data.team.id}`;
+  const connect = new URLSearchParams(location.search).get('connect')==='app' ? '?connect=app' : '';
+  window.location.href = `/teams/${data.team.id}${connect}`;
 }
 
 // ── Dashboard ──
@@ -554,6 +555,11 @@ async function loadDashboard(){
       const d2 = await r2.json();
       renderMembers(d2.members||[]);
       renderTokens(d2.tokens||[]);
+      // Arriving from the desktop app's "Connect" flow: surface the connect pill.
+      if(new URLSearchParams(location.search).get('connect')==='app'){
+        const pill = $('connect-pill');
+        if(pill){ pill.scrollIntoView({behavior:'smooth',block:'center'}); toast('Click “Connect Terse app ↗” to link your Mac'); }
+      }
     }
     loadAlerts();
   } else {
@@ -635,8 +641,9 @@ function renderTokens(tokens){
   try{justMinted=localStorage.getItem(`terse_cloud_token_${teamId}`);}catch{}
   let html='';
   if(justMinted){
-    html+=`<div class="token-pill" style="border-color:var(--ac);background:var(--acd)">
+    html+=`<div id="connect-pill" class="token-pill" style="border-color:var(--ac);background:var(--acd);flex-wrap:wrap;gap:8px">
       <span class="mono" style="font-size:12px"><strong>New token (shown once):</strong> ${escapeHtml(justMinted)}</span>
+      <a class="action" href="terse://connect?token=${encodeURIComponent(justMinted)}" style="color:var(--ac);font-weight:700">Connect Terse app ↗</a>
       <a class="action" onclick="copyToken('${justMinted}')">Copy</a>
     </div>`;
   }

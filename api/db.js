@@ -687,6 +687,35 @@ const getTeamByMode = db.prepare(`
   ORDER BY tokens_in DESC
 `);
 
+// Agent-activity rollup for the team dashboard: classify recent coding-agent
+// sessions (Claude Code, Codex, Cursor, …) by agent_type. Driven by cowork_sessions
+// rather than cloud_events so it reflects live/recent agent work + context fill.
+const getTeamByAgent = db.prepare(`
+  SELECT agent_type,
+    COUNT(*) as sessions,
+    COUNT(DISTINCT user_email) as developers,
+    COALESCE(SUM(tokens_in), 0) as tokens_in,
+    COALESCE(SUM(tokens_out), 0) as tokens_out,
+    COALESCE(SUM(tool_calls), 0) as tool_calls,
+    COALESCE(AVG(CASE WHEN context_window > 0
+      THEN CAST(context_used AS REAL) / context_window ELSE NULL END), 0) as avg_context_fill
+  FROM cowork_sessions
+  WHERE team_id = ? AND last_seen_at >= ?
+  GROUP BY agent_type
+  ORDER BY tokens_in DESC
+`);
+
+const getTeamAgentTotals = db.prepare(`
+  SELECT COUNT(*) as total_sessions,
+    COUNT(DISTINCT agent_type) as agent_types,
+    COUNT(DISTINCT CASE WHEN project != '' THEN project END) as projects,
+    COALESCE(SUM(tool_calls), 0) as tool_calls,
+    COALESCE(SUM(tokens_in), 0) as tokens_in,
+    COALESCE(SUM(tokens_out), 0) as tokens_out
+  FROM cowork_sessions
+  WHERE team_id = ? AND last_seen_at >= ?
+`);
+
 // ── Terse Cowork helpers ──
 // Upsert a live agent session keyed by (team, member, device, agent, project).
 const upsertCoworkSession = db.prepare(`
@@ -878,7 +907,7 @@ module.exports = {
   addTeamToken, findTeamByToken, touchTeamToken, getTeamTokens, deleteTeamToken,
   addCloudEvent, getTeamEvents, getTeamSummary,
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
-  getTeamByModel, getTeamByMode,
+  getTeamByModel, getTeamByMode, getTeamByAgent, getTeamAgentTotals,
   // Terse Cowork
   upsertCoworkSession, getCoworkSessionByKey, getCoworkSession, getCoworkSessions,
   bumpCoworkSessionSeq, endStaleCoworkSessions, idleStaleCoworkSessions,

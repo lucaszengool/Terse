@@ -23,6 +23,10 @@ pub struct CoworkConfig {
     pub team_token: Option<String>,
     #[serde(rename = "shareLogs", default = "default_true")]
     pub share_logs: bool,
+    /// Independent opt-in for pushing aggregate token-usage events to the team
+    /// dashboard (no prompt/log text — counts only). Separate from `share_logs`.
+    #[serde(rename = "shareStats", default = "default_true")]
+    pub share_stats: bool,
 }
 
 fn default_true() -> bool { true }
@@ -42,7 +46,7 @@ impl CoworkConfig {
                 }
             }
         }
-        CoworkConfig { share_logs: true, ..Default::default() }
+        CoworkConfig { share_logs: true, share_stats: true, ..Default::default() }
     }
 
     pub fn save(&self) {
@@ -55,10 +59,20 @@ impl CoworkConfig {
         }
     }
 
-    pub fn is_active(&self) -> bool {
-        self.share_logs
-            && self.team_token.as_ref().map_or(false, |t| !t.is_empty())
+    /// True when connected to a team — used to gate stats publishing independent
+    /// of the log-sharing toggle.
+    fn connected(&self) -> bool {
+        self.team_token.as_ref().map_or(false, |t| !t.is_empty())
             && self.team_id.as_ref().map_or(false, |t| !t.is_empty())
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.share_logs && self.connected()
+    }
+
+    /// True when usage-stat events should be pushed to the team dashboard.
+    pub fn is_stats_active(&self) -> bool {
+        self.share_stats && self.connected()
     }
 
     pub fn snapshot(&self) -> serde_json::Value {
@@ -66,7 +80,8 @@ impl CoworkConfig {
             "teamId": self.team_id,
             "teamName": self.team_name,
             "shareLogs": self.share_logs,
-            "connected": self.team_token.as_ref().map_or(false, |t| !t.is_empty()),
+            "shareStats": self.share_stats,
+            "connected": self.connected(),
             "apiBase": API_BASE,
         })
     }
@@ -79,6 +94,9 @@ pub struct CoworkState {
     pub config: CoworkConfig,
     last_ts: HashMap<String, String>,
     last_project: HashMap<String, String>,
+    // Per-agent cumulative (input, output) tokens last reported as a usage event,
+    // so the scan loop can publish only the delta and avoid double counting.
+    last_published_tokens: HashMap<String, (u64, u64)>,
 }
 
 impl CoworkState {
@@ -87,7 +105,14 @@ impl CoworkState {
             config: CoworkConfig::load(),
             last_ts: HashMap::new(),
             last_project: HashMap::new(),
+            last_published_tokens: HashMap::new(),
         }
+    }
+
+    /// Build a throwaway state around a config snapshot — used to publish a usage
+    /// event from a background thread without holding the app-wide lock.
+    pub fn from_config(config: CoworkConfig) -> Self {
+        CoworkState { config, ..Default::default() }
     }
 }
 
@@ -258,4 +283,74 @@ pub fn publish_presence(state: &CoworkState, user_email: Option<&str>) {
     if let Ok(s) = serde_json::to_string(&body) {
         post_json("/api/cloud/presence", &token, &s);
     }
+}
+
+// ── Usage telemetry (feeds the team token-usage / classification dashboard) ──
+
+/// Push one aggregate usage event to the team dashboard. Counts only — never any
+/// prompt or log text. Gated on the separate `share_stats` opt-in.
+#[allow(clippy::too_many_arguments)]
+pub fn publish_event(
+    state: &CoworkState,
+    source: &str,
+    tool: &str,
+    project: &str,
+    model: &str,
+    mode: &str,
+    tokens_in: u64,
+    tokens_out: u64,
+    tokens_saved: u64,
+    user_email: Option<&str>,
+) {
+    if !state.config.is_stats_active() { return; }
+    let token = match state.config.team_token.clone() { Some(t) => t, None => return };
+    let body = serde_json::json!({
+        "user_email": user_email,
+        "source": source,
+        "tool": tool,
+        "project": project,
+        "model": model,
+        "optimization_mode": mode,
+        "tokens_in": tokens_in,
+        "tokens_out": tokens_out,
+        "tokens_saved": tokens_saved,
+    });
+    if let Ok(s) = serde_json::to_string(&body) {
+        post_json("/api/cloud/events", &token, &s);
+    }
+}
+
+/// Publish the per-agent token-usage delta since the last report as a usage event
+/// classified by the coding agent (claude-code / codex / cursor / …). Called from
+/// the agent scan loop alongside `publish_snapshot`.
+pub fn publish_agent_usage(
+    state: &mut CoworkState,
+    snapshot: &serde_json::Value,
+    user_email: Option<&str>,
+) {
+    if !state.config.is_stats_active() { return; }
+    let agent_type = snapshot["agentType"].as_str().unwrap_or("agent").to_string();
+    let total_in = snapshot["totalInputTokens"].as_u64().unwrap_or(0);
+    let total_out = snapshot["totalOutputTokens"].as_u64().unwrap_or(0);
+
+    let (prev_in, prev_out) = state
+        .last_published_tokens
+        .get(&agent_type)
+        .copied()
+        .unwrap_or((0, 0));
+    // Guard against counter resets (new session reuses the agent_type key).
+    let d_in = total_in.saturating_sub(prev_in);
+    let d_out = total_out.saturating_sub(prev_out);
+    let reset = total_in < prev_in || total_out < prev_out;
+    state
+        .last_published_tokens
+        .insert(agent_type.clone(), (total_in, total_out));
+    if reset || (d_in == 0 && d_out == 0) { return; }
+
+    let project = snapshot["project"].as_str().unwrap_or("").to_string();
+    let model = snapshot["model"].as_str().unwrap_or("").to_string();
+    publish_event(
+        state, "agent", &agent_type, &project, &model, "",
+        d_in, d_out, 0, user_email,
+    );
 }

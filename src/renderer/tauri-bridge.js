@@ -106,7 +106,9 @@ if (window.__TAURI__) {
     getCoworkConfig: () => invoke('get_cowork_config'),
     setCoworkToken: (token) => invoke('set_cowork_token', { token }),
     setCoworkShareLogs: (enabled) => invoke('set_cowork_share_logs', { enabled }),
+    setCoworkShareStats: (enabled) => invoke('set_cowork_share_stats', { enabled }),
     clearCoworkToken: () => invoke('clear_cowork_token'),
+    openCloudTeams: (path) => invoke('open_cloud_teams', { path: path || null }),
 
     // Pets (Phase 1 — picker + foundation)
     getPetState: () => invoke('get_pet_state'),

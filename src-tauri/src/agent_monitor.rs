@@ -2463,6 +2463,9 @@ pub fn start_scanning(app: AppHandle) {
             {
                 let mut cw = state.cowork.lock().unwrap_or_else(|e| e.into_inner());
                 crate::cowork::publish_snapshot(&mut cw, &snapshot, member_email.as_deref());
+                // Also feed the team usage dashboard with this agent's token delta,
+                // classified by agent type (gated on the separate share_stats opt-in).
+                crate::cowork::publish_agent_usage(&mut cw, &snapshot, member_email.as_deref());
             }
             let _ = app.emit("agent-update", serde_json::json!({
                 "agentType": agent_type,

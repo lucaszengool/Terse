@@ -6,6 +6,13 @@
   "build": {
     "frontendDist": "../src/renderer"
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["terse"]
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": ["dmg"],

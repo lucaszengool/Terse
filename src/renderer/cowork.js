@@ -49,6 +49,7 @@
     }
     token = cfg.teamToken; teamId = cfg.teamId;
     $('#shareToggle').checked = cfg.shareLogs !== false;
+    $('#statsToggle').checked = cfg.shareStats !== false;
     if (cfg.teamName) { const p = $('#teamPill'); p.textContent = cfg.teamName; p.style.display = ''; }
     $('#mainView').style.display = 'block';
 
@@ -70,6 +71,7 @@
     }
   });
   $('#tokenInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btnJoin').click(); });
+  $('#btnCreate').addEventListener('click', () => { try { T.openCloudTeams(); } catch {} });
 
   // ── Loaders ──
   async function loadSessions() {
@@ -264,6 +266,92 @@
     $('#mainView').style.display = 'block';
   });
 
+  // ── Stats ──
+  let statsPeriod = 'week';
+  let statsLoaded = false;
+  const kfmt = (n) => {
+    n = Number(n) || 0;
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+    return String(Math.round(n));
+  };
+  function bars(title, rows, labelKey, valKey, labelFmt) {
+    rows = (rows || []).filter((r) => (Number(r[valKey]) || 0) > 0).slice(0, 6);
+    if (!rows.length) return '';
+    const max = Math.max(...rows.map((r) => Number(r[valKey]) || 0)) || 1;
+    const body = rows.map((r) => {
+      const v = Number(r[valKey]) || 0;
+      const w = Math.max(3, Math.round((v / max) * 100));
+      const label = labelFmt ? labelFmt(r[labelKey]) : (r[labelKey] || '—');
+      return `<div class="barrow"><span class="bl" title="${esc(label)}">${esc(label)}</span>` +
+        `<span class="bt"><span class="bf" style="width:${w}%"></span></span>` +
+        `<span class="bv">${kfmt(v)}</span></div>`;
+    }).join('');
+    return `<div class="cls-group"><div class="cls-title">${esc(title)}</div>${body}</div>`;
+  }
+  function sparkline(daily) {
+    daily = daily || [];
+    if (daily.length < 2) return '';
+    const vals = daily.map((x) => Number(x.tokens_saved) || 0);
+    const max = Math.max(...vals) || 1;
+    const W = 280, H = 40, n = vals.length;
+    const pts = vals.map((v, i) =>
+      `${((i / (n - 1)) * W).toFixed(1)},${(H - (v / max) * H).toFixed(1)}`).join(' ');
+    return `<div class="section-title">Daily tokens saved</div>` +
+      `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">` +
+      `<polyline points="${pts}" fill="none" stroke="var(--btn)" stroke-width="2" ` +
+      `stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  }
+  async function loadStats() {
+    const el = $('#statsBody');
+    statsLoaded = true;
+    try {
+      const q = `period=${statsPeriod}` + (myEmail ? `&email=${encodeURIComponent(myEmail)}` : '');
+      const d = await api(`/api/cloud/teams/${teamId}/stats?${q}`);
+      renderStats(d);
+    } catch (e) {
+      el.innerHTML = '<div class="empty">Couldn\'t load team stats.</div>';
+    }
+  }
+  function renderStats(d) {
+    const s = d.summary || {};
+    const inTok = s.total_tokens_in || 0, saved = s.total_tokens_saved || 0;
+    const rate = inTok > 0 ? ((saved / inTok) * 100).toFixed(1) : '0.0';
+    const kpis = [
+      ['Tokens saved', kfmt(saved)],
+      ['Saved', '$' + (s.dollars_saved != null ? s.dollars_saved : 0)],
+      ['Save rate', rate + '%'],
+      ['Developers', s.active_developers || 0],
+      ['Events', (s.total_events || 0).toLocaleString()],
+      ['Tokens in', kfmt(inTok)],
+    ];
+    const roleNote = d.role === 'member'
+      ? '<div class="role-note">Showing your own usage. Team owners see everyone’s.</div>' : '';
+    const cls =
+      bars('By coding agent', d.by_agent, 'agent_type', 'tokens_in') +
+      bars('By tool / device', d.by_tool, 'tool', 'tokens_in') +
+      bars('By model', d.by_model, 'model', 'tokens_in') +
+      bars('By optimization mode', d.by_mode, 'mode', 'tokens_in');
+    const devBars = bars('Tokens saved', d.by_developer, 'user_email', 'tokens_saved', short);
+    $('#statsBody').innerHTML =
+      roleNote +
+      `<div class="statgrid">${kpis.map((k) =>
+        `<div class="statcard"><div class="sv">${esc(k[1])}</div><div class="sl">${esc(k[0])}</div></div>`).join('')}</div>` +
+      '<div class="section-title">Classification</div>' +
+      (cls || '<div class="empty">No usage yet. Turn on “Share usage stats”, then optimize or run an agent.</div>') +
+      '<div class="section-title">By developer</div>' +
+      (devBars || '<div class="empty">No savings recorded yet.</div>') +
+      sparkline(d.daily);
+  }
+  document.querySelectorAll('.period-btn').forEach((b) =>
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.period-btn').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      statsPeriod = b.dataset.p;
+      loadStats();
+    }));
+
   // ── Tabs ──
   document.querySelectorAll('.tab').forEach((t) =>
     t.addEventListener('click', () => {
@@ -272,14 +360,20 @@
       const name = t.dataset.tab;
       $('#tab-live').style.display = name === 'live' ? 'block' : 'none';
       $('#tab-feed').style.display = name === 'feed' ? 'block' : 'none';
+      $('#tab-stats').style.display = name === 'stats' ? 'block' : 'none';
       $('#tab-inbox').style.display = name === 'inbox' ? 'block' : 'none';
       if (name === 'feed') renderFeed();
+      if (name === 'stats') loadStats();
     }));
 
   // ── Footer controls ──
   $('#shareToggle').addEventListener('change', (e) => {
     try { T.setCoworkShareLogs(e.target.checked); } catch {}
   });
+  $('#statsToggle').addEventListener('change', (e) => {
+    try { T.setCoworkShareStats(e.target.checked); } catch {}
+  });
+  $('#btnCloud').addEventListener('click', () => { try { T.openCloudTeams(); } catch {} });
   $('#btnLeave').addEventListener('click', async () => {
     if (es) es.close();
     try { await T.clearCoworkToken(); } catch {}

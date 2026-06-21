@@ -330,6 +330,14 @@ router.get('/teams/:id/stats', async (req, res) => {
       FROM cloud_events WHERE team_id = ? AND user_email = ? AND occurred_at >= ?
       GROUP BY substr(occurred_at,1,10) ORDER BY date ASC
     `).all(team.id, memberEmail, start);
+    const memberByAgent = db.db.prepare(`
+      SELECT agent_type, COUNT(*) as sessions, 1 as developers,
+        COALESCE(SUM(tokens_in),0) as tokens_in, COALESCE(SUM(tokens_out),0) as tokens_out,
+        COALESCE(SUM(tool_calls),0) as tool_calls,
+        COALESCE(AVG(CASE WHEN context_window > 0 THEN CAST(context_used AS REAL)/context_window ELSE NULL END),0) as avg_context_fill
+      FROM cowork_sessions WHERE team_id = ? AND user_email = ? AND last_seen_at >= ?
+      GROUP BY agent_type ORDER BY tokens_in DESC
+    `).all(team.id, memberEmail, start);
     const dollarsSaved = (memberSummary.total_tokens_saved / 1_000_000) * 3;
     return res.json({
       team: { id: team.id, name: team.name, slug: team.slug, company: team.company, seats: team.seats },
@@ -339,6 +347,7 @@ router.get('/teams/:id/stats', async (req, res) => {
       by_developer: [{ user_email: memberEmail, events: memberSummary.total_events, tokens_in: memberSummary.total_tokens_in, tokens_saved: memberSummary.total_tokens_saved }],
       by_tool: memberByTool,
       by_project: memberByProject,
+      by_agent: memberByAgent,
       daily: memberDaily,
     });
   }
@@ -350,6 +359,8 @@ router.get('/teams/:id/stats', async (req, res) => {
   const byProject = db.getTeamByProject.all(team.id, start);
   const byModel = db.getTeamByModel.all(team.id, start);
   const byMode = db.getTeamByMode.all(team.id, start);
+  const byAgent = db.getTeamByAgent.all(team.id, start);
+  const agentTotals = db.getTeamAgentTotals.get(team.id, start);
   const daily = db.getTeamDaily.all(team.id, start);
   const dollarsSaved = (summary.total_tokens_saved / 1_000_000) * 3;
   const totalMembers = db.getTeamMembers.all(team.id).length;
@@ -364,6 +375,8 @@ router.get('/teams/:id/stats', async (req, res) => {
     by_project: byProject,
     by_model: byModel,
     by_mode: byMode,
+    by_agent: byAgent,
+    agent_totals: agentTotals,
     daily,
   });
 });

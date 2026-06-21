@@ -24,6 +24,7 @@ use tauri::{
     tray::TrayIconBuilder,
 };
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
+use tauri_plugin_deep_link::DeepLinkExt;
 
 // ── App State ──
 
@@ -806,6 +807,16 @@ fn set_cowork_share_logs(enabled: bool, state: tauri::State<'_, AppState>) -> se
     cw.config.snapshot()
 }
 
+/// Opt in/out of pushing aggregate token-usage events to the team dashboard.
+/// Independent of `share_logs` (live agent logs).
+#[tauri::command]
+fn set_cowork_share_stats(enabled: bool, state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let mut cw = lock_or_recover(&state.cowork);
+    cw.config.share_stats = enabled;
+    cw.config.save();
+    cw.config.snapshot()
+}
+
 #[tauri::command]
 fn clear_cowork_token(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let mut cw = lock_or_recover(&state.cowork);
@@ -1402,6 +1413,7 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
             let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
             store.record_optimization("agent", new_original, new_optimized);
         }
+        publish_usage_event(&state, "agent", new_original, new_optimized);
 
         // Each hook compression costs 0.3 quota
         let mut lic = state.license.lock().unwrap_or_else(|e| e.into_inner());
@@ -1511,6 +1523,65 @@ fn navigate_to_cowork(app: AppHandle) {
             let _ = win.eval("window.location.replace('/cowork.html');");
         }
     }
+}
+
+/// Open the Terse Cloud team dashboard in the default browser. `path` is an
+/// optional suffix under `/teams` (e.g. a team id); when absent we send the user
+/// to the create/connect flow (`?connect=app`) so the website can hand a token
+/// straight back via the `terse://` deep link.
+#[tauri::command]
+fn open_cloud_teams(path: Option<String>, state: tauri::State<'_, AppState>) {
+    const BASE: &str = "https://www.terseai.org";
+    let url = match path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        Some(p) => {
+            let p = p.trim_start_matches('/');
+            format!("{}/teams/{}", BASE, p)
+        }
+        None => {
+            // If already connected, deep-link to this team; else the connect flow.
+            let team_id = lock_or_recover(&state.cowork).config.team_id.clone();
+            match team_id {
+                Some(id) if !id.is_empty() => format!("{}/teams/{}", BASE, id),
+                _ => format!("{}/teams?connect=app", BASE),
+            }
+        }
+    };
+    let _ = std::process::Command::new("open").arg(&url).spawn();
+}
+
+/// Handle a `terse://connect?token=tct_…` deep link: focus the app immediately,
+/// then resolve + persist the team token off-thread and open the Team window.
+/// Called from the deep-link plugin (`on_open_url`) and on cold-start launch.
+fn handle_connect_url(app: &AppHandle, url: &tauri::Url) {
+    if url.scheme() != "terse" { return; }
+    let token = url
+        .query_pairs()
+        .find(|(k, _)| k == "token")
+        .map(|(_, v)| v.into_owned());
+
+    // Bring the window forward right away — feels instant even while we verify.
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.show();
+        let _ = win.unminimize();
+        let _ = win.set_focus();
+    }
+
+    let token = match token { Some(t) if !t.trim().is_empty() => t.trim().to_string(), _ => return };
+    let app = app.clone();
+    std::thread::spawn(move || {
+        if cowork::resolve_and_save_token(&token).is_ok() {
+            {
+                let state = app.state::<AppState>();
+                let mut cw = lock_or_recover(&state.cowork);
+                cw.config = cowork::CoworkConfig::load();
+            }
+            if let Some(win) = app.get_webview_window("main") {
+                if let Ok(u) = "tauri://localhost/cowork.html".parse() {
+                    let _ = win.navigate(u);
+                }
+            }
+        }
+    });
 }
 
 // ── Farm Window control ──
@@ -1814,6 +1885,25 @@ fn set_pet_settings(settings: pet_store::PetSettings, state: tauri::State<'_, Ap
     Ok(())
 }
 
+/// Push one optimization as an aggregate usage event to the team dashboard
+/// (counts only, no text), off the UI thread so the curl never blocks. No-op
+/// unless connected to a team with the `share_stats` opt-in on.
+fn publish_usage_event(state: &AppState, source: &str, original: u64, optimized: u64) {
+    let cfg = { lock_or_recover(&state.cowork).config.clone() };
+    if !cfg.is_stats_active() { return; }
+    let mode = lock_or_recover(&state.settings).aggressiveness.clone();
+    let email = lock_or_recover(&state.auth).email.clone();
+    let source = source.to_string();
+    let saved = original.saturating_sub(optimized);
+    std::thread::spawn(move || {
+        let st = cowork::CoworkState::from_config(cfg);
+        cowork::publish_event(
+            &st, &source, "mac", "", "", &mode,
+            original, 0, saved, email.as_deref(),
+        );
+    });
+}
+
 #[tauri::command]
 fn record_optimization(source: String, original_tokens: u64, optimized_tokens: u64, state: tauri::State<'_, AppState>, app: AppHandle) {
     let saved = original_tokens.saturating_sub(optimized_tokens);
@@ -1825,6 +1915,7 @@ fn record_optimization(source: String, original_tokens: u64, optimized_tokens: u
         let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
         store.record_optimization(&source, original_tokens, optimized_tokens);
     }
+    publish_usage_event(&state, &source, original_tokens, optimized_tokens);
     let _ = app.emit("stats-updated", ());
     // 1 coin per optimization call regardless of tokens saved
     {
@@ -2227,12 +2318,36 @@ fn cleanup_proxy_configs() {
 
 pub fn run() {
     tauri::Builder::default()
+        // single-instance MUST be registered first; with the deep-link feature it
+        // also forwards a `terse://` URL from a second launch to the running app.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.show();
+                let _ = win.unminimize();
+                let _ = win.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_deep_link::init())
         .manage(AppState::default())
         .setup(|app| {
+            // Register the terse:// connect handler + handle a cold-start launch URL.
+            {
+                let handle = app.handle().clone();
+                app.deep_link().on_open_url(move |event| {
+                    for url in event.urls() {
+                        handle_connect_url(&handle, &url);
+                    }
+                });
+                if let Ok(Some(urls)) = app.deep_link().get_current() {
+                    for url in urls {
+                        handle_connect_url(app.handle(), &url);
+                    }
+                }
+            }
             // Remove macOS quarantine & handle App Translocation
             // DMG-installed apps get quarantine + translocation which breaks events,
             // keychain access, and file reads (see tauri-apps/tauri#9052)
@@ -2661,7 +2776,9 @@ pub fn run() {
             get_cowork_config,
             set_cowork_token,
             set_cowork_share_logs,
+            set_cowork_share_stats,
             clear_cowork_token,
+            open_cloud_teams,
             install_agent_hook,
             check_agent_hook,
             get_hook_stats,

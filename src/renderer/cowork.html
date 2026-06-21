@@ -96,10 +96,31 @@
 
     .empty{color:var(--t3);text-align:center;padding:22px 0;font-size:11px}
     .footer{margin-top:12px;border-top:1px solid var(--bd);padding-top:10px;
-      display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--t3)}
+      display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--t3);gap:8px}
+    .footer .switches{display:flex;flex-direction:column;gap:4px}
+    .footer .frow{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
     .switch{display:flex;align-items:center;gap:6px;cursor:pointer}
     .switch input{accent-color:var(--btn)}
     .link{color:var(--t2);cursor:pointer;text-decoration:underline}
+
+    /* Stats tab */
+    .periods{display:flex;gap:4px;margin-bottom:10px}
+    .period-btn{flex:1;padding:5px 0;font-size:10px;font-weight:600;border:1px solid var(--bd);
+      background:var(--sf);color:var(--t3);border-radius:8px;cursor:pointer}
+    .period-btn.active{background:var(--btn);color:var(--btn-t);border-color:transparent}
+    .role-note{font-size:10px;color:var(--t3);margin-bottom:8px;padding:6px 8px;background:var(--sf);border-radius:8px}
+    .statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px}
+    .statcard{background:var(--sf);border-radius:10px;padding:9px 8px}
+    .statcard .sv{font-size:15px;font-weight:800;color:var(--t1);letter-spacing:-.02em}
+    .statcard .sl{font-size:9px;color:var(--t3);margin-top:2px}
+    .cls-group{margin-bottom:10px}
+    .cls-title{font-size:10px;font-weight:700;color:var(--t2);margin:0 0 5px}
+    .barrow{display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:10px}
+    .barrow .bl{flex:0 0 86px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .barrow .bt{flex:1;height:7px;background:var(--bd);border-radius:4px;overflow:hidden}
+    .barrow .bf{display:block;height:100%;background:var(--btn);border-radius:4px}
+    .barrow .bv{flex:0 0 auto;color:var(--t3);font-variant-numeric:tabular-nums;min-width:34px;text-align:right}
+    .spark{width:100%;height:40px;display:block;margin-top:4px}
   </style>
   <script>(function(){var s=localStorage.getItem('terse-theme')||'lime';document.documentElement.setAttribute('data-theme',s)})();</script>
 </head>
@@ -118,6 +139,7 @@
     <input id="tokenInput" type="text" placeholder="tct_…" autocomplete="off" spellcheck="false">
     <button class="primary-btn" id="btnJoin">Join team</button>
     <div class="err" id="joinErr"></div>
+    <p style="margin-top:2px">No team yet? <span class="link" id="btnCreate">Create one on Terse Cloud ↗</span> — then click “Connect Terse app” there to link this Mac instantly.</p>
   </div>
 
   <!-- Connected -->
@@ -125,6 +147,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="live">Live</button>
       <button class="tab" data-tab="feed">Activity</button>
+      <button class="tab" data-tab="stats">Stats</button>
       <button class="tab" data-tab="inbox">Inbox<span class="badge" id="inboxBadge" style="display:none">0</span></button>
     </div>
 
@@ -139,6 +162,16 @@
     <!-- FEED -->
     <div id="tab-feed" style="display:none">
       <div id="feed"><div class="empty">No recent activity.</div></div>
+    </div>
+
+    <!-- STATS -->
+    <div id="tab-stats" style="display:none">
+      <div class="periods">
+        <button class="period-btn" data-p="day">24h</button>
+        <button class="period-btn active" data-p="week">7d</button>
+        <button class="period-btn" data-p="month">30d</button>
+      </div>
+      <div id="statsBody"><div class="empty">Loading…</div></div>
     </div>
 
     <!-- INBOX -->
@@ -160,8 +193,14 @@
     </div>
 
     <div class="footer">
-      <label class="switch"><input type="checkbox" id="shareToggle" checked> Share my agents</label>
-      <span class="link" id="btnLeave">Leave team</span>
+      <div class="switches">
+        <label class="switch"><input type="checkbox" id="shareToggle" checked> Share my agents</label>
+        <label class="switch"><input type="checkbox" id="statsToggle" checked> Share usage stats</label>
+      </div>
+      <div class="frow">
+        <span class="link" id="btnCloud">Open Terse Cloud ↗</span>
+        <span class="link" id="btnLeave">Leave team</span>
+      </div>
     </div>
   </div>
 

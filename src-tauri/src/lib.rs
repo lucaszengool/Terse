@@ -2,6 +2,7 @@
 
 mod capture;
 mod agent_monitor;
+mod agent_usage_scan;
 mod stats_store;
 mod license;
 mod cowork;
@@ -2576,6 +2577,22 @@ pub fn run() {
             let app_handle3 = app.handle().clone();
             std::thread::spawn(move || {
                 agent_monitor::start_scanning(app_handle3);
+            });
+
+            // Persist real agent token usage into the stats store: backfill the
+            // last 30 days of Claude Code session logs on launch, then re-scan
+            // every 30s for live growth. A per-file offset ledger prevents any
+            // double-counting (see agent_usage_scan).
+            let app_handle_usage = app.handle().clone();
+            std::thread::spawn(move || {
+                loop {
+                    {
+                        let state = app_handle_usage.state::<AppState>();
+                        // scan_once parses files first, then locks only to record.
+                        agent_usage_scan::scan_once(&state.stats_store);
+                    }
+                    std::thread::sleep(std::time::Duration::from_secs(30));
+                }
             });
 
             // Start combined focus + text polling

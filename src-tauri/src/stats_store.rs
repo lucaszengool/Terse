@@ -102,6 +102,23 @@ impl StatsStore {
         self.dirty = true;
     }
 
+    /// Record raw agent token usage attributed to a specific day (YYYY-MM-DD).
+    /// Used by the session-log scanner for both backfill and live tracking.
+    /// Does NOT touch tokens_saved — savings are only credited by real compression.
+    /// Caller is responsible for flushing (batch many calls, then `flush()`).
+    pub fn record_agent_usage_for_date(&mut self, day: &str, input_tokens: u64, output_tokens: u64, tool_calls: u64) {
+        if input_tokens == 0 && output_tokens == 0 && tool_calls == 0 { return; }
+        self.ensure_day(day);
+        if let Some(day_data) = self.data.days.get_mut(day) {
+            if let Some(src) = day_data.get_mut("agent") {
+                src.tokens_in += input_tokens;
+                src.tokens_out += output_tokens;
+                src.tool_calls += tool_calls;
+            }
+        }
+        self.dirty = true;
+    }
+
     pub fn get_stats(&self, period: &str) -> serde_json::Value {
         let start_date = match period {
             "day" => Self::today_key(),

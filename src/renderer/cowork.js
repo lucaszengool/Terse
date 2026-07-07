@@ -266,6 +266,233 @@
     $('#mainView').style.display = 'block';
   });
 
+  // ── Local stats: pricing + cost helpers (same keys as stats.html) ─────────
+  const DEFAULT_RATES = {
+    agent:   { in: 3.0, out: 15.0 },
+    browser: { in: 2.5, out: 10.0 },
+    editor:  { in: 3.0, out: 15.0 },
+    manual:  { in: 3.0, out: 15.0 },
+  };
+  const SOURCE_META = {
+    browser: { name: 'Browser', color: '#4A9EFF' },
+    agent:   { name: 'Agent',   color: '#4CAF50' },
+    editor:  { name: 'Editor',  color: '#9C27B0' },
+    manual:  { name: 'Manual',  color: '#FF9800' },
+  };
+  function loadRates() {
+    try { const r = JSON.parse(localStorage.getItem('terse-rates') || 'null'); if (r && r.agent) return r; } catch {}
+    return JSON.parse(JSON.stringify(DEFAULT_RATES));
+  }
+  let RATES = loadRates();
+  const CACHE_READ_MULT = 0.1, CACHE_WRITE_MULT = 1.25;
+  function costOf(src, s) {
+    s = s || {};
+    const r = RATES[src] || DEFAULT_RATES[src] || { in: 3, out: 15 };
+    const cr = s.cacheReadTokens || 0, cw = s.cacheCreationTokens || 0;
+    const fresh = Math.max(0, (s.tokensIn || 0) - cr - cw);
+    return (fresh * r.in + cr * r.in * CACHE_READ_MULT + cw * r.in * CACHE_WRITE_MULT) / 1e6
+      + (s.tokensOut || 0) / 1e6 * r.out;
+  }
+  function savedUsd(src, tokensSaved) {
+    return (tokensSaved || 0) / 1e6 * (RATES[src] || DEFAULT_RATES[src] || { in: 3 }).in;
+  }
+  function fmtUSD(n) {
+    if (!n) return '$0';
+    if (n >= 1000) return '$' + (n / 1000).toFixed(1) + 'k';
+    if (n >= 100) return '$' + n.toFixed(0);
+    if (n >= 1) return '$' + n.toFixed(2);
+    return '$' + n.toFixed(3);
+  }
+  function shortModel(m) {
+    if (!m || m === 'unknown') return 'Unknown';
+    return m.replace(/^claude-/, '').replace(/-\d{8}$/, '');
+  }
+
+  // ── Local budget helpers (shared localStorage with stats.html) ───────────
+  function loadBudget() {
+    const v = parseFloat(localStorage.getItem('terse-budget-usd') || '');
+    return isFinite(v) && v > 0 ? v : null;
+  }
+  function saveBudgetLocal(v) {
+    if (isFinite(v) && v > 0) localStorage.setItem('terse-budget-usd', String(v));
+    else localStorage.removeItem('terse-budget-usd');
+  }
+  function daysInMonth() {
+    const n = new Date(); return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
+  }
+
+  // ── Slack helpers (same keys as stats.html) ──────────────────────────────
+  const LVL_RANK = { ok: 0, warn: 1, near: 2, over: 3 };
+  function slackWebhook() { return (localStorage.getItem('terse-slack-webhook') || '').trim(); }
+  function slackEnabled() { return localStorage.getItem('terse-slack-enabled') === '1' && !!slackWebhook(); }
+  function refreshTeamSlackUI() {
+    const hook = slackWebhook(), en = slackEnabled();
+    const inp = $('#teamSlackWebhook');
+    if (document.activeElement !== inp) inp.value = hook;
+    $('#teamSlackEnabled').checked = en;
+    const badge = $('#teamSlackBadge');
+    badge.textContent = en ? 'On' : (hook ? 'Paused' : 'Off');
+    badge.className = 'slack-badge ' + (en ? 'on' : 'off');
+  }
+  function maybeTeamSlackAlert(lvl, spent, budget, forecast, pct) {
+    if (!slackEnabled() || LVL_RANK[lvl] < 1) return;
+    const ym = new Date().toISOString().slice(0, 7);
+    let last; try { last = JSON.parse(localStorage.getItem('terse-slack-last') || '{}'); } catch { last = {}; }
+    const lastRank = last.month === ym ? (last.rank || 0) : 0;
+    if (LVL_RANK[lvl] <= lastRank) return;
+    const emoji = lvl === 'over' ? '🚨' : '⚠️';
+    const text = emoji + ' *Terse budget alert* — ' + fmtUSD(spent) + ' of ' + fmtUSD(budget) +
+      ' used this month (' + pct + '%). Forecast ' + fmtUSD(forecast) + ' by month-end.';
+    T.sendSlackAlert(slackWebhook(), text)
+      .then(() => { localStorage.setItem('terse-slack-last', JSON.stringify({ month: ym, rank: LVL_RANK[lvl] })); })
+      .catch(() => {});
+  }
+
+  // ── Render local stats overlay ───────────────────────────────────────────
+  async function renderLocalStats() {
+    const period = statsPeriod === 'day' ? 'day' : statsPeriod === 'month' ? 'month' : 'week';
+    let localData, attrData;
+    try { localData = await T.getStats(period); } catch {}
+    try { attrData = await T.getAttribution(period); } catch {}
+
+    // ── Budget + cost ──
+    const budget = loadBudget();
+    const inp = $('#teamBudgetInput');
+    if (document.activeElement !== inp) inp.value = budget || '';
+
+    const hero = $('#teamBudgetHero');
+    if (localData && budget) {
+      hero.style.display = 'block';
+      const bySource = localData.bySource || {};
+      let totalCost = 0;
+      for (const [k, s] of Object.entries(bySource)) totalCost += costOf(k, s);
+      const pct = Math.min(999, Math.round((totalCost / budget) * 100));
+      const dom = new Date().getDate(), dim = daysInMonth();
+      const daily = dom > 0 ? totalCost / dom : totalCost;
+      const forecast = daily * dim;
+      const daysLeft = Math.max(0, dim - dom);
+
+      $('#tbSpent').textContent = fmtUSD(totalCost);
+      $('#tbBudget').textContent = fmtUSD(budget);
+      $('#tbPct').textContent = pct + '%';
+      $('#tbDaily').textContent = fmtUSD(daily);
+      $('#tbForecast').textContent = fmtUSD(forecast);
+      $('#tbDaysLeft').textContent = daysLeft;
+
+      const fill = $('#tbFill');
+      fill.style.width = Math.min(100, pct) + '%';
+      let lvl = pct >= 100 ? 'over' : pct >= 90 ? 'near' : pct >= 75 ? 'warn' : 'ok';
+      fill.className = 'burn-fill burn-' + lvl;
+      const alert = $('#tbAlert');
+      alert.className = 'budget-alert-sm alert-' + lvl;
+      const fOver = forecast > budget;
+      const icons = { ok:'✓', warn:'⚠', near:'⚠', over:'✕' };
+      $('#tbAlertIcon').textContent = icons[lvl];
+      const msgs = {
+        over: `Over budget — ${fmtUSD(totalCost - budget)} above the ${fmtUSD(budget)} cap.`,
+        near: `${pct}% used. ${fOver ? 'Forecast ' + fmtUSD(forecast) + ' will exceed cap.' : 'Slow down to stay under.'}`,
+        warn: `75% used. ${fOver ? 'On pace for ' + fmtUSD(forecast) + ' — over budget.' : 'Tracking ' + fmtUSD(forecast) + '.'}`,
+        ok:   fOver ? 'Pace projects ' + fmtUSD(forecast) + ' — watch it.' : 'On track. Projected ' + fmtUSD(forecast) + '.',
+      };
+      $('#tbAlertText').textContent = msgs[lvl];
+      maybeTeamSlackAlert(lvl, totalCost, budget, forecast, pct);
+    } else {
+      hero.style.display = 'none';
+    }
+
+    // ── Cost by source ──
+    if (localData) {
+      const bySource = localData.bySource || {};
+      const rows = Object.entries(SOURCE_META)
+        .map(([k, m]) => ({ k, m, c: costOf(k, bySource[k] || {}) }))
+        .filter(r => r.c > 0).sort((a, b) => b.c - a.c);
+      const costSec = $('#localCostSection');
+      const wrap = $('#teamCostSrc');
+      wrap.innerHTML = '';
+      if (rows.length) {
+        costSec.style.display = 'block';
+        const max = Math.max(...rows.map(r => r.c), 0.0001);
+        rows.forEach(r => {
+          const el = document.createElement('div');
+          el.className = 'cost-src-row';
+          el.innerHTML =
+            '<div class="top"><span class="nm">' + esc(r.m.name) + '</span><span class="v">' + fmtUSD(r.c) + '</span></div>' +
+            '<div class="pct-bar"><div class="pct-bar-fill" style="width:' + Math.round(r.c / max * 100) + '%;background:' + r.m.color + '"></div></div>';
+          wrap.appendChild(el);
+        });
+      } else { costSec.style.display = 'none'; }
+    }
+
+    // ── Attribution: by model ──
+    const mSec = $('#localModelSection'), mWrap = $('#teamAttrModels');
+    mWrap.innerHTML = '';
+    const models = (attrData || {}).byModel || [];
+    if (models.length) {
+      mSec.style.display = 'block';
+      const max = Math.max(...models.map(m => m.costUsd || 0), 0.0001);
+      models.forEach(m => {
+        const el = document.createElement('div');
+        el.className = 'attr-item';
+        el.innerHTML =
+          '<span class="nm">' + esc(shortModel(m.name)) + '</span>' +
+          '<span class="ct">' + fmtUSD(m.costUsd || 0) + ' <small>· ' + kfmt((m.tokensIn||0)+(m.tokensOut||0)) + '</small></span>';
+        mWrap.appendChild(el);
+      });
+    } else { mSec.style.display = 'none'; }
+
+    // ── Attribution: MCP servers ──
+    const mcpSec = $('#localMcpSection'), mcpWrap = $('#teamAttrMcp');
+    mcpWrap.innerHTML = '';
+    const mcps = (attrData || {}).byMcpServer || [];
+    if (mcps.length) {
+      mcpSec.style.display = 'block';
+      mcps.forEach(s => {
+        const el = document.createElement('div');
+        el.className = 'attr-item';
+        el.innerHTML = '<span class="nm">' + esc(s.name) + '</span><span class="ct">' + kfmt(s.toolCalls || 0) + ' <small>calls</small></span>';
+        mcpWrap.appendChild(el);
+      });
+    } else { mcpSec.style.display = 'none'; }
+
+    // ── Attribution: top tools ──
+    const tSec = $('#localToolSection'), tWrap = $('#teamAttrTools');
+    tWrap.innerHTML = '';
+    const tools = (attrData || {}).byTool || [];
+    if (tools.length) {
+      tSec.style.display = 'block';
+      tools.forEach(t => {
+        const el = document.createElement('div');
+        el.className = 'attr-item';
+        el.innerHTML = '<span class="nm">' + esc(t.name) + '</span><span class="ct">' + kfmt(t.count || 0) + ' <small>calls</small></span>';
+        tWrap.appendChild(el);
+      });
+    } else { tSec.style.display = 'none'; }
+
+    refreshTeamSlackUI();
+  }
+
+  // ── CSV export (local) ───────────────────────────────────────────────────
+  async function exportTeamCsv() {
+    let data; try { data = await T.getStats(statsPeriod); } catch { return; }
+    const lines = ['Terse team export — period: ' + statsPeriod, ''];
+    lines.push(['date','tokens_in','tokens_out','tokens_saved','tool_calls','est_cost_usd'].join(','));
+    for (const d of (data.byDay || [])) {
+      const c = (d.tokensIn||0)/1e6*DEFAULT_RATES.agent.in + (d.tokensOut||0)/1e6*DEFAULT_RATES.agent.out;
+      lines.push([d.date, d.tokensIn||0, d.tokensOut||0, d.tokensSaved||0, d.toolCalls||0, c.toFixed(4)].join(','));
+    }
+    lines.push('');
+    lines.push(['source','tokens_in','tokens_out','tokens_saved','est_cost_usd','est_saved_usd'].join(','));
+    for (const [k, s] of Object.entries(data.bySource || {}))
+      lines.push([k, s.tokensIn||0, s.tokensOut||0, s.tokensSaved||0,
+        costOf(k, s).toFixed(4), savedUsd(k, s.tokensSaved).toFixed(4)].join(','));
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'terse-team-usage-' + statsPeriod + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
   // ── Stats ──
   let statsPeriod = 'week';
   let statsLoaded = false;
@@ -306,6 +533,8 @@
   async function loadStats() {
     const el = $('#statsBody');
     statsLoaded = true;
+    // Local stats always load (independent of cloud).
+    renderLocalStats();
     try {
       const q = `period=${statsPeriod}` + (myEmail ? `&email=${encodeURIComponent(myEmail)}` : '');
       const d = await api(`/api/cloud/teams/${teamId}/stats?${q}`);
@@ -365,6 +594,38 @@
       if (name === 'feed') renderFeed();
       if (name === 'stats') loadStats();
     }));
+
+  // ── Local stats controls ─────────────────────────────────────────────────
+  $('#btnSetTeamBudget').addEventListener('click', () => {
+    const v = parseFloat($('#teamBudgetInput').value);
+    saveBudgetLocal(v);
+    renderLocalStats();
+  });
+  $('#teamBudgetInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#btnSetTeamBudget').click();
+  });
+  $('#btnExportTeamCsv').addEventListener('click', exportTeamCsv);
+
+  // Slack buttons
+  $('#tbtnOpenSlack').addEventListener('click', () => { try { T.openUrl('https://app.slack.com/client'); } catch {} });
+  $('#tbtnSlackHook').addEventListener('click', () => { try { T.openUrl('https://api.slack.com/messaging/webhooks'); } catch {} });
+  $('#tbtnSaveSlack').addEventListener('click', () => {
+    const v = $('#teamSlackWebhook').value.trim();
+    if (v && !v.startsWith('https://hooks.slack.com/')) return;
+    if (v) localStorage.setItem('terse-slack-webhook', v); else localStorage.removeItem('terse-slack-webhook');
+    if (!v) localStorage.setItem('terse-slack-enabled', '0');
+    refreshTeamSlackUI();
+  });
+  $('#teamSlackEnabled').addEventListener('change', (e) => {
+    if (e.target.checked && !slackWebhook()) { e.target.checked = false; return; }
+    localStorage.setItem('terse-slack-enabled', e.target.checked ? '1' : '0');
+    refreshTeamSlackUI();
+  });
+  $('#tbtnTestSlack').addEventListener('click', () => {
+    const hook = $('#teamSlackWebhook').value.trim() || slackWebhook();
+    if (!hook.startsWith('https://hooks.slack.com/')) return;
+    try { T.sendSlackAlert(hook, '✅ Terse Team is connected — budget alerts will arrive here.').catch(() => {}); } catch {}
+  });
 
   // ── Footer controls ──
   $('#shareToggle').addEventListener('change', (e) => {

@@ -18,7 +18,7 @@
     .back-btn:hover{background:var(--sfh);color:var(--t1)}
     .header h1{font-size:15px;font-weight:700;flex:1}
     .view-toggle{display:flex;gap:2px;background:var(--sf);border-radius:9999px;padding:2px}
-    .view-btn{padding:4px 10px;font-size:10px;font-weight:600;border:none;background:none;
+    .view-btn{padding:4px 9px;font-size:10px;font-weight:600;border:none;background:none;
       color:var(--t3);cursor:pointer;border-radius:9999px;white-space:nowrap}
     .view-btn.active{background:var(--btn);color:var(--btn-t)}
 
@@ -36,6 +36,7 @@
       background:var(--btn);color:var(--btn-t);
       font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.02em}
     .share-btn:hover{opacity:.88}
+    .share-btn.ghost{background:var(--sf);color:var(--t2)}
     .share-toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);
       background:#111;color:#fff;padding:8px 18px;border-radius:20px;
       font-size:11px;opacity:0;transition:opacity .3s;pointer-events:none;
@@ -50,7 +51,7 @@
     .summary-label{display:block;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
     .section{margin-bottom:16px}
     .section-title{font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;
-      text-transform:uppercase;letter-spacing:.5px}
+      text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between}
     .chart-container{background:var(--sf);border:none;border-radius:var(--rs);
       padding:12px;position:relative;height:140px;overflow:hidden}
     .chart-bar-row{display:flex;align-items:flex-end;gap:3px;height:100px;padding:0 4px}
@@ -77,8 +78,101 @@
     .pct-bar-fill{height:100%;border-radius:9999px;background:var(--ac);transition:width .3s}
     .empty-state{text-align:center;padding:40px 20px;color:var(--t3);font-size:12px}
     .empty-state p{margin-top:8px;font-size:10px}
+    .attr-list{display:flex;flex-direction:column;gap:1px;background:var(--sf);border-radius:var(--rs);overflow:hidden}
+    .attr-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;font-size:11px}
+    .attr-item .nm{color:var(--t1);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:8px}
+    .attr-item .ct{color:var(--t2);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .attr-item .ct small{color:var(--t3);font-weight:600}
+    /* Insights — actionable money-saving hints derived from usage data */
+    .insight-list{display:flex;flex-direction:column;gap:6px}
+    .insight-row{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;
+      background:var(--sf);border-radius:var(--rs);font-size:11px;line-height:1.5}
+    .insight-row .ic{flex-shrink:0;font-size:13px;line-height:1.3}
+    .insight-row .tx{color:var(--t2)}
+    .insight-row .tx b{color:var(--t1)}
+    .insight-row .tx .save{color:var(--ac);font-weight:700}
+    .insight-row.warn{background:rgba(255,197,51,0.08)}
+    .insight-row.warn .ic{color:var(--warn)}
+    .mini-link{font-size:9px;font-weight:600;color:var(--t3);background:var(--sf);
+      border:none;border-radius:9999px;padding:3px 9px;cursor:pointer;text-transform:none;letter-spacing:0}
+    .mini-link:hover{color:var(--t1);background:var(--sfh)}
+
+    /* Cost / Budget view */
+    #viewCost{display:flex;flex-direction:column;gap:14px}
+    .budget-hero{background:var(--sf);border-radius:var(--rs);padding:16px;text-align:center}
+    .budget-spent{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+    .budget-of{font-size:11px;color:var(--t3);margin-top:6px}
+    .budget-of b{color:var(--t2);font-weight:700}
+    .burn-bar{height:10px;background:var(--bd);border-radius:9999px;margin-top:12px;overflow:hidden}
+    .burn-bar-fill{height:100%;border-radius:9999px;transition:width .4s,background .4s}
+    .burn-ok{background:var(--ac)}
+    .burn-warn{background:#d97706}
+    .burn-near{background:#ea580c}
+    .burn-over{background:#dc2626}
+    .alert-banner{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--rs);
+      font-size:11px;font-weight:600;line-height:1.35}
+    .alert-ok{background:color-mix(in srgb,var(--ac) 14%,transparent);color:var(--ac)}
+    .alert-warn{background:rgba(217,119,6,.14);color:#b45309}
+    .alert-near{background:rgba(234,88,12,.16);color:#c2410c}
+    .alert-over{background:rgba(220,38,38,.16);color:#dc2626}
+    .alert-icon{font-size:14px;flex-shrink:0}
+    .stat-row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .stat-mini{background:var(--sf);border-radius:var(--rs);padding:10px 8px;text-align:center}
+    .stat-mini .n{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+    .stat-mini .l{font-size:8.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
+    .budget-form{display:flex;align-items:center;gap:8px;background:var(--sf);border-radius:var(--rs);padding:10px 12px}
+    .budget-form label{font-size:11px;color:var(--t2);font-weight:600;white-space:nowrap}
+    .budget-form .pre{color:var(--t3)}
+    .budget-form input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+      color:var(--t1);font-size:12px;padding:6px 8px;font-variant-numeric:tabular-nums;
+      font-family:inherit;-webkit-app-region:no-drag}
+    .budget-form input:focus{outline:none;border-color:var(--ac)}
+    .budget-form button{border:none;border-radius:8px;background:var(--btn);color:var(--btn-t);
+      font-size:11px;font-weight:700;padding:6px 12px;cursor:pointer}
+    .cost-src{display:flex;flex-direction:column;gap:7px}
+    .cost-src-row .top{display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:3px}
+    .cost-src-row .top .nm{display:flex;align-items:center;gap:6px;color:var(--t1);font-weight:600}
+    .cost-src-row .top .dot{width:8px;height:8px;border-radius:50%}
+    .cost-src-row .top .v{color:var(--t2);font-weight:700;font-variant-numeric:tabular-nums}
+    .rates-note{font-size:9px;color:var(--t3);text-align:center;line-height:1.4}
+    .rates-note a{color:var(--t2);cursor:pointer;text-decoration:underline}
+    .rates-editor{display:none;flex-direction:column;gap:6px;background:var(--sf);border-radius:var(--rs);padding:10px 12px}
+    .rates-editor.show{display:flex}
+    .rate-row{display:flex;align-items:center;gap:6px;font-size:10px}
+    .rate-row .rl{flex:1;color:var(--t2);font-weight:600}
+    .rate-row input{width:58px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;
+      color:var(--t1);font-size:10px;padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums;font-family:inherit}
+    .rate-row input:focus{outline:none;border-color:var(--ac)}
+    .rate-head{display:flex;gap:6px;font-size:8.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+    .rate-head .rl{flex:1}.rate-head span{width:58px;text-align:right}
+
+    /* Slack alerts */
+    .slack-card{background:var(--sf);border-radius:var(--rs);padding:12px;display:flex;flex-direction:column;gap:9px}
+    .slack-head{display:flex;align-items:center;gap:8px}
+    .slack-logo{width:18px;height:18px;flex-shrink:0}
+    .slack-head .ttl{font-size:12px;font-weight:700;color:var(--t1);flex:1}
+    .slack-head .badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:9999px}
+    .slack-head .badge.on{background:color-mix(in srgb,var(--ac) 18%,transparent);color:var(--ac)}
+    .slack-head .badge.off{background:var(--bd);color:var(--t3)}
+    .slack-desc{font-size:10px;color:var(--t3);line-height:1.4}
+    .slack-btns{display:flex;gap:6px}
+    .slack-btns button{flex:1;border:none;border-radius:8px;font-size:10.5px;font-weight:700;
+      padding:8px 6px;cursor:pointer;-webkit-app-region:no-drag}
+    .slack-open{background:#4A154B;color:#fff}
+    .slack-hook{background:var(--sf2,var(--bd));color:var(--t1)}
+    .slack-row{display:flex;gap:6px;align-items:center}
+    .slack-row input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+      color:var(--t1);font-size:11px;padding:7px 8px;font-family:inherit;-webkit-app-region:no-drag}
+    .slack-row input:focus{outline:none;border-color:var(--ac)}
+    .slack-row button{border:none;border-radius:8px;background:var(--btn);color:var(--btn-t);
+      font-size:11px;font-weight:700;padding:7px 11px;cursor:pointer;white-space:nowrap}
+    .slack-foot{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--t2)}
+    .slack-toggle{display:flex;align-items:center;gap:6px;cursor:pointer}
+    .slack-toggle input{width:14px;height:14px;accent-color:var(--ac)}
+    .slack-test{background:none;border:none;color:var(--t3);font-size:10px;font-weight:600;cursor:pointer;text-decoration:underline}
+    .slack-test:hover{color:var(--t1)}
   </style>
-  <script>(function(){var s=localStorage.getItem('terse-theme')||'lime';document.documentElement.setAttribute('data-theme',s)})();</script>
+  <script>(function(){var s=localStorage.getItem('terse-theme')||'azure';document.documentElement.setAttribute('data-theme',s)})();</script>
 </head>
 <body>
   <div class="header">
@@ -89,9 +183,12 @@
     <div class="view-toggle">
       <button class="view-btn active" data-view="receipt">小票</button>
       <button class="view-btn" data-view="charts">图表</button>
+      <button class="view-btn" data-view="cost">成本</button>
     </div>
   </div>
 
+  <!-- Auth-gated content: blurred until signed in (header stays usable) -->
+  <div id="contentGate" data-auth-gate>
   <div class="period-tabs" id="periodTabs">
     <button class="period-tab" data-period="day">今天</button>
     <button class="period-tab" data-period="week">本周</button>
@@ -109,16 +206,16 @@
   <div id="viewCharts" style="display:none">
     <div class="summary-grid" id="summaryGrid">
       <div class="summary-card">
+        <span class="summary-num accent" id="sumCost">$0</span>
+        <span class="summary-label">Est. Cost</span>
+      </div>
+      <div class="summary-card">
         <span class="summary-num" id="sumTokensIn">0</span>
         <span class="summary-label">Tokens Used</span>
       </div>
-      <div class="summary-card">
-        <span class="summary-num accent" id="sumSaved">0</span>
+      <div class="summary-card" id="cardSaved">
+        <span class="summary-num" id="sumSaved">0</span>
         <span class="summary-label">Tokens Saved</span>
-      </div>
-      <div class="summary-card">
-        <span class="summary-num accent" id="sumPct">0%</span>
-        <span class="summary-label">Reduction</span>
       </div>
       <div class="summary-card">
         <span class="summary-num" id="sumMsgs">0</span>
@@ -126,7 +223,8 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-title">Usage Over Time</div>
+      <div class="section-title"><span>Usage Over Time</span>
+        <button class="mini-link" id="btnExportCsv">Export CSV</button></div>
       <div class="chart-container">
         <div class="chart-bar-row" id="chartBars"></div>
         <div class="chart-legend">
@@ -139,20 +237,115 @@
       <div class="section-title">By Source</div>
       <div class="source-grid" id="sourceGrid"></div>
     </div>
+    <div class="section" id="insightsSection" style="display:none">
+      <div class="section-title">Insights</div>
+      <div class="insight-list" id="insightsList"></div>
+    </div>
+    <div class="section" id="attrModelSection" style="display:none">
+      <div class="section-title">By Model</div>
+      <div class="cost-src" id="attrModels"></div>
+    </div>
+    <div class="section" id="attrMcpSection" style="display:none">
+      <div class="section-title">Top MCP Servers</div>
+      <div class="attr-list" id="attrMcp"></div>
+    </div>
+    <div class="section" id="attrToolSection" style="display:none">
+      <div class="section-title">Top Tools</div>
+      <div class="attr-list" id="attrTools"></div>
+    </div>
     <div id="emptyState" class="empty-state" style="display:none">
       <div style="font-size:32px;opacity:0.3">T</div>
       <p>No stats yet. Start optimizing prompts to see data here.</p>
     </div>
   </div>
 
+  <!-- Cost / Budget view -->
+  <div id="viewCost" style="display:none">
+    <div class="budget-form">
+      <label>Monthly budget</label>
+      <span class="pre">$</span>
+      <input type="number" id="budgetInput" min="0" step="10" placeholder="e.g. 200" inputmode="decimal">
+      <button id="btnSaveBudget">Set</button>
+    </div>
+
+    <div id="budgetBody" style="display:none;flex-direction:column;gap:14px">
+      <div class="budget-hero">
+        <div class="budget-spent" id="bSpent">$0</div>
+        <div class="budget-of">of <b id="bBudget">$0</b> this month · <span id="bPct">0%</span></div>
+        <div class="burn-bar"><div class="burn-bar-fill burn-ok" id="bFill" style="width:0%"></div></div>
+      </div>
+
+      <div class="alert-banner alert-ok" id="bAlert">
+        <span class="alert-icon">✓</span><span id="bAlertText">On track.</span>
+      </div>
+
+      <div class="stat-row3">
+        <div class="stat-mini"><div class="n" id="bDaily">$0</div><div class="l">Per day</div></div>
+        <div class="stat-mini"><div class="n" id="bForecast">$0</div><div class="l">Forecast EOM</div></div>
+        <div class="stat-mini"><div class="n" id="bDaysLeft">0</div><div class="l">Days left</div></div>
+      </div>
+
+      <div class="section" style="margin:0">
+        <div class="section-title"><span>Spend by Source</span>
+          <button class="mini-link" id="btnExportCsv2">Export CSV</button></div>
+        <div class="cost-src" id="costSrc"></div>
+      </div>
+
+      <!-- Slack budget alerts -->
+      <div class="slack-card">
+        <div class="slack-head">
+          <svg class="slack-logo" viewBox="0 0 122.8 122.8" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M25.8 77.6c0 7.1-5.8 12.9-12.9 12.9S0 84.7 0 77.6s5.8-12.9 12.9-12.9h12.9zM32.3 77.6c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9z" fill="#E01E5A"/>
+            <path d="M45.2 25.8c-7.1 0-12.9-5.8-12.9-12.9S38.1 0 45.2 0s12.9 5.8 12.9 12.9v12.9zM45.2 32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H12.9C5.8 58.1 0 52.3 0 45.2s5.8-12.9 12.9-12.9z" fill="#36C5F0"/>
+            <path d="M97 45.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9-5.8 12.9-12.9 12.9H97zM90.5 45.2c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V12.9C64.7 5.8 70.5 0 77.6 0s12.9 5.8 12.9 12.9z" fill="#2EB67D"/>
+            <path d="M77.6 97c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9-12.9-5.8-12.9-12.9V97zM77.6 90.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9z" fill="#ECB22E"/>
+          </svg>
+          <span class="ttl">Slack alerts</span>
+          <span class="badge off" id="slackBadge">Off</span>
+        </div>
+        <div class="slack-desc">Get a Slack ping at 75% / 90% / 100% of budget. Paste an
+          <b>Incoming Webhook</b> URL — open Slack, create one, then drop it here.</div>
+        <div class="slack-btns">
+          <button class="slack-open" id="btnOpenSlack">Open Slack</button>
+          <button class="slack-hook" id="btnSlackHook">Create webhook ↗</button>
+        </div>
+        <div class="slack-row">
+          <input type="text" id="slackWebhook" placeholder="https://hooks.slack.com/services/…" spellcheck="false">
+          <button id="btnSaveSlack">Save</button>
+        </div>
+        <div class="slack-foot">
+          <label class="slack-toggle"><input type="checkbox" id="slackEnabled">Send budget alerts</label>
+          <button class="slack-test" id="btnTestSlack">Send test</button>
+        </div>
+      </div>
+
+      <div class="rates-note">
+        Cost is estimated from editable per-source rates. <a id="toggleRates">Edit rates ▾</a>
+      </div>
+      <div class="rates-editor" id="ratesEditor">
+        <div class="rate-head"><span class="rl">Source ($/M tokens)</span><span>Input</span><span>Output</span></div>
+        <div id="rateRows"></div>
+        <button class="share-btn" id="btnSaveRates" style="margin-top:4px">Save rates</button>
+      </div>
+    </div>
+
+    <div id="budgetEmpty" class="empty-state">
+      <div style="font-size:32px;opacity:0.3">$</div>
+      <p>Set a monthly budget to track spend, burn-down and forecast.</p>
+    </div>
+  </div>
+
   <div class="share-toast" id="shareToast"></div>
+  </div><!-- /contentGate -->
 
   <script src="tauri-bridge.js"></script>
+  <script src="auth-scrim.js"></script>
   <script>
     const T = window.terse;
     let currentPeriod = 'month';
     let currentView = 'receipt';
     let lastData = null;
+    let monthData = null;   // always-month snapshot for the Cost view
 
     function fmtTok(n) {
       if (!n) return '0';
@@ -160,7 +353,13 @@
       if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
       return String(n);
     }
-
+    function fmtUSD(n) {
+      if (!n) return '$0';
+      if (n >= 1000) return '$' + (n / 1000).toFixed(1) + 'k';
+      if (n >= 100) return '$' + n.toFixed(0);
+      if (n >= 1) return '$' + n.toFixed(2);
+      return '$' + n.toFixed(3);
+    }
     function fmtDate(d, period) {
       const p = d.split('-');
       if (period === 'day') return p[2];
@@ -174,6 +373,57 @@
       manual:  { name: 'Manual',  color: '#FF9800' },
     };
 
+    // ── Pricing / dollarization ─────────────────────────────────────
+    // Per-source blended rates in USD per 1M tokens. Editable + persisted.
+    const DEFAULT_RATES = {
+      agent:   { in: 3.0, out: 15.0 },
+      browser: { in: 2.5, out: 10.0 },
+      editor:  { in: 3.0, out: 15.0 },
+      manual:  { in: 3.0, out: 15.0 },
+    };
+    function loadRates() {
+      try {
+        const r = JSON.parse(localStorage.getItem('terse-rates') || 'null');
+        if (r && r.agent) return r;
+      } catch (e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_RATES));
+    }
+    let RATES = loadRates();
+    function rateFor(src) { return RATES[src] || DEFAULT_RATES[src] || { in: 3, out: 15 }; }
+    // Anthropic-style cache multipliers relative to fresh input: reads ~0.1×, writes ~1.25×.
+    const CACHE_READ_MULT = 0.1, CACHE_WRITE_MULT = 1.25;
+    function costOf(src, s) {
+      s = s || {};
+      const r = rateFor(src);
+      const cr = s.cacheReadTokens || 0;
+      const cw = s.cacheCreationTokens || 0;
+      const fresh = Math.max(0, (s.tokensIn || 0) - cr - cw);
+      const inCost = (fresh * r.in + cr * r.in * CACHE_READ_MULT + cw * r.in * CACHE_WRITE_MULT) / 1e6;
+      return inCost + (s.tokensOut || 0) / 1e6 * r.out;
+    }
+    function savedUsdOf(src, tokensSaved) {
+      // savings are on the input side (compression removes fresh input tokens)
+      return (tokensSaved || 0) / 1e6 * rateFor(src).in;
+    }
+    function totalCost(bySource) {
+      let c = 0, saved = 0;
+      for (const [k, s] of Object.entries(bySource || {})) {
+        c += costOf(k, s);
+        saved += savedUsdOf(k, s.tokensSaved);
+      }
+      return { cost: c, saved };
+    }
+
+    // ── Budget (local, per-device) ──────────────────────────────────
+    function loadBudget() {
+      const v = parseFloat(localStorage.getItem('terse-budget-usd') || '');
+      return isFinite(v) && v > 0 ? v : null;
+    }
+    function saveBudget(v) {
+      if (isFinite(v) && v > 0) localStorage.setItem('terse-budget-usd', String(v));
+      else localStorage.removeItem('terse-budget-usd');
+    }
+
     // ── Receipt canvas drawing ─────────────────────────────────────
     function drawReceipt(data) {
       const canvas = document.getElementById('receiptCanvas');
@@ -184,10 +434,15 @@
 
       const sources = Object.entries(SOURCE_META)
         .map(([key, meta]) => ({ key, meta, s: data.bySource[key] || {} }))
-        .filter(({ s }) => (s.tokensIn || 0) > 0);
+        .filter(({ s }) => (s.tokensIn || 0) > 0 || (s.tokensOut || 0) > 0);
 
-      // Calculate canvas height
+      const totals = totalCost(data.bySource);
+      const hasSaved = (data.summary.tokensSaved || 0) > 0;
+
+      // Calculate canvas height. Saved/Reduction rows are dropped when there are
+      // no real savings to credit (e.g. passively-scanned agent usage).
       const ROLLER = 20;
+      const SUMMARY_ROWS = hasSaved ? 5 : 3;
       const H = ROLLER + 30   // roller + top gap
         + 54                  // T logo
         + 18                  // title
@@ -195,7 +450,7 @@
         + (sources.length > 0 ? 14 + 30 + sources.length * 22 + 6 : 0) // dash + headers + rows
         + 16                  // single dash before TOTAL
         + 42                  // TOTAL
-        + 3 * 18 + 8          // summary rows
+        + SUMMARY_ROWS * 18 + 8
         + 16                  // dash
         + 44;                 // footer + bottom pad
 
@@ -238,7 +493,6 @@
       ctx.font = 'bold 38px ' + MONO;
       ctx.fillStyle = '#000';
       ctx.fillText('T', W / 2, y + 28);
-      // 5 small dots below
       const dotY = y + 40, ds = 7;
       for (let i = 0; i < 5; i++) {
         ctx.beginPath();
@@ -275,23 +529,21 @@
       ctx.restore();
       y += 20;
 
-      // Column headers + source rows (only if data exists)
+      // Column headers + source rows: SOURCE | TOKENS | COST
       if (sources.length > 0) {
         dash(ctx, PAD, y, W - PAD); y += 14;
         ctx.save();
         ctx.font = 'bold 8.5px ' + MONO;
         ctx.fillStyle = '#000';
         ctx.textAlign = 'left';  ctx.fillText('SOURCE',   PAD, y);
-        ctx.textAlign = 'right'; ctx.fillText('IN',       W / 2 + 4, y);
-        ctx.textAlign = 'right'; ctx.fillText('SAVED',    W / 2 + 52, y);
-        ctx.textAlign = 'right'; ctx.fillText('PCT',      W - PAD, y);
+        ctx.textAlign = 'right'; ctx.fillText('TOKENS',   W / 2 + 30, y);
+        ctx.textAlign = 'right'; ctx.fillText('EST COST', W - PAD, y);
         ctx.restore();
         y += 8;
         dash(ctx, PAD, y, W - PAD); y += 14;
 
-        for (const { meta, s } of sources) {
-          const pct = s.tokensIn > 0 ? Math.round((s.tokensSaved / s.tokensIn) * 100) : 0;
-          // color dot
+        for (const { meta, key, s } of sources) {
+          const tok = (s.tokensIn || 0) + (s.tokensOut || 0);
           ctx.beginPath();
           ctx.arc(PAD + 4, y - 3.5, 4, 0, Math.PI * 2);
           ctx.fillStyle = meta.color;
@@ -299,10 +551,8 @@
           ctx.font = '10.5px ' + MONO;
           ctx.fillStyle = '#000';
           ctx.textAlign = 'left';  ctx.fillText(meta.name.toUpperCase(), PAD + 13, y);
-          ctx.textAlign = 'right'; ctx.fillText(fmtTok(s.tokensIn),    W / 2 + 4,  y);
-          ctx.textAlign = 'right'; ctx.fillText(fmtTok(s.tokensSaved), W / 2 + 52, y);
-          ctx.fillStyle = pct >= 30 ? '#16a34a' : pct >= 15 ? '#d97706' : '#dc2626';
-          ctx.textAlign = 'right'; ctx.fillText(pct + '%',             W - PAD,    y);
+          ctx.textAlign = 'right'; ctx.fillText(fmtTok(tok), W / 2 + 30, y);
+          ctx.textAlign = 'right'; ctx.fillText(fmtUSD(costOf(key, s)), W - PAD, y);
           y += 22;
         }
         y += 6;
@@ -310,7 +560,7 @@
 
       dash(ctx, PAD, y, W - PAD); y += 16;
 
-      // TOTAL
+      // TOTAL — est cost is the hero (always meaningful, even with 0 savings)
       ctx.save();
       ctx.font = 'bold 11px ' + MONO;
       ctx.fillStyle = '#000';
@@ -318,18 +568,22 @@
       ctx.fillText('TOTAL:', PAD, y + 14);
       ctx.font = 'bold 26px ' + MONO;
       ctx.textAlign = 'right';
-      ctx.fillText(fmtTok(data.summary.tokensSaved), W - PAD, y + 18);
+      ctx.fillText(fmtUSD(totals.cost), W - PAD, y + 18);
       ctx.font = '9px ' + MONO;
       ctx.fillStyle = '#888';
       ctx.textAlign = 'right';
-      ctx.fillText('tokens saved', W - PAD, y + 31);
+      ctx.fillText('est. spend', W - PAD, y + 31);
       ctx.restore();
       y += 42;
 
       // Summary rows
       const rows = [
         ['TOKENS USED',  fmtTok(data.summary.tokensIn)],
-        ['REDUCTION',    (data.summary.percentSaved || 0) + '%'],
+        ['TOKENS OUT',   fmtTok(data.summary.tokensOut)],
+        ...(hasSaved ? [
+          ['TOKENS SAVED', fmtTok(data.summary.tokensSaved) + '  (' + fmtUSD(totals.saved) + ')'],
+          ['REDUCTION',    (data.summary.percentSaved || 0) + '%'],
+        ] : []),
         ['MESSAGES',     String(data.summary.messagesTotal || 0)],
       ];
       ctx.save();
@@ -369,11 +623,16 @@
     // ── Charts ──────────────────────────────────────────────────────
     function renderCharts(data) {
       const { summary, bySource, byDay } = data;
-      const hasData = summary.tokensIn > 0 || summary.tokensSaved > 0;
+      const hasData = summary.tokensIn > 0 || summary.tokensOut > 0 || summary.tokensSaved > 0;
       document.getElementById('emptyState').style.display = hasData ? 'none' : 'block';
+      const totals = totalCost(bySource);
+      // Savings are only credited by real Terse compression; passively-scanned
+      // agent usage has none. Hide the Saved tile entirely rather than show 0.
+      const hasSaved = (summary.tokensSaved || 0) > 0;
+      document.getElementById('cardSaved').style.display = hasSaved ? '' : 'none';
+      document.getElementById('sumCost').textContent     = fmtUSD(totals.cost);
       document.getElementById('sumTokensIn').textContent = fmtTok(summary.tokensIn);
       document.getElementById('sumSaved').textContent    = fmtTok(summary.tokensSaved);
-      document.getElementById('sumPct').textContent      = summary.percentSaved + '%';
       document.getElementById('sumMsgs').textContent     = fmtTok(summary.messagesTotal);
 
       const chartEl = document.getElementById('chartBars');
@@ -385,10 +644,13 @@
           grp.className = 'chart-bar-group';
           const h1 = Math.max(1, Math.round((d.tokensIn    / maxTok) * 90));
           const h2 = Math.max(1, Math.round((d.tokensSaved / maxTok) * 90));
+          const savedBar = hasSaved
+            ? '<div class="chart-bar saved" style="height:' + h2 + 'px"></div>'
+            : '';
           grp.innerHTML =
             '<div style="display:flex;gap:1px;align-items:flex-end;height:90px;width:100%">' +
               '<div class="chart-bar tokens" style="height:' + h1 + 'px"></div>' +
-              '<div class="chart-bar saved"  style="height:' + h2 + 'px"></div>' +
+              savedBar +
             '</div><div class="chart-date">' + fmtDate(d.date, currentPeriod) + '</div>';
           chartEl.appendChild(grp);
         }
@@ -398,23 +660,262 @@
       srcEl.innerHTML = '';
       for (const [key, meta] of Object.entries(SOURCE_META)) {
         const s = bySource[key] || {};
-        if (!s.tokensIn && !s.tokensSaved) continue;
+        if (!s.tokensIn && !s.tokensOut && !s.tokensSaved) continue;
         const pct = s.tokensIn > 0 ? Math.round((s.tokensSaved / s.tokensIn) * 100) : 0;
         const card = document.createElement('div');
         card.className = 'source-card';
+        const savedHtml = (s.tokensSaved > 0)
+          ? '<div class="source-row"><span class="label">Saved</span><span class="value green">' + fmtTok(s.tokensSaved) + ' (' + pct + '%)</span></div>'
+          : '';
         card.innerHTML =
           '<div class="source-header">' +
             '<div class="source-icon" style="background:' + meta.color + '"></div>' +
             '<div class="source-name">' + meta.name + '</div>' +
           '</div>' +
           '<div class="source-stats">' +
-            '<div class="source-row"><span class="label">Tokens</span><span class="value">' + fmtTok(s.tokensIn) + '</span></div>' +
-            '<div class="source-row"><span class="label">Saved</span><span class="value green">' + fmtTok(s.tokensSaved) + ' (' + pct + '%)</span></div>' +
-            '<div class="source-row"><span class="label">Messages</span><span class="value">' + (s.messagesTotal || 0) + '</span></div>' +
-          '</div>' +
-          '<div class="pct-bar"><div class="pct-bar-fill" style="width:' + pct + '%"></div></div>';
+            '<div class="source-row"><span class="label">Tokens</span><span class="value">' + fmtTok((s.tokensIn||0)+(s.tokensOut||0)) + '</span></div>' +
+            '<div class="source-row"><span class="label">Est. cost</span><span class="value">' + fmtUSD(costOf(key, s)) + '</span></div>' +
+            savedHtml +
+          '</div>';
         srcEl.appendChild(card);
       }
+    }
+
+    // ── Attribution (by model / MCP server / tool) ──────────────────
+    function shortModel(m) {
+      if (!m || m === 'unknown') return 'Unknown';
+      return m.replace(/^claude-/, '').replace(/-\d{8}$/, '');
+    }
+    function renderAttribution(attr) {
+      attr = attr || {};
+      const models = attr.byModel || [];
+      const mcp = attr.byMcpServer || [];
+      const tools = attr.byTool || [];
+
+      const mSec = document.getElementById('attrModelSection');
+      const mWrap = document.getElementById('attrModels');
+      mWrap.innerHTML = '';
+      if (models.length) {
+        mSec.style.display = 'block';
+        const max = Math.max(...models.map(m => m.costUsd || 0), 0.0001);
+        for (const m of models) {
+          const tok = (m.tokensIn || 0) + (m.tokensOut || 0);
+          const el = document.createElement('div');
+          el.className = 'cost-src-row';
+          el.innerHTML =
+            '<div class="top"><span class="nm">' + shortModel(m.name) + '</span>' +
+            '<span class="v">' + fmtUSD(m.costUsd || 0) + ' · ' + fmtTok(tok) + '</span></div>' +
+            '<div class="pct-bar"><div class="pct-bar-fill" style="width:' + Math.round((m.costUsd || 0) / max * 100) + '%"></div></div>';
+          mWrap.appendChild(el);
+        }
+      } else { mSec.style.display = 'none'; }
+
+      const mcpSec = document.getElementById('attrMcpSection');
+      const mcpWrap = document.getElementById('attrMcp');
+      mcpWrap.innerHTML = '';
+      if (mcp.length) {
+        mcpSec.style.display = 'block';
+        for (const s of mcp) {
+          const el = document.createElement('div');
+          el.className = 'attr-item';
+          el.innerHTML = '<span class="nm">' + s.name + '</span><span class="ct">' + fmtTok(s.toolCalls || 0) + ' <small>calls</small></span>';
+          mcpWrap.appendChild(el);
+        }
+      } else { mcpSec.style.display = 'none'; }
+
+      const tSec = document.getElementById('attrToolSection');
+      const tWrap = document.getElementById('attrTools');
+      tWrap.innerHTML = '';
+      if (tools.length) {
+        tSec.style.display = 'block';
+        for (const t of tools) {
+          const el = document.createElement('div');
+          el.className = 'attr-item';
+          el.innerHTML = '<span class="nm">' + t.name + '</span><span class="ct">' + fmtTok(t.count || 0) + ' <small>calls</small></span>';
+          tWrap.appendChild(el);
+        }
+      } else { tSec.style.display = 'none'; }
+    }
+
+    // ── Insights — actionable hints derived from usage + attribution ──
+    // All heuristics run on data already loaded for this view; no extra backend calls.
+    function renderInsights(data, attr) {
+      const sec = document.getElementById('insightsSection');
+      const list = document.getElementById('insightsList');
+      list.innerHTML = '';
+      const insights = [];
+      const summary = (data && data.summary) || {};
+      const models = (attr && attr.byModel) || [];
+      const mcp = (attr && attr.byMcpServer) || [];
+      const tools = (attr && attr.byTool) || [];
+
+      // 1. Model-routing hint: heavy Opus share → estimate Sonnet savings.
+      //    Sonnet input/output rates are ~5× cheaper than Opus; assume ~40% of
+      //    turns are routine enough to route down.
+      const totalModelCost = models.reduce((a, m) => a + (m.costUsd || 0), 0);
+      const opus = models.find(m => /opus/i.test(m.name || ''));
+      if (opus && totalModelCost > 1 && (opus.costUsd || 0) / totalModelCost > 0.4) {
+        const share = Math.round((opus.costUsd / totalModelCost) * 100);
+        const est = opus.costUsd * 0.4 * (1 - 1 / 5);
+        insights.push({
+          ic: '🔀', warn: share > 70,
+          html: '<b>' + share + '% of spend is Opus</b> — routing routine turns to Sonnet would save ' +
+                '<span class="save">≈' + fmtUSD(est) + '</span> this period.',
+        });
+      }
+
+      // 2. MCP schema tax: many active servers bloat every request's system prompt.
+      if (mcp.length >= 4) {
+        insights.push({
+          ic: '🧩', warn: false,
+          html: '<b>' + mcp.length + ' MCP servers active</b> — each adds schema tokens to every request. ' +
+                'Disable the ones you rarely call.',
+        });
+      }
+
+      // 3. Top tool consumer — likely duplicate-read leak; Doctor confirms.
+      const topTool = tools[0];
+      if (topTool && (topTool.count || 0) >= 100) {
+        insights.push({
+          ic: '🔧', warn: false,
+          html: '<b>' + topTool.name + '</b> ran ' + fmtTok(topTool.count) +
+                ' times — run Doctor to check for duplicate calls and re-reads.',
+        });
+      }
+
+      // 4. Low compression rate on real Terse traffic → suggest a stronger mode.
+      const savedPct = summary.tokensIn > 0 ? (summary.tokensSaved || 0) / summary.tokensIn * 100 : 0;
+      if ((summary.tokensSaved || 0) > 0 && summary.tokensIn > 100000 && savedPct < 5) {
+        insights.push({
+          ic: '🎚', warn: false,
+          html: 'Only <b>' + savedPct.toFixed(1) + '%</b> of input tokens were trimmed — ' +
+                'try Balanced or Aggressive mode for more headroom.',
+        });
+      }
+
+      if (!insights.length) { sec.style.display = 'none'; return; }
+      sec.style.display = 'block';
+      for (const ins of insights) {
+        const el = document.createElement('div');
+        el.className = 'insight-row' + (ins.warn ? ' warn' : '');
+        el.innerHTML = '<span class="ic">' + ins.ic + '</span><span class="tx">' + ins.html + '</span>';
+        list.appendChild(el);
+      }
+    }
+
+    // ── Cost / Budget ───────────────────────────────────────────────
+    function daysInThisMonth() {
+      const n = new Date();
+      return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
+    }
+    function renderCost(data) {
+      const budget = loadBudget();
+      const body = document.getElementById('budgetBody');
+      const empty = document.getElementById('budgetEmpty');
+      const inp = document.getElementById('budgetInput');
+      if (budget && document.activeElement !== inp) inp.value = budget;
+
+      if (!budget) { body.style.display = 'none'; empty.style.display = 'block'; return; }
+      body.style.display = 'flex'; empty.style.display = 'none';
+      refreshSlackUI();
+
+      const totals = totalCost(data.bySource);
+      const spent = totals.cost;
+      const pct = Math.min(999, Math.round((spent / budget) * 100));
+
+      const now = new Date();
+      const dim = daysInThisMonth();
+      const dayOfMonth = now.getDate();
+      const daysLeft = Math.max(0, dim - dayOfMonth);
+      const daily = dayOfMonth > 0 ? spent / dayOfMonth : spent;
+      const forecast = daily * dim;
+
+      document.getElementById('bSpent').textContent = fmtUSD(spent);
+      document.getElementById('bBudget').textContent = fmtUSD(budget);
+      document.getElementById('bPct').textContent = pct + '%';
+      document.getElementById('bDaily').textContent = fmtUSD(daily);
+      document.getElementById('bForecast').textContent = fmtUSD(forecast);
+      document.getElementById('bDaysLeft').textContent = daysLeft;
+
+      const fill = document.getElementById('bFill');
+      fill.style.width = Math.min(100, pct) + '%';
+      let lvl = 'ok';
+      if (pct >= 100) lvl = 'over'; else if (pct >= 90) lvl = 'near'; else if (pct >= 75) lvl = 'warn';
+      fill.className = 'burn-bar-fill burn-' + lvl;
+
+      const banner = document.getElementById('bAlert');
+      const bText = document.getElementById('bAlertText');
+      const icon = banner.querySelector('.alert-icon');
+      banner.className = 'alert-banner alert-' + lvl;
+      const fOver = forecast > budget;
+      if (lvl === 'over') { icon.textContent = '✕'; bText.textContent = 'Over budget — ' + fmtUSD(spent - budget) + ' above the ' + fmtUSD(budget) + ' cap.'; }
+      else if (lvl === 'near') { icon.textContent = '⚠'; bText.textContent = 'At ' + pct + '% of budget. ' + (fOver ? 'Forecast ' + fmtUSD(forecast) + ' will exceed the cap.' : 'Slow down to stay under.'); }
+      else if (lvl === 'warn') { icon.textContent = '⚠'; bText.textContent = '75% used. ' + (fOver ? 'On pace for ' + fmtUSD(forecast) + ' by month-end — over budget.' : 'Tracking toward ' + fmtUSD(forecast) + '.'); }
+      else { icon.textContent = '✓'; bText.textContent = fOver ? 'Under 75%, but pace projects ' + fmtUSD(forecast) + ' — watch it.' : 'On track. Projected ' + fmtUSD(forecast) + ' by month-end.'; }
+
+      maybeSlackAlert(lvl, spent, budget, forecast, pct);
+
+      // Spend by source
+      const wrap = document.getElementById('costSrc');
+      wrap.innerHTML = '';
+      const rows = Object.entries(SOURCE_META)
+        .map(([key, meta]) => ({ key, meta, c: costOf(key, data.bySource[key] || {}) }))
+        .filter(r => r.c > 0).sort((a, b) => b.c - a.c);
+      const max = Math.max(...rows.map(r => r.c), 0.0001);
+      for (const r of rows) {
+        const el = document.createElement('div');
+        el.className = 'cost-src-row';
+        el.innerHTML =
+          '<div class="top"><span class="nm"><span class="dot" style="background:' + r.meta.color + '"></span>' + r.meta.name + '</span>' +
+          '<span class="v">' + fmtUSD(r.c) + '</span></div>' +
+          '<div class="pct-bar"><div class="pct-bar-fill" style="width:' + Math.round(r.c / max * 100) + '%;background:' + r.meta.color + '"></div></div>';
+        wrap.appendChild(el);
+      }
+    }
+
+    function renderRatesEditor() {
+      const wrap = document.getElementById('rateRows');
+      wrap.innerHTML = '';
+      for (const [key, meta] of Object.entries(SOURCE_META)) {
+        const r = rateFor(key);
+        const row = document.createElement('div');
+        row.className = 'rate-row';
+        row.innerHTML =
+          '<span class="rl">' + meta.name + '</span>' +
+          '<input type="number" min="0" step="0.1" data-src="' + key + '" data-k="in" value="' + r.in + '">' +
+          '<input type="number" min="0" step="0.1" data-src="' + key + '" data-k="out" value="' + r.out + '">';
+        wrap.appendChild(row);
+      }
+    }
+
+    // ── CSV export ──────────────────────────────────────────────────
+    function exportCsv() {
+      const d = lastData; if (!d) return;
+      const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+      const lines = [];
+      lines.push('Terse usage export — period: ' + currentPeriod);
+      lines.push('');
+      lines.push(['date','tokens_in','tokens_out','tokens_saved','tool_calls','est_cost_usd'].join(','));
+      for (const day of d.byDay) {
+        // byDay is source-aggregated; approximate cost with a blended agent rate fallback
+        const cost = (day.tokensIn||0)/1e6*DEFAULT_RATES.agent.in + (day.tokensOut||0)/1e6*DEFAULT_RATES.agent.out;
+        lines.push([day.date, day.tokensIn||0, day.tokensOut||0, day.tokensSaved||0, day.toolCalls||0, cost.toFixed(4)].join(','));
+      }
+      lines.push('');
+      lines.push(['source','tokens_in','tokens_out','tokens_saved','tool_calls','est_cost_usd','est_saved_usd'].join(','));
+      for (const [key] of Object.entries(SOURCE_META)) {
+        const s = d.bySource[key] || {};
+        lines.push([key, s.tokensIn||0, s.tokensOut||0, s.tokensSaved||0, s.toolCalls||0,
+          costOf(key, s).toFixed(4), savedUsdOf(key, s.tokensSaved).toFixed(4)].join(','));
+      }
+      const csv = lines.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'terse-usage-' + currentPeriod + '.csv';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      showToast('已导出 CSV ✓');
     }
 
     // ── Main render ─────────────────────────────────────────────────
@@ -423,7 +924,17 @@
       if (!data) return;
       lastData = data;
       if (currentView === 'receipt') drawReceipt(data);
-      else renderCharts(data);
+      else if (currentView === 'charts') {
+        renderCharts(data);
+        let attr = null;
+        try { attr = await T.getAttribution(currentPeriod); renderAttribution(attr); } catch (e) {}
+        try { renderInsights(data, attr); } catch (e) {}
+      }
+      else if (currentView === 'cost') {
+        // Cost view is always month-scoped, independent of the period tabs.
+        monthData = await T.getStats('month');
+        renderCost(monthData || data);
+      }
     }
 
     // View toggle
@@ -434,10 +945,10 @@
         currentView = btn.dataset.view;
         document.getElementById('viewReceipt').style.display = currentView === 'receipt' ? 'flex' : 'none';
         document.getElementById('viewCharts').style.display  = currentView === 'charts'  ? 'block' : 'none';
-        if (lastData) {
-          if (currentView === 'receipt') drawReceipt(lastData);
-          else renderCharts(lastData);
-        }
+        document.getElementById('viewCost').style.display    = currentView === 'cost'    ? 'flex' : 'none';
+        // Period tabs are irrelevant to the (always-monthly) Cost view.
+        document.getElementById('periodTabs').style.display  = currentView === 'cost'    ? 'none' : 'flex';
+        render();
       });
     });
 
@@ -450,6 +961,92 @@
       currentPeriod = tab.dataset.period;
       render();
     });
+
+    // Budget controls
+    document.getElementById('btnSaveBudget').addEventListener('click', () => {
+      const v = parseFloat(document.getElementById('budgetInput').value);
+      saveBudget(v);
+      showToast(isFinite(v) && v > 0 ? '已设置预算 ✓' : '已清除预算');
+      if (monthData) renderCost(monthData);
+    });
+    document.getElementById('budgetInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btnSaveBudget').click();
+    });
+
+    // ── Slack alerts ────────────────────────────────────────────────
+    const LVL_RANK = { ok: 0, warn: 1, near: 2, over: 3 };
+    function slackWebhook() { return (localStorage.getItem('terse-slack-webhook') || '').trim(); }
+    function slackEnabled() { return localStorage.getItem('terse-slack-enabled') === '1' && !!slackWebhook(); }
+    function refreshSlackUI() {
+      const hook = slackWebhook();
+      const en = slackEnabled();
+      const inp = document.getElementById('slackWebhook');
+      if (document.activeElement !== inp) inp.value = hook;
+      document.getElementById('slackEnabled').checked = en;
+      const badge = document.getElementById('slackBadge');
+      badge.textContent = en ? 'On' : (hook ? 'Paused' : 'Off');
+      badge.className = 'badge ' + (en ? 'on' : 'off');
+    }
+    function maybeSlackAlert(lvl, spent, budget, forecast, pct) {
+      if (!slackEnabled() || LVL_RANK[lvl] < 1) return;
+      const ym = new Date().toISOString().slice(0, 7);
+      let last; try { last = JSON.parse(localStorage.getItem('terse-slack-last') || '{}'); } catch (e) { last = {}; }
+      const lastRank = last.month === ym ? (last.rank || 0) : 0;
+      if (LVL_RANK[lvl] <= lastRank) return; // already alerted at this level (or higher) this month
+      const emoji = lvl === 'over' ? '🚨' : '⚠️';
+      const text = emoji + ' *Terse budget alert* — ' + fmtUSD(spent) + ' of ' + fmtUSD(budget) +
+        ' used this month (' + pct + '%). Forecast ' + fmtUSD(forecast) + ' by month-end.';
+      T.sendSlackAlert(slackWebhook(), text)
+        .then(() => { localStorage.setItem('terse-slack-last', JSON.stringify({ month: ym, rank: LVL_RANK[lvl] })); })
+        .catch(() => {});
+    }
+    document.getElementById('btnOpenSlack').addEventListener('click', () => T.openUrl('https://app.slack.com/client'));
+    document.getElementById('btnSlackHook').addEventListener('click', () => T.openUrl('https://api.slack.com/messaging/webhooks'));
+    document.getElementById('btnSaveSlack').addEventListener('click', () => {
+      const v = document.getElementById('slackWebhook').value.trim();
+      if (v && !v.startsWith('https://hooks.slack.com/')) { showToast('请输入 Slack Webhook 链接'); return; }
+      if (v) localStorage.setItem('terse-slack-webhook', v); else localStorage.removeItem('terse-slack-webhook');
+      if (!v) localStorage.setItem('terse-slack-enabled', '0');
+      refreshSlackUI();
+      showToast(v ? '已保存 Webhook ✓' : '已清除 Webhook');
+    });
+    document.getElementById('slackEnabled').addEventListener('change', e => {
+      if (e.target.checked && !slackWebhook()) { e.target.checked = false; showToast('请先保存 Webhook 链接'); return; }
+      localStorage.setItem('terse-slack-enabled', e.target.checked ? '1' : '0');
+      refreshSlackUI();
+    });
+    document.getElementById('btnTestSlack').addEventListener('click', () => {
+      const hook = document.getElementById('slackWebhook').value.trim() || slackWebhook();
+      if (!hook.startsWith('https://hooks.slack.com/')) { showToast('请先填入 Slack Webhook'); return; }
+      showToast('正在发送测试…');
+      T.sendSlackAlert(hook, '✅ Terse is connected — budget alerts will arrive here.')
+        .then(() => showToast('测试已发送，请查看 Slack ✓'))
+        .catch(err => showToast('发送失败：' + (err || 'unknown')));
+    });
+
+    // Rates editor
+    document.getElementById('toggleRates').addEventListener('click', () => {
+      const ed = document.getElementById('ratesEditor');
+      ed.classList.toggle('show');
+      if (ed.classList.contains('show')) renderRatesEditor();
+    });
+    document.getElementById('btnSaveRates').addEventListener('click', () => {
+      const next = JSON.parse(JSON.stringify(RATES));
+      document.querySelectorAll('#rateRows input').forEach(i => {
+        const v = parseFloat(i.value);
+        if (isFinite(v) && v >= 0) {
+          next[i.dataset.src] = next[i.dataset.src] || { in: 3, out: 15 };
+          next[i.dataset.src][i.dataset.k] = v;
+        }
+      });
+      RATES = next;
+      localStorage.setItem('terse-rates', JSON.stringify(RATES));
+      showToast('已保存费率 ✓');
+      if (monthData) renderCost(monthData);
+    });
+
+    document.getElementById('btnExportCsv').addEventListener('click', exportCsv);
+    document.getElementById('btnExportCsv2').addEventListener('click', exportCsv);
 
     // Share — copy canvas image to clipboard (paste into WeChat)
     document.getElementById('btnShare').addEventListener('click', async () => {

@@ -45,6 +45,17 @@ if (_dbgInvoke) {
 }
 
 // ── Quota display ──
+// Compact weekly-reset suffix for the cramped popup, e.g. " · Mon".
+function fmtPopupReset(iso) {
+  if (!iso) return '';
+  const reset = new Date(iso);
+  if (isNaN(reset.getTime())) return '';
+  const days = Math.round((reset - new Date()) / 86400000);
+  if (days <= 0) return ' · today';
+  if (days >= 7) return ' · Mon';
+  return ' · ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][reset.getDay()];
+}
+
 async function updatePopupQuota() {
   const el = document.getElementById('popupQuota');
   if (!el) return;
@@ -53,7 +64,7 @@ async function updatePopupQuota() {
     if (lic.remaining < 0) {
       el.textContent = '';
     } else {
-      el.textContent = lic.remaining + '/' + lic.limits.optimizationsPerWeek + ' left';
+      el.textContent = lic.remaining + '/' + lic.limits.optimizationsPerWeek + ' left' + fmtPopupReset(lic.resetsAt);
       el.classList.toggle('low', lic.remaining <= 10);
     }
   } catch { el.textContent = ''; }
@@ -104,6 +115,11 @@ function escapeHtml(s) {
 
 // Auto-resize textarea and window to fit content
 function autoResizePopup() {
+  // In the Dynamic Island window, sizing is hover-driven — delegate to island.js.
+  if (document.body.classList.contains('island-mode')) {
+    if (window.__islandResize) window.__islandResize();
+    return;
+  }
   if (minimized) return;
   const ta = document.getElementById('optimized');
   if (!ta.classList.contains('hidden')) {
@@ -160,7 +176,18 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     T.updateSettings({ aggressiveness: btn.dataset.mode });
+    // Keep the live JS optimizer in sync so the preview honors the selected mode
+    if (window._terseOptimizer) window._terseOptimizer.updateSettings({ aggressiveness: btn.dataset.mode });
   });
+});
+
+// ⚡ Speed Mode toggle (orthogonal to compression mode) — cache-safe clamp
+document.getElementById('speedBtn')?.addEventListener('click', () => {
+  const btn = document.getElementById('speedBtn');
+  const on = !btn.classList.contains('active');
+  btn.classList.toggle('active', on);
+  T.updateSettings({ speedMode: on });
+  if (window._terseOptimizer) window._terseOptimizer.updateSettings({ speedMode: on });
 });
 
 // Auto mode toggle (Off / Send / Auto)
@@ -482,11 +509,19 @@ T.on('popup-clear', () => {
   T.resizePopup(160);
 });
 
-// Sync mode from settings
+// Sync mode + speed from settings, and push them into the live JS optimizer
 T.getSettings().then(s => {
   document.querySelectorAll('.mode-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === s.aggressiveness);
   });
+  const speedBtn = document.getElementById('speedBtn');
+  if (speedBtn) speedBtn.classList.toggle('active', !!s.speedMode);
+  if (window._terseOptimizer) {
+    window._terseOptimizer.updateSettings({
+      aggressiveness: s.aggressiveness || 'balanced',
+      speedMode: !!s.speedMode,
+    });
+  }
 });
 
 // Capture
@@ -593,7 +628,10 @@ function formatTokens(n) {
 function showAgentBanner(info) {
   const banner = document.getElementById('agentBanner');
   document.getElementById('agentBannerIcon').textContent = info.icon || '';
-  document.getElementById('agentBannerText').textContent = `${info.name} detected — monitor session?`;
+  document.getElementById('agentBannerText').textContent =
+    (window.i18n && window.i18n.t)
+      ? window.i18n.t('agent_detected_q', { name: info.name })
+      : `${info.name} detected — monitor session?`;
   banner.classList.remove('hidden');
   banner.dataset.agentType = info.type;
   autoResizePopup();
@@ -851,6 +889,56 @@ function updateAgentPanel(snapshot) {
   const burnRate = snapshot.burnRate || 0;
   document.getElementById('agentBurnRate').textContent =
     formatTokens(burnRate) + ' tok/min';
+
+  // ── Compaction forecast + pre-compaction warning ──
+  // Track context growth over recent snapshots (per agent) to project when
+  // auto-compaction (~92% of the window) will hit at the current pace.
+  const _t = (k, p) => (window.i18n && window.i18n.t) ? window.i18n.t(k, p) : null;
+  window._ctxHist = window._ctxHist || {};
+  const histKey = snapshot.id || activeAgentType || 'agent';
+  const hist = (window._ctxHist[histKey] = window._ctxHist[histKey] || []);
+  if (currentCtx > 0 && (!hist.length || hist[hist.length - 1].ctx !== currentCtx)) {
+    hist.push({ t: Date.now(), ctx: currentCtx });
+    if (hist.length > 12) hist.shift();
+  }
+  let etaText = '';
+  if (!approx && hist.length >= 2) {
+    const firstS = hist[0], lastS = hist[hist.length - 1];
+    const mins = (lastS.t - firstS.t) / 60000;
+    const growth = lastS.ctx - firstS.ctx;
+    if (mins > 0.5 && growth > 0) {
+      const perMin = growth / mins;
+      const compactAt = (snapshot.contextMax || 200000) * 0.92;
+      const remaining = compactAt - lastS.ctx;
+      if (remaining > 0 && ctxFill >= 40) {
+        const etaMin = Math.round(remaining / perMin);
+        if (etaMin < 600) {
+          const timeStr = etaMin >= 60 ? Math.round(etaMin / 60) + 'h ' + (etaMin % 60) + 'm' : etaMin + 'm';
+          etaText = _t('ctx_eta', { time: timeStr }) || ('≈' + timeStr + ' to compaction');
+        }
+      }
+    }
+  }
+  const etaEl = document.getElementById('agentCtxEta');
+  if (etaEl) etaEl.textContent = etaText;
+
+  // Warning banner at 75% (advisory) and 90% (imminent)
+  const warnEl = document.getElementById('agentCtxWarn');
+  if (warnEl) {
+    const warnTextEl = document.getElementById('agentCtxWarnText');
+    if (!approx && ctxFill >= 90) {
+      warnEl.className = 'ctx-warn danger';
+      warnTextEl.textContent = _t('ctx_warn_hard', { pct: ctxFill })
+        || ('Context ' + ctxFill + '% full — compaction imminent, /compact now');
+    } else if (!approx && ctxFill >= 75) {
+      warnEl.className = 'ctx-warn';
+      warnTextEl.textContent = (_t('ctx_warn_soft', { pct: ctxFill })
+        || ('Context ' + ctxFill + '% full — /compact at a natural breakpoint'))
+        + (etaText ? ' · ' + etaText : '');
+    } else {
+      warnEl.className = 'ctx-warn hidden';
+    }
+  }
 
   // ── Savings hero ──
   const opt = snapshot.optimizationStats || {};
@@ -1348,7 +1436,7 @@ function updateAgentPanel(snapshot) {
     requestAnimationFrame(() => { actEl.scrollTop = actEl.scrollHeight; });
     // Fire pet for new tool calls — toolCallCount is monotonically increasing so no 20-msg cap issue
     actEl.dataset.toolCallCount = String(snapToolCount);
-    if (snapToolCount > prevToolCallCount && window.terse && window.terse.petWorkDetected) {
+    if (!document.body.classList.contains('island-mode') && snapToolCount > prevToolCallCount && window.terse && window.terse.petWorkDetected) {
       window.terse.petWorkDetected(newSaveableTokens, lastNewToolName).catch(() => {});
     }
   }
@@ -1789,6 +1877,8 @@ function pollProxyStatus() {
       if (bar) bar.style.display = 'none';
     });
 }
-// Poll every 5 seconds
-setInterval(pollProxyStatus, 5000);
-pollProxyStatus();
+// Poll every 5 seconds (skipped in the Dynamic Island window — the popup owns proxy polling)
+if (!document.body.classList.contains('island-mode')) {
+  setInterval(pollProxyStatus, 5000);
+  pollProxyStatus();
+}

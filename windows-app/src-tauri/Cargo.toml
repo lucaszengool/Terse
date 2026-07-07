@@ -17,6 +17,9 @@ dirs = "6"
 chrono = "0.4"
 
 [target.'cfg(target_os = "windows")'.dependencies]
+# Acrylic/Mica blur behind the island + dashboards (Windows equivalent of the
+# macOS NSVisualEffectView vibrancy the shared frontend expects).
+window-vibrancy = "0.6"
 windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_UI_Accessibility",

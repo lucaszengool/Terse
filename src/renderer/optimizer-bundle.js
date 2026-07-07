@@ -24539,8 +24539,12 @@
             removeHedging: true,
             compressLists: true,
             correctTypos: true,
-            aggressiveness: "balanced"
+            aggressiveness: "balanced",
             // 'light', 'balanced', 'aggressive'
+            speedMode: false
+            // ⚡ Speed Mode: cache-safe clamp — never applies the lossy/structure-
+            // changing aggressive transforms (strip-markdown, abbreviations, drop
+            // articles) so the rewrite stays meaning-preserving and prompt-cache-safe.
           };
         }
         getSettings() {
@@ -24573,7 +24577,10 @@
             };
           }
           const applied = [];
-          const level = this.settings.aggressiveness;
+          let level = this.settings.aggressiveness;
+          // ⚡ Speed Mode clamp: drop the lossy aggressive-only transforms so the
+          // rewrite stays meaning-preserving and prompt-cache-safe.
+          if (this.settings.speedMode && level === "aggressive") level = "balanced";
           const lang = detectLanguage(text);
           const isEnglish = lang === "en";
           if (DICT_PACKAGES[lang]) getSpeller(lang);

@@ -85,6 +85,20 @@ if (window.__TAURI__) {
     resizePopup: (h) => invoke('resize_popup', { h }),
     movePopupBy: (dx, dy) => invoke('move_popup_by', { dx, dy }),
 
+    // Dynamic Island (灵动岛)
+    showIslandWindow: () => invoke('show_island_window'),
+    hideIslandWindow: () => invoke('hide_island_window'),
+    islandSetExpanded: (expanded) => invoke('island_set_expanded', { expanded }),
+    islandResize: (h) => invoke('island_resize', { h }),
+    focusIsland: (agentType) => invoke('focus_island', { agentType: agentType || null }),
+
+    // Floating dashboard widget windows (saved · cache · focus · agents · compression · activity · savings)
+    openDashboards: () => invoke('open_dashboards'),
+    hideDashboards: () => invoke('hide_dashboards'),
+    toggleDashboard: (kind) => invoke('toggle_dashboard', { kind }),
+    tileDashboards: () => invoke('tile_dashboards'),
+    dashboardsVisible: () => invoke('dashboards_visible'),
+
     // Agent Monitor
     getAgentDetections: () => invoke('get_agent_detections'),
     getAgentSessions: () => invoke('get_agent_sessions'),
@@ -98,8 +112,22 @@ if (window.__TAURI__) {
 
     // Stats
     getStats: (period) => invoke('get_stats', { period }),
+    getAttribution: (period) => invoke('get_agent_attribution', { period }),
     navigateToStats: () => invoke('navigate_to_stats'),
     navigateBack: () => invoke('navigate_back'),
+
+    // Doctor (360-style health scanner)
+    doctorScan: (period) => invoke('doctor_scan', { period: period || null }),
+    cleanupScan: () => invoke('cleanup_scan'),
+    cleanupClean: (paths) => invoke('cleanup_clean', { paths }),
+    speedModeStatus: () => invoke('speed_mode_status'),
+    setSpeedMode: (enabled) => invoke('set_speed_mode', { enabled }),
+    doctorApplyFix: (finding) => invoke('doctor_apply_fix', { finding }),
+    doctorDismiss: (id) => invoke('doctor_dismiss', { id }),
+    showDoctorWindow: () => invoke('show_doctor_window'),
+    hideDoctorWindow: () => invoke('hide_doctor_window'),
+    navigateToDoctor: () => invoke('navigate_to_doctor'),
+    showMainWindow: () => invoke('show_main_window'),
 
     // Cowork (team collaboration)
     navigateToCowork: () => invoke('navigate_to_cowork'),
@@ -109,6 +137,8 @@ if (window.__TAURI__) {
     setCoworkShareStats: (enabled) => invoke('set_cowork_share_stats', { enabled }),
     clearCoworkToken: () => invoke('clear_cowork_token'),
     openCloudTeams: (path) => invoke('open_cloud_teams', { path: path || null }),
+    openUrl: (url) => invoke('open_url', { url }),
+    sendSlackAlert: (webhook, text) => invoke('send_slack_alert', { webhook, text }),
 
     // Pets (Phase 1 — picker + foundation)
     getPetState: () => invoke('get_pet_state'),
@@ -263,6 +293,7 @@ if (window.__TAURI__) {
     setClerkUser: (clerkUserId) => invoke('set_clerk_user', { clerkUserId }),
     verifyLicense: (clerkUserId) => invoke('verify_license_remote', { clerkUserId }),
     checkCanOptimize: () => invoke('check_can_optimize'),
+    trialGraceStatus: () => invoke('trial_grace_status'),
     recordOptimizationUsage: () => invoke('record_optimization_usage'),
     checkCanAddSession: () => invoke('check_can_add_session'),
 

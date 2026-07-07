@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Terse Dashboard</title>
+  <!-- popup.css supplies the theme CSS variables (--ac/--sf/--bd/--bg/--t1..t3);
+       dash.css owns all the dashboard-widget visuals. -->
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="dash.css">
+</head>
+<body class="dash-mode">
+  <!--
+    One floating dashboard widget. The Tauri window label ("dash-<kind>") selects
+    which metric this window renders (saved · cache · focus · agents · compression
+    · activity · savings). dash.js reads the label, builds the card, and drives it
+    live from the same agent-connected/agent-update events the island listens to.
+  -->
+  <div id="dashRoot" class="dash-root">
+    <div class="dash-header" data-tauri-drag-region>
+      <span id="dashTitle" class="dash-title">Terse</span>
+      <div id="dashTabs" class="dash-tabs"></div>
+      <button id="dashClose" class="dash-close" title="Hide widget">✕</button>
+    </div>
+    <div id="dashBody" class="dash-body"></div>
+    <span class="dash-sheen"></span>
+    <span class="island-aurora dash-aurora"></span>
+  </div>
+
+  <script>
+    // Load saved theme + keep in sync with the rest of the app (mirrors island.html).
+    (function () {
+      var saved = localStorage.getItem('terse-theme') || 'azure';
+      document.documentElement.setAttribute('data-theme', saved);
+      setInterval(function () {
+        var t = localStorage.getItem('terse-theme') || 'azure';
+        if (document.documentElement.getAttribute('data-theme') !== t) {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      }, 500);
+    })();
+
+    // Wait for __TAURI__, then load the bridge + the dashboard controller.
+    function _loadScripts() {
+      if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
+      ['tauri-bridge.js', 'auth-scrim.js', 'i18n.js', 'dash.js'].reduce(function (p, src) {
+        return p.then(function () {
+          return new Promise(function (resolve) {
+            var s = document.createElement('script'); s.src = src;
+            s.onload = resolve; s.onerror = resolve;
+            document.body.appendChild(s);
+          });
+        });
+      }, Promise.resolve());
+    }
+    _loadScripts();
+  </script>
+</body>
+</html>

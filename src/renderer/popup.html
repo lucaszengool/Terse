@@ -8,9 +8,8 @@
 <body>
   <!-- Minimized favicon -->
   <div id="favicon" class="favicon" title="Show Terse">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-      <rect x="2" y="2" width="20" height="20" rx="5" fill="white" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
-      <text x="12" y="17" text-anchor="middle" fill="currentColor" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="14" font-weight="700">T</text>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <text x="12" y="18" text-anchor="middle" fill="currentColor" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="17" font-weight="800">T</text>
     </svg>
   </div>
 
@@ -34,6 +33,7 @@
           <button class="auto-btn active" data-auto="send" title="Optimize when you press Enter">Send</button>
           <button class="auto-btn" data-auto="auto" title="Live replace as you type">Auto</button>
         </div>
+        <button id="speedBtn" class="speed-btn" title="⚡ Speed Mode — cache-safe trimming that preserves meaning so it never busts the model's prompt cache (keeps fast time-to-first-token)">⚡</button>
       </div>
     </div>
     <div class="bar-stats-row">
@@ -122,6 +122,12 @@
       <!-- Context fill bar (always visible, compact) -->
       <div class="context-fill-bar-mini"><div class="context-fill-bar-fill" id="agentContextBar"></div></div>
 
+      <!-- Pre-compaction warning — appears when context fill crosses 75% / 90% -->
+      <div id="agentCtxWarn" class="ctx-warn hidden">
+        <span class="ctx-warn-ic">⚠</span>
+        <span id="agentCtxWarnText"></span>
+      </div>
+
       <!-- Approx-token note (shown for Cursor: messages read from SQLite, tokens estimated) -->
       <div id="agentHookOnlyNote" style="display:none;font-size:10px;color:#888;padding:4px 8px 2px;line-height:1.4">
         <span id="agentPanelName2"></span> stores token counts server-side — shown values are estimates. Messages and turns are accurate.
@@ -138,6 +144,7 @@
             <span class="context-fill-label">Context</span>
             <span id="agentContextPct" class="context-fill-pct">0%</span>
             <span id="agentBurnRate" class="burn-rate">0 tok/min</span>
+            <span id="agentCtxEta" class="ctx-eta"></span>
           </div>
         </div>
 
@@ -218,7 +225,7 @@
   <script>
     // Load saved theme + sync across windows
     (function() {
-      var saved = localStorage.getItem('terse-theme') || 'lime';
+      var saved = localStorage.getItem('terse-theme') || 'azure';
       document.documentElement.setAttribute('data-theme', saved);
       // Listen for theme changes from main window
       window.addEventListener('storage', function(e) {
@@ -228,7 +235,7 @@
       });
       // Also poll every 500ms in case storage event doesn't fire (same-origin Tauri)
       setInterval(function() {
-        var t = localStorage.getItem('terse-theme') || 'lime';
+        var t = localStorage.getItem('terse-theme') || 'azure';
         if (document.documentElement.getAttribute('data-theme') !== t) {
           document.documentElement.setAttribute('data-theme', t);
         }

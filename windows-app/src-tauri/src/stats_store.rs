@@ -19,11 +19,66 @@ pub struct SourceStats {
     pub messages_optimized: u64,
     #[serde(rename = "toolCalls")]
     pub tool_calls: u64,
+    /// Subset of `tokens_in` that were prompt-cache reads (~10× cheaper than fresh input).
+    #[serde(rename = "cacheReadTokens", default)]
+    pub cache_read_tokens: u64,
+    /// Subset of `tokens_in` that were prompt-cache writes (~1.25× fresh input).
+    #[serde(rename = "cacheCreationTokens", default)]
+    pub cache_creation_tokens: u64,
+}
+
+/// Token counts attributed to one model (or MCP server). All `_in` totals include
+/// their cache subsets, mirroring `SourceStats`.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AttrStats {
+    #[serde(rename = "tokensIn", default)]
+    pub tokens_in: u64,
+    #[serde(rename = "tokensOut", default)]
+    pub tokens_out: u64,
+    #[serde(rename = "cacheReadTokens", default)]
+    pub cache_read: u64,
+    #[serde(rename = "cacheCreationTokens", default)]
+    pub cache_creation: u64,
+    #[serde(rename = "toolCalls", default)]
+    pub tool_calls: u64,
+}
+
+impl AttrStats {
+    fn add(&mut self, o: &AttrStats) {
+        self.tokens_in += o.tokens_in;
+        self.tokens_out += o.tokens_out;
+        self.cache_read += o.cache_read;
+        self.cache_creation += o.cache_creation;
+        self.tool_calls += o.tool_calls;
+    }
+}
+
+/// One day's attribution breakdown: by model, by MCP server, and a tool-call
+/// histogram. Populated by the session-log scanner.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DayAttribution {
+    #[serde(default)]
+    pub models: HashMap<String, AttrStats>,
+    #[serde(rename = "mcpServers", default)]
+    pub mcp_servers: HashMap<String, AttrStats>,
+    #[serde(default)]
+    pub tools: HashMap<String, u64>,
+}
+
+impl DayAttribution {
+    pub fn merge(&mut self, o: &DayAttribution) {
+        for (k, v) in &o.models { self.models.entry(k.clone()).or_default().add(v); }
+        for (k, v) in &o.mcp_servers { self.mcp_servers.entry(k.clone()).or_default().add(v); }
+        for (k, v) in &o.tools { *self.tools.entry(k.clone()).or_default() += v; }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StatsData {
     pub days: HashMap<String, HashMap<String, SourceStats>>,
+    /// date (YYYY-MM-DD) → per-model / per-MCP / per-tool attribution.
+    #[serde(default)]
+    pub attribution: HashMap<String, DayAttribution>,
 }
 
 pub struct StatsStore {
@@ -102,6 +157,92 @@ impl StatsStore {
         self.dirty = true;
     }
 
+    /// Record raw agent token usage attributed to a specific day (YYYY-MM-DD).
+    /// Used by the session-log scanner for both backfill and live tracking.
+    /// Does NOT touch tokens_saved — savings are only credited by real compression.
+    /// `messages` is the count of assistant turns this batch represents.
+    /// Caller is responsible for flushing (batch many calls, then `flush()`).
+    pub fn record_agent_usage_for_date(&mut self, day: &str, input_tokens: u64, output_tokens: u64, tool_calls: u64, cache_read: u64, cache_creation: u64, messages: u64) {
+        if input_tokens == 0 && output_tokens == 0 && tool_calls == 0 { return; }
+        self.ensure_day(day);
+        if let Some(day_data) = self.data.days.get_mut(day) {
+            if let Some(src) = day_data.get_mut("agent") {
+                src.tokens_in += input_tokens;
+                src.tokens_out += output_tokens;
+                src.tool_calls += tool_calls;
+                src.cache_read_tokens += cache_read;
+                src.cache_creation_tokens += cache_creation;
+                src.messages_total += messages;
+            }
+        }
+        self.dirty = true;
+    }
+
+    /// Merge one day's attribution (by model / MCP / tool) into the store.
+    /// Caller flushes. Used by the session-log scanner alongside the agent totals.
+    pub fn record_attribution_for_date(&mut self, day: &str, attr: &DayAttribution) {
+        if attr.models.is_empty() && attr.mcp_servers.is_empty() && attr.tools.is_empty() { return; }
+        self.data.attribution.entry(day.to_string()).or_default().merge(attr);
+        self.dirty = true;
+    }
+
+    fn period_start(period: &str) -> String {
+        match period {
+            "day" => Self::today_key(),
+            "week" => (chrono::Local::now() - chrono::Duration::days(7)).format("%Y-%m-%d").to_string(),
+            "month" => (chrono::Local::now() - chrono::Duration::days(30)).format("%Y-%m-%d").to_string(),
+            _ => "2000-01-01".to_string(),
+        }
+    }
+
+    /// Aggregate attribution over a period into ranked, dollarized lists:
+    /// `byModel` (sorted by est cost), `byMcpServer` (by tool calls), `byTool` (by count).
+    pub fn get_attribution(&self, period: &str) -> serde_json::Value {
+        let start = Self::period_start(period);
+        let mut agg = DayAttribution::default();
+        for (day, attr) in &self.data.attribution {
+            if day.as_str() < start.as_str() { continue; }
+            agg.merge(attr);
+        }
+
+        let cost_of = |s: &AttrStats, model: &str| -> f64 {
+            let fresh = s.tokens_in.saturating_sub(s.cache_read + s.cache_creation);
+            crate::pricing::estimate_cost(model, fresh, s.tokens_out, s.cache_read, s.cache_creation)
+        };
+
+        let mut by_model: Vec<serde_json::Value> = agg.models.iter().map(|(name, s)| {
+            serde_json::json!({
+                "name": name,
+                "tokensIn": s.tokens_in, "tokensOut": s.tokens_out,
+                "cacheReadTokens": s.cache_read, "toolCalls": s.tool_calls,
+                "costUsd": (cost_of(s, name) * 10000.0).round() / 10000.0,
+            })
+        }).collect();
+        by_model.sort_by(|a, b| b["costUsd"].as_f64().unwrap_or(0.0)
+            .partial_cmp(&a["costUsd"].as_f64().unwrap_or(0.0)).unwrap_or(std::cmp::Ordering::Equal));
+
+        let mut by_mcp: Vec<serde_json::Value> = agg.mcp_servers.iter().map(|(name, s)| {
+            serde_json::json!({
+                "name": name, "toolCalls": s.tool_calls,
+                "tokensIn": s.tokens_in, "tokensOut": s.tokens_out,
+                "costUsd": (cost_of(s, "") * 10000.0).round() / 10000.0,
+            })
+        }).collect();
+        by_mcp.sort_by(|a, b| b["toolCalls"].as_u64().unwrap_or(0).cmp(&a["toolCalls"].as_u64().unwrap_or(0)));
+
+        let mut by_tool: Vec<serde_json::Value> = agg.tools.iter()
+            .map(|(name, c)| serde_json::json!({ "name": name, "count": c }))
+            .collect();
+        by_tool.sort_by(|a, b| b["count"].as_u64().unwrap_or(0).cmp(&a["count"].as_u64().unwrap_or(0)));
+
+        serde_json::json!({
+            "byModel": by_model,
+            "byMcpServer": by_mcp,
+            "byTool": by_tool.into_iter().take(20).collect::<Vec<_>>(),
+            "period": period,
+        })
+    }
+
     pub fn get_stats(&self, period: &str) -> serde_json::Value {
         let start_date = match period {
             "day" => Self::today_key(),
@@ -119,6 +260,7 @@ impl StatsStore {
         let mut summary = serde_json::json!({
             "tokensIn": 0u64, "tokensOut": 0u64, "tokensSaved": 0u64,
             "messagesTotal": 0u64, "messagesOptimized": 0u64, "toolCalls": 0u64,
+            "cacheReadTokens": 0u64, "cacheCreationTokens": 0u64,
         });
 
         let mut by_source: HashMap<String, serde_json::Value> = HashMap::new();
@@ -126,6 +268,7 @@ impl StatsStore {
             by_source.insert(src.to_string(), serde_json::json!({
                 "tokensIn": 0u64, "tokensOut": 0u64, "tokensSaved": 0u64,
                 "messagesTotal": 0u64, "messagesOptimized": 0u64, "toolCalls": 0u64,
+                "cacheReadTokens": 0u64, "cacheCreationTokens": 0u64,
             }));
         }
         let mut by_day: Vec<serde_json::Value> = Vec::new();
@@ -150,6 +293,8 @@ impl StatsStore {
                     summary["messagesTotal"] = serde_json::json!(summary["messagesTotal"].as_u64().unwrap_or(0) + s.messages_total);
                     summary["messagesOptimized"] = serde_json::json!(summary["messagesOptimized"].as_u64().unwrap_or(0) + s.messages_optimized);
                     summary["toolCalls"] = serde_json::json!(summary["toolCalls"].as_u64().unwrap_or(0) + s.tool_calls);
+                    summary["cacheReadTokens"] = serde_json::json!(summary["cacheReadTokens"].as_u64().unwrap_or(0) + s.cache_read_tokens);
+                    summary["cacheCreationTokens"] = serde_json::json!(summary["cacheCreationTokens"].as_u64().unwrap_or(0) + s.cache_creation_tokens);
 
                     // Add to by_source
                     if let Some(bs) = by_source.get_mut(*src_key) {
@@ -159,6 +304,8 @@ impl StatsStore {
                         bs["messagesTotal"] = serde_json::json!(bs["messagesTotal"].as_u64().unwrap_or(0) + s.messages_total);
                         bs["messagesOptimized"] = serde_json::json!(bs["messagesOptimized"].as_u64().unwrap_or(0) + s.messages_optimized);
                         bs["toolCalls"] = serde_json::json!(bs["toolCalls"].as_u64().unwrap_or(0) + s.tool_calls);
+                        bs["cacheReadTokens"] = serde_json::json!(bs["cacheReadTokens"].as_u64().unwrap_or(0) + s.cache_read_tokens);
+                        bs["cacheCreationTokens"] = serde_json::json!(bs["cacheCreationTokens"].as_u64().unwrap_or(0) + s.cache_creation_tokens);
                     }
 
                     // Add to day sum
@@ -183,6 +330,13 @@ impl StatsStore {
             "byDay": by_day,
             "period": period,
         })
+    }
+
+    pub fn total_tokens_saved(&self) -> u64 {
+        self.data.days.values()
+            .flat_map(|day| day.values())
+            .map(|s| s.tokens_saved)
+            .sum()
     }
 
     fn maybe_save(&mut self) {

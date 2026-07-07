@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Terse Island</title>
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="island.css">
+</head>
+<body class="island-mode">
+  <!--
+    Dynamic Island (灵动岛). The expanded card embeds a VERBATIM copy of popup.html's body
+    (favicon + #bar with #agentPanel) so popup.js — loaded unchanged — finds every element it
+    references and renders the agent monitor identically. island.css hides all popup chrome
+    except #agentPanel; island.js drives the pill, hover expand/collapse and window visibility.
+  -->
+  <div id="islandRoot">
+    <!-- Collapsed pill (always rendered; visible when not expanded) -->
+    <div id="islandPill">
+      <span class="island-aurora"></span>
+      <span class="island-sheen"></span>
+      <span id="islandPillGlyph" class="island-pill-glyph"></span>
+      <span id="islandPillIcon" class="island-pill-icon"></span>
+      <span class="island-pill-mid">
+        <span id="islandPillName" class="island-pill-name">Terse</span>
+        <span id="islandPillAction" class="island-pill-action"></span>
+      </span>
+      <span id="islandPillSave" class="island-pill-save"><span class="save-bolt">⚡</span><span id="islandPillSaveNum">0</span></span>
+      <span id="islandPillRing" class="island-pill-ring" style="--ring-p:0"><span class="ring-label" id="islandPillRingPct"></span></span>
+    </div>
+
+    <!-- Expanded monitor card -->
+    <div id="islandExpanded">
+      <span class="island-aurora"></span>
+      <span class="island-sheen island-sheen-card"></span>
+      <!-- Multi-agent selector (shown only when >1 agent connected) -->
+      <div id="islandAgentTabs" class="island-agent-tabs"></div>
+
+      <!-- ▼▼▼ Vivid live hero (island-only, populated by island.js) ▼▼▼ -->
+      <div id="islandHero" class="island-hero">
+        <div class="island-hero-row">
+          <span id="islandHeroIcon" class="island-hero-icon">🤖</span>
+          <div class="island-hero-id">
+            <span id="islandHeroName" class="island-hero-name">Agent</span>
+            <span class="island-hero-status">
+              <i class="hero-live-dot"></i><span id="islandHeroStatusText">Monitoring</span>
+            </span>
+          </div>
+          <div class="island-hero-saved-wrap">
+            <span id="islandHeroSaved" class="island-hero-saved">0</span>
+            <span class="island-hero-saved-unit" id="islandHeroSavedUnit">tokens saved</span>
+            <span id="islandHeroReduce" class="island-hero-reduce"></span>
+          </div>
+          <div id="islandHeroRing" class="island-hero-ring" style="--ring-p:0">
+            <span class="hero-ring-pct" id="islandHeroRingPct">0%</span>
+            <span class="hero-ring-cap">ctx</span>
+          </div>
+        </div>
+        <!-- Live "quality" strip — how Terse is helping right now (reduction · cache · context) -->
+        <div id="islandHeroMetrics" class="island-hero-metrics"></div>
+        <!-- Live agent-flow strip — recent steps slide in from the right -->
+        <div id="islandFlow" class="island-flow"></div>
+        <!-- FX layer — floating "+N saved" gains rise & fade on each optimization -->
+        <div id="islandHeroFx" class="island-hero-fx"></div>
+      </div>
+      <!-- ▲▲▲ End vivid hero ▲▲▲ -->
+
+      <!-- ▼▼▼ Bento dashboard (island-only) — on hover, reveal ALL stat boards at once,
+           cascading in like the promo. This is the full set of per-metric "仪表盘" widgets
+           (same boards the old floating windows showed: saved · cache · compression · focus
+           · agents · savings · activity), now living inside the island hover card and
+           aggregated across every connected agent. It replaces the big embedded monitor. ▼▼▼ -->
+      <div id="islandBento" class="island-bento">
+        <div class="bento-tile" data-tile="saved">
+          <div class="bt-head"><span class="bt-title">Saved</span><span class="bt-delta" id="btSavedDelta"></span></div>
+          <div class="bt-num" id="btSavedNum">0</div>
+          <div class="bt-sub">tokens trimmed</div>
+          <div class="bt-spark" id="btSavedSpark"></div>
+        </div>
+        <div class="bento-tile" data-tile="cache">
+          <div class="bt-head"><span class="bt-title">Cache</span><span class="bt-delta good" id="btCacheBadge">faster</span></div>
+          <div class="bt-num" id="btCacheNum">0%</div>
+          <div class="bt-bar"><div class="bt-bar-fill" id="btCacheBar"></div></div>
+          <div class="bt-sub">hit rate · cost ↓</div>
+        </div>
+        <div class="bento-tile" data-tile="compression">
+          <div class="bt-head"><span class="bt-title">Compression</span><span class="bt-delta" id="btCompDelta"></span></div>
+          <div class="bt-ring" id="btCompRing" style="--ring-p:0"><span class="bt-ring-pct" id="btCompPct">0%</span></div>
+          <div class="bt-sub" style="text-align:center">reduced</div>
+        </div>
+        <div class="bento-tile" data-tile="focus">
+          <div class="bt-head"><span class="bt-title">Focus</span><span class="bt-delta" id="btFocusDelta"></span></div>
+          <div class="bt-ring" id="btFocusRing" style="--ring-p:0"><span class="bt-ring-pct" id="btFocusPct">—</span></div>
+          <div class="bt-sub" style="text-align:center">context headroom</div>
+        </div>
+        <div class="bento-tile" data-tile="agents">
+          <div class="bt-head"><span class="bt-title">Agents</span><span class="bt-live"><i></i>live</span></div>
+          <div class="bt-num" id="btAgentsNum">0<span class="bt-num-unit"> online</span></div>
+          <div class="bt-avatars" id="btAgentAvatars"></div>
+          <div class="bt-eq" id="btAgentsEq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="bento-tile" data-tile="savings">
+          <div class="bt-head"><span class="bt-title">Savings</span><span class="bt-delta" id="btMoneyDelta"></span></div>
+          <div class="bt-money"><span class="bt-cur">$</span><span class="bt-num" id="btMoneyNum">0</span><span class="bt-cents" id="btMoneyCents">.00</span></div>
+          <div class="bt-sub">estimated · session</div>
+        </div>
+        <div class="bento-tile bento-activity" data-tile="activity">
+          <div class="bt-head">
+            <span class="bt-title">Activity</span>
+            <span class="bt-live" id="btActStatus"><i></i><span id="btActStatusTx">live</span></span>
+          </div>
+          <div class="bt-flow" id="btActFlow"></div>
+        </div>
+      </div>
+      <!-- ▲▲▲ End bento dashboard ▲▲▲ -->
+
+      <!-- ▼▼▼ Verbatim copy of popup.html body (favicon + #bar) ▼▼▼ -->
+      <!-- Minimized favicon -->
+      <div id="favicon" class="favicon" title="Show Terse">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="2" width="20" height="20" rx="5" fill="white" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
+          <text x="12" y="17" text-anchor="middle" fill="currentColor" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="14" font-weight="700">T</text>
+        </svg>
+      </div>
+
+      <div id="bar" data-tauri-drag-region>
+        <div class="bar-header" data-tauri-drag-region>
+          <div class="bar-left" data-tauri-drag-region>
+            <div class="dot"></div>
+            <span id="appLabel">Connected</span>
+          </div>
+          <div class="bar-right">
+            <button id="btnHide" class="hide-btn" title="Minimize to icon">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="mode-toggle">
+              <button class="mode-btn active" data-mode="light" title="Typos + whitespace only">Soft</button>
+              <button class="mode-btn" data-mode="balanced" title="Balanced optimization">Normal</button>
+              <button class="mode-btn" data-mode="aggressive" title="Maximum compression">Aggr</button>
+            </div>
+            <div class="auto-toggle">
+              <button class="auto-btn" data-auto="off" title="Manual only">Off</button>
+              <button class="auto-btn active" data-auto="send" title="Optimize when you press Enter">Send</button>
+              <button class="auto-btn" data-auto="auto" title="Live replace as you type">Auto</button>
+            </div>
+            <button id="speedBtn" class="speed-btn" title="⚡ Speed Mode — cache-safe trimming that preserves meaning so it never busts the model's prompt cache (keeps fast time-to-first-token)">⚡</button>
+          </div>
+        </div>
+        <div class="bar-stats-row">
+          <div id="techniques" class="techniques"></div>
+          <span id="popupQuota" class="popup-quota"></span>
+          <div class="bar-stats">
+            <span id="tokBefore">0</span>
+            <span class="arrow">→</span>
+            <span id="tokAfter" class="accent">0</span>
+            <span id="tokPct" class="pct"></span>
+          </div>
+        </div>
+        <div id="hintState" class="hint-state">
+          <span>Select your prompt text, then click Capture</span>
+        </div>
+        <div id="bridgeInstall" class="bridge-install hidden">
+          <span class="bridge-msg">Install <b>Terse Bridge</b> for live mode in VS Code</span>
+          <button id="btnInstallBridge" class="install-btn">Install Extension</button>
+        </div>
+        <!-- Agent Detection Banner -->
+        <div id="agentBanner" class="agent-banner hidden">
+          <div class="agent-banner-inner">
+            <span id="agentBannerIcon" class="agent-icon"></span>
+            <span id="agentBannerText" class="agent-text">Agent detected</span>
+            <button id="btnAgentAccept" class="agent-accept-btn">Connect</button>
+            <button id="btnAgentDismiss" class="agent-dismiss-btn">Dismiss</button>
+          </div>
+        </div>
+
+        <!-- Agent Monitor Panel (shown when connected) -->
+        <div id="agentPanel" class="agent-panel hidden">
+          <div class="agent-panel-header">
+            <span id="agentPanelIcon" class="agent-icon"></span>
+            <span id="agentPanelName" class="agent-name">Agent</span>
+            <span id="agentPanelStatus" class="agent-status">Monitoring</span>
+            <button id="btnAgentDetails" class="agent-details-btn" title="Toggle details">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <button id="btnAgentDisconnect" class="agent-disconnect-btn" title="Disconnect">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Plan & Usage row -->
+          <div id="agentPlanRow" class="agent-plan-row hidden">
+            <span id="agentPlanBadge" class="plan-badge">Pro</span>
+            <div class="usage-bars">
+              <div class="usage-bar-wrap" id="usageShortWrap">
+                <span class="usage-label" id="usageShortLabel">5h</span>
+                <div class="usage-bar"><div class="usage-bar-fill" id="usageShortBar"></div></div>
+                <span class="usage-pct" id="usageShortPct">0%</span>
+              </div>
+              <div class="usage-bar-wrap" id="usageLongWrap" style="display:none">
+                <span class="usage-label" id="usageLongLabel">7d</span>
+                <div class="usage-bar"><div class="usage-bar-fill" id="usageLongBar"></div></div>
+                <span class="usage-pct" id="usageLongPct">0%</span>
+              </div>
+            </div>
+            <span id="agentResetTimer" class="reset-timer"></span>
+            <span id="agentSavingsUSD" class="savings-usd"></span>
+          </div>
+
+          <!-- Proxy status bar -->
+          <div id="proxyStatusBar" class="proxy-status-bar" style="display:none;padding:3px 8px;font-size:9px;display:flex;align-items:center;gap:6px;background:rgba(16,185,129,0.08);border-radius:4px;margin:2px 0">
+            <span style="width:6px;height:6px;border-radius:50%;background:#10b981;flex-shrink:0"></span>
+            <span>Proxy</span>
+            <span id="proxyReqs" style="font-weight:700">0</span><span>reqs</span>
+            <span class="sum-sep">|</span>
+            <span id="proxyRouted" style="font-weight:700;color:var(--ac)">0</span><span>routed</span>
+            <span id="proxyModel" style="margin-left:auto;opacity:0.6"></span>
+          </div>
+
+          <!-- Compact summary bar (always visible) -->
+          <div class="agent-summary-bar">
+            <span class="sum-item"><span class="sum-label">Ctx</span> <span id="agentCtxShort" class="sum-val">0%</span></span>
+            <span class="sum-sep">|</span>
+            <span class="sum-item"><span class="sum-label">In</span> <span id="agentInputShort" class="sum-val">0</span></span>
+            <span class="sum-sep">|</span>
+            <span class="sum-item"><span class="sum-label">Cache</span> <span id="agentCacheShort" class="sum-val">0%</span></span>
+            <span class="sum-sep">|</span>
+            <span class="sum-item"><span class="sum-label">Tools</span> <span id="agentToolShort" class="sum-val">0</span></span>
+            <span class="sum-sep">|</span>
+            <span class="sum-item sum-save"><span id="agentSaveShort" class="sum-val">0</span> <span id="agentSaveLabel">saveable</span></span>
+          </div>
+
+          <!-- Context fill bar (always visible, compact) -->
+          <div class="context-fill-bar-mini"><div class="context-fill-bar-fill" id="agentContextBar"></div></div>
+
+          <!-- Approx-token note (shown for Cursor: messages read from SQLite, tokens estimated) -->
+          <div id="agentHookOnlyNote" style="display:none;font-size:10px;color:#888;padding:4px 8px 2px;line-height:1.4">
+            <span id="agentPanelName2"></span> stores token counts server-side — shown values are estimates. Messages and turns are accurate.
+          </div>
+
+          <!-- ═══ Activity log with inline optimization (PRIMARY VIEW) ═══ -->
+          <div id="agentActivity" class="agent-activity"></div>
+
+          <!-- ═══ Details panel (hidden by default, toggled by ▼ button) ═══ -->
+          <div id="agentDetailsPanel" class="agent-details-panel hidden">
+            <!-- Context fill meter -->
+            <div class="context-fill-wrap">
+              <div class="context-fill-header">
+                <span class="context-fill-label">Context</span>
+                <span id="agentContextPct" class="context-fill-pct">0%</span>
+                <span id="agentBurnRate" class="burn-rate">0 tok/min</span>
+              </div>
+            </div>
+
+            <!-- Stats grid -->
+            <div class="agent-stats-grid">
+              <div class="agent-stat"><span class="agent-stat-label">Turns</span><span id="agentTurns" class="agent-stat-value">0</span></div>
+              <div class="agent-stat"><span class="agent-stat-label">Input</span><span id="agentInputTok" class="agent-stat-value">0</span></div>
+              <div class="agent-stat"><span class="agent-stat-label">Cache</span><span id="agentCacheEff" class="agent-stat-value">0%</span></div>
+              <div class="agent-stat"><span class="agent-stat-label">Tools</span><span id="agentToolCount" class="agent-stat-value">0</span></div>
+            </div>
+
+            <!-- Token breakdown -->
+            <div class="token-breakdown">
+              <div class="breakdown-bar">
+                <div class="breakdown-seg user" id="breakdownUser" title="User prompts"></div>
+                <div class="breakdown-seg assistant" id="breakdownAssistant" title="Assistant"></div>
+                <div class="breakdown-seg tool" id="breakdownTool" title="Tool results"></div>
+              </div>
+              <div class="breakdown-legend">
+                <span class="legend-item"><span class="legend-dot user"></span>User <span id="breakdownUserPct">0%</span></span>
+                <span class="legend-item"><span class="legend-dot assistant"></span>Asst <span id="breakdownAsstPct">0%</span></span>
+                <span class="legend-item"><span class="legend-dot tool"></span>Tools <span id="breakdownToolPct">0%</span></span>
+              </div>
+            </div>
+
+            <!-- Savings hero -->
+            <div class="agent-savings-hero">
+              <div class="savings-big">
+                <span id="agentSavedBig" class="savings-num">0</span>
+                <span class="savings-unit" id="agentSavingsUnit">tokens saveable</span>
+              </div>
+              <div class="savings-bar-wrap">
+                <div class="savings-bar"><div class="savings-bar-fill" id="agentSavingsBar"></div></div>
+                <span id="agentSavingsPct" class="savings-pct">0%</span>
+              </div>
+            </div>
+
+            <!-- Insights -->
+            <div id="agentInsights" class="agent-insights hidden"></div>
+
+            <!-- How tokens were saved -->
+            <div id="agentOptDetail" class="agent-opt-detail hidden">
+              <div class="opt-detail-header">
+                <span class="opt-detail-title">How tokens were saved</span>
+                <span id="agentOptMsgCount" class="opt-detail-count"></span>
+              </div>
+              <div id="agentOptTechniques" class="agent-opt-techniques"></div>
+              <div id="agentOptRecent" class="agent-opt-recent hidden"></div>
+            </div>
+
+            <!-- Warnings -->
+            <div id="agentWarnings" class="agent-warnings hidden">
+              <div id="agentDedupAlerts"></div>
+              <div id="agentRedundantTools"></div>
+            </div>
+          </div>
+        </div>
+
+        <textarea id="optimized" class="opt-text hidden" spellcheck="false" readonly placeholder="Optimized text appears here..."></textarea>
+        <div class="actions">
+          <button id="btnCapture" class="capture-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            Capture
+          </button>
+          <button id="btnReplace" class="replace-btn" disabled>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Replace
+          </button>
+          <button id="btnCopy" class="copy-btn" title="Copy">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          </button>
+          <button id="btnUndo" class="undo-btn hidden" title="Undo Replace" style="display:none;padding:4px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;font-size:10px;font-weight:600;color:var(--t2);cursor:pointer">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-8.36L1 10"/></svg>
+            Undo
+          </button>
+        </div>
+      </div>
+      <!-- ▲▲▲ End verbatim popup body ▲▲▲ -->
+    </div>
+  </div>
+
+  <script>
+    // Load saved theme + sync across windows
+    (function() {
+      var saved = localStorage.getItem('terse-theme') || 'azure';
+      document.documentElement.setAttribute('data-theme', saved);
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'terse-theme' && e.newValue) {
+          document.documentElement.setAttribute('data-theme', e.newValue);
+        }
+      });
+      setInterval(function() {
+        var t = localStorage.getItem('terse-theme') || 'azure';
+        if (document.documentElement.getAttribute('data-theme') !== t) {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      }, 500);
+    })();
+    // Wait for __TAURI__ then load bridge + optimizer + popup render engine + island controller.
+    function _loadScripts() {
+      if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
+      ['tauri-bridge.js','optimizer-bundle.js','popup.js','island.js'].reduce(function(p, src) {
+        return p.then(function() {
+          return new Promise(function(resolve) {
+            var s = document.createElement('script'); s.src = src;
+            s.onload = resolve; s.onerror = resolve;
+            document.body.appendChild(s);
+          });
+        });
+      }, Promise.resolve());
+    }
+    _loadScripts();
+
+    // i18n — purely additive
+    var i18nScript = document.createElement('script');
+    i18nScript.src = 'i18n.js';
+    document.body.appendChild(i18nScript);
+  </script>
+</body>
+</html>

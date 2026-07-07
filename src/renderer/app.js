@@ -3,15 +3,35 @@ const $$ = s => document.querySelectorAll(s);
 const T = window.terse;
 
 let prevView = 'sessions';
-const views = { sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel') };
+const views = { sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView') };
 function show(name) {
   Object.values(views).forEach(v => v.classList.add('hidden'));
   views[name].classList.remove('hidden');
   if (name !== 'settings') prevView = name;
+  // keep the sidebar highlight in sync with the visible page
+  const page = ['cleanup', 'settings', 'boost'].includes(name) ? name : 'overview';
+  $$('.sb-item').forEach(b => b.classList.toggle('active', b.dataset.page === page));
 }
 
 // Init
 (async () => {
+  // On cold launch, surface the Doctor (体检) report in this same window for
+  // users who aren't signed in — it's the hook that shows what Terse finds.
+  // Once signed in it never auto-opens (only reachable via the dock button).
+  // The guard is sessionStorage, not localStorage: it persists across in-app
+  // navigations (so navigating back from the Doctor doesn't bounce us straight
+  // back into it), but resets on each app restart — so a still-signed-out user
+  // sees it again next launch, exactly as asked.
+  try {
+    if (!sessionStorage.getItem('terse-doctor-autoshown') && T.getAuth) {
+      sessionStorage.setItem('terse-doctor-autoshown', '1');
+      const a = await T.getAuth().catch(() => null);
+      if (!a || !a.signedIn) {
+        if (T.navigateToDoctor) { T.navigateToDoctor(); return; }
+      }
+    }
+  } catch (e) { /* non-fatal: fall through to the normal main view */ }
+
   const s = await T.getSettings();
   $$('.toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.level === s.aggressiveness));
   $$('.setting-row input').forEach(cb => { if (s[cb.dataset.key] !== undefined) cb.checked = s[cb.dataset.key]; });
@@ -22,6 +42,22 @@ function show(name) {
 })();
 
 // ── License ──
+// Format a weekly-quota reset timestamp as a short suffix, e.g. " · resets Mon"
+// or " · resets today". Returns '' when the timestamp is missing/unparseable.
+function fmtResetSuffix(iso) {
+  if (!iso) return '';
+  const reset = new Date(iso);
+  if (isNaN(reset.getTime())) return '';
+  const now = new Date();
+  const dayMs = 86400000;
+  const days = Math.round((reset - now) / dayMs);
+  if (days <= 0) return ' · resets today';
+  if (days === 1) return ' · resets tomorrow';
+  if (days >= 7) return ' · resets Mon';
+  const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][reset.getDay()];
+  return ' · resets ' + wd;
+}
+
 async function updateLicenseBanner() {
   if (!T.getLicense) return;
   try {
@@ -37,6 +73,21 @@ async function updateLicenseBanner() {
     const noActivePlan = !tier || tier === 'expired' || tier === 'free' || status === 'cancelled' || status === 'none';
 
     if (noActivePlan) {
+      // During the post-login grace window, present it as a free preview countdown
+      // instead of the upsell — the user is meant to try Terse first.
+      try {
+        if (T.trialGraceStatus) {
+          const g = await T.trialGraceStatus();
+          if (g && g.inGrace && !g.hasPlan) {
+            const mins = Math.max(1, Math.ceil((g.remainingSecs || 0) / 60));
+            $('#licenseTier').textContent = 'Free preview';
+            $('#licenseUsage').textContent = mins + ' min left · enjoy Terse';
+            banner.classList.remove('limit-warning');
+            $('#btnUpgrade').textContent = 'Start Free Trial';
+            return;
+          }
+        }
+      } catch {}
       // No active subscription — must start a trial
       $('#licenseTier').textContent = 'No Plan';
       $('#licenseUsage').textContent = 'Start a free trial to use Terse';
@@ -55,7 +106,7 @@ async function updateLicenseBanner() {
     // Active paid subscription
     $('#licenseTier').textContent = tierLabel;
     if (lic.limits?.optimizationsPerWeek > 0 && lic.remaining >= 0) {
-      $('#licenseUsage').textContent = lic.remaining + '/' + lic.limits.optimizationsPerWeek + ' left this week';
+      $('#licenseUsage').textContent = lic.remaining + '/' + lic.limits.optimizationsPerWeek + ' left this week' + fmtResetSuffix(lic.resetsAt);
       if (lic.remaining <= 10) banner.classList.add('limit-warning');
     } else {
       $('#licenseUsage').textContent = 'Unlimited';
@@ -72,6 +123,14 @@ async function checkPaywall() {
     const lic = await T.getLicense();
     const gate = $('#paywallGate');
     if (!gate) return;
+    // Grace window: for the first 15 minutes after login we let the user try Terse
+    // without an active plan — keep the paywall hidden until the window elapses.
+    try {
+      if (T.trialGraceStatus) {
+        const g = await T.trialGraceStatus();
+        if (g && g.inGrace && !g.hasPlan) { gate.classList.add('hidden'); gate.style.display = 'none'; return; }
+      }
+    } catch {}
     const tier = (lic.tier || '').toLowerCase();
     const status = (lic.status || '').toLowerCase();
     const noActivePlan = !tier || tier === 'expired' || tier === 'free' || status === 'cancelled' || status === 'none';
@@ -190,6 +249,14 @@ if (window.__TAURI__?.event?.listen) {
       }).catch(() => {});
     }
   });
+  // 15-minute "try it first" window ended with no plan → reveal the paywall.
+  window.__TAURI__.event.listen('trial-grace-expired', () => {
+    updateLicenseBanner();
+    checkPaywall();
+    if (T.getAgentSessions && typeof renderSessions === 'function') {
+      T.getAgentSessions().then(() => renderSessions()).catch(() => {});
+    }
+  });
 }
 
 // Also refresh when window gets focus (user returns from browser after payment)
@@ -214,8 +281,14 @@ window.addEventListener('focus', () => {
 });
 
 // ── Sessions ──
+let _sessionsSig = '';
 function refreshSessions() {
   Promise.all([T.getSessions(), T.getAgentSessions()]).then(([sessions, agentSessions]) => {
+    // Agent events fire every few seconds; skip the rebuild when nothing
+    // changed so hover states and animations never flicker mid-interaction.
+    const sig = JSON.stringify([sessions, agentSessions]);
+    if (sig === _sessionsSig) return;
+    _sessionsSig = sig;
     const list = $('#sessionsList');
     const empty = $('#emptyState');
     list.innerHTML = '';
@@ -251,10 +324,11 @@ function refreshSessions() {
         T.disconnectAgent(e.currentTarget.dataset.type);
         refreshSessions();
       });
-      // Click session to activate and show popup
+      // Click an agent (Claude) session to pull down the dynamic island onto it
       item.style.cursor = 'pointer';
       item.addEventListener('click', () => {
-        if (T.activateSession) T.activateSession(null, a.agentType);
+        if (T.focusIsland) T.focusIsland(a.agentType);
+        else if (T.activateSession) T.activateSession(null, a.agentType);
       });
       list.appendChild(item);
     });
@@ -372,6 +446,14 @@ $('#btnSettings').addEventListener('click', () => {
 $('#btnStats').addEventListener('click', () => T.navigateToStats());
 $('#btnFarm').addEventListener('click', () => T.showFarmWindow());
 $('#btnCowork')?.addEventListener('click', () => T.navigateToCowork());
+$('#btnDoctor')?.addEventListener('click', () => {
+  // Open the Doctor (体检) report inside this same window. Fall back to the
+  // standalone window if in-window navigation isn't available.
+  if (T.navigateToDoctor) T.navigateToDoctor();
+  else if (T.showDoctorWindow) T.showDoctorWindow();
+});
+// The floating dashboard widgets now live inside the Dynamic Island hover card
+// (see island.html / island.js) — the standalone launcher button was removed.
 $('#btnCloseSettings').addEventListener('click', () => show(prevView));
 $$('.toggle-btn').forEach(b => b.addEventListener('click', () => {
   $$('.toggle-btn').forEach(x => x.classList.remove('active')); b.classList.add('active');
@@ -867,4 +949,370 @@ let tt;
 function toast(msg, err) {
   const t = $('#toast'); t.textContent = msg; t.className = err ? 'toast error' : 'toast';
   clearTimeout(tt); tt = setTimeout(() => t.classList.add('hidden'), 2500);
+}
+
+// ── Command palette (⌘K) + keyboard shortcuts ──
+// Labels are English source strings; i18n's MutationObserver re-translates rendered
+// items, and we also match the translated label (via i18n key) during fuzzy search.
+const THEME_NAMES = ['azure','lime','lavender','coral','teal','midnight','rose','sage','sand'];
+function setAggrLevel(level) { $(`.toggle-btn[data-level="${level}"]`)?.click(); }
+const CMD_DEFS = [
+  { ic: '📊', label: 'Open Statistics', key: 'cmd_open_stats', run: () => T.navigateToStats() },
+  { ic: '🩺', label: 'Open Doctor', key: 'cmd_open_doctor', run: () => T.navigateToDoctor ? T.navigateToDoctor() : T.showDoctorWindow() },
+  { ic: '👥', label: 'Open Team', key: 'cmd_open_team', run: () => T.navigateToCowork() },
+  { ic: '🌾', label: 'Open Farm', key: 'cmd_open_farm', run: () => T.showFarmWindow() },
+  { ic: '🐾', label: 'Open Pals', key: 'cmd_open_pals', run: () => $('#btnPalsTitle')?.click() },
+  { ic: '＋', label: 'Connect a window', key: 'cmd_connect_window', kbd: '⌘N', run: () => $('#btnAddSession').click() },
+  { ic: '⚙', label: 'Open Settings', key: 'cmd_open_settings', kbd: '⌘,', run: () => show('settings') },
+  { ic: '✂', label: 'Optimize pasted text', key: 'cmd_optimize_text', kbd: '⌘↵', run: () => { show('sessions'); $('#manualInput').focus(); } },
+  { ic: '🪶', label: 'Aggressiveness: Light', key: 'cmd_aggr_light', run: () => setAggrLevel('light') },
+  { ic: '⚖', label: 'Aggressiveness: Balanced', key: 'cmd_aggr_balanced', run: () => setAggrLevel('balanced') },
+  { ic: '🔥', label: 'Aggressiveness: Aggressive', key: 'cmd_aggr_aggressive', run: () => setAggrLevel('aggressive') },
+  ...THEME_NAMES.map(name => ({
+    ic: '🎨',
+    label: 'Theme: ' + name.charAt(0).toUpperCase() + name.slice(1),
+    key: 'cmd_theme_' + name,
+    run: () => setTheme(name),
+  })),
+  { ic: '⌨', label: 'Keyboard Shortcuts', key: 'cmd_shortcuts', kbd: '⌘/', run: () => toggleSheet(true) },
+  { ic: '💳', label: 'Manage subscription', key: 'cmd_manage_sub', run: () => $('#btnUpgrade').click() },
+];
+
+// Subsequence fuzzy score: word-start hits > consecutive hits > scattered hits. 0 = no match.
+function fuzzyScore(q, s) {
+  q = q.toLowerCase(); s = (s || '').toLowerCase();
+  if (!q) return 1;
+  let qi = 0, score = 0, prev = -2;
+  for (let i = 0; i < s.length && qi < q.length; i++) {
+    if (s[i] === q[qi]) {
+      score += (i === 0 || s[i - 1] === ' ' || s[i - 1] === ':') ? 3 : (prev === i - 1 ? 2 : 1);
+      prev = i; qi++;
+    }
+  }
+  return qi === q.length ? score : 0;
+}
+
+let cmdSel = 0, cmdMatches = [];
+function cmdDisplayLabel(def) {
+  try { if (window.i18n) return window.i18n.t(def.key); } catch {}
+  return def.label;
+}
+function renderCmds(query) {
+  cmdMatches = CMD_DEFS
+    .map(def => ({ def, score: Math.max(fuzzyScore(query, def.label), fuzzyScore(query, cmdDisplayLabel(def))) }))
+    .filter(m => m.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(m => m.def);
+  cmdSel = Math.min(cmdSel, Math.max(0, cmdMatches.length - 1));
+  const list = $('#cmdList');
+  list.innerHTML = '';
+  if (!cmdMatches.length) {
+    const d = document.createElement('div');
+    d.className = 'cmd-empty';
+    d.textContent = 'No matching commands';
+    list.appendChild(d);
+    return;
+  }
+  cmdMatches.forEach((def, i) => {
+    const item = document.createElement('div');
+    item.className = 'cmd-item' + (i === cmdSel ? ' sel' : '');
+    item.innerHTML = `<span class="cmd-ic">${def.ic}</span><span class="cmd-label">${esc(def.label)}</span>${def.kbd ? `<kbd>${def.kbd}</kbd>` : ''}`;
+    // mousedown (not click) so the input doesn't blur first
+    item.addEventListener('mousedown', e => { e.preventDefault(); runCmd(def); });
+    item.addEventListener('mousemove', () => {
+      if (cmdSel !== i) { cmdSel = i; list.querySelectorAll('.cmd-item').forEach((el, j) => el.classList.toggle('sel', j === cmdSel)); }
+    });
+    list.appendChild(item);
+  });
+}
+function runCmd(def) { closePalette(); try { def.run(); } catch (e) { console.warn('[cmd]', e); } }
+function openPalette() {
+  toggleSheet(false);
+  $('#cmdPalette').classList.remove('hidden');
+  const input = $('#cmdInput');
+  input.value = ''; cmdSel = 0;
+  renderCmds('');
+  input.focus();
+}
+function closePalette() { $('#cmdPalette').classList.add('hidden'); }
+function togglePalette() { $('#cmdPalette').classList.contains('hidden') ? openPalette() : closePalette(); }
+function toggleSheet(force) {
+  const sheet = $('#shortcutSheet');
+  const open = force !== undefined ? force : sheet.classList.contains('hidden');
+  if (open) closePalette();
+  sheet.classList.toggle('hidden', !open);
+}
+
+$('#cmdInput').addEventListener('input', e => { cmdSel = 0; renderCmds(e.target.value.trim()); });
+$('#cmdInput').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!cmdMatches.length) return;
+    cmdSel = (cmdSel + (e.key === 'ArrowDown' ? 1 : cmdMatches.length - 1)) % cmdMatches.length;
+    const items = $$('#cmdList .cmd-item');
+    items.forEach((el, j) => el.classList.toggle('sel', j === cmdSel));
+    items[cmdSel]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (cmdMatches[cmdSel]) runCmd(cmdMatches[cmdSel]);
+  }
+});
+// Click on the dimmed backdrop closes
+$('#cmdPalette').addEventListener('mousedown', e => { if (e.target === e.currentTarget) closePalette(); });
+$('#shortcutSheet').addEventListener('mousedown', e => { if (e.target === e.currentTarget) toggleSheet(false); });
+
+// Guided empty state → same flow as the + button
+$('#btnEmptyConnect')?.addEventListener('click', () => $('#btnAddSession').click());
+
+window.addEventListener('keydown', e => {
+  const mod = e.metaKey || e.ctrlKey;
+  const k = e.key;
+  if (mod && (k === 'k' || k === 'K')) { e.preventDefault(); togglePalette(); return; }
+  if (mod && k === ',') { e.preventDefault(); show('settings'); return; }
+  if (mod && k === '/') { e.preventDefault(); toggleSheet(); return; }
+  if (mod && (k === 'n' || k === 'N')) { e.preventDefault(); $('#btnAddSession').click(); return; }
+  if (k === 'Escape') {
+    if (!$('#cmdPalette').classList.contains('hidden')) { closePalette(); return; }
+    if (!$('#shortcutSheet').classList.contains('hidden')) { toggleSheet(false); return; }
+    if (!views.settings.classList.contains('hidden')) { show(prevView); return; }
+    if (!views.pick.classList.contains('hidden')) { $('#btnCancelPick').click(); return; }
+    if (!views.manual.classList.contains('hidden')) { show('sessions'); return; }
+  }
+});
+
+// ── Agent Health strip — surfaces the Doctor score on the home view ──
+// Read-only scan (doctor_scan never mutates); refreshed every 30 minutes.
+function hsBytes(b) {
+  if (!b) return '';
+  return b >= 1048576 ? (b / 1048576).toFixed(0) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+}
+function renderHealthStrip(rep) {
+  const strip = $('#healthStrip');
+  if (!strip || !rep || typeof rep.score !== 'number') return false;
+  const s = rep.summary || {};
+  $('#hsScore').textContent = rep.score;
+  strip.classList.remove('ok', 'bad', 'loading', 'hidden');
+  strip.dataset.loaded = '1';
+  if (rep.score < 70) strip.classList.add('bad');
+  else if (rep.score < 90) strip.classList.add('ok');
+  const bits = [];
+  if (s.agentsRunning) {
+    let live = s.agentsRunning + ' agent' + (s.agentsRunning === 1 ? '' : 's') + ' active';
+    if (s.agentsRssBytes) live += ' (' + hsBytes(s.agentsRssBytes) + ')';
+    bits.push(live);
+  }
+  const issues = s.issues || 0;
+  bits.push(issues === 0 ? 'all clear' : issues + (issues === 1 ? ' issue' : ' issues'));
+  if (s.high) bits.push(s.high + ' need attention');
+  if (s.recoverableUsd >= 0.01) bits.push('~$' + s.recoverableUsd + '/mo recoverable');
+  if (s.junkBytes) bits.push(hsBytes(s.junkBytes) + ' cleanable');
+  $('#hsSub').textContent = bits.join(' · ');
+  return true;
+}
+async function refreshHealthStrip() {
+  const strip = $('#healthStrip');
+  if (!strip || !T.doctorScan) return;
+  // Paint the last known result on the SAME frame (survives page navigations),
+  // then refresh from a real scan in the background.
+  if (!strip.dataset.loaded) {
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem('terse-health-cache') || 'null'); } catch {}
+    if (!renderHealthStrip(cached)) {
+      strip.classList.add('loading');
+      strip.classList.remove('hidden');
+    }
+  }
+  try {
+    const rep = await T.doctorScan('month');
+    if (renderHealthStrip(rep)) {
+      try {
+        localStorage.setItem('terse-health-cache', JSON.stringify({ score: rep.score, summary: rep.summary }));
+      } catch {}
+    } else if (!strip.dataset.loaded) {
+      strip.classList.add('hidden');
+    }
+  } catch (e) {
+    if (!strip.dataset.loaded) strip.classList.add('hidden');
+    console.warn('[terse] health strip:', e);
+  }
+}
+$('#healthStrip')?.addEventListener('click', () => $('#btnDoctor').click());
+refreshHealthStrip();
+// Live enough to trust, cheap enough to forget: 5-minute cadence.
+setInterval(refreshHealthStrip, 5 * 60 * 1000);
+
+// ── Sidebar navigation (360-style shell) ──
+const SB_ACTIONS = {
+  overview: () => show('sessions'),
+  cleanup:  () => { show('cleanup'); if (!clState.scanned) clScan(); },
+  settings: () => show('settings'),
+  doctor:   () => $('#btnDoctor').click(),
+  stats:    () => T.navigateToStats(),
+  team:     () => T.navigateToCowork && T.navigateToCowork(),
+  farm:     () => T.showFarmWindow && T.showFarmWindow(),
+  boost:    () => { show('boost'); refreshBoost(); },
+  pals:     () => $('#btnPalsTitle')?.click(),
+};
+$$('.sb-item').forEach(b => b.addEventListener('click', () => {
+  const page = b.dataset.page;
+  // Same-frame feedback: highlight instantly; for cross-page navigations also
+  // dim the pane so the click visibly registered before the new page loads.
+  if (page !== 'pals') $$('.sb-item').forEach(x => x.classList.toggle('active', x === b));
+  if (['doctor', 'stats', 'team'].includes(page)) document.body.classList.add('navigating');
+  SB_ACTIONS[page]?.();
+}));
+
+// ── Cleanup (清理) page ──
+const clState = { scanned: false, groups: [] };
+function clFmtBytes(b) {
+  if (!b) return '0 B';
+  if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB';
+  if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+  return Math.max(1, Math.round(b / 1024)) + ' KB';
+}
+function clSelected() {
+  const out = { paths: [], bytes: 0, files: 0 };
+  $$('#clGroups .cl-row').forEach((row, i) => {
+    if (row.querySelector('input').checked && clState.groups[i]) {
+      out.paths.push(...(clState.groups[i].paths || []));
+      out.bytes += clState.groups[i].bytes || 0;
+      out.files += (clState.groups[i].paths || []).length;
+    }
+  });
+  return out;
+}
+function clUpdateFooter() {
+  const sel = clSelected();
+  $('#clTotal').textContent = clFmtBytes(sel.bytes);
+  $('#clCount').textContent = sel.files + ' files selected';
+  $('#btnClClean').disabled = sel.files === 0;
+}
+async function clScan() {
+  const view = $('#cleanupView');
+  view.classList.add('scanning');
+  $('#clIdle').classList.remove('hidden');
+  $('#clResults').classList.add('hidden');
+  $('#clDone').classList.add('hidden');
+  let res;
+  try { res = await T.cleanupScan(); } catch (e) { view.classList.remove('scanning'); return; }
+  view.classList.remove('scanning');
+  clState.scanned = true;
+  clState.groups = (res && res.groups) || [];
+  if (!clState.groups.length) {
+    $('#clIdle').classList.add('hidden');
+    $('#clDoneMsg').textContent = 'All clean — nothing slowing your agents down';
+    $('#clDone').classList.remove('hidden');
+    return;
+  }
+  const box = $('#clGroups');
+  box.innerHTML = '';
+  clState.groups.forEach(g => {
+    const row = document.createElement('label');
+    row.className = 'cl-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true;
+    cb.addEventListener('change', clUpdateFooter);
+    const tx = document.createElement('div');
+    tx.className = 'cl-row-tx';
+    const t1 = document.createElement('div'); t1.className = 'cl-row-title'; t1.textContent = g.title;
+    const t2 = document.createElement('div'); t2.className = 'cl-row-sub'; t2.textContent = g.detail;
+    tx.appendChild(t1); tx.appendChild(t2);
+    const sz = document.createElement('span');
+    sz.className = 'cl-row-size'; sz.textContent = clFmtBytes(g.bytes);
+    row.appendChild(cb); row.appendChild(tx); row.appendChild(sz);
+    box.appendChild(row);
+  });
+  $('#clIdle').classList.add('hidden');
+  $('#clResults').classList.remove('hidden');
+  clUpdateFooter();
+}
+$('#btnClScan')?.addEventListener('click', clScan);
+$('#btnClRescan')?.addEventListener('click', clScan);
+$('#btnClScanAgain')?.addEventListener('click', clScan);
+$('#btnClClean')?.addEventListener('click', async () => {
+  const sel = clSelected();
+  if (!sel.files) return;
+  if (!(await tconfirm('Delete ' + sel.files + ' files (' + clFmtBytes(sel.bytes) + ')?', 'Stats, auth and recent sessions are never touched.', '一键清理 · Clean'))) return;
+  const btn = $('#btnClClean');
+  btn.disabled = true; btn.textContent = 'Cleaning…';
+  try {
+    const res = await T.cleanupClean(sel.paths);
+    $('#clResults').classList.add('hidden');
+    $('#clDoneMsg').textContent = (res && res.message) || 'Cleaned';
+    $('#clDone').classList.remove('hidden');
+    toast((res && res.message) || 'Cleaned');
+    refreshHealthStrip();
+  } catch (e) {
+    toast('Cleanup failed — try again', true);
+  }
+  btn.disabled = false; btn.textContent = '一键清理 · Clean';
+});
+
+// ── Speed Up (加速) mode ──
+async function refreshBoost() {
+  if (!T.speedModeStatus) return;
+  try {
+    const st = await T.speedModeStatus();
+    const on = !!(st && st.enabled);
+    const tog = $('#boostToggle');
+    if (tog) tog.checked = on;
+    $('#sbBoostPill')?.classList.toggle('hidden', !on);
+  } catch {}
+}
+$('#boostToggle')?.addEventListener('change', async (e) => {
+  const on = e.target.checked;
+  try {
+    await T.setSpeedMode(on);
+    $('#sbBoostPill')?.classList.toggle('hidden', !on);
+    toast(on ? '加速已开启 — agents will respond faster' : 'Speed Up off — full-detail mode');
+  } catch {
+    e.target.checked = !on;
+    toast('Could not change Speed Up mode', true);
+  }
+});
+refreshBoost();
+
+// ── Sidebar pet icon — reflect the equipped skin's emoji when one is set ──
+(async () => {
+  try {
+    if (!T.getPetState) return;
+    const pet = await T.getPetState();
+    const skins = (window.TERSE_PALS && window.TERSE_PALS.SKINS) || [];
+    const skinId = pet && pet.data && pet.data.equippedSkins && pet.data.equippedSkins[pet.data.equippedPet];
+    const skin = skins.find(s => s.id === skinId);
+    if (skin && skin.emoji && skin.emoji !== '🐾') $('#sbPalIcon').textContent = skin.emoji;
+  } catch {}
+})();
+
+
+// ── In-app confirm — WKWebView has no native window.confirm(), so a styled
+//    promise-based modal stands in for it everywhere a destructive action asks.
+function tconfirm(title, sub, okLabel) {
+  return new Promise((resolve) => {
+    const ov = document.createElement('div');
+    ov.className = 'tc-overlay';
+    ov.innerHTML =
+      '<div class="tc-panel">' +
+        '<div class="tc-title"></div>' +
+        (sub ? '<div class="tc-sub"></div>' : '') +
+        '<div class="tc-actions">' +
+          '<button class="tc-cancel" type="button">Cancel</button>' +
+          '<button class="tc-ok" type="button"></button>' +
+        '</div>' +
+      '</div>';
+    ov.querySelector('.tc-title').textContent = title;
+    if (sub) ov.querySelector('.tc-sub').textContent = sub;
+    ov.querySelector('.tc-ok').textContent = okLabel || 'Confirm';
+    const done = (val) => { ov.remove(); document.removeEventListener('keydown', onKey, true); resolve(val); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); done(false); }
+      if (e.key === 'Enter') { e.stopPropagation(); done(true); }
+    };
+    ov.addEventListener('mousedown', (e) => { if (e.target === ov) done(false); });
+    ov.querySelector('.tc-cancel').addEventListener('click', () => done(false));
+    ov.querySelector('.tc-ok').addEventListener('click', () => done(true));
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(ov);
+    ov.querySelector('.tc-ok').focus();
+  });
 }

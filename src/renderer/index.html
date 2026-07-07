@@ -20,7 +20,7 @@
   <!-- Pals Inventory — collection of pets + skins, unlock with saved tokens -->
   <div id="palsPage" data-tauri-drag-region style="display:none;position:fixed;inset:0;z-index:9997;background:var(--bg);flex-direction:column;padding:12px 10px 10px;overflow:hidden">
     <div data-tauri-drag-region style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-shrink:0">
-      <button id="palsBackBtn" style="border:none;background:var(--sf);color:var(--t1);width:26px;height:26px;border-radius:50%;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center">←</button>
+      <button id="palsBackBtn" style="border:none;background:var(--sf);color:var(--t1);width:26px;height:26px;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center">←</button>
       <div data-tauri-drag-region style="text-align:center;flex:1">
         <div style="font-size:14px;font-weight:700;color:var(--t1)">Your Pals</div>
         <div id="palsBalance" style="font-size:10px;color:var(--t3);margin-top:1px">Balance: 0 tokens</div>
@@ -31,21 +31,22 @@
   </div>
 
   <div id="authGate" data-tauri-drag-region style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
-    <div style="width:48px;height:48px;background:var(--btn);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--btn-t)">T</div>
+    <div class="brand-tile">T</div>
     <h2 style="color:var(--t1);font-size:18px;font-weight:700;margin:0">Welcome to Terse</h2>
     <p style="color:var(--t3);font-size:12px;text-align:center;margin:0;line-height:1.6">Choose your style</p>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:4px 0">
-      <div class="gate-theme" data-t="lime" style="width:36px;height:36px;border-radius:50%;background:#d1e847;cursor:pointer;border:3px solid var(--t1)"></div>
-      <div class="gate-theme" data-t="lavender" style="width:36px;height:36px;border-radius:50%;background:#c4b5fd;cursor:pointer;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="coral" style="width:36px;height:36px;border-radius:50%;background:#ff8a80;cursor:pointer;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="teal" style="width:36px;height:36px;border-radius:50%;background:#5eead4;cursor:pointer;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="midnight" style="width:36px;height:36px;border-radius:50%;background:#1e293b;cursor:pointer;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="rose" style="width:36px;height:36px;border-radius:50%;background:#fda4af;cursor:pointer;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="sage" style="width:36px;height:36px;border-radius:50%;background:#86efac;cursor:pointer;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="sand" style="width:36px;height:36px;border-radius:50%;background:#fde68a;cursor:pointer;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="azure" style="width:36px;height:36px;border-radius:50%;background:#5ea8ff;border:3px solid var(--t1)"></div>
+      <div class="gate-theme" data-t="lime" style="width:36px;height:36px;border-radius:50%;background:#d1e847;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="lavender" style="width:36px;height:36px;border-radius:50%;background:#c4b5fd;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="coral" style="width:36px;height:36px;border-radius:50%;background:#ff8a80;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="teal" style="width:36px;height:36px;border-radius:50%;background:#5eead4;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="midnight" style="width:36px;height:36px;border-radius:50%;background:#1e293b;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="rose" style="width:36px;height:36px;border-radius:50%;background:#fda4af;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="sage" style="width:36px;height:36px;border-radius:50%;background:#86efac;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="sand" style="width:36px;height:36px;border-radius:50%;background:#fde68a;border:3px solid transparent"></div>
     </div>
-    <button id="gateSignIn" style="margin-top:4px;padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer">Sign In</button>
-    <button id="gateSignUp" style="padding:8px 28px;background:transparent;color:var(--t2);border:none;border-radius:9999px;font-size:12px;font-weight:600;cursor:pointer">Create Account</button>
+    <button id="gateSignIn" style="margin-top:4px;padding:10px 28px;background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 4px 14px color-mix(in srgb,var(--btn) 30%,transparent)">Sign In</button>
+    <button id="gateSignUp" style="padding:8px 28px;background:transparent;color:var(--t2);border:none;border-radius:9999px;font-size:12px;font-weight:600">Create Account</button>
   </div>
 
   <div id="titlebar" data-tauri-drag-region>
@@ -76,9 +77,68 @@
     </div>
   </div>
 
+  <!-- 360-style shell: left sidebar navigation + content pane -->
+  <div id="shell">
+    <aside id="sidebar" data-tauri-drag-region>
+      <div class="sb-brand" data-tauri-drag-region>
+        <div class="sb-logo">T</div>
+        <div class="sb-name">Terse<span>Agent 管家</span></div>
+      </div>
+      <nav class="sb-nav">
+        <button class="sb-item active" data-page="overview">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+          <span>概览 · Overview</span>
+        </button>
+        <button class="sb-item" data-page="doctor">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+          <span>体检 · Doctor</span>
+        </button>
+        <button class="sb-item" data-page="cleanup">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2v-4h18v4a2 2 0 01-2 2z"/><path d="M12 3v12"/><path d="M8 9l4-4 4 4"/></svg>
+          <span>清理 · Cleanup</span>
+        </button>
+        <button class="sb-item" data-page="stats">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="13" width="4" height="8" rx="1"/><rect x="10" y="9" width="4" height="12" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
+          <span>统计 · Stats</span>
+        </button>
+        <button class="sb-item" data-page="team">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>团队 · Team</span>
+        </button>
+        <button class="sb-item" data-page="farm">
+          <span class="sb-emoji">🌾</span>
+          <span>农场 · Farm</span>
+        </button>
+      </nav>
+      <div class="sb-bottom">
+        <button class="sb-item" data-page="boost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+          <span>加速 · Speed Up</span>
+          <span class="sb-pill hidden" id="sbBoostPill">ON</span>
+        </button>
+        <button class="sb-item" data-page="pals">
+          <span class="sb-emoji" id="sbPalIcon">🐾</span>
+          <span>宠物 · Pals</span>
+        </button>
+        <button class="sb-item" data-page="settings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          <span>设置 · Settings</span>
+        </button>
+      </div>
+    </aside>
+
   <div id="app">
     <!-- Sessions list -->
     <div id="sessionsView">
+      <!-- Agent Health strip — live Doctor score, click opens the full report -->
+      <button id="healthStrip" class="health-strip hidden">
+        <span class="hs-score" id="hsScore">–</span>
+        <span class="hs-text">
+          <span class="hs-title">Agent Health</span>
+          <span class="hs-sub" id="hsSub"></span>
+        </span>
+        <span class="hs-go">›</span>
+      </button>
       <div class="section-header">
         <span>Connected Sessions</span>
         <button id="btnAddSession" class="add-btn" title="Add connection">
@@ -93,21 +153,28 @@
       <div id="emptyState" class="empty-state">
         <div class="idle-icon">T</div>
         <p class="idle-title">No connections yet</p>
-        <p class="idle-sub">Click + to connect to a chat input</p>
+        <p class="idle-sub">Connect a chat window — Terse trims every prompt you send</p>
+        <button id="btnEmptyConnect" class="empty-cta">Connect a window</button>
+        <p class="empty-kbd-hint"><span>or press</span> <kbd>⌘K</kbd> <span>for commands</span></p>
       </div>
 
-      <button id="btnStats" class="stats-nav-btn">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="13" width="4" height="8" rx="1"/><rect x="10" y="9" width="4" height="12" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
-        Statistics
-      </button>
-      <button id="btnFarm" class="stats-nav-btn" style="margin-top:4px">
-        🌾 Terse 农场
-      </button>
-      <button id="btnCowork" class="stats-nav-btn" style="margin-top:4px">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Team · 协同
-      </button>
-
+      <div class="nav-grid">
+        <button id="btnStats" class="stats-nav-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="13" width="4" height="8" rx="1"/><rect x="10" y="9" width="4" height="12" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
+          Statistics
+        </button>
+        <button id="btnDoctor" class="stats-nav-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+          体检 · Doctor
+        </button>
+        <button id="btnCowork" class="stats-nav-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Team · 协同
+        </button>
+        <button id="btnFarm" class="stats-nav-btn">
+          🌾 Terse 农场
+        </button>
+      </div>
       <div class="idle-divider"><span>or paste below</span></div>
       <textarea id="manualInput" class="manual-area" placeholder="Paste a prompt to optimize..." spellcheck="false"></textarea>
       <button id="btnManualOpt" class="secondary-btn">Optimize</button>
@@ -142,6 +209,79 @@
       </div>
     </div>
 
+    <!-- CLEANUP (清理) — one-click removal of files that slow agents down -->
+    <div id="cleanupView" class="hidden">
+      <div class="cl-hero">
+        <div class="cl-hero-ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2v-4h18v4a2 2 0 01-2 2z"/><path d="M12 3v12"/><path d="M8 9l4-4 4 4"/></svg>
+        </div>
+        <div class="cl-hero-tx">
+          <h3>清理 · Cleanup</h3>
+          <p>Stale agent transcripts, shell snapshots and leftover logs slow every tool that walks the store. One click frees the space — nothing recent is ever touched.</p>
+        </div>
+      </div>
+      <div id="clIdle" class="cl-center">
+        <div class="cl-orb"><span></span></div>
+        <p class="cl-idle-tip">扫描 ~/.claude · ~/.codex · ~/.terse</p>
+        <button id="btnClScan" class="cl-scan-btn">开始扫描 · Scan</button>
+      </div>
+      <div id="clResults" class="hidden">
+        <div id="clGroups" class="cl-groups"></div>
+        <div class="cl-footer">
+          <div class="cl-total"><span id="clTotal">0 B</span><span class="cl-total-sub" id="clCount"></span></div>
+          <button id="btnClRescan" class="cl-rescan-btn" title="Re-scan">↻</button>
+          <button id="btnClClean" class="cl-clean-btn">一键清理 · Clean</button>
+        </div>
+      </div>
+      <div id="clDone" class="cl-center hidden">
+        <div class="cl-done-ic">✓</div>
+        <p class="cl-done-title" id="clDoneMsg">All clean</p>
+        <button id="btnClScanAgain" class="cl-rescan-btn wide">再次扫描 · Scan again</button>
+      </div>
+    </div>
+
+    <!-- SPEED UP (加速) — one switch for Terse's three speed levers -->
+    <div id="boostView" class="hidden">
+      <div class="cl-hero">
+        <div class="cl-hero-ic boost-ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+        </div>
+        <div class="cl-hero-tx">
+          <h3>加速 · Speed Up Mode</h3>
+          <p>One switch turns on the three levers that make agents respond faster: cache-safe trimming, a local result cache, and tool-result compression.</p>
+        </div>
+        <label class="boost-switch">
+          <input type="checkbox" id="boostToggle">
+          <span class="boost-track"><span class="boost-knob"></span></span>
+        </label>
+      </div>
+      <div class="boost-grid">
+        <div class="boost-card">
+          <div class="boost-card-ic">⚡</div>
+          <div class="boost-card-t">Cache-safe trimming</div>
+          <div class="boost-card-d">Only the newest turn is ever rewritten, so the model's prompt cache stays warm — up to ~80% faster time-to-first-token on long sessions.</div>
+        </div>
+        <div class="boost-card">
+          <div class="boost-card-ic">♻️</div>
+          <div class="boost-card-t">Local result cache</div>
+          <div class="boost-card-d">Exact-repeat tool calls (same file read twice, same search) are served instantly from disk instead of burning tokens again.</div>
+        </div>
+        <div class="boost-card">
+          <div class="boost-card-ic">🗜</div>
+          <div class="boost-card-t">Tool-result compression</div>
+          <div class="boost-card-d">Verbose tool output is compacted before it enters context — a smaller context decodes faster on every following turn.</div>
+        </div>
+      </div>
+      <div class="boost-tradeoffs">
+        <div class="boost-tr-title">诚实的代价 · The honest tradeoffs</div>
+        <ul>
+          <li><b>Less total token reduction.</b> Cache-safe trimming skips history rewrites, so raw token savings are smaller than Aggressive mode — you trade savings for speed.</li>
+          <li><b>Repeats can be stale.</b> If a file changed between two identical reads, the local cache can serve the older result for that session. Terse invalidates on write, but external changes aren't seen.</li>
+          <li><b>Compression can drop rare detail.</b> Compacted tool output keeps structure and key values, but an unusual detail deep in verbose output may be trimmed. Turn Speed Up off for forensic debugging sessions.</li>
+        </ul>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div id="settingsPanel" class="hidden">
       <h3>Settings</h3>
@@ -154,6 +294,21 @@
         </div>
       </div>
       <div class="setting-group">
+        <label class="setting-label">Theme</label>
+        <div class="theme-picker">
+          <div class="theme-dot" data-t="azure" style="background:#5ea8ff" title="Azure"></div>
+          <div class="theme-dot" data-t="lime" style="background:#d1e847" title="Lime"></div>
+          <div class="theme-dot" data-t="lavender" style="background:#c4b5fd" title="Lavender"></div>
+          <div class="theme-dot" data-t="coral" style="background:#ff8a80" title="Coral"></div>
+          <div class="theme-dot" data-t="teal" style="background:#5eead4" title="Teal"></div>
+          <div class="theme-dot" data-t="midnight" style="background:#1e293b" title="Midnight"></div>
+          <div class="theme-dot" data-t="rose" style="background:#fda4af" title="Rose"></div>
+          <div class="theme-dot" data-t="sage" style="background:#86efac" title="Sage"></div>
+          <div class="theme-dot" data-t="sand" style="background:#fde68a" title="Sand"></div>
+        </div>
+      </div>
+      <details class="setting-group adv-group">
+        <summary class="adv-summary"><span>Advanced rules</span><span class="adv-chev">▾</span></summary>
         <label class="setting-row"><span>Remove filler words</span><input type="checkbox" data-key="removeFillerWords" checked></label>
         <label class="setting-row"><span>Remove politeness</span><input type="checkbox" data-key="removePoliteness" checked></label>
         <label class="setting-row"><span>Remove hedging</span><input type="checkbox" data-key="removeHedging" checked></label>
@@ -163,7 +318,7 @@
         <label class="setting-row"><span>Remove redundancy</span><input type="checkbox" data-key="removeRedundancy" checked></label>
         <label class="setting-row"><span>Compress whitespace</span><input type="checkbox" data-key="compressWhitespace" checked></label>
         <label class="setting-row"><span>Compress code</span><input type="checkbox" data-key="compressCodeBlocks" checked></label>
-      </div>
+      </details>
       <div class="setting-group">
         <label class="setting-label">Account</label>
         <div id="accountSection">
@@ -184,19 +339,6 @@
           </div>
         </div>
       </div>
-      <div class="setting-group">
-        <label class="setting-label">Theme</label>
-        <div class="theme-picker">
-          <div class="theme-dot" data-t="lime" style="background:#d1e847" title="Lime"></div>
-          <div class="theme-dot" data-t="lavender" style="background:#c4b5fd" title="Lavender"></div>
-          <div class="theme-dot" data-t="coral" style="background:#ff8a80" title="Coral"></div>
-          <div class="theme-dot" data-t="teal" style="background:#5eead4" title="Teal"></div>
-          <div class="theme-dot" data-t="midnight" style="background:#1e293b" title="Midnight"></div>
-          <div class="theme-dot" data-t="rose" style="background:#fda4af" title="Rose"></div>
-          <div class="theme-dot" data-t="sage" style="background:#86efac" title="Sage"></div>
-          <div class="theme-dot" data-t="sand" style="background:#fde68a" title="Sand"></div>
-        </div>
-      </div>
       <button id="btnCloseSettings" class="secondary-btn">Done</button>
     </div>
 
@@ -211,6 +353,7 @@
 
     <!-- Theme dropdown -->
     <div id="themeDropdown" class="theme-dropdown hidden">
+      <div class="theme-dot" data-t="azure" style="background:#5ea8ff" title="Azure"></div>
       <div class="theme-dot" data-t="lime" style="background:#d1e847" title="Lime"></div>
       <div class="theme-dot" data-t="lavender" style="background:#c4b5fd" title="Lavender"></div>
       <div class="theme-dot" data-t="coral" style="background:#ff8a80" title="Coral"></div>
@@ -222,28 +365,56 @@
     </div>
     <div id="toast" class="toast hidden"></div>
 
+    <!-- ⌘K Command Palette -->
+    <div id="cmdPalette" class="cmd-overlay hidden">
+      <div class="cmd-panel">
+        <input id="cmdInput" class="cmd-input" placeholder="Type a command..." spellcheck="false" autocomplete="off" />
+        <div id="cmdList" class="cmd-list"></div>
+        <div class="cmd-foot">
+          <span><kbd>↑↓</kbd> <span>navigate</span></span>
+          <span><kbd>↵</kbd> <span>run</span></span>
+          <span><kbd>esc</kbd> <span>close</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard shortcut cheat sheet (⌘/) -->
+    <div id="shortcutSheet" class="cmd-overlay hidden">
+      <div class="cmd-panel sheet-panel">
+        <div class="sheet-title">Keyboard Shortcuts</div>
+        <div class="sheet-rows">
+          <div class="sheet-row"><span>Command palette</span><kbd>⌘K</kbd></div>
+          <div class="sheet-row"><span>Connect a window</span><kbd>⌘N</kbd></div>
+          <div class="sheet-row"><span>Open Settings</span><kbd>⌘,</kbd></div>
+          <div class="sheet-row"><span>Optimize pasted text</span><kbd>⌘↵</kbd></div>
+          <div class="sheet-row"><span>Keyboard Shortcuts</span><kbd>⌘/</kbd></div>
+          <div class="sheet-row"><span>Close / back</span><kbd>esc</kbd></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Paywall Gate — blocks app when no active subscription/trial -->
     <div id="paywallGate" class="hidden" style="position:fixed;inset:0;z-index:9998;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px">
-      <div style="width:48px;height:48px;background:var(--btn);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--btn-t)">T</div>
+      <div class="brand-tile">T</div>
       <!-- Trial mode (default) -->
       <div id="paywallTrialSection">
         <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Try Terse Free</h2>
         <p style="color:var(--t3);font-size:11px;text-align:center;margin:8px 0 0;line-height:1.6;max-width:240px">30-day free trial — no charge until your trial ends.</p>
         <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px">
           <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-            <button id="paywallProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:14px;font-weight:800;cursor:pointer;width:200px">Start Free — $0</button>
+            <button id="paywallProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:14px;font-weight:800;width:200px">Start Free — $0</button>
             <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">then $4.99 USD / month after trial</span>
           </div>
           <p id="paywallChinaNote" style="color:var(--t1);font-size:12px;font-weight:600;text-align:center;margin:4px 0 0;opacity:0.7">WeChat/Alipay pay monthly:</p>
           <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-            <button id="paywallWechatBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'wechat_pay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">WeChat Pay / 微信支付</button>
+            <button id="paywallWechatBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'wechat_pay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;width:200px">WeChat Pay / 微信支付</button>
             <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-            <button id="paywallAlipayBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'alipay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Alipay / 支付宝</button>
+            <button id="paywallAlipayBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'alipay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;width:200px">Alipay / 支付宝</button>
             <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
           </div>
-          <button id="paywallPremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Premium Trial — $99/mo</button>
+          <button id="paywallPremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;width:200px">Premium Trial — $99/mo</button>
           <p id="paywallTrialNote" style="color:var(--t1);font-size:10px;font-weight:400;text-align:center;margin:2px 0 0;opacity:0.5">Cancel anytime · Card required for free trial</p>
         </div>
       </div>
@@ -252,24 +423,25 @@
         <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Subscribe to Continue</h2>
         <p style="color:var(--t3);font-size:11px;text-align:center;margin:0;line-height:1.6;max-width:240px">Your free trial has been used. Subscribe to keep using Terse.</p>
         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-top:4px">
-          <button id="paywallSubscribeProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;width:200px">Subscribe Pro</button>
+          <button id="paywallSubscribeProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;width:200px">Subscribe Pro</button>
           <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
         </div>
-        <button id="paywallSubscribePremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Subscribe Premium — $99/mo</button>
+        <button id="paywallSubscribePremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;width:200px">Subscribe Premium — $99/mo</button>
         <p style="color:var(--t1);font-size:12px;font-weight:600;text-align:center;margin:4px 0 0;opacity:0.7">Or pay with:</p>
         <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-          <button id="paywallSubscribeWechatBtn" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">WeChat Pay / 微信支付</button>
+          <button id="paywallSubscribeWechatBtn" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;width:200px">WeChat Pay / 微信支付</button>
           <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-          <button id="paywallSubscribeAlipayBtn" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;width:200px">Alipay / 支付宝</button>
+          <button id="paywallSubscribeAlipayBtn" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;width:200px">Alipay / 支付宝</button>
           <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
         </div>
         <p style="color:var(--t1);font-size:11px;font-weight:500;text-align:center;margin:2px 0 0;opacity:0.6">Billed monthly, cancel anytime</p>
       </div>
-      <button id="paywallSwitchBtn" style="margin-top:4px;padding:6px 20px;background:transparent;color:var(--t3);border:none;font-size:11px;font-weight:500;cursor:pointer;text-decoration:underline">Switch Account</button>
+      <button id="paywallSwitchBtn" style="margin-top:4px;padding:6px 20px;background:transparent;color:var(--t3);border:none;font-size:11px;font-weight:500;text-decoration:underline">Switch Account</button>
     </div>
   </div>
+  </div><!-- /shell -->
   <script>
     /* ── Theme System ── */
     function setTheme(t) {
@@ -283,9 +455,19 @@
       var gate = document.getElementById('authGate');
       if (gate) gate.style.background = 'var(--bg)';
     }
+    // One-time migration: move installs still on the old default (lime) to the
+    // new professional default (azure). Deliberate non-lime choices are untouched.
+    (function() {
+      if (!localStorage.getItem('terse-theme-v2')) {
+        localStorage.setItem('terse-theme-v2', '1');
+        if ((localStorage.getItem('terse-theme') || 'lime') === 'lime') {
+          localStorage.setItem('terse-theme', 'azure');
+        }
+      }
+    })();
     // Load saved theme
     (function() {
-      var saved = localStorage.getItem('terse-theme') || 'lime';
+      var saved = localStorage.getItem('terse-theme') || 'azure';
       document.documentElement.setAttribute('data-theme', saved);
     })();
     // Bind theme dots (settings + auth gate)
@@ -299,7 +481,7 @@
       var dd = document.getElementById('themeDropdown');
       dd.classList.toggle('hidden');
       // Update active dot
-      var saved = localStorage.getItem('terse-theme') || 'lime';
+      var saved = localStorage.getItem('terse-theme') || 'azure';
       dd.querySelectorAll('.theme-dot').forEach(function(d) {
         d.style.borderColor = d.dataset.t === saved ? 'var(--btn-t)' : 'transparent';
       });

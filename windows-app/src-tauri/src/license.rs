@@ -17,7 +17,16 @@ pub struct AuthState {
     pub first_name: Option<String>,
     #[serde(rename = "signedIn")]
     pub signed_in: bool,
+    /// Start of the 15-minute "try it first" grace window (ISO 8601 / RFC 3339),
+    /// set at first sign-in. During this window the subscription gate is suppressed
+    /// so a new user can use Terse before being asked to start a free trial. Cleared
+    /// on sign-out. Persisted so the window survives app restarts.
+    #[serde(rename = "graceStart", default)]
+    pub grace_start: Option<String>,
 }
+
+/// Length of the post-login "try it first" grace window, in seconds (15 minutes).
+pub const GRACE_SECS: i64 = 15 * 60;
 
 fn auth_path() -> PathBuf {
     let home = dirs::home_dir().unwrap_or_default();
@@ -53,7 +62,32 @@ impl AuthState {
         self.image_url = None;
         self.first_name = None;
         self.signed_in = false;
+        self.grace_start = None;
         self.save();
+    }
+
+    /// Begin the grace window if it hasn't started yet (idempotent — preserves the
+    /// original start across restarts so the 15 minutes don't reset every launch).
+    pub fn ensure_grace_started(&mut self) {
+        if self.grace_start.is_none() {
+            self.grace_start = Some(chrono::Utc::now().to_rfc3339());
+        }
+    }
+
+    /// Seconds left in the grace window (0 once elapsed or never started).
+    pub fn grace_remaining_secs(&self) -> i64 {
+        match self.grace_start.as_deref() {
+            Some(s) => match chrono::DateTime::parse_from_rfc3339(s) {
+                Ok(start) => (start.timestamp() + GRACE_SECS - chrono::Utc::now().timestamp()).max(0),
+                Err(_) => 0,
+            },
+            None => 0,
+        }
+    }
+
+    /// True while the user is still inside the post-login grace window.
+    pub fn in_grace(&self) -> bool {
+        self.grace_remaining_secs() > 0
     }
 }
 
@@ -106,6 +140,22 @@ impl Default for License {
 fn current_week() -> u32 {
     let now = chrono::Local::now();
     now.format("%Y%W").to_string().parse().unwrap_or(0)
+}
+
+/// ISO-8601 timestamp of the next weekly quota reset (upcoming Monday 00:00 local).
+/// Weekly usage zeroes when the `%W` week number rolls over, which happens at the
+/// start of each Monday — so that's when the user's quota refreshes.
+fn next_weekly_reset() -> String {
+    use chrono::{Datelike, Duration, Local, TimeZone};
+    let now = Local::now();
+    let days_since_monday = now.weekday().num_days_from_monday() as i64;
+    let days_until_next_monday = 7 - days_since_monday; // 7 when today is Monday
+    let next_date = (now + Duration::days(days_until_next_monday)).date_naive();
+    next_date
+        .and_hms_opt(0, 0, 0)
+        .and_then(|naive| Local.from_local_datetime(&naive).single())
+        .map(|dt| dt.to_rfc3339())
+        .unwrap_or_default()
 }
 
 fn license_path() -> PathBuf {
@@ -197,6 +247,7 @@ impl License {
             },
             "weeklyUsage": self.weekly_usage,
             "remaining": self.remaining_optimizations(),
+            "resetsAt": next_weekly_reset(),
             "clerkUserId": self.clerk_user_id,
             "expiresAt": self.expires_at,
             "trialEnd": self.trial_end,

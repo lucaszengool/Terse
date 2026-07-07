@@ -121,8 +121,83 @@
     .barrow .bf{display:block;height:100%;background:var(--btn);border-radius:4px}
     .barrow .bv{flex:0 0 auto;color:var(--t3);font-variant-numeric:tabular-nums;min-width:34px;text-align:right}
     .spark{width:100%;height:40px;display:block;margin-top:4px}
+
+    /* ── Local stats overlay (budget / cost / attribution / slack) ── */
+    .loc-section{margin-bottom:10px}
+    .loc-title{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;
+      letter-spacing:.04em;margin:0 0 6px;display:flex;align-items:center;justify-content:space-between}
+    /* Budget */
+    .budget-hero-sm{background:var(--sf);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+    .bh-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+    .bh-spent{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+    .bh-of{font-size:10px;color:var(--t3)}
+    .bh-pct{font-size:10px;font-weight:700;color:var(--t2)}
+    .burn-bar{height:6px;background:var(--bd);border-radius:9999px;overflow:hidden;margin-bottom:5px}
+    .burn-fill{height:100%;border-radius:9999px;transition:width .4s,background .4s}
+    .burn-ok{background:var(--ac)}.burn-warn{background:#d97706}.burn-near{background:#ea580c}.burn-over{background:#dc2626}
+    .budget-alert-sm{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;
+      padding:6px 8px;border-radius:8px;margin-bottom:6px}
+    .alert-ok{background:color-mix(in srgb,var(--ac) 14%,transparent);color:var(--ac)}
+    .alert-warn{background:rgba(217,119,6,.14);color:#b45309}
+    .alert-near{background:rgba(234,88,12,.16);color:#c2410c}
+    .alert-over{background:rgba(220,38,38,.16);color:#dc2626}
+    .bh-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+    .bh-stat{background:var(--bg);border-radius:8px;padding:6px;text-align:center}
+    .bh-stat .n{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+    .bh-stat .l{font-size:8.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:1px}
+    .budget-set-row{display:flex;gap:6px;margin-top:6px}
+    .budget-set-row input{flex:1;min-width:0;background:var(--sf);border:1px solid var(--bd);
+      border-radius:8px;color:var(--t1);font-size:11px;padding:5px 8px;font-family:inherit}
+    .budget-set-row input:focus{outline:none;border-color:var(--ac)}
+    .budget-set-row button{border:none;border-radius:8px;background:var(--btn);color:var(--btn-t);
+      font-size:10.5px;font-weight:700;padding:5px 10px;cursor:pointer}
+    /* Bars with $ */
+    .barrow .bv2{flex:0 0 auto;color:var(--t3);font-size:9px;min-width:38px;text-align:right}
+    /* Attribution list */
+    .attr-list{display:flex;flex-direction:column;gap:1px;background:var(--sf);
+      border-radius:8px;overflow:hidden;margin-bottom:8px}
+    .attr-item{display:flex;align-items:center;justify-content:space-between;
+      padding:6px 10px;font-size:10.5px}
+    .attr-item .nm{color:var(--t1);font-weight:600;overflow:hidden;text-overflow:ellipsis;
+      white-space:nowrap;margin-right:8px;flex:1}
+    .attr-item .ct{color:var(--t2);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .attr-item .ct small{color:var(--t3);font-weight:600}
+    .cost-src-row .top{display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:3px}
+    .cost-src-row .top .nm{color:var(--t1);font-weight:600}
+    .cost-src-row .top .v{color:var(--t2);font-weight:700;font-variant-numeric:tabular-nums}
+    .pct-bar{height:4px;background:var(--bd);border-radius:9999px;margin-bottom:6px;overflow:hidden}
+    .pct-bar-fill{height:100%;border-radius:9999px;background:var(--ac);transition:width .3s}
+    /* Slack */
+    .slack-card-sm{background:var(--sf);border-radius:10px;padding:10px 12px;
+      display:flex;flex-direction:column;gap:8px;margin-top:4px}
+    .slack-head-sm{display:flex;align-items:center;gap:6px}
+    .slack-logo-sm{width:14px;height:14px;flex-shrink:0}
+    .slack-head-sm .ttl{font-size:11px;font-weight:700;color:var(--t1);flex:1}
+    .slack-badge{font-size:8.5px;font-weight:700;padding:2px 7px;border-radius:9999px}
+    .slack-badge.on{background:color-mix(in srgb,var(--ac) 18%,transparent);color:var(--ac)}
+    .slack-badge.off{background:var(--bd);color:var(--t3)}
+    .slack-row-sm{display:flex;gap:5px}
+    .slack-row-sm input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);
+      border-radius:7px;color:var(--t1);font-size:10.5px;padding:5px 7px;font-family:inherit}
+    .slack-row-sm input:focus{outline:none;border-color:var(--ac)}
+    .slack-row-sm button{border:none;border-radius:7px;background:var(--btn);color:var(--btn-t);
+      font-size:10.5px;font-weight:700;padding:5px 9px;cursor:pointer;white-space:nowrap}
+    .slack-btns-sm{display:flex;gap:5px}
+    .slack-btns-sm button{flex:1;border:none;border-radius:7px;font-size:10px;font-weight:700;
+      padding:6px 4px;cursor:pointer}
+    .slack-open-sm{background:#4A154B;color:#fff}
+    .slack-hook-sm{background:var(--bd);color:var(--t1)}
+    .slack-foot-sm{display:flex;align-items:center;justify-content:space-between;
+      font-size:10px;color:var(--t2)}
+    .slack-toggle-sm{display:flex;align-items:center;gap:5px;cursor:pointer}
+    .slack-toggle-sm input{width:12px;height:12px;accent-color:var(--ac)}
+    .slack-test-sm{background:none;border:none;color:var(--t3);font-size:10px;
+      font-weight:600;cursor:pointer;text-decoration:underline}
+    .mini-link{font-size:9px;font-weight:600;color:var(--t3);background:var(--sf);
+      border:none;border-radius:9999px;padding:2px 8px;cursor:pointer}
+    .mini-link:hover{color:var(--t1)}
   </style>
-  <script>(function(){var s=localStorage.getItem('terse-theme')||'lime';document.documentElement.setAttribute('data-theme',s)})();</script>
+  <script>(function(){var s=localStorage.getItem('terse-theme')||'azure';document.documentElement.setAttribute('data-theme',s)})();</script>
 </head>
 <body>
   <div class="header">
@@ -133,6 +208,8 @@
     <span class="pill" id="teamPill" style="display:none"></span>
   </div>
 
+  <!-- Auth-gated content: blurred until signed in (header stays usable) -->
+  <div id="contentGate" data-auth-gate>
   <!-- Not connected -->
   <div id="joinView" style="display:none">
     <p>Connect Terse to your team to see everyone's coding agents working live, read each other's logs, and hand off work. Paste your team token (your team owner can copy it from the Terse Cloud dashboard).</p>
@@ -171,6 +248,91 @@
         <button class="period-btn active" data-p="week">7d</button>
         <button class="period-btn" data-p="month">30d</button>
       </div>
+
+      <!-- ── Local: budget + cost ── -->
+      <div class="loc-section" id="localBudgetSection">
+        <div class="loc-title"><span>My Budget</span>
+          <button class="mini-link" id="btnExportTeamCsv">Export CSV</button></div>
+        <div class="budget-hero-sm" id="teamBudgetHero" style="display:none">
+          <div class="bh-row">
+            <span class="bh-spent" id="tbSpent">$0</span>
+            <span class="bh-of">of <b id="tbBudget">$0</b> &nbsp;<span id="tbPct" class="bh-pct">0%</span></span>
+          </div>
+          <div class="burn-bar"><div class="burn-fill burn-ok" id="tbFill" style="width:0%"></div></div>
+          <div class="budget-alert-sm alert-ok" id="tbAlert">
+            <span id="tbAlertIcon">✓</span>&nbsp;<span id="tbAlertText">On track.</span>
+          </div>
+          <div class="bh-stats">
+            <div class="bh-stat"><div class="n" id="tbDaily">$0</div><div class="l">Per day</div></div>
+            <div class="bh-stat"><div class="n" id="tbForecast">$0</div><div class="l">Forecast EOM</div></div>
+            <div class="bh-stat"><div class="n" id="tbDaysLeft">—</div><div class="l">Days left</div></div>
+          </div>
+        </div>
+        <div class="budget-set-row">
+          <input type="number" id="teamBudgetInput" min="0" step="10"
+            placeholder="Monthly budget ($)" inputmode="decimal">
+          <button id="btnSetTeamBudget">Set</button>
+        </div>
+      </div>
+
+      <!-- ── Local: cost by source ── -->
+      <div class="loc-section" id="localCostSection" style="display:none">
+        <div class="loc-title">Est. Cost by Source</div>
+        <div id="teamCostSrc"></div>
+      </div>
+
+      <!-- ── Local: by model ── -->
+      <div class="loc-section" id="localModelSection" style="display:none">
+        <div class="loc-title">By Model</div>
+        <div id="teamAttrModels" class="attr-list"></div>
+      </div>
+
+      <!-- ── Local: top MCP servers ── -->
+      <div class="loc-section" id="localMcpSection" style="display:none">
+        <div class="loc-title">Top MCP Servers</div>
+        <div id="teamAttrMcp" class="attr-list"></div>
+      </div>
+
+      <!-- ── Local: top tools ── -->
+      <div class="loc-section" id="localToolSection" style="display:none">
+        <div class="loc-title">Top Tools</div>
+        <div id="teamAttrTools" class="attr-list"></div>
+      </div>
+
+      <!-- ── Slack alerts ── -->
+      <div class="loc-section">
+        <div class="loc-title">Slack Alerts</div>
+        <div class="slack-card-sm">
+          <div class="slack-head-sm">
+            <svg class="slack-logo-sm" viewBox="0 0 122.8 122.8" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M25.8 77.6c0 7.1-5.8 12.9-12.9 12.9S0 84.7 0 77.6s5.8-12.9 12.9-12.9h12.9zM32.3 77.6c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9z" fill="#E01E5A"/>
+              <path d="M45.2 25.8c-7.1 0-12.9-5.8-12.9-12.9S38.1 0 45.2 0s12.9 5.8 12.9 12.9v12.9zM45.2 32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H12.9C5.8 58.1 0 52.3 0 45.2s5.8-12.9 12.9-12.9z" fill="#36C5F0"/>
+              <path d="M97 45.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9-5.8 12.9-12.9 12.9H97zM90.5 45.2c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V12.9C64.7 5.8 70.5 0 77.6 0s12.9 5.8 12.9 12.9z" fill="#2EB67D"/>
+              <path d="M77.6 97c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9-12.9-5.8-12.9-12.9V97zM77.6 90.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9z" fill="#ECB22E"/>
+            </svg>
+            <span class="ttl">Budget alerts</span>
+            <span class="slack-badge off" id="teamSlackBadge">Off</span>
+          </div>
+          <div class="slack-btns-sm">
+            <button class="slack-open-sm" id="tbtnOpenSlack">Open Slack</button>
+            <button class="slack-hook-sm" id="tbtnSlackHook">Create webhook ↗</button>
+          </div>
+          <div class="slack-row-sm">
+            <input type="text" id="teamSlackWebhook"
+              placeholder="https://hooks.slack.com/services/…" spellcheck="false">
+            <button id="tbtnSaveSlack">Save</button>
+          </div>
+          <div class="slack-foot-sm">
+            <label class="slack-toggle-sm">
+              <input type="checkbox" id="teamSlackEnabled"> Send budget alerts
+            </label>
+            <button class="slack-test-sm" id="tbtnTestSlack">Send test</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Cloud team stats (existing) ── -->
+      <div class="loc-title" style="margin-top:4px">Team stats</div>
       <div id="statsBody"><div class="empty">Loading…</div></div>
     </div>
 
@@ -212,8 +374,10 @@
     </div>
     <div id="logBody"></div>
   </div>
+  </div><!-- /contentGate -->
 
   <script src="tauri-bridge.js"></script>
+  <script src="auth-scrim.js"></script>
   <script src="cowork.js"></script>
 </body>
 </html>

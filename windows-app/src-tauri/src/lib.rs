@@ -1713,9 +1713,9 @@ static DASH_POLL_RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::Ato
 
 #[tauri::command]
 fn check_ax_permission() -> bool {
-    // Synchronously check + request AX permission.
-    // Returns true if already trusted. If not trusted, opens System Settings.
-    capture::is_ax_trusted_sync()
+    // Windows UI Automation needs no accessibility-permission grant (unlike macOS AX),
+    // so this is always true — kept for shared-frontend command parity.
+    true
 }
 
 #[tauri::command]

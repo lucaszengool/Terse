@@ -29,11 +29,16 @@
 - [For ChatGPT](https://www.terseai.org/for-chatgpt): Reduce ChatGPT token costs via browser compression
 - [For GitHub Copilot](https://www.terseai.org/for-github-copilot): Reduce GitHub Copilot context costs in VS Code
 - [For Aider](https://www.terseai.org/for-aider): Reduce Aider token costs — auto-detect sessions, compress prompts
+- [For Cline](https://www.terseai.org/for-cline): Reduce Cline token costs — BYOM autonomous agent, per-step context growth
+- [For Codex CLI](https://www.terseai.org/for-codex-cli): Reduce OpenAI Codex CLI token costs in the terminal
+- [For Windsurf](https://www.terseai.org/for-windsurf): Reduce Windsurf/Cascade token and credit costs
+- [For Gemini CLI](https://www.terseai.org/for-gemini-cli): Reduce Gemini CLI token costs — large-context discipline
 
 ### Guides & Articles
 - [What Is Token Optimization?](https://www.terseai.org/what-is-token-optimization): Complete guide to token optimization concepts
 - [How to Reduce AI API Costs](https://www.terseai.org/reduce-ai-api-costs): 7 proven strategies to cut AI costs by 60-80%
 - [Claude Code Pricing 2026](https://www.terseai.org/claude-code-pricing): Real per-token costs, monthly estimates, and how to cut your bill
+- [Cursor Pricing 2026](https://www.terseai.org/cursor-pricing): Plans, credit pool, real token costs, and how to save
 - [AI Token Pricing Comparison 2026](https://www.terseai.org/ai-token-pricing-comparison): Claude vs GPT vs Gemini complete cost guide
 - [I Built an App to Steal $50M Back from Claude Code](https://www.terseai.org/i-built-an-app-to-steal-50m-back): Technical deep-dive on the Terse compression pipeline
 

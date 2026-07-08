@@ -10,19 +10,19 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reduce Aider Token Costs — Terse for Aider</title>
-  <meta name="description" content="Terse auto-detects Aider sessions and monitors token usage per turn. Compress prompts, catch redundant file reads, track per-model cost across GPT-4o, Claude, Gemini, and local models. 30-day free trial.">
-  <link rel="canonical" href="https://www.terseai.org/for-aider">
+  <title>Reduce Gemini CLI Token Costs — Terse for Gemini CLI</title>
+  <meta name="description" content="Terse auto-detects Google's Gemini CLI, compresses typed prompts, and tracks per-turn cost at Gemini 2.5 rates. Tame that 1M-token context window. 100% on-device. 30-day free trial.">
+  <link rel="canonical" href="https://www.terseai.org/for-gemini-cli">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Reduce Aider Token Costs — Terse for Aider">
-  <meta property="og:description" content="Terse auto-detects Aider sessions and monitors token usage per turn. Compress prompts, catch redundant file reads, and track cost across any LLM backend. 30-day free trial.">
-  <meta property="og:url" content="https://www.terseai.org/for-aider">
+  <meta property="og:title" content="Reduce Gemini CLI Token Costs — Terse for Gemini CLI">
+  <meta property="og:description" content="Terse auto-detects Google's Gemini CLI, compresses typed prompts, flags redundant reads, and tracks per-turn cost at Gemini model rates. 100% on-device. 30-day free trial.">
+  <meta property="og:url" content="https://www.terseai.org/for-gemini-cli">
   <meta property="og:site_name" content="Terse">
   <meta property="og:image" content="https://www.terseai.org/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Reduce Aider Token Costs — Terse for Aider">
-  <meta name="twitter:description" content="Terse auto-detects Aider sessions, compresses prompts 40-70%, and tracks per-turn cost across any LLM backend. 30-day free trial.">
+  <meta name="twitter:title" content="Reduce Gemini CLI Token Costs — Terse for Gemini CLI">
+  <meta name="twitter:description" content="Terse auto-detects Gemini CLI, compresses prompts 40-70%, and tracks per-turn cost at Gemini 2.5 rates. Tame the 1M context. 30-day free trial.">
   <link rel="sitemap" type="application/xml" href="/sitemap.xml">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -32,15 +32,15 @@
     "@graph": [
       {
         "@type": "WebPage",
-        "name": "Reduce Aider Token Costs — Terse for Aider",
-        "url": "https://www.terseai.org/for-aider",
-        "description": "Terse auto-detects Aider sessions and reduces token costs by 40-70%. Compress prompts, flag redundant file reads, and track per-turn cost across Claude, GPT-4o, Gemini, and local models.",
+        "name": "Reduce Gemini CLI Token Costs — Terse for Gemini CLI",
+        "url": "https://www.terseai.org/for-gemini-cli",
+        "description": "Terse auto-detects Google's Gemini CLI and reduces token costs by 40-70%. Compress prompts, flag redundant file reads, and track per-turn cost at Gemini 2.5 Pro and Flash rates — all on-device.",
         "dateModified": "2026-07-08",
         "breadcrumb": {
           "@type": "BreadcrumbList",
           "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "For Aider", "item": "https://www.terseai.org/for-aider"}
+            {"@type": "ListItem", "position": 2, "name": "For Gemini CLI", "item": "https://www.terseai.org/for-gemini-cli"}
           ]
         }
       },
@@ -49,34 +49,34 @@
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "Does Terse work with Aider?",
+            "name": "Does Terse work with Gemini CLI?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes. Terse auto-detects Aider sessions via process scanning and attaches a floating monitor to your terminal. It compresses prompts before they reach the LLM, flags redundant file reads (a very common pattern in Aider's map-based workflow), and tracks per-turn token cost across any model Aider is connected to — Claude, GPT-4o, Gemini, or local models."
+              "text": "Yes. Terse auto-detects Google's Gemini CLI via process scanning and attaches a floating monitor to your terminal. It compresses the prompts you type before they reach Gemini, flags redundant file reads as the agent works through your repo, and tracks per-turn token cost at the correct Gemini model rate — Gemini 2.5 Pro or 2.5 Flash. No configuration required."
             }
           },
           {
             "@type": "Question",
-            "name": "Why is my Aider session so expensive?",
+            "name": "Gemini 2.5 Pro has a 1M-token context window — doesn't that mean I don't need to worry about tokens?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Aider's repo-map feature sends a compressed summary of your entire codebase at the start of every session — this can be 5,000–50,000 tokens before you type anything. Aider also re-reads files frequently as it applies changes. Each re-read adds the file's token count to the context. Terse compresses your typed prompts and flags when Aider is reading the same file repeatedly so you can interrupt before the costs compound."
+              "text": "It's the opposite. A 1M-token context window is a double-edged sword: because Gemini CLI can hold your entire repo in context, it's very easy to accidentally send hundreds of thousands of tokens every turn — and you pay for the full context on each API call, not once. At $1.25/M input, a 400K-token context costs $0.50 per turn before Gemini writes a single line. Big context windows make token discipline more important, not less. Terse compresses your prompts and flags when the same files are being re-sent so the accumulated context doesn't quietly balloon your bill."
             }
           },
           {
             "@type": "Question",
-            "name": "Which LLM backends does Terse support with Aider?",
+            "name": "Do I really pay per token if Gemini CLI has a free tier?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Terse monitors the Aider session regardless of which LLM backend it's connected to — Claude Sonnet/Opus, GPT-4o, Gemini 2.5, or local models via Ollama. Terse's model-aware cost tracking recognizes the model being used and shows per-turn costs in the correct currency for that model's pricing."
+              "text": "Gemini CLI ships with a generous free tier when you sign in with a personal Google account. But heavy users, teams, and anyone using a Gemini API key (Vertex AI or AI Studio) pay per token at standard Gemini 2.5 Pro / Flash rates. Terse is built for that second group — once you're on a paid API key, every accumulated turn of context is billable, and Terse shows you the running cost in real time so there are no surprises at month end."
             }
           },
           {
             "@type": "Question",
-            "name": "Does Terse interfere with Aider's automatic file editing?",
+            "name": "Does Terse interfere with how Gemini CLI reads files or runs commands?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Terse only compresses the prompts you type in the terminal input. It does not touch Aider's output, the file edits Aider applies, or the repo-map generation. Your Aider workflow stays exactly the same — you just send shorter, cleaner prompts."
+              "text": "No. Terse only compresses the prompts you type into the terminal input. It does not touch Gemini CLI's file reads, the shell commands it runs, or the edits it applies. Your agentic workflow stays exactly the same — Terse just makes sure the text you add each turn is short and clean, and warns you before the context grows out of control."
             }
           }
         ]
@@ -198,17 +198,17 @@
 <div style="max-width:1100px;margin:0 auto">
 <div class="hero">
   <div class="hero-glow"></div>
-  <div class="badge">Aider</div>
-  <h1>Cut Your <span class="gradient-text">Aider</span> Token Costs by 40–70%</h1>
-  <p class="sub">Terse auto-detects Aider sessions, compresses every prompt before it reaches the LLM, and monitors token usage per turn — across Claude, GPT-4o, Gemini, and local models. All on-device.</p>
+  <div class="badge">Gemini CLI</div>
+  <h1>Cut Your <span class="gradient-text">Gemini CLI</span> Token Costs by 40–70%</h1>
+  <p class="sub">Terse auto-detects Google's terminal coding agent, compresses every prompt before it reaches Gemini, and tracks per-turn cost at Gemini 2.5 Pro and Flash rates. So a 1M-token context window doesn't quietly drain your API budget. All on-device.</p>
   <div class="hero-actions">
     <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
     <a href="#how-it-works" class="btn-ghost">See How It Works</a>
   </div>
   <div class="stats-row">
     <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">prompt compression</span></div>
-    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">Aider detection</span></div>
-    <div class="stat-pill"><span class="val">Any LLM</span><span class="lbl">model-aware cost tracking</span></div>
+    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">Gemini CLI detection</span></div>
+    <div class="stat-pill"><span class="val">1M</span><span class="lbl">context, watched per turn</span></div>
     <div class="stat-pill"><span class="val">0</span><span class="lbl">data leaves device</span></div>
   </div>
 </div>
@@ -217,28 +217,28 @@
 <div class="divider"></div>
 
 <section id="how-it-works">
-  <h2>How Terse Works with <span class="gradient-text">Aider</span></h2>
-  <p class="section-sub">Aider's repo-map sends thousands of tokens before you type a word. Every prompt you add goes on top. Terse compresses what it can — your typed text — and flags what it shouldn't ignore: redundant file reads as Aider applies its edits.</p>
+  <h2>How Terse Works with <span class="gradient-text">Gemini CLI</span></h2>
+  <p class="section-sub">Gemini CLI reads your repo, edits files, and runs commands agentically — and its context grows with every turn. With a 1M-token window, it's easy to send a quarter-million tokens without noticing. Terse compresses what you type and flags when the same files are being re-sent, so the accumulated context stays lean.</p>
 
   <div style="margin-bottom:40px">
     <div class="demo-box">
-      <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Terminal — Aider Session</div><div class="demo-badge">Terse Active</div></div>
-      <div class="demo-body" id="aiderDemo">
-        <div class="term-line cmd">$ aider --model claude/claude-sonnet-4-5</div>
-        <div class="term-line out">Aider v0.67.0 — Claude Sonnet 4.5 · repo-map: 8,240 tokens</div>
-        <div class="term-line green">● Terse detected Aider — monitoring (Sonnet 4.5 · $3.00/M input)</div>
-        <div class="term-line cmd" style="margin-top:8px">&gt; can you please refactor the authetication service to use the newer asynchrnous pattern that we discussed earlier in the conversation and also make sure to add proper error handeling</div>
-        <div class="terse-banner" id="aiderBanner">
+      <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Terminal — Gemini CLI Session</div><div class="demo-badge">Terse Active</div></div>
+      <div class="demo-body" id="gemDemo">
+        <div class="term-line cmd">$ gemini</div>
+        <div class="term-line out">Gemini CLI · model: gemini-2.5-pro · API key (AI Studio) · 1M context</div>
+        <div class="term-line green">● Terse detected Gemini CLI — monitoring (2.5 Pro · $1.25/M input · $10/M output)</div>
+        <div class="term-line cmd" style="margin-top:8px">&gt; could you please go ahead and take a look at the whole repo and then refactor the paymnet handler to use the newer async retry pattern that we talked about, and also add some proper logging</div>
+        <div class="terse-banner" id="gemBanner">
           <div style="width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0"></div>
-          <div style="flex:1;font-size:10px;color:var(--t2)">Terse: 31 tokens → <span style="color:var(--ac)">14 tokens</span> · "refactor auth service to async pattern, add error handling" · <span style="color:var(--ac)">55% reduction</span></div>
+          <div style="flex:1;font-size:10px;color:var(--t2)">Terse: 38 tokens → <span style="color:var(--ac)">15 tokens</span> · "refactor payment handler to async retry pattern, add logging" · <span style="color:var(--ac)">60% reduction</span></div>
         </div>
-        <div class="term-line out" style="margin-top:8px">Aider reading: src/auth/service.ts [2,140 tokens]</div>
-        <div class="term-line warn" id="aiderWarn">⚠ Terse: auth/service.ts read 3× this session — consider /add to keep in context</div>
-        <div class="terse-stats" id="aiderStats">
-          <div class="ts-box"><span class="ts-val">11.2K</span><span class="ts-lbl">prompt tokens</span></div>
-          <div class="ts-box"><span class="ts-val" style="color:#fbbf24">31.8K</span><span class="ts-lbl">without Terse</span></div>
-          <div class="ts-box"><span class="ts-val">65%</span><span class="ts-lbl">compressed</span></div>
-          <div class="ts-box"><span class="ts-val">$0.04</span><span class="ts-lbl">this turn</span></div>
+        <div class="term-line out" style="margin-top:8px">Gemini reading: src/ (24 files) → context now 412,000 tokens</div>
+        <div class="term-line warn" id="gemWarn">⚠ Terse: 412K tokens in context this turn ≈ $0.52 input — payment/handler.ts re-sent 3× unchanged</div>
+        <div class="terse-stats" id="gemStats">
+          <div class="ts-box"><span class="ts-val">412K</span><span class="ts-lbl">turn context</span></div>
+          <div class="ts-box"><span class="ts-val" style="color:#fbbf24">$0.52</span><span class="ts-lbl">input cost</span></div>
+          <div class="ts-box"><span class="ts-val">60%</span><span class="ts-lbl">prompt compressed</span></div>
+          <div class="ts-box"><span class="ts-val">$0.58</span><span class="ts-lbl">this turn</span></div>
         </div>
       </div>
     </div>
@@ -247,38 +247,38 @@
   <div class="feature-grid">
     <div class="feat-card">
       <div class="feat-icon">⚡</div>
-      <h3>Auto Aider Detection</h3>
-      <p>Terse scans running processes every 5 seconds. When Aider launches in your terminal, a floating monitor bar appears automatically — no setup, no configuration required.</p>
+      <h3>Auto Gemini CLI Detection</h3>
+      <p>Terse scans running processes every 5 seconds. When Gemini CLI launches in your terminal, a floating monitor bar appears automatically — no setup, no config, no wrapper script. It picks up the model you're running, Pro or Flash.</p>
       <span class="tag">Automatic</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">🗜️</div>
       <h3>Prompt Compression</h3>
-      <p>Every instruction you type in Aider's terminal prompt goes through Terse's 7-stage pipeline: typo correction, filler removal, hedge stripping, and phrase shortening. Code blocks pass through unchanged.</p>
+      <p>Every instruction you type at the Gemini CLI prompt runs through Terse's 7-stage pipeline: typo correction, filler removal, hedge stripping, and phrase shortening. Code blocks and file paths pass through untouched.</p>
       <span class="tag">7-Stage Pipeline</span>
     </div>
     <div class="feat-card">
-      <div class="feat-icon">📁</div>
-      <h3>Redundant File Read Flagging</h3>
-      <p>Aider reads files as it applies changes — and often reads the same file multiple times per session. Terse tracks this and alerts you when a file has been read 2+ times so you can use /add to keep it in context instead.</p>
-      <span class="tag">Session Tracking</span>
+      <div class="feat-icon">🪟</div>
+      <h3>Large-Context &amp; Redundant-Read Flagging</h3>
+      <p>The 1M window means Gemini CLI can quietly re-send your whole repo each turn. Terse tracks the running context size and warns when a file is re-sent unchanged, so you can trim context before the per-turn input cost compounds.</p>
+      <span class="tag">Context Watchdog</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">💰</div>
       <h3>Model-Aware Cost Tracking</h3>
-      <p>Terse recognizes which LLM Aider is using and tracks per-turn cost at the correct model rate — Sonnet, Opus, GPT-4o, Gemini 2.5, or local models. See exactly which prompts are burning money.</p>
+      <p>Terse knows whether Gemini CLI is on 2.5 Pro or 2.5 Flash and prices every turn at the correct input/output rate. On a paid API key, you see exactly what each turn of accumulated context is costing — in real time.</p>
       <span class="tag">Per-Turn Visibility</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">📊</div>
       <h3>Session Cost Summary</h3>
-      <p>At the end of each Aider session, Terse shows the total token usage, total cost, and a breakdown of where tokens were spent — prompts, file reads, repo-map overhead. Know exactly what drove today's bill.</p>
+      <p>At the end of each Gemini CLI session, Terse shows total tokens, total cost, and a breakdown of where they went — your prompts, file reads, and repeated context. Know exactly what drove the day's spend.</p>
       <span class="tag">Session Analytics</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">🔒</div>
       <h3>100% On-Device</h3>
-      <p>Terse reads your terminal input via macOS Accessibility APIs and compresses locally. No prompt text, no code, and no file contents are ever sent to Terse's servers.</p>
+      <p>Terse reads your terminal input via OS Accessibility APIs and compresses locally with a Rust engine. No prompt text, no code, and no file contents are ever sent to Terse's servers — or to Google beyond what Gemini CLI already sends.</p>
       <span class="tag">Zero Cloud</span>
     </div>
   </div>
@@ -287,10 +287,18 @@
 <div class="divider"></div>
 
 <section>
-  <h2>Supported <span class="gradient-text">Aider Backends</span></h2>
-  <p class="section-sub">Terse tracks token costs and monitors sessions regardless of which LLM you've configured Aider to use.</p>
+  <h2>Supported <span class="gradient-text">Gemini CLI Models</span></h2>
+  <p class="section-sub">Gemini CLI runs on Google's Gemini models by default, but Terse tracks token cost across every backend you might reach for. Pricing shown is per million tokens.</p>
 
   <div class="model-grid">
+    <div class="model-card">
+      <div class="model-name">Gemini 2.5 Pro</div>
+      <div class="model-cost"><em>$1.25</em>/M input · <em>$10</em>/M output</div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Gemini 2.5 Flash</div>
+      <div class="model-cost"><em>$0.075</em>/M input · <em>$0.30</em>/M output</div>
+    </div>
     <div class="model-card">
       <div class="model-name">Claude Sonnet 4.5</div>
       <div class="model-cost"><em>$3</em>/M input · <em>$15</em>/M output</div>
@@ -302,18 +310,6 @@
     <div class="model-card">
       <div class="model-name">GPT-4o</div>
       <div class="model-cost"><em>$2.50</em>/M input · <em>$10</em>/M output</div>
-    </div>
-    <div class="model-card">
-      <div class="model-name">Gemini 2.5 Pro</div>
-      <div class="model-cost"><em>$1.25</em>/M input · <em>$10</em>/M output</div>
-    </div>
-    <div class="model-card">
-      <div class="model-name">GPT-4o mini</div>
-      <div class="model-cost"><em>$0.15</em>/M input · <em>$0.60</em>/M output</div>
-    </div>
-    <div class="model-card">
-      <div class="model-name">Gemini 2.5 Flash</div>
-      <div class="model-cost"><em>$0.075</em>/M input · <em>$0.30</em>/M output</div>
     </div>
     <div class="model-card">
       <div class="model-name">Claude Haiku 4.5</div>
@@ -330,23 +326,23 @@
 
 <section>
   <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
-  <p class="section-sub">Everything about using Terse with Aider.</p>
+  <p class="section-sub">Everything about using Terse with Google's Gemini CLI.</p>
   <div class="faq-grid">
     <div class="faq-item">
-      <div class="faq-q">Does Terse work with Aider automatically?</div>
-      <div class="faq-a">Yes. Terse scans running processes every 5 seconds. When Aider launches in your terminal, Terse detects it and activates a floating monitor bar. No configuration required — detection is fully automatic for all Aider startup modes.</div>
+      <div class="faq-q">Does Terse work with Gemini CLI automatically?</div>
+      <div class="faq-a">Yes. Terse scans running processes every 5 seconds. When Gemini CLI launches in your terminal, Terse detects it and activates a floating monitor bar. No configuration required — detection is automatic, and Terse picks up whether you're on Gemini 2.5 Pro or Flash.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Why is my Aider session so expensive?</div>
-      <div class="faq-a">The main cost drivers are: (1) Aider's repo-map — a compressed codebase summary sent at session start (5,000–50,000 tokens), (2) repeated file reads as Aider applies edits, (3) verbose prompts with filler and typos. Terse compresses your typed prompts and flags redundant file reads. The repo-map itself is not compressed — that's controlled by Aider's --map-tokens flag.</div>
+      <div class="faq-q">Isn't a 1M-token context window a reason NOT to worry about tokens?</div>
+      <div class="faq-a">It's the opposite. Because Gemini CLI can hold your whole repo in context, it's easy to send hundreds of thousands of tokens every turn — and you pay for the full context on each call, not once. At $1.25/M input, a 400K context is $0.50 per turn before Gemini writes anything. Big windows make token discipline more important. Terse compresses prompts and flags when context is re-sent unchanged.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Does Terse compress Aider's repo-map?</div>
-      <div class="faq-a">No. Terse only compresses the prompts you type. Aider's repo-map is generated by Aider itself and sent directly to the LLM — it doesn't pass through the text fields Terse reads. To reduce repo-map tokens, use Aider's --map-tokens flag (e.g., --map-tokens 2000) or /add specific files and disable the repo-map with --no-auto-commits.</div>
+      <div class="faq-q">Gemini CLI has a free tier — do I actually pay per token?</div>
+      <div class="faq-a">On a personal Google sign-in, Gemini CLI's free tier is generous. But anyone on a Gemini API key via AI Studio or Vertex AI pays standard per-token rates. Terse is built for that group: once you're on a paid key, every accumulated turn of context is billable, and Terse shows the running cost so nothing surprises you at month end.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Does Terse send my Aider prompts to any server?</div>
-      <div class="faq-a">No. Terse is 100% on-device. It reads your terminal input via macOS Accessibility APIs, compresses locally using a Rust engine, and writes the compressed text back to the terminal input. Your prompts and code never leave your machine.</div>
+      <div class="faq-q">Does Terse send my Gemini CLI prompts to any server?</div>
+      <div class="faq-a">No. Terse is 100% on-device. It reads your terminal input via OS Accessibility APIs, compresses locally using a Rust engine, and writes the compressed text back to the input. Your prompts and code never leave your machine — Terse adds no cloud hop of its own.</div>
     </div>
   </div>
 </section>
@@ -372,9 +368,9 @@
       <span>GitHub Copilot — VS Code</span>
       <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
     </a>
-    <a href="/for-chatgpt" class="also-card">
-      <span style="font-size:18px">💬</span>
-      <span>ChatGPT — Browser</span>
+    <a href="/for-aider" class="also-card">
+      <span style="font-size:18px">🧩</span>
+      <span>Aider — Terminal Pair Programmer</span>
       <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
     </a>
   </div>
@@ -383,9 +379,9 @@
 <div class="cta-section">
   <div class="cta-glow"></div>
   <h2>Stop Burning Tokens on <span class="gradient-text">Verbose Prompts</span></h2>
-  <p>30-day free trial. No credit card required until your trial ends. Supports Claude, GPT-4o, Gemini, and local models.</p>
+  <p>30-day free trial. No credit card required until your trial ends. Tracks Gemini 2.5 Pro, Flash, Claude, GPT-4o, and local models.</p>
   <div class="hero-actions" style="justify-content:center">
-    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS</a>
+    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS &amp; Windows</a>
     <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
   </div>
 </div>
@@ -405,10 +401,10 @@
 
 <script>
 (function(){
-  const lines = document.querySelectorAll('#aiderDemo .term-line');
-  const banner = document.getElementById('aiderBanner');
-  const warn = document.getElementById('aiderWarn');
-  const stats = document.getElementById('aiderStats');
+  const lines = document.querySelectorAll('#gemDemo .term-line');
+  const banner = document.getElementById('gemBanner');
+  const warn = document.getElementById('gemWarn');
+  const stats = document.getElementById('gemStats');
   let started = false;
 
   function run() {

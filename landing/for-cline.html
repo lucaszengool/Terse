@@ -10,19 +10,19 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reduce Aider Token Costs — Terse for Aider</title>
-  <meta name="description" content="Terse auto-detects Aider sessions and monitors token usage per turn. Compress prompts, catch redundant file reads, track per-model cost across GPT-4o, Claude, Gemini, and local models. 30-day free trial.">
-  <link rel="canonical" href="https://www.terseai.org/for-aider">
+  <title>Reduce Cline Token Costs — Terse for Cline</title>
+  <meta name="description" content="Cline is a BYOM autonomous coding agent — you pay per token. Terse compresses your prompts, flags redundant file reads as context grows each step, and tracks cost on-device.">
+  <link rel="canonical" href="https://www.terseai.org/for-cline">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Reduce Aider Token Costs — Terse for Aider">
-  <meta property="og:description" content="Terse auto-detects Aider sessions and monitors token usage per turn. Compress prompts, catch redundant file reads, and track cost across any LLM backend. 30-day free trial.">
-  <meta property="og:url" content="https://www.terseai.org/for-aider">
+  <meta property="og:title" content="Reduce Cline Token Costs — Terse for Cline">
+  <meta property="og:description" content="Cline is a bring-your-own-model autonomous agent — every step re-sends growing context. Terse compresses prompts, flags redundant reads, and tracks per-step cost. On-device.">
+  <meta property="og:url" content="https://www.terseai.org/for-cline">
   <meta property="og:site_name" content="Terse">
   <meta property="og:image" content="https://www.terseai.org/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Reduce Aider Token Costs — Terse for Aider">
-  <meta name="twitter:description" content="Terse auto-detects Aider sessions, compresses prompts 40-70%, and tracks per-turn cost across any LLM backend. 30-day free trial.">
+  <meta name="twitter:title" content="Reduce Cline Token Costs — Terse for Cline">
+  <meta name="twitter:description" content="Terse auto-detects Cline, compresses prompts 40-70%, and tracks per-step cost across every BYOM backend. 30-day free trial.">
   <link rel="sitemap" type="application/xml" href="/sitemap.xml">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -32,15 +32,15 @@
     "@graph": [
       {
         "@type": "WebPage",
-        "name": "Reduce Aider Token Costs — Terse for Aider",
-        "url": "https://www.terseai.org/for-aider",
-        "description": "Terse auto-detects Aider sessions and reduces token costs by 40-70%. Compress prompts, flag redundant file reads, and track per-turn cost across Claude, GPT-4o, Gemini, and local models.",
+        "name": "Reduce Cline Token Costs — Terse for Cline",
+        "url": "https://www.terseai.org/for-cline",
+        "description": "Terse auto-detects Cline and reduces token costs by 40-70%. Compress prompts, flag redundant file reads as the autonomous loop re-sends growing context, and track per-step cost across every BYOM backend.",
         "dateModified": "2026-07-08",
         "breadcrumb": {
           "@type": "BreadcrumbList",
           "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "For Aider", "item": "https://www.terseai.org/for-aider"}
+            {"@type": "ListItem", "position": 2, "name": "For Cline", "item": "https://www.terseai.org/for-cline"}
           ]
         }
       },
@@ -49,34 +49,34 @@
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "Does Terse work with Aider?",
+            "name": "Does Terse work with Cline?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes. Terse auto-detects Aider sessions via process scanning and attaches a floating monitor to your terminal. It compresses prompts before they reach the LLM, flags redundant file reads (a very common pattern in Aider's map-based workflow), and tracks per-turn token cost across any model Aider is connected to — Claude, GPT-4o, Gemini, or local models."
+              "text": "Yes. Cline runs as a VS Code extension, and Terse auto-detects it by monitoring your editor via macOS Accessibility APIs. When you type an instruction into Cline's Plan or Act input, Terse compresses it before it reaches your model. It also flags when Cline re-reads the same files across its autonomous loop and tracks per-step token cost against whichever BYOM backend you've configured."
             }
           },
           {
             "@type": "Question",
-            "name": "Why is my Aider session so expensive?",
+            "name": "Why is my Cline task so expensive?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Aider's repo-map feature sends a compressed summary of your entire codebase at the start of every session — this can be 5,000–50,000 tokens before you type anything. Aider also re-reads files frequently as it applies changes. Each re-read adds the file's token count to the context. Terse compresses your typed prompts and flags when Aider is reading the same file repeatedly so you can interrupt before the costs compound."
+              "text": "Cline is autonomous: on every step it feeds file contents and terminal command output back into context, then re-sends the entire growing context to your model. A single complex task can re-read the same files repeatedly and balloon to 500K–1M+ tokens. Because Cline is bring-your-own-model, you pay for every one of those tokens directly. Terse compresses the instructions you type and flags redundant reads so you can stop the loop before the context, and the bill, compound."
             }
           },
           {
             "@type": "Question",
-            "name": "Which LLM backends does Terse support with Aider?",
+            "name": "Which models and BYOM backends does Terse support with Cline?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Terse monitors the Aider session regardless of which LLM backend it's connected to — Claude Sonnet/Opus, GPT-4o, Gemini 2.5, or local models via Ollama. Terse's model-aware cost tracking recognizes the model being used and shows per-turn costs in the correct currency for that model's pricing."
+              "text": "All of them. Cline is bring-your-own-model — you plug in an API key for Anthropic Claude, OpenAI GPT, Google Gemini, an OpenRouter route, or a local model via Ollama or LM Studio. Terse recognizes the active model and tracks per-step cost at that model's real rate. For local Ollama/LM Studio backends there's no API bill, so Terse shows token counts without a dollar figure."
             }
           },
           {
             "@type": "Question",
-            "name": "Does Terse interfere with Aider's automatic file editing?",
+            "name": "Does Terse interfere with Cline's autonomous editing?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Terse only compresses the prompts you type in the terminal input. It does not touch Aider's output, the file edits Aider applies, or the repo-map generation. Your Aider workflow stays exactly the same — you just send shorter, cleaner prompts."
+              "text": "No. Terse only compresses the instructions you type into Cline's Plan/Act input box. It never touches Cline's file edits, terminal commands, diffs, or the context it assembles between steps. Cline's autonomous loop runs exactly as before — you just seed it with shorter, cleaner instructions and get a live warning when it starts re-reading files."
             }
           }
         ]
@@ -198,17 +198,17 @@
 <div style="max-width:1100px;margin:0 auto">
 <div class="hero">
   <div class="hero-glow"></div>
-  <div class="badge">Aider</div>
-  <h1>Cut Your <span class="gradient-text">Aider</span> Token Costs by 40–70%</h1>
-  <p class="sub">Terse auto-detects Aider sessions, compresses every prompt before it reaches the LLM, and monitors token usage per turn — across Claude, GPT-4o, Gemini, and local models. All on-device.</p>
+  <div class="badge">Cline</div>
+  <h1>Cut Your <span class="gradient-text">Cline</span> Token Costs by 40–70%</h1>
+  <p class="sub">Cline is bring-your-own-model — you pay for every token its autonomous loop sends. Terse auto-detects Cline in VS Code, compresses each instruction you type, and flags the redundant file reads that make growing context expensive. All on-device.</p>
   <div class="hero-actions">
     <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
     <a href="#how-it-works" class="btn-ghost">See How It Works</a>
   </div>
   <div class="stats-row">
     <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">prompt compression</span></div>
-    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">Aider detection</span></div>
-    <div class="stat-pill"><span class="val">Any LLM</span><span class="lbl">model-aware cost tracking</span></div>
+    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">Cline detection</span></div>
+    <div class="stat-pill"><span class="val">Any BYOM</span><span class="lbl">model-aware cost tracking</span></div>
     <div class="stat-pill"><span class="val">0</span><span class="lbl">data leaves device</span></div>
   </div>
 </div>
@@ -217,28 +217,27 @@
 <div class="divider"></div>
 
 <section id="how-it-works">
-  <h2>How Terse Works with <span class="gradient-text">Aider</span></h2>
-  <p class="section-sub">Aider's repo-map sends thousands of tokens before you type a word. Every prompt you add goes on top. Terse compresses what it can — your typed text — and flags what it shouldn't ignore: redundant file reads as Aider applies its edits.</p>
+  <h2>How Terse Works with <span class="gradient-text">Cline</span></h2>
+  <p class="section-sub">Cline's autonomous loop re-sends the entire growing context on every step — file contents, terminal output, and diffs stack up fast, and you pay per token. Terse compresses what it can — the instructions you type in Plan and Act mode — and flags what balloons the bill: the same files being re-read step after step.</p>
 
   <div style="margin-bottom:40px">
     <div class="demo-box">
-      <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Terminal — Aider Session</div><div class="demo-badge">Terse Active</div></div>
-      <div class="demo-body" id="aiderDemo">
-        <div class="term-line cmd">$ aider --model claude/claude-sonnet-4-5</div>
-        <div class="term-line out">Aider v0.67.0 — Claude Sonnet 4.5 · repo-map: 8,240 tokens</div>
-        <div class="term-line green">● Terse detected Aider — monitoring (Sonnet 4.5 · $3.00/M input)</div>
-        <div class="term-line cmd" style="margin-top:8px">&gt; can you please refactor the authetication service to use the newer asynchrnous pattern that we discussed earlier in the conversation and also make sure to add proper error handeling</div>
-        <div class="terse-banner" id="aiderBanner">
+      <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">VS Code — Cline (Act mode)</div><div class="demo-badge">Terse Active</div></div>
+      <div class="demo-body" id="clineDemo">
+        <div class="term-line out">Cline v3.2 — API: Anthropic · Claude Sonnet 4.5 · context: 42,180 tokens</div>
+        <div class="term-line green">● Terse detected Cline in VS Code — monitoring (Sonnet 4.5 · $3.00/M input)</div>
+        <div class="term-line cmd" style="margin-top:8px">Plan: could you please go ahead and add input validation to the signup form component, and also i think it would be a good idea to write some tests for it if that makes sense</div>
+        <div class="terse-banner" id="clineBanner">
           <div style="width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0"></div>
-          <div style="flex:1;font-size:10px;color:var(--t2)">Terse: 31 tokens → <span style="color:var(--ac)">14 tokens</span> · "refactor auth service to async pattern, add error handling" · <span style="color:var(--ac)">55% reduction</span></div>
+          <div style="flex:1;font-size:10px;color:var(--t2)">Terse: 38 tokens → <span style="color:var(--ac)">15 tokens</span> · "add input validation to signup form, write tests" · <span style="color:var(--ac)">61% reduction</span></div>
         </div>
-        <div class="term-line out" style="margin-top:8px">Aider reading: src/auth/service.ts [2,140 tokens]</div>
-        <div class="term-line warn" id="aiderWarn">⚠ Terse: auth/service.ts read 3× this session — consider /add to keep in context</div>
-        <div class="terse-stats" id="aiderStats">
-          <div class="ts-box"><span class="ts-val">11.2K</span><span class="ts-lbl">prompt tokens</span></div>
-          <div class="ts-box"><span class="ts-val" style="color:#fbbf24">31.8K</span><span class="ts-lbl">without Terse</span></div>
+        <div class="term-line out" style="margin-top:8px">Act → read_file: src/components/SignupForm.tsx [3,410 tokens]</div>
+        <div class="term-line warn" id="clineWarn">⚠ Terse: SignupForm.tsx re-read 4× this task — context now 58K, re-sent every step</div>
+        <div class="terse-stats" id="clineStats">
+          <div class="ts-box"><span class="ts-val">214K</span><span class="ts-lbl">task tokens</span></div>
+          <div class="ts-box"><span class="ts-val" style="color:#fbbf24">612K</span><span class="ts-lbl">without Terse</span></div>
           <div class="ts-box"><span class="ts-val">65%</span><span class="ts-lbl">compressed</span></div>
-          <div class="ts-box"><span class="ts-val">$0.04</span><span class="ts-lbl">this turn</span></div>
+          <div class="ts-box"><span class="ts-val">$1.84</span><span class="ts-lbl">this task</span></div>
         </div>
       </div>
     </div>
@@ -247,38 +246,38 @@
   <div class="feature-grid">
     <div class="feat-card">
       <div class="feat-icon">⚡</div>
-      <h3>Auto Aider Detection</h3>
-      <p>Terse scans running processes every 5 seconds. When Aider launches in your terminal, a floating monitor bar appears automatically — no setup, no configuration required.</p>
+      <h3>Auto Cline Detection</h3>
+      <p>Cline runs as a VS Code extension. Terse scans your editor every 5 seconds and, when a Cline session is active, attaches a floating monitor to its Plan/Act panel — no setup, no config, no API key sharing.</p>
       <span class="tag">Automatic</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">🗜️</div>
       <h3>Prompt Compression</h3>
-      <p>Every instruction you type in Aider's terminal prompt goes through Terse's 7-stage pipeline: typo correction, filler removal, hedge stripping, and phrase shortening. Code blocks pass through unchanged.</p>
+      <p>Every instruction you type into Cline's Plan or Act input goes through Terse's 7-stage pipeline: typo correction, filler removal, hedge stripping, and phrase shortening. Code blocks and file paths pass through untouched.</p>
       <span class="tag">7-Stage Pipeline</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">📁</div>
-      <h3>Redundant File Read Flagging</h3>
-      <p>Aider reads files as it applies changes — and often reads the same file multiple times per session. Terse tracks this and alerts you when a file has been read 2+ times so you can use /add to keep it in context instead.</p>
-      <span class="tag">Session Tracking</span>
+      <h3>Redundant Read &amp; Context-Growth Flagging</h3>
+      <p>Cline's autonomous loop re-reads files and re-sends the whole context on every step. Terse tracks each read and alerts you when a file has been pulled in 2+ times — the single biggest driver of a runaway token bill.</p>
+      <span class="tag">Loop Tracking</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">💰</div>
       <h3>Model-Aware Cost Tracking</h3>
-      <p>Terse recognizes which LLM Aider is using and tracks per-turn cost at the correct model rate — Sonnet, Opus, GPT-4o, Gemini 2.5, or local models. See exactly which prompts are burning money.</p>
-      <span class="tag">Per-Turn Visibility</span>
+      <p>Because Cline is BYOM, you pay directly per token. Terse recognizes the active backend — Claude, GPT, Gemini, OpenRouter, or local — and tracks per-step cost at that model's real rate so nothing is a surprise.</p>
+      <span class="tag">Per-Step Visibility</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">📊</div>
       <h3>Session Cost Summary</h3>
-      <p>At the end of each Aider session, Terse shows the total token usage, total cost, and a breakdown of where tokens were spent — prompts, file reads, repo-map overhead. Know exactly what drove today's bill.</p>
+      <p>When a Cline task finishes, Terse shows total tokens, total cost, and a breakdown of where they went — typed instructions, file reads, terminal output fed back in. See exactly what a task cost your API key.</p>
       <span class="tag">Session Analytics</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">🔒</div>
       <h3>100% On-Device</h3>
-      <p>Terse reads your terminal input via macOS Accessibility APIs and compresses locally. No prompt text, no code, and no file contents are ever sent to Terse's servers.</p>
+      <p>Terse reads Cline's input via macOS Accessibility APIs and compresses locally in Rust. Your prompts, code, and file contents never leave your machine — and your model API key stays entirely inside Cline.</p>
       <span class="tag">Zero Cloud</span>
     </div>
   </div>
@@ -287,8 +286,8 @@
 <div class="divider"></div>
 
 <section>
-  <h2>Supported <span class="gradient-text">Aider Backends</span></h2>
-  <p class="section-sub">Terse tracks token costs and monitors sessions regardless of which LLM you've configured Aider to use.</p>
+  <h2>Supported <span class="gradient-text">Cline Backends</span></h2>
+  <p class="section-sub">Cline is bring-your-own-model. Terse recognizes whichever backend you've plugged in — Anthropic, OpenAI, Google, OpenRouter, or local — and tracks cost at that model's real per-token rate.</p>
 
   <div class="model-grid">
     <div class="model-card">
@@ -320,7 +319,7 @@
       <div class="model-cost"><em>$0.80</em>/M input · <em>$4</em>/M output</div>
     </div>
     <div class="model-card">
-      <div class="model-name">Local (Ollama)</div>
+      <div class="model-name">Local (Ollama/LM Studio)</div>
       <div class="model-cost">Token count monitoring · no cost tracking</div>
     </div>
   </div>
@@ -330,23 +329,23 @@
 
 <section>
   <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
-  <p class="section-sub">Everything about using Terse with Aider.</p>
+  <p class="section-sub">Everything about using Terse with Cline.</p>
   <div class="faq-grid">
     <div class="faq-item">
-      <div class="faq-q">Does Terse work with Aider automatically?</div>
-      <div class="faq-a">Yes. Terse scans running processes every 5 seconds. When Aider launches in your terminal, Terse detects it and activates a floating monitor bar. No configuration required — detection is fully automatic for all Aider startup modes.</div>
+      <div class="faq-q">Does Terse work with Cline?</div>
+      <div class="faq-a">Yes. Cline runs as a VS Code extension, and Terse auto-detects it by monitoring your editor every 5 seconds. When you type into Cline's Plan or Act input, Terse compresses the instruction before it reaches your model, flags redundant file reads across the autonomous loop, and tracks per-step cost. No configuration required.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Why is my Aider session so expensive?</div>
-      <div class="faq-a">The main cost drivers are: (1) Aider's repo-map — a compressed codebase summary sent at session start (5,000–50,000 tokens), (2) repeated file reads as Aider applies edits, (3) verbose prompts with filler and typos. Terse compresses your typed prompts and flags redundant file reads. The repo-map itself is not compressed — that's controlled by Aider's --map-tokens flag.</div>
+      <div class="faq-q">Why is my Cline task so expensive?</div>
+      <div class="faq-a">Cline re-sends its entire growing context on every step — file contents, terminal output, and diffs all stack up, and it often re-reads the same files repeatedly. A single complex task can hit 500K–1M+ tokens. Since Cline is BYOM, you pay for all of it directly. Terse compresses your typed instructions and flags the redundant reads so you can interrupt before the context compounds.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Does Terse compress Aider's repo-map?</div>
-      <div class="faq-a">No. Terse only compresses the prompts you type. Aider's repo-map is generated by Aider itself and sent directly to the LLM — it doesn't pass through the text fields Terse reads. To reduce repo-map tokens, use Aider's --map-tokens flag (e.g., --map-tokens 2000) or /add specific files and disable the repo-map with --no-auto-commits.</div>
+      <div class="faq-q">Which BYOM backends does Terse support?</div>
+      <div class="faq-a">All of them. Plug Cline into Anthropic Claude, OpenAI GPT, Google Gemini, an OpenRouter route, or a local model via Ollama or LM Studio — Terse recognizes the active model and tracks per-step cost at its real rate. For local backends there's no API bill, so Terse shows token counts without a dollar figure.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Does Terse send my Aider prompts to any server?</div>
-      <div class="faq-a">No. Terse is 100% on-device. It reads your terminal input via macOS Accessibility APIs, compresses locally using a Rust engine, and writes the compressed text back to the terminal input. Your prompts and code never leave your machine.</div>
+      <div class="faq-q">Does Terse interfere with Cline's autonomous editing?</div>
+      <div class="faq-a">No. Terse only compresses the instructions you type into Cline's Plan/Act input. It never touches Cline's file edits, terminal commands, diffs, or the context it assembles between steps — and it never sees your API key. Cline's loop runs exactly as before; you just seed it with shorter, cleaner instructions.</div>
     </div>
   </div>
 </section>
@@ -372,9 +371,9 @@
       <span>GitHub Copilot — VS Code</span>
       <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
     </a>
-    <a href="/for-chatgpt" class="also-card">
-      <span style="font-size:18px">💬</span>
-      <span>ChatGPT — Browser</span>
+    <a href="/for-aider" class="also-card">
+      <span style="font-size:18px">🧠</span>
+      <span>Aider — Terminal Pair Programmer</span>
       <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
     </a>
   </div>
@@ -383,7 +382,7 @@
 <div class="cta-section">
   <div class="cta-glow"></div>
   <h2>Stop Burning Tokens on <span class="gradient-text">Verbose Prompts</span></h2>
-  <p>30-day free trial. No credit card required until your trial ends. Supports Claude, GPT-4o, Gemini, and local models.</p>
+  <p>30-day free trial. No credit card required until your trial ends. Supports Claude, GPT, Gemini, OpenRouter, and local models.</p>
   <div class="hero-actions" style="justify-content:center">
     <a href="/#pricing" class="btn-primary">Start Free Trial — macOS</a>
     <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
@@ -405,10 +404,10 @@
 
 <script>
 (function(){
-  const lines = document.querySelectorAll('#aiderDemo .term-line');
-  const banner = document.getElementById('aiderBanner');
-  const warn = document.getElementById('aiderWarn');
-  const stats = document.getElementById('aiderStats');
+  const lines = document.querySelectorAll('#clineDemo .term-line');
+  const banner = document.getElementById('clineBanner');
+  const warn = document.getElementById('clineWarn');
+  const stats = document.getElementById('clineStats');
   let started = false;
 
   function run() {

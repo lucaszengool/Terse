@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reduce Aider Token Costs — Terse for Aider</title>
+  <meta name="description" content="Terse auto-detects Aider sessions and monitors token usage per turn. Compress prompts, catch redundant file reads, track per-model cost across GPT-4o, Claude, Gemini, and local models. 30-day free trial.">
+  <link rel="canonical" href="https://www.terseai.org/for-aider">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Reduce Aider Token Costs — Terse for Aider">
+  <meta property="og:description" content="Terse auto-detects Aider sessions and monitors token usage per turn. Compress prompts, catch redundant file reads, and track cost across any LLM backend. 30-day free trial.">
+  <meta property="og:url" content="https://www.terseai.org/for-aider">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Reduce Aider Token Costs — Terse for Aider">
+  <meta name="twitter:description" content="Terse auto-detects Aider sessions, compresses prompts 40-70%, and tracks per-turn cost across any LLM backend. 30-day free trial.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "Reduce Aider Token Costs — Terse for Aider",
+        "url": "https://www.terseai.org/for-aider",
+        "description": "Terse auto-detects Aider sessions and reduces token costs by 40-70%. Compress prompts, flag redundant file reads, and track per-turn cost across Claude, GPT-4o, Gemini, and local models.",
+        "dateModified": "2026-07-08",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "For Aider", "item": "https://www.terseai.org/for-aider"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does Terse work with Aider?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse auto-detects Aider sessions via process scanning and attaches a floating monitor to your terminal. It compresses prompts before they reach the LLM, flags redundant file reads (a very common pattern in Aider's map-based workflow), and tracks per-turn token cost across any model Aider is connected to — Claude, GPT-4o, Gemini, or local models."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why is my Aider session so expensive?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Aider's repo-map feature sends a compressed summary of your entire codebase at the start of every session — this can be 5,000–50,000 tokens before you type anything. Aider also re-reads files frequently as it applies changes. Each re-read adds the file's token count to the context. Terse compresses your typed prompts and flags when Aider is reading the same file repeatedly so you can interrupt before the costs compound."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which LLM backends does Terse support with Aider?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse monitors the Aider session regardless of which LLM backend it's connected to — Claude Sonnet/Opus, GPT-4o, Gemini 2.5, or local models via Ollama. Terse's model-aware cost tracking recognizes the model being used and shows per-turn costs in the correct currency for that model's pricing."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse interfere with Aider's automatic file editing?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Terse only compresses the prompts you type in the terminal input. It does not touch Aider's output, the file edits Aider applies, or the repo-map generation. Your Aider workflow stays exactly the same — you just send shorter, cleaner prompts."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .hero{padding:140px 40px 80px;text-align:center;position:relative;overflow:hidden;max-width:900px;margin:0 auto}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07) 0%,transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,68px);font-weight:900;letter-spacing:-2.5px;line-height:1.05;margin-bottom:16px}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:600px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:56px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:22px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(26px,4vw,38px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    section .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:680px}
+    .divider{max-width:100%;height:1px;background:var(--bd);margin:0 40px}
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+    .demo-box{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;max-width:760px;margin:0 auto}
+    .demo-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .demo-title{margin-left:8px;font-size:11px;color:var(--t3);flex:1}
+    .demo-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+    .demo-body{padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px}
+    .term-line{line-height:1.8;opacity:0;transition:opacity .3s}
+    .term-line.show{opacity:1}
+    .term-line.cmd{color:#fff}
+    .term-line.out{color:var(--t3)}
+    .term-line.green{color:var(--ac)}
+    .term-line.warn{color:#fbbf24}
+    .terse-banner{margin-top:10px;padding:10px 14px;background:var(--acd);border:1px solid var(--acm);border-radius:8px;display:flex;align-items:center;gap:10px;opacity:0;transition:opacity .4s}
+    .terse-banner.show{opacity:1}
+    .terse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;opacity:0;transition:opacity .4s}
+    .terse-stats.show{opacity:1}
+    .ts-box{background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:8px;text-align:center}
+    .ts-val{font-size:13px;font-weight:800;display:block;color:var(--ac)}
+    .ts-lbl{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+    .model-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:32px 0}
+    .model-card{padding:18px;background:var(--bg2);border:1px solid var(--bd);border-radius:12px;text-align:center}
+    .model-name{font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px}
+    .model-cost{font-size:11px;color:var(--t3)}
+    .model-cost em{color:var(--ac);font-style:normal;font-weight:700}
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(32px,5vw,52px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid,.model-grid{grid-template-columns:1fr 1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/for-claude-code">Claude Code</a>
+    <a href="/for-cursor">Cursor</a>
+    <a href="/for-github-copilot">Copilot</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Aider</div>
+  <h1>Cut Your <span class="gradient-text">Aider</span> Token Costs by 40–70%</h1>
+  <p class="sub">Terse auto-detects Aider sessions, compresses every prompt before it reaches the LLM, and monitors token usage per turn — across Claude, GPT-4o, Gemini, and local models. All on-device.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
+    <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">prompt compression</span></div>
+    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">Aider detection</span></div>
+    <div class="stat-pill"><span class="val">Any LLM</span><span class="lbl">model-aware cost tracking</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">data leaves device</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>How Terse Works with <span class="gradient-text">Aider</span></h2>
+  <p class="section-sub">Aider's repo-map sends thousands of tokens before you type a word. Every prompt you add goes on top. Terse compresses what it can — your typed text — and flags what it shouldn't ignore: redundant file reads as Aider applies its edits.</p>
+
+  <div style="margin-bottom:40px">
+    <div class="demo-box">
+      <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Terminal — Aider Session</div><div class="demo-badge">Terse Active</div></div>
+      <div class="demo-body" id="aiderDemo">
+        <div class="term-line cmd">$ aider --model claude/claude-sonnet-4-5</div>
+        <div class="term-line out">Aider v0.67.0 — Claude Sonnet 4.5 · repo-map: 8,240 tokens</div>
+        <div class="term-line green">● Terse detected Aider — monitoring (Sonnet 4.5 · $3.00/M input)</div>
+        <div class="term-line cmd" style="margin-top:8px">&gt; can you please refactor the authetication service to use the newer asynchrnous pattern that we discussed earlier in the conversation and also make sure to add proper error handeling</div>
+        <div class="terse-banner" id="aiderBanner">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0"></div>
+          <div style="flex:1;font-size:10px;color:var(--t2)">Terse: 31 tokens → <span style="color:var(--ac)">14 tokens</span> · "refactor auth service to async pattern, add error handling" · <span style="color:var(--ac)">55% reduction</span></div>
+        </div>
+        <div class="term-line out" style="margin-top:8px">Aider reading: src/auth/service.ts [2,140 tokens]</div>
+        <div class="term-line warn" id="aiderWarn">⚠ Terse: auth/service.ts read 3× this session — consider /add to keep in context</div>
+        <div class="terse-stats" id="aiderStats">
+          <div class="ts-box"><span class="ts-val">11.2K</span><span class="ts-lbl">prompt tokens</span></div>
+          <div class="ts-box"><span class="ts-val" style="color:#fbbf24">31.8K</span><span class="ts-lbl">without Terse</span></div>
+          <div class="ts-box"><span class="ts-val">65%</span><span class="ts-lbl">compressed</span></div>
+          <div class="ts-box"><span class="ts-val">$0.04</span><span class="ts-lbl">this turn</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <h3>Auto Aider Detection</h3>
+      <p>Terse scans running processes every 5 seconds. When Aider launches in your terminal, a floating monitor bar appears automatically — no setup, no configuration required.</p>
+      <span class="tag">Automatic</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🗜️</div>
+      <h3>Prompt Compression</h3>
+      <p>Every instruction you type in Aider's terminal prompt goes through Terse's 7-stage pipeline: typo correction, filler removal, hedge stripping, and phrase shortening. Code blocks pass through unchanged.</p>
+      <span class="tag">7-Stage Pipeline</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📁</div>
+      <h3>Redundant File Read Flagging</h3>
+      <p>Aider reads files as it applies changes — and often reads the same file multiple times per session. Terse tracks this and alerts you when a file has been read 2+ times so you can use /add to keep it in context instead.</p>
+      <span class="tag">Session Tracking</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💰</div>
+      <h3>Model-Aware Cost Tracking</h3>
+      <p>Terse recognizes which LLM Aider is using and tracks per-turn cost at the correct model rate — Sonnet, Opus, GPT-4o, Gemini 2.5, or local models. See exactly which prompts are burning money.</p>
+      <span class="tag">Per-Turn Visibility</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <h3>Session Cost Summary</h3>
+      <p>At the end of each Aider session, Terse shows the total token usage, total cost, and a breakdown of where tokens were spent — prompts, file reads, repo-map overhead. Know exactly what drove today's bill.</p>
+      <span class="tag">Session Analytics</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <h3>100% On-Device</h3>
+      <p>Terse reads your terminal input via macOS Accessibility APIs and compresses locally. No prompt text, no code, and no file contents are ever sent to Terse's servers.</p>
+      <span class="tag">Zero Cloud</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Supported <span class="gradient-text">Aider Backends</span></h2>
+  <p class="section-sub">Terse tracks token costs and monitors sessions regardless of which LLM you've configured Aider to use.</p>
+
+  <div class="model-grid">
+    <div class="model-card">
+      <div class="model-name">Claude Sonnet 4.5</div>
+      <div class="model-cost"><em>$3</em>/M input · <em>$15</em>/M output</div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Claude Opus 4</div>
+      <div class="model-cost"><em>$15</em>/M input · <em>$75</em>/M output</div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">GPT-4o</div>
+      <div class="model-cost"><em>$2.50</em>/M input · <em>$10</em>/M output</div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Gemini 2.5 Pro</div>
+      <div class="model-cost"><em>$1.25</em>/M input · <em>$10</em>/M output</div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">GPT-4o mini</div>
+      <div class="model-cost"><em>$0.15</em>/M input · <em>$0.60</em>/M output</div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Gemini 2.5 Flash</div>
+      <div class="model-cost"><em>$0.075</em>/M input · <em>$0.30</em>/M output</div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Claude Haiku 4.5</div>
+      <div class="model-cost"><em>$0.80</em>/M input · <em>$4</em>/M output</div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Local (Ollama)</div>
+      <div class="model-cost">Token count monitoring · no cost tracking</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about using Terse with Aider.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">Does Terse work with Aider automatically?</div>
+      <div class="faq-a">Yes. Terse scans running processes every 5 seconds. When Aider launches in your terminal, Terse detects it and activates a floating monitor bar. No configuration required — detection is fully automatic for all Aider startup modes.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Why is my Aider session so expensive?</div>
+      <div class="faq-a">The main cost drivers are: (1) Aider's repo-map — a compressed codebase summary sent at session start (5,000–50,000 tokens), (2) repeated file reads as Aider applies edits, (3) verbose prompts with filler and typos. Terse compresses your typed prompts and flags redundant file reads. The repo-map itself is not compressed — that's controlled by Aider's --map-tokens flag.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse compress Aider's repo-map?</div>
+      <div class="faq-a">No. Terse only compresses the prompts you type. Aider's repo-map is generated by Aider itself and sent directly to the LLM — it doesn't pass through the text fields Terse reads. To reduce repo-map tokens, use Aider's --map-tokens flag (e.g., --map-tokens 2000) or /add specific files and disable the repo-map with --no-auto-commits.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse send my Aider prompts to any server?</div>
+      <div class="faq-a">No. Terse is 100% on-device. It reads your terminal input via macOS Accessibility APIs, compresses locally using a Rust engine, and writes the compressed text back to the terminal input. Your prompts and code never leave your machine.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">Terse reduces token costs across every major AI coding tool.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card">
+      <span style="font-size:18px">⚡</span>
+      <span>Claude Code</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-cursor" class="also-card">
+      <span style="font-size:18px">⌨️</span>
+      <span>Cursor — AI Code Editor</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-github-copilot" class="also-card">
+      <span style="font-size:18px">🤖</span>
+      <span>GitHub Copilot — VS Code</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-chatgpt" class="also-card">
+      <span style="font-size:18px">💬</span>
+      <span>ChatGPT — Browser</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Stop Burning Tokens on <span class="gradient-text">Verbose Prompts</span></h2>
+  <p>30-day free trial. No credit card required until your trial ends. Supports Claude, GPT-4o, Gemini, and local models.</p>
+  <div class="hero-actions" style="justify-content:center">
+    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent session optimizer. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-chatgpt">ChatGPT</a><a href="/for-github-copilot">GitHub Copilot</a><a href="/for-aider">Aider</a></div>
+    <div class="footer-col"><h4>Techniques</h4><a href="/spell-correction">Spell Correction</a><a href="/nlp-analysis">NLP Analysis</a><a href="/telegraph-compression">Telegraph Compression</a><a href="/selective-context">Selective Context</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/what-is-token-optimization">What Is Token Optimization?</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Windows · Rust · Swift</span></div>
+</footer>
+
+<script>
+(function(){
+  const lines = document.querySelectorAll('#aiderDemo .term-line');
+  const banner = document.getElementById('aiderBanner');
+  const warn = document.getElementById('aiderWarn');
+  const stats = document.getElementById('aiderStats');
+  let started = false;
+
+  function run() {
+    if (started) return;
+    started = true;
+    lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), i * 380));
+    setTimeout(() => banner.classList.add('show'), lines.length * 380 + 200);
+    setTimeout(() => warn.classList.add('show'), lines.length * 380 + 800);
+    setTimeout(() => stats.classList.add('show'), lines.length * 380 + 1300);
+  }
+
+  const obs = new IntersectionObserver(e => e.forEach(x => { if (x.isIntersecting) run(); }), { threshold: 0.3 });
+  obs.observe(document.querySelector('.demo-box'));
+})();
+</script>
+</body>
+</html>

@@ -1,35 +1,52 @@
 # Terse
 
-> Terse is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider. It runs 100% on-device with zero cloud dependency.
+> Terse is a macOS + Windows token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, GitHub Copilot, Aider, and more. It runs 100% on-device with zero cloud dependency.
 
 ## Key Facts
 - Reduces token usage by 40-70% on verbose prompts and up to 89% on CLI output
 - 20+ optimization techniques in a 7-stage pipeline
-- Auto-detects Claude Code, Cursor, OpenClaw, Aider agent sessions
-- Model-aware pricing: tracks costs for Opus, Sonnet, Haiku, GPT-4o, Gemini
+- Auto-detects Claude Code, Cursor, GitHub Copilot, Aider, Cline, Roo Code agent sessions
+- Model-aware pricing: tracks costs for Claude Opus 4, Sonnet 4.6, Haiku 4.5, GPT-4o, Gemini 2.5
 - 400+ built-in typo corrections, 130+ phrase-shortening rules
 - 3 modes: Soft (typo-fix only), Normal (filler removal), Aggressive (max compression)
-- Pricing: Free (50/week), Pro $7.99/mo (unlimited), Premium $99/mo (teams)
-- macOS only, built with Tauri + Rust + Swift
+- Pricing: Free (50/week), Pro $4.99/mo (unlimited), Premium $99/mo (teams)
+- macOS + Windows, built with Tauri + Rust + Swift
+- CLAUDE.md rule generation from session patterns
+- Live agent session monitoring: per-turn cost, duplicate tool call detection, context fill meter
 
-## Documentation
-- [Getting Started](https://www.terseai.org/docs): Complete usage guide, installation, and configuration
-- [What Is Token Optimization?](https://www.terseai.org/what-is-token-optimization): Full guide to token optimization concepts and techniques
+## Pages
+
+### Product
+- [Home](https://www.terseai.org/): Full product overview, pricing, features
+- [Token Calculator](https://www.terseai.org/token-calculator): Calculate your potential token savings
+- [Marketplace](https://www.terseai.org/marketplace): Extensions and integrations
+- [Docs](https://www.terseai.org/docs): Complete usage guide, installation, and configuration
+- [API Docs](https://www.terseai.org/api-docs): REST API reference for prompt optimization endpoint
+
+### Per-Tool Landing Pages
+- [For Claude Code](https://www.terseai.org/for-claude-code): Reduce Claude Code token costs by 40-89%
+- [For Cursor](https://www.terseai.org/for-cursor): Reduce Cursor AI token costs by 40-70%
+- [For ChatGPT](https://www.terseai.org/for-chatgpt): Reduce ChatGPT token costs via browser compression
+- [For GitHub Copilot](https://www.terseai.org/for-github-copilot): Reduce GitHub Copilot context costs in VS Code
+- [For Aider](https://www.terseai.org/for-aider): Reduce Aider token costs — auto-detect sessions, compress prompts
+
+### Guides & Articles
+- [What Is Token Optimization?](https://www.terseai.org/what-is-token-optimization): Complete guide to token optimization concepts
 - [How to Reduce AI API Costs](https://www.terseai.org/reduce-ai-api-costs): 7 proven strategies to cut AI costs by 60-80%
+- [Claude Code Pricing 2026](https://www.terseai.org/claude-code-pricing): Real per-token costs, monthly estimates, and how to cut your bill
 - [AI Token Pricing Comparison 2026](https://www.terseai.org/ai-token-pricing-comparison): Claude vs GPT vs Gemini complete cost guide
+- [I Built an App to Steal $50M Back from Claude Code](https://www.terseai.org/i-built-an-app-to-steal-50m-back): Technical deep-dive on the Terse compression pipeline
 
-## Techniques
+### Technique Deep-Dives
 - [Spell Correction](https://www.terseai.org/spell-correction): Hybrid dictionary + macOS NSSpellChecker pipeline
 - [Pattern Optimization](https://www.terseai.org/pattern-optimization): 130+ phrase-shortening and redundancy rules
 - [NLP Analysis](https://www.terseai.org/nlp-analysis): Filler, hedging, and meta-language removal
 - [Telegraph Compression](https://www.terseai.org/telegraph-compression): Aggressive article/preposition stripping
-
-## Research
-- [LLMLingua (EMNLP 2023)](https://www.terseai.org/llmlingua): How PruneAI builds on academic prompt compression research
+- [LLMLingua (EMNLP 2023)](https://www.terseai.org/llmlingua): Academic research behind prompt compression
 - [Norvig Spelling](https://www.terseai.org/norvig-spelling): Statistical spelling correction foundation
 - [Selective Context](https://www.terseai.org/selective-context): Context pruning for token reduction
 
 ## Pricing
 - Free: 50 optimizations/week, 1 session, all 3 modes, spell correction
-- Pro ($7.99/mo): Unlimited optimizations, 3 sessions, agent monitoring, CLAUDE.md generation
-- Premium ($99/mo): Unlimited everything, unlimited devices, priority support
+- Pro ($4.99/mo): Unlimited optimizations, 3 sessions, agent monitoring, CLAUDE.md generation, 2 devices, 30-day free trial
+- Premium ($99/mo): Unlimited everything, unlimited devices, priority support, 30-day free trial

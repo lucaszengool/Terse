@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reduce GitHub Copilot Token Costs — Terse for GitHub Copilot</title>
+  <meta name="description" content="Terse compresses every prompt sent through GitHub Copilot's API, reducing context window usage by 40-70%. Works automatically in VS Code, JetBrains, and the terminal. 30-day free trial.">
+  <link rel="canonical" href="https://www.terseai.org/for-github-copilot">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Reduce GitHub Copilot Token Costs — Terse for GitHub Copilot">
+  <meta property="og:description" content="Terse compresses GitHub Copilot prompts by 40-70%, reducing context window usage and cost. Works automatically in VS Code. 30-day free trial.">
+  <meta property="og:url" content="https://www.terseai.org/for-github-copilot">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Reduce GitHub Copilot Token Costs — Terse for GitHub Copilot">
+  <meta name="twitter:description" content="Terse compresses GitHub Copilot prompts by 40-70%. Works automatically in VS Code. 30-day free trial.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "Reduce GitHub Copilot Token Costs — Terse for GitHub Copilot",
+        "url": "https://www.terseai.org/for-github-copilot",
+        "description": "Terse reduces GitHub Copilot token costs by compressing prompts and chat context by 40-70%. Works automatically in VS Code via the Terse extension.",
+        "dateModified": "2026-07-08",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "For GitHub Copilot", "item": "https://www.terseai.org/for-github-copilot"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does Terse work with GitHub Copilot?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse integrates with GitHub Copilot via VS Code and the macOS Accessibility API. When you type in the Copilot Chat panel or inline chat, Terse compresses your prompt before it's sent — removing filler words, fixing typos, and stripping redundancy. This reduces the tokens consumed by each Copilot interaction by 40-70%."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does GitHub Copilot cost?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "GitHub Copilot costs $10/month for individuals (Copilot Individual), $19/month per seat for businesses (Copilot Business), and $39/month per seat for enterprises (Copilot Enterprise). Copilot Enterprise includes Copilot Chat with larger context windows and custom model training — where token efficiency has the most impact on performance."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What makes Copilot prompts expensive in terms of tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "GitHub Copilot Chat context includes your active file, the selected code, recent conversation history, and your typed prompt. On large files or long conversations, this context can reach 30,000-80,000 tokens per request. Verbose prompts, repeated context, and filler language all add tokens without improving the Copilot response. Terse compresses the prompt text portion by 40-70%, which reduces latency and context window consumption."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse work with Copilot CLI and terminal agents?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse monitors the terminal and can compress prompts sent to any Copilot CLI workflow. The Agent Monitor in Terse tracks token usage per turn for terminal-based Copilot interactions, flags redundant queries, and tracks cumulative session cost."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--ac3:#a7f3d0;
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .hero{padding:140px 40px 80px;text-align:center;position:relative;overflow:hidden;max-width:900px;margin:0 auto}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07) 0%,transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,68px);font-weight:900;letter-spacing:-2.5px;line-height:1.05;margin-bottom:16px}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:600px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:56px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:22px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(26px,4vw,38px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    section .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:680px}
+    .divider{max-width:100%;height:1px;background:var(--bd);margin:0 40px}
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+    .plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:32px 0}
+    .plan-card{padding:22px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;text-align:center}
+    .plan-name{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:10px}
+    .plan-price{font-size:32px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px;font-variant-numeric:tabular-nums}
+    .plan-period{font-size:12px;color:var(--t3);margin-bottom:16px}
+    .plan-desc{font-size:13px;color:var(--t2);line-height:1.6}
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(32px,5vw,52px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid,.plan-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/for-claude-code">Claude Code</a>
+    <a href="/for-cursor">Cursor</a>
+    <a href="/for-aider">Aider</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">GitHub Copilot</div>
+  <h1>Cut Your <span class="gradient-text">GitHub Copilot</span> Token Costs by 40–70%</h1>
+  <p class="sub">Terse compresses every prompt before it reaches Copilot — removing filler, fixing typos, and stripping redundancy. Less context in means faster responses and lower cost on Copilot Business and Enterprise plans.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
+    <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">prompt compression</span></div>
+    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">VS Code detection</span></div>
+    <div class="stat-pill"><span class="val">7-Stage</span><span class="lbl">compression pipeline</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">data leaves device</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>How Terse Works with <span class="gradient-text">GitHub Copilot</span></h2>
+  <p class="section-sub">Copilot's context window fills up fast: your file, selected code, conversation history, and your typed prompt. Terse compresses the prompt text before it's sent — reducing tokens without reducing intent.</p>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <h3>VS Code Integration</h3>
+      <p>Terse detects VS Code via the Accessibility API and activates when you open the Copilot Chat panel or inline chat. No configuration required — it works the moment you start typing.</p>
+      <span class="tag">Automatic</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🗜️</div>
+      <h3>7-Stage Prompt Pipeline</h3>
+      <p>Spell correction, whitespace normalization, filler word removal, hedge stripping, phrase shortening, redundancy elimination, and cleanup — in sequence, on every prompt you type to Copilot.</p>
+      <span class="tag">130+ Rules</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <h3>Per-Turn Cost Tracking</h3>
+      <p>Terse's Agent Monitor shows token usage per Copilot Chat turn in real time. Know immediately when a single question is consuming 60,000 tokens — and why.</p>
+      <span class="tag">Live Monitor</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔁</div>
+      <h3>Redundant Query Detection</h3>
+      <p>Terse tracks when you ask Copilot the same question twice in a session, or ask about the same file or function multiple times. Each duplicate is flagged so you can reuse the previous response instead.</p>
+      <span class="tag">Session Awareness</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💬</div>
+      <h3>Copilot Chat Compression</h3>
+      <p>Works in both Copilot Chat and inline chat (@workspace queries, /fix, /explain). Long natural-language questions are trimmed without losing technical accuracy — code blocks are always protected.</p>
+      <span class="tag">Chat + Inline</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <h3>100% On-Device</h3>
+      <p>Terse reads your prompts via macOS Accessibility APIs and compresses locally. No text is sent to Terse's servers — your code stays on your machine, just like Copilot's own privacy guarantees require.</p>
+      <span class="tag">Zero Cloud</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>GitHub Copilot <span class="gradient-text">Pricing</span> — Where Terse Helps Most</h2>
+  <p class="section-sub">Copilot's plans are seat-priced, but token efficiency directly affects how much value you get per seat and how fast context windows fill during long sessions.</p>
+
+  <div class="plan-grid">
+    <div class="plan-card">
+      <div class="plan-name">Copilot Individual</div>
+      <div class="plan-price">$10</div>
+      <div class="plan-period">per month</div>
+      <div class="plan-desc">Code completions + Copilot Chat. Context window fills quickly on large files. Terse reduces prompt token consumption so each chat turn has more budget for the file context.</div>
+    </div>
+    <div class="plan-card" style="border-color:var(--acm)">
+      <div class="plan-name" style="color:var(--ac)">Copilot Business</div>
+      <div class="plan-price" style="color:var(--ac)">$19</div>
+      <div class="plan-period">per seat / month</div>
+      <div class="plan-desc">All of Individual + organization policy controls. Teams with many daily Copilot Chat users benefit most from prompt compression — each seat's efficiency multiplied across the team.</div>
+    </div>
+    <div class="plan-card">
+      <div class="plan-name">Copilot Enterprise</div>
+      <div class="plan-price">$39</div>
+      <div class="plan-period">per seat / month</div>
+      <div class="plan-desc">Adds custom models, larger context (including @workspace for full repo). Token efficiency matters most here — larger context windows mean more potential for token waste if prompts are verbose.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about using Terse with GitHub Copilot.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">Does Terse work with GitHub Copilot?</div>
+      <div class="faq-a">Yes. Terse detects VS Code via macOS Accessibility APIs and compresses prompts you type in the Copilot Chat panel and inline chat. It works automatically — no configuration required.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse work with Copilot CLI?</div>
+      <div class="faq-a">Yes. Terse monitors terminal sessions and can compress prompts sent to Copilot CLI workflows. The Agent Monitor tracks per-turn token usage and flags redundant queries across CLI interactions.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Will Terse affect Copilot's code completion quality?</div>
+      <div class="faq-a">No. Terse only compresses the natural language text you type — questions, instructions, context descriptions. Code blocks are always protected and pass through unchanged. The meaning of your prompt is preserved while the redundant language is removed.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse send my Copilot prompts to any server?</div>
+      <div class="faq-a">No. Terse is 100% on-device. It reads text via macOS Accessibility APIs, compresses locally using a Rust engine, and writes the compressed text back. Your code and prompts never leave your machine.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">Terse reduces token costs across every major AI coding tool.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card">
+      <span style="font-size:18px">⚡</span>
+      <span>Claude Code</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-cursor" class="also-card">
+      <span style="font-size:18px">⌨️</span>
+      <span>Cursor — AI Code Editor</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-chatgpt" class="also-card">
+      <span style="font-size:18px">💬</span>
+      <span>ChatGPT — Browser</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-aider" class="also-card">
+      <span style="font-size:18px">🖥️</span>
+      <span>Aider — Terminal Agent</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Stop Losing Tokens to <span class="gradient-text">Verbose Prompts</span></h2>
+  <p>30-day free trial. No credit card required until your trial ends. Cancel anytime.</p>
+  <div class="hero-actions" style="justify-content:center">
+    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent session optimizer. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-chatgpt">ChatGPT</a><a href="/for-github-copilot">GitHub Copilot</a><a href="/for-aider">Aider</a></div>
+    <div class="footer-col"><h4>Techniques</h4><a href="/spell-correction">Spell Correction</a><a href="/nlp-analysis">NLP Analysis</a><a href="/telegraph-compression">Telegraph Compression</a><a href="/selective-context">Selective Context</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/what-is-token-optimization">What Is Token Optimization?</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Windows · Rust · Swift</span></div>
+</footer>
+
+</body>
+</html>

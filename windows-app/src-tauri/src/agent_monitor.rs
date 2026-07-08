@@ -33,7 +33,7 @@ fn get_process_cwd_by_pid(pid: u32) -> Option<String> {
     // On Windows, there's no direct equivalent of lsof -d cwd.
     // We use PowerShell to query the process CommandLine and ExecutablePath,
     // then try to extract the CWD from common patterns.
-    let output = std::process::Command::new("powershell")
+    let output = crate::hidden_command("powershell")
         .args([
             "-NoProfile", "-NonInteractive", "-Command",
             &format!(
@@ -74,7 +74,7 @@ fn get_process_cwd_by_pid(pid: u32) -> Option<String> {
 
     // Fallback: try to get the process's current directory via PowerShell
     // This uses a .NET call that may require elevation
-    let cwd_output = std::process::Command::new("powershell")
+    let cwd_output = crate::hidden_command("powershell")
         .args([
             "-NoProfile", "-NonInteractive", "-Command",
             &format!(
@@ -104,7 +104,7 @@ fn get_process_cwd_by_pid(pid: u32) -> Option<String> {
 /// Returns Vec<(pid, cwd)>.
 fn get_claude_pid_cwds() -> Vec<(u32, String)> {
     // Use PowerShell to find all claude processes and their command lines
-    let output = std::process::Command::new("powershell")
+    let output = crate::hidden_command("powershell")
         .args([
             "-NoProfile", "-NonInteractive", "-Command",
             "Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*claude*' } | Select-Object ProcessId,CommandLine,ExecutablePath | ConvertTo-Json",
@@ -258,7 +258,7 @@ fn resolve_claude_log_dir(pid: u32) -> Option<PathBuf> {
     }
 
     // Fallback: try parent process (claude may be spawned by npm/node)
-    let parent_output = std::process::Command::new("powershell")
+    let parent_output = crate::hidden_command("powershell")
         .args([
             "-NoProfile", "-NonInteractive", "-Command",
             &format!(
@@ -1841,7 +1841,7 @@ fn read_cursor_conversations() -> Vec<(String, String, String)> {
         if !db_path.exists() { continue; }
 
         // Use sqlite3.exe to read bubble data (ships with Windows or installed via scoop/winget)
-        let output = match std::process::Command::new("sqlite3.exe")
+        let output = match crate::hidden_command("sqlite3.exe")
             .arg("-json")
             .arg(db_path)
             .arg("SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId%' AND length(value) > 50 ORDER BY rowid LIMIT 1000;")
@@ -1989,7 +1989,7 @@ struct ProcessInfo {
 
 /// List all running processes on Windows using `tasklist /FO CSV /NH`.
 fn list_processes() -> Option<Vec<ProcessInfo>> {
-    let output = std::process::Command::new("tasklist")
+    let output = crate::hidden_command("tasklist")
         .args(["/FO", "CSV", "/NH"])
         .output()
         .ok()?;
@@ -2111,7 +2111,7 @@ pub fn fetch_claude_plan_info() -> Option<AgentPlanInfo> {
         Some(t) => t.to_string(),
         None => {
             // Fallback: try `claude auth status`
-            let auth_out = std::process::Command::new("claude")
+            let auth_out = crate::hidden_command("claude")
                 .args(["auth", "status", "--json"])
                 .output().ok();
             if let Some(out) = auth_out {
@@ -2123,7 +2123,7 @@ pub fn fetch_claude_plan_info() -> Option<AgentPlanInfo> {
     };
 
     // Call usage API
-    let usage_output = std::process::Command::new("curl")
+    let usage_output = crate::hidden_command("curl")
         .args(["-s", "--connect-timeout", "5", "--max-time", "10",
                "-H", &format!("Authorization: Bearer {}", access_token),
                "-H", "anthropic-beta: oauth-2025-04-20",
@@ -2180,7 +2180,7 @@ fn read_claude_credentials_from_file() -> Option<serde_json::Value> {
 /// Falls back to PowerShell CredentialManager module.
 fn read_claude_credentials_from_credential_manager() -> Option<serde_json::Value> {
     // Try PowerShell to read from Windows Credential Manager
-    let output = std::process::Command::new("powershell")
+    let output = crate::hidden_command("powershell")
         .args([
             "-NoProfile", "-NonInteractive", "-Command",
             r#"
@@ -2220,7 +2220,7 @@ pub fn fetch_cursor_plan_info() -> Option<AgentPlanInfo> {
     let db_str = db_path.to_str()?;
 
     // Read plan type (use sqlite3.exe on Windows)
-    let plan_output = std::process::Command::new("sqlite3.exe")
+    let plan_output = crate::hidden_command("sqlite3.exe")
         .args(["-readonly", db_str,
                "SELECT value FROM ItemTable WHERE key='cursorAuth/stripeMembershipType'"])
         .output().ok()?;
@@ -2228,11 +2228,11 @@ pub fn fetch_cursor_plan_info() -> Option<AgentPlanInfo> {
     if plan.is_empty() { return None; }
 
     // Read userId and accessToken for API call
-    let uid_output = std::process::Command::new("sqlite3.exe")
+    let uid_output = crate::hidden_command("sqlite3.exe")
         .args(["-readonly", db_str,
                "SELECT value FROM ItemTable WHERE key='cursorAuth/cachedUserId'"])
         .output().ok();
-    let token_output = std::process::Command::new("sqlite3.exe")
+    let token_output = crate::hidden_command("sqlite3.exe")
         .args(["-readonly", db_str,
                "SELECT value FROM ItemTable WHERE key='cursorAuth/accessToken'"])
         .output().ok();
@@ -2247,7 +2247,7 @@ pub fn fetch_cursor_plan_info() -> Option<AgentPlanInfo> {
     let mut short_term = None;
 
     if !access_token.is_empty() && !user_id.is_empty() {
-        let usage_output = std::process::Command::new("curl")
+        let usage_output = crate::hidden_command("curl")
             .args(["-s", "--connect-timeout", "5", "--max-time", "10",
                    "-H", &format!("Cookie: WorkosCursorSessionToken={}", access_token),
                    &format!("https://www.cursor.com/api/usage?user={}", user_id)])

@@ -258,7 +258,11 @@ impl License {
 /// Verify license with backend API (async, non-blocking)
 pub async fn verify_license(clerk_user_id: &str) -> Option<License> {
     let url = format!("{}/api/license/{}", API_BASE, clerk_user_id);
-    let output = tokio::process::Command::new("curl")
+    let output = {
+        let mut __c = tokio::process::Command::new("curl");
+        __c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        __c
+    }
         .args(["-s", "--connect-timeout", "5", "--max-time", "10", &url])
         .output()
         .await

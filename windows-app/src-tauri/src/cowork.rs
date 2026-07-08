@@ -122,7 +122,7 @@ impl CoworkState {
 /// Resolve a team token to its team via /api/cloud/whoami, then persist it.
 pub fn resolve_and_save_token(token: &str) -> Result<serde_json::Value, String> {
     let url = format!("{}/api/cloud/whoami", API_BASE);
-    let output = std::process::Command::new("curl")
+    let output = crate::hidden_command("curl")
         .args([
             "-s", "--connect-timeout", "5", "--max-time", "10",
             "-H", &format!("x-terse-team-token: {}", token),
@@ -219,7 +219,7 @@ fn build_body(
 
 fn post_json(path: &str, token: &str, body: &str) {
     let url = format!("{}{}", API_BASE, path);
-    let _ = std::process::Command::new("curl")
+    let _ = crate::hidden_command("curl")
         .args([
             "-s", "-o", "/dev/null", "-X", "POST",
             "--connect-timeout", "5", "--max-time", "10",

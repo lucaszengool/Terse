@@ -97,7 +97,7 @@ public class FgWin {
 [FgWin]::GetInfo()
 "#;
 
-    match Command::new("powershell")
+    match hidden_cmd("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output()
         .await
@@ -134,7 +134,7 @@ public class WinActivate {{ [DllImport("user32.dll")] public static extern bool 
 "@; [WinActivate]::ShowWindow($p.MainWindowHandle, 9); [WinActivate]::SetForegroundWindow($p.MainWindowHandle) }}"#,
         app_name
     );
-    let _ = Command::new("powershell")
+    let _ = hidden_cmd("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
         .output()
         .await;
@@ -149,7 +149,7 @@ pub async fn send_keys(keys: &str) -> () {
         r#"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{}')"#,
         keys
     );
-    let _ = Command::new("powershell")
+    let _ = hidden_cmd("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
         .output()
         .await;
@@ -164,7 +164,7 @@ pub async fn read_ax_app(pid: u32, hint_x: Option<f64>, hint_y: Option<f64>) -> 
         args.push(format!("{}", y as i32));
     }
 
-    match Command::new(uia_bin_path())
+    match hidden_cmd(uia_bin_path())
         .args(&args)
         .output()
         .await
@@ -201,7 +201,7 @@ pub async fn read_selection(app_name: &str) -> CaptureResult {
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
     // Read clipboard via PowerShell
-    match Command::new("powershell")
+    match hidden_cmd("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", "Get-Clipboard"])
         .output()
         .await
@@ -253,7 +253,7 @@ pub async fn write_to_app(app_name: &str, text: &str, pid: u32) -> WriteResult {
 
 /// Write text via UIA (direct Value set)
 pub async fn write_uia(pid: u32, text: &str) -> WriteResult {
-    let mut child = match Command::new(uia_bin_path())
+    let mut child = match hidden_cmd(uia_bin_path())
         .args(["write-pid", &pid.to_string()])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -285,7 +285,7 @@ pub async fn write_uia(pid: u32, text: &str) -> WriteResult {
 
 /// Spellcheck via terse-uia (uses Windows spellcheck API)
 pub async fn spellcheck_text(text: &str) -> Result<String, String> {
-    let mut child = Command::new(uia_bin_path())
+    let mut child = hidden_cmd(uia_bin_path())
         .arg("spellcheck")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -403,7 +403,7 @@ pub async fn install_bridge() -> serde_json::Value {
 
 /// Enable UI Automation on Electron apps (VS Code, Cursor)
 pub async fn enable_ax_for_app(pid: u32) -> bool {
-    match Command::new(uia_bin_path())
+    match hidden_cmd(uia_bin_path())
         .args(["enable-uia", &pid.to_string()])
         .output()
         .await
@@ -442,7 +442,7 @@ pub async fn send_keys_batch(cmds: &[&str], delays: &[f64]) {
 /// Read ALL text via Ctrl+A -> Ctrl+C -> Right arrow (deselect)
 pub async fn read_all_via_clipboard(_app_name: &str) -> CaptureResult {
     // Save clipboard
-    let saved = Command::new("powershell")
+    let saved = hidden_cmd("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", "Get-Clipboard"])
         .output()
         .await
@@ -462,7 +462,7 @@ pub async fn read_all_via_clipboard(_app_name: &str) -> CaptureResult {
     ).await;
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-    let captured = Command::new("powershell")
+    let captured = hidden_cmd("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", "Get-Clipboard"])
         .output()
         .await
@@ -494,7 +494,7 @@ pub async fn read_all_via_clipboard(_app_name: &str) -> CaptureResult {
 /// Write to a terminal input by clearing the current line first, then pasting.
 /// Uses Home + Shift+End to select all, then Ctrl+V to paste.
 pub async fn write_via_clipboard_terminal(text: &str) -> WriteResult {
-    let saved = Command::new("powershell")
+    let saved = hidden_cmd("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", "Get-Clipboard"])
         .output()
         .await
@@ -532,7 +532,7 @@ pub async fn write_via_clipboard_terminal(text: &str) -> WriteResult {
 }
 
 pub async fn write_via_clipboard(app_name: &str, text: &str, skip_activate: bool) -> WriteResult {
-    let saved = Command::new("powershell")
+    let saved = hidden_cmd("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", "Get-Clipboard"])
         .output()
         .await
@@ -567,7 +567,7 @@ pub async fn write_via_clipboard(app_name: &str, text: &str, skip_activate: bool
 
 async fn set_clipboard(text: &str) {
     // Use PowerShell Set-Clipboard
-    let _ = Command::new("powershell")
+    let _ = hidden_cmd("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command",
             &format!("Set-Clipboard -Value '{}'", text.replace("'", "''"))])
         .output()
@@ -669,7 +669,7 @@ impl KeyMonitorState {
 
         let state = self.clone();
         tokio::spawn(async move {
-            let mut child = match Command::new(uia_bin_path())
+            let mut child = match hidden_cmd(uia_bin_path())
                 .args(["key-monitor", &pid.to_string()])
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
@@ -784,7 +784,7 @@ impl KeyMonitorState {
 
 async fn reqwest_lite(url: &str) -> Option<String> {
     // Try curl first (available on Windows 10+), fall back to PowerShell Invoke-WebRequest
-    let output = Command::new("curl")
+    let output = hidden_cmd("curl")
         .args(["-s", "--connect-timeout", "1", "--max-time", "2", url])
         .output()
         .await;
@@ -799,7 +799,7 @@ async fn reqwest_lite(url: &str) -> Option<String> {
                 "try {{ (Invoke-WebRequest -Uri '{}' -TimeoutSec 2 -UseBasicParsing).Content }} catch {{ }}",
                 url
             );
-            let output = Command::new("powershell")
+            let output = hidden_cmd("powershell")
                 .args(["-NoProfile", "-NonInteractive", "-Command", &ps_cmd])
                 .output()
                 .await
@@ -814,7 +814,7 @@ async fn reqwest_lite(url: &str) -> Option<String> {
 }
 
 async fn http_post(url: &str, body: &str) -> Option<String> {
-    let output = Command::new("curl")
+    let output = hidden_cmd("curl")
         .args([
             "-s", "--connect-timeout", "1", "--max-time", "2",
             "-X", "POST",
@@ -835,7 +835,7 @@ async fn http_post(url: &str, body: &str) -> Option<String> {
                 "try {{ (Invoke-WebRequest -Uri '{}' -Method POST -ContentType 'application/json' -Body '{}' -TimeoutSec 2 -UseBasicParsing).Content }} catch {{ }}",
                 url, body.replace("'", "''")
             );
-            let output = Command::new("powershell")
+            let output = hidden_cmd("powershell")
                 .args(["-NoProfile", "-NonInteractive", "-Command", &ps_cmd])
                 .output()
                 .await
@@ -847,4 +847,14 @@ async fn http_post(url: &str, body: &str) -> Option<String> {
             }
         }
     }
+}
+
+
+/// tokio twin of `crate::hidden_command` — spawns without a flashing console
+/// window on Windows. `tokio::process::Command` exposes `creation_flags`
+/// inherently on Windows, so no extra trait import is needed.
+fn hidden_cmd<S: AsRef<std::ffi::OsStr>>(program: S) -> Command {
+    let mut c = Command::new(program);
+    c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    c
 }

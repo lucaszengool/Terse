@@ -1600,7 +1600,7 @@ fn scan_agent_runtime(out: &mut Vec<Finding>) -> (u32, u64) {
     // omitted — memory-footprint and forgotten-session findings still fire; the runaway-CPU
     // finding stays dormant on Windows.
     let ps_script = "Get-CimInstance Win32_Process -Filter \"Name='claude.exe' OR Name='codex.exe'\" | ForEach-Object { $d=0; try { $c=[Management.ManagementDateTimeConverter]::ToDateTime($_.CreationDate); $d=[math]::Floor(((Get-Date)-$c).TotalDays) } catch {}; \"$($_.ProcessId)|$($_.Name)|$($_.WorkingSetSize)|$d\" }";
-    let output = match std::process::Command::new("powershell")
+    let output = match crate::hidden_command("powershell")
         .args(["-NoProfile", "-Command", ps_script])
         .output()
     {
@@ -2023,7 +2023,7 @@ pub fn apply_fix(finding: &Value) -> Value {
                 // "taskmgr.exe" is a launcher token (not a path); everything else must exist.
                 let is_launcher = p == "taskmgr.exe";
                 if (is_launcher || Path::new(p).exists())
-                    && std::process::Command::new("cmd")
+                    && crate::hidden_command("cmd")
                         .args(["/C", "start", "", p])
                         .status()
                         .map(|s| s.success())
@@ -2093,7 +2093,7 @@ fn stop_agent_processes(pids: &[String]) -> u32 {
     for pid_s in pids {
         let Ok(pid) = pid_s.trim().parse::<u32>() else { continue };
         // Re-verify the pid still belongs to an agent CLI before killing it.
-        let name = std::process::Command::new("powershell")
+        let name = crate::hidden_command("powershell")
             .args(["-NoProfile", "-Command",
                    &format!("(Get-Process -Id {pid} -ErrorAction SilentlyContinue).ProcessName")])
             .output()
@@ -2104,7 +2104,7 @@ fn stop_agent_processes(pids: &[String]) -> u32 {
         if !AGENT_BINS.contains(&bin.as_str()) {
             continue;
         }
-        if std::process::Command::new("taskkill")
+        if crate::hidden_command("taskkill")
             .args(["/PID", &pid.to_string(), "/T"])
             .status()
             .map(|s| s.success())

@@ -20,6 +20,20 @@ fn lock_or_recover<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
         e.into_inner()
     })
 }
+
+/// CREATE_NO_WINDOW — suppresses the flashing console window when spawning child
+/// processes (powershell, cmd, taskkill, curl, terse-uia.exe) on Windows.
+pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// Build a `std::process::Command` that never flashes a console window. Every
+/// child-process spawn in the app goes through this (or capture.rs's tokio twin)
+/// so background scans/polls stay invisible.
+pub fn hidden_command<S: AsRef<std::ffi::OsStr>>(program: S) -> std::process::Command {
+    use std::os::windows::process::CommandExt;
+    let mut c = std::process::Command::new(program);
+    c.creation_flags(CREATE_NO_WINDOW);
+    c
+}
 use tauri::{
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
     tray::TrayIconBuilder,
@@ -526,8 +540,12 @@ async fn replace_in_target(text: String, state: tauri::State<'_, AppState>) -> R
 #[tauri::command]
 async fn apply_to_clipboard(text: String) -> bool {
     use tokio::process::Command;
-    // Windows: use PowerShell Set-Clipboard
-    let _ = Command::new("powershell")
+    // Windows: use PowerShell Set-Clipboard (console window suppressed)
+    let _ = {
+        let mut __c = Command::new("powershell");
+        __c.creation_flags(CREATE_NO_WINDOW);
+        __c
+    }
         .args(["-NoProfile", "-Command", &format!("Set-Clipboard -Value '{}'", text.replace('\'', "''"))])
         .output()
         .await;
@@ -1583,7 +1601,7 @@ fn trigger_ml_model_download() {
 
         for url in &urls {
             eprintln!("[terse-ml] downloading model from {}", url);
-            let status = std::process::Command::new("curl")
+            let status = crate::hidden_command("curl")
                 .args([
                     "-L", "--silent", "--show-error",
                     "--retry", "3", "--retry-delay", "2",
@@ -2271,7 +2289,7 @@ fn open_cloud_teams(path: Option<String>, state: tauri::State<'_, AppState>) {
             }
         }
     };
-    let _ = std::process::Command::new("cmd").args(["/C","start","",&url]).spawn();
+    let _ = crate::hidden_command("cmd").args(["/C","start","",&url]).spawn();
 }
 
 /// Show every dashboard widget window. The windows themselves are created hidden
@@ -2297,7 +2315,7 @@ fn open_dashboards(app: AppHandle) {
 fn open_url(url: String) {
     let u = url.trim();
     if u.starts_with("http://") || u.starts_with("https://") {
-        let _ = std::process::Command::new("cmd").args(["/C","start","",u]).spawn();
+        let _ = crate::hidden_command("cmd").args(["/C","start","",u]).spawn();
     }
 }
 
@@ -2401,7 +2419,7 @@ async fn send_slack_alert(webhook: String, text: String) -> Result<(), String> {
     }
     tauri::async_runtime::spawn_blocking(move || {
         let body = serde_json::json!({ "text": text }).to_string();
-        let output = std::process::Command::new("curl")
+        let output = crate::hidden_command("curl")
             .arg("-sS").arg("-X").arg("POST")
             .arg("-H").arg("Content-Type: application/json")
             .arg("--data").arg(&body)
@@ -2927,7 +2945,7 @@ pub fn run() {
                 let pid_file = home.join(".terse").join("proxy.pid");
                 if let Ok(pid_str) = std::fs::read_to_string(&pid_file) {
                     if let Ok(pid) = pid_str.trim().parse::<u32>() {
-                        let _ = std::process::Command::new("taskkill")
+                        let _ = crate::hidden_command("taskkill")
                             .args(["/PID", &pid.to_string(), "/F"])
                             .output();
                         std::thread::sleep(std::time::Duration::from_millis(400));
@@ -2989,7 +3007,7 @@ pub fn run() {
                 }
 
                 // Try `where node` as a fallback (works if node is on PATH)
-                if let Ok(output) = std::process::Command::new("where").arg("node").output() {
+                if let Ok(output) = crate::hidden_command("where").arg("node").output() {
                     if output.status.success() {
                         if let Ok(paths) = String::from_utf8(output.stdout) {
                             if let Some(first) = paths.lines().next() {
@@ -3008,7 +3026,7 @@ pub fn run() {
                     None => { eprintln!("[terse] node not found, skipping local proxy"); return; }
                 };
                 // Start proxy on port 7860
-                match std::process::Command::new(&node)
+                match crate::hidden_command(&node)
                     .arg(&proxy_script)
                     .arg("--port").arg("7860")
                     .stdout(std::process::Stdio::null())

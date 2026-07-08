@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code vs Codex CLI (2026): Benchmarks, Pricing &amp; Token Cost — Terse</title>
+  <meta name="description" content="Claude Code vs Codex CLI: the two leading terminal agents in 2026. Codex CLI tops Terminal-Bench 2.1; Claude Code excels at large-codebase reasoning. Plus how to cut token cost.">
+  <link rel="canonical" href="https://www.terseai.org/claude-code-vs-codex-cli">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Claude Code vs Codex CLI (2026): Benchmarks, Pricing &amp; Token Cost">
+  <meta property="og:description" content="The two leading terminal coding agents compared. Codex CLI tops Terminal-Bench 2.1; Claude Code excels at large-codebase reasoning — and how to cut token cost on both.">
+  <meta property="og:url" content="https://www.terseai.org/claude-code-vs-codex-cli">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Claude Code vs Codex CLI (2026): Benchmarks &amp; Pricing">
+  <meta name="twitter:description" content="Two leading terminal agents compared. Codex CLI tops Terminal-Bench; Claude Code excels on big codebases — plus how to cut token cost on both.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "headline": "Claude Code vs Codex CLI (2026): Benchmarks, Pricing and Token Cost",
+        "description": "A balanced 2026 comparison of the two leading terminal coding agents — Claude Code (Anthropic) and Codex CLI (OpenAI). Benchmarks, pricing models, open-source status, and how to reduce token cost on both.",
+        "url": "https://www.terseai.org/claude-code-vs-codex-cli",
+        "datePublished": "2026-07-08",
+        "dateModified": "2026-07-08",
+        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "Claude Code vs Codex CLI", "item": "https://www.terseai.org/claude-code-vs-codex-cli"}
+          ]
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+          {"@type": "ListItem", "position": 2, "name": "Claude Code vs Codex CLI", "item": "https://www.terseai.org/claude-code-vs-codex-cli"}
+        ]
+      },
+      {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Which is better on benchmarks, Claude Code or Codex CLI?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "On Terminal-Bench 2.1 — the leading benchmark for terminal agents — Codex CLI paired with GPT-5.5 currently ranks #1 at around 83.4%. Claude Code with Claude Opus 4.8 is the top Claude pairing at roughly 78.9%. Codex CLI is slightly ahead on that specific benchmark, but benchmark scores don't tell the whole story: Claude Code is widely praised for reliability and reasoning across large, messy codebases, where careful multi-step refactors matter more than raw pass rates."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which is cheaper, Claude Code or Codex CLI?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Neither is universally cheaper — it depends on the model and the task. Claude Code bills through a Claude subscription (Pro at $20/month, higher tiers and Premium seats for teams) or the Anthropic API, with rolling weekly rate limits. Codex CLI bills through a ChatGPT/Codex subscription or OpenAI API usage. GPT-5-class and Claude Opus output pricing differ, and both agents accumulate context (files, diffs, command output) every turn, so real cost tracks how much context you feed the model — not the sticker rate alone."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which is better for large codebases, Claude Code or Codex CLI?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Claude Code is widely favored for deep reasoning on large codebases and careful, multi-file refactors — it tends to hold context and plan across many files reliably. Codex CLI is extremely strong too and leads on raw Terminal-Bench scores, with tight OpenAI ecosystem integration. For sprawling legacy repos where careful reasoning beats raw speed, many developers reach for Claude Code; for top benchmark performance and OpenAI-native workflows, Codex CLI is the pick."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Are Claude Code and Codex CLI open source?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Codex CLI is an open-source command-line tool you can inspect, fork, and self-host, though it calls OpenAI's proprietary models. Claude Code is a proprietary CLI from Anthropic that runs against Claude models. Both are terminal-first agents, and both are friendly to power users who bring their own API key and want to watch token spend closely."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can Terse track token usage for both Claude Code and Codex CLI?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse is an on-device optimizer that works with both terminal agents. It compresses prompts, flags duplicate file reads, and monitors per-turn token usage regardless of which agent or model you run. Because both Claude Code and Codex CLI accumulate context each turn, Terse's compression and monitoring reduce token cost the same way on either one — and you can track both side by side from a single dashboard."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--ac3:#a7f3d0;
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+      --red:rgba(248,113,113,1);--redd:rgba(248,113,113,0.1);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+
+    .hero{padding:140px 40px 80px;text-align:center;position:relative;overflow:hidden;max-width:900px;margin:0 auto}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07) 0%,transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(32px,5.5vw,64px);font-weight:900;letter-spacing:-2.5px;line-height:1.05;margin-bottom:16px}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:640px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:48px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:22px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(26px,4vw,38px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    section .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:680px}
+    section p.prose{font-size:15px;color:var(--t2);line-height:1.8;max-width:760px;margin-bottom:16px}
+    .divider{max-width:100%;height:1px;background:var(--bd);margin:0 40px}
+
+    /* Comparison / pricing table */
+    .price-table{width:100%;border-collapse:collapse;margin:32px 0;font-size:14px}
+    .price-table th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);border-bottom:1px solid var(--bd);white-space:nowrap}
+    .price-table td{padding:12px 16px;border-bottom:1px solid var(--bd);color:var(--t2);vertical-align:top}
+    .price-table tr:last-child td{border-bottom:none}
+    .price-table tr:hover td{background:var(--sf)}
+    .price-table td:first-child{color:var(--t1);font-weight:600;white-space:nowrap}
+    .price-table .cost{color:var(--ac);font-weight:700}
+    .price-table .high{color:#f87171;font-weight:700}
+    .price-table-wrap{overflow-x:auto;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;margin:32px 0}
+
+    /* Two-agent cards */
+    .tier-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:32px 0}
+    .tier-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px}
+    .tier-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:6px}
+    .tier-cost{font-size:26px;font-weight:900;letter-spacing:-1px;color:var(--t1);margin-bottom:4px}
+    .tier-period{font-size:12px;color:var(--t3);margin-bottom:16px}
+    .tier-traits{display:flex;flex-direction:column;gap:6px}
+    .tier-trait{font-size:13px;color:var(--t2);display:flex;align-items:baseline;gap:8px}
+    .tier-trait::before{content:'·';color:var(--t3);flex-shrink:0}
+
+    /* Feature grid */
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    /* FAQ */
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(32px,5vw,52px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .tier-grid{grid-template-columns:1fr}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/for-claude-code">Claude Code</a>
+    <a href="/for-codex-cli">Codex CLI</a>
+    <a href="/token-calculator">Calculator</a>
+    <a href="/ai-token-pricing-comparison">Pricing Comparison</a>
+    <a href="/#pricing">Plans</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Updated July 2026</div>
+  <h1>Claude Code vs <span class="gradient-text">Codex CLI</span></h1>
+  <p class="sub">The two leading terminal-first agentic coding tools of 2026, compared head to head. Codex CLI tops the Terminal-Bench 2.1 leaderboard; Claude Code is prized for large-codebase reasoning. Here's how they really stack up — and how to cut token cost on either.</p>
+  <div class="hero-actions">
+    <a href="#comparison" class="btn-primary">See the Comparison →</a>
+    <a href="#terse-both" class="btn-ghost">Cut Token Cost on Both</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">#1</span><span class="lbl">Codex CLI on Terminal-Bench 2.1</span></div>
+    <div class="stat-pill"><span class="val">~83.4%</span><span class="lbl">Codex + GPT-5.5</span></div>
+    <div class="stat-pill"><span class="val">~78.9%</span><span class="lbl">Claude Code + Opus 4.8</span></div>
+    <div class="stat-pill"><span class="val">Both</span><span class="lbl">terminal-first agents</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="overview">
+  <h2>Two <span class="gradient-text">Terminal Agents</span>, Two Philosophies</h2>
+  <p class="section-sub">Claude Code and Codex CLI both live in your terminal and drive real, multi-file agentic work — reading files, running commands, editing code, and iterating. They come from the two frontier labs, and each has a distinct personality.</p>
+
+  <div class="tier-grid">
+    <div class="tier-card">
+      <div class="tier-label">Anthropic</div>
+      <div class="tier-cost">Claude Code</div>
+      <div class="tier-period">Claude Opus 4.8 / Sonnet</div>
+      <div class="tier-traits">
+        <div class="tier-trait">Terminal-first agent, proprietary CLI</div>
+        <div class="tier-trait">Renowned for large-codebase reasoning</div>
+        <div class="tier-trait">Careful, reliable multi-file refactors</div>
+        <div class="tier-trait">Claude subscription or Anthropic API</div>
+      </div>
+    </div>
+    <div class="tier-card" style="border-color:var(--acm)">
+      <div class="tier-label" style="color:var(--ac)">OpenAI</div>
+      <div class="tier-cost" style="color:var(--ac)">Codex CLI</div>
+      <div class="tier-period">GPT-5.x / Codex models</div>
+      <div class="tier-traits">
+        <div class="tier-trait">Terminal-first agent, open-source CLI</div>
+        <div class="tier-trait">#1 on Terminal-Bench 2.1 (~83.4%)</div>
+        <div class="tier-trait">Tight OpenAI ecosystem integration</div>
+        <div class="tier-trait">ChatGPT/Codex subscription or OpenAI API</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="prose">Neither tool is a clear winner across the board. Codex CLI currently posts the top raw benchmark scores and ships as an open-source CLI you can read and fork. Claude Code is widely praised for how it reasons across sprawling, messy codebases and how reliably it completes careful refactors. The right choice depends on your model preferences, your ecosystem, and the shape of your work.</p>
+</section>
+
+<div class="divider"></div>
+
+<section id="comparison">
+  <h2>Side-by-Side <span class="gradient-text">Comparison</span></h2>
+  <p class="section-sub">The key differences between Claude Code and Codex CLI at a glance, as of July 2026.</p>
+
+  <div class="price-table-wrap">
+    <table class="price-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Claude Code</th>
+          <th>Codex CLI</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Vendor / model</td>
+          <td>Anthropic — Claude Opus 4.8 / Sonnet</td>
+          <td>OpenAI — GPT-5.x / Codex models</td>
+        </tr>
+        <tr>
+          <td>Interface</td>
+          <td>Terminal-first agentic CLI</td>
+          <td>Terminal-first agentic CLI</td>
+        </tr>
+        <tr>
+          <td>Benchmark score</td>
+          <td>~78.9% on Terminal-Bench 2.1 <span style="color:var(--t3)">(Opus 4.8, top Claude pairing)</span></td>
+          <td class="cost">~83.4% on Terminal-Bench 2.1 <span style="color:var(--t3)">(#1, GPT-5.5)</span></td>
+        </tr>
+        <tr>
+          <td>Pricing model</td>
+          <td>Claude subscription (Pro $20/mo, higher/Premium seats) or Anthropic API; rolling weekly rate limits</td>
+          <td>ChatGPT/Codex subscription or OpenAI API usage</td>
+        </tr>
+        <tr>
+          <td>Open source?</td>
+          <td>No — proprietary CLI</td>
+          <td class="cost">Yes — open-source CLI (proprietary models)</td>
+        </tr>
+        <tr>
+          <td>Token accumulation</td>
+          <td>Context grows each turn (files, diffs, command output)</td>
+          <td>Context grows each turn (files, diffs, command output)</td>
+        </tr>
+        <tr>
+          <td>Best for</td>
+          <td>Deep reasoning on big codebases, careful refactors, reliability</td>
+          <td>Top raw benchmark scores, OpenAI ecosystem, inspectable open-source CLI</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="font-size:13px;color:var(--t3);margin-top:-16px">Benchmark figures reflect Terminal-Bench 2.1 as reported in 2026 and shift as models update. Treat leaderboard deltas of a few points as roughly comparable in day-to-day use.</p>
+</section>
+
+<div class="divider"></div>
+
+<section id="benchmarks">
+  <h2>Benchmarks: <span class="gradient-text">Close at the Top</span></h2>
+  <p class="prose">On Terminal-Bench 2.1 — the standard benchmark for terminal-driven agents — Codex CLI paired with GPT-5.5 holds the #1 spot at roughly 83.4%. Claude Code with Claude Opus 4.8 is the strongest Claude pairing at about 78.9%. That makes Codex slightly ahead on this particular benchmark.</p>
+  <p class="prose">But a few points on one leaderboard rarely decides real projects. Claude Code is repeatedly singled out for its reasoning on large, tangled codebases and for the reliability of its multi-step refactors — qualities that a single pass-rate number doesn't fully capture. If your work is dominated by careful reasoning over lots of files, the benchmark gap may not reflect your experience. If you want the highest measured pass rate and OpenAI-native tooling, Codex CLI leads.</p>
+</section>
+
+<div class="divider"></div>
+
+<section id="pricing">
+  <h2>Pricing &amp; <span class="gradient-text">Token Cost</span></h2>
+  <p class="section-sub">Both agents can be billed through a subscription or a raw API key. Neither is universally cheaper — real cost depends on the model you run and how much context each turn carries.</p>
+
+  <div class="tier-grid">
+    <div class="tier-card">
+      <div class="tier-label">Claude Code</div>
+      <div class="tier-cost" style="font-size:22px">Subscription or API</div>
+      <div class="tier-period">Claude Pro from $20/mo</div>
+      <div class="tier-traits">
+        <div class="tier-trait">Claude Pro $20/mo; higher tiers &amp; Premium seats for teams</div>
+        <div class="tier-trait">Or pay-as-you-go on the Anthropic API</div>
+        <div class="tier-trait">Rolling weekly rate limits on subscriptions</div>
+        <div class="tier-trait">Claude Opus output priced above Sonnet</div>
+      </div>
+    </div>
+    <div class="tier-card">
+      <div class="tier-label">Codex CLI</div>
+      <div class="tier-cost" style="font-size:22px">Subscription or API</div>
+      <div class="tier-period">ChatGPT/Codex plans or usage</div>
+      <div class="tier-traits">
+        <div class="tier-trait">Bundled with ChatGPT/Codex subscriptions</div>
+        <div class="tier-trait">Or pay-as-you-go on the OpenAI API</div>
+        <div class="tier-trait">GPT-5-class output pricing varies by model</div>
+        <div class="tier-trait">Open-source CLI, so BYO-key is straightforward</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="prose">Both tools accumulate context every turn — the files they read, the diffs they generate, and the command output they capture all get fed back to the model. That means your token bill is driven less by the sticker price of a model and more by how much context each turn carries. Power users on either agent who bring their own API key tend to watch token spend closely for exactly this reason.</p>
+</section>
+
+<div class="divider"></div>
+
+<section id="best-for">
+  <h2>Which Should <span class="gradient-text">You Pick?</span></h2>
+  <p class="section-sub">There's no single winner. Match the tool to how you actually work.</p>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🧠</div>
+      <h3>Pick Claude Code if…</h3>
+      <p>You work in large, complex codebases and value careful reasoning and reliable multi-file refactors over raw benchmark position. Claude Code's strength is holding context and planning across many files.</p>
+      <span class="tag">Big Codebases &amp; Refactors</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🏆</div>
+      <h3>Pick Codex CLI if…</h3>
+      <p>You want the top measured pass rate on Terminal-Bench, tight integration with the OpenAI ecosystem, and an open-source CLI you can inspect, fork, or self-host with your own key.</p>
+      <span class="tag">Top Scores &amp; Open Source</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔑</div>
+      <h3>Either, if you BYO key…</h3>
+      <p>Both agents are friendly to power users who bring their own API key and want to watch token spend. If cost control matters, the deciding factor is often how you optimize context — not which agent you chose.</p>
+      <span class="tag">Cost-Conscious Power Users</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="terse-both">
+  <h2>Terse Works With <span class="gradient-text">Both</span></h2>
+  <p class="section-sub">Whichever terminal agent you run, both accumulate context each turn — and that's exactly what Terse trims. Terse is an on-device optimizer that compresses prompts, flags duplicate file reads, and monitors per-turn token usage across either tool.</p>
+  <p class="prose">Because Claude Code and Codex CLI grow context the same way, Terse reduces token cost on both identically — compressing what you send, catching redundant reads before they hit the model, and surfacing your most expensive turns. You can even track both agents side by side from one dashboard.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card">
+      <span style="font-size:18px">🧠</span>
+      <span>Terse for Claude Code</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-codex-cli" class="also-card">
+      <span style="font-size:18px">🖥️</span>
+      <span>Terse for Codex CLI</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/token-calculator" class="also-card">
+      <span style="font-size:18px">🧮</span>
+      <span>Token Cost Calculator</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Common questions about Claude Code vs Codex CLI in 2026.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">Which is better on benchmarks, Claude Code or Codex CLI?</div>
+      <div class="faq-a">On Terminal-Bench 2.1, Codex CLI with GPT-5.5 currently ranks #1 at around 83.4%; Claude Code with Opus 4.8 is the top Claude pairing at roughly 78.9%. Codex is slightly ahead on that benchmark, but Claude Code is widely praised for reliability and reasoning across large codebases, where careful refactors matter more than raw pass rates.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Which is cheaper, Claude Code or Codex CLI?</div>
+      <div class="faq-a">Neither is universally cheaper — it depends on the model and task. Claude Code bills via a Claude subscription (Pro $20/mo, higher/Premium tiers) or the Anthropic API with weekly rate limits; Codex CLI via a ChatGPT/Codex subscription or OpenAI API usage. Both accumulate context each turn, so real cost tracks how much context you feed the model.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Which is better for large codebases?</div>
+      <div class="faq-a">Claude Code is widely favored for deep reasoning on large codebases and careful multi-file refactors, thanks to how it holds context and plans across files. Codex CLI is very strong too and leads on raw Terminal-Bench scores with tight OpenAI integration. For sprawling legacy repos, many developers reach for Claude Code; for top scores and OpenAI-native workflows, Codex CLI.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Are both Claude Code and Codex CLI open source?</div>
+      <div class="faq-a">Codex CLI is an open-source CLI you can inspect, fork, and self-host, though it calls OpenAI's proprietary models. Claude Code is a proprietary CLI from Anthropic that runs against Claude models. Both are terminal-first agents and both are friendly to power users who bring their own API key.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can Terse track token usage for both?</div>
+      <div class="faq-a">Yes. Terse is an on-device optimizer that works with both terminal agents. It compresses prompts, flags duplicate file reads, and monitors per-turn token usage regardless of agent or model. Since both accumulate context each turn, Terse reduces token cost the same way on either — and you can track both side by side.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Do I have to choose just one?</div>
+      <div class="faq-a">No. Many developers keep both installed and switch based on the task — Claude Code for careful reasoning on big refactors, Codex CLI for top benchmark performance and OpenAI-native workflows. Terse works across both, so switching agents doesn't change how you track and control token cost.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">Terse reduces token costs across every major AI coding tool.</p>
+  <div class="also-grid">
+    <a href="/for-cursor" class="also-card">
+      <span style="font-size:18px">⌨️</span>
+      <span>Cursor — AI Code Editor</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-aider" class="also-card">
+      <span style="font-size:18px">🖥️</span>
+      <span>Aider — Terminal Agent</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-gemini-cli" class="also-card">
+      <span style="font-size:18px">✨</span>
+      <span>Gemini CLI — Terminal Agent</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-github-copilot" class="also-card">
+      <span style="font-size:18px">🤖</span>
+      <span>GitHub Copilot — VS Code</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Cut Token Cost on <span class="gradient-text">Either Agent</span></h2>
+  <p>Terse compresses prompts, catches duplicate tool calls, and monitors per-turn cost — on Claude Code, Codex CLI, or both. 30-day free trial, no credit card until your trial ends.</p>
+  <div class="hero-actions" style="justify-content:center">
+    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent session optimizer. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-chatgpt">ChatGPT</a><a href="/for-github-copilot">GitHub Copilot</a><a href="/for-aider">Aider</a><a href="/for-cline">Cline</a><a href="/for-codex-cli">Codex CLI</a><a href="/for-windsurf">Windsurf</a><a href="/for-gemini-cli">Gemini CLI</a><a href="/for-opencode">opencode</a></div>
+    <div class="footer-col"><h4>Pricing</h4><a href="/claude-code-pricing">Claude Code Pricing</a><a href="/ai-token-pricing-comparison">Token Pricing 2026</a><a href="/token-calculator">Cost Calculator</a><a href="/#pricing">Terse Plans</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/what-is-token-optimization">What Is Token Optimization?</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/i-built-an-app-to-steal-50m-back">How Terse Works</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Windows · Rust · Swift</span></div>
+</footer>
+
+</body>
+</html>

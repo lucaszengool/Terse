@@ -33,12 +33,20 @@
 - [For Codex CLI](https://www.terseai.org/for-codex-cli): Reduce OpenAI Codex CLI token costs in the terminal
 - [For Windsurf](https://www.terseai.org/for-windsurf): Reduce Windsurf/Cascade token and credit costs
 - [For Gemini CLI](https://www.terseai.org/for-gemini-cli): Reduce Gemini CLI token costs — large-context discipline
+- [For opencode](https://www.terseai.org/for-opencode): Reduce opencode token costs — most-starred open-source terminal agent
+
+### Comparisons & Alternatives
+- [Cursor vs Claude Code](https://www.terseai.org/cursor-vs-claude-code): Pricing, token efficiency, and which to choose
+- [Claude Code vs Codex CLI](https://www.terseai.org/claude-code-vs-codex-cli): Benchmarks, pricing, and token cost head-to-head
+- [Claude Code Alternatives](https://www.terseai.org/claude-code-alternatives): 10 best alternatives in 2026, free and paid
+- [Cursor Alternatives](https://www.terseai.org/cursor-alternatives): 9 best alternatives in 2026, IDE and terminal
 
 ### Guides & Articles
 - [What Is Token Optimization?](https://www.terseai.org/what-is-token-optimization): Complete guide to token optimization concepts
 - [How to Reduce AI API Costs](https://www.terseai.org/reduce-ai-api-costs): 7 proven strategies to cut AI costs by 60-80%
 - [Claude Code Pricing 2026](https://www.terseai.org/claude-code-pricing): Real per-token costs, monthly estimates, and how to cut your bill
 - [Cursor Pricing 2026](https://www.terseai.org/cursor-pricing): Plans, credit pool, real token costs, and how to save
+- [GitHub Copilot Pricing 2026](https://www.terseai.org/github-copilot-pricing): Plans, usage-based AI Credits, and how to cut your bill
 - [AI Token Pricing Comparison 2026](https://www.terseai.org/ai-token-pricing-comparison): Claude vs GPT vs Gemini complete cost guide
 - [I Built an App to Steal $50M Back from Claude Code](https://www.terseai.org/i-built-an-app-to-steal-50m-back): Technical deep-dive on the Terse compression pipeline
 

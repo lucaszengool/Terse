@@ -37,12 +37,16 @@
 - [For Windsurf](https://www.terseai.org/for-windsurf): Reduce Windsurf/Cascade token and credit costs
 - [For Gemini CLI](https://www.terseai.org/for-gemini-cli): Reduce Gemini CLI token costs — large-context discipline
 - [For opencode](https://www.terseai.org/for-opencode): Reduce opencode token costs — most-starred open-source terminal agent
+- [For Zed](https://www.terseai.org/for-zed): Reduce Zed token costs — Rust-native AI editor, compress prompts into Zed AI
 
 ### Comparisons & Alternatives
 - [Cursor vs Claude Code](https://www.terseai.org/cursor-vs-claude-code): Pricing, token efficiency, and which to choose
 - [Claude Code vs Codex CLI](https://www.terseai.org/claude-code-vs-codex-cli): Benchmarks, pricing, and token cost head-to-head
+- [Cursor vs GitHub Copilot](https://www.terseai.org/cursor-vs-github-copilot): The two most-adopted tools, pricing and which to pick
+- [Windsurf vs Cursor](https://www.terseai.org/windsurf-vs-cursor): The two leading AI IDEs, pricing and autonomy compared
 - [Claude Code Alternatives](https://www.terseai.org/claude-code-alternatives): 10 best alternatives in 2026, free and paid
 - [Cursor Alternatives](https://www.terseai.org/cursor-alternatives): 9 best alternatives in 2026, IDE and terminal
+- [GitHub Copilot Alternatives](https://www.terseai.org/github-copilot-alternatives): 9 best alternatives in 2026, IDE and terminal
 
 ### Guides & Articles
 - [What Is Token Optimization?](https://www.terseai.org/what-is-token-optimization): Complete guide to token optimization concepts

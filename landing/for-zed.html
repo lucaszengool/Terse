@@ -11,19 +11,19 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reduce Cursor Token Costs — Terse for Cursor</title>
-  <meta name="description" content="Terse cuts Cursor AI token costs by 40-70%. Real-time prompt compression in the Cursor chat and composer — auto-appears when you focus Cursor, compresses">
-  <link rel="canonical" href="https://www.terseai.org/for-cursor">
+  <title>Reduce Zed Token Costs — Terse for Zed</title>
+  <meta name="description" content="Zed is a fast Rust-native AI editor. Terse compresses the prompts you type into Zed's AI assistant and tracks per-request token cost — 100% on-device.">
+  <link rel="canonical" href="https://www.terseai.org/for-zed">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Reduce Cursor Token Costs — Terse for Cursor">
-  <meta property="og:description" content="Terse cuts Cursor AI token costs by 40-70%. Real-time prompt compression in the Cursor chat and composer. Auto-appears when Cursor is focused.">
-  <meta property="og:url" content="https://www.terseai.org/for-cursor">
+  <meta property="og:title" content="Reduce Zed Token Costs — Terse for Zed">
+  <meta property="og:description" content="Zed is a fast Rust-native AI editor. Terse compresses the prompts you type into Zed's AI assistant and tracks per-request token cost — 100% on-device.">
+  <meta property="og:url" content="https://www.terseai.org/for-zed">
   <meta property="og:site_name" content="Terse">
   <meta property="og:image" content="https://www.terseai.org/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Reduce Cursor Token Costs — Terse for Cursor">
-  <meta name="twitter:description" content="Terse cuts Cursor AI token costs by 40-70%. Real-time prompt compression in the Cursor chat and composer.">
+  <meta name="twitter:title" content="Reduce Zed Token Costs — Terse for Zed">
+  <meta name="twitter:description" content="Zed is a fast Rust-native AI editor. Terse compresses the prompts you type into Zed's AI assistant and tracks per-request token cost.">
   <link rel="sitemap" type="application/xml" href="/sitemap.xml">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -33,15 +33,15 @@
     "@graph": [
       {
         "@type": "WebPage",
-        "name": "Reduce Cursor Token Costs — Terse for Cursor",
-        "url": "https://www.terseai.org/for-cursor",
-        "description": "Terse reduces Cursor AI token costs by 40-70% through real-time prompt compression in the Cursor chat and composer.",
-        "dateModified": "2026-04-25",
+        "name": "Reduce Zed Token Costs — Terse for Zed",
+        "url": "https://www.terseai.org/for-zed",
+        "description": "Terse compresses the prompts you type into Zed's AI assistant and agent panel and tracks per-request token cost across Claude and GPT models — 100% on-device.",
+        "dateModified": "2026-07-08",
         "breadcrumb": {
           "@type": "BreadcrumbList",
           "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "For Cursor", "item": "https://www.terseai.org/for-cursor"}
+            {"@type": "ListItem", "position": 2, "name": "For Zed", "item": "https://www.terseai.org/for-zed"}
           ]
         }
       },
@@ -50,42 +50,34 @@
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "How does Terse work with Cursor?",
+            "name": "Does Terse work with Zed?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Terse uses macOS Accessibility APIs to read text from Cursor's chat and Composer panels. When you focus Cursor, a floating Terse bar auto-appears at the top of your screen. As you type a prompt, Terse shows the optimized version and its token savings. You can replace your draft with the compressed version with one click, or enable Auto mode to compress every message automatically."
+              "text": "Yes. Terse uses macOS Accessibility APIs (and Windows UI Automation) to read the text you type into Zed's AI assistant and agent panel. When you focus Zed, a floating Terse bar appears and shows the compressed version of your prompt plus its token savings. It works on the natural-language instructions you type — it does not hook into Zed's internal AI traffic or model calls."
             }
           },
           {
             "@type": "Question",
-            "name": "Why is Cursor so expensive?",
+            "name": "Why do Zed AI requests use tokens and credits?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Cursor sends a large context window with every request — your full codebase index, conversation history, and system prompts all count toward your token usage. Each message in Cursor Agent mode can consume 5,000-20,000 tokens before you've typed a single word. Terse compresses the editable portions (your prompts and instructions) by 40-70%, directly reducing per-request cost."
+              "text": "Zed's agentic editing sends your instruction plus surrounding code context, conversation history, and a system prompt to a hosted model like Claude Opus or GPT-5.x on every request. On the Zed Pro plan you get $5/mo of token credits and then pay by usage, so shorter, denser prompts directly stretch your credits further. Terse compresses the editable part — the instruction you type — by 40–70%."
             }
           },
           {
             "@type": "Question",
-            "name": "Does Terse work with Cursor's Composer and Chat?",
+            "name": "Does Terse read my Zed code?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes. Terse reads from Cursor's Chat panel and Composer textarea via macOS Accessibility APIs. Both modes are supported. The Terse floating bar shows live token counts and savings as you type in either interface."
+              "text": "No. Terse only reads the natural-language prompt you type into Zed's AI panel, and it processes it entirely on-device. It never reads your source files, your project, or Zed's internal context. No prompt or code is ever sent to a Terse server — compression happens locally on your Mac or PC."
             }
           },
           {
             "@type": "Question",
-            "name": "Will Terse break my Cursor prompts?",
+            "name": "Which models does Terse track?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Terse uses three compression modes — Soft (typo fix only), Normal (filler and hedging removal), and Aggressive (maximum compression). In Soft and Normal modes, the meaning of your prompt is fully preserved. Code blocks, variable names, file paths, and technical terms are always protected from modification."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does Terse affect Cursor's codebase context?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "No. Terse only optimizes the text you type in the chat and Composer panels. It does not modify Cursor's codebase index, file context, or system prompts. The context Cursor adds automatically is separate from what Terse compresses."
+              "text": "Terse is model-aware and tracks per-request cost across the models Zed exposes — Claude Opus 4, Claude Sonnet 4.5, Claude Haiku 4.5, GPT-5.x, GPT-4o, and Gemini 2.5 Pro, including Zed's hosted models. It uses each model's real per-million input pricing so the cost estimate on your prompt reflects the model you actually have selected in Zed."
             }
           }
         ]
@@ -176,6 +168,11 @@
     .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
     .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
 
+    .model-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+    .model-card{padding:18px 20px;background:var(--bg2);border:1px solid var(--bd);border-radius:12px}
+    .model-card .mn{font-size:14px;font-weight:700;margin-bottom:4px}
+    .model-card .mp{font-size:12px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+
     .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
     .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
     .also-card:hover{border-color:var(--ac);color:var(--ac)}
@@ -197,6 +194,7 @@
       .hero{padding:120px 20px 60px}
       .feature-grid{grid-template-columns:1fr}
       .faq-grid{grid-template-columns:1fr}
+      .model-grid{grid-template-columns:1fr}
       .footer-inner{grid-template-columns:1fr 1fr}
       section{padding:60px 20px}
       .cursor-body{grid-template-columns:1fr}.cursor-sidebar{display:none}
@@ -219,17 +217,17 @@
 <div style="max-width:1100px;margin:0 auto">
 <div class="hero">
   <div class="hero-glow"></div>
-  <div class="badge">Cursor</div>
-  <h1>Cursor Getting <span class="gradient-text">Too Expensive?</span></h1>
-  <p class="sub">Terse auto-appears when you focus Cursor, compresses your prompts in real time, and shows you the savings before you send. 40–70% fewer tokens per message.</p>
+  <div class="badge">Zed</div>
+  <h1>Cut Your Zed Token Costs by <span class="gradient-text">40–70%</span></h1>
+  <p class="sub">Zed is the fast, Rust-native AI editor. Terse auto-appears when you focus Zed, compresses the prompts you type into its AI assistant and agent panel, and tracks per-request cost across Claude and GPT — 100% on-device.</p>
   <div class="hero-actions">
     <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
     <a href="#how-it-works" class="btn-ghost">See How It Works</a>
   </div>
   <div class="stats-row">
     <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">prompt token reduction</span></div>
-    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">appears on Cursor focus</span></div>
-    <div class="stat-pill"><span class="val">3</span><span class="lbl">compression modes</span></div>
+    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">appears on Zed focus</span></div>
+    <div class="stat-pill"><span class="val">Model</span><span class="lbl">aware cost tracking</span></div>
     <div class="stat-pill"><span class="val">0</span><span class="lbl">data leaves device</span></div>
   </div>
 </div>
@@ -238,35 +236,35 @@
 <div class="divider"></div>
 
 <section id="how-it-works">
-  <h2>How Terse Works with <span class="gradient-text">Cursor</span></h2>
-  <p class="section-sub">Terse reads from Cursor's Chat and Composer panels via macOS Accessibility APIs, compresses on-device, and shows the result before you hit send.</p>
+  <h2>How Terse Works with <span class="gradient-text">Zed</span></h2>
+  <p class="section-sub">Zed's agentic editing runs multiple agent threads in parallel against hosted models like Claude Opus and GPT-5.x. Terse reads the instruction you type into the AI panel via Accessibility APIs, compresses it on-device, and shows the cost before you send.</p>
 
   <div class="demo-box">
-    <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Cursor — Composer</div><div class="demo-badge">Terse Active</div></div>
+    <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Zed — AI Assistant</div><div class="demo-badge">Terse Active</div></div>
     <div class="cursor-body">
       <div class="cursor-sidebar">
-        <div class="cursor-file active">📄 auth.ts</div>
-        <div class="cursor-file">📄 middleware.ts</div>
-        <div class="cursor-file">📄 routes.ts</div>
-        <div class="cursor-file">📄 types.ts</div>
+        <div class="cursor-file active">📄 db.rs</div>
+        <div class="cursor-file">📄 pool.rs</div>
+        <div class="cursor-file">📄 schema.rs</div>
+        <div class="cursor-file">📄 main.rs</div>
       </div>
       <div class="cursor-chat">
-        <div class="cursor-chat-header">Composer</div>
+        <div class="cursor-chat-header">Agent · Claude Opus 4</div>
         <div class="cursor-messages">
-          <div class="cursor-msg ai show">I can help you refactor the auth middleware. What changes do you need?</div>
-          <div class="cursor-msg user" id="cursorMsg">
-            <span class="original">Could you please possibly help me refactor this authentication middleware so that it would hopefully use asynchronous handlers? I think it would be really good if you could also make sure that it maintains backwards compatibility with existing API consumers.</span>
-            <span class="sent">Refactor auth middleware to use async handlers. Maintain backwards compatibility with existing API consumers.</span>
-            <span class="savings">Terse: 67 → 22 tokens · saved 67% · Normal mode</span>
+          <div class="cursor-msg ai show" id="zedBanner">Terse detected Zed — model: Claude Opus 4. Tracking token cost on this thread.</div>
+          <div class="cursor-msg user" id="zedWarn">
+            <span class="original">Hey, could you please possibly go ahead and add connection pooling to the database module for me? I was really hoping you could also make sure that it gracefully handles timeouts and retries when the connection drops.</span>
+            <span class="sent">Add connection pooling to the database module. Handle timeouts and retries gracefully on dropped connections.</span>
+            <span class="savings" id="zedStats">Terse: 71 → 24 tokens · saved 66% · ~$0.0007 saved · Normal mode</span>
           </div>
         </div>
-        <div class="terse-popup" id="cursorPopup">
+        <div class="terse-popup" id="zedPopup">
           <div class="tp-dot"></div>
-          <div class="tp-text">Terse compressed your message — removed filler &amp; hedging, preserved intent</div>
-          <div class="tp-savings">−67%</div>
+          <div class="tp-text">Terse compressed your instruction — removed filler &amp; hedging, priced against Claude Opus 4</div>
+          <div class="tp-savings">−66%</div>
         </div>
         <div class="cursor-input-row">
-          <div class="cursor-input" style="color:var(--t3)">Type a message…</div>
+          <div class="cursor-input" style="color:var(--t3)">Ask the agent…</div>
         </div>
       </div>
     </div>
@@ -275,39 +273,39 @@
   <div class="feature-grid">
     <div class="feat-card">
       <div class="feat-icon">👁️</div>
-      <h3>Focus-Triggered Popup</h3>
-      <p>When you click into Cursor's Chat or Composer, Terse auto-appears at the top of your screen — without stealing focus or interrupting your flow.</p>
+      <h3>Auto Zed Detection</h3>
+      <p>When you click into Zed's AI assistant or agent panel, Terse auto-appears at the top of your screen — without stealing focus or interrupting Zed's 120fps flow.</p>
       <span class="tag">Auto-detect</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">✂️</div>
-      <h3>Filler & Hedging Removal</h3>
-      <p>Phrases like "Could you possibly help me…", "I was hoping you could…", and "It would be great if…" add tokens without adding meaning. Terse removes them automatically.</p>
+      <h3>Prompt & Instruction Compression</h3>
+      <p>The verbose instructions you type into Zed's agent — "could you please go ahead and…", "I was hoping you could…" — get stripped of filler and hedging while intent is preserved.</p>
       <span class="tag">Normal Mode</span>
     </div>
     <div class="feat-card">
-      <div class="feat-icon">🔒</div>
-      <h3>Code Block Protection</h3>
-      <p>Variable names, file paths, and backtick code blocks are always excluded from compression. Only natural language prose is touched — never your code.</p>
-      <span class="tag">Always Safe</span>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">🔄</div>
-      <h3>Auto Mode</h3>
-      <p>Enable Auto in the Terse popup to automatically replace every Cursor prompt with its optimized version before you send. Zero extra clicks.</p>
-      <span class="tag">One-Click</span>
+      <div class="feat-icon">🧵</div>
+      <h3>Agent-Thread Context Awareness</h3>
+      <p>Zed runs multiple agent threads in parallel. Terse follows the thread you're typing in, so each thread's prompt is compressed and priced independently.</p>
+      <span class="tag">Per-Thread</span>
     </div>
     <div class="feat-card">
       <div class="feat-icon">💰</div>
-      <h3>Live Token Counter</h3>
-      <p>See the before and after token count for every prompt in real time. Know exactly how much you're saving on each Cursor request.</p>
-      <span class="tag">Real-time</span>
+      <h3>Model-Aware Cost Tracking</h3>
+      <p>Terse knows which model your thread uses — Claude Opus, Sonnet, or GPT-5.x — and prices each prompt with that model's real per-million rate so savings are accurate.</p>
+      <span class="tag">Claude · GPT</span>
     </div>
     <div class="feat-card">
-      <div class="feat-icon">🔧</div>
-      <h3>3 Compression Modes</h3>
-      <p>Soft (typo fix only), Normal (filler removal), and Aggressive (maximum compression). Switch modes per-prompt depending on how much context precision you need.</p>
-      <span class="tag">Flexible</span>
+      <div class="feat-icon">📊</div>
+      <h3>Session Cost Summary</h3>
+      <p>See tokens and dollars saved across a whole Zed session. On Pro your $5/mo of hosted-model token credits stretch further when prompts stay lean.</p>
+      <span class="tag">Per-Session</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <h3>100% On-Device</h3>
+      <p>Terse only reads the text you type, and compresses it locally via Accessibility APIs. It never reads Zed's internal traffic, your code, or your project — nothing leaves your machine.</p>
+      <span class="tag">Private</span>
     </div>
   </div>
 </section>
@@ -315,58 +313,75 @@
 <div class="divider"></div>
 
 <section>
-  <h2>Why Cursor <span class="gradient-text">Costs So Much</span></h2>
-  <p class="section-sub">Cursor's cost isn't just your prompts — it's everything Cursor adds automatically before your words even reach the model.</p>
+  <h2>Why Zed AI Requests <span class="gradient-text">Cost Tokens</span></h2>
+  <p class="section-sub">Zed's cost isn't just your instruction — it's everything the agent sends to the hosted model before your words reach it. On Pro, that spends your $5/mo token credits and then bills by usage.</p>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px">
     <div style="padding:28px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px">
-      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">Token breakdown — Cursor Agent message</div>
+      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">Token breakdown — Zed agent request</div>
       <div style="display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Cursor system prompt</span><span style="font-weight:600">~2,000 tokens</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Codebase index &amp; context</span><span style="font-weight:600">~8,000–15,000 tokens</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Conversation history</span><span style="font-weight:600">~2,000–5,000 tokens</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2);font-style:italic">Your prompt (verbose)</span><span style="color:#f87171;font-weight:700">~200–800 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Zed system prompt</span><span style="font-weight:600">~1,500 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">File &amp; buffer context</span><span style="font-weight:600">~6,000–14,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Thread history</span><span style="font-weight:600">~2,000–5,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2);font-style:italic">Your instruction (verbose)</span><span style="color:#f87171;font-weight:700">~150–700 tokens</span></div>
         <div style="height:1px;background:var(--bd);margin:4px 0"></div>
-        <div style="font-size:12px;color:var(--t3)">Your prompt is the only part you control. Terse cuts it by 40–70%.</div>
+        <div style="font-size:12px;color:var(--t3)">Your instruction is the only part you control. Terse cuts it by 40–70%.</div>
       </div>
     </div>
     <div style="padding:28px;background:var(--bg2);border:1px solid var(--acm);border-radius:14px;background:linear-gradient(160deg,rgba(110,231,183,0.05),var(--bg2))">
       <div style="font-size:12px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">What Terse does</div>
       <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Removes filler phrases ("could you please", "I was hoping", "it would be great if")</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Removes filler phrases ("could you please go ahead", "I was hoping")</span></div>
         <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Fixes typos that cause misinterpretation and re-prompting</span></div>
-        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Removes hedging language that doesn't change the instruction</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Prices every prompt against the model your Zed thread has selected</span></div>
         <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Compresses redundant phrasing while preserving full meaning</span></div>
-        <div style="margin-top:8px;padding:10px 14px;background:var(--acd);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)">Result: 40–70% fewer tokens on every prompt you type</div>
+        <div style="margin-top:8px;padding:10px 14px;background:var(--acd);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)">Result: leaner prompts, and your Pro token credits go further</div>
       </div>
     </div>
   </div>
+  <p style="font-size:13px;color:var(--t3);margin-top:20px">New to how agent pricing adds up? Read the full <a href="/ai-coding-agent-costs" style="color:var(--ac);font-weight:600">AI coding agent cost guide</a>.</p>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Supported <span class="gradient-text">Models</span></h2>
+  <p class="section-sub">Terse tracks per-request cost with each model's real input pricing, matched to the model your Zed thread has selected — including Zed's hosted models.</p>
+  <div class="model-grid">
+    <div class="model-card"><div class="mn">Claude Opus 4</div><div class="mp">$15.00 / M input</div></div>
+    <div class="model-card"><div class="mn">Claude Sonnet 4.5</div><div class="mp">$3.00 / M input</div></div>
+    <div class="model-card"><div class="mn">GPT-5.x</div><div class="mp">$1.25 / M input</div></div>
+    <div class="model-card"><div class="mn">GPT-4o</div><div class="mp">$2.50 / M input</div></div>
+    <div class="model-card"><div class="mn">Gemini 2.5 Pro</div><div class="mp">$1.25 / M input</div></div>
+    <div class="model-card"><div class="mn">Claude Haiku 4.5</div><div class="mp">$1.00 / M input</div></div>
+  </div>
+  <p style="font-size:12px;color:var(--t3);margin-top:16px">Zed exposes hosted models on Pro (with $5/mo token credits) or your own API keys. Terse matches whichever model you select. Prices approximate per-million input tokens.</p>
 </section>
 
 <div class="divider"></div>
 
 <section>
   <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
-  <p class="section-sub">Everything about using Terse with Cursor.</p>
+  <p class="section-sub">Everything about using Terse with Zed.</p>
   <div class="faq-grid">
     <div class="faq-item">
-      <div class="faq-q">How does Terse work with Cursor?</div>
-      <div class="faq-a">Terse reads from Cursor's Chat and Composer via macOS Accessibility APIs. A floating bar auto-appears when you focus Cursor, showing live token counts and the compressed version of your prompt. One click to replace, or enable Auto mode for hands-free compression.</div>
+      <div class="faq-q">Does Terse work with Zed?</div>
+      <div class="faq-a">Yes. Terse reads the text you type into Zed's AI assistant and agent panel via macOS Accessibility APIs (and Windows UI Automation). A floating bar auto-appears when you focus Zed, showing live token counts and the compressed version of your prompt. It works on your typed instructions — not on Zed's internal AI traffic.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Why is Cursor so expensive?</div>
-      <div class="faq-a">Cursor sends a large context window per request — codebase index, conversation history, and system prompts all count toward your bill. Your typed prompts are the only part you can control. Terse compresses them by 40–70% per message.</div>
+      <div class="faq-q">Why do Zed AI requests use tokens and credits?</div>
+      <div class="faq-a">Every agent request sends your instruction plus code context, thread history, and a system prompt to a hosted model. On Zed Pro you get $5/mo of token credits and then pay by usage — so shorter, denser prompts directly stretch your credits. Terse compresses the editable part by 40–70%.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Does Terse work with Cursor Composer and Chat?</div>
-      <div class="faq-a">Yes. Both the Chat panel and Composer textarea are supported. The Terse floating bar shows live token counts and savings as you type in either interface.</div>
+      <div class="faq-q">Does Terse read my Zed code?</div>
+      <div class="faq-a">No. Terse only reads the natural-language prompt you type into the AI panel, and processes it entirely on-device. It never reads your source files, your project, or Zed's internal context, and nothing is sent to a Terse server.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Will Terse break my Cursor prompts?</div>
-      <div class="faq-a">No. In Soft and Normal modes, meaning is fully preserved — only filler, hedging, and typos are removed. Code blocks, variable names, and technical terms are always protected. You can preview the compressed version before applying.</div>
+      <div class="faq-q">Which models does Terse track?</div>
+      <div class="faq-a">Claude Opus 4, Claude Sonnet 4.5, Claude Haiku 4.5, GPT-5.x, GPT-4o, and Gemini 2.5 Pro — including Zed's hosted models. Terse is model-aware and prices each prompt with the real per-million rate of whichever model your thread has selected.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Does Terse affect Cursor's codebase context?</div>
-      <div class="faq-a">No. Terse only compresses the text you type. Cursor's codebase index, file context, and system prompts are not touched by Terse.</div>
+      <div class="faq-q">Will Terse break my Zed prompts?</div>
+      <div class="faq-a">No. In Soft and Normal modes, meaning is fully preserved — only filler, hedging, and typos are removed. Code blocks, file paths, and technical terms are always protected. You can preview the compressed version before applying, or use Aggressive mode when you want maximum compression.</div>
     </div>
     <div class="faq-item">
       <div class="faq-q">Is there a free trial?</div>
@@ -379,21 +394,21 @@
 
 <section>
   <h2>Also Works With</h2>
-  <p class="section-sub">Terse supports every major AI coding tool and browser-based AI assistant.</p>
+  <p class="section-sub">Terse supports every major AI code editor and coding assistant.</p>
   <div class="also-grid">
+    <a href="/for-cursor" class="also-card"><span style="font-size:18px">🖱️</span><span>Cursor — AI IDE</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-windsurf" class="also-card"><span style="font-size:18px">🏄</span><span>Windsurf — AI IDE</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
     <a href="/for-claude-code" class="also-card"><span style="font-size:18px">⚡</span><span>Claude Code — CLI Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
-    <a href="/for-chatgpt" class="also-card"><span style="font-size:18px">💬</span><span>ChatGPT — Browser</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
     <a href="/for-github-copilot" class="also-card"><span style="font-size:18px">🤖</span><span>GitHub Copilot — VS Code</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
-    <a href="/for-aider" class="also-card"><span style="font-size:18px">🖥️</span><span>Aider — Terminal Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
   </div>
 </section>
 
 <div class="cta-section">
   <div class="cta-glow"></div>
-  <h2>Make Every Cursor Prompt <span class="gradient-text">Leaner</span></h2>
+  <h2>Make Every Zed Agent Prompt <span class="gradient-text">Leaner</span></h2>
   <p>30-day free trial. No credit card required until your trial ends. Cancel anytime.</p>
   <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS</a>
+    <a href="/#pricing" class="btn-primary">Start Free Trial — macOS &amp; Windows</a>
     <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
   </div>
 </div>
@@ -404,22 +419,25 @@
       <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
       <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Prompt optimizer for AI coding tools. Compress prompts, cut costs, ship faster. All on-device.</p>
     </div>
-    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-chatgpt">ChatGPT</a><a href="/for-github-copilot">GitHub Copilot</a><a href="/for-aider">Aider</a><a href="/for-cline">Cline</a><a href="/for-codex-cli">Codex CLI</a><a href="/for-windsurf">Windsurf</a><a href="/for-gemini-cli">Gemini CLI</a><a href="/for-opencode">opencode</a><a href="/for-zed">Zed</a><a href="/ai-coding-agent-costs">Cost Guide</a></div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-zed">Zed</a><a href="/for-chatgpt">ChatGPT</a><a href="/for-github-copilot">GitHub Copilot</a><a href="/for-aider">Aider</a><a href="/for-cline">Cline</a><a href="/for-codex-cli">Codex CLI</a><a href="/for-windsurf">Windsurf</a><a href="/for-gemini-cli">Gemini CLI</a><a href="/for-opencode">opencode</a><a href="/for-zed">Zed</a><a href="/ai-coding-agent-costs">Cost Guide</a></div>
     <div class="footer-col"><h4>Techniques</h4><a href="/spell-correction">Spell Correction</a><a href="/nlp-analysis">NLP Analysis</a><a href="/telegraph-compression">Telegraph Compression</a><a href="/selective-context">Selective Context</a></div>
     <div class="footer-col"><h4>Learn</h4><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
   </div>
-  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Rust · Swift</span></div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Windows · Rust · Swift</span></div>
 </footer>
 
 <script>
 (function(){
-  const msg = document.getElementById('cursorMsg');
-  const popup = document.getElementById('cursorPopup');
+  const banner = document.getElementById('zedBanner');
+  const warn = document.getElementById('zedWarn');
+  const stats = document.getElementById('zedStats');
+  const popup = document.getElementById('zedPopup');
   let started = false;
   function run(){
     if(started) return; started = true;
-    setTimeout(()=>msg.classList.add('show'), 600);
-    setTimeout(()=>popup.classList.add('show'), 1200);
+    setTimeout(()=>banner.classList.add('show'), 400);
+    setTimeout(()=>warn.classList.add('show'), 900);
+    setTimeout(()=>popup.classList.add('show'), 1500);
   }
   const obs = new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)run();}),{threshold:0.3});
   obs.observe(document.querySelector('.demo-box'));

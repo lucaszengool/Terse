@@ -16,6 +16,9 @@
 
 ## Pages
 
+### Pillar Guide
+- [AI Coding Agent Costs 2026 — Complete Guide](https://www.terseai.org/ai-coding-agent-costs): What every AI coding agent costs and how to cut token bills 40-70% (hub linking all tool, pricing, and comparison pages)
+
 ### Product
 - [Home](https://www.terseai.org/): Full product overview, pricing, features
 - [Token Calculator](https://www.terseai.org/token-calculator): Calculate your potential token savings

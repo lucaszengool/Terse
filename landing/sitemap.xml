@@ -139,6 +139,24 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://www.terseai.org/claude-code-vs-github-copilot</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/windsurf-vs-claude-code</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/ai-coding-tools-pricing</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
     <loc>https://www.terseai.org/reduce-ai-api-costs</loc>
     <lastmod>2026-07-08</lastmod>
     <changefreq>monthly</changefreq>

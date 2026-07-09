@@ -43,7 +43,9 @@
 - [Cursor vs Claude Code](https://www.terseai.org/cursor-vs-claude-code): Pricing, token efficiency, and which to choose
 - [Claude Code vs Codex CLI](https://www.terseai.org/claude-code-vs-codex-cli): Benchmarks, pricing, and token cost head-to-head
 - [Cursor vs GitHub Copilot](https://www.terseai.org/cursor-vs-github-copilot): The two most-adopted tools, pricing and which to pick
+- [Claude Code vs GitHub Copilot](https://www.terseai.org/claude-code-vs-github-copilot): Terminal agent vs IDE extension, pricing and which to pick
 - [Windsurf vs Cursor](https://www.terseai.org/windsurf-vs-cursor): The two leading AI IDEs, pricing and autonomy compared
+- [Windsurf vs Claude Code](https://www.terseai.org/windsurf-vs-claude-code): AI IDE vs terminal agent, pricing and token efficiency
 - [Claude Code Alternatives](https://www.terseai.org/claude-code-alternatives): 10 best alternatives in 2026, free and paid
 - [Cursor Alternatives](https://www.terseai.org/cursor-alternatives): 9 best alternatives in 2026, IDE and terminal
 - [GitHub Copilot Alternatives](https://www.terseai.org/github-copilot-alternatives): 9 best alternatives in 2026, IDE and terminal
@@ -54,6 +56,7 @@
 - [Claude Code Pricing 2026](https://www.terseai.org/claude-code-pricing): Real per-token costs, monthly estimates, and how to cut your bill
 - [Cursor Pricing 2026](https://www.terseai.org/cursor-pricing): Plans, credit pool, real token costs, and how to save
 - [GitHub Copilot Pricing 2026](https://www.terseai.org/github-copilot-pricing): Plans, usage-based AI Credits, and how to cut your bill
+- [AI Coding Tools Pricing 2026](https://www.terseai.org/ai-coding-tools-pricing): Every tool's plans compared side-by-side; cheapest and free options
 - [AI Token Pricing Comparison 2026](https://www.terseai.org/ai-token-pricing-comparison): Claude vs GPT vs Gemini complete cost guide
 - [I Built an App to Steal $50M Back from Claude Code](https://www.terseai.org/i-built-an-app-to-steal-50m-back): Technical deep-dive on the Terse compression pipeline
 

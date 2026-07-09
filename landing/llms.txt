@@ -52,6 +52,7 @@
 
 ### Product
 - [Home](https://www.terseai.org/): Full product overview, pricing, features
+- [About Terse](https://www.terseai.org/about): Who/what Terse is — on-device token optimizer, privacy-first, supported tools
 - [Token Calculator](https://www.terseai.org/token-calculator): Calculate your potential token savings
 - [Marketplace](https://www.terseai.org/marketplace): Extensions and integrations
 - [Docs](https://www.terseai.org/docs): Complete usage guide, installation, and configuration

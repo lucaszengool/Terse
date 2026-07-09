@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reduce Your Claude Code Context Window (2026) — Terse</title>
+  <meta name="description" content="A practical 2026 guide to reducing Claude Code's context window: use /compact and /clear, keep CLAUDE.md lean, scope file reads, and use subagents.">
+  <link rel="canonical" href="https://www.terseai.org/reduce-claude-code-context-window">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="How to Reduce Your Claude Code Context Window (2026)">
+  <meta property="og:description" content="A practical 2026 guide to reducing Claude Code's context window: /compact, /clear, lean CLAUDE.md, scoped reads, and subagents to fight context rot.">
+  <meta property="og:url" content="https://www.terseai.org/reduce-claude-code-context-window">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to Reduce Your Claude Code Context Window (2026)">
+  <meta name="twitter:description" content="A practical 2026 guide to reducing Claude Code's context window: /compact, /clear, lean CLAUDE.md, scoped reads, and subagents to fight context rot.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "How to Reduce Your Claude Code Context Window (2026)",
+        "description": "A practical 2026 guide to reducing Claude Code's context window: use /compact and /clear, keep CLAUDE.md lean, scope file reads, and use subagents to fight context rot.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "url": "https://www.terseai.org",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": { "@type": "WebPage", "@id": "https://www.terseai.org/reduce-claude-code-context-window" }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "Reduce Claude Code Context Window", "item": "https://www.terseai.org/reduce-claude-code-context-window" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I reduce Claude Code's context window?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Run /compact to summarize and shrink conversation history, /clear between unrelated tasks, keep your CLAUDE.md lean, tell Claude which specific files to read instead of the whole repo, and delegate research to subagents so their output does not pollute the main thread." }
+          },
+          {
+            "@type": "Question",
+            "name": "What is context rot in Claude Code?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Context rot is the drop in answer quality that happens as the context window fills. As history, file contents, and tool outputs accumulate, the model spends attention on stale or irrelevant tokens and is more likely to lose track of instructions, so trimming context improves both cost and quality." }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between /compact and /clear?",
+            "acceptedAnswer": { "@type": "Answer", "text": "/compact replaces the conversation history with an AI-generated summary, preserving continuity while cutting tokens. /clear wipes the context entirely and starts a fresh session. Use /compact to continue the same task with less baggage; use /clear when you move to something unrelated." }
+          },
+          {
+            "@type": "Question",
+            "name": "Why do duplicate tool calls waste context?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Every tool result — file reads, greps, command output — is injected into the context window and re-sent on every subsequent turn. Reading the same file twice or re-running the same search duplicates that payload, inflating cost and crowding out relevant context." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .backlink{font-size:13px;color:var(--ac);margin-bottom:20px;display:inline-block;border-bottom:none}
+    .article .backlink:hover{border-bottom:1px solid var(--ac)}
+
+    .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:24px 28px;margin:0 0 40px}
+    .answer-box p{margin-bottom:0;color:var(--t1)}
+    .answer-box .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ac);font-weight:700;display:block;margin-bottom:10px}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="backlink">&larr; Back to Blog</a>
+  <span class="tag">Claude Code Guide</span>
+  <h1>How to Reduce Your Claude Code Context Window (2026)</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <span class="lbl">Quick Answer</span>
+    <p>To reduce Claude Code's context window, run <code>/compact</code> to summarize and shrink history, use <code>/clear</code> between unrelated tasks, keep your CLAUDE.md lean, tell Claude which specific files to read instead of the whole repo, and delegate research to subagents so their output never lands in your main thread.</p>
+  </div>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#what-fills">What Fills Claude Code's Context Window</a></li>
+      <li><a href="#why-matters">Why a Bloated Context Costs You Twice</a></li>
+      <li><a href="#techniques">8 Techniques to Reduce the Context Window</a></li>
+      <li><a href="#terse">How Terse Helps</a></li>
+      <li><a href="#summary">Summary</a></li>
+    </ol>
+  </div>
+
+  <h2 id="what-fills">What Fills Claude Code's Context Window</h2>
+  <p>Claude Code's context window is the total pool of tokens the model sees on every request. It is not just the message you type. Four things pour into it, and most of them grow silently as you work:</p>
+  <ul>
+    <li><strong>Your CLAUDE.md file</strong> — the project memory file is injected at the top of every session and stays there for the whole conversation. A 500-line CLAUDE.md is 500 lines the model re-reads on every single turn.</li>
+    <li><strong>Every file Claude reads</strong> — each <code>Read</code>, <code>Grep</code>, or glob result gets dropped into context in full. Ask it to "read the whole repo" and you can inject tens of thousands of tokens in one move.</li>
+    <li><strong>Tool and command outputs</strong> — the results of <code>Bash</code>, test runs, build logs, and searches all land in context. A single noisy <code>npm install</code> or a long stack trace can eat thousands of tokens.</li>
+    <li><strong>The full conversation history</strong> — this is the big one. Large language models are stateless, so Claude Code re-sends the entire prior conversation with every new turn. A file you read on turn 3 is re-transmitted on turns 4, 5, 6, and onward until you clear or compact.</li>
+  </ul>
+  <p>That last point is what surprises most developers. Nothing leaves the context on its own. Everything you and Claude add early in a session keeps riding along, turn after turn, quietly inflating the payload. Understanding that <a href="/what-is-token-optimization">token optimization</a> is really about managing this accumulating payload is the key to everything below.</p>
+
+  <h2 id="why-matters">Why a Bloated Context Costs You Twice</h2>
+  <p>A full context window hurts you in two distinct ways: your wallet and your output quality.</p>
+
+  <h3>Cost and speed</h3>
+  <p>Because history re-sends every turn, a token you add on turn 1 gets billed again on every subsequent turn. Over a 40-turn session, a 5,000-token file read that stays in context can be transmitted dozens of times. Bigger context also means slower responses — the model has more to process before it can answer. This is why context size is one of the biggest levers on your <a href="/claude-code-pricing">Claude Code pricing</a> and overall <a href="/ai-coding-agent-costs">AI coding agent costs</a>. If you want to see how the numbers move, the <a href="/token-calculator">token calculator</a> makes the compounding effect concrete.</p>
+
+  <h3>Context rot</h3>
+  <p>The subtler cost is quality. As the window fills, answers get worse — a phenomenon commonly called <strong>context rot</strong>. When the context is crowded with stale file contents, old tool output, and history from tasks you finished an hour ago, the model spends attention on irrelevant tokens and is more likely to lose the thread of your actual instructions. A lean context is not just cheaper; it is measurably sharper. Reducing the window is therefore a quality strategy as much as a cost one.</p>
+
+  <div class="cost-card">
+    <h4>Where a typical Claude Code session's tokens go</h4>
+    <div class="row"><span class="label">CLAUDE.md + system instructions</span><span>~15%</span></div>
+    <div class="row"><span class="label">Your prompts (what you type)</span><span>~10%</span></div>
+    <div class="row"><span class="label">Conversation history (re-sent each turn)</span><span>~30%</span></div>
+    <div class="row"><span class="label">File reads + tool/command output</span><span>~45%</span></div>
+  </div>
+
+  <h2 id="techniques">8 Techniques to Reduce the Context Window</h2>
+  <p>Here are the practical moves, roughly in order of impact. Most take seconds and pay off immediately.</p>
+
+  <h3><span class="strategy-num">1</span> Use /compact to summarize and shrink history</h3>
+  <p>When a session gets long but you still need continuity, run <code>/compact</code>. It replaces the bulky conversation history with a concise AI-generated summary, preserving what matters while reclaiming a large share of the window. You can steer it — <code>/compact focus on the auth refactor we just did</code> — to keep the summary tight around the work that still matters. Compact when you feel responses slowing down or the context indicator climbing past two-thirds.</p>
+
+  <h3><span class="strategy-num">2</span> Use /clear between unrelated tasks</h3>
+  <p>When you switch to something genuinely new — a different feature, a different bug — do not keep the old conversation around. Run <code>/clear</code> to wipe the context and start fresh. Carrying the debugging session for feature A into your work on feature B gives you all the cost and none of the benefit. As a rule: new task, new context.</p>
+
+  <h3><span class="strategy-num">3</span> Keep your CLAUDE.md lean</h3>
+  <p>Because CLAUDE.md is injected on every turn, every line you cut saves tokens across the entire session. Trim it to durable, high-signal facts: build commands, architecture notes, hard rules. Move rarely-needed detail into separate docs that Claude reads only on demand. A tight 40-line CLAUDE.md beats a sprawling 400-line one that repeats things the model can infer from the code.</p>
+
+  <h3><span class="strategy-num">4</span> Be specific about which files to read</h3>
+  <p>"Read the whole repo and figure it out" is the single most expensive instruction you can give. Instead, point Claude at the exact files or directories that matter: "Read <code>src/auth/session.rs</code> and its test." Specific reads keep the window small and, as a bonus, focus the model on the code that actually matters — a double win against context rot.</p>
+
+  <h3><span class="strategy-num">5</span> Use subagents for isolated research</h3>
+  <p>When you need broad exploration — "find everywhere we validate tokens" — delegate it to a subagent. The subagent burns through files in its <em>own</em> context window and returns only a short conclusion to your main thread. All those file reads and dead-end searches never pollute your primary session. This is the cleanest way to do heavy research without paying for it on every subsequent turn.</p>
+
+  <h3><span class="strategy-num">6</span> Avoid re-reading the same file</h3>
+  <p>If a file is already in context, do not ask Claude to read it again — the content is right there. Re-reading duplicates the entire payload and pushes you toward context rot faster. The same applies to re-running an identical search or command: each duplicate tool result is injected fresh and then re-sent every turn afterward. Duplicate tool calls are pure waste.</p>
+
+  <h3><span class="strategy-num">7</span> Prefer targeted edits over rewrites</h3>
+  <p>Ask for surgical edits rather than having Claude reprint whole files. A targeted diff adds a handful of tokens; regenerating a 300-line file adds all 300 to the output <em>and</em> the history. Precise edits keep both the response and the growing context small.</p>
+
+  <h3><span class="strategy-num">8</span> Commit and start fresh for new features</h3>
+  <p>When you finish a unit of work, commit it and then <code>/clear</code>. The commit is your durable record; you no longer need the whole conversation that produced it living in context. Starting each feature from a clean window is the most reliable way to keep sessions fast and sharp over a long day.</p>
+
+  <h2 id="terse">How Terse Helps</h2>
+  <p><a href="/for-claude-code">Terse for Claude Code</a> attacks the context problem from two light-touch angles. First, it compresses the prompts you type before they ever enter the conversation — stripping filler, hedging, and padding on-device in under a millisecond, so the tokens you contribute stay minimal and, because history re-sends, stay minimal across every turn.</p>
+  <p>Second, Terse watches your Claude Code sessions and flags redundant work: duplicate tool calls and repeated file reads that quietly inflate your context. When Claude reads the same file twice or re-runs a search it already ran, Terse surfaces it so you can catch the waste. It is a nudge, not a takeover — the goal is to make the invisible growth of your context window visible.</p>
+
+  <div class="cta-box">
+    <h3>Keep your Claude Code context lean</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse compresses the prompts you type and flags duplicate tool calls and file reads in your Claude Code sessions. On-device, zero latency, no API calls.</p>
+    <a href="/for-claude-code" class="btn">Terse for Claude Code</a>
+  </div>
+
+  <h2 id="summary">Summary</h2>
+  <p>Claude Code's context window fills with your CLAUDE.md, every file it reads, tool output, and a conversation history that re-sends on every turn. A bloated window costs you twice — real dollars from re-billed tokens, and degraded answers from context rot. The fixes are simple and habitual:</p>
+  <ul>
+    <li><strong>/compact</strong> to summarize a long session, <strong>/clear</strong> to reset for unrelated work.</li>
+    <li>Keep <strong>CLAUDE.md lean</strong> and name <strong>specific files</strong> instead of "read the whole repo."</li>
+    <li>Push research into <strong>subagents</strong>, avoid <strong>re-reading files</strong> and duplicate tool calls, prefer <strong>targeted edits</strong>, and <strong>commit + clear</strong> between features.</li>
+  </ul>
+  <p>Do these consistently and you will spend less, get faster responses, and keep Claude sharp deep into a working session. For the cost side of the picture, dig into <a href="/claude-code-pricing">Claude Code pricing</a> and the broader <a href="/ai-coding-agent-costs">AI coding agent costs</a> breakdown.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/for-claude-code">Terse for Claude Code</a> — how Terse fits into your workflow</li>
+    <li><a href="/claude-code-pricing">Claude Code Pricing</a> — what a session actually costs</li>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — the full cost picture across tools</li>
+    <li><a href="/token-calculator">Token Calculator</a> — model the compounding cost of context</li>
+    <li><a href="/what-is-token-optimization">What Is Token Optimization?</a> — the foundational guide</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/claude-code-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Claude Code Pricing</a><a href="/token-calculator" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Token Calculator</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

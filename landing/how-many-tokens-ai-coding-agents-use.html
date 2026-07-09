@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How Many Tokens Do AI Coding Agents Use? (2026) — Terse</title>
+  <meta name="description" content="AI coding agents commonly burn 50K–500K+ tokens per task, sometimes over 1M. Here's why context — not your prompt — dominates token usage, with typical 2026 ranges.">
+  <link rel="canonical" href="https://www.terseai.org/how-many-tokens-ai-coding-agents-use">
+  <link rel="sitemap" type="application/xml" href="https://www.terseai.org/sitemap.xml">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="How Many Tokens Do AI Coding Agents Use? (2026)">
+  <meta property="og:description" content="AI coding agents commonly burn 50K–500K+ tokens per task, sometimes over 1M. Here's why context — not your prompt — dominates token usage.">
+  <meta property="og:url" content="https://www.terseai.org/how-many-tokens-ai-coding-agents-use">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How Many Tokens Do AI Coding Agents Use? (2026)">
+  <meta name="twitter:description" content="AI coding agents commonly burn 50K–500K+ tokens per task, sometimes over 1M. Here's why context — not your prompt — dominates token usage.">
+  <meta name="twitter:image" content="https://www.terseai.org/og-image.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "How Many Tokens Do AI Coding Agents Use? (2026)",
+        "description": "AI coding agents commonly burn 50K–500K+ tokens per task, sometimes over 1M. Here's why context — not your prompt — dominates token usage, with typical 2026 ranges.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "url": "https://www.terseai.org",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": { "@type": "WebPage", "@id": "https://www.terseai.org/how-many-tokens-ai-coding-agents-use" },
+        "keywords": ["how many tokens do AI coding agents use", "AI agent token usage", "Claude Code token usage", "Aider token usage", "Cursor token usage", "agent token consumption", "LLM context window"]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "How Many Tokens Do AI Coding Agents Use?", "item": "https://www.terseai.org/how-many-tokens-ai-coding-agents-use" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How many tokens does a single coding task use?",
+            "acceptedText": "",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A single non-trivial coding task run through an agent commonly consumes 50,000 to 500,000+ tokens. Long autonomous sessions that read many files and iterate over multiple turns can exceed 1 million tokens. The exact figure depends on repo size, how many files the agent reads, and how many turns it takes."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why do AI coding agents use so many tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Agents re-send accumulated context on every turn — the system prompt, tool definitions, files read, command output, and prior messages. Because each new turn includes everything before it, total token usage grows super-linearly with the number of turns rather than linearly with your prompt length."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do terminal agents use more tokens than IDE agents?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "It varies by task and configuration, but the main difference is how much context each tool auto-includes. Some observations show one agent using roughly 5x more tokens than another on the same task, largely because of differences in repo-mapping, file-inclusion, and history-management defaults."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does my prompt length matter for token cost?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Your typed prompt is usually a small share of total tokens — context dominates. But verbose prompts and redundant file reads still compound across a long session, because everything you add to the conversation gets re-sent on every subsequent turn."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .back-link{display:inline-block;font-size:13px;color:var(--ac);margin-bottom:24px;border-bottom:none}
+    .back-link:hover{border-bottom:1px solid var(--ac)}
+
+    .answer-box{background:var(--bg2);border:1px solid var(--bdl);border-left:3px solid var(--ac);border-radius:12px;padding:24px 28px;margin:0 0 40px}
+    .answer-box p{margin-bottom:0;color:var(--t1);font-size:17px;line-height:1.7}
+    .answer-box .q{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--ac);font-weight:700;margin-bottom:10px;display:block}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-link">← Back to Blog</a>
+  <span class="tag">Data &amp; Explainers</span>
+  <h1>How Many Tokens Do AI Coding Agents Use?</h1>
+  <p class="updated">Published July 2026</p>
+
+  <div class="answer-box">
+    <span class="q">Quick answer</span>
+    <p>A single non-trivial coding task run through an AI agent commonly uses 50,000 to 500,000+ tokens, and long autonomous sessions can exceed 1 million. Usage is dominated by context, not your prompt: agents re-send the system prompt, tool definitions, files read, and prior turns on every step, so cost grows super-linearly with turns.</p>
+  </div>
+
+  <p class="subtitle">If your AI coding bill feels higher than your typing suggests it should be, you are not imagining it. Modern agents spend most of their tokens re-reading context, not reading your prompt. This explainer breaks down where those tokens actually go, with honest 2026 ranges you can sanity-check against your own usage.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#per-task">Tokens Per Task: The Real Numbers</a></li>
+      <li><a href="#why-superlinear">Why Usage Grows Super-Linearly</a></li>
+      <li><a href="#sources">Where the Tokens Come From</a></li>
+      <li><a href="#terminal-vs-ide">Terminal Agents vs. IDE Agents</a></li>
+      <li><a href="#takeaway">The Takeaway: Context Dominates</a></li>
+    </ol>
+  </div>
+
+  <h2 id="per-task">Tokens Per Task: The Real Numbers</h2>
+  <p>Let us start with the number everyone wants. Based on observed usage across popular agents in 2026, a single non-trivial coding task — say, "add a feature and update the tests" — commonly lands somewhere between <strong>50,000 and 500,000+ tokens</strong>. Trivial one-line edits can come in under 20,000. Long, autonomous sessions where the agent explores a large repo, reads dozens of files, runs commands, and iterates over many turns routinely push past <strong>1 million tokens</strong>.</p>
+  <p>These are ranges, not precise measurements. Your actual numbers depend heavily on repo size, how aggressively the tool includes context, how many turns the task takes, and your configuration. Treat the figures below as observations to calibrate against, not laboratory constants.</p>
+
+  <table class="pricing-table">
+    <thead>
+      <tr><th>Task Type</th><th>Typical Total Tokens</th><th>Turns</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Trivial edit (one file, one change)</td><td>10K – 40K</td><td>1–3</td></tr>
+      <tr><td>Standard feature or bug fix</td><td>50K – 250K</td><td>4–15</td></tr>
+      <tr><td>Multi-file refactor</td><td>200K – 600K</td><td>10–30</td></tr>
+      <tr><td>Long autonomous session</td><td>600K – 1M+</td><td>30+</td></tr>
+    </tbody>
+  </table>
+
+  <p>The spread is wide because these totals are cumulative across every turn. And that cumulative behavior is the single most important thing to understand about agent token usage. For a full picture of what those tokens translate to in dollars, see our breakdown of <a href="/ai-coding-agent-costs">AI coding agent costs</a>.</p>
+
+  <h2 id="why-superlinear">Why Usage Grows Super-Linearly</h2>
+  <p>Here is the mechanism that surprises most people. LLMs are stateless. The model does not "remember" your previous turn — the agent has to re-send the entire relevant history on every single request. So each turn includes the system prompt, the tool definitions, every file already read into context, every command's output, and the full transcript of prior messages and diffs.</p>
+  <p>The consequence: a file the agent reads on turn 3 is re-transmitted on turns 4, 5, 6, and every turn after. Over a 30-turn session, that one file might be sent 27 times. This is why total token usage grows <strong>super-linearly</strong> with the number of turns rather than linearly with your prompt length. Doubling the length of a session more than doubles the tokens.</p>
+
+  <div class="cost-card">
+    <h4>The compounding effect (illustrative)</h4>
+    <div class="row"><span class="label">Turn 1 context</span><span>~8K tokens</span></div>
+    <div class="row"><span class="label">Turn 5 context (history + 3 files read)</span><span>~35K tokens</span></div>
+    <div class="row"><span class="label">Turn 15 context (more history + 8 files)</span><span>~90K tokens</span></div>
+    <div class="row highlight"><span class="label">Cumulative input across 15 turns</span><span>~600K tokens</span></div>
+  </div>
+
+  <p>Notice that the biggest single line item is not any one turn — it is the accumulation. This is exactly why techniques like prompt caching, context pruning, and summarization matter so much for agents specifically, and why the same task can cost wildly different amounts depending on how the tool manages that growing payload.</p>
+
+  <h2 id="sources">Where the Tokens Come From</h2>
+  <p>Break a single agent request into its parts and a consistent pattern emerges. There are four broad sources of tokens, and only one of them is the prompt you actually typed.</p>
+
+  <table class="pricing-table">
+    <thead>
+      <tr><th>Token Source</th><th>Typical Range</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>System prompt + tool definitions</td><td>5K – 20K</td><td>Fixed overhead, sent every turn</td></tr>
+      <tr><td>Repo map / project index (Aider-style)</td><td>5K – 50K</td><td>Added upfront in some tools</td></tr>
+      <tr><td>Files read into context</td><td>2K – 15K per file</td><td>Largest variable component</td></tr>
+      <tr><td>Command &amp; tool outputs</td><td>1K – 20K each</td><td>Test logs, grep, build output</td></tr>
+      <tr><td>Conversation history (re-sent)</td><td>Grows every turn</td><td>Compounds across the session</td></tr>
+      <tr><td>Your typed prompt</td><td>50 – 800</td><td>Usually the smallest share</td></tr>
+    </tbody>
+  </table>
+
+  <p>A few things stand out. The <strong>system prompt and tool definitions</strong> are a fixed tax — often 5K to 20K tokens — paid on every turn before you do anything. Tools that ship large, detailed tool schemas pay this tax repeatedly. Repo-map features, like Aider's project map, add another 5K to 50K upfront so the model has a bird's-eye view of the codebase.</p>
+  <p>But the two components that usually dominate are <strong>files read into context</strong> and <strong>conversation history re-sent each step</strong>. A single moderately sized source file can be 2,000 to 15,000 tokens, and agents often read several. Once read, they linger in history and get re-sent. Command outputs — a verbose test run, a large grep result, a stack trace — pile on top. Want to estimate your own footprint before a session? Our <a href="/token-calculator">token calculator</a> converts text and files into token counts, and the <a href="/ai-coding-tools-pricing">AI coding tools pricing</a> guide maps those tokens to each provider's rates.</p>
+
+  <h2 id="terminal-vs-ide">Terminal Agents vs. IDE Agents</h2>
+  <p>People often ask whether terminal agents like <a href="/for-claude-code">Claude Code</a>, Aider, and Codex use more or fewer tokens than IDE agents like Cursor and GitHub Copilot. The honest answer is: <em>it depends on the task and the configuration</em>, and the tools differ mainly in <strong>how much context they auto-include</strong>.</p>
+  <p>Terminal agents tend to be explicit and autonomous — they read whole files, run commands, and keep long transcripts, which can drive high per-task totals on complex work. IDE agents often lean on editor context (open files, cursor position, symbol indexes) and may include less full-file content per turn for quick completions, but heavier agent modes narrow that gap. Some public comparisons have observed <strong>one agent using roughly 5x more tokens than another on the same task</strong>, driven largely by differences in repo-mapping, file-inclusion, and history-management defaults.</p>
+  <p>The practical lesson is not "tool A is cheaper than tool B" — it is that <em>defaults matter enormously</em>. The same underlying model can cost 5x more depending on how much the surrounding agent decides to stuff into context on your behalf. Configuration, not the model, is often the biggest lever you control.</p>
+
+  <h2 id="takeaway">The Takeaway: Context Dominates</h2>
+  <p>If you remember one thing: <strong>token usage in coding agents is dominated by context, not by your prompt.</strong> The system prompt, tool definitions, files, outputs, and re-sent history together account for the overwhelming majority of tokens on any non-trivial task. Compressing the sentence you type saves a little; managing the context window saves a lot.</p>
+  <p>That said, verbose prompts and redundant file reads absolutely still add up over a long session — because everything you add gets carried forward and re-sent on every subsequent turn. A single unnecessary large file read on turn 4 quietly costs you tokens on turns 5 through 30. Small, repeated inefficiencies compound in exactly the same super-linear way that legitimate context does.</p>
+  <p>This is where visibility helps. <a href="/">Terse</a> tracks per-turn token usage across your agent sessions and flags redundant reads and duplicate tool calls — so when the same file gets read three times or a grep repeats, you can see it instead of paying for it silently. It is a light touch: the goal is awareness, not micromanagement. Once you can watch the context grow turn by turn, you naturally keep sessions leaner. To turn those savings into a dollar figure, pair it with our guide to <a href="/reduce-ai-api-costs">reducing AI API costs</a>.</p>
+
+  <div class="cta-box">
+    <h3>See Where Your Agent Tokens Go</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse monitors Claude Code, Cursor, Aider, and Codex sessions in real time — tracking per-turn tokens, flagging duplicate tool calls and redundant reads, and compressing prompts on-device. Zero API calls, zero latency.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Frequently Asked Questions</h2>
+  <h3>How many tokens does a single coding task use?</h3>
+  <p>Commonly 50,000 to 500,000+ tokens for a non-trivial task, and over 1 million for long autonomous sessions. Trivial edits can stay under 20,000. The variance comes from repo size, files read, and turn count.</p>
+  <h3>Why do AI coding agents use so many tokens?</h3>
+  <p>Because LLMs are stateless, agents re-send the full relevant context — system prompt, tools, files, outputs, and prior messages — on every turn. Usage therefore grows super-linearly with the number of turns.</p>
+  <h3>Does my prompt length actually matter?</h3>
+  <p>Your typed prompt is usually the smallest share of total tokens. But verbose prompts and redundant file reads still compound across a session, since everything you add is re-sent on every following turn.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — what agent token usage translates to in dollars</li>
+    <li><a href="/ai-coding-tools-pricing">AI Coding Tools Pricing</a> — provider rates side by side</li>
+    <li><a href="/token-calculator">Token Calculator</a> — estimate tokens for any text or file</li>
+    <li><a href="/reduce-ai-api-costs">How to Reduce AI API Costs</a> — 7 strategies to cut token spend</li>
+    <li><a href="/for-claude-code">Terse for Claude Code</a> — per-session monitoring for terminal agents</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Costs</a><a href="/reduce-ai-api-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Reduce AI Costs</a><a href="/token-calculator" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Token Calculator</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

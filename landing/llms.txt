@@ -19,6 +19,13 @@
 ### Pillar Guide
 - [AI Coding Agent Costs 2026 — Complete Guide](https://www.terseai.org/ai-coding-agent-costs): What every AI coding agent costs and how to cut token bills 40-70% (hub linking all tool, pricing, and comparison pages)
 
+### Blog
+- [The Terse Blog](https://www.terseai.org/blog): Practical guides on AI coding agent costs, tokens, and cutting your bill
+- [Why Is Cursor So Expensive?](https://www.terseai.org/why-is-cursor-so-expensive): The credit pool, frontier-model overages, and context bloat explained
+- [Reduce Your Claude Code Context Window](https://www.terseai.org/reduce-claude-code-context-window): What fills context and the techniques to keep it lean
+- [How Many Tokens Do AI Coding Agents Use?](https://www.terseai.org/how-many-tokens-ai-coding-agents-use): A data-driven breakdown of where an agent's tokens go
+- [What Are GitHub Copilot AI Credits?](https://www.terseai.org/what-are-github-copilot-ai-credits): The June 2026 usage-based billing change explained
+
 ### Product
 - [Home](https://www.terseai.org/): Full product overview, pricing, features
 - [Token Calculator](https://www.terseai.org/token-calculator): Calculate your potential token savings

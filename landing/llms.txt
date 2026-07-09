@@ -25,6 +25,30 @@
 - [Reduce Your Claude Code Context Window](https://www.terseai.org/reduce-claude-code-context-window): What fills context and the techniques to keep it lean
 - [How Many Tokens Do AI Coding Agents Use?](https://www.terseai.org/how-many-tokens-ai-coding-agents-use): A data-driven breakdown of where an agent's tokens go
 - [What Are GitHub Copilot AI Credits?](https://www.terseai.org/what-are-github-copilot-ai-credits): The June 2026 usage-based billing change explained
+- [Why Is Claude Code So Expensive?](https://www.terseai.org/why-is-claude-code-so-expensive)
+- [How to Reduce Your Cursor Costs](https://www.terseai.org/how-to-reduce-cursor-costs)
+- [How to Reduce GitHub Copilot Costs](https://www.terseai.org/how-to-reduce-github-copilot-costs)
+- [How to Write Prompts That Use Fewer Tokens](https://www.terseai.org/how-to-write-prompts-that-use-fewer-tokens)
+- [What Are Tokens in LLMs?](https://www.terseai.org/what-are-tokens-in-llms)
+- [What Is a Context Window?](https://www.terseai.org/what-is-a-context-window)
+- [Claude Code Rate Limits Explained](https://www.terseai.org/claude-code-rate-limits-explained)
+- [The Cheapest AI Coding Assistant in 2026](https://www.terseai.org/cheapest-ai-coding-assistant)
+- [Is Cursor Worth It in 2026?](https://www.terseai.org/is-cursor-worth-it-2026)
+- [Is Claude Code Worth It in 2026?](https://www.terseai.org/is-claude-code-worth-it-2026)
+- [How to Use CLAUDE.md to Save Tokens](https://www.terseai.org/how-to-use-claude-md-to-save-tokens)
+- [What Is Prompt Compression?](https://www.terseai.org/what-is-prompt-compression)
+- [Input vs Output Tokens: What's the Difference?](https://www.terseai.org/input-vs-output-tokens)
+- [What Is Context Rot?](https://www.terseai.org/what-is-context-rot)
+- [10 Ways to Cut Your AI Coding Bill](https://www.terseai.org/10-ways-to-cut-your-ai-coding-bill)
+- [Cursor Auto Mode Explained](https://www.terseai.org/cursor-auto-mode-explained)
+- [How Much Do AI Coding Agents Cost Per Month?](https://www.terseai.org/how-much-do-ai-coding-agents-cost-per-month)
+- [How to Stop AI Agents From Re-Reading Files](https://www.terseai.org/how-to-stop-ai-agents-re-reading-files)
+- [What Is an AI Coding Agent?](https://www.terseai.org/what-is-an-ai-coding-agent)
+- [Terminal vs IDE AI Agents: Which Costs Less?](https://www.terseai.org/terminal-vs-ide-ai-agents-cost)
+- [12 Token Optimization Techniques](https://www.terseai.org/token-optimization-techniques)
+- [7 Mistakes That Waste Tokens in AI Coding](https://www.terseai.org/common-mistakes-that-waste-tokens)
+- [GitHub Copilot Free vs Pro: Worth Upgrading?](https://www.terseai.org/github-copilot-free-vs-pro)
+- [The True Cost of Vibe Coding](https://www.terseai.org/the-true-cost-of-vibe-coding)
 
 ### Product
 - [Home](https://www.terseai.org/): Full product overview, pricing, features

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What Are Tokens in LLMs? A Developer's Guide — Terse</title>
+  <meta name="description" content="What is a token in AI? A beginner-friendly guide to tokens in LLMs — how tokenization and BPE work, the 1 token ≈ 4 chars rule, input vs output pricing.">
+  <link rel="canonical" href="https://www.terseai.org/what-are-tokens-in-llms">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="What Are Tokens in LLMs? A Developer's Guide">
+  <meta property="og:description" content="A clear explainer of tokens in LLMs — how tokenization works, the 1 token ≈ 4 characters rule, and why input and output tokens are priced differently.">
+  <meta property="og:url" content="https://www.terseai.org/what-are-tokens-in-llms">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="What Are Tokens in LLMs? A Developer's Guide">
+  <meta name="twitter:description" content="A clear explainer of tokens in LLMs — how tokenization works, the 1 token ≈ 4 characters rule, and why input and output tokens are priced differently.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "What Are Tokens in LLMs? A Developer's Guide",
+        "description": "What is a token in AI? A beginner-friendly guide to tokens in LLMs — how tokenization and BPE work, the 1 token ≈ 4 chars rule, input vs output pricing.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": "https://www.terseai.org/what-are-tokens-in-llms"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "What Are Tokens in LLMs?", "item": "https://www.terseai.org/what-are-tokens-in-llms" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is a token in an LLM?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A token is the basic unit of text an LLM reads and generates. It is usually a subword — a common word is often a single token, while rarer words are split into pieces. Whitespace, punctuation, and code symbols count as tokens too. As a rough rule, 1 token is about 4 English characters or 0.75 words, so 100 tokens is roughly 75 words."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How many tokens is 1000 words?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Roughly 1,300 to 1,350 tokens for typical English prose, using the rule that 100 tokens is about 75 words. The exact count depends on the tokenizer and the text — code, rare words, and unusual punctuation split into more tokens than plain prose."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why are input and output tokens priced differently?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Generating output is more computationally expensive than reading input, so most providers charge more for output tokens — often 3 to 5 times the input rate. Your prompt and context count as input tokens; the model's reply counts as output tokens, and each is billed separately."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How can I reduce token usage?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Send less text. Trim filler and repetition from prompts, drop irrelevant context, and reuse cached content where possible. Terse compresses the prompts you type into AI coding tools on-device, cutting token usage 40 to 70 percent with a light touch before anything is sent."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .back-blog{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:20px;border-bottom:none}
+    .article .back-blog:hover{color:var(--ac)}
+    .article .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:20px 24px;margin:0 0 36px}
+    .article .answer-box p{margin-bottom:0;color:var(--t1);font-size:16px;line-height:1.75}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-blog">&larr; Back to Blog</a>
+  <span class="tag">Fundamentals</span>
+  <h1>What Are Tokens in LLMs? A Developer's Guide</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <p>A token is the basic unit of text a large language model reads and generates — usually a subword produced by a tokenizer. As a rough rule, 1 token is about 4 English characters or 0.75 words, so 100 tokens is roughly 75 words. Both billing and the context window are measured in tokens.</p>
+  </div>
+
+  <p class="subtitle">If you have ever wondered why an API bill is measured in "tokens" instead of words, or why the same prompt costs more on one model than another, tokens are the answer. They are the unit every LLM actually thinks in. Once you understand what a token is and how text gets split into them, pricing, context limits, and cost control all start to make sense.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#what-is-a-token">What Is a Token, Exactly?</a></li>
+      <li><a href="#tokens-to-words">Tokens, Characters, and Words</a></li>
+      <li><a href="#how-tokenization-works">How Tokenization Works (BPE)</a></li>
+      <li><a href="#worked-example">A Worked Example</a></li>
+      <li><a href="#input-vs-output">Input vs Output Tokens</a></li>
+      <li><a href="#why-they-matter">Why Tokens Matter</a></li>
+      <li><a href="#reduce-tokens">How to Reduce Token Usage</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <h2 id="what-is-a-token"><span class="strategy-num">1</span> What Is a Token, Exactly?</h2>
+  <p>A large language model does not read raw letters or whole words. Before any text reaches the model, a component called a <strong>tokenizer</strong> chops it into <strong>tokens</strong> — the subword units the model was trained on. A token can be a whole word (<code>the</code>), a word fragment (<code>token</code> + <code>izer</code>), a single character, or even a chunk of whitespace or punctuation.</p>
+  <p>The model then turns each token into a number, does its math on those numbers, and generates its reply one token at a time. Everything the model reads (your prompt and context) and everything it writes (its answer) is counted in tokens. That is why token is the unit that shows up on your bill and in your context-window limit rather than "words" or "characters."</p>
+
+  <h2 id="tokens-to-words"><span class="strategy-num">2</span> Tokens, Characters, and Words</h2>
+  <p>You do not need to count tokens by hand to reason about them. A few rough rules of thumb cover most English text:</p>
+  <ul>
+    <li><strong>1 token ≈ 4 English characters</strong> (including spaces).</li>
+    <li><strong>1 token ≈ 0.75 words</strong>, so about 4/3 of a token per word.</li>
+    <li><strong>100 tokens ≈ 75 words</strong> — a useful anchor for estimating prompt and reply sizes.</li>
+  </ul>
+  <p>These are approximations, not guarantees. Plain prose sits close to the rule; code, rare technical terms, non-English text, and heavy punctuation all push the ratio higher because they split into more tokens. When you need an exact number, a <a href="/token-calculator">token calculator</a> will run your text through a real tokenizer instead of the rule of thumb.</p>
+
+  <h2 id="how-tokenization-works"><span class="strategy-num">3</span> How Tokenization Works (BPE)</h2>
+  <p>Most modern LLMs tokenize with a technique called <strong>byte-pair encoding (BPE)</strong>. The idea is simple: the tokenizer learns a vocabulary of the most common character sequences in its training data, then encodes new text using the fewest, largest pieces from that vocabulary.</p>
+  <p>The practical consequences follow directly from that:</p>
+  <ul>
+    <li><strong>Common words are a single token.</strong> Words like <code>the</code>, <code>and</code>, or <code>function</code> appear so often they earn their own entry in the vocabulary.</li>
+    <li><strong>Rare words get split into pieces.</strong> An uncommon or made-up word like <code>tokenization</code> may break into <code>token</code> + <code>ization</code>, and a truly novel string can fragment into several tokens.</li>
+    <li><strong>Whitespace and punctuation count.</strong> A leading space is usually attached to the following token, and symbols, newlines, and punctuation each consume tokens too.</li>
+    <li><strong>Code symbols are expensive.</strong> Brackets, operators, and indentation in source code fragment heavily, which is why code often uses more tokens per character than prose.</li>
+  </ul>
+  <p>Different models use different tokenizers, so the exact split — and therefore the exact token count — varies from one model to another for the same input.</p>
+
+  <h2 id="worked-example"><span class="strategy-num">4</span> A Worked Example</h2>
+  <p>Take a short sentence and count it both ways. Consider:</p>
+  <pre>"Tokenization turns text into tokens."</pre>
+  <p>That string is 38 characters including the quotes and spaces, and 5 words. Applying the rules of thumb:</p>
+  <div class="cost-card">
+    <h4>"Tokenization turns text into tokens."</h4>
+    <div class="row"><span class="label">Characters (with spaces)</span><span>38</span></div>
+    <div class="row"><span class="label">Words</span><span>5</span></div>
+    <div class="row"><span class="label">Estimate by chars (38 ÷ 4)</span><span>~9-10 tokens</span></div>
+    <div class="row"><span class="label">Estimate by words (5 ÷ 0.75)</span><span>~7 tokens</span></div>
+    <div class="row highlight"><span class="label">Actual (typical BPE tokenizer)</span><span>~8 tokens</span></div>
+  </div>
+  <p>The two estimates bracket the real number, which lands around eight tokens. Note that <code>Tokenization</code> alone is a rare word and splits into two or three pieces, while the shorter, common words each cost a single token. The trailing period is its own token as well. This is the whole model in miniature: common pieces are cheap, rare ones are expensive, and every symbol counts.</p>
+
+  <h2 id="input-vs-output"><span class="strategy-num">5</span> Input vs Output Tokens</h2>
+  <p>When an API bills you, it splits tokens into two buckets, and they are almost never priced the same:</p>
+  <ul>
+    <li><strong>Input tokens</strong> — everything you send the model: your prompt, the system message, any context, files, and prior conversation history.</li>
+    <li><strong>Output tokens</strong> — everything the model generates back: its reply.</li>
+  </ul>
+  <p>Generating text is more computationally expensive than reading it, so providers typically charge more for output — often <strong>3 to 5 times the input rate</strong>. A verbose answer can cost several times what the prompt that triggered it did. That asymmetry is worth remembering: trimming a rambling prompt saves you input-rate tokens, but asking for a concise answer saves you output-rate tokens, which are worth more each. For a side-by-side of how the two rates differ across models, see our <a href="/ai-token-pricing-comparison">AI token pricing comparison</a>.</p>
+
+  <h2 id="why-they-matter"><span class="strategy-num">6</span> Why Tokens Matter</h2>
+  <p>Tokens are not an accounting curiosity — they are the two hard limits every LLM workflow runs into:</p>
+  <ul>
+    <li><strong>Billing is per token.</strong> You pay by input and output tokens, not by request. A prompt that carries thousands of tokens of context costs more than a lean one every single time it runs — and in an agent loop that re-sends context each turn, that cost compounds fast.</li>
+    <li><strong>The context window is measured in tokens.</strong> Every model has a maximum number of tokens it can hold at once — prompt plus context plus reply. Exceed it and the model truncates or refuses. Understanding tokens is what lets you fit a large codebase or long document inside that budget.</li>
+  </ul>
+  <p>Once tokens are the unit you think in, cost control becomes concrete: fewer tokens in means a smaller bill and more room in the window. That is the core idea behind <a href="/what-is-token-optimization">token optimization</a> — systematically sending less text without losing meaning. For a full breakdown of how tokens accumulate in a real agent session, see our guide to <a href="/ai-coding-agent-costs">AI coding agent costs</a>.</p>
+
+  <h2 id="reduce-tokens">How to Reduce Token Usage</h2>
+  <p>Because everything is billed by the token, the fastest way to cut cost is simply to send less text — without losing the information the model needs:</p>
+  <ul>
+    <li><strong>Trim filler and repetition.</strong> Polite preambles, restated requirements, and hedging words all add input tokens that do not change the answer.</li>
+    <li><strong>Drop irrelevant context.</strong> Most tasks need two or three relevant files, not the whole repository. Every excluded file is tokens you stop paying for.</li>
+    <li><strong>Ask for concise output.</strong> Output tokens cost more each, so requesting a focused reply saves at the pricier rate.</li>
+    <li><strong>Compress before you send.</strong> Tools like <a href="/for-cursor">Terse</a> rewrite the prompts you type into AI coding tools on-device, cutting token usage <strong>40 to 70 percent</strong> with a light touch before anything leaves your machine.</li>
+  </ul>
+  <p>If you want to see the numbers on your own text, our <a href="/reduce-ai-api-costs">guide to reducing AI API costs</a> walks through where the savings actually come from.</p>
+
+  <div class="cta-box">
+    <h3>Send Fewer Tokens, Automatically</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse compresses the prompts you send into AI coding tools and shows the per-request token cost inline — on-device, zero latency, no API calls. Cut 40-70% of the wordiness before it ever costs you a token.</p>
+    <a href="/for-cursor" class="btn">See Terse for Cursor</a>
+  </div>
+
+  <h2 id="faq">Frequently Asked Questions</h2>
+
+  <h3>What is a token in an LLM?</h3>
+  <p>A token is the basic unit of text an LLM reads and generates. It is usually a subword — a common word is often a single token, while rarer words are split into pieces. Whitespace, punctuation, and code symbols count as tokens too. As a rough rule, 1 token is about 4 English characters or 0.75 words, so 100 tokens is roughly 75 words.</p>
+
+  <h3>How many tokens is 1000 words?</h3>
+  <p>Roughly 1,300 to 1,350 tokens for typical English prose, using the rule that 100 tokens is about 75 words. The exact count depends on the tokenizer and the text — code, rare words, and unusual punctuation split into more tokens than plain prose.</p>
+
+  <h3>Why are input and output tokens priced differently?</h3>
+  <p>Generating output is more computationally expensive than reading input, so most providers charge more for output tokens — often 3 to 5 times the input rate. Your prompt and context count as input tokens; the model's reply counts as output tokens, and each is billed separately.</p>
+
+  <h3>How can I reduce token usage?</h3>
+  <p>Send less text. Trim filler and repetition from prompts, drop irrelevant context, and reuse cached content where possible. <a href="/for-cursor">Terse</a> compresses the prompts you type into AI coding tools on-device, cutting token usage 40 to 70 percent with a light touch before anything is sent.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/what-is-token-optimization">What Is Token Optimization?</a> — the idea behind sending less text</li>
+    <li><a href="/token-calculator">Token Calculator</a> — run your text through a real tokenizer</li>
+    <li><a href="/ai-token-pricing-comparison">AI Token Pricing Comparison</a> — input vs output rates across models</li>
+    <li><a href="/reduce-ai-api-costs">Reduce AI API Costs</a> — where token savings actually come from</li>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — how tokens accumulate in an agent session</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/cursor-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Cursor Pricing</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/for-cursor" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Terse for Cursor</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

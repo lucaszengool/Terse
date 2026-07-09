@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How to Use CLAUDE.md to Save Tokens (2026) — Terse</title>
+  <meta name="description" content="How to use CLAUDE.md to save tokens: it loads into context every session, so every wasted line is a recurring token tax. Keep it lean, high-signal, and pruned.">
+  <link rel="canonical" href="https://www.terseai.org/how-to-use-claude-md-to-save-tokens">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="How to Use CLAUDE.md to Save Tokens (2026)">
+  <meta property="og:description" content="CLAUDE.md loads into Claude Code's context every session — so every wasted line is a recurring token tax. How to keep it lean, high-signal, and cheap.">
+  <meta property="og:url" content="https://www.terseai.org/how-to-use-claude-md-to-save-tokens">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to Use CLAUDE.md to Save Tokens (2026)">
+  <meta name="twitter:description" content="CLAUDE.md loads into Claude Code's context every session — so every wasted line is a recurring token tax. How to keep it lean, high-signal, and cheap.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "How to Use CLAUDE.md to Save Tokens (2026)",
+        "description": "How to use CLAUDE.md to save tokens: it loads into context every session, so every wasted line is a recurring token tax. Keep it lean, high-signal, and pruned.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": "https://www.terseai.org/how-to-use-claude-md-to-save-tokens"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "How to Use CLAUDE.md to Save Tokens", "item": "https://www.terseai.org/how-to-use-claude-md-to-save-tokens" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does CLAUDE.md use tokens on every session?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Claude Code loads your CLAUDE.md into context at the start of every session, before you type anything. That means every line — useful or not — is billed on each new session and carried through the conversation. A lean file pays off repeatedly; a bloated one is a recurring token tax."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What should go in CLAUDE.md?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Durable, project-specific facts the model cannot infer: build and test commands, key directory layout, coding conventions, and hard constraints. Keep it to concise bullets. Leave out transient notes, general language basics the model already knows, and large code or config blocks — reference those files instead of pasting them."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I keep CLAUDE.md from bloating over time?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Prune it regularly. Every few weeks, delete stale notes, one-off reminders, and anything the model no longer needs told. Prefer references over pasted content, and split project-specific rules into per-directory CLAUDE.md files so only the relevant context loads for the area you are working in."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can a bloated CLAUDE.md hurt accuracy, not just cost?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Beyond the token cost, a long CLAUDE.md worsens context rot — the more low-signal text the model carries, the harder it is for it to attend to what matters. A lean, high-signal file both saves tokens and keeps the model focused on the instructions that actually change its behavior."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .back-blog{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:20px;border-bottom:none}
+    .article .back-blog:hover{color:var(--ac)}
+    .article .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:20px 24px;margin:0 0 36px}
+    .article .answer-box p{margin-bottom:0;color:var(--t1);font-size:16px;line-height:1.75}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-blog">&larr; Back to Blog</a>
+  <span class="tag">Token Guide</span>
+  <h1>How to Use CLAUDE.md to Save Tokens (2026)</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <p>Claude Code loads your CLAUDE.md into context at the start of every session, so every wasted line is a recurring per-session token tax. To save tokens, keep it lean and high-signal: state durable facts, conventions, and commands; reference files instead of pasting them; prune regularly; and scope per-directory files.</p>
+  </div>
+
+  <p class="subtitle">CLAUDE.md is the most read file in your project — Claude Code loads it before you type a single word, on every session. That makes it uniquely worth optimizing: unlike a one-off prompt, its cost repeats forever. This guide covers exactly what to keep, what to cut, and how to keep the file lean without losing the context that actually helps.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#why-it-matters">Why CLAUDE.md Is a Recurring Token Tax</a></li>
+      <li><a href="#rule-1">1. State Durable Facts, Not Transient Notes</a></li>
+      <li><a href="#rule-2">2. Don't Restate What the Model Already Knows</a></li>
+      <li><a href="#rule-3">3. Reference Files — Don't Paste Them</a></li>
+      <li><a href="#rule-4">4. Use Concise Bullets</a></li>
+      <li><a href="#rule-5">5. Prune Regularly</a></li>
+      <li><a href="#rule-6">6. Scope Per-Directory CLAUDE.md Files</a></li>
+      <li><a href="#context-rot">Bloat Also Worsens Context Rot</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <h2 id="why-it-matters">Why CLAUDE.md Is a Recurring Token Tax</h2>
+  <p>Most prompts you write are paid once. CLAUDE.md is different. Claude Code reads it into context automatically at the start of every session, before your first message, and then carries it forward through the conversation. That changes the economics completely: a wasteful line in a normal prompt costs you once, but a wasteful line in CLAUDE.md costs you on <em>every session you ever open in that project</em>.</p>
+  <p>Multiply that by a busy week — dozens of sessions across a team — and a bloated instructions file quietly becomes one of your largest, least-visible token line items. The fix is not to delete CLAUDE.md; a good one saves far more than it costs by preventing wrong turns. The fix is to make every line earn its recurring price. If you want to see how per-session context adds up across a real workflow, our <a href="/ai-coding-agent-costs">breakdown of AI coding agent costs</a> walks through where the tokens go. Below are the six rules that keep the file lean.</p>
+
+  <h2 id="rule-1"><span class="strategy-num">1</span> State Durable Facts, Not Transient Notes</h2>
+  <p>CLAUDE.md should hold the things that are true about your project for months, not the thing you happened to be debugging on Tuesday. Durable facts pay for their recurring cost because they steer the model correctly across many sessions: the build and test commands, the directory layout, hard architectural constraints, and conventions that are non-obvious from the code.</p>
+  <p>Transient notes are the opposite. "Currently investigating the flaky login test," "remember to revert the temporary logging in auth.ts," or "the staging DB is down this week" all become dead weight the moment the situation changes — but they keep loading and keep costing tokens until someone deletes them. Keep those in your task tracker or a scratch file, not in the file that loads every session.</p>
+
+  <h2 id="rule-2"><span class="strategy-num">2</span> Don't Restate What the Model Already Knows</h2>
+  <p>A surprising amount of CLAUDE.md bloat is the model being told things it learned in pre-training. "Use meaningful variable names," "write tests for new features," "Python uses indentation for blocks," "prefer async/await over callbacks" — none of this changes the model's behavior, because it is already the default. You are paying tokens to tell an expert that water is wet.</p>
+  <p>The test for any line is simple: <em>would the model do something different without this?</em> If the instruction just restates a general best practice or a language basic, cut it. Reserve CLAUDE.md for the project-specific overrides — the places where your conventions differ from the obvious default, like "we use tabs, not spaces" or "never import from <code>internal/</code> outside its package." Those are worth their recurring cost; generic advice is not.</p>
+
+  <h2 id="rule-3"><span class="strategy-num">3</span> Reference Files — Don't Paste Them</h2>
+  <p>The single fastest way to bloat CLAUDE.md is to paste in a large block of code, a full config file, or an entire schema. A 200-line config pasted into CLAUDE.md is thousands of tokens loaded on every session, whether or not the current task touches that config at all.</p>
+  <p>Instead, point to it. A line like "DB schema lives in <code>db/schema.sql</code>; migrations in <code>db/migrations/</code>" costs a dozen tokens and lets the model read the real file only when a task actually needs it. The model is already good at opening files on demand — that is what its tools are for. Your job in CLAUDE.md is to tell it <em>where</em> things are, not to inline their contents. If you want to measure how much a pasted block inflates the file, our <a href="/token-calculator">token calculator</a> shows the count before you commit it.</p>
+
+  <h2 id="rule-4"><span class="strategy-num">4</span> Use Concise Bullets</h2>
+  <p>Prose is expensive per unit of information. A paragraph explaining "the reason we structure our services this way is that historically we found..." carries one useful fact wrapped in dozens of connective words that get re-sent every session. A bullet delivers the same instruction at a fraction of the cost.</p>
+  <p>Write CLAUDE.md as a dense list of directives, not an essay. "Run <code>make test</code> before committing." "API routes live in <code>src/routes/</code>." "Never edit generated files in <code>gen/</code>." Each is a single scannable line the model can act on. Cut narrative justification unless the <em>why</em> genuinely changes what the model does — most of the time it does not, and it is pure recurring overhead. This is the same discipline <a href="/for-claude-code">Terse</a> applies to the prompts you type into Claude Code: strip the padding, keep the signal.</p>
+
+  <h2 id="rule-5"><span class="strategy-num">5</span> Prune Regularly</h2>
+  <p>CLAUDE.md files rot upward. Everyone adds lines; almost nobody removes them. A note that was essential three months ago describes a subsystem you have since deleted, but it keeps loading on every session because no one thought to check. Left alone, the file only grows, and so does its recurring cost.</p>
+  <p>Make pruning a habit. Every few weeks, read the file top to bottom and ask of each line whether it still earns its place. Delete stale references, resolved reminders, and anything superseded by a change in the code. Treat it like the dependency list it effectively is: something you keep tight on purpose, not a log you append to forever. A ten-minute prune can shave a meaningful slice off every future session's token count.</p>
+
+  <h2 id="rule-6"><span class="strategy-num">6</span> Scope Per-Directory CLAUDE.md Files</h2>
+  <p>In a large repo, a single root CLAUDE.md tends to accumulate rules for every corner of the codebase — the frontend build quirks, the backend service conventions, the infra scripts, the data pipeline. When you are only working in one of those areas, you are still paying to load instructions for all of them.</p>
+  <p>Claude Code supports nested CLAUDE.md files, so split by directory. Put frontend-specific conventions in <code>frontend/CLAUDE.md</code>, backend rules in <code>services/CLAUDE.md</code>, and keep only truly repo-wide facts at the root. Now a session working in the frontend loads the frontend context and skips the rest. This both trims tokens and sharpens relevance — the model sees the rules for the code it is actually touching. For more ways to keep Claude Code's working set small, see our guide to <a href="/reduce-claude-code-context-window">reducing the Claude Code context window</a>.</p>
+
+  <h2 id="context-rot">Bloat Also Worsens Context Rot</h2>
+  <p>Saving tokens is the obvious win, but there is a second reason to keep CLAUDE.md lean: accuracy. As the context fills with low-signal text, the model's ability to attend to what matters degrades — a phenomenon often called context rot. A CLAUDE.md padded with stale notes, generic advice, and pasted configs does not just cost more; it dilutes the instructions you actually care about, making the model more likely to overlook the one constraint that mattered.</p>
+  <p>A lean file is therefore doing double duty. Every line you cut is tokens you stop re-paying <em>and</em> one less distraction competing for the model's attention. If you want the token side of this quantified against Claude Code's plans and rates, our <a href="/claude-code-pricing">Claude Code pricing guide</a> lays out what per-session context actually costs. And if you would rather not audit the file by hand, <a href="/for-claude-code">Terse</a> can generate concise CLAUDE.md rules from your recurring session patterns — a light-touch way to capture what's durable without the bloat.</p>
+
+  <div class="cta-box">
+    <h3>Turn Session Patterns Into a Lean CLAUDE.md</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse watches how you actually work in Claude Code and suggests concise, high-signal CLAUDE.md rules — on-device, no API calls. Capture what's durable, skip the padding, and stop re-paying for context you don't need.</p>
+    <a href="/for-claude-code" class="btn">Terse for Claude Code</a>
+  </div>
+
+  <h2 id="faq">Frequently Asked Questions</h2>
+
+  <h3>Does CLAUDE.md use tokens on every session?</h3>
+  <p>Yes. Claude Code loads your CLAUDE.md into context at the start of every session, before you type anything. That means every line — useful or not — is billed on each new session and carried through the conversation. A lean file pays off repeatedly; a bloated one is a recurring token tax.</p>
+
+  <h3>What should go in CLAUDE.md?</h3>
+  <p>Durable, project-specific facts the model cannot infer: build and test commands, key directory layout, coding conventions, and hard constraints. Keep it to concise bullets. Leave out transient notes, general language basics the model already knows, and large code or config blocks — reference those files instead of pasting them.</p>
+
+  <h3>How do I keep CLAUDE.md from bloating over time?</h3>
+  <p>Prune it regularly. Every few weeks, delete stale notes, one-off reminders, and anything the model no longer needs told. Prefer references over pasted content, and split project-specific rules into per-directory CLAUDE.md files so only the relevant context loads for the area you are working in.</p>
+
+  <h3>Can a bloated CLAUDE.md hurt accuracy, not just cost?</h3>
+  <p>Yes. Beyond the token cost, a long CLAUDE.md worsens context rot — the more low-signal text the model carries, the harder it is for it to attend to what matters. A lean, high-signal file both saves tokens and keeps the model focused on the instructions that actually change its behavior.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/for-claude-code">Terse for Claude Code</a> — compress prompts and generate lean CLAUDE.md rules</li>
+    <li><a href="/reduce-claude-code-context-window">Reduce the Claude Code Context Window</a> — keep the working set small</li>
+    <li><a href="/claude-code-pricing">Claude Code Pricing</a> — what per-session context actually costs</li>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — where tokens go in an agent session</li>
+    <li><a href="/token-calculator">Token Calculator</a> — measure a file or prompt before you commit it</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/cursor-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Cursor Pricing</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/for-cursor" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Terse for Cursor</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

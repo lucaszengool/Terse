@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal vs IDE AI Agents: Which Costs Less? — Terse</title>
+  <meta name="description" content="Terminal vs IDE AI coding agents on cost: how context control, billing models, and discipline decide which is cheaper. A full comparison table for 2026.">
+  <link rel="canonical" href="https://www.terseai.org/terminal-vs-ide-ai-agents-cost">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Terminal vs IDE AI Agents: Which Costs Less?">
+  <meta property="og:description" content="How terminal AI agents and IDE AI agents differ on cost — context control, billing models, and the discipline that decides which is cheaper for you.">
+  <meta property="og:url" content="https://www.terseai.org/terminal-vs-ide-ai-agents-cost">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Terminal vs IDE AI Agents: Which Costs Less?">
+  <meta name="twitter:description" content="How terminal AI agents and IDE AI agents differ on cost — context control, billing models, and the discipline that decides which is cheaper for you.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "Terminal vs IDE AI Agents: Which Costs Less?",
+        "description": "Terminal vs IDE AI coding agents on cost: how context control, billing models, and discipline decide which is cheaper. A full comparison table for 2026.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": "https://www.terseai.org/terminal-vs-ide-ai-agents-cost"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "Terminal vs IDE AI Agents", "item": "https://www.terseai.org/terminal-vs-ide-ai-agents-cost" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Are terminal AI coding agents cheaper than IDE ones?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Often, but not universally. Terminal agents like Claude Code and Aider let you control exactly which files enter context and when, so a disciplined user tends to send fewer tokens per request. IDE agents auto-include context for convenience, which can mean more tokens. Cost ultimately depends on your habits and the billing model, not just the interface."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why do IDE agents use more tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "IDE agents like Cursor and Windsurf pull in context automatically — open files, a project index, editor state, and selection — to make suggestions feel instant. That convenience can add tokens to each request. Features like Cursor Auto mode mitigate it by picking efficient models and trimming context, but the default tendency is to include more."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How is billing different between terminal and IDE agents?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Billing models vary widely. Cursor and GitHub Copilot use subscriptions with credit pools; Claude Code uses a subscription with rolling usage limits; Windsurf uses a credit quota; Aider and Cline are pure pay-per-token on your own API key. The billing model shapes how a given amount of token usage translates into your actual bill."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does the tool or my usage matter more for cost?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Usage matters more. Model choice, context size, prompt length, and how long you let agents run autonomously drive far more variance than which interface you pick. A disciplined developer can run an IDE agent cheaply, and an undisciplined one can burn through a terminal agent's limits fast."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .back-blog{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:20px;border-bottom:none}
+    .article .back-blog:hover{color:var(--ac)}
+    .article .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:20px 24px;margin:0 0 36px}
+    .article .answer-box p{margin-bottom:0;color:var(--t1);font-size:16px;line-height:1.75}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-blog">&larr; Back to Blog</a>
+  <span class="tag">Cost Guide</span>
+  <h1>Terminal vs IDE AI Agents: Which Costs Less?</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <p>Neither is universally cheaper. Terminal agents like Claude Code and Aider let you control exactly what enters context, so disciplined users tend to send fewer tokens per request. IDE agents like Cursor and Windsurf auto-include context for convenience, which can raise token counts. The billing model and your own habits decide the final number more than the interface does.</p>
+  </div>
+
+  <p class="subtitle">"Terminal or IDE?" is really two questions stacked together: which one fits your workflow, and which one costs less to run. The cost half has a clearer answer than most comparisons admit — it comes down to how much context each style pulls in by default, and how each one bills you for it. Here is the honest breakdown, with a table you can act on.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#the-split">Terminal vs IDE: The Core Split</a></li>
+      <li><a href="#context">Context Control Is the Real Cost Lever</a></li>
+      <li><a href="#billing">Billing Models Are Not the Same</a></li>
+      <li><a href="#table">The Comparison Table</a></li>
+      <li><a href="#which-cheaper">So Which Is Actually Cheaper?</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <h2 id="the-split">Terminal vs IDE: The Core Split</h2>
+  <p><strong>Terminal agents</strong> run in your shell: Claude Code, Aider, OpenAI's Codex CLI, Gemini CLI, and opencode. You point them at files, describe a task, and they read, edit, and run commands from the command line. The defining trait is explicitness — nothing enters the model's context unless you (or the agent, on your instruction) put it there.</p>
+  <p><strong>IDE agents</strong> live inside the editor: Cursor, GitHub Copilot, and Windsurf. They watch your editor state — open tabs, cursor position, the file you are in, an index of the project — and use it to make suggestions feel instant and aware. The defining trait is convenience: relevant context is gathered for you, automatically, so you rarely have to spell out what the model should look at.</p>
+  <p>That single difference — explicit context versus automatic context — is the root of almost every cost gap between the two styles. Everything else is a downstream effect of it.</p>
+
+  <h2 id="context">Context Control Is the Real Cost Lever</h2>
+  <p>Token cost is dominated by how much context rides along on each request, and that is precisely where the two styles diverge. In a terminal agent, you decide which files are in play. Ask Aider to edit two files and it works with two files. That tight control means a disciplined session sends only what the task needs, and pay-per-token setups reward that directly.</p>
+  <p>IDE agents optimize for a different thing: not making you think about context at all. To do that, they auto-include the open buffers, a project index, editor selection, and recent activity. It is genuinely convenient — but convenience has a token cost, because material you never explicitly asked for still shows up in the request. That is the mechanism behind "why did that one-line change cost so much?" in an IDE agent.</p>
+  <p>The caveat matters: IDE vendors know this and build mitigations. Cursor's <strong>Auto mode</strong> picks efficient models and trims context so the average request stays lean, and both Cursor and Windsurf cap what they pull in. So the tendency toward more tokens is real, but it is a tendency, not a law. If you want the underlying math, our breakdown of <a href="/how-many-tokens-ai-coding-agents-use">how many tokens AI coding agents use</a> shows where the count actually goes in a real session.</p>
+
+  <h2 id="billing">Billing Models Are Not the Same</h2>
+  <p>Even identical token usage can produce very different bills, because the billing model translates usage into dollars in different ways. There are four broad shapes:</p>
+  <ul>
+    <li><strong>Subscription + credit pool</strong> (Cursor, GitHub Copilot): a flat monthly fee includes a pool of model usage; exceed it and you pay overage. Predictable up to the pool, then it climbs.</li>
+    <li><strong>Subscription + rolling limits</strong> (Claude Code): a flat fee with usage limits that reset on a rolling window rather than a hard monthly credit balance. Predictable behavior, capped throughput.</li>
+    <li><strong>Credit quota</strong> (Windsurf): a monthly quota of action/flow credits; different operations consume different amounts, and you top up when you run out.</li>
+    <li><strong>Pure pay-per-token</strong> (Aider, Cline): you bring your own API key and pay the provider directly per token. No subscription, no pool — the bill is exactly your usage.</li>
+  </ul>
+  <p>This is why "cheaper" has no interface-level answer. A heavy user on pure token billing pays for every token but can pick the cheapest capable model; a light user on a subscription pool may never touch the ceiling and effectively pays a flat rate. Our guides on <a href="/ai-coding-tools-pricing">AI coding tools pricing</a> and <a href="/ai-coding-agent-costs">AI coding agent costs</a> map each of these models out in detail.</p>
+
+  <h2 id="table">The Comparison Table</h2>
+  <p>Here is how the common agents line up on the three variables that decide cost — how much you control context, how they bill, and the resulting cost tendency at typical usage:</p>
+
+  <table class="pricing-table">
+    <thead>
+      <tr>
+        <th>Agent (type)</th>
+        <th>Context control</th>
+        <th>Typical billing</th>
+        <th>Cost tendency</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Claude Code (terminal)</td>
+        <td>Explicit — you add files</td>
+        <td>Subscription + rolling limits</td>
+        <td>Efficient with discipline</td>
+      </tr>
+      <tr>
+        <td>Aider (terminal)</td>
+        <td>Explicit — files you name</td>
+        <td>Pure pay-per-token (BYOM)</td>
+        <td>Bill equals your usage</td>
+      </tr>
+      <tr>
+        <td>Codex CLI (terminal)</td>
+        <td>Explicit — scoped by you</td>
+        <td>Subscription / API key</td>
+        <td>Lean when scoped tight</td>
+      </tr>
+      <tr>
+        <td>Gemini CLI (terminal)</td>
+        <td>Explicit — you direct it</td>
+        <td>Quota / pay-per-token</td>
+        <td>Generous free tier, scales with use</td>
+      </tr>
+      <tr>
+        <td>opencode (terminal)</td>
+        <td>Explicit — BYOM control</td>
+        <td>Pure pay-per-token (BYOM)</td>
+        <td>Bill equals your usage</td>
+      </tr>
+      <tr>
+        <td>Cursor (IDE)</td>
+        <td>Automatic — Auto mode trims</td>
+        <td>Subscription + credit pool</td>
+        <td>Convenient; watch the pool</td>
+      </tr>
+      <tr>
+        <td>GitHub Copilot (IDE)</td>
+        <td>Automatic — editor context</td>
+        <td>Subscription + credit pool</td>
+        <td>Predictable at flat tier</td>
+      </tr>
+      <tr>
+        <td>Windsurf (IDE)</td>
+        <td>Automatic — indexed context</td>
+        <td>Credit quota</td>
+        <td>Depends on quota burn</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Read the table as tendencies, not verdicts. Every row can shift a full column with a change in how you work — a scoped Cursor session on Auto mode is lean, and an unscoped Aider run on a frontier model is not.</p>
+
+  <h2 id="which-cheaper">So Which Is Actually Cheaper?</h2>
+  <p>The honest answer: it depends on your discipline far more than on the interface. Terminal agents give you the levers to be cheap — explicit context, easy model swapping, tight scoping — but they do not force you to pull them. IDE agents make convenience the default and lean on mitigations like Auto mode to keep the average request affordable, which can beat an undisciplined terminal user handily.</p>
+  <p>A few patterns hold up regardless of which side you land on:</p>
+  <ul>
+    <li><strong>Scope every task.</strong> Whether you are naming files for Aider or trusting Cursor's index, a narrow task means a smaller context and a smaller bill.</li>
+    <li><strong>Match the model to the job.</strong> Reserve frontier models for hard reasoning; let a cheaper model handle edits and boilerplate. This one habit moves the number more than switching tools.</li>
+    <li><strong>Watch autonomous runs.</strong> Long agent loops re-send accumulated context every turn on both styles — the fastest way to blow through a pool, a quota, or a token budget.</li>
+    <li><strong>Trim your prompts.</strong> Wordy instructions ride along on every subsequent turn, so padding is paid repeatedly, not once.</li>
+  </ul>
+  <p>This is the layer <a href="/for-cursor">Terse</a> works on, and it works with both styles. It compresses the prompts you type — into a terminal agent or an IDE agent — on-device before they are sent, and tracks per-turn cost with a light touch so the token math stays visible no matter which billing model you are on. If you want to weigh a specific matchup, our <a href="/cursor-vs-claude-code">Cursor vs Claude Code comparison</a> takes the IDE-versus-terminal question down to one concrete pair, and the <a href="/token-calculator">token calculator</a> lets you measure a prompt before you ever hit send.</p>
+
+  <div class="cta-box">
+    <h3>Track Per-Turn Cost in Any Agent</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse compresses the prompts you send into terminal and IDE agents alike and tracks per-request token cost — on-device, zero latency, no API calls. See what each turn is worth before it compounds.</p>
+    <a href="/for-cursor" class="btn">Get Terse</a>
+  </div>
+
+  <h2 id="faq">Frequently Asked Questions</h2>
+
+  <h3>Are terminal AI coding agents cheaper than IDE ones?</h3>
+  <p>Often, but not universally. Terminal agents like Claude Code and Aider let you control exactly which files enter context and when, so a disciplined user tends to send fewer tokens per request. IDE agents auto-include context for convenience, which can mean more tokens. Cost ultimately depends on your habits and the billing model, not just the interface.</p>
+
+  <h3>Why do IDE agents use more tokens?</h3>
+  <p>IDE agents like Cursor and Windsurf pull in context automatically — open files, a project index, editor state, and selection — to make suggestions feel instant. That convenience can add tokens to each request. Features like Cursor Auto mode mitigate it by picking efficient models and trimming context, but the default tendency is to include more.</p>
+
+  <h3>How is billing different between terminal and IDE agents?</h3>
+  <p>Billing models vary widely. Cursor and GitHub Copilot use subscriptions with credit pools; Claude Code uses a subscription with rolling usage limits; Windsurf uses a credit quota; Aider and Cline are pure pay-per-token on your own API key. The billing model shapes how a given amount of token usage translates into your actual bill.</p>
+
+  <h3>Does the tool or my usage matter more for cost?</h3>
+  <p>Usage matters more. Model choice, context size, prompt length, and how long you let agents run autonomously drive far more variance than which interface you pick. A disciplined developer can run an IDE agent cheaply, and an undisciplined one can burn through a terminal agent's limits fast.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — where tokens actually go in an agent session</li>
+    <li><a href="/ai-coding-tools-pricing">AI Coding Tools Pricing</a> — every billing model compared</li>
+    <li><a href="/cursor-vs-claude-code">Cursor vs Claude Code</a> — IDE versus terminal on one concrete pair</li>
+    <li><a href="/how-many-tokens-ai-coding-agents-use">How Many Tokens AI Coding Agents Use</a> — the count broken down</li>
+    <li><a href="/token-calculator">Token Calculator</a> — measure how wordy a prompt really is</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/cursor-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Cursor Pricing</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/for-cursor" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Terse for Cursor</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

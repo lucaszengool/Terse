@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How to Write Prompts That Use Fewer Tokens — Terse</title>
+  <meta name="description" content="How to write prompts that use fewer tokens: drop filler, use imperative voice, reference files instead of pasting, and cut redundant words — with a before/after.">
+  <link rel="canonical" href="https://www.terseai.org/how-to-write-prompts-that-use-fewer-tokens">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="How to Write Prompts That Use Fewer Tokens">
+  <meta property="og:description" content="Practical techniques to reduce prompt tokens — cut filler and politeness, use imperative voice, reference code instead of pasting it, and batch related asks.">
+  <meta property="og:url" content="https://www.terseai.org/how-to-write-prompts-that-use-fewer-tokens">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to Write Prompts That Use Fewer Tokens">
+  <meta name="twitter:description" content="Practical techniques to reduce prompt tokens — cut filler and politeness, use imperative voice, reference code instead of pasting it, and batch related asks.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "How to Write Prompts That Use Fewer Tokens",
+        "description": "How to write prompts that use fewer tokens: drop filler, use imperative voice, reference files instead of pasting, and cut redundant words — with a before/after.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": "https://www.terseai.org/how-to-write-prompts-that-use-fewer-tokens"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "How to Write Prompts That Use Fewer Tokens", "item": "https://www.terseai.org/how-to-write-prompts-that-use-fewer-tokens" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I write prompts that use fewer tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Drop filler and politeness like \"could you please\" and \"I was wondering if,\" switch to imperative voice, stop restating context the model already has, reference files and functions by name instead of pasting them, use terse bullet lists over prose, and cut redundant adjectives. A token is roughly four characters or 0.75 words, so every word you remove saves real tokens."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How many tokens is a word?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "As a rule of thumb, one token is about four characters or roughly 0.75 words. So 100 words is around 133 tokens. Short common words are often one token; longer or rarer words split into several."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does trimming prompt words actually save much?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "On any single message the context — files, chat history, and tool output — usually dwarfs your typed prompt. But prompt discipline compounds: in an agent session your prompt is re-sent with the growing history every turn, so a tighter prompt is paid back on every turn that carries it forward."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Should I remove markdown formatting to save tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Heavy markdown — decorative headers, bold, nested lists, tables — adds tokens the model does not need to understand plain instructions. Keep light structure like a simple bullet list when it aids clarity, but drop ornamental formatting when a plain sentence works just as well."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .back-blog{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:20px;border-bottom:none}
+    .article .back-blog:hover{color:var(--ac)}
+    .article .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:20px 24px;margin:0 0 36px}
+    .article .answer-box p{margin-bottom:0;color:var(--t1);font-size:16px;line-height:1.75}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-blog">&larr; Back to Blog</a>
+  <span class="tag">Prompting Guide</span>
+  <h1>How to Write Prompts That Use Fewer Tokens</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <p>To write prompts that use fewer tokens, drop filler and politeness like "could you please," use imperative voice, stop restating context the model already has, reference files and functions by name instead of pasting them, and cut redundant adjectives. A token is roughly four characters or 0.75 words, so every word you trim saves real tokens.</p>
+  </div>
+
+  <p class="subtitle">Every word you type into an AI coding tool becomes tokens, and tokens are what you pay for. Most of us write prompts the way we write Slack messages — polite, padded, and repetitive. Here is how to tighten them without losing meaning, why it matters more in a long session than in a single message, and a before/after that shows the savings.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#token-basics">What a Token Actually Is</a></li>
+      <li><a href="#tip-1">1. Drop Filler and Politeness</a></li>
+      <li><a href="#tip-2">2. Use the Imperative Voice</a></li>
+      <li><a href="#tip-3">3. Don't Restate Known Context</a></li>
+      <li><a href="#tip-4">4. Reference Code, Don't Paste It</a></li>
+      <li><a href="#tip-5">5. Bullets Over Prose, Cut Adjectives</a></li>
+      <li><a href="#tip-6">6. Skip Decorative Markdown &amp; Batch Asks</a></li>
+      <li><a href="#before-after">Before / After Example</a></li>
+      <li><a href="#diminishing">Where the Real Savings Are</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <h2 id="token-basics">What a Token Actually Is</h2>
+  <p>A token is the unit models read and bill by. As a rule of thumb, <strong>one token is about four characters, or roughly 0.75 words</strong> — so 100 words is around 133 tokens. Short common words are usually a single token; longer or rarer words split into several. This is why a wordy prompt costs measurably more than a tight one, and why the fixes below translate directly into fewer tokens sent and paid for. If you want to see the count for a specific prompt, our <a href="/token-calculator">token calculator</a> shows it before you hit send, and <a href="/what-is-token-optimization">what token optimization is</a> covers the broader idea.</p>
+
+  <h2 id="tip-1"><span class="strategy-num">1</span> Drop Filler and Politeness</h2>
+  <p>The model does not need pleasantries to do the work. Phrases like <em>"could you please,"</em> <em>"I was wondering if you might be able to,"</em> <em>"if it's not too much trouble,"</em> and <em>"thanks so much in advance"</em> are pure token overhead. The same goes for hedging — <em>"I think maybe,"</em> <em>"it would be great if,"</em> <em>"perhaps you could."</em> Strip them. "Could you please refactor this function to be more readable?" becomes "Refactor this function for readability." Same instruction, roughly half the tokens.</p>
+
+  <h2 id="tip-2"><span class="strategy-num">2</span> Use the Imperative Voice</h2>
+  <p>Commands are shorter than requests. "I would like you to add error handling to the login route" is a request wrapped around an instruction; "Add error handling to the login route" is the instruction. Imperative verbs — <code>add</code>, <code>fix</code>, <code>rename</code>, <code>explain</code>, <code>refactor</code> — start the sentence, carry the intent, and cut every word spent softening the ask. Models respond just as well to a direct command as to a polite one, and often more precisely.</p>
+
+  <h2 id="tip-3"><span class="strategy-num">3</span> Don't Restate Known Context</h2>
+  <p>If the model already has a file open, the conversation history, or a system prompt describing the project, do not re-describe it. "As you know, this is a React app using TypeScript and we're using Tailwind for styling, and in the previous message you saw the component…" is tokens spent telling the model what it can already see. Trust the context. Say what changed or what you want next, not a recap of everything leading up to it.</p>
+
+  <h2 id="tip-4"><span class="strategy-num">4</span> Reference Code, Don't Paste It</h2>
+  <p>Pasting a 200-line file into your prompt to ask about one function can add thousands of tokens. If the tool can read your files — as Cursor, Claude Code, and most agents can — reference the file or function by name instead: "Fix the off-by-one in <code>parseRange()</code> in <code>utils/date.ts</code>." The agent reads exactly what it needs. When you must paste, paste only the relevant lines, and trim stack traces to the frames that matter. This single habit saves more tokens than all the wording tweaks combined.</p>
+
+  <h2 id="tip-5"><span class="strategy-num">5</span> Bullets Over Prose, Cut Adjectives</h2>
+  <p>A terse bullet list carries requirements with fewer connective words than flowing prose. Instead of "First I'd like you to add validation, and then after that it would be good to also write some tests, and finally please update the docs," write three bullets: <code>- add validation</code>, <code>- write tests</code>, <code>- update docs</code>. While you're at it, cut redundant adjectives — "a really clean, simple, elegant, well-structured solution" says nothing "clean solution" doesn't. Adjectives that don't change the output are just tokens.</p>
+
+  <h2 id="tip-6"><span class="strategy-num">6</span> Skip Decorative Markdown &amp; Batch Asks</h2>
+  <p>Heavy markdown — decorative headers, bold everywhere, nested tables — adds formatting tokens the model doesn't need to understand plain instructions. Keep light structure (a simple bullet list) when it aids clarity; drop the ornamentation when a plain sentence works. Finally, <strong>batch related asks</strong>. Three quick follow-ups in one message share a single context payload instead of re-sending the accumulated history three times. Grouping related changes into one prompt is one of the biggest per-session savings there is — for the full picture on where those tokens go, see our <a href="/ai-coding-agent-costs">breakdown of AI coding agent costs</a>.</p>
+
+  <h2 id="before-after">Before / After Example</h2>
+  <p>Here's a real-world prompt tightened with the rules above. The meaning is identical; the token count is not.</p>
+  <pre>BEFORE (~48 tokens)
+"Hi! I was wondering if you could please help me out.
+Could you take a look at the getUser function in the
+auth file and maybe add some proper error handling to
+it? That would be really great, thanks so much!"
+
+AFTER (~18 tokens)
+"Add error handling to getUser() in auth.ts."</pre>
+  <p>That's roughly a 60% reduction on this one message — and in an agent session that prompt rides along in the context on every following turn, so the saving is paid back turn after turn, not just once.</p>
+
+  <h2 id="diminishing">Where the Real Savings Are</h2>
+  <p>Be honest about diminishing returns. On any single request, the <strong>context</strong> — open files, chat history, and tool output — almost always dwarfs your typed prompt. Trimming ten words off a message that ships alongside a 6,000-token file dump is a rounding error on that turn. If token cost is your real concern, controlling context (referencing files, closing irrelevant ones, scoping tasks) moves the number far more than word choice.</p>
+  <p>But prompt discipline still compounds. In an agent or Composer session, your prompt is re-sent with the growing history on every turn, so a tighter prompt is paid back on each turn that carries it forward. Over a 30-turn session those savings add up, and the habit of writing tersely tends to produce more focused output as a bonus. Techniques like <a href="/telegraph-compression">telegraphic compression</a> and <a href="/nlp-analysis">NLP-based analysis</a> push this idea further, dropping function words a model can infer.</p>
+
+  <div class="cta-box">
+    <h3>Let Terse Do It Automatically</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse fixes typos, removes filler and politeness, and shortens phrases in the prompts you type into AI coding tools — on-device, zero latency, no API calls. Three modes from a light touch to aggressive. It applies every rule on this page for you, before the prompt is sent.</p>
+    <a href="/what-is-token-optimization" class="btn">How Terse Works</a>
+  </div>
+
+  <h2 id="faq">Frequently Asked Questions</h2>
+
+  <h3>How do I write prompts that use fewer tokens?</h3>
+  <p>Drop filler and politeness like "could you please" and "I was wondering if," switch to imperative voice, stop restating context the model already has, reference files and functions by name instead of pasting them, use terse bullet lists over prose, and cut redundant adjectives. A token is roughly four characters or 0.75 words, so every word you remove saves real tokens.</p>
+
+  <h3>How many tokens is a word?</h3>
+  <p>As a rule of thumb, one token is about four characters or roughly 0.75 words. So 100 words is around 133 tokens. Short common words are often a single token; longer or rarer words split into several.</p>
+
+  <h3>Does trimming prompt words actually save much?</h3>
+  <p>On any single message the context — files, chat history, and tool output — usually dwarfs your typed prompt. But prompt discipline compounds: in an agent session your prompt is re-sent with the growing history every turn, so a tighter prompt is paid back on every turn that carries it forward.</p>
+
+  <h3>Should I remove markdown formatting to save tokens?</h3>
+  <p>Heavy markdown — decorative headers, bold, nested lists, tables — adds tokens the model does not need to understand plain instructions. Keep light structure like a simple bullet list when it aids clarity, but drop ornamental formatting when a plain sentence works just as well.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/what-is-token-optimization">What Is Token Optimization?</a> — the idea behind cutting tokens without losing meaning</li>
+    <li><a href="/token-calculator">Token Calculator</a> — measure how wordy a prompt really is</li>
+    <li><a href="/telegraph-compression">Telegraphic Compression</a> — dropping function words a model can infer</li>
+    <li><a href="/nlp-analysis">NLP Analysis</a> — how Terse decides what's safe to cut</li>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — where tokens actually go in a session</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/cursor-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Cursor Pricing</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/for-cursor" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Terse for Cursor</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

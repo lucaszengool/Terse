@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>12 Token Optimization Techniques for 2026 — Terse</title>
+  <meta name="description" content="How to optimize tokens: 12 proven token optimization techniques for AI coding tools in 2026 — prompt compression, caching, compaction, context control, and more.">
+  <link rel="canonical" href="https://www.terseai.org/token-optimization-techniques">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="12 Token Optimization Techniques for 2026">
+  <meta property="og:description" content="Twelve practical ways to optimize tokens in AI coding tools — from prompt compression and caching to compaction, context control, and per-turn monitoring.">
+  <meta property="og:url" content="https://www.terseai.org/token-optimization-techniques">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="12 Token Optimization Techniques for 2026">
+  <meta name="twitter:description" content="Twelve practical ways to optimize tokens in AI coding tools — from prompt compression and caching to compaction, context control, and per-turn monitoring.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "12 Token Optimization Techniques for 2026",
+        "description": "How to optimize tokens: 12 proven token optimization techniques for AI coding tools in 2026 — prompt compression, caching, compaction, context control, and more.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": "https://www.terseai.org/token-optimization-techniques"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "Token Optimization Techniques", "item": "https://www.terseai.org/token-optimization-techniques" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I optimize tokens in AI coding tools?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Optimize tokens by compressing prompts, sending only relevant context, using prompt caching, compacting long histories, clearing between tasks, avoiding duplicate file reads, right-sizing the model, capping output length, keeping instruction files lean, referencing files instead of pasting them, and monitoring per-turn usage. Some techniques are lossless (caching, dedup) and some are lossy (compaction, aggressive trimming)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which token optimization techniques are lossless?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Prompt caching, eliminating duplicate tool calls and redundant file reads, right-sizing the model, and monitoring usage are lossless — they cut cost without discarding meaning. Selective context and referencing files instead of pasting are near-lossless. Prompt compression, telegraph shortening, compaction, clearing history, and capping output are lossy to varying degrees."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does compressing prompts hurt output quality?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Light-touch compression — removing filler, hedging, and politeness while keeping every instruction and identifier intact — usually improves focus rather than hurting it. Aggressive telegraphing that drops necessary articles or context can introduce ambiguity, so it should be applied only where meaning is unmistakable."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the biggest source of wasted tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Context that rides along on every turn — long chat history, duplicate file reads, and whole-repo dumps — is the biggest waste, because it is re-billed on each request. Compaction, clearing, selective context, and prompt caching all target this compounding cost."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .back-blog{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:20px;border-bottom:none}
+    .article .back-blog:hover{color:var(--ac)}
+    .article .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:20px 24px;margin:0 0 36px}
+    .article .answer-box p{margin-bottom:0;color:var(--t1);font-size:16px;line-height:1.75}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-blog">&larr; Back to Blog</a>
+  <span class="tag">Optimization Guide</span>
+  <h1>12 Token Optimization Techniques for 2026</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <p>The most effective way to optimize tokens is to send less and re-send nothing. Compress prompts, include only relevant context, cache and compact what repeats, dedupe file reads, right-size the model, cap output, and watch per-turn usage. Some techniques are lossless; a few are lossy and belong only where meaning stays intact.</p>
+  </div>
+
+  <p class="subtitle">Token cost is not one big lever — it is a dozen small ones. Most waste hides in context that gets re-billed every turn and in prompts padded with words the model never needed. Below are twelve concrete token optimization techniques, ordered from the prompt you type to the session you run, with a note on which are lossless (no meaning lost) and which are lossy (they trade a little fidelity for savings).</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#t1">Compress the Prompt</a></li>
+      <li><a href="#t2">Telegraph / Lexical Shortening</a></li>
+      <li><a href="#t3">Selective Context</a></li>
+      <li><a href="#t4">Prompt Caching</a></li>
+      <li><a href="#t5">Compaction</a></li>
+      <li><a href="#t6">Clear Between Tasks</a></li>
+      <li><a href="#t7">Eliminate Redundant Reads</a></li>
+      <li><a href="#t8">Right-Size the Model</a></li>
+      <li><a href="#t9">Concise Output</a></li>
+      <li><a href="#t10">Lean Instruction Files</a></li>
+      <li><a href="#t11">Reference, Don't Paste</a></li>
+      <li><a href="#t12">Monitor Per-Turn Usage</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <p>If you want the conceptual foundation first, our primer on <a href="/what-is-token-optimization">what token optimization is</a> explains why these tokens cost what they do. Otherwise, start at the top.</p>
+
+  <h2 id="t1"><span class="strategy-num">1</span> Compress the Prompt</h2>
+  <p>The cheapest tokens are the ones you never send. Cut filler ("basically," "just," "actually"), hedging ("I was kind of wondering if maybe"), and politeness padding ("please could you be so kind as to"). None of it changes what the model does — it only adds tokens that get re-sent on every following turn. <strong>Lossy, but barely:</strong> when you keep every instruction and identifier intact, compression tends to sharpen focus rather than lose it. See <a href="/telegraph-compression">telegraph compression</a> for the mechanics.</p>
+
+  <h2 id="t2"><span class="strategy-num">2</span> Telegraph / Lexical Shortening</h2>
+  <p>Beyond removing filler, you can drop articles and redundant words where the meaning is unmistakable — "fix the bug in the parser function" becomes "fix bug in parser fn." This is telegraphing, the same instinct behind headlines and commit messages. <strong>Lossy:</strong> push it too far and you introduce ambiguity, so apply it only where a human would still read it one way. Our <a href="/nlp-analysis">NLP analysis</a> covers which word classes are safe to drop.</p>
+
+  <h2 id="t3"><span class="strategy-num">3</span> Selective Context</h2>
+  <p>Most tasks need two or three files, not the whole repository. Handing the model your entire codebase to change one function means paying to re-send thousands of irrelevant lines on every request. Include only the snippets that matter to the task in front of you. <strong>Near-lossless</strong> when done well — you lose nothing the model needed. Our <a href="/selective-context">selective context</a> guide shows how to pick the right slices.</p>
+
+  <h2 id="t4"><span class="strategy-num">4</span> Prompt Caching</h2>
+  <p>When a stable block of context — system prompt, style guide, or a large reference file — repeats across requests, prompt caching lets the provider reuse it at a steep discount instead of re-billing the full input rate. Structure your requests so the unchanging part sits at the front and stays byte-identical. <strong>Lossless:</strong> nothing is dropped; you simply stop paying full price for the same tokens twice.</p>
+
+  <h2 id="t5"><span class="strategy-num">5</span> Compaction</h2>
+  <p>Long agent sessions accumulate history that rides along on every turn. Compaction summarizes that history into a compact digest — in many tools a <code>/compact</code> command — so the essentials survive while the raw transcript is dropped. <strong>Lossy:</strong> detail is deliberately discarded, so compact at natural boundaries and re-state anything critical the summary might blur.</p>
+
+  <h2 id="t6"><span class="strategy-num">6</span> Clear Between Tasks</h2>
+  <p>When you finish one task and start an unrelated one, the old conversation is pure dead weight — re-sent and re-billed for no reason. A <code>/clear</code> (or a fresh session) resets context to zero. <strong>Lossy by design:</strong> you are throwing history away, which is exactly what you want between independent tasks. Clearing is often the single biggest one-click saving in a long working day.</p>
+
+  <h2 id="t7"><span class="strategy-num">7</span> Eliminate Redundant Reads</h2>
+  <p>Agents frequently re-read a file they already have in context, or fire two tool calls that return the same result. Each duplicate is a full payload re-billed for information the model already holds. Catch these — good tooling flags a duplicate read before it fires. <strong>Lossless:</strong> removing a duplicate removes nothing but cost. This is one of the purest wins available.</p>
+
+  <h2 id="t8"><span class="strategy-num">8</span> Right-Size the Model</h2>
+  <p>Frontier models can cost many times more per token than an efficient mid-tier model. Renaming a variable, writing a small test, or fixing a typo does not need top-tier reasoning. Reserve the expensive model for genuinely hard problems and let a cheaper one handle routine work. <strong>Lossless</strong> for the cost math — you pay less per token for tasks that never needed the premium model.</p>
+
+  <h2 id="t9"><span class="strategy-num">9</span> Concise Output</h2>
+  <p>Output tokens are billed too, often at a higher rate than input. Ask for terse answers, request "code only, no explanation" when that is all you need, and cap length where the tool allows it. A model told to be brief stops narrating every step. <strong>Lossy:</strong> you are trading away prose you did not want anyway, but be explicit when you actually need the reasoning shown.</p>
+
+  <h2 id="t10"><span class="strategy-num">10</span> Lean Instruction Files</h2>
+  <p>Files like <code>CLAUDE.md</code> or a rules file are loaded into context on every turn, so every wasted line is paid for continuously. Keep them tight: durable project facts and conventions, not a changelog or a wall of edge cases. <strong>Near-lossless</strong> — a lean instruction file that keeps the load-bearing rules loses nothing the agent relied on, while trimming a fixed cost off every single request.</p>
+
+  <h2 id="t11"><span class="strategy-num">11</span> Reference, Don't Paste</h2>
+  <p>Pasting an entire 2,000-line file inlines 15,000-25,000 tokens that then ride every following turn. Where the tool can read files on demand, point it at the path instead — <code>see src/parser.ts</code> — and let it pull only what it needs. <strong>Near-lossless:</strong> the model still gets the content, but only once and only the parts it opens, instead of carrying the whole dump forward.</p>
+
+  <h2 id="t12"><span class="strategy-num">12</span> Monitor Per-Turn Usage</h2>
+  <p>You cannot cut what you cannot see. Watching token count per turn turns a mystery invoice into an early warning — a turn that suddenly spikes is usually a fat file read or bloated context you can fix on the spot. <strong>Lossless:</strong> monitoring changes nothing about the request; it just makes the waste visible so the other eleven techniques get applied where they matter.</p>
+
+  <div class="cta-box">
+    <h3>Automate the Prompt Layer, On-Device</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse applies several of these techniques automatically — light-touch prompt compression, telegraph shortening, and per-request cost tracking — all on-device, zero latency, no API calls. It cuts the wordiness before it compounds across every turn.</p>
+    <a href="/for-cursor" class="btn">See Terse in Action</a>
+  </div>
+
+  <h2>Lossless vs Lossy at a Glance</h2>
+  <table class="pricing-table">
+    <thead><tr><th>Technique</th><th>Type</th></tr></thead>
+    <tbody>
+      <tr><td>Prompt caching</td><td>Lossless</td></tr>
+      <tr><td>Eliminate redundant reads</td><td>Lossless</td></tr>
+      <tr><td>Right-size the model</td><td>Lossless</td></tr>
+      <tr><td>Monitor per-turn usage</td><td>Lossless</td></tr>
+      <tr><td>Selective context</td><td>Near-lossless</td></tr>
+      <tr><td>Reference, don't paste</td><td>Near-lossless</td></tr>
+      <tr><td>Lean instruction files</td><td>Near-lossless</td></tr>
+      <tr><td>Compress the prompt</td><td>Lossy (light)</td></tr>
+      <tr><td>Telegraph shortening</td><td>Lossy</td></tr>
+      <tr><td>Concise output</td><td>Lossy</td></tr>
+      <tr><td>Compaction</td><td>Lossy</td></tr>
+      <tr><td>Clear between tasks</td><td>Lossy (by design)</td></tr>
+    </tbody>
+  </table>
+  <p>Reach for the lossless techniques first — they cut cost with no downside — then apply the lossy ones where the trade is obviously worth it. If you want to see how these play out across a full agent session, our breakdown of <a href="/ai-coding-agent-costs">AI coding agent costs</a> quantifies where the tokens actually go.</p>
+
+  <h2 id="faq">Frequently Asked Questions</h2>
+
+  <h3>How do I optimize tokens in AI coding tools?</h3>
+  <p>Compress prompts, send only relevant context, use prompt caching, compact long histories, clear between tasks, avoid duplicate file reads, right-size the model, cap output length, keep instruction files lean, reference files instead of pasting them, and monitor per-turn usage. Some of these are lossless and some are lossy — reach for the lossless ones first.</p>
+
+  <h3>Which token optimization techniques are lossless?</h3>
+  <p>Prompt caching, eliminating duplicate tool calls and redundant file reads, right-sizing the model, and monitoring usage are lossless. Selective context, referencing files instead of pasting, and lean instruction files are near-lossless. Prompt compression, telegraphing, concise output, compaction, and clearing history are lossy to varying degrees.</p>
+
+  <h3>Does compressing prompts hurt output quality?</h3>
+  <p>Light-touch compression — removing filler, hedging, and politeness while keeping every instruction and identifier intact — usually improves focus rather than hurting it. Aggressive telegraphing that drops necessary articles or context can introduce ambiguity, so apply it only where meaning is unmistakable.</p>
+
+  <h3>What is the biggest source of wasted tokens?</h3>
+  <p>Context that rides along on every turn — long chat history, duplicate file reads, and whole-repo dumps — because it is re-billed on each request. Compaction, clearing, selective context, and prompt caching all target this compounding cost.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/what-is-token-optimization">What Is Token Optimization?</a> — the concept and why tokens cost what they do</li>
+    <li><a href="/telegraph-compression">Telegraph Compression</a> — the mechanics of lexical shortening</li>
+    <li><a href="/nlp-analysis">NLP Analysis</a> — which word classes are safe to drop</li>
+    <li><a href="/selective-context">Selective Context</a> — how to pick the right files and snippets</li>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — where tokens actually go in a session</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/cursor-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Cursor Pricing</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/for-cursor" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Terse for Cursor</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

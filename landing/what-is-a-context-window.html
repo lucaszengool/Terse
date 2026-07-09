@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What Is a Context Window? (2026 Guide) — Terse</title>
+  <meta name="description" content="What is a context window? A developer's guide to the token limit LLMs read at once — 2026 sizes, why bigger isn't always better, context rot, and how to manage it.">
+  <link rel="canonical" href="https://www.terseai.org/what-is-a-context-window">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="What Is a Context Window? (2026 Guide)">
+  <meta property="og:description" content="The token limit an LLM reads at once — 2026 model sizes, why bigger isn't always better, context rot, and how coding agents fill it every turn.">
+  <meta property="og:url" content="https://www.terseai.org/what-is-a-context-window">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="What Is a Context Window? (2026 Guide)">
+  <meta name="twitter:description" content="The token limit an LLM reads at once — 2026 model sizes, why bigger isn't always better, context rot, and how coding agents fill it every turn.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "What Is a Context Window? (2026 Guide)",
+        "description": "What is a context window? A developer's guide to the token limit LLMs read at once — 2026 sizes, why bigger isn't always better, context rot, and how to manage it.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": "https://www.terseai.org/what-is-a-context-window"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "What Is a Context Window?", "item": "https://www.terseai.org/what-is-a-context-window" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is a context window in an LLM?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A context window is the maximum number of tokens a language model can consider at once. It has to hold everything at play in a single request: the system prompt, your instructions, any supplied context, the conversation so far, and the model's own output as it generates. Once the window is full, the oldest content has to be dropped or compacted."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How big are context windows in 2026?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "In 2026, Claude models ship with a 200K-token window (with some configurations up to 1M), Gemini 2.5 offers up to 1M tokens, and GPT-class models provide large windows as well. Sizes keep growing, but a bigger maximum does not automatically mean better answers."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is a bigger context window always better?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. As a window fills, quality and attention can degrade — a phenomenon often called context rot — and every extra token raises cost and latency. A tightly scoped context on a smaller window frequently outperforms a bloated one on a huge window."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I manage the context window in a coding agent?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Compact or clear the conversation when it grows stale, scope each task to the few files that matter, avoid re-reading files the agent already has, and feed only the context a task needs. These habits improve both cost and answer quality at the same time."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .back-blog{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:20px;border-bottom:none}
+    .article .back-blog:hover{color:var(--ac)}
+    .article .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:20px 24px;margin:0 0 36px}
+    .article .answer-box p{margin-bottom:0;color:var(--t1);font-size:16px;line-height:1.75}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-blog">&larr; Back to Blog</a>
+  <span class="tag">LLM Basics</span>
+  <h1>What Is a Context Window?</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <p>A context window is the maximum number of tokens a language model can consider at once. Everything in a single request shares it: the system prompt, your instructions, supplied context, the conversation so far, and the model's own output as it generates. When the window fills, the oldest content must be dropped or compacted.</p>
+  </div>
+
+  <p class="subtitle">Every large language model has a hard ceiling on how much text it can hold in mind at any moment. That ceiling — the context window — shapes what your prompts cost, how coherent long conversations stay, and why a coding agent can "forget" what it read ten steps ago. Here is what it is, how big it gets in 2026, and why filling it to the brim is usually the wrong move.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#definition">The Definition, Precisely</a></li>
+      <li><a href="#whats-inside">What Actually Lives in the Window</a></li>
+      <li><a href="#sizes-2026">Context Window Sizes in 2026</a></li>
+      <li><a href="#coding-agents">How Coding Agents Fill It</a></li>
+      <li><a href="#bigger-not-better">Why Bigger Isn't Always Better</a></li>
+      <li><a href="#managing">Managing the Window</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <h2 id="definition">The Definition, Precisely</h2>
+  <p>A context window is the maximum number of <strong>tokens</strong> a model can process in a single pass. A token is a chunk of text — roughly three-quarters of a word in English — and the model reads and writes in tokens, not characters. The window is the fixed-size workspace those tokens have to fit into.</p>
+  <p>Crucially, the window is shared by everything in the request. It is not just your prompt. It holds the instructions the application sends on your behalf, whatever context has been attached, the entire back-and-forth of the conversation up to this point, and the response the model is in the middle of producing. Input and output draw from the same budget. Once the total crosses the model's limit, something has to give — older turns get truncated, summarized, or dropped so the newest content still fits.</p>
+
+  <h2 id="whats-inside">What Actually Lives in the Window</h2>
+  <p>It helps to picture the window as a single buffer that gets assembled fresh for every request. In a simple chatbot the pieces are:</p>
+  <ul>
+    <li><strong>The system prompt</strong> — hidden instructions that set the model's role, tone, and rules.</li>
+    <li><strong>Your message</strong> — the actual question or task you typed.</li>
+    <li><strong>Any attached context</strong> — retrieved documents, pasted code, or reference material.</li>
+    <li><strong>The conversation so far</strong> — every prior user message and model reply in the session.</li>
+    <li><strong>The output being generated</strong> — the model's answer counts against the same ceiling as it is written.</li>
+  </ul>
+  <p>All of it is counted together. A long conversation eventually spends so much of the window on history that there is little room left for a substantive answer — which is exactly when quality starts to slip.</p>
+
+  <h2 id="sizes-2026">Context Window Sizes in 2026</h2>
+  <p>Windows have grown enormously. As of 2026, the headline numbers look like this:</p>
+  <table class="pricing-table">
+    <thead>
+      <tr><th>Model family</th><th>Context window</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Claude models</td><td>200K tokens (up to 1M in some configurations)</td></tr>
+      <tr><td>Gemini 2.5</td><td>Up to 1M tokens</td></tr>
+      <tr><td>GPT-class models</td><td>Large windows (hundreds of thousands of tokens)</td></tr>
+    </tbody>
+  </table>
+  <p>To put a million tokens in perspective: that is roughly the length of several full-length novels, or a mid-sized codebase read in one gulp. It sounds like the ceiling has effectively disappeared. In practice, the ceiling is only half the story — <em>how full you keep it</em> matters far more than how high it goes, for reasons we get to below.</p>
+
+  <h2 id="coding-agents">How Coding Agents Fill It</h2>
+  <p>Nowhere does the context window matter more than in AI coding agents, because they fill it aggressively and refill it every single turn. A typical agent request packs in:</p>
+  <ul>
+    <li>The <strong>system prompt</strong> defining how the agent behaves.</li>
+    <li><strong>Tool definitions</strong> — the schema for every command the agent is allowed to call.</li>
+    <li><strong>Files it has read</strong> — often entire source files pulled in for reference.</li>
+    <li><strong>Command outputs</strong> — the results of tests, builds, greps, and shell runs.</li>
+    <li>The <strong>growing chat history</strong> of everything said and done so far.</li>
+  </ul>
+  <p>Here is the part that surprises people: all of this is <strong>re-sent on every turn</strong>. A 4,000-token file the agent read on step three rides along in steps four, five, six, and onward. The window does not remember — it is rebuilt from scratch each request, so early context is re-transmitted again and again. That is why a session that "felt short" can consume a startling number of tokens. Our <a href="/ai-coding-agent-costs">breakdown of AI coding agent costs</a> walks through how these per-turn re-sends dominate a real session, and <a href="/reduce-claude-code-context-window">this guide to reducing your Claude Code context window</a> shows the same dynamic from inside one agent.</p>
+
+  <h2 id="bigger-not-better">Why Bigger Isn't Always Better</h2>
+  <p>The instinct is to reach for the biggest window available and stuff it. Two problems undercut that.</p>
+  <p>The first is <strong>context rot</strong>. As the window fills, a model's ability to attend to any single piece of information tends to degrade. Details buried in the middle of a huge context get less attention than the same detail in a short one; the model can overlook instructions, mix up facts, or lose the thread. A precise answer sitting inside 900K tokens of noise is harder for the model to surface than the same answer in a tightly scoped 5K-token prompt. More context is not automatically more signal — often it is more distraction.</p>
+  <p>The second is <strong>cost</strong>. You pay per token, on input and output alike, and in an agent loop you pay for the same context repeatedly as it re-sends each turn. A bloated window on a frontier model multiplies the two most expensive variables at once. You can see the raw token math with our <a href="/token-calculator">token calculator</a>, which shows how quickly a padded prompt inflates before you ever hit send.</p>
+  <p>Put together: a smaller, cleaner context frequently beats a huge, messy one on both quality and price. The maximum window size is a ceiling, not a target.</p>
+
+  <h2 id="managing">Managing the Window</h2>
+  <p>Treating the context window as a resource to spend deliberately — rather than a bucket to fill — improves cost and answer quality at the same time. A few reliable habits:</p>
+  <ul>
+    <li><strong>Compact or clear.</strong> When a conversation grows long and stale, summarize it down or start fresh. Carrying twenty turns of dead history forward taxes every remaining request.</li>
+    <li><strong>Scope each task.</strong> Give the agent the two or three files that actually matter instead of the whole repository. Most changes do not need the entire codebase in view.</li>
+    <li><strong>Feed selective context.</strong> Attach only the passages relevant to the task rather than whole documents. Our note on <a href="/selective-context">selective context</a> covers the research behind pruning input down to what carries signal.</li>
+    <li><strong>Trim before you send.</strong> Cut padding, restated requirements, and untrimmed logs. See <a href="/what-is-token-optimization">what token optimization is</a> for the broader picture of squeezing waste out of prompts.</li>
+    <li><strong>Avoid redundant reads.</strong> Re-reading a file the agent already has, or repeating a tool call, quietly re-fills the window for nothing.</li>
+  </ul>
+  <p>That last point is where a light-touch tool helps. <a href="/for-cursor">Terse</a> flags redundant file reads and duplicate tool calls that waste your context window, and it tracks per-request token cost so the math stays visible — a small on-device nudge, not a heavy rewrite of how you work. The goal is not to fear the window but to keep it clean, so the model spends its attention on the tokens that matter.</p>
+
+  <div class="cta-box">
+    <h3>See What's Filling Your Context Window</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse flags redundant file reads and duplicate tool calls that waste the window, compresses the prompts you send, and tracks per-request token cost — on-device, zero latency, no API calls.</p>
+    <a href="/for-cursor" class="btn">Try Terse</a>
+  </div>
+
+  <h2 id="faq">Frequently Asked Questions</h2>
+
+  <h3>What is a context window in an LLM?</h3>
+  <p>A context window is the maximum number of tokens a language model can consider at once. It holds everything in a single request: the system prompt, your instructions, any supplied context, the conversation so far, and the model's own output as it generates. Once the window is full, the oldest content has to be dropped or compacted.</p>
+
+  <h3>How big are context windows in 2026?</h3>
+  <p>In 2026, Claude models ship with a 200K-token window (up to 1M in some configurations), Gemini 2.5 offers up to 1M tokens, and GPT-class models provide large windows as well. Sizes keep growing, but a bigger maximum does not automatically mean better answers.</p>
+
+  <h3>Is a bigger context window always better?</h3>
+  <p>No. As a window fills, quality and attention can degrade — often called context rot — and every extra token raises cost and latency. A tightly scoped context on a smaller window frequently outperforms a bloated one on a huge window.</p>
+
+  <h3>How do I manage the context window in a coding agent?</h3>
+  <p>Compact or clear the conversation when it grows stale, scope each task to the few files that matter, avoid re-reading files the agent already has, and feed only the context a task needs. These habits improve both cost and answer quality at once.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/reduce-claude-code-context-window">Reduce Your Claude Code Context Window</a> — trim what an agent carries each turn</li>
+    <li><a href="/what-is-token-optimization">What Is Token Optimization?</a> — squeezing waste out of prompts</li>
+    <li><a href="/selective-context">Selective Context</a> — the research on pruning input to what matters</li>
+    <li><a href="/token-calculator">Token Calculator</a> — measure how many tokens a prompt really uses</li>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — where tokens actually go in an agent session</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/cursor-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Cursor Pricing</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/for-cursor" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Terse for Cursor</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

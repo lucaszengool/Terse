@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What Is an AI Coding Agent? (2026 Guide) — Terse</title>
+  <meta name="description" content="What is an AI coding agent? A plain-English explainer of the agentic loop, how agents differ from autocomplete, the three form factors, and why they cost tokens.">
+  <link rel="canonical" href="https://www.terseai.org/what-is-an-ai-coding-agent">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="What Is an AI Coding Agent? (2026 Guide)">
+  <meta property="og:description" content="An AI coding agent reads, writes, and runs code in a loop to finish a task. How the agentic loop works, the three form factors, and why they burn tokens.">
+  <meta property="og:url" content="https://www.terseai.org/what-is-an-ai-coding-agent">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="What Is an AI Coding Agent? (2026 Guide)">
+  <meta name="twitter:description" content="An AI coding agent reads, writes, and runs code in a loop to finish a task. How the agentic loop works, the three form factors, and why they burn tokens.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "What Is an AI Coding Agent? (2026 Guide)",
+        "description": "What is an AI coding agent? A plain-English explainer of the agentic loop, how agents differ from autocomplete, the three form factors, and why they cost tokens.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": "https://www.terseai.org/what-is-an-ai-coding-agent"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "What Is an AI Coding Agent?", "item": "https://www.terseai.org/what-is-an-ai-coding-agent" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is an AI coding agent?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "An AI coding agent is an LLM-powered tool that autonomously reads, writes, and runs code in a loop to complete a task. You give it a goal, it plans, uses tools like reading files, editing, running commands, and searching, observes the results, and iterates until the task is done — unlike autocomplete, which only suggests the next few lines."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How is an AI coding agent different from autocomplete?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Autocomplete suggests the next line or few lines as you type and stops there. An AI coding agent works in an agentic loop — it plans a task, calls tools to read files, edit code, and run commands, checks the results, and keeps going on its own until the goal is met. Autocomplete assists your keystrokes; an agent completes whole tasks."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What are the main types of AI coding agents?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "There are three form factors: terminal-first agents like Claude Code, Codex CLI, Aider, opencode, and Gemini CLI; IDE-embedded agents like Cursor, Windsurf, and GitHub Copilot agent mode; and cloud or fully autonomous agents like Devin. They differ in where they run and how much control you keep over each step."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why do AI coding agents use so many tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Because context accumulates every step of the loop. Each turn re-sends the files, tool outputs, and conversation history gathered so far, so a file read early in a session gets billed again on every later turn. More autonomy means more steps, more context carried forward, and more tokens — which is why costs climb with long agent runs."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .back-blog{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:20px;border-bottom:none}
+    .article .back-blog:hover{color:var(--ac)}
+    .article .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:20px 24px;margin:0 0 36px}
+    .article .answer-box p{margin-bottom:0;color:var(--t1);font-size:16px;line-height:1.75}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-blog">&larr; Back to Blog</a>
+  <span class="tag">Explainer</span>
+  <h1>What Is an AI Coding Agent?</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <p>An AI coding agent is an LLM-powered tool that autonomously reads, writes, and runs code in a loop to complete a task. You give it a goal; it plans, uses tools — read a file, edit, run a command, search — observes the results, and iterates until the work is done. That loop is what separates it from plain autocomplete.</p>
+  </div>
+
+  <p class="subtitle">"AI coding agent" gets used for everything from a smarter autocomplete to a fully autonomous engineer. They are not the same thing. This guide explains what an agent actually is, how the agentic loop works step by step, the three form factors you will run into, and why all of them consume so many tokens.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#definition">The Short Definition</a></li>
+      <li><a href="#vs-autocomplete">Agent vs. Autocomplete</a></li>
+      <li><a href="#the-loop">The Agentic Loop</a></li>
+      <li><a href="#form-factors">The Three Form Factors</a></li>
+      <li><a href="#tokens">Why Agents Burn Tokens</a></li>
+      <li><a href="#tradeoff">The Autonomy Trade-off</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <h2 id="definition">The Short Definition</h2>
+  <p>An <strong>AI coding agent</strong> is a tool built on a large language model that can autonomously read, write, and run code in a loop to finish a task you describe in plain language. The key word is <em>autonomously</em>: you hand it a goal, and it decides what steps to take, executes them using real tools, checks whether they worked, and keeps going until it believes the job is done — or it hits a limit and hands back to you.</p>
+  <p>That is a meaningful jump from earlier AI coding tools. A code completion model predicts text. An agent takes actions in your project: opening files, editing them, running your test suite, reading the failures, and trying again. It is the difference between an assistant that suggests and one that does.</p>
+
+  <h2 id="vs-autocomplete">Agent vs. Autocomplete</h2>
+  <p>The clearest way to understand an agent is to contrast it with the thing it is often confused for. Autocomplete — the grey ghost text that finishes your line as you type — is reactive and bounded. It looks at your cursor, predicts the next few lines, and stops. You are still the one driving; it just saves keystrokes. It never runs anything, never reads across your codebase on its own, and never decides what to do next.</p>
+  <p>An agent inverts that relationship. You describe an outcome — "add pagination to the users endpoint and update the tests" — and the agent takes it from there. It figures out which files are involved, edits several of them, runs the tests, reads what broke, and fixes it, looping until the outcome is achieved. Autocomplete assists your keystrokes; an agent completes whole tasks. Both are useful, but they solve different problems and cost wildly different amounts of tokens.</p>
+
+  <h2 id="the-loop">The Agentic Loop</h2>
+  <p>Everything an agent does happens inside a single repeating cycle. Understanding this loop is the fastest way to understand agents — and to understand their cost. It goes like this:</p>
+  <ol>
+    <li><strong>Goal.</strong> You give the agent a task in natural language.</li>
+    <li><strong>Plan.</strong> The model reasons about what needs to happen and picks a first action.</li>
+    <li><strong>Act (use a tool).</strong> It calls a tool — read a file, edit code, run a command, search the repo, hit an API.</li>
+    <li><strong>Observe.</strong> The tool returns a result — file contents, a test log, an error, search hits — and that output is fed back into the model.</li>
+    <li><strong>Iterate.</strong> The model looks at the new information, decides the next action, and the loop repeats — until the task is complete.</li>
+  </ol>
+  <p>A real session might run this loop dozens of times. Read the file, edit it, run the tests, see three failures, read the relevant module, fix the edit, re-run, pass, done. Each pass is a full round trip to the model. This is the engine under every agent, whether it lives in your terminal, your IDE, or the cloud — and it is also, as we will see, exactly why they are expensive.</p>
+
+  <h2 id="form-factors">The Three Form Factors</h2>
+  <p>Agents ship in three broad shapes. They run the same loop; they differ in where they live and how much of the driving they take over.</p>
+
+  <h3>1. Terminal-first</h3>
+  <p>These run in your command line and work directly against your repository. <strong>Claude Code, Codex CLI, Aider, opencode, and Gemini CLI</strong> are the common ones. They tend to be fast, scriptable, and transparent — you watch each tool call scroll past — which appeals to developers who want to stay close to the metal. If you are choosing among them, our <a href="/claude-code-alternatives">Claude Code alternatives guide</a> compares the main options head to head.</p>
+
+  <h3>2. IDE-embedded</h3>
+  <p>These live inside your editor as an "agent mode" alongside inline suggestions. <strong>Cursor, Windsurf, and GitHub Copilot agent mode</strong> are the leading examples. The pitch is convenience: the agent has your open files and editor context right there, and edits show up as diffs you can review in place. They blur the line between autocomplete and agent because they offer both in one window.</p>
+
+  <h3>3. Cloud / autonomous</h3>
+  <p>These run remotely and aim for maximum autonomy — you assign a task and come back to a result, often a pull request. <strong>Devin</strong> is the best-known example. You give up the most step-by-step control here in exchange for the agent handling long, multi-step work unattended. It is the far end of the spectrum: least supervision, most independence.</p>
+
+  <h2 id="tokens">Why Agents Burn Tokens</h2>
+  <p>Here is the part that surprises people the first time they see an agent's bill. Agents consume tokens far out of proportion to how much you type, and the reason is baked into the loop from the previous section: <strong>context accumulates every step</strong>.</p>
+  <p>On each pass of the loop, the model needs to see what has happened so far — the original goal, the files it has read, the edits it has made, and the output of every tool call. So all of that gets re-sent on every turn. A 4,000-token file the agent read on step 3 rides along again on steps 4, 5, 6, and every step after. Over a 30-step session, that single early read can be billed dozens of times. Multiply that by every file, every test log, and every search result, and the token count balloons well past what the conversation "looks like."</p>
+  <p>This is why a session that felt short can cost a surprising amount, and why longer, more autonomous runs cost disproportionately more — more steps means more context carried forward on each one. If you want the numbers behind this, our breakdown of <a href="/ai-coding-agent-costs">AI coding agent costs</a> walks through where the tokens actually go, <a href="/how-many-tokens-ai-coding-agents-use">how many tokens AI coding agents use</a> per session quantifies typical volumes, and our <a href="/ai-coding-tools-pricing">AI coding tools pricing</a> comparison shows how that translates into dollars across the popular tools.</p>
+
+  <h2 id="tradeoff">The Autonomy Trade-off</h2>
+  <p>Every choice about agents comes back to one trade-off: <strong>more autonomy means more capability, but also more cost and less control</strong>. A terminal agent you supervise turn by turn is cheaper and easier to steer, but you are in the loop. A cloud agent that runs unattended handles bigger jobs, but it spends more tokens getting there and gives you fewer chances to course-correct before it goes down the wrong path.</p>
+  <p>There is no single right answer — the best form factor depends on the task and how much you want to watch it. What helps in every case is visibility into what each turn is actually costing. That is the light-touch layer <a href="/for-claude-code">Terse</a> adds: it tracks per-turn token cost across agents so you can see, in real time, how a session is compounding — without changing how the agent works. When the agentic loop is doing its job invisibly, a quiet running total of the tokens is how you keep the trade-off honest.</p>
+
+  <div class="cta-box">
+    <h3>See What Every Agent Turn Costs</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse tracks per-turn token cost across Claude Code, Cursor, and other agents — on-device, zero latency, no API calls. Watch context compound turn by turn before it shows up on a bill.</p>
+    <a href="/for-claude-code" class="btn">Terse for Claude Code</a>
+  </div>
+
+  <h2 id="faq">Frequently Asked Questions</h2>
+
+  <h3>What is an AI coding agent?</h3>
+  <p>An AI coding agent is an LLM-powered tool that autonomously reads, writes, and runs code in a loop to complete a task. You give it a goal, it plans, uses tools like reading files, editing, running commands, and searching, observes the results, and iterates until the task is done — unlike autocomplete, which only suggests the next few lines.</p>
+
+  <h3>How is an AI coding agent different from autocomplete?</h3>
+  <p>Autocomplete suggests the next line or few lines as you type and stops there. An agent works in an agentic loop — it plans a task, calls tools to read files, edit code, and run commands, checks the results, and keeps going on its own until the goal is met. Autocomplete assists your keystrokes; an agent completes whole tasks.</p>
+
+  <h3>What are the main types of AI coding agents?</h3>
+  <p>There are three form factors: terminal-first agents like Claude Code, Codex CLI, Aider, opencode, and Gemini CLI; IDE-embedded agents like Cursor, Windsurf, and GitHub Copilot agent mode; and cloud or fully autonomous agents like Devin. They differ in where they run and how much control you keep over each step.</p>
+
+  <h3>Why do AI coding agents use so many tokens?</h3>
+  <p>Because context accumulates every step of the loop. Each turn re-sends the files, tool outputs, and conversation history gathered so far, so a file read early in a session gets billed again on every later turn. More autonomy means more steps, more context carried forward, and more tokens — which is why costs climb with long agent runs.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — where tokens actually go in a session</li>
+    <li><a href="/how-many-tokens-ai-coding-agents-use">How Many Tokens AI Coding Agents Use</a> — typical per-session volumes</li>
+    <li><a href="/ai-coding-tools-pricing">AI Coding Tools Pricing</a> — what the popular tools cost, compared</li>
+    <li><a href="/claude-code-alternatives">Claude Code Alternatives</a> — terminal agents compared head to head</li>
+    <li><a href="/for-claude-code">Terse for Claude Code</a> — track per-turn cost across agents</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/cursor-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Cursor Pricing</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/for-cursor" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Terse for Cursor</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

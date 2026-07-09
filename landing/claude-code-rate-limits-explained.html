@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Rate Limits Explained (2026) — Terse</title>
+  <meta name="description" content="How Claude Code rate limits work in 2026 — rolling weekly and session caps, why heavy context burns them faster, and practical ways to stretch your usage.">
+  <link rel="canonical" href="https://www.terseai.org/claude-code-rate-limits-explained">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Claude Code Rate Limits Explained (2026)">
+  <meta property="og:description" content="How Claude Code usage limits work in 2026 — rolling weekly and session caps, what drains them fastest, and how to do more within your limit.">
+  <meta property="og:url" content="https://www.terseai.org/claude-code-rate-limits-explained">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Claude Code Rate Limits Explained (2026)">
+  <meta name="twitter:description" content="How Claude Code usage limits work in 2026 — rolling weekly and session caps, what drains them fastest, and how to do more within your limit.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "Claude Code Rate Limits Explained (2026)",
+        "description": "How Claude Code rate limits work in 2026 — rolling weekly and session caps, why heavy context burns them faster, and practical ways to stretch your usage.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": "https://www.terseai.org/claude-code-rate-limits-explained"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "Claude Code Rate Limits Explained", "item": "https://www.terseai.org/claude-code-rate-limits-explained" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do Claude Code rate limits work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Claude Code on a Claude subscription uses rolling rate limits rather than a fixed credit pool. Usage is capped on a rolling weekly basis, with shorter session limits on top. When you hit a ceiling you wait for that window to reset or upgrade to a higher tier. Heavy context and long autonomous runs consume the limit faster."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why did I hit a Claude Code limit so quickly?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Rate limits are driven by tokens, not messages. Long autonomous runs, large files, and accumulated context re-sent every turn burn through your window fast — especially on Opus. A single unscoped agent run over many files can consume more of your limit than a full day of tight, focused edits."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How can I do more within my Claude Code limit?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Use Sonnet for routine work and save Opus for hard reasoning, run /compact and /clear to shrink conversation history, scope tasks narrowly, avoid redundant file reads, and batch work into focused sessions. Trimming prompt and context waste stretches how far each window goes."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What happens when I hit the Claude Code weekly limit?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Claude Code pauses until the rolling window resets, or you can upgrade to a higher tier for more headroom. Pro has the tightest ceiling; higher subscription tiers and the pay-as-you-go API give you more room. Exact numbers change over time, so treat the mechanism, not a fixed quota, as the thing to plan around."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .back-blog{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:20px;border-bottom:none}
+    .article .back-blog:hover{color:var(--ac)}
+    .article .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:20px 24px;margin:0 0 36px}
+    .article .answer-box p{margin-bottom:0;color:var(--t1);font-size:16px;line-height:1.75}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-blog">&larr; Back to Blog</a>
+  <span class="tag">Cost Guide</span>
+  <h1>Claude Code Rate Limits Explained (2026)</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <p>Claude Code on a Claude subscription uses rolling rate limits, not a fixed credit pool. Usage is capped on a rolling weekly basis, with shorter session limits on top. Hit a ceiling and you wait for the window to reset or upgrade. Heavy context and long autonomous runs burn the limit faster, so tighter sessions go further.</p>
+  </div>
+
+  <p class="subtitle">If Claude Code suddenly tells you to slow down, you have not bought a broken product — you have hit a rate limit. The subscription does not sell you a pile of credits; it gives you access that is metered on rolling windows. Understanding how that meter works is the difference between constantly bumping the ceiling and comfortably getting a full week of work out of your plan.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#how-limits-work">How Claude Code Limits Actually Work</a></li>
+      <li><a href="#reason-1">1. Rolling Windows, Not a Credit Pool</a></li>
+      <li><a href="#reason-2">2. Tier Determines Your Ceiling</a></li>
+      <li><a href="#reason-3">3. Context and Long Runs Drain Faster</a></li>
+      <li><a href="#reason-4">4. Model Choice Multiplies Usage</a></li>
+      <li><a href="#stretch-limit">How to Stretch Your Limit</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <h2 id="how-limits-work">How Claude Code Limits Actually Work</h2>
+  <p>The confusion starts with the mental model. People assume a subscription buys a monthly bucket of tokens they spend down like a prepaid card. Claude Code does not work that way. Access through a Claude subscription is governed by <strong>rolling rate limits</strong>: usage is capped over a rolling weekly window, with tighter session-length limits layered on top.</p>
+  <p>When you reach a ceiling, Claude Code does not silently overcharge you — it pauses and tells you to wait for the window to reset, or to upgrade for more headroom. Because the window rolls, the limit refills gradually as older usage ages out rather than resetting on a fixed calendar date. That is why a heavy morning can leave you throttled in the afternoon even though the "week" is not over.</p>
+  <p>One honest caveat up front: the exact numbers move. Anthropic tunes tiers and thresholds over time, so this guide focuses on how the system behaves, not on a fixed quota you can memorize. For the current plan tiers and what each one includes, see our <a href="/claude-code-pricing">Claude Code pricing guide</a>. Below are the four things that actually determine how far your limit goes.</p>
+
+  <h2 id="reason-1"><span class="strategy-num">1</span> Rolling Windows, Not a Credit Pool</h2>
+  <p>The single biggest source of surprise is expecting a credit pool and getting a rolling window instead. With a pool, you can front-load a huge job and coast; with a rolling limit, a burst of intense usage counts against you for the rest of the window. There is both a shorter <strong>session</strong> limit — protecting against a single marathon run — and a longer <strong>rolling weekly</strong> limit that governs sustained work.</p>
+  <p>Practically, this means pacing matters. Two hours of tightly scoped work spread across a few sessions stresses the limit far less than the same token volume dumped into one sprawling autonomous run. The window is always healing, so steady, deliberate use is rewarded and bursty, unscoped use is penalized.</p>
+
+  <h2 id="reason-2"><span class="strategy-num">2</span> Tier Determines Your Ceiling</h2>
+  <p>How much room you get is set by your plan. <strong>Pro at $20/month has the tightest ceiling</strong> — it is designed for lighter, intermittent coding rather than all-day autonomous agent work. Higher subscription tiers raise the rolling limits substantially, giving heavy users far more headroom before they ever see a throttle.</p>
+  <p>Beyond the subscription tiers, the <strong>pay-as-you-go API</strong> is a different model entirely: instead of a rolling ceiling you pay per token with no weekly cap, which suits workloads that would constantly bump against subscription limits. If you are consistently hitting the wall on Pro, the fix is usually to move up a tier or shift the heaviest work to the API — not to fight the limit. Our <a href="/ai-coding-agent-costs">breakdown of AI coding agent costs</a> compares the subscription and API paths so you can see which fits your usage.</p>
+
+  <h2 id="reason-3"><span class="strategy-num">3</span> Context and Long Runs Drain Faster</h2>
+  <p>Rate limits are measured in tokens, and tokens accumulate in ways that are easy to miss. Every turn of an agent session re-sends the accumulated context: the files it has read, the tool output it collected, and the full conversation history. A 4,000-token file dump from early in a session gets re-transmitted on turn after turn, so a session that "felt short" can consume a surprising slice of your window.</p>
+  <p>Long autonomous runs compound this. When you let the agent grind on an under-specified task, it reads files it does not need, retries, and self-corrects — and every one of those loops carries the full, growing context. A single unscoped run across twenty files can eat more of your limit than a whole day of tight, targeted edits. This is exactly the dynamic covered in our guide to <a href="/reduce-claude-code-context-window">reducing the Claude Code context window</a>: shrinking what rides along on each turn is the highest-leverage way to stay under the ceiling.</p>
+
+  <h2 id="reason-4"><span class="strategy-num">4</span> Model Choice Multiplies Usage</h2>
+  <p>Not all tokens cost the same against your limit. Opus-class models are far heavier than Sonnet, so the same task run on Opus draws down your window much faster. Reaching for the most powerful model on every routine edit — renaming a variable, fixing a typo, writing a small test — is one of the quickest ways to hit a ceiling early in the week.</p>
+  <p>The efficient move is to match the model to the job: let Sonnet handle the large majority of routine work and reserve Opus for genuinely hard reasoning or architecture. Bloated context on the heaviest model multiplies the two most expensive variables at once, which is the classic recipe for an unexpected throttle. If you want to see how prompt and context size translate into tokens before you send, our <a href="/token-calculator">token calculator</a> makes the math visible.</p>
+
+  <h2 id="stretch-limit">How to Stretch Your Limit</h2>
+  <p>None of this means Claude Code is stingy — it means the limits reward discipline. A handful of habits keep you comfortably inside your window most weeks:</p>
+  <ul>
+    <li><strong>Use Sonnet for routine work.</strong> Let the efficient model handle the 80% of tasks that are edits, small tests, refactors, and boilerplate, and switch to Opus deliberately only for hard reasoning. Do not leave the heaviest model as your permanent default.</li>
+    <li><strong>Run <code>/compact</code> and <code>/clear</code>.</strong> Use <code>/compact</code> to summarize and shrink a long conversation, and <code>/clear</code> to start fresh when you move to an unrelated task. Both cut the accumulated history that would otherwise re-ride on every turn.</li>
+    <li><strong>Scope tasks narrowly.</strong> Instead of one sprawling autonomous run, give the agent a well-defined task, let it finish, then start the next. Shorter runs carry less context and are far easier to steer.</li>
+    <li><strong>Avoid redundant file reads.</strong> Point the agent at the two or three files that matter rather than letting it re-read the same large files it already has in context. Every avoided re-read is tokens you stop spending against your limit.</li>
+    <li><strong>Batch work into focused sessions.</strong> Deliberate, contained sessions stress the rolling window less than scattered all-day usage, and they make it obvious when you are approaching a ceiling.</li>
+    <li><strong>Write concise prompts.</strong> Trim padding, restated requirements, and pasted logs down to what matters. A tighter prompt costs less on every turn it rides along on.</li>
+  </ul>
+  <p>If you want to go further on the prompt layer specifically, <a href="/for-claude-code">Terse</a> compresses what you type into Claude Code before it is sent and tracks per-request token cost inline — a small, on-device nudge that trims waste so each rolling window goes further. It is a light touch, not a rewrite: the goal is simply to stop paying for words the model never needed.</p>
+
+  <div class="cta-box">
+    <h3>Do More Within Your Claude Code Limit</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse compresses the prompts you send into Claude Code and tracks per-request token cost — on-device, zero latency, no API calls. Trim the waste before it eats your rolling window.</p>
+    <a href="/for-claude-code" class="btn">Terse for Claude Code</a>
+  </div>
+
+  <h2 id="faq">Frequently Asked Questions</h2>
+
+  <h3>How do Claude Code rate limits work?</h3>
+  <p>Claude Code on a Claude subscription uses rolling rate limits rather than a fixed credit pool. Usage is capped on a rolling weekly basis, with shorter session limits on top. When you hit a ceiling you wait for that window to reset or upgrade to a higher tier. Heavy context and long autonomous runs consume the limit faster.</p>
+
+  <h3>Why did I hit a Claude Code limit so quickly?</h3>
+  <p>Rate limits are driven by tokens, not messages. Long autonomous runs, large files, and accumulated context re-sent every turn burn through your window fast — especially on Opus. A single unscoped agent run over many files can consume more of your limit than a full day of tight, focused edits.</p>
+
+  <h3>How can I do more within my Claude Code limit?</h3>
+  <p>Use Sonnet for routine work and save Opus for hard reasoning, run <code>/compact</code> and <code>/clear</code> to shrink conversation history, scope tasks narrowly, avoid redundant file reads, and batch work into focused sessions. Trimming prompt and context waste stretches how far each window goes.</p>
+
+  <h3>What happens when I hit the Claude Code weekly limit?</h3>
+  <p>Claude Code pauses until the rolling window resets, or you can upgrade to a higher tier for more headroom. Pro has the tightest ceiling; higher subscription tiers and the pay-as-you-go API give you more room. Exact numbers change over time, so treat the mechanism, not a fixed quota, as the thing to plan around.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/claude-code-pricing">Claude Code Pricing Explained</a> — plan tiers and what each includes</li>
+    <li><a href="/reduce-claude-code-context-window">Reduce the Claude Code Context Window</a> — shrink what rides along each turn</li>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — subscription vs API compared</li>
+    <li><a href="/token-calculator">Token Calculator</a> — measure how heavy a prompt really is</li>
+    <li><a href="/for-claude-code">Terse for Claude Code</a> — compress prompts and track per-request cost</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/cursor-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Cursor Pricing</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/for-cursor" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Terse for Cursor</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

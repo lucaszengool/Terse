@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>7 Mistakes That Waste Tokens in AI Coding — Terse</title>
+  <meta name="description" content="Why am I wasting tokens? The 7 most common mistakes that burn tokens in AI coding tools — pasted files, verbose prompts, endless context — and the fix for each.">
+  <link rel="canonical" href="https://www.terseai.org/common-mistakes-that-waste-tokens">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="7 Mistakes That Waste Tokens in AI Coding (2026)">
+  <meta property="og:description" content="The 7 most common mistakes that waste tokens in AI coding tools — and a concrete fix for each, from pasted files to bloated instruction files.">
+  <meta property="og:url" content="https://www.terseai.org/common-mistakes-that-waste-tokens">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="7 Mistakes That Waste Tokens in AI Coding (2026)">
+  <meta name="twitter:description" content="The 7 most common mistakes that waste tokens in AI coding tools — and a concrete fix for each, from pasted files to bloated instruction files.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": "7 Mistakes That Waste Tokens in AI Coding (2026)",
+        "description": "The 7 most common mistakes that waste tokens in AI coding tools — pasted files, verbose prompts, endless context — and a concrete fix for each.",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": { "@type": "Organization", "name": "Terse" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse",
+          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        },
+        "image": "https://www.terseai.org/og-image.png",
+        "mainEntityOfPage": "https://www.terseai.org/common-mistakes-that-waste-tokens"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
+          { "@type": "ListItem", "position": 3, "name": "7 Mistakes That Waste Tokens", "item": "https://www.terseai.org/common-mistakes-that-waste-tokens" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Why am I wasting so many tokens in AI coding tools?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Most wasted tokens come from a handful of habits: pasting entire files and logs into the prompt instead of referencing them, verbose over-polite prompts, never clearing context so one endless session grows every turn, letting the agent explore the repo blindly, and using frontier models for routine work. Each one re-sends unnecessary tokens on every turn."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the single biggest token waster?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "An endless session that never gets cleared or compacted. Because most agents re-send the full accumulated context on every turn, a single early file dump gets billed dozens of times over a long session. Clearing or compacting context between tasks is the highest-leverage fix."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do verbose or over-polite prompts actually cost more tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Filler, hedging, and polite preambles add tokens the model does not need, and because the prompt rides along with the accumulated history on every subsequent turn, a padded prompt is paid repeatedly, not once. Concise prompts cost less and tend to produce more focused output."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I stop wasting tokens without changing tools?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Reference files instead of pasting them, write concise prompts, clear or compact context between tasks, point the agent at the right files, use a cheaper model for routine work, enable prompt caching where available, and trim your instruction file. Terse also catches filler and flags redundant reads and duplicate tool calls automatically."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .updated{font-size:13px;color:var(--t3);margin-bottom:24px}
+    .article .back-blog{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:20px;border-bottom:none}
+    .article .back-blog:hover{color:var(--ac)}
+    .article .answer-box{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:12px;padding:20px 24px;margin:0 0 36px}
+    .article .answer-box p{margin-bottom:0;color:var(--t1);font-size:16px;line-height:1.75}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .pricing-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .pricing-table td:first-child{color:var(--t1);font-weight:600}
+
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
+    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .row:last-child{border-bottom:none}
+    .cost-card .row .label{color:var(--t3)}
+    .cost-card .row.highlight{color:var(--ac);font-weight:700}
+    .cost-card .row.highlight .label{color:var(--ac)}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .strategy-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:13px;margin-right:8px;flex-shrink:0}
+
+    @media(max-width:600px){
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<div class="article">
+  <a href="/blog" class="back-blog">&larr; Back to Blog</a>
+  <span class="tag">Cost Guide</span>
+  <h1>7 Mistakes That Waste Tokens in AI Coding</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <div class="answer-box">
+    <p>Most wasted tokens come from a few repeatable habits: pasting whole files and logs into the prompt, padding prompts with filler, never clearing context so one session grows every turn, letting the agent explore blindly, and using frontier models for routine work. Each one re-sends tokens you never needed — here is the fix for all seven.</p>
+  </div>
+
+  <p class="subtitle">If you keep asking "why am I wasting tokens?", the answer is almost never a single leak — it is a handful of small habits that each re-send unnecessary tokens on every turn. Below are the seven most common mistakes, why each one costs real money, and the concrete fix. A few of them Terse catches for you automatically.</p>
+
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#mistake-1">1. Pasting Entire Files and Logs Into the Prompt</a></li>
+      <li><a href="#mistake-2">2. Verbose, Over-Polite Prompts</a></li>
+      <li><a href="#mistake-3">3. Never Clearing or Compacting Context</a></li>
+      <li><a href="#mistake-4">4. Letting the Agent "Explore the Repo" Blindly</a></li>
+      <li><a href="#mistake-5">5. Frontier Models for Routine Work</a></li>
+      <li><a href="#mistake-6">6. Ignoring Prompt Caching</a></li>
+      <li><a href="#mistake-7">7. A Bloated Instruction File</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <p>Before the list, one mechanic explains why these mistakes hurt so much. Most AI coding agents re-send the accumulated context on <em>every turn</em> — your prompt, the files in context, the chat history, and every tool result. So a token you waste early is not paid once; it is paid again on every following turn. That is the thread running through all seven mistakes. If you want the full picture, our <a href="/ai-coding-agent-costs">breakdown of AI coding agent costs</a> quantifies how per-turn re-sends dominate a real session.</p>
+
+  <h2 id="mistake-1"><span class="strategy-num">1</span> Pasting Entire Files and Logs Into the Prompt</h2>
+  <p><strong>Why it costs tokens:</strong> When you paste a 2,000-line file or a full 500-line stack trace into the chat, every token of it enters the context — and thanks to per-turn re-sends, it rides along on every subsequent turn. A single pasted log can add 4,000-8,000 tokens that get billed a dozen times before the task is done. Worse, most of it is noise the model never reads.</p>
+  <p><strong>The fix:</strong> Reference, don't paste. Point the agent at the file by path and let it read the exact lines it needs, or paste only the relevant 10-20 lines of a log — the error and a little surrounding context. Modern agents are good at pulling a file on demand; feeding them the whole thing up front just pays for tokens they would have skipped.</p>
+
+  <h2 id="mistake-2"><span class="strategy-num">2</span> Verbose, Over-Polite Prompts</h2>
+  <p><strong>Why it costs tokens:</strong> "Hi, I hope you're doing well. I was wondering if you might possibly be able to help me with something, if that's okay?" is a lot of tokens before you have said anything. Filler, hedging, restated requirements, and polite preambles all add tokens the model does not need — and because the prompt is carried forward with the history, you pay for that padding on every turn, not just once.</p>
+  <p><strong>The fix:</strong> Say what you need, plainly. Drop the preamble, the "please and thank you," and the throat-clearing. Concise, specific prompts cost less and, as a bonus, produce more focused output. This is exactly the layer <a href="/for-cursor">Terse</a> targets: it strips filler and politeness on-device before the prompt is sent, so the compression happens automatically. Our guide on <a href="/how-to-write-prompts-that-use-fewer-tokens">how to write prompts that use fewer tokens</a> goes deeper on the wording patterns that quietly inflate a request.</p>
+
+  <h2 id="mistake-3"><span class="strategy-num">3</span> Never Clearing or Compacting Context</h2>
+  <p><strong>Why it costs tokens:</strong> This is the biggest single waster. Running one endless session — dozens of unrelated tasks in a single conversation — means the entire history is re-sent on every turn. A file you read on turn 3 is still being billed on turn 40. By the end of a long session, you are paying to re-transmit a small novel's worth of stale context with every message.</p>
+  <p><strong>The fix:</strong> Clear the context when you switch tasks, and compact it when a session gets long. Most tools have a clear/reset command and many now offer an automatic compaction step that summarizes the history into a fraction of the tokens. Treat each distinct task as its own session. Our guide on <a href="/reduce-claude-code-context-window">reducing the Claude Code context window</a> walks through exactly when to clear versus compact.</p>
+
+  <h2 id="mistake-4"><span class="strategy-num">4</span> Letting the Agent "Explore the Repo" Blindly</h2>
+  <p><strong>Why it costs tokens:</strong> An under-specified task sends the agent wandering. It greps, reads files it does not need, opens directories to "understand the structure," and each of those reads dumps tokens into the context that then ride along on every following turn. A blind exploration of a large repo can burn tens of thousands of tokens before a single line of useful work happens — and agents often re-read the same file twice because they lost track of it.</p>
+  <p><strong>The fix:</strong> Point it at the right files. Name the two or three files that matter in your prompt. If you know the function, say so. Scoped instructions cut the exploration phase to almost nothing. Terse helps here too — its agent monitor flags redundant reads and duplicate tool calls, so you can see when an agent is re-reading the same file or repeating a search it already ran.</p>
+
+  <h2 id="mistake-5"><span class="strategy-num">5</span> Frontier Models for Routine Work</h2>
+  <p><strong>Why it costs tokens:</strong> Strictly this wastes money rather than tokens, but the effect on your bill is identical. Frontier models like Claude Opus or GPT-5 are priced many times higher per token than a solid mid-tier model. Using them to rename a variable, fix a typo, format a file, or write a small test means paying a 5-15x multiplier for work a cheaper model does just as well. On a large context, that multiplier hits every token you send.</p>
+  <p><strong>The fix:</strong> Match the model to the task. Reserve frontier models for genuinely hard reasoning and architecture; use a cheaper, faster model for the routine 80% — edits, boilerplate, small tests, refactors. Many tools offer an "auto" mode that picks an efficient model for you. Do not leave a frontier model pinned as your permanent default.</p>
+
+  <h2 id="mistake-6"><span class="strategy-num">6</span> Ignoring Prompt Caching</h2>
+  <p><strong>Why it costs tokens:</strong> If your provider supports prompt caching and you are not using it, you are paying full price to re-send the same stable prefix — system prompt, instructions, a large reference file — on every request. Cached tokens are billed at a steep discount (often 90% off on cache hits), so ignoring caching on a repeated, unchanging prefix is money left on the table every single turn.</p>
+  <p><strong>The fix:</strong> Structure your context so the stable parts come first and enable caching where the platform offers it. Keep the unchanging system prompt and reference material at the front of the context and let the volatile, per-turn content trail it, so the cache prefix stays intact across requests. For most agent tools this is a setting or a code-level flag on the request — worth checking, because the savings compound over a session.</p>
+
+  <h2 id="mistake-7"><span class="strategy-num">7</span> A Bloated Instruction File</h2>
+  <p><strong>Why it costs tokens:</strong> Your <code>CLAUDE.md</code>, <code>.cursorrules</code>, or equivalent instruction file is loaded into context at the start of every session — and then re-sent on every turn of that session. A 3,000-token file of accumulated rules, examples, and "don't do this" notes becomes a fixed tax on every request you ever make. Most of these files grow by accretion and are never pruned, so you are paying to re-send guidance the model rarely acts on.</p>
+  <p><strong>The fix:</strong> Keep the instruction file lean and high-signal. Trim rules that never fire, cut long examples the model already infers, and move rarely-needed detail into referenced docs the agent can pull on demand instead of loading every time. A tight instruction file is one of the highest-leverage cuts you can make, because it is paid on literally every turn of every session. Our primer on <a href="/what-is-token-optimization">what token optimization is</a> covers the trade-off between always-loaded context and on-demand references.</p>
+
+  <div class="cta-box">
+    <h3>Catch the Waste Automatically</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse strips filler and politeness from your prompts on-device, and its agent monitor flags redundant reads and duplicate tool calls in real time — so several of these mistakes get caught before they cost you. Zero latency, no API calls.</p>
+    <a href="/for-cursor" class="btn">Try Terse</a>
+  </div>
+
+  <h2 id="faq">Frequently Asked Questions</h2>
+
+  <h3>Why am I wasting so many tokens in AI coding tools?</h3>
+  <p>Most wasted tokens come from a handful of habits: pasting entire files and logs into the prompt instead of referencing them, verbose over-polite prompts, never clearing context so one endless session grows every turn, letting the agent explore the repo blindly, and using frontier models for routine work. Each one re-sends unnecessary tokens on every turn.</p>
+
+  <h3>What is the single biggest token waster?</h3>
+  <p>An endless session that never gets cleared or compacted. Because most agents re-send the full accumulated context on every turn, a single early file dump gets billed dozens of times over a long session. Clearing or compacting context between tasks is the highest-leverage fix.</p>
+
+  <h3>Do verbose or over-polite prompts actually cost more tokens?</h3>
+  <p>Yes. Filler, hedging, and polite preambles add tokens the model does not need, and because the prompt rides along with the accumulated history on every subsequent turn, a padded prompt is paid repeatedly, not once. Concise prompts cost less and tend to produce more focused output.</p>
+
+  <h3>How do I stop wasting tokens without changing tools?</h3>
+  <p>Reference files instead of pasting them, write concise prompts, clear or compact context between tasks, point the agent at the right files, use a cheaper model for routine work, enable prompt caching where available, and trim your instruction file. Terse also catches filler and flags redundant reads and duplicate tool calls automatically.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/ai-coding-agent-costs">AI Coding Agent Costs</a> — where tokens actually go in an agent session</li>
+    <li><a href="/token-calculator">Token Calculator</a> — measure how wordy a prompt really is</li>
+    <li><a href="/reduce-claude-code-context-window">Reduce Claude Code Context Window</a> — when to clear versus compact</li>
+    <li><a href="/what-is-token-optimization">What Is Token Optimization?</a> — the fundamentals in plain terms</li>
+    <li><a href="/how-to-write-prompts-that-use-fewer-tokens">How to Write Prompts That Use Fewer Tokens</a> — concise-prompt patterns</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Guides</h4><a href="/blog" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Blog</a><a href="/cursor-pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Cursor Pricing</a><a href="/ai-coding-agent-costs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">AI Coding Agent Costs</a><a href="/for-cursor" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Terse for Cursor</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

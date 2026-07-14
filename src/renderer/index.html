@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Terse</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="onboarding.css">
 </head>
 <body>
   <!-- Auth Gate — shown until user signs in -->
@@ -31,19 +32,23 @@
   </div>
 
   <div id="authGate" data-tauri-drag-region style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
+    <div id="gateLang" style="position:absolute;top:14px;right:14px;display:flex;align-items:center;gap:5px;background:var(--sf);border:1px solid var(--bd);border-radius:9999px;padding:5px 11px;font-size:11px;font-weight:700;color:var(--t2);cursor:pointer;-webkit-app-region:no-drag">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg>
+      <span id="gateLangLbl">English</span>
+    </div>
     <div class="brand-tile">T</div>
     <h2 style="color:var(--t1);font-size:18px;font-weight:700;margin:0">Welcome to Terse</h2>
     <p style="color:var(--t3);font-size:12px;text-align:center;margin:0;line-height:1.6">Choose your style</p>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:4px 0">
-      <div class="gate-theme" data-t="azure" style="width:36px;height:36px;border-radius:50%;background:#5ea8ff;border:3px solid var(--t1)"></div>
-      <div class="gate-theme" data-t="lime" style="width:36px;height:36px;border-radius:50%;background:#d1e847;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="lavender" style="width:36px;height:36px;border-radius:50%;background:#c4b5fd;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="coral" style="width:36px;height:36px;border-radius:50%;background:#ff8a80;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="teal" style="width:36px;height:36px;border-radius:50%;background:#5eead4;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="midnight" style="width:36px;height:36px;border-radius:50%;background:#1e293b;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="rose" style="width:36px;height:36px;border-radius:50%;background:#fda4af;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="sage" style="width:36px;height:36px;border-radius:50%;background:#86efac;border:3px solid transparent"></div>
-      <div class="gate-theme" data-t="sand" style="width:36px;height:36px;border-radius:50%;background:#fde68a;border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="azure" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#F4F3EF 52%,#C9F03D 52%);border:3px solid var(--t1)"></div>
+      <div class="gate-theme" data-t="lime" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#C9F03D 52%,#0B0B0D 52%);border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="lavender" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#C6B6FA 52%,#C9F03D 52%);border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="coral" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#FF6B4A 52%,#0B0B0D 52%);border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="teal" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2FE6A8 52%,#0B0B0D 52%);border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="midnight" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0B0B0D 52%,#C9F03D 52%);border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="rose" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#FF5E9C 52%,#0B0B0D 52%);border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="sage" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2F3BEE 52%,#C9F03D 52%);border:3px solid transparent"></div>
+      <div class="gate-theme" data-t="sand" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#FFC24B 52%,#0B0B0D 52%);border:3px solid transparent"></div>
     </div>
     <button id="gateSignIn" style="margin-top:4px;padding:10px 28px;background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 4px 14px color-mix(in srgb,var(--btn) 30%,transparent)">Sign In</button>
     <button id="gateSignUp" style="padding:8px 28px;background:transparent;color:var(--t2);border:none;border-radius:9999px;font-size:12px;font-weight:600">Create Account</button>
@@ -82,47 +87,85 @@
     <aside id="sidebar" data-tauri-drag-region>
       <div class="sb-brand" data-tauri-drag-region>
         <div class="sb-logo">T</div>
-        <div class="sb-name">Terse<span>Agent 管家</span></div>
+        <div class="sb-name">Terse<span>Agent Butler</span></div>
       </div>
       <nav class="sb-nav">
+        <div class="sb-group-label">Monitor</div>
         <button class="sb-item active" data-page="overview">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-          <span>概览 · Overview</span>
+          <span>Overview</span>
         </button>
-        <button class="sb-item" data-page="doctor">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
-          <span>体检 · Doctor</span>
-        </button>
-        <button class="sb-item" data-page="cleanup">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2v-4h18v4a2 2 0 01-2 2z"/><path d="M12 3v12"/><path d="M8 9l4-4 4 4"/></svg>
-          <span>清理 · Cleanup</span>
+        <button class="sb-item" data-page="observe">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>Observe</span>
         </button>
         <button class="sb-item" data-page="stats">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="13" width="4" height="8" rx="1"/><rect x="10" y="9" width="4" height="12" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
-          <span>统计 · Stats</span>
+          <span>Stats</span>
+        </button>
+        <button class="sb-item" data-page="connection">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          <span>Connection</span>
+          <span class="sb-pill hidden" id="sbConnPill">!</span>
+        </button>
+
+        <div class="sb-group-label">Optimize</div>
+        <button class="sb-item" data-page="doctor">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+          <span>Doctor</span>
+        </button>
+        <button class="sb-item" data-page="cleanup">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2v-4h18v4a2 2 0 01-2 2z"/><path d="M12 3v12"/><path d="M8 9l4-4 4 4"/></svg>
+          <span>Cleanup</span>
+        </button>
+        <button class="sb-item" data-page="rules">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <span>Rules</span>
+        </button>
+
+        <div class="sb-group-label">Secure</div>
+        <button class="sb-item" data-page="mcp">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>MCP</span>
+          <span class="sb-pill hidden" id="sbMcpPill">0</span>
+        </button>
+        <button class="sb-item" data-page="alerts">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span>Alerts</span>
+          <span class="sb-pill hidden" id="sbAlertPill">0</span>
+        </button>
+
+        <div class="sb-group-label">Library</div>
+        <button class="sb-item" data-page="prompts">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v14H8l-4 3V4z"/><path d="M8 9h8M8 13h5"/></svg>
+          <span>Prompts</span>
+        </button>
+        <button class="sb-item" data-page="history">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+          <span>History</span>
         </button>
         <button class="sb-item" data-page="team">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span>团队 · Team</span>
+          <span>Team</span>
         </button>
         <button class="sb-item" data-page="farm">
           <span class="sb-emoji">🌾</span>
-          <span>农场 · Farm</span>
+          <span>Farm</span>
         </button>
       </nav>
       <div class="sb-bottom">
         <button class="sb-item" data-page="boost">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-          <span>加速 · Speed Up</span>
+          <span>Speed Up</span>
           <span class="sb-pill hidden" id="sbBoostPill">ON</span>
         </button>
         <button class="sb-item" data-page="pals">
           <span class="sb-emoji" id="sbPalIcon">🐾</span>
-          <span>宠物 · Pals</span>
+          <span>Pals</span>
         </button>
         <button class="sb-item" data-page="settings">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          <span>设置 · Settings</span>
+          <span>Settings</span>
         </button>
       </div>
     </aside>
@@ -130,6 +173,19 @@
   <div id="app">
     <!-- Sessions list -->
     <div id="sessionsView">
+      <!-- Anomaly banner — surfaces the single most urgent issue right now -->
+      <button id="anomalyBanner" class="anomaly hidden">
+        <span class="an-ic" id="anIc">⚠</span>
+        <span class="an-tx" id="anTx"></span>
+        <span class="an-go" id="anGo">Fix ›</span>
+      </button>
+      <!-- KPI hero — decision-critical numbers top-left (F-pattern) -->
+      <div id="kpiHero" class="kpi-hero">
+        <div class="kpi" id="kpiSaved"><div class="kpi-v">–</div><div class="kpi-l">Saved today</div></div>
+        <div class="kpi" id="kpiSpend"><div class="kpi-v">–</div><div class="kpi-l">Spend today</div></div>
+        <div class="kpi" id="kpiBurn"><div class="kpi-v">–</div><div class="kpi-l">Burn · ETA</div></div>
+        <div class="kpi" id="kpiCtx"><div class="kpi-v">–</div><div class="kpi-l">Context</div></div>
+      </div>
       <!-- Agent Health strip — live Doctor score, click opens the full report -->
       <button id="healthStrip" class="health-strip hidden">
         <span class="hs-score" id="hsScore">–</span>
@@ -165,7 +221,7 @@
         </button>
         <button id="btnDoctor" class="stats-nav-btn">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
-          体检 · Doctor
+          Doctor
         </button>
         <button id="btnCowork" class="stats-nav-btn">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -216,7 +272,7 @@
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2v-4h18v4a2 2 0 01-2 2z"/><path d="M12 3v12"/><path d="M8 9l4-4 4 4"/></svg>
         </div>
         <div class="cl-hero-tx">
-          <h3>清理 · Cleanup</h3>
+          <h3>Cleanup</h3>
           <p>Stale agent transcripts, shell snapshots and leftover logs slow every tool that walks the store. One click frees the space — nothing recent is ever touched.</p>
         </div>
       </div>
@@ -230,7 +286,7 @@
         <div class="cl-footer">
           <div class="cl-total"><span id="clTotal">0 B</span><span class="cl-total-sub" id="clCount"></span></div>
           <button id="btnClRescan" class="cl-rescan-btn" title="Re-scan">↻</button>
-          <button id="btnClClean" class="cl-clean-btn">一键清理 · Clean</button>
+          <button id="btnClClean" class="cl-clean-btn">Clean up</button>
         </div>
       </div>
       <div id="clDone" class="cl-center hidden">
@@ -247,7 +303,7 @@
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
         </div>
         <div class="cl-hero-tx">
-          <h3>加速 · Speed Up Mode</h3>
+          <h3>Speed Up Mode</h3>
           <p>One switch turns on the three levers that make agents respond faster: cache-safe trimming, a local result cache, and tool-result compression.</p>
         </div>
         <label class="boost-switch">
@@ -282,6 +338,117 @@
       </div>
     </div>
 
+    <!-- PROMPTS · Prompt Library -->
+    <div id="promptsView" class="hidden">
+      <div class="pl-list" id="plList">
+        <div class="pl-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="plQ" type="text" placeholder="Search prompts…" spellcheck="false" autocomplete="off">
+          <button class="pl-new" id="plNew">＋ New prompt</button>
+        </div>
+        <div class="pl-rows" id="plRows"></div>
+      </div>
+
+      <!-- VARIABLE FILL -->
+      <div id="plVars" class="hidden pl-stagewrap">
+        <div class="pl-stage" id="plVarsStage"></div>
+        <div class="pl-actions">
+          <button class="pl-btn ghost" id="plVarsBack">Back</button>
+          <button class="pl-btn" id="plVarsUse">Use ⏎</button>
+        </div>
+      </div>
+
+      <!-- EDITOR -->
+      <div id="plEdit" class="hidden pl-stagewrap">
+        <div class="pl-stage">
+          <h2 id="plEditTitle">New prompt</h2>
+          <div class="pl-sub">Use <b>{{variable}}</b> or <b>{{tone=formal}}</b> for fill-in fields.</div>
+          <div class="pl-fld"><label>Title</label><input id="plETitle" type="text" placeholder="e.g. Code review request"></div>
+          <div class="pl-fld"><label>Prompt</label><textarea id="plEBody" placeholder="Review {{file}} for {{focus=bugs and edge cases}} and suggest fixes."></textarea></div>
+          <div class="pl-fld"><label>Tags (comma-separated)</label><input id="plETags" type="text" placeholder="review, coding"></div>
+        </div>
+        <div class="pl-actions">
+          <button class="pl-btn ghost" id="plEditBack">Cancel</button>
+          <button class="pl-btn danger hidden" id="plEditDelete">Delete</button>
+          <button class="pl-btn" id="plEditSave">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OBSERVE · Session Timeline + replay -->
+    <div id="observeView" class="hidden">
+      <div class="ob-head">
+        <div>
+          <div class="ob-title" id="obTitle">Session Timeline</div>
+          <div class="ob-sub" id="obSub">Live step-by-step trace of your agent</div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="obRefresh">↻ Refresh</button>
+          <button class="ob-btn" id="obExport">⤓ Export replay</button>
+        </div>
+      </div>
+      <input id="obSearch" class="ob-search" type="text" placeholder="Search this session…" spellcheck="false" autocomplete="off">
+      <div class="ob-files" id="obFiles"></div>
+      <div class="ob-steps" id="obSteps"></div>
+    </div>
+
+    <!-- MCP · Manager + risk scoring -->
+    <div id="mcpView" class="hidden">
+      <div class="ob-head">
+        <div>
+          <div class="ob-title">MCP Servers · 安全</div>
+          <div class="ob-sub" id="mcpSub">Audit every configured tool server</div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="mcpRefresh">↻ Rescan</button>
+        </div>
+      </div>
+      <div class="mcp-summary" id="mcpSummary"></div>
+      <div class="mcp-list" id="mcpList"></div>
+    </div>
+
+    <!-- CONNECTION · connectivity doctor -->
+    <div id="connectionView" class="hidden">
+      <div class="ob-head">
+        <div>
+          <div class="ob-title">Connection</div>
+          <div class="ob-sub" id="connSub">Diagnose why an agent can't reach Claude</div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="connRescan">↻ Rescan</button>
+          <button class="ob-btn" id="connFixAll">🛠 Fix all</button>
+        </div>
+      </div>
+      <div id="connBanner" class="conn-banner hidden"></div>
+      <div class="conn-list" id="connList"></div>
+    </div>
+
+    <!-- RULES · CLAUDE.md memory manager -->
+    <div id="rulesView" class="hidden">
+      <div class="ob-head">
+        <div>
+          <div class="ob-title">Rules</div>
+          <div class="ob-sub" id="rulesSub">Your always-on CLAUDE.md files — loaded every turn</div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="rulesRefresh">↻ Rescan</button>
+        </div>
+      </div>
+      <div class="rules-files" id="rulesFiles"></div>
+      <div id="rulesEditor" class="rules-editor hidden">
+        <div class="rules-ed-head">
+          <span id="rulesEdPath"></span>
+          <span id="rulesEdStat"></span>
+        </div>
+        <textarea id="rulesEdText" spellcheck="false" placeholder="# Project rules…"></textarea>
+        <div class="ob-actions" style="justify-content:flex-end;margin-top:10px">
+          <button class="ob-btn ghost" id="rulesClose">Close</button>
+          <button class="ob-btn ghost" id="rulesCompress">⚡ Compress</button>
+          <button class="ob-btn" id="rulesSave">Save</button>
+        </div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div id="settingsPanel" class="hidden">
       <h3>Settings</h3>
@@ -296,15 +463,15 @@
       <div class="setting-group">
         <label class="setting-label">Theme</label>
         <div class="theme-picker">
-          <div class="theme-dot" data-t="azure" style="background:#5ea8ff" title="Azure"></div>
-          <div class="theme-dot" data-t="lime" style="background:#d1e847" title="Lime"></div>
-          <div class="theme-dot" data-t="lavender" style="background:#c4b5fd" title="Lavender"></div>
-          <div class="theme-dot" data-t="coral" style="background:#ff8a80" title="Coral"></div>
-          <div class="theme-dot" data-t="teal" style="background:#5eead4" title="Teal"></div>
-          <div class="theme-dot" data-t="midnight" style="background:#1e293b" title="Midnight"></div>
-          <div class="theme-dot" data-t="rose" style="background:#fda4af" title="Rose"></div>
-          <div class="theme-dot" data-t="sage" style="background:#86efac" title="Sage"></div>
-          <div class="theme-dot" data-t="sand" style="background:#fde68a" title="Sand"></div>
+          <div class="theme-dot" data-t="azure" style="background:linear-gradient(135deg,#F4F3EF 52%,#C9F03D 52%)" title="Azure"></div>
+          <div class="theme-dot" data-t="lime" style="background:linear-gradient(135deg,#C9F03D 52%,#0B0B0D 52%)" title="Lime"></div>
+          <div class="theme-dot" data-t="lavender" style="background:linear-gradient(135deg,#C6B6FA 52%,#C9F03D 52%)" title="Lavender"></div>
+          <div class="theme-dot" data-t="coral" style="background:linear-gradient(135deg,#FF6B4A 52%,#0B0B0D 52%)" title="Coral"></div>
+          <div class="theme-dot" data-t="teal" style="background:linear-gradient(135deg,#2FE6A8 52%,#0B0B0D 52%)" title="Teal"></div>
+          <div class="theme-dot" data-t="midnight" style="background:linear-gradient(135deg,#0B0B0D 52%,#C9F03D 52%)" title="Midnight"></div>
+          <div class="theme-dot" data-t="rose" style="background:linear-gradient(135deg,#FF5E9C 52%,#0B0B0D 52%)" title="Rose"></div>
+          <div class="theme-dot" data-t="sage" style="background:linear-gradient(135deg,#2F3BEE 52%,#C9F03D 52%)" title="Sage"></div>
+          <div class="theme-dot" data-t="sand" style="background:linear-gradient(135deg,#FFC24B 52%,#0B0B0D 52%)" title="Sand"></div>
         </div>
       </div>
       <details class="setting-group adv-group">
@@ -353,15 +520,15 @@
 
     <!-- Theme dropdown -->
     <div id="themeDropdown" class="theme-dropdown hidden">
-      <div class="theme-dot" data-t="azure" style="background:#5ea8ff" title="Azure"></div>
-      <div class="theme-dot" data-t="lime" style="background:#d1e847" title="Lime"></div>
-      <div class="theme-dot" data-t="lavender" style="background:#c4b5fd" title="Lavender"></div>
-      <div class="theme-dot" data-t="coral" style="background:#ff8a80" title="Coral"></div>
-      <div class="theme-dot" data-t="teal" style="background:#5eead4" title="Teal"></div>
-      <div class="theme-dot" data-t="midnight" style="background:#1e293b" title="Midnight"></div>
-      <div class="theme-dot" data-t="rose" style="background:#fda4af" title="Rose"></div>
-      <div class="theme-dot" data-t="sage" style="background:#86efac" title="Sage"></div>
-      <div class="theme-dot" data-t="sand" style="background:#fde68a" title="Sand"></div>
+      <div class="theme-dot" data-t="azure" style="background:linear-gradient(135deg,#F4F3EF 52%,#C9F03D 52%)" title="Azure"></div>
+      <div class="theme-dot" data-t="lime" style="background:linear-gradient(135deg,#C9F03D 52%,#0B0B0D 52%)" title="Lime"></div>
+      <div class="theme-dot" data-t="lavender" style="background:linear-gradient(135deg,#C6B6FA 52%,#C9F03D 52%)" title="Lavender"></div>
+      <div class="theme-dot" data-t="coral" style="background:linear-gradient(135deg,#FF6B4A 52%,#0B0B0D 52%)" title="Coral"></div>
+      <div class="theme-dot" data-t="teal" style="background:linear-gradient(135deg,#2FE6A8 52%,#0B0B0D 52%)" title="Teal"></div>
+      <div class="theme-dot" data-t="midnight" style="background:linear-gradient(135deg,#0B0B0D 52%,#C9F03D 52%)" title="Midnight"></div>
+      <div class="theme-dot" data-t="rose" style="background:linear-gradient(135deg,#FF5E9C 52%,#0B0B0D 52%)" title="Rose"></div>
+      <div class="theme-dot" data-t="sage" style="background:linear-gradient(135deg,#2F3BEE 52%,#C9F03D 52%)" title="Sage"></div>
+      <div class="theme-dot" data-t="sand" style="background:linear-gradient(135deg,#FFC24B 52%,#0B0B0D 52%)" title="Sand"></div>
     </div>
     <div id="toast" class="toast hidden"></div>
 
@@ -398,45 +565,74 @@
       <div class="brand-tile">T</div>
       <!-- Trial mode (default) -->
       <div id="paywallTrialSection">
-        <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Try Terse Free</h2>
-        <p style="color:var(--t3);font-size:11px;text-align:center;margin:8px 0 0;line-height:1.6;max-width:240px">30-day free trial — no charge until your trial ends.</p>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-            <button id="paywallProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:14px;font-weight:800;width:200px">Start Free — $0</button>
-            <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">then $4.99 USD / month after trial</span>
+        <h2 id="paywallTitle" style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Try Terse Free</h2>
+        <p id="paywallSubtitle" style="color:var(--t3);font-size:11px;text-align:center;margin:8px 0 0;line-height:1.6;max-width:250px">Pick a plan, then choose how to pay.</p>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:9px;margin-top:14px">
+          <div style="display:flex;flex-direction:column;gap:8px;width:236px">
+            <!-- Weekly -->
+            <div role="button" data-tier="pro_weekly" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_weekly')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
+              <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="weekly" style="font-size:12px;font-weight:700;color:var(--t1)">Weekly</span><span data-plan="weekly_sub" style="font-size:8.5px;color:var(--t3)">Flexible · cancel anytime</span></span>
+              <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$1.99<span data-plan="per_week" style="font-size:9px;color:var(--t3);font-weight:600"> /wk</span></span>
+            </div>
+            <!-- Monthly (highlighted, $0 trial via card) -->
+            <div role="button" data-tier="pro" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px;background:color-mix(in srgb,var(--btn) 13%,var(--sf));border:1.5px solid var(--btn);border-radius:12px;cursor:pointer">
+              <span data-plan="popular" style="position:absolute;top:-8px;left:12px;background:var(--btn);color:var(--btn-t);font-size:7.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:9999px">MOST POPULAR</span>
+              <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="monthly" style="font-size:12.5px;font-weight:800;color:var(--t1)">Monthly</span><span data-plan="save42" style="font-size:8.5px;color:var(--btn);font-weight:700">Save 42% vs weekly</span></span>
+              <span style="display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap"><span data-plan="zero_today" style="font-size:15px;font-weight:900;color:var(--t1)">$0 today</span><span data-plan="then499" style="font-size:8.5px;color:var(--t3);font-weight:600">then $4.99/mo</span></span>
+            </div>
+            <!-- Quarterly -->
+            <div role="button" data-tier="pro_quarterly" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_quarterly')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
+              <span data-plan="save54" style="position:absolute;top:-8px;right:12px;background:var(--t1);color:var(--bg);font-size:7.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:9999px">SAVE 54%</span>
+              <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="quarterly" style="font-size:12px;font-weight:700;color:var(--t1)">Quarterly</span><span data-plan="quarterly_sub" style="font-size:8.5px;color:var(--t3)">Best value · ~$4/mo</span></span>
+              <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$12<span data-plan="per_quarter" style="font-size:9px;color:var(--t3);font-weight:600"> /3mo</span></span>
+            </div>
           </div>
-          <p id="paywallChinaNote" style="color:var(--t1);font-size:12px;font-weight:600;text-align:center;margin:4px 0 0;opacity:0.7">WeChat/Alipay pay monthly:</p>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-            <button id="paywallWechatBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'wechat_pay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;width:200px">WeChat Pay / 微信支付</button>
-            <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
+          <!-- Payment method — acts on the selected plan above -->
+          <div style="display:flex;flex-direction:column;gap:6px;width:236px;margin-top:2px">
+            <button id="paywallCardBtn" data-paylabel="card" style="padding:11px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:800;cursor:pointer">Continue with card</button>
+            <div style="display:flex;gap:6px">
+              <button id="paywallWechatBtn" data-paylabel="wechat" style="flex:1;padding:8px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer">WeChat 微信</button>
+              <button id="paywallAlipayBtn" data-paylabel="alipay" style="flex:1;padding:8px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer">Alipay 支付宝</button>
+            </div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-            <button id="paywallAlipayBtn" onclick="event.stopPropagation();if(window.terse){window.terse.getAuth().then(function(a){if(a.signedIn&&a.clerkUserId)fetch('https://www.terseai.org/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:'pro',paymentMethod:'alipay',clerkUserId:a.clerkUserId,clerkUserEmail:a.email})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.__TAURI__?window.__TAURI__.shell.open(d.url):window.open(d.url,'_blank')})})}" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;width:200px">Alipay / 支付宝</button>
-            <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
-          </div>
+          <p id="paywallChinaNote" style="color:var(--t3);font-size:9.5px;font-weight:400;text-align:center;margin:2px 0 0;line-height:1.5;max-width:236px">Card: Monthly starts with a 30-day free trial. WeChat / Alipay are billed immediately.</p>
           <button id="paywallPremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;width:200px">Premium Trial — $99/mo</button>
-          <p id="paywallTrialNote" style="color:var(--t1);font-size:10px;font-weight:400;text-align:center;margin:2px 0 0;opacity:0.5">Cancel anytime · Card required for free trial</p>
+          <p id="paywallTrialNote" style="color:var(--t1);font-size:10px;font-weight:400;text-align:center;margin:2px 0 0;opacity:0.5">Cancel anytime</p>
         </div>
       </div>
       <!-- Subscribe-directly mode (shown after trial_already_used) -->
       <div id="paywallSubscribeSection" style="display:none;flex-direction:column;align-items:center;gap:10px">
-        <h2 style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Subscribe to Continue</h2>
-        <p style="color:var(--t3);font-size:11px;text-align:center;margin:0;line-height:1.6;max-width:240px">Your free trial has been used. Subscribe to keep using Terse.</p>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-top:4px">
-          <button id="paywallSubscribeProBtn" style="padding:10px 28px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:700;width:200px">Subscribe Pro</button>
-          <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
+        <h2 id="paywallSubscribeTitle" style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Subscribe to Continue</h2>
+        <p id="paywallSubscribeText" style="color:var(--t3);font-size:11px;text-align:center;margin:0;line-height:1.6;max-width:240px">Your free trial has been used. Subscribe to keep using Terse.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;width:236px;margin-top:4px">
+          <!-- Weekly -->
+          <div role="button" data-tier="pro_weekly" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_weekly')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
+            <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="weekly" style="font-size:12px;font-weight:700;color:var(--t1)">Weekly</span><span data-plan="weekly_sub" style="font-size:8.5px;color:var(--t3)">Flexible · cancel anytime</span></span>
+            <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$1.99<span data-plan="per_week" style="font-size:9px;color:var(--t3);font-weight:600"> /wk</span></span>
+          </div>
+          <!-- Monthly (highlighted) -->
+          <div role="button" data-tier="pro" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px;background:color-mix(in srgb,var(--btn) 13%,var(--sf));border:1.5px solid var(--btn);border-radius:12px;cursor:pointer">
+            <span data-plan="popular" style="position:absolute;top:-8px;left:12px;background:var(--btn);color:var(--btn-t);font-size:7.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:9999px">MOST POPULAR</span>
+            <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="monthly" style="font-size:12.5px;font-weight:800;color:var(--t1)">Monthly</span><span data-plan="save42" style="font-size:8.5px;color:var(--btn);font-weight:700">Save 42% vs weekly</span></span>
+            <span style="font-size:14px;font-weight:900;color:var(--t1);white-space:nowrap">$4.99<span data-plan="per_month" style="font-size:9px;color:var(--t3);font-weight:600"> /mo</span></span>
+          </div>
+          <!-- Quarterly -->
+          <div role="button" data-tier="pro_quarterly" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_quarterly')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
+            <span data-plan="save54" style="position:absolute;top:-8px;right:12px;background:var(--t1);color:var(--bg);font-size:7.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:9999px">SAVE 54%</span>
+            <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="quarterly" style="font-size:12px;font-weight:700;color:var(--t1)">Quarterly</span><span data-plan="quarterly_sub" style="font-size:8.5px;color:var(--t3)">Best value · ~$4/mo</span></span>
+            <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$12<span data-plan="per_quarter" style="font-size:9px;color:var(--t3);font-weight:600"> /3mo</span></span>
+          </div>
+        </div>
+        <!-- Payment method — acts on the selected plan above -->
+        <div style="display:flex;flex-direction:column;gap:6px;width:236px;margin-top:2px">
+          <button id="paywallSubscribeProBtn" data-paylabel="card" style="padding:11px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:800;cursor:pointer">Continue with card</button>
+          <div style="display:flex;gap:6px">
+            <button id="paywallSubscribeWechatBtn" data-paylabel="wechat" style="flex:1;padding:8px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer">WeChat 微信</button>
+            <button id="paywallSubscribeAlipayBtn" data-paylabel="alipay" style="flex:1;padding:8px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer">Alipay 支付宝</button>
+          </div>
         </div>
         <button id="paywallSubscribePremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;width:200px">Subscribe Premium — $99/mo</button>
-        <p style="color:var(--t1);font-size:12px;font-weight:600;text-align:center;margin:4px 0 0;opacity:0.7">Or pay with:</p>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-          <button id="paywallSubscribeWechatBtn" style="padding:8px 28px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;width:200px">WeChat Pay / 微信支付</button>
-          <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-          <button id="paywallSubscribeAlipayBtn" style="padding:8px 28px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:600;width:200px">Alipay / 支付宝</button>
-          <span style="color:var(--t3);font-size:9px;font-weight:400;opacity:0.7">$4.99 USD / month</span>
-        </div>
-        <p style="color:var(--t1);font-size:11px;font-weight:500;text-align:center;margin:2px 0 0;opacity:0.6">Billed monthly, cancel anytime</p>
+        <p style="color:var(--t1);font-size:11px;font-weight:500;text-align:center;margin:2px 0 0;opacity:0.6">Billed per selected plan · cancel anytime</p>
       </div>
       <button id="paywallSwitchBtn" style="margin-top:4px;padding:6px 20px;background:transparent;color:var(--t3);border:none;font-size:11px;font-weight:500;text-decoration:underline">Switch Account</button>
     </div>
@@ -464,10 +660,17 @@
           localStorage.setItem('terse-theme', 'azure');
         }
       }
+      // v3: the product default is now the dark "midnight" scheme. Promote anyone
+      // still on the auto-assigned light default; deliberate picks are untouched.
+      if (!localStorage.getItem('terse-theme-v3')) {
+        localStorage.setItem('terse-theme-v3', '1');
+        var cur = localStorage.getItem('terse-theme');
+        if (!cur || cur === 'azure') localStorage.setItem('terse-theme', 'midnight');
+      }
     })();
     // Load saved theme
     (function() {
-      var saved = localStorage.getItem('terse-theme') || 'azure';
+      var saved = localStorage.getItem('terse-theme') || 'midnight';
       document.documentElement.setAttribute('data-theme', saved);
     })();
     // Bind theme dots (settings + auth gate)
@@ -481,7 +684,7 @@
       var dd = document.getElementById('themeDropdown');
       dd.classList.toggle('hidden');
       // Update active dot
-      var saved = localStorage.getItem('terse-theme') || 'azure';
+      var saved = localStorage.getItem('terse-theme') || 'midnight';
       dd.querySelectorAll('.theme-dot').forEach(function(d) {
         d.style.borderColor = d.dataset.t === saved ? 'var(--btn-t)' : 'transparent';
       });
@@ -495,7 +698,7 @@
 
     function _loadScripts() {
       if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
-      ['tauri-bridge.js','pals.js','optimizer-bundle.js','app.js'].reduce(function(p, src) {
+      ['tauri-bridge.js','pals.js','optimizer-bundle.js','onboarding.js','app.js'].reduce(function(p, src) {
         return p.then(function() {
           return new Promise(function(resolve) {
             var s = document.createElement('script'); s.src = src;
@@ -518,6 +721,18 @@
       if (window.i18n) window.i18n.createLangPicker(document.getElementById('btnLang'));
     });
 
+    // Language picker on the initial auth gate (first-run) — same mechanism.
+    (function(){
+      var gl = document.getElementById('gateLang');
+      if (!gl) return;
+      function syncLbl(){ try { var cur = window.i18n.getLang(); var m = window.i18n.getLangs().find(function(l){return l.code===cur;}); document.getElementById('gateLangLbl').textContent = (m&&m.label)||'English'; } catch(_){} }
+      var t = setInterval(function(){ if (window.i18n){ syncLbl(); clearInterval(t); } }, 60);
+      gl.addEventListener('click', function(e){
+        e.stopPropagation();
+        if (window.i18n) window.i18n.createLangPicker(gl); // setLang() persists + reloads → gate re-renders in the chosen language
+      });
+    })();
+
     // Translate paywall notes based on locale
     function _translatePaywallNotes() {
       var lang = (navigator.language || '').toLowerCase();
@@ -528,11 +743,58 @@
       }
       var note1 = document.getElementById('paywallChinaNote');
       var note2 = document.getElementById('paywallTrialNote');
-      if (isChinese && note1) note1.textContent = '免费试用仅支持银行卡。微信/支付宝需按月付费：';
-      if (isChinese && note2) note2.textContent = '银行卡支付可享受30天免费试用，随时取消';
+      if (isChinese && note1) note1.textContent = '银行卡：按月方案含 30 天免费试用。微信 / 支付宝立即扣款。';
+      if (isChinese && note2) note2.textContent = '随时取消';
+      // Payment-method buttons (act on the selected plan)
+      if (isChinese) {
+        var payTxt = { card:'使用银行卡', wechat:'微信支付', alipay:'支付宝' };
+        for (var pk in payTxt) {
+          document.querySelectorAll('[data-paylabel="' + pk + '"]').forEach(function(el){ el.textContent = payTxt[el.getAttribute('data-paylabel')]; });
+        }
+      }
+      // Plan cards (weekly / monthly / quarterly)
+      if (isChinese) {
+        var trad = window.i18n && window.i18n.getLang() === 'zh-Hant';
+        var M = trad ? {
+          title:'免費試用 Terse', subtitle:'選擇方案，再選擇支付方式。',
+          weekly:'按週', weekly_sub:'靈活 · 隨時取消', per_week:' /週',
+          monthly:'按月', save42:'比按週省 42%', zero_today:'今天 $0', then499:'之後 $4.99/月', per_month:' /月',
+          quarterly:'按季', quarterly_sub:'最超值 · 約 $4/月', per_quarter:' /3個月',
+          popular:'最受歡迎', save54:'省 54%'
+        } : {
+          title:'免费试用 Terse', subtitle:'选择方案，再选择支付方式。',
+          weekly:'按周', weekly_sub:'灵活 · 随时取消', per_week:' /周',
+          monthly:'按月', save42:'比按周省 42%', zero_today:'今天 $0', then499:'之后 $4.99/月', per_month:' /月',
+          quarterly:'按季', quarterly_sub:'最超值 · 约 $4/月', per_quarter:' /3个月',
+          popular:'最受欢迎', save54:'省 54%'
+        };
+        for (var k in M) {
+          if (k === 'title' || k === 'subtitle') continue;
+          document.querySelectorAll('[data-plan="' + k + '"]').forEach(function(el){ el.textContent = M[k]; });
+        }
+        var tt = document.getElementById('paywallTitle'); if (tt) tt.textContent = M.title;
+        var st = document.getElementById('paywallSubtitle'); if (st) st.textContent = M.subtitle;
+        var subT = document.getElementById('paywallSubscribeTitle');
+        var subX = document.getElementById('paywallSubscribeText');
+        if (subT) subT.textContent = trad ? '訂閱以繼續' : '订阅以继续';
+        if (subX) subX.textContent = trad ? '你的免費試用已用完。訂閱以繼續使用 Terse。' : '你的免费试用已用完。订阅以继续使用 Terse。';
+      }
     }
     _translatePaywallNotes();
     window.addEventListener('terse-lang-changed', _translatePaywallNotes);
+
+    // ── Plan selection: the plan cards choose a tier; the Card / WeChat / Alipay
+    // buttons below then act on whichever plan is selected (default: monthly). ──
+    window.__terseTier = 'pro';
+    window.__terseSelectPlan = function (tier) {
+      window.__terseTier = tier;
+      document.querySelectorAll('#paywallGate [data-tier]').forEach(function (c) {
+        var on = c.getAttribute('data-tier') === tier;
+        c.style.borderColor = on ? 'var(--btn)' : 'var(--bd)';
+        c.style.borderWidth = on ? '1.5px' : '1px';
+        c.style.background = on ? 'color-mix(in srgb,var(--btn) 13%,var(--sf))' : 'var(--sf)';
+      });
+    };
   </script>
 </body>
 </html>

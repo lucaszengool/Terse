@@ -30,11 +30,19 @@ const CLERK_SECRET = process.env.CLERK_SECRET_KEY;
 
 // ── macOS app price IDs (30-day free trial, separate from API) ────────────
 const PRICES = {
-  pro:     process.env.STRIPE_PRICE_PRO     || 'price_1THjoHGf9QijP49FBJr4407W',
-  premium: process.env.STRIPE_PRICE_PREMIUM || 'price_1TAMciGf9QijP49FHTr9DuAB',
+  pro:           process.env.STRIPE_PRICE_PRO           || 'price_1THjoHGf9QijP49FBJr4407W',
+  premium:       process.env.STRIPE_PRICE_PREMIUM       || 'price_1TAMciGf9QijP49FHTr9DuAB',
+  // Pro at alternate billing intervals — SAME entitlement as `pro`, but NO free trial
+  // (charged immediately). Created 2026-07-14 on prod_U8drXX5M1uvwAG (Terse Pro).
+  pro_weekly:    process.env.STRIPE_PRICE_PRO_WEEKLY    || 'price_1Tt8IOGf9QijP49FxEK0RhMU',
+  pro_quarterly: process.env.STRIPE_PRICE_PRO_QUARTERLY || 'price_1Tt8IOGf9QijP49FGmGijaYV',
 };
 
-// 30-day free trial on all APP plans
+// Billing-interval aliases that grant the same entitlement as monthly Pro.
+const PRO_INTERVAL_TIERS = new Set(['pro_weekly', 'pro_quarterly']);
+const normalizeTier = (t) => (PRO_INTERVAL_TIERS.has(t) ? 'pro' : t);
+
+// 30-day free trial — ONLY on the monthly Pro plan (weekly/quarterly charge immediately)
 const TRIAL_DAYS = 30;
 
 // ── API price IDs (NO free trial — pay immediately, separate product) ─────
@@ -231,7 +239,8 @@ async function syncSubscription(sub) {
 
   // ── App subscription ──
   let tier = 'expired';
-  if (priceId === PRICES.pro || priceId === LEGACY_PRO_PRICE) tier = 'pro';
+  const proPriceIds = [PRICES.pro, LEGACY_PRO_PRICE, PRICES.pro_weekly, PRICES.pro_quarterly].filter(Boolean);
+  if (proPriceIds.includes(priceId)) tier = 'pro';
   else if (priceId === PRICES.premium) tier = 'premium';
 
   // Compute trial end date if in trial
@@ -316,8 +325,10 @@ app.post('/api/checkout', async (req, res) => {
     const isChinaPay = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
 
     // ── Trial abuse prevention ──
-    // Skip when: noTrial=true (direct subscribe) OR isChinaPay (never had a trial)
-    if (!noTrial && !isChinaPay) {
+    // Only the monthly Pro plan offers a free trial. Weekly/quarterly (and direct
+    // subscribe / China pay) charge immediately, so they skip the trial-used check.
+    const offersTrial = !noTrial && !isChinaPay && tier === 'pro';
+    if (offersTrial) {
       const allEmailCustomers = await stripe.customers.list({ email: clerkUserEmail, limit: 10 });
       for (const c of allEmailCustomers.data) {
         const prevSubs = await stripe.subscriptions.list({ customer: c.id, limit: 10, status: 'all' });
@@ -358,7 +369,7 @@ app.post('/api/checkout', async (req, res) => {
         items: [{ price: priceId }],
         collection_method: 'send_invoice',
         days_until_due: 3,
-        metadata: { clerk_user_id: clerkUserId, tier },
+        metadata: { clerk_user_id: clerkUserId, tier: normalizeTier(tier) },
         payment_settings: {
           payment_method_types: [paymentMethod],
         },
@@ -367,7 +378,7 @@ app.post('/api/checkout', async (req, res) => {
       // Don't activate yet — wait for invoice.paid webhook to confirm payment
       // Set as 'past_due' so app knows payment is pending
       licenseCache.set(clerkUserId, {
-        tier,
+        tier: normalizeTier(tier),
         stripeCustomerId: customerId,
         subscriptionId: sub.id,
         status: 'past_due',
@@ -384,8 +395,8 @@ app.post('/api/checkout', async (req, res) => {
         if (invoice.status === 'draft') {
           await stripe.invoices.update(invoice.id, {
             description: paymentMethod === 'wechat_pay'
-              ? 'Terse Pro 月度订阅。免费试用仅支持银行卡支付，微信支付需直接付款。\nTerse Pro monthly subscription. Free trial is only available with bank card payment.'
-              : 'Terse Pro 月度订阅。免费试用仅支持银行卡支付，支付宝需直接付款。\nTerse Pro monthly subscription. Free trial is only available with bank card payment.',
+              ? 'Terse Pro 订阅。免费试用仅支持银行卡支付，微信支付需直接付款。\nTerse Pro subscription. Free trial is only available with bank card payment.'
+              : 'Terse Pro 订阅。免费试用仅支持银行卡支付，支付宝需直接付款。\nTerse Pro subscription. Free trial is only available with bank card payment.',
           });
           invoice = await stripe.invoices.finalizeInvoice(invoice.id);
         }
@@ -396,16 +407,31 @@ app.post('/api/checkout', async (req, res) => {
       res.json({ url: invoiceUrl, sessionId: null });
     } else {
       // Default: card/Link via Stripe Checkout (WeChat/Alipay use send_invoice path above)
-      const subscriptionData = { metadata: { clerk_user_id: clerkUserId, tier } };
-      if (!noTrial) subscriptionData.trial_period_days = TRIAL_DAYS;
+      // Store the entitlement tier ('pro') in metadata so the webhook/DB never see the
+      // billing-interval alias ('pro_weekly'/'pro_quarterly').
+      const entTier = normalizeTier(tier);
+      const subscriptionData = { metadata: { clerk_user_id: clerkUserId, tier: entTier } };
+      // Free trial ($0 today) only on the monthly Pro plan; others charge now.
+      const withTrial = !noTrial && tier === 'pro';
+      if (withTrial) subscriptionData.trial_period_days = TRIAL_DAYS;
+      // Reassure the buyer on Stripe's hosted page about what's due today.
+      let custom_text;
+      if (withTrial) {
+        custom_text = { submit: { message: '$0.00 due today — your card is not charged until the 30-day free trial ends. Then $4.99 USD/month. Cancel anytime.' } };
+      } else if (tier === 'pro_weekly') {
+        custom_text = { submit: { message: '$1.99 USD billed weekly. Cancel anytime.' } };
+      } else if (tier === 'pro_quarterly') {
+        custom_text = { submit: { message: '$12.00 USD billed every 3 months (~$4/mo). Cancel anytime.' } };
+      }
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
         mode: 'subscription',
-        success_url: `${baseUrl}/?checkout=success&tier=${tier}`,
+        success_url: `${baseUrl}/?checkout=success&tier=${entTier}`,
         cancel_url: `${baseUrl}/?checkout=cancelled`,
-        metadata: { clerk_user_id: clerkUserId, tier },
+        metadata: { clerk_user_id: clerkUserId, tier: entTier },
         subscription_data: subscriptionData,
+        ...(custom_text ? { custom_text } : {}),
       });
 
       res.json({ url: session.url, sessionId: session.id });

@@ -3,13 +3,13 @@ const $$ = s => document.querySelectorAll(s);
 const T = window.terse;
 
 let prevView = 'sessions';
-const views = { sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView') };
+const views = { sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView') };
 function show(name) {
-  Object.values(views).forEach(v => v.classList.add('hidden'));
+  Object.values(views).forEach(v => v && v.classList.add('hidden'));
   views[name].classList.remove('hidden');
   if (name !== 'settings') prevView = name;
   // keep the sidebar highlight in sync with the visible page
-  const page = ['cleanup', 'settings', 'boost'].includes(name) ? name : 'overview';
+  const page = ['cleanup', 'settings', 'boost', 'prompts', 'observe', 'mcp', 'rules', 'connection'].includes(name) ? name : 'overview';
   $$('.sb-item').forEach(b => b.classList.toggle('active', b.dataset.page === page));
 }
 
@@ -196,23 +196,41 @@ async function startTrialCheckout(tier, noTrial = false, paymentMethod = null) {
   } catch (e) { toast('Network error: ' + e, true); }
 }
 
-if ($('#paywallProBtn')) {
-  $('#paywallProBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('pro'); });
+// Currently selected plan tier (set by the plan cards via window.__terseSelectPlan).
+// Payment-method buttons below act on whichever plan is selected.
+const selectedTier = () => window.__terseTier || 'pro';
+
+// ── Trial gate: card gives the monthly plan a free trial; weekly/quarterly and all
+// WeChat/Alipay payments charge immediately (backend gates the trial to tier==='pro'). ──
+if ($('#paywallCardBtn')) {
+  $('#paywallCardBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const t = selectedTier();
+    startTrialCheckout(t, t !== 'pro'); // monthly → trial; others → charge now
+  });
+}
+if ($('#paywallWechatBtn')) {
+  $('#paywallWechatBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout(selectedTier(), true, 'wechat_pay'); });
+}
+if ($('#paywallAlipayBtn')) {
+  $('#paywallAlipayBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout(selectedTier(), true, 'alipay'); });
 }
 if ($('#paywallPremiumBtn')) {
   $('#paywallPremiumBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('premium'); });
 }
+
+// ── Subscribe gate (after trial_already_used): no trial on any plan/method. ──
 if ($('#paywallSubscribeProBtn')) {
-  $('#paywallSubscribeProBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('pro', true); });
+  $('#paywallSubscribeProBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout(selectedTier(), true); });
 }
 if ($('#paywallSubscribePremiumBtn')) {
   $('#paywallSubscribePremiumBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('premium', true); });
 }
 if ($('#paywallSubscribeWechatBtn')) {
-  $('#paywallSubscribeWechatBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('pro', true, 'wechat_pay'); });
+  $('#paywallSubscribeWechatBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout(selectedTier(), true, 'wechat_pay'); });
 }
 if ($('#paywallSubscribeAlipayBtn')) {
-  $('#paywallSubscribeAlipayBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('pro', true, 'alipay'); });
+  $('#paywallSubscribeAlipayBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout(selectedTier(), true, 'alipay'); });
 }
 if ($('#paywallSwitchBtn')) {
   $('#paywallSwitchBtn').addEventListener('click', async () => {
@@ -293,6 +311,7 @@ function refreshSessions() {
     const empty = $('#emptyState');
     list.innerHTML = '';
 
+    updateKpis(agentSessions);
     const total = sessions.length + agentSessions.length;
     if (total === 0) {
       empty.classList.remove('hidden');
@@ -367,6 +386,59 @@ function refreshSessions() {
       list.appendChild(more);
     }
   });
+}
+
+// ── Anomaly banner — one urgent issue, one click to act ──────────────────
+function updateAnomaly(busy){
+  const b = $('#anomalyBanner'); if (!b) return;
+  let an = null; // {sev, ic, tx, action}
+  if (busy){
+    const ctx = busy.contextFill||0, burn = busy.burnRate||0, cache = busy.cacheEfficiency;
+    const dup = busy.toolCachePotential && busy.toolCachePotential.duplicateCalls || 0;
+    if (ctx >= 90) an = { sev:'red', ic:'⚠', tx:`Context ${ctx}% full — quality is dropping. Run /compact now.`, action:'doctor' };
+    else if (burn >= 80000) an = { sev:'amber', ic:'🔥', tx:`Burn rate ${fmtNum(burn)}/min — you'll hit your limit fast.`, action:'doctor' };
+    else if (busy.turns >= 3 && cache != null && cache < 40) an = { sev:'amber', ic:'💸', tx:`Cache only ${cache}% — you're re-paying for context every turn.`, action:'doctor' };
+    else if (dup >= 3) an = { sev:'amber', ic:'🔁', tx:`${dup} duplicate tool calls — the agent may be looping.`, action:'doctor' };
+  }
+  if (!an){ b.classList.add('hidden'); return; }
+  b.className = 'anomaly ' + an.sev;
+  $('#anIc').textContent = an.ic; $('#anTx').textContent = an.tx;
+  b._action = an.action;
+}
+$('#anomalyBanner')?.addEventListener('click', ()=>{ const a = $('#anomalyBanner')._action; if (a==='doctor') $('#btnDoctor')?.click(); });
+
+// ── Overview KPI hero — decision-critical numbers (F-pattern, top-left) ──
+let _kpiSavedCache = null;
+function fmtNum(n){ return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(Math.round(n)); }
+function updateKpis(agentSessions){
+  // Live metrics from the busiest connected session.
+  const busy = (agentSessions||[]).slice().sort((a,b)=>(b.totalInputTokens||0)-(a.totalInputTokens||0))[0];
+  const spend = (agentSessions||[]).reduce((s,a)=>s+(a.estimatedCost||0),0);
+  $('#kpiSpend').querySelector('.kpi-v').textContent = '$'+spend.toFixed(2);
+  if (busy){
+    const burn = busy.burnRate||0;
+    const eta = busy.limitEtaMinutes || busy.etaMinutes;
+    $('#kpiBurn').querySelector('.kpi-v').textContent = fmtNum(burn)+'/min';
+    $('#kpiBurn').querySelector('.kpi-l').textContent = eta ? `Burn · ~${eta}m left` : 'Burn rate';
+    const ctx = busy.contextFill||0;
+    const ctxEl = $('#kpiCtx').querySelector('.kpi-v');
+    ctxEl.textContent = ctx+'%';
+    ctxEl.style.color = ctx>=90 ? 'var(--red,#ff6b6b)' : ctx>=75 ? 'var(--warn,#ffb648)' : '';
+  } else {
+    $('#kpiBurn').querySelector('.kpi-v').textContent = '–';
+    $('#kpiCtx').querySelector('.kpi-v').textContent = '–';
+  }
+  // Anomaly banner — the single most urgent thing right now.
+  updateAnomaly(busy);
+  // Saved today from stats (cached briefly to avoid hammering).
+  const now = Date.now();
+  if (!_kpiSavedCache || now - _kpiSavedCache.t > 4000){
+    _kpiSavedCache = { t: now };
+    (T.getStats ? T.getStats('day') : Promise.resolve(null)).then(st=>{
+      const saved = st && st.summary ? (st.summary.tokensSaved||0) : 0;
+      $('#kpiSaved').querySelector('.kpi-v').textContent = fmtNum(saved);
+    }).catch(()=>{});
+  }
 }
 
 T.on('sessions-updated', () => refreshSessions());
@@ -560,14 +632,24 @@ async function updateAuthUI() {
         $('#accountAvatar').src = auth.imageUrl;
         $('#accountAvatar').style.display = 'block';
       }
-      // After sign-in, prompt user to pick a starter pet (once).
-      maybeShowPetPicker();
+      // After sign-in: run the first-run onboarding once, then the pet picker.
+      maybeRunOnboarding();
     } else {
       if (gate) gate.style.display = 'flex';
       $('#signedOutUI').classList.remove('hidden');
       $('#signedInUI').classList.add('hidden');
     }
   } catch {}
+}
+
+// ── First-run onboarding (agents → mode → Doctor 体检 → cleanup 清理) ──
+// Runs once, right after sign-in, then hands off to the pet picker below.
+function maybeRunOnboarding() {
+  try {
+    const ob = window.TERSE_ONBOARDING;
+    if (ob && !ob.hasOnboarded()) { ob.start(() => maybeShowPetPicker()); return; }
+  } catch (e) { console.warn('[onboarding] start failed', e); }
+  maybeShowPetPicker();
 }
 
 // ── Pet picker overlay ──────────────────────────────────────────────
@@ -1145,12 +1227,19 @@ setInterval(refreshHealthStrip, 5 * 60 * 1000);
 const SB_ACTIONS = {
   overview: () => show('sessions'),
   cleanup:  () => { show('cleanup'); if (!clState.scanned) clScan(); },
+  alerts:   () => T.navigateToAlerts && T.navigateToAlerts(),
   settings: () => show('settings'),
   doctor:   () => $('#btnDoctor').click(),
   stats:    () => T.navigateToStats(),
+  history:  () => T.navigateToHistory && T.navigateToHistory(),
   team:     () => T.navigateToCowork && T.navigateToCowork(),
-  farm:     () => T.showFarmWindow && T.showFarmWindow(),
+  farm:     () => T.navigateToFarm ? T.navigateToFarm() : (T.showFarmWindow && T.showFarmWindow()),
   boost:    () => { show('boost'); refreshBoost(); },
+  prompts:  () => { show('prompts'); promptsInit(); },
+  observe:  () => { show('observe'); observeInit(); },
+  mcp:      () => { show('mcp'); mcpInit(); },
+  rules:    () => { show('rules'); rulesInit(); },
+  connection: () => { show('connection'); connInit(); },
   pals:     () => $('#btnPalsTitle')?.click(),
 };
 $$('.sb-item').forEach(b => b.addEventListener('click', () => {
@@ -1158,9 +1247,355 @@ $$('.sb-item').forEach(b => b.addEventListener('click', () => {
   // Same-frame feedback: highlight instantly; for cross-page navigations also
   // dim the pane so the click visibly registered before the new page loads.
   if (page !== 'pals') $$('.sb-item').forEach(x => x.classList.toggle('active', x === b));
-  if (['doctor', 'stats', 'team'].includes(page)) document.body.classList.add('navigating');
+  if (['doctor', 'stats', 'team', 'alerts', 'history', 'farm'].includes(page)) document.body.classList.add('navigating');
   SB_ACTIONS[page]?.();
 }));
+
+// ── Prompt Library (提示词) — in-shell panel, same store as the ⌘⇧K palette ──
+const PL = { prompts: [], filtered: [], sel: 0, current: null, view: 'list', wired: false };
+function plEsc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function plParseVar(raw){ const name=raw.split(/[=|]/)[0].trim();
+  const def = raw.includes('=') ? raw.slice(raw.indexOf('=')+1).trim() : ''; return { name, def }; }
+function plFill(body, vals){ return String(body||'').replace(/\{\{([^}]+)\}\}/g,(_,r)=>{ const {name,def}=plParseVar(r); const v=vals[name]; return (v!==undefined&&v!=='')?v:def; }); }
+function plPreview(body, vals){ return plEsc(body).replace(/\{\{([^}]+)\}\}/g,(_,r)=>{ const {name,def}=plParseVar(r); const v=vals[name]; const o=(v!==undefined&&v!=='')?v:def; return o?`<mark>${plEsc(o)}</mark>`:`<mark>{{${plEsc(name)}}}</mark>`; }); }
+function plShow(v){ PL.view=v; $('#plList').classList.toggle('hidden', v!=='list'); $('#plVars').classList.toggle('hidden', v!=='vars'); $('#plEdit').classList.toggle('hidden', v!=='edit'); }
+function plApplyFilter(){
+  const term = ($('#plQ').value||'').trim().toLowerCase();
+  PL.filtered = !term ? PL.prompts.slice() : PL.prompts.filter(p =>
+    (p.title||'').toLowerCase().includes(term) || (p.body||'').toLowerCase().includes(term) ||
+    (p.tags||[]).some(t=>t.toLowerCase().includes(term)));
+  if (PL.sel >= PL.filtered.length) PL.sel = Math.max(0, PL.filtered.length-1);
+  plRender();
+}
+function plRender(){
+  const el = $('#plRows');
+  if (!PL.filtered.length){
+    el.innerHTML = PL.prompts.length
+      ? `<div class="pl-empty">No prompts match.</div>`
+      : `<div class="pl-empty">Your prompt library is empty.<br>Press <b>＋ New prompt</b> to save your first reusable prompt.</div>`;
+    return;
+  }
+  el.innerHTML = PL.filtered.map((p,i)=>{
+    const nv=(p.variables||[]).length;
+    const snip=(p.body||'').replace(/\s+/g,' ').slice(0,72);
+    return `<div class="pl-row ${i===PL.sel?'sel':''}" data-i="${i}">
+      <div class="pl-ic">📝</div>
+      <div class="pl-tx"><div class="pl-rt">${plEsc(p.title||'Untitled')}</div><div class="pl-rs">${plEsc(snip)}</div></div>
+      <div class="pl-meta">${nv?`<span class="pl-vtag">${nv} field${nv>1?'s':''}</span>`:''}
+        <button class="pl-editb" data-edit="${p.id}" title="Edit">✎</button>
+        <button class="pl-del" data-del="${p.id}" title="Delete">✕</button></div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.pl-row').forEach(r=>r.addEventListener('click',e=>{
+    if(e.target.closest('.pl-del')||e.target.closest('.pl-editb')) return; PL.sel=+r.dataset.i; plChoose(); }));
+  el.querySelectorAll('.pl-editb').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation();
+    plOpenEdit(PL.prompts.find(p=>p.id===b.dataset.edit)||null); }));
+  el.querySelectorAll('.pl-del').forEach(b=>b.addEventListener('click',async e=>{
+    e.stopPropagation(); await T.deletePrompt(b.dataset.del); await plLoad(); }));
+}
+function plChoose(){ PL.current = PL.filtered[PL.sel]; if(!PL.current) return;
+  if ((PL.current.variables||[]).length) plOpenVars(); else plUse(PL.current.body); }
+function plOpenVars(){
+  const c=PL.current, vals={};
+  $('#plVarsStage').innerHTML = `<h2>${plEsc(c.title)}</h2><div class="pl-sub">Fill in the fields, then Use.</div>
+    ${c.variables.map((n,i)=>`<div class="pl-fld"><label>${plEsc(n)}</label><input class="pl-vin" data-name="${plEsc(n)}" type="text" ${i===0?'autofocus':''} placeholder="${plEsc(n)}"></div>`).join('')}
+    <div class="pl-fld"><label>Preview</label><div class="pl-prev" id="plPrev"></div></div>`;
+  plShow('vars');
+  const inputs=[...document.querySelectorAll('.pl-vin')];
+  const upd=()=>{ inputs.forEach(i=>vals[i.dataset.name]=i.value); $('#plPrev').innerHTML=plPreview(c.body,vals); };
+  inputs.forEach(i=>i.addEventListener('input',upd)); upd(); inputs[0]?.focus();
+  $('#plVarsUse').onclick=()=>{ inputs.forEach(i=>vals[i.dataset.name]=i.value); plUse(plFill(c.body,vals)); };
+  $('#plVarsBack').onclick=()=>{ plShow('list'); $('#plQ').focus(); };
+}
+// "Use" in the main window: drop the (filled) prompt into the optimizer input,
+// copy it to the clipboard, and switch to Overview so it's one click to optimize.
+async function plUse(text){
+  if (PL.current?.id && T.recordPromptUse) T.recordPromptUse(PL.current.id);
+  try { await navigator.clipboard.writeText(text); } catch(_){}
+  const box = $('#manualInput');
+  if (box){ box.value = text; }
+  show('sessions');
+  if (box){ box.focus(); box.scrollIntoView({block:'center'}); box.classList.add('pl-flash'); setTimeout(()=>box.classList.remove('pl-flash'),700); }
+}
+function plOpenEdit(p){
+  PL.current = p || null;
+  $('#plEditTitle').textContent = p ? 'Edit prompt' : 'New prompt';
+  $('#plETitle').value = p?.title || ''; $('#plEBody').value = p?.body || '';
+  $('#plETags').value = (p?.tags||[]).join(', ');
+  $('#plEditDelete').classList.toggle('hidden', !p);
+  plShow('edit'); setTimeout(()=>$('#plETitle').focus(),20);
+}
+async function plLoad(){ const r = await T.listPrompts().catch(()=>({prompts:[]})); PL.prompts = r.prompts||[]; PL.sel=0; plApplyFilter(); }
+function promptsInit(){
+  plShow('list');
+  if (!PL.wired){
+    PL.wired = true;
+    $('#plQ').addEventListener('input',()=>{ PL.sel=0; plApplyFilter(); });
+    $('#plNew').addEventListener('click',()=>plOpenEdit(null));
+    $('#plVarsBack')?.addEventListener('click',()=>{ plShow('list'); $('#plQ').focus(); });
+    $('#plEditBack').addEventListener('click',()=>{ plShow('list'); $('#plQ').focus(); });
+    $('#plEditSave').addEventListener('click',async()=>{
+      const body=$('#plEBody').value; if(!body.trim() && !$('#plETitle').value.trim()){ plShow('list'); return; }
+      await T.savePrompt({ id: PL.current?.id||'', title:$('#plETitle').value, body,
+        tags:$('#plETags').value.split(',').map(t=>t.trim()).filter(Boolean) });
+      await plLoad(); plShow('list'); $('#plQ').focus();
+    });
+    $('#plEditDelete').addEventListener('click',async()=>{ if(PL.current?.id){ await T.deletePrompt(PL.current.id); await plLoad(); } plShow('list'); $('#plQ').focus(); });
+    // keyboard nav while the list is visible
+    $('#promptsView').addEventListener('keydown',e=>{
+      if (PL.view!=='list') return;
+      if (e.key==='ArrowDown'){ e.preventDefault(); PL.sel=Math.min(PL.filtered.length-1,PL.sel+1); plRender(); }
+      else if (e.key==='ArrowUp'){ e.preventDefault(); PL.sel=Math.max(0,PL.sel-1); plRender(); }
+      else if (e.key==='Enter'){ e.preventDefault(); plChoose(); }
+    });
+  }
+  plLoad().then(()=>$('#plQ').focus());
+}
+
+// Re-run the i18n DOM walk so freshly-rendered (JS-generated) leaf text in the
+// new panels gets translated too — the initial page-load pass can't see it.
+function applyI18n(){ try { window.i18n && window.i18n.applyTranslations && window.i18n.applyTranslations(); } catch(e){} }
+
+// ── Observe · Session Timeline + replay ──────────────────────────────────
+const roleGlyph = { user: '🧑', assistant: '🤖', tool: '⚙' };
+let obWired = false;
+async function observeInit(){
+  if (!obWired){
+    obWired = true;
+    $('#obSearch').addEventListener('input', e => obRenderSteps(e.target.value));
+    $('#obRefresh').addEventListener('click', observeInit);
+    $('#obExport').addEventListener('click', async ()=>{
+      const btn = $('#obExport'); const old = btn.textContent; btn.textContent = 'Exporting…'; btn.disabled = true;
+      try { const p = await T.exportSessionReplay(); btn.textContent = '✓ Saved to Downloads';
+        setTimeout(()=>{ btn.textContent = old; btn.disabled = false; }, 2200); }
+      catch(e){ btn.textContent = 'No session'; setTimeout(()=>{ btn.textContent = old; btn.disabled = false; }, 1800); }
+    });
+  }
+  const box = $('#obSteps');
+  box.innerHTML = '<div class="ob-empty">Loading timeline…</div>';
+  let tl; try { tl = await T.getSessionTimeline(); } catch(e){ tl = null; }
+  const steps = (tl && tl.steps) || [];
+  if (!steps.length){
+    box.innerHTML = '<div class="ob-empty">No active session. Start Claude Code, Cursor, or Codex and its every step shows up here — with per-step token cost.</div>';
+    $('#obSub').textContent = 'Live step-by-step trace of your agent';
+    applyI18n();
+    return;
+  }
+  $('#obTitle').textContent = (tl.agentName || 'Session') + (tl.project ? ' · ' + tl.project : '');
+  $('#obSub').textContent = `${tl.totalSteps} steps · ${(tl.totalTokens||0).toLocaleString()} tokens${tl.model ? ' · '+tl.model : ''}`;
+  // Per-session quality flags (Control) — reuse loop/dup/cache detection.
+  const q = tl.quality || {}; const flags = [];
+  if (q.looping) flags.push(['red','🔁 looping — '+q.duplicateCalls+' duplicate calls']);
+  else if (q.duplicateCalls) flags.push(['amber','🔁 '+q.duplicateCalls+' duplicate calls']);
+  if (q.lowCache) flags.push(['amber','💸 cache '+q.cacheEfficiency+'%']);
+  if (q.redundantReads) flags.push(['amber','📄 '+q.redundantReads+' re-read files']);
+  if (!flags.length) flags.push(['ok','✓ no loops or waste detected']);
+  const qbar = document.getElementById('obQuality') || (()=>{ const d=document.createElement('div'); d.id='obQuality'; d.className='ob-quality'; $('#obSearch').before(d); return d; })();
+  qbar.innerHTML = flags.map(([s,t])=>`<span class="obq ${s}">${plEsc(t)}</span>`).join('');
+  // Diff attribution — which files this session touched (from Edit/Write tool calls).
+  obAllSteps = steps;
+  const EDIT_TOOLS = /edit|write|create|update|notebook/i;
+  const pathRe = /(?:file_path|path|filename)["'\s:=]+["']?([\/~][^\s"'`,)]+)/i;
+  const touched = {};
+  steps.forEach(s=>{ if (s.toolName && EDIT_TOOLS.test(s.toolName)){ const m = (s.text||'').match(pathRe); if (m){ const f = m[1].split('/').pop(); touched[f] = (touched[f]||0)+1; } } });
+  const files = Object.entries(touched).sort((a,b)=>b[1]-a[1]);
+  $('#obFiles').innerHTML = files.length ? '<span class="obf-lbl">Files touched:</span>' + files.map(([f,n])=>`<span class="obf">${plEsc(f)}${n>1?` ·${n}`:''}</span>`).join('') : '';
+  obRenderSteps($('#obSearch').value || '');
+  box.scrollTop = box.scrollHeight;
+}
+let obAllSteps = [];
+function obRenderSteps(filter){
+  const box = $('#obSteps'); const f = (filter||'').trim().toLowerCase();
+  const rows = obAllSteps.filter(s => !f || (s.text||'').toLowerCase().includes(f) || (s.toolName||'').toLowerCase().includes(f) || (s.role||'').includes(f));
+  if (!rows.length){ box.innerHTML = '<div class="ob-empty">No steps match "'+plEsc(filter)+'".</div>'; return; }
+  box.innerHTML = rows.map(s=>{
+    const label = s.toolName ? `${s.role} · ${s.toolName}` : (s.type ? `${s.role} · ${s.type}` : s.role);
+    return `<div class="ob-step ${plEsc(s.role)}">
+      <div class="ob-gutter">${roleGlyph[s.role]||'•'}</div>
+      <div class="ob-body">
+        <div class="ob-meta"><span class="ob-role">${plEsc(label)}</span>
+          <span class="ob-cost">${(s.tokens||0).toLocaleString()} tok · $${(s.cost||0).toFixed(3)}</span></div>
+        <div class="ob-text">${plEsc((s.text||'').slice(0,600))}</div>
+      </div></div>`;
+  }).join('');
+  applyI18n();
+}
+
+// ── MCP Manager · discover + risk-score tool servers ─────────────────────
+let mcpWired = false;
+function riskColor(lvl){ return lvl==='high' ? '#ff6b6b' : lvl==='medium' ? '#ffb648' : '#8ad06a'; }
+async function mcpInit(){
+  if (!mcpWired){ mcpWired = true; $('#mcpRefresh').addEventListener('click', mcpInit); }
+  const list = $('#mcpList'); list.innerHTML = '<div class="ob-empty">Scanning MCP configs…</div>';
+  let data; try { data = await T.mcpList(); } catch(e){ data = null; }
+  const servers = (data && data.servers) || [], sum = (data && data.summary) || {};
+  const pill = $('#sbMcpPill');
+  if (pill){ if (sum.high){ pill.textContent = sum.high; pill.classList.remove('hidden'); } else pill.classList.add('hidden'); }
+  $('#mcpSub').textContent = servers.length
+    ? `${sum.total} servers · ${sum.remote} remote · ${sum.withSecrets} hold secrets`
+    : 'Audit every configured tool server';
+  $('#mcpSummary').innerHTML = servers.length ? `
+    <div class="mcp-stat"><b style="color:#ff6b6b">${sum.high||0}</b><span>high risk</span></div>
+    <div class="mcp-stat"><b style="color:#ffb648">${sum.medium||0}</b><span>medium</span></div>
+    <div class="mcp-stat"><b style="color:#8ad06a">${sum.low||0}</b><span>low</span></div>
+    <div class="mcp-stat"><b>${sum.enabled||0}</b><span>enabled</span></div>` : '';
+  if (!servers.length){
+    list.innerHTML = '<div class="ob-empty">No MCP servers found in Claude Code, Cursor, or Windsurf configs. When you add tool servers, Terse audits their permissions and flags risky ones here.</div>';
+    applyI18n();
+    return;
+  }
+  list.innerHTML = servers.map(s=>`
+    <div class="mcp-row ${s.enabled?'':'off'}">
+      <div class="mcp-dot" style="background:${riskColor(s.riskLevel)}"></div>
+      <div class="mcp-main">
+        <div class="mcp-name">${plEsc(s.name)} <span class="mcp-src">${plEsc(s.source)}</span>
+          ${s.transport!=='stdio'?`<span class="mcp-tag">${plEsc(s.transport)}</span>`:''}
+          ${s.envKeys && s.envKeys.length?`<span class="mcp-tag secret">🔑 ${s.envKeys.length}</span>`:''}</div>
+        <div class="mcp-cmd">${plEsc((s.command||'').slice(0,90))}</div>
+        <div class="mcp-reasons">${(s.reasons||[]).slice(0,3).map(r=>`<div>• ${plEsc(r)}</div>`).join('')}</div>
+      </div>
+      <div class="mcp-right">
+        <div class="mcp-risk" style="color:${riskColor(s.riskLevel)}">${s.risk}<span>/100</span></div>
+        <label class="mcp-toggle"><input type="checkbox" ${s.enabled?'checked':''}
+          data-sp="${plEsc(s.sourcePath)}" data-nm="${plEsc(s.name)}"><span></span></label>
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('.mcp-toggle input').forEach(cb=>cb.addEventListener('change', async e=>{
+    const t = e.target; t.disabled = true;
+    try { await T.mcpSetEnabled(t.dataset.sp, t.dataset.nm, t.checked); t.closest('.mcp-row').classList.toggle('off', !t.checked); }
+    catch(err){ t.checked = !t.checked; }
+    t.disabled = false; mcpInit();
+  }));
+  applyI18n();
+}
+
+// ── Rules / Memory Manager · edit + compress CLAUDE.md ───────────────────
+let rulesWired = false, rulesCur = null;
+function rulesTokens(s){ return Math.round((s||'').length / 4); }
+async function rulesInit(){
+  if (!rulesWired){
+    rulesWired = true;
+    $('#rulesRefresh').addEventListener('click', rulesInit);
+    $('#rulesClose').addEventListener('click', ()=>{ $('#rulesEditor').classList.add('hidden'); });
+    $('#rulesSave').addEventListener('click', async ()=>{
+      if (!rulesCur) return; const btn = $('#rulesSave'); btn.textContent='Saving…'; btn.disabled=true;
+      try { await T.claudeMdWrite(rulesCur, $('#rulesEdText').value); btn.textContent='✓ Saved'; }
+      catch(e){ btn.textContent='Failed'; }
+      setTimeout(()=>{ btn.textContent='Save'; btn.disabled=false; rulesInit(); }, 1200);
+    });
+    $('#rulesCompress').addEventListener('click', async ()=>{
+      const ta = $('#rulesEdText'); const btn = $('#rulesCompress'); const before = ta.value;
+      if (!before.trim() || !T.optimizeText) return;
+      btn.textContent='⚡ Compressing…'; btn.disabled=true;
+      try {
+        const r = await T.optimizeText(before);
+        const out = (r && (r.optimized || r.text)) || (typeof r === 'string' ? r : before);
+        ta.value = out;
+        const saved = rulesTokens(before) - rulesTokens(out);
+        $('#rulesEdStat').textContent = `${rulesTokens(out)} tokens · saved ~${Math.max(0,saved)}`;
+        btn.textContent = saved>0 ? `⚡ −${saved} tok (review & Save)` : '⚡ Compress';
+      } catch(e){ btn.textContent='⚡ Compress'; }
+      btn.disabled=false;
+      setTimeout(()=>{ btn.textContent='⚡ Compress'; }, 2600);
+    });
+    $('#rulesEdText').addEventListener('input', ()=>{ $('#rulesEdStat').textContent = `${rulesTokens($('#rulesEdText').value)} tokens`; });
+  }
+  const box = $('#rulesFiles');
+  box.innerHTML = '<div class="ob-empty">Scanning CLAUDE.md files…</div>';
+  let data; try { data = await T.claudeMdList(); } catch(e){ data = null; }
+  const files = (data && data.files) || [];
+  if (!files.length){ box.innerHTML = '<div class="ob-empty">No CLAUDE.md files found. Create one in a project (or ~/.claude/CLAUDE.md) to give your agents persistent rules — Terse audits their always-on token cost here.</div>'; applyI18n(); return; }
+  const totalTok = files.reduce((s,f)=>s+(f.tokens||0),0);
+  $('#rulesSub').textContent = `${files.length} files · ~${fmtNum(totalTok)} always-on tokens every turn`;
+  box.innerHTML = files.map(f=>`
+    <div class="rules-row" data-path="${plEsc(f.path)}">
+      <div class="rules-main">
+        <div class="rules-name">${plEsc(f.name||'CLAUDE.md')} <span class="mcp-src">${plEsc(f.scope)}</span></div>
+        <div class="mcp-cmd">${plEsc(f.path)}</div>
+      </div>
+      <div class="rules-tok ${f.tokens>2000?'heavy':''}">${fmtNum(f.tokens||0)}<span>tok</span></div>
+    </div>`).join('');
+  applyI18n();
+  box.querySelectorAll('.rules-row').forEach(r=>r.addEventListener('click', async ()=>{
+    rulesCur = r.dataset.path;
+    let txt=''; try { txt = await T.claudeMdRead(rulesCur); } catch(e){ txt=''; }
+    $('#rulesEdPath').textContent = rulesCur;
+    $('#rulesEdText').value = txt;
+    $('#rulesEdStat').textContent = `${rulesTokens(txt)} tokens`;
+    $('#rulesEditor').classList.remove('hidden');
+    $('#rulesEditor').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }));
+}
+
+// ── Connection Doctor · detect + auto-fix agent connectivity ─────────────
+let connWired = false;
+const connIcon = { ok: '✓', warn: '!', fail: '✕' };
+function connRender(data){
+  const list = $('#connList');
+  const checks = (data && data.checks) || [];
+  $('#connSub').textContent = data && data.status === 'ok'
+    ? 'All connection checks passed'
+    : `${data.fails||0} failing · ${data.warns||0} warnings${data.fixable?` · ${data.fixable} auto-fixable`:''}`;
+  const pill = $('#sbConnPill');
+  if (pill){ if (data && (data.fails||0) > 0){ pill.classList.remove('hidden'); } else pill.classList.add('hidden'); }
+  $('#connFixAll').style.display = (data && data.fixable > 0) ? '' : 'none';
+  list.innerHTML = checks.map(c=>`
+    <div class="conn-row ${plEsc(c.status)}">
+      <div class="conn-ic ${plEsc(c.status)}">${connIcon[c.status]||'•'}</div>
+      <div class="conn-main">
+        <div class="conn-label">${plEsc(c.label)}</div>
+        <div class="conn-detail">${plEsc(c.detail)}</div>
+        ${c.suggestion ? `<div class="conn-sugg">💡 ${plEsc(c.suggestion)}</div>` : ''}
+      </div>
+      ${c.fixable && c.status!=='ok' ? '<div class="conn-tag">auto-fixable</div>' : ''}
+    </div>`).join('');
+  applyI18n();
+}
+async function connInit(){
+  if (!connWired){
+    connWired = true;
+    $('#connRescan').addEventListener('click', connInit);
+    $('#connFixAll').addEventListener('click', async ()=>{
+      const btn = $('#connFixAll'); const old = btn.textContent; btn.textContent = '🛠 Fixing…'; btn.disabled = true;
+      $('#connBanner').classList.add('hidden');
+      let r; try { r = await T.connectivityFixAll(); } catch(e){ r = null; }
+      btn.disabled = false; btn.textContent = old;
+      if (r){
+        const banner = $('#connBanner');
+        const acts = (r.actions||[]);
+        const remaining = (r.remaining||[]).filter(c=>c.status!=='ok');
+        banner.classList.remove('hidden');
+        banner.className = 'conn-banner ' + (remaining.some(c=>c.status==='fail') ? 'warn' : 'ok');
+        banner.innerHTML = `<b>${(r.fixed||[]).length ? '✓ Fixed: '+r.fixed.join(', ') : 'Ran repairs'}</b>` +
+          (acts.length ? '<div>'+acts.map(a=>'• '+a).join('<br>')+'</div>' : '') +
+          (remaining.length ? `<div style="margin-top:6px;opacity:.85">Still needs you: ${remaining.map(c=>c.label).join(', ')} — see suggestions below.</div>` : '<div style="margin-top:6px">Connection restored. Relaunch your agent if it was stuck.</div>');
+        connRender({ checks: r.checks, fails: remaining.filter(c=>c.status==='fail').length, warns: remaining.filter(c=>c.status==='warn').length, fixable: remaining.filter(c=>c.fixable).length, status: remaining.length?'warn':'ok' });
+      }
+    });
+  }
+  $('#connList').innerHTML = '<div class="ob-empty">Checking connection…</div>';
+  $('#connBanner').classList.add('hidden');
+  let data; try { data = await T.connectivityScan(); } catch(e){ data = null; }
+  if (!data){ $('#connList').innerHTML = '<div class="ob-empty">Could not run connection checks.</div>'; return; }
+  connRender(data);
+}
+
+// ── Alerts sidebar badge — reflects unread count from the Alert Center ──
+async function refreshAlertBadge() {
+  const pill = $('#sbAlertPill');
+  if (!pill || !T.getRecentAlerts) return;
+  try {
+    const r = await T.getRecentAlerts();
+    const n = (r && r.unread) || 0;
+    pill.textContent = n > 99 ? '99+' : String(n);
+    pill.classList.toggle('hidden', n === 0);
+  } catch (e) { /* non-fatal */ }
+}
+refreshAlertBadge();
+// A newly dispatched alert bumps the badge without a poll.
+T.on && T.on('alert', () => refreshAlertBadge());
+// ⌘⇧K (or the menu-bar item) opens the Prompt Library panel in this window.
+T.on && T.on('open-prompts', () => { show('prompts'); promptsInit(); });
 
 // ── Cleanup (清理) page ──
 const clState = { scanned: false, groups: [] };

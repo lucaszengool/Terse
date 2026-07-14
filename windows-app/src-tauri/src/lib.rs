@@ -8,6 +8,13 @@ mod cowork;
 mod pet_store;
 mod farm_store;
 mod doctor;
+mod notifications;
+mod circuit;
+mod digest;
+mod mcp_manager;
+mod connectivity;
+mod prompt_store;
+mod session_history;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -121,6 +128,13 @@ pub struct AppState {
     pub popup_visible_for_text: Mutex<bool>,
     pub key_monitors: capture::KeyMonitorState,
     pub hook_stats_synced: Mutex<u64>,
+    pub alerts: Mutex<notifications::AlertCenter>,
+    pub circuit: Mutex<circuit::CircuitBreaker>,
+    pub prompt_store: Mutex<prompt_store::PromptStore>,
+    /// App name that was frontmost when the prompt palette was opened, so an
+    /// inserted prompt is pasted back into it (the palette itself steals focus).
+    pub palette_target: Mutex<String>,
+    pub session_history: Mutex<session_history::SessionHistoryStore>,
 }
 
 impl Default for AppState {
@@ -149,6 +163,11 @@ impl Default for AppState {
             popup_visible_for_text: Mutex::new(false),
             key_monitors: capture::KeyMonitorState::new(),
             hook_stats_synced: Mutex::new(0),
+            alerts: Mutex::new(notifications::AlertCenter::new()),
+            circuit: Mutex::new(circuit::CircuitBreaker::new()),
+            prompt_store: Mutex::new(prompt_store::PromptStore::new()),
+            palette_target: Mutex::new(String::new()),
+            session_history: Mutex::new(session_history::SessionHistoryStore::new()),
         }
     }
 }
@@ -3179,9 +3198,344 @@ pub fn run() {
             equip_skin,
             set_pet_settings,
             pet_work_detected,
+            // ── Parity: budget / burn-rate ──
+            get_budget,
+            set_budget,
+            get_budget_status,
+            // ── Parity: alerts / notifications ──
+            notifications::dispatch_alert,
+            notifications::get_alert_settings,
+            notifications::set_alert_settings,
+            notifications::get_recent_alerts,
+            notifications::mark_alerts_read,
+            notifications::clear_alerts,
+            notifications::snooze_alert_kind,
+            // ── Parity: circuit breaker ──
+            circuit::get_circuit_settings,
+            circuit::set_circuit_settings,
+            circuit::get_circuit_trips,
+            circuit::circuit_resume,
+            // ── Parity: weekly digest ──
+            digest::send_weekly_digest_now,
+            // ── Parity: MCP manager ──
+            mcp_manager::mcp_list,
+            mcp_manager::mcp_set_enabled,
+            // ── Parity: prompt library ──
+            prompt_store::list_prompts,
+            prompt_store::save_prompt,
+            prompt_store::delete_prompt,
+            prompt_store::get_prompt,
+            prompt_store::record_prompt_use,
+            // ── Parity: session history ──
+            session_history::get_session_history,
+            session_history::list_session_history,
+            session_history::clear_session_history,
+            session_history::delete_session_history,
+            // ── Parity: command palette ──
+            show_palette,
+            hide_palette,
+            insert_prompt_text,
+            // ── Parity: session timeline / replay ──
+            get_session_timeline,
+            export_session_replay,
+            // ── Parity: memory (CLAUDE.md) ──
+            claude_md_list,
+            claude_md_read,
+            claude_md_write,
+            // ── Parity: connectivity doctor ──
+            connectivity_scan,
+            connectivity_fix_all,
+            // ── Parity: in-main-window navigation ──
+            navigate_to_farm,
+            navigate_to_alerts,
+            navigate_to_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// ── Parity commands ported from macOS: budget, palette, memory, timeline, connectivity ──
+
+#[tauri::command]
+fn get_budget(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).get_budget()
+}
+
+#[tauri::command]
+fn set_budget(budget: serde_json::Value, state: tauri::State<'_, AppState>) -> bool {
+    state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).set_budget(budget);
+    true
+}
+
+#[tauri::command]
+fn get_budget_status(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).budget_status()
+}
+
+/// Navigate the MAIN window to the Farm in-place, sized up for the game.
+#[tauri::command]
+fn navigate_to_farm(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Ok(Some(monitor)) = win.current_monitor() {
+            let sf = monitor.scale_factor();
+            let sw = monitor.size().width as f64 / sf;
+            let sh = monitor.size().height as f64 / sf;
+            let w = 1200.0_f64.min(sw - 40.0);
+            let h = 780.0_f64.min(sh - 80.0);
+            let _ = win.set_size(tauri::LogicalSize::new(w, h));
+            let _ = win.center();
+        }
+        if let Ok(url) = "tauri://localhost/farm.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/farm.html');");
+        }
+    }
+}
+
+/// Navigate the MAIN window to the Alert Center in-place.
+#[tauri::command]
+fn navigate_to_alerts(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Ok(url) = "tauri://localhost/alerts.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/alerts.html');");
+        }
+    }
+}
+
+/// Navigate the MAIN window to the session-history page in-place.
+#[tauri::command]
+fn navigate_to_history(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Ok(url) = "tauri://localhost/history.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/history.html');");
+        }
+    }
+}
+
+/// Open the prompt palette. Captures the frontmost app first (so an inserted
+/// prompt is pasted back into it), then shows + focuses the palette window.
+fn open_palette(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let front = capture::get_front_app().await;
+        if let Some(st) = app.try_state::<AppState>() {
+            let _ = st.palette_target.lock().map(|mut g| { *g = front.name.clone(); });
+        }
+        if let Some(w) = app.get_webview_window("palette") {
+            let _ = w.show();
+            let _ = w.set_focus();
+            let _ = app.emit("palette-open", ());
+        }
+    });
+}
+
+#[tauri::command]
+fn show_palette(app: AppHandle) {
+    open_palette(&app);
+}
+
+#[tauri::command]
+fn hide_palette(app: AppHandle) {
+    if let Some(w) = app.get_webview_window("palette") {
+        let _ = w.hide();
+    }
+}
+
+/// Insert finished prompt text: copy to clipboard (guaranteed), then re-activate
+/// the app that was frontmost when the palette opened and paste at the cursor.
+#[tauri::command]
+async fn insert_prompt_text(text: String, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<bool, String> {
+    let target = state.palette_target.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    if let Some(w) = app.get_webview_window("palette") {
+        let _ = w.hide();
+    }
+    // Guaranteed path: text is on the clipboard even if paste-back fails.
+    let _ = apply_to_clipboard(text.clone()).await;
+    if !target.is_empty() && target.to_lowercase() != "terse" {
+        capture::activate_app(&target).await;
+        tokio::time::sleep(std::time::Duration::from_millis(140)).await;
+        let _ = capture::write_via_clipboard_terminal(&text).await;
+    }
+    Ok(true)
+}
+
+// ── Session timeline / shareable replay ──
+
+#[tauri::command]
+fn get_session_timeline(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let at = agent_type.unwrap_or_default();
+    let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+    monitor.get_timeline_for(&at, 400).unwrap_or_else(|| serde_json::json!({ "steps": [], "totalSteps": 0 }))
+}
+
+/// HTML-escape for embedding text in the self-contained replay.
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+}
+
+/// Render a timeline object into a single self-contained, shareable HTML file.
+fn build_replay_html(tl: &serde_json::Value) -> String {
+    let name = tl.get("agentName").and_then(|v| v.as_str()).unwrap_or("Agent");
+    let project = tl.get("project").and_then(|v| v.as_str()).unwrap_or("");
+    let model = tl.get("model").and_then(|v| v.as_str()).unwrap_or("");
+    let total_steps = tl.get("totalSteps").and_then(|v| v.as_u64()).unwrap_or(0);
+    let total_tokens = tl.get("totalTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+    let empty = vec![];
+    let steps = tl.get("steps").and_then(|v| v.as_array()).unwrap_or(&empty);
+
+    let mut rows = String::new();
+    for st in steps {
+        let role = st.get("role").and_then(|v| v.as_str()).unwrap_or("");
+        let ttype = st.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let tool = st.get("toolName").and_then(|v| v.as_str()).unwrap_or("");
+        let text = st.get("text").and_then(|v| v.as_str()).unwrap_or("");
+        let tokens = st.get("tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+        let cost = st.get("cost").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let ts = st.get("timestamp").and_then(|v| v.as_str()).unwrap_or("");
+        let label = if !tool.is_empty() { format!("{role} · {tool}") }
+            else if !ttype.is_empty() { format!("{role} · {ttype}") }
+            else { role.to_string() };
+        rows.push_str(&format!(
+            "<div class=\"step {role}\"><div class=\"meta\"><span class=\"role\">{}</span>\
+             <span class=\"num\">{} tok · ${:.3}</span><span class=\"ts\">{}</span></div>\
+             <pre>{}</pre></div>",
+            html_escape(&label), tokens, cost, html_escape(ts), html_escape(text)
+        ));
+    }
+
+    format!(
+        "<!doctype html><html><head><meta charset=\"utf-8\"><title>Terse Replay — {name}</title>\
+         <style>\
+         body{{margin:0;background:#0b0f0c;color:#e8f0e8;font:14px/1.5 -apple-system,system-ui,sans-serif}}\
+         header{{position:sticky;top:0;background:#0f1511;border-bottom:1px solid #223;padding:16px 24px}}\
+         h1{{margin:0 0 4px;font-size:18px}}h1 b{{color:#c6f24e}}\
+         .sub{{color:#8aa08a;font-size:13px}}\
+         .wrap{{max-width:900px;margin:0 auto;padding:20px}}\
+         .step{{border:1px solid #1c2a1c;border-radius:12px;margin:10px 0;overflow:hidden;background:#0f1511}}\
+         .step.user{{border-color:#2a3a5a}}.step.assistant{{border-color:#3a2a5a}}.step.tool{{border-color:#2a3a2a}}\
+         .meta{{display:flex;gap:12px;align-items:center;padding:8px 14px;background:#121a13;font-size:12px}}\
+         .role{{font-weight:700;color:#c6f24e}}.num{{color:#8aa08a}}.ts{{margin-left:auto;color:#5a705a}}\
+         pre{{margin:0;padding:12px 14px;white-space:pre-wrap;word-break:break-word;color:#cfe0cf;font:12px/1.5 ui-monospace,Menlo,monospace}}\
+         </style></head><body>\
+         <header><div class=\"wrap\" style=\"padding:0\"><h1><b>Terse</b> Replay — {name}</h1>\
+         <div class=\"sub\">{project}{model_sep}{model} · {total_steps} steps · {total_tokens} tokens</div></div></header>\
+         <div class=\"wrap\">{rows}</div>\
+         <div class=\"wrap\" style=\"color:#5a705a;font-size:12px;text-align:center;padding-bottom:40px\">Generated by Terse · terseai.org</div>\
+         </body></html>",
+        name = html_escape(name), project = html_escape(project),
+        model_sep = if model.is_empty() { "" } else { " · " }, model = html_escape(model),
+        total_steps = total_steps, total_tokens = total_tokens, rows = rows,
+    )
+}
+
+/// Export the current timeline as a self-contained HTML replay in ~/Downloads;
+/// returns the written file path.
+#[tauri::command]
+fn export_session_replay(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let at = agent_type.unwrap_or_default();
+    let tl = {
+        let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+        monitor.get_timeline_for(&at, 2000).ok_or_else(|| "no session to export".to_string())?
+    };
+    let html = build_replay_html(&tl);
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let agent = tl.get("agentType").and_then(|v| v.as_str()).unwrap_or("agent");
+    let dir = dirs::download_dir()
+        .or_else(dirs::home_dir)
+        .ok_or_else(|| "no downloads dir".to_string())?;
+    let path = dir.join(format!("terse-replay-{agent}-{ts}.html"));
+    std::fs::write(&path, html).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+// ── Rules / Memory Manager (Remember) — CLAUDE.md across projects ──
+
+#[tauri::command]
+fn claude_md_list() -> serde_json::Value {
+    let home = dirs::home_dir().unwrap_or_default();
+    let mut candidates: Vec<(std::path::PathBuf, &str)> = vec![
+        (home.join(".claude/CLAUDE.md"), "Global"),
+        (home.join(".claude/CLAUDE.local.md"), "Global (local)"),
+    ];
+    if let Ok(text) = std::fs::read_to_string(home.join(".claude.json")) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
+            if let Some(projs) = v.get("projects").and_then(|p| p.as_object()) {
+                for key in projs.keys().take(60) {
+                    candidates.push((std::path::Path::new(key).join("CLAUDE.md"), "Project"));
+                }
+            }
+        }
+    }
+    let mut files = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for (path, scope) in candidates {
+        let ps = path.to_string_lossy().into_owned();
+        if !seen.insert(ps.clone()) { continue; }
+        if let Ok(meta) = std::fs::metadata(&path) {
+            let bytes = meta.len();
+            files.push(serde_json::json!({
+                "path": ps,
+                "name": path.parent().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+                "scope": scope,
+                "bytes": bytes,
+                "tokens": bytes / 4,
+            }));
+        }
+    }
+    serde_json::json!({ "files": files })
+}
+
+#[tauri::command]
+fn claude_md_read(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn claude_md_write(path: String, content: String) -> Result<bool, String> {
+    if let Some(dir) = std::path::Path::new(&path).parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    std::fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+// ── Connection Doctor — detect + auto-fix agent connectivity ──
+
+#[tauri::command]
+fn connectivity_scan() -> serde_json::Value {
+    // Windows does not yet compute stalled-agent state; the API/DNS/proxy probes
+    // are the substantive checks and run regardless.
+    let stalled: Vec<String> = Vec::new();
+    let checks = connectivity::scan(&stalled);
+    let fails = checks.iter().filter(|c| c.status == "fail").count();
+    let warns = checks.iter().filter(|c| c.status == "warn").count();
+    let fixable = checks.iter().filter(|c| c.status != "ok" && c.fixable).count();
+    let status = if fails > 0 { "fail" } else if warns > 0 { "warn" } else { "ok" };
+    serde_json::json!({ "checks": checks, "fails": fails, "warns": warns, "fixable": fixable, "status": status })
+}
+
+#[tauri::command]
+fn connectivity_fix_all() -> serde_json::Value {
+    let stalled: Vec<String> = Vec::new();
+    let before = connectivity::scan(&stalled);
+    let (fixed, actions) = connectivity::apply_fixes(&before);
+    std::thread::sleep(std::time::Duration::from_millis(600));
+    let after_checks = connectivity::scan(&stalled);
+    let remaining: Vec<_> = after_checks.iter().filter(|c| c.status != "ok").cloned().collect();
+    serde_json::json!({
+        "fixed": fixed,
+        "actions": actions,
+        "checks": after_checks,
+        "remaining": remaining,
+    })
 }
 
 // ── Combined Focus + Text Polling ──

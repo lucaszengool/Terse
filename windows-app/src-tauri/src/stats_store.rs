@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use chrono::Datelike;
 
 const SOURCE_TYPES: &[&str] = &["browser", "agent", "editor", "manual"];
 
@@ -73,12 +74,23 @@ impl DayAttribution {
     }
 }
 
+/// User-set spend caps (USD). 0 means "no cap for this period".
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct BudgetConfig {
+    #[serde(rename = "weeklyUsd", default)]
+    pub weekly_usd: f64,
+    #[serde(rename = "monthlyUsd", default)]
+    pub monthly_usd: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StatsData {
     pub days: HashMap<String, HashMap<String, SourceStats>>,
     /// date (YYYY-MM-DD) → per-model / per-MCP / per-tool attribution.
     #[serde(default)]
     pub attribution: HashMap<String, DayAttribution>,
+    #[serde(default)]
+    pub budget: BudgetConfig,
 }
 
 pub struct StatsStore {
@@ -337,6 +349,91 @@ impl StatsStore {
             .flat_map(|day| day.values())
             .map(|s| s.tokens_saved)
             .sum()
+    }
+
+    // ── Budgets & burn-rate ────────────────────────────────────────────────
+
+    pub fn get_budget(&self) -> serde_json::Value {
+        serde_json::to_value(&self.data.budget).unwrap_or_default()
+    }
+
+    pub fn set_budget(&mut self, v: serde_json::Value) {
+        if let Ok(b) = serde_json::from_value::<BudgetConfig>(v) {
+            self.data.budget = b;
+            self.dirty = true;
+            self.maybe_save();
+        }
+    }
+
+    /// Real dollarized spend across the attribution ledger for every day
+    /// on/after `start` (YYYY-MM-DD). Mirrors `get_attribution`'s cost math.
+    fn cost_since(&self, start: &str) -> f64 {
+        let mut total = 0.0;
+        for (day, attr) in &self.data.attribution {
+            if day.as_str() < start {
+                continue;
+            }
+            for (model, s) in &attr.models {
+                let fresh = s.tokens_in.saturating_sub(s.cache_read + s.cache_creation);
+                total += crate::pricing::estimate_cost(model, fresh, s.tokens_out, s.cache_read, s.cache_creation);
+            }
+        }
+        total
+    }
+
+    fn days_in_month(year: i32, month: u32) -> i64 {
+        let (ny, nm) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
+        let first = chrono::NaiveDate::from_ymd_opt(year, month, 1);
+        let next = chrono::NaiveDate::from_ymd_opt(ny, nm, 1);
+        match (first, next) {
+            (Some(f), Some(n)) => (n - f).num_days(),
+            _ => 30,
+        }
+    }
+
+    /// Build a per-period status object: spend-to-date, % of cap, burn rate
+    /// ($/day) and the projected end-of-period spend. Only periods with a cap
+    /// set (> 0) are included.
+    pub fn budget_status(&self) -> serde_json::Value {
+        let now = chrono::Local::now();
+        let today = now.date_naive();
+
+        let mk = |cap: f64, start: chrono::NaiveDate, days_total: i64| -> serde_json::Value {
+            let start_str = start.format("%Y-%m-%d").to_string();
+            let spent = self.cost_since(&start_str);
+            let days_elapsed = ((today - start).num_days() + 1).max(1);
+            let burn = spent / days_elapsed as f64;
+            let projected = burn * days_total as f64;
+            let pct = if cap > 0.0 { (spent / cap * 100.0).round() as i64 } else { 0 };
+            let proj_pct = if cap > 0.0 { (projected / cap * 100.0).round() as i64 } else { 0 };
+            serde_json::json!({
+                "cap": (cap * 100.0).round() / 100.0,
+                "spent": (spent * 10000.0).round() / 10000.0,
+                "pct": pct,
+                "burnPerDay": (burn * 10000.0).round() / 10000.0,
+                "projected": (projected * 100.0).round() / 100.0,
+                "projectedPct": proj_pct,
+                "daysElapsed": days_elapsed,
+                "daysTotal": days_total,
+                "overProjected": projected > cap,
+                "startDate": start_str,
+            })
+        };
+
+        let mut out = serde_json::Map::new();
+
+        if self.data.budget.weekly_usd > 0.0 {
+            let weekday = today.weekday().num_days_from_monday() as i64;
+            let monday = today - chrono::Duration::days(weekday);
+            out.insert("weekly".into(), mk(self.data.budget.weekly_usd, monday, 7));
+        }
+        if self.data.budget.monthly_usd > 0.0 {
+            let first = today.with_day(1).unwrap_or(today);
+            let dim = Self::days_in_month(today.year(), today.month());
+            out.insert("monthly".into(), mk(self.data.budget.monthly_usd, first, dim));
+        }
+
+        serde_json::Value::Object(out)
     }
 
     fn maybe_save(&mut self) {

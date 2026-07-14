@@ -258,15 +258,18 @@ impl License {
 /// Verify license with backend API (async, non-blocking)
 pub async fn verify_license(clerk_user_id: &str) -> Option<License> {
     let url = format!("{}/api/license/{}", API_BASE, clerk_user_id);
-    let output = {
-        let mut __c = tokio::process::Command::new("curl");
-        __c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-        __c
-    }
-        .args(["-s", "--connect-timeout", "5", "--max-time", "10", &url])
-        .output()
-        .await
-        .ok()?;
+    // Run curl on a blocking thread through the shared `hidden_command` helper
+    // (CREATE_NO_WINDOW) rather than a bare `tokio::process::Command`. This is the
+    // same path every other curl uses; the async spawn was the one status poll that
+    // still flashed a console window on Windows (fired on every window focus).
+    let output = tokio::task::spawn_blocking(move || {
+        crate::hidden_command("curl")
+            .args(["-s", "--connect-timeout", "5", "--max-time", "10", &url])
+            .output()
+    })
+    .await
+    .ok()?
+    .ok()?;
 
     if !output.status.success() {
         return None;

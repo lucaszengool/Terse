@@ -490,6 +490,49 @@ impl AgentSessionData {
         }
     }
 
+    /// Full step-by-step timeline for the Observe view / shareable replay.
+    pub fn get_timeline(&self, limit: usize) -> serde_json::Value {
+        let pricing = self.get_model_pricing();
+        let start = self.messages.len().saturating_sub(limit);
+        let steps: Vec<serde_json::Value> = self.messages.iter().enumerate().skip(start).map(|(i, m)| {
+            // Rough per-step cost: assistant text is output, everything else input.
+            let cost = if m.role == "assistant" {
+                m.tokens as f64 / 1000.0 * pricing.1
+            } else {
+                m.tokens as f64 / 1000.0 * pricing.0
+            };
+            serde_json::json!({
+                "i": i,
+                "role": m.role,
+                "type": m.msg_type,
+                "toolName": m.tool_name,
+                "text": safe_truncate(&m.text, 4000),
+                "tokens": m.tokens,
+                "cost": (cost * 1000.0).round() / 1000.0,
+                "timestamp": m.timestamp,
+            })
+        }).collect();
+        let redundant_reads = self.file_reads.values().filter(|c| **c >= 2).count();
+        serde_json::json!({
+            "agentType": self.agent_type,
+            "agentName": self.agent_name,
+            "agentIcon": self.agent_icon,
+            "project": "",
+            "model": self.detected_model,
+            "turns": self.turns,
+            "totalSteps": self.messages.len(),
+            "totalTokens": self.total_input_tokens + self.total_output_tokens,
+            "quality": {
+                "duplicateCalls": self.duplicate_tool_calls,
+                "cacheEfficiency": self.cache_efficiency,
+                "redundantReads": redundant_reads,
+                "looping": self.duplicate_tool_calls >= 3,
+                "lowCache": self.turns >= 3 && self.cache_efficiency < 40 && self.total_input_tokens > 20_000,
+            },
+            "steps": steps,
+        })
+    }
+
     fn get_snapshot(&self) -> serde_json::Value {
         let total = self.total_input_tokens + self.total_output_tokens;
         let pricing = self.get_model_pricing();
@@ -1497,6 +1540,20 @@ impl AgentMonitor {
 
     pub fn get_session_snapshot(&self, agent_type: &str) -> Option<serde_json::Value> {
         self.sessions.get(agent_type).map(|s| s.get_snapshot())
+    }
+
+    /// Timeline for the Observe view. Falls back to the highest-activity connected
+    /// session when `agent_type` is empty (the common single-agent case).
+    pub fn get_timeline_for(&self, agent_type: &str, limit: usize) -> Option<serde_json::Value> {
+        if !agent_type.is_empty() {
+            return self.sessions.get(agent_type).map(|s| s.get_timeline(limit));
+        }
+        let mut sessions: Vec<&AgentSessionData> = self.sessions.values().filter(|s| s.connected).collect();
+        sessions.sort_by(|a, b| {
+            let score = |s: &&AgentSessionData| s.total_input_tokens + s.turns as u64 * 1000;
+            score(b).cmp(&score(a))
+        });
+        sessions.first().map(|s| s.get_timeline(limit))
     }
 
     pub fn accept_agent(&mut self, agent_type: &str) -> Option<serde_json::Value> {

@@ -2,7 +2,9 @@
 nixPkgs = ["nodejs_18"]
 
 [phases.install]
-cmds = ["npm install"]
+# prod deps only — skips puppeteer (dev-only; it downloads a full Chromium and
+# breaks the build) and any other devDependencies the API doesn't need at runtime.
+cmds = ["npm install --omit=dev --no-audit --no-fund"]
 
 [phases.build]
 cmds = []

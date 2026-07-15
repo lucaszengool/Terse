@@ -14,8 +14,7 @@
     "express": "^4.21.0",
     "express-rate-limit": "^7.5.0",
     "jose": "^4.15.9",
-    "stripe": "^17.5.0",
-    "terse": "^0.1.0"
+    "stripe": "^17.5.0"
   },
   "devDependencies": {
     "puppeteer": "^24.39.1"

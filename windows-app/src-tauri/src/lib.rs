@@ -2730,6 +2730,26 @@ fn unlock_skin(pet_id: String, skin_id: String, state: tauri::State<'_, AppState
 
 
 pub fn run() {
+    // Persist any panic to ~/.terse/crash.log so a launch crash on a user's
+    // machine (which has no console) is diagnosable instead of a silent white flash.
+    {
+        let default_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            if let Some(dir) = dirs::home_dir() {
+                let dir = dir.join(".terse");
+                let _ = std::fs::create_dir_all(&dir);
+                use std::io::Write;
+                if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(dir.join("crash.log")) {
+                    let _ = writeln!(f, "[panic] {}", info);
+                    if let Some(loc) = info.location() {
+                        let _ = writeln!(f, "  at {}:{}", loc.file(), loc.line());
+                    }
+                }
+            }
+            default_hook(info);
+        }));
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())

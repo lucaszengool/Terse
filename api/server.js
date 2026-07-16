@@ -20,6 +20,9 @@ const db = require('./db');
 // Paddle module (WeChat Pay + Alipay recurring)
 const paddleModule = require('./paddle');
 
+// Trial-recovery emails (24h + 72h) — inert unless RECOVERY_EMAILS_ENABLED=1
+const recovery = require('./recovery');
+
 // Stripe setup
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -955,6 +958,10 @@ app.use(paddleModule.router);
 
 // ── Terse Developer API ──
 app.use('/api/v1', terseApiRouter);
+
+// ── Trial-recovery emails (protected cron + hourly scheduler; off unless enabled) ──
+app.use(recovery.router());
+recovery.startScheduler();
 
 // ── Newsletter subscribe (proxies to Buttondown with server-side API key) ──
 app.post('/api/newsletter/subscribe', async (req, res) => {

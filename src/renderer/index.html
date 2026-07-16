@@ -5,6 +5,7 @@
   <title>Terse</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="onboarding.css">
+  <link rel="stylesheet" href="doctor-scenes.css">
 </head>
 <body>
   <!-- Auth Gate — shown until user signs in -->
@@ -590,12 +591,12 @@
           <!-- Payment method — acts on the selected plan above -->
           <div style="display:flex;flex-direction:column;gap:6px;width:236px;margin-top:2px">
             <button id="paywallCardBtn" data-paylabel="card" style="padding:11px;background:var(--btn);color:var(--btn-t);border:none;border-radius:9999px;font-size:13px;font-weight:800;cursor:pointer">Continue with card</button>
-            <div style="display:flex;gap:6px">
+            <div id="paywallChinaRow" style="display:flex;gap:6px">
               <button id="paywallWechatBtn" data-paylabel="wechat" style="flex:1;padding:8px;background:#07C160;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer">WeChat 微信</button>
               <button id="paywallAlipayBtn" data-paylabel="alipay" style="flex:1;padding:8px;background:#1677FF;color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer">Alipay 支付宝</button>
             </div>
           </div>
-          <p id="paywallChinaNote" style="color:var(--t3);font-size:9.5px;font-weight:400;text-align:center;margin:2px 0 0;line-height:1.5;max-width:236px">Card: Monthly starts with a 30-day free trial. WeChat / Alipay are billed immediately.</p>
+          <p id="paywallChinaNote" style="color:var(--t3);font-size:9.5px;font-weight:400;text-align:center;margin:2px 0 0;line-height:1.5;max-width:236px">Billed now — pay with card, WeChat, or Alipay.</p>
           <button id="paywallPremiumBtn" style="padding:8px 28px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9999px;font-size:11px;font-weight:600;width:200px">Premium Trial — $99/mo</button>
           <p id="paywallTrialNote" style="color:var(--t1);font-size:10px;font-weight:400;text-align:center;margin:2px 0 0;opacity:0.5">Cancel anytime</p>
         </div>
@@ -698,7 +699,7 @@
 
     function _loadScripts() {
       if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
-      ['tauri-bridge.js','pals.js','optimizer-bundle.js','onboarding.js','app.js'].reduce(function(p, src) {
+      ['tauri-bridge.js','pals.js','optimizer-bundle.js','doctor-theater.js','onboarding.js','app.js'].reduce(function(p, src) {
         return p.then(function() {
           return new Promise(function(resolve) {
             var s = document.createElement('script'); s.src = src;
@@ -743,7 +744,7 @@
       }
       var note1 = document.getElementById('paywallChinaNote');
       var note2 = document.getElementById('paywallTrialNote');
-      if (isChinese && note1) note1.textContent = '银行卡：按月方案含 30 天免费试用。微信 / 支付宝立即扣款。';
+      if (isChinese && note1) note1.textContent = '立即扣款 — 可用银行卡、微信或支付宝。';
       if (isChinese && note2) note2.textContent = '随时取消';
       // Payment-method buttons (act on the selected plan)
       if (isChinese) {
@@ -794,7 +795,16 @@
         c.style.borderWidth = on ? '1.5px' : '1px';
         c.style.background = on ? 'color-mix(in srgb,var(--btn) 13%,var(--sf))' : 'var(--sf)';
       });
+      // Monthly (trial-section) is a 30-day FREE TRIAL — only card supports a trial;
+      // WeChat/Alipay bill immediately, so showing them here confuses users. Card only.
+      var isTrialMonthly = (tier === 'pro');
+      var row = document.getElementById('paywallChinaRow');
+      if (row) row.style.display = isTrialMonthly ? 'none' : 'flex';
+      var note = document.getElementById('paywallChinaNote');
+      if (note) note.style.display = isTrialMonthly ? 'none' : 'block';
     };
+    // Set the correct initial state (default = monthly trial → card only).
+    try { window.__terseSelectPlan(window.__terseTier); } catch (e) {}
   </script>
 </body>
 </html>

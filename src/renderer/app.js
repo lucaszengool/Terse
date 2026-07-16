@@ -635,18 +635,31 @@ async function updateAuthUI() {
       // After sign-in: run the first-run onboarding once, then the pet picker.
       maybeRunOnboarding();
     } else {
-      if (gate) gate.style.display = 'flex';
       $('#signedOutUI').classList.remove('hidden');
       $('#signedInUI').classList.add('hidden');
+      // ── Value-first: before asking anyone to sign in, run a live agent-detection +
+      // Doctor 体检 scan so they see their REAL agents, health score and savings first,
+      // then prompt account creation. Biggest lever against the "signup wall" drop-off.
+      try {
+        const ob = window.TERSE_ONBOARDING;
+        if (ob && ob.startPreview && !ob.hasPreviewed()) {
+          if (gate) gate.style.display = 'none';
+          ob.startPreview(function () { if (gate) gate.style.display = 'flex'; doAuth('signup'); });
+          return;
+        }
+      } catch (e) { console.warn('[onboarding] preview failed', e); }
+      if (gate) gate.style.display = 'flex';
     }
   } catch {}
 }
 
-// ── First-run onboarding (agents → mode → Doctor 体检 → cleanup 清理) ──
-// Runs once, right after sign-in, then hands off to the pet picker below.
+// ── First-run onboarding ──
+// If the user already saw the pre-signin value preview (agents + Doctor), skip the
+// full onboarding and go straight to the pet picker. Otherwise run it once.
 function maybeRunOnboarding() {
   try {
     const ob = window.TERSE_ONBOARDING;
+    if (ob && ob.hasPreviewed && ob.hasPreviewed()) { maybeShowPetPicker(); return; }
     if (ob && !ob.hasOnboarded()) { ob.start(() => maybeShowPetPicker()); return; }
   } catch (e) { console.warn('[onboarding] start failed', e); }
   maybeShowPetPicker();

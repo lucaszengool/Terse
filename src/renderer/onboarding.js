@@ -12,6 +12,7 @@
   'use strict';
   const T = window.terse || {};
   const DONE_KEY = 'terse-onboarded';
+  const PREVIEW_KEY = 'terse-previewed';
 
   // ── onboarding-specific strings: en + zh fully, English fallback otherwise ──
   const ONB = {
@@ -31,6 +32,8 @@
       doctor_sub: 'A full health scan of your agents. Read-only — nothing changes yet.',
       doctor_cta: 'Review & clean up →',
       doctor_grade_good: 'Looking good', doctor_grade_bad: 'Needs attention', doctor_findings_word: 'findings',
+      preview_agents_sub: 'No account needed — this is a free local scan.',
+      preview_cta: 'Create a free account to optimize →', preview_skip: 'Sign in',
       cleanup_title: 'Clean up agent cache',
       cleanup_sub: 'Stale caches your agents never prune. Safe to remove — stats & projects untouched.',
       cleanup_reclaim: 'reclaimable',
@@ -63,6 +66,8 @@
       doctor_sub: '对你的智能体做一次完整体检。只读 — 暂不改动任何内容。',
       doctor_cta: '查看并清理 →',
       doctor_grade_good: '状况良好', doctor_grade_bad: '需要关注', doctor_findings_word: '项结果',
+      preview_agents_sub: '无需账号 — 这是一次免费的本地扫描。',
+      preview_cta: '创建免费账号,开始优化 →', preview_skip: '登录',
       cleanup_title: '清理智能体缓存',
       cleanup_sub: '智能体从不清理的陈旧缓存。可安全删除 — 不触碰统计与项目文件。',
       cleanup_reclaim: '可回收',
@@ -95,6 +100,8 @@
       doctor_sub: '對你的智能體做一次完整體檢。唯讀 — 暫不改動任何內容。',
       doctor_cta: '檢視並清理 →',
       doctor_grade_good: '狀況良好', doctor_grade_bad: '需要關注', doctor_findings_word: '項結果',
+      preview_agents_sub: '無需帳號 — 這是一次免費的本地掃描。',
+      preview_cta: '建立免費帳號,開始優化 →', preview_skip: '登入',
       cleanup_title: '清理智能體快取',
       cleanup_sub: '智能體從不清理的陳舊快取。可安全刪除 — 不觸碰統計與專案檔案。',
       cleanup_reclaim: '可回收',
@@ -156,6 +163,7 @@
 
   // ── state ──
   let root = null, onDone = null, step = 0, built = false;
+  let preview = false, onPreviewDone = null; // value-first pre-signin preview (agents + Doctor only)
   const S = { theme: '', mode: 'Normal', agents: 0, tokensSaved: 1284, reclaimed: 0, scoreBefore: 62, scoreAfter: 88 };
   const NSTEPS = 5;
   const META = () => ([
@@ -193,7 +201,7 @@
       if (window.i18n && window.i18n.createLangPicker) window.i18n.createLangPicker(langBtn); // setLang() reloads → onboarding re-opens in the chosen language
     });
 
-    root.querySelector('#onbSkip').addEventListener('click', () => finish(true));
+    root.querySelector('#onbSkip').addEventListener('click', () => { if (preview) finishPreview(); else finish(true); });
 
     const stage = root.querySelector('#onbStage');
     stage.appendChild(stepAgents());
@@ -326,7 +334,7 @@
       <div class="section-title" id="onbFindHdr" style="display:none"><span>${esc(ti('doctor_findings', 'Findings'))}</span><span class="n" id="onbFindN"></span></div>
       <div id="findingsList"></div>
       <button class="onb-cta" id="onbDocCta" disabled style="margin-top:14px">${esc(L('doctor_cta'))}</button>`);
-    d.querySelector('#onbDocCta').addEventListener('click', () => next());
+    d.querySelector('#onbDocCta').addEventListener('click', () => { if (preview) finishPreview(); else next(); });
     return d;
   }
 
@@ -414,17 +422,50 @@
       const mv = f.mv || '';
       const card = document.createElement('div');
       card.className = 'finding sev-' + sev; card.style.setProperty('--i', i);
+      const hasScene = !!(window.doctorScenes && window.doctorScenes.build);
       card.innerHTML = `
         <div class="f-top"><span class="sev-dot ${sev}"></span>
           <div class="f-body"><div class="f-headline"><span class="f-title">${esc(f.title || '')}</span>
             <span class="cat-badge ${cat}">${esc(cat)}</span></div>
             <div class="f-detail">${esc(f.detail || '')}</div>
             <div class="f-impact"><div class="track"><div class="fill"></div></div>${mv ? '<span class="mv">' + esc(mv) + '</span>' : ''}</div>
+            ${hasScene ? `<div class="f-actions" style="margin-top:9px">
+              <button class="preview-card-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 4 14 8-14 8V4z"/></svg>${esc(ti('doctor_preview', 'Preview'))}</button></div>
+            <div class="f-preview"><div class="fp-stage"></div>
+              <div class="th-seg fp-seg before"><span class="pill"></span>
+                <button type="button" data-state="before" class="active">${esc(ti('doctor_problem', 'Problem'))}</button>
+                <button type="button" data-state="after">${esc(ti('doctor_after_fix', 'After fix'))}</button></div></div>` : ''}
           </div></div>`;
       list.appendChild(card);
+      if (hasScene) wireScenePreview(card, f, cat);
       setTimeout(() => { const fill = card.querySelector('.f-impact .fill'); if (fill) requestAnimationFrame(() => fill.style.width = imp + '%'); }, 220 + i * 70);
     });
-    setTimeout(() => { root.querySelector('#onbDocCta').disabled = false; }, findings.length * 70 + 300);
+    setTimeout(() => { const b = root.querySelector('#onbDocCta'); b.disabled = false; if (preview) b.textContent = L('preview_cta'); }, findings.length * 70 + 300);
+  }
+
+  // Per-finding animated scene, reusing the REAL Doctor scene library (window.doctorScenes).
+  // Toggling Problem/After-fix re-injects the scene HTML, which replays its CSS animations.
+  function wireScenePreview(card, f, cat) {
+    const btn = card.querySelector('.preview-card-btn');
+    const panel = card.querySelector('.f-preview');
+    const stage = panel && panel.querySelector('.fp-stage');
+    const seg = panel && panel.querySelector('.th-seg');
+    if (!btn || !panel || !stage || !seg) return;
+    let state = 'before', open = false;
+    const inject = () => { try { stage.innerHTML = window.doctorScenes.build(cat, f, state); } catch (e) {} };
+    const setState = (s) => {
+      state = s;
+      seg.className = 'th-seg fp-seg ' + s;
+      seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.state === s));
+      inject();
+    };
+    btn.addEventListener('click', () => {
+      open = !open;
+      panel.classList.toggle('open', open);
+      btn.classList.toggle('active', open);
+      if (open) setState('before');
+    });
+    seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => setState(b.dataset.state)));
   }
 
   /* ── STEP 3: cleanup ── */
@@ -547,10 +588,15 @@
     root.querySelectorAll('.onb-step').forEach(s => { s.classList.remove('active', 'left'); if (+s.dataset.step < n) s.classList.add('left'); });
     const cur = root.querySelector(`.onb-step[data-step="${n}"]`); if (cur) cur.classList.add('active');
     root.querySelectorAll('#onbProg .onb-seg').forEach(sg => sg.classList.toggle('done', +sg.dataset.s < n));
-    root.querySelector('#onbMeta').textContent = `${n + 1}/${NSTEPS} · ${META()[n] || ''}`;
+    if (preview) {
+      root.querySelector('#onbMeta').textContent = (n === 0 ? '1/2 · ' + L('agents_title') : '2/2 · Terse 体检');
+    } else {
+      root.querySelector('#onbMeta').textContent = `${n + 1}/${NSTEPS} · ${META()[n] || ''}`;
+    }
     if (ENTER[n]) setTimeout(ENTER[n], 250);
   }
-  function next() { if (step < NSTEPS - 1) show(step + 1); }
+  // In preview mode the flow is only agents(0) → Doctor(2); full mode is linear.
+  function next() { if (preview) { if (step === 0) show(2); return; } if (step < NSTEPS - 1) show(step + 1); }
 
   function finish(skipped) {
     try { localStorage.setItem(DONE_KEY, '1'); } catch {}
@@ -560,21 +606,49 @@
     setTimeout(() => { if (cb) try { cb(); } catch (e) { console.warn('[onboarding] onDone failed', e); } }, 260);
   }
 
-  // ── public API ──
-  function hasOnboarded() { try { return localStorage.getItem(DONE_KEY) === '1'; } catch { return false; } }
-  function start(done) {
-    onDone = typeof done === 'function' ? done : null;
-    if (!built) buildDOM();
-    // reflect the theme the user already picked in the auth gate
-    try { S.theme = (document.documentElement.getAttribute('data-theme')) || localStorage.getItem('terse-theme') || ''; } catch {}
+  // Value-first preview: user has seen agents + Doctor before signing in → mark as
+  // both previewed (this session) and onboarded, then trigger the sign-in flow.
+  function finishPreview() {
+    try { sessionStorage.setItem(PREVIEW_KEY, '1'); localStorage.setItem(DONE_KEY, '1'); } catch {}
+    preview = false;
+    if (root) { root.classList.remove('show'); root.querySelector('#onbProg').style.display = 'flex'; }
+    const cb = onPreviewDone; onPreviewDone = null;
+    setTimeout(() => { if (cb) try { cb(); } catch (e) { console.warn('[onboarding] preview onContinue failed', e); } }, 260);
+  }
+
+  function resetSteps() {
     doctored = false; cleanData = null;
-    // reset transient step state
     root.querySelector('#onbAgentList').innerHTML = '';
     root.querySelector('#findingsList').innerHTML = '';
     root.querySelector('#onbFindHdr').style.display = 'none';
+    try { S.theme = (document.documentElement.getAttribute('data-theme')) || localStorage.getItem('terse-theme') || ''; } catch {}
+  }
+
+  // ── public API ──
+  function hasOnboarded() { try { return localStorage.getItem(DONE_KEY) === '1'; } catch { return false; } }
+  function hasPreviewed() { try { return sessionStorage.getItem(PREVIEW_KEY) === '1'; } catch { return false; } }
+  function start(done) {
+    preview = false;
+    onDone = typeof done === 'function' ? done : null;
+    if (!built) buildDOM();
+    resetSteps();
+    root.querySelector('#onbProg').style.display = 'flex';
     renderDemo(1);
     root.classList.add('show');
     show(0);
   }
-  window.TERSE_ONBOARDING = { start, hasOnboarded, reset() { try { localStorage.removeItem(DONE_KEY); } catch {} } };
+  // Pre-signin value preview: agents detection + Doctor 体检 only, ending in a sign-in CTA.
+  function startPreview(onContinue) {
+    preview = true;
+    onPreviewDone = typeof onContinue === 'function' ? onContinue : null;
+    if (!built) buildDOM();
+    resetSteps();
+    root.querySelector('#onbProg').style.display = 'none'; // 2-step flow — hide the 5-dot bar
+    root.classList.add('show');
+    show(0);
+  }
+  window.TERSE_ONBOARDING = {
+    start, startPreview, hasOnboarded, hasPreviewed,
+    reset() { try { localStorage.removeItem(DONE_KEY); sessionStorage.removeItem(PREVIEW_KEY); } catch {} },
+  };
 })();

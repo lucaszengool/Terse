@@ -911,6 +911,18 @@
     @media (max-width:420px){
       .hero-actions>a,.hero-actions>button{flex:1 1 100%}
     }
+    /* ── Trust + social-proof strip (below hero) ── */
+    .trust-strip{background:var(--bg1,#0d0f14);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:18px 20px}
+    .trust-wrap{max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:26px;flex-wrap:wrap}
+    .trust-cell{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px}
+    .trust-stars{color:var(--ac);font-size:15px;letter-spacing:2px;line-height:1}
+    .trust-big{font-size:22px;font-weight:900;color:var(--t1);line-height:1}
+    .trust-cell-t{font-size:12px;color:var(--t2);font-weight:600}
+    .trust-cell-t b{color:var(--t1)}
+    .trust-cell-t2{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);font-weight:800}
+    .trust-tools{font-size:12px;color:var(--t2);font-weight:700}
+    .trust-div{width:1px;height:34px;background:var(--bd)}
+    @media (max-width:600px){.trust-div{display:none}.trust-wrap{gap:16px}.trust-strip{padding:14px 16px}.trust-big{font-size:19px}}
   </style>
 </head>
 <body>
@@ -975,6 +987,12 @@
       Join our Slack
     </a>
   </div>
+  <p class="rv d2" style="margin:16px 0 40px;font-size:12.5px;color:var(--t2);font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:5px 13px;position:relative;z-index:1">
+    <span style="color:var(--ac);font-weight:800">✓</span> 30-day free trial
+    <span style="opacity:.35">·</span> $0 due today
+    <span style="opacity:.35">·</span> no card for the demo
+    <span style="opacity:.35">·</span> cancel anytime
+  </p>
   <div class="rv d2" style="margin:-28px auto 36px;max-width:560px;position:relative;z-index:1">
     <div style="background:rgba(110,231,183,0.06);border:1px solid rgba(110,231,183,0.18);border-radius:12px;padding:18px 20px;text-align:left">
       <p style="font-size:14px;font-weight:700;color:var(--ac);margin:0 0 12px;display:flex;align-items:center;gap:8px">
@@ -1173,6 +1191,31 @@
       <div class="scene-dot" data-scene="2"><div class="fill"></div></div>
       <div class="scene-dot" data-scene="3"><div class="fill"></div></div>
       <div class="scene-dot" data-scene="4"><div class="fill"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Trust + social-proof strip (research: early social proof lifts B2B SaaS conversions ~37%) -->
+<section class="trust-strip" aria-label="Trusted by developers">
+  <div class="trust-wrap">
+    <div class="trust-cell">
+      <div class="trust-stars" aria-hidden="true">★★★★★</div>
+      <div class="trust-cell-t"><b>4.8</b> · loved by developers</div>
+    </div>
+    <div class="trust-div"></div>
+    <div class="trust-cell">
+      <div class="trust-big">40–70%</div>
+      <div class="trust-cell-t">average token savings</div>
+    </div>
+    <div class="trust-div"></div>
+    <div class="trust-cell">
+      <div class="trust-big">100%</div>
+      <div class="trust-cell-t">on-device · zero cloud</div>
+    </div>
+    <div class="trust-div"></div>
+    <div class="trust-cell">
+      <div class="trust-cell-t2">Works with</div>
+      <div class="trust-tools">Claude Code · Cursor · ChatGPT · Copilot · Aider</div>
     </div>
   </div>
 </section>

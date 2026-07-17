@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terse — 安装动效 Intro</title>
+<style>
+:root{ --u:0.16vmin; --lime:#a3e635; --lime-d:#7cb518;
+  --mono:'SF Mono',ui-monospace,'Roboto Mono',Menlo,monospace; }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+html,body{height:100%;background:#000;overflow:hidden;font-family:-apple-system,'SF Pro Display',system-ui,'PingFang SC',sans-serif}
+#wrap{position:fixed;inset:0;display:grid;place-items:center}
+/* clean portrait canvas */
+#stage{position:relative;width:min(43vmin,420px);aspect-ratio:688/1280;border-radius:calc(64*var(--u));overflow:hidden;
+  background:linear-gradient(180deg,#11151b 0%,#0a0d12 55%,#06080c 100%);box-shadow:0 calc(40*var(--u)) calc(120*var(--u)) rgba(0,0,0,.7)}
+
+.sb{position:absolute;top:calc(40*var(--u));left:calc(56*var(--u));right:calc(56*var(--u));display:flex;justify-content:space-between;
+  color:#fff;font-weight:700;font-size:calc(26*var(--u));z-index:6;opacity:.9}
+
+/* centered app: icon + label (standard home-screen layout) */
+.app{position:absolute;left:0;right:0;top:50%;transform:translateY(-54%);display:flex;flex-direction:column;align-items:center;z-index:5}
+
+.icon{position:relative;width:calc(264*var(--u));height:calc(264*var(--u));border-radius:calc(60*var(--u));overflow:hidden;
+  box-shadow:0 calc(14*var(--u)) calc(40*var(--u)) rgba(0,0,0,.5)}
+.icon .bg{position:absolute;inset:0;background:linear-gradient(150deg,#c6f24a,#7cb518)}
+.icon .T{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;font-size:calc(156*var(--u));color:#0a0a0a;z-index:2}
+/* dim veil while installing (standard iOS dimmed icon) */
+.icon .veil{position:absolute;inset:0;z-index:3;background:rgba(10,12,16,.74)}
+/* center stop square */
+.icon .stop{position:absolute;z-index:5;top:50%;left:50%;transform:translate(-50%,-50%);width:calc(56*var(--u));height:calc(56*var(--u));
+  border-radius:calc(11*var(--u));background:#fff}
+/* circular progress ring (fills clockwise) */
+.icon .ring{position:absolute;z-index:5;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.icon .ring .trk{fill:none;stroke:rgba(255,255,255,.22);stroke-width:4.5}
+.icon .ring .prg{fill:none;stroke:#fff;stroke-width:4.5;stroke-linecap:round}
+
+/* home-screen app label */
+.label{margin-top:calc(26*var(--u));color:#fff;font-weight:600;font-size:calc(30*var(--u));opacity:.95;letter-spacing:.01em}
+.sub{margin-top:calc(8*var(--u));color:#8b9097;font-size:calc(21*var(--u));font-family:var(--mono);height:calc(26*var(--u))}
+
+#prog{position:absolute;top:0;left:0;height:calc(4*var(--u));background:var(--lime);width:0;z-index:20}
+.replay{position:absolute;inset:0;z-index:30;display:none;place-items:center;background:rgba(0,0,0,.45);cursor:pointer}
+.replay span{background:var(--lime);color:#0a0a0a;font-weight:800;font-size:calc(28*var(--u));padding:calc(15*var(--u)) calc(38*var(--u));border-radius:calc(40*var(--u))}
+.cap{position:fixed;bottom:14px;left:0;right:0;text-align:center;color:#555;font-size:12px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <div id="prog"></div>
+    <div class="sb"><span>9:41</span><span>▪▪▪ ◍ ▮▮</span></div>
+    <div class="app">
+      <div class="icon" id="icon">
+        <div class="bg"></div>
+        <div class="T">T</div>
+        <div class="veil" id="veil"></div>
+        <svg class="ring" id="ring" viewBox="0 0 100 100"><circle class="trk" cx="50" cy="50" r="46"/><circle class="prg" id="prg" cx="50" cy="50" r="46"/></svg>
+        <div class="stop" id="stop"></div>
+      </div>
+      <div class="label" id="label">Terse</div>
+      <div class="sub" id="sub">正在安装…</div>
+    </div>
+    <div class="replay" id="replay"><span>▶ 重播</span></div>
+  </div>
+</div>
+<div class="cap">Terse — 标准 iOS 安装动效（简洁版）· 点击重播</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const C=2*Math.PI*46;
+$('prg').style.strokeDasharray=C; $('prg').style.strokeDashoffset=C;
+let raf,t0;
+const WAIT=0.5;     // brief "waiting" before fill (like iOS)
+const DL=2.6;       // fill completes
+const TOTAL=4.4;
+const clamp=(a,b,v)=>Math.max(a,Math.min(b,v));
+const easeOut=x=>1-Math.pow(1-x,2);
+
+function frame(now){
+  const t=(now-t0)/1000;
+  $('prog').style.width=clamp(0,1,t/TOTAL)*100+'%';
+  // progress fill (clockwise) after a brief wait
+  const p=clamp(0,1,easeOut(clamp(0,1,(t-WAIT)/(DL-WAIT))));
+  $('prg').style.strokeDashoffset=C*(1-p);
+  const sub=$('sub');
+  if(sub && !frame._done) sub.textContent = t<WAIT ? '等待中…' : '正在安装… '+Math.round(p*100)+'%';
+
+  // finish — clean: veil + ring fade, icon brightens, label stays
+  if(t>=DL && !frame._done){
+    frame._done=true;
+    $('veil').style.transition='opacity .5s ease';$('veil').style.opacity='0';
+    $('ring').style.transition='opacity .35s ease';$('ring').style.opacity='0';
+    $('stop').style.transition='opacity .25s ease,transform .25s ease';$('stop').style.opacity='0';$('stop').style.transform='translate(-50%,-50%) scale(.5)';
+    const ic=$('icon');ic.style.transition='transform .45s cubic-bezier(.2,1.3,.4,1)';ic.style.transform='scale(1.04)';
+    setTimeout(()=>{ic.style.transition='transform .25s ease';ic.style.transform='scale(1)';},460);
+    $('sub').textContent='已安装';$('sub').style.color='var(--lime)';
+  }
+  if(t<TOTAL) raf=requestAnimationFrame(frame);
+  else $('replay').style.display='grid';
+}
+function run(){
+  cancelAnimationFrame(raf); frame._done=false;
+  $('veil').style.transition='none';$('veil').style.opacity='1';
+  $('ring').style.transition='none';$('ring').style.opacity='1';
+  $('prg').style.strokeDashoffset=C;
+  $('stop').style.transition='none';$('stop').style.opacity='1';$('stop').style.transform='translate(-50%,-50%) scale(1)';
+  $('icon').style.transition='none';$('icon').style.transform='scale(1)';
+  $('sub').style.color='#8b9097';$('sub').textContent='正在安装…';
+  $('replay').style.display='none';
+  void $('stage').offsetWidth;
+  t0=performance.now(); raf=requestAnimationFrame(frame);
+}
+$('replay').addEventListener('click',run);
+$('stage').addEventListener('click',()=>{if($('replay').style.display==='grid')run();});
+run();
+</script>
+</body>
+</html>

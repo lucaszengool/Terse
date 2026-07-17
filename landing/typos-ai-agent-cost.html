@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How Typos Inflate AI Agent Costs</title>
+<meta name="description" content="A single typo can triple a word's token count, break tool calls, and trigger costly retries. How misspellings tax AI agents and how to fix them pre-send.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://www.terseai.org/typos-ai-agent-cost">
+<meta property="og:title" content="How Typos Inflate AI Agent Costs">
+<meta property="og:description" content="A single typo can triple a word's token count, break tool calls, and trigger costly retries. How misspellings tax AI agents and how to fix them pre-send.">
+<meta property="og:url" content="https://www.terseai.org/typos-ai-agent-cost">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Terse">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="How Typos Inflate AI Agent Costs">
+<meta name="twitter:description" content="A single typo can triple a word's token count, break tool calls, and trigger costly retries. How misspellings tax AI agents and how to fix them pre-send.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "How Typos Inflate AI Agent Costs",
+  "description": "A single typo can triple a word's token count, break tool calls, and trigger costly retries. How misspellings tax AI agents and how to fix them pre-send.",
+  "url": "https://www.terseai.org/typos-ai-agent-cost",
+  "datePublished": "2026-07-17",
+  "dateModified": "2026-07-17",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Terse",
+    "url": "https://www.terseai.org"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Terse"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.terseai.org/typos-ai-agent-cost"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How much does a typo cost in tokens?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A misspelled word typically tokenizes into 2-4x as many tokens as its correct form, because it no longer matches the tokenizer's vocabulary whole. In agent sessions the real cost is larger: a typo in a file path or identifier can trigger failed tool calls and retry turns worth thousands of tokens."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do AI models understand prompts with typos?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Usually yes for prose \u2014 models are robust readers. But you pay extra tokens for fragmented words, and in agent workflows a misspelled path or symbol is often taken literally, causing wrong or failed tool calls rather than a graceful guess."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Won't a spellchecker break my variable names and commands?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Not a prompt-aware one. Terse only corrects natural-language regions and treats code, identifiers, file paths, quoted strings, and backticked text as immutable \u2014 and shows a diff of every correction so nothing changes silently."
+      }
+    }
+  ]
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+body{background:var(--bg0);color:var(--t2);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6}
+.article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+.article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+.article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+.article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+.article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+.article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+.article li{margin-bottom:8px}
+.article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+.article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+.article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+.article a:hover{border-color:var(--ac)}
+.article .crumb{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:14px;text-decoration:none;border-bottom:none}
+.article .crumb:hover{color:var(--ac)}
+.article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+.article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+.article .cta-box h3{margin-top:0}
+.article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+.blogwrap{max-width:1000px;margin:0 auto;padding:120px 32px 80px}
+.blogwrap h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.blogwrap .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:48px;max-width:720px}
+.bloggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px;margin-bottom:48px}
+.bcard{display:block;padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;text-decoration:none;transition:border-color .15s,transform .15s}
+.bcard:hover{border-color:var(--acm);transform:translateY(-2px)}
+.bcard .btag{display:inline-block;padding:3px 10px;border-radius:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:12px}
+.bcard h2{font-size:17px;font-weight:800;color:var(--t1);letter-spacing:-0.3px;line-height:1.35;margin-bottom:8px}
+.bcard p{font-size:13px;color:var(--t3);line-height:1.6}
+</style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<main class="article">
+  <a class="crumb" href="/blog">&larr; Terse Blog</a><br>
+  <span class="tag">Spell Correction</span>
+  <h1>How Typos Inflate AI Agent Costs</h1>
+  <p class="subtitle">A typo costs more than embarrassment. Misspelled words fall out of the tokenizer's vocabulary and shatter into two to four times as many tokens, and in agent workflows a misspelled identifier or path can cause a failed tool call — which means a full retry loop billed on top of the original attempt. Fixing typos before the prompt is sent is the cheapest optimization there is.</p>
+
+  <h2>Cost #1: Typos Break Tokenization</h2>
+  <p>Subword tokenizers price text by how familiar it is. Correctly spelled common words match the vocabulary whole: "authentication" is one or two tokens. Misspell it and the greedy matcher can't find the long entry, so the word shatters into fragments:</p>
+  <pre>"authentication"   → 1-2 tokens
+"authetnication"   → 4-5 tokens ("aut", "et", "n", "ication")
+"the"              → 1 token
+"teh"              → 2 tokens
+"function"         → 1 token
+"funciton"         → 3 tokens</pre>
+  <p>A single transposition typically doubles or triples that word's cost. Sprinkle a handful of typos through a long prompt and you've added a measurable surcharge — while simultaneously making the text statistically weirder and marginally harder for the model to read. (Why fragmentation happens is covered in <a href="/tokenization-101">Tokenization 101</a>.) Models are good at guessing what you meant, but you're paying extra tokens for the privilege of making them guess.</p>
+
+  <h2>Cost #2: Typos Break Tool Calls</h2>
+  <p>In chat, a typo is a few wasted tokens. In an agent session, it can be a wasted <em>turn</em> — and turns are expensive, because each one re-bills the whole context. The failure chain looks like this:</p>
+  <ul>
+    <li>You ask the agent to "update the confg file" or reference <code>src/utls/parser.js</code>.</li>
+    <li>The agent takes the string literally — agents often should, since odd names are frequently real — and calls a tool: reads the wrong path, greps for the misspelled symbol, runs a command with a bad flag.</li>
+    <li>The tool fails or returns nothing. The error output lands in context. The agent reasons about the failure, retries with a variation, maybe searches the codebase to figure out what you meant.</li>
+  </ul>
+  <p>That recovery loop typically costs one to three extra model turns, each carrying your full conversation history as re-billed input, plus the failed tool output that now sits in the window for the rest of the session (see the <a href="/context-window-diet">context window diet</a> for why stale output keeps costing). A one-character typo in a file path can easily burn 10,000+ tokens of recovery — the single worst cost-per-character ratio in AI usage.</p>
+
+  <h2>Cost #3: Ambiguity Compounds</h2>
+  <p>There's a quieter third cost. When a prompt mixes typos with intentional oddities — real variable names like <code>usr_cnt</code>, real flags like <code>-rf</code>, project-specific jargon — the model has to decide which unusual strings are mistakes and which are meaningful. Every typo you send erodes its confidence about the strings that matter, occasionally producing "corrections" of things that were correct. Clean input keeps the signal unambiguous: anything unusual that remains is intentional.</p>
+
+  <h2>The Fix: Correct Before You Send</h2>
+  <p>Fixing typos after the model has misread them costs a round trip. Fixing them <em>before the prompt is sent</em> costs nothing, which is why spell correction is the first stage of Terse's optimization pipeline — it runs in every mode, including the gentlest:</p>
+  <ul>
+    <li><strong>Prose gets corrected.</strong> Terse's <a href="/spell-correction">spell-correction layer</a> fixes natural-language typos on-device before the text leaves your machine, using a <a href="/norvig-spelling">Norvig-style</a> statistical corrector backed by the system dictionary.</li>
+    <li><strong>Code is protected.</strong> Identifiers, paths, quoted strings, and anything inside backticks are never "corrected" — <code>usr_cnt</code> stays <code>usr_cnt</code>. A spellchecker that rewrites variable names would create the exact failed-tool-call problem it's meant to prevent, so the protected-region rules matter as much as the dictionary.</li>
+    <li><strong>Corrections are visible.</strong> The before/after diff shows every change, so a "fix" you didn't want is a one-click revert rather than a silent mutation.</li>
+  </ul>
+  <p>For <a href="/for-claude-code">Claude Code and other agent tools</a>, the payoff is doubled: corrected prompts tokenize cheaper going in, and correctly spelled identifiers and paths mean tool calls succeed on the first attempt instead of the third. Cheap insurance against the most expensive kind of typo.</p>
+
+  <div class="cta-box">
+    <h3>Fix Typos Before They're Billed</h3>
+    <p>Terse corrects prompt typos on-device before sending — cheaper tokenization in, fewer failed tool calls out. Code and identifiers are never touched. Free to start.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Frequently Asked Questions</h2>
+  <h3>How much does a typo cost in tokens?</h3>
+  <p>A misspelled word typically tokenizes into 2-4x as many tokens as its correct form, because it no longer matches the tokenizer's vocabulary whole. In agent sessions the real cost is larger: a typo in a file path or identifier can trigger failed tool calls and retry turns worth thousands of tokens.</p>
+  <h3>Do AI models understand prompts with typos?</h3>
+  <p>Usually yes for prose — models are robust readers. But you pay extra tokens for fragmented words, and in agent workflows a misspelled path or symbol is often taken literally, causing wrong or failed tool calls rather than a graceful guess.</p>
+  <h3>Won't a spellchecker break my variable names and commands?</h3>
+  <p>Not a prompt-aware one. Terse only corrects natural-language regions and treats code, identifiers, file paths, quoted strings, and backticked text as immutable — and shows a diff of every correction so nothing changes silently.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/blog">Terse Blog</a> — all token optimization guides</li>
+    <li><a href="/tokenization-101">Tokenization 101</a> — why misspellings fragment</li>
+    <li><a href="/context-window-diet">Context Window Diet</a> — what failed-call output costs downstream</li>
+    <li><a href="/spell-correction">Spell Correction in Terse</a> — the pipeline's first stage</li>
+  </ul>
+</main>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

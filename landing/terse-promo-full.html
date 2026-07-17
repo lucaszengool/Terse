@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terse — 完整片头 + promo</title>
+<style>
+:root{ --u:0.16vmin; --lime:#a3e635; --mono:'SF Mono',ui-monospace,Menlo,monospace; }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+html,body{height:100%;background:#000;overflow:hidden;font-family:-apple-system,'SF Pro Display',system-ui,'PingFang SC',sans-serif}
+/* the promo iframe sits underneath; revealed when the app "opens" */
+#promo{position:fixed;inset:0;width:100%;height:100%;border:0;opacity:0;transition:opacity .6s ease;background:#000;z-index:1}
+/* install overlay on top */
+#install{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:linear-gradient(180deg,#11151b,#0a0d12 55%,#06080c);
+  transition:opacity .5s ease;will-change:transform,opacity}
+.sb{position:absolute;top:calc(40*var(--u));left:calc(56*var(--u));right:calc(56*var(--u));display:flex;justify-content:space-between;color:#fff;font-weight:700;font-size:calc(26*var(--u));opacity:.9}
+.app{display:flex;flex-direction:column;align-items:center}
+.icon{position:relative;width:calc(264*var(--u));height:calc(264*var(--u));border-radius:calc(60*var(--u));overflow:hidden;box-shadow:0 calc(14*var(--u)) calc(40*var(--u)) rgba(0,0,0,.5);will-change:transform}
+.icon .bg{position:absolute;inset:0;background:linear-gradient(150deg,#c6f24a,#7cb518)}
+.icon .T{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;font-size:calc(156*var(--u));color:#0a0a0a;z-index:2}
+.icon .veil{position:absolute;inset:0;z-index:3;background:rgba(10,12,16,.74)}
+.icon .stop{position:absolute;z-index:5;top:50%;left:50%;transform:translate(-50%,-50%);width:calc(56*var(--u));height:calc(56*var(--u));border-radius:calc(11*var(--u));background:#fff}
+.icon .ring{position:absolute;z-index:5;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.icon .ring .trk{fill:none;stroke:rgba(255,255,255,.22);stroke-width:4.5}
+.icon .ring .prg{fill:none;stroke:#fff;stroke-width:4.5;stroke-linecap:round}
+.label{margin-top:calc(26*var(--u));color:#fff;font-weight:600;font-size:calc(30*var(--u));opacity:.95}
+.sub{margin-top:calc(8*var(--u));color:#8b9097;font-size:calc(21*var(--u));font-family:var(--mono);height:calc(26*var(--u))}
+.cap{position:fixed;bottom:10px;left:0;right:0;text-align:center;color:#444;font-size:11px;z-index:9}
+</style>
+</head>
+<body>
+<iframe id="promo" title="Terse promo"></iframe>
+<div id="install">
+  <div class="sb"><span>9:41</span><span>▪▪▪ ◍ ▮▮</span></div>
+  <div class="app" id="appwrap">
+    <div class="icon" id="icon">
+      <div class="bg"></div><div class="T">T</div>
+      <div class="veil" id="veil"></div>
+      <svg class="ring" id="ring" viewBox="0 0 100 100"><circle class="trk" cx="50" cy="50" r="46"/><circle class="prg" id="prg" cx="50" cy="50" r="46"/></svg>
+      <div class="stop" id="stop"></div>
+    </div>
+    <div class="label">Terse</div>
+    <div class="sub" id="sub">正在安装…</div>
+  </div>
+</div>
+<div class="cap">Terse — 安装 → 打开 → 完整 promo</div>
+<script>
+const $=id=>document.getElementById(id);
+const PROMO='terse-koco-mimic.html';
+const C=2*Math.PI*46; $('prg').style.strokeDasharray=C; $('prg').style.strokeDashoffset=C;
+const clamp=(a,b,v)=>Math.max(a,Math.min(b,v)), easeOut=x=>1-Math.pow(1-x,2);
+const WAIT=0.5, DL=2.6, OPEN=3.5; // install fills, then "open" zoom at OPEN
+let raf,t0,opened=false,done=false;
+
+function frame(now){
+  const t=(now-t0)/1000;
+  const p=clamp(0,1,easeOut(clamp(0,1,(t-WAIT)/(DL-WAIT))));
+  $('prg').style.strokeDashoffset=C*(1-p);
+  if(!done){const s=$('sub'); s.textContent=t<WAIT?'等待中…':'正在安装… '+Math.round(p*100)+'%';}
+
+  if(t>=DL && !done){ done=true;
+    $('veil').style.transition='opacity .5s ease';$('veil').style.opacity='0';
+    $('ring').style.transition='opacity .35s ease';$('ring').style.opacity='0';
+    $('stop').style.transition='opacity .25s ease,transform .25s ease';$('stop').style.opacity='0';$('stop').style.transform='translate(-50%,-50%) scale(.5)';
+    const ic=$('icon');ic.style.transition='transform .45s cubic-bezier(.2,1.3,.4,1)';ic.style.transform='scale(1.05)';
+    setTimeout(()=>{ic.style.transition='transform .2s ease';ic.style.transform='scale(1)';},460);
+    $('sub').textContent='已安装';$('sub').style.color='var(--lime)';
+    // preload the promo behind the overlay so it's ready to reveal
+    $('promo').src=PROMO;
+  }
+
+  // OPEN: app icon zooms to fill, overlay fades, promo (with its 3D intro) takes over
+  if(t>=OPEN && !opened){ opened=true;
+    $('sub').textContent='打开中…';
+    const ic=$('icon'), inst=$('install');
+    ic.style.transition='transform .7s cubic-bezier(.6,0,.15,1)';
+    ic.style.transform='scale(14)';
+    $('appwrap').style.transition='opacity .5s ease .15s';$('appwrap').style.opacity='0';
+    setTimeout(()=>{ $('promo').style.opacity='1'; },380);
+    setTimeout(()=>{ inst.style.opacity='0'; },520);
+    setTimeout(()=>{ inst.style.display='none'; },1100);
+    return; // stop driving install frames
+  }
+  raf=requestAnimationFrame(frame);
+}
+function start(){ t0=performance.now(); raf=requestAnimationFrame(frame); }
+window.addEventListener('load',start);
+</script>
+</body>
+</html>

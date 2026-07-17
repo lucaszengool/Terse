@@ -190,6 +190,14 @@ async function init() {
     document.getElementById('totalOpts').textContent = stats.totalOptimizations.toLocaleString();
   }
 
+  // Review nudge — show after 25 successful optimizations, until dismissed
+  if (stats && stats.totalOptimizations >= 25) {
+    const { reviewBannerDismissed } = await chrome.storage.local.get('reviewBannerDismissed');
+    if (!reviewBannerDismissed) {
+      document.getElementById('reviewBanner').classList.remove('hidden');
+    }
+  }
+
   // Load auth status for footer display
   const auth = await sendBg({ type: 'get-auth' });
   const authEl = document.getElementById('authStatus');
@@ -417,6 +425,18 @@ document.querySelectorAll('.theme-dot').forEach(dot => {
     document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active', d.dataset.t === theme));
     await sendBg({ type: 'update-settings', settings: { theme } });
   });
+});
+
+// ── Review nudge ──
+
+document.getElementById('reviewDismiss').addEventListener('click', async () => {
+  document.getElementById('reviewBanner').classList.add('hidden');
+  await chrome.storage.local.set({ reviewBannerDismissed: true });
+});
+
+document.getElementById('reviewLink').addEventListener('click', () => {
+  // Once they've gone to rate, don't nag again
+  chrome.storage.local.set({ reviewBannerDismissed: true });
 });
 
 // ── Settings button → open options page ──

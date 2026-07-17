@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<title>Terse — LinkedIn Carousel</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#d1e847;          /* Terse lime (app --bg) */
+    --bg-d:#c2da33;
+    --t1:#0a0a0a;          /* app --t1 */
+    --t2:#333333;          /* app --t2 */
+    --t3:#555555;          /* app --t3 */
+    --ac:#2d8b00;          /* app accent (dark green) */
+    --sf:rgba(255,255,255,0.55);   /* frosted card */
+    --sfh:rgba(255,255,255,0.72);
+    --bd:rgba(0,0,0,0.07);
+    --bdl:rgba(0,0,0,0.12);
+    --r:24px; --rs:16px;
+    --sys:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter',sans-serif;
+    --mono:'SF Mono','JetBrains Mono',Menlo,monospace;
+  }
+  body{background:#222;font-family:var(--sys)}
+  .deck{display:flex;flex-direction:column;align-items:center;gap:28px;padding:28px}
+
+  /* LinkedIn portrait carousel: 1080 x 1350 (4:5) */
+  .slide{
+    width:1080px;height:1350px;position:relative;overflow:hidden;
+    background:
+      radial-gradient(1100px 760px at 84% -42%, rgba(255,255,255,0.40) 0%, transparent 58%),
+      radial-gradient(820px 620px at 6% 150%, rgba(10,10,10,0.05) 0%, transparent 55%),
+      linear-gradient(150deg, #dcef5a 0%, var(--bg) 52%, var(--bg-d) 100%);
+    color:var(--t1);
+    padding:96px 90px;
+    display:flex;flex-direction:column;
+  }
+  /* faint grid texture (mirrors banner) */
+  .slide::before{
+    content:"";position:absolute;inset:0;z-index:0;
+    background-image:linear-gradient(rgba(10,10,10,0.035) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(10,10,10,0.035) 1px,transparent 1px);
+    background-size:54px 54px;
+    mask-image:radial-gradient(120% 120% at 50% 0%, #000 40%, transparent 85%);
+  }
+  .slide > *{position:relative;z-index:1}
+
+  /* brand row */
+  .brand{display:flex;align-items:center;gap:18px;margin-bottom:auto}
+  .mark{
+    width:62px;height:62px;border-radius:16px;background:var(--t1);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    box-shadow:0 10px 26px rgba(10,10,10,0.22);
+  }
+  .mark span{font-weight:900;font-size:40px;color:var(--bg);line-height:1}
+  .brand .nm{font-size:30px;font-weight:900;letter-spacing:-1px}
+  .brand .pg{margin-left:auto;font-family:var(--mono);font-size:22px;color:var(--t3);font-weight:700}
+
+  /* footer */
+  .foot{margin-top:auto;display:flex;align-items:center;gap:14px;padding-top:40px}
+  .foot .u{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--t1)}
+  .foot .swipe{margin-left:auto;font-size:24px;font-weight:800;color:var(--ac);display:flex;align-items:center;gap:10px}
+  .foot .swipe .ar{font-size:30px}
+
+  /* type scale */
+  .kick{font-family:var(--mono);font-size:25px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:2px;margin-bottom:30px}
+  h1{font-size:92px;line-height:0.98;font-weight:900;letter-spacing:-3px;margin-bottom:34px}
+  h1 em{color:var(--ac);font-style:normal}
+  h2{font-size:66px;line-height:1.02;font-weight:900;letter-spacing:-2px;margin-bottom:30px}
+  h2 em{color:var(--ac);font-style:normal}
+  p.lead{font-size:38px;line-height:1.34;font-weight:500;color:var(--t2);max-width:880px}
+  p.lead b{color:var(--t1);font-weight:800}
+
+  .stepno{font-family:var(--mono);font-size:30px;font-weight:800;color:var(--ac);margin-bottom:18px}
+
+  /* frosted card */
+  .card{
+    background:var(--sf);border:1.5px solid var(--bd);border-radius:var(--r);
+    padding:44px 46px;backdrop-filter:blur(8px);
+  }
+  .card + .card{margin-top:28px}
+
+  /* token chips */
+  .chips{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+  .chip{font-family:var(--mono);font-size:30px;font-weight:700;padding:12px 20px;border-radius:12px;
+        background:rgba(255,255,255,0.7);border:1.5px solid var(--bdl);color:var(--t1)}
+  .chip.cut{background:rgba(220,38,38,0.10);border-color:rgba(220,38,38,0.30);color:#b91c1c;text-decoration:line-through;opacity:0.85}
+  .chip.keep{background:rgba(45,139,0,0.12);border-color:rgba(45,139,0,0.35);color:var(--ac)}
+
+  /* before/after bar */
+  .bar{height:70px;border-radius:14px;display:flex;align-items:center;padding:0 26px;font-family:var(--mono);font-weight:800;font-size:30px}
+  .bar.before{background:rgba(220,38,38,0.12);color:#b91c1c;width:100%}
+  .bar.after{background:rgba(45,139,0,0.16);color:var(--ac)}
+  .barlabel{font-size:24px;font-weight:700;color:var(--t3);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px}
+
+  /* big stat row */
+  .stats{display:flex;gap:26px;margin-top:8px}
+  .stat{flex:1;background:var(--sf);border:1.5px solid var(--bd);border-radius:var(--r);padding:40px 32px;text-align:center}
+  .stat .n{font-family:var(--mono);font-size:74px;font-weight:900;color:var(--ac);letter-spacing:-2px;line-height:1}
+  .stat .l{font-size:24px;font-weight:600;color:var(--t2);margin-top:14px;line-height:1.2}
+
+  .bullets{margin-top:6px}
+  .b{display:flex;gap:20px;align-items:flex-start;font-size:36px;line-height:1.3;font-weight:500;color:var(--t1);margin-top:24px}
+  .b .ic{color:var(--ac);font-weight:900;font-size:38px;flex-shrink:0;line-height:1.1}
+  .b b{font-weight:800}
+
+  .cta-big{font-size:46px;font-weight:900;letter-spacing:-1px;margin-top:30px}
+  .pill{display:inline-flex;align-items:center;gap:14px;margin-top:34px;background:var(--t1);color:var(--bg);
+        font-weight:800;font-size:34px;padding:24px 40px;border-radius:50px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- 1 — COVER -->
+  <div class="slide" id="s1">
+    <div class="brand"><div class="mark"><span>T</span></div><div class="nm">Terse AI</div></div>
+    <div style="margin:auto 0">
+      <div class="kick">// technical deep dive</div>
+      <h1>Cut an LLM prompt <em>60%</em>.<br>In <em>&lt;50ms</em>.<br>No model call.</h1>
+      <p class="lead">How Terse compresses prompts <b>locally</b> — before a single token leaves your machine.</p>
+    </div>
+    <div class="foot"><div class="u">terseai.org</div><div class="swipe">Swipe <span class="ar">→</span></div></div>
+  </div>
+
+  <!-- 2 — PROBLEM -->
+  <div class="slide" id="s2">
+    <div class="brand"><div class="mark"><span>T</span></div><div class="nm">Terse AI</div><div class="pg">01</div></div>
+    <div style="margin:auto 0">
+      <div class="kick">// the usual way</div>
+      <h2>Everyone "optimizes"<br>prompts by asking<br>a model to <em>rewrite them</em>.</h2>
+      <div class="card">
+        <p class="lead" style="font-size:36px">That's <b>slow</b>, it <b>costs tokens</b> to save tokens, and it <b>ships your prompt to a server</b>.</p>
+      </div>
+      <p class="lead" style="margin-top:30px;font-size:34px;color:var(--t1)"><b>We needed something local, instant, and private.</b></p>
+    </div>
+    <div class="foot"><div class="u">terseai.org</div><div class="swipe">Swipe <span class="ar">→</span></div></div>
+  </div>
+
+  <!-- 3 — STEP 1 -->
+  <div class="slide" id="s3">
+    <div class="brand"><div class="mark"><span>T</span></div><div class="nm">Terse AI</div><div class="pg">02</div></div>
+    <div style="margin:auto 0">
+      <div class="stepno">STEP 01</div>
+      <h2>Tokenize like the<br><em>model</em> does — not<br>like a human reads.</h2>
+      <p class="lead" style="margin-bottom:30px">A space, a comma, "ing" — each can be its own token. We mirror the real BPE boundaries, so we optimize <b>what you're billed for</b>.</p>
+      <div class="card">
+        <div class="barlabel">one word → many tokens</div>
+        <div class="chips">
+          <span class="chip">"</span><span class="chip">could</span><span class="chip">you</span><span class="chip">please</span><span class="chip">re</span><span class="chip">fact</span><span class="chip">or</span><span class="chip">"</span>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><div class="u">terseai.org</div><div class="swipe">Swipe <span class="ar">→</span></div></div>
+  </div>
+
+  <!-- 4 — STEP 2 -->
+  <div class="slide" id="s4">
+    <div class="brand"><div class="mark"><span>T</span></div><div class="nm">Terse AI</div><div class="pg">03</div></div>
+    <div style="margin:auto 0">
+      <div class="stepno">STEP 02</div>
+      <h2>Strip what carries<br><em>zero signal</em> to<br>the model.</h2>
+      <p class="lead" style="margin-bottom:30px">Politeness, hedging, filler. Identical output without them. <b>~15–25% gone</b> on its own.</p>
+      <div class="card">
+        <div class="barlabel">before</div>
+        <div class="chips">
+          <span class="chip cut">Could you please</span><span class="chip keep">refactor</span><span class="chip cut">, if you don't mind,</span><span class="chip keep">this function</span><span class="chip cut">I think maybe</span>
+        </div>
+        <div class="barlabel" style="margin-top:30px">after</div>
+        <div class="chips">
+          <span class="chip keep">refactor this function</span>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><div class="u">terseai.org</div><div class="swipe">Swipe <span class="ar">→</span></div></div>
+  </div>
+
+  <!-- 5 — STEP 3 -->
+  <div class="slide" id="s5">
+    <div class="brand"><div class="mark"><span>T</span></div><div class="nm">Terse AI</div><div class="pg">04</div></div>
+    <div style="margin:auto 0">
+      <div class="stepno">STEP 03</div>
+      <h2>The hard part isn't<br>cutting. It's knowing<br>what <em>not</em> to cut.</h2>
+      <p class="lead" style="margin-bottom:30px">A clean technical prompt passes through at <b>0% reduction</b>. Over-compression is worse than none.</p>
+      <div class="card" style="display:flex;align-items:center;gap:28px">
+        <div style="flex:1">
+          <div class="barlabel">clean prompt in</div>
+          <div class="bar after" style="font-size:26px">// fix race condition in worker.rs</div>
+        </div>
+        <div style="font-size:54px;color:var(--ac);font-weight:900">=</div>
+        <div class="stat" style="flex:0 0 220px;padding:28px 20px">
+          <div class="n" style="font-size:60px">0%</div>
+          <div class="l">touched</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><div class="u">terseai.org</div><div class="swipe">Swipe <span class="ar">→</span></div></div>
+  </div>
+
+  <!-- 6 — STEP 4 -->
+  <div class="slide" id="s6">
+    <div class="brand"><div class="mark"><span>T</span></div><div class="nm">Terse AI</div><div class="pg">05</div></div>
+    <div style="margin:auto 0">
+      <div class="stepno">STEP 04</div>
+      <h2>The biggest waste<br>isn't in the prompt.<br>It's the <em>context</em>.</h2>
+      <div class="bullets">
+        <div class="b"><span class="ic">→</span><div>The same file read <b>3×</b> in one session</div></div>
+        <div class="b"><span class="ic">→</span><div>A <b>40K-token diff</b> for a 12-line change</div></div>
+        <div class="b"><span class="ic">→</span><div>Duplicate tool calls firing twice</div></div>
+      </div>
+      <div class="card" style="margin-top:36px">
+        <p class="lead" style="font-size:34px"><b>Terse flags these live</b> in your agent session — Claude Code, Cursor, ChatGPT &amp; more.</p>
+      </div>
+    </div>
+    <div class="foot"><div class="u">terseai.org</div><div class="swipe">Swipe <span class="ar">→</span></div></div>
+  </div>
+
+  <!-- 7 — RESULT / CTA -->
+  <div class="slide" id="s7">
+    <div class="brand"><div class="mark"><span>T</span></div><div class="nm">Terse AI</div><div class="pg">06</div></div>
+    <div style="margin:auto 0">
+      <div class="kick">// net result</div>
+      <h2 style="margin-bottom:44px">Same model.<br>Same output.<br>A <em>smaller bill</em>.</h2>
+      <div class="stats">
+        <div class="stat"><div class="n">40-70%</div><div class="l">fewer tokens on verbose input</div></div>
+        <div class="stat"><div class="n">0%</div><div class="l">touched on clean prompts</div></div>
+      </div>
+      <div class="stats" style="margin-top:26px">
+        <div class="stat"><div class="n">&lt;50<span style="font-size:40px">ms</span></div><div class="l">on-device, no model call</div></div>
+        <div class="stat"><div class="n">100%</div><div class="l">local — nothing leaves your Mac</div></div>
+      </div>
+      <div class="cta-big">Try it free →</div>
+      <div class="pill"><span class="ar">▸</span> terseai.org</div>
+    </div>
+    <div class="foot"><div class="u">@TerseAI</div><div class="swipe" style="color:var(--t3)">Follow for more ↗</div></div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -117,6 +117,16 @@ body {
   display: flex; align-items: center; gap: 3px; transition: all 0.15s; }
 .undo-btn:hover { background: var(--sfh); }
 
+/* Review nudge banner */
+.review-banner { display: flex; align-items: center; justify-content: space-between; gap: 4px;
+  padding: 6px 8px; background: var(--sf); border-radius: var(--rs); font-size: 10px;
+  color: var(--t2); margin-bottom: 6px; }
+.review-banner a { color: var(--ac); font-weight: 700; text-decoration: none; }
+.review-banner a:hover { text-decoration: underline; }
+.review-dismiss { background: transparent; border: none; color: var(--t3); font-size: 13px;
+  cursor: pointer; padding: 0 2px; line-height: 1; border-radius: 4px; transition: all 0.15s; }
+.review-dismiss:hover { color: var(--t1); }
+
 /* Stats bar */
 .stats-bar { display: flex; align-items: center; gap: 4px; padding: 6px 8px;
   background: var(--sf); border-radius: var(--rs); font-size: 9px; color: var(--t2);

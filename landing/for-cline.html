@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reduce Cline Token Costs — Terse for Cline</title>
+  <meta name="description" content="Terse compresses your Cline prompts by 40-70%, tracks session token usage and cost, and caps runaway Cline sessions with a budget circuit breaker.">
+  <link rel="canonical" href="https://www.terseai.org/for-cline">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Reduce Cline Token Costs — Terse for Cline">
+  <meta property="og:description" content="Terse compresses Cline prompts by 40-70%, tracks session usage and cost, and stops runaway Cline sessions before the next API call.">
+  <meta property="og:url" content="https://www.terseai.org/for-cline">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Reduce Cline Token Costs — Terse for Cline">
+  <meta name="twitter:description" content="Compress Cline prompts by 40-70%, track session cost, and cap runaway sessions with a budget circuit breaker.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "Reduce Cline Token Costs — Terse for Cline",
+        "url": "https://www.terseai.org/for-cline",
+        "description": "Terse compresses Cline prompts by 40-70%, monitors Cline sessions with token and cost stats, and caps runaway sessions with a budget circuit breaker.",
+        "dateModified": "2026-07-17",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "For Cline", "item": "https://www.terseai.org/for-cline"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How does Terse detect Cline?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse auto-detects Cline through process and configuration detection — no plugins or Cline settings changes required. Once detected, Cline sessions appear in the Terse agent monitor with session-level stats: token usage, estimated per-turn cost with model-aware pricing, burn rate, and session history."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why does Cline use so many tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Cline is an autonomous agent: every task involves multiple turns, and each turn re-sends system instructions, file context, and conversation history. Tool loops — retrying a failing command or re-reading the same file — multiply this further. Terse attacks both ends: it compresses the prompts you write by 40-70%, and its budget circuit breaker stops a looping Cline session before its next API call."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I set a spending limit for Cline?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse's budget circuit breaker lets you set burn-rate, token, or dollar ceilings for any monitored agent, including Cline. When a ceiling is crossed, Terse escalates from alert to SIGSTOP pause to SIGTERM kill — enforced at the process level before the next API call, with one-click resume."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Cline monitoring as detailed as Claude Code monitoring?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Not quite — and we're honest about that. Claude Code has Terse's deepest integration: exact token counts, cache read/write efficiency, and 30-day historical backfill via JSONL streaming. Cline is tracked via process and config detection with session-level stats and cost estimates. The optimizer, Terse Doctor, and the budget circuit breaker deliver the same full value for Cline."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse compress the prompts I type into Cline?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse captures the text field you are typing into — including Cline's chat input in VS Code — and applies its 35+ deterministic compression techniques in one of three modes: Light, Balanced, or Aggressive. Code blocks, file paths, and identifiers are always protected. Typical prompts shrink 40-70% with meaning preserved."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does any of my Cline data leave my machine?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Detection, monitoring, compression, and budget enforcement all run on-device on macOS or Windows. Your prompts and code never leave the machine."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg2:hsl(250,21%,11%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .hero{padding:140px 40px 80px;text-align:center;max-width:900px;margin:0 auto;position:relative}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07),transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:620px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:600px}
+    .divider{height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .demo-box{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;max-width:760px;margin:0 auto 40px}
+    .demo-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .demo-title{margin-left:8px;font-size:11px;color:var(--t3);flex:1}
+    .demo-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+    .mon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px}
+    .mon-cell{padding:14px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;opacity:0;transition:opacity .3s}
+    .mon-cell.show{opacity:1}
+    .mon-cell .k{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+    .mon-cell .v{font-size:20px;font-weight:800;color:var(--t1);font-family:'JetBrains Mono',monospace;margin-top:4px}
+    .mon-cell .v.ac{color:var(--ac)}
+    .mon-foot{padding:0 16px 16px;font-size:11px;color:var(--t3)}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+      .mon-grid{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#pipeline">Pipeline</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Cline</div>
+  <h1>Cline Burning Through <span class="gradient-text">Your API Budget?</span></h1>
+  <p class="sub">Terse compresses the prompts you give Cline by 40–70%, watches every Cline session with live token and cost stats, and trips a budget circuit breaker before a looping task becomes an expensive one.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
+    <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">prompt token reduction</span></div>
+    <div class="stat-pill"><span class="val">Auto</span><span class="lbl">Cline session detection</span></div>
+    <div class="stat-pill"><span class="val">3</span><span class="lbl">budget ceiling types</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">data leaves device</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>How Terse Works with <span class="gradient-text">Cline</span></h2>
+  <p class="section-sub">Terse auto-detects Cline via process and config detection — no plugins, no Cline settings changes — and starts tracking the session immediately.</p>
+
+  <div class="demo-box">
+    <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Terse — Agent Monitor · Cline session</div><div class="demo-badge">Detected</div></div>
+    <div class="mon-grid">
+      <div class="mon-cell" id="c1"><div class="k">Session tokens</div><div class="v">184.2k</div></div>
+      <div class="mon-cell" id="c2"><div class="k">Est. session cost</div><div class="v">$2.41</div></div>
+      <div class="mon-cell" id="c3"><div class="k">Burn rate</div><div class="v">$3.10/hr</div></div>
+      <div class="mon-cell" id="c4"><div class="k">Turns</div><div class="v">27</div></div>
+      <div class="mon-cell" id="c5"><div class="k">Prompt savings today</div><div class="v ac">−58%</div></div>
+      <div class="mon-cell" id="c6"><div class="k">Budget ceiling</div><div class="v ac">$5.00 armed</div></div>
+    </div>
+    <div class="mon-foot">Session-level stats via process &amp; config detection · cost estimated with model-aware pricing</div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">👁️</div>
+      <h3>Auto-Detection</h3>
+      <p>Terse recognizes a running Cline session by process and config — one of 8 agents it detects out of the box. No extension to install inside VS Code.</p>
+      <span class="tag">Zero setup</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">✂️</div>
+      <h3>Prompt Compression</h3>
+      <p>Your task descriptions get the full 35+ technique pipeline — filler, hedging, and redundancy removed in Light, Balanced, or Aggressive mode. 40–70% fewer tokens per prompt.</p>
+      <span class="tag">3 modes</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <h3>Code Protection</h3>
+      <p>Code blocks, file paths, and identifiers in your Cline prompts are always excluded from compression. Only natural-language prose is touched.</p>
+      <span class="tag">Always safe</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🛑</div>
+      <h3>Budget Circuit Breaker</h3>
+      <p>Set a burn-rate, token, or dollar ceiling on Cline. If a task loops, Terse alerts, then pauses (SIGSTOP), then kills (SIGTERM) — before the next API call.</p>
+      <span class="tag">Spend cap</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🩺</div>
+      <h3>Terse Doctor</h3>
+      <p>~25 consent-gated scans catch waste around your whole setup: agent loops, duplicate tool calls, redundant file reads, MCP bloat, context burn — with one-click fixes.</p>
+      <span class="tag">~25 scans</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔔</div>
+      <h3>Alert Center</h3>
+      <p>9 alert kinds delivered where you are — macOS notifications, Slack webhook, or ntfy.sh push to your phone — plus a weekly savings digest.</p>
+      <span class="tag">9 alerts</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Honest About <span class="gradient-text">Monitoring Depth</span></h2>
+  <p class="section-sub">Not every agent exposes the same telemetry. Here's exactly what you get with Cline versus Claude Code.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px">
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">Cline — process &amp; config detection</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Session detection &amp; history</span><span style="font-weight:600;color:var(--ac)">✓</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Session token &amp; cost stats</span><span style="font-weight:600;color:var(--ac)">✓ estimated</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Burn rate &amp; budget breaker</span><span style="font-weight:600;color:var(--ac)">✓</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Prompt optimizer &amp; Doctor</span><span style="font-weight:600;color:var(--ac)">✓ full</span></div>
+        <div style="height:1px;background:var(--bd);margin:4px 0"></div>
+        <div style="font-size:12px;color:var(--t3)">Lighter telemetry — but the optimizer, Doctor, and breaker deliver their full value on every Cline session.</div>
+      </div>
+    </div>
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--acm);border-radius:14px;background:linear-gradient(160deg,rgba(110,231,183,0.05),var(--bg2))">
+      <div style="font-size:12px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">Claude Code — deepest integration</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Exact input/output tokens from JSONL session streaming</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Cache read/write efficiency, per-turn cost, context-window fill %</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">30-day historical backfill + session replay export</span></div>
+        <div style="margin-top:8px;padding:10px 14px;background:var(--acd);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)">Run both? Terse tracks Cline and Claude Code side by side.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about using Terse with Cline.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">How does Terse detect Cline?</div>
+      <div class="faq-a">Via process and configuration detection — no plugins or Cline settings changes. Detected sessions appear in the agent monitor with token usage, estimated per-turn cost, burn rate, and session history.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Why does Cline use so many tokens?</div>
+      <div class="faq-a">Every autonomous turn re-sends instructions, file context, and history — and tool loops multiply it. Terse compresses your prompts 40–70% and its circuit breaker stops a looping session before the next API call.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can I set a spending limit for Cline?</div>
+      <div class="faq-a">Yes. Set a burn-rate, token, or dollar ceiling in the budget circuit breaker. On breach, Terse escalates alert → SIGSTOP pause → SIGTERM kill, enforced before the next API call, with one-click resume.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Is Cline monitoring as deep as Claude Code?</div>
+      <div class="faq-a">No — Claude Code gets exact tokens, cache efficiency, and 30-day backfill via JSONL streaming. Cline gets process/config detection with session-level stats and estimates. Optimizer, Doctor, and breaker work fully for both.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does Terse compress prompts I type into Cline?</div>
+      <div class="faq-a">Yes — the 35+ technique pipeline runs in Light, Balanced, or Aggressive mode on the text you type, with code blocks, paths, and identifiers always protected. Typical reduction is 40–70%.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does any Cline data leave my machine?</div>
+      <div class="faq-a">No. Detection, monitoring, compression, and budget enforcement all run on-device on macOS or Windows.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">Terse supports every major AI coding agent — 8 detected automatically.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card"><span style="font-size:18px">⚡</span><span>Claude Code — CLI Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-cursor" class="also-card"><span style="font-size:18px">✦</span><span>Cursor — AI Editor</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-windsurf" class="also-card"><span style="font-size:18px">🌊</span><span>Windsurf — Cascade Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-codex" class="also-card"><span style="font-size:18px">🖥️</span><span>OpenAI Codex — CLI</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/agent-budget-circuit-breaker" class="also-card"><span style="font-size:18px">🛑</span><span>Budget Circuit Breaker</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Put a Butler Behind <span class="gradient-text">Every Cline Task</span></h2>
+  <p>30-day free trial. No credit card required until your trial ends. Cancel anytime.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="/#pricing" class="btn-primary">Start Free Trial</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent butler for AI coding tools. Compress prompts, watch every agent, cap the spend. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-cline">Cline</a><a href="/for-windsurf">Windsurf</a><a href="/for-codex">OpenAI Codex</a><a href="/for-openclaw">OpenClaw</a></div>
+    <div class="footer-col"><h4>Product</h4><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="/terse-vs-llmlingua">Terse vs LLMLingua</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Windows · Rust</span></div>
+</footer>
+
+<script>
+(function(){
+  const cells = ['c1','c2','c3','c4','c5','c6'].map(id=>document.getElementById(id));
+  let started = false;
+  function run(){
+    if(started) return; started = true;
+    cells.forEach((el,i)=>setTimeout(()=>el.classList.add('show'), 300+i*180));
+  }
+  const obs = new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)run();}),{threshold:0.3});
+  obs.observe(document.querySelector('.demo-box'));
+})();
+</script>
+</body>
+</html>

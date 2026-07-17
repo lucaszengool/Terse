@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse — Features in Motion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-page: #CFDB72;
+    --bg-phone: #D6E07E;
+    --ink: #111210;
+    --ink-soft: #5a5d4e;
+    --ink-faint: #767867;
+    --accent: #2f6b1c;
+    --accent-soft: #5a8a3e;
+    --line: #1a1c18;
+    --card: #ECF1B8;
+    --card-line: rgba(20,30,5,0.10);
+    --total: 36s;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg-page);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 56px 24px 60px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--ink);
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* paper grain */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 3px 3px, 5px 5px;
+    background-position: 0 0, 1px 2px;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.55;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(60,80,20,0.10) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ── Headline area ── */
+  .headline {
+    text-align: center;
+    min-height: 140px;
+    position: relative;
+    width: 100%;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+  }
+  .eyebrow .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* Title slot — each title fades in for its scene */
+  .title-stack {
+    position: relative;
+    height: 96px;
+  }
+  .title {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    opacity: 0;
+  }
+  .title h1 {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1.0;
+    color: var(--ink);
+    letter-spacing: -1.6px;
+  }
+  .title h1 em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -1.0px;
+  }
+  .title p {
+    margin-top: 8px;
+    font-size: 12.5px;
+    font-weight: 400;
+    color: var(--ink-soft);
+    letter-spacing: 0.1px;
+    line-height: 1.45;
+  }
+
+  /* Title animations — 36s cycle, 6 scenes × 6s each */
+  .title-1 { animation: t1 var(--total) infinite; }
+  .title-2 { animation: t2 var(--total) infinite; }
+  .title-3 { animation: t3 var(--total) infinite; }
+  .title-4 { animation: t4 var(--total) infinite; }
+  .title-5 { animation: t5 var(--total) infinite; }
+  .title-6 { animation: t6 var(--total) infinite; }
+
+  @keyframes t1 { 0%,14% {opacity:1;} 17%,100% {opacity:0;} }
+  @keyframes t2 { 0%,14% {opacity:0;} 17%,30% {opacity:1;} 33%,100% {opacity:0;} }
+  @keyframes t3 { 0%,30% {opacity:0;} 33%,47% {opacity:1;} 50%,100% {opacity:0;} }
+  @keyframes t4 { 0%,47% {opacity:0;} 50%,64% {opacity:1;} 67%,100% {opacity:0;} }
+  @keyframes t5 { 0%,64% {opacity:0;} 67%,81% {opacity:1;} 84%,100% {opacity:0;} }
+  @keyframes t6 { 0%,81% {opacity:0;} 84%,97% {opacity:1;} 100% {opacity:0;} }
+
+  /* ── Phone ── */
+  .phone-wrap {
+    margin-top: 4px; /* very tight gap between text and phone */
+    position: relative;
+  }
+  .phone-wrap::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -38px;
+    transform: translateX(-50%);
+    width: 75%;
+    height: 40px;
+    background: radial-gradient(ellipse, rgba(40,60,10,0.20) 0%, transparent 70%);
+    filter: blur(14px);
+    z-index: -1;
+  }
+
+  .phone {
+    width: 320px;
+    height: 716px;
+    background: var(--bg-phone);
+    border: 1.2px solid var(--line);
+    border-radius: 46px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.4) inset,
+      0 30px 60px -20px rgba(40,60,10,0.18);
+    flex-shrink: 0;
+  }
+
+  .di {
+    position: absolute;
+    top: 11px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 28px;
+    background: var(--line);
+    border-radius: 16px;
+    z-index: 10;
+  }
+
+  .sb {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 22px 0;
+    z-index: 5;
+  }
+  .sb-time {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+  }
+  .sb-right { display: flex; align-items: center; gap: 5px; }
+  .signal {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5px;
+    height: 9px;
+  }
+  .signal b {
+    width: 2.5px;
+    background: var(--ink);
+    border-radius: 1px;
+    display: block;
+  }
+  .signal b:nth-child(1) { height: 3px; }
+  .signal b:nth-child(2) { height: 5px; }
+  .signal b:nth-child(3) { height: 7px; opacity: 0.3; }
+  .signal b:nth-child(4) { height: 9px; opacity: 0.3; }
+  .wifi-svg { width: 13px; height: 10px; }
+  .batt {
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 4px;
+    border-radius: 3px;
+    letter-spacing: -0.2px;
+    line-height: 1;
+    opacity: 0.85;
+  }
+
+  /* ── Scene container ── */
+  .stage {
+    position: absolute;
+    inset: 60px 24px 50px 24px;
+    overflow: hidden;
+  }
+  .scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .scene-1 { animation: s1 var(--total) infinite; }
+  .scene-2 { animation: s2 var(--total) infinite; }
+  .scene-3 { animation: s3 var(--total) infinite; }
+  .scene-4 { animation: s4 var(--total) infinite; }
+  .scene-5 { animation: s5 var(--total) infinite; }
+  .scene-6 { animation: s6 var(--total) infinite; }
+
+  @keyframes s1 { 0%,14% {opacity:1;} 17%,100% {opacity:0;} }
+  @keyframes s2 { 0%,14% {opacity:0;} 17%,30% {opacity:1;} 33%,100% {opacity:0;} }
+  @keyframes s3 { 0%,30% {opacity:0;} 33%,47% {opacity:1;} 50%,100% {opacity:0;} }
+  @keyframes s4 { 0%,47% {opacity:0;} 50%,64% {opacity:1;} 67%,100% {opacity:0;} }
+  @keyframes s5 { 0%,64% {opacity:0;} 67%,81% {opacity:1;} 84%,100% {opacity:0;} }
+  @keyframes s6 { 0%,81% {opacity:0;} 84%,97% {opacity:1;} 100% {opacity:0;} }
+
+  /* ── Scene 1: Brand ── */
+  .brand {
+    text-align: center;
+    transform: translateY(-10px);
+  }
+  .brand .glyph {
+    width: 30px;
+    height: 30px;
+    margin: 0 auto 18px;
+    opacity: 0.9;
+    animation: floaty 4s ease-in-out infinite;
+  }
+  @keyframes floaty {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  .brand .word {
+    font-family: 'Fraunces', serif;
+    font-size: 64px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -3px;
+    line-height: 0.95;
+  }
+  .brand .sub {
+    margin-top: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .brand .divider {
+    margin: 24px auto 0;
+    width: 28px;
+    height: 1px;
+    background: var(--ink);
+    opacity: 0.25;
+  }
+  .brand .tagline {
+    margin-top: 20px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  /* ── Scene 2: Token reduction ── */
+  .reduce {
+    width: 100%;
+    padding: 0 4px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-line);
+    border-radius: 14px;
+    padding: 14px;
+    position: relative;
+  }
+  .card-label {
+    font-size: 9.5px;
+    font-weight: 500;
+    color: var(--ink-faint);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .card-body {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .card-meta {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px dashed var(--card-line);
+  }
+  .meta-tokens {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .meta-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 100px;
+    letter-spacing: 0.3px;
+  }
+  .meta-badge.before {
+    background: rgba(60,80,10,0.1);
+    color: var(--ink-soft);
+  }
+  .meta-badge.after {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .arrow-down {
+    width: 24px;
+    height: 24px;
+    margin: 12px auto;
+    color: var(--accent);
+    opacity: 0;
+    animation: arrowIn var(--total) infinite;
+  }
+  @keyframes arrowIn {
+    0%, 17% { opacity: 0; transform: translateY(-8px); }
+    20%, 30% { opacity: 1; transform: translateY(0); }
+    33%, 100% { opacity: 0; }
+  }
+
+  .card-original {
+    opacity: 0;
+    animation: cardIn1 var(--total) infinite;
+  }
+  @keyframes cardIn1 {
+    0%, 15% { opacity: 0; transform: translateY(8px); }
+    18%, 30% { opacity: 1; transform: translateY(0); }
+    33%, 100% { opacity: 0; }
+  }
+
+  .card-optimized {
+    opacity: 0;
+    animation: cardIn2 var(--total) infinite;
+    background: #fff;
+    border-color: rgba(47,107,28,0.25);
+    box-shadow: 0 4px 14px rgba(47,107,28,0.10);
+  }
+  @keyframes cardIn2 {
+    0%, 20% { opacity: 0; transform: translateY(8px); }
+    23%, 30% { opacity: 1; transform: translateY(0); }
+    33%, 100% { opacity: 0; }
+  }
+
+  /* ── Scene 3: Three modes ── */
+  .modes {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 4px;
+  }
+  .mode {
+    background: var(--card);
+    border: 1px solid var(--card-line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+  }
+  .mode-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(47,107,28,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+  .mode-text { flex: 1; }
+  .mode-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+  }
+  .mode-desc {
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+    line-height: 1.35;
+  }
+  .mode-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .mode-1 { animation: modeIn1 var(--total) infinite; }
+  .mode-2 { animation: modeIn2 var(--total) infinite; }
+  .mode-3 { animation: modeIn3 var(--total) infinite; }
+  @keyframes modeIn1 {
+    0%, 33% { opacity: 0; transform: translateX(-10px); }
+    36%, 47% { opacity: 1; transform: translateX(0); }
+    50%, 100% { opacity: 0; }
+  }
+  @keyframes modeIn2 {
+    0%, 36% { opacity: 0; transform: translateX(-10px); }
+    39%, 47% { opacity: 1; transform: translateX(0); }
+    50%, 100% { opacity: 0; }
+  }
+  @keyframes modeIn3 {
+    0%, 39% { opacity: 0; transform: translateX(-10px); }
+    42%, 47% { opacity: 1; transform: translateX(0); }
+    50%, 100% { opacity: 0; }
+  }
+
+  /* ── Scene 4: Anywhere ── */
+  .apps {
+    width: 100%;
+    padding: 0 4px;
+  }
+  .apps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .app {
+    background: var(--card);
+    border: 1px solid var(--card-line);
+    border-radius: 14px;
+    padding: 14px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    opacity: 0;
+  }
+  .app-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    background: rgba(20,30,5,0.06);
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .app-name {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: -0.1px;
+  }
+  .app .check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .app-1 { animation: appIn1 var(--total) infinite; }
+  .app-2 { animation: appIn2 var(--total) infinite; }
+  .app-3 { animation: appIn3 var(--total) infinite; }
+  .app-4 { animation: appIn4 var(--total) infinite; }
+  .app-5 { animation: appIn5 var(--total) infinite; }
+  .app-6 { animation: appIn6 var(--total) infinite; }
+  @keyframes appIn1 { 0%,50% {opacity:0; transform:scale(0.85);} 52%,64% {opacity:1; transform:scale(1);} 67%,100% {opacity:0;} }
+  @keyframes appIn2 { 0%,51% {opacity:0; transform:scale(0.85);} 53%,64% {opacity:1; transform:scale(1);} 67%,100% {opacity:0;} }
+  @keyframes appIn3 { 0%,52% {opacity:0; transform:scale(0.85);} 54%,64% {opacity:1; transform:scale(1);} 67%,100% {opacity:0;} }
+  @keyframes appIn4 { 0%,53% {opacity:0; transform:scale(0.85);} 55%,64% {opacity:1; transform:scale(1);} 67%,100% {opacity:0;} }
+  @keyframes appIn5 { 0%,54% {opacity:0; transform:scale(0.85);} 56%,64% {opacity:1; transform:scale(1);} 67%,100% {opacity:0;} }
+  @keyframes appIn6 { 0%,55% {opacity:0; transform:scale(0.85);} 57%,64% {opacity:1; transform:scale(1);} 67%,100% {opacity:0;} }
+
+  .apps-meta {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ── Scene 5: Languages ── */
+  .langs {
+    width: 100%;
+    padding: 0 4px;
+  }
+  .lang-card {
+    background: var(--card);
+    border: 1px solid var(--card-line);
+    border-radius: 14px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .lang-orig {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--ink);
+    line-height: 1.6;
+    position: relative;
+  }
+  .lang-orig span {
+    display: block;
+    opacity: 0;
+  }
+  .lang-orig .en { animation: langIn1 var(--total) infinite; }
+  .lang-orig .cn { animation: langIn2 var(--total) infinite; }
+  .lang-orig .jp { animation: langIn3 var(--total) infinite; }
+  .lang-orig .fr { animation: langIn4 var(--total) infinite; }
+  .lang-orig .es { animation: langIn5 var(--total) infinite; }
+  @keyframes langIn1 { 0%,67% {opacity:0; transform:translateX(-6px);} 69%,81% {opacity:1; transform:translateX(0);} 84%,100% {opacity:0;} }
+  @keyframes langIn2 { 0%,69% {opacity:0; transform:translateX(-6px);} 71%,81% {opacity:1; transform:translateX(0);} 84%,100% {opacity:0;} }
+  @keyframes langIn3 { 0%,71% {opacity:0; transform:translateX(-6px);} 73%,81% {opacity:1; transform:translateX(0);} 84%,100% {opacity:0;} }
+  @keyframes langIn4 { 0%,73% {opacity:0; transform:translateX(-6px);} 75%,81% {opacity:1; transform:translateX(0);} 84%,100% {opacity:0;} }
+  @keyframes langIn5 { 0%,75% {opacity:0; transform:translateX(-6px);} 77%,81% {opacity:1; transform:translateX(0);} 84%,100% {opacity:0;} }
+
+  .lang-meta {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ── Scene 6: CTA / Stats ── */
+  .cta-scene {
+    width: 100%;
+    padding: 0 8px;
+    text-align: center;
+  }
+  .stats-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .stat {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--card-line);
+    border-radius: 14px;
+    padding: 14px 8px;
+  }
+  .stat-num {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .stat-num small {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--ink-soft);
+    letter-spacing: 0;
+  }
+  .stat-label {
+    margin-top: 6px;
+    font-size: 9.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .cta-btn-anim {
+    width: 100%;
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: 100px;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .cta-btn-anim svg { fill: #fff; width: 15px; height: 15px; }
+  .cta-btn-anim span {
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+  }
+  .cta-note-anim {
+    margin-top: 14px;
+    font-size: 10.5px;
+    font-weight: 400;
+    color: var(--ink-faint);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  /* Home indicator */
+  .home-bar {
+    position: absolute;
+    bottom: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 104px;
+    height: 4px;
+    background: var(--line);
+    border-radius: 3px;
+    opacity: 0.75;
+  }
+
+  /* Progress dots */
+  .progress {
+    margin-top: 32px;
+    display: flex;
+    gap: 6px;
+  }
+  .progress .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ink);
+    opacity: 0.2;
+  }
+  .progress .dot.d1 { animation: dotOn1 var(--total) infinite; }
+  .progress .dot.d2 { animation: dotOn2 var(--total) infinite; }
+  .progress .dot.d3 { animation: dotOn3 var(--total) infinite; }
+  .progress .dot.d4 { animation: dotOn4 var(--total) infinite; }
+  .progress .dot.d5 { animation: dotOn5 var(--total) infinite; }
+  .progress .dot.d6 { animation: dotOn6 var(--total) infinite; }
+  @keyframes dotOn1 { 0%,14% {opacity:1; transform:scale(1.3);} 17%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dotOn2 { 0%,14% {opacity:0.2;} 17%,30% {opacity:1; transform:scale(1.3);} 33%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dotOn3 { 0%,30% {opacity:0.2;} 33%,47% {opacity:1; transform:scale(1.3);} 50%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dotOn4 { 0%,47% {opacity:0.2;} 50%,64% {opacity:1; transform:scale(1.3);} 67%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dotOn5 { 0%,64% {opacity:0.2;} 67%,81% {opacity:1; transform:scale(1.3);} 84%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dotOn6 { 0%,81% {opacity:0.2;} 84%,97% {opacity:1; transform:scale(1.3);} 100% {opacity:0.2; transform:scale(1);} }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="headline">
+    <div class="eyebrow"><span class="dot"></span> Terse for Mac</div>
+
+    <div class="title-stack">
+      <!-- 6 titles, each animated -->
+      <div class="title title-1">
+        <h1>Save Tokens.<br><em>Save Money.</em></h1>
+        <p>A quietly intelligent prompt optimizer.</p>
+      </div>
+      <div class="title title-2">
+        <h1>Reduce tokens <em>up to 70%.</em></h1>
+        <p>Same intent. Fewer words. Lower bills.</p>
+      </div>
+      <div class="title title-3">
+        <h1>Three smart <em>modes.</em></h1>
+        <p>Soft, Normal, Aggressive — your call.</p>
+      </div>
+      <div class="title title-4">
+        <h1>Works <em>everywhere.</em></h1>
+        <p>Browser, editor, agent — anywhere you type.</p>
+      </div>
+      <div class="title title-5">
+        <h1>Speaks <em>any language.</em></h1>
+        <p>Optimization that travels with you.</p>
+      </div>
+      <div class="title title-6">
+        <h1>Ready when <em>you are.</em></h1>
+        <p>Start free. 500 optimizations a week.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phone -->
+  <div class="phone-wrap">
+    <div class="phone">
+
+      <div class="di"></div>
+
+      <div class="sb">
+        <span class="sb-time">21:06</span>
+        <div class="sb-right">
+          <div class="signal"><b></b><b></b><b></b><b></b></div>
+          <svg class="wifi-svg" viewBox="0 0 24 17" fill="#111210" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3.8C8.3 3.8 5 5.3 2.6 7.7L0 5.1C3.1 2 7.3 0 12 0s8.9 2 12 5.1l-2.6 2.6C19 5.3 15.7 3.8 12 3.8zm0 5.4c-2.4 0-4.5.9-6.1 2.4L3.6 9.3C5.7 7.2 8.7 6 12 6s6.3 1.2 8.4 3.3l-2.3 2.3C16.5 10.1 14.4 9.2 12 9.2zm0 5.3c-1.2 0-2.3.5-3.1 1.3L12 19.5l3.1-3.1c-.8-.9-1.9-1.4-3.1-1.4z"/>
+          </svg>
+          <div class="batt">98</div>
+        </div>
+      </div>
+
+      <div class="stage">
+
+        <!-- ── Scene 1: Brand ── -->
+        <div class="scene scene-1">
+          <div class="brand">
+            <div class="glyph">
+              <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:#111210">
+                <circle cx="16" cy="6" r="3"/>
+                <path d="M16 9 V20"/>
+                <path d="M16 20 L10 28"/>
+                <path d="M16 20 L22 28"/>
+                <circle cx="10" cy="28" r="2"/>
+                <circle cx="22" cy="28" r="2"/>
+              </svg>
+            </div>
+            <div class="word">Terse</div>
+            <div class="sub">Prompt Optimizer</div>
+            <div class="divider"></div>
+            <div class="tagline">“The art of saying<br>more with less.”</div>
+          </div>
+        </div>
+
+        <!-- ── Scene 2: Token reduction ── -->
+        <div class="scene scene-2">
+          <div class="reduce">
+            <div class="card card-original">
+              <div class="card-label">Original Prompt</div>
+              <div class="card-body">Could you please kindly help me write a Python function that calculates the factorial of a given number?</div>
+              <div class="card-meta">
+                <span class="meta-tokens">tokens</span>
+                <span class="meta-badge before">147</span>
+              </div>
+            </div>
+            <div class="arrow-down">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <polyline points="5 12 12 19 19 12"/>
+              </svg>
+            </div>
+            <div class="card card-optimized">
+              <div class="card-label" style="color:var(--accent)">Optimized</div>
+              <div class="card-body">Write Python factorial function.</div>
+              <div class="card-meta">
+                <span class="meta-tokens">tokens · −70%</span>
+                <span class="meta-badge after">44</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Scene 3: Three modes ── -->
+        <div class="scene scene-3">
+          <div class="modes">
+            <div class="mode mode-1">
+              <div class="mode-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+              </div>
+              <div class="mode-text">
+                <div class="mode-name">Soft</div>
+                <div class="mode-desc">Typo fixes, whitespace clean</div>
+              </div>
+              <div class="mode-pct">~15%</div>
+            </div>
+            <div class="mode mode-2">
+              <div class="mode-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+              </div>
+              <div class="mode-text">
+                <div class="mode-name">Normal</div>
+                <div class="mode-desc">Removes filler & hedging</div>
+              </div>
+              <div class="mode-pct">~45%</div>
+            </div>
+            <div class="mode mode-3">
+              <div class="mode-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 10-14h-6l0-6z" fill="currentColor"/></svg>
+              </div>
+              <div class="mode-text">
+                <div class="mode-name">Aggressive</div>
+                <div class="mode-desc">Maximum compression</div>
+              </div>
+              <div class="mode-pct">~70%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Scene 4: Anywhere ── -->
+        <div class="scene scene-4">
+          <div class="apps">
+            <div class="apps-grid">
+              <div class="app app-1">
+                <div class="app-icon">◐</div>
+                <div class="app-name">Browser</div>
+                <span class="check">✓</span>
+              </div>
+              <div class="app app-2">
+                <div class="app-icon">⌘</div>
+                <div class="app-name">ChatGPT</div>
+                <span class="check">✓</span>
+              </div>
+              <div class="app app-3">
+                <div class="app-icon">⌥</div>
+                <div class="app-name">Claude</div>
+                <span class="check">✓</span>
+              </div>
+              <div class="app app-4">
+                <div class="app-icon">⊕</div>
+                <div class="app-name">VS Code</div>
+                <span class="check">✓</span>
+              </div>
+              <div class="app app-5">
+                <div class="app-icon">✎</div>
+                <div class="app-name">Notes</div>
+                <span class="check">✓</span>
+              </div>
+              <div class="app app-6">
+                <div class="app-icon">✱</div>
+                <div class="app-name">Anywhere</div>
+                <span class="check">✓</span>
+              </div>
+            </div>
+            <div class="apps-meta">Captures via accessibility · Always on</div>
+          </div>
+        </div>
+
+        <!-- ── Scene 5: Languages ── -->
+        <div class="scene scene-5">
+          <div class="langs">
+            <div class="lang-card">
+              <div class="lang-orig">
+                <span class="en"><span style="color:var(--ink-faint)">EN</span>  Write factorial function.</span>
+                <span class="cn"><span style="color:var(--ink-faint)">ZH</span>  写阶乘函数。</span>
+                <span class="jp"><span style="color:var(--ink-faint)">JP</span>  階乗関数を書く。</span>
+                <span class="fr"><span style="color:var(--ink-faint)">FR</span>  Écris fonction factorielle.</span>
+                <span class="es"><span style="color:var(--ink-faint)">ES</span>  Escribe función factorial.</span>
+              </div>
+            </div>
+            <div class="lang-meta">Same meaning · Fewer tokens · Any tongue</div>
+          </div>
+        </div>
+
+        <!-- ── Scene 6: Stats + CTA ── -->
+        <div class="scene scene-6">
+          <div class="cta-scene">
+            <div class="stats-row">
+              <div class="stat">
+                <div class="stat-num">1.2<small>M</small></div>
+                <div class="stat-label">tokens saved</div>
+              </div>
+              <div class="stat">
+                <div class="stat-num">$8<small>.43</small></div>
+                <div class="stat-label">this month</div>
+              </div>
+            </div>
+            <button class="cta-btn-anim">
+              <svg viewBox="0 0 24 24"><path d="M12 12c2.65 0 4.8-2.15 4.8-4.8S14.65 2.4 12 2.4 7.2 4.55 7.2 7.2 9.35 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+              <span>Sign in to get started</span>
+            </button>
+            <div class="cta-note-anim">Free · 500 / week</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="home-bar"></div>
+    </div>
+  </div>
+
+  <!-- Scene progress dots -->
+  <div class="progress">
+    <span class="dot d1"></span>
+    <span class="dot d2"></span>
+    <span class="dot d3"></span>
+    <span class="dot d4"></span>
+    <span class="dot d5"></span>
+    <span class="dot d6"></span>
+  </div>
+
+</div>
+</body>
+</html>

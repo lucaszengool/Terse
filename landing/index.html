@@ -37,6 +37,9 @@
   <meta name="author" content="Terse">
   <meta name="keywords" content="token optimization, AI cost reduction, prompt compression, Claude Code, Cursor, ChatGPT, LLM token savings, AI agent monitor, reduce AI API costs, prompt optimizer, reduce Claude Code costs, cursor token optimizer, macOS AI tool, AI session monitor, LLM token cost tracker">
   <link rel="canonical" href="https://www.terseai.org/">
+  <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
+  <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/">
+  <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
 
   <!-- LLM ingestion files -->
   <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-friendly site summary">
@@ -71,8 +74,8 @@
         "name": "Terse",
         "url": "https://www.terseai.org",
         "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "macOS",
-        "description": "Terse is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider.",
+        "operatingSystem": "macOS, Windows",
+        "description": "Terse is an on-device AI agent butler for macOS and Windows that cuts token costs 40-70%: prompt compression, live monitoring of 8 coding agents (Claude Code, Cursor, Codex, Copilot CLI, Cline, Windsurf, OpenClaw, Aider), a budget circuit breaker that pauses runaway agents, MCP server management with security risk scoring, and Terse Doctor waste scans.",
         "offers": [
           {
             "@type": "Offer",
@@ -91,26 +94,21 @@
         ],
         "featureList": [
           "40-70% token cost reduction on AI prompts",
-          "Real-time agent session monitoring with per-turn cost tracking",
-          "Duplicate tool call detection",
-          "Redundant file read flagging",
-          "20+ token reduction techniques including spell correction",
+          "Live monitoring of 8 coding agents: Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider",
+          "Budget circuit breaker — pauses or kills runaway agents before the next API call",
+          "MCP server manager with security risk scoring",
+          "Terse Doctor: 25 scans for cache waste, duplicate tool calls, redundant reads, context burn",
+          "Per-turn cost, cache efficiency, burn rate, and context-window tracking",
+          "35+ token reduction techniques including spell correction",
           "3 optimization modes: Soft, Normal, Aggressive",
-          "Auto-detects Claude Code, Cursor, OpenClaw, Aider",
+          "Alert Center with Slack and push notifications, weekly savings digest",
           "CLAUDE.md rule generation from session patterns",
           "100% on-device, zero cloud dependency"
         ],
         "screenshot": "https://www.terseai.org/og-image.png",
-        "softwareVersion": "1.2.0",
+        "softwareVersion": "1.3.3",
         "datePublished": "2026-01-15",
-        "dateModified": "2026-04-25",
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.8",
-          "reviewCount": "47",
-          "bestRating": "5",
-          "worstRating": "1"
-        }
+        "dateModified": "2026-07-17"
       },
       {
         "@type": "WebSite",
@@ -3252,9 +3250,9 @@ async function handleNewsletterSubmit(e) {
 <footer>
   <div class="footer-inner">
     <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">Token optimizer + team analytics. Compress prompts, monitor agent sessions, detect duplicates &mdash; and track your whole team's AI spend with Terse Cloud.</p></div>
-    <div class="footer-col"><h4 data-i18n="footer.product">Product</h4><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#techniques" data-i18n="footer.techniques">Techniques</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="#dl" data-i18n="footer.download">Download</a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener">GitHub ★</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.product">Product</h4><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#techniques" data-i18n="footer.techniques">Techniques</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="#dl" data-i18n="footer.download">Download</a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener">GitHub ★</a></div>
     <div class="footer-col"><h4 data-i18n="footer.techniques">Techniques</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">Spell Correction</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">Pattern Optimization</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP Analysis</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">Telegraph Compression</a></div>
-    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/for-github-copilot">Terse for GitHub Copilot</a><a href="/for-aider">Terse for Aider</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="/i-built-an-app-to-steal-50m-back">How Terse Works</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">Refund Policy</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/blog">Blog</a><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/for-github-copilot">Terse for GitHub Copilot</a><a href="/for-aider">Terse for Aider</a><a href="/for-cline">Terse for Cline</a><a href="/for-windsurf">Terse for Windsurf</a><a href="/for-codex">Terse for Codex</a><a href="/terse-vs-llmlingua">Terse vs LLMLingua</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="/i-built-an-app-to-steal-50m-back">How Terse Works</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">Refund Policy</a></div>
     <div class="footer-col"><h4 data-i18n="footer.support">Support</h4><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Ask a question</a><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Join our Slack</a><a href="mailto:support@terseai.org">Email support</a></div>
   </div>
   <div class="footer-bottom"><span data-i18n="footer.copyright">&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>

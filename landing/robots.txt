@@ -3,6 +3,8 @@
 
 User-agent: *
 Allow: /
+# Block utility pages
+Disallow: /auth-callback.html
 
 # Allow AI crawlers explicitly
 User-agent: GPTBot
@@ -37,8 +39,5 @@ Allow: /
 
 User-agent: YouBot
 Allow: /
-
-# Block utility pages
-Disallow: /auth-callback.html
 
 Sitemap: https://www.terseai.org/sitemap.xml

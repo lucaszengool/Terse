@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse — Token Optimizer · Space Promo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #000008;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  }
+  #canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+  #ui-layer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #hud {
+    position: absolute;
+    top: 28px; left: 32px;
+    font-family: 'SF Mono', 'Courier New', monospace;
+    font-size: 11px;
+    color: #00f0ff;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1);
+    text-shadow: 0 0 12px rgba(0,240,255,0.8);
+  }
+  #hud.visible { opacity: 1; transform: translateX(0); }
+  #hud-line2 {
+    font-size: 9px;
+    color: rgba(0,240,255,0.6);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+  #caption {
+    position: absolute;
+    bottom: 80px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    color: #ffffff;
+    font-size: 18px;
+    max-width: 640px;
+    line-height: 1.6;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 0 40px rgba(0,100,255,0.3);
+    font-weight: 300;
+    letter-spacing: 0.5px;
+  }
+  #caption.visible { opacity: 1; }
+  #scene-dots {
+    position: absolute;
+    bottom: 32px; left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(0,240,255,0.25);
+    transition: all 0.4s ease;
+  }
+  .dot.active {
+    background: #00f0ff;
+    box-shadow: 0 0 8px rgba(0,240,255,0.8);
+    width: 18px; border-radius: 3px;
+  }
+  /* VOID scene text */
+  #void-text {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    text-align: center;
+    color: rgba(255,255,255,0.85);
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 3px;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    text-shadow: 0 0 40px rgba(255,255,255,0.3);
+  }
+  #void-text .sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 10px;
+    letter-spacing: 4px;
+  }
+  #void-text.visible { opacity: 1; }
+  /* Holographic panels */
+  .holo-panel {
+    position: absolute;
+    background: rgba(8,16,48,0.85);
+    border: 1px solid rgba(0,200,255,0.4);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-family: 'SF Mono', 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(0,240,255,0.9);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 40px rgba(0,200,255,0.3), inset 0 0 20px rgba(0,100,255,0.05);
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+    transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1);
+    pointer-events: none;
+    min-width: 260px;
+  }
+  .holo-panel.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  .holo-panel .panel-title {
+    color: #00f0ff;
+    font-size: 10px;
+    letter-spacing: 2px;
+    border-bottom: 1px solid rgba(0,200,255,0.2);
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .holo-panel .panel-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 7px;
+    gap: 12px;
+  }
+  .holo-panel .dot-green { color: #00ff88; }
+  .holo-panel .dot-cyan { color: #00f0ff; }
+  .holo-panel .dot-yellow { color: #ffcc00; }
+  .holo-panel .saving { color: #00ff88; font-weight: bold; }
+  .holo-panel .route { color: #ffcc00; font-size: 10px; }
+  #panel-monitor {
+    left: 6%;
+    top: 50%;
+    transform: translateY(-50%) translateX(-10px) scale(0.96);
+  }
+  #panel-monitor.visible {
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+  #panel-stats {
+    right: 6%;
+    top: 50%;
+    transform: translateY(-50%) translateX(10px) scale(0.96);
+  }
+  #panel-stats.visible {
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+  /* Big central pulse number */
+  #center-saving {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    font-size: 72px;
+    font-weight: 800;
+    color: #00f0ff;
+    text-shadow: 0 0 60px rgba(0,240,255,0.9), 0 0 120px rgba(0,200,255,0.4);
+    opacity: 0;
+    letter-spacing: -2px;
+    transition: opacity 0.8s ease;
+    pointer-events: none;
+  }
+  #center-saving.visible { opacity: 1; }
+  /* Terse app window */
+  #app-window {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%) scale(0.9);
+    width: 340px;
+    background: rgba(10,12,30,0.92);
+    border: 1px solid rgba(100,140,255,0.3);
+    border-radius: 12px;
+    box-shadow: 0 0 80px rgba(60,100,255,0.4), 0 30px 60px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08);
+    opacity: 0;
+    transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+    pointer-events: none;
+    overflow: hidden;
+  }
+  #app-window.visible {
+    opacity: 1;
+    transform: translate(-50%,-50%) scale(1);
+  }
+  .window-titlebar {
+    background: rgba(30,35,70,0.9);
+    padding: 11px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(100,140,255,0.15);
+  }
+  .window-dots { display: flex; gap: 6px; }
+  .window-dot {
+    width: 11px; height: 11px; border-radius: 50%;
+  }
+  .window-dot.red { background: #ff5f57; }
+  .window-dot.yellow { background: #febc2e; }
+  .window-dot.green { background: #28c840; }
+  .window-title {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+  .window-body {
+    padding: 20px;
+  }
+  .token-display {
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .token-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .token-count {
+    font-size: 48px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -2px;
+    text-shadow: 0 0 30px rgba(100,160,255,0.5);
+    transition: color 0.3s;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', monospace;
+  }
+  .token-count.optimizing { color: #00f0ff; }
+  .mode-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .mode-btn {
+    flex: 1;
+    padding: 7px 4px;
+    border-radius: 6px;
+    border: 1px solid rgba(100,140,255,0.2);
+    background: rgba(30,40,90,0.5);
+    color: rgba(255,255,255,0.4);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-align: center;
+    font-family: 'SF Mono', monospace;
+  }
+  .mode-btn.active {
+    border-color: rgba(0,200,255,0.6);
+    background: rgba(0,100,200,0.3);
+    color: #00f0ff;
+    box-shadow: 0 0 15px rgba(0,200,255,0.2);
+  }
+  .savings-line {
+    text-align: center;
+    font-size: 12px;
+    color: rgba(0,255,136,0.9);
+    letter-spacing: 0.5px;
+    border-top: 1px solid rgba(100,140,255,0.1);
+    padding-top: 12px;
+  }
+  /* CTA scene */
+  #cta-left, #cta-right {
+    position: absolute;
+    top: 40%;
+    width: 260px;
+    background: rgba(8,16,48,0.88);
+    border: 1px solid rgba(0,200,255,0.4);
+    border-radius: 12px;
+    padding: 24px 20px;
+    box-shadow: 0 0 50px rgba(0,200,255,0.25);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    pointer-events: all;
+    text-align: center;
+  }
+  #cta-left { left: 12%; transform: translateY(20px) translateX(-10px); }
+  #cta-right { right: 12%; transform: translateY(20px) translateX(10px); }
+  #cta-left.visible { opacity: 1; transform: translateY(0) translateX(0); }
+  #cta-right.visible { opacity: 1; transform: translateY(0) translateX(0); }
+  .cta-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 14px;
+    letter-spacing: 0.3px;
+  }
+  .cta-button {
+    display: inline-block;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, rgba(0,180,255,0.3), rgba(0,100,200,0.4));
+    border: 1px solid rgba(0,200,255,0.6);
+    border-radius: 24px;
+    color: #00f0ff;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    box-shadow: 0 0 25px rgba(0,200,255,0.3);
+    transition: box-shadow 0.3s;
+    pointer-events: all;
+  }
+  .cta-button:hover { box-shadow: 0 0 40px rgba(0,200,255,0.5); }
+  .user-dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+  .user-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(0,240,255,0.4);
+    box-shadow: 0 0 4px rgba(0,240,255,0.4);
+  }
+  .cta-sub {
+    font-size: 11px;
+    color: rgba(0,240,255,0.6);
+    letter-spacing: 1px;
+  }
+  #big-tagline {
+    position: absolute;
+    bottom: 160px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    color: #ffffff;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    opacity: 0;
+    transition: opacity 1s ease;
+    pointer-events: none;
+    text-shadow: 0 0 60px rgba(0,200,255,0.5), 0 2px 20px rgba(0,0,0,0.8);
+    white-space: nowrap;
+  }
+  #big-tagline.visible { opacity: 1; }
+  #big-tagline span { color: #00f0ff; }
+  /* Flash overlay */
+  #flash {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: white;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 999;
+    transition: opacity 0.1s ease;
+  }
+  /* Sparkles canvas */
+  #sparkle-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 8;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  #sparkle-canvas.visible { opacity: 1; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<canvas id="sparkle-canvas"></canvas>
+<div id="flash"></div>
+
+<div id="ui-layer">
+  <!-- HUD top-left -->
+  <div id="hud">
+    <div id="hud-line1">TERSE · MISSION CONTROL</div>
+    <div id="hud-line2" id="hud-sub"></div>
+  </div>
+
+  <!-- Scene 0 void text -->
+  <div id="void-text">
+    <div>每一次 AI 对话，都在消耗金钱</div>
+    <div class="sub">EVERY CONVERSATION HAS A COST</div>
+  </div>
+
+  <!-- Caption bottom-center -->
+  <div id="caption"></div>
+
+  <!-- Scene dots -->
+  <div id="scene-dots">
+    <div class="dot" data-i="0"></div>
+    <div class="dot" data-i="1"></div>
+    <div class="dot" data-i="2"></div>
+    <div class="dot" data-i="3"></div>
+    <div class="dot" data-i="4"></div>
+    <div class="dot" data-i="5"></div>
+    <div class="dot" data-i="6"></div>
+    <div class="dot" data-i="7"></div>
+  </div>
+
+  <!-- Holographic panels (scenes 3-4) -->
+  <div class="holo-panel" id="panel-monitor">
+    <div class="panel-title">■ TERSE MONITOR</div>
+    <div class="panel-row">
+      <span><span class="dot-green">●</span> Chrome</span>
+      <span>52 → 14 tok</span>
+      <span class="saving">-73%</span>
+    </div>
+    <div class="panel-row">
+      <span><span class="dot-cyan">●</span> Claude Code</span>
+      <span>42 → 12 tok</span>
+      <span class="saving">-71%</span>
+    </div>
+    <div class="panel-row">
+      <span><span class="dot-yellow">●</span> Cursor</span>
+      <span>88 → 19 tok</span>
+      <span class="saving">-78%</span>
+    </div>
+    <div class="panel-row" style="margin-top:10px; border-top:1px solid rgba(0,200,255,0.15); padding-top:8px;">
+      <span class="route">⚡ Route: opus → sonnet</span>
+      <span class="saving">-80%↓</span>
+    </div>
+  </div>
+
+  <div class="holo-panel" id="panel-stats">
+    <div class="panel-title">◈ 节省统计</div>
+    <div style="text-align:center; margin-bottom:10px;">
+      <div style="font-size:10px; color:rgba(0,240,255,0.5); letter-spacing:2px; margin-bottom:4px;">本月已节省</div>
+      <div style="font-size:28px; font-weight:700; color:#00ff88; text-shadow:0 0 20px rgba(0,255,136,0.5); letter-spacing:-1px;">¥ 342.50</div>
+    </div>
+    <div class="panel-row">
+      <span style="color:rgba(255,255,255,0.5);">210K → 23K tokens</span>
+    </div>
+    <div style="margin-top:8px;">
+      <div style="font-size:9px; color:rgba(0,240,255,0.5); margin-bottom:5px; letter-spacing:1px;">SAVINGS RATE</div>
+      <div style="background:rgba(0,0,0,0.4); border-radius:3px; height:8px; overflow:hidden;">
+        <div style="width:89%; height:100%; background:linear-gradient(90deg,#00f0ff,#00ff88); border-radius:3px; box-shadow:0 0 8px rgba(0,240,255,0.5);"></div>
+      </div>
+      <div style="font-size:10px; color:rgba(0,240,255,0.7); margin-top:4px; text-align:right;">89%</div>
+    </div>
+  </div>
+
+  <!-- Center saving big number -->
+  <div id="center-saving">-71%</div>
+
+  <!-- App window scene 6 -->
+  <div id="app-window">
+    <div class="window-titlebar">
+      <div class="window-dots">
+        <div class="window-dot red"></div>
+        <div class="window-dot yellow"></div>
+        <div class="window-dot green"></div>
+      </div>
+      <div class="window-title">Terse — Token Optimizer</div>
+    </div>
+    <div class="window-body">
+      <div class="token-display">
+        <div class="token-label">TOKENS USED</div>
+        <div class="token-count" id="token-counter">1847</div>
+      </div>
+      <div class="mode-buttons">
+        <div class="mode-btn">SOFT</div>
+        <div class="mode-btn active">NORMAL</div>
+        <div class="mode-btn">AGGRESSIVE</div>
+      </div>
+      <div class="savings-line" id="savings-line">
+        已节省: 0 tokens · $0.00
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA scene 7 -->
+  <div id="cta-left">
+    <div class="cta-title">免费开始使用</div>
+    <a href="https://terse.ai" class="cta-button">立即下载 →</a>
+    <div class="cta-sub" style="margin-top:12px;">macOS · 永久免费计划</div>
+  </div>
+
+  <div id="cta-right">
+    <div class="cta-title">加入 2,000+ 开发者</div>
+    <div class="user-dots" id="user-dots"></div>
+    <div class="cta-sub">全球开发者正在使用</div>
+  </div>
+
+  <div id="big-tagline">
+    <span>Terse</span> · 让 AI 更便宜 · 更智能 · 更快
+  </div>
+</div>
+
+<script>
+// ─── SEEDED PRNG ───────────────────────────────────────────────────────────────
+function makePRNG(seed) {
+  let s = seed >>> 0;
+  return function() {
+    s = Math.imul(s, 1664525) + 1013904223 >>> 0;
+    return s / 4294967295;
+  };
+}
+
+// ─── CANVAS SETUP ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const sparkleCanvas = document.getElementById('sparkle-canvas');
+const sctx = sparkleCanvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = sparkleCanvas.width = window.innerWidth;
+  H = canvas.height = sparkleCanvas.height = window.innerHeight;
+  buildNebula();
+}
+window.addEventListener('resize', resize);
+
+// ─── STARS ────────────────────────────────────────────────────────────────────
+const STAR_COUNT = 3000;
+const stars = [];
+const STAR_COLORS = ['#aaccff','#aaccff','#ffffd0','#ffffd0','#ffffd0','#ffaa66','#ffffff'];
+
+function initStars() {
+  const rng = makePRNG(0xDEADBEEF);
+  stars.length = 0;
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const layer = i < 1000 ? 0 : i < 2000 ? 1 : 2;
+    stars.push({
+      x: rng() * W,
+      y: rng() * H,
+      r: 0.3 + rng() * 2.2,
+      brightness: 0.4 + rng() * 0.6,
+      twinkleSpeed: 0.4 + rng() * 2.0,
+      twinkleOffset: rng() * Math.PI * 2,
+      color: STAR_COLORS[Math.floor(rng() * STAR_COLORS.length)],
+      layer: layer,
+      vx: (rng() - 0.5) * (layer === 0 ? 0.008 : layer === 1 ? 0.018 : 0.04),
+      vy: (rng() - 0.5) * (layer === 0 ? 0.005 : layer === 1 ? 0.012 : 0.025),
+    });
+  }
+}
+
+function drawStars(ts) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < stars.length; i++) {
+    const st = stars[i];
+    // animate drift
+    st.x += st.vx;
+    st.y += st.vy;
+    if (st.x < 0) st.x += W;
+    if (st.x > W) st.x -= W;
+    if (st.y < 0) st.y += H;
+    if (st.y > H) st.y -= H;
+
+    const twinkle = 0.5 + 0.5 * Math.sin(ts * 0.001 * st.twinkleSpeed + st.twinkleOffset);
+    const alpha = st.brightness * (0.6 + 0.4 * twinkle);
+
+    ctx.beginPath();
+    ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+    ctx.shadowBlur = st.r * 6;
+    ctx.shadowColor = st.color;
+    ctx.fillStyle = st.color;
+    ctx.globalAlpha = alpha;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+}
+
+// ─── NEBULA ───────────────────────────────────────────────────────────────────
+const NEBULA_LAYERS = 5;
+const nebulaCanvases = [];
+const nebulaPositions = [
+  { x: 0, y: 0, vx: 0.05, vy: 0.03 },
+  { x: 0, y: 0, vx: -0.08, vy: 0.05 },
+  { x: 0, y: 0, vx: 0.12, vy: -0.04 },
+  { x: 0, y: 0, vx: -0.06, vy: -0.09 },
+  { x: 0, y: 0, vx: 0.07, vy: 0.11 },
+];
+const NEBULA_COLORS = [
+  ['#ff44aa','#5500cc'],
+  ['#00ccff','#003388'],
+  ['#5500cc','#ff44aa'],
+  ['#ff7733','#cc2200'],
+  ['#00ccff','#5500cc'],
+];
+
+function buildNebula() {
+  nebulaCanvases.length = 0;
+  const rng = makePRNG(0xCAFEBABE);
+  for (let n = 0; n < NEBULA_LAYERS; n++) {
+    const nc = document.createElement('canvas');
+    nc.width = W; nc.height = H;
+    const nctx = nc.getContext('2d');
+    const cols = NEBULA_COLORS[n];
+    for (let i = 0; i < 300; i++) {
+      const x = rng() * W;
+      const y = rng() * H;
+      const rx = 80 + rng() * 200;
+      const ry = 60 + rng() * 180;
+      const alpha = 0.04 + rng() * 0.04;
+      const col = cols[Math.floor(rng() * cols.length)];
+      const grad = nctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry));
+      grad.addColorStop(0, col + Math.round(alpha * 255).toString(16).padStart(2,'0'));
+      grad.addColorStop(1, 'transparent');
+      nctx.save();
+      nctx.scale(1, ry / rx);
+      nctx.beginPath();
+      nctx.arc(x, y * (rx / ry), rx, 0, Math.PI * 2);
+      nctx.fillStyle = grad;
+      nctx.fill();
+      nctx.restore();
+    }
+    nebulaCanvases.push(nc);
+  }
+}
+
+function drawNebula() {
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = 0.6;
+  for (let n = 0; n < nebulaCanvases.length; n++) {
+    const pos = nebulaPositions[n];
+    pos.x += pos.vx;
+    pos.y += pos.vy;
+    ctx.drawImage(nebulaCanvases[n], pos.x % W, pos.y % H);
+    // tile wrap
+    if (pos.x % W > 0) ctx.drawImage(nebulaCanvases[n], (pos.x % W) - W, pos.y % H);
+    if (pos.y % H > 0) ctx.drawImage(nebulaCanvases[n], pos.x % W, (pos.y % H) - H);
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+}
+
+// ─── PLANET ───────────────────────────────────────────────────────────────────
+let planetRadius = 120;
+
+function drawPlanet(ts) {
+  const cx = W * 0.5;
+  const cy = H * 0.5;
+  const r = planetRadius;
+  if (r < 8) return;
+
+  ctx.save();
+
+  // Outer atmosphere glow
+  const atmGrad = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r * 1.5);
+  atmGrad.addColorStop(0, 'rgba(80,120,255,0.18)');
+  atmGrad.addColorStop(0.5, 'rgba(60,80,200,0.06)');
+  atmGrad.addColorStop(1, 'transparent');
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = atmGrad;
+  ctx.fill();
+  ctx.restore();
+
+  // Planet body
+  const bodyGrad = ctx.createRadialGradient(
+    cx - r * 0.3, cy - r * 0.3, r * 0.05,
+    cx, cy, r
+  );
+  bodyGrad.addColorStop(0, '#2a5acc');
+  bodyGrad.addColorStop(0.3, '#1a3a8a');
+  bodyGrad.addColorStop(0.7, '#0e1f55');
+  bodyGrad.addColorStop(1, '#050a1a');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  // Surface detail clouds drifting
+  const drift = (ts * 0.00008) % (Math.PI * 2);
+  for (let i = 0; i < 4; i++) {
+    const angle = drift + i * (Math.PI * 0.5);
+    const bx = cx + Math.cos(angle) * r * 0.4;
+    const by = cy + Math.sin(angle * 0.6) * r * 0.25;
+    const cloudGrad = ctx.createRadialGradient(bx, by, 0, bx, by, r * 0.3);
+    cloudGrad.addColorStop(0, 'rgba(60,120,220,0.18)');
+    cloudGrad.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(bx, by, r * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = cloudGrad;
+    ctx.fill();
+  }
+
+  // Specular highlight
+  const specGrad = ctx.createRadialGradient(
+    cx - r * 0.35, cy - r * 0.35, 0,
+    cx - r * 0.2, cy - r * 0.2, r * 0.6
+  );
+  specGrad.addColorStop(0, 'rgba(140,180,255,0.22)');
+  specGrad.addColorStop(0.5, 'rgba(80,120,255,0.06)');
+  specGrad.addColorStop(1, 'transparent');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = specGrad;
+  ctx.fill();
+
+  // Rim light
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(120,180,255,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.shadowBlur = 30;
+  ctx.shadowColor = '#6699ff';
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Atmosphere ring inner glow
+  const atmInner = ctx.createRadialGradient(cx, cy, r * 0.9, cx, cy, r * 1.2);
+  atmInner.addColorStop(0, 'rgba(80,140,255,0.3)');
+  atmInner.addColorStop(0.5, 'rgba(60,100,220,0.12)');
+  atmInner.addColorStop(1, 'transparent');
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.2, 0, Math.PI * 2);
+  ctx.fillStyle = atmInner;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+// ─── WARP / SPEED LINES ───────────────────────────────────────────────────────
+let warpActive = false;
+let warpAlpha = 0;
+let warpOriginX = 0.5;
+let warpOriginY = 0.5;
+
+const warpLines = [];
+function initWarp(ox, oy) {
+  warpLines.length = 0;
+  const rng = makePRNG(0xBEEFCAFE);
+  for (let i = 0; i < 120; i++) {
+    const angle = rng() * Math.PI * 2;
+    const speed = 3 + rng() * 8;
+    warpLines.push({
+      angle,
+      dist: rng() * 200,
+      speed,
+      length: 20 + rng() * 80,
+      alpha: 0.3 + rng() * 0.5,
+    });
+  }
+}
+
+function drawWarp(ts) {
+  if (!warpActive && warpAlpha <= 0) return;
+  if (warpActive) {
+    warpAlpha = Math.min(1, warpAlpha + 0.04);
+  } else {
+    warpAlpha = Math.max(0, warpAlpha - 0.03);
+  }
+  const ox = warpOriginX * W;
+  const oy = warpOriginY * H;
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (const ln of warpLines) {
+    ln.dist += ln.speed;
+    if (ln.dist > Math.max(W, H)) ln.dist = 10;
+    const x1 = ox + Math.cos(ln.angle) * ln.dist;
+    const y1 = oy + Math.sin(ln.angle) * ln.dist;
+    const x2 = ox + Math.cos(ln.angle) * (ln.dist + ln.length);
+    const y2 = oy + Math.sin(ln.angle) * (ln.dist + ln.length);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = `rgba(180,220,255,${ln.alpha * warpAlpha})`;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+}
+
+// ─── SPARKLES ─────────────────────────────────────────────────────────────────
+const sparkles = [];
+let sparkleActive = false;
+
+function spawnSparkle() {
+  const rng = Math.random;
+  sparkles.push({
+    x: rng() * W,
+    y: -10,
+    vx: (rng() - 0.5) * 1.5,
+    vy: 0.5 + rng() * 1.5,
+    r: 1 + rng() * 3,
+    alpha: 0.6 + rng() * 0.4,
+    color: rng() > 0.5 ? '#00f0ff' : '#ffffff',
+    life: 1,
+    decay: 0.003 + rng() * 0.005,
+  });
+}
+
+function drawSparkles() {
+  sctx.clearRect(0, 0, W, H);
+  if (!sparkleActive) return;
+  if (Math.random() < 0.3) spawnSparkle();
+  for (let i = sparkles.length - 1; i >= 0; i--) {
+    const sp = sparkles[i];
+    sp.x += sp.vx;
+    sp.y += sp.vy;
+    sp.life -= sp.decay;
+    if (sp.life <= 0 || sp.y > H + 20) { sparkles.splice(i, 1); continue; }
+    sctx.save();
+    sctx.globalAlpha = sp.alpha * sp.life;
+    sctx.beginPath();
+    sctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
+    sctx.fillStyle = sp.color;
+    sctx.shadowBlur = sp.r * 4;
+    sctx.shadowColor = sp.color;
+    sctx.fill();
+    sctx.restore();
+  }
+}
+
+// ─── CAMERA / ZOOM ────────────────────────────────────────────────────────────
+let canvasAlpha = 0;
+let planetScaleTarget = 0.3;
+let currentPlanetScale = 0.01;
+
+// ─── SCENE MANAGEMENT ─────────────────────────────────────────────────────────
+const scenes = [
+  { id: 0, duration: 2000 },
+  { id: 1, duration: 3000 },
+  { id: 2, duration: 3000 },
+  { id: 3, duration: 4000 },
+  { id: 4, duration: 4000 },
+  { id: 5, duration: 3000 },
+  { id: 6, duration: 5000 },
+  { id: 7, duration: 4000 },
+];
+
+let currentScene = 0;
+let sceneStartTime = 0;
+let globalTS = 0;
+
+const hudEl = document.getElementById('hud');
+const hudLine1 = document.getElementById('hud-line1');
+const hudLine2 = document.getElementById('hud-line2');
+const captionEl = document.getElementById('caption');
+const voidText = document.getElementById('void-text');
+const panelMonitor = document.getElementById('panel-monitor');
+const panelStats = document.getElementById('panel-stats');
+const centerSaving = document.getElementById('center-saving');
+const appWindow = document.getElementById('app-window');
+const ctaLeft = document.getElementById('cta-left');
+const ctaRight = document.getElementById('cta-right');
+const bigTagline = document.getElementById('big-tagline');
+const flashEl = document.getElementById('flash');
+const sparkleCanvasEl = document.getElementById('sparkle-canvas');
+const tokenCounter = document.getElementById('token-counter');
+const savingsLine = document.getElementById('savings-line');
+const dots = document.querySelectorAll('.dot');
+
+function setHUD(line1, line2) {
+  hudEl.classList.remove('visible');
+  setTimeout(() => {
+    hudLine1.textContent = line1;
+    if (hudLine2) hudLine2.textContent = line2 || '';
+    hudEl.classList.add('visible');
+  }, 100);
+}
+
+function setCaption(text) {
+  captionEl.classList.remove('visible');
+  setTimeout(() => {
+    captionEl.textContent = text;
+    captionEl.classList.add('visible');
+  }, 300);
+}
+
+function hideCaption() {
+  captionEl.classList.remove('visible');
+}
+
+function updateDots(scene) {
+  dots.forEach((d, i) => {
+    d.classList.toggle('active', i === scene);
+  });
+}
+
+// Token counter animation
+let tokenAnimInterval = null;
+const tokenSteps = [1847, 1200, 680, 312, 89];
+let tokenStep = 0;
+
+function startTokenAnimation() {
+  tokenStep = 0;
+  tokenCounter.textContent = tokenSteps[0];
+  tokenCounter.classList.remove('optimizing');
+  savingsLine.textContent = '已节省: 0 tokens · $0.00';
+  if (tokenAnimInterval) clearInterval(tokenAnimInterval);
+  tokenAnimInterval = setInterval(() => {
+    tokenStep++;
+    if (tokenStep >= tokenSteps.length) {
+      clearInterval(tokenAnimInterval);
+      tokenAnimInterval = null;
+      return;
+    }
+    const val = tokenSteps[tokenStep];
+    tokenCounter.textContent = val.toLocaleString();
+    tokenCounter.classList.add('optimizing');
+    const saved = 1847 - val;
+    const dollars = (saved * 0.000102).toFixed(2);
+    savingsLine.textContent = `已节省: ${saved.toLocaleString()} tokens · $${dollars}`;
+  }, 700);
+}
+
+// Floating panel animation via JS (sin wave)
+let panelAnimFrame = null;
+function animatePanels(ts) {
+  const offset = Math.sin(ts * 0.001) * 6;
+  const offset2 = Math.sin(ts * 0.0013 + 1.2) * 5;
+  panelMonitor.style.marginTop = offset + 'px';
+  panelStats.style.marginTop = offset2 + 'px';
+  // pulse center saving
+  if (centerSaving.classList.contains('visible')) {
+    const pulse = 1 + 0.06 * Math.sin(ts * 0.003);
+    centerSaving.style.transform = `translate(-50%,-50%) scale(${pulse})`;
+    const glowAlpha = 0.6 + 0.4 * Math.sin(ts * 0.003);
+    centerSaving.style.textShadow = `0 0 ${60 * glowAlpha}px rgba(0,240,255,${glowAlpha}), 0 0 120px rgba(0,200,255,${glowAlpha * 0.5})`;
+  }
+  panelAnimFrame = requestAnimationFrame(animatePanels);
+}
+
+// User dots for CTA
+function buildUserDots() {
+  const ud = document.getElementById('user-dots');
+  ud.innerHTML = '';
+  for (let i = 0; i < 30; i++) {
+    const d = document.createElement('div');
+    d.className = 'user-dot';
+    const hue = 180 + Math.random() * 60;
+    d.style.background = `hsla(${hue},100%,70%,${0.3+Math.random()*0.5})`;
+    d.style.boxShadow = `0 0 4px hsla(${hue},100%,70%,0.4)`;
+    ud.appendChild(d);
+  }
+}
+
+// Flash helper
+function doFlash(peakAlpha, duration) {
+  flashEl.style.transition = `opacity ${duration * 0.3}ms ease`;
+  flashEl.style.opacity = peakAlpha;
+  setTimeout(() => {
+    flashEl.style.transition = `opacity ${duration * 0.7}ms ease`;
+    flashEl.style.opacity = 0;
+  }, duration * 0.3);
+}
+
+// ─── SCENE TRANSITIONS ────────────────────────────────────────────────────────
+function hideAllPanels() {
+  panelMonitor.classList.remove('visible');
+  panelStats.classList.remove('visible');
+  centerSaving.classList.remove('visible');
+  appWindow.classList.remove('visible');
+  ctaLeft.classList.remove('visible');
+  ctaRight.classList.remove('visible');
+  bigTagline.classList.remove('visible');
+  voidText.classList.remove('visible');
+  sparkleActive = false;
+  sparkleCanvasEl.classList.remove('visible');
+  warpActive = false;
+}
+
+function enterScene(scene) {
+  currentScene = scene;
+  sceneStartTime = globalTS;
+  updateDots(scene);
+  hideAllPanels();
+
+  switch (scene) {
+    case 0:
+      canvasAlpha = 0;
+      planetScaleTarget = 0.3;
+      hudEl.classList.remove('visible');
+      hideCaption();
+      setTimeout(() => voidText.classList.add('visible'), 400);
+      break;
+
+    case 1:
+      canvasAlpha = 1;
+      planetScaleTarget = 0.3;
+      setHUD('TERSE · MISSION CONTROL', 'GALAXY SECTOR 7 · DEEP SPACE');
+      setTimeout(() => setCaption('2025年 — 开发者每月花费 $200+ 在 AI Tokens 上'), 600);
+      break;
+
+    case 2:
+      planetScaleTarget = 0.48;
+      setHUD('接近目标行星', 'APPROACH VECTOR LOCKED');
+      setTimeout(() => setCaption('Tokens 正在快速消耗…'), 400);
+      warpActive = true;
+      initWarp(0.5, 0.5);
+      setTimeout(() => { warpActive = false; }, 1800);
+      break;
+
+    case 3:
+      planetScaleTarget = 0.55;
+      setHUD('TERSE · 实时监控 · 自动优化', 'ORBITAL INSERTION COMPLETE');
+      hideCaption();
+      setTimeout(() => panelMonitor.classList.add('visible'), 600);
+      break;
+
+    case 4:
+      planetScaleTarget = 0.62;
+      setHUD('平均节省 71% 的 Token 成本', 'TOKEN COMPRESSION ACTIVE');
+      setTimeout(() => {
+        panelMonitor.classList.add('visible');
+        panelStats.classList.add('visible');
+      }, 300);
+      setTimeout(() => centerSaving.classList.add('visible'), 900);
+      break;
+
+    case 5:
+      planetScaleTarget = 0.62;
+      setHUD('INITIATING WARP · 系统启动', 'FASTER THAN LIGHT');
+      hideCaption();
+      warpActive = true;
+      initWarp(0.78, 0.18);
+      setTimeout(() => doFlash(0.9, 600), 2400);
+      setTimeout(() => { warpActive = false; }, 2800);
+      break;
+
+    case 6:
+      planetScaleTarget = 0.35;
+      setHUD('TERSE · 一键开启 · 永远在线', 'PRODUCT INTERFACE ACTIVE');
+      hideCaption();
+      setTimeout(() => {
+        appWindow.classList.add('visible');
+        startTokenAnimation();
+      }, 500);
+      break;
+
+    case 7:
+      planetScaleTarget = 0.2;
+      hudEl.classList.remove('visible');
+      hideCaption();
+      buildUserDots();
+      sparkleActive = true;
+      sparkleCanvasEl.classList.add('visible');
+      setTimeout(() => ctaLeft.classList.add('visible'), 400);
+      setTimeout(() => ctaRight.classList.add('visible'), 700);
+      setTimeout(() => bigTagline.classList.add('visible'), 1100);
+      break;
+  }
+}
+
+// ─── MAIN LOOP ─────────────────────────────────────────────────────────────────
+let lastTS = 0;
+function loop(ts) {
+  globalTS = ts;
+  lastTS = ts;
+
+  // Lerp planet scale smoothly
+  currentPlanetScale += (planetScaleTarget - currentPlanetScale) * 0.02;
+  planetRadius = Math.min(W, H) * 0.5 * currentPlanetScale;
+
+  // Draw background
+  ctx.fillStyle = '#000008';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw nebula + stars
+  if (canvasAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = canvasAlpha;
+    drawNebula();
+    drawStars(ts);
+    drawPlanet(ts);
+    drawWarp(ts);
+    ctx.restore();
+    if (canvasAlpha < 1) canvasAlpha = Math.min(1, canvasAlpha + 0.008);
+  }
+
+  drawSparkles();
+
+  // Auto-advance scenes
+  const elapsed = ts - sceneStartTime;
+  const sceneDuration = scenes[currentScene] ? scenes[currentScene].duration : 4000;
+  if (elapsed > sceneDuration && currentScene < scenes.length - 1) {
+    enterScene(currentScene + 1);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' && currentScene < scenes.length - 1) {
+    enterScene(currentScene + 1);
+  } else if (e.key === 'ArrowLeft' && currentScene > 0) {
+    enterScene(currentScene - 1);
+  }
+});
+
+// Click navigation
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('cta-button')) return;
+  if (currentScene < scenes.length - 1) {
+    enterScene(currentScene + 1);
+  }
+});
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+resize();
+initStars();
+
+// Start panel float animation
+requestAnimationFrame(animatePanels);
+
+// Start main render loop
+requestAnimationFrame((ts) => {
+  lastTS = ts;
+  sceneStartTime = ts;
+  enterScene(0);
+  loop(ts);
+});
+</script>
+</body>
+</html>

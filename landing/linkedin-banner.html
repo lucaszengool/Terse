@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --lime:#d1e847;            /* exact icon green */
+    --lime-d:#c2da33;          /* slightly deeper lime for texture */
+    --ink:#0a0a0a;             /* icon letter black */
+    --ink2:rgba(10,10,10,0.72);
+    --ink3:rgba(10,10,10,0.50);
+  }
+  html,body{background:var(--lime)}
+  /* LinkedIn Page cover spec: 1128 x 191 */
+  .banner{
+    width:1128px;height:191px;position:relative;overflow:hidden;
+    background:
+      radial-gradient(900px 600px at 85% -50%, rgba(255,255,255,0.30) 0%, transparent 60%),
+      radial-gradient(700px 500px at 5% 150%, rgba(10,10,10,0.06) 0%, transparent 55%),
+      linear-gradient(135deg, #dcef5a 0%, var(--lime) 55%, var(--lime-d) 100%);
+    font-family:'Inter',-apple-system,sans-serif;color:var(--ink);
+    display:flex;align-items:center;padding:0 64px;gap:40px;
+  }
+  /* faint grid texture in dark ink */
+  .banner::before{
+    content:"";position:absolute;inset:0;
+    background-image:linear-gradient(rgba(10,10,10,0.04) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(10,10,10,0.04) 1px,transparent 1px);
+    background-size:34px 34px;mask-image:linear-gradient(90deg,transparent,#000 30%,#000 70%,transparent);
+  }
+  .left{position:relative;z-index:2;flex:1;min-width:0}
+  .brandrow{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+  /* mark mirrors the app icon: lime T on black tile */
+  .mark{
+    width:52px;height:52px;border-radius:13px;flex-shrink:0;
+    background:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 22px rgba(10,10,10,0.22);
+  }
+  .mark span{font-family:'Inter',sans-serif;font-weight:900;font-size:34px;color:var(--lime);line-height:1}
+  .name{font-size:34px;font-weight:900;letter-spacing:-1.2px;color:var(--ink)}
+  .tag{font-size:21px;font-weight:800;letter-spacing:-0.4px;line-height:1.25;color:var(--ink)}
+  .sub{font-size:14px;color:var(--ink2);margin-top:8px;font-weight:600}
+  .right{position:relative;z-index:2;display:flex;gap:14px;flex-shrink:0}
+  .chip{
+    background:rgba(10,10,10,0.06);border:1px solid rgba(10,10,10,0.14);
+    border-radius:14px;padding:16px 20px;text-align:center;min-width:118px;
+  }
+  .chip .n{font-size:30px;font-weight:900;color:var(--ink);letter-spacing:-1px;font-family:'JetBrains Mono',monospace}
+  .chip .l{font-size:11px;color:var(--ink3);margin-top:4px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px}
+  .url{position:absolute;left:64px;bottom:16px;z-index:2;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink3);letter-spacing:0.5px;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="banner" id="banner">
+    <div class="left">
+      <div class="brandrow">
+        <div class="mark"><span>T</span></div>
+        <div class="name">Terse AI</div>
+      </div>
+      <div class="tag">Cut 40&ndash;70% of your AI token costs.</div>
+      <div class="sub">On-device prompt optimization &amp; real-time agent monitoring for Claude Code, Cursor, ChatGPT &amp; more.</div>
+    </div>
+    <div class="right">
+      <div class="chip"><div class="n">40-70%</div><div class="l">Tokens saved</div></div>
+      <div class="chip"><div class="n">100%</div><div class="l">On&nbsp;device</div></div>
+      <div class="chip"><div class="n">5+</div><div class="l">AI tools</div></div>
+    </div>
+    <div class="url">terseai.org</div>
+  </div>
+</body>
+</html>

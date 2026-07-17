@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terse vs LLMLingua — Prompt Compression Compared</title>
+  <meta name="description" content="Terse vs LLMLingua: deterministic rule pipeline vs perplexity-based ML compression. Latency, meaning safety, code protection, and honest tradeoffs.">
+  <link rel="canonical" href="https://www.terseai.org/terse-vs-llmlingua">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Terse vs LLMLingua — Prompt Compression Compared">
+  <meta property="og:description" content="Deterministic rules vs perplexity-based ML compression: how Terse and LLMLingua differ on latency, meaning safety, code protection, and compression ratios.">
+  <meta property="og:url" content="https://www.terseai.org/terse-vs-llmlingua">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Terse vs LLMLingua — Prompt Compression Compared">
+  <meta name="twitter:description" content="Deterministic rules vs perplexity-based ML compression — an honest comparison for interactive agent workflows.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "Terse vs LLMLingua — Prompt Compression Compared",
+        "url": "https://www.terseai.org/terse-vs-llmlingua",
+        "description": "An honest comparison of Terse's deterministic rule-based prompt compression and Microsoft LLMLingua's perplexity-based ML compression: latency, meaning safety, code protection, and compression ratios.",
+        "dateModified": "2026-07-17",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "Terse vs LLMLingua", "item": "https://www.terseai.org/terse-vs-llmlingua"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is Terse the same as LLMLingua?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. LLMLingua is a research method from Microsoft that compresses prompts with a small language model, dropping tokens the model finds predictable (low perplexity). Terse is a desktop app that compresses prompts with a deterministic pipeline of 35+ linguistic rules — filler removal, hedging removal, typo correction, phrase shortening — running on-device in under 5 milliseconds. Same goal, fundamentally different mechanisms."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which achieves higher compression, Terse or LLMLingua?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "On long documents, LLMLingua — its perplexity-based token dropping can reach very high raw ratios (up to 20x in published benchmarks) on lengthy contexts like meeting transcripts or retrieved passages. Terse typically reduces interactive prompts by 40-70%. The tradeoff: LLMLingua's output is often not human-readable and can drop tokens that mattered; Terse's output stays readable, reviewable, and meaning-safe."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does LLMLingua need a GPU?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "LLMLingua runs a small language model (such as LLaMA-7B or a distilled variant) to score token perplexity, so practical use benefits from a GPU and adds model-inference latency to every compression. Terse's rule pipeline is plain deterministic computation — it runs on-device on any Mac or Windows machine in under 5 milliseconds, with no model, no GPU, and no network call."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can prompt compression break my prompt?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "It can if the compressor drops load-bearing tokens. Perplexity-based methods delete whatever the scoring model finds predictable, which occasionally includes negations, numbers, or identifiers. Terse takes the opposite approach: it only removes text matched by explicit linguistic rules (filler, hedging, redundancy), never touches code blocks, file paths, or identifiers, and shows you the compressed version before it is sent."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which should I use for AI coding agents?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "For interactive agent workflows — Claude Code, Cursor, Cline, Windsurf — Terse is the practical choice: sub-5ms on-device compression on every prompt, protected code, plus agent monitoring and budget enforcement around it. LLMLingua fits batch pipelines where you control the inference stack and need maximum compression of long retrieved contexts, and can accept GPU cost and non-readable output."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I use Terse and LLMLingua together?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, they operate at different layers. LLMLingua can compress long retrieved documents inside a RAG or batch pipeline you build, while Terse compresses the interactive prompts you type and monitors the agents consuming them. Nothing about one excludes the other."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg2:hsl(250,21%,11%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .hero{padding:140px 40px 80px;text-align:center;max-width:900px;margin:0 auto;position:relative}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07),transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:640px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:640px}
+    .divider{height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .table-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--bd)}
+    .cmp-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--bg2);min-width:640px}
+    .cmp-table th{padding:14px 18px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .cmp-table th.terse-col{color:var(--ac)}
+    .cmp-table td{padding:12px 18px;border-bottom:1px solid var(--bd);color:var(--t2);vertical-align:top}
+    .cmp-table tr:last-child td{border-bottom:none}
+    .cmp-table td:first-child{color:var(--t3);font-weight:600;white-space:nowrap}
+    .cmp-table .win{color:var(--ac);font-weight:600}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#pipeline">Pipeline</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Comparison</div>
+  <h1>Terse vs <span class="gradient-text">LLMLingua</span></h1>
+  <p class="sub">Both compress prompts to cut LLM costs — with opposite mechanisms. Terse runs a deterministic pipeline of 35+ linguistic rules on-device in under 5ms. LLMLingua runs a small language model that drops low-perplexity tokens. Here's the honest comparison.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Try Terse Free — 30 Days</a>
+    <a href="#comparison" class="btn-ghost">Jump to the Table</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">&lt;5ms</span><span class="lbl">Terse compression latency</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">GPUs required by Terse</span></div>
+    <div class="stat-pill"><span class="val">100%</span><span class="lbl">deterministic — same in, same out</span></div>
+    <div class="stat-pill"><span class="val">Always</span><span class="lbl">code blocks protected</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="comparison">
+  <h2>Side by <span class="gradient-text">Side</span></h2>
+  <p class="section-sub">LLMLingua is excellent research from Microsoft. Terse solves a different problem: real-time compression inside interactive agent workflows. Neither "wins" every row — read the last two.</p>
+  <div class="table-wrap">
+  <table class="cmp-table">
+    <tr><th></th><th class="terse-col">Terse</th><th>LLMLingua</th></tr>
+    <tr>
+      <td>Mechanism</td>
+      <td class="win">Deterministic rule pipeline — 35+ linguistic techniques (filler, hedging, redundancy, typo correction)</td>
+      <td>Perplexity-based ML — a small LM scores tokens and drops the predictable ones</td>
+    </tr>
+    <tr>
+      <td>Latency</td>
+      <td class="win">&lt;5ms, on-device, CPU only</td>
+      <td>Model inference per compression; practical use benefits from a GPU</td>
+    </tr>
+    <tr>
+      <td>Determinism</td>
+      <td class="win">Same input → same output, every time; previewable before sending</td>
+      <td>Output depends on the scoring model and budget parameters</td>
+    </tr>
+    <tr>
+      <td>Meaning safety</td>
+      <td class="win">Only removes text matched by explicit rules; negations, numbers, and instructions preserved</td>
+      <td>Can drop tokens that mattered — the scoring model decides, not a rule you can audit</td>
+    </tr>
+    <tr>
+      <td>Code protection</td>
+      <td class="win">Code blocks, file paths, and identifiers always excluded from compression</td>
+      <td>No built-in concept of protected code regions</td>
+    </tr>
+    <tr>
+      <td>Readability of output</td>
+      <td class="win">Human-readable — you can review and edit the compressed prompt</td>
+      <td>Often non-readable token soup (fine for the model, not for you)</td>
+    </tr>
+    <tr>
+      <td>Max raw compression</td>
+      <td>40–70% on typical interactive prompts</td>
+      <td class="win">Higher raw ratios on long documents — up to ~20x in published benchmarks</td>
+    </tr>
+    <tr>
+      <td>Long-document / RAG batch compression</td>
+      <td>Not the target use case</td>
+      <td class="win">The target use case — long retrieved contexts, transcripts, few-shot exemplars</td>
+    </tr>
+    <tr>
+      <td>Built for</td>
+      <td class="win">Interactive agent workflows — Claude Code, Cursor, Cline, Windsurf — plus monitoring, Doctor, and budget control around them</td>
+      <td>Research and batch pipelines where you control the inference stack</td>
+    </tr>
+    <tr>
+      <td>Setup</td>
+      <td class="win">Desktop app for macOS and Windows; works in any text field</td>
+      <td>Python library integrated into your own code</td>
+    </tr>
+  </table>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Why Determinism Matters for <span class="gradient-text">Agent Workflows</span></h2>
+  <p class="section-sub">When you send 50 prompts a day to a coding agent, the compressor becomes part of your toolchain — and toolchains need to be predictable.</p>
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <h3>Zero Perceptible Latency</h3>
+      <p>Sub-5ms means compression happens as you type. An ML compressor's model inference — even fast — is an extra hop between you and your agent on every message.</p>
+      <span class="tag">&lt;5ms</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔍</div>
+      <h3>Auditable Rules</h3>
+      <p>Every removal comes from a named rule: filler, hedging, redundancy, typo. If a compression looks wrong, you can see exactly why it happened — and it never happens differently tomorrow.</p>
+      <span class="tag">Deterministic</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <h3>Code Never Touched</h3>
+      <p>Coding prompts are full of identifiers, paths, and snippets where every character is load-bearing. Terse structurally excludes them; perplexity scoring has no such guarantee.</p>
+      <span class="tag">Protected</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📴</div>
+      <h3>On-Device, No Stack</h3>
+      <p>No GPU, no Python environment, no model weights. Install the app and every text field on your machine gets compression — plus the agent monitor and budget breaker.</p>
+      <span class="tag">No GPU</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🤝</div>
+      <h3>Honest Tradeoff</h3>
+      <p>If you need to squeeze a 50-page retrieved context to a tenth of its size inside a batch pipeline, LLMLingua's approach genuinely achieves ratios Terse doesn't aim for.</p>
+      <span class="tag">Credit where due</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🧩</div>
+      <h3>They Can Coexist</h3>
+      <p>LLMLingua compresses long documents inside a pipeline you build; Terse compresses the prompts you type and guards the agents consuming them. Different layers, no conflict.</p>
+      <span class="tag">Both</span>
+    </div>
+  </div>
+  <p style="margin-top:28px;font-size:14px;color:var(--t2);max-width:720px">Want the research background? We wrote up how LLMLingua works on our <a href="/llmlingua" style="color:var(--ac)">LLMLingua research page</a>. And Terse is more than a compressor — the same app watches <a href="/for-claude-code" style="color:var(--ac)">Claude Code</a>, <a href="/for-cursor" style="color:var(--ac)">Cursor</a>, <a href="/for-cline" style="color:var(--ac)">Cline</a>, and <a href="/for-windsurf" style="color:var(--ac)">Windsurf</a> live, and its <a href="/agent-budget-circuit-breaker" style="color:var(--ac)">budget circuit breaker</a> stops runaway sessions before the next API call.</p>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about how Terse and LLMLingua differ.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">Is Terse the same as LLMLingua?</div>
+      <div class="faq-a">No. LLMLingua compresses prompts with a small language model that drops low-perplexity tokens. Terse uses a deterministic pipeline of 35+ linguistic rules running on-device in under 5ms. Same goal, opposite mechanisms.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Which achieves higher compression?</div>
+      <div class="faq-a">On long documents, LLMLingua — published benchmarks show up to ~20x on lengthy contexts. Terse reduces interactive prompts 40–70%. The tradeoff: LLMLingua's output is often unreadable and can drop tokens that mattered; Terse stays readable and meaning-safe.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does LLMLingua need a GPU?</div>
+      <div class="faq-a">It runs a small LM to score token perplexity, so practical use benefits from a GPU and adds inference latency per compression. Terse is plain deterministic computation — any Mac or Windows machine, under 5ms, no model, no network.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can prompt compression break my prompt?</div>
+      <div class="faq-a">Perplexity-based methods can drop negations, numbers, or identifiers the scoring model found predictable. Terse only removes text matched by explicit rules, never touches code or paths, and shows you the result before sending.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Which should I use for AI coding agents?</div>
+      <div class="faq-a">For interactive workflows (Claude Code, Cursor, Cline, Windsurf): Terse — sub-5ms compression, protected code, plus monitoring and budget enforcement. For batch compression of long retrieved contexts in a pipeline you control: LLMLingua.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can I use both together?</div>
+      <div class="faq-a">Yes — they operate at different layers. LLMLingua compresses documents inside a RAG or batch pipeline; Terse compresses the prompts you type and monitors the agents consuming them.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>See Terse in Action</h2>
+  <p class="section-sub">Real-time compression, agent monitoring, and budget control for every major AI coding tool.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card"><span style="font-size:18px">⚡</span><span>Claude Code — CLI Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-cursor" class="also-card"><span style="font-size:18px">✦</span><span>Cursor — AI Editor</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-windsurf" class="also-card"><span style="font-size:18px">🌊</span><span>Windsurf — Cascade Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/agent-budget-circuit-breaker" class="also-card"><span style="font-size:18px">🛑</span><span>Budget Circuit Breaker</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/llmlingua" class="also-card"><span style="font-size:18px">📚</span><span>LLMLingua Research Notes</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Compression You Can <span class="gradient-text">Read and Trust</span></h2>
+  <p>30-day free trial. Deterministic, on-device, under 5 milliseconds.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="/#pricing" class="btn-primary">Start Free Trial</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent butler for AI coding tools. Compress prompts, watch every agent, cap the spend. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-cline">Cline</a><a href="/for-windsurf">Windsurf</a><a href="/for-codex">OpenAI Codex</a><a href="/for-openclaw">OpenClaw</a></div>
+    <div class="footer-col"><h4>Product</h4><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="/terse-vs-llmlingua">Terse vs LLMLingua</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Windows · Rust</span></div>
+</footer>
+
+</body>
+</html>

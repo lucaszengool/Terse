@@ -1,0 +1,1921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse · Vivid Feature Tour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=Italiana&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --page-bg: #CFE2C2;
+    --ink: #1F2A1A;
+    --ink-soft: #4A5A40;
+    --ink-faint: #7a8a70;
+    --accent: #2F6E45;
+    --accent-light: #4FA15E;
+    --accent-glow: #8FCB86;
+    --line: #1F2A1A;
+    --hair: rgba(31,42,26,0.16);
+    --total: 54s;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--page-bg);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 50px 24px 56px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    color: var(--ink);
+  }
+  svg { shape-rendering: geometricPrecision; }
+
+  .page {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  /* ── Headline ── */
+  .headline { text-align: center; width: 100%; min-height: 140px; }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 3.2px;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+  }
+  .eyebrow .ornament { display: inline-flex; align-items: center; gap: 4px; }
+  .eyebrow .ornament i {
+    width: 4px; height: 4px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    display: block;
+  }
+  .eyebrow .ornament .line {
+    width: 14px;
+    height: 1px;
+    background: var(--ink-soft);
+    opacity: 0.6;
+  }
+
+  .title-stack { position: relative; height: 96px; }
+  .title {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+  }
+  .title h1 {
+    font-family: 'Italiana', serif;
+    font-size: 38px;
+    font-weight: 400;
+    line-height: 1.0;
+    color: var(--ink);
+    letter-spacing: -0.4px;
+  }
+  .title h1 em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-variation-settings: "opsz" 144;
+    letter-spacing: -0.5px;
+  }
+  .title p {
+    margin-top: 10px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ink-soft);
+    letter-spacing: 0.6px;
+    line-height: 1.5;
+  }
+
+  /* 9 scenes × ~11% each, 54s total */
+  .title-1 { animation: t1 var(--total) ease-in-out infinite; }
+  .title-2 { animation: t2 var(--total) ease-in-out infinite; }
+  .title-3 { animation: t3 var(--total) ease-in-out infinite; }
+  .title-4 { animation: t4 var(--total) ease-in-out infinite; }
+  .title-5 { animation: t5 var(--total) ease-in-out infinite; }
+  .title-6 { animation: t6 var(--total) ease-in-out infinite; }
+  .title-7 { animation: t7 var(--total) ease-in-out infinite; }
+  .title-8 { animation: t8 var(--total) ease-in-out infinite; }
+  .title-9 { animation: t9 var(--total) ease-in-out infinite; }
+
+  @keyframes t1 { 0%,10% {opacity:1;} 11%,100% {opacity:0;} }
+  @keyframes t2 { 0%,10% {opacity:0;} 11%,21% {opacity:1;} 22%,100% {opacity:0;} }
+  @keyframes t3 { 0%,21% {opacity:0;} 22%,32% {opacity:1;} 33%,100% {opacity:0;} }
+  @keyframes t4 { 0%,32% {opacity:0;} 33%,43% {opacity:1;} 44%,100% {opacity:0;} }
+  @keyframes t5 { 0%,43% {opacity:0;} 44%,54% {opacity:1;} 55%,100% {opacity:0;} }
+  @keyframes t6 { 0%,54% {opacity:0;} 55%,65% {opacity:1;} 66%,100% {opacity:0;} }
+  @keyframes t7 { 0%,65% {opacity:0;} 66%,76% {opacity:1;} 77%,100% {opacity:0;} }
+  @keyframes t8 { 0%,76% {opacity:0;} 77%,87% {opacity:1;} 88%,100% {opacity:0;} }
+  @keyframes t9 { 0%,87% {opacity:0;} 88%,99% {opacity:1;} 100% {opacity:0;} }
+
+  /* ── Phone ── */
+  .phone-wrap { margin-top: 4px; position: relative; }
+  .phone-wrap::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -28px;
+    transform: translateX(-50%);
+    width: 70%;
+    height: 30px;
+    background: radial-gradient(ellipse, rgba(40,30,18,0.18) 0%, transparent 70%);
+    filter: blur(12px);
+    z-index: -1;
+  }
+
+  .phone {
+    width: 322px;
+    height: 716px;
+    background:
+      radial-gradient(120% 70% at 78% 8%, rgba(245,224,150,0.38) 0%, rgba(245,224,150,0) 46%),
+      radial-gradient(90% 60% at 12% 96%, rgba(120,190,120,0.30) 0%, rgba(120,190,120,0) 50%),
+      linear-gradient(170deg, #DCEBCB 0%, #CDE0BF 52%, #C3D9B6 100%);
+    border: 1.2px solid var(--line);
+    border-radius: 46px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.55) inset,
+      0 22px 50px -22px rgba(40,30,18,0.18);
+    flex-shrink: 0;
+  }
+
+  /* DI + status bar */
+  .di {
+    position: absolute;
+    top: 11px; left: 50%;
+    transform: translateX(-50%);
+    width: 100px; height: 28px;
+    background: var(--line);
+    border-radius: 16px;
+    z-index: 10;
+  }
+  .sb {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 22px 0;
+    z-index: 5;
+  }
+  .sb-time { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.2px; }
+  .sb-right { display: flex; align-items: center; gap: 5px; }
+  .signal { display: flex; align-items: flex-end; gap: 1.5px; height: 9px; }
+  .signal b { width: 2.5px; background: var(--ink); border-radius: 1px; display: block; }
+  .signal b:nth-child(1) { height: 3px; }
+  .signal b:nth-child(2) { height: 5px; }
+  .signal b:nth-child(3) { height: 7px; opacity: 0.3; }
+  .signal b:nth-child(4) { height: 9px; opacity: 0.3; }
+  .wifi-svg { width: 13px; height: 10px; }
+  .batt {
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 4px;
+    border-radius: 3px;
+    line-height: 1;
+    opacity: 0.85;
+  }
+
+  /* Stage */
+  .stage {
+    position: absolute;
+    inset: 60px 24px 50px 24px;
+    z-index: 2;
+  }
+  .scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .scene-1 { animation: s1 var(--total) ease-in-out infinite; }
+  .scene-2 { animation: s2 var(--total) ease-in-out infinite; }
+  .scene-3 { animation: s3 var(--total) ease-in-out infinite; }
+  .scene-4 { animation: s4 var(--total) ease-in-out infinite; }
+  .scene-5 { animation: s5 var(--total) ease-in-out infinite; }
+  .scene-6 { animation: s6 var(--total) ease-in-out infinite; }
+  .scene-7 { animation: s7 var(--total) ease-in-out infinite; }
+  .scene-8 { animation: s8 var(--total) ease-in-out infinite; }
+  .scene-9 { animation: s9 var(--total) ease-in-out infinite; }
+
+  @keyframes s1 { 0%,10% {opacity:1;} 11%,100% {opacity:0;} }
+  @keyframes s2 { 0%,10% {opacity:0;} 11%,21% {opacity:1;} 22%,100% {opacity:0;} }
+  @keyframes s3 { 0%,21% {opacity:0;} 22%,32% {opacity:1;} 33%,100% {opacity:0;} }
+  @keyframes s4 { 0%,32% {opacity:0;} 33%,43% {opacity:1;} 44%,100% {opacity:0;} }
+  @keyframes s5 { 0%,43% {opacity:0;} 44%,54% {opacity:1;} 55%,100% {opacity:0;} }
+  @keyframes s6 { 0%,54% {opacity:0;} 55%,65% {opacity:1;} 66%,100% {opacity:0;} }
+  @keyframes s7 { 0%,65% {opacity:0;} 66%,76% {opacity:1;} 77%,100% {opacity:0;} }
+  @keyframes s8 { 0%,76% {opacity:0;} 77%,87% {opacity:1;} 88%,100% {opacity:0;} }
+  @keyframes s9 { 0%,87% {opacity:0;} 88%,99% {opacity:1;} 100% {opacity:0;} }
+
+  /* Common labels */
+  .label-mini {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 2.6px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .label-mini.green { color: var(--accent); }
+  .hairline {
+    height: 1px;
+    background: var(--hair);
+    width: 100%;
+  }
+  .ornament-diamond {
+    display: inline-block;
+    width: 4px; height: 4px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    vertical-align: middle;
+  }
+
+  /* ── Scene 1: Brand splash — minimalist garden ── */
+  .scene-1 { justify-content: center; padding-left: 66px; }
+  .brand-splash {
+    text-align: center;
+    position: relative;
+    width: 100%;
+    z-index: 3;
+  }
+
+  /* Garden SVG background — flowers, grass, stems */
+  .garden-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .garden-bg svg { width: 100%; height: 100%; display: block; }
+
+  /* Subtle aura behind wordmark */
+  .brand-aura {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 240px;
+    height: 110px;
+    background: radial-gradient(ellipse, rgba(255,250,235,0.35) 0%, transparent 65%);
+    pointer-events: none;
+    animation: auraBreathe 6s ease-in-out infinite;
+    z-index: 2;
+  }
+  @keyframes auraBreathe {
+    0%,100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  }
+
+  /* Foliage fade-in + gentle sway */
+  .orn-fade { opacity: 0; transform-origin: top center; }
+  .orn-1 { animation: ornIn 1.4s 0.2s ease-out forwards, foliageSway 7s 1.8s ease-in-out infinite; }
+  .orn-2 { animation: ornIn 1.2s 0.6s ease-out forwards, foliageSway 6s 2s ease-in-out infinite; }
+  .orn-3 { animation: ornIn 0.9s 1.4s ease-out forwards, bugBob 4s 2s ease-in-out infinite; }
+  @keyframes ornIn {
+    0%   { opacity: 0; transform: scale(0.94) translateY(-4px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes foliageSway {
+    0%,100% { transform: rotate(0); }
+    50% { transform: rotate(0.6deg); }
+  }
+  @keyframes bugBob {
+    0%,100% { transform: translateY(0) rotate(0); }
+    25% { transform: translateY(-3px) rotate(6deg); }
+    50% { transform: translateY(0) rotate(0); }
+    75% { transform: translateY(-3px) rotate(-6deg); }
+  }
+
+  /* ── Persistent door-world background (behind every scene) ── */
+  .world-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .world-bg svg { width: 100%; height: 100%; display: block; }
+  /* gentle living sway on the persistent left vine */
+  .vine-sway { transform-origin: 20px 0; animation: vineSway 9s ease-in-out infinite; }
+  @keyframes vineSway {
+    0%,100% { transform: rotate(-0.5deg); }
+    50%     { transform: rotate(0.5deg); }
+  }
+  /* the recurring ladybug, drifting in open space */
+  .bug-drift { animation: bugDrift 16s ease-in-out infinite; transform-origin: center; }
+  @keyframes bugDrift {
+    0%   { transform: translate(0,0) rotate(0); }
+    25%  { transform: translate(-10px,14px) rotate(-8deg); }
+    50%  { transform: translate(6px,30px) rotate(5deg); }
+    75%  { transform: translate(-6px,16px) rotate(-4deg); }
+    100% { transform: translate(0,0) rotate(0); }
+  }
+
+  /* ── Scene-1 door reveal animation ── */
+  .door-open  { opacity: 0; animation: doorIn 1.6s 0.2s cubic-bezier(.2,.7,.2,1) forwards; transform-origin: 80px 50%; }
+  .door-edge  { opacity: 0; animation: edgeIn 1.2s 0.7s ease-out forwards; }
+  .door-fol-1 { opacity: 0; animation: folIn 1.3s 0.5s ease-out forwards, foliageSway 7s 2s ease-in-out infinite; transform-origin: top left; }
+  .door-fol-2 { opacity: 0; animation: folIn 1.2s 0.9s ease-out forwards, foliageSway 8s 2.3s ease-in-out infinite; transform-origin: bottom left; }
+  .door-bug   { opacity: 0; animation: folIn 0.8s 1.6s ease-out forwards, bugBob 4s 2s ease-in-out infinite; }
+  @keyframes doorIn {
+    0%   { opacity: 0; transform: perspective(600px) rotateY(-22deg); }
+    100% { opacity: 1; transform: perspective(600px) rotateY(0); }
+  }
+  @keyframes edgeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+  @keyframes folIn {
+    0%   { opacity: 0; transform: scale(0.92) translate(-4px,-6px); }
+    100% { opacity: 1; transform: scale(1) translate(0,0); }
+  }
+
+  /* Crown ornament */
+  .brand-splash .ornament-top {
+    width: 30px;
+    height: 30px;
+    margin: 0 auto 14px;
+    animation: gentleFloat 4s ease-in-out infinite;
+    position: relative;
+  }
+  @keyframes gentleFloat {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  /* Eyebrow tag */
+  .brand-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 3.6px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .brand-tag .dash {
+    width: 18px; height: 1px;
+    background: var(--ink-soft);
+    opacity: 0.55;
+  }
+
+  .brand-splash .word {
+    font-family: 'Italiana', serif;
+    font-size: 88px;
+    color: var(--ink);
+    letter-spacing: -1px;
+    line-height: 0.95;
+    animation: wordShimmer 6s ease-in-out infinite;
+  }
+  @keyframes wordShimmer {
+    0%,100% { text-shadow: 0 0 0 transparent; }
+    50% { text-shadow: 0 0 30px rgba(255,255,220,0.55); }
+  }
+
+  /* small flourish under wordmark */
+  .brand-flourish {
+    margin: 10px auto 0;
+    width: 80px;
+    height: 8px;
+    opacity: 0.55;
+  }
+  .brand-flourish svg { display: block; width: 100%; height: 100%; }
+
+  .brand-splash .sub {
+    margin-top: 10px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  .divider-orn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .divider-orn .line { width: 22px; height: 1px; background: var(--ink-soft); opacity: 0.55; }
+  .divider-orn i {
+    width: 4px; height: 4px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    display: block;
+  }
+  .brand-splash .tagline {
+    margin-top: 20px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .brand-splash .tagline em {
+    color: var(--ink);
+    font-weight: 400;
+  }
+
+  /* ── Scene 2: Token Reduction (no boxes) ── */
+  .scene-2 { justify-content: center; gap: 16px; align-items: stretch; padding: 0 8px; }
+  .reduce-block { display: flex; flex-direction: column; gap: 16px; }
+  .reduce-section { display: flex; flex-direction: column; gap: 6px; opacity: 0; }
+  .reduce-orig { animation: redOrig var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .reduce-opt  { animation: redOpt var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes redOrig {
+    0%,10% { opacity: 0; transform: translateY(8px); }
+    13%,20% { opacity: 1; transform: translateY(0); }
+    22%,100% { opacity: 0; }
+  }
+  @keyframes redOpt {
+    0%,15% { opacity: 0; transform: translateY(8px); }
+    18%,20% { opacity: 1; transform: translateY(0); }
+    22%,100% { opacity: 0; }
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-head .tok {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+  }
+  .section-head .tok em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 13px;
+    color: var(--ink);
+    margin-right: 3px;
+  }
+  .reduce-body {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .reduce-body.opt {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 14px;
+  }
+
+  /* dots flow between sections */
+  .opt-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0;
+    animation: flowIn var(--total) ease-in-out infinite;
+  }
+  @keyframes flowIn {
+    0%,12% { opacity: 0; }
+    14%,18% { opacity: 1; }
+    20%,100% { opacity: 0; }
+  }
+  .opt-flow .d {
+    width: 4px; height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: dotFlow 1.1s ease-in-out infinite;
+  }
+  .opt-flow .d:nth-child(2) { animation-delay: 0.15s; }
+  .opt-flow .d:nth-child(3) { animation-delay: 0.3s; }
+  .opt-flow .lbl { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--ink-soft); }
+  .opt-flow .d:nth-child(5) { animation-delay: 0.45s; }
+  .opt-flow .d:nth-child(6) { animation-delay: 0.6s; }
+  .opt-flow .d:nth-child(7) { animation-delay: 0.75s; }
+  @keyframes dotFlow {
+    0%,100% { transform: translateY(0); opacity: 0.4; }
+    50% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  .saved-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
+    opacity: 0;
+    animation: savedIn var(--total) cubic-bezier(.34,1.56,.64,1) infinite;
+  }
+  @keyframes savedIn {
+    0%,18% { opacity: 0; transform: translateY(4px); }
+    20%,21% { opacity: 1; transform: translateY(0); }
+    22%,100% { opacity: 0; }
+  }
+  .saved-line .pct {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 32px;
+    color: var(--accent);
+    animation: pctPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pctPulse {
+    0%,100% { transform: scale(1); text-shadow: 0 0 0 rgba(58,58,46,0); }
+    50% { transform: scale(1.08); text-shadow: 0 0 12px rgba(58,58,46,0.4); }
+  }
+  .saved-line .lbl { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--ink-soft); }
+
+  /* Striking original-text effect on optimized */
+  .reduce-body.strike { position: relative; }
+  .reduce-body.strike::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 100%;
+    top: 50%;
+    height: 1.2px;
+    background: var(--accent);
+    transform-origin: left;
+    animation: strikeDraw var(--total) ease-in-out infinite;
+  }
+  @keyframes strikeDraw {
+    0%,14% { right: 100%; }
+    17%,19% { right: 0; }
+    21%,100% { right: 100%; }
+  }
+
+  /* ── Scene 3: Three Modes ── */
+  .scene-3 { justify-content: center; gap: 14px; padding: 0 4px; align-items: stretch; }
+  .mode-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+    opacity: 0;
+    transition: color 0.3s ease;
+  }
+  .mode-icon { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .mode-info { flex: 1; min-width: 0; }
+  .mode-name {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .mode-ex {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+  .mode-pct {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+    transition: color 0.3s ease;
+  }
+  .hairline-row {
+    height: 1px;
+    background: var(--hair);
+    width: 100%;
+    opacity: 0;
+  }
+
+  .m-row-1 { animation: modeRow1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .m-row-2 { animation: modeRow2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .m-row-3 { animation: modeRow3 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes modeRow1 {
+    0%,21% { opacity: 0; transform: translateX(-12px); }
+    23%,32% { opacity: 1; transform: translateX(0); }
+    33%,100% { opacity: 0; }
+  }
+  @keyframes modeRow2 {
+    0%,23% { opacity: 0; transform: translateX(-12px); }
+    25%,32% { opacity: 1; transform: translateX(0); }
+    33%,100% { opacity: 0; }
+  }
+  @keyframes modeRow3 {
+    0%,25% { opacity: 0; transform: translateX(-12px); }
+    27%,32% { opacity: 1; transform: translateX(0); }
+    33%,100% { opacity: 0; }
+  }
+  /* Highlight cycling — accent color cycles through each row */
+  .m-row-1 .mode-pct { animation: hlSoft var(--total) ease-in-out infinite; }
+  .m-row-2 .mode-pct { animation: hlNorm var(--total) ease-in-out infinite; }
+  .m-row-3 .mode-pct { animation: hlAgg var(--total) ease-in-out infinite; }
+  @keyframes hlSoft {
+    0%,26% { color: var(--ink); transform: scale(1); }
+    27%,28% { color: var(--accent); transform: scale(1.15); }
+    29%,100% { color: var(--ink); transform: scale(1); }
+  }
+  @keyframes hlNorm {
+    0%,28% { color: var(--ink); transform: scale(1); }
+    29%,30% { color: var(--accent); transform: scale(1.15); }
+    31%,100% { color: var(--ink); transform: scale(1); }
+  }
+  @keyframes hlAgg {
+    0%,30% { color: var(--ink); transform: scale(1); }
+    31%,32% { color: var(--accent); transform: scale(1.15); }
+    33%,100% { color: var(--ink); transform: scale(1); }
+  }
+  .hairline-1 { animation: hlLine1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .hairline-2 { animation: hlLine2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes hlLine1 {
+    0%,23% { opacity: 0; }
+    25%,32% { opacity: 1; }
+    33%,100% { opacity: 0; }
+  }
+  @keyframes hlLine2 {
+    0%,25% { opacity: 0; }
+    27%,32% { opacity: 1; }
+    33%,100% { opacity: 0; }
+  }
+
+  /* ── Scene 4: Works Everywhere ── */
+  .scene-4 { justify-content: center; }
+  .app-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px 14px;
+  }
+  .app-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    opacity: 0;
+  }
+  .app-cell .glyph { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+  .app-cell .nm {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: 0;
+  }
+  .app-cell .check {
+    position: absolute;
+    top: -4px; right: 14px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 8px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    box-shadow: 0 0 8px rgba(58,58,46,0.6);
+  }
+  .app-1 { animation: appIn1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .app-2 { animation: appIn2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .app-3 { animation: appIn3 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .app-4 { animation: appIn4 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .app-5 { animation: appIn5 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .app-6 { animation: appIn6 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes appIn1 { 0%,32%{opacity:0; transform:translateY(6px) scale(0.85);} 34%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn2 { 0%,33%{opacity:0; transform:translateY(6px) scale(0.85);} 35%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn3 { 0%,34%{opacity:0; transform:translateY(6px) scale(0.85);} 36%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn4 { 0%,35%{opacity:0; transform:translateY(6px) scale(0.85);} 37%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn5 { 0%,36%{opacity:0; transform:translateY(6px) scale(0.85);} 38%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn6 { 0%,37%{opacity:0; transform:translateY(6px) scale(0.85);} 39%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  .chk-1 { animation: chk1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .chk-2 { animation: chk2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .chk-3 { animation: chk3 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .chk-4 { animation: chk4 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .chk-5 { animation: chk5 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .chk-6 { animation: chk6 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes chk1 { 0%,37%{opacity:0; transform:scale(0);} 39%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk2 { 0%,37.5%{opacity:0; transform:scale(0);} 39.5%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk3 { 0%,38%{opacity:0; transform:scale(0);} 40%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk4 { 0%,38.5%{opacity:0; transform:scale(0);} 40.5%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk5 { 0%,39%{opacity:0; transform:scale(0);} 41%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk6 { 0%,39.5%{opacity:0; transform:scale(0);} 41.5%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+
+  .anywhere-foot {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 9.5px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  /* ── Scene 5: Agent Monitoring (NEW) ── */
+  .scene-5 { justify-content: center; padding: 0 4px; }
+  .monitor-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: liveBlink 1.2s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--accent-glow);
+  }
+  @keyframes liveBlink {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+  .monitor-log {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--ink);
+    width: 100%;
+  }
+  .log-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    opacity: 0;
+  }
+  .log-line .ts { color: var(--ink-faint); font-size: 9px; min-width: 36px; }
+  .log-line .ag { color: var(--accent); font-weight: 500; }
+  .log-line .arr { color: var(--ink-faint); }
+  .log-line .msg { color: var(--ink); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log-line .gain {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .lg-1 { animation: lg1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .lg-2 { animation: lg2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .lg-3 { animation: lg3 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .lg-4 { animation: lg4 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .lg-5 { animation: lg5 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes lg1 { 0%,44%{opacity:0; transform:translateY(6px);} 46%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+  @keyframes lg2 { 0%,45%{opacity:0; transform:translateY(6px);} 47%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+  @keyframes lg3 { 0%,47%{opacity:0; transform:translateY(6px);} 49%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+  @keyframes lg4 { 0%,49%{opacity:0; transform:translateY(6px);} 51%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+  @keyframes lg5 { 0%,51%{opacity:0; transform:translateY(6px);} 53%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+
+  .monitor-stat {
+    text-align: center;
+    margin-top: 18px;
+    opacity: 0;
+    animation: monStatIn var(--total) cubic-bezier(.34,1.56,.64,1) infinite;
+  }
+  @keyframes monStatIn {
+    0%,49%{opacity:0; transform:translateY(6px);}
+    51%,54%{opacity:1; transform:translateY(0);}
+    55%,100%{opacity:0;}
+  }
+  .monitor-stat .val {
+    font-family: 'Italiana', serif;
+    font-size: 36px;
+    color: var(--ink);
+    line-height: 1;
+    letter-spacing: -0.5px;
+    animation: valTick 1.8s ease-in-out infinite;
+    display: inline-block;
+  }
+  @keyframes valTick {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
+  .monitor-stat .val small {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-left: 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .monitor-stat .sub {
+    margin-top: 6px;
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  /* tiny waveform bars decorating monitor */
+  .monitor-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    height: 16px;
+    margin-top: 12px;
+  }
+  .monitor-bars b {
+    width: 3px;
+    background: var(--accent);
+    border-radius: 1px;
+    animation: barEq 1s ease-in-out infinite;
+    opacity: 0.7;
+  }
+  .monitor-bars b:nth-child(1) { animation-delay: 0s; height: 6px; }
+  .monitor-bars b:nth-child(2) { animation-delay: 0.1s; height: 12px; }
+  .monitor-bars b:nth-child(3) { animation-delay: 0.2s; height: 9px; }
+  .monitor-bars b:nth-child(4) { animation-delay: 0.3s; height: 16px; }
+  .monitor-bars b:nth-child(5) { animation-delay: 0.4s; height: 7px; }
+  .monitor-bars b:nth-child(6) { animation-delay: 0.5s; height: 13px; }
+  .monitor-bars b:nth-child(7) { animation-delay: 0.6s; height: 10px; }
+  .monitor-bars b:nth-child(8) { animation-delay: 0.5s; height: 14px; }
+  .monitor-bars b:nth-child(9) { animation-delay: 0.4s; height: 8px; }
+  .monitor-bars b:nth-child(10) { animation-delay: 0.3s; height: 11px; }
+  @keyframes barEq {
+    0%,100% { transform: scaleY(0.5); }
+    50% { transform: scaleY(1.2); }
+  }
+
+  /* ── Scene 6: Languages (no boxes) ── */
+  .scene-6 { justify-content: center; gap: 12px; padding: 0 4px; align-items: stretch; }
+  .lang-stack { display: flex; flex-direction: column; gap: 4px; }
+  .lang-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    opacity: 0;
+  }
+  .lang-row .flag {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 1.2px;
+    width: 30px;
+    flex-shrink: 0;
+  }
+  .lang-row .orig {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lang-row .arrow { color: var(--ink-faint); font-size: 11px; }
+  .lang-row .opt {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    transition: color 0.3s;
+  }
+  .l-row-1 { animation: lRow1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .l-row-2 { animation: lRow2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .l-row-3 { animation: lRow3 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .l-row-4 { animation: lRow4 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .l-row-5 { animation: lRow5 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes lRow1 { 0%,55%{opacity:0; transform:translateX(-6px);} 57%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  @keyframes lRow2 { 0%,56%{opacity:0; transform:translateX(-6px);} 58%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  @keyframes lRow3 { 0%,57%{opacity:0; transform:translateX(-6px);} 59%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  @keyframes lRow4 { 0%,58%{opacity:0; transform:translateX(-6px);} 60%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  @keyframes lRow5 { 0%,59%{opacity:0; transform:translateX(-6px);} 61%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  .l-row-1 .opt { animation: optHL1 var(--total) ease-in-out infinite; }
+  .l-row-2 .opt { animation: optHL2 var(--total) ease-in-out infinite; }
+  .l-row-3 .opt { animation: optHL3 var(--total) ease-in-out infinite; }
+  .l-row-4 .opt { animation: optHL4 var(--total) ease-in-out infinite; }
+  .l-row-5 .opt { animation: optHL5 var(--total) ease-in-out infinite; }
+  @keyframes optHL1 { 0%,59%{color:var(--ink);} 60%,61%{color:var(--accent);} 62%,100%{color:var(--ink);} }
+  @keyframes optHL2 { 0%,60%{color:var(--ink);} 61%,62%{color:var(--accent);} 63%,100%{color:var(--ink);} }
+  @keyframes optHL3 { 0%,61%{color:var(--ink);} 62%,63%{color:var(--accent);} 64%,100%{color:var(--ink);} }
+  @keyframes optHL4 { 0%,62%{color:var(--ink);} 63%,64%{color:var(--accent);} 65%,100%{color:var(--ink);} }
+  @keyframes optHL5 { 0%,63%{color:var(--ink);} 64%,65%{color:var(--accent);} 66%,100%{color:var(--ink);} }
+
+  /* ── Scene 7: Terse Pet — cute round Pal ── */
+  .scene-7 { justify-content: flex-start; padding: 12px 0 0; }
+  .pet-head { text-align: center; }
+  .pet-head .nm {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .pet-stage {
+    position: relative;
+    width: 240px;
+    height: 220px;
+    margin: 10px auto 0;
+  }
+  .pet-body {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 14px;
+    animation: petBob 2.2s ease-in-out infinite;
+    transform-origin: center 92%;
+  }
+  @keyframes petBob {
+    0%,100% { transform: translateY(0) scale(1, 1); }
+    50% { transform: translateY(-4px) scale(1.02, 0.98); }
+  }
+  .pet-body svg { display: block; overflow: visible; }
+  /* tail wagging */
+  .pet-tail-wag { transform-origin: 70% 70%; animation: tailWag 0.9s ease-in-out infinite; }
+  @keyframes tailWag {
+    0%,100% { transform: rotate(-10deg); }
+    50% { transform: rotate(15deg); }
+  }
+  /* ear twitching occasionally */
+  .pet-ear-l { transform-origin: 50% 100%; animation: earTwitchL 5s ease-in-out infinite; }
+  .pet-ear-r { transform-origin: 50% 100%; animation: earTwitchR 5s ease-in-out infinite 0.2s; }
+  @keyframes earTwitchL { 0%,90%,100% { transform: rotate(0); } 93%,96% { transform: rotate(-12deg); } }
+  @keyframes earTwitchR { 0%,88%,100% { transform: rotate(0); } 91%,94% { transform: rotate(12deg); } }
+  /* eye blink */
+  .pet-eye { transform-origin: center; animation: eyeBlink 3.4s ease-in-out infinite; }
+  @keyframes eyeBlink {
+    0%,92%,100% { transform: scaleY(1); }
+    94%,96% { transform: scaleY(0.1); }
+  }
+  /* belly breath */
+  .pet-belly { transform-origin: center 80%; animation: bellyBreath 2.2s ease-in-out infinite; }
+  @keyframes bellyBreath {
+    0%,100% { transform: scale(1, 1); }
+    50% { transform: scale(1.03, 0.97); }
+  }
+  .pet-shadow {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 10px;
+    background: radial-gradient(ellipse, rgba(40,30,18,0.35) 0%, transparent 70%);
+    filter: blur(4px);
+    animation: shadowPulse 2.2s ease-in-out infinite;
+  }
+  @keyframes shadowPulse {
+    0%,100% { width: 100px; opacity: 1; }
+    50% { width: 90px; opacity: 0.7; }
+  }
+  /* sparkles around pet */
+  .pet-sparkle {
+    position: absolute;
+    width: 4px; height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(138,142,120,0.7);
+    opacity: 0;
+  }
+  .pet-spark-1 { top: 20%; left: 18%; animation: sparkPop 2.4s ease-out infinite; }
+  .pet-spark-2 { top: 35%; right: 18%; animation: sparkPop 2.4s ease-out infinite 0.8s; }
+  .pet-spark-3 { top: 55%; left: 12%; animation: sparkPop 2.4s ease-out infinite 1.6s; }
+  @keyframes sparkPop {
+    0%,100% { opacity: 0; transform: scale(0.4); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+  /* Floating hearts */
+  .heart {
+    position: absolute;
+    color: var(--accent);
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    opacity: 0;
+  }
+  .heart-1 { left: 12%; top: 50%; animation: heartFloat 3s ease-out infinite; }
+  .heart-2 { right: 14%; top: 60%; animation: heartFloat 3s ease-out infinite 0.7s; }
+  .heart-3 { left: 24%; top: 30%; animation: heartFloat 3s ease-out infinite 1.4s; }
+  @keyframes heartFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    20% { opacity: 1; transform: translateY(-10px) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) scale(0.8); }
+  }
+  /* Pet stats */
+  .pet-stats {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 16px;
+  }
+  .pet-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+  }
+  .pet-stat-row .lbl {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--ink);
+    width: 64px;
+    flex-shrink: 0;
+  }
+  .pet-stat-row .bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(26,28,24,0.15);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .pet-stat-row .bar .fill {
+    position: absolute;
+    inset: 0 100% 0 0;
+    background: var(--accent);
+    border-radius: 4px;
+  }
+  .pet-stat-row .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    width: 30px;
+    text-align: right;
+  }
+  .ps-1 { animation: psRow1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .ps-2 { animation: psRow2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .ps-3 { animation: psRow3 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes psRow1 { 0%,68%{opacity:0; transform:translateY(4px);} 70%,76%{opacity:1; transform:translateY(0);} 77%,100%{opacity:0;} }
+  @keyframes psRow2 { 0%,69%{opacity:0; transform:translateY(4px);} 71%,76%{opacity:1; transform:translateY(0);} 77%,100%{opacity:0;} }
+  @keyframes psRow3 { 0%,70%{opacity:0; transform:translateY(4px);} 72%,76%{opacity:1; transform:translateY(0);} 77%,100%{opacity:0;} }
+  .ps-1 .fill { animation: barFill1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .ps-2 .fill { animation: barFill2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .ps-3 .fill { animation: barFill3 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes barFill1 { 0%,70%{right:100%;} 73%,76%{right:5%;} 77%,100%{right:100%;} }
+  @keyframes barFill2 { 0%,71%{right:100%;} 74%,76%{right:30%;} 77%,100%{right:100%;} }
+  @keyframes barFill3 { 0%,72%{right:100%;} 75%,76%{right:18%;} 77%,100%{right:100%;} }
+
+  .pet-foot {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .pet-foot em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    text-transform: none;
+  }
+
+  /* ── Scene 8: Terse Farm (NEW) ── */
+  .scene-8 { justify-content: flex-start; padding: 16px 0 0; }
+  .farm-head { text-align: center; margin-bottom: 12px; }
+  .farm-head .nm {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 20px;
+    color: var(--ink);
+  }
+  .farm-grid {
+    width: 220px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .tile {
+    aspect-ratio: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+  }
+  .tile svg { display: block; }
+  .t-1 { animation: tileIn1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .t-2 { animation: tileIn2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .t-3 { animation: tileIn3 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .t-4 { animation: tileIn4 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .t-5 { animation: tileIn5 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .t-6 { animation: tileIn6 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .t-7 { animation: tileIn7 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .t-8 { animation: tileIn8 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .t-9 { animation: tileIn9 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes tileIn1 { 0%,78%{opacity:0; transform:scale(0.6);} 80%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn2 { 0%,78.5%{opacity:0; transform:scale(0.6);} 80.5%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn3 { 0%,79%{opacity:0; transform:scale(0.6);} 81%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn4 { 0%,79.5%{opacity:0; transform:scale(0.6);} 81.5%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn5 { 0%,80%{opacity:0; transform:scale(0.6);} 82%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn6 { 0%,80.5%{opacity:0; transform:scale(0.6);} 82.5%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn7 { 0%,81%{opacity:0; transform:scale(0.6);} 83%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn8 { 0%,81.5%{opacity:0; transform:scale(0.6);} 83.5%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn9 { 0%,82%{opacity:0; transform:scale(0.6);} 84%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  /* Crop grow animation on selected tiles */
+  .crop-grow { transform-origin: 50% 100%; animation: cropGrow 2.4s ease-in-out infinite; }
+  @keyframes cropGrow {
+    0%,100% { transform: scale(0.85, 0.7); }
+    50% { transform: scale(1, 1); }
+  }
+  /* Water droplet */
+  .droplet {
+    position: absolute;
+    width: 5px;
+    height: 7px;
+    background: var(--accent-light);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    opacity: 0;
+    animation: dropFall 2s ease-in infinite;
+  }
+  @keyframes dropFall {
+    0% { opacity: 0; transform: translateY(-30px); }
+    30% { opacity: 1; }
+    60% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(0) scale(0.5); }
+  }
+  /* Floating coin */
+  .coin {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #D4B470 0%, #B8923E 100%);
+    border: 1px solid #5E4920;
+    opacity: 0;
+    animation: coinFloat 3s ease-out infinite;
+    box-shadow: 0 0 8px rgba(232,201,100,0.5);
+  }
+  .coin::before {
+    content: '$';
+    position: absolute;
+    inset: 0;
+    color: #5E4920;
+    font-size: 8px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+  }
+  @keyframes coinFloat {
+    0% { opacity: 0; transform: translate(-50%, -50%) translateY(0) scale(0.5) rotate(0); }
+    20% { opacity: 1; transform: translate(-50%, -50%) translateY(-10px) scale(1) rotate(180deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) translateY(-50px) scale(0.7) rotate(720deg); }
+  }
+  /* Sun rays animation */
+  .farm-sun {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,240,180,0.9) 0%, rgba(255,220,140,0.6) 70%, transparent 100%);
+    box-shadow: 0 0 20px rgba(255,220,140,0.6);
+    animation: sunPulse 3s ease-in-out infinite;
+  }
+  @keyframes sunPulse {
+    0%,100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.15); opacity: 1; }
+  }
+  /* +50 coins floating notification */
+  .coin-notify {
+    position: absolute;
+    top: 30%; right: 14px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 14px;
+    color: var(--accent);
+    opacity: 0;
+    animation: coinNotify 3s ease-out infinite;
+  }
+  @keyframes coinNotify {
+    0%,30% { opacity: 0; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-12px); }
+    100% { opacity: 0; transform: translateY(-30px); }
+  }
+
+  .farm-foot {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .farm-foot em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 0;
+    text-transform: none;
+    margin-left: 4px;
+    opacity: 0;
+    animation: harvestNum var(--total) cubic-bezier(.34,1.56,.64,1) infinite;
+  }
+  @keyframes harvestNum {
+    0%,82% { opacity: 0; transform: translateY(4px); }
+    84%,87% { opacity: 1; transform: translateY(0); }
+    88%,100% { opacity: 0; }
+  }
+
+  /* ── Scene 9: Stats + CTA ── */
+  .scene-9 { justify-content: center; gap: 14px; padding: 0 4px; align-items: stretch; }
+  .stat-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 8px 0;
+    opacity: 0;
+  }
+  .stat-line .label {
+    font-size: 9.5px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .stat-line .val {
+    font-family: 'Italiana', serif;
+    font-size: 32px;
+    color: var(--ink);
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+  .stat-line .val small {
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-left: 2px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+  }
+  .st-1 { animation: stIn1 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  .st-2 { animation: stIn2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes stIn1 { 0%,88%{opacity:0; transform:translateY(6px);} 90%,99%{opacity:1; transform:translateY(0);} 100%{opacity:0;} }
+  @keyframes stIn2 { 0%,89%{opacity:0; transform:translateY(6px);} 91%,99%{opacity:1; transform:translateY(0);} 100%{opacity:0;} }
+
+  .spark {
+    height: 36px;
+    width: 100%;
+    margin: 4px 0;
+    opacity: 0;
+    animation: sparkScene var(--total) cubic-bezier(.34,1.56,.64,1) infinite;
+  }
+  @keyframes sparkScene { 0%,89%{opacity:0;} 91%,99%{opacity:1;} 100%{opacity:0;} }
+  .spark path.line {
+    stroke: var(--accent);
+    stroke-width: 1.8;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 260;
+    stroke-dashoffset: 260;
+    animation: drawSpark var(--total) cubic-bezier(.34,1.56,.64,1) infinite;
+  }
+  @keyframes drawSpark { 0%,89% { stroke-dashoffset: 260; } 94%,99% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 260; } }
+  .spark path.fill { stroke: none; fill: url(#sparkGrad); opacity: 0; animation: fillIn var(--total) cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes fillIn { 0%,94% {opacity:0;} 96%,99% {opacity:0.55;} 100% {opacity:0;} }
+
+  .cta-btn-mv {
+    margin-top: 8px;
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: 100px;
+    padding: 13px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 8px 24px rgba(40,30,18,0.20);
+    animation: ctaPulse 3s ease-in-out infinite;
+    opacity: 0;
+    animation: ctaIn var(--total) ease-out infinite, ctaPulse 3s ease-in-out infinite;
+  }
+  @keyframes ctaIn { 0%,91%{opacity:0; transform:translateY(8px);} 93%,99%{opacity:1; transform:translateY(0);} 100%{opacity:0;} }
+  @keyframes ctaPulse {
+    0%,100% { box-shadow: 0 8px 24px rgba(40,30,18,0.20); }
+    50% { box-shadow: 0 8px 30px rgba(40,30,18,0.30), 0 0 0 6px rgba(138,142,120,0.30); }
+  }
+  .cta-btn-mv span { font-size: 12.5px; font-weight: 500; letter-spacing: 0.4px; }
+  .cta-btn-mv svg { fill: #fff; width: 13px; height: 13px; }
+  .cta-note-mv {
+    margin-top: 8px;
+    font-size: 9.5px;
+    color: var(--ink-soft);
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    text-align: center;
+    opacity: 0;
+    animation: ctaNoteIn var(--total) cubic-bezier(.34,1.56,.64,1) infinite;
+  }
+  @keyframes ctaNoteIn { 0%,93%{opacity:0;} 95%,99%{opacity:1;} 100%{opacity:0;} }
+
+  /* Home indicator */
+  .home-bar {
+    position: absolute;
+    bottom: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 104px;
+    height: 4px;
+    background: var(--line);
+    border-radius: 3px;
+    opacity: 0.75;
+    z-index: 5;
+  }
+
+  /* Progress — 9 dots */
+  .progress {
+    margin-top: 36px;
+    display: flex;
+    gap: 6px;
+  }
+  .progress .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--ink);
+    opacity: 0.2;
+  }
+  .progress .d1 { animation: dot1 var(--total) ease-in-out infinite; }
+  .progress .d2 { animation: dot2 var(--total) ease-in-out infinite; }
+  .progress .d3 { animation: dot3 var(--total) ease-in-out infinite; }
+  .progress .d4 { animation: dot4 var(--total) ease-in-out infinite; }
+  .progress .d5 { animation: dot5 var(--total) ease-in-out infinite; }
+  .progress .d6 { animation: dot6 var(--total) ease-in-out infinite; }
+  .progress .d7 { animation: dot7 var(--total) ease-in-out infinite; }
+  .progress .d8 { animation: dot8 var(--total) ease-in-out infinite; }
+  .progress .d9 { animation: dot9 var(--total) ease-in-out infinite; }
+  @keyframes dot1 { 0%,10% {opacity:1; transform:scale(1.4);} 11%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot2 { 0%,10% {opacity:0.2;} 11%,21% {opacity:1; transform:scale(1.4);} 22%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot3 { 0%,21% {opacity:0.2;} 22%,32% {opacity:1; transform:scale(1.4);} 33%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot4 { 0%,32% {opacity:0.2;} 33%,43% {opacity:1; transform:scale(1.4);} 44%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot5 { 0%,43% {opacity:0.2;} 44%,54% {opacity:1; transform:scale(1.4);} 55%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot6 { 0%,54% {opacity:0.2;} 55%,65% {opacity:1; transform:scale(1.4);} 66%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot7 { 0%,65% {opacity:0.2;} 66%,76% {opacity:1; transform:scale(1.4);} 77%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot8 { 0%,76% {opacity:0.2;} 77%,87% {opacity:1; transform:scale(1.4);} 88%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot9 { 0%,87% {opacity:0.2;} 88%,99% {opacity:1; transform:scale(1.4);} 100% {opacity:0.2; transform:scale(1);} }
+
+  /* ════════ Door-style scene components — flat paper-cut, minimal ════════ */
+  .scene-2,.scene-3,.scene-4,.scene-5,.scene-6,.scene-8,.scene-9 { padding-left: 26px; }
+
+  /* Scene 2 — Token reduction */
+  .d2 { display:flex; flex-direction:column; align-items:center; gap:24px; width:100%; }
+  .d2-big { font-family:'Italiana',serif; color:var(--ink); line-height:0.85; display:flex; align-items:baseline; }
+  .d2-big em { font-size:104px; font-style:normal; }
+  .d2-big span { font-size:32px; margin-left:3px; color:var(--accent-light); }
+  .d2-cap { font-size:9.5px; letter-spacing:2.6px; text-transform:uppercase; color:var(--ink-soft); margin-top:-12px; }
+  .d2-bars { width:188px; display:flex; flex-direction:column; gap:13px; }
+  .d2-row { display:flex; align-items:center; gap:10px; }
+  .d2-n { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-soft); width:26px; text-align:right; }
+  .d2-n.green { color:var(--accent-light); }
+  .d2-bar { flex:1; height:9px; position:relative; }
+  .d2-bar i { position:absolute; left:0; top:0; height:100%; border-radius:5px; }
+  .d2-bar i.lg { width:100%; background:var(--ink-soft); opacity:0.3; }
+  .d2-bar i.sm { width:30%; background:var(--accent-light); }
+
+  /* Scene 3 — Three modes */
+  .d3 { display:flex; flex-direction:column; width:218px; }
+  .d3-row { display:flex; align-items:center; gap:14px; padding:17px 2px; border-bottom:1px solid var(--hair); }
+  .d3-row:last-child { border-bottom:none; }
+  .d3-lv { width:60px; height:30px; flex-shrink:0; }
+  .d3-nm { font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:18px; color:var(--ink); flex:1; }
+  .d3-pct { font-family:'Italiana',serif; font-size:21px; color:var(--accent-light); }
+
+  /* Scene 4 — Works everywhere (constellation) */
+  .d4 { position:relative; width:236px; height:236px; }
+  .d4-ring { position:absolute; inset:26px; border:1px solid var(--hair); border-radius:50%; }
+  .d4-ring.r2 { inset:64px; opacity:0.6; }
+  .d4-core { position:absolute; left:50%; top:50%; width:40px; height:40px; transform:translate(-50%,-50%); }
+  .d4-chip { position:absolute; transform:translate(-50%,-50%); background:#EEF2E6; border:1px solid rgba(31,42,26,0.16);
+             border-radius:20px; padding:5px 10px; font-size:10px; font-weight:500; color:var(--ink); white-space:nowrap;
+             display:flex; align-items:center; gap:5px; box-shadow:0 3px 8px -4px rgba(31,42,26,0.28); }
+  .d4-chip .ck { color:var(--accent-light); font-size:9px; font-weight:700; }
+  .d4-c1 { left:50%;  top:18px; }
+  .d4-c2 { left:88%;  top:74px; }
+  .d4-c3 { left:88%;  top:162px; }
+  .d4-c4 { left:50%;  top:218px; }
+  .d4-c5 { left:12%;  top:162px; }
+  .d4-c6 { left:12%;  top:74px; }
+  .d4-foot { font-size:9px; letter-spacing:2.4px; text-transform:uppercase; color:var(--ink-soft); margin-top:16px; }
+
+  /* Scene 5 — Agent monitoring */
+  .d5 { display:flex; flex-direction:column; align-items:center; gap:17px; width:228px; }
+  .d5-live { display:flex; align-items:center; gap:7px; font-size:9px; letter-spacing:2.6px; text-transform:uppercase; color:var(--ink-soft); }
+  .d5-live .dot { width:6px; height:6px; border-radius:50%; background:#CB4332; animation:livePulse 1.7s ease-in-out infinite; }
+  @keyframes livePulse { 0%,100% { box-shadow:0 0 0 0 rgba(203,67,50,.5); } 50% { box-shadow:0 0 0 6px rgba(203,67,50,0); } }
+  .d5-log { width:100%; display:flex; flex-direction:column; gap:10px; font-family:'JetBrains Mono',monospace; font-size:11px; }
+  .d5-log .r { display:flex; align-items:center; gap:9px; }
+  .d5-log .t { color:var(--ink-faint); }
+  .d5-log .a { color:var(--ink); }
+  .d5-log .g { margin-left:auto; color:var(--accent-light); }
+  .d5-big { font-family:'Italiana',serif; font-size:46px; color:var(--ink); display:flex; flex-direction:column; align-items:center; line-height:1; margin-top:2px; }
+  .d5-big small { font-size:9px; letter-spacing:2.2px; text-transform:uppercase; color:var(--ink-soft); font-family:'Inter',sans-serif; margin-top:7px; }
+  .d5-bars { display:flex; align-items:flex-end; gap:4px; height:26px; }
+  .d5-bars b { width:6px; background:var(--accent-glow); border-radius:2px; animation:barRise 2.6s ease-in-out infinite; }
+  .d5-bars b:nth-child(1){height:9px;animation-delay:0s}.d5-bars b:nth-child(2){height:14px;animation-delay:.2s}
+  .d5-bars b:nth-child(3){height:8px;animation-delay:.4s}.d5-bars b:nth-child(4){height:18px;animation-delay:.6s}
+  .d5-bars b:nth-child(5){height:12px;animation-delay:.8s}.d5-bars b:nth-child(6){height:22px;animation-delay:1s}
+  .d5-bars b:nth-child(7){height:15px;animation-delay:1.2s}.d5-bars b:nth-child(8){height:25px;animation-delay:1.4s}
+  @keyframes barRise { 0%,100% { transform:scaleY(0.6); opacity:.6; } 50% { transform:scaleY(1); opacity:1; } }
+
+  /* Scene 6 — Languages */
+  .d6 { display:flex; flex-direction:column; align-items:center; gap:22px; width:230px; }
+  .d6-ex { display:flex; align-items:center; gap:11px; font-size:15px; }
+  .d6-ex .o { color:var(--ink-faint); text-decoration:line-through; text-decoration-color:rgba(122,138,112,0.6); }
+  .d6-ex .ar { color:var(--accent-light); font-size:13px; }
+  .d6-ex .opt { font-family:'Fraunces',serif; font-style:italic; font-weight:400; color:var(--ink); }
+  .d6-chips { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:215px; }
+  .d6-chips span { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-soft); border:1px solid var(--hair); border-radius:14px; padding:4px 9px; }
+  .d6-chips span.on { background:var(--accent); color:#EAF0E2; border-color:var(--accent); }
+  .d6-cap { font-size:9px; letter-spacing:2.6px; text-transform:uppercase; color:var(--ink-soft); }
+
+  /* Scene 8 — Terse Farm */
+  .d8 { display:flex; flex-direction:column; align-items:center; gap:20px; }
+  .d8 svg { display:block; }
+  .d8-foot { font-size:11px; color:var(--ink-soft); letter-spacing:.4px; }
+  .d8-foot em { font-style:normal; color:var(--accent-light); font-weight:600; }
+  .coin-float { animation:coinFloat 3s ease-in-out infinite; transform-origin:center; }
+  @keyframes coinFloat { 0%,100% { transform:translateY(0); opacity:.95; } 50% { transform:translateY(-5px); opacity:1; } }
+
+  /* Scene 9 — Stats + CTA */
+  .d9 { display:flex; flex-direction:column; align-items:center; gap:14px; width:238px; }
+  .d9-big { font-family:'Italiana',serif; color:var(--ink); display:flex; align-items:baseline; gap:1px; line-height:0.9; }
+  .d9-big em { font-size:78px; font-style:normal; }
+  .d9-big small { font-size:30px; }
+  .d9-cap { font-size:9px; letter-spacing:2.6px; text-transform:uppercase; color:var(--ink-soft); margin-top:-6px; }
+  .d9-spark { width:100%; height:46px; }
+  .d9-sub { font-size:12px; color:var(--ink-soft); }
+  .d9-sub b { color:var(--ink); font-weight:600; }
+  .d9-cta { margin-top:8px; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#EAF0E2;
+            border:none; border-radius:24px; padding:11px 24px; font-family:'Inter',sans-serif; font-size:12.5px;
+            font-weight:600; letter-spacing:.3px; cursor:pointer; box-shadow:0 8px 18px -9px rgba(31,42,26,.7); }
+  .d9-cta svg { width:14px; height:14px; fill:#EAF0E2; }
+  .d9-note { font-size:9px; letter-spacing:2.2px; text-transform:uppercase; color:var(--ink-soft); }
+
+  .rise-2{transform-box:fill-box;transform-origin:50% 100%;animation:rise2 var(--total) cubic-bezier(.34,1.56,.64,1) infinite;}
+  @keyframes rise2{0%,11%{opacity:0;transform:translateY(24px) scale(.86);}16%,21%{opacity:1;transform:translateY(0) scale(1);}22%,100%{opacity:0;transform:translateY(0) scale(1);}}
+  .rise-3{transform-box:fill-box;transform-origin:50% 100%;animation:rise3 var(--total) cubic-bezier(.34,1.56,.64,1) infinite;}
+  @keyframes rise3{0%,22%{opacity:0;transform:translateY(24px) scale(.86);}27%,32%{opacity:1;transform:translateY(0) scale(1);}33%,100%{opacity:0;transform:translateY(0) scale(1);}}
+  .rise-4{transform-box:fill-box;transform-origin:50% 100%;animation:rise4 var(--total) cubic-bezier(.34,1.56,.64,1) infinite;}
+  @keyframes rise4{0%,33%{opacity:0;transform:translateY(24px) scale(.86);}38%,43%{opacity:1;transform:translateY(0) scale(1);}44%,100%{opacity:0;transform:translateY(0) scale(1);}}
+  .rise-5{transform-box:fill-box;transform-origin:50% 100%;animation:rise5 var(--total) cubic-bezier(.34,1.56,.64,1) infinite;}
+  @keyframes rise5{0%,44%{opacity:0;transform:translateY(24px) scale(.86);}49%,54%{opacity:1;transform:translateY(0) scale(1);}55%,100%{opacity:0;transform:translateY(0) scale(1);}}
+  .rise-6{transform-box:fill-box;transform-origin:50% 100%;animation:rise6 var(--total) cubic-bezier(.34,1.56,.64,1) infinite;}
+  @keyframes rise6{0%,55%{opacity:0;transform:translateY(24px) scale(.86);}60%,65%{opacity:1;transform:translateY(0) scale(1);}66%,100%{opacity:0;transform:translateY(0) scale(1);}}
+  .rise-8{transform-box:fill-box;transform-origin:50% 100%;animation:rise8 var(--total) cubic-bezier(.34,1.56,.64,1) infinite;}
+  @keyframes rise8{0%,77%{opacity:0;transform:translateY(24px) scale(.86);}82%,87%{opacity:1;transform:translateY(0) scale(1);}88%,100%{opacity:0;transform:translateY(0) scale(1);}}
+  .rise-9{transform-box:fill-box;transform-origin:50% 100%;animation:rise9 var(--total) cubic-bezier(.34,1.56,.64,1) infinite;}
+  @keyframes rise9{0%,88%{opacity:0;transform:translateY(24px) scale(.86);}93%,98%{opacity:1;transform:translateY(0) scale(1);}99%,100%{opacity:0;transform:translateY(0) scale(1);}}
+
+  /* ════════ Per-scene paper-cut botanical illustrations ════════ */
+  .scene-2,.scene-3,.scene-4,.scene-5,.scene-6,.scene-8,.scene-9 { padding-left:0; justify-content:center; }
+  .illus { width:250px; height:366px; overflow:visible; display:block; }
+  .illus text { font-family:'JetBrains Mono',monospace; }
+  .sway  { transform-box:fill-box; transform-origin:50% 100%; animation:swayG 4.2s ease-in-out infinite; }
+  .sway2 { transform-box:fill-box; transform-origin:50% 100%; animation:swayG 5.1s ease-in-out infinite; }
+  @keyframes swayG { 0%,100%{transform:rotate(-6deg);} 50%{transform:rotate(6deg);} }
+  .breathe { transform-box:fill-box; transform-origin:center; animation:breatheG 2.6s ease-in-out infinite; }
+  @keyframes breatheG { 0%,100%{transform:scale(1);} 50%{transform:scale(1.12);} }
+  .bob { animation:bobG 2.4s ease-in-out infinite; }
+  @keyframes bobG { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-7px);} }
+  .twinkle { animation:twk 1.8s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
+  @keyframes twk { 0%,100%{opacity:.2;transform:scale(.6);} 50%{opacity:1;transform:scale(1.1);} }
+  .floatup { animation:floatUp 3.4s ease-out infinite; }
+  @keyframes floatUp { 0%{opacity:0;transform:translateY(8px);} 15%{opacity:1;} 80%{opacity:1;} 100%{opacity:0;transform:translateY(-26px);} }
+  .coinf { animation:coinF 2.1s ease-in-out infinite; }
+  @keyframes coinF { 0%,100%{transform:translateY(0) rotate(-6deg);} 50%{transform:translateY(-11px) rotate(6deg);} }
+  .fall  { animation:fallG 3.6s ease-in infinite; }
+  @keyframes fallG { 0%{transform:translate(0,0) rotate(0);opacity:0;} 8%{opacity:.95;} 100%{transform:translate(16px,120px) rotate(240deg);opacity:0;} }
+  .pop   { transform-box:fill-box; transform-origin:50% 100%; animation:popG 4s ease-in-out infinite; }
+  @keyframes popG { 0%,4%{transform:scale(0);} 11%{transform:scale(1.25);} 17%{transform:scale(0.92);} 22%{transform:scale(1);} 92%{transform:scale(1);} 100%{transform:scale(0);} }
+  .pulse { animation:pulseG 1.6s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
+  @keyframes pulseG { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+  .halo  { animation:haloG 1.8s ease-out infinite; transform-box:fill-box; transform-origin:center; }
+  @keyframes haloG { 0%{transform:scale(.5);opacity:.5;} 100%{transform:scale(2.4);opacity:0;} }
+  .slowspin { transform-box:fill-box; transform-origin:center; animation:spinG 18s linear infinite; }
+  @keyframes spinG { to{transform:rotate(360deg);} }
+  .cap { margin-top:12px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .cap .big { font-family:'Italiana',serif; font-size:48px; color:var(--ink); line-height:.9; }
+  .cap .big small { font-size:21px; color:var(--accent-light); }
+  .cap .lbl { font-size:9px; letter-spacing:2.6px; text-transform:uppercase; color:var(--ink-soft); }
+  .cap .live { display:inline-flex; align-items:center; gap:6px; font-size:9px; letter-spacing:2.6px; text-transform:uppercase; color:var(--ink-soft); }
+  .cap .live i { width:6px;height:6px;border-radius:50%;background:#CB4332;animation:pulseG 1.5s ease-in-out infinite; }
+  .lang-chips { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; max-width:214px; }
+  .lang-chips span { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-soft); border:1px solid var(--hair); border-radius:13px; padding:3px 8px; }
+  .lang-chips span.on { background:var(--accent); color:#EAF0E2; border-color:var(--accent); }
+  .cta-go { margin-top:4px; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#EAF0E2; border:none; border-radius:24px; padding:11px 24px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.3px; cursor:pointer; box-shadow:0 8px 18px -9px rgba(31,42,26,.7); }
+  .cta-go svg { width:14px; height:14px; fill:#EAF0E2; }
+
+
+  /* ════ vivid life layer ════ */
+  .life-bg { position:absolute; inset:60px 8px 40px 8px; z-index:4; pointer-events:none; overflow:hidden; }
+  .firefly { position:absolute; width:5px; height:5px; border-radius:50%; background:#F6E08C;
+             box-shadow:0 0 7px 2px rgba(246,224,140,.75); animation:twk2 3s ease-in-out infinite; }
+  @keyframes twk2 { 0%,100%{opacity:0;transform:scale(.4);} 50%{opacity:1;transform:scale(1);} }
+  .petal-drift { position:absolute; top:-14px; width:11px; height:11px; opacity:0; animation:petalDrift 9s linear infinite; }
+  .petal-drift svg { width:100%; height:100%; display:block; }
+  @keyframes petalDrift {
+    0%{opacity:0; transform:translateY(0) translateX(0) rotate(0);}
+    10%{opacity:.9;}
+    90%{opacity:.9;}
+    100%{opacity:0; transform:translateY(560px) translateX(-26px) rotate(320deg);}
+  }
+  .bfly { position:absolute; left:0; top:0; width:30px; height:24px; animation:bflyPath 19s ease-in-out infinite; }
+  .bfly svg { width:100%; height:100%; display:block; overflow:visible; }
+  .bfly .wl { transform-box:fill-box; transform-origin:right center; animation:flapL .26s ease-in-out infinite; }
+  .bfly .wr { transform-box:fill-box; transform-origin:left center;  animation:flapR .26s ease-in-out infinite; }
+  @keyframes flapL { 0%,100%{transform:scaleX(1) rotate(0);} 50%{transform:scaleX(.35) rotate(-6deg);} }
+  @keyframes flapR { 0%,100%{transform:scaleX(1) rotate(0);} 50%{transform:scaleX(.35) rotate(6deg);} }
+  @keyframes bflyPath {
+    0%   { transform:translate(30px,470px) rotate(-10deg); }
+    18%  { transform:translate(150px,360px) rotate(12deg); }
+    36%  { transform:translate(60px,250px) rotate(-14deg); }
+    54%  { transform:translate(190px,180px) rotate(10deg); }
+    72%  { transform:translate(80px,90px) rotate(-8deg); }
+    100% { transform:translate(30px,470px) rotate(-10deg); }
+  }
+
+
+  /* VIVID v5 distinct vignettes */
+  .scene-1,.scene-2,.scene-3,.scene-4,.scene-5,.scene-6,.scene-8,.scene-9{ padding:0!important; justify-content:center; }
+  .sbg{ position:absolute; inset:-60px -24px -50px -24px; z-index:0; pointer-events:none; }
+  .artbg{ position:absolute; inset:-60px -24px -50px -24px; z-index:1; pointer-events:none; }
+  .artbg svg{ width:100%; height:100%; display:block; }
+  .artbg text{ font-family:'JetBrains Mono',monospace; }
+  .scene-1 .brand-splash{ position:relative; z-index:2; }
+  .capb{ position:absolute; left:0; right:0; bottom:14px; z-index:3; display:flex; flex-direction:column; align-items:center; gap:8px; padding:34px 0 4px; }
+  .capb.dark::before{ content:''; position:absolute; inset:0; z-index:-1; background:linear-gradient(to top, rgba(23,42,30,.92) 34%, rgba(23,42,30,0)); }
+  .capb::before{ content:''; position:absolute; inset:0; z-index:-1; background:linear-gradient(to top, rgba(199,221,184,.95) 34%, rgba(199,221,184,0)); }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:226px; }
+  .chips span{ font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-soft); border:1px solid var(--hair); border-radius:13px; padding:3px 8px; background:rgba(255,255,255,.4); }
+  .chips span.on{ background:var(--accent); color:#EAF0E2; border-color:var(--accent); }
+  .capb .lbl{ font-size:9px; letter-spacing:2.6px; text-transform:uppercase; color:var(--ink-soft); }
+  .capb.dark .lbl{ color:#cfe2c2; }
+  .cta-go{ display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#EAF0E2; border:none; border-radius:24px; padding:11px 26px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; box-shadow:0 8px 18px -9px rgba(31,42,26,.7); }
+  .cta-go svg{ width:14px; height:14px; fill:#EAF0E2; }
+  .spk{ transform-box:fill-box; transform-origin:center; animation:spk 2.6s ease-in-out infinite; }
+  @keyframes spk{ 0%,100%{opacity:0;transform:scale(.2) rotate(0);} 50%{opacity:1;transform:scale(1) rotate(35deg);} }
+  .breathe{ transform-box:fill-box; transform-origin:center bottom; animation:breathe 5s ease-in-out infinite; }
+  @keyframes breathe{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.035);} }
+  .swayA{ transform-box:fill-box; transform-origin:50% 100%; animation:swayA 6s ease-in-out infinite; }
+  .swayB{ transform-box:fill-box; transform-origin:50% 100%; animation:swayB 7.4s ease-in-out infinite; }
+  @keyframes swayA{ 0%,100%{transform:rotate(-2.6deg);} 50%{transform:rotate(2.6deg);} }
+  @keyframes swayB{ 0%,100%{transform:rotate(2.2deg);} 50%{transform:rotate(-2.2deg);} }
+  .bob{ animation:bobv 3.6s ease-in-out infinite; } .bob.b2{ animation-delay:-1.4s; } .bob.b3{ animation-delay:-2.4s; } .bob.b4{ animation-delay:-3.1s; }
+  @keyframes bobv{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+  .twinkle{ transform-box:fill-box; transform-origin:center; animation:twk 2.6s ease-in-out infinite; }
+  @keyframes twk{ 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.16);opacity:.85;} }
+  .twk2{ transform-box:fill-box; transform-origin:center; animation:twk2 3s ease-in-out infinite; }
+  @keyframes twk2{ 0%,100%{opacity:.3;transform:scale(.7);} 50%{opacity:1;transform:scale(1);} }
+  .pollen{ transform-box:fill-box; animation:pollenrise 6s linear infinite; }
+  @keyframes pollenrise{ 0%{opacity:0;transform:translate(0,0);} 14%{opacity:.85;} 100%{opacity:0;transform:translate(16px,-130px);} }
+  .leaffall{ transform-box:fill-box; transform-origin:center; animation:lf 5s ease-in infinite; }
+  @keyframes lf{ 0%{opacity:0;transform:translate(0,0) rotate(0);} 10%{opacity:1;} 100%{opacity:0;transform:translate(40px,230px) rotate(340deg);} }
+  .drip{ transform-box:fill-box; transform-origin:center; animation:drp 2.4s ease-in infinite; }
+  @keyframes drp{ 0%{opacity:0;transform:translateY(0);} 18%{opacity:1;} 100%{opacity:0;transform:translateY(60px);} }
+  .coinfall{ transform-box:fill-box; transform-origin:center; animation:coinfall 3.2s ease-in infinite; }
+  @keyframes coinfall{ 0%{opacity:0;transform:translateY(-30px) rotate(0);} 16%{opacity:1;} 100%{opacity:0;transform:translateY(70px) rotate(220deg);} }
+  .coinf{ animation:coinf 3s ease-in-out infinite; } @keyframes coinf{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+  .popdelay{ transform-box:fill-box; transform-origin:50% 50%; animation:popd 3.4s ease-out infinite; }
+  @keyframes popd{ 0%{transform:scale(0);} 22%{transform:scale(1.15);} 34%,94%{transform:scale(1);} 100%{transform:scale(1);} }
+  .climb{ animation:climbv 6s ease-in-out infinite; }
+  @keyframes climbv{ 0%{transform:translateY(10px);opacity:.55;} 50%{transform:translateY(-4px);opacity:1;} 100%{transform:translateY(10px);opacity:.55;} }
+  .ringspin{ transform-box:fill-box; transform-origin:center; animation:spinv 26s linear infinite; }
+  @keyframes spinv{ to{transform:rotate(360deg);} }
+  .rays{ transform-box:fill-box; transform-origin:center; animation:spinv 80s linear infinite; }
+  .glowp{ transform-box:fill-box; transform-origin:center; animation:glowp 2.2s ease-in-out infinite; }
+  @keyframes glowp{ 0%,100%{opacity:.35;transform:scale(.9);} 50%{opacity:.8;transform:scale(1.12);} }
+  .halo{ transform-box:fill-box; transform-origin:center; animation:halo 2.4s ease-out infinite; }
+  @keyframes halo{ 0%{opacity:.5;transform:scale(.7);} 80%{opacity:0;transform:scale(1.5);} 100%{opacity:0;} }
+  .needle{ transform-box:fill-box; animation:needle 5s ease-in-out infinite; }
+  @keyframes needle{ 0%,100%{transform:rotate(-6deg);} 50%{transform:rotate(6deg);} }
+  .draw{ stroke-dasharray:320; stroke-dashoffset:320; animation:draw 5s ease-out infinite; }
+  @keyframes draw{ 0%{stroke-dashoffset:320;} 60%,100%{stroke-dashoffset:0;} }
+  .turn{ transform-box:fill-box; transform-origin:center; animation:turn 9s ease-in-out infinite; }
+  @keyframes turn{ 0%,100%{transform:rotate(-5deg);} 50%{transform:rotate(5deg);} }
+  .wreathsway{ transform-box:fill-box; transform-origin:137px 300px; animation:wreathsway 9s ease-in-out infinite; }
+  @keyframes wreathsway{ 0%,100%{transform:rotate(-1deg);} 50%{transform:rotate(1deg);} }
+  .lift{ animation:lift 4s ease-in-out infinite; } @keyframes lift{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="headline">
+    <div class="eyebrow">
+      <span class="ornament"><span class="line"></span><i></i><span class="line"></span></span>
+      Terse for Mac · Full Tour
+    </div>
+
+    <div class="title-stack">
+      <div class="title title-1">
+        <h1>Save Tokens.<br><em>Save Money.</em></h1>
+        <p>A quietly intelligent prompt optimizer.</p>
+      </div>
+      <div class="title title-2">
+        <h1>One tap. <em>70% shorter.</em></h1>
+        <p>Same meaning, fewer words, lower bills.</p>
+      </div>
+      <div class="title title-3">
+        <h1>Three smart <em>modes.</em></h1>
+        <p>Soft, Normal, Aggressive — your call.</p>
+      </div>
+      <div class="title title-4">
+        <h1>Lives in <em>every app.</em></h1>
+        <p>Browser, editor, agent — anywhere you type.</p>
+      </div>
+      <div class="title title-5">
+        <h1>Watches your <em>agents.</em></h1>
+        <p>Live monitoring. Real-time token savings.</p>
+      </div>
+      <div class="title title-6">
+        <h1>Speaks <em>any language.</em></h1>
+        <p>Optimization that travels with you.</p>
+      </div>
+      <div class="title title-7">
+        <h1>Meet your <em>Terse Pal.</em></h1>
+        <p>A pet that grows with every token saved.</p>
+      </div>
+      <div class="title title-8">
+        <h1>Tend your <em>Terse Farm.</em></h1>
+        <p>Plant, water, harvest — earn from savings.</p>
+      </div>
+      <div class="title title-9">
+        <h1>See your <em>savings grow.</em></h1>
+        <p>Start free. 500 optimizations a week.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phone -->
+  <div class="phone-wrap">
+    <div class="phone">
+
+      <!-- Persistent door-world background: paper-cut vine + drifting ladybug -->
+      <div class="world-bg">
+        <svg viewBox="0 0 322 716" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <!-- shared paper-cut leaf library (referenced here + by Scene 1 door) -->
+            <g id="lf-almond"><path d="M0 0 C 8 -4 9 -16 0 -26 C -9 -16 -8 -4 0 0 Z"/></g>
+            <g id="lf-round"><path d="M0 0 C 9 0 13 -9 8 -16 C 14 -20 6 -28 0 -24 C -6 -28 -14 -20 -8 -16 C -13 -9 -9 0 0 0 Z"/></g>
+            <g id="lf-clover"><circle cx="0" cy="-15" r="7.5"/><circle cx="-8" cy="-6" r="7.5"/><circle cx="8" cy="-6" r="7.5"/><rect x="-1" y="-6" width="2" height="8"/></g>
+            <g id="lf-oak"><path d="M0 0 C 5 -2 4 -6 9 -8 C 5 -10 8 -15 3 -16 C 6 -22 -1 -22 0 -27 C 1 -22 -6 -22 -3 -16 C -8 -15 -5 -10 -9 -8 C -4 -6 -5 -2 0 0 Z"/></g>
+            <g id="ladybug">
+              <ellipse cx="0" cy="0" rx="5.6" ry="6.6" fill="#1F2A1A"/>
+              <path d="M -5.6 0 Q -5.6 -6.6 0 -6.6 Q 5.6 -6.6 5.6 0 Q 5.6 4.6 0 4.6 Q -5.6 4.6 -5.6 0 Z" fill="#CB4332"/>
+              <line x1="0" y1="-4.6" x2="0" y2="4.6" stroke="#1F2A1A" stroke-width="0.7"/>
+              <circle cx="-2.2" cy="-3" r="0.85" fill="#1F2A1A"/><circle cx="2.2" cy="-3" r="0.85" fill="#1F2A1A"/>
+              <circle cx="-2.7" cy="0.6" r="0.85" fill="#1F2A1A"/><circle cx="2.7" cy="0.6" r="0.85" fill="#1F2A1A"/>
+              <ellipse cx="0" cy="-6.6" rx="2.2" ry="1.7" fill="#1F2A1A"/>
+              <line x1="-1" y1="-7.8" x2="-2.2" y2="-10" stroke="#1F2A1A" stroke-width="0.6" stroke-linecap="round"/>
+              <line x1="1" y1="-7.8" x2="2.2" y2="-10" stroke="#1F2A1A" stroke-width="0.6" stroke-linecap="round"/>
+            </g>
+          </defs>
+        </svg>
+      </div>
+
+      
+      <div class="life-bg"><span class="firefly" style="left:16%;top:30%;animation-delay:0s;animation-duration:3.2s"></span><span class="firefly" style="left:70%;top:22%;animation-delay:1.1s;animation-duration:2.6s"></span><span class="firefly" style="left:40%;top:60%;animation-delay:2s;animation-duration:3.6s"></span><span class="firefly" style="left:82%;top:54%;animation-delay:.6s;animation-duration:3s"></span><span class="firefly" style="left:24%;top:74%;animation-delay:1.6s;animation-duration:2.8s"></span><span class="firefly" style="left:58%;top:80%;animation-delay:2.4s;animation-duration:3.4s"></span><span class="petal-drift" style="left:30%;animation-delay:0s;animation-duration:9s"><svg viewBox="0 0 12 12"><path d="M6 0 C9 3 9 9 6 12 C3 9 3 3 6 0 Z" fill="#F4C9CF"/></svg></span><span class="petal-drift" style="left:62%;animation-delay:3s;animation-duration:11s"><svg viewBox="0 0 12 12"><path d="M6 0 C9 3 9 9 6 12 C3 9 3 3 6 0 Z" fill="#F4C9CF"/></svg></span><span class="petal-drift" style="left:46%;animation-delay:6s;animation-duration:10s"><svg viewBox="0 0 12 12"><path d="M6 0 C9 3 9 9 6 12 C3 9 3 3 6 0 Z" fill="#F4C9CF"/></svg></span><span class="petal-drift" style="left:78%;animation-delay:1.5s;animation-duration:12s"><svg viewBox="0 0 12 12"><path d="M6 0 C9 3 9 9 6 12 C3 9 3 3 6 0 Z" fill="#F4C9CF"/></svg></span><div class="bfly"><svg viewBox="0 0 30 24"><ellipse class="wl" cx="11" cy="12" rx="7" ry="10" fill="#F2B6C0"/><ellipse class="wl" cx="10" cy="7"  rx="5" ry="6"  fill="#F7D6A0"/><ellipse class="wr" cx="19" cy="12" rx="7" ry="10" fill="#F2B6C0"/><ellipse class="wr" cx="20" cy="7"  rx="5" ry="6"  fill="#F7D6A0"/><ellipse cx="15" cy="12" rx="1.6" ry="7" fill="#2A2420"/><line x1="15" y1="6" x2="13" y2="2" stroke="#2A2420" stroke-width="0.8" stroke-linecap="round"/><line x1="15" y1="6" x2="17" y2="2" stroke="#2A2420" stroke-width="0.8" stroke-linecap="round"/></svg></div></div>
+
+      <div class="di"></div>
+
+      <div class="sb">
+        <span class="sb-time">21:06</span>
+        <div class="sb-right">
+          <div class="signal"><b></b><b></b><b></b><b></b></div>
+          <svg class="wifi-svg" viewBox="0 0 24 17" fill="#1a1814" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3.8C8.3 3.8 5 5.3 2.6 7.7L0 5.1C3.1 2 7.3 0 12 0s8.9 2 12 5.1l-2.6 2.6C19 5.3 15.7 3.8 12 3.8zm0 5.4c-2.4 0-4.5.9-6.1 2.4L3.6 9.3C5.7 7.2 8.7 6 12 6s6.3 1.2 8.4 3.3l-2.3 2.3C16.5 10.1 14.4 9.2 12 9.2zm0 5.3c-1.2 0-2.3.5-3.1 1.3L12 19.5l3.1-3.1c-.8-.9-1.9-1.4-3.1-1.4z"/>
+          </svg>
+          <div class="batt">98</div>
+        </div>
+      </div>
+
+      <div class="stage">
+
+        <!-- ───── Scene 1: Brand — minimalist garden ───── -->
+        <div class="scene scene-1">
+          <div class="sbg" style="background:radial-gradient(74% 50% at 50% 30%, rgba(251,230,182,.6) 0%, rgba(251,230,182,0) 60%), linear-gradient(180deg, rgba(250,236,210,.55) 0%, rgba(250,236,210,0) 42%);"></div>
+          <div class="artbg"><svg viewBox="0 0 274 606" preserveAspectRatio="xMidYMid slice"><g class="breathe" style="transform-origin:137px 184px"><path d="M80 184 Q137 150 194 184" fill="none" stroke="#2E9444" stroke-width="2.2" stroke-linecap="round" opacity="0.85"/><use href="#lf-almond" transform="translate(93.7,174.8) rotate(-57.0) scale(0.85)" fill="#45AE51"/><use href="#lf-almond" transform="translate(114.2,167.7) rotate(-30.0) scale(0.85)" fill="#78C84C"/><use href="#lf-almond" transform="translate(159.8,167.7) rotate(30.0) scale(0.85)" fill="#2E9444"/><use href="#lf-almond" transform="translate(180.3,174.8) rotate(57.0) scale(0.85)" fill="#45AE51"/><g class="twinkle"><g transform="translate(137,158)"><g transform="rotate(0.0)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(27.7)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(55.4)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(83.1)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(110.8)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(138.5)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(166.2)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(193.8)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(221.5)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(249.2)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(276.9)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(304.6)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(332.3)"><path d="M0 0 C 5.1 -4.8 3.4 -12.3 0 -15.0 C -3.4 -12.3 -5.1 -4.8 0 0 Z" fill="#F87FA2"/></g><g transform="rotate(16.0)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(48.7)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(81.5)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(114.2)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(146.9)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(179.6)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(212.4)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(245.1)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(277.8)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(310.5)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(343.3)"><path d="M0 0 C 3.6 -3.6 2.4 -9.3 0 -11.4 C -2.4 -9.3 -3.6 -3.6 0 0 Z" fill="#FBBBCE"/></g><g transform="rotate(8.0)"><path d="M0 0 C 2.1 -2.5 1.4 -6.4 0 -7.8 C -1.4 -6.4 -2.1 -2.5 0 0 Z" fill="#EC4F86"/></g><g transform="rotate(48.0)"><path d="M0 0 C 2.1 -2.5 1.4 -6.4 0 -7.8 C -1.4 -6.4 -2.1 -2.5 0 0 Z" fill="#EC4F86"/></g><g transform="rotate(88.0)"><path d="M0 0 C 2.1 -2.5 1.4 -6.4 0 -7.8 C -1.4 -6.4 -2.1 -2.5 0 0 Z" fill="#EC4F86"/></g><g transform="rotate(128.0)"><path d="M0 0 C 2.1 -2.5 1.4 -6.4 0 -7.8 C -1.4 -6.4 -2.1 -2.5 0 0 Z" fill="#EC4F86"/></g><g transform="rotate(168.0)"><path d="M0 0 C 2.1 -2.5 1.4 -6.4 0 -7.8 C -1.4 -6.4 -2.1 -2.5 0 0 Z" fill="#EC4F86"/></g><g transform="rotate(208.0)"><path d="M0 0 C 2.1 -2.5 1.4 -6.4 0 -7.8 C -1.4 -6.4 -2.1 -2.5 0 0 Z" fill="#EC4F86"/></g><g transform="rotate(248.0)"><path d="M0 0 C 2.1 -2.5 1.4 -6.4 0 -7.8 C -1.4 -6.4 -2.1 -2.5 0 0 Z" fill="#EC4F86"/></g><g transform="rotate(288.0)"><path d="M0 0 C 2.1 -2.5 1.4 -6.4 0 -7.8 C -1.4 -6.4 -2.1 -2.5 0 0 Z" fill="#EC4F86"/></g><g transform="rotate(328.0)"><path d="M0 0 C 2.1 -2.5 1.4 -6.4 0 -7.8 C -1.4 -6.4 -2.1 -2.5 0 0 Z" fill="#EC4F86"/></g><circle r="4.5" fill="#F8BE2E"/></g></g><g class="bob b2"><g transform="translate(101,176)"><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#F8BE2E" transform="rotate(0.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#F8BE2E" transform="rotate(60.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#F8BE2E" transform="rotate(120.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#F8BE2E" transform="rotate(180.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#F8BE2E" transform="rotate(240.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#F8BE2E" transform="rotate(300.0)"/><circle r="5.0" fill="#DE981E"/></g></g><g class="bob b3"><g transform="translate(173,176)"><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#B681F0" transform="rotate(0.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#B681F0" transform="rotate(60.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#B681F0" transform="rotate(120.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#B681F0" transform="rotate(180.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#B681F0" transform="rotate(240.0)"/><ellipse cx="0" cy="-10.0" rx="5.4" ry="10.0" fill="#B681F0" transform="rotate(300.0)"/><circle r="5.0" fill="#F8BE2E"/></g></g><g class="bob"><g transform="translate(118,182)"><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F66339" transform="rotate(0.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F66339" transform="rotate(60.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F66339" transform="rotate(120.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F66339" transform="rotate(180.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F66339" transform="rotate(240.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F66339" transform="rotate(300.0)"/><circle r="3.0" fill="#F8BE2E"/></g></g><g class="twinkle"><g transform="translate(156,182)"><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#46B6EC" transform="rotate(0.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#46B6EC" transform="rotate(60.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#46B6EC" transform="rotate(120.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#46B6EC" transform="rotate(180.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#46B6EC" transform="rotate(240.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#46B6EC" transform="rotate(300.0)"/><circle r="3.0" fill="#F8BE2E"/></g></g></g><g transform="translate(58,160)" class="spk" style="animation-delay:0s"><path d="M0 -7.7 C 1.6 -1.9 1.9 -1.6 7.7 0 C 1.9 1.6 1.6 1.9 0 7.7 C -1.6 1.9 -1.9 1.6 -7.7 0 C -1.9 -1.6 -1.6 -1.9 0 -7.7 Z" fill="#FCDE80"/></g><g transform="translate(216,164)" class="spk" style="animation-delay:1s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FBBBCE"/></g><g transform="translate(48,430)" class="spk" style="animation-delay:1.7s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FCDE80"/></g><g transform="translate(226,430)" class="spk" style="animation-delay:.6s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#F4EDD6"/></g><g transform="translate(137,470)" class="spk" style="animation-delay:2.2s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FCDE80"/></g><circle cx="108" cy="452" r="2" fill="#FCDE80" class="pollen" style="animation-delay:0s;animation-duration:6s"/><circle cx="168" cy="462" r="2" fill="#FBBBCE" class="pollen" style="animation-delay:2.2s;animation-duration:6s"/><circle cx="140" cy="480" r="2" fill="#FCDE80" class="pollen" style="animation-delay:4s;animation-duration:6s"/></svg></div>
+          <div class="brand-splash">
+            <div class="brand-tag"><span class="dash"></span>In Full Bloom<span class="dash"></span></div>
+            <div class="ornament-top"><svg viewBox="0 0 32 32"><g transform="translate(16,16)"><polygon points="0,-12 11,0 0,12 -11,0" fill="#8a8e78"/><polygon points="0,-12 11,0 0,0" fill="#5e6450"/><polygon points="0,-12 -11,0 0,0" fill="#3a3a2e"/><circle r="2.2" fill="#f4eed8" opacity="0.95"/></g></svg></div>
+            <div class="word">Terse</div>
+            <div class="brand-flourish"><svg viewBox="0 0 80 8" preserveAspectRatio="none"><line x1="0" y1="4" x2="32" y2="4" stroke="#1a1814" stroke-width="0.8"/><line x1="48" y1="4" x2="80" y2="4" stroke="#1a1814" stroke-width="0.8"/><circle cx="40" cy="4" r="2" fill="#3a3a2e"/><circle cx="34" cy="4" r="1" fill="#1a1814" opacity="0.5"/><circle cx="46" cy="4" r="1" fill="#1a1814" opacity="0.5"/></svg></div>
+            <div class="sub">Prompt Optimizer</div>
+            <div class="divider-orn"><span class="line"></span><i></i><span class="line"></span></div>
+            <div class="tagline">The art of saying<br><em>more with less.</em></div>
+          </div>
+        </div>
+
+        <div class="scene scene-2">
+          <div class="sbg" style="background:radial-gradient(125% 85% at 50% 30%, rgba(241,203,107,.32) 0%, transparent 62%);"></div>
+          <div class="artbg"><svg viewBox="0 0 274 606" preserveAspectRatio="xMidYMid slice"><rect x="-10" y="472" width="294" height="14" fill="#9C7648"/><rect x="-10" y="486" width="294" height="80" fill="#7A5A38"/><rect x="-10" y="472" width="294" height="4" fill="#9C7A52"/><line x1="246" y1="40" x2="246" y2="150" stroke="#42603C" stroke-width="3"/><path d="M226 150 H266 L259 170 H233 Z" fill="#42603C"/><ellipse cx="246" cy="200" rx="58" ry="64" fill="#FFF3C9" opacity="0.4" class="glowp"/><g transform="translate(46,236) rotate(-3)"><g class="lift"><rect x="-4" y="6" width="92" height="168" rx="4" fill="#E7DEC8" opacity="0.5"/><rect x="0" y="0" width="92" height="168" rx="4" fill="#FBF7EC" stroke="#E7DEC8" stroke-width="1"/><rect x="8" y="12" width="72" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="29" width="72" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="45" width="72" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="62" width="72" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="79" width="72" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="95" width="72" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="112" width="72" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="129" width="72" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="145" width="72" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/></g></g><path d="M148 330 Q165 300 188 326" fill="none" stroke="#DE981E" stroke-width="2.6" stroke-dasharray="4 4" stroke-linecap="round"/><path d="M188 326 l-8 -2 m8 2 l-2 8" fill="none" stroke="#DE981E" stroke-width="2.6" stroke-linecap="round"/><g transform="translate(170,288) rotate(4)"><g class="lift"><rect x="-4" y="6" width="72" height="108" rx="4" fill="#E7DEC8" opacity="0.5"/><rect x="0" y="0" width="72" height="108" rx="4" fill="#FBF7EC" stroke="#E7DEC8" stroke-width="1"/><rect x="8" y="12" width="56" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="42" width="42" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/><rect x="8" y="72" width="56" height="3.4" rx="1.7" fill="#6f8c73" opacity="0.55"/></g></g><g transform="translate(152,344)"><g class="bob"><circle r="21" fill="#E03C1F"/><circle r="21" fill="none" stroke="#fff" stroke-width="1.4" stroke-dasharray="2 3"/><text y="6" text-anchor="middle" font-size="16" font-family="Italiana,serif" fill="#fff">&#8722;70%</text></g></g><g transform="translate(140,464) rotate(-22)"><rect x="0" y="-2.5" width="64" height="5" rx="2.5" fill="#DE981E"/><path d="M64 -2.5 L78 0 L64 2.5 Z" fill="#1F2A1A"/><rect x="-12" y="-4" width="14" height="8" rx="4" fill="#F66339"/></g><g class="swayA"><path d="M17 446 H47 L41 470 H23 Z" fill="#7A5A38"/><rect x="15" y="442" width="34" height="7" rx="3.5" fill="#9C7648"/><ellipse cx="32.0" cy="432.0" rx="14.8" ry="14.8" fill="#2E9444"/><circle cx="47.6" cy="432.0" r="10.0" fill="#2E9444"/><circle cx="44.0" cy="442.0" r="10.0" fill="#2E9444"/><circle cx="34.7" cy="447.4" r="10.0" fill="#2E9444"/><circle cx="24.2" cy="445.5" r="10.0" fill="#2E9444"/><circle cx="17.3" cy="437.3" r="10.0" fill="#2E9444"/><circle cx="17.3" cy="426.7" r="10.0" fill="#2E9444"/><circle cx="24.2" cy="418.5" r="10.0" fill="#2E9444"/><circle cx="34.7" cy="416.6" r="10.0" fill="#2E9444"/><circle cx="44.0" cy="422.0" r="10.0" fill="#2E9444"/><ellipse cx="28.0" cy="426.0" rx="9.6" ry="9.6" fill="#45AE51"/><circle cx="38.1" cy="426.0" r="6.5" fill="#45AE51"/><circle cx="35.2" cy="433.2" r="6.5" fill="#45AE51"/><circle cx="28.0" cy="436.1" r="6.5" fill="#45AE51"/><circle cx="20.8" cy="433.2" r="6.5" fill="#45AE51"/><circle cx="17.9" cy="426.0" r="6.5" fill="#45AE51"/><circle cx="20.8" cy="418.8" r="6.5" fill="#45AE51"/><circle cx="28.0" cy="415.9" r="6.5" fill="#45AE51"/><circle cx="35.2" cy="418.8" r="6.5" fill="#45AE51"/><g class="twinkle"><g transform="translate(40,430)"><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#F87FA2" transform="rotate(0.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#F87FA2" transform="rotate(60.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#F87FA2" transform="rotate(120.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#F87FA2" transform="rotate(180.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#F87FA2" transform="rotate(240.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#F87FA2" transform="rotate(300.0)"/><circle r="3.5" fill="#F8BE2E"/></g></g></g><g><path d="M214 446 h28 v16 q0 8 -8 8 h-12 q-8 0 -8 -8 Z" fill="#F4EDD6" stroke="#E7DEC8"/><path d="M242 450 q11 0 11 9 q0 9 -11 9" fill="none" stroke="#E7DEC8" stroke-width="2.5"/><path d="M223 440 q-3 -8 1 -14 M232 440 q3 -8 -1 -14" stroke="#C9C2AE" stroke-width="2" fill="none" stroke-linecap="round" class="lift"/></g><text x="104" y="430" text-anchor="middle" font-size="12" fill="#6f8c73">147 tokens</text><text x="206" y="430" text-anchor="middle" font-size="12" fill="#2E9444">44 tokens</text><g transform="translate(120,210)" class="spk" style="animation-delay:0s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FCDE80"/></g><g transform="translate(206,250)" class="spk" style="animation-delay:1.2s"><path d="M0 -5.8 C 1.2 -1.4 1.4 -1.2 5.8 0 C 1.4 1.2 1.2 1.4 0 5.8 C -1.2 1.4 -1.4 1.2 -5.8 0 C -1.4 -1.2 -1.2 -1.4 0 -5.8 Z" fill="#F66339"/></g><circle cx="80" cy="440" r="2" fill="#FCDE80" class="pollen" style="animation-delay:1s;animation-duration:6s"/></svg></div>
+        </div>
+
+        <div class="scene scene-3">
+          <div class="sbg" style="background:radial-gradient(125% 85% at 50% 38%, rgba(182,129,240,.34) 0%, transparent 62%);"></div>
+          <div class="artbg"><svg viewBox="0 0 274 606" preserveAspectRatio="xMidYMid slice"><circle cx="60" cy="258" r="50" fill="rgba(127,185,75,.16)"/><g class="swayA breathe"><ellipse cx="60.0" cy="264.0" rx="22.9" ry="21.5" fill="#2E9444"/><circle cx="84.2" cy="264.0" r="14.5" fill="#2E9444"/><circle cx="80.9" cy="275.3" r="14.5" fill="#2E9444"/><circle cx="72.1" cy="283.6" r="14.5" fill="#2E9444"/><circle cx="60.0" cy="286.6" r="14.5" fill="#2E9444"/><circle cx="47.9" cy="283.6" r="14.5" fill="#2E9444"/><circle cx="39.1" cy="275.3" r="14.5" fill="#2E9444"/><circle cx="35.8" cy="264.0" r="14.5" fill="#2E9444"/><circle cx="39.1" cy="252.7" r="14.5" fill="#2E9444"/><circle cx="47.9" cy="244.4" r="14.5" fill="#2E9444"/><circle cx="60.0" cy="241.4" r="14.5" fill="#2E9444"/><circle cx="72.1" cy="244.4" r="14.5" fill="#2E9444"/><circle cx="80.9" cy="252.7" r="14.5" fill="#2E9444"/><ellipse cx="56.0" cy="257.0" rx="17.8" ry="16.3" fill="#45AE51"/><circle cx="74.7" cy="257.0" r="11.0" fill="#45AE51"/><circle cx="71.1" cy="267.1" r="11.0" fill="#45AE51"/><circle cx="61.8" cy="273.3" r="11.0" fill="#45AE51"/><circle cx="50.2" cy="273.3" r="11.0" fill="#45AE51"/><circle cx="40.9" cy="267.1" r="11.0" fill="#45AE51"/><circle cx="37.3" cy="257.0" r="11.0" fill="#45AE51"/><circle cx="40.9" cy="246.9" r="11.0" fill="#45AE51"/><circle cx="50.2" cy="240.7" r="11.0" fill="#45AE51"/><circle cx="61.8" cy="240.7" r="11.0" fill="#45AE51"/><circle cx="71.1" cy="246.9" r="11.0" fill="#45AE51"/><ellipse cx="69.0" cy="262.0" rx="11.1" ry="10.4" fill="#78C84C"/><circle cx="80.7" cy="262.0" r="7.0" fill="#78C84C"/><circle cx="77.3" cy="269.7" r="7.0" fill="#78C84C"/><circle cx="69.0" cy="272.9" r="7.0" fill="#78C84C"/><circle cx="60.7" cy="269.7" r="7.0" fill="#78C84C"/><circle cx="57.3" cy="262.0" r="7.0" fill="#78C84C"/><circle cx="60.7" cy="254.3" r="7.0" fill="#78C84C"/><circle cx="69.0" cy="251.1" r="7.0" fill="#78C84C"/><circle cx="77.3" cy="254.3" r="7.0" fill="#78C84C"/></g><g class="twinkle"><g transform="translate(47,250)"><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#FBBBCE" transform="rotate(0.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#FBBBCE" transform="rotate(60.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#FBBBCE" transform="rotate(120.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#FBBBCE" transform="rotate(180.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#FBBBCE" transform="rotate(240.0)"/><ellipse cx="0" cy="-7.0" rx="3.8" ry="7.0" fill="#FBBBCE" transform="rotate(300.0)"/><circle r="3.5" fill="#F8BE2E"/></g></g><g class="bob"><g transform="translate(73,268)"><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F8BE2E" transform="rotate(0.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F8BE2E" transform="rotate(60.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F8BE2E" transform="rotate(120.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F8BE2E" transform="rotate(180.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F8BE2E" transform="rotate(240.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F8BE2E" transform="rotate(300.0)"/><circle r="3.0" fill="#DE981E"/></g></g><text x="60" y="348" text-anchor="middle" font-size="15" font-family="Fraunces,serif" font-style="italic" fill="#1F2A1A">Soft</text><text x="60" y="376" text-anchor="middle" font-size="27" font-family="Italiana,serif" fill="#45AE51">15%</text><circle cx="137" cy="258" r="50" fill="rgba(241,203,107,.22)"/><g class="swayB"><line x1="137" y1="292" x2="137" y2="252" stroke="#2E9444" stroke-width="2.6" stroke-linecap="round"/></g><g class="swayB breathe"><ellipse cx="137.0" cy="262.0" rx="14.8" ry="14.1" fill="#2E9444"/><circle cx="152.6" cy="262.0" r="9.5" fill="#2E9444"/><circle cx="149.6" cy="270.7" r="9.5" fill="#2E9444"/><circle cx="141.8" cy="276.1" r="9.5" fill="#2E9444"/><circle cx="132.2" cy="276.1" r="9.5" fill="#2E9444"/><circle cx="124.4" cy="270.7" r="9.5" fill="#2E9444"/><circle cx="121.4" cy="262.0" r="9.5" fill="#2E9444"/><circle cx="124.4" cy="253.3" r="9.5" fill="#2E9444"/><circle cx="132.2" cy="247.9" r="9.5" fill="#2E9444"/><circle cx="141.8" cy="247.9" r="9.5" fill="#2E9444"/><circle cx="149.6" cy="253.3" r="9.5" fill="#2E9444"/><ellipse cx="137.0" cy="257.0" rx="9.6" ry="8.9" fill="#45AE51"/><circle cx="147.1" cy="257.0" r="6.0" fill="#45AE51"/><circle cx="144.2" cy="263.6" r="6.0" fill="#45AE51"/><circle cx="137.0" cy="266.4" r="6.0" fill="#45AE51"/><circle cx="129.8" cy="263.6" r="6.0" fill="#45AE51"/><circle cx="126.9" cy="257.0" r="6.0" fill="#45AE51"/><circle cx="129.8" cy="250.4" r="6.0" fill="#45AE51"/><circle cx="137.0" cy="247.6" r="6.0" fill="#45AE51"/><circle cx="144.2" cy="250.4" r="6.0" fill="#45AE51"/></g><g class="bob"><g transform="translate(137,246)"><ellipse cx="0" cy="-8.0" rx="4.3" ry="8.0" fill="#B681F0" transform="rotate(0.0)"/><ellipse cx="0" cy="-8.0" rx="4.3" ry="8.0" fill="#B681F0" transform="rotate(60.0)"/><ellipse cx="0" cy="-8.0" rx="4.3" ry="8.0" fill="#B681F0" transform="rotate(120.0)"/><ellipse cx="0" cy="-8.0" rx="4.3" ry="8.0" fill="#B681F0" transform="rotate(180.0)"/><ellipse cx="0" cy="-8.0" rx="4.3" ry="8.0" fill="#B681F0" transform="rotate(240.0)"/><ellipse cx="0" cy="-8.0" rx="4.3" ry="8.0" fill="#B681F0" transform="rotate(300.0)"/><circle r="4.0" fill="#F8BE2E"/></g></g><text x="137" y="348" text-anchor="middle" font-size="15" font-family="Fraunces,serif" font-style="italic" fill="#1F2A1A">Normal</text><text x="137" y="376" text-anchor="middle" font-size="27" font-family="Italiana,serif" fill="#DE981E">45%</text><circle cx="214" cy="258" r="50" fill="rgba(242,169,184,.22)"/><g class="swayA"><line x1="214" y1="294" x2="214" y2="252" stroke="#2E9444" stroke-width="2.6" stroke-linecap="round"/><use href="#lf-almond" transform="translate(206,274) rotate(-46) scale(0.85)" fill="#45AE51"/><use href="#lf-almond" transform="translate(222,278) rotate(46) scale(0.85)" fill="#78C84C"/></g><g class="twinkle"><g transform="translate(214,242)"><ellipse cx="0" cy="-13.0" rx="7.0" ry="13.0" fill="#F87FA2" transform="rotate(0.0)"/><ellipse cx="0" cy="-13.0" rx="7.0" ry="13.0" fill="#F87FA2" transform="rotate(60.0)"/><ellipse cx="0" cy="-13.0" rx="7.0" ry="13.0" fill="#F87FA2" transform="rotate(120.0)"/><ellipse cx="0" cy="-13.0" rx="7.0" ry="13.0" fill="#F87FA2" transform="rotate(180.0)"/><ellipse cx="0" cy="-13.0" rx="7.0" ry="13.0" fill="#F87FA2" transform="rotate(240.0)"/><ellipse cx="0" cy="-13.0" rx="7.0" ry="13.0" fill="#F87FA2" transform="rotate(300.0)"/><circle r="6.5" fill="#F8BE2E"/></g></g><text x="214" y="348" text-anchor="middle" font-size="15" font-family="Fraunces,serif" font-style="italic" fill="#1F2A1A">Aggressive</text><text x="214" y="376" text-anchor="middle" font-size="27" font-family="Italiana,serif" fill="#E03C1F">70%</text><g transform="translate(34,210)" class="spk" style="animation-delay:0s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FCDE80"/></g><g transform="translate(240,214)" class="spk" style="animation-delay:1.2s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#B681F0"/></g><g transform="translate(137,150)" class="spk" style="animation-delay:1.9s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FBBBCE"/></g><circle cx="90" cy="420" r="2" fill="#B681F0" class="pollen" style="animation-delay:0s;animation-duration:6s"/><circle cx="186" cy="432" r="2" fill="#FBBBCE" class="pollen" style="animation-delay:2.4s;animation-duration:6s"/></svg></div>
+        </div>
+
+        <div class="scene scene-4">
+          <div class="artbg"><svg viewBox="0 0 274 606" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="night" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#103A34"/><stop offset="60%" stop-color="#1A604B"/><stop offset="100%" stop-color="#2A9259"/></linearGradient><radialGradient id="moong" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFF7DE" stop-opacity=".5"/><stop offset="100%" stop-color="#FFF7DE" stop-opacity="0"/></radialGradient></defs><rect x="-10" y="-10" width="294" height="626" fill="url(#night)"/><circle cx="210" cy="92" r="46" fill="url(#moong)"/><path d="M196 58 a34 34 0 1 0 0 68 a26 26 0 1 1 0 -68 Z" fill="#F6EBC4"/><circle cx="190" cy="80" r="4" fill="#E4D6A4" opacity="0.6"/><circle cx="200" cy="104" r="3" fill="#E4D6A4" opacity="0.6"/><g transform="translate(40,70)" class="twk2" style="animation-delay:0s"><path d="M0 -3 L0.8 -0.8 L3 0 L0.8 0.8 L0 3 L-0.8 0.8 L-3 0 L-0.8 -0.8 Z" fill="#FBEFC6"/></g><g transform="translate(80,140)" class="twk2" style="animation-delay:1.1s"><path d="M0 -2 L0.6 -0.6 L2 0 L0.6 0.6 L0 2 L-0.6 0.6 L-2 0 L-0.6 -0.6 Z" fill="#FBEFC6"/></g><g transform="translate(150,60)" class="twk2" style="animation-delay:2s"><path d="M0 -2.4 L0.7 -0.7 L2.4 0 L0.7 0.7 L0 2.4 L-0.7 0.7 L-2.4 0 L-0.7 -0.7 Z" fill="#FBEFC6"/></g><g transform="translate(60,210)" class="twk2" style="animation-delay:1.6s"><path d="M0 -2 L0.6 -0.6 L2 0 L0.6 0.6 L0 2 L-0.6 0.6 L-2 0 L-0.6 -0.6 Z" fill="#FBEFC6"/></g><g transform="translate(250,180)" class="twk2" style="animation-delay:0.6s"><path d="M0 -2.4 L0.7 -0.7 L2.4 0 L0.7 0.7 L0 2.4 L-0.7 0.7 L-2.4 0 L-0.7 -0.7 Z" fill="#FBEFC6"/></g><g transform="translate(120,200)" class="twk2" style="animation-delay:2.4s"><path d="M0 -2 L0.6 -0.6 L2 0 L0.6 0.6 L0 2 L-0.6 0.6 L-2 0 L-0.6 -0.6 Z" fill="#FBEFC6"/></g><g transform="translate(36,300)" class="twk2" style="animation-delay:1.3s"><path d="M0 -2.4 L0.7 -0.7 L2.4 0 L0.7 0.7 L0 2.4 L-0.7 0.7 L-2.4 0 L-0.7 -0.7 Z" fill="#FBEFC6"/></g><g transform="translate(244,260)" class="twk2" style="animation-delay:2s"><path d="M0 -2 L0.6 -0.6 L2 0 L0.6 0.6 L0 2 L-0.6 0.6 L-2 0 L-0.6 -0.6 Z" fill="#FBEFC6"/></g><g><line x1="70" y1="150" x2="130" y2="110" stroke="#9FBfa0" stroke-width="1" opacity="0.4"/><line x1="130" y1="110" x2="190" y2="160" stroke="#9FBfa0" stroke-width="1" opacity="0.4"/><line x1="190" y1="160" x2="150" y2="220" stroke="#9FBfa0" stroke-width="1" opacity="0.4"/><line x1="150" y1="220" x2="86" y2="250" stroke="#9FBfa0" stroke-width="1" opacity="0.4"/><line x1="86" y1="250" x2="210" y2="238" stroke="#9FBfa0" stroke-width="1" opacity="0.4"/><line x1="210" y1="238" x2="70" y2="150" stroke="#9FBfa0" stroke-width="1" opacity="0.4"/></g><circle cx="70" cy="150" r="12" fill="#46B6EC" opacity="0.25" class="glowp"/><g transform="translate(70,150)" class="twk2" style="animation-delay:0.0s"><path d="M0 -7 L2.0 -2.0 L7 0 L2.0 2.0 L0 7 L-2.0 2.0 L-7 0 L-2.0 -2.0 Z" fill="#46B6EC"/></g><text x="55" y="153" text-anchor="end" font-size="9" fill="#E7F0DE">Claude</text><circle cx="130" cy="110" r="12" fill="#F87FA2" opacity="0.25" class="glowp"/><g transform="translate(130,110)" class="twk2" style="animation-delay:0.0s"><path d="M0 -7 L2.0 -2.0 L7 0 L2.0 2.0 L0 7 L-2.0 2.0 L-7 0 L-2.0 -2.0 Z" fill="#F87FA2"/></g><text x="115" y="113" text-anchor="end" font-size="9" fill="#E7F0DE">ChatGPT</text><circle cx="190" cy="160" r="12" fill="#F8BE2E" opacity="0.25" class="glowp"/><g transform="translate(190,160)" class="twk2" style="animation-delay:0.0s"><path d="M0 -7 L2.0 -2.0 L7 0 L2.0 2.0 L0 7 L-2.0 2.0 L-7 0 L-2.0 -2.0 Z" fill="#F8BE2E"/></g><text x="205" y="163" text-anchor="start" font-size="9" fill="#E7F0DE">Codex</text><circle cx="150" cy="220" r="12" fill="#B681F0" opacity="0.25" class="glowp"/><g transform="translate(150,220)" class="twk2" style="animation-delay:0.0s"><path d="M0 -7 L2.0 -2.0 L7 0 L2.0 2.0 L0 7 L-2.0 2.0 L-7 0 L-2.0 -2.0 Z" fill="#B681F0"/></g><text x="165" y="223" text-anchor="start" font-size="9" fill="#E7F0DE">VS Code</text><circle cx="86" cy="250" r="12" fill="#F66339" opacity="0.25" class="glowp"/><g transform="translate(86,250)" class="twk2" style="animation-delay:0.4s"><path d="M0 -7 L2.0 -2.0 L7 0 L2.0 2.0 L0 7 L-2.0 2.0 L-7 0 L-2.0 -2.0 Z" fill="#F66339"/></g><text x="71" y="253" text-anchor="end" font-size="9" fill="#E7F0DE">Notes</text><circle cx="210" cy="238" r="12" fill="#78C84C" opacity="0.25" class="glowp"/><g transform="translate(210,238)" class="twk2" style="animation-delay:0.0s"><path d="M0 -7 L2.0 -2.0 L7 0 L2.0 2.0 L0 7 L-2.0 2.0 L-7 0 L-2.0 -2.0 Z" fill="#78C84C"/></g><text x="225" y="241" text-anchor="start" font-size="9" fill="#E7F0DE">Slack</text><path d="M-10 520 Q137 470 284 520 V626 H-10 Z" fill="#14361F"/><g transform="translate(48,498)"><rect x="-14" y="-18" width="28" height="20" fill="#0F2A18"/><path d="M-18 -18 L0 -32 L18 -18 Z" fill="#0B2114"/><rect x="-5" y="-12" width="10" height="10" fill="#FCDE80" class="glowp"/></g><use href="#lf-round" transform="translate(210,512) rotate(0) scale(1.6)" fill="#10301C"/><rect x="208" y="512" width="3" height="14" fill="#0B2114"/></svg></div>
+          <div class="capb dark"><div class="lbl">browser &#183; editor &#183; agent &#8212; anywhere you type</div></div>
+        </div>
+
+        <div class="scene scene-5">
+          <div class="sbg" style="background:radial-gradient(125% 85% at 50% 38%, rgba(246,99,57,.26) 0%, transparent 62%);"></div>
+          <div class="artbg"><svg viewBox="0 0 274 606" preserveAspectRatio="xMidYMid slice"><rect x="20" y="120" width="234" height="380" rx="20" fill="#F3F7EC" stroke="rgba(31,42,26,.1)" stroke-width="1.4"/><g transform="translate(40,150)"><rect x="0" y="-12" width="64" height="22" rx="11" fill="#FCE7E0"/><circle cx="14" cy="-1" r="4" fill="#E03C1F" class="glowp"/><text x="26" y="3" font-size="9" letter-spacing="1.5" fill="#E03C1F">LIVE</text></g><path d="M92.6 273.3 A58 58 0 1 0 181.4 273.3" fill="none" stroke="rgba(31,42,26,.14)" stroke-width="9" stroke-linecap="round"/><path d="M92.6 273.3 A58 58 0 1 1 182.7 200.3" fill="none" stroke="#45AE51" stroke-width="9" stroke-linecap="round" class="draw"/><g class="needle" style="transform-origin:137px 236px"><line x1="137" y1="236" x2="137" y2="192" stroke="#1F2A1A" stroke-width="2.4" stroke-linecap="round"/><circle cx="137" cy="236" r="4" fill="#1F2A1A"/></g><text x="137" y="236" text-anchor="middle" font-size="30" font-family="Italiana,serif" fill="#1F2A1A">70%</text><text x="137" y="254" text-anchor="middle" font-size="8" letter-spacing="1.5" fill="#6f8c73">REDUCED</text><text x="218" y="158" text-anchor="end" font-size="22" font-family="Italiana,serif" fill="#2E9444">12,453</text><text x="218" y="170" text-anchor="end" font-size="7" letter-spacing="1" fill="#6f8c73">SAVED TODAY</text><polyline points="40,360 74,344 108,350 142,326 176,332 210,300 234,292" fill="none" stroke="#45AE51" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="draw"/><polygon points="40,372 40,360 74,344 108,350 142,326 176,332 210,300 234,292 234,372" fill="#45AE51" opacity="0.12"/><circle cx="234" cy="292" r="3.5" fill="#2E9444" class="glowp"/><circle cx="44" cy="407" r="4" fill="#45AE51"/><text x="56" y="410" font-size="10" fill="#1F2A1A">claude</text><rect x="120" y="403" width="40" height="6" rx="3" fill="#45AE51" opacity="0.5"/><text x="234" y="410" text-anchor="end" font-size="10" fill="#2E9444">&#8722;132</text><circle cx="44" cy="429" r="4" fill="#78C84C"/><text x="56" y="432" font-size="10" fill="#1F2A1A">gpt-4</text><rect x="120" y="425" width="58" height="6" rx="3" fill="#78C84C" opacity="0.5"/><text x="234" y="432" text-anchor="end" font-size="10" fill="#2E9444">&#8722;289</text><circle cx="44" cy="451" r="4" fill="#2E9444"/><text x="56" y="454" font-size="10" fill="#1F2A1A">codex</text><rect x="120" y="447" width="76" height="6" rx="3" fill="#2E9444" opacity="0.5"/><text x="234" y="454" text-anchor="end" font-size="10" fill="#2E9444">&#8722;412</text><circle cx="44" cy="473" r="4" fill="#F66339"/><text x="56" y="476" font-size="10" fill="#1F2A1A">agent</text><rect x="120" y="469" width="94" height="6" rx="3" fill="#F66339" opacity="0.5"/><text x="234" y="476" text-anchor="end" font-size="10" fill="#2E9444">&#8722;207</text><g transform="translate(60,200)" class="spk" style="animation-delay:0s"><path d="M0 -6.2 C 1.3 -1.6 1.6 -1.3 6.2 0 C 1.6 1.3 1.3 1.6 0 6.2 C -1.3 1.6 -1.6 1.3 -6.2 0 C -1.6 -1.3 -1.3 -1.6 0 -6.2 Z" fill="#F66339"/></g><g transform="translate(228,330)" class="spk" style="animation-delay:1.3s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FCDE80"/></g></svg></div>
+        </div>
+
+        <div class="scene scene-6">
+          <div class="sbg" style="background:radial-gradient(125% 85% at 50% 38%, rgba(70,182,236,.32) 0%, transparent 62%);"></div>
+          <div class="artbg"><svg viewBox="0 0 274 606" preserveAspectRatio="xMidYMid slice"><defs><radialGradient id="globe" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="#BFE2F0"/><stop offset="100%" stop-color="#8FC4E0"/></radialGradient></defs><circle cx="137" cy="280" r="108" fill="url(#globe)" stroke="#6FA9C6" stroke-width="1.5"/><ellipse cx="137" cy="280" rx="108" ry="45" fill="none" stroke="#fff" stroke-width="0.8" opacity="0.4"/><ellipse cx="137" cy="280" rx="54" ry="108" fill="none" stroke="#fff" stroke-width="0.8" opacity="0.35"/><g class="wreathsway" style="transform-origin:137px 280px;animation-duration:40s"><ellipse cx="103.0" cy="250.0" rx="22.2" ry="16.3" fill="#45AE51"/><circle cx="126.4" cy="250.0" r="11.0" fill="#45AE51"/><circle cx="120.9" cy="261.0" r="11.0" fill="#45AE51"/><circle cx="107.1" cy="266.9" r="11.0" fill="#45AE51"/><circle cx="91.3" cy="264.9" r="11.0" fill="#45AE51"/><circle cx="81.0" cy="255.9" r="11.0" fill="#45AE51"/><circle cx="81.0" cy="244.1" r="11.0" fill="#45AE51"/><circle cx="91.3" cy="235.1" r="11.0" fill="#45AE51"/><circle cx="107.1" cy="233.1" r="11.0" fill="#45AE51"/><circle cx="120.9" cy="239.0" r="11.0" fill="#45AE51"/><ellipse cx="167.0" cy="240.0" rx="19.2" ry="13.3" fill="#78C84C"/><circle cx="187.3" cy="240.0" r="9.0" fill="#78C84C"/><circle cx="182.5" cy="249.0" r="9.0" fill="#78C84C"/><circle cx="170.5" cy="253.8" r="9.0" fill="#78C84C"/><circle cx="156.9" cy="252.2" r="9.0" fill="#78C84C"/><circle cx="147.9" cy="244.8" r="9.0" fill="#78C84C"/><circle cx="147.9" cy="235.2" r="9.0" fill="#78C84C"/><circle cx="156.9" cy="227.8" r="9.0" fill="#78C84C"/><circle cx="170.5" cy="226.2" r="9.0" fill="#78C84C"/><circle cx="182.5" cy="231.0" r="9.0" fill="#78C84C"/><ellipse cx="157.0" cy="314.0" rx="22.2" ry="17.8" fill="#45AE51"/><circle cx="180.4" cy="314.0" r="12.0" fill="#45AE51"/><circle cx="174.9" cy="326.0" r="12.0" fill="#45AE51"/><circle cx="161.1" cy="332.4" r="12.0" fill="#45AE51"/><circle cx="145.3" cy="330.2" r="12.0" fill="#45AE51"/><circle cx="135.0" cy="320.4" r="12.0" fill="#45AE51"/><circle cx="135.0" cy="307.6" r="12.0" fill="#45AE51"/><circle cx="145.3" cy="297.8" r="12.0" fill="#45AE51"/><circle cx="161.1" cy="295.6" r="12.0" fill="#45AE51"/><circle cx="174.9" cy="302.0" r="12.0" fill="#45AE51"/><ellipse cx="97.0" cy="310.0" rx="14.8" ry="11.8" fill="#78C84C"/><circle cx="112.6" cy="310.0" r="8.0" fill="#78C84C"/><circle cx="108.0" cy="318.8" r="8.0" fill="#78C84C"/><circle cx="97.0" cy="322.5" r="8.0" fill="#78C84C"/><circle cx="86.0" cy="318.8" r="8.0" fill="#78C84C"/><circle cx="81.4" cy="310.0" r="8.0" fill="#78C84C"/><circle cx="86.0" cy="301.2" r="8.0" fill="#78C84C"/><circle cx="97.0" cy="297.5" r="8.0" fill="#78C84C"/><circle cx="108.0" cy="301.2" r="8.0" fill="#78C84C"/><ellipse cx="185.0" cy="286.0" rx="11.8" ry="8.9" fill="#45AE51"/><circle cx="197.5" cy="286.0" r="6.0" fill="#45AE51"/><circle cx="192.8" cy="293.3" r="6.0" fill="#45AE51"/><circle cx="182.2" cy="295.1" r="6.0" fill="#45AE51"/><circle cx="173.8" cy="290.1" r="6.0" fill="#45AE51"/><circle cx="173.8" cy="281.9" r="6.0" fill="#45AE51"/><circle cx="182.2" cy="276.9" r="6.0" fill="#45AE51"/><circle cx="192.8" cy="278.7" r="6.0" fill="#45AE51"/></g><g class="ringspin" style="transform-origin:137px 280px"><ellipse cx="137" cy="280" rx="130" ry="54" fill="none" stroke="#9A57E6" stroke-width="1.4" stroke-dasharray="3 6" transform="rotate(-18 137 280)"/></g><line x1="107" y1="254" x2="107" y2="240" stroke="#2E9444" stroke-width="1.6"/><g class="bob"><g transform="translate(107,236)"><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F87FA2" transform="rotate(0.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F87FA2" transform="rotate(60.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F87FA2" transform="rotate(120.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F87FA2" transform="rotate(180.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F87FA2" transform="rotate(240.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F87FA2" transform="rotate(300.0)"/><circle r="4.5" fill="#F8BE2E"/><text y="1.6" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-family="Italiana,serif" fill="#fff">&#20013;</text></g></g><line x1="169" y1="240" x2="169" y2="226" stroke="#2E9444" stroke-width="1.6"/><g class="twinkle"><g transform="translate(169,222)"><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(0.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(60.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(120.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(180.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(240.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(300.0)"/><circle r="4.5" fill="#F8BE2E"/><text y="1.6" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-family="Italiana,serif" fill="#fff">&#12354;</text></g></g><line x1="161" y1="310" x2="161" y2="296" stroke="#2E9444" stroke-width="1.6"/><g class="bob b2"><g transform="translate(161,292)"><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(0.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(60.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(120.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(180.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(240.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(300.0)"/><circle r="4.5" fill="#F8BE2E"/><text y="1.6" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-family="Italiana,serif" fill="#fff">&#54620;</text></g></g><line x1="95" y1="308" x2="95" y2="294" stroke="#2E9444" stroke-width="1.6"/><g class="twinkle"><g transform="translate(95,290)"><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#46B6EC" transform="rotate(0.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#46B6EC" transform="rotate(60.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#46B6EC" transform="rotate(120.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#46B6EC" transform="rotate(180.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#46B6EC" transform="rotate(240.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#46B6EC" transform="rotate(300.0)"/><circle r="4.5" fill="#F8BE2E"/><text y="1.6" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-family="Italiana,serif" fill="#fff">A</text></g></g><line x1="129" y1="234" x2="129" y2="220" stroke="#2E9444" stroke-width="1.6"/><g class="bob b3"><g transform="translate(129,216)"><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F66339" transform="rotate(0.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F66339" transform="rotate(60.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F66339" transform="rotate(120.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F66339" transform="rotate(180.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F66339" transform="rotate(240.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F66339" transform="rotate(300.0)"/><circle r="4.5" fill="#F8BE2E"/><text y="1.6" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-family="Italiana,serif" fill="#fff">&#196;</text></g></g><line x1="187" y1="284" x2="187" y2="270" stroke="#2E9444" stroke-width="1.6"/><g class="twinkle"><g transform="translate(187,266)"><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#EC4F86" transform="rotate(0.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#EC4F86" transform="rotate(60.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#EC4F86" transform="rotate(120.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#EC4F86" transform="rotate(180.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#EC4F86" transform="rotate(240.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#EC4F86" transform="rotate(300.0)"/><circle r="4.5" fill="#F8BE2E"/><text y="1.6" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-family="Italiana,serif" fill="#fff">&#1071;</text></g></g><line x1="87" y1="276" x2="87" y2="262" stroke="#2E9444" stroke-width="1.6"/><g class="bob b4"><g transform="translate(87,258)"><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(0.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(60.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(120.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(180.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(240.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#F8BE2E" transform="rotate(300.0)"/><circle r="4.5" fill="#F8BE2E"/><text y="1.6" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-family="Italiana,serif" fill="#fff">&#241;</text></g></g><line x1="143" y1="324" x2="143" y2="310" stroke="#2E9444" stroke-width="1.6"/><g class="bob"><g transform="translate(143,306)"><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(0.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(60.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(120.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(180.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(240.0)"/><ellipse cx="0" cy="-9.0" rx="4.9" ry="9.0" fill="#B681F0" transform="rotate(300.0)"/><circle r="4.5" fill="#F8BE2E"/><text y="1.6" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-family="Italiana,serif" fill="#fff">&#1593;</text></g></g><g transform="translate(40,160)" class="spk" style="animation-delay:0s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#B681F0"/></g><g transform="translate(232,200)" class="spk" style="animation-delay:1.1s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FCDE80"/></g><circle cx="100" cy="420" r="2" fill="#B681F0" class="pollen" style="animation-delay:0s;animation-duration:6s"/><circle cx="180" cy="430" r="2" fill="#FBBBCE" class="pollen" style="animation-delay:2.4s;animation-duration:6s"/></svg></div>
+          <div class="capb">
+            <div class="chips"><span class="on">ZH</span><span>EN</span><span>JP</span><span>FR</span><span>ES</span><span>DE</span><span>KO</span><span>RU</span><span>HI</span></div>
+            <div class="lbl">40+ languages</div>
+          </div>
+        </div>
+
+        <div class="scene scene-7">
+          <div class="pet-head">
+            <div class="nm">Shiro</div>
+            <div class="label-mini">white bear · your terse pal</div>
+          </div>
+
+          <div class="pet-stage">
+            <div class="pet-body">
+              <svg width="160" height="180" viewBox="0 0 160 180">
+                <!-- Shiro · White Bear — Terse pal -->
+                <g transform="translate(80, 150)">
+
+                  <!-- Tail (wags) — fluffy puff -->
+                  <g class="pet-tail-wag">
+                    <ellipse cx="-44" cy="-28" rx="14" ry="12" fill="#d8c8b2"/>
+                    <ellipse cx="-46" cy="-30" rx="10" ry="9" fill="#f6efe2"/>
+                  </g>
+
+                  <!-- Back legs/feet -->
+                  <ellipse cx="-22" cy="-2" rx="11" ry="7" fill="#d8c8b2"/>
+                  <ellipse cx="22" cy="-2" rx="11" ry="7" fill="#d8c8b2"/>
+                  <!-- pink toe beans -->
+                  <ellipse cx="-22" cy="0" rx="6" ry="2.5" fill="#d8a89e" opacity="0.6"/>
+                  <ellipse cx="22" cy="0" rx="6" ry="2.5" fill="#d8a89e" opacity="0.6"/>
+
+                  <!-- Body (round, fluffy, white) -->
+                  <g class="pet-belly">
+                    <ellipse cx="0" cy="-40" rx="46" ry="42" fill="#f6efe2"/>
+                    <!-- Belly (pink-cream tummy) -->
+                    <ellipse cx="0" cy="-32" rx="30" ry="28" fill="#f0e0d5"/>
+                  </g>
+
+                  <!-- Ears (round bear ears) -->
+                  <g class="pet-ear-l">
+                    <ellipse cx="-30" cy="-90" rx="11" ry="11" fill="#f6efe2"/>
+                    <ellipse cx="-30" cy="-88" rx="6" ry="6" fill="#e8cec0" opacity="0.85"/>
+                  </g>
+                  <g class="pet-ear-r">
+                    <ellipse cx="30" cy="-90" rx="11" ry="11" fill="#f6efe2"/>
+                    <ellipse cx="30" cy="-88" rx="6" ry="6" fill="#e8cec0" opacity="0.85"/>
+                  </g>
+
+                  <!-- Head -->
+                  <ellipse cx="0" cy="-72" rx="32" ry="28" fill="#f6efe2"/>
+                  <!-- Face muzzle highlight -->
+                  <ellipse cx="0" cy="-62" rx="18" ry="12" fill="#fcf6e8"/>
+
+                  <!-- Eyes (with blink) -->
+                  <g class="pet-eye">
+                    <ellipse cx="-9" cy="-72" rx="2.4" ry="3.2" fill="#1a1814"/>
+                    <circle cx="-8.2" cy="-73.4" r="0.9" fill="#fff"/>
+                  </g>
+                  <g class="pet-eye" style="animation-delay: 0.05s;">
+                    <ellipse cx="9" cy="-72" rx="2.4" ry="3.2" fill="#1a1814"/>
+                    <circle cx="9.8" cy="-73.4" r="0.9" fill="#fff"/>
+                  </g>
+
+                  <!-- Blush cheeks -->
+                  <ellipse cx="-15" cy="-65" rx="4" ry="2.5" fill="#d8a89e" opacity="0.7"/>
+                  <ellipse cx="15" cy="-65" rx="4" ry="2.5" fill="#d8a89e" opacity="0.7"/>
+
+                  <!-- Tiny dark bear nose -->
+                  <ellipse cx="0" cy="-64" rx="1.4" ry="1" fill="#3a2820"/>
+
+                  <!-- Mouth — open happy smile with tongue -->
+                  <path d="M -4 -60 Q 0 -55 4 -60" stroke="#1a1814" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+                  <ellipse cx="0" cy="-58" rx="2" ry="1.2" fill="#c6857a" opacity="0.85"/>
+
+                  <!-- Tiny floating leaf (signature Terse touch) -->
+                  <g transform="translate(20, -106)">
+                    <ellipse cx="0" cy="0" rx="6" ry="3" fill="#5e6450" transform="rotate(-30)"/>
+                    <line x1="0" y1="0" x2="-5" y2="6" stroke="#5e6450" stroke-width="0.8"/>
+                  </g>
+                </g>
+              </svg>
+            </div>
+            <div class="pet-shadow"></div>
+            <div class="pet-sparkle pet-spark-1"></div>
+            <div class="pet-sparkle pet-spark-2"></div>
+            <div class="pet-sparkle pet-spark-3"></div>
+            <div class="heart heart-1">♥</div>
+            <div class="heart heart-2">♥</div>
+            <div class="heart heart-3">♥</div>
+          </div>
+
+          <div class="pet-stats">
+            <div class="pet-stat-row ps-1">
+              <span class="lbl">Happy</span>
+              <div class="bar"><div class="fill"></div></div>
+              <span class="num">95</span>
+            </div>
+            <div class="pet-stat-row ps-2">
+              <span class="lbl">Hunger</span>
+              <div class="bar"><div class="fill"></div></div>
+              <span class="num">70</span>
+            </div>
+            <div class="pet-stat-row ps-3">
+              <span class="lbl">Energy</span>
+              <div class="bar"><div class="fill"></div></div>
+              <span class="num">82</span>
+            </div>
+          </div>
+
+          <div class="pet-foot">Feeds on <em>optimized tokens</em></div>
+        </div>
+
+        <!-- ───── Scene 8: Terse Farm (NEW) ───── -->
+        <div class="scene scene-8">
+          <div class="sbg" style="background:radial-gradient(125% 85% at 55% 26%, rgba(248,190,46,.40) 0%, transparent 62%);"></div>
+          <div class="artbg"><svg viewBox="0 0 274 606" preserveAspectRatio="xMidYMid slice">
+            <g transform="translate(228,82)"><g class="ringspin"><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(0)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(30)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(60)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(90)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(120)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(150)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(180)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(210)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(240)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(270)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(300)"/><rect x="-1.6" y="-31" width="3.2" height="9" rx="1.6" fill="#F8BE2E" transform="rotate(330)"/></g><circle r="17" fill="#F8BE2E"/><circle r="11" fill="#FCDE80"/></g><g transform="translate(70,112) scale(1.1)" class="bob"><circle cx="-12" cy="2" r="9" fill="#F4EDD6"/><circle cx="0" cy="-3" r="12" fill="#F4EDD6"/><circle cx="13" cy="2" r="9" fill="#F4EDD6"/><rect x="-21" y="0" width="42" height="9" rx="4" fill="#F4EDD6"/></g><g transform="translate(152,72) scale(0.8)" class="bob"><circle cx="-12" cy="2" r="9" fill="#F4EDD6"/><circle cx="0" cy="-3" r="12" fill="#F4EDD6"/><circle cx="13" cy="2" r="9" fill="#F4EDD6"/><rect x="-21" y="0" width="42" height="9" rx="4" fill="#F4EDD6"/></g>
+            <path d="M-10 530 Q137 470 284 530 V612 H-10 Z" fill="#9A7A4E"/><path d="M-10 564 Q137 520 284 564 V612 H-10 Z" fill="#6E5536"/><g class="swayA"><line x1="50" y1="564" x2="50" y2="546" stroke="#2E9444" stroke-width="2"/><ellipse cx="50.0" cy="538.0" rx="14.8" ry="13.3" fill="#1C8A6A"/><circle cx="65.6" cy="538.0" r="9.0" fill="#1C8A6A"/><circle cx="62.0" cy="547.0" r="9.0" fill="#1C8A6A"/><circle cx="52.7" cy="551.8" r="9.0" fill="#1C8A6A"/><circle cx="42.2" cy="550.2" r="9.0" fill="#1C8A6A"/><circle cx="35.3" cy="542.8" r="9.0" fill="#1C8A6A"/><circle cx="35.3" cy="533.2" r="9.0" fill="#1C8A6A"/><circle cx="42.2" cy="525.8" r="9.0" fill="#1C8A6A"/><circle cx="52.7" cy="524.2" r="9.0" fill="#1C8A6A"/><circle cx="62.0" cy="529.0" r="9.0" fill="#1C8A6A"/><ellipse cx="50.0" cy="536.0" rx="9.6" ry="8.9" fill="#39B58D"/><circle cx="60.1" cy="536.0" r="6.0" fill="#39B58D"/><circle cx="57.2" cy="542.6" r="6.0" fill="#39B58D"/><circle cx="50.0" cy="545.4" r="6.0" fill="#39B58D"/><circle cx="42.8" cy="542.6" r="6.0" fill="#39B58D"/><circle cx="39.9" cy="536.0" r="6.0" fill="#39B58D"/><circle cx="42.8" cy="529.4" r="6.0" fill="#39B58D"/><circle cx="50.0" cy="526.6" r="6.0" fill="#39B58D"/><circle cx="57.2" cy="529.4" r="6.0" fill="#39B58D"/><ellipse cx="47.0" cy="534.0" rx="4.4" ry="4.4" fill="#7FBfa0"/><circle cx="51.7" cy="534.0" r="3.0" fill="#7FBfa0"/><circle cx="49.3" cy="538.1" r="3.0" fill="#7FBfa0"/><circle cx="44.7" cy="538.1" r="3.0" fill="#7FBfa0"/><circle cx="42.3" cy="534.0" r="3.0" fill="#7FBfa0"/><circle cx="44.7" cy="529.9" r="3.0" fill="#7FBfa0"/><circle cx="49.3" cy="529.9" r="3.0" fill="#7FBfa0"/></g><g class="swayA"><path d="M98 556 Q88 542 78 532 Q92 544 98 556 Z" fill="#45AE51"/><path d="M98 556 Q108 542 118 532 Q104 544 98 556 Z" fill="#78C84C"/><path d="M98 556 Q90 543 83 534 Q94 545 98 556 Z" fill="#45AE51"/><path d="M98 556 Q106 543 113 534 Q102 545 98 556 Z" fill="#78C84C"/><path d="M98 556 Q93 544 88 536 Q95 546 98 556 Z" fill="#45AE51"/><path d="M98 556 Q103 544 108 536 Q101 546 98 556 Z" fill="#78C84C"/><path d="M98 556 Q96 545 93 538 Q96 547 98 556 Z" fill="#45AE51"/><path d="M98 556 Q100 545 103 538 Q100 547 98 556 Z" fill="#78C84C"/><path d="M98 556 Q98 546 98 540 Q98 548 98 556 Z" fill="#45AE51"/><path d="M98 556 Q98 546 98 540 Q98 548 98 556 Z" fill="#78C84C"/><path d="M92 562 L104 562 L98 580 Z" fill="#E03C1F"/></g><g class="swayB"><line x1="150" y1="564" x2="150" y2="518" stroke="#2E9444" stroke-width="2"/><ellipse cx="150.0" cy="524.0" rx="13.3" ry="16.3" fill="#2E9444"/><circle cx="164.0" cy="524.0" r="9.0" fill="#2E9444"/><circle cx="160.8" cy="535.0" r="9.0" fill="#2E9444"/><circle cx="152.4" cy="540.9" r="9.0" fill="#2E9444"/><circle cx="143.0" cy="538.9" r="9.0" fill="#2E9444"/><circle cx="136.8" cy="529.9" r="9.0" fill="#2E9444"/><circle cx="136.8" cy="518.1" r="9.0" fill="#2E9444"/><circle cx="143.0" cy="509.1" r="9.0" fill="#2E9444"/><circle cx="152.4" cy="507.1" r="9.0" fill="#2E9444"/><circle cx="160.8" cy="513.0" r="9.0" fill="#2E9444"/><ellipse cx="150.0" cy="526.0" rx="8.9" ry="11.1" fill="#45AE51"/><circle cx="159.4" cy="526.0" r="6.0" fill="#45AE51"/><circle cx="156.6" cy="534.3" r="6.0" fill="#45AE51"/><circle cx="150.0" cy="537.7" r="6.0" fill="#45AE51"/><circle cx="143.4" cy="534.3" r="6.0" fill="#45AE51"/><circle cx="140.6" cy="526.0" r="6.0" fill="#45AE51"/><circle cx="143.4" cy="517.7" r="6.0" fill="#45AE51"/><circle cx="150.0" cy="514.3" r="6.0" fill="#45AE51"/><circle cx="156.6" cy="517.7" r="6.0" fill="#45AE51"/><g class="bob"><circle cx="142" cy="534" r="5.5" fill="#EA3525"/></g><g class="bob b2"><circle cx="158" cy="540" r="5.5" fill="#EA3525"/></g><g class="bob b3"><circle cx="152" cy="524" r="5" fill="#F66339"/></g></g><g class="turn" style="transform-origin:212px 492px"><line x1="212" y1="564" x2="212" y2="502" stroke="#2E9444" stroke-width="3"/><path d="M212 528.0 Q201 517 190 510 Q205 519 212 528.0 Z" fill="#45AE51"/><path d="M212 520.8 Q223 511 234 505 Q219 513 212 520.8 Z" fill="#78C84C"/><g transform="translate(212,492)"><g transform="rotate(0.0)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(27.7)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(55.4)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(83.1)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(110.8)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(138.5)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(166.2)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(193.8)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(221.5)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(249.2)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(276.9)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(304.6)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(332.3)"><path d="M0 0 C 5.8 -5.4 3.8 -13.9 0 -17.0 C -3.8 -13.9 -5.8 -5.4 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(16.0)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(48.7)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(81.5)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(114.2)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(146.9)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(179.6)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(212.4)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(245.1)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(277.8)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(310.5)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(343.3)"><path d="M0 0 C 4.0 -4.1 2.7 -10.6 0 -12.9 C -2.7 -10.6 -4.0 -4.1 0 0 Z" fill="#DE981E"/></g><g transform="rotate(8.0)"><path d="M0 0 C 2.4 -2.8 1.6 -7.2 0 -8.8 C -1.6 -7.2 -2.4 -2.8 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(48.0)"><path d="M0 0 C 2.4 -2.8 1.6 -7.2 0 -8.8 C -1.6 -7.2 -2.4 -2.8 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(88.0)"><path d="M0 0 C 2.4 -2.8 1.6 -7.2 0 -8.8 C -1.6 -7.2 -2.4 -2.8 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(128.0)"><path d="M0 0 C 2.4 -2.8 1.6 -7.2 0 -8.8 C -1.6 -7.2 -2.4 -2.8 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(168.0)"><path d="M0 0 C 2.4 -2.8 1.6 -7.2 0 -8.8 C -1.6 -7.2 -2.4 -2.8 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(208.0)"><path d="M0 0 C 2.4 -2.8 1.6 -7.2 0 -8.8 C -1.6 -7.2 -2.4 -2.8 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(248.0)"><path d="M0 0 C 2.4 -2.8 1.6 -7.2 0 -8.8 C -1.6 -7.2 -2.4 -2.8 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(288.0)"><path d="M0 0 C 2.4 -2.8 1.6 -7.2 0 -8.8 C -1.6 -7.2 -2.4 -2.8 0 0 Z" fill="#F8BE2E"/></g><g transform="rotate(328.0)"><path d="M0 0 C 2.4 -2.8 1.6 -7.2 0 -8.8 C -1.6 -7.2 -2.4 -2.8 0 0 Z" fill="#F8BE2E"/></g><circle r="5.1" fill="#7A5A1E"/></g></g><g transform="translate(150,300)"><g class="bob"><path d="M-20 -10 H12 V14 Q12 20 5 20 H-13 Q-20 20 -20 12 Z" fill="#2492CE"/><path d="M12 -6 L34 -20 L39 -12 L18 6 Z" fill="#2492CE"/><rect x="-15" y="-20" width="22" height="7" rx="3.5" fill="#46B6EC"/></g></g><g transform="translate(184,330)"><g class="drip" style="animation-delay:0s"><ellipse rx="2.6" ry="4" fill="#2492CE"/></g></g><g transform="translate(189,330)"><g class="drip" style="animation-delay:.8s"><ellipse rx="2.6" ry="4" fill="#2492CE"/></g></g><g transform="translate(180,330)"><g class="drip" style="animation-delay:1.6s"><ellipse rx="2.6" ry="4" fill="#2492CE"/></g></g><g transform="translate(150,456)"><g class="coinf" style="animation-delay:.3s"><circle r="8" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.6" cy="-2.7" rx="2.4" ry="1.4" fill="#FFF3CF" opacity="0.6"/><text y="3.0" text-anchor="middle" font-size="8.4" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g transform="translate(212,442)"><g class="coinf" style="animation-delay:1.1s"><circle r="8" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.6" cy="-2.7" rx="2.4" ry="1.4" fill="#FFF3CF" opacity="0.6"/><text y="3.0" text-anchor="middle" font-size="8.4" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g class="swayB"><path d="M20.0 534 q -3 -10 -1 -16 M20.0 534 q 0 -12 0 -18 M20.0 534 q 3 -10 1 -16" stroke="#45AE51" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M58.333333333333336 534 q -3 -10 -1 -16 M58.333333333333336 534 q 0 -12 0 -18 M58.333333333333336 534 q 3 -10 1 -16" stroke="#45AE51" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M96.66666666666667 534 q -3 -10 -1 -16 M96.66666666666667 534 q 0 -12 0 -18 M96.66666666666667 534 q 3 -10 1 -16" stroke="#45AE51" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M135.0 534 q -3 -10 -1 -16 M135.0 534 q 0 -12 0 -18 M135.0 534 q 3 -10 1 -16" stroke="#45AE51" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M173.33333333333334 534 q -3 -10 -1 -16 M173.33333333333334 534 q 0 -12 0 -18 M173.33333333333334 534 q 3 -10 1 -16" stroke="#45AE51" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M211.66666666666666 534 q -3 -10 -1 -16 M211.66666666666666 534 q 0 -12 0 -18 M211.66666666666666 534 q 3 -10 1 -16" stroke="#45AE51" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M250.0 534 q -3 -10 -1 -16 M250.0 534 q 0 -12 0 -18 M250.0 534 q 3 -10 1 -16" stroke="#45AE51" stroke-width="1.6" fill="none" stroke-linecap="round"/></g>
+            <text x="137" y="596" text-anchor="middle" font-size="11" letter-spacing="1.5" fill="#6f8c73">HARVEST &#183; <tspan fill="#DE981E">+50 COINS</tspan></text>
+          </svg></div>
+        </div>
+
+        <div class="scene scene-9">
+          <div class="sbg" style="background:radial-gradient(125% 85% at 50% 38%, rgba(248,190,46,.42) 0%, transparent 62%);"></div>
+          <div class="artbg"><svg viewBox="0 0 274 606" preserveAspectRatio="xMidYMid slice"><ellipse cx="137" cy="456" rx="80" ry="12" fill="#8A6B44" opacity="0.4"/><path d="M104 360 Q137 250 170 360" fill="none" stroke="#FCDE80" stroke-width="1.5" stroke-dasharray="2 6" opacity="0.6"/><g class="twinkle"><path d="M86 360 l8 -10 l8 10 l-8 10 Z" fill="#B681F0"/></g><g class="twinkle" style="animation-delay:-1s"><path d="M188 364 l7 -9 l7 9 l-7 9 Z" fill="#46B6EC"/></g><path d="M71 412 h132 v44 q0 7 -7 7 h-118 q-7 0 -7 -7 Z" fill="#7A5A38"/><rect x="71" y="412" width="132" height="11" fill="#5A4329"/><path d="M71 412 q0 -50 66 -50 q66 0 66 50 Z" fill="#9C7648"/><path d="M71 412 q0 -50 66 -50 q66 0 66 50" fill="none" stroke="#DE981E" stroke-width="3"/><rect x="71" y="409" width="132" height="7" fill="#DE981E"/><rect x="131" y="422" width="12" height="20" rx="2.5" fill="#F8BE2E"/><rect x="91" y="412" width="6" height="51" fill="#DE981E"/><rect x="177" y="412" width="6" height="51" fill="#DE981E"/><g transform="translate(103,404)"><g class="coinf" style="animation-delay:0s"><circle r="9" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.9" cy="-3.1" rx="2.7" ry="1.6" fill="#FFF3CF" opacity="0.6"/><text y="3.4" text-anchor="middle" font-size="9.5" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g transform="translate(123,400)"><g class="coinf" style="animation-delay:.6s"><circle r="9" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.9" cy="-3.1" rx="2.7" ry="1.6" fill="#FFF3CF" opacity="0.6"/><text y="3.4" text-anchor="middle" font-size="9.5" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g transform="translate(145,398)"><g class="coinf" style="animation-delay:1.2s"><circle r="9" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.9" cy="-3.1" rx="2.7" ry="1.6" fill="#FFF3CF" opacity="0.6"/><text y="3.4" text-anchor="middle" font-size="9.5" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g transform="translate(167,402)"><g class="coinf" style="animation-delay:1.8s"><circle r="9" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.9" cy="-3.1" rx="2.7" ry="1.6" fill="#FFF3CF" opacity="0.6"/><text y="3.4" text-anchor="middle" font-size="9.5" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g transform="translate(113,412)"><g class="coinf" style="animation-delay:.3s"><circle r="9" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.9" cy="-3.1" rx="2.7" ry="1.6" fill="#FFF3CF" opacity="0.6"/><text y="3.4" text-anchor="middle" font-size="9.5" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g transform="translate(137,410)"><g class="coinf" style="animation-delay:.9s"><circle r="9" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.9" cy="-3.1" rx="2.7" ry="1.6" fill="#FFF3CF" opacity="0.6"/><text y="3.4" text-anchor="middle" font-size="9.5" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g transform="translate(159,412)"><g class="coinf" style="animation-delay:1.5s"><circle r="9" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.9" cy="-3.1" rx="2.7" ry="1.6" fill="#FFF3CF" opacity="0.6"/><text y="3.4" text-anchor="middle" font-size="9.5" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g transform="translate(181,408)"><g class="coinf" style="animation-delay:2s"><circle r="9" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.9" cy="-3.1" rx="2.7" ry="1.6" fill="#FFF3CF" opacity="0.6"/><text y="3.4" text-anchor="middle" font-size="9.5" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g transform="translate(93,410)"><g class="coinf" style="animation-delay:1.1s"><circle r="9" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.9" cy="-3.1" rx="2.7" ry="1.6" fill="#FFF3CF" opacity="0.6"/><text y="3.4" text-anchor="middle" font-size="9.5" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g><g class="swayA"><line x1="137" y1="400" x2="137" y2="372" stroke="#2E9444" stroke-width="2"/><use href="#lf-almond" transform="translate(135,378) rotate(-50) scale(0.7)" fill="#45AE51"/><use href="#lf-almond" transform="translate(139,374) rotate(50) scale(0.7)" fill="#78C84C"/><g class="twinkle"><g transform="translate(137,366)"><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F87FA2" transform="rotate(0.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F87FA2" transform="rotate(60.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F87FA2" transform="rotate(120.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F87FA2" transform="rotate(180.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F87FA2" transform="rotate(240.0)"/><ellipse cx="0" cy="-6.0" rx="3.2" ry="6.0" fill="#F87FA2" transform="rotate(300.0)"/><circle r="3.0" fill="#F8BE2E"/></g></g></g><g transform="translate(96,300)"><g class="coinfall" style="animation-delay:0s"><g transform="translate(0,0)"><g class="coinf" style="animation-delay:0s"><circle r="7" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.2" cy="-2.4" rx="2.1" ry="1.3" fill="#FFF3CF" opacity="0.6"/><text y="2.7" text-anchor="middle" font-size="7.4" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g></g></g><g transform="translate(178,290)"><g class="coinfall" style="animation-delay:.9s"><g transform="translate(0,0)"><g class="coinf" style="animation-delay:0s"><circle r="7" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.2" cy="-2.4" rx="2.1" ry="1.3" fill="#FFF3CF" opacity="0.6"/><text y="2.7" text-anchor="middle" font-size="7.4" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g></g></g><g transform="translate(137,250)"><g class="coinfall" style="animation-delay:1.5s"><g transform="translate(0,0)"><g class="coinf" style="animation-delay:0s"><circle r="7" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.2" cy="-2.4" rx="2.1" ry="1.3" fill="#FFF3CF" opacity="0.6"/><text y="2.7" text-anchor="middle" font-size="7.4" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g></g></g><g transform="translate(112,330)"><g class="coinfall" style="animation-delay:2.1s"><g transform="translate(0,0)"><g class="coinf" style="animation-delay:0s"><circle r="7" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.2" cy="-2.4" rx="2.1" ry="1.3" fill="#FFF3CF" opacity="0.6"/><text y="2.7" text-anchor="middle" font-size="7.4" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g></g></g><g transform="translate(166,330)"><g class="coinfall" style="animation-delay:.5s"><g transform="translate(0,0)"><g class="coinf" style="animation-delay:0s"><circle r="7" fill="#F8BE2E" stroke="#DE981E" stroke-width="1.5"/><ellipse cx="-2.2" cy="-2.4" rx="2.1" ry="1.3" fill="#FFF3CF" opacity="0.6"/><text y="2.7" text-anchor="middle" font-size="7.4" font-family="Italiana,serif" fill="#7A5A1E">&#162;</text></g></g></g></g><g transform="translate(70,300)" class="spk" style="animation-delay:0s"><path d="M0 -8.2 C 1.7 -2.0 2.0 -1.7 8.2 0 C 2.0 1.7 1.7 2.0 0 8.2 C -1.7 2.0 -2.0 1.7 -8.2 0 C -2.0 -1.7 -1.7 -2.0 0 -8.2 Z" fill="#FCDE80"/></g><g transform="translate(206,320)" class="spk" style="animation-delay:1s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FCDE80"/></g><g transform="translate(96,250)" class="spk" style="animation-delay:1.7s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FBBBCE"/></g><g transform="translate(180,250)" class="spk" style="animation-delay:.6s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FCDE80"/></g><g transform="translate(137,210)" class="spk" style="animation-delay:2.2s"><path d="M0 -7.2 C 1.5 -1.8 1.8 -1.5 7.2 0 C 1.8 1.5 1.5 1.8 0 7.2 C -1.5 1.8 -1.8 1.5 -7.2 0 C -1.8 -1.5 -1.5 -1.8 0 -7.2 Z" fill="#FCDE80"/></g><text x="137" y="200" text-anchor="middle" font-size="44" font-family="Italiana,serif" fill="#1F2A1A">1.2<tspan font-size="22" fill="#2E9444">M</tspan></text><text x="137" y="218" text-anchor="middle" font-size="8.5" letter-spacing="2" fill="#6f8c73">TOKENS SAVED &#183; $8.43 THIS MONTH</text></svg></div>
+          <div class="capb">
+            <button class="cta-go"><svg viewBox="0 0 24 24"><path d="M12 12c2.65 0 4.8-2.15 4.8-4.8S14.65 2.4 12 2.4 7.2 4.55 7.2 7.2 9.35 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg><span>Get started &#8212; free</span></button>
+            <div class="lbl">500 optimizations / week free</div>
+          </div>
+        </div>
+
+              </div>
+
+      <div class="home-bar"></div>
+    </div>
+  </div>
+
+  <div class="progress">
+    <span class="dot d1"></span>
+    <span class="dot d2"></span>
+    <span class="dot d3"></span>
+    <span class="dot d4"></span>
+    <span class="dot d5"></span>
+    <span class="dot d6"></span>
+    <span class="dot d7"></span>
+    <span class="dot d8"></span>
+    <span class="dot d9"></span>
+  </div>
+
+</div>
+</body>
+</html>

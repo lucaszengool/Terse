@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>什么是 Token 优化?降低 AI 成本完全指南 — Terse</title>
+  <meta name="description" content="Token 优化是在不降低输出质量的前提下,系统性减少发送给 LLM 的 token 数量的过程。了解优化技术、真实节省数据(40-70%),以及 2026 年如何削减 AI 成本。">
+  <link rel="canonical" href="https://www.terseai.org/zh/what-is-token-optimization">
+  <link rel="alternate" hreflang="en" href="https://www.terseai.org/what-is-token-optimization">
+  <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/what-is-token-optimization">
+  <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/what-is-token-optimization">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="什么是 Token 优化?降低 AI 成本完全指南">
+  <meta property="og:description" content="Token 优化是在不降低输出质量的前提下,系统性减少发送给 LLM 的 token 数量的过程。了解优化技术、真实节省数据,以及如何削减 AI 成本。">
+  <meta property="og:url" content="https://www.terseai.org/zh/what-is-token-optimization">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="什么是 Token 优化?降低 AI 成本完全指南">
+  <meta name="twitter:description" content="Token 优化可在不降低输出质量的前提下,把发送给 LLM 的 token 减少 40-70%。关于技术、节省与工具的完全指南。">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "什么是 Token 优化?降低 AI 成本完全指南",
+    "description": "Token 优化是在不降低输出质量的前提下,系统性减少发送给大语言模型(LLM)以及从其接收的 token 数量的过程。了解优化技术、真实节省数据与工具。",
+    "inLanguage": "zh-Hans",
+    "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "datePublished": "2026-03-18",
+    "dateModified": "2026-03-18",
+    "mainEntityOfPage": "https://www.terseai.org/zh/what-is-token-optimization",
+    "keywords": ["token 优化", "什么是 token 优化", "AI token 优化", "LLM 降本", "提示词压缩", "降低 AI 成本", "token 节省"]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter','PingFang SC','Hiragino Sans GB','Microsoft YaHei',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-1px;line-height:1.2;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .meta{font-size:13px;color:var(--t3);margin-bottom:32px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+    .article .definition{background:var(--bg2);border-left:3px solid var(--ac);padding:20px 24px;border-radius:0 10px 10px 0;margin:24px 0 32px;font-size:17px;line-height:1.8;color:var(--t2)}
+    .article .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0 32px}
+    .article .stat-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px;text-align:center}
+    .article .stat-card .num{font-size:32px;font-weight:900;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .article .stat-card .label{font-size:13px;color:var(--t3);margin-top:4px}
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+    .comparison-table{width:100%;border-collapse:collapse;margin:20px 0 28px}
+    .comparison-table th,.comparison-table td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2)}
+    .comparison-table th{color:var(--t3);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+    .comparison-table td:first-child{color:var(--t1);font-weight:600}
+    @media(max-width:600px){
+      .article .stat-grid{grid-template-columns:1fr}
+      .comparison-table{font-size:12px}
+      .comparison-table th,.comparison-table td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/zh/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/zh/#how-it-works" style="color:var(--t2);text-decoration:none">工作原理</a><a href="/zh/#pipeline" style="color:var(--t2);text-decoration:none">优化管线</a><a href="/zh/#agents" style="color:var(--t2);text-decoration:none">Agent 监控</a><a href="/zh/#pricing" style="color:var(--t2);text-decoration:none">定价</a></div>
+</nav>
+
+<main class="article">
+  <span class="tag">指南</span>
+  <h1>什么是 Token 优化?降低 AI 成本完全指南</h1>
+  <p class="meta">最后更新:2026 年 3 月</p>
+  <p class="subtitle">你发送给 LLM 的每一个 token 都在花钱。而大多数提示词中,有 40-70% 的 token 是模型并不需要的冗余。Token 优化在它们到达 API 之前将其移除——降成本,不降质量。</p>
+
+  <div class="toc">
+    <h4>目录</h4>
+    <ol>
+      <li><a href="#definition">什么是 Token 优化?</a></li>
+      <li><a href="#what-are-tokens">什么是 AI Token?</a></li>
+      <li><a href="#why-it-matters">为什么 Token 优化在 2026 年至关重要</a></li>
+      <li><a href="#how-it-works">Token 优化如何运作</a></li>
+      <li><a href="#vs-prompt-engineering">Token 优化 vs 提示词工程</a></li>
+      <li><a href="#real-world-savings">真实世界的节省</a></li>
+      <li><a href="#tools">Token 优化工具</a></li>
+      <li><a href="#getting-started">用 Terse 快速上手</a></li>
+    </ol>
+  </div>
+
+  <h2 id="definition">什么是 Token 优化?</h2>
+  <div class="definition">
+    <strong>Token 优化</strong>是指在不降低输出质量的前提下,系统性减少发送给大语言模型(LLM)以及从其接收的 token 数量的过程。它在提示词和上下文窗口到达模型之前应用各种压缩技术——包括赘词去除、去重、拼写纠正和短语精简——从而带来更低的成本、更快的响应,以及对有限上下文窗口更高效的利用。
+  </div>
+  <p>其原理并不复杂:人类书写的文本天然存在冗余。当我们给 ChatGPT、Claude 或任何 LLM 写提示词时,总会夹带赘词、含糊措辞、客套话、多余的限定语和啰嗦的句式——它们对模型几乎不携带任何信息。微软的研究(<a href="/llmlingua">LLMLingua</a> 论文,EMNLP 2023)表明,典型提示词中 40-70% 的 token 可以移除,而模型的输出质量没有任何可测量的变化。</p>
+  <p>Token 优化把这一发现变成了实用工具。与其手动把每条提示词改写得更精炼,token 优化工具会自动检测并移除冗余——实时进行、覆盖每条提示词、贯穿每次会话。结果是:你从 LLM 得到同等质量的回答,却只需为明显更少的 token 付费。</p>
+  <p>这并不是把提示词写得敷衍,也不是删除重要上下文。Token 优化专门针对人类自然而然添加、但 LLM 并不需要的语言脚手架。"I was wondering if you could perhaps" 变成 "can you";"What I would really like you to do is" 变成一条直接的请求。意思完全相同,token 成本却不同。</p>
+
+  <h2 id="what-are-tokens">什么是 AI Token?</h2>
+  <p>在深入优化之前,先理解 token 到底是什么、它为什么与成本相关,会很有帮助。</p>
+  <p><strong>Token</strong> 是大语言模型处理文本的基本单位。Token 既不是单词、字符,也不是句子——它们是由分词器(通常是 BPE,字节对编码)生成的子词单元。在实践中,一个 token 大约对应 3-4 个英文字符,或约 0.75 个英文单词。单词 "optimization" 是两个 token,"the" 是一个 token。像 "Please help me write a function" 这样的短句约为 7 个 token。</p>
+  <p>所有主流 LLM 提供商都按 token 对 API 计费:</p>
+  <ul>
+    <li><strong>输入 token</strong> — 你的提示词中的 token,包括系统指令、对话历史和当前消息。这是你发送给模型的部分。</li>
+    <li><strong>输出 token</strong> — 模型在回复中生成的 token。通常比输入 token 贵 3-5 倍。</li>
+    <li><strong>缓存 token</strong> — 部分提供商(尤其是 Anthropic 的 Claude)对与此前发送内容相匹配的 token 提供折扣价,鼓励保持一致的提示词结构。</li>
+  </ul>
+  <p>以下是 2026 年主流模型的定价:</p>
+  <pre>
+模型                输入(每 100 万 token)  输出(每 100 万 token)
+Claude Opus 4       $15.00                  $75.00
+Claude Sonnet 4     $3.00                   $15.00
+GPT-4o              $2.50                   $10.00
+GPT-4.5             $75.00                  $150.00
+Gemini 2.5 Pro      $1.25                   $10.00</pre>
+  <p>按这个价格,token 用量的账很快就会累积起来。一位用 Claude Opus 4 进行 40 轮编程会话的开发者,可能消耗 210,000 个输入 token 和 45,000 个输出 token——单个任务就要 6.53 美元。如果 token 优化把输入 token 减少 50%,会话成本就降到 4.96 美元。每天跑 10 次会话、每周 5 天,一个月复利下来能省 300 多美元。</p>
+  <p>上下文窗口是另一个维度。每个模型都有最大上下文长度——单次请求所能处理的 token 总数上限。Claude 的 200K 上下文窗口和 Gemini 的 1M 窗口固然慷慨,但 agent 会话很快就能填满它们。上下文窗口一满,模型要么截断较早的对话历史(丢失信息),要么会话必须重启。Token 优化通过在同样的 token 预算里装进更多有效内容,延展了上下文窗口的实际容量。</p>
+
+  <h2 id="why-it-matters">为什么 Token 优化在 2026 年至关重要</h2>
+  <p>对任何在规模化使用或构建 LLM 应用的人来说,token 优化已经从"锦上添花"变成了必需品。三个趋势的汇合让它在 2026 年变得至关重要。</p>
+
+  <h3>1. Agent 会话让 Token 用量爆炸式增长</h3>
+  <p>AI 编程 agent 的兴起——Claude Code、Cursor、Windsurf、Aider、OpenClaw——从根本上改变了 token 的消耗方式。2024 年,大部分 LLM 使用是单发式的:一条提示词,一条回复。2026 年,主导模式变成了多轮 agent 会话:为完成一个任务,模型被调用 20 次、40 次甚至 100 多次。</p>
+  <p>Agent 会话的每一轮都会把完整的对话历史塞进提示词。第 3 轮写下的一句赘语,会作为上下文在第 4 到第 40 轮被反复重发。这形成了一种复利效应:早期的冗余会在此后每次 API 调用中成倍放大。一句 15 个 token 的多余句子,在剩余 37 轮中反复出现,就要花掉 555 个 token——而这只是一次会话里的一句话。</p>
+  <p>Terse 的 <a href="/zh/#agents">agent 监控器</a>曾跟踪到单个编程任务累计输入 token 超过 500,000 的会话。按 Claude Opus 4 的价格,仅输入 token 就是 7.50 美元。哪怕只优化 30%,每个任务也能省 2.25 美元——在大多数开发团队的运行规模下,这是一笔实实在在的节省。</p>
+
+  <h3>2. 企业 AI 预算正被严格审视</h3>
+  <p>随着组织从 AI 试验走向生产部署,财务团队开始对 API 成本刨根问底。一支 10 人的开发团队,每人每天跑 5-8 次 agent 会话,每月的 LLM API 开销轻松达到 5,000-15,000 美元。Token 优化能直接、可度量地削减这笔支出,而不需要开发者改变工作流,也不必换用能力更弱的模型。</p>
+  <p>ROI 的计算很简单:如果一个 token 优化工具每个席位每月 8 美元,却能省下 200-500 美元的 API 成本,它的回报是自身成本的 25-60 倍。这就是为什么 token 优化已与模型访问、向量数据库和可观测性工具并列,成为 AI 基础设施预算中的一个固定项目。</p>
+
+  <h3>3. 上下文窗口效率决定 Agent 质量</h3>
+  <p>更大的上下文窗口本应解决长对话中的信息丢失问题。但它没有。研究一再表明,模型对埋在长上下文中间的信息表现更差(Liu 等人 2023 年记录的"lost in the middle"问题)。上下文窗口里的 token 更多并不意味着表现更好——往往适得其反,模型会在噪音中难以聚焦到相关信息。</p>
+  <p>Token 优化直接解决这一点。移除冗余 token 后,上下文窗口中的信噪比提高了。模型看到的文本更少,但看到的每一句都信息密度更高。结果是注意力分配更佳、回答更准确,模型忽略或违背先前上下文的情况也更少。Token 优化不只是省钱的手段——它同时是提质的手段。</p>
+
+  <h2 id="how-it-works">Token 优化如何运作</h2>
+  <p>Token 优化涵盖了从简单的空白清理到复杂的语言学分析等一系列技术。最有效的方案会把多种技术组合成一条分阶段处理文本的管线。下面以 <a href="/docs">Terse 的 7 级管线</a>为参考实现,说明现代 token 优化的工作方式。</p>
+
+  <h3>第 1 级:代码块保护</h3>
+  <p>在任何优化开始之前,系统会识别并抽出绝不能被修改的内容:代码块(围栏式和缩进式)、行内代码、URL、文件路径和命令行参数。这些内容被占位符替换,并在优化完成后还原。这一点至关重要——token 优化必须对技术内容是安全的。代码块内一处错误的优化就可能引入 bug 或改变程序行为。</p>
+
+  <h3>第 2 级:拼写纠正</h3>
+  <p>错别字以两种方式浪费 token。其一,拼错的单词往往会被切分成比正确形式更多的子词单元(错拼 "optmization" 变成 3 个 token 而不是 2 个)。其二,错别字可能让模型困惑,产生更长或更不准确的回复,消耗额外的输出 token。<a href="/spell-correction">拼写纠正</a>在这些错误到达模型之前将其修复,既使用针对常见技术错拼的内置词典,也借助系统级拼写检查器扩大覆盖面。</p>
+
+  <h3>第 3 级:空白规整</h3>
+  <p>连续多个空格、过多的空行、行尾空白,以及代码块之外不一致的缩进,都在消耗 token 却不增加任何含义。空白规整把它们压缩到最简形式。仅这一项通常就能在真实提示词中省下 2-5% 的 token,尤其是从编辑器或格式混乱的文档中粘贴的文本。</p>
+
+  <h3>第 4 级:模式优化</h3>
+  <p><a href="/pattern-optimization">模式优化</a>应用 20 多条确定性的文本转换规则,把啰嗦的短语替换为简洁的等价表达。这些规则源自对数千条真实提示词的分析,总结出最常见的冗长模式。例如:</p>
+  <ul>
+    <li>"in order to" 变成 "to"(每次出现省 2 个 token)</li>
+    <li>"a large number of" 变成 "many"(省 4 个 token)</li>
+    <li>"at this point in time" 变成 "now"(省 5 个 token)</li>
+    <li>"due to the fact that" 变成 "because"(省 4 个 token)</li>
+    <li>"in the event that" 变成 "if"(省 4 个 token)</li>
+    <li>"is able to" 变成 "can"(省 2 个 token)</li>
+    <li>"take into consideration" 变成 "consider"(省 2 个 token)</li>
+  </ul>
+  <p>单条替换看似微小,但在整条提示词中会不断累积。一条 500 词的提示词通常包含 8-15 处这类模式,仅模式优化一项就能累计省下 30-60 个 token。</p>
+
+  <h3>第 5 级:NLP 分析</h3>
+  <p>这一级针对四类人类下意识添加、但对 LLM 没有益处的语言冗余:</p>
+  <ul>
+    <li><strong>赘词:</strong>"just"、"actually"、"basically"、"really"、"very"、"quite"、"simply"、"literally"。这些词在人类对话中起强调作用,但对解析指令的 LLM 来说信息量为零。</li>
+    <li><strong>含糊措辞:</strong>"I think"、"maybe"、"perhaps"、"it seems like"、"I believe"、"it might be"。LLM 不需要你表达不确定——无论你是否含糊其辞,它都会给出同样的回答。</li>
+    <li><strong>客套话:</strong>"please"、"could you kindly"、"would you mind"、"I would appreciate if"、"thank you in advance"。模型不会因为被礼貌地请求就更卖力。这些短语花掉 token,却不影响输出质量。</li>
+    <li><strong>元语言:</strong>"I want you to"、"what I need is"、"the thing is"、"here is what I am looking for"。这些自我指涉的铺垫先告诉模型你要问什么,然后你才真正问出来。铺垫本身就是冗余。</li>
+  </ul>
+
+  <h3>第 6 级:电报式压缩</h3>
+  <p>为了实现最大压缩(在 Aggressive 模式下可用),<a href="/telegraph-compression">电报式压缩</a>借鉴了电报时代的通信技巧:去掉冠词("the"、"a"、"an")、在语义不受影响时省略助动词、将常见短语缩写化,并把被动句改为主动语态。得到的文本读起来更像速记,但传达给模型的指令一模一样。</p>
+
+  <h3>第 7 级:代码块还原</h3>
+  <p>第 1 级保护起来的所有内容被原封不动地还原。最终输出是一条压缩后的提示词:代码分毫未动、自然语言更精炼、拼写全部正确——随时可以发送给模型。</p>
+
+  <h2 id="vs-prompt-engineering">Token 优化 vs 提示词工程</h2>
+  <p>Token 优化与提示词工程互为补充,但本质上是两门不同的学科。理解这一区别很重要,因为它们解决不同的问题、作用于不同的层面。</p>
+
+  <table class="comparison-table">
+    <thead>
+      <tr><th>维度</th><th>Token 优化</th><th>提示词工程</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>目标</td><td>在不改变含义的前提下减少 token 数</td><td>通过更好的指令提升输出质量</td></tr>
+      <tr><td>运行时机</td><td>自动,作用于每条提示词</td><td>手动,发生在提示词设计阶段</td></tr>
+      <tr><td>作用范围</td><td>所有文本——提示词、上下文、历史</td><td>系统提示词与模板</td></tr>
+      <tr><td>所需技能</td><td>无(全自动)</td><td>较高(需要领域专业知识)</td></tr>
+      <tr><td>主要收益</td><td>降低成本、提升上下文效率</td><td>改善输出质量</td></tr>
+      <tr><td>可组合性</td><td>是——可优化任何提示词</td><td>因提示词而异——每个模板需单独打磨</td></tr>
+      <tr><td>能否处理用户输入</td><td>能——适用于动态的自由文本</td><td>不能——只作用于预先设计的模板</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>提示词工程</strong>关注你说什么:选择正确的指令、组织 few-shot 示例、指定输出格式,以及设计能引出高质量回答的系统提示词。它是设计期的活动——你精心打造一个提示词模板,然后反复使用。</p>
+  <p><strong>Token 优化</strong>关注你说得有多高效:剥离任何待发送文本中的语言开销,无论那是精心设计的系统提示词,还是随手敲下的用户消息。它是运行期的活动——自动作用于每一条提示词。</p>
+  <p>最有效的做法是两者兼用。一条既经过精心设计、又做过 token 优化的提示词,能以最低的 token 成本换来高质量的输出。你为质量设计提示词,让优化负责效率。两种实践相互加强:提示词工程确保正确的信息到达模型,token 优化确保只有正确的信息到达模型——不带稀释信号的赘料。</p>
+  <p>更关键的是,token 优化覆盖了提示词工程鞭长莫及的文本:用户生成的输入。当开发者在 Claude Code 里敲下一个随想的问题、或往 ChatGPT 里粘贴一份 bug 报告时,这些文本没有经过任何提示词工程,带着自然人类写作的全部冗余。Token 优化会自动压缩它们,在 API 成本中最大、最不可控的那部分上创造节省。</p>
+
+  <h2 id="real-world-savings">真实世界的节省</h2>
+  <p>Token 优化的理论节省已有充分依据:自然语言内容可削减 40-70%,这既来自 LLMLingua 的研究,也来自 Terse 部署的实测数据。但这些百分比在实践中意味着什么?</p>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="num">40-70%</div>
+      <div class="label">自然语言的 token 削减率</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">210K</div>
+      <div class="label">典型 agent 会话 token(优化前)</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">~90K</div>
+      <div class="label">优化后(节省 57%)</div>
+    </div>
+  </div>
+
+  <h3>案例研究:Claude Code Agent 会话</h3>
+  <p>Terse 的 agent 监控器跟踪了一次真实的 Claude Code 会话——一个跑了 42 轮的重构任务,数据如下:</p>
+  <pre>
+指标                  优化前                 优化后
+输入 token 总量       210,847                90,064
+输出 token 总量       45,231                 45,231(不变)
+会话成本              $6.54                  $3.74
+节省                  —                      $2.80 (43%)
+处理耗时              —                      合计 &lt;12ms</pre>
+  <p>输出 token 保持不变,因为 token 优化只压缩输入——即你发送的提示词和上下文。模型回复的长度取决于任务本身,而不是你的提示词有多啰嗦。这正是核心洞察:输出一模一样,输入成本显著更低。</p>
+
+  <h3>随时间累积的影响</h3>
+  <p>对一位每天跑 6 次 agent 会话、每周 5 天的职业开发者来说,数字很快就会滚起来:</p>
+  <ul>
+    <li><strong>每日节省:</strong>6 次会话 x $2.80 = $16.80/天</li>
+    <li><strong>每月节省:</strong>每位开发者约 $370/月</li>
+    <li><strong>10 人团队:</strong>每月约省 $3,700 的 API 成本</li>
+    <li><strong>团队年度:</strong>约 $44,400 的节省</li>
+  </ul>
+  <p>以上采用保守估计(43% 压缩率、Claude Opus 4 定价)。使用 GPT-4.5(输入 $75/M token)等更昂贵模型的团队,节省会成比例放大。一次 210K 输入 token 的 GPT-4.5 agent 会话,优化前 15.81 美元、优化后 6.76 美元——单次会话就省 9.05 美元。</p>
+
+  <h3>上下文窗口效率增益</h3>
+  <p>除了直接省钱,token 优化还延展了上下文窗口的有效容量。在上面那次 210K token 的会话中,优化后只用了 90K token 的上下文——在 Claude 的 200K 窗口内还剩 110K 的富余。这意味着会话可以跑得更久才触发上下文截断、被迫重启的次数更少,而且后期各轮的表现更好——因为上下文里装的是密实的信息,而不是填充的赘料。</p>
+  <p>把<a href="/selective-context">选择性上下文</a>技术与 token 优化结合使用的团队反馈,会话在触及上下文上限前能多跑 60-80%,直接转化为更少的任务中断和更少的重复劳动。</p>
+
+  <h2 id="tools">Token 优化工具</h2>
+  <p>2026 年的 token 优化生态包含几种路线,各有取舍。以下是主要选项的对比。</p>
+
+  <h3>Terse</h3>
+  <p><a href="/zh/">Terse</a> 是一款 macOS 上的本机 token 优化器兼 agent 监控器。它对提示词实时应用 7 级压缩管线,以亚毫秒级的处理延迟实现 40-70% 的 token 削减。Terse 通过 macOS 辅助功能 API 直接对接 Claude Code、ChatGPT、Cursor、Aider 等 LLM 界面——不需要浏览器扩展、API 代理或改动代码。所有处理都在你的机器本地运行,提示词永远不会离开你的设备。</p>
+  <p>Terse 的独特之处在于把提示词优化与 agent 会话监控合二为一。除了压缩 token,它还跟踪每轮成本、检测重复工具调用、监控上下文窗口用量,并生成 <code>CLAUDE.md</code> 规则来预防 agent 的浪费行为。它不只是在减少 token——它让你看清 AI 预算究竟花在了哪里。</p>
+
+  <h3>LLMLingua / LLMLingua-2</h3>
+  <p><a href="/llmlingua">LLMLingua</a> 是微软研究院开创基于模型的提示词压缩的学术框架。它用一个较小的 LLM 来识别并移除低信息量 token。压缩质量出色,但需要 GPU(或调用托管模型的 API),每次压缩增加 200-500ms 延迟,且面向批处理/离线场景设计,而非实时交互工作流。LLMLingua-2 通过训练的分类器提升了速度,但仍需神经网络推理。</p>
+
+  <h3>手动改写提示词</h3>
+  <p>最朴素的办法:把提示词亲手改得更精炼。对于一次设计、反复使用的系统提示词和模板,这很有效。但它无法扩展到动态的用户输入、对话历史,或随每轮增长的 agent 会话上下文。它需要自律、领域知识和时间——而且只能作用于你可控的文本,管不了用户产生的文本。</p>
+
+  <h3>API 层面的提示词缓存</h3>
+  <p>Anthropic 等提供商提供提示词缓存:重复出现的提示词前缀按折扣价计费(通常是标准输入价的 10%)。这能降低提示词中静态部分(系统消息、few-shot 示例)的成本,但帮不了动态部分(用户输入、对话历史)——而冗余恰恰最集中在那里。Token 优化与提示词缓存是互补的:优化动态内容、缓存静态内容,组合起来的节省最大。</p>
+
+  <h2 id="getting-started">用 Terse 快速上手</h2>
+  <p>用 Terse 搭好 token 优化只需不到两分钟。以下是快速上手流程。</p>
+
+  <h3>第 1 步:下载</h3>
+  <p>从 <a href="https://github.com/Terse-AI/terseai/releases">GitHub Releases 页面</a>下载最新的 Terse DMG。打开 DMG,把 Terse 拖进"应用程序"文件夹。首次启动时,右键点按应用并选择"打开"以绕过 macOS Gatekeeper(Terse 尚未经过 Apple 签名)。</p>
+
+  <h3>第 2 步:授予辅助功能权限</h3>
+  <p>Terse 使用 macOS 辅助功能 API 读写已连接应用中的文本。前往<strong>系统设置 &rarr; 隐私与安全性 &rarr; 辅助功能</strong>,点击 + 按钮,添加 Terse。没有这个权限,你仍然可以在手动复制粘贴模式下使用 Terse,但自动捕获与替换会被禁用。</p>
+
+  <h3>第 3 步:连接你的应用</h3>
+  <p>用 <kbd>Cmd+Shift+T</kbd> 打开 Terse 主窗口。Terse 会自动检测受支持的应用——ChatGPT(Chrome/Safari)、Claude Code、Cursor、Aider 和 OpenClaw。当你聚焦到一个已连接的应用时,Terse 弹出条会出现在屏幕顶部,显示实时优化统计。</p>
+
+  <h3>第 4 步:选择模式</h3>
+  <p>在弹出条中切换三种优化级别:</p>
+  <ul>
+    <li><strong>Soft:</strong>只做拼写纠正和空白处理。节省 2-5%,语义零改动。适合只想要干净文本、不想改动任何内容的场景。</li>
+    <li><strong>Normal:</strong>移除赘词、含糊措辞、客套话和元语言。节省 15-25%。日常使用的推荐默认值。</li>
+    <li><strong>Aggressive:</strong>最大压缩,包含电报式精简。节省 25-40%。适合每个 token 都要计较的高强度 agent 会话。</li>
+  </ul>
+
+  <h3>第 5 步:开始优化</h3>
+  <p>在手动模式(默认)下,点击<strong>捕获</strong>从活跃应用读取文本,在弹出条中检查优化结果,然后点击<strong>替换</strong>把优化后的文本写回,或点击<strong>复制</strong>自行粘贴。开启<strong>自动模式</strong>可获得随输入持续运行的免手动优化。</p>
+  <p>关于详细配置选项、键盘快捷键,以及 agent 监控和 CLAUDE.md 规则生成等高级功能,请参阅完整的 <a href="/docs">Terse 文档</a>。</p>
+
+  <div class="cta-box">
+    <h3>今天就开始节省 Token</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse 以零延迟把 AI token 成本降低 40-70%。本机运行、隐私安全,兼容所有主流 LLM。提供免费档。</p>
+    <a href="/zh/#pricing" class="btn">下载 Terse</a>
+  </div>
+
+  <h2>延伸阅读</h2>
+  <p>探索 Terse token 优化管线背后的研究与技术:</p>
+  <ul>
+    <li><a href="/llmlingua">LLMLingua</a> — 证明提示词压缩可行的 EMNLP 2023 研究</li>
+    <li><a href="/selective-context">选择性上下文</a> — 面向长提示词和 agent 历史的句子级过滤</li>
+    <li><a href="/spell-correction">拼写纠正</a> — 错别字修正如何减少 token 数并提升模型准确性</li>
+    <li><a href="/docs">文档</a> — 安装与配置 Terse 的完整指南</li>
+  </ul>
+</main>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/zh/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent 会话优化器 + 监控器。压缩提示词、检测重复工具调用、跟踪每轮成本。全部在本机完成。</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">产品</h4><a href="/zh/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">优化管线</a><a href="/zh/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">优化技术</a><a href="/zh/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent 监控</a><a href="/zh/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">定价</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">优化技术</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">拼写纠正</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">模式优化</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP 分析</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">电报式压缩</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">研究</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig 拼写</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">选择性上下文</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">文档</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

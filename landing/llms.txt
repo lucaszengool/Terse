@@ -1,23 +1,31 @@
 # Terse
 
-> Terse is a macOS + Windows token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, GitHub Copilot, Aider, and more. It runs 100% on-device with zero cloud dependency.
+> Terse is an on-device AI agent butler for macOS and Windows that cuts AI token costs by 40-70%. It compresses prompts before they hit the API, live-monitors 8 coding agents (Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider), enforces spending limits with a budget circuit breaker that can pause or kill a runaway agent before its next API call, manages MCP servers with security risk scoring, and diagnoses token waste with Terse Doctor. It runs 100% on-device with zero cloud dependency — prompts never leave your machine.
 
 ## Key Facts
 - Reduces token usage by 40-70% on verbose prompts and up to 89% on CLI output
-- 20+ optimization techniques in a 7-stage pipeline
-- Auto-detects Claude Code, Cursor, GitHub Copilot, Aider, Cline, Roo Code agent sessions
-- Model-aware pricing: tracks costs for Claude Opus 4, Sonnet 4.6, Haiku 4.5, GPT-4o, Gemini 2.5
+- 35+ optimization techniques in a 7-stage on-device pipeline (<5ms)
+- Auto-detects 8 agents: Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider
+- Budget circuit breaker: burn-rate / token / dollar ceilings that escalate from alert to pausing (SIGSTOP) or killing (SIGTERM) the agent process before the next API call
+- MCP Manager: discovers every MCP server across Claude Code, Cursor, and Windsurf configs; risk-scores each (remote transport, embedded credentials, code-execution surface, unpinned supply chain); enable/disable without editing JSON
+- Terse Doctor: ~25 consent-gated scans — prompt-cache waste (low hit rate, write thrash, TTL expiry), MCP bloat, duplicate tool calls, redundant file reads, context burn, CLAUDE.md token tax, secret exposure, runaway runtimes, disk cleanup — with one-click fixes
+- Per-session stats: input/output tokens, cache read/write efficiency, per-turn cost with model-aware pricing, burn rate, context-window fill %
+- Alert Center: 9 alert kinds via macOS/Windows notifications, Slack webhook, or ntfy.sh push; weekly savings digest
+- Model-aware pricing: tracks costs for Claude Opus, Sonnet, Haiku, GPT-4o, Gemini 2.5
 - 400+ built-in typo corrections, 130+ phrase-shortening rules
-- 3 modes: Soft (typo-fix only), Normal (filler removal), Aggressive (max compression)
-- Pricing: Free (50/week), Pro $4.99/mo (unlimited), Premium $99/mo (teams)
+- 3 modes: Soft (typo-fix only), Normal (filler removal), Aggressive (max compression); code blocks always protected
+- Team sharing: publish live agent sessions and aggregate stats to teammates, including via an MCP server their agents can query
+- Also available as a Chrome extension (in-page compression for any AI chat) and a VS Code extension (agent monitoring + optimizer in the editor)
+- Pricing: Free (50/week), Pro $4.99/mo (unlimited, 30-day free trial), Premium $99/mo (teams)
 - macOS + Windows, built with Tauri + Rust + Swift
-- CLAUDE.md rule generation from session patterns
-- Live agent session monitoring: per-turn cost, duplicate tool call detection, context fill meter
 
 ## Pages
 
 ### Product
 - [Home](https://www.terseai.org/): Full product overview, pricing, features
+- [Budget Circuit Breaker](https://www.terseai.org/agent-budget-circuit-breaker): Stop runaway AI agents — spending limits that pause or kill before the next API call
+- [MCP Manager](https://www.terseai.org/mcp-manager): Discover, risk-score, and manage MCP servers across your agent configs
+- [Terse for Windows](https://www.terseai.org/for-windows): The full Terse app on Windows
 - [Token Calculator](https://www.terseai.org/token-calculator): Calculate your potential token savings
 - [Marketplace](https://www.terseai.org/marketplace): Extensions and integrations
 - [Docs](https://www.terseai.org/docs): Complete usage guide, installation, and configuration
@@ -29,12 +37,20 @@
 - [For ChatGPT](https://www.terseai.org/for-chatgpt): Reduce ChatGPT token costs via browser compression
 - [For GitHub Copilot](https://www.terseai.org/for-github-copilot): Reduce GitHub Copilot context costs in VS Code
 - [For Aider](https://www.terseai.org/for-aider): Reduce Aider token costs — auto-detect sessions, compress prompts
+- [For Cline](https://www.terseai.org/for-cline): Monitor and optimize Cline sessions
+- [For Windsurf](https://www.terseai.org/for-windsurf): Monitor and optimize Windsurf sessions
+- [For OpenAI Codex](https://www.terseai.org/for-codex): Monitor and optimize Codex CLI sessions
+- [For OpenClaw](https://www.terseai.org/for-openclaw): Monitor and optimize OpenClaw sessions
 
 ### Guides & Articles
+- [Blog](https://www.terseai.org/blog): All token-optimization guides
 - [What Is Token Optimization?](https://www.terseai.org/what-is-token-optimization): Complete guide to token optimization concepts
 - [How to Reduce AI API Costs](https://www.terseai.org/reduce-ai-api-costs): 7 proven strategies to cut AI costs by 60-80%
 - [Claude Code Pricing 2026](https://www.terseai.org/claude-code-pricing): Real per-token costs, monthly estimates, and how to cut your bill
 - [AI Token Pricing Comparison 2026](https://www.terseai.org/ai-token-pricing-comparison): Claude vs GPT vs Gemini complete cost guide
+- [Prompt Caching Guide](https://www.terseai.org/prompt-caching-guide): How cache read/write pricing works and how to stop cache thrash
+- [Git Diff Compression](https://www.terseai.org/git-diff-compression): Reclaim your agent context window from bloated diffs
+- [How Typos Inflate AI Agent Costs](https://www.terseai.org/typos-ai-agent-cost): Typos tokenize badly and trigger retries
 - [I Built an App to Steal $50M Back from Claude Code](https://www.terseai.org/i-built-an-app-to-steal-50m-back): Technical deep-dive on the Terse compression pipeline
 
 ### Technique Deep-Dives
@@ -43,6 +59,7 @@
 - [NLP Analysis](https://www.terseai.org/nlp-analysis): Filler, hedging, and meta-language removal
 - [Telegraph Compression](https://www.terseai.org/telegraph-compression): Aggressive article/preposition stripping
 - [LLMLingua (EMNLP 2023)](https://www.terseai.org/llmlingua): Academic research behind prompt compression
+- [Terse vs LLMLingua](https://www.terseai.org/terse-vs-llmlingua): Rule-based vs ML compression compared
 - [Norvig Spelling](https://www.terseai.org/norvig-spelling): Statistical spelling correction foundation
 - [Selective Context](https://www.terseai.org/selective-context): Context pruning for token reduction
 

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Token Optimizer for Windows — Terse for Windows</title>
+  <meta name="description" content="Terse for Windows: prompt optimizer, agent monitoring, budget circuit breaker, and Terse Doctor — full feature parity with the Mac app, on-device.">
+  <link rel="canonical" href="https://www.terseai.org/for-windows">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AI Token Optimizer for Windows — Terse for Windows">
+  <meta property="og:description" content="The Terse agent butler on Windows: prompt compression in any app via UI Automation, agent monitoring, budget ceilings, Doctor scans. Full parity with macOS.">
+  <meta property="og:url" content="https://www.terseai.org/for-windows">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AI Token Optimizer for Windows — Terse for Windows">
+  <meta name="twitter:description" content="Terse on Windows: prompt optimizer, agent monitoring, budget circuit breaker, Doctor — full parity with the Mac app.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "AI Token Optimizer for Windows — Terse for Windows",
+        "url": "https://www.terseai.org/for-windows",
+        "description": "Terse for Windows is a full Tauri port of the Mac agent butler: prompt optimizer, capture and replace in any app via UI Automation, agent monitoring, budget circuit breaker, and Terse Doctor.",
+        "dateModified": "2026-07-17",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "For Windows", "item": "https://www.terseai.org/for-windows"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is Terse available for Windows?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse for Windows is a full Tauri port that shares the same frontend as the Mac app: the prompt optimizer with all 35+ techniques and three modes, live agent monitoring, the budget circuit breaker, Terse Doctor, the Farm, pets, and the island. It is not a cut-down companion app."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does Terse capture text on Windows?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "On Windows, Terse ships terse-uia.exe, a helper built on the Windows UI Automation API. It reads the text field you are focused on in any app — browser, editor, or terminal — and can replace your draft with the optimized version in place, mirroring what the Swift accessibility helper does on macOS."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need WebView2 to run Terse on Windows?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse's UI runs on Microsoft WebView2, which is preinstalled on Windows 11 and most updated Windows 10 systems. The Terse installer bundles the WebView2 runtime offline, so the app works even on machines without it, and shows a clear error message rather than failing silently if the runtime is missing."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does the Windows version have feature parity with macOS?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes — the Windows app shares the same frontend and a ported Rust backend. Optimizer, capture and replace in any app, agent monitoring, budget circuit breaker, Terse Doctor, Farm, pets, and the island all work on Windows. Platform-specific pieces (macOS Accessibility API, Swift helper) are replaced by their Windows equivalents (UI Automation, terse-uia.exe)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which AI agents does Terse monitor on Windows?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The same 8 agents as on macOS: Claude Code, OpenClaw, Aider, Cursor Agent, OpenAI Codex, GitHub Copilot CLI, Cline, and Windsurf. Claude Code has the deepest integration with exact token counts from JSONL streaming; the others are detected by process and config with session-level stats."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How is Terse installed on Windows?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse ships as an NSIS installer with a per-machine install, so it lands in Program Files like a normal Windows application and works across user accounts. A free 30-day trial starts on first launch; all processing stays on-device."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg2:hsl(250,21%,11%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .hero{padding:140px 40px 80px;text-align:center;max-width:900px;margin:0 auto;position:relative}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07),transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:620px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:600px}
+    .divider{height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .parity-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-top:8px}
+    .parity-table th{padding:14px 18px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .parity-table td{padding:12px 18px;border-bottom:1px solid var(--bd);color:var(--t2)}
+    .parity-table tr:last-child td{border-bottom:none}
+    .parity-table .yes{color:var(--ac);font-weight:700}
+    .table-wrap{overflow-x:auto;border-radius:14px}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#pipeline">Pipeline</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Windows</div>
+  <h1>The AI Token Optimizer, <span class="gradient-text">Now on Windows</span></h1>
+  <p class="sub">Terse for Windows is a full Tauri port of the Mac agent butler — same frontend, same features. Compress prompts in any app via UI Automation, watch your coding agents live, and cap runaway spend with the budget circuit breaker.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial — Windows</a>
+    <a href="#how-it-works" class="btn-ghost">See What's Included</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">35+</span><span class="lbl">optimization techniques</span></div>
+    <div class="stat-pill"><span class="val">8</span><span class="lbl">agents auto-detected</span></div>
+    <div class="stat-pill"><span class="val">Full</span><span class="lbl">parity with the Mac app</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">data leaves device</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>Everything the Mac App Does — <span class="gradient-text">On Windows</span></h2>
+  <p class="section-sub">The Windows app shares the same frontend with a ported Rust backend. Where macOS uses the Accessibility API and a Swift helper, Windows uses UI Automation and terse-uia.exe.</p>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">✂️</div>
+      <h3>Prompt Optimizer</h3>
+      <p>All 35+ compression techniques, three modes — Light, Balanced, Aggressive — with code blocks, file paths, and identifiers always protected. Same engine as macOS.</p>
+      <span class="tag">3 modes</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🪟</div>
+      <h3>Capture in Any App</h3>
+      <p>terse-uia.exe uses the Windows UI Automation API to read the focused text field in any application — browsers, editors, terminals — and replace your draft with the optimized version in place.</p>
+      <span class="tag">UI Automation</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📡</div>
+      <h3>Live Agent Monitoring</h3>
+      <p>Auto-detects Claude Code, Cursor Agent, Cline, Windsurf, OpenAI Codex, GitHub Copilot CLI, Aider, and OpenClaw. Per-session tokens, cost, burn rate, and context-window fill.</p>
+      <span class="tag">8 agents</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🛑</div>
+      <h3>Budget Circuit Breaker</h3>
+      <p>Burn-rate, token, and dollar ceilings with alert → pause → kill escalation, enforced before the agent's next API call. Same breaker, Windows process control.</p>
+      <span class="tag">Spend cap</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🩺</div>
+      <h3>Terse Doctor</h3>
+      <p>~25 consent-gated scans: cache waste, MCP bloat, agent loops, context burn, CLAUDE.md token tax, secret exposure, runaway runtimes, disk cleanup — with one-click fixes.</p>
+      <span class="tag">~25 scans</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🌱</div>
+      <h3>Farm, Pets &amp; Island</h3>
+      <p>The fun parts made the trip too: the Terse Farm, desktop pets, and the floating island with per-metric dashboards all run on Windows.</p>
+      <span class="tag">Included</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Feature <span class="gradient-text">Parity List</span></h2>
+  <p class="section-sub">Not a companion app. The same product, with platform pieces swapped for their Windows equivalents.</p>
+  <div class="table-wrap">
+  <table class="parity-table">
+    <tr><th>Feature</th><th>macOS</th><th>Windows</th></tr>
+    <tr><td>Prompt optimizer (35+ techniques, 3 modes, code-protected)</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Capture &amp; replace in any app</td><td class="yes">✓ Accessibility API (terse-ax)</td><td class="yes">✓ UI Automation (terse-uia.exe)</td></tr>
+    <tr><td>Agent monitoring — 8 agents, per-session tokens &amp; cost</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Budget circuit breaker (alert → pause → kill)</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Terse Doctor (~25 scans, one-click fixes)</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Alert Center (notifications, Slack webhook, ntfy.sh)</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Farm, pets, island dashboards</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>UI runtime</td><td>WKWebView</td><td>WebView2 (bundled offline in installer)</td></tr>
+    <tr><td>Installer</td><td>.dmg</td><td>NSIS, per-machine install</td></tr>
+  </table>
+  </div>
+  <p style="margin-top:28px;font-size:14px;color:var(--t2);max-width:720px">Whichever agent you run on Windows — <a href="/for-claude-code" style="color:var(--ac)">Claude Code</a>, <a href="/for-cline" style="color:var(--ac)">Cline</a>, <a href="/for-windsurf" style="color:var(--ac)">Windsurf</a>, or <a href="/for-codex" style="color:var(--ac)">OpenAI Codex</a> — Terse monitors it, compresses its prompts, and guards it with the <a href="/agent-budget-circuit-breaker" style="color:var(--ac)">budget circuit breaker</a>.</p>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about running Terse on Windows.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">Is Terse available for Windows?</div>
+      <div class="faq-a">Yes. Terse for Windows is a full Tauri port sharing the same frontend as the Mac app: optimizer, agent monitoring, budget circuit breaker, Terse Doctor, Farm, pets, and island. It is not a cut-down companion app.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How does Terse capture text on Windows?</div>
+      <div class="faq-a">Via terse-uia.exe, a helper built on the Windows UI Automation API. It reads the focused text field in any app and can replace your draft with the optimized version in place — mirroring the Swift accessibility helper on macOS.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Do I need WebView2?</div>
+      <div class="faq-a">Terse's UI runs on Microsoft WebView2, preinstalled on Windows 11 and most updated Windows 10 systems. The installer bundles the runtime offline so it works either way, and shows a clear error instead of failing silently if the runtime is missing.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Is there feature parity with macOS?</div>
+      <div class="faq-a">Yes — same frontend, ported Rust backend. Optimizer, capture/replace, agent monitoring, breaker, Doctor, Farm, pets, and island all work on Windows. Only the platform plumbing differs: UI Automation instead of the macOS Accessibility API.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Which agents are monitored on Windows?</div>
+      <div class="faq-a">The same 8 as macOS: Claude Code, OpenClaw, Aider, Cursor Agent, OpenAI Codex, GitHub Copilot CLI, Cline, and Windsurf. Claude Code has the deepest integration with exact token counts from JSONL streaming.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How is it installed?</div>
+      <div class="faq-a">An NSIS installer with a per-machine install — Terse lands in Program Files like a normal Windows application and works across user accounts. A 30-day free trial starts on first launch; everything runs on-device.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">Terse supports every major AI coding agent — on Windows and macOS.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card"><span style="font-size:18px">⚡</span><span>Claude Code — CLI Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-cline" class="also-card"><span style="font-size:18px">🤖</span><span>Cline — VS Code Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-windsurf" class="also-card"><span style="font-size:18px">🌊</span><span>Windsurf — Cascade Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-codex" class="also-card"><span style="font-size:18px">🖥️</span><span>OpenAI Codex — CLI</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/agent-budget-circuit-breaker" class="also-card"><span style="font-size:18px">🛑</span><span>Budget Circuit Breaker</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Your Agents Run on Windows. <span class="gradient-text">So Does Terse.</span></h2>
+  <p>30-day free trial. On-device processing — prompts never leave your machine.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="/#pricing" class="btn-primary">Start Free Trial — Windows</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent butler for AI coding tools. Compress prompts, watch every agent, cap the spend. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-cline">Cline</a><a href="/for-windsurf">Windsurf</a><a href="/for-codex">OpenAI Codex</a><a href="/for-openclaw">OpenClaw</a></div>
+    <div class="footer-col"><h4>Product</h4><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="/terse-vs-llmlingua">Terse vs LLMLingua</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>Windows · macOS · Rust</span></div>
+</footer>
+
+</body>
+</html>

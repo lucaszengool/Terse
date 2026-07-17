@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>System Prompt Bloat — Trim Your CLAUDE.md</title>
+<meta name="description" content="Your CLAUDE.md loads on every turn, so every redundant line is a repeating tax. How to cut a bloated system prompt from 8,400 to 2,900 tokens.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://www.terseai.org/system-prompt-bloat">
+<meta property="og:title" content="System Prompt Bloat — Trim Your CLAUDE.md">
+<meta property="og:description" content="Your CLAUDE.md loads on every turn, so every redundant line is a repeating tax. How to cut a bloated system prompt from 8,400 to 2,900 tokens.">
+<meta property="og:url" content="https://www.terseai.org/system-prompt-bloat">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Terse">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="System Prompt Bloat — Trim Your CLAUDE.md">
+<meta name="twitter:description" content="Your CLAUDE.md loads on every turn, so every redundant line is a repeating tax. How to cut a bloated system prompt from 8,400 to 2,900 tokens.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "System Prompt Bloat \u2014 Trim Your CLAUDE.md",
+  "description": "Your CLAUDE.md loads on every turn, so every redundant line is a repeating tax. How to cut a bloated system prompt from 8,400 to 2,900 tokens.",
+  "url": "https://www.terseai.org/system-prompt-bloat",
+  "datePublished": "2026-07-17",
+  "dateModified": "2026-07-17",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Terse",
+    "url": "https://www.terseai.org"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Terse"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.terseai.org/system-prompt-bloat"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How long should a CLAUDE.md file be?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "As short as it can be while stating every rule once. Well-trimmed instruction files for a mid-size project typically land between 1,000 and 3,000 tokens. If yours exceeds 5,000, look for repetition, rationale paragraphs, and dead rules."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does a shorter system prompt make the model follow rules worse?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No \u2014 usually the opposite. Models follow tight imperative bullets more reliably than long prose, because each rule is unambiguous and none are buried. Redundancy does not reinforce a rule; it dilutes the file."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why should volatile content go at the bottom of CLAUDE.md?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Prompt caching matches the byte-identical prefix of your context. Stable rules at the top stay cached at ~10% of normal input cost; a date or task list near the top changes the prefix and forces a full-price re-read of everything below it, every turn."
+      }
+    }
+  ]
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+body{background:var(--bg0);color:var(--t2);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6}
+.article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+.article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+.article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+.article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+.article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+.article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+.article li{margin-bottom:8px}
+.article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+.article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+.article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+.article a:hover{border-color:var(--ac)}
+.article .crumb{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:14px;text-decoration:none;border-bottom:none}
+.article .crumb:hover{color:var(--ac)}
+.article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+.article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+.article .cta-box h3{margin-top:0}
+.article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+.blogwrap{max-width:1000px;margin:0 auto;padding:120px 32px 80px}
+.blogwrap h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.blogwrap .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:48px;max-width:720px}
+.bloggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px;margin-bottom:48px}
+.bcard{display:block;padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;text-decoration:none;transition:border-color .15s,transform .15s}
+.bcard:hover{border-color:var(--acm);transform:translateY(-2px)}
+.bcard .btag{display:inline-block;padding:3px 10px;border-radius:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:12px}
+.bcard h2{font-size:17px;font-weight:800;color:var(--t1);letter-spacing:-0.3px;line-height:1.35;margin-bottom:8px}
+.bcard p{font-size:13px;color:var(--t3);line-height:1.6}
+</style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<main class="article">
+  <a class="crumb" href="/blog">&larr; Terse Blog</a><br>
+  <span class="tag">Claude Code</span>
+  <h1>System Prompt Bloat</h1>
+  <p class="subtitle">Your CLAUDE.md or system prompt is the most-read file in your project — the model loads it on every single turn. That makes every redundant sentence in it a tax you pay hundreds of times a day. Most instruction files are roughly three times longer than they need to be, and trimming them loses nothing: one rule, one line, stated once.</p>
+
+  <h2>Why System Prompt Size Matters More Than Any Other File</h2>
+  <p>An ordinary source file costs tokens when it is read. A system prompt costs tokens on <em>every turn of every session</em>, because it sits at the front of the context that gets re-sent with each request. A 40-turn day with an 8,400-token CLAUDE.md means the model processed those instructions 40 times. Trim it to 2,900 tokens and — even before <a href="/prompt-caching-guide">caching</a> enters the picture — you have removed roughly 220,000 tokens from a single day's traffic. Over a year that trim is worth on the order of $180 for one developer, more for a team.</p>
+
+  <h2>The Three Bloat Patterns</h2>
+  <h3>1. Repetition</h3>
+  <p>The same rule stated three different ways, usually because it was added three different times. "Always use tabs." Later: "Indentation: tabs, not spaces." Later still: "Note that this project uses tab indentation." The model needs one of these. Merge overlapping rules ruthlessly — if two bullets could be one, they should be.</p>
+  <h3>2. Narration</h3>
+  <p>Long explanations of <em>why</em> a rule exists, when the model only needs the <em>what</em>. The history lesson behind your branching strategy does not change how the model names a branch. Cut every "because" clause and every paragraph of rationale. A rule reads better as an imperative bullet than as a story:</p>
+  <pre>Bloated:  "We decided back in 2024 that because our CI system
+           has trouble with long file names, and since some
+           developers are on Windows, it would be best if
+           everyone tried to keep file names short."
+Tight:    "- Keep file names under 40 chars"</pre>
+  <h3>3. Dead rules</h3>
+  <p>Instructions referencing files, scripts, or workflows that no longer exist. Dead rules are worse than useless — the model may waste turns trying to follow them, and every stale path erodes its trust in the rest of the file. Audit quarterly: if a rule names a file, confirm the file exists.</p>
+
+  <h2>How to Trim Without Losing Rules</h2>
+  <ul>
+    <li><strong>Convert prose to bullets.</strong> Every rule should be one imperative line. "Always run tests before committing" — not a paragraph about why testing matters.</li>
+    <li><strong>Delete the why.</strong> Keep rationale in your team wiki if you must keep it somewhere. The model follows tight instructions better, not worse.</li>
+    <li><strong>Merge overlaps.</strong> One rule, one line, stated once.</li>
+    <li><strong>Remove anything the model already does by default.</strong> Instructions like "be helpful" or "write clean code" consume tokens to request behavior you would get anyway.</li>
+  </ul>
+
+  <h2>Order the File for Caching</h2>
+  <p>Trimming shrinks the tax; ordering makes what remains nearly free. Prompt caching works on stable prefixes: if the beginning of your context is byte-identical across requests, it is served at about a tenth of normal input price. That means volatile content — today's date, the current task list, session notes — must live at the <em>bottom</em> of your CLAUDE.md, never the top. One timestamp on line 3 busts the cache for everything after it, every turn. The full mechanics are covered in the <a href="/prompt-caching-guide">prompt caching guide</a>.</p>
+  <p>Terse can compress reference docs and CLAUDE.md blocks before you commit them, and its <a href="/for-claude-code">session monitor</a> shows how much of each turn's cost is instruction overhead — the fastest way to find out whether your system prompt has quietly tripled in size. Once the instructions are lean, the next biggest lever is what your agent reads into context: see the <a href="/context-window-diet">context window diet</a>.</p>
+
+  <div class="cta-box">
+    <h3>See What Your Instructions Cost</h3>
+    <p>Terse tracks per-turn token cost across your agent sessions, so a bloated system prompt shows up as a number instead of a hunch. On-device, free to start.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Frequently Asked Questions</h2>
+  <h3>How long should a CLAUDE.md file be?</h3>
+  <p>As short as it can be while stating every rule once. Well-trimmed instruction files for a mid-size project typically land between 1,000 and 3,000 tokens. If yours exceeds 5,000, look for repetition, rationale paragraphs, and dead rules.</p>
+  <h3>Does a shorter system prompt make the model follow rules worse?</h3>
+  <p>No — usually the opposite. Models follow tight imperative bullets more reliably than long prose, because each rule is unambiguous and none are buried. Redundancy does not reinforce a rule; it dilutes the file.</p>
+  <h3>Why should volatile content go at the bottom of CLAUDE.md?</h3>
+  <p>Prompt caching matches the byte-identical prefix of your context. Stable rules at the top stay cached at ~10% of normal input cost; a date or task list near the top changes the prefix and forces a full-price re-read of everything below it, every turn.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/blog">Terse Blog</a> — all token optimization guides</li>
+    <li><a href="/prompt-caching-guide">Prompt Caching Guide</a> — make the stable prefix nearly free</li>
+    <li><a href="/context-window-diet">Context Window Diet</a> — the other half of per-turn cost</li>
+    <li><a href="/for-claude-code">Terse for Claude Code</a> — per-turn cost monitoring</li>
+  </ul>
+</main>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

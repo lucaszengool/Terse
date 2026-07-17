@@ -1,0 +1,3997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Terse — Cut AI Token Costs 40–70%</title>
+<meta name="description" content="On-device prompt optimizer for Claude Code, Cursor, and every AI workflow. 40–70% token savings. 100% private.">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-LNCSLGTN76");</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:auto}
+body{background:#000;color:#fff;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#c{position:fixed;inset:0;z-index:0;pointer-events:none}
+#spacer{height:1260vh;pointer-events:none}
+/* chromatic aberration layers */
+#ca-r,#ca-b{position:fixed;inset:0;z-index:899;opacity:0;pointer-events:none;mix-blend-mode:screen;transition:opacity .04s,transform .06s}
+#ca-r{background:rgba(255,0,60,.08)}
+#ca-b{background:rgba(0,220,255,.08)}
+#flash{position:fixed;inset:0;z-index:900;opacity:0;pointer-events:none;mix-blend-mode:screen;transition:opacity .05s}
+/* nav */
+#nav{position:fixed;top:0;left:0;right:0;z-index:300;height:60px;padding:0 48px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(to bottom,rgba(0,0,0,.8) 0%,transparent 100%);pointer-events:auto}
+.logo{display:flex;align-items:center;gap:10px;font-weight:900;font-size:17px;letter-spacing:-.5px;cursor:pointer;text-decoration:none;color:#fff}
+.logo-icon{width:30px;height:30px;border-radius:7px;background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.3);display:grid;place-items:center;font-size:14px;font-weight:900;color:#6ee7b7;box-shadow:0 0 18px rgba(110,231,183,.18)}
+.nav-links{display:flex;gap:32px}
+.nav-links a{font-size:12px;font-weight:500;color:rgba(255,255,255,.35);cursor:pointer;transition:color .2s;letter-spacing:.1px;text-decoration:none}
+.nav-links a:hover,.nav-links a.on{color:rgba(255,255,255,.9)}
+.nav-cta{display:flex;gap:10px;align-items:center}
+.btn-ghost{padding:8px 18px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.12);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.05px}
+.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+.btn-primary{padding:9px 22px;background:#6ee7b7;color:#000;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.05px}
+.btn-primary:hover{background:#a7f3d0;box-shadow:0 0 30px rgba(110,231,183,.35)}
+/* left nav */
+#lnav{position:fixed;left:28px;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:2px;opacity:0;transition:opacity .4s;pointer-events:none}
+#lnav.on{opacity:1;pointer-events:auto}
+.ln{font-size:10px;font-weight:500;color:rgba(255,255,255,.22);cursor:pointer;padding:5px 0;transition:all .22s;display:flex;align-items:center;gap:9px;white-space:nowrap;letter-spacing:.15px}
+.ln::before{content:'';width:14px;height:1px;background:currentColor;flex-shrink:0;transition:all .25s}
+.ln:hover{color:rgba(255,255,255,.55)}
+.ln.on{color:rgba(255,255,255,.9);font-weight:600}
+.ln.on::before{width:26px;box-shadow:0 0 5px currentColor}
+/* right dots */
+#rdots{position:fixed;right:20px;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:10px;opacity:0;transition:opacity .4s}
+#rdots.on{opacity:1}
+.rd{width:4px;height:4px;border-radius:50%;cursor:pointer;background:rgba(255,255,255,.18);transition:all .3s}
+.rd.on{background:var(--ac,#6ee7b7);box-shadow:0 0 8px var(--ac,#6ee7b7);transform:scale(1.6)}
+/* progress bar */
+#prog{position:fixed;top:0;left:0;height:1.5px;z-index:400;width:0%;transition:background .6s,box-shadow .6s}
+/* section label */
+#slbl{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:200;font-size:9px;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:rgba(255,255,255,.18);white-space:nowrap;transition:all .5s;font-family:'JetBrains Mono',monospace}
+/* scroll hint */
+#shint{position:fixed;bottom:32px;right:36px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px;opacity:1;transition:opacity .5s}
+#shint.gone{opacity:0;pointer-events:none}
+.sw{width:16px;height:24px;border:1.5px solid rgba(255,255,255,.2);border-radius:8px;display:flex;justify-content:center;padding-top:4px}
+.sb{width:2.5px;height:5px;background:rgba(255,255,255,.4);border-radius:2px;animation:sba 1.6s ease-in-out infinite}
+@keyframes sba{0%{transform:translateY(0);opacity:1}100%{transform:translateY(8px);opacity:0}}
+#shint span{font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.16)}
+/* overlay + panels */
+#overlay{position:fixed;inset:0;z-index:100;pointer-events:none}
+.panel{position:absolute;inset:0;display:flex;align-items:center;padding:0 0 0 80px;opacity:0;transform:translateY(14px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1);pointer-events:none}
+.panel.on{opacity:1;transform:translateY(0)}
+.panel a,.panel button{pointer-events:auto}
+/* panel content */
+.pcol{max-width:500px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;color:rgba(255,255,255,.35);margin-bottom:20px;font-family:'JetBrains Mono',monospace}
+.eyebrow::before{content:'';width:18px;height:1px;background:currentColor}
+.ptitle{font-size:clamp(56px,6.8vw,100px);font-weight:900;letter-spacing:-4px;line-height:.88;margin-bottom:20px}
+.psub{font-size:clamp(14px,1.3vw,17px);color:rgba(255,255,255,.48);line-height:1.75;margin-bottom:26px;max-width:440px;font-weight:300}
+.psub strong{color:rgba(255,255,255,.75);font-weight:600}
+/* hero specific */
+.hero-compress{display:flex;align-items:center;gap:0;margin-bottom:24px;font-family:'JetBrains Mono',monospace;font-size:12px}
+.hc-before{padding:10px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px 0 0 8px;color:rgba(255,255,255,.5);font-size:11px;line-height:1.5;max-width:200px}
+.hc-before span{display:block;font-size:9px;color:rgba(255,255,255,.25);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase}
+.hc-arrow{padding:0 12px;color:rgba(255,255,255,.2);font-size:18px;align-self:center}
+.hc-after{padding:10px 14px;background:rgba(110,231,183,.05);border:1px solid rgba(110,231,183,.2);border-radius:0 8px 8px 0;color:#6ee7b7;font-size:11px;line-height:1.5;max-width:160px}
+.hc-after span{display:block;font-size:9px;color:rgba(110,231,183,.5);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase}
+.hc-badge{align-self:center;margin-left:12px;padding:5px 10px;background:rgba(110,231,183,.12);border:1px solid rgba(110,231,183,.25);border-radius:20px;color:#6ee7b7;font-size:11px;font-weight:700;white-space:nowrap}
+/* stats row */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:hidden;margin-bottom:24px;background:rgba(0,0,0,.45);backdrop-filter:blur(20px)}
+.stat{padding:14px 10px;text-align:center;border-right:1px solid rgba(255,255,255,.05)}
+.stat:last-child{border-right:none}
+.sn{font-size:clamp(18px,2.2vw,28px);font-weight:900;letter-spacing:-1px}
+.sl{font-size:8px;color:rgba(255,255,255,.28);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+/* tool ticker */
+.ticker{overflow:hidden;position:relative;margin-top:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,.05)}
+.ticker::before,.ticker::after{content:'';position:absolute;top:0;bottom:0;width:36px;z-index:2}
+.ticker::before{left:0;background:linear-gradient(to right,rgba(0,0,0,.6),transparent)}
+.ticker::after{right:0;background:linear-gradient(to left,rgba(0,0,0,.6),transparent)}
+.ticker-t{display:flex;gap:24px;animation:tick 22s linear infinite;width:max-content}
+@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ti{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:rgba(255,255,255,.2);white-space:nowrap}
+.ti-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5}
+/* pbtns */
+.pbtns{display:flex;gap:10px;flex-wrap:wrap}
+.pbtn{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;transition:all .2s;letter-spacing:.1px;border:none;line-height:1}
+.pbtn-g{background:#6ee7b7;color:#000;box-shadow:0 0 30px rgba(110,231,183,.15)}
+.pbtn-g:hover{background:#a7f3d0;box-shadow:0 0 60px rgba(110,231,183,.3);transform:translateY(-2px)}
+.pbtn-o{background:rgba(255,255,255,.07);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.12)}
+.pbtn-o:hover{background:rgba(255,255,255,.13);color:#fff}
+/* pipeline */
+.pstages{display:flex;flex-direction:column;gap:5px;margin-bottom:22px}
+.pstage{display:flex;align-items:center;gap:10px;padding:8px 12px;border-left:2px solid rgba(255,255,255,.06);border-radius:0 8px 8px 0;font-size:12px;color:rgba(255,255,255,.38);transition:all .45s}
+.pstage.lit{border-left-color:#67e8f9;background:rgba(103,232,249,.06);color:rgba(255,255,255,.88)}
+.ps-n{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;min-width:16px;color:rgba(255,255,255,.18);transition:color .45s}
+.pstage.lit .ps-n{color:#67e8f9}
+.ps-ex{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.18);transition:color .45s;white-space:nowrap}
+.pstage.lit .ps-ex{color:#67e8f9}
+.pipe-total{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid rgba(255,255,255,.06);margin-top:4px;font-size:12px;color:rgba(255,255,255,.4)}
+.pipe-total strong{color:#6ee7b7;font-weight:700}
+/* agent monitor */
+.agent-term{background:rgba(0,0,0,.6);border:1px solid rgba(167,139,250,.15);border-radius:10px;padding:14px 16px;margin-bottom:18px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.55);line-height:1.9}
+.term-line{display:flex;gap:10px}
+.term-t{color:rgba(167,139,250,.5);min-width:52px}
+.term-k{color:rgba(167,139,250,.7)}
+.term-v{color:rgba(255,255,255,.6)}
+.term-v.hi{color:#a78bfa}
+.term-v.ok{color:#6ee7b7}
+.term-v.warn{color:#fbbf24}
+.agent-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:18px}
+.agent-chip{padding:10px 12px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px}
+.ac-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.ac-name{font-size:11px;font-weight:600;color:rgba(255,255,255,.7)}
+.ac-stat{font-size:9px;color:rgba(255,255,255,.28);margin-top:2px;font-family:'JetBrains Mono',monospace}
+/* features */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:22px}
+.fc{padding:13px 14px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);transition:all .25s}
+.fc:hover{border-color:rgba(251,146,60,.3);background:rgba(251,146,60,.03)}
+.fc-icon{font-size:16px;margin-bottom:6px}
+.fc h4{font-size:11px;font-weight:700;margin-bottom:3px;color:rgba(255,255,255,.8)}
+.fc p{font-size:10px;color:rgba(255,255,255,.3);line-height:1.6}
+/* pricing */
+.pcards{display:flex;gap:10px;margin-top:4px}
+.pcard{flex:1;max-width:185px;background:rgba(0,0,0,.5);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px 14px;display:flex;flex-direction:column;gap:0;transition:all .3s}
+.pcard:hover{border-color:rgba(255,255,255,.18);transform:translateY(-4px)}
+.pcard.rec{border-color:rgba(251,191,36,.3);box-shadow:0 0 40px rgba(251,191,36,.07)}
+.pc-tier{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.28);margin-bottom:6px}
+.pc-price{font-size:32px;font-weight:900;letter-spacing:-2px;line-height:1;margin-bottom:12px}
+.pc-price sub{font-size:13px;font-weight:500;vertical-align:super;opacity:.4}
+.pc-price small{font-size:11px;font-weight:400;opacity:.25}
+.pc-features{list-style:none;font-size:10px;color:rgba(255,255,255,.38);display:flex;flex-direction:column;gap:5px;margin-bottom:14px;flex:1}
+.pc-features li::before{content:'✓ ';color:rgba(255,255,255,.2)}
+.pc-features li.hi::before{color:#6ee7b7}
+.pc-features li.hi{color:rgba(255,255,255,.65)}
+.pc-btn{display:block;text-align:center;padding:9px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.1);transition:all .2s}
+.pc-btn:hover{background:rgba(255,255,255,.14)}
+.pc-btn.hl{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;border:none}
+.pc-btn.hl:hover{box-shadow:0 0 30px rgba(251,191,36,.4)}
+/* faq */
+.faqg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:22px}
+.fqi{padding:13px 14px;border-radius:9px;background:rgba(0,0,0,.38);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px);transition:border-color .2s}
+.fqi:hover{border-color:rgba(52,211,153,.25)}
+.fqq{font-size:11px;font-weight:700;margin-bottom:4px;color:rgba(255,255,255,.72)}
+.fqa{font-size:10px;color:rgba(255,255,255,.3);line-height:1.7}
+/* gradient text */
+.g0{background:linear-gradient(135deg,#6ee7b7,#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.g1{background:linear-gradient(135deg,#67e8f9,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.g2{background:linear-gradient(135deg,#c084fc,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.g3{background:linear-gradient(135deg,#fb923c,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.g4{background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.g5{background:linear-gradient(135deg,#34d399,#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+/* burst particles */
+.bp{position:fixed;border-radius:50%;pointer-events:none;z-index:9999;animation:bpa var(--dur,.7s) ease-out forwards}
+@keyframes bpa{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+/* responsive */
+@media(max-width:960px){
+  .nav-links{display:none}
+  .panel{padding:0 24px 100px;align-items:flex-end}
+  #lnav,#rdots{display:none}
+  .pcards{flex-direction:column;max-width:300px}
+  .faqg{grid-template-columns:1fr}
+  .agent-row{grid-template-columns:1fr}
+  .hc-before{max-width:140px}
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="spacer"></div>
+<div id="flash"></div>
+<div id="ca-r"></div>
+<div id="ca-b"></div>
+
+<header id="nav">
+  <a class="logo" onclick="goSec(0)"><div class="logo-icon">T</div>Terse</a>
+  <nav class="nav-links">
+    <a onclick="goSec(0)">Optimizer</a>
+    <a onclick="goSec(1)">Pipeline</a>
+    <a onclick="goSec(2)">Monitor</a>
+    <a onclick="goSec(3)">Features</a>
+    <a onclick="goSec(4)">Pricing</a>
+    <a onclick="goSec(5)">FAQ</a>
+    <a onclick="goSec(6)">API</a>
+    <a onclick="goSec(8)">Cloud</a>
+    <a onclick="goSec(9)">Exchange</a>
+  </nav>
+  <div class="nav-cta">
+    <button class="btn-ghost" onclick="handleDL(null,'vscode')">VS Code</button>
+    <button class="btn-primary" onclick="handleDL(null,'mac')">Download Free</button>
+  </div>
+</header>
+
+<nav id="lnav">
+  <div class="ln on" onclick="goSec(0)">Token Optimizer</div>
+  <div class="ln" onclick="goSec(1)">7-Stage Pipeline</div>
+  <div class="ln" onclick="goSec(2)">Agent Monitor</div>
+  <div class="ln" onclick="goSec(3)">35+ Features</div>
+  <div class="ln" onclick="goSec(4)">Pricing</div>
+  <div class="ln" onclick="goSec(5)">FAQ</div>
+  <div class="ln" onclick="goSec(6)">Developer API</div>
+  <div class="ln" onclick="goSec(7)">Vibe Projects</div>
+  <div class="ln" onclick="goSec(8)">Terse Cloud</div>
+  <div class="ln" onclick="goSec(9)">Token Exchange</div>
+  <div class="ln" onclick="goSec(10)">Terse Pals</div>
+</nav>
+
+<div id="rdots">
+  <div class="rd on" onclick="goSec(0)"></div>
+  <div class="rd" onclick="goSec(1)"></div>
+  <div class="rd" onclick="goSec(2)"></div>
+  <div class="rd" onclick="goSec(3)"></div>
+  <div class="rd" onclick="goSec(4)"></div>
+  <div class="rd" onclick="goSec(5)"></div>
+  <div class="rd" onclick="goSec(6)"></div>
+  <div class="rd" onclick="goSec(7)"></div>
+  <div class="rd" onclick="goSec(8)"></div>
+  <div class="rd" onclick="goSec(9)"></div>
+  <div class="rd" onclick="goSec(10)"></div>
+</div>
+
+<div id="prog"></div>
+<div id="slbl">TOKEN OPTIMIZER</div>
+<div id="shint"><div class="sw"><div class="sb"></div></div><span>Scroll</span></div>
+
+<div id="overlay">
+
+<!-- S0: HERO -->
+<div class="panel on" data-s="0">
+  <div class="pcol">
+    <div class="eyebrow">macOS · iOS · Windows · VS Code</div>
+    <div class="ptitle">Every token<br><span class="g0">counts.</span></div>
+    <div class="psub">Cut <strong>40–70%</strong> of your AI costs with on-device prompt optimization. Works silently across Claude Code, Cursor, ChatGPT, and every AI workflow — <strong>100% private</strong>.</div>
+    <div class="hero-compress">
+      <div class="hc-before"><span>original prompt</span>Can you please help me implement a function that would be able to handle user authentication...</div>
+      <div class="hc-arrow">→</div>
+      <div class="hc-after"><span>optimized</span>Implement user auth function with session handling and JWT tokens</div>
+      <div class="hc-badge">−68% tokens</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><div class="sn g0">40–70%</div><div class="sl">savings</div></div>
+      <div class="stat"><div class="sn g0">35+</div><div class="sl">techniques</div></div>
+      <div class="stat"><div class="sn g0">5s</div><div class="sl">agent detect</div></div>
+      <div class="stat"><div class="sn g0">0ms</div><div class="sl">cloud latency</div></div>
+    </div>
+    <div class="pbtns" style="margin-bottom:12px">
+      <a href="#" onclick="handleDL(event,'mac')" class="pbtn pbtn-g">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        Download for macOS
+      </a>
+      <a href="/demo" class="pbtn pbtn-o">Live Demo →</a>
+    </div>
+    <div class="ticker">
+      <div class="ticker-t">
+        <span class="ti"><span class="ti-dot" style="color:#6ee7b7"></span>Claude Code</span>
+        <span class="ti"><span class="ti-dot"></span>Cursor</span>
+        <span class="ti"><span class="ti-dot"></span>Aider</span>
+        <span class="ti"><span class="ti-dot"></span>VS Code</span>
+        <span class="ti"><span class="ti-dot"></span>ChatGPT</span>
+        <span class="ti"><span class="ti-dot"></span>Gemini</span>
+        <span class="ti"><span class="ti-dot"></span>Windsurf</span>
+        <span class="ti"><span class="ti-dot"></span>Copilot</span>
+        <span class="ti"><span class="ti-dot"></span>OpenClaw</span>
+        <span class="ti"><span class="ti-dot" style="color:#6ee7b7"></span>Claude Code</span>
+        <span class="ti"><span class="ti-dot"></span>Cursor</span>
+        <span class="ti"><span class="ti-dot"></span>Aider</span>
+        <span class="ti"><span class="ti-dot"></span>VS Code</span>
+        <span class="ti"><span class="ti-dot"></span>ChatGPT</span>
+        <span class="ti"><span class="ti-dot"></span>Gemini</span>
+        <span class="ti"><span class="ti-dot"></span>Windsurf</span>
+        <span class="ti"><span class="ti-dot"></span>Copilot</span>
+        <span class="ti"><span class="ti-dot"></span>OpenClaw</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S1: PIPELINE -->
+<div class="panel" data-s="1">
+  <div class="pcol">
+    <div class="eyebrow">7-Stage Optimization</div>
+    <div class="ptitle">Deterministic<br><span class="g1">pipeline.</span></div>
+    <div class="psub">Every prompt runs through <strong>7 sequential stages</strong> — each one strips tokens without touching meaning. Fully deterministic, no LLM involved.</div>
+    <div class="pstages" id="pstages">
+      <div class="pstage"><span class="ps-n">01</span>Spell Correction<span class="ps-ex">feture → feature</span></div>
+      <div class="pstage"><span class="ps-n">02</span>Whitespace Norm<span class="ps-ex">−3 tok/msg</span></div>
+      <div class="pstage"><span class="ps-n">03</span>Filler Removal<span class="ps-ex">−12 tok avg</span></div>
+      <div class="pstage"><span class="ps-n">04</span>Phrase Shortening<span class="ps-ex">−8 tok avg</span></div>
+      <div class="pstage"><span class="ps-n">05</span>NLP Compression<span class="ps-ex">−7 tok avg</span></div>
+      <div class="pstage"><span class="ps-n">06</span>Imperative Rewrite<span class="ps-ex">−6 tok avg</span></div>
+      <div class="pstage"><span class="ps-n">07</span>Final Cleanup<span class="ps-ex">−2 tok avg</span></div>
+    </div>
+    <div class="pipe-total">Total average savings per prompt: <strong>−38 tokens (68%)</strong></div>
+    <div class="pbtns" style="margin-top:18px"><a href="/demo" class="pbtn pbtn-g">See it live →</a></div>
+  </div>
+</div>
+
+<!-- S2: AGENT MONITOR -->
+<div class="panel" data-s="2">
+  <div class="pcol">
+    <div class="eyebrow">Real-Time Intelligence</div>
+    <div class="ptitle">Agent<br><span class="g2">Monitor.</span></div>
+    <div class="agent-term">
+      <div class="term-line"><span class="term-t">09:14:01</span><span class="term-k">detected</span><span class="term-v hi">&nbsp;claude-code</span><span class="term-v">&nbsp;pid:48291</span></div>
+      <div class="term-line"><span class="term-t">09:14:06</span><span class="term-k">turn&nbsp;&nbsp;&nbsp;</span><span class="term-v">&nbsp;in=2,847 out=412</span><span class="term-v warn">&nbsp;$0.021</span></div>
+      <div class="term-line"><span class="term-t">09:14:06</span><span class="term-k">cache&nbsp;&nbsp;</span><span class="term-v ok">&nbsp;hit=84%&nbsp;</span><span class="term-v">&nbsp;saved=$0.18</span></div>
+      <div class="term-line"><span class="term-t">09:14:12</span><span class="term-k">warn&nbsp;&nbsp;&nbsp;</span><span class="term-v warn">&nbsp;duplicate tool read ×3</span></div>
+      <div class="term-line"><span class="term-t">09:14:18</span><span class="term-k">session</span><span class="term-v">&nbsp;total=24,190 tok</span><span class="term-v ok">&nbsp;saved=−68%</span></div>
+    </div>
+    <div class="agent-row">
+      <div class="agent-chip"><div class="ac-dot" style="background:#6ee7b7"></div><div><div class="ac-name">Claude Code</div><div class="ac-stat">Active · 24k tok · $0.18 saved</div></div></div>
+      <div class="agent-chip"><div class="ac-dot" style="background:#818cf8"></div><div><div class="ac-name">Cursor</div><div class="ac-stat">Idle · last seen 4m ago</div></div></div>
+      <div class="agent-chip"><div class="ac-dot" style="background:#fb923c;opacity:.5"></div><div><div class="ac-name">Aider</div><div class="ac-stat">Not running</div></div></div>
+      <div class="agent-chip"><div class="ac-dot" style="background:#fbbf24"></div><div><div class="ac-name">Windsurf</div><div class="ac-stat">Active · 8k tok</div></div></div>
+    </div>
+    <div class="pbtns"><a href="#" onclick="handleDL(event,'mac')" class="pbtn pbtn-g">Start monitoring →</a></div>
+  </div>
+</div>
+
+<!-- S3: FEATURES -->
+<div class="panel" data-s="3">
+  <div class="pcol" style="max-width:540px">
+    <div class="eyebrow">35+ Techniques</div>
+    <div class="ptitle">The full<br><span class="g3">platform.</span></div>
+    <div class="fgrid">
+      <div class="fc"><div class="fc-icon">⚡</div><h4>Git Diff −70%</h4><p>Changed lines + 1 context only. Critical for Claude Code agentic workflows.</p></div>
+      <div class="fc"><div class="fc-icon">🔵</div><h4>Cache Awareness</h4><p>Detects stable prefixes for Anthropic cache API. 50–90% savings on repeated context.</p></div>
+      <div class="fc"><div class="fc-icon">📦</div><h4>History Compress</h4><p>Auto-summarizes old conversation turns. Up to 80% savings in long sessions.</p></div>
+      <div class="fc"><div class="fc-icon">🔍</div><h4>Duplicate Detect</h4><p>Flags redundant tool calls and file reads (~800 tok each). Stops agent loops.</p></div>
+      <div class="fc"><div class="fc-icon">🌐</div><h4>11 Languages</h4><p>Full spell + optimization across English, Chinese, Japanese, German, French, and 6 more.</p></div>
+      <div class="fc"><div class="fc-icon">🔒</div><h4>100% On-Device</h4><p>No cloud. No telemetry. Your prompts never leave your machine. Full offline support.</p></div>
+    </div>
+    <div class="pbtns">
+      <a href="/teams" class="pbtn pbtn-g">Terse Cloud →</a>
+      <a href="/demo" class="pbtn pbtn-o">All 35+ features</a>
+    </div>
+  </div>
+</div>
+
+<!-- S4: PRICING -->
+<div class="panel" data-s="4">
+  <div class="pcol" style="max-width:620px">
+    <div class="eyebrow">30-Day Free Trial · No Card Required</div>
+    <div class="ptitle">Simple<br><span class="g4">pricing.</span></div>
+    <div class="pcards">
+      <div class="pcard">
+        <div class="pc-tier">Free</div>
+        <div class="pc-price"><sub>$</sub>0<small>/mo</small></div>
+        <ul class="pc-features">
+          <li>3 optimizations/day</li>
+          <li>Soft mode only</li>
+          <li>1 session</li>
+          <li>macOS app</li>
+        </ul>
+        <a href="/get-started" class="pc-btn">Get started</a>
+      </div>
+      <div class="pcard rec">
+        <div class="pc-tier" style="color:#fbbf24">Pro ★ Most Popular</div>
+        <div class="pc-price" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text"><sub style="-webkit-text-fill-color:rgba(255,255,255,.4)">$</sub>4.99<small style="-webkit-text-fill-color:rgba(255,255,255,.2)">/mo</small></div>
+        <ul class="pc-features">
+          <li class="hi">Unlimited optimizations</li>
+          <li class="hi">All 3 modes</li>
+          <li class="hi">3 agent sessions</li>
+          <li class="hi">Real-time monitoring</li>
+          <li>CLAUDE.md generation</li>
+          <li>iOS keyboard</li>
+        </ul>
+        <a href="/get-started" class="pc-btn hl">Start free trial</a>
+      </div>
+      <div class="pcard">
+        <div class="pc-tier">Team</div>
+        <div class="pc-price"><sub>$</sub>99<small>/mo</small></div>
+        <ul class="pc-features">
+          <li>Unlimited sessions</li>
+          <li>Unlimited devices</li>
+          <li>Team analytics</li>
+          <li>SAML SSO</li>
+          <li>Priority support</li>
+        </ul>
+        <a href="/get-started" class="pc-btn">Start free trial</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S5: FAQ -->
+<div class="panel" data-s="5">
+  <div class="pcol" style="max-width:680px">
+    <div class="eyebrow">Common Questions</div>
+    <div class="ptitle">Stop<br>burning<br><span class="g5">tokens.</span></div>
+    <div class="faqg">
+      <div class="fqi"><div class="fqq">Does it actually work?</div><div class="fqa">Yes. A 2-hour Claude Code session generates ~210K tokens. Terse compresses to ~23K. That's an 89% reduction — verifiable in the stats view.</div></div>
+      <div class="fqi"><div class="fqq">Will it change my meaning?</div><div class="fqa">No. Terse uses deterministic NLP — it never paraphrases, only removes redundancy. LLMLingua research (EMNLP 2023) confirms quality is maintained.</div></div>
+      <div class="fqi"><div class="fqq">Works with Claude Code?</div><div class="fqa">Yes, and Cursor, Aider, Windsurf, and any browser-based AI. Auto-detected via process scanning every 5s.</div></div>
+      <div class="fqi"><div class="fqq">Is my data private?</div><div class="fqa">100%. No cloud, no telemetry, no servers. Everything runs locally via native macOS Accessibility APIs.</div></div>
+    </div>
+    <div class="pbtns">
+      <a href="#" onclick="handleDL(event,'mac')" class="pbtn pbtn-g">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        Download Free
+      </a>
+      <a href="/demo" class="pbtn pbtn-o">Try Live Demo</a>
+    </div>
+  </div>
+</div>
+
+<!-- S6: DEVELOPER API -->
+<div class="panel" data-s="6">
+  <div class="pcol">
+    <div class="eyebrow">Developer API</div>
+    <div class="ptitle">Build with<br><span class="g1">Terse API.</span></div>
+    <div class="psub">One POST request — <strong>30–60% fewer tokens</strong>, same meaning. Integrate token optimization directly into your vibe coding project. Free tier included.</div>
+    <div class="pbtns" style="margin-top:18px">
+      <a href="/api-docs" class="pbtn pbtn-g">Read the docs →</a>
+      <a href="/get-started" class="pbtn pbtn-o">Get API key</a>
+    </div>
+  </div>
+</div>
+
+<!-- S7: VIBE PROJECTS -->
+<div class="panel" data-s="7">
+  <div class="pcol">
+    <div class="eyebrow">Community Showcase</div>
+    <div class="ptitle">Vibe<br><span class="g3">Projects.</span></div>
+    <div class="psub">Built with the Terse API? Publish your project and get traffic, users, and visibility in the vibe coding developer community.</div>
+    <div class="pbtns" style="margin-top:18px">
+      <a href="/projects" class="pbtn pbtn-g">Browse projects →</a>
+      <a href="/projects/submit" class="pbtn pbtn-o">Submit yours</a>
+    </div>
+  </div>
+</div>
+
+<!-- S8: TERSE CLOUD -->
+<div class="panel" data-s="8">
+  <div class="pcol">
+    <div class="eyebrow">Team Intelligence</div>
+    <div class="ptitle">Terse<br><span class="g1">Cloud.</span></div>
+    <div class="psub">See who's using what, how much is saved, and where tokens are wasted — <strong>across every tool in your team</strong>. Per-developer, per-project, per-tool analytics.</div>
+    <div class="pbtns" style="margin-top:18px">
+      <a href="/teams" class="pbtn pbtn-g">Open dashboard →</a>
+    </div>
+  </div>
+</div>
+
+<!-- S9: TOKEN EXCHANGE -->
+<div class="panel" data-s="9">
+  <div class="pcol">
+    <div class="eyebrow">Token Marketplace</div>
+    <div class="ptitle">Token<br><span class="g4">Exchange.</span></div>
+    <div class="psub">Trade idle AI API tokens. Sellers list unused quota at a discount — buyers get <strong>Claude, GPT-4, Gemini access at 40–60% off</strong>. Zero waste.</div>
+    <div class="pbtns" style="margin-top:18px">
+      <a href="/marketplace" class="pbtn pbtn-g">Browse listings →</a>
+      <a href="/marketplace/sell" class="pbtn pbtn-o">Sell tokens</a>
+    </div>
+  </div>
+</div>
+
+<!-- S10: TERSE PALS -->
+<div class="panel" data-s="10">
+  <div class="pcol">
+    <div class="eyebrow">Your Companion</div>
+    <div class="ptitle">Terse<br><span class="g2">Pals.</span></div>
+    <div class="psub">Pick a pal that celebrates every token you save — it reacts to each tool call, eats your savings, and keeps you company through long coding sessions. <strong>20 pals available</strong>.</div>
+    <div class="pbtns" style="margin-top:18px">
+      <a href="#" onclick="handleDL(event,'mac')" class="pbtn pbtn-g">Download Free →</a>
+    </div>
+  </div>
+</div>
+
+</div><!-- #overlay -->
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass }from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass }     from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass }     from 'three/addons/postprocessing/OutputPass.js';
+
+/* ══════════════════════════════════════════════════════════
+   RENDERER — cinematic pipeline (ACES + linear color)
+══════════════════════════════════════════════════════════ */
+const R=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true,alpha:false,powerPreference:'high-performance'});
+R.setPixelRatio(Math.min(window.devicePixelRatio,1.75));
+R.setSize(window.innerWidth,window.innerHeight);
+R.setClearColor(0x010205,1); /* near-black with cool blue tint — never pure #000 */
+R.toneMapping=THREE.ACESFilmicToneMapping;
+R.toneMappingExposure=0.72; /* underexposed — crushes blacks, lets stars punch through (Interstellar look) */
+R.outputColorSpace=THREE.SRGBColorSpace;
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x020410,0.0015); /* very subtle atmospheric depth */
+
+/* ═══════════════════════════════════════════════════════════
+   MILKY WAY SKYBOX — ESO public domain panorama
+   Single biggest "wow that's a galaxy" change: a 360° Milky Way
+   band texture as scene background gives the "inside the galaxy
+   looking out" Interstellar feel. CORS-friendly ESO CDN.
+   ═══════════════════════════════════════════════════════════ */
+{
+  const loader=new THREE.TextureLoader();
+  loader.setCrossOrigin('anonymous');
+  loader.load(
+    'https://cdn.eso.org/images/publicationjpg/eso0932a.jpg',
+    (tex)=>{
+      tex.mapping=THREE.EquirectangularReflectionMapping;
+      tex.colorSpace=THREE.SRGBColorSpace;
+      scene.background=tex;
+      scene.backgroundIntensity=0.32; /* muted so foreground stars/panels pop */
+      scene.backgroundRotation=new THREE.Euler(0.25,1.1,0.05); /* poles off-camera */
+    },
+    undefined,
+    ()=>{ /* fallback: keep solid clear color if texture fails */ }
+  );
+}
+
+const cam=new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,1200);
+/* FOV reduced 60° → 45° for telephoto compression — makes background feel vast.
+   Far plane extended to 1200 to accommodate deep starfield + galaxy sprites. */
+cam.position.set(0,1.5,14);
+
+/* ══════════════════════════════════════════════════════════
+   POST-PROCESSING PIPELINE — the Hollywood look
+   RenderPass → UnrealBloom (Nolan-style) → Anamorphic (J.J. Abrams
+   cyan streak) → CombinedGrade (vignette + CA + grain) → Output
+══════════════════════════════════════════════════════════ */
+const composer=new EffectComposer(R);
+composer.setPixelRatio(Math.min(window.devicePixelRatio,1.75));
+composer.setSize(window.innerWidth,window.innerHeight);
+composer.addPass(new RenderPass(scene,cam));
+
+const bloomPass=new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth,window.innerHeight),
+  0.45,  /* strength — Interstellar bloom is subtle, not punchy */
+  0.85,  /* radius — wide soft falloff */
+  0.92   /* threshold — HIGH so only HDR stars bloom, midtones don't */
+);
+composer.addPass(bloomPass);
+
+/* Anamorphic horizontal streak — signature cyan tint that smears the
+   brightest pixels across X. Authentic J.J. Abrams / Nolan vibe. */
+const anamorphicPass=new ShaderPass({
+  uniforms:{
+    tDiffuse:{value:null},
+    resolution:{value:new THREE.Vector2(window.innerWidth,window.innerHeight)},
+    strength:{value:0.30}, /* anamorphic should accent bright lights only, not dominate frame */
+  },
+  vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader:`
+    uniform sampler2D tDiffuse;
+    uniform vec2 resolution;
+    uniform float strength;
+    varying vec2 vUv;
+    void main(){
+      vec3 base=texture2D(tDiffuse,vUv).rgb;
+      vec3 streak=vec3(0.0);
+      float total=0.0;
+      for(float i=-20.0;i<=20.0;i+=1.0){
+        float w=exp(-i*i/160.0);
+        vec2 off=vec2(i/resolution.x*1.0,0.0);
+        vec3 s=texture2D(tDiffuse,vUv+off).rgb;
+        /* ONLY the brightest 5-10% of pixels get streaked */
+        float lum=max(s.r,max(s.g,s.b));
+        s*=smoothstep(0.80,1.0,lum);
+        streak+=s*w; total+=w;
+      }
+      streak/=total;
+      streak*=vec3(0.42,0.65,1.0); /* subtle blue tint, not cyan-blast */
+      gl_FragColor=vec4(base+streak*strength,1.0);
+    }
+  `,
+});
+composer.addPass(anamorphicPass);
+
+/* Combined cinematic grade pass — vignette + chromatic aberration + grain.
+   One pass instead of three (saves 2 full-screen blits). */
+const gradePass=new ShaderPass({
+  uniforms:{
+    tDiffuse:{value:null},
+    time:{value:0},
+    vignetteStrength:{value:0.85}, /* gentler — Interstellar IMAX has natural falloff */
+    caStrength:{value:0.006},     /* subtle CA only at extreme edges */
+    grainStrength:{value:0.022},  /* fine 35mm-style grain */
+  },
+  vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader:`
+    uniform sampler2D tDiffuse;
+    uniform float time;
+    uniform float vignetteStrength;
+    uniform float caStrength;
+    uniform float grainStrength;
+    varying vec2 vUv;
+    float rand(vec2 c){ return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453); }
+    void main(){
+      vec2 d=vUv-0.5;
+      float radial=dot(d,d);
+      /* Chromatic aberration that scales with radius (edges only) */
+      float ca=radial*caStrength;
+      float r=texture2D(tDiffuse,vUv-d*ca).r;
+      float g=texture2D(tDiffuse,vUv).g;
+      float b=texture2D(tDiffuse,vUv+d*ca).b;
+      vec3 col=vec3(r,g,b);
+      /* Cinematic vignette — soft, not harsh */
+      float vign=1.0-smoothstep(0.50,1.05,length(d)*1.35*vignetteStrength);
+      col*=mix(0.6,1.0,vign);
+      /* Film grain */
+      col+=(rand(vUv*time*0.001)-0.5)*grainStrength;
+      /* Subtle teal/orange color grade — Hollywood look */
+      col.r*=1.02; col.b*=1.04;
+      gl_FragColor=vec4(col,1.0);
+    }
+  `,
+});
+composer.addPass(gradePass);
+composer.addPass(new OutputPass());
+
+window.addEventListener('resize',()=>{
+  R.setSize(window.innerWidth,window.innerHeight);
+  composer.setSize(window.innerWidth,window.innerHeight);
+  bloomPass.setSize(window.innerWidth,window.innerHeight);
+  anamorphicPass.uniforms.resolution.value.set(window.innerWidth,window.innerHeight);
+  cam.aspect=window.innerWidth/window.innerHeight;
+  cam.updateProjectionMatrix();
+});
+
+/* ══════════════════════════════════════════════════════════
+   LIGHTS
+══════════════════════════════════════════════════════════ */
+scene.add(new THREE.AmbientLight(0x0a0a1a,0.8));
+scene.add(new THREE.AmbientLight(0x111827,6));
+const pL=new THREE.PointLight(0x6ee7b7,30,90);
+scene.add(pL);
+const rL=new THREE.PointLight(0x818cf8,5,70);
+rL.position.set(-10,8,-20);
+scene.add(rL);
+const bL=new THREE.PointLight(0x0ea5e9,3,50);
+bL.position.set(12,3,-10);
+scene.add(bL);
+
+/* ══════════════════════════════════════════════════════════
+   SECTION CONFIG
+══════════════════════════════════════════════════════════ */
+const NSEC=11;
+const SEC_NAMES=['TOKEN OPTIMIZER','7-STAGE PIPELINE','AGENT MONITOR','35+ FEATURES','PRICING','FAQ','DEVELOPER API','VIBE PROJECTS','TERSE CLOUD','TOKEN EXCHANGE','TERSE PALS'];
+const SEC_HEX=['#6ee7b7','#67e8f9','#a78bfa','#fb923c','#fbbf24','#34d399','#60a5fa','#f97316','#38bdf8','#eab308','#f472b6'];
+const SEC_COL=SEC_HEX.map(h=>new THREE.Color(h));
+
+/* Camera positions — wide sweeps, dramatic angles */
+const CAM_POS=[
+  new THREE.Vector3(  0,  1.5,  14),   // S0 front center
+  new THREE.Vector3( -8,  5,   -6),    // S1 high-left dive
+  new THREE.Vector3(  7,  0,  -28),    // S2 right approach
+  new THREE.Vector3( -5,  7,  -46),    // S3 high arc left
+  new THREE.Vector3(  6, -2,  -64),    // S4 low dramatic
+  new THREE.Vector3(  0,  7,  -82),    // S5 elevated center
+  new THREE.Vector3( -7,  2,  -98),    // S6 API — left sweep
+  new THREE.Vector3(  7, -1, -116),    // S7 Projects — right low
+  new THREE.Vector3( -5,  6, -132),    // S8 Cloud — high left
+  new THREE.Vector3(  8, -3, -150),    // S9 Exchange — dramatic low right
+  new THREE.Vector3(  0,  4, -166),    // S10 Pals — center elevated
+];
+const CAM_TGT=[
+  new THREE.Vector3(  0,  0,    0),
+  new THREE.Vector3(  0,  0,  -22),
+  new THREE.Vector3(  2,  0,  -36),
+  new THREE.Vector3(  0,  0,  -54),
+  new THREE.Vector3(  0,  3,  -72),
+  new THREE.Vector3(  0, -2,  -90),
+  new THREE.Vector3(  0,  0, -110),
+  new THREE.Vector3(  0,  1, -128),
+  new THREE.Vector3(  0,  0, -146),
+  new THREE.Vector3(  0,  0, -164),
+  new THREE.Vector3(  0, -1, -182),
+];
+
+/* ══════════════════════════════════════════════════════════
+   COMET PATH — drives scroll camera + section impacts
+══════════════════════════════════════════════════════════ */
+const cometCurve=new THREE.CatmullRomCurve3([
+  new THREE.Vector3( 3, 4, 18),
+  new THREE.Vector3( 0, 1,  2),    // S0
+  new THREE.Vector3(-4, 5,-10),
+  new THREE.Vector3(-4, 3,-20),    // S1
+  new THREE.Vector3( 5,-1,-29),
+  new THREE.Vector3( 5, 0,-38),    // S2
+  new THREE.Vector3(-3, 5,-47),
+  new THREE.Vector3(-1, 2,-56),    // S3
+  new THREE.Vector3( 4,-2,-64),
+  new THREE.Vector3( 3,-1,-72),    // S4
+  new THREE.Vector3(-1, 6,-81),
+  new THREE.Vector3( 0, 5,-90),    // S5
+  new THREE.Vector3(-5, 1,-99),
+  new THREE.Vector3(-4, 1,-108),   // S6
+  new THREE.Vector3( 5,-1,-117),
+  new THREE.Vector3( 4, 0,-126),   // S7
+  new THREE.Vector3(-3, 5,-135),
+  new THREE.Vector3(-2, 4,-144),   // S8
+  new THREE.Vector3( 6,-2,-153),
+  new THREE.Vector3( 5,-2,-162),   // S9
+  new THREE.Vector3( 0, 4,-171),
+  new THREE.Vector3( 0, 3,-180),   // S10
+]);
+const cometPosV=new THREE.Vector3();
+/* Every section starts FULLY LIT — no ramp, no delay. User wants
+   all Terse animations visible at all times during scroll. */
+const secImpacted=new Uint8Array(11).fill(1);
+const secBurstFired=new Uint8Array(11);
+
+function ease3(t){return t<.5?4*t*t*t:1-(-2*t+2)**3/2}
+function lv3(a,b,t){return a.clone().lerp(b,t)}
+
+/* ══════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════ */
+function mat(col,op,blend,wire){
+  const m=new THREE.MeshBasicMaterial({color:col,transparent:op<1,opacity:op,depthWrite:op>.95});
+  if(blend){m.blending=THREE.AdditiveBlending;m.depthWrite=false;}
+  if(wire) m.wireframe=true;
+  return m;
+}
+function phong(col,em,eI,op){
+  return new THREE.MeshPhongMaterial({color:col,emissive:em||col,emissiveIntensity:eI||.6,
+    transparent:op!==undefined&&op<1,opacity:op===undefined?1:op,shininess:80});
+}
+function lbl(text,hex,w,h,fs){
+  const cv=document.createElement('canvas'); cv.width=w||400; cv.height=h||100;
+  const c=cv.getContext('2d');
+  c.fillStyle=hex||'#fff';
+  c.font=`700 ${fs||68}px Inter,sans-serif`;
+  c.textAlign='center'; c.textBaseline='middle';
+  c.fillText(text,cv.width/2,cv.height/2);
+  const tx=new THREE.CanvasTexture(cv); tx.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+  sp.scale.set((w||400)/50,(h||100)/50,1);
+  return sp;
+}
+function sphere(r,col,op,blend){
+  return new THREE.Mesh(new THREE.SphereGeometry(r,16,16),mat(col,op,blend));
+}
+function drawBdr(ctx,w,h,col){
+  /* outer border */
+  ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.globalAlpha=.45;
+  ctx.strokeRect(1,1,w-2,h-2);
+  /* corner brackets */
+  const cs=22; ctx.lineWidth=3; ctx.globalAlpha=.85;
+  [[2,2,1,1],[w-2,2,-1,1],[2,h-2,1,-1],[w-2,h-2,-1,-1]].forEach(([x,y,dx,dy])=>{
+    ctx.beginPath();
+    ctx.moveTo(x+dx*cs,y);ctx.lineTo(x,y);ctx.lineTo(x,y+dy*cs);
+    ctx.stroke();
+  });
+}
+function divLine(ctx,w,y,col){
+  ctx.strokeStyle=col; ctx.lineWidth=1; ctx.globalAlpha=.28;
+  ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+  ctx.globalAlpha=1;
+}
+function holoPanel(drawFn,cw,ch){
+  const cv=document.createElement('canvas');
+  cv.width=cw;cv.height=ch;
+  const ctx=cv.getContext('2d');
+  drawFn(ctx,cw,ch);
+  const tx=new THREE.CanvasTexture(cv);tx.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+  sp.scale.set(cw/108,ch/108,1);
+  return sp;
+}
+/* Real billboard holographic panel — main plane + glow halo + corner frame + L-brackets + status dots + scanline */
+function makeHoloPanel(width,height,drawFn,color){
+  if(color===undefined) color=0x6ee7b7;
+  const cv=document.createElement('canvas');
+  cv.width=1024; cv.height=Math.round(1024*height/width);
+  const ctx=cv.getContext('2d');
+  drawFn(ctx,cv.width,cv.height);
+  const tex=new THREE.CanvasTexture(cv);
+  tex.minFilter=THREE.LinearFilter;
+  tex.magFilter=THREE.LinearFilter;
+  const panel=new THREE.Group();
+  const mainMat=new THREE.MeshBasicMaterial({
+    map:tex,transparent:true,opacity:0,
+    side:THREE.DoubleSide,depthWrite:false,fog:false,
+  });
+  const main=new THREE.Mesh(new THREE.PlaneGeometry(width,height),mainMat);
+  panel.add(main);
+  const haloMat=new THREE.MeshBasicMaterial({
+    color:color,transparent:true,opacity:0,
+    blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false,
+  });
+  const halo=new THREE.Mesh(new THREE.PlaneGeometry(width*1.1,height*1.1),haloMat);
+  halo.position.z=-0.05;
+  panel.add(halo);
+  const edgeMat=new THREE.LineBasicMaterial({color:color,transparent:true,opacity:0,fog:false});
+  const frameGeo=new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-width/2,-height/2,0.01), new THREE.Vector3(-width/2, height/2,0.01),
+    new THREE.Vector3(-width/2, height/2,0.01), new THREE.Vector3( width/2, height/2,0.01),
+    new THREE.Vector3( width/2, height/2,0.01), new THREE.Vector3( width/2,-height/2,0.01),
+    new THREE.Vector3( width/2,-height/2,0.01), new THREE.Vector3(-width/2,-height/2,0.01),
+  ]);
+  const frame=new THREE.LineSegments(frameGeo,edgeMat);
+  panel.add(frame);
+
+  /* L-shaped corner brackets — ~15% of width/height, accent color */
+  const bx=width*0.15, by=height*0.15;
+  const w2=width/2, h2=height/2;
+  const bracketMat=new THREE.LineBasicMaterial({color:color,transparent:true,opacity:0,linewidth:2,fog:false});
+  const bracketGeo=new THREE.BufferGeometry().setFromPoints([
+    /* top-left L */
+    new THREE.Vector3(-w2,h2-by,0.02), new THREE.Vector3(-w2,h2,0.02),
+    new THREE.Vector3(-w2,h2,0.02),    new THREE.Vector3(-w2+bx,h2,0.02),
+    /* top-right L */
+    new THREE.Vector3(w2-bx,h2,0.02),  new THREE.Vector3(w2,h2,0.02),
+    new THREE.Vector3(w2,h2,0.02),     new THREE.Vector3(w2,h2-by,0.02),
+    /* bottom-left L */
+    new THREE.Vector3(-w2,-h2,0.02),   new THREE.Vector3(-w2,-h2+by,0.02),
+    new THREE.Vector3(-w2,-h2,0.02),   new THREE.Vector3(-w2+bx,-h2,0.02),
+    /* bottom-right L */
+    new THREE.Vector3(w2-bx,-h2,0.02), new THREE.Vector3(w2,-h2,0.02),
+    new THREE.Vector3(w2,-h2,0.02),    new THREE.Vector3(w2,-h2+by,0.02),
+  ]);
+  const brackets=new THREE.LineSegments(bracketGeo,bracketMat);
+  panel.add(brackets);
+
+  /* Status dots — green, amber, red — top-right */
+  const dotGrp=new THREE.Group();
+  const dotColors=[0x10b981,0xfbbf24,0xef4444];
+  const dotMats=[];
+  dotColors.forEach((c,i)=>{
+    const m=new THREE.Mesh(
+      new THREE.CircleGeometry(0.06,16),
+      new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false})
+    );
+    m.position.set(w2-0.18-i*0.18,h2-0.18,0.03);
+    dotGrp.add(m);
+    dotMats.push(m.material);
+  });
+  panel.add(dotGrp);
+
+  /* Scanline — thin horizontal accent plane that scrolls vertically */
+  const scanMat=new THREE.MeshBasicMaterial({
+    color:color,transparent:true,opacity:0,
+    blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false,
+  });
+  const scanline=new THREE.Mesh(new THREE.PlaneGeometry(width*0.98,0.05),scanMat);
+  scanline.position.z=0.015;
+  panel.add(scanline);
+
+  panel.userData={mainMat,haloMat,edgeMat,bracketMat,dotMats,scanline,scanMat,ctx,tex,cv,baseScale:1,width,height};
+  return panel;
+}
+
+/* ──────────────────────────────────────────────────────────
+   PREMIUM PANEL CHROME — common header/grid/border drawer
+────────────────────────────────────────────────────────── */
+function drawPanelChrome(ctx,w,h,accent,title,subtitle,statusLabel){
+  /* Refined dark navy with subtle accent — high-end terminal aesthetic.
+     Dark enough that bloom doesn't blow out, distinct enough from space. */
+  const bg=ctx.createLinearGradient(0,0,0,h);
+  bg.addColorStop(0,'rgba(14,20,40,0.97)');
+  bg.addColorStop(0.5,'rgba(10,15,32,0.97)');
+  bg.addColorStop(1,'rgba(7,11,24,0.97)');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+
+  /* Subtle radial accent glow — much softer, only hints at "powered on" */
+  const centerGlow=ctx.createRadialGradient(w/2,h*0.20,0,w/2,h*0.20,w*0.7);
+  centerGlow.addColorStop(0,accent+'1f');
+  centerGlow.addColorStop(0.5,accent+'0a');
+  centerGlow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=centerGlow; ctx.fillRect(0,0,w,h);
+
+  /* Refined grid lines */
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+  for(let x=0;x<w;x+=32){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+  for(let y=0;y<h;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+
+  /* Slim accent top bar — refined, not blasting */
+  const topGrd=ctx.createLinearGradient(0,0,w,0);
+  topGrd.addColorStop(0,'rgba(0,0,0,0)');
+  topGrd.addColorStop(0.5,accent);
+  topGrd.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=topGrd; ctx.fillRect(0,0,w,2);
+
+  /* Single clean inner border in accent */
+  ctx.strokeStyle=accent+'88'; ctx.lineWidth=1.5;
+  ctx.strokeRect(12,12,w-24,h-24);
+
+  /* Title */
+  ctx.fillStyle=accent;
+  ctx.font='600 26px "JetBrains Mono","SF Mono",monospace';
+  ctx.textBaseline='top';
+  ctx.fillText(title,32,32);
+
+  if(subtitle){
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='500 13px "Inter",sans-serif';
+    ctx.fillText(subtitle,32,64);
+  }
+
+  /* Status: green dot + LIVE */
+  ctx.fillStyle='#10b981';
+  ctx.beginPath(); ctx.arc(w-70,42,5,0,Math.PI*2); ctx.fill();
+  ctx.shadowColor='#10b981'; ctx.shadowBlur=12;
+  ctx.beginPath(); ctx.arc(w-70,42,5,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.font='700 10px "JetBrains Mono",monospace';
+  ctx.fillText(statusLabel||'LIVE',w-56,36);
+
+  /* Decorative corner ticks */
+  ctx.strokeStyle=accent; ctx.lineWidth=2;
+  const tickLen=18;
+  ctx.beginPath();ctx.moveTo(0,tickLen);ctx.lineTo(0,0);ctx.lineTo(tickLen,0);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(w-tickLen,0);ctx.lineTo(w,0);ctx.lineTo(w,tickLen);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,h-tickLen);ctx.lineTo(0,h);ctx.lineTo(tickLen,h);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(w-tickLen,h);ctx.lineTo(w,h);ctx.lineTo(w,h-tickLen);ctx.stroke();
+
+  /* reset baseline for downstream draws */
+  ctx.textBaseline='alphabetic';
+  return {contentY:108};
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  if(r===undefined) r=8;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+function pill(ctx,x,y,w,h,fill,stroke,text,textColor){
+  roundRect(ctx,x,y,w,h,h/2);
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.4;ctx.stroke();}
+  if(text){
+    ctx.fillStyle=textColor||'rgba(255,255,255,0.9)';
+    ctx.font='600 12px "Inter",sans-serif';
+    ctx.textBaseline='middle';
+    ctx.textAlign='center';
+    ctx.fillText(text,x+w/2,y+h/2+1);
+    ctx.textAlign='left';
+    ctx.textBaseline='alphabetic';
+  }
+}
+
+function glowText(ctx,text,x,y,color,font,glowAmount){
+  ctx.font=font;
+  ctx.fillStyle=color;
+  ctx.shadowColor=color;
+  ctx.shadowBlur=glowAmount||16;
+  ctx.fillText(text,x,y);
+  ctx.shadowBlur=0;
+}
+
+function bar(ctx,x,y,w,h,pct,color,label){
+  roundRect(ctx,x,y,w,h,h/2);
+  ctx.fillStyle='rgba(255,255,255,0.08)';
+  ctx.fill();
+  if(pct>0){
+    roundRect(ctx,x,y,Math.max(h,w*pct),h,h/2);
+    const grd=ctx.createLinearGradient(x,0,x+w,0);
+    grd.addColorStop(0,color);
+    grd.addColorStop(1,color+'aa');
+    ctx.fillStyle=grd;
+    ctx.fill();
+  }
+  if(label){
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.font='600 11px "JetBrains Mono",monospace';
+    ctx.textBaseline='alphabetic';
+    ctx.fillText(label,x+w+12,y+h-2);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   GLOBAL ATMOSPHERE
+══════════════════════════════════════════════════════════ */
+/* Background nebula — color zones per section */
+[[0,0x041e12],[-18,0x030c18],[-36,0x0d0320],[-54,0x1a0800],[-72,0x100a00],[-90,0x021410],[-108,0x001428],[-126,0x140800],[-144,0x001820],[-162,0x100c00],[-180,0x1a0028]]
+.forEach(([z,col])=>{
+  const m=new THREE.Mesh(new THREE.SphereGeometry(68,8,6),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.92,side:THREE.BackSide,depthWrite:false}));
+  m.position.z=z; scene.add(m);
+  const m2=new THREE.Mesh(new THREE.SphereGeometry(48,7,5),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.6,side:THREE.BackSide,depthWrite:false}));
+  m2.position.z=z; scene.add(m2);
+});
+
+/* Nebula wisps */
+for(let i=0;i<30;i++){
+  const cols=[0x0a3022,0x041830,0x1a0828,0x28100a,0x000820,0x051a0e];
+  const m=new THREE.Mesh(new THREE.SphereGeometry(1,5,4),mat(cols[i%6],.10,true));
+  m.scale.set(28+Math.random()*40,7+Math.random()*12,15+Math.random()*20);
+  m.position.set((Math.random()-.5)*60,(Math.random()-.5)*25,Math.random()*-105-5);
+  m.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
+  scene.add(m);
+}
+
+/* Starfield — 3 depth layers */
+function mkStars(n,size,op,spread){
+  const pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    pos[i*3]=(Math.random()-.5)*spread;
+    pos[i*3+1]=(Math.random()-.5)*spread;
+    pos[i*3+2]=(Math.random()-.5)*(spread*.7)-60;
+  }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  return new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size,sizeAttenuation:true,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false}));
+}
+/* ═══════════════════════════════════════════════════════════
+   INTERSTELLAR STARFIELD — 28,000 stars in 3 parallax layers
+   - Realistic B-V color distribution (76% warm M/K, 13% G, 8% F/A, 3% blue giants)
+   - Top 1% HDR brightness (>1.0) so UnrealBloomPass picks them up
+   - Custom ShaderMaterial with smooth round point sprites + twinkle
+   - Distributed on spherical shells (uniform density, no cube clustering)
+   ═══════════════════════════════════════════════════════════ */
+function sampleStarColor(){
+  /* B-V index based — realistic stellar color spectrum */
+  const t=Math.random();
+  if(t<0.76) return [1.00,0.66,0.46]; /* M/K dwarfs — warm orange-red */
+  if(t<0.89) return [1.00,0.95,0.85]; /* G-type sun-like — warm white */
+  if(t<0.97) return [0.95,0.97,1.00]; /* F/A neutral white */
+  return [0.70,0.82,1.00];            /* B/O blue giants */
+}
+function makeStarShell(N, rInner, rOuter, sizeMin, sizeMax, parallax){
+  const pos=new Float32Array(N*3);
+  const col=new Float32Array(N*3);
+  const siz=new Float32Array(N);
+  const phs=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    /* Uniform on sphere shell */
+    const u=Math.random(), v=Math.random();
+    const theta=2*Math.PI*u;
+    const phi=Math.acos(2*v-1);
+    const r=rInner+Math.random()*(rOuter-rInner);
+    pos[i*3]  =r*Math.sin(phi)*Math.cos(theta);
+    pos[i*3+1]=r*Math.sin(phi)*Math.sin(theta);
+    pos[i*3+2]=r*Math.cos(phi);
+    /* Log size distribution — most tiny, few hero */
+    siz[i]=sizeMin+Math.pow(Math.random(),6)*(sizeMax-sizeMin);
+    /* Top 1% HDR brightness so they bloom; rest standard */
+    const isHero=Math.random()<0.012;
+    const brightness=isHero?(1.6+Math.random()*1.8):(0.42+Math.random()*0.48);
+    const c=sampleStarColor();
+    col[i*3]  =c[0]*brightness;
+    col[i*3+1]=c[1]*brightness;
+    col[i*3+2]=c[2]*brightness;
+    phs[i]=Math.random()*Math.PI*2;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('starColor',new THREE.BufferAttribute(col,3));
+  g.setAttribute('starSize',new THREE.BufferAttribute(siz,1));
+  g.setAttribute('starPhase',new THREE.BufferAttribute(phs,1));
+  const mat=new THREE.ShaderMaterial({
+    uniforms:{
+      uTime:{value:0},
+      uPixel:{value:Math.min(window.devicePixelRatio,1.75)},
+    },
+    vertexShader:`
+      attribute vec3 starColor;
+      attribute float starSize;
+      attribute float starPhase;
+      uniform float uTime;
+      uniform float uPixel;
+      varying vec3 vColor;
+      varying float vAlpha;
+      void main(){
+        vColor=starColor;
+        /* Subtle twinkle — amp 0.18, not 0.5 */
+        float tw=0.82+0.18*sin(uTime*1.3+starPhase);
+        vAlpha=tw;
+        vec4 mv=modelViewMatrix*vec4(position,1.0);
+        gl_PointSize=starSize*tw*uPixel*(300.0/-mv.z);
+        gl_Position=projectionMatrix*mv;
+      }`,
+    fragmentShader:`
+      varying vec3 vColor;
+      varying float vAlpha;
+      void main(){
+        vec2 c=gl_PointCoord-0.5;
+        float d=length(c);
+        float a=smoothstep(0.5,0.0,d);
+        a=pow(a,2.2);
+        gl_FragColor=vec4(vColor*a,a*vAlpha);
+      }`,
+    transparent:true,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false,
+  });
+  const pts=new THREE.Points(g,mat);
+  pts.userData.parallax=parallax;
+  pts.frustumCulled=false;
+  scene.add(pts);
+  return {pts,mat};
+}
+const starLayers=[];
+/* Near layer: 6k stars, closest, biggest, follow camera most */
+starLayers.push(makeStarShell(6000, 80, 200, 0.5, 3.2, 0.55));
+/* Mid layer: 10k stars, medium depth */
+starLayers.push(makeStarShell(10000, 200, 420, 0.35, 2.0, 0.25));
+/* Far layer: 12k stars, deepest, smallest, almost stationary — vastness */
+starLayers.push(makeStarShell(12000, 420, 700, 0.22, 1.1, 0.08));
+
+/* ═══════════════════════════════════════════════════════════
+   GALACTIC CLUSTERED STAR LAYER — 8k stars in open clusters
+   along the galactic plane. Real galaxies have density clumps;
+   uniform distribution reads as "starfield", clustered reads
+   as "we're inside a galaxy".
+   ═══════════════════════════════════════════════════════════ */
+{
+  const N=8000;
+  const CLUSTERS=42;
+  /* Cluster centers biased toward galactic plane (y=0 strip with slight tilt) */
+  const ccs=[];
+  for(let c=0;c<CLUSTERS;c++){
+    const r=160+Math.random()*380;
+    const theta=Math.random()*Math.PI*2;
+    /* Heavy bias toward galactic plane — y narrow */
+    const yJit=(Math.random()-0.5)*40;
+    ccs.push({
+      x:r*Math.cos(theta),
+      y:yJit,
+      z:r*Math.sin(theta)*0.7-30,  /* compress z for parallax */
+      tightness:8+Math.random()*22, /* cluster radius */
+    });
+  }
+  const pos=new Float32Array(N*3);
+  const col=new Float32Array(N*3);
+  const siz=new Float32Array(N);
+  const phs=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    const c=ccs[Math.floor(Math.random()*CLUSTERS)];
+    /* Gaussian-ish jitter inside cluster */
+    const jx=(Math.random()+Math.random()+Math.random()-1.5)*c.tightness;
+    const jy=(Math.random()+Math.random()+Math.random()-1.5)*c.tightness*0.4;
+    const jz=(Math.random()+Math.random()+Math.random()-1.5)*c.tightness;
+    pos[i*3]  =c.x+jx;
+    pos[i*3+1]=c.y+jy;
+    pos[i*3+2]=c.z+jz;
+    siz[i]=0.3+Math.pow(Math.random(),5)*2.8;
+    const isHero=Math.random()<0.015;
+    const brightness=isHero?(1.5+Math.random()*1.5):(0.38+Math.random()*0.42);
+    const cc=sampleStarColor();
+    col[i*3]=cc[0]*brightness; col[i*3+1]=cc[1]*brightness; col[i*3+2]=cc[2]*brightness;
+    phs[i]=Math.random()*Math.PI*2;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('starColor',new THREE.BufferAttribute(col,3));
+  g.setAttribute('starSize',new THREE.BufferAttribute(siz,1));
+  g.setAttribute('starPhase',new THREE.BufferAttribute(phs,1));
+  const mat=new THREE.ShaderMaterial({
+    uniforms:{ uTime:{value:0}, uPixel:{value:Math.min(window.devicePixelRatio,1.75)} },
+    vertexShader:starLayers[0].mat.vertexShader,
+    fragmentShader:starLayers[0].mat.fragmentShader,
+    transparent:true, blending:THREE.AdditiveBlending, depthWrite:false,
+  });
+  const pts=new THREE.Points(g,mat);
+  pts.userData.parallax=0.18;
+  pts.frustumCulled=false;
+  scene.add(pts);
+  starLayers.push({pts,mat});
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DISTANT GALAXY SPRITES — 6 elliptical/spiral galaxies far away
+   Adds the "look there's another galaxy" Interstellar atmospheric layer
+   ═══════════════════════════════════════════════════════════ */
+function makeGalaxySprite(coreColor,armColor,size,pos,rot){
+  const cv=document.createElement('canvas');
+  cv.width=cv.height=512;
+  const ctx=cv.getContext('2d');
+  /* Bright nucleus */
+  const core=ctx.createRadialGradient(256,256,0,256,256,40);
+  core.addColorStop(0,coreColor+'ff');
+  core.addColorStop(0.5,coreColor+'cc');
+  core.addColorStop(1,coreColor+'00');
+  ctx.fillStyle=core; ctx.fillRect(0,0,512,512);
+  /* Soft disk halo */
+  const halo=ctx.createRadialGradient(256,256,30,256,256,240);
+  halo.addColorStop(0,armColor+'66');
+  halo.addColorStop(0.5,armColor+'22');
+  halo.addColorStop(1,armColor+'00');
+  ctx.fillStyle=halo; ctx.fillRect(0,0,512,512);
+  /* Faint spiral arm hint via radial stripes */
+  ctx.globalCompositeOperation='lighter';
+  for(let a=0;a<3;a++){
+    const ang=a*Math.PI*2/3;
+    ctx.save();
+    ctx.translate(256,256);
+    ctx.rotate(ang);
+    const arm=ctx.createLinearGradient(-200,0,200,0);
+    arm.addColorStop(0,armColor+'00');
+    arm.addColorStop(0.5,armColor+'33');
+    arm.addColorStop(1,armColor+'00');
+    ctx.fillStyle=arm;
+    ctx.fillRect(-200,-12,400,24);
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation='source-over';
+  const tex=new THREE.CanvasTexture(cv);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0.55,fog:false
+  }));
+  sp.position.set(pos[0],pos[1],pos[2]);
+  sp.scale.set(size,size*0.45,1);
+  sp.material.rotation=rot;
+  scene.add(sp);
+  return sp;
+}
+const distantGalaxies=[
+  makeGalaxySprite('#ffd9a0','#c9aeff', 90, [-180, 60,-380], 0.4),
+  makeGalaxySprite('#fff0c8','#7fb6ff', 70, [220,-50,-450], -0.6),
+  makeGalaxySprite('#ffb480','#ff9fd6', 55, [-100,-90,-500], 1.2),
+  makeGalaxySprite('#fff5e0','#9be0ff', 80, [300, 80,-560], 2.1),
+  makeGalaxySprite('#e8d4ff','#ffd0a0', 65, [-280,-30,-620], -1.4),
+  makeGalaxySprite('#fff8e8','#a7d4ff',100, [ 60,150,-680], 0.9),
+];
+
+/* Compatibility alias for any old references */
+const twnkl=[];
+
+/* Global holographic corridor grid */
+const grid=new THREE.GridHelper(320,54,0x0f1a2e,0x080d14);
+grid.position.y=-7;
+const gms=Array.isArray(grid.material)?grid.material:[grid.material];
+gms.forEach(m=>{m.transparent=true;m.opacity=.18;});
+scene.add(grid);
+
+/* Global ambient floating squares — reference UI design language */
+const gSqs=[];
+for(let i=0;i<130;i++){
+  const sz=.04+Math.random()*.28;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(sz,sz,sz*.06),mat(0xffffff,.04+Math.random()*.12,false));
+  m.position.set((Math.random()-.5)*30,(Math.random()-.5)*20,Math.random()*-205-3);
+  m.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
+  scene.add(m);
+  gSqs.push({m,rx:(Math.random()-.5)*.006,ry:(Math.random()-.5)*.009,rz:(Math.random()-.5)*.004,ph:Math.random()*Math.PI*2,baseOp:.03+Math.random()*.10});
+}
+
+/* Global token particle river — tiny dots flowing z-direction */
+const RIVER_N=350;
+const riverPts=[];
+for(let i=0;i<RIVER_N;i++){
+  const m=sphere(.04+Math.random()*.04,0x6ee7b7,.6+Math.random()*.35,true);
+  const rx=(Math.random()-.5)*18, ry=(Math.random()-.5)*14, rz=Math.random()*-195;
+  m.position.set(rx,ry,rz);
+  scene.add(m);
+  riverPts.push({m,rx,ry,rz,spd:.03+Math.random()*.07,col:Math.random()>.7?0x67e8f9:Math.random()>.5?0xa78bfa:0x6ee7b7});
+}
+riverPts.forEach(p=>{p.m.material.color.setHex(p.col);});
+
+/* Section ground glow — color-coded illuminated floors per station */
+[
+  {z:0,    col:0x6ee7b7},{z:-20,  col:0x67e8f9},{z:-38,  col:0xa78bfa},
+  {z:-56,  col:0xfb923c},{z:-72,  col:0xfbbf24},{z:-90,  col:0x34d399},
+  {z:-108, col:0x60a5fa},{z:-126, col:0xf97316},{z:-144, col:0x38bdf8},
+  {z:-162, col:0xeab308},{z:-180, col:0xf472b6},
+].forEach(({z,col})=>{
+  const w=36,d=22;
+  const gf=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mat(col,.04,true));
+  gf.material.side=THREE.DoubleSide; gf.rotation.x=-Math.PI/2;
+  gf.position.set(0,-5.5,z); scene.add(gf);
+  /* Smaller bright center spot */
+  const gc=new THREE.Mesh(new THREE.PlaneGeometry(12,8),mat(col,.06,true));
+  gc.material.side=THREE.DoubleSide; gc.rotation.x=-Math.PI/2;
+  gc.position.set(0,-5.4,z); scene.add(gc);
+  /* Vertical pillar of light rising from floor */
+  const vb=new THREE.Mesh(new THREE.CylinderGeometry(0,1.5,8,8,1,true),mat(col,.022,true));
+  vb.material.side=THREE.DoubleSide; vb.position.set(0,-1.5,z); scene.add(vb);
+});
+
+/* Deep background rings framing each station */
+[
+  {z:-2,col:0x6ee7b7},{z:-22,col:0x67e8f9},{z:-40,col:0xa78bfa},
+  {z:-58,col:0xfb923c},{z:-74,col:0xfbbf24},{z:-92,col:0x34d399},
+  {z:-110,col:0x60a5fa},{z:-128,col:0xf97316},{z:-146,col:0x38bdf8},
+  {z:-164,col:0xeab308},{z:-182,col:0xf472b6},
+].forEach(({z,col})=>{
+  /* Large outer boundary ring at back of each station */
+  const br=new THREE.Mesh(new THREE.TorusGeometry(14,.06,8,120),mat(col,.08,true));
+  br.rotation.x=Math.PI/2*.35; br.position.set(0,0,z); scene.add(br);
+  const br2=new THREE.Mesh(new THREE.TorusGeometry(10,.04,8,120),mat(col,.055,true));
+  br2.rotation.x=-Math.PI/2*.25; br2.position.set(0,-1,z); scene.add(br2);
+});
+
+/* ══════════════════════════════════════════════════════════
+   INTERSTELLAR CINEMATIC LAYER — nebulae, deep stars, dust streaks
+   Adds volumetric atmosphere so flight feels like a Hollywood blockbuster.
+══════════════════════════════════════════════════════════ */
+
+/* Build a radial-gradient cloud canvas — soft falloff, multi-stop volumetric look */
+function _nebCanvas(hexCenter, hexMid, hexOuter){
+  const cv=document.createElement('canvas');
+  cv.width=cv.height=512;
+  const cx=cv.getContext('2d');
+  const grd=cx.createRadialGradient(256,256,8,256,256,256);
+  grd.addColorStop(0.00, hexCenter);
+  grd.addColorStop(0.18, hexMid);
+  grd.addColorStop(0.55, hexOuter);
+  grd.addColorStop(1.00, 'rgba(0,0,0,0)');
+  cx.fillStyle=grd;
+  cx.fillRect(0,0,512,512);
+  /* Sprinkle a few sub-clouds for texture */
+  for(let i=0;i<14;i++){
+    const rx=64+Math.random()*384, ry=64+Math.random()*384;
+    const rs=40+Math.random()*120;
+    const sg=cx.createRadialGradient(rx,ry,0,rx,ry,rs);
+    sg.addColorStop(0,hexMid);
+    sg.addColorStop(1,'rgba(0,0,0,0)');
+    cx.globalAlpha=0.35+Math.random()*0.25;
+    cx.fillStyle=sg;
+    cx.fillRect(0,0,512,512);
+  }
+  cx.globalAlpha=1;
+  return cv;
+}
+
+/* Interstellar palette — 8 nebula sprites scattered through depth */
+const _nebDefs=[
+  /* Gargantua amber accretion glow */
+  {c:'rgba(255,220,140,0.95)', m:'rgba(255,150,40,0.55)',  o:'rgba(180,60,5,0.18)',   pos:[ -22, 4, -34],  size:62},
+  /* Cosmic violet gas */
+  {c:'rgba(220,180,255,0.85)', m:'rgba(140,90,220,0.50)',  o:'rgba(60,20,120,0.14)',  pos:[  24, -6, -62], size:70},
+  /* Cold cyan-blue deep field */
+  {c:'rgba(180,230,255,0.80)', m:'rgba(60,140,230,0.45)',  o:'rgba(10,40,110,0.14)',  pos:[ -28, 8, -92],  size:74},
+  /* Terse muted teal-emerald */
+  {c:'rgba(180,255,220,0.80)', m:'rgba(60,200,160,0.42)',  o:'rgba(10,80,60,0.13)',   pos:[  18, 10, -118], size:58},
+  /* Deep amber furnace */
+  {c:'rgba(255,200,110,0.90)', m:'rgba(230,110,30,0.50)',  o:'rgba(120,40,5,0.15)',   pos:[ -16, -4, -148], size:66},
+  /* Violet-magenta swirl */
+  {c:'rgba(255,180,240,0.80)', m:'rgba(180,80,200,0.45)',  o:'rgba(70,10,90,0.13)',   pos:[  26, 6, -176],  size:72},
+  /* Teal nebula veil */
+  {c:'rgba(170,250,230,0.75)', m:'rgba(40,180,160,0.40)',  o:'rgba(10,60,70,0.12)',   pos:[ -12, -8, -208], size:80},
+  /* Distant golden haze */
+  {c:'rgba(255,230,160,0.70)', m:'rgba(220,150,60,0.38)',  o:'rgba(100,50,10,0.10)',  pos:[   8, 12, -54],  size:48},
+];
+const nebulae=[];
+_nebDefs.forEach((d,i)=>{
+  const tex=new THREE.CanvasTexture(_nebCanvas(d.c,d.m,d.o));
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex, blending:THREE.AdditiveBlending,
+    depthWrite:false, transparent:true, opacity:0.18 /* Interstellar nebulae are subtle — they hint at depth, never dominate */
+  }));
+  sp.position.set(d.pos[0],d.pos[1],d.pos[2]);
+  sp.scale.set(d.size,d.size,1);
+  scene.add(sp);
+  nebulae.push({sp, baseOp:0.35+Math.random()*0.20, ph:Math.random()*Math.PI*2, spd:0.18+Math.random()*0.22, rotSpd:(Math.random()-0.5)*0.04, baseSize:d.size});
+});
+
+/* Deep parallax starfield — tiny dense field, very far back */
+const deepStars=[];
+{
+  const N=260;
+  const pos=new Float32Array(N*3);
+  const colArr=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    pos[i*3]   = (Math.random()-0.5)*180;
+    pos[i*3+1] = (Math.random()-0.5)*120;
+    pos[i*3+2] = -50 - Math.random()*200;
+    /* Slight blue/gold tint variation */
+    const tint=Math.random();
+    const r = tint<0.55 ? 0.85 : (tint<0.85 ? 1.0 : 0.75);
+    const g = tint<0.55 ? 0.92 : (tint<0.85 ? 0.92 : 0.85);
+    const b = tint<0.55 ? 1.0  : (tint<0.85 ? 0.78 : 1.0);
+    colArr[i*3]=r; colArr[i*3+1]=g; colArr[i*3+2]=b;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(colArr,3));
+  const mt=new THREE.PointsMaterial({size:0.55,sizeAttenuation:true,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,depthWrite:false,vertexColors:true});
+  const pts=new THREE.Points(g,mt);
+  scene.add(pts);
+  /* Track per-star twinkle params (sample-twinkle by global opacity sin) */
+  deepStars.push({pts, mat:mt, ph:Math.random()*Math.PI*2});
+}
+
+/* Cosmic dust streaks — short z-aligned line segments, ~80 of them */
+const dustStreaks=[];
+{
+  const N=80;
+  for(let i=0;i<N;i++){
+    const baseLen=0.8+Math.random()*1.6;
+    const px=(Math.random()-0.5)*40;
+    const py=(Math.random()-0.5)*22;
+    const pz=-Math.random()*210 - 5;
+    const geo=new THREE.BufferGeometry();
+    const arr=new Float32Array(6);
+    arr[0]=px; arr[1]=py; arr[2]=pz;
+    arr[3]=px; arr[4]=py; arr[5]=pz+baseLen;
+    geo.setAttribute('position',new THREE.BufferAttribute(arr,3));
+    const tint=Math.random();
+    const col= tint<0.5 ? 0xbfd9ff : (tint<0.8 ? 0xffe2b0 : 0xc8ffe6);
+    const m=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0.18+Math.random()*0.22,blending:THREE.AdditiveBlending,depthWrite:false});
+    const ln=new THREE.Line(geo,m);
+    scene.add(ln);
+    dustStreaks.push({ln,geo,baseLen,px,py,pz,ph:Math.random()*Math.PI*2});
+  }
+}
+
+/* Gravitational lens flare — horizontal anamorphic bar + radial rays around comet */
+const _lensCv=document.createElement('canvas');
+_lensCv.width=1024; _lensCv.height=1024;
+{
+  const lx=_lensCv.getContext('2d');
+  /* Soft radial bloom core */
+  const core=lx.createRadialGradient(512,512,0,512,512,260);
+  core.addColorStop(0,'rgba(255,245,210,0.95)');
+  core.addColorStop(0.18,'rgba(255,210,120,0.55)');
+  core.addColorStop(0.55,'rgba(255,140,40,0.18)');
+  core.addColorStop(1,'rgba(255,80,0,0)');
+  lx.fillStyle=core; lx.fillRect(0,0,1024,1024);
+  /* Horizontal anamorphic streak (long thin) */
+  const bar=lx.createLinearGradient(0,512,1024,512);
+  bar.addColorStop(0,'rgba(255,200,80,0)');
+  bar.addColorStop(0.5,'rgba(255,250,220,0.9)');
+  bar.addColorStop(1,'rgba(255,200,80,0)');
+  lx.fillStyle=bar;
+  lx.fillRect(0,500,1024,24);
+  /* Six thin radial rays at 0°,30°,60°,90°,120°,150° */
+  lx.save();
+  lx.translate(512,512);
+  for(let k=0;k<6;k++){
+    lx.save();
+    lx.rotate(k*Math.PI/6);
+    const rg=lx.createLinearGradient(-480,0,480,0);
+    rg.addColorStop(0,'rgba(255,210,120,0)');
+    rg.addColorStop(0.5,'rgba(255,240,200,0.55)');
+    rg.addColorStop(1,'rgba(255,210,120,0)');
+    lx.fillStyle=rg;
+    lx.fillRect(-480,-2,960,4);
+    lx.restore();
+  }
+  lx.restore();
+}
+const cometLensFlareTex=new THREE.CanvasTexture(_lensCv);
+const cometLensFlare=new THREE.Sprite(new THREE.SpriteMaterial({
+  map:cometLensFlareTex,blending:THREE.AdditiveBlending,
+  depthWrite:false,transparent:true,opacity:0.55
+}));
+cometLensFlare.scale.set(7.0,7.0,1);
+scene.add(cometLensFlare);
+
+/* ══════════════════════════════════════════════════════════
+   COMET — white-hot head + tapered gold light streak
+══════════════════════════════════════════════════════════ */
+/* White-hot nucleus — small bright point */
+const cometCore=new THREE.Mesh(new THREE.SphereGeometry(.18,16,16),mat(0xffffff,1.0,true));
+cometCore.visible=false; /* hidden — comet is a pure light trail, no ball */
+/* Tight inner gold glow */
+const cometG1=new THREE.Mesh(new THREE.SphereGeometry(.36,14,14),mat(0xffd700,.85,true));
+cometG1.material.side=THREE.BackSide;
+cometG1.visible=false; /* hidden — comet is a pure light trail */
+scene.add(cometCore,cometG1);
+
+/* Dedicated comet point light — moves with nucleus */
+const cometLight=new THREE.PointLight(0xffd700,60,40);
+scene.add(cometLight);
+
+/* ══════════════════════════════════════════════════════════
+   COMET STREAK — 3-LAYER TAPERED RIBBON (screen-space oriented)
+   - Core: bright white-gold, narrow
+   - Glow: wider amber halo
+   - Far halo: very wide soft atmosphere
+   Uses camera RIGHT vector for stable orientation when camera
+   is directly behind comet (cross(dir,toCam) collapses to zero).
+══════════════════════════════════════════════════════════ */
+const STREAK_N=80;
+function makeRibbonLayer(opacity){
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(STREAK_N*2*3);
+  const col=new Float32Array(STREAK_N*2*3);
+  const idx=[];
+  for(let i=0;i<STREAK_N-1;i++){
+    const a=i*2, b=i*2+1, c=(i+1)*2, d=(i+1)*2+1;
+    idx.push(a,b,c, b,d,c);
+  }
+  geo.setIndex(idx);
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({
+    vertexColors:true,transparent:true,opacity:opacity,
+    blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide
+  }));
+  m.frustumCulled=false;
+  scene.add(m);
+  return {geo,pos,col,mesh:m};
+}
+const streakCore=makeRibbonLayer(1.0);
+const streakGlow=makeRibbonLayer(0.55);
+const streakHalo=makeRibbonLayer(0.22);
+/* Keep legacy aliases so any other code referencing them doesn't break */
+const streakGeo=streakCore.geo, streakPos=streakCore.pos, streakCol=streakCore.col;
+
+const streakHistory=[];
+for(let i=0;i<STREAK_N;i++) streakHistory.push(new THREE.Vector3(0,4,18));
+let streakInited=false;
+
+/* Pre-computed scratch */
+const _camRight=new THREE.Vector3();
+function updateStreak(cometPos,camera,t){
+  if(t===undefined) t=0;
+  if(!streakInited){
+    for(let i=0;i<STREAK_N;i++) streakHistory[i].copy(cometPos);
+    streakInited=true;
+  } else {
+    for(let i=STREAK_N-1;i>0;i--) streakHistory[i].copy(streakHistory[i-1]);
+    streakHistory[0].copy(cometPos);
+  }
+
+  /* Camera's world-space right vector — always perpendicular to view.
+     This guarantees ribbon is visible regardless of camera-vs-comet angle. */
+  _camRight.set(1,0,0).applyQuaternion(camera.quaternion);
+
+  /* Travelling light-pulse — a bright bulge that races from head to tail
+     and wraps around. Adds the "shimmering flashing trail" feel. */
+  const pulseTravel=(t*0.85)%1; /* 0..1 head→tail */
+
+  for(let i=0;i<STREAK_N;i++){
+    const here=streakHistory[i];
+    const taper=1-(i/STREAK_N);
+    const t2=taper*taper;
+
+    /* Three layer widths (head→tail tapered) */
+    const wCore=0.40*t2+0.10*taper;
+    const wGlow=1.10*t2+0.22*taper;
+    const wHalo=2.60*taper+0.45;
+
+    /* Per-segment shimmer — three different frequencies so layers feel alive */
+    const shCore = 0.85 + 0.15*Math.sin(t*8 + i*0.4);
+    const shGlow = 0.80 + 0.20*Math.sin(t*5 + i*0.2);
+    const shHalo = 0.70 + 0.30*Math.sin(t*3 + i*0.15);
+
+    /* Travelling pulse bulge — narrow gaussian-style bump at pulseTravel position */
+    const segFrac=i/STREAK_N;
+    const pd=Math.abs(segFrac-pulseTravel);
+    const pulseBoost = 1.0 + 0.55*Math.exp(-(pd*pd)/0.006);
+
+    const baseIdx=i*6;
+    /* CORE — white-hot at head → bright gold → faded amber */
+    streakCore.pos[baseIdx]   = here.x - _camRight.x*wCore;
+    streakCore.pos[baseIdx+1] = here.y - _camRight.y*wCore;
+    streakCore.pos[baseIdx+2] = here.z - _camRight.z*wCore;
+    streakCore.pos[baseIdx+3] = here.x + _camRight.x*wCore;
+    streakCore.pos[baseIdx+4] = here.y + _camRight.y*wCore;
+    streakCore.pos[baseIdx+5] = here.z + _camRight.z*wCore;
+    {
+      const kC = shCore * pulseBoost;
+      const r=1.0*taper*kC;
+      const g=(0.6+0.4*taper)*taper*kC;
+      const b=(0.1+0.5*t2)*taper*kC;
+      streakCore.col[baseIdx]=r;   streakCore.col[baseIdx+1]=g; streakCore.col[baseIdx+2]=b;
+      streakCore.col[baseIdx+3]=r; streakCore.col[baseIdx+4]=g; streakCore.col[baseIdx+5]=b;
+    }
+    /* GLOW — warm amber, softer */
+    streakGlow.pos[baseIdx]   = here.x - _camRight.x*wGlow;
+    streakGlow.pos[baseIdx+1] = here.y - _camRight.y*wGlow;
+    streakGlow.pos[baseIdx+2] = here.z - _camRight.z*wGlow;
+    streakGlow.pos[baseIdx+3] = here.x + _camRight.x*wGlow;
+    streakGlow.pos[baseIdx+4] = here.y + _camRight.y*wGlow;
+    streakGlow.pos[baseIdx+5] = here.z + _camRight.z*wGlow;
+    {
+      const kG = shGlow * (1 + 0.35*(pulseBoost-1));
+      const r=0.95*taper*kG;
+      const g=0.55*taper*kG;
+      const b=0.10*taper*kG;
+      streakGlow.col[baseIdx]=r;   streakGlow.col[baseIdx+1]=g; streakGlow.col[baseIdx+2]=b;
+      streakGlow.col[baseIdx+3]=r; streakGlow.col[baseIdx+4]=g; streakGlow.col[baseIdx+5]=b;
+    }
+    /* HALO — deep amber atmosphere */
+    streakHalo.pos[baseIdx]   = here.x - _camRight.x*wHalo;
+    streakHalo.pos[baseIdx+1] = here.y - _camRight.y*wHalo;
+    streakHalo.pos[baseIdx+2] = here.z - _camRight.z*wHalo;
+    streakHalo.pos[baseIdx+3] = here.x + _camRight.x*wHalo;
+    streakHalo.pos[baseIdx+4] = here.y + _camRight.y*wHalo;
+    streakHalo.pos[baseIdx+5] = here.z + _camRight.z*wHalo;
+    {
+      const kH = shHalo;
+      const r=0.55*taper*kH;
+      const g=0.25*taper*kH;
+      const b=0.05*taper*kH;
+      streakHalo.col[baseIdx]=r;   streakHalo.col[baseIdx+1]=g; streakHalo.col[baseIdx+2]=b;
+      streakHalo.col[baseIdx+3]=r; streakHalo.col[baseIdx+4]=g; streakHalo.col[baseIdx+5]=b;
+    }
+  }
+  streakCore.geo.attributes.position.needsUpdate=true;
+  streakCore.geo.attributes.color.needsUpdate=true;
+  streakGlow.geo.attributes.position.needsUpdate=true;
+  streakGlow.geo.attributes.color.needsUpdate=true;
+  streakHalo.geo.attributes.position.needsUpdate=true;
+  streakHalo.geo.attributes.color.needsUpdate=true;
+}
+
+/* ══════════════════════════════════════════════════════════
+   COMET HEAD HALO SPRITE — radial-gradient burst at nucleus
+══════════════════════════════════════════════════════════ */
+const _haloCv=document.createElement('canvas');
+_haloCv.width=_haloCv.height=256;
+{
+  const hctx=_haloCv.getContext('2d');
+  const grd=hctx.createRadialGradient(128,128,0,128,128,128);
+  grd.addColorStop(0,'rgba(255,255,240,1)');
+  grd.addColorStop(0.12,'rgba(255,230,140,0.95)');
+  grd.addColorStop(0.30,'rgba(255,180,40,0.55)');
+  grd.addColorStop(0.65,'rgba(255,120,10,0.18)');
+  grd.addColorStop(1,'rgba(255,80,0,0)');
+  hctx.fillStyle=grd;
+  hctx.fillRect(0,0,256,256);
+}
+const cometHaloTex=new THREE.CanvasTexture(_haloCv);
+const cometHalo=new THREE.Sprite(new THREE.SpriteMaterial({
+  map:cometHaloTex,blending:THREE.AdditiveBlending,
+  depthWrite:false,transparent:true,opacity:1.0
+}));
+cometHalo.scale.set(2.2,2.2,1);
+cometHalo.visible=false; /* radial sprite looks like a ball — hidden for pure trail aesthetic */
+scene.add(cometHalo);
+
+/* Star-burst cross-flare sprite (anamorphic accent) */
+const _flareCv=document.createElement('canvas');
+_flareCv.width=512; _flareCv.height=64;
+{
+  const fctx=_flareCv.getContext('2d');
+  const grd=fctx.createLinearGradient(0,0,512,0);
+  grd.addColorStop(0,'rgba(255,200,80,0)');
+  grd.addColorStop(0.5,'rgba(255,250,220,1)');
+  grd.addColorStop(1,'rgba(255,200,80,0)');
+  fctx.fillStyle=grd;
+  fctx.fillRect(0,28,512,8);
+}
+const cometFlareTex=new THREE.CanvasTexture(_flareCv);
+const cometFlare=new THREE.Sprite(new THREE.SpriteMaterial({
+  map:cometFlareTex,blending:THREE.AdditiveBlending,
+  depthWrite:false,transparent:true,opacity:0.85
+}));
+cometFlare.scale.set(6.5,0.8,1);
+scene.add(cometFlare);
+
+/* Per-section lit state — initialized to FULLY LIT from frame 0.
+   User wants every Terse panel/animation visible at all times. */
+const secLit=new Float32Array(11).fill(1);
+
+/* ══════════════════════════════════════════════════════════
+   AMBIENT PARTICLE FIELD — 80 tiny white particles across all Z
+══════════════════════════════════════════════════════════ */
+const ambParts=[];
+for(let i=0;i<80;i++){
+  const m=sphere(.028+Math.random()*.022,0xffffff,.06+Math.random()*.04,true);
+  m.position.set((Math.random()-.5)*38,(Math.random()-.5)*24,Math.random()*-200-2);
+  scene.add(m);
+  ambParts.push({m,ph:Math.random()*Math.PI*2,phx:Math.random()*Math.PI*2,vy:.004+Math.random()*.008,oy:m.position.y,ox:m.position.x,oz:m.position.z});
+}
+
+/* Impact burst — 80 gold particles ejected on section hit */
+const impactBursts=[];
+for(let i=0;i<80;i++){
+  const col=[0xffd700,0xffa500,0xffffff,0xfbbf24][i%4];
+  const m=sphere(.08+Math.random()*.06,col,.95,true);
+  m.position.set(0,0,200);
+  m.userData={active:false,vx:0,vy:0,vz:0,life:0};
+  scene.add(m); impactBursts.push(m);
+}
+let impactBurstIdx=0;
+function fireImpactBurst(pos,col){
+  /* Gold + section-color burst */
+  for(let i=0;i<40;i++){
+    const m=impactBursts[(impactBurstIdx++)%80];
+    const a=Math.random()*Math.PI*2, b=Math.random()*Math.PI;
+    const spd=0.12+Math.random()*.22;
+    m.position.copy(pos);
+    m.material.color.setHex(i<20?0xffd700:col);
+    m.userData={active:true,vx:Math.cos(a)*Math.sin(b)*spd,vy:Math.cos(b)*spd*1.4,vz:Math.sin(a)*Math.sin(b)*spd,life:0};
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATION 0 — TOKEN CORE  (z=0)
+══════════════════════════════════════════════════════════ */
+const s0=new THREE.Group(); scene.add(s0);
+
+/* S0 ghost text — large atmospheric number */
+const g0txt=lbl('-68%','#6ee7b7',680,240,198);
+g0txt.scale.set(13.6,4.8,1); g0txt.position.set(7.5,0,-1); g0txt.material.opacity=.10; s0.add(g0txt);
+
+/* ════════════════════════════════════════════════════
+   PREMIUM DATA NUCLEUS — TorusKnot + Crystal Gem + Shards
+   Replaces the basic icosahedron sphere with an elegant
+   high-end aesthetic: mathematical knot, faceted gem core,
+   orbiting crystal shards, and soft volumetric glow.
+   ════════════════════════════════════════════════════ */
+/* Outer: elegant figure-8 torus knot (thin filament) */
+const icoW=new THREE.Mesh(
+  new THREE.TorusKnotGeometry(2.2,0.07,220,20,2,3),
+  new THREE.MeshBasicMaterial({color:0x6ee7b7,transparent:true,opacity:.95,fog:false})
+);
+/* Inner: faceted octahedron gem with emerald glow */
+const icoIn=new THREE.Mesh(
+  new THREE.OctahedronGeometry(0.95,0),
+  new THREE.MeshPhongMaterial({color:0x0a2a18,emissive:0x34d399,emissiveIntensity:1.4,shininess:120,transparent:true,opacity:.95,fog:false})
+);
+/* Middle: secondary torus knot, perpendicular, dimmer accent color */
+const icoM=new THREE.Mesh(
+  new THREE.TorusKnotGeometry(1.65,0.05,180,16,3,5),
+  new THREE.MeshBasicMaterial({color:0x22d3ee,transparent:true,opacity:.55,fog:false})
+);
+icoM.rotation.x=Math.PI/2;
+/* Soft layered glow shells (additive blending, fog-immune) */
+const g0a=new THREE.Mesh(new THREE.SphereGeometry(2.8,24,18),new THREE.MeshBasicMaterial({color:0x6ee7b7,transparent:true,opacity:.35,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+const g0b=new THREE.Mesh(new THREE.SphereGeometry(4.5,24,18),new THREE.MeshBasicMaterial({color:0x22d3ee,transparent:true,opacity:.18,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+const g0c=new THREE.Mesh(new THREE.SphereGeometry(7.0,24,18),new THREE.MeshBasicMaterial({color:0x6ee7b7,transparent:true,opacity:.08,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+[icoW,icoIn,icoM,g0a,g0b,g0c].forEach(m=>s0.add(m));
+
+/* Crystal shards — 8 cone-shaped facets orbiting the core, evoking
+   refracted light and adding sparkle. */
+const crystalShards=[];
+const SHARD_N=8;
+for(let i=0;i<SHARD_N;i++){
+  const ang=(i/SHARD_N)*Math.PI*2;
+  const sh=new THREE.Mesh(
+    new THREE.ConeGeometry(0.10,0.55,4),
+    new THREE.MeshBasicMaterial({color:0xa7f3d0,transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})
+  );
+  sh.position.set(Math.cos(ang)*2.6, Math.sin(ang)*0.2, Math.sin(ang)*2.6);
+  sh.lookAt(0,0,0);
+  s0.add(sh);
+  crystalShards.push({m:sh,baseAng:ang,r:2.6,ph:Math.random()*Math.PI*2});
+}
+
+/* Outer token cloud — atom model: 50 particles in 3 orbital rings */
+const tok0=[];
+const ringInclinations=[Math.PI/6, Math.PI/3, Math.PI/2]; // 30°, 60°, 90°
+for(let ring=0;ring<3;ring++){
+  const inc=ringInclinations[ring];
+  const ringR=4.5+ring*1.2;
+  const count=16+ring*2;
+  for(let j=0;j<count;j++){
+    const ph=(j/count)*Math.PI*2;
+    const m=sphere(.07+Math.random()*.05,
+      [0x6ee7b7,0x34d399,0x22d3ee,0xa7f3d0,0x67e8f9][j%5],.85,true);
+    s0.add(m);
+    tok0.push({m,r:ringR,ph,inc,spd:(.18+ring*.08)*(ring%2?1:-1),ring});
+  }
+}
+
+/* Savings arc — circular arc filling 70% (252°) as secLit rises */
+const S0_ARC_N=40;
+const s0ArcDots=[];
+for(let i=0;i<S0_ARC_N;i++){
+  const ang=(i/S0_ARC_N)*Math.PI*2-Math.PI/2;
+  const filled=i/S0_ARC_N<0.70;
+  const m=new THREE.Mesh(new THREE.SphereGeometry(0.065,6,6),new THREE.MeshBasicMaterial({
+    color:filled?0x6ee7b7:0x0a2a1a,transparent:true,opacity:0.15,
+    blending:THREE.AdditiveBlending,depthWrite:false
+  }));
+  m.position.set(Math.cos(ang)*3.4, Math.sin(ang)*3.4, 0.5);
+  s0.add(m); s0ArcDots.push({m,filled,ang,ph:Math.random()*Math.PI*2});
+}
+/* Heartbeat pulse state */
+let s0PulseT=0;
+
+/* Stat labels removed — holopanel already shows this data */
+const sp0=[];
+
+/* Pulsing rings around core */
+const coreRings=[];
+[3.2,4.8,6.5].forEach((r,i)=>{
+  const m=new THREE.Mesh(new THREE.TorusGeometry(r,.04,8,80),mat(0x6ee7b7,.45,true));
+  m.rotation.x=i*.7+.2; m.rotation.z=i*.4;
+  s0.add(m); coreRings.push({m,spd:(.08+i*.04)*(i%2?1:-1)});
+});
+
+/* Filler words removed — holo panel shows the optimization story */
+const fillerSp=[];
+
+/* Compression beam removed — holo panel shows the compression story */
+const beamParts=[];
+
+/* Word bars — thin rectangles arranged like text lines, then compress */
+const wordBars=[];
+const wordRowDefs=[
+  /* "before" cluster — 3 rows of 5 wide bars spread out */
+  ...(()=>{const out=[];for(let r=0;r<3;r++) for(let b=0;b<5;b++) out.push({x:-8.5+b*2.2,y:2.5-r*1.1,wBase:1.4+Math.random()*.6,isBefore:true,idx:r*5+b});return out;})(),
+  /* "after" cluster — same count but narrower and packed */
+  ...(()=>{const out=[];for(let r=0;r<3;r++) for(let b=0;b<5;b++) out.push({x:-4.2+b*.7,y:-1.2-r*.55,wBase:.38+Math.random()*.14,isBefore:false,idx:r*5+b});return out;})(),
+];
+wordRowDefs.forEach(d=>{
+  const geo=new THREE.BoxGeometry(d.wBase,.18,.06);
+  const col=d.isBefore?0xf87171:0x6ee7b7;
+  const m=new THREE.Mesh(geo,mat(col,d.isBefore?.55:.80,true));
+  m.position.set(d.x,d.y,-2.5+Math.random()*.4);
+  s0.add(m);
+  wordBars.push({m,d,ph:Math.random()*Math.PI*2,wBase:d.wBase});
+});
+
+
+
+
+/* ══════════════════════════════════════════════════════════
+   STATION 1 — PIPELINE TUNNEL  (z=-20)
+══════════════════════════════════════════════════════════ */
+const s1=new THREE.Group(); s1.position.z=-20; scene.add(s1);
+
+const g1txt=lbl('7 STAGES','#67e8f9',800,220,178);
+g1txt.scale.set(16,4.4,1); g1txt.position.set(7,1,-3); g1txt.material.opacity=.09; s1.add(g1txt);
+
+/* Tunnel rings — neon cyan/blue */
+const RING_N=9;
+const pRings=[];
+for(let i=0;i<RING_N;i++){
+  const z=i*-4.5, r=4.8-i*.08;
+  const rM=mat(0x00ffff,.55,true);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.08,12,80),rM);
+  ring.position.z=z; s1.add(ring);
+  const gM=mat(0x00ddff,.14,true);
+  const gR=new THREE.Mesh(new THREE.TorusGeometry(r*1.05,.28,10,80),gM);
+  gR.position.z=z; s1.add(gR);
+  pRings.push({ring,gR,rM,gM});
+}
+
+/* Bright gold data packet traveling the tunnel */
+const s1Packet=new THREE.Mesh(new THREE.SphereGeometry(0.3,16,16),new THREE.MeshBasicMaterial({
+  color:0xffd700,transparent:true,opacity:1.0,blending:THREE.AdditiveBlending,depthWrite:false
+}));
+const s1PacketGlow=sphere(0.7,0xffd700,0.3,true);
+s1Packet.add(s1PacketGlow);
+s1.add(s1Packet);
+let s1PacketT=0;
+
+/* Stage node spheres flanking each ring — text labels removed, geometry tells story */
+const stageNames=['Spell Fix','Whitespace','Filler Out','Phrase Cut','NLP Pass','Rewrite','Cleanup'];
+stageNames.forEach((n,i)=>{
+  const node=sphere(.28,0x67e8f9,.9,true);
+  node.position.set(5.5,0,-4.5*i); s1.add(node);
+  const glow=sphere(.7,0x67e8f9,.18,true);
+  glow.position.copy(node.position); s1.add(glow);
+});
+
+/* Tunnel particles and packets removed — holo panel shows pipeline story */
+const tParts=[];
+const packets=[];
+
+
+/* tokCountLbl and tokPctLbl removed — holopanel shows pipeline stats */
+
+
+/* ══════════════════════════════════════════════════════════
+   STATION 2 — AGENT MONITOR  (z=-38)
+══════════════════════════════════════════════════════════ */
+const s2=new THREE.Group(); s2.position.z=-38; scene.add(s2);
+
+const g2txt=lbl('84%','#a78bfa',480,300,240);
+g2txt.scale.set(9.6,6.0,1); g2txt.position.set(7.5,-1,-2); g2txt.material.opacity=.09; s2.add(g2txt);
+
+/* Terminal frame */
+const pfG=new THREE.EdgesGeometry(new THREE.BoxGeometry(12,7.5,.1));
+const pFr=new THREE.LineSegments(pfG,new THREE.LineBasicMaterial({color:0xa78bfa,transparent:true,opacity:.9,blending:THREE.AdditiveBlending}));
+pFr.position.set(3.5,0,-1); s2.add(pFr);
+const pGl=new THREE.Mesh(new THREE.PlaneGeometry(12.5,8),mat(0xa78bfa,.08,true));
+pGl.material.side=THREE.DoubleSide; pGl.position.copy(pFr.position); s2.add(pGl);
+
+/* Scanlines effect on terminal */
+for(let i=0;i<18;i++){
+  const line=new THREE.Mesh(new THREE.PlaneGeometry(11.8,.02),mat(0xa78bfa,.08,true));
+  line.material.side=THREE.DoubleSide;
+  line.position.set(3.5,-3.5+i*.42,-0.85); s2.add(line);
+}
+
+/* Pixel data matrix removed — holo panel shows monitor data */
+const agCubes=[];
+
+/* Agent brain — dodecahedron looks more like a network brain */
+const agCore=new THREE.Mesh(new THREE.DodecahedronGeometry(1.1,0),phong(0x3b0f8c,0x7c3aed,1.8,.97));
+agCore.position.set(-5.5,0,0); s2.add(agCore);
+
+/* Red warning flash plane — semi-transparent overlay for duplicate detection */
+const dupFlashPlane=new THREE.Mesh(new THREE.PlaneGeometry(40,30),new THREE.MeshBasicMaterial({
+  color:0xff0000,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide
+}));
+dupFlashPlane.position.set(0,0,5); s2.add(dupFlashPlane);
+let s2DupFlashT=0, s2DupFlashNext=3.5;
+
+/* Orbiting rings around brain */
+const agRings=[];
+[1.9,2.9,4.1,5.2].forEach((r,i)=>{
+  const m=new THREE.Mesh(new THREE.TorusGeometry(r,.055,10,64),mat(0xa78bfa,.6+i*.04,true));
+  m.rotation.x=i*.85+.3; m.rotation.z=i*.52;
+  m.position.copy(agCore.position); s2.add(m);
+  agRings.push({m,spd:(.22+i*.06)*(i%2?1:-1)});
+});
+
+/* Brain glow */
+const ag1=sphere(2.1,0xa78bfa,.20,true); ag1.material.side=THREE.BackSide; ag1.position.copy(agCore.position); s2.add(ag1);
+const ag2=sphere(4.0,0x7c3aed,.07,true); ag2.material.side=THREE.BackSide; ag2.position.copy(agCore.position); s2.add(ag2);
+
+/* Agent satellites, connections, stat orbs, diff panel removed — holo panel shows agent monitor */
+const agSats=[];
+const agLines=[];
+
+
+/* Cache hit arc gauge — shows 84% cache efficiency */
+const CACHE_SEGS=32;
+const cacheArc=[];
+for(let i=0;i<CACHE_SEGS;i++){
+  const ang=(i/CACHE_SEGS)*Math.PI*2-Math.PI/2;
+  const r=1.6;
+  const filled=i/CACHE_SEGS<.84;
+  const m=new THREE.Mesh(new THREE.SphereGeometry(.055,5,5),mat(filled?0x6ee7b7:0x1a1a2e,filled?.9:.3,true));
+  m.position.set(agCore.position.x+Math.cos(ang)*r, agCore.position.y+Math.sin(ang)*r, -.5);
+  s2.add(m); cacheArc.push({m,filled,ang});
+}
+/* cacheLbl removed — cache arc gauge shows the 84% visually */
+
+/* turnSprites removed — agent monitor terminal in HTML panel tells the story */
+const turnSprites=[];
+
+/* Duplicate tool call warning badge */
+/* dupLbl and dupSub removed — pulsing red orb tells the story */
+const dupWarn=new THREE.Mesh(new THREE.SphereGeometry(.4,12,12),mat(0xf87171,.9,true));
+dupWarn.position.set(7.5,4.5,-1); s2.add(dupWarn);
+const dupG=sphere(.9,0xf87171,.2,true); dupG.position.copy(dupWarn.position); s2.add(dupG);
+
+/* Conversation bubbles orbiting brain — rounded box shapes, red=dup, green=cached */
+const convBubbles=[];
+const bubbleDefs=[
+  {col:0xf87171,status:'dup',  r:3.8,ph:0.0,  spd:.18},
+  {col:0x6ee7b7,status:'cache',r:3.2,ph:1.26, spd:.22},
+  {col:0xf87171,status:'dup',  r:4.2,ph:2.51, spd:.16},
+  {col:0x6ee7b7,status:'cache',r:3.5,ph:3.77, spd:.20},
+  {col:0xfbbf24,status:'warn', r:2.8,ph:4.71, spd:.26},
+  {col:0x6ee7b7,status:'cache',r:4.5,ph:5.65, spd:.15},
+];
+bubbleDefs.forEach(d=>{
+  const g=new THREE.Group();
+  const box=new THREE.Mesh(new THREE.BoxGeometry(.9,.5,.15),mat(d.col,.22,true));
+  const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(.9,.5,.15)),
+    new THREE.LineBasicMaterial({color:d.col,transparent:true,opacity:.85,blending:THREE.AdditiveBlending}));
+  const glo=sphere(.45,d.col,.14,true);
+  g.add(box,edge,glo);
+  g.position.set(agCore.position.x+Math.cos(d.ph)*d.r, agCore.position.y+Math.sin(d.ph*.7)*0.8, Math.sin(d.ph)*d.r*.5);
+  s2.add(g);
+  convBubbles.push({g,d,ph:d.ph});
+});
+
+/* Cache fill torus — lights up segment by segment */
+const CACHE_TORUS_N=36;
+const cacheTorusSegs=[];
+for(let i=0;i<CACHE_TORUS_N;i++){
+  const ang=(i/CACHE_TORUS_N)*Math.PI*2;
+  const filled=i/CACHE_TORUS_N<.84;
+  const m=new THREE.Mesh(new THREE.TorusGeometry(.28,.06,6,8),mat(filled?0x6ee7b7:0x1a1040,filled?.9:.2,true));
+  m.position.set(agCore.position.x+Math.cos(ang)*2.8, agCore.position.y+Math.sin(ang)*2.8, 0.2);
+  m.rotation.z=ang;
+  s2.add(m); cacheTorusSegs.push({m,filled,ang,idx:i});
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   STATION 3 — FEATURE GALAXY  (z=-56)
+══════════════════════════════════════════════════════════ */
+const s3=new THREE.Group(); s3.position.z=-56; scene.add(s3);
+
+const g3txt=lbl('35+','#fb923c',440,300,240);
+g3txt.scale.set(8.8,6.0,1); g3txt.position.set(7.5,1,-2); g3txt.material.opacity=.09; s3.add(g3txt);
+
+/* Central hub */
+const hub=new THREE.Mesh(new THREE.OctahedronGeometry(1.3,0),phong(0xfb923c,0xfb923c,1.3));
+hub.material.wireframe=true; s3.add(hub);
+const hubG=sphere(2.5,0xfb923c,.12,true); hubG.material.side=THREE.BackSide; s3.add(hubG);
+
+const orbDefs=[
+  {l:'Spell Fix',    sub:'typo→fix',   c:0xfb923c,r:4.4,ph:0,    y:.9, spd:.24},
+  {l:'Filler Cut',   sub:'−40 tok avg',c:0xfbbf24,r:3.2,ph:1.05, y:-.5,spd:.30},
+  {l:'Git Diff',     sub:'−70% lines', c:0xf87171,r:5.2,ph:2.10, y:.3, spd:.19},
+  {l:'Cache API',    sub:'50–90% off', c:0xa78bfa,r:2.5,ph:3.14, y:-.8,spd:.37},
+  {l:'NLP Pass',     sub:'−12 tok avg',c:0x67e8f9,r:4.7,ph:4.19, y:.8, spd:.21},
+  {l:'100% Local',   sub:'zero cloud', c:0x6ee7b7,r:3.7,ph:5.24, y:-.2,spd:.26},
+];
+const fOrbs=[];
+const s3Lines=[];
+orbDefs.forEach(d=>{
+  const g=new THREE.Group();
+  const sz=.52+Math.random()*.16;
+  /* Octahedron for each feature orb — cyberpunk "server" look */
+  const orb=new THREE.Mesh(new THREE.OctahedronGeometry(sz,0),phong(d.c,d.c,2.4));
+  const glo=sphere(sz*2.8,d.c,.20,true);
+  const rin=new THREE.Mesh(new THREE.TorusGeometry(sz*2.4,.06,8,48),mat(d.c,.7,true));
+  const sl=lbl(d.l,'#'+d.c.toString(16).padStart(6,'0'),340,68,58);
+  sl.position.set(0,-sz*3.4,0); sl.scale.set(5,2.4,1);
+  const sub=lbl(d.sub,'#'+d.c.toString(16).padStart(6,'0'),280,52,40);
+  sub.position.set(0,-sz*5.2,0); sub.scale.set(4.2,1.8,1); sub.material.opacity=.45;
+  g.add(orb,glo,rin,sl,sub);
+  g.position.set(d.r*Math.cos(d.ph),d.y,d.r*Math.sin(d.ph)*.55);
+  s3.add(g);
+  fOrbs.push({g,rin,...d,basePos:g.position.clone()});
+  /* Connection line hub → orb */
+  const lineMat=new THREE.LineDashedMaterial({color:d.c,transparent:true,opacity:0.3,
+    blending:THREE.AdditiveBlending,dashSize:0.3,gapSize:0.2});
+  const lineGeo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),g.position.clone()]);
+  const connLine=new THREE.Line(lineGeo,lineMat);
+  connLine.computeLineDistances();
+  s3.add(connLine);
+  s3Lines.push({line:connLine,mat:lineMat,orb:g});
+});
+
+/* hubLbl removed — orb galaxy tells the story */
+
+/* Hub-to-orb spokes */
+const spkM=new THREE.LineBasicMaterial({color:0xfb923c,transparent:true,opacity:.12,blending:THREE.AdditiveBlending});
+fOrbs.forEach(o=>{
+  const pts=[new THREE.Vector3(0,0,0),o.g.position.clone()];
+  s3.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),spkM));
+});
+
+/* S3 — depth rings framing the galaxy */
+[9,12,15].forEach((r,i)=>{
+  const dr=new THREE.Mesh(new THREE.TorusGeometry(r,.04+i*.02,8,100),mat(0xfb923c,.06+i*.02,true));
+  dr.rotation.x=(i-.5)*.4; s3.add(dr);
+});
+/* Micro-dots and constellation lines removed — keep galaxy clean */
+
+/* ══════════════════════════════════════════════════════════
+   STATION 4 — PRICING VAULT  (z=-72)
+══════════════════════════════════════════════════════════ */
+const s4=new THREE.Group(); s4.position.z=-72; scene.add(s4);
+
+const monoDefs=[
+  {x:-4.5,c:0x00ffff,nc:0x00ffff,h:5.5,op:.5,price:'$0'},
+  {x:0,   c:0xfbbf24,nc:0xffd700,h:8.0,op:.95,price:'$4.99'},
+  {x:4.5, c:0xff00ff,nc:0xff44ff,h:4.8,op:.45,price:'$99'},
+];
+const monos=[];
+monoDefs.forEach((d,i)=>{
+  const g=new THREE.Group();
+  const geo=new THREE.BoxGeometry(2.0,d.h,1.0);
+  /* Filled body */
+  g.add(new THREE.Mesh(geo,mat(d.c,d.op*.15)));
+  /* Neon edge wireframe */
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({color:d.nc,transparent:true,opacity:d.op,blending:THREE.AdditiveBlending})));
+  /* Vertical light beam shooting upward (very tall thin cylinder) */
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(.04,.08,40,6),mat(d.nc,d.op*.6,true));
+  beam.position.y=d.h/2+20; g.add(beam);
+  /* price label */
+  const pl=lbl(d.price,'#'+d.nc.toString(16).padStart(6,'0'),280,110,90);
+  pl.position.set(0,d.h/2+2.2,0); g.add(pl);
+  /* horizontal glow rings at top */
+  [0,1].forEach(j=>{
+    const tr=new THREE.Mesh(new THREE.TorusGeometry(1.4+j*.6,.05,8,48),mat(d.nc,d.op*.7,true));
+    tr.rotation.x=Math.PI/2; tr.position.y=d.h/2+.2+j*.4; g.add(tr);
+  });
+  /* Holographic price tag — 3 thin horizontal bars */
+  [-0.18,0,0.18].forEach(dy=>{
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(1.4,.04,.02),mat(d.nc,0.7,true));
+    bar.position.set(0,d.h/2+3.6+dy,0); g.add(bar);
+  });
+  g.position.set(d.x,d.h/2-4,0); s4.add(g);
+  monos.push({g,ph:Math.random()*Math.PI*2,d});
+});
+
+/* Ground glow */
+const gndG=new THREE.Mesh(new THREE.PlaneGeometry(30,22),mat(0xfbbf24,.06,true));
+gndG.material.side=THREE.DoubleSide; gndG.rotation.x=-Math.PI/2; gndG.position.y=-4; s4.add(gndG);
+
+/* Tier labels and ROI labels removed — crystal pillars tell the story visually */
+
+
+/* ══════════════════════════════════════════════════════════
+   STATION 5 — FAQ AURORA  (z=-90)
+══════════════════════════════════════════════════════════ */
+const s5=new THREE.Group(); s5.position.z=-90; scene.add(s5);
+
+const g5txt=lbl('FREE','#34d399',560,260,210);
+g5txt.scale.set(11.2,5.2,1); g5txt.position.set(7,.5,-2); g5txt.material.opacity=.09; s5.add(g5txt);
+
+const auroraWaves=[];
+/* Magenta-cyan cyberpunk palette */
+const auroraColors=[0xff00ff,0x00ffff,0xff44cc,0x00ccff];
+for(let wi=0;wi<4;wi++){
+  const pts=[];
+  for(let k=0;k<=90;k++) pts.push(new THREE.Vector3(-18+k*36/90,wi*1.6-3,0));
+  const curve=new THREE.CatmullRomCurve3(pts);
+  const wM=new THREE.MeshBasicMaterial({
+    color:auroraColors[wi%4],
+    transparent:true,opacity:.5-wi*.06,blending:THREE.AdditiveBlending,depthWrite:false
+  });
+  /* Thicker tubes: radius 0.15 */
+  const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,90,.15+wi*.02,8,false),wM);
+  s5.add(mesh);
+  auroraWaves.push({mesh,wM,pts,wi,ph:Math.random()*Math.PI*2,spd:.32+Math.random()*.32,amp:1.1+Math.random()*.9});
+}
+
+/* Northern lights and aurora particles removed — clean visual focus */
+const northStreaks=[];
+const aurPts=[];
+
+/* Horizon ring */
+const hRing=new THREE.Mesh(new THREE.TorusGeometry(11,.12,8,160),mat(0x34d399,.4,true));
+hRing.rotation.x=Math.PI/2; hRing.position.y=-4.5; s5.add(hRing);
+
+/* testimonials, resLbl, ctaLbl removed — aurora waves are the visual story */
+/* Final download CTA glow — keep the orb, remove the text */
+const ctaGlow=sphere(3.5,0x34d399,.08,true); ctaGlow.material.side=THREE.BackSide; ctaGlow.position.set(0,0,2); s5.add(ctaGlow);
+
+/* ══════════════════════════════════════════════════════════
+   STATION 6 — DEVELOPER API NETWORK  (z=-108)
+   Story: request packets fly in → optimize → fly out green
+══════════════════════════════════════════════════════════ */
+const s6=new THREE.Group(); s6.position.z=-108; scene.add(s6);
+
+/* API core — Torus Knot (p=2,q=3) looks technical and cool */
+const apiCore=new THREE.Mesh(new THREE.TorusKnotGeometry(0.8,0.25,128,16,2,3),phong(0x1e40af,0x3b82f6,2.4,.97));
+const apiWire=new THREE.Mesh(new THREE.TorusKnotGeometry(0.85,0.27,64,8,2,3),mat(0x60a5fa,.45,true,true));
+const apiG1=sphere(2.0,0x3b82f6,.18,true); apiG1.material.side=THREE.BackSide;
+const apiG2=sphere(3.5,0x60a5fa,.07,true); apiG2.material.side=THREE.BackSide;
+[apiCore,apiWire,apiG1,apiG2].forEach(m=>s6.add(m));
+
+/* Holographic scan ring — sweeps around hub */
+const scanRing=new THREE.Mesh(new THREE.TorusGeometry(2.8,.025,6,80),mat(0x60a5fa,.7,true));
+s6.add(scanRing);
+
+/* Orbital rings around API hub */
+const apiRings=[];
+[1.8,3.0,4.5].forEach((r,i)=>{
+  const m=new THREE.Mesh(new THREE.TorusGeometry(r,.04,8,80),mat(0x3b82f6,.35+i*.08,true));
+  m.rotation.x=.8+i*.6; m.rotation.z=i*.45; s6.add(m);
+  apiRings.push({m,spd:(.18+i*.06)*(i%2?1:-1)});
+});
+
+/* Endpoint nodes — 6 positions in a 3D spread */
+const apiEps=[];
+const epAngles=[0,1.05,2.09,3.14,4.19,5.24];
+const epRadii=[5.5,4.8,6.0,5.2,4.5,5.8];
+const epY=[.8,-.6,1.0,-.8,.5,-.4];
+const epCols=[0x60a5fa,0x6ee7b7,0xa78bfa,0xfbbf24,0xf87171,0x67e8f9];
+epAngles.forEach((ang,i)=>{
+  const g=new THREE.Group();
+  /* Hexagonal flat disc — looks like a server node */
+  const hexGeo=new THREE.CylinderGeometry(0.35,0.35,0.08,6);
+  const node=new THREE.Mesh(hexGeo,mat(epCols[i],.85,true));
+  const hexEdge=new THREE.LineSegments(new THREE.EdgesGeometry(hexGeo),
+    new THREE.LineBasicMaterial({color:epCols[i],transparent:true,opacity:0.9,blending:THREE.AdditiveBlending}));
+  const glo=sphere(.65,epCols[i],.2,true);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.5,.03,6,32),mat(epCols[i],.6,true));
+  ring.rotation.x=Math.PI/2;
+  g.add(node,hexEdge,glo,ring);
+  g.position.set(Math.cos(ang)*epRadii[i],epY[i],Math.sin(ang)*epRadii[i]*.65);
+  s6.add(g);
+  apiEps.push({g,ang,r:epRadii[i],y:epY[i],ph:Math.random()*Math.PI*2,col:epCols[i],ring});
+});
+
+/* Request packets: trimmed to 6 for clarity */
+const apiPackets=[];
+for(let i=0;i<6;i++){
+  const inbound=i%2===0;
+  const epIdx=i%6;
+  const m=new THREE.Mesh(new THREE.SphereGeometry(.12,8,8),mat(inbound?0xffff00:0x00ff88,.95,true));
+  const trail=sphere(.28,inbound?0x00ffff:0x00ff88,.25,true); m.add(trail);
+  s6.add(m);
+  apiPackets.push({m,epIdx,t:(i/6),spd:.006+Math.random()*.004,inbound});
+}
+
+/* API ghost text */
+const g6txt=lbl('API','#60a5fa',420,300,242);
+g6txt.scale.set(8.4,6.0,1); g6txt.position.set(7.5,1,-2); g6txt.material.opacity=.09; s6.add(g6txt);
+
+/* Hexagonal grid background plane */
+const apiGrid=new THREE.GridHelper(22,18,0x1e3a8a,0x1e3a8a);
+apiGrid.material.transparent=true; apiGrid.material.opacity=.12;
+apiGrid.rotation.x=.3; apiGrid.position.set(0,-3,3); s6.add(apiGrid);
+
+/* ══════════════════════════════════════════════════════════
+   STATION 7 — VIBE PROJECTS GALAXY  (z=-126)
+   Story: 6 project cards orbit a central node, token savings stream outward
+══════════════════════════════════════════════════════════ */
+const s7=new THREE.Group(); s7.position.z=-126; scene.add(s7);
+
+const g7txt=lbl('BUILD','#f97316',600,240,194);
+g7txt.scale.set(12,4.8,1); g7txt.position.set(7.5,0,-2); g7txt.material.opacity=.09; s7.add(g7txt);
+
+/* Central project hub */
+const projHub=new THREE.Mesh(new THREE.IcosahedronGeometry(.9,1),phong(0xc2410c,0xf97316,1.5,.95));
+projHub.material.wireframe=false;
+const projHubW=new THREE.Mesh(new THREE.IcosahedronGeometry(1.0,1),mat(0xf97316,.45,true,true));
+const projHubG=sphere(1.8,0xf97316,.15,true); projHubG.material.side=THREE.BackSide;
+[projHub,projHubW,projHubG].forEach(m=>s7.add(m));
+
+/* 3 project cards — glowing holographic panels */
+const projCards=[];
+const pcCols=[0xf97316,0x6ee7b7,0x818cf8];
+const pcR=[4.5,5.2,4.8];
+const pcY=[.8,-.5,1.1];
+for(let i=0;i<3;i++){
+  const g=new THREE.Group();
+  const ang=(i/3)*Math.PI*2;
+  /* Card body */
+  const face=new THREE.Mesh(new THREE.BoxGeometry(2.2,1.5,.05),mat(pcCols[i],.18,false));
+  /* Edge glow */
+  const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(2.2,1.5,.05)),
+    new THREE.LineBasicMaterial({color:pcCols[i],transparent:true,opacity:.9,blending:THREE.AdditiveBlending}));
+  /* Inner scanlines */
+  for(let r=0;r<4;r++){
+    const sl=new THREE.Mesh(new THREE.PlaneGeometry(1.8,.008),mat(pcCols[i],.35,true));
+    sl.material.side=THREE.DoubleSide; sl.position.set(0,-.45+r*.3,.04); g.add(sl);
+  }
+  /* Corner dots */
+  [[-1,.65],[ 1,.65],[-1,-.65],[1,-.65]].forEach(([x,y])=>{
+    const d=sphere(.05,pcCols[i],.9,true); d.position.set(x,y,.04); g.add(d);
+  });
+  g.add(face,edge);
+  g.position.set(Math.cos(ang)*pcR[i],pcY[i],Math.sin(ang)*pcR[i]*.6);
+  g.rotation.y=ang+.3; g.rotation.x=Math.sin(i*.8)*.12;
+  s7.add(g);
+  projCards.push({g,ang,r:pcR[i],y:pcY[i],ph:Math.random()*Math.PI*2,spd:.08+i*.012,col:pcCols[i]});
+}
+
+/* Spoke lines: hub → cards */
+const projSpkM=new THREE.LineBasicMaterial({color:0xf97316,transparent:true,opacity:.15,blending:THREE.AdditiveBlending});
+projCards.forEach(c=>{
+  const pts=[new THREE.Vector3(0,0,0),c.g.position.clone()];
+  s7.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),projSpkM));
+});
+
+/* projParts removed — clean visual focus on the holo panel */
+const projParts=[];
+
+/* Holographic scanline sweeping through project cards */
+const s7ScanLine=new THREE.Mesh(new THREE.PlaneGeometry(20,0.04),new THREE.MeshBasicMaterial({
+  color:0xffffff,transparent:true,opacity:0.35,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide
+}));
+s7.add(s7ScanLine);
+
+/* ══════════════════════════════════════════════════════════
+   STATION 8 — TERSE CLOUD NETWORK  (z=-144)
+   Story: developer nodes orbit a cloud, data streams flow up, team analytics bars
+══════════════════════════════════════════════════════════ */
+const s8=new THREE.Group(); s8.position.z=-144; scene.add(s8);
+
+const g8txt=lbl('CLOUD','#38bdf8',680,220,178);
+g8txt.scale.set(13.6,4.4,1); g8txt.position.set(7,0,-2); g8txt.material.opacity=.09; s8.add(g8txt);
+
+/* Cloud core — overlapping spheres for cloud shape */
+const cloudPts=[];
+[[0,0,0],[1.1,0,.5],[-.9,.3,.4],[.5,.6,-.5],[-.4,-.4,-.7],[.8,-.2,-.3],[-1,.2,-.4]].forEach(([x,y,z])=>{
+  const r=.7+Math.random()*.5;
+  const m=new THREE.Mesh(new THREE.SphereGeometry(r,20,20),mat(0x0ea5e9,.18,false));
+  m.position.set(x*1.1,y*.8,z*.8); s8.add(m);
+  const mg=sphere(r*1.4,0x38bdf8,.1,true); mg.position.copy(m.position); mg.material.side=THREE.BackSide; s8.add(mg);
+  cloudPts.push(m);
+});
+const cloudG=sphere(3.5,0x38bdf8,.06,true); cloudG.material.side=THREE.BackSide; s8.add(cloudG);
+
+/* Developer nodes */
+const teamDevs=[];
+const devCols8=[0x6ee7b7,0xa78bfa,0xfbbf24,0xf87171,0x67e8f9,0xfb923c];
+for(let i=0;i<4;i++){
+  const ang=(i/4)*Math.PI*2;
+  const r=6.5;
+  const g=new THREE.Group();
+  const dev=sphere(.35,devCols8[i],.95,true);
+  const devG=sphere(.75,devCols8[i],.2,true);
+  const devRing=new THREE.Mesh(new THREE.TorusGeometry(.55,.04,6,32),mat(devCols8[i],.55,true));
+  devRing.rotation.x=Math.PI/2;
+  g.add(dev,devG,devRing);
+  g.position.set(Math.cos(ang)*r,Math.sin(i*.9)*.8,Math.sin(ang)*r*.6);
+  s8.add(g);
+  teamDevs.push({g,ang,r,y:Math.sin(i*.9)*.8,ph:Math.random()*Math.PI*2,spd:.10+i*.014,col:devCols8[i]});
+}
+
+/* Analytics histogram bars (3D cylinders of different heights) */
+const analyticsBars=[];
+const barHeights=[1.2,2.5,1.8,3.2,2.0];
+barHeights.forEach((h,i)=>{
+  const col=devCols8[i%6];
+  const bar=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,h,8),mat(col,.5,true));
+  bar.position.set(4.5+(i-.5)*.65,h/2-3.5,-1.5);
+  const bEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(.22,.22,h,8)),
+    new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.7,blending:THREE.AdditiveBlending}));
+  bEdge.position.copy(bar.position);
+  s8.add(bar,bEdge);
+  analyticsBars.push({bar,bEdge,h,ph:Math.random()*Math.PI*2,col});
+});
+
+/* Data stream particles dev→cloud */
+const cloudStreams=[];
+for(let i=0;i<24;i++){
+  const devIdx=i%4;
+  const m=sphere(.05,devCols8[devIdx],.8,true);
+  s8.add(m);
+  cloudStreams.push({m,devIdx,t:Math.random(),spd:.007+Math.random()*.005});
+}
+
+/* Scanning beam (horizontal plane sweeping up) */
+const scanBeam=new THREE.Mesh(new THREE.PlaneGeometry(24,.04),mat(0x38bdf8,.55,true));
+scanBeam.material.side=THREE.DoubleSide; scanBeam.position.set(0,-4,0); s8.add(scanBeam);
+
+/* 97% uptime progress arc — 35 segments */
+const S8_ARC_N=36;
+const s8UptimeArc=[];
+for(let i=0;i<S8_ARC_N;i++){
+  const ang=(i/S8_ARC_N)*Math.PI*2-Math.PI/2;
+  const filled=i/S8_ARC_N<0.97;
+  const m=new THREE.Mesh(new THREE.SphereGeometry(0.06,5,5),new THREE.MeshBasicMaterial({
+    color:filled?0x38bdf8:0x1a2a40,transparent:true,opacity:0.15,
+    blending:THREE.AdditiveBlending,depthWrite:false
+  }));
+  m.position.set(Math.cos(ang)*4.5+5,Math.sin(ang)*4.5,0);
+  s8.add(m); s8UptimeArc.push({m,filled,ph:Math.random()*Math.PI*2});
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATION 9 — TOKEN EXCHANGE FLOOR  (z=-162)
+   Story: sell orders (red) + buy orders (green) + trade matches flash
+══════════════════════════════════════════════════════════ */
+const s9=new THREE.Group(); s9.position.z=-162; scene.add(s9);
+
+const g9txt=lbl('EXCHANGE','#eab308',860,200,160);
+g9txt.scale.set(17.2,4.0,1); g9txt.position.set(6,2,-2); g9txt.material.opacity=.09; s9.add(g9txt);
+
+/* Sell order book — NEON RED (#ff0066) descending columns */
+const sellOrders=[];
+[3.4,2.8,2.2,1.7,1.2,.8,.5].forEach((h,i)=>{
+  const g=new THREE.Group();
+  const col=new THREE.Mesh(new THREE.BoxGeometry(.55,h,.55),mat(0xff0066,.5,true));
+  const edg=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(.55,h,.55)),
+    new THREE.LineBasicMaterial({color:0xff0066,transparent:true,opacity:.9,blending:THREE.AdditiveBlending}));
+  g.add(col,edg);
+  g.position.set(-5.8+i*.45,h/2-4.5,0);
+  s9.add(g);
+  sellOrders.push({g,col,h,baseH:h,ph:Math.random()*Math.PI*2});
+});
+
+/* Buy order book — NEON GREEN (#00ff88) ascending columns */
+const buyOrders=[];
+[.5,.8,1.2,1.7,2.2,2.8,3.4].forEach((h,i)=>{
+  const g=new THREE.Group();
+  const col=new THREE.Mesh(new THREE.BoxGeometry(.55,h,.55),mat(0x00ff88,.5,true));
+  const edg=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(.55,h,.55)),
+    new THREE.LineBasicMaterial({color:0x00ff88,transparent:true,opacity:.9,blending:THREE.AdditiveBlending}));
+  g.add(col,edg);
+  g.position.set(2.2+i*.45,h/2-4.5,0);
+  s9.add(g);
+  buyOrders.push({g,col,h,baseH:h,ph:Math.random()*Math.PI*2});
+});
+
+/* Match flash — full-screen white burst plane */
+const s9MatchFlashPlane=new THREE.Mesh(new THREE.PlaneGeometry(60,40),new THREE.MeshBasicMaterial({
+  color:0xffffff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide
+}));
+s9MatchFlashPlane.position.set(0,0,3); s9.add(s9MatchFlashPlane);
+
+/* Central exchange core — pulsing gold sphere where trades match */
+const exchCore=sphere(0.7,0xeab308,.95,true);
+const exchG1=sphere(1.4,0xeab308,.18,true); exchG1.material.side=THREE.BackSide;
+const exchG2=sphere(2.5,0xfbbf24,.06,true); exchG2.material.side=THREE.BackSide;
+exchCore.position.set(-1.4,-1,0); exchG1.position.copy(exchCore.position); exchG2.position.copy(exchCore.position);
+[exchCore,exchG1,exchG2].forEach(m=>s9.add(m));
+
+/* Price chart line — a glowing curve floating in background */
+const chartPts=[];
+for(let i=0;i<=50;i++) chartPts.push(new THREE.Vector3(-9+i*.36,Math.sin(i*.38)*.9+Math.cos(i*.22)*.5-1,-2));
+const chartCurve=new THREE.CatmullRomCurve3(chartPts);
+const chartMesh=new THREE.Mesh(new THREE.TubeGeometry(chartCurve,50,.03,5,false),mat(0xeab308,.6,true));
+s9.add(chartMesh);
+/* Chart data points */
+for(let i=0;i<=50;i+=5){
+  const p=chartPts[i];
+  const dot=sphere(.07,0xfbbf24,.9,true); dot.position.copy(p); s9.add(dot);
+}
+
+/* tradePts removed for clarity — order book + chart tell the story */
+const tradePts=[];
+
+/* Exchange orbital ring */
+const exchRing=new THREE.Mesh(new THREE.TorusGeometry(2.2,.06,8,80),mat(0xeab308,.5,true));
+exchRing.position.copy(exchCore.position); s9.add(exchRing);
+
+/* ══════════════════════════════════════════════════════════
+   STATION 10 — TERSE PALS  (z=-180)
+   Story: cute geometric companion celebrates token savings
+══════════════════════════════════════════════════════════ */
+const s10=new THREE.Group(); s10.position.z=-180; scene.add(s10);
+
+const g10txt=lbl('PALS','#f472b6',520,280,224);
+g10txt.scale.set(10.4,5.6,1); g10txt.position.set(7.5,1,-2); g10txt.material.opacity=.09; s10.add(g10txt);
+
+/* Pal body — main sphere */
+const palBody=new THREE.Mesh(new THREE.SphereGeometry(1.4,32,32),phong(0x9d174d,0xf472b6,1.4,.97));
+const palG1=sphere(2.0,0xf472b6,.18,true); palG1.material.side=THREE.BackSide;
+const palG2=sphere(3.2,0xec4899,.07,true); palG2.material.side=THREE.BackSide;
+[palBody,palG1,palG2].forEach(m=>s10.add(m));
+
+/* Eyes */
+const mkEye=(x)=>{
+  const g=new THREE.Group();
+  const whiteE=new THREE.Mesh(new THREE.SphereGeometry(.22,12,12),mat(0xffffff,.98,false));
+  const pupil=new THREE.Mesh(new THREE.SphereGeometry(.11,10,10),mat(0x000000,.98,false));
+  pupil.position.z=.16;
+  const shine=sphere(.05,0xffffff,.98,false); shine.position.set(.07,.07,.19);
+  g.add(whiteE,pupil,shine);
+  g.position.set(x,.38,.98);
+  palBody.add(g);
+  return g;
+};
+const eyeL=mkEye(-.48);
+const eyeR=mkEye(.48);
+
+/* Token savings arc — partial torus ring around body */
+const PAL_ARC_N=52;
+const palArcDots=[];
+for(let i=0;i<PAL_ARC_N;i++){
+  const ang=(i/PAL_ARC_N)*Math.PI*2-Math.PI/2;
+  const active=i/PAL_ARC_N<.78;
+  const m=sphere(.055,active?0xf472b6:0x4a044e,active?.9:.25,true);
+  m.position.set(Math.cos(ang)*2.2,Math.sin(ang)*2.2,0);
+  s10.add(m);
+  palArcDots.push({m,ang,active,ph:Math.random()*Math.PI*2});
+}
+
+/* Companion shapes orbiting the pal — only 2 */
+const companions=[];
+[[0xfbbf24,'tetra'],[0x6ee7b7,'octa']].forEach(([col,type],i)=>{
+  const ang=(i/2)*Math.PI*2;
+  const r=5.2;
+  let geo;
+  if(type==='tetra') geo=new THREE.TetrahedronGeometry(.6);
+  else if(type==='octa') geo=new THREE.OctahedronGeometry(.6);
+  else if(type==='dode') geo=new THREE.DodecahedronGeometry(.55);
+  else geo=new THREE.IcosahedronGeometry(.58,0);
+  const body=new THREE.Mesh(geo,phong(col,col,1.3,.94));
+  const glow=sphere(1.0,col,.15,true); body.add(glow);
+  body.position.set(Math.cos(ang)*r,Math.sin(i*.9)*.7,Math.sin(ang)*r*.6);
+  s10.add(body);
+  companions.push({m:body,ang,r,ph:Math.random()*Math.PI*2,spd:.14+i*.04});
+});
+
+/* Rainbow celebration + hearts removed — pal + 2 companions is enough */
+const celParts=[];
+const s10Hearts=[];
+
+/* ══════════════════════════════════════════════════════════
+   HOLOGRAPHIC UI PANELS — billboarded plane + halo + corner frame
+══════════════════════════════════════════════════════════ */
+const holoPanels=[];
+
+/* Shared canvas-drawing primitives for panel internals */
+function panelBg(ctx,w,h,bgCol,accent){
+  ctx.fillStyle=bgCol;ctx.fillRect(0,0,w,h);
+  /* subtle grid */
+  ctx.strokeStyle=accent;ctx.globalAlpha=.08;ctx.lineWidth=1;
+  for(let y=0;y<h;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  for(let x=0;x<w;x+=64){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+  ctx.globalAlpha=1;
+  /* header bar */
+  ctx.fillStyle=accent;ctx.globalAlpha=.18;ctx.fillRect(0,0,w,76);
+  ctx.globalAlpha=1;
+  drawBdr(ctx,w,h,accent);
+}
+
+/* Panel S0 — Token Compression Demo */
+const hp0=makeHoloPanel(10,6,(ctx,w,h)=>{
+  const accent='#6ee7b7';
+  drawPanelChrome(ctx,w,h,accent,'TOKEN OPTIMIZER','Real-time compression engine','LIVE');
+  /* Two side-by-side comparison boxes */
+  const boxY=130,boxH=h-260,boxW=(w-110)/2;
+  /* LEFT — BEFORE */
+  roundRect(ctx,32,boxY,boxW,boxH,10);
+  ctx.fillStyle='rgba(248,113,113,0.10)';ctx.fill();
+  ctx.strokeStyle='rgba(248,113,113,0.45)';ctx.lineWidth=1.2;ctx.stroke();
+  /* small badge */
+  pill(ctx,46,boxY+14,80,22,'rgba(248,113,113,0.18)','rgba(248,113,113,0.5)','BEFORE','#f87171');
+  ctx.fillStyle='rgba(248,113,113,0.55)';
+  ctx.font='700 11px "JetBrains Mono",monospace';
+  ctx.fillText('78 tokens',boxW-46,boxY+30);
+  ctx.fillStyle='rgba(255,255,255,0.78)';
+  ctx.font='400 16px "JetBrains Mono",monospace';
+  const beforeLines=['"Can you please help','me with this when you','have a moment, thank','you so much"'];
+  beforeLines.forEach((l,i)=>ctx.fillText(l,46,boxY+72+i*26));
+  /* ARROW center, glowing */
+  glowText(ctx,'→',w/2,boxY+boxH/2+18,accent,'900 56px "JetBrains Mono",monospace',32);
+  /* RIGHT — AFTER */
+  const rx=78+boxW;
+  roundRect(ctx,rx,boxY,boxW,boxH,10);
+  ctx.fillStyle='rgba(110,231,183,0.10)';ctx.fill();
+  ctx.strokeStyle='rgba(110,231,183,0.5)';ctx.lineWidth=1.2;ctx.stroke();
+  pill(ctx,rx+14,boxY+14,70,22,'rgba(110,231,183,0.20)',accent+'88','AFTER',accent);
+  ctx.fillStyle=accent;
+  ctx.font='700 11px "JetBrains Mono",monospace';
+  ctx.fillText('12 tokens',rx+boxW-58,boxY+30);
+  glowText(ctx,'"Help with this"',rx+14,boxY+92,'#fff','700 22px "JetBrains Mono",monospace',8);
+  /* "84% saved" sub-label */
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.font='500 12px "Inter",sans-serif';
+  ctx.fillText('semantically identical',rx+14,boxY+120);
+  /* Bottom progress bar */
+  bar(ctx,32,h-90,w-180,16,0.85,accent,'85%');
+  /* Big BOLD 85% with glow + SAVED label */
+  glowText(ctx,'85%',w-130,h-58,accent,'900 44px "Inter",sans-serif',24);
+  ctx.fillStyle='rgba(255,255,255,0.45)';
+  ctx.font='700 10px "JetBrains Mono",monospace';
+  ctx.fillText('SAVED',w-122,h-32);
+},0x6ee7b7);
+hp0.position.set(0,2.5,-6); s0.add(hp0);
+holoPanels.push({grp:hp0,sec:0});
+
+/* Panel S1 — 7-Stage Pipeline */
+const hp1=makeHoloPanel(10,6,(ctx,w,h)=>{
+  const accent='#67e8f9';
+  drawPanelChrome(ctx,w,h,accent,'7-STAGE PIPELINE','End-to-end optimization','RUNNING');
+  const stages=['Capture','Parse','Analyze','Compress','Verify','Format','Deliver'];
+  const padX=32, gap=10;
+  const totalW=w-padX*2;
+  const bw=(totalW - (stages.length-1)*gap)/stages.length;
+  const stageY=h/2-26;
+  stages.forEach((s,i)=>{
+    const x=padX+i*(bw+gap);
+    /* Pill background */
+    roundRect(ctx,x,stageY,bw,52,14);
+    const grd=ctx.createLinearGradient(x,stageY,x,stageY+52);
+    grd.addColorStop(0,'rgba(103,232,249,0.18)');
+    grd.addColorStop(1,'rgba(103,232,249,0.08)');
+    ctx.fillStyle=grd; ctx.fill();
+    ctx.strokeStyle=accent+'aa'; ctx.lineWidth=1.2; ctx.stroke();
+    /* check mark + label */
+    ctx.fillStyle='#10b981';
+    ctx.beginPath(); ctx.arc(x+16,stageY+26,4.5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.font='600 13px "Inter",sans-serif';
+    ctx.textBaseline='middle';
+    ctx.fillText(s,x+28,stageY+27);
+    ctx.textBaseline='alphabetic';
+    /* Connector arrow */
+    if(i<stages.length-1){
+      ctx.strokeStyle=accent+'66'; ctx.lineWidth=1.4;
+      ctx.beginPath();
+      ctx.moveTo(x+bw,stageY+26); ctx.lineTo(x+bw+gap,stageY+26);
+      ctx.stroke();
+    }
+  });
+  /* Sub stats row */
+  const statsY=stageY+90;
+  const stats=[['12ms','avg latency',accent],['100%','accuracy','#10b981'],['0','data leaks','#fbbf24']];
+  const sw=(w-padX*2)/stats.length;
+  stats.forEach((st,i)=>{
+    const sx=padX+i*sw;
+    roundRect(ctx,sx+8,statsY,sw-16,58,10);
+    ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.stroke();
+    glowText(ctx,st[0],sx+sw/2-30,statsY+30,st[2],'800 22px "Inter",sans-serif',10);
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='500 10px "JetBrains Mono",monospace';
+    ctx.fillText(st[1].toUpperCase(),sx+sw/2-30,statsY+48);
+  });
+},0x67e8f9);
+hp1.position.set(0,2.5,-6); s1.add(hp1);
+holoPanels.push({grp:hp1,sec:1});
+
+/* Panel S2 — Agent Monitor Dashboard */
+const hp2=makeHoloPanel(10,6.4,(ctx,w,h)=>{
+  const accent='#a78bfa';
+  drawPanelChrome(ctx,w,h,accent,'AGENT MONITOR','Live AI session observability','TRACKING');
+  /* Log rows */
+  const rows=[
+    {ok:true, dot:'#10b981', tag:'GPT-4 call',  tok:'1,203 tok', state:'CACHED',          stCol:'#10b981', bg:'rgba(16,185,129,0.06)', stroke:'rgba(16,185,129,0.3)'},
+    {ok:true, dot:'#60a5fa', tag:'Claude call', tok:'856 tok',   state:'NEW',             stCol:'#60a5fa', bg:'rgba(96,165,250,0.06)', stroke:'rgba(96,165,250,0.3)'},
+    {ok:false,dot:'#ef4444', tag:'GPT-4 call',  tok:'1,203 tok', state:'DUPLICATE BLOCKED',stCol:'#ef4444', bg:'rgba(239,68,68,0.10)',  stroke:'rgba(239,68,68,0.45)'},
+    {ok:true, dot:'#60a5fa', tag:'Claude call', tok:'412 tok',   state:'NEW',             stCol:'#60a5fa', bg:'rgba(96,165,250,0.06)', stroke:'rgba(96,165,250,0.3)'},
+  ];
+  const padX=32, rowH=52, rowGap=10, startY=125;
+  rows.forEach((r,i)=>{
+    const y=startY+i*(rowH+rowGap);
+    roundRect(ctx,padX,y,w-padX*2,rowH,10);
+    ctx.fillStyle=r.bg; ctx.fill();
+    ctx.strokeStyle=r.stroke; ctx.lineWidth=1; ctx.stroke();
+    /* status dot */
+    ctx.fillStyle=r.dot;
+    ctx.shadowColor=r.dot; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(padX+20,y+rowH/2,5,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    /* check / warn */
+    ctx.fillStyle=r.ok?'#10b981':'#fbbf24';
+    ctx.font='700 14px "JetBrains Mono",monospace';
+    ctx.textBaseline='middle';
+    ctx.fillText(r.ok?'✓':'⚠',padX+38,y+rowH/2+1);
+    /* call name */
+    ctx.fillStyle='#fff';
+    ctx.font='600 14px "Inter",sans-serif';
+    ctx.fillText(r.tag,padX+60,y+rowH/2+1);
+    /* tok */
+    ctx.fillStyle='rgba(255,255,255,0.55)';
+    ctx.font='500 12px "JetBrains Mono",monospace';
+    ctx.fillText(r.tok,padX+200,y+rowH/2+1);
+    /* state pill on right */
+    ctx.font='700 11px "JetBrains Mono",monospace';
+    const stateW=ctx.measureText(r.state).width+22;
+    pill(ctx,w-padX-stateW-8,y+rowH/2-12,stateW,24,r.bg,r.stCol+'88',r.state,r.stCol);
+    ctx.textBaseline='alphabetic';
+  });
+  /* Bottom stat boxes */
+  const sy=startY+rows.length*(rowH+rowGap)+10;
+  const swid=(w-padX*2-12)/2;
+  /* Cache hit */
+  roundRect(ctx,padX,sy,swid,52,10);
+  ctx.fillStyle='rgba(167,139,250,0.08)'; ctx.fill();
+  ctx.strokeStyle=accent+'55'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.45)';
+  ctx.font='500 10px "JetBrains Mono",monospace';
+  ctx.fillText('CACHE HIT RATE',padX+14,sy+18);
+  glowText(ctx,'84%',padX+14,sy+44,accent,'800 22px "Inter",sans-serif',12);
+  bar(ctx,padX+90,sy+30,swid-110,8,0.84,accent,null);
+  /* Saved today */
+  roundRect(ctx,padX+swid+12,sy,swid,52,10);
+  ctx.fillStyle='rgba(16,185,129,0.06)'; ctx.fill();
+  ctx.strokeStyle='rgba(16,185,129,0.4)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.45)';
+  ctx.font='500 10px "JetBrains Mono",monospace';
+  ctx.fillText('SAVED TODAY',padX+swid+12+14,sy+18);
+  glowText(ctx,'12,400',padX+swid+12+14,sy+44,'#10b981','800 22px "Inter",sans-serif',12);
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.font='600 11px "JetBrains Mono",monospace';
+  ctx.fillText('tok',padX+swid+12+108,sy+44);
+},0xa78bfa);
+hp2.position.set(0,2.5,-6); s2.add(hp2);
+holoPanels.push({grp:hp2,sec:2});
+
+/* Panel S3 — Features grid (9 pills) */
+const hp3=makeHoloPanel(10,6.4,(ctx,w,h)=>{
+  const accent='#fb923c';
+  drawPanelChrome(ctx,w,h,accent,'35+ TECHNIQUES','Comprehensive optimization library','LOADED');
+  const feats=['Typo fix','Filler removal','Whitespace','Markdown strip','Abbreviations','Politeness','Hedging','Phrase compression','+27 more →'];
+  const cols=3,rows=3;
+  const padX=32,padY=120;
+  const gridW=w-padX*2;
+  const cellGap=12;
+  const pw=(gridW-cellGap*(cols-1))/cols;
+  const gridH=h-padY-50;
+  const ph=(gridH-cellGap*(rows-1))/rows;
+  feats.forEach((f,i)=>{
+    const cx=i%cols,cy=Math.floor(i/cols);
+    const x=padX+cx*(pw+cellGap),y=padY+cy*(ph+cellGap);
+    const isLast=i===feats.length-1;
+    roundRect(ctx,x,y,pw,ph,14);
+    if(isLast){
+      const grd=ctx.createLinearGradient(x,y,x+pw,y+ph);
+      grd.addColorStop(0,accent);
+      grd.addColorStop(1,'#ea580c');
+      ctx.fillStyle=grd; ctx.fill();
+      ctx.shadowColor=accent; ctx.shadowBlur=20;
+      ctx.strokeStyle=accent; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#0a0a0a';
+    } else {
+      ctx.fillStyle='rgba(251,146,60,0.10)'; ctx.fill();
+      ctx.strokeStyle='rgba(251,146,60,0.45)'; ctx.lineWidth=1; ctx.stroke();
+      /* small dot */
+      ctx.fillStyle=accent;
+      ctx.beginPath(); ctx.arc(x+16,y+ph/2,3,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.92)';
+    }
+    ctx.font=isLast?'700 14px "Inter",sans-serif':'600 13px "Inter",sans-serif';
+    ctx.textBaseline='middle';
+    if(isLast){
+      ctx.textAlign='center';
+      ctx.fillText(f,x+pw/2,y+ph/2+1);
+      ctx.textAlign='left';
+    } else {
+      ctx.fillText(f,x+26,y+ph/2+1);
+    }
+    ctx.textBaseline='alphabetic';
+  });
+},0xfb923c);
+hp3.position.set(0,2.5,-6); s3.add(hp3);
+holoPanels.push({grp:hp3,sec:3});
+
+/* Panel S4 — Pricing */
+const hp4=makeHoloPanel(10,6,(ctx,w,h)=>{
+  const accent='#fbbf24';
+  drawPanelChrome(ctx,w,h,accent,'PRICING','Pay for what you use','BILLING');
+  const cards=[
+    {name:'FREE', price:'$0',  per:'/mo', sub:'1k tok/day',      popular:false, c:'#67e8f9'},
+    {name:'PRO',  price:'$9',  per:'/mo', sub:'Unlimited',       popular:true,  c:accent},
+    {name:'TEAM', price:'$29', per:'/mo', sub:'10 seats',        popular:false, c:'#a78bfa'},
+  ];
+  const padX=32,pY=125,gap=14;
+  const pW=(w-padX*2-gap*2)/3, pH=h-pY-66;
+  cards.forEach((c,i)=>{
+    const x=padX+i*(pW+gap);
+    roundRect(ctx,x,pY,pW,pH,14);
+    if(c.popular){
+      const grd=ctx.createLinearGradient(x,pY,x,pY+pH);
+      grd.addColorStop(0,'rgba(251,191,36,0.20)');
+      grd.addColorStop(1,'rgba(251,191,36,0.04)');
+      ctx.fillStyle=grd; ctx.fill();
+      ctx.strokeStyle=accent; ctx.lineWidth=1.5;
+      ctx.shadowColor=accent; ctx.shadowBlur=14; ctx.stroke(); ctx.shadowBlur=0;
+    } else {
+      ctx.fillStyle='rgba(255,255,255,0.03)'; ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.10)'; ctx.lineWidth=1; ctx.stroke();
+    }
+    /* tier label */
+    ctx.fillStyle=c.c;
+    ctx.font='700 12px "JetBrains Mono",monospace';
+    ctx.fillText(c.name,x+18,pY+30);
+    /* popular badge */
+    if(c.popular){
+      pill(ctx,x+pW-78,pY+16,64,22,accent,null,'POPULAR','#0a0a0a');
+    }
+    /* big price */
+    glowText(ctx,c.price,x+18,pY+82,'#fff','900 44px "Inter",sans-serif',c.popular?20:8);
+    /* per */
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='500 13px "Inter",sans-serif';
+    const priceW=ctx.measureText(c.price).width;
+    ctx.fillText(c.per,x+24+priceW*0.6,pY+82);
+    /* divider */
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x+18,pY+102); ctx.lineTo(x+pW-18,pY+102); ctx.stroke();
+    /* sub */
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.font='500 13px "Inter",sans-serif';
+    ctx.fillText(c.sub,x+18,pY+126);
+  });
+  /* bottom ROI */
+  ctx.fillStyle='rgba(255,255,255,0.45)';
+  ctx.font='600 11px "JetBrains Mono",monospace';
+  ctx.textAlign='center';
+  ctx.fillText('ROI: 5× IN MONTH 1  ·  30-DAY FREE TRIAL',w/2,h-22);
+  ctx.textAlign='left';
+},0xfbbf24);
+hp4.position.set(0,2.5,-6); s4.add(hp4);
+holoPanels.push({grp:hp4,sec:4});
+
+/* Panel S5 — FAQ */
+const hp5=makeHoloPanel(10,6,(ctx,w,h)=>{
+  const accent='#34d399';
+  drawPanelChrome(ctx,w,h,accent,'FAQ','Frequently asked questions','ANSWERED');
+  const qa=[
+    ['Is my data private?',  'Yes — 100% on-device, no telemetry.'],
+    ['Will it change meaning?','Deterministic NLP. No paraphrasing.'],
+    ['How much will I save?', 'Typical sessions cut 40–70% of tokens.'],
+  ];
+  const padX=32, qY=120, rowH=94;
+  qa.forEach(([q,a],i)=>{
+    const y=qY+i*rowH;
+    /* card */
+    roundRect(ctx,padX,y,w-padX*2,rowH-12,12);
+    ctx.fillStyle='rgba(52,211,153,0.05)'; ctx.fill();
+    ctx.strokeStyle='rgba(52,211,153,0.18)'; ctx.lineWidth=1; ctx.stroke();
+    /* Q chevron */
+    ctx.fillStyle=accent;
+    ctx.font='700 18px "JetBrains Mono",monospace';
+    ctx.fillText('›',padX+18,y+34);
+    /* Q text */
+    ctx.fillStyle=accent;
+    ctx.font='600 15px "Inter",sans-serif';
+    ctx.fillText(q,padX+38,y+34);
+    /* A */
+    ctx.fillStyle='rgba(255,255,255,0.65)';
+    ctx.font='400 13px "Inter",sans-serif';
+    ctx.fillText(a,padX+38,y+62);
+  });
+},0x34d399);
+hp5.position.set(0,2.5,-6); s5.add(hp5);
+holoPanels.push({grp:hp5,sec:5});
+
+/* Panel S6 — Developer API */
+const hp6=makeHoloPanel(10,6,(ctx,w,h)=>{
+  const accent='#60a5fa';
+  drawPanelChrome(ctx,w,h,accent,'POST /api/v1/optimize','REST API · v1.2','200 OK');
+  /* Code block */
+  const padX=32, codeY=120, codeH=h-codeY-90;
+  roundRect(ctx,padX,codeY,w-padX*2,codeH,10);
+  ctx.fillStyle='rgba(2,6,16,0.9)'; ctx.fill();
+  ctx.strokeStyle='rgba(96,165,250,0.25)'; ctx.lineWidth=1; ctx.stroke();
+  /* traffic-light dots */
+  ['#ef4444','#fbbf24','#10b981'].forEach((c,i)=>{
+    ctx.fillStyle=c;
+    ctx.beginPath(); ctx.arc(padX+16+i*16,codeY+16,4,0,Math.PI*2); ctx.fill();
+  });
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.font='500 10px "JetBrains Mono",monospace';
+  ctx.fillText('terminal — bash',padX+72,codeY+20);
+  /* line-by-line color-coded */
+  const segLines=[
+    [['$ ','rgba(255,255,255,0.35)'],['curl','#c084fc'],[' -X POST ','#fff'],['https://api.terse.dev','#60a5fa'],[' \\','rgba(255,255,255,0.35)']],
+    [['    ','#fff'],['-H','#c084fc'],[' "Authorization: Bearer ','#fbbf24'],['tsk_••••••','#fff'],['" \\','#fbbf24']],
+    [['    ','#fff'],['-d','#c084fc'],[" '","#fbbf24"],['{ ','rgba(255,255,255,0.6)'],['"text"','#34d399'],[': ','rgba(255,255,255,0.6)'],['"...","mode"','#34d399'],[':','rgba(255,255,255,0.6)'],['"normal"','#fbbf24'],[' }','rgba(255,255,255,0.6)'],["'",'#fbbf24']],
+    [['','']],
+    [['→ ','#10b981'],['200 OK','#10b981']],
+    [['{ ','rgba(255,255,255,0.7)'],['"saved"','#34d399'],[': ','rgba(255,255,255,0.7)'],['1956','#fbbf24'],[', ','rgba(255,255,255,0.7)'],['"pct"','#34d399'],[': ','rgba(255,255,255,0.7)'],['68','#fbbf24'],[' }','rgba(255,255,255,0.7)']],
+  ];
+  ctx.font='500 14px "JetBrains Mono","SF Mono",monospace';
+  segLines.forEach((segs,li)=>{
+    const y=codeY+52+li*26;
+    let x=padX+16;
+    segs.forEach(([txt,col])=>{
+      if(!txt) return;
+      ctx.fillStyle=col;
+      ctx.fillText(txt,x,y);
+      x+=ctx.measureText(txt).width;
+    });
+  });
+  /* Footer metrics */
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.font='600 11px "JetBrains Mono",monospace';
+  ctx.fillText('LATENCY 12ms  ·  P99 38ms  ·  99.99% UPTIME',padX,h-26);
+  /* Right side speed indicator */
+  ctx.fillStyle=accent;
+  ctx.font='800 18px "Inter",sans-serif';
+  ctx.textAlign='right';
+  ctx.fillText('12ms',w-padX,h-26);
+  ctx.textAlign='left';
+},0x60a5fa);
+hp6.position.set(0,2.5,-6); s6.add(hp6);
+holoPanels.push({grp:hp6,sec:6});
+
+/* Panel S7 — Vibe Projects */
+const hp7=makeHoloPanel(10,6,(ctx,w,h)=>{
+  const accent='#f97316';
+  drawPanelChrome(ctx,w,h,accent,'VIBE PROJECTS','Curated app templates','BROWSING');
+  const tiles=[
+    {icon:'⌨', name:'iOS Keyboard',   desc:'Pinyin RIME engine',  color:'#6ee7b7'},
+    {icon:'⚙', name:'Code Review Bot',desc:'GitHub auto-review',  color:'#a78bfa'},
+    {icon:'✉', name:'Email Composer', desc:'Tone optimizer',      color:'#fbbf24'},
+  ];
+  const padX=32, tY=125, gap=14;
+  const tW=(w-padX*2-gap*2)/3, tH=h-tY-46;
+  tiles.forEach((t,i)=>{
+    const x=padX+i*(tW+gap);
+    roundRect(ctx,x,tY,tW,tH,14);
+    ctx.fillStyle='rgba(249,115,22,0.06)'; ctx.fill();
+    ctx.strokeStyle='rgba(249,115,22,0.35)'; ctx.lineWidth=1; ctx.stroke();
+    /* Icon box */
+    const iconSize=44;
+    roundRect(ctx,x+16,tY+16,iconSize,iconSize,10);
+    ctx.fillStyle=t.color+'22'; ctx.fill();
+    ctx.strokeStyle=t.color+'aa'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle=t.color;
+    ctx.font='600 22px "Inter",sans-serif';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(t.icon,x+16+iconSize/2,tY+16+iconSize/2+1);
+    ctx.textBaseline='alphabetic';
+    ctx.textAlign='left';
+    /* name */
+    ctx.fillStyle='#fff';
+    ctx.font='700 14px "Inter",sans-serif';
+    ctx.fillText(t.name,x+72,tY+36);
+    /* desc */
+    ctx.fillStyle='rgba(255,255,255,0.55)';
+    ctx.font='400 12px "Inter",sans-serif';
+    ctx.fillText(t.desc,x+72,tY+56);
+    /* Mini stats row */
+    ctx.fillStyle='rgba(255,255,255,0.35)';
+    ctx.font='600 10px "JetBrains Mono",monospace';
+    ctx.fillText('★ 4.9   ▼ 12.4k',x+16,tY+iconSize+38);
+    /* Open link */
+    ctx.fillStyle=t.color;
+    ctx.font='700 11px "JetBrains Mono",monospace';
+    ctx.fillText('OPEN →',x+16,tH+tY-16);
+  });
+},0xf97316);
+hp7.position.set(0,2.5,-6); s7.add(hp7);
+holoPanels.push({grp:hp7,sec:7});
+
+/* Panel S8 — Cloud Analytics */
+const hp8=makeHoloPanel(10,6.4,(ctx,w,h)=>{
+  const accent='#38bdf8';
+  drawPanelChrome(ctx,w,h,accent,'TERSE CLOUD','Team usage analytics','SYNCED');
+  /* Bar chart at top */
+  const bars=[120,180,240,160,200,280,220];
+  const chartX=32, chartW=w*0.58 - 40;
+  const chartY=130, chartH=170;
+  const bgap=8;
+  const bw=(chartW - bgap*(bars.length-1))/bars.length;
+  /* Chart background */
+  roundRect(ctx,chartX-8,chartY-12,chartW+16,chartH+44,12);
+  ctx.fillStyle='rgba(56,189,248,0.04)'; ctx.fill();
+  ctx.strokeStyle='rgba(56,189,248,0.18)'; ctx.lineWidth=1; ctx.stroke();
+  /* horizontal grid lines */
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for(let g=0;g<4;g++){
+    const yy=chartY+chartH-(g+1)*(chartH/4);
+    ctx.beginPath(); ctx.moveTo(chartX,yy); ctx.lineTo(chartX+chartW,yy); ctx.stroke();
+  }
+  const days=['M','T','W','T','F','S','S'];
+  bars.forEach((v,i)=>{
+    const x=chartX+i*(bw+bgap);
+    const hh=v/280*chartH;
+    const by=chartY+chartH-hh;
+    roundRect(ctx,x,by,bw,hh,4);
+    const grd=ctx.createLinearGradient(0,by,0,by+hh);
+    grd.addColorStop(0,accent);
+    grd.addColorStop(1,'rgba(56,189,248,0.15)');
+    ctx.fillStyle=grd; ctx.fill();
+    /* day labels */
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='600 11px "JetBrains Mono",monospace';
+    ctx.textAlign='center';
+    ctx.fillText(days[i],x+bw/2,chartY+chartH+22);
+    ctx.textAlign='left';
+  });
+  /* Right side: mini pie + stats */
+  const rx=chartX+chartW+32;
+  const rw=w-rx-32;
+  /* Pie chart */
+  const cx=rx+50, cy=chartY+62, rad=44;
+  const segs=[[.55,accent],[.25,'#a78bfa'],[.12,'#10b981'],[.08,'#fbbf24']];
+  let cur=-Math.PI/2;
+  segs.forEach(([frac,col])=>{
+    const next=cur+frac*Math.PI*2;
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,rad,cur,next);
+    ctx.closePath();
+    ctx.fill();
+    cur=next;
+  });
+  /* inner hole */
+  ctx.fillStyle='rgba(8,12,28,0.96)';
+  ctx.beginPath(); ctx.arc(cx,cy,rad*0.55,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff';
+  ctx.font='800 16px "Inter",sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('100%',cx,cy+5);
+  ctx.textAlign='left';
+  /* Legend */
+  const legend=[['GPT-4','55%',accent],['Claude','25%','#a78bfa'],['Gemini','12%','#10b981'],['Other','8%','#fbbf24']];
+  legend.forEach((lg,i)=>{
+    const ly=chartY+130+i*18;
+    ctx.fillStyle=lg[2];
+    ctx.beginPath(); ctx.rect(rx,ly-6,8,8); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.font='500 11px "Inter",sans-serif';
+    ctx.fillText(lg[0],rx+14,ly);
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='600 11px "JetBrains Mono",monospace';
+    ctx.textAlign='right';
+    ctx.fillText(lg[1],rx+rw,ly);
+    ctx.textAlign='left';
+  });
+  /* Stats row bottom */
+  const stats=[['12','DEVS',accent],['2.4M','TOKENS SAVED','#10b981'],['$890','COST CUT','#fbbf24']];
+  const sy=h-80;
+  const padX=32;
+  const sw=(w-padX*2)/stats.length;
+  stats.forEach((st,i)=>{
+    const sx=padX+i*sw;
+    glowText(ctx,st[0],sx+10,sy+26,st[2],'800 24px "Inter",sans-serif',12);
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='500 10px "JetBrains Mono",monospace';
+    ctx.fillText(st[1],sx+10,sy+46);
+  });
+},0x38bdf8);
+hp8.position.set(0,2.5,-6); s8.add(hp8);
+holoPanels.push({grp:hp8,sec:8});
+
+/* Panel S9 — Token Exchange */
+const hp9=makeHoloPanel(10,6,(ctx,w,h)=>{
+  const accent='#eab308';
+  drawPanelChrome(ctx,w,h,accent,'TOKEN EXCHANGE','Live token marketplace','MATCHING');
+  const padX=32, padY=125;
+  /* Order book table — single column */
+  const tableW=w-padX*2;
+  const rowH=24;
+  const sells=[
+    {price:'0.0142',qty:'1,200',model:'GPT-4'},
+    {price:'0.0141',qty:'  860',model:'Claude'},
+    {price:'0.0140',qty:'2,500',model:'GPT-4'},
+  ];
+  const buys=[
+    {price:'0.0138',qty:'  850',model:'Claude'},
+    {price:'0.0137',qty:'1,640',model:'GPT-4'},
+    {price:'0.0135',qty:'  900',model:'Gemini'},
+  ];
+  /* Header */
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.font='600 10px "JetBrains Mono",monospace';
+  ctx.fillText('PRICE',padX+16,padY-4);
+  ctx.fillText('SIZE',padX+150,padY-4);
+  ctx.fillText('MODEL',padX+260,padY-4);
+  /* Sell rows */
+  sells.forEach((r,i)=>{
+    const y=padY+i*rowH;
+    roundRect(ctx,padX,y,tableW,rowH-2,4);
+    ctx.fillStyle=`rgba(239,68,68,${0.04+i*0.04})`; ctx.fill();
+    /* depth bar */
+    const dpw=(r.qty.trim()==='2,500')?0.9:(r.qty.trim()==='1,200')?0.45:0.32;
+    ctx.fillStyle='rgba(239,68,68,0.12)';
+    ctx.fillRect(padX+tableW*(1-dpw),y,tableW*dpw,rowH-2);
+    ctx.fillStyle='#ef4444';
+    ctx.font='700 13px "JetBrains Mono",monospace';
+    ctx.fillText(r.price,padX+16,y+rowH/2+4);
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.font='500 12px "JetBrains Mono",monospace';
+    ctx.fillText(r.qty,padX+150,y+rowH/2+4);
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.fillText(r.model,padX+260,y+rowH/2+4);
+  });
+  /* Spread divider */
+  const spreadY=padY+sells.length*rowH+4;
+  roundRect(ctx,padX,spreadY,tableW,20,6);
+  ctx.fillStyle='rgba(234,179,8,0.12)'; ctx.fill();
+  ctx.strokeStyle=accent+'88'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle=accent;
+  ctx.font='700 11px "JetBrains Mono",monospace';
+  ctx.textAlign='center';
+  ctx.fillText('── SPREAD: 0.0002 ──',padX+tableW/2,spreadY+14);
+  ctx.textAlign='left';
+  /* Buy rows */
+  buys.forEach((r,i)=>{
+    const y=spreadY+28+i*rowH;
+    roundRect(ctx,padX,y,tableW,rowH-2,4);
+    ctx.fillStyle=`rgba(16,185,129,${0.04+i*0.04})`; ctx.fill();
+    const dpw=(r.qty.trim()==='1,640')?0.7:(r.qty.trim()==='900')?0.36:0.34;
+    ctx.fillStyle='rgba(16,185,129,0.12)';
+    ctx.fillRect(padX,y,tableW*dpw,rowH-2);
+    ctx.fillStyle='#10b981';
+    ctx.font='700 13px "JetBrains Mono",monospace';
+    ctx.fillText(r.price,padX+16,y+rowH/2+4);
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.font='500 12px "JetBrains Mono",monospace';
+    ctx.fillText(r.qty,padX+150,y+rowH/2+4);
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.fillText(r.model,padX+260,y+rowH/2+4);
+  });
+  /* Bottom: Last price */
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.font='600 11px "JetBrains Mono",monospace';
+  ctx.fillText('LAST',padX,h-30);
+  glowText(ctx,'0.0141',padX+50,h-26,accent,'800 18px "JetBrains Mono",monospace',12);
+  ctx.fillStyle='#10b981';
+  ctx.font='700 13px "JetBrains Mono",monospace';
+  ctx.fillText('↑ 2.3%',padX+150,h-26);
+  /* sparkline mini */
+  ctx.strokeStyle=accent; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  const spx=w-padX-120, spy=h-32;
+  const spw=100, sph=18;
+  const sp=[0.4,0.55,0.3,0.6,0.45,0.7,0.55,0.8];
+  sp.forEach((v,i)=>{
+    const px=spx+i*(spw/(sp.length-1));
+    const py=spy+sph*(1-v);
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  });
+  ctx.stroke();
+},0xeab308);
+hp9.position.set(0,2.5,-6); s9.add(hp9);
+holoPanels.push({grp:hp9,sec:9});
+
+/* Panel S10 — Terse Pals */
+const hp10=makeHoloPanel(10,6,(ctx,w,h)=>{
+  const accent='#f472b6';
+  drawPanelChrome(ctx,w,h,accent,'TERSE PALS','Your companion pet','BONDED');
+  const padX=32, padY=125;
+  /* LEFT: pet area */
+  const petW=w*0.4-padX;
+  roundRect(ctx,padX,padY,petW,h-padY-46,14);
+  const petGrd=ctx.createLinearGradient(padX,padY,padX,padY+h-padY-46);
+  petGrd.addColorStop(0,'rgba(244,114,182,0.15)');
+  petGrd.addColorStop(1,'rgba(244,114,182,0.04)');
+  ctx.fillStyle=petGrd; ctx.fill();
+  ctx.strokeStyle='rgba(244,114,182,0.35)'; ctx.lineWidth=1; ctx.stroke();
+
+  /* Cute pet — body sphere + eyes + smile + ears + blush */
+  const cx=padX+petW/2, cy=padY+(h-padY-46)/2 - 8;
+  /* shadow oval */
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(cx,cy+78,42,7,0,0,Math.PI*2); ctx.fill();
+  /* body glow */
+  const bodyGrd=ctx.createRadialGradient(cx-12,cy-20,5,cx,cy,80);
+  bodyGrd.addColorStop(0,'#fce7f3');
+  bodyGrd.addColorStop(0.6,accent);
+  bodyGrd.addColorStop(1,'#9d174d');
+  ctx.fillStyle=bodyGrd;
+  ctx.shadowColor=accent; ctx.shadowBlur=24;
+  ctx.beginPath(); ctx.arc(cx,cy,62,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  /* ears */
+  ctx.fillStyle='#ec4899';
+  ctx.beginPath(); ctx.moveTo(cx-44,cy-32); ctx.lineTo(cx-28,cy-66); ctx.lineTo(cx-18,cy-40); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx+44,cy-32); ctx.lineTo(cx+28,cy-66); ctx.lineTo(cx+18,cy-40); ctx.closePath(); ctx.fill();
+  /* inner ears */
+  ctx.fillStyle='#fbcfe8';
+  ctx.beginPath(); ctx.moveTo(cx-36,cy-38); ctx.lineTo(cx-28,cy-58); ctx.lineTo(cx-22,cy-42); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx+36,cy-38); ctx.lineTo(cx+28,cy-58); ctx.lineTo(cx+22,cy-42); ctx.closePath(); ctx.fill();
+  /* eye whites */
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx-18,cy-8,11,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+18,cy-8,11,0,Math.PI*2); ctx.fill();
+  /* pupils */
+  ctx.fillStyle='#1a0a1a';
+  ctx.beginPath(); ctx.arc(cx-18,cy-6,6,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+18,cy-6,6,0,Math.PI*2); ctx.fill();
+  /* highlights */
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx-16,cy-9,2,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+20,cy-9,2,0,Math.PI*2); ctx.fill();
+  /* blush */
+  ctx.fillStyle='rgba(244,114,182,0.55)';
+  ctx.beginPath(); ctx.arc(cx-32,cy+10,5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+32,cy+10,5,0,Math.PI*2); ctx.fill();
+  /* smile */
+  ctx.strokeStyle='#1a0a1a'; ctx.lineWidth=2.4; ctx.lineCap='round';
+  ctx.beginPath(); ctx.arc(cx,cy+12,10,0.15*Math.PI,0.85*Math.PI); ctx.stroke();
+
+  /* RIGHT: stats column */
+  const rx=padX+petW+16;
+  const rw=w-rx-padX;
+  /* Level + name banner */
+  roundRect(ctx,rx,padY,rw,46,10);
+  ctx.fillStyle='rgba(244,114,182,0.10)'; ctx.fill();
+  ctx.strokeStyle=accent+'88'; ctx.lineWidth=1; ctx.stroke();
+  glowText(ctx,'LV 12',rx+14,padY+30,accent,'800 22px "Inter",sans-serif',12);
+  ctx.fillStyle='#fff';
+  ctx.font='600 14px "Inter",sans-serif';
+  ctx.fillText('Shiro',rx+90,padY+30);
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.font='600 10px "JetBrains Mono",monospace';
+  ctx.textAlign='right';
+  ctx.fillText('HAPPY ✨',rx+rw-14,padY+30);
+  ctx.textAlign='left';
+
+  /* HP bar */
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='600 10px "JetBrains Mono",monospace';
+  ctx.fillText('HP',rx,padY+74);
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+  ctx.font='700 11px "JetBrains Mono",monospace';
+  ctx.textAlign='right';
+  ctx.fillText('87 / 100',rx+rw,padY+74);
+  ctx.textAlign='left';
+  bar(ctx,rx,padY+80,rw,12,0.87,'#10b981',null);
+
+  /* XP bar */
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='600 10px "JetBrains Mono",monospace';
+  ctx.fillText('XP',rx,padY+114);
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+  ctx.font='700 11px "JetBrains Mono",monospace';
+  ctx.textAlign='right';
+  ctx.fillText('234 / 500',rx+rw,padY+114);
+  ctx.textAlign='left';
+  bar(ctx,rx,padY+120,rw,12,0.468,'#60a5fa',null);
+
+  /* Feed counter */
+  roundRect(ctx,rx,padY+148,rw,42,10);
+  ctx.fillStyle='rgba(16,185,129,0.06)'; ctx.fill();
+  ctx.strokeStyle='rgba(16,185,129,0.3)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.font='500 10px "JetBrains Mono",monospace';
+  ctx.fillText('FED TODAY',rx+14,padY+166);
+  glowText(ctx,'1,234',rx+14,padY+186,'#10b981','800 18px "Inter",sans-serif',10);
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.font='600 11px "JetBrains Mono",monospace';
+  ctx.fillText('tokens',rx+72,padY+186);
+},0xf472b6);
+hp10.position.set(0,2.5,-6); s10.add(hp10);
+holoPanels.push({grp:hp10,sec:10});
+
+/* ══════════════════════════════════════════════════════════
+   SCROLL + CAMERA STATE
+══════════════════════════════════════════════════════════ */
+/* Section arrival timestamps — drives panel reveal animations */
+const secArrivalT=new Float64Array(11).fill(-999);
+
+let scrollRaw=0, scrollSmooth=0, scrollVel=0;
+let camPos=cam.position.clone(), camLook=new THREE.Vector3(0,0,0);
+
+let _snapTmr;
+window.addEventListener('scroll',()=>{
+  scrollRaw=window.scrollY;
+  clearTimeout(_snapTmr);
+  _snapTmr=setTimeout(()=>{
+    const mS=Math.max(1,document.documentElement.scrollHeight-window.innerHeight);
+    const nearest=Math.round((scrollRaw/mS)*(NSEC-1));
+    const target=(mS*nearest)/(NSEC-1);
+    if(Math.abs(target-scrollRaw)>12) window.scrollTo({top:target,behavior:'smooth'});
+  },240);
+},{passive:true});
+
+/* ══════════════════════════════════════════════════════════
+   UI STATE
+══════════════════════════════════════════════════════════ */
+let lastSec=-1, impactLast=0;
+const panels=document.querySelectorAll('.panel');
+const lnEls=document.querySelectorAll('.ln');
+const navAs=document.querySelectorAll('.nav-links a');
+const rdEls=document.querySelectorAll('.rd');
+const progEl=document.getElementById('prog');
+const slblEl=document.getElementById('slbl');
+const shintEl=document.getElementById('shint');
+const lnavEl=document.getElementById('lnav');
+const rdotsEl=document.getElementById('rdots');
+const flashEl=document.getElementById('flash');
+const caR=document.getElementById('ca-r');
+const caB=document.getElementById('ca-b');
+
+function updateUI(i){
+  slblEl.textContent=SEC_NAMES[i];
+  panels.forEach((p,j)=>p.classList.toggle('on',j===i));
+  lnEls.forEach((e,j)=>e.classList.toggle('on',j===i));
+  navAs.forEach((e,j)=>e.classList.toggle('on',j===i));
+  rdEls.forEach((e,j)=>e.classList.toggle('on',j===i));
+  rdotsEl.style.setProperty('--ac',SEC_HEX[i]);
+  progEl.style.background=`linear-gradient(90deg,${SEC_HEX[i]},${SEC_HEX[i]}99)`;
+  progEl.style.boxShadow=`0 0 8px ${SEC_HEX[i]}bb`;
+  pL.color.set(SEC_COL[i]);
+  rL.color.set(SEC_COL[(i+2)%NSEC]);
+}
+
+function fireImpact(col){
+  const now=Date.now(); if(now-impactLast<450) return; impactLast=now;
+  flashEl.style.background=col; flashEl.style.opacity='.18';
+  setTimeout(()=>{flashEl.style.opacity='0';},80);
+  caR.style.opacity='1'; caR.style.transform='translateX(-5px)';
+  caB.style.opacity='1'; caB.style.transform='translateX(5px)';
+  setTimeout(()=>{caR.style.opacity='0';caR.style.transform='translateX(0)';
+    caB.style.opacity='0';caB.style.transform='translateX(0)';},240);
+  burstP(window.innerWidth/2,window.innerHeight/2,col,55);
+  setTimeout(()=>burstP(window.innerWidth/2,window.innerHeight/2,col,25),100);
+}
+
+function burstP(cx,cy,col,n){
+  for(let i=0;i<n;i++){
+    const p=document.createElement('div'); p.className='bp';
+    const a=(Math.PI*2*i)/n+Math.random()*.5,d=45+Math.random()*210,sz=1.5+Math.random()*3;
+    p.style.cssText=`width:${sz}px;height:${sz}px;background:${col};box-shadow:0 0 ${sz*2}px ${col};left:${cx}px;top:${cy}px;--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px;--dur:${.4+Math.random()*.45}s`;
+    document.body.appendChild(p); setTimeout(()=>p.remove(),900);
+  }
+}
+
+function goSec(i){
+  const maxSy=document.documentElement.scrollHeight-window.innerHeight;
+  window.scrollTo({top:maxSy*i/(NSEC-1),behavior:'smooth'});
+}
+
+/* ══════════════════════════════════════════════════════════
+   PIPELINE STAGE TICKER
+══════════════════════════════════════════════════════════ */
+let pipeIdx=0;
+const psDivs=Array.from(document.querySelectorAll('.pstage'));
+setInterval(()=>{
+  psDivs.forEach((e,i)=>e.classList.toggle('lit',i<=pipeIdx));
+  pipeIdx=(pipeIdx+1)%psDivs.length;
+  if(pipeIdx===0) setTimeout(()=>psDivs.forEach(e=>e.classList.remove('lit')),700);
+},500);
+
+/* ══════════════════════════════════════════════════════════
+   MAIN ANIMATION LOOP
+══════════════════════════════════════════════════════════ */
+const clock=new THREE.Clock();
+
+let matchFlash=0;
+let _lastT=0;
+
+/* ── Intro DISABLED — page opens with first screen already lit and centered.
+   User wants every Terse screen visible from the very first frame. */
+let introT=999;
+const INTRO_DUR=0;
+let introDone=true;
+const introCometStart=new THREE.Vector3(0,4,0);
+const introCometEnd=new THREE.Vector3(0,4,0);
+
+function animate(){
+  requestAnimationFrame(animate);
+  const t=clock.getElapsedTime();
+  const dt=Math.min(t-_lastT,.05); _lastT=t;
+
+  /* ── Hero intro ── */
+  if(!introDone){
+    introT+=dt;
+    if(introT>=INTRO_DUR){
+      introDone=true;
+    }
+  }
+
+  /* ── Scroll — heavily damped silky spring (no jitter) ── */
+  const maxSy=Math.max(1,document.documentElement.scrollHeight-window.innerHeight);
+  /* Higher damping (0.91) + lower spring (0.06) = cinematic silk */
+  scrollVel=Math.max(-45,Math.min(45,scrollVel*.91+(scrollRaw-scrollSmooth)*.06));
+  /* dead-stop snap when very close */
+  if(Math.abs(scrollRaw-scrollSmooth)<0.5&&Math.abs(scrollVel)<0.4){scrollSmooth=scrollRaw;scrollVel=0;}
+  scrollSmooth=Math.max(0,Math.min(maxSy,scrollSmooth+scrollVel));
+  const pct=scrollSmooth/maxSy;
+  const rawSec=pct*(NSEC-1);
+  const sec=Math.min(NSEC-1,Math.max(0,Math.round(rawSec)));
+  const fi=Math.floor(rawSec);
+  const frac=rawSec-fi;
+  const ez=ease3(Math.max(0,Math.min(1,frac)));
+
+  progEl.style.width=(pct*100)+'%';
+  shintEl.classList.toggle('gone',scrollSmooth>window.innerHeight*.35);
+  lnavEl.classList.toggle('on',scrollSmooth>window.innerHeight*.18);
+  rdotsEl.classList.toggle('on',scrollSmooth>window.innerHeight*.18);
+
+  if(sec!==lastSec){
+    updateUI(sec);
+    secArrivalT[sec]=t;
+    if(lastSec>=0){
+      fireImpact(SEC_HEX[sec]);
+    }
+    lastSec=sec;
+  }
+
+  /* ── Comet position — drives scene traversal ── */
+  const clampedPct=Math.max(0,Math.min(1,pct));
+  cometCurve.getPointAt(clampedPct,cometPosV);
+
+  /* ── INTRO OVERRIDE — sweep comet from up-right offscreen down into S0 ── */
+  if(!introDone){
+    const p=Math.min(1,introT/INTRO_DUR);
+    const e=1-Math.pow(1-p,3); /* ease-out cubic */
+    cometPosV.copy(introCometStart).lerp(introCometEnd,e);
+  }
+
+  /* ── Section power-on — ALL panels lit from the start ──
+     User feedback: any delay between camera arrival and panel lighting
+     looks "late". Solution: ignite EVERY panel as soon as intro begins so
+     the next-section panel is already glowing and animating before the
+     camera ever turns toward it. Burst still fires per-section on hit. */
+  const SEC_Z=[0,-20,-38,-56,-72,-90,-108,-126,-144,-162,-180];
+  for(let i=0;i<NSEC;i++){
+    /* Light EVERY section immediately — no thresholds, no waiting. */
+    if(!secImpacted[i]) secImpacted[i]=1;
+    /* Visual impact burst — still fires only at the actual hit moment so
+       you get the cinematic pop when comet crosses each section. */
+    if(!secBurstFired[i] && Math.abs(cometPosV.z-SEC_Z[i])<5.0){
+      secBurstFired[i]=1;
+      fireImpactBurst(cometPosV,parseInt(SEC_HEX[i].slice(1),16));
+    }
+    /* Near-instant ramp (0.20/frame ≈ 0.08s to full bright) — once lit stays lit forever */
+    secLit[i]=Math.min(1,secLit[i]+.20);
+  }
+
+  /* Comet proximity — gold point light surges on approach */
+  const nearSZ=SEC_Z[sec];
+  const cometNearDist=Math.abs(cometPosV.z-nearSZ);
+  const nearFactor=Math.max(0,1-cometNearDist/8);
+  pL.intensity=16+nearFactor*45;
+  pL.color.setHex(nearFactor>.3?0xffd700:0x6ee7b7);  // gold when comet nearby
+
+  /* ── Camera tangent (used for camera follow + streak orientation) ── */
+  const lookt=Math.min(1,clampedPct+0.04);
+  const ahead=new THREE.Vector3(); cometCurve.getPointAt(lookt,ahead);
+  const tangent=ahead.clone().sub(cometPosV).normalize();
+  if(tangent.lengthSq()<0.0001) tangent.set(0,0,-1);
+
+  /* Comet head meshes — core + tight glow + halo sprite + anamorphic flare */
+  cometCore.position.copy(cometPosV);
+  cometG1.position.copy(cometPosV);
+  cometCore.material.opacity=.95+Math.sin(t*12)*.05;
+  cometG1.material.opacity=.78+Math.sin(t*6)*.10;
+  cometHalo.position.copy(cometPosV);
+  cometHalo.scale.setScalar(2.0+Math.sin(t*5)*0.25);
+  cometHalo.material.opacity=0.9+Math.sin(t*7)*0.10;
+  cometFlare.position.copy(cometPosV);
+  cometFlare.material.rotation=Math.sin(t*0.5)*0.08;
+  cometFlare.scale.set(6.4+Math.sin(t*4)*0.9,0.78+Math.sin(t*7)*0.18,1);
+  cometFlare.material.opacity=0.60+0.40*Math.abs(Math.sin(t*3));
+  /* Gravitational lens flare — sits at comet, slow rotation, dramatic pulse */
+  cometLensFlare.position.copy(cometPosV);
+  cometLensFlare.material.rotation=t*0.08;
+  const lensPulse=0.45+0.40*Math.abs(Math.sin(t*3));
+  cometLensFlare.material.opacity=lensPulse;
+  const lensSc=6.8+Math.sin(t*2.2)*0.9;
+  cometLensFlare.scale.set(lensSc,lensSc,1);
+  cometLight.position.copy(cometPosV);
+  cometLight.intensity=55+Math.sin(t*8)*10;
+
+  /* ── Impact burst particle physics ── */
+  impactBursts.forEach(m=>{
+    if(!m.userData.active) return;
+    m.userData.life+=0.022;
+    m.position.x+=m.userData.vx;
+    m.position.y+=m.userData.vy;
+    m.position.z+=m.userData.vz;
+    m.userData.vy-=0.004;
+    m.material.opacity=Math.max(0,1-m.userData.life*1.1);
+    if(m.userData.life>1){m.userData.active=false;m.position.set(0,0,200);}
+  });
+
+  /* ── Camera follows comet — TIGHT direct tracking, comet always in frame ── */
+  /* Direct positioning (no lerp) guarantees comet is always at a fixed
+     screen position regardless of scroll speed. Smoothness comes from
+     scrollSmooth lerp (already damped above), so camera is butter-smooth
+     without ever lagging behind the comet. */
+  /* Camera sits behind+above comet, looks AHEAD where the holo panel sits.
+     Larger behindDist + lookAt at panel position = panel fills the frame. */
+  const behindDist=7.5;
+  const aboveDist=2.5;
+  const tPos=cometPosV.clone()
+    .addScaledVector(tangent,-behindDist)
+    .add(new THREE.Vector3(0,aboveDist,0));
+  /* lookAt point is where the holo panel will appear (6 ahead, slightly up) */
+  const tLook=cometPosV.clone().addScaledVector(tangent,6).add(new THREE.Vector3(0,0.5,0));
+
+  /* Smooth damped chase — 0.06 = cinematic glide (Interstellar feel). */
+  camPos.lerp(tPos,0.06);
+  camLook.lerp(tLook,0.06);
+  cam.position.copy(camPos);
+  cam.lookAt(camLook);
+  cam.up.set(0,1,0);
+
+  /* Update tapered streak (must run AFTER camera position is set) */
+  updateStreak(cometPosV,cam,t);
+
+  /* Point light follows camera */
+  pL.position.set(camPos.x,camPos.y+5,camPos.z+3);
+
+  /* ── AMBIENT PARTICLE FIELD — all sections ── */
+  ambParts.forEach(p=>{
+    p.m.position.y=p.oy+Math.sin(t*.22+p.ph)*1.8;
+    p.m.position.x=p.ox+Math.sin(t*.14+p.phx)*.9;
+    p.m.material.opacity=.04+Math.sin(t*.5+p.ph)*.04;
+  });
+
+  /* ── INTERSTELLAR NEBULAE — gentle rotation + breath-pulse opacity ── */
+  nebulae.forEach(n=>{
+    n.sp.material.rotation += n.rotSpd*dt;
+    const breath=n.baseOp + 0.18*Math.sin(t*n.spd + n.ph);
+    n.sp.material.opacity=breath;
+    const sc=n.baseSize*(1 + 0.025*Math.sin(t*n.spd*0.7 + n.ph));
+    n.sp.scale.set(sc,sc,1);
+  });
+
+  /* ── DEEP PARALLAX STARFIELD — slow global twinkle ── */
+  deepStars.forEach(d=>{
+    d.mat.opacity=0.72+0.22*Math.sin(t*0.6+d.ph);
+  });
+
+  /* ── COSMIC DUST STREAKS — stretch with scroll velocity for motion blur ── */
+  {
+    const speedK=Math.min(1,Math.abs(scrollVel)/14);
+    const stretch=1 + speedK*4.5;
+    dustStreaks.forEach(d=>{
+      const arr=d.geo.attributes.position.array;
+      const ln=d.baseLen*stretch;
+      arr[3]=d.px;
+      arr[4]=d.py;
+      arr[5]=d.pz+ln;
+      d.geo.attributes.position.needsUpdate=true;
+      d.ln.material.opacity=(0.16+0.18*Math.sin(t*0.7+d.ph))*(0.7+0.6*speedK);
+    });
+  }
+
+  /* ── STATION 0 — FULLY LIT from frame 0 (user wants bright first screen) ── */
+  {const L=1; const minL=1; /* FORCED LIT — every Terse animation always on */
+  /* Speed up with lit factor */
+  icoW.rotation.y=t*(.22+L*.35); icoW.rotation.x=t*(.13+L*.2);
+  icoIn.rotation.y=-t*(.15+L*.25); icoIn.rotation.z=t*(.05+L*.1);
+  icoM.rotation.y=t*(.09+L*.18); icoM.rotation.z=-t*(.07+L*.12);
+  g0a.rotation.y=t*.06; g0b.rotation.z=t*.03; g0c.rotation.x=t*.025;
+  /* Glow shells BRIGHT */
+  g0a.material.opacity=.40+Math.sin(t*1.2)*.05; g0b.material.opacity=.22+Math.sin(t*.9)*.04; g0c.material.opacity=.10+Math.sin(t*.7)*.02;
+  icoW.material.opacity=.95;
+  /* Crystal shards orbit and twinkle */
+  crystalShards.forEach(s=>{
+    const a=s.baseAng+t*0.25;
+    s.m.position.set(Math.cos(a)*s.r, Math.sin(a*2+s.ph)*0.35, Math.sin(a)*s.r);
+    s.m.lookAt(0,0,0);
+    s.m.material.opacity=.55+Math.sin(t*2.8+s.ph)*.40;
+    const sc=0.85+Math.sin(t*2.2+s.ph)*0.25;
+    s.m.scale.set(sc,sc*1.4,sc);
+  });
+  /* Heartbeat PULSE every ~2 seconds when lit */
+  s0PulseT=t;
+  const pulsePhase=(t%2)/2; // 0→1 every 2 seconds
+  const heartBeat=L>0.3&&pulsePhase<0.15?1+Math.sin(pulsePhase/0.15*Math.PI)*0.4:1;
+  icoW.scale.setScalar(heartBeat); icoIn.scale.setScalar(heartBeat); icoM.scale.setScalar(heartBeat);
+  coreRings.forEach(r=>{
+    r.m.rotation.y+=r.spd*(.014+L*.025);
+    r.m.rotation.x+=r.spd*(.007+L*.012);
+    r.m.material.opacity=.35+minL*.55;
+  });
+  /* Atom-model ring orbits */
+  tok0.forEach(o=>{
+    o.ph+=o.spd*(.012+L*.015);
+    // Rotate ring plane with inclination
+    const nx=Math.cos(o.ph)*o.r;
+    const nyRaw=Math.sin(o.ph)*o.r*Math.sin(o.inc);
+    const nzRaw=Math.sin(o.ph)*o.r*Math.cos(o.inc);
+    o.m.position.set(nx, nyRaw, nzRaw);
+    o.m.material.opacity=minL*0.5+Math.sin(t*.8+o.ph)*(0.3*Math.max(L,0.1));
+  });
+  /* Savings arc fills in as secLit rises */
+  s0ArcDots.forEach((d,i)=>{
+    const fillFrac=i/S0_ARC_N;
+    const revealed=fillFrac<L*0.70+(1-L)*0.15;
+    d.m.material.color.setHex(d.filled?0x6ee7b7:0x0a2a1a);
+    d.m.material.opacity=revealed?(minL*0.6+Math.sin(t*2+d.ph)*.25):minL*0.08;
+  });
+  /* Filler words shrink and orbit faster when lit — visually "being removed" */
+  fillerSp.forEach(f=>{
+    f.ang+=f.spd*(.006+L*.012);
+    f.s.position.x=Math.cos(f.ang)*f.r;
+    f.s.position.z=Math.sin(f.ang)*f.r*.65;
+    f.s.position.y+=Math.sin(t*.3+f.ph)*.008;
+    const fade=Math.sin(t*f.spd*0.5+f.fadePhase);
+    f.s.material.opacity=Math.max(.02,L*(.35+fade*.28));
+    f.s.scale.setScalar(0.3+Math.max(0,fade)*.7);
+  });
+  /* Beam compression — particles race inward faster when lit */
+  const burstCycle=(t*(.25+L*.4))%1;
+  const corePulse=burstCycle<.1?burstCycle*10*.15:.15*(1-burstCycle*.5);
+  icoW.scale.setScalar(1+corePulse*.18*L);
+  beamParts.forEach(p=>{
+    const myPhase=p.ph/(Math.PI*2);
+    const localT=(burstCycle+myPhase)%1;
+    const r=localT<.5?p.startR*(1-localT*2):p.startR;
+    p.m.position.set(Math.cos(p.ang)*Math.sin(p.inc)*r,Math.cos(p.inc)*r*.5,Math.sin(p.ang)*Math.sin(p.inc)*r);
+    p.m.material.opacity=L*(localT<.5?(.85*(1-localT*1.5)):0);
+  });
+  /* Word bars — before bars widen→shrink, after bars glow tighter */
+  wordBars.forEach(b=>{
+    if(b.d.isBefore){
+      /* Scale x from full to compressed, animated with a slow pulse */
+      const compress=1-L*0.68+Math.sin(t*.35+b.ph)*.04;
+      b.m.scale.x=Math.max(0.25,compress);
+      b.m.material.opacity=L*(.35+Math.sin(t*.5+b.ph)*.18);
+      b.m.position.y=b.d.y+Math.sin(t*.28+b.ph)*.08;
+    } else {
+      /* After bars glow bright when lit */
+      b.m.material.opacity=L*(.60+Math.sin(t*1.2+b.ph)*.28);
+      b.m.position.y=b.d.y+Math.sin(t*.32+b.ph)*.05;
+    }
+  });}
+
+  /* ── STATION 1 — pipeline lights up stage by stage ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 1 always on */
+  const litSpeed=1.15+L*1.8;
+  const litIdx=Math.floor(t*litSpeed)%RING_N;
+  const stageColors=[0x00ffff,0x00ddff,0x22d3ee,0x00ffff,0x67e8f9,0x00ccff,0x22d3ee,0x00ffff,0x67e8f9];
+  pRings.forEach((pr,i)=>{
+    const lit=i===litIdx;
+    const prevLit=i<litIdx;
+    pr.ring.rotation.z=t*(.07+i*.022+L*.04)*(i%2?1:-1);
+    pr.gR.rotation.z=pr.ring.rotation.z;
+    pr.rM.opacity=lit?(.85+L*.15):prevLit?(.35+L*.15):0.12+minL*.06;
+    pr.gM.opacity=lit?(.28+L*.12):prevLit?(.10+L*.05):0.05+minL*.03;
+    pr.rM.color.setHex(lit?stageColors[i]:prevLit?0x004466:0x001122);
+  });
+  tParts.forEach(p=>{p.z-=p.spd*(1+L); if(p.z<-38)p.z=4; p.m.position.z=p.z; p.m.material.opacity=.35+minL*.55+L*.4;});
+  packets.forEach(p=>{p.z-=p.spd*(1+L*.8); if(p.z<-38)p.z=2; p.m.position.z=p.z; p.m.material.opacity=.35+minL*.55+L*.4;});
+  /* Gold data packet traverses tunnel */
+  s1PacketT=(s1PacketT+0.008*(1+L))%1;
+  s1Packet.position.set(0,0,s1PacketT*-38+2);
+  s1Packet.material.opacity=minL*0.6+L*0.4;
+  s1PacketGlow.material.opacity=(minL*0.2+L*0.3)*Math.max(0,Math.sin(s1PacketT*Math.PI));}
+
+  /* ── STATION 2 — agent monitor powers on ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 2 always on */
+  agCore.rotation.y=t*(.42+L*.4); agCore.rotation.x=t*(.18+L*.15);
+  ag1.rotation.y=-t*(.2+L*.2); ag2.rotation.y=t*(.11+L*.1);
+  agRings.forEach(r=>{
+    r.m.rotation.y+=r.spd*(.013+L*.018);
+    r.m.rotation.z+=Math.abs(r.spd)*(.009+L*.012);
+    r.m.material.opacity=.35+minL*.55+L*.45;
+  });
+  agCubes.forEach(c=>{c.m.material.opacity=.35+minL*.55+L*c.base*(.4+Math.sin(t*c.spd+c.ph)*.6);});
+  /* Animated cache ring — segments light up one by one in sequence */
+  cacheTorusSegs.forEach((s,i)=>{
+    const seqT=((t*0.6) % 1); // 0→1 looping
+    const segFrac=i/CACHE_TORUS_N;
+    const lit=seqT>segFrac&&seqT<segFrac+0.3;
+    if(s.filled){
+      s.m.material.color.setHex(lit?0xffd700:0x6ee7b7);
+      s.m.material.opacity=minL*0.3+(lit?L*0.9:L*0.5);
+    } else {
+      s.m.material.color.setHex(0x1a1040);
+      s.m.material.opacity=minL*0.06;
+    }
+    s.m.rotation.x=t*.25; s.m.rotation.y=t*.18;
+  });
+  /* Dup flash — periodic red burst */
+  if(L>0.3&&t>s2DupFlashNext){
+    s2DupFlashT=t; s2DupFlashNext=t+3+Math.random()*2;
+  }
+  const dfAge=t-s2DupFlashT;
+  dupFlashPlane.material.opacity=dfAge<0.15?L*0.3*(1-dfAge/0.15):0;
+  /* Cache arc brightens when lit */
+  cacheArc.forEach((seg,i)=>{
+    if(seg.filled) seg.m.material.opacity=minL*0.2+L*(.65+Math.sin(t*1.6+i*.3)*.3);
+    else seg.m.material.opacity=.35+minL*.55;
+  });
+  /* Duplicate warning pulses harder */
+  dupWarn.material.opacity=.35+minL*.55+L*(.55+Math.sin(t*2.8)*.42);
+  dupG.material.opacity=.35+minL*.55+L*(.14+Math.sin(t*2.8)*.14);
+  agSats.forEach(a=>{
+    a.ph+=a.spd*.01;
+    a.m.position.set(agCore.position.x+Math.cos(a.ph)*a.r, agCore.position.y+Math.sin(a.ph*.7)*.8, Math.sin(a.ph)*a.r*.6);
+  });
+  /* Electric arc connection lines — jitter midpoint each frame */
+  agLines.forEach(({line,lineG,a})=>{
+    const src=agCore.position.clone(), dst=a.m.position.clone();
+    const mid=src.clone().lerp(dst,.5).add(new THREE.Vector3((Math.random()-.5)*.8,(Math.random()-.5)*.8,0));
+    const pts=[src,mid,dst];
+    lineG.setFromPoints(pts);
+    line.geometry=lineG;
+    line.material.opacity=L*(.18+Math.sin(t*4+a.ph)*.25);
+  });
+  /* Conversation bubbles orbit brain */
+  convBubbles.forEach(b=>{
+    b.ph+=b.d.spd*(.009+L*.012);
+    b.g.position.set(agCore.position.x+Math.cos(b.ph)*b.d.r, agCore.position.y+Math.sin(b.ph*.7)*.8, Math.sin(b.ph)*b.d.r*.5);
+    const pulse=b.d.status==='dup'?(0.5+Math.sin(t*3.2+b.ph)*.45):(0.6+Math.sin(t*1.4+b.ph)*.35);
+    b.g.children[0].material.opacity=L*pulse*.35;
+    b.g.children[1].material.opacity=L*(pulse*.85+.1);
+    b.g.children[2].material.opacity=L*pulse*.18;
+    b.g.rotation.y=Math.sin(t*.5+b.ph)*.2;
+  });
+  }
+
+  /* ── STATION 3 — feature galaxy ignites ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 3 always on */
+  fOrbs.forEach((o,oi)=>{
+    if(o.phase===undefined) o.phase=o.ph;
+    o.phase+=o.spd*(.01+L*.016);
+    o.g.position.x=o.r*Math.cos(o.phase);
+    o.g.position.z=o.r*Math.sin(o.phase)*.52;
+    o.g.position.y=o.y+Math.sin(t*.42+o.phase)*.4;
+    o.g.children[0].rotation.x=t*1.2+oi*.3; o.g.children[0].rotation.y=t*.8+oi*.2;
+    o.rin.rotation.y=t*(2.2+L*2.0);
+    o.rin.rotation.x=t*(1.1+L*1.0);
+    o.rin.material.opacity=.35+minL*.55+L*.5;
+    /* orb glow intensity — much brighter */
+    o.g.children[0].material.emissiveIntensity=minL*0.5+L*2.0;
+    o.g.children[1].material.opacity=.35+minL*.55+L*.22;
+  });
+  /* Animated dashed connection lines */
+  s3Lines.forEach((sl,i)=>{
+    sl.mat.dashOffset=-(t*0.8+i*0.3);
+    sl.mat.opacity=minL*0.15+L*0.35;
+    /* Update line endpoint to follow orbiting orb */
+    sl.line.geometry.setFromPoints([new THREE.Vector3(0,0,0),sl.orb.position.clone()]);
+    sl.line.computeLineDistances();
+  });
+  hub.rotation.y=t*(.5+L*.6); hub.rotation.x=t*(.32+L*.4);
+  hub.scale.setScalar(1+Math.sin(t*2.8)*.1+L*.18);
+  hubG.material.opacity=.35+minL*.55+L*.22+Math.sin(t*1.2)*.04;}
+
+  /* ── STATION 4 — pricing pillars light up ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 4 always on */
+  monos.forEach((m,i)=>{
+    m.g.position.y=monoDefs[i].h/2-4+Math.sin(t*.36+m.ph)*(.2+L*.3);
+    /* child[0]=body, child[1]=neon edge, child[2]=beam, child[3,4]=rings, child[5,6,7]=holo tags */
+    const body=m.g.children[0]; if(body&&body.material) body.material.opacity=.35+minL*.55+L*.18;
+    const edge=m.g.children[1]; if(edge&&edge.material) edge.material.opacity=.35+minL*.55+L*.6;
+    const beam=m.g.children[2]; if(beam&&beam.material) beam.material.opacity=.35+minL*.55+L*(0.4+Math.sin(t*1.4+m.ph)*.4);
+    [m.g.children[3],m.g.children[4]].forEach((tr,j)=>{
+      if(tr&&tr.material) tr.material.opacity=.35+minL*.55+L*(0.5+Math.sin(t*2+m.ph+j*.8)*.45);
+    });
+    /* Holographic price tags pulse */
+    [m.g.children[5],m.g.children[6],m.g.children[7]].forEach((bar,j)=>{
+      if(bar&&bar.material) bar.material.opacity=.35+minL*.55+L*(0.55+Math.sin(t*3+m.ph+j*.6)*.4);
+    });
+  });}
+
+  /* ── STATION 5 — aurora ignites ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 5 always on */
+  auroraWaves.forEach(w=>{
+    w.pts.forEach((pt,k)=>{pt.y=w.wi*1.3-4+Math.sin(k*.19+t*w.spd+w.ph)*w.amp*(.4+L*.8);});
+    const nc=new THREE.CatmullRomCurve3(w.pts);
+    const ng=new THREE.TubeGeometry(nc,90,.15+w.wi*.018+L*.06,8,false);
+    w.mesh.geometry.dispose(); w.mesh.geometry=ng;
+    w.wM.opacity=minL*.15+L*(.38+Math.sin(t*.26+w.ph)*.22);
+  });
+  /* Northern lights streaks — fade in and out */
+  northStreaks.forEach(ns=>{
+    ns.streakMat.opacity=minL*.08+L*(0.1+Math.sin(t*0.8+ns.ph)*.15+Math.max(0,Math.sin(t*0.3+ns.basePh))*.2);
+  });
+  aurPts.forEach(p=>{p.m.position.y+=p.vy*(1+L); if(p.m.position.y<-6)p.m.position.y=p.by; p.m.material.opacity=.35+minL*.55+L*(.4+Math.random()*.3);});
+  hRing.rotation.z=t*(.035+L*.06); hRing.material.opacity=.35+minL*.55+L*.35;}
+
+  /* ── STATION 6 — API NETWORK ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 6 always on */
+  apiCore.rotation.y=t*(.8+L*.5); apiCore.rotation.x=t*(.5+L*.3);
+  apiWire.rotation.y=-t*(.4+L*.3); apiWire.rotation.x=t*(.25+L*.2);
+  apiG1.rotation.y=t*.18; apiG2.rotation.y=-t*.12;
+  apiG1.material.opacity=.35+minL*.55+L*.18; apiG2.material.opacity=.35+minL*.55+L*.08;
+  scanRing.rotation.y=t*(1.2+L*.8); scanRing.rotation.x=Math.sin(t*.3)*.4;
+  apiRings.forEach(r=>{r.m.rotation.y+=r.spd*(.016+L*.02);r.m.rotation.z+=Math.abs(r.spd)*(.011+L*.014); r.m.material.opacity=.35+minL*.55+L*.45;});
+  apiEps.forEach((ep,i)=>{
+    ep.ang+=(.005+L*.004);
+    ep.g.position.set(Math.cos(ep.ang)*ep.r,ep.y+Math.sin(t*.4+ep.ph)*(.3+L*.4),Math.sin(ep.ang)*ep.r*.65);
+    ep.ring.rotation.z+=.04+L*.04;
+    ep.g.children[0].material.opacity=.35+minL*.55+L*(.65+Math.sin(t*1.2+ep.ph)*.32); // hex disc
+    ep.g.children[1].material.opacity=.35+minL*.55+L*0.9; // hex edge
+    ep.g.children[2].material.opacity=.35+minL*.55+L*(.18+Math.sin(t*.8+ep.ph)*.12); // glow
+  });
+  apiPackets.forEach(p=>{
+    p.t+=p.spd; if(p.t>1)p.t=0;
+    const ep=apiEps[p.epIdx];
+    const src=p.inbound?ep.g.position:new THREE.Vector3(0,0,0);
+    const dst=p.inbound?new THREE.Vector3(0,0,0):ep.g.position;
+    p.m.position.lerpVectors(src,dst,p.t);
+    p.m.material.opacity=(p.t<.12||p.t>.88?Math.min(p.t,.88)*6:.9)*(minL*.3+L*.7);
+    const trail=p.m.children[0];
+    if(trail) trail.material.opacity=(minL*.1+L*.3+Math.sin(t*3+p.t*Math.PI)*.15);
+    p.m.scale.setScalar(1+Math.sin(t*4+p.t*6)*.15);
+  });}
+
+  /* ── STATION 7 — VIBE PROJECTS ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 7 always on */
+  projHub.rotation.y=t*(.5+L*.4); projHub.rotation.x=t*(.3+L*.25);
+  projHubW.rotation.y=-t*(.3+L*.25); projHubW.rotation.z=t*(.2+L*.18);
+  projHubG.material.opacity=.35+minL*.55+L*.18+Math.sin(t*.5)*.06;
+  projCards.forEach(c=>{
+    c.ang+=c.spd*(.007+L*.009);
+    c.g.position.set(Math.cos(c.ang)*c.r,c.y+Math.sin(t*.35+c.ph)*(.3+L*.4),Math.sin(c.ang)*c.r*.6);
+    c.g.rotation.y=c.ang*.6+Math.sin(t*.3+c.ph)*.12;
+    c.g.rotation.z=Math.sin(t*.22+c.ph)*.06;
+    c.g.children.forEach((child,ci)=>{
+      if(ci>3&&ci<8&&child.material) child.material.opacity=.35+minL*.55+L*(.25+Math.sin(t*2.2+ci*.9+c.ph)*.3);
+    });
+    /* neon edge glow — brighter */
+    if(c.g.children[1]&&c.g.children[1].material) c.g.children[1].material.opacity=.35+minL*.55+L*.65;
+    if(c.g.children[0]&&c.g.children[0].material) c.g.children[0].material.opacity=.35+minL*.55+L*.22;
+  });
+  projParts.forEach(p=>{
+    p.m.position.y+=p.vy*(1+L*.5);
+    if(p.m.position.y>p.oy+6) p.m.position.y=p.oy;
+    p.m.position.x=p.ox+Math.sin(t*.5+p.ph)*.6;
+    p.m.material.opacity=.35+minL*.55+L*Math.max(0,.5+Math.sin(t*2.5+p.ph)*.45);
+  });
+  /* Holographic scanline sweeps through project cards vertically */
+  const scanY=(t*0.8)%6-3;
+  s7ScanLine.position.y=scanY;
+  s7ScanLine.material.opacity=.35+minL*.55+L*(0.2+Math.sin(t*4)*.15);}
+
+  /* ── STATION 8 — TERSE CLOUD ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 8 always on */
+  cloudPts.forEach((c,i)=>{c.rotation.y=t*.12+i*.05; c.rotation.x=Math.sin(t*.08+i*.5)*.05; c.material.opacity=.35+minL*.55+L*.18;});
+  cloudG.material.opacity=.35+minL*.55+L*.1+Math.sin(t*.4)*.03;
+  teamDevs.forEach(d=>{
+    d.ang+=d.spd*(.007+L*.008);
+    d.g.position.set(Math.cos(d.ang)*d.r,d.y+Math.sin(t*.3+d.ph)*.35,Math.sin(d.ang)*d.r*.6);
+    d.g.children[2].rotation.z+=.04+L*.04;
+    d.g.children[0].material.opacity=.35+minL*.55+L*.45;
+  });
+  cloudStreams.forEach(p=>{
+    p.t+=p.spd*(1+L); if(p.t>1)p.t=0;
+    const dev=teamDevs[p.devIdx].g;
+    p.m.position.lerpVectors(dev.position,new THREE.Vector3(0,0,0),p.t);
+    p.m.material.opacity=(minL*.1+L*.6)*Math.sin(p.t*Math.PI);
+  });
+  analyticsBars.forEach(b=>{
+    b.bar.scale.y=1+Math.sin(t*(.55+L*.4)+b.ph)*(.14+L*.18);
+    b.bar.position.y=(b.h*b.bar.scale.y)/2-3.5;
+    b.bEdge.position.y=b.bar.position.y; b.bEdge.scale.y=b.bar.scale.y;
+    /* Neon gradient — brighter at top */
+    b.bar.material.color.setHex(0x00ffaa);
+    b.bar.material.opacity=.35+minL*.55+L*(.4+Math.sin(t*1.1+b.ph)*.28);
+    if(b.bEdge.material) b.bEdge.material.opacity=.35+minL*.55+L*.55;
+  });
+  /* Uptime arc fills as L rises */
+  s8UptimeArc.forEach((d,i)=>{
+    d.m.material.opacity=d.filled?(minL*.1+L*(0.5+Math.sin(t*2+d.ph)*.3)):minL*.03;
+    d.m.material.color.setHex(d.filled?0x38bdf8:0x1a2a40);
+  });
+  scanBeam.position.y=-4+((t*(.35+L*.3))%8);
+  scanBeam.material.opacity=.35+minL*.55+L*(.55+Math.sin(t*2.2)*.4);
+  scanBeam.scale.x=1+Math.sin(t*1.4)*.2;}
+
+  /* ── STATION 9 — TOKEN EXCHANGE ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 9 always on */
+  sellOrders.forEach((o)=>{
+    const scale=1+Math.sin(t*(.55+L*.4)+o.ph)*(.14+L*.2);
+    o.col.scale.y=scale; o.col.position.y=o.h*scale/2-4.5;
+    o.col.material.opacity=.35+minL*.55+L*(.35+Math.sin(t*1.1+o.ph)*.25);
+  });
+  buyOrders.forEach((o)=>{
+    const scale=1+Math.sin(t*(.65+L*.4)+o.ph)*(.16+L*.2);
+    o.col.scale.y=scale; o.col.position.y=o.h*scale/2-4.5;
+    o.col.material.opacity=.35+minL*.55+L*(.35+Math.sin(t*1.1+o.ph)*.25);
+  });
+  matchFlash*=.82;
+  tradePts.forEach(p=>{
+    p.life+=.012+L*.008; if(p.life>1){p.life=0; matchFlash=1;}
+    p.m.position.x+=p.vx+(Math.random()-.5)*.04;
+    p.m.position.y+=(Math.random()-.5)*.03;
+    if(p.m.position.x>4) p.m.position.x=-4;
+    if(p.m.position.x<-4) p.m.position.x=4;
+    p.m.material.opacity=.35+minL*.55+L*(.2+Math.sin(p.life*Math.PI*2+p.ph)*.7);
+  });
+  /* Match flash — bright white burst when orders cross */
+  s9MatchFlashPlane.material.opacity=matchFlash*L*0.55;
+  exchCore.material.opacity=.35+minL*.55+L*(.65+Math.sin(t*2.8)*.32)+matchFlash*.6;
+  exchG1.material.opacity=.35+minL*.55+L*(.14+Math.sin(t*2.8)*.12)+matchFlash*.3;
+  exchRing.rotation.y=t*(1.1+L*.6); exchRing.rotation.z=t*(.4+L*.3);}
+
+  /* ── STATION 10 — TERSE PALS ── */
+  {const L=1; const minL=1; /* FORCED LIT — section 10 always on */
+  /* More dramatic bounce + rotation */
+  const bounce=Math.sin(t*.85)*(.4+L*.55);
+  palBody.position.y=bounce;
+  palBody.rotation.y=Math.sin(t*.55)*(.25+L*.25);
+  palBody.rotation.z=Math.sin(t*.35)*(.08+L*.1);
+  palG1.position.copy(palBody.position); palG2.position.copy(palBody.position);
+  palG1.material.opacity=.35+minL*.55+L*.25; palG2.material.opacity=.35+minL*.55+L*.1;
+  /* Eyes blink */
+  const blink=Math.sin(t*3.2)>.94?0.1:1;
+  eyeL.scale.y=blink; eyeR.scale.y=blink;
+  /* Arc pulse — brighter when lit */
+  palArcDots.forEach((d,i)=>{
+    if(d.active){
+      d.m.material.opacity=.35+minL*.55+L*(.55+Math.sin(t*2.4+i*.2)*.42);
+      d.m.position.y=palBody.position.y+Math.sin(d.ang)*2.2;
+    } else {
+      d.m.material.opacity=.35+minL*.55;
+    }
+  });
+  /* Companions orbit faster when lit */
+  companions.forEach(c=>{
+    c.ang+=c.spd*(.007+L*.014);
+    c.m.position.set(Math.cos(c.ang)*c.r,Math.sin(c.ang*.6)*.7+Math.sin(t*.3+c.ph)*.35,Math.sin(c.ang)*c.r*.6);
+    c.m.rotation.x+=.025+L*.03; c.m.rotation.y+=.018+L*.022;
+    c.m.children[0].material.opacity=.35+minL*.55+L*.2;
+  });
+  /* Celebration particles — rainbow hue cycling */
+  celParts.forEach(p=>{
+    p.hue=(p.hue+0.004)%1;
+    const col=new THREE.Color(); col.setHSL(p.hue,1,0.6);
+    p.m.material.color.copy(col);
+    p.m.position.y+=(p.vy*(1+L*.8));
+    if(p.m.position.y<-6) p.m.position.y=7+Math.random()*2;
+    p.m.position.x=p.startX+Math.sin(t*.45+p.ph)*.9;
+    p.m.material.opacity=.35+minL*.55+L*(.35+Math.sin(t*2.2+p.ph)*.55);
+  });
+  /* Heart particles float upward above pal */
+  s10Hearts.forEach(h=>{
+    h.life+=h.vy;
+    if(h.life>1){h.life=0; h.m.position.set((Math.random()-.5)*0.6,2+Math.random(),0.5);}
+    h.m.position.y+=h.vy*(0.5+L);
+    h.m.position.x=h.startX+Math.sin(t*0.8+h.ph)*0.3;
+    const fade=Math.min(h.life*4,1)*Math.max(0,1-h.life*1.2);
+    h.m.material.opacity=.35+minL*.55+L*fade*0.8;
+    h.m.rotation.z=Math.sin(t+h.ph)*0.3;
+  });}
+
+  /* ── GLOBAL ── */
+  /* Token river — particles flow forward along z */
+  riverPts.forEach(p=>{
+    p.rz+=p.spd;
+    if(p.rz>10) p.rz=-195;
+    p.m.position.set(p.rx+Math.sin(t*.2+p.rz*.05)*.3, p.ry+Math.cos(t*.15+p.rz*.04)*.2, p.rz);
+    p.m.material.opacity=.12+Math.sin(t*1.5+p.rz*.08)*.10;
+  });
+
+  /* Ambient floating squares — slowly rotating */
+  gSqs.forEach(s=>{
+    s.m.rotation.x+=s.rx; s.m.rotation.y+=s.ry; s.m.rotation.z+=s.rz;
+    s.m.material.opacity=s.baseOp+Math.sin(t*.28+s.ph)*.035;
+  });
+
+  /* Holographic panel reveal — power-on via secLit, billboard to camera */
+  /* Hero panel (S0) intro slide-up */
+  if(!introDone && holoPanels[0]){
+    const heroT=Math.max(0,Math.min(1,(introT-0.6)/0.8));
+    const e=1-Math.pow(1-heroT,3);
+    /* secLit[0] is already 1 from init — no clamp needed */
+  }
+  holoPanels.forEach((p,pi)=>{
+    let L=secLit[p.sec];
+    /* Once a section is impacted, FORCE full brightness immediately so
+       Terse animations remain fully visible as user lingers/scrolls back.
+       The dim "approaching" state is just before first impact. */
+    const fullyLit=secImpacted[p.sec]?1:Math.max(L,0.0);
+    /* Boost the displayed brightness — content should be fully readable */
+    const Lview=Math.max(fullyLit,L);
+    const ud=p.grp.userData;
+    /* Panel content always renders at FULL opacity once lit (was 0.95 cap) */
+    ud.mainMat.opacity=Lview;
+    ud.haloMat.opacity=Lview*0.55+Math.sin(t*1.4+p.sec)*0.06*Lview;
+    ud.edgeMat.opacity=Lview;
+    if(ud.bracketMat) ud.bracketMat.opacity=Lview;
+    /* Status dots — pulse independently, always visible once lit */
+    if(ud.dotMats){
+      ud.dotMats[0].opacity=Lview*(0.65+Math.sin(t*2.4+p.sec)*0.35); // green
+      ud.dotMats[1].opacity=Lview*(0.45+Math.sin(t*2.4+p.sec+1.0)*0.25); // amber
+      ud.dotMats[2].opacity=Lview*(0.30+Math.sin(t*2.4+p.sec+2.0)*0.20); // red
+    }
+    /* Scanline — moves bottom→top continuously, brighter for visibility */
+    if(ud.scanline && ud.scanMat){
+      const period=3.2;
+      const u=((t+p.sec*0.5)%period)/period;
+      ud.scanline.position.y=-ud.height/2+u*ud.height;
+      const edgeFade=Math.min(u,1-u)*4;
+      ud.scanMat.opacity=Lview*0.65*Math.min(1,edgeFade);
+    }
+    /* LINEAR DISTANCE COMPENSATION — panels stay at near-constant
+       apparent screen size regardless of how far the camera is from them.
+       This means upcoming sections look just as big and prominent from
+       a distance as they do when the camera arrives. */
+    const _panelWorld=new THREE.Vector3();
+    p.grp.getWorldPosition(_panelWorld);
+    const dist=_panelWorld.distanceTo(cam.position);
+    const refDist=13;
+    /* Modest distance compensation — panel grows up to 2× when far, never bigger.
+       Prevents panels from exceeding camera view bounds (which made them look
+       like empty wireframes with no texture visible). */
+    const distScale=Math.max(1,Math.min(2.0,Math.sqrt(dist/refDist)));
+    const targetScale=1.0*distScale;
+    /* Smooth panel scale — eases toward target rather than snapping per frame */
+    if(ud.curScale===undefined) ud.curScale=targetScale;
+    ud.curScale += (targetScale-ud.curScale)*0.12;
+    p.grp.scale.setScalar(ud.curScale);
+    /* Panel sits at its final Y from frame 0 — no slide-in delay. */
+    if(ud.originalY===undefined) ud.originalY=2.5;
+    p.grp.position.y=ud.originalY+Math.sin(t*0.8+p.sec)*0.05;
+    /* Billboard toward camera */
+    p.grp.lookAt(cam.position);
+  });
+
+  /* Interstellar starfield — twinkle + camera-anchored parallax */
+  starLayers.forEach(L=>{
+    L.mat.uniforms.uTime.value=t;
+    /* Anchor each layer to camera at its parallax factor for vast-space feel */
+    L.pts.position.copy(cam.position).multiplyScalar(L.pts.userData.parallax);
+  });
+
+  /* ═══════════════════════════════════════════════════════════
+     BRIGHTNESS SLEDGEHAMMER v3 — HARD FLOOR of 0.95.
+     Forces FULL opacity on every material in every section group.
+     Holo panel main meshes are also explicitly forced to opacity=1.
+     ═══════════════════════════════════════════════════════════ */
+  const _secGroups=[s0,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10];
+  const FLOOR=0.95;
+  _secGroups.forEach(sec=>{
+    sec.traverse(obj=>{
+      const mat=obj.material;
+      if(!mat) return;
+      const mats=Array.isArray(mat)?mat:[mat];
+      mats.forEach(m=>{
+        if(m.opacity===undefined) return;
+        if(m.opacity<FLOOR){
+          m.opacity=FLOOR;
+          if(!m.transparent){ m.transparent=true; m.needsUpdate=true; }
+        }
+      });
+    });
+  });
+  /* Explicit panel main mesh override — always opacity 1.0 */
+  holoPanels.forEach(p=>{
+    const ud=p.grp.userData;
+    if(ud.mainMat) ud.mainMat.opacity=1.0;
+  });
+
+  /* Drive post-processing grade time uniform for grain animation */
+  gradePass.uniforms.time.value=performance.now();
+  composer.render();
+}
+animate();
+
+/* ══════════════════════════════════════════════════════════
+   DOWNLOAD HANDLER
+══════════════════════════════════════════════════════════ */
+function handleDL(e,p){
+  if(e) e.preventDefault();
+  const t={mac:'/get-started',windows:'/get-started?platform=windows',vscode:'https://marketplace.visualstudio.com/items?itemName=terse.terse'};
+  window.location.href=t[p]||t.mac;
+}
+
+updateUI(0);
+secArrivalT[0]=0;
+
+/* Version badge — proves the latest code is loaded (not a stale cache).
+   If you don't see "BRIGHT-v9" in the corner, the browser is showing cached HTML. */
+{
+  const b=document.createElement('div');
+  b.textContent='GALAXY-v15 ' + new Date().toISOString().slice(11,19);
+  b.style.cssText='position:fixed;bottom:8px;left:8px;z-index:99999;background:#ff6b35;color:#000;padding:4px 10px;font:bold 11px ui-monospace,monospace;border-radius:3px;pointer-events:none;';
+  document.body.appendChild(b);
+  console.log('🟢 Terse landing v9 loaded — secLit/secImpacted=1, L=1 forced, brightness×3 sledgehammer active');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vibe Projects — Built with Terse API</title>
+  <meta name="description" content="Discover vibe coding projects that use Terse to cut LLM token costs. Publish your project to get traffic from the community.">
+  <link rel="icon" href="/favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg0:#0e0e10;--bg1:#131316;--bg2:#1a1a1f;--bg3:#222228;
+      --bd:#2e2e38;--t1:#f0f0f2;--t2:#a0a0b0;--t3:#606070;
+      --ac:#6ee7b7;--acd:rgba(110,231,183,.1);--acm:rgba(110,231,183,.25);
+      --gradient:linear-gradient(135deg,#6ee7b7,#3b82f6);
+      --mono:'JetBrains Mono',monospace;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',sans-serif;line-height:1.6;min-height:100vh}
+    a{color:var(--ac);text-decoration:none}
+    a:hover{text-decoration:underline}
+    button{cursor:pointer;font-family:'Inter',sans-serif}
+
+    /* Nav */
+    nav{position:sticky;top:0;z-index:100;background:rgba(14,14,16,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd);padding:0 32px;height:56px;display:flex;align-items:center;gap:20px}
+    .nav-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;color:var(--t1);text-decoration:none}
+    .logo-icon{width:28px;height:28px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#000;flex-shrink:0}
+    .nav-sep{color:var(--bd);font-size:18px;font-weight:300}
+    .nav-title{font-size:14px;font-weight:600;color:var(--t2)}
+    .nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+    .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:var(--gradient);color:#000;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .2s}
+    .btn:hover{opacity:.88;text-decoration:none}
+    .btn-ghost{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{border-color:var(--acm);color:var(--ac);text-decoration:none}
+
+    /* Page layout */
+    .page{max-width:1200px;margin:0 auto;padding:48px 32px}
+
+    /* Hero */
+    .hero{text-align:center;padding:60px 0 40px}
+    .hero-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--acd);border:1px solid var(--acm);border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--ac);margin-bottom:20px}
+    .hero h1{font-size:clamp(32px,5vw,58px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:14px}
+    .hero p{font-size:16px;color:var(--t2);max-width:560px;margin:0 auto 32px;line-height:1.7}
+    .hero-stats{display:flex;gap:32px;justify-content:center;flex-wrap:wrap;margin-bottom:36px}
+    .hero-stat{text-align:center}
+    .hero-stat-n{font-size:28px;font-weight:900;font-family:var(--mono);color:var(--ac)}
+    .hero-stat-l{font-size:11px;color:var(--t3);margin-top:2px}
+
+    /* Connect banner */
+    #connect-banner{display:none;background:linear-gradient(135deg,rgba(110,231,183,.08),rgba(59,130,246,.06));border:1px solid var(--acm);border-radius:16px;padding:24px 28px;margin-bottom:36px;position:relative;overflow:hidden}
+    #connect-banner::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(ellipse,rgba(110,231,183,.12),transparent 70%);pointer-events:none}
+    .connect-inner{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+    .connect-dot{width:10px;height:10px;border-radius:50%;background:var(--ac);box-shadow:0 0 0 3px rgba(110,231,183,.25);flex-shrink:0;animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(110,231,183,.25)}50%{box-shadow:0 0 0 6px rgba(110,231,183,.1)}}
+
+    /* Filters */
+    .filters{display:flex;align-items:center;gap:10px;margin-bottom:28px;flex-wrap:wrap}
+    .filter-btn{padding:6px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:600;color:var(--t2);transition:all .15s}
+    .filter-btn:hover,.filter-btn.active{background:var(--acd);border-color:var(--acm);color:var(--ac)}
+    .filter-sep{width:1px;height:20px;background:var(--bd);margin:0 4px}
+    .sort-select{padding:6px 12px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;font-size:12px;color:var(--t2);font-family:'Inter',sans-serif;outline:none}
+
+    /* Projects grid */
+    .projects-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:40px}
+    .proj-card{background:var(--bg1);border:1px solid var(--bd);border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:12px;transition:border-color .2s,transform .15s}
+    .proj-card:hover{border-color:var(--acm);transform:translateY(-2px)}
+    .proj-card.featured{border-color:var(--acm);background:linear-gradient(135deg,rgba(110,231,183,.04),var(--bg1))}
+    .proj-header{display:flex;align-items:flex-start;gap:12px}
+    .proj-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .proj-meta{flex:1;min-width:0}
+    .proj-name{font-size:15px;font-weight:800;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .proj-host{font-size:11px;color:var(--t3);margin-top:2px}
+    .proj-upvotes{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--t3);flex-shrink:0}
+    .proj-desc{font-size:13px;color:var(--t2);line-height:1.65;flex:1}
+    .proj-tags{display:flex;flex-wrap:wrap;gap:5px}
+    .proj-tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;background:var(--bg3);color:var(--t3)}
+    .proj-tag.featured-tag{background:var(--acd);color:var(--ac)}
+    .proj-footer{display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid var(--bd);margin-top:auto}
+    .proj-savings{font-size:11px;color:var(--t3)}
+    .proj-savings span{color:var(--ac);font-weight:700}
+    .proj-links{display:flex;gap:10px;align-items:center}
+    .proj-link{font-size:11px;color:var(--t3);transition:color .15s}
+    .proj-link:hover{color:var(--ac);text-decoration:none}
+    .upvote-btn{display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border:1px solid var(--bd);border-radius:7px;font-size:11px;font-weight:700;color:var(--t3);transition:all .15s}
+    .upvote-btn:hover:not(:disabled){background:var(--acd);border-color:var(--acm);color:var(--ac)}
+    .upvote-btn:disabled{opacity:.5}
+
+    /* Featured badge */
+    .featured-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;background:var(--acd);border:1px solid var(--acm);border-radius:20px;color:var(--ac);letter-spacing:.3px}
+
+    /* Empty state */
+    .empty{text-align:center;padding:80px 20px;color:var(--t3)}
+    .empty h3{font-size:18px;font-weight:700;margin-bottom:8px;color:var(--t2)}
+
+    /* Load more */
+    .load-more{text-align:center;margin-top:8px}
+
+    /* Publish modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.open{display:flex}
+    .modal{background:var(--bg1);border:1px solid var(--bd);border-radius:22px;padding:36px;max-width:540px;width:100%;position:relative;max-height:92vh;overflow-y:auto}
+    .modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--t2);cursor:pointer;transition:all .15s}
+    .modal-close:hover{color:var(--t1);border-color:var(--bd)}
+    .modal h2{font-size:22px;font-weight:900;letter-spacing:-.8px;margin-bottom:6px}
+    .modal-sub{font-size:13px;color:var(--t3);margin-bottom:28px}
+    label{font-size:12px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px}
+    .form-field{margin-bottom:14px}
+    input,textarea,select{width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);font-size:14px;outline:none;transition:border-color .15s;font-family:'Inter',sans-serif;box-sizing:border-box}
+    input:focus,textarea:focus,select:focus{border-color:var(--acm)}
+    textarea{resize:vertical}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .submit-btn{width:100%;padding:13px;background:var(--gradient);color:#000;border:none;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;transition:opacity .2s;margin-top:6px}
+    .submit-btn:hover{opacity:.88}
+    .submit-btn:disabled{opacity:.5;cursor:not-allowed}
+    .form-msg{text-align:center;font-size:13px;margin-top:10px;display:none}
+
+    /* Connection status pill */
+    .conn-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}
+    .conn-pill.connected{background:rgba(110,231,183,.12);border:1px solid var(--acm);color:var(--ac)}
+    .conn-pill.not-connected{background:var(--bg2);border:1px solid var(--bd);color:var(--t3)}
+
+    /* Step indicator */
+    .steps{display:flex;gap:0;margin-bottom:28px}
+    .step{flex:1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t3);padding:10px 14px;background:var(--bg2);border:1px solid var(--bd)}
+    .step:first-child{border-radius:10px 0 0 10px}
+    .step:last-child{border-radius:0 10px 10px 0;border-left:none}
+    .step.done{background:var(--acd);border-color:var(--acm);color:var(--ac)}
+    .step.active{background:var(--bg3);color:var(--t1);font-weight:600}
+    .step-n{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;background:var(--bd);color:var(--t3)}
+    .step.done .step-n{background:var(--ac);color:#000}
+    .step.active .step-n{background:var(--t1);color:#000}
+
+    @media(max-width:900px){
+      .projects-grid{grid-template-columns:repeat(2,1fr)}
+      nav{padding:0 16px}
+      .page{padding:32px 16px}
+    }
+    @media(max-width:600px){
+      .projects-grid{grid-template-columns:1fr}
+      .form-row{grid-template-columns:1fr}
+      .hero h1{font-size:28px}
+      .hero-stats{gap:18px}
+      .connect-inner{flex-direction:column;align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="logo-icon">T</div>Terse
+  </a>
+  <span class="nav-sep">/</span>
+  <span class="nav-title">Vibe Projects</span>
+  <div class="nav-right">
+    <a href="/api-docs" class="btn-ghost" style="font-size:12px;padding:7px 14px">Docs</a>
+    <div id="nav-user-area">
+      <button onclick="openClerkSignIn()" class="btn-ghost" id="nav-signin">Sign in</button>
+      <div id="nav-user" style="display:none;align-items:center;gap:8px">
+        <div id="nav-conn-pill"></div>
+        <img id="nav-avatar" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--bd)">
+        <button onclick="openPublishModal()" class="btn" id="nav-publish-btn" style="display:none;font-size:12px;padding:8px 14px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Publish project
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--ac)"><circle cx="12" cy="12" r="10"/></svg>
+      LIVE PLATFORM
+    </div>
+    <h1>Vibe Coding <span style="background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Projects</span></h1>
+    <p>Discover open-source projects built with Terse API. Connect your project to cut LLM costs — publish it to get traffic from the community.</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-n" id="stat-projects">—</div><div class="hero-stat-l">projects published</div></div>
+      <div class="hero-stat"><div class="hero-stat-n" id="stat-tokens">—</div><div class="hero-stat-l">tokens saved monthly</div></div>
+      <div class="hero-stat"><div class="hero-stat-n" id="stat-upvotes">—</div><div class="hero-stat-l">total upvotes</div></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button onclick="openPublishModal()" class="btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Publish your project
+      </button>
+      <a href="/api-docs" class="btn-ghost">Read the API docs →</a>
+    </div>
+  </div>
+
+  <!-- Auto-connect banner (shown when user is signed in + has API usage) -->
+  <div id="connect-banner">
+    <div class="connect-inner">
+      <div class="connect-dot"></div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:800;margin-bottom:4px" id="banner-title">Your project is connected to Terse API</div>
+        <div style="font-size:12px;color:var(--t2)" id="banner-sub">You've optimized <strong id="banner-tokens" style="color:var(--ac)">—</strong> tokens so far. Ready to publish and get traffic?</div>
+      </div>
+      <button onclick="openPublishModal()" class="btn" style="flex-shrink:0;white-space:nowrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Publish in one click
+      </button>
+    </div>
+  </div>
+
+  <!-- No-API banner (shown when user is signed in but no key) -->
+  <div id="no-api-banner" style="display:none;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:22px 26px;margin-bottom:36px">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">Connect your project to get started</div>
+        <div style="font-size:12px;color:var(--t3)">Generate a <code style="font-family:var(--mono);font-size:11px;color:var(--ac);background:var(--acd);padding:1px 5px;border-radius:4px">tsk_...</code> API key, add it to your project, then come back to publish.</div>
+      </div>
+      <button onclick="generateKeyAndConnect()" class="btn" style="flex-shrink:0;background:var(--bg3);color:var(--t1);border:1px solid var(--bd)">
+        Generate API key →
+      </button>
+    </div>
+    <div id="generated-key-box" style="display:none;margin-top:14px;padding:12px 16px;background:var(--bg0);border:1px solid var(--acm);border-radius:10px;font-family:var(--mono);font-size:13px;color:var(--ac)"></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('featured',this)">⭐ Featured</button>
+    <div class="filter-sep"></div>
+    <button class="filter-btn" onclick="setTagFilter('Agents',this)">Agents</button>
+    <button class="filter-btn" onclick="setTagFilter('Python',this)">Python</button>
+    <button class="filter-btn" onclick="setTagFilter('TypeScript',this)">TypeScript</button>
+    <button class="filter-btn" onclick="setTagFilter('RAG',this)">RAG</button>
+    <button class="filter-btn" onclick="setTagFilter('CLI',this)">CLI</button>
+    <div class="filter-sep"></div>
+    <select class="sort-select" id="sort-select" onchange="resort()">
+      <option value="upvotes">Most upvoted</option>
+      <option value="newest">Newest</option>
+      <option value="savings">Most savings</option>
+    </select>
+  </div>
+
+  <!-- Projects grid -->
+  <div class="projects-grid" id="projects-grid">
+    <div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--t3)">
+      <div style="width:32px;height:32px;border:3px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px"></div>
+      Loading projects…
+    </div>
+  </div>
+
+  <!-- Load more -->
+  <div class="load-more" id="load-more-wrap" style="display:none">
+    <button class="btn-ghost" onclick="loadMore()" id="load-more-btn">Load more</button>
+  </div>
+
+  <!-- How to publish CTA -->
+  <div style="background:var(--bg1);border:1px solid var(--bd);border-radius:20px;padding:40px;text-align:center;margin-top:60px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3);margin-bottom:14px">Get featured</div>
+    <h2 style="font-size:26px;font-weight:900;letter-spacing:-1px;margin-bottom:12px">Ship with Terse.<br><span style="background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Get discovered.</span></h2>
+    <p style="font-size:14px;color:var(--t2);max-width:480px;margin:0 auto 28px;line-height:1.7">Add <code style="font-family:var(--mono);font-size:12px;color:var(--ac);background:var(--acd);padding:2px 6px;border-radius:5px">POST /api/v1/optimize</code> to your vibe coding project, then publish it here. Featured projects get pinned to the top and linked from the main landing page.</p>
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:32px">
+      <div style="text-align:left;background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:16px 20px;min-width:200px">
+        <div style="font-size:20px;margin-bottom:8px">⚡</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">5-minute setup</div>
+        <div style="font-size:12px;color:var(--t3)">One fetch() call wrapping your LLM API</div>
+      </div>
+      <div style="text-align:left;background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:16px 20px;min-width:200px">
+        <div style="font-size:20px;margin-bottom:8px">📈</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">Get traffic</div>
+        <div style="font-size:12px;color:var(--t3)">Listed on this page + terseai.org landing</div>
+      </div>
+      <div style="text-align:left;background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:16px 20px;min-width:200px">
+        <div style="font-size:20px;margin-bottom:8px">💰</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">Real savings</div>
+        <div style="font-size:12px;color:var(--t3)">30–60% fewer tokens on every prompt</div>
+      </div>
+    </div>
+    <button onclick="openPublishModal()" class="btn" style="font-size:14px;padding:12px 28px">Publish your project →</button>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- PUBLISH MODAL                             -->
+<!-- ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="publish-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closePublishModal()">×</button>
+
+    <!-- Step 0: Not signed in -->
+    <div id="modal-step-signin" style="display:none;text-align:center;padding:20px 0">
+      <div style="font-size:40px;margin-bottom:16px">🔑</div>
+      <h2>Sign in to publish</h2>
+      <p class="modal-sub" style="max-width:300px;margin:0 auto 24px">Create a free account to get your API key and publish your project.</p>
+      <button onclick="openClerkSignIn();closePublishModal()" class="btn" style="width:100%;justify-content:center;font-size:14px;padding:13px">Sign in with email →</button>
+    </div>
+
+    <!-- Step 1: No API key yet -->
+    <div id="modal-step-connect" style="display:none">
+      <div class="steps">
+        <div class="step active"><div class="step-n">1</div>Connect API</div>
+        <div class="step"><div class="step-n">2</div>Publish</div>
+      </div>
+      <h2>Connect your project</h2>
+      <p class="modal-sub">Generate an API key and add it to your project. Once your project makes its first optimize call, you're connected.</p>
+
+      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Step 1 — Get your API key</div>
+        <div id="connect-key-box" style="font-family:var(--mono);font-size:13px;color:var(--t3)">Click below to generate a key</div>
+        <button onclick="generateKeyForConnect()" class="btn-ghost" id="gen-key-btn" style="margin-top:12px;font-size:12px;width:100%;justify-content:center">Generate tsk_... key</button>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Step 2 — Add to your project</div>
+        <pre style="background:var(--bg0);border-radius:8px;padding:12px;font-size:12px;line-height:1.7;overflow-x:auto"><span style="color:var(--t3)">// Add before your LLM call</span>
+<span style="color:#60a5fa">const</span> r = <span style="color:#60a5fa">await</span> fetch(<span style="color:#a3e635">'https://www.terseai.org/api/v1/optimize'</span>, {
+  method: <span style="color:#a3e635">'POST'</span>,
+  headers: { <span style="color:#a3e635">'Authorization'</span>: <span style="color:#a3e635">`Bearer ${process.env.TERSE_API_KEY}`</span> },
+  body: JSON.stringify({ text: prompt, mode: <span style="color:#a3e635">'normal'</span> }),
+});
+<span style="color:#60a5fa">const</span> { optimized } = <span style="color:#60a5fa">await</span> r.json();</pre>
+      </div>
+
+      <button onclick="checkConnectionAndAdvance()" class="btn" style="width:100%;justify-content:center;font-size:14px;padding:13px" id="check-conn-btn">
+        I've added it — check connection →
+      </button>
+      <div id="conn-check-msg" style="display:none;text-align:center;font-size:12px;color:var(--t3);margin-top:10px"></div>
+    </div>
+
+    <!-- Step 2: Publish form (auto-filled if connected) -->
+    <div id="modal-step-publish" style="display:none">
+      <div class="steps">
+        <div class="step done"><div class="step-n">✓</div>Connected</div>
+        <div class="step active"><div class="step-n">2</div>Publish</div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <h2 style="margin:0">Publish your project</h2>
+        <div class="conn-pill connected" id="modal-conn-pill">
+          <svg width="8" height="8" viewBox="0 0 10 10" fill="var(--ac)"><circle cx="5" cy="5" r="5"/></svg>
+          Connected
+        </div>
+      </div>
+      <p class="modal-sub" id="modal-conn-stats">Your project is live. Fill in the details and publish to the showcase.</p>
+
+      <form id="publish-form" onsubmit="submitProject(event)">
+        <div class="form-field">
+          <label>Project name *</label>
+          <input name="name" required maxlength="100" placeholder="e.g. VibeFlow" id="pf-name">
+        </div>
+        <div class="form-field">
+          <label>Short description * <span style="color:var(--t3);font-weight:400">(max 500 chars)</span></label>
+          <textarea name="description" required maxlength="500" rows="3" placeholder="What does it do, and how does Terse help reduce costs?" id="pf-desc"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>GitHub URL</label>
+            <input name="github_url" type="url" placeholder="https://github.com/you/project" id="pf-github">
+          </div>
+          <div class="form-field">
+            <label>Website URL</label>
+            <input name="website_url" type="url" placeholder="https://your-project.com" id="pf-website">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Tags <span style="color:var(--t3);font-weight:400">(comma-separated)</span></label>
+          <input name="tags" placeholder="Python, Agents, RAG" id="pf-tags">
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Tokens saved / month</label>
+            <input name="tokens_saved_monthly" type="number" min="0" placeholder="e.g. 50000" id="pf-tokens">
+          </div>
+          <div class="form-field">
+            <label>Cost saved / month ($)</label>
+            <input name="cost_saved_usd" type="number" min="0" step="0.01" placeholder="e.g. 7.50" id="pf-cost">
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="publish-submit-btn">
+          🚀 Publish to platform
+        </button>
+        <div class="form-msg" id="publish-msg"></div>
+      </form>
+    </div>
+
+    <!-- Step 3: Success -->
+    <div id="modal-step-success" style="display:none;text-align:center;padding:20px 0">
+      <div style="font-size:56px;margin-bottom:16px">🎉</div>
+      <h2>You're live!</h2>
+      <p class="modal-sub" style="max-width:320px;margin:0 auto 24px">Your project is now on the platform. It'll appear in the showcase after a quick review. Share the link to start getting traffic.</p>
+      <button onclick="closePublishModal();location.reload()" class="btn" style="font-size:14px;padding:12px 28px">View platform →</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Clerk -->
+<script
+  async
+  crossorigin="anonymous"
+  data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck"
+  src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+  type="text/javascript"
+></script>
+
+<style>
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+
+<script>
+const API = 'https://www.terseai.org';
+
+// ── State ──
+let allProjects = [];
+let displayedProjects = [];
+let activeFilter = 'all';
+let activeTag = null;
+let activeSort = 'upvotes';
+let userMe = null;
+let userToken = null;
+let generatedKey = null;
+let PAGE_SIZE = 9;
+let currentPage = 0;
+
+// ── Clerk ──
+window.addEventListener('load', async () => {
+  await window.Clerk.load();
+  window.Clerk.addListener(onClerkChange);
+  onClerkChange();
+});
+
+async function onClerkChange() {
+  const user = window.Clerk.user;
+  const navSignin = document.getElementById('nav-signin');
+  const navUser = document.getElementById('nav-user');
+  const navAvatar = document.getElementById('nav-avatar');
+
+  if (user) {
+    navSignin.style.display = 'none';
+    navUser.style.display = 'flex';
+    if (navAvatar) navAvatar.src = user.imageUrl;
+    try {
+      userToken = await window.Clerk.session.getToken();
+      await loadMe();
+    } catch {}
+  } else {
+    navSignin.style.display = '';
+    navUser.style.display = 'none';
+    userToken = null;
+    userMe = null;
+    hideBanners();
+  }
+}
+
+function openClerkSignIn() {
+  window.Clerk.openSignIn({ afterSignInUrl: '/vibe-projects', afterSignUpUrl: '/vibe-projects' });
+}
+
+// ── Load user connection status ──
+async function loadMe() {
+  if (!userToken) return;
+  try {
+    const res = await fetch('/api/v1/me', { headers: { Authorization: 'Bearer ' + userToken } });
+    if (!res.ok) return;
+    userMe = await res.json();
+    updateBanners();
+    updateNavPublishBtn();
+  } catch {}
+}
+
+function updateNavPublishBtn() {
+  const btn = document.getElementById('nav-publish-btn');
+  if (btn && userMe) btn.style.display = 'inline-flex';
+}
+
+function updateBanners() {
+  if (!userMe) return;
+  hideBanners();
+
+  if (userMe.connected && userMe.has_usage) {
+    // User has API key with usage → show "your project is connected" banner
+    const banner = document.getElementById('connect-banner');
+    banner.style.display = 'block';
+    const tokFmt = userMe.total_tokens_optimized >= 1000
+      ? Math.round(userMe.total_tokens_optimized / 1000) + 'K'
+      : String(userMe.total_tokens_optimized);
+    document.getElementById('banner-tokens').textContent = tokFmt;
+    // Update nav pill
+    document.getElementById('nav-conn-pill').innerHTML = `<div class="conn-pill connected"><svg width="7" height="7" viewBox="0 0 10 10" fill="var(--ac)"><circle cx="5" cy="5" r="5"/></svg> Connected</div>`;
+  } else if (userMe.connected && !userMe.has_usage) {
+    // Has key but no usage yet — show simpler banner
+    const banner = document.getElementById('connect-banner');
+    banner.style.display = 'block';
+    document.getElementById('banner-title').textContent = 'API key ready — make your first optimize call';
+    document.getElementById('banner-sub').textContent = 'Once your project makes a call, you\'re connected and can publish.';
+    document.getElementById('nav-conn-pill').innerHTML = `<div class="conn-pill not-connected"><svg width="7" height="7" viewBox="0 0 10 10" fill="var(--t3)"><circle cx="5" cy="5" r="5"/></svg> Not active yet</div>`;
+  } else {
+    // Signed in but no key
+    document.getElementById('no-api-banner').style.display = 'block';
+    document.getElementById('nav-conn-pill').innerHTML = `<div class="conn-pill not-connected">Not connected</div>`;
+  }
+}
+
+function hideBanners() {
+  document.getElementById('connect-banner').style.display = 'none';
+  document.getElementById('no-api-banner').style.display = 'none';
+}
+
+// ── Generate key from no-api-banner ──
+async function generateKeyAndConnect() {
+  if (!userToken) { openClerkSignIn(); return; }
+  const box = document.getElementById('generated-key-box');
+  box.style.display = 'block';
+  box.textContent = 'Generating…';
+  try {
+    const res = await fetch('/api/v1/keys', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + userToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: 'Vibe project' }),
+    });
+    const data = await res.json();
+    if (data.key) {
+      generatedKey = data.key;
+      box.innerHTML = `<div style="font-size:11px;color:var(--t3);margin-bottom:6px">Your API key (save it — shown once):</div><div style="color:var(--ac);word-break:break-all">${data.key}</div><button onclick="navigator.clipboard.writeText('${data.key}');this.textContent='Copied!'" style="margin-top:8px;font-size:11px;padding:4px 10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;color:var(--t2);cursor:pointer">Copy</button>`;
+      await loadMe();
+    }
+  } catch {
+    box.textContent = 'Error generating key. Try again.';
+  }
+}
+
+// ── Load projects ──
+async function loadProjects() {
+  try {
+    const res = await fetch('/api/v1/projects?limit=50');
+    const data = await res.json();
+    allProjects = data.projects || [];
+
+    // Seed example projects if platform is empty
+    if (allProjects.length === 0) {
+      allProjects = SEED_PROJECTS;
+    }
+
+    updateStats();
+    applyFilterAndRender();
+  } catch {
+    document.getElementById('projects-grid').innerHTML = `<div style="grid-column:1/-1" class="empty"><h3>Could not load projects</h3><p>Check your connection and try again.</p></div>`;
+  }
+}
+
+function updateStats() {
+  const total = allProjects.length;
+  const tokens = allProjects.reduce((a, p) => a + (p.tokens_saved_monthly || 0), 0);
+  const upvotes = allProjects.reduce((a, p) => a + (p.upvotes || 0), 0);
+  document.getElementById('stat-projects').textContent = total || '—';
+  document.getElementById('stat-tokens').textContent = tokens >= 1000000 ? (tokens/1000000).toFixed(1)+'M' : tokens >= 1000 ? Math.round(tokens/1000)+'K' : String(tokens) || '—';
+  document.getElementById('stat-upvotes').textContent = upvotes || '—';
+}
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  activeTag = null;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPage = 0;
+  applyFilterAndRender();
+}
+
+function setTagFilter(tag, btn) {
+  activeFilter = 'tag';
+  activeTag = tag;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPage = 0;
+  applyFilterAndRender();
+}
+
+function resort() {
+  activeSort = document.getElementById('sort-select').value;
+  currentPage = 0;
+  applyFilterAndRender();
+}
+
+function applyFilterAndRender() {
+  let filtered = [...allProjects];
+
+  if (activeFilter === 'featured') {
+    filtered = filtered.filter(p => p.is_featured);
+  } else if (activeFilter === 'tag' && activeTag) {
+    filtered = filtered.filter(p => p.tags && p.tags.some(t => t.toLowerCase() === activeTag.toLowerCase()));
+  }
+
+  if (activeSort === 'newest') {
+    filtered.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+  } else if (activeSort === 'savings') {
+    filtered.sort((a, b) => (b.tokens_saved_monthly || 0) - (a.tokens_saved_monthly || 0));
+  } else {
+    filtered.sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0) || (b.upvotes || 0) - (a.upvotes || 0));
+  }
+
+  displayedProjects = filtered;
+  renderProjects(filtered.slice(0, PAGE_SIZE));
+  const more = document.getElementById('load-more-wrap');
+  more.style.display = filtered.length > PAGE_SIZE ? 'block' : 'none';
+  currentPage = 1;
+}
+
+function loadMore() {
+  const start = currentPage * PAGE_SIZE;
+  const next = displayedProjects.slice(start, start + PAGE_SIZE);
+  appendProjects(next);
+  currentPage++;
+  if (currentPage * PAGE_SIZE >= displayedProjects.length) {
+    document.getElementById('load-more-wrap').style.display = 'none';
+  }
+}
+
+const ICON_COLORS = [
+  'linear-gradient(135deg,#6ee7b7,#3b82f6)',
+  'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#8b5cf6,#ec4899)',
+  'linear-gradient(135deg,#06b6d4,#6366f1)',
+  'linear-gradient(135deg,#10b981,#f59e0b)',
+];
+const ICONS = ['🤖','💬','🐍','🚀','⚡','🔧','🧠','🛠️','📡','🌐'];
+
+function projCardHTML(p, i) {
+  const color = ICON_COLORS[i % ICON_COLORS.length];
+  const icon = p.icon || ICONS[i % ICONS.length];
+  const tags = p.tags || [];
+  const tokFmt = p.tokens_saved_monthly >= 1000
+    ? Math.round(p.tokens_saved_monthly/1000)+'K'
+    : String(p.tokens_saved_monthly || 0);
+  const domain = (() => { try { return new URL(p.website_url).hostname; } catch { return null; } })();
+
+  return `
+    <div class="proj-card${p.is_featured ? ' featured' : ''}" data-id="${esc(p.id)}">
+      <div class="proj-header">
+        <div class="proj-icon" style="background:${color}">${icon}</div>
+        <div class="proj-meta">
+          <div class="proj-name">${esc(p.name)}${p.is_featured ? ' <span class="featured-badge">⭐ Featured</span>' : ''}</div>
+          ${domain ? `<div class="proj-host">${esc(domain)}</div>` : ''}
+        </div>
+        <div class="proj-upvotes">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span class="proj-upvote-count">${p.upvotes || 0}</span>
+        </div>
+      </div>
+      <p class="proj-desc">${esc(p.description)}</p>
+      ${tags.length ? `<div class="proj-tags">${tags.map(t=>`<span class="proj-tag${p.is_featured?' featured-tag':''}">${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="proj-footer">
+        <div class="proj-savings">
+          ${p.tokens_saved_monthly ? `<span>${tokFmt}</span> tokens/mo saved` : '<span style="color:var(--t3)">tokens saved not reported</span>'}
+        </div>
+        <div class="proj-links">
+          ${p.github_url ? `<a href="${esc(p.github_url)}" target="_blank" rel="noopener" class="proj-link">GitHub ↗</a>` : ''}
+          ${p.website_url ? `<a href="${esc(p.website_url)}" target="_blank" rel="noopener" class="proj-link">Visit ↗</a>` : ''}
+          <button class="upvote-btn" onclick="upvote('${esc(p.id)}',this)">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+            Upvote
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderProjects(projects) {
+  const grid = document.getElementById('projects-grid');
+  if (!projects.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1" class="empty"><h3>No projects found</h3><p>Try a different filter, or <button onclick="openPublishModal()" style="background:none;border:none;color:var(--ac);font-weight:700;cursor:pointer;font-size:14px">be the first to publish!</button></p></div>`;
+    return;
+  }
+  grid.innerHTML = projects.map((p, i) => projCardHTML(p, i)).join('');
+}
+
+function appendProjects(projects) {
+  const grid = document.getElementById('projects-grid');
+  const offset = grid.children.length;
+  grid.insertAdjacentHTML('beforeend', projects.map((p, i) => projCardHTML(p, offset + i)).join(''));
+}
+
+async function upvote(id, btn) {
+  btn.disabled = true;
+  try {
+    await fetch('/api/v1/projects/' + id + '/upvote', { method: 'POST' });
+    const countEl = btn.closest('.proj-card').querySelector('.proj-upvote-count');
+    if (countEl) countEl.textContent = parseInt(countEl.textContent || '0') + 1;
+    btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="var(--ac)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Voted';
+    btn.style.color = 'var(--ac)';
+    btn.style.borderColor = 'var(--acm)';
+  } catch {}
+}
+
+// ── Publish modal ──
+function openPublishModal() {
+  const modal = document.getElementById('publish-modal');
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  const user = window.Clerk?.user;
+  if (!user) {
+    showModalStep('signin');
+    return;
+  }
+
+  if (!userMe) {
+    loadMe().then(() => decideModalStep());
+  } else {
+    decideModalStep();
+  }
+}
+
+function decideModalStep() {
+  if (!userMe) { showModalStep('signin'); return; }
+  if (!userMe.connected) { showModalStep('connect'); return; }
+  if (!userMe.has_usage) {
+    // Has key but no usage — show connect step with key already shown
+    showModalStep('connect');
+    const box = document.getElementById('connect-key-box');
+    const connKey = userMe.connected_key;
+    if (connKey) {
+      box.innerHTML = `<span style="color:var(--ac)">${esc(connKey.prefix)}</span> <span style="color:var(--t3)">(${esc(connKey.label)})</span>`;
+      document.getElementById('gen-key-btn').textContent = 'Generate another key';
+    }
+    return;
+  }
+  // Connected with usage → go straight to publish
+  showModalStep('publish');
+  prefillPublishForm();
+}
+
+function showModalStep(step) {
+  ['signin','connect','publish','success'].forEach(s => {
+    document.getElementById('modal-step-'+s).style.display = s === step ? 'block' : 'none';
+  });
+}
+
+function prefillPublishForm() {
+  if (!userMe) return;
+  const key = userMe.connected_key;
+  if (key) {
+    const tokFmt = key.tokens_optimized >= 1000 ? Math.round(key.tokens_optimized/1000)+'K' : String(key.tokens_optimized);
+    document.getElementById('modal-conn-stats').textContent = `Connected via "${key.label}" — ${key.requests_total} requests, ${tokFmt} tokens optimized.`;
+    // Pre-fill tokens saved
+    const tokField = document.getElementById('pf-tokens');
+    if (tokField && !tokField.value) tokField.value = key.tokens_optimized || '';
+  }
+  // If user already has a project, pre-fill name
+  if (userMe.projects?.length) {
+    const existing = userMe.projects[0];
+    const nameField = document.getElementById('pf-name');
+    if (nameField && !nameField.value) nameField.value = existing.name || '';
+  }
+}
+
+async function generateKeyForConnect() {
+  if (!userToken) return;
+  const box = document.getElementById('connect-key-box');
+  const btn = document.getElementById('gen-key-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  box.textContent = '';
+
+  try {
+    const res = await fetch('/api/v1/keys', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + userToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: 'Vibe project' }),
+    });
+    const data = await res.json();
+    if (data.key) {
+      generatedKey = data.key;
+      box.innerHTML = `<div style="font-size:11px;color:var(--t3);margin-bottom:6px">Save this key — it won't be shown again:</div><div style="color:var(--ac);word-break:break-all;font-weight:700">${data.key}</div>`;
+      // Copy button
+      const copyBtn = document.createElement('button');
+      copyBtn.textContent = 'Copy key';
+      copyBtn.style.cssText = 'margin-top:8px;font-size:11px;padding:4px 10px;background:var(--bg3);border:1px solid var(--bd);border-radius:6px;color:var(--t2);cursor:pointer';
+      copyBtn.onclick = () => { navigator.clipboard.writeText(data.key); copyBtn.textContent = 'Copied!'; };
+      box.appendChild(copyBtn);
+      btn.textContent = 'Generate another key';
+      btn.disabled = false;
+    }
+  } catch {
+    box.textContent = 'Error. Try again.';
+    btn.disabled = false;
+    btn.textContent = 'Generate tsk_... key';
+  }
+}
+
+async function checkConnectionAndAdvance() {
+  const btn = document.getElementById('check-conn-btn');
+  const msg = document.getElementById('conn-check-msg');
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  msg.style.display = 'none';
+
+  // Refresh user status
+  if (userToken) {
+    try {
+      const res = await fetch('/api/v1/me', { headers: { Authorization: 'Bearer ' + userToken } });
+      userMe = await res.json();
+    } catch {}
+  }
+
+  if (userMe?.has_usage) {
+    showModalStep('publish');
+    prefillPublishForm();
+  } else if (userMe?.connected) {
+    msg.style.display = 'block';
+    msg.innerHTML = 'Key exists but no API calls made yet. Add the optimize call to your project code, then check again.';
+  } else {
+    msg.style.display = 'block';
+    msg.innerHTML = 'No API key found. Generate one above first.';
+  }
+  btn.disabled = false;
+  btn.textContent = 'I\'ve added it — check connection →';
+}
+
+async function submitProject(e) {
+  e.preventDefault();
+  const form = document.getElementById('publish-form');
+  const btn = document.getElementById('publish-submit-btn');
+  const msg = document.getElementById('publish-msg');
+  const fd = new FormData(form);
+
+  const tags = (fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean);
+  const costUsd = parseFloat(fd.get('cost_saved_usd')) || 0;
+
+  const body = {
+    name: fd.get('name'),
+    description: fd.get('description'),
+    github_url: fd.get('github_url') || undefined,
+    website_url: fd.get('website_url') || undefined,
+    tags,
+    tokens_saved_monthly: parseInt(fd.get('tokens_saved_monthly')) || 0,
+    cost_saved_monthly_cents: Math.round(costUsd * 100),
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Publishing…';
+  msg.style.display = 'none';
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (userToken) headers['Authorization'] = 'Bearer ' + userToken;
+
+    const res = await fetch('/api/v1/projects', { method: 'POST', headers, body: JSON.stringify(body) });
+    const data = await res.json();
+
+    if (res.ok) {
+      showModalStep('success');
+      loadProjects(); // Refresh grid
+    } else {
+      msg.style.display = 'block';
+      msg.style.color = '#f87171';
+      msg.textContent = data.error || 'Submission failed. Please try again.';
+    }
+  } catch {
+    msg.style.display = 'block';
+    msg.style.color = '#f87171';
+    msg.textContent = 'Network error. Please try again.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Publish to platform';
+  }
+}
+
+function closePublishModal() {
+  document.getElementById('publish-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePublishModal(); });
+document.getElementById('publish-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('publish-modal')) closePublishModal();
+});
+
+// ── Helpers ──
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Seed projects (shown when platform is empty) ──
+const SEED_PROJECTS = [
+  {
+    id: 'seed-1', name: 'ClaudeFlow', description: 'Orchestrates Claude agents for complex multi-step tasks. Terse API cuts context window usage by 41% per turn, enabling longer sessions without hitting token limits.',
+    github_url: 'https://github.com', website_url: null, tags: ['Node.js','Agents','TypeScript'],
+    tokens_saved_monthly: 38000, upvotes: 247, is_featured: true, submitted_at: '2026-05-01',
+  },
+  {
+    id: 'seed-2', name: 'PromptKit', description: 'A library of 200+ production-ready prompts. Uses Terse API to auto-compress each prompt at runtime, reducing developer API bills by $80/mo on average.',
+    github_url: 'https://github.com', website_url: null, tags: ['TypeScript','Prompts'],
+    tokens_saved_monthly: 21000, upvotes: 189, is_featured: true, submitted_at: '2026-05-03',
+  },
+  {
+    id: 'seed-3', name: 'PyAgentKit', description: 'Batteries-included Python scaffold for building LLM agents. Terse integration is built-in — every outbound message is auto-optimized before the API call.',
+    github_url: 'https://github.com', website_url: null, tags: ['Python','Scaffold','Agents'],
+    tokens_saved_monthly: 29000, upvotes: 134, is_featured: false, submitted_at: '2026-05-05',
+  },
+  {
+    id: 'seed-4', name: 'VibeCoder CLI', description: 'Terminal-first AI coding assistant that runs Claude Code in your terminal. All prompts are preprocessed with Terse normal mode before being sent.',
+    github_url: 'https://github.com', website_url: null, tags: ['CLI','Python','Agents'],
+    tokens_saved_monthly: 55000, upvotes: 98, is_featured: false, submitted_at: '2026-05-08',
+  },
+  {
+    id: 'seed-5', name: 'RAG Optimizer', description: 'A retrieval-augmented generation pipeline that uses Terse aggressive mode on retrieved chunks before stuffing them into context. Cuts RAG context by 58%.',
+    github_url: 'https://github.com', website_url: null, tags: ['Python','RAG','OpenAI'],
+    tokens_saved_monthly: 72000, upvotes: 76, is_featured: false, submitted_at: '2026-05-10',
+  },
+  {
+    id: 'seed-6', name: 'NextChat Pro', description: 'A Next.js chat app with Terse middleware baked in. User messages are compressed before each API round-trip — invisible to users, 35% lower costs.',
+    github_url: 'https://github.com', website_url: null, tags: ['TypeScript','Next.js','SaaS'],
+    tokens_saved_monthly: 18000, upvotes: 61, is_featured: false, submitted_at: '2026-05-12',
+  },
+];
+
+// ── Init ──
+loadProjects();
+</script>
+</body>
+</html>

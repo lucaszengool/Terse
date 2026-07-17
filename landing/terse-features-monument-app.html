@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse · Full Feature Tour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=Italiana&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --page-bg: #CFDB72;
+    --ink: #1a1c18;
+    --ink-soft: #4a4d3e;
+    --ink-faint: #767867;
+    --accent: #2f6b1c;
+    --accent-light: #5a8a3e;
+    --accent-glow: #7DAA50;
+    --line: #1a1c18;
+    --hair: rgba(26,28,24,0.18);
+    --total: 54s;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--page-bg);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 50px 24px 56px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    color: var(--ink);
+  }
+  svg { shape-rendering: geometricPrecision; }
+
+  .page {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  /* ── Headline ── */
+  .headline { text-align: center; width: 100%; min-height: 140px; }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 3.2px;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+  }
+  .eyebrow .ornament { display: inline-flex; align-items: center; gap: 4px; }
+  .eyebrow .ornament i {
+    width: 4px; height: 4px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    display: block;
+  }
+  .eyebrow .ornament .line {
+    width: 14px;
+    height: 1px;
+    background: var(--ink-soft);
+    opacity: 0.6;
+  }
+
+  .title-stack { position: relative; height: 96px; }
+  .title {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+  }
+  .title h1 {
+    font-family: 'Italiana', serif;
+    font-size: 38px;
+    font-weight: 400;
+    line-height: 1.0;
+    color: var(--ink);
+    letter-spacing: -0.4px;
+  }
+  .title h1 em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-variation-settings: "opsz" 144;
+    letter-spacing: -0.5px;
+  }
+  .title p {
+    margin-top: 10px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ink-soft);
+    letter-spacing: 0.6px;
+    line-height: 1.5;
+  }
+
+  /* 9 scenes × ~11% each, 54s total */
+  .title-1 { animation: t1 var(--total) ease-in-out infinite; }
+  .title-2 { animation: t2 var(--total) ease-in-out infinite; }
+  .title-3 { animation: t3 var(--total) ease-in-out infinite; }
+  .title-4 { animation: t4 var(--total) ease-in-out infinite; }
+  .title-5 { animation: t5 var(--total) ease-in-out infinite; }
+  .title-6 { animation: t6 var(--total) ease-in-out infinite; }
+  .title-7 { animation: t7 var(--total) ease-in-out infinite; }
+  .title-8 { animation: t8 var(--total) ease-in-out infinite; }
+  .title-9 { animation: t9 var(--total) ease-in-out infinite; }
+
+  @keyframes t1 { 0%,10% {opacity:1;} 11%,100% {opacity:0;} }
+  @keyframes t2 { 0%,10% {opacity:0;} 11%,21% {opacity:1;} 22%,100% {opacity:0;} }
+  @keyframes t3 { 0%,21% {opacity:0;} 22%,32% {opacity:1;} 33%,100% {opacity:0;} }
+  @keyframes t4 { 0%,32% {opacity:0;} 33%,43% {opacity:1;} 44%,100% {opacity:0;} }
+  @keyframes t5 { 0%,43% {opacity:0;} 44%,54% {opacity:1;} 55%,100% {opacity:0;} }
+  @keyframes t6 { 0%,54% {opacity:0;} 55%,65% {opacity:1;} 66%,100% {opacity:0;} }
+  @keyframes t7 { 0%,65% {opacity:0;} 66%,76% {opacity:1;} 77%,100% {opacity:0;} }
+  @keyframes t8 { 0%,76% {opacity:0;} 77%,87% {opacity:1;} 88%,100% {opacity:0;} }
+  @keyframes t9 { 0%,87% {opacity:0;} 88%,99% {opacity:1;} 100% {opacity:0;} }
+
+  /* ── Phone ── */
+  .phone-wrap { margin-top: 4px; position: relative; }
+  .phone-wrap::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -28px;
+    transform: translateX(-50%);
+    width: 70%;
+    height: 30px;
+    background: radial-gradient(ellipse, rgba(30,40,10,0.18) 0%, transparent 70%);
+    filter: blur(12px);
+    z-index: -1;
+  }
+
+  .phone {
+    width: 322px;
+    height: 716px;
+    background: var(--page-bg);
+    border: 1.2px solid var(--line);
+    border-radius: 46px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.55) inset,
+      0 22px 50px -22px rgba(30,40,10,0.18);
+    flex-shrink: 0;
+  }
+
+  /* DI + status bar */
+  .di {
+    position: absolute;
+    top: 11px; left: 50%;
+    transform: translateX(-50%);
+    width: 100px; height: 28px;
+    background: var(--line);
+    border-radius: 16px;
+    z-index: 10;
+  }
+  .sb {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 22px 0;
+    z-index: 5;
+  }
+  .sb-time { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.2px; }
+  .sb-right { display: flex; align-items: center; gap: 5px; }
+  .signal { display: flex; align-items: flex-end; gap: 1.5px; height: 9px; }
+  .signal b { width: 2.5px; background: var(--ink); border-radius: 1px; display: block; }
+  .signal b:nth-child(1) { height: 3px; }
+  .signal b:nth-child(2) { height: 5px; }
+  .signal b:nth-child(3) { height: 7px; opacity: 0.3; }
+  .signal b:nth-child(4) { height: 9px; opacity: 0.3; }
+  .wifi-svg { width: 13px; height: 10px; }
+  .batt {
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 4px;
+    border-radius: 3px;
+    line-height: 1;
+    opacity: 0.85;
+  }
+
+  /* Stage */
+  .stage {
+    position: absolute;
+    inset: 60px 24px 50px 24px;
+    z-index: 2;
+  }
+  .scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .scene-1 { animation: s1 var(--total) ease-in-out infinite; }
+  .scene-2 { animation: s2 var(--total) ease-in-out infinite; }
+  .scene-3 { animation: s3 var(--total) ease-in-out infinite; }
+  .scene-4 { animation: s4 var(--total) ease-in-out infinite; }
+  .scene-5 { animation: s5 var(--total) ease-in-out infinite; }
+  .scene-6 { animation: s6 var(--total) ease-in-out infinite; }
+  .scene-7 { animation: s7 var(--total) ease-in-out infinite; }
+  .scene-8 { animation: s8 var(--total) ease-in-out infinite; }
+  .scene-9 { animation: s9 var(--total) ease-in-out infinite; }
+
+  @keyframes s1 { 0%,10% {opacity:1;} 11%,100% {opacity:0;} }
+  @keyframes s2 { 0%,10% {opacity:0;} 11%,21% {opacity:1;} 22%,100% {opacity:0;} }
+  @keyframes s3 { 0%,21% {opacity:0;} 22%,32% {opacity:1;} 33%,100% {opacity:0;} }
+  @keyframes s4 { 0%,32% {opacity:0;} 33%,43% {opacity:1;} 44%,100% {opacity:0;} }
+  @keyframes s5 { 0%,43% {opacity:0;} 44%,54% {opacity:1;} 55%,100% {opacity:0;} }
+  @keyframes s6 { 0%,54% {opacity:0;} 55%,65% {opacity:1;} 66%,100% {opacity:0;} }
+  @keyframes s7 { 0%,65% {opacity:0;} 66%,76% {opacity:1;} 77%,100% {opacity:0;} }
+  @keyframes s8 { 0%,76% {opacity:0;} 77%,87% {opacity:1;} 88%,100% {opacity:0;} }
+  @keyframes s9 { 0%,87% {opacity:0;} 88%,99% {opacity:1;} 100% {opacity:0;} }
+
+  /* Common labels */
+  .label-mini {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 2.6px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .label-mini.green { color: var(--accent); }
+  .hairline {
+    height: 1px;
+    background: var(--hair);
+    width: 100%;
+  }
+  .ornament-diamond {
+    display: inline-block;
+    width: 4px; height: 4px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    vertical-align: middle;
+  }
+
+  /* ── Scene 1: Brand splash — minimalist garden ── */
+  .scene-1 { justify-content: center; }
+  .brand-splash {
+    text-align: center;
+    position: relative;
+    width: 100%;
+    z-index: 3;
+  }
+
+  /* Garden SVG background — flowers, grass, stems */
+  .garden-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .garden-bg svg { width: 100%; height: 100%; display: block; }
+
+  /* Subtle aura behind wordmark */
+  .brand-aura {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 240px;
+    height: 110px;
+    background: radial-gradient(ellipse, rgba(255,255,225,0.4) 0%, transparent 65%);
+    pointer-events: none;
+    animation: auraBreathe 6s ease-in-out infinite;
+    z-index: 2;
+  }
+  @keyframes auraBreathe {
+    0%,100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  }
+
+  /* Ornament progressive fade-in (draw-in like ink) */
+  .orn-fade { opacity: 0; transform-origin: center; }
+  .orn-1 { animation: ornIn 1.4s 0.2s ease-out forwards, ornBreathe 7s 1.8s ease-in-out infinite; }
+  .orn-2 { animation: ornIn 1.4s 0.5s ease-out forwards, ornBreathe 7s 2.2s ease-in-out infinite; }
+  .orn-3 { animation: ornIn 1.0s 0.9s ease-out forwards; }
+  .orn-4 { animation: ornIn 1.0s 1.2s ease-out forwards; }
+  .orn-5 { animation: ornIn 1.6s 1.5s ease-out forwards; }
+  .orn-6 { animation: ornIn 0.8s 1.8s ease-out forwards; }
+  @keyframes ornIn {
+    0%   { opacity: 0; transform: scale(0.88); }
+    100% { opacity: 0.9; transform: scale(1); }
+  }
+  @keyframes ornBreathe {
+    0%,100% { filter: none; }
+    50% { filter: drop-shadow(0 0 4px rgba(26,28,24,0.20)); }
+  }
+
+  /* Crown ornament */
+  .brand-splash .ornament-top {
+    width: 30px;
+    height: 30px;
+    margin: 0 auto 14px;
+    animation: gentleFloat 4s ease-in-out infinite;
+    position: relative;
+  }
+  @keyframes gentleFloat {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  /* Eyebrow tag */
+  .brand-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 3.6px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .brand-tag .dash {
+    width: 18px; height: 1px;
+    background: var(--ink-soft);
+    opacity: 0.55;
+  }
+
+  .brand-splash .word {
+    font-family: 'Italiana', serif;
+    font-size: 88px;
+    color: var(--ink);
+    letter-spacing: -1px;
+    line-height: 0.95;
+    animation: wordShimmer 6s ease-in-out infinite;
+  }
+  @keyframes wordShimmer {
+    0%,100% { text-shadow: 0 0 0 transparent; }
+    50% { text-shadow: 0 0 30px rgba(255,255,220,0.55); }
+  }
+
+  /* small flourish under wordmark */
+  .brand-flourish {
+    margin: 10px auto 0;
+    width: 80px;
+    height: 8px;
+    opacity: 0.55;
+  }
+  .brand-flourish svg { display: block; width: 100%; height: 100%; }
+
+  .brand-splash .sub {
+    margin-top: 10px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  .divider-orn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .divider-orn .line { width: 22px; height: 1px; background: var(--ink-soft); opacity: 0.55; }
+  .divider-orn i {
+    width: 4px; height: 4px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    display: block;
+  }
+  .brand-splash .tagline {
+    margin-top: 20px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .brand-splash .tagline em {
+    color: var(--ink);
+    font-weight: 400;
+  }
+
+  /* ── Scene 2: Token Reduction (no boxes) ── */
+  .scene-2 { justify-content: center; gap: 16px; align-items: stretch; padding: 0 8px; }
+  .reduce-block { display: flex; flex-direction: column; gap: 16px; }
+  .reduce-section { display: flex; flex-direction: column; gap: 6px; opacity: 0; }
+  .reduce-orig { animation: redOrig var(--total) ease-out infinite; }
+  .reduce-opt  { animation: redOpt var(--total) ease-out infinite; }
+  @keyframes redOrig {
+    0%,10% { opacity: 0; transform: translateY(8px); }
+    13%,20% { opacity: 1; transform: translateY(0); }
+    22%,100% { opacity: 0; }
+  }
+  @keyframes redOpt {
+    0%,15% { opacity: 0; transform: translateY(8px); }
+    18%,20% { opacity: 1; transform: translateY(0); }
+    22%,100% { opacity: 0; }
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-head .tok {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+  }
+  .section-head .tok em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 13px;
+    color: var(--ink);
+    margin-right: 3px;
+  }
+  .reduce-body {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .reduce-body.opt {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 14px;
+  }
+
+  /* dots flow between sections */
+  .opt-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0;
+    animation: flowIn var(--total) ease-in-out infinite;
+  }
+  @keyframes flowIn {
+    0%,12% { opacity: 0; }
+    14%,18% { opacity: 1; }
+    20%,100% { opacity: 0; }
+  }
+  .opt-flow .d {
+    width: 4px; height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: dotFlow 1.1s ease-in-out infinite;
+  }
+  .opt-flow .d:nth-child(2) { animation-delay: 0.15s; }
+  .opt-flow .d:nth-child(3) { animation-delay: 0.3s; }
+  .opt-flow .lbl { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--ink-soft); }
+  .opt-flow .d:nth-child(5) { animation-delay: 0.45s; }
+  .opt-flow .d:nth-child(6) { animation-delay: 0.6s; }
+  .opt-flow .d:nth-child(7) { animation-delay: 0.75s; }
+  @keyframes dotFlow {
+    0%,100% { transform: translateY(0); opacity: 0.4; }
+    50% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  .saved-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
+    opacity: 0;
+    animation: savedIn var(--total) ease-out infinite;
+  }
+  @keyframes savedIn {
+    0%,18% { opacity: 0; transform: translateY(4px); }
+    20%,21% { opacity: 1; transform: translateY(0); }
+    22%,100% { opacity: 0; }
+  }
+  .saved-line .pct {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 32px;
+    color: var(--accent);
+    animation: pctPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pctPulse {
+    0%,100% { transform: scale(1); text-shadow: 0 0 0 rgba(47,107,28,0); }
+    50% { transform: scale(1.08); text-shadow: 0 0 12px rgba(47,107,28,0.4); }
+  }
+  .saved-line .lbl { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--ink-soft); }
+
+  /* Striking original-text effect on optimized */
+  .reduce-body.strike { position: relative; }
+  .reduce-body.strike::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 100%;
+    top: 50%;
+    height: 1.2px;
+    background: var(--accent);
+    transform-origin: left;
+    animation: strikeDraw var(--total) ease-in-out infinite;
+  }
+  @keyframes strikeDraw {
+    0%,14% { right: 100%; }
+    17%,19% { right: 0; }
+    21%,100% { right: 100%; }
+  }
+
+  /* ── Scene 3: Three Modes ── */
+  .scene-3 { justify-content: center; gap: 14px; padding: 0 4px; align-items: stretch; }
+  .mode-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+    opacity: 0;
+    transition: color 0.3s ease;
+  }
+  .mode-icon { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .mode-info { flex: 1; min-width: 0; }
+  .mode-name {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .mode-ex {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+  .mode-pct {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+    transition: color 0.3s ease;
+  }
+  .hairline-row {
+    height: 1px;
+    background: var(--hair);
+    width: 100%;
+    opacity: 0;
+  }
+
+  .m-row-1 { animation: modeRow1 var(--total) ease-out infinite; }
+  .m-row-2 { animation: modeRow2 var(--total) ease-out infinite; }
+  .m-row-3 { animation: modeRow3 var(--total) ease-out infinite; }
+  @keyframes modeRow1 {
+    0%,21% { opacity: 0; transform: translateX(-12px); }
+    23%,32% { opacity: 1; transform: translateX(0); }
+    33%,100% { opacity: 0; }
+  }
+  @keyframes modeRow2 {
+    0%,23% { opacity: 0; transform: translateX(-12px); }
+    25%,32% { opacity: 1; transform: translateX(0); }
+    33%,100% { opacity: 0; }
+  }
+  @keyframes modeRow3 {
+    0%,25% { opacity: 0; transform: translateX(-12px); }
+    27%,32% { opacity: 1; transform: translateX(0); }
+    33%,100% { opacity: 0; }
+  }
+  /* Highlight cycling — accent color cycles through each row */
+  .m-row-1 .mode-pct { animation: hlSoft var(--total) ease-in-out infinite; }
+  .m-row-2 .mode-pct { animation: hlNorm var(--total) ease-in-out infinite; }
+  .m-row-3 .mode-pct { animation: hlAgg var(--total) ease-in-out infinite; }
+  @keyframes hlSoft {
+    0%,26% { color: var(--ink); transform: scale(1); }
+    27%,28% { color: var(--accent); transform: scale(1.15); }
+    29%,100% { color: var(--ink); transform: scale(1); }
+  }
+  @keyframes hlNorm {
+    0%,28% { color: var(--ink); transform: scale(1); }
+    29%,30% { color: var(--accent); transform: scale(1.15); }
+    31%,100% { color: var(--ink); transform: scale(1); }
+  }
+  @keyframes hlAgg {
+    0%,30% { color: var(--ink); transform: scale(1); }
+    31%,32% { color: var(--accent); transform: scale(1.15); }
+    33%,100% { color: var(--ink); transform: scale(1); }
+  }
+  .hairline-1 { animation: hlLine1 var(--total) ease-out infinite; }
+  .hairline-2 { animation: hlLine2 var(--total) ease-out infinite; }
+  @keyframes hlLine1 {
+    0%,23% { opacity: 0; }
+    25%,32% { opacity: 1; }
+    33%,100% { opacity: 0; }
+  }
+  @keyframes hlLine2 {
+    0%,25% { opacity: 0; }
+    27%,32% { opacity: 1; }
+    33%,100% { opacity: 0; }
+  }
+
+  /* ── Scene 4: Works Everywhere ── */
+  .scene-4 { justify-content: center; }
+  .app-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px 14px;
+  }
+  .app-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    opacity: 0;
+  }
+  .app-cell .glyph { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+  .app-cell .nm {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: 0;
+  }
+  .app-cell .check {
+    position: absolute;
+    top: -4px; right: 14px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 8px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    box-shadow: 0 0 8px rgba(47,107,28,0.6);
+  }
+  .app-1 { animation: appIn1 var(--total) ease-out infinite; }
+  .app-2 { animation: appIn2 var(--total) ease-out infinite; }
+  .app-3 { animation: appIn3 var(--total) ease-out infinite; }
+  .app-4 { animation: appIn4 var(--total) ease-out infinite; }
+  .app-5 { animation: appIn5 var(--total) ease-out infinite; }
+  .app-6 { animation: appIn6 var(--total) ease-out infinite; }
+  @keyframes appIn1 { 0%,32%{opacity:0; transform:translateY(6px) scale(0.85);} 34%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn2 { 0%,33%{opacity:0; transform:translateY(6px) scale(0.85);} 35%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn3 { 0%,34%{opacity:0; transform:translateY(6px) scale(0.85);} 36%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn4 { 0%,35%{opacity:0; transform:translateY(6px) scale(0.85);} 37%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn5 { 0%,36%{opacity:0; transform:translateY(6px) scale(0.85);} 38%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  @keyframes appIn6 { 0%,37%{opacity:0; transform:translateY(6px) scale(0.85);} 39%,43%{opacity:1; transform:translateY(0) scale(1);} 44%,100%{opacity:0;} }
+  .chk-1 { animation: chk1 var(--total) ease-out infinite; }
+  .chk-2 { animation: chk2 var(--total) ease-out infinite; }
+  .chk-3 { animation: chk3 var(--total) ease-out infinite; }
+  .chk-4 { animation: chk4 var(--total) ease-out infinite; }
+  .chk-5 { animation: chk5 var(--total) ease-out infinite; }
+  .chk-6 { animation: chk6 var(--total) ease-out infinite; }
+  @keyframes chk1 { 0%,37%{opacity:0; transform:scale(0);} 39%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk2 { 0%,37.5%{opacity:0; transform:scale(0);} 39.5%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk3 { 0%,38%{opacity:0; transform:scale(0);} 40%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk4 { 0%,38.5%{opacity:0; transform:scale(0);} 40.5%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk5 { 0%,39%{opacity:0; transform:scale(0);} 41%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+  @keyframes chk6 { 0%,39.5%{opacity:0; transform:scale(0);} 41.5%,43%{opacity:1; transform:scale(1);} 44%,100%{opacity:0;} }
+
+  .anywhere-foot {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 9.5px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  /* ── Scene 5: Agent Monitoring (NEW) ── */
+  .scene-5 { justify-content: center; padding: 0 4px; }
+  .monitor-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: liveBlink 1.2s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--accent-glow);
+  }
+  @keyframes liveBlink {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+  .monitor-log {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--ink);
+    width: 100%;
+  }
+  .log-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    opacity: 0;
+  }
+  .log-line .ts { color: var(--ink-faint); font-size: 9px; min-width: 36px; }
+  .log-line .ag { color: var(--accent); font-weight: 500; }
+  .log-line .arr { color: var(--ink-faint); }
+  .log-line .msg { color: var(--ink); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log-line .gain {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .lg-1 { animation: lg1 var(--total) ease-out infinite; }
+  .lg-2 { animation: lg2 var(--total) ease-out infinite; }
+  .lg-3 { animation: lg3 var(--total) ease-out infinite; }
+  .lg-4 { animation: lg4 var(--total) ease-out infinite; }
+  .lg-5 { animation: lg5 var(--total) ease-out infinite; }
+  @keyframes lg1 { 0%,44%{opacity:0; transform:translateY(6px);} 46%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+  @keyframes lg2 { 0%,45%{opacity:0; transform:translateY(6px);} 47%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+  @keyframes lg3 { 0%,47%{opacity:0; transform:translateY(6px);} 49%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+  @keyframes lg4 { 0%,49%{opacity:0; transform:translateY(6px);} 51%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+  @keyframes lg5 { 0%,51%{opacity:0; transform:translateY(6px);} 53%,54%{opacity:1; transform:translateY(0);} 55%,100%{opacity:0;} }
+
+  .monitor-stat {
+    text-align: center;
+    margin-top: 18px;
+    opacity: 0;
+    animation: monStatIn var(--total) ease-out infinite;
+  }
+  @keyframes monStatIn {
+    0%,49%{opacity:0; transform:translateY(6px);}
+    51%,54%{opacity:1; transform:translateY(0);}
+    55%,100%{opacity:0;}
+  }
+  .monitor-stat .val {
+    font-family: 'Italiana', serif;
+    font-size: 36px;
+    color: var(--ink);
+    line-height: 1;
+    letter-spacing: -0.5px;
+    animation: valTick 1.8s ease-in-out infinite;
+    display: inline-block;
+  }
+  @keyframes valTick {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
+  .monitor-stat .val small {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-left: 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .monitor-stat .sub {
+    margin-top: 6px;
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  /* tiny waveform bars decorating monitor */
+  .monitor-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    height: 16px;
+    margin-top: 12px;
+  }
+  .monitor-bars b {
+    width: 3px;
+    background: var(--accent);
+    border-radius: 1px;
+    animation: barEq 1s ease-in-out infinite;
+    opacity: 0.7;
+  }
+  .monitor-bars b:nth-child(1) { animation-delay: 0s; height: 6px; }
+  .monitor-bars b:nth-child(2) { animation-delay: 0.1s; height: 12px; }
+  .monitor-bars b:nth-child(3) { animation-delay: 0.2s; height: 9px; }
+  .monitor-bars b:nth-child(4) { animation-delay: 0.3s; height: 16px; }
+  .monitor-bars b:nth-child(5) { animation-delay: 0.4s; height: 7px; }
+  .monitor-bars b:nth-child(6) { animation-delay: 0.5s; height: 13px; }
+  .monitor-bars b:nth-child(7) { animation-delay: 0.6s; height: 10px; }
+  .monitor-bars b:nth-child(8) { animation-delay: 0.5s; height: 14px; }
+  .monitor-bars b:nth-child(9) { animation-delay: 0.4s; height: 8px; }
+  .monitor-bars b:nth-child(10) { animation-delay: 0.3s; height: 11px; }
+  @keyframes barEq {
+    0%,100% { transform: scaleY(0.5); }
+    50% { transform: scaleY(1.2); }
+  }
+
+  /* ── Scene 6: Languages (no boxes) ── */
+  .scene-6 { justify-content: center; gap: 12px; padding: 0 4px; align-items: stretch; }
+  .lang-stack { display: flex; flex-direction: column; gap: 4px; }
+  .lang-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    opacity: 0;
+  }
+  .lang-row .flag {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 1.2px;
+    width: 30px;
+    flex-shrink: 0;
+  }
+  .lang-row .orig {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lang-row .arrow { color: var(--ink-faint); font-size: 11px; }
+  .lang-row .opt {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    transition: color 0.3s;
+  }
+  .l-row-1 { animation: lRow1 var(--total) ease-out infinite; }
+  .l-row-2 { animation: lRow2 var(--total) ease-out infinite; }
+  .l-row-3 { animation: lRow3 var(--total) ease-out infinite; }
+  .l-row-4 { animation: lRow4 var(--total) ease-out infinite; }
+  .l-row-5 { animation: lRow5 var(--total) ease-out infinite; }
+  @keyframes lRow1 { 0%,55%{opacity:0; transform:translateX(-6px);} 57%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  @keyframes lRow2 { 0%,56%{opacity:0; transform:translateX(-6px);} 58%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  @keyframes lRow3 { 0%,57%{opacity:0; transform:translateX(-6px);} 59%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  @keyframes lRow4 { 0%,58%{opacity:0; transform:translateX(-6px);} 60%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  @keyframes lRow5 { 0%,59%{opacity:0; transform:translateX(-6px);} 61%,65%{opacity:1; transform:translateX(0);} 66%,100%{opacity:0;} }
+  .l-row-1 .opt { animation: optHL1 var(--total) ease-in-out infinite; }
+  .l-row-2 .opt { animation: optHL2 var(--total) ease-in-out infinite; }
+  .l-row-3 .opt { animation: optHL3 var(--total) ease-in-out infinite; }
+  .l-row-4 .opt { animation: optHL4 var(--total) ease-in-out infinite; }
+  .l-row-5 .opt { animation: optHL5 var(--total) ease-in-out infinite; }
+  @keyframes optHL1 { 0%,59%{color:var(--ink);} 60%,61%{color:var(--accent);} 62%,100%{color:var(--ink);} }
+  @keyframes optHL2 { 0%,60%{color:var(--ink);} 61%,62%{color:var(--accent);} 63%,100%{color:var(--ink);} }
+  @keyframes optHL3 { 0%,61%{color:var(--ink);} 62%,63%{color:var(--accent);} 64%,100%{color:var(--ink);} }
+  @keyframes optHL4 { 0%,62%{color:var(--ink);} 63%,64%{color:var(--accent);} 65%,100%{color:var(--ink);} }
+  @keyframes optHL5 { 0%,63%{color:var(--ink);} 64%,65%{color:var(--accent);} 66%,100%{color:var(--ink);} }
+
+  /* ── Scene 7: Terse Pet — cute round Pal ── */
+  .scene-7 { justify-content: flex-start; padding: 12px 0 0; }
+  .pet-head { text-align: center; }
+  .pet-head .nm {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .pet-stage {
+    position: relative;
+    width: 240px;
+    height: 220px;
+    margin: 10px auto 0;
+  }
+  .pet-body {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 14px;
+    animation: petBob 2.2s ease-in-out infinite;
+    transform-origin: center 92%;
+  }
+  @keyframes petBob {
+    0%,100% { transform: translateY(0) scale(1, 1); }
+    50% { transform: translateY(-4px) scale(1.02, 0.98); }
+  }
+  .pet-body svg { display: block; overflow: visible; }
+  /* tail wagging */
+  .pet-tail-wag { transform-origin: 70% 70%; animation: tailWag 0.9s ease-in-out infinite; }
+  @keyframes tailWag {
+    0%,100% { transform: rotate(-10deg); }
+    50% { transform: rotate(15deg); }
+  }
+  /* ear twitching occasionally */
+  .pet-ear-l { transform-origin: 50% 100%; animation: earTwitchL 5s ease-in-out infinite; }
+  .pet-ear-r { transform-origin: 50% 100%; animation: earTwitchR 5s ease-in-out infinite 0.2s; }
+  @keyframes earTwitchL { 0%,90%,100% { transform: rotate(0); } 93%,96% { transform: rotate(-12deg); } }
+  @keyframes earTwitchR { 0%,88%,100% { transform: rotate(0); } 91%,94% { transform: rotate(12deg); } }
+  /* eye blink */
+  .pet-eye { transform-origin: center; animation: eyeBlink 3.4s ease-in-out infinite; }
+  @keyframes eyeBlink {
+    0%,92%,100% { transform: scaleY(1); }
+    94%,96% { transform: scaleY(0.1); }
+  }
+  /* belly breath */
+  .pet-belly { transform-origin: center 80%; animation: bellyBreath 2.2s ease-in-out infinite; }
+  @keyframes bellyBreath {
+    0%,100% { transform: scale(1, 1); }
+    50% { transform: scale(1.03, 0.97); }
+  }
+  .pet-shadow {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 10px;
+    background: radial-gradient(ellipse, rgba(30,40,10,0.35) 0%, transparent 70%);
+    filter: blur(4px);
+    animation: shadowPulse 2.2s ease-in-out infinite;
+  }
+  @keyframes shadowPulse {
+    0%,100% { width: 100px; opacity: 1; }
+    50% { width: 90px; opacity: 0.7; }
+  }
+  /* sparkles around pet */
+  .pet-sparkle {
+    position: absolute;
+    width: 4px; height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(125,170,80,0.7);
+    opacity: 0;
+  }
+  .pet-spark-1 { top: 20%; left: 18%; animation: sparkPop 2.4s ease-out infinite; }
+  .pet-spark-2 { top: 35%; right: 18%; animation: sparkPop 2.4s ease-out infinite 0.8s; }
+  .pet-spark-3 { top: 55%; left: 12%; animation: sparkPop 2.4s ease-out infinite 1.6s; }
+  @keyframes sparkPop {
+    0%,100% { opacity: 0; transform: scale(0.4); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+  /* Floating hearts */
+  .heart {
+    position: absolute;
+    color: var(--accent);
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    opacity: 0;
+  }
+  .heart-1 { left: 12%; top: 50%; animation: heartFloat 3s ease-out infinite; }
+  .heart-2 { right: 14%; top: 60%; animation: heartFloat 3s ease-out infinite 0.7s; }
+  .heart-3 { left: 24%; top: 30%; animation: heartFloat 3s ease-out infinite 1.4s; }
+  @keyframes heartFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    20% { opacity: 1; transform: translateY(-10px) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) scale(0.8); }
+  }
+  /* Pet stats */
+  .pet-stats {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 16px;
+  }
+  .pet-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+  }
+  .pet-stat-row .lbl {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--ink);
+    width: 64px;
+    flex-shrink: 0;
+  }
+  .pet-stat-row .bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(26,28,24,0.15);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .pet-stat-row .bar .fill {
+    position: absolute;
+    inset: 0 100% 0 0;
+    background: var(--accent);
+    border-radius: 4px;
+  }
+  .pet-stat-row .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    width: 30px;
+    text-align: right;
+  }
+  .ps-1 { animation: psRow1 var(--total) ease-out infinite; }
+  .ps-2 { animation: psRow2 var(--total) ease-out infinite; }
+  .ps-3 { animation: psRow3 var(--total) ease-out infinite; }
+  @keyframes psRow1 { 0%,68%{opacity:0; transform:translateY(4px);} 70%,76%{opacity:1; transform:translateY(0);} 77%,100%{opacity:0;} }
+  @keyframes psRow2 { 0%,69%{opacity:0; transform:translateY(4px);} 71%,76%{opacity:1; transform:translateY(0);} 77%,100%{opacity:0;} }
+  @keyframes psRow3 { 0%,70%{opacity:0; transform:translateY(4px);} 72%,76%{opacity:1; transform:translateY(0);} 77%,100%{opacity:0;} }
+  .ps-1 .fill { animation: barFill1 var(--total) ease-out infinite; }
+  .ps-2 .fill { animation: barFill2 var(--total) ease-out infinite; }
+  .ps-3 .fill { animation: barFill3 var(--total) ease-out infinite; }
+  @keyframes barFill1 { 0%,70%{right:100%;} 73%,76%{right:5%;} 77%,100%{right:100%;} }
+  @keyframes barFill2 { 0%,71%{right:100%;} 74%,76%{right:30%;} 77%,100%{right:100%;} }
+  @keyframes barFill3 { 0%,72%{right:100%;} 75%,76%{right:18%;} 77%,100%{right:100%;} }
+
+  .pet-foot {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .pet-foot em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    text-transform: none;
+  }
+
+  /* ── Scene 8: Terse Farm (NEW) ── */
+  .scene-8 { justify-content: flex-start; padding: 16px 0 0; }
+  .farm-head { text-align: center; margin-bottom: 12px; }
+  .farm-head .nm {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 20px;
+    color: var(--ink);
+  }
+  .farm-grid {
+    width: 220px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .tile {
+    aspect-ratio: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+  }
+  .tile svg { display: block; }
+  .t-1 { animation: tileIn1 var(--total) ease-out infinite; }
+  .t-2 { animation: tileIn2 var(--total) ease-out infinite; }
+  .t-3 { animation: tileIn3 var(--total) ease-out infinite; }
+  .t-4 { animation: tileIn4 var(--total) ease-out infinite; }
+  .t-5 { animation: tileIn5 var(--total) ease-out infinite; }
+  .t-6 { animation: tileIn6 var(--total) ease-out infinite; }
+  .t-7 { animation: tileIn7 var(--total) ease-out infinite; }
+  .t-8 { animation: tileIn8 var(--total) ease-out infinite; }
+  .t-9 { animation: tileIn9 var(--total) ease-out infinite; }
+  @keyframes tileIn1 { 0%,78%{opacity:0; transform:scale(0.6);} 80%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn2 { 0%,78.5%{opacity:0; transform:scale(0.6);} 80.5%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn3 { 0%,79%{opacity:0; transform:scale(0.6);} 81%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn4 { 0%,79.5%{opacity:0; transform:scale(0.6);} 81.5%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn5 { 0%,80%{opacity:0; transform:scale(0.6);} 82%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn6 { 0%,80.5%{opacity:0; transform:scale(0.6);} 82.5%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn7 { 0%,81%{opacity:0; transform:scale(0.6);} 83%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn8 { 0%,81.5%{opacity:0; transform:scale(0.6);} 83.5%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  @keyframes tileIn9 { 0%,82%{opacity:0; transform:scale(0.6);} 84%,87%{opacity:1; transform:scale(1);} 88%,100%{opacity:0;} }
+  /* Crop grow animation on selected tiles */
+  .crop-grow { transform-origin: 50% 100%; animation: cropGrow 2.4s ease-in-out infinite; }
+  @keyframes cropGrow {
+    0%,100% { transform: scale(0.85, 0.7); }
+    50% { transform: scale(1, 1); }
+  }
+  /* Water droplet */
+  .droplet {
+    position: absolute;
+    width: 5px;
+    height: 7px;
+    background: var(--accent-light);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    opacity: 0;
+    animation: dropFall 2s ease-in infinite;
+  }
+  @keyframes dropFall {
+    0% { opacity: 0; transform: translateY(-30px); }
+    30% { opacity: 1; }
+    60% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(0) scale(0.5); }
+  }
+  /* Floating coin */
+  .coin {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F5D070 0%, #B8923E 100%);
+    border: 1px solid #8E6E2A;
+    opacity: 0;
+    animation: coinFloat 3s ease-out infinite;
+    box-shadow: 0 0 8px rgba(232,201,100,0.5);
+  }
+  .coin::before {
+    content: '$';
+    position: absolute;
+    inset: 0;
+    color: #8E6E2A;
+    font-size: 8px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+  }
+  @keyframes coinFloat {
+    0% { opacity: 0; transform: translate(-50%, -50%) translateY(0) scale(0.5) rotate(0); }
+    20% { opacity: 1; transform: translate(-50%, -50%) translateY(-10px) scale(1) rotate(180deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) translateY(-50px) scale(0.7) rotate(720deg); }
+  }
+  /* Sun rays animation */
+  .farm-sun {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,240,180,0.9) 0%, rgba(255,220,140,0.6) 70%, transparent 100%);
+    box-shadow: 0 0 20px rgba(255,220,140,0.6);
+    animation: sunPulse 3s ease-in-out infinite;
+  }
+  @keyframes sunPulse {
+    0%,100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.15); opacity: 1; }
+  }
+  /* +50 coins floating notification */
+  .coin-notify {
+    position: absolute;
+    top: 30%; right: 14px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 14px;
+    color: var(--accent);
+    opacity: 0;
+    animation: coinNotify 3s ease-out infinite;
+  }
+  @keyframes coinNotify {
+    0%,30% { opacity: 0; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-12px); }
+    100% { opacity: 0; transform: translateY(-30px); }
+  }
+
+  .farm-foot {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .farm-foot em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 0;
+    text-transform: none;
+    margin-left: 4px;
+    opacity: 0;
+    animation: harvestNum var(--total) ease-out infinite;
+  }
+  @keyframes harvestNum {
+    0%,82% { opacity: 0; transform: translateY(4px); }
+    84%,87% { opacity: 1; transform: translateY(0); }
+    88%,100% { opacity: 0; }
+  }
+
+  /* ── Scene 9: Stats + CTA ── */
+  .scene-9 { justify-content: center; gap: 14px; padding: 0 4px; align-items: stretch; }
+  .stat-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 8px 0;
+    opacity: 0;
+  }
+  .stat-line .label {
+    font-size: 9.5px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .stat-line .val {
+    font-family: 'Italiana', serif;
+    font-size: 32px;
+    color: var(--ink);
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+  .stat-line .val small {
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-left: 2px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+  }
+  .st-1 { animation: stIn1 var(--total) ease-out infinite; }
+  .st-2 { animation: stIn2 var(--total) ease-out infinite; }
+  @keyframes stIn1 { 0%,88%{opacity:0; transform:translateY(6px);} 90%,99%{opacity:1; transform:translateY(0);} 100%{opacity:0;} }
+  @keyframes stIn2 { 0%,89%{opacity:0; transform:translateY(6px);} 91%,99%{opacity:1; transform:translateY(0);} 100%{opacity:0;} }
+
+  .spark {
+    height: 36px;
+    width: 100%;
+    margin: 4px 0;
+    opacity: 0;
+    animation: sparkScene var(--total) ease-out infinite;
+  }
+  @keyframes sparkScene { 0%,89%{opacity:0;} 91%,99%{opacity:1;} 100%{opacity:0;} }
+  .spark path.line {
+    stroke: var(--accent);
+    stroke-width: 1.8;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 260;
+    stroke-dashoffset: 260;
+    animation: drawSpark var(--total) ease-out infinite;
+  }
+  @keyframes drawSpark { 0%,89% { stroke-dashoffset: 260; } 94%,99% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 260; } }
+  .spark path.fill { stroke: none; fill: url(#sparkGrad); opacity: 0; animation: fillIn var(--total) ease-out infinite; }
+  @keyframes fillIn { 0%,94% {opacity:0;} 96%,99% {opacity:0.55;} 100% {opacity:0;} }
+
+  .cta-btn-mv {
+    margin-top: 8px;
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: 100px;
+    padding: 13px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 8px 24px rgba(30,40,10,0.20);
+    animation: ctaPulse 3s ease-in-out infinite;
+    opacity: 0;
+    animation: ctaIn var(--total) ease-out infinite, ctaPulse 3s ease-in-out infinite;
+  }
+  @keyframes ctaIn { 0%,91%{opacity:0; transform:translateY(8px);} 93%,99%{opacity:1; transform:translateY(0);} 100%{opacity:0;} }
+  @keyframes ctaPulse {
+    0%,100% { box-shadow: 0 8px 24px rgba(30,40,10,0.20); }
+    50% { box-shadow: 0 8px 30px rgba(30,40,10,0.30), 0 0 0 6px rgba(125,170,80,0.30); }
+  }
+  .cta-btn-mv span { font-size: 12.5px; font-weight: 500; letter-spacing: 0.4px; }
+  .cta-btn-mv svg { fill: #fff; width: 13px; height: 13px; }
+  .cta-note-mv {
+    margin-top: 8px;
+    font-size: 9.5px;
+    color: var(--ink-soft);
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    text-align: center;
+    opacity: 0;
+    animation: ctaNoteIn var(--total) ease-out infinite;
+  }
+  @keyframes ctaNoteIn { 0%,93%{opacity:0;} 95%,99%{opacity:1;} 100%{opacity:0;} }
+
+  /* Home indicator */
+  .home-bar {
+    position: absolute;
+    bottom: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 104px;
+    height: 4px;
+    background: var(--line);
+    border-radius: 3px;
+    opacity: 0.75;
+    z-index: 5;
+  }
+
+  /* Progress — 9 dots */
+  .progress {
+    margin-top: 36px;
+    display: flex;
+    gap: 6px;
+  }
+  .progress .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--ink);
+    opacity: 0.2;
+  }
+  .progress .d1 { animation: dot1 var(--total) ease-in-out infinite; }
+  .progress .d2 { animation: dot2 var(--total) ease-in-out infinite; }
+  .progress .d3 { animation: dot3 var(--total) ease-in-out infinite; }
+  .progress .d4 { animation: dot4 var(--total) ease-in-out infinite; }
+  .progress .d5 { animation: dot5 var(--total) ease-in-out infinite; }
+  .progress .d6 { animation: dot6 var(--total) ease-in-out infinite; }
+  .progress .d7 { animation: dot7 var(--total) ease-in-out infinite; }
+  .progress .d8 { animation: dot8 var(--total) ease-in-out infinite; }
+  .progress .d9 { animation: dot9 var(--total) ease-in-out infinite; }
+  @keyframes dot1 { 0%,10% {opacity:1; transform:scale(1.4);} 11%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot2 { 0%,10% {opacity:0.2;} 11%,21% {opacity:1; transform:scale(1.4);} 22%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot3 { 0%,21% {opacity:0.2;} 22%,32% {opacity:1; transform:scale(1.4);} 33%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot4 { 0%,32% {opacity:0.2;} 33%,43% {opacity:1; transform:scale(1.4);} 44%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot5 { 0%,43% {opacity:0.2;} 44%,54% {opacity:1; transform:scale(1.4);} 55%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot6 { 0%,54% {opacity:0.2;} 55%,65% {opacity:1; transform:scale(1.4);} 66%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot7 { 0%,65% {opacity:0.2;} 66%,76% {opacity:1; transform:scale(1.4);} 77%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot8 { 0%,76% {opacity:0.2;} 77%,87% {opacity:1; transform:scale(1.4);} 88%,100% {opacity:0.2; transform:scale(1);} }
+  @keyframes dot9 { 0%,87% {opacity:0.2;} 88%,99% {opacity:1; transform:scale(1.4);} 100% {opacity:0.2; transform:scale(1);} }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="headline">
+    <div class="eyebrow">
+      <span class="ornament"><span class="line"></span><i></i><span class="line"></span></span>
+      Terse for Mac · Full Tour
+    </div>
+
+    <div class="title-stack">
+      <div class="title title-1">
+        <h1>Save Tokens.<br><em>Save Money.</em></h1>
+        <p>A quietly intelligent prompt optimizer.</p>
+      </div>
+      <div class="title title-2">
+        <h1>One tap. <em>70% shorter.</em></h1>
+        <p>Same meaning, fewer words, lower bills.</p>
+      </div>
+      <div class="title title-3">
+        <h1>Three smart <em>modes.</em></h1>
+        <p>Soft, Normal, Aggressive — your call.</p>
+      </div>
+      <div class="title title-4">
+        <h1>Lives in <em>every app.</em></h1>
+        <p>Browser, editor, agent — anywhere you type.</p>
+      </div>
+      <div class="title title-5">
+        <h1>Watches your <em>agents.</em></h1>
+        <p>Live monitoring. Real-time token savings.</p>
+      </div>
+      <div class="title title-6">
+        <h1>Speaks <em>any language.</em></h1>
+        <p>Optimization that travels with you.</p>
+      </div>
+      <div class="title title-7">
+        <h1>Meet your <em>Terse Pal.</em></h1>
+        <p>A pet that grows with every token saved.</p>
+      </div>
+      <div class="title title-8">
+        <h1>Tend your <em>Terse Farm.</em></h1>
+        <p>Plant, water, harvest — earn from savings.</p>
+      </div>
+      <div class="title title-9">
+        <h1>See your <em>savings grow.</em></h1>
+        <p>Start free. 500 optimizations a week.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phone -->
+  <div class="phone-wrap">
+    <div class="phone">
+
+      <div class="di"></div>
+
+      <div class="sb">
+        <span class="sb-time">21:06</span>
+        <div class="sb-right">
+          <div class="signal"><b></b><b></b><b></b><b></b></div>
+          <svg class="wifi-svg" viewBox="0 0 24 17" fill="#1a1c18" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3.8C8.3 3.8 5 5.3 2.6 7.7L0 5.1C3.1 2 7.3 0 12 0s8.9 2 12 5.1l-2.6 2.6C19 5.3 15.7 3.8 12 3.8zm0 5.4c-2.4 0-4.5.9-6.1 2.4L3.6 9.3C5.7 7.2 8.7 6 12 6s6.3 1.2 8.4 3.3l-2.3 2.3C16.5 10.1 14.4 9.2 12 9.2zm0 5.3c-1.2 0-2.3.5-3.1 1.3L12 19.5l3.1-3.1c-.8-.9-1.9-1.4-3.1-1.4z"/>
+          </svg>
+          <div class="batt">98</div>
+        </div>
+      </div>
+
+      <div class="stage">
+
+        <!-- ───── Scene 1: Brand — minimalist garden ───── -->
+        <div class="scene scene-1">
+
+          <!-- Art Nouveau ornamental border — refined & delicate -->
+          <div class="garden-bg">
+            <svg viewBox="0 0 280 606" preserveAspectRatio="xMidYMid meet"
+                 fill="none" stroke="#1a1c18" stroke-linecap="round" stroke-linejoin="round">
+
+              <!-- Subtle inner dashed frame -->
+              <path d="M 50 110 L 230 110" stroke-width="0.4" stroke-dasharray="1.2,3" opacity="0.18"/>
+              <path d="M 50 500 L 230 500" stroke-width="0.4" stroke-dasharray="1.2,3" opacity="0.18"/>
+              <path d="M 20 160 L 20 460" stroke-width="0.4" stroke-dasharray="1.2,3" opacity="0.18"/>
+              <path d="M 260 160 L 260 460" stroke-width="0.4" stroke-dasharray="1.2,3" opacity="0.18"/>
+
+              <!-- ─── TOP CENTRAL CREST ─── -->
+              <g transform="translate(140, 100)" class="orn-fade orn-1">
+                <!-- main S-curves -->
+                <path d="M -54 0 Q -38 -7 -22 -2 Q -14 3 -6 -1" stroke-width="0.9"/>
+                <path d="M 54 0 Q 38 -7 22 -2 Q 14 3 6 -1" stroke-width="0.9"/>
+                <!-- secondary under-curves -->
+                <path d="M -52 1 Q -42 7 -26 5" stroke-width="0.55" opacity="0.55"/>
+                <path d="M 52 1 Q 42 7 26 5" stroke-width="0.55" opacity="0.55"/>
+                <!-- inner side rosettes between center and leaves -->
+                <g transform="translate(-32, -2)">
+                  <ellipse cx="0" cy="0" rx="1.4" ry="0.6" stroke-width="0.5"/>
+                  <ellipse cx="0" cy="0" rx="0.6" ry="1.4" stroke-width="0.5"/>
+                  <circle cx="0" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                </g>
+                <g transform="translate(32, -2)">
+                  <ellipse cx="0" cy="0" rx="1.4" ry="0.6" stroke-width="0.5"/>
+                  <ellipse cx="0" cy="0" rx="0.6" ry="1.4" stroke-width="0.5"/>
+                  <circle cx="0" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                </g>
+                <!-- acanthus leaf end-caps left -->
+                <path d="M -54 0 Q -62 -3 -64 1 Q -60 4 -54 0 Z" stroke-width="0.7"/>
+                <path d="M -56 -2 Q -60 -5 -62 -3" stroke-width="0.45" opacity="0.6"/>
+                <path d="M -62 1 Q -66 -2 -70 0 Q -66 3 -62 1" stroke-width="0.5"/>
+                <!-- acanthus leaf end-caps right -->
+                <path d="M 54 0 Q 62 -3 64 1 Q 60 4 54 0 Z" stroke-width="0.7"/>
+                <path d="M 56 -2 Q 60 -5 62 -3" stroke-width="0.45" opacity="0.6"/>
+                <path d="M 62 1 Q 66 -2 70 0 Q 66 3 62 1" stroke-width="0.5"/>
+                <!-- pearl strings extending outward -->
+                <circle cx="-74" cy="0" r="0.6" fill="#1a1c18" stroke="none"/>
+                <circle cx="-79" cy="0" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="-84" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                <circle cx="74" cy="0" r="0.6" fill="#1a1c18" stroke="none"/>
+                <circle cx="79" cy="0" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="84" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                <!-- center diamond cluster -->
+                <path d="M 0 -6 L 6 0 L 0 6 L -6 0 Z" stroke-width="0.9"/>
+                <path d="M 0 -3 L 3 0 L 0 3 L -3 0 Z" stroke-width="0.5" opacity="0.7"/>
+                <circle cx="0" cy="0" r="0.8" fill="#1a1c18" stroke="none"/>
+                <!-- triple-dot crown above -->
+                <circle cx="0" cy="-12" r="0.9" fill="#1a1c18" stroke="none"/>
+                <circle cx="-5" cy="-10" r="0.6" fill="#1a1c18" stroke="none"/>
+                <circle cx="5" cy="-10" r="0.6" fill="#1a1c18" stroke="none"/>
+                <!-- delicate descending flourish below diamond -->
+                <path d="M 0 8 Q -2.5 11 0 14 Q 2.5 11 0 8 Z" stroke-width="0.6"/>
+                <circle cx="0" cy="17" r="0.5" fill="#1a1c18" stroke="none"/>
+              </g>
+
+              <!-- ─── BOTTOM CENTRAL CREST (mirror) ─── -->
+              <g transform="translate(140, 510) scale(1,-1)" class="orn-fade orn-2">
+                <path d="M -54 0 Q -38 -7 -22 -2 Q -14 3 -6 -1" stroke-width="0.9"/>
+                <path d="M 54 0 Q 38 -7 22 -2 Q 14 3 6 -1" stroke-width="0.9"/>
+                <path d="M -52 1 Q -42 7 -26 5" stroke-width="0.55" opacity="0.55"/>
+                <path d="M 52 1 Q 42 7 26 5" stroke-width="0.55" opacity="0.55"/>
+                <g transform="translate(-32, -2)">
+                  <ellipse cx="0" cy="0" rx="1.4" ry="0.6" stroke-width="0.5"/>
+                  <ellipse cx="0" cy="0" rx="0.6" ry="1.4" stroke-width="0.5"/>
+                  <circle cx="0" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                </g>
+                <g transform="translate(32, -2)">
+                  <ellipse cx="0" cy="0" rx="1.4" ry="0.6" stroke-width="0.5"/>
+                  <ellipse cx="0" cy="0" rx="0.6" ry="1.4" stroke-width="0.5"/>
+                  <circle cx="0" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                </g>
+                <path d="M -54 0 Q -62 -3 -64 1 Q -60 4 -54 0 Z" stroke-width="0.7"/>
+                <path d="M -56 -2 Q -60 -5 -62 -3" stroke-width="0.45" opacity="0.6"/>
+                <path d="M -62 1 Q -66 -2 -70 0 Q -66 3 -62 1" stroke-width="0.5"/>
+                <path d="M 54 0 Q 62 -3 64 1 Q 60 4 54 0 Z" stroke-width="0.7"/>
+                <path d="M 56 -2 Q 60 -5 62 -3" stroke-width="0.45" opacity="0.6"/>
+                <path d="M 62 1 Q 66 -2 70 0 Q 66 3 62 1" stroke-width="0.5"/>
+                <circle cx="-74" cy="0" r="0.6" fill="#1a1c18" stroke="none"/>
+                <circle cx="-79" cy="0" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="-84" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                <circle cx="74" cy="0" r="0.6" fill="#1a1c18" stroke="none"/>
+                <circle cx="79" cy="0" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="84" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                <path d="M 0 -6 L 6 0 L 0 6 L -6 0 Z" stroke-width="0.9"/>
+                <path d="M 0 -3 L 3 0 L 0 3 L -3 0 Z" stroke-width="0.5" opacity="0.7"/>
+                <circle cx="0" cy="0" r="0.8" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="-12" r="0.9" fill="#1a1c18" stroke="none"/>
+                <circle cx="-5" cy="-10" r="0.6" fill="#1a1c18" stroke="none"/>
+                <circle cx="5" cy="-10" r="0.6" fill="#1a1c18" stroke="none"/>
+                <path d="M 0 8 Q -2.5 11 0 14 Q 2.5 11 0 8 Z" stroke-width="0.6"/>
+                <circle cx="0" cy="17" r="0.5" fill="#1a1c18" stroke="none"/>
+              </g>
+
+              <!-- ─── CORNER FLOURISHES — refined with inner spiral + acanthus ─── -->
+              <g transform="translate(28, 140)" class="orn-fade orn-3">
+                <!-- outer scroll curl -->
+                <path d="M 0 0 Q 0 -14 10 -18 Q 22 -20 24 -10" stroke-width="0.9"/>
+                <!-- inner spiral 1 -->
+                <path d="M 16 -12 Q 18 -12 18 -10 Q 16 -8 14 -10 Q 14 -14 18 -14" stroke-width="0.6"/>
+                <!-- inner spiral 2 (deeper) -->
+                <path d="M 16 -11 Q 17 -11 17 -10" stroke-width="0.4" opacity="0.7"/>
+                <!-- acanthus leaflet outside -->
+                <path d="M 0 -8 Q -6 -10 -8 -6 Q -4 -4 0 -8 Z" stroke-width="0.7"/>
+                <path d="M -2 -7 Q -5 -8 -7 -6" stroke-width="0.4" opacity="0.6"/>
+                <!-- secondary leaf below -->
+                <path d="M -2 -2 Q -7 -1 -9 3 Q -5 4 -2 -2 Z" stroke-width="0.6"/>
+                <!-- pearl string from corner -->
+                <circle cx="6" cy="-4" r="0.7" fill="#1a1c18" stroke="none"/>
+                <circle cx="11" cy="-2" r="0.5" fill="#1a1c18" stroke="none"/>
+                <!-- tip pearls -->
+                <circle cx="24" cy="-10" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="27" cy="-7" r="0.4" fill="#1a1c18" stroke="none"/>
+                <!-- tiny rosette -->
+                <g transform="translate(4, -16)">
+                  <ellipse cx="0" cy="0" rx="1.2" ry="0.5" stroke-width="0.4"/>
+                  <ellipse cx="0" cy="0" rx="0.5" ry="1.2" stroke-width="0.4"/>
+                  <circle cx="0" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                </g>
+              </g>
+
+              <g transform="translate(252, 140) scale(-1,1)" class="orn-fade orn-3">
+                <path d="M 0 0 Q 0 -14 10 -18 Q 22 -20 24 -10" stroke-width="0.9"/>
+                <path d="M 16 -12 Q 18 -12 18 -10 Q 16 -8 14 -10 Q 14 -14 18 -14" stroke-width="0.6"/>
+                <path d="M 16 -11 Q 17 -11 17 -10" stroke-width="0.4" opacity="0.7"/>
+                <path d="M 0 -8 Q -6 -10 -8 -6 Q -4 -4 0 -8 Z" stroke-width="0.7"/>
+                <path d="M -2 -7 Q -5 -8 -7 -6" stroke-width="0.4" opacity="0.6"/>
+                <path d="M -2 -2 Q -7 -1 -9 3 Q -5 4 -2 -2 Z" stroke-width="0.6"/>
+                <circle cx="6" cy="-4" r="0.7" fill="#1a1c18" stroke="none"/>
+                <circle cx="11" cy="-2" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="24" cy="-10" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="27" cy="-7" r="0.4" fill="#1a1c18" stroke="none"/>
+                <g transform="translate(4, -16)">
+                  <ellipse cx="0" cy="0" rx="1.2" ry="0.5" stroke-width="0.4"/>
+                  <ellipse cx="0" cy="0" rx="0.5" ry="1.2" stroke-width="0.4"/>
+                  <circle cx="0" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                </g>
+              </g>
+
+              <g transform="translate(28, 470) scale(1,-1)" class="orn-fade orn-4">
+                <path d="M 0 0 Q 0 -14 10 -18 Q 22 -20 24 -10" stroke-width="0.9"/>
+                <path d="M 16 -12 Q 18 -12 18 -10 Q 16 -8 14 -10 Q 14 -14 18 -14" stroke-width="0.6"/>
+                <path d="M 16 -11 Q 17 -11 17 -10" stroke-width="0.4" opacity="0.7"/>
+                <path d="M 0 -8 Q -6 -10 -8 -6 Q -4 -4 0 -8 Z" stroke-width="0.7"/>
+                <path d="M -2 -7 Q -5 -8 -7 -6" stroke-width="0.4" opacity="0.6"/>
+                <path d="M -2 -2 Q -7 -1 -9 3 Q -5 4 -2 -2 Z" stroke-width="0.6"/>
+                <circle cx="6" cy="-4" r="0.7" fill="#1a1c18" stroke="none"/>
+                <circle cx="11" cy="-2" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="24" cy="-10" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="27" cy="-7" r="0.4" fill="#1a1c18" stroke="none"/>
+                <g transform="translate(4, -16)">
+                  <ellipse cx="0" cy="0" rx="1.2" ry="0.5" stroke-width="0.4"/>
+                  <ellipse cx="0" cy="0" rx="0.5" ry="1.2" stroke-width="0.4"/>
+                  <circle cx="0" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                </g>
+              </g>
+
+              <g transform="translate(252, 470) scale(-1,-1)" class="orn-fade orn-4">
+                <path d="M 0 0 Q 0 -14 10 -18 Q 22 -20 24 -10" stroke-width="0.9"/>
+                <path d="M 16 -12 Q 18 -12 18 -10 Q 16 -8 14 -10 Q 14 -14 18 -14" stroke-width="0.6"/>
+                <path d="M 16 -11 Q 17 -11 17 -10" stroke-width="0.4" opacity="0.7"/>
+                <path d="M 0 -8 Q -6 -10 -8 -6 Q -4 -4 0 -8 Z" stroke-width="0.7"/>
+                <path d="M -2 -7 Q -5 -8 -7 -6" stroke-width="0.4" opacity="0.6"/>
+                <path d="M -2 -2 Q -7 -1 -9 3 Q -5 4 -2 -2 Z" stroke-width="0.6"/>
+                <circle cx="6" cy="-4" r="0.7" fill="#1a1c18" stroke="none"/>
+                <circle cx="11" cy="-2" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="24" cy="-10" r="0.5" fill="#1a1c18" stroke="none"/>
+                <circle cx="27" cy="-7" r="0.4" fill="#1a1c18" stroke="none"/>
+                <g transform="translate(4, -16)">
+                  <ellipse cx="0" cy="0" rx="1.2" ry="0.5" stroke-width="0.4"/>
+                  <ellipse cx="0" cy="0" rx="0.5" ry="1.2" stroke-width="0.4"/>
+                  <circle cx="0" cy="0" r="0.4" fill="#1a1c18" stroke="none"/>
+                </g>
+              </g>
+
+              <!-- ─── SIDE VERTICAL RAILS — more frequent leaflets + pearl details ─── -->
+              <g transform="translate(20, 305)" class="orn-fade orn-5">
+                <path d="M 0 -110 Q -3 -90 0 -70 Q 3 -50 0 -30 Q -3 -10 0 10 Q 3 30 0 50 Q -3 70 0 90 Q 1 100 0 110" stroke-width="0.65" opacity="0.55"/>
+                <!-- alternating leaflets -->
+                <g transform="translate(-3, -90)"><path d="M 0 0 Q -4 -1 -6 -3 Q -4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(3, -60)"><path d="M 0 0 Q 4 -1 6 -3 Q 4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(-3, -30)"><path d="M 0 0 Q -4 -1 -6 -3 Q -4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(3, 0)"><path d="M 0 0 Q 4 -1 6 -3 Q 4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(-3, 30)"><path d="M 0 0 Q -4 -1 -6 -3 Q -4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(3, 60)"><path d="M 0 0 Q 4 -1 6 -3 Q 4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(-3, 90)"><path d="M 0 0 Q -4 -1 -6 -3 Q -4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <!-- pearl dots between leaflets -->
+                <circle cx="0" cy="-75" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="-45" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="-15" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="15" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="45" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="75" r="0.55" fill="#1a1c18" stroke="none"/>
+                <!-- mid-point feature rosette -->
+                <g transform="translate(0, 0)">
+                  <ellipse cx="0" cy="0" rx="2.4" ry="1" stroke-width="0.5"/>
+                  <ellipse cx="0" cy="0" rx="1" ry="2.4" stroke-width="0.5"/>
+                  <circle cx="0" cy="0" r="0.8" fill="#1a1c18" stroke="none"/>
+                </g>
+              </g>
+
+              <g transform="translate(260, 305) scale(-1,1)" class="orn-fade orn-5">
+                <path d="M 0 -110 Q -3 -90 0 -70 Q 3 -50 0 -30 Q -3 -10 0 10 Q 3 30 0 50 Q -3 70 0 90 Q 1 100 0 110" stroke-width="0.65" opacity="0.55"/>
+                <g transform="translate(-3, -90)"><path d="M 0 0 Q -4 -1 -6 -3 Q -4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(3, -60)"><path d="M 0 0 Q 4 -1 6 -3 Q 4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(-3, -30)"><path d="M 0 0 Q -4 -1 -6 -3 Q -4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(3, 0)"><path d="M 0 0 Q 4 -1 6 -3 Q 4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(-3, 30)"><path d="M 0 0 Q -4 -1 -6 -3 Q -4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(3, 60)"><path d="M 0 0 Q 4 -1 6 -3 Q 4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <g transform="translate(-3, 90)"><path d="M 0 0 Q -4 -1 -6 -3 Q -4 -1 0 0 Z" stroke-width="0.55"/></g>
+                <circle cx="0" cy="-75" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="-45" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="-15" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="15" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="45" r="0.55" fill="#1a1c18" stroke="none"/>
+                <circle cx="0" cy="75" r="0.55" fill="#1a1c18" stroke="none"/>
+                <g transform="translate(0, 0)">
+                  <ellipse cx="0" cy="0" rx="2.4" ry="1" stroke-width="0.5"/>
+                  <ellipse cx="0" cy="0" rx="1" ry="2.4" stroke-width="0.5"/>
+                  <circle cx="0" cy="0" r="0.8" fill="#1a1c18" stroke="none"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+
+          <!-- Glow aura -->
+          <div class="brand-aura"></div>
+
+
+          <!-- Brand text -->
+          <div class="brand-splash">
+            <div class="brand-tag">
+              <span class="dash"></span>
+              Hand · Made · 2025
+              <span class="dash"></span>
+            </div>
+            <div class="ornament-top">
+              <svg viewBox="0 0 32 32">
+                <g transform="translate(16,16)">
+                  <polygon points="0,-12 11,0 0,12 -11,0" fill="#A8D070"/>
+                  <polygon points="0,-12 11,0 0,0" fill="#5A8A3E"/>
+                  <polygon points="0,-12 -11,0 0,0" fill="#2F6B1C"/>
+                  <circle r="2.2" fill="#F0FFD8" opacity="0.95"/>
+                </g>
+              </svg>
+            </div>
+            <div class="word">Terse</div>
+            <div class="brand-flourish">
+              <svg viewBox="0 0 80 8" preserveAspectRatio="none">
+                <line x1="0" y1="4" x2="32" y2="4" stroke="#1a1c18" stroke-width="0.8"/>
+                <line x1="48" y1="4" x2="80" y2="4" stroke="#1a1c18" stroke-width="0.8"/>
+                <circle cx="40" cy="4" r="2" fill="#2F6B1C"/>
+                <circle cx="34" cy="4" r="1" fill="#1a1c18" opacity="0.5"/>
+                <circle cx="46" cy="4" r="1" fill="#1a1c18" opacity="0.5"/>
+              </svg>
+            </div>
+            <div class="sub">Prompt Optimizer</div>
+            <div class="divider-orn">
+              <span class="line"></span><i></i><span class="line"></span>
+            </div>
+            <div class="tagline">The art of saying<br><em>more with less.</em></div>
+          </div>
+        </div>
+
+        <!-- ───── Scene 2: Token Reduction ───── -->
+        <div class="scene scene-2">
+          <div class="reduce-block">
+
+            <div class="reduce-section reduce-orig">
+              <div class="section-head">
+                <span class="label-mini">Original</span>
+                <span class="tok"><em>147</em> tokens</span>
+              </div>
+              <div class="reduce-body">Could you please kindly help me write a Python function that calculates factorial?</div>
+            </div>
+
+            <div class="opt-flow">
+              <span class="d"></span><span class="d"></span><span class="d"></span>
+              <span class="lbl">Optimizing</span>
+              <span class="d"></span><span class="d"></span><span class="d"></span>
+            </div>
+
+            <div class="reduce-section reduce-opt">
+              <div class="section-head">
+                <span class="label-mini green">Optimized</span>
+                <span class="tok"><em>44</em> tokens</span>
+              </div>
+              <div class="reduce-body opt">Write Python factorial function.</div>
+            </div>
+
+            <div class="saved-line">
+              <span class="pct">70%</span>
+              <span class="lbl">saved · every prompt</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ───── Scene 3: Three Modes ───── -->
+        <div class="scene scene-3">
+          <div class="mode-row m-row-1">
+            <div class="mode-icon">
+              <svg width="38" height="38" viewBox="0 0 38 38">
+                <g transform="translate(19,24)">
+                  <polygon points="0,-12 12,-6 0,0 -12,-6" fill="#C5E090"/>
+                  <polygon points="12,-6 12,6 0,12 0,0" fill="#5A8A3E"/>
+                  <polygon points="-12,-6 -12,6 0,12 0,0" fill="#2F6B1C"/>
+                </g>
+              </svg>
+            </div>
+            <div class="mode-info">
+              <div class="mode-name">Soft</div>
+              <div class="mode-ex">→ typos · whitespace</div>
+            </div>
+            <div class="mode-pct">15%</div>
+          </div>
+          <div class="hairline-row hairline-1"></div>
+          <div class="mode-row m-row-2">
+            <div class="mode-icon">
+              <svg width="38" height="38" viewBox="0 0 38 38">
+                <g transform="translate(19,28)">
+                  <g transform="translate(0,-10)">
+                    <polygon points="0,-8 8,-4 0,0 -8,-4" fill="#C5E090"/>
+                    <polygon points="8,-4 8,4 0,8 0,0" fill="#5A8A3E"/>
+                    <polygon points="-8,-4 -8,4 0,8 0,0" fill="#2F6B1C"/>
+                  </g>
+                  <g transform="translate(0,0)">
+                    <polygon points="-12,-6 0,0 12,-6 0,-12" fill="#C5E090"/>
+                    <polygon points="12,-6 12,6 0,12 0,0" fill="#5A8A3E"/>
+                    <polygon points="-12,-6 -12,6 0,12 0,0" fill="#2F6B1C"/>
+                  </g>
+                </g>
+              </svg>
+            </div>
+            <div class="mode-info">
+              <div class="mode-name">Normal</div>
+              <div class="mode-ex">→ filler · hedging removed</div>
+            </div>
+            <div class="mode-pct">45%</div>
+          </div>
+          <div class="hairline-row hairline-2"></div>
+          <div class="mode-row m-row-3">
+            <div class="mode-icon">
+              <svg width="38" height="38" viewBox="0 0 38 38">
+                <g transform="translate(19,30)">
+                  <line x1="0" y1="-24" x2="0" y2="-16" stroke="#1a1c18" stroke-width="1"/>
+                  <polygon points="0,-24 6,-22 0,-20" fill="#5A8A3E"/>
+                  <g transform="translate(0,-14)">
+                    <polygon points="0,-6 6,-3 0,0 -6,-3" fill="#A8D070"/>
+                    <polygon points="6,-3 6,3 0,6 0,0" fill="#5A8A3E"/>
+                    <polygon points="-6,-3 -6,3 0,6 0,0" fill="#2F6B1C"/>
+                  </g>
+                  <g transform="translate(0,-2)">
+                    <polygon points="-10,-5 0,0 10,-5 0,-10" fill="#C5E090"/>
+                    <polygon points="10,-5 10,5 0,10 0,0" fill="#5A8A3E"/>
+                    <polygon points="-10,-5 -10,5 0,10 0,0" fill="#2F6B1C"/>
+                  </g>
+                  <g transform="translate(0,8)">
+                    <polygon points="-14,-5 0,0 14,-5 0,-10" fill="#C5E090"/>
+                    <polygon points="14,-5 14,5 0,10 0,0" fill="#5A8A3E"/>
+                    <polygon points="-14,-5 -14,5 0,10 0,0" fill="#2F6B1C"/>
+                  </g>
+                </g>
+              </svg>
+            </div>
+            <div class="mode-info">
+              <div class="mode-name">Aggressive</div>
+              <div class="mode-ex">→ symbols · max compress</div>
+            </div>
+            <div class="mode-pct">70%</div>
+          </div>
+        </div>
+
+        <!-- ───── Scene 4: Works Everywhere ───── -->
+        <div class="scene scene-4">
+          <div class="app-grid">
+            <div class="app-cell app-1">
+              <div class="glyph">
+                <svg width="32" height="32" viewBox="0 0 32 32"><g transform="translate(16,22)"><polygon points="-11,-6 11,-6 0,5" fill="#2F6B1C"/><polygon points="-11,-6 0,-14 11,-6 0,5" fill="#C5E090"/><polygon points="0,5 11,-6 11,-6 0,-14" fill="#5A8A3E" opacity="0.85"/></g></svg>
+              </div>
+              <div class="nm">Chrome</div>
+              <span class="check chk-1">✓</span>
+            </div>
+            <div class="app-cell app-2">
+              <div class="glyph">
+                <svg width="32" height="32" viewBox="0 0 32 32"><g transform="translate(16,22)"><polygon points="-11,-6 11,-6 11,4 -11,4" fill="#2F6B1C"/><polygon points="-11,-6 0,-12 11,-6 0,0" fill="#C5E090"/><polygon points="11,-6 11,4 0,10 0,0" fill="#5A8A3E"/></g></svg>
+              </div>
+              <div class="nm">ChatGPT</div>
+              <span class="check chk-2">✓</span>
+            </div>
+            <div class="app-cell app-3">
+              <div class="glyph">
+                <svg width="32" height="32" viewBox="0 0 32 32"><g transform="translate(16,20)"><circle r="11" fill="#2F6B1C"/><circle r="11" cy="-3" fill="#C5E090"/><circle r="11" cy="-3" cx="-2" fill="none" stroke="#5A8A3E" stroke-width="1.2"/></g></svg>
+              </div>
+              <div class="nm">Claude</div>
+              <span class="check chk-3">✓</span>
+            </div>
+            <div class="app-cell app-4">
+              <div class="glyph">
+                <svg width="32" height="32" viewBox="0 0 32 32"><g transform="translate(16,22)"><polygon points="-10,-7 -3,-3 -10,3" fill="#2F6B1C"/><polygon points="-3,-3 10,-12 10,-5 -3,5" fill="#C5E090"/><polygon points="-3,-3 10,-5 10,5 -3,5" fill="#5A8A3E"/></g></svg>
+              </div>
+              <div class="nm">VS Code</div>
+              <span class="check chk-4">✓</span>
+            </div>
+            <div class="app-cell app-5">
+              <div class="glyph">
+                <svg width="32" height="32" viewBox="0 0 32 32"><g transform="translate(16,22)"><polygon points="-9,-10 9,-10 9,5 -9,5" fill="#C5E090"/><polygon points="-9,-10 -4,-15 13,-15 9,-10" fill="#5A8A3E"/><polygon points="13,-15 13,0 9,5 9,-10" fill="#2F6B1C"/></g></svg>
+              </div>
+              <div class="nm">Notes</div>
+              <span class="check chk-5">✓</span>
+            </div>
+            <div class="app-cell app-6">
+              <div class="glyph">
+                <svg width="32" height="32" viewBox="0 0 32 32"><g transform="translate(16,22)"><polygon points="0,-14 11,-8 0,-2 -11,-8" fill="#A8D070"/><polygon points="11,-8 11,4 0,10 0,-2" fill="#5A8A3E"/><polygon points="-11,-8 -11,4 0,10 0,-2" fill="#2F6B1C"/></g></svg>
+              </div>
+              <div class="nm">Any app</div>
+              <span class="check chk-6">✓</span>
+            </div>
+          </div>
+          <div class="anywhere-foot">— System-wide via Accessibility —</div>
+        </div>
+
+        <!-- ───── Scene 5: Agent Monitoring (NEW) ───── -->
+        <div class="scene scene-5">
+          <div class="monitor-head">
+            <span class="live-dot"></span>
+            <span class="label-mini">Live · Monitoring Agents</span>
+          </div>
+
+          <div class="monitor-log">
+            <div class="log-line lg-1">
+              <span class="ts">21:01</span>
+              <span class="ag">claude</span>
+              <span class="arr">→</span>
+              <span class="msg">optimize prompt</span>
+              <span class="gain">−132</span>
+            </div>
+            <div class="log-line lg-2">
+              <span class="ts">21:02</span>
+              <span class="ag">gpt-4</span>
+              <span class="arr">→</span>
+              <span class="msg">refactor request</span>
+              <span class="gain">−289</span>
+            </div>
+            <div class="log-line lg-3">
+              <span class="ts">21:03</span>
+              <span class="ag">cursor</span>
+              <span class="arr">→</span>
+              <span class="msg">code review prompt</span>
+              <span class="gain">−98</span>
+            </div>
+            <div class="log-line lg-4">
+              <span class="ts">21:04</span>
+              <span class="ag">codex</span>
+              <span class="arr">→</span>
+              <span class="msg">agent loop</span>
+              <span class="gain">−412</span>
+            </div>
+            <div class="log-line lg-5">
+              <span class="ts">21:05</span>
+              <span class="ag">claude</span>
+              <span class="arr">→</span>
+              <span class="msg">follow-up question</span>
+              <span class="gain">−76</span>
+            </div>
+          </div>
+
+          <div class="monitor-stat">
+            <div class="val">12,453<small>tokens saved today</small></div>
+            <div class="monitor-bars">
+              <b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b>
+            </div>
+          </div>
+        </div>
+
+        <!-- ───── Scene 6: Languages ───── -->
+        <div class="scene scene-6">
+          <div class="lang-stack">
+            <div class="lang-row l-row-1">
+              <span class="flag">EN</span>
+              <span class="orig">Could you please write...</span>
+              <span class="arrow">→</span>
+              <span class="opt">Write function.</span>
+            </div>
+            <div class="lang-row l-row-2">
+              <span class="flag">ZH</span>
+              <span class="orig">能否帮我写一个...</span>
+              <span class="arrow">→</span>
+              <span class="opt">写函数。</span>
+            </div>
+            <div class="lang-row l-row-3">
+              <span class="flag">JP</span>
+              <span class="orig">関数を書いて...</span>
+              <span class="arrow">→</span>
+              <span class="opt">関数を書く。</span>
+            </div>
+            <div class="lang-row l-row-4">
+              <span class="flag">FR</span>
+              <span class="orig">Pourrais-tu écrire...</span>
+              <span class="arrow">→</span>
+              <span class="opt">Écris fonction.</span>
+            </div>
+            <div class="lang-row l-row-5">
+              <span class="flag">ES</span>
+              <span class="orig">¿Puedes por favor...</span>
+              <span class="arrow">→</span>
+              <span class="opt">Escribe función.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ───── Scene 7: Terse Pet (NEW) ───── -->
+        <div class="scene scene-7">
+          <div class="pet-head">
+            <div class="nm">Shiro</div>
+            <div class="label-mini">white bear · your terse pal</div>
+          </div>
+
+          <div class="pet-stage">
+            <div class="pet-body">
+              <svg width="160" height="180" viewBox="0 0 160 180">
+                <!-- Shiro · White Bear — Terse pal -->
+                <g transform="translate(80, 150)">
+
+                  <!-- Tail (wags) — fluffy puff -->
+                  <g class="pet-tail-wag">
+                    <ellipse cx="-44" cy="-28" rx="14" ry="12" fill="#E8D8C8"/>
+                    <ellipse cx="-46" cy="-30" rx="10" ry="9" fill="#F8F4EE"/>
+                  </g>
+
+                  <!-- Back legs/feet -->
+                  <ellipse cx="-22" cy="-2" rx="11" ry="7" fill="#E8D8C8"/>
+                  <ellipse cx="22" cy="-2" rx="11" ry="7" fill="#E8D8C8"/>
+                  <!-- pink toe beans -->
+                  <ellipse cx="-22" cy="0" rx="6" ry="2.5" fill="#FF9DBA" opacity="0.6"/>
+                  <ellipse cx="22" cy="0" rx="6" ry="2.5" fill="#FF9DBA" opacity="0.6"/>
+
+                  <!-- Body (round, fluffy, white) -->
+                  <g class="pet-belly">
+                    <ellipse cx="0" cy="-40" rx="46" ry="42" fill="#F8F4EE"/>
+                    <!-- Belly (pink-cream tummy) -->
+                    <ellipse cx="0" cy="-32" rx="30" ry="28" fill="#FFE8E0"/>
+                  </g>
+
+                  <!-- Ears (round bear ears) -->
+                  <g class="pet-ear-l">
+                    <ellipse cx="-30" cy="-90" rx="11" ry="11" fill="#F8F4EE"/>
+                    <ellipse cx="-30" cy="-88" rx="6" ry="6" fill="#FFD8D5" opacity="0.85"/>
+                  </g>
+                  <g class="pet-ear-r">
+                    <ellipse cx="30" cy="-90" rx="11" ry="11" fill="#F8F4EE"/>
+                    <ellipse cx="30" cy="-88" rx="6" ry="6" fill="#FFD8D5" opacity="0.85"/>
+                  </g>
+
+                  <!-- Head -->
+                  <ellipse cx="0" cy="-72" rx="32" ry="28" fill="#F8F4EE"/>
+                  <!-- Face muzzle highlight -->
+                  <ellipse cx="0" cy="-62" rx="18" ry="12" fill="#FFFCF5"/>
+
+                  <!-- Eyes (with blink) -->
+                  <g class="pet-eye">
+                    <ellipse cx="-9" cy="-72" rx="2.4" ry="3.2" fill="#1a1c18"/>
+                    <circle cx="-8.2" cy="-73.4" r="0.9" fill="#fff"/>
+                  </g>
+                  <g class="pet-eye" style="animation-delay: 0.05s;">
+                    <ellipse cx="9" cy="-72" rx="2.4" ry="3.2" fill="#1a1c18"/>
+                    <circle cx="9.8" cy="-73.4" r="0.9" fill="#fff"/>
+                  </g>
+
+                  <!-- Blush cheeks -->
+                  <ellipse cx="-15" cy="-65" rx="4" ry="2.5" fill="#FF9DBA" opacity="0.7"/>
+                  <ellipse cx="15" cy="-65" rx="4" ry="2.5" fill="#FF9DBA" opacity="0.7"/>
+
+                  <!-- Tiny dark bear nose -->
+                  <ellipse cx="0" cy="-64" rx="1.4" ry="1" fill="#3a2820"/>
+
+                  <!-- Mouth — open happy smile with tongue -->
+                  <path d="M -4 -60 Q 0 -55 4 -60" stroke="#1a1c18" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+                  <ellipse cx="0" cy="-58" rx="2" ry="1.2" fill="#FF7A95" opacity="0.85"/>
+
+                  <!-- Tiny floating leaf (signature Terse touch) -->
+                  <g transform="translate(20, -106)">
+                    <ellipse cx="0" cy="0" rx="6" ry="3" fill="#5A8A3E" transform="rotate(-30)"/>
+                    <line x1="0" y1="0" x2="-5" y2="6" stroke="#5A8A3E" stroke-width="0.8"/>
+                  </g>
+                </g>
+              </svg>
+            </div>
+            <div class="pet-shadow"></div>
+            <div class="pet-sparkle pet-spark-1"></div>
+            <div class="pet-sparkle pet-spark-2"></div>
+            <div class="pet-sparkle pet-spark-3"></div>
+            <div class="heart heart-1">♥</div>
+            <div class="heart heart-2">♥</div>
+            <div class="heart heart-3">♥</div>
+          </div>
+
+          <div class="pet-stats">
+            <div class="pet-stat-row ps-1">
+              <span class="lbl">Happy</span>
+              <div class="bar"><div class="fill"></div></div>
+              <span class="num">95</span>
+            </div>
+            <div class="pet-stat-row ps-2">
+              <span class="lbl">Hunger</span>
+              <div class="bar"><div class="fill"></div></div>
+              <span class="num">70</span>
+            </div>
+            <div class="pet-stat-row ps-3">
+              <span class="lbl">Energy</span>
+              <div class="bar"><div class="fill"></div></div>
+              <span class="num">82</span>
+            </div>
+          </div>
+
+          <div class="pet-foot">Feeds on <em>optimized tokens</em></div>
+        </div>
+
+        <!-- ───── Scene 8: Terse Farm (NEW) ───── -->
+        <div class="scene scene-8">
+          <div class="farm-sun"></div>
+          <div class="farm-head">
+            <div class="nm">Terse Farm</div>
+            <div class="label-mini">tokens → coins</div>
+          </div>
+
+          <div class="farm-grid">
+            <!-- 9 tiles, varying crops -->
+            <div class="tile t-1">
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <!-- soil base -->
+                <g transform="translate(30, 38)">
+                  <polygon points="0,-10 24,2 0,14 -24,2" fill="#7C5A38"/>
+                  <polygon points="-24,2 0,14 0,20 -24,8" fill="#5A4128"/>
+                  <polygon points="24,2 0,14 0,20 24,8" fill="#4A3520"/>
+                </g>
+                <!-- sprout -->
+                <g transform="translate(30, 30)" class="crop-grow">
+                  <line x1="0" y1="0" x2="0" y2="10" stroke="#2F6B1C" stroke-width="1.4"/>
+                  <ellipse cx="-4" cy="2" rx="3" ry="2" fill="#5A8A3E"/>
+                  <ellipse cx="4" cy="0" rx="3" ry="2" fill="#5A8A3E"/>
+                </g>
+              </svg>
+            </div>
+            <div class="tile t-2">
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <g transform="translate(30, 38)">
+                  <polygon points="0,-10 24,2 0,14 -24,2" fill="#7C5A38"/>
+                  <polygon points="-24,2 0,14 0,20 -24,8" fill="#5A4128"/>
+                  <polygon points="24,2 0,14 0,20 24,8" fill="#4A3520"/>
+                </g>
+                <!-- ripe with flower -->
+                <g transform="translate(30, 22)" class="crop-grow">
+                  <line x1="0" y1="0" x2="0" y2="16" stroke="#2F6B1C" stroke-width="1.4"/>
+                  <ellipse cx="-5" cy="6" rx="3.5" ry="2.5" fill="#5A8A3E"/>
+                  <ellipse cx="5" cy="4" rx="3.5" ry="2.5" fill="#5A8A3E"/>
+                  <!-- flower -->
+                  <circle cx="0" cy="-2" r="3.5" fill="#E8C964"/>
+                  <circle cx="0" cy="-2" r="1.5" fill="#8E6E2A"/>
+                </g>
+                <div class="coin"></div>
+              </svg>
+              <div class="coin" style="animation-delay:0.5s;"></div>
+            </div>
+            <div class="tile t-3">
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <g transform="translate(30, 38)">
+                  <polygon points="0,-10 24,2 0,14 -24,2" fill="#7C5A38"/>
+                  <polygon points="-24,2 0,14 0,20 -24,8" fill="#5A4128"/>
+                  <polygon points="24,2 0,14 0,20 24,8" fill="#4A3520"/>
+                </g>
+                <!-- seed dots -->
+                <g transform="translate(30, 36)">
+                  <circle cx="-4" cy="0" r="1.2" fill="#1a1c18"/>
+                  <circle cx="3" cy="-2" r="1.2" fill="#1a1c18"/>
+                  <circle cx="2" cy="3" r="1.2" fill="#1a1c18"/>
+                </g>
+              </svg>
+            </div>
+
+            <div class="tile t-4">
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <g transform="translate(30, 38)">
+                  <polygon points="0,-10 24,2 0,14 -24,2" fill="#7C5A38"/>
+                  <polygon points="-24,2 0,14 0,20 -24,8" fill="#5A4128"/>
+                  <polygon points="24,2 0,14 0,20 24,8" fill="#4A3520"/>
+                </g>
+                <!-- medium plant -->
+                <g transform="translate(30, 26)" class="crop-grow">
+                  <line x1="0" y1="0" x2="0" y2="14" stroke="#2F6B1C" stroke-width="1.4"/>
+                  <ellipse cx="-5" cy="4" rx="4" ry="2.5" fill="#5A8A3E"/>
+                  <ellipse cx="5" cy="2" rx="4" ry="2.5" fill="#5A8A3E"/>
+                  <ellipse cx="0" cy="-2" rx="3" ry="2" fill="#A8D070"/>
+                </g>
+                <!-- water droplet -->
+                <div class="droplet" style="left:50%; top:10px; animation-delay:0s;"></div>
+              </svg>
+            </div>
+            <div class="tile t-5">
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <g transform="translate(30, 38)">
+                  <polygon points="0,-10 24,2 0,14 -24,2" fill="#7C5A38"/>
+                  <polygon points="-24,2 0,14 0,20 -24,8" fill="#5A4128"/>
+                  <polygon points="24,2 0,14 0,20 24,8" fill="#4A3520"/>
+                </g>
+                <!-- tall crop -->
+                <g transform="translate(30, 18)" class="crop-grow">
+                  <line x1="0" y1="0" x2="0" y2="22" stroke="#2F6B1C" stroke-width="1.6"/>
+                  <ellipse cx="-6" cy="10" rx="5" ry="3" fill="#5A8A3E"/>
+                  <ellipse cx="6" cy="6" rx="5" ry="3" fill="#5A8A3E"/>
+                  <ellipse cx="0" cy="-2" rx="4" ry="3" fill="#A8D070"/>
+                  <!-- fruit -->
+                  <circle cx="-3" cy="14" r="2.5" fill="#C84A3A"/>
+                  <circle cx="4" cy="16" r="2.5" fill="#C84A3A"/>
+                </g>
+              </svg>
+              <div class="coin" style="animation-delay:1s;"></div>
+            </div>
+            <div class="tile t-6">
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <g transform="translate(30, 38)">
+                  <polygon points="0,-10 24,2 0,14 -24,2" fill="#7C5A38"/>
+                  <polygon points="-24,2 0,14 0,20 -24,8" fill="#5A4128"/>
+                  <polygon points="24,2 0,14 0,20 24,8" fill="#4A3520"/>
+                </g>
+                <!-- sprout -->
+                <g transform="translate(30, 30)" class="crop-grow">
+                  <line x1="0" y1="0" x2="0" y2="10" stroke="#2F6B1C" stroke-width="1.4"/>
+                  <ellipse cx="-4" cy="2" rx="3" ry="2" fill="#A8D070"/>
+                  <ellipse cx="4" cy="0" rx="3" ry="2" fill="#A8D070"/>
+                </g>
+                <div class="droplet" style="left:50%; top:10px; animation-delay:0.8s;"></div>
+              </svg>
+            </div>
+
+            <div class="tile t-7">
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <g transform="translate(30, 38)">
+                  <polygon points="0,-10 24,2 0,14 -24,2" fill="#7C5A38"/>
+                  <polygon points="-24,2 0,14 0,20 -24,8" fill="#5A4128"/>
+                  <polygon points="24,2 0,14 0,20 24,8" fill="#4A3520"/>
+                </g>
+                <!-- bare -->
+              </svg>
+            </div>
+            <div class="tile t-8">
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <g transform="translate(30, 38)">
+                  <polygon points="0,-10 24,2 0,14 -24,2" fill="#7C5A38"/>
+                  <polygon points="-24,2 0,14 0,20 -24,8" fill="#5A4128"/>
+                  <polygon points="24,2 0,14 0,20 24,8" fill="#4A3520"/>
+                </g>
+                <g transform="translate(30, 26)" class="crop-grow">
+                  <line x1="0" y1="0" x2="0" y2="14" stroke="#2F6B1C" stroke-width="1.4"/>
+                  <ellipse cx="-5" cy="4" rx="4" ry="2.5" fill="#5A8A3E"/>
+                  <ellipse cx="5" cy="2" rx="4" ry="2.5" fill="#5A8A3E"/>
+                </g>
+              </svg>
+            </div>
+            <div class="tile t-9">
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <g transform="translate(30, 38)">
+                  <polygon points="0,-10 24,2 0,14 -24,2" fill="#7C5A38"/>
+                  <polygon points="-24,2 0,14 0,20 -24,8" fill="#5A4128"/>
+                  <polygon points="24,2 0,14 0,20 24,8" fill="#4A3520"/>
+                </g>
+                <!-- ripe with flower -->
+                <g transform="translate(30, 22)" class="crop-grow">
+                  <line x1="0" y1="0" x2="0" y2="16" stroke="#2F6B1C" stroke-width="1.4"/>
+                  <ellipse cx="-5" cy="6" rx="3.5" ry="2.5" fill="#5A8A3E"/>
+                  <ellipse cx="5" cy="4" rx="3.5" ry="2.5" fill="#5A8A3E"/>
+                  <circle cx="0" cy="-2" r="3.5" fill="#E8C964"/>
+                  <circle cx="0" cy="-2" r="1.5" fill="#8E6E2A"/>
+                </g>
+              </svg>
+              <div class="coin" style="animation-delay:1.5s;"></div>
+            </div>
+          </div>
+
+          <div class="farm-foot">Harvested today <em>+ 50 coins</em></div>
+        </div>
+
+        <!-- ───── Scene 9: Stats + CTA ───── -->
+        <div class="scene scene-9">
+          <div class="stat-line st-1">
+            <span class="label">Tokens saved · all time</span>
+            <span class="val">1.2<small>M</small></span>
+          </div>
+          <div class="hairline"></div>
+          <svg class="spark" viewBox="0 0 280 36" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2F6B1C" stop-opacity="0.5"/>
+                <stop offset="100%" stop-color="#2F6B1C" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path class="fill" d="M0 32 L0 26 L30 28 L60 22 L95 24 L130 16 L165 20 L200 10 L235 14 L280 6 L280 36 L0 36 Z"/>
+            <path class="line" d="M0 26 L30 28 L60 22 L95 24 L130 16 L165 20 L200 10 L235 14 L280 6"/>
+          </svg>
+          <div class="hairline"></div>
+          <div class="stat-line st-2">
+            <span class="label">This month</span>
+            <span class="val">$8<small>.43</small></span>
+          </div>
+          <button class="cta-btn-mv">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.65 0 4.8-2.15 4.8-4.8S14.65 2.4 12 2.4 7.2 4.55 7.2 7.2 9.35 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+            <span>Sign in to get started</span>
+          </button>
+          <div class="cta-note-mv">Free · 500 / week</div>
+        </div>
+
+      </div>
+
+      <div class="home-bar"></div>
+    </div>
+  </div>
+
+  <div class="progress">
+    <span class="dot d1"></span>
+    <span class="dot d2"></span>
+    <span class="dot d3"></span>
+    <span class="dot d4"></span>
+    <span class="dot d5"></span>
+    <span class="dot d6"></span>
+    <span class="dot d7"></span>
+    <span class="dot d8"></span>
+    <span class="dot d9"></span>
+  </div>
+
+</div>
+</body>
+</html>

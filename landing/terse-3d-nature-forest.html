@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Terse · 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+/* premium 3D emoji (Fluent) replacing OS/Apple emoji */
+.fx{display:inline-block;width:1em;height:1em;vertical-align:-.16em;object-fit:contain}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif}
+
+/* ── STAGE: fixed, scaled + centered by JS ── */
+#stage{
+  position:fixed;
+  width:1080px;height:1920px;
+  overflow:hidden;
+  transform-origin:top left;
+  /* clean light studio — soft seamless white sweep */
+  background:
+    radial-gradient(130% 95% at 50% 12%,#ffffff 0%,#f5f6f9 40%,#edeff3 72%,#e5e8ee 100%);
+}
+/* soft white key light + faint violet/cyan tint + grounding vignette */
+#stage::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(50% 44% at 50% 40%,rgba(255,255,255,.92),transparent 70%),
+    radial-gradient(ellipse 70% 55% at 14% 16%,rgba(14,124,90,.08),transparent 62%),
+    radial-gradient(ellipse 64% 50% at 88% 26%,rgba(198,155,60,.08),transparent 60%),
+    radial-gradient(ellipse 130% 75% at 50% 118%,rgba(20,24,40,.14),transparent 64%)}
+/* slow-rotating studio flare — soft violet→cyan on light, subtle */
+.studio{position:absolute;width:1800px;height:1800px;left:50%;top:46%;
+  transform:translate(-50%,-50%);pointer-events:none;z-index:0;opacity:.28;
+  background:conic-gradient(from 0deg,rgba(120,124,140,0),rgba(150,154,170,.22) 16%,rgba(120,124,140,.05) 33%,rgba(255,255,255,0) 50%,rgba(150,154,170,.18) 69%,rgba(120,124,140,0) 86%,rgba(120,124,140,0));
+  -webkit-mask:radial-gradient(closest-side,#000 28%,transparent 72%);mask:radial-gradient(closest-side,#000 28%,transparent 72%);
+  filter:blur(28px);animation:spin 52s linear infinite;will-change:transform}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+/* arrival bloom pulse */
+.bl{position:absolute;width:1000px;height:1000px;left:50%;top:46%;transform:translate(-50%,-50%);
+  pointer-events:none;z-index:1;opacity:0;
+  background:radial-gradient(closest-side,rgba(255,255,255,.85),transparent 70%);filter:blur(10px)}
+
+/* ── 3D world ── */
+#world{position:absolute;inset:0;perspective:2200px;perspective-origin:50% 48%;z-index:3}
+/* zero-size rig at stage center — all rotations pivot here */
+#rig{position:absolute;top:50%;left:50%;width:0;height:0;transform-style:preserve-3d;transform-origin:0 0;
+  will-change:transform}
+
+/* floor — soft contact shadow for the light studio */
+#shadow{position:absolute;width:700px;height:175px;
+  left:calc(50% - 350px);top:calc(50% + 290px);z-index:2;
+  background:
+    radial-gradient(ellipse 38% 60% at 50% 50%,rgba(20,24,40,.3),transparent 72%),
+    radial-gradient(ellipse at 50% 50%,rgba(20,24,40,.16),transparent 70%);
+  filter:blur(28px);pointer-events:none}
+
+/* ── PHONE: centered on rig origin ── */
+#phone{position:absolute;width:490px;height:1010px;
+  top:-505px;left:-245px;
+  transform-style:preserve-3d;will-change:transform}
+/* every phone face on its own GPU layer, no backface flicker while rotating */
+#phone>*,#phone .sc>*{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+
+/* titanium frame — natural satin titanium, low-contrast brushed silver */
+.fr{position:absolute;inset:0;border-radius:92px;
+  background:
+    linear-gradient(118deg,
+      #edeff1 0%,#dcdfe2 16%,#cbcfd3 30%,#e2e5e7 44%,
+      #c9cdd1 58%,#dde0e3 74%,#ccd0d4 88%,#dcdfe2 100%);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.65),
+    0 54px 110px rgba(0,0,0,.5),
+    0 20px 44px rgba(0,0,0,.32),
+    0 6px 14px rgba(0,0,0,.22)}
+/* polished chamfer highlight that sweeps with the light */
+.fr::before{content:"";position:absolute;inset:0;border-radius:92px;pointer-events:none;opacity:.55;
+  background:linear-gradient(var(--lx,118deg),
+    transparent 40%,rgba(255,255,255,.85) 49%,rgba(255,255,255,.9) 50.5%,transparent 60%)}
+/* bright inner chamfer ring (polished edge against the bezel) + soft top/bottom shaping */
+.fr::after{content:"";position:absolute;inset:0;border-radius:92px;pointer-events:none;
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.85),
+    inset 0 0 0 5px rgba(255,255,255,.18),
+    inset 0 0 0 9px rgba(0,0,0,.04),
+    inset 0 6px 14px rgba(255,255,255,.45),
+    inset 0 -5px 12px rgba(0,0,0,.16)}
+/* bezel */
+.bz{position:absolute;inset:12px;border-radius:80px;transform:translateZ(5px);
+  background:#040406;
+  box-shadow:inset 0 0 0 3px #000,inset 0 0 28px rgba(0,0,0,.95),0 0 0 1px rgba(255,255,255,.08)}
+/* screen */
+.sc{position:absolute;inset:16px;border-radius:74px;overflow:hidden;
+  transform:translateZ(7px);background:#d1e847}
+/* glass — realistic ceramic-shield surface: subtle, content stays readable */
+.gl{position:absolute;inset:0;z-index:40;pointer-events:none;border-radius:74px;
+  background:
+    /* crisp primary glint — sharp polished streak that sweeps with the angle */
+    linear-gradient(var(--lx,118deg),
+      rgba(255,255,255,0) 34%,rgba(255,255,255,.16) 45%,rgba(255,255,255,.24) 47.5%,rgba(255,255,255,.05) 51%,rgba(255,255,255,0) 60%),
+    /* soft ambient wash from top-left */
+    linear-gradient(135deg,rgba(255,255,255,.085) 0%,rgba(255,255,255,0) 46%),
+    /* specular bloom tracking the light origin */
+    radial-gradient(56% 28% at var(--gx,30%) var(--gy,12%),rgba(255,255,255,.16),transparent 72%),
+    /* fresnel edge — flares brighter at glancing viewing angles */
+    radial-gradient(125% 125% at 50% 46%,transparent 58%,rgba(255,255,255,calc(.24*var(--fres,0))) 100%)}
+.gl::after{content:"";position:absolute;inset:0;border-radius:74px;
+  /* secondary softer counter-streak for layered, polished depth */
+  background:linear-gradient(calc(var(--lx,118deg) + 30deg),transparent 62%,rgba(255,255,255,.05) 75%,transparent 88%)}
+/* dynamic island */
+.di{position:absolute;top:26px;left:50%;transform:translateX(-50%) translateZ(9px);
+  width:126px;height:36px;background:#000;border-radius:20px;z-index:41;
+  box-shadow:0 1px 3px rgba(0,0,0,.6)}
+.di::after{content:"";position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#2c3e52,#040a10 72%)}
+/* rails / thickness */
+/* satin titanium rails: soft shoulders + bright polished chamfer line at center */
+.rl{position:absolute;background:linear-gradient(90deg,#8d9195 0%,#b6babe 24%,#e9ebed 49%,#f3f4f5 51%,#aeb2b6 76%,#7f8387 100%)}
+.rl::after{content:"";position:absolute;inset:0;opacity:.5;mix-blend-mode:overlay;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 1px,transparent 1px 3px)}
+.rl.L{left:0;top:70px;bottom:70px;width:36px;transform-origin:left center;transform:rotateY(-90deg);border-radius:8px 0 0 8px}
+.rl.R{right:0;top:70px;bottom:70px;width:36px;transform-origin:right center;transform:rotateY(90deg);border-radius:0 8px 8px 0}
+.rl.T{left:70px;right:70px;top:0;height:36px;transform-origin:center top;transform:rotateX(90deg);background:linear-gradient(0deg,#8d9195,#e9ebed 50%,#7f8387)}
+.rl.B{left:70px;right:70px;bottom:0;height:36px;transform-origin:center bottom;transform:rotateX(-90deg);background:linear-gradient(0deg,#7f8387,#dcdee0 50%,#8d9195)}
+.bk{position:absolute;inset:0;border-radius:90px;transform:translateZ(-36px) rotateY(180deg);
+  background:linear-gradient(145deg,#eceef0,#d2d5d8 50%,#e2e4e6)}
+.bt{position:absolute;background:linear-gradient(90deg,#83878b,#d6dadd 50%,#83878b);border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.bt.a{left:-4px;top:220px;width:7px;height:50px;transform:translateZ(-7px)}
+.bt.v1{left:-4px;top:308px;width:7px;height:78px;transform:translateZ(-7px)}
+.bt.v2{left:-4px;top:402px;width:7px;height:78px;transform:translateZ(-7px)}
+.bt.pw{right:-4px;top:330px;width:7px;height:106px;transform:translateZ(-7px)}
+
+/* ══════════════════════════════════════════
+   APP — exact Terse lime theme
+══════════════════════════════════════════ */
+#app{position:absolute;inset:0;overflow:hidden;background:#d1e847;color:#0a0a0a;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;letter-spacing:-.01em}
+/* premium type rhythm: tight tracking on display sizes, restrained weights */
+#app h2,.lg-ttl,.seth,.sh,.sc-card2 .v,.sv-bg .n,.rcpt-tot .tv,.f-stat .big{letter-spacing:-.022em}
+#app::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(70% 44% at 82% 5%,rgba(255,255,255,.42),transparent 68%)}
+
+.view{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;will-change:opacity;transform:scale(.985)}
+.view.on{opacity:1;transform:none}
+.pad{padding:72px 20px 22px;gap:14px}
+
+/* shared surfaces */
+.card{background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.44));border:1px solid rgba(255,255,255,.6);border-radius:20px;
+  box-shadow:0 16px 34px rgba(40,50,10,.1),0 4px 10px rgba(40,50,10,.05),inset 0 1px 0 rgba(255,255,255,.75)}
+.sf{background:rgba(255,255,255,.5)}
+
+/* mac titlebar */
+.tb{display:flex;align-items:center;gap:8px;flex:none;margin-bottom:4px}
+.tb .dg{width:9px;height:9px;border-radius:50%;background:#2d8b00;flex:none;position:relative}
+.tb .dg::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #2d8b00;opacity:.4;animation:rng 2s ease-out infinite}
+@keyframes rng{0%{transform:scale(.5);opacity:.5}100%{transform:scale(1.9);opacity:0}}
+.tb .nm{font-size:13px;font-weight:750;color:#0a0a0a}
+.tb .ss{font-size:12px;color:#555;margin-left:4px}
+.tb .ic{margin-left:auto;font-size:16px;opacity:.55;display:flex;gap:12px}
+@keyframes flt{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes shim{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes blink{50%{opacity:0}}
+
+/* ── LOGIN ── */
+.login-v{align-items:center;justify-content:center;gap:22px}
+.logo-box{width:120px;height:120px;border-radius:30px;background:#fff;
+  display:grid;place-items:center;font-size:72px;font-weight:800;color:#0a0a0a;
+  box-shadow:0 16px 40px rgba(0,0,0,.14);animation:flt 3.4s ease-in-out infinite;flex:none}
+.lg-ttl{font-size:34px;font-weight:700;text-align:center}
+.lg-sub{font-size:17px;font-weight:450;color:#5a6b3a;text-align:center;margin-top:-12px}
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding:0 30px;flex:none}
+.sw{width:64px;height:64px;border-radius:50%;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.sw.out{background:transparent;border:3px solid #0a0a0a}
+.sw.sel{transform:scale(1.2);box-shadow:0 0 0 4px rgba(255,255,255,.85),0 6px 18px rgba(0,0,0,.18)}
+.lg-btn{padding:16px 52px;background:#0a0a0a;color:#fff;border:none;border-radius:999px;
+  font-size:19px;font-weight:600;box-shadow:0 10px 24px rgba(0,0,0,.2);flex:none}
+.lg-cr{font-size:15px;font-weight:500;color:#5a6b3a;text-align:center}
+
+/* ── MAIN WINDOW ── */
+.sh{font-size:22px;font-weight:760;display:flex;align-items:center;flex:none}
+.sh .pl{margin-left:auto;width:42px;height:42px;border-radius:50%;background:#fff;
+  display:grid;place-items:center;font-size:24px;font-weight:300;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+.sc-card{background:linear-gradient(180deg,#fff,#fbfcf7);border-radius:20px;padding:17px 19px;
+  box-shadow:0 14px 30px rgba(40,50,10,.1),0 3px 8px rgba(40,50,10,.06),inset 0 1px 0 rgba(255,255,255,.9);
+  border:1px solid rgba(255,255,255,.7);flex:none}
+.sc-row{display:flex;align-items:center;gap:10px}
+.sc-dot{width:9px;height:9px;border-radius:50%;background:#2d8b00;flex:none}
+.sc-em{font-size:28px;flex:none}
+.sc-n{font-size:17px;font-weight:750}.sc-s{font-size:13px;color:#555;margin-top:2px}
+.bbtn{background:linear-gradient(180deg,#fff,#f7f9f0);border:1px solid rgba(255,255,255,.8);border-radius:18px;padding:17px;font-size:18px;font-weight:650;
+  color:#0a0a0a;text-align:center;box-shadow:0 8px 18px rgba(40,50,10,.1),inset 0 1px 0 rgba(255,255,255,.9);flex:none;
+  display:flex;align-items:center;justify-content:center;gap:10px}
+.sep{font-size:15px;color:#555;text-align:center;flex:none}
+.ta{flex:1;background:rgba(255,255,255,.45);border-radius:16px;padding:14px;font-size:17px;color:#888;
+  border:1px solid rgba(255,255,255,.3);min-height:70px;display:flex;align-items:flex-start}
+.ob-btn{background:linear-gradient(180deg,#15170d,#0a0a0a);border:none;border-radius:18px;padding:18px;font-size:19px;font-weight:650;letter-spacing:.01em;
+  color:#d1e847;text-align:center;box-shadow:0 12px 26px rgba(10,12,4,.28),inset 0 1px 0 rgba(255,255,255,.12);flex:none}
+.mftr{display:flex;align-items:center;flex:none;margin-top:auto}
+.pb{background:#0a0a0a;color:#d1e847;font-size:13px;font-weight:750;padding:7px 13px;border-radius:999px;margin-right:10px}
+.ft{font-size:15px;color:#555;flex:1}
+.mgb{background:#fff;border:none;border-radius:999px;padding:8px 18px;font-size:14px;font-weight:700;color:#0a0a0a;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+
+/* ── OPTIMIZER ── */
+.ob{background:linear-gradient(180deg,rgba(255,255,255,.82),rgba(255,255,255,.66));border:1px solid rgba(255,255,255,.9);border-radius:24px;padding:16px;
+  box-shadow:0 22px 50px rgba(40,50,10,.13),0 5px 12px rgba(40,50,10,.06),inset 0 1px 0 rgba(255,255,255,.95);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);flex:none}
+.ob-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;gap:8px}
+.ob-lbl{display:flex;align-items:center;gap:8px;min-width:0}
+.ob-app{font-size:13px;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp{display:flex;gap:2px;background:rgba(255,255,255,.5);border-radius:999px;padding:3px}
+.mp button,.ap button{padding:6px 11px;font-size:12px;background:transparent;border:none;color:#555;border-radius:999px;font-weight:600;transition:all .25s}
+.mp button.on,.ap button.on{background:#fff;color:#0a0a0a;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ap{display:flex;gap:2px;background:rgba(255,255,255,.5);border-radius:999px;padding:3px}
+.ob-st{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.ob-q{font-size:12px;color:#555;font-weight:600}
+.ob-nm{display:flex;align-items:center;gap:7px;font-size:17px}
+.ob-nm .nb{font-weight:750;color:#333;font-variant-numeric:tabular-nums}
+.ob-nm .ar{color:#888;font-size:13px}
+.ob-nm .na{font-weight:760;color:#2d8b00;font-variant-numeric:tabular-nums}
+.ob-nm .np{font-weight:760;color:#2d8b00;font-size:17px}
+.ob-tx{position:relative;width:100%;min-height:148px;background:rgba(255,255,255,.6);border-radius:14px;padding:13px;
+  font-family:"SF Mono",Menlo,monospace;font-size:14px;line-height:1.6;color:#0a0a0a;border:1px solid rgba(255,255,255,.3)}
+.ob-tx .ly{position:absolute;inset:13px;transition:opacity .35s ease}
+.cr{display:inline-block;width:2px;height:16px;background:#2d8b00;vertical-align:-3px;animation:blink .9s steps(1) infinite}
+.rm{color:#c0392b}.rm.sk{text-decoration:line-through;opacity:.35}
+.tchs{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;min-height:24px}
+.tg{font-size:12px;padding:4px 10px;background:rgba(255,255,255,.5);color:#333;border-radius:999px;font-weight:600;
+  opacity:0;transform:translateY(6px) scale(.9);transition:all .35s cubic-bezier(.16,1,.3,1)}
+.tg.sh{opacity:1;transform:none}
+.tg.gn{background:#2d8b00;color:#fff}
+.ob-ac{display:flex;gap:6px;margin-top:11px}
+.cp{display:flex;align-items:center;gap:5px;padding:12px 16px;background:rgba(255,255,255,.5);color:#0a0a0a;border:none;border-radius:999px;font-size:13px;font-weight:600}
+.rp{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border:none;border-radius:999px;font-size:13px;font-weight:750;color:#0a0a0a;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.12);transition:all .3s}
+.rp.go{color:#fff;background:linear-gradient(100deg,#2d8b00,#3aa50a,#2d8b00);background-size:200%;animation:shim 1.6s linear infinite;transform:scale(1.02);box-shadow:0 6px 22px rgba(45,139,0,.36)}
+.cy{padding:12px 13px;background:rgba(255,255,255,.5);color:#0a0a0a;border:none;border-radius:999px;font-size:14px}
+.stub{flex:1;background:rgba(255,255,255,.3);border-radius:18px;padding:13px 15px;display:flex;flex-direction:column;gap:9px;border:1px solid rgba(255,255,255,.4)}
+.stubr{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700}
+.stubd{width:8px;height:8px;border-radius:50%;background:#2d8b00;flex:none}
+.stubp{height:12px;border-radius:7px;background:rgba(255,255,255,.5)}
+.stubp.m{width:80%}.stubp.s{width:55%}
+
+/* ── SETTINGS ── */
+.seth{font-size:26px;font-weight:760;flex:none}
+.setsb{font-size:12px;font-weight:700;letter-spacing:1.2px;color:#555;text-transform:uppercase;margin:6px 2px 3px;flex:none}
+.m3{position:relative;display:flex;background:rgba(255,255,255,.5);border-radius:15px;padding:4px;flex:none}
+.m3 .kn{position:absolute;top:4px;bottom:4px;width:calc((100% - 8px)/3);border-radius:11px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.16);transition:transform .5s cubic-bezier(.5,1.5,.4,1)}
+.m3 button{flex:1;z-index:1;background:transparent;border:none;padding:14px 0;font-size:17px;font-weight:700;color:#555;transition:color .3s}
+.m3 button.on{color:#0a0a0a}
+.tgl{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.trow{display:flex;align-items:center;padding:13px 4px;border-bottom:1px solid rgba(0,0,0,.05);font-size:17px}
+.trow:last-child{border-bottom:none}
+.trow .sw{margin-left:auto;width:54px;height:30px;border-radius:999px;background:rgba(0,0,0,.18);position:relative;transition:background .35s;flex:none}
+.trow .sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);transition:transform .4s cubic-bezier(.5,1.6,.4,1)}
+.trow.on .sw{background:#0f1108}.trow.on .sw::after{transform:translateX(24px)}
+.acct{background:rgba(255,255,255,.5);border-radius:18px;padding:16px;display:flex;align-items:center;gap:12px;flex:none}
+.acct-av{width:46px;height:46px;border-radius:50%;background:#2d8b00;display:grid;place-items:center;font-size:22px;color:#fff;flex:none}
+.acct-n{font-size:17px;font-weight:750}.acct-e{font-size:13px;color:#555}
+
+/* ── AGENT ── */
+.ag-tp{background:rgba(255,255,255,.6);border-radius:18px;padding:15px;flex:none;border:1px solid rgba(255,255,255,.7)}
+.ag-hd{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:750;margin-bottom:9px}
+.ag-st{margin-left:auto;font-size:13px;color:#2d8b00;font-weight:600}
+.ctx-l{display:flex;font-size:12px;color:#555;font-weight:700;margin-bottom:6px;letter-spacing:.5px}
+.ctx-l b{color:#0a0a0a;margin-left:auto;font-variant-numeric:tabular-nums}
+.ctx-b{height:10px;background:rgba(0,0,0,.08);border-radius:6px;overflow:hidden}
+.ctx-b i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#3aa50a,#2d8b00)}
+.ag-gr{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:none}
+.ag-c{background:rgba(255,255,255,.6);border-radius:13px;padding:11px 4px;text-align:center;border:1px solid rgba(255,255,255,.7)}
+.ag-c .v{font-size:21px;font-weight:760;color:#0a0a0a;font-variant-numeric:tabular-nums}
+.ag-c .l{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+.sv-h{background:rgba(255,255,255,.6);border-radius:18px;padding:15px;flex:none;border:1px solid rgba(255,255,255,.7)}
+.sv-bg{display:flex;align-items:baseline;gap:8px}
+.sv-bg .n{font-size:42px;font-weight:760;color:#2d8b00;font-variant-numeric:tabular-nums;line-height:1}
+.sv-bg .u{font-size:13px;color:#2d8b00;opacity:.7}
+.sv-bar{height:8px;background:rgba(0,0,0,.08);border-radius:5px;overflow:hidden;margin-top:10px}
+.sv-bar i{display:block;height:100%;width:0;background:#2d8b00;border-radius:5px}
+.lg{flex:1;background:rgba(255,255,255,.5);border-radius:18px;padding:12px;
+  font-family:"SF Mono",Menlo,monospace;font-size:13px;overflow:hidden;display:flex;flex-direction:column;gap:3px;border:1px solid rgba(255,255,255,.6)}
+.ll{display:flex;gap:6px;align-items:center;padding:3px 7px;border-radius:8px;white-space:nowrap;
+  opacity:0;transform:translateY(8px);animation:lgIn .4s cubic-bezier(.16,1,.3,1) forwards}
+@keyframes lgIn{to{opacity:1;transform:none}}
+.ll.u{background:rgba(255,255,255,.7)}.ll.u.s{border-left:3px solid #2d8b00}
+.ll .ic{flex:none}.ll .tx{flex:1;overflow:hidden;text-overflow:ellipsis;color:#333}.ll.u .tx{color:#0a0a0a}
+.ll .bd{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px}
+.bd-g{background:#2d8b00;color:#fff}.bd-d{color:#555}
+
+/* ── PET ── */
+.pet-v{padding:66px 18px 18px;align-items:center;gap:10px}
+.pet-hd{width:100%;display:flex;align-items:center;gap:10px;flex:none}
+.pet-hd h2{font-size:24px;font-weight:760}
+.cns{display:flex;gap:10px;width:100%;flex:none}
+.cn{background:rgba(255,255,255,.5);border-radius:12px;padding:7px 14px;font-size:14px;font-weight:700;color:#333}
+.pet-stage{position:relative;width:100%;height:280px;display:flex;align-items:center;justify-content:center;flex:none}
+.shiro-wrap{animation:flt 3.2s ease-in-out infinite;filter:drop-shadow(0 16px 26px rgba(0,0,0,.16));width:240px;height:240px;display:grid;place-items:center}
+.shiro{width:240px;height:240px;transform-origin:50% 92%;animation:k-breathe 5s ease-in-out infinite}
+@keyframes k-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.025,.97)}}
+@keyframes k-leg-A{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@keyframes k-leg-B{0%,100%{transform:rotate(7deg)}50%{transform:rotate(-7deg)}}
+.shiro .leg-A{animation:k-leg-A .55s ease-in-out infinite}
+.shiro .leg-B{animation:k-leg-B .55s ease-in-out infinite}
+@keyframes k-ear-twitch{0%,80%,100%{transform:rotate(0)}90%{transform:rotate(-12deg)}95%{transform:rotate(8deg)}}
+.shiro .ear-L{animation:k-ear-twitch 4.6s ease-in-out infinite}
+.shiro .ear-R{animation:k-ear-twitch 5.3s ease-in-out .8s infinite}
+@keyframes k-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.10)}}
+.shiro .pet-eye-L,.shiro .pet-eye-R{animation:k-blink 5.4s linear infinite}
+@keyframes k-tongue-loll{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(.5px) rotate(2deg)}}
+.shiro .tongue{transform-box:fill-box;transform-origin:50% 0%;animation:k-tongue-loll 1.2s ease-in-out infinite}
+.bbl{position:absolute;top:8%;background:#fff;padding:11px 20px;border-radius:20px;
+  font-size:17px;font-weight:750;color:#222;box-shadow:0 8px 22px rgba(0,0,0,.14);white-space:nowrap}
+.bbl::after{content:"";position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
+  border:8px solid transparent;border-top-color:#fff;border-bottom:0}
+.pfc{position:absolute;font-size:26px}
+.pfc:nth-child(1){top:18%;right:16%;animation:pflt 1.3s ease-in infinite}
+.pfc:nth-child(2){top:8%;left:20%;animation:pflt 1.3s .5s ease-in infinite}
+.pfc:nth-child(3){top:28%;right:26%;animation:pflt 1.3s .9s ease-in infinite}
+@keyframes pflt{0%{opacity:0;transform:translateY(-18px)}20%{opacity:1}80%{opacity:1;transform:translateY(76px)}100%{opacity:0;transform:translateY(96px)}}
+.bh-card{background:rgba(255,255,255,.6);border-radius:18px;padding:13px 15px;width:100%;flex:none;border:1px solid rgba(255,255,255,.5)}
+.bh-row{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:15px}
+.bh-row:last-child{border-bottom:none}
+.ck{width:26px;height:26px;border-radius:7px;background:#2d8b00;display:grid;place-items:center;color:#fff;font-size:15px;margin-left:auto;flex:none}
+.skins{display:flex;gap:10px;width:100%;flex:none}
+.skin{flex:none;background:rgba(255,255,255,.55);border-radius:13px;padding:9px 13px;text-align:center;border:1px solid rgba(255,255,255,.5)}
+.skin .se{font-size:30px;display:block;margin-bottom:4px}
+.skin .sn{font-size:12px;font-weight:700;color:#333}
+.skin.eq{border-color:#2d8b00;background:rgba(45,139,0,.1)}
+
+/* ── FARM (real Terse farm-bg.jpg scene) ── */
+.farm-v{padding:0;gap:0;overflow:hidden;
+  background:linear-gradient(180deg,#8ed3f3 0%,#a6e0f6 26%,#c6ecdf 56%,#bbe6c6 100%)}
+/* full farm illustration shown complete, centered as a scene band (as the app loads it) */
+.f-scene{position:absolute;left:0;right:0;top:25%;width:100%;aspect-ratio:1400/786;z-index:2;
+  box-shadow:0 22px 54px rgba(0,45,30,.3)}
+.f-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+/* feather the band into the sky top & bottom */
+.f-scene::before{content:"";position:absolute;left:0;right:0;top:-1px;height:16%;z-index:3;pointer-events:none;
+  background:linear-gradient(180deg,rgba(166,224,246,.95),transparent)}
+.f-scene::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:18%;z-index:3;pointer-events:none;
+  background:linear-gradient(0deg,rgba(187,230,198,.95),transparent)}
+/* crops planted on the upper checkerboard field of the illustration */
+.f-field{position:absolute;inset:0;z-index:4}
+.crop{position:absolute;width:11%;aspect-ratio:1;transform:scale(0);transform-origin:50% 88%;will-change:transform}
+.crop img{width:100%;height:100%;filter:drop-shadow(0 4px 5px rgba(0,0,0,.3))}
+.f-xp{position:absolute;left:42%;top:18%;z-index:5;background:rgba(160,230,90,.96);color:#1f4d00;font-weight:760;font-size:15px;
+  padding:5px 13px;border-radius:999px;box-shadow:0 6px 16px rgba(0,0,0,.22);opacity:0;transition:opacity .4s;white-space:nowrap}
+/* top hud */
+.f-hud{position:absolute;left:0;right:0;top:0;z-index:4;padding:60px 14px 0;display:flex;align-items:center;gap:9px;pointer-events:none}
+.f-coin{display:flex;align-items:center;gap:5px;background:rgba(20,28,12,.55);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.18);color:#ffe08a;font-size:16px;font-weight:760;padding:7px 14px;border-radius:999px}
+.f-coin b{color:#fff}
+.f-lv{display:flex;align-items:center;gap:8px;background:rgba(20,28,12,.55);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.18);color:#fff;font-size:15px;font-weight:800;padding:7px 14px;border-radius:999px}
+.f-lv i{width:64px;height:8px;border-radius:999px;background:rgba(255,255,255,.25);overflow:hidden}
+.f-lv i b{display:block;width:64%;height:100%;background:linear-gradient(90deg,#b388ff,#7c4dff);border-radius:999px}
+.f-gear{margin-left:auto;width:40px;height:40px;border-radius:50%;background:rgba(20,28,12,.55);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:19px}
+/* sparkles */
+.fsp{position:absolute;font-size:22px;z-index:3;animation:spup 1.3s ease-out infinite}
+@keyframes spup{0%{opacity:0;transform:translateY(0)scale(.5)}20%{opacity:1;transform:translateY(-20px)scale(1)}80%{opacity:1;transform:translateY(-60px)scale(1)}100%{opacity:0;transform:translateY(-86px)scale(.7)}}
+/* harvest notification */
+.f-harv{position:absolute;left:14px;right:14px;top:57%;z-index:5;display:flex;align-items:center;gap:12px;
+  background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-radius:18px;padding:13px 15px;
+  box-shadow:0 16px 34px rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.9);animation:flt 3s ease-in-out infinite}
+.f-harv-em{font-size:34px;flex:none}
+.f-harv-tx{flex:1;min-width:0}
+.f-harv-tx b{display:block;font-size:17px;font-weight:760;color:#1a1a1a}
+.f-harv-tx span{font-size:13px;color:#666}
+.f-harv-tx i{font-style:normal;color:#2d8b00;font-weight:800;font-variant-numeric:tabular-nums}
+.f-harv-btn{flex:none;background:linear-gradient(180deg,#3aa50a,#2d8b00);color:#fff;border:none;border-radius:13px;
+  padding:11px 20px;font-size:16px;font-weight:760;box-shadow:0 6px 16px rgba(45,139,0,.4)}
+/* bottom panel: stats + toolbar */
+.f-bottom{position:absolute;left:0;right:0;bottom:0;z-index:6;padding:14px 14px 18px;display:flex;flex-direction:column;gap:11px;
+  background:linear-gradient(180deg,rgba(18,24,12,0),rgba(14,20,8,.86) 22%,rgba(12,17,7,.95));backdrop-filter:blur(4px)}
+.f-stats{display:flex;gap:10px}
+.f-stat{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:11px 14px}
+.f-stat .lab{font-size:12px;color:#cfe0b8;font-weight:600}
+.f-stat .big{font-size:27px;font-weight:760;color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
+.f-stat .sub{font-size:11px;color:#9fb98a}
+.f-tools{display:flex;gap:10px}
+.f-tool{flex:1;position:relative;border-radius:16px;padding:12px 0 9px;text-align:center;font-size:13px;font-weight:800;color:#fff;
+  display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:0 6px 14px rgba(0,0,0,.28)}
+.f-tool span{font-size:24px;line-height:1}
+.t-blue{background:linear-gradient(180deg,#5cc3f0,#2f9fe0)}
+.t-green{background:linear-gradient(180deg,#7fd44f,#54ab2c)}
+.t-gold{background:linear-gradient(180deg,#ffc94d,#f0a824)}
+.t-gray{background:linear-gradient(180deg,#7c8794,#5b6470)}
+.t-dot{position:absolute;top:-5px;right:-2px;min-width:19px;height:19px;border-radius:999px;background:#ff3b3b;color:#fff;
+  font-size:11px;font-weight:800;display:grid;place-items:center;border:2px solid rgba(14,20,8,.95);font-style:normal}
+
+/* ── STATS ── */
+.stats-tabs{display:flex;background:rgba(255,255,255,.5);border-radius:14px;padding:4px;gap:2px;flex:none}
+.stats-tabs button{flex:1;padding:10px;font-size:15px;font-weight:700;background:transparent;border:none;color:#555;border-radius:10px;transition:all .25s}
+.stats-tabs button.on{background:#fff;color:#0a0a0a;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.sg{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;flex:none}
+.sc-card2{background:linear-gradient(180deg,rgba(255,255,255,.8),rgba(255,255,255,.6));border-radius:20px;padding:18px;border:1px solid rgba(255,255,255,.85);
+  box-shadow:0 12px 28px rgba(40,50,10,.09),inset 0 1px 0 rgba(255,255,255,.9)}
+.sc-card2 .v{font-size:36px;font-weight:760;color:#2d8b00;font-variant-numeric:tabular-nums;line-height:1}
+.sc-card2 .v.dk{color:#0a0a0a}
+.sc-card2 .l{font-size:12px;color:#555;margin-top:7px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.rcpt{flex:1;background:rgba(255,255,255,.82);border-radius:20px;padding:18px;font-family:"SF Mono",Menlo,monospace;border:1px solid rgba(255,255,255,.9)}
+.rcpt-t{font-size:10px;letter-spacing:2.5px;color:#555;text-align:center;margin-bottom:10px;text-transform:uppercase}
+.rcpt-lg{font-size:44px;font-weight:760;color:#0a0a0a;text-align:center;display:block}
+.rcpt-sb{font-size:13px;letter-spacing:3px;color:#0a0a0a;text-align:center;margin-bottom:14px;font-weight:750}
+.rcpt-inf{font-size:13px;color:#555;text-align:center;line-height:1.8;margin-bottom:12px}
+.rcpt-div{border:none;border-top:1px dashed rgba(0,0,0,.2);margin:8px 0}
+.rcpt-row{display:flex;align-items:center;margin-bottom:7px;gap:6px}
+.rcpt-row .src{font-size:13px;font-weight:750;color:#0a0a0a;width:80px}
+.rcpt-row .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.rcpt-row .val{font-size:13px;color:#333;margin-left:auto;font-variant-numeric:tabular-nums}
+.rcpt-row .pct{font-size:12px;color:#2d8b00;font-weight:750;width:32px;text-align:right}
+.rcpt-tot{display:flex;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:2px solid rgba(0,0,0,.12)}
+.rcpt-tot .tl{font-size:12px;font-weight:760;color:#0a0a0a;letter-spacing:1.5px}
+.rcpt-tot .tv{font-size:30px;font-weight:760;color:#2d8b00;font-variant-numeric:tabular-nums}
+
+/* ── signature accents ── */
+/* subtle living sheen on the hero savings numbers (clean, not gaudy) */
+.sv-bg .n,.rcpt-tot .tv{
+  background:linear-gradient(100deg,#2d8b00 0%,#62d416 46%,#2d8b00 72%);
+  background-size:220% auto;-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;animation:gsheen 3.4s linear infinite}
+@keyframes gsheen{to{background-position:-220% center}}
+/* tactile press-state polish on pill buttons */
+.lg-btn,.ob-btn,.bbtn,.f-harv-btn{transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}
+/* soft entrance lift for cards as their view turns on */
+.view.on .sc-card,.view.on .ob,.view.on .sc-card2,.view.on .ag-tp,.view.on .ag-c,.view.on .sv-h{
+  animation:cardIn .55s cubic-bezier(.16,1,.3,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+
+/* ════════════════════════════════════════════════════════════════════
+   LIGHT PRO THEME (v3) — clean white surfaces, hairline borders, soft
+   shadows, refined violet→cyan accent reserved for key moments. High-end,
+   simple & clean. Loads last so it wins over the lime base.
+   ════════════════════════════════════════════════════════════════════ */
+#app{
+  /* neutral black/grey structure + green accent + yellow highlight (Terse) */
+  --txt:#14151A; --muted:#6B7280; --faint:#9CA3AF;
+  --surface2:#ECEEF1;
+  --border:rgba(18,20,26,.06);
+  --hi:rgba(255,255,255,.95); --sh:rgba(20,22,30,.13);
+  --ink:#15171C; --char:#23262E;                  /* near-black + charcoal for dark boxes */
+  --accent:#0E7C5A; --accent2:#15936B; --accdim:rgba(14,124,90,.12);   /* deep emerald */
+  --posLt:#37D9A2;                                                      /* bright emerald on dark */
+  --gold:#C69B3C; --gold2:#E8CC83; --golddim:rgba(198,155,60,.16);     /* 24k metallic gold */
+  --pos:#0E7C5A; --pos2:#0A5E44; --posdim:rgba(14,124,90,.12);          /* savings = emerald */
+  --red:#E5484D;
+  /* elevated near-white base (not clinical pure white); soft-3D reads on it */
+  background:radial-gradient(120% 85% at 50% -8%,#FCFCFD,#F1F2F4 72%);color:var(--txt)}
+.sc{background:#F3F4F6}
+#app::before{background:radial-gradient(60% 36% at 84% 0%,rgba(31,168,92,.05),transparent 64%)}
+
+/* ── soft-3D raised cards: dual shadow (light TL + dark BR) + sheen + gradient ── */
+.card,.sc-card,.ob,.sc-card2,.ag-tp,.ag-c,.sv-h,.bh-card,.acct,.stub,.cn,.skin,.rcpt{
+  background:linear-gradient(145deg,#FCFDFF,#EAEDF3);border:1px solid var(--border);
+  box-shadow:-5px -5px 13px var(--hi),7px 9px 20px var(--sh),inset 0 1px 0 rgba(255,255,255,.85)}
+.sc-card,.ob{background:linear-gradient(145deg,#FCFDFF,#E9ECF3)}
+/* pressed-in inset surfaces (sunken 3D) */
+.ta,.ob-tx,.lg{background:#E9ECF2;border:none;
+  box-shadow:inset 3px 3px 7px rgba(20,26,48,.1),inset -3px -3px 7px rgba(255,255,255,.85)}
+
+/* ── text hierarchy ── */
+.tb .nm,.sh,.seth,.sc-n,.acct-n,.pet-hd h2,.ob-nm .nb,.bh-row,.trow,.ob-tx,.lg-ttl{color:var(--txt)}
+.tb .ss,.sc-s,.sep,.ft,.lg-sub,.lg-cr,.ob-app,.ob-q,.acct-e,.setsb,.ctx-l,.ag-c .l,.skin .sn,.cn,.stats-tabs button,.ta{color:var(--muted)}
+.tb .ic{opacity:.5}
+.ob-nm .ar{color:var(--faint)}
+
+/* ── glossy 3D status dots (emerald) + gradient avatar/badge ── */
+.dg,.sc-dot,.stubd,.ck{background:radial-gradient(circle at 36% 30%,#2FBE86,#0E7C5A);
+  box-shadow:0 1px 3px rgba(14,124,90,.5),inset 0 1px 1px rgba(255,255,255,.55)}
+.tb .dg::after{border-color:var(--accent)}
+.acct-av{background:linear-gradient(135deg,#2A2D36,#15171C);box-shadow:0 4px 12px rgba(20,22,30,.35)}
+.ag-st{color:var(--accent)}
+/* metallic 24k gold PRO badge */
+.pb{background:linear-gradient(135deg,#F2DEA0,#C69B3C 52%,#A8801F);color:#3A2C00;
+  box-shadow:0 4px 12px rgba(168,128,31,.42),inset 0 1px 0 rgba(255,255,255,.55)}
+.cr{background:var(--accent)}
+.rm{color:var(--red)}
+
+/* ── buttons: raised primary with colored glow, raised secondary ── */
+.lg-btn,.ob-btn{background:linear-gradient(135deg,#2A2D36,#15171C);color:#fff;border:none;
+  box-shadow:-4px -4px 12px var(--hi),7px 9px 22px rgba(20,22,30,.32),inset 0 1px 0 rgba(255,255,255,.14)}
+.bbtn,.mgb,.cp,.cy,.rp,.sh .pl{background:linear-gradient(145deg,#FCFDFE,#E9EBEF);color:var(--txt);border:1px solid var(--border);
+  box-shadow:-4px -4px 10px var(--hi),5px 6px 14px var(--sh)}
+.rp.go{background:linear-gradient(135deg,#15936B,#0E7C5A);color:#fff;box-shadow:0 7px 20px rgba(14,124,90,.42),inset 0 1px 0 rgba(255,255,255,.28)}
+
+/* ── segmented / tabs: inset track, raised active pill ── */
+.mp,.ap,.stats-tabs,.m3{background:#E6E9F0;box-shadow:inset 2px 2px 6px rgba(20,26,48,.09),inset -2px -2px 6px rgba(255,255,255,.85)}
+.mp button,.ap button,.m3 button,.stats-tabs button{color:var(--muted)}
+.mp button.on,.ap button.on,.stats-tabs button.on{background:linear-gradient(145deg,#FFF,#EEF0F5);color:var(--txt);box-shadow:-2px -2px 6px var(--hi),3px 3px 8px var(--sh)}
+.m3 button.on{color:var(--txt)}
+.m3 .kn{background:linear-gradient(145deg,#FFF,#EDF0F5);box-shadow:-2px -2px 6px var(--hi),3px 4px 9px var(--sh)}
+
+/* ── toggles: inset track, accent gradient when on ── */
+.trow{border-bottom-color:rgba(20,26,48,.06)}
+.trow .sw{background:#E2E5EC;box-shadow:inset 2px 2px 5px rgba(20,26,48,.12),inset -2px -2px 5px rgba(255,255,255,.8)}
+.trow.on .sw{background:linear-gradient(135deg,#15936B,#0E7C5A);box-shadow:0 2px 8px rgba(14,124,90,.4)}
+
+/* ── savings emerald; inset 3D bars ── */
+.na,.np,.rcpt-row .pct,.sv-bg .u{color:var(--pos)}
+.ctx-b,.sv-bar{background:#E4E7EE;box-shadow:inset 1px 1px 3px rgba(20,26,48,.12),inset -1px -1px 3px rgba(255,255,255,.8)}
+.sv-bar i{background:linear-gradient(90deg,#0E7C5A,#1FB682)}
+.ctx-b i{background:linear-gradient(90deg,#3A3D45,#22252C)}
+.tg{background:#E7EAF1;color:var(--muted)}
+.tg.gn{background:var(--posdim);color:var(--pos2)}
+.ag-c .v{color:var(--txt)}
+.sc-card2 .v{color:var(--pos)}.sc-card2 .v.dk{color:var(--txt)}
+
+/* ── agent log ── */
+.ll.u{background:#EDEFF4;box-shadow:inset 1px 1px 3px rgba(20,26,48,.06)}.ll.u.s{border-left-color:var(--pos)}
+.ll .tx{color:var(--muted)}.ll.u .tx{color:var(--txt)}
+.bd-g{background:var(--posdim);color:var(--pos2)}.bd-d{color:var(--faint)}
+
+/* ── login (3D logo + swatches) ── */
+.logo-box{background:linear-gradient(145deg,#FCFDFF,#E9ECF3);color:var(--accent);
+  box-shadow:-6px -6px 16px var(--hi),9px 11px 26px var(--sh),inset 0 1px 0 rgba(255,255,255,.9)}
+.sw.out{border-color:var(--txt)}
+.sw{box-shadow:-2px -2px 6px var(--hi),3px 4px 9px var(--sh)}
+
+/* ── receipt ── */
+.rcpt-t,.rcpt-inf,.rcpt-row .src,.rcpt-row .val,.rcpt-sb{color:var(--muted)}
+.rcpt-lg,.rcpt-tot .tl{color:var(--txt)}
+.rcpt-div{border-top-color:rgba(20,26,48,.1)}
+.rcpt-tot{border-top-color:rgba(20,26,48,.14)}
+
+/* ── pet ── */
+.bbl{background:linear-gradient(145deg,#FFF,#EEF0F5);color:var(--txt);border:none;
+  box-shadow:-4px -4px 10px var(--hi),6px 7px 16px var(--sh)}
+.bbl::after{border-top-color:#F2F3F8}
+.bh-row{border-bottom-color:rgba(20,26,48,.06)}
+.skin.eq{border-color:var(--accent);background:var(--accdim)}
+
+/* ── FARM: white background, soft-3D glass UI ── */
+.farm-v{background:#FFFFFF}
+.f-scene::before{background:linear-gradient(180deg,rgba(255,255,255,.97),transparent)}
+.f-scene::after{background:linear-gradient(0deg,rgba(255,255,255,.97),transparent)}
+.f-coin,.f-lv,.f-gear{background:#FFFFFF;border:1px solid var(--border);color:var(--txt);
+  box-shadow:-3px -3px 8px rgba(255,255,255,.9),4px 5px 12px rgba(20,26,48,.13)}
+.f-coin b{color:#A8801F}
+.f-lv i{background:#E2E5EC}.f-lv i b{background:linear-gradient(90deg,#15936B,#0E7C5A)}
+.f-bottom{background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.94) 24%,#FFFFFF)}
+.f-stat{background:linear-gradient(145deg,#FCFDFF,#EAEDF3);border:1px solid var(--border);
+  box-shadow:-3px -3px 8px var(--hi),4px 5px 12px var(--sh)}
+.f-stat .lab{color:var(--muted)}.f-stat .big{color:var(--txt)}.f-stat .sub{color:var(--faint)}
+.f-harv-tx i{color:var(--pos2)}
+
+/* ── hero numbers: emerald gradient ── */
+.rcpt-tot .tv{background:linear-gradient(120deg,#0E7C5A,#16A877);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:none}
+
+/* ── premium dark feature boxes (charcoal/onyx) — grain + gold hairline ── */
+.sv-h,.sg .sc-card2:nth-child(1){position:relative;overflow:hidden;
+  background:linear-gradient(158deg,#272B34,#15171C);border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 18px 40px rgba(10,12,16,.42),inset 0 1px 0 rgba(255,255,255,.1)}
+.sv-h::before,.sg .sc-card2:nth-child(1)::before{content:"";position:absolute;left:16px;right:16px;top:0;height:1px;z-index:2;
+  background:linear-gradient(90deg,transparent,rgba(232,204,131,.75),transparent)}
+.sv-h::after,.sg .sc-card2:nth-child(1)::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.06;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* light/emerald text on the dark boxes */
+.sv-bg .n{background:linear-gradient(120deg,#37D9A2,#7BF0C8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sv-bg .u{color:rgba(236,240,238,.62)}
+.ag-tp .ag-hd{color:var(--txt)}
+.sg .sc-card2:nth-child(1) .v{color:var(--posLt)}
+.sg .sc-card2:nth-child(1) .l{color:rgba(236,240,238,.6)}
+
+/* emerald harvest button + metallic coin */
+.f-harv-btn{background:linear-gradient(135deg,#15936B,#0E7C5A);box-shadow:0 6px 16px rgba(14,124,90,.4)}
+
+/* ════════════════ SIMULATED TOUCH / RIPPLE (v3 interaction layer) ════════════════ */
+#fxlayer{position:absolute;inset:0;z-index:50;pointer-events:none;border-radius:74px;overflow:hidden}
+/* macOS-style arrow cursor — its tip sits at the click point */
+#cursor{position:absolute;left:0;top:0;width:27px;height:27px;margin:-2px 0 0 -2px;opacity:0;
+  filter:drop-shadow(0 2px 4px rgba(15,23,42,.4));transform-origin:8% 8%;transition:transform .1s ease;
+  will-change:left,top,transform,opacity}
+#cursor.press{transform:scale(.8)}
+/* click pulse ring radiating from the tip */
+.ripple{position:absolute;border-radius:50%;width:22px;height:22px;margin:-11px 0 0 -11px;pointer-events:none;
+  border:2px solid rgba(14,124,90,.6);background:rgba(14,124,90,.14);animation:rip .62s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes rip{from{transform:scale(.3);opacity:.95}to{transform:scale(3.4);opacity:0}}
+.tapnow{transform:scale(.93)!important;transition:transform .12s ease}
+
+/* ════════════ v3 REFINEMENT — light premium green · more gold & grey ·
+   richer numbers · white-based gradient scenes ════════════ */
+#app{
+  --accent:#2FB488; --accent2:#46C79C; --accdim:rgba(47,180,136,.13);
+  --accentLt:#8FE0C2; --mint:#EAF7F1;
+  --posLt:#5FE0B0; --pos:#2FB488; --pos2:#1F8E6A; --posdim:rgba(47,180,136,.13);
+  font-feature-settings:"tnum" 1,"ss01" 1}
+/* light-emerald re-skin of the accents */
+.dg,.sc-dot,.stubd,.ck{background:radial-gradient(circle at 36% 30%,#5FD3AC,#2FB488);box-shadow:0 1px 3px rgba(47,180,136,.42),inset 0 1px 1px rgba(255,255,255,.6)}
+.rp.go{background:linear-gradient(135deg,#46C79C,#2FB488);box-shadow:0 7px 20px rgba(47,180,136,.4),inset 0 1px 0 rgba(255,255,255,.4)}
+.trow.on .sw{background:linear-gradient(135deg,#46C79C,#2FB488);box-shadow:0 2px 8px rgba(47,180,136,.4)}
+.sv-bar i{background:linear-gradient(90deg,#2FB488,#5FD3AC)}
+.f-lv i b{background:linear-gradient(90deg,#46C79C,#2FB488)}
+.f-harv-btn{background:linear-gradient(135deg,#46C79C,#2FB488);box-shadow:0 6px 16px rgba(47,180,136,.4)}
+.rcpt-tot .tv{background:linear-gradient(120deg,#1F9E76,#3FC79A)}
+.na,.np,.rcpt-row .pct,.sc-card2 .v{color:#1F9E76}
+.skin.eq{border-color:#2FB488;background:rgba(47,180,136,.12)}
+.ripple{border-color:rgba(47,180,136,.6);background:rgba(47,180,136,.14)}
+/* bright mint numbers on the dark feature boxes */
+.sv-bg .n,.sg .sc-card2:nth-child(1) .v{background:none;-webkit-text-fill-color:#5FE0B0;color:#5FE0B0}
+
+/* ── more GREY: secondary boxes filled grey (not pure white) ── */
+.acct,.bh-card,.stub,.cn,.skin,.tg{background:linear-gradient(145deg,#F1F3F6,#E6E9EE)}
+.tg{background:#E7EAEF}
+
+/* ── more GOLD: refined metallic touches (kept to ~10%) ── */
+.sv-bg .u{color:var(--gold);font-weight:700}
+.sg .sc-card2:nth-child(1) .l{color:rgba(232,204,131,.85)}
+.acct-av{box-shadow:0 0 0 2px rgba(198,155,60,.55),0 4px 12px rgba(20,22,30,.3)}
+.rcpt-t{color:var(--gold);letter-spacing:2.6px}
+.skin{position:relative}
+.skin.eq::after{content:"★";position:absolute;top:5px;right:7px;font-size:11px;color:var(--gold)}
+
+/* ── richer TEXT / NUMBER texture ── */
+.sc-card2 .v,.rcpt-tot .tv,.sv-bg .n,.ag-c .v,.f-stat .big,.rcpt-lg,.sh,.seth,.lg-ttl,.ob-nm .nb,.ag-c .v{
+  letter-spacing:-.022em;font-variant-numeric:tabular-nums}
+.sv-bg .n{text-shadow:0 1px 10px rgba(95,224,176,.28)}
+.sg .sc-card2:nth-child(1) .v{text-shadow:0 1px 10px rgba(95,224,176,.24)}
+.lg-ttl,.seth{font-weight:780}
+
+/* ── white-dominant premium gradient scene backgrounds ── */
+.login-v{background:radial-gradient(120% 80% at 50% 6%,#F0FAF4,#FFFFFF 52%,#F1F4F8)}
+.pet-v{background:radial-gradient(110% 72% at 50% 0%,#EFF9F3,#FFFFFF 58%)}
+.view[data-v="stats"]{background:linear-gradient(180deg,#FFFFFF,#F1F4F8 72%)}
+.view[data-v="main"]{background:radial-gradient(120% 70% at 86% 0%,#FBF6EA,#FFFFFF 54%)}
+.view[data-v="opt"]{background:linear-gradient(180deg,#FCFEFD,#F1F4F7)}
+.view[data-v="set"]{background:radial-gradient(120% 70% at 50% 0%,#F4FAF7,#FFFFFF 60%)}
+.view[data-v="agent"]{background:linear-gradient(180deg,#FCFDFE,#F0F2F6)}
+
+/* ════════════ v3 — MATCH REFERENCE LANGUAGE (dreamy pastel hero · spring-green
+   wavy underline · white+black+mint card mix · frosted icon chips · glossy emoji) ════════════ */
+#app{--accent:#2EAE67;--accent2:#43C07D;--accdim:rgba(46,174,103,.13);
+  --pos:#2EAE67;--pos2:#1F8E55;--posdim:rgba(46,174,103,.13);--posLt:#5FE0A8;--mint:#E8F5EE}
+/* spring-green re-skin */
+.dg,.sc-dot,.stubd,.ck{background:radial-gradient(circle at 36% 30%,#54C98E,#2EAE67);box-shadow:0 1px 3px rgba(46,174,103,.42),inset 0 1px 1px rgba(255,255,255,.6)}
+.rp.go{background:linear-gradient(135deg,#43C07D,#2EAE67);box-shadow:0 7px 20px rgba(46,174,103,.4),inset 0 1px 0 rgba(255,255,255,.4)}
+.trow.on .sw{background:linear-gradient(135deg,#43C07D,#2EAE67);box-shadow:0 2px 8px rgba(46,174,103,.4)}
+.sv-bar i{background:linear-gradient(90deg,#2EAE67,#54C98E)}
+.f-lv i b,.f-harv-btn{background:linear-gradient(135deg,#43C07D,#2EAE67)}
+.na,.np,.rcpt-row .pct,.sc-card2 .v{color:#1F9E5E}
+.rcpt-tot .tv{background:linear-gradient(120deg,#1F9E5E,#43C07D)}
+.skin.eq{border-color:#2EAE67;background:rgba(46,174,103,.12)}
+.ripple{border-color:rgba(46,174,103,.6);background:rgba(46,174,103,.14)}
+.sv-bg .n,.sg .sc-card2:nth-child(1) .v{-webkit-text-fill-color:#5FE0A8;color:#5FE0A8}
+
+/* ── signature hand-drawn GREEN WAVY UNDERLINE under section titles ── */
+.sh,.seth,.pet-hd h2{position:relative;align-self:flex-start}
+.sh::after,.seth::after,.pet-hd h2::after{content:"";position:absolute;left:1px;bottom:-7px;width:42px;height:7px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='8' viewBox='0 0 36 8'%3E%3Cpath d='M1 5 Q5 1 9 5 T17 5 T25 5 T33 5' fill='none' stroke='%232EAE67' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat left center;background-size:auto 7px}
+
+/* ── frosted grey rounded-square ICON CHIPS (toolbar) ── */
+.tb .ic{opacity:1;gap:7px;margin-left:auto}
+.tb .ic span{width:29px;height:29px;border-radius:9px;display:grid;place-items:center;font-size:14px;
+  background:rgba(120,132,150,.13);border:1px solid rgba(255,255,255,.6);box-shadow:0 1px 2px rgba(20,22,30,.06)}
+
+/* ── glossy 3D emoji glow ── */
+.fx{filter:drop-shadow(0 2px 4px rgba(20,24,40,.18))}
+
+/* ── pale-MINT stat card mixed into the grid (3rd) → white+black+mint variety ── */
+.sg .sc-card2:nth-child(3){background:linear-gradient(160deg,#EBF7F0,#DCEFE4);border:1px solid #C2E5D2;
+  box-shadow:0 10px 24px rgba(46,160,100,.13),inset 0 1px 0 rgba(255,255,255,.75)}
+.sg .sc-card2:nth-child(3) .v{color:#1F9E5E}
+.sg .sc-card2:nth-child(3) .l{color:#3C7A5C}
+
+/* ── dreamy pastel HERO scenes (white-dominant gradient, like the reference) ── */
+.login-v{background:linear-gradient(165deg,#E9F1FB 0%,#F1ECF8 32%,#FBF0EC 60%,#FFFFFF 90%)}
+.pet-v{background:linear-gradient(165deg,#E9F1FB 0%,#F2ECF7 34%,#FCEFEA 62%,#FFFFFF 88%)}
+.view[data-v="main"]{background:radial-gradient(120% 78% at 82% -4%,#FCF7E8,#FFFFFF 52%)}
+.view[data-v="stats"]{background:linear-gradient(180deg,#F2F7FC,#FFFFFF 58%)}
+.view[data-v="opt"]{background:linear-gradient(180deg,#F4F9FE,#FFFFFF 55%)}
+.view[data-v="set"]{background:radial-gradient(120% 70% at 50% 0%,#EEF6FB,#FFFFFF 58%)}
+.view[data-v="agent"]{background:linear-gradient(180deg,#F5F8FC,#FFFFFF 55%)}
+
+/* ════════════ MAIN SCREEN — reference card-grid ════════════ */
+.m-head{display:flex;align-items:center;flex:none}
+.m-streak{display:flex;align-items:center;gap:6px;font-size:27px;font-weight:850;color:var(--txt);letter-spacing:-.02em}
+.m-streak .fire{font-size:24px}
+.m-streak small{font-size:14px;font-weight:600;color:var(--muted);margin-left:3px}
+.m-streak .m-arrow{font-size:20px;color:var(--faint);margin-left:2px}
+.m-chips{margin-left:auto;display:flex;gap:7px}
+.m-chip{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:14px;
+  background:rgba(120,132,150,.13);border:1px solid rgba(255,255,255,.6);box-shadow:0 1px 2px rgba(20,22,30,.06)}
+.m-tabs{display:flex;gap:18px;font-size:16px;font-weight:650;color:var(--muted);flex:none;margin:2px 0 4px}
+.m-tabs .on{color:var(--txt);position:relative}
+.m-tabs .on::after{content:"";position:absolute;left:0;right:-3px;bottom:-7px;height:7px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='8' viewBox='0 0 36 8'%3E%3Cpath d='M1 5 Q5 1 9 5 T17 5 T25 5 T33 5' fill='none' stroke='%232EAE67' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat left center;background-size:auto 7px}
+.m-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:none}
+.tile{position:relative;border-radius:20px;padding:15px 16px;min-height:106px;overflow:hidden;
+  background:linear-gradient(150deg,#FFFFFF,#F4F6FA);border:1px solid var(--border);
+  box-shadow:0 1px 2px rgba(16,24,40,.04),0 10px 24px rgba(16,24,40,.07),inset 0 1px 0 rgba(255,255,255,.85)}
+.tile .t-name{font-size:14px;font-weight:700;color:var(--txt);max-width:62%;line-height:1.25}
+.tile .t-num{font-size:32px;font-weight:850;color:var(--txt);margin-top:10px;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.tile .t-sub{font-size:11px;color:var(--muted);font-weight:600;margin-top:3px}
+.tile .t-em{position:absolute;right:9px;bottom:7px;font-size:38px;line-height:1}
+.tile .t-em .fx{filter:drop-shadow(0 3px 5px rgba(20,24,40,.22))}
+.tile .t-plus{position:absolute;right:7px;bottom:6px;width:21px;height:21px;border-radius:50%;z-index:2;
+  background:linear-gradient(135deg,#43C07D,#2EAE67);color:#fff;font-size:15px;font-weight:700;
+  display:grid;place-items:center;box-shadow:0 3px 8px rgba(46,174,103,.5),inset 0 1px 0 rgba(255,255,255,.4)}
+.tile.dark{background:linear-gradient(158deg,#272B34,#15171C);border-color:rgba(255,255,255,.08);color:#fff;
+  box-shadow:0 14px 30px rgba(10,12,16,.4),inset 0 1px 0 rgba(255,255,255,.1)}
+.tile.dark .t-name,.tile.dark .t-num{color:#fff}
+.tile.dark .t-sub{color:rgba(236,240,238,.55)}
+.tile.mint{background:linear-gradient(160deg,#EBF7F0,#DCEFE4);border-color:#C2E5D2}
+.tile.mint .t-num{color:#1F9E5E}
+.tile.mint .t-sub{color:#3C7A5C}
+.m-cta{margin-top:2px;display:flex;align-items:center;justify-content:center;gap:8px;
+  background:linear-gradient(135deg,#43C07D,#2EAE67);color:#fff;
+  box-shadow:0 1px 2px rgba(16,24,40,.06),0 12px 26px rgba(46,174,103,.42),inset 0 1px 0 rgba(255,255,255,.35)}
+.m-cta .fx{filter:drop-shadow(0 2px 3px rgba(0,0,0,.2))}
+/* staggered tile-pop entrance */
+.view.on .tile{animation:tilePop .52s cubic-bezier(.34,1.56,.64,1) both}
+.view.on .tile:nth-child(1){animation-delay:.05s}
+.view.on .tile:nth-child(2){animation-delay:.11s}
+.view.on .tile:nth-child(3){animation-delay:.17s}
+.view.on .tile:nth-child(4){animation-delay:.23s}
+@keyframes tilePop{from{opacity:0;transform:translateY(16px) scale(.9)}to{opacity:1;transform:none}}
+
+/* ════════════ FINAL PASS — cleaner light green · neutral buttons · more gold · livelier anim ════════════ */
+#app{--accent:#34B985;--accent2:#46C893;--accdim:rgba(52,185,133,.12);
+  --pos:#34B985;--pos2:#1F9E6B;--posdim:rgba(52,185,133,.12);--posLt:#6FE3B0;--mint:#E9F6EF}
+/* cleaner light-mint accents (non-buttons only) */
+.dg,.sc-dot,.stubd,.ck{background:radial-gradient(circle at 36% 30%,#62D6B0,#34B985);box-shadow:0 1px 3px rgba(52,185,133,.4),inset 0 1px 1px rgba(255,255,255,.6)}
+.sv-bar i{background:linear-gradient(90deg,#34B985,#62D6B0)}
+.f-lv i b{background:linear-gradient(90deg,#46C893,#34B985)}
+.trow.on .sw{background:linear-gradient(135deg,#46C893,#34B985);box-shadow:0 2px 8px rgba(52,185,133,.4)}
+.na,.np,.rcpt-row .pct,.sc-card2 .v{color:#1F9E6B}
+.rcpt-tot .tv{background:linear-gradient(120deg,#1F9E6B,#46C893)}
+.skin.eq{border-color:#34B985;background:rgba(52,185,133,.12)}
+.ripple{border-color:rgba(52,185,133,.6);background:rgba(52,185,133,.14)}
+.sv-bg .n,.sg .sc-card2:nth-child(1) .v{-webkit-text-fill-color:#6FE3B0;color:#6FE3B0}
+.tile .t-plus{background:linear-gradient(135deg,#46C893,#34B985);box-shadow:0 3px 8px rgba(52,185,133,.5),inset 0 1px 0 rgba(255,255,255,.4)}
+.tile.mint .t-num{color:#1F9E6B}
+/* wavy underline → cleaner green */
+.sh::after,.seth::after,.pet-hd h2::after,.m-tabs .on::after{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='8' viewBox='0 0 36 8'%3E%3Cpath d='M1 5 Q5 1 9 5 T17 5 T25 5 T33 5' fill='none' stroke='%2334B985' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E")}
+
+/* ── BUTTONS: black / grey ONLY (never green) ── */
+.m-cta,.rp.go,.f-harv-btn{background:linear-gradient(135deg,#2A2D36,#15171C)!important;color:#fff!important;
+  box-shadow:0 1px 2px rgba(16,24,40,.14),0 12px 26px rgba(16,24,40,.22),inset 0 1px 0 rgba(255,255,255,.12)!important}
+
+/* ── MORE GOLD (metallic, the luxury accent) ── */
+.tile.gold{position:relative;overflow:hidden;background:linear-gradient(160deg,#FBF3DA,#F3E4B8);border-color:#E7D49C}
+.tile.gold .t-num{color:#9A7611}.tile.gold .t-sub{color:#8A6E1E}
+.sg .sc-card2:nth-child(2){background:linear-gradient(160deg,#FBF4DD,#F4E7C0);border:1px solid #E8D6A1;
+  box-shadow:0 10px 24px rgba(180,140,30,.12),inset 0 1px 0 rgba(255,255,255,.75)}
+.sg .sc-card2:nth-child(2) .v.dk{color:#9A7611}
+.sg .sc-card2:nth-child(2) .l{color:#8A6E1E}
+
+/* ── livelier, eye-catching animations ── */
+.tile.gold::after{content:"";position:absolute;top:-60%;left:0;width:46%;height:220%;transform:rotate(20deg);pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent);animation:goldSheen 5s ease-in-out infinite}
+@keyframes goldSheen{0%,70%{transform:translateX(-160%) rotate(20deg);opacity:0}78%{opacity:1}100%{transform:translateX(520%) rotate(20deg);opacity:0}}
+.tile .t-plus{animation:plusPulse 2.6s ease-in-out infinite}
+@keyframes plusPulse{0%,100%{box-shadow:0 3px 8px rgba(52,185,133,.5)}50%{box-shadow:0 3px 15px rgba(52,185,133,.85)}}
+.m-streak .fire{display:inline-block;animation:bob 2.3s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(245,183,10,.4))}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.m-cta{position:relative;overflow:hidden}
+.m-cta::after{content:"";position:absolute;top:0;left:-45%;width:32%;height:100%;transform:skewX(-18deg);pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.24),transparent);animation:ctaShine 3.8s ease-in-out infinite}
+@keyframes ctaShine{0%,66%{left:-45%}100%{left:150%}}
+
+/* ════════════ LIQUID-GLASS components · glossy emoji · count-up motion · filled scenes ════════════ */
+/* glass tiles (translucent + backdrop blur + specular highlight) */
+.tile{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.7);box-shadow:0 1px 2px rgba(16,24,40,.04),0 12px 28px rgba(16,24,40,.1),inset 0 1px 0 rgba(255,255,255,.9)}
+.tile::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+  background:linear-gradient(135deg,rgba(255,255,255,.55),transparent 44%)}
+.tile>*{position:relative;z-index:1}
+.tile.dark{background:rgba(28,31,38,.6);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);border-color:rgba(255,255,255,.12)}
+.tile.dark::before{background:linear-gradient(135deg,rgba(255,255,255,.16),transparent 42%)}
+.tile.gold{background:rgba(250,240,205,.6);-webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5);border-color:rgba(231,212,156,.8)}
+/* glassy frosted chips */
+.m-chip,.tb .ic span{-webkit-backdrop-filter:blur(10px) saturate(1.4);backdrop-filter:blur(10px) saturate(1.4);background:rgba(255,255,255,.42)}
+
+/* glossy, gently floating 3D emoji */
+.fx{filter:drop-shadow(0 2px 4px rgba(20,24,40,.18)) saturate(1.07)}
+.tile .t-em{animation:emFloat 3.4s ease-in-out infinite}
+.tile .t-em .fx{filter:drop-shadow(0 4px 7px rgba(20,24,40,.24)) saturate(1.1)}
+.tile.dark:nth-child(2) .t-em{animation-delay:.5s}.tile:nth-child(3) .t-em{animation-delay:1s}
+@keyframes emFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-5px) rotate(2deg)}}
+
+/* glowing glass typing caret */
+.cr{background:linear-gradient(180deg,#46C893,#1F9E6B);border-radius:1.5px;box-shadow:0 0 8px rgba(52,185,133,.75)}
+
+/* blur-rise entrance for hero numbers */
+.view.on .t-num,.view.on .sv-bg .n,.view.on .sc-card2 .v,.view.on .f-stat .big,.view.on .stub-big span,.view.on .mt-val{
+  animation:numRise .6s cubic-bezier(.16,1,.3,1) both}
+@keyframes numRise{from{opacity:0;filter:blur(7px);transform:translateY(7px)}to{opacity:1;filter:blur(0);transform:none}}
+
+/* ── mini spark bar-chart (grey bars + gold peak), grows on view-on ── */
+.spark{display:flex;align-items:flex-end;gap:6px;height:58px;margin-top:2px}
+.spark i{flex:1;height:var(--h);border-radius:5px 5px 3px 3px;transform-origin:bottom;
+  background:linear-gradient(180deg,#C6CBD4,#AEB4BF);box-shadow:inset 0 1px 0 rgba(255,255,255,.6)}
+.spark i.hi{background:linear-gradient(180deg,#F2DEA0,#C69B3C);box-shadow:0 3px 10px rgba(198,155,60,.45),inset 0 1px 0 rgba(255,255,255,.6)}
+.view.on .spark i{animation:sparkGrow .7s cubic-bezier(.16,1,.3,1) both}
+.view.on .spark i:nth-child(1){animation-delay:.06s}.view.on .spark i:nth-child(2){animation-delay:.12s}
+.view.on .spark i:nth-child(3){animation-delay:.18s}.view.on .spark i:nth-child(4){animation-delay:.24s}
+.view.on .spark i:nth-child(5){animation-delay:.3s}.view.on .spark i:nth-child(6){animation-delay:.36s}
+.view.on .spark i:nth-child(7){animation-delay:.42s}
+@keyframes sparkGrow{from{transform:scaleY(0);opacity:0}to{transform:scaleY(1);opacity:1}}
+
+/* ── MAIN: weekly trend card (fills the gap) ── */
+.m-trend{flex:1;min-height:120px;display:flex;flex-direction:column;justify-content:center;gap:8px;border-radius:20px;padding:15px 16px;
+  background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.7);box-shadow:0 1px 2px rgba(16,24,40,.04),0 12px 28px rgba(16,24,40,.09),inset 0 1px 0 rgba(255,255,255,.9)}
+.mt-top{display:flex;align-items:baseline;gap:6px}
+.mt-lbl{font-size:13px;font-weight:650;color:var(--muted)}
+.mt-val{margin-left:auto;font-size:24px;font-weight:850;color:var(--txt);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.mt-u{font-size:12px;color:var(--muted)}
+.mt-days{display:flex;gap:6px}.mt-days span{flex:1;text-align:center;font-size:10px;color:var(--faint)}
+
+/* ── OPT: live savings card (fills the stub) ── */
+.stub{justify-content:flex-start;gap:11px;background:rgba(255,255,255,.5);-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4)}
+.stub-big{display:flex;align-items:baseline;gap:8px}
+.stub-big span{font-size:38px;font-weight:850;color:#1F9E6B;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.stub-big small{font-size:12px;color:var(--muted);font-weight:600}
+.stub-rows{display:flex;flex-direction:column;gap:7px;margin-top:auto}
+.stub-row{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--txt);
+  background:rgba(255,255,255,.6);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+.sr-dot{width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#62D6B0,#34B985);flex:none}
+.sr-tx{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-bd{font-size:11px;font-weight:800;color:#9A7611;background:rgba(198,155,60,.16);padding:2px 8px;border-radius:999px}
+
+/* ════════════ POLISH PASS — richer numbers · glass typing editor · glossy emoji impact · HD/smooth ════════════ */
+/* HD crispness + own GPU layer for the screen content */
+#app{transform:translateZ(0);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+.fx{image-rendering:auto}
+
+/* ── premium STAT NUMBERS: crisp tabular + soft glow + count-finish pop ── */
+.t-num,.sc-card2 .v,.f-stat .big,.sv-bg .n,.stub-big span,.mt-val,.rcpt-tot .tv,.ag-c .v,.ob-nm .nb,.ob-nm .na{
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:-.022em}
+.sc-card2 .v,.f-stat .big,.t-num,.mt-val{text-shadow:0 2px 12px rgba(20,24,40,.07)}
+.tile.gold .t-num{text-shadow:0 2px 14px rgba(198,155,60,.32)}
+.sv-bg .n{text-shadow:0 0 18px rgba(95,224,176,.4)}
+.stub-big span{text-shadow:0 2px 16px rgba(52,185,133,.28)}
+.np,.na{text-shadow:0 2px 12px rgba(52,185,133,.22)}
+/* a number softly "settles" (scale pop) as its view arrives */
+.view.on .t-num,.view.on .stub-big span,.view.on .sv-bg .n,.view.on .mt-val{animation:numRise .6s cubic-bezier(.16,1,.3,1) both,numSettle 1.7s ease-out both}
+@keyframes numSettle{0%{transform:scale(1.06)}60%{transform:scale(1)}100%{transform:scale(1)}}
+
+/* ── glass TYPING EDITOR ── */
+.ob-tx{background:rgba(244,247,251,.72);-webkit-backdrop-filter:blur(10px) saturate(1.3);backdrop-filter:blur(10px) saturate(1.3);
+  box-shadow:inset 2px 2px 8px rgba(20,26,48,.08),inset -2px -2px 8px rgba(255,255,255,.8),inset 0 0 0 1px rgba(255,255,255,.4)}
+.ob-tx .ly{letter-spacing:.1px}
+/* removed words: animated red diff strike that fades + shrinks */
+.rm{transition:color .3s ease,opacity .35s ease}
+.rm.sk{color:#E5484D;opacity:.42;text-decoration:line-through;text-decoration-color:rgba(229,72,77,.85);text-decoration-thickness:2px}
+/* glowing glass caret with a soft breathing trail */
+.cr{width:2.5px;background:linear-gradient(180deg,#46C893,#1F9E6B);border-radius:2px;box-shadow:0 0 10px rgba(52,185,133,.85),0 0 3px rgba(52,185,133,.9)}
+
+/* ── STICKER-GLOSS EMOJI: white outline + depth + glow + vividness ── */
+.fx{filter:
+  drop-shadow(.7px .7px 0 rgba(255,255,255,.95)) drop-shadow(-.7px -.7px 0 rgba(255,255,255,.95))
+  drop-shadow(.7px -.7px 0 rgba(255,255,255,.92)) drop-shadow(-.7px .7px 0 rgba(255,255,255,.92))
+  drop-shadow(0 4px 6px rgba(20,24,40,.28)) saturate(1.2) contrast(1.06)}
+.tile .t-em{animation:emPop 4.2s ease-in-out infinite}
+.tile .t-em .fx{filter:
+  drop-shadow(1px 1px 0 #fff) drop-shadow(-1px -1px 0 #fff) drop-shadow(1px -1px 0 #fff) drop-shadow(-1px 1px 0 #fff)
+  drop-shadow(0 6px 9px rgba(20,24,40,.3)) drop-shadow(0 0 13px rgba(255,255,255,.45)) saturate(1.24) contrast(1.07)}
+.tile:nth-child(2) .t-em{animation-delay:.7s}.tile:nth-child(3) .t-em{animation-delay:1.4s}.tile:nth-child(4) .t-em{animation-delay:2.1s}
+@keyframes emPop{0%,84%,100%{transform:translateY(0) scale(1) rotate(-1.5deg)}90%{transform:translateY(-5px) scale(1.14) rotate(4deg)}96%{transform:translateY(0) scale(1)}}
+/* tiny specular sparkle that twinkles on tile emoji */
+.tile .t-em::after{content:"";position:absolute;top:2px;left:6px;width:7px;height:7px;border-radius:50%;
+  background:radial-gradient(circle,#fff,rgba(255,255,255,0) 70%);opacity:0;animation:twinkle 4.2s ease-in-out infinite}
+.tile:nth-child(2) .t-em::after{animation-delay:.7s}.tile:nth-child(3) .t-em::after{animation-delay:1.4s}.tile:nth-child(4) .t-em::after{animation-delay:2.1s}
+@keyframes twinkle{0%,86%,100%{opacity:0;transform:scale(.4)}91%{opacity:.95;transform:scale(1.1)}}
+/* pet milestone sparkles + farm sparkles get a glow */
+.pfc .fx,.fsp .fx{filter:drop-shadow(0 0 6px rgba(255,255,255,.7)) saturate(1.15)}
+
+/* ════════════ v4 — REFERENCE-GRADE STAT CARDS (big number · glossy icon · frosted) ════════════ */
+.sg{gap:12px}
+.sc-card2{position:relative;overflow:hidden;padding:16px 16px 15px;min-height:104px;border-radius:22px;
+  display:flex;flex-direction:column;justify-content:flex-end}
+.sc-card2 .m-ico{position:absolute;top:11px;right:11px;font-size:26px;line-height:1}
+.sc-card2 .v{font-size:38px;font-weight:850;line-height:1;letter-spacing:-.03em}
+.sc-card2 .l{margin-top:6px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+/* frosted glass on the white/mint/gold cards */
+.sc-card2:nth-child(3),.sc-card2:nth-child(4){-webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5)}
+.sc-card2:nth-child(4){background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.8);
+  box-shadow:0 1px 2px rgba(16,24,40,.04),0 12px 28px rgba(16,24,40,.1),inset 0 1px 0 rgba(255,255,255,.9)}
+.sc-card2:nth-child(4) .v{color:var(--txt)}
+.sc-card2:nth-child(4) .l{color:var(--muted)}
+/* dark card (1st): brighter big number + light caps label */
+.sg .sc-card2:nth-child(1) .v{font-size:34px}
+.sg .sc-card2:nth-child(1) .l{color:rgba(236,240,238,.62)}
+/* gold card (2nd) */
+.sg .sc-card2:nth-child(2) .v.dk{color:#9A7611}
+.sg .sc-card2:nth-child(2) .l{color:#8A6E1E}
+/* mint card (3rd) */
+.sg .sc-card2:nth-child(3) .l{color:#3C7A5C}
+/* number settle pop on the stat values */
+.view.on .sc-card2 .v{animation:numRise .6s cubic-bezier(.16,1,.3,1) both}
+
+/* receipt: a touch more premium */
+.rcpt{border-radius:22px}
+.rcpt-lg{text-shadow:0 2px 10px rgba(20,24,40,.12)}
+
+/* ════════════ v4 — SETTINGS toggle rows + AGENT cells upgraded ════════════ */
+/* settings: glossy emoji icon per toggle, framed as a clean glass list */
+.tgl{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4);
+  border:1px solid rgba(255,255,255,.7);border-radius:20px;padding:4px 14px;
+  box-shadow:0 1px 2px rgba(16,24,40,.04),0 12px 28px rgba(16,24,40,.08),inset 0 1px 0 rgba(255,255,255,.85)}
+.trow{display:flex;align-items:center;gap:11px;padding:11px 2px}
+.trow .ti{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;font-size:16px;
+  background:rgba(255,255,255,.7);border:1px solid var(--border);box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.trow .tl2{flex:1;font-size:16px;color:var(--txt);font-weight:600}
+.trow .sw{margin-left:0}
+
+/* agent: frosted glossy stat cells with icon + bigger number */
+.ag-gr{gap:9px}
+.ag-c{position:relative;overflow:hidden;padding:12px 8px 11px;border-radius:16px;
+  background:rgba(255,255,255,.58);-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);
+  border:1px solid rgba(255,255,255,.72);box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 20px rgba(16,24,40,.07),inset 0 1px 0 rgba(255,255,255,.85)}
+.ag-c .ac-ico{position:absolute;top:7px;right:7px;font-size:14px;opacity:.95}
+.ag-c .v{font-size:23px;font-weight:850;color:var(--txt);letter-spacing:-.02em}
+.ag-c .l{font-size:9.5px;letter-spacing:.4px}
+.ag-tp{-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4);background:rgba(255,255,255,.6)}
+.view.on .ag-c{animation:tilePop .5s cubic-bezier(.34,1.56,.64,1) both}
+.view.on .ag-c:nth-child(1){animation-delay:.04s}.view.on .ag-c:nth-child(2){animation-delay:.1s}
+.view.on .ag-c:nth-child(3){animation-delay:.16s}.view.on .ag-c:nth-child(4){animation-delay:.22s}
+
+/* ════════════ v4 — WET-GLOSS EMOJI (shaped specular) + LIQUID-GLASS DEPTH ════════════ */
+/* emoji wrapper: img + a highlight masked to the emoji silhouette = real wet gloss */
+.fxw{display:inline-block;width:1em;height:1em;position:relative;vertical-align:-.16em;line-height:1}
+.fxw .fx{display:block;width:100%;height:100%;vertical-align:top}
+.fxw::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+  -webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;
+  background:
+    radial-gradient(50% 38% at 32% 20%,rgba(255,255,255,.9),rgba(255,255,255,.25) 38%,transparent 60%),
+    linear-gradient(158deg,rgba(255,255,255,.55) 6%,transparent 38%);
+  mix-blend-mode:screen}
+/* a soft contact glow under the emoji (shaped) for premium lift */
+.fxw::before{content:"";position:absolute;left:8%;right:8%;bottom:-6%;height:34%;pointer-events:none;z-index:0;
+  background:radial-gradient(50% 100% at 50% 100%,rgba(20,24,40,.28),transparent 72%);filter:blur(3px)}
+.tile .t-em .fxw::after{background:
+    radial-gradient(52% 40% at 30% 18%,rgba(255,255,255,.95),rgba(255,255,255,.3) 40%,transparent 62%),
+    linear-gradient(158deg,rgba(255,255,255,.6) 6%,transparent 40%)}
+
+/* ── LIQUID-GLASS DEPTH: top-lit edge, bottom inner shade, deep float ── */
+.tile,.m-trend,.sc-card2:nth-child(4),.ag-c,.ag-tp,.tgl,.ob,.stub,.f-stat{
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.95),
+    inset 0 -10px 18px rgba(20,26,48,.05),
+    0 2px 5px rgba(16,24,40,.05),
+    0 20px 44px rgba(16,24,40,.11)!important}
+.tile{-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6)}
+.m-trend{-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6)}
+/* crisp 1px specular rim that catches light at the top edge */
+.tile::after,.m-trend::after,.ag-c::after,.sc-card2:nth-child(4)::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.5),transparent 18%);-webkit-mask:linear-gradient(180deg,#000,transparent 30%);mask:linear-gradient(180deg,#000,transparent 30%);opacity:.7}
+.ag-c,.sc-card2:nth-child(4){position:relative;overflow:hidden}
+
+/* ════════════ v4 — GEIST TYPE · ANIMATED WET-SHINE EMOJI · CHROMATIC LIQUID GLASS ════════════ */
+/* premium typeface: Geist for UI, Geist Mono (tabular) for all numbers */
+#app{font-family:'Geist','PingFang SC',-apple-system,BlinkMacSystemFont,sans-serif}
+.t-num,.sc-card2 .v,.f-stat .big,.sv-bg .n,.stub-big span,.mt-val,.rcpt-tot .tv,.ag-c .v,.ob-nm .nb,.ob-nm .na,.m-streak,.rcpt-lg,.cn,.ob-q,.f-coin b,.rcpt-row .val,.ctx-l b,.s1,.s2{
+  font-family:'Geist Mono','Geist','PingFang SC',ui-monospace,monospace;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:-.02em}
+.l,.t-sub,.mt-lbl,.setsb,.ag-c .l,.sc-card2 .l,.f-stat .lab,.stub-big small{
+  font-family:'Geist','PingFang SC',sans-serif;text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+
+/* stronger animated WET shine, masked to each emoji silhouette */
+.fx{filter:
+  drop-shadow(.7px .7px 0 #fff) drop-shadow(-.7px -.7px 0 #fff) drop-shadow(.7px -.7px 0 #fff) drop-shadow(-.7px .7px 0 #fff)
+  drop-shadow(0 4px 7px rgba(20,24,40,.3)) saturate(1.3) contrast(1.08) brightness(1.03)}
+.fxw::after{
+  background:
+    linear-gradient(115deg,transparent 34%,rgba(255,255,255,.96) 47%,rgba(255,255,255,.45) 52%,transparent 62%),
+    radial-gradient(52% 40% at 30% 18%,rgba(255,255,255,.92),rgba(255,255,255,.22) 42%,transparent 60%);
+  background-size:280% 100%,100% 100%;background-position:210% 0,0 0;
+  animation:emShine 4.8s ease-in-out infinite;mix-blend-mode:screen}
+@keyframes emShine{0%,52%{background-position:210% 0,0 0}82%,100%{background-position:-130% 0,0 0}}
+
+/* CHROMATIC liquid-glass edge (faint cyan TL + pink BR) + breathing specular */
+.tile,.m-trend,.ag-c,.sc-card2:nth-child(4),.tgl,.ob,.stub,.f-stat{
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.95),
+    inset 1px 1px 0 rgba(150,210,255,.22),
+    inset -1px -1px 0 rgba(255,180,225,.18),
+    inset 0 -10px 18px rgba(20,26,48,.05),
+    0 2px 5px rgba(16,24,40,.05),
+    0 22px 46px rgba(16,24,40,.12)!important}
+.tile::after,.m-trend::after{animation:rimBreath 4.2s ease-in-out infinite}
+@keyframes rimBreath{0%,100%{opacity:.55}50%{opacity:.9}}
+
+/* ════════════ v5 — TRUE LIQUID-GLASS REFRACTION (SVG feDisplacement on backdrop) ════════════ */
+.glass-defs{position:absolute;pointer-events:none}
+/* hero glass now refracts/bends the background at its edges (Chromium) */
+.tile,.m-trend{backdrop-filter:blur(13px) saturate(1.6) url(#liquid);-webkit-backdrop-filter:blur(16px) saturate(1.6)}
+.tile.gold,.sc-card2:nth-child(4){backdrop-filter:blur(13px) saturate(1.55) url(#liquid);-webkit-backdrop-filter:blur(14px) saturate(1.5)}
+/* smaller cards keep plain frosted blur (no displacement) to protect 60fps */
+.ob,.tgl,.ag-tp,.ag-c{backdrop-filter:blur(13px) saturate(1.5);-webkit-backdrop-filter:blur(13px) saturate(1.5)}
+/* a refined diagonal light glides slowly across hero glass (premium "alive" feel) */
+.tile::before,.m-trend::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;overflow:hidden;
+  background:
+    linear-gradient(135deg,rgba(255,255,255,.55),transparent 44%),
+    linear-gradient(115deg,transparent 38%,rgba(255,255,255,.35) 49%,transparent 60%);
+  background-size:100% 100%,260% 100%;background-position:0 0,200% 0;
+  animation:glassSweep 6.5s ease-in-out infinite}
+@keyframes glassSweep{0%,60%{background-position:0 0,200% 0}88%,100%{background-position:0 0,-140% 0}}
+/* the dark feature box gets a slow specular drift too */
+.sv-h,.sg .sc-card2:nth-child(1){position:relative;overflow:hidden}
+.sv-h::after{opacity:.06}
+
+/* ════════════ v8 — UNIFIED TRANSPARENT-GLASS SYSTEM (white base · one emerald accent · neutral buttons) ════════════ */
+/* clean neutral base — just enough tone for the glass to read */
+#stage{background:radial-gradient(120% 92% at 50% 2%,#FFFFFF,#EDF0F4 68%,#E5E9EF)!important}
+.login-v,.pet-v{background:linear-gradient(165deg,#F3F8FF,#FFFFFF 52%,#F1FAF6)!important}
+.view[data-v="main"]{background:radial-gradient(115% 80% at 82% -5%,#F4FAF8,#FFFFFF 56%)!important}
+.view[data-v="stats"]{background:linear-gradient(180deg,#F4F8FD,#FFFFFF 60%)!important}
+.view[data-v="opt"]{background:linear-gradient(180deg,#F4FAF8,#FFFFFF 55%)!important}
+.view[data-v="set"]{background:radial-gradient(120% 70% at 50% 0%,#F5F8FE,#FFFFFF 60%)!important}
+.view[data-v="agent"]{background:linear-gradient(180deg,#F4F8FD,#FFFFFF 55%)!important}
+
+/* single restrained accent */
+#app{--accent:#10B981;--accent2:#34D399;--accdim:rgba(16,185,129,.12);--pos:#10B981;--pos2:#0B8F63;--posdim:rgba(16,185,129,.12)}
+
+/* ── ONE uniform transparent glass for EVERY surface ── */
+.tile,.tile.dark,.tile.gold,.m-trend,.sg .sc-card2,.sg .sc-card2:nth-child(1),.sg .sc-card2:nth-child(2),.sg .sc-card2:nth-child(3),.sg .sc-card2:nth-child(4),
+.ag-c,.ag-tp,.sv-h,.bh-card,.acct,.stub,.cn,.skin,.ob,.tgl,.card,.sc-card,.rcpt{
+  background:rgba(255,255,255,.46)!important;border:1px solid rgba(255,255,255,.72)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.95),
+    inset 1px 1px 0 rgba(150,210,255,.18),
+    inset -1px -1px 0 rgba(255,180,225,.14),
+    inset 0 -10px 18px rgba(20,26,48,.05),
+    0 2px 6px rgba(16,24,40,.05),
+    0 22px 48px rgba(16,24,40,.1)!important}
+/* refraction on the prominent surfaces (perf-balanced) */
+.tile,.m-trend,.sg .sc-card2,.sv-h,.ob{backdrop-filter:blur(15px) saturate(1.6) url(#liquid)!important}
+/* hide the old dark-card grain/hairline so all glass reads uniform */
+.sv-h::before,.sv-h::after,.sg .sc-card2:nth-child(1)::before,.sg .sc-card2:nth-child(1)::after,.tile.gold::after{display:none!important}
+
+/* ── neutral text + ONE emerald accent for positive/saved ── */
+.tile .t-name,.tile .t-num,.tile.dark .t-name,.tile.dark .t-num,.sc-card2 .v,.sc-card2 .v.dk,.ag-c .v,.f-stat .big,.stub-big span,.mt-val,.sv-bg .n,.rcpt-tot .tv{
+  color:#14151A!important;-webkit-text-fill-color:#14151A!important;background:none!important;text-shadow:none!important}
+.tile .t-sub,.sc-card2 .l,.ag-c .l,.f-stat .lab,.tile.dark .t-sub,.mt-lbl{color:#6B7280!important}
+/* the saved/positive numbers carry the single accent */
+.sv-bg .n,.sg .sc-card2:nth-child(1) .v,.na,.np,.rcpt-row .pct,.stub-big span,.tile:nth-child(4) .t-num{
+  color:#10B981!important;-webkit-text-fill-color:#10B981!important}
+.sv-bg .u{color:#0B8F63!important}
+
+/* ── neutral buttons (black/grey only) ── */
+.m-cta,.lg-btn,.ob-btn,.f-harv-btn{background:linear-gradient(135deg,#2A2D36,#15171C)!important;color:#fff!important;
+  box-shadow:0 1px 2px rgba(16,24,40,.16),0 14px 30px rgba(16,24,40,.22),inset 0 1px 0 rgba(255,255,255,.12)!important}
+.pb{background:#15171C!important;color:#fff!important;box-shadow:0 4px 12px rgba(16,24,40,.25)!important}
+.bbtn,.mgb,.cp,.cy,.rp,.sh .pl{background:rgba(255,255,255,.55)!important;color:var(--txt)!important;border:1px solid rgba(255,255,255,.75)!important}
+.f-coin b{color:#14151A!important}
+
+/* breathing specular + chromatic edge already inherited; add gentle rim to every glass card */
+.sg .sc-card2::after,.ag-tp::after,.ob::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.5),transparent 16%);-webkit-mask:linear-gradient(180deg,#000,transparent 30%);mask:linear-gradient(180deg,#000,transparent 30%);opacity:.6}
+.sg .sc-card2,.ag-tp,.ob{position:relative;overflow:hidden}
+
+/* ════════════ v9 — VISIBLE GLASS: colorful blobs BEHIND the UI + more transparent, thicker 3D bevel ════════════ */
+/* soft saturated aurora blobs behind each screen so the frosted glass actually reads (base stays light) */
+.login-v,.pet-v{background:
+  radial-gradient(38% 26% at 20% 18%,rgba(16,185,129,.42),transparent 62%),
+  radial-gradient(40% 28% at 84% 24%,rgba(59,130,246,.38),transparent 62%),
+  radial-gradient(46% 32% at 58% 88%,rgba(139,92,246,.36),transparent 64%),
+  linear-gradient(160deg,#F6F9FF,#FFFFFF 62%)!important}
+.view[data-v="main"]{background:
+  radial-gradient(36% 26% at 15% 22%,rgba(16,185,129,.4),transparent 60%),
+  radial-gradient(40% 30% at 88% 20%,rgba(59,130,246,.36),transparent 60%),
+  radial-gradient(44% 32% at 70% 92%,rgba(139,92,246,.32),transparent 62%),
+  #F5F7FB!important}
+.view[data-v="stats"]{background:
+  radial-gradient(40% 28% at 18% 16%,rgba(59,130,246,.36),transparent 60%),
+  radial-gradient(42% 30% at 86% 36%,rgba(16,185,129,.34),transparent 60%),
+  radial-gradient(46% 30% at 50% 96%,rgba(139,92,246,.3),transparent 62%),
+  #F5F7FB!important}
+.view[data-v="opt"]{background:
+  radial-gradient(38% 26% at 16% 18%,rgba(16,185,129,.38),transparent 60%),
+  radial-gradient(40% 30% at 86% 30%,rgba(59,130,246,.32),transparent 60%),
+  #F5F8FB!important}
+.view[data-v="set"]{background:
+  radial-gradient(40% 28% at 22% 14%,rgba(139,92,246,.36),transparent 60%),
+  radial-gradient(42% 30% at 84% 40%,rgba(16,185,129,.32),transparent 60%),
+  #F6F6FC!important}
+.view[data-v="agent"]{background:
+  radial-gradient(38% 26% at 16% 16%,rgba(59,130,246,.36),transparent 60%),
+  radial-gradient(42% 30% at 86% 34%,rgba(139,92,246,.32),transparent 60%),
+  radial-gradient(44% 28% at 55% 94%,rgba(16,185,129,.3),transparent 62%),
+  #F5F7FB!important}
+#stage{background:
+  radial-gradient(60% 50% at 14% 6%,#E4F6FF,transparent 55%),
+  radial-gradient(60% 50% at 90% 10%,#EEE7FF,transparent 55%),
+  radial-gradient(70% 55% at 50% 104%,#E6FBEE,transparent 58%),
+  linear-gradient(160deg,#F2F6FB,#F7F4FD 50%,#F1FBF6)!important}
+
+/* MORE transparent cards + THICK 3D glass bevel + rim glow + strong refraction */
+.tile,.tile.dark,.tile.gold,.m-trend,.sg .sc-card2,.ag-c,.ag-tp,.sv-h,.bh-card,.acct,.stub,.cn,.skin,.ob,.tgl,.card,.sc-card,.rcpt{
+  background:rgba(255,255,255,.3)!important;border:1px solid rgba(255,255,255,.6)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,1),
+    inset 0 0 0 1px rgba(255,255,255,.45),
+    inset 1.5px 1.5px 0 rgba(150,210,255,.3),
+    inset -1.5px -1.5px 0 rgba(255,180,225,.24),
+    inset 0 -18px 28px rgba(20,26,48,.08),
+    0 3px 9px rgba(16,24,40,.07),
+    0 30px 60px rgba(16,24,40,.15)!important}
+/* strong edge refraction on the prominent surfaces */
+.tile,.m-trend,.sg .sc-card2,.sv-h,.ob{backdrop-filter:blur(16px) saturate(1.8) url(#liquidStrong)!important}
+/* extra reflective rim-light glow around every glass card */
+.tile::after,.m-trend::after,.sg .sc-card2::after,.ag-c::after,.ag-tp::after,.ob::after,.tgl::after,.bh-card::after,.acct::after,.stub::after,.cn::after,.skin::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;
+  box-shadow:inset 0 0 12px rgba(255,255,255,.5),inset 0 1px 1px rgba(255,255,255,.9)}
+.ag-c,.cn,.skin,.tgl,.bh-card,.acct,.stub{position:relative;overflow:hidden}
+
+/* ════════════ v10 — TRANSPARENT GLASS PHONE: clear glass frame + frosted screen + floating glass UI ════════════ */
+/* gorgeous soft studio backdrop (shows through the whole glass phone) */
+#stage{background:
+  radial-gradient(70% 55% at 20% 10%,#EAF3FF,transparent 60%),
+  radial-gradient(70% 55% at 86% 16%,#F1E9FF,transparent 60%),
+  radial-gradient(80% 60% at 50% 102%,#E7FBF0,transparent 60%),
+  linear-gradient(160deg,#F2F6FC,#F8F4FE 50%,#F1FBF7)!important}
+
+/* the phone is now CLEAR GLASS — no opaque frame/bezel fill */
+.fr{background:linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,.04) 58%,rgba(255,255,255,.16))!important;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.75),
+    inset 0 3px 16px rgba(255,255,255,.5),
+    inset 0 -8px 20px rgba(120,140,200,.18),
+    0 54px 110px rgba(20,30,70,.3),
+    0 18px 44px rgba(20,30,70,.2)!important}
+.bz{background:transparent!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28),inset 0 0 36px rgba(180,200,255,.12)!important}
+.bk{background:linear-gradient(135deg,rgba(255,255,255,.18),rgba(255,255,255,.05))!important}
+.rl{background:linear-gradient(90deg,rgba(255,255,255,.16),rgba(255,255,255,.55) 50%,rgba(255,255,255,.16))!important}
+.rl.T,.rl.B{background:linear-gradient(0deg,rgba(255,255,255,.16),rgba(255,255,255,.55) 50%,rgba(255,255,255,.16))!important}
+.bt{background:linear-gradient(90deg,rgba(255,255,255,.3),rgba(255,255,255,.65),rgba(255,255,255,.3))!important}
+/* frosted glass screen pane (shows the backdrop softly blurred) */
+.sc{background:rgba(255,255,255,.10)!important;-webkit-backdrop-filter:blur(7px) saturate(1.3);backdrop-filter:blur(7px) saturate(1.3)}
+#app{background:transparent!important}
+#app::before{display:none!important}
+/* no per-screen background — UI floats in the glass */
+.view,.login-v,.pet-v,.view[data-v="main"],.view[data-v="stats"],.view[data-v="opt"],.view[data-v="set"],.view[data-v="agent"]{background:transparent!important}
+
+/* every component = a floating GLASS SHAPE (no fill, glass rim + float) */
+.tile,.tile.dark,.tile.gold,.m-trend,.sg .sc-card2,.ag-c,.ag-tp,.sv-h,.bh-card,.acct,.stub,.cn,.skin,.ob,.tgl,.card,.sc-card,.rcpt,.ob-tx,.lg,.f-stat{
+  background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  border:1px solid rgba(255,255,255,.5)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),inset 0 0 16px rgba(255,255,255,.16),0 14px 32px rgba(20,30,70,.13)!important}
+/* remove the old filled-glass pseudos so cards are clean glass outlines */
+.tile::before,.tile::after,.m-trend::before,.m-trend::after,.sg .sc-card2::before,.sg .sc-card2::after,.ag-c::after,.ag-tp::after,.ob::after,.tgl::after,.bh-card::after,.acct::after,.stub::after,.cn::after,.skin::after,.sv-h::before,.sv-h::after{display:none!important}
+/* segmented: glass track + glass active pill */
+.mp,.ap,.stats-tabs,.m3{background:rgba(255,255,255,.12)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.mp button.on,.ap button.on,.stats-tabs button.on,.m3 .kn{background:rgba(255,255,255,.55)!important;box-shadow:0 2px 7px rgba(20,30,70,.16)!important}
+
+/* buttons = glass pills (no solid fill) */
+.m-cta,.lg-btn,.ob-btn,.f-harv-btn,.bbtn,.mgb,.cp,.cy,.rp,.sh .pl,.pb{
+  background:rgba(255,255,255,.16)!important;color:var(--txt)!important;border:1px solid rgba(255,255,255,.55)!important;
+  -webkit-backdrop-filter:blur(6px) saturate(1.4);backdrop-filter:blur(6px) saturate(1.4);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 8px 22px rgba(20,30,70,.14)!important}
+
+/* legibility: faint white halo so floating text reads on the glass */
+.view{text-shadow:0 1px 3px rgba(255,255,255,.55)}
+.sh,.seth,.pet-hd h2,.t-name,.sc-n,.trow,.tl2{text-shadow:0 1px 4px rgba(255,255,255,.7)}
+
+/* ════════════ v11 — FULLY CLEAR GLASS PHONE on a vivid backdrop (only the UI reads) ════════════ */
+/* vivid colorful studio backdrop so the clear glass device + floating UI pop */
+#stage{background:
+  radial-gradient(55% 45% at 16% 12%,rgba(94,231,200,.95),transparent 60%),
+  radial-gradient(55% 45% at 86% 16%,rgba(139,125,255,.95),transparent 60%),
+  radial-gradient(60% 50% at 76% 100%,rgba(255,138,170,.9),transparent 62%),
+  radial-gradient(55% 45% at 16% 92%,rgba(108,198,255,.9),transparent 60%),
+  linear-gradient(150deg,#2A2350,#1F4E66 48%,#1C5E52)!important}
+
+/* the phone body is now almost invisible clear glass — only its bright rim catches light */
+.fr{background:rgba(255,255,255,.05)!important;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.6),
+    inset 0 3px 22px rgba(255,255,255,.3),
+    inset 0 -10px 26px rgba(255,255,255,.12),
+    0 56px 120px rgba(0,0,0,.45),0 18px 50px rgba(0,0,0,.32)!important}
+.bz{background:transparent!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)!important}
+.sc{background:rgba(255,255,255,.05)!important;-webkit-backdrop-filter:blur(2.5px) saturate(1.15);backdrop-filter:blur(2.5px) saturate(1.15)}
+.bk{background:rgba(255,255,255,.06)!important}
+.rl,.rl.T,.rl.B{background:linear-gradient(90deg,rgba(255,255,255,.2),rgba(255,255,255,.6) 50%,rgba(255,255,255,.2))!important}
+
+/* UI text → light, with a dark halo so it stays crisp over the vivid backdrop */
+#app{color:#fff!important}
+.view{text-shadow:0 1px 6px rgba(0,0,0,.4)!important}
+#app,.tile .t-name,.tile .t-num,.tile.dark .t-name,.tile.dark .t-num,.sc-card2 .v,.sc-card2 .v.dk,.ag-c .v,.f-stat .big,.mt-val,.rcpt-tot .tv,
+.tb .nm,.sh,.seth,.sc-n,.acct-n,.pet-hd h2,.ob-nm .nb,.bh-row,.trow,.tl2,.lg-ttl,.rcpt-lg,.cn,.m-streak,.ob-tx,.ll.u .tx,.ag-hd,.f-coin b,.stub-big small{
+  color:#fff!important;-webkit-text-fill-color:#fff!important}
+.tile .t-sub,.sc-card2 .l,.ag-c .l,.f-stat .lab,.mt-lbl,.tb .ss,.sc-s,.sep,.ft,.lg-sub,.lg-cr,.ob-app,.ob-q,.acct-e,.setsb,.ctx-l,.skin .sn,.stats-tabs button,.mt-days span,.rcpt-t,.rcpt-inf,.rcpt-row .src,.rcpt-row .val,.rcpt-sb,.ll .tx,.ob-nm .ar{
+  color:rgba(255,255,255,.72)!important}
+/* bright accent for saved/positive + dots */
+.sv-bg .n,.na,.np,.rcpt-row .pct,.sg .sc-card2:nth-child(1) .v,.stub-big span,.tile:nth-child(4) .t-num,.ag-st{
+  color:#54FFCB!important;-webkit-text-fill-color:#54FFCB!important}
+.dg,.sc-dot,.stubd,.ck{background:radial-gradient(circle at 36% 30%,#7CFFD8,#19C98D)!important}
+
+/* components: clean clear-glass outlines (more transparent, brighter rim) */
+.tile,.tile.dark,.tile.gold,.m-trend,.sg .sc-card2,.ag-c,.ag-tp,.sv-h,.bh-card,.acct,.stub,.cn,.skin,.ob,.tgl,.card,.sc-card,.rcpt,.ob-tx,.lg,.f-stat{
+  background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.42)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 0 16px rgba(255,255,255,.1),0 16px 36px rgba(0,0,0,.22)!important}
+.mp,.ap,.stats-tabs,.m3{background:rgba(255,255,255,.1)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)!important}
+.mp button.on,.ap button.on,.stats-tabs button.on,.m3 .kn{background:rgba(255,255,255,.34)!important}
+.m-cta,.lg-btn,.ob-btn,.f-harv-btn,.bbtn,.mgb,.cp,.cy,.rp,.sh .pl,.pb{
+  background:rgba(255,255,255,.16)!important;color:#fff!important;border:1px solid rgba(255,255,255,.5)!important}
+/* wavy underline → bright mint */
+.sh::after,.seth::after,.pet-hd h2::after,.m-tabs .on::after{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='8' viewBox='0 0 36 8'%3E%3Cpath d='M1 5 Q5 1 9 5 T17 5 T25 5 T33 5' fill='none' stroke='%2354FFCB' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E")!important}
+#stage{background:linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.34)),url('bg-forest1.jpg') center/cover no-repeat!important}
+</style>
+</head>
+<body>
+
+<!-- liquid-glass refraction filters (Chromium): warps the backdrop at card edges -->
+<svg class="glass-defs" aria-hidden="true" width="0" height="0">
+  <filter id="liquid" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.011 0.013" numOctaves="2" seed="7" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="1.5" result="nb"/>
+    <feDisplacementMap in="SourceGraphic" in2="nb" scale="20" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="liquidStrong" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.009 0.011" numOctaves="2" seed="4" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="2" result="nb"/>
+    <feDisplacementMap in="SourceGraphic" in2="nb" scale="32" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div id="stage">
+  <div class="studio"></div>
+  <div class="bl"></div>
+  <!-- 3D world -->
+  <div id="world">
+    <div id="shadow"></div>
+    <div id="rig">
+      <div id="phone">
+        <div class="bk"></div>
+        <div class="rl L"></div><div class="rl R"></div>
+        <div class="rl T"></div><div class="rl B"></div>
+        <div class="bt a"></div><div class="bt v1"></div>
+        <div class="bt v2"></div><div class="bt pw"></div>
+        <div class="fr"></div><div class="bz"></div>
+        <div class="sc">
+          <div id="app">
+
+            <!-- LOGIN -->
+            <div class="view login-v" data-v="login">
+              <div class="logo-box">T</div>
+              <div class="lg-ttl">欢迎使用 Terse</div>
+              <div class="lg-sub">选择你的风格</div>
+              <div class="swatches" id="sw">
+                <div class="sw out" style="border-color:#0a0a0a"></div>
+                <div class="sw" style="background:#c4b5fd"></div>
+                <div class="sw" style="background:#ff8a80"></div>
+                <div class="sw" style="background:#5eead4"></div>
+                <div class="sw" style="background:#1e293b"></div>
+                <div class="sw" style="background:#fda4af"></div>
+                <div class="sw" style="background:#86efac"></div>
+                <div class="sw" style="background:#fde68a"></div>
+              </div>
+              <button class="lg-btn">登录</button>
+              <div class="lg-cr">创建账户</div>
+            </div>
+
+            <!-- MAIN -->
+            <div class="view pad" data-v="main">
+              <!-- streak header + frosted chips -->
+              <div class="m-head">
+                <span class="m-streak"><span class="fire">🔥</span>12<small>连续优化</small><span class="m-arrow">›</span></span>
+                <div class="m-chips"><span class="m-chip">🌐</span><span class="m-chip">⚙</span></div>
+              </div>
+              <!-- tab row with wavy underline -->
+              <div class="m-tabs"><span class="on">全部</span><span>Agent</span><span>浏览器</span><span>编辑器</span></div>
+              <!-- card grid: white · black · mint tiles -->
+              <div class="m-grid">
+                <div class="tile"><div class="t-name">Claude Code</div><div class="t-num" id="mt1" data-to="12">0</div><div class="t-sub">turns</div><span class="t-em">🤖</span><span class="t-plus">+</span></div>
+                <div class="tile dark"><div class="t-name">Cursor Agent</div><div class="t-num" id="mt2" data-to="24">0</div><div class="t-sub">turns</div><span class="t-em">📝</span><span class="t-plus">+</span></div>
+                <div class="tile"><div class="t-name">浏览器</div><div class="t-num" id="mt3" data-to="8">0</div><div class="t-sub">prompts</div><span class="t-em">🌐</span><span class="t-plus">+</span></div>
+                <div class="tile gold"><div class="t-name">今日省 Token</div><div class="t-num" id="mt4" data-to="36" data-suf="K">0</div><div class="t-sub">≈ $0.74 节省</div><span class="t-em">🪙</span></div>
+              </div>
+              <!-- weekly savings trend (fills the space, animated) -->
+              <div class="m-trend">
+                <div class="mt-top"><span class="mt-lbl">本周节省趋势</span><span class="mt-val" id="mtv" data-to="312" data-suf="K"></span><span class="mt-u">tokens</span></div>
+                <div class="spark">
+                  <i style="--h:38%"></i><i style="--h:56%"></i><i style="--h:34%"></i><i style="--h:72%"></i><i style="--h:50%"></i><i style="--h:84%"></i><i class="hi" style="--h:100%"></i>
+                </div>
+                <div class="mt-days"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+              </div>
+              <!-- primary CTA -->
+              <div class="ob-btn m-cta"><span>✨</span>优化提示词</div>
+              <div class="mftr"><span class="pb">PRO</span><span class="ft">Trial active</span><button class="mgb">Manage</button></div>
+            </div>
+
+            <!-- OPTIMIZER -->
+            <div class="view pad" data-v="opt">
+              <div class="ob">
+                <div class="ob-top">
+                  <div class="ob-lbl"><span class="dg"></span><span class="ob-app">App Store Connect — Google C...</span></div>
+                  <div class="mp" id="mp"><button data-m="0">Soft</button><button class="on" data-m="1">Normal</button><button data-m="2">Aggr</button></div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+                  <div class="ap" id="ap"><button data-a="0">Off</button><button class="on" data-a="1">Send</button><button data-a="2">Auto</button></div>
+                </div>
+                <div class="ob-st">
+                  <span class="ob-q">685 / 1500 left</span>
+                  <div class="ob-nm"><span class="nb" id="tb">685</span><span class="ar">→</span><span class="na" id="ta">685</span><span class="np" id="pct" style="opacity:0">-41%</span></div>
+                </div>
+                <div class="ob-tx"><div class="ly" id="oV"></div><div class="ly" id="oT" style="opacity:0"></div></div>
+                <div class="tchs" id="tchs"><span class="tg">去填充词</span><span class="tg">缩短短语</span><span class="tg">修正拼写</span><span class="tg gn">省 282 token</span></div>
+                <div class="ob-ac"><button class="cp">↻ Capture</button><button class="rp" id="rp">✓ Replace</button><button class="cy">⧉</button></div>
+              </div>
+              <!-- live savings card (fills space, animated counter + spark) -->
+              <div class="stub">
+                <div class="stubr"><span class="stubd"></span>实时优化 · 今日</div>
+                <div class="stub-big"><span id="stv" data-to="282">0</span><small>tokens saved</small></div>
+                <div class="spark sp-d">
+                  <i style="--h:42%"></i><i style="--h:30%"></i><i style="--h:60%"></i><i style="--h:46%"></i><i style="--h:74%"></i><i style="--h:58%"></i><i class="hi" style="--h:96%"></i>
+                </div>
+                <div class="stub-rows">
+                  <div class="stub-row"><span class="sr-dot"></span><span class="sr-tx">重构 auth 模块</span><span class="sr-bd">省 140</span></div>
+                  <div class="stub-row"><span class="sr-dot"></span><span class="sr-tx">补充单元测试</span><span class="sr-bd">省 56</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SETTINGS -->
+            <div class="view pad" data-v="set">
+              <div class="tb"><span class="dg"></span><span class="nm">TERSE</span><span class="ss">3 sessions</span>
+                <div class="ic"><span>🌐</span><span>⏱</span><span>😊</span><span>⚙</span></div></div>
+              <div class="seth">设置</div>
+              <div class="setsb">优化强度</div>
+              <div class="m3" id="m3" style="padding:4px"><div class="kn" id="kn"></div>
+                <button>轻度</button><button class="on">均衡</button><button>激进</button></div>
+              <div class="tgl" id="tgl">
+                <div class="trow"><span class="ti">✨</span><span class="tl2">移除填充词</span><span class="sw"></span></div>
+                <div class="trow"><span class="ti">😊</span><span class="tl2">移除客套话</span><span class="sw"></span></div>
+                <div class="trow"><span class="ti">🌐</span><span class="tl2">移除模糊语</span><span class="sw"></span></div>
+                <div class="trow"><span class="ti">📝</span><span class="tl2">移除元语言</span><span class="sw"></span></div>
+                <div class="trow"><span class="ti">⭐</span><span class="tl2">缩短短语</span><span class="sw"></span></div>
+                <div class="trow"><span class="ti">🌱</span><span class="tl2">简化词汇</span><span class="sw"></span></div>
+                <div class="trow"><span class="ti">🔥</span><span class="tl2">移除冗余</span><span class="sw"></span></div>
+                <div class="trow"><span class="ti">💧</span><span class="tl2">压缩空白</span><span class="sw"></span></div>
+                <div class="trow"><span class="ti">⚙</span><span class="tl2">压缩代码</span><span class="sw"></span></div>
+              </div>
+              <div class="setsb">账户</div>
+              <div class="acct"><div class="acct-av">👤</div><div><div class="acct-n">User</div><div class="acct-e">testing234@gmail.com</div></div></div>
+            </div>
+
+            <!-- AGENT -->
+            <div class="view pad" data-v="agent">
+              <div class="tb"><span class="dg"></span><span class="nm">TERSE</span><span class="ss">2 sessions</span><div class="ic"><span>⚙</span></div></div>
+              <div class="ag-tp">
+                <div class="ag-hd"><span class="dg"></span><span>Claude Code</span><span class="ag-st">● Monitoring</span></div>
+                <div class="ctx-l">CONTEXT<b id="cP">0%</b></div>
+                <div class="ctx-b"><i id="cB"></i></div>
+              </div>
+              <div class="ag-gr">
+                <div class="ag-c"><span class="ac-ico">⏱</span><div class="v" id="aT">0</div><div class="l">Turns</div></div>
+                <div class="ag-c"><span class="ac-ico">📊</span><div class="v" id="aI">0</div><div class="l">Input</div></div>
+                <div class="ag-c"><span class="ac-ico">🔥</span><div class="v" id="aC">0%</div><div class="l">Cache</div></div>
+                <div class="ag-c"><span class="ac-ico">⚙</span><div class="v" id="aTl">0</div><div class="l">Tools</div></div>
+              </div>
+              <div class="sv-h">
+                <div class="sv-bg"><span class="n" id="aS">0</span><span class="u">tokens saveable</span></div>
+                <div class="sv-bar"><i id="aSB"></i></div>
+              </div>
+              <div class="lg" id="aL"></div>
+            </div>
+
+            <!-- PET -->
+            <div class="view pet-v" data-v="pet">
+              <div class="pet-hd"><div class="dg"></div><h2>我的伙伴</h2></div>
+              <div class="cns">
+                <div class="cn">🪙 531</div><div class="cn">🎨 皮肤 400</div><div class="cn">🐾 $1</div>
+              </div>
+              <div class="pet-stage">
+                <div class="bbl">省下 282 tokens</div>
+                <div class="shiro-wrap"><svg class="shiro" viewBox="0 0 200 200" fill="none"><defs><filter id="wc-shiro-lmj5z" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="1.4"/></filter></defs><g opacity=".26" filter="url(#wc-shiro-lmj5z)"><ellipse cx="100.00" cy="137.20" rx="43.20" ry="30.00" fill="#F8F4EE"/><circle cx="100.00" cy="112.00" r="30.00" fill="#F8F4EE"/></g><circle cx="58.00" cy="143.20" r="6.00" fill="#F8F4EE"/><g class="leg-A" style="transform-box:fill-box;transform-origin:50% 5%;"><ellipse cx="83.20" cy="170.80" rx="11.34" ry="9.60" fill="#F8F4EE"/><ellipse cx="83.20" cy="178.29" rx="10.26" ry="1.92" fill="#3a2a20" opacity=".70"/><circle cx="78.88" cy="178.29" r="1.73" fill="#3a2a20" opacity=".85"/><circle cx="87.52" cy="178.29" r="1.73" fill="#3a2a20" opacity=".85"/><circle cx="83.20" cy="178.29" r="1.73" fill="#3a2a20" opacity=".85"/></g><ellipse cx="100.00" cy="137.20" rx="43.20" ry="30.00" fill="#F8F4EE"/><ellipse cx="100.00" cy="146.20" rx="25.92" ry="16.50" fill="#FFE8E0" opacity=".90"/><g class="leg-B pet-arm" style="transform-box:fill-box;transform-origin:50% 5%;"><ellipse cx="116.80" cy="170.80" rx="11.34" ry="9.60" fill="#F8F4EE"/><ellipse cx="116.80" cy="178.29" rx="10.26" ry="1.92" fill="#3a2a20" opacity=".70"/><circle cx="112.48" cy="178.29" r="1.73" fill="#3a2a20" opacity=".85"/><circle cx="121.12" cy="178.29" r="1.73" fill="#3a2a20" opacity=".85"/><circle cx="116.80" cy="178.29" r="1.73" fill="#3a2a20" opacity=".85"/></g><g class="ear-L" style="transform-box:fill-box;transform-origin:79.60px 97.00px"><circle cx="79.60" cy="92.80" r="9.60" fill="#F8F4EE"/><circle cx="79.60" cy="92.80" r="4.80" fill="#FF9DBA" opacity=".55"/></g><g class="ear-R" style="transform-box:fill-box;transform-origin:120.40px 97.00px"><circle cx="120.40" cy="92.80" r="9.60" fill="#F8F4EE"/><circle cx="120.40" cy="92.80" r="4.80" fill="#FF9DBA" opacity=".55"/></g><circle cx="100.00" cy="112.00" r="30.00" fill="#F8F4EE"/><g class="pet-eye-L" style="transform-box:fill-box;transform-origin:50% 50%"><circle cx="91.00" cy="110.50" r="3.00" fill="#3a2a20"/><circle cx="91.90" cy="109.60" r="1.20" fill="white"/></g><g class="pet-eye-R" style="transform-box:fill-box;transform-origin:50% 50%"><circle cx="109.00" cy="110.50" r="3.00" fill="#3a2a20"/><circle cx="109.90" cy="109.60" r="1.20" fill="white"/></g><ellipse cx="85.60" cy="116.50" rx="4.80" ry="2.40" fill="#FF9DBA" opacity=".55"/><ellipse cx="114.40" cy="116.50" rx="4.80" ry="2.40" fill="#FF9DBA" opacity=".55"/><g class="pet-mouth" style="transform-box:fill-box;transform-origin:50% 0%"><path d="M95.80,119.50 Q100.00,126.70 104.20,119.50 Q100.00,122.50 95.80,119.50 Z" fill="#3a2a20" opacity=".88"/><path d="M101.20,121.90 Q106.00,126.70 106.60,123.70 Q105.40,120.70 101.80,120.70 Z" fill="#FF7A95" class="tongue"/></g></svg></div>
+                <span class="pfc">🪙</span><span class="pfc">✨</span><span class="pfc">🪙</span>
+              </div>
+              <div class="bh-card">
+                <div class="bh-row"><span>🎬 待机动画 / 呼吸摆动</span><div class="ck">✓</div></div>
+                <div class="bh-row"><span>🍽 节省时进食</span><div class="ck">✓</div></div>
+                <div class="bh-row"><span>🎉 里程碑庆祝 + 闪光</span><div class="ck">✓</div></div>
+              </div>
+              <div class="skins">
+                <div class="skin eq"><span class="se">🐻</span><div class="sn">Shiro</div></div>
+                <div class="skin"><span class="se">🎃</span><div class="sn">Pumpkin</div></div>
+                <div class="skin"><span class="se">👻</span><div class="sn">Ghost</div></div>
+                <div class="skin"><span class="se">🎅</span><div class="sn">Santa</div></div>
+              </div>
+            </div>
+
+            <!-- FARM -->
+            <div class="view farm-v" data-v="farm">
+              <!-- top hud (over the sky) -->
+              <div class="f-hud">
+                <div class="f-coin">🪙<b id="fC">2,140</b></div>
+                <div class="f-lv">LV 7<i><b></b></i></div>
+                <div class="f-gear">⚙</div>
+              </div>
+              <!-- the genuine Terse farm illustration + crops planted on its field -->
+              <div class="f-scene">
+                <img class="f-bg" src="farm-bg.jpg" alt="Terse farm">
+                <div class="f-field" id="fg">
+                  <span class="crop" data-c="🌽" style="left:24%;top:15%"></span>
+                  <span class="crop" data-c="🌾" style="left:38%;top:14%"></span>
+                  <span class="crop" data-c="🍓" style="left:52%;top:15%"></span>
+                  <span class="crop" data-c="🌻" style="left:66%;top:14%"></span>
+                  <span class="crop" data-c="🥕" style="left:26%;top:28%"></span>
+                  <span class="crop" data-c="🌷" style="left:40%;top:29%"></span>
+                  <span class="crop" data-c="🥬" style="left:54%;top:28%"></span>
+                  <span class="crop" data-c="🍅" style="left:68%;top:29%"></span>
+                  <span class="crop" data-c="🍆" style="left:33%;top:80%"></span>
+                  <span class="crop" data-c="🥔" style="left:58%;top:81%"></span>
+                  <span class="f-xp" id="fXp">+180 XP</span>
+                </div>
+                <div class="fsp" style="left:35%;top:10%;animation-delay:0s">✨</div>
+                <div class="fsp" style="left:62%;top:20%;animation-delay:.6s">🌟</div>
+                <div class="fsp" style="left:47%;top:34%;animation-delay:1.1s">💫</div>
+              </div>
+              <!-- harvest notification -->
+              <div class="f-harv">
+                <span class="f-harv-em">🌽</span>
+                <div class="f-harv-tx"><b>玉米已成熟！</b><span>今日省 <i id="fH">0</i> token · 点击收获</span></div>
+                <button class="f-harv-btn">收获</button>
+              </div>
+              <!-- stats + toolbar -->
+              <div class="f-bottom">
+                <div class="f-stats">
+                  <div class="f-stat"><div class="lab">今日省 Token</div><div class="big" id="fT">1,240</div><div class="sub">≈ +124 XP</div></div>
+                  <div class="f-stat"><div class="lab">今日任务</div><div class="big">2 / 3</div><div class="sub">已完成</div></div>
+                </div>
+                <div class="f-tools">
+                  <div class="f-tool t-blue"><span>💧</span>浇水</div>
+                  <div class="f-tool t-green"><span>⭐</span>施肥</div>
+                  <div class="f-tool t-gold"><span>🌾</span>收获<i class="t-dot">1</i></div>
+                  <div class="f-tool t-gray"><span>🎣</span>钓鱼</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- STATS -->
+            <div class="view pad" data-v="stats">
+              <div class="tb"><span class="dg"></span><span class="nm">Statistics</span>
+                <div style="margin-left:auto;display:flex;gap:7px">
+                  <button style="background:rgba(255,255,255,.5);border:none;border-radius:10px;padding:6px 14px;font-size:13px;font-weight:750;color:#0a0a0a">小票</button>
+                  <button style="background:rgba(255,255,255,.3);border:none;border-radius:10px;padding:6px 14px;font-size:13px;font-weight:700;color:#555">图表</button>
+                </div>
+              </div>
+              <div class="stats-tabs"><button class="on">今天</button><button>本周</button><button>本月</button><button>全部</button></div>
+              <div class="sg">
+                <div class="sc-card2"><span class="m-ico">🪙</span><div class="v" id="s1">0</div><div class="l">Tokens Saved</div></div>
+                <div class="sc-card2"><span class="m-ico">💸</span><div class="v dk" id="s2">$0.00</div><div class="l">Cost Saved</div></div>
+                <div class="sc-card2"><span class="m-ico">📊</span><div class="v" id="s3">0%</div><div class="l">Reduction</div></div>
+                <div class="sc-card2"><span class="m-ico">📝</span><div class="v dk" id="s4">0</div><div class="l">Messages</div></div>
+              </div>
+              <div class="rcpt">
+                <div class="rcpt-t">token receipt</div>
+                <span class="rcpt-lg">T</span>
+                <div class="rcpt-sb">TOKEN&nbsp;&nbsp;RECEIPT</div>
+                <div class="rcpt-inf">ORDER: #9227 · JUN 1, 2026<br>ALL TIME</div>
+                <hr class="rcpt-div">
+                <div class="rcpt-row"><span class="dot" style="background:#3b82f6"></span><span class="src">BROWSER</span><span class="val">4.5K/236</span><span class="pct">5%</span></div>
+                <div class="rcpt-row"><span class="dot" style="background:#22c55e"></span><span class="src">AGENT</span><span class="val">89.7M/1.2M</span><span class="pct">1%</span></div>
+                <div class="rcpt-row"><span class="dot" style="background:#a855f7"></span><span class="src">EDITOR</span><span class="val">60/15</span><span class="pct" style="color:orange">25%</span></div>
+                <hr class="rcpt-div">
+                <div class="rcpt-tot"><span class="tl">TOTAL SAVED</span><span class="tv" id="sT">0</span></div>
+              </div>
+            </div>
+
+          </div>
+          <div class="di"></div><div class="gl"></div>
+          <div id="fxlayer"><svg id="cursor" viewBox="0 0 24 24"><path d="M2 2 L2 19 L6.2 14.9 L9.2 21.4 L11.8 20.2 L8.8 13.8 L14.6 13.4 Z" fill="#fff" stroke="#14151A" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const stage=$('#stage'),rig=$('#rig'),shadow=$('#shadow'),root=document.documentElement;
+const world=$('#world'),bloom=$('.bl');
+const touch=$('#cursor'),fxl=$('#fxlayer');
+
+/* ── PREMIUM 3D EMOJI (Microsoft Fluent) — no OS/Apple emoji anywhere ── */
+const FB='https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/';
+const EMO={
+ '🪙':'Coin/3D/coin_3d.png','🎨':'Artist palette/3D/artist_palette_3d.png',
+ '🐾':'Paw prints/3D/paw_prints_3d.png','🎉':'Party popper/3D/party_popper_3d.png',
+ '✨':'Sparkles/3D/sparkles_3d.png','🐻':'Bear/3D/bear_3d.png',
+ '🎃':'Jack-o-lantern/3D/jack-o-lantern_3d.png','👻':'Ghost/3D/ghost_3d.png',
+ '🎅':'Santa claus/Default/3D/santa_claus_3d_default.png',
+ '🎬':'Clapper board/3D/clapper_board_3d.png',
+ '🍽':'Fork and knife with plate/3D/fork_and_knife_with_plate_3d.png',
+ '🌽':'Ear of corn/3D/ear_of_corn_3d.png','🥕':'Carrot/3D/carrot_3d.png',
+ '🍅':'Tomato/3D/tomato_3d.png','🌾':'Sheaf of rice/3D/sheaf_of_rice_3d.png',
+ '🍓':'Strawberry/3D/strawberry_3d.png','🥬':'Leafy green/3D/leafy_green_3d.png',
+ '🍆':'Eggplant/3D/eggplant_3d.png','🌻':'Sunflower/3D/sunflower_3d.png',
+ '🥔':'Potato/3D/potato_3d.png','🏡':'House with garden/3D/house_with_garden_3d.png',
+ '🌟':'Glowing star/3D/glowing_star_3d.png','💫':'Dizzy/3D/dizzy_3d.png',
+ '🌤':'Sun behind small cloud/3D/sun_behind_small_cloud_3d.png',
+ '🔥':'Fire/3D/fire_3d.png','🌐':'Globe with meridians/3D/globe_with_meridians_3d.png',
+ '😊':'Smiling face with smiling eyes/3D/smiling_face_with_smiling_eyes_3d.png',
+ '🤖':'Robot/3D/robot_3d.png','📝':'Memo/3D/memo_3d.png','📊':'Bar chart/3D/bar_chart_3d.png',
+ '👤':'Bust in silhouette/3D/bust_in_silhouette_3d.png','⏱':'Stopwatch/3D/stopwatch_3d.png',
+ '⚙':'Gear/3D/gear_3d.png','💧':'Droplet/3D/droplet_3d.png','⭐':'Star/3D/star_3d.png',
+ '🎣':'Fishing pole/3D/fishing_pole_3d.png','🌱':'Seedling/3D/seedling_3d.png',
+ '💸':'Money with wings/3D/money_with_wings_3d.png','🌷':'Tulip/3D/tulip_3d.png',
+ '🚀':'Rocket/3D/rocket_3d.png'
+};
+const esc=c=>c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+const EMO_RE=new RegExp('('+Object.keys(EMO).map(esc).join('|')+')\\uFE0F?','g');
+function emoImg(ch){const p=EMO[ch];if(!p)return null;const u=FB+encodeURI(p);
+  return `<span class="fxw" style="--m:url('${u}')"><img class="fx" src="${u}" alt="${ch}" draggable="false"></span>`;}
+function fluentize(rootEl){
+  const W=document.createTreeWalker(rootEl,NodeFilter.SHOW_TEXT);
+  const todo=[];let n;while(n=W.nextNode()){EMO_RE.lastIndex=0;if(EMO_RE.test(n.nodeValue))todo.push(n);}
+  todo.forEach(t=>{const sp=document.createElement('span');
+    sp.innerHTML=t.nodeValue.replace(EMO_RE,(m,c)=>emoImg(c)||m);
+    t.parentNode.replaceChild(sp,t);});
+}
+
+/* ── RELIABLE FIT: position:fixed stage, JS-centered ── */
+function fit(){
+  const s=Math.min(innerWidth/1080,innerHeight/1920);
+  stage.style.transform='scale('+s+')';
+  stage.style.left=((innerWidth-1080*s)/2)+'px';
+  stage.style.top=((innerHeight-1920*s)/2)+'px';
+}
+addEventListener('resize',fit);
+addEventListener('load',fit);
+fit();
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+/* smootherstep (quintic): zero 1st AND 2nd derivative at 0 and 1 →
+   no velocity/accel snap at the start or end of a camera move = buttery */
+const eIO=t=>t*t*t*(t*(t*6-15)+10);
+const eOut=t=>1-Math.pow(1-t,3);
+
+/* ── SHOTS ──
+   sc: overall scale  ry/rx/rz: rotation degrees  x/y: pan px  oy: perspective-origin-y%  tr: transition-in seconds */
+/* Calm, premium pacing: every view holds long enough for its content
+   animation to fully play before the camera moves on. Smooth glides
+   (tr .7–.9), gentle angles — no whip-pans, no motion sickness. */
+const S=[
+ /* login hero — gentle 3/4 establish */
+ {t:0.0,  v:'login', ry:-22,rx:8,  rz:-2, sc:1.30, x:0,    y:8,   oy:46, tr:0  },
+ /* PEDESTAL DOWN — straight vertical glide down to the sessions (angles held) */
+ {t:2.8,  v:'main',  ry:-20,rx:7,  rz:-1, sc:1.44, x:0,    y:-128,oy:40, tr:.75},
+ /* TRUCK LEFT — flat horizontal slide across to the optimizer */
+ {t:6.0,  v:'opt',   ry:-8, rx:6,  rz:0,  sc:1.48, x:-122, y:-8,  oy:44, tr:.7 },
+ /* CRASH ZOOM — fast straight dolly-in to the -41% (almost no rotation) */
+ {t:8.4,  v:'opt',   ry:-6, rx:8,  rz:-2, sc:2.18, x:8,    y:86,  oy:52, tr:.55},
+ /* PAN RIGHT — pivot on the spot to reveal settings (near-profile) */
+ {t:9.8,  v:'set',   ry:-50,rx:7,  rz:0,  sc:1.48, x:70,   y:-12, oy:44, tr:.7 },
+ /* WHIP / TRUCK — fast sweep across to the agent monitor */
+ {t:12.6, v:'agent', ry:40, rx:8,  rz:-3, sc:1.50, x:-112, y:-22, oy:42, tr:.6 },
+ /* PEDESTAL DOWN + dolly — descend vertically into the saveable number */
+ {t:14.8, v:'agent', ry:6,  rx:9,  rz:1,  sc:2.12, x:12,   y:154, oy:58, tr:.75},
+ /* ARC — orbit-in with a soft roll to reveal the pet */
+ {t:16.6, v:'pet',   ry:-24,rx:7,  rz:-7, sc:1.62, x:0,    y:22,  oy:50, tr:.8 },
+ /* TILT UP — pitch over to a top-down bird's-eye of the farm */
+ {t:19.4, v:'farm',  ry:2,  rx:44, rz:0,  sc:1.62, x:0,    y:64,  oy:26, tr:.8 },
+ /* DOLLY IN — straight push to the harvest card */
+ {t:22.2, v:'farm',  ry:-4, rx:12, rz:0,  sc:2.04, x:22,   y:112, oy:54, tr:.75},
+ /* PEDESTAL UP + PULL BACK — rise and zoom out wide for stats */
+ {t:24.0, v:'stats', ry:12, rx:7,  rz:-1, sc:1.34, x:-18,  y:-6,  oy:46, tr:.75},
+ /* WHIP PAN — fast pivot-and-slide out to close */
+ {t:26.8, v:'login', ry:-44,rx:10, rz:-5, sc:1.44, x:92,   y:20,  oy:46, tr:.7 },
+ /* glide home to loop */
+ {t:30.0, v:'login', ry:-22,rx:8,  rz:-2, sc:1.30, x:0,    y:8,   oy:46, tr:.75},
+];
+const TOTAL=30.0,FN=['ry','rx','rz','sc','x','y','oy'];
+
+function camAt(t){
+  let i=0;for(let k=0;k<S.length-1;k++)if(t>=S[k].t)i=k;
+  const a=S[i],b=S[Math.min(i+1,S.length-1)];
+  const ts=b.t-b.tr;let pose={},p=0,toShot=a;
+  if(b===a||t<ts){FN.forEach(f=>pose[f]=a[f]);}
+  else{p=clamp((t-ts)/Math.max(.001,b.tr),0,1);const e=eIO(p);FN.forEach(f=>pose[f]=lerp(a[f],b[f],e));toShot=b;}
+  return{pose,p,cur:a,nxt:b,to:toShot};
+}
+
+/* views */
+const views={};$$('.view').forEach(el=>views[el.dataset.v]=el);
+function setViews(a,b,p){
+  /* smootherstep the crossfade so page transitions feel as silky as the camera */
+  const e=p<=0?0:p>=1?1:p*p*p*(p*(p*6-15)+10);
+  const o={};Object.keys(views).forEach(k=>o[k]=0);
+  if(a.v===b.v||p===0)o[a.v]=1;
+  else{o[a.v]=Math.max(o[a.v],1-e);o[b.v]=Math.max(o[b.v],e);}
+  Object.keys(views).forEach(k=>{
+    const el=views[k];el.classList.toggle('on',o[k]>0.02);el.style.opacity=o[k].toFixed(3);
+  });
+}
+
+/* ── TYPING ── */
+const VERB=[['I ',0],['was ',0],['just ',1],['wondering ',1],['if ',0],['you ',0],['could ',0],
+  ['possibly ',1],['help ',0],['me ',0],['to ',0],['maybe ',1],['write ',0],['a ',0],
+  ['short ',1],['little ',1],['function ',0],['that ',0],['basically ',1],['just ',1],
+  ['takes ',0],['a ',0],['list ',0],['of ',0],['numbers ',0],['and ',0],['returns ',0],
+  ['the ',0],['sum ',0],['of ',0],['them ',0],['please?',1]];
+$('#oV').innerHTML=VERB.map(w=>`<span class="${w[1]?'rm':''}">${w[0]}</span>`).join('')+'<span class="cr"></span>';
+$('#oT').textContent='Write a function that returns the sum of a list of numbers.';
+const rmSpans=$$('#oV .rm'),vLen=VERB.reduce((a,w)=>a+w[0].length,0);
+const LOGS=[
+  ['u','▸','重构 auth 模块，处理边界情况','省 140',1],
+  ['t','⚙','Read src/auth.ts','',0],['a','◇','分析中…','',0],
+  ['u','▸','把所有错误信息打印出来谢谢','省 86',1],
+  ['t','⚙','Grep "catch" ×7','',0],
+  ['u','▸','补充单元测试 login flow','省 56',1],
+  ['t','⚙','Edit auth.test.ts','',0],['a','◇','完成 ✓','',0]];
+/* crops as Fluent 3D imgs */
+const crops=$$('#fg .crop');crops.forEach(c=>{c.innerHTML=emoImg(c.dataset.c)||c.dataset.c;});
+/* fluentize all static emoji in the app */
+fluentize(document.getElementById('app'));
+let lTyped=-1,lLog=-1;
+
+function animApp(t){
+  /* swatch pulse */
+  const si=Math.floor((t%1.6)/1.6*8);
+  $$('#sw .sw').forEach((d,i)=>d.classList.toggle('sel',i===si));
+
+  /* main tiles + trend count-up (eased) */
+  const mcp=eOut(clamp((t-2.9)/1.6,0,1));
+  ['mt1','mt2','mt3','mt4','mtv'].forEach(id=>{const el=$('#'+id);if(el){const to=+el.dataset.to;
+    el.textContent=Math.round(to*mcp).toLocaleString()+(el.dataset.suf||'');}});
+  /* optimizer live "saved" ticker */
+  const stv=$('#stv');if(stv){const v=eOut(clamp((t-6.2)/1.8,0,1));stv.textContent=Math.round((+stv.dataset.to)*v).toLocaleString();}
+
+  /* optimizer */
+  const os=6.0,rep=7.6;
+  const typed=clamp(Math.floor(((t-os)/1.4)*vLen),0,vLen);
+  if(typed!==lTyped){lTyped=typed;let c=0,h='';
+    for(const w of VERB){if(c>=typed)break;const tk=Math.min(w[0].length,typed-c);h+=`<span class="${w[1]?'rm':''}">${w[0].slice(0,tk)}</span>`;c+=w[0].length;}
+    $('#oV').innerHTML=h+(t>os&&t<os+1.4?'<span class="cr"></span>':'');}
+  rmSpans.forEach((s,i)=>s.classList.toggle('sk',t>rep-.45-(i%3)*.04&&t<rep+.45));
+  const rd=t>=rep;$('#oV').style.opacity=rd?0:1;$('#oT').style.opacity=rd?1:0;
+  $('#rp').classList.toggle('go',t>=rep-.05&&t<rep+1.4);
+  $('#ta').textContent=Math.round(lerp(685,403,eOut(clamp((t-rep)/.75,0,1))));
+  $('#pct').style.opacity=t>=rep+.3?1:0;
+  $$('#tchs .tg').forEach((tg,i)=>tg.classList.toggle('sh',t>=rep+.2+i*.11));
+  let om=1;if(t>os+.3&&t<os+1.1)om=0;else if(t>=os+1.1&&t<os+1.9)om=2;
+  [...$('#mp').children].forEach((b,i)=>b.classList.toggle('on',i===om));
+
+  /* settings */
+  const ss=9.8;let sm=0;if(t>ss+.4)sm=2;if(t>ss+.9)sm=1;
+  const kn=$('#kn');if(kn)kn.style.transform=`translateX(${sm*100}%)`;
+  [...($('#m3')||{querySelectorAll:()=>[]}).querySelectorAll('button')].forEach((b,i)=>b.classList.toggle('on',i===sm));
+  $$('#tgl .trow').forEach((r,i)=>r.classList.toggle('on',t>=ss+.25+i*.1));
+
+  /* agent */
+  const as=12.6,ae=eOut(clamp((t-as)/2.0,0,1));
+  const cB=$('#cB');if(cB){cB.style.width=(72*ae)+'%';$('#cP').textContent=Math.round(72*ae)+'%';
+    $('#aT').textContent=Math.round(lerp(0,12,ae));$('#aI').textContent=lerp(0,17.7,ae).toFixed(1)+'M';
+    $('#aC').textContent=Math.round(lerp(0,88,ae))+'%';$('#aTl').textContent=Math.round(lerp(0,94,ae));}
+  const se=eOut(clamp((t-14.2)/1.4,0,1));
+  const aS=$('#aS');if(aS){aS.textContent=Math.round(lerp(0,36100,se)).toLocaleString();$('#aSB').style.width=(60*se)+'%';}
+  const ln=clamp(Math.floor((t-as+.15)/.20),0,LOGS.length);
+  if(ln!==lLog){lLog=ln;const box=$('#aL');if(box){box.innerHTML='';
+    for(let i=0;i<ln;i++){const L=LOGS[i];const d=document.createElement('div');
+      d.className='ll '+(L[0]==='u'?(L[4]?'u s':'u'):L[0]);
+      d.innerHTML=`<span class="ic">${L[1]}</span><span class="tx">${L[2]}</span>`+(L[3]?`<span class="bd ${L[4]?'bd-g':'bd-d'}">${L[3]}</span>`:'');
+      box.appendChild(d);}}}
+
+  /* farm */
+  const fs=19.4,fp=eOut(clamp((t-fs)/1.8,0,1));
+  crops.forEach((c,i)=>{const g=eOut(clamp((t-(fs+.08+i*.1))/.42,0,1));const pk=g>0&&g<1?1+.12*Math.sin(g*Math.PI):1;c.style.transform=`scale(${g*pk})`;});
+  const fv=Math.round(1240*fp);
+  const fHel=$('#fH');if(fHel)fHel.textContent=fv.toLocaleString();
+  const fTel=$('#fT');if(fTel)fTel.textContent=fv.toLocaleString();
+  const fCel=$('#fC');if(fCel)fCel.textContent=Math.round(2140+fp*320).toLocaleString();
+  const fXp=$('#fXp');if(fXp)fXp.style.opacity=fp>.72?1:0;
+
+  /* stats */
+  const sts=24.0,ste=eOut(clamp((t-sts)/1.4,0,1));
+  const s1=$('#s1');if(s1){s1.textContent=Math.round(1200000*ste).toLocaleString();
+    $('#s2').textContent='$'+(ste*148.5).toFixed(2);$('#s3').textContent=Math.round(ste*1)+'%';
+    $('#s4').textContent=Math.round(ste*338);$('#sT').textContent=(ste*1.2).toFixed(1)+'M';}
+
+  updateTouch(t);
+}
+
+/* ── SIMULATED TOUCH: a finger taps through Terse's functions on cue ──
+   x/y are % of the screen; each tap fires a ripple + presses the real control. */
+const TAPS=[
+  {t:5.0,  x:50, y:80, sel:'.view[data-v="main"] .ob-btn'},      /* tap 优化 */
+  {t:6.7,  x:80, y:14, sel:'#mp button:last-child'},             /* tap Aggr mode */
+  {t:7.45, x:57, y:62, sel:'#rp'},                               /* tap Replace */
+  {t:10.3, x:50, y:21, sel:'#m3 button:nth-child(3)'},           /* tap strength */
+  {t:11.0, x:86, y:45, sel:'#tgl .trow:nth-child(3) .sw'},       /* flip a toggle */
+  {t:17.3, x:34, y:88, sel:'.skins .skin:nth-child(2)'},         /* try a skin */
+  {t:20.3, x:18, y:92, sel:'.f-tools .f-tool:nth-child(1)'},     /* water crops */
+  {t:21.1, x:62, y:92, sel:'.f-tools .f-tool:nth-child(3)'},     /* harvest */
+  {t:24.7, x:38, y:21, sel:'.stats-tabs button:nth-child(2)'},   /* switch tab */
+];
+let firedTap=-1,_ptouch=0;
+function fireTap(tap){
+  if(fxl){const r=document.createElement('div');r.className='ripple';r.style.left=tap.x+'%';r.style.top=tap.y+'%';
+    fxl.appendChild(r);setTimeout(()=>r.remove(),650);}
+  if(touch){touch.classList.add('press');setTimeout(()=>touch&&touch.classList.remove('press'),150);}
+  if(tap.sel){const el=document.querySelector(tap.sel);if(el){el.classList.add('tapnow');setTimeout(()=>el.classList.remove('tapnow'),200);}}
+}
+function curAt(t){
+  let i=-1;for(let k=0;k<TAPS.length;k++){if(t<=TAPS[k].t+0.45){i=k;break;}}
+  if(i<0)return null;
+  const tap=TAPS[i],appear=tap.t-0.6;
+  if(t<appear)return null;
+  if(t<=tap.t){
+    const p=clamp((t-appear)/0.6,0,1),e=p*p*(3-2*p);
+    const link=(i>0 && tap.t-TAPS[i-1].t<2.4)?TAPS[i-1]:{x:tap.x,y:tap.y+9};
+    return{x:lerp(link.x,tap.x,e),y:lerp(link.y,tap.y,e),op:clamp((t-appear)/0.3,0,1)};
+  }
+  return{x:tap.x,y:tap.y,op:clamp(1-(t-tap.t-0.4)/0.3,0,1)};
+}
+function updateTouch(t){
+  if(!touch)return;
+  if(t<_ptouch-0.5)firedTap=-1;_ptouch=t;
+  for(let k=0;k<TAPS.length;k++){if(k>firedTap&&t>=TAPS[k].t&&t<TAPS[k].t+0.35){firedTap=k;fireTap(TAPS[k]);}}
+  const c=curAt(t);
+  if(!c){touch.style.opacity='0';return;}
+  touch.style.left=c.x+'%';touch.style.top=c.y+'%';touch.style.opacity=c.op.toFixed(2);
+}
+
+/* ── MAIN LOOP ── */
+let start=performance.now();
+function frame(){
+  const t=((performance.now()-start)/1000)%TOTAL;
+  const {pose,p,cur,nxt,to}=camAt(t);
+
+  /* arrival accent — slightly punchier settle + indigo bloom flash to draw the eye */
+  let pop=1,bl=0;
+  for(const s of S){const dt=t-s.t;if(dt>=0&&dt<.34){const k=1-dt/.34;pop=Math.max(pop,1+.02*k);bl=Math.max(bl,.18*k*k);}}
+  /* tap-driven CRASH-ZOOM: pressing an app dives the camera in (+ tiny settle shake & flash) */
+  let punch=1,shk=0,shy=0;
+  if(typeof TAPS!=='undefined')for(const tp of TAPS){const dt=t-tp.t;if(dt>=-.04&&dt<.6){const k=Math.max(0,1-dt/.6),e=k*k;punch*=1+.09*e;shk+=Math.sin(dt*52)*1.0*e;shy+=Math.cos(dt*45)*1.2*e;bl=Math.max(bl,.16*e);}}
+
+  /* idle breathing drift — ramps in/out as sin(πu) across each hold, so it is
+     exactly 0 at every arrival & departure: no on/off snap, perfectly smooth */
+  const hs=cur.t, he=nxt.t-nxt.tr;
+  let idle=0;
+  if(p===0 && he>hs){const u=clamp((t-hs)/(he-hs),0,1);idle=Math.sin(Math.PI*u);}
+  const dRy=Math.sin(t*0.5)*1.5*idle;
+  const dRx=Math.sin(t*0.42+1.2)*0.9*idle;
+  const dSc=1+Math.sin(t*0.66+0.8)*0.0035*idle;
+
+  /* camera — GPU-composited translate3d, only transform + opacity animate */
+  world.style.perspectiveOrigin=`50% ${pose.oy}%`;
+  rig.style.transform=
+    `translate3d(${(pose.x+shk*1.6).toFixed(2)}px,${(pose.y+shy*1.6).toFixed(2)}px,0)`+
+    ` scale(${(pose.sc*pop*dSc*punch).toFixed(4)})`+
+    ` rotateX(${(pose.rx+dRx).toFixed(3)}deg)`+
+    ` rotateY(${(pose.ry+dRy).toFixed(3)}deg)`+
+    ` rotateZ(${(pose.rz+shk*0.2).toFixed(3)}deg)`;
+
+  /* reactive light — reflection tracks angle AND the idle sway, fresnel grows
+     with viewing angle so edges flare at glancing rotations (like real glass) */
+  const ry=pose.ry+dRy, rx=pose.rx+dRx, ang=Math.hypot(ry,rx);
+  root.style.setProperty('--lx',(118+ry*2.4).toFixed(2)+'deg');
+  root.style.setProperty('--gx',(50-ry*1.7).toFixed(2)+'%');
+  root.style.setProperty('--gy',(14+rx*0.8).toFixed(2)+'%');
+  root.style.setProperty('--fres',clamp(ang/46,0,1).toFixed(3));
+
+  /* shadow */
+  shadow.style.transform=`translateX(${pose.x*.03}px) scale(${.6+pose.sc*.28},1)`;
+  shadow.style.opacity=String(clamp(.48-(pose.sc-1)*.38,.12,.48));
+
+  /* arrival bloom pulse */
+  if(bloom)bloom.style.opacity=bl;
+
+  setViews(cur,to,p);
+  animApp(t);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+addEventListener('keydown',e=>{
+  if(e.key==='r'||e.key==='R'){start=performance.now();lTyped=-1;lLog=-1;}
+});
+</script>
+</body>
+</html>

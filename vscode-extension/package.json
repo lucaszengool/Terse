@@ -14,17 +14,28 @@
     "Other"
   ],
   "keywords": [
-    "AI",
+    "claude code",
+    "copilot",
+    "cursor",
+    "token counter",
+    "token",
+    "cost",
+    "ai",
+    "agent",
+    "monitor",
     "prompt",
     "optimizer",
-    "tokens",
-    "LLM",
-    "Claude",
-    "ChatGPT",
-    "GPT",
+    "llm",
+    "claude",
+    "chatgpt",
+    "gpt",
     "compress",
-    "token saver"
+    "token saver",
+    "openai",
+    "anthropic",
+    "budget"
   ],
+  "homepage": "https://www.terseai.org",
   "repository": {
     "type": "git",
     "url": "https://github.com/terse-app/terse-vscode"

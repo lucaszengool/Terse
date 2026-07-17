@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tokenization 101 — Why 'the' Is 1 Token</title>
+<meta name="description" content="Why common words are cheap and rare ones expensive: a practical tour of LLM tokenization, plus safe abbreviations that cut prompt costs 20%.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://www.terseai.org/tokenization-101">
+<meta property="og:title" content="Tokenization 101 — Why 'the' Is 1 Token">
+<meta property="og:description" content="Why common words are cheap and rare ones expensive: a practical tour of LLM tokenization, plus safe abbreviations that cut prompt costs 20%.">
+<meta property="og:url" content="https://www.terseai.org/tokenization-101">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Terse">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tokenization 101 — Why 'the' Is 1 Token">
+<meta name="twitter:description" content="Why common words are cheap and rare ones expensive: a practical tour of LLM tokenization, plus safe abbreviations that cut prompt costs 20%.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Tokenization 101 \u2014 Why 'the' Is 1 Token",
+  "description": "Why common words are cheap and rare ones expensive: a practical tour of LLM tokenization, plus safe abbreviations that cut prompt costs 20%.",
+  "url": "https://www.terseai.org/tokenization-101",
+  "datePublished": "2026-07-17",
+  "dateModified": "2026-07-17",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Terse",
+    "url": "https://www.terseai.org"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Terse"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.terseai.org/tokenization-101"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why is a rare word more expensive than a common one?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Subword tokenizers keep frequent character sequences as single vocabulary entries. Common words match whole (1 token); rare or invented words don't match and get split into several smaller pieces, each billed separately."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do AI models understand abbreviations like fn, repo, and config?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. These abbreviations are ubiquitous in the code and documentation models were trained on, so they're understood as reliably as the full words \u2014 while costing fewer tokens."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does whitespace really cost tokens?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Repeated spaces, blank lines, and trailing whitespace each consume tokens. Collapsing them is the single safest optimization available \u2014 zero meaning change, guaranteed savings."
+      }
+    }
+  ]
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+body{background:var(--bg0);color:var(--t2);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6}
+.article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+.article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+.article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+.article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+.article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+.article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+.article li{margin-bottom:8px}
+.article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+.article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+.article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+.article a:hover{border-color:var(--ac)}
+.article .crumb{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:14px;text-decoration:none;border-bottom:none}
+.article .crumb:hover{color:var(--ac)}
+.article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+.article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+.article .cta-box h3{margin-top:0}
+.article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+.blogwrap{max-width:1000px;margin:0 auto;padding:120px 32px 80px}
+.blogwrap h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.blogwrap .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:48px;max-width:720px}
+.bloggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px;margin-bottom:48px}
+.bcard{display:block;padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;text-decoration:none;transition:border-color .15s,transform .15s}
+.bcard:hover{border-color:var(--acm);transform:translateY(-2px)}
+.bcard .btag{display:inline-block;padding:3px 10px;border-radius:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:12px}
+.bcard h2{font-size:17px;font-weight:800;color:var(--t1);letter-spacing:-0.3px;line-height:1.35;margin-bottom:8px}
+.bcard p{font-size:13px;color:var(--t3);line-height:1.6}
+</style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<main class="article">
+  <a class="crumb" href="/blog">&larr; Terse Blog</a><br>
+  <span class="tag">Fundamentals</span>
+  <h1>Tokenization 101</h1>
+  <p class="subtitle">You are not billed by the word or the character — you are billed by the token, and tokens map to neither in the way you'd expect. Common words like "the" cost one token; rare or invented words get split into several. Understand the rules and you can say the same thing for meaningfully fewer tokens.</p>
+
+  <h2>How Text Becomes Tokens</h2>
+  <p>Modern LLMs use subword tokenizers (BPE-style): the tokenizer has a fixed vocabulary of common character sequences, and it greedily carves your text into the longest pieces it knows. Frequent English words are in the vocabulary whole, so "the", "function", and "return" are one token each. Rarer strings get split: "ChatGPT" is two tokens, "kubernetes" three, and a long snake_case identifier like <code>user_authentication_status_handler</code> can be six or more, because underscores break the match and each fragment is priced separately.</p>
+  <p>Three non-obvious rules follow from the greedy-match design:</p>
+  <ul>
+    <li><strong>Whitespace counts.</strong> A leading space is usually part of the token ("&nbsp;cat" and "cat" are different tokens), and repeated spaces, stray blank lines, and trailing whitespace all consume extra tokens for zero meaning.</li>
+    <li><strong>Capitalization shifts the count.</strong> "hello" and "HELLO" tokenize differently — ALL-CAPS words often split into more pieces because the caps variants are rarer in training text.</li>
+    <li><strong>Punctuation and symbols add up.</strong> Every <code>#</code>, <code>*</code>, and <code>|</code> in formatted text is billable — the mechanics behind the <a href="/markdown-token-tax">markdown token tax</a>.</li>
+  </ul>
+  <pre>"the"                          → 1 token
+"ChatGPT"                      → 2 tokens
+"kubernetes"                   → 3 tokens
+"user_authentication_handler"  → 6 tokens
+"fix   the    bug"             → extra tokens for extra spaces</pre>
+
+  <h2>The Practical Payoff: Abbreviations the Model Understands</h2>
+  <p>Because common strings are cheap, the abbreviations developers already use are usually single tokens — and models read them perfectly: "function" → <code>fn</code>, "repository" → <code>repo</code>, "configuration" → <code>config</code>, "environment" → <code>env</code>, "database" → <code>db</code>. Applied across a technical prompt, safe abbreviations plus whitespace normalization typically cut about 20%: a verbose 2,600-token prompt drops to roughly 2,050 with identical meaning. On daily technical prompting that's worth about $70 a year, before it compounds with re-billed agent history.</p>
+  <p>The word "safe" is doing real work there. Abbreviating identifiers that appear in code, or shortening words inside quoted strings, changes meaning. A rule-based optimizer earns its keep by knowing the difference: <a href="/">Terse</a>'s Aggressive mode applies a curated abbreviation dictionary to prose only — code, strings, paths, and URLs are protected regions, and negations are never touched.</p>
+
+  <h2>What This Means for Your Prompts</h2>
+  <ul>
+    <li><strong>Normalize whitespace.</strong> Collapse doubled spaces and stray line breaks — pure waste, zero risk. Terse's Soft mode does this (plus typo fixes) for free.</li>
+    <li><strong>Prefer common words.</strong> "use" beats "utilize" (1 token vs 2-3); plain phrasing is literally cheaper than fancy phrasing.</li>
+    <li><strong>Use standard abbreviations in throwaway prompts.</strong> fn, repo, config, env, db — instantly understood, consistently cheaper. Save the full words for text a human will read.</li>
+    <li><strong>Count before you assume.</strong> Token counts are unintuitive; a <a href="/token-calculator">token calculator</a> against your actual prompts beats any rule of thumb.</li>
+  </ul>
+  <p>Tokenization is also why typos are surprisingly expensive: a misspelled word falls out of the vocabulary and shatters into fragments, tripling its cost while degrading the model's comprehension. That failure mode is worth <a href="/typos-ai-agent-cost">its own article</a>.</p>
+
+  <div class="cta-box">
+    <h3>Cut Tokens Without Changing Meaning</h3>
+    <p>Terse normalizes whitespace, fixes typos, and applies model-safe abbreviations automatically — 20-40% fewer tokens on technical prompts. On-device, free to start.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Frequently Asked Questions</h2>
+  <h3>Why is a rare word more expensive than a common one?</h3>
+  <p>Subword tokenizers keep frequent character sequences as single vocabulary entries. Common words match whole (1 token); rare or invented words don't match and get split into several smaller pieces, each billed separately.</p>
+  <h3>Do AI models understand abbreviations like fn, repo, and config?</h3>
+  <p>Yes. These abbreviations are ubiquitous in the code and documentation models were trained on, so they're understood as reliably as the full words — while costing fewer tokens.</p>
+  <h3>Does whitespace really cost tokens?</h3>
+  <p>Yes. Repeated spaces, blank lines, and trailing whitespace each consume tokens. Collapsing them is the single safest optimization available — zero meaning change, guaranteed savings.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/blog">Terse Blog</a> — all token optimization guides</li>
+    <li><a href="/typos-ai-agent-cost">How Typos Inflate AI Agent Costs</a> — tokenization's failure mode</li>
+    <li><a href="/markdown-token-tax">The Markdown Token Tax</a> — what syntax characters cost</li>
+    <li><a href="/token-calculator">Token Calculator</a> — count and price your own prompts</li>
+  </ul>
+</main>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

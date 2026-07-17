@@ -3,7 +3,7 @@
   "name": "Terse — Token Optimizer for LLMs",
   "short_name": "Terse",
   "version": "1.0.2",
-  "description": "Compress prompts to save tokens and reduce API costs. Works with any AI chat or agent.",
+  "description": "AI prompt compressor & token saver — cut ChatGPT, Claude & Gemini token costs 20-40%. On-device, works in any AI chat.",
   "homepage_url": "https://www.terseai.org",
   "icons": {
     "16": "icons/icon-16.png",

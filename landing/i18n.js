@@ -3766,6 +3766,16 @@
   function detect(){
     var saved = localStorage.getItem('terse-lang');
     if(saved && T[saved]) return saved;
+    // Honor a page's explicitly-declared NON-default language (e.g. static /zh/ pages)
+    // over browser locale. English pages (lang="en") stay auto-translating as before.
+    var docLang = (document.documentElement.getAttribute('lang')||'').trim().toLowerCase();
+    if(docLang && docLang.split('-')[0] !== 'en'){
+      if(docLang.startsWith('zh-hans')||docLang==='zh-cn'||docLang==='zh-sg') return 'zh-Hans';
+      if(docLang.startsWith('zh-hant')||docLang==='zh-tw'||docLang==='zh-hk') return 'zh-Hant';
+      if(docLang.startsWith('zh')) return 'zh-Hans';
+      if(T[docLang]) return docLang;
+      if(T[docLang.split('-')[0]]) return docLang.split('-')[0];
+    }
     var navLangs = navigator.languages || [navigator.language];
     for(var i=0; i<navLangs.length; i++){
       var l = navLangs[i].toLowerCase();

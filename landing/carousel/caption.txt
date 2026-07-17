@@ -1,0 +1,18 @@
+Compressing an LLM prompt by 60% — in under 50ms, on a laptop, with no model call.
+
+Most "prompt optimizers" just ask GPT to rewrite your prompt. That's slow, it spends tokens to save tokens, and it ships your data to a server.
+
+We wanted something local, instant, and private. Here's how Terse does it 👇 (swipe)
+
+→ Tokenize the way the model does — real BPE boundaries, not character count
+→ Strip zero-signal filler (politeness, hedging) — ~15–25% with identical output
+→ Leave clean technical prompts at 0%; over-compression is worse than none
+→ Catch the real waste: the same file read 3×, a 40K-token diff for 12 lines
+
+40–70% off verbose input, 0% on clean input, all on-device.
+
+What's the most wasteful thing you've watched an AI agent do? 👇
+
+👉 terseai.org
+
+#LLM #DeveloperTools #AIEngineering #Tokenization #BuildInPublic

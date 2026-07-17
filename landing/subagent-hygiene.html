@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Subagent Hygiene — Keep AI Agent Context Cheap</title>
+<meta name="description" content="Everything in your main context is re-billed every turn. Learn the subagent pattern that turns an 11K-token search into a 400-token conclusion.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://www.terseai.org/subagent-hygiene">
+<meta property="og:title" content="Subagent Hygiene — Keep AI Agent Context Cheap">
+<meta property="og:description" content="Everything in your main context is re-billed every turn. Learn the subagent pattern that turns an 11K-token search into a 400-token conclusion.">
+<meta property="og:url" content="https://www.terseai.org/subagent-hygiene">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Terse">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Subagent Hygiene — Keep AI Agent Context Cheap">
+<meta name="twitter:description" content="Everything in your main context is re-billed every turn. Learn the subagent pattern that turns an 11K-token search into a 400-token conclusion.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Subagent Hygiene \u2014 Keep AI Agent Context Cheap",
+  "description": "Everything in your main context is re-billed every turn. Learn the subagent pattern that turns an 11K-token search into a 400-token conclusion.",
+  "url": "https://www.terseai.org/subagent-hygiene",
+  "datePublished": "2026-07-17",
+  "dateModified": "2026-07-17",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Terse",
+    "url": "https://www.terseai.org"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Terse"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.terseai.org/subagent-hygiene"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is a subagent in AI coding tools?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A subagent is a separate model invocation with its own fresh context window, spawned to handle a subtask \u2014 typically broad searches or multi-file analysis. It does the noisy work in disposable context and returns only a short conclusion to the main session."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "When should I use a subagent instead of searching inline?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Delegate when the work fans out \u2014 codebase-wide searches, multi-file sweeps, checking many candidates \u2014 and you only need the conclusion. Work directly when reading a single known file or making sequential edits, where delegation overhead exceeds the savings."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do subagents cost extra?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A subagent's own tokens are paid once, then discarded. That's almost always cheaper than the alternative: search noise sitting in your main context being re-billed on every subsequent turn for the rest of the session."
+      }
+    }
+  ]
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+body{background:var(--bg0);color:var(--t2);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6}
+.article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+.article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+.article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+.article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+.article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+.article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+.article li{margin-bottom:8px}
+.article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+.article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+.article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+.article a:hover{border-color:var(--ac)}
+.article .crumb{display:inline-block;font-size:13px;color:var(--t3);margin-bottom:14px;text-decoration:none;border-bottom:none}
+.article .crumb:hover{color:var(--ac)}
+.article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+.article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+.article .cta-box h3{margin-top:0}
+.article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+.blogwrap{max-width:1000px;margin:0 auto;padding:120px 32px 80px}
+.blogwrap h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:16px;color:var(--t1)}
+.blogwrap .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:48px;max-width:720px}
+.bloggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px;margin-bottom:48px}
+.bcard{display:block;padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;text-decoration:none;transition:border-color .15s,transform .15s}
+.bcard:hover{border-color:var(--acm);transform:translateY(-2px)}
+.bcard .btag{display:inline-block;padding:3px 10px;border-radius:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:12px}
+.bcard h2{font-size:17px;font-weight:800;color:var(--t1);letter-spacing:-0.3px;line-height:1.35;margin-bottom:8px}
+.bcard p{font-size:13px;color:var(--t3);line-height:1.6}
+</style>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/#how-it-works" style="color:var(--t2);text-decoration:none">How It Works</a><a href="/#pipeline" style="color:var(--t2);text-decoration:none">Pipeline</a><a href="/#agents" style="color:var(--t2);text-decoration:none">Agent Monitor</a><a href="/#pricing" style="color:var(--t2);text-decoration:none">Pricing</a></div>
+</nav>
+
+<main class="article">
+  <a class="crumb" href="/blog">&larr; Terse Blog</a><br>
+  <span class="tag">Agent Sessions</span>
+  <h1>Subagent Hygiene</h1>
+  <p class="subtitle">The most expensive thing in a long coding session is the main context window, because everything in it is re-billed on every turn. Subagents fix this: they do the noisy searching in their own throwaway context and hand back only the conclusion — turning an 11K-token inline search into a 400-token summary your main thread keeps.</p>
+
+  <h2>The Problem With Searching Inline</h2>
+  <p>Run a codebase-wide search in your main thread and every match lands in your window: every file excerpt, every false positive, every "close but not it" result. You wanted one answer — where is the rate limiter configured? — and you're now carrying the entire expedition. Worse, you keep carrying it: because the whole context is re-sent on each request, an 11K-token search kept for the rest of a long session is re-billed dozens of times. Across a heavy session that single pattern is worth roughly $150 a year, and it's usually repeated several times a day.</p>
+  <p>The signal-to-noise ratio makes it sting. Of those 11K tokens, the part you actually needed was one file path and a line number — perhaps 40 tokens. Everything else is exhaust from the process of finding it.</p>
+
+  <h2>The Pattern: Fan Out the Mess, Keep Only the Answer</h2>
+  <p>A subagent is a separate model invocation with its own fresh context. Hand it the broad search or the multi-file sweep. It reads dozens of files, follows dead ends, accumulates all the noise — <em>in its own context</em>, which is paid once and then discarded. What returns to your main thread is a one-paragraph conclusion:</p>
+  <pre>Inline search:   11,000 tokens kept in main context,
+                 re-billed every remaining turn
+
+Subagent search: same work in a throwaway context,
+                 ~400-token conclusion kept, paid once</pre>
+  <p>Claude Code's Task tool, and equivalent features in other agent harnesses, exist precisely for this. The main thread stays lean, which does more than save money: a clean history makes the model measurably better at later turns, because it isn't re-parsing search exhaust to find the thread of the actual task. This is the delegation half of the <a href="/context-window-diet">context window diet</a>.</p>
+
+  <h2>Three Rules of Subagent Hygiene</h2>
+  <ul>
+    <li><strong>Delegate anything broad.</strong> "Find where X is configured," "check every caller of this function," "which of these 30 files mentions the legacy API" — all subagent work. If the task fans out across many files and you need a conclusion rather than the raw material, it does not belong in your main thread.</li>
+    <li><strong>Ask for conclusions, not dumps.</strong> Tell the subagent what shape to return: the answer plus <code>file:line</code> references — not the matching excerpts. A subagent that returns 8K tokens of quoted code has just moved the problem, not solved it.</li>
+    <li><strong>Keep single-file work inline.</strong> Delegation has overhead — the subagent re-reads whatever orientation it needs. Reading one known file or making a sequential edit is cheaper done directly. The dividing line: fan-out and noise favor a subagent; a single target favors the main thread.</li>
+  </ul>
+
+  <h2>Verify It's Working</h2>
+  <p>The point of the pattern is a main thread that stays small, and that's checkable. <a href="/for-claude-code">Terse's agent monitor</a> shows per-source token usage across your sessions — watch the agent source while you work and you can see whether searches are landing in your main context or being absorbed by subagents. Pair the pattern with <a href="/git-diff-compression">diff filtering</a> and narrow file reads, and main-thread cost per turn typically drops by half or more.</p>
+
+  <div class="cta-box">
+    <h3>Watch Your Main Thread Stay Lean</h3>
+    <p>Terse tracks token usage per source across agent sessions, so you can confirm searches are going to subagents instead of bloating your main context. On-device, free to start.</p>
+    <a href="/#pricing" class="btn">Download Terse</a>
+  </div>
+
+  <h2>Frequently Asked Questions</h2>
+  <h3>What is a subagent in AI coding tools?</h3>
+  <p>A subagent is a separate model invocation with its own fresh context window, spawned to handle a subtask — typically broad searches or multi-file analysis. It does the noisy work in disposable context and returns only a short conclusion to the main session.</p>
+  <h3>When should I use a subagent instead of searching inline?</h3>
+  <p>Delegate when the work fans out — codebase-wide searches, multi-file sweeps, checking many candidates — and you only need the conclusion. Work directly when reading a single known file or making sequential edits, where delegation overhead exceeds the savings.</p>
+  <h3>Do subagents cost extra?</h3>
+  <p>A subagent's own tokens are paid once, then discarded. That's almost always cheaper than the alternative: search noise sitting in your main context being re-billed on every subsequent turn for the rest of the session.</p>
+
+  <h2>Further Reading</h2>
+  <ul>
+    <li><a href="/blog">Terse Blog</a> — all token optimization guides</li>
+    <li><a href="/context-window-diet">Context Window Diet</a> — the full window-management playbook</li>
+    <li><a href="/git-diff-compression">Git Diff Compression</a> — shrink the other big context filler</li>
+    <li><a href="/for-claude-code">Terse for Claude Code</a> — per-source session tracking</li>
+  </ul>
+</main>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent session optimizer + monitor. Compress prompts, detect duplicate tool calls, track per-turn cost. All on-device.</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Product</h4><a href="/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pipeline</a><a href="/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Techniques</a><a href="/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent Monitor</a><a href="/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pricing</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Techniques</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Spell Correction</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Pattern Optimization</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP Analysis</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Telegraph Compression</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">Research</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig Spelling</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Selective Context</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Docs</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

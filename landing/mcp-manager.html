@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Server Manager — Audit &amp; Disable MCP Servers | Terse</title>
+  <meta name="description" content="Discover every MCP server across Claude Code, Cursor, and Windsurf configs. Risk-score each one and enable or disable with one click — no JSON editing.">
+  <link rel="canonical" href="https://www.terseai.org/mcp-manager">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MCP Server Manager — Audit &amp; Disable MCP Servers | Terse">
+  <meta property="og:description" content="One dashboard for every MCP server on your machine: discovery across Claude Code, Cursor, and Windsurf configs, security risk scores, one-click disable.">
+  <meta property="og:url" content="https://www.terseai.org/mcp-manager">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MCP Server Manager — Audit &amp; Disable MCP Servers | Terse">
+  <meta name="twitter:description" content="Discover, risk-score, and disable MCP servers across Claude Code, Cursor, and Windsurf — without touching JSON.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "MCP Server Manager — Audit & Disable MCP Servers | Terse",
+        "url": "https://www.terseai.org/mcp-manager",
+        "description": "Terse's MCP Manager discovers all MCP servers across Claude Code, Cursor, and Windsurf configs, risk-scores each one, and lets you enable or disable servers without editing JSON.",
+        "dateModified": "2026-07-17",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "MCP Manager", "item": "https://www.terseai.org/mcp-manager"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I see all the MCP servers installed on my machine?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse's MCP Manager scans the MCP configuration files of Claude Code, Cursor, and Windsurf and lists every server it finds in one dashboard — its name, transport, which tools it exposes, and which agents load it. Servers configured in multiple tools show up once, with all their attachment points."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I disable an MCP server without editing JSON?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Flip the toggle next to the server in Terse's MCP Manager. Terse rewrites the underlying config safely and can re-enable the server later with the same click — the original definition is preserved. You never open .mcp.json, settings.json, or any other config file by hand."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What makes an MCP server risky?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse scores each server on four signals: remote transport (the server runs on someone else's machine), embedded credentials (API keys or tokens sitting in plain-text config), code-execution surface (tools that run shell commands or arbitrary code), and unpinned supply chain (npx or uvx pulling the latest version on every launch). High-scoring servers are flagged so you can disable or pin them."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do unused MCP servers cost me tokens?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Every enabled MCP server injects its tool definitions into the agent's context on every request — even if you never call those tools. A handful of bloated servers can add thousands of tokens per turn. Terse Doctor's MCP bloat scan finds dead servers, unused tools, and bloated tool prefixes, and the MCP Manager disables them in one click."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which tools' MCP configs does Terse discover?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse discovers MCP servers configured for Claude Code, Cursor, and Windsurf, covering both global and project-level configuration files. The same dashboard manages all of them."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does the MCP Manager send my configs to the cloud?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Discovery, risk scoring, and config edits all happen on-device. Your MCP configs — including any credentials inside them — never leave your machine."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg2:hsl(250,21%,11%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .hero{padding:140px 40px 80px;text-align:center;max-width:900px;margin:0 auto;position:relative}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07),transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:620px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:600px}
+    .divider{height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .demo-box{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;max-width:760px;margin:0 auto 40px}
+    .demo-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .demo-title{margin-left:8px;font-size:11px;color:var(--t3);flex:1}
+    .demo-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+    .mcp-list{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+    .mcp-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:12px;opacity:0;transition:opacity .3s}
+    .mcp-row.show{opacity:1}
+    .mcp-name{font-family:'JetBrains Mono',monospace;font-weight:600;min-width:130px}
+    .mcp-src{color:var(--t3);font-size:10px;flex:1}
+    .risk{padding:2px 9px;border-radius:4px;font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+    .risk.low{background:var(--acd);color:var(--ac)}
+    .risk.med{background:rgba(251,191,36,0.12);color:#fbbf24}
+    .risk.high{background:rgba(248,113,113,0.12);color:#f87171}
+    .mcp-toggle{width:32px;height:18px;border-radius:9px;background:var(--ac);position:relative;flex-shrink:0}
+    .mcp-toggle::after{content:'';position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:var(--bg0)}
+    .mcp-toggle.off{background:hsla(0,0%,100%,0.15)}
+    .mcp-toggle.off::after{right:auto;left:2px;background:var(--t3)}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+      .mcp-src{display:none}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#pipeline">Pipeline</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">MCP Manager</div>
+  <h1>Every MCP Server. <span class="gradient-text">One Dashboard.</span></h1>
+  <p class="sub">Terse discovers all the MCP servers scattered across your Claude Code, Cursor, and Windsurf configs, risk-scores each one, and lets you enable or disable any server with one click — no JSON editing, ever.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
+    <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">3</span><span class="lbl">tools scanned: Claude Code · Cursor · Windsurf</span></div>
+    <div class="stat-pill"><span class="val">4</span><span class="lbl">risk signals per server</span></div>
+    <div class="stat-pill"><span class="val">1-click</span><span class="lbl">enable / disable</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">JSON files opened by hand</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>Audit Your <span class="gradient-text">MCP Attack Surface</span></h2>
+  <p class="section-sub">MCP servers are third-party code with access to your agent — and they accumulate silently across config files. Terse puts them all in one list, scored.</p>
+
+  <div class="demo-box">
+    <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Terse — MCP Manager · 6 servers found</div><div class="demo-badge">Scan Complete</div></div>
+    <div class="mcp-list">
+      <div class="mcp-row" id="m1"><span class="mcp-name">filesystem</span><span class="mcp-src">Claude Code · local stdio · 11 tools</span><span class="risk low">Low</span><div class="mcp-toggle"></div></div>
+      <div class="mcp-row" id="m2"><span class="mcp-name">github</span><span class="mcp-src">Claude Code + Cursor · token in config</span><span class="risk med">Medium</span><div class="mcp-toggle"></div></div>
+      <div class="mcp-row" id="m3"><span class="mcp-name">shell-exec</span><span class="mcp-src">Cursor · code-execution surface</span><span class="risk high">High</span><div class="mcp-toggle"></div></div>
+      <div class="mcp-row" id="m4"><span class="mcp-name">web-search</span><span class="mcp-src">Windsurf · remote transport</span><span class="risk med">Medium</span><div class="mcp-toggle"></div></div>
+      <div class="mcp-row" id="m5"><span class="mcp-name">old-scraper</span><span class="mcp-src">Claude Code · unpinned npx · unused 30d</span><span class="risk high">High</span><div class="mcp-toggle off"></div></div>
+      <div class="mcp-row" id="m6"><span class="mcp-name">postgres</span><span class="mcp-src">Cursor · local stdio · pinned version</span><span class="risk low">Low</span><div class="mcp-toggle"></div></div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🔍</div>
+      <h3>Cross-Config Discovery</h3>
+      <p>Terse scans the MCP configuration of Claude Code, Cursor, and Windsurf — global and project-level — and merges everything into a single inventory. No server hides.</p>
+      <span class="tag">3 tools</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🌐</div>
+      <h3>Remote Transport Flag</h3>
+      <p>Servers running over remote transports execute on someone else's machine. Terse flags them so you know which tools ship your requests off-device.</p>
+      <span class="tag">Risk signal</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔑</div>
+      <h3>Embedded Credential Check</h3>
+      <p>API keys and tokens pasted into MCP config files sit in plain text. Terse detects embedded credentials and raises the server's risk score.</p>
+      <span class="tag">Risk signal</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💣</div>
+      <h3>Code-Execution Surface</h3>
+      <p>Servers exposing shell or arbitrary-code tools give the agent — and anything that prompt-injects it — direct execution on your machine. Flagged high.</p>
+      <span class="tag">Risk signal</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📦</div>
+      <h3>Unpinned Supply Chain</h3>
+      <p>An MCP server launched via unpinned npx or uvx pulls the latest package on every start — a supply-chain attack away from your codebase. Terse flags unpinned servers.</p>
+      <span class="tag">Risk signal</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🎚️</div>
+      <h3>One-Click Enable / Disable</h3>
+      <p>Toggle any server off without opening a config file. Terse rewrites the JSON safely and preserves the definition, so re-enabling is the same single click.</p>
+      <span class="tag">No JSON</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>MCP Servers Aren't Free — <span class="gradient-text">They Cost Tokens</span></h2>
+  <p class="section-sub">Every enabled server injects its tool definitions into the agent's context on every single request, whether you use those tools or not.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px">
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">The hidden context tax</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Tool schemas injected per server</span><span style="font-weight:600">hundreds–thousands of tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Sent on</span><span style="font-weight:600">every request</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Dead servers you forgot about</span><span style="font-weight:600">still injected</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2);font-style:italic">Result</span><span style="color:#f87171;font-weight:700">context bloat on every turn</span></div>
+        <div style="height:1px;background:var(--bd);margin:4px 0"></div>
+        <div style="font-size:12px;color:var(--t3)">Terse Doctor's MCP bloat scan finds dead servers, unused tools, and bloated tool prefixes.</div>
+      </div>
+    </div>
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--acm);border-radius:14px;background:linear-gradient(160deg,rgba(110,231,183,0.05),var(--bg2))">
+      <div style="font-size:12px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">What the MCP Manager does about it</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Shows which servers your agents actually use — and which have been dead weight for weeks</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Disables unused servers in one click, reclaiming their context tokens on every future request</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Flags high-risk servers so the sketchy ones get turned off first</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">→</span><span style="font-size:13px;color:var(--t2)">Pairs with the <a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline">budget circuit breaker</a> — leaner context means every turn under your ceiling goes further</span></div>
+        <div style="margin-top:8px;padding:10px 14px;background:var(--acd);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)">Result: smaller context, smaller attack surface, smaller bill</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about discovering, auditing, and disabling MCP servers.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">How do I see all the MCP servers on my machine?</div>
+      <div class="faq-a">Terse scans the MCP configs of Claude Code, Cursor, and Windsurf and lists every server in one dashboard — name, transport, exposed tools, and which agents load it. Servers configured in multiple tools appear once with all attachment points.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How do I disable an MCP server without editing JSON?</div>
+      <div class="faq-a">Flip the toggle next to the server. Terse rewrites the underlying config safely and preserves the original definition, so re-enabling is the same single click. You never open a config file by hand.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">What makes an MCP server risky?</div>
+      <div class="faq-a">Four signals: remote transport, embedded credentials in plain-text config, code-execution surface (shell or arbitrary-code tools), and unpinned supply chain (npx/uvx pulling latest on every launch). High-scoring servers are flagged for review.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Do unused MCP servers cost me tokens?</div>
+      <div class="faq-a">Yes — every enabled server injects its tool schemas into the agent's context on every request. Terse Doctor's MCP bloat scan finds dead servers, unused tools, and bloated tool prefixes; the MCP Manager disables them in one click.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Which tools' MCP configs does Terse discover?</div>
+      <div class="faq-a">Claude Code, Cursor, and Windsurf — both global and project-level configuration files, managed from the same dashboard.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does the MCP Manager send my configs to the cloud?</div>
+      <div class="faq-a">No. Discovery, risk scoring, and config edits all happen on-device. Your MCP configs — including any credentials inside them — never leave your machine.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">The MCP Manager covers every agent that loads MCP servers — and Terse monitors the rest of your agent fleet too.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card"><span style="font-size:18px">⚡</span><span>Claude Code — CLI Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-cursor" class="also-card"><span style="font-size:18px">✦</span><span>Cursor — AI Editor</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-windsurf" class="also-card"><span style="font-size:18px">🌊</span><span>Windsurf — Cascade Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/agent-budget-circuit-breaker" class="also-card"><span style="font-size:18px">🛑</span><span>Budget Circuit Breaker</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Know What Your Agents <span class="gradient-text">Are Loading</span></h2>
+  <p>30-day free trial. Scan runs on-device — your configs never leave the machine.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="/#pricing" class="btn-primary">Start Free Trial</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent butler for AI coding tools. Compress prompts, watch every agent, cap the spend. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-cline">Cline</a><a href="/for-windsurf">Windsurf</a><a href="/for-codex">OpenAI Codex</a><a href="/for-openclaw">OpenClaw</a></div>
+    <div class="footer-col"><h4>Product</h4><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="/terse-vs-llmlingua">Terse vs LLMLingua</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Windows · Rust</span></div>
+</footer>
+
+<script>
+(function(){
+  const rows = ['m1','m2','m3','m4','m5','m6'].map(id=>document.getElementById(id));
+  let started = false;
+  function run(){
+    if(started) return; started = true;
+    rows.forEach((el,i)=>setTimeout(()=>el.classList.add('show'), 300+i*250));
+  }
+  const obs = new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)run();}),{threshold:0.3});
+  obs.observe(document.querySelector('.demo-box'));
+})();
+</script>
+</body>
+</html>

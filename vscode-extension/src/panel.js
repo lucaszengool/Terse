@@ -3,6 +3,7 @@ const vscode = require('vscode');
 const path = require('path');
 const auth = require('./auth');
 const { PromptOptimizer } = require('./optimizer');
+const reviewNudge = require('./review-nudge');
 
 const API_BASE = 'https://www.terseai.org';
 
@@ -85,6 +86,7 @@ class TersePanel {
           const mode = msg.mode || vscode.workspace.getConfiguration('terse').get('mode', 'normal');
           const result = await optimizer.optimize(text, { aggressiveness: mode });
           this._post({ type: 'optimizeResult', result });
+          reviewNudge.recordSuccess();
         } catch (e) {
           this._post({ type: 'error', error: e.message });
         }

@@ -1,0 +1,16 @@
+# Files excluded from the packaged .vsix
+.vscode/**
+.git/**
+esbuild.js
+**/*.map
+**/.DS_Store
+# Dev-only tools — not needed at runtime
+node_modules/esbuild/**
+node_modules/@esbuild/**
+node_modules/@types/**
+node_modules/@vscode/vsce/**
+# Test and doc files inside packages (saves space)
+node_modules/**/test/**
+node_modules/**/*.md
+node_modules/**/*.ts
+node_modules/**/.github/**

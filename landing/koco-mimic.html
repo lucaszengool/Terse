@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Terse · 把省下的 Token 变成金币与花</title>
+<style>
+/* =====================================================================
+   Frame-faithful HTML recreation of the Koco habit-tracker promo video.
+   720x960 source · 29.1s · iPhone 15 Pro (silver titanium) floating &
+   tilting in 3D on a light-grey product backdrop, glass screen with
+   live specular sheen.  Scenes cross-fade on a real-time timeline while
+   the device keeps rotating.  Icons use native Apple 3D emoji (exactly
+   what the original app renders).  Pure CSS/JS, no assets.
+   ===================================================================== */
+:root{
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --green:#0bbf76; --greenD:#0a9e63; --lime:#9bff4d;
+  --grad:linear-gradient(135deg,#9bff4d 0%,#12e08c 46%,#06d6e6 100%);
+  --gradD:linear-gradient(135deg,#0fae6e,#0bbf76 50%,#08a9c0);
+  /* device build dims (design px; whole rig is scaled to fit) */
+  --w:372px; --h:800px; --r:60px; --rim:6px; --bezel:5px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+html,body{height:100%;background:#0b0b0d;font-family:var(--sans);overflow:hidden}
+emoji,.e{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-style:normal}
+
+/* ---------------- stage / product backdrop ---------------- */
+#stage{position:fixed;inset:0;display:grid;place-items:center;perspective:920px;perspective-origin:50% 42%;
+  background:
+    radial-gradient(64% 46% at 50% 34%,rgba(34,231,170,.34),transparent 62%),
+    radial-gradient(58% 42% at 50% 84%,rgba(8,200,235,.26),transparent 62%),
+    linear-gradient(158deg,#0a2c24 0%,#08202e 52%,#0c1736 100%)}
+#fit{position:relative;transform-origin:center center}
+.contact-shadow{position:absolute;left:50%;bottom:3%;width:calc(var(--w)*1.05);height:60px;transform:translateX(-50%);
+  border-radius:50%;z-index:-1;filter:blur(28px);
+  background:radial-gradient(ellipse at center,rgba(26,240,180,.4),rgba(8,200,235,.2) 42%,transparent 72%);
+  animation:shadow 6s ease-in-out infinite}
+@keyframes shadow{0%,100%{transform:translateX(-50%) scale(1);opacity:.92;filter:blur(16px)}
+  50%{transform:translateX(-50%) scale(1.13);opacity:.6;filter:blur(24px)}}
+
+/* ---------------- float + 3D tilt ---------------- */
+#float{animation:float 6s ease-in-out infinite;will-change:transform}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+/* #phone transform is driven per-scene by JS (rAF) to match the real video's
+   angle for each scene.  NO filter/overflow here — those flatten 3D, and we
+   need the pop-out star layer to keep real translateZ depth. */
+#phone{transform-style:preserve-3d;will-change:transform;transform:rotateX(6deg) rotateY(14deg) rotateZ(-1deg)}
+/* un-clipped 3D layer (sibling of the screen) so stars can leap OUT of the glass */
+#popLayer{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none;z-index:40}
+.pop{position:absolute;left:var(--ox,50%);top:var(--oy,44%);transform-style:preserve-3d;will-change:transform;
+  animation:popOut var(--d,1.5s) cubic-bezier(.16,1,.3,1) var(--dl,0s) forwards}
+.pop::after{content:"";position:absolute;left:50%;top:118%;width:30px;height:9px;border-radius:50%;transform:translateX(-50%);
+  background:radial-gradient(closest-side,rgba(20,22,28,.3),transparent);filter:blur(2px);opacity:0;animation:popShadow var(--d,1.5s) ease-out var(--dl,0s) forwards}
+/* shockwave ring + flash that burst behind the element as it pops out */
+.pop::before{content:"";position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;
+  border:3px solid rgba(255,214,90,.95);box-shadow:0 0 12px rgba(255,214,90,.7);transform:scale(.2);opacity:.95;
+  animation:popRing 640ms cubic-bezier(.16,1,.3,1) var(--dl,0s) both}
+@keyframes popRing{0%{transform:scale(.2);opacity:.95;border-width:6px}100%{transform:scale(4.2);opacity:0;border-width:.5px}}
+/* juicy squash-and-stretch burst out, then gravity arc + tumble */
+@keyframes popOut{
+  0%{transform:translate(-50%,4px) translateZ(0) scale3d(.3,.3,1) rotate(0);opacity:0}
+  10%{opacity:1;transform:translate(-50%,-14px) translateZ(110px) scale3d(1.35,.72,1) rotate(8deg)}   /* squash WIDE as it slams out */
+  20%{transform:translate(calc(-50% + var(--dx,0px)),-40px) translateZ(165px) scale3d(.74,1.28,1) rotate(34deg)} /* recoil TALL */
+  32%{transform:translate(calc(-50% + var(--dxm,0px)),-52px) translateZ(135px) scale3d(1.12,.92,1) rotate(120deg)}
+  44%{transform:translate(calc(-50% + var(--dxm,0px)),-44px) translateZ(120px) scale(1) rotate(200deg)}
+  100%{transform:translate(calc(-50% + var(--dx2,0px)),var(--fall,250px)) translateZ(10px) scale(.8) rotate(var(--spin,460deg));opacity:.92}}
+@keyframes popShadow{0%,46%{opacity:0;transform:translateX(-50%) scale(.3)}100%{opacity:.5;transform:translateX(-50%) scale(1)}}
+
+/* ---------------- titanium frame ---------------- */
+.frame{position:relative;width:var(--w);height:var(--h);border-radius:var(--r);padding:var(--rim);transform-style:preserve-3d;
+  background:
+   repeating-linear-gradient(90deg,rgba(255,255,255,0) 0px,rgba(255,255,255,.05) 1px,rgba(0,0,0,.045) 2px,rgba(255,255,255,0) 3px),
+   linear-gradient(100deg,#d6d8da 0%,#f5f6f7 12%,#c5c7ca 30%,#e9eaec 50%,#c0c2c5 70%,#f1f2f4 88%,#cdcfd2 100%);
+  box-shadow:
+   inset 0 2px 1px rgba(255,255,255,.85),
+   inset 2px 0 1px rgba(255,255,255,.45),
+   inset 0 -3px 2px rgba(0,0,0,.34),
+   inset -2px 0 2px rgba(0,0,0,.22),
+   inset 0 0 0 1px rgba(0,0,0,.16),
+   0 30px 46px rgba(20,22,28,.22),
+   0 9px 16px rgba(20,22,28,.16)}
+.frame::before{content:"";position:absolute;inset:0;border-radius:var(--r);padding:var(--rim);pointer-events:none;
+  background:conic-gradient(from 212deg at 50% 50%,#fff 0deg,#b8bbbf 40deg,#f6f7f8 90deg,#a7aaae 150deg,#fff 200deg,#babdc1 250deg,#f3f4f6 300deg,#fff 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
+/* side buttons */
+.btn{position:absolute;border-radius:3px;background:linear-gradient(180deg,#e7e8ea,#b4b6b9,#e7e8ea);box-shadow:inset 0 0 1px rgba(0,0,0,.45)}
+.btn.act{left:-3px;top:128px;width:3px;height:30px}
+.btn.vup{left:-3px;top:172px;width:3px;height:58px}
+.btn.vdn{left:-3px;top:240px;width:3px;height:58px}
+.btn.pwr{right:-3px;top:182px;width:3px;height:88px}
+
+/* ---------------- screen / glass ---------------- */
+.screen{position:relative;width:100%;height:100%;border-radius:calc(var(--r) - var(--rim) + 1px);background:#000;
+  padding:var(--bezel);overflow:hidden;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 0 16px rgba(0,0,0,.9)}
+.content{position:relative;width:100%;height:100%;border-radius:calc(var(--r) - var(--rim) - var(--bezel) + 2px);
+  overflow:hidden;background:#0a1f1c}
+/* dynamic island */
+.island{position:absolute;top:13px;left:50%;transform:translateX(-50%) translateZ(2px);width:104px;height:31px;background:#000;
+  border-radius:17px;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:0 11px;
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.12),0 1px 3px rgba(0,0,0,.6)}
+.island .rec{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff7b7b,#ff3b30 60%,#c1271d);
+  box-shadow:0 0 6px 1px rgba(255,59,48,.8);animation:rec 1.7s ease-in-out infinite}
+.island .lens{width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#22323f,#05080c 70%);
+  box-shadow:inset 0 0 2px rgba(120,160,200,.5)}
+@keyframes rec{0%,100%{opacity:1}50%{opacity:.4}}
+/* static gloss + bevel */
+.glass-gloss{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:55;mix-blend-mode:screen;
+  background:
+   linear-gradient(115deg,transparent 0,transparent 39%,rgba(255,255,255,.05) 45%,rgba(255,255,255,.22) 50%,rgba(255,255,255,.05) 55%,transparent 61%,transparent 100%),
+   linear-gradient(135deg,rgba(255,255,255,.18) 0,rgba(255,255,255,.04) 24%,transparent 44%);
+  box-shadow:inset -8px -6px 0 -10px rgba(255,255,255,.85),inset 0 -7px 0 -8px rgba(255,255,255,.6),inset 6px 6px 12px -8px rgba(255,255,255,.45)}
+/* moving specular sweep */
+.glass-sweep{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:56;overflow:hidden;mix-blend-mode:screen}
+.glass-sweep::before{content:"";position:absolute;top:-40%;left:-60%;width:58%;height:180%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.05) 30%,rgba(255,255,255,.34) 50%,rgba(255,255,255,.05) 70%,transparent);
+  filter:blur(7px);transform:rotate(17deg) translateX(0);animation:sweep 8.5s ease-in-out infinite}
+@keyframes sweep{0%{transform:rotate(17deg) translateX(0);opacity:0}12%{opacity:.85}
+  52%{transform:rotate(17deg) translateX(360%);opacity:.85}62%{opacity:0}100%{transform:rotate(17deg) translateX(360%);opacity:0}}
+
+/* ---------------- scene system ---------------- */
+.scene{position:absolute;inset:0;opacity:0;visibility:hidden;z-index:1;overflow:hidden;
+  background:radial-gradient(80% 50% at 50% 12%,#10b07a33,transparent 60%),linear-gradient(168deg,#0c2c25 0%,#0a2336 100%)}
+.scene.on{opacity:1;visibility:visible;z-index:2}
+.scene.fade{transition:opacity .32s ease}
+.scene.zin.on{animation:zin .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes zin{from{transform:scale(1.08);opacity:0;filter:blur(5px)}to{transform:scale(1);opacity:1;filter:blur(0)}}
+
+/* ---------------- iOS status bar ---------------- */
+.statusbar{position:absolute;top:0;left:0;right:0;height:54px;z-index:50;display:flex;align-items:center;justify-content:space-between;
+  padding:18px 26px 0;color:#0c0c0c;font-weight:600;font-size:15px}
+.statusbar .t{letter-spacing:.2px}
+.statusbar .l{display:flex;align-items:center;gap:6px}
+.statusbar .rgt{display:flex;align-items:center;gap:6px}
+.statusbar svg{display:block}
+.sb-dark{color:#0c0c0c}.sb-white{color:#fff}
+.statusbar .tmark{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:5px;font-size:11px;font-weight:900;line-height:1;border:1.6px solid currentColor;opacity:.9}
+/* "+N" coin-gain popup that floats up on collect */
+.gain{position:absolute;z-index:46;display:flex;align-items:center;gap:5px;transform:translateX(-50%);pointer-events:none;
+  font-size:23px;font-weight:900;color:var(--green);text-shadow:0 2px 10px rgba(255,255,255,.85);
+  animation:gainUp 1.5s cubic-bezier(.2,.9,.3,1) forwards}
+@keyframes gainUp{0%{opacity:0;transform:translateX(-50%) translateY(12px) scale(.5)}
+  16%{opacity:1;transform:translateX(-50%) translateY(0) scale(1.15)}
+  30%{transform:translateX(-50%) translateY(-4px) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-74px) scale(1)}}
+
+/* ---------------- shared bits ---------------- */
+.squig{display:block;height:7px;width:30px;margin-top:2px}
+.squig path{fill:none;stroke:var(--green);stroke-width:2.4;stroke-linecap:round}
+.bokeh{position:absolute;inset:0;overflow:hidden;pointer-events:none;
+  -webkit-mask:linear-gradient(#000 0,#000 34%,transparent 72%);mask:linear-gradient(#000 0,#000 34%,transparent 72%)}
+.bokeh i{position:absolute;top:var(--y);left:var(--x);width:var(--s);height:var(--s);border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,var(--col),transparent 70%);filter:blur(var(--b));opacity:var(--o);
+  animation:bkf var(--d) ease-in-out var(--dl) infinite alternate}
+@keyframes bkf{from{transform:translate(0,0) scale(1)}to{transform:translate(var(--dx),var(--dy)) scale(1.16)}}
+
+/* holographic star (rounded, foil sheen) */
+/* ===== Terse coins ===== */
+/* holographic "rare" coin (rainbow, round) */
+.holo{--sz:30px;position:relative;width:var(--sz);height:var(--sz);display:inline-block;flex:none;isolation:isolate;border-radius:50%;
+  filter:drop-shadow(0 3px 6px rgba(150,110,255,.35));
+  background:
+    radial-gradient(circle at 36% 28%,rgba(255,255,255,.85),transparent 42%),
+    repeating-linear-gradient(125deg,rgba(255,0,180,.14) 0,rgba(0,230,255,.14) 3px,rgba(120,255,140,.14) 6px,rgba(180,120,255,.14) 9px),
+    conic-gradient(from 0deg,#ff61d2,#6ff0ff,#8cff9e,#b78cff,#ffd36f,#ff61d2);
+  background-size:200% 200%,200% 200%,180% 180%;background-blend-mode:screen,color-dodge,normal;
+  box-shadow:inset 0 0 0 calc(var(--sz)*.07) rgba(255,255,255,.5),inset 0 -3px 6px rgba(120,60,160,.35),0 2px 6px rgba(120,80,200,.3);
+  animation:holoSweep 3.4s ease-in-out infinite}
+@keyframes holoSweep{0%,100%{background-position:0% 50%,0% 0%,50% 50%}50%{background-position:100% 50%,100% 0%,50% 50%}}
+/* signature gold Terse coin (with T) */
+.coin{--cs:30px;width:var(--cs);height:var(--cs);border-radius:50%;position:relative;display:inline-grid;place-items:center;flex:none;
+  background:radial-gradient(circle at 36% 26%,#fff6c8 0%,#ffe072 32%,#f7b52e 64%,#d98a16 100%);
+  border:calc(var(--cs)*.05) solid #ffe98a;
+  box-shadow:inset 0 calc(var(--cs)*.06) calc(var(--cs)*.1) rgba(255,255,255,.85),inset 0 calc(var(--cs)*-.1) calc(var(--cs)*.14) rgba(150,90,0,.45),0 calc(var(--cs)*.1) calc(var(--cs)*.22) rgba(200,130,15,.4)}
+.coin::before{content:"";position:absolute;inset:15%;border-radius:50%;box-shadow:inset 0 0 0 calc(var(--cs)*.035) rgba(160,95,0,.28)}
+.coin>b{position:relative;font-weight:900;font-size:calc(var(--cs)*.52);line-height:1;color:#b3760c;text-shadow:0 1px 0 rgba(255,255,255,.55)}
+.coin .sheen{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}
+.coin .sheen::after{content:"";position:absolute;top:-30%;left:-60%;width:46%;height:160%;transform:rotate(20deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);animation:coinSheen 3.2s ease-in-out infinite}
+@keyframes coinSheen{0%{transform:rotate(20deg) translateX(0);opacity:0}18%{opacity:.95}55%{transform:rotate(20deg) translateX(420%);opacity:.95}100%{transform:rotate(20deg) translateX(420%);opacity:0}}
+.coin.dim{background:radial-gradient(circle at 36% 26%,#eef1f4,#b9bfc6 38%,#868d95 72%,#5a6068);border-color:#d3d7dc}
+.coin.dim>b{color:#5c626a;text-shadow:none}
+
+/* glowing orb (jelly emoji badge) */
+.orb{--glow:255,196,60;--c1:#fff0b0;--c2:#ffb12e;position:relative;width:62px;height:62px;display:grid;place-items:center;
+  font-size:30px;line-height:1;border-radius:50%;isolation:isolate;
+  background:radial-gradient(120% 120% at 30% 22%,var(--c1) 0%,var(--c2) 55%,rgba(0,0,0,.18) 130%);
+  box-shadow:inset 0 -6px 12px rgba(0,0,0,.18),inset 0 4px 8px rgba(255,255,255,.55),
+    0 6px 16px rgba(var(--glow),.45),0 0 26px rgba(var(--glow),.5),0 0 56px rgba(var(--glow),.32);
+  animation:orbB 3s ease-in-out infinite}
+.orb::before{content:"";position:absolute;top:9%;left:18%;width:55%;height:38%;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(255,255,255,.95),transparent);filter:blur(1px);z-index:2}
+.orb .e{position:relative;z-index:3;filter:drop-shadow(0 1px 1px rgba(0,0,0,.2))}
+@keyframes orbB{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-4px) scale(1.04)}}
+
+/* comet */
+.comet{position:absolute;display:flex;align-items:center;transform-origin:left center;filter:drop-shadow(0 0 9px rgba(255,190,70,.55))}
+.comet .tail{width:200px;height:13px;border-radius:999px;
+  background:linear-gradient(90deg,rgba(255,120,30,0) 0%,rgba(255,150,45,.4) 16%,rgba(255,215,75,.88) 52%,rgba(150,255,120,1) 90%,#d6ffc0 100%);
+  clip-path:polygon(0 50%,58% 9%,100% 0,100% 100%,58% 91%);filter:blur(1px);animation:cometP 1.2s ease-in-out infinite}
+.comet .head{width:17px;height:17px;margin-left:-7px;border-radius:50%;
+  background:radial-gradient(circle at 40% 40%,#fff,#d6ffbf 35%,#9bff7a 70%);
+  box-shadow:0 0 8px #b6ff8e,0 0 18px #8cff66,0 0 34px rgba(140,255,102,.7)}
+@keyframes cometP{0%,100%{opacity:.85}50%{opacity:1}}
+
+/* iOS bottom sheet */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;z-index:30;
+  box-shadow:0 -8px 40px rgba(0,0,0,.16);padding:10px 20px 26px}
+.scene.on .sheet{animation:sheetUp .55s cubic-bezier(.22,1,.36,1) both}
+@keyframes sheetUp{0%{transform:translateY(100%)}70%{transform:translateY(-1.5%)}100%{transform:translateY(0)}}
+.sheet .handle{width:40px;height:5px;border-radius:9px;background:#d8d8dc;margin:2px auto 14px}
+.sheet .shead{display:flex;align-items:center;gap:16px;font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:6px}
+.sheet .shead .sub{color:#b6b6bb;font-weight:600;font-size:15px}
+.sheet .shead .x{margin-left:auto;color:#bcbcc2;font-size:22px;font-weight:400}
+
+/* =================== habit grid scene =================== */
+.h-top{position:absolute;top:54px;left:0;right:0;z-index:20;padding:6px 18px 0}
+.tabs{display:flex;align-items:flex-start;gap:13px;font-size:15px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap}
+.tabs>span,.tabs .act{white-space:nowrap}
+.tabs .act{color:#fff;font-weight:800;display:flex;flex-direction:column;align-items:center}
+.tabs .sp{flex:1}
+.tab-ic{display:flex;align-items:center;gap:7px;color:rgba(255,255,255,.6);flex:none}
+.tab-ic .b{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:rgba(255,255,255,.12);font-size:12px}
+.summary{margin:18px 0 0;display:flex;align-items:center;gap:12px;background:var(--grad);
+  border-radius:20px;padding:16px 18px;box-shadow:0 10px 26px rgba(11,191,118,.4)}
+.summary .num{font-size:40px;font-weight:900;letter-spacing:-1px;line-height:.9;color:#fff;text-shadow:0 2px 10px rgba(0,60,40,.3)}
+.summary .meta{font-size:12px;color:rgba(255,255,255,.85);font-weight:700;line-height:1.25}
+.summary .modes{margin-left:auto;display:flex;gap:6px}
+.mc{font-size:12px;font-weight:800;color:rgba(255,255,255,.85);background:rgba(255,255,255,.22);border-radius:11px;padding:7px 11px}
+.mc.on{color:#06623f;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+/* live compression bar — Terse's core function, animated */
+.livebar{margin:12px 2px 0;display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700}
+.livebar .ld{color:#1a1a1a;white-space:nowrap}
+.livebar .lt{flex:1;height:9px;border-radius:6px;background:rgba(120,120,128,.16);overflow:hidden}
+.livebar .lt i{display:block;height:100%;width:58%;border-radius:6px;background:var(--grad);background-size:200% 100%;box-shadow:0 0 10px rgba(22,196,127,.6)}
+.scene.on .livebar .lt i{animation:liveFill 1.1s cubic-bezier(.2,.9,.3,1) both,liveFlow 2.4s linear .9s infinite}
+@keyframes liveFill{from{width:0}to{width:58%}}
+@keyframes liveFlow{to{background-position:200% 0}}
+.livebar .lp{color:var(--green);font-weight:900;white-space:nowrap}
+.gridwrap{position:absolute;left:0;right:0;top:214px;bottom:0;overflow:hidden}
+.gridpad{padding:6px 16px 80px;will-change:transform}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.card{position:relative;border-radius:22px;height:120px;padding:15px 14px;overflow:hidden;
+  box-shadow:0 6px 18px rgba(20,20,30,.05);display:flex;flex-direction:column}
+.card.w{background:#fff}
+.card.d{background:#15171d;border:1px solid rgba(255,255,255,.07);box-shadow:inset 0 1.5px 0 rgba(255,214,120,.32),0 8px 22px rgba(0,0,0,.3)}
+.card.d::after{content:"T";position:absolute;top:8px;right:11px;font-size:15px;font-weight:900;line-height:1;
+  color:rgba(255,214,120,.16)}
+.card .nm{font-size:13px;font-weight:700;line-height:1.15;letter-spacing:-.2px;max-width:76%}
+.card.w .nm{color:#20242b}.card.d .nm{color:#f1f2f4}
+.card .ct{font-size:24px;font-weight:800;margin-top:4px;line-height:1}
+.card.w .ct{color:#181b20}.card.d .ct{color:#fff}
+.card .ct.o,.card .ct.gr{color:var(--green)}
+.card .emo{position:absolute;right:10px;bottom:12px;font-size:33px;line-height:1;filter:drop-shadow(0 3px 5px rgba(0,0,0,.14))}
+.card.d .emo{filter:drop-shadow(0 3px 6px rgba(0,0,0,.4))}
+.card .badge{position:absolute;right:7px;bottom:10px;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;
+  font-size:11px;font-weight:800;color:#fff;z-index:3;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.card .badge.plus,.card .badge.done{background:var(--green)}
+.card .hl{position:absolute;top:-6px;left:-6px;--sz:34px;z-index:4}
+
+/* =================== star-wish globe scene =================== */
+.sw{position:absolute;inset:0;background:
+  radial-gradient(50% 32% at 22% 30%,rgba(255,90,180,.5),transparent 64%),
+  radial-gradient(48% 32% at 84% 26%,rgba(60,150,255,.55),transparent 66%),
+  radial-gradient(44% 28% at 64% 54%,rgba(150,90,255,.5),transparent 66%),
+  radial-gradient(64% 40% at 48% 88%,rgba(255,200,60,.42),transparent 64%),
+  linear-gradient(170deg,#1b1340 0%,#0e1c45 100%)}
+.sw::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(50% 34% at 30% 26%,rgba(255,255,255,.12),transparent 70%)}
+.sw .hd{position:absolute;top:60px;left:20px;right:18px;display:flex;align-items:flex-start;justify-content:space-between}
+.sw .ti{font-size:21px;font-weight:800;color:#fff}
+.sw .acts{display:flex;gap:13px;font-size:18px;color:rgba(255,255,255,.7);margin-top:4px;align-items:center}
+.sw .acts .e{font-size:18px}
+.sw .wish{position:absolute;top:108px;left:0;right:0;text-align:center;color:rgba(255,255,255,.78);font-size:15px;font-weight:600}
+.sw .date{position:absolute;top:138px;right:26px;color:rgba(255,255,255,.5);font-size:13px;font-weight:600}
+.ribL,.ribR{position:absolute;top:402px;width:90px;height:42px;z-index:1;
+  background:linear-gradient(110deg,#ffe08a,#ff9e2c);border-radius:50%/80% 80% 30% 30%;
+  box-shadow:0 6px 12px rgba(240,160,40,.3);opacity:.92}
+.ribL{left:26px;transform:rotate(-26deg)}
+.ribR{right:26px;transform:rotate(26deg) scaleX(-1)}
+.globe{position:absolute;top:150px;left:50%;transform:translateX(-50%);width:300px;height:300px;border-radius:50%;overflow:hidden;z-index:2;
+  background:radial-gradient(120% 120% at 32% 18%,rgba(255,255,255,.58),rgba(255,255,255,.13) 42%,rgba(200,216,240,.05) 70%,rgba(255,255,255,.16));
+  box-shadow:inset 0 8px 22px rgba(255,255,255,.85),inset 0 -20px 40px rgba(150,172,210,.22),
+    inset 0 0 0 2px rgba(255,255,255,.6),inset 0 0 30px rgba(255,255,255,.38),0 18px 44px rgba(150,170,210,.28)}
+.globe::after{content:"";position:absolute;top:6%;left:14%;width:46%;height:32%;border-radius:50%;transform:rotate(-20deg);
+  background:radial-gradient(closest-side,rgba(255,255,255,.9),transparent);filter:blur(3px)}
+.globe .pile{position:absolute;inset:0}
+.globe .bit{position:absolute;line-height:.85;will-change:transform;animation:idleBob var(--dur,3.4s) ease-in-out var(--delay,0s) infinite}
+.globe .bit .e,.globe .bit .holo{display:block}
+.globe .bit .coin:not(.dim){animation:coinGlow 2.8s ease-in-out infinite}
+@keyframes coinGlow{0%,100%{filter:drop-shadow(0 0 3px rgba(255,200,70,.4))}50%{filter:drop-shadow(0 0 8px rgba(255,215,95,.85))}}
+@keyframes idleBob{
+  0%,100%{transform:translateY(0) rotate(calc(var(--rot,5deg) * -1))}
+  33%{transform:translateY(calc(var(--amp,6px) * -1)) translateX(calc(var(--amp,6px) * .4)) rotate(var(--rot,5deg))}
+  66%{transform:translateY(calc(var(--amp,6px) * -.4)) translateX(calc(var(--amp,6px) * -.4)) rotate(calc(var(--rot,5deg) * -.6))}}
+.dk{filter:grayscale(1) brightness(.42) drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+.sw .collect{position:absolute;top:462px;left:22px;display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;color:#fff}
+.sw .collect b{color:#ff8a00}
+.sw .collect .gray{color:#a9a9af;font-weight:600;font-size:14px}
+.sw .cheese{position:absolute;top:446px;right:30px;font-size:44px;filter:drop-shadow(0 3px 6px rgba(255,180,60,.5))}
+.sw .cheese .dot{position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;background:#ff3b30}
+/* globe#2 rainbow comet — gold star head shooting a flowing rainbow tail toward the card */
+.sw .gcomet{position:absolute;top:404px;right:54px;z-index:6;width:0;height:0}
+.sw .ghead{position:absolute;right:-22px;top:-22px;font-size:40px;filter:drop-shadow(0 0 9px rgba(255,200,60,.8))}
+.sw .gtail{position:absolute;right:-6px;top:-4px;width:180px;height:18px;transform-origin:right center;transform:rotate(152deg);
+  border-radius:999px;clip-path:polygon(0 50%,58% 8%,100% 0,100% 100%,58% 92%);filter:blur(1px);
+  background:linear-gradient(90deg,rgba(255,90,200,0) 0%,rgba(255,90,200,.6) 16%,rgba(255,220,70,.92) 46%,rgba(120,255,140,1) 72%,rgba(120,180,255,1) 100%);
+  background-size:220% 100%;animation:gflow 1.3s linear infinite}
+@keyframes gflow{from{background-position:0 0}to{background-position:-220% 0}}
+.statcard{position:absolute;left:18px;right:18px;bottom:26px;background:#fff;border:2px solid rgba(52,199,89,.3);border-radius:22px;
+  padding:20px 8px;display:flex;justify-content:space-around;text-align:center;box-shadow:0 10px 26px rgba(40,160,80,.12)}
+.statcard .s .n{font-size:30px;font-weight:800;color:var(--green)}
+.statcard .s .n.dark{color:#1c1c1e}
+.statcard .s .u{font-size:12px;color:#9a9a9f;font-weight:600;margin-top:2px}
+.statcard .s .n small{font-size:13px;color:#9a9a9f;font-weight:600}
+
+/* =================== comet trail scene =================== */
+.tr{position:absolute;inset:0;background:radial-gradient(60% 40% at 50% 30%,rgba(120,90,255,.4),transparent 60%),linear-gradient(170deg,#17123e,#0e1c45)}
+.tr .blurbg{position:absolute;inset:0;filter:blur(3px);opacity:.6;background:
+  radial-gradient(40% 26% at 30% 30%,#cfe0ff,transparent 70%),radial-gradient(36% 24% at 70% 24%,#ffd9ec,transparent 70%),
+  radial-gradient(50% 30% at 50% 70%,#fff0c8,transparent 70%)}
+.tr .tabs2{position:absolute;top:118px;left:22px;display:flex;gap:18px;font-size:16px;font-weight:700;color:rgba(255,255,255,.55)}
+.tr .tabs2 .act{color:#fff;font-weight:800;display:flex;flex-direction:column;align-items:flex-start}
+.tr .tabs2 .sub{color:rgba(255,255,255,.5);font-weight:600}
+.tr .scene-comet{position:absolute;top:150px;left:50px;width:240px;height:300px}
+
+/* =================== habit detail (carrot) scene =================== */
+.dt{position:absolute;inset:0;background:radial-gradient(60% 40% at 72% 28%,rgba(255,150,40,.34),transparent 60%),linear-gradient(168deg,#2a1426 0%,#121034 100%)}
+.dt .back{position:absolute;top:96px;left:22px;font-size:24px;color:#fff}
+.dt .mid{position:absolute;top:96px;left:0;right:0;text-align:center;font-size:17px;font-weight:700;color:rgba(255,255,255,.82)}
+.dt .big{position:absolute;top:128px;left:26px;font-size:54px;font-weight:800;color:#fff;line-height:.9}
+.dt .nm{position:absolute;top:196px;left:26px;font-size:22px;font-weight:800;color:#fff}
+.dt .recent{position:absolute;top:230px;left:26px;font-size:13px;color:rgba(255,255,255,.55);font-weight:600}
+.dt .stars{position:absolute;top:256px;left:24px;font-size:24px;letter-spacing:2px}
+.dt .veg{position:absolute;top:150px;right:24px;font-size:120px;line-height:1;filter:drop-shadow(0 10px 16px rgba(220,120,40,.35))}
+.cal{position:absolute;left:16px;right:16px;top:312px;bottom:20px;background:#fff;border-radius:26px;padding:18px 16px;
+  box-shadow:0 12px 30px rgba(40,40,60,.1)}
+.cal .ch{display:flex;align-items:center;justify-content:space-between;font-size:19px;font-weight:800;color:#1c1c1e;margin-bottom:14px}
+.cal .ch span{color:var(--green);font-weight:600}
+.cal .wk,.cal .dys{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.cal .wk{color:#bcbcc2;font-size:13px;font-weight:600;margin-bottom:8px}
+.cal .dys{gap:11px 0;font-size:15px;color:var(--green);font-weight:600}
+
+/* =================== 星盒 collection scene =================== */
+.box-sc{position:absolute;inset:0;background:radial-gradient(70% 40% at 50% 14%,rgba(16,180,140,.32),transparent 60%),linear-gradient(168deg,#0c2c25,#0a2336)}
+.box-sc .orbs{position:absolute;top:96px;left:0;right:0;display:flex;justify-content:space-evenly;align-items:center}
+.box-sc .sheet{height:64%}
+.collgrid{display:flex;justify-content:space-around;padding:24px 4px 8px;text-align:center}
+.collgrid .it{width:30%;position:relative}
+.collgrid .q{position:absolute;top:-14px;left:50%;transform:translateX(-50%);color:#c9c9cf;font-size:16px;font-weight:700}
+.collgrid .ic{font-size:50px;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,.18))}
+.collgrid .ic .holo{--sz:54px;margin:0 auto}
+.collgrid .nm{font-size:16px;font-weight:800;color:#1c1c1e;margin-top:8px}
+.collgrid .ds{font-size:12px;color:#a6a6ac;font-weight:500;line-height:1.5;margin-top:6px;padding:0 4px}
+.box-sc .locks{display:flex;justify-content:space-around;padding:8px 4px 0;font-size:18px;color:#c2c2c8}
+
+/* =================== widget space scene =================== */
+.ws{position:absolute;inset:0;background:radial-gradient(60% 40% at 30% 24%,rgba(120,90,255,.34),transparent 60%),linear-gradient(165deg,#102a3e 0%,#171048 100%)}
+.ws .x{position:absolute;top:96px;left:24px;font-size:24px;color:#fff}
+.ws .ti{position:absolute;top:150px;left:0;right:0;text-align:center;font-size:17px;font-weight:800;color:#fff;display:flex;flex-direction:column;align-items:center}
+.ws .ti .e{font-size:14px;margin-bottom:2px}
+.wcard{position:absolute;top:198px;left:24px;right:24px;height:170px;border-radius:30px;overflow:hidden;
+  background:linear-gradient(140deg,rgba(255,255,255,.85),rgba(225,224,250,.7));
+  box-shadow:0 16px 36px rgba(150,140,210,.25),inset 0 1px 1px rgba(255,255,255,.8);display:flex;align-items:center;padding:0 26px}
+.wcard .bubble{position:absolute;left:-10px;bottom:-30px;width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,rgba(255,255,255,.8),rgba(190,180,240,.25) 60%,transparent 75%)}
+.wcard .stars{position:absolute;left:18px;bottom:46px;width:150px;height:90px;font-size:16px}
+.wcard .stars .e{position:absolute}
+.wcard .rgt{margin-left:auto;text-align:center;z-index:2}
+.wcard .rgt .n{font-size:34px;font-weight:800;color:#9a9aa0}
+.wcard .rgt .l{font-size:12px;color:#9a9aa0;font-weight:600}
+.wcard .rgt .e{font-size:40px;filter:drop-shadow(0 4px 8px rgba(255,200,60,.5))}
+.ws .clbl{position:absolute;top:382px;left:0;right:0;text-align:center;color:rgba(255,255,255,.6);font-size:13px;font-weight:600}
+.ws .dots{position:absolute;top:404px;left:0;right:0;display:flex;justify-content:center;gap:6px}
+.ws .dots i{width:6px;height:6px;border-radius:50%;background:#cfcfd5}.ws .dots i.on{background:var(--green)}
+.ws .mini{position:absolute;top:438px;left:24px;right:24px;display:flex;gap:14px}
+.mcard{flex:1;border-radius:24px;padding:16px;box-shadow:0 10px 24px rgba(40,40,60,.08)}
+.mcard.y{background:linear-gradient(160deg,#fff6cf,#ffe9a8);display:flex;flex-direction:column}
+.mcard.y .e{font-size:46px;align-self:flex-end;filter:drop-shadow(0 4px 6px rgba(200,140,30,.4))}
+.mcard.y .n{font-size:30px;font-weight:800;color:#3a2e10;margin-top:6px}
+.mcard.y .l{font-size:13px;color:#7a6a3a;font-weight:600}
+.mcard.wt{background:#fff}
+.mcard.wt .dd{font-size:14px;color:#9a9a9f;font-weight:700;margin-bottom:10px}
+.mcard.wt .row{display:flex;align-items:center;gap:8px;margin:8px 0}
+.mcard.wt .row .e{font-size:24px}
+.mcard.wt .row .n{font-size:18px;font-weight:800;color:#1c1c1e}
+.mcard.wt .row .l{font-size:13px;color:#8a8a8f;font-weight:600}
+.ws .mlbl{position:absolute;bottom:40px;left:0;right:0;text-align:center;color:rgba(255,255,255,.6);font-size:13px;font-weight:600}
+.ws .mlbl .dot{display:block;width:7px;height:7px;border-radius:50%;background:var(--green);margin:8px auto 0}
+
+/* =================== chick scene =================== */
+.ck{position:absolute;inset:0;overflow:hidden;background:radial-gradient(70% 44% at 50% 16%,rgba(16,180,140,.32),transparent 60%),linear-gradient(168deg,#0e2a24,#0c2238)}
+.ck .hd{position:absolute;top:62px;left:24px;font-size:20px;font-weight:800;color:#fff}
+.ck .chick{position:absolute;top:138px;left:54px;font-size:132px;line-height:1;
+  filter:drop-shadow(0 14px 20px rgba(240,180,40,.42));animation:bobC 2.6s ease-in-out infinite}
+@keyframes bobC{0%,100%{transform:translateY(0) rotate(-2.5deg)}50%{transform:translateY(-9px) rotate(2.5deg)}}
+.ck .kstar{position:absolute;top:182px;right:38px;--sz:30px;animation:kbob 2.6s ease-in-out infinite}
+@keyframes kbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.ck .kline{position:absolute;top:214px;left:178px;width:148px;height:2px;border-radius:2px;transform-origin:left center;transform:rotate(-7deg);
+  background:repeating-linear-gradient(90deg,#dcdce0 0 7px,transparent 7px 12px)}
+.ck .pill{position:absolute;top:432px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;font-size:15px;
+  font-weight:800;padding:11px 30px;border-radius:24px;box-shadow:0 8px 20px rgba(52,199,89,.4)}
+.ck .lines{position:absolute;top:488px;left:24px;right:24px}
+.ck .lrow{display:flex;align-items:center;gap:10px;padding:14px 4px;border-bottom:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.7);font-size:14px;font-weight:600}
+.ck .lrow .e{font-size:22px}
+.ck .lrow .n{margin-left:auto;color:rgba(255,255,255,.6);font-weight:700;font-size:13px}
+
+/* =================== final stats scene =================== */
+.fn{position:absolute;inset:0;background:radial-gradient(70% 42% at 50% 14%,rgba(16,180,140,.3),transparent 60%),linear-gradient(168deg,#0c2c25,#141038)}
+.fn .x{position:absolute;top:96px;left:24px;font-size:24px;color:#fff}
+.fn .track{position:absolute;top:150px;left:18px;right:18px}
+.fn .stars{display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px 12px}
+.fn .stars .holo{--sz:38px}
+.fn .stars .out{--sz:34px;opacity:.45;filter:grayscale(.6) drop-shadow(0 2px 3px rgba(0,0,0,.15))}
+.fn .line{position:relative;height:3px;background:#dcdce0;border-radius:3px;margin:0 8px}
+.fn .line .fill{position:absolute;left:0;top:0;height:100%;width:34%;background:var(--green);border-radius:3px}
+.fn .line .pt{position:absolute;top:-7px;width:17px;height:17px;border-radius:50%;background:#fff;border:2px solid #dcdce0;transform:translateX(-50%)}
+.fn .line .pt.on{background:var(--green);border-color:var(--green);color:#fff;font-size:10px;display:grid;place-items:center}
+.fn .labs{display:flex;justify-content:space-between;padding:10px 0 0;font-size:13px;color:rgba(255,255,255,.5);font-weight:600}
+.fn .labs .on{color:rgba(255,255,255,.9)}
+.fn .unlock{position:absolute;top:300px;left:18px;right:18px;background:rgba(210,240,220,.5);border:1.5px solid rgba(52,199,89,.3);
+  border-radius:22px;padding:18px;text-align:center;font-size:16px;font-weight:700;color:#2a2a2c}
+.fn .unlock b{color:#ff8a00}.fn .unlock .g{color:var(--green)}
+.fn .fstats{position:absolute;top:392px;left:18px;right:18px;display:flex;justify-content:space-around;text-align:center}
+.fn .fstats .n{font-size:30px;font-weight:800;color:#fff}
+.fn .fstats .n .gr{color:#2fe39a}
+.fn .fstats .n small{font-size:14px;color:rgba(255,255,255,.55)}
+.fn .fstats .u{font-size:12px;color:rgba(255,255,255,.55);font-weight:600;margin-top:3px}
+.fn .foot{position:absolute;bottom:70px;left:24px;right:24px;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;line-height:1.6}
+.fn .peek{position:absolute;bottom:0;left:30px;font-size:40px;opacity:.9}
+.fn .peek2{position:absolute;bottom:6px;left:90px;font-size:34px;opacity:.9}
+
+/* =================== unlock celebration (梦虹之星) =================== */
+.ul{position:absolute;inset:0;overflow:hidden;background:radial-gradient(70% 50% at 50% 46%,#243a2b 0%,#16241b 55%,#0c130f 100%)}
+.ul .dim{position:absolute;inset:0;opacity:.18;filter:blur(2px) brightness(.6);
+  background:linear-gradient(180deg,#dfe6ee,#cfd8e6)}
+.ul .rays{position:absolute;top:30%;left:50%;width:340px;height:340px;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle,rgba(150,255,180,.35),transparent 62%);animation:halo 3s ease-in-out infinite}
+@keyframes halo{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.8}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1}}
+.ul .twk{position:absolute;inset:0;background:
+  radial-gradient(circle at 30% 28%,#fff 0 1px,transparent 2px),radial-gradient(circle at 64% 22%,#fff 0 1px,transparent 2px),
+  radial-gradient(circle at 46% 42%,#fff 0 1px,transparent 2px),radial-gradient(circle at 72% 50%,#fff 0 1px,transparent 2px),
+  radial-gradient(circle at 24% 52%,#fff 0 1px,transparent 2px);opacity:.6;animation:tw 2.4s ease-in-out infinite}
+@keyframes tw{0%,100%{opacity:.3}50%{opacity:.75}}
+.ul .bigstar{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);--sz:120px}
+.ul .bigstar .holo{--sz:120px;filter:drop-shadow(0 0 26px rgba(120,255,160,.7))}
+.ul .moon2{position:absolute;top:62%;left:24%;--sz:54px}
+.ul .moon2 .holo{--sz:54px}
+.ul .ministar{position:absolute;top:42%;left:74%;--sz:60px}
+.ul .ministar .holo{--sz:60px}
+.ul .card{position:absolute;left:18px;right:18px;bottom:24px;background:rgba(255,255,255,.96);border:2px solid #57e08a;
+  border-radius:24px;padding:24px 18px;text-align:center;box-shadow:0 0 40px rgba(80,230,140,.5)}
+.scene.on .ul .card{animation:sheetUp .5s cubic-bezier(.22,1,.36,1) both}
+.ul .card .t{font-size:18px;font-weight:800;color:#1c1c1e}
+.ul .card .t b{color:var(--green)}
+.ul .card .d{font-size:13px;color:#9a9a9f;margin-top:8px;line-height:1.6}
+
+/* ---------------- per-component entrance / idle animations ---------------- */
+.scene.on .card{animation:riseIn .5s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--i,0) * 34ms)}
+@keyframes riseIn{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+.scene-comet .comet{animation:cometSway 3s ease-in-out infinite}
+@keyframes cometSway{0%,100%{transform:rotate(60deg) translateY(0)}50%{transform:rotate(63deg) translateY(-5px)}}
+.comet .head{animation:headPulse 1.1s ease-in-out infinite}
+@keyframes headPulse{0%,100%{filter:none;transform:scale(1)}50%{transform:scale(1.18)}}
+.ul .bigstar .holo{animation:holoSweep 3.4s ease-in-out infinite,starBreathe 2.6s ease-in-out infinite}
+@keyframes starBreathe{0%,100%{transform:scale(1) rotate(-4deg)}50%{transform:scale(1.07) rotate(4deg)}}
+.ul .ministar .holo,.ul .moon2 .holo{animation:holoSweep 3.4s ease-in-out infinite,floaty 3s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.spark{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;
+  box-shadow:0 0 6px 1px rgba(255,255,255,.9);animation:twinkle var(--dur,3s) ease-in-out var(--delay,0s) infinite}
+@keyframes twinkle{0%,100%{opacity:.12;transform:scale(.5)}45%{opacity:1;transform:scale(1.5)}55%{opacity:.7;transform:scale(1)}}
+.cnt.pop{animation:numPop .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes numPop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
+.fn .line .fill{animation:none}
+.scene.on .fn .line .fill{animation:fillW 1s cubic-bezier(.22,1,.36,1) both}
+@keyframes fillW{from{width:0}to{width:34%}}
+
+/* ---------------- progress + replay ---------------- */
+#prog{position:absolute;left:0;top:0;height:3px;background:var(--green);width:0;z-index:90;box-shadow:0 0 8px rgba(52,199,89,.7)}
+#hint{position:absolute;inset:0;z-index:95;display:none;place-items:center;background:rgba(0,0,0,.5);cursor:pointer;border-radius:inherit}
+#hint span{background:#fff;color:#111;font-weight:800;font-size:16px;padding:13px 30px;border-radius:30px}
+@media(prefers-reduced-motion:reduce){#phone,#float,.glass-sweep::before,.contact-shadow,.orb,.holo,.comet .tail,.ck .chick{animation:none}}
+</style>
+</head>
+<body>
+<div id="stage"><div id="fit">
+  <div class="contact-shadow"></div>
+  <div id="float"><div id="phone"><div class="frame">
+    <span class="btn act"></span><span class="btn vup"></span><span class="btn vdn"></span><span class="btn pwr"></span>
+    <div class="screen"><div class="content">
+      <div id="scenes"></div>
+      <div class="island"><span class="rec"></span><span class="lens"></span></div>
+      <div class="glass-gloss"></div>
+      <div class="glass-sweep"></div>
+      <div id="prog"></div>
+      <div id="hint"><span>▶ 重播</span></div>
+    </div></div>
+    <div id="popLayer"></div>
+  </div></div></div>
+</div></div>
+
+<script>
+const stageEl=document.getElementById('scenes');
+const E=h=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstElementChild;};
+
+/* ---- fit the whole rig to the viewport ---- */
+function fit(){
+  const W=372,H=800,vw=innerWidth,vh=innerHeight;
+  const s=Math.min(vw*0.96/W,vh*0.97/H);
+  document.getElementById('fit').style.transform='scale('+s+')';
+}
+addEventListener('resize',fit);fit();
+
+/* ---- shared markup helpers ---- */
+const squig=`<svg class="squig" viewBox="0 0 42 7"><path d="M2 5 Q8 1 13 4.5 T24 4.5 T34 4 T40 3.5"/></svg>`;
+const statusbar=(time,mark='T',cls='sb-white')=>`
+ <div class="statusbar ${cls}">
+   <div class="l"><span class="t">${time}</span><span class="tmark">${mark}</span></div>
+   <div class="rgt">
+     <svg width="18" height="12" viewBox="0 0 18 12"><g fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></g></svg>
+     <svg width="17" height="12" viewBox="0 0 17 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 4.2C3.3 2.1 5.8 1 8.5 1S13.7 2.1 16 4.2"/><path d="M3.6 6.8C5 5.5 6.7 4.8 8.5 4.8s3.5.7 4.9 2"/><path d="M6.2 9.4c.7-.6 1.5-1 2.3-1s1.6.4 2.3 1"/></svg>
+     <svg width="26" height="13" viewBox="0 0 26 13"><rect x="1" y="1.5" width="21" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/><rect x="3" y="3.3" width="13" height="6.4" rx="1.6" fill="currentColor"/><rect x="23.5" y="4.5" width="1.8" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+   </div>
+ </div>`;
+const bokeh=(n=18,top=true)=>{
+  const cols=['#ffd1e8','#cde8ff','#d3ffd9','#fff3c4','#e7d6ff','#c8fff0','#ffe0c4'];
+  let s='';for(let i=0;i<n;i++){const sz=(7+(i*37%26));
+    const seed=(i*53)%100,seed2=(i*71)%(top?40:90);
+    s+=`<i style="--x:${seed}%;--y:${seed2}%;--s:${sz}px;--b:${sz/5}px;--col:${cols[i%cols.length]};--o:${0.4+(i%5)*0.1};--dx:${(i%2?1:-1)*(10+i%14)}px;--dy:${(i%3-1)*12}px;--d:${5+(i%6)}s;--dl:-${i%6}s"></i>`;}
+  return `<div class="bokeh">${s}</div>`;
+};
+const holo=(sz=30)=>`<span class="holo" style="--sz:${sz}px"></span>`;
+const coin=(sz=30,dim=false,shine=true)=>`<span class="coin${dim?' dim':''}" style="--cs:${sz}px">${shine?'<span class="sheen"></span>':''}<b>T</b></span>`;
+
+/* habit card */
+function card(nm,ct,emo,o={}){
+  const cl=o.dark?'d':'w';
+  const ctc=o.o?'o':(o.gr?'gr':'');
+  const badge=o.done?`<span class="badge done">✓</span>`:`<span class="badge plus">+</span>`;
+  return `<div class="card ${cl}">${o.holo?holo(28).replace('class="holo"','class="holo hl"'):''}
+    <div class="nm">${nm}</div><div class="ct ${ctc}">${ct}</div>
+    <span class="emo e">${emo}</span>${badge}</div>`;
+}
+
+/* ================= SCENE habit grid ================= */
+function habitGrid(cardsHTML){
+  return E(`<section>
+    ${statusbar('16:31','T','sb-white')}
+    <div class="h-top">
+      <div class="tabs">
+        <span class="act">全部${squig}</span><span>浏览器</span><span>智能体</span><span>编辑器</span><span>终端</span>
+        <span class="sp"></span>
+        <span class="tab-ic"><span class="b">▴</span><span class="b" style="font-size:13px">▦</span><span class="b" style="font-weight:300;font-size:20px">+</span></span>
+      </div>
+      <div class="summary">
+        <span class="num cnt" data-to="284" data-suf="k" style="font-size:38px">284k</span>
+        <span class="meta"><span style="color:rgba(255,255,255,.7);font-weight:700">tokens</span><br>今日已省</span>
+        <span class="modes">
+          <span class="mc">轻度</span><span class="mc on">标准</span><span class="mc">极限</span>
+        </span>
+      </div>
+    </div>
+    <div class="gridwrap"><div class="gridpad"><div class="cards">${cardsHTML}</div></div></div>
+  </section>`);
+}
+/* Terse token sources: each app/agent/browser Terse optimises, with tokens saved */
+const setA=
+  card('Claude','56k','🟠',{dark:1,done:1,o:1,holo:1,ac:'#ff8a4c',pct:48})
+ +card('ChatGPT','18k','💬',{done:1,gr:1,ac:'#10a37f',pct:34})
+ +card('Gemini','12k','🔮',{done:1,ac:'#4f8bff',pct:29})
+ +card('Cursor','31k','🖱️',{dark:1,done:1,o:1,ac:'#22d3ee',pct:42})
+ +card('VS Code','9k','💻',{done:1,gr:1,ac:'#2aa4f4',pct:26})
+ +card('Copilot','0','🤖',{ac:'#a371f7'})
+ +card('Claude Code','42k','⌨️',{dark:1,done:1,o:1,ac:'#ff8a4c',pct:51})
+ +card('Terminal','16k','🖥️',{dark:1,done:1,holo:1,ac:'#34e0a1',pct:38})
+ +card('Chrome','14k','🌐',{done:1,ac:'#ffb020',pct:31})
+ +card('Safari','7k','🧭',{gr:1,ac:'#1e9bff',pct:22})
+ +card('Firefox','5k','🦊',{ac:'#ff7139'})
+ +card('Arc','11k','🌈',{done:1,holo:1,ac:'#f472b6',pct:27})
+ +card('Aider','8k','🛠️',{dark:1,ac:'#22c55e',pct:24})
+ +card('Warp','6k','⚡',{dark:1,o:1,ac:'#01a4ff',pct:33})
+ +card('Raycast','3k','🔍',{done:1,ac:'#ff6363',pct:19})
+ +card('Zed','4k','✦',{done:1,gr:1,ac:'#22d3ee',pct:21})
+ +card('Notion','2k','📝',{ac:'#9aa0a6'})
+ +card('Slack','1k','💬',{dark:1,ac:'#36c5f0',pct:12});
+
+/* ---- holo moon (crescent mask) ---- */
+const MOON="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M58 6a44 44 0 1 0 0 88 a34 34 0 1 1 0-88z'/%3E%3C/svg%3E\")";
+const holoM=sz=>`<span class="holo" style="--sz:${sz}px;--star:${MOON}"></span>`;
+
+/* ---- star-globe builder (parameterised: scenes 2 & 4) ---- */
+const BLUE='filter:hue-rotate(195deg) saturate(1.5) brightness(1.05)';
+function pile(kind){
+  const R=(a,b)=>a+Math.random()*(b-a);
+  const cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  let parts=[];
+  for(let i=0;i<34;i++) parts.push({dark:0});                  /* saved coins (bottom heap) */
+  for(let i=0;i<12;i++) parts.push({dark:1});                  /* un-saved (dark) coins on top */
+  let s='';
+  parts.forEach(it=>{
+    /* mound: lower items cluster to centre, higher items spread wider (follows sphere bottom) */
+    const bottom=it.dark?R(8,20):R(-1,15);
+    const hw=14+(bottom+2)*1.7;                                 /* half-width at this height */
+    const left=cl(50+R(-1,1)*hw,8,92);
+    const sz=R(23,31).toFixed(0);
+    const inner=it.dark? coin(sz,true,false)
+      : (Math.random()<0.16? holo(sz) : coin(sz,false,false));
+    s+=`<span class="bit" style="left:${left.toFixed(1)}%;bottom:${bottom.toFixed(1)}%;`
+      +`--amp:${R(2,5).toFixed(1)}px;--rot:${R(3,8).toFixed(0)}deg;--dur:${R(2.8,4.4).toFixed(1)}s;--delay:${(-R(0,4)).toFixed(2)}s">${inner}</span>`;
+  });
+  return s;
+}
+function globe(o){
+  return `<div class="sw">
+    ${statusbar(o.time||'16:31','T','sb-white')}
+    <div class="hd"><div class="ti">我的节省</div>
+      <div class="acts">${coin(22,false,false)}<span style="color:#b9bdc4;font-weight:300;font-size:22px">+</span><span style="color:#b9bdc4;font-weight:300;font-size:19px">↗</span></div></div>
+    <div class="wish">${o.wish}</div>
+    <div class="date">${o.date}</div>
+    <div class="ribL"></div><div class="ribR"></div>
+    <div class="globe"><div class="pile">${o.pile}</div></div>
+    <div class="collect">👆 点击收集金币 <b class="cct">${o.counter}</b> <span class="gray">(${o.received})</span></div>
+    <div class="cheese">${coin(46,false,true)}<span class="dot"></span></div>
+    ${o.comet?`<div class="gcomet"><span class="gtail"></span><span class="ghead">${coin(34,false,true)}</span></div>`:''}
+    <div class="statcard">
+      <div class="s"><div class="n">${o.s1}<small> 枚</small></div><div class="u">收集的金币</div></div>
+      <div class="s"><div class="n dark">${o.s2}</div><div class="u">省下 tokens</div></div>
+      <div class="s"><div class="n dark">${o.s3}<small> 天</small></div><div class="u">连续节省</div></div>
+    </div>
+  </div>`;
+}
+const gwish='今天也要把浪费的 token 都省下来 ✨';
+const gstat={s1:20,s2:'1.2M',s3:32};
+const mkGlobe=(kind,counter,icon,iconStyle)=>globe({wish:gwish,date:'2025-05-21',time:'16:31',
+  pile:pile(kind),counter,received:'已领 0',icon,iconStyle,...gstat});
+
+/* ============================ SCENE DEFINITIONS ============================
+   Cut points taken verbatim from ffmpeg scene-detection on the source video;
+   the 0–9.3s intro alternates HOME-GRID <-> WISH-GLOBE every cut, each globe
+   showing a new collectible (cheese→holo→strawberry→cherry→blue) with the
+   counter climbing x6→x11→x12→x13→x15.  Per-scene phone angles sampled from
+   the real frames.                                                          */
+const gT=(a,bb)=>(n,p)=>{const g=n.querySelector('.gridpad');if(g)g.style.transform='translateY('+(-(a+(bb-a)*p))+'px)';
+  const e=1-Math.pow(1-Math.min(1,p/0.5),3);
+  n.querySelectorAll('.cnt').forEach(s=>s.textContent=Math.round(+s.dataset.to*e)+(s.dataset.suf||''));};
+const sparks=(n=12)=>Array.from({length:n},(_,i)=>`<span class="spark" style="left:${(i*53)%96+2}%;top:${(i*37)%64+4}%;--dur:${2+(i%4)*0.6}s;--delay:-${(i%5)*0.7}s"></span>`).join('');
+const SC=[
+ /* 0 · home grid (0.00–2.37) — opens at a strong 3/4 corner, rotates to front-on */
+ { node:habitGrid(setA), dur:2.37, a:[15,39,1], b:[0,0,0], hold:0.87, settle:0.46,
+   sc:[1.26,1], tr:[[14,-6],[0,0]], tick:gT(0,40) },
+ /* 1 · globe · cheese x6 (2.37–3.13) */
+ { html:mkGlobe('coin','x 6','🪙'), dur:0.76, a:[3,2,0], b:[4,-2,0] },
+ /* 2 · home grid (3.13–4.27) */
+ { node:habitGrid(setA), dur:1.14, a:[4,-2,0], b:[2,3,0], tick:gT(48,108) },
+ /* 3 · globe · holographic x11 (4.27–5.17) */
+ { html:mkGlobe('holo','x 11','🪙'), dur:0.90, a:[2,3,0], b:[4,-1,0] },
+ /* 4 · home grid (5.17–5.87) */
+ { node:habitGrid(setA), dur:0.70, a:[4,-1,0], b:[3,2,0], tick:gT(118,158) },
+ /* 5 · globe · strawberry x12 (5.87–6.47) */
+ { html:mkGlobe('crop','x 12','🌽'), dur:0.60, a:[3,2,0], b:[5,-3,0] },
+ /* 6 · home grid (6.47–7.40) */
+ { node:habitGrid(setA), dur:0.93, a:[5,-3,0], b:[2,1,0], tick:gT(168,208) },
+ /* 7 · globe · cherry x13 (7.40–7.93) */
+ { html:mkGlobe('flower','x 13','🌸'), dur:0.53, a:[2,1,0], b:[4,-2,0] },
+ /* 8 · home grid (7.93–8.67) */
+ { node:habitGrid(setA), dur:0.74, a:[4,-2,0], b:[3,2,0], tick:gT(212,242) },
+ /* 9 · globe · blue star x15 (8.67–9.30) */
+ { html:mkGlobe('coin','x 15','🪙'), dur:0.63, a:[3,2,0], b:[4,-1,0] },
+
+ /* 10 · comet / 拖尾 trail (9.30–11.40) — phone sweeps, tail cycles green↔rainbow */
+ { html:`<div class="tr">
+     ${statusbar('21:27')}
+     <div class="blurbg"></div>
+     <div class="tabs2"><span class="act">金币盒 <span style="font-weight:600;color:#9a9a9f">17</span></span><span class="act">省钱彗星<span style="color:#9a9a9f"> 1</span>${squig}</span></div>
+     <div class="scene-comet">
+       <span class="holo" style="position:absolute;top:0;left:0;--sz:46px;z-index:3"></span>
+       <div class="comet ctrail" style="top:20px;left:24px;transform:rotate(60deg)"><span class="tail" style="width:240px"></span><span class="head"></span></div>
+     </div>
+     <div class="sheet" style="height:32%"><div class="handle"></div>
+       <div class="shead">我的金币盒 <span class="sub">17</span> &nbsp; 省钱彗星 <span class="sub">1</span>${squig}<span class="x">✕</span></div>
+       <div style="display:flex;gap:14px;margin-top:10px">
+         <div style="flex:1;height:120px;border-radius:18px;background:linear-gradient(160deg,#f4f5f7,#e9eaee);display:grid;place-items:end center;padding-bottom:8px;color:#9a9a9f;font-size:13px;font-weight:700">无尾迹</div>
+         <div style="flex:1;height:120px;border-radius:18px;position:relative;overflow:hidden;background:linear-gradient(160deg,#eafff0,#d7f6e2);display:grid;place-items:end center;padding-bottom:8px;color:var(--green);font-size:13px;font-weight:700">
+           <div class="comet ctrail" style="top:18px;left:24px;transform:rotate(60deg)"><span class="tail" style="width:120px;height:10px"></span><span class="head" style="width:13px;height:13px"></span></div>星虹省钱</div>
+       </div>
+     </div></div>`,
+   dur:2.10, a:[10,-8,2], b:[15,-13,3],
+   tick:(n,p)=>{const rb=p>.34&&p<.66;
+     n.querySelectorAll('.ctrail .tail').forEach(t=>t.style.background=rb
+       ?'linear-gradient(90deg,rgba(255,80,200,0) 0%,rgba(255,80,200,.7) 18%,rgba(255,225,70,.9) 45%,rgba(120,255,140,1) 70%,rgba(120,180,255,1) 100%)'
+       :'linear-gradient(90deg,rgba(255,120,30,0) 0%,rgba(255,150,45,.4) 16%,rgba(255,215,75,.88) 52%,rgba(150,255,120,1) 90%,#d6ffc0 100%)');} },
+
+ /* 3 · 我的星愿 globe #2 (11.40–15.40) — letter to future self, comet into card */
+ { html:globe({wish:'致未来的自己：每个提示词都更省，把省下的 token 存成金币 💚',
+     date:'2025-05-21',time:'21:25',pile:pile('coin'),counter:'x 1',received:'已领 10',icon:'🪙',
+     s1:10,s2:'720k',s3:22,comet:true}),
+   dur:4.00, a:[13,15,-2], b:[10,11,-1] },
+
+ /* 4 · habit detail · carrot + calendar (15.40–17.37) */
+ { html:`<div class="dt">
+     ${statusbar('17:56')}
+     <div class="back">←</div><div class="mid">金币详情</div>
+     <div class="big">2</div><div class="nm">节省金币 · 累计收集</div>
+     <div class="recent">上次收集: 2025-05-13 12:31</div>
+     <div class="stars">${coin(22,false,false).repeat(5)}</div>
+     <div class="veg">${coin(110,false,true)}</div>
+     <div class="cal">
+       <div class="ch"><span style="color:#c8c8ce">‹</span> 2025年6月 <span>›</span></div>
+       <div class="wk"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+       <div class="dys">${Array.from({length:35},(_,i)=>{const d=i-6;return `<span>${d>=1&&d<=30?d:''}</span>`;}).join('')}</div>
+     </div></div>`,
+   dur:1.97, a:[12,-13,-2], b:[15,-12,-2] },
+
+ /* 5 · unlock celebration · 梦虹之星 (17.37–19.37) — dim bg, glowing holo star, card slides up */
+ { html:`<div class="ul">
+     ${statusbar('21:25','T','sb-white')}
+     <div class="dim"></div><div class="twk"></div><div class="rays"></div>${sparks(14)}
+     <div class="ministar">${coin(60,false,true)}</div>
+     <div class="bigstar">${holo(120)}</div>
+     <div class="moon2">${coin(54,false,true)}</div>
+     <div class="card"><div class="t">恭喜，解锁了 <b>流光金币</b></div>
+       <div class="d">用连续省下的 token 凝结而成的稀有金币，只属于坚持精简提示词的你…</div></div></div>`,
+   dur:2.00, a:[-7,13,2], b:[-5,16,3], fade:true },
+
+ /* 6 · 我的星盒 collection (19.37–22.37) — orbs + sheet slides up */
+ { html:`<div class="box-sc">
+     ${statusbar('15:35')}
+     <div class="orbs">
+       <div class="orb orb--gold">${coin(38,false,true)}</div>
+       <div class="orb" style="--glow:180,150,255;--c1:#efe6ff;--c2:#c4a8ff">${holo(38)}</div>
+       <div class="orb" style="--glow:255,180,60;--c1:#fff3c0;--c2:#ffae2e">${coin(38,false,true)}</div>
+     </div>
+     <div class="sheet"><div class="handle"></div>
+       <div class="shead">我的收藏 <span class="sub">23</span> &nbsp; 省钱彗星 <span class="sub">1</span><span class="x">✕</span></div>
+       <div class="collgrid">
+         <div class="it"><div class="q">?</div><div class="ic">${holo(54)}</div><div class="nm">流光金币</div><div class="ds">连续保持"干净又精简"的提示词节奏，省下的 token 凝成的稀有金币…</div></div>
+         <div class="it"><div class="q">?</div><div class="ic">${coin(50,false,true)}</div><div class="nm">黄金积蓄</div><div class="ds">由坚持节省积攒而成，是一段时间持续优化提示词的证明</div></div>
+         <div class="it"><div class="ic">${coin(50,true,false)}</div><div class="nm">未铸金币</div><div class="ds">还没省下的 token，继续精简提示词就能把它铸成金币…</div></div>
+       </div>
+       <div class="locks">${Array(3).fill(`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2.4"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>`).join('')}</div>
+     </div></div>`,
+   dur:3.00, a:[7,6,0], b:[6,2,0], fade:true },
+
+ /* 7 · 我的小组件空间 widget space (22.37–24.70) */
+ { html:`<div class="ws">
+     ${statusbar('17:35')}
+     <div class="x">✕</div>
+     <div class="ti">${coin(15,false,false)}我的小组件空间~${squig}</div>
+     <div class="wcard">
+       <div class="bubble"></div>
+       <div class="stars"><span style="position:absolute;left:8px;top:48px">${coin(22)}</span><span style="position:absolute;left:46px;top:16px">${coin(18)}</span><span style="position:absolute;left:82px;top:46px">${coin(14)}</span><span style="position:absolute;left:30px;top:6px">${coin(12)}</span><span style="position:absolute;left:98px;top:12px">${holo(13)}</span><span style="position:absolute;left:122px;top:42px">${coin(12)}</span></div>
+       <div class="rgt"><div class="n">50k</div><div class="l">本周省下</div>${coin(40,false,true)}</div>
+     </div>
+     <div class="clbl">节省小组件(静态)</div>
+     <div class="dots"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+     <div class="mini">
+       <div class="mcard y"><span style="align-self:flex-end">${coin(40,false,true)}</span><div class="n">18</div><div class="l">金币 · 今日</div></div>
+       <div class="mcard wt"><div class="dd">06.21</div>
+         <div class="row"><span class="e">🟠</span><span class="n">24k</span><span class="l">Claude 省下</span></div>
+         <div class="row"><span class="e">🖱️</span><span class="n">31k</span><span class="l">Cursor 省下</span></div></div>
+     </div>
+     <div class="mlbl">Mini 看板<span class="dot"></span></div></div>`,
+   dur:2.33, a:[9,-8,0], b:[8,-11,-1] },
+
+ /* 8 · chick character (24.70–26.73) */
+ { html:`<div class="ck">
+     ${statusbar('20:19')}
+     ${bokeh(20,true)}
+     <div class="hd">Piyo · 今日陪伴${squig}</div>
+     <div class="kline"></div><span class="holo kstar"></span>
+     <div class="chick e">🐥</div>
+     <div class="pill">省下 1.2k</div>
+     <div class="lines">
+       <div class="lrow"><span class="e">🟠</span> Claude 优化 <span class="n">14 次</span></div>
+       <div class="lrow"><span class="e">🖱️</span> Cursor 优化 <span class="n">10 次</span></div>
+     </div></div>`,
+   dur:2.03, a:[14,19,1], b:[1,2,0], hold:0.3, settle:0.5 },
+
+ /* 9 · final star progress (26.73–29.13) */
+ { html:`<div class="fn">
+     ${statusbar('15:36')}
+     <div class="x">✕</div>
+     <div class="track">
+       <div class="stars">
+         ${coin(38,false,true)}${holo(42)}${coin(40,false,true)}${holo(44)}<span style="opacity:.5">${coin(34,true,false)}</span>
+       </div>
+       <div class="line"><div class="fill"></div>
+         <span class="pt on" style="left:12%">✓</span><span class="pt on" style="left:34%">✓</span>
+         <span class="pt" style="left:56%"></span><span class="pt" style="left:78%"></span><span class="pt" style="left:98%"></span></div>
+       <div class="labs"><span class="on">6天</span><span class="on">9天</span><span>12天</span><span>15天</span><span>18天</span></div>
+     </div>
+     <div class="unlock">再省 <b>3</b> 天 可解锁 <span class="g">流光金币</span></div>
+     <div class="fstats">
+       <div class="s"><div class="n"><span class="gr cnt" data-to="9">0</span><small> 天</small></div><div class="u">连续节省</div></div>
+       <div class="s"><div class="n"><span class="cnt" data-to="15">0</span><small> 枚</small></div><div class="u">收集金币</div></div>
+       <div class="s"><div class="n"><span class="cnt" data-to="38">0</span><small> %</small></div><div class="u">平均节省率</div></div>
+     </div>
+     <div class="foot">每一个省下的 token，都是更省的未来 💚 · terse.app</div>
+     <span class="peek" style="bottom:0;left:30px">${coin(40,false,true)}</span><span class="peek2" style="bottom:6px;left:92px">${holo(32)}</span></div>`,
+   dur:2.40, a:[11,13,-2], b:[14,16,-3], fade:true,
+   tick:(n,p)=>{const e=1-Math.pow(1-Math.min(1,p/0.5),3);
+     n.querySelectorAll('.cnt').forEach(s=>s.textContent=Math.round(+s.dataset.to*e));} },
+];
+
+/* build scene nodes */
+SC.forEach(s=>{
+  const n = s.node || E('<section>'+s.html+'</section>');
+  n.classList.add('scene'); if(s.fade) n.classList.add('fade');
+  n.querySelectorAll('.card').forEach((c,i)=>c.style.setProperty('--i',i%9));
+  stageEl.appendChild(n); s.node=n;
+});
+
+/* ===================== real-time motion engine ===================== */
+const prog=document.getElementById('prog'), hint=document.getElementById('hint'),
+      phone=document.getElementById('phone');
+const TOTAL=SC.reduce((a,s)=>a+s.dur,0);
+const starts=(()=>{let a=0,o=[];SC.forEach(s=>{o.push(a);a+=s.dur;});return o;})();
+const lerp=(a,b,t)=>a+(b-a)*t;
+/* Phone motion model (measured from the video): each scene HOLDS its entry angle
+   for `hold` seconds, then rotates FAST to the settled angle over `settle` seconds
+   (easeOutExpo), then STAYS FIXED. rprog = 0..1 given seconds elapsed in scene. */
+const rprog=(s,el)=>{const hd=s.hold||0, sd=s.settle||0.5;
+  if(el<=hd) return 0; if(el>=hd+sd) return 1;
+  const x=(el-hd)/sd; return 1-Math.pow(2,-10*x);};
+let cur=-1,t0=performance.now(),running=true;
+
+/* coins leaping OUT of the screen onto the ground (fires when a savings-jar shows) */
+function popBurst(n=5,scatter=false){
+  const layer=document.getElementById('popLayer'); if(!layer) return;
+  for(let k=0;k<n;k++){
+    const s=document.createElement('span'); s.className='pop';
+    s.innerHTML = Math.random()<0.22 ? holo(scatter?28:34) : coin(scatter?28:34,false,true);
+    if(scatter){ s.style.setProperty('--ox',(22+Math.random()*56).toFixed(0)+'%');
+      s.style.setProperty('--oy',(38+Math.random()*34).toFixed(0)+'%'); }
+    const dx=Math.random()*120-60, dx2=dx+(Math.random()*120-60);
+    s.style.setProperty('--dx',dx.toFixed(0)+'px');
+    s.style.setProperty('--dxm',((dx+dx2)/2).toFixed(0)+'px');
+    s.style.setProperty('--dx2',dx2.toFixed(0)+'px');
+    s.style.setProperty('--fall',(230+Math.random()*140).toFixed(0)+'px');
+    s.style.setProperty('--spin',((Math.random()<.5?-1:1)*(360+(Math.random()*360|0)))+'deg');
+    s.style.setProperty('--d',(1.3+Math.random()*0.7).toFixed(2)+'s');
+    s.style.setProperty('--dl',(Math.random()*0.32).toFixed(2)+'s');
+    layer.appendChild(s);
+    s.addEventListener('animationend',()=>s.remove());
+  }
+}
+function activate(i){               /* hard cut */
+  if(cur>=0) SC[cur].node.classList.remove('on');
+  const s=SC[i]; delete s.node.dataset.pi; void s.node.offsetWidth;
+  s.node.classList.add('on'); cur=i;
+  if(s.node.querySelector('.globe')){ popBurst(5); gainPop(5,'50%','42%'); }       /* jar → coins burst from the heap */
+  else if(s.node.querySelector('.cards')){ popBurst(4,true); gainPop(4,'50%','30%'); } /* grid → coins pop from the cards */
+}
+function gainPop(n,ox='50%',oy='38%'){
+  const layer=document.getElementById('popLayer'); if(!layer) return;
+  const g=document.createElement('div'); g.className='gain';
+  g.style.left=ox; g.style.top=oy;
+  g.innerHTML=`+${n} ${coin(20,false,false)}`;
+  layer.appendChild(g);
+  g.addEventListener('animationend',()=>g.remove());
+}
+function applyAngle(s,p){
+  let pre='';
+  if(s.sc||s.tr){                                   /* zoom + pan (e.g. intro corner reveal) */
+    const sc=s.sc?lerp(s.sc[0],s.sc[1],p):1;
+    const tx=s.tr?lerp(s.tr[0][0],s.tr[1][0],p):0;
+    const ty=s.tr?lerp(s.tr[0][1],s.tr[1][1],p):0;
+    pre=`translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${sc.toFixed(3)}) `;
+  }
+  phone.style.transform=pre+`rotateX(${lerp(s.a[0],s.b[0],p).toFixed(2)}deg) `
+    +`rotateY(${lerp(s.a[1],s.b[1],p).toFixed(2)}deg) `
+    +`rotateZ(${lerp(s.a[2],s.b[2],p).toFixed(2)}deg)`;
+}
+function loop(now){ if(!running) return;
+  let t=(now-t0)/1000;
+  if(t>=TOTAL){ t0=now; t=0; cur=-1; }            /* seamless loop — always animating */
+  let i=SC.length-1; for(let k=0;k<SC.length;k++){ if(t<starts[k]+SC[k].dur){i=k;break;} }
+  if(i!==cur) activate(i);
+  const s=SC[i], el=t-starts[i], p=Math.min(1,el/s.dur);
+  applyAngle(s,rprog(s,el)); if(s.tick) s.tick(s.node,p);
+  prog.style.width=(t/TOTAL*100)+'%';
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+hint.addEventListener('click',()=>{hint.style.display='none';cur=-1;t0=performance.now();running=true;requestAnimationFrame(loop);});
+
+/* verification hooks */
+window.__total=TOTAL; window.__starts=starts;
+window.__go=i=>{running=false;hint.style.display='none';
+  if(cur>=0)SC[cur].node.classList.remove('on');
+  cur=-1; activate(i); const s=SC[i]; applyAngle(s,1); if(s.tick)s.tick(s.node,0.6);
+  prog.style.width=((starts[i]+s.dur*0.5)/TOTAL*100)+'%';};
+window.__dbg=(rx,ry,rz,s)=>{running=false;hint.style.display='none';
+  if(cur!==0){if(cur>=0)SC[cur].node.classList.remove('on');cur=-1;activate(0);}
+  phone.style.transform=`scale(${s}) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`;};
+window.__still=t=>{running=false;hint.style.display='none';
+  let i=SC.length-1;for(let k=0;k<SC.length;k++){if(t<starts[k]+SC[k].dur){i=k;break;}}
+  if(cur>=0)SC[cur].node.classList.remove('on');cur=-1;activate(i);
+  const s=SC[i],el=t-starts[i],p=Math.min(1,el/s.dur);applyAngle(s,rprog(s,el));if(s.tick)s.tick(s.node,p);
+  prog.style.width=(t/TOTAL*100)+'%';
+  /* deterministically pose every CSS animation to time t (for frame-accurate capture) */
+  void document.body.offsetWidth;
+  try{document.getAnimations().forEach(a=>{a.pause();
+    a.currentTime=Math.max(0,(t-starts[i]))*1000;});}catch(e){}};
+</script>
+</body>
+</html>

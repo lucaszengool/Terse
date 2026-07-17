@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Terse · Agent Capture Backgrounds (rich)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e1014;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:46px 24px 70px;font-family:'Bricolage Grotesque',system-ui,sans-serif;color:#e7e9ee}
+h1{font:600 26px/1.1 'Newsreader',serif}
+.sub{font:600 13px/1.4 'Bricolage Grotesque';color:#8b93a3;margin:4px 0 30px}
+.row{display:flex;gap:34px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:13px}
+.cap{font:800 12px/1 'Bricolage Grotesque';letter-spacing:.14em;text-transform:uppercase;color:#9aa3b4}
+
+.phone{position:relative;width:300px;height:620px;border-radius:54px;padding:11px;
+  background:linear-gradient(160deg,#3a3d45,#16181d);
+  box-shadow:0 50px 90px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.18),0 0 0 2px #0b0c0f}
+.screen{position:relative;width:100%;height:100%;border-radius:44px;overflow:hidden;background:#000}
+.notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:96px;height:26px;border-radius:16px;background:#0b0c0f;z-index:40}
+.statusbar{position:absolute;top:15px;left:24px;right:22px;display:flex;justify-content:space-between;z-index:40;font:800 12px/1 'Bricolage Grotesque';color:#fff;mix-blend-mode:difference}
+.cam{position:absolute;inset:0;overflow:hidden}
+.head{position:absolute;top:52px;left:24px;right:24px;z-index:30}
+.date{font:300 27px/1 'Newsreader',serif;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.4)}
+.hint{margin-top:7px;font:700 12.5px/1.4 'Bricolage Grotesque';color:rgba(255,255,255,.92);text-shadow:0 1px 6px rgba(0,0,0,.4)}
+
+/* ════ AURORA WASH + BLOBS (depth base) ════ */
+.bg{position:absolute;inset:0;z-index:0}
+.wash{position:absolute;inset:0}
+.blob{position:absolute;border-radius:50%;filter:blur(46px);opacity:.95}
+.vig{position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 36%,transparent 50%,rgba(20,16,12,.26));pointer-events:none;z-index:6}
+.grain{position:absolute;inset:-50%;opacity:.45;mix-blend-mode:soft-light;z-index:5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation:grain 8s steps(6) infinite}
+@keyframes grain{to{transform:translate(6%,4%)}}
+@keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(16px,-20px) scale(1.08)}}
+@keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-18px,14px) scale(1.1)}}
+@keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(12px,16px) scale(1.06)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ════ DENSE OBJECT FIELD ════ */
+.field{position:absolute;inset:0;z-index:4}
+.ob{position:absolute;display:grid;place-items:center;will-change:transform;
+  animation:bob var(--t,7s) ease-in-out infinite;animation-delay:var(--dl,0s)}
+@keyframes bob{0%,100%{transform:translate(0,0) rotate(var(--r,0deg))}50%{transform:translate(0,var(--y,-10px)) rotate(calc(var(--r,0deg) + var(--rr,4deg)))}}
+/* glassy chip object */
+.ob.chip{border-radius:11px;background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,255,255,.7));
+  box-shadow:0 10px 20px rgba(40,40,60,.18),inset 0 1px 0 #fff;backdrop-filter:blur(3px)}
+.ob.glyph{font-weight:800;font-family:'Bricolage Grotesque'}
+.ob.mono{font-family:'SF Mono',Menlo,monospace;font-weight:700}
+.ob.ring2{border-radius:50%;background:none}
+.ob.dot{border-radius:50%}
+.ob.pill{border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.78));box-shadow:0 8px 16px rgba(40,40,60,.16);font:800 10px/1 'Bricolage Grotesque';padding:0 10px}
+.ob.card2{border-radius:13px;background:linear-gradient(180deg,#fff,rgba(255,255,255,.82));box-shadow:0 16px 30px rgba(40,40,70,.22)}
+.ob.tile{border-radius:9px}
+.ob.star{filter:drop-shadow(0 2px 5px rgba(0,0,0,.12))}
+.ob.line{height:6px;border-radius:4px}
+
+/* per-theme washes */
+.t-claude .wash{background:linear-gradient(165deg,#FFE9C6 0%,#FFC58C 32%,#F89A66 62%,#EC7350 100%)}
+.t-cursor .wash{background:linear-gradient(165deg,#DCE8FF 0%,#A7C0F8 32%,#7B97EE 62%,#566FDB 100%)}
+.t-codex  .wash{background:linear-gradient(165deg,#CFF3E1 0%,#83DDB2 32%,#46C293 62%,#23A877 100%)}
+.t-claude .b1{width:240px;height:240px;left:-50px;top:-40px;background:radial-gradient(circle,#FFE1A8,#ffb36b00 70%);animation:drift1 14s ease-in-out infinite}
+.t-claude .b2{width:300px;height:300px;right:-90px;top:40px;background:radial-gradient(circle,#FF8E63,#ff8e6300 70%);animation:drift2 17s ease-in-out infinite}
+.t-claude .b3{width:260px;height:260px;left:-70px;bottom:20px;background:radial-gradient(circle,#F76E5A,#f76e5a00 70%);animation:drift3 15s ease-in-out infinite}
+.t-cursor .b1{width:250px;height:250px;left:-60px;top:-30px;background:radial-gradient(circle,#BFD4FF,#bfd4ff00 70%);animation:drift1 15s ease-in-out infinite}
+.t-cursor .b2{width:300px;height:300px;right:-100px;top:50px;background:radial-gradient(circle,#6E8DEA,#6e8dea00 70%);animation:drift2 18s ease-in-out infinite}
+.t-cursor .b3{width:240px;height:240px;left:-50px;bottom:14px;background:radial-gradient(circle,#8A7BF0,#8a7bf000 70%);animation:drift3 16s ease-in-out infinite}
+.t-codex .b1{width:250px;height:250px;left:-60px;top:-30px;background:radial-gradient(circle,#BFF0D4,#bff0d400 70%);animation:drift1 15s ease-in-out infinite}
+.t-codex .b2{width:300px;height:300px;right:-100px;top:50px;background:radial-gradient(circle,#3FBE8C,#3fbe8c00 70%);animation:drift2 18s ease-in-out infinite}
+.t-codex .b3{width:240px;height:240px;left:-50px;bottom:8px;background:radial-gradient(circle,#79D0A2,#79d0a200 70%);animation:drift3 16s ease-in-out infinite}
+/* cursor grid + codex topo extras */
+.t-cursor .grid{position:absolute;inset:0;z-index:3;opacity:.14;background-image:linear-gradient(rgba(255,255,255,.9) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.9) 1px,transparent 1px);background-size:30px 30px;-webkit-mask:radial-gradient(100% 80% at 50% 40%,#000,transparent 86%);mask:radial-gradient(100% 80% at 50% 40%,#000,transparent 86%)}
+.t-codex .topo{position:absolute;left:50%;bottom:-14%;width:440px;height:440px;margin-left:-220px;z-index:3;border-radius:50%;opacity:.4;background:radial-gradient(circle,transparent 30%,rgba(255,255,255,.5) 31% 32%,transparent 33%,rgba(255,255,255,.4) 42% 43%,transparent 44%,rgba(255,255,255,.3) 54% 55%,transparent 56%,rgba(255,255,255,.22) 67% 68%,transparent 69%)}
+
+/* ════ shared cream agent card (subject) ════ */
+.subj{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);z-index:20;width:262px}
+.subj::before{content:"";position:absolute;left:50%;top:50%;width:340px;height:290px;transform:translate(-50%,-50%);z-index:-1;background:radial-gradient(50% 50%,rgba(255,255,255,.5),transparent 68%);filter:blur(9px)}
+.card{position:relative;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.85);background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(251,248,241,.97));box-shadow:0 36px 64px rgba(40,30,20,.36),0 12px 24px rgba(40,30,20,.22),inset 0 1px 0 #fff}
+.card::before{content:"";position:absolute;inset:0;border-radius:24px;pointer-events:none;background:linear-gradient(155deg,rgba(255,255,255,.5),transparent 36%)}
+.bar{display:flex;align-items:center;gap:9px;padding:10px 13px;background:linear-gradient(180deg,#FBF6EC,#F3ECDD);border-bottom:1px solid #EFE7D6}
+.mark{width:22px;height:22px;border-radius:8px;display:grid;place-items:center;font:900 13px/1 'Bricolage Grotesque'}
+.nm{font:800 13.5px/1 'Bricolage Grotesque';color:#22323F}
+.live{margin-left:auto;display:flex;align-items:center;gap:5px;font:800 8.5px/1 'Bricolage Grotesque';text-transform:uppercase;letter-spacing:.06em}
+.live i{width:7px;height:7px;border-radius:50%}
+@keyframes pdot{50%{opacity:.3}}
+.metrics{display:flex;align-items:center;gap:11px;padding:8px 13px 11px;border-top:1px solid #F1EADC}
+.mr{position:relative;width:40px;height:40px;flex:none}.mr svg{width:100%;height:100%;transform:rotate(-90deg)}
+.mr b{position:absolute;inset:0;display:grid;place-items:center;font:800 9px/1 'Bricolage Grotesque';color:#22323F}
+.ms{flex:1}.ms b{display:block;font:400 20px/1 'Newsreader',serif;color:#22323F}.ms span{font:700 8px/1 'Bricolage Grotesque';color:#a59c8b;margin-top:2px;display:block}
+.tag{font:800 14px/1 'Bricolage Grotesque';color:#fff;padding:7px 11px;border-radius:11px}
+.foot{padding:8px 13px;font:700 9px/1 'SF Mono',Menlo,monospace;color:#a59c8b;background:#FBF6EC;border-top:1px solid #EFE7D6}
+.cl{position:relative;height:104px;margin:10px 12px 2px}
+.cl svg.w{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.cl .core{position:absolute;left:14%;top:48%;transform:translate(-50%,-50%);width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 38% 30%,#fff,#F6E1CD 72%);box-shadow:0 7px 16px rgba(207,107,74,.42),inset 0 1px 0 #fff;z-index:2}
+.cl .core svg{width:22px;height:22px}
+.cl .halo{position:absolute;inset:-8px;border-radius:50%;background:radial-gradient(circle,rgba(207,107,74,.4),transparent 70%);animation:pdot 2s ease-in-out infinite}
+.cl .nd{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;font:800 9px/1 'Bricolage Grotesque';color:#6b5a45;background:#fff;padding:5px 9px 5px 6px;border-radius:10px;box-shadow:0 5px 12px rgba(150,118,78,.24);white-space:nowrap;z-index:2}
+.cl .nd em{display:grid;place-items:center;width:17px;height:17px;border-radius:6px;font-style:normal;font-size:10px;background:#F4EAD9;color:#CF6B4A}
+.cl .n1{left:63%;top:16%}.cl .n2{left:80%;top:43%}.cl .n3{left:80%;top:65%}.cl .n4{left:63%;top:86%}
+.cl .n1 em{background:#E7EEFB;color:#5a8de6}.cl .n3 em,.cl .n4 em{background:#EAF5EF;color:#4fa882}
+.chips{display:flex;gap:7px;padding:0 13px 9px}
+.chip{display:flex;align-items:center;gap:6px;font:800 8.5px/1 'Bricolage Grotesque';color:#7a6e5c;background:#F6F0E6;padding:6px 9px;border-radius:8px}
+.chip i{width:6px;height:6px;border-radius:50%}
+.cu{padding:11px 13px 9px;background:linear-gradient(180deg,#FBF9F4,#F5F1E8)}
+.cucode{background:#fff;border-radius:12px;padding:9px 11px;box-shadow:inset 0 1px 3px rgba(90,120,160,.08),0 3px 8px rgba(90,120,160,.07);font-family:'SF Mono',Menlo,monospace}
+.culn{display:flex;align-items:center;font-size:11px;line-height:1.8;color:#5b6675;white-space:pre}
+.culn em{width:18px;margin-right:10px;color:#c3cbd6;font-style:normal;font-size:9px;text-align:right;flex:none}
+.culn .kw{color:#9a6ad0}.culn .fn{color:#5a8de6}
+.culn.act .sel{background:rgba(90,141,230,.15);border-radius:5px;padding:1px 5px;box-shadow:0 0 0 1px rgba(90,141,230,.28)}
+.beam2{display:inline-block;width:2px;height:13px;background:#5a8de6;margin-left:3px;box-shadow:0 0 7px #5a8de6;animation:pdot .9s steps(1) infinite}
+.ghost{position:relative;margin:9px 0 0 26px;display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#fff,#F2F7FE);border:1px solid #DBE6FB;border-radius:11px;padding:7px 9px;box-shadow:0 9px 20px rgba(58,86,140,.18)}
+.ghost .sp{color:#5a8de6;font-size:12px}.ghost .gt{flex:1;font:700 9.5px/1.2 'Bricolage Grotesque';color:#5a6b86}
+.ghost .tab{font:800 8.5px/1 'Bricolage Grotesque';color:#fff;background:linear-gradient(180deg,#6f9be8,#5a8de6);padding:6px 9px;border-radius:8px;box-shadow:0 4px 9px rgba(58,86,140,.34)}
+.cudiff{display:flex;gap:8px;margin-top:10px}.cudiff span{font:700 9px/1 'SF Mono',Menlo,monospace;padding:5px 9px;border-radius:8px}
+.cudiff .add{color:#3a9b6b;background:#E7F5ED}.cudiff .del{color:#cf6a5e;background:#FBEAE7}
+.cx{padding:11px 14px 9px;background:linear-gradient(180deg,#FBF9F4,#F3F2EC)}
+.cxpipe{display:flex;flex-direction:column;gap:8px}.cxs{display:flex;align-items:center;gap:9px}
+.cxd{position:relative;width:14px;height:14px;border-radius:50%;flex:none;border:2px solid #d8d2c4;background:#fff}
+.cxs.done .cxd{background:#2fa07c;border-color:#2fa07c}.cxs.done .cxd::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font:900 8px/1 'Bricolage Grotesque'}
+.cxs.run .cxd{border-color:#2fa07c;animation:pdot 1s ease-in-out infinite}.cxs.run .cxd::after{content:"";position:absolute;inset:3px;border-radius:50%;background:#2fa07c}
+.cxl{width:66px;flex:none;font:800 9.5px/1 'Bricolage Grotesque';color:#4a4636}.cxs.todo .cxl{color:#aaa496}
+.cxbar{flex:1;height:7px;border-radius:5px;background:#EAE5D8;overflow:hidden}.cxbar b{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#42b98f,#2fa07c);box-shadow:0 0 7px rgba(47,160,124,.5)}
+.cxgen{position:relative;margin-top:10px;background:#fff;border-radius:11px;padding:10px 11px;box-shadow:inset 0 1px 3px rgba(47,120,90,.08),0 3px 8px rgba(47,120,90,.06);display:flex;flex-direction:column;gap:6px}
+.cxgl{height:6px;border-radius:4px;background:linear-gradient(90deg,#d8ede6,#eef6f3)}
+.cxgtag{position:absolute;right:10px;bottom:9px;font:800 8.5px/1 'Bricolage Grotesque';color:#2fa07c;background:#E3F3EC;padding:4px 8px;border-radius:7px}
+
+.focus{position:absolute;left:50%;top:46%;width:150px;height:120px;margin:-60px 0 0 -75px;z-index:21}
+.focus .b{position:absolute;width:30px;height:30px;border:3px solid #fff;border-radius:6px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.3))}
+.focus .tl{top:0;left:0;border-right:0;border-bottom:0}.focus .tr{top:0;right:0;border-left:0;border-bottom:0}
+.focus .bl{bottom:0;left:0;border-right:0;border-top:0}.focus .br{bottom:0;right:0;border-left:0;border-top:0}
+.sheet{position:absolute;left:16px;right:16px;bottom:92px;height:54px;z-index:22;border-radius:20px;background:rgba(255,255,255,.32);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.4)}
+.sheet::after{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:30px;height:4px;border-radius:2px;background:rgba(255,255,255,.7)}
+.shutter{position:absolute;left:50%;bottom:24px;width:64px;height:64px;margin-left:-32px;z-index:23;display:grid;place-items:center}
+.shutter .ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#5ec79a,#7fd0f2,#f4c95a,#f0805e,#5ec79a);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));animation:spin 6s linear infinite}
+.shutter .core{width:48px;height:48px;border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.35);animation:breathe 1.9s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(.93)}}
+</style>
+</head>
+<body>
+<h1>Agent Capture · Rich Backgrounds</h1>
+<div class="sub">Busy, element-packed scenes — dozens of themed floating objects per agent, one UI family</div>
+<div class="row" id="row"></div>
+
+<script>
+/* ── card markup per agent (the cream hero) ── */
+var CARD={
+ claude:'<div class="card"><div class="bar"><span class="mark" style="background:#F4EAD9;color:#CF6B4A">✳</span><span class="nm">Claude Code</span><span class="live" style="color:#4fa882"><i style="background:#4fa882;animation:pdot 1.2s infinite"></i>ORCHESTRATING</span></div>'
+  +'<div class="cl"><svg class="w" viewBox="0 0 280 110" preserveAspectRatio="none"><g fill="none" stroke="#E8DAC5" stroke-width="1.6" stroke-linecap="round"><path d="M38 52 C100 40 120 18 176 18"/><path d="M38 52 C110 44 150 46 216 46"/><path d="M38 52 C110 60 150 70 216 70"/><path d="M38 52 C100 64 120 92 176 92"/></g><g fill="#CF6B4A"><circle r="2.4"><animateMotion dur="1.6s" repeatCount="indefinite" path="M38 52 C100 40 120 18 176 18"/></circle><circle r="2.4"><animateMotion dur="1.8s" begin="-.5s" repeatCount="indefinite" path="M38 52 C110 44 150 46 216 46"/></circle><circle r="2.4"><animateMotion dur="1.8s" begin="-.9s" repeatCount="indefinite" path="M38 52 C110 60 150 70 216 70"/></circle><circle r="2.4"><animateMotion dur="1.6s" begin="-1.2s" repeatCount="indefinite" path="M38 52 C100 64 120 92 176 92"/></circle></g></svg>'
+  +'<span class="core"><span class="halo"></span><svg viewBox="0 0 24 24"><g stroke="#CF6B4A" stroke-width="2.4" stroke-linecap="round"><path d="M12 4v16M4 12h16M6.3 6.3l11.4 11.4M17.7 6.3L6.3 17.7"/></g><circle cx="12" cy="12" r="2.7" fill="#CF6B4A"/></svg></span>'
+  +'<span class="nd n1"><em>◇</em>plan</span><span class="nd n2"><em>⌕</em>search</span><span class="nd n3"><em>✎</em>edit</span><span class="nd n4"><em>✓</em>test</span></div>'
+  +'<div class="chips"><span class="chip"><i style="background:#e0954e;animation:pdot 1s infinite"></i>3 sub-agents</span><span class="chip"><i style="background:#4fa882"></i>streaming</span></div>'
+  +'<div class="metrics"><div class="mr"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#EFE7D6" stroke-width="4"/><circle cx="18" cy="18" r="14" fill="none" stroke="#4fa882" stroke-width="4" stroke-linecap="round" stroke-dasharray="88" stroke-dashoffset="36"/></svg><b>59%</b></div><div class="ms"><b>2,140</b><span>tokens saved</span></div><div class="tag" style="background:linear-gradient(180deg,#5ab68f,#4fa882)">−41%</div></div>'
+  +'<div class="foot">claude-opus-4 · ~/terse · main</div></div>',
+ cursor:'<div class="card"><div class="bar"><span class="mark" style="background:#E7EEFB;color:#5a8de6">▣</span><span class="nm">Cursor</span><span class="live" style="color:#5a8de6"><i style="background:#5a8de6;animation:pdot 1.2s infinite"></i>TAB · AI</span></div>'
+  +'<div class="cu"><div class="cucode"><div class="culn"><em>12</em><span class="kw">const</span> sys = <span class="fn">build</span>(cfg)</div><div class="culn act"><em>13</em><span class="sel"><span class="kw">return</span> compress(sys)</span><span class="beam2"></span></div></div>'
+  +'<div class="ghost"><span class="sp">✦</span><span class="gt">strip 41% tokens · keep intent</span><span class="tab">⇥&nbsp;Tab</span></div>'
+  +'<div class="cudiff"><span class="add">＋ compress(sys)</span><span class="del">－ verbose(sys)</span></div></div>'
+  +'<div class="metrics"><div class="mr"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#EFE7D6" stroke-width="4"/><circle cx="18" cy="18" r="14" fill="none" stroke="#5a8de6" stroke-width="4" stroke-linecap="round" stroke-dasharray="88" stroke-dashoffset="46"/></svg><b>48%</b></div><div class="ms"><b>1,920</b><span>tokens saved</span></div><div class="tag" style="background:linear-gradient(180deg,#6f9be8,#5a8de6)">−38%</div></div>'
+  +'<div class="foot">cursor · ~/terse · main</div></div>',
+ codex:'<div class="card"><div class="bar"><span class="mark" style="background:#E3F3EC;color:#2fa07c">❯</span><span class="nm">Codex</span><span class="live" style="color:#2fa07c"><i style="background:#2fa07c;animation:pdot 1.2s infinite"></i>RUNNING</span></div>'
+  +'<div class="cx"><div class="cxpipe"><div class="cxs done"><span class="cxd"></span><span class="cxl">Plan</span><span class="cxbar"><b style="width:100%"></b></span></div><div class="cxs done"><span class="cxd"></span><span class="cxl">Generate</span><span class="cxbar"><b style="width:100%"></b></span></div><div class="cxs run"><span class="cxd"></span><span class="cxl">Apply patch</span><span class="cxbar"><b style="width:66%"></b></span></div><div class="cxs todo"><span class="cxd"></span><span class="cxl">Verify</span><span class="cxbar"><b style="width:0"></b></span></div></div>'
+  +'<div class="cxgen"><span class="cxgl" style="width:82%"></span><span class="cxgl" style="width:58%"></span><span class="cxgl" style="width:72%"></span><span class="cxgtag">+18 −7</span></div></div>'
+  +'<div class="metrics"><div class="mr"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#EFE7D6" stroke-width="4"/><circle cx="18" cy="18" r="14" fill="none" stroke="#2fa07c" stroke-width="4" stroke-linecap="round" stroke-dasharray="88" stroke-dashoffset="42"/></svg><b>52%</b></div><div class="ms"><b>2,460</b><span>tokens saved</span></div><div class="tag" style="background:linear-gradient(180deg,#42b98f,#2fa07c)">−44%</div></div>'
+  +'<div class="foot">codex-cli · ~/terse</div></div>'
+};
+
+/* ── object-field generators: lots of themed floating items ──
+   Each item: {x,y, type, txt/size, color, bg} placed around (avoiding centre). */
+function R(a,b){return a+Math.random()*(b-a)}
+/* deterministic-ish jitter via index so layouts feel hand-placed but full */
+function field(theme){
+  var items=[], i=0;
+  function push(o){o.i=i++;items.push(o)}
+  var P=theme.pal, G=theme.glyphs, M=theme.mono, CH=theme.chips;
+  var inCard=function(x,y){return x>24 && x<76 && y>30 && y<75;};
+  /* ── tier 1: a few BIG statement glyphs at the corners (structure) ── */
+  var bigSlots=[[10,12],[88,15],[12,86],[87,84],[50,8]];
+  for(var b=0;b<bigSlots.length;b++){
+    var bx=bigSlots[b][0]+R(-2,2),by=bigSlots[b][1]+R(-2,2);
+    push({x:bx,y:by,k:'glyph',t:G[b%G.length],s:R(40,62),col:P[(b+2)%P.length],big:1});
+  }
+  /* ── tier 2 + 3: medium chips/cards + small accents, packed on a grid ── */
+  var cols=[7,21,35,50,65,79,93], rows=[10,19,28,38,50,62,72,82,91];
+  for(var r=0;r<rows.length;r++){
+    for(var c=0;c<cols.length;c++){
+      var x=cols[c]+R(-3,3), y=rows[r]+R(-3,3);
+      if(inCard(x,y)) continue;
+      var pick=Math.random();
+      var col=P[(r*7+c)%P.length];
+      if(pick<0.20){ push({x:x,y:y,k:'glyph',t:G[(i)%G.length],s:R(15,24),col:col}); }
+      else if(pick<0.38){ push({x:x,y:y,k:'mono',t:M[(i)%M.length],s:R(11,16),col:col}); }
+      else if(pick<0.56){ push({x:x,y:y,k:'card2',w:R(36,58),h:R(26,40),accent:col}); }
+      else if(pick<0.72){ push({x:x,y:y,k:'pill',t:CH[(i)%CH.length],col:col}); }
+      else if(pick<0.84){ push({x:x,y:y,k:'ring',d:R(16,34),col:col}); }
+      else if(pick<0.94){ push({x:x,y:y,k:'dot',d:R(7,14),col:col}); }
+      else { push({x:x,y:y,k:'line',w:R(22,42),col:col}); }
+    }
+  }
+  return items;
+}
+function renderField(theme){
+  var items=field(theme), html='';
+  var tint=theme.tint;            /* rgba base for glass objects */
+  for(var n=0;n<items.length;n++){
+    var o=items[n];
+    /* depth 0(far)..1(near): set by row band — top rows are "further" */
+    var dep=Math.max(0,Math.min(1,(o.y-6)/86));      /* lower on screen = nearer */
+    var sc=(0.82+dep*0.4).toFixed(2);                 /* scale by depth */
+    var blur=(o.big?0:(0.9*(1-dep))).toFixed(1);      /* far = slightly soft; big = crisp */
+    var op=(o.big?0.9:(0.6+dep*0.38)).toFixed(2);     /* crisper, more present */
+    var t=(5+ (o.i%6)*0.9).toFixed(1)+'s', dl=(-(o.i%9)*0.7).toFixed(1)+'s';
+    var y=(-(6+ (o.i%5)*3))+'px', rr=((o.i%2?1:-1)*(3+o.i%4))+'deg', r0=((o.i%5-2)*5)+'deg';
+    var st='left:'+o.x.toFixed(1)+'%;top:'+o.y.toFixed(1)+'%;--t:'+t+';--dl:'+dl+';--y:'+y+';--rr:'+rr+';--r:'+r0+';'
+          +'scale:'+sc+';filter:blur('+blur+'px);opacity:'+op+';';
+    if(o.k==='glyph') html+='<span class="ob glyph" style="'+st+'font-size:'+o.s.toFixed(0)+'px;color:'+o.col+';text-shadow:0 2px 7px rgba(0,0,0,.16)">'+o.t+'</span>';
+    else if(o.k==='mono') html+='<span class="ob mono" style="'+st+'font-size:'+o.s.toFixed(0)+'px;color:'+o.col+'">'+o.t+'</span>';
+    else if(o.k==='card2') html+='<span class="ob" style="'+st+'width:'+o.w.toFixed(0)+'px;height:'+o.h.toFixed(0)+'px;border-radius:12px;background:linear-gradient(180deg,'+tint+'.9),'+tint+'.55));box-shadow:0 12px 24px rgba(40,40,70,.16),inset 0 1px 0 rgba(255,255,255,.6);backdrop-filter:blur(4px)"><span style="position:absolute;left:7px;top:7px;width:'+(o.w*.5).toFixed(0)+'px;height:5px;border-radius:3px;background:'+o.accent+'"></span><span style="position:absolute;left:7px;top:16px;right:8px;height:4px;border-radius:3px;background:'+o.accent+';opacity:.4;box-shadow:0 8px 0 0 '+o.accent+'66"></span></span>';
+    else if(o.k==='pill') html+='<span class="ob" style="'+st+'height:21px;display:flex;align-items:center;gap:5px;padding:0 10px;border-radius:999px;background:linear-gradient(180deg,'+tint+'.95),'+tint+'.7));box-shadow:0 8px 16px rgba(40,40,70,.16),inset 0 1px 0 rgba(255,255,255,.7);font:800 10px/1 \'Bricolage Grotesque\';color:'+o.col+'"><b style="width:6px;height:6px;border-radius:50%;background:'+o.col+'"></b>'+o.t+'</span>';
+    else if(o.k==='ring') html+='<span class="ob" style="'+st+'width:'+o.d.toFixed(0)+'px;height:'+o.d.toFixed(0)+'px;border-radius:50%;border:2.5px solid '+o.col+'"></span>';
+    else if(o.k==='dot') html+='<span class="ob" style="'+st+'width:'+o.d.toFixed(0)+'px;height:'+o.d.toFixed(0)+'px;border-radius:50%;background:'+o.col+';box-shadow:0 0 12px '+o.col+'"></span>';
+    else if(o.k==='line') html+='<span class="ob" style="'+st+'width:'+o.w.toFixed(0)+'px;height:6px;border-radius:4px;background:'+o.col+'"></span>';
+  }
+  return html;
+}
+
+var THEMES={
+ claude:{cls:'t-claude',hint:'Point at your Claude Code',tint:'rgba(255,243,224,',
+   extra:'<span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>',
+   pal:['#FFF1D6','#FFE0B0','#FFCB8F','#FFB770','#FF9E5E','#F3825A','#FFFFFF'],
+   glyphs:['✳','✦','✶','◇','✺','❋','⟡','✷','☼','✧','❂','⁕'],
+   mono:['{ }','&lt;/&gt;','( )','=&gt;','#tok','· · ·','[ ]','fn'],
+   chips:['plan','agent','tool','context','reason','token','spawn']},
+ cursor:{cls:'t-cursor',hint:'Point at your Cursor',tint:'rgba(233,240,255,',
+   extra:'<div class="grid"></div><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>',
+   pal:['#FFFFFF','#DCE8FF','#B9CEFB','#9DBAF6','#7E9CEE','#6E8DEA','#A99CF4'],
+   glyphs:['▣','◧','⌘','⇥','▤','◨','❮❯','▥','⌗','▢','‹/›','⌄'],
+   mono:['&lt;div&gt;','=&gt;','{ }','const','./','tab','&lt;/&gt;','()=>'],
+   chips:['Tab','accept','suggest','refactor','def','hint','inline']},
+ codex:{cls:'t-codex',hint:'Point at your Codex',tint:'rgba(230,250,239,',
+   extra:'<div class="topo"></div><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>',
+   pal:['#FFFFFF','#D6F5E5','#A9E6C8','#7FD8AE','#54C595','#3CB587','#BfE98A'],
+   glyphs:['❯','✓','⬡','⌥','◈','⎇','⬢','✦','⌗','◇','⊞','✚'],
+   mono:['$','&gt;_','+18','−7','./run','diff','patch','git'],
+   chips:['plan','patch','verify','build','test','apply','commit']}
+};
+
+var row=document.getElementById('row');
+['claude','cursor','codex'].forEach(function(key){
+  var T=THEMES[key];
+  var col=document.createElement('div');col.className='col';
+  col.innerHTML=
+   '<div class="phone"><div class="screen">'
+   +'<div class="notch"></div><div class="statusbar"><span>9:41</span><span>5G ▣</span></div>'
+   +'<div class="cam '+T.cls+'">'
+   +'<div class="bg"><div class="wash"></div>'+T.extra+'<div class="grain"></div><div class="vig"></div></div>'
+   +'<div class="field">'+renderField(T)+'</div>'
+   +'<div class="head"><div class="date">Jun 6</div><div class="hint">'+T.hint+'</div></div>'
+   +'<div class="focus"><span class="b tl"></span><span class="b tr"></span><span class="b bl"></span><span class="b br"></span></div>'
+   +'<div class="subj">'+CARD[key]+'</div>'
+   +'<div class="sheet"></div><div class="shutter"><span class="ring"></span><span class="core"></span></div>'
+   +'</div></div></div>'
+   +'<div class="cap">'+key+'</div>';
+  row.appendChild(col);
+});
+</script>
+</body>
+</html>

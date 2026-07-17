@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Terse · 穿越宇宙</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000003;font-family:'SF Mono','Fira Code','Consolas',monospace}
+#c{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1}
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none}
+.hud{position:absolute;top:26px;left:34px;font-size:9.5px;letter-spacing:2.5px;color:rgba(160,185,230,.42);text-transform:uppercase}
+.stitle{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,calc(-50% + 24px));
+  text-align:center;width:min(740px,92vw);
+  opacity:0;transition:opacity 1.2s cubic-bezier(.16,1,.3,1),transform 1.2s cubic-bezier(.16,1,.3,1);
+}
+.stitle.vis{opacity:1;transform:translate(-50%,-50%)}
+.stitle h1{font-size:clamp(28px,5.5vw,52px);font-weight:200;letter-spacing:5px;color:#fff;text-shadow:0 0 80px rgba(80,140,255,.7),0 0 200px rgba(60,100,200,.35);line-height:1.2}
+.stitle h2{font-size:clamp(15px,2.3vw,21px);font-weight:200;color:rgba(170,200,255,.82);margin-top:10px;letter-spacing:3px;text-shadow:0 0 40px rgba(80,140,255,.6)}
+.stitle p{font-size:clamp(12px,1.7vw,15px);color:rgba(140,170,220,.52);margin-top:18px;letter-spacing:1.5px;line-height:1.9}
+.panel{
+  position:absolute;
+  background:rgba(4,6,20,.86);
+  border:1px solid rgba(80,130,220,.25);
+  border-radius:16px;padding:22px 26px;
+  backdrop-filter:blur(24px) saturate(1.5);
+  -webkit-backdrop-filter:blur(24px) saturate(1.5);
+  box-shadow:0 0 80px rgba(40,80,200,.14),0 20px 60px rgba(0,0,0,.85),
+             inset 0 1px 0 rgba(100,150,255,.12);
+  min-width:272px;
+  opacity:0;transform:translateY(28px) scale(.965);
+  transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1);
+}
+.panel.vis{opacity:1;transform:translateY(0) scale(1)}
+.ph{display:flex;align-items:center;gap:8px;padding-bottom:13px;margin-bottom:13px;border-bottom:1px solid rgba(80,130,220,.16)}
+.pled{width:7px;height:7px;border-radius:50%;background:#6688ff;box-shadow:0 0 10px rgba(100,136,255,.9),0 0 24px rgba(100,136,255,.35)}
+.pt{font-size:8.5px;letter-spacing:3px;color:rgba(140,175,255,.65);text-transform:uppercase;font-weight:600}
+.pr{display:flex;justify-content:space-between;align-items:center;padding:5.5px 0;font-size:11px;color:rgba(160,185,240,.52);border-bottom:1px solid rgba(80,130,220,.07)}
+.pr:last-child{border-bottom:none}
+.pv{color:rgba(190,210,255,.85);font-weight:600}
+.pg{color:#44ddcc;font-weight:700}
+.py{color:#ffdd55;font-weight:700}
+.prd{color:#ff9966}
+.pbig{font-size:56px;font-weight:100;letter-spacing:-2px;color:#99aaff;text-align:center;padding:9px 0 5px;text-shadow:0 0 50px rgba(120,150,255,.8)}
+.psub{font-size:8.5px;letter-spacing:2.5px;color:rgba(140,170,240,.38);text-align:center;text-transform:uppercase}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:13px}
+.sc{text-align:center;padding:9px 5px;background:rgba(80,130,220,.06);border:1px solid rgba(80,130,220,.11);border-radius:8px}
+.sn{font-size:19px;font-weight:200;color:#99aaff;text-shadow:0 0 18px rgba(120,150,255,.55)}
+.sl{font-size:7.5px;letter-spacing:1.5px;color:rgba(140,170,240,.32);text-transform:uppercase;margin-top:2px}
+.bw{margin-top:11px}
+.bl{display:flex;justify-content:space-between;font-size:8.5px;color:rgba(140,170,240,.3);margin-bottom:4px;letter-spacing:.8px}
+.bb{height:3.5px;background:rgba(80,130,220,.13);border-radius:2px;overflow:hidden}
+.bf{height:100%;background:linear-gradient(90deg,#5566ff,#8899ff);border-radius:2px;width:0%;transition:width 1.8s cubic-bezier(.16,1,.3,1)}
+.lr{font-size:10px;color:rgba(155,185,240,.46);line-height:1.95}
+.ri{display:flex;align-items:center;gap:9px;padding:7.5px 0;font-size:11px;border-bottom:1px solid rgba(80,130,220,.07)}
+.ri:last-child{border-bottom:none}
+.rl{color:rgba(155,185,240,.5);flex:1}.ra{color:rgba(80,130,220,.45)}
+.rb{margin-left:auto;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:11px}
+.rg{background:rgba(0,200,140,.1);color:#44ddcc;border:1px solid rgba(0,200,140,.22)}
+.rd{background:rgba(255,80,80,.07);color:rgba(255,100,100,.42);border:1px solid rgba(255,80,80,.14)}
+.nb{margin-top:11px;padding:8px 12px;background:rgba(255,210,50,.05);border:1px solid rgba(255,210,50,.15);border-radius:8px;font-size:9.5px;color:rgba(255,210,50,.65);letter-spacing:.7px}
+.dots{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:9px}
+.dot{width:4.5px;height:4.5px;border-radius:50%;background:rgba(100,140,220,.2);transition:all .4s}
+.dot.on{background:rgba(130,170,255,.88);transform:scale(1.5)}
+.cta{display:inline-block;margin-top:24px;padding:12px 40px;background:rgba(80,130,220,.12);border:1px solid rgba(100,155,255,.32);border-radius:32px;color:rgba(180,210,255,.85);font-size:13.5px;letter-spacing:2.5px;text-decoration:none;box-shadow:0 0 36px rgba(80,130,220,.18);pointer-events:all;cursor:pointer;font-family:inherit;transition:all .32s}
+.cta:hover{background:rgba(80,130,220,.26);box-shadow:0 0 56px rgba(80,130,220,.38);color:#fff}
+#ld{position:fixed;inset:0;background:#000003;z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity .9s}
+.lp{display:inline-block;width:5px;height:5px;border-radius:50%;background:rgba(100,140,220,.55);margin:0 2.5px;animation:lpa 1.2s ease-in-out infinite}
+.lp:nth-child(2){animation-delay:.18s}.lp:nth-child(3){animation-delay:.36s}
+@keyframes lpa{0%,80%,100%{transform:scale(.5);opacity:.2}40%{transform:scale(1);opacity:1}}
+</style>
+</head>
+<body>
+
+<div id="ld">
+  <div style="text-align:center">
+    <div style="margin-bottom:12px"><span class="lp"></span><span class="lp"></span><span class="lp"></span></div>
+    <div style="font-size:9px;letter-spacing:4px;color:rgba(100,140,220,.38);text-transform:uppercase">MAPPING THE UNIVERSE</div>
+  </div>
+</div>
+
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <div class="hud" id="hud">TERSE · COSMIC WEB</div>
+
+  <div class="stitle" id="s0"><h1>在浩瀚宇宙中</h1><p>数十亿光年的星系网络 — 每一次 AI 对话都在消耗你的资源</p></div>
+  <div class="stitle" id="s1"><h2>每月 $200+</h2><p>开发者平均 AI Token 支出<br>其中 70% 可以被 Terse 自动节省</p></div>
+
+  <div class="stitle" id="s2t" style="top:21%;transform:translate(-50%,0)"><h2 style="font-size:17px">实时监控 · 跨所有 AI 应用</h2></div>
+  <div class="panel" id="s2p" style="top:50%;left:50%;transform:translate(-53%,-44%) translateY(28px)">
+    <div class="ph"><div class="pled"></div><div class="pt">Terse · 实时监控</div></div>
+    <div class="pr"><span>Chrome ChatGPT</span><span class="pv">52→14 tok</span><span class="pg">-73%</span></div>
+    <div class="pr"><span>Claude Code</span><span class="pv">42→12 tok</span><span class="pg">-71%</span></div>
+    <div class="pr"><span>OpenClaw</span><span class="pv">380→95 tok</span><span class="pg">-75%</span></div>
+    <div class="pr"><span>⚡ 智能路由</span><span>opus→sonnet</span><span class="pg">-80%↓</span></div>
+    <div id="liveFeed" class="lr" style="margin-top:11px;min-height:38px"></div>
+  </div>
+
+  <div class="stitle" id="s3t" style="top:21%;transform:translate(-50%,0)"><h2 style="font-size:17px">自动压缩 · 三种优化模式</h2></div>
+  <div class="panel" id="s3p" style="top:50%;left:50%;transform:translate(-46%,-50%) translateY(28px)">
+    <div class="ph"><div class="pled" style="background:#44ddcc;box-shadow:0 0 10px rgba(68,221,204,.9)"></div><div class="pt">Token 优化统计</div></div>
+    <div class="pbig">-71%</div><div class="psub">平均节省率</div>
+    <div class="bw"><div class="bl"><span>压缩前</span><span>压缩后</span></div><div class="bb"><div class="bf" id="sbar"></div></div></div>
+    <div class="sgrid">
+      <div class="sc"><div class="sn" id="c1">0</div><div class="sl">优化次数</div></div>
+      <div class="sc"><div class="sn" id="c2">$0</div><div class="sl">节省费用</div></div>
+      <div class="sc"><div class="sn" id="c3">0K</div><div class="sl">节省 Tok</div></div>
+    </div>
+  </div>
+
+  <div class="stitle" id="s4t" style="top:21%;transform:translate(-50%,0)"><h2 style="font-size:17px">智能路由 · 自动选最优模型</h2></div>
+  <div class="panel" id="s4p" style="top:50%;left:50%;transform:translate(-52%,-48%) translateY(28px);min-width:312px">
+    <div class="ph"><div class="pled" style="background:#ffdd44;box-shadow:0 0 10px rgba(255,221,68,.9)"></div><div class="pt">智能模型路由</div></div>
+    <div class="ri" style="opacity:.28"><span class="rl">claude-opus-4</span><span class="ra">→</span><span style="color:rgba(255,100,100,.5);font-weight:600">高成本</span><span class="rb rd">已屏蔽</span></div>
+    <div class="ri"><span class="rl" style="color:rgba(200,215,255,.8)">claude-sonnet-4</span><span class="ra" style="color:#ffdd44">⚡</span><span style="color:#ffdd44;font-weight:600">最优选择</span><span class="rb rg">-80%</span></div>
+    <div class="ri" style="opacity:.24"><span class="rl">gpt-4o</span><span class="ra">→</span><span style="color:rgba(155,185,240,.36);font-weight:600">按需回退</span><span class="rb" style="border:1px solid rgba(80,130,220,.14);color:rgba(140,170,240,.34)">备用</span></div>
+    <div class="nb">⚡ 本次对话已自动降低成本 $0.031</div>
+  </div>
+
+  <div class="stitle" id="s5t" style="top:21%;transform:translate(-50%,0)"><h2 style="font-size:17px">Agent 全程追踪 · 防止 Token 浪费</h2></div>
+  <div class="panel" id="s5p" style="top:50%;left:50%;transform:translate(-50%,-50%) translateY(28px);min-width:292px">
+    <div class="ph"><div class="pled" style="background:#cc88ff;box-shadow:0 0 10px rgba(200,136,255,.9)"></div><div class="pt">Agent 监控</div></div>
+    <div id="agentLog" class="lr" style="min-height:90px"></div>
+    <div style="padding-top:11px;margin-top:7px;border-top:1px solid rgba(80,130,220,.12)">
+      <div class="pr"><span>总消耗</span><span class="pv">210K→23K tok</span></div>
+      <div class="pr"><span>⚠ 重复读取</span><span class="prd">src/auth.js ×3</span></div>
+      <div class="pr"><span>整体节省</span><span class="pg" style="font-size:17px;font-weight:200">89%</span></div>
+    </div>
+  </div>
+
+  <div class="stitle" id="s6" style="width:min(840px,93vw)">
+    <h1 style="font-size:clamp(32px,6vw,62px);font-weight:100;letter-spacing:7px">TERSE</h1>
+    <h2 style="font-size:clamp(13px,2.2vw,20px);margin-top:8px;letter-spacing:3px">让 AI 更便宜 · 更智能 · 更快</h2>
+    <p style="color:rgba(140,170,220,.44);font-size:12.5px;margin-top:14px">加入 2,000+ 开发者的选择</p>
+    <a class="cta" href="#">免费开始使用</a>
+  </div>
+
+  <div class="dots" id="dots"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// PURE WEBGL2 — Cosmic Web via double-domain-warp fBm fragment shader
+// Technique: Inigo Quilez domain warping + volumetric density field
+// No external dependencies needed
+// ─────────────────────────────────────────────────────────────────
+
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
+
+if (!gl) {
+  document.getElementById('ld').innerHTML = '<div style="color:rgba(200,180,140,.5);font-size:11px;letter-spacing:2px">WEBGL2 NOT SUPPORTED</div>';
+}
+
+// ── VERTEX SHADER: fullscreen triangle, no geometry needed ─────────
+const VS = `#version 300 es
+void main() {
+  // Fullscreen triangle: 3 vertices cover entire viewport
+  vec2 p[3];
+  p[0] = vec2(-1.0, -1.0);
+  p[1] = vec2( 3.0, -1.0);
+  p[2] = vec2(-1.0,  3.0);
+  gl_Position = vec4(p[gl_VertexID], 0.0, 1.0);
+}`;
+
+// ── FRAGMENT SHADER: Cosmic Web Renderer ──────────────────────────
+// Core technique: Inigo Quilez double domain warp (iquilezles.org/articles/warp)
+// fBm(fBm(fBm(p))) produces the long wispy filamentary structure
+// of the cosmic web / dark matter simulation look
+const FS = `#version 300 es
+precision highp float;
+
+uniform float uT;        // time
+uniform vec2  uRes;      // resolution
+uniform vec2  uOff;      // camera pan offset (scene-driven)
+uniform float uZoom;     // zoom level (scene-driven)
+uniform float uFade;     // scene fade multiplier
+
+out vec4 fragColor;
+
+// ── HASH FUNCTIONS ──────────────────────────────────────────────
+float hash11(float p) {
+  p = fract(p * 0.1031);
+  p *= p + 33.33;
+  p *= p + p;
+  return fract(p);
+}
+
+float hash21(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+vec2 hash22(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.xx + p3.yz) * p3.zy);
+}
+
+// ── VALUE NOISE ─────────────────────────────────────────────────
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);  // smoothstep
+  return mix(
+    mix(hash21(i),               hash21(i + vec2(1,0)), u.x),
+    mix(hash21(i + vec2(0,1)),   hash21(i + vec2(1,1)), u.x),
+    u.y
+  );
+}
+
+// ── fBm: Fractional Brownian Motion ────────────────────────────
+// 6 octaves, rotated to prevent axis-aligned artefacts
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  // 30-degree rotation matrix prevents grid artefacts
+  mat2 rot = mat2(0.866, 0.5, -0.5, 0.866);
+  for (int i = 0; i < 6; i++) {
+    v += a * noise(p);
+    p  = rot * p * 2.03;
+    a *= 0.50;
+  }
+  return v;
+}
+
+// ── DOUBLE DOMAIN WARP ─────────────────────────────────────────
+// This is THE technique for cosmic-web filaments.
+// fBm applied recursively to warp its own input coordinates —
+// produces long wispy tendrils instead of round blobs.
+// Reference: Inigo Quilez, "Domain Warping" (2002)
+float cosmicDensity(vec2 p, float time) {
+  // Slow drift through the density field
+  p += time * 0.008;
+
+  // First warp: compute displacement vectors using 2 independent fBms
+  vec2 q = vec2(
+    fbm(p + vec2(0.0,  0.0)),
+    fbm(p + vec2(5.2,  1.3))
+  );
+
+  // Second warp: warp again using first warp output
+  // The 4.0 multiplier controls filament vs blob balance
+  // Higher = more twisted filaments
+  vec2 r = vec2(
+    fbm(p + 4.0 * q + vec2(1.7, 9.2) + time * 0.004),
+    fbm(p + 4.0 * q + vec2(8.3, 2.8))
+  );
+
+  // Final density: fBm evaluated at doubly-warped coordinates
+  return fbm(p + 4.2 * r);
+}
+
+// ── GALAXY CLUSTER NODE: 3-layer gaussian glow ─────────────────
+vec3 clusterGlow(vec2 uv, vec2 pos, float size, vec3 col) {
+  float d = length(uv - pos);
+  // Tight core + medium halo + wide diffuse
+  float core  = exp(-d * d / (size * size * 0.003));
+  float halo  = exp(-d * d / (size * size * 0.04)) * 0.35;
+  float diffuse = exp(-d * d / (size * size * 0.35)) * 0.12;
+  return col * (core + halo + diffuse);
+}
+
+void main() {
+  // ── COORDINATE SETUP ──────────────────────────────────────────
+  // Normalized coords: (0,0)=center, aspect-corrected
+  vec2 uv = (gl_FragCoord.xy - uRes * 0.5) / min(uRes.x, uRes.y);
+
+  // Camera: zoom and pan (driven by scene uniforms)
+  uv = uv / uZoom + uOff;
+
+  // ── COSMIC WEB DENSITY FIELD ──────────────────────────────────
+  // Sample at two scales for multi-level structure
+  float d1 = cosmicDensity(uv * 1.8, uT);          // large filaments
+  float d2 = cosmicDensity(uv * 3.6 + vec2(7.3, 2.1), uT * 0.7); // fine detail
+
+  // Combine: large structure dominant, fine detail adds texture
+  float d = d1 * 0.72 + d2 * 0.28;
+
+  // ── COLOR MAPPING ─────────────────────────────────────────────
+  // Palette from reference image:
+  // void → deep purple → cobalt → electric blue → teal → blue-white
+  vec3 col = vec3(0.0, 0.0, 0.006); // deep void — near-black with tiny blue tint
+
+  // Purple glow in low-density regions (dark matter halos)
+  col += vec3(0.018, 0.006, 0.065) * smoothstep(0.25, 0.55, d);
+  // Cobalt blue mid-density (filament core)
+  col += vec3(0.035, 0.095, 0.38)  * smoothstep(0.38, 0.62, d);
+  // Bright teal on filament ridges (compression zones)
+  col += vec3(0.08, 0.30, 0.58)    * smoothstep(0.52, 0.72, d);
+  // Electric blue-white on dense nodes
+  col += vec3(0.40, 0.60, 0.95)    * smoothstep(0.65, 0.82, d);
+  // Hot white core of galaxy clusters
+  col += vec3(0.90, 0.95, 1.00)    * smoothstep(0.78, 0.95, d);
+
+  // Fine-scale texture variation: slightly lighter on detail peaks
+  col += vec3(0.015, 0.04, 0.12) * smoothstep(0.4, 0.7, d2) * smoothstep(0.3, 0.6, d1);
+
+  // ── GALAXY CLUSTER NODES ──────────────────────────────────────
+  // 24 pseudo-random galaxy cluster positions
+  // Placed in a way that concentrates them near high-density regions
+  vec3 nodeAccum = vec3(0.0);
+
+  float clusterData[72]; // 24 clusters × 3 values (x, y, type)
+  // Pre-computed positions in cosmic web coordinate space
+  clusterData[0]=-.82; clusterData[1]=.41;  clusterData[2]=0.;
+  clusterData[3]=.65;  clusterData[4]=-.78; clusterData[5]=1.;
+  clusterData[6]=-.15; clusterData[7]=.92;  clusterData[8]=0.;
+  clusterData[9]=.88;  clusterData[10]=.55; clusterData[11]=2.;
+  clusterData[12]=-.58;clusterData[13]=-.62;clusterData[14]=1.;
+  clusterData[15]=.22; clusterData[16]=-.38;clusterData[17]=0.;
+  clusterData[18]=-.94;clusterData[19]=-.22;clusterData[20]=2.;
+  clusterData[21]=.48; clusterData[22]=.84; clusterData[23]=1.;
+  clusterData[24]=-.32;clusterData[25]=.18; clusterData[26]=0.;
+  clusterData[27]=.75; clusterData[28]=-.12;clusterData[29]=2.;
+  clusterData[30]=-.68;clusterData[31]=.72; clusterData[32]=1.;
+  clusterData[33]=.12; clusterData[34]=-.95;clusterData[35]=0.;
+  clusterData[36]=-.45;clusterData[37]=-.84;clusterData[38]=2.;
+  clusterData[39]=.92; clusterData[40]=.28; clusterData[41]=1.;
+  clusterData[42]=-.25;clusterData[43]=.55; clusterData[44]=0.;
+  clusterData[45]=.58; clusterData[46]=-.55;clusterData[47]=2.;
+  clusterData[48]=-.78;clusterData[49]=.08; clusterData[50]=1.;
+  clusterData[51]=.35; clusterData[52]=.72; clusterData[53]=0.;
+  clusterData[54]=-.18;clusterData[55]=-.45;clusterData[56]=2.;
+  clusterData[57]=.82; clusterData[58]=-.38;clusterData[59]=1.;
+  clusterData[60]=-.52;clusterData[61]=.35; clusterData[62]=0.;
+  clusterData[63]=.18; clusterData[64]=.18; clusterData[65]=2.;
+  clusterData[66]=-.88;clusterData[67]=-.52;clusterData[68]=1.;
+  clusterData[69]=.65; clusterData[70]=.62; clusterData[71]=0.;
+
+  for (int i = 0; i < 24; i++) {
+    vec2 cpos = vec2(clusterData[i*3], clusterData[i*3+1]);
+    float ctype = clusterData[i*3+2];
+    // Color varies by type: warm white / cool white / blue-white
+    vec3 cCol;
+    if (ctype < 0.5)      cCol = vec3(1.0,  0.92, 0.78);  // warm white
+    else if (ctype < 1.5) cCol = vec3(0.88, 0.94, 1.0);   // cool white
+    else                  cCol = vec3(0.72, 0.85, 1.0);    // blue-white
+    // Size varies: larger clusters are brighter
+    float sz = 0.8 + hash11(float(i) * 7.13) * 0.8;
+    nodeAccum += clusterGlow(uv, cpos, sz, cCol);
+  }
+
+  // Only show cluster nodes where there's actual density (they live in filaments)
+  col += nodeAccum * (0.3 + 0.7 * smoothstep(0.25, 0.6, d));
+
+  // ── BACKGROUND STAR FIELD ─────────────────────────────────────
+  // Two scales: distant galaxies (very small, blue-white) + foreground stars (warm)
+  vec2 sg = uv * 60.0;
+  vec2 si = floor(sg), sf = fract(sg);
+  float sh = hash21(si);
+  if (sh > 0.968) {
+    float sb   = (sh - 0.968) / 0.032;
+    float sdist = length(sf - 0.5);
+    float star  = sb * sb * 0.9 / (sdist * sdist * 180.0 + 0.008);
+    vec3 sCol  = mix(vec3(1.0, 0.95, 0.80), vec3(0.80, 0.90, 1.0), hash11(sh * 17.3));
+    col += sCol * star;
+  }
+
+  // ── HDR TONE MAPPING ─────────────────────────────────────────
+  // Reinhard extended — prevents blown-out whites while keeping depth
+  col = col * (1.0 + col * 0.15) / (1.0 + col);
+  // Gamma correction 2.2
+  col = pow(max(col, 0.0), vec3(0.4545));
+
+  // ── VIGNETTE ─────────────────────────────────────────────────
+  // Strong vignette emphasizes the cosmic depth / void
+  vec2 vUV = gl_FragCoord.xy / uRes;
+  float vd  = length(vUV - 0.5);
+  float vig = 1.0 - smoothstep(0.35, 0.92, vd * 1.55);
+  col *= vig;
+
+  // Scene fade
+  col *= uFade;
+
+  fragColor = vec4(col, 1.0);
+}`;
+
+// ── COMPILE & LINK ────────────────────────────────────────────────
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error('Shader error:', gl.getShaderInfoLog(s));
+    return null;
+  }
+  return s;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+  console.error('Link error:', gl.getProgramInfoLog(prog));
+}
+gl.useProgram(prog);
+
+// Create a VAO (required for WebGL2 even with no vertex data)
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+// Get uniform locations
+const uT    = gl.getUniformLocation(prog, 'uT');
+const uRes  = gl.getUniformLocation(prog, 'uRes');
+const uOff  = gl.getUniformLocation(prog, 'uOff');
+const uZoom = gl.getUniformLocation(prog, 'uZoom');
+const uFade = gl.getUniformLocation(prog, 'uFade');
+
+// ── SCENE SYSTEM ──────────────────────────────────────────────────
+// Each scene: camera offset, zoom, and which DOM panels to show
+// The camera drifts through the cosmic web to reveal different regions
+const SCENES = [
+  { hud:'TERSE · COSMIC WEB',        off:[0,0],       zoom:1.0,  show:['s0'],        dur:3200 },
+  { hud:'UNIVERSE · SCANNING',       off:[.08,.04],   zoom:1.28, show:['s1'],        dur:3500 },
+  { hud:'TERSE · MONITOR · LIVE',    off:[-.22,.12],  zoom:1.75, show:['s2t','s2p'], dur:5500 },
+  { hud:'TOKEN · OPTIMIZER',         off:[.18,-.14],  zoom:2.1,  show:['s3t','s3p'], dur:5500 },
+  { hud:'SMART · ROUTER · ENGAGED',  off:[-.08,.22],  zoom:1.85, show:['s4t','s4p'], dur:5000 },
+  { hud:'AGENT · TRACKING',          off:[.28,.08],   zoom:2.35, show:['s5t','s5p'], dur:5000 },
+  { hud:'TERSE · TOKEN OPTIMIZER',   off:[0,0],       zoom:0.92, show:['s6'],        dur:8000 },
+];
+
+const ALL_IDS=['s0','s1','s2t','s2p','s3t','s3p','s4t','s4p','s5t','s5p','s6'];
+let sid=-1, scTmr=null;
+
+// Camera lerp state
+let camOff=[0,0], camOffTgt=[0,0];
+let camZoom=1.0,  camZoomTgt=1.0;
+let fadeMul=1.0;
+
+const hideAll=()=>ALL_IDS.forEach(id=>{const e=document.getElementById(id);if(e)e.classList.remove('vis')});
+const showEls=ids=>ids.forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('vis')});
+function updateDots(i){const d=document.getElementById('dots');d.innerHTML='';SCENES.forEach((_,j)=>{const dot=document.createElement('div');dot.className='dot'+(j===i?' on':'');d.appendChild(dot)})}
+
+const FEED=[
+  '<span style="color:#44ddcc">●</span> Chrome: 52→14 tok <span style="color:#44ddcc;font-weight:700">-73%</span>',
+  '<span style="color:#ffdd55">⚡</span> Route: opus→sonnet <span style="color:#44ddcc;font-weight:700">-80%↓</span>',
+  '<span style="color:#44ddcc">●</span> Claude Code: 42→12 tok <span style="color:#44ddcc;font-weight:700">-71%</span>',
+  '<span style="color:#ff9966">⚠</span> Dup read: src/auth.js ×3',
+  '<span style="color:#44ddcc">●</span> OpenClaw: 380→95 tok <span style="color:#44ddcc;font-weight:700">-75%</span>',
+];
+const AGENT=[
+  '<span style="color:#99aaff">[terse]</span> 42→12 tok <span style="color:#44ddcc">(-71%)</span>',
+  '<span style="color:#ffdd55">⚡ route:</span> opus→sonnet · saved $0.031',
+  '<span style="color:#99aaff">[terse]</span> npm test 4823→38 <span style="color:#44ddcc">(-99%)</span>',
+  '<span style="color:#ff9966">⚠ dup:</span> Read src/auth.js ×3',
+  '<span style="color:#99aaff">[terse]</span> git diff 1240→310 <span style="color:#44ddcc">(-75%)</span>',
+];
+let fI=null,aI=null,cI=null;
+const clrI=()=>{clearInterval(fI);clearInterval(aI);clearInterval(cI)};
+
+function goScene(idx){
+  idx=Math.max(0,Math.min(SCENES.length-1,idx));
+  sid=idx; clrI(); clearTimeout(scTmr);
+  const sc=SCENES[idx];
+  document.getElementById('hud').textContent=sc.hud;
+  camOffTgt=[sc.off[0], sc.off[1]];
+  camZoomTgt=sc.zoom;
+  hideAll(); updateDots(idx);
+  setTimeout(()=>showEls(sc.show), 340);
+  if(idx===2){
+    let fi=0;const el=document.getElementById('liveFeed');el.innerHTML='';
+    fI=setInterval(()=>{if(fi>=FEED.length){clearInterval(fI);return}const d=document.createElement('div');d.innerHTML=FEED[fi++];el.appendChild(d);if(el.children.length>4)el.removeChild(el.children[0])},960);
+  }
+  if(idx===3){
+    setTimeout(()=>{const b=document.getElementById('sbar');if(b)b.style.width='71%'},520);
+    let t=0,co=0,sa=0;
+    cI=setInterval(()=>{t=Math.min(t+Math.round(Math.random()*90+30),2847);co=Math.min(co+(Math.random()*15+4),342);sa=Math.min(sa+(Math.random()*10+3),210);const e1=document.getElementById('c1');if(e1)e1.textContent=t.toLocaleString();const e2=document.getElementById('c2');if(e2)e2.textContent='$'+Math.round(co);const e3=document.getElementById('c3');if(e3)e3.textContent=Math.round(sa)+'K';if(t>=2847)clearInterval(cI)},70);
+  }
+  if(idx===5){
+    let ai=0;const el=document.getElementById('agentLog');el.innerHTML='';
+    aI=setInterval(()=>{if(ai>=AGENT.length){clearInterval(aI);return}const d=document.createElement('div');d.innerHTML=AGENT[ai++];el.appendChild(d);if(el.children.length>5)el.removeChild(el.children[0])},920);
+  }
+  if(idx<SCENES.length-1)scTmr=setTimeout(()=>goScene(idx+1),sc.dur);
+}
+
+// ── RESIZE ────────────────────────────────────────────────────────
+function resize(){
+  const dpr = Math.min(devicePixelRatio, 2);
+  canvas.width  = Math.round(innerWidth  * dpr);
+  canvas.height = Math.round(innerHeight * dpr);
+  canvas.style.width  = innerWidth  + 'px';
+  canvas.style.height = innerHeight + 'px';
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── RENDER LOOP ────────────────────────────────────────────────────
+const t0 = performance.now();
+let lastTime = 0;
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  const t = (now - t0) * 0.001;
+  const dt = Math.min(t - lastTime, 0.05);
+  lastTime = t;
+
+  // Smooth camera lerp (exponential)
+  const lf = 1.0 - Math.pow(0.018, dt);
+  camOff[0] += (camOffTgt[0] - camOff[0]) * lf;
+  camOff[1] += (camOffTgt[1] - camOff[1]) * lf;
+  camZoom   += (camZoomTgt  - camZoom)    * lf;
+
+  // Upload uniforms
+  gl.uniform1f(uT,    t);
+  gl.uniform2f(uRes,  canvas.width, canvas.height);
+  gl.uniform2f(uOff,  camOff[0], camOff[1]);
+  gl.uniform1f(uZoom, camZoom);
+  gl.uniform1f(uFade, fadeMul);
+
+  // Draw fullscreen triangle (3 vertices, no index buffer)
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+// ── INPUT ─────────────────────────────────────────────────────────
+window.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' ')goScene(sid+1);
+  else if(e.key==='ArrowLeft')goScene(sid-1);
+  else if(e.key==='r'||e.key==='R')goScene(0);
+});
+window.addEventListener('click',e=>{if(!e.target.closest('a,.cta'))goScene(sid+1)});
+
+// ── BOOT ──────────────────────────────────────────────────────────
+const ldEl = document.getElementById('ld');
+// Small delay to let WebGL compile the shader before hiding loading
+setTimeout(()=>{
+  ldEl.style.opacity='0';
+  setTimeout(()=>ldEl.style.display='none', 900);
+  requestAnimationFrame(frame);
+  goScene(0);
+}, 400);
+</script>
+</body>
+</html>

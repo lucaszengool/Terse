@@ -6,12 +6,20 @@ Productivity
 ## Language
 English
 
+## Title options (max 45 chars, brand first)
+1. `Terse: AI Prompt Compressor & Token Saver` (42)
+2. `Terse — AI Prompt Compressor, Token Saver` (41)
+3. `Terse: Token Saver for ChatGPT & Claude` (39)
+4. `Terse: Compress AI Prompts, Save Tokens` (39)
+
 ## Short Description (max 132 chars)
-Compress prompts to save tokens and reduce API costs. Works with any AI chat or agent.
+AI prompt compressor & token saver — cut ChatGPT, Claude & Gemini token costs 20-40%. On-device, works in any AI chat. (118 chars — matches manifest.json)
 
 ## Detailed Description
 
-Terse compresses your AI prompts in real-time, saving tokens and reducing API costs — without losing meaning.
+> First two lines are what searchers see — keep keywords front-loaded.
+
+Terse is an AI prompt compressor and token saver: it compresses ChatGPT, Claude, and Gemini prompts in real time, cutting token counts and API costs 20-40% — without losing meaning.
 
 How it works:
 Terse runs a 20+ technique optimization engine directly in your browser. It removes filler words, politeness padding, hedging, redundant phrases, and compresses whitespace — all while preserving the meaning of your prompt. Your text never leaves your browser unless you choose to sign in.
@@ -40,6 +48,13 @@ If you use AI APIs, every token counts. Terse typically saves 15–40% of tokens
 
 Privacy first:
 All optimization happens locally in your browser. No text is sent to any server. Optional sign-in enables usage sync and subscription features.
+
+## Screenshot Checklist (5 shots, 1280×800)
+1. **Before/after compression** — a real verbose prompt on the left, the compressed version on the right, with the token delta and technique tags visible.
+2. **Savings counter** — the popup's "Total saved: N tokens across N optimizations" stats bar after real use (big numbers sell).
+3. **Themes** — grid/collage of the popup in several of the 8 themes (Lime, Lavender, Midnight, Teal).
+4. **Keyboard shortcut** — Cmd+Shift+R capture-and-replace in action inside a ChatGPT/Claude input, shortcut keys overlaid.
+5. **Options page** — mode selection (Soft/Normal/Aggressive) with the per-mode descriptions visible.
 
 ## Single Purpose Description
 Terse optimizes AI prompts by removing filler, redundancy, and unnecessary tokens to reduce API costs.

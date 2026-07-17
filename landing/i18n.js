@@ -83,7 +83,8 @@
     // Pricing
     'pricing.sectionTitle': 'Pricing',
     'pricing.heading': 'Simple, transparent plans',
-    'pricing.trialNote': 'Every plan includes a <strong>30-day free trial</strong>. No charge until your trial ends.',
+    'pricing.trialNote': 'Monthly plans include a <strong>30-day free trial</strong> — $0 today. Prefer flexibility? Weekly and quarterly billing available.',
+    'pricing.proIntervals': 'or <strong>$1.99</strong>/week · <strong>$12</strong>/quarter (~$4/mo — save 20%)',
     'pricing.pro': 'Pro',
     'pricing.proPrice': '$4.99/mo',
     'pricing.proDesc': 'For developers running agent sessions daily. Unlimited prompts, multi-session monitoring.',
@@ -438,7 +439,8 @@
     // Pricing
     'pricing.sectionTitle': '价格',
     'pricing.heading': '简单透明的方案',
-    'pricing.trialNote': '所有方案均包含 <strong>30 天免费试用</strong>。试用期内不收取任何费用。',
+    'pricing.trialNote': '按月方案含 <strong>30 天免费试用</strong> — 今天 $0。也可选择按周或按季付费。',
+    'pricing.proIntervals': '或 <strong>$1.99</strong>/周 · <strong>$12</strong>/季（约 $4/月 — 省 20%）',
     'pricing.pro': 'Pro',
     'pricing.proPrice': '$4.99/月',
     'pricing.proDesc': '面向每日使用 Agent 的开发者。无限提示优化，多会话监控。',
@@ -793,7 +795,8 @@
     // Pricing
     'pricing.sectionTitle': '價格',
     'pricing.heading': '簡單透明的方案',
-    'pricing.trialNote': '所有方案均包含 <strong>30 天免費試用</strong>。試用期內不收取任何費用。',
+    'pricing.trialNote': '按月方案含 <strong>30 天免費試用</strong> — 今天 $0。也可選擇按週或按季付費。',
+    'pricing.proIntervals': '或 <strong>$1.99</strong>/週 · <strong>$12</strong>/季（約 $4/月 — 省 20%）',
     'pricing.pro': 'Pro',
     'pricing.proPrice': '$4.99/月',
     'pricing.proDesc': '面向每日使用 Agent 的開發者。無限提示優化，多工作階段監控。',

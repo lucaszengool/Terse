@@ -99,6 +99,10 @@ jobs:
           retention-days: 30
 
       - name: Upload to GitHub Release
+        # Only deliberate runs (manual dispatch or a version tag) may replace the
+        # public installer. Plain pushes to main were silently clobbering the
+        # v1.3.1 asset with a build of main's older windows-app on every commit.
+        if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.3.1

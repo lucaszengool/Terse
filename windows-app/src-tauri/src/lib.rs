@@ -2750,6 +2750,33 @@ pub fn run() {
         }));
     }
 
+    // WebView2 guard: without the runtime the window dies as a silent white
+    // flash (see tauri#4389 — a denied/failed WebView2 install leaves the app
+    // installed but unlaunchable, with no error). Detect it up front and tell
+    // the user what to do instead.
+    if let Err(e) = tauri::webview_version() {
+        if let Some(dir) = dirs::home_dir() {
+            let dir = dir.join(".terse");
+            let _ = std::fs::create_dir_all(&dir);
+            use std::io::Write;
+            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(dir.join("crash.log")) {
+                let _ = writeln!(f, "[launch] WebView2 runtime not available: {}", e);
+            }
+        }
+        let msg = "Terse needs the Microsoft Edge WebView2 runtime, but it is not installed on this PC. \
+                   Terse 需要 Microsoft Edge WebView2 运行时才能启动，当前系统未安装。\
+                   Click OK to open the download page — install WebView2, then start Terse again. \
+                   点击确定打开下载页面，安装 WebView2 后重新打开 Terse。";
+        let _ = crate::hidden_command("powershell")
+            .args(["-NoProfile", "-Command",
+                   &format!("Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('{}','Terse — WebView2')", msg)])
+            .status();
+        let _ = crate::hidden_command("cmd")
+            .args(["/C", "start", "", "https://developer.microsoft.com/microsoft-edge/webview2/"])
+            .spawn();
+        return;
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())

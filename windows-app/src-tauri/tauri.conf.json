@@ -38,6 +38,9 @@
       "timestampUrl": "",
       "webviewInstallMode": {
         "type": "offlineInstaller"
+      },
+      "nsis": {
+        "installMode": "perMachine"
       }
     }
   },

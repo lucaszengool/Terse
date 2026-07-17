@@ -330,7 +330,8 @@ app.post('/api/checkout', async (req, res) => {
     // ── Trial abuse prevention ──
     // Only the monthly Pro plan offers a free trial. Weekly/quarterly (and direct
     // subscribe / China pay) charge immediately, so they skip the trial-used check.
-    const offersTrial = !noTrial && !isChinaPay && tier === 'pro';
+    // Monthly Pro and Premium offer the 30-day trial; weekly/quarterly charge immediately.
+    const offersTrial = !noTrial && !isChinaPay && (tier === 'pro' || tier === 'premium');
     if (offersTrial) {
       const allEmailCustomers = await stripe.customers.list({ email: clerkUserEmail, limit: 10 });
       for (const c of allEmailCustomers.data) {
@@ -415,12 +416,13 @@ app.post('/api/checkout', async (req, res) => {
       const entTier = normalizeTier(tier);
       const subscriptionData = { metadata: { clerk_user_id: clerkUserId, tier: entTier } };
       // Free trial ($0 today) only on the monthly Pro plan; others charge now.
-      const withTrial = !noTrial && tier === 'pro';
+      const withTrial = !noTrial && (tier === 'pro' || tier === 'premium');
       if (withTrial) subscriptionData.trial_period_days = TRIAL_DAYS;
       // Reassure the buyer on Stripe's hosted page about what's due today.
       let custom_text;
       if (withTrial) {
-        custom_text = { submit: { message: '$0.00 due today — your card is not charged until the 30-day free trial ends. Then $4.99 USD/month. Cancel anytime.' } };
+        const monthly = tier === 'premium' ? '$99.00' : '$4.99';
+        custom_text = { submit: { message: `$0.00 due today — your card is not charged until the 30-day free trial ends. Then ${monthly} USD/month. Cancel anytime.` } };
       } else if (tier === 'pro_weekly') {
         custom_text = { submit: { message: '$1.99 USD billed weekly. Cancel anytime.' } };
       } else if (tier === 'pro_quarterly') {

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agent Budget Limit — Stop Runaway Agents | Terse</title>
+  <meta name="description" content="Set burn-rate, token, and dollar ceilings for Claude Code, Cursor, Cline and more. Terse pauses or kills runaway agents before the next API call.">
+  <link rel="canonical" href="https://www.terseai.org/agent-budget-circuit-breaker">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AI Agent Budget Limit — Stop Runaway Agents | Terse">
+  <meta property="og:description" content="Burn-rate, token, and dollar ceilings for AI coding agents. Terse escalates from alert to pause to kill — before the next API call, not after the bill.">
+  <meta property="og:url" content="https://www.terseai.org/agent-budget-circuit-breaker">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AI Agent Budget Limit — Stop Runaway Agents | Terse">
+  <meta name="twitter:description" content="Burn-rate, token, and dollar ceilings for AI coding agents. Terse pauses or kills runaway agents before the next API call.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "AI Agent Budget Limit — Stop Runaway Agents | Terse",
+        "url": "https://www.terseai.org/agent-budget-circuit-breaker",
+        "description": "Terse's budget circuit breaker sets burn-rate, token, and dollar ceilings for AI coding agents and escalates from alert to SIGSTOP pause to SIGTERM kill before the next API call.",
+        "dateModified": "2026-07-17",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
+            {"@type": "ListItem", "position": 2, "name": "Budget Circuit Breaker", "item": "https://www.terseai.org/agent-budget-circuit-breaker"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I set a spending limit for Claude Code?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Install Terse and open the Budget Circuit Breaker panel. Set a dollar ceiling (for example $5 per session), a token ceiling, or a burn-rate ceiling (dollars per hour). Terse reads Claude Code's exact token usage from its JSONL session stream, computes per-turn cost with model-aware pricing, and enforces the ceiling automatically — no Claude Code configuration changes required."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I pause an AI agent automatically?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. When a ceiling is crossed, Terse escalates in stages: first an alert, then a SIGSTOP pause that freezes the agent process, then a SIGTERM kill if the ceiling is exceeded further. The pause happens before the agent's next API call, so no additional tokens are billed. A paused agent can be resumed with one click and continues exactly where it stopped."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is a runaway AI agent?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A runaway agent is a coding agent stuck in a loop — retrying a failing test, re-reading the same files, or calling the same tool repeatedly — while continuing to make paid API calls. Left overnight, a single looping agent can burn hundreds of dollars. Terse detects the burn rate spike and duplicate tool-call patterns, and stops the process before the next API call is made."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Will stopping the agent corrupt my work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The first enforcement stage is SIGSTOP, which freezes the process without terminating it — no state is lost and one-click resume continues the session. SIGTERM is only used as the final escalation stage, and it asks the process to exit cleanly. Your files and git history are untouched either way; the agent simply stops making new API calls."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which AI agents does the circuit breaker support?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse auto-detects 8 agents: Claude Code, OpenClaw, Aider, Cursor Agent, OpenAI Codex, GitHub Copilot CLI, Cline, and Windsurf. Claude Code has the deepest integration with exact token counts from JSONL streaming; other agents are detected by process and config, with session stats and cost estimates driving the same ceilings."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does the budget circuit breaker send my data anywhere?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Terse runs entirely on-device. Token counts, cost calculations, and process control all happen locally on your Mac or Windows machine. Your prompts and code never leave the machine."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg2:hsl(250,21%,11%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .hero{padding:140px 40px 80px;text-align:center;max-width:900px;margin:0 auto;position:relative}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07),transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:620px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:600px}
+    .divider{height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .demo-box{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;max-width:760px;margin:0 auto 40px}
+    .demo-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .demo-title{margin-left:8px;font-size:11px;color:var(--t3);flex:1}
+    .demo-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+    .term{padding:18px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9;color:var(--t2)}
+    .term .dim{color:var(--t3)}
+    .term .ok{color:var(--ac)}
+    .term .warn{color:#fbbf24}
+    .term .err{color:#f87171}
+    .term-line{opacity:0;transition:opacity .3s}
+    .term-line.show{opacity:1}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/#pipeline">Pipeline</a>
+    <a href="/#agents">Agent Monitor</a>
+    <a href="/#pricing">Pricing</a>
+  </div>
+  <a href="/#pricing" class="nav-cta">Start Free Trial</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Budget Circuit Breaker</div>
+  <h1>Stop Runaway Agents <span class="gradient-text">Before the Bill</span></h1>
+  <p class="sub">Set a budget limit for any AI coding agent — burn-rate, token, or dollar ceilings. When an agent loops, Terse escalates from alert to pause to kill, <strong>before the next API call</strong> — not after the invoice.</p>
+  <div class="hero-actions">
+    <a href="/#pricing" class="btn-primary">Start 30-Day Free Trial</a>
+    <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">3</span><span class="lbl">ceiling types: burn-rate · tokens · $</span></div>
+    <div class="stat-pill"><span class="val">8</span><span class="lbl">agents auto-detected</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">tokens billed after trip</span></div>
+    <div class="stat-pill"><span class="val">1-click</span><span class="lbl">resume paused agent</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>The Runaway Agent <span class="gradient-text">Problem</span></h2>
+  <p class="section-sub">Autonomous coding agents retry failing tests, re-read the same files, and loop on tool calls — while every iteration is a paid API call. Left running overnight, one stuck agent can burn hundreds of dollars.</p>
+
+  <div class="demo-box">
+    <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">Terse — Agent Monitor · claude (PID 48213)</div><div class="demo-badge">Breaker Armed</div></div>
+    <div class="term">
+      <div class="term-line show"><span class="dim">02:14:07</span>  claude-code · turn 41 · <span class="dim">re-running failing test suite (attempt 12)</span></div>
+      <div class="term-line show"><span class="dim">02:14:31</span>  duplicate tool call detected · <span class="dim">Bash(npm test) ×12 · Read(src/auth.ts) ×9</span></div>
+      <div class="term-line" id="bl1"><span class="warn">02:14:31  ⚠ ALERT</span> — burn rate $14.20/hr exceeds ceiling $6.00/hr</div>
+      <div class="term-line" id="bl2"><span class="warn">02:15:02  ⏸ SIGSTOP</span> — agent paused before next API call · session cost held at $3.87</div>
+      <div class="term-line" id="bl3"><span class="err">02:20:02  ✕ SIGTERM</span> <span class="dim">(if unattended)</span> — process terminated · trip logged to history</div>
+      <div class="term-line" id="bl4"><span class="ok">→ Resume anytime</span> <span class="dim">— one click continues the session exactly where it stopped</span></div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🔥</div>
+      <h3>Burn-Rate Ceiling</h3>
+      <p>Cap spend velocity in dollars per hour. A loop shows up as a burn-rate spike within minutes — Terse trips the breaker long before the session total gets scary.</p>
+      <span class="tag">$/hour</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🎟️</div>
+      <h3>Token Ceiling</h3>
+      <p>Hard limit on total tokens per session. Terse tracks input, output, and cache tokens per turn, so the ceiling reflects what the API actually bills.</p>
+      <span class="tag">Per-session</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💵</div>
+      <h3>Dollar Ceiling</h3>
+      <p>Set a plain dollar cap — "this session may not cost more than $5." Per-turn cost is computed with model-aware pricing, so the number is real, not a guess.</p>
+      <span class="tag">Model-aware</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🚦</div>
+      <h3>Escalation Ladder</h3>
+      <p>Alert first, SIGSTOP pause second, SIGTERM kill last. Each stage is visible and reversible — the breaker never jumps straight to killing your agent.</p>
+      <span class="tag">Alert → Pause → Kill</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">⏱️</div>
+      <h3>Stops Before the Next Call</h3>
+      <p>Enforcement happens at the process level before the agent's next API request leaves your machine. Once the breaker trips, not one more token is billed.</p>
+      <span class="tag">Zero overshoot</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📜</div>
+      <h3>Trip History + Resume</h3>
+      <p>Every trip is logged: which ceiling, which agent, session cost at the moment of the trip. Paused agents resume with one click and continue where they stopped.</p>
+      <span class="tag">One-click</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>How the Breaker <span class="gradient-text">Escalates</span></h2>
+  <p class="section-sub">Three stages, in order, each one visible in the Terse dashboard and the Alert Center. Nothing is silent, nothing is destructive by default.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px">
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">What a runaway night costs without a breaker</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Agent loops on failing test, 90s per turn</span><span style="font-weight:600">~40 turns/hr</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">Context re-sent every turn</span><span style="font-weight:600">50k–150k tokens/turn</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">8 hours unattended</span><span style="font-weight:600">~320 turns</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2);font-style:italic">Morning surprise</span><span style="color:#f87171;font-weight:700">$100s billed</span></div>
+        <div style="height:1px;background:var(--bd);margin:4px 0"></div>
+        <div style="font-size:12px;color:var(--t3)">Provider dashboards show this the next day. Terse sees the burn-rate spike in minutes — and acts.</div>
+      </div>
+    </div>
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--acm);border-radius:14px;background:linear-gradient(160deg,rgba(110,231,183,0.05),var(--bg2))">
+      <div style="font-size:12px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">The same night with the breaker armed</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">1</span><span style="font-size:13px;color:var(--t2)"><strong>Alert</strong> — ceiling crossed; notification via macOS, Slack webhook, or ntfy.sh push to your phone.</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">2</span><span style="font-size:13px;color:var(--t2)"><strong>SIGSTOP pause</strong> — the agent process freezes before its next API call. State preserved, zero further spend.</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--ac);font-weight:800;flex-shrink:0">3</span><span style="font-size:13px;color:var(--t2)"><strong>SIGTERM kill</strong> — final stage if the ceiling is exceeded further. The trip is logged with full session context.</span></div>
+        <div style="margin-top:8px;padding:10px 14px;background:var(--acd);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)">Result: the loop costs a few dollars, not a few hundred</div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:28px;font-size:14px;color:var(--t2);max-width:720px">The breaker pairs with Terse's live agent monitor — per-turn cost, burn rate, context-window fill, duplicate tool calls, and redundant file reads across <a href="/for-claude-code" style="color:var(--ac)">Claude Code</a>, <a href="/for-cursor" style="color:var(--ac)">Cursor</a>, <a href="/for-cline" style="color:var(--ac)">Cline</a>, <a href="/for-windsurf" style="color:var(--ac)">Windsurf</a>, and more. And every prompt you do send is cheaper thanks to the built-in optimizer.</p>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+  <p class="section-sub">Everything about budget limits, pausing, and killing runaway agents.</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">How do I set a spending limit for Claude Code?</div>
+      <div class="faq-a">Open Terse's Budget Circuit Breaker panel and set a dollar, token, or burn-rate ceiling. Terse reads Claude Code's exact token usage from its JSONL session stream and computes per-turn cost with model-aware pricing — no Claude Code config changes needed.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can I pause an AI agent automatically?</div>
+      <div class="faq-a">Yes. On a ceiling breach Terse escalates: alert → SIGSTOP pause → SIGTERM kill. The pause freezes the agent process before its next API call, so no further tokens are billed. One click resumes the session exactly where it stopped.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">What is a runaway AI agent?</div>
+      <div class="faq-a">An agent stuck in a loop — retrying a failing test, re-reading the same files, repeating tool calls — while every iteration is a paid API request. Overnight, one loop can burn hundreds of dollars. Terse spots the burn-rate spike and duplicate-call pattern within minutes.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Will stopping the agent corrupt my work?</div>
+      <div class="faq-a">No. SIGSTOP freezes the process without terminating it — nothing is lost, and resume continues the session. SIGTERM, the final stage, asks the process to exit cleanly. Your files and git history are never touched.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Which agents does the circuit breaker support?</div>
+      <div class="faq-a">Terse auto-detects 8 agents: Claude Code, OpenClaw, Aider, Cursor Agent, OpenAI Codex, GitHub Copilot CLI, Cline, and Windsurf. Claude Code gets exact token counts via JSONL streaming; the others are tracked via process and config detection with session-level stats.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Does the breaker send my data anywhere?</div>
+      <div class="faq-a">No. Everything — token counting, cost math, process control — runs on-device on macOS or Windows. Your prompts and code never leave the machine.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Also Works With</h2>
+  <p class="section-sub">The breaker guards every agent Terse monitors — and the optimizer shrinks every prompt you send.</p>
+  <div class="also-grid">
+    <a href="/for-claude-code" class="also-card"><span style="font-size:18px">⚡</span><span>Claude Code — CLI Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-cursor" class="also-card"><span style="font-size:18px">✦</span><span>Cursor — AI Editor</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-cline" class="also-card"><span style="font-size:18px">🤖</span><span>Cline — VS Code Agent</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-codex-cli" class="also-card"><span style="font-size:18px">🖥️</span><span>OpenAI Codex — CLI</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/mcp-manager" class="also-card"><span style="font-size:18px">🛡️</span><span>MCP Manager — Audit Servers</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Never Wake Up to a <span class="gradient-text">$300 Invoice</span></h2>
+  <p>30-day free trial. On-device. Arm the breaker in under a minute.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="/#pricing" class="btn-primary">Start Free Trial</a>
+    <a href="/token-calculator" class="btn-ghost">Calculate Your Savings</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent butler for AI coding tools. Compress prompts, watch every agent, cap the spend. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-cline">Cline</a><a href="/for-windsurf">Windsurf</a><a href="/for-codex-cli">OpenAI Codex</a><a href="/for-cline">OpenClaw</a></div>
+    <div class="footer-col"><h4>Product</h4><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="/llmlingua">Terse vs LLMLingua</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Windows · Rust</span></div>
+</footer>
+
+<script>
+(function(){
+  const lines = ['bl1','bl2','bl3','bl4'].map(id=>document.getElementById(id));
+  let started = false;
+  function run(){
+    if(started) return; started = true;
+    lines.forEach((el,i)=>setTimeout(()=>el.classList.add('show'), 500+i*600));
+  }
+  const obs = new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)run();}),{threshold:0.3});
+  obs.observe(document.querySelector('.demo-box'));
+})();
+</script>
+</body>
+</html>

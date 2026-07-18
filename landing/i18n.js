@@ -14,10 +14,10 @@
     'nav.signOut': 'Sign Out',
 
     // Hero
-    'hero.title1': 'Save every token.',
-    'hero.title2': 'Power your team.',
-    'hero.subtitle': 'Cut 40-70% of your AI token costs with on-device optimization — then give your whole team full visibility with <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Token analytics by developer, project, and tool.',
-    'hero.download': 'Download Optimizer',
+    'hero.title1': 'Your AI agents,',
+    'hero.title2': 'handled.',
+    'hero.subtitle': 'Terse is the butler for your AI coding agents — it live-monitors Claude Code, Cursor & 6 more, caps <a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">runaway spend</a> before the next API call, compresses every prompt, and keeps your <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">MCP setup</a> clean. All on-device.',
+    'hero.download': 'Download Terse',
     'hero.exchange': 'Buy / Sell Tokens',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'After installing, drag Terse to <strong>Applications</strong>, then paste this in <strong>Terminal</strong>:',
@@ -370,10 +370,10 @@
     'nav.signOut': '退出登录',
 
     // Hero
-    'hero.title1': '节省每一个 token。',
-    'hero.title2': '赋能你的团队。',
-    'hero.subtitle': '通过本地优化削减 40-70% 的 AI token 开销——再用 <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a> 让全团队掌握完整用量可视化。按开发者、项目和工具分析 token 开销。',
-    'hero.download': '下载优化器',
+    'hero.title1': '你的 AI 智能体,',
+    'hero.title2': '一手托管。',
+    'hero.subtitle': 'Terse 是你 AI 编程智能体的贴身管家——实时监控 Claude Code、Cursor 等 8 款智能体,在下一次 API 调用前<a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">拦截失控开销</a>,压缩每一条提示词,并让你的 <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">MCP 配置</a>保持整洁。全程本地运行。',
+    'hero.download': '下载 Terse',
     'hero.exchange': '买卖 Token',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': '安装后，将 Terse 拖入<strong>应用程序</strong>文件夹，然后在<strong>终端</strong>中粘贴以下命令：',
@@ -726,10 +726,10 @@
     'nav.signOut': '登出',
 
     // Hero
-    'hero.title1': '節省每一個 token。',
-    'hero.title2': '賦能你的團隊。',
-    'hero.subtitle': '透過本機優化削減 40-70% 的 AI token 開銷——再用 <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a> 讓全團隊掌握完整用量可視化。依開發者、專案和工具分析 token 開銷。',
-    'hero.download': '下載優化器',
+    'hero.title1': '你的 AI 智能體,',
+    'hero.title2': '一手託管。',
+    'hero.subtitle': 'Terse 是你 AI 編程智能體的貼身管家——即時監控 Claude Code、Cursor 等 8 款智能體,在下一次 API 呼叫前<a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">攔截失控開銷</a>,壓縮每一條提示詞,並讓你的 <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">MCP 設定</a>保持整潔。全程本機執行。',
+    'hero.download': '下載 Terse',
     'hero.exchange': '買賣 Token',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': '安裝後，將 Terse 拖入<strong>應用程式</strong>資料夾，然後在<strong>終端機</strong>中貼上以下指令：',

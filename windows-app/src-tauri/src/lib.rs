@@ -2932,9 +2932,13 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Register global shortcuts
+            // Register global shortcuts. These are optional conveniences — if
+            // another app already owns the hotkey (very common with Ctrl+Shift+C
+            // on Windows: WeChat, screenshot tools, etc.), registration returns
+            // "HotKey already registered". Never let that abort setup: a taken
+            // shortcut must not stop the whole app from launching.
             let app_handle = app.handle().clone();
-            app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+T", move |_app, _shortcut, _event| {
+            if let Err(e) = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+T", move |_app, _shortcut, _event| {
                 if let Some(win) = app_handle.get_webview_window("main") {
                     if win.is_visible().unwrap_or(false) {
                         let _ = win.hide();
@@ -2943,10 +2947,12 @@ pub fn run() {
                         let _ = win.set_focus();
                     }
                 }
-            })?;
+            }) {
+                eprintln!("[terse] Ctrl+Shift+T shortcut unavailable (already in use): {}", e);
+            }
 
             let app_handle2 = app.handle().clone();
-            app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+C", move |_app, _shortcut, _event| {
+            if let Err(e) = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+C", move |_app, _shortcut, _event| {
                 // Trigger capture on the active session
                 let app = app_handle2.clone();
                 tauri::async_runtime::spawn(async move {
@@ -2975,7 +2981,9 @@ pub fn run() {
                         }
                     }
                 });
-            })?;
+            }) {
+                eprintln!("[terse] Ctrl+Shift+C shortcut unavailable (already in use): {}", e);
+            }
 
             // Start agent monitor scanning
             let app_handle3 = app.handle().clone();

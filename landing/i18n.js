@@ -108,7 +108,7 @@
     // FAQ
     'faq.sectionTitle': 'FAQ',
     'faq.heading': 'Frequently asked questions',
-    'faq.subtitle': 'Everything you need to know about token optimization and how Terse saves you money.',
+    'faq.subtitle': 'Everything you need to know about running your AI agents with Terse — monitoring, cost control, and prompt optimization.',
     'faq.q1': 'What is token optimization?',
     'faq.a1': 'Token optimization reduces tokens in AI prompts without losing meaning. Terse uses 20+ techniques to cut usage by 40-70%, directly lowering AI API costs.',
     'faq.q2': 'How much can Terse save?',
@@ -131,13 +131,13 @@
     'faq.a10': 'Sign in at terseai.org/marketplace. Sell: paste key, set discount. Buy: top up, generate API key.',
 
     // CTA
-    'cta.heading': 'Stop wasting tokens and money.',
-    'cta.subtitle': 'Optimize every prompt. Monitor every agent session. And give your whole team visibility with Terse Cloud — analytics by developer, project, and tool.',
+    'cta.heading': 'Take control of every AI agent.',
+    'cta.subtitle': 'Monitor every agent live, stop runaway spend before the next API call, and keep your MCP setup clean — while compressing every prompt. Your whole team gets full visibility with Terse Cloud.',
     'cta.onDevice': '100% on-device',
     'cta.zeroLatency': 'Zero latency',
 
     // Footer
-    'footer.tagline': 'Token optimizer + team analytics. Compress prompts, monitor agents, detect duplicates — track your team\'s AI spend with Terse Cloud.',
+    'footer.tagline': 'The butler for your AI coding agents — live monitoring, a runaway-spend breaker, MCP management, and 40-70% prompt compression. On-device, with team analytics via Terse Cloud.',
     'footer.product': 'Product',
     'footer.techniques': 'Techniques',
     'footer.learn': 'Learn',
@@ -211,7 +211,7 @@
     'features.worksWith': 'Works with',
 
     // How It Works section
-    'howItWorks.label': 'Agent Token Optimization',
+    'howItWorks.label': 'How Terse Works',
     'howItWorks.heading': 'Every turn optimized, automatically.',
     'howItWorks.desc': 'A single agent task can consume 50x more tokens than a chat message. Terse runs 5 parallel optimization strategies on every turn.',
     'howItWorks.f1': 'Compresses every user message before it hits the API',
@@ -464,7 +464,7 @@
     // FAQ
     'faq.sectionTitle': '常见问题',
     'faq.heading': '常见问题解答',
-    'faq.subtitle': '关于 token 优化以及 Terse 如何帮你省钱，你需要了解的一切。',
+    'faq.subtitle': '关于用 Terse 管理你的 AI 智能体——监控、成本控制与提示优化,你需要了解的一切。',
     'faq.q1': '什么是 token 优化？',
     'faq.a1': 'Token 优化在不丢失语义的前提下减少 AI 提示中的 token 数量。Terse 使用 20 多种技术将用量降低 40-70%，直接降低 AI API 成本。',
     'faq.q2': 'Terse 能节省多少？',
@@ -487,13 +487,13 @@
     'faq.a10': '在 terseai.org/marketplace 登录。卖出：粘贴密钥，设定折扣。买入：充值，生成 API 密钥。',
 
     // CTA
-    'cta.heading': '别再浪费 token 和金钱。',
-    'cta.subtitle': '优化每一条提示，监控每一个会话。用 Terse Cloud 为全团队提供可视化——按开发者、项目和工具分析。',
+    'cta.heading': '掌控每一个 AI 智能体。',
+    'cta.subtitle': '实时监控每一个智能体,在下一次 API 调用前拦截失控开销,让你的 MCP 配置保持整洁——同时压缩每一条提示。借助 Terse Cloud,让整个团队拥有完整可视性。',
     'cta.onDevice': '100% 本地运行',
     'cta.zeroLatency': '零延迟',
 
     // Footer
-    'footer.tagline': 'Token 优化器 + 团队分析。压缩提示、监控 Agent、检测重复——用 Terse Cloud 追踪团队 AI 开销。',
+    'footer.tagline': '你 AI 编程智能体的贴身管家——实时监控、失控开销拦截、MCP 管理,以及 40-70% 提示压缩。全程本地运行,并通过 Terse Cloud 提供团队分析。',
     'footer.product': '产品',
     'footer.techniques': '技术',
     'footer.learn': '了解更多',
@@ -567,7 +567,7 @@
     'features.worksWith': '兼容',
 
     // How It Works section
-    'howItWorks.label': 'Agent Token 优化',
+    'howItWorks.label': 'Terse 工作原理',
     'howItWorks.heading': '每一轮自动优化。',
     'howItWorks.desc': '单个 Agent 任务消耗的 token 可达聊天消息的 50 倍。Terse 在每一轮运行 5 种并行优化策略。',
     'howItWorks.f1': '在用户消息到达 API 之前进行压缩',
@@ -820,7 +820,7 @@
     // FAQ
     'faq.sectionTitle': '常見問題',
     'faq.heading': '常見問題解答',
-    'faq.subtitle': '關於 token 優化以及 Terse 如何幫你省錢，你需要了解的一切。',
+    'faq.subtitle': '關於用 Terse 管理你的 AI 智能體——監控、成本控制與提示優化,你需要了解的一切。',
     'faq.q1': '什麼是 token 優化？',
     'faq.a1': 'Token 優化在不遺失語意的前提下減少 AI 提示中的 token 數量。Terse 使用 20 多種技術將用量降低 40-70%，直接降低 AI API 成本。',
     'faq.q2': 'Terse 能節省多少？',
@@ -843,13 +843,13 @@
     'faq.a10': '在 terseai.org/marketplace 登入。賣出：貼上金鑰，設定折扣。買入：儲值，產生 API 金鑰。',
 
     // CTA
-    'cta.heading': '別再浪費 token 和金錢。',
-    'cta.subtitle': '優化每一條提示，監控每一個工作階段。用 Terse Cloud 為全團隊提供可視化——依開發者、專案和工具分析。',
+    'cta.heading': '掌控每一個 AI 智能體。',
+    'cta.subtitle': '即時監控每一個智能體,在下一次 API 呼叫前攔截失控開銷,讓你的 MCP 設定保持整潔——同時壓縮每一條提示。透過 Terse Cloud,讓整個團隊擁有完整可視性。',
     'cta.onDevice': '100% 本機執行',
     'cta.zeroLatency': '零延遲',
 
     // Footer
-    'footer.tagline': 'Token 優化器 + 團隊分析。壓縮提示、監控 Agent、偵測重複——用 Terse Cloud 追蹤團隊 AI 開銷。',
+    'footer.tagline': '你 AI 編程智能體的貼身管家——即時監控、失控開銷攔截、MCP 管理,以及 40-70% 提示壓縮。全程本機執行,並透過 Terse Cloud 提供團隊分析。',
     'footer.product': '產品',
     'footer.techniques': '技術',
     'footer.learn': '瞭解更多',
@@ -923,7 +923,7 @@
     'features.worksWith': '相容',
 
     // How It Works section
-    'howItWorks.label': 'Agent Token 優化',
+    'howItWorks.label': 'Terse 運作原理',
     'howItWorks.heading': '每一輪自動優化。',
     'howItWorks.desc': '單一 Agent 任務消耗的 token 可達聊天訊息的 50 倍。Terse 在每一輪執行 5 種並行優化策略。',
     'howItWorks.f1': '在使用者訊息到達 API 之前進行壓縮',
@@ -1082,10 +1082,10 @@
     'nav.signOut': 'ログアウト',
 
     // Hero
-    'hero.title1': 'すべてのトークンを節約。',
-    'hero.title2': 'チームを強化する。',
-    'hero.subtitle': 'オンデバイス最適化でAIトークンコストを40〜70%削減。そして <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a> でチーム全体に完全な可視性を。開発者・プロジェクト・ツール別のトークン分析。',
-    'hero.download': 'オプティマイザをダウンロード',
+    'hero.title1': 'あなたの AI エージェントを、',
+    'hero.title2': 'おまかせ。',
+    'hero.subtitle': 'Terse は、あなたの AI コーディングエージェントの執事です。Claude Code や Cursor など計 8 種類をリアルタイムで監視し、次の API 呼び出しの前に<a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">暴走コスト</a>を食い止め、すべてのプロンプトを圧縮し、<a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">MCP 構成</a>を常にクリーンに保ちます。すべてオンデバイスで。',
+    'hero.download': 'Terse をダウンロード',
     'hero.exchange': 'トークンの売買',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'インストール後、Terseを<strong>アプリケーション</strong>にドラッグし、<strong>ターミナル</strong>で以下を実行してください：',
@@ -1175,7 +1175,7 @@
     // FAQ
     'faq.sectionTitle': 'よくある質問',
     'faq.heading': 'よくある質問',
-    'faq.subtitle': 'トークン最適化とTerseによるコスト削減について知っておくべきことをまとめました。',
+    'faq.subtitle': 'Terse で AI エージェントを運用するために知っておくべきすべて — 監視、コスト管理、プロンプト最適化。',
     'faq.q1': 'トークン最適化とは何ですか？',
     'faq.a1': 'トークン最適化は、意味を損なうことなくAIプロンプトのトークン数を削減します。Terseは20以上の技術を使用して使用量を40〜70%削減し、AI APIコストを直接下げます。',
     'faq.q2': 'Terseでどれくらい節約できますか？',
@@ -1198,13 +1198,13 @@
     'faq.a10': 'terseai.org/marketplaceにログインしてください。売却：キーを貼り付け、割引率を設定。購入：チャージしてAPIキーを生成。',
 
     // CTA
-    'cta.heading': 'トークンとコストの無駄をなくしましょう。',
-    'cta.subtitle': 'すべてのプロンプトを最適化。すべてのセッションを監視。Terse Cloud でチーム全体に可視性を — 開発者・プロジェクト・ツール別分析。',
+    'cta.heading': 'すべての AI エージェントを掌握する。',
+    'cta.subtitle': 'すべてのエージェントをリアルタイムで監視し、次の API 呼び出しの前に暴走コストを食い止め、MCP 構成をクリーンに保ちながら、あらゆるプロンプトを圧縮します。Terse Cloud でチーム全体が完全な可視性を得られます。',
     'cta.onDevice': '100%オンデバイス',
     'cta.zeroLatency': 'ゼロレイテンシー',
 
     // Footer
-    'footer.tagline': 'トークン最適化 + チーム分析。プロンプト圧縮、エージェント監視、重複検出 — Terse Cloud でチームのAIコストを追跡。',
+    'footer.tagline': 'あなたの AI コーディングエージェントの執事 — リアルタイム監視、暴走コストの遮断、MCP 管理、そして 40-70% のプロンプト圧縮。すべてオンデバイスで、Terse Cloud によるチーム分析付き。',
     'footer.product': '製品',
     'footer.techniques': '技術',
     'footer.learn': '詳しく見る',
@@ -1258,7 +1258,7 @@
     'features.worksWith': '対応ツール',
 
     // How It Works section
-    'howItWorks.label': 'エージェントトークン最適化',
+    'howItWorks.label': 'Terse の仕組み',
     'howItWorks.heading': '毎ターン自動で最適化。',
     'howItWorks.desc': '1つのエージェントタスクはチャットメッセージの50倍のトークンを消費することがあります。Terseは毎ターン5つの並列最適化戦略を実行します。',
     'howItWorks.f1': 'APIに到達する前にすべてのユーザーメッセージを圧縮',
@@ -1417,10 +1417,10 @@
     'nav.signOut': '로그아웃',
 
     // Hero
-    'hero.title1': '모든 토큰을 절약하세요.',
-    'hero.title2': '팀을 강화하세요.',
-    'hero.subtitle': '온디바이스 최적화로 AI 토큰 비용을 40~70% 절감하고, <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>로 팀 전체에 완전한 가시성을 제공하세요. 개발자·프로젝트·도구별 토큰 분석.',
-    'hero.download': '옵티마이저 다운로드',
+    'hero.title1': '당신의 AI 에이전트,',
+    'hero.title2': '맡겨두세요.',
+    'hero.subtitle': 'Terse는 당신의 AI 코딩 에이전트를 위한 집사입니다. Claude Code, Cursor 등 8종을 실시간으로 모니터링하고, 다음 API 호출 전에 <a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">폭주하는 지출</a>을 차단하며, 모든 프롬프트를 압축하고, <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">MCP 설정</a>을 깔끔하게 유지합니다. 모두 온디바이스로.',
+    'hero.download': 'Terse 다운로드',
     'hero.exchange': '토큰 매매',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': '설치 후 Terse를 <strong>응용 프로그램</strong>으로 드래그한 다음 <strong>터미널</strong>에서 다음을 붙여넣으세요:',
@@ -1510,7 +1510,7 @@
     // FAQ
     'faq.sectionTitle': '자주 묻는 질문',
     'faq.heading': '자주 묻는 질문',
-    'faq.subtitle': '토큰 최적화와 Terse가 비용을 절감하는 방법에 대해 알아야 할 모든 것을 정리했습니다.',
+    'faq.subtitle': 'Terse로 AI 에이전트를 운영하는 데 알아야 할 모든 것 — 모니터링, 비용 관리, 프롬프트 최적화.',
     'faq.q1': '토큰 최적화란 무엇입니까?',
     'faq.a1': '토큰 최적화는 의미를 잃지 않으면서 AI 프롬프트의 토큰을 줄이는 것입니다. Terse는 20가지 이상의 기술을 사용하여 사용량을 40~70% 절감하고, AI API 비용을 직접적으로 낮춥니다.',
     'faq.q2': 'Terse로 얼마나 절약할 수 있습니까?',
@@ -1533,13 +1533,13 @@
     'faq.a10': 'terseai.org/marketplace에 로그인하세요. 판매: 키를 붙여넣고 할인율을 설정합니다. 구매: 충전 후 API 키를 생성합니다.',
 
     // CTA
-    'cta.heading': '토큰과 비용 낭비를 멈추세요.',
-    'cta.subtitle': '모든 프롬프트를 최적화하고 모든 세션을 모니터링하세요. Terse Cloud로 팀 전체에 가시성을 — 개발자·프로젝트·도구별 분석.',
+    'cta.heading': '모든 AI 에이전트를 장악하세요.',
+    'cta.subtitle': '모든 에이전트를 실시간으로 모니터링하고, 다음 API 호출 전에 폭주하는 지출을 차단하며, 모든 프롬프트를 압축하면서 MCP 설정을 깔끔하게 유지하세요. Terse Cloud로 팀 전체가 완전한 가시성을 확보합니다.',
     'cta.onDevice': '100% 온디바이스',
     'cta.zeroLatency': '제로 레이턴시',
 
     // Footer
-    'footer.tagline': '토큰 최적화 + 팀 분석. 프롬프트 압축, 에이전트 모니터링, 중복 감지 — Terse Cloud로 팀 AI 비용 추적.',
+    'footer.tagline': '당신의 AI 코딩 에이전트를 위한 집사 — 실시간 모니터링, 폭주 지출 차단기, MCP 관리, 그리고 40-70% 프롬프트 압축. 온디바이스로 작동하며 Terse Cloud를 통한 팀 분석 제공.',
     'footer.product': '제품',
     'footer.techniques': '기술',
     'footer.learn': '자세히 보기',
@@ -1593,7 +1593,7 @@
     'features.worksWith': '호환 도구',
 
     // How It Works section
-    'howItWorks.label': '에이전트 토큰 최적화',
+    'howItWorks.label': 'Terse 작동 방식',
     'howItWorks.heading': '매 턴마다 자동으로 최적화.',
     'howItWorks.desc': '단일 에이전트 작업은 채팅 메시지보다 50배 많은 토큰을 소비할 수 있습니다. Terse는 매 턴마다 5가지 병렬 최적화 전략을 실행합니다.',
     'howItWorks.f1': 'API에 도달하기 전에 모든 사용자 메시지를 압축',
@@ -1752,10 +1752,10 @@
     'nav.signOut': 'Cerrar sesión',
 
     // Hero
-    'hero.title1': 'Ahorre cada token.',
-    'hero.title2': 'Potencia tu equipo.',
-    'hero.subtitle': 'Reduzca entre un 40 y un 70% de sus costos de tokens de IA con optimización en el dispositivo — y dé a todo su equipo visibilidad completa con <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Análisis de tokens por desarrollador, proyecto y herramienta.',
-    'hero.download': 'Descargar optimizador',
+    'hero.title1': 'Sus agentes de IA,',
+    'hero.title2': 'bajo control.',
+    'hero.subtitle': 'Terse es el mayordomo de sus agentes de programación con IA: monitorea Claude Code, Cursor y 6 más en tiempo real, frena el <a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">gasto descontrolado</a> antes de la próxima llamada a la API, comprime cada prompt y mantiene su <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">configuración de MCP</a> impecable. Todo en el dispositivo.',
+    'hero.download': 'Descargar Terse',
     'hero.exchange': 'Comprar / Vender tokens',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Después de instalar, arrastre Terse a <strong>Aplicaciones</strong> y luego pegue esto en la <strong>Terminal</strong>:',
@@ -1845,7 +1845,7 @@
     // FAQ
     'faq.sectionTitle': 'Preguntas frecuentes',
     'faq.heading': 'Preguntas frecuentes',
-    'faq.subtitle': 'Todo lo que necesitan saber sobre la optimización de tokens y cómo Terse les ahorra dinero.',
+    'faq.subtitle': 'Todo lo que necesita saber para gestionar sus agentes de IA con Terse: monitoreo, control de costos y optimización de prompts.',
     'faq.q1': '¿Qué es la optimización de tokens?',
     'faq.a1': 'La optimización de tokens reduce los tokens en los prompts de IA sin perder significado. Terse utiliza más de 20 técnicas para reducir el uso entre un 40 y un 70%, disminuyendo directamente los costos de API de IA.',
     'faq.q2': '¿Cuánto puede ahorrar Terse?',
@@ -1868,13 +1868,13 @@
     'faq.a10': 'Ingresen en terseai.org/marketplace. Para vender: peguen la clave y establezcan el descuento. Para comprar: recarguen y generen una clave de API.',
 
     // CTA
-    'cta.heading': 'Dejen de desperdiciar tokens y dinero.',
-    'cta.subtitle': 'Optimicen cada prompt. Monitoreen cada sesión. Y den a todo su equipo visibilidad con Terse Cloud — análisis por desarrollador, proyecto y herramienta.',
+    'cta.heading': 'Tome el control de cada agente de IA.',
+    'cta.subtitle': 'Monitoree cada agente en tiempo real, detenga el gasto descontrolado antes de la próxima llamada a la API y mantenga su configuración de MCP impecable — mientras comprime cada prompt. Todo su equipo obtiene visibilidad completa con Terse Cloud.',
     'cta.onDevice': '100% en el dispositivo',
     'cta.zeroLatency': 'Cero latencia',
 
     // Footer
-    'footer.tagline': 'Optimizador de tokens + analítica de equipo. Compriman prompts, monitoreen agentes, detecten duplicados — rastreen el gasto en IA de su equipo con Terse Cloud.',
+    'footer.tagline': 'El mayordomo de sus agentes de programación con IA: monitoreo en tiempo real, un cortacircuitos del gasto descontrolado, gestión de MCP y compresión de prompts del 40-70%. En el dispositivo, con analítica de equipo mediante Terse Cloud.',
     'footer.product': 'Producto',
     'footer.techniques': 'Técnicas',
     'footer.learn': 'Aprender',
@@ -1928,7 +1928,7 @@
     'features.worksWith': 'Compatible con',
 
     // How It Works section
-    'howItWorks.label': 'Optimización de tokens de agente',
+    'howItWorks.label': 'Cómo funciona Terse',
     'howItWorks.heading': 'Cada turno optimizado, automáticamente.',
     'howItWorks.desc': 'Una sola tarea de agente puede consumir 50 veces más tokens que un mensaje de chat. Terse ejecuta 5 estrategias de optimización en paralelo en cada turno.',
     'howItWorks.f1': 'Comprime cada mensaje del usuario antes de que llegue a la API',
@@ -2087,10 +2087,10 @@
     'nav.signOut': 'Se déconnecter',
 
     // Hero
-    'hero.title1': 'Économisez chaque token.',
-    'hero.title2': 'Dynamisez votre équipe.',
-    'hero.subtitle': 'Réduisez de 40 à 70 % vos coûts de tokens IA grâce à l\'optimisation sur l\'appareil — puis donnez à toute votre équipe une visibilité complète avec <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Analytique par développeur, projet et outil.',
-    'hero.download': 'Télécharger l\'optimiseur',
+    'hero.title1': 'Vos agents IA,',
+    'hero.title2': 'sous contrôle.',
+    'hero.subtitle': 'Terse est le majordome de vos agents de codage IA : il surveille Claude Code, Cursor et 6 autres en temps réel, stoppe les <a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">dépenses incontrôlées</a> avant le prochain appel API, compresse chaque prompt et garde votre <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">configuration MCP</a> propre. Le tout sur l’appareil.',
+    'hero.download': 'Télécharger Terse',
     'hero.exchange': 'Acheter / Vendre des tokens',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Après l\'installation, glissez Terse dans <strong>Applications</strong>, puis collez ceci dans le <strong>Terminal</strong> :',
@@ -2180,7 +2180,7 @@
     // FAQ
     'faq.sectionTitle': 'FAQ',
     'faq.heading': 'Questions fréquentes',
-    'faq.subtitle': 'Tout ce que vous devez savoir sur l\'optimisation de tokens et comment Terse vous fait économiser.',
+    'faq.subtitle': 'Tout ce que vous devez savoir pour piloter vos agents IA avec Terse : surveillance, maîtrise des coûts et optimisation des prompts.',
     'faq.q1': 'Qu\'est-ce que l\'optimisation de tokens ?',
     'faq.a1': 'L\'optimisation de tokens réduit le nombre de tokens dans les prompts IA sans perte de sens. Terse utilise plus de 20 techniques pour réduire la consommation de 40 à 70 %, diminuant directement les coûts d\'API IA.',
     'faq.q2': 'Combien Terse permet-il d\'économiser ?',
@@ -2203,13 +2203,13 @@
     'faq.a10': 'Connectez-vous sur terseai.org/marketplace. Pour vendre : collez votre clé, définissez la remise. Pour acheter : rechargez, générez une clé API.',
 
     // CTA
-    'cta.heading': 'Cessez de gaspiller des tokens et de l\'argent.',
-    'cta.subtitle': 'Optimisez chaque prompt. Surveillez chaque session. Et donnez à toute votre équipe la visibilité avec Terse Cloud — analytique par développeur, projet et outil.',
+    'cta.heading': 'Prenez le contrôle de chaque agent IA.',
+    'cta.subtitle': 'Surveillez chaque agent en temps réel, stoppez les dépenses incontrôlées avant le prochain appel API et gardez votre configuration MCP propre — tout en compressant chaque prompt. Toute votre équipe bénéficie d’une visibilité complète avec Terse Cloud.',
     'cta.onDevice': '100 % sur l\'appareil',
     'cta.zeroLatency': 'Zéro latence',
 
     // Footer
-    'footer.tagline': 'Optimiseur de tokens + analytique d\'équipe. Compressez les prompts, surveillez les agents, détectez les doublons — suivez les coûts IA de votre équipe avec Terse Cloud.',
+    'footer.tagline': 'Le majordome de vos agents de codage IA : surveillance en temps réel, un coupe-circuit des dépenses incontrôlées, gestion MCP et compression des prompts de 40 à 70 %. Sur l’appareil, avec analytique d’équipe via Terse Cloud.',
     'footer.product': 'Produit',
     'footer.techniques': 'Techniques',
     'footer.learn': 'En savoir plus',
@@ -2263,7 +2263,7 @@
     'features.worksWith': 'Compatible avec',
 
     // How It Works section
-    'howItWorks.label': 'Optimisation des tokens d\'agent',
+    'howItWorks.label': 'Comment fonctionne Terse',
     'howItWorks.heading': 'Chaque tour optimisé, automatiquement.',
     'howItWorks.desc': 'Une seule tâche d\'agent peut consommer 50 fois plus de tokens qu\'un message de chat. Terse exécute 5 stratégies d\'optimisation en parallèle à chaque tour.',
     'howItWorks.f1': 'Compresse chaque message utilisateur avant qu\'il n\'atteigne l\'API',
@@ -2422,10 +2422,10 @@
     'nav.signOut': 'Abmelden',
 
     // Hero
-    'hero.title1': 'Jeden Token sparen.',
-    'hero.title2': 'Stärken Sie Ihr Team.',
-    'hero.subtitle': 'Reduzieren Sie 40–70 % Ihrer AI-Token-Kosten durch On-Device-Optimierung — und geben Sie Ihrem gesamten Team vollständige Transparenz mit <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Token-Analysen nach Entwickler, Projekt und Tool.',
-    'hero.download': 'Optimierer herunterladen',
+    'hero.title1': 'Ihre KI-Agenten,',
+    'hero.title2': 'im Griff.',
+    'hero.subtitle': 'Terse ist der Butler für Ihre KI-Coding-Agenten: Es überwacht Claude Code, Cursor und 6 weitere in Echtzeit, stoppt <a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">ausufernde Kosten</a> vor dem nächsten API-Aufruf, komprimiert jeden Prompt und hält Ihr <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">MCP-Setup</a> sauber. Alles auf dem Gerät.',
+    'hero.download': 'Terse herunterladen',
     'hero.exchange': 'Token kaufen / verkaufen',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Ziehen Sie Terse nach der Installation in den <strong>Programme</strong>-Ordner und fügen Sie dann Folgendes im <strong>Terminal</strong> ein:',
@@ -2515,7 +2515,7 @@
     // FAQ
     'faq.sectionTitle': 'FAQ',
     'faq.heading': 'Häufig gestellte Fragen',
-    'faq.subtitle': 'Alles, was Sie über Token-Optimierung wissen müssen und wie Terse Ihnen Geld spart.',
+    'faq.subtitle': 'Alles, was Sie über den Betrieb Ihrer KI-Agenten mit Terse wissen müssen — Überwachung, Kostenkontrolle und Prompt-Optimierung.',
     'faq.q1': 'Was ist Token-Optimierung?',
     'faq.a1': 'Token-Optimierung reduziert Token in AI-Prompts, ohne die Bedeutung zu verändern. Terse nutzt über 20 Techniken, um den Verbrauch um 40–70 % zu senken und so direkt AI-API-Kosten zu reduzieren.',
     'faq.q2': 'Wie viel kann Terse einsparen?',
@@ -2538,13 +2538,13 @@
     'faq.a10': 'Melden Sie sich unter terseai.org/marketplace an. Verkaufen: Schlüssel einfügen, Rabatt festlegen. Kaufen: Guthaben aufladen, API-Schlüssel generieren.',
 
     // CTA
-    'cta.heading': 'Verschwenden Sie keine Token und kein Geld mehr.',
-    'cta.subtitle': 'Jeden Prompt optimieren. Jede Sitzung überwachen. Und Ihrem gesamten Team Transparenz geben mit Terse Cloud — Analysen nach Entwickler, Projekt und Tool.',
+    'cta.heading': 'Übernehmen Sie die Kontrolle über jeden KI-Agenten.',
+    'cta.subtitle': 'Überwachen Sie jeden Agenten in Echtzeit, stoppen Sie ausufernde Kosten vor dem nächsten API-Aufruf und halten Sie Ihr MCP-Setup sauber — während jeder Prompt komprimiert wird. Ihr gesamtes Team erhält volle Transparenz mit Terse Cloud.',
     'cta.onDevice': '100 % lokal auf dem Gerät',
     'cta.zeroLatency': 'Keine Latenz',
 
     // Footer
-    'footer.tagline': 'Token-Optimierer + Team-Analysen. Prompts komprimieren, Agents überwachen, Duplikate erkennen — KI-Kosten Ihres Teams mit Terse Cloud verfolgen.',
+    'footer.tagline': 'Der Butler für Ihre KI-Coding-Agenten — Echtzeit-Überwachung, ein Schutzschalter gegen ausufernde Kosten, MCP-Verwaltung und 40-70 % Prompt-Kompression. Auf dem Gerät, mit Team-Analysen über Terse Cloud.',
     'footer.product': 'Produkt',
     'footer.techniques': 'Techniken',
     'footer.learn': 'Wissen',
@@ -2598,7 +2598,7 @@
     'features.worksWith': 'Kompatibel mit',
 
     // How It Works section
-    'howItWorks.label': 'Agenten-Token-Optimierung',
+    'howItWorks.label': 'So funktioniert Terse',
     'howItWorks.heading': 'Jede Runde automatisch optimiert.',
     'howItWorks.desc': 'Eine einzelne Agenten-Aufgabe kann 50-mal mehr Tokens verbrauchen als eine Chat-Nachricht. Terse führt 5 parallele Optimierungsstrategien in jeder Runde aus.',
     'howItWorks.f1': 'Komprimiert jede Benutzernachricht, bevor sie die API erreicht',
@@ -2757,10 +2757,10 @@
     'nav.signOut': 'تسجيل الخروج',
 
     // Hero
-    'hero.title1': 'وفّر كل توكن.',
-    'hero.title2': 'عزّز فريقك.',
-    'hero.subtitle': 'خفّض 40–70% من تكاليف توكنات الذكاء الاصطناعي عبر التحسين المحلي على الجهاز — ثم أعطِ فريقك بأكمله رؤية كاملة مع <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. تحليلات التوكنات حسب المطور والمشروع والأداة.',
-    'hero.download': 'تنزيل المُحسّن',
+    'hero.title1': 'وكلاء الذكاء الاصطناعي لديك،',
+    'hero.title2': 'تحت السيطرة.',
+    'hero.subtitle': 'Terse هو كبير الخدم لوكلاء البرمجة بالذكاء الاصطناعي لديك — يراقب Claude Code و Cursor و6 آخرين في الوقت الفعلي، ويوقف <a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">الإنفاق الجامح</a> قبل استدعاء API التالي، ويضغط كل أمر، ويُبقي <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">إعداد MCP</a> نظيفًا. كل ذلك على الجهاز.',
+    'hero.download': 'تنزيل Terse',
     'hero.exchange': 'شراء / بيع التوكنات',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'بعد التثبيت، اسحب Terse إلى مجلد <strong>التطبيقات</strong>، ثم الصق هذا الأمر في <strong>الطرفية</strong>:',
@@ -2850,7 +2850,7 @@
     // FAQ
     'faq.sectionTitle': 'الأسئلة الشائعة',
     'faq.heading': 'الأسئلة المتكررة',
-    'faq.subtitle': 'كل ما تحتاج معرفته حول تحسين التوكنات وكيف يوفر لك Terse المال.',
+    'faq.subtitle': 'كل ما تحتاج معرفته لتشغيل وكلاء الذكاء الاصطناعي مع Terse — المراقبة والتحكم في التكاليف وتحسين الأوامر.',
     'faq.q1': 'ما هو تحسين التوكنات؟',
     'faq.a1': 'تحسين التوكنات يقلل عدد التوكنات في أوامر الذكاء الاصطناعي دون فقدان المعنى. يستخدم Terse أكثر من 20 تقنية لتقليل الاستهلاك بنسبة 40–70%، مما يخفّض تكاليف API مباشرة.',
     'faq.q2': 'كم يمكن أن يوفر Terse؟',
@@ -2873,13 +2873,13 @@
     'faq.a10': 'سجّل الدخول عبر terseai.org/marketplace. للبيع: الصق المفتاح، حدّد الخصم. للشراء: اشحن الرصيد، أنشئ مفتاح API.',
 
     // CTA
-    'cta.heading': 'توقف عن إهدار التوكنات والمال.',
-    'cta.subtitle': 'حسّن كل أمر. راقب كل جلسة. وأعطِ فريقك بأكمله رؤية مع Terse Cloud — تحليلات حسب المطور والمشروع والأداة.',
+    'cta.heading': 'تحكّم في كل وكيل ذكاء اصطناعي.',
+    'cta.subtitle': 'راقب كل وكيل في الوقت الفعلي، وأوقف الإنفاق الجامح قبل استدعاء API التالي، وأبقِ إعداد MCP نظيفًا — مع ضغط كل أمر. يحصل فريقك بأكمله على رؤية كاملة مع Terse Cloud.',
     'cta.onDevice': '100% على الجهاز',
     'cta.zeroLatency': 'بدون تأخير',
 
     // Footer
-    'footer.tagline': 'مُحسّن توكنات + تحليلات الفريق. اضغط الأوامر، راقب الوكلاء، اكشف التكرار — تتبّع إنفاق فريقك على الذكاء الاصطناعي مع Terse Cloud.',
+    'footer.tagline': 'كبير الخدم لوكلاء البرمجة بالذكاء الاصطناعي لديك — مراقبة في الوقت الفعلي، وقاطع للإنفاق الجامح، وإدارة MCP، وضغط للأوامر بنسبة 40-70%. على الجهاز، مع تحليلات الفريق عبر Terse Cloud.',
     'footer.product': 'المنتج',
     'footer.techniques': 'التقنيات',
     'footer.learn': 'تعلّم',
@@ -2933,7 +2933,7 @@
     'features.worksWith': 'متوافق مع',
 
     // How It Works section
-    'howItWorks.label': 'تحسين توكنات الوكيل',
+    'howItWorks.label': 'كيف يعمل Terse',
     'howItWorks.heading': 'كل دورة مُحسَّنة تلقائيًا.',
     'howItWorks.desc': 'مهمة وكيل واحدة قد تستهلك 50 ضعف توكنات رسالة الدردشة. يُشغّل Terse خمس استراتيجيات تحسين متوازية في كل دورة.',
     'howItWorks.f1': 'يضغط كل رسالة مستخدم قبل وصولها إلى واجهة API',
@@ -3092,10 +3092,10 @@
     'nav.signOut': 'Esci',
 
     // Hero
-    'hero.title1': 'Risparmia ogni token.',
-    'hero.title2': 'Potenzia il tuo team.',
-    'hero.subtitle': 'Riduca del 40-70% i costi dei token AI con l\'ottimizzazione on-device — poi dia a tutto il suo team visibilità completa con <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Analisi dei token per sviluppatore, progetto e strumento.',
-    'hero.download': 'Scarica l\'ottimizzatore',
+    'hero.title1': 'I tuoi agenti IA,',
+    'hero.title2': 'sotto controllo.',
+    'hero.subtitle': 'Terse è il maggiordomo dei tuoi agenti di programmazione IA: monitora Claude Code, Cursor e altri 6 in tempo reale, blocca la <a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">spesa fuori controllo</a> prima della prossima chiamata API, comprime ogni prompt e mantiene pulita la tua <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">configurazione MCP</a>. Tutto sul dispositivo.',
+    'hero.download': 'Scarica Terse',
     'hero.exchange': 'Compra / Vendi Token',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Dopo l\'installazione, trascini Terse nella cartella <strong>Applicazioni</strong>, poi incolli questo comando nel <strong>Terminale</strong>:',
@@ -3185,7 +3185,7 @@
     // FAQ
     'faq.sectionTitle': 'FAQ',
     'faq.heading': 'Domande frequenti',
-    'faq.subtitle': 'Tutto ciò che serve sapere sull\'ottimizzazione dei token e su come Terse fa risparmiare.',
+    'faq.subtitle': 'Tutto ciò che devi sapere per gestire i tuoi agenti IA con Terse — monitoraggio, controllo dei costi e ottimizzazione dei prompt.',
     'faq.q1': 'Cos\'è l\'ottimizzazione dei token?',
     'faq.a1': 'L\'ottimizzazione dei token riduce i token nei prompt AI senza perdere il significato. Terse usa oltre 20 tecniche per ridurre il consumo del 40-70%, abbattendo direttamente i costi delle API AI.',
     'faq.q2': 'Quanto può far risparmiare Terse?',
@@ -3208,13 +3208,13 @@
     'faq.a10': 'Acceda a terseai.org/marketplace. Vendere: incolli la chiave, imposti lo sconto. Comprare: ricarichi il saldo, generi una chiave API.',
 
     // CTA
-    'cta.heading': 'Smetta di sprecare token e denaro.',
-    'cta.subtitle': 'Ottimizzi ogni prompt. Monitori ogni sessione. E dia a tutto il suo team visibilità con Terse Cloud — analisi per sviluppatore, progetto e strumento.',
+    'cta.heading': 'Prendi il controllo di ogni agente IA.',
+    'cta.subtitle': 'Monitora ogni agente in tempo reale, blocca la spesa fuori controllo prima della prossima chiamata API e mantieni pulita la tua configurazione MCP — comprimendo al contempo ogni prompt. Tutto il tuo team ottiene visibilità completa con Terse Cloud.',
     'cta.onDevice': '100% sul dispositivo',
     'cta.zeroLatency': 'Zero latenza',
 
     // Footer
-    'footer.tagline': 'Ottimizzatore token + analisi di team. Comprimi prompt, monitora agenti, rileva duplicati — monitora i costi IA del tuo team con Terse Cloud.',
+    'footer.tagline': 'Il maggiordomo dei tuoi agenti di programmazione IA — monitoraggio in tempo reale, un interruttore per la spesa fuori controllo, gestione MCP e compressione dei prompt del 40-70%. On-device, con analisi di team tramite Terse Cloud.',
     'footer.product': 'Prodotto',
     'footer.techniques': 'Tecniche',
     'footer.learn': 'Risorse',
@@ -3268,7 +3268,7 @@
     'features.worksWith': 'Compatibile con',
 
     // How It Works section
-    'howItWorks.label': 'Ottimizzazione token dell\'agente',
+    'howItWorks.label': 'Come funziona Terse',
     'howItWorks.heading': 'Ogni turno ottimizzato, automaticamente.',
     'howItWorks.desc': 'Un singolo compito dell\'agente può consumare 50 volte più token di un messaggio di chat. Terse esegue 5 strategie di ottimizzazione in parallelo ad ogni turno.',
     'howItWorks.f1': 'Comprime ogni messaggio utente prima che raggiunga l\'API',
@@ -3427,10 +3427,10 @@
     'nav.signOut': 'Sair',
 
     // Hero
-    'hero.title1': 'Economize cada token.',
-    'hero.title2': 'Potencialize sua equipe.',
-    'hero.subtitle': 'Reduza 40-70% dos custos de tokens de IA com otimização no dispositivo — e dê a toda a sua equipe visibilidade completa com <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Análise de tokens por desenvolvedor, projeto e ferramenta.',
-    'hero.download': 'Baixar otimizador',
+    'hero.title1': 'Seus agentes de IA,',
+    'hero.title2': 'sob controle.',
+    'hero.subtitle': 'O Terse é o mordomo dos seus agentes de programação com IA: monitora o Claude Code, o Cursor e mais 6 em tempo real, freia os <a href="/agent-budget-circuit-breaker" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">gastos descontrolados</a> antes da próxima chamada de API, comprime cada prompt e mantém sua <a href="/mcp-manager" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">configuração de MCP</a> limpa. Tudo no dispositivo.',
+    'hero.download': 'Baixar Terse',
     'hero.exchange': 'Comprar / Vender Tokens',
     'hero.cloudCta': 'Terse Cloud',
     'hero.installNote': 'Após instalar, arraste o Terse para <strong>Aplicativos</strong> e cole este comando no <strong>Terminal</strong>:',
@@ -3520,7 +3520,7 @@
     // FAQ
     'faq.sectionTitle': 'FAQ',
     'faq.heading': 'Perguntas frequentes',
-    'faq.subtitle': 'Tudo o que você precisa saber sobre otimização de tokens e como o Terse economiza seu dinheiro.',
+    'faq.subtitle': 'Tudo o que você precisa saber para operar seus agentes de IA com o Terse — monitoramento, controle de custos e otimização de prompts.',
     'faq.q1': 'O que é otimização de tokens?',
     'faq.a1': 'A otimização de tokens reduz tokens em prompts de IA sem perder o significado. O Terse usa mais de 20 técnicas para reduzir o consumo em 40-70%, diminuindo diretamente os custos de API de IA.',
     'faq.q2': 'Quanto o Terse pode economizar?',
@@ -3543,13 +3543,13 @@
     'faq.a10': 'Faça login em terseai.org/marketplace. Vender: cole a chave, defina o desconto. Comprar: adicione saldo, gere uma chave de API.',
 
     // CTA
-    'cta.heading': 'Pare de desperdiçar tokens e dinheiro.',
-    'cta.subtitle': 'Otimize cada prompt. Monitore cada sessão. E dê a toda a sua equipe visibilidade com o Terse Cloud — análises por desenvolvedor, projeto e ferramenta.',
+    'cta.heading': 'Assuma o controle de cada agente de IA.',
+    'cta.subtitle': 'Monitore cada agente em tempo real, interrompa os gastos descontrolados antes da próxima chamada de API e mantenha sua configuração de MCP limpa — enquanto comprime cada prompt. Toda a sua equipe ganha visibilidade completa com o Terse Cloud.',
     'cta.onDevice': '100% no dispositivo',
     'cta.zeroLatency': 'Zero latência',
 
     // Footer
-    'footer.tagline': 'Otimizador de tokens + análise de equipe. Comprima prompts, monitore agentes, detecte duplicatas — monitore os custos de IA da sua equipe com o Terse Cloud.',
+    'footer.tagline': 'O mordomo dos seus agentes de programação com IA — monitoramento em tempo real, um disjuntor de gastos descontrolados, gestão de MCP e compressão de prompts de 40-70%. No dispositivo, com análises de equipe via Terse Cloud.',
     'footer.product': 'Produto',
     'footer.techniques': 'Técnicas',
     'footer.learn': 'Aprenda',
@@ -3603,7 +3603,7 @@
     'features.worksWith': 'Compatível com',
 
     // How It Works section
-    'howItWorks.label': 'Otimização de tokens do agente',
+    'howItWorks.label': 'Como o Terse funciona',
     'howItWorks.heading': 'Cada turno otimizado, automaticamente.',
     'howItWorks.desc': 'Uma única tarefa do agente pode consumir 50x mais tokens do que uma mensagem de chat. O Terse executa 5 estratégias de otimização em paralelo a cada turno.',
     'howItWorks.f1': 'Comprime cada mensagem do usuário antes de chegar à API',

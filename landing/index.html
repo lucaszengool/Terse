@@ -1314,6 +1314,67 @@
   </div>
 </section>
 
+
+<!-- ═══ CAPABILITY PILLARS — Terse is an agent butler, not just a compressor ═══ -->
+<style>
+  #pillars .pillar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:36px}
+  #pillars .pillar-card{position:relative;display:block;padding:24px 22px 40px;background:var(--sf);border:1px solid var(--bd);border-radius:16px;text-decoration:none;transition:border-color .2s,background .2s,transform .2s}
+  #pillars .pillar-card:hover{border-color:var(--ac);background:var(--sfh);transform:translateY(-3px)}
+  #pillars .pillar-ic{font-size:26px;line-height:1;margin-bottom:14px}
+  #pillars .pillar-card h3{font-size:16px;font-weight:700;color:var(--t1);margin:0 0 6px}
+  #pillars .pillar-card p{font-size:13px;line-height:1.55;color:var(--t3);margin:0}
+  #pillars .pillar-arrow{position:absolute;bottom:16px;left:22px;color:var(--ac);font-size:15px;opacity:0;transform:translateX(-4px);transition:opacity .2s,transform .2s}
+  #pillars .pillar-card:hover .pillar-arrow{opacity:1;transform:translateX(0)}
+</style>
+<section class="section" id="pillars" style="background:var(--bg1);border-top:1px solid var(--bd)">
+  <div class="glow" style="top:-120px;left:-180px"></div>
+  <div class="s-inner">
+    <div class="rvl" style="text-align:center;max-width:720px;margin:0 auto">
+      <div class="label" data-i18n="pillars.label">One butler, every agent</div>
+      <h2 data-i18n-html="pillars.heading">Not just a compressor.<br><span class="gradient-text">A butler for your AI agents.</span></h2>
+      <p class="desc" data-i18n="pillars.subtitle" style="margin-left:auto;margin-right:auto">Terse handles the whole lifecycle of every AI coding agent you run — watching it, capping its spend, keeping its tools clean, and trimming every token. All on-device.</p>
+    </div>
+    <div class="pillar-grid rvl d1">
+      <a class="pillar-card" href="/what-is-token-optimization">
+        <div class="pillar-ic" aria-hidden="true">⚡</div>
+        <h3 data-i18n="pillars.optimize.title">Optimize</h3>
+        <p data-i18n="pillars.optimize.desc">Compress every prompt 40–70% before it hits the API — 35+ on-device techniques, code always protected.</p>
+        <span class="pillar-arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="pillar-card" href="/for-claude-code">
+        <div class="pillar-ic" aria-hidden="true">📡</div>
+        <h3 data-i18n="pillars.monitor.title">Monitor</h3>
+        <p data-i18n="pillars.monitor.desc">Live tokens, cost, cache efficiency, burn rate and context fill across 8 coding agents.</p>
+        <span class="pillar-arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="pillar-card" href="/agent-budget-circuit-breaker">
+        <div class="pillar-ic" aria-hidden="true">🛑</div>
+        <h3 data-i18n="pillars.budget.title">Budget breaker</h3>
+        <p data-i18n="pillars.budget.desc">Set spend ceilings that pause or kill a runaway agent before its next API call.</p>
+        <span class="pillar-arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="pillar-card" href="/mcp-manager">
+        <div class="pillar-ic" aria-hidden="true">🔌</div>
+        <h3 data-i18n="pillars.mcp.title">MCP manager</h3>
+        <p data-i18n="pillars.mcp.desc">Discover every MCP server across your configs, risk-score each, toggle without editing JSON.</p>
+        <span class="pillar-arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="pillar-card" href="/reduce-ai-api-costs">
+        <div class="pillar-ic" aria-hidden="true">🩺</div>
+        <h3 data-i18n="pillars.doctor.title">Doctor</h3>
+        <p data-i18n="pillars.doctor.desc">25 waste scans — cache thrash, duplicate tool calls, redundant reads, context burn — with one-click fixes.</p>
+        <span class="pillar-arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="pillar-card" href="/teams">
+        <div class="pillar-ic" aria-hidden="true">👥</div>
+        <h3 data-i18n="pillars.team.title">Team</h3>
+        <p data-i18n="pillars.team.desc">Share live agent sessions and team analytics — by developer, project, and tool.</p>
+        <span class="pillar-arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ HOW IT WORKS: AGENT TOKEN REDUCTION — FULL WALKTHROUGH ═══ -->
 <section class="section" id="how-it-works" style="background:var(--bg0);border-top:1px solid var(--bd)">
   <div class="glow" style="top:-100px;right:-200px"></div>

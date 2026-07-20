@@ -408,6 +408,26 @@ fn agent_defs() -> Vec<(&'static str, AgentDef)> {
             log_dir: None,
             parser: "generic",
         }),
+        ("hermes", AgentDef {
+            name: "Hermes",
+            icon: "\u{1F9E0}",
+            // Hermes Agent (Nous Research) runs as `hermes`, but on Windows it's a
+            // Python entry point so the process name often isn't "hermes". Detect
+            // instead via HERMES_HOME (~/.hermes): agent.log is appended on every
+            // turn, so its file mtime is a reliable "currently running" signal —
+            // the detection scan checks modified() on each path directly, so a
+            // file path works here just like a dir. state.db + the home dir are
+            // fallbacks. Sessions live in a SQLite state.db (not JSONL), so there
+            // is no token/message parsing yet — detection + island display only.
+            process_names: &["hermes"],
+            config_detect_dirs: vec![
+                home.join(".hermes").join("logs").join("agent.log"),
+                home.join(".hermes").join("state.db"),
+                home.join(".hermes"),
+            ],
+            log_dir: None,
+            parser: "generic",
+        }),
     ]
 }
 

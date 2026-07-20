@@ -2205,6 +2205,7 @@ fn island_resize(h: f64, app: AppHandle) {
         let x = ((sw - ISLAND_CARD_W) / 2.0).max(0.0);
         let _ = win.set_size(tauri::LogicalSize::new(ISLAND_CARD_W, clamped));
         let _ = win.set_position(tauri::LogicalPosition::new(x, ISLAND_Y));
+        make_rounded(&win, ISLAND_CARD_W, clamped, 22.0);
     }
 }
 
@@ -2237,13 +2238,40 @@ fn island_set_expanded(expanded: bool, app: AppHandle) {
         let x = ((sw - w) / 2.0).max(0.0);
         let _ = win.set_size(tauri::LogicalSize::new(w, h));
         let _ = win.set_position(tauri::LogicalPosition::new(x, ISLAND_Y));
+        // Pill uses a full-height radius so the ends are semicircular; the card keeps 22px.
+        let radius = if expanded { 22.0 } else { h / 2.0 };
+        make_rounded(&win, w, h, radius);
     }
 }
 
-/// On macOS this rounded the native window layer via Cocoa. Windows 11 rounds
-/// frameless windows itself and the frontend applies `border-radius`, so this is
-/// a deliberate no-op kept for call-site parity.
-fn make_rounded(_win: &tauri::WebviewWindow, _radius: f64) {}
+/// Clip a frameless window to a rounded-rectangle region so it reads as a pill/card
+/// — the Windows equivalent of macOS's native island corner radius (22px). Windows 10
+/// does NOT round frameless windows (that's Win11 only), and the acrylic backdrop fills
+/// the whole rectangular window, so without this the island shows as a rectangle with a
+/// tinted halo instead of the Mac's clean rounded pill. A GDI region is fixed to the size
+/// it was built for, so this MUST be re-applied after every resize (pill <-> card).
+fn make_rounded(win: &tauri::WebviewWindow, w_logical: f64, h_logical: f64, radius: f64) {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::Graphics::Gdi::CreateRoundRectRgn;
+        use windows::Win32::UI::WindowsAndMessaging::SetWindowRgn;
+        let scale = win.scale_factor().unwrap_or(1.0);
+        let w = (w_logical * scale).round() as i32;
+        let h = (h_logical * scale).round() as i32;
+        let d = (radius * scale * 2.0).round() as i32;
+        if w > 0 && h > 0 {
+            if let Ok(hwnd) = win.hwnd() {
+                unsafe {
+                    // SetWindowRgn takes ownership of the region; don't delete it.
+                    let rgn = CreateRoundRectRgn(0, 0, w + 1, h + 1, d, d);
+                    let _ = SetWindowRgn(hwnd, rgn, true);
+                }
+            }
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    { let _ = (win, w_logical, h_logical, radius); }
+}
 
 /// Called after a confirmed Stripe purchase — marks pet owned without spending coins.
 #[tauri::command]
@@ -2911,6 +2939,12 @@ pub fn run() {
                     if let Some(w) = app.get_webview_window(&label) {
                         let _ = apply_acrylic(&w, Some((18, 18, 20, 125)));
                     }
+                }
+                // Clip the island to a rounded pill (its acrylic fills the whole
+                // rectangle otherwise) so it matches macOS's rounded island. The
+                // pill uses a full-height radius; resize handlers re-round on expand.
+                if let Some(w) = app.get_webview_window("island") {
+                    make_rounded(&w, ISLAND_PILL_W, ISLAND_PILL_H, ISLAND_PILL_H / 2.0);
                 }
             }
 

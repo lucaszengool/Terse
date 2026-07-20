@@ -2253,8 +2253,7 @@ fn island_set_expanded(expanded: bool, app: AppHandle) {
 fn make_rounded(win: &tauri::WebviewWindow, w_logical: f64, h_logical: f64, radius: f64) {
     #[cfg(target_os = "windows")]
     {
-        use windows::Win32::Graphics::Gdi::CreateRoundRectRgn;
-        use windows::Win32::UI::WindowsAndMessaging::SetWindowRgn;
+        use windows::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn};
         let scale = win.scale_factor().unwrap_or(1.0);
         let w = (w_logical * scale).round() as i32;
         let h = (h_logical * scale).round() as i32;
@@ -2264,7 +2263,7 @@ fn make_rounded(win: &tauri::WebviewWindow, w_logical: f64, h_logical: f64, radi
                 unsafe {
                     // SetWindowRgn takes ownership of the region; don't delete it.
                     let rgn = CreateRoundRectRgn(0, 0, w + 1, h + 1, d, d);
-                    let _ = SetWindowRgn(hwnd, rgn, true);
+                    let _ = SetWindowRgn(hwnd, rgn, true.into());
                 }
             }
         }

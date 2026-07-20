@@ -2253,17 +2253,22 @@ fn island_set_expanded(expanded: bool, app: AppHandle) {
 fn make_rounded(win: &tauri::WebviewWindow, w_logical: f64, h_logical: f64, radius: f64) {
     #[cfg(target_os = "windows")]
     {
+        use windows::Win32::Foundation::{BOOL, HWND};
         use windows::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn};
         let scale = win.scale_factor().unwrap_or(1.0);
         let w = (w_logical * scale).round() as i32;
         let h = (h_logical * scale).round() as i32;
         let d = (radius * scale * 2.0).round() as i32;
         if w > 0 && h > 0 {
-            if let Ok(hwnd) = win.hwnd() {
+            if let Ok(raw) = win.hwnd() {
+                // tauri's hwnd() comes from a newer `windows` crate than our direct
+                // dep, so its HWND is a different type. Rebuild our HWND from the raw
+                // pointer (both are `HWND(*mut c_void)`) so the versions line up.
+                let hwnd = HWND(raw.0);
                 unsafe {
                     // SetWindowRgn takes ownership of the region; don't delete it.
                     let rgn = CreateRoundRectRgn(0, 0, w + 1, h + 1, d, d);
-                    let _ = SetWindowRgn(hwnd, rgn, true.into());
+                    let _ = SetWindowRgn(hwnd, rgn, BOOL(1));
                 }
             }
         }

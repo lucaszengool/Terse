@@ -1,107 +1,50 @@
 # Terse
 
-> Terse is a macOS + Windows token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, GitHub Copilot, Aider, and more. It runs 100% on-device with zero cloud dependency.
+> Terse is an on-device AI agent butler for macOS and Windows that cuts AI token costs by 40-70%. It compresses prompts before they hit the API, live-monitors 8 coding agents (Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider), enforces spending limits with a budget circuit breaker that can pause or kill a runaway agent before its next API call, manages MCP servers with security risk scoring, and diagnoses token waste with Terse Doctor. It runs 100% on-device — prompts never leave your machine. Also available as a Chrome extension and a VS Code extension.
 
 ## Key Facts
-- Reduces token usage by 40-70% on verbose prompts and up to 89% on CLI output
-- 20+ optimization techniques in a 7-stage pipeline
-- Auto-detects Claude Code, Cursor, GitHub Copilot, Aider, Cline, Roo Code agent sessions
-- Model-aware pricing: tracks costs for Claude Opus 4, Sonnet 4.6, Haiku 4.5, GPT-4o, Gemini 2.5
-- 400+ built-in typo corrections, 130+ phrase-shortening rules
-- 3 modes: Soft (typo-fix only), Normal (filler removal), Aggressive (max compression)
-- Pricing: Free (50/week), Pro $4.99/mo (unlimited), Premium $99/mo (teams)
-- macOS + Windows, built with Tauri + Rust + Swift
-- CLAUDE.md rule generation from session patterns
-- Live agent session monitoring: per-turn cost, duplicate tool call detection, context fill meter
+- Reduces token usage 40-70% on verbose prompts; 35+ on-device optimization techniques (<5ms)
+- Live monitoring of 8 agents: input/output tokens, cache read/write efficiency, per-turn cost (model-aware pricing), burn rate, context-window fill
+- Budget circuit breaker: burn-rate / token / dollar ceilings that escalate from alert to pausing (SIGSTOP) or killing (SIGTERM) the agent process before the next API call
+- MCP Manager: discovers every MCP server across Claude Code / Cursor / Windsurf configs; risk-scores each (remote transport, embedded credentials, code-execution surface, unpinned supply chain); enable/disable without editing JSON
+- Terse Doctor: ~25 consent-gated scans — cache thrash, duplicate tool calls, redundant file reads, context burn, CLAUDE.md token tax, secret exposure, runaway runtimes — with one-click fixes
+- 3 optimization modes: Soft (typo-fix only), Normal (filler removal), Aggressive (max compression); code blocks always protected
+- Alert Center: macOS/Windows notifications, Slack webhook, ntfy.sh push; weekly savings digest
+- Team sharing: publish live agent sessions and aggregate stats to teammates
+- Pricing: Free 30-day trial; Monthly $4.99/mo; macOS + Windows, built with Tauri + Rust + Swift
 
 ## Pages
 
-### Pillar Guide
-- [AI Coding Agent Costs 2026 — Complete Guide](https://www.terseai.org/ai-coding-agent-costs): What every AI coding agent costs and how to cut token bills 40-70% (hub linking all tool, pricing, and comparison pages)
-
-### Blog
-- [The Terse Blog](https://www.terseai.org/blog): Practical guides on AI coding agent costs, tokens, and cutting your bill
-- [Why Is Cursor So Expensive?](https://www.terseai.org/why-is-cursor-so-expensive): The credit pool, frontier-model overages, and context bloat explained
-- [Reduce Your Claude Code Context Window](https://www.terseai.org/reduce-claude-code-context-window): What fills context and the techniques to keep it lean
-- [How Many Tokens Do AI Coding Agents Use?](https://www.terseai.org/how-many-tokens-ai-coding-agents-use): A data-driven breakdown of where an agent's tokens go
-- [What Are GitHub Copilot AI Credits?](https://www.terseai.org/what-are-github-copilot-ai-credits): The June 2026 usage-based billing change explained
-- [Why Is Claude Code So Expensive?](https://www.terseai.org/why-is-claude-code-so-expensive)
-- [How to Reduce Your Cursor Costs](https://www.terseai.org/how-to-reduce-cursor-costs)
-- [How to Reduce GitHub Copilot Costs](https://www.terseai.org/how-to-reduce-github-copilot-costs)
-- [How to Write Prompts That Use Fewer Tokens](https://www.terseai.org/how-to-write-prompts-that-use-fewer-tokens)
-- [What Are Tokens in LLMs?](https://www.terseai.org/what-are-tokens-in-llms)
-- [What Is a Context Window?](https://www.terseai.org/what-is-a-context-window)
-- [Claude Code Rate Limits Explained](https://www.terseai.org/claude-code-rate-limits-explained)
-- [The Cheapest AI Coding Assistant in 2026](https://www.terseai.org/cheapest-ai-coding-assistant)
-- [Is Cursor Worth It in 2026?](https://www.terseai.org/is-cursor-worth-it-2026)
-- [Is Claude Code Worth It in 2026?](https://www.terseai.org/is-claude-code-worth-it-2026)
-- [How to Use CLAUDE.md to Save Tokens](https://www.terseai.org/how-to-use-claude-md-to-save-tokens)
-- [What Is Prompt Compression?](https://www.terseai.org/what-is-prompt-compression)
-- [Input vs Output Tokens: What's the Difference?](https://www.terseai.org/input-vs-output-tokens)
-- [What Is Context Rot?](https://www.terseai.org/what-is-context-rot)
-- [10 Ways to Cut Your AI Coding Bill](https://www.terseai.org/10-ways-to-cut-your-ai-coding-bill)
-- [Cursor Auto Mode Explained](https://www.terseai.org/cursor-auto-mode-explained)
-- [How Much Do AI Coding Agents Cost Per Month?](https://www.terseai.org/how-much-do-ai-coding-agents-cost-per-month)
-- [How to Stop AI Agents From Re-Reading Files](https://www.terseai.org/how-to-stop-ai-agents-re-reading-files)
-- [What Is an AI Coding Agent?](https://www.terseai.org/what-is-an-ai-coding-agent)
-- [Terminal vs IDE AI Agents: Which Costs Less?](https://www.terseai.org/terminal-vs-ide-ai-agents-cost)
-- [12 Token Optimization Techniques](https://www.terseai.org/token-optimization-techniques)
-- [7 Mistakes That Waste Tokens in AI Coding](https://www.terseai.org/common-mistakes-that-waste-tokens)
-- [GitHub Copilot Free vs Pro: Worth Upgrading?](https://www.terseai.org/github-copilot-free-vs-pro)
-- [The True Cost of Vibe Coding](https://www.terseai.org/the-true-cost-of-vibe-coding)
-
 ### Product
 - [Home](https://www.terseai.org/): Full product overview, pricing, features
-- [About Terse](https://www.terseai.org/about): Who/what Terse is — on-device token optimizer, privacy-first, supported tools
-- [Token Calculator](https://www.terseai.org/token-calculator): Calculate your potential token savings
-- [Marketplace](https://www.terseai.org/marketplace): Extensions and integrations
-- [Docs](https://www.terseai.org/docs): Complete usage guide, installation, and configuration
-- [API Docs](https://www.terseai.org/api-docs): REST API reference for prompt optimization endpoint
+- [Budget Circuit Breaker](https://www.terseai.org/agent-budget-circuit-breaker): Stop runaway AI agents — spending limits that pause or kill before the next API call
+- [MCP Manager](https://www.terseai.org/mcp-manager): Discover, risk-score, and manage MCP servers across your agent configs
+- [Terse for Windows](https://www.terseai.org/for-windows): The full Terse app on Windows
+- [Token Cost Calculator](https://www.terseai.org/token-calculator): Estimate your potential token savings
+- [About Terse](https://www.terseai.org/about): Who builds Terse and why
 
-### Per-Tool Landing Pages
-- [For Claude Code](https://www.terseai.org/for-claude-code): Reduce Claude Code token costs by 40-89%
-- [For Cursor](https://www.terseai.org/for-cursor): Reduce Cursor AI token costs by 40-70%
-- [For ChatGPT](https://www.terseai.org/for-chatgpt): Reduce ChatGPT token costs via browser compression
-- [For GitHub Copilot](https://www.terseai.org/for-github-copilot): Reduce GitHub Copilot context costs in VS Code
-- [For Aider](https://www.terseai.org/for-aider): Reduce Aider token costs — auto-detect sessions, compress prompts
-- [For Cline](https://www.terseai.org/for-cline): Reduce Cline token costs — BYOM autonomous agent, per-step context growth
-- [For Codex CLI](https://www.terseai.org/for-codex-cli): Reduce OpenAI Codex CLI token costs in the terminal
-- [For Windsurf](https://www.terseai.org/for-windsurf): Reduce Windsurf/Cascade token and credit costs
-- [For Gemini CLI](https://www.terseai.org/for-gemini-cli): Reduce Gemini CLI token costs — large-context discipline
-- [For opencode](https://www.terseai.org/for-opencode): Reduce opencode token costs — most-starred open-source terminal agent
-- [For Zed](https://www.terseai.org/for-zed): Reduce Zed token costs — Rust-native AI editor, compress prompts into Zed AI
+### Per-Tool Pages
+- [Claude Code](https://www.terseai.org/for-claude-code) · [Cursor](https://www.terseai.org/for-cursor) · [ChatGPT](https://www.terseai.org/for-chatgpt) · [GitHub Copilot](https://www.terseai.org/for-github-copilot) · [Aider](https://www.terseai.org/for-aider) · [Cline](https://www.terseai.org/for-cline) · [Windsurf](https://www.terseai.org/for-windsurf) · [Codex CLI](https://www.terseai.org/for-codex-cli) · [Gemini CLI](https://www.terseai.org/for-gemini-cli) · [OpenCode](https://www.terseai.org/for-opencode) · [Zed](https://www.terseai.org/for-zed)
 
 ### Comparisons & Alternatives
-- [Cursor vs Claude Code](https://www.terseai.org/cursor-vs-claude-code): Pricing, token efficiency, and which to choose
-- [Claude Code vs Codex CLI](https://www.terseai.org/claude-code-vs-codex-cli): Benchmarks, pricing, and token cost head-to-head
-- [Cursor vs GitHub Copilot](https://www.terseai.org/cursor-vs-github-copilot): The two most-adopted tools, pricing and which to pick
-- [Claude Code vs GitHub Copilot](https://www.terseai.org/claude-code-vs-github-copilot): Terminal agent vs IDE extension, pricing and which to pick
-- [Windsurf vs Cursor](https://www.terseai.org/windsurf-vs-cursor): The two leading AI IDEs, pricing and autonomy compared
-- [Windsurf vs Claude Code](https://www.terseai.org/windsurf-vs-claude-code): AI IDE vs terminal agent, pricing and token efficiency
-- [Claude Code Alternatives](https://www.terseai.org/claude-code-alternatives): 10 best alternatives in 2026, free and paid
-- [Cursor Alternatives](https://www.terseai.org/cursor-alternatives): 9 best alternatives in 2026, IDE and terminal
-- [GitHub Copilot Alternatives](https://www.terseai.org/github-copilot-alternatives): 9 best alternatives in 2026, IDE and terminal
+- [AI coding agent costs (pillar guide)](https://www.terseai.org/ai-coding-agent-costs)
+- [Cursor vs Claude Code](https://www.terseai.org/cursor-vs-claude-code) · [Claude Code vs GitHub Copilot](https://www.terseai.org/claude-code-vs-github-copilot) · [Claude Code vs Codex CLI](https://www.terseai.org/claude-code-vs-codex-cli) · [Windsurf vs Claude Code](https://www.terseai.org/windsurf-vs-claude-code) · [Windsurf vs Cursor](https://www.terseai.org/windsurf-vs-cursor) · [Cursor vs GitHub Copilot](https://www.terseai.org/cursor-vs-github-copilot)
+- [Claude Code alternatives](https://www.terseai.org/claude-code-alternatives) · [Cursor alternatives](https://www.terseai.org/cursor-alternatives) · [GitHub Copilot alternatives](https://www.terseai.org/github-copilot-alternatives)
 
-### Guides & Articles
-- [What Is Token Optimization?](https://www.terseai.org/what-is-token-optimization): Complete guide to token optimization concepts
-- [How to Reduce AI API Costs](https://www.terseai.org/reduce-ai-api-costs): 7 proven strategies to cut AI costs by 60-80%
-- [Claude Code Pricing 2026](https://www.terseai.org/claude-code-pricing): Real per-token costs, monthly estimates, and how to cut your bill
-- [Cursor Pricing 2026](https://www.terseai.org/cursor-pricing): Plans, credit pool, real token costs, and how to save
-- [GitHub Copilot Pricing 2026](https://www.terseai.org/github-copilot-pricing): Plans, usage-based AI Credits, and how to cut your bill
-- [AI Coding Tools Pricing 2026](https://www.terseai.org/ai-coding-tools-pricing): Every tool's plans compared side-by-side; cheapest and free options
-- [AI Token Pricing Comparison 2026](https://www.terseai.org/ai-token-pricing-comparison): Claude vs GPT vs Gemini complete cost guide
-- [I Built an App to Steal $50M Back from Claude Code](https://www.terseai.org/i-built-an-app-to-steal-50m-back): Technical deep-dive on the Terse compression pipeline
+### Cost & Pricing Guides
+- [Claude Code pricing 2026](https://www.terseai.org/claude-code-pricing) · [Cursor pricing](https://www.terseai.org/cursor-pricing) · [GitHub Copilot pricing](https://www.terseai.org/github-copilot-pricing)
+- [AI token pricing comparison](https://www.terseai.org/ai-token-pricing-comparison) · [How much do AI coding agents cost per month](https://www.terseai.org/how-much-do-ai-coding-agents-cost-per-month) · [Cheapest AI coding assistant](https://www.terseai.org/cheapest-ai-coding-assistant)
+- [Why is Claude Code so expensive](https://www.terseai.org/why-is-claude-code-so-expensive) · [Why is Cursor so expensive](https://www.terseai.org/why-is-cursor-so-expensive)
+- [How to reduce Cursor costs](https://www.terseai.org/how-to-reduce-cursor-costs) · [How to reduce GitHub Copilot costs](https://www.terseai.org/how-to-reduce-github-copilot-costs) · [Reduce AI API costs](https://www.terseai.org/reduce-ai-api-costs)
+
+### Concept Guides
+- [What is token optimization](https://www.terseai.org/what-is-token-optimization) · [What is prompt compression](https://www.terseai.org/what-is-prompt-compression) · [What are tokens in LLMs](https://www.terseai.org/what-are-tokens-in-llms) · [What is a context window](https://www.terseai.org/what-is-a-context-window) · [What is context rot](https://www.terseai.org/what-is-context-rot) · [What is an AI coding agent](https://www.terseai.org/what-is-an-ai-coding-agent) · [Input vs output tokens](https://www.terseai.org/input-vs-output-tokens)
+- [Token optimization techniques](https://www.terseai.org/token-optimization-techniques) · [How to write prompts that use fewer tokens](https://www.terseai.org/how-to-write-prompts-that-use-fewer-tokens) · [How to use CLAUDE.md to save tokens](https://www.terseai.org/how-to-use-claude-md-to-save-tokens) · [Common mistakes that waste tokens](https://www.terseai.org/common-mistakes-that-waste-tokens)
+- [The Terse blog](https://www.terseai.org/blog)
 
 ### Technique Deep-Dives
-- [Spell Correction](https://www.terseai.org/spell-correction): Hybrid dictionary + macOS NSSpellChecker pipeline
-- [Pattern Optimization](https://www.terseai.org/pattern-optimization): 130+ phrase-shortening and redundancy rules
-- [NLP Analysis](https://www.terseai.org/nlp-analysis): Filler, hedging, and meta-language removal
-- [Telegraph Compression](https://www.terseai.org/telegraph-compression): Aggressive article/preposition stripping
-- [LLMLingua (EMNLP 2023)](https://www.terseai.org/llmlingua): Academic research behind prompt compression
-- [Norvig Spelling](https://www.terseai.org/norvig-spelling): Statistical spelling correction foundation
-- [Selective Context](https://www.terseai.org/selective-context): Context pruning for token reduction
+- [LLMLingua](https://www.terseai.org/llmlingua) · [Telegraph compression](https://www.terseai.org/telegraph-compression) · [Pattern optimization](https://www.terseai.org/pattern-optimization) · [NLP analysis](https://www.terseai.org/nlp-analysis) · [Spell correction](https://www.terseai.org/spell-correction) · [Selective context](https://www.terseai.org/selective-context) · [Norvig spelling](https://www.terseai.org/norvig-spelling)
 
 ## Pricing
-- Free: 50 optimizations/week, 1 session, all 3 modes, spell correction
-- Pro ($4.99/mo): Unlimited optimizations, 3 sessions, agent monitoring, CLAUDE.md generation, 2 devices, 30-day free trial
-- Premium ($99/mo): Unlimited everything, unlimited devices, priority support, 30-day free trial
+- Free: 30-day trial, all 3 modes, spell correction
+- Monthly ($4.99/mo): Unlimited optimizations, agent monitoring, budget circuit breaker, MCP manager, Doctor, CLAUDE.md generation

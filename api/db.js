@@ -372,6 +372,55 @@ try { db.exec(`ALTER TABLE users ADD COLUMN api_subscription_id TEXT`); } catch 
 try { db.exec(`ALTER TABLE users ADD COLUMN api_tokens_this_month INTEGER DEFAULT 0`); } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN api_month_key TEXT DEFAULT ''`); } catch {}
 
+// ── Referral program (dual-sided give-get) ────────────────────────────────
+try { db.exec(`ALTER TABLE users ADD COLUMN referral_code TEXT`); } catch {}
+try { db.exec(`ALTER TABLE users ADD COLUMN referred_by TEXT`); } catch {}      // referrer's user id
+try { db.exec(`ALTER TABLE users ADD COLUMN bonus_pro_until TEXT`); } catch {}   // ISO ts of granted Pro
+// Lifetime purchase — ISO ts of the one-time payment, and its Stripe payment_intent
+// (kept for reconciliation/refunds). NULL means the user has not bought lifetime.
+try { db.exec(`ALTER TABLE users ADD COLUMN lifetime_at TEXT`); } catch {}
+try { db.exec(`ALTER TABLE users ADD COLUMN lifetime_payment_id TEXT`); } catch {}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS referrals (
+    id TEXT PRIMARY KEY,
+    referrer_id TEXT,
+    referee_id TEXT UNIQUE,
+    code TEXT,
+    status TEXT DEFAULT 'pending',           -- pending → converted (referee started paid)
+    created_at TEXT DEFAULT (datetime('now')),
+    converted_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+`);
+
+const setReferralCode      = db.prepare(`UPDATE users SET referral_code = ? WHERE id = ?`);
+const getUserByReferralCode = db.prepare(`SELECT * FROM users WHERE referral_code = ?`);
+const setReferredBy        = db.prepare(`UPDATE users SET referred_by = ? WHERE id = ?`);
+const setBonusProUntil     = db.prepare(`UPDATE users SET bonus_pro_until = ? WHERE id = ?`);
+
+// ── Lifetime (one-time purchase) ──────────────────────────────────────────
+// A lifetime buyer has NO Stripe subscription, so the license endpoint's
+// subscription lookup would report them expired. This flag is the only record
+// that they paid, and it must be checked before that lookup.
+const setLifetime = db.prepare(
+  `UPDATE users SET lifetime_at = ?, lifetime_payment_id = ? WHERE id = ?`
+);
+const addReferral          = db.prepare(`INSERT OR IGNORE INTO referrals (id, referrer_id, referee_id, code, status) VALUES (?, ?, ?, ?, 'pending')`);
+const getReferralByReferee = db.prepare(`SELECT * FROM referrals WHERE referee_id = ?`);
+const markReferralConverted = db.prepare(`UPDATE referrals SET status = 'converted', converted_at = datetime('now') WHERE referee_id = ? AND status = 'pending'`);
+const countInvited         = db.prepare(`SELECT COUNT(*) AS n FROM referrals WHERE referrer_id = ?`);
+const countConverted       = db.prepare(`SELECT COUNT(*) AS n FROM referrals WHERE referrer_id = ? AND status = 'converted'`);
+
+/// Deterministic 6-char code — MUST match the desktop client's fallback
+/// (src-tauri/src/lib.rs::referral_code_for) so codes are identical everywhere.
+function referralCodeFor(id) {
+  const d = crypto.createHash('sha256').update(String(id)).digest();
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 6; i++) s += A[d[i] % A.length];
+  return s;
+}
+
 // ── Developer API key helpers ──
 const addDevApiKey = db.prepare(`
   INSERT INTO developer_api_keys (id, user_id, key_hash, key_prefix, label)
@@ -919,6 +968,10 @@ module.exports = {
   addDevApiKey, getDevApiKeysByUser, findDevApiKeyByHash, findDevApiKeyWithUser,
   revokeDevApiKey, touchDevApiKey, incrementApiTokens, resetApiTokens,
   updateUserTier, updateApiTier,
+  // Referral program
+  setReferralCode, getUserByReferralCode, setReferredBy, setBonusProUntil, setLifetime,
+  addReferral, getReferralByReferee, markReferralConverted, countInvited, countConverted,
+  referralCodeFor,
   // Vibe Projects Platform
   addVibeProject, getVibeProjects, getVibeProjectsByUser, upvoteVibeProject,
   // Terse Docs

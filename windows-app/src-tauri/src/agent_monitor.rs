@@ -465,6 +465,10 @@ pub struct AgentSessionData {
     pub duplicate_tool_calls: u64,                  // count of duplicate tool calls
     pub duplicate_tool_tokens: u64,                 // tokens wasted on duplicate calls
     tool_call_hashes: HashSet<String>,              // cache keys for duplicate detection
+    // Codex Desktop: per-turn accumulators (Desktop JSONL has no token usage fields)
+    codex_pending_input: u64,
+    codex_pending_output: u64,
+    pub context_window: u64,                        // from model_context_window in task_started
     // ── Attention layer (done / blocked / idle detection) ──
     /// Last time this session produced new activity (message/token growth).
     pub last_activity: std::time::Instant,
@@ -518,6 +522,9 @@ impl AgentSessionData {
             duplicate_tool_calls: 0,
             duplicate_tool_tokens: 0,
             tool_call_hashes: HashSet::new(),
+            codex_pending_input: 0,
+            codex_pending_output: 0,
+            context_window: 0,
             last_activity: std::time::Instant::now(),
             last_role: String::new(),
             idle_notified: false,
@@ -1012,6 +1019,10 @@ impl AgentSessionData {
         }
     }
 
+    // Codex parsing is shared with macOS verbatim: the Desktop build writes a
+    // different JSONL shape (event_msg / task_started / task_complete with no
+    // usage fields) and Windows only understood the older CLI shape, so Desktop
+    // sessions showed zero turns and zero tokens here.
     fn parse_codex_line(&mut self, obj: &serde_json::Value) {
         let event_type = obj.get("type")
             .or_else(|| obj.get("event_type"))
@@ -1023,6 +1034,182 @@ impl AgentSessionData {
             .unwrap_or("")
             .to_string();
 
+        // ── New Desktop format: session_meta → model / model_provider ──
+        if event_type == "session_meta" {
+            if let Some(p) = obj.get("payload") {
+                if let Some(m) = p.get("model").and_then(|v| v.as_str()) {
+                    self.detected_model = Some(m.to_string());
+                }
+                if let Some(mp) = p.get("model_provider").and_then(|v| v.as_str()) {
+                    if self.detected_model.is_none() {
+                        self.detected_model = Some(mp.to_string());
+                    }
+                }
+            }
+            return;
+        }
+
+        // ── New Desktop format: turn_context → context window size ──
+        if event_type == "turn_context" {
+            // model_context_window is in the associated task_started event_msg, not here
+            return;
+        }
+
+        // ── New Desktop format: event_msg dispatches on payload.type ──
+        if event_type == "event_msg" {
+            let payload = obj.get("payload").cloned().unwrap_or(serde_json::Value::Null);
+            let pt = payload.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            match pt {
+                "task_started" => {
+                    self.turns += 1;
+                    self.codex_pending_input = 0;
+                    self.codex_pending_output = 0;
+                    if let Some(ctx) = payload.get("model_context_window").and_then(|v| v.as_u64()) {
+                        self.context_window = ctx;
+                    }
+                }
+                "task_complete" => {
+                    // Flush accumulated per-turn token estimates (Desktop JSONL has no usage fields)
+                    if self.codex_pending_input > self.total_input_tokens {
+                        self.total_input_tokens = self.codex_pending_input;
+                        self.last_input_tokens = self.codex_pending_input;
+                    }
+                    if self.codex_pending_output > self.total_output_tokens {
+                        self.total_output_tokens = self.codex_pending_output;
+                    }
+                    self.codex_pending_input = 0;
+                    self.codex_pending_output = 0;
+                }
+                "user_message" => {
+                    let text = payload.get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if !text.is_empty() {
+                        let tokens = estimate_tokens(&text);
+                        self.messages.push(AgentMessage {
+                            role: "user".to_string(),
+                            text,
+                            tokens,
+                            timestamp: ts.clone(),
+                            msg_type: "text".to_string(),
+                            tool_name: None,
+                        });
+                    }
+                }
+                _ => {}
+            }
+            return;
+        }
+
+        // ── New Desktop format: response_item → messages + token accumulation ──
+        if event_type == "response_item" {
+            let payload = obj.get("payload").cloned().unwrap_or(serde_json::Value::Null);
+            let pt = payload.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            let role = payload.get("role").and_then(|v| v.as_str()).unwrap_or("");
+
+            // Accumulate token estimates from all content items in this message.
+            // Desktop JSONL has no usage fields — we estimate from content length.
+            let content_tokens: u64 = payload.get("content")
+                .and_then(|c| c.as_array())
+                .map(|arr| arr.iter().filter_map(|item| {
+                    item.get("text").and_then(|t| t.as_str()).map(|s| estimate_tokens(s))
+                }).sum())
+                .unwrap_or(0);
+
+            match role {
+                "developer" | "user" => self.codex_pending_input += content_tokens,
+                "assistant" => self.codex_pending_output += content_tokens,
+                _ => {}
+            }
+
+            if pt == "message" && role == "assistant" {
+                let content = payload.get("content").and_then(|c| c.as_array());
+                let text = content.map(|arr| {
+                    arr.iter()
+                        .filter(|item| item.get("type").and_then(|t| t.as_str()) == Some("output_text"))
+                        .filter_map(|item| item.get("text").and_then(|t| t.as_str()))
+                        .collect::<Vec<_>>()
+                        .join("")
+                }).unwrap_or_default();
+                if !text.is_empty() {
+                    let tokens = estimate_tokens(&text);
+                    self.messages.push(AgentMessage {
+                        role: "assistant".to_string(),
+                        text,
+                        tokens,
+                        timestamp: ts.clone(),
+                        msg_type: "text".to_string(),
+                        tool_name: None,
+                    });
+                }
+            }
+
+            // Desktop function_call items — tool use + duplicate detection
+            if pt == "function_call" {
+                let name = payload.get("name").and_then(|v| v.as_str()).unwrap_or("tool").to_string();
+                let args = payload.get("arguments").map(|v| v.to_string()).unwrap_or_default();
+                let input_prefix = safe_truncate(&args, 100);
+                let cache_key = format!("{}:{}", name, input_prefix);
+                self.tool_call_count += 1;
+                *self.tools_used.entry(name.clone()).or_insert(0) += 1;
+                if !self.tool_call_hashes.insert(cache_key) {
+                    self.duplicate_tool_calls += 1;
+                }
+                // File read detection
+                if name == "read_file" || name == "read" {
+                    if let Some(path) = payload.get("arguments")
+                        .and_then(|a| a.get("path").or_else(|| a.get("file_path")))
+                        .and_then(|v| v.as_str())
+                    {
+                        *self.file_reads.entry(path.to_string()).or_insert(0) += 1;
+                    }
+                }
+                self.messages.push(AgentMessage {
+                    role: "tool".to_string(),
+                    text: format!("Tool: {}", name),
+                    tokens: 0,
+                    timestamp: ts.clone(),
+                    msg_type: "tool_use".to_string(),
+                    tool_name: Some(name),
+                });
+            }
+
+            // Desktop function_call_output — tool result with compression + duplicate tokens
+            if pt == "function_call_output" {
+                let output = payload.get("output").and_then(|v| v.as_str()).unwrap_or("");
+                let result_tokens = estimate_tokens(output);
+                let tool_name = self.messages.iter().rev()
+                    .find(|m| m.msg_type == "tool_use")
+                    .and_then(|m| m.tool_name.clone())
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                self.tool_result_total_tokens += result_tokens;
+                let compress_rate = match tool_name.as_str() {
+                    "shell" | "bash" => estimate_bash_compressibility(output),
+                    "read_file" | "read" => estimate_read_compressibility(output),
+                    "web_search" => 0.35,
+                    _ => 0.20,
+                };
+                self.tool_result_compressible += (result_tokens as f64 * compress_rate) as u64;
+                {
+                    let call_count = self.tools_used.get(&tool_name).copied().unwrap_or(0) as u64;
+                    let unique_count = self.tool_call_hashes.iter()
+                        .filter(|k| k.starts_with(&format!("{}:", tool_name)))
+                        .count() as u64;
+                    if call_count > unique_count {
+                        self.duplicate_tool_tokens += result_tokens;
+                    }
+                }
+                if result_tokens > 1000 {
+                    self.large_results.push((tool_name, result_tokens));
+                }
+            }
+
+            return;
+        }
+
+        // Old CLI format: model detection
         if let Some(model) = obj.get("turn_context")
             .and_then(|tc| tc.get("model"))
             .and_then(|m| m.as_str())
@@ -1038,7 +1225,36 @@ impl AgentSessionData {
                 self.turns += 1;
             }
 
+            // Responses API streaming event — token usage arrives in response.done
+            "response.done" => {
+                let u = obj.get("response")
+                    .and_then(|r| r.get("usage"))
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+                let input = u["input_tokens"].as_u64().unwrap_or(0);
+                let cached = u.get("input_token_details")
+                    .and_then(|d| d["cached_tokens"].as_u64())
+                    .unwrap_or(0);
+                let output = u["output_tokens"].as_u64().unwrap_or(0);
+                let reasoning = u.get("output_tokens_details")
+                    .and_then(|d| d["reasoning_tokens"].as_u64())
+                    .unwrap_or(0);
+                let new_total = input + output + reasoning;
+                let cur_total = self.total_input_tokens + self.total_output_tokens;
+                if new_total > cur_total {
+                    self.total_input_tokens = input;
+                    self.total_cache_read_tokens = cached;
+                    self.total_output_tokens = output + reasoning;
+                    self.last_input_tokens = input;
+                    if self.total_input_tokens > 0 {
+                        self.cache_efficiency = ((cached as f64 / self.total_input_tokens as f64) * 100.0) as u32;
+                    }
+                }
+                self.turns += 1;
+            }
+
             "turn.completed" => {
+                // usage: { input_tokens, cached_input_tokens, output_tokens, reasoning_output_tokens }
                 let u = obj.get("usage")
                     .or_else(|| obj.get("payload").and_then(|p| p.get("usage")))
                     .cloned()
@@ -1047,13 +1263,15 @@ impl AgentSessionData {
                 let input = u["input_tokens"].as_u64().unwrap_or(0);
                 let cached = u["cached_input_tokens"].as_u64().unwrap_or(0);
                 let output = u["output_tokens"].as_u64().unwrap_or(0);
+                let reasoning = u["reasoning_output_tokens"].as_u64().unwrap_or(0);
 
-                let new_total = input + cached + output;
+                // Codex reports cumulative totals per session — take the max to avoid backwards steps
+                let new_total = input + cached + output + reasoning;
                 let cur_total = self.total_input_tokens + self.total_output_tokens;
                 if new_total > cur_total {
                     self.total_input_tokens = input + cached;
                     self.total_cache_read_tokens = cached;
-                    self.total_output_tokens = output;
+                    self.total_output_tokens = output + reasoning;
                     self.last_input_tokens = input + cached;
                     if self.total_input_tokens > 0 {
                         self.cache_efficiency = ((self.total_cache_read_tokens as f64
@@ -1074,7 +1292,23 @@ impl AgentSessionData {
                         .to_string();
                     self.tool_call_count += 1;
                     *self.tools_used.entry(name.clone()).or_insert(0) += 1;
+
+                    // Duplicate detection: hash tool name + first 100 chars of arg
                     let arg = codex_extract_arg(&item);
+                    let input_prefix = safe_truncate(&arg, 100);
+                    let cache_key = format!("{}:{}", name, input_prefix);
+                    if !self.tool_call_hashes.insert(cache_key) {
+                        self.duplicate_tool_calls += 1;
+                    }
+
+                    // Track file reads for redundancy detection
+                    if itype == "file_read" || name == "read" {
+                        let path = item["path"].as_str().unwrap_or("");
+                        if !path.is_empty() {
+                            *self.file_reads.entry(path.to_string()).or_insert(0) += 1;
+                        }
+                    }
+
                     self.messages.push(AgentMessage {
                         role: "tool".to_string(),
                         text: format!("Tool: {}", name),
@@ -1083,7 +1317,6 @@ impl AgentSessionData {
                         msg_type: "tool_use".to_string(),
                         tool_name: Some(name),
                     });
-                    let _ = arg;
                 }
             }
 
@@ -1138,6 +1371,30 @@ impl AgentSessionData {
                             .unwrap_or("");
                         let result_tokens = estimate_tokens(output);
                         self.tool_result_total_tokens += result_tokens;
+
+                        // Compression estimation — same logic as Claude Code
+                        let compress_rate = match name.as_str() {
+                            "shell" | "command_execution" | "local_shell_call" =>
+                                estimate_bash_compressibility(output),
+                            "read" | "file_read" =>
+                                estimate_read_compressibility(output),
+                            "web_search" | "web_search_call" => 0.35,
+                            "mcp" | "mcp_call" => 0.20,
+                            _ => 0.20,
+                        };
+                        self.tool_result_compressible += (result_tokens as f64 * compress_rate) as u64;
+
+                        // Duplicate token tracking
+                        {
+                            let call_count = self.tools_used.get(&name).copied().unwrap_or(0) as u64;
+                            let unique_count = self.tool_call_hashes.iter()
+                                .filter(|k| k.starts_with(&format!("{}:", name)))
+                                .count() as u64;
+                            if call_count > unique_count {
+                                self.duplicate_tool_tokens += result_tokens;
+                            }
+                        }
+
                         if result_tokens > 1000 {
                             self.large_results.push((name, result_tokens));
                         }
@@ -1146,7 +1403,7 @@ impl AgentSessionData {
                 }
             }
 
-            _ => {}
+            _ => {} // thread.started, error, etc. — no data needed
         }
 
         if self.messages.len() > 200 {
@@ -1276,6 +1533,24 @@ impl AgentSessionData {
         let mut offset = self.watcher_offset;
         self.read_file_from_offset(&file_path, &mut offset);
         self.watcher_offset = offset;
+
+        // Codex Desktop's JSONL carries no usage fields, so the rollout alone
+        // under-reports. terse-local-proxy writes the real counts it sees on
+        // Codex's /v1/responses calls; merge them when they are ahead of what the
+        // log implies. Same merge macOS does.
+        if self.agent_type == "codex" {
+            if let Some((in_tok, out_tok, cached)) = read_codex_proxy_tokens() {
+                if in_tok > self.total_input_tokens {
+                    self.total_input_tokens = in_tok;
+                    self.total_output_tokens = out_tok;
+                    self.total_cache_read_tokens = cached;
+                    self.last_input_tokens = in_tok;
+                    if in_tok > 0 {
+                        self.cache_efficiency = ((cached as f64 / in_tok as f64) * 100.0) as u32;
+                    }
+                }
+            }
+        }
     }
 
     fn read_new_lines_multi(&mut self) {
@@ -1713,7 +1988,9 @@ impl AgentMonitor {
             let session_file = find_codex_session();
             eprintln!("[terse-agent] accept_agent codex: session_file = {:?}", session_file);
             if let Some(ref file) = session_file {
-                if let Ok(content) = fs::read_to_string(file) {
+                // read_codex_session_file (not fs::read_to_string) so zstd-compressed
+                // rollouts are decompressed rather than silently skipped.
+                if let Some(content) = read_codex_session_file(file) {
                     for line in content.lines() {
                         let trimmed = line.trim();
                         if trimmed.is_empty() { continue; }
@@ -2110,6 +2387,36 @@ fn extract_lexical_text(node: &serde_json::Value) -> String {
         }
     }
     out
+}
+
+fn read_codex_proxy_tokens() -> Option<(u64, u64, u64)> {
+    let home = dirs::home_dir()?;
+    let stats_file = home.join(".terse").join("codex-proxy-tokens.json");
+    let data = fs::read_to_string(&stats_file).ok()?;
+    let json: serde_json::Value = serde_json::from_str(&data).ok()?;
+    let input = json["inputTokens"].as_u64().unwrap_or(0);
+    let output = json["outputTokens"].as_u64().unwrap_or(0);
+    let cached = json["cachedTokens"].as_u64().unwrap_or(0);
+    if input == 0 && output == 0 { return None; }
+    Some((input, output, cached))
+}
+
+fn read_codex_session_file(path: &std::path::Path) -> Option<String> {
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    if name.ends_with(".jsonl.zst") {
+        // Try to decompress with the system zstd binary
+        let out = std::process::Command::new("zstd")
+            .args(["-d", "--stdout", "-q"])
+            .arg(path)
+            .output()
+            .ok()?;
+        if out.status.success() {
+            return String::from_utf8(out.stdout).ok();
+        }
+        // zstd not found or failed — content unavailable
+        return None;
+    }
+    fs::read_to_string(path).ok()
 }
 
 fn find_latest_session(log_dir: &Path) -> Option<PathBuf> {

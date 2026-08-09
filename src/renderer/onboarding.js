@@ -3,8 +3,9 @@
    Steps: detect agents → pick mode → Terse Doctor 体检 → clean up 清理 → finale.
    - Doctor step reuses the EXACT gauge / radar-sweep / cat-chip animation
      from doctor.js (animateGauge / runSweep / endSweep, ported verbatim).
-   - Pulls real data via T.getAgentSessions() / T.doctorScan(); falls back
-     to representative sample data when the bridge is unavailable.
+   - Pulls real data via T.getAgentSessions() / T.doctorScan(). Agents and
+     Doctor findings are NEVER faked: an empty scan renders its empty state.
+     (The cleanup step's SAMPLE_CLEAN is explicitly labelled a preview.)
    - Language selector on the header reuses window.i18n.createLangPicker.
    Exposes: window.TERSE_ONBOARDING = { start(onDone), hasOnboarded, reset }.
    ══════════════════════════════════════════════════════════════════ */
@@ -32,6 +33,7 @@
       doctor_sub: 'A full health scan of your agents. Read-only — nothing changes yet.',
       doctor_cta: 'Review & clean up →',
       doctor_grade_good: 'Looking good', doctor_grade_bad: 'Needs attention', doctor_findings_word: 'findings',
+      doctor_clean: 'Nothing to flag — your agents came back clean.',
       preview_agents_sub: 'No account needed — this is a free local scan.',
       preview_cta: 'Create a free account to optimize →', preview_skip: 'Sign in',
       cleanup_title: 'Clean up agent cache',
@@ -66,6 +68,7 @@
       doctor_sub: '对你的智能体做一次完整体检。只读 — 暂不改动任何内容。',
       doctor_cta: '查看并清理 →',
       doctor_grade_good: '状况良好', doctor_grade_bad: '需要关注', doctor_findings_word: '项结果',
+      doctor_clean: '没有发现问题 — 你的智能体一切正常。',
       preview_agents_sub: '无需账号 — 这是一次免费的本地扫描。',
       preview_cta: '创建免费账号,开始优化 →', preview_skip: '登录',
       cleanup_title: '清理智能体缓存',
@@ -100,6 +103,7 @@
       doctor_sub: '對你的智能體做一次完整體檢。唯讀 — 暫不改動任何內容。',
       doctor_cta: '檢視並清理 →',
       doctor_grade_good: '狀況良好', doctor_grade_bad: '需要關注', doctor_findings_word: '項結果',
+      doctor_clean: '沒有發現問題 — 你的智能體一切正常。',
       preview_agents_sub: '無需帳號 — 這是一次免費的本地掃描。',
       preview_cta: '建立免費帳號,開始優化 →', preview_skip: '登入',
       cleanup_title: '清理智能體快取',
@@ -137,20 +141,11 @@
   }
   function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
-  // ── sample fallbacks (used only when bridge data is unavailable) ──
-  const SAMPLE_AGENTS = [
-    { icon: '🤖', name: 'Claude Code', project: 'terse', model: 'opus-4', turns: 42, tok: '169K', cache: 68, cost: '$2.15' },
-    { icon: '⌘', name: 'Cursor Agent', project: 'web-app', model: 'gpt-5', turns: 18, tok: '54K', cache: 41, cost: '$0.82' },
-    { icon: '📁', name: 'Codex', project: 'api-svc', model: 'gpt-5-codex', turns: 7, tok: '23K', cache: 12, cost: '$0.31' },
-  ];
-  const SAMPLE_FINDINGS = [
-    { severity: 'high', category: 'guard', title: 'API key found in ~/.claude/CLAUDE.md', detail: 'A credential marker is sitting in an always-loaded instructions file.', imp: 96, mv: 'critical' },
-    { severity: 'high', category: 'cache', title: 'Opus cached 38% of input (≥20K volume)', detail: 'Low cache hit-rate means you re-pay full price for context every turn.', imp: 82, mv: '−$1.24/day' },
-    { severity: 'medium', category: 'loop', title: '3 duplicate tool calls this session', detail: 'Same (tool, args) repeated — results were already in context.', imp: 58, mv: '4,500 tok' },
-    { severity: 'medium', category: 'context', title: 'Context fill 72% — 20–30% prunable', detail: 'Approaching the window limit; old turns can be trimmed safely.', imp: 54, mv: '~48K tok' },
-    { severity: 'medium', category: 'disk', title: '1.2 GB of agent transcripts >30 days old', detail: 'Session logs Claude Code / Codex finished with weeks ago.', imp: 50, mv: '1.2 GB' },
-    { severity: 'low', category: 'mcp', title: '2 MCP servers loaded on every request', detail: 'One has made 0 tool calls this period — pure token overhead.', imp: 32, mv: '−1.8K tok' },
-  ];
+  // Sample agent + finding fixtures were removed: they were rendered with a
+  // "Live" badge / as real Doctor findings whenever the real scan came back
+  // empty, which showed users invented sessions and a false "API key found in
+  // ~/.claude/CLAUDE.md" alert. Empty scans now render their real empty state.
+  // (SAMPLE_CLEAN below is different — the cleanup step labels it a preview.)
   const SAMPLE_CLEAN = [
     { icon: '📄', title: 'Stale agent transcripts (>30d)', path: '~/.claude/projects', bytes: 1288490188 },
     { icon: '🐞', title: 'Claude Code debug logs (>7d)', path: '~/.claude/logs', bytes: 922746880 },
@@ -233,9 +228,13 @@
   async function runAgentScan() {
     const list = root.querySelector('#onbAgentList'), txt = root.querySelector('#onbScanTxt');
     const radar = root.querySelector('#onbRadar'), cta = root.querySelector('#onbAgentCta');
+    // Connected sessions carry live stats, but during first run nothing is
+    // connected yet — the user hasn't accepted an agent. So fall through to
+    // *detected* agents (running processes Terse found) and show them without
+    // invented stats. This is the whole point of the screen.
     let data = null;
     try { if (T.getAgentSessions) data = await T.getAgentSessions(); } catch { data = null; }
-    let agents;
+    let agents = [];
     if (Array.isArray(data) && data.length) {
       agents = data.slice(0, 5).map(a => ({
         icon: a.agentIcon || AGENT_ICON[a.agentType] || '🤖',
@@ -246,7 +245,21 @@
           a.estimatedCost != null ? '$' + Number(a.estimatedCost).toFixed(2) : null].filter(Boolean).join(' · '),
       }));
     } else {
-      agents = SAMPLE_AGENTS.map(a => ({ icon: a.icon, name: a.name, meta: `${a.project} · ${a.model} · ${a.turns} turns · ${a.tok} tok · ${a.cache}% cache · ${a.cost}` }));
+      let det = null;
+      try { if (T.getAgentDetections) det = await T.getAgentDetections(); } catch { det = null; }
+      if (Array.isArray(det) && det.length) {
+        agents = det.slice(0, 5).map(a => ({
+          icon: a.icon || AGENT_ICON[a.type || a.agentType] || '🤖',
+          name: a.name || a.agentName || a.type || a.agentType || 'Agent',
+          // Detections know the process, not the conversation — show the pid,
+          // never a fabricated turn/token/cost line.
+          meta: [a.project, a.pid != null ? 'pid ' + a.pid : null].filter(Boolean).join(' · '),
+        }));
+      }
+      // Otherwise stay empty. There used to be a SAMPLE_AGENTS fallback here,
+      // but this screen badges every row "Live" and the subtitle promises
+      // "以下均为实时会话" — so it showed users invented sessions (Claude Code ·
+      // terse · 42 turns · $2.15) as their own. A Windows 11 user reported it.
     }
     if (!agents.length) { // genuinely none
       txt.innerHTML = esc(L('agents_none_title'));
@@ -395,8 +408,14 @@
     // resolve findings + score defensively (bridge shape may vary)
     let findings = (report && (report.findings || report.issues)) || null;
     let score = report && (report.score != null ? report.score : (report.summary && (report.summary.score != null ? report.summary.score : report.summary.health)));
-    if (!Array.isArray(findings) || !findings.length) findings = SAMPLE_FINDINGS.slice();
-    if (score == null) score = S.scoreBefore;
+    // Never substitute SAMPLE_FINDINGS for a real scan. One of them is a high
+    // severity "API key found in ~/.claude/CLAUDE.md" — showing that to a user
+    // whose machine is clean is a false credential-leak alarm, and it is what
+    // prompted a Windows user to ask whether Terse takes their token.
+    if (!Array.isArray(findings)) findings = [];
+    // A genuinely clean machine scores high; only fall back to the placeholder
+    // score when the scan itself failed to report one.
+    if (score == null) score = findings.length ? S.scoreBefore : 92;
     S.scoreBefore = Math.round(Number(score) || 62);
     // stash disk/junk findings (with byte sizes) for the cleanup step
     S._clean = findings.filter(f => /junk|disk/.test(f.category || '') && (f.bytes || f.sizeBytes || f.junkBytes));
@@ -415,6 +434,11 @@
     root.querySelector('#onbFindHdr').style.display = 'flex';
     root.querySelector('#onbFindN').textContent = findings.length;
     const list = root.querySelector('#findingsList'); list.innerHTML = '';
+    if (!findings.length) {
+      // Clean bill of health — say that plainly instead of inventing findings.
+      list.innerHTML = `<p class="onb-sub" style="margin-top:6px">${esc(L('doctor_clean'))}</p>`;
+      return;
+    }
     findings.forEach((f, i) => {
       const sev = (f.severity || 'low').toLowerCase();
       const cat = (f.category || 'config').toLowerCase();

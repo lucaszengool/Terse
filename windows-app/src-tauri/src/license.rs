@@ -300,3 +300,62 @@ pub async fn verify_license(clerk_user_id: &str) -> Option<License> {
 
     Some(existing)
 }
+
+// ── Referral program (cloud-tracked) ─────────────────────────────────────────
+// The backend at {API_BASE}/api/referral owns code generation, attribution and
+// reward granting (dual-sided: both referrer and referee get free Pro days).
+// The client only displays state and forwards redemptions, so self-referral and
+// abuse are prevented server-side. Until the endpoints ship, calls return None /
+// a friendly "launching soon" and the client shows a deterministic display code.
+//
+// Both calls go through `hidden_command` (CREATE_NO_WINDOW) so curl never
+// flashes a console window — the same rule every other curl on Windows follows.
+
+/// GET the caller's referral dashboard (code, share URL, counts, rewards).
+pub async fn fetch_referral(clerk_user_id: &str) -> Option<serde_json::Value> {
+    let url = format!("{}/api/referral/{}", API_BASE, clerk_user_id);
+    let output = tokio::task::spawn_blocking(move || {
+        crate::hidden_command("curl")
+            .args(["-s", "--connect-timeout", "5", "--max-time", "10", &url])
+            .output()
+    })
+    .await
+    .ok()?
+    .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let body = String::from_utf8_lossy(&output.stdout);
+    let v: serde_json::Value = serde_json::from_str(body.trim()).ok()?;
+    // Treat an error/empty object as "not live yet".
+    if v.get("code").is_some() || v.get("invited").is_some() {
+        Some(v)
+    } else {
+        None
+    }
+}
+
+/// POST a friend's code to claim the give-get reward. Returns the backend's
+/// verdict; `granted: true` means Pro was applied and the client should re-verify.
+pub async fn redeem_referral(clerk_user_id: &str, code: &str) -> Result<serde_json::Value, String> {
+    let url = format!("{}/api/referral/redeem", API_BASE);
+    let payload =
+        serde_json::json!({ "clerkUserId": clerk_user_id, "code": code }).to_string();
+    let output = tokio::task::spawn_blocking(move || {
+        crate::hidden_command("curl")
+            .args([
+                "-s", "-X", "POST", "-H", "Content-Type: application/json", "-d", &payload,
+                "--connect-timeout", "5", "--max-time", "10", &url,
+            ])
+            .output()
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        return Err("Could not reach the referral service.".to_string());
+    }
+    let body = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_str(body.trim())
+        .map_err(|_| "Referrals are launching soon — your invite code is ready to share.".to_string())
+}

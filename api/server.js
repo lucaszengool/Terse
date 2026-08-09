@@ -39,14 +39,25 @@ const PRICES = {
   // (charged immediately). Created 2026-07-14 on prod_U8drXX5M1uvwAG (Terse Pro).
   pro_weekly:    process.env.STRIPE_PRICE_PRO_WEEKLY    || 'price_1Tt8IOGf9QijP49FxEK0RhMU',
   pro_quarterly: process.env.STRIPE_PRICE_PRO_QUARTERLY || 'price_1Tt8IOGf9QijP49FGmGijaYV',
+  // Annual ($15.99/yr) and lifetime ($25.99 one-time). No hardcoded fallback on
+  // purpose: these must be created in Stripe first, and a wrong price id would
+  // silently charge the wrong amount. Missing env → checkout fails loudly below.
+  pro_annual:    process.env.STRIPE_PRICE_PRO_ANNUAL    || '',
+  pro_lifetime:  process.env.STRIPE_PRICE_PRO_LIFETIME  || '',
 };
 
 // Billing-interval aliases that grant the same entitlement as monthly Pro.
-const PRO_INTERVAL_TIERS = new Set(['pro_weekly', 'pro_quarterly']);
+const PRO_INTERVAL_TIERS = new Set(['pro_weekly', 'pro_quarterly', 'pro_annual', 'pro_lifetime']);
 const normalizeTier = (t) => (PRO_INTERVAL_TIERS.has(t) ? 'pro' : t);
+// Lifetime is a ONE-TIME payment, so Stripe Checkout runs in 'payment' mode and no
+// subscription is ever created. Everything downstream keys off this predicate.
+const isLifetime = (t) => t === 'pro_lifetime';
 
-// 30-day free trial — ONLY on the monthly Pro plan (weekly/quarterly charge immediately)
-const TRIAL_DAYS = 30;
+// Free trial length per plan. Monthly/Premium get 30 days, weekly gets 7 (one billing
+// period) so the trial never outlasts the interval it precedes. Quarterly charges now.
+const TRIAL_DAYS_BY_TIER = { pro: 30, premium: 30, pro_weekly: 7 };
+const trialDaysFor = (t) => TRIAL_DAYS_BY_TIER[t] || 0;
+const TIER_OFFERS_TRIAL = (t) => trialDaysFor(t) > 0;
 
 // ── API price IDs (NO free trial — pay immediately, separate product) ─────
 const API_PRICES = {
@@ -139,7 +150,15 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
             });
             db.ensureUser(clerkUserId);
             db.updateUserTier.run(tier, session.subscription, session.customer, 'active', null, clerkUserId);
+            // Lifetime leaves no subscription behind, so persist a durable flag —
+            // without it the next license check finds no active sub and expires them.
+            if (session.metadata?.plan === 'pro_lifetime') {
+              db.setLifetime.run(new Date().toISOString(), session.payment_intent || null, clerkUserId);
+              console.log(`[license] LIFETIME recorded for ${clerkUserId} (pi=${session.payment_intent})`);
+            }
             console.log(`[license] activated ${tier} for ${clerkUserId}`);
+            // Dual-sided referral: reward the referrer now that this referee paid.
+            creditReferrerOnConversion(clerkUserId);
           }
         }
         break;
@@ -166,6 +185,22 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
       }
       case 'invoice.payment_succeeded': {
         const invoice = data.object;
+        // Lifetime bought with WeChat/Alipay arrives as a STANDALONE invoice with no
+        // subscription. Without this branch the money lands and access never does.
+        if (!invoice.subscription && invoice.metadata?.plan === 'pro_lifetime') {
+          const uid = invoice.metadata.clerk_user_id;
+          if (uid) {
+            db.ensureUser(uid);
+            db.updateUserTier.run('pro', null, invoice.customer, 'active', null, uid);
+            db.setLifetime.run(new Date().toISOString(), invoice.payment_intent || invoice.id, uid);
+            licenseCache.delete(uid);
+            console.log(`[license] LIFETIME via invoice ${invoice.id} for ${uid}`);
+            creditReferrerOnConversion(uid);
+          } else {
+            console.error(`[license] lifetime invoice ${invoice.id} paid but has no clerk_user_id metadata`);
+          }
+          break;
+        }
         if (invoice.subscription) {
           const sub = await stripe.subscriptions.retrieve(invoice.subscription);
           await syncSubscription(sub);
@@ -242,7 +277,8 @@ async function syncSubscription(sub) {
 
   // ── App subscription ──
   let tier = 'expired';
-  const proPriceIds = [PRICES.pro, LEGACY_PRO_PRICE, PRICES.pro_weekly, PRICES.pro_quarterly].filter(Boolean);
+  const proPriceIds = [PRICES.pro, LEGACY_PRO_PRICE, PRICES.pro_weekly, PRICES.pro_quarterly,
+                       PRICES.pro_annual].filter(Boolean);
   if (proPriceIds.includes(priceId)) tier = 'pro';
   else if (priceId === PRICES.premium) tier = 'premium';
 
@@ -303,9 +339,20 @@ app.post('/api/checkout', async (req, res) => {
       return res.status(400).json({ error: 'Missing tier or clerkUserId' });
     }
 
+    // Distinguish "no such plan" from "plan exists but has no Stripe price yet".
+    // Both used to surface as "Invalid tier", which sent you hunting through the
+    // client for a typo when the real cause was an unset env var.
+    if (!(tier in PRICES)) {
+      return res.status(400).json({ error: `Invalid tier: ${tier}` });
+    }
     const priceId = PRICES[tier];
     if (!priceId) {
-      return res.status(400).json({ error: 'Invalid tier' });
+      const envVar = `STRIPE_PRICE_${tier.toUpperCase()}`;
+      console.error(`[checkout] ${tier} requested but ${envVar} is unset`);
+      return res.status(503).json({
+        error: `The ${tier} plan isn't available yet — ${envVar} is not configured on the server.`,
+        code: 'price_not_configured',
+      });
     }
 
     // Find or create Stripe customer
@@ -327,11 +374,15 @@ app.post('/api/checkout', async (req, res) => {
     const paymentMethod = req.body.paymentMethod; // 'wechat_pay', 'alipay', or undefined
     const isChinaPay = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
 
+    // Lifetime over WeChat/Alipay goes through a STANDALONE invoice (below), never
+    // the subscription branch — a subscription against the one-time price would
+    // re-bill forever. Yearly keeps the subscription path so it re-invoices annually.
+
     // ── Trial abuse prevention ──
     // Only the monthly Pro plan offers a free trial. Weekly/quarterly (and direct
     // subscribe / China pay) charge immediately, so they skip the trial-used check.
     // Monthly Pro and Premium offer the 30-day trial; weekly/quarterly charge immediately.
-    const offersTrial = !noTrial && !isChinaPay && (tier === 'pro' || tier === 'premium');
+    const offersTrial = !noTrial && !isChinaPay && TIER_OFFERS_TRIAL(tier);
     if (offersTrial) {
       const allEmailCustomers = await stripe.customers.list({ email: clerkUserEmail, limit: 10 });
       for (const c of allEmailCustomers.data) {
@@ -349,6 +400,37 @@ app.post('/api/checkout', async (req, res) => {
           return res.status(400).json({ error: 'trial_already_used', message: 'A free trial has already been used for this account.' });
         }
       }
+    }
+
+    if (isChinaPay && isLifetime(tier)) {
+      // ── Lifetime via WeChat/Alipay: a standalone one-time invoice ─────────────
+      // Not a subscription — nothing here may recur. Access is granted by the
+      // invoice.payment_succeeded webhook, which reads the metadata set below.
+      const openInvoices = await stripe.invoices.list({ customer: customerId, status: 'open', limit: 20 });
+      const dupe = openInvoices.data.find(i => i.metadata?.plan === 'pro_lifetime');
+      if (dupe?.hosted_invoice_url) {
+        console.log(`[checkout] returning existing lifetime invoice for ${clerkUserId} inv=${dupe.id}`);
+        return res.json({ url: dupe.hosted_invoice_url, sessionId: null });
+      }
+
+      let invoice = await stripe.invoices.create({
+        customer: customerId,
+        collection_method: 'send_invoice',
+        days_until_due: 3,
+        // The metadata lives on the INVOICE because there is no subscription to
+        // hang it off — the webhook has nothing else to identify the buyer by.
+        metadata: { clerk_user_id: clerkUserId, tier: 'pro', plan: 'pro_lifetime' },
+        payment_settings: { payment_method_types: [paymentMethod] },
+        description: paymentMethod === 'wechat_pay'
+          ? 'Terse Pro 买断（一次性付款，永久使用，不会再次扣款）。\nTerse Pro lifetime — one-time payment, no subscription.'
+          : 'Terse Pro 买断（一次性付款，永久使用，不会再次扣款）。\nTerse Pro lifetime — one-time payment, no subscription.',
+      });
+      // Attach the line item to THIS invoice explicitly, so a stray pending item
+      // can never attach itself to an unrelated invoice.
+      await stripe.invoiceItems.create({ customer: customerId, price: priceId, invoice: invoice.id });
+      invoice = await stripe.invoices.finalizeInvoice(invoice.id);
+      console.log(`[license] lifetime invoice (${paymentMethod}) ${invoice.id} for ${clerkUserId}`);
+      return res.json({ url: invoice.hosted_invoice_url, sessionId: null });
     }
 
     if (isChinaPay) {
@@ -415,27 +497,48 @@ app.post('/api/checkout', async (req, res) => {
       // billing-interval alias ('pro_weekly'/'pro_quarterly').
       const entTier = normalizeTier(tier);
       const subscriptionData = { metadata: { clerk_user_id: clerkUserId, tier: entTier } };
-      // Free trial ($0 today) only on the monthly Pro plan; others charge now.
-      const withTrial = !noTrial && (tier === 'pro' || tier === 'premium');
-      if (withTrial) subscriptionData.trial_period_days = TRIAL_DAYS;
+      // Free trial ($0 today) on monthly/premium (30d) and weekly (7d); quarterly charges now.
+      const withTrial = !noTrial && TIER_OFFERS_TRIAL(tier);
+      const trialDays = trialDaysFor(tier);
+      if (withTrial) subscriptionData.trial_period_days = trialDays;
       // Reassure the buyer on Stripe's hosted page about what's due today.
       let custom_text;
       if (withTrial) {
-        const monthly = tier === 'premium' ? '$99.00' : '$4.99';
-        custom_text = { submit: { message: `$0.00 due today — your card is not charged until the 30-day free trial ends. Then ${monthly} USD/month. Cancel anytime.` } };
+        const after = tier === 'premium' ? '$99.00 USD/month'
+                    : tier === 'pro_weekly' ? '$1.99 USD/week'
+                    : '$4.99 USD/month';
+        custom_text = { submit: { message: `$0.00 due today — your card is not charged until the ${trialDays}-day free trial ends. Then ${after}. Cancel anytime.` } };
       } else if (tier === 'pro_weekly') {
         custom_text = { submit: { message: '$1.99 USD billed weekly. Cancel anytime.' } };
       } else if (tier === 'pro_quarterly') {
         custom_text = { submit: { message: '$12.00 USD billed every 3 months (~$4/mo). Cancel anytime.' } };
+      } else if (entTier === 'pro') {
+        // Monthly without a trial (the post-trial subscribe gate, and WeChat/Alipay,
+        // which can't carry a trial). Without this the page explains nothing.
+        custom_text = { submit: { message: '$4.99 USD billed monthly. Cancel anytime.' } };
+      } else if (tier === 'pro_annual') {
+        custom_text = { submit: { message: '$15.99 USD billed yearly (~$1.33/mo). Cancel anytime.' } };
+      } else if (isLifetime(tier)) {
+        custom_text = { submit: { message: '$25.99 USD once. Yours forever — no subscription, nothing to cancel.' } };
+      } else if (entTier === 'premium') {
+        custom_text = { submit: { message: '$99.00 USD billed monthly. Cancel anytime.' } };
       }
+
+      // (An unconfigured price is already rejected at the top of this handler.)
+      const lifetime = isLifetime(tier);
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
-        mode: 'subscription',
+        // Lifetime is a one-off charge; everything else is recurring.
+        mode: lifetime ? 'payment' : 'subscription',
         success_url: `${baseUrl}/?checkout=success&tier=${entTier}`,
         cancel_url: `${baseUrl}/?checkout=cancelled`,
-        metadata: { clerk_user_id: clerkUserId, tier: entTier },
-        subscription_data: subscriptionData,
+        metadata: { clerk_user_id: clerkUserId, tier: entTier, plan: tier },
+        // subscription_data is rejected in payment mode; carry the same metadata
+        // on the payment intent instead so the webhook can attribute the purchase.
+        ...(lifetime
+          ? { payment_intent_data: { metadata: { clerk_user_id: clerkUserId, tier: entTier, plan: tier } } }
+          : { subscription_data: subscriptionData }),
         ...(custom_text ? { custom_text } : {}),
       });
 
@@ -656,6 +759,26 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
   const isIOS = platform === 'ios';
   const planLimits = isIOS ? PLAN_LIMITS_IOS : PLAN_LIMITS;
 
+  // ── Lifetime short-circuit ────────────────────────────────────────────────
+  // Must run BEFORE the Stripe lookup below: a lifetime buyer has no subscription,
+  // so that lookup would find nothing and mark them expired. This flag is the only
+  // proof of purchase, and it never lapses.
+  try {
+    const lifer = db.getUser.get(clerkUserId);
+    if (lifer && lifer.lifetime_at) {
+      return res.json({
+        tier: 'pro',
+        status: 'active',
+        lifetime: true,
+        limits: planLimits['pro'] || { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
+        expiresAt: null,
+        trialEnd: null,
+      });
+    }
+  } catch (err) {
+    console.error('[license] lifetime check error:', err.message);
+  }
+
   // Check cache first
   let license = licenseCache.get(clerkUserId);
 
@@ -707,6 +830,27 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
     'user_3BP20FfLSljVdFW6tKgC2Vxmi6P': { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
   };
 
+  // Referral bonus: a user with unexpired bonus Pro days is Pro even without an
+  // active Stripe subscription (unless Stripe already makes them active/trialing).
+  try {
+    const dbu = db.getUser.get(clerkUserId);
+    const bonus = dbu && dbu.bonus_pro_until;
+    const bonusActive = bonus && new Date(bonus).getTime() > Date.now();
+    const stripePro = license && (license.status === 'active' || license.status === 'trialing')
+      && license.tier && license.tier !== 'expired';
+    if (bonusActive && !stripePro) {
+      return res.json({
+        tier: 'pro',
+        status: 'trialing',
+        limits: planLimits['pro'] || { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
+        expiresAt: bonus,
+        trialEnd: bonus,
+      });
+    }
+  } catch (err) {
+    console.error('[license] referral bonus check error:', err.message);
+  }
+
   if (!license || license.status === 'cancelled' || license.status === 'past_due') {
     const override = ACCOUNT_OVERRIDES[clerkUserId];
     if (override) {
@@ -731,6 +875,83 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
     trialEnd: license.trialEnd || null,
   });
 });
+
+// ── Referral program (dual-sided give-get, 14 days Pro each) ──────────────────
+const REFERRAL_DAYS = 14;
+function addDaysIso(fromIso, days) {
+  const base = fromIso ? new Date(fromIso).getTime() : 0;
+  const start = Math.max(Date.now(), base || 0);
+  return new Date(start + days * 86400000).toISOString();
+}
+
+// Dashboard: the caller's code, share URL, and counts.
+app.get('/api/referral/:clerkUserId', (req, res) => {
+  const id = req.params.clerkUserId;
+  if (!id) return res.status(400).json({ error: 'missing user' });
+  try {
+    db.ensureUser(id);
+    let u = db.getUser.get(id);
+    let code = u && u.referral_code;
+    if (!code) { code = db.referralCodeFor(id); db.setReferralCode.run(code, id); }
+    const invited = db.countInvited.get(id)?.n || 0;
+    const converted = db.countConverted.get(id)?.n || 0;
+    const proDaysEarned = converted * REFERRAL_DAYS + (u && u.referred_by ? REFERRAL_DAYS : 0);
+    res.json({
+      code,
+      shareUrl: `https://www.terseai.org/?ref=${code}`,
+      invited, converted, proDaysEarned,
+      rewardText: `Give ${REFERRAL_DAYS} days of Pro, get ${REFERRAL_DAYS} days of Pro`,
+    });
+  } catch (err) {
+    console.error('[referral] get error:', err.message);
+    res.status(500).json({ error: 'referral lookup failed' });
+  }
+});
+
+// Redeem a friend's code. Referee gets their 14 days immediately (acquisition
+// hook); the referrer is credited when the referee converts to paid (webhook).
+// Server owns all abuse checks: no self-referral, one redemption per user.
+app.post('/api/referral/redeem', express.json(), (req, res) => {
+  const { clerkUserId, code } = req.body || {};
+  if (!clerkUserId || !code) return res.status(400).json({ granted: false, message: 'Missing code.' });
+  try {
+    db.ensureUser(clerkUserId);
+    const norm = String(code).trim().toUpperCase();
+    const owner = db.getUserByReferralCode.get(norm);
+    if (!owner) return res.json({ granted: false, message: 'That invite code is not valid.' });
+    if (owner.id === clerkUserId) return res.json({ granted: false, message: "You can't redeem your own code." });
+    if (db.getReferralByReferee.get(clerkUserId)) {
+      return res.json({ granted: false, message: 'You have already redeemed an invite code.' });
+    }
+    db.addReferral.run(require('crypto').randomUUID(), owner.id, clerkUserId, norm);
+    db.setReferredBy.run(owner.id, clerkUserId);
+    const me = db.getUser.get(clerkUserId);
+    const until = addDaysIso(me && me.bonus_pro_until, REFERRAL_DAYS);
+    db.setBonusProUntil.run(until, clerkUserId);
+    licenseCache.delete(clerkUserId); // force re-eval so Pro reflects immediately
+    res.json({ granted: true, message: `${REFERRAL_DAYS} days of Pro unlocked! 🎉`, bonusProUntil: until });
+  } catch (err) {
+    console.error('[referral] redeem error:', err.message);
+    res.status(500).json({ granted: false, message: 'Could not redeem right now.' });
+  }
+});
+
+/// Credit a referrer once their referee converts to a paid plan. Idempotent.
+function creditReferrerOnConversion(refereeId) {
+  try {
+    const ref = db.getReferralByReferee.get(refereeId);
+    if (!ref || ref.status !== 'pending') return;
+    const referrer = db.getUser.get(ref.referrer_id);
+    if (!referrer) return;
+    const until = addDaysIso(referrer.bonus_pro_until, REFERRAL_DAYS);
+    db.setBonusProUntil.run(until, ref.referrer_id);
+    db.markReferralConverted.run(refereeId);
+    licenseCache.delete(ref.referrer_id);
+    console.log(`[referral] credited referrer ${ref.referrer_id} — referee ${refereeId} converted`);
+  } catch (err) {
+    console.error('[referral] credit error:', err.message);
+  }
+}
 
 // ── Auth flow for desktop app ──
 // Pending auth tokens: token -> { created, clerkUserId, email, imageUrl }

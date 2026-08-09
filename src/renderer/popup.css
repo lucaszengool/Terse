@@ -56,6 +56,37 @@
 [data-theme="rose"]     { --ac:#f472b6; --ac-glow:rgba(244,114,182,0.22); --ac-glow-wide:rgba(244,114,182,0.08); --acd:rgba(244,114,182,0.15); }
 [data-theme="sage"]     { --ac:#86efac; --ac-glow:rgba(134,239,172,0.22); --ac-glow-wide:rgba(134,239,172,0.08); --acd:rgba(134,239,172,0.15); }
 [data-theme="sand"]     { --ac:#fbbf24; --ac-glow:rgba(251,191,36,0.22);  --ac-glow-wide:rgba(251,191,36,0.08);  --acd:rgba(251,191,36,0.15); }
+/* Horizon — the macdemo film's liquid glass. Unlike the themes above (which only
+   shift the glow over an opaque obsidian slab) this one re-tints the surface
+   ladder itself so the desktop reads through the island, matching the window. */
+[data-theme="horizon"]  {
+  --ac:#C9F03D; --ac-glow:rgba(201,240,61,0.24); --ac-glow-wide:rgba(201,240,61,0.08); --acd:rgba(201,240,61,0.15);
+  --di-canvas:   rgba(9,11,15,0.42);
+  --di-elevated: rgba(255,255,255,0.075);
+  --di-card:     rgba(255,255,255,0.055);
+  --di-hair:       rgba(255,255,255,0.12);
+  --di-hair-light: rgba(255,255,255,0.24);
+  --di-specular:   rgba(255,255,255,0.55);
+  --di-t1:#F6F7F4; --di-t2:#C6CBC0; --di-t3:#9AA096; --di-t4:#6E746A;
+  --sf: rgba(255,255,255,0.075); --sfh: rgba(255,255,255,0.12);
+  --btn: rgba(255,255,255,0.12); --btn-hover: rgba(255,255,255,0.18);
+}
+/* The floating bar becomes the same slab: the film's tint gradient + the
+   white crystal rim, in place of the opaque obsidian + coloured border. */
+[data-theme="horizon"] #bar {
+  background: linear-gradient(160deg, rgba(15,17,22,0.26), rgba(7,9,13,0.48));
+  backdrop-filter: blur(3px) saturate(1.25) brightness(1.02);
+  -webkit-backdrop-filter: blur(3px) saturate(1.25) brightness(1.02);
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.34),
+    inset 0 0 30px 8px rgba(255,255,255,0.045),
+    inset 0 -18px 40px -22px rgba(255,255,255,0.10),
+    0 0 0 1px rgba(255,255,255,0.14),
+    0 34px 80px -24px rgba(0,0,0,0.60),
+    0 10px 28px -12px rgba(0,0,0,0.45);
+}
 
 html { height: 100%; background: transparent; }
 
@@ -187,6 +218,39 @@ body {
 .bar-stats-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .popup-quota { font-size: 9px; color: var(--di-t4); font-weight: 600; letter-spacing: 0.2px; }
 .popup-quota.low { color: #ff6161; }
+
+/* Teaching line under the capture hint. */
+.hint-teach { display: block; margin-top: 6px; font-size: 10px; line-height: 1.45;
+  color: var(--di-t4, rgba(255,255,255,0.5)); }
+
+/* First-run teaching overlay (shown once). */
+.first-run { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center;
+  justify-content: center; padding: 14px; background: rgba(10,12,16,0.72);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.first-run.hidden { display: none; }
+.fr-card { width: 100%; max-width: 300px; border-radius: 16px; padding: 16px;
+  background: linear-gradient(160deg, rgba(38,42,52,0.98), rgba(24,26,33,0.98));
+  border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 18px 50px rgba(0,0,0,0.5); }
+.fr-title { font-size: 15px; font-weight: 800; color: #fff; }
+.fr-sub { margin-top: 6px; font-size: 10.5px; line-height: 1.5; color: rgba(255,255,255,0.62); }
+.fr-q { margin-top: 12px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.82); }
+.fr-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.fr-chip { -webkit-app-region: no-drag; cursor: pointer; border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); font-size: 11px; font-weight: 700;
+  padding: 5px 10px; border-radius: 9px; }
+.fr-chip.on { border-color: #34d399; color: #34d399; background: rgba(52,211,153,0.14); }
+.fr-done { -webkit-app-region: no-drag; cursor: pointer; margin-top: 14px; width: 100%; border: none;
+  border-radius: 10px; padding: 9px; font-size: 12px; font-weight: 800; color: #05140d;
+  background: linear-gradient(180deg, #4ade80, #22c55e); }
+.fr-done:hover { filter: brightness(1.06); }
+
+/* Prompt-quality badge — grades clarity/specificity of the original prompt. */
+.prompt-quality { font-size: 9px; font-weight: 800; letter-spacing: 0.2px; padding: 1px 6px;
+  border-radius: 7px; cursor: default; white-space: nowrap; }
+.prompt-quality.hidden { display: none; }
+.prompt-quality.q-good { color: #34d399; background: rgba(52,211,153,0.13); }
+.prompt-quality.q-ok   { color: #fbbf24; background: rgba(251,191,36,0.13); }
+.prompt-quality.q-low  { color: #ff8686; background: rgba(255,97,97,0.14); }
 .bar-stats { display: flex; align-items: center; gap: 5px; font-size: 11px; }
 .bar-stats span { font-weight: 600; color: var(--di-t2); font-variant-numeric: tabular-nums; }
 .bar-stats .accent { color: var(--ac); text-shadow: 0 0 12px var(--ac-glow); }

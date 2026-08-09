@@ -94,9 +94,10 @@ pub struct CoworkState {
     pub config: CoworkConfig,
     last_ts: HashMap<String, String>,
     last_project: HashMap<String, String>,
-    // Per-agent cumulative (input, output) tokens last reported as a usage event,
-    // so the scan loop can publish only the delta and avoid double counting.
-    last_published_tokens: HashMap<String, (u64, u64)>,
+    // Per-agent cumulative (input, output, cache_read, cache_create) tokens last
+    // reported as a usage event, so the scan loop can publish only the delta and
+    // avoid double counting.
+    last_published_tokens: HashMap<String, (u64, u64, u64, u64)>,
 }
 
 impl CoworkState {
@@ -300,10 +301,17 @@ pub fn publish_event(
     tokens_in: u64,
     tokens_out: u64,
     tokens_saved: u64,
+    cache_read: u64,
+    cache_creation: u64,
     user_email: Option<&str>,
 ) {
     if !state.config.is_stats_active() { return; }
     let token = match state.config.team_token.clone() { Some(t) => t, None => return };
+    // `tokens_in` is the TOTAL input; fresh = total − cache. Estimate dollars so the
+    // team dashboard can render showback / leaderboards without its own price table.
+    let fresh_in = tokens_in.saturating_sub(cache_read + cache_creation);
+    let cost_usd = crate::pricing::estimate_cost(model, fresh_in, tokens_out, cache_read, cache_creation);
+    let saved_usd = crate::pricing::estimate_cost(model, tokens_saved, 0, 0, 0);
     let body = serde_json::json!({
         "user_email": user_email,
         "source": source,
@@ -314,6 +322,10 @@ pub fn publish_event(
         "tokens_in": tokens_in,
         "tokens_out": tokens_out,
         "tokens_saved": tokens_saved,
+        "cache_read": cache_read,
+        "cache_creation": cache_creation,
+        "cost_usd": (cost_usd * 10000.0).round() / 10000.0,
+        "saved_usd": (saved_usd * 10000.0).round() / 10000.0,
     });
     if let Ok(s) = serde_json::to_string(&body) {
         post_json("/api/cloud/events", &token, &s);
@@ -332,25 +344,29 @@ pub fn publish_agent_usage(
     let agent_type = snapshot["agentType"].as_str().unwrap_or("agent").to_string();
     let total_in = snapshot["totalInputTokens"].as_u64().unwrap_or(0);
     let total_out = snapshot["totalOutputTokens"].as_u64().unwrap_or(0);
+    let total_cread = snapshot["totalCacheReadTokens"].as_u64().unwrap_or(0);
+    let total_ccreate = snapshot["totalCacheCreateTokens"].as_u64().unwrap_or(0);
 
-    let (prev_in, prev_out) = state
+    let (prev_in, prev_out, prev_cread, prev_ccreate) = state
         .last_published_tokens
         .get(&agent_type)
         .copied()
-        .unwrap_or((0, 0));
+        .unwrap_or((0, 0, 0, 0));
     // Guard against counter resets (new session reuses the agent_type key).
     let d_in = total_in.saturating_sub(prev_in);
     let d_out = total_out.saturating_sub(prev_out);
+    let d_cread = total_cread.saturating_sub(prev_cread);
+    let d_ccreate = total_ccreate.saturating_sub(prev_ccreate);
     let reset = total_in < prev_in || total_out < prev_out;
     state
         .last_published_tokens
-        .insert(agent_type.clone(), (total_in, total_out));
+        .insert(agent_type.clone(), (total_in, total_out, total_cread, total_ccreate));
     if reset || (d_in == 0 && d_out == 0) { return; }
 
     let project = snapshot["project"].as_str().unwrap_or("").to_string();
     let model = snapshot["model"].as_str().unwrap_or("").to_string();
     publish_event(
         state, "agent", &agent_type, &project, &model, "",
-        d_in, d_out, 0, user_email,
+        d_in, d_out, 0, d_cread, d_ccreate, user_email,
     );
 }

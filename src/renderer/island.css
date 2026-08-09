@@ -18,6 +18,41 @@ body.island-mode {
   user-select: none;
 }
 
+/* ── HORIZON glass island ──────────────────────────────────────────────────
+   Same material as the main window and as the macdemo film's island
+   (remotion-macdemo/src/lib/island.tsx → liquidGlass(22)): the pill/card is a
+   near-clear dark slab with a white crystal rim, so the desktop shows through
+   instead of the opaque obsidian gradient above. */
+body.island-mode[data-theme="horizon"],
+[data-theme="horizon"] body.island-mode {
+  background: linear-gradient(160deg, rgba(15,17,22,0.26), rgba(7,9,13,0.48));
+  backdrop-filter: blur(3px) saturate(1.25) brightness(1.02);
+  -webkit-backdrop-filter: blur(3px) saturate(1.25) brightness(1.02);
+}
+[data-theme="horizon"] #islandRoot {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.34),
+    inset 0 0 30px 8px rgba(255,255,255,0.045),
+    inset 0 -18px 40px -22px rgba(255,255,255,0.10),
+    0 0 0 1px rgba(255,255,255,0.14);
+}
+/* Hover peek keeps the rim, just lifts the inner glow (no accent floor — the
+   film's glass is colourless; only the content carries the lime). */
+[data-theme="horizon"] body.island-mode #islandRoot:has(#islandPill.peek) {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.70),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.42),
+    inset 0 0 34px 10px rgba(255,255,255,0.07),
+    0 0 0 1px rgba(255,255,255,0.18);
+}
+/* The context ring's inner disc punches back to the glass, not to obsidian. */
+[data-theme="horizon"] .island-pill-ring::after {
+  background: rgba(9,11,15,0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
 #islandRoot {
   width: 100%; height: 100%;
   position: relative;
@@ -716,3 +751,298 @@ body.island-mode.expanded #islandBento.reveal .bento-tile {
 @supports (mask-composite: exclude) or (-webkit-mask-composite: xor) {
   .island-aurora { display: block; }
 }
+
+/* ── Focus / calm mode + reduced-motion + density ──────────────────────────
+   The island is animation-heavy (aurora shimmer, EQ bars, FX gains, breathe).
+   Delightful, but distracting during deep work and a problem for motion
+   sensitivity. Calm mode freezes all of it; we also honor the OS-level
+   reduced-motion setting automatically. Compact trims the density. */
+@media (prefers-reduced-motion: reduce) {
+  .island-mode *, .island-mode *::before, .island-mode *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+  .island-aurora { display: none !important; }
+}
+body.calm *, body.calm *::before, body.calm *::after {
+  animation: none !important;
+}
+body.calm .island-aurora { display: none !important; }
+
+/* Compact density — scale the expanded card down without touching every rule. */
+body.compact #islandExpanded { zoom: 0.88; }
+
+/* The injected calm/compact toggles (added by island.js). */
+.island-prefs { display: flex; gap: 6px; justify-content: flex-end;
+  padding: 6px 10px 8px; }
+.island-pref-btn { -webkit-app-region: no-drag; cursor: pointer; border: none;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.2px; border-radius: 7px;
+  padding: 3px 8px; color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.06); }
+.island-pref-btn.on { color: #34d399; background: rgba(52,211,153,0.14); }
+.island-pref-btn:hover { color: rgba(255,255,255,0.85); }
+
+/* ── Capture / Replace — optimize selected text in any app, folded into the island ── */
+body.island-mode .island-capture { margin-top: 10px; padding: 0 2px 2px; }
+.icap-cta { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px;
+  border: none; border-radius: 14px; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 800;
+  color: var(--btn-t, #fff);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ac, #6d5efc) 92%, #fff 8%), var(--ac, #6d5efc));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 6px 18px rgba(0,0,0,.22);
+  transition: transform .15s ease, filter .15s ease; will-change: transform; }
+.icap-cta:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.icap-cta:active { transform: translateY(0) scale(.98); }
+.icap-cta svg { opacity: .95; }
+.icap-result { margin-top: 10px; background: color-mix(in srgb, var(--bg, #1c1c22) 66%, transparent);
+  border: 1px solid var(--bd, rgba(255,255,255,.12)); border-radius: 14px; padding: 11px;
+  animation: viewInIsland .24s cubic-bezier(.22,.61,.36,1) both; }
+@keyframes viewInIsland { from { opacity: 0; transform: translate3d(0,6px,0); } to { opacity: 1; transform: none; } }
+.icap-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.icap-stat { font-size: 12px; color: var(--t2, #cfcfd6); font-variant-numeric: tabular-nums; }
+.icap-stat b { color: var(--t1, #fff); font-weight: 800; }
+.icap-pct { font-size: 11px; font-weight: 800; color: #34d399; }
+.icap-text { width: 100%; min-height: 64px; max-height: 150px; resize: none; border-radius: 10px; padding: 9px 11px;
+  background: var(--sf, rgba(255,255,255,.05)); border: 1px solid var(--bd, rgba(255,255,255,.12));
+  color: var(--t1, #fff); font-family: 'SF Mono', Menlo, monospace; font-size: 11px; line-height: 1.5; outline: none; }
+.icap-actions { display: flex; gap: 7px; margin-top: 9px; }
+.icap-a { flex: 1; border: none; border-radius: 10px; padding: 9px; cursor: pointer; font-family: inherit; font-size: 12px;
+  font-weight: 800; color: var(--t1, #fff); background: var(--sf, rgba(255,255,255,.06));
+  box-shadow: inset 0 0 0 1px var(--bd, rgba(255,255,255,.12)); transition: transform .14s ease, filter .14s ease; }
+.icap-a:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.icap-a:active { transform: translateY(0) scale(.97); }
+.icap-a.primary { color: #fff; background: var(--ac, #6d5efc); box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+.icap-a.primary:disabled { opacity: .5; cursor: default; transform: none; }
+.icap-a.ghost { flex: 0 0 auto; padding: 9px 14px; color: var(--t3, #9a9aa2); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ALERT STATE — the pill morphs into a notification banner.
+   Same liquid-glass vocabulary as the pill/card (aurora, sheen, accent floor,
+   22px rim); the only new signal is a severity hue so urgency reads instantly.
+   ══════════════════════════════════════════════════════════════════════════ */
+#islandAlert { display: none; }
+body.island-mode.alerting #islandPill,
+body.island-mode.alerting #islandExpanded { display: none; }
+body.island-mode.alerting #islandAlert {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px 13px 16px;
+  border-radius: 22px;
+  position: relative;
+  overflow: hidden;
+  /* Morph out of the pill: squash-and-stretch, not a plain fade. */
+  animation: iaMorph .46s cubic-bezier(.16,1.16,.3,1) both;
+}
+@keyframes iaMorph {
+  0%   { opacity: 0; transform: scale(.82, .46); filter: blur(7px); }
+  55%  { opacity: 1; filter: blur(0); }
+  72%  { transform: scale(1.012, 1.03); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+body.island-mode.alerting.ia-leaving #islandAlert {
+  animation: iaMorphOut .3s cubic-bezier(.4,0,.7,.2) both;
+}
+@keyframes iaMorphOut {
+  0%   { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(.86, .42); filter: blur(6px); }
+}
+
+/* Severity accent — drives rim, bar and icon glow from one custom property. */
+#islandAlert { --sev: var(--ac); --sev-glow: var(--ac-glow); }
+body.island-mode.alerting[data-sev="high"]     #islandAlert { --sev: #ff6161; --sev-glow: rgba(255,97,97,.5); }
+body.island-mode.alerting[data-sev="critical"] #islandAlert { --sev: #ff6161; --sev-glow: rgba(255,97,97,.62); }
+body.island-mode.alerting[data-sev="medium"]   #islandAlert { --sev: #ffc533; --sev-glow: rgba(255,197,51,.45); }
+body.island-mode.alerting[data-sev="low"]      #islandAlert { --sev: var(--ac); --sev-glow: var(--ac-glow); }
+
+/* Rim picks up the severity and breathes while the alert is up. */
+body.island-mode.alerting #islandRoot {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.14),
+    inset 0 0 0 0.5px rgba(255,255,255,0.08),
+    inset 0 -22px 44px -18px var(--sev-glow, var(--ac-glow-wide)),
+    0 10px 40px -10px var(--sev-glow, var(--ac-glow-wide));
+  animation: iaBreathe 2.6s ease-in-out infinite;
+}
+@keyframes iaBreathe {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.09); }
+}
+
+/* Left severity bar — wipes down on entry, then holds with a soft glow. */
+#islandAlert .ia-bar {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, var(--sev), color-mix(in srgb, var(--sev) 35%, transparent));
+  box-shadow: 0 0 12px var(--sev-glow);
+  transform-origin: top;
+  animation: iaBarWipe .5s cubic-bezier(.2,.9,.3,1) both .06s;
+}
+@keyframes iaBarWipe { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+#islandAlert .ia-head { display: flex; align-items: center; gap: 7px; }
+#islandAlert .ia-sp { flex: 1; }
+
+/* Icon pops in with an expanding halo. */
+#islandAlert .ia-ic {
+  font-size: 13px; line-height: 1;
+  filter: drop-shadow(0 0 6px var(--sev-glow));
+  animation: iaPop .5s cubic-bezier(.2,1.5,.4,1) both .1s;
+}
+@keyframes iaPop {
+  0%   { transform: scale(0) rotate(-25deg); opacity: 0; }
+  70%  { transform: scale(1.22) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+#islandAlert .ia-kind {
+  font-size: 8.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--sev); padding: 2px 7px; border-radius: 9999px;
+  background: color-mix(in srgb, var(--sev) 14%, transparent);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--sev) 40%, transparent);
+}
+#islandAlert .ia-count {
+  font-size: 8.5px; font-weight: 700; color: var(--t3);
+  font-variant-numeric: tabular-nums;
+}
+#islandAlert .ia-x {
+  width: 17px; height: 17px; flex: 0 0 auto; padding: 0;
+  display: grid; place-items: center;
+  border: none; border-radius: 50%; cursor: pointer;
+  background: var(--sf); color: var(--t3); font-size: 8px;
+  transition: transform .15s ease, color .15s ease, background .15s ease;
+}
+#islandAlert .ia-x:hover { transform: scale(1.14); color: var(--t1); background: color-mix(in srgb, var(--sev) 22%, var(--sf)); }
+
+/* Text rises in, staggered under the header. */
+#islandAlert .ia-title {
+  font-size: 12.5px; font-weight: 800; color: var(--t1); line-height: 1.35;
+  animation: iaRise .42s cubic-bezier(.22,.61,.36,1) both .16s;
+}
+#islandAlert .ia-body {
+  font-size: 10.5px; color: var(--t2); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  animation: iaRise .42s cubic-bezier(.22,.61,.36,1) both .22s;
+}
+@keyframes iaRise { from { opacity: 0; transform: translate3d(0,7px,0); } to { opacity: 1; transform: none; } }
+
+#islandAlert .ia-acts {
+  display: flex; gap: 6px; margin-top: 3px;
+  animation: iaRise .42s cubic-bezier(.22,.61,.36,1) both .28s;
+}
+#islandAlert .ia-btn {
+  border: none; border-radius: 9999px; padding: 6px 13px; cursor: pointer;
+  font-family: inherit; font-size: 10.5px; font-weight: 800;
+  background: var(--sev); color: #0b0b0d;
+  box-shadow: 0 3px 14px -4px var(--sev-glow);
+  transition: transform .14s ease, filter .14s ease;
+}
+#islandAlert .ia-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+#islandAlert .ia-btn:active { transform: translateY(0) scale(.96); }
+#islandAlert .ia-btn.ghost {
+  background: var(--sf); color: var(--t2);
+  box-shadow: inset 0 0 0 1px var(--bd);
+}
+#islandAlert .ia-btn.ghost:hover { color: var(--t1); }
+
+/* Life bar — the alert's remaining dwell time, pausable on hover. */
+#islandAlert .ia-life {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: color-mix(in srgb, var(--t3) 18%, transparent);
+}
+#islandAlert .ia-life > i {
+  display: block; height: 100%; width: 100%; transform-origin: left;
+  background: linear-gradient(90deg, var(--sev), color-mix(in srgb, var(--sev) 45%, transparent));
+  box-shadow: 0 0 8px var(--sev-glow);
+}
+@keyframes iaDrain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+body.island-mode.alerting #islandAlert:hover .ia-life > i { animation-play-state: paused; }
+
+/* Incoming-alert jolt on the pill, just before it morphs. */
+#islandPill.ia-knock { animation: iaKnock .34s cubic-bezier(.3,1.4,.4,1) both; }
+@keyframes iaKnock {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06, .9); }
+  70%  { transform: scale(.98, 1.04); }
+  100% { transform: scale(1); }
+}
+
+/* ── Approval prompts ─────────────────────────────────────────────────────
+   An approval is not a passing alert: the agent is BLOCKED. So the card has no
+   life bar, doesn't auto-dismiss, and its options wrap to as many rows as needed. */
+#islandAlert .ia-opts { flex-wrap: wrap; gap: 5px; }
+#islandAlert .ia-opts .ia-btn {
+  font-size: 10px; padding: 5px 11px; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* "always / don't ask again" is the consequential one — warn rather than invite. */
+#islandAlert .ia-opts .ia-btn.sticky {
+  background: color-mix(in srgb, #ffc533 20%, transparent);
+  color: #ffc533;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #ffc533 40%, transparent);
+}
+#islandAlert .ia-opts .ia-btn.sticky:hover { background: color-mix(in srgb, #ffc533 30%, transparent); }
+/* Blocked agents get a steadier, more insistent rim than a transient alert. */
+body.island-mode.approving #islandRoot { animation: iaBreathe 1.7s ease-in-out infinite; }
+body.island-mode.approving #islandAlert .ia-life { display: none; }
+/* The window that's asking, shown small next to the kind chip. */
+body.island-mode.approving #islandAlert .ia-count {
+  font-size: 8px; opacity: .75; max-width: 190px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SAVINGS LEDGER — the before/after the island never showed.
+   A single bar whose filled part is what you actually spent and whose hatched
+   tail is what Terse cut. Reads as one sentence: would-have → actual → saved.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ilg { margin: 8px 2px 0; }
+
+.ilg-bar {
+  position: relative; display: flex; height: 7px; border-radius: 9999px;
+  overflow: hidden; background: color-mix(in srgb, var(--t3) 16%, transparent);
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,.06);
+}
+/* Actual spend — solid, the honest part of the bill. */
+.ilg-fill {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ac) 72%, #fff 8%), var(--ac));
+  box-shadow: 0 0 10px -2px var(--ac-glow);
+  transition: width .9s cubic-bezier(.22,.61,.36,1);
+}
+/* The removed slice — hatched so it reads as "not paid", not as more spend. */
+.ilg-cut {
+  position: relative; height: 100%; width: 0; display: flex; align-items: center; justify-content: center;
+  background-color: color-mix(in srgb, var(--ac) 26%, transparent);
+  background-image: repeating-linear-gradient(115deg,
+    color-mix(in srgb, var(--ac) 75%, transparent) 0 2px,
+    transparent 2px 5px);
+  transition: width .9s cubic-bezier(.22,.61,.36,1);
+}
+.ilg-cut-lbl {
+  font-size: 7px; font-weight: 900; letter-spacing: .3px;
+  color: var(--ac); text-shadow: 0 0 6px rgba(0,0,0,.9);
+  white-space: nowrap; opacity: 0; transition: opacity .4s ease .5s;
+}
+.ilg-cut.wide .ilg-cut-lbl { opacity: 1; }
+
+.ilg-row { display: flex; align-items: flex-end; gap: 8px; margin-top: 6px; }
+.ilg-col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ilg-right { margin-left: auto; align-items: flex-end; }
+.ilg-k { font-size: 7.5px; font-weight: 700; letter-spacing: .3px; color: var(--t3);
+         text-transform: uppercase; white-space: nowrap; }
+.ilg-v { font-size: 12px; font-weight: 800; color: var(--t1);
+         font-variant-numeric: tabular-nums; line-height: 1.1; }
+/* The counterfactual is struck through — it's the bill that never arrived. */
+.ilg-was { color: var(--t3); text-decoration: line-through;
+           text-decoration-color: color-mix(in srgb, var(--t3) 60%, transparent); }
+.ilg-good { color: var(--ac); font-size: 14px;
+             text-shadow: 0 0 16px var(--ac-glow); }
+.ilg-arrow { font-size: 10px; color: var(--t3); padding-bottom: 1px; }
+
+/* A value that just changed ticks up, so live savings feel live. */
+@keyframes ilgTick {
+  0%   { transform: translateY(0);   }
+  35%  { transform: translateY(-2px); }
+  100% { transform: translateY(0);   }
+}
+.ilg-v.bump { animation: ilgTick .42s cubic-bezier(.22,.61,.36,1); }
+body.island-mode.calm .ilg-v.bump { animation: none; }

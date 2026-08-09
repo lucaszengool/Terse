@@ -641,6 +641,21 @@ struct KeyMonitorHandle {
     ready: bool,
     stdin_tx: Option<tokio::sync::mpsc::Sender<String>>,
     enter_tx: Option<tokio::sync::mpsc::Sender<String>>,
+    /// OS pid of the spawned `terse-uia.exe key-monitor` child. Without this we
+    /// could only forget the handle, never kill the process — every reconnect
+    /// left another helper running until the user cleared them out of Task
+    /// Manager.
+    child_pid: Option<u32>,
+}
+
+/// Kill a helper child by pid. `taskkill /T` takes its own children with it, so
+/// a wedged helper can't leave a subtree behind.
+fn kill_child(pid: u32) {
+    let _ = hidden_cmd("taskkill")
+        .args(["/PID", &pid.to_string(), "/T", "/F"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
 }
 
 impl KeyMonitorState {
@@ -664,6 +679,7 @@ impl KeyMonitorState {
             ready: false,
             stdin_tx: Some(stdin_tx.clone()),
             enter_tx: Some(enter_tx),
+            child_pid: None,
         };
         inner.monitors.insert(pid, handle);
 
@@ -682,6 +698,14 @@ impl KeyMonitorState {
                     return;
                 }
             };
+
+            // Record the child's pid so stop_monitor / shutdown can kill it.
+            if let Some(cpid) = child.id() {
+                let mut inner = state.inner.lock().unwrap_or_else(|e| e.into_inner());
+                if let Some(h) = inner.monitors.get_mut(&pid) {
+                    h.child_pid = Some(cpid);
+                }
+            }
 
             let stdout = child.stdout.take().unwrap();
             let mut child_stdin = child.stdin.take().unwrap();
@@ -719,14 +743,38 @@ impl KeyMonitorState {
                 }
             }
 
-            // Process ended
+            // stdout closed — the helper is finished (or was killed). Reap it so
+            // it can't linger as an orphan, then drop the handle.
+            let _ = child.kill().await;
+            let _ = child.wait().await;
             state.inner.lock().unwrap_or_else(|e| e.into_inner()).monitors.remove(&pid);
         });
     }
 
+    /// Stop watching a pid AND kill the helper process behind it. Dropping the
+    /// handle alone used to leave `terse-uia.exe key-monitor` running forever.
     pub fn stop_monitor(&self, pid: u32) {
-        let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        inner.monitors.remove(&pid);
+        let child_pid = {
+            let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            inner.monitors.remove(&pid).and_then(|h| h.child_pid)
+        };
+        if let Some(cpid) = child_pid {
+            kill_child(cpid);
+        }
+    }
+
+    /// Kill every helper child. Called on app exit so quitting Terse actually
+    /// leaves nothing behind in Task Manager.
+    pub fn stop_all(&self) {
+        let pids: Vec<u32> = {
+            let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            let pids = inner.monitors.values().filter_map(|h| h.child_pid).collect();
+            inner.monitors.clear();
+            pids
+        };
+        for cpid in pids {
+            kill_child(cpid);
+        }
     }
 
     pub fn get_buffer(&self, pid: u32) -> Option<(String, std::time::Instant)> {

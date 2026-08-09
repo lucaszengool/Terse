@@ -35,6 +35,45 @@ track_save() {
   fi
 }
 
+# ── Compression constants ──
+# These tune the meaning-preserving compression applied to large Read files.
+# The PreToolUse hook can only rewrite tool INPUT, so we cap the raw read to a
+# HEAD window (via limit) and deliver a compressed TAIL of the file plus repeat
+# collapsing as additionalContext. This preserves file endings (exports, closing
+# brackets, error tails) that a pure head-cap silently drops.
+HEAD_KEEP=400        # first N lines shown as the raw Read output
+TAIL_KEEP=100        # last M lines surfaced via additionalContext
+BYTE_CAP=61440       # 60 KB hard backstop on the tail rendering (a single huge line can't blow the budget)
+
+# collapse_runs — collapse runs of >=3 consecutive identical or whitespace-only
+# lines to a single representative line + a marker. Meaning-preserving: a wall of
+# identical/blank lines carries no extra information. Pure awk (coreutils only).
+collapse_runs() {
+  awk '
+    function flush(   marker) {
+      if (run >= 3) {
+        # keep one representative line, then note how many were folded away
+        print prev
+        printf "… [terse: %d× repeated] …\n", run
+      } else {
+        # short run: emit verbatim to avoid altering meaning
+        for (i = 0; i < run; i++) print prev
+      }
+    }
+    {
+      # normalize whitespace-only lines so blank runs collapse together too
+      key = ($0 ~ /^[[:space:]]*$/) ? "" : $0
+      if (NR > 1 && key == prevkey) {
+        run++
+      } else {
+        if (NR > 1) flush()
+        prev = $0; prevkey = key; run = 1
+      }
+    }
+    END { if (NR > 0) flush() }
+  '
+}
+
 # ══════════════════════════════════════════════════════
 # READ — cap line limit to prevent huge file reads
 # Default limit is 2000 lines. Most files need far less.
@@ -73,7 +112,39 @@ if [ "$TOOL_NAME" = "Read" ]; then
     if [ -f "$FILE_PATH" ]; then
       LINE_COUNT=$(wc -l < "$FILE_PATH" 2>/dev/null | tr -d ' ')
       if [ "$LINE_COUNT" -gt 500 ]; then
-        # Large file: cap to 500 lines, agent can use offset to read more
+        # Large file. Two things happen here:
+        #   (A) HEAD keep — the raw Read output is capped to HEAD_KEEP lines via `limit`.
+        #   (A) TAIL keep — we surface the last TAIL_KEEP lines as additionalContext so
+        #       file endings (exports, closing brackets, error tails) survive the head-cap.
+        #   (B) The tail is run-collapsed (repeated/blank lines folded).
+        #   (C) The tail rendering is byte-capped at BYTE_CAP as a hard backstop.
+        # Everything is fail-open: if any step fails we fall through to a plain cap.
+        ELIDED=$(( LINE_COUNT - HEAD_KEEP - TAIL_KEEP ))
+        TAIL_RENDER=""
+        if [ "$ELIDED" -gt 0 ]; then
+          # tail slice → collapse runs → byte-cap (head -c is a coreutils builtin)
+          TAIL_RENDER=$(tail -n "$TAIL_KEEP" "$FILE_PATH" 2>/dev/null | collapse_runs | head -c "$BYTE_CAP" 2>/dev/null)
+        fi
+
+        if [ -n "$TAIL_RENDER" ]; then
+          # HEAD kept via limit; TAIL delivered as context with an elided-middle marker.
+          UPDATED=$(echo "$TOOL_INPUT" | jq --argjson h "$HEAD_KEEP" '. + {limit: $h}')
+          CTX=$(printf 'Terse: %s lines total. Showing first %s lines above; last %s lines below (middle %s elided).\n… [terse: elided %s lines] …\n%s' \
+            "$LINE_COUNT" "$HEAD_KEEP" "$TAIL_KEEP" "$ELIDED" "$ELIDED" "$TAIL_RENDER")
+          jq -n --argjson input "$UPDATED" --arg ctx "$CTX" '{
+            hookSpecificOutput: {
+              hookEventName: "PreToolUse",
+              permissionDecision: "allow",
+              updatedInput: $input,
+              additionalContext: $ctx
+            }
+          }'
+          track_save "Read" "$LINE_COUNT" "$HEAD_KEEP"
+          exit 0
+        fi
+
+        # Fallback (tail render unavailable, e.g. file barely over 500 lines):
+        # keep the original plain 500-line cap byte-for-byte.
         UPDATED=$(echo "$TOOL_INPUT" | jq '. + {limit: 500}')
         jq -n --argjson input "$UPDATED" '{
           hookSpecificOutput: {

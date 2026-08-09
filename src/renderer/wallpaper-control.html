@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
+  <meta charset="UTF-8">
+  <title>Terse Wallpaper 壁纸</title>
+  <script type="importmap">
+  { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/jsm/" } }
+  </script>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:var(--bg);color:var(--t1);
+      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+      font-size:12px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden}
+    body{display:flex;flex-direction:column;height:100vh;border-radius:16px}
+    .wrap{width:100%;max-width:680px;margin:0 auto}
+
+    .header{display:flex;align-items:center;gap:10px;padding:14px 18px 8px;-webkit-app-region:drag;flex-shrink:0}
+    .back-btn{-webkit-app-region:no-drag;width:28px;height:28px;border-radius:50%;border:none;flex-shrink:0;
+      background:var(--sf);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:background .15s,transform .15s}
+    .back-btn:hover{background:var(--sfh);color:var(--t1);transform:scale(1.08)}
+    .hd-ic{width:22px;height:22px;color:var(--ac)}
+    .header h1{font-size:15px;font-weight:800;flex:1;letter-spacing:-.01em}
+    .header h1 .cn{font-weight:600;color:var(--t3);font-size:12px;margin-left:4px}
+
+    .scroll{flex:1;overflow-y:auto;padding:8px 18px 24px}
+    .scroll::-webkit-scrollbar{width:4px}.scroll::-webkit-scrollbar-thumb{background:var(--bdl);border-radius:4px}
+
+    /* live preview */
+    .preview{position:relative;height:210px;border-radius:16px;overflow:hidden;margin-bottom:14px;
+      border:1px solid var(--bd);box-shadow:inset 0 1px 0 var(--hl),var(--shadow-md);background:#05060a}
+    .preview canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+    .preview .tag{position:absolute;top:10px;left:12px;font-size:9px;font-weight:800;letter-spacing:.1em;
+      text-transform:uppercase;color:rgba(255,255,255,.7);background:rgba(0,0,0,.3);
+      padding:3px 9px;border-radius:9999px;backdrop-filter:blur(6px)}
+
+    .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:14px 15px;margin-bottom:12px;
+      box-shadow:inset 0 1px 0 var(--hl),var(--shadow-sm)}
+    .card-t{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);font-weight:800;margin-bottom:10px}
+
+    /* master enable row */
+    .enable{display:flex;align-items:center;gap:12px}
+    .enable .ic{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+      font-size:19px;color:var(--ac);background:color-mix(in srgb,var(--ac) 14%,transparent);
+      box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 25%,transparent)}
+    .enable .tx{flex:1;min-width:0}
+    .enable .tt{font-size:13px;font-weight:800;color:var(--t1)}
+    .enable .ds{font-size:10.5px;color:var(--t3);line-height:1.4;margin-top:2px}
+    .sw{appearance:none;-webkit-appearance:none;width:46px;height:27px;flex-shrink:0;background:var(--sf);
+      border:1px solid var(--bdl);border-radius:9999px;position:relative;cursor:pointer;
+      box-shadow:inset 0 1px 3px rgba(0,0,0,.18);transition:background .25s var(--ease),border-color .25s}
+    .sw::before{content:'';position:absolute;top:2.5px;left:2.5px;width:20px;height:20px;background:#fff;border-radius:50%;
+      box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .25s var(--ease)}
+    .sw:checked{background:linear-gradient(180deg,#6ee7a0,#34d375);border-color:transparent}
+    .sw:checked::before{transform:translateX(19px)}
+
+    /* theme swatches */
+    .themes{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+    .th{aspect-ratio:1.4;border-radius:11px;cursor:pointer;border:2px solid transparent;position:relative;overflow:hidden;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),var(--shadow-sm);transition:transform .15s var(--ease),border-color .15s}
+    .th:hover{transform:translateY(-2px) scale(1.03)}
+    .th.sel{border-color:var(--t1)}
+    .th::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.35))}
+    .th .nm{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:8px;font-weight:800;
+      color:#fff;text-transform:uppercase;letter-spacing:.4px;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+
+    /* sliders */
+    .slider{margin-bottom:14px}.slider:last-child{margin-bottom:0}
+    .slider .lab{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--t2);margin-bottom:7px}
+    .slider .val{color:var(--ac);font-variant-numeric:tabular-nums}
+    input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:9999px;
+      background:var(--bd);outline:none;cursor:pointer}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+      background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.4),var(--shadow-sm);cursor:pointer}
+
+    .row{display:flex;align-items:center;gap:10px;padding:8px 0}
+    .row .rt{flex:1;font-size:12px;font-weight:700;color:var(--t1)}
+    .row .rd{font-size:10px;color:var(--t3)}
+    .sw.sm{width:38px;height:22px}.sw.sm::before{width:16px;height:16px}.sw.sm:checked::before{transform:translateX(16px)}
+
+    .engines{display:flex;flex-direction:column;gap:8px}
+    .eng{padding:10px 12px;border-radius:12px;border:1.5px solid var(--bd);cursor:pointer;
+      background:var(--bg2);transition:border-color .15s,background .15s}
+    .eng:hover{border-color:var(--t3)}
+    .eng.sel{border-color:var(--acc,#7c5cff);background:color-mix(in srgb,var(--acc,#7c5cff) 9%,transparent)}
+    .eng .et{font-size:12px;font-weight:800;color:var(--t1)}
+    .eng .ed{font-size:10px;color:var(--t3);line-height:1.55;margin-top:3px}
+
+    .note{font-size:10px;color:var(--t3);line-height:1.6;padding:2px 2px 0}
+    .note b{color:var(--t2)}
+  </style>
+</head>
+<body>
+  <div class="header wrap">
+    <button class="back-btn" id="btnBack" title="Back">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <svg class="hd-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 14l4-4 4 4 4-5 6 6"/></svg>
+    <h1>Live Wallpaper<span class="cn">壁纸 · 实时律动</span></h1>
+  </div>
+
+  <div class="scroll">
+    <div class="wrap">
+      <div class="preview"><canvas id="prev"></canvas><span class="tag">Live preview · Token flow</span></div>
+
+      <div class="card">
+        <div class="enable">
+          <div class="ic">🖥️</div>
+          <div class="tx">
+            <div class="tt">Set as desktop wallpaper</div>
+            <div class="ds">Pins the token-reactive field behind your desktop icons across all Spaces. Bulk tokens ripple; big spikes drop meteors.</div>
+          </div>
+          <input type="checkbox" class="sw" id="enable">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-t">Engine 引擎</div>
+        <div class="engines" id="engines">
+          <div class="eng" data-e="mineradio">
+            <div class="et">你的壁纸 · 粒子律动</div>
+            <div class="ed">用你<b>当前那张桌面壁纸</b>当底,粒子按它取色、在它上面律动;
+              agent 活动和 token 统计会被粒子聚成数字浮现出来。</div>
+          </div>
+          <div class="eng" data-e="topography">
+            <div class="et">音域回响 · 光柱地形</div>
+            <div class="ed">原来的 3D 光柱地形:token 流动掀起涟漪,大额消耗砸下陨石。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-t">Theme · 10 presets</div>
+        <div class="themes" id="themes"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-t">Feel</div>
+        <div class="slider"><div class="lab"><span>Intensity 律动</span><span class="val" id="vInt">1.0×</span></div>
+          <input type="range" id="sInt" min="0.3" max="2" step="0.1" value="1"></div>
+        <div class="slider"><div class="lab"><span>Camera angle</span><span class="val" id="vAng">42°</span></div>
+          <input type="range" id="sAng" min="28" max="75" step="1" value="42"></div>
+        <div class="slider"><div class="lab"><span>Density · precision</span><span class="val" id="vQual">44</span></div>
+          <input type="range" id="sQual" min="24" max="96" step="4" value="44"></div>
+        <div class="row" style="border-top:1px solid var(--bd);margin-top:4px">
+          <div class="rt">Live stats panel<div class="rd">Show tokens, Terse savings & active agents on the wallpaper</div></div>
+          <input type="checkbox" class="sw sm" id="showPanel" checked>
+        </div>
+      </div>
+
+      <div class="note">The wallpaper is <b>click-through</b> — your desktop and icons stay fully usable. It follows you across Spaces and auto-restores on launch while enabled. Turn it off any time with the switch above.</div>
+    </div>
+  </div>
+
+  <script src="tauri-bridge.js"></script>
+  <script type="module">
+    import TokenWallpaper3D from './token-wallpaper-3d.js';
+    import MineradioWallpaper from './mineradio-wallpaper.js';
+    const T = window.terse;
+    const ENGINES = { mineradio: MineradioWallpaper, topography: TokenWallpaper3D };
+    const $ = s => document.querySelector(s);
+    const THEMES = [
+      ['indigo','#4b3aa0','#8b6bff'],['ocean','#0a2a5e','#3aa0ff'],['ice','#1a5a7a','#7fe9ff'],
+      ['emerald','#0a5a3e','#40e0a0'],['gold','#7a5a10','#ffcf5a'],['amber','#8a4a10','#ff9f43'],
+      ['blood','#6a1414','#ff5a5a'],['coral','#8a2a4a','#ff7a9c'],['neon','#4a1a6a','#c46bff'],['mono','#3a3a44','#e8e8f0']
+    ];
+    let cfg = { enabled:false, engine:'mineradio', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
+    let prev = null, saveT = null;
+
+    function save(){ clearTimeout(saveT); saveT = setTimeout(()=>{ T.setWallpaperConfig(cfg); }, 200); }
+
+    function renderThemes(){
+      $('#themes').innerHTML = THEMES.map(([n,a,b])=>`
+        <div class="th ${n===cfg.theme?'sel':''}" data-t="${n}"
+          style="background:radial-gradient(120% 120% at 30% 20%, ${b}, ${a} 70%, #0a0b12)">
+          <span class="nm">${n}</span></div>`).join('');
+      document.querySelectorAll('.th').forEach(el=>el.addEventListener('click',()=>{
+        cfg.theme = el.dataset.t;
+        document.querySelectorAll('.th').forEach(x=>x.classList.toggle('sel',x===el));
+        prev && prev.setTheme(cfg.theme); save();
+      }));
+    }
+
+    /** 预览也跟着引擎走 —— 选哪个就预览哪个 */
+    function mountPreview(){
+      if (prev) { try { prev.dispose(); } catch(e){} prev = null; }
+      const host = $('#prev').parentElement;
+      if (host) host.style.background = '';
+      const E = ENGINES[cfg.engine] || MineradioWallpaper;
+      prev = new E($('#prev'), { theme:cfg.theme, quality:Math.min(44,cfg.quality), angle:cfg.angle, intensity:cfg.intensity });
+      prev.start();
+      prev.setActivity(0.7); // 预览是展示位,保持活跃(真壁纸这个值绑定在 agent 上)
+    }
+
+    function renderEngines(){
+      document.querySelectorAll('.eng').forEach(el=>{
+        el.classList.toggle('sel', el.dataset.e === (cfg.engine||'mineradio'));
+      });
+    }
+
+    function paint(){
+      $('#enable').checked = !!cfg.enabled;
+      $('#showPanel').checked = cfg.showPanel !== false;
+      $('#sInt').value = cfg.intensity; $('#vInt').textContent = (+cfg.intensity).toFixed(1)+'×';
+      $('#sAng').value = cfg.angle; $('#vAng').textContent = cfg.angle+'°';
+      $('#sQual').value = cfg.quality; $('#vQual').textContent = cfg.quality;
+      renderThemes(); renderEngines();
+    }
+
+    function wire(){
+      $('#btnBack').addEventListener('click',()=>T.navigateBack());
+      document.querySelectorAll('.eng').forEach(el=>el.addEventListener('click',()=>{
+        if (cfg.engine === el.dataset.e) return;
+        cfg.engine = el.dataset.e;
+        renderEngines(); mountPreview(); save();
+      }));
+      $('#enable').addEventListener('change', e=>{ cfg.enabled = e.target.checked; T.setWallpaperEnabled(cfg.enabled); });
+      $('#showPanel').addEventListener('change', e=>{ cfg.showPanel = e.target.checked; save(); });
+      $('#sInt').addEventListener('input', e=>{ cfg.intensity = +e.target.value; $('#vInt').textContent = cfg.intensity.toFixed(1)+'×';
+        prev && prev.setIntensity && prev.setIntensity(cfg.intensity); save(); });
+      $('#sAng').addEventListener('input', e=>{ cfg.angle = +e.target.value; $('#vAng').textContent = cfg.angle+'°';
+        prev && prev.setAngle(cfg.angle); save(); });
+      $('#sQual').addEventListener('input', e=>{ cfg.quality = +e.target.value; $('#vQual').textContent = cfg.quality;
+        prev && prev.setQuality(cfg.quality); save(); });
+    }
+
+    (async () => {
+      try { const c = await T.getWallpaperConfig(); if (c) cfg = Object.assign(cfg, c); } catch(e){}
+      paint(); wire();
+      mountPreview();
+      // Drive the preview with gentle demo pulses so the user sees the motion without the small
+      // canvas washing out — mostly soft ripples, an occasional (capped) meteor for drama.
+      setInterval(()=>{ if(!prev) return; const r=Math.random();
+        prev.pulse(r<0.12 ? 0.65+Math.random()*0.25 : 0.12+Math.random()*0.28); }, 1500);
+      // 预览里也演示一下"统计融进粒子":每 4 秒丢一条示例数据进去
+      let demo = 0;
+      setInterval(()=>{ if(!prev || !prev.floatToken) return;
+        const d = [ ()=>prev.floatToken(820+Math.random()*900,'consume'),
+                    ()=>prev.floatToken(1200+Math.random()*900,'saved'),
+                    ()=>prev.setAgents([{name:'claude-code',rate:1400},{name:'codex',rate:600}]),
+                    ()=>prev.setStageItems([{k:'cache',v:'61%',u:'hit'}]) ][demo++ % 4];
+        d(); }, 4000);
+    })();
+  </script>
+</body>
+</html>

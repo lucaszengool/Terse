@@ -334,6 +334,23 @@ fn agent_defs() -> Vec<(&'static str, AgentDef)> {
             log_dir: None,
             parser: "generic",
         }),
+        ("hermes", AgentDef {
+            name: "Hermes",
+            icon: "\u{1F9E0}",
+            // Hermes Agent (Nous Research), HERMES_HOME = ~/.hermes. agent.log is
+            // appended every turn, so its file mtime is a reliable "running" signal
+            // (the scan checks modified() on each path directly, so a file works
+            // like a dir). Sessions are in a SQLite state.db, not JSONL — detection
+            // + island display only, no token/message parsing yet.
+            process_names: &["hermes"],
+            config_detect_dirs: vec![
+                home.join(".hermes/logs/agent.log"),
+                home.join(".hermes/state.db"),
+                home.join(".hermes"),
+            ],
+            log_dir: None,
+            parser: "generic",
+        }),
     ]
 }
 
@@ -375,6 +392,14 @@ pub struct AgentSessionData {
     codex_pending_input: u64,
     codex_pending_output: u64,
     pub context_window: u64,                        // from model_context_window in task_started
+    // ── Attention layer (done / blocked / idle detection) ──
+    /// Last time this session produced new activity (message/token growth).
+    pub last_activity: std::time::Instant,
+    /// Role of the most recent message — drives done-vs-stalled classification.
+    pub last_role: String,
+    /// Whether we've already fired the idle/attention alert for the current
+    /// quiet stretch (reset when activity resumes).
+    pub idle_notified: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -423,7 +448,102 @@ impl AgentSessionData {
             codex_pending_input: 0,
             codex_pending_output: 0,
             context_window: 0,
+            last_activity: std::time::Instant::now(),
+            last_role: String::new(),
+            idle_notified: false,
         }
+    }
+
+    /// Cheap (burn_rate tok/min, total tokens, est cost USD) for the circuit
+    /// breaker — avoids rebuilding the whole snapshot every tick.
+    fn quick_metrics(&self) -> (u64, u64, f64) {
+        let total = self.total_input_tokens + self.total_output_tokens;
+        let pricing = self.get_model_pricing();
+        let est_cost = (self.total_input_tokens as f64 / 1000.0) * pricing.0
+            + (self.total_output_tokens as f64 / 1000.0) * pricing.1
+            + (self.total_cache_read_tokens as f64 / 1000.0) * pricing.2;
+        let elapsed_secs = self.started_at.elapsed().as_secs().max(1);
+        let burn = (total as f64 / (elapsed_secs as f64 / 60.0)).round() as u64;
+        (burn, total, est_cost)
+    }
+
+    /// Compact end-of-session report for the summary card. Leans on numbers we
+    /// already track; "saveable" is the concrete waste Terse would have trimmed.
+    fn get_summary(&self) -> serde_json::Value {
+        let total = self.total_input_tokens + self.total_output_tokens;
+        let pricing = self.get_model_pricing();
+        let est_cost = (self.total_input_tokens as f64 / 1000.0) * pricing.0
+            + (self.total_output_tokens as f64 / 1000.0) * pricing.1
+            + (self.total_cache_read_tokens as f64 / 1000.0) * pricing.2;
+        let reread_waste: u64 = self.file_reads.iter()
+            .filter(|(_, c)| **c >= 2)
+            .map(|(_, c)| (*c as u64 - 1) * 800)
+            .sum();
+        let saveable = self.duplicate_tool_tokens + reread_waste + self.tool_result_compressible;
+        let elapsed_min = (self.started_at.elapsed().as_secs() as f64 / 60.0).round() as u64;
+        serde_json::json!({
+            "id": format!("agent-{}-{}", self.agent_type, self.pid),
+            "agentType": self.agent_type,
+            "agentName": self.agent_name,
+            "agentIcon": self.agent_icon,
+            "project": self.project,
+            "model": self.detected_model,
+            "turns": self.turns,
+            "toolCallCount": self.tool_call_count,
+            "totalTokens": total,
+            "totalInputTokens": self.total_input_tokens,
+            "totalOutputTokens": self.total_output_tokens,
+            "cacheEfficiency": self.cache_efficiency,
+            "estimatedCost": (est_cost * 1000.0).round() / 1000.0,
+            "saveableTokens": saveable,
+            "duplicateCalls": self.duplicate_tool_calls,
+            "elapsedMinutes": elapsed_min,
+        })
+    }
+
+    /// Build a step-by-step timeline for the Observe view / HTML replay from the
+    /// parsed message log. `limit` caps how many recent steps we return so the
+    /// payload stays sane on very long sessions.
+    pub fn get_timeline(&self, limit: usize) -> serde_json::Value {
+        let pricing = self.get_model_pricing();
+        let start = self.messages.len().saturating_sub(limit);
+        let steps: Vec<serde_json::Value> = self.messages.iter().enumerate().skip(start).map(|(i, m)| {
+            // Rough per-step cost: assistant text is output, everything else input.
+            let cost = if m.role == "assistant" {
+                m.tokens as f64 / 1000.0 * pricing.1
+            } else {
+                m.tokens as f64 / 1000.0 * pricing.0
+            };
+            serde_json::json!({
+                "i": i,
+                "role": m.role,
+                "type": m.msg_type,
+                "toolName": m.tool_name,
+                "text": safe_truncate(&m.text, 4000),
+                "tokens": m.tokens,
+                "cost": (cost * 1000.0).round() / 1000.0,
+                "timestamp": m.timestamp,
+            })
+        }).collect();
+        let redundant_reads = self.file_reads.values().filter(|c| **c >= 2).count();
+        serde_json::json!({
+            "agentType": self.agent_type,
+            "agentName": self.agent_name,
+            "agentIcon": self.agent_icon,
+            "project": self.project,
+            "model": self.detected_model,
+            "turns": self.turns,
+            "totalSteps": self.messages.len(),
+            "totalTokens": self.total_input_tokens + self.total_output_tokens,
+            "quality": {
+                "duplicateCalls": self.duplicate_tool_calls,
+                "cacheEfficiency": self.cache_efficiency,
+                "redundantReads": redundant_reads,
+                "looping": self.duplicate_tool_calls >= 3,
+                "lowCache": self.turns >= 3 && self.cache_efficiency < 40 && self.total_input_tokens > 20_000,
+            },
+            "steps": steps,
+        })
     }
 
     fn get_snapshot(&self) -> serde_json::Value {
@@ -443,6 +563,20 @@ impl AgentSessionData {
         // Burn rate: tokens per minute
         let elapsed_secs = self.started_at.elapsed().as_secs().max(1);
         let burn_rate = (total as f64 / (elapsed_secs as f64 / 60.0)).round() as u64;
+
+        // ── Predictions (self-contained; the fuel gauge extrapolates current pace) ──
+        let elapsed_hours = elapsed_secs as f64 / 3600.0;
+        let cost_per_hour = if elapsed_hours > 0.0 { est_cost / elapsed_hours } else { 0.0 };
+        // Context ETA: at the average rate context has been growing, how many
+        // minutes until it fills the window. Null once effectively full.
+        let elapsed_min_f = (elapsed_secs as f64 / 60.0).max(0.1);
+        let ctx_growth_per_min = current_context as f64 / elapsed_min_f;
+        let context_eta_minutes: Option<u64> = if context_fill < 98 && ctx_growth_per_min > 1.0 {
+            let remaining = context_max.saturating_sub(current_context) as f64;
+            Some((remaining / ctx_growth_per_min).round().max(0.0) as u64)
+        } else {
+            None
+        };
 
         // Redundant file reads
         let redundant_reads: Vec<_> = self.file_reads.iter()
@@ -513,6 +647,8 @@ impl AgentSessionData {
             "currentContext": current_context,
             "contextMax": context_max,
             "burnRate": burn_rate,
+            "costPerHour": (cost_per_hour * 1000.0).round() / 1000.0,
+            "contextEtaMinutes": context_eta_minutes,
             "elapsedMinutes": (elapsed_secs as f64 / 60.0).round() as u64,
             "redundantReads": redundant_reads,
             "rereadWaste": reread_waste,
@@ -1720,6 +1856,9 @@ pub struct AgentMonitor {
     plan_cache: HashMap<String, (AgentPlanInfo, std::time::Instant)>,
     /// Agents manually disconnected by user — suppressed from auto-detection until explicit reconnect
     suppressed: std::collections::HashSet<String>,
+    /// Session summaries captured at teardown, drained by the scan loop to emit
+    /// the completion card. (agent_type, summary json)
+    pub ended_summaries: Vec<(String, serde_json::Value)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1754,6 +1893,7 @@ impl AgentMonitor {
             miss_count: HashMap::new(),
             plan_cache: HashMap::new(),
             suppressed: std::collections::HashSet::new(),
+            ended_summaries: Vec::new(),
         }
     }
 
@@ -1796,8 +1936,36 @@ impl AgentMonitor {
         self.sessions.values().any(|s| s.connected)
     }
 
+    /// Connected sessions that sent a request but have been quiet for a while —
+    /// i.e. the last log entry is a user/tool message (awaiting Claude) and no
+    /// activity for 30s+. Used by the Connection Doctor to flag "not responding".
+    pub fn stalled_agents(&self) -> Vec<String> {
+        let now = std::time::Instant::now();
+        self.sessions.values()
+            .filter(|s| s.connected
+                && s.turns > 0
+                && (s.last_role == "user" || s.last_role == "tool")
+                && now.duration_since(s.last_activity).as_secs() >= 30)
+            .map(|s| s.agent_name.clone())
+            .collect()
+    }
+
     pub fn get_session_snapshot(&self, agent_type: &str) -> Option<serde_json::Value> {
         self.sessions.get(agent_type).map(|s| s.get_snapshot())
+    }
+
+    /// Timeline for the Observe view. Falls back to the first connected session
+    /// when `agent_type` is empty (the common single-agent case).
+    pub fn get_timeline_for(&self, agent_type: &str, limit: usize) -> Option<serde_json::Value> {
+        if !agent_type.is_empty() {
+            return self.sessions.get(agent_type).map(|s| s.get_timeline(limit));
+        }
+        let mut sessions: Vec<&AgentSessionData> = self.sessions.values().filter(|s| s.connected).collect();
+        sessions.sort_by(|a, b| {
+            let score = |s: &&AgentSessionData| s.total_input_tokens + s.turns as u64 * 1000;
+            score(b).cmp(&score(a))
+        });
+        sessions.first().map(|s| s.get_timeline(limit))
     }
 
     pub fn accept_agent(&mut self, agent_type: &str) -> Option<serde_json::Value> {
@@ -2008,6 +2176,13 @@ impl AgentMonitor {
             if *count >= 3 {
                 self.detected.remove(&key);
                 self.miss_count.remove(&key);
+                // Capture a completion summary before the session data is dropped,
+                // but only for sessions that actually did work.
+                if let Some(sess) = self.sessions.get(&key) {
+                    if sess.connected && sess.turns > 0 {
+                        self.ended_summaries.push((key.clone(), sess.get_summary()));
+                    }
+                }
                 self.sessions.remove(&key);
                 self.pending.retain(|d| d.agent_type != key);
                 lost_types.push(key);
@@ -2448,6 +2623,12 @@ pub fn start_scanning(app: AppHandle) {
                     // Detect changes by message count or token growth
                     let new_tokens = session.total_input_tokens + session.total_output_tokens;
                     if session.messages.len() != prev_msg_count || new_tokens != prev_tokens {
+                        // Activity resumed — reset the attention clock so a later
+                        // quiet stretch fires exactly one idle alert.
+                        session.last_activity = std::time::Instant::now();
+                        session.idle_notified = false;
+                        session.last_role = session.messages.last()
+                            .map(|m| m.role.clone()).unwrap_or_default();
                         updates.push((agent_type.clone(), session.get_snapshot()));
                     }
                 }
@@ -2472,6 +2653,90 @@ pub fn start_scanning(app: AppHandle) {
                 "session": snapshot,
             }));
         }
+
+        // ── Attention layer + circuit breaker + completion summaries ──
+        // Gather under one lock, then dispatch/emit/enforce outside it.
+        const IDLE_THRESHOLD_SECS: u64 = 40;
+        let (ended, idle_events, circuit_readings) = {
+            let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+            let ended: Vec<(String, serde_json::Value)> = std::mem::take(&mut monitor.ended_summaries);
+            let mut idle_events: Vec<serde_json::Value> = Vec::new();
+            let mut circuit_readings: Vec<crate::circuit::Reading> = Vec::new();
+            let now_i = std::time::Instant::now();
+            let types: Vec<String> = monitor.sessions.keys().cloned().collect();
+            for at in types {
+                if let Some(s) = monitor.sessions.get_mut(&at) {
+                    if !s.connected { continue; }
+                    let (burn, total, cost) = s.quick_metrics();
+                    circuit_readings.push(crate::circuit::Reading {
+                        session_id: format!("agent-{}-{}", s.agent_type, s.pid),
+                        agent_type: s.agent_type.clone(),
+                        pid: s.pid,
+                        burn_rate: burn,
+                        tokens: total,
+                        cost,
+                    });
+                    let idle_secs = now_i.duration_since(s.last_activity).as_secs();
+                    if s.turns > 0 && !s.idle_notified && idle_secs >= IDLE_THRESHOLD_SECS {
+                        s.idle_notified = true;
+                        // Classify: assistant last → finished & waiting; otherwise
+                        // it went quiet mid-work → likely blocked on a prompt.
+                        let done = s.last_role == "assistant";
+                        idle_events.push(serde_json::json!({
+                            "agentType": s.agent_type,
+                            "agentName": s.agent_name,
+                            "agentIcon": s.agent_icon,
+                            "project": s.project,
+                            "state": if done { "done" } else { "blocked" },
+                            "idleSecs": idle_secs,
+                            "turns": s.turns,
+                        }));
+                    }
+                }
+            }
+            (ended, idle_events, circuit_readings)
+        };
+
+        // Completion summary cards.
+        for (_at, summary) in ended {
+            let name = summary.get("agentName").and_then(|v| v.as_str()).unwrap_or("Agent").to_string();
+            let saved = summary.get("saveableTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            let cost = summary.get("estimatedCost").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let turns = summary.get("turns").and_then(|v| v.as_u64()).unwrap_or(0);
+            let _ = app.emit("agent-summary", &summary);
+            let body = format!("{} turns · ~${:.2} · {} tokens saveable", turns, cost, saved);
+            crate::notifications::notify(
+                &app, "summary", &format!("{} session wrapped", name), &body,
+                "low", &format!("summary:{}", _at), Some("open-stats"),
+            );
+        }
+
+        // Attention alerts — one deliberate interrupt when the agent needs you.
+        for ev in idle_events {
+            let name = ev.get("agentName").and_then(|v| v.as_str()).unwrap_or("Agent");
+            let icon = ev.get("agentIcon").and_then(|v| v.as_str()).unwrap_or("🤖");
+            let done = ev.get("state").and_then(|v| v.as_str()) == Some("done");
+            let (title, body, sev) = if done {
+                (format!("{} {} finished", icon, name), "Waiting for your next prompt.".to_string(), "medium")
+            } else {
+                (format!("{} {} is waiting", icon, name), "Idle mid-task — it may be blocked on a prompt or approval.".to_string(), "medium")
+            };
+            // Per-episode dedupe: turn count changes between genuine idle
+            // episodes, so distinct "waiting" moments aren't collapsed by the
+            // hourly throttle, while accidental double-fires still dedupe.
+            let turns = ev.get("turns").and_then(|v| v.as_u64()).unwrap_or(0);
+            let dedupe = format!("attention:{}:{}", name, turns);
+            crate::notifications::notify(&app, "agent", &title, &body, sev, &dedupe, Some("open-popup"));
+            let _ = app.emit("agent-attention", &ev);
+        }
+
+        // Circuit breaker — evaluate every live session's burn/spend.
+        for r in &circuit_readings {
+            let _ = crate::circuit::evaluate(&app, r);
+        }
+
+        // Weekly digest — self-throttled to one check/hour, one send/ISO-week.
+        crate::digest::maybe_send_weekly(&app);
 
         // Heartbeat presence whenever something is happening, so teammates see us online.
         if had_updates {

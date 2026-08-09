@@ -172,7 +172,7 @@
     .slack-test{background:none;border:none;color:var(--t3);font-size:10px;font-weight:600;cursor:pointer;text-decoration:underline}
     .slack-test:hover{color:var(--t1)}
   </style>
-  <script>(function(){var s=localStorage.getItem('terse-theme')||'azure';document.documentElement.setAttribute('data-theme',s)})();</script>
+  <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
 </head>
 <body>
   <div class="header">
@@ -422,6 +422,17 @@
     function saveBudget(v) {
       if (isFinite(v) && v > 0) localStorage.setItem('terse-budget-usd', String(v));
       else localStorage.removeItem('terse-budget-usd');
+      // Mirror to the backend so the unified alert monitor can fire native +
+      // Alert Center + Slack budget alerts (75/90/100% + projected overspend),
+      // not just the client-side Slack ping. Weekly cap is preserved.
+      try {
+        const monthly = (isFinite(v) && v > 0) ? v : 0;
+        if (T.getBudget && T.setBudget) {
+          T.getBudget().then(b => {
+            T.setBudget({ weeklyUsd: (b && b.weeklyUsd) || 0, monthlyUsd: monthly });
+          }).catch(() => T.setBudget({ weeklyUsd: 0, monthlyUsd: monthly }));
+        }
+      } catch (e) { /* non-fatal */ }
     }
 
     // ── Receipt canvas drawing ─────────────────────────────────────

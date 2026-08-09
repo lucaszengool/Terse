@@ -90,6 +90,8 @@ if (window.__TAURI__) {
     hideIslandWindow: () => invoke('hide_island_window'),
     islandSetExpanded: (expanded) => invoke('island_set_expanded', { expanded }),
     islandResize: (h) => invoke('island_resize', { h }),
+    islandAlertSize: (w, h) => invoke('island_alert_size', { w, h }),
+    focusApp: (app) => invoke('focus_app', { app }),
     focusIsland: (agentType) => invoke('focus_island', { agentType: agentType || null }),
 
     // Floating dashboard widget windows (saved · cache · focus · agents · compression · activity · savings)
@@ -112,6 +114,9 @@ if (window.__TAURI__) {
 
     // Stats
     getStats: (period) => invoke('get_stats', { period }),
+    getBudget: () => invoke('get_budget'),
+    setBudget: (budget) => invoke('set_budget', { budget }),
+    getBudgetStatus: () => invoke('get_budget_status'),
     getAttribution: (period) => invoke('get_agent_attribution', { period }),
     navigateToStats: () => invoke('navigate_to_stats'),
     navigateBack: () => invoke('navigate_back'),
@@ -128,6 +133,48 @@ if (window.__TAURI__) {
     hideDoctorWindow: () => invoke('hide_doctor_window'),
     navigateToDoctor: () => invoke('navigate_to_doctor'),
     showMainWindow: () => invoke('show_main_window'),
+
+    // Prompt library + palette (⌘⇧K)
+    showPalette: () => invoke('show_palette'),
+    hidePalette: () => invoke('hide_palette'),
+    insertPromptText: (text) => invoke('insert_prompt_text', { text }),
+    listPrompts: () => invoke('list_prompts'),
+    getPrompt: (id) => invoke('get_prompt', { id }),
+    savePrompt: (prompt) => invoke('save_prompt', { prompt }),
+    deletePrompt: (id) => invoke('delete_prompt', { id }),
+    recordPromptUse: (id) => invoke('record_prompt_use', { id }),
+
+    // Live token wallpaper (desktop-pinned)
+    navigateToWallpaper: () => invoke('navigate_to_wallpaper'),
+    getWallpaperConfig: () => invoke('get_wallpaper_config'),
+    // 用户当前那张真桌面壁纸(1920 宽 JPEG data URL)—— mineradio 引擎的底图
+    getDesktopPicture: (force) => invoke('get_desktop_picture', { force: !!force }),
+    setWallpaperConfig: (config) => invoke('set_wallpaper_config', { config }),
+    setWallpaperEnabled: (on) => invoke('set_wallpaper_enabled', { on }),
+    getTokenPulse: () => invoke('get_token_pulse'),
+
+    // Session history
+    navigateToHistory: () => invoke('navigate_to_history'),
+    listSessionHistory: (period) => invoke('list_session_history', { period: period || null }),
+    getSessionHistory: (id) => invoke('get_session_history', { id }),
+    deleteSessionHistory: (id) => invoke('delete_session_history', { id }),
+    clearSessionHistory: () => invoke('clear_session_history'),
+
+    // Alert Center (unified notifications)
+    navigateToAlerts: () => invoke('navigate_to_alerts'),
+    getAlertSettings: () => invoke('get_alert_settings'),
+    setAlertSettings: (settings) => invoke('set_alert_settings', { settings }),
+    getRecentAlerts: () => invoke('get_recent_alerts'),
+    markAlertsRead: () => invoke('mark_alerts_read'),
+    clearAlerts: () => invoke('clear_alerts'),
+    dispatchAlert: (kind, title, body, severity) => invoke('dispatch_alert', { kind, title, body, severity }),
+    snoozeAlertKind: (kind, minutes) => invoke('snooze_alert_kind', { kind, minutes }),
+    toastAction: (action) => invoke('toast_action', { action }),
+    // Budget guardrail / circuit breaker
+    getCircuitSettings: () => invoke('get_circuit_settings'),
+    setCircuitSettings: (settings) => invoke('set_circuit_settings', { settings }),
+    getCircuitTrips: () => invoke('get_circuit_trips'),
+    circuitResume: (sessionId) => invoke('circuit_resume', { sessionId }),
 
     // Cowork (team collaboration)
     navigateToCowork: () => invoke('navigate_to_cowork'),
@@ -216,7 +263,33 @@ if (window.__TAURI__) {
     hidePetWindow: () => invoke('hide_pet_window'),
     // Farm window
     showFarmWindow: () => invoke('show_farm_window'),
+    // MCP Manager (Secure)
+    mcpList: () => invoke('mcp_list'),
+    mcpSetEnabled: (sourcePath, name, enabled) => invoke('mcp_set_enabled', { sourcePath, name, enabled }),
+    // Session Timeline + replay (Observe)
+    getSessionTimeline: (agentType) => invoke('get_session_timeline', { agentType: agentType || null }),
+    exportSessionReplay: (agentType) => invoke('export_session_replay', { agentType: agentType || null }),
+    // Rules / Memory Manager (Remember)
+    claudeMdList: () => invoke('claude_md_list'),
+    claudeMdRead: (path) => invoke('claude_md_read', { path }),
+    claudeMdWrite: (path, content) => invoke('claude_md_write', { path, content }),
+    // Connection Doctor
+    connectivityScan: () => invoke('connectivity_scan'),
+    connectivityFixAll: () => invoke('connectivity_fix_all'),
     hideFarmWindow: () => invoke('hide_farm_window'),
+    navigateToFarm: () => invoke('navigate_to_farm'),
+
+    // Knowledge Graph
+    navigateToGraph: () => invoke('navigate_to_graph'),
+    graphStatus: (path) => invoke('graph_status', { path: path || null }),
+    graphBuild: (path) => invoke('graph_build', { path: path || null }),
+    graphGet: (path) => invoke('graph_get', { path: path || null }),
+    graphList: () => invoke('graph_list'),
+    graphAddFolder: (path) => invoke('graph_add_folder', { path }),
+    graphRemove: (path) => invoke('graph_remove', { path }),
+    graphSaveOverlay: (overlay, path) => invoke('graph_save_overlay', { overlay, path: path || null }),
+    graphWriteDigest: (path) => invoke('graph_write_digest', { path: path || null }),
+    graphSetWatch: (enabled, path) => invoke('graph_set_watch', { enabled, path: path || null }),
 
     // Hook (RTK-style compression)
     checkAgentHook: () => invoke('check_agent_hook'),
@@ -293,6 +366,9 @@ if (window.__TAURI__) {
     setClerkUser: (clerkUserId) => invoke('set_clerk_user', { clerkUserId }),
     verifyLicense: (clerkUserId) => invoke('verify_license_remote', { clerkUserId }),
     checkCanOptimize: () => invoke('check_can_optimize'),
+    requestUpgrade: (reason) => invoke('request_upgrade', { reason: reason || null }),
+    getReferralInfo: () => invoke('get_referral_info'),
+    redeemReferralCode: (code) => invoke('redeem_referral_code', { code }),
     trialGraceStatus: () => invoke('trial_grace_status'),
     recordOptimizationUsage: () => invoke('record_optimization_usage'),
     checkCanAddSession: () => invoke('check_can_add_session'),

@@ -242,10 +242,51 @@ function _updatePopupUI(d) {
     }
     document.getElementById('optimized').value = d.optimized || '';
     document.getElementById('btnReplace').disabled = false;
+    _renderPromptQuality(d.original || window._terseLastOriginal || '');
     autoResizePopup();
   } catch (e) {
     console.error('[terse-popup] UI update error:', e);
   }
+}
+
+// ── Prompt-quality score ─────────────────────────────────────────────────────
+// Complements compression: fewer tokens AND a clearer prompt. A fast, local
+// heuristic that grades clarity/specificity and surfaces one actionable tip.
+function scorePromptQuality(text) {
+  const t = (text || '').trim();
+  const words = t ? t.split(/\s+/).length : 0;
+  if (words < 2) return { score: 0, grade: '—', tip: '' };
+  let score = 62; // neutral baseline
+  const tips = [];
+
+  const hasPath = /[\w./~-]+\.[a-z]{1,6}\b/i.test(t) || /(^|\s)[.~]?\/[\w./-]+/.test(t);
+  const hasCode = t.includes('```') || /`[^`]+`/.test(t);
+  const hasImperative = /^(add|fix|create|refactor|write|implement|explain|remove|delete|update|rename|test|debug|make|build|generate|convert|optimi[sz]e|review|summari[sz]e)\b/i.test(t);
+  const vagueOnly = /\b(this|that|it|these|those|the thing|stuff|something)\b/i.test(t) && !hasPath && !hasCode;
+  const wantsOutput = /\b(return|output|format|as (a )?(json|table|list|markdown)|should|expected|so that)\b/i.test(t);
+
+  if (hasPath) score += 12;
+  if (hasCode) score += 8;
+  if (hasImperative) score += 8; else tips.push('Start with a clear verb (add, fix, explain…).');
+  if (wantsOutput) score += 8; else tips.push('Say what output you want (format, file, result).');
+  if (vagueOnly) { score -= 18; tips.push('Replace “this/it” with the concrete file or symbol.'); }
+  if (words < 6) { score -= 12; tips.push('Add specifics — one line is often too vague to act on.'); }
+  if (words > 400) { score -= 6; tips.push('Long prompt — lead with the ask, then the context.'); }
+
+  score = Math.max(5, Math.min(98, Math.round(score)));
+  const grade = score >= 80 ? 'Clear' : score >= 60 ? 'OK' : 'Vague';
+  return { score, grade, tip: tips[0] || 'Looks specific and actionable.' };
+}
+
+function _renderPromptQuality(original) {
+  const el = document.getElementById('promptQuality');
+  if (!el) return;
+  const q = scorePromptQuality(original);
+  if (!q.score) { el.classList.add('hidden'); return; }
+  const tone = q.score >= 80 ? 'good' : q.score >= 60 ? 'ok' : 'low';
+  el.className = 'prompt-quality q-' + tone;
+  el.textContent = '✎ ' + q.grade + ' ' + q.score;
+  el.title = 'Prompt quality ' + q.score + '/100 — ' + q.tip;
 }
 
 T.on('optimize-request', async (d) => {
@@ -314,6 +355,8 @@ T.on('optimize-request', async (d) => {
 
 T.on('send-mode-optimize', async (d) => {
   if (!window._terseOptimizer) return;
+  // Applying an optimization is Pro. Monitoring stays free; here we upsell.
+  try { const c = await _invoke('check_can_optimize'); if (!c.allowed) { _invoke('request_upgrade', { reason: 'Auto-trim on send is a Pro feature.' }).catch(()=>{}); return; } } catch {}
   const opt = window._terseOptimizer.optimize(d.text);
   if (opt.optimized !== d.text && opt.optimized.length >= 3) {
     try {
@@ -537,6 +580,8 @@ let _lastOriginalText = null; // for undo
 document.getElementById('btnReplace').addEventListener('click', async () => {
   const text = document.getElementById('optimized').value;
   if (!text) return;
+  // Pro gate: free users can preview the trim, but applying it is Pro.
+  try { const c = await _invoke('check_can_optimize'); if (!c.allowed) { _invoke('request_upgrade', { reason: 'Applying the trim is a Pro feature.' }).catch(()=>{}); return; } } catch {}
   const btn = document.getElementById('btnReplace');
   // Save original for undo (stored from last optimize-request)
   _lastOriginalText = window._terseLastOriginal || null;
@@ -1882,3 +1927,34 @@ if (!document.body.classList.contains('island-mode')) {
   setInterval(pollProxyStatus, 5000);
   pollProxyStatus();
 }
+
+// ── First-run teaching wizard (shown once, popup only) ───────────────────────
+// A one-question "which agents do you use?" that personalizes nothing critical
+// but frames what Terse does and captures the user's stack for later. The empty
+// state itself already teaches (see #hintTeach); this is the warm welcome.
+(function initFirstRun() {
+  if (document.body.classList.contains('island-mode')) return;
+  const el = document.getElementById('firstRun');
+  if (!el) return;
+  let done = false;
+  try { done = localStorage.getItem('terse_onboarded') === '1'; } catch {}
+  if (done) return;
+  el.classList.remove('hidden');
+  const picked = new Set();
+  el.querySelectorAll('.fr-chip').forEach((c) => {
+    c.addEventListener('click', () => {
+      const a = c.dataset.agent;
+      if (picked.has(a)) { picked.delete(a); c.classList.remove('on'); }
+      else { picked.add(a); c.classList.add('on'); }
+    });
+  });
+  const finish = () => {
+    try {
+      localStorage.setItem('terse_onboarded', '1');
+      localStorage.setItem('terse_agents', JSON.stringify([...picked]));
+    } catch {}
+    el.classList.add('hidden');
+  };
+  const btn = document.getElementById('frDone');
+  if (btn) btn.addEventListener('click', finish);
+})();

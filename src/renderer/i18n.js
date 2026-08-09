@@ -32,6 +32,7 @@ en: {
   cmd_theme_azure: 'Theme: Azure', cmd_theme_lime: 'Theme: Lime', cmd_theme_lavender: 'Theme: Lavender',
   cmd_theme_coral: 'Theme: Coral', cmd_theme_teal: 'Theme: Teal', cmd_theme_midnight: 'Theme: Midnight',
   cmd_theme_rose: 'Theme: Rose', cmd_theme_sage: 'Theme: Sage', cmd_theme_sand: 'Theme: Sand',
+  cmd_theme_horizon: 'Theme: Horizon · Glass',
   cmd_or_press: 'or press', cmd_for_commands: 'for commands',
   empty_guided_sub: 'Connect a chat window — Terse trims every prompt you send',
   empty_connect_cta: 'Connect a window',
@@ -254,6 +255,7 @@ en: {
   cmd_theme_azure: '主题：Azure 蓝', cmd_theme_lime: '主题：Lime 青柠', cmd_theme_lavender: '主题：Lavender 薰衣草',
   cmd_theme_coral: '主题：Coral 珊瑚', cmd_theme_teal: '主题：Teal 青绿', cmd_theme_midnight: '主题：Midnight 午夜',
   cmd_theme_rose: '主题：Rose 玫瑰', cmd_theme_sage: '主题：Sage 鼠尾草', cmd_theme_sand: '主题：Sand 沙金',
+  cmd_theme_horizon: '主题：Horizon 玻璃',
   cmd_or_press: '或按', cmd_for_commands: '查看所有命令',
   empty_guided_sub: '连接一个聊天窗口 — Terse 会精简你发送的每个提示词',
   empty_connect_cta: '连接一个窗口',
@@ -451,6 +453,7 @@ en: {
   cmd_theme_azure: '主題：Azure 藍', cmd_theme_lime: '主題：Lime 青檸', cmd_theme_lavender: '主題：Lavender 薰衣草',
   cmd_theme_coral: '主題：Coral 珊瑚', cmd_theme_teal: '主題：Teal 青綠', cmd_theme_midnight: '主題：Midnight 午夜',
   cmd_theme_rose: '主題：Rose 玫瑰', cmd_theme_sage: '主題：Sage 鼠尾草', cmd_theme_sand: '主題：Sand 沙金',
+  cmd_theme_horizon: '主題：Horizon 玻璃',
   cmd_or_press: '或按', cmd_for_commands: '查看所有命令',
   empty_guided_sub: '連接一個聊天視窗 — Terse 會精簡你發送的每個提示詞',
   empty_connect_cta: '連接一個視窗',
@@ -1346,6 +1349,119 @@ ar: {
 // language blocks above stay focused on the main windows. Boards reuse a few
 // existing keys (cache · tools · context · turns · input · monitoring · saveable
 // · agent) where the wording is identical.
+// ── New-UI strings (sidebar nav/sections + Observe/MCP/Rules/KPI panels) ──
+// Centralised for every locale, then merged into TRANSLATIONS so we don't have
+// to touch each language block. English falls through to the source HTML.
+const NEW_UI = {
+  'zh-Hans': {
+    nav_overview:'概览', nav_observe:'观察', nav_stats:'统计', nav_doctor:'体检', nav_cleanup:'清理', nav_rules:'规则', nav_alerts:'提醒', nav_prompts:'提示词', nav_history:'历史', nav_team:'团队', nav_farm:'农场', nav_speed:'加速', nav_pals:'宠物', nav_settings:'设置',
+    grp_monitor:'监控', grp_optimize:'优化', grp_secure:'安全', grp_library:'资料', agent_butler:'智能体管家', speed_up_mode:'加速模式',
+    ob_timeline:'会话时间线', ob_sub:'实时逐步追踪你的智能体', ob_refresh:'↻ 刷新', ob_export:'⤓ 导出回放',
+    ob_empty:'暂无活动会话。启动 Claude Code、Cursor 或 Codex，它的每一步都会显示在这里——含每步 token 成本。', ob_clean:'✓ 未检测到循环或浪费', ob_files:'改动文件：',
+    mcp_sub:'审计每个已配置的工具服务器', rescan:'↻ 重新扫描', mcp_empty:'未在 Claude Code、Cursor 或 Windsurf 配置中找到 MCP 服务器。添加工具服务器后，Terse 会在这里审计其权限并标记有风险的服务器。',
+    mcp_high:'高风险', mcp_medium:'中等', mcp_low:'低', mcp_enabled:'已启用',
+    rules_sub:'你常驻的 CLAUDE.md 文件——每轮都会加载', rules_empty:'未找到 CLAUDE.md 文件。在项目中（或 ~/.claude/CLAUDE.md）创建一个，为你的智能体提供持久规则——Terse 会在这里审计其常驻 token 成本。',
+    close_btn:'关闭', compress_btn:'⚡ 压缩', save_btn:'保存', kpi_saved:'今日节省', kpi_spend:'今日花费', kpi_burn:'消耗 · 预计', kpi_burnrate:'消耗速率', kpi_context:'上下文', ph_ob_search:'搜索此会话…', ph_rules:'# 项目规则…',
+  },
+  'zh-Hant': {
+    nav_overview:'概覽', nav_observe:'觀察', nav_stats:'統計', nav_doctor:'體檢', nav_cleanup:'清理', nav_rules:'規則', nav_alerts:'提醒', nav_prompts:'提示詞', nav_history:'歷史', nav_team:'團隊', nav_farm:'農場', nav_speed:'加速', nav_pals:'寵物', nav_settings:'設定',
+    grp_monitor:'監控', grp_optimize:'優化', grp_secure:'安全', grp_library:'資料', agent_butler:'智能體管家', speed_up_mode:'加速模式',
+    ob_timeline:'工作階段時間軸', ob_sub:'即時逐步追蹤你的智能體', ob_refresh:'↻ 重新整理', ob_export:'⤓ 匯出回放',
+    ob_empty:'暫無進行中的工作階段。啟動 Claude Code、Cursor 或 Codex，它的每一步都會顯示在這裡——含每步 token 成本。', ob_clean:'✓ 未偵測到迴圈或浪費', ob_files:'變更檔案：',
+    mcp_sub:'稽核每個已設定的工具伺服器', rescan:'↻ 重新掃描', mcp_empty:'未在 Claude Code、Cursor 或 Windsurf 設定中找到 MCP 伺服器。新增工具伺服器後，Terse 會在這裡稽核其權限並標記有風險的伺服器。',
+    mcp_high:'高風險', mcp_medium:'中等', mcp_low:'低', mcp_enabled:'已啟用',
+    rules_sub:'你常駐的 CLAUDE.md 檔案——每輪都會載入', rules_empty:'未找到 CLAUDE.md 檔案。在專案中（或 ~/.claude/CLAUDE.md）建立一個，為你的智能體提供持久規則——Terse 會在這裡稽核其常駐 token 成本。',
+    close_btn:'關閉', compress_btn:'⚡ 壓縮', save_btn:'儲存', kpi_saved:'今日節省', kpi_spend:'今日花費', kpi_burn:'消耗 · 預計', kpi_burnrate:'消耗速率', kpi_context:'上下文', ph_ob_search:'搜尋此工作階段…', ph_rules:'# 專案規則…',
+  },
+  ja: {
+    nav_overview:'概要', nav_observe:'観察', nav_stats:'統計', nav_doctor:'診断', nav_cleanup:'クリーンアップ', nav_rules:'ルール', nav_alerts:'アラート', nav_prompts:'プロンプト', nav_history:'履歴', nav_team:'チーム', nav_farm:'ファーム', nav_speed:'高速化', nav_pals:'ペット', nav_settings:'設定',
+    grp_monitor:'モニター', grp_optimize:'最適化', grp_secure:'セキュリティ', grp_library:'ライブラリ', agent_butler:'エージェント執事', speed_up_mode:'高速化モード',
+    ob_timeline:'セッションタイムライン', ob_sub:'エージェントをステップごとにリアルタイム追跡', ob_refresh:'↻ 更新', ob_export:'⤓ リプレイを書き出し',
+    ob_empty:'アクティブなセッションがありません。Claude Code、Cursor、Codex を起動すると、各ステップがトークンコスト付きでここに表示されます。', ob_clean:'✓ ループや無駄は検出されませんでした', ob_files:'変更されたファイル：',
+    mcp_sub:'設定済みのすべてのツールサーバーを監査', rescan:'↻ 再スキャン', mcp_empty:'Claude Code、Cursor、Windsurf の設定に MCP サーバーが見つかりません。ツールサーバーを追加すると、Terse がその権限を監査し、危険なものをここに表示します。',
+    mcp_high:'高リスク', mcp_medium:'中', mcp_low:'低', mcp_enabled:'有効',
+    rules_sub:'常時読み込まれる CLAUDE.md ファイル（毎ターン）', rules_empty:'CLAUDE.md ファイルが見つかりません。プロジェクト（または ~/.claude/CLAUDE.md）に作成すると、エージェントに永続的なルールを与えられます。Terse が常時トークンコストをここで監査します。',
+    close_btn:'閉じる', compress_btn:'⚡ 圧縮', save_btn:'保存', kpi_saved:'本日の節約', kpi_spend:'本日の支出', kpi_burn:'消費 · 予測', kpi_burnrate:'消費レート', kpi_context:'コンテキスト', ph_ob_search:'このセッションを検索…', ph_rules:'# プロジェクトルール…',
+  },
+  ko: {
+    nav_overview:'개요', nav_observe:'관찰', nav_stats:'통계', nav_doctor:'검진', nav_cleanup:'정리', nav_rules:'규칙', nav_alerts:'알림', nav_prompts:'프롬프트', nav_history:'기록', nav_team:'팀', nav_farm:'팜', nav_speed:'가속', nav_pals:'펫', nav_settings:'설정',
+    grp_monitor:'모니터', grp_optimize:'최적화', grp_secure:'보안', grp_library:'라이브러리', agent_butler:'에이전트 집사', speed_up_mode:'가속 모드',
+    ob_timeline:'세션 타임라인', ob_sub:'에이전트를 단계별로 실시간 추적', ob_refresh:'↻ 새로고침', ob_export:'⤓ 리플레이 내보내기',
+    ob_empty:'활성 세션이 없습니다. Claude Code, Cursor 또는 Codex를 실행하면 각 단계가 토큰 비용과 함께 여기에 표시됩니다.', ob_clean:'✓ 루프나 낭비가 감지되지 않음', ob_files:'변경된 파일:',
+    mcp_sub:'구성된 모든 도구 서버 감사', rescan:'↻ 다시 스캔', mcp_empty:'Claude Code, Cursor 또는 Windsurf 구성에서 MCP 서버를 찾을 수 없습니다. 도구 서버를 추가하면 Terse가 권한을 감사하고 위험한 항목을 여기에 표시합니다.',
+    mcp_high:'높은 위험', mcp_medium:'보통', mcp_low:'낮음', mcp_enabled:'사용 중',
+    rules_sub:'항상 로드되는 CLAUDE.md 파일 — 매 턴마다 로드', rules_empty:'CLAUDE.md 파일을 찾을 수 없습니다. 프로젝트(또는 ~/.claude/CLAUDE.md)에 만들어 에이전트에 지속적인 규칙을 부여하세요. Terse가 상시 토큰 비용을 여기서 감사합니다.',
+    close_btn:'닫기', compress_btn:'⚡ 압축', save_btn:'저장', kpi_saved:'오늘 절약', kpi_spend:'오늘 지출', kpi_burn:'소모 · 예상', kpi_burnrate:'소모율', kpi_context:'컨텍스트', ph_ob_search:'이 세션 검색…', ph_rules:'# 프로젝트 규칙…',
+  },
+  es: {
+    nav_overview:'Resumen', nav_observe:'Observar', nav_stats:'Estadísticas', nav_doctor:'Diagnóstico', nav_cleanup:'Limpieza', nav_rules:'Reglas', nav_alerts:'Alertas', nav_prompts:'Prompts', nav_history:'Historial', nav_team:'Equipo', nav_farm:'Granja', nav_speed:'Acelerar', nav_pals:'Mascotas', nav_settings:'Ajustes',
+    grp_monitor:'Monitor', grp_optimize:'Optimizar', grp_secure:'Seguridad', grp_library:'Biblioteca', agent_butler:'Mayordomo de agentes', speed_up_mode:'Modo aceleración',
+    ob_timeline:'Cronología de sesión', ob_sub:'Rastreo en vivo paso a paso de tu agente', ob_refresh:'↻ Actualizar', ob_export:'⤓ Exportar repetición',
+    ob_empty:'No hay sesión activa. Inicia Claude Code, Cursor o Codex y cada paso aparecerá aquí, con el coste de tokens por paso.', ob_clean:'✓ Sin bucles ni desperdicio detectados', ob_files:'Archivos modificados:',
+    mcp_sub:'Audita cada servidor de herramientas configurado', rescan:'↻ Reescanear', mcp_empty:'No se encontraron servidores MCP en la configuración de Claude Code, Cursor o Windsurf. Cuando añadas servidores, Terse auditará sus permisos y marcará los arriesgados aquí.',
+    mcp_high:'riesgo alto', mcp_medium:'medio', mcp_low:'bajo', mcp_enabled:'activos',
+    rules_sub:'Tus archivos CLAUDE.md siempre activos, cargados en cada turno', rules_empty:'No se encontraron archivos CLAUDE.md. Crea uno en un proyecto (o ~/.claude/CLAUDE.md) para dar reglas persistentes a tus agentes; Terse audita aquí su coste de tokens siempre activo.',
+    close_btn:'Cerrar', compress_btn:'⚡ Comprimir', save_btn:'Guardar', kpi_saved:'Ahorrado hoy', kpi_spend:'Gasto hoy', kpi_burn:'Consumo · ETA', kpi_burnrate:'Tasa de consumo', kpi_context:'Contexto', ph_ob_search:'Buscar en esta sesión…', ph_rules:'# Reglas del proyecto…',
+  },
+  fr: {
+    nav_overview:'Aperçu', nav_observe:'Observer', nav_stats:'Statistiques', nav_doctor:'Diagnostic', nav_cleanup:'Nettoyage', nav_rules:'Règles', nav_alerts:'Alertes', nav_prompts:'Prompts', nav_history:'Historique', nav_team:'Équipe', nav_farm:'Ferme', nav_speed:'Accélérer', nav_pals:'Compagnons', nav_settings:'Paramètres',
+    grp_monitor:'Surveillance', grp_optimize:'Optimiser', grp_secure:'Sécurité', grp_library:'Bibliothèque', agent_butler:'Majordome d’agents', speed_up_mode:'Mode accéléré',
+    ob_timeline:'Chronologie de session', ob_sub:'Suivi en direct étape par étape de votre agent', ob_refresh:'↻ Actualiser', ob_export:'⤓ Exporter la relecture',
+    ob_empty:'Aucune session active. Lancez Claude Code, Cursor ou Codex et chaque étape apparaîtra ici, avec le coût en jetons par étape.', ob_clean:'✓ Aucune boucle ni gaspillage détecté', ob_files:'Fichiers modifiés :',
+    mcp_sub:'Auditez chaque serveur d’outils configuré', rescan:'↻ Rescanner', mcp_empty:'Aucun serveur MCP trouvé dans la configuration de Claude Code, Cursor ou Windsurf. Lorsque vous en ajoutez, Terse audite leurs autorisations et signale les plus risqués ici.',
+    mcp_high:'risque élevé', mcp_medium:'moyen', mcp_low:'faible', mcp_enabled:'activés',
+    rules_sub:'Vos fichiers CLAUDE.md toujours actifs, chargés à chaque tour', rules_empty:'Aucun fichier CLAUDE.md trouvé. Créez-en un dans un projet (ou ~/.claude/CLAUDE.md) pour donner des règles persistantes à vos agents ; Terse audite ici leur coût en jetons permanent.',
+    close_btn:'Fermer', compress_btn:'⚡ Compresser', save_btn:'Enregistrer', kpi_saved:'Économisé aujourd’hui', kpi_spend:'Dépense du jour', kpi_burn:'Consommation · ETA', kpi_burnrate:'Débit de consommation', kpi_context:'Contexte', ph_ob_search:'Rechercher dans cette session…', ph_rules:'# Règles du projet…',
+  },
+  de: {
+    nav_overview:'Übersicht', nav_observe:'Beobachten', nav_stats:'Statistiken', nav_doctor:'Diagnose', nav_cleanup:'Bereinigung', nav_rules:'Regeln', nav_alerts:'Warnungen', nav_prompts:'Prompts', nav_history:'Verlauf', nav_team:'Team', nav_farm:'Farm', nav_speed:'Beschleunigen', nav_pals:'Begleiter', nav_settings:'Einstellungen',
+    grp_monitor:'Überwachung', grp_optimize:'Optimieren', grp_secure:'Sicherheit', grp_library:'Bibliothek', agent_butler:'Agenten-Butler', speed_up_mode:'Beschleunigungsmodus',
+    ob_timeline:'Sitzungsverlauf', ob_sub:'Live-Schritt-für-Schritt-Verfolgung Ihres Agenten', ob_refresh:'↻ Aktualisieren', ob_export:'⤓ Wiedergabe exportieren',
+    ob_empty:'Keine aktive Sitzung. Starten Sie Claude Code, Cursor oder Codex, und jeder Schritt erscheint hier – mit Token-Kosten pro Schritt.', ob_clean:'✓ Keine Schleifen oder Verschwendung erkannt', ob_files:'Geänderte Dateien:',
+    mcp_sub:'Jeden konfigurierten Tool-Server prüfen', rescan:'↻ Erneut scannen', mcp_empty:'Keine MCP-Server in der Konfiguration von Claude Code, Cursor oder Windsurf gefunden. Wenn Sie Server hinzufügen, prüft Terse deren Berechtigungen und markiert riskante hier.',
+    mcp_high:'hohes Risiko', mcp_medium:'mittel', mcp_low:'niedrig', mcp_enabled:'aktiviert',
+    rules_sub:'Ihre stets aktiven CLAUDE.md-Dateien – bei jedem Zug geladen', rules_empty:'Keine CLAUDE.md-Dateien gefunden. Erstellen Sie eine in einem Projekt (oder ~/.claude/CLAUDE.md), um Ihren Agenten dauerhafte Regeln zu geben; Terse prüft hier ihre stets aktiven Token-Kosten.',
+    close_btn:'Schließen', compress_btn:'⚡ Komprimieren', save_btn:'Speichern', kpi_saved:'Heute gespart', kpi_spend:'Heutige Ausgaben', kpi_burn:'Verbrauch · ETA', kpi_burnrate:'Verbrauchsrate', kpi_context:'Kontext', ph_ob_search:'Diese Sitzung durchsuchen…', ph_rules:'# Projektregeln…',
+  },
+  ar: {
+    nav_overview:'نظرة عامة', nav_observe:'مراقبة', nav_stats:'إحصاءات', nav_doctor:'فحص', nav_cleanup:'تنظيف', nav_rules:'قواعد', nav_alerts:'تنبيهات', nav_prompts:'موجهات', nav_history:'السجل', nav_team:'الفريق', nav_farm:'المزرعة', nav_speed:'تسريع', nav_pals:'الرفاق', nav_settings:'الإعدادات',
+    grp_monitor:'المراقبة', grp_optimize:'التحسين', grp_secure:'الأمان', grp_library:'المكتبة', agent_butler:'مدبّر الوكلاء', speed_up_mode:'وضع التسريع',
+    ob_timeline:'الجدول الزمني للجلسة', ob_sub:'تتبّع مباشر خطوة بخطوة لوكيلك', ob_refresh:'↻ تحديث', ob_export:'⤓ تصدير الإعادة',
+    ob_empty:'لا توجد جلسة نشطة. شغّل Claude Code أو Cursor أو Codex وستظهر كل خطوة هنا مع تكلفة الرموز لكل خطوة.', ob_clean:'✓ لم يُكتشف أي تكرار أو هدر', ob_files:'الملفات المعدّلة:',
+    mcp_sub:'دقّق كل خادم أدوات مُهيّأ', rescan:'↻ إعادة الفحص', mcp_empty:'لم يُعثر على خوادم MCP في إعدادات Claude Code أو Cursor أو Windsurf. عند إضافة خوادم أدوات، يدقّق Terse أذوناتها ويعلّم الخطيرة هنا.',
+    mcp_high:'خطر مرتفع', mcp_medium:'متوسط', mcp_low:'منخفض', mcp_enabled:'مُفعّل',
+    rules_sub:'ملفات CLAUDE.md الدائمة لديك — تُحمّل في كل دور', rules_empty:'لم يُعثر على ملفات CLAUDE.md. أنشئ ملفًا في مشروع (أو ~/.claude/CLAUDE.md) لمنح وكلائك قواعد دائمة؛ يدقّق Terse تكلفة الرموز الدائمة هنا.',
+    close_btn:'إغلاق', compress_btn:'⚡ ضغط', save_btn:'حفظ', kpi_saved:'وُفِّر اليوم', kpi_spend:'إنفاق اليوم', kpi_burn:'الاستهلاك · المتوقّع', kpi_burnrate:'معدل الاستهلاك', kpi_context:'السياق', ph_ob_search:'ابحث في هذه الجلسة…', ph_rules:'# قواعد المشروع…',
+  },
+  'pt-BR': {
+    nav_overview:'Visão geral', nav_observe:'Observar', nav_stats:'Estatísticas', nav_doctor:'Diagnóstico', nav_cleanup:'Limpeza', nav_rules:'Regras', nav_alerts:'Alertas', nav_prompts:'Prompts', nav_history:'Histórico', nav_team:'Equipe', nav_farm:'Fazenda', nav_speed:'Acelerar', nav_pals:'Mascotes', nav_settings:'Configurações',
+    grp_monitor:'Monitor', grp_optimize:'Otimizar', grp_secure:'Segurança', grp_library:'Biblioteca', agent_butler:'Mordomo de agentes', speed_up_mode:'Modo turbo',
+    ob_timeline:'Linha do tempo da sessão', ob_sub:'Rastreamento ao vivo passo a passo do seu agente', ob_refresh:'↻ Atualizar', ob_export:'⤓ Exportar replay',
+    ob_empty:'Nenhuma sessão ativa. Inicie o Claude Code, Cursor ou Codex e cada passo aparecerá aqui, com o custo de tokens por passo.', ob_clean:'✓ Nenhum loop ou desperdício detectado', ob_files:'Arquivos alterados:',
+    mcp_sub:'Audite cada servidor de ferramentas configurado', rescan:'↻ Reescanear', mcp_empty:'Nenhum servidor MCP encontrado nas configurações do Claude Code, Cursor ou Windsurf. Ao adicionar servidores, o Terse audita suas permissões e sinaliza os arriscados aqui.',
+    mcp_high:'risco alto', mcp_medium:'médio', mcp_low:'baixo', mcp_enabled:'ativos',
+    rules_sub:'Seus arquivos CLAUDE.md sempre ativos — carregados a cada turno', rules_empty:'Nenhum arquivo CLAUDE.md encontrado. Crie um em um projeto (ou ~/.claude/CLAUDE.md) para dar regras persistentes aos seus agentes; o Terse audita aqui o custo de tokens sempre ativo.',
+    close_btn:'Fechar', compress_btn:'⚡ Comprimir', save_btn:'Salvar', kpi_saved:'Economizado hoje', kpi_spend:'Gasto hoje', kpi_burn:'Consumo · ETA', kpi_burnrate:'Taxa de consumo', kpi_context:'Contexto', ph_ob_search:'Pesquisar nesta sessão…', ph_rules:'# Regras do projeto…',
+  },
+};
+for (const _lng of Object.keys(NEW_UI)) {
+  if (TRANSLATIONS[_lng]) Object.assign(TRANSLATIONS[_lng], NEW_UI[_lng]);
+}
+const _CLEAN_UP = { 'zh-Hans':'一键清理','zh-Hant':'一鍵清理', ja:'一括クリーンアップ', ko:'한 번에 정리', es:'Limpiar', fr:'Nettoyer', de:'Bereinigen', ar:'تنظيف', 'pt-BR':'Limpar' };
+for (const _l in _CLEAN_UP) if (TRANSLATIONS[_l]) TRANSLATIONS[_l].clean_up_btn = _CLEAN_UP[_l];
+const _CONN = {
+  'zh-Hans': { nav_connection:'连接', conn_sub:'诊断智能体为何无法连接 Claude', conn_fixall:'🛠 一键修复' },
+  'zh-Hant': { nav_connection:'連接', conn_sub:'診斷智能體為何無法連接 Claude', conn_fixall:'🛠 一鍵修復' },
+  ja: { nav_connection:'接続', conn_sub:'エージェントが Claude に接続できない原因を診断', conn_fixall:'🛠 すべて修復' },
+  ko: { nav_connection:'연결', conn_sub:'에이전트가 Claude에 연결하지 못하는 원인 진단', conn_fixall:'🛠 모두 수정' },
+  es: { nav_connection:'Conexión', conn_sub:'Diagnostica por qué un agente no puede conectar con Claude', conn_fixall:'🛠 Reparar todo' },
+  fr: { nav_connection:'Connexion', conn_sub:'Diagnostiquez pourquoi un agent ne peut pas joindre Claude', conn_fixall:'🛠 Tout réparer' },
+  de: { nav_connection:'Verbindung', conn_sub:'Diagnostizieren, warum ein Agent Claude nicht erreicht', conn_fixall:'🛠 Alles beheben' },
+  ar: { nav_connection:'الاتصال', conn_sub:'تشخيص سبب عدم اتصال الوكيل بـ Claude', conn_fixall:'🛠 إصلاح الكل' },
+  'pt-BR': { nav_connection:'Conexão', conn_sub:'Diagnostique por que um agente não alcança o Claude', conn_fixall:'🛠 Corrigir tudo' },
+};
+for (const _l in _CONN) if (TRANSLATIONS[_l]) Object.assign(TRANSLATIONS[_l], _CONN[_l]);
+
 const DASH_T = {
   en: {
     dash_session:'Session', dash_focus:'Focus', dash_compression:'Compression',
@@ -1694,13 +1810,37 @@ const EN_TEXT_MAP = {
   'Theme: Azure': 'cmd_theme_azure', 'Theme: Lime': 'cmd_theme_lime', 'Theme: Lavender': 'cmd_theme_lavender',
   'Theme: Coral': 'cmd_theme_coral', 'Theme: Teal': 'cmd_theme_teal', 'Theme: Midnight': 'cmd_theme_midnight',
   'Theme: Rose': 'cmd_theme_rose', 'Theme: Sage': 'cmd_theme_sage', 'Theme: Sand': 'cmd_theme_sand',
+  'Theme: Horizon · Glass': 'cmd_theme_horizon',
   'or press': 'cmd_or_press', 'for commands': 'cmd_for_commands',
   'Connect a chat window — Terse trims every prompt you send': 'empty_guided_sub',
+  // Observe / MCP / Rules / KPI panels (new)
+  'Session Timeline': 'ob_timeline', 'Live step-by-step trace of your agent': 'ob_sub',
+  '↻ Refresh': 'ob_refresh', '⤓ Export replay': 'ob_export',
+  'No active session. Start Claude Code, Cursor, or Codex and its every step shows up here — with per-step token cost.': 'ob_empty',
+  '✓ no loops or waste detected': 'ob_clean', 'Files touched:': 'ob_files',
+  'Audit every configured tool server': 'mcp_sub', '↻ Rescan': 'rescan',
+  'No MCP servers found in Claude Code, Cursor, or Windsurf configs. When you add tool servers, Terse audits their permissions and flags risky ones here.': 'mcp_empty',
+  'high risk': 'mcp_high', 'medium': 'mcp_medium', 'low': 'mcp_low', 'enabled': 'mcp_enabled',
+  'Rules · Memory': 'rules_title', 'Your always-on CLAUDE.md files — loaded every turn': 'rules_sub',
+  'No CLAUDE.md files found. Create one in a project (or ~/.claude/CLAUDE.md) to give your agents persistent rules — Terse audits their always-on token cost here.': 'rules_empty',
+  'Close': 'close_btn', '⚡ Compress': 'compress_btn', 'Save': 'save_btn',
+  'Saved today': 'kpi_saved', 'Spend today': 'kpi_spend', 'Burn · ETA': 'kpi_burn', 'Burn rate': 'kpi_burnrate',
+  // Sidebar nav + section labels + header (single-language, locale-driven)
+  'Overview': 'nav_overview', 'Observe': 'nav_observe', 'Stats': 'nav_stats',
+  'Doctor': 'nav_doctor', 'Cleanup': 'nav_cleanup', 'Rules': 'nav_rules',
+  'Alerts': 'nav_alerts', 'Prompts': 'nav_prompts', 'History': 'nav_history',
+  'Team': 'nav_team', 'Farm': 'nav_farm', 'Speed Up': 'nav_speed', 'Pals': 'nav_pals',
+  'Settings': 'nav_settings', 'Speed Up Mode': 'speed_up_mode',
+  'Monitor': 'grp_monitor', 'Optimize': 'grp_optimize', 'Secure': 'grp_secure', 'Library': 'grp_library',
+  'Agent Butler': 'agent_butler', 'Clean up': 'clean_up_btn',
+  'Connection': 'nav_connection', "Diagnose why an agent can't reach Claude": 'conn_sub', '🛠 Fix all': 'conn_fixall',
 };
 const EN_PLACEHOLDER_MAP = {
   'Paste a prompt to optimize...': 'paste_placeholder',
   'Optimized text appears here...': 'optimized_placeholder',
   'Type a command...': 'cmd_placeholder',
+  'Search this session…': 'ph_ob_search',
+  '# Project rules…': 'ph_rules',
 };
 const EN_TITLE_MAP = {
   'Theme': 'theme', 'Settings': 'settings', 'Hide': 'hide', 'Language': 'language',
@@ -1808,6 +1948,75 @@ function createLangPicker(anchorEl, onPick) {
 
   return dd;
 }
+
+// ── Freemium / referral strings (added 2026-07) ─────────────────────────────
+// Registered here (not inline in the big dicts) to keep the addition self-contained.
+// Languages beyond en/zh fall back to English via t()'s built-in fallback.
+Object.assign(EN_TEXT_MAP, {
+  "You're watching the waste — Pro fixes it": 'fh_title',
+  'Live optimization, Speed Up, Cleanup & Team are Pro. Auto-trim every prompt and cut your agent bill.': 'fh_sub',
+  'Start free trial →': 'fh_btn',
+  'Monitoring, stats & wallpaper stay free forever · cancel anytime': 'fh_note',
+  'Invite & earn Pro': 'sb_invite',
+  'Give Pro, get Pro': 'inv_title',
+  'Your invite code': 'inv_code_label',
+  'Copy link': 'inv_copy',
+  'invited': 'inv_invited',
+  'joined Pro': 'inv_joined',
+  'Pro days': 'inv_prodays',
+  "Have a friend's code?": 'inv_have_code',
+  'Redeem': 'inv_redeem',
+  'Keep using Terse free →': 'pw_later',
+  '🎁 Invite friends → get Pro free': 'pw_invite',
+  'Share link copied ✓': 'inv_copied',
+});
+if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['ENTER CODE'] = 'inv_placeholder';
+(function augmentFreemiumI18n() {
+  const add = (lang, obj) => { TRANSLATIONS[lang] = Object.assign({}, TRANSLATIONS[lang], obj); };
+  add('en', {
+    fh_title: "You're watching the waste — Pro fixes it",
+    fh_sub: 'Live optimization, Speed Up, Cleanup & Team are Pro. Auto-trim every prompt and cut your agent bill.',
+    fh_btn: 'Start free trial →', fh_note: 'Monitoring, stats & wallpaper stay free forever · cancel anytime',
+    sb_invite: 'Invite & earn Pro', inv_title: 'Give Pro, get Pro', inv_code_label: 'Your invite code',
+    inv_copy: 'Copy link', inv_invited: 'invited', inv_joined: 'joined Pro', inv_prodays: 'Pro days',
+    inv_have_code: "Have a friend's code?", inv_redeem: 'Redeem', inv_placeholder: 'ENTER CODE',
+    inv_copied: 'Share link copied ✓', pw_later: 'Keep using Terse free →', pw_invite: '🎁 Invite friends → get Pro free',
+    pro_gate_boost: 'Speed Up is a Pro feature. Start your free trial to cut your agent bill.',
+    pro_gate_cleanup: 'Cleanup is a Pro feature. Start your free trial to reclaim wasted tokens & disk.',
+    pro_gate_team: 'Team is a Pro feature. Start your free trial to watch every agent together.',
+    pro_gate_optimize: 'Live optimization is Pro. Start your free trial to auto-trim every prompt.',
+    pro_gate_stats: 'Stats is a Pro feature. Start your free trial to see where your tokens go.',
+    pro_gate_connection: 'Connection Doctor is a Pro feature. Start your free trial to auto-fix agent connectivity.',
+  });
+  add('zh-Hans', {
+    fh_title: '你在看着浪费 —— Pro 帮你省下', fh_sub: '实时优化、加速、清理和团队均为 Pro 功能。自动精简每条提示词，削减你的智能体账单。',
+    fh_btn: '开始免费试用 →', fh_note: '监控、统计和壁纸永久免费 · 随时取消',
+    sb_invite: '邀请赚 Pro', inv_title: '送 Pro，得 Pro', inv_code_label: '你的邀请码', inv_copy: '复制链接',
+    inv_invited: '已邀请', inv_joined: '已开通 Pro', inv_prodays: 'Pro 天数', inv_have_code: '有朋友的邀请码？',
+    inv_redeem: '兑换', inv_placeholder: '输入邀请码', inv_copied: '分享链接已复制 ✓',
+    pw_later: '继续免费使用 Terse →', pw_invite: '🎁 邀请好友 → 免费得 Pro',
+    pro_gate_boost: '加速是 Pro 功能。开始免费试用，削减你的智能体账单。',
+    pro_gate_cleanup: '清理是 Pro 功能。开始免费试用，回收被浪费的 token 和磁盘。',
+    pro_gate_team: '团队是 Pro 功能。开始免费试用，一起观察每个智能体。',
+    pro_gate_optimize: '实时优化是 Pro 功能。开始免费试用，自动精简每条提示词。',
+    pro_gate_stats: '统计是 Pro 功能。开始免费试用，看清你的 token 都花在哪。',
+    pro_gate_connection: '连接体检是 Pro 功能。开始免费试用，自动修复智能体连接问题。',
+  });
+  add('zh-Hant', {
+    fh_title: '你正看著浪費 —— Pro 幫你省下', fh_sub: '即時最佳化、加速、清理和團隊皆為 Pro 功能。自動精簡每條提示詞，削減你的代理帳單。',
+    fh_btn: '開始免費試用 →', fh_note: '監控、統計和桌布永久免費 · 隨時取消',
+    sb_invite: '邀請賺 Pro', inv_title: '送 Pro，得 Pro', inv_code_label: '你的邀請碼', inv_copy: '複製連結',
+    inv_invited: '已邀請', inv_joined: '已開通 Pro', inv_prodays: 'Pro 天數', inv_have_code: '有朋友的邀請碼？',
+    inv_redeem: '兌換', inv_placeholder: '輸入邀請碼', inv_copied: '分享連結已複製 ✓',
+    pw_later: '繼續免費使用 Terse →', pw_invite: '🎁 邀請好友 → 免費得 Pro',
+    pro_gate_boost: '加速是 Pro 功能。開始免費試用，削減你的代理帳單。',
+    pro_gate_cleanup: '清理是 Pro 功能。開始免費試用，回收被浪費的 token 和磁碟。',
+    pro_gate_team: '團隊是 Pro 功能。開始免費試用，一起觀察每個代理。',
+    pro_gate_optimize: '即時最佳化是 Pro 功能。開始免費試用，自動精簡每條提示詞。',
+    pro_gate_stats: '統計是 Pro 功能。開始免費試用，看清你的 token 都花在哪。',
+    pro_gate_connection: '連線體檢是 Pro 功能。開始免費試用，自動修復代理連線問題。',
+  });
+})();
 
 // ── Init: apply translations on load ──
 applyTranslations();

@@ -496,7 +496,7 @@
     if (f.fixKind === 'delete') {
       const n = (f.paths && f.paths.length) || 0;
       const label = n > 0 ? n + ' junk file' + (n === 1 ? '' : 's') : 'these junk files';
-      if (!(await dconfirm('Delete ' + label + '?', 'This cannot be undone.', 'Clean'))) return false;
+      if (!(await dconfirm('Clean ' + label + '?', 'Files move to your Trash, so you can restore them if needed.', 'Clean'))) return false;
     }
     if (f.fixKind === 'kill-process') {
       const n = (f.paths && f.paths.length) || 0;
@@ -578,9 +578,13 @@
   // in the standalone case we also hide the Doctor so the paywall is visible.
   async function goToPaywall() {
     const standalone = currentWindowLabel() === 'doctor';
+    // request_upgrade returns the main window to the app shell AND opens the
+    // Pro sheet (via the #upgrade hash) — so gating actually shows the paywall
+    // instead of silently navigating back.
     try {
-      if (T.showMainWindow) await T.showMainWindow();
-      else if (T.navigateBack) await T.navigateBack();
+      if (T.requestUpgrade) { await T.requestUpgrade('doctor_fix'); }
+      else if (T.showMainWindow) { await T.showMainWindow(); }
+      else if (T.navigateBack) { await T.navigateBack(); }
     } catch (e) { /* ignore */ }
     if (standalone) {
       try { if (T.hideDoctorWindow) await T.hideDoctorWindow(); } catch (e) { /* ignore */ }

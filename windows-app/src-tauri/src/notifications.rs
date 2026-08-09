@@ -18,6 +18,9 @@ use tauri::{AppHandle, Emitter, Manager};
 /// How many past alerts the Alert Center keeps.
 const MAX_RECENT: usize = 120;
 
+/// Logical width of the toast window (cards are 356px + 12px padding each side).
+pub const TOAST_W: f64 = 380.0;
+
 /// Alert families the dispatcher understands. Kept in sync with the Alert
 /// Center UI so per-kind toggles line up.
 ///
@@ -295,38 +298,26 @@ impl Default for AlertCenter {
     }
 }
 
-/// Escape a string for embedding inside an AppleScript double-quoted literal.
-fn as_quote(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
-    for c in s.chars() {
-        match c {
-            '\\' => out.push_str("\\\\"),
-            '"' => out.push_str("\\\""),
-            '\n' | '\r' => out.push(' '),
-            _ => out.push(c),
-        }
+/// Show the alert in Terse's own toast window (top-right, always on top).
+/// Replaces the OS notification banner, which could be neither themed to match
+/// the app nor localized — and which never existed at all on Windows.
+fn notify_desktop(app: &AppHandle, rec: &AlertRecord) {
+    // Mirrors the macOS build: when the dynamic island is on screen it IS the
+    // notification surface — the alert morphs out of the pill instead of a second
+    // card appearing beside it. The toast window is the fallback when it's hidden.
+    let island_up = app
+        .get_webview_window("island")
+        .and_then(|w| w.is_visible().ok())
+        .unwrap_or(false);
+    if island_up {
+        let _ = app.emit_to("island", "terse-toast", rec);
+        return;
     }
-    out.push('"');
-    out
+    if let Some(win) = app.get_webview_window("toast") {
+        let _ = win.show();
+        let _ = app.emit_to("toast", "terse-toast", rec);
+    }
 }
-
-#[cfg(target_os = "macos")]
-fn notify_native(title: &str, body: &str) {
-    // subtitle carries the alert's own title; the app name stays "Terse".
-    let script = format!(
-        "display notification {} with title \"Terse\" subtitle {}",
-        as_quote(body),
-        as_quote(title)
-    );
-    let _ = std::process::Command::new("osascript")
-        .arg("-e")
-        .arg(script)
-        .spawn();
-}
-
-#[cfg(not(target_os = "macos"))]
-fn notify_native(_title: &str, _body: &str) {}
 
 fn post_slack(webhook: &str, text: &str) {
     let body = serde_json::json!({ "text": text }).to_string();
@@ -399,7 +390,7 @@ pub fn dispatch(
         let _ = app.emit("alert", &rec);
     }
     if do_native {
-        notify_native(title, body);
+        notify_desktop(app, &rec);
     }
     if do_slack {
         let sev_icon = match severity { "high" => "🔴", "medium" => "🟠", _ => "🔵" };
@@ -471,6 +462,45 @@ pub fn snooze_alert_kind(kind: String, minutes: u64, state: tauri::State<'_, cra
     }
     ac.save();
     true
+}
+
+/// Grow the toast window to fit its card stack (logical px). Keeping the window
+/// exactly as tall as the cards leaves the rest of the screen clickable.
+#[tauri::command]
+pub fn toast_resize(h: f64, app: AppHandle) {
+    if let Some(win) = app.get_webview_window("toast") {
+        let _ = win.set_size(tauri::LogicalSize::new(TOAST_W, h.clamp(60.0, 620.0)));
+    }
+}
+
+#[tauri::command]
+pub fn toast_hide(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("toast") {
+        let _ = win.hide();
+    }
+}
+
+/// Act on a toast's primary button: bring the main window forward and land the
+/// user on the page that fixes the thing the alert is about.
+#[tauri::command]
+pub fn toast_action(action: String, app: AppHandle) {
+    let page = match action.as_str() {
+        "open-cleanup" => "cleanup",
+        "open-stats" => "stats",
+        "open-budget" => "stats",
+        "open-alerts" => "alerts",
+        "open-team" => "team",
+        _ => "doctor",
+    };
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.show();
+        let _ = win.unminimize();
+        let _ = win.set_focus();
+        let _ = win.eval(&format!(
+            "window.__terseOpenPage && window.__terseOpenPage('{}')",
+            page
+        ));
+    }
 }
 
 /// Route a proactive alert through the same pipeline from Rust callers

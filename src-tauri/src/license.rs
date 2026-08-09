@@ -17,7 +17,16 @@ pub struct AuthState {
     pub first_name: Option<String>,
     #[serde(rename = "signedIn")]
     pub signed_in: bool,
+    /// Start of the 15-minute "try it first" grace window (ISO 8601 / RFC 3339),
+    /// set at first sign-in. During this window the subscription gate is suppressed
+    /// so a new user can use Terse before being asked to start a free trial. Cleared
+    /// on sign-out. Persisted so the window survives app restarts.
+    #[serde(rename = "graceStart", default)]
+    pub grace_start: Option<String>,
 }
+
+/// Length of the post-login "try it first" grace window, in seconds (15 minutes).
+pub const GRACE_SECS: i64 = 15 * 60;
 
 fn auth_path() -> PathBuf {
     let home = dirs::home_dir().unwrap_or_default();
@@ -53,7 +62,32 @@ impl AuthState {
         self.image_url = None;
         self.first_name = None;
         self.signed_in = false;
+        self.grace_start = None;
         self.save();
+    }
+
+    /// Begin the grace window if it hasn't started yet (idempotent — preserves the
+    /// original start across restarts so the 15 minutes don't reset every launch).
+    pub fn ensure_grace_started(&mut self) {
+        if self.grace_start.is_none() {
+            self.grace_start = Some(chrono::Utc::now().to_rfc3339());
+        }
+    }
+
+    /// Seconds left in the grace window (0 once elapsed or never started).
+    pub fn grace_remaining_secs(&self) -> i64 {
+        match self.grace_start.as_deref() {
+            Some(s) => match chrono::DateTime::parse_from_rfc3339(s) {
+                Ok(start) => (start.timestamp() + GRACE_SECS - chrono::Utc::now().timestamp()).max(0),
+                Err(_) => 0,
+            },
+            None => 0,
+        }
+    }
+
+    /// True while the user is still inside the post-login grace window.
+    pub fn in_grace(&self) -> bool {
+        self.grace_remaining_secs() > 0
     }
 }
 
@@ -106,6 +140,22 @@ impl Default for License {
 fn current_week() -> u32 {
     let now = chrono::Local::now();
     now.format("%Y%W").to_string().parse().unwrap_or(0)
+}
+
+/// ISO-8601 timestamp of the next weekly quota reset (upcoming Monday 00:00 local).
+/// Weekly usage zeroes when the `%W` week number rolls over, which happens at the
+/// start of each Monday — so that's when the user's quota refreshes.
+fn next_weekly_reset() -> String {
+    use chrono::{Datelike, Duration, Local, TimeZone};
+    let now = Local::now();
+    let days_since_monday = now.weekday().num_days_from_monday() as i64;
+    let days_until_next_monday = 7 - days_since_monday; // 7 when today is Monday
+    let next_date = (now + Duration::days(days_until_next_monday)).date_naive();
+    next_date
+        .and_hms_opt(0, 0, 0)
+        .and_then(|naive| Local.from_local_datetime(&naive).single())
+        .map(|dt| dt.to_rfc3339())
+        .unwrap_or_default()
 }
 
 fn license_path() -> PathBuf {
@@ -186,10 +236,23 @@ impl License {
         self.status == "trialing"
     }
 
+    /// True when the user has a real paid/trialing plan. This is the single gate
+    /// for Pro-only features (live optimization + auto-replace, Doctor auto-fix,
+    /// Cleanup, Cowork, multi-repo Graph). Monitoring features never check this —
+    /// the Dynamic Island, Stats, Doctor scan, Wallpaper, Prompts and Farm are
+    /// free forever so the free tier is genuinely useful and surfaces the waste
+    /// that motivates upgrading.
+    pub fn is_pro(&self) -> bool {
+        let active = matches!(self.status.as_str(), "active" | "trialing" | "past_due");
+        let real_tier = !matches!(self.tier.as_str(), "" | "free" | "expired");
+        active && real_tier
+    }
+
     pub fn get_snapshot(&self) -> serde_json::Value {
         serde_json::json!({
             "tier": self.tier,
             "status": self.status,
+            "isPro": self.is_pro(),
             "limits": {
                 "optimizationsPerWeek": self.limits.optimizations_per_week,
                 "maxSessions": self.limits.max_sessions,
@@ -197,6 +260,7 @@ impl License {
             },
             "weeklyUsage": self.weekly_usage,
             "remaining": self.remaining_optimizations(),
+            "resetsAt": next_weekly_reset(),
             "clerkUserId": self.clerk_user_id,
             "expiresAt": self.expires_at,
             "trialEnd": self.trial_end,
@@ -241,4 +305,54 @@ pub async fn verify_license(clerk_user_id: &str) -> Option<License> {
     existing.save();
 
     Some(existing)
+}
+
+// ── Referral program (cloud-tracked) ─────────────────────────────────────────
+// The backend at {API_BASE}/api/referral owns code generation, attribution and
+// reward granting (dual-sided: both referrer and referee get free Pro days).
+// The client only displays state and forwards redemptions, so self-referral and
+// abuse are prevented server-side. Until the endpoints ship, calls return None /
+// a friendly "launching soon" and the client shows a deterministic display code.
+
+/// GET the caller's referral dashboard (code, share URL, counts, rewards).
+pub async fn fetch_referral(clerk_user_id: &str) -> Option<serde_json::Value> {
+    let url = format!("{}/api/referral/{}", API_BASE, clerk_user_id);
+    let output = tokio::process::Command::new("curl")
+        .args(["-s", "--connect-timeout", "5", "--max-time", "10", &url])
+        .output()
+        .await
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let body = String::from_utf8_lossy(&output.stdout);
+    let v: serde_json::Value = serde_json::from_str(body.trim()).ok()?;
+    // Treat an error/empty object as "not live yet".
+    if v.get("code").is_some() || v.get("invited").is_some() {
+        Some(v)
+    } else {
+        None
+    }
+}
+
+/// POST a friend's code to claim the give-get reward. Returns the backend's
+/// verdict; `granted: true` means Pro was applied and the client should re-verify.
+pub async fn redeem_referral(clerk_user_id: &str, code: &str) -> Result<serde_json::Value, String> {
+    let url = format!("{}/api/referral/redeem", API_BASE);
+    let payload =
+        serde_json::json!({ "clerkUserId": clerk_user_id, "code": code }).to_string();
+    let output = tokio::process::Command::new("curl")
+        .args([
+            "-s", "-X", "POST", "-H", "Content-Type: application/json", "-d", &payload,
+            "--connect-timeout", "5", "--max-time", "10", &url,
+        ])
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        return Err("Could not reach the referral service.".to_string());
+    }
+    let body = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_str(body.trim())
+        .map_err(|_| "Referrals are launching soon — your invite code is ready to share.".to_string())
 }

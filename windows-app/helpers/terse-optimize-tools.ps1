@@ -26,6 +26,41 @@ function Track-Save($tool, $original, $optimized) {
     }
 }
 
+# ── Compression constants ──
+# Tune meaning-preserving compression for large Read files. A PreToolUse hook can
+# only rewrite tool INPUT, so we cap the raw read to a HEAD window (via limit) and
+# deliver a compressed TAIL of the file plus repeat collapsing as additionalContext.
+# This preserves file endings (exports, closing brackets, error tails) a head-cap drops.
+$HeadKeep = 400        # first N lines shown as the raw Read output
+$TailKeep = 100        # last M lines surfaced via additionalContext
+$ByteCap  = 61440      # 60 KB hard backstop on the tail rendering
+
+# Collapse-Runs — fold runs of >=3 consecutive identical or whitespace-only lines
+# to a single representative line + a marker. Meaning-preserving. Pure PowerShell.
+function Collapse-Runs([string[]]$lines) {
+    $out = New-Object System.Collections.Generic.List[string]
+    $prev = $null; $prevKey = $null; $run = 0
+    $flush = {
+        if ($run -ge 3) {
+            $out.Add($prev)
+            $out.Add("… [terse: ${run}× repeated] …")
+        } elseif ($run -gt 0) {
+            for ($i = 0; $i -lt $run; $i++) { $out.Add($prev) }
+        }
+    }
+    foreach ($line in $lines) {
+        $key = if ($line -match '^\s*$') { "" } else { $line }
+        if ($null -ne $prev -and $key -eq $prevKey) {
+            $run++
+        } else {
+            & $flush
+            $prev = $line; $prevKey = $key; $run = 1
+        }
+    }
+    & $flush
+    return ($out -join "`n")
+}
+
 function Emit-Hook($updatedInput, $context) {
     $output = @{
         hookSpecificOutput = @{
@@ -59,8 +94,31 @@ if ($toolName -eq "Read") {
     # If no limit set, check file size
     if (-not $limit -or $limit -eq 0) {
         if (Test-Path $filePath) {
-            $lineCount = (Get-Content $filePath -ErrorAction SilentlyContinue | Measure-Object -Line).Lines
+            $allLines = @(Get-Content $filePath -ErrorAction SilentlyContinue)
+            $lineCount = $allLines.Count
             if ($lineCount -gt 500) {
+                # Large file. HEAD keep via limit; TAIL keep via additionalContext so file
+                # endings survive the head-cap. Tail is run-collapsed (B) and byte-capped (C).
+                $elided = $lineCount - $HeadKeep - $TailKeep
+                $tailRender = $null
+                if ($elided -gt 0) {
+                    $tailLines = $allLines[($lineCount - $TailKeep)..($lineCount - 1)]
+                    $tailRender = Collapse-Runs $tailLines
+                    if ($tailRender.Length -gt $ByteCap) {
+                        $tailRender = $tailRender.Substring(0, $ByteCap)  # 60 KB hard backstop
+                    }
+                }
+
+                if ($tailRender) {
+                    $updated = $toolInput | ConvertTo-Json -Depth 3 | ConvertFrom-Json
+                    $updated | Add-Member -NotePropertyName "limit" -NotePropertyValue $HeadKeep -Force
+                    $ctx = "Terse: $lineCount lines total. Showing first $HeadKeep lines above; last $TailKeep lines below (middle $elided elided).`n… [terse: elided $elided lines] …`n$tailRender"
+                    Emit-Hook $updated $ctx
+                    Track-Save "Read" $lineCount $HeadKeep
+                    exit 0
+                }
+
+                # Fallback (tail render unavailable): original plain 500-line cap.
                 $updated = $toolInput | ConvertTo-Json -Depth 3 | ConvertFrom-Json
                 $updated | Add-Member -NotePropertyName "limit" -NotePropertyValue 500 -Force
                 Emit-Hook $updated "Terse: file has $lineCount lines, showing 500. Use offset+limit for specific sections."

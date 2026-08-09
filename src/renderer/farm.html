@@ -24,7 +24,9 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Chewy',cursive,san
   background:rgba(0,0,0,0);
   border:none;box-shadow:none;
   display:flex;flex-direction:column;align-items:center;
-  padding:8px 6px 8px;gap:5px;
+  /* top padding clears the folded-in 返回 back button (top:14px, ~36px tall) so
+     the coin / harvest / level HUDs are never hidden behind it */
+  padding:56px 6px 8px;gap:5px;
   overflow:hidden;
   pointer-events:none; /* pass clicks through transparent areas to tiles */
 }
@@ -1269,6 +1271,20 @@ body.tool-water .tile-plant.is-dry {
 <div id="app">
   <!-- Drag region — drag this bar to move the window -->
   <div id="drag-bar" data-tauri-drag-region></div>
+  <!-- Back to the main Terse shell (Farm is now folded into the main window) -->
+  <button id="farm-back" title="返回 · Back"
+    onclick="try{window.__TAURI__.core.invoke('navigate_back')}catch(e){}"
+    style="position:absolute;top:14px;left:14px;z-index:99999;display:flex;align-items:center;gap:6px;
+      padding:8px 14px 8px 11px;border:none;border-radius:9999px;cursor:pointer;font-family:inherit;
+      font-size:13px;font-weight:800;color:#fff;background:rgba(20,30,20,.5);
+      box-shadow:0 4px 16px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.18);
+      backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);
+      transition:transform .16s ease,background .16s ease"
+    onmouseover="this.style.background='rgba(20,30,20,.72)';this.style.transform='translateY(-1px)'"
+    onmouseout="this.style.background='rgba(20,30,20,.5)';this.style.transform='none'">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    返回
+  </button>
   <!-- Sky scene decorations -->
   <div id="sky-scene" data-tauri-drag-region>
     <!-- House silhouette (left side) -->
@@ -5168,5 +5184,9 @@ buildGrassTile = function(s, i, isUnlocked) {
 };
 
 </script>
+<!-- Farm is written Chinese-first; this renders it in English when the app
+     language isn't Chinese. Loaded last so it observes the built board. -->
+<script src="i18n.js"></script>
+<script src="farm-i18n.js"></script>
 </body>
 </html>

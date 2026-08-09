@@ -42,6 +42,39 @@
   const heroFx    = document.getElementById('islandHeroFx');
   const metricState = {};     // metric key -> last rendered value (for bump-on-change)
   let saveWashTimer = null;
+
+  // ── Focus / calm mode + density prefs (persisted, plus OS reduced-motion) ──
+  (function initPrefs() {
+    const B = document.body;
+    try {
+      if (localStorage.getItem('terse_calm') === '1') B.classList.add('calm');
+      if (localStorage.getItem('terse_density') === 'compact') B.classList.add('compact');
+    } catch {}
+    const persist = () => {
+      try {
+        localStorage.setItem('terse_calm', B.classList.contains('calm') ? '1' : '0');
+        localStorage.setItem('terse_density', B.classList.contains('compact') ? 'compact' : 'cozy');
+      } catch {}
+    };
+    const mkBtn = (label, title, cls, onToggle) => {
+      const b = document.createElement('button');
+      b.className = 'island-pref-btn' + (B.classList.contains(cls) ? ' on' : '');
+      b.textContent = label; b.title = title;
+      b.addEventListener('click', () => {
+        B.classList.toggle(cls);
+        b.classList.toggle('on', B.classList.contains(cls));
+        persist(); onToggle && onToggle();
+      });
+      return b;
+    };
+    const row = document.createElement('div');
+    row.className = 'island-prefs';
+    row.appendChild(mkBtn('☾ Calm', 'Focus mode — freeze animations', 'calm'));
+    row.appendChild(mkBtn('⊟ Compact', 'Denser layout', 'compact'));
+    if (expandedEl) expandedEl.appendChild(row);
+    // Global hook so main-window settings could flip focus mode too.
+    window.terseSetCalm = (on) => { B.classList.toggle('calm', !!on); persist(); };
+  })();
   // Bento dashboard refs
   const bentoEl     = document.getElementById('islandBento');
   const btSavedNum  = document.getElementById('btSavedNum');
@@ -74,7 +107,6 @@
   let activeType   = null;    // which agent the expanded panel is showing
   let expanded     = false;
   let windowShown  = false;
-  let gated        = false;    // true once the 15-min grace ends with no active plan
   let collapseTimer = null;
   let pinned       = false;    // true = boards locked open via click; hover-leave won't hide
   let dashHovered  = false;    // true = pointer is currently over a dashboard board window
@@ -413,7 +445,13 @@
           lastActionKey = 'lifetime';
         }
       } else {
-        pillMid.classList.remove('has-action');
+        // Cold start: no agent, nothing saved yet. Teach instead of sitting blank.
+        pillMid.classList.add('has-action');
+        if (lastActionKey !== 'teach') {
+          pillAct.innerHTML = '<span class="act-ico">✨</span>Start Claude Code — I light up automatically';
+          pillAct.classList.remove('swap'); void pillAct.offsetWidth; pillAct.classList.add('swap');
+          lastActionKey = 'teach';
+        }
       }
       pillSave.classList.add('zero');
       setRing(pillRing, pillRingP, 0);
@@ -475,10 +513,75 @@
   }
 
   // ── Expanded hero header ──
+  // ── Savings ledger ────────────────────────────────────────────────────────
+  // The island showed "tokens saved" with nothing to compare it against, so the
+  // number meant little. This renders the counterfactual: what the session WOULD
+  // have cost, what it actually cost, and the slice Terse removed.
+  const ilg = {
+    box:    document.getElementById('islandLedger'),
+    fill:   document.getElementById('ilgFill'),
+    cut:    document.getElementById('ilgCut'),
+    cutLbl: document.getElementById('ilgCutLbl'),
+    would:  document.getElementById('ilgWould'),
+    actual: document.getElementById('ilgActual'),
+    saved:  document.getElementById('ilgSaved'),
+  };
+  const ilgLast = {};
+  function ilgSet(el, text) {
+    if (!el || el.textContent === text) return;      // only animate real changes
+    el.textContent = text;
+    el.classList.remove('bump');
+    void el.offsetWidth;                              // restart the tick
+    el.classList.add('bump');
+  }
+  // Labels follow the app language like the rest of the island.
+  const ILG_STR = {
+    en:        { would: 'Would have used', actual: 'Actually used', saved: 'Terse saved' },
+    'zh-Hans': { would: '原本消耗',        actual: '实际消耗',      saved: 'Terse 省下' },
+    'zh-Hant': { would: '原本消耗',        actual: '實際消耗',      saved: 'Terse 省下' },
+  };
+  function ilgLang() {
+    try {
+      const l = window.i18n && window.i18n.getLang();
+      if (l && ILG_STR[l]) return ILG_STR[l];
+    } catch (e) {}
+    return ILG_STR.en;
+  }
+  function renderLedgerLabels() {
+    const d = ilgLang();
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set('ilgWouldK', d.would); set('ilgActualK', d.actual); set('ilgSavedK', d.saved);
+  }
+  renderLedgerLabels();
+  window.addEventListener('terse-lang-changed', renderLedgerLabels);
+
+  function renderLedger(s) {
+    if (!ilg.box || !s) return;
+    const actual = (s.totalInputTokens || 0) + (s.totalOutputTokens || 0);
+    const saved  = savedTokensFor(s);
+    const would  = actual + saved;                    // the bill that never arrived
+    if (would <= 0) { ilg.box.style.display = 'none'; return; }
+    ilg.box.style.display = '';
+
+    const pct = Math.max(0, Math.min(100, Math.round((saved / would) * 100)));
+    // Bar splits into what you paid vs what Terse cut.
+    ilg.fill.style.width = (100 - pct) + '%';
+    ilg.cut.style.width  = pct + '%';
+    // Only show the label once the slice is wide enough to hold it legibly.
+    ilg.cut.classList.toggle('wide', pct >= 12);
+    ilg.cutLbl.textContent = '−' + pct + '%';
+
+    ilgSet(ilg.would,  fmtTok(would));
+    ilgSet(ilg.actual, fmtTok(actual));
+    ilgSet(ilg.saved,  fmtTok(saved));
+    ilgLast.pct = pct;
+  }
+
   function renderHero(s) {
     if (!s) return;
     heroIcon.textContent = s.agentIcon || '🤖';
     heroName.textContent = s.agentName || 'Agent';
+    renderLedger(s);
 
     // Working vs idle — fresh activity within the last few seconds reads as "working"
     const act = latestAction(s);
@@ -609,11 +712,8 @@
 
   // ── Window visibility follows connected-agent count ──
   function ensureWindow() {
-    // Once the post-login grace window has ended with no plan, the island stays hidden.
-    if (gated) {
-      if (windowShown) { windowShown = false; collapse(true); T.hideIslandWindow(); }
-      return;
-    }
+    // Visibility depends only on whether any agent is connected — monitoring is
+    // free forever, so there is no plan check here.
     const n = count();
     if (n > 0 && !windowShown) {
       windowShown = true;
@@ -628,13 +728,24 @@
   // ── Show / hide the dashboard constellation ────────────────────────────────
   function keepOpen() { if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; } }
 
+  // While the island is showing something the user must click, the floating boards
+  // are in the way — they cover the region directly under the pill, which is exactly
+  // where the alert's buttons land. Suppress them for the duration.
+  let dashSuppressed = false;
+
   function expand() {
     keepOpen();
-    if (expanded || count() === 0) return;
+    if (expanded || count() === 0 || dashSuppressed) return;
     expanded = true;
     pill.classList.add('peek');
     if (T.openDashboards) T.openDashboards();
   }
+
+  // Called by the alert layer when it takes over the island (and again when it lets go).
+  window.__islandSuppressDash = function (on) {
+    dashSuppressed = !!on;
+    if (on) collapse(true);   // force-close regardless of pin, so nothing overlaps the alert
+  };
 
   // `now=true` force-collapses regardless of pin; `now=false` debounces + respects pin.
   function collapse(now) {
@@ -724,9 +835,6 @@
   T.on('agent-connected', (data) => {
     const s = data && data.session;
     if (!s || !s.agentType) return;
-    // A connection only succeeds when the user has a plan or is in grace, so any
-    // successful connect means the gate no longer applies — self-heal after upgrade.
-    gated = false;
     agents[s.agentType] = s;
     ensureWindow();
     renderPill(); renderTabs();
@@ -764,6 +872,28 @@
     renderPill(); renderTabs(); ensureWindow(); scheduleResize();
   });
 
+  // ── Session summary: a subtle two-note chime marks the payoff moment.
+  // Synthesized (no asset) and silenced in Calm/focus mode.
+  T.on('agent-summary', () => {
+    try {
+      if (document.body.classList.contains('calm')) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      [660, 880].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        o.connect(g); g.connect(ctx.destination);
+        const t0 = ctx.currentTime + i * 0.12;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.08, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+        o.start(t0); o.stop(t0 + 0.24);
+      });
+      setTimeout(() => { try { ctx.close(); } catch {} }, 700);
+    } catch {}
+  });
+
   // ── Pull-down from the main window: focus an agent and expand the island ──
   T.on('island-focus', (data) => {
     const t = data && data.agentType;
@@ -773,22 +903,17 @@
     if (count() > 0) expand();     // expand() switches the panel to pickActive()/activeType
   });
 
-  // ── Grace window ended with no plan → the island disappears ──
+  // ── Grace window ended with no plan ──
+  // The island is a MONITOR, and monitoring is free forever — so it keeps running
+  // for free users. Pro gates the things that act on your tokens (optimization,
+  // Speed Up, graph-for-agents), which are enforced at their own entry points.
+  // Hiding the island here also silently killed the approval scanner, which only
+  // runs while the island is visible — a blocked agent went unreported.
   T.on('trial-grace-expired', () => {
-    gated = true;
-    for (const t in agents) delete agents[t];
-    activeType = null;
+    // Collapse the floating dashboards (a Pro surface) but keep the pill alive.
     collapse(true);
-    windowShown = false;
-    T.hideIslandWindow();
+    renderPill();
   });
-
-  // On load, respect an already-expired grace window (returning gated user).
-  if (T.trialGraceStatus) {
-    T.trialGraceStatus().then((g) => {
-      if (g && g.expired) { gated = true; ensureWindow(); }
-    }).catch(() => {});
-  }
 
   // ── Keep window._terseHookStats fresh independent of the (now hidden) popup panel ──
   // popup.js still pulls it, but the boards are the primary surface now, so the island
@@ -823,6 +948,397 @@
       if (expanded) renderHero(agents[pickActive()]);
     }).catch(() => {});
   }
+  // ── Capture / Replace — optimize selected text in any app (folds in the popup) ──
+  (function initCapture() {
+    const btn = document.getElementById('icapBtn');
+    const label = document.getElementById('icapLabel');
+    const result = document.getElementById('icapResult');
+    const outText = document.getElementById('icapText');
+    const before = document.getElementById('icapBefore');
+    const after = document.getElementById('icapAfter');
+    const pct = document.getElementById('icapPct');
+    const bReplace = document.getElementById('icapReplace');
+    const bCopy = document.getElementById('icapCopy');
+    const bUndo = document.getElementById('icapUndo');
+    if (!btn) return;
+    let original = '', optimized = '', busy = false;
+    const reset = () => { busy = false; label.textContent = '优化选中文本 · Capture'; };
+
+    async function doCapture() {
+      if (busy) return;
+      busy = true;
+      label.textContent = '读取选中… · Reading…';
+      try { await T.captureNow(); } catch (_) { reset(); return; }
+      // captured-text arrives asynchronously; fall back so the label never sticks.
+      setTimeout(() => { if (busy) reset(); }, 4000);
+    }
+
+    T.on && T.on('captured-text', async (d) => {
+      if (!d || !d.text) return;
+      original = d.text;
+      let r = null;
+      try { r = await T.optimizeText(d.text); } catch (_) {}
+      if (!r) { reset(); return; }
+      optimized = r.optimized || d.text;
+      const s = r.stats || {};
+      before.textContent = (s.originalTokens || 0).toLocaleString();
+      after.textContent = (s.optimizedTokens || 0).toLocaleString();
+      const p = s.percentSaved || 0;
+      pct.textContent = p > 0 ? '−' + p + '%' : '';
+      outText.value = optimized;
+      result.classList.remove('hidden');
+      bReplace.disabled = false;
+      bUndo.classList.add('hidden');
+      reset();
+      if (window.__islandResize) window.__islandResize();
+    });
+
+    btn.addEventListener('click', doCapture);
+    bReplace.addEventListener('click', async () => {
+      if (!optimized) return;
+      try { await T.replaceInTarget(optimized); bUndo.classList.remove('hidden'); } catch (_) {}
+    });
+    bUndo.addEventListener('click', async () => {
+      if (!original) return;
+      try { await T.replaceInTarget(original); bUndo.classList.add('hidden'); } catch (_) {}
+    });
+    bCopy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(optimized || outText.value);
+        bCopy.textContent = 'Copied'; setTimeout(() => (bCopy.textContent = 'Copy'), 1200); } catch (_) {}
+    });
+  })();
+
   reseedSessions();
   setInterval(reseedSessions, 4000);
+})();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Island alert layer.
+   Notifications morph the pill into a banner instead of opening a separate
+   toast window (Rust routes to whichever surface is on screen). Alerts queue,
+   so a burst plays one at a time rather than fighting over the window.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function () {
+  if (!document.body.classList.contains('island-mode')) return;
+  const T = window.terse;
+  if (!T || !T.on) return;
+
+  const el = {
+    root:   document.getElementById('islandRoot'),
+    pill:   document.getElementById('islandPill'),
+    alert:  document.getElementById('islandAlert'),
+    ic:     document.getElementById('islandAlertIcon'),
+    kind:   document.getElementById('islandAlertKind'),
+    count:  document.getElementById('islandAlertCount'),
+    title:  document.getElementById('islandAlertTitle'),
+    body:   document.getElementById('islandAlertBody'),
+    go:     document.getElementById('islandAlertGo'),
+    snooze: document.getElementById('islandAlertSnooze'),
+    close:  document.getElementById('islandAlertClose'),
+    life:   document.getElementById('islandAlertLife'),
+  };
+  if (!el.alert) return;
+
+  const W = 400;          // alert banner width (pill is 360, monitor card 440)
+  const LIFE_MS = 8000;
+  const MAX_QUEUE = 6;
+
+  const STR = {
+    en: {
+      k_doctor:'Doctor', k_cleanup:'Cleanup', k_budget:'Budget', k_cache:'Cache', k_routing:'Routing',
+      k_context:'Context', k_agent:'Agent', k_summary:'Summary', k_digest:'Digest',
+      a_doctor:'Open Doctor', a_cleanup:'Clean up', a_stats:'Open Stats', a_budget:'Open Budget',
+      a_alerts:'Open Alerts', a_team:'Open Team', a_open:'Open', snooze:'Snooze 1h', more:'+{n} more',
+    },
+    'zh-Hans': {
+      k_doctor:'体检', k_cleanup:'清理', k_budget:'预算', k_cache:'缓存', k_routing:'模型路由',
+      k_context:'上下文', k_agent:'智能体', k_summary:'会话总结', k_digest:'周报',
+      a_doctor:'打开体检', a_cleanup:'立即清理', a_stats:'查看统计', a_budget:'查看预算',
+      a_alerts:'查看提醒', a_team:'打开团队', a_open:'打开', snooze:'静音 1 小时', more:'还有 {n} 条',
+    },
+    'zh-Hant': {
+      k_doctor:'體檢', k_cleanup:'清理', k_budget:'預算', k_cache:'快取', k_routing:'模型路由',
+      k_context:'上下文', k_agent:'智能體', k_summary:'工作階段總結', k_digest:'週報',
+      a_doctor:'開啟體檢', a_cleanup:'立即清理', a_stats:'檢視統計', a_budget:'檢視預算',
+      a_alerts:'檢視提醒', a_team:'開啟團隊', a_open:'開啟', snooze:'靜音 1 小時', more:'還有 {n} 則',
+    },
+  };
+  const lang = () => { try { return (window.i18n && window.i18n.getLang()) || 'en'; } catch { return 'en'; } };
+  const L = (k, v) => {
+    const d = STR[lang()] || STR.en;
+    let s = d[k] || STR.en[k] || k;
+    if (v) for (const p in v) s = s.replace('{' + p + '}', v[p]);
+    return s;
+  };
+
+  const ICON = { doctor:'🩺', cleanup:'🧹', budget:'💰', cache:'⚡', routing:'🔀',
+                 context:'🪟', agent:'🤖', summary:'📋', digest:'📨' };
+  const ACT = { 'open-doctor':'a_doctor', 'open-cleanup':'a_cleanup', 'open-stats':'a_stats',
+                'open-budget':'a_budget', 'open-alerts':'a_alerts', 'open-team':'a_team' };
+
+  let queue = [];
+  let active = null;
+  let lifeTimer = null;
+  let leaving = false;
+
+  function clearLife() { if (lifeTimer) { clearTimeout(lifeTimer); lifeTimer = null; } }
+
+  // Restore the pill and drain whatever queued up while this alert was on screen.
+  function finish() {
+    clearLife();
+    if (!active) return;
+    leaving = true;
+    document.body.classList.add('ia-leaving');
+    setTimeout(() => {
+      document.body.classList.remove('alerting', 'ia-leaving');
+      document.body.removeAttribute('data-sev');
+      active = null; leaving = false;
+      if (queue.length) {
+        present(queue.shift());     // stays suppressed — another card is taking over
+      } else {
+        // Nothing left to click: give the floating boards back.
+        if (window.__islandSuppressDash) window.__islandSuppressDash(false);
+        if (T.islandSetExpanded) T.islandSetExpanded(false);
+      }
+    }, 300);
+  }
+
+  function present(a) {
+    active = a;
+    clearLife();
+    // Clear the floating boards out of the way BEFORE the banner expands, so the
+    // buttons never appear underneath a dashboard the user then has to fight.
+    if (window.__islandSuppressDash) window.__islandSuppressDash(true);
+
+    el.ic.textContent    = ICON[a.kind] || '🔔';
+    el.kind.textContent  = L('k_' + a.kind);
+    el.title.textContent = a.title || '';
+    el.body.textContent  = a.body || '';
+    el.body.style.display = a.body ? '' : 'none';
+    el.count.textContent = queue.length ? L('more', { n: queue.length }) : '';
+
+    const actKey = ACT[a.action];
+    el.go.style.display = actKey ? '' : 'none';
+    if (actKey) { el.go.textContent = L(actKey); el.go.dataset.act = a.action; }
+    el.snooze.textContent = L('snooze');
+    el.snooze.dataset.kind = a.kind;
+    el.snooze.style.display = '';   // a preceding status morph may have hidden it
+
+    document.body.setAttribute('data-sev', String(a.severity || 'low').toLowerCase());
+    document.body.classList.add('alerting');
+
+    // Size the window to the banner, then correct to the measured content height.
+    // rAF never fires while the webview is hidden/occluded, which would strand the
+    // banner at the 132px estimate — fall back to a timer in that case.
+    if (T.islandAlertSize) {
+      T.islandAlertSize(W, 132);
+      const measure = () => {
+        const h = Math.ceil(el.alert.scrollHeight) + 2;
+        if (h > 60) T.islandAlertSize(W, h);
+      };
+      if (document.hidden) setTimeout(measure, 0);
+      else requestAnimationFrame(measure);
+    }
+
+    // Restart the drain bar (re-trigger the animation by reflowing it).
+    el.life.style.animation = 'none';
+    void el.life.offsetWidth;
+    el.life.style.animation = `iaDrain ${LIFE_MS}ms linear forwards`;
+    lifeTimer = setTimeout(finish, LIFE_MS);
+  }
+
+  function enqueue(a) {
+    if (!a || !a.title) return;
+    if (active || leaving) {
+      if (queue.length < MAX_QUEUE) {
+        queue.push(a);
+        if (active) el.count.textContent = L('more', { n: queue.length });
+      }
+      return;
+    }
+    // Knock the pill first so the morph reads as caused by the alert.
+    el.pill.classList.add('ia-knock');
+    setTimeout(() => el.pill.classList.remove('ia-knock'), 340);
+    setTimeout(() => present(a), 140);
+  }
+
+  // Hovering holds the alert open (the CSS pauses the bar; clear the timer to match).
+  el.alert.addEventListener('mouseenter', clearLife);
+  el.alert.addEventListener('mouseleave', () => {
+    if (active && !leaving && !lifeTimer) lifeTimer = setTimeout(finish, LIFE_MS / 2);
+  });
+
+  el.close.addEventListener('click', (e) => { e.stopPropagation(); finish(); });
+  el.go.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (T.toastAction) T.toastAction(e.currentTarget.dataset.act);
+    finish();
+  });
+  el.snooze.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (T.snoozeAlertKind) T.snoozeAlertKind(e.currentTarget.dataset.kind, 60);
+    finish();
+  });
+
+  T.on('terse-toast', (payload) => enqueue(payload));
+
+  // ── Agent approval prompts ────────────────────────────────────────────────
+  // Rust watches Claude / Codex / Cursor (terminal AND app) for a blocked
+  // permission prompt and emits it here. These differ from alerts in three ways:
+  //   • N options, not one action — rendered as a row of buttons
+  //   • no auto-dismiss: the agent is *blocked*, so the card stays until answered
+  //   • cleared remotely — answering in the terminal fires terse-approval-cleared
+  const APPROVAL_STR = {
+    en:        { kind:'Needs you', deny:'Deny', always:'Always', wait:'waiting' },
+    'zh-Hans': { kind:'待确认',    deny:'拒绝', always:'始终允许', wait:'等待中' },
+    'zh-Hant': { kind:'待確認',    deny:'拒絕', always:'always',  wait:'等待中' },
+  };
+  const A = (k) => (APPROVAL_STR[lang()] || APPROVAL_STR.en)[k];
+  const AGENT_ICON = { claude: '🤖', codex: '🧠', cursor: '🖱️' };
+
+  function presentApproval(p) {
+    active = { approval: p };
+    clearLife();
+    if (window.__islandSuppressDash) window.__islandSuppressDash(true);
+
+    el.ic.textContent   = AGENT_ICON[p.agent] || '🔔';
+    el.kind.textContent = A('kind');
+    // "which window is asking" — the app + window title.
+    el.count.textContent = [p.app, p.window].filter(Boolean).join(' · ').slice(0, 42);
+    el.title.textContent = p.question || '';
+    // "which step" — the command / diff being approved.
+    el.body.textContent  = p.detail || '';
+    el.body.style.display = p.detail ? '' : 'none';
+
+    // Options replace the single action+snooze pair.
+    el.go.style.display = 'none';
+    el.snooze.style.display = 'none';
+    let row = document.getElementById('islandApprovalOpts');
+    if (!row) {
+      row = document.createElement('div');
+      row.id = 'islandApprovalOpts';
+      row.className = 'ia-acts ia-opts';
+      el.snooze.parentNode.appendChild(row);
+    }
+    row.innerHTML = '';
+    row.style.display = '';
+    (p.options || []).forEach((o) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ia-btn' + (o.deny ? ' ghost' : '') + (o.sticky ? ' sticky' : '');
+      b.textContent = (o.key ? o.key + ' · ' : '') + o.label;
+      b.title = o.label;
+      // We surface the prompt; the user answers in the agent's own window. Clicking
+      // focuses that window rather than synthesising a keystroke — injecting keys
+      // into someone's terminal is not something to do on a heuristic match.
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (T.focusApp) T.focusApp(p.app);
+        finishApproval(p.id);
+      });
+      row.appendChild(b);
+    });
+
+    document.body.setAttribute('data-sev', 'high');
+    document.body.classList.add('alerting', 'approving');
+
+    if (T.islandAlertSize) {
+      T.islandAlertSize(W, 150);
+      const measure = () => {
+        const h = Math.ceil(el.alert.scrollHeight) + 2;
+        if (h > 60) T.islandAlertSize(W, h);
+      };
+      if (document.hidden) setTimeout(measure, 0); else requestAnimationFrame(measure);
+    }
+    // No life bar: the agent is blocked, so this must not time out.
+    el.life.style.animation = 'none';
+  }
+
+  function finishApproval(id) {
+    const row = document.getElementById('islandApprovalOpts');
+    if (row) { row.innerHTML = ''; row.style.display = 'none'; }
+    document.body.classList.remove('approving');
+    el.snooze.style.display = '';
+    if (active && active.approval && active.approval.id !== id) return; // newer one showing
+    finish();
+  }
+
+  const approvalQueue = [];
+  T.on('terse-approval', (p) => {
+    if (!p || !p.question) return;
+    // An approval outranks a passing alert — the agent is stuck.
+    if (active && active.approval) {
+      if (!approvalQueue.some(q => q.id === p.id)) approvalQueue.push(p);
+      el.count.textContent = (active.approval.app || '') + ' · +' + approvalQueue.length;
+      return;
+    }
+    if (active) { clearLife(); active = null; }   // drop a transient alert
+    presentApproval(p);
+  });
+  T.on('terse-approval-cleared', (id) => {
+    const i = approvalQueue.findIndex(q => q.id === id);
+    if (i >= 0) approvalQueue.splice(i, 1);
+    if (active && active.approval && active.approval.id === id) {
+      const next = approvalQueue.shift();
+      if (next) { finishApproval(id); setTimeout(() => presentApproval(next), 340); }
+      else finishApproval(id);
+    }
+  });
+
+  // ── Status morph ──────────────────────────────────────────────────────────
+  // A lighter sibling of the alert: same expand-and-return motion, but no action
+  // buttons and a short dwell. Used for moments worth *showing* rather than acting
+  // on (an agent connecting), so the island visibly changes shape during normal use.
+  const STATUS_MS = 2400;
+  function showStatus(o) {
+    if (active || leaving) return;          // never pre-empt a real alert
+    active = { status: true };
+    clearLife();
+    if (window.__islandSuppressDash) window.__islandSuppressDash(true);
+
+    el.ic.textContent    = o.icon || '•';
+    el.kind.textContent  = o.kind || '';
+    el.title.textContent = o.title || '';
+    el.body.textContent  = o.body || '';
+    el.body.style.display = o.body ? '' : 'none';
+    el.count.textContent = '';
+    el.go.style.display = 'none';
+    el.snooze.style.display = 'none';
+
+    document.body.setAttribute('data-sev', o.sev || 'low');
+    document.body.classList.add('alerting');
+
+    if (T.islandAlertSize) {
+      T.islandAlertSize(W, 96);
+      const measure = () => {
+        const h = Math.ceil(el.alert.scrollHeight) + 2;
+        if (h > 50) T.islandAlertSize(W, h);
+      };
+      if (document.hidden) setTimeout(measure, 0); else requestAnimationFrame(measure);
+    }
+
+    el.life.style.animation = 'none';
+    void el.life.offsetWidth;
+    el.life.style.animation = `iaDrain ${STATUS_MS}ms linear forwards`;
+    lifeTimer = setTimeout(finish, STATUS_MS);
+  }
+  window.__islandStatus = showStatus;
+
+  const S_STR = {
+    en:        { connected: 'Connected', watching: 'Now watching this agent', gone: 'Disconnected' },
+    'zh-Hans': { connected: '已连接',    watching: '开始监控这个智能体',      gone: '已断开' },
+    'zh-Hant': { connected: '已連接',    watching: '開始監控這個智能體',      gone: '已斷開' },
+  };
+  const S = (k) => (S_STR[lang()] || S_STR.en)[k];
+
+  T.on('agent-connected', (data) => {
+    const s = data && data.session;
+    if (!s || !s.agentType) return;
+    showStatus({ icon: '🔗', kind: S('connected'), title: s.agentName || s.agentType, body: S('watching'), sev: 'low' });
+  });
+  T.on('agent-disconnected', (data) => {
+    const s = data && data.session;
+    if (!s || !s.agentType) return;
+    showStatus({ icon: '🔌', kind: S('gone'), title: s.agentName || s.agentType, sev: 'low' });
+  });
 })();

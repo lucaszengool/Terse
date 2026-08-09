@@ -415,6 +415,75 @@ case "dump-text":
     }
     print(json(["ok": true, "count": found.count, "elements": found]))
 
+case "window-text":
+    // Full visible text of an app's windows — NOT truncated (dump-text caps every
+    // value at 200 chars, which is fine for debugging but cuts off the agent
+    // permission prompts we need to read). Returns one entry per window so the
+    // caller can say *which* window is asking.
+    //   window-text <pid> [maxCharsPerWindow]
+    // Distinguish the two failure modes — a missing Accessibility grant and a bad
+    // argument look identical otherwise, and the grant is the one that actually
+    // happens (recompiling the binary revokes it).
+    guard AXIsProcessTrusted() else {
+        print(json(["ok":false, "error":"not_trusted",
+                    "hint":"Grant Accessibility to this binary in System Settings › Privacy & Security › Accessibility"]))
+        exit(0)
+    }
+    guard args.count >= 3, let wtPid = Int32(args[2]) else {
+        print(json(["ok":false, "error":"bad_args", "hint":"usage: window-text <pid> [maxChars]"])); exit(0)
+    }
+    let wtCap = args.count >= 4 ? (Int(args[3]) ?? 20000) : 20000
+    let wtApp = AXUIElementCreateApplication(wtPid)
+
+    // Electron/Chromium apps (Claude, Cursor, VS Code, Windsurf) do NOT build an
+    // accessibility tree until an assistive technology asks for one — their windows
+    // otherwise report zero text and the prompt is invisible to us. Setting the
+    // private AXManualAccessibility attribute is the documented way to ask.
+    // Harmless on native apps, which simply reject the attribute.
+    AXUIElementSetAttributeValue(wtApp, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    AXUIElementSetAttributeValue(wtApp, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+
+    var wtWins: CFTypeRef?
+    var windows: [[String: Any]] = []
+
+    func wtWalk(_ el: AXUIElement, _ depth: Int, _ buf: inout [String]) {
+        if depth > 18 { return }
+        var r: CFTypeRef?
+        AXUIElementCopyAttributeValue(el, kAXRoleAttribute as CFString, &r)
+        let role = r as? String ?? ""
+        if ["AXTextArea", "AXTextField", "AXTextView", "AXStaticText", "AXWebArea"].contains(role) {
+            var v: CFTypeRef?
+            if AXUIElementCopyAttributeValue(el, kAXValueAttribute as CFString, &v) == .success,
+               let s = v as? String, !s.isEmpty {
+                buf.append(s)
+            }
+        }
+        var ch: CFTypeRef?
+        if AXUIElementCopyAttributeValue(el, kAXChildrenAttribute as CFString, &ch) == .success,
+           let kids = ch as? [AXUIElement] {
+            for kid in kids { wtWalk(kid, depth + 1, &buf) }
+        }
+    }
+
+    if AXUIElementCopyAttributeValue(wtApp, kAXWindowsAttribute as CFString, &wtWins) == .success,
+       let winList = wtWins as? [AXUIElement] {
+        for (wi, win) in winList.prefix(8).enumerated() {
+            var title = ""
+            var t: CFTypeRef?
+            if AXUIElementCopyAttributeValue(win, kAXTitleAttribute as CFString, &t) == .success {
+                title = t as? String ?? ""
+            }
+            var parts: [String] = []
+            wtWalk(win, 0, &parts)
+            var text = parts.joined(separator: "\n")
+            // Prompts sit at the BOTTOM of a terminal buffer, so when we have to
+            // clip, keep the tail — clipping the head would drop the question.
+            if text.count > wtCap { text = String(text.suffix(wtCap)) }
+            windows.append(["index": wi, "title": title, "text": text, "len": text.count])
+        }
+    }
+    print(json(["ok": true, "pid": Int(wtPid), "windows": windows]))
+
 case "key-monitor":
     // Monitor keystrokes for a target app using CGEventTap.
     // Builds a text buffer — zero flash, zero clipboard, zero osascript.

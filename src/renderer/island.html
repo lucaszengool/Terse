@@ -28,6 +28,28 @@
       <span id="islandPillRing" class="island-pill-ring" style="--ring-p:0"><span class="ring-label" id="islandPillRingPct"></span></span>
     </div>
 
+    <!-- Alert banner — the pill morphs into this when a notification arrives.
+         Its own layer so the pill/card states stay untouched. -->
+    <div id="islandAlert">
+      <span class="island-aurora"></span>
+      <span class="island-sheen island-sheen-card"></span>
+      <span id="islandAlertBar" class="ia-bar"></span>
+      <div class="ia-head">
+        <span id="islandAlertIcon" class="ia-ic"></span>
+        <span id="islandAlertKind" class="ia-kind"></span>
+        <span class="ia-sp"></span>
+        <span id="islandAlertCount" class="ia-count"></span>
+        <button id="islandAlertClose" class="ia-x" type="button" title="Dismiss">✕</button>
+      </div>
+      <div id="islandAlertTitle" class="ia-title"></div>
+      <div id="islandAlertBody" class="ia-body"></div>
+      <div class="ia-acts">
+        <button id="islandAlertGo" class="ia-btn" type="button"></button>
+        <button id="islandAlertSnooze" class="ia-btn ghost" type="button"></button>
+      </div>
+      <span class="ia-life"><i id="islandAlertLife"></i></span>
+    </div>
+
     <!-- Expanded monitor card -->
     <div id="islandExpanded">
       <span class="island-aurora"></span>
@@ -53,6 +75,29 @@
           <div id="islandHeroRing" class="island-hero-ring" style="--ring-p:0">
             <span class="hero-ring-pct" id="islandHeroRingPct">0%</span>
             <span class="hero-ring-cap">ctx</span>
+          </div>
+        </div>
+        <!-- Savings ledger — the before/after Terse never actually showed: what the
+             session WOULD have cost, what it cost, and the gap Terse removed. -->
+        <div id="islandLedger" class="ilg">
+          <div class="ilg-bar">
+            <div class="ilg-fill" id="ilgFill"></div>
+            <div class="ilg-cut" id="ilgCut"><span class="ilg-cut-lbl" id="ilgCutLbl">−0%</span></div>
+          </div>
+          <div class="ilg-row">
+            <span class="ilg-col">
+              <span class="ilg-k" id="ilgWouldK">Would have used</span>
+              <span class="ilg-v ilg-was" id="ilgWould">0</span>
+            </span>
+            <span class="ilg-arrow">→</span>
+            <span class="ilg-col">
+              <span class="ilg-k" id="ilgActualK">Actually used</span>
+              <span class="ilg-v" id="ilgActual">0</span>
+            </span>
+            <span class="ilg-col ilg-right">
+              <span class="ilg-k" id="ilgSavedK">Terse saved</span>
+              <span class="ilg-v ilg-good" id="ilgSaved">0</span>
+            </span>
           </div>
         </div>
         <!-- Live "quality" strip — how Terse is helping right now (reduction · cache · context) -->
@@ -112,6 +157,27 @@
         </div>
       </div>
       <!-- ▲▲▲ End bento dashboard ▲▲▲ -->
+
+      <!-- ▼▼▼ Capture / Replace — optimize selected text in any app ▼▼▼ -->
+      <div id="islandCapture" class="island-capture">
+        <button id="icapBtn" class="icap-cta">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg>
+          <span id="icapLabel">优化选中文本 · Capture</span>
+        </button>
+        <div id="icapResult" class="icap-result hidden">
+          <div class="icap-head">
+            <span class="icap-stat"><b id="icapBefore">0</b> → <b id="icapAfter">0</b></span>
+            <span class="icap-pct" id="icapPct"></span>
+          </div>
+          <textarea id="icapText" class="icap-text" readonly spellcheck="false"></textarea>
+          <div class="icap-actions">
+            <button id="icapReplace" class="icap-a primary">✓ Replace</button>
+            <button id="icapCopy" class="icap-a">Copy</button>
+            <button id="icapUndo" class="icap-a ghost hidden">Undo</button>
+          </div>
+        </div>
+      </div>
+      <!-- ▲▲▲ End capture / replace ▲▲▲ -->
 
       <!-- ▼▼▼ Verbatim copy of popup.html body (favicon + #bar) ▼▼▼ -->
       <!-- Minimized favicon -->
@@ -331,7 +397,7 @@
   <script>
     // Load saved theme + sync across windows
     (function() {
-      var saved = localStorage.getItem('terse-theme') || 'azure';
+      var saved = localStorage.getItem('terse-theme') || 'horizon';
       document.documentElement.setAttribute('data-theme', saved);
       window.addEventListener('storage', function(e) {
         if (e.key === 'terse-theme' && e.newValue) {
@@ -339,7 +405,7 @@
         }
       });
       setInterval(function() {
-        var t = localStorage.getItem('terse-theme') || 'azure';
+        var t = localStorage.getItem('terse-theme') || 'horizon';
         if (document.documentElement.getAttribute('data-theme') !== t) {
           document.documentElement.setAttribute('data-theme', t);
         }

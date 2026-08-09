@@ -29,10 +29,10 @@
   <script>
     // Load saved theme + keep in sync with the rest of the app (mirrors island.html).
     (function () {
-      var saved = localStorage.getItem('terse-theme') || 'azure';
+      var saved = localStorage.getItem('terse-theme') || 'horizon';
       document.documentElement.setAttribute('data-theme', saved);
       setInterval(function () {
-        var t = localStorage.getItem('terse-theme') || 'azure';
+        var t = localStorage.getItem('terse-theme') || 'horizon';
         if (document.documentElement.getAttribute('data-theme') !== t) {
           document.documentElement.setAttribute('data-theme', t);
         }

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
+  <meta charset="UTF-8">
+  <title>Terse Alerts 提醒</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:var(--bg);color:var(--t1);
+      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+      font-size:12px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden}
+    body{display:flex;flex-direction:column;height:100vh;border-radius:16px}
+    .wrap{width:100%;max-width:680px;margin:0 auto}
+
+    /* ── Header ── */
+    .header{display:flex;align-items:center;gap:10px;padding:14px 18px 10px;
+      -webkit-app-region:drag;flex-shrink:0}
+    .back-btn{-webkit-app-region:no-drag;width:28px;height:28px;border-radius:50%;border:none;
+      flex-shrink:0;background:var(--sf);color:var(--t2);cursor:pointer;display:flex;
+      align-items:center;justify-content:center;transition:background .15s,color .15s,transform .15s}
+    .back-btn:hover{background:var(--sfh);color:var(--t1);transform:scale(1.08)}
+    .hd-ic{width:22px;height:22px;color:var(--ac);flex-shrink:0}
+    .header h1{font-size:15px;font-weight:800;flex:1;letter-spacing:-.01em}
+    .header h1 .cn{font-weight:600;color:var(--t3);font-size:12px;margin-left:4px}
+
+    /* ── Segmented tabs ── */
+    .tabs{display:flex;gap:0;margin:4px auto 0;background:var(--sf);border:1px solid var(--bd);
+      border-radius:9999px;padding:3px;width:fit-content;position:relative}
+    .tabs button{-webkit-app-region:no-drag;border:none;background:none;cursor:pointer;
+      font-size:11.5px;font-weight:700;padding:7px 22px;border-radius:9999px;color:var(--t3);
+      letter-spacing:.01em;transition:color .2s;position:relative;z-index:1;display:flex;align-items:center;gap:6px}
+    .tabs button.active{color:var(--btn-t)}
+    .tabs .pill{position:absolute;top:3px;bottom:3px;width:calc(50% - 3px);border-radius:9999px;
+      background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.35),var(--shadow-sm);
+      transition:transform .28s var(--ease);z-index:0}
+    .tabs.t1 .pill{transform:translateX(100%)}
+    .tab-badge{min-width:16px;height:16px;padding:0 5px;border-radius:9999px;font-size:9px;
+      font-weight:800;display:inline-flex;align-items:center;justify-content:center;
+      background:var(--red);color:#fff;font-variant-numeric:tabular-nums}
+    .tabs button.active .tab-badge{background:color-mix(in srgb,var(--btn-t) 22%,transparent);color:var(--btn-t)}
+
+    .scroll{flex:1;overflow-y:auto;padding:14px 18px 22px}
+    .scroll::-webkit-scrollbar{width:4px}
+    .scroll::-webkit-scrollbar-thumb{background:var(--bdl);border-radius:4px}
+
+    /* ── Recent toolbar ── */
+    .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+    .toolbar .count{font-size:11px;font-weight:700;color:var(--t2);flex:1;font-variant-numeric:tabular-nums}
+    .tb-btn{-webkit-app-region:no-drag;border:1px solid var(--bd);border-radius:9999px;
+      background:var(--sf);color:var(--t2);font-size:10.5px;font-weight:700;padding:6px 13px;
+      cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+    .tb-btn:hover{background:var(--sfh);color:var(--t1);border-color:var(--bdl)}
+    .tb-btn.danger:hover{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,transparent)}
+
+    /* ── Alert cards ── */
+    #alertList{display:flex;flex-direction:column;gap:8px}
+    /* Severity is a soft rail that fades out, not a hard painted edge — it reads as
+       a hint at the margin instead of competing with the content. */
+    .alert{position:relative;overflow:hidden;background:var(--sf);border:1px solid var(--bd);
+      border-radius:15px;padding:13px 15px 13px 17px;
+      box-shadow:inset 0 1px 0 var(--hl),var(--shadow-sm);
+      opacity:0;transform:translateY(8px);animation:cardIn .4s var(--ease) calc(var(--i,0)*45ms) both;
+      transition:background .2s var(--ease),border-color .2s var(--ease),transform .2s var(--ease)}
+    @keyframes cardIn{to{opacity:1;transform:none}}
+    .alert::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;--sev:var(--bd);
+      background:linear-gradient(180deg,var(--sev),color-mix(in srgb,var(--sev) 12%,transparent))}
+    .alert:hover{border-color:var(--bdl);transform:translateY(-1px)}
+    .alert.sev-high::before{--sev:var(--red);box-shadow:0 0 14px -2px color-mix(in srgb,var(--red) 55%,transparent)}
+    .alert.sev-medium::before{--sev:var(--warn)}
+    .alert.sev-low::before{--sev:var(--ac)}
+    /* Only an unread high-severity row earns a tinted bloom — the one thing on the
+       page allowed to pull the eye on its own. */
+    .alert.sev-high.unread{background:
+      radial-gradient(120% 100% at 0% 50%,color-mix(in srgb,var(--red) 7%,transparent),transparent 62%),
+      color-mix(in srgb,#fff 3.5%,var(--sf))}
+    /* Unread: a brighter surface + the dot carry the signal. The old accent-tinted
+       wash turned the card olive against the lime theme. */
+    .alert.unread{background:color-mix(in srgb,#fff 3.5%,var(--sf));border-color:var(--bdl)}
+    .a-top{display:flex;align-items:center;gap:8px}
+    .a-emoji{width:26px;height:26px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;
+      justify-content:center;font-size:14px;background:var(--bg);
+      box-shadow:inset 0 0 0 1px var(--bd)}
+    .a-head{flex:1;min-width:0;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+    .a-title{font-size:12.5px;font-weight:800;color:var(--t1);letter-spacing:-.01em}
+    /* The kind is metadata, so it's a hairline-outlined label that only carries a
+       whisper of its hue — six saturated chips used to fight the titles beside them.
+       The colour still identifies the kind; it just sits behind the headline now. */
+    .a-kind{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.42px;
+      padding:1.5px 7px;border-radius:9999px;white-space:nowrap;opacity:.9;
+      color:color-mix(in srgb,var(--kc,var(--t3)) 72%,var(--t2));
+      background:color-mix(in srgb,var(--kc,var(--t3)) 7%,transparent);
+      box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--kc,var(--t3)) 20%,transparent)}
+    .k-doctor{--kc:var(--ac)}
+    .k-cleanup{--kc:#8D6E63}
+    .k-budget{--kc:#34d375}
+    .k-cache{--kc:#4A9EFF}
+    .k-routing{--kc:#9C27B0}
+    .k-context{--kc:#00BCD4}
+    .a-time{font-size:9.5px;color:var(--t3);font-weight:600;white-space:nowrap;flex-shrink:0;
+      font-variant-numeric:tabular-nums}
+    .unread-dot{width:7px;height:7px;border-radius:50%;background:var(--ac);flex-shrink:0;
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 18%,transparent);
+      animation:unreadPulse 2.4s var(--ease) infinite}
+    @keyframes unreadPulse{
+      0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 18%,transparent)}
+      50%    {box-shadow:0 0 0 5px color-mix(in srgb,var(--ac) 7%,transparent)}}
+    @media (prefers-reduced-motion:reduce){.unread-dot{animation:none}}
+    .a-body{font-size:10.5px;color:var(--t2);line-height:1.5;margin-top:6px;padding-left:34px}
+    .a-actions{margin-top:10px;padding-left:34px;display:flex;align-items:center;gap:4px}
+    /* One accent per row, and only for the action worth taking. A tinted-accent
+       primary keeps the row calm; a solid lime fill on every button (including
+       Snooze) left the list with eight competing CTAs and no hierarchy. */
+    .a-action{-webkit-app-region:no-drag;border:none;border-radius:9999px;font-size:10.5px;
+      font-weight:700;padding:6px 13px;cursor:pointer;
+      color:var(--ac);background:color-mix(in srgb,var(--ac) 13%,transparent);
+      box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 26%,transparent);
+      transition:background .15s var(--ease),color .15s var(--ease),transform .15s var(--ease)}
+    .a-action:hover{background:color-mix(in srgb,var(--ac) 20%,transparent);transform:translateY(-1px)}
+    .a-action:active{transform:translateY(0) scale(.97)}
+    /* Snooze is a dismissal, not a call to action — keep it near-invisible until hovered. */
+    .a-action.a-snooze{color:var(--t3);background:none;box-shadow:none;padding:6px 10px;font-weight:600}
+    .a-action.a-snooze:hover{color:var(--t2);background:var(--sfh);transform:none}
+
+    /* ── Empty state ── */
+    .empty{text-align:center;padding:48px 20px}
+    .empty-ic{width:64px;height:64px;margin:0 auto 14px;border-radius:20px;display:flex;
+      align-items:center;justify-content:center;font-size:30px;color:var(--ac);
+      background:color-mix(in srgb,var(--ac) 10%,transparent);
+      box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 22%,transparent)}
+    .empty-t{font-size:13px;font-weight:800;color:var(--t1);margin-bottom:4px}
+    .empty-s{font-size:11px;color:var(--t3);line-height:1.5;max-width:320px;margin:0 auto}
+
+    /* ── Settings ── */
+    .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);
+      padding:14px 15px;margin-bottom:12px;box-shadow:inset 0 1px 0 var(--hl),var(--shadow-sm)}
+    .card-t{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);
+      font-weight:800;margin-bottom:10px}
+    .srow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--bd)}
+    .srow:first-of-type{border-top:none}
+    .srow .si{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;
+      justify-content:center;font-size:15px;background:var(--bg);box-shadow:inset 0 0 0 1px var(--bd)}
+    .srow .stx{flex:1;min-width:0}
+    .srow .stt{font-size:12px;font-weight:700;color:var(--t1)}
+    .srow .sds{font-size:10px;color:var(--t3);line-height:1.4;margin-top:1px}
+    /* iOS switch (matches styles.css setting-row checkbox) */
+    .sw{appearance:none;-webkit-appearance:none;width:38px;height:22px;flex-shrink:0;
+      background:var(--sf);border:1px solid var(--bdl);border-radius:11px;position:relative;cursor:pointer;
+      box-shadow:inset 0 1px 3px rgba(0,0,0,.14);transition:background .25s var(--ease),border-color .25s}
+    .sw::before{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;
+      border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .25s var(--ease)}
+    .sw:checked{background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));
+      border-color:transparent}
+    .sw:checked::before{transform:translateX(16px)}
+
+    .field{margin-top:4px}
+    .field label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);
+      font-weight:700;display:block;margin-bottom:6px}
+    .field input[type=text]{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--bd);
+      border-radius:var(--rs);color:var(--t1);font-size:11.5px;font-family:'SF Mono',Menlo,monospace;
+      outline:none;user-select:text;transition:border-color .2s,box-shadow .2s}
+    .field input[type=text]:focus{border-color:color-mix(in srgb,var(--ac) 45%,transparent);box-shadow:var(--ring)}
+
+    /* severity segmented + kinds grid */
+    .seg{display:flex;gap:2px;background:var(--bg);border:1px solid var(--bd);border-radius:9999px;padding:3px}
+    .seg button{flex:1;-webkit-app-region:no-drag;border:none;background:none;cursor:pointer;
+      font-size:10.5px;font-weight:700;padding:6px 8px;border-radius:9999px;color:var(--t3);transition:all .18s}
+    .seg button.active{color:var(--btn-t);
+      background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.35),var(--shadow-sm)}
+    .kinds{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+    .kind{display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--bg);
+      border:1px solid var(--bd);border-radius:var(--rs);cursor:pointer;transition:border-color .15s,background .15s}
+    .kind:hover{border-color:var(--bdl)}
+    .kind .ke{font-size:15px;flex-shrink:0}
+    .kind .kt{flex:1;font-size:11px;font-weight:700;color:var(--t1)}
+    .kind .kt small{display:block;font-size:8.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.3px}
+    .kind .sw{width:34px;height:20px}
+    .kind .sw::before{width:14px;height:14px}
+    .kind .sw:checked::before{transform:translateX(14px)}
+
+    .two{display:flex;gap:10px}
+    .two .field{flex:1}
+    select{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);
+      color:var(--t1);font-size:11.5px;font-family:inherit;outline:none;cursor:pointer}
+
+    .test-btn{-webkit-app-region:no-drag;width:100%;padding:11px;border:none;border-radius:11px;cursor:pointer;
+      font-size:12px;font-weight:800;color:var(--btn-t);
+      background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.35),var(--shadow-sm);
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      transition:transform .15s var(--ease),box-shadow .15s var(--ease)}
+    .test-btn:hover{transform:translateY(-1px)}
+    .test-btn:active{transform:scale(.98)}
+    .hint{font-size:9.5px;color:var(--t3);text-align:center;margin-top:8px;line-height:1.5}
+    .disabled{opacity:.45;pointer-events:none}
+    .hidden{display:none!important}
+
+    .toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);padding:10px 18px;
+      background:var(--btn);color:var(--btn-t);border-radius:9999px;font-size:11.5px;font-weight:700;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.35),var(--shadow-md);z-index:100;
+      animation:slideUp .25s var(--ease)}
+  </style>
+</head>
+<body>
+  <div class="header wrap">
+    <button class="back-btn" id="btnBack" title="Back">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <svg class="hd-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+    <h1>Alert Center<span class="cn">提醒</span></h1>
+  </div>
+  <div class="tabs wrap" id="tabs">
+    <span class="pill"></span>
+    <button class="active" data-tab="0">Recent <span class="tab-badge hidden" id="tabBadge">0</span></button>
+    <button data-tab="1">Settings</button>
+  </div>
+
+  <div class="scroll">
+    <div class="wrap">
+      <!-- RECENT -->
+      <section id="paneRecent">
+        <div class="toolbar" id="toolbar">
+          <span class="count" id="recCount"></span>
+          <button class="tb-btn" id="btnMarkRead">Mark all read</button>
+          <button class="tb-btn danger" id="btnClear">Clear</button>
+        </div>
+        <div id="alertList"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="paneSettings" class="hidden">
+        <div class="card">
+          <div class="card-t">Channels</div>
+          <div class="srow">
+            <div class="si">🔔</div>
+            <div class="stx"><div class="stt">Master switch</div><div class="sds">Turn every alert on or off</div></div>
+            <input type="checkbox" class="sw" id="c-enabled">
+          </div>
+          <div class="srow">
+            <div class="si">🖥️</div>
+            <div class="stx"><div class="stt">Desktop toasts</div><div class="sds">Terse banners, top-right, in your theme</div></div>
+            <input type="checkbox" class="sw" id="c-native">
+          </div>
+          <div class="srow">
+            <div class="si">📥</div>
+            <div class="stx"><div class="stt">In-app Alert Center</div><div class="sds">Keep a history + live toasts here</div></div>
+            <input type="checkbox" class="sw" id="c-inApp">
+          </div>
+          <div class="srow">
+            <div class="si">💬</div>
+            <div class="stx"><div class="stt">Slack</div><div class="sds">Post to an incoming webhook</div></div>
+            <input type="checkbox" class="sw" id="c-slack">
+          </div>
+          <div class="field" id="webhookField">
+            <label>Slack incoming webhook</label>
+            <input type="text" id="c-webhook" placeholder="https://hooks.slack.com/services/…" spellcheck="false">
+          </div>
+          <div class="srow">
+            <div class="si">📱</div>
+            <div class="stx"><div class="stt">Phone push</div><div class="sds">Push to your phone via a free ntfy.sh topic</div></div>
+            <input type="checkbox" class="sw" id="c-push">
+          </div>
+          <div class="field" id="pushField">
+            <label>ntfy topic URL</label>
+            <input type="text" id="c-pushurl" placeholder="https://ntfy.sh/terse-your-secret" spellcheck="false">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-t">What to alert on</div>
+          <div class="field" style="margin-top:0;margin-bottom:12px">
+            <label>Minimum severity</label>
+            <div class="seg" id="sevSeg">
+              <button data-sev="low">All</button>
+              <button data-sev="medium">Medium+</button>
+              <button data-sev="high">High only</button>
+            </div>
+          </div>
+          <div class="kinds" id="kindsGrid"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-t">Timing</div>
+          <div class="two">
+            <div class="field" style="margin-top:0">
+              <label>Throttle (same alert)</label>
+              <select id="c-throttle">
+                <option value="0">No throttle</option>
+                <option value="15">15 min</option>
+                <option value="30">30 min</option>
+                <option value="60">1 hour</option>
+                <option value="180">3 hours</option>
+                <option value="720">12 hours</option>
+              </select>
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Quiet hours</label>
+              <div class="two">
+                <select id="c-quietStart"></select>
+                <select id="c-quietEnd"></select>
+              </div>
+            </div>
+          </div>
+          <div class="hint">Quiet hours mute desktop toasts + Slack; alerts still appear here.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-t">Budget guardrail · circuit breaker</div>
+          <div class="srow">
+            <div class="si">🛑</div>
+            <div class="stx"><div class="stt">Enable circuit breaker</div><div class="sds">Act on runaway spend, not just alert on it</div></div>
+            <input type="checkbox" class="sw" id="cb-enabled">
+          </div>
+          <div class="field" id="cbBody">
+            <label>When a ceiling trips</label>
+            <div class="seg" id="cbActionSeg">
+              <button data-act="alert">Alert only</button>
+              <button data-act="pause">Pause agent</button>
+              <button data-act="kill">Stop agent</button>
+            </div>
+            <div class="two" style="margin-top:12px">
+              <div class="field" style="margin-top:0">
+                <label>Burn limit (tokens/min)</label>
+                <input type="number" id="cb-burn" min="0" step="5000" placeholder="80000">
+              </div>
+              <div class="field" style="margin-top:0">
+                <label>Session token cap</label>
+                <input type="number" id="cb-tokens" min="0" step="500000" placeholder="5000000">
+              </div>
+            </div>
+            <div class="field" style="margin-top:12px">
+              <label>Session cost cap (USD)</label>
+              <input type="number" id="cb-cost" min="0" step="1" placeholder="20">
+            </div>
+            <div class="hint">Pause suspends the agent process (resumable); Stop terminates it. Caps of 0 disable that check. Burn must stay high across 2 ticks before it trips.</div>
+          </div>
+        </div>
+
+        <button class="test-btn" id="btnTest">🔔 Send a test alert</button>
+        <div class="hint">Fires through your current channel settings so you can confirm banners work.</div>
+      </section>
+    </div>
+  </div>
+
+  <script src="tauri-bridge.js"></script>
+  <script>
+    const T = window.terse;
+    const $ = s => document.querySelector(s);
+    const $$ = s => document.querySelectorAll(s);
+    let settings = null;
+
+    const KINDS = [
+      { id:'doctor',  e:'🩺', t:'Doctor findings', s:'Health issues' },
+      { id:'cleanup', e:'🧹', t:'Cleanup',         s:'Disk & junk' },
+      { id:'budget',  e:'💰', t:'Budget',          s:'Spend & burn' },
+      { id:'cache',   e:'⚡', t:'Cache',           s:'Hit-rate drops' },
+      { id:'routing', e:'🧭', t:'Model routing',   s:'Cheaper model' },
+      { id:'context', e:'📄', t:'Context',         s:'Near-full window' },
+      { id:'agent',   e:'🔔', t:'Agent attention', s:'Done / blocked / idle' },
+      { id:'summary', e:'📋', t:'Session summary',  s:'Completion report' },
+      { id:'digest',  e:'📰', t:'Weekly digest',    s:'Savings roll-up' },
+    ];
+    const KIND_EMOJI = Object.fromEntries(KINDS.map(k => [k.id, k.e]));
+
+    function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+      document.body.appendChild(t); setTimeout(()=>t.remove(),1900); }
+
+    function relTime(ts){
+      const s = Math.max(0, Math.floor(Date.now()/1000) - ts);
+      if (s < 45) return 'just now';
+      if (s < 3600) return Math.round(s/60)+'m ago';
+      if (s < 86400) return Math.round(s/3600)+'h ago';
+      return Math.round(s/86400)+'d ago';
+    }
+    const ACTIONS = {
+      'open-doctor':  { label:'Open Doctor',  run:()=>T.navigateToDoctor&&T.navigateToDoctor() },
+      'open-cleanup': { label:'Clean up now', run:()=>T.navigateBack&&T.navigateBack() },
+      'open-budget':  { label:'View budget',  run:()=>T.navigateToStats&&T.navigateToStats() },
+      'open-stats':   { label:'Open Stats',   run:()=>T.navigateToStats&&T.navigateToStats() },
+      'open-popup':   { label:'Go to agent',  run:()=>T.navigateBack&&T.navigateBack() },
+    };
+    const SNOOZE_MIN = 60;
+
+    async function renderRecent(){
+      const data = await T.getRecentAlerts().catch(()=>({alerts:[],unread:0}));
+      const list = data.alerts || [];
+      const badge = $('#tabBadge');
+      badge.textContent = data.unread || 0;
+      badge.classList.toggle('hidden', !data.unread);
+      $('#recCount').textContent = list.length ? `${list.length} alert${list.length>1?'s':''}` : '';
+      $('#toolbar').classList.toggle('hidden', !list.length);
+      const el = $('#alertList');
+      if (!list.length){
+        el.innerHTML = `<div class="empty"><div class="empty-ic">✓</div>
+          <div class="empty-t">You're all caught up</div>
+          <div class="empty-s">Terse will surface cache regressions, budget burn, cleanup and Doctor findings here as they happen.</div></div>`;
+        return;
+      }
+      el.innerHTML = list.map((a,i)=>{
+        const act = a.action && ACTIONS[a.action];
+        return `<div class="alert sev-${a.severity} ${a.read?'':'unread'}" style="--i:${i}">
+          <div class="a-top">
+            <div class="a-emoji">${KIND_EMOJI[a.kind]||'🔔'}</div>
+            <div class="a-head">
+              <span class="a-title">${esc(a.title)}</span>
+              <span class="a-kind k-${a.kind}">${a.kind}</span>
+            </div>
+            ${a.read?'':'<span class="unread-dot"></span>'}
+            <span class="a-time">${relTime(a.ts)}</span>
+          </div>
+          <div class="a-body">${esc(a.body)}</div>
+          <div class="a-actions">
+            ${act?`<button class="a-action" data-act="${a.action}">${act.label}</button>`:''}
+            <button class="a-action a-snooze" data-snooze="${a.kind}">Snooze 1h</button>
+          </div>
+        </div>`;
+      }).join('');
+      el.querySelectorAll('.a-action[data-act]').forEach(b=>b.addEventListener('click',()=>ACTIONS[b.dataset.act]?.run()));
+      el.querySelectorAll('.a-snooze').forEach(b=>b.addEventListener('click',()=>{
+        T.snoozeAlertKind && T.snoozeAlertKind(b.dataset.snooze, SNOOZE_MIN);
+        toast('Snoozed '+b.dataset.snooze+' for 1h');
+      }));
+    }
+    function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    // ── Settings ──
+    function fillHourSelects(){
+      const mk = (sel, val) => { let o='<option value="">—</option>';
+        for(let h=0;h<24;h++){ o+=`<option value="${h}" ${String(val)===String(h)?'selected':''}>${String(h).padStart(2,'0')}:00</option>`; }
+        sel.innerHTML=o; };
+      mk($('#c-quietStart'), settings.quietStart);
+      mk($('#c-quietEnd'), settings.quietEnd);
+    }
+    function renderKinds(){
+      $('#kindsGrid').innerHTML = KINDS.map(k=>`
+        <label class="kind"><span class="ke">${k.e}</span>
+          <span class="kt">${k.t}<small>${k.s}</small></span>
+          <input type="checkbox" class="sw" data-kind="${k.id}" ${settings.kinds[k.id]!==false?'checked':''}>
+        </label>`).join('');
+      $$('#kindsGrid .sw').forEach(cb=>cb.addEventListener('change',()=>{
+        settings.kinds[cb.dataset.kind]=cb.checked; save();
+      }));
+    }
+    function paintSettings(){
+      $('#c-enabled').checked = settings.enabled;
+      $('#c-native').checked = settings.native;
+      $('#c-inApp').checked = settings.inApp;
+      $('#c-slack').checked = settings.slack;
+      $('#c-webhook').value = settings.slackWebhook || '';
+      $('#c-push').checked = !!settings.push;
+      $('#c-pushurl').value = settings.pushUrl || '';
+      $('#pushField').classList.toggle('disabled', !settings.push);
+      $('#c-throttle').value = String(settings.throttleMinutes ?? 60);
+      $$('#sevSeg button').forEach(b=>b.classList.toggle('active', b.dataset.sev===settings.minSeverity));
+      $('#webhookField').classList.toggle('disabled', !settings.slack);
+      renderKinds();
+      fillHourSelects();
+    }
+    let saveTimer=null;
+    function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(async()=>{ await T.setAlertSettings(settings); },250); }
+
+    function wireSettings(){
+      $('#c-enabled').addEventListener('change',e=>{settings.enabled=e.target.checked;save();});
+      $('#c-native').addEventListener('change',e=>{settings.native=e.target.checked;save();});
+      $('#c-inApp').addEventListener('change',e=>{settings.inApp=e.target.checked;save();});
+      $('#c-slack').addEventListener('change',e=>{settings.slack=e.target.checked;$('#webhookField').classList.toggle('disabled',!e.target.checked);save();});
+      $('#c-webhook').addEventListener('input',e=>{settings.slackWebhook=e.target.value.trim();save();});
+      $('#c-push').addEventListener('change',e=>{settings.push=e.target.checked;$('#pushField').classList.toggle('disabled',!e.target.checked);save();});
+      $('#c-pushurl').addEventListener('input',e=>{settings.pushUrl=e.target.value.trim();save();});
+      $('#c-throttle').addEventListener('change',e=>{settings.throttleMinutes=parseInt(e.target.value,10)||0;save();});
+      $('#c-quietStart').addEventListener('change',e=>{settings.quietStart=e.target.value===''?null:parseInt(e.target.value,10);save();});
+      $('#c-quietEnd').addEventListener('change',e=>{settings.quietEnd=e.target.value===''?null:parseInt(e.target.value,10);save();});
+      $$('#sevSeg button').forEach(b=>b.addEventListener('click',()=>{
+        settings.minSeverity=b.dataset.sev;
+        $$('#sevSeg button').forEach(x=>x.classList.toggle('active',x===b)); save();
+      }));
+      $('#btnTest').addEventListener('click',async()=>{
+        await T.dispatchAlert('doctor','Test alert','If you can read this, your alert channels are working. 🎉','medium');
+        toast('Test alert sent'); setTimeout(renderRecent,300);
+      });
+    }
+
+    // ── Tabs ──
+    function setTab(i){
+      $('#tabs').classList.toggle('t1', i===1);
+      $$('#tabs button').forEach(b=>b.classList.toggle('active', +b.dataset.tab===i));
+      $('#paneRecent').classList.toggle('hidden', i!==0);
+      $('#paneSettings').classList.toggle('hidden', i!==1);
+      if (i===0){ renderRecent(); T.markAlertsRead && T.markAlertsRead().then(()=>setTimeout(()=>{ const b=$('#tabBadge'); b.classList.add('hidden'); },600)); }
+    }
+
+    // ── Budget guardrail / circuit breaker ──
+    let circuit = null;
+    async function initCircuit(){
+      circuit = await T.getCircuitSettings().catch(()=>null) || {
+        enabled:false, action:'alert', burnLimitPerMin:80000, sessionTokenCap:5000000, sessionCostCap:20, sustainTicks:2 };
+      const saveCircuit = ()=>{ T.setCircuitSettings && T.setCircuitSettings(circuit); };
+      const paint = ()=>{
+        $('#cb-enabled').checked = !!circuit.enabled;
+        $('#cbBody').classList.toggle('disabled', !circuit.enabled);
+        $$('#cbActionSeg button').forEach(b=>b.classList.toggle('active', b.dataset.act===(circuit.action||'alert')));
+        $('#cb-burn').value = circuit.burnLimitPerMin ?? 80000;
+        $('#cb-tokens').value = circuit.sessionTokenCap ?? 5000000;
+        $('#cb-cost').value = circuit.sessionCostCap ?? 20;
+      };
+      paint();
+      $('#cb-enabled').addEventListener('change',e=>{circuit.enabled=e.target.checked;$('#cbBody').classList.toggle('disabled',!e.target.checked);saveCircuit();});
+      $$('#cbActionSeg button').forEach(b=>b.addEventListener('click',()=>{
+        circuit.action=b.dataset.act; $$('#cbActionSeg button').forEach(x=>x.classList.toggle('active',x===b)); saveCircuit();
+      }));
+      $('#cb-burn').addEventListener('change',e=>{circuit.burnLimitPerMin=Math.max(0,parseInt(e.target.value||'0',10));saveCircuit();});
+      $('#cb-tokens').addEventListener('change',e=>{circuit.sessionTokenCap=Math.max(0,parseInt(e.target.value||'0',10));saveCircuit();});
+      $('#cb-cost').addEventListener('change',e=>{circuit.sessionCostCap=Math.max(0,parseFloat(e.target.value||'0'));saveCircuit();});
+    }
+
+    // ── Init ──
+    (async()=>{
+      settings = await T.getAlertSettings().catch(()=>null) || {
+        enabled:true,native:true,slack:false,inApp:true,slackWebhook:'',minSeverity:'medium',
+        kinds:{},throttleMinutes:60,quietStart:null,quietEnd:null,push:false,pushUrl:'' };
+      if(!settings.kinds) settings.kinds={};
+      paintSettings(); wireSettings();
+      await initCircuit();
+      await renderRecent();
+      // mark read shortly after landing on Recent
+      setTimeout(()=>{ T.markAlertsRead && T.markAlertsRead(); }, 900);
+
+      $('#btnBack').addEventListener('click',()=>T.navigateBack());
+      $$('#tabs button').forEach(b=>b.addEventListener('click',()=>setTab(+b.dataset.tab)));
+
+      // Live: a new alert lands while the Center is open.
+      if (window.__TAURI__?.event?.listen){
+        window.__TAURI__.event.listen('alert',()=>{ if(!$('#paneRecent').classList.contains('hidden')) renderRecent(); });
+      }
+    })();
+  </script>
+</body>
+</html>

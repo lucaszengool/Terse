@@ -9,13 +9,17 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["terse"]
+        "schemes": [
+          "terse"
+        ]
       }
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg"],
+    "targets": [
+      "dmg"
+    ],
     "macOS": {
       "entitlements": "../src-tauri/Entitlements.plist"
     },
@@ -52,15 +56,17 @@
         "label": "main",
         "title": "Terse",
         "url": "index.html",
-        "width": 340,
-        "height": 460,
+        "width": 980,
+        "height": 650,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "resizable": true,
         "shadow": true,
         "visible": true,
-        "visibleOnAllWorkspaces": true
+        "visibleOnAllWorkspaces": true,
+        "minWidth": 820,
+        "minHeight": 560
       }
     ],
     "trayIcon": {

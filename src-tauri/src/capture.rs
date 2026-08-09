@@ -43,7 +43,7 @@ static AX_BIN_PATH: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
 });
 
 /// Get the terse-ax binary path
-fn ax_bin_path() -> &'static str {
+pub fn ax_bin_path() -> &'static str {
     &AX_BIN_PATH
 }
 const BRIDGE_PORT: u16 = 47821;

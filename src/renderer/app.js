@@ -115,48 +115,128 @@ async function updateLicenseBanner() {
   } catch {}
 }
 // ── Paywall Gate — blocks app until user starts a free trial ──
+// ── Freemium model ──────────────────────────────────────────────────────────
+// Monitoring is FREE forever (Dynamic Island, agent activity, Stats, Doctor scan,
+// Wallpaper, Prompts, Farm). The paywall is never a wall anymore — it's an
+// on-demand upgrade sheet opened when a free user attempts a Pro action (live
+// optimization / auto-replace, Doctor auto-fix, Cleanup, Team, multi-repo graph)
+// or taps Upgrade. So checkPaywall() only keeps the sheet closed + refreshes CTAs.
 async function checkPaywall() {
-  if (!T.getLicense || !T.getAuth) return;
+  const gate = $('#paywallGate');
+  if (gate && !gate.dataset.userOpened) { gate.classList.add('hidden'); gate.style.display = 'none'; }
+  refreshUpgradeCta();
+}
+
+async function refreshUpgradeCta() {
   try {
-    const auth = await T.getAuth();
-    if (!auth.signedIn) return; // auth gate handles this
+    if (!T.getLicense) return;
     const lic = await T.getLicense();
-    const gate = $('#paywallGate');
-    if (!gate) return;
-    // Grace window: for the first 15 minutes after login we let the user try Terse
-    // without an active plan — keep the paywall hidden until the window elapses.
-    try {
-      if (T.trialGraceStatus) {
-        const g = await T.trialGraceStatus();
-        if (g && g.inGrace && !g.hasPlan) { gate.classList.add('hidden'); gate.style.display = 'none'; return; }
-      }
-    } catch {}
-    const tier = (lic.tier || '').toLowerCase();
-    const status = (lic.status || '').toLowerCase();
-    const noActivePlan = !tier || tier === 'expired' || tier === 'free' || status === 'cancelled' || status === 'none';
-    if (noActivePlan) {
-      // Onboarding order: pick a starter pet BEFORE the paywall. The pet picker
-      // and this gate share z-index:9998, and the gate is later in the DOM, so it
-      // would otherwise paint on top of an unfinished pet selection. Defer until
-      // the starter pet is picked (the pet-pick handler re-calls checkPaywall()).
-      try {
-        if (T.getPetState) {
-          const pet = await T.getPetState();
-          if (pet && pet.data && !pet.data.starterPicked) {
-            gate.classList.add('hidden');
-            gate.style.display = 'none';
-            return;
-          }
-        }
-      } catch {}
-      gate.classList.remove('hidden');
-      gate.style.display = 'flex';
-    } else {
-      gate.classList.add('hidden');
-      gate.style.display = 'none';
+    let pro = !!(lic && lic.isPro);
+    // The first 15 min after sign-in is a reverse-trial: full access, no upsell.
+    // When it elapses the free-tier UI (hero, PRO locks, Upgrade CTA) appears —
+    // this is the "after 15 minutes" state the user should clearly see.
+    if (!pro && T.trialGraceStatus) {
+      try { const g = await T.trialGraceStatus(); if (g && g.inGrace && !g.hasPlan) pro = true; } catch {}
     }
+    document.body.classList.toggle('is-free', !pro);
+    const cta = $('#sbUpgrade');
+    if (cta) cta.style.display = pro ? 'none' : '';
   } catch {}
 }
+
+function openPaywall(reason) {
+  const gate = $('#paywallGate'); if (!gate) return;
+  gate.dataset.userOpened = '1';
+  gate.classList.remove('hidden'); gate.style.display = 'flex';
+  if (reason) { const sub = $('#paywallSubtitle'); if (sub) sub.textContent = reason; }
+}
+function closePaywall() {
+  const gate = $('#paywallGate'); if (!gate) return;
+  delete gate.dataset.userOpened;
+  gate.classList.add('hidden'); gate.style.display = 'none';
+}
+window.__terseOpenPaywall = openPaywall;
+
+async function isPro() { try { const l = await T.getLicense(); return !!(l && l.isPro); } catch { return false; } }
+// Gate a Pro action: returns true if allowed, else opens the upgrade sheet.
+async function ensurePro(reason) { if (await isPro()) return true; openPaywall(reason || 'This is a Pro feature. Upgrade to unlock it.'); return false; }
+window.__terseEnsurePro = ensurePro;
+
+// Banner CTA + whole-banner click → open the trial sheet for free users.
+$('#btnUpgrade')?.addEventListener('click', (e) => { e.stopPropagation(); openPaywall(); });
+$('#licenseBanner')?.addEventListener('click', () => { if (document.body.classList.contains('is-free')) openPaywall(); });
+// Free-tier hero CTA in the Overview.
+$('#freeHeroBtn')?.addEventListener('click', () => openPaywall());
+
+// A Pro-gated sub-page (Doctor/Stats) sends the user back here with #upgrade so
+// the paywall opens on top of the app rather than being lost on navigation.
+if (location.hash && location.hash.toLowerCase().indexOf('upgrade') >= 0) {
+  try { history.replaceState(null, '', location.pathname); } catch {}
+  setTimeout(() => openPaywall(TT('pro_gate_optimize')), 250);
+}
+
+// Guard for a Pro action outside the sidebar: opens the trial sheet when free.
+async function proGuard(reasonKey, run) {
+  if (document.body.classList.contains('is-free') && !(await isPro())) { openPaywall(TT(reasonKey)); return; }
+  run();
+}
+
+// Dismiss controls (the sheet is now a modal, not a wall).
+$('#paywallClose')?.addEventListener('click', closePaywall);
+$('#paywallLaterBtn')?.addEventListener('click', closePaywall);
+$('#paywallInviteBtn')?.addEventListener('click', () => { closePaywall(); openInvite(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const g = $('#paywallGate'); if (g && !g.classList.contains('hidden')) closePaywall();
+    const inv = $('#inviteModal'); if (inv && !inv.classList.contains('hidden')) closeInvite();
+  }
+});
+
+// ── Invite / referral sheet ──────────────────────────────────────────────────
+let _referral = null;
+function closeInvite() { const m = $('#inviteModal'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+async function openInvite() {
+  const m = $('#inviteModal'); if (!m) return;
+  m.classList.remove('hidden'); m.style.display = 'flex';
+  $('#inviteMsg').textContent = '';
+  try {
+    _referral = await T.getReferralInfo();
+  } catch { _referral = null; }
+  const r = _referral || {};
+  if (r.signedIn === false) {
+    $('#inviteCode').textContent = 'sign in';
+    $('#inviteMsg').textContent = 'Sign in to get your invite code.';
+    return;
+  }
+  $('#inviteCode').textContent = r.code || '······';
+  $('#inviteSent').textContent = r.invited || 0;
+  $('#inviteConv').textContent = r.converted || 0;
+  $('#inviteDays').textContent = r.proDaysEarned || 0;
+  if (r.rewardText) $('#inviteReward').innerHTML = r.rewardText + '. When a friend starts Pro, you <b style="color:var(--t1)">both</b> win.';
+  if (r.pending) $('#inviteMsg').textContent = 'Referral rewards are rolling out — your code is ready to share.';
+}
+window.__terseOpenInvite = openInvite;
+
+$('#inviteClose')?.addEventListener('click', closeInvite);
+$('#inviteCopy')?.addEventListener('click', async () => {
+  const url = (_referral && _referral.shareUrl) || ('https://www.terseai.org/?ref=' + (($('#inviteCode').textContent) || ''));
+  try { await navigator.clipboard.writeText(url); } catch { try { await T.applyToClipboard(url); } catch {} }
+  $('#inviteMsg').textContent = 'Share link copied ✓';
+});
+$('#inviteRedeemBtn')?.addEventListener('click', async () => {
+  const code = ($('#inviteRedeemInput').value || '').trim().toUpperCase();
+  if (!code) { $('#inviteMsg').textContent = 'Enter a code.'; return; }
+  $('#inviteMsg').textContent = 'Redeeming…';
+  try {
+    const res = await T.redeemReferralCode(code);
+    if (res && res.granted) {
+      $('#inviteMsg').textContent = '🎉 ' + (res.message || '14 days of Pro unlocked!');
+      updateLicenseBanner(); refreshUpgradeCta();
+    } else {
+      $('#inviteMsg').textContent = (res && res.message) || 'Code saved — reward applies once your friend joins.';
+    }
+  } catch (e) { $('#inviteMsg').textContent = String(e); }
+});
 
 async function startTrialCheckout(tier, noTrial = false, paymentMethod = null) {
   toast('Starting checkout…');
@@ -206,7 +286,8 @@ if ($('#paywallCardBtn')) {
   $('#paywallCardBtn').addEventListener('click', (e) => {
     e.stopPropagation();
     const t = selectedTier();
-    startTrialCheckout(t, t !== 'pro'); // monthly → trial; others → charge now
+    // Weekly (7-day) and monthly (30-day) start as a $0 trial on card; quarterly charges now.
+    startTrialCheckout(t, t !== 'pro' && t !== 'pro_weekly');
   });
 }
 if ($('#paywallWechatBtn')) {
@@ -252,21 +333,16 @@ if (window.__TAURI__?.event?.listen) {
   window.__TAURI__.event.listen('quota-updated', () => updateLicenseBanner());
   window.__TAURI__.event.listen('quota-exhausted', (event) => {
     updateLicenseBanner();
-    // Show exhausted banner in main window
-    const banner = document.getElementById('licenseBanner');
-    if (banner) {
-      banner.classList.add('limit-warning');
-      const usage = document.getElementById('licenseUsage');
-      if (usage) usage.textContent = 'No active plan — start a free trial';
-    }
-    // Disconnect all sessions in UI
-    if (T.getAgentSessions) {
-      T.getAgentSessions().then(sessions => {
-        // Sessions already disconnected server-side; refresh UI
-        if (typeof renderSessions === 'function') renderSessions();
-      }).catch(() => {});
-    }
+    // Monitoring stays free — no disconnects. Surface the upgrade sheet for the
+    // Pro-only optimization the user just tried.
+    const msg = (event && event.payload && event.payload.message) || 'Live optimization is a Pro feature.';
+    openPaywall(msg);
   });
+  // On-demand upgrade sheet requested (from the floating popup / anywhere).
+  window.__TAURI__.event.listen('open-paywall', (event) => {
+    openPaywall((event && event.payload && event.payload.reason) || null);
+  });
+  window.__TAURI__.event.listen('license-updated', () => { updateLicenseBanner(); refreshUpgradeCta(); });
   // 15-minute "try it first" window ended with no plan → reveal the paywall.
   window.__TAURI__.event.listen('trial-grace-expired', () => {
     updateLicenseBanner();
@@ -515,7 +591,7 @@ $('#btnManCopy').addEventListener('click', async () => {
 $('#btnSettings').addEventListener('click', () => {
   $('#settingsPanel').classList.contains('hidden') ? show('settings') : show(prevView);
 });
-$('#btnStats').addEventListener('click', () => T.navigateToStats());
+$('#btnStats').addEventListener('click', () => proGuard('pro_gate_stats', () => T.navigateToStats()));
 $('#btnFarm').addEventListener('click', () => T.showFarmWindow());
 $('#btnCowork')?.addEventListener('click', () => T.navigateToCowork());
 $('#btnDoctor')?.addEventListener('click', () => {
@@ -667,13 +743,31 @@ function maybeRunOnboarding() {
 
 // ── Pet picker overlay ──────────────────────────────────────────────
 async function maybeShowPetPicker() {
-  if (!T.getPetState || !window.TERSE_PALS) return;
+  if (!T.getPetState || !window.TERSE_PALS) { maybeStartTour(); return; }
   let state;
-  try { state = await T.getPetState(); } catch { return; }
-  if (!state || state.data.starterPicked) return;
+  try { state = await T.getPetState(); } catch { maybeStartTour(); return; }
+  if (!state || state.data.starterPicked) { maybeStartTour(); return; }
   renderPetPickerGrid(state);
   const overlay = $('#petPicker');
   if (overlay) overlay.style.display = 'flex';
+}
+
+// ── Guided sidebar tour ──
+// Runs once, the first time the user actually lands on the shell — so it never
+// competes with the onboarding flow, the pet picker or the paywall for attention.
+function maybeStartTour() {
+  const tour = window.TERSE_TOUR;
+  if (!tour || tour.hasSeen()) return;
+  const blocked = () =>
+    $('#petPicker')?.style.display === 'flex' ||
+    document.querySelector('#onbFlow.show') ||
+    !$('#paywallGate')?.classList.contains('hidden');
+  let tries = 0;
+  (function wait() {
+    if (tries++ > 40) return;
+    if (blocked()) return setTimeout(wait, 500);
+    setTimeout(() => { if (!blocked()) tour.start(); }, 700);
+  })();
 }
 
 // ── Pals inventory (Phase 5) ─────────────────────────────────────
@@ -1021,6 +1115,7 @@ function renderPetPickerGrid(state) {
         }
         // Starter pet picked — now the paywall may appear (it was deferred during onboarding).
         checkPaywall();
+        maybeStartTour();
       } catch (e) { console.warn('[pet-picker] pick failed:', e); }
     });
     grid.appendChild(card);
@@ -1049,10 +1144,10 @@ function toast(msg, err) {
 // ── Command palette (⌘K) + keyboard shortcuts ──
 // Labels are English source strings; i18n's MutationObserver re-translates rendered
 // items, and we also match the translated label (via i18n key) during fuzzy search.
-const THEME_NAMES = ['azure','lime','lavender','coral','teal','midnight','rose','sage','sand'];
+const THEME_NAMES = ['horizon','azure','lime','lavender','coral','teal','midnight','rose','sage','sand'];
 function setAggrLevel(level) { $(`.toggle-btn[data-level="${level}"]`)?.click(); }
 const CMD_DEFS = [
-  { ic: '📊', label: 'Open Statistics', key: 'cmd_open_stats', run: () => T.navigateToStats() },
+  { ic: '📊', label: 'Open Statistics', key: 'cmd_open_stats', run: () => proGuard('pro_gate_stats', () => T.navigateToStats()) },
   { ic: '🩺', label: 'Open Doctor', key: 'cmd_open_doctor', run: () => T.navigateToDoctor ? T.navigateToDoctor() : T.showDoctorWindow() },
   { ic: '👥', label: 'Open Team', key: 'cmd_open_team', run: () => T.navigateToCowork() },
   { ic: '🌾', label: 'Open Farm', key: 'cmd_open_farm', run: () => T.showFarmWindow() },
@@ -1245,8 +1340,10 @@ const SB_ACTIONS = {
   doctor:   () => $('#btnDoctor').click(),
   stats:    () => T.navigateToStats(),
   history:  () => T.navigateToHistory && T.navigateToHistory(),
+  wallpaper:() => T.navigateToWallpaper && T.navigateToWallpaper(),
   team:     () => T.navigateToCowork && T.navigateToCowork(),
   farm:     () => T.navigateToFarm ? T.navigateToFarm() : (T.showFarmWindow && T.showFarmWindow()),
+  graph:    () => T.navigateToGraph && T.navigateToGraph(),
   boost:    () => { show('boost'); refreshBoost(); },
   prompts:  () => { show('prompts'); promptsInit(); },
   observe:  () => { show('observe'); observeInit(); },
@@ -1255,14 +1352,50 @@ const SB_ACTIONS = {
   connection: () => { show('connection'); connInit(); },
   pals:     () => $('#btnPalsTitle')?.click(),
 };
+// Pro-only destinations. Clicking one on the free tier is the strongest upsell
+// moment ("hitting a wall") — we open the trial sheet framed by that feature's
+// benefit instead of navigating. `is-free` is kept current by refreshUpgradeCta().
+const PRO_PAGES = {
+  boost:      'pro_gate_boost',
+  cleanup:    'pro_gate_cleanup',
+  team:       'pro_gate_team',
+  stats:      'pro_gate_stats',
+  connection: 'pro_gate_connection',
+};
 $$('.sb-item').forEach(b => b.addEventListener('click', () => {
   const page = b.dataset.page;
+  if (PRO_PAGES[page] && document.body.classList.contains('is-free')) {
+    openPaywall(TT(PRO_PAGES[page]));
+    return;
+  }
   // Same-frame feedback: highlight instantly; for cross-page navigations also
   // dim the pane so the click visibly registered before the new page loads.
   if (page !== 'pals') $$('.sb-item').forEach(x => x.classList.toggle('active', x === b));
-  if (['doctor', 'stats', 'team', 'alerts', 'history', 'farm'].includes(page)) document.body.classList.add('navigating');
+  if (['doctor', 'stats', 'team', 'alerts', 'history', 'farm', 'wallpaper', 'graph'].includes(page)) document.body.classList.add('navigating');
   SB_ACTIONS[page]?.();
 }));
+
+// Entry point for out-of-window callers (alert toasts) — routes through the same
+// sidebar handler so Pro gating and the active-item highlight stay consistent.
+window.__terseOpenPage = (page) => {
+  const btn = document.querySelector(`.sb-item[data-page="${page}"]`);
+  if (btn) btn.click(); else SB_ACTIONS[page]?.();
+};
+
+// Small i18n helper that falls back to English text if the key/dict is missing.
+function TT(key) {
+  const map = {
+    pro_gate_boost:      'Speed Up is a Pro feature. Start your free trial to cut your agent bill.',
+    pro_gate_cleanup:    'Cleanup is a Pro feature. Start your free trial to reclaim wasted tokens & disk.',
+    pro_gate_team:       'Team is a Pro feature. Start your free trial to watch every agent together.',
+    pro_gate_optimize:   'Live optimization is Pro. Start your free trial to auto-trim every prompt.',
+    pro_gate_stats:      'Stats is a Pro feature. Start your free trial to see where your tokens go.',
+    pro_gate_connection: 'Connection Doctor is a Pro feature. Start your free trial to auto-fix agent connectivity.',
+  };
+  const en = map[key] || key;
+  try { return (window.i18n && window.i18n.t) ? (window.i18n.t(key) !== key ? window.i18n.t(key) : en) : en; }
+  catch { return en; }
+}
 
 // ── Prompt Library (提示词) — in-shell panel, same store as the ⌘⇧K palette ──
 const PL = { prompts: [], filtered: [], sel: 0, current: null, view: 'list', wired: false };

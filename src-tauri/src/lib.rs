@@ -4,10 +4,23 @@ mod capture;
 mod agent_monitor;
 mod agent_usage_scan;
 mod stats_store;
+mod pricing;
 mod license;
 mod cowork;
 mod pet_store;
 mod farm_store;
+mod doctor;
+mod notifications;
+mod circuit;
+mod approvals;
+mod ax_read;
+mod digest;
+mod mcp_manager;
+mod connectivity;
+mod prompt_store;
+mod session_history;
+mod graph_store;
+mod graph_extract;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -23,6 +36,7 @@ fn lock_or_recover<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 use tauri::{
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
     tray::TrayIconBuilder,
+    menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
 };
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -65,6 +79,11 @@ pub struct Settings {
     pub compress_whitespace: bool,
     #[serde(rename = "compressCodeBlocks")]
     pub compress_code_blocks: bool,
+    /// ⚡ Speed Mode — forces cache-safe trimming (only the safe/lossless
+    /// subset regardless of the selected aggressiveness level), so Terse
+    /// never mutates a prompt in a way that busts the provider's prompt cache.
+    #[serde(rename = "speedMode", default)]
+    pub speed_mode: bool,
 }
 
 impl Default for Settings {
@@ -80,6 +99,7 @@ impl Default for Settings {
             remove_redundancy: true,
             compress_whitespace: true,
             compress_code_blocks: true,
+            speed_mode: false,
         }
     }
 }
@@ -108,6 +128,18 @@ pub struct AppState {
     pub popup_visible_for_text: Mutex<bool>,
     pub key_monitors: capture::KeyMonitorState,
     pub hook_stats_synced: Mutex<u64>,
+    pub alerts: Mutex<notifications::AlertCenter>,
+    pub circuit: Mutex<circuit::CircuitBreaker>,
+    pub prompt_store: Mutex<prompt_store::PromptStore>,
+    /// App name that was frontmost when the prompt palette was opened, so an
+    /// inserted prompt is pasted back into it (the palette itself steals focus).
+    pub palette_target: Mutex<String>,
+    pub session_history: Mutex<session_history::SessionHistoryStore>,
+    /// Knowledge-graph runtime state (current repo + watch flag).
+    pub graph: Mutex<graph_store::GraphState>,
+    /// Live filesystem watcher for the current repo; kept alive here. Dropping it
+    /// (set to `None`) stops watching and lets its debounce task exit.
+    pub graph_watcher: Mutex<Option<notify::RecommendedWatcher>>,
 }
 
 impl Default for AppState {
@@ -136,6 +168,13 @@ impl Default for AppState {
             popup_visible_for_text: Mutex::new(false),
             key_monitors: capture::KeyMonitorState::new(),
             hook_stats_synced: Mutex::new(0),
+            alerts: Mutex::new(notifications::AlertCenter::new()),
+            circuit: Mutex::new(circuit::CircuitBreaker::new()),
+            prompt_store: Mutex::new(prompt_store::PromptStore::new()),
+            palette_target: Mutex::new(String::new()),
+            session_history: Mutex::new(session_history::SessionHistoryStore::new()),
+            graph: Mutex::new(graph_store::GraphState::new()),
+            graph_watcher: Mutex::new(None),
         }
     }
 }
@@ -445,7 +484,10 @@ async fn capture_now(state: tauri::State<'_, AppState>, app: AppHandle) -> Resul
         None => return Err("No active session".to_string()),
     };
 
-    // Ensure popup is visible
+    // The popup window is retired — captured text now surfaces in the dynamic
+    // island's Capture/Replace widget (and the popup.js engine it still hosts).
+    // We keep emitting `popup-show` so any embedded popup UI resets, but we no
+    // longer raise the standalone popup window.
     {
         let mut visible = state.popup_visible_for_text.lock().unwrap_or_else(|e| e.into_inner());
         if !*visible {
@@ -453,10 +495,7 @@ async fn capture_now(state: tauri::State<'_, AppState>, app: AppHandle) -> Resul
             let _ = app.emit("popup-show", serde_json::json!({
                 "app": if session.title.is_empty() { &session.name } else { &session.title },
                 "sessionId": session.id,
-                            }));
-            if let Some(popup) = app.get_webview_window("popup") {
-                let _ = popup.show();
-            }
+            }));
         }
     }
 
@@ -577,6 +616,7 @@ fn update_settings(s: serde_json::Value, state: tauri::State<'_, AppState>, app:
     update_bool!("removeRedundancy", remove_redundancy);
     update_bool!("compressWhitespace", compress_whitespace);
     update_bool!("compressCodeBlocks", compress_code_blocks);
+    update_bool!("speedMode", speed_mode);
     let _ = app.emit("settings-changed", serde_json::to_value(&*settings).unwrap());
     true
 }
@@ -664,6 +704,344 @@ fn resize_popup(h: f64, state: tauri::State<'_, AppState>, app: AppHandle) {
     }
 }
 
+// ── Dynamic Island (灵动岛) Commands ──
+
+const ISLAND_PILL_W: f64 = 360.0;
+const ISLAND_PILL_H: f64 = 44.0;
+const ISLAND_CARD_W: f64 = 440.0;
+const ISLAND_CARD_DEFAULT_H: f64 = 520.0;
+const ISLAND_Y: f64 = 4.0;
+
+// ── Floating dashboard widget windows ──
+// Each entry is one small frameless always-on-top card showing ONE rich live
+// metric. The window label is "dash-<kind>" and it loads dash.html?w=<kind>; the
+// renderer (dash.js) reads its own window label to know which widget to draw.
+// They are created hidden at setup, tiled top-left, and the user drags them
+// anywhere; the main-window launcher shows/hides them as a set.
+const DASHBOARDS: &[(&str, f64, f64)] = &[
+    ("session", 322.0, 372.0),
+    ("saved", 300.0, 220.0),
+    ("compression", 300.0, 238.0),
+    ("cache", 300.0, 210.0),
+    ("focus", 300.0, 226.0),
+    ("tools", 322.0, 252.0),
+    ("agents", 300.0, 214.0),
+    ("savings", 300.0, 218.0),
+    ("activity", 340.0, 320.0),
+];
+const DASH_GAP: f64 = 14.0;
+const DASH_ORIGIN_X: f64 = 40.0;
+const DASH_ORIGIN_Y: f64 = 56.0;
+
+/// Compute a left→right, wrap-on-overflow tiled layout for the dashboard windows.
+/// Returns (label, kind, x, y, w, h) for each.
+fn dash_layout(screen_w: f64) -> Vec<(String, String, f64, f64, f64, f64)> {
+    let mut out = Vec::new();
+    let (mut x, mut y, mut row_h) = (DASH_ORIGIN_X, DASH_ORIGIN_Y, 0.0f64);
+    let max_x = (screen_w - DASH_ORIGIN_X).max(DASH_ORIGIN_X + 360.0);
+    for (kind, w, h) in DASHBOARDS {
+        if x + *w > max_x {
+            x = DASH_ORIGIN_X;
+            y += row_h + DASH_GAP;
+            row_h = 0.0;
+        }
+        out.push((format!("dash-{}", kind), kind.to_string(), x, y, *w, *h));
+        x += *w + DASH_GAP;
+        row_h = row_h.max(*h);
+    }
+    out
+}
+
+/// True while the dashboard constellation is revealed; gates the cursor-poll thread.
+static DASH_POLL_RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Poll the global cursor position and emit a single consolidated inside/outside
+/// signal for the whole dashboard constellation (island pill + every visible board).
+///
+/// Per-window DOM `mouseleave` events were too flaky to drive collapse: the boards
+/// are separate transparent overlay windows, so crossing the gaps between them — or
+/// leaving fast — dropped/raced the leave event and the set stayed open. A global
+/// cursor poll sidesteps all of that: it knows the real pointer position regardless
+/// of which (if any) window owns it. `NSEvent.mouseLocation` is thread-safe, so this
+/// is safe off the main thread. Emits `dash-cursor-outside` only after the pointer
+/// has been clear of every window for a short grace period (so brisk gap-crossings
+/// between adjacent boards don't trigger a false collapse).
+fn start_dash_cursor_poll(app: AppHandle) {
+    use std::sync::atomic::Ordering;
+    // swap returns the previous value; bail if a poll loop is already live.
+    if DASH_POLL_RUNNING.swap(true, Ordering::SeqCst) { return; }
+    std::thread::spawn(move || {
+        // Hover must feel instant in BOTH directions, and webview mouseenter is
+        // unreliable on unfocused overlay windows — so this native poll is the
+        // single source of truth: 40ms tick, immediate open on island entry,
+        // short grace before close so diagonal travel between windows never
+        // flickers the set shut.
+        const PILL_MARGIN: f64 = 10.0;   // slack around the island pill
+        const SET_MARGIN: f64 = 18.0;    // slack around each dashboard window
+        const GRACE: std::time::Duration = std::time::Duration::from_millis(170);
+        let mut last_inside: Option<bool> = None;
+        let mut last_island = false;
+        let mut outside_since: Option<std::time::Instant> = None;
+        loop {
+            if !DASH_POLL_RUNNING.load(Ordering::SeqCst) { break; }
+            let labels: Vec<String> =
+                dash_layout(island_screen_width(&app)).into_iter().map(|t| t.0).collect();
+            let island_visible = app
+                .get_webview_window("island")
+                .and_then(|w| w.is_visible().ok())
+                .unwrap_or(false);
+            if !island_visible {
+                // Island hidden: keep serving hover-close while any dashboard is
+                // still up; once everything is gone this loop has no job left.
+                let any_dash = labels.iter().any(|l| {
+                    app.get_webview_window(l).and_then(|w| w.is_visible().ok()).unwrap_or(false)
+                });
+                if !any_dash { break; }
+            }
+
+            let cursor = match app.cursor_position() {
+                Ok(c) => c,
+                Err(_) => { std::thread::sleep(std::time::Duration::from_millis(120)); continue; }
+            };
+            let hits = |w: &tauri::WebviewWindow, margin: f64| -> bool {
+                if !w.is_visible().unwrap_or(false) { return false; }
+                let (p, s) = match (w.outer_position(), w.outer_size()) {
+                    (Ok(p), Ok(s)) => (p, s),
+                    _ => return false,
+                };
+                let (x0, y0) = (p.x as f64 - margin, p.y as f64 - margin);
+                let (x1, y1) = (p.x as f64 + s.width as f64 + margin, p.y as f64 + s.height as f64 + margin);
+                cursor.x >= x0 && cursor.x <= x1 && cursor.y >= y0 && cursor.y <= y1
+            };
+
+            // OPEN path: entering the island fires on the SAME tick, no grace.
+            let island_hit = app
+                .get_webview_window("island")
+                .map(|w| hits(&w, PILL_MARGIN))
+                .unwrap_or(false);
+            if island_hit && !last_island {
+                let _ = app.emit("island-hover", ());
+            }
+            last_island = island_hit;
+
+            let mut inside = island_hit;
+            if !inside {
+                for l in &labels {
+                    if let Some(w) = app.get_webview_window(l) { if hits(&w, SET_MARGIN) { inside = true; break; } }
+                }
+            }
+
+            if inside {
+                outside_since = None;
+                if last_inside != Some(true) {
+                    let _ = app.emit("dash-cursor-inside", ());
+                    last_inside = Some(true);
+                }
+            } else {
+                let firmly_out = match outside_since {
+                    Some(t) => t.elapsed() >= GRACE,
+                    None => { outside_since = Some(std::time::Instant::now()); false }
+                };
+                if firmly_out && last_inside != Some(false) {
+                    let _ = app.emit("dash-cursor-outside", ());
+                    last_inside = Some(false);
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(40));
+        }
+        DASH_POLL_RUNNING.store(false, Ordering::SeqCst);
+    });
+}
+
+/// Show every dashboard widget window. The windows themselves are created hidden
+/// at setup (window creation must run on the main thread); this just reveals them.
+#[tauri::command]
+fn open_dashboards(app: AppHandle) {
+    for (label, _, _, _, _, _) in dash_layout(island_screen_width(&app)) {
+        if let Some(win) = app.get_webview_window(&label) {
+            let _ = win.show();
+            let _ = win.set_always_on_top(true);
+        }
+    }
+    // Nudge the (until now hidden) dashboards to reseed their live agent registry the
+    // instant they're revealed, so they never show a stale "0 online" / empty state.
+    let _ = app.emit("dashboards-shown", ());
+    // Start the global cursor poll that reliably drives hover-collapse.
+    start_dash_cursor_poll(app);
+}
+
+/// Hide every dashboard widget window (positions are preserved).
+#[tauri::command]
+fn hide_dashboards(app: AppHandle) {
+    // NOTE: the cursor poll stays alive — it also drives hover-OPEN on the pill.
+    for (label, _, _, _, _, _) in dash_layout(island_screen_width(&app)) {
+        if let Some(win) = app.get_webview_window(&label) {
+            let _ = win.hide();
+        }
+    }
+}
+
+/// Show or hide a single dashboard widget by kind (e.g. "saved"). Returns the new
+/// visible state so the launcher can reflect it.
+#[tauri::command]
+fn toggle_dashboard(kind: String, app: AppHandle) -> bool {
+    let label = format!("dash-{}", kind);
+    if let Some(win) = app.get_webview_window(&label) {
+        if win.is_visible().unwrap_or(false) {
+            let _ = win.hide();
+            return false;
+        }
+        let _ = win.show();
+        let _ = win.set_always_on_top(true);
+        return true;
+    }
+    // Window not found (shouldn't happen — they're created at setup). Show the set.
+    open_dashboards(app);
+    true
+}
+
+/// Re-tile all dashboard windows back to their default grid positions.
+#[tauri::command]
+fn tile_dashboards(app: AppHandle) {
+    let sw = island_screen_width(&app);
+    for (label, _, x, y, _, _) in dash_layout(sw) {
+        if let Some(win) = app.get_webview_window(&label) {
+            let _ = win.set_position(tauri::LogicalPosition::new(x, y));
+        }
+    }
+}
+
+/// True if at least one dashboard widget window is currently visible.
+#[tauri::command]
+fn dashboards_visible(app: AppHandle) -> bool {
+    for (label, _, _, _, _, _) in dash_layout(island_screen_width(&app)) {
+        if let Some(win) = app.get_webview_window(&label) {
+            if win.is_visible().unwrap_or(false) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Logical width of the primary monitor (for horizontally re-centering the island on resize).
+fn island_screen_width(app: &AppHandle) -> f64 {
+    match app.primary_monitor() {
+        Ok(Some(m)) => m.size().width as f64 / m.scale_factor(),
+        _ => 1440.0,
+    }
+}
+
+/// Logical height of the primary monitor (caps how tall the expanded island may grow).
+fn island_screen_height(app: &AppHandle) -> f64 {
+    match app.primary_monitor() {
+        Ok(Some(m)) => m.size().height as f64 / m.scale_factor(),
+        _ => 900.0,
+    }
+}
+
+#[tauri::command]
+fn show_island_window(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("island") {
+        let _ = win.show();
+    }
+    // Hover-open is native-driven: the poll must be live whenever the pill is.
+    start_dash_cursor_poll(app);
+}
+
+#[tauri::command]
+fn hide_island_window(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("island") {
+        let _ = win.hide();
+    }
+}
+
+/// Hover toggle: collapse to the pill or expand to the monitor card, kept top-center.
+#[tauri::command]
+fn island_set_expanded(expanded: bool, app: AppHandle) {
+    if let Some(win) = app.get_webview_window("island") {
+        let sw = island_screen_width(&app);
+        let (w, h) = if expanded {
+            (ISLAND_CARD_W, ISLAND_CARD_DEFAULT_H)
+        } else {
+            (ISLAND_PILL_W, ISLAND_PILL_H)
+        };
+        let x = ((sw - w) / 2.0).max(0.0);
+        let _ = win.set_size(tauri::LogicalSize::new(w, h));
+        let _ = win.set_position(tauri::LogicalPosition::new(x, ISLAND_Y));
+    }
+}
+
+/// Fit the expanded card to its rendered content height (analogous to resize_popup).
+#[tauri::command]
+fn island_resize(h: f64, app: AppHandle) {
+    if let Some(win) = app.get_webview_window("island") {
+        let sw = island_screen_width(&app);
+        // Allow the card to grow nearly the full screen height; the webview scrolls
+        // internally beyond this so the chevron-details always reveal fully.
+        let max_h = (island_screen_height(&app) - ISLAND_Y - 12.0).max(360.0);
+        let clamped = h.max(120.0).min(max_h);
+        let x = ((sw - ISLAND_CARD_W) / 2.0).max(0.0);
+        let _ = win.set_size(tauri::LogicalSize::new(ISLAND_CARD_W, clamped));
+        let _ = win.set_position(tauri::LogicalPosition::new(x, ISLAND_Y));
+    }
+}
+
+/// Size the island to an arbitrary alert-banner rect, kept top-center. Separate from
+/// `island_resize` because an alert is its own width (wider than the pill, narrower
+/// than the monitor card) rather than the fixed card width.
+#[tauri::command]
+fn island_alert_size(w: f64, h: f64, app: AppHandle) {
+    if let Some(win) = app.get_webview_window("island") {
+        let sw = island_screen_width(&app);
+        let max_h = (island_screen_height(&app) - ISLAND_Y - 12.0).max(200.0);
+        let cw = w.max(ISLAND_PILL_W).min((sw - 16.0).max(ISLAND_PILL_W));
+        let ch = h.max(ISLAND_PILL_H).min(max_h);
+        let x = ((sw - cw) / 2.0).max(0.0);
+        let _ = win.set_size(tauri::LogicalSize::new(cw, ch));
+        let _ = win.set_position(tauri::LogicalPosition::new(x, ISLAND_Y));
+    }
+}
+
+/// Bring an app to the front by name. Used when the user clicks an option on an
+/// approval card: we focus the agent's own window so they answer there. We do NOT
+/// synthesise the keystroke — injecting keys into a terminal off a heuristic text
+/// match could approve the wrong thing.
+#[tauri::command]
+fn focus_app(app: String) {
+    // Reject anything that isn't a plain app name before it reaches osascript.
+    if app.is_empty()
+        || app.len() > 40
+        || !app.chars().all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == '-' || c == '_' || c == '.')
+    {
+        return;
+    }
+    let _ = std::process::Command::new("osascript")
+        .args(["-e", &format!("tell application \"{}\" to activate", app)])
+        .output();
+}
+
+/// True when the island overlay is on screen — lets the alert layer choose the island
+/// as the presentation surface and fall back to the toast window otherwise.
+#[tauri::command]
+fn island_is_visible(app: AppHandle) -> bool {
+    app.get_webview_window("island")
+        .and_then(|w| w.is_visible().ok())
+        .unwrap_or(false)
+}
+
+/// Reveal the dynamic island and expand it onto a specific agent. Called when the user
+/// clicks an agent (Claude) session in the main window — instead of popping the legacy
+/// popup, we "pull down" the island and focus that agent's panel. island.js listens for
+/// the `island-focus` event and drives the expand + panel-switch.
+#[tauri::command]
+fn focus_island(agent_type: Option<String>, app: AppHandle) {
+    if let Some(win) = app.get_webview_window("island") {
+        let _ = win.show();
+    }
+    let _ = app.emit("island-focus", serde_json::json!({ "agentType": agent_type }));
+}
+
 // ── Agent Monitor Commands ──
 
 #[tauri::command]
@@ -686,10 +1064,11 @@ fn get_agent_sessions(state: tauri::State<'_, AppState>) -> Vec<serde_json::Valu
 async fn accept_agent(agent_type: String, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<Option<serde_json::Value>, String> {
     eprintln!("[terse] accept_agent called for type={}", agent_type);
 
-    // Block new connections if quota is exhausted
+    // Block new connections if quota is exhausted — unless still inside the
+    // post-login grace window, during which the subscription gate is suppressed.
     {
-        let lic = lock_or_recover(&state.license);
-        if !lic.can_optimize() {
+        let can = { lock_or_recover(&state.license).can_optimize() };
+        if !can && !in_grace(&state) {
             let _ = app.emit("quota-exhausted", serde_json::json!({
                 "remaining": 0,
                 "message": "No active subscription. Start a free trial to use Terse."
@@ -755,15 +1134,12 @@ fn activate_session(session_id: Option<u32>, agent_type: Option<String>, state: 
     *state.popup_visible_for_text.lock().unwrap_or_else(|e| e.into_inner()) = true;
     *state.last_popup_text.lock().unwrap_or_else(|e| e.into_inner()) = String::new();
 
-    // Show popup
+    // Popup retired — the island's Capture/Replace widget surfaces this now.
     let _ = app.emit("popup-show", serde_json::json!({
         "app": label,
         "sessionId": session_id,
         "agentType": agent_type,
     }));
-    if let Some(popup) = app.get_webview_window("popup") {
-        let _ = popup.show();
-    }
     true
 }
 
@@ -790,10 +1166,13 @@ fn get_cowork_config(state: tauri::State<'_, AppState>) -> serde_json::Value {
 
 /// Join a team by pasting its team token. Resolves the team via the cloud and persists it.
 #[tauri::command]
-fn set_cowork_token(token: String, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+async fn set_cowork_token(token: String, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let token = token.trim().to_string();
     if token.is_empty() { return Err("Empty token".into()); }
-    let snap = cowork::resolve_and_save_token(&token)?;
+    // Network validation (curl, up to 10s) must never run on the main thread.
+    let snap = tauri::async_runtime::spawn_blocking(move || cowork::resolve_and_save_token(&token))
+        .await
+        .map_err(|e| e.to_string())??;
     // Reload config into runtime state so publishing starts immediately.
     let mut cw = lock_or_recover(&state.cowork);
     cw.config = cowork::CoworkConfig::load();
@@ -828,13 +1207,37 @@ fn clear_cowork_token(state: tauri::State<'_, AppState>) -> serde_json::Value {
     cw.config.snapshot()
 }
 
+/// Rate-limit ETA: annotate each usage period with a normalized percentage and
+/// the exact minutes until it resets, so the fuel gauge can show
+/// "82% used · resets in 2h14m" without guessing a window length.
+fn enrich_plan_eta(v: &mut serde_json::Value) {
+    let now = chrono::Utc::now();
+    for key in ["shortTerm", "longTerm"] {
+        if let Some(period) = v.get_mut(key).and_then(|p| p.as_object_mut()) {
+            if let Some(u) = period.get("utilization").and_then(|x| x.as_f64()) {
+                // Some sources report a 0–1 fraction, others 0–100 percent.
+                let pct = if u <= 1.0 { u * 100.0 } else { u };
+                period.insert("utilizationPct".into(), serde_json::json!((pct * 10.0).round() / 10.0));
+            }
+            if let Some(r) = period.get("resetsAt").and_then(|x| x.as_str()) {
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(r) {
+                    let mins = (dt.with_timezone(&chrono::Utc) - now).num_minutes();
+                    period.insert("minutesToReset".into(), serde_json::json!(mins.max(0)));
+                }
+            }
+        }
+    }
+}
+
 #[tauri::command]
 async fn get_agent_plan_info(agent_type: String, state: tauri::State<'_, AppState>) -> Result<Option<serde_json::Value>, String> {
     // Check cache first
     {
         let monitor = lock_or_recover(&state.agent_monitor);
         if let Some(cached) = monitor.get_cached_plan_info(&agent_type) {
-            return Ok(Some(serde_json::to_value(cached).unwrap_or_default()));
+            let mut v = serde_json::to_value(cached).unwrap_or_default();
+            enrich_plan_eta(&mut v);
+            return Ok(Some(v));
         }
     }
 
@@ -858,7 +1261,11 @@ async fn get_agent_plan_info(agent_type: String, state: tauri::State<'_, AppStat
         eprintln!("[terse] plan info cached: plan={}", plan_info.plan);
     }
 
-    Ok(info.map(|i| serde_json::to_value(i).unwrap_or_default()))
+    Ok(info.map(|i| {
+        let mut v = serde_json::to_value(i).unwrap_or_default();
+        enrich_plan_eta(&mut v);
+        v
+    }))
 }
 
 // ── Multi-Agent Hook Installation ──
@@ -1352,50 +1759,61 @@ fn check_json_hook(settings_path: &std::path::Path, hook_event: &str) -> serde_j
 
 /// Read compression stats from both hook tracking files and sync to stats_store
 #[tauri::command]
-fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_json::Value {
-    let tmp = std::env::temp_dir();
-    let stats_files = [
-        tmp.join("terse-compress-stats.jsonl"),       // Bash compression
-        tmp.join("terse-tool-optimize-stats.jsonl"),   // Read/Grep optimization
-    ];
+async fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> Result<serde_json::Value, String> {
+    // The JSONL parse is the heavy part — these files grow with every hook
+    // compression, and this command is polled by the island/dash/pet windows,
+    // so it must never run on the main thread. The quota/pet bookkeeping below
+    // is pure in-memory state and stays on the command path.
+    let entries: Vec<(u64, u64, u64)> = tauri::async_runtime::spawn_blocking(|| {
+        let tmp = std::env::temp_dir();
+        let stats_files = [
+            tmp.join("terse-compress-stats.jsonl"),       // Bash compression
+            tmp.join("terse-tool-optimize-stats.jsonl"),   // Read/Grep optimization
+        ];
+        let mut out = Vec::new();
+        for stats_file in &stats_files {
+            if let Ok(content) = std::fs::read_to_string(stats_file) {
+                for line in content.lines() {
+                    if let Ok(entry) = serde_json::from_str::<serde_json::Value>(line) {
+                        out.push((
+                            entry["saved"].as_u64().unwrap_or(0),
+                            entry["originalTokens"].as_u64().unwrap_or(0),
+                            entry["optimizedTokens"].as_u64().unwrap_or(0),
+                        ));
+                    }
+                }
+            }
+        }
+        out
+    })
+    .await
+    .map_err(|e| e.to_string())?;
 
-    let any_exists = stats_files.iter().any(|f| f.exists());
-    if !any_exists {
-        return serde_json::json!({
+    if entries.is_empty() {
+        return Ok(serde_json::json!({
             "totalSaved": 0,
             "totalOriginal": 0,
             "totalOptimized": 0,
             "compressions": 0,
-        });
+        }));
     }
+
+    let last_synced = state.hook_stats_synced.lock().unwrap_or_else(|e| e.into_inner()).clone();
 
     let mut total_saved: u64 = 0;
     let mut total_original: u64 = 0;
     let mut total_optimized: u64 = 0;
     let mut count: u64 = 0;
-    // Track new entries since last sync
     let mut new_original: u64 = 0;
     let mut new_optimized: u64 = 0;
-
-    let last_synced = state.hook_stats_synced.lock().unwrap_or_else(|e| e.into_inner()).clone();
-
-    for stats_file in &stats_files {
-        if let Ok(content) = std::fs::read_to_string(stats_file) {
-            for line in content.lines() {
-                if let Ok(entry) = serde_json::from_str::<serde_json::Value>(line) {
-                    let saved = entry["saved"].as_u64().unwrap_or(0);
-                    let orig = entry["originalTokens"].as_u64().unwrap_or(0);
-                    let opt = entry["optimizedTokens"].as_u64().unwrap_or(0);
-                    total_saved += saved;
-                    total_original += orig;
-                    total_optimized += opt;
-                    count += 1;
-                    if count > last_synced {
-                        new_original += orig;
-                        new_optimized += opt;
-                    }
-                }
-            }
+    for (saved, orig, opt) in &entries {
+        total_saved += saved;
+        total_original += orig;
+        total_optimized += opt;
+        count += 1;
+        if count > last_synced {
+            new_original += orig;
+            new_optimized += opt;
         }
     }
 
@@ -1403,12 +1821,6 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
     let new_count = count.saturating_sub(last_synced);
     if new_count > 0 && new_original > 0 {
         let new_saved = new_original.saturating_sub(new_optimized);
-
-        // Snapshot total BEFORE recording (needed for milestone delta check)
-        let prev_total = {
-            let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
-            store.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0)
-        };
 
         {
             let mut store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
@@ -1424,6 +1836,8 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
         let exhausted = !lic.can_optimize();
         let remaining = lic.remaining_optimizations();
         drop(lic);
+        // Suppress the gate during the post-login grace window.
+        let exhausted = exhausted && !in_grace(&state);
 
         *state.hook_stats_synced.lock().unwrap_or_else(|e| e.into_inner()) = count;
 
@@ -1473,7 +1887,7 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
         }
     }
 
-    serde_json::json!({
+    Ok(serde_json::json!({
         "totalSaved": total_saved,
         "totalOriginal": total_original,
         "totalOptimized": total_optimized,
@@ -1481,7 +1895,7 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
         "percentSaved": if total_original > 0 {
             ((total_saved as f64 / total_original as f64) * 100.0).round() as u64
         } else { 0 },
-    })
+    }))
 }
 
 // ── Stats Commands ──
@@ -1490,6 +1904,133 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
 fn get_stats(period: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     store.get_stats(&period)
+}
+
+#[tauri::command]
+fn get_agent_attribution(period: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+    store.get_attribution(&period)
+}
+
+#[tauri::command]
+fn get_budget(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).get_budget()
+}
+
+#[tauri::command]
+fn set_budget(budget: serde_json::Value, state: tauri::State<'_, AppState>) -> bool {
+    state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).set_budget(budget);
+    true
+}
+
+#[tauri::command]
+fn get_budget_status(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).budget_status()
+}
+
+// ── Terse Doctor (360-style health scanner) ──
+
+// NOTE: the doctor/cleanup commands are async + spawn_blocking because they walk
+// large on-disk stores — a sync command would run on the main thread and freeze
+// the whole UI for the duration of the scan.
+#[tauri::command]
+async fn doctor_scan(
+    period: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let period = period.unwrap_or_else(|| "month".to_string());
+    let (attr, stats) = {
+        let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+        (store.get_attribution(&period), store.get_stats(&period))
+    };
+    let sessions = {
+        let monitor = lock_or_recover(&state.agent_monitor);
+        monitor.get_connected_sessions()
+    };
+    let summary = stats.get("summary").cloned().unwrap_or(stats);
+    tauri::async_runtime::spawn_blocking(move || {
+        doctor::scan_full(&attr, &summary, &sessions, &period)
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn doctor_apply_fix(
+    finding: serde_json::Value,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    // Gate ONLY remediation: scanning + the report are free.
+    {
+        let auth = lock_or_recover(&state.auth);
+        if !auth.signed_in {
+            return Ok(serde_json::json!({
+                "ok": false,
+                "needsAuth": true,
+                "reason": "login",
+                "message": "Sign in to clean."
+            }));
+        }
+    }
+    {
+        let can = { lock_or_recover(&state.license).can_optimize() };
+        if !can && !in_grace(&state) {
+            return Ok(serde_json::json!({
+                "ok": false,
+                "needsAuth": true,
+                "reason": "subscription",
+                "message": "An active subscription is required to clean."
+            }));
+        }
+    }
+    tauri::async_runtime::spawn_blocking(move || doctor::apply_fix(&finding))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn doctor_dismiss(id: String) -> serde_json::Value {
+    doctor::dismiss(&id)
+}
+
+#[tauri::command]
+async fn cleanup_scan() -> serde_json::Value {
+    tauri::async_runtime::spawn_blocking(doctor::cleanup_scan)
+        .await
+        .unwrap_or_else(|_| serde_json::json!({ "groups": [] }))
+}
+
+#[tauri::command]
+fn speed_mode_status() -> serde_json::Value {
+    doctor::speed_mode_status()
+}
+
+#[tauri::command]
+fn set_speed_mode(enabled: bool) -> serde_json::Value {
+    doctor::set_speed_mode(enabled)
+}
+
+#[tauri::command]
+async fn cleanup_clean(paths: Vec<String>) -> serde_json::Value {
+    tauri::async_runtime::spawn_blocking(move || doctor::cleanup_clean(&paths))
+        .await
+        .unwrap_or_else(|_| serde_json::json!({ "ok": false, "message": "clean task failed" }))
+}
+
+#[tauri::command]
+fn show_doctor_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("doctor") {
+        let _ = w.show();
+        w.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_doctor_window(app: AppHandle) {
+    if let Some(w) = app.get_webview_window("doctor") {
+        let _ = w.hide();
+    }
 }
 
 #[tauri::command]
@@ -1507,6 +2048,7 @@ fn navigate_to_stats(app: AppHandle) {
 #[tauri::command]
 fn navigate_back(app: AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
+        restore_compact_main(&win);
         if let Ok(url) = "tauri://localhost/index.html".parse() {
             let _ = win.navigate(url);
         } else {
@@ -1523,6 +2065,787 @@ fn navigate_to_cowork(app: AppHandle) {
         } else {
             let _ = win.eval("window.location.replace('/cowork.html');");
         }
+    }
+}
+
+/// Fold the Farm into the main window (instead of the old standalone game
+/// window). Grows the shell to a comfortable play size; `navigate_back`
+/// (via restore_compact_main) returns it to the compact 980×650.
+#[tauri::command]
+fn navigate_to_farm(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        // Give the game room to breathe, clamped to the screen.
+        if let Ok(Some(monitor)) = win.current_monitor() {
+            let sf = monitor.scale_factor();
+            let sw = monitor.size().width as f64 / sf;
+            let sh = monitor.size().height as f64 / sf;
+            let w = 1200.0_f64.min(sw - 40.0);
+            let h = 780.0_f64.min(sh - 80.0);
+            let _ = win.set_size(tauri::LogicalSize::new(w, h));
+            let _ = win.center();
+        }
+        if let Ok(url) = "tauri://localhost/farm.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/farm.html');");
+        }
+    }
+}
+
+// ── Knowledge Graph ─────────────────────────────────────────────────────────
+//
+// A Graphify-style code knowledge graph built locally with tree-sitter (see
+// graph_extract.rs), with a token-optimized digest agents read instead of
+// grepping (graph_store::write_digest) and a human overlay that survives
+// re-extraction (graph_store::merge). Live updates come from a debounced notify
+// watcher toggled by `graph_set_watch`.
+
+/// Resolve which repo to operate on: explicit arg → last-opened repo → the repo
+/// the active coding agent is currently working in.
+fn resolve_repo(path: Option<String>, state: &AppState) -> Option<std::path::PathBuf> {
+    if let Some(p) = path {
+        let p = p.trim();
+        if !p.is_empty() {
+            return Some(std::path::PathBuf::from(p));
+        }
+    }
+    if let Some(r) = lock_or_recover(&state.graph).current_repo.clone() {
+        return Some(r);
+    }
+    graph_extract::detect_active_repo().map(std::path::PathBuf::from)
+}
+
+/// Merge overlay, (re)write the digest, optionally credit token savings to Stats,
+/// then notify the UI. `record` is true only for user-initiated builds so live
+/// watcher rebuilds don't inflate the savings counter.
+fn finalize_graph(
+    app: &AppHandle,
+    repo: &std::path::Path,
+    graph: &graph_store::KnowledgeGraph,
+    record: bool,
+) -> serde_json::Value {
+    let overlay = graph_store::load_overlay(&graph.repo_hash);
+    let merged = graph_store::merge(graph, &overlay);
+
+    let (tokens_saved, digest_tokens) = match graph_store::write_digest(repo, &merged) {
+        Ok(res) => {
+            if record && res.source_tokens > 0 {
+                let state = app.state::<AppState>();
+                lock_or_recover(&state.stats_store)
+                    .record_optimization("graph", res.source_tokens, res.digest_tokens);
+            }
+            (res.tokens_saved(), res.digest_tokens)
+        }
+        Err(_) => (0, 0),
+    };
+
+    let _ = app.emit(
+        "graph-updated",
+        serde_json::json!({
+            "repo": repo.to_string_lossy(),
+            "builtAt": graph.built_at,
+            "nodes": merged.nodes.len(),
+            "edges": merged.edges.len(),
+        }),
+    );
+
+    serde_json::json!({
+        "ok": true,
+        "repo": repo.to_string_lossy(),
+        "builtAt": graph.built_at,
+        "nodes": merged.nodes.len(),
+        "edges": merged.edges.len(),
+        "files": graph.file_count,
+        "clusters": merged.communities.len(),
+        "tokensSaved": tokens_saved,
+        "digestTokens": digest_tokens,
+    })
+}
+
+#[tauri::command]
+fn graph_status(path: Option<String>, state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let detected = graph_extract::detect_active_repo();
+    let watching = lock_or_recover(&state.graph).watching;
+    let mut out = serde_json::json!({ "watching": watching, "detected": detected });
+    if let Some(repo) = resolve_repo(path, &state) {
+        let hash = graph_store::repo_hash(&repo);
+        out["repo"] = serde_json::json!(repo.to_string_lossy());
+        if let Some(g) = graph_store::load_graph(&hash) {
+            out["hasGraph"] = serde_json::json!(true);
+            out["builtAt"] = serde_json::json!(g.built_at);
+            out["nodes"] = serde_json::json!(g.nodes.len());
+            out["edges"] = serde_json::json!(g.edges.len());
+            out["files"] = serde_json::json!(g.file_count);
+            out["clusters"] = serde_json::json!(g.communities.len());
+        } else {
+            out["hasGraph"] = serde_json::json!(false);
+        }
+    } else {
+        out["hasGraph"] = serde_json::json!(false);
+    }
+    out
+}
+
+/// Shared build path: extract off-thread, cache, write the digest, and record it
+/// in the registry. `record` credits token savings to Stats (user-initiated only);
+/// `set_current` points the app at this repo (skip for silent background builds).
+async fn do_graph_build(
+    app: &AppHandle,
+    repo: std::path::PathBuf,
+    source: &str,
+    record: bool,
+    set_current: bool,
+) -> Result<serde_json::Value, String> {
+    if !repo.exists() {
+        return Err(format!("Path does not exist: {}", repo.display()));
+    }
+    {
+        let state = app.state::<AppState>();
+        let mut gs = lock_or_recover(&state.graph);
+        gs.upsert(&repo, source);
+        if set_current {
+            gs.set_repo(&repo);
+        }
+    }
+    let repo2 = repo.clone();
+    let graph = tauri::async_runtime::spawn_blocking(move || graph_extract::build(&repo2))
+        .await
+        .map_err(|e| e.to_string())?;
+    graph_store::save_graph(&graph);
+    let out = finalize_graph(app, &repo, &graph, record);
+    let saved = out.get("tokensSaved").and_then(|v| v.as_u64()).unwrap_or(0);
+    {
+        let state = app.state::<AppState>();
+        lock_or_recover(&state.graph).mark_built(&graph, saved);
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+async fn graph_build(path: Option<String>, app: AppHandle) -> Result<serde_json::Value, String> {
+    let repo = {
+        let state = app.state::<AppState>();
+        resolve_repo(path, &state)
+            .ok_or("No repository detected. Open a folder path, or start a coding agent in one.")?
+    };
+    do_graph_build(&app, repo, "auto", true, true).await
+}
+
+/// Register a folder the user picks and build its graph immediately.
+#[tauri::command]
+async fn graph_add_folder(path: String, app: AppHandle) -> Result<serde_json::Value, String> {
+    let repo = std::path::PathBuf::from(path.trim());
+    if !repo.is_dir() {
+        return Err(format!("Not a folder: {}", repo.display()));
+    }
+    do_graph_build(&app, repo, "manual", true, true).await
+}
+
+/// Open a native folder picker and return the chosen path (or null if cancelled).
+/// Tauri webviews don't implement JS `prompt()`, so folder selection must go
+/// through the dialog plugin.
+#[tauri::command]
+async fn graph_pick_folder(app: AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog().file().pick_folder(move |f| {
+        let _ = tx.send(f);
+    });
+    let picked = rx.await.map_err(|e| e.to_string())?;
+    Ok(picked
+        .and_then(|fp| fp.into_path().ok())
+        .map(|pb| pb.to_string_lossy().to_string()))
+}
+
+/// All known graphs (registry ∪ currently-detected active repos) for the switcher.
+#[tauri::command]
+fn graph_list(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let active = graph_extract::detect_active_repos();
+    let active_set: std::collections::HashSet<&String> = active.iter().collect();
+    let (entries, last_viewed) = {
+        let mut gs = lock_or_recover(&state.graph);
+        gs.upsert_active(&active);
+        let last_viewed = gs.registry.last_viewed.clone();
+        let mut entries: Vec<serde_json::Value> = gs
+            .registry
+            .repos
+            .iter()
+            .map(|e| {
+                let name = std::path::Path::new(&e.repo)
+                    .file_name()
+                    .map(|x| x.to_string_lossy().to_string())
+                    .unwrap_or_else(|| e.repo.clone());
+                serde_json::json!({
+                    "repo": e.repo,
+                    "name": name,
+                    "source": e.source,
+                    "builtAt": e.built_at,
+                    "nodes": e.nodes,
+                    "edges": e.edges,
+                    "files": e.files,
+                    "tokensSaved": e.tokens_saved,
+                    "hasGraph": graph_store::cache_exists(&e.hash),
+                    "active": active_set.contains(&e.repo),
+                    "lastActive": e.last_active,
+                    "lastViewed": e.last_viewed,
+                })
+            })
+            .collect();
+        // Most useful first: active, then most-recently active/viewed.
+        entries.sort_by(|a, b| {
+            let av = |v: &serde_json::Value| v.get("active").and_then(|x| x.as_bool()).unwrap_or(false);
+            let recency = |v: &serde_json::Value| {
+                v.get("lastActive").and_then(|x| x.as_u64()).unwrap_or(0)
+                    .max(v.get("lastViewed").and_then(|x| x.as_u64()).unwrap_or(0))
+            };
+            av(b).cmp(&av(a)).then(recency(b).cmp(&recency(a)))
+        });
+        (entries, last_viewed)
+    };
+    serde_json::json!({ "repos": entries, "lastViewed": last_viewed })
+}
+
+/// Forget a repo (and delete its cached graph + overlay).
+#[tauri::command]
+fn graph_remove(path: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let repo = std::path::PathBuf::from(path.trim());
+    let hash = graph_store::repo_hash(&repo);
+    graph_store::delete_cache(&hash);
+    lock_or_recover(&state.graph).remove(&repo);
+    serde_json::json!({ "ok": true })
+}
+
+#[tauri::command]
+fn graph_get(
+    path: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let repo = resolve_repo(path, &state).ok_or("No repository selected")?;
+    let hash = graph_store::repo_hash(&repo);
+    let graph = graph_store::load_graph(&hash)
+        .ok_or("No graph has been built for this repository yet")?;
+    let overlay = graph_store::load_overlay(&hash);
+    let merged = graph_store::merge(&graph, &overlay);
+    // Remember this as the last-viewed graph so it re-opens here next launch.
+    {
+        let mut gs = lock_or_recover(&state.graph);
+        gs.upsert(&repo, "auto");
+        gs.set_viewed(&repo);
+    }
+    Ok(serde_json::json!({
+        "repo": repo.to_string_lossy(),
+        "graph": serde_json::to_value(&merged).unwrap_or_default(),
+        "overlay": serde_json::to_value(&overlay).unwrap_or_default(),
+    }))
+}
+
+#[tauri::command]
+fn graph_save_overlay(
+    path: Option<String>,
+    overlay: serde_json::Value,
+    app: AppHandle,
+) -> Result<serde_json::Value, String> {
+    let repo = {
+        let state = app.state::<AppState>();
+        resolve_repo(path, &state).ok_or("No repository selected")?
+    };
+    let hash = graph_store::repo_hash(&repo);
+    let overlay: graph_store::GraphOverlay =
+        serde_json::from_value(overlay).map_err(|e| format!("Bad overlay: {}", e))?;
+    graph_store::save_overlay(&hash, &overlay);
+    // Rewrite the digest so agents immediately see the human edits, and refresh
+    // the UI — but don't credit savings (no new extraction happened).
+    if let Some(graph) = graph_store::load_graph(&hash) {
+        let merged = graph_store::merge(&graph, &overlay);
+        let _ = graph_store::write_digest(&repo, &merged);
+        let _ = app.emit(
+            "graph-updated",
+            serde_json::json!({ "repo": repo.to_string_lossy(), "builtAt": graph.built_at }),
+        );
+    }
+    Ok(serde_json::json!({ "ok": true }))
+}
+
+#[tauri::command]
+fn graph_write_digest(
+    path: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let repo = resolve_repo(path, &state).ok_or("No repository selected")?;
+    let hash = graph_store::repo_hash(&repo);
+    let graph = graph_store::load_graph(&hash).ok_or("No graph built yet")?;
+    let overlay = graph_store::load_overlay(&hash);
+    let merged = graph_store::merge(&graph, &overlay);
+    let res = graph_store::write_digest(&repo, &merged).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({
+        "ok": true,
+        "digestPath": res.digest_path.to_string_lossy(),
+        "tokensSaved": res.tokens_saved(),
+        "digestTokens": res.digest_tokens,
+        "sourceTokens": res.source_tokens,
+    }))
+}
+
+#[tauri::command]
+fn graph_set_watch(
+    enabled: bool,
+    path: Option<String>,
+    app: AppHandle,
+) -> Result<serde_json::Value, String> {
+    use notify::Watcher;
+
+    if !enabled {
+        let state = app.state::<AppState>();
+        *lock_or_recover(&state.graph_watcher) = None; // drop → stops watching
+        lock_or_recover(&state.graph).watching = false;
+        return Ok(serde_json::json!({ "watching": false }));
+    }
+
+    let repo = {
+        let state = app.state::<AppState>();
+        resolve_repo(path, &state).ok_or("No repository selected")?
+    };
+    if !repo.exists() {
+        return Err(format!("Path does not exist: {}", repo.display()));
+    }
+
+    // Debounced rebuild pipeline: the watcher pings a channel; a task coalesces
+    // bursts (800ms quiet) then rebuilds off the UI thread. Digest writes use
+    // non-source extensions, so they never re-trigger this watcher.
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<()>();
+
+    let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+        if let Ok(ev) = res {
+            if ev.paths.iter().any(|p| graph_extract::is_source_path(p)) {
+                let _ = tx.send(());
+            }
+        }
+    })
+    .map_err(|e| e.to_string())?;
+    watcher
+        .watch(&repo, notify::RecursiveMode::Recursive)
+        .map_err(|e| e.to_string())?;
+
+    {
+        let state = app.state::<AppState>();
+        lock_or_recover(&state.graph).set_repo(&repo);
+        *lock_or_recover(&state.graph_watcher) = Some(watcher);
+        lock_or_recover(&state.graph).watching = true;
+    }
+
+    let task_app = app.clone();
+    let task_repo = repo.clone();
+    tauri::async_runtime::spawn(async move {
+        while rx.recv().await.is_some() {
+            // Coalesce a burst of edits before rebuilding.
+            loop {
+                tokio::select! {
+                    v = rx.recv() => { if v.is_none() { return; } }
+                    _ = tokio::time::sleep(std::time::Duration::from_millis(800)) => break,
+                }
+            }
+            let build_repo = task_repo.clone();
+            if let Ok(graph) =
+                tauri::async_runtime::spawn_blocking(move || graph_extract::build(&build_repo)).await
+            {
+                graph_store::save_graph(&graph);
+                finalize_graph(&task_app, &task_repo, &graph, false);
+            }
+        }
+    });
+
+    Ok(serde_json::json!({ "watching": true, "repo": repo.to_string_lossy() }))
+}
+
+/// Point the main window at the knowledge-graph UI (mirrors `navigate_to_farm`).
+#[tauri::command]
+fn navigate_to_graph(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Ok(Some(monitor)) = win.current_monitor() {
+            let sf = monitor.scale_factor();
+            let sw = monitor.size().width as f64 / sf;
+            let sh = monitor.size().height as f64 / sf;
+            let w = 1220.0_f64.min(sw - 40.0);
+            let h = 820.0_f64.min(sh - 80.0);
+            let _ = win.set_size(tauri::LogicalSize::new(w, h));
+            let _ = win.center();
+        }
+        if let Ok(url) = "tauri://localhost/graph.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/graph.html');");
+        }
+    }
+}
+
+/// Background service: periodically detect every repo a coding agent is working
+/// in and keep a cached graph + digest for each. Builds a repo when it has no
+/// cache yet, or when the cache is stale (>6h) and the repo is still active, so
+/// the work stays cheap. Digest writes use non-source extensions, so they never
+/// trip the live watcher. Token savings are NOT credited here (only user builds
+/// count) to avoid inflating Stats.
+fn start_graph_autobuild(app: AppHandle) {
+    const STALE_SECS: u64 = 6 * 3600;
+    const INTERVAL_SECS: u64 = 180;
+    // At most this many builds per pass, so a burst of stale repos is amortized
+    // across several ticks instead of hammering the CPU at once.
+    const MAX_BUILDS_PER_PASS: u32 = 2;
+    tauri::async_runtime::spawn(async move {
+        // Let the app fully settle before the first (heaviest) pass.
+        tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+        loop {
+            let repos = graph_extract::detect_active_repos();
+            if !repos.is_empty() {
+                {
+                    let state = app.state::<AppState>();
+                    lock_or_recover(&state.graph).upsert_active(&repos);
+                }
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                let mut built: u32 = 0;
+                for r in &repos {
+                    let repo = std::path::PathBuf::from(r);
+                    if !repo.is_dir() {
+                        continue;
+                    }
+                    let hash = graph_store::repo_hash(&repo);
+                    let needs = match graph_store::load_graph(&hash) {
+                        None => true,
+                        Some(g) => now.saturating_sub(g.built_at) > STALE_SECS,
+                    };
+                    if needs {
+                        // Silent build: don't steal the user's current-repo selection,
+                        // don't credit savings. Space builds out so a machine with
+                        // several active repos never sees one big CPU spike.
+                        let _ = do_graph_build(&app, repo, "auto", false, false).await;
+                        built += 1;
+                        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                        if built >= MAX_BUILDS_PER_PASS {
+                            break;
+                        }
+                    }
+                }
+                let _ = app.emit("graph-registry-updated", ());
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(INTERVAL_SECS)).await;
+        }
+    });
+}
+
+/// Open the prompt palette. Captures the frontmost app first (so an inserted
+/// prompt is pasted back into it), then shows + focuses the palette window.
+fn open_palette(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let front = capture::get_front_app().await;
+        if let Some(st) = app.try_state::<AppState>() {
+            let name = st.palette_target.lock().map(|mut g| { *g = front.name.clone(); }).is_ok();
+            let _ = name;
+        }
+        if let Some(w) = app.get_webview_window("palette") {
+            let _ = w.show();
+            let _ = w.set_focus();
+            let _ = app.emit("palette-open", ());
+        }
+    });
+}
+
+#[tauri::command]
+fn show_palette(app: AppHandle) {
+    open_palette(&app);
+}
+
+#[tauri::command]
+fn hide_palette(app: AppHandle) {
+    if let Some(w) = app.get_webview_window("palette") {
+        let _ = w.hide();
+    }
+}
+
+/// Insert finished prompt text: copy to clipboard (guaranteed), then re-activate
+/// the app that was frontmost when the palette opened and paste at the cursor.
+#[tauri::command]
+async fn insert_prompt_text(text: String, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<bool, String> {
+    let target = state.palette_target.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    if let Some(w) = app.get_webview_window("palette") {
+        let _ = w.hide();
+    }
+    // Guaranteed path: text is on the clipboard even if paste-back fails.
+    let _ = apply_to_clipboard(text.clone()).await;
+    if !target.is_empty() && target.to_lowercase() != "terse" {
+        capture::activate_app(&target).await;
+        tokio::time::sleep(std::time::Duration::from_millis(140)).await;
+        let _ = capture::write_via_clipboard_terminal(&text).await;
+    }
+    Ok(true)
+}
+
+/// Navigate the MAIN window to the Alert Center in-place, matching the Doctor
+/// pattern (single main window, reached from the sidebar).
+#[tauri::command]
+fn navigate_to_alerts(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Ok(url) = "tauri://localhost/alerts.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/alerts.html');");
+        }
+    }
+}
+
+// ── Live token wallpaper (desktop-pinned) ─────────────────────────────────
+
+fn wallpaper_config_path() -> std::path::PathBuf {
+    dirs::home_dir().unwrap_or_default().join(".terse").join("wallpaper.json")
+}
+
+fn wallpaper_default_config() -> serde_json::Value {
+    serde_json::json!({
+        "enabled": false,
+        // 默认引擎 = mineradio(真桌面壁纸 + 粒子律动);"topography" 切回音域回响光柱地形
+        "engine": "mineradio",
+        "theme": "neon", "quality": 56, "angle": 55, "intensity": 1.0
+    })
+}
+
+/// 极简 base64(只为把一张 JPEG 塞进 data URL,不值得为它加一个依赖)
+fn b64(data: &[u8]) -> String {
+    const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
+    for c in data.chunks(3) {
+        let b = [c[0], *c.get(1).unwrap_or(&0), *c.get(2).unwrap_or(&0)];
+        let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
+        out.push(T[(n >> 18 & 63) as usize] as char);
+        out.push(T[(n >> 12 & 63) as usize] as char);
+        out.push(if c.len() > 1 { T[(n >> 6 & 63) as usize] as char } else { '=' });
+        out.push(if c.len() > 2 { T[(n & 63) as usize] as char } else { '=' });
+    }
+    out
+}
+
+/// 用户**当前那张真桌面壁纸**,缩到 1920 宽的 JPEG data URL。
+///
+/// mineradio 引擎的粒子是按底图取色的 —— 拿到这张图,粒子就长成用户自己壁纸的样子,
+/// 而不是我们凭空造一张。macOS 会把当前壁纸渲染好放在 /private/var/db/Wallpapers/<uuid>/,
+/// 读得到就用它;读不到再退回系统自带的 Sonoma 母版。
+///
+/// 缩图用系统自带的 `sips`(macOS 本来就有),省掉一个图像处理依赖;
+/// 结果缓存在 ~/.terse/wallpaper-bg.jpg,壁纸窗口每次启动直接读缓存。
+#[tauri::command]
+fn get_desktop_picture(force: Option<bool>) -> Option<String> {
+    let cache = dirs::home_dir()?.join(".terse").join("wallpaper-bg.jpg");
+    let fresh = std::fs::metadata(&cache)
+        .and_then(|m| m.modified())
+        .map(|t| t.elapsed().map(|e| e.as_secs() < 3600).unwrap_or(false))
+        .unwrap_or(false);
+    if force.unwrap_or(false) || !fresh {
+        let mut src: Option<std::path::PathBuf> = None;
+        // 1) 当前桌面壁纸(系统渲染好的那张)
+        if let Ok(rd) = std::fs::read_dir("/private/var/db/Wallpapers") {
+            let mut best: Option<(std::time::SystemTime, std::path::PathBuf)> = None;
+            for e in rd.flatten() {
+                let p = e.path().join("Wallpaper.png");
+                if let Ok(m) = std::fs::metadata(&p) {
+                    let t = m.modified().unwrap_or(std::time::UNIX_EPOCH);
+                    if best.as_ref().map(|(bt, _)| t > *bt).unwrap_or(true) {
+                        best = Some((t, p));
+                    }
+                }
+            }
+            src = best.map(|(_, p)| p);
+        }
+        // 2) 退回系统自带壁纸
+        if src.is_none() {
+            for cand in [
+                "/System/Library/Desktop Pictures/.wallpapers/Sonoma Horizon/Sonoma Horizon.heic",
+                "/System/Library/Desktop Pictures/Sonoma.heic",
+            ] {
+                if std::path::Path::new(cand).exists() {
+                    src = Some(std::path::PathBuf::from(cand));
+                    break;
+                }
+            }
+        }
+        let src = src?;
+        if let Some(dir) = cache.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let ok = std::process::Command::new("/usr/bin/sips")
+            .args(["-s", "format", "jpeg", "-s", "formatOptions", "82", "-Z", "1920"])
+            .arg(&src)
+            .arg("--out")
+            .arg(&cache)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        if !ok && !cache.exists() {
+            return None;
+        }
+    }
+    let bytes = std::fs::read(&cache).ok()?;
+    Some(format!("data:image/jpeg;base64,{}", b64(&bytes)))
+}
+
+#[tauri::command]
+fn get_wallpaper_config() -> serde_json::Value {
+    std::fs::read_to_string(wallpaper_config_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_else(wallpaper_default_config)
+}
+
+/// Persist wallpaper config and push it live to the running wallpaper window.
+#[tauri::command]
+fn set_wallpaper_config(config: serde_json::Value, app: AppHandle) -> bool {
+    let p = wallpaper_config_path();
+    if let Some(dir) = p.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let ok = std::fs::write(&p, serde_json::to_string_pretty(&config).unwrap_or_default()).is_ok();
+    // Live update: the wallpaper window re-reads theme/quality/angle on this event.
+    let _ = app.emit("wallpaper-config", &config);
+    ok
+}
+
+/// Pin an existing window to the macOS desktop level: it renders behind the
+/// desktop icons (above the static desktop picture), is click-through so the
+/// desktop stays usable, and follows the user across all Spaces.
+#[cfg(target_os = "macos")]
+fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
+    use cocoa::base::{id, NO, YES};
+    use objc::{msg_send, sel, sel_impl};
+    if let Ok(ptr) = win.ns_window() {
+        let ns: id = ptr as id;
+        unsafe {
+            // kCGDesktopWindowLevel — the live-wallpaper layer, behind icons.
+            let level: i64 = -2_147_483_623;
+            let _: () = msg_send![ns, setLevel: level];
+            // canJoinAllSpaces(1<<0) | stationary(1<<4) | ignoresCycle(1<<6):
+            // stays on every Space, out of Mission Control and window cycling.
+            let behavior: u64 = (1 << 0) | (1 << 4) | (1 << 6);
+            let _: () = msg_send![ns, setCollectionBehavior: behavior];
+            let _: () = msg_send![ns, setIgnoresMouseEvents: YES]; // click-through
+            let _: () = msg_send![ns, setHasShadow: NO];
+            let _: () = msg_send![ns, setOpaque: YES];
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn pin_wallpaper_window(_win: &tauri::WebviewWindow) {}
+
+/// Size the (already-created) wallpaper window to the primary display, pin it
+/// behind the desktop, and show it. The window itself is built once in `setup`
+/// on the main thread; commands only show/hide it (thread-safe).
+fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
+    let win = app
+        .get_webview_window("wallpaper")
+        .ok_or_else(|| "wallpaper window not initialized".to_string())?;
+    if let Ok(Some(m)) = app.primary_monitor() {
+        let sf = m.scale_factor();
+        let w = m.size().width as f64 / sf;
+        let h = m.size().height as f64 / sf;
+        let _ = win.set_position(tauri::LogicalPosition::new(0.0, 0.0));
+        let _ = win.set_size(tauri::LogicalSize::new(w, h));
+    }
+    let _ = win.show();
+    // Pinning touches AppKit (NSWindow) — must run on the main thread, so it is
+    // safe whether called from `setup` or from a command handler thread.
+    let win2 = win.clone();
+    let _ = app.run_on_main_thread(move || pin_wallpaper_window(&win2));
+    Ok(())
+}
+
+#[tauri::command]
+fn set_wallpaper_enabled(on: bool, app: AppHandle) -> Result<(), String> {
+    let mut cfg = get_wallpaper_config();
+    cfg["enabled"] = serde_json::json!(on);
+    let _ = set_wallpaper_config(cfg, app.clone());
+    if on {
+        show_wallpaper_window(&app)?;
+    } else if let Some(w) = app.get_webview_window("wallpaper") {
+        let _ = w.hide();
+    }
+    Ok(())
+}
+
+/// Cheap token counter (today, in+out) that the wallpaper polls to drive pulses.
+#[tauri::command]
+fn get_token_pulse(state: tauri::State<'_, AppState>) -> u64 {
+    state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).today_total_tokens()
+}
+
+/// Navigate the MAIN window to the wallpaper control page in-place.
+#[tauri::command]
+fn navigate_to_wallpaper(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Ok(url) = "tauri://localhost/wallpaper-control.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/wallpaper-control.html');");
+        }
+    }
+}
+
+/// Navigate the MAIN window to the session-history page in-place.
+#[tauri::command]
+fn navigate_to_history(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Ok(url) = "tauri://localhost/history.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/history.html');");
+        }
+    }
+}
+
+/// Navigate the MAIN window to the Doctor (体检) report in-place. This keeps the
+/// Doctor inside the single main window (reached via the dock button) instead of
+/// spawning a second floating window.
+#[tauri::command]
+fn navigate_to_doctor(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        // The main window is the 980×650 360-style shell — the Doctor renders
+        // inside it at that size, so no resize/recenter dance is needed.
+        if let Ok(url) = "tauri://localhost/doctor.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/doctor.html');");
+        }
+    }
+}
+
+/// Historically shrank the main window back to the compact 340×460 monitor when
+/// leaving the Doctor. The main window is now a persistent 980×650 shell, so
+/// returning must keep whatever size the user has — this is intentionally a no-op.
+/// Return the main window to the compact 980×650 shell after a page (e.g. the
+/// folded-in Farm) grew it. Cheap no-op if it's already that size.
+fn restore_compact_main(win: &tauri::WebviewWindow) {
+    if let Ok(sz) = win.inner_size() {
+        let sf = win.scale_factor().unwrap_or(1.0);
+        let w = sz.width as f64 / sf;
+        if w > 1000.0 {
+            let _ = win.set_size(tauri::LogicalSize::new(980.0, 650.0));
+        }
+    }
+}
+
+/// Bring the main window to the front on its primary view (index.html). The
+/// main window's init runs the paywall check on load, so this is how an
+/// unentitled user is routed from the Doctor to the in-app paywall.
+#[tauri::command]
+fn show_main_window(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        restore_compact_main(&win);
+        if let Ok(url) = "tauri://localhost/index.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/index.html');");
+        }
+        let _ = win.show();
+        let _ = win.set_focus();
     }
 }
 
@@ -1548,6 +2871,48 @@ fn open_cloud_teams(path: Option<String>, state: tauri::State<'_, AppState>) {
         }
     };
     let _ = std::process::Command::new("open").arg(&url).spawn();
+}
+
+/// Open an arbitrary http(s) URL in the user's default browser (e.g. Slack web,
+/// the webhook setup page). Restricted to http/https so it can't launch apps.
+#[tauri::command]
+fn open_url(url: String) {
+    let u = url.trim();
+    if u.starts_with("http://") || u.starts_with("https://") {
+        let _ = std::process::Command::new("open").arg(u).spawn();
+    }
+}
+
+/// POST a plain message to a Slack incoming webhook. The webhook is the user's
+/// secret and is only ever sent to Slack. Done with curl (off the main thread)
+/// so there's no browser-CORS issue. Returns Ok once Slack accepts it.
+#[tauri::command]
+async fn send_slack_alert(webhook: String, text: String) -> Result<(), String> {
+    let w = webhook.trim().to_string();
+    if !w.starts_with("https://hooks.slack.com/") {
+        return Err("Not a Slack webhook URL (expected https://hooks.slack.com/…)".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let body = serde_json::json!({ "text": text }).to_string();
+        let output = std::process::Command::new("curl")
+            .arg("-sS").arg("-X").arg("POST")
+            .arg("-H").arg("Content-Type: application/json")
+            .arg("--data").arg(&body)
+            .arg("--max-time").arg("10")
+            .arg(&w)
+            .output()
+            .map_err(|e| e.to_string())?;
+        let resp = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if output.status.success() && (resp == "ok" || resp.is_empty()) {
+            Ok(())
+        } else if !resp.is_empty() {
+            Err(resp)
+        } else {
+            Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Handle a `terse://connect?token=tct_…` deep link: focus the app immediately,
@@ -1636,6 +3001,190 @@ fn get_farm_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
         stats.total_tokens_saved().saturating_sub(farm.data.saved_tokens_spent_farm)
     };
     farm.get_state(coin_bal, saved_token_bal)
+}
+
+// ── Session Timeline + HTML replay (Observe) ────────────────────────────────
+
+/// Step-by-step timeline for the Observe view. `agentType` empty → busiest
+/// connected session.
+#[tauri::command]
+fn get_session_timeline(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let at = agent_type.unwrap_or_default();
+    let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+    monitor.get_timeline_for(&at, 400).unwrap_or_else(|| serde_json::json!({ "steps": [], "totalSteps": 0 }))
+}
+
+/// HTML-escape for embedding text in the self-contained replay.
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+}
+
+/// Render a timeline object into a single self-contained, shareable HTML file.
+fn build_replay_html(tl: &serde_json::Value) -> String {
+    let name = tl.get("agentName").and_then(|v| v.as_str()).unwrap_or("Agent");
+    let project = tl.get("project").and_then(|v| v.as_str()).unwrap_or("");
+    let model = tl.get("model").and_then(|v| v.as_str()).unwrap_or("");
+    let total_steps = tl.get("totalSteps").and_then(|v| v.as_u64()).unwrap_or(0);
+    let total_tokens = tl.get("totalTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+    let empty = vec![];
+    let steps = tl.get("steps").and_then(|v| v.as_array()).unwrap_or(&empty);
+
+    let mut rows = String::new();
+    for st in steps {
+        let role = st.get("role").and_then(|v| v.as_str()).unwrap_or("");
+        let ttype = st.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let tool = st.get("toolName").and_then(|v| v.as_str()).unwrap_or("");
+        let text = st.get("text").and_then(|v| v.as_str()).unwrap_or("");
+        let tokens = st.get("tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+        let cost = st.get("cost").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let ts = st.get("timestamp").and_then(|v| v.as_str()).unwrap_or("");
+        let label = if !tool.is_empty() { format!("{role} · {tool}") }
+            else if !ttype.is_empty() { format!("{role} · {ttype}") }
+            else { role.to_string() };
+        rows.push_str(&format!(
+            "<div class=\"step {role}\"><div class=\"meta\"><span class=\"role\">{}</span>\
+             <span class=\"num\">{} tok · ${:.3}</span><span class=\"ts\">{}</span></div>\
+             <pre>{}</pre></div>",
+            html_escape(&label), tokens, cost, html_escape(ts), html_escape(text)
+        ));
+    }
+
+    format!(
+        "<!doctype html><html><head><meta charset=\"utf-8\"><title>Terse Replay — {name}</title>\
+         <style>\
+         body{{margin:0;background:#0b0f0c;color:#e8f0e8;font:14px/1.5 -apple-system,system-ui,sans-serif}}\
+         header{{position:sticky;top:0;background:#0f1511;border-bottom:1px solid #223;padding:16px 24px}}\
+         h1{{margin:0 0 4px;font-size:18px}}h1 b{{color:#c6f24e}}\
+         .sub{{color:#8aa08a;font-size:13px}}\
+         .wrap{{max-width:900px;margin:0 auto;padding:20px}}\
+         .step{{border:1px solid #1c2a1c;border-radius:12px;margin:10px 0;overflow:hidden;background:#0f1511}}\
+         .step.user{{border-color:#2a3a5a}}.step.assistant{{border-color:#3a2a5a}}.step.tool{{border-color:#2a3a2a}}\
+         .meta{{display:flex;gap:12px;align-items:center;padding:8px 14px;background:#121a13;font-size:12px}}\
+         .role{{font-weight:700;color:#c6f24e}}.num{{color:#8aa08a}}.ts{{margin-left:auto;color:#5a705a}}\
+         pre{{margin:0;padding:12px 14px;white-space:pre-wrap;word-break:break-word;color:#cfe0cf;font:12px/1.5 ui-monospace,Menlo,monospace}}\
+         </style></head><body>\
+         <header><div class=\"wrap\" style=\"padding:0\"><h1><b>Terse</b> Replay — {name}</h1>\
+         <div class=\"sub\">{project}{model_sep}{model} · {total_steps} steps · {total_tokens} tokens</div></div></header>\
+         <div class=\"wrap\">{rows}</div>\
+         <div class=\"wrap\" style=\"color:#5a705a;font-size:12px;text-align:center;padding-bottom:40px\">Generated by Terse · terseai.org</div>\
+         </body></html>",
+        name = html_escape(name), project = html_escape(project),
+        model_sep = if model.is_empty() { "" } else { " · " }, model = html_escape(model),
+        total_steps = total_steps, total_tokens = total_tokens, rows = rows,
+    )
+}
+
+/// Export the current timeline as a self-contained HTML replay in ~/Downloads;
+/// returns the written file path.
+#[tauri::command]
+fn export_session_replay(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let at = agent_type.unwrap_or_default();
+    let tl = {
+        let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+        monitor.get_timeline_for(&at, 2000).ok_or_else(|| "no session to export".to_string())?
+    };
+    let html = build_replay_html(&tl);
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let agent = tl.get("agentType").and_then(|v| v.as_str()).unwrap_or("agent");
+    let dir = dirs::download_dir()
+        .or_else(dirs::home_dir)
+        .ok_or_else(|| "no downloads dir".to_string())?;
+    let path = dir.join(format!("terse-replay-{agent}-{ts}.html"));
+    std::fs::write(&path, html).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+// ── Rules / Memory Manager (Remember) — CLAUDE.md across projects ────────────
+
+/// Discover CLAUDE.md files: the global `~/.claude/CLAUDE.md` plus one per
+/// project recorded in `~/.claude.json`. Returns path + always-on token weight.
+#[tauri::command]
+fn claude_md_list() -> serde_json::Value {
+    let home = dirs::home_dir().unwrap_or_default();
+    let mut candidates: Vec<(std::path::PathBuf, &str)> = vec![
+        (home.join(".claude/CLAUDE.md"), "Global"),
+        (home.join(".claude/CLAUDE.local.md"), "Global (local)"),
+    ];
+    if let Ok(text) = std::fs::read_to_string(home.join(".claude.json")) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
+            if let Some(projs) = v.get("projects").and_then(|p| p.as_object()) {
+                for key in projs.keys().take(60) {
+                    candidates.push((std::path::Path::new(key).join("CLAUDE.md"), "Project"));
+                }
+            }
+        }
+    }
+    let mut files = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for (path, scope) in candidates {
+        let ps = path.to_string_lossy().into_owned();
+        if !seen.insert(ps.clone()) { continue; }
+        if let Ok(meta) = std::fs::metadata(&path) {
+            let bytes = meta.len();
+            files.push(serde_json::json!({
+                "path": ps,
+                "name": path.parent().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+                "scope": scope,
+                "bytes": bytes,
+                "tokens": bytes / 4, // ~4 bytes/token, always-on every turn
+            }));
+        }
+    }
+    serde_json::json!({ "files": files })
+}
+
+#[tauri::command]
+fn claude_md_read(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn claude_md_write(path: String, content: String) -> Result<bool, String> {
+    if let Some(dir) = std::path::Path::new(&path).parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    std::fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+// ── Connection Doctor — detect + auto-fix agent connectivity ────────────────
+
+#[tauri::command]
+fn connectivity_scan(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let stalled = {
+        let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+        monitor.stalled_agents()
+    };
+    let checks = connectivity::scan(&stalled);
+    let fails = checks.iter().filter(|c| c.status == "fail").count();
+    let warns = checks.iter().filter(|c| c.status == "warn").count();
+    let fixable = checks.iter().filter(|c| c.status != "ok" && c.fixable).count();
+    let status = if fails > 0 { "fail" } else if warns > 0 { "warn" } else { "ok" };
+    serde_json::json!({ "checks": checks, "fails": fails, "warns": warns, "fixable": fixable, "status": status })
+}
+
+/// Apply automatic repairs, then re-scan so the UI shows the new state.
+#[tauri::command]
+fn connectivity_fix_all(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let stalled = {
+        let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+        monitor.stalled_agents()
+    };
+    let before = connectivity::scan(&stalled);
+    let (fixed, actions) = connectivity::apply_fixes(&before);
+    // Re-scan (proxy/DNS fixes need a moment to take effect).
+    std::thread::sleep(std::time::Duration::from_millis(600));
+    let after_checks = connectivity::scan(&stalled);
+    let remaining: Vec<_> = after_checks.iter().filter(|c| c.status != "ok").cloned().collect();
+    serde_json::json!({
+        "fixed": fixed,
+        "actions": actions,
+        "checks": after_checks,
+        "remaining": remaining,
+    })
 }
 
 #[tauri::command]
@@ -1900,7 +3449,7 @@ fn publish_usage_event(state: &AppState, source: &str, original: u64, optimized:
         let st = cowork::CoworkState::from_config(cfg);
         cowork::publish_event(
             &st, &source, "mac", "", "", &mode,
-            original, 0, saved, email.as_deref(),
+            original, 0, saved, 0, 0, email.as_deref(),
         );
     });
 }
@@ -2113,11 +3662,15 @@ async fn verify_license_remote(state: tauri::State<'_, AppState>, clerk_user_id:
 
 #[tauri::command]
 fn check_can_optimize(state: tauri::State<'_, AppState>) -> serde_json::Value {
-    let lic = lock_or_recover(&state.license);
+    let (can, remaining, tier) = {
+        let lic = lock_or_recover(&state.license);
+        (lic.can_optimize(), lic.remaining_optimizations(), lic.tier.clone())
+    };
     serde_json::json!({
-        "allowed": lic.can_optimize(),
-        "remaining": lic.remaining_optimizations(),
-        "tier": lic.tier,
+        // Allowed during the post-login grace window even without an active plan.
+        "allowed": can || in_grace(&state),
+        "remaining": remaining,
+        "tier": tier,
     })
 }
 
@@ -2129,18 +3682,116 @@ fn record_optimization_usage(state: tauri::State<'_, AppState>, app: AppHandle) 
     let exhausted = !lic.can_optimize();
     let remaining = lic.remaining_optimizations();
     drop(lic);
+    // Suppress the gate during the post-login grace window.
+    let exhausted = exhausted && !in_grace(&state);
 
     if exhausted {
-        let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
-        let types: Vec<String> = monitor.sessions.keys().cloned().collect();
-        for t in &types {
-            monitor.disconnect_agent(t);
-        }
+        // Free/lapsed users keep full monitoring — the Island, Stats, agent
+        // activity and wallpaper are free forever. We no longer disconnect
+        // agents here; we just surface the upgrade prompt for the Pro-only
+        // optimization feature they just tried to use.
         let _ = app.emit("quota-exhausted", serde_json::json!({
             "remaining": remaining,
-            "message": "No active subscription. Start a free trial to use Terse."
+            "message": "Live optimization is a Pro feature. Start Pro to auto-trim every prompt."
         }));
     }
+}
+
+/// Bring the main window forward and open the Pro upgrade sheet. Called from the
+/// floating popup when a free user tries to apply an optimization — monitoring is
+/// free, but applying the trim is Pro.
+#[tauri::command]
+fn request_upgrade(app: AppHandle, reason: Option<String>) {
+    let reason = reason.unwrap_or_default();
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.set_focus();
+        // If the main window is currently on a Pro-gated sub-page (Doctor, Stats,
+        // …) rather than the app shell, navigate back to the shell with an
+        // `#upgrade` flag — app.js opens the paywall from that hash on load. When
+        // already on the shell, the running app.js catches the event below.
+        let on_shell = w
+            .url()
+            .ok()
+            .map(|u| {
+                let p = u.path();
+                p == "/" || p.ends_with("index.html")
+            })
+            .unwrap_or(true);
+        if !on_shell {
+            if let Ok(url) = "tauri://localhost/index.html#upgrade".parse() {
+                let _ = w.navigate(url);
+            }
+            return;
+        }
+    }
+    let _ = app.emit("open-paywall", serde_json::json!({ "reason": reason }));
+}
+
+/// A stable, shareable 6-char invite code derived from the user id — shown while
+/// the backend referral service is still being wired up.
+fn referral_code_for(clerk: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(clerk.as_bytes());
+    let d = h.finalize();
+    const ALPHABET: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    (0..6).map(|i| ALPHABET[(d[i] as usize) % ALPHABET.len()] as char).collect()
+}
+
+/// Referral dashboard for the Invite screen. Prefers the backend (authoritative
+/// counts + rewards); falls back to a display-only code so the UI always works.
+#[tauri::command]
+async fn get_referral_info(app: AppHandle) -> serde_json::Value {
+    let clerk = {
+        let st = app.state::<AppState>();
+        let auth = lock_or_recover(&st.auth);
+        auth.clerk_user_id.clone()
+    };
+    let clerk = match clerk {
+        Some(c) if !c.is_empty() => c,
+        _ => return serde_json::json!({ "signedIn": false }),
+    };
+    if let Some(mut info) = license::fetch_referral(&clerk).await {
+        info["signedIn"] = serde_json::json!(true);
+        return info;
+    }
+    let code = referral_code_for(&clerk);
+    serde_json::json!({
+        "signedIn": true,
+        "code": code,
+        "shareUrl": format!("https://www.terseai.org/?ref={}", code),
+        "invited": 0,
+        "converted": 0,
+        "proDaysEarned": 0,
+        "pending": true, // backend attribution not live yet
+        "rewardText": "Give 14 days of Pro, get 14 days of Pro",
+    })
+}
+
+/// Redeem a friend's invite code. On a backend-confirmed grant, re-verify the
+/// license so Pro entitlements refresh immediately.
+#[tauri::command]
+async fn redeem_referral_code(code: String, app: AppHandle) -> Result<serde_json::Value, String> {
+    let clerk = {
+        let st = app.state::<AppState>();
+        let auth = lock_or_recover(&st.auth);
+        auth.clerk_user_id.clone()
+    };
+    let clerk = clerk.ok_or("Please sign in first.")?;
+    let code = code.trim().to_uppercase();
+    if code.is_empty() {
+        return Err("Enter an invite code.".to_string());
+    }
+    let res = license::redeem_referral(&clerk, &code).await?;
+    if res.get("granted").and_then(|v| v.as_bool()).unwrap_or(false) {
+        if let Some(lic) = license::verify_license(&clerk).await {
+            let st = app.state::<AppState>();
+            *lock_or_recover(&st.license) = lic;
+        }
+        let _ = app.emit("license-updated", ());
+    }
+    Ok(res)
 }
 
 #[tauri::command]
@@ -2166,6 +3817,51 @@ fn get_auth(state: tauri::State<'_, AppState>) -> serde_json::Value {
         "email": auth.email,
         "imageUrl": auth.image_url,
         "firstName": auth.first_name,
+    })
+}
+
+/// True while the signed-in user is inside the 15-minute post-login grace window.
+/// Callers MUST NOT hold the license lock when calling this (it locks `auth`, and
+/// save_auth locks auth→license, so nesting license→auth here could deadlock).
+fn in_grace(state: &AppState) -> bool {
+    let auth = lock_or_recover(&state.auth);
+    auth.in_grace()
+}
+
+/// After the grace window elapses, if the user still has no active plan, tear down
+/// the "try it" affordances: emit `trial-grace-expired` (the main window shows the
+/// paywall, the Dynamic Island hides itself) and disconnect any live agents so the
+/// monitor stops. If they subscribed during the window, this is a no-op.
+fn schedule_grace_expiry(app: AppHandle, secs: i64) {
+    std::thread::spawn(move || {
+        if secs > 0 {
+            std::thread::sleep(std::time::Duration::from_secs(secs as u64));
+        }
+        let state = app.state::<AppState>();
+        let has_plan = { lock_or_recover(&state.license).can_optimize() };
+        if has_plan || in_grace(&state) {
+            return; // subscribed, or the window was extended/restarted — nothing to do
+        }
+        {
+            let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+            let types: Vec<String> = monitor.sessions.keys().cloned().collect();
+            for t in &types { monitor.disconnect_agent(t); }
+        }
+        let _ = app.emit("trial-grace-expired", serde_json::json!({}));
+    });
+}
+
+/// Status of the post-login grace window for the renderer (paywall + island).
+#[tauri::command]
+fn trial_grace_status(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let has_plan = { lock_or_recover(&state.license).can_optimize() };
+    let auth = lock_or_recover(&state.auth);
+    let rem = auth.grace_remaining_secs();
+    serde_json::json!({
+        "inGrace": auth.in_grace(),
+        "remainingSecs": rem,
+        "hasPlan": has_plan,
+        "expired": auth.grace_start.is_some() && !auth.in_grace() && !has_plan,
     })
 }
 
@@ -2227,19 +3923,33 @@ fn trigger_ml_model_download() {
 }
 
 #[tauri::command]
-fn save_auth(state: tauri::State<'_, AppState>, clerk_user_id: String, email: String, image_url: String, first_name: String) {
-    let mut auth = lock_or_recover(&state.auth);
-    auth.clerk_user_id = Some(clerk_user_id.clone());
-    auth.email = Some(email);
-    auth.image_url = Some(image_url);
-    auth.first_name = Some(first_name);
-    auth.signed_in = true;
-    auth.save();
+fn save_auth(state: tauri::State<'_, AppState>, app: AppHandle, clerk_user_id: String, email: String, image_url: String, first_name: String) {
+    let grace_rem;
+    {
+        let mut auth = lock_or_recover(&state.auth);
+        auth.clerk_user_id = Some(clerk_user_id.clone());
+        auth.email = Some(email);
+        auth.image_url = Some(image_url);
+        auth.first_name = Some(first_name);
+        auth.signed_in = true;
+        // Begin the 15-minute "try it first" window (idempotent across restarts).
+        auth.ensure_grace_started();
+        grace_rem = auth.grace_remaining_secs();
+        auth.save();
+    }
 
     // Also update license with clerk user id
-    let mut lic = lock_or_recover(&state.license);
-    lic.clerk_user_id = Some(clerk_user_id);
-    lic.save();
+    {
+        let mut lic = lock_or_recover(&state.license);
+        lic.clerk_user_id = Some(clerk_user_id);
+        lic.save();
+    }
+
+    // When the grace window ends, hide the island + reveal the paywall if still unpaid.
+    let has_plan = { lock_or_recover(&state.license).can_optimize() };
+    if !has_plan {
+        schedule_grace_expiry(app, grace_rem);
+    }
 
     // Kick off ML model download in background (only runs if model not already present)
     trigger_ml_model_download();
@@ -2250,6 +3960,36 @@ fn check_ax_permission() -> bool {
     // Synchronously check + request AX permission.
     // Returns true if already trusted. If not trusted, opens System Settings.
     capture::is_ax_trusted_sync()
+}
+
+/// Clear-glass mode for the "horizon" theme (macOS).
+///
+/// Every other dark theme sits on top of an NSVisualEffectView (applied in
+/// `setup`), which frosts the desktop behind the window. Horizon is the
+/// macdemo film's liquid glass — `blur(3px)` is essentially clear, and the
+/// whole point is that the wallpaper reads through crisply — so that native
+/// layer has to come off, otherwise the frosted backing wins and the window
+/// just looks like midnight with a lime accent.
+///
+/// `enabled = true` → strip the vibrancy (horizon). `false` → put it back.
+/// No-op off macOS; the Windows build has no NSVisualEffectView to swap.
+#[tauri::command]
+fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
+    #[cfg(target_os = "macos")]
+    {
+        use window_vibrancy::{apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial};
+        if let Some(win) = app.get_webview_window("main") {
+            if enabled {
+                let _ = clear_vibrancy(&win);
+            } else {
+                let _ = apply_vibrancy(&win, NSVisualEffectMaterial::HudWindow, None, Some(16.0));
+            }
+        }
+    }
+    // The popup/island/dashboard windows never had vibrancy applied — they are
+    // plain transparent windows, so their CSS glass is already clear.
+    #[cfg(not(target_os = "macos"))]
+    let _ = (&app, enabled);
 }
 
 #[tauri::command]
@@ -2273,7 +4013,7 @@ fn sign_out(state: tauri::State<'_, AppState>) {
 
 /// Remove ANTHROPIC_BASE_URL from ~/.claude/settings.json if it points to our proxy.
 /// Called on app startup (cleanup from previous crash) and when proxy exits.
-fn cleanup_proxy_configs() {
+pub(crate) fn cleanup_proxy_configs() {
     let home = dirs::home_dir().unwrap_or_default();
     let settings_file = home.join(".claude").join("settings.json");
     if settings_file.exists() {
@@ -2332,9 +4072,31 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_deep_link::init())
+        // Remember each floating window's position/size across restarts and
+        // multi-monitor setups — but NEVER restore visibility or maximized/
+        // fullscreen state. Default flags include VISIBLE, which would re-open
+        // every window that was open at last quit (farm, popup, palette,
+        // dashboards…). We want a clean launch: only `main` + the island (shown
+        // on agent-connect) + the pet (if equipped) appear.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::SIZE,
+                )
+                .build(),
+        )
         .manage(AppState::default())
         .setup(|app| {
+            // Native vibrancy under the main window (macOS) — deliberately NOT applied
+            // at startup any more. "horizon" is the default theme and it is clear glass:
+            // an NSVisualEffectView under the window frosts the desktop into a flat grey
+            // slab, which is exactly the look horizon exists to avoid. The frontend calls
+            // set_clear_glass(false) when the user picks any other theme, which is what
+            // puts the frosted backing back. Starting without it means the first paint is
+            // already glass, with no flash of grey while the JS boots.
             // Register the terse:// connect handler + handle a cold-start launch URL.
             {
                 let handle = app.handle().clone();
@@ -2400,16 +4162,24 @@ pub fn run() {
                 }
             }
 
-            // Create popup window
             let monitor = app.primary_monitor()?.unwrap();
             let screen_width = monitor.size().width as f64 / monitor.scale_factor();
-            let popup_w = 540.0;
-            let popup_x = ((screen_width - popup_w) / 2.0) as f64;
 
-            let _popup = WebviewWindowBuilder::new(app, "popup", WebviewUrl::App("popup.html".into()))
-                .title("Terse Popup")
-                .inner_size(popup_w, 200.0)
-                .position(popup_x, 8.0)
+            // The standalone popup window is retired: its optimizer engine
+            // (popup.js) and Capture/Replace now live inside the dynamic island,
+            // so we no longer build a separate popup window. Every
+            // `get_webview_window("popup")` call is guarded and becomes a no-op.
+
+            // ── Prompt palette window (⌘⇧K) ──
+            // Frameless, transparent, always-on-top, centred near the top of the
+            // screen like a Spotlight/Raycast launcher. Hidden until the hotkey.
+            let palette_w = 560.0;
+            let palette_h = 480.0;
+            let palette_x = ((screen_width - palette_w) / 2.0) as f64;
+            let _palette = WebviewWindowBuilder::new(app, "palette", WebviewUrl::App("palette.html".into()))
+                .title("Terse Prompt Palette")
+                .inner_size(palette_w, palette_h)
+                .position(palette_x, 120.0)
                 .decorations(false)
                 .transparent(true)
                 .always_on_top(true)
@@ -2417,9 +4187,34 @@ pub fn run() {
                 .shadow(false)
                 .skip_taskbar(true)
                 .focused(false)
-                .visible_on_all_workspaces(true)
                 .visible(false)
                 .build()?;
+
+            // ── Live token wallpaper window (desktop-pinned; hidden until enabled) ──
+            // Built once here on the main thread; enable/disable just shows/hides it.
+            {
+                let (ww, wh) = app
+                    .primary_monitor()
+                    .ok()
+                    .flatten()
+                    .map(|m| {
+                        let sf = m.scale_factor();
+                        (m.size().width as f64 / sf, m.size().height as f64 / sf)
+                    })
+                    .unwrap_or((1440.0, 900.0));
+                let _wall = WebviewWindowBuilder::new(app, "wallpaper", WebviewUrl::App("wallpaper.html".into()))
+                    .title("Terse Wallpaper")
+                    .inner_size(ww, wh)
+                    .position(0.0, 0.0)
+                    .decorations(false)
+                    .transparent(false)
+                    .resizable(false)
+                    .shadow(false)
+                    .skip_taskbar(true)
+                    .focused(false)
+                    .visible(false)
+                    .build()?;
+            }
 
             // ── Floating pet companion window (Phase 2) ──
             // Shimeji-style large pet (~200px) in a 240×260 transparent
@@ -2429,6 +4224,9 @@ pub fn run() {
             let monitor_h = monitor.size().height as f64 / monitor.scale_factor();
             let pet_x = (screen_width - pet_w - 24.0) as f64;
             let pet_y = (monitor_h - pet_h - 60.0) as f64;
+            // Show the floating Pals companion on launch whenever the user has a
+            // pet equipped — restoring the pre-existing behaviour. With no pet
+            // equipped a clean start is just the main window + the island.
             let pet_visible = {
                 let st = app.state::<AppState>();
                 let pet_store = st.pet_store.lock().unwrap_or_else(|e| e.into_inner());
@@ -2458,6 +4256,8 @@ pub fn run() {
                 .inner_size(1366.0, 768.0)
                 .min_inner_size(1100.0, 618.0)
                 .position(farm_x, farm_y)
+                // Same as the Doctor window — opaque native backing would block the glass.
+                .transparent(true)
                 .title_bar_style(tauri::TitleBarStyle::Overlay)
                 .hidden_title(true)
                 .always_on_top(false)
@@ -2467,6 +4267,92 @@ pub fn run() {
                 .accept_first_mouse(true)
                 .visible(false)
                 .build()?;
+
+            // ── Doctor window (体检 — hidden until user opens it) ──
+            let doc_x = (screen_width / 2.0 - 430.0) as f64;
+            let doc_y = 70.0_f64;
+            let _doctor_win = WebviewWindowBuilder::new(app, "doctor", WebviewUrl::App("doctor.html".into()))
+                .title("Terse Doctor")
+                .inner_size(1040.0, 800.0)
+                .min_inner_size(820.0, 640.0)
+                .position(doc_x, doc_y)
+                // Glass themes need a non-opaque native backing, or macOS paints a
+                // solid window behind the webview and no amount of CSS shows through.
+                .transparent(true)
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true)
+                .always_on_top(false)
+                .resizable(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible(false)
+                .build()?;
+
+            // ── Dynamic Island window (灵动岛 — agent monitor pill) ──
+            // A frameless always-on-top pill pinned top-center near the notch. Hidden until an
+            // agent connects; collapsed it shows a compact pill, on hover it expands (resized via
+            // island_set_expanded) into the full agent monitor panel reused from popup.js.
+            let island_x = ((screen_width - ISLAND_PILL_W) / 2.0) as f64;
+            let _island_win = WebviewWindowBuilder::new(app, "island", WebviewUrl::App("island.html".into()))
+                .title("Terse Island")
+                .inner_size(ISLAND_PILL_W, ISLAND_PILL_H)
+                .position(island_x, ISLAND_Y)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible_on_all_workspaces(true)
+                .visible(false)
+                .build()?;
+
+            // ── Alert toast window ──
+            // Terse's own notification banner, top-right, always on top. It replaces
+            // the OS notification (unthemeable, English-only, absent on Windows).
+            // Created hidden and resized to its card stack by toast.js.
+            let toast_x = screen_width - notifications::TOAST_W - 14.0;
+            let _toast_win = WebviewWindowBuilder::new(app, "toast", WebviewUrl::App("toast.html".into()))
+                .title("Terse Alert")
+                .inner_size(notifications::TOAST_W, 140.0)
+                .position(toast_x, 42.0)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible_on_all_workspaces(true)
+                .visible(false)
+                .build()?;
+
+            // ── Floating dashboard widget windows (灵动仪表盘) ──
+            // One small frameless always-on-top card per live metric. Created hidden
+            // here (window creation must run on the main thread); the main-window
+            // launcher reveals them as a set via open_dashboards. dash.js reads each
+            // window's label ("dash-<kind>") to know which rich widget to render.
+            for (label, kind, dx, dy, dw, dh) in dash_layout(screen_width) {
+                let _ = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(format!("dash.html?w={}", kind).into()))
+                    .title("Terse Dashboard")
+                    .inner_size(dw, dh)
+                    .position(dx, dy)
+                    .decorations(false)
+                    .transparent(true)
+                    .always_on_top(true)
+                    .resizable(false)
+                    .shadow(false)
+                    .skip_taskbar(true)
+                    .focused(false)
+                    .accept_first_mouse(true)
+                    .visible_on_all_workspaces(true)
+                    .visible(false)
+                    .build();
+            }
 
             // macOS: force transparent bg + rounded corners on both windows
             #[cfg(target_os = "macos")]
@@ -2497,13 +4383,98 @@ pub fn run() {
                 if let Some(w) = app.get_webview_window("main") { make_rounded(&w, 16.0); }
                 if let Some(w) = app.get_webview_window("popup") { make_rounded(&w, 16.0); }
                 if let Some(w) = app.get_webview_window("farm") { make_rounded(&w, 20.0); }
+                if let Some(w) = app.get_webview_window("doctor") { make_rounded(&w, 18.0); }
+                if let Some(w) = app.get_webview_window("island") { make_rounded(&w, 22.0); }
+                if let Some(w) = app.get_webview_window("toast") { make_rounded(&w, 16.0); }
+                for (label, _, _, _, _, _) in dash_layout(screen_width) {
+                    if let Some(w) = app.get_webview_window(&label) { make_rounded(&w, 20.0); }
+                }
             }
 
-            // Tray icon
+            // NOTE: We no longer auto-show the standalone Doctor window on launch —
+            // that produced two windows at startup. The Doctor now lives inside the
+            // single main window: the renderer (app.js) navigates the main window to
+            // doctor.html on first run for not-yet-signed-in users, and the dock
+            // button opens it in-place thereafter. The standalone window remains
+            // available on demand via Cmd+Shift+D.
+
+            // Tray icon — quick-access menu-bar item: show/hide, one-click mode
+            // switch, and jumps to Doctor / Stats without opening the main window.
+            let tray_show = MenuItemBuilder::with_id("tray_show", "Show / Hide Terse").build(app)?;
+            let mode_light = MenuItemBuilder::with_id("mode_light", "Mode: Soft").build(app)?;
+            let mode_balanced = MenuItemBuilder::with_id("mode_balanced", "Mode: Normal").build(app)?;
+            let mode_aggressive = MenuItemBuilder::with_id("mode_aggressive", "Mode: Aggressive").build(app)?;
+            let tray_doctor = MenuItemBuilder::with_id("tray_doctor", "Open Doctor · 体检").build(app)?;
+            let tray_stats = MenuItemBuilder::with_id("tray_stats", "Open Stats").build(app)?;
+            let tray_quit = MenuItemBuilder::with_id("tray_quit", "Quit Terse").build(app)?;
+            let sep = PredefinedMenuItem::separator(app)?;
+            let tray_menu = MenuBuilder::new(app)
+                .items(&[
+                    &tray_show, &sep,
+                    &mode_light, &mode_balanced, &mode_aggressive, &sep,
+                    &tray_doctor, &tray_stats, &sep,
+                    &tray_quit,
+                ])
+                .build()?;
+
+            let toggle_main = |app: &AppHandle| {
+                if let Some(win) = app.get_webview_window("main") {
+                    if win.is_visible().unwrap_or(false) {
+                        let _ = win.hide();
+                    } else {
+                        let _ = win.show();
+                        let _ = win.set_focus();
+                    }
+                }
+            };
+            let toggle_win = |app: &AppHandle, label: &str| {
+                if let Some(win) = app.get_webview_window(label) {
+                    let _ = win.show();
+                    let _ = win.set_focus();
+                }
+            };
+
             let _tray = TrayIconBuilder::new()
                 .tooltip("Terse")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(move |app, event| {
+                    let app = app.clone();
+                    match event.id().as_ref() {
+                        "tray_show" => toggle_main(&app),
+                        "tray_doctor" => toggle_win(&app, "doctor"),
+                        "tray_stats" => {
+                            if let Some(win) = app.get_webview_window("main") {
+                                let _ = win.show();
+                                let _ = win.set_focus();
+                                if let Ok(url) = "tauri://localhost/stats.html".parse() {
+                                    let _ = win.navigate(url);
+                                }
+                            }
+                        }
+                        "tray_quit" => app.exit(0),
+                        id @ ("mode_light" | "mode_balanced" | "mode_aggressive") => {
+                            let mode = match id {
+                                "mode_light" => "light",
+                                "mode_aggressive" => "aggressive",
+                                _ => "balanced",
+                            };
+                            {
+                                let state = app.state::<AppState>();
+                                let mut s = state.settings.lock().unwrap_or_else(|e| e.into_inner());
+                                s.aggressiveness = mode.to_string();
+                                let _ = app.emit("settings-changed", serde_json::to_value(&*s).unwrap_or_default());
+                            }
+                        }
+                        _ => {}
+                    }
+                })
                 .on_tray_icon_event(|tray, event| {
-                    if let tauri::tray::TrayIconEvent::Click { .. } = event {
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        button_state: tauri::tray::MouseButtonState::Up,
+                        ..
+                    } = event {
                         let app = tray.app_handle();
                         if let Some(win) = app.get_webview_window("main") {
                             if win.is_visible().unwrap_or(false) {
@@ -2518,9 +4489,26 @@ pub fn run() {
                 .build(app)?;
 
             // Register global shortcuts
+            // Watch for agent approval prompts (Claude / Codex / Cursor, terminal
+            // and app) and surface them in the island. Idles unless the island is up.
+            approvals::spawn_scanner(app.handle().clone());
+
             let app_handle = app.handle().clone();
             app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+T", move |_app, _shortcut, _event| {
                 if let Some(win) = app_handle.get_webview_window("main") {
+                    if win.is_visible().unwrap_or(false) {
+                        let _ = win.hide();
+                    } else {
+                        let _ = win.show();
+                        let _ = win.set_focus();
+                    }
+                }
+            })?;
+
+            // Toggle the Doctor (体检) window with Cmd+Shift+D.
+            let app_handle_doctor = app.handle().clone();
+            app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+D", move |_app, _shortcut, _event| {
+                if let Some(win) = app_handle_doctor.get_webview_window("doctor") {
                     if win.is_visible().unwrap_or(false) {
                         let _ = win.hide();
                     } else {
@@ -2565,11 +4553,18 @@ pub fn run() {
             // If user is already signed in, kick off ML model download now
             {
                 let app_state = app.state::<AppState>();
-                let auth = lock_or_recover(&app_state.auth);
-                let already_signed_in = auth.signed_in;
-                drop(auth);
+                let (already_signed_in, grace_rem) = {
+                    let auth = lock_or_recover(&app_state.auth);
+                    (auth.signed_in, auth.grace_remaining_secs())
+                };
                 if already_signed_in {
                     trigger_ml_model_download();
+                    // Resume the grace-expiry timer if a returning user is still inside
+                    // the window with no active plan (survives app restarts).
+                    let has_plan = { lock_or_recover(&app_state.license).can_optimize() };
+                    if grace_rem > 0 && !has_plan {
+                        schedule_grace_expiry(app.handle().clone(), grace_rem);
+                    }
                 }
             }
 
@@ -2590,6 +4585,9 @@ pub fn run() {
                         let state = app_handle_usage.state::<AppState>();
                         // scan_once parses files first, then locks only to record.
                         agent_usage_scan::scan_once(&state.stats_store);
+                        // Per-model / per-MCP / per-tool attribution (separate ledger,
+                        // never double-counts usage). Backfills history on first run.
+                        agent_usage_scan::scan_attribution_once(&state.stats_store);
                     }
                     std::thread::sleep(std::time::Duration::from_secs(30));
                 }
@@ -2600,6 +4598,44 @@ pub fn run() {
             std::thread::spawn(move || {
                 start_polling(app_handle4);
             });
+
+            // Background alert monitor: routes new Doctor findings, disk bloat
+            // and (once configured) budget burn through the unified alert layer.
+            start_alert_monitor(app.handle().clone());
+
+            // Auto-build knowledge graphs for every repo an agent is working in,
+            // caching them locally so the Graph tab opens instantly and agents get
+            // an up-to-date token-saving digest without the user lifting a finger.
+            start_graph_autobuild(app.handle().clone());
+
+            // Restore the live desktop wallpaper if the user left it enabled.
+            // (The window itself is created below; pinning is dispatched to the
+            // main thread by show_wallpaper_window.)
+            if get_wallpaper_config().get("enabled").and_then(|v| v.as_bool()).unwrap_or(false) {
+                let _ = show_wallpaper_window(&app.handle());
+            }
+
+            // ── Prompt palette: ⌘⇧K global hotkey ──
+            {
+                use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
+                let hk = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyK);
+                let handle = app.handle().clone();
+                let gs = app.global_shortcut();
+                let _ = gs.on_shortcut(hk, move |_a, _sc, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        // Prompt Library now lives inside the main window as a
+                        // sidebar panel — bring the main window forward and ask
+                        // the frontend to open it, instead of the old floating
+                        // palette overlay.
+                        if let Some(win) = handle.get_webview_window("main") {
+                            let _ = win.show();
+                            let _ = win.unminimize();
+                            let _ = win.set_focus();
+                            let _ = win.emit("open-prompts", ());
+                        }
+                    }
+                });
+            }
 
             // Proactive AX permission check — runs 2s after startup so the dialog
             // appears at launch (with context) rather than mid-session (confusing).
@@ -2781,6 +4817,19 @@ pub fn run() {
             set_popup_minimized,
             move_popup_by,
             resize_popup,
+            show_island_window,
+            hide_island_window,
+            island_set_expanded,
+            island_resize,
+            island_alert_size,
+            island_is_visible,
+            focus_app,
+            focus_island,
+            open_dashboards,
+            hide_dashboards,
+            toggle_dashboard,
+            tile_dashboards,
+            dashboards_visible,
             debug_log,
             get_agent_detections,
             get_agent_sessions,
@@ -2796,13 +4845,74 @@ pub fn run() {
             set_cowork_share_stats,
             clear_cowork_token,
             open_cloud_teams,
+            open_url,
+            send_slack_alert,
             install_agent_hook,
             check_agent_hook,
             get_hook_stats,
             get_stats,
+            get_agent_attribution,
+            get_budget,
+            set_budget,
+            get_budget_status,
+            doctor_scan,
+            doctor_apply_fix,
+            cleanup_scan,
+            cleanup_clean,
+            speed_mode_status,
+            set_speed_mode,
+            doctor_dismiss,
+            show_doctor_window,
+            hide_doctor_window,
             navigate_to_stats,
             navigate_back,
             navigate_to_cowork,
+            navigate_to_doctor,
+            navigate_to_alerts,
+            navigate_to_wallpaper,
+            get_wallpaper_config,
+            set_wallpaper_config,
+            get_desktop_picture,
+            set_wallpaper_enabled,
+            get_token_pulse,
+            navigate_to_history,
+            session_history::list_session_history,
+            session_history::get_session_history,
+            session_history::delete_session_history,
+            session_history::clear_session_history,
+            show_palette,
+            hide_palette,
+            insert_prompt_text,
+            prompt_store::list_prompts,
+            prompt_store::get_prompt,
+            prompt_store::save_prompt,
+            prompt_store::delete_prompt,
+            prompt_store::record_prompt_use,
+            notifications::get_alert_settings,
+            notifications::set_alert_settings,
+            notifications::get_recent_alerts,
+            notifications::mark_alerts_read,
+            notifications::clear_alerts,
+            notifications::dispatch_alert,
+            notifications::snooze_alert_kind,
+            notifications::toast_resize,
+            notifications::toast_hide,
+            notifications::toast_action,
+            circuit::get_circuit_settings,
+            circuit::set_circuit_settings,
+            circuit::get_circuit_trips,
+            circuit::circuit_resume,
+            digest::send_weekly_digest_now,
+            mcp_manager::mcp_list,
+            mcp_manager::mcp_set_enabled,
+            get_session_timeline,
+            export_session_replay,
+            claude_md_list,
+            claude_md_read,
+            claude_md_write,
+            connectivity_scan,
+            connectivity_fix_all,
+            show_main_window,
             record_optimization,
             // Pet commands (Phase 1)
             get_pet_state,
@@ -2836,9 +4946,23 @@ pub fn run() {
             farm_pool_clear,
             farm_add_fishing_coins,
             show_farm_window,
+            navigate_to_farm,
             hide_farm_window,
+            // Knowledge Graph
+            graph_status,
+            graph_build,
+            graph_get,
+            graph_list,
+            graph_add_folder,
+            graph_pick_folder,
+            graph_remove,
+            graph_save_overlay,
+            graph_write_digest,
+            graph_set_watch,
+            navigate_to_graph,
             farm_set_mini,
             check_ax_permission,
+            set_clear_glass,
             request_accessibility,
             pet_work_detected,
             emit_popup_update,
@@ -2857,7 +4981,11 @@ pub fn run() {
             set_clerk_user,
             verify_license_remote,
             check_can_optimize,
+            trial_grace_status,
             record_optimization_usage,
+            request_upgrade,
+            get_referral_info,
+            redeem_referral_code,
             check_can_add_session,
             get_auth,
             save_auth,
@@ -2865,6 +4993,154 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// ── Background alert monitor ──────────────────────────────────────────────
+
+/// Truncate a detail string to `max` chars for a notification body.
+fn truncate_alert(s: &str, max: usize) -> String {
+    let s = s.trim();
+    if s.chars().count() <= max {
+        return s.to_string();
+    }
+    let mut out: String = s.chars().take(max).collect();
+    out.push('…');
+    out
+}
+
+/// Run one pass of the alert checks: Doctor high-severity findings + disk
+/// cleanup thresholds. Budget burn is layered in once the budget model exists.
+fn run_alert_checks(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let period = "week";
+    let (attr, stats) = {
+        let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+        (store.get_attribution(period), store.get_stats(period))
+    };
+    let sessions = {
+        let monitor = lock_or_recover(&state.agent_monitor);
+        monitor.get_connected_sessions()
+    };
+    let summary = stats.get("summary").cloned().unwrap_or(stats);
+
+    // Persist live-session snapshots to disk history (task #19) — accrues even
+    // if we never observe the disconnect event.
+    if !sessions.is_empty() {
+        state.session_history.lock().unwrap_or_else(|e| e.into_inner()).record_many(&sessions);
+    }
+
+    let report = doctor::scan_full(&attr, &summary, &sessions, period);
+
+    // Route findings to the right alert kind:
+    //  • cache regressions (category "cache") at medium+ → "cache" alerts
+    //  • disk/junk highs → "cleanup"
+    //  • everything else high → "doctor"
+    // Each throttled per finding id so a persistent issue won't re-nag.
+    if let Some(findings) = report.get("findings").and_then(|f| f.as_array()) {
+        for f in findings {
+            let sev = f.get("severity").and_then(|v| v.as_str()).unwrap_or("low");
+            let cat = f.get("category").and_then(|v| v.as_str()).unwrap_or("");
+            if cat == "config" {
+                continue;
+            }
+            let id = f.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let title = f.get("title").and_then(|v| v.as_str()).unwrap_or("Agent health issue");
+            let detail = f.get("detail").and_then(|v| v.as_str()).unwrap_or("");
+            let body = truncate_alert(detail, 200);
+
+            let (kind, action, key) = if cat == "cache" {
+                // Cache hit-rate regressions get their own channel at medium+.
+                if sev == "low" { continue; }
+                ("cache", "open-doctor", format!("cache:{}", id))
+            } else if cat == "context" {
+                // Context-window overflow / drift (task #18) → context channel.
+                if sev == "low" { continue; }
+                ("context", "open-doctor", format!("context:{}", id))
+            } else if id.starts_with("cost:frontier") {
+                // Premium model carrying most of the cost (task #17) → routing.
+                if sev == "low" { continue; }
+                ("routing", "open-stats", format!("routing:{}", id))
+            } else if sev != "high" {
+                continue;
+            } else if cat == "junk" || cat == "disk" {
+                ("cleanup", "open-cleanup", format!("doctor:{}", id))
+            } else {
+                ("doctor", "open-doctor", format!("doctor:{}", id))
+            };
+            notifications::dispatch(app, kind, title, &body, sev, &key, Some(action.to_string()));
+        }
+    }
+
+    // Reclaimable disk over threshold → cleanup alert.
+    if let Some(bytes) = report.pointer("/summary/junkBytes").and_then(|v| v.as_u64()) {
+        const MB: u64 = 1024 * 1024;
+        if bytes >= 200 * MB {
+            let human = if bytes >= 1024 * MB {
+                format!("{:.1} GB", bytes as f64 / (1024.0 * MB as f64))
+            } else {
+                format!("{} MB", bytes / MB)
+            };
+            let sev = if bytes >= 1024 * MB { "high" } else { "medium" };
+            notifications::dispatch(
+                app,
+                "cleanup",
+                "Reclaimable disk space",
+                &format!("Terse found {} of stale agent logs, caches and junk it can safely clean.", human),
+                sev,
+                "cleanup:junk",
+                Some("open-cleanup".to_string()),
+            );
+        }
+    }
+
+    // ── Budget burn (task #9) ──
+    let budget = {
+        let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+        store.budget_status()
+    };
+    if let Some(obj) = budget.as_object() {
+        for (period, b) in obj {
+            let cap = b.get("cap").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            if cap <= 0.0 { continue; }
+            let spent = b.get("spent").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let pct = b.get("pct").and_then(|v| v.as_i64()).unwrap_or(0);
+            let projected = b.get("projected").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let over_proj = b.get("overProjected").and_then(|v| v.as_bool()).unwrap_or(false);
+            // startDate makes the dedupe key roll over each new week/month, so
+            // each threshold can fire once per period.
+            let stamp = b.get("startDate").and_then(|v| v.as_str()).unwrap_or("");
+            let label = if period == "weekly" { "weekly" } else { "monthly" };
+
+            if pct >= 100 {
+                notifications::dispatch(app, "budget",
+                    &format!("Over {} budget", label),
+                    &format!("You've spent ${:.2} of your ${:.2} {} budget ({}%).", spent, cap, label, pct),
+                    "high", &format!("budget:{}:100:{}", period, stamp), Some("open-budget".to_string()));
+            } else if pct >= 80 {
+                notifications::dispatch(app, "budget",
+                    &format!("{}% of {} budget used", pct, label),
+                    &format!("${:.2} of ${:.2} spent. Projected ${:.2} by period end.", spent, cap, projected),
+                    "medium", &format!("budget:{}:80:{}", period, stamp), Some("open-budget".to_string()));
+            } else if over_proj {
+                notifications::dispatch(app, "budget",
+                    &format!("On track to exceed {} budget", label),
+                    &format!("At the current burn rate you'll hit ${:.2} — over your ${:.2} {} cap.", projected, cap, label),
+                    "medium", &format!("budget:{}:proj:{}", period, stamp), Some("open-budget".to_string()));
+            }
+        }
+    }
+}
+
+/// Spawn the periodic alert monitor. First pass runs ~45s after launch (once
+/// the initial usage scan has populated stats), then every 20 minutes.
+fn start_alert_monitor(app: AppHandle) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(45));
+        loop {
+            run_alert_checks(&app);
+            std::thread::sleep(std::time::Duration::from_secs(20 * 60));
+        }
+    });
 }
 
 // ── Combined Focus + Text Polling ──

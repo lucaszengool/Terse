@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terse Knowledge Graph</title>
+<link rel="stylesheet" href="styles.css">
+<script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--t1);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+  button{font-family:inherit;cursor:pointer}
+  #wrap{display:flex;flex-direction:column;height:100%}
+
+  /* ── Top bar ─────────────────────────────────────────────── */
+  #top{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--bd);
+    background:var(--sf);flex-shrink:0;-webkit-app-region:drag}
+  #top button,#top input,#top .chip{-webkit-app-region:no-drag}
+  .icon-btn{width:30px;height:30px;border-radius:9px;border:1px solid var(--bd);background:transparent;
+    color:var(--t2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .icon-btn:hover{background:var(--sfh);color:var(--t1)}
+  #title{font-size:14px;font-weight:650;letter-spacing:-.01em;white-space:nowrap}
+  #title small{font-weight:500;color:var(--t3);margin-left:2px}
+  #repoSel{flex:1;min-width:130px;max-width:440px;background:var(--bg);border:1px solid var(--bd);
+    border-radius:9px;padding:6px 28px 6px 10px;color:var(--t1);font-size:12px;font-weight:600;
+    -webkit-appearance:none;appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat:no-repeat;background-position:right 9px center}
+  #repoSel:focus{outline:none;border-color:var(--btn)}
+  .btn{border:1px solid var(--bd);background:var(--sf);color:var(--t1);border-radius:9px;
+    padding:6px 12px;font-size:12px;font-weight:600;white-space:nowrap}
+  .btn:hover{background:var(--sfh)}
+  .btn.primary{background:var(--btn);color:var(--btn-t);border-color:transparent}
+  .btn.primary:hover{background:var(--btn-hover)}
+  .btn.on{background:var(--btn);color:var(--btn-t);border-color:transparent}
+  #saveBadge{font-size:11.5px;color:var(--t2);background:var(--bg);border:1px solid var(--bd);
+    border-radius:20px;padding:4px 10px;white-space:nowrap}
+  #saveBadge b{color:var(--t1)}
+  #liveDot{width:7px;height:7px;border-radius:50%;background:#888;display:inline-block;margin-right:5px;vertical-align:middle}
+  #liveDot.on{background:#28d17c;box-shadow:0 0 6px #28d17c}
+
+  /* ── Toolbar ─────────────────────────────────────────────── */
+  #tools{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);
+    background:var(--sf);flex-shrink:0;flex-wrap:wrap}
+  #search{background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:6px 10px;
+    color:var(--t1);font-size:12px;width:190px}
+  #search:focus{outline:none;border-color:var(--btn)}
+  .chip{border:1px solid var(--bd);background:var(--bg);color:var(--t2);border-radius:20px;
+    padding:4px 11px;font-size:11.5px;font-weight:600}
+  .chip.on{background:var(--btn);color:var(--btn-t);border-color:transparent}
+  .sep{width:1px;height:20px;background:var(--bd);margin:0 2px}
+  .tlabel{font-size:11px;color:var(--t3);font-weight:600}
+
+  /* ── Stage ───────────────────────────────────────────────── */
+  #stage{position:relative;flex:1;overflow:hidden;background:var(--bg)}
+  #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #cv.editing{cursor:crosshair}
+
+  #legend{position:absolute;left:12px;bottom:12px;background:color-mix(in srgb,var(--sf) 88%,transparent);
+    border:1px solid var(--bd);border-radius:12px;padding:9px 11px;max-width:230px;
+    backdrop-filter:blur(8px);font-size:11px;color:var(--t2);max-height:38%;overflow:auto}
+  #legend h4{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:6px}
+  #legend .row{display:flex;align-items:center;gap:7px;margin:3px 0}
+  #legend .sw{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  #legend .muted{color:var(--t3);margin-top:6px;font-size:10px;line-height:1.4}
+
+  #hud{position:absolute;right:12px;top:10px;font-size:11px;color:var(--t3);text-align:right;pointer-events:none}
+
+  /* ── Empty / loading state ───────────────────────────────── */
+  #empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;text-align:center;padding:30px}
+  #empty svg{opacity:.5}
+  #empty h2{font-size:17px;font-weight:650}
+  #empty p{font-size:13px;color:var(--t3);max-width:400px;line-height:1.5}
+  .hidden{display:none!important}
+  #spinner{width:26px;height:26px;border:3px solid var(--bd);border-top-color:var(--btn);border-radius:50%;
+    animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Detail panel ────────────────────────────────────────── */
+  #detail{position:absolute;top:0;right:0;bottom:0;width:300px;background:var(--sf);
+    border-left:1px solid var(--bd);transform:translateX(100%);transition:transform .18s ease;
+    display:flex;flex-direction:column;z-index:6}
+  #detail.open{transform:translateX(0)}
+  #detail .dhead{display:flex;align-items:flex-start;gap:8px;padding:14px 14px 10px;border-bottom:1px solid var(--bd)}
+  #dkindDot{width:12px;height:12px;border-radius:50%;margin-top:4px;flex-shrink:0}
+  #dname{font-size:15px;font-weight:650;word-break:break-word;line-height:1.25}
+  #dmeta{font-size:11px;color:var(--t3);margin-top:3px;font-family:ui-monospace,Menlo,monospace;word-break:break-all}
+  #dclose{margin-left:auto}
+  #dbody{flex:1;overflow:auto;padding:12px 14px}
+  .dsec{margin-bottom:14px}
+  .dsec h5{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:6px}
+  .nb{display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:8px;font-size:12px;cursor:pointer;color:var(--t1)}
+  .nb:hover{background:var(--sfh)}
+  .nb .rel{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--btn-t);
+    background:var(--btn);border-radius:5px;padding:1px 5px;font-weight:700;flex-shrink:0}
+  .nb .rel.inf{background:transparent;color:var(--t3);border:1px dashed var(--bd)}
+  .nb .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dsec .empty-nb{font-size:11.5px;color:var(--t3)}
+  .edit-row{display:flex;gap:6px;margin-top:6px}
+  .edit-row input{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:6px 8px;color:var(--t1);font-size:12px}
+  .edit-row input:focus{outline:none;border-color:var(--btn)}
+  #detail .actions{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;border-top:1px solid var(--bd)}
+  #detail .actions .btn{padding:5px 10px;font-size:11.5px}
+
+  /* ── Toast ───────────────────────────────────────────────── */
+  /* ── Text modal (Tauri webviews have no prompt()) ────────── */
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:20}
+  .modal-card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:16px;width:340px;max-width:86vw;
+    box-shadow:0 18px 50px rgba(0,0,0,0.35)}
+  #modalTitle{font-size:13px;font-weight:650;margin-bottom:10px}
+  #modalInput{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:8px 10px;
+    color:var(--t1);font-size:13px}
+  #modalInput:focus{outline:none;border-color:var(--btn)}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+
+  #toast{position:absolute;bottom:16px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--t1);color:var(--bg);padding:8px 15px;border-radius:20px;font-size:12.5px;font-weight:600;
+    opacity:0;transition:all .22s ease;z-index:9;pointer-events:none;max-width:80%}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="top">
+    <button class="icon-btn" id="back" title="Back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div id="title">Knowledge Graph <small id="counts"></small></div>
+    <select id="repoSel" title="Switch repository"></select>
+    <button class="icon-btn" id="addFolder" title="Add a folder to track">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <span id="saveBadge" class="hidden"></span>
+    <button class="btn" id="live" title="Auto-rebuild on file changes"><span id="liveDot"></span>Live</button>
+    <button class="btn primary" id="build">Rebuild</button>
+  </div>
+
+  <div id="tools" class="hidden">
+    <input id="search" placeholder="Search symbols…" spellcheck="false">
+    <span class="sep"></span>
+    <span class="tlabel">Kinds</span>
+    <button class="chip on" data-kind="function">fn</button>
+    <button class="chip on" data-kind="class">class</button>
+    <button class="chip on" data-kind="method">method</button>
+    <button class="chip on" data-kind="module">module</button>
+    <button class="chip" data-kind="external">external</button>
+    <span class="sep"></span>
+    <button class="chip" id="fInferred">inferred only</button>
+    <span class="sep"></span>
+    <button class="chip" id="edit">✎ Edit</button>
+    <button class="chip" id="digest" title="Rewrite the agent digest now">⤓ Digest</button>
+  </div>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="hud"></div>
+    <div id="legend" class="hidden"></div>
+
+    <div id="empty">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+        <circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/>
+        <path d="M7 7l3.5 9M17 7l-3.5 9M7 6h10"/>
+      </svg>
+      <h2 id="emptyH">No graph yet</h2>
+      <p id="emptyP">Terse builds a knowledge graph of your codebase — every function, class and module, and how they call, import and inherit from each other. Agents read a compact digest of it instead of grepping whole files, saving tokens.</p>
+      <button class="btn primary" id="buildEmpty">Build graph</button>
+    </div>
+
+    <div id="detail">
+      <div class="dhead">
+        <span id="dkindDot"></span>
+        <div style="min-width:0">
+          <div id="dname"></div>
+          <div id="dmeta"></div>
+        </div>
+        <button class="icon-btn" id="dclose" title="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="dbody"></div>
+      <div class="actions" id="dactions"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal" class="hidden">
+  <div class="modal-card">
+    <div id="modalTitle">Add note</div>
+    <input id="modalInput" spellcheck="false" placeholder="">
+    <div class="modal-actions">
+      <button class="btn" id="modalCancel">Cancel</button>
+      <button class="btn primary" id="modalOk">OK</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="graph.js"></script>
+</body>
+</html>

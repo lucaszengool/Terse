@@ -1,9 +1,10 @@
 {
   "identifier": "default",
   "description": "Default capability for Terse windows",
-  "windows": ["main", "popup"],
+  "windows": ["main", "popup", "pet", "farm", "doctor", "island", "palette", "wallpaper", "toast", "dash-*"],
   "permissions": [
     "core:default",
+    "dialog:allow-open",
     "core:event:default",
     "core:event:allow-listen",
     "core:event:allow-emit",

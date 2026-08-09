@@ -5,6 +5,7 @@
   <title>Terse</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="onboarding.css">
+  <link rel="stylesheet" href="tour.css">
   <link rel="stylesheet" href="doctor-scenes.css">
 </head>
 <body>
@@ -32,7 +33,7 @@
     <div id="palsScroll" style="flex:1;overflow-y:auto;padding-right:2px"></div>
   </div>
 
-  <div id="authGate" data-tauri-drag-region style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
+  <div id="authGate" data-tauri-drag-region style="position:fixed;inset:0;z-index:9999;background:var(--gate-bg, var(--bg));backdrop-filter:var(--gate-blur, none);-webkit-backdrop-filter:var(--gate-blur, none);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
     <div id="gateLang" style="position:absolute;top:14px;right:14px;display:flex;align-items:center;gap:5px;background:var(--sf);border:1px solid var(--bd);border-radius:9999px;padding:5px 11px;font-size:11px;font-weight:700;color:var(--t2);cursor:pointer;-webkit-app-region:no-drag">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg>
       <span id="gateLangLbl">English</span>
@@ -41,7 +42,8 @@
     <h2 style="color:var(--t1);font-size:18px;font-weight:700;margin:0">Welcome to Terse</h2>
     <p style="color:var(--t3);font-size:12px;text-align:center;margin:0;line-height:1.6">Choose your style</p>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:4px 0">
-      <div class="gate-theme" data-t="azure" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#F4F3EF 52%,#C9F03D 52%);border:3px solid var(--t1)"></div>
+      <div class="gate-theme" data-t="horizon" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,0.42) 52%,#C9F03D 52%);border:3px solid var(--t1);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8)"></div>
+      <div class="gate-theme" data-t="azure" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#F4F3EF 52%,#C9F03D 52%);border:3px solid transparent"></div>
       <div class="gate-theme" data-t="lime" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#C9F03D 52%,#0B0B0D 52%);border:3px solid transparent"></div>
       <div class="gate-theme" data-t="lavender" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#C6B6FA 52%,#C9F03D 52%);border:3px solid transparent"></div>
       <div class="gate-theme" data-t="coral" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#FF6B4A 52%,#0B0B0D 52%);border:3px solid transparent"></div>
@@ -89,6 +91,7 @@
       <div class="sb-brand" data-tauri-drag-region>
         <div class="sb-logo">T</div>
         <div class="sb-name">Terse<span>Agent Butler</span></div>
+        <button id="sbHelp" type="button" title="Replay the guide">?</button>
       </div>
       <nav class="sb-nav">
         <div class="sb-group-label">Monitor</div>
@@ -100,14 +103,16 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
           <span>Observe</span>
         </button>
-        <button class="sb-item" data-page="stats">
+        <button class="sb-item" data-page="stats" data-pro>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="13" width="4" height="8" rx="1"/><rect x="10" y="9" width="4" height="12" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
           <span>Stats</span>
+          <span class="sb-pro">PRO</span>
         </button>
-        <button class="sb-item" data-page="connection">
+        <button class="sb-item" data-page="connection" data-pro>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
           <span>Connection</span>
           <span class="sb-pill hidden" id="sbConnPill">!</span>
+          <span class="sb-pro">PRO</span>
         </button>
 
         <div class="sb-group-label">Optimize</div>
@@ -115,9 +120,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
           <span>Doctor</span>
         </button>
-        <button class="sb-item" data-page="cleanup">
+        <button class="sb-item" data-page="cleanup" data-pro>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2v-4h18v4a2 2 0 01-2 2z"/><path d="M12 3v12"/><path d="M8 9l4-4 4 4"/></svg>
           <span>Cleanup</span>
+          <span class="sb-pro">PRO</span>
         </button>
         <button class="sb-item" data-page="rules">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -141,13 +147,18 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v14H8l-4 3V4z"/><path d="M8 9h8M8 13h5"/></svg>
           <span>Prompts</span>
         </button>
+        <button class="sb-item" data-page="graph">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7 7l3.5 9M17 7l-3.5 9M7 6h10"/></svg>
+          <span>Graph</span>
+        </button>
         <button class="sb-item" data-page="history">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
           <span>History</span>
         </button>
-        <button class="sb-item" data-page="team">
+        <button class="sb-item" data-page="team" data-pro>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span>Team</span>
+          <span class="sb-pro">PRO</span>
         </button>
         <button class="sb-item" data-page="farm">
           <span class="sb-emoji">🌾</span>
@@ -155,10 +166,23 @@
         </button>
       </nav>
       <div class="sb-bottom">
-        <button class="sb-item" data-page="boost">
+        <button class="sb-item" id="sbUpgrade" style="display:none;color:var(--btn-t);background:var(--btn);border-radius:9px" onclick="window.__terseOpenPaywall&&window.__terseOpenPaywall()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg>
+          <span>Upgrade to Pro</span>
+        </button>
+        <button class="sb-item" id="sbInvite" onclick="window.__terseOpenInvite&&window.__terseOpenInvite()">
+          <span class="sb-emoji">🎁</span>
+          <span>Invite &amp; earn Pro</span>
+        </button>
+        <button class="sb-item" data-page="boost" data-pro>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
           <span>Speed Up</span>
           <span class="sb-pill hidden" id="sbBoostPill">ON</span>
+          <span class="sb-pro">PRO</span>
+        </button>
+        <button class="sb-item" data-page="wallpaper">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 14l4-4 4 4 4-5 6 6"/></svg>
+          <span>Wallpaper</span>
         </button>
         <button class="sb-item" data-page="pals">
           <span class="sb-emoji" id="sbPalIcon">🐾</span>
@@ -186,6 +210,16 @@
         <div class="kpi" id="kpiSpend"><div class="kpi-v">–</div><div class="kpi-l">Spend today</div></div>
         <div class="kpi" id="kpiBurn"><div class="kpi-v">–</div><div class="kpi-l">Burn · ETA</div></div>
         <div class="kpi" id="kpiCtx"><div class="kpi-v">–</div><div class="kpi-l">Context</div></div>
+      </div>
+      <!-- Free-tier upsell hero — only shown to free users (body.is-free). The
+           monitoring above shows the waste; this converts it into an upgrade. -->
+      <div id="freeHero">
+        <div id="freeHeroInner">
+          <div class="fh-top"><span class="fh-badge">FREE</span><span class="fh-title">You're watching the waste — Pro fixes it</span></div>
+          <p class="fh-sub">Live optimization, Speed Up, Cleanup &amp; Team are Pro. Auto-trim every prompt and cut your agent bill.</p>
+          <button id="freeHeroBtn" class="fh-btn">Start free trial →</button>
+          <div class="fh-note">Monitoring, stats &amp; wallpaper stay free forever · cancel anytime</div>
+        </div>
       </div>
       <!-- Agent Health strip — live Doctor score, click opens the full report -->
       <button id="healthStrip" class="health-strip hidden">
@@ -464,6 +498,7 @@
       <div class="setting-group">
         <label class="setting-label">Theme</label>
         <div class="theme-picker">
+          <div class="theme-dot" data-t="horizon" style="background:linear-gradient(135deg,rgba(255,255,255,0.42) 52%,#C9F03D 52%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8), 0 0 0 1px rgba(255,255,255,0.25)" title="Horizon · Glass"></div>
           <div class="theme-dot" data-t="azure" style="background:linear-gradient(135deg,#F4F3EF 52%,#C9F03D 52%)" title="Azure"></div>
           <div class="theme-dot" data-t="lime" style="background:linear-gradient(135deg,#C9F03D 52%,#0B0B0D 52%)" title="Lime"></div>
           <div class="theme-dot" data-t="lavender" style="background:linear-gradient(135deg,#C6B6FA 52%,#C9F03D 52%)" title="Lavender"></div>
@@ -521,7 +556,8 @@
 
     <!-- Theme dropdown -->
     <div id="themeDropdown" class="theme-dropdown hidden">
-      <div class="theme-dot" data-t="azure" style="background:linear-gradient(135deg,#F4F3EF 52%,#C9F03D 52%)" title="Azure"></div>
+      <div class="theme-dot" data-t="horizon" style="background:linear-gradient(135deg,rgba(255,255,255,0.42) 52%,#C9F03D 52%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8), 0 0 0 1px rgba(255,255,255,0.25)" title="Horizon · Glass"></div>
+          <div class="theme-dot" data-t="azure" style="background:linear-gradient(135deg,#F4F3EF 52%,#C9F03D 52%)" title="Azure"></div>
       <div class="theme-dot" data-t="lime" style="background:linear-gradient(135deg,#C9F03D 52%,#0B0B0D 52%)" title="Lime"></div>
       <div class="theme-dot" data-t="lavender" style="background:linear-gradient(135deg,#C6B6FA 52%,#C9F03D 52%)" title="Lavender"></div>
       <div class="theme-dot" data-t="coral" style="background:linear-gradient(135deg,#FF6B4A 52%,#0B0B0D 52%)" title="Coral"></div>
@@ -562,8 +598,10 @@
     </div>
 
     <!-- Paywall Gate — blocks app when no active subscription/trial -->
-    <div id="paywallGate" class="hidden" style="position:fixed;inset:0;z-index:9998;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px">
+    <div id="paywallGate" class="hidden" style="position:fixed;inset:0;z-index:9998;background:color-mix(in srgb,var(--bg) 80%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;overflow:auto">
+      <button id="paywallClose" title="Keep using Terse free" style="position:absolute;top:14px;right:16px;width:30px;height:30px;border-radius:9px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
       <div class="brand-tile">T</div>
+      <div id="paywallProPitch" style="color:var(--t3);font-size:10px;text-align:center;max-width:250px;line-height:1.5;margin:-2px 0 2px">Monitoring, stats & wallpaper are <b style="color:var(--t1)">free forever</b>. <b style="color:var(--btn-t);background:var(--btn);padding:1px 5px;border-radius:5px">Pro</b> auto-trims every prompt, unlocks Doctor fixes, Cleanup, Team & multi-repo graphs.</div>
       <!-- Trial mode (default) -->
       <div id="paywallTrialSection">
         <h2 id="paywallTitle" style="color:var(--t1);font-size:17px;font-weight:700;margin:0;text-align:center">Try Terse Free</h2>
@@ -573,7 +611,7 @@
             <!-- Weekly -->
             <div role="button" data-tier="pro_weekly" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_weekly')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
               <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="weekly" style="font-size:12px;font-weight:700;color:var(--t1)">Weekly</span><span data-plan="weekly_sub" style="font-size:8.5px;color:var(--t3)">Flexible · cancel anytime</span></span>
-              <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$1.99<span data-plan="per_week" style="font-size:9px;color:var(--t3);font-weight:600"> /wk</span></span>
+              <span style="display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap"><span data-plan="zero_today_wk" style="font-size:15px;font-weight:900;color:var(--t1)">$0 today</span><span data-plan="then199" style="font-size:8.5px;color:var(--t3);font-weight:600">then $1.99/wk</span></span>
             </div>
             <!-- Monthly (highlighted, $0 trial via card) -->
             <div role="button" data-tier="pro" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px;background:color-mix(in srgb,var(--btn) 13%,var(--sf));border:1.5px solid var(--btn);border-radius:12px;cursor:pointer">
@@ -584,8 +622,19 @@
             <!-- Quarterly -->
             <div role="button" data-tier="pro_quarterly" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_quarterly')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
               <span data-plan="save54" style="position:absolute;top:-8px;right:12px;background:var(--t1);color:var(--bg);font-size:7.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:9999px">SAVE 54%</span>
-              <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="quarterly" style="font-size:12px;font-weight:700;color:var(--t1)">Quarterly</span><span data-plan="quarterly_sub" style="font-size:8.5px;color:var(--t3)">Best value · ~$4/mo</span></span>
+              <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="quarterly" style="font-size:12px;font-weight:700;color:var(--t1)">Quarterly</span><span data-plan="quarterly_sub" style="font-size:8.5px;color:var(--t3)">~$4/mo</span></span>
               <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$12<span data-plan="per_quarter" style="font-size:9px;color:var(--t3);font-weight:600"> /3mo</span></span>
+            </div>
+            <!-- Annual — cheapest per month, so it carries "best value" now -->
+            <div role="button" data-tier="pro_annual" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_annual')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
+              <span data-plan="save85" style="position:absolute;top:-8px;right:12px;background:var(--t1);color:var(--bg);font-size:7.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:9999px">SAVE 85%</span>
+              <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="annual" style="font-size:12px;font-weight:700;color:var(--t1)">Yearly</span><span data-plan="annual_sub" style="font-size:8.5px;color:var(--t3)">Best value · ~$1.33/mo</span></span>
+              <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$15.99<span data-plan="per_year" style="font-size:9px;color:var(--t3);font-weight:600"> /yr</span></span>
+            </div>
+            <!-- Lifetime — one-time payment, no subscription -->
+            <div role="button" data-tier="pro_lifetime" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_lifetime')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
+              <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="lifetime" style="font-size:12px;font-weight:700;color:var(--t1)">Lifetime</span><span data-plan="lifetime_sub" style="font-size:8.5px;color:var(--t3)">Pay once · yours forever</span></span>
+              <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$25.99<span data-plan="once" style="font-size:9px;color:var(--t3);font-weight:600"> once</span></span>
             </div>
           </div>
           <!-- Payment method — acts on the selected plan above -->
@@ -620,8 +669,19 @@
           <!-- Quarterly -->
           <div role="button" data-tier="pro_quarterly" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_quarterly')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
             <span data-plan="save54" style="position:absolute;top:-8px;right:12px;background:var(--t1);color:var(--bg);font-size:7.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:9999px">SAVE 54%</span>
-            <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="quarterly" style="font-size:12px;font-weight:700;color:var(--t1)">Quarterly</span><span data-plan="quarterly_sub" style="font-size:8.5px;color:var(--t3)">Best value · ~$4/mo</span></span>
+            <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="quarterly" style="font-size:12px;font-weight:700;color:var(--t1)">Quarterly</span><span data-plan="quarterly_sub" style="font-size:8.5px;color:var(--t3)">~$4/mo</span></span>
             <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$12<span data-plan="per_quarter" style="font-size:9px;color:var(--t3);font-weight:600"> /3mo</span></span>
+          </div>
+          <!-- Yearly -->
+          <div role="button" data-tier="pro_annual" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_annual')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
+            <span data-plan="save85" style="position:absolute;top:-8px;right:12px;background:var(--t1);color:var(--bg);font-size:7.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:9999px">SAVE 85%</span>
+            <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="annual" style="font-size:12px;font-weight:700;color:var(--t1)">Yearly</span><span data-plan="annual_sub" style="font-size:8.5px;color:var(--t3)">Best value · ~$1.33/mo</span></span>
+            <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$15.99<span data-plan="per_year" style="font-size:9px;color:var(--t3);font-weight:600"> /yr</span></span>
+          </div>
+          <!-- Lifetime -->
+          <div role="button" data-tier="pro_lifetime" onclick="window.__terseSelectPlan&&window.__terseSelectPlan('pro_lifetime')" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;cursor:pointer">
+            <span style="display:flex;flex-direction:column;text-align:left"><span data-plan="lifetime" style="font-size:12px;font-weight:700;color:var(--t1)">Lifetime</span><span data-plan="lifetime_sub" style="font-size:8.5px;color:var(--t3)">Pay once · yours forever</span></span>
+            <span style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">$25.99<span data-plan="once" style="font-size:9px;color:var(--t3);font-weight:600"> once</span></span>
           </div>
         </div>
         <!-- Payment method — acts on the selected plan above -->
@@ -636,21 +696,69 @@
         <p style="color:var(--t1);font-size:11px;font-weight:500;text-align:center;margin:2px 0 0;opacity:0.6">Billed per selected plan · cancel anytime</p>
       </div>
       <button id="paywallSwitchBtn" style="margin-top:4px;padding:6px 20px;background:transparent;color:var(--t3);border:none;font-size:11px;font-weight:500;text-decoration:underline">Switch Account</button>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:6px">
+        <button id="paywallInviteBtn" style="padding:7px 18px;background:color-mix(in srgb,var(--btn) 12%,transparent);color:var(--btn);border:1px dashed var(--btn);border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer">🎁 Invite friends → get Pro free</button>
+        <button id="paywallLaterBtn" style="padding:4px 12px;background:transparent;color:var(--t3);border:none;font-size:11px;font-weight:500;cursor:pointer">Keep using Terse free →</button>
+      </div>
+    </div>
+
+    <!-- ═══ Invite / referral sheet ═══ -->
+    <div id="inviteModal" class="hidden" style="position:fixed;inset:0;z-index:9999;background:color-mix(in srgb,var(--bg) 80%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;padding:26px">
+      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:22px;width:320px;max-width:90vw;box-shadow:0 24px 60px rgba(0,0,0,.35);position:relative">
+        <button id="inviteClose" style="position:absolute;top:12px;right:14px;width:28px;height:28px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer">✕</button>
+        <div style="font-size:34px;text-align:center">🎁</div>
+        <h2 style="color:var(--t1);font-size:16px;font-weight:800;text-align:center;margin:6px 0 2px">Give Pro, get Pro</h2>
+        <p id="inviteReward" style="color:var(--t3);font-size:11px;text-align:center;margin:0 0 14px;line-height:1.5">Share your code. When a friend starts Pro, you <b style="color:var(--t1)">both</b> get 14 days of Pro free.</p>
+
+        <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:5px">Your invite code</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <div id="inviteCode" style="flex:1;font-family:ui-monospace,Menlo,monospace;font-size:18px;font-weight:800;letter-spacing:2px;color:var(--t1);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;text-align:center">······</div>
+          <button id="inviteCopy" style="padding:0 14px;background:var(--btn);color:var(--btn-t);border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer">Copy link</button>
+        </div>
+
+        <div id="inviteStats" style="display:flex;gap:8px;margin-bottom:14px">
+          <div style="flex:1;text-align:center;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:8px 4px"><div id="inviteSent" style="font-size:18px;font-weight:800;color:var(--t1)">0</div><div style="font-size:9px;color:var(--t3)">invited</div></div>
+          <div style="flex:1;text-align:center;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:8px 4px"><div id="inviteConv" style="font-size:18px;font-weight:800;color:var(--t1)">0</div><div style="font-size:9px;color:var(--t3)">joined Pro</div></div>
+          <div style="flex:1;text-align:center;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:8px 4px"><div id="inviteDays" style="font-size:18px;font-weight:800;color:var(--btn-t);background:var(--btn);border-radius:6px">0</div><div style="font-size:9px;color:var(--t3)">Pro days</div></div>
+        </div>
+
+        <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:5px">Have a friend's code?</div>
+        <div style="display:flex;gap:6px">
+          <input id="inviteRedeemInput" placeholder="ENTER CODE" spellcheck="false" style="flex:1;text-transform:uppercase;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;color:var(--t1);font-size:13px;font-family:ui-monospace,Menlo,monospace;letter-spacing:1px">
+          <button id="inviteRedeemBtn" style="padding:0 16px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">Redeem</button>
+        </div>
+        <p id="inviteMsg" style="color:var(--t3);font-size:10px;text-align:center;margin:10px 0 0;min-height:12px"></p>
+      </div>
     </div>
   </div>
   </div><!-- /shell -->
   <script>
     /* ── Theme System ── */
+    /* macOS: "horizon" is clear glass (blur 3px) — the desktop is meant to read
+       through it crisply, so the native NSVisualEffectView frosting under the
+       window has to come off. Every other theme puts it back. Retries until the
+       Tauri bridge exists, since this runs before the scripts load; a no-op on
+       Windows, where the command is a stub. */
+    function applyClearGlass(t) {
+      var on = t === 'horizon';
+      var tries = 0;
+      (function go() {
+        var core = window.__TAURI__ && window.__TAURI__.core;
+        if (!core) { if (++tries < 100) setTimeout(go, 30); return; }
+        try { core.invoke('set_clear_glass', { enabled: on }); } catch (e) {}
+      })();
+    }
     function setTheme(t) {
       document.documentElement.setAttribute('data-theme', t);
       localStorage.setItem('terse-theme', t);
+      applyClearGlass(t);
       // Update active states
       document.querySelectorAll('.theme-dot,.gate-theme').forEach(function(d) {
         d.style.borderColor = d.dataset.t === t ? 'var(--t1)' : 'transparent';
       });
       // Update auth gate background
       var gate = document.getElementById('authGate');
-      if (gate) gate.style.background = 'var(--bg)';
+      if (gate) gate.style.background = 'var(--gate-bg, var(--bg))';
     }
     // One-time migration: move installs still on the old default (lime) to the
     // new professional default (azure). Deliberate non-lime choices are untouched.
@@ -668,11 +776,23 @@
         var cur = localStorage.getItem('terse-theme');
         if (!cur || cur === 'azure') localStorage.setItem('terse-theme', 'midnight');
       }
+      // v4 (Windows only): the Windows default is now "horizon", the
+      // liquid-glass scheme lifted from the macdemo film — the main window and
+      // the Dynamic Island become one transparent slab over the desktop, backed
+      // by acrylic. macOS keeps "midnight"; horizon is still selectable there.
+      // Promote anyone still on the auto-assigned dark default; a deliberate
+      // pick of any other scheme is untouched.
+      if (navigator.userAgent.indexOf('Windows') >= 0 && !localStorage.getItem('terse-theme-v4')) {
+        localStorage.setItem('terse-theme-v4', '1');
+        var c3 = localStorage.getItem('terse-theme');
+        if (!c3 || c3 === 'midnight') localStorage.setItem('terse-theme', 'horizon');
+      }
     })();
     // Load saved theme
     (function() {
-      var saved = localStorage.getItem('terse-theme') || 'midnight';
+      var saved = localStorage.getItem('terse-theme') || 'horizon';
       document.documentElement.setAttribute('data-theme', saved);
+      applyClearGlass(saved);
     })();
     // Bind theme dots (settings + auth gate)
     document.addEventListener('click', function(e) {
@@ -685,7 +805,7 @@
       var dd = document.getElementById('themeDropdown');
       dd.classList.toggle('hidden');
       // Update active dot
-      var saved = localStorage.getItem('terse-theme') || 'midnight';
+      var saved = localStorage.getItem('terse-theme') || 'horizon';
       dd.querySelectorAll('.theme-dot').forEach(function(d) {
         d.style.borderColor = d.dataset.t === saved ? 'var(--btn-t)' : 'transparent';
       });
@@ -699,7 +819,7 @@
 
     function _loadScripts() {
       if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
-      ['tauri-bridge.js','pals.js','optimizer-bundle.js','doctor-theater.js','onboarding.js','app.js'].reduce(function(p, src) {
+      ['tauri-bridge.js','pals.js','optimizer-bundle.js','doctor-theater.js','onboarding.js','tour.js','app.js'].reduce(function(p, src) {
         return p.then(function() {
           return new Promise(function(resolve) {
             var s = document.createElement('script'); s.src = src;
@@ -742,16 +862,50 @@
         var l = window.i18n.getLang();
         isChinese = l === 'zh-Hans' || l === 'zh-Hant';
       }
-      var note1 = document.getElementById('paywallChinaNote');
+      // Snapshot the ORIGINAL English text once, straight from the markup, before
+      // anything overwrites it. Without this the Chinese pass is one-way: every
+      // branch below used to be `if (isChinese) set-Chinese` with no else, so
+      // switching back to English left the Chinese strings sitting in the DOM.
+      if (!window.__paywallEN) {
+        var snap = {};
+        document.querySelectorAll('[data-plan],[data-paylabel]').forEach(function (el, i) {
+          var k = 'n' + i;
+          el.setAttribute('data-en-key', k);
+          snap[k] = el.textContent;
+        });
+        ['paywallTitle','paywallSubtitle','paywallSubscribeTitle','paywallSubscribeText','paywallTrialNote']
+          .forEach(function (id) { var e = document.getElementById(id); if (e) snap['#' + id] = e.textContent; });
+        window.__paywallEN = snap;
+      }
+      var EN = window.__paywallEN;
+      var restore = function (el) {
+        var k = el.getAttribute('data-en-key');
+        if (k && EN[k] !== undefined) el.textContent = EN[k];
+      };
+      var restoreId = function (id) {
+        var e = document.getElementById(id);
+        if (e && EN['#' + id] !== undefined) e.textContent = EN['#' + id];
+      };
+
       var note2 = document.getElementById('paywallTrialNote');
-      if (isChinese && note1) note1.textContent = '立即扣款 — 可用银行卡、微信或支付宝。';
-      if (isChinese && note2) note2.textContent = '随时取消';
+      // note1 (#paywallChinaNote) is owned by __terseSelectPlan — it already picks
+      // its language both ways, and is re-run at the end of this pass.
+      if (note2) { if (isChinese) note2.textContent = '随时取消'; else restoreId('paywallTrialNote'); }
+
       // Payment-method buttons (act on the selected plan)
-      if (isChinese) {
-        var payTxt = { card:'使用银行卡', wechat:'微信支付', alipay:'支付宝' };
-        for (var pk in payTxt) {
-          document.querySelectorAll('[data-paylabel="' + pk + '"]').forEach(function(el){ el.textContent = payTxt[el.getAttribute('data-paylabel')]; });
-        }
+      var payTxt = { card:'使用银行卡', wechat:'微信支付', alipay:'支付宝' };
+      for (var pk in payTxt) {
+        document.querySelectorAll('[data-paylabel="' + pk + '"]').forEach(function (el) {
+          if (isChinese) el.textContent = payTxt[el.getAttribute('data-paylabel')];
+          else restore(el);
+        });
+      }
+
+      if (!isChinese) {
+        // English (and every other language, which falls back to English): put the
+        // markup's own text back, then let i18n translate from that clean base.
+        document.querySelectorAll('[data-plan]').forEach(restore);
+        ['paywallTitle','paywallSubtitle','paywallSubscribeTitle','paywallSubscribeText'].forEach(restoreId);
       }
       // Plan cards (weekly / monthly / quarterly)
       if (isChinese) {
@@ -759,14 +913,20 @@
         var M = trad ? {
           title:'免費試用 Terse', subtitle:'選擇方案，再選擇支付方式。',
           weekly:'按週', weekly_sub:'靈活 · 隨時取消', per_week:' /週',
+          zero_today_wk:'今天 $0', then199:'之後 $1.99/週',
           monthly:'按月', save42:'比按週省 42%', zero_today:'今天 $0', then499:'之後 $4.99/月', per_month:' /月',
-          quarterly:'按季', quarterly_sub:'最超值 · 約 $4/月', per_quarter:' /3個月',
+          quarterly:'按季', quarterly_sub:'約 $4/月', per_quarter:' /3個月',
+          annual:'按年', annual_sub:'最超值 · 約 $1.33/月', per_year:' /年', save85:'省 85%',
+          lifetime:'買斷', lifetime_sub:'一次付清 · 永久使用', once:' 一次性',
           popular:'最受歡迎', save54:'省 54%'
         } : {
           title:'免费试用 Terse', subtitle:'选择方案，再选择支付方式。',
           weekly:'按周', weekly_sub:'灵活 · 随时取消', per_week:' /周',
+          zero_today_wk:'今天 $0', then199:'之后 $1.99/周',
           monthly:'按月', save42:'比按周省 42%', zero_today:'今天 $0', then499:'之后 $4.99/月', per_month:' /月',
-          quarterly:'按季', quarterly_sub:'最超值 · 约 $4/月', per_quarter:' /3个月',
+          quarterly:'按季', quarterly_sub:'约 $4/月', per_quarter:' /3个月',
+          annual:'按年', annual_sub:'最超值 · 约 $1.33/月', per_year:' /年', save85:'省 85%',
+          lifetime:'买断', lifetime_sub:'一次付清 · 永久使用', once:' 一次性',
           popular:'最受欢迎', save54:'省 54%'
         };
         for (var k in M) {
@@ -780,9 +940,26 @@
         if (subT) subT.textContent = trad ? '訂閱以繼續' : '订阅以继续';
         if (subX) subX.textContent = trad ? '你的免費試用已用完。訂閱以繼續使用 Terse。' : '你的免费试用已用完。订阅以继续使用 Terse。';
       }
+      // Re-apply the plan-dependent payment note in the new language.
+      try { window.__terseSelectPlan(window.__terseTier); } catch (e) {}
     }
     _translatePaywallNotes();
     window.addEventListener('terse-lang-changed', _translatePaywallNotes);
+    // This inline script runs BEFORE i18n.js has loaded, so the first pass above
+    // has no window.i18n and falls back to navigator.language — which localizes the
+    // paywall to Chinese on a Chinese-locale machine even when the user picked
+    // English, with no later event to correct it. Re-run once i18n is really there.
+    (function waitForI18n() {
+      var tries = 0;
+      var t = setInterval(function () {
+        if (window.i18n && typeof window.i18n.getLang === 'function') {
+          clearInterval(t);
+          _translatePaywallNotes();
+        } else if (++tries > 100) {   // ~6s, then give up rather than spin forever
+          clearInterval(t);
+        }
+      }, 60);
+    })();
 
     // ── Plan selection: the plan cards choose a tier; the Card / WeChat / Alipay
     // buttons below then act on whichever plan is selected (default: monthly). ──
@@ -795,13 +972,38 @@
         c.style.borderWidth = on ? '1.5px' : '1px';
         c.style.background = on ? 'color-mix(in srgb,var(--btn) 13%,var(--sf))' : 'var(--sf)';
       });
-      // Monthly (trial-section) is a 30-day FREE TRIAL — only card supports a trial;
-      // WeChat/Alipay bill immediately, so showing them here confuses users. Card only.
-      var isTrialMonthly = (tier === 'pro');
+      // Monthly is a 30-day FREE TRIAL, and only a card can carry a trial. WeChat and
+      // Alipay stay available (users asked for them) but bill immediately — so the note
+      // has to say that plainly rather than the buttons quietly disappearing.
+      // Weekly (7-day) and monthly (30-day) both start as a $0 card trial; quarterly
+      // bills right away. Keep the per-plan price in the note so "billed later" is concrete.
+      var TRIAL_PRICE = { pro: { zh: '$4.99/月', en: '$4.99/mo' }, pro_weekly: { zh: '$1.99/周', en: '$1.99/wk' } };
+      var priced = TRIAL_PRICE[tier];
       var row = document.getElementById('paywallChinaRow');
-      if (row) row.style.display = isTrialMonthly ? 'none' : 'flex';
+      // Every plan can be paid with WeChat/Alipay. Lifetime goes out as a one-time
+      // invoice; the recurring plans as an invoice that re-bills each period.
+      if (row) row.style.display = 'flex';
       var note = document.getElementById('paywallChinaNote');
-      if (note) note.style.display = isTrialMonthly ? 'none' : 'block';
+      if (note) {
+        var zh = false;
+        try {
+          var l = window.i18n && window.i18n.getLang();
+          zh = l ? (l === 'zh-Hans' || l === 'zh-Hant')
+                 : (navigator.language || '').toLowerCase().indexOf('zh') === 0;
+        } catch (e) {}
+        note.style.display = 'block';
+        note.textContent = priced
+          ? (zh ? '免费试用仅支持银行卡。微信 / 支付宝无试用，立即扣款 ' + priced.zh + '。'
+                : 'Free trial requires a card. WeChat / Alipay have no trial — billed ' + priced.en + ' now.')
+          : tier === 'pro_lifetime'
+          ? (zh ? '一次性付款 $25.99 — 银行卡、微信或支付宝均可，永久使用，不会再次扣款。'
+                : 'One payment of $25.99 — card, WeChat or Alipay. Yours forever, never charged again.')
+          : tier === 'pro_annual'
+          ? (zh ? '立即扣款 $15.99 — 银行卡、微信或支付宝，一年后再次开具账单。'
+                : 'Billed $15.99 now — card, WeChat or Alipay. Invoiced again in a year.')
+          : (zh ? '立即扣款 — 可用银行卡、微信或支付宝。'
+                : 'Billed now — pay with card, WeChat, or Alipay.');
+      }
     };
     // Set the correct initial state (default = monthly trial → card only).
     try { window.__terseSelectPlan(window.__terseTier); } catch (e) {}

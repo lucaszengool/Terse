@@ -344,6 +344,17 @@ impl StatsStore {
         })
     }
 
+    /// Today's in+out token total — the cheap counter the live wallpaper polls
+    /// to drive its pulses (`get_token_pulse`).
+    pub fn today_total_tokens(&self) -> u64 {
+        let day = Self::today_key();
+        self.data
+            .days
+            .get(&day)
+            .map(|d| d.values().map(|s| s.tokens_in + s.tokens_out).sum())
+            .unwrap_or(0)
+    }
+
     pub fn total_tokens_saved(&self) -> u64 {
         self.data.days.values()
             .flat_map(|day| day.values())

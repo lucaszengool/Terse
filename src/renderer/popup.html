@@ -13,6 +13,22 @@
     </svg>
   </div>
 
+  <!-- First-run teaching overlay (shown once) -->
+  <div id="firstRun" class="first-run hidden">
+    <div class="fr-card">
+      <div class="fr-title">👋 Welcome to Terse</div>
+      <div class="fr-sub">Terse trims wasted tokens from your prompts and watches your coding agents to cut cost and catch runaway spend — all locally, nothing leaves your Mac.</div>
+      <div class="fr-q">Which agents do you use?</div>
+      <div class="fr-chips" id="frChips">
+        <button class="fr-chip" data-agent="claude-code">Claude Code</button>
+        <button class="fr-chip" data-agent="cursor">Cursor</button>
+        <button class="fr-chip" data-agent="codex">Codex</button>
+        <button class="fr-chip" data-agent="other">Other</button>
+      </div>
+      <button id="frDone" class="fr-done">Get started</button>
+    </div>
+  </div>
+
   <div id="bar" data-tauri-drag-region>
     <div class="bar-header" data-tauri-drag-region>
       <div class="bar-left" data-tauri-drag-region>
@@ -38,6 +54,7 @@
     </div>
     <div class="bar-stats-row">
       <div id="techniques" class="techniques"></div>
+      <span id="promptQuality" class="prompt-quality hidden" title=""></span>
       <span id="popupQuota" class="popup-quota"></span>
       <div class="bar-stats">
         <span id="tokBefore">0</span>
@@ -47,7 +64,8 @@
       </div>
     </div>
     <div id="hintState" class="hint-state">
-      <span>Select your prompt text, then click Capture</span>
+      <span id="hintPrimary">Select your prompt text, then click Capture</span>
+      <span id="hintTeach" class="hint-teach">Terse also watches your coding agents automatically — start Claude Code, Cursor, or Codex and it lights up.</span>
     </div>
     <div id="bridgeInstall" class="bridge-install hidden">
       <span class="bridge-msg">Install <b>Terse Bridge</b> for live mode in VS Code</span>
@@ -225,7 +243,7 @@
   <script>
     // Load saved theme + sync across windows
     (function() {
-      var saved = localStorage.getItem('terse-theme') || 'azure';
+      var saved = localStorage.getItem('terse-theme') || 'horizon';
       document.documentElement.setAttribute('data-theme', saved);
       // Listen for theme changes from main window
       window.addEventListener('storage', function(e) {
@@ -235,7 +253,7 @@
       });
       // Also poll every 500ms in case storage event doesn't fire (same-origin Tauri)
       setInterval(function() {
-        var t = localStorage.getItem('terse-theme') || 'azure';
+        var t = localStorage.getItem('terse-theme') || 'horizon';
         if (document.documentElement.getAttribute('data-theme') !== t) {
           document.documentElement.setAttribute('data-theme', t);
         }

@@ -20,14 +20,13 @@
 //! and a noisy one lands ~60-85 (never 0).
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 // Finding, promote_all_fixable and fix_steps_for live in one shared file so
 // the two apps cannot drift apart again — see the header there.
-#[path = "../../../shared/doctor_core.rs"]
+#[path = "../../shared/doctor_core.rs"]
 mod doctor_core;
 pub use doctor_core::{fix_steps_for, Finding};
 use doctor_core::promote_all_fixable;
@@ -367,9 +366,10 @@ fn scan_mcp_server_count(attr: &Value, out: &mut Vec<Finding>) {
         fix_kind: "advise".into(),
         fix_label: "How to fix".into(),
         fixable: false,
-        // The fix disables exactly the servers named in the detail — the cheapest
-        // tail, never the ones actually being called.
-        paths: list.iter().map(|s| s.to_string()).collect(),
+        // The one-click fix (mcp-disable) stashes exactly these servers, so the
+        // names the detail line recommends have to travel with the finding —
+        // without them apply_fix has nothing to act on.
+        paths: rarely_used.clone(),
     });
 }
 
@@ -422,7 +422,8 @@ fn scan_mcp_dead_server(attr: &Value, summary: &Value, period: &str, out: &mut V
         fix_kind: "advise".into(),
         fix_label: "How to fix".into(),
         fixable: false,
-        paths: dead.iter().map(|s| s.to_string()).collect(),
+        // Carry the dead server names so mcp-disable can stash exactly these.
+        paths: dead.clone(),
     });
 }
 
@@ -471,7 +472,7 @@ fn scan_mcp_bloated_server(attr: &Value, out: &mut Vec<Finding>) {
             fix_kind: "advise".into(),
             fix_label: "How to fix".into(),
             fixable: false,
-            paths: vec![name.to_string()],
+            paths: vec![],
         });
         break; // one bloated-server finding is enough
     }
@@ -509,16 +510,58 @@ fn scan_mcp_unused_tools(sessions: &[Value], out: &mut Vec<Finding>) {
             usd_wasted: round2(usd),
             bytes: 0,
             latency_note: "Unused tool schemas inflate prefill on every turn.".into(),
-            // Session-scoped: we know how many tools went unused, not which
-            // servers they came from, so this can't name servers to disable.
-            // The honest one-click action is Terse's own tool-result compression,
-            // which cuts the same prefill waste without guessing.
             fix_kind: "advise".into(),
             fix_label: "How to fix".into(),
             fixable: false,
             paths: vec![],
         });
     }
+}
+
+/// mcp:claude-md-bloat — the always-on `~/.claude/CLAUDE.md` memory file is
+/// injected into the prefix of *every* request. Past a lean baseline, most of
+/// it should live in on-demand skills instead of always-on context.
+fn scan_claude_md(attr: &Value, out: &mut Vec<Finding>) {
+    // Lean baseline every project reasonably keeps always-on.
+    const BASELINE_TOKENS: u64 = 1_500;
+    let path = dirs::home_dir().unwrap_or_default().join(".claude").join("CLAUDE.md");
+    let text = match fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(_) => return,
+    };
+    // ~4 chars/token is the usual rule of thumb for English prose.
+    let tokens = (text.chars().count() as u64) / 4;
+    if tokens <= BASELINE_TOKENS {
+        return;
+    }
+    let excess = tokens - BASELINE_TOKENS;
+    let model = dominant_model(attr);
+    // Honest floor: cost of re-sending the excess once. It actually compounds on
+    // every request, so this understates the real drain.
+    let usd = crate::pricing::estimate_cost(&model, excess, 0, 0, 0);
+    let severity = if tokens >= 6_000 { "medium" } else { "low" };
+    out.push(Finding {
+        id: "mcp:claude-md-bloat".into(),
+        category: "mcp".into(),
+        category_label: "Tool / MCP Bloat".into(),
+        severity: severity.into(),
+        title: format!("CLAUDE.md is ~{} always-on tokens", tokens),
+        detail: format!(
+            "Your global ~/.claude/CLAUDE.md is ~{tokens} tokens and rides in the prefix of every \
+             single request. Keep the ~{BASELINE_TOKENS} tokens that apply to nearly every task; move \
+             the rest (rules for specific tasks, long examples, rarely-hit workflows) into on-demand \
+             skills so they load only when relevant. A lookup-table CLAUDE.md beats a brain-dump — \
+             ~{excess} tokens here are trimmable from every turn."
+        ),
+        tokens_wasted: excess,
+        usd_wasted: round2(usd),
+        bytes: 0,
+        latency_note: "Always-on memory inflates prefill on every turn; progressive disclosure fixes it.".into(),
+        fix_kind: "advise".into(),
+        fix_label: "How to fix".into(),
+        fixable: false,
+        paths: vec![path.to_string_lossy().to_string()],
+    });
 }
 
 // ── Agent-loop findings (live sessions) ──────────────────────────────────────
@@ -1349,14 +1392,14 @@ const CACHE_TARGETS: &[CacheTarget] = &[
         title: "Cursor agent logs",
         detail: "Cursor writes one log tree per window per day and never prunes them; these \
                  slow its own startup scans too.",
-        rel: &["AppData", "Roaming", "Cursor", "logs"], depth: 3, exts: &[], days: 7,
+        rel: &["Library", "Application Support", "Cursor", "logs"], depth: 3, exts: &[], days: 7,
     },
     CacheTarget {
         id: "disk:vscode-logs",
         title: "VS Code / Copilot logs",
         detail: "Per-session log trees (incl. Copilot agent channels) that VS Code keeps \
                  forever.",
-        rel: &["AppData", "Roaming", "Code", "logs"], depth: 3, exts: &[], days: 7,
+        rel: &["Library", "Application Support", "Code", "logs"], depth: 3, exts: &[], days: 7,
     },
 ];
 
@@ -1600,13 +1643,8 @@ fn scan_permission_risk(out: &mut Vec<Finding>) {
 /// Returns (running agent process count, their total RSS in bytes) so the
 /// caller can surface a live "N agents active" glance even when nothing is wrong.
 fn scan_agent_runtime(out: &mut Vec<Finding>) -> (u32, u64) {
-    // Windows equivalent of `ps`: PowerShell CIM emits `pid|name|workingset_bytes|elapsed_days`
-    // per agent process. Instantaneous per-process CPU% needs two samples on Windows, so it is
-    // omitted — memory-footprint and forgotten-session findings still fire; the runaway-CPU
-    // finding stays dormant on Windows.
-    let ps_script = "Get-CimInstance Win32_Process -Filter \"Name='claude.exe' OR Name='codex.exe'\" | ForEach-Object { $d=0; try { $c=[Management.ManagementDateTimeConverter]::ToDateTime($_.CreationDate); $d=[math]::Floor(((Get-Date)-$c).TotalDays) } catch {}; \"$($_.ProcessId)|$($_.Name)|$($_.WorkingSetSize)|$d\" }";
-    let output = match crate::hidden_command("powershell")
-        .args(["-NoProfile", "-Command", ps_script])
+    let output = match std::process::Command::new("ps")
+        .args(["-axo", "pid=,pcpu=,rss=,etime=,comm="])
         .output()
     {
         Ok(o) if o.status.success() => o,
@@ -1614,27 +1652,38 @@ fn scan_agent_runtime(out: &mut Vec<Finding>) -> (u32, u64) {
     };
     let text = String::from_utf8_lossy(&output.stdout);
 
+    const AGENT_BINS: &[&str] = &["claude", "codex"];
     let mut count = 0u32;
     let mut total_rss_kb = 0u64;
-    let hot: Vec<String> = Vec::new(); // CPU% unavailable on Windows → never populated
-    let hot_pids: Vec<String> = Vec::new();
+    let mut hot: Vec<String> = Vec::new(); // "claude (pid 123) at 97% CPU"
+    let mut hot_pids: Vec<String> = Vec::new();
     let mut forgotten: Vec<String> = Vec::new(); // "codex (pid 9) running 3 days"
     let mut forgotten_pids: Vec<String> = Vec::new();
 
     for line in text.lines() {
-        let mut it = line.split('|');
-        let (Some(pid), Some(name), Some(ws), Some(days)) =
-            (it.next(), it.next(), it.next(), it.next())
+        let mut it = line.split_whitespace();
+        let (Some(pid), Some(pcpu), Some(rss), Some(etime), Some(comm)) =
+            (it.next(), it.next(), it.next(), it.next(), it.next())
         else {
             continue;
         };
-        let raw = basename(name.trim()).to_ascii_lowercase();
-        let bin = raw.strip_suffix(".exe").unwrap_or(&raw).to_string();
+        let bin = basename(comm).to_ascii_lowercase();
+        if !AGENT_BINS.contains(&bin.as_str()) {
+            continue;
+        }
         count += 1;
-        total_rss_kb += ws.trim().parse::<u64>().unwrap_or(0) / 1024;
-        if days.trim().parse::<u32>().unwrap_or(0) >= 2 {
-            forgotten.push(format!("{bin} (pid {}) running {} days", pid.trim(), days.trim()));
-            forgotten_pids.push(pid.trim().to_string());
+        total_rss_kb += rss.parse::<u64>().unwrap_or(0);
+        let cpu = pcpu.parse::<f64>().unwrap_or(0.0);
+        if cpu >= 85.0 {
+            hot.push(format!("{bin} (pid {pid}) at {cpu:.0}% CPU"));
+            hot_pids.push(pid.to_string());
+        }
+        // etime formats: MM:SS, HH:MM:SS, or DD-HH:MM:SS — a '-' means days.
+        if let Some((days, _)) = etime.split_once('-') {
+            if days.parse::<u32>().unwrap_or(0) >= 2 {
+                forgotten.push(format!("{bin} (pid {pid}) running {days} days"));
+                forgotten_pids.push(pid.to_string());
+            }
         }
     }
 
@@ -1704,7 +1753,7 @@ fn scan_agent_runtime(out: &mut Vec<Finding>) -> (u32, u64) {
             fix_kind: "open-path".into(),
             fix_label: "Activity Monitor".into(),
             fixable: true,
-            paths: vec!["taskmgr.exe".into()],
+            paths: vec!["/System/Applications/Utilities/Activity Monitor.app".into()],
         });
     }
     (count, total_rss_kb * 1024)
@@ -1813,6 +1862,85 @@ fn scan_mcp_config_sprawl(out: &mut Vec<Finding>) {
     });
 }
 
+// ── macOS permission scanner (权限) ──────────────────────────────────────────
+
+// The no-options form does NOT prompt — unlike capture::is_ax_trusted_sync(),
+// which opens System Settings as a side effect. A scan has to stay read-only,
+// so the scanner uses this and leaves the prompting to the fix button.
+#[cfg(target_os = "macos")]
+extern "C" {
+    fn AXIsProcessTrusted() -> bool;
+}
+
+#[cfg(target_os = "macos")]
+fn ax_trusted_quiet() -> bool {
+    unsafe { AXIsProcessTrusted() }
+}
+
+/// Full Disk Access can only be detected by trying to read something protected
+/// by it. Reading a directory listing is harmless and side-effect free — if TCC
+/// denies us, we get an error instead of a prompt.
+#[cfg(target_os = "macos")]
+fn has_full_disk_access() -> bool {
+    let p = dirs::home_dir()
+        .unwrap_or_default()
+        .join("Library/Application Support/com.apple.TCC");
+    fs::read_dir(p).is_ok()
+}
+
+/// permission:* — the OS-level grants Terse needs, surfaced as normal findings
+/// so they get the same one-click treatment as everything else. macOS never
+/// lets an app grant itself a TCC permission, so the fix opens the exact pane.
+#[cfg(target_os = "macos")]
+fn scan_permissions(out: &mut Vec<Finding>) {
+    if !ax_trusted_quiet() {
+        out.push(Finding {
+            id: "permission:accessibility".into(),
+            category: "guard".into(),
+            category_label: "Permissions".into(),
+            severity: "high".into(),
+            title: "Accessibility access is off".into(),
+            detail: "Terse reads and rewrites the prompt in your editor or browser through the \
+                     macOS Accessibility API. Without this grant, capture and one-click replace \
+                     silently do nothing — every optimization has to be pasted by hand."
+                .into(),
+            tokens_wasted: 0,
+            usd_wasted: 0.0,
+            bytes: 0,
+            latency_note: "Without it, nothing can be captured or replaced automatically.".into(),
+            fix_kind: "grant-permission".into(),
+            fix_label: "Open Settings".into(),
+            fixable: true,
+            // paths[0] carries the System Settings pane for apply_fix.
+            paths: vec!["Privacy_Accessibility".into()],
+        });
+    }
+    if !has_full_disk_access() {
+        out.push(Finding {
+            id: "permission:full-disk".into(),
+            category: "guard".into(),
+            category_label: "Permissions".into(),
+            severity: "low".into(),
+            title: "Full Disk Access is off".into(),
+            detail: "Cleanup and the disk scanners can only see agent transcripts in folders macOS \
+                     lets Terse read. Without Full Disk Access some stale sessions stay invisible, \
+                     so the reclaimable figure understates what is actually there."
+                .into(),
+            tokens_wasted: 0,
+            usd_wasted: 0.0,
+            bytes: 0,
+            latency_note: "Only affects how much the disk scanners can see.".into(),
+            fix_kind: "grant-permission".into(),
+            fix_label: "Open Settings".into(),
+            fixable: true,
+            paths: vec!["Privacy_AllFiles".into()],
+        });
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn scan_permissions(_out: &mut Vec<Finding>) {}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /// Run a full read-only scan with live connected sessions and a period hint.
@@ -1834,6 +1962,7 @@ pub fn scan_full(attr: &Value, summary: &Value, sessions: &[Value], period: &str
     scan_mcp_dead_server(attr, summary, period, &mut findings);
     scan_mcp_bloated_server(attr, &mut findings);
     scan_mcp_unused_tools(sessions, &mut findings);
+    scan_claude_md(attr, &mut findings);
 
     // Agent loops (live)
     scan_loop_duplicate_calls(sessions, &settings, &mut findings);
@@ -1862,6 +1991,7 @@ pub fn scan_full(attr: &Value, summary: &Value, sessions: &[Value], period: &str
     // Protection (防护)
     scan_secret_exposure(&mut findings);
     scan_permission_risk(&mut findings);
+    scan_permissions(&mut findings);
 
     // Agent runtime (加速) + config-level context taxes
     let (agents_running, agents_rss_bytes) = scan_agent_runtime(&mut findings);
@@ -1875,6 +2005,24 @@ pub fn scan_full(attr: &Value, summary: &Value, sessions: &[Value], period: &str
     push_config_stable_tool_order(attr, sessions, &mut findings);
     push_config_prewarm(has_cache_finding, &mut findings);
     push_config_cap_output(has_output_finding, &mut findings);
+
+    // ── Prompt-cache orchestration ──
+    // Caching is the single biggest lever (up to ~90% off the static prefix).
+    // When cache-safe mode is OFF, every cache finding gets a real one-click
+    // action instead of advice-only: enabling it makes the optimizer rewrite
+    // only the newest turn and keep the cached prefix byte-identical, which is
+    // exactly the remediation each finding describes. apply_fix("optimize")
+    // flips settings.cache_safe_mode. Once it's on, the findings revert to
+    // advisory (the remaining work — prefix pinning, TTL — is user-side).
+    if !settings.cache_safe_mode {
+        for f in findings.iter_mut() {
+            if f.category == "cache" && !f.fixable {
+                f.fix_kind = "optimize".into();
+                f.fix_label = "Enable cache-safe mode".into();
+                f.fixable = true;
+            }
+        }
+    }
 
     // ── Every finding gets a real one-click action ──
     // Anything still advisory at this point is mapped to a concrete remediation
@@ -1986,74 +2134,17 @@ fn grade_for(score: u32) -> &'static str {
 }
 
 /// Apply one finding's remediation. Returns a small result object for the UI.
-// ── Fix vocabulary (ported verbatim from the macOS app) ─────────────────────
-// promote_all_fixable + fix_steps_for and the kinds they emit ('tune',
-// 'mcp-disable', 'claude-md-trim', 'grant-permission') are shared with macOS
-// on purpose: doctor.js keys its labels and step lists off these exact
-// strings, so any divergence shows up as a card that behaves differently on
-// one platform.
-/// Push one step of a running fix to the Doctor UI, which draws it as a per-card
-/// progress bar. `i` is 1-based; `i == total` means the card is done.
+/// Map every still-advisory finding onto a concrete one-click action.
 ///
-/// Steps are emitted around the slow parts (disk walks, process kills, elevation
-/// prompts) so a fix that takes a few seconds shows movement instead of a frozen
-/// "Working…" button.
-fn step(app: &AppHandle, id: &str, i: u32, total: u32, label: &str) {
-    let _ = app.emit(
-        "doctor-fix-progress",
-        json!({
-            "id": id,
-            "step": i,
-            "total": total,
-            "pct": ((i as f64 / total.max(1) as f64) * 100.0).round() as u32,
-            "label": label,
-        }),
-    );
-}
-
-/// Re-run one operation elevated, which pops the UAC consent dialog.
+/// Before this, ~17 of the scanners emitted `fix_kind: "advise"` — the card told
+/// you what was wrong and then handed you a "How to fix" essay. Each of those has
+/// a real remediation Terse can perform itself, so they are promoted here rather
+/// than at each construction site (one map beats 17 scattered edits, and it keeps
+/// the scanners purely diagnostic).
 ///
-/// `ShellExecuteW` with the `runas` verb is the documented way to request
-/// elevation for a single child process without manifesting the whole app as
-/// `requireAdministrator` (which would prompt on every launch). We only reach
-/// for it after the unelevated attempt has already failed with access-denied,
-/// so the user is never asked for admin rights we don't actually need.
-///
-/// Returns false if the user cancels the UAC dialog — a decline, not an error.
-#[cfg(target_os = "windows")]
-fn run_elevated(exe: &str, params: &str) -> bool {
-    use std::os::windows::ffi::OsStrExt;
-    use windows::core::PCWSTR;
-    use windows::Win32::UI::Shell::ShellExecuteW;
-    use windows::Win32::UI::WindowsAndMessaging::SW_HIDE;
-
-    fn wide(s: &str) -> Vec<u16> {
-        std::ffi::OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
-    }
-    let verb = wide("runas");
-    let file = wide(exe);
-    let args = wide(params);
-    // ShellExecuteW returns an HINSTANCE; > 32 means success. <= 32 is an error
-    // code, and SE_ERR_ACCESSDENIED (5) is specifically "user said no to UAC".
-    let r = unsafe {
-        ShellExecuteW(
-            None,
-            PCWSTR(verb.as_ptr()),
-            PCWSTR(file.as_ptr()),
-            PCWSTR(args.as_ptr()),
-            PCWSTR::null(),
-            SW_HIDE,
-        )
-    };
-    r.0 as usize > 32
-}
-
-#[cfg(not(target_os = "windows"))]
-fn run_elevated(_exe: &str, _params: &str) -> bool {
-    false
-}
-
-pub fn apply_fix(app: &AppHandle, finding: &Value) -> Value {
+/// `fix_kind` values used below are handled in `apply_fix`; `fix_steps_for` gives
+/// the UI the named steps to draw a progress bar against.
+pub fn apply_fix(finding: &Value) -> Value {
     let id = finding.get("id").and_then(|v| v.as_str()).unwrap_or("");
     let kind = finding
         .get("fixKind")
@@ -2067,39 +2158,9 @@ pub fn apply_fix(app: &AppHandle, finding: &Value) -> Value {
                 .and_then(|v| v.as_array())
                 .map(|a| a.iter().filter_map(|p| p.as_str().map(String::from)).collect())
                 .unwrap_or_default();
-            step(app, id, 1, 3, "Checking files…");
             let (bytes, count) = delete_paths(&paths);
-            // Anything still on disk was refused — almost always ACL'd or held by
-            // another user's process. Offer to retry those (and only those)
-            // elevated; UAC asks once, and a decline just leaves them alone.
-            let leftover: Vec<&String> = paths.iter().filter(|p| Path::new(p).exists()).collect();
-            let mut elevated_note = String::new();
-            if !leftover.is_empty() {
-                step(app, id, 2, 3, "Needs permission — confirm the prompt…");
-                let list = leftover
-                    .iter()
-                    .map(|p| format!("'{}'", p.replace('\'', "''")))
-                    .collect::<Vec<_>>()
-                    .join(",");
-                let ps = format!(
-                    "-NoProfile -NonInteractive -Command \"Remove-Item -LiteralPath {list} -Force -Recurse -ErrorAction SilentlyContinue\""
-                );
-                if run_elevated("powershell.exe", &ps) {
-                    // ShellExecuteW does not wait; give the elevated child a moment
-                    // to finish before we count what survived.
-                    std::thread::sleep(std::time::Duration::from_millis(1200));
-                    let still = leftover.iter().filter(|p| Path::new(p).exists()).count();
-                    let cleared = leftover.len() - still;
-                    if cleared > 0 {
-                        elevated_note = format!(" ({cleared} needed admin)");
-                    }
-                } else {
-                    elevated_note = format!(" ({} skipped — permission declined)", leftover.len());
-                }
-            }
-            step(app, id, 3, 3, "Done");
             json!({ "ok": true, "kind": "delete", "freedBytes": bytes, "deleted": count,
-                    "message": format!("Cleaned {count} files, freed {}{elevated_note}", human_size(bytes)) })
+                    "message": format!("Cleaned {count} files, freed {}", human_size(bytes)) })
         }
         "optimize" => {
             let mut st = load_settings();
@@ -2129,11 +2190,9 @@ pub fn apply_fix(app: &AppHandle, finding: &Value) -> Value {
                 .unwrap_or_default();
             let mut opened = 0u32;
             for p in paths.iter().take(4) {
-                // "taskmgr.exe" is a launcher token (not a path); everything else must exist.
-                let is_launcher = p == "taskmgr.exe";
-                if (is_launcher || Path::new(p).exists())
-                    && crate::hidden_command("cmd")
-                        .args(["/C", "start", "", p])
+                if Path::new(p).exists()
+                    && std::process::Command::new("open")
+                        .arg(p)
                         .status()
                         .map(|s| s.success())
                         .unwrap_or(false)
@@ -2154,24 +2213,7 @@ pub fn apply_fix(app: &AppHandle, finding: &Value) -> Value {
                 .and_then(|v| v.as_array())
                 .map(|a| a.iter().filter_map(|p| p.as_str().map(String::from)).collect())
                 .unwrap_or_default();
-            step(app, id, 1, 2, "Stopping agent processes…");
             let stopped = stop_agent_processes(&pids);
-            // Anything that survived is running as another user or is protected —
-            // retry just those elevated so the UAC prompt appears once.
-            if stopped == 0 && !pids.is_empty() {
-                step(app, id, 1, 2, "Needs permission — confirm the prompt…");
-                let args = pids
-                    .iter()
-                    .filter(|p| p.trim().parse::<u32>().is_ok())
-                    .map(|p| format!("/PID {p}"))
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                if !args.is_empty() {
-                    let _ = run_elevated("taskkill.exe", &format!("{args} /T /F"));
-                    std::thread::sleep(std::time::Duration::from_millis(900));
-                }
-            }
-            step(app, id, 2, 2, "Done");
             if stopped > 0 {
                 json!({ "ok": true, "kind": "kill",
                         "message": format!(
@@ -2203,6 +2245,9 @@ pub fn apply_fix(app: &AppHandle, finding: &Value) -> Value {
                 "message": "cleanupPeriodDays set to 30 — Claude Code now prunes old transcripts itself." }),
             Err(e) => json!({ "ok": false, "message": format!("Could not edit settings: {e}") }),
         },
+        // Settings-level remediation. Each finding names a concrete lever; this
+        // flips exactly that lever rather than the blanket cache-safe toggle the
+        // old "optimize" arm used, so the message matches what the card promised.
         "tune" => {
             let mut st = load_settings();
             let msg = if id.starts_with("cache:idle-ttl-churn") || id.starts_with("config:prewarm-cache") {
@@ -2291,7 +2336,225 @@ pub fn apply_fix(app: &AppHandle, finding: &Value) -> Value {
     }
 }
 
+// ── MCP / CLAUDE.md remediation ──────────────────────────────────────────────
 
+/// Claude Code has no `disabled` flag for MCP servers (the feature request is
+/// still open), so "disabling" one means taking it out of `mcpServers`. To keep
+/// that reversible we stash the whole entry under `_terseDisabledMcpServers`
+/// in the same file and write a timestamped backup first — nothing is lost, and
+/// restoring is a copy back.
+///
+/// Returns (servers stashed, backup path).
+fn disable_mcp_servers(finding: &Value) -> Result<(u32, String), String> {
+    // Names come from the finding's `paths` when the scanner listed them, else
+    // from the id suffix (`mcp:single-bloated-server:<name>`).
+    let mut names: Vec<String> = finding
+        .get("paths")
+        .and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|p| p.as_str().map(String::from)).collect())
+        .unwrap_or_default();
+    if names.is_empty() {
+        if let Some(id) = finding.get("id").and_then(|v| v.as_str()) {
+            if let Some((_, name)) = id.rsplit_once(':') {
+                if !name.is_empty() && !name.contains(' ') && id.matches(':').count() >= 2 {
+                    names.push(name.to_string());
+                }
+            }
+        }
+    }
+    if names.is_empty() {
+        return Ok((0, String::new()));
+    }
+
+    // A server can be declared in three places, and users who keep their setup
+    // per-project have nothing in the global block at all — only stashing from
+    // ~/.claude.json is why project users used to get "no server found":
+    //   1. ~/.claude.json          → root .mcpServers        (global)
+    //   2. ~/.claude.json          → projects.<dir>.mcpServers (per project)
+    //   3. <project>/.mcp.json     → .mcpServers             (checked into repo)
+    let home = dirs::home_dir().unwrap_or_default();
+    let cfg = home.join(".claude.json");
+    let mut moved = 0u32;
+    let mut backups: Vec<String> = Vec::new();
+
+    // ── 1 + 2: the global config, root block and every project block ──
+    if let Ok(txt) = fs::read_to_string(&cfg) {
+        if let Ok(mut root) = serde_json::from_str::<Value>(&txt) {
+            let backup = format!("{}.terse-bak", cfg.display());
+            fs::write(&backup, &txt).map_err(|e| e.to_string())?;
+            let mut touched = 0u32;
+
+            let mut stash: serde_json::Map<String, Value> = root
+                .get("_terseDisabledMcpServers")
+                .and_then(|v| v.as_object())
+                .cloned()
+                .unwrap_or_default();
+            if let Some(servers) = root.get_mut("mcpServers").and_then(|v| v.as_object_mut()) {
+                for n in &names {
+                    if let Some(entry) = servers.remove(n) {
+                        stash.insert(n.clone(), entry);
+                        touched += 1;
+                    }
+                }
+            }
+            if !stash.is_empty() {
+                root["_terseDisabledMcpServers"] = Value::Object(stash);
+            }
+
+            if let Some(projects) = root.get_mut("projects").and_then(|v| v.as_object_mut()) {
+                for (_dir, pv) in projects.iter_mut() {
+                    let mut pstash: serde_json::Map<String, Value> = pv
+                        .get("_terseDisabledMcpServers")
+                        .and_then(|v| v.as_object())
+                        .cloned()
+                        .unwrap_or_default();
+                    if let Some(servers) = pv.get_mut("mcpServers").and_then(|v| v.as_object_mut()) {
+                        for n in &names {
+                            if let Some(entry) = servers.remove(n) {
+                                pstash.insert(n.clone(), entry);
+                                touched += 1;
+                            }
+                        }
+                    }
+                    if !pstash.is_empty() {
+                        pv["_terseDisabledMcpServers"] = Value::Object(pstash);
+                    }
+                }
+            }
+
+            if touched > 0 {
+                let out = serde_json::to_string_pretty(&root).map_err(|e| e.to_string())?;
+                fs::write(&cfg, out).map_err(|e| e.to_string())?;
+                moved += touched;
+                backups.push(backup);
+            }
+        }
+    }
+
+    // ── 3: each tracked project's checked-in .mcp.json ──
+    for dir in claude_project_dirs() {
+        let p = dir.join(".mcp.json");
+        let Ok(txt) = fs::read_to_string(&p) else { continue };
+        let Ok(mut root) = serde_json::from_str::<Value>(&txt) else { continue };
+        let mut touched = 0u32;
+        let mut stash: serde_json::Map<String, Value> = root
+            .get("_terseDisabledMcpServers")
+            .and_then(|v| v.as_object())
+            .cloned()
+            .unwrap_or_default();
+        if let Some(servers) = root.get_mut("mcpServers").and_then(|v| v.as_object_mut()) {
+            for n in &names {
+                if let Some(entry) = servers.remove(n) {
+                    stash.insert(n.clone(), entry);
+                    touched += 1;
+                }
+            }
+        }
+        if touched > 0 {
+            let backup = format!("{}.terse-bak", p.display());
+            fs::write(&backup, &txt).map_err(|e| e.to_string())?;
+            root["_terseDisabledMcpServers"] = Value::Object(stash);
+            let out = serde_json::to_string_pretty(&root).map_err(|e| e.to_string())?;
+            fs::write(&p, out).map_err(|e| e.to_string())?;
+            moved += touched;
+            backups.push(backup);
+        }
+    }
+
+    Ok((moved, backups.join(", ")))
+}
+
+/// Project roots Claude Code knows about — the keys of `projects` in
+/// ~/.claude.json. Used to reach per-project .mcp.json and CLAUDE.md.
+fn claude_project_dirs() -> Vec<PathBuf> {
+    let cfg = dirs::home_dir().unwrap_or_default().join(".claude.json");
+    let Ok(txt) = fs::read_to_string(cfg) else { return Vec::new() };
+    let Ok(root) = serde_json::from_str::<Value>(&txt) else { return Vec::new() };
+    root.get("projects")
+        .and_then(|v| v.as_object())
+        .map(|o| o.keys().map(PathBuf::from).filter(|p| p.is_dir()).collect())
+        .unwrap_or_default()
+}
+
+/// A CLAUDE.md is prose — Terse must not silently rewrite what the user tells
+/// their agent. So the "fix" is mechanical-only and non-destructive: back the
+/// original up, write a *draft* beside it with the safely-removable weight
+/// stripped (collapsed blank runs, trailing whitespace, duplicated lines), and
+/// hand the draft back for review. The user swaps it in, not us.
+///
+/// Returns (human-readable size delta, draft path), or None if nothing to trim.
+/// Trims the global CLAUDE.md **and** every tracked project's CLAUDE.md — a user
+/// whose weight lives in a project file used to click this and be told the global
+/// one was already lean.
+fn trim_claude_md() -> Result<Option<(String, String)>, String> {
+    let mut targets: Vec<PathBuf> =
+        vec![dirs::home_dir().unwrap_or_default().join(".claude").join("CLAUDE.md")];
+    for dir in claude_project_dirs() {
+        targets.push(dir.join("CLAUDE.md"));
+    }
+
+    let mut saved_total = 0usize;
+    let mut drafts: Vec<String> = Vec::new();
+    for t in targets {
+        if !t.exists() {
+            continue;
+        }
+        if let Ok(Some((saved, draft))) = trim_one_claude_md(&t) {
+            saved_total += saved;
+            drafts.push(draft);
+        }
+    }
+    if drafts.is_empty() {
+        return Ok(None);
+    }
+    // Open the biggest win so the user lands on the file worth reviewing.
+    if let Some(first) = drafts.first() {
+        let _ = std::process::Command::new("open").arg(first).status();
+    }
+    Ok(Some((human_size(saved_total as u64), drafts.join(", "))))
+}
+
+fn trim_one_claude_md(path: &Path) -> Result<Option<(usize, String)>, String> {
+    let txt = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let before = txt.len();
+
+    let mut out: Vec<String> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut blank_run = 0usize;
+    let mut in_code = false;
+    for line in txt.lines() {
+        let trimmed = line.trim_end();
+        if trimmed.trim_start().starts_with("```") {
+            in_code = !in_code;
+        }
+        if trimmed.trim().is_empty() && !in_code {
+            blank_run += 1;
+            if blank_run > 1 {
+                continue; // collapse runs of blank lines
+            }
+        } else {
+            blank_run = 0;
+        }
+        // Drop exact duplicate non-trivial lines outside code fences — repeated
+        // instructions are pure context tax and never change the meaning.
+        let key = trimmed.trim().to_string();
+        if !in_code && key.len() > 24 && !key.starts_with('#') && !seen.insert(key) {
+            continue;
+        }
+        out.push(trimmed.to_string());
+    }
+    let trimmed_txt = out.join("\n");
+    let after = trimmed_txt.len();
+    if after + 64 >= before {
+        return Ok(None);
+    }
+
+    let backup = format!("{}.terse-bak", path.display());
+    fs::write(&backup, &txt).map_err(|e| e.to_string())?;
+    let draft = path.with_file_name("CLAUDE.terse-trimmed.md");
+    fs::write(&draft, &trimmed_txt).map_err(|e| e.to_string())?;
+    Ok(Some((before - after, draft.display().to_string())))
+}
 
 // ── Remediation helpers for the direct-fix kinds ─────────────────────────────
 
@@ -2303,20 +2566,18 @@ fn stop_agent_processes(pids: &[String]) -> u32 {
     let mut stopped = 0u32;
     for pid_s in pids {
         let Ok(pid) = pid_s.trim().parse::<u32>() else { continue };
-        // Re-verify the pid still belongs to an agent CLI before killing it.
-        let name = crate::hidden_command("powershell")
-            .args(["-NoProfile", "-Command",
-                   &format!("(Get-Process -Id {pid} -ErrorAction SilentlyContinue).ProcessName")])
+        let comm = std::process::Command::new("ps")
+            .args(["-p", &pid.to_string(), "-o", "comm="])
             .output()
             .ok()
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_ascii_lowercase())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
             .unwrap_or_default();
-        let bin = name.strip_suffix(".exe").unwrap_or(&name).to_string();
+        let bin = basename(&comm).to_ascii_lowercase();
         if !AGENT_BINS.contains(&bin.as_str()) {
             continue;
         }
-        if crate::hidden_command("taskkill")
-            .args(["/PID", &pid.to_string(), "/T"])
+        if std::process::Command::new("kill")
+            .arg(pid.to_string())
             .status()
             .map(|s| s.success())
             .unwrap_or(false)
@@ -2493,6 +2754,29 @@ pub fn dismiss(id: &str) -> Value {
 /// original name rules, and agent-store paths must live under a known
 /// transcript root, carry a transcript extension, AND still be stale — so a
 /// forged or outdated finding can never touch fresh work or anything else.
+/// Move a file to the user's Trash instead of unlinking it, so every Doctor
+/// cleanup is recoverable — the "undo" is just dragging it back out of Trash.
+/// Same-volume rename (home → ~/.Trash), so it's atomic and cheap.
+fn move_to_trash(path: &Path) -> bool {
+    let trash = home().join(".Trash");
+    if fs::create_dir_all(&trash).is_err() {
+        return false;
+    }
+    let fname = path
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_else(|| "terse-cleanup".into());
+    let mut dest = trash.join(&fname);
+    let mut n = 1;
+    while dest.exists() {
+        dest = trash.join(format!("{}-{}", n, fname));
+        n += 1;
+    }
+    // Fall back to a hard delete only if the file can't be trashed (e.g. a
+    // cross-volume path), preserving the original reclaim behavior.
+    fs::rename(path, &dest).is_ok() || fs::remove_file(path).is_ok()
+}
+
 fn delete_paths(paths: &[String]) -> (u64, u64) {
     let base = terse_dir();
     let h = home();
@@ -2543,49 +2827,6 @@ fn delete_paths(paths: &[String]) -> (u64, u64) {
         }
     }
     (bytes, count)
-}
-
-/// Send one file to the Recycle Bin — the Windows counterpart of macOS's
-/// `~/.Trash` move.
-///
-/// This matters beyond tidiness: the shared confirm dialog promises "Files move
-/// to your Trash, so you can restore them if needed." Windows used to
-/// `fs::remove_file` here, which made that promise false — a cleanup was
-/// unrecoverable. `SHFileOperationW` with `FOF_ALLOWUNDO` is the documented way
-/// to recycle rather than erase.
-///
-/// Falls back to a hard delete only when recycling is impossible (a path on a
-/// volume with no Recycle Bin, e.g. a network share), preserving the old
-/// reclaim behaviour rather than silently skipping the file.
-fn move_to_trash(path: &Path) -> bool {
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::ffi::OsStrExt;
-        use windows::Win32::UI::Shell::{
-            SHFileOperationW, FOF_NOCONFIRMATION, FOF_NOERRORUI, FOF_SILENT, FO_DELETE,
-            SHFILEOPSTRUCTW,
-        };
-        // pFrom is a double-NUL-terminated list, so one extra NUL after the path.
-        let mut from: Vec<u16> = path.as_os_str().encode_wide().collect();
-        from.push(0);
-        from.push(0);
-        // FOF_ALLOWUNDO is what makes this the Recycle Bin instead of a delete.
-        const FOF_ALLOWUNDO: u16 = 0x0040;
-        let mut op = SHFILEOPSTRUCTW {
-            wFunc: FO_DELETE as u32,
-            pFrom: windows::core::PCWSTR(from.as_ptr()),
-            fFlags: FOF_ALLOWUNDO
-                | FOF_NOCONFIRMATION.0 as u16
-                | FOF_SILENT.0 as u16
-                | FOF_NOERRORUI.0 as u16,
-            ..Default::default()
-        };
-        let rc = unsafe { SHFileOperationW(&mut op) };
-        if rc == 0 && !op.fAnyOperationsAborted.as_bool() {
-            return true;
-        }
-    }
-    fs::remove_file(path).is_ok()
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -2733,217 +2974,3 @@ mod tests {
         assert!(survived, "fresh file missing after refused clean");
     }
 }
-
-// ── MCP / CLAUDE.md remediation (ported from macOS) ─────────────────────────
-fn disable_mcp_servers(finding: &Value) -> Result<(u32, String), String> {
-    // Names come from the finding's `paths` when the scanner listed them, else
-    // from the id suffix (`mcp:single-bloated-server:<name>`).
-    let mut names: Vec<String> = finding
-        .get("paths")
-        .and_then(|v| v.as_array())
-        .map(|a| a.iter().filter_map(|p| p.as_str().map(String::from)).collect())
-        .unwrap_or_default();
-    if names.is_empty() {
-        if let Some(id) = finding.get("id").and_then(|v| v.as_str()) {
-            if let Some((_, name)) = id.rsplit_once(':') {
-                if !name.is_empty() && !name.contains(' ') && id.matches(':').count() >= 2 {
-                    names.push(name.to_string());
-                }
-            }
-        }
-    }
-    if names.is_empty() {
-        return Ok((0, String::new()));
-    }
-
-    // A server can be declared in three places, and users who keep their setup
-    // per-project have nothing in the global block at all — only stashing from
-    // ~/.claude.json is why project users used to get "no server found":
-    //   1. ~/.claude.json          → root .mcpServers        (global)
-    //   2. ~/.claude.json          → projects.<dir>.mcpServers (per project)
-    //   3. <project>/.mcp.json     → .mcpServers             (checked into repo)
-    let home = dirs::home_dir().unwrap_or_default();
-    let cfg = home.join(".claude.json");
-    let mut moved = 0u32;
-    let mut backups: Vec<String> = Vec::new();
-
-    // ── 1 + 2: the global config, root block and every project block ──
-    if let Ok(txt) = fs::read_to_string(&cfg) {
-        if let Ok(mut root) = serde_json::from_str::<Value>(&txt) {
-            let backup = format!("{}.terse-bak", cfg.display());
-            fs::write(&backup, &txt).map_err(|e| e.to_string())?;
-            let mut touched = 0u32;
-
-            let mut stash: serde_json::Map<String, Value> = root
-                .get("_terseDisabledMcpServers")
-                .and_then(|v| v.as_object())
-                .cloned()
-                .unwrap_or_default();
-            if let Some(servers) = root.get_mut("mcpServers").and_then(|v| v.as_object_mut()) {
-                for n in &names {
-                    if let Some(entry) = servers.remove(n) {
-                        stash.insert(n.clone(), entry);
-                        touched += 1;
-                    }
-                }
-            }
-            if !stash.is_empty() {
-                root["_terseDisabledMcpServers"] = Value::Object(stash);
-            }
-
-            if let Some(projects) = root.get_mut("projects").and_then(|v| v.as_object_mut()) {
-                for (_dir, pv) in projects.iter_mut() {
-                    let mut pstash: serde_json::Map<String, Value> = pv
-                        .get("_terseDisabledMcpServers")
-                        .and_then(|v| v.as_object())
-                        .cloned()
-                        .unwrap_or_default();
-                    if let Some(servers) = pv.get_mut("mcpServers").and_then(|v| v.as_object_mut()) {
-                        for n in &names {
-                            if let Some(entry) = servers.remove(n) {
-                                pstash.insert(n.clone(), entry);
-                                touched += 1;
-                            }
-                        }
-                    }
-                    if !pstash.is_empty() {
-                        pv["_terseDisabledMcpServers"] = Value::Object(pstash);
-                    }
-                }
-            }
-
-            if touched > 0 {
-                let out = serde_json::to_string_pretty(&root).map_err(|e| e.to_string())?;
-                fs::write(&cfg, out).map_err(|e| e.to_string())?;
-                moved += touched;
-                backups.push(backup);
-            }
-        }
-    }
-
-    // ── 3: each tracked project's checked-in .mcp.json ──
-    for dir in claude_project_dirs() {
-        let p = dir.join(".mcp.json");
-        let Ok(txt) = fs::read_to_string(&p) else { continue };
-        let Ok(mut root) = serde_json::from_str::<Value>(&txt) else { continue };
-        let mut touched = 0u32;
-        let mut stash: serde_json::Map<String, Value> = root
-            .get("_terseDisabledMcpServers")
-            .and_then(|v| v.as_object())
-            .cloned()
-            .unwrap_or_default();
-        if let Some(servers) = root.get_mut("mcpServers").and_then(|v| v.as_object_mut()) {
-            for n in &names {
-                if let Some(entry) = servers.remove(n) {
-                    stash.insert(n.clone(), entry);
-                    touched += 1;
-                }
-            }
-        }
-        if touched > 0 {
-            let backup = format!("{}.terse-bak", p.display());
-            fs::write(&backup, &txt).map_err(|e| e.to_string())?;
-            root["_terseDisabledMcpServers"] = Value::Object(stash);
-            let out = serde_json::to_string_pretty(&root).map_err(|e| e.to_string())?;
-            fs::write(&p, out).map_err(|e| e.to_string())?;
-            moved += touched;
-            backups.push(backup);
-        }
-    }
-
-    Ok((moved, backups.join(", ")))
-}
-
-/// Project roots Claude Code knows about — the keys of `projects` in
-/// ~/.claude.json. Used to reach per-project .mcp.json and CLAUDE.md.
-fn claude_project_dirs() -> Vec<PathBuf> {
-    let cfg = dirs::home_dir().unwrap_or_default().join(".claude.json");
-    let Ok(txt) = fs::read_to_string(cfg) else { return Vec::new() };
-    let Ok(root) = serde_json::from_str::<Value>(&txt) else { return Vec::new() };
-    root.get("projects")
-        .and_then(|v| v.as_object())
-        .map(|o| o.keys().map(PathBuf::from).filter(|p| p.is_dir()).collect())
-        .unwrap_or_default()
-}
-
-/// A CLAUDE.md is prose — Terse must not silently rewrite what the user tells
-/// their agent. So the "fix" is mechanical-only and non-destructive: back the
-/// original up, write a *draft* beside it with the safely-removable weight
-/// stripped (collapsed blank runs, trailing whitespace, duplicated lines), and
-/// hand the draft back for review. The user swaps it in, not us.
-///
-/// Returns (human-readable size delta, draft path), or None if nothing to trim.
-/// Trims the global CLAUDE.md **and** every tracked project's CLAUDE.md — a user
-/// whose weight lives in a project file used to click this and be told the global
-/// one was already lean.
-fn trim_claude_md() -> Result<Option<(String, String)>, String> {
-    let mut targets: Vec<PathBuf> =
-        vec![dirs::home_dir().unwrap_or_default().join(".claude").join("CLAUDE.md")];
-    for dir in claude_project_dirs() {
-        targets.push(dir.join("CLAUDE.md"));
-    }
-
-    let mut saved_total = 0usize;
-    let mut drafts: Vec<String> = Vec::new();
-    for t in targets {
-        if !t.exists() {
-            continue;
-        }
-        if let Ok(Some((saved, draft))) = trim_one_claude_md(&t) {
-            saved_total += saved;
-            drafts.push(draft);
-        }
-    }
-    if drafts.is_empty() {
-        return Ok(None);
-    }
-    // Open the biggest win so the user lands on the file worth reviewing.
-    if let Some(first) = drafts.first() {
-        let _ = crate::hidden_command("cmd").args(["/C", "start", ""]).arg(first).status();
-    }
-    Ok(Some((human_size(saved_total as u64), drafts.join(", "))))
-}
-
-fn trim_one_claude_md(path: &Path) -> Result<Option<(usize, String)>, String> {
-    let txt = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    let before = txt.len();
-
-    let mut out: Vec<String> = Vec::new();
-    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
-    let mut blank_run = 0usize;
-    let mut in_code = false;
-    for line in txt.lines() {
-        let trimmed = line.trim_end();
-        if trimmed.trim_start().starts_with("```") {
-            in_code = !in_code;
-        }
-        if trimmed.trim().is_empty() && !in_code {
-            blank_run += 1;
-            if blank_run > 1 {
-                continue; // collapse runs of blank lines
-            }
-        } else {
-            blank_run = 0;
-        }
-        // Drop exact duplicate non-trivial lines outside code fences — repeated
-        // instructions are pure context tax and never change the meaning.
-        let key = trimmed.trim().to_string();
-        if !in_code && key.len() > 24 && !key.starts_with('#') && !seen.insert(key) {
-            continue;
-        }
-        out.push(trimmed.to_string());
-    }
-    let trimmed_txt = out.join("\n");
-    let after = trimmed_txt.len();
-    if after + 64 >= before {
-        return Ok(None);
-    }
-
-    let backup = format!("{}.terse-bak", path.display());
-    fs::write(&backup, &txt).map_err(|e| e.to_string())?;
-    let draft = path.with_file_name("CLAUDE.terse-trimmed.md");
-    fs::write(&draft, &trimmed_txt).map_err(|e| e.to_string())?;
-    Ok(Some((before - after, draft.display().to_string())))
-}
-
-// ── Remediation helpers for the direct-fix kinds ─────────────────────────────

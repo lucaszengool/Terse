@@ -3973,6 +3973,14 @@ fn check_ax_permission() -> bool {
 ///
 /// `enabled = true` → strip the vibrancy (horizon). `false` → put it back.
 /// No-op off macOS; the Windows build has no NSVisualEffectView to swap.
+/// The Doctor's one-click fixes persist their toggles to ~/.terse/doctor.json.
+/// The optimizer runs in the webview, so it needs them handed over — without
+/// this the fixes would record a preference nothing ever reads.
+#[tauri::command]
+fn get_doctor_settings() -> doctor::DoctorSettings {
+    doctor::load_settings()
+}
+
 #[tauri::command]
 fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
     #[cfg(target_os = "macos")]
@@ -4352,6 +4360,36 @@ pub fn run() {
                     .visible_on_all_workspaces(true)
                     .visible(false)
                     .build();
+            }
+
+            // ── Rescue floating windows stranded off-screen ──
+            // tauri_plugin_window_state restores POSITION for these windows. A
+            // position saved under a different display setup (external monitor,
+            // different scaled resolution) can land almost entirely off the edge
+            // of the current screen. The pet is the worst case: it draws its art
+            // horizontally CENTRED in a 240px window, so a window with only its
+            // left sliver on screen renders a pet that is completely invisible —
+            // "equipped but not showing", with nothing wrong in the JS at all.
+            fn clamp_into_screen(win: &tauri::WebviewWindow) {
+                let Ok(Some(mon)) = win.current_monitor() else { return };
+                let scale = mon.scale_factor();
+                let ms = mon.size().to_logical::<f64>(scale);
+                let mp = mon.position().to_logical::<f64>(scale);
+                let (Ok(sz), Ok(pos)) = (win.outer_size(), win.outer_position()) else { return };
+                let ws = sz.to_logical::<f64>(scale);
+                let wp = pos.to_logical::<f64>(scale);
+                // Keep the whole window inside the monitor; if the window is
+                // somehow larger than the screen, favour the top-left corner.
+                let nx = wp.x.min(mp.x + ms.width - ws.width).max(mp.x);
+                let ny = wp.y.min(mp.y + ms.height - ws.height).max(mp.y);
+                if (nx - wp.x).abs() > 1.0 || (ny - wp.y).abs() > 1.0 {
+                    let _ = win.set_position(tauri::LogicalPosition::new(nx, ny));
+                }
+            }
+            for label in ["pet", "popup", "island", "toast", "palette"] {
+                if let Some(w) = app.get_webview_window(label) {
+                    clamp_into_screen(&w);
+                }
             }
 
             // macOS: force transparent bg + rounded corners on both windows
@@ -4963,6 +5001,7 @@ pub fn run() {
             farm_set_mini,
             check_ax_permission,
             set_clear_glass,
+            get_doctor_settings,
             request_accessibility,
             pet_work_detected,
             emit_popup_update,

@@ -354,6 +354,10 @@
         '</button>' +
         '<button class="fix-btn ' + btnKind + '" type="button">' + esc(fixLabel) + arrow + '</button>' +
         '<button class="dismiss-link" type="button">Dismiss</button>' +
+      '</div>' +
+      '<div class="fix-progress" hidden>' +
+        '<div class="fix-progress-track"><div class="fix-progress-fill"></div></div>' +
+        '<div class="fix-progress-step"></div>' +
       '</div>';
 
     const adviseBody = card.querySelector('.advise-body');
@@ -487,6 +491,92 @@
     });
   }
 
+  // ---- per-finding fix progress -------------------------------------------
+  // Mirrors doctor.rs fix_steps_for(). A fix is usually sub-second, so the bar
+  // walks the named steps on a timer and holds on the last one until the call
+  // actually returns — it never claims a step finished that hasn't. The point is
+  // that the user can see WHICH step a fix is on, not a featureless spinner.
+  const FIX_STEPS = {
+    'delete':           ['Re-checking files', 'Moving to Trash', 'Recounting space'],
+    'kill-process':     ['Verifying processes', 'Sending stop signal', 'Confirming exit'],
+    'mcp-disable':      ['Reading MCP config', 'Backing up config', 'Stashing idle servers', 'Verifying config'],
+    'claude-md-trim':   ['Reading CLAUDE.md', 'Backing up original', 'Drafting trimmed copy', 'Opening for review'],
+    'grant-permission': ['Checking permission', 'Opening System Settings'],
+    'tune':             ['Reading settings', 'Applying tuning', 'Saving'],
+    'optimize':         ['Reading settings', 'Applying tuning', 'Saving'],
+    'open-path':        ['Locating file', 'Opening'],
+    // Kinds added when every advisory finding gained a real one-click fix.
+    'enable-cache':     ['Enabling cache-safe optimization'],
+    'compress-context': ['Enabling compression'],
+    'mcp-prune':        ['Reading MCP config', 'Disabling servers'],
+    'cap-output':       ['Writing output cap'],
+    'set-budget':       ['Setting monthly budget'],
+    'fix-bypass':       ['Reading settings', 'Backing up', 'Switching mode'],
+    'fix-permissions':  ['Reading settings', 'Backing up', 'Removing broad rules'],
+    'set-cleanup-days': ['Reading settings', 'Writing retention'],
+  };
+
+  // The backend emits one `doctor-fix-progress` per real step of a running fix
+  // ({id, step, total, pct, label}). Those events drive the bar; FIX_STEPS above
+  // is only the opening placeholder, shown until the first event lands so the
+  // card never sits blank. Crucially the bar does NOT advance on a timer — if a
+  // fix is parked on a UAC consent dialog, the label says so and stays there
+  // instead of animating through steps that haven't happened.
+  let liveProgress = null; // { id, fill, label, wrap }
+
+  (function bindFixProgress() {
+    const handler = (ev) => {
+      const d = (ev && ev.payload) ? ev.payload : ev;
+      if (!d || !liveProgress || d.id !== liveProgress.id) return;
+      const pct = Math.max(6, Math.min(100, Number(d.pct) || 0));
+      if (liveProgress.fill) liveProgress.fill.style.width = pct + '%';
+      if (liveProgress.label) {
+        const n = Number(d.step) || 0, total = Number(d.total) || 0;
+        liveProgress.label.textContent = (d.label || 'Working') +
+          (total > 1 ? ' · ' + n + '/' + total : '');
+      }
+      liveProgress.gotEvent = true;
+    };
+    if (T && typeof T.on === 'function') { T.on('doctor-fix-progress', handler); return; }
+    try {
+      if (window.__TAURI__ && window.__TAURI__.event) {
+        window.__TAURI__.event.listen('doctor-fix-progress', handler);
+      }
+    } catch (e) { /* no bridge (browser preview) — placeholder text is all you get */ }
+  })();
+
+  function startFixProgress(card, kind, id) {
+    const steps = FIX_STEPS[kind] || ['Applying', 'Saving'];
+    const wrap = card && card.querySelector('.fix-progress');
+    if (!wrap) return { finish() {}, fail() {} };
+    const fill = wrap.querySelector('.fix-progress-fill');
+    const label = wrap.querySelector('.fix-progress-step');
+    wrap.hidden = false;
+    wrap.classList.remove('failed', 'done');
+    if (fill) fill.style.width = '8%';
+    if (label) label.textContent = steps[0] + '…';
+
+    liveProgress = { id: id, fill: fill, label: label, wrap: wrap, gotEvent: false };
+    const mine = liveProgress;
+    const clear = () => { if (liveProgress === mine) liveProgress = null; };
+
+    return {
+      finish(msg) {
+        clear();
+        if (fill) fill.style.width = '100%';
+        wrap.classList.add('done');
+        if (label) label.textContent = msg || 'Done';
+        setTimeout(() => { wrap.hidden = true; }, 1400);
+      },
+      fail(msg) {
+        clear();
+        wrap.classList.add('failed');
+        if (label) label.textContent = msg || 'Could not apply';
+        setTimeout(() => { wrap.hidden = true; wrap.classList.remove('failed'); }, 2600);
+      },
+    };
+  }
+
   // ---- apply (gated) ------------------------------------------------------
   async function applyFinding(f, card, btn) {
     if (!card) {
@@ -505,12 +595,14 @@
     }
 
     if (btn) { btn.disabled = true; btn.textContent = 'Working…'; }
+    const prog = startFixProgress(card, f.fixKind, f.id);
 
     let res;
     try {
       if (!T.doctorApplyFix) throw new Error('bridge unavailable');
       res = await T.doctorApplyFix(f);
     } catch (e) {
+      prog.fail('Could not apply');
       if (btn) { btn.disabled = false; btn.textContent = f.fixLabel || 'Fix'; }
       showToast('Could not apply fix — please try again.');
       return false;
@@ -518,6 +610,7 @@
 
     res = res || {};
     if (res.ok) {
+      prog.finish(res.message);
       let msg = res.message || 'Fixed';
       if (res.freedBytes) msg += ' · freed ' + fmtBytes(res.freedBytes);
       else if (res.deleted) msg += ' · ' + res.deleted + ' removed';
@@ -528,6 +621,7 @@
 
     // gated
     if (res.needsAuth) {
+      prog.fail(res.message || 'Sign-in required');
       if (btn) { btn.disabled = false; btn.textContent = f.fixLabel || 'Fix'; }
       if ((res.reason || 'login') === 'subscription') {
         await goToPaywall();
@@ -537,6 +631,7 @@
       return false;
     }
 
+    prog.fail(res.message);
     if (btn) { btn.disabled = false; btn.textContent = f.fixLabel || 'Fix'; }
     showToast(res.message || 'Could not apply fix.');
     return false;

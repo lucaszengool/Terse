@@ -193,6 +193,18 @@ impl License {
         }
     }
 
+    /// True on a live paid plan. Used for entitlements that are not metered by
+    /// weekly usage — currently the knowledge-graph agent digest, which is what
+    /// actually connects your agents to the graph.
+    pub fn is_pro(&self) -> bool {
+        let t = self.tier.to_lowercase();
+        let s = self.status.to_lowercase();
+        (s == "active" || s == "trialing")
+            && !t.is_empty()
+            && t != "free"
+            && t != "expired"
+    }
+
     pub fn can_optimize(&self) -> bool {
         // Expired/cancelled users cannot optimize
         if self.tier == "expired" || self.status == "cancelled" || self.status == "none" {

@@ -15,6 +15,27 @@ if (window.__TAURI__) {
   // Registry of JS-side listeners (same API as Electron's ipcRenderer.on)
   const _listeners = {};
 
+  // ── Doctor toggles → live optimizer ──
+  // The Doctor's fixes write ~/.terse/doctor.json in Rust; the optimizer runs
+  // here. This is the bridge between them, so "Enable cache-safe mode" actually
+  // changes how the next prompt is optimized instead of just clearing a card.
+  function syncDoctorSettings() {
+    if (!window._terseOptimizer) return;
+    invoke('get_doctor_settings').then((s) => {
+      if (!s || !window._terseOptimizer) return;
+      window._terseOptimizer.updateSettings({
+        cacheSafeMode: !!s.cacheSafeMode,
+        responseCache: !!s.responseCache,
+        compression: !!s.compression,
+      });
+    }).catch(() => { /* no settings yet → optimizer keeps its defaults */ });
+  }
+  // The optimizer bundle loads after this file, so wait for it to appear.
+  (function waitForOptimizer(tries) {
+    if (window._terseOptimizer) { syncDoctorSettings(); return; }
+    if ((tries || 0) < 100) setTimeout(() => waitForOptimizer((tries || 0) + 1), 60);
+  })(0);
+
   // Dispatch an event locally to all JS listeners registered via T.on()
   function _dispatch(channel, payload) {
     if (_listeners[channel]) {
@@ -127,7 +148,11 @@ if (window.__TAURI__) {
     cleanupClean: (paths) => invoke('cleanup_clean', { paths }),
     speedModeStatus: () => invoke('speed_mode_status'),
     setSpeedMode: (enabled) => invoke('set_speed_mode', { enabled }),
-    doctorApplyFix: (finding) => invoke('doctor_apply_fix', { finding }),
+    // After a fix lands, push the new toggles straight into the live optimizer —
+    // otherwise the setting only takes effect on the next app launch and the fix
+    // looks like it did nothing.
+    doctorApplyFix: (finding) =>
+      invoke('doctor_apply_fix', { finding }).then((r) => { syncDoctorSettings(); return r; }),
     doctorDismiss: (id) => invoke('doctor_dismiss', { id }),
     showDoctorWindow: () => invoke('show_doctor_window'),
     hideDoctorWindow: () => invoke('hide_doctor_window'),
@@ -363,6 +388,7 @@ if (window.__TAURI__) {
 
     // License
     getLicense: () => invoke('get_license'),
+    getDoctorSettings: () => invoke('get_doctor_settings'),
     setClerkUser: (clerkUserId) => invoke('set_clerk_user', { clerkUserId }),
     verifyLicense: (clerkUserId) => invoke('verify_license_remote', { clerkUserId }),
     checkCanOptimize: () => invoke('check_can_optimize'),

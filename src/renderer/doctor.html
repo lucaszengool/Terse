@@ -131,6 +131,17 @@
     .metric .ml{color:var(--t3);font-weight:600}
     .f-latency{font-size:9.5px;color:var(--t3);margin-top:6px;font-style:italic}
     .f-actions{display:flex;align-items:center;gap:8px;margin-top:10px}
+    /* Per-finding fix progress — which step the fix is on, not a spinner. */
+    .fix-progress{margin-top:9px}
+    .fix-progress-track{height:4px;border-radius:9999px;background:var(--bd);overflow:hidden}
+    .fix-progress-fill{height:100%;width:0;border-radius:9999px;background:var(--ac);
+      transition:width .38s cubic-bezier(.2,.8,.2,1)}
+    .fix-progress.done .fix-progress-fill{background:var(--btn)}
+    .fix-progress.failed .fix-progress-fill{background:var(--red)}
+    .fix-progress-step{margin-top:5px;font-size:10px;font-weight:600;color:var(--t3);
+      font-variant-numeric:tabular-nums}
+    .fix-progress.done .fix-progress-step{color:var(--t2)}
+    .fix-progress.failed .fix-progress-step{color:var(--red)}
     .fix-btn{-webkit-app-region:no-drag;border:none;border-radius:9px;
       font-size:10.5px;font-weight:800;padding:7px 14px;cursor:pointer;
       letter-spacing:.01em;transition:opacity .15s}

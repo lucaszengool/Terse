@@ -1742,6 +1742,36 @@ fn save_auth(state: tauri::State<'_, AppState>, clerk_user_id: String, email: St
 }
 
 #[tauri::command]
+fn get_doctor_settings() -> doctor::DoctorSettings {
+    doctor::load_settings()
+}
+
+/// Toggle the fully-clear glass look. macOS drops NSVisualEffectView vibrancy;
+/// the Windows equivalent is dropping the acrylic backdrop, which leaves the
+/// window's own CSS gradient over an unblurred desktop — exactly the film's
+/// near-clear glass. Re-enabling restores the same tint `setup` applies.
+#[tauri::command]
+fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
+    #[cfg(target_os = "windows")]
+    {
+        use window_vibrancy::{apply_acrylic, clear_acrylic};
+        // Every frameless surface that carries the glass, so the island and the
+        // main window never disagree about how clear they are.
+        for lbl in ["main", "island", "doctor", "farm", "palette", "toast"] {
+            if let Some(win) = app.get_webview_window(lbl) {
+                if enabled {
+                    let _ = clear_acrylic(&win);
+                } else {
+                    let _ = apply_acrylic(&win, Some((14, 16, 21, 78)));
+                }
+            }
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    let _ = (&app, enabled);
+}
+
+#[tauri::command]
 fn sign_out(state: tauri::State<'_, AppState>) {
     let mut auth = lock_or_recover(&state.auth);
     auth.sign_out();
@@ -1888,6 +1918,7 @@ fn dashboards_visible(app: AppHandle) -> bool {
 async fn doctor_apply_fix(
     finding: serde_json::Value,
     state: tauri::State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     // Gate ONLY remediation: scanning + the report are free.
     {
@@ -1912,7 +1943,9 @@ async fn doctor_apply_fix(
             }));
         }
     }
-    tauri::async_runtime::spawn_blocking(move || doctor::apply_fix(&finding))
+    // `app` goes along so the fix can emit per-step progress the card draws as a
+    // progress bar, and so an elevated retry can be prompted mid-fix.
+    tauri::async_runtime::spawn_blocking(move || doctor::apply_fix(&app, &finding))
         .await
         .map_err(|e| e.to_string())
 }
@@ -3736,6 +3769,8 @@ pub fn run() {
             get_referral_info,
             redeem_referral_code,
             focus_app,
+            get_doctor_settings,
+            set_clear_glass,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

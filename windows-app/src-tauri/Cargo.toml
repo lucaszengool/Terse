@@ -33,6 +33,9 @@ window-vibrancy = "0.6"
 windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_UI_Accessibility",
+    # ShellExecuteW("runas") — per-operation UAC elevation for Doctor fixes that
+    # hit access-denied, instead of manifesting the whole app as admin.
+    "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_System_Com",

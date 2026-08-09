@@ -582,8 +582,63 @@
   });
   function paintLive() { $('liveDot').classList.toggle('on', G.live); $('live').classList.toggle('on', G.live); }
 
+  /* ── Pro gate ──────────────────────────────────────────────────────────
+     Building and browsing the graph is free. What Pro unlocks is the part that
+     actually pays for itself: writing the agent digest (.terse/graph.md) so
+     agents read the map instead of grepping whole files. Free users see the
+     graph and a card explaining exactly that, rather than a locked screen. */
+  var isPro = false;
+  function refreshPlan() {
+    if (!invoke) return;
+    invoke('get_license').then(function (lic) {
+      var tier = ((lic && lic.tier) || '').toLowerCase();
+      var status = ((lic && lic.status) || '').toLowerCase();
+      // Must match License::is_pro() in the backend, or the card and the
+      // entitlement disagree — a "free" tier can still report status "active".
+      isPro = (status === 'active' || status === 'trialing') &&
+              tier !== '' && tier !== 'free' && tier !== 'expired';
+      var gate = $('proGate');
+      if (gate) gate.classList.toggle('hidden', isPro);
+      var d = $('digest');
+      if (d) {
+        d.classList.toggle('locked', !isPro);
+        d.title = isPro ? 'Rewrite the agent digest now'
+                        : 'Pro — let your agents read the graph instead of grepping files';
+      }
+    }).catch(function () {
+      // Offline / no license → treat as free tier and SHOW the card, rather
+      // than silently leaving it hidden and looking like Pro.
+      isPro = false;
+      var g = $('proGate');
+      if (g) g.classList.remove('hidden');
+      var db = $('digest');
+      if (db) db.classList.add('locked');
+    });
+  }
+  refreshPlan();
+
+  function goPro() {
+    // The paywall lives in the main window; navigate it there and let its
+    // checkPaywall() take over, same route the Doctor's gated fixes use.
+    if (invoke) invoke('navigate_back').catch(function () {});
+    toast('Pro connects your agents to this graph — opening plans…');
+  }
+  var gateBtn = $('proGateBtn');
+  if (gateBtn) gateBtn.addEventListener('click', goPro);
+
   $('digest').addEventListener('click', function () {
+    if (!isPro) { goPro(); return; }
     invoke('graph_write_digest', { path: currentPath() }).then(function (r) {
+      // The backend is the authority on entitlement — if it says Pro is needed,
+      // believe it over our cached license copy.
+      if (r && r.ok === false) {
+        isPro = false;
+        var g = $('proGate');
+        if (g) g.classList.remove('hidden');
+        toast(r.message || 'Pro connects your agents to this graph.');
+        goPro();
+        return;
+      }
       toast('Digest written · ' + fmt(r.tokensSaved) + ' tokens saved');
     }).catch(function (e) { toast(String(e)); });
   });

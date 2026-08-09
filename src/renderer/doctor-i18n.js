@@ -47,6 +47,19 @@
       'Enable result cache': '启用结果缓存',
       'Enable': '启用',
       'How to fix': '如何修复',
+      // One-click fix labels (promote_all_fixable in doctor.rs)
+      'Enable cache-safe mode': '开启缓存安全模式',
+      'Keep cache warm': '保持缓存热度',
+      'Stabilise prefix': '稳定前缀',
+      'Disable unused servers': '禁用闲置服务',
+      'Trim CLAUDE.md': '精简 CLAUDE.md',
+      'Auto-compact': '自动压缩上下文',
+      'Compress results': '压缩工具结果',
+      'Route cheap turns': '廉价模型分流',
+      'Cap output': '限制输出长度',
+      'Freeze tool order': '固定工具顺序',
+      'Prewarm cache': '预热缓存',
+      'Open config': '打开配置',
       // metric suffix
       '/mo': '/月',
       // constant titles
@@ -146,6 +159,19 @@
       'Enable result cache': '啟用結果緩存',
       'Enable': '啟用',
       'How to fix': '如何修復',
+      // One-click fix labels (promote_all_fixable in doctor.rs)
+      'Enable cache-safe mode': '開啟快取安全模式',
+      'Keep cache warm': '保持快取熱度',
+      'Stabilise prefix': '穩定前綴',
+      'Disable unused servers': '停用閒置服務',
+      'Trim CLAUDE.md': '精簡 CLAUDE.md',
+      'Auto-compact': '自動壓縮上下文',
+      'Compress results': '壓縮工具結果',
+      'Route cheap turns': '廉價模型分流',
+      'Cap output': '限制輸出長度',
+      'Freeze tool order': '固定工具順序',
+      'Prewarm cache': '預熱快取',
+      'Open config': '開啟設定',
       // metric suffix
       '/mo': '/月',
       // constant titles

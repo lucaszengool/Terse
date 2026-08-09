@@ -183,6 +183,14 @@ body { height: 100%; background: var(--bg); color: var(--t1);
 [data-theme="horizon"] body {
   text-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 0 10px rgba(0,0,0,0.30);
 }
+/* The sidebar in the film is a faint LIGHT wash (S3_Main's D.side =
+   rgba(255,255,255,0.028)), not a darker panel. Painting it with the ground
+   colour instead stacks a second dark layer over the glass and is what makes
+   the left column read as a solid slab. */
+[data-theme="horizon"] #sidebar {
+  background: rgba(255,255,255,0.028);
+  border-right-color: rgba(255,255,255,0.075);
+}
 /* The tracked micro-labels are the first thing the wallpaper eats — they are
    small, thin and sit at the bottom of the text ramp. Over glass they need to
    come back up, or the sidebar groups read as smudges. */
@@ -204,9 +212,9 @@ body { height: 100%; background: var(--bg); color: var(--t1);
 [data-theme="horizon"] .cmd-panel, [data-theme="horizon"] .tc-panel,
 [data-theme="horizon"] .theme-dropdown, [data-theme="horizon"] .manual-area,
 [data-theme="horizon"] .live-text, [data-theme="horizon"] .toggle-group {
-  background: linear-gradient(160deg, rgba(15,17,22,0.62), rgba(7,9,13,0.78));
-  backdrop-filter: blur(16px) saturate(1.3);
-  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  background: linear-gradient(160deg, rgba(15,17,22,0.42), rgba(7,9,13,0.58));
+  backdrop-filter: blur(8px) saturate(1.25);
+  -webkit-backdrop-filter: blur(8px) saturate(1.25);
   border-color: var(--bd);
 }
 /* Surfaces inside the slab stay glass too — a solid card would break the
@@ -215,11 +223,14 @@ body { height: 100%; background: var(--bg); color: var(--t1);
 [data-theme="horizon"] .boost-card, [data-theme="horizon"] .stats-strip,
 [data-theme="horizon"] .license-banner, [data-theme="horizon"] .cl-hero,
 [data-theme="horizon"] .cl-footer, [data-theme="horizon"] .card {
-  background: linear-gradient(160deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035));
-  backdrop-filter: blur(6px) saturate(1.2);
-  -webkit-backdrop-filter: blur(6px) saturate(1.2);
-  border-color: var(--bd);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 22px -14px rgba(0,0,0,0.55);
+  /* The film's cards are FLAT white-alpha washes (S3_Main's D palette:
+     tile 0.05 / card 0.065) with no blur of their own — a second backdrop
+     filter stacked inside the slab is what makes the window read frosted
+     instead of clear. Keep them as thin washes so the wallpaper still comes
+     through the cards, exactly as it does in the video. */
+  background: rgba(255,255,255,0.065);
+  border-color: rgba(255,255,255,0.075);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 8px 22px -16px rgba(0,0,0,0.45);
 }
 ::selection { background: color-mix(in srgb, var(--ac) 30%, transparent); }
 

@@ -68,6 +68,21 @@
   #hud{position:absolute;right:12px;top:10px;font-size:11px;color:var(--t3);text-align:right;pointer-events:none}
 
   /* ── Empty / loading state ───────────────────────────────── */
+  /* Free-tier Pro card — floats over the canvas, never blocks it. */
+  #proGate{position:absolute;left:14px;right:14px;bottom:14px;z-index:12;display:flex;gap:12px;
+    align-items:center;padding:12px 14px;border-radius:16px;background:var(--sf);
+    border:1px solid var(--bd);box-shadow:var(--shadow-md);backdrop-filter:blur(12px)}
+  #proGate.hidden{display:none}
+  #proGate .pg-badge{flex-shrink:0;font-size:9.5px;font-weight:800;letter-spacing:.08em;
+    padding:3px 8px;border-radius:9999px;background:var(--btn);color:var(--btn-t)}
+  #proGate .pg-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  #proGate .pg-tx b{font-size:12.5px;color:var(--t1)}
+  #proGate .pg-tx span{font-size:10.5px;line-height:1.5;color:var(--t3)}
+  #proGate code{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--t2)}
+  #proGate #proGateBtn{flex-shrink:0}
+  .chip.locked{opacity:.6}
+  .chip.locked::after{content:'PRO';margin-left:6px;font-size:8px;font-weight:800;
+    letter-spacing:.06em;padding:1px 5px;border-radius:9999px;background:var(--btn);color:var(--btn-t)}
   #empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:14px;text-align:center;padding:30px}
   #empty svg{opacity:.5}
@@ -166,6 +181,18 @@
       <h2 id="emptyH">No graph yet</h2>
       <p id="emptyP">Terse builds a knowledge graph of your codebase — every function, class and module, and how they call, import and inherit from each other. Agents read a compact digest of it instead of grepping whole files, saving tokens.</p>
       <button class="btn primary" id="buildEmpty">Build graph</button>
+    </div>
+
+    <!-- Free tier: the graph is yours to browse; connecting AGENTS to it is Pro. -->
+    <div id="proGate" class="hidden">
+      <div class="pg-badge">PRO</div>
+      <div class="pg-tx">
+        <b>Let your agents read this graph</b>
+        <span>On the free plan the graph is yours to explore. Pro writes the agent digest
+        (<code>.terse/graph.md</code>) so Claude Code and Codex read the map instead of grepping
+        whole files — fewer tokens per turn, and faster answers.</span>
+      </div>
+      <button class="btn primary" id="proGateBtn">Upgrade to Pro</button>
     </div>
 
     <div id="detail">

@@ -197,12 +197,9 @@ impl License {
     /// weekly usage — currently the knowledge-graph agent digest, which is what
     /// actually connects your agents to the graph.
     pub fn is_pro(&self) -> bool {
-        let t = self.tier.to_lowercase();
-        let s = self.status.to_lowercase();
-        (s == "active" || s == "trialing")
-            && !t.is_empty()
-            && t != "free"
-            && t != "expired"
+        let active = matches!(self.status.as_str(), "active" | "trialing" | "past_due");
+        let real_tier = !matches!(self.tier.as_str(), "" | "free" | "expired");
+        active && real_tier
     }
 
     pub fn can_optimize(&self) -> bool {
@@ -251,6 +248,7 @@ impl License {
     pub fn get_snapshot(&self) -> serde_json::Value {
         serde_json::json!({
             "tier": self.tier,
+            "isPro": self.is_pro(),
             "status": self.status,
             "limits": {
                 "optimizationsPerWeek": self.limits.optimizations_per_week,

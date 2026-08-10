@@ -157,7 +157,7 @@
 }
 html { height: 100%; background: transparent; }
 body { height: 100%; background: var(--bg); color: var(--t1);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-family: -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif;
   font-size: 13px; line-height: 1.45; letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   overflow: hidden; user-select: none;
@@ -330,7 +330,7 @@ body { height: 100%; background: var(--bg); color: var(--t1);
   background: linear-gradient(90deg, transparent, var(--bdl), transparent); }
 .manual-area { width: 100%; min-height: 50px; padding: 10px; margin-bottom: 8px;
   background: var(--sf); border: 1px solid var(--bd); border-radius: var(--rs); color: var(--t1);
-  font-family: 'SF Mono', Menlo, monospace; font-size: 11.5px; line-height: 1.5;
+  font-family: 'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; font-size: 11.5px; line-height: 1.5;
   resize: vertical; outline: none; user-select: text;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
 .manual-area:focus { background: var(--sfh); border-color: color-mix(in srgb, var(--ac) 45%, transparent); box-shadow: var(--ring); }
@@ -370,7 +370,7 @@ body { height: 100%; background: var(--bg); color: var(--t1);
 
 .live-text { width: 100%; min-height: 80px; max-height: 160px; padding: 10px;
   background: var(--sf); border: 1px solid var(--bd); border-radius: var(--rs); color: var(--t1);
-  font-family: 'SF Mono', Menlo, monospace; font-size: 11.5px; line-height: 1.55;
+  font-family: 'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; font-size: 11.5px; line-height: 1.55;
   resize: vertical; outline: none; user-select: text; margin-bottom: 6px;
   transition: border-color 0.2s, box-shadow 0.2s; }
 .live-text:focus { border-color: color-mix(in srgb, var(--ac) 45%, transparent); box-shadow: var(--ring); }
@@ -764,7 +764,7 @@ h2, h3 { letter-spacing: -0.02em; }
    ════════════════════════════════════════════════════════════════════ */
 
 /* Type — heavy grotesque display voice for titles, tight tracking */
-body { font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; }
+body { font-family: 'Helvetica Neue', -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif; }
 h2, h3, .sb-name, .hs-title, .cl-hero-tx h3, .idle-title, .sheet-title, .tc-title,
 .cl-total > span:first-child, .stat-pct, .hs-score { letter-spacing: -0.02em; }
 #settingsPanel h3, .cl-hero-tx h3 { font-weight: 800; }
@@ -934,10 +934,10 @@ button:not(:disabled):active, .sb-item:active, .session-item:active, .theme-dot:
 .pl-fld label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--t3); font-weight: 700; margin-bottom: 6px; }
 .pl-fld input, .pl-fld textarea { width: 100%; padding: 10px 12px; background: var(--sf); border: 1px solid var(--bd); border-radius: 11px;
   color: var(--t1); font-size: 12.5px; font-family: inherit; outline: none; transition: border-color .18s ease, box-shadow .18s ease; }
-.pl-fld textarea { min-height: 130px; resize: vertical; font-family: 'SF Mono', Menlo, monospace; font-size: 11.5px; line-height: 1.55; }
+.pl-fld textarea { min-height: 130px; resize: vertical; font-family: 'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; font-size: 11.5px; line-height: 1.55; }
 .pl-fld input:focus, .pl-fld textarea:focus { border-color: color-mix(in srgb, var(--ac) 45%, transparent); box-shadow: var(--ring); }
 .pl-prev { background: var(--sf); border: 1px solid var(--bd); border-radius: 11px; padding: 11px 13px; font-size: 11px; line-height: 1.6;
-  color: var(--t2); white-space: pre-wrap; max-height: 130px; overflow: auto; font-family: 'SF Mono', Menlo, monospace; }
+  color: var(--t2); white-space: pre-wrap; max-height: 130px; overflow: auto; font-family: 'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; }
 .pl-prev mark { background: color-mix(in srgb, var(--ac) 22%, transparent); color: var(--t1); border-radius: 3px; padding: 0 2px; }
 .pl-actions { display: flex; gap: 8px; padding: 12px 0 2px; border-top: 1px solid var(--bd); }
 .pl-btn { flex: 1; border: none; border-radius: 12px; padding: 11px; cursor: pointer; font-size: 12.5px; font-weight: 800; color: var(--btn-t);
@@ -995,7 +995,7 @@ button:not(:disabled):active, .sb-item:active, .session-item:active, .theme-dot:
 .ob-meta { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
 .ob-role { font-size: 12px; font-weight: 700; color: var(--t1); }
 .ob-cost { font-size: 11px; color: var(--t3); white-space: nowrap; }
-.ob-text { font: 11px/1.5 ui-monospace, Menlo, monospace; color: var(--t2); white-space: pre-wrap; word-break: break-word; max-height: 84px; overflow: hidden; }
+.ob-text { font: 11px/1.5 ui-monospace,Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; color: var(--t2); white-space: pre-wrap; word-break: break-word; max-height: 84px; overflow: hidden; }
 /* MCP */
 .mcp-summary { display: flex; gap: 10px; margin-bottom: 12px; }
 .mcp-stat { flex: 1; background: var(--sf); border: 1px solid var(--bd); border-radius: var(--r, 12px); padding: 10px; text-align: center; }
@@ -1009,7 +1009,7 @@ button:not(:disabled):active, .sb-item:active, .session-item:active, .theme-dot:
 .mcp-src { font-size: 10px; font-weight: 600; color: var(--t3); }
 .mcp-tag { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--bg); color: var(--t2); box-shadow: inset 0 0 0 1px var(--bd); }
 .mcp-tag.secret { color: var(--warn, #ffb648); }
-.mcp-cmd { font: 11px/1.4 ui-monospace, Menlo, monospace; color: var(--t3); margin: 3px 0; word-break: break-all; }
+.mcp-cmd { font: 11px/1.4 ui-monospace,Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; color: var(--t3); margin: 3px 0; word-break: break-all; }
 .mcp-reasons { font-size: 11px; color: var(--t3); line-height: 1.5; }
 .mcp-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
 .mcp-risk { font-size: 18px; font-weight: 800; } .mcp-risk span { font-size: 10px; color: var(--t3); font-weight: 600; }
@@ -1058,7 +1058,7 @@ button:not(:disabled):active, .sb-item:active, .session-item:active, .theme-dot:
 .rules-tok span { font-size: 10px; color: var(--t3); font-weight: 600; margin-left: 2px; }
 .rules-editor { margin-top: 14px; background: var(--sf); border: 1px solid var(--bd); border-radius: var(--r, 12px); padding: 12px; }
 .rules-ed-head { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--t3); margin-bottom: 8px; }
-#rulesEdText { width: 100%; min-height: 320px; resize: vertical; box-sizing: border-box; background: var(--bg); color: var(--t1); border: 1px solid var(--bd); border-radius: 10px; padding: 12px; font: 12px/1.6 ui-monospace, Menlo, monospace; }
+#rulesEdText { width: 100%; min-height: 320px; resize: vertical; box-sizing: border-box; background: var(--bg); color: var(--t1); border: 1px solid var(--bd); border-radius: 10px; padding: 12px; font: 12px/1.6 ui-monospace,Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; }
 
 /* ── Observe search + file attribution (Understand) ───────────────────────── */
 .ob-search { width: 100%; box-sizing: border-box; background: var(--sf); border: 1px solid var(--bd); border-radius: 9999px; padding: 8px 14px; color: var(--t1); font-size: 12.5px; margin-bottom: 10px; }
@@ -1066,7 +1066,7 @@ button:not(:disabled):active, .sb-item:active, .session-item:active, .theme-dot:
 .ob-files { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
 .ob-files:empty { display: none; }
 .obf-lbl { font-size: 11px; color: var(--t3); font-weight: 600; }
-.obf { font: 11px ui-monospace, Menlo, monospace; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: color-mix(in srgb, var(--ac) 14%, var(--sf)); color: var(--t1); }
+.obf { font: 11px ui-monospace,Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: color-mix(in srgb, var(--ac) 14%, var(--sf)); color: var(--t1); }
 
 /* ── Sidebar section labels (groups the nav to fight overload) ─────────────── */
 .sb-group-label { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;

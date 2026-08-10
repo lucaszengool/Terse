@@ -95,7 +95,7 @@ body {
   height: 100%;
   background: transparent;
   color: var(--di-t1);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-family: -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif;
   font-size: 12px; line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   overflow: clip;
@@ -305,7 +305,7 @@ body {
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: var(--rs); color: var(--di-t1);
-  font-family: 'SF Mono', Menlo, monospace; font-size: 11px; line-height: 1.5;
+  font-family: 'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; font-size: 11px; line-height: 1.5;
   resize: none; outline: none; user-select: text; margin-bottom: 5px;
   overflow-y: auto;
   transition: background 0.2s ease, border-color 0.2s ease;
@@ -665,7 +665,7 @@ body.minimized .favicon { display: flex !important; }
   border-left: 2px solid rgba(255,197,51,0.45);
   border-radius: 4px; font-size: 9px;
 }
-.agent-redundant-tool .rt-name  { color: var(--di-t1); font-weight: 600; font-family: 'SF Mono', Menlo, monospace; }
+.agent-redundant-tool .rt-name  { color: var(--di-t1); font-weight: 600; font-family: 'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; }
 .agent-redundant-tool .rt-count { color: var(--di-t1); font-weight: 600; margin-left: auto; }
 
 /* ── Activity Log ── */
@@ -673,7 +673,7 @@ body.minimized .favicon { display: flex !important; }
 
 .agent-activity {
   max-height: 200px; overflow-y: auto;
-  font-size: 10px; font-family: 'SF Mono', Menlo, monospace;
+  font-size: 10px; font-family: 'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace;
   color: var(--di-t1); line-height: 1.5; scroll-behavior: smooth;
 }
 .agent-activity::-webkit-scrollbar { width: 3px; }
@@ -694,7 +694,7 @@ body.minimized .favicon { display: flex !important; }
 .agent-activity-line .opt-badge {
   font-size: 8px; padding: 0 4px; border-radius: 2px;
   background: var(--acd); color: var(--ac); font-weight: 600;
-  margin-left: 4px; font-family: -apple-system, sans-serif; float: right;
+  margin-left: 4px; font-family: -apple-system,'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif; float: right;
 }
 .agent-activity-line .opt-badge.saveable { background: var(--ac); color: #080a08; animation: pulse-badge 2s ease-in-out; }
 .agent-activity-line .opt-badge.fixed    { background: rgba(87,193,255,0.18); color: #57c1ff; }
@@ -705,7 +705,7 @@ body.minimized .favicon { display: flex !important; }
 
 .agent-activity-line .tok-badge {
   font-size: 8px; padding: 0 3px; border-radius: 2px;
-  font-weight: 600; margin-left: 4px; font-family: -apple-system, sans-serif;
+  font-weight: 600; margin-left: 4px; font-family: -apple-system,'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif;
   float: right; font-variant-numeric: tabular-nums;
 }
 .tok-badge.dim  { color: var(--di-t4); }

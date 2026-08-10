@@ -591,7 +591,7 @@ function ensureLabelStyles() {
   s.id = 'tw3d-label-css';
   s.textContent = `
     .tw-lay{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2}
-    .tw-lab{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;pointer-events:none;white-space:nowrap;will-change:transform,opacity}
+    .tw-lab{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif;pointer-events:none;white-space:nowrap;will-change:transform,opacity}
     .tw-float{font-size:23px;font-weight:850;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
       text-shadow:0 0 18px currentColor,0 2px 10px rgba(0,0,0,.55)}
     .tw-tag{display:flex;align-items:center;gap:7px;padding:5px 11px 5px 9px;border-radius:9999px;
@@ -652,7 +652,7 @@ function ensureLabelStyles() {
     .tw-log-grp + .tw-log-grp{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09)}
     .tw-log-rows{display:flex;flex-direction:column;gap:3px}
     .tw-log-row{display:flex;align-items:center;gap:9px;font-size:11.5px;line-height:1.55;
-      font-family:'SF Mono',ui-monospace,Menlo,monospace;color:rgba(255,255,255,.82);
+      font-family:'SF Mono',ui-monospace,Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace;color:rgba(255,255,255,.82);
       animation:twlogin .45s cubic-bezier(.2,.85,.25,1) both}
     .tw-log-row .k{flex-shrink:0;width:15px;text-align:center;font-size:12px}
     .tw-log-row .k.tool{color:var(--tw-accent,#e146eb)}

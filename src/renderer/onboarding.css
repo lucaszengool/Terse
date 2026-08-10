@@ -98,9 +98,9 @@
 #onbFlow .onb-demo .dl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);font-weight:700;margin-bottom:7px}
 #onbFlow .onb-demo .w{transition:all .4s ease}
 #onbFlow .onb-demo .w.cut{color:color-mix(in srgb,var(--t3) 50%,transparent);text-decoration:line-through;text-decoration-color:rgba(239,68,68,.55)}
-#onbFlow .onb-badge{position:absolute;top:11px;right:12px;font-size:12px;font-weight:900;padding:3px 10px;border-radius:20px;background:color-mix(in srgb,var(--ac) 18%,transparent);color:var(--ac);font-family:'JetBrains Mono',monospace;transition:all .3s}
+#onbFlow .onb-badge{position:absolute;top:11px;right:12px;font-size:12px;font-weight:900;padding:3px 10px;border-radius:20px;background:color-mix(in srgb,var(--ac) 18%,transparent);color:var(--ac);font-family:'JetBrains Mono','Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace;transition:all .3s}
 #onbFlow .onb-tokrow{display:flex;justify-content:space-between;margin-top:12px;font-size:11px;color:var(--t3);font-weight:600}
-#onbFlow .onb-tokrow b{color:var(--t1);font-family:'JetBrains Mono',monospace}
+#onbFlow .onb-tokrow b{color:var(--t1);font-family:'JetBrains Mono','Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace}
 
 /* ══ DOCTOR — verbatim from doctor.html ══ */
 /* flex-shrink:0 so the tall gauge/findings don't get squished inside the scrolling flex column */
@@ -163,7 +163,7 @@
 
 /* ── cleanup ── */
 #onbFlow .onb-reclaim{text-align:center;margin:2px 0 12px}
-#onbFlow .onb-reclaim .rn{font-family:'JetBrains Mono',monospace;font-size:38px;font-weight:800;color:var(--ac);line-height:1;text-shadow:0 0 26px color-mix(in srgb,var(--ac) 32%,transparent)}
+#onbFlow .onb-reclaim .rn{font-family:'JetBrains Mono','Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace;font-size:38px;font-weight:800;color:var(--ac);line-height:1;text-shadow:0 0 26px color-mix(in srgb,var(--ac) 32%,transparent)}
 #onbFlow .onb-reclaim .rn small{font-size:19px}
 #onbFlow .onb-reclaim .rl{font-size:11px;color:var(--t2);font-weight:600;margin-top:3px}
 #onbFlow .onb-clnrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:11px;background:var(--sf);margin-bottom:7px;border:1px solid var(--bd);transition:opacity .4s,transform .4s}
@@ -173,8 +173,8 @@
 #onbFlow .onb-clnrow .cbi{width:24px;height:24px;border-radius:7px;background:color-mix(in srgb,var(--t3) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
 #onbFlow .onb-clnrow .cn{flex:1;min-width:0}
 #onbFlow .onb-clnrow .ct{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#onbFlow .onb-clnrow .cp{font-size:8.5px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-top:1px}
-#onbFlow .onb-clnrow .cs{font-size:11px;font-weight:800;color:var(--t2);font-family:'JetBrains Mono',monospace;flex-shrink:0}
+#onbFlow .onb-clnrow .cp{font-size:8.5px;color:var(--t3);font-family:'JetBrains Mono','Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace;margin-top:1px}
+#onbFlow .onb-clnrow .cs{font-size:11px;font-weight:800;color:var(--t2);font-family:'JetBrains Mono','Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace;flex-shrink:0}
 #onbFlow .onb-clnnote{font-size:9.5px;color:var(--t3);text-align:center;margin-top:6px;line-height:1.4}
 
 /* ── finale ── */
@@ -183,7 +183,7 @@
 #onbFlow .onb-check.show{opacity:1;transform:scale(1)}
 #onbFlow .onb-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;margin-top:10px}
 #onbFlow .onb-stat{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 6px}
-#onbFlow .onb-stat .sv{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:800;color:var(--ac)}
+#onbFlow .onb-stat .sv{font-family:'JetBrains Mono','Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace;font-size:16px;font-weight:800;color:var(--ac)}
 #onbFlow .onb-stat .sl{font-size:8.5px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:3px}
 #onbFlow .onb-recap{background:var(--sf);border-radius:12px;padding:11px 13px;width:100%;margin-top:10px;text-align:left}
 #onbFlow .onb-recap .row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;color:var(--t2)}

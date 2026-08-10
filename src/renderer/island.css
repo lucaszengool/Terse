@@ -580,7 +580,7 @@ body.island-mode.expanded #islandBento.reveal .bento-tile {
   font-family: 'JetBrains Mono','SF Mono', Menlo, ui-monospace, monospace;
 }
 .bt-num.bump { animation: saveBump 0.5s ease; }
-.bt-num-unit { font-size: 9.5px; font-weight: 700; color: var(--t3); letter-spacing: 0; font-family: -apple-system, sans-serif; }
+.bt-num-unit { font-size: 9.5px; font-weight: 700; color: var(--t3); letter-spacing: 0; font-family: -apple-system,'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif; }
 .bt-sub { font-size: 8.5px; font-weight: 600; color: var(--t3); margin-top: 4px; letter-spacing: 0.2px; }
 
 /* Mini sparkline-ish bar row (Saved tile) */
@@ -802,7 +802,7 @@ body.island-mode .island-capture { margin-top: 10px; padding: 0 2px 2px; }
 .icap-pct { font-size: 11px; font-weight: 800; color: #34d399; }
 .icap-text { width: 100%; min-height: 64px; max-height: 150px; resize: none; border-radius: 10px; padding: 9px 11px;
   background: var(--sf, rgba(255,255,255,.05)); border: 1px solid var(--bd, rgba(255,255,255,.12));
-  color: var(--t1, #fff); font-family: 'SF Mono', Menlo, monospace; font-size: 11px; line-height: 1.5; outline: none; }
+  color: var(--t1, #fff); font-family: 'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; font-size: 11px; line-height: 1.5; outline: none; }
 .icap-actions { display: flex; gap: 7px; margin-top: 9px; }
 .icap-a { flex: 1; border: none; border-radius: 10px; padding: 9px; cursor: pointer; font-family: inherit; font-size: 12px;
   font-weight: 800; color: var(--t1, #fff); background: var(--sf, rgba(255,255,255,.06));

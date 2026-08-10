@@ -7,10 +7,31 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+// Where terse.db lives.
+//
+// This used to be hardcoded to <repo>/data, which on Railway is inside the
+// container's ephemeral filesystem — every redeploy would start from an empty
+// database, taking users, referrals and gift codes with it. Worse, attaching a
+// volume in the Railway dashboard would NOT have helped, because nothing here
+// looked at where it was mounted.
+//
+// Resolution order:
+//   1. TERSE_DATA_DIR            — explicit override (set this if unsure)
+//   2. RAILWAY_VOLUME_MOUNT_PATH — set automatically when a volume is attached
+//   3. <repo>/data               — local development
+const DATA_DIR =
+  process.env.TERSE_DATA_DIR ||
+  process.env.RAILWAY_VOLUME_MOUNT_PATH ||
+  path.join(__dirname, '..', 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const db = new Database(path.join(DATA_DIR, 'terse.db'));
+const DB_FILE = path.join(DATA_DIR, 'terse.db');
+// Printed on every boot so the deploy log answers "is my data on the volume?"
+// without needing a shell. If this says /app/data in production, it is NOT.
+console.log(`[db] sqlite: ${DB_FILE} (persistent=${
+  !!(process.env.TERSE_DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH)})`);
+
+const db = new Database(DB_FILE);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -391,6 +412,21 @@ db.exec(`
     converted_at TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+
+  -- Single-use gift codes that grant lifetime (买断) access. Pre-minted in
+  -- batches and handed out personally; redeeming one sets users.lifetime_at,
+  -- the same flag a paid lifetime purchase sets, so the license endpoint needs
+  -- no special case. redeemed_by NULL = still unused; the claim is an atomic
+  -- conditional UPDATE, so two people racing the same code cannot both win.
+  CREATE TABLE IF NOT EXISTS gift_codes (
+    code TEXT PRIMARY KEY,
+    batch TEXT,
+    kind TEXT DEFAULT 'lifetime',
+    redeemed_by TEXT,
+    redeemed_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_gift_codes_batch ON gift_codes(batch);
 `);
 
 const setReferralCode      = db.prepare(`UPDATE users SET referral_code = ? WHERE id = ?`);
@@ -409,6 +445,19 @@ const addReferral          = db.prepare(`INSERT OR IGNORE INTO referrals (id, re
 const getReferralByReferee = db.prepare(`SELECT * FROM referrals WHERE referee_id = ?`);
 const markReferralConverted = db.prepare(`UPDATE referrals SET status = 'converted', converted_at = datetime('now') WHERE referee_id = ? AND status = 'pending'`);
 const countInvited         = db.prepare(`SELECT COUNT(*) AS n FROM referrals WHERE referrer_id = ?`);
+// ── Gift codes (single-use lifetime) ──
+const addGiftCode          = db.prepare(`INSERT OR IGNORE INTO gift_codes (code, batch, kind) VALUES (?, ?, ?)`);
+const getGiftCode          = db.prepare(`SELECT * FROM gift_codes WHERE code = ?`);
+// Atomic single-use claim: only succeeds while redeemed_by is still NULL, so a
+// code cannot be spent twice even if two requests arrive at the same instant.
+// Callers MUST check .changes === 1 rather than trusting a prior SELECT.
+const claimGiftCode        = db.prepare(
+  `UPDATE gift_codes SET redeemed_by = ?, redeemed_at = datetime('now')
+     WHERE code = ? AND redeemed_by IS NULL`
+);
+const countGiftCodes       = db.prepare(
+  `SELECT COUNT(*) AS total, SUM(redeemed_by IS NOT NULL) AS used FROM gift_codes WHERE batch = ?`
+);
 const countConverted       = db.prepare(`SELECT COUNT(*) AS n FROM referrals WHERE referrer_id = ? AND status = 'converted'`);
 
 /// Deterministic 6-char code — MUST match the desktop client's fallback
@@ -971,6 +1020,7 @@ module.exports = {
   // Referral program
   setReferralCode, getUserByReferralCode, setReferredBy, setBonusProUntil, setLifetime,
   addReferral, getReferralByReferee, markReferralConverted, countInvited, countConverted,
+  addGiftCode, getGiftCode, claimGiftCode, countGiftCodes,
   referralCodeFor,
   // Vibe Projects Platform
   addVibeProject, getVibeProjects, getVibeProjectsByUser, upvoteVibeProject,

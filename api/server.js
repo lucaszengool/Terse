@@ -895,12 +895,19 @@ app.get('/api/referral/:clerkUserId', (req, res) => {
     if (!code) { code = db.referralCodeFor(id); db.setReferralCode.run(code, id); }
     const invited = db.countInvited.get(id)?.n || 0;
     const converted = db.countConverted.get(id)?.n || 0;
-    const proDaysEarned = converted * REFERRAL_DAYS + (u && u.referred_by ? REFERRAL_DAYS : 0);
+    // Days are earned per INVITE now (granted at redeem), not per conversion —
+    // this has to match grantReferrerReward or the modal lies to the user.
+    const proDaysEarned = invited * REFERRAL_DAYS + (u && u.referred_by ? REFERRAL_DAYS : 0);
+    const lifetime = !!(u && u.lifetime_at);
     res.json({
       code,
       shareUrl: `https://www.terseai.org/?ref=${code}`,
       invited, converted, proDaysEarned,
+      lifetime,
+      lifetimeGoal: LIFETIME_REFERRAL_GOAL,
+      lifetimeRemaining: lifetime ? 0 : Math.max(0, LIFETIME_REFERRAL_GOAL - invited),
       rewardText: `Give ${REFERRAL_DAYS} days of Pro, get ${REFERRAL_DAYS} days of Pro`,
+      lifetimeText: `Invite ${LIFETIME_REFERRAL_GOAL} friends → Terse free forever`,
     });
   } catch (err) {
     console.error('[referral] get error:', err.message);
@@ -917,6 +924,27 @@ app.post('/api/referral/redeem', express.json(), (req, res) => {
   try {
     db.ensureUser(clerkUserId);
     const norm = String(code).trim().toUpperCase();
+
+    // The same input box accepts a friend's invite code OR a personal gift code.
+    // Gift codes are tried first: they are namespaced (TERSE-…) so they can never
+    // collide with a 6-char invite code.
+    if (norm.startsWith('TERSE-')) {
+      const gift = db.getGiftCode.get(norm);
+      if (!gift) return res.json({ granted: false, message: 'That gift code is not valid.' });
+      // Atomic claim — the SELECT above is only for a nicer message; this is the
+      // check that actually enforces single use.
+      const claimed = db.claimGiftCode.run(clerkUserId, norm);
+      if (claimed.changes !== 1) {
+        return res.json({ granted: false, message: 'That gift code has already been used.' });
+      }
+      db.setLifetime.run(new Date().toISOString(), `gift:${norm}`, clerkUserId);
+      licenseCache.delete(clerkUserId);
+      return res.json({
+        granted: true, lifetime: true,
+        message: 'Lifetime unlocked — all features and all future updates, forever. 🎉',
+      });
+    }
+
     const owner = db.getUserByReferralCode.get(norm);
     if (!owner) return res.json({ granted: false, message: 'That invite code is not valid.' });
     if (owner.id === clerkUserId) return res.json({ granted: false, message: "You can't redeem your own code." });
@@ -929,12 +957,58 @@ app.post('/api/referral/redeem', express.json(), (req, res) => {
     const until = addDaysIso(me && me.bonus_pro_until, REFERRAL_DAYS);
     db.setBonusProUntil.run(until, clerkUserId);
     licenseCache.delete(clerkUserId); // force re-eval so Pro reflects immediately
-    res.json({ granted: true, message: `${REFERRAL_DAYS} days of Pro unlocked! 🎉`, bonusProUntil: until });
+
+    // Credit the REFERRER right now, not on conversion.
+    //
+    // This used to wait for creditReferrerOnConversion() from the payment
+    // webhook, so a referrer whose friend redeemed but never subscribed saw
+    // "0 Pro days" forever — the modal promises "you both win", and the reward
+    // has to land when the invite is actually used.
+    const referrerReward = grantReferrerReward(owner.id);
+
+    res.json({
+      granted: true,
+      message: `${REFERRAL_DAYS} days of Pro unlocked! 🎉`,
+      bonusProUntil: until,
+      referrerRewarded: referrerReward.days,
+      referrerLifetime: referrerReward.lifetime,
+    });
   } catch (err) {
     console.error('[referral] redeem error:', err.message);
     res.status(500).json({ granted: false, message: 'Could not redeem right now.' });
   }
 });
+
+/// How many successful invites earn permanent (买断) access.
+const LIFETIME_REFERRAL_GOAL = 10;
+
+/// Reward a referrer for one successful invite: +14 days of Pro, and permanent
+/// access once they hit LIFETIME_REFERRAL_GOAL invites. Returns what was granted
+/// so the response can tell the referee what their friend just earned.
+function grantReferrerReward(referrerId) {
+  const out = { days: 0, lifetime: false };
+  try {
+    const referrer = db.getUser.get(referrerId);
+    if (!referrer) return out;
+
+    // Already permanent → nothing left to grant, and no point extending days.
+    if (referrer.lifetime_at) return { days: 0, lifetime: true };
+
+    db.setBonusProUntil.run(addDaysIso(referrer.bonus_pro_until, REFERRAL_DAYS), referrerId);
+    out.days = REFERRAL_DAYS;
+
+    const invited = db.countInvited.get(referrerId)?.n || 0;
+    if (invited >= LIFETIME_REFERRAL_GOAL) {
+      db.setLifetime.run(new Date().toISOString(), `referral:${invited}`, referrerId);
+      out.lifetime = true;
+      console.log(`[referral] ${referrerId} hit ${invited} invites — lifetime granted`);
+    }
+    licenseCache.delete(referrerId);
+  } catch (err) {
+    console.error('[referral] reward error:', err.message);
+  }
+  return out;
+}
 
 /// Credit a referrer once their referee converts to a paid plan. Idempotent.
 function creditReferrerOnConversion(refereeId) {
@@ -943,11 +1017,12 @@ function creditReferrerOnConversion(refereeId) {
     if (!ref || ref.status !== 'pending') return;
     const referrer = db.getUser.get(ref.referrer_id);
     if (!referrer) return;
-    const until = addDaysIso(referrer.bonus_pro_until, REFERRAL_DAYS);
-    db.setBonusProUntil.run(until, ref.referrer_id);
+    // The 14 days were already granted at redeem time (see grantReferrerReward),
+    // so conversion only records the status — granting again here would pay the
+    // referrer twice for one invite.
     db.markReferralConverted.run(refereeId);
     licenseCache.delete(ref.referrer_id);
-    console.log(`[referral] credited referrer ${ref.referrer_id} — referee ${refereeId} converted`);
+    console.log(`[referral] referee ${refereeId} converted — referrer ${ref.referrer_id} marked`);
   } catch (err) {
     console.error('[referral] credit error:', err.message);
   }

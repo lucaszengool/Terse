@@ -1151,6 +1151,32 @@ function renderPetPickerGrid(state) {
 }
 
 // Load auth state on startup
+// Re-verify the licence whenever the window regains focus.
+//
+// Checkout happens in the BROWSER: the user clicks Upgrade, pays, then comes
+// back to the app. Until now the licence was only fetched on launch, so the app
+// still showed everything locked until they quit and reopened it — which is
+// indistinguishable from the isPro bug we just fixed, and would have produced
+// the same "我买了但用不了" reports for every future purchase.
+//
+// Throttled to once per 5s so alt-tabbing doesn't hammer the endpoint.
+(function reverifyOnFocus() {
+  let last = 0;
+  window.addEventListener('focus', async () => {
+    if (Date.now() - last < 5000) return;
+    last = Date.now();
+    try {
+      if (!T.getAuth || !T.verifyLicense) return;
+      const auth = await T.getAuth();
+      if (!auth || !auth.signedIn || !auth.clerkUserId) return;
+      await T.verifyLicense(auth.clerkUserId);
+      updateLicenseBanner();
+      refreshUpgradeCta();
+      if (typeof checkPaywall === 'function') checkPaywall();
+    } catch (e) { /* offline — keep whatever the cached licence says */ }
+  });
+})();
+
 updateAuthUI().then(() => {
   // Auto-verify license on launch if signed in
   T.getAuth && T.getAuth().then(auth => {

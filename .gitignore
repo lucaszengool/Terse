@@ -31,3 +31,8 @@ windows-app/helpers/terse-uia.exe
 windows-app/helpers/terse-uia/bin/
 windows-app/helpers/terse-uia/obj/
 windows-app/helpers/terse-uia/publish/
+
+# Lifetime gift codes — SECRETS. This repo is public; a committed batch is a
+# free permanent licence for anyone who reads the file. Generate with
+# `node api/mint-gift-codes.js`, hand out privately, and import on the server.
+docs/gift-codes-*.txt

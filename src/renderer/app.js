@@ -212,9 +212,34 @@ async function openInvite() {
   $('#inviteSent').textContent = r.invited || 0;
   $('#inviteConv').textContent = r.converted || 0;
   $('#inviteDays').textContent = r.proDaysEarned || 0;
-  if (r.rewardText) $('#inviteReward').innerHTML = r.rewardText + '. When a friend starts Pro, you <b style="color:var(--t1)">both</b> win.';
+  // The referrer is credited the moment a friend REDEEMS now, not when they
+  // later subscribe — the old copy ("when a friend starts Pro") described the
+  // behaviour that left referrers on 0 days forever.
+  if (r.rewardText) $('#inviteReward').innerHTML = r.rewardText + '. Your days land the moment they redeem — you <b style="color:var(--t1)">both</b> win.';
   if (r.pending) $('#inviteMsg').textContent = 'Referral rewards are rolling out — your code is ready to share.';
+  renderLifetimeProgress(r);
 }
+// 10 successful invites → permanent 买断 (all features, all future updates).
+// Driven by lifetimeGoal/lifetimeRemaining from /api/referral; an older server
+// omits them, in which case the row stays hidden rather than showing a fake 0/10.
+function renderLifetimeProgress(r) {
+  const box = $('#inviteLifetime');
+  if (!box) return;
+  const goal = Number(r.lifetimeGoal) || 0;
+  if (!goal) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  const invited = Number(r.invited) || 0;
+  const done = !!r.lifetime;
+  const remaining = done ? 0 : Math.max(0, Number(r.lifetimeRemaining ?? (goal - invited)));
+  const pct = done ? 100 : Math.min(100, Math.round((invited / goal) * 100));
+  $('#inviteLifetimeFill').style.width = pct + '%';
+  $('#inviteLifetimeCount').textContent = done ? '✓' : invited + '/' + goal;
+  $('#inviteLifetimeLabel').textContent = done
+    ? 'Lifetime unlocked — yours forever'
+    : (r.lifetimeText || ('Invite ' + goal + ' friends → Terse free forever'))
+      + (remaining ? ' · ' + remaining + ' to go' : '');
+}
+
 window.__terseOpenInvite = openInvite;
 
 $('#inviteClose')?.addEventListener('click', closeInvite);
@@ -230,10 +255,13 @@ $('#inviteRedeemBtn')?.addEventListener('click', async () => {
   try {
     const res = await T.redeemReferralCode(code);
     if (res && res.granted) {
-      $('#inviteMsg').textContent = '🎉 ' + (res.message || '14 days of Pro unlocked!');
+      // A TERSE-… gift code grants lifetime outright; a friend's invite code
+      // grants days and also pays the friend immediately.
+      $('#inviteMsg').textContent = (res.lifetime ? '🎉 ' : '🎉 ') + (res.message || '14 days of Pro unlocked!');
       updateLicenseBanner(); refreshUpgradeCta();
+      openInvite(); // re-fetch so the counters and lifetime bar reflect the grant
     } else {
-      $('#inviteMsg').textContent = (res && res.message) || 'Code saved — reward applies once your friend joins.';
+      $('#inviteMsg').textContent = (res && res.message) || 'That code could not be redeemed.';
     }
   } catch (e) { $('#inviteMsg').textContent = String(e); }
 });

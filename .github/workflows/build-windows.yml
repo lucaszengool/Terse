@@ -290,7 +290,23 @@ jobs:
           # the only way to photograph it: what is left on screen IS the
           # wallpaper, which is also how we can tell the WorkerW re-parent and
           # the reposition after it actually worked.
-          (New-Object -ComObject Shell.Application).MinimizeAll()
+          # MinimizeAll only touches windows that appear on the taskbar, and
+          # every Terse window sets skip_taskbar(true) — so it left the Doctor
+          # window sitting over the desktop and the "wallpaper" screenshot was
+          # really a screenshot of the app. Hide each top-level Terse window
+          # explicitly instead. The wallpaper window itself is a Progman/WorkerW
+          # child, so EnumWindows never returns it and it stays visible.
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class H{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern int GetWindowThreadProcessId(IntPtr h,out int p);[DllImport("user32.dll")]public static extern bool ShowWindow(IntPtr h,int c);}'
+          $tpids = (Get-Process -Name "Terse" -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
+          $hidden = 0
+          $hcb = [H+Cb]{ param($h,$l)
+            if ([H]::IsWindowVisible($h)) {
+              $wpid = 0; [void][H]::GetWindowThreadProcessId($h, [ref]$wpid)
+              if ($tpids -contains $wpid) { [void][H]::ShowWindow($h, 0); $script:hidden++ }  # SW_HIDE
+            }
+            return $true }
+          [void][H]::EnumWindows($hcb, [IntPtr]::Zero)
+          Write-Host "hid $hidden Terse window(s) to expose the wallpaper"
           Start-Sleep -Seconds 6
           Add-Type -AssemblyName System.Windows.Forms,System.Drawing
           $b2 = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds

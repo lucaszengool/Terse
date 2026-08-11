@@ -200,6 +200,34 @@ jobs:
       # so enumerate every visible window owned by the Terse process, front each
       # in turn and photograph it. These are REAL app windows with live backend
       # data behind them.
+      # Report the runtime truth instead of inferring it from screenshots: is DWM
+      # composition even on (this runner is Windows Server with classic theming,
+      # where a grey caption gradient can be a CI artefact rather than a real
+      # bug), and does each Terse window still carry WS_CAPTION after setup
+      # stripped it? WS_CAPTION = 0x00C00000.
+      - name: Report DWM state and window styles
+        continue-on-error: true
+        run: |
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class D{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern int GetWindowThreadProcessId(IntPtr h,out int p);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll",EntryPoint="GetWindowLongPtrW")]public static extern IntPtr GetWindowLongPtr(IntPtr h,int i);[DllImport("dwmapi.dll")]public static extern int DwmIsCompositionEnabled(out bool e);}'
+          $comp = $false
+          try { [void][D]::DwmIsCompositionEnabled([ref]$comp) } catch {}
+          Write-Host "DWM composition enabled: $comp"
+          $dpids = (Get-Process -Name "Terse" -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
+          $dcb = [D+Cb]{ param($h,$l)
+            if ([D]::IsWindowVisible($h)) {
+              $wpid = 0; [void][D]::GetWindowThreadProcessId($h, [ref]$wpid)
+              if ($dpids -contains $wpid) {
+                $sb = New-Object System.Text.StringBuilder 512
+                [void][D]::GetWindowTextW($h, $sb, 512)
+                $st = [int64][D]::GetWindowLongPtr($h, -16)   # GWL_STYLE
+                $ex = [int64][D]::GetWindowLongPtr($h, -20)   # GWL_EXSTYLE
+                $cap = ($st -band 0x00C00000) -ne 0
+                Write-Host ("  '{0}' style=0x{1:X8} ex=0x{2:X8} WS_CAPTION={3}" -f $sb.ToString(), $st, $ex, $cap)
+              }
+            }
+            return $true }
+          [void][D]::EnumWindows($dcb, [IntPtr]::Zero)
+
       - name: Screenshot every window the app actually opened
         continue-on-error: true
         run: |

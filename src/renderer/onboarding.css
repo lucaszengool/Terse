@@ -1,3 +1,9 @@
+/* WebView2 renders every scrollbar and form control the ::-webkit-scrollbar
+   rules don't match in LIGHT mode unless this is declared — classic silver
+   #C0C0C0 widgets on a dark page. macOS happened to default to the look we
+   wanted, so this was never needed there. */
+:root { color-scheme: dark; }
+
 /* ══════════════════════════════════════════════════════════════════
    Terse first-run onboarding — overlay chrome + verbatim Doctor animation
    All rules scoped under #onbFlow so nothing leaks into the main app.

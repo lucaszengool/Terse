@@ -1,0 +1,161 @@
+# Interactive Windows desktop for hands-on testing.
+#
+# Boots a windows-latest runner, installs a Terse build produced by
+# "Build Windows Installer", launches it, and holds the machine open so you can
+# RDP in from a Mac and use the app yourself.
+#
+# WHY TAILSCALE AND NOT A PUBLIC TUNNEL: this repository is public, so every
+# workflow log is world-readable. An ngrok/cloudflared TCP endpoint printed into
+# that log is an open RDP port on a machine holding a checkout of the repo.
+# Tailscale puts the runner on YOUR private tailnet instead — the address is
+# only routable from your own devices, and printing it leaks nothing.
+#
+# ── One-time setup (you have to do these; I can't create accounts or handle
+#    passwords) ────────────────────────────────────────────────────────────────
+#   1. Free Tailscale account, then Settings → Keys → Generate auth key
+#      (Reusable ON, Ephemeral ON — ephemeral keys clean the runner out of your
+#      tailnet when the job ends).
+#   2. Add two repository secrets under Settings → Secrets and variables →
+#      Actions:
+#        TS_AUTHKEY    — the key from step 1
+#        RDP_PASSWORD  — any password you choose, used for the Windows login
+#      Both are masked, so neither is ever printed in the public log.
+#   3. On the Mac: install Tailscale (same account) and Microsoft Remote Desktop
+#      from the App Store.
+#
+# ── Caveat worth knowing before you trust what you see ───────────────────────
+# windows-latest is Windows Server 2025 (build 26100), not Windows 11. Mica and
+# DWM rounded corners DO work there — they need build >= 22000 — so the glass and
+# corner behaviour is a fair test. The live wallpaper is NOT: Server has no
+# desktop picture and a different Explorer desktop, and the wallpaper window
+# composites the user's actual desktop photo. Judge the wallpaper on real
+# hardware or a Windows 11 VM, not here.
+
+name: Windows Test Desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run ID of a "Build Windows Installer" run to install (blank = latest successful on this branch)'
+        required: false
+        type: string
+      minutes:
+        description: 'How long to hold the desktop open (max 330; the job dies at 6h regardless)'
+        required: false
+        default: '90'
+        type: string
+
+jobs:
+  desktop:
+    runs-on: windows-latest
+    # +10 so the "session over" step still runs after the hold elapses.
+    timeout-minutes: 340
+
+    steps:
+      - name: Guard — required secrets present
+        shell: pwsh
+        env:
+          TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
+          RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+        run: |
+          $missing = @()
+          if (-not $env:TS_AUTHKEY)   { $missing += 'TS_AUTHKEY' }
+          if (-not $env:RDP_PASSWORD) { $missing += 'RDP_PASSWORD' }
+          if ($missing) {
+            throw "Missing repository secret(s): $($missing -join ', '). See the header of this workflow file for how to create them."
+          }
+
+      - name: Download the installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          $id = $env:RUN_ID
+          if (-not $id) {
+            $id = gh run list --repo "${{ github.repository }}" `
+                    --workflow "Build Windows Installer" --branch "${{ github.ref_name }}" `
+                    --status success --limit 1 --json databaseId --jq '.[0].databaseId'
+            if (-not $id) { throw "no successful 'Build Windows Installer' run on ${{ github.ref_name }} — build one first" }
+            Write-Host "using latest successful run $id"
+          }
+          gh run download $id --repo "${{ github.repository }}" -n Terse-Windows-Installer -D installer
+          Get-ChildItem -Recurse installer | Select-Object FullName, Length
+
+      - name: Install Terse
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse installer -Filter *.exe | Select-Object -First 1
+          if (-not $exe) { throw "artifact contained no .exe" }
+          Write-Host "installing $($exe.FullName)"
+          Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait
+          Start-Sleep -Seconds 5
+          Get-ChildItem "C:\Program Files\Terse" -ErrorAction SilentlyContinue | Select-Object Name
+
+      - name: Enable Remote Desktop
+        shell: pwsh
+        env:
+          RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+        run: |
+          # runneradmin is the interactive user the runner already logs in as, so
+          # RDP'ing as it lands on the session the app will launch into.
+          net user runneradmin "$env:RDP_PASSWORD" | Out-Null
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
+            -Name fDenyTSConnections -Value 0
+          # NLA on — the endpoint is tailnet-only, but there is no reason to
+          # accept unauthenticated connection attempts.
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
+            -Name UserAuthentication -Value 1
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-Service -Name TermService -StartupType Automatic
+          Start-Service -Name TermService -ErrorAction SilentlyContinue
+          Write-Host "RDP enabled for user: runneradmin"
+
+      - name: Join the tailnet
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          # Ephemeral + a stable name so it is obvious in the Tailscale admin
+          # console which machine this is, and so it disappears afterwards.
+          args: --hostname=terse-test-runner --accept-routes
+
+      - name: Launch Terse and print how to connect
+        shell: pwsh
+        run: |
+          $app = Get-ChildItem "C:\Program Files\Terse" -Filter *.exe -ErrorAction SilentlyContinue |
+                 Select-Object -First 1
+          if ($app) {
+            Write-Host "launching $($app.FullName)"
+            Start-Process -FilePath $app.FullName
+          } else {
+            Write-Warning "Terse.exe not found under C:\Program Files\Terse — RDP in and start it by hand"
+          }
+          $ip = (tailscale ip -4) -join ''
+          Write-Host ""
+          Write-Host "════════════════════════════════════════════════"
+          Write-Host " Connect with Microsoft Remote Desktop:"
+          Write-Host "   PC name : $ip      (or terse-test-runner)"
+          Write-Host "   User    : runneradmin"
+          Write-Host "   Password: the RDP_PASSWORD secret you set"
+          Write-Host "════════════════════════════════════════════════"
+          Write-Host ""
+          Write-Host "Cancel this run from the Actions tab when you are done."
+
+      - name: Hold the desktop open
+        shell: pwsh
+        env:
+          MINUTES: ${{ inputs.minutes }}
+        run: |
+          $m = [int]$env:MINUTES
+          if ($m -le 0 -or $m -gt 330) { $m = 90 }
+          Write-Host "holding for $m minutes — cancel the run to release it early"
+          for ($i = 1; $i -le $m; $i++) {
+            Start-Sleep -Seconds 60
+            if ($i % 10 -eq 0) { Write-Host "  ...$i/$m minutes" }
+          }
+
+      - name: Session over
+        if: always()
+        shell: pwsh
+        run: Write-Host "runner released; the ephemeral node drops out of your tailnet on its own"

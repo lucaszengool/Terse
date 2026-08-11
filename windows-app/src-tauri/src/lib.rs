@@ -3397,6 +3397,20 @@ pub fn run() {
                 });
             }
 
+            // main is `visible: false` in tauri.conf.json on Windows ONLY, and is
+            // shown HERE, after the sweep above has stripped its frame. Tauri
+            // creates and shows a visible:true window before setup() runs, so
+            // Windows painted main's caption before any of our code could strip
+            // it — and on a transparent window nothing ever repaints over those
+            // pixels, which is why the ghost "Terse" title outlived four
+            // different fixes. Stripping first and showing second is the only
+            // ordering where the caption is never drawn at all.
+            #[cfg(target_os = "windows")]
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+
             // Tray icon + right-click menu (parity with macOS). Until now the
             // Windows tray had NO menu, so there was no way to quit Terse at all —
             // users had to kill it from Task Manager.

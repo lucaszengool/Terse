@@ -7,7 +7,9 @@
     "frontendDist": "../../src/renderer"
   },
   "bundle": {
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -58,7 +60,7 @@
         "alwaysOnTop": false,
         "resizable": true,
         "shadow": true,
-        "visible": true,
+        "visible": false,
         "minWidth": 820,
         "minHeight": 560
       }
@@ -74,7 +76,9 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["terse"]
+        "schemes": [
+          "terse"
+        ]
       }
     }
   }

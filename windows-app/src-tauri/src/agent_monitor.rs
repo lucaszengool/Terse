@@ -298,7 +298,23 @@ fn find_claude_project_dir(home: &Path) -> Option<PathBuf> {
         }
     }
 
-    // Fallback: find the most recently modified project subdirectory
+    // Fallback: the most recently modified project subdirectory — but ONLY if it
+    // is genuinely live.
+    //
+    // On Windows, Claude Desktop and Claude Code CLI are BOTH called claude.exe
+    // (Desktop: %LOCALAPPDATA%\Microsoft\WindowsApps\Claude.exe, CLI:
+    // %USERPROFILE%\.local\bin\claude.exe — the installers are known to shadow
+    // each other in PATH for this reason). `tasklist` reports only the image
+    // name, so process matching cannot tell them apart: anyone with Claude
+    // Desktop sitting in the tray matched "claude" and got a Claude Code card.
+    // This fallback then handed that phantom card the newest folder in
+    // ~/.claude/projects — a session from days ago — and the UI presented its
+    // turns, cost and tools as live. That is the "Claude Code / GPT-5 while I
+    // never used Claude today" report.
+    //
+    // A real CLI session appends to its JSONL continuously, so requiring recent
+    // activity is what separates "an agent is running" from "an agent ran once".
+    const LIVE_WINDOW: Duration = Duration::from_secs(15 * 60);
     let mut newest: Option<(PathBuf, SystemTime)> = None;
     if let Ok(entries) = fs::read_dir(&projects_dir) {
         for entry in entries.flatten() {
@@ -312,7 +328,11 @@ fn find_claude_project_dir(home: &Path) -> Option<PathBuf> {
             }
         }
     }
-    newest.map(|(p, _)| p)
+    newest
+        .filter(|(_, mtime)| {
+            SystemTime::now().duration_since(*mtime).map(|age| age <= LIVE_WINDOW).unwrap_or(false)
+        })
+        .map(|(p, _)| p)
 }
 
 fn agent_defs() -> Vec<(&'static str, AgentDef)> {

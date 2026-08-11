@@ -5076,6 +5076,13 @@ fn b64(data: &[u8]) -> String {
 ///    file extension; the decoder sniffs the content, so that's fine.
 /// 2. `HKCU\Control Panel\Desktop\WallPaper` — the original source file. Used
 ///    when the transcoded copy is missing (fresh profile, some OEM images).
+/// 3. Windows' own stock wallpaper under `%WINDIR%\Web`, which is always
+///    present. This mirrors the macOS side's fall back to `Sonoma.heic`:
+///    mineradio colours its particles by sampling this image, so returning
+///    None left the Windows wallpaper visibly different from the Mac build — a
+///    dark, colourless field — whenever 1 and 2 both miss (a solid-colour
+///    desktop, a policy-managed profile, or a wallpaper on a drive that isn't
+///    mounted). Now the engine always has a base image, same as on the Mac.
 fn desktop_picture_source() -> Option<std::path::PathBuf> {
     if let Some(appdata) = dirs::config_dir() {
         let transcoded = appdata
@@ -5087,25 +5094,33 @@ fn desktop_picture_source() -> Option<std::path::PathBuf> {
             return Some(transcoded);
         }
     }
-    let out = hidden_command("reg")
-        .args([
-            "query",
-            r"HKCU\Control Panel\Desktop",
-            "/v",
-            "WallPaper",
-        ])
+    // `reg` failing must fall through to the stock image, not abort the lookup.
+    if let Ok(out) = hidden_command("reg")
+        .args(["query", r"HKCU\Control Panel\Desktop", "/v", "WallPaper"])
         .output()
-        .ok()?;
-    let text = String::from_utf8_lossy(&out.stdout);
-    for line in text.lines() {
-        if let Some(idx) = line.find("REG_SZ") {
-            let val = line[idx + "REG_SZ".len()..].trim();
-            if !val.is_empty() {
-                let p = std::path::PathBuf::from(val);
-                if p.exists() {
-                    return Some(p);
+    {
+        let text = String::from_utf8_lossy(&out.stdout);
+        for line in text.lines() {
+            if let Some(idx) = line.find("REG_SZ") {
+                let val = line[idx + "REG_SZ".len()..].trim();
+                if !val.is_empty() {
+                    let p = std::path::PathBuf::from(val);
+                    if p.exists() {
+                        return Some(p);
+                    }
                 }
             }
+        }
+    }
+    let windir = std::env::var("WINDIR").unwrap_or_else(|_| r"C:\Windows".to_string());
+    for cand in [
+        r"Web\Wallpaper\Windows\img0.jpg",
+        r"Web\Wallpaper\Theme1\img1.jpg",
+        r"Web\Screen\img100.jpg",
+    ] {
+        let p = std::path::Path::new(&windir).join(cand);
+        if p.exists() {
+            return Some(p);
         }
     }
     None

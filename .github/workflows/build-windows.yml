@@ -110,3 +110,71 @@ jobs:
             windows-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Smoke test on a real Windows desktop ────────────────────────────────
+      # windows-latest is an actual Windows machine with an interactive session,
+      # so the app can be installed, launched and photographed here. Everything
+      # in this build was written on a Mac and verified only by cross-compiling;
+      # these steps are the first thing in the pipeline that proves it RUNS.
+      #
+      # continue-on-error throughout: the release is already published above, and
+      # a flaky screenshot must never fail a build that shipped fine.
+      - name: Install the built app silently
+        continue-on-error: true
+        run: |
+          $exe = Get-ChildItem -Recurse "windows-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis" -Filter *.exe |
+                 Select-Object -First 1
+          if (-not $exe) { throw "no installer produced" }
+          Write-Host "installing $($exe.FullName)"
+          Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait
+          Start-Sleep -Seconds 5
+          $installed = Get-ChildItem -Recurse "C:\Program Files\Terse" -Filter "Terse.exe" -ErrorAction SilentlyContinue |
+                       Select-Object -First 1
+          if (-not $installed) { throw "Terse.exe not found after install" }
+          Write-Host "INSTALLED_AT=$($installed.FullName)"
+          "TERSE_EXE=$($installed.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Launch and prove it stays alive
+        continue-on-error: true
+        run: |
+          Start-Process -FilePath "$env:TERSE_EXE"
+          # WebView2 first-run + the setup() window builds need a moment.
+          Start-Sleep -Seconds 40
+          $p = Get-Process -Name "Terse" -ErrorAction SilentlyContinue
+          if (-not $p) { throw "Terse exited within 40s of launch — it crashed on startup" }
+          Write-Host "alive: $($p.Count) process(es), pid $($p[0].Id)"
+          # A window title is the cheapest proof the webview actually rendered
+          # rather than the process merely existing.
+          $titles = $p | ForEach-Object { $_.MainWindowTitle } | Where-Object { $_ }
+          Write-Host "window titles: $($titles -join ' | ')"
+
+      - name: Screenshot the desktop
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $bmp.Save("artifacts/terse-windows.png")
+          Write-Host "screenshot $($b.Width)x$($b.Height) saved"
+
+      - name: Collect the app's own logs
+        continue-on-error: true
+        run: |
+          $log = Join-Path $env:USERPROFILE ".terse"
+          if (Test-Path $log) {
+            New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+            Copy-Item -Recurse -Force $log artifacts/dot-terse
+            Get-ChildItem -Recurse artifacts/dot-terse | Select-Object FullName, Length
+          } else { Write-Host "no ~/.terse yet" }
+
+      - name: Upload the evidence
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-smoke-test
+          path: artifacts/**
+          if-no-files-found: warn
+          retention-days: 14

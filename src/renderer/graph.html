@@ -134,6 +134,19 @@
     background:var(--t1);color:var(--bg);padding:8px 15px;border-radius:20px;font-size:12.5px;font-weight:600;
     opacity:0;transition:all .22s ease;z-index:9;pointer-events:none;max-width:80%}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* Overlay-style scrollbars. WKWebView hides these by default; WebView2 draws
+     a full classic Windows gutter, which is why these panes looked heavier than
+     the same screens on macOS. */
+  * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.16); border-radius: 8px;
+    border: 2px solid transparent; background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); background-clip: content-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
 </style>
 </head>
 <body>

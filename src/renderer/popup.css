@@ -95,7 +95,7 @@ body {
   height: 100%;
   background: transparent;
   color: var(--di-t1);
-  font-family: -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif;
+  font-family: -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';
   font-size: 12px; line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   overflow: clip;
@@ -697,7 +697,7 @@ body.minimized .favicon { display: flex !important; }
 .agent-activity-line .opt-badge {
   font-size: 8px; padding: 0 4px; border-radius: 2px;
   background: var(--acd); color: var(--ac); font-weight: 600;
-  margin-left: 4px; font-family: -apple-system,'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif; float: right;
+  margin-left: 4px; font-family: -apple-system,'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'; float: right;
 }
 .agent-activity-line .opt-badge.saveable { background: var(--ac); color: #080a08; animation: pulse-badge 2s ease-in-out; }
 .agent-activity-line .opt-badge.fixed    { background: rgba(87,193,255,0.18); color: #57c1ff; }
@@ -708,7 +708,7 @@ body.minimized .favicon { display: flex !important; }
 
 .agent-activity-line .tok-badge {
   font-size: 8px; padding: 0 3px; border-radius: 2px;
-  font-weight: 600; margin-left: 4px; font-family: -apple-system,'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif;
+  font-weight: 600; margin-left: 4px; font-family: -apple-system,'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';
   float: right; font-variant-numeric: tabular-nums;
 }
 .tok-badge.dim  { color: var(--di-t4); }

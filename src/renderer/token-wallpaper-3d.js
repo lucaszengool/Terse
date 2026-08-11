@@ -591,7 +591,7 @@ function ensureLabelStyles() {
   s.id = 'tw3d-label-css';
   s.textContent = `
     .tw-lay{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2}
-    .tw-lab{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif;pointer-events:none;white-space:nowrap;will-change:transform,opacity}
+    .tw-lab{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';pointer-events:none;white-space:nowrap;will-change:transform,opacity}
     .tw-float{font-size:23px;font-weight:850;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
       text-shadow:0 0 18px currentColor,0 2px 10px rgba(0,0,0,.55)}
     .tw-tag{display:flex;align-items:center;gap:7px;padding:5px 11px 5px 9px;border-radius:9999px;

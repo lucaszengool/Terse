@@ -157,7 +157,7 @@
 }
 html { height: 100%; background: transparent; }
 body { height: 100%; background: var(--bg); color: var(--t1);
-  font-family: -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif;
+  font-family: -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';
   font-size: 13px; line-height: 1.45; letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   overflow: hidden; user-select: none;
@@ -781,7 +781,7 @@ h2, h3 { letter-spacing: -0.02em; }
    ════════════════════════════════════════════════════════════════════ */
 
 /* Type — heavy grotesque display voice for titles, tight tracking */
-body { font-family: 'Helvetica Neue', -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif; }
+body { font-family: 'Helvetica Neue', -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'; }
 h2, h3, .sb-name, .hs-title, .cl-hero-tx h3, .idle-title, .sheet-title, .tc-title,
 .cl-total > span:first-child, .stat-pct, .hs-score { letter-spacing: -0.02em; }
 #settingsPanel h3, .cl-hero-tx h3 { font-weight: 800; }

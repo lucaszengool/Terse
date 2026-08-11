@@ -596,12 +596,18 @@ kbd { display: inline-block; padding: 1px 5px; background: var(--sf);
 .health-strip.loading .hs-sub::before { content: '\00a0'; }
 @keyframes hsShimmer { to { background-position: -200% 0; } }
 /* Needs-attention pulse — a HIGH finding makes the score tile breathe red */
-.health-strip.bad .hs-score { animation: hsAlert 2s var(--ease) infinite; }
-@keyframes hsAlert {
-  0%, 100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 25%, transparent); }
-  50% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 45%, transparent),
-        0 0 12px color-mix(in srgb, var(--red) 35%, transparent); }
+/* Alert breathe as an opacity fade on an overlay — the resting ring stays on
+   .hs-score itself. Animating box-shadow repainted the tile for as long as the
+   user had a HIGH finding, which is precisely when they leave the app open. */
+.health-strip.bad .hs-score { position: relative; }
+.health-strip.bad .hs-score::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 45%, transparent),
+              0 0 12px color-mix(in srgb, var(--red) 35%, transparent);
+  opacity: 0; will-change: opacity;
+  animation: hsAlert 2s var(--ease) infinite;
 }
+@keyframes hsAlert { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
 
 /* Launcher grid — superseded by the sidebar; buttons stay in the DOM because
    the command palette and sidebar actions trigger them programmatically. */

@@ -143,8 +143,11 @@ body {
 .dot.danger { background: #ff6161; box-shadow: 0 0 7px rgba(255,97,97,0.45); }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1;   box-shadow: 0 0 6px  var(--ac-glow); }
-  50%       { opacity: 0.5; box-shadow: 0 0 18px var(--ac-glow); }
+  /* opacity only. It already faded 1 → .5; the box-shadow swing on top forced a
+     repaint of the live dot every frame for as long as an agent was connected,
+     buying almost nothing visually on a 6px circle. */
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
 }
 
 #appLabel {

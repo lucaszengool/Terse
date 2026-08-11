@@ -394,9 +394,19 @@ body.island-mode #islandExpanded::-webkit-scrollbar-thumb {
    When NOT hovered, the pill gently "breathes" an accent glow so the live monitor draws
    the eye even at rest. The window is natively rounded-clipped, so only inset shadows
    show — the breathe is built from inset rings + an accent floor. */
-body.island-mode:not(.expanded) #islandRoot {
-  animation: islandBreathe 3.8s ease-in-out infinite;
+body.island-mode:not(.expanded) #islandRoot::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; z-index: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 0 0 1px var(--ac-glow),
+    inset 0 -22px 40px -14px var(--ac-glow);
+  opacity: 0; will-change: opacity;
+  animation: glowBreathe 3.8s ease-in-out infinite;
 }
+/* opacity-only: the resting shadow stays on #islandRoot, the lit state rides an
+   overlay. Animating box-shadow here repainted the whole island continuously. */
+@keyframes glowBreathe { 0%,100% { opacity: 0; } 50% { opacity: 1; } }
 @keyframes islandBreathe {
   0%, 100% {
     box-shadow:
@@ -428,20 +438,29 @@ body.island-mode:not(.expanded) #islandPill .island-sheen { animation-duration: 
 #islandPill.working .island-pill-glyph::after { animation-duration: 0.6s; }
 #islandPill.working .island-pill-action { color: var(--ac); }
 /* A thin accent progress sweep along the pill's bottom edge while working */
-#islandPill.working::after {
+/* Progress sweep along the pill's bottom edge while an agent works. Translated,
+   not background-position'd, and clipped by #islandPill's own overflow:hidden —
+   so the pill is not repainted 60x/s at exactly the moment the machine is
+   busiest doing real work. */
+#islandPill.working::before {
   content: ''; position: absolute; left: 12px; right: 12px; bottom: 5px; height: 1.5px;
-  border-radius: 2px; pointer-events: none;
+  border-radius: 2px; pointer-events: none; opacity: 0.85; z-index: 2;
   background: linear-gradient(90deg, transparent, var(--ac), transparent);
-  background-size: 50% 100%; opacity: 0.85;
-  animation: pillWork 1.5s linear infinite;
+  will-change: transform;
+  animation: pillWorkX 1.5s linear infinite;
 }
-@keyframes pillWork {
-  0%   { background-position: -60% 0; }
-  100% { background-position: 160% 0; }
+/* Composited variant used by the rules below: same sweep, transform-driven. */
+@keyframes pillWorkX {
+  0%   { transform: translate3d(-100%,0,0); }
+  100% { transform: translate3d(200%,0,0); }
 }
 /* Working overrides idle breathing with a livelier accent pulse */
-body.island-mode:not(.expanded) #islandRoot:has(#islandPill.working) {
-  animation: islandBreatheWork 2.4s ease-in-out infinite;
+body.island-mode:not(.expanded) #islandRoot:has(#islandPill.working)::before {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.14),
+    inset 0 0 0 1px var(--ac),
+    inset 0 -24px 44px -12px var(--ac-glow);
+  animation-duration: 2.4s;
 }
 @keyframes islandBreatheWork {
   0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), inset 0 0 0 0.5px var(--ac-glow-wide), inset 0 -18px 34px -16px var(--ac-glow); }
@@ -698,8 +717,13 @@ body.island-mode.expanded #islandBento.reveal .bento-tile {
 
 /* ── Pre-compaction pill states (context ≥75% amber, ≥90% pulsing red) ── */
 #islandPill.ctx-warn   { box-shadow: 0 0 0 1px rgba(255,197,51,0.45), 0 0 12px rgba(255,197,51,0.25); }
-#islandPill.ctx-danger { box-shadow: 0 0 0 1px rgba(255,97,97,0.55), 0 0 14px rgba(255,97,97,0.35);
-  animation: ctxDangerPulse 1.6s ease-in-out infinite; }
+#islandPill.ctx-danger { box-shadow: 0 0 0 1px rgba(255,97,97,0.55), 0 0 14px rgba(255,97,97,0.35); }
+#islandPill.ctx-danger::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(255,97,97,0.85), 0 0 22px rgba(255,97,97,0.55);
+  opacity: 0; will-change: opacity;
+  animation: glowBreathe 1.6s ease-in-out infinite;
+}
 @keyframes ctxDangerPulse {
   0%, 100% { box-shadow: 0 0 0 1px rgba(255,97,97,0.55), 0 0 14px rgba(255,97,97,0.35); }
   50%      { box-shadow: 0 0 0 1px rgba(255,97,97,0.85), 0 0 22px rgba(255,97,97,0.55); }

@@ -2399,6 +2399,31 @@ fn make_rounded(win: &tauri::WebviewWindow, w_logical: f64, h_logical: f64, radi
     { let _ = (win, w_logical, h_logical, radius); }
 }
 
+/// Clear the WebView2 ghost titlebar (tauri#14764) by resizing the window once.
+///
+/// That upstream bug paints a leftover titlebar background BELOW the web content
+/// on transparent windows; it is not a window style, which is why CI kept
+/// reporting WS_CAPTION=false while the bar stayed on screen. The issue reports
+/// that resizing makes it disappear, so nudge the height by a pixel and back.
+///
+/// The guard is essential: a resize fires Resized, whose handler strips the
+/// frame, which previously nudged again — an infinite loop that wiped the island
+/// off the desktop. This runs at most once at a time, and never from inside
+/// strip_native_frame.
+#[cfg(target_os = "windows")]
+fn clear_ghost_titlebar(win: &tauri::WebviewWindow) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static NUDGING: AtomicBool = AtomicBool::new(false);
+    if NUDGING.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    if let Ok(sz) = win.inner_size() {
+        let _ = win.set_size(tauri::PhysicalSize::new(sz.width, sz.height + 1));
+        let _ = win.set_size(tauri::PhysicalSize::new(sz.width, sz.height));
+    }
+    NUDGING.store(false, Ordering::SeqCst);
+}
+
 /// Remove the native caption from a window built with `decorations(false)`.
 ///
 /// tao leaves WS_CAPTION and WS_SYSMENU on undecorated windows so that snap and
@@ -3409,6 +3434,7 @@ pub fn run() {
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.show();
                 let _ = w.set_focus();
+                clear_ghost_titlebar(&w);
             }
 
             // Tray icon + right-click menu (parity with macOS). Until now the

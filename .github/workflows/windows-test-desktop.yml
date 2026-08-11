@@ -24,12 +24,16 @@
 #      from the App Store.
 #
 # ── Caveat worth knowing before you trust what you see ───────────────────────
-# windows-latest is Windows Server 2025 (build 26100), not Windows 11. Mica and
-# DWM rounded corners DO work there — they need build >= 22000 — so the glass and
-# corner behaviour is a fair test. The live wallpaper is NOT: Server has no
-# desktop picture and a different Explorer desktop, and the wallpaper window
-# composites the user's actual desktop photo. Judge the wallpaper on real
-# hardware or a Windows 11 VM, not here.
+# windows-latest is Windows Server 2025 Datacenter, build 26100 — not Windows 11,
+# but Mica and DWM rounded corners need only build >= 22000, so glass and corner
+# behaviour is a fair test here. It also ships the Windows 11 "bloom" desktop
+# picture, so the wallpaper engine has a real base image to composite.
+#
+# What is NOT representative: the runner has no GPU. WebView2 falls back to
+# software rendering, which is exactly the configuration that broke the
+# wallpaper's particle text (vertex texture fetch returns 0 there). That makes it
+# a GOOD place to catch that class of bug and a BAD place to judge how the
+# wallpaper actually looks. Frame rate will also be poor over RDP.
 
 name: Windows Test Desktop
 

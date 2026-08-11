@@ -7,6 +7,7 @@ mod stats_store;
 mod pricing;
 mod license;
 mod cowork;
+mod permission;
 mod pet_store;
 mod farm_store;
 mod doctor;
@@ -2603,7 +2604,10 @@ fn wallpaper_config_path() -> std::path::PathBuf {
 
 fn wallpaper_default_config() -> serde_json::Value {
     serde_json::json!({
-        "enabled": false,
+        // On by default: the particle wallpaper is the feature people
+        // install Terse to see. Defaults apply only when wallpaper.json
+        // is absent, so an existing user who turned it off stays off.
+        "enabled": true,
         // 默认引擎 = mineradio(真桌面壁纸 + 粒子律动);"topography" 切回音域回响光柱地形
         "engine": "mineradio",
         "theme": "neon", "quality": 56, "angle": 55, "intensity": 1.0
@@ -2986,21 +2990,80 @@ fn farm_set_mini(mini: bool, app: AppHandle) -> Result<(), String> {
 
 // ── Farm Commands ──
 
+/// Terse Farm is a Pro feature.
+///
+/// Viewing the farm stays free — the tiles, the coin balance and what the saved
+/// tokens are worth are all readable, because that view IS the pitch. What Pro
+/// gates is *acting* on it: planting, fertilising, harvesting. A locked screen
+/// would just be a dead end.
+///
+/// Mirrors doctor_apply_fix's gate so the frontend's existing needsAuth /
+/// reason handling (sign-in modal vs paywall) works unchanged.
+fn farm_pro_gate(state: &tauri::State<'_, AppState>) -> Option<String> {
+    {
+        let auth = lock_or_recover(&state.auth);
+        if !auth.signed_in {
+            return Some("Sign in to tend your farm.".into());
+        }
+    }
+    let can = { lock_or_recover(&state.license).can_optimize() };
+    if !can && !in_grace(state) {
+        return Some("Terse Farm is a Pro feature — upgrade to plant and harvest.".into());
+    }
+    None
+}
+
+/// How many saved tokens buy one farm coin.
+///
+/// The farm's whole premise is that optimizing pays for the seeds, but coins
+/// were only ever minted "1 per optimization call, regardless of tokens saved"
+/// — so a turn that saved 40k tokens was worth exactly as much as one that
+/// saved 12. Saved tokens now convert too, which is what makes the farm an
+/// actual reward for the thing Terse does.
+pub const TOKENS_PER_COIN: u64 = 1_000;
+
+/// The single source of truth for the farm's spendable coins.
+///
+/// This used to be copy-pasted into five commands with subtly different
+/// arithmetic (some subtracted farm spend, some didn't), so the balance shown
+/// on the farm could disagree with the one plant/fertilize actually checked.
+fn farm_coin_balance(state: &tauri::State<'_, AppState>) -> u64 {
+    let farm_spent = {
+        let farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+        farm.data.coins_spent_farm
+    };
+    let (earned, pet_spent) = {
+        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
+        (pet.data().coins_earned, pet.data().coins_spent)
+    };
+    let token_coins = {
+        let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+        stats.total_tokens_saved() / TOKENS_PER_COIN
+    };
+    earned
+        .saturating_add(token_coins)
+        .saturating_sub(pet_spent)
+        .saturating_sub(farm_spent)
+}
+
 #[tauri::command]
 fn get_farm_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
-    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
-    let coin_bal = {
-        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-        let farm_spent = farm.data.coins_spent_farm;
-        let earned = pet.data().coins_earned;
-        let pet_spent = pet.data().coins_spent;
-        earned.saturating_sub(pet_spent).saturating_sub(farm_spent)
-    };
-    let saved_token_bal = {
+    let coin_bal = farm_coin_balance(&state);
+    let (saved_total, token_coins) = {
         let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
-        stats.total_tokens_saved().saturating_sub(farm.data.saved_tokens_spent_farm)
+        let t = stats.total_tokens_saved();
+        (t, t / TOKENS_PER_COIN)
     };
-    farm.get_state(coin_bal, saved_token_bal)
+    let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
+    let mut out = farm.get_state(coin_bal, saved_total);
+    // Surface the conversion so the farm can show WHERE the coins came from
+    // instead of a bare number.
+    if let Some(o) = out.as_object_mut() {
+        o.insert("tokensSaved".into(), serde_json::json!(saved_total));
+        o.insert("tokenCoins".into(), serde_json::json!(token_coins));
+        o.insert("tokensPerCoin".into(), serde_json::json!(TOKENS_PER_COIN));
+    }
+    out
 }
 
 // ── Session Timeline + HTML replay (Observe) ────────────────────────────────
@@ -3189,12 +3252,11 @@ fn connectivity_fix_all(state: tauri::State<'_, AppState>) -> serde_json::Value 
 
 #[tauri::command]
 fn farm_plant(tile_idx: usize, crop_id: String, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    if let Some(msg) = farm_pro_gate(&state) { return Err(msg); }
+    // Balance FIRST: farm_coin_balance locks farm_store itself and the Mutex is
+    // not reentrant, so taking the lock before calling it deadlocks the command.
+    let coin_bal = farm_coin_balance(&state);
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
-    let coin_bal = {
-        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
-        pet.data().coins_earned.saturating_sub(spent)
-    };
     farm.plant(tile_idx, &crop_id, coin_bal)
 }
 
@@ -3206,17 +3268,17 @@ fn farm_water(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<serd
 
 #[tauri::command]
 fn farm_fertilize(tile_idx: usize, state: tauri::State<'_, AppState>) -> Result<u64, String> {
+    if let Some(msg) = farm_pro_gate(&state) { return Err(msg); }
+    // Balance FIRST: farm_coin_balance locks farm_store itself and the Mutex is
+    // not reentrant, so taking the lock before calling it deadlocks the command.
+    let coin_bal = farm_coin_balance(&state);
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
-    let coin_bal = {
-        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
-        pet.data().coins_earned.saturating_sub(spent)
-    };
     farm.fertilize(tile_idx, coin_bal)
 }
 
 #[tauri::command]
 fn farm_harvest(tile_idx: usize, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<serde_json::Value, String> {
+    if let Some(msg) = farm_pro_gate(&state) { return Err(msg); }
     let result = {
         let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
         farm.harvest(tile_idx)?
@@ -3279,12 +3341,11 @@ fn farm_sell_crops(crop_id: String, amount: u64, state: tauri::State<'_, AppStat
 
 #[tauri::command]
 fn farm_pool_plant(pool_idx: usize, crop_id: String, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    if let Some(msg) = farm_pro_gate(&state) { return Err(msg); }
+    // Balance FIRST: farm_coin_balance locks farm_store itself and the Mutex is
+    // not reentrant, so taking the lock before calling it deadlocks the command.
+    let coin_bal = farm_coin_balance(&state);
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
-    let coin_bal = {
-        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
-        pet.data().coins_earned.saturating_sub(spent)
-    };
     farm.pool_plant(pool_idx, &crop_id, coin_bal)
 }
 
@@ -3302,12 +3363,10 @@ fn farm_pool_harvest(pool_idx: usize, state: tauri::State<'_, AppState>) -> Resu
 
 #[tauri::command]
 fn farm_pool_fertilize(pool_idx: usize, state: tauri::State<'_, AppState>) -> Result<u64, String> {
+    // Balance FIRST: farm_coin_balance locks farm_store itself and the Mutex is
+    // not reentrant, so taking the lock before calling it deadlocks the command.
+    let coin_bal = farm_coin_balance(&state);
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
-    let coin_bal = {
-        let pet = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-        let spent = pet.data().coins_spent + farm.data.coins_spent_farm;
-        pet.data().coins_earned.saturating_sub(spent)
-    };
     farm.pool_fertilize(pool_idx, coin_bal)
 }
 
@@ -3981,6 +4040,17 @@ fn get_doctor_settings() -> doctor::DoctorSettings {
     doctor::load_settings()
 }
 
+/// Answer a pending Claude Code permission prompt from the island.
+/// `decision` is allow | deny | ask; anything else is rejected rather than
+/// forwarded, so a bad payload can never become an approval.
+#[tauri::command]
+fn permission_respond(id: String, decision: String, app: tauri::AppHandle) -> bool {
+    if !matches!(decision.as_str(), "allow" | "deny" | "ask" | "always") {
+        return false;
+    }
+    app.state::<permission::PermissionHub>().respond(&id, &decision)
+}
+
 #[tauri::command]
 fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
     #[cfg(target_os = "macos")]
@@ -4094,9 +4164,21 @@ pub fn run() {
                     tauri_plugin_window_state::StateFlags::POSITION
                         | tauri_plugin_window_state::StateFlags::SIZE,
                 )
+                // The pet is excluded from position restore on purpose. Its launch
+                // position is computed from the current monitor anyway, and a
+                // position saved under a different display setup put it 182px off
+                // the right edge of a 1792px screen — the art is drawn CENTRED in
+                // the 240px window, so the pet became completely invisible while
+                // the window itself still reported onscreen=true.
+                //
+                // Restore also runs AFTER setup(), so clamping there was silently
+                // overwritten by the restored coordinates. Not restoring at all is
+                // the only version of this that cannot race.
+                .with_denylist(&["pet"])
                 .build(),
         )
         .manage(AppState::default())
+        .manage(permission::PermissionHub::default())
         .setup(|app| {
             // Native vibrancy under the main window (macOS) — deliberately NOT applied
             // at startup any more. "horizon" is the default theme and it is clear glass:
@@ -4105,6 +4187,14 @@ pub fn run() {
             // set_clear_glass(false) when the user picks any other theme, which is what
             // puts the frosted backing back. Starting without it means the first paint is
             // already glass, with no flash of grey while the JS boots.
+            permission::start(app.handle().clone());
+            // Register the PreToolUse hook. Appends to whatever the user already
+            // has, and refuses to touch an unparseable settings.json.
+            match permission::install_hook() {
+                Ok(true) => eprintln!("[permission] hook installed in ~/.claude/settings.json"),
+                Ok(false) => {}
+                Err(e) => eprintln!("[permission] hook not installed: {e}"),
+            }
             // Register the terse:// connect handler + handle a cold-start launch URL.
             {
                 let handle = app.handle().clone();
@@ -4232,14 +4322,11 @@ pub fn run() {
             let monitor_h = monitor.size().height as f64 / monitor.scale_factor();
             let pet_x = (screen_width - pet_w - 24.0) as f64;
             let pet_y = (monitor_h - pet_h - 60.0) as f64;
-            // Show the floating Pals companion on launch whenever the user has a
-            // pet equipped — restoring the pre-existing behaviour. With no pet
-            // equipped a clean start is just the main window + the island.
-            let pet_visible = {
-                let st = app.state::<AppState>();
-                let pet_store = st.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-                pet_store.data().equipped_pet.is_some()
-            };
+            // The pet starts hidden, whether or not one is equipped. It is a
+            // companion the user opens deliberately from the app, not something
+            // that should plant itself on the desktop the moment Terse starts.
+            // Equipping still persists; this only changes what launch looks like.
+            let pet_visible = false;
             let _pet_win = WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("pet.html".into()))
                 .title("Terse Pet")
                 .inner_size(pet_w, pet_h)
@@ -4386,10 +4473,24 @@ pub fn run() {
                     let _ = win.set_position(tauri::LogicalPosition::new(nx, ny));
                 }
             }
+            // Runs twice: now, and again after the window-state plugin has had a
+            // chance to restore positions (its restore lands after setup()).
             for label in ["pet", "popup", "island", "toast", "palette"] {
                 if let Some(w) = app.get_webview_window(label) {
                     clamp_into_screen(&w);
                 }
+            }
+            {
+                let h = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(1500));
+                    for label in ["pet", "popup", "island", "toast", "palette"] {
+                        if let Some(w) = h.get_webview_window(label) {
+                            let w2 = w.clone();
+                            let _ = w.run_on_main_thread(move || clamp_into_screen(&w2));
+                        }
+                    }
+                });
             }
 
             // macOS: force transparent bg + rounded corners on both windows
@@ -5001,6 +5102,7 @@ pub fn run() {
             farm_set_mini,
             check_ax_permission,
             set_clear_glass,
+            permission_respond,
             get_doctor_settings,
             request_accessibility,
             pet_work_detected,

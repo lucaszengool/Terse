@@ -3072,11 +3072,11 @@ pub fn run() {
             let monitor_h = monitor.size().height as f64 / monitor.scale_factor();
             let pet_x = (screen_width - pet_w - 24.0) as f64;
             let pet_y = (monitor_h - pet_h - 60.0) as f64;
-            let pet_visible = {
-                let st = app.state::<AppState>();
-                let pet_store = st.pet_store.lock().unwrap_or_else(|e| e.into_inner());
-                pet_store.data().equipped_pet.is_some()
-            };
+            // The pet starts hidden, whether or not one is equipped. It is a
+            // companion the user opens deliberately from the app, not something
+            // that should plant itself on the desktop the moment Terse starts.
+            // Equipping still persists; this only changes what launch looks like.
+            let pet_visible = false;
             let _pet_win = WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("pet.html".into()))
                 .title("Terse Pet")
                 .inner_size(pet_w, pet_h)
@@ -3261,6 +3261,21 @@ pub fn run() {
                             }
                         }
                     });
+                }
+            }
+
+            // Every window this app creates is decorations(false) — main and the
+            // popup from tauri.conf.json, the rest from their builders — so none
+            // of them should carry a native caption. strip_native_frame runs
+            // inside make_rounded, but main and several others never go through
+            // make_rounded, which is why the MAIN window still showed a ghost
+            // "Terse" title and □ ✕ buttons after the island was fixed. Sweep
+            // every window once, here, after they all exist, rather than relying
+            // on whichever ones happen to be rounded.
+            #[cfg(target_os = "windows")]
+            for (_label, w) in app.webview_windows() {
+                if let Ok(raw) = w.hwnd() {
+                    strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
                 }
             }
 
@@ -5081,7 +5096,10 @@ fn wallpaper_config_path() -> std::path::PathBuf {
 
 fn wallpaper_default_config() -> serde_json::Value {
     serde_json::json!({
-        "enabled": false,
+        // On by default: the particle wallpaper is the feature people
+        // install Terse to see. Defaults apply only when wallpaper.json
+        // is absent, so an existing user who turned it off stays off.
+        "enabled": true,
         // 默认引擎 = mineradio(真桌面壁纸 + 粒子律动);"topography" 切回音域回响光柱地形
         "engine": "mineradio",
         "theme": "neon", "quality": 56, "angle": 55, "intensity": 1.0

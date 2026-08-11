@@ -5220,7 +5220,7 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
     use windows::Win32::UI::WindowsAndMessaging::{
         FindWindowExW, GetSystemMetrics, GetWindowLongPtrW, SendMessageTimeoutW, SetParent,
         SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, SMTO_NORMAL, SM_CXVIRTUALSCREEN,
-        SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOZORDER,
+        SM_CYVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOZORDER,
         SWP_SHOWWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
     };
 
@@ -5248,16 +5248,37 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             );
         }
 
-        // The wallpaper WorkerW is the top-level WorkerW WITHOUT a SHELLDLL_DefView
-        // child (the one *with* that child hosts the desktop icons).
+        // Finding the wallpaper host, in the order the shell actually arranges
+        // it. The previous version took the last top-level WorkerW *without* a
+        // SHELLDLL_DefView child, which is not the same thing: there are
+        // normally two or three WorkerWs and that picked an arbitrary one, so
+        // the window was re-parented somewhere that never draws. CI confirmed
+        // it — wallpaper.json said enabled, wallpaper-bg.jpg was generated, and
+        // the desktop still showed the stock picture.
+        //
+        // 1) If SHELLDLL_DefView is a direct child of Progman (the usual case
+        //    on Windows 11), Progman itself is the correct parent: our window
+        //    then draws over the wallpaper and under the icons.
+        // 2) Otherwise DefView lives inside a WorkerW, and the wallpaper host
+        //    is that WorkerW's NEXT sibling of the same class.
+        let defview_on_progman = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None)
+            .map(|h| !h.is_invalid())
+            .unwrap_or(false);
         let mut target = HWND::default();
-        let mut worker = FindWindowExW(None, None, w!("WorkerW"), None).unwrap_or_default();
-        while !worker.is_invalid() {
-            let defview = FindWindowExW(worker, None, w!("SHELLDLL_DefView"), None);
-            if defview.map(|h| h.is_invalid()).unwrap_or(true) {
-                target = worker;
+        if !defview_on_progman {
+            let mut worker = FindWindowExW(None, None, w!("WorkerW"), None).unwrap_or_default();
+            while !worker.is_invalid() {
+                let has_defview = FindWindowExW(worker, None, w!("SHELLDLL_DefView"), None)
+                    .map(|h| !h.is_invalid())
+                    .unwrap_or(false);
+                if has_defview {
+                    // The sibling immediately after the icon host is the layer
+                    // the wallpaper is painted into.
+                    target = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
+                    break;
+                }
+                worker = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
             }
-            worker = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
         }
         let parent = if target.is_invalid() { progman } else { target };
         if !parent.is_invalid() {
@@ -5267,15 +5288,18 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             // 0,0 + monitor-size we set before showing no longer means what it
             // did — without this the wallpaper lands off-screen or at the wrong
             // size, which looks identical to "the wallpaper never appeared".
-            // Uses the full virtual screen so it spans multi-monitor setups the
-            // way the macOS desktop level does.
-            let x = GetSystemMetrics(SM_XVIRTUALSCREEN);
-            let y = GetSystemMetrics(SM_YVIRTUALSCREEN);
+            // Sized to the whole virtual screen so it spans multi-monitor
+            // setups the way the macOS desktop level does — but positioned at
+            // 0,0, NOT at SM_X/YVIRTUALSCREEN. Those are desktop coordinates,
+            // and a child's origin is its parent's client area: the host spans
+            // the virtual desktop, so its 0,0 already IS the top-left. With a
+            // monitor left of the primary, SM_XVIRTUALSCREEN is negative and
+            // would have shoved the wallpaper off the side.
             let cx = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             let cy = GetSystemMetrics(SM_CYVIRTUALSCREEN);
             if cx > 0 && cy > 0 {
                 let _ = SetWindowPos(
-                    hwnd, None, x, y, cx, cy,
+                    hwnd, None, 0, 0, cx, cy,
                     SWP_NOACTIVATE | SWP_NOZORDER | SWP_SHOWWINDOW,
                 );
             }

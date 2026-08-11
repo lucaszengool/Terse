@@ -1733,26 +1733,39 @@ fn get_doctor_settings() -> doctor::DoctorSettings {
     doctor::load_settings()
 }
 
-/// Toggle the fully-clear glass look. macOS drops NSVisualEffectView vibrancy;
-/// the Windows equivalent is dropping the acrylic backdrop, which leaves the
-/// window's own CSS gradient over an unblurred desktop — exactly the film's
-/// near-clear glass. Re-enabling restores the same tint `setup` applies.
+/// Toggle the fully-clear glass look, mirroring the macOS command exactly:
+/// `enabled = true` (horizon) → strip the native material so the window is bare
+/// transparent and the wallpaper reads through crisply; `false` (every other
+/// dark theme) → put the material back so the desktop frosts behind the window.
+///
+/// Mac swaps an NSVisualEffectView. The Windows counterpart is Mica — DWM's
+/// wallpaper-derived material, which behaves like vibrancy in that it blurs and
+/// deliberately does not sample other windows. Acrylic is NOT the counterpart:
+/// on 22H2+ it composites near-opaque whatever tint alpha it is given, and it
+/// sat under the theme's own gradient, so the window read flat grey.
+///
+/// This used to call `clear_acrylic` unconditionally while `setup` applied
+/// `apply_mica` — two different DWM attributes, so the clear was a no-op and
+/// horizon could never actually go clear on Windows.
 #[tauri::command]
 fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
     #[cfg(target_os = "windows")]
     {
-        use window_vibrancy::clear_acrylic;
-        // Every frameless surface that carries the glass, so the island and the
-        // main window never disagree about how clear they are.
-        for lbl in ["main", "island", "doctor", "farm", "palette", "toast"] {
+        use window_vibrancy::{apply_mica, clear_mica};
+        // Only the large rectangular surfaces, matching where `setup` rounds via
+        // DWM. The island and toast are clipped to a shape with SetWindowRgn,
+        // and DWM paints its backdrop over the whole rectangle ignoring that
+        // region — mica on the island fills the pill's corners back in. They
+        // stay plain transparent, which is also what Mac does with them.
+        for lbl in ["main", "doctor", "farm", "palette"] {
             if let Some(win) = app.get_webview_window(lbl) {
-                // Only ever CLEAR. Re-applying acrylic would undo the
-                // transparency fix — on Windows 11 22H2+ it composites a
-                // near-opaque backdrop under the theme's own gradient, which is
-                // exactly what made the window read flat grey. Startup no
-                // longer applies it at all, so there is nothing to restore.
-                let _ = enabled;
-                let _ = clear_acrylic(&win);
+                // Both error on pre-22000 builds, where the window is simply
+                // transparent already — a downgrade, not a breakage.
+                if enabled {
+                    let _ = clear_mica(&win);
+                } else {
+                    let _ = apply_mica(&win, Some(true));
+                }
             }
         }
     }
@@ -3268,43 +3281,41 @@ pub fn run() {
                     .build();
             }
 
-            // Mica, not acrylic, and not bare transparency.
+            // Backdrop material: bare transparency at startup, Mica on demand.
             //
-            // Three attempts, so the reasoning is worth recording. apply_acrylic
+            // Four attempts, so the reasoning is worth keeping. apply_acrylic
             // composites a near-opaque backdrop on Windows 11 22H2+ (26100 here)
             // whatever tint alpha it is given, and it sat UNDER the theme's own
             // translucent gradient — the window read as flat grey however far
-            // the tint came down. Removing it did produce real transparency, but
-            // bare transparency has NO material: windows sitting behind Terse
-            // show through sharply and legibly, which reads as a second window
-            // overlaid on the glass. That is not what macOS does — vibrancy
-            // blurs the backdrop, so anything behind dissolves into a wash.
+            // the tint came down. Mica is the Win11 material that does behave
+            // like macOS vibrancy: DWM derives it from the DESKTOP WALLPAPER,
+            // blurred and tinted, and deliberately does not sample other
+            // windows, so background windows stop bleeding through.
             //
-            // Mica is the Win11 material that behaves like vibrancy here: DWM
-            // derives it from the DESKTOP WALLPAPER, blurred and tinted, and
-            // deliberately does NOT sample other windows. So background windows
-            // stop bleeding through while the surface still reads as glass over
-            // the desktop. Dark variant, to match every theme the app ships.
+            // But applying it at startup is what made every big Windows window
+            // look frosted where Mac looked like clear glass — Mac applies no
+            // material until the theme asks for one. So Mica moved to
+            // set_clear_glass, which is the same seam Mac swaps vibrancy on.
             #[cfg(target_os = "windows")]
             {
-                // Mica ONLY on the large rectangular surfaces. DWM paints its
-                // backdrop over the window's whole rectangle and ignores the
-                // GDI region SetWindowRgn installs, so putting mica on the
-                // island filled the pill's corners — it came out looking
-                // wrapped in a dark rectangle with four square corners, and
-                // lost its transparency. The island and toast stay plain
-                // transparent + rounded region; they are small and sit over the
-                // desktop, where bleed-through was never the complaint.
+                // NO backdrop material at startup — the Mac build's rule, ported.
                 //
-                // The big windows get their rounding from DWM instead (below),
-                // which mica does respect.
-                use window_vibrancy::apply_mica;
+                // src-tauri/src/lib.rs:4183 spells out why: "horizon" is the
+                // default theme and it is clear glass, so applying a native
+                // material underneath frosts the desktop into a flat slab, which
+                // is the exact look horizon exists to avoid. Mac therefore starts
+                // bare and lets the frontend call set_clear_glass(false) when the
+                // user picks any other theme. Mica was being applied here
+                // unconditionally, which is why every big Windows window read as
+                // frosted while the same theme on Mac read as clear glass.
+                //
+                // Trade-off this re-opens, recorded so it isn't rediscovered a
+                // fourth time: bare transparency has no material, so windows
+                // behind Terse show through sharply instead of dissolving into a
+                // wash. Mica hid that by deriving its backdrop from the wallpaper
+                // only. It now comes back with the theme, via set_clear_glass.
                 for lbl in ["main", "doctor", "farm", "palette"] {
                     if let Some(w) = app.get_webview_window(lbl) {
-                        // Errors on pre-22000 builds; the window is still
-                        // transparent there, so failing is a downgrade and not
-                        // a breakage.
-                        let _ = apply_mica(&w, Some(true));
                         // Round these through DWM rather than SetWindowRgn. The
                         // GDI region does not clip the mica backdrop, so a
                         // mica'd window rounded that way still shows four square

@@ -750,11 +750,12 @@
   </div><!-- /shell -->
   <script>
     /* ── Theme System ── */
-    /* macOS: "horizon" is clear glass (blur 3px) — the desktop is meant to read
-       through it crisply, so the native NSVisualEffectView frosting under the
-       window has to come off. Every other theme puts it back. Retries until the
-       Tauri bridge exists, since this runs before the scripts load; a no-op on
-       Windows, where the command is a stub. */
+    /* "horizon" is clear glass (blur 3px) — the desktop is meant to read through
+       it crisply, so the native material under the window has to come off. Every
+       other theme puts it back. macOS swaps an NSVisualEffectView, Windows swaps
+       Mica (both live in set_clear_glass); it is no longer a Windows stub, which
+       is what used to leave every Windows window frosted on horizon. Retries
+       until the Tauri bridge exists, since this runs before the scripts load. */
     function applyClearGlass(t) {
       var on = t === 'horizon';
       var tries = 0;

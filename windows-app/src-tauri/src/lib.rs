@@ -5203,8 +5203,10 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
     use windows::core::w;
     use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
     use windows::Win32::UI::WindowsAndMessaging::{
-        FindWindowExW, GetWindowLongPtrW, SendMessageTimeoutW, SetParent, SetWindowLongPtrW,
-        GWL_EXSTYLE, SMTO_NORMAL, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
+        FindWindowExW, GetSystemMetrics, GetWindowLongPtrW, SendMessageTimeoutW, SetParent,
+        SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, SMTO_NORMAL, SM_CXVIRTUALSCREEN,
+        SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOZORDER,
+        SWP_SHOWWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
     };
 
     let raw = match win.hwnd() {
@@ -5245,6 +5247,23 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
         let parent = if target.is_invalid() { progman } else { target };
         if !parent.is_invalid() {
             let _ = SetParent(hwnd, parent);
+            // MUST reposition after re-parenting. SetParent re-interprets the
+            // window's coordinates as client-relative to its new parent, so the
+            // 0,0 + monitor-size we set before showing no longer means what it
+            // did — without this the wallpaper lands off-screen or at the wrong
+            // size, which looks identical to "the wallpaper never appeared".
+            // Uses the full virtual screen so it spans multi-monitor setups the
+            // way the macOS desktop level does.
+            let x = GetSystemMetrics(SM_XVIRTUALSCREEN);
+            let y = GetSystemMetrics(SM_YVIRTUALSCREEN);
+            let cx = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+            let cy = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+            if cx > 0 && cy > 0 {
+                let _ = SetWindowPos(
+                    hwnd, None, x, y, cx, cy,
+                    SWP_NOACTIVATE | SWP_NOZORDER | SWP_SHOWWINDOW,
+                );
+            }
         }
 
         // Click-through + out of Alt-Tab, so the desktop stays fully usable.

@@ -324,7 +324,7 @@ jobs:
           # really a screenshot of the app. Hide each top-level Terse window
           # explicitly instead. The wallpaper window itself is a Progman/WorkerW
           # child, so EnumWindows never returns it and it stays visible.
-          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class H{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern int GetWindowThreadProcessId(IntPtr h,out int p);[DllImport("user32.dll")]public static extern bool ShowWindow(IntPtr h,int c);}'
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class H{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern int GetWindowThreadProcessId(IntPtr h,out int p);[DllImport("user32.dll")]public static extern bool ShowWindow(IntPtr h,int c);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetClassNameW(IntPtr h,System.Text.StringBuilder s,int n);}'
           $tpids = (Get-Process -Name "Terse" -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
           $hidden = 0
           $hcb = [H+Cb]{ param($h,$l)
@@ -335,6 +335,24 @@ jobs:
             return $true }
           [void][H]::EnumWindows($hcb, [IntPtr]::Zero)
           Write-Host "hid $hidden Terse window(s) to expose the wallpaper"
+          # Hiding Terse alone still left the runner's own console covering the
+          # desktop, so the shot was a sliver of wallpaper under a wall of logs.
+          # Minimise every other top-level window too — except the shell itself
+          # (Progman hosts the desktop and Shell_TrayWnd is the taskbar; hiding
+          # either would remove the very thing being photographed).
+          $keep = @('Progman','WorkerW','Shell_TrayWnd','Windows.UI.Core.CoreWindow')
+          $mini = 0
+          $mcb = [H+Cb]{ param($h,$l)
+            if ([H]::IsWindowVisible($h)) {
+              $cls = New-Object System.Text.StringBuilder 256
+              [void][H]::GetClassNameW($h, $cls, 256)
+              if ($keep -notcontains $cls.ToString()) {
+                [void][H]::ShowWindow($h, 6); $script:mini++   # SW_MINIMIZE
+              }
+            }
+            return $true }
+          [void][H]::EnumWindows($mcb, [IntPtr]::Zero)
+          Write-Host "minimised $mini other window(s)"
           Start-Sleep -Seconds 6
           Add-Type -AssemblyName System.Windows.Forms,System.Drawing
           $b2 = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds

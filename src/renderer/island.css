@@ -95,27 +95,32 @@ body.island-mode #islandRoot:has(#islandPill.peek) {
 
 /* Liquid sheen — a soft accent light that sweeps across the pill/card to signal "live" */
 .island-sheen {
-  position: absolute; inset: 0;
+  /* Swept with transform, not background-position. The island is on screen
+     permanently, so this animation never stops — and background-position is a
+     paint property, meaning Chromium repainted the whole pill (through a
+     mix-blend-mode: screen layer) every frame, forever. transform and opacity
+     are compositor-only, so the same sweep now costs no repaint at all. */
+  position: absolute; top: 0; bottom: 0;
+  left: -70%; width: 70%;
   border-radius: inherit;
   pointer-events: none;
   background: linear-gradient(105deg,
-    transparent 30%,
-    var(--ac-glow) 46%,
+    transparent 0%,
+    var(--ac-glow) 38%,
     rgba(255,255,255,0.10) 50%,
-    var(--ac-glow) 54%,
-    transparent 70%);
-  background-size: 280% 100%;
-  background-position: 180% 0;
+    var(--ac-glow) 62%,
+    transparent 100%);
   opacity: 0.0;
+  will-change: transform, opacity;
   animation: islandSheen 4.2s ease-in-out infinite;
   mix-blend-mode: screen;
 }
 .island-sheen-card { animation-duration: 6.5s; opacity: 0; }
 @keyframes islandSheen {
-  0%   { background-position: 180% 0; opacity: 0; }
+  0%   { transform: translate3d(0,0,0);    opacity: 0; }
   35%  { opacity: 0.9; }
   60%  { opacity: 0.9; }
-  100% { background-position: -120% 0; opacity: 0; }
+  100% { transform: translate3d(250%,0,0); opacity: 0; }
 }
 
 .island-dot {
@@ -127,8 +132,11 @@ body.island-mode #islandRoot:has(#islandPill.peek) {
   animation: islandPulse 1.8s ease-in-out infinite;
 }
 @keyframes islandPulse {
-  0%, 100% { opacity: 1;   box-shadow: 0 0 8px var(--ac-glow), 0 0 2px var(--ac); }
-  50%      { opacity: .55; box-shadow: 0 0 4px var(--ac-glow); }
+  /* opacity only — animating box-shadow repainted the dot every frame for the
+     entire time the island was open. The shadow is now static and the pulse
+     comes from opacity, which the compositor handles for free. */
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .55; }
 }
 
 .island-pill-icon { font-size: 15px; line-height: 1; flex-shrink: 0; z-index: 1; }

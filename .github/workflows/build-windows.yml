@@ -134,6 +134,41 @@ jobs:
           Write-Host "INSTALLED_AT=$($installed.FullName)"
           "TERSE_EXE=$($installed.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      # The runner boots with no desktop picture and the wallpaper feature off,
+      # so a plain launch never touches any of the wallpaper code. Setting both
+      # up BEFORE launch means `setup()`'s restore path runs for real:
+      # show_wallpaper_window -> pin_wallpaper_window (the WorkerW re-parent) and
+      # get_desktop_picture (the PowerShell downscale). Those are the two pieces
+      # that have never been observed running anywhere.
+      - name: Give the runner a desktop picture and turn the wallpaper on
+        continue-on-error: true
+        run: |
+          # Also a direct check of the stock paths the Rust fallback relies on.
+          foreach ($c in @("$env:WINDIR\Web\Wallpaper\Windows\img0.jpg",
+                           "$env:WINDIR\Web\Wallpaper\Theme1\img1.jpg",
+                           "$env:WINDIR\Web\Screen\img100.jpg")) {
+            Write-Host "stock candidate $c exists=$(Test-Path $c)"
+          }
+          $img = Get-ChildItem -Recurse "$env:WINDIR\Web\Wallpaper" -Include *.jpg -ErrorAction SilentlyContinue |
+                 Select-Object -First 1
+          if ($img) {
+            # One line on purpose: a PowerShell here-string must close at column
+            # 0, which is illegal inside an indented YAML block scalar.
+            Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class Wp { [DllImport("user32.dll", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool SystemParametersInfo(uint a, uint b, string c, uint d); }'
+            # SPI_SETDESKWALLPAPER, SPIF_UPDATEINIFILE|SPIF_SENDCHANGE
+            $null = [Wp]::SystemParametersInfo(20, 0, $img.FullName, 3)
+            Write-Host "desktop picture set to $($img.FullName)"
+          } else {
+            Write-Host "no stock wallpaper on this runner - fallback will be exercised"
+          }
+          $transcoded = Join-Path $env:APPDATA "Microsoft\Windows\Themes\TranscodedWallpaper"
+          Write-Host "TranscodedWallpaper exists=$(Test-Path $transcoded)"
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          '{"enabled":true,"engine":"mineradio","theme":"neon","quality":56,"angle":55,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Write-Host "wallpaper.json written with enabled=true"
+
       - name: Launch and prove it stays alive
         continue-on-error: true
         run: |
@@ -159,6 +194,39 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           $bmp.Save("artifacts/terse-windows.png")
           Write-Host "screenshot $($b.Width)x$($b.Height) saved"
+
+      # wallpaper-bg.jpg only exists if desktop_picture_source() found an image
+      # AND the PowerShell/System.Drawing downscale succeeded, so its presence is
+      # end-to-end proof of the piece that differs most from the Mac's `sips`
+      # path. Its absence localises the failure precisely.
+      - name: Prove the wallpaper engine got its base image
+        continue-on-error: true
+        run: |
+          $bg = Join-Path $env:USERPROFILE ".terse\wallpaper-bg.jpg"
+          if (Test-Path $bg) {
+            $f = Get-Item $bg
+            Add-Type -AssemblyName System.Drawing
+            $i = [System.Drawing.Image]::FromFile($f.FullName)
+            Write-Host "WALLPAPER_BG OK: $($f.Length) bytes, $($i.Width)x$($i.Height)"
+            $i.Dispose()
+          } else {
+            Write-Host "WALLPAPER_BG MISSING - source lookup or downscale failed"
+          }
+          # The wallpaper window is a WorkerW child with WS_EX_TOOLWINDOW, so it
+          # never appears in the process window list. Minimising everything is
+          # the only way to photograph it: what is left on screen IS the
+          # wallpaper, which is also how we can tell the WorkerW re-parent and
+          # the reposition after it actually worked.
+          (New-Object -ComObject Shell.Application).MinimizeAll()
+          Start-Sleep -Seconds 6
+          Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+          $b2 = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp2 = New-Object System.Drawing.Bitmap $b2.Width, $b2.Height
+          $g2 = [System.Drawing.Graphics]::FromImage($bmp2)
+          $g2.CopyFromScreen($b2.X, $b2.Y, 0, 0, $bmp2.Size)
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $bmp2.Save("artifacts/terse-windows-desktop.png")
+          Write-Host "desktop screenshot saved"
 
       - name: Collect the app's own logs
         continue-on-error: true

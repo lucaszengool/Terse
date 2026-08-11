@@ -119,6 +119,41 @@ jobs:
       #
       # continue-on-error throughout: the release is already published above, and
       # a flaky screenshot must never fail a build that shipped fine.
+      # The single most useful number for reading the screenshots below.
+      # WebView2 144.0.3719.67 through .82 shipped a regression that paints a
+      # ghost title bar under the web content on transparent windows
+      # (MicrosoftEdge/WebView2Feedback#5492, tauri#14764). It is fixed in
+      # 144.0.3719.93+. Without this line, every ghost bar in a screenshot is
+      # ambiguous between "our bug" and "the runner's runtime".
+      - name: Log the WebView2 Runtime version
+        continue-on-error: true
+        run: |
+          $keys = @(
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
+            'HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          )
+          $v = $null
+          foreach ($k in $keys) {
+            $p = Get-ItemProperty -Path $k -ErrorAction SilentlyContinue
+            if ($p.pv) { $v = $p.pv; break }
+          }
+          if (-not $v) { $v = "(not found in registry)" }
+          Write-Host "WebView2 Runtime: $v"
+          $bad = $false
+          if ($v -match '^(\d+)\.(\d+)\.(\d+)\.(\d+)$') {
+            $maj = [int]$Matches[1]; $bld = [int]$Matches[3]; $rev = [int]$Matches[4]
+            # Regressed range: 144.0.3719.<93 and all of 145.x.
+            if ($maj -eq 145) { $bad = $true }
+            if ($maj -eq 144 -and $bld -eq 3719 -and $rev -lt 93) { $bad = $true }
+          }
+          if ($bad) {
+            Write-Warning "This runtime is inside the WebView2 ghost-titlebar regression window - any ghost bar in the screenshots below is upstream, not ours."
+          } else {
+            Write-Host "Outside the known regression window - a ghost bar here would be ours."
+          }
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          "WebView2 Runtime: $v`nregressed range: $bad" | Set-Content artifacts/webview2-version.txt
+
       - name: Install the built app silently
         continue-on-error: true
         run: |

@@ -185,16 +185,17 @@ const GLYPH_VS = `
 precision highp float;
 attribute vec2 aUv;
 attribute float aRand;
-uniform sampler2D uGlyphTex;
+attribute float aOn;
 uniform float uForm, uVis, uPixel, uPointScale, uTime, uBloomSize;
 uniform vec2 uCenter, uSize;
 uniform vec3 uTint;
 varying vec3 vColor;
 varying float vA;
 void main(){
-  vec2 g = vec2(clamp(aUv.x, 0.002, 0.998), clamp(aUv.y, 0.06, 0.94));
-  float m = texture2D(uGlyphTex, g).r;
-  float on = step(0.45, m);
+  // 字形遮罩在 CPU 上采好后直接喂 aUv/aOn —— 这里不做 vertex texture fetch:
+  // Windows/WebView2 走 ANGLE,顶点纹理单元在软件渲染(WARP/SwiftShader)下会是 0,
+  // 采样恒返回 0 → 整句统计文字一个粒子都不亮。CPU 采样在两个平台上都成立。
+  float on = aOn;
   vec2 target = uCenter + (aUv - 0.5) * uSize;
   float a = aRand * 6.2831;
   vec2 scatter = vec2(cos(a), sin(a)) * (0.55 + aRand * 1.35);
@@ -378,22 +379,26 @@ export default class MineradioWallpaper {
     const cv = document.createElement('canvas');
     cv.width = 1024; cv.height = 160;
     this._glyphCanvas = cv;
-    this._glyphTex = new THREE.CanvasTexture(cv);
-    this._glyphTex.minFilter = THREE.LinearFilter;
-    this._glyphTex.magFilter = THREE.LinearFilter;
+    // willReadFrequently:每次换一句都要 getImageData 采一遍遮罩,不加这个 Chromium 会把
+    // 画布留在 GPU 上,每次回读都同步阻塞一帧。
+    this._glyphCtx = cv.getContext('2d', { willReadFrequently: true });
 
     const n = 30000;
+    this._glyphN = n;
     const geo = new THREE.BufferGeometry();
     const uv = new Float32Array(n * 2), rnd = new Float32Array(n), pos = new Float32Array(n * 3);
+    const on = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       uv[i * 2] = Math.random(); uv[i * 2 + 1] = Math.random(); rnd[i] = Math.random();
     }
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('aUv', new THREE.BufferAttribute(uv, 2));
     geo.setAttribute('aRand', new THREE.BufferAttribute(rnd, 1));
+    geo.setAttribute('aOn', new THREE.BufferAttribute(on, 1));
+    this._glyphAttr = { uv: geo.attributes.aUv, on: geo.attributes.aOn };
 
     const base = {
-      uGlyphTex: { value: this._glyphTex }, uDotTex: this.u.uDotTex,
+      uDotTex: this.u.uDotTex,
       uForm: { value: 0 }, uVis: { value: 0 },
       uCenter: { value: new THREE.Vector2(0, 0) },
       uSize: { value: new THREE.Vector2(2.55, 0.44) },
@@ -416,20 +421,62 @@ export default class MineradioWallpaper {
     this._glyphLayer = { scene, geo, mat, matB };
   }
 
-  /** 把当前这句话画进字形画布(粒子随后采它当遮罩) */
+  /** 把当前这句话画进字形画布,再在 CPU 上把亮像素采成每颗粒子的落点 */
   _drawGlyphLabel(text) {
-    const cv = this._glyphCanvas, g = cv.getContext('2d');
+    const cv = this._glyphCanvas, g = this._glyphCtx;
     g.clearRect(0, 0, cv.width, cv.height);
     g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height);
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
     let px = 96;
-    const FONT = "'SF Mono','JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace";
+    // Consolas/Segoe UI Mono 补在前面:Windows 上没有 SF Mono/Menlo,只留 generic
+    // monospace 会掉到 Courier New,细笔画在粒子遮罩里几乎采不到点。
+    const FONT = "'SF Mono','JetBrains Mono',ui-monospace,SFMono-Regular,Menlo," +
+                 "Consolas,'Segoe UI Mono',monospace";
     for (; px > 30; px -= 2) {
       g.font = `800 ${px}px ${FONT}`;
       if (g.measureText(text).width < cv.width * 0.92) break;
     }
     g.fillText(text, cv.width / 2, cv.height / 2);
-    this._glyphTex.needsUpdate = true;
+    this._sampleGlyphMask();
+  }
+
+  /** 遮罩 → 粒子:亮像素列表里随机取点写进 aUv,其余粒子 aOn=0 直接不亮。
+   *  以前这一步在 vertex shader 里 texture2D(uGlyphTex),Windows 软件渲染下恒为 0。 */
+  _sampleGlyphMask() {
+    const cv = this._glyphCanvas, W = cv.width, H = cv.height;
+    const attr = this._glyphAttr;
+    if (!attr) return;
+    const uv = attr.uv.array, on = attr.on.array, n = this._glyphN;
+
+    let data;
+    try { data = this._glyphCtx.getImageData(0, 0, W, H).data; }
+    catch (e) { return; }                       // 画布被污染就保持上一句(不至于黑屏)
+
+    // 亮像素索引表(步长 1,1024×160 一次扫完 ~0.5ms)
+    const lit = [];
+    for (let y = 0; y < H; y++) {
+      const row = y * W * 4;
+      for (let x = 0; x < W; x++) {
+        if (data[row + x * 4] > 115) lit.push(y * W + x);
+      }
+    }
+    if (!lit.length) { on.fill(0); attr.on.needsUpdate = true; return; }
+
+    // 点数跟着笔画面积走,长句不会稀、短句不会糊成一块实心
+    const budget = Math.max(2500, Math.min(n, Math.round(lit.length * 0.10)));
+    for (let i = 0; i < n; i++) {
+      if (i < budget) {
+        const p = lit[(Math.random() * lit.length) | 0];
+        // 半像素抖动,免得粒子严格落在像素格上织出网点
+        uv[i * 2]     = (((p % W) + Math.random()) / W);
+        uv[i * 2 + 1] = 1 - (((p / W | 0) + Math.random()) / H);   // 画布 y 向下,uv y 向上
+        on[i] = 1;
+      } else {
+        on[i] = 0;
+      }
+    }
+    attr.uv.needsUpdate = true;
+    attr.on.needsUpdate = true;
   }
 
   /* ── 底图:用户当前那张真桌面壁纸 ── */
@@ -654,11 +701,18 @@ export default class MineradioWallpaper {
       let gy = (((this._glyphIdx * 0.61) % 1) - 0.5) * 3.2;
       // 左下角是实时统计面板(#panel)的位置,数字落这儿会被压住 —— 左侧一律走上半屏
       if (this._glyphSide < 0 && gy < 0.35) gy = 0.35 + Math.abs(gy) * 0.6;
-      this._glyph = {
-        label: next.label, kind: next.kind, t0: now,
-        x: this._glyphSide * (2.45 + ((this._glyphIdx * 0.37) % 1) * 0.85),
-        y: gy,
-      };
+      let gx = this._glyphSide * (2.45 + ((this._glyphIdx * 0.37) % 1) * 0.85);
+      // 这些偏移是按 16:9 定的。竖屏/窄屏(竖着摆的显示器)下视锥半宽只有 ~1.9,
+      // 整句会整个飞到画面外 —— 看起来就是"统计根本不出现"。按相机实际半宽夹一次。
+      const cam = this._silk && this._silk.cam;
+      if (cam && cam.isPerspectiveCamera) {
+        const halfW = Math.tan(cam.fov * Math.PI / 360) * cam.position.z * cam.aspect;
+        const room = Math.max(0, halfW * 0.96 - this._gu.uSize.value.x / 2);
+        gx = Math.sign(gx) * Math.min(Math.abs(gx), room);
+        const halfH = Math.tan(cam.fov * Math.PI / 360) * cam.position.z;
+        gy = Math.max(-halfH * 0.82, Math.min(halfH * 0.82, gy));
+      }
+      this._glyph = { label: next.label, kind: next.kind, t0: now, x: gx, y: gy };
       this._drawGlyphLabel(next.label);
     }
     if (!this._glyph) {
@@ -699,7 +753,7 @@ export default class MineradioWallpaper {
     try {
       this._disposeLayers();
       this._glyphLayer.geo.dispose(); this._glyphLayer.mat.dispose(); this._glyphLayer.matB.dispose();
-      this._glyphTex.dispose(); this._coverTex.dispose(); this._edgeTex.dispose(); this._rippleTex.dispose();
+      this._coverTex.dispose(); this._edgeTex.dispose(); this._rippleTex.dispose();
       this.renderer.dispose();
     } catch (e) {}
   }

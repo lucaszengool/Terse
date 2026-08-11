@@ -3193,9 +3193,35 @@ pub fn run() {
                         let _ = apply_acrylic(&w, Some(GLASS_TINT));
                     }
                 }
-                for (label, _, _, _, _, _) in dash_layout(screen_width) {
+                // Every frameless window needs the rounded GDI region, not just
+                // the island. Windows does not round frameless windows itself
+                // (Win11 rounds only decorated ones), and the acrylic backdrop
+                // fills the raw rectangle — so a card whose CSS has a 20px
+                // radius renders with four opaque black square corners poking
+                // out past its own border. That is the corner artefact visible
+                // on every dashboard.
+                for (label, _, _, _, w_l, h_l) in dash_layout(screen_width) {
                     if let Some(w) = app.get_webview_window(&label) {
                         let _ = apply_acrylic(&w, Some(GLASS_TINT));
+                        make_rounded(&w, w_l, h_l, 20.0);
+                    }
+                }
+                // Same for the other frameless surfaces. Doctor and Farm are
+                // resizable, so their region is re-cut on resize; palette and
+                // toast are fixed.
+                for (lbl, radius) in [("doctor", 16.0), ("farm", 16.0), ("palette", 14.0), ("toast", 14.0)] {
+                    if let Some(w) = app.get_webview_window(lbl) {
+                        let round = move |win: &tauri::WebviewWindow| {
+                            if let Ok(sz) = win.inner_size() {
+                                let sf = win.scale_factor().unwrap_or(1.0);
+                                make_rounded(win, sz.width as f64 / sf, sz.height as f64 / sf, radius);
+                            }
+                        };
+                        round(&w);
+                        let w2 = w.clone();
+                        w.on_window_event(move |ev| {
+                            if let tauri::WindowEvent::Resized(_) = ev { round(&w2); }
+                        });
                     }
                 }
                 // Clip the island to a rounded pill (its acrylic fills the whole

@@ -3429,6 +3429,39 @@ pub fn run() {
                         if let Ok(raw) = w2.hwnd() {
                             strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
                         }
+                        // Then flush the stale surface, ONCE per window, the first
+                        // time it is focused.
+                        //
+                        // Stripping the style stops the caption being drawn again;
+                        // it does not erase what was already drawn. On a
+                        // transparent window nothing repaints that strip, so
+                        // whatever landed there before the strip just stays. CI
+                        // proves it is exactly this: with identical app code, two
+                        // consecutive runs disagreed — the island came out clean in
+                        // one and ghosted in the other, while the Doctor ghosted in
+                        // both. That is a race against the first paint, not a
+                        // missing style bit, and it is why WS_CAPTION=False kept
+                        // being reported next to a visible title bar.
+                        //
+                        // The nudge already existed but was only ever applied to
+                        // `main`, which is why main is the one window that came out
+                        // clean consistently. Every frameless window needs it.
+                        //
+                        // Only on first focus: nudging on every focus/resize would
+                        // flicker, and the re-entrancy guard inside
+                        // clear_ghost_titlebar stops the Resized this fires from
+                        // nudging again.
+                        if matches!(ev, tauri::WindowEvent::Focused(true)) {
+                            use std::collections::HashSet;
+                            use std::sync::Mutex;
+                            static FLUSHED: Mutex<Option<HashSet<String>>> = Mutex::new(None);
+                            let mut g = FLUSHED.lock().unwrap_or_else(|e| e.into_inner());
+                            let seen = g.get_or_insert_with(HashSet::new);
+                            if seen.insert(w2.label().to_string()) {
+                                drop(g);
+                                clear_ghost_titlebar(&w2);
+                            }
+                        }
                     }
                 });
             }

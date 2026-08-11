@@ -2387,11 +2387,47 @@ fn make_rounded(win: &tauri::WebviewWindow, w_logical: f64, h_logical: f64, radi
                     let rgn = CreateRoundRectRgn(0, 0, w + 1, h + 1, d, d);
                     let _ = SetWindowRgn(hwnd, rgn, BOOL(1));
                 }
+                strip_native_frame(hwnd);
             }
         }
     }
     #[cfg(not(target_os = "windows"))]
     { let _ = (win, w_logical, h_logical, radius); }
+}
+
+/// Remove the native caption from a window built with `decorations(false)`.
+///
+/// tao leaves WS_CAPTION and WS_SYSMENU on undecorated windows so that snap and
+/// resize keep working, and relies on DWM not painting them. That held while an
+/// acrylic backdrop covered the non-client area; with the backdrop gone the OS
+/// paints the caption itself, so the island rendered with a faint "Terse Island"
+/// title and real minimize/maximize/close buttons floating over the pill — a
+/// second window frame sitting behind the glass, exactly as reported.
+///
+/// WS_THICKFRAME is deliberately kept: it carries resizing, and dropping it
+/// would freeze the size of every window this runs on.
+#[cfg(target_os = "windows")]
+fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        SetWindowLongPtrW, SetWindowPos, GWL_STYLE, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE,
+        SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_SYSMENU,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW;
+    unsafe {
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        let drop_bits =
+            (WS_CAPTION.0 | WS_SYSMENU.0 | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0) as isize;
+        let stripped = style & !drop_bits;
+        if stripped != style {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, stripped);
+            // Without SWP_FRAMECHANGED the non-client area is not recalculated
+            // and the caption keeps being drawn until something else resizes it.
+            let _ = SetWindowPos(
+                hwnd, None, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+            );
+        }
+    }
 }
 
 /// Called after a confirmed Stripe purchase — marks pet owned without spending coins.
@@ -5220,7 +5256,7 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
     use windows::Win32::UI::WindowsAndMessaging::{
         FindWindowExW, GetSystemMetrics, GetWindowLongPtrW, SendMessageTimeoutW, SetParent,
         SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, SMTO_NORMAL, SM_CXVIRTUALSCREEN,
-        SM_CYVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOZORDER,
+        HWND_BOTTOM, SM_CYVIRTUALSCREEN, SWP_NOACTIVATE,
         SWP_SHOWWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
     };
 
@@ -5298,9 +5334,17 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             let cx = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             let cy = GetSystemMetrics(SM_CYVIRTUALSCREEN);
             if cx > 0 && cy > 0 {
+                // HWND_BOTTOM, not NOZORDER. The icons live in SHELLDLL_DefView,
+                // a sibling under the same parent, so inserting at the top of
+                // the z-order painted the wallpaper OVER them — CI showed the
+                // particle field drawing correctly with every desktop icon
+                // gone. macOS's kCGDesktopWindowLevel sits below the icons;
+                // sinking to the bottom of the parent's children is the
+                // equivalent, and puts us above the static wallpaper but under
+                // the icons.
                 let _ = SetWindowPos(
-                    hwnd, None, 0, 0, cx, cy,
-                    SWP_NOACTIVATE | SWP_NOZORDER | SWP_SHOWWINDOW,
+                    hwnd, HWND_BOTTOM, 0, 0, cx, cy,
+                    SWP_NOACTIVATE | SWP_SHOWWINDOW,
                 );
             }
         }

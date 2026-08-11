@@ -253,12 +253,17 @@ jobs:
           }
           if (-not (Test-Path $edge)) { Write-Host "no Edge on runner"; exit 0 }
           New-Item -ItemType Directory -Force -Path artifacts/pages | Out-Null
+          # --screenshot needs an ABSOLUTE path (a relative one silently writes
+          # nowhere useful and the step reported FAILED for all 18 pages), plus
+          # --no-sandbox to run as the CI user and a virtual-time budget so the
+          # page's own scripts get to paint before the shot is taken.
+          $root = (Get-Location).Path
+          $dest = Join-Path $root "artifacts/pages"
           foreach ($p in Get-ChildItem "src/renderer" -Filter *.html) {
-            $out = "artifacts/pages/$($p.BaseName).png"
-            & $edge --headless=new --disable-gpu --hide-scrollbars=false `
-                    --window-size=1280,900 --default-background-color=00000000 `
+            $out = Join-Path $dest "$($p.BaseName).png"
+            & $edge --headless=new --disable-gpu --no-sandbox --hide-scrollbars=false `
+                    --virtual-time-budget=4000 --window-size=1280,900 `
                     --screenshot="$out" ("file:///" + $p.FullName.Replace('\','/')) 2>$null
-            Start-Sleep -Milliseconds 400
             if (Test-Path $out) { Write-Host "  rendered $($p.Name)" }
             else { Write-Host "  FAILED   $($p.Name)" }
           }

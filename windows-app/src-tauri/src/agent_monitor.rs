@@ -363,11 +363,17 @@ fn agent_defs() -> Vec<(&'static str, AgentDef)> {
             parser: "generic",
         }),
         ("codex", AgentDef {
-            name: "Codex CLI",
+            // Covers the CLI and the Windows Desktop app. Both ship as "Codex.exe"
+            // (the Store AppxManifest registers app/Codex.exe) and the matcher is
+            // case-insensitive with .exe stripped, so detection already worked —
+            // what did not was finding the Desktop app's SESSIONS. The CLI writes
+            // to ~/.codex; the Desktop app does not, which is why users running
+            // only Codex Desktop saw a card detected but every metric at zero.
+            name: "Codex",
             icon: "\u{1F4AC}",
-            process_names: &["codex"],
-            config_detect_dirs: vec![home.join(".codex")],
-            log_dir: Some(home.join(".codex")),
+            process_names: &["codex", "codex-app-server"],
+            config_detect_dirs: codex_home_dirs(&home),
+            log_dir: codex_home_dirs(&home).into_iter().find(|d| d.exists()),
             parser: "generic",
         }),
         ("copilot", AgentDef {
@@ -2466,6 +2472,34 @@ fn find_latest_session(log_dir: &Path) -> Option<PathBuf> {
 struct ProcessInfo {
     pid: u32,
     comm: String,
+}
+
+/// Everywhere Codex keeps session data on Windows, most specific first.
+///
+///   CODEX_HOME            explicit override, honoured by both CLI and app
+///   %LOCALAPPDATA%\Codex  Desktop app (logs + sessions)
+///   %LOCALAPPDATA%\Packages\OpenAI.Codex_*\LocalCache\Roaming\Codex
+///                         Microsoft Store install — the package family suffix
+///                         is machine-specific, so it has to be globbed
+///   ~/.codex              the CLI
+fn codex_home_dirs(home: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if let Ok(h) = std::env::var("CODEX_HOME") {
+        if !h.trim().is_empty() { out.push(PathBuf::from(h)); }
+    }
+    if let Some(local) = dirs::data_local_dir() {
+        out.push(local.join("Codex"));
+        if let Ok(rd) = std::fs::read_dir(local.join("Packages")) {
+            for e in rd.flatten() {
+                let n = e.file_name();
+                if n.to_string_lossy().starts_with("OpenAI.Codex_") {
+                    out.push(e.path().join("LocalCache").join("Roaming").join("Codex"));
+                }
+            }
+        }
+    }
+    out.push(home.join(".codex"));
+    out
 }
 
 /// List all running processes on Windows using `tasklist /FO CSV /NH`.

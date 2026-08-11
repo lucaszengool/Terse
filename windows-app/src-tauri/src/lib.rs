@@ -3187,7 +3187,14 @@ pub fn run() {
             #[cfg(target_os = "windows")]
             {
                 use window_vibrancy::apply_acrylic;
-                const GLASS_TINT: (u8, u8, u8, u8) = (14, 16, 21, 78);
+                // Blur only, essentially no tint — the CSS gradient is the colour,
+                // exactly as on macOS where NSVisualEffectView contributes blur and
+                // the same rgba(15,17,22,.26)→rgba(7,9,13,.48) supplies the tone.
+                // At alpha 78 acrylic laid a second ~30% dark wash under that
+                // gradient, which is why the cards read grey and flat rather than
+                // transparent. RGB matches the gradient's top stop so the little
+                // that remains is the same hue.
+                const GLASS_TINT: (u8, u8, u8, u8) = (15, 17, 22, 12);
                 for lbl in ["main", "island", "doctor", "farm", "palette", "toast"] {
                     if let Some(w) = app.get_webview_window(lbl) {
                         let _ = apply_acrylic(&w, Some(GLASS_TINT));

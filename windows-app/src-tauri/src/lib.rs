@@ -1418,25 +1418,12 @@ fn get_stats(period: String, state: tauri::State<'_, AppState>) -> serde_json::V
 
 #[tauri::command]
 fn navigate_to_stats(app: AppHandle) {
-    if let Some(win) = app.get_webview_window("main") {
-        // Use Tauri's internal URL scheme
-        if let Ok(url) = "tauri://localhost/stats.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/stats.html');");
-        }
-    }
+    navigate_main(&app, "stats.html");
 }
 
 #[tauri::command]
 fn navigate_back(app: AppHandle) {
-    if let Some(win) = app.get_webview_window("main") {
-        if let Ok(url) = "tauri://localhost/index.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/index.html');");
-        }
-    }
+    navigate_main(&app, "index.html");
 }
 
 #[tauri::command]
@@ -1754,16 +1741,18 @@ fn get_doctor_settings() -> doctor::DoctorSettings {
 fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
     #[cfg(target_os = "windows")]
     {
-        use window_vibrancy::{apply_acrylic, clear_acrylic};
+        use window_vibrancy::clear_acrylic;
         // Every frameless surface that carries the glass, so the island and the
         // main window never disagree about how clear they are.
         for lbl in ["main", "island", "doctor", "farm", "palette", "toast"] {
             if let Some(win) = app.get_webview_window(lbl) {
-                if enabled {
-                    let _ = clear_acrylic(&win);
-                } else {
-                    let _ = apply_acrylic(&win, Some((14, 16, 21, 78)));
-                }
+                // Only ever CLEAR. Re-applying acrylic would undo the
+                // transparency fix — on Windows 11 22H2+ it composites a
+                // near-opaque backdrop under the theme's own gradient, which is
+                // exactly what made the window read flat grey. Startup no
+                // longer applies it at all, so there is nothing to restore.
+                let _ = enabled;
+                let _ = clear_acrylic(&win);
             }
         }
     }
@@ -2241,11 +2230,7 @@ fn handle_connect_url(app: &AppHandle, url: &tauri::Url) {
                 let mut cw = lock_or_recover(&state.cowork);
                 cw.config = cowork::CoworkConfig::load();
             }
-            if let Some(win) = app.get_webview_window("main") {
-                if let Ok(u) = "tauri://localhost/cowork.html".parse() {
-                    let _ = win.navigate(u);
-                }
-            }
+            navigate_main(&app, "cowork.html");
         }
     });
 }
@@ -2426,13 +2411,7 @@ fn minimize_window(app: AppHandle) {
 
 #[tauri::command]
 fn navigate_to_cowork(app: AppHandle) {
-    if let Some(win) = app.get_webview_window("main") {
-        if let Ok(url) = "tauri://localhost/cowork.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/cowork.html');");
-        }
-    }
+    navigate_main(&app, "cowork.html");
 }
 
 /// Navigate the MAIN window to the Doctor (体检) report in-place. This keeps the
@@ -2440,15 +2419,7 @@ fn navigate_to_cowork(app: AppHandle) {
 /// spawning a second floating window.
 #[tauri::command]
 fn navigate_to_doctor(app: AppHandle) {
-    if let Some(win) = app.get_webview_window("main") {
-        // The main window is the 980×650 360-style shell — the Doctor renders
-        // inside it at that size, so no resize/recenter dance is needed.
-        if let Ok(url) = "tauri://localhost/doctor.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/doctor.html');");
-        }
-    }
+    navigate_main(&app, "doctor.html");
 }
 
 /// Open the Terse Cloud team dashboard in the default browser. `path` is an
@@ -2705,11 +2676,7 @@ fn show_island_window(app: AppHandle) {
 fn show_main_window(app: AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         restore_compact_main(&win);
-        if let Ok(url) = "tauri://localhost/index.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/index.html');");
-        }
+        navigate_main(&app, "index.html");
         let _ = win.show();
         let _ = win.set_focus();
     }
@@ -3170,34 +3137,32 @@ pub fn run() {
                     .build();
             }
 
-            // Windows: acrylic blur behind the frameless surfaces so the liquid-glass
-            // frontend reads correctly (parity with macOS vibrancy). Best-effort.
+            // NO acrylic backdrop.
             //
-            // The tint is deliberately light. `horizon` — the Windows default theme —
-            // is the macdemo film's near-clear glass: it paints its own
-            // rgba(15,17,22,0.26) → rgba(7,9,13,0.48) gradient in CSS, so a heavy
-            // acrylic tint underneath would stack into an opaque slab and the
-            // wallpaper would stop reading through. Alpha 78/255 (~30%) leaves the
-            // desktop visible while acrylic still supplies the blur and the material
-            // feel; the CSS gradient does the rest of the darkening.
+            // window-vibrancy's apply_acrylic composites an opaque-ish backdrop
+            // on Windows 11 22H2+ (26100 here) regardless of the tint alpha we
+            // pass — the known issues on that crate cover exactly this. It was
+            // sitting UNDER the theme's own translucent gradient, which is why
+            // the window read as flat grey no matter how far the tint was
+            // lowered: the CSS was transparent, the layer behind it was not.
             //
-            // `main` is included here — it was previously left out, so the main
-            // window was transparent with nothing behind it and its glass had no
-            // material to sit on.
+            // The window is already `transparent: true`, and every theme paints
+            // its own background, so dropping acrylic lets the desktop show
+            // through the CSS directly. That is also closer to the macdemo
+            // film's material, which is near-clear (blur 3px) rather than
+            // frosted — macOS vibrancy supplies a gentle blur there, and having
+            // none here costs a little blur but buys actual transparency.
             #[cfg(target_os = "windows")]
             {
-                use window_vibrancy::apply_acrylic;
-                // Blur only, essentially no tint — the CSS gradient is the colour,
+                                // Blur only, essentially no tint — the CSS gradient is the colour,
                 // exactly as on macOS where NSVisualEffectView contributes blur and
                 // the same rgba(15,17,22,.26)→rgba(7,9,13,.48) supplies the tone.
                 // At alpha 78 acrylic laid a second ~30% dark wash under that
                 // gradient, which is why the cards read grey and flat rather than
                 // transparent. RGB matches the gradient's top stop so the little
                 // that remains is the same hue.
-                const GLASS_TINT: (u8, u8, u8, u8) = (15, 17, 22, 12);
                 for lbl in ["main", "island", "doctor", "farm", "palette", "toast"] {
                     if let Some(w) = app.get_webview_window(lbl) {
-                        let _ = apply_acrylic(&w, Some(GLASS_TINT));
                     }
                 }
                 // Every frameless window needs the rounded GDI region, not just
@@ -3209,7 +3174,6 @@ pub fn run() {
                 // on every dashboard.
                 for (label, _, _, _, w_l, h_l) in dash_layout(screen_width) {
                     if let Some(w) = app.get_webview_window(&label) {
-                        let _ = apply_acrylic(&w, Some(GLASS_TINT));
                         make_rounded(&w, w_l, h_l, 20.0);
                     }
                 }
@@ -3313,9 +3277,7 @@ pub fn run() {
                             if let Some(win) = app.get_webview_window("main") {
                                 let _ = win.show();
                                 let _ = win.set_focus();
-                                if let Ok(url) = "tauri://localhost/stats.html".parse() {
-                                    let _ = win.navigate(url);
-                                }
+                                navigate_main(&app, "stats.html");
                             }
                         }
                         // Clean shutdown: kill helper children first, then exit.
@@ -3848,36 +3810,20 @@ fn navigate_to_farm(app: AppHandle) {
             let _ = win.set_size(tauri::LogicalSize::new(w, h));
             let _ = win.center();
         }
-        if let Ok(url) = "tauri://localhost/farm.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/farm.html');");
-        }
+        navigate_main(&app, "farm.html");
     }
 }
 
 /// Navigate the MAIN window to the Alert Center in-place.
 #[tauri::command]
 fn navigate_to_alerts(app: AppHandle) {
-    if let Some(win) = app.get_webview_window("main") {
-        if let Ok(url) = "tauri://localhost/alerts.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/alerts.html');");
-        }
-    }
+    navigate_main(&app, "alerts.html");
 }
 
 /// Navigate the MAIN window to the session-history page in-place.
 #[tauri::command]
 fn navigate_to_history(app: AppHandle) {
-    if let Some(win) = app.get_webview_window("main") {
-        if let Ok(url) = "tauri://localhost/history.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/history.html');");
-        }
-    }
+    navigate_main(&app, "history.html");
 }
 
 /// Open the prompt palette. Captures the frontmost app first (so an inserted
@@ -5025,11 +4971,7 @@ fn navigate_to_graph(app: AppHandle) {
             let _ = win.set_size(tauri::LogicalSize::new(w, h));
             let _ = win.center();
         }
-        if let Ok(url) = "tauri://localhost/graph.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/graph.html');");
-        }
+        navigate_main(&app, "graph.html");
     }
 }
 
@@ -5357,16 +5299,34 @@ fn get_token_pulse(state: tauri::State<'_, AppState>) -> u64 {
     state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).today_total_tokens()
 }
 
+/// Navigate the MAIN window to a bundled page.
+///
+/// The origin differs by platform: macOS/Linux serve the app from
+/// `tauri://localhost`, Windows from `http://tauri.localhost`. Every navigation
+/// here hardcoded the macOS form, and `"tauri://localhost/x.html".parse()`
+/// SUCCEEDS as a URL — it is syntactically valid — so the eval fallback beneath
+/// it never fired. WebView2 was handed a scheme it does not serve and simply
+/// did nothing: clicking Wallpaper, Stats, Alerts, History, Team or Graph left
+/// the user on whatever page they were already on. That is the
+/// "点进去啥都没有" report.
+///
+/// Resolving against the window's CURRENT url gets the right origin on both.
+fn navigate_main(app: &AppHandle, page: &str) {
+    let Some(win) = app.get_webview_window("main") else { return };
+    if let Ok(cur) = win.url() {
+        if let Ok(url) = cur.join(page) {
+            let _ = win.navigate(url);
+            return;
+        }
+    }
+    // Last resort: let the page itself do a relative navigation.
+    let _ = win.eval(&format!("window.location.replace('/{}');", page));
+}
+
 /// Navigate the MAIN window to the wallpaper control page in-place.
 #[tauri::command]
 fn navigate_to_wallpaper(app: AppHandle) {
-    if let Some(win) = app.get_webview_window("main") {
-        if let Ok(url) = "tauri://localhost/wallpaper-control.html".parse() {
-            let _ = win.navigate(url);
-        } else {
-            let _ = win.eval("window.location.replace('/wallpaper-control.html');");
-        }
-    }
+    navigate_main(&app, "wallpaper-control.html");
 }
 
 // ── Referral program + upgrade prompt (parity with macOS) ───────────────────
@@ -5393,9 +5353,7 @@ fn request_upgrade(app: AppHandle, reason: Option<String>) {
             })
             .unwrap_or(true);
         if !on_shell {
-            if let Ok(url) = "tauri://localhost/index.html#upgrade".parse() {
-                let _ = w.navigate(url);
-            }
+            navigate_main(&app, "index.html#upgrade");
             return;
         }
     }

@@ -355,6 +355,40 @@ jobs:
           $bmp2.Save("artifacts/terse-windows-desktop.png")
           Write-Host "desktop screenshot saved"
 
+      # Capture the wallpaper window ITSELF, not the desktop it sits on. It is a
+      # Progman/WorkerW child, so it is always underneath every app window and a
+      # desktop screenshot can only ever show whatever slice is not covered.
+      # PrintWindow with PW_RENDERFULLCONTENT renders a window's own content even
+      # when it is fully obscured, which is the only way to photograph the
+      # particle field on a machine that also has the app open.
+      - name: Photograph the live wallpaper itself
+        continue-on-error: true
+        run: |
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class P{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumChildWindows(IntPtr p,Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint f);public struct R{public int L,T,Rr,B;}}'
+          Add-Type -AssemblyName System.Drawing
+          $target = [IntPtr]::Zero
+          $scan = [P+Cb]{ param($h,$l)
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][P]::GetWindowTextW($h, $sb, 256)
+            if ($sb.ToString() -eq 'Terse Wallpaper') { $script:target = $h; return $false }
+            [void][P]::EnumChildWindows($h, $scan, [IntPtr]::Zero)
+            return $true }
+          [void][P]::EnumWindows($scan, [IntPtr]::Zero)
+          if ($target -eq [IntPtr]::Zero) { Write-Host 'WALLPAPER WINDOW NOT FOUND'; exit 0 }
+          $r = New-Object P+R
+          [void][P]::GetWindowRect($target, [ref]$r)
+          $w = $r.Rr - $r.L; $h2 = $r.B - $r.T
+          Write-Host "wallpaper window found: ${w}x${h2} at $($r.L),$($r.T)"
+          if ($w -le 0 -or $h2 -le 0) { Write-Host 'zero-sized - not drawing'; exit 0 }
+          $bmp = New-Object System.Drawing.Bitmap $w, $h2
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $hdc = $g.GetHdc()
+          $ok = [P]::PrintWindow($target, $hdc, 2)   # PW_RENDERFULLCONTENT
+          $g.ReleaseHdc($hdc)
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $bmp.Save("artifacts/wallpaper-window.png")
+          Write-Host "PrintWindow ok=$ok -> artifacts/wallpaper-window.png"
+
       - name: Collect the app's own logs
         continue-on-error: true
         run: |

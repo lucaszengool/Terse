@@ -2216,6 +2216,10 @@ fn handle_connect_url(app: &AppHandle, url: &tauri::Url) {
 
     // Bring the window forward right away — feels instant even while we verify.
     if let Some(win) = app.get_webview_window("main") {
+        #[cfg(target_os = "windows")]
+        if let Ok(raw) = win.hwnd() {
+            strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+        }
         let _ = win.show();
         let _ = win.unminimize();
         let _ = win.set_focus();
@@ -2733,6 +2737,10 @@ fn set_speed_mode(enabled: bool) -> serde_json::Value {
 #[tauri::command]
 fn show_doctor_window(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("doctor") {
+        #[cfg(target_os = "windows")]
+        if let Ok(raw) = w.hwnd() {
+            strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+        }
         let _ = w.show();
         w.set_focus().map_err(|e| e.to_string())?;
     }
@@ -3003,6 +3011,10 @@ pub fn run() {
         // over, so without this `handle_connect_url` never fires.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(win) = app.get_webview_window("main") {
+                #[cfg(target_os = "windows")]
+                if let Ok(raw) = win.hwnd() {
+                    strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+                }
                 let _ = win.show();
                 let _ = win.unminimize();
                 let _ = win.set_focus();
@@ -3426,12 +3438,20 @@ pub fn run() {
                         "tray_show" => toggle_main(&app),
                         "tray_doctor" => {
                             if let Some(win) = app.get_webview_window("doctor") {
+                                #[cfg(target_os = "windows")]
+                                if let Ok(raw) = win.hwnd() {
+                                    strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+                                }
                                 let _ = win.show();
                                 let _ = win.set_focus();
                             }
                         }
                         "tray_stats" => {
                             if let Some(win) = app.get_webview_window("main") {
+                                #[cfg(target_os = "windows")]
+                                if let Ok(raw) = win.hwnd() {
+                                    strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+                                }
                                 let _ = win.show();
                                 let _ = win.set_focus();
                                 navigate_main(&app, "stats.html");
@@ -3993,6 +4013,10 @@ fn open_palette(app: &AppHandle) {
             let _ = st.palette_target.lock().map(|mut g| { *g = front.name.clone(); });
         }
         if let Some(w) = app.get_webview_window("palette") {
+            #[cfg(target_os = "windows")]
+            if let Ok(raw) = w.hwnd() {
+                strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+            }
             let _ = w.show();
             let _ = w.set_focus();
             let _ = app.emit("palette-open", ());
@@ -5564,6 +5588,10 @@ fn navigate_to_wallpaper(app: AppHandle) {
 fn request_upgrade(app: AppHandle, reason: Option<String>) {
     let reason = reason.unwrap_or_default();
     if let Some(w) = app.get_webview_window("main") {
+        #[cfg(target_os = "windows")]
+        if let Ok(raw) = w.hwnd() {
+            strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+        }
         let _ = w.show();
         let _ = w.set_focus();
         // If the main window is currently on a Pro-gated sub-page (Doctor, Stats,

@@ -195,6 +195,74 @@ jobs:
           $bmp.Save("artifacts/terse-windows.png")
           Write-Host "screenshot $($b.Width)x$($b.Height) saved"
 
+      # One screenshot of the desktop only ever shows the window on top. Tauri
+      # builds several windows at startup (main, island, popup, pet, wallpaper),
+      # so enumerate every visible window owned by the Terse process, front each
+      # in turn and photograph it. These are REAL app windows with live backend
+      # data behind them.
+      - name: Screenshot every window the app actually opened
+        continue-on-error: true
+        run: |
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class W{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern int GetWindowThreadProcessId(IntPtr h,out int p);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern bool ShowWindow(IntPtr h,int c);}'
+          Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $pids = (Get-Process -Name "Terse" -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
+          if (-not $pids) { Write-Host "no Terse process"; exit 0 }
+          $found = New-Object System.Collections.ArrayList
+          $cb = [W+Cb]{ param($h,$l)
+            if ([W]::IsWindowVisible($h)) {
+              $wpid = 0; [void][W]::GetWindowThreadProcessId($h, [ref]$wpid)
+              if ($pids -contains $wpid) {
+                $sb = New-Object System.Text.StringBuilder 512
+                [void][W]::GetWindowTextW($h, $sb, 512)
+                [void]$found.Add(@{ h = $h; t = $sb.ToString() })
+              }
+            }
+            return $true }
+          [void][W]::EnumWindows($cb, [IntPtr]::Zero)
+          Write-Host "found $($found.Count) visible Terse window(s)"
+          $i = 0
+          foreach ($w in $found) {
+            $i++
+            [void][W]::ShowWindow($w.h, 9)   # SW_RESTORE
+            [void][W]::SetForegroundWindow($w.h)
+            Start-Sleep -Milliseconds 1500
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+            $safe = ($w.t -replace '[^\w\-]', '_'); if (-not $safe) { $safe = "untitled" }
+            $bmp.Save("artifacts/window-$i-$safe.png")
+            Write-Host "  [$i] '$($w.t)' -> window-$i-$safe.png"
+            $g.Dispose(); $bmp.Dispose()
+          }
+
+      # Tauri EMBEDS the frontend in the binary, so there are no .html files on
+      # disk to open. The checkout has the same sources that were embedded, so
+      # render each one in Edge — the very engine WebView2 uses. This proves
+      # layout, fonts, scrollbars and the new color-scheme on every page,
+      # including pages the app never opens on its own. It does NOT prove
+      # backend wiring: window.__TAURI__ is absent, so data-driven regions stay
+      # empty. Those are covered by the real-window shots above.
+      - name: Render every page in the WebView2 engine
+        continue-on-error: true
+        run: |
+          $edge = (Get-Command msedge -ErrorAction SilentlyContinue).Source
+          if (-not $edge) {
+            $edge = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+          }
+          if (-not (Test-Path $edge)) { Write-Host "no Edge on runner"; exit 0 }
+          New-Item -ItemType Directory -Force -Path artifacts/pages | Out-Null
+          foreach ($p in Get-ChildItem "src/renderer" -Filter *.html) {
+            $out = "artifacts/pages/$($p.BaseName).png"
+            & $edge --headless=new --disable-gpu --hide-scrollbars=false `
+                    --window-size=1280,900 --default-background-color=00000000 `
+                    --screenshot="$out" ("file:///" + $p.FullName.Replace('\','/')) 2>$null
+            Start-Sleep -Milliseconds 400
+            if (Test-Path $out) { Write-Host "  rendered $($p.Name)" }
+            else { Write-Host "  FAILED   $($p.Name)" }
+          }
+
       # wallpaper-bg.jpg only exists if desktop_picture_source() found an image
       # AND the PowerShell/System.Drawing downscale succeeded, so its presence is
       # end-to-end proof of the piece that differs most from the Mac's `sips`

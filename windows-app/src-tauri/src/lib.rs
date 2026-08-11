@@ -2414,11 +2414,9 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
         WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
         WS_POPUP, WS_SYSMENU,
     };
-    use windows::Win32::Foundation::RECT;
     use windows::Win32::Graphics::Gdi::{
         RedrawWindow, RDW_ALLCHILDREN, RDW_FRAME, RDW_INVALIDATE, RDW_UPDATENOW,
     };
-    use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
     use windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW;
     unsafe {
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
@@ -2472,19 +2470,14 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
             // the old title stayed on screen as a ghost long after WS_CAPTION
             // was gone — the CI diagnostic reported WS_CAPTION=False on every
             // window while the screenshot still showed "Terse Island". Force a
-            // frame redraw, then nudge the size by a pixel and back, which is
-            // what actually makes DWM discard the stale surface.
+            // frame redraw. NOT a size nudge: resizing fires a Resized event,
+            // whose handler calls back into this function, which resizes
+            // again — an infinite loop that wedged the island right off the
+            // desktop the one build it shipped in.
             let _ = RedrawWindow(
                 hwnd, None, None,
                 RDW_FRAME | RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN,
             );
-            let mut r = RECT::default();
-            if GetWindowRect(hwnd, &mut r).is_ok() {
-                let (w, h) = (r.right - r.left, r.bottom - r.top);
-                let flags = SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED;
-                let _ = SetWindowPos(hwnd, None, 0, 0, w, h + 1, flags);
-                let _ = SetWindowPos(hwnd, None, 0, 0, w, h, flags);
-            }
         }
     }
 }

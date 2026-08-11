@@ -2412,7 +2412,7 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
         SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SWP_FRAMECHANGED,
         SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION, WS_EX_CLIENTEDGE,
         WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
-        WS_SYSMENU,
+        WS_POPUP, WS_SYSMENU,
     };
     use windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW;
     unsafe {
@@ -2421,7 +2421,11 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
         // both go with it.
         let drop_bits =
             (WS_CAPTION.0 | WS_SYSMENU.0 | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0) as isize;
-        let stripped = style & !drop_bits;
+        // Adding WS_POPUP is what actually guarantees it: a popup window has no
+        // caption by definition, so this holds even if something re-sets the
+        // caption bit behind us. Clearing the bits alone left the classic grey
+        // gradient title bar drawn by USER32.
+        let stripped = (style & !drop_bits) | WS_POPUP.0 as isize;
         // The extended styles draw their own raised/sunken edges, which survive
         // the caption removal and leave a visible outline around the glass.
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
@@ -3345,6 +3349,23 @@ pub fn run() {
                 if let Ok(raw) = w.hwnd() {
                     strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
                 }
+                // Most of these windows are built hidden and shown later, and the
+                // frame comes back when they are. Stripping once during setup is
+                // therefore not enough — the Doctor window kept its caption for
+                // exactly this reason. Re-strip on show/focus/resize. Tauri keeps
+                // window-event listeners in a list, so this does not displace the
+                // rounding handlers registered above.
+                let w2 = w.clone();
+                w.on_window_event(move |ev| {
+                    if matches!(
+                        ev,
+                        tauri::WindowEvent::Focused(_) | tauri::WindowEvent::Resized(_)
+                    ) {
+                        if let Ok(raw) = w2.hwnd() {
+                            strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+                        }
+                    }
+                });
             }
 
             // Tray icon + right-click menu (parity with macOS). Until now the

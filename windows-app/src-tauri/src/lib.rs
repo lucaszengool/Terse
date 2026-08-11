@@ -2409,16 +2409,29 @@ fn make_rounded(win: &tauri::WebviewWindow, w_logical: f64, h_logical: f64, radi
 #[cfg(target_os = "windows")]
 fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
     use windows::Win32::UI::WindowsAndMessaging::{
-        SetWindowLongPtrW, SetWindowPos, GWL_STYLE, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE,
-        SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_SYSMENU,
+        SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SWP_FRAMECHANGED,
+        SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION, WS_EX_CLIENTEDGE,
+        WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
+        WS_SYSMENU,
     };
     use windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW;
     unsafe {
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        // WS_CAPTION is WS_BORDER|WS_DLGFRAME, so the title bar and its border
+        // both go with it.
         let drop_bits =
             (WS_CAPTION.0 | WS_SYSMENU.0 | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0) as isize;
         let stripped = style & !drop_bits;
-        if stripped != style {
+        // The extended styles draw their own raised/sunken edges, which survive
+        // the caption removal and leave a visible outline around the glass.
+        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        let ex_stripped = ex
+            & !((WS_EX_DLGMODALFRAME.0 | WS_EX_WINDOWEDGE.0 | WS_EX_CLIENTEDGE.0
+                | WS_EX_STATICEDGE.0) as isize);
+        if ex_stripped != ex {
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_stripped);
+        }
+        if stripped != style || ex_stripped != ex {
             SetWindowLongPtrW(hwnd, GWL_STYLE, stripped);
             // Without SWP_FRAMECHANGED the non-client area is not recalculated
             // and the caption keeps being drawn until something else resizes it.

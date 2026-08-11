@@ -3137,32 +3137,32 @@ pub fn run() {
                     .build();
             }
 
-            // NO acrylic backdrop.
+            // Mica, not acrylic, and not bare transparency.
             //
-            // window-vibrancy's apply_acrylic composites an opaque-ish backdrop
-            // on Windows 11 22H2+ (26100 here) regardless of the tint alpha we
-            // pass — the known issues on that crate cover exactly this. It was
-            // sitting UNDER the theme's own translucent gradient, which is why
-            // the window read as flat grey no matter how far the tint was
-            // lowered: the CSS was transparent, the layer behind it was not.
+            // Three attempts, so the reasoning is worth recording. apply_acrylic
+            // composites a near-opaque backdrop on Windows 11 22H2+ (26100 here)
+            // whatever tint alpha it is given, and it sat UNDER the theme's own
+            // translucent gradient — the window read as flat grey however far
+            // the tint came down. Removing it did produce real transparency, but
+            // bare transparency has NO material: windows sitting behind Terse
+            // show through sharply and legibly, which reads as a second window
+            // overlaid on the glass. That is not what macOS does — vibrancy
+            // blurs the backdrop, so anything behind dissolves into a wash.
             //
-            // The window is already `transparent: true`, and every theme paints
-            // its own background, so dropping acrylic lets the desktop show
-            // through the CSS directly. That is also closer to the macdemo
-            // film's material, which is near-clear (blur 3px) rather than
-            // frosted — macOS vibrancy supplies a gentle blur there, and having
-            // none here costs a little blur but buys actual transparency.
+            // Mica is the Win11 material that behaves like vibrancy here: DWM
+            // derives it from the DESKTOP WALLPAPER, blurred and tinted, and
+            // deliberately does NOT sample other windows. So background windows
+            // stop bleeding through while the surface still reads as glass over
+            // the desktop. Dark variant, to match every theme the app ships.
             #[cfg(target_os = "windows")]
             {
-                                // Blur only, essentially no tint — the CSS gradient is the colour,
-                // exactly as on macOS where NSVisualEffectView contributes blur and
-                // the same rgba(15,17,22,.26)→rgba(7,9,13,.48) supplies the tone.
-                // At alpha 78 acrylic laid a second ~30% dark wash under that
-                // gradient, which is why the cards read grey and flat rather than
-                // transparent. RGB matches the gradient's top stop so the little
-                // that remains is the same hue.
+                use window_vibrancy::apply_mica;
                 for lbl in ["main", "island", "doctor", "farm", "palette", "toast"] {
                     if let Some(w) = app.get_webview_window(lbl) {
+                        // Errors on pre-22000 builds; the window is still
+                        // transparent there, so failing is a downgrade and not
+                        // a breakage.
+                        let _ = apply_mica(&w, Some(true));
                     }
                 }
                 // Every frameless window needs the rounded GDI region, not just

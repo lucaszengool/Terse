@@ -2431,6 +2431,24 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
         if ex_stripped != ex {
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_stripped);
         }
+        // Belt and braces: tell DWM not to render the non-client area at all.
+        // Clearing the style bits removed the min/max/close buttons but DWM kept
+        // painting the caption itself, so the ghost "Terse Island" / "Terse"
+        // title survived on top of the glass. DWMNCRP_DISABLED stops that at the
+        // compositor, whatever the style bits end up saying — and it is immune
+        // to anything that re-applies them later on show or focus.
+        {
+            use windows::Win32::Graphics::Dwm::{
+                DwmSetWindowAttribute, DWMNCRP_DISABLED, DWMWA_NCRENDERING_POLICY,
+            };
+            let policy = DWMNCRP_DISABLED;
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_NCRENDERING_POLICY,
+                &policy as *const _ as *const std::ffi::c_void,
+                std::mem::size_of_val(&policy) as u32,
+            );
+        }
         if stripped != style || ex_stripped != ex {
             SetWindowLongPtrW(hwnd, GWL_STYLE, stripped);
             // Without SWP_FRAMECHANGED the non-client area is not recalculated
@@ -3108,6 +3126,9 @@ pub fn run() {
             let farm_x = (screen_width / 2.0 - 683.0) as f64;
             let _farm_win = WebviewWindowBuilder::new(app, "farm", WebviewUrl::App("farm.html".into()))
                 .title("Terse Farm")
+                .decorations(false)
+                .transparent(true)
+                .shadow(false)
                 .inner_size(1366.0, 768.0)
                 .min_inner_size(1100.0, 618.0)
                 .position(farm_x, 80.0)
@@ -3122,6 +3143,9 @@ pub fn run() {
             let doc_x = (screen_width / 2.0 - 520.0) as f64;
             let _doctor_win = WebviewWindowBuilder::new(app, "doctor", WebviewUrl::App("doctor.html".into()))
                 .title("Terse Doctor")
+                .decorations(false)
+                .transparent(true)
+                .shadow(false)
                 .inner_size(1040.0, 800.0)
                 .min_inner_size(820.0, 640.0)
                 .position(doc_x, 70.0)
@@ -3205,13 +3229,44 @@ pub fn run() {
             // the desktop. Dark variant, to match every theme the app ships.
             #[cfg(target_os = "windows")]
             {
+                // Mica ONLY on the large rectangular surfaces. DWM paints its
+                // backdrop over the window's whole rectangle and ignores the
+                // GDI region SetWindowRgn installs, so putting mica on the
+                // island filled the pill's corners — it came out looking
+                // wrapped in a dark rectangle with four square corners, and
+                // lost its transparency. The island and toast stay plain
+                // transparent + rounded region; they are small and sit over the
+                // desktop, where bleed-through was never the complaint.
+                //
+                // The big windows get their rounding from DWM instead (below),
+                // which mica does respect.
                 use window_vibrancy::apply_mica;
-                for lbl in ["main", "island", "doctor", "farm", "palette", "toast"] {
+                for lbl in ["main", "doctor", "farm", "palette"] {
                     if let Some(w) = app.get_webview_window(lbl) {
                         // Errors on pre-22000 builds; the window is still
                         // transparent there, so failing is a downgrade and not
                         // a breakage.
                         let _ = apply_mica(&w, Some(true));
+                        // Round these through DWM rather than SetWindowRgn. The
+                        // GDI region does not clip the mica backdrop, so a
+                        // mica'd window rounded that way still shows four square
+                        // corners; DWMWA_WINDOW_CORNER_PREFERENCE rounds the
+                        // composited result, backdrop included.
+                        if let Ok(raw) = w.hwnd() {
+                            use windows::Win32::Graphics::Dwm::{
+                                DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE,
+                                DWMWCP_ROUND,
+                            };
+                            let pref = DWMWCP_ROUND;
+                            unsafe {
+                                let _ = DwmSetWindowAttribute(
+                                    windows::Win32::Foundation::HWND(raw.0),
+                                    DWMWA_WINDOW_CORNER_PREFERENCE,
+                                    &pref as *const _ as *const std::ffi::c_void,
+                                    std::mem::size_of_val(&pref) as u32,
+                                );
+                            }
+                        }
                     }
                 }
                 // Every frameless window needs the rounded GDI region, not just

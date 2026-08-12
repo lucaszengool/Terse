@@ -5496,6 +5496,27 @@ fn set_wallpaper_config(config: serde_json::Value, app: AppHandle) -> bool {
 /// (`WS_EX_TRANSPARENT | WS_EX_NOACTIVATE`), matching the Mac behaviour;
 /// `WS_EX_TOOLWINDOW` is NOT set, since it conflicts with the child parenting
 /// and a child window is already out of Alt-Tab.
+/// Append a line to `~/.terse/wallpaper-pin.log`.
+///
+/// The wallpaper pin is the one code path in this app that CI provably cannot
+/// exercise: the runner reports `Progman = 0` and zero top-level WorkerW, so
+/// every branch below the parent lookup has never executed there. Screenshots
+/// from a bare desktop cannot tell "wrong host", "right host, not compositing"
+/// and "never ran" apart either. This is how a real machine reports which one it
+/// was — ask the user for the file rather than guessing from a picture.
+#[cfg(target_os = "windows")]
+fn pin_log(line: &str) {
+    use std::io::Write;
+    eprintln!("[terse][wallpaper-pin] {line}");
+    if let Some(dir) = dirs::home_dir() {
+        let p = dir.join(".terse").join("wallpaper-pin.log");
+        let _ = std::fs::create_dir_all(p.parent().unwrap());
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
+            let _ = writeln!(f, "{line}");
+        }
+    }
+}
+
 #[cfg(target_os = "windows")]
 fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
     use windows::core::w;
@@ -5555,26 +5576,58 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
         //    then draws over the wallpaper and under the icons.
         // 2) Otherwise DefView lives inside a WorkerW, and the wallpaper host
         //    is that WorkerW's NEXT sibling of the same class.
-        let defview_on_progman = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None)
+        // Walk every top-level WorkerW ONCE, recording both candidates:
+        //   · the sibling immediately after whichever host owns SHELLDLL_DefView
+        //   · the first WorkerW that has no DefView child at all
+        //
+        // The previous version short-circuited: if DefView was a direct child of
+        // Progman it never looked at the WorkerWs and parented to Progman. That
+        // is the common Windows 11 layout, and parenting there puts us in the
+        // same child list as the icons, sunk to HWND_BOTTOM — i.e. underneath
+        // the picture Progman paints. Correct parent, invisible result.
+        let defview_owner_is_progman = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None)
             .map(|h| !h.is_invalid())
             .unwrap_or(false);
-        let mut target = HWND::default();
-        if !defview_on_progman {
-            let mut worker = FindWindowExW(None, None, w!("WorkerW"), None).unwrap_or_default();
-            while !worker.is_invalid() {
-                let has_defview = FindWindowExW(worker, None, w!("SHELLDLL_DefView"), None)
-                    .map(|h| !h.is_invalid())
-                    .unwrap_or(false);
-                if has_defview {
-                    // The sibling immediately after the icon host is the layer
-                    // the wallpaper is painted into.
-                    target = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
-                    break;
-                }
-                worker = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
+        let mut after_defview = HWND::default();
+        let mut first_bare = HWND::default();
+        let mut worker_count = 0usize;
+        let mut worker = FindWindowExW(None, None, w!("WorkerW"), None).unwrap_or_default();
+        while !worker.is_invalid() {
+            worker_count += 1;
+            let has_defview = FindWindowExW(worker, None, w!("SHELLDLL_DefView"), None)
+                .map(|h| !h.is_invalid())
+                .unwrap_or(false);
+            if has_defview && after_defview.is_invalid() {
+                after_defview = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
+            } else if !has_defview && first_bare.is_invalid() {
+                first_bare = worker;
             }
+            worker = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
         }
+        // When DefView sits on Progman there is no "sibling after" to find, so
+        // the bare WorkerW is the wallpaper layer. When DefView sits inside a
+        // WorkerW, the sibling after it is. Prefer whichever the layout implies,
+        // then the other, then Progman as a last resort.
+        let target = if defview_owner_is_progman {
+            if !first_bare.is_invalid() { first_bare } else { after_defview }
+        } else if !after_defview.is_invalid() {
+            after_defview
+        } else {
+            first_bare
+        };
         let parent = if target.is_invalid() { progman } else { target };
+        // Record what the shell actually looked like. CI cannot test any of this
+        // — the runner has no Progman and no WorkerW at all (the diagnostic came
+        // back "Progman = 0, total top-level WorkerW: 0"), so this path has never
+        // once executed there. The only machine that can answer is a real
+        // desktop, and this is how it reports back.
+        pin_log(&format!(
+            "progman={:?} defview_on_progman={} workerw_count={} after_defview={:?} \
+             first_bare={:?} chosen={:?}{}",
+            progman.0, defview_owner_is_progman, worker_count, after_defview.0,
+            first_bare.0, parent.0,
+            if parent.is_invalid() { "  << NO PARENT - pin aborted" } else { "" }
+        ));
         if !parent.is_invalid() {
             // WS_CHILD, and NOT WS_POPUP. This is the piece that was missing, and
             // it is why the wallpaper never appeared on a real desktop however
@@ -5647,6 +5700,21 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
         let add = (WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0) as isize;
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | add);
+
+        // What the window ended up as, so the log answers "did it take?" rather
+        // than only "what did we ask for?".
+        let final_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        let final_ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        let mut r = windows::Win32::Foundation::RECT::default();
+        let _ = windows::Win32::UI::WindowsAndMessaging::GetWindowRect(hwnd, &mut r);
+        pin_log(&format!(
+            "  result: style=0x{:08X} ex=0x{:08X} WS_CHILD={} WS_POPUP={} rect={},{} {}x{}",
+            final_style,
+            final_ex,
+            final_style & WS_CHILD.0 as isize != 0,
+            final_style & WS_POPUP.0 as isize != 0,
+            r.left, r.top, r.right - r.left, r.bottom - r.top
+        ));
     }
     let _ = win.set_ignore_cursor_events(true);
 }

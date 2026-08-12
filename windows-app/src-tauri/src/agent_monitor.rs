@@ -2039,6 +2039,17 @@ impl AgentMonitor {
                 }
                 session.session_file = Some(file.clone());
             }
+            // Same line for Codex. It shares no parsing code with Claude Code -
+            // rollouts carry no usage fields, so these token numbers come from
+            // estimate_tokens over content length, flushed per turn on
+            // task_complete. Only instrumenting the Claude branch left this half
+            // of the report ("both agents online, both zero") unobserved.
+            crate::diag_log("agent-monitor", &format!(
+                "accept 'codex': file={:?} messages={} turns={} in_tok={} out_tok={}",
+                session.session_file.as_ref().map(|p| p.display().to_string()),
+                session.messages.len(), session.turns,
+                session.total_input_tokens, session.total_output_tokens
+            ));
         } else {
             // Single-file path for other agents (Aider, etc.)
             let session_file = if let Some(log_dir) = &detection.log_dir {

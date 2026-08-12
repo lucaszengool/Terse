@@ -335,6 +335,74 @@ jobs:
       # AND the PowerShell/System.Drawing downscale succeeded, so its presence is
       # end-to-end proof of the piece that differs most from the Mac's `sips`
       # path. Its absence localises the failure precisely.
+      # Where did the wallpaper window actually LAND?
+      #
+      # Screenshots cannot distinguish "parented to the wrong host" from
+      # "parented correctly but not compositing" - both look like a bare
+      # desktop, and two rounds were spent guessing between them. This walks the
+      # shell's window tree and prints every Terse-owned window under Progman
+      # and each WorkerW, with its class, styles and rect. WS_CHILD windows do
+      # not appear in EnumWindows at all, so if the pin worked the window shows
+      # up here and NOWHERE in the top-level list.
+      - name: Where did the wallpaper window land
+        continue-on-error: true
+        run: |
+          Add-Type -TypeDefinition @'
+          using System;using System.Runtime.InteropServices;using System.Text;
+          public class W {
+            public delegate bool Cb(IntPtr h, IntPtr l);
+            [DllImport("user32.dll")] public static extern IntPtr FindWindowExW(IntPtr p,IntPtr c,string cls,string t);
+            [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr h,Cb cb,IntPtr l);
+            [DllImport("user32.dll")] public static extern int GetClassNameW(IntPtr h,StringBuilder s,int m);
+            [DllImport("user32.dll")] public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int m);
+            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h,out R r);
+            [DllImport("user32.dll")] public static extern IntPtr GetWindowLongPtrW(IntPtr h,int i);
+            [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr h,out uint p);
+            [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+            [StructLayout(LayoutKind.Sequential)] public struct R { public int L,T,Rt,B; }
+          }
+          '@
+          $tpids = @(Get-Process -Name "Terse" -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
+          Write-Host "Terse pids: $($tpids -join ',')"
+          function Dump([IntPtr]$host_, [string]$hostName) {
+            $cb = [W+Cb]{
+              param($h,$l)
+              $p = 0; [void][W]::GetWindowThreadProcessId($h, [ref]$p)
+              $cls = New-Object System.Text.StringBuilder 256
+              [void][W]::GetClassNameW($h, $cls, 256)
+              $mine = $tpids -contains $p
+              if ($mine -or $cls.ToString() -eq 'SHELLDLL_DefView') {
+                $t = New-Object System.Text.StringBuilder 256
+                [void][W]::GetWindowTextW($h, $t, 256)
+                $r = New-Object W+R
+                [void][W]::GetWindowRect($h, [ref]$r)
+                $st = [int64][W]::GetWindowLongPtrW($h, -16)
+                $ex = [int64][W]::GetWindowLongPtrW($h, -20)
+                $child = ($st -band 0x40000000) -ne 0
+                $popup = ($st -band 0x80000000) -ne 0
+                $tag = if ($mine) { 'TERSE' } else { 'shell' }
+                Write-Host ("  [$tag] under ${hostName}: class='$($cls.ToString())' title='$($t.ToString())' " +
+                            ("style=0x{0:X8} ex=0x{1:X8} WS_CHILD={2} WS_POPUP={3} visible={4} rect={5},{6} {7}x{8}" -f
+                             $st,$ex,$child,$popup,[W]::IsWindowVisible($h),$r.L,$r.T,($r.Rt-$r.L),($r.B-$r.T)))
+              }
+              return $true
+            }
+            [void][W]::EnumChildWindows($host_, $cb, [IntPtr]::Zero)
+          }
+          $progman = [W]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"Progman",$null)
+          Write-Host "Progman = $progman"
+          Dump $progman "Progman"
+          $ww = [W]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"WorkerW",$null)
+          $n = 0
+          while ($ww -ne [IntPtr]::Zero) {
+            $n++
+            $hasDef = [W]::FindWindowExW($ww,[IntPtr]::Zero,"SHELLDLL_DefView",$null) -ne [IntPtr]::Zero
+            Write-Host "WorkerW #$n = $ww  hasDefView=$hasDef"
+            Dump $ww "WorkerW#$n"
+            $ww = [W]::FindWindowExW([IntPtr]::Zero,$ww,"WorkerW",$null)
+          }
+          Write-Host "total top-level WorkerW: $n"
+
       - name: Prove the wallpaper engine got its base image
         continue-on-error: true
         run: |

@@ -175,6 +175,65 @@ jobs:
       # show_wallpaper_window -> pin_wallpaper_window (the WorkerW re-parent) and
       # get_desktop_picture (the PowerShell downscale). Those are the two pieces
       # that have never been observed running anywhere.
+      # Real agent traffic, without a real agent.
+      #
+      # "CI cannot produce agent traffic" was wrong - agent_monitor does not talk
+      # to Claude Code, it reads the JSONL transcripts Claude Code leaves in
+      # ~/.claude/projects/<encoded-cwd>/<session>.jsonl. So a transcript in that
+      # shape IS the traffic, and discovery -> parse -> display becomes testable
+      # here instead of only on someone's desktop.
+      #
+      # The schema below is taken from a real transcript, not invented: `type`,
+      # `cwd`, `message.role`, `message.usage.{input,output,cache_creation,
+      # cache_read}_tokens`, tool_use / tool_result content blocks and
+      # `toolUseResult` - exactly the fields parse_claude_code_line reads.
+      - name: Plant a Claude Code transcript so the agent parser has real input
+        continue-on-error: true
+        run: |
+          $enc  = "C--Users-runneradmin-Desktop-terse-ci"
+          $dir  = Join-Path $env:USERPROFILE ".claude\projects\$enc"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $sid  = [guid]::NewGuid().ToString()
+          $cwd  = "C:\Users\runneradmin\Desktop\terse-ci"
+          $file = Join-Path $dir "$sid.jsonl"
+          $lines = New-Object System.Collections.ArrayList
+          function Add-Line($o) { [void]$lines.Add((ConvertTo-Json $o -Depth 12 -Compress)) }
+          $t0 = [DateTime]::UtcNow.AddMinutes(-6)
+          for ($i = 0; $i -lt 8; $i++) {
+            $ts = $t0.AddSeconds($i * 40).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            Add-Line @{ type='user'; cwd=$cwd; sessionId=$sid; timestamp=$ts; uuid=[guid]::NewGuid().ToString();
+                        message=@{ role='user'; content="Refactor the token counter, pass $i" } }
+            # assistant turn: a tool call, then text, with real usage numbers
+            $ts2 = $t0.AddSeconds($i * 40 + 8).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            Add-Line @{ type='assistant'; cwd=$cwd; sessionId=$sid; timestamp=$ts2; uuid=[guid]::NewGuid().ToString();
+                        message=@{ role='assistant'; model='claude-opus-5'; type='message';
+                          content=@( @{ type='tool_use'; id="toolu_$i"; name='Read'; input=@{ file_path="$cwd\src\counter.ts" } } );
+                          usage=@{ input_tokens=(120 + $i * 30); output_tokens=(340 + $i * 55);
+                                   cache_creation_input_tokens=(2200 + $i * 400);
+                                   cache_read_input_tokens=(15000 + $i * 2600) } } }
+            $ts3 = $t0.AddSeconds($i * 40 + 14).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            Add-Line @{ type='user'; cwd=$cwd; sessionId=$sid; timestamp=$ts3; uuid=[guid]::NewGuid().ToString();
+                        toolUseResult=@{ type='text'; file=@{ filePath="$cwd\src\counter.ts" } };
+                        message=@{ role='user'; content=@( @{ type='tool_result'; tool_use_id="toolu_$i";
+                          content=("export function count(s: string) { return s.length } " * 40) } ) } }
+            $ts4 = $t0.AddSeconds($i * 40 + 22).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            Add-Line @{ type='assistant'; cwd=$cwd; sessionId=$sid; timestamp=$ts4; uuid=[guid]::NewGuid().ToString();
+                        message=@{ role='assistant'; model='claude-opus-5'; type='message';
+                          content=@( @{ type='text'; text="Done - pass $i trimmed the counter." } );
+                          usage=@{ input_tokens=(95 + $i * 12); output_tokens=(210 + $i * 40);
+                                   cache_creation_input_tokens=0;
+                                   cache_read_input_tokens=(18000 + $i * 3100) } } }
+          }
+          Set-Content -Path $file -Value $lines -Encoding utf8
+          # mtime must be fresh: find_all_active_jsonl_globally ignores anything
+          # older than 30 minutes, so a stale fixture would look like no traffic.
+          (Get-Item $file).LastWriteTime = Get-Date
+          $expIn  = 0; $expOut = 0
+          for ($i = 0; $i -lt 8; $i++) { $expIn += (120 + $i*30) + (95 + $i*12); $expOut += (340 + $i*55) + (210 + $i*40) }
+          Write-Host "planted $file  ($($lines.Count) lines)"
+          Write-Host "EXPECT input_tokens=$expIn output_tokens=$expOut turns=8"
+          "EXPECT_IN=$expIn`nEXPECT_OUT=$expOut" | Set-Content artifacts-expect.txt
+
       - name: Give the runner a desktop picture and turn the wallpaper on
         continue-on-error: true
         run: |

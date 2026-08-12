@@ -30,7 +30,10 @@
     .scroll::-webkit-scrollbar{width:4px}.scroll::-webkit-scrollbar-thumb{background:var(--bdl);border-radius:4px}
 
     /* live preview */
-    .preview{position:relative;height:210px;border-radius:16px;overflow:hidden;margin-bottom:14px;
+    .prev-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+    .preview-pro{outline:1.5px solid var(--btn);outline-offset:-1.5px}
+    .tag-pro{background:var(--btn)!important;color:var(--btn-t)!important}
+    .preview{position:relative;height:300px;border-radius:16px;overflow:hidden;
       border:1px solid var(--bd);box-shadow:inset 0 1px 0 var(--hl),var(--shadow-md);background:#05060a}
     .preview canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
     .preview .tag{position:absolute;top:10px;left:12px;font-size:9px;font-weight:800;letter-spacing:.1em;
@@ -88,6 +91,13 @@
     .eng:hover{border-color:var(--t3)}
     .eng.sel{border-color:var(--acc,#7c5cff);background:color-mix(in srgb,var(--acc,#7c5cff) 9%,transparent)}
     .eng .et{font-size:12px;font-weight:800;color:var(--t1)}
+    .locked{opacity:.55;position:relative}
+    .locked input, .locked .theme-dot, .locked .sw{pointer-events:none}
+    .pro-lock-tag{margin-left:7px;font-size:8px;font-weight:800;letter-spacing:.07em;
+      padding:1px 6px;border-radius:9999px;background:var(--btn);color:var(--btn-t)}
+    .eng-pro{position:relative}
+    .pro-tag{font-size:8px;font-weight:800;letter-spacing:.07em;padding:1px 5px;border-radius:9999px;
+      background:var(--btn);color:var(--btn-t);margin-left:6px;vertical-align:middle}
     .eng .ed{font-size:10px;color:var(--t3);line-height:1.55;margin-top:3px}
 
     .note{font-size:10px;color:var(--t3);line-height:1.6;padding:2px 2px 0}
@@ -105,7 +115,11 @@
 
   <div class="scroll">
     <div class="wrap">
-      <div class="preview"><canvas id="prev"></canvas><span class="tag">Live preview · Token flow</span></div>
+      <div class="prev-pair">
+        <div class="preview"><canvas id="prev"></canvas><span class="tag">免费版 · FREE</span></div>
+        <div class="preview preview-pro"><canvas id="prevPro"></canvas>
+          <span class="tag tag-pro">PRO · 电影级粒子聚合</span></div>
+      </div>
 
       <div class="card">
         <div class="enable">
@@ -125,6 +139,15 @@
             <div class="et">你的壁纸 · 粒子律动</div>
             <div class="ed">用你<b>当前那张桌面壁纸</b>当底,粒子按它取色、在它上面律动;
               agent 活动和 token 统计会被粒子聚成数字浮现出来。</div>
+          </div>
+          <!-- Pro tier. Free users may SELECT it to watch the live preview —
+               that preview is the pitch — but applying it to the desktop opens
+               the plan window instead. -->
+          <div class="eng eng-pro" data-e="cinematic" data-pro="1">
+            <div class="et">电影级 · 粒子聚合 <span class="pro-tag">PRO</span></div>
+            <div class="ed">在粒子律动之上再加一层:省下的 token、缓存命中率、花费金额
+              会像片头那样<b>由粒子聚合成字</b>浮现;每次成型时,全局散落的粒子会泛起
+              一次各不相同的波动。还会实时显示 agent 的日志流。</div>
           </div>
           <div class="eng" data-e="topography">
             <div class="et">音域回响 · 光柱地形</div>
@@ -161,7 +184,8 @@
     import TokenWallpaper3D from './token-wallpaper-3d.js';
     import MineradioWallpaper from './mineradio-wallpaper.js';
     const T = window.terse;
-    const ENGINES = { mineradio: MineradioWallpaper, topography: TokenWallpaper3D };
+    const ENGINES = { mineradio: MineradioWallpaper, cinematic: MineradioWallpaper,
+                      topography: TokenWallpaper3D };
     const $ = s => document.querySelector(s);
     const THEMES = [
       ['indigo','#4b3aa0','#8b6bff'],['ocean','#0a2a5e','#3aa0ff'],['ice','#1a5a7a','#7fe9ff'],
@@ -169,7 +193,7 @@
       ['blood','#6a1414','#ff5a5a'],['coral','#8a2a4a','#ff7a9c'],['neon','#4a1a6a','#c46bff'],['mono','#3a3a44','#e8e8f0']
     ];
     let cfg = { enabled:false, engine:'mineradio', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
-    let prev = null, saveT = null;
+    let prev = null, prevPro = null, saveT = null, previewOnlyEngine = null;
 
     function save(){ clearTimeout(saveT); saveT = setTimeout(()=>{ T.setWallpaperConfig(cfg); }, 200); }
 
@@ -188,17 +212,122 @@
     /** 预览也跟着引擎走 —— 选哪个就预览哪个 */
     function mountPreview(){
       if (prev) { try { prev.dispose(); } catch(e){} prev = null; }
+      if (prevPro) { try { prevPro.dispose(); } catch(e){} prevPro = null; }
       const host = $('#prev').parentElement;
       if (host) host.style.background = '';
       const E = ENGINES[cfg.engine] || MineradioWallpaper;
-      prev = new E($('#prev'), { theme:cfg.theme, quality:Math.min(44,cfg.quality), angle:cfg.angle, intensity:cfg.intensity });
-      prev.start();
-      prev.setActivity(0.7); // 预览是展示位,保持活跃(真壁纸这个值绑定在 agent 上)
+      const base = { theme:cfg.theme, quality:Math.min(44,cfg.quality), angle:cfg.angle, intensity:cfg.intensity };
+      // Both run live, side by side. Showing the Pro effect rather than locking
+      // it is the entire pitch — a user cannot want what they have not seen.
+      prev = new E($('#prev'), Object.assign({}, base, { pro:false }));
+      prev.start(); prev.setActivity(0.7);
+      prevPro = new E($('#prevPro'), Object.assign({}, base, { pro:true }));
+      prevPro.start(); prevPro.setActivity(0.7);
+      startPreviewFeed();
     }
+
+    // Demo traffic for the previews. Real wallpapers are driven by live agents;
+    // a settings panel has none, so without this the comparison the user is
+    // being asked to judge is two empty fields.
+    let feedT = null;
+    function startPreviewFeed(){
+      if (feedT) clearInterval(feedT);
+      const SAMPLES = [
+        { v: '-38%', u: '', saved: true }, { v: '+2,148', u: 'tok', saved: true },
+        { v: 'cache', u: '61%', saved: false }, { v: '$0.19', u: '', saved: true },
+        { v: '+488', u: 'saved', saved: true }, { v: 'ctx', u: '47%', saved: false },
+      ];
+      let i = 0;
+      // Real agent data first — the preview should show what the user's own
+      // wallpaper will actually look like. The sample numbers below are only a
+      // fallback so the panel is never a dead rectangle on a quiet machine.
+      const feedReal = async () => {
+        try {
+          const list = (await T.getAgentSessions()) || [];
+          const groups = list
+            .filter(a => a && (a.recentMessages || []).length)
+            .slice(0, 3)
+            .map(a => ({
+              name: a.agentName || a.agentType || 'Agent',
+              icon: a.agentIcon || '🤖',
+              lines: (a.recentMessages || []).map(m =>
+                String((m && (m.text || m.summary || m.tool)) || '').trim()).filter(Boolean),
+            }))
+            .filter(g => g.lines.length);
+          if (!groups.length) return false;
+          [prev, prevPro].forEach(p => { if (p && p.setAgentLog) { p._lastLogAt = 0; try { p.setAgentLog(groups); } catch(e){} } });
+          return true;
+        } catch (e) { return false; }
+      };
+
+      const tick = () => {
+        feedReal();
+        const it = SAMPLES[i++ % SAMPLES.length];
+        [prev, prevPro].forEach(p => {
+          if (!p) return;
+          p._lastStageAt = 0;                 // bypass the 12s throttle in a demo
+          try { p.setStageItems([it]); } catch(e){}
+        });
+      };
+      tick();
+      feedT = setInterval(tick, 2600);
+    }
+
+    /** Gate the tuning controls behind Pro.
+     *
+     *  Free keeps a working wallpaper on sensible defaults; Pro is what lets
+     *  you tune it. This is a far clearer line than a feature the user cannot
+     *  see — the controls are visibly there, visibly locked, and one click
+     *  explains why.
+     */
+    async function applyProLock(){
+      let pro = false;
+      try {
+        const lic = await (T.getLicense ? T.getLicense() : null);
+        const tier = ((lic && lic.tier) || '').toLowerCase();
+        const st = ((lic && lic.status) || '').toLowerCase();
+        pro = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
+      } catch (e) { /* offline → treat as free */ }
+      window.__wpPro = pro;
+      const ids = ['sInt','sAng','sQual','showPanel'];
+      ids.forEach(function(id){
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.disabled = !pro;
+        const row = el.closest('.card') || el.parentElement;
+        if (row) row.classList.toggle('locked', !pro);
+      });
+      const th = document.getElementById('themes');
+      if (th) th.classList.toggle('locked', !pro);
+      document.querySelectorAll('.pro-lock-tag').forEach(function(n){ n.remove(); });
+      if (!pro) {
+        [document.getElementById('themes'), document.getElementById('sInt')].forEach(function(anchor){
+          if (!anchor) return;
+          const card = anchor.closest('.card');
+          const t = card && card.querySelector('.card-t');
+          if (t && !t.querySelector('.pro-lock-tag')) {
+            const b = document.createElement('span');
+            b.className = 'pro-lock-tag'; b.textContent = 'PRO';
+            t.appendChild(b);
+          }
+        });
+      }
+    }
+
+    document.addEventListener('click', function (e) {
+      // A locked control should explain itself rather than silently do nothing.
+      const card = e.target.closest && e.target.closest('.locked');
+      if (!card || window.__wpPro) return;
+      e.preventDefault(); e.stopPropagation();
+      try {
+        if (T.requestUpgrade) T.requestUpgrade('wallpaper_settings');
+        else if (T.navigateBack) T.navigateBack();
+      } catch (err) { /* ignore */ }
+    }, true);
 
     function renderEngines(){
       document.querySelectorAll('.eng').forEach(el=>{
-        el.classList.toggle('sel', el.dataset.e === (cfg.engine||'mineradio'));
+        el.classList.toggle('sel', el.dataset.e === (previewOnlyEngine || cfg.engine || 'mineradio'));
       });
     }
 
@@ -208,15 +337,46 @@
       $('#sInt').value = cfg.intensity; $('#vInt').textContent = (+cfg.intensity).toFixed(1)+'×';
       $('#sAng').value = cfg.angle; $('#vAng').textContent = cfg.angle+'°';
       $('#sQual').value = cfg.quality; $('#vQual').textContent = cfg.quality;
-      renderThemes(); renderEngines();
+      renderThemes(); renderEngines(); applyProLock();
     }
 
     function wire(){
       $('#btnBack').addEventListener('click',()=>T.navigateBack());
-      document.querySelectorAll('.eng').forEach(el=>el.addEventListener('click',()=>{
+      document.querySelectorAll('.eng').forEach(el=>el.addEventListener('click',async ()=>{
         if (cfg.engine === el.dataset.e) return;
-        cfg.engine = el.dataset.e;
-        renderEngines(); mountPreview(); save();
+        // Pro engines: the LIVE PREVIEW is deliberately free — it is the entire
+        // pitch, and hiding it would sell nothing. Only saving it as the actual
+        // desktop wallpaper is gated, and that is where the plan window opens.
+        if (el.dataset.pro) {
+          // Do NOT touch cfg here. The old version set cfg.engine before the
+          // licence check and only skipped save() — but any later save (moving
+          // a slider, toggling a switch) then persisted the Pro engine, so a
+          // free user could select it after all. The preview gets its own
+          // variable; cfg is only written once entitlement is confirmed.
+          previewOnlyEngine = el.dataset.e;
+          renderEngines(); mountPreview();          // preview runs for everyone
+          let pro = false;
+          try {
+            const lic = await (T.getLicense ? T.getLicense() : null);
+            const tier = ((lic && lic.tier) || '').toLowerCase();
+            const st = ((lic && lic.status) || '').toLowerCase();
+            pro = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
+          } catch (e) { /* offline → treat as free */ }
+          if (!pro) {
+            try {
+              if (T.requestUpgrade) await T.requestUpgrade('wallpaper_pro');
+              else if (T.showMainWindow) await T.showMainWindow();
+              else if (T.navigateBack) await T.navigateBack();
+            } catch (e) { /* ignore */ }
+            return;                                  // preview stays, cfg untouched
+          }
+          previewOnlyEngine = null;
+          cfg.engine = el.dataset.e;                 // entitled — now it is real
+        } else {
+          cfg.engine = el.dataset.e;
+          renderEngines(); mountPreview();
+        }
+        save();
       }));
       $('#enable').addEventListener('change', e=>{ cfg.enabled = e.target.checked; T.setWallpaperEnabled(cfg.enabled); });
       $('#showPanel').addEventListener('change', e=>{ cfg.showPanel = e.target.checked; save(); });

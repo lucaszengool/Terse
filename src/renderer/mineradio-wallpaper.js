@@ -54,6 +54,10 @@ const STAT_TINT = {
   saved: '#C9F03D', spent: '#FF9F45', cache: '#5AD8FF',
   compact: '#B98CFF', cost: '#FFD75A', agents: '#7CF5C0',
 };
+/** Pro 的多槽位调色板 —— 同屏几条字各用一色。STAT_TINT 只有按 kind 的 3~6 色,
+ *  同类事件连着来会撞成一片单色,这一组按槽位分配,保证同屏永远是多彩的。 */
+const PRO_TINT = ['#C9F03D', '#5AD8FF', '#FF9F45', '#B98CFF', '#7CF5C0', '#FFD75A'];
+
 /** 主题只影响染色倾向(配色本体来自用户壁纸)—— 保留选择器的意义 */
 const THEME_TINT = {
   indigo: '#8b6bff', ocean: '#3aa0ff', ice: '#7fe9ff', emerald: '#40e0a0',
@@ -237,8 +241,13 @@ export default class MineradioWallpaper {
     this._activity = 0.12;
     this._activityTarget = 0.12;
     this._kick = 0;
+    // Pro tier. Kept as a plain flag rather than a separate engine so the two
+    // previews in the control panel are the SAME renderer with one switch —
+    // any divergence a user sees is a real product difference, not two code
+    // paths that drifted apart.
+    this.pro = !!(opts && opts.pro);
     this._glyphQueue = [];
-    this._glyph = null;          // { label, kind, x, y, t0 }
+    this._glyphSlots = [];       // each: { ..., glyph: { label, kind, x, y, t0, col } }
     this._glyphSide = 1;
     this._glyphIdx = 0;
     this._lastAgentSig = '';
@@ -375,16 +384,19 @@ export default class MineradioWallpaper {
     this.layers = [];
   }
 
-  _buildGlyphLayer() {
+  /** One glyph slot: its own canvas, geometry, materials and uniforms.
+   *
+   *  The layer used to be a SINGLE slot, which capped the wallpaper at one line
+   *  of text in one colour at any instant — every extra callout just queued up
+   *  behind it, so Pro looked identical to free no matter how it was tuned.
+   *  Slots are independent, so N of them run concurrently in N colours. */
+  _buildGlyphSlot(n) {
     const cv = document.createElement('canvas');
     cv.width = 1024; cv.height = 160;
-    this._glyphCanvas = cv;
     // willReadFrequently:每次换一句都要 getImageData 采一遍遮罩,不加这个 Chromium 会把
     // 画布留在 GPU 上,每次回读都同步阻塞一帧。
-    this._glyphCtx = cv.getContext('2d', { willReadFrequently: true });
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
 
-    const n = 30000;
-    this._glyphN = n;
     const geo = new THREE.BufferGeometry();
     const uv = new Float32Array(n * 2), rnd = new Float32Array(n), pos = new Float32Array(n * 3);
     const on = new Float32Array(n);
@@ -393,15 +405,14 @@ export default class MineradioWallpaper {
     }
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('aUv', new THREE.BufferAttribute(uv, 2));
-    geo.setAttribute('aRand', new THREE.BufferAttribute(rnd, 1));
+    geo.setAttribute('aRnd', new THREE.BufferAttribute(rnd, 1));
     geo.setAttribute('aOn', new THREE.BufferAttribute(on, 1));
-    this._glyphAttr = { uv: geo.attributes.aUv, on: geo.attributes.aOn };
 
     const base = {
       uDotTex: this.u.uDotTex,
       uForm: { value: 0 }, uVis: { value: 0 },
       uCenter: { value: new THREE.Vector2(0, 0) },
-      uSize: { value: new THREE.Vector2(2.55, 0.44) },
+      uSize: { value: new THREE.Vector2(2.90, 0.86) },
       uTint: { value: new THREE.Color('#C9F03D') },
       uPixel: { value: 1 }, uPointScale: { value: 1 }, uTime: this.u.uTime,
       uAlpha: { value: 0.95 }, uBloomSize: { value: 1 }, uSoft: { value: 0 },
@@ -410,46 +421,67 @@ export default class MineradioWallpaper {
     const bloom = Object.assign({}, base, {
       uBloomSize: { value: 2.4 }, uSoft: { value: 1 }, uAlpha: { value: 0.52 },
     });
-    this._gu = base; this._guB = bloom;
     const mat = new THREE.ShaderMaterial({ uniforms: base, vertexShader: GLYPH_VS, fragmentShader: GLYPH_FS,
       transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
     const matB = new THREE.ShaderMaterial({ uniforms: bloom, vertexShader: GLYPH_VS, fragmentShader: GLYPH_FS,
       transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
+    return {
+      cv, ctx, geo, mat, matB, u: base, uB: bloom, n,
+      attr: { uv: geo.attributes.aUv, on: geo.attributes.aOn },
+      glyph: null,
+    };
+  }
+
+  _buildGlyphLayer() {
     const scene = new THREE.Scene();
-    const b = new THREE.Points(geo, matB); b.frustumCulled = false; b.renderOrder = 0; scene.add(b);
-    const p = new THREE.Points(geo, mat); p.frustumCulled = false; p.renderOrder = 1; scene.add(p);
-    this._glyphLayer = { scene, geo, mat, matB };
+    // Pro runs four slots so several statistics — and the live agent log — are
+    // on screen together. Points per slot drop so the total stays close to the
+    // single-slot budget rather than quadrupling the fill cost.
+    const count = this.pro ? 4 : 1;
+    const per = this.pro ? 14000 : 30000;
+    this._glyphSlots = [];
+    for (let i = 0; i < count; i++) {
+      const slot = this._buildGlyphSlot(per);
+      const b = new THREE.Points(slot.geo, slot.matB); b.frustumCulled = false; b.renderOrder = 0; scene.add(b);
+      const p = new THREE.Points(slot.geo, slot.mat);  p.frustumCulled = false; p.renderOrder = 1; scene.add(p);
+      this._glyphSlots.push(slot);
+    }
+    this._glyphLayer = { scene, slots: this._glyphSlots };
   }
 
   /** 把当前这句话画进字形画布,再在 CPU 上把亮像素采成每颗粒子的落点 */
-  _drawGlyphLabel(text) {
-    const cv = this._glyphCanvas, g = this._glyphCtx;
+  _drawGlyphLabel(slot, text, size) {
+    const cv = slot.cv, g = slot.ctx;
     g.clearRect(0, 0, cv.width, cv.height);
     g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height);
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    let px = 96;
+    // Pro's companion callouts are drawn deliberately smaller: the film's field
+    // is numbers at MIXED sizes, and a same-size second line just looks doubled.
+    // One family, three weights of presence — the reference field is the same
+    // particle type at different scales, not different kinds of object.
+    let px = size === 'big' ? 168 : size === 'small' ? 46 : 84;
     // Consolas/Segoe UI Mono 补在前面:Windows 上没有 SF Mono/Menlo,只留 generic
     // monospace 会掉到 Courier New,细笔画在粒子遮罩里几乎采不到点。
     const FONT = "'SF Mono','JetBrains Mono',ui-monospace,SFMono-Regular,Menlo," +
                  "Consolas,'Segoe UI Mono',monospace";
-    for (; px > 30; px -= 2) {
+    for (const floor = size === 'small' ? 18 : 28; px > floor; px -= 2) {
       g.font = `800 ${px}px ${FONT}`;
       if (g.measureText(text).width < cv.width * 0.92) break;
     }
     g.fillText(text, cv.width / 2, cv.height / 2);
-    this._sampleGlyphMask();
+    this._sampleGlyphMask(slot);
   }
 
   /** 遮罩 → 粒子:亮像素列表里随机取点写进 aUv,其余粒子 aOn=0 直接不亮。
    *  以前这一步在 vertex shader 里 texture2D(uGlyphTex),Windows 软件渲染下恒为 0。 */
-  _sampleGlyphMask() {
-    const cv = this._glyphCanvas, W = cv.width, H = cv.height;
-    const attr = this._glyphAttr;
+  _sampleGlyphMask(slot) {
+    const cv = slot.cv, W = cv.width, H = cv.height;
+    const attr = slot.attr;
     if (!attr) return;
-    const uv = attr.uv.array, on = attr.on.array, n = this._glyphN;
+    const uv = attr.uv.array, on = attr.on.array, n = slot.n;
 
     let data;
-    try { data = this._glyphCtx.getImageData(0, 0, W, H).data; }
+    try { data = slot.ctx.getImageData(0, 0, W, H).data; }
     catch (e) { return; }                       // 画布被污染就保持上一句(不至于黑屏)
 
     // 亮像素索引表(步长 1,1024×160 一次扫完 ~0.5ms)
@@ -577,9 +609,11 @@ export default class MineradioWallpaper {
     const n = 2 + (Math.random() < 0.5 ? 0 : 1);
     for (let k = 0; k < n; k++) {
       let x, y;
-      if (this._glyph) {                       // 有数字在显示 → 波纹从它那儿推出去
-        x = this._glyph.x + (Math.random() - 0.5) * 0.5;
-        y = this._glyph.y + (Math.random() - 0.5) * 0.4;
+      const lead = (this._glyphSlots || []).filter(sl => sl.glyph)
+        .sort((a, b) => b.u.uVis.value - a.u.uVis.value)[0];
+      if (lead) {                              // 有数字在显示 → 波纹从它那儿推出去
+        x = lead.glyph.x + (Math.random() - 0.5) * 0.5;
+        y = lead.glyph.y + (Math.random() - 0.5) * 0.4;
       } else {
         const idx = Math.floor(Math.random() * 9);
         x = ((idx % 3) / 2 - 0.5) * planeW * 0.72 + (Math.random() - 0.5) * 0.7 * aspect;
@@ -610,11 +644,42 @@ export default class MineradioWallpaper {
   /* ── 统计融入:这些 API 原本是往场景里丢 DOM 标签的,
         在这个引擎里改成"粒子聚成那个数字" ── */
 
+  /** A short companion line for the Pro field — derived from the headline so it
+   *  is never invented data, just a second facet of the same event. */
+  _proTrail(label, kind) {
+    // The companion line must carry INFORMATION. The first version emitted bare
+    // words ("live", "cached"), which read as filler next to a real statistic
+    // and made the Pro field look padded rather than richer. Each variant here
+    // is derived from the same event, so nothing is invented.
+    const m = String(label).match(/[-+]?[\d.,]+/);
+    const n = m ? m[0] : '';
+    const pick = (arr) => arr[(this._glyphIdx + arr.length) % arr.length];
+    if (kind === 'saved') {
+      return pick([n + ' tok cached', 'prefix reused', n + ' off this turn', 'cache hit']);
+    }
+    if (kind === 'agents') {
+      return pick(['streaming', n + '/min burn', 'context healthy', 'tools warm']);
+    }
+    if (kind === 'cache') {
+      return pick([n + ' reused', 'prefix stable', 'ttl refreshed']);
+    }
+    if (kind === 'log') return null;   // log lines are long enough already
+    return n ? n + ' tok' : null;
+  }
+
   _queueGlyph(label, kind) {
     if (!label) return;
     // 队列压太长就丢旧的:壁纸要的是"此刻在发生什么",不是补播历史
-    if (this._glyphQueue.length > 3) this._glyphQueue.shift();
-    this._glyphQueue.push({ label, kind: kind || 'saved' });
+    const cap = this.pro ? 6 : 3;          // Pro keeps more in flight
+    if (this._glyphQueue.length >= 8) return;   // hard ceiling shared by every producer
+    if (this._glyphQueue.length > cap) this._glyphQueue.shift();
+    this._glyphQueue.push({ label, kind: kind || 'saved', size: 'mid' });
+    // Pro: a second, smaller callout trails the headline — the film's look is
+    // a FIELD of numbers at mixed sizes, not one line at a time.
+    if (this.pro && Math.random() < 0.7) {
+      const trail = this._proTrail(label, kind);
+      if (trail) this._glyphQueue.push({ label: trail, kind: kind || 'saved', size: 'small' });
+    }
   }
 
   /** token 增量 → 粒子聚成 "+N tok" / "+N saved" */
@@ -638,6 +703,82 @@ export default class MineradioWallpaper {
     if (busiest) this._queueGlyph((busiest.name || 'agent') + ' ' + fmt(busiest.rate) + '/min', 'agents');
   }
 
+  /** 实时 agent 日志 —— 把 agent 正在做的那一行,用同一套粒子聚合浮现出来。
+   *
+   *  数字告诉你省了多少,日志告诉你它此刻在干什么 —— 后者才是"这台机器活着"
+   *  的证据。节流到 6 秒一条:字形层同时只渲染一条,喂太快只会互相顶掉,
+   *  而且壁纸刷屏会变成干扰而不是氛围。
+   *  重复的行直接丢弃(agent 循环调同一个工具时会连发)。 */
+  setAgentLog(groups) {
+    // wallpaper.html feeds GROUPS — [{ name, icon, project, lines[] }], busiest
+    // agent first. Take the newest line of the busiest one; a plain string is
+    // accepted too so the method is usable on its own.
+    let t = '';
+    if (typeof groups === 'string') {
+      t = groups;
+    } else if (Array.isArray(groups) && groups.length) {
+      const g = groups[0];
+      const lines = (g && g.lines) || [];
+      const last = lines.length ? lines[lines.length - 1] : '';
+      const body = typeof last === 'string' ? last : (last && (last.text || last.label)) || '';
+      t = ((g && g.icon) ? g.icon + ' ' : '') + body;
+    }
+    // Keep the pulse the older duplicate of this method used to do. That copy
+    // was defined LATER in the class and therefore silently overrode this one —
+    // every log line went to a method that only pulsed and dropped the text,
+    // which is why the headline never appeared no matter what was fixed here.
+    if (Array.isArray(groups) && groups.length) {
+      const l0 = (groups[0].lines || [])[0];
+      if (l0 && +l0.tok > 0) this.pulse(Math.min(1.2, 0.15 + Math.log10(1 + l0.tok) * 0.3));
+    }
+    t = String(t == null ? '' : t).replace(/\s+/g, ' ').trim();
+    if (!t) return;
+    const now = performance.now();
+    // Only skip a repeat if we ALREADY have it buffered — otherwise a stable
+    // line (the fallback headline is stable on purpose) would be rejected on
+    // every poll and the rotation would never get its first entry.
+    if (t === this._lastLogLine && (this._logRecent || []).length) return;
+    // The FIRST line must never be throttled. performance.now() is page uptime,
+    // so defaulting _lastLogAt to 0 meant any log arriving in the first few
+    // seconds of the page's life was discarded as "too soon".
+    if (this._lastLogAt != null &&
+        now - this._lastLogAt < (this.pro ? 1200 : 9000)) return;
+    this._lastLogAt = now;
+    this._lastLogLine = t;
+    // 字形是逐字采样成粒子的,长句会糊成一片 —— 截断到能读的长度。
+    // Front of the queue: the log is the "this machine is alive" signal, and
+    // behind a backlog of numbers it would surface minutes late or never.
+    // The log is the HEADLINE — biggest type, centre of the screen. It is the
+    // one line that says what the machine is doing right now; the statistics
+    // orbit it. Front of the queue so a backlog of numbers cannot delay it.
+    // Keep it SHORT. The glyph canvas is a fixed 1024px wide and the type is
+    // auto-shrunk to fit, so a long line does not wrap — it just renders small
+    // and stretched edge to edge, which is exactly what "not big enough" was.
+    const label = t.length > 18 ? t.slice(0, 17) + '…' : t;
+    // Free tier gets the statistics only. The centre headline — the live agent
+    // log — is the Pro differentiator, and it has to be visibly absent on the
+    // free side or the two previews look identical and sell nothing.
+    if (!this.pro) return;
+    this._logRecent = (this._logRecent || []);
+    if (this._logRecent[this._logRecent.length - 1] !== label) this._logRecent.push(label);
+    if (this._logRecent.length > 5) this._logRecent.shift();   // keep the last 5
+    // A new line jumps the queue: point the rotation at it and clear the wait so
+    // _pumpLog plays it on the next frame. Recording here and letting the pump
+    // decide keeps ONE place that chooses what is on screen.
+    this._logRot = this._logRecent.length - 1;
+    this._logNextAt = 0;
+    // Preempt: a NEW line must take the centre now, not after the current one
+    // finishes its ~12s life. Waiting is what made the headline feel like a
+    // slideshow of old activity rather than a live readout.
+    for (const sl of (this._glyphSlots || [])) {
+      if (sl.glyph && sl.glyph.size === 'big') {
+        // Cut its life short instead of popping it, so it fades rather than
+        // disappearing mid-frame.
+        sl.glyph.life = Math.min(sl.glyph.life, (now - sl.glyph.t0) + 260);
+      }
+    }
+  }
+
   /** 中央"正在播放"那组数据 —— 每 12 秒挑一条,聚成数字 */
   setStageItems(items) {
     const arr = Array.isArray(items) ? items : [];
@@ -652,12 +793,6 @@ export default class MineradioWallpaper {
 
   /** 音域回响会把 agent 日志渲成场景内文字;这个引擎不铺文字墙 —— 只取最新一行的
    *  token 数当一次冲击,让日志"推动"粒子而不是"占满"壁纸。 */
-  setAgentLog(groups) {
-    if (!Array.isArray(groups) || !groups.length) return;
-    const line = (groups[0].lines || [])[0];
-    if (line && +line.tok > 0) this.pulse(Math.min(1.2, 0.15 + Math.log10(1 + line.tok) * 0.3));
-  }
-
   /* ══════════════ 内部 ══════════════ */
 
   _update(dt) {
@@ -691,10 +826,69 @@ export default class MineradioWallpaper {
     this._updateGlyph();
   }
 
+  /** Headline rotation: the newest log line first, then the four before it, and
+   *  round again. A wallpaper is watched idly for minutes at a time — a single
+   *  line that plays once and leaves a blank centre reads as broken, so the
+   *  recent history keeps cycling until something newer arrives. */
+  _pumpLog(now) {
+    const list = this._logRecent || [];
+    if (!list.length) return;
+    // Never interrupt a headline that is still on screen.
+    if ((this._glyphSlots || []).some(sl => sl.glyph && sl.glyph.size === 'big')) return;
+    if (now < (this._logNextAt || 0)) return;
+    this._logNextAt = now + 700;               // brief gap between headlines
+    // NEVER let the headline path grow the queue without bound.
+    //
+    // _pumpLog fires on a timer while slot intake is rate-limited, so an
+    // unshift with no cap grew the queue forever whenever the slots were busy —
+    // the wallpaper's WebProcess eventually stopped responding entirely, which
+    // looks exactly like "the log feature does nothing".
+    // The headline gets its OWN holder and its own reserved slot.
+    //
+    // It used to share _glyphQueue with the statistics, which meant competing
+    // against a stream that refills constantly: the queue sat at its length cap
+    // and the headline's enqueue was rejected every single time. 61 formations
+    // were observed with zero headlines. Decoupling is the fix — a rate-limited
+    // producer can never win a race against an unbounded one.
+    if (this._logPending) return;              // one headline waiting is enough
+    if (this._logRot == null) this._logRot = list.length - 1;
+    const idx = ((this._logRot % list.length) + list.length) % list.length;
+    this._logPending = { label: list[idx], kind: 'log', size: 'big' };
+    this._logRot = idx - 1;                    // walk newest → oldest, then wrap
+  }
+
   _updateGlyph() {
     const now = performance.now();
-    if (!this._glyph && this._glyphQueue.length) {
-      const next = this._glyphQueue.shift();
+    this._pumpLog(now);
+    const slots = this._glyphSlots || [];
+
+    // ── fill any free slot ──
+    // Every slot pulls independently, so a headline number, its companion and a
+    // live agent-log line can all be on screen at once instead of taking turns.
+    // Stagger, do not batch. Filling every free slot in one frame made the whole
+    // set appear and vanish in unison — a pulse, not a stream. One slot may take
+    // a glyph per window, so they overlap in a rolling succession instead.
+    if (this._nextFillAt == null) this._nextFillAt = 0;
+    const FILL_GAP = this.pro ? 520 : 1400;   // ms between successive formations
+    for (let si = 0; si < slots.length; si++) {
+      const slot = slots[si];
+      if (slot.glyph) continue;
+      // Slot 0 is reserved for the headline so the statistics can never starve
+      // it; the rest never touch the headline.
+      const headlineSlot = si === 0 && slots.length > 1;
+      let next;
+      if (headlineSlot) {
+        if (!this._logPending) continue;
+        next = this._logPending;
+        this._logPending = null;
+      } else {
+        if (!this._glyphQueue.length && !this._logPending) continue;
+        if (now < this._nextFillAt) break;
+        this._nextFillAt = now + FILL_GAP;
+        // With one slot (free tier) the headline still takes precedence.
+        if (this._logPending) { next = this._logPending; this._logPending = null; }
+        else next = this._glyphQueue.shift();
+      }
       // 左右交替、纵向游走 —— 避开屏幕正中(那儿通常是窗口和图标)
       this._glyphSide *= -1;
       this._glyphIdx++;
@@ -702,40 +896,130 @@ export default class MineradioWallpaper {
       // 左下角是实时统计面板(#panel)的位置,数字落这儿会被压住 —— 左侧一律走上半屏
       if (this._glyphSide < 0 && gy < 0.35) gy = 0.35 + Math.abs(gy) * 0.6;
       let gx = this._glyphSide * (2.45 + ((this._glyphIdx * 0.37) % 1) * 0.85);
-      // 这些偏移是按 16:9 定的。竖屏/窄屏(竖着摆的显示器)下视锥半宽只有 ~1.9,
-      // 整句会整个飞到画面外 —— 看起来就是"统计根本不出现"。按相机实际半宽夹一次。
+      // Concurrent slots must not stack on top of each other — push each one to
+      // its own band. Without this the four Pro lines overlap into a smear.
+      gy += (si - (slots.length - 1) / 2) * 0.95;
+      // 这些偏移是按 16:9 定的。竖屏/窄屏下视锥半宽只有 ~1.9,整句会飞出画面。
       const cam = this._silk && this._silk.cam;
       if (cam && cam.isPerspectiveCamera) {
         const halfW = Math.tan(cam.fov * Math.PI / 360) * cam.position.z * cam.aspect;
-        const room = Math.max(0, halfW * 0.96 - this._gu.uSize.value.x / 2);
+        const room = Math.max(0, halfW * 0.96 - slot.u.uSize.value.x / 2);
         gx = Math.sign(gx) * Math.min(Math.abs(gx), room);
         const halfH = Math.tan(cam.fov * Math.PI / 360) * cam.position.z;
         gy = Math.max(-halfH * 0.82, Math.min(halfH * 0.82, gy));
       }
-      this._glyph = { label: next.label, kind: next.kind, t0: now, x: gx, y: gy };
-      this._drawGlyphLabel(next.label);
-    }
-    if (!this._glyph) {
-      this._gu.uVis.value = 0; this._guB.uVis.value = 0;
-      this.u.uTintStrength.value = 0;
-      return;
-    }
-    const age = now - this._glyph.t0;
-    if (age > G_LIFE) { this._glyph = null; this._gu.uVis.value = 0; this._guB.uVis.value = 0; return; }
-    let form, vis;
-    if (age < G_IN) { const t = age / G_IN; form = smoother(t); vis = smoother(Math.min(1, t * 1.6)); }
-    else if (age < G_IN + G_HOLD) { form = 1; vis = 1; }
-    else { const t = (age - G_IN - G_HOLD) / G_OUT; form = 1 - smoother(t) * 0.75; vis = 1 - smoother(t); }
+      // Colour: Pro spreads slots across the palette so the field is multicolour
+      // even when several events share one kind; free keeps the by-kind tint.
+      const col = this.pro ? PRO_TINT[(si + this._glyphIdx) % PRO_TINT.length]
+                           : (STAT_TINT[next.kind] || STAT_TINT.saved);
+      const tier = next.size || 'mid';
+      // The headline owns the centre; statistics scatter around it. Putting the
+      // big line in the same band rota as the rest is what made the field look
+      // like a list instead of a composition.
+      if (tier === 'big') { gx = 0; gy = 0.15; }
+      slot.glyph = { label: next.label, kind: next.kind, t0: now, x: gx, y: gy,
+                     size: tier, small: tier === 'small', col,
+                     // per-glyph drift so the callouts FLOAT rather than sit still
+                     dx: (Math.random() - 0.5) * 0.5, dy: 0.16 + Math.random() * 0.22,
+                     ph: Math.random() * Math.PI * 2,
+                     // Varied lifetime: equal lifetimes made the field clear in
+                     // one go, which is what read as "all disappear together".
+                     life: G_LIFE * (tier === 'small' ? 0.72 : tier === 'big' ? 1.25 : 1)
+                           * (0.82 + Math.random() * 0.45) };
+      this._drawGlyphLabel(slot, next.label, tier);
 
-    const col = STAT_TINT[this._glyph.kind] || STAT_TINT.saved;
-    for (const g of [this._gu, this._guB]) {
-      g.uForm.value = form; g.uVis.value = vis;
-      g.uCenter.value.set(this._glyph.x, this._glyph.y);
-      g.uTint.value.set(col);
+      // ── The scattered field REACTS to each formation ──
+      // A glyph used to assemble in silence, which made the numbers read as an
+      // overlay pasted on top rather than something the field itself did. The
+      // pattern varies per formation so repeats never look mechanical.
+      const nx = Math.max(-1, Math.min(1, gx / (PLANE_SIZE * 0.5)));
+      const ny = Math.max(-1, Math.min(1, gy / (PLANE_SIZE * 0.5)));
+      // The headline is the loudest event on the wallpaper, so it must move the
+      // field the most. 'log' previously fell through to the 0.62 default and
+      // ended up the WEAKEST of all kinds — the opposite of the intent.
+      const kindStr = ((next.size || 'mid') === 'small' ? 0.5 : 1) *
+        (next.kind === 'log' ? 1.35 : next.kind === 'saved' ? 1.0
+          : next.kind === 'agents' ? 0.78 : 0.62);
+      // ── The field's reaction to a formation ──
+      // Eight patterns, picked at RANDOM rather than in rotation: a fixed cycle
+      // becomes predictable within a minute of watching a wallpaper, and the
+      // whole point of this layer is that it never quite repeats. The headline
+      // gets the wider, more dramatic shapes.
+      const big = tier === 'big';
+      const S = big ? 2.3 : 1;    // headline reactions read across the whole plane
+      const shape = Math.floor(Math.random() * (big ? 8 : 6));
+      // Vary the SPREAD per formation as well as the pattern. With a fixed
+      // radius every shape decayed into the same round pulse a moment after it
+      // started, which is why eight patterns still read as "only one wave".
+      const spread = 0.7 + Math.random() * 1.1;
+      const R = (x, y, st) => this._triggerRipple(
+        Math.max(-1, Math.min(1, nx + (x - nx) * spread)),
+        Math.max(-1, Math.min(1, ny + (y - ny) * spread)),
+        st * kindStr * S * (0.8 + Math.random() * 0.5));
+      if (shape === 0) {                       // single deep drop
+        R(nx, ny, 1.15);
+      } else if (shape === 1) {                // twin echoes, detuned
+        R(nx - 0.16, ny, 0.85); R(nx + 0.16, ny + 0.05, 0.70);
+      } else if (shape === 2) {                // expanding ring
+        for (let k = 0; k < 3; k++) {
+          const a = (k / 3) * Math.PI * 2 + Math.random() * 6.28;
+          R(nx + Math.cos(a) * 0.22, ny + Math.sin(a) * 0.22, 0.62);
+        }
+      } else if (shape === 3) {                // sweep travelling outward
+        for (let k = 0; k < 3; k++) {
+          R(nx + Math.sign(nx || 1) * (0.20 + k * 0.26), ny - k * 0.10, 0.95 - k * 0.24);
+        }
+      } else if (shape === 4) {                // vertical column, rising
+        for (let k = 0; k < 3; k++) R(nx, ny - 0.18 + k * 0.30, 0.90 - k * 0.18);
+      } else if (shape === 5) {                // scatter — a handful of sparks
+        for (let k = 0; k < 5; k++) {
+          R(nx + (Math.random() - 0.5) * 0.9, ny + (Math.random() - 0.5) * 0.7, 0.34 + Math.random() * 0.3);
+        }
+      } else if (shape === 6) {                // wide double ring (headline only)
+        const spin = Math.random() * 6.28;
+        for (let k = 0; k < 6; k++) {
+          const a = (k / 6) * Math.PI * 2 + spin;
+          R(nx + Math.cos(a) * 0.40, ny + Math.sin(a) * 0.30, 0.95);
+          R(nx + Math.cos(a) * 0.78, ny + Math.sin(a) * 0.58, 0.55);
+        }
+      } else {                                 // shockwave across the whole plane
+        for (let k = 0; k < 4; k++) R(nx, ny, 1.25 - k * 0.22);
+        R(-nx * 0.7, -ny * 0.7, 0.55);
+      }
+      this._kick = Math.max(this._kick, (big ? 1.5 : 0.55) * kindStr);
     }
-    // 壁纸自己的粒子也短暂偏向这条统计的品牌色 —— 走 Mineradio 原有的染色通道
-    this.u.uTintColor.value.set(col);
-    this.u.uTintStrength.value = vis * 0.30;
+
+    // ── advance every live slot ──
+    let strongest = 0, strongestCol = null;
+    for (const slot of slots) {
+      const g0 = slot.glyph;
+      if (!g0) { slot.u.uVis.value = 0; slot.uB.uVis.value = 0; continue; }
+      const age = now - g0.t0;
+      if (age > g0.life) { slot.glyph = null; slot.u.uVis.value = 0; slot.uB.uVis.value = 0; continue; }
+      let form, vis;
+      if (age < G_IN) { const t = age / G_IN; form = smoother(t); vis = smoother(Math.min(1, t * 1.6)); }
+      else if (age < G_IN + G_HOLD) { form = 1; vis = 1; }
+      else { const t = (age - G_IN - G_HOLD) / G_OUT; form = 1 - smoother(t) * 0.75; vis = 1 - smoother(t); }
+
+      // Float: a slow rise plus a lateral sway, seeded per glyph. Static text
+      // over a moving particle field looks pasted on; this is what sells it.
+      const t = age / 1000;
+      const fx = g0.x + Math.sin(t * 0.9 + g0.ph) * 0.10 + g0.dx * t * 0.10;
+      const fy = g0.y + g0.dy * t * 0.35 + Math.cos(t * 0.7 + g0.ph) * 0.05;
+
+      for (const u of [slot.u, slot.uB]) {
+        u.uForm.value = form; u.uVis.value = vis;
+        u.uCenter.value.set(fx, fy);
+        u.uTint.value.set(g0.col);
+        // Companion lines sit smaller in the field, matching their smaller type.
+        u.uPointScale.value = g0.size === 'big' ? 1.7 : g0.size === 'small' ? 0.66 : 1;
+      }
+      if (vis > strongest) { strongest = vis; strongestCol = g0.col; }
+    }
+
+    // 壁纸自己的粒子短暂偏向最亮那条统计的品牌色 —— 走 Mineradio 原有的染色通道
+    if (strongestCol) this.u.uTintColor.value.set(strongestCol);
+    this.u.uTintStrength.value = strongest * 0.30;
   }
 
   _render() {
@@ -743,7 +1027,10 @@ export default class MineradioWallpaper {
     r.clear();
     for (const L of this.layers) r.render(L.scene, L.cam);
     // 字形层用 SILK 的相机(同一套平面坐标),最后画,叠在最上面
-    if (this._gu.uVis.value > 0.001) r.render(this._glyphLayer.scene, this._silk.cam);
+    // Any live slot means the layer has something to draw.
+    if ((this._glyphSlots || []).some(sl => sl.u.uVis.value > 0.001)) {
+      r.render(this._glyphLayer.scene, this._silk.cam);
+    }
   }
 
   dispose() {
@@ -752,7 +1039,7 @@ export default class MineradioWallpaper {
     if (this._ro) { try { this._ro.disconnect(); } catch (e) {} this._ro = null; }
     try {
       this._disposeLayers();
-      this._glyphLayer.geo.dispose(); this._glyphLayer.mat.dispose(); this._glyphLayer.matB.dispose();
+      for (const sl of (this._glyphSlots || [])) { sl.geo.dispose(); sl.mat.dispose(); sl.matB.dispose(); }
       this._coverTex.dispose(); this._edgeTex.dispose(); this._rippleTex.dispose();
       this.renderer.dispose();
     } catch (e) {}

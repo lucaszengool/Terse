@@ -73,7 +73,11 @@
     // 两个引擎 API 完全一致,所以下面的轮询/统计代码一行都不用分叉。
     //   mineradio  = 用户自己的真桌面壁纸 + Mineradio 粒子(默认)
     //   topography = 音域回响光柱地形(原引擎)
-    const ENGINES = { mineradio: MineradioWallpaper, topography: TokenWallpaper3D };
+    // 'cinematic' is the Pro tier of the mineradio engine, not a separate
+    // renderer — it was missing from this map, so picking Pro silently fell
+    // back to the free engine and the desktop looked identical.
+    const ENGINES = { mineradio: MineradioWallpaper, cinematic: MineradioWallpaper,
+                      topography: TokenWallpaper3D };
     const engineOf = c => ENGINES[c && c.engine] || MineradioWallpaper;
     const canvas = document.getElementById('stage');
     const panel = document.getElementById('panel');
@@ -95,7 +99,10 @@
       // mineradio 会把用户的真壁纸铺到 body 上;切回音域回响要清掉,否则底图还留着
       document.body.style.background = '#05060a';
       const E = engineOf(cfg);
-      wp = new E(canvas, { theme: cfg.theme, quality: cfg.quality, angle: cfg.angle, intensity: cfg.intensity });
+      // pro MUST be forwarded here: without it the engine builds its free
+      // field no matter what the user picked in the control panel.
+      wp = new E(canvas, { theme: cfg.theme, quality: cfg.quality, angle: cfg.angle,
+                           intensity: cfg.intensity, pro: cfg.engine === 'cinematic' });
       window.wp = wp;   // dev aid: drive from console / preview harness
       wp.start();
     }
@@ -148,6 +155,7 @@
         + ((a.optimizationStats && +a.optimizationStats.potentialSavings)||0);
     }
     // Map one recent agent message → a log line (matches the Dynamic Island's step vocabulary).
+    function fmtTok(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(n); }
     function msgToLine(m){
       const name = (m.toolName||m.tool_name||'').toString();
       if (m.type==='tool_use')    return { kind:'tool',   ico:'⚙', label: name||'tool',                    tok:+m.tokens||0 };
@@ -158,7 +166,7 @@
     let lastSaved = null;
     async function pollMeta(){
       const show = cfg.showPanel !== false;
-      let saved = 0, pct = 0, active = [];
+      let saved = 0, pct = 0, active = [], sessions = [];
       // Tokens saved by Terse (today) — captured here, but the DISPLAYED value falls back to agent
       // "saveable" below (see savedShown) since agent traffic doesn't credit tokens_saved.
       try {
@@ -170,6 +178,7 @@
       // Live agents
       try {
         const list = (await T.getAgentSessions()) || [];
+        sessions = list;   // needed after this try block (log groups)
         active = list.filter(a => a && a.connected !== false);
         document.getElementById('pAgentCount').textContent = active.length;
         const wrap = document.getElementById('pAgents');
@@ -226,8 +235,13 @@
 
       // Live agent log — EACH active agent gets its own headed group of recent steps (detailed
       // tool/result/text lines), busiest first, up to 3 agents.
-      const logGroups = active
-        .filter(a => (a.recentMessages||[]).length)
+      // Source the log from ALL sessions, not just `active`. The island shows a
+      // last-known line whether or not a session is currently flagged
+      // connected; the wallpaper filtered on `connected !== false` first, so a
+      // session the island was happily displaying produced NOTHING here — the
+      // centre stayed empty even while the island scrolled its log.
+      const logGroups = (sessions || [])
+        .filter(a => a && (a.recentMessages||[]).length)
         .sort((a,b) => (+b.burnRate||0) - (+a.burnRate||0))
         .slice(0, 3)
         .map(a => ({
@@ -236,6 +250,24 @@
           project: a.project ? String(a.project).split('/').filter(Boolean).pop() : '',
           lines: (a.recentMessages||[]).map(msgToLine),
         }));
+      // Fall back to facts we KNOW exist. recentMessages can be empty even for a
+      // busy session (the monitor only fills it once it has parsed transcript
+      // lines), and an empty centre reads as a broken feature. Everything here
+      // is still real session data — nothing is invented.
+      if (!logGroups.length && sessions.length) {
+        const s0 = sessions.slice().sort((a,b) => (+b.totalTokens||0) - (+a.totalTokens||0))[0];
+        if (s0) {
+          const bits = [];
+          if (s0.turns) bits.push(s0.turns + ' turns');
+          if (s0.totalTokens) bits.push(fmtTok(s0.totalTokens) + ' in');
+          if (s0.model) bits.push(String(s0.model));
+          logGroups.push({
+            name: s0.agentName || s0.agentType || 'Agent',
+            icon: s0.agentIcon || '🤖',
+            lines: [{ label: (s0.agentName || 'Agent') + ' · ' + (bits.join(' · ') || 'connected') }],
+          });
+        }
+      }
       wp.setAgentLog(logGroups);
     }
 

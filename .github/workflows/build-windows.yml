@@ -521,6 +521,62 @@ jobs:
           }
           Write-Host "burst done"
 
+      # The ghost titlebar is intermittent - two runs of IDENTICAL app code
+      # disagreed about whether the island had one. So a single frame is a coin
+      # flip here too, exactly as it was for the wallpaper glyphs. Burst the
+      # island and Doctor, and crop the top-left corner where the ghost paints,
+      # so the sequence shows whether the flush erases it and WHEN.
+      - name: Burst the island and Doctor corners
+        continue-on-error: true
+        run: |
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class Q{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint f);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);public struct R{public int L,T,Rr,B;}}'
+          Add-Type -AssemblyName System.Drawing
+          $wins = @{}
+          $scan = [Q+Cb]{ param($h,$l)
+            if ([Q]::IsWindowVisible($h)) {
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][Q]::GetWindowTextW($h, $sb, 256)
+              $t = $sb.ToString()
+              if ($t -eq 'Terse Island' -or $t -eq 'Terse Doctor' -or $t -eq 'Terse') {
+                if (-not $wins.ContainsKey($t)) { $wins[$t] = $h }
+              }
+            }
+            return $true }
+          [void][Q]::EnumWindows($scan, [IntPtr]::Zero)
+          Write-Host "windows to burst: $($wins.Keys -join ', ')"
+          if ($wins.Count -eq 0) { Write-Host 'NONE FOUND'; exit 0 }
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          foreach ($name in $wins.Keys) {
+            $hw = $wins[$name]
+            $safe = $name -replace '[^A-Za-z0-9]','_'
+            for ($i = 1; $i -le 8; $i++) {
+              try {
+                $r = New-Object Q+R
+                [void][Q]::GetWindowRect($hw, [ref]$r)
+                $w = $r.Rr - $r.L; $h2 = $r.B - $r.T
+                if ($w -le 0 -or $h2 -le 0) { break }
+                $b = New-Object System.Drawing.Bitmap $w, $h2
+                $gg = [System.Drawing.Graphics]::FromImage($b)
+                $dc = $gg.GetHdc()
+                [void][Q]::PrintWindow($hw, $dc, 2)
+                $gg.ReleaseHdc($dc)
+                # Crop the top-left corner, blown up 4x - that is the only place
+                # the ghost caption paints, and full-window shots make it easy to
+                # miss against dark content (it was called "cleared" on the
+                # Doctor window once on exactly that basis).
+                $cw = [Math]::Min(420, $w); $ch = [Math]::Min(46, $h2)
+                $crop = New-Object System.Drawing.Bitmap ($cw*4), ($ch*4)
+                $cg = [System.Drawing.Graphics]::FromImage($crop)
+                $cg.InterpolationMode = 'NearestNeighbor'
+                $cg.DrawImage($b, (New-Object System.Drawing.Rectangle 0,0,($cw*4),($ch*4)), (New-Object System.Drawing.Rectangle 0,0,$cw,$ch), 'Pixel')
+                $crop.Save(("artifacts/ghost-{0}-{1:D2}.png" -f $safe, $i))
+                $cg.Dispose(); $crop.Dispose(); $gg.Dispose(); $b.Dispose()
+              } catch { Write-Host "$name frame $i failed: $_" }
+              Start-Sleep -Milliseconds 900
+            }
+          }
+          Write-Host "ghost burst done"
+
       - name: Collect the app's own logs
         continue-on-error: true
         run: |

@@ -2428,11 +2428,36 @@ fn clear_ghost_titlebar(win: &tauri::WebviewWindow) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static NUDGING: AtomicBool = AtomicBool::new(false);
     if NUDGING.swap(true, Ordering::SeqCst) {
+        diag_log("frame-strip", &format!("flush SKIPPED (re-entrant) for '{}'", win.label()));
         return;
     }
+    let styles = |w: &tauri::WebviewWindow| -> String {
+        use windows::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, GWL_EXSTYLE, GWL_STYLE};
+        match w.hwnd() {
+            Ok(raw) => unsafe {
+                let h = windows::Win32::Foundation::HWND(raw.0);
+                format!(
+                    "style=0x{:08X} ex=0x{:08X}",
+                    GetWindowLongPtrW(h, GWL_STYLE),
+                    GetWindowLongPtrW(h, GWL_EXSTYLE)
+                )
+            },
+            Err(_) => "no hwnd".into(),
+        }
+    };
+    let before = styles(win);
     if let Ok(sz) = win.inner_size() {
         let _ = win.set_size(tauri::PhysicalSize::new(sz.width, sz.height + 1));
         let _ = win.set_size(tauri::PhysicalSize::new(sz.width, sz.height));
+        diag_log(
+            "frame-strip",
+            &format!(
+                "flush RAN for '{}' {}x{}  before: {}  after: {}",
+                win.label(), sz.width, sz.height, before, styles(win)
+            ),
+        );
+    } else {
+        diag_log("frame-strip", &format!("flush for '{}': inner_size() failed", win.label()));
     }
     NUDGING.store(false, Ordering::SeqCst);
 }
@@ -5506,10 +5531,22 @@ fn set_wallpaper_config(config: serde_json::Value, app: AppHandle) -> bool {
 /// was — ask the user for the file rather than guessing from a picture.
 #[cfg(target_os = "windows")]
 fn pin_log(line: &str) {
+    diag_log("wallpaper-pin", line)
+}
+
+/// Append to `~/.terse/<name>.log`, and echo to stderr.
+///
+/// This is how the wallpaper bug got solved after five builds of guessing from
+/// screenshots: the log said `defview_on_progman=true ... chosen=0x2009a` and
+/// settled in one line what no picture could. The ghost titlebar is the same
+/// shape of problem — intermittent, invisible to a style dump — so it gets the
+/// same treatment rather than another round of theories.
+#[cfg(target_os = "windows")]
+fn diag_log(name: &str, line: &str) {
     use std::io::Write;
-    eprintln!("[terse][wallpaper-pin] {line}");
+    eprintln!("[terse][{name}] {line}");
     if let Some(dir) = dirs::home_dir() {
-        let p = dir.join(".terse").join("wallpaper-pin.log");
+        let p = dir.join(".terse").join(format!("{name}.log"));
         let _ = std::fs::create_dir_all(p.parent().unwrap());
         if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
             let _ = writeln!(f, "{line}");

@@ -497,6 +497,29 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           $bmp.Save("artifacts/wallpaper-window.png")
           Write-Host "PrintWindow ok=$ok -> artifacts/wallpaper-window.png"
+          $g.Dispose(); $bmp.Dispose()
+
+          # ── Burst, to catch the particle glyphs ────────────────────────────
+          # The stat text (the numbers and agent lines that particles gather
+          # into) is on a 12s rotation with a 2.22s envelope - G_IN 420 +
+          # G_HOLD 1100 + G_OUT 700 in mineradio-wallpaper.js. So ONE frame has
+          # roughly an 18% chance of landing on a glyph, and a frame without one
+          # proves nothing at all. 20 frames at 1.2s spacing covers two full
+          # rotations, so at least one glyph must appear if the pipeline works.
+          Write-Host "burst: 20 frames over 24s to catch the glyph rotation"
+          for ($i = 1; $i -le 20; $i++) {
+            Start-Sleep -Milliseconds 1200
+            try {
+              $b = New-Object System.Drawing.Bitmap $w, $h2
+              $gg = [System.Drawing.Graphics]::FromImage($b)
+              $dc = $gg.GetHdc()
+              [void][P]::PrintWindow($target, $dc, 2)
+              $gg.ReleaseHdc($dc)
+              $b.Save(("artifacts/wallpaper-frame-{0:D2}.png" -f $i))
+              $gg.Dispose(); $b.Dispose()
+            } catch { Write-Host "frame $i failed: $_" }
+          }
+          Write-Host "burst done"
 
       - name: Collect the app's own logs
         continue-on-error: true

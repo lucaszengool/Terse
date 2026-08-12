@@ -394,7 +394,15 @@ fn agent_defs() -> Vec<(&'static str, AgentDef)> {
             process_names: &["codex", "codex-app-server"],
             config_detect_dirs: codex_home_dirs(&home),
             log_dir: codex_home_dirs(&home).into_iter().find(|d| d.exists()),
-            parser: "generic",
+            // "codex", NOT "generic". accept_agent branches on
+            // `detection.parser == "codex"` to reach find_codex_session() and
+            // parse_codex_line(). With "generic" that branch is unreachable and
+            // Codex falls through to find_latest_session + parse_generic_line,
+            // which does not understand the rollout format at all - so the card
+            // connects and every single metric stays 0. macOS has had "codex"
+            // here all along; this was a port typo, and it is the whole reason
+            // Codex showed 0t next to a working Claude Code.
+            parser: "codex",
         }),
         ("copilot", AgentDef {
             name: "Copilot CLI",

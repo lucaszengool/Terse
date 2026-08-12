@@ -3411,6 +3411,17 @@ pub fn run() {
             // on whichever ones happen to be rounded.
             #[cfg(target_os = "windows")]
             for (_label, w) in app.webview_windows() {
+                // EXCEPT the wallpaper. strip_native_frame adds WS_POPUP, and a
+                // popup cannot also be WS_CHILD — which is exactly what a window
+                // re-parented into WorkerW has to be to draw on the desktop
+                // surface. This sweep runs over every window and so quietly
+                // turned the wallpaper back into a popup after pin_wallpaper_window
+                // had made it a child, and the Resized that pinning fires re-ran
+                // it again afterwards. The window was parented correctly and
+                // still drew nothing.
+                if _label == "wallpaper" {
+                    continue;
+                }
                 if let Ok(raw) = w.hwnd() {
                     strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
                 }
@@ -5479,17 +5490,23 @@ fn set_wallpaper_config(config: serde_json::Value, app: AppHandle) -> bool {
 /// child — that is the wallpaper layer — and re-parent into it. Falls back to
 /// parenting under Progman itself on shells where the split never happens.
 ///
-/// Also made click-through (`WS_EX_TRANSPARENT | WS_EX_NOACTIVATE`) and hidden
-/// from Alt-Tab (`WS_EX_TOOLWINDOW`), matching the Mac behaviour.
+/// The window is restyled to `WS_CHILD` (dropping `WS_POPUP` and the frame bits)
+/// before re-parenting — SetParent does not do this for you, and a popup handed
+/// to SetParent is composited nowhere. It is also made click-through
+/// (`WS_EX_TRANSPARENT | WS_EX_NOACTIVATE`), matching the Mac behaviour;
+/// `WS_EX_TOOLWINDOW` is NOT set, since it conflicts with the child parenting
+/// and a child window is already out of Alt-Tab.
 #[cfg(target_os = "windows")]
 fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
     use windows::core::w;
     use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
     use windows::Win32::UI::WindowsAndMessaging::{
         FindWindowExW, GetSystemMetrics, GetWindowLongPtrW, SendMessageTimeoutW, SetParent,
-        SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, SMTO_NORMAL, SM_CXVIRTUALSCREEN,
+        SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SMTO_NORMAL, SM_CXVIRTUALSCREEN,
         HWND_BOTTOM, SM_CYVIRTUALSCREEN, SWP_NOACTIVATE,
-        SWP_SHOWWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
+        SWP_SHOWWINDOW, WS_CAPTION, WS_CHILD, WS_EX_APPWINDOW, WS_EX_NOACTIVATE,
+        WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_EX_WINDOWEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
+        WS_POPUP, WS_SYSMENU, WS_THICKFRAME, WS_VISIBLE,
     };
 
     let raw = match win.hwnd() {
@@ -5505,15 +5522,24 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
         if !progman.is_invalid() {
             // Ask Progman to spawn the wallpaper WorkerW. Timeout so a wedged
             // Explorer can't hang our main thread.
-            let _ = SendMessageTimeoutW(
-                progman,
-                0x052C,
-                WPARAM(0),
-                LPARAM(0),
-                SMTO_NORMAL,
-                1000,
-                None,
-            );
+            //
+            // TWO messages, with wParam 0xD — not one with wParam 0. The bare
+            // (0x052C, 0, 0) form is the old Windows 8 recipe and it is what we
+            // were sending; on current Windows 11 it does not reliably spawn the
+            // second WorkerW, so the sibling search below found nothing and the
+            // window got parented to Progman, where it never draws. The 0xD/0
+            // then 0xD/1 pair is the form every working implementation uses.
+            for lp in [0isize, 1] {
+                let _ = SendMessageTimeoutW(
+                    progman,
+                    0x052C,
+                    WPARAM(0xD),
+                    LPARAM(lp),
+                    SMTO_NORMAL,
+                    1000,
+                    None,
+                );
+            }
         }
 
         // Finding the wallpaper host, in the order the shell actually arranges
@@ -5550,6 +5576,35 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
         }
         let parent = if target.is_invalid() { progman } else { target };
         if !parent.is_invalid() {
+            // WS_CHILD, and NOT WS_POPUP. This is the piece that was missing, and
+            // it is why the wallpaper never appeared on a real desktop however
+            // correctly it was parented: SetParent does not add WS_CHILD for you,
+            // and a WS_POPUP window handed to SetParent stays a popup owned by
+            // the host instead of becoming part of the desktop surface — so it
+            // is composited nowhere. Every working implementation of this trick
+            // sets WS_CHILD explicitly and drops the frame styles.
+            //
+            // WS_THICKFRAME goes too. Elsewhere in this file it is deliberately
+            // KEPT (it carries resizing), but the wallpaper is not resizable and
+            // a sizing border on a desktop child is just a frame that can paint.
+            let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+            let drop_bits = (WS_POPUP.0 | WS_CAPTION.0 | WS_THICKFRAME.0 | WS_SYSMENU.0
+                | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0) as isize;
+            SetWindowLongPtrW(
+                hwnd,
+                GWL_STYLE,
+                (style & !drop_bits) | (WS_CHILD.0 | WS_VISIBLE.0) as isize,
+            );
+            // WS_EX_APPWINDOW forces a taskbar button, WS_EX_WINDOWEDGE draws a
+            // raised edge, and WS_EX_TOOLWINDOW — which this function used to ADD
+            // — makes the window a floating tool palette, the opposite of a
+            // desktop child. All three come off; the reference implementations
+            // strip exactly these.
+            let ex0 = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let ex_drop =
+                (WS_EX_APPWINDOW.0 | WS_EX_WINDOWEDGE.0 | WS_EX_TOOLWINDOW.0) as isize;
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex0 & !ex_drop);
+
             let _ = SetParent(hwnd, parent);
             // MUST reposition after re-parenting. SetParent re-interprets the
             // window's coordinates as client-relative to its new parent, so the
@@ -5581,9 +5636,16 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             }
         }
 
-        // Click-through + out of Alt-Tab, so the desktop stays fully usable.
+        // Click-through, so the desktop stays fully usable.
+        //
+        // WS_EX_TOOLWINDOW is deliberately NOT added back. It used to be, to keep
+        // the window out of Alt-Tab — but it also marks the window a floating
+        // tool palette, which fights the WS_CHILD desktop parenting set above and
+        // was stripped there for that reason. Re-adding it here would have undone
+        // that two lines later. A WS_CHILD window is already absent from Alt-Tab,
+        // so it bought nothing.
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        let add = (WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0 | WS_EX_TOOLWINDOW.0) as isize;
+        let add = (WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0) as isize;
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | add);
     }
     let _ = win.set_ignore_cursor_events(true);
@@ -5611,6 +5673,23 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
     // so this is safe whether called from `setup` or from a command handler thread.
     let win2 = win.clone();
     let _ = app.run_on_main_thread(move || pin_wallpaper_window(&win2));
+
+    // Then again, twice, a beat later. On Windows 11 24H2 the wallpaper WorkerW
+    // frequently does not exist yet when an app launches with the session — it
+    // is spawned by Explorer some time after login. Pinning once at startup then
+    // finds nothing, falls back to Progman, and the wallpaper silently never
+    // draws; the user sees the toggle ON and a bare desktop, which is exactly
+    // the report. Re-pinning is idempotent, so the cost of being early is one
+    // wasted SetParent.
+    let app2 = app.clone();
+    let win3 = win.clone();
+    std::thread::spawn(move || {
+        for delay_ms in [1500u64, 5000] {
+            std::thread::sleep(std::time::Duration::from_millis(delay_ms));
+            let w = win3.clone();
+            let _ = app2.run_on_main_thread(move || pin_wallpaper_window(&w));
+        }
+    });
     Ok(())
 }
 

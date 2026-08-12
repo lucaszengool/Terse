@@ -5554,7 +5554,7 @@ fn pin_log(line: &str) {
 /// shape of problem — intermittent, invisible to a style dump — so it gets the
 /// same treatment rather than another round of theories.
 #[cfg(target_os = "windows")]
-fn diag_log(name: &str, line: &str) {
+pub(crate) fn diag_log(name: &str, line: &str) {
     use std::io::Write;
     eprintln!("[terse][{name}] {line}");
     if let Some(dir) = dirs::home_dir() {

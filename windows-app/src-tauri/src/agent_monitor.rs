@@ -1998,6 +1998,15 @@ impl AgentMonitor {
             session.session_file = all_files.first().cloned();
             eprintln!("[terse-agent] loaded {} files: {} messages, {} turns, {} input tokens",
                 all_files.len(), session.messages.len(), session.turns, session.total_input_tokens);
+            // The decisive line: files found vs what parsing actually produced.
+            // 0 files means discovery failed; files but 0 messages means the
+            // lines did not match the parser; messages but 0 tokens means the
+            // usage fields are shaped differently than expected.
+            crate::diag_log("agent-monitor", &format!(
+                "accept '{}': files={} messages={} turns={} in_tok={} out_tok={}",
+                detection.agent_type, all_files.len(), session.messages.len(),
+                session.turns, session.total_input_tokens, session.total_output_tokens
+            ));
         } else if agent_type == "cursor-agent" {
             // Cursor stores conversations in SQLite (cursorDiskKV table), not JSONL files.
             let msgs = read_cursor_conversations();
@@ -2236,8 +2245,19 @@ fn find_all_active_jsonl_globally() -> Vec<PathBuf> {
     // Only log on first call or count change (avoid spam)
     static LAST_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let prev = LAST_COUNT.swap(active.len(), std::sync::atomic::Ordering::Relaxed);
-    if !active.is_empty() && active.len() != prev {
-        eprintln!("[terse-agent] found {} active JSONL files globally", active.len());
+    if active.len() != prev {
+        // To a file, not just stderr. A released Windows build is built with
+        // windows_subsystem = "windows", so it has no console and every
+        // eprintln! in this module has been going nowhere. That is why "agents
+        // detected, every metric 0" could not be diagnosed from the app itself.
+        crate::diag_log("agent-monitor", &format!(
+            "jsonl scan: projects_dir={} exists={} active={} (was {})",
+            projects_dir.display(), projects_dir.exists(), active.len(), prev
+        ));
+        for (p, _) in active.iter().take(6) {
+            let sz = fs::metadata(p).map(|m| m.len()).unwrap_or(0);
+            crate::diag_log("agent-monitor", &format!("   {} ({} bytes)", p.display(), sz));
+        }
     }
     active.into_iter().map(|(p, _)| p).collect()
 }

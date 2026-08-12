@@ -3514,7 +3514,19 @@ pub fn run() {
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.show();
                 let _ = w.set_focus();
-                clear_ghost_titlebar(&w);
+                // No flush here any more. frame-strip.log caught this call
+                // running while main was style=0x14CF0000 — WS_CAPTION,
+                // WS_SYSMENU, WS_THICKFRAME, min/max, no WS_POPUP. In other
+                // words the sweep above HAD stripped it, and then show() put the
+                // whole native frame back, so this flush was repainting a window
+                // that still had a real caption — flushing the ghost IN rather
+                // than out.
+                //
+                // set_focus() fires Focused(true), whose handler strips the frame
+                // and only then flushes. The third line of that same log confirms
+                // the ordering works: main flushed again at style=0x94040000,
+                // WS_POPUP set and no caption. That is the flush that clears it,
+                // and it is the one the island and Doctor now get too.
             }
 
             // Tray icon + right-click menu (parity with macOS). Until now the

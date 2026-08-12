@@ -309,6 +309,35 @@ jobs:
           Get-Process -Name claude,codex -ErrorAction SilentlyContinue |
             ForEach-Object { Write-Host "running: $($_.ProcessName) pid=$($_.Id)" }
 
+      # Run the smoke test as a PRO user.
+      #
+      # The Pro field (four glyph slots, the PRO_TINT six-colour palette, the
+      # 1.2s agent-log cadence) is gated two ways: wallpaper.json must say
+      # engine=cinematic, AND get_license must report an entitled subscription -
+      # the renderer now re-checks, so setting the engine alone is no longer
+      # enough. A default runner is neither, so every burst so far has been
+      # photographing the FREE field and the Pro palette has never been observed.
+      #
+      # license.json is the local cache the License struct loads from, so writing
+      # an active tier here simulates a subscribed user on this machine. It grants
+      # nothing server-side; it is the same file a real subscriber would have.
+      - name: Sign the runner in as Pro
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $lic = @{
+            tier = 'pro'; status = 'active'
+            limits = @{ optimizations_per_week = -1; max_sessions = -1; max_devices = -1 }
+            clerkUserId = 'ci_smoke_user'
+            expiresAt = (Get-Date).AddDays(30).ToString('yyyy-MM-ddTHH:mm:sszzz')
+            trialEnd = $null
+            weekly_usage = 0.0
+            usage_week = [int](Get-Date -UFormat %V)
+          }
+          ConvertTo-Json $lic -Depth 6 | Set-Content (Join-Path $dir "license.json") -Encoding ascii
+          Write-Host "license.json written: tier=pro status=active"
+
       - name: Give the runner a desktop picture and turn the wallpaper on
         continue-on-error: true
         run: |
@@ -334,7 +363,11 @@ jobs:
           Write-Host "TranscodedWallpaper exists=$(Test-Path $transcoded)"
           $dir = Join-Path $env:USERPROFILE ".terse"
           New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          '{"enabled":true,"engine":"mineradio","theme":"neon","quality":56,"angle":55,"intensity":1.0}' |
+          # engine=cinematic, not mineradio: that is the Pro field, and with the
+          # Pro licence written above the renderer's entitlement check now
+          # passes, so the burst below finally photographs four coloured glyph
+          # slots instead of the free one-slot field.
+          '{"enabled":true,"engine":"cinematic","theme":"neon","quality":56,"angle":55,"intensity":1.0}' |
             Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
           Write-Host "wallpaper.json written with enabled=true"
 

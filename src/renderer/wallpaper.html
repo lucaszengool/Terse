@@ -85,6 +85,21 @@
       gold:'#ffcf5a', amber:'#ff9f43', blood:'#ff5a5a', coral:'#ff7a9c', neon:'#e146eb', mono:'#e8e8f0' };
 
     let wp = null, lastTokens = null, cfg = { engine:'mineradio', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
+    /** null = not checked yet (treat as entitled), true/false = a definite answer.
+     *  Only an explicit false downgrades the field — see mountEngine. */
+    let proOK = null;
+    /** Same entitlement rule the control panel uses, so the two can never
+     *  disagree about what "Pro" means: an active or trialing subscription on a
+     *  tier that is neither empty nor 'expired'. */
+    async function refreshEntitlement(){
+      try {
+        const lic = await (T.getLicense ? T.getLicense() : null);
+        if (!lic) return;                       // no command → leave as-is
+        const tier = ((lic.tier) || '').toLowerCase();
+        const st = ((lic.status) || '').toLowerCase();
+        proOK = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
+      } catch (e) { /* offline → leave proOK alone, fail open */ }
+    }
     const rateBuf = [];
 
     function applyAccent(theme){
@@ -101,8 +116,21 @@
       const E = engineOf(cfg);
       // pro MUST be forwarded here: without it the engine builds its free
       // field no matter what the user picked in the control panel.
+      //
+      // But `cfg.engine === 'cinematic'` alone is not entitlement. The control
+      // panel checks the licence at the moment you click, and never again — so a
+      // subscription that lapses leaves 'cinematic' sitting in wallpaper.json
+      // and the Pro field keeps rendering forever, as does hand-editing that
+      // file. entitled() re-checks here, where the pixels actually get drawn.
+      //
+      // Deliberately fails OPEN: a thrown call (offline, backend hiccup) keeps
+      // whatever the user already had. The wallpaper is persistent, unlike the
+      // settings panel that can fail closed for a moment without anyone losing
+      // anything — downgrading a paying user's desktop over a dropped request
+      // would be the worse error.
       wp = new E(canvas, { theme: cfg.theme, quality: cfg.quality, angle: cfg.angle,
-                           intensity: cfg.intensity, pro: cfg.engine === 'cinematic' });
+                           intensity: cfg.intensity,
+                           pro: cfg.engine === 'cinematic' && proOK !== false });
       window.wp = wp;   // dev aid: drive from console / preview harness
       wp.start();
     }
@@ -273,7 +301,16 @@
 
     async function boot(){
       try { const c = await T.getWallpaperConfig(); if (c) cfg = Object.assign(cfg, c); } catch(e){}
+      // Before the first mount, so a lapsed subscription never gets one frame of
+      // the Pro field. Re-checked every 5 min: this window lives for days, and a
+      // subscription can start or end while it runs.
+      await refreshEntitlement();
       mountEngine();
+      setInterval(async () => {
+        const was = proOK;
+        await refreshEntitlement();
+        if (was !== proOK && cfg.engine === 'cinematic') mountEngine();
+      }, 300000);
       applyAccent(cfg.theme);
       panel.classList.toggle('off', cfg.showPanel === false);
       poll();

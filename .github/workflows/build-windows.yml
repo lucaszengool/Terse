@@ -347,14 +347,20 @@ jobs:
       - name: Where did the wallpaper window land
         continue-on-error: true
         run: |
+          # CharSet.Unicode is NOT optional. C# DllImport defaults to CharSet.Ansi,
+          # so "Progman" was marshalled as ANSI into the WIDE entry point and never
+          # matched - FindWindowExW returned 0 and the dump concluded the runner had
+          # no Progman and no WorkerW at all. The giveaway was in its own output:
+          # class='T' title='T' is "Terse" in UTF-16 read as ANSI and cut at the
+          # first null byte. The Rust side uses w!() literals and was never affected.
           Add-Type -TypeDefinition @'
           using System;using System.Runtime.InteropServices;using System.Text;
           public class W {
             public delegate bool Cb(IntPtr h, IntPtr l);
-            [DllImport("user32.dll")] public static extern IntPtr FindWindowExW(IntPtr p,IntPtr c,string cls,string t);
+            [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindowExW(IntPtr p,IntPtr c,string cls,string t);
             [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr h,Cb cb,IntPtr l);
-            [DllImport("user32.dll")] public static extern int GetClassNameW(IntPtr h,StringBuilder s,int m);
-            [DllImport("user32.dll")] public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int m);
+            [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassNameW(IntPtr h,StringBuilder s,int m);
+            [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int m);
             [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h,out R r);
             [DllImport("user32.dll")] public static extern IntPtr GetWindowLongPtrW(IntPtr h,int i);
             [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr h,out uint p);

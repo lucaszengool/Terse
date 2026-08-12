@@ -234,6 +234,81 @@ jobs:
           Write-Host "EXPECT input_tokens=$expIn output_tokens=$expOut turns=8"
           "EXPECT_IN=$expIn`nEXPECT_OUT=$expOut" | Set-Content artifacts-expect.txt
 
+      # Codex too. Different agent, different store, different parser:
+      # ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl, read by parse_codex_line
+      # rather than parse_claude_code_line. Testing only Claude Code would leave
+      # exactly half the reported bug uncovered - the desktop showed BOTH agents
+      # online with zeroes, and they share no parsing code at all.
+      #
+      # Shape taken from parse_codex_line's own dispatch (Desktop rollout
+      # format): session_meta carries the model; event_msg dispatches on
+      # payload.type for task_started / user_message / task_complete;
+      # response_item carries role'd content plus function_call and
+      # function_call_output. Note Codex rollouts have NO usage fields at all -
+      # the parser estimates tokens from content length and flushes per turn on
+      # task_complete, so the fixture needs real prose volume, not token counts.
+      - name: Plant a Codex rollout so the other parser has real input
+        continue-on-error: true
+        run: |
+          $now  = Get-Date
+          $dir  = Join-Path $env:USERPROFILE (".codex\sessions\{0:yyyy}\{0:MM}\{0:dd}" -f $now)
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $sid  = [guid]::NewGuid().ToString()
+          $file = Join-Path $dir ("rollout-{0:yyyy-MM-ddTHH-mm-ss}-$sid.jsonl" -f $now)
+          $lines = New-Object System.Collections.ArrayList
+          function Add-L($o) { [void]$lines.Add((ConvertTo-Json $o -Depth 12 -Compress)) }
+          $t0 = $now.AddMinutes(-5).ToUniversalTime()
+          $ts = { param($s) $t0.AddSeconds($s).ToString("yyyy-MM-ddTHH:mm:ss.fffZ") }
+          Add-L @{ type='session_meta'; timestamp=(& $ts 0);
+                   payload=@{ model='gpt-5-codex'; model_provider='openai'; id=$sid } }
+          $prose = "Scanning the workspace for the token accounting path and the places it double counts cached reads. "
+          for ($i = 0; $i -lt 6; $i++) {
+            $b = $i * 45
+            Add-L @{ type='event_msg'; timestamp=(& $ts $b);
+                     payload=@{ type='task_started'; model_context_window=272000 } }
+            Add-L @{ type='event_msg'; timestamp=(& $ts ($b+1));
+                     payload=@{ type='user_message'; message="Audit the cache accounting, round $i" } }
+            Add-L @{ type='response_item'; timestamp=(& $ts ($b+2));
+                     payload=@{ type='message'; role='user';
+                       content=@( @{ type='input_text'; text=("Audit the cache accounting, round $i. " + ($prose * 3)) } ) } }
+            Add-L @{ type='response_item'; timestamp=(& $ts ($b+8));
+                     payload=@{ type='function_call'; name='shell'; call_id="call_$i";
+                       arguments=(ConvertTo-Json @{ command=@('bash','-lc','rg -n "cache_read" src/') } -Compress) } }
+            Add-L @{ type='response_item'; timestamp=(& $ts ($b+12));
+                     payload=@{ type='function_call_output'; call_id="call_$i";
+                       output=("src/stats.rs:41: cache_read_input_tokens`n" * 30) } }
+            Add-L @{ type='response_item'; timestamp=(& $ts ($b+20));
+                     payload=@{ type='message'; role='assistant';
+                       content=@( @{ type='output_text'; text=("Round $i - the cached reads are counted twice. " + ($prose * 6)) } ) } }
+            Add-L @{ type='event_msg'; timestamp=(& $ts ($b+24)); payload=@{ type='task_complete' } }
+          }
+          Set-Content -Path $file -Value $lines -Encoding utf8
+          (Get-Item $file).LastWriteTime = Get-Date
+          Write-Host "planted $file  ($($lines.Count) lines, 6 turns)"
+
+      # Detection is by PROCESS NAME, not by transcript.
+      # agent_defs() lists process_names: ["claude"] and ["codex"], so a planted
+      # transcript alone is invisible - accept_agent never fires, nothing is
+      # parsed, and no log line is written. That is exactly what the first
+      # fixture run showed: "planted ... 32 lines" and then silence.
+      #
+      # cmd.exe copied under each name gives the scanner a real process with a
+      # real PID to find. It sleeps and does nothing else. The CWD lookup will
+      # fail on it, which is fine and worth exercising: find_claude_project_dir
+      # is meant to fall back to scanning all project dirs for the most recent
+      # session, and that fallback is what the planted transcript tests.
+      - name: Give the agent scanner processes to find
+        continue-on-error: true
+        run: |
+          foreach ($n in @('claude','codex')) {
+            $exe = Join-Path $env:TEMP "$n.exe"
+            Copy-Item "$env:WINDIR\System32\cmd.exe" $exe -Force
+            Start-Process -FilePath $exe -ArgumentList '/c','timeout /t 900 /nobreak' -WindowStyle Hidden
+          }
+          Start-Sleep -Seconds 2
+          Get-Process -Name claude,codex -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "running: $($_.ProcessName) pid=$($_.Id)" }
+
       - name: Give the runner a desktop picture and turn the wallpaper on
         continue-on-error: true
         run: |

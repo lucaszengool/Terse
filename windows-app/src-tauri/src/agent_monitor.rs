@@ -2245,7 +2245,13 @@ fn find_all_active_jsonl_globally() -> Vec<PathBuf> {
     // Only log on first call or count change (avoid spam)
     static LAST_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let prev = LAST_COUNT.swap(active.len(), std::sync::atomic::Ordering::Relaxed);
-    if active.len() != prev {
+    // Log on change AND on the very first call. `!= prev` alone stays silent
+    // when the first scan finds nothing (0 == 0), which is precisely the case
+    // that needs reporting - a planted transcript that was never discovered
+    // produced no log line at all, and the silence read as "the code never ran".
+    static LOGGED_ONCE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    let first = !LOGGED_ONCE.swap(true, std::sync::atomic::Ordering::Relaxed);
+    if active.len() != prev || first {
         // To a file, not just stderr. A released Windows build is built with
         // windows_subsystem = "windows", so it has no console and every
         // eprintln! in this module has been going nowhere. That is why "agents

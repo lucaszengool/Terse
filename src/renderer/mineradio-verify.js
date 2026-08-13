@@ -302,13 +302,6 @@ export default class MineradioWallpaper {
       uBloomStrength: { value: 0.62 }, uBloomSize: { value: 2.65 },
       uTintColor: { value: new THREE.Color(THEME_TINT[this.theme] || '#9db8cf') },
       uTintStrength: { value: 0 },
-      // 轻轻起舞:见 mineradio-shaders.js 的 danceAt()
-      uDanceAmt: { value: 0 }, uDanceMode: { value: 0 }, uDanceT: { value: 0 },
-      uDanceCenter: { value: new THREE.Vector2(0, 0) },
-      uDanceDir: { value: new THREE.Vector2(1, 0) },
-      // 两层取景差多少倍。字的位置是按 SILK 平面算的,PULSE 层(屏幕中间那团糊糊
-      // 的粒子)得换算过去,否则动作会挤在正中间一小块。
-      uDanceScale: { value: PULSE_HALF_H / (PLANE_SIZE / 2) },
       uCoverTex: { value: this._coverTex }, uPrevCoverTex: { value: this._coverTex },
       uColorMixT: { value: 1.0 }, uEdgeTex: { value: this._edgeTex },
       uRippleTex: { value: this._rippleTex }, uRippleCount: { value: 0 },
@@ -418,17 +411,7 @@ export default class MineradioWallpaper {
     }
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('aUv', new THREE.BufferAttribute(uv, 2));
-    // MUST be 'aRand' — the name the glyph shader declares. As 'aRnd' the
-    // attribute was never bound, so WebGL fed every glyph particle aRand = 0:
-    //   · angle  = 0            → all scatter in ONE direction (straight +x)
-    //   · radius = 0.55 + 0     → all by the SAME distance
-    //   · z      = (rand-0.5)   → one flat depth, no spread
-    //   · twinkle sin(t + 0)    → every particle pulsing in lockstep
-    // which turned the film's convergence-from-everywhere into the whole word
-    // sliding in sideways as a rigid block, and sliding back out to dissolve.
-    // The field layer above already used the right name; only the glyph layer
-    // was wrong, which is why the ambient particles always looked correct.
-    geo.setAttribute('aRand', new THREE.BufferAttribute(rnd, 1));
+    geo.setAttribute('aRnd', new THREE.BufferAttribute(rnd, 1));
     geo.setAttribute('aOn', new THREE.BufferAttribute(on, 1));
 
     const base = {
@@ -597,29 +580,6 @@ export default class MineradioWallpaper {
     const r = this._ripples[this._rippleIdx];
     r.x = x; r.y = y; r.age = 0; r.str = strength;
     this._rippleIdx = (this._rippleIdx + 1) % RIPPLE_MAX;
-  }
-
-  /** Pick a choreography without ever repeating the last one.
-   *
-   *  Uniform random re-picks the same one ~1 time in 6, and two identical
-   *  dances in a row is exactly what reads as "it always does the same thing" —
-   *  the one impression this layer must never give. A shuffled bag spends every
-   *  choreography before any repeats. */
-  _nextShape(n) {
-    let bag = this._shapeBag;
-    if (!bag || !bag.length || bag._n !== n) {
-      bag = this._shapeBag = Array.from({ length: n }, (_, i) => i);
-      bag._n = n;
-      for (let i = n - 1; i > 0; i--) {
-        const j = (Math.random() * (i + 1)) | 0;
-        [bag[i], bag[j]] = [bag[j], bag[i]];
-      }
-      // Never let a reshuffle put the previous pattern first.
-      if (bag[bag.length - 1] === this._lastShape && n > 1) {
-        [bag[bag.length - 1], bag[0]] = [bag[0], bag[bag.length - 1]];
-      }
-    }
-    return (this._lastShape = bag.pop());
   }
 
   _updateRipples(dt) {
@@ -878,33 +838,6 @@ export default class MineradioWallpaper {
     // 活动度平滑逼近 + 冲击衰减
     this._activity += (this._activityTarget - this._activity) * Math.min(1, dt * 2.2);
     this._kick *= Math.exp(-dt / 0.62);
-
-    // ── 轻轻起舞:只跟中间那句 big text 走 ───────────────────────────────────
-    // 之前这里有两套东西,现在都拿掉了:
-    //
-    //  · 一个不问青红皂白的节拍器(每 0.87s 一圈涟漪、每 3s 一大圈)。它是为了
-    //    "闲置时别死掉"加的,结果是画面从头到尾都在响 —— 就是「太频繁太乱」,
-    //    而且让 big text 的反应完全淹没在这层底噪里。壁纸本来就该是安静的,
-    //    有字出现才动。
-    //  · 一串每 0.22s 补一发的 pulse()。它确实让画面一直在动,但 pulse() 能做的
-    //    只有 rippleSumAt 那一种运动 —— 从一点向外扩散的圆环。补得再密、位置
-    //    再变,看到的还是「单一的向外扩散成圈」,只是圈更多、更吵。
-    //
-    // 换成 shader 里的 danceAt():六段真正不同的编舞(行云/回旋/呼吸/摇曳/
-    // 星落/涟纹),每段都是持续、轻柔的位移,包络跟着这句话一起浮起和落下。
-    //
-    // 只有 big 这一层会触发。统计数字那些小字照常聚散,但不再推动背景 —— 之前
-    // 每条 mid/small 都会甩一组涟漪出去,四条并发时画面就没安静过。
-    const bigV = clamp01(this._bigVis || 0);
-    // 包络自己再平滑一次:glyph 的 vis 在 G_IN 内 0→1 只用 0.4s,直接拿来当舞蹈
-    // 强度会「啪」地起来。0.9s 的时间常数让粒子是被带起来的,不是被推起来的。
-    this._danceAmt = (this._danceAmt || 0) + (bigV - (this._danceAmt || 0)) * Math.min(1, dt / 0.9);
-    if (this._danceAmt < 0.0005) this._danceAmt = 0;
-    if (bigV > 0.01) this._danceT = (this._danceT || 0) + dt;
-    else this._danceT = 0;
-    u.uDanceAmt.value = this.pro ? this._danceAmt : 0;
-    u.uDanceT.value = this._danceT || 0;
-
     const act = clamp01(this._activity);
     const beat = Math.min(2.2, this._kick);
 
@@ -920,23 +853,12 @@ export default class MineradioWallpaper {
     u.uTreble.value = Math.min(1.0, 0.05 + act * 0.10 + beat * 0.20);
     u.uBeat.value = Math.min(1.2, beat * 0.55);
     u.uEnergy.value = clamp01(0.12 + act * 0.34 + beat * 0.50);
-    // The swell the comment in _updateGlyph describes, finally applied. Left at
-    // `beat * 0.45` this rode _kick alone — one nudge with a 0.62s half-life,
-    // spent long before the 2.07s glyph was done, so the mass was back to idle
-    // while the word was still on screen. Taking the max with the headline's own
-    // envelope holds the field expanded for exactly as long as the text is up
-    // and releases it as the letters dissolve.
-    u.uBurstAmt.value = clamp01(Math.max(beat * 0.45, bigV * 0.55));
-
+    u.uBurstAmt.value = clamp01(beat * 0.45);
     u.uIntensity.value = 0.5 * this.intensity;
 
-    // SILK 是会起伏的那层粒子平面 —— 也就是这套编舞的舞台。常亮不行:规则网格
-    // 静止时会在壁纸上织出一层半调网点,很难看。原本它只在节拍上开门(beat),
-    // 而 beat 靠的是那个每 0.87s 一响的节拍器;节拍器拿掉之后 beat 基本一直是 0,
-    // 门就再也不开了 —— 舞跳得再好也没人看得见。
-    // 现在跟着舞蹈包络开合:字浮起来,平面跟着淡入起舞;字散了,平面也退回去。
-    const g0 = clamp01(Math.max(this._danceAmt || 0, (beat - 0.30) / 0.70));
-    this._silk.u.uAlpha.value = 0.20 * (g0 * g0 * (3 - 2 * g0));
+    // SILK 只在节拍上现身 —— 常亮的话规则网格会在壁纸上织出半调网点
+    const g0 = clamp01((beat - 0.30) / 0.70);
+    this._silk.u.uAlpha.value = 0.18 * (g0 * g0 * (3 - 2 * g0));
 
     this._updateGlyph();
   }
@@ -1044,29 +966,69 @@ export default class MineradioWallpaper {
                      life: G_LIFE };
       this._drawGlyphLabel(slot, next.label, tier);
 
-      // ── 只有中间那句 big text 会让背景动 ──────────────────────────────
-      // 统计数字(mid / small)照旧聚散,但不再碰背景。之前每条都会甩一组涟漪
-      // 出去,Pro 四条并发时画面根本没安静过 —— 「太频繁太乱」的一半原因在这。
-      if (tier === 'big') {
-        // 挑一段编舞,洗牌发牌,不会连着两次一样。六段在 shader 的 danceAt() 里:
-        // 0 行云 / 1 回旋 / 2 呼吸 / 3 摇曳 / 4 星落 / 5 涟纹。
-        const mode = this._nextShape(6);
-        this.u.uDanceMode.value = mode;
-        this.u.uDanceCenter.value.set(gx, gy);
-        // 方向每次重抽 —— 同一段编舞换个朝向就是另一个样子,六段实际不止六种。
-        const ang = Math.random() * Math.PI * 2;
-        this.u.uDanceDir.value.set(Math.cos(ang), Math.sin(ang));
-        this._danceT = 0;
-        // 一发很轻的涟漪当"落位"的重音。留一发是因为字浮现的瞬间总要有个着地感,
-        // 但也就一发 —— 原来那 3~13 发一组的图案,不管排成环、扫掠还是柱子,
-        // 出来的都是同一种向外扩散的圈,叠在一起只是更吵。
-        this._triggerRipple(gx, gy, 0.55 * RIPPLE_Z * 1.6);
-        this._kick = Math.max(this._kick, 0.5);
+      // ── The scattered field REACTS to each formation ──
+      // A glyph used to assemble in silence, which made the numbers read as an
+      // overlay pasted on top rather than something the field itself did. The
+      // pattern varies per formation so repeats never look mechanical.
+      const nx = Math.max(-1, Math.min(1, gx / (PLANE_SIZE * 0.5)));
+      const ny = Math.max(-1, Math.min(1, gy / (PLANE_SIZE * 0.5)));
+      // The headline is the loudest event on the wallpaper, so it must move the
+      // field the most. 'log' previously fell through to the 0.62 default and
+      // ended up the WEAKEST of all kinds — the opposite of the intent.
+      const kindStr = ((next.size || 'mid') === 'small' ? 0.5 : 1) *
+        (next.kind === 'log' ? 1.35 : next.kind === 'saved' ? 1.0
+          : next.kind === 'agents' ? 0.78 : 0.62);
+      // ── The field's reaction to a formation ──
+      // Eight patterns, picked at RANDOM rather than in rotation: a fixed cycle
+      // becomes predictable within a minute of watching a wallpaper, and the
+      // whole point of this layer is that it never quite repeats. The headline
+      // gets the wider, more dramatic shapes.
+      const big = tier === 'big';
+      const S = big ? 2.3 : 1;    // headline reactions read across the whole plane
+      const shape = Math.floor(Math.random() * (big ? 8 : 6));
+      // Vary the SPREAD per formation as well as the pattern. With a fixed
+      // radius every shape decayed into the same round pulse a moment after it
+      // started, which is why eight patterns still read as "only one wave".
+      const spread = 0.7 + Math.random() * 1.1;
+      const R = (x, y, st) => this._triggerRipple(
+        Math.max(-1, Math.min(1, nx + (x - nx) * spread)),
+        Math.max(-1, Math.min(1, ny + (y - ny) * spread)),
+        st * kindStr * S * (0.8 + Math.random() * 0.5));
+      if (shape === 0) {                       // single deep drop
+        R(nx, ny, 1.15);
+      } else if (shape === 1) {                // twin echoes, detuned
+        R(nx - 0.16, ny, 0.85); R(nx + 0.16, ny + 0.05, 0.70);
+      } else if (shape === 2) {                // expanding ring
+        for (let k = 0; k < 3; k++) {
+          const a = (k / 3) * Math.PI * 2 + Math.random() * 6.28;
+          R(nx + Math.cos(a) * 0.22, ny + Math.sin(a) * 0.22, 0.62);
+        }
+      } else if (shape === 3) {                // sweep travelling outward
+        for (let k = 0; k < 3; k++) {
+          R(nx + Math.sign(nx || 1) * (0.20 + k * 0.26), ny - k * 0.10, 0.95 - k * 0.24);
+        }
+      } else if (shape === 4) {                // vertical column, rising
+        for (let k = 0; k < 3; k++) R(nx, ny - 0.18 + k * 0.30, 0.90 - k * 0.18);
+      } else if (shape === 5) {                // scatter — a handful of sparks
+        for (let k = 0; k < 5; k++) {
+          R(nx + (Math.random() - 0.5) * 0.9, ny + (Math.random() - 0.5) * 0.7, 0.34 + Math.random() * 0.3);
+        }
+      } else if (shape === 6) {                // wide double ring (headline only)
+        const spin = Math.random() * 6.28;
+        for (let k = 0; k < 6; k++) {
+          const a = (k / 6) * Math.PI * 2 + spin;
+          R(nx + Math.cos(a) * 0.40, ny + Math.sin(a) * 0.30, 0.95);
+          R(nx + Math.cos(a) * 0.78, ny + Math.sin(a) * 0.58, 0.55);
+        }
+      } else {                                 // shockwave across the whole plane
+        for (let k = 0; k < 4; k++) R(nx, ny, 1.25 - k * 0.22);
+        R(-nx * 0.7, -ny * 0.7, 0.55);
       }
+      this._kick = Math.max(this._kick, (big ? 1.5 : 0.55) * kindStr);
     }
 
     // ── advance every live slot ──
-    let strongest = 0, strongestCol = null, bigVis = 0;
+    let strongest = 0, strongestCol = null;
     for (const slot of slots) {
       const g0 = slot.glyph;
       if (!g0) { slot.u.uVis.value = 0; slot.uB.uVis.value = 0; continue; }
@@ -1093,33 +1055,12 @@ export default class MineradioWallpaper {
         // instead made big text blobbier as it grew: same dot count, fatter
         // dots, so the strokes smeared. Growing the box keeps the dots crisp and
         // spends the extra area on more of them.
-        // The film's own scales: centre lyric 1.55 (statlyrics.tsx) and scattered
-        // stats 0.58 (tokenstats.ts SMALL). 1.7 / 0.66 spread the same particle
-        // budget over ~20% more area, which is part of why the letters read as
-        // separate blobs instead of a dense glow.
-        const sc = g0.size === 'big' ? 1.55 : g0.size === 'small' ? 0.58 : 1;
+        const sc = g0.size === 'big' ? 1.7 : g0.size === 'small' ? 0.66 : 1;
         u.uSize.value.set(3.05 * sc, 0.52 * sc);
         u.uPointScale.value = 1;
       }
       if (vis > strongest) { strongest = vis; strongestCol = g0.col; }
-      // The headline is what the field is supposed to dance WITH, so track its
-      // envelope separately: a small companion line at full vis must not drive
-      // the same swell as the centre headline.
-      if (g0.size === 'big' && vis > bigVis) bigVis = vis;
     }
-    // The field's burst must follow the TEXT, not a decaying thump. The film
-    // sets uBurstAmt from the live glyph's own envelope, so the particle mass
-    // swells for as long as the word is up and re-triggers on every new line
-    // — that is the 卡点. Driving it from _kick alone gave one nudge that was
-    // gone in a second, leaving the clump back to its idle rotation while the
-    // text was still there.
-    //
-    // Assigned OUT here, not inside the loop: both `continue` branches skip the
-    // loop body, so once every slot was empty the old placement stopped writing
-    // and _glyphVis froze at its last value — the dance and the swell would run
-    // on against a blank screen until the next headline happened to reset them.
-    this._glyphVis = strongest;
-    this._bigVis = bigVis;
 
     // 壁纸自己的粒子短暂偏向最亮那条统计的品牌色 —— 走 Mineradio 原有的染色通道
     if (strongestCol) this.u.uTintColor.value.set(strongestCol);

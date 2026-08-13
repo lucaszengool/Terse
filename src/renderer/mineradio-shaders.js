@@ -24,6 +24,13 @@ uniform vec2 uMouseXY, uHandXY;
 uniform float uHandActive, uGestureGrip;
 uniform vec3 uTintColor;
 uniform float uTintStrength;
+// ── Terse 加的,不是 Mineradio 的 ───────────────────────────────────────────
+// 中间那句 big text 出现时,粒子"轻轻起舞"用的编舞参数。见下面 danceAt()。
+uniform float uDanceAmt, uDanceMode, uDanceT;
+uniform vec2 uDanceCenter, uDanceDir;
+// PULSE 层的取景比 SILK 大得多(半高 11.5 对 2.4),两层坐标不是一个尺度。
+// uDanceScale = PULSE_HALF_H / (PLANE_SIZE/2),用来把字的位置和动作幅度换算过去。
+uniform float uDanceScale;
 attribute vec2 aUv;
 attribute float aRand;
 varying vec3 vColor;
@@ -112,6 +119,59 @@ maxAmp = max(maxAmp, abs(local));
   return sum;
 }
 
+// ── 轻轻起舞 (Terse) ────────────────────────────────────────────────────────
+// rippleSumAt 只会做一种运动:从一个点向外扩散的圆环。八种"图案"其实都是同一个
+// 圆环在不同位置重复,所以看久了永远是"一圈一圈往外推"。这里给的是六段真正不同
+// 的编舞 —— 平移波、旋绕、呼吸、摇曳、闪烁、涟纹 —— 每段都是**持续而轻柔**的,
+// 靠 uDanceAmt 的包络随中间那句 big text 一起浮起、落下,而不是砸一下就没了。
+//
+// 返回 .xy = 平面内的漂移,.z = 起伏。uDanceAmt 为 0 时整段直接短路,不进入的
+// 分支 GPU 也不会执行,静止时没有任何代价。
+vec3 danceAt(vec2 p, float rnd) {
+  if (uDanceAmt < 0.001) return vec3(0.0);
+  vec2 d = p - uDanceCenter;
+  float dist = length(d);
+  float t = uDanceT;
+  // 以那句话为中心的柔和衰减:动作从字里长出来,又够得到画面边上
+  float reach = exp(-dist * dist / 14.0);
+  vec3 o = vec3(0.0);
+  float m = uDanceMode;
+
+  if (m < 0.5) {
+// 0 行云 —— 一道缓慢的隆起横穿画面
+float ph = dot(p, uDanceDir) * 0.80 - t * 1.15;
+o.z = sin(ph) * 0.44;
+o.xy = uDanceDir * cos(ph) * 0.11;
+  } else if (m < 1.5) {
+// 1 回旋 —— 整片粒子绕着那句话轻轻转
+float a = 0.42 * reach * sin(t * 0.85);
+float c = cos(a), s = sin(a);
+o.xy = mat2(c, -s, s, c) * d - d;
+o.z = reach * sin(t * 1.25 + dist * 0.4) * 0.30;
+  } else if (m < 2.5) {
+// 2 呼吸 —— 向字靠拢又散开
+float b = sin(t * 1.05) * reach;
+o.xy = d / max(dist, 0.001) * b * 0.36;
+o.z = b * 0.38;
+  } else if (m < 3.5) {
+// 3 摇曳 —— 像风里的草,越往外摆得越开
+float sway = sin(t * 0.95 + p.y * 0.50 + rnd * 1.3);
+o.x = sway * (0.11 + abs(p.y) * 0.070);
+o.z = sway * 0.20 * (0.35 + reach);
+  } else if (m < 4.5) {
+// 4 星落 —— 每颗粒子按自己的相位起落,是闪烁不是波
+float ph = t * 1.45 + rnd * 6.2831;
+o.z = sin(ph) * 0.32 * (0.40 + reach);
+o.xy = vec2(cos(ph * 0.7), sin(ph * 0.5)) * 0.055;
+  } else {
+// 5 涟纹 —— 会漂移的驻波脊,像水下的沙纹
+float ph = dot(p, uDanceDir) * 1.75 + sin(t * 0.55) * 1.5;
+o.z = sin(ph) * cos(dist * 0.45 - t * 0.75) * 0.38;
+o.xy = uDanceDir * sin(ph) * 0.065;
+  }
+  return o * uDanceAmt;
+}
+
 void main(){
   float t = uTime * uSpeed;
   vec3 pos;
@@ -159,6 +219,12 @@ float bassBreath = snoise(vec3(pos.x*0.35, pos.y*0.35, t*0.4)) * uBass * 0.42 * 
 float depthZ = (depthVal - 0.5) * uAiBoost * uDepth * 1.40 * uHasDepth;
 
 pos.z = rippleZ * 1.30 + midDisp + trebleJ + bassBreath + depthZ;
+
+// 编舞叠在最后 —— SILK 就是那层会起伏的粒子平面,舞台在这儿
+vec3 dnc = danceAt(pos.xy, aRand);
+pos.xy += dnc.xy;
+pos.z += dnc.z;
+maxRippleAmp = max(maxRippleAmp, abs(dnc.z) * 0.55);
   }
 
   // ====================================================
@@ -356,6 +422,64 @@ if (transition > 0.001) {
   pos.z += (hash11(aRand * 123.0) - 0.5) * bloom * 0.18;
   vAlpha *= 0.86 + bloom * 0.22;
   maxRippleAmp = max(maxRippleAmp, bloom * 0.10);
+}
+
+// ── 那团 blur 的粒子也起舞 ──────────────────────────────────────────────
+// 就是屏幕中间那一团(极光带 + 星尘),外加它的辉光孪生层,所以看起来是"糊"的。
+// 之前这里只有一句通用的摇摆,幅度 0.55 —— 这层可视半高是 11.5 个世界单位,
+// 0.55 只有 5%,等于没动。现在换成和 SILK 同一套六段编舞,并且:
+//   · 中心换算过来(× uDanceScale),动作是从那句话所在的位置长出来的;
+//   · 幅度按取景比例放大,再乘 1.5 —— 「幅度大一点」。
+if (uDanceAmt > 0.001) {
+  float t5 = uDanceT;
+  float m5 = uDanceMode;
+  // 字在 SILK 平面上的位置换算到这一层的取景里
+  vec2 c5 = uDanceCenter * uDanceScale;
+  vec2 d5 = pos.xy - c5;
+  float dist5 = length(d5);
+  // 衰减半径也跟着取景放大,否则一团粒子里只有正中间几颗会动
+  float reach5 = exp(-dist5 * dist5 / (14.0 * uDanceScale * uDanceScale));
+  // 基准幅度:SILK 用的是 ~0.4,这里按取景比放大再 ×1.5
+  float A = uDanceAmt * uDanceScale * 1.5;
+  vec3 o5 = vec3(0.0);
+
+  if (m5 < 0.5) {
+// 0 行云
+float ph = dot(pos.xy, uDanceDir) * (0.80 / uDanceScale) - t5 * 1.15;
+o5.z = sin(ph) * 0.44;
+o5.xy = uDanceDir * cos(ph) * 0.32;      // 这层看 z 不明显,横向给足
+  } else if (m5 < 1.5) {
+// 1 回旋
+float a = 0.42 * reach5 * sin(t5 * 0.85);
+float c = cos(a), s = sin(a);
+o5.xy = (mat2(c, -s, s, c) * d5 - d5) / uDanceScale;   // 旋转本身已经带尺度
+o5.z = reach5 * sin(t5 * 1.25 + dist5 * (0.4 / uDanceScale)) * 0.30;
+  } else if (m5 < 2.5) {
+// 2 呼吸
+float b = sin(t5 * 1.05) * reach5;
+o5.xy = d5 / max(dist5, 0.001) * b * 0.36;
+o5.z = b * 0.38;
+  } else if (m5 < 3.5) {
+// 3 摇曳
+float sway = sin(t5 * 0.95 + pos.y * (0.50 / uDanceScale) + aRand * 1.3);
+o5.x = sway * (0.11 + abs(pos.y / uDanceScale) * 0.070);
+o5.z = sway * 0.20 * (0.35 + reach5);
+  } else if (m5 < 4.5) {
+// 4 星落 —— 这层本来就是一颗颗独立的星尘,这段最贴它
+float ph = t5 * 1.45 + aRand * 6.2831;
+o5.z = sin(ph) * 0.32 * (0.40 + reach5);
+o5.xy = vec2(cos(ph * 0.7), sin(ph * 0.5)) * 0.16;
+  } else {
+// 5 涟纹
+float ph = dot(pos.xy, uDanceDir) * (1.75 / uDanceScale) + sin(t5 * 0.55) * 1.5;
+o5.z = sin(ph) * cos(dist5 * (0.45 / uDanceScale) - t5 * 0.75) * 0.38;
+o5.xy = uDanceDir * sin(ph) * 0.22;
+  }
+
+  pos.xy += o5.xy * A;
+  pos.z  += o5.z * A;
+  // 动起来的时候稍微亮一点,让这团粒子在字出现时"活"过来
+  vAlpha *= 1.0 + uDanceAmt * 0.18;
 }
   }
 

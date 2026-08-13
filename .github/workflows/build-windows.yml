@@ -283,8 +283,16 @@ jobs:
             Add-L @{ type='event_msg'; timestamp=(& $ts ($b+24)); payload=@{ type='task_complete' } }
           }
           Set-Content -Path $file -Value $lines -Encoding utf8
-          (Get-Item $file).LastWriteTime = Get-Date
-          Write-Host "planted $file  ($($lines.Count) lines, 6 turns)"
+          # Deliberately STALE - 45 minutes old, past find_codex_session's 30
+          # minute freshness window. That reproduces the actual reported bug:
+          # Terse starts while Codex is open but idle, accept_agent finds nothing
+          # fresh, and session_file stays None. A later step touches this file to
+          # simulate the user starting work, which is what the late-attach retry
+          # has to notice. Planting it fresh only ever tested the happy path,
+          # which already worked.
+          (Get-Item $file).LastWriteTime = (Get-Date).AddMinutes(-45)
+          Write-Host "planted $file  ($($lines.Count) lines, 6 turns) - mtime backdated 45 min"
+          "CODEX_ROLLOUT=$file" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       # Detection is by PROCESS NAME, not by transcript.
       # agent_defs() lists process_names: ["claude"] and ["codex"], so a planted
@@ -384,6 +392,30 @@ jobs:
           # rather than the process merely existing.
           $titles = $p | ForEach-Object { $_.MainWindowTitle } | Where-Object { $_ }
           Write-Host "window titles: $($titles -join ' | ')"
+
+      # The user starts working in Codex, 40 seconds after Terse launched.
+      #
+      # By now accept_agent has already run and found nothing fresh, so
+      # session_file is None - the exact state that used to be permanent.
+      # Touching the rollout is what a live Codex session looks like to the
+      # watcher. The poll loop runs every 5s, so 20s is four chances to notice.
+      #
+      # Pass = "codex late-attach:" in agent-monitor.log. Its absence means the
+      # retry never fired and the fix does not work, however green the build is.
+      - name: Simulate Codex starting work after launch
+        continue-on-error: true
+        run: |
+          if (-not $env:CODEX_ROLLOUT) { Write-Host "no rollout path recorded"; exit 0 }
+          if (-not (Test-Path $env:CODEX_ROLLOUT)) { Write-Host "rollout missing"; exit 0 }
+          (Get-Item $env:CODEX_ROLLOUT).LastWriteTime = Get-Date
+          Write-Host "touched $env:CODEX_ROLLOUT - it is now fresh"
+          Start-Sleep -Seconds 20
+          $log = Join-Path $env:USERPROFILE ".terse\agent-monitor.log"
+          if (Test-Path $log) {
+            $hit = Select-String -Path $log -Pattern 'codex late-attach' -SimpleMatch
+            if ($hit) { Write-Host "LATE-ATTACH OK: $($hit.Line)" }
+            else { Write-Warning "LATE-ATTACH DID NOT FIRE - the retry is not working" }
+          } else { Write-Host "no agent-monitor.log yet" }
 
       - name: Screenshot the desktop
         continue-on-error: true

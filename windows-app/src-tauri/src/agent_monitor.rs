@@ -1559,10 +1559,51 @@ impl AgentSessionData {
             self.read_new_lines_multi();
             return;
         }
+        // Codex: retry the session lookup when we have no file yet.
+        //
+        // This is the whole reason Claude Code works and Codex does not.
+        // read_new_lines_multi re-scans for Claude Code on EVERY poll, so it
+        // self-heals; Codex went through accept_agent exactly once and, if no
+        // rollout was fresh at that instant, kept session_file = None and hit the
+        // `None => return` below forever. Terse starts with Codex open but idle,
+        // or before the user has typed anything, and Codex is pinned at 0 for the
+        // rest of the session no matter how much work happens afterwards.
+        //
+        // find_codex_session applies the 30-minute freshness window, so this only
+        // attaches once a rollout is actually being written to.
+        if self.agent_type == "codex" && self.session_file.is_none() {
+            if let Some(found) = find_codex_session() {
+                crate::diag_log("agent-monitor", &format!(
+                    "codex late-attach: {}", found.display()
+                ));
+                if let Some(content) = read_codex_session_file(&found) {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.is_empty() { continue; }
+                        if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                            self.parse_codex_line(&obj);
+                        }
+                    }
+                }
+                self.watcher_offset = fs::metadata(&found).map(|m| m.len()).unwrap_or(0);
+                self.session_file = Some(found);
+            }
+        }
+
         // Legacy single-file path
         let file_path = match &self.session_file {
             Some(p) => p.clone(),
-            None => return,
+            None => {
+                // Still nothing on disk — but the proxy may have seen the traffic
+                // anyway. That merge used to sit AFTER this return, so the one
+                // case that most needed a fallback (no rollout at all: a relay
+                // endpoint, a custom CODEX_HOME, a build that logs elsewhere)
+                // was the one case it never ran for.
+                if self.agent_type == "codex" {
+                    self.merge_codex_proxy_tokens();
+                }
+                return;
+            }
         };
         let mut offset = self.watcher_offset;
         self.read_file_from_offset(&file_path, &mut offset);
@@ -1573,15 +1614,26 @@ impl AgentSessionData {
         // Codex's /v1/responses calls; merge them when they are ahead of what the
         // log implies. Same merge macOS does.
         if self.agent_type == "codex" {
-            if let Some((in_tok, out_tok, cached)) = read_codex_proxy_tokens() {
-                if in_tok > self.total_input_tokens {
-                    self.total_input_tokens = in_tok;
-                    self.total_output_tokens = out_tok;
-                    self.total_cache_read_tokens = cached;
-                    self.last_input_tokens = in_tok;
-                    if in_tok > 0 {
-                        self.cache_efficiency = ((cached as f64 / in_tok as f64) * 100.0) as u32;
-                    }
+            self.merge_codex_proxy_tokens();
+        }
+    }
+
+    /// Take the proxy's token counts when they are ahead of the rollout's.
+    ///
+    /// Split out of read_new_lines so it can also run on the no-session-file
+    /// path. Codex rollouts carry no usage fields, so terse-local-proxy's view of
+    /// the real /v1/responses calls is often the only true number — and for a
+    /// user on a relay endpoint or a custom CODEX_HOME it may be the ONLY signal
+    /// there is.
+    fn merge_codex_proxy_tokens(&mut self) {
+        if let Some((in_tok, out_tok, cached)) = read_codex_proxy_tokens() {
+            if in_tok > self.total_input_tokens {
+                self.total_input_tokens = in_tok;
+                self.total_output_tokens = out_tok;
+                self.total_cache_read_tokens = cached;
+                self.last_input_tokens = in_tok;
+                if in_tok > 0 {
+                    self.cache_efficiency = ((cached as f64 / in_tok as f64) * 100.0) as u32;
                 }
             }
         }

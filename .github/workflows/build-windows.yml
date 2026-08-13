@@ -407,6 +407,24 @@ jobs:
         run: |
           if (-not $env:CODEX_ROLLOUT) { Write-Host "no rollout path recorded"; exit 0 }
           if (-not (Test-Path $env:CODEX_ROLLOUT)) { Write-Host "rollout missing"; exit 0 }
+          # Let the app scan with the file STALE first, several times over.
+          #
+          # The previous run touched it ~1s after the launch step returned, and
+          # the app's first agent scan happened to land AFTER the touch - so
+          # accept_agent found a fresh file on its first try and the retry path
+          # was never entered. The test reported failure for the fix while
+          # actually failing to reproduce the bug.
+          #
+          # The scan loop polls every 5s, so 45s is roughly nine passes that must
+          # all see it stale before the touch. Only then is a later attach
+          # provably a RETRY rather than a first success.
+          Write-Host "holding 45s so the app scans repeatedly while the rollout is stale"
+          Start-Sleep -Seconds 45
+          $log0 = Join-Path $env:USERPROFILE ".terse\agent-monitor.log"
+          if (Test-Path $log0) {
+            Write-Host "--- agent-monitor.log BEFORE the touch ---"
+            Get-Content $log0 | Select-Object -Last 12 | ForEach-Object { Write-Host "  $_" }
+          }
           (Get-Item $env:CODEX_ROLLOUT).LastWriteTime = Get-Date
           Write-Host "touched $env:CODEX_ROLLOUT - it is now fresh"
           Start-Sleep -Seconds 20

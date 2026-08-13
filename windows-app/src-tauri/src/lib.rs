@@ -5556,12 +5556,18 @@ fn pin_log(line: &str) {
 #[cfg(target_os = "windows")]
 pub(crate) fn diag_log(name: &str, line: &str) {
     use std::io::Write;
+    // Timestamped. Without one, these lines cannot be ordered against anything
+    // else — a CI run left "codex session search ... age 2s" next to "LATE-ATTACH
+    // DID NOT FIRE" and the only way to tell which happened first was to infer it
+    // from the workflow's own clock. An untimed diagnostic log answers "what"
+    // but not "when", and "when" was the whole question.
+    let ts = chrono::Local::now().format("%H:%M:%S%.3f");
     eprintln!("[terse][{name}] {line}");
     if let Some(dir) = dirs::home_dir() {
         let p = dir.join(".terse").join(format!("{name}.log"));
         let _ = std::fs::create_dir_all(p.parent().unwrap());
         if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
-            let _ = writeln!(f, "{line}");
+            let _ = writeln!(f, "[{ts}] {line}");
         }
     }
 }

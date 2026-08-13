@@ -2,6 +2,12 @@
   const T = {};
 
   T.en = {
+    'guide.back': 'Back to Terse',
+    'guide.butler': 'Agent Butler',
+    'guide.hint': 'Click any item on the left',
+    'guide.eyebrow': 'Interactive guide',
+    'guide.title': 'Interactive Guide — Terse',
+    'nav.guide': 'Guide',
     // Nav
     'nav.howItWorks': 'How It Works',
     'nav.pipeline': 'Pipeline',
@@ -1070,6 +1076,10 @@
   };
 
   T.ja = {
+    'guide.back': 'Terse に戻る',
+    'guide.hint': '左の項目をクリック',
+    'guide.eyebrow': 'インタラクティブガイド',
+    'nav.guide': 'ガイド',
     // Nav
     'nav.howItWorks': '仕組み',
     'nav.pipeline': 'パイプライン',
@@ -1405,6 +1415,10 @@
   };
 
   T.ko = {
+    'guide.back': 'Terse로 돌아가기',
+    'guide.hint': '왼쪽 항목을 클릭하세요',
+    'guide.eyebrow': '인터랙티브 가이드',
+    'nav.guide': '가이드',
     // Nav
     'nav.howItWorks': '작동 방식',
     'nav.pipeline': '파이프라인',
@@ -1740,6 +1754,10 @@
   };
 
   T.es = {
+    'guide.back': 'Volver a Terse',
+    'guide.hint': 'Haz clic en cualquier elemento',
+    'guide.eyebrow': 'Guía interactiva',
+    'nav.guide': 'Guía',
     // Nav
     'nav.howItWorks': 'Cómo funciona',
     'nav.pipeline': 'Pipeline',
@@ -2075,6 +2093,10 @@
   };
 
   T.fr = {
+    'guide.back': 'Retour à Terse',
+    'guide.hint': 'Cliquez sur un élément à gauche',
+    'guide.eyebrow': 'Guide interactif',
+    'nav.guide': 'Guide',
     // Nav
     'nav.howItWorks': 'Fonctionnement',
     'nav.pipeline': 'Pipeline',
@@ -2410,6 +2432,10 @@
   };
 
   T.de = {
+    'guide.back': 'Zurück zu Terse',
+    'guide.hint': 'Klicke links auf einen Eintrag',
+    'guide.eyebrow': 'Interaktive Anleitung',
+    'nav.guide': 'Anleitung',
     // Nav
     'nav.howItWorks': 'So funktioniert es',
     'nav.pipeline': 'Pipeline',
@@ -2745,6 +2771,10 @@
   };
 
   T.ar = {
+    'guide.back': 'العودة إلى Terse',
+    'guide.hint': 'انقر أي عنصر على اليسار',
+    'guide.eyebrow': 'دليل تفاعلي',
+    'nav.guide': 'الدليل',
     // Nav
     'nav.howItWorks': 'كيف يعمل',
     'nav.pipeline': 'خط المعالجة',
@@ -3080,6 +3110,10 @@
   };
 
   T.it = {
+    'guide.back': 'Torna a Terse',
+    'guide.hint': 'Clicca una voce a sinistra',
+    'guide.eyebrow': 'Guida interattiva',
+    'nav.guide': 'Guida',
     // Nav
     'nav.howItWorks': 'Come funziona',
     'nav.pipeline': 'Pipeline',

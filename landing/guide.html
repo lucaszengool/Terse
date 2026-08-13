@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="guide.title">Interactive Guide — Terse</title>
+<meta name="description" data-i18n="guide.metaDesc" content="Click through a working replica of the Terse app. Every feature explained, with the real downstream effect it has on your terminal, your agents and your disk.">
+<link rel="icon" href="favicon.ico">
+<style>
+/* 配色/尺寸取自 src/renderer/styles.css:侧边栏 188px、lime #C9F03D、
+   sb-item 9px 11px —— 这一页要和 app 主界面一比一,不是"神似" */
+:root{
+  --lime:#C9F03D; --lime-d:#A8CF45;
+  --bg:#0C0E12; --panel:rgba(255,255,255,.045); --panel2:rgba(255,255,255,.028);
+  --bd:rgba(255,255,255,.10); --bdl:rgba(255,255,255,.16);
+  --t1:#F5F5F7; --t2:#C9D2C0; --t3:#96A489;
+  --cyan:#5AD8FF; --orange:#FF9F45; --violet:#B98CFF; --gold:#FFD75A; --mint:#7CF5C0;
+  --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace;
+  --ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t1);font-family:var(--ui);-webkit-font-smoothing:antialiased;line-height:1.6}
+a{color:inherit}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+
+/* ── 顶部 ── */
+.gh{padding:38px 0 20px;text-align:center}
+.gh .eyebrow{font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:2px;color:var(--lime-d);text-transform:uppercase}
+.gh h1{margin-top:12px;font-size:clamp(30px,5vw,48px);font-weight:850;letter-spacing:-1.2px}
+.gh h1 em{font-style:normal;color:var(--lime)}
+.gh p{margin:12px auto 0;max-width:660px;font-size:16px;color:var(--t2)}
+.hint{margin-top:18px;display:inline-flex;align-items:center;gap:9px;padding:9px 16px;border-radius:999px;
+  background:rgba(201,240,61,.10);border:1px solid rgba(201,240,61,.30);font-size:14px;font-weight:650;color:var(--lime)}
+.hint .dot{width:7px;height:7px;border-radius:7px;background:var(--lime);box-shadow:0 0 9px var(--lime);animation:bl 1.6s ease-in-out infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ── app 复刻 ── */
+.stage{margin:26px 0 10px;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:18px;align-items:start}
+@media(max-width:1020px){.stage{grid-template-columns:1fr}}
+.app{border-radius:16px;overflow:hidden;border:1px solid var(--bd);
+  background:linear-gradient(160deg,rgba(24,28,34,.92),rgba(12,15,20,.96));
+  box-shadow:0 30px 80px -24px rgba(0,0,0,.7)}
+.tbar{height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--bd)}
+.tl{width:11px;height:11px;border-radius:11px}
+.tbar .ttl{margin-left:8px;font-size:12.5px;font-weight:650;color:var(--t3)}
+.shell{display:flex;min-height:520px}
+.side{width:188px;flex-shrink:0;padding:12px 10px 10px;border-right:1px solid var(--bd);background:rgba(255,255,255,.02)}
+.brand{display:flex;align-items:center;gap:9px;padding:2px 6px 16px}
+.logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(180deg,#D7F866,var(--lime));
+  color:#0B0B0D;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.bname{font-size:13.5px;font-weight:800;line-height:1.15}
+.bname span{display:block;font-size:10.5px;font-weight:600;color:var(--lime-d)}
+.glabel{font-size:10px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:var(--lime-d);padding:12px 8px 5px}
+.item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border:none;background:transparent;
+  color:var(--t2);text-align:left;font-family:inherit;font-size:13px;font-weight:600;border-radius:9px;cursor:pointer;transition:.14s}
+.item:hover{background:rgba(201,240,61,.10);color:var(--lime)}
+.item.on{background:linear-gradient(180deg,#D7F866,var(--lime));color:#0B0B0D;font-weight:750}
+.item .ic{width:15px;text-align:center;flex-shrink:0}
+.item .pro{margin-left:auto;font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
+  background:rgba(201,240,61,.20);color:var(--lime)}
+.item.on .pro{background:rgba(11,11,13,.16);color:#0B0B0D}
+.pane{flex:1;padding:22px 26px;min-width:0}
+.ptitle{display:flex;align-items:center;gap:11px}
+.ptitle h2{font-size:22px;font-weight:800;letter-spacing:-.4px}
+.ptitle .tag{font-family:var(--mono);font-size:11px;font-weight:800;padding:3px 8px;border-radius:6px;
+  background:rgba(201,240,61,.14);color:var(--lime)}
+.kpis{margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{padding:12px 13px;border-radius:11px;background:var(--panel);border:1px solid var(--bd)}
+.kpi .k{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--lime-d)}
+.kpi .v{margin-top:5px;font-family:var(--mono);font-size:20px;font-weight:800;color:var(--lime)}
+.rows{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:11px;
+  background:var(--panel2);border:1px solid var(--bd);cursor:pointer;transition:.14s}
+.row:hover{border-color:rgba(201,240,61,.42);background:rgba(201,240,61,.07)}
+.row .rn{flex:1;font-size:13.5px;font-weight:650;color:var(--t1)}
+.row .rv{font-family:var(--mono);font-size:13px;font-weight:750;color:var(--lime)}
+.row .sw{width:38px;height:21px;border-radius:21px;background:rgba(201,240,61,.16);position:relative;flex-shrink:0}
+.row.act .sw{background:var(--lime)}
+.row .sw i{position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:15px;background:var(--t3);transition:.16s}
+.row.act .sw i{left:20px;background:#0B0B0D}
+
+/* ── 右侧解释 ── */
+.expl{position:sticky;top:16px;border-radius:16px;border:1px solid var(--bd);overflow:hidden;
+  background:linear-gradient(160deg,rgba(24,28,34,.9),rgba(12,15,20,.95))}
+.expl .eh{padding:15px 18px;border-bottom:1px solid var(--bd)}
+.expl .eh .n{font-size:17px;font-weight:800;color:var(--lime)}
+.expl .eh .g{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:1.2px;color:var(--lime-d);text-transform:uppercase}
+.sec{padding:14px 18px;border-bottom:1px solid var(--bd)}
+.sec:last-child{border-bottom:none}
+.sec .lab{font-family:var(--mono);font-size:10.5px;font-weight:800;letter-spacing:1.2px;color:var(--lime-d);text-transform:uppercase}
+.sec p{margin-top:7px;font-size:14px;color:var(--t2)}
+.demo{margin:0 18px 16px;border-radius:11px;overflow:hidden;border:1px solid rgba(201,240,61,.26);background:rgba(0,0,0,.34)}
+.demo .dh{padding:8px 13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(201,240,61,.18)}
+.demo .dh b{font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:1.3px;color:var(--lime-d)}
+.demo .dot{width:7px;height:7px;border-radius:7px;background:var(--lime);box-shadow:0 0 8px var(--lime)}
+.demo .db{padding:12px 15px;font-family:var(--mono);font-size:12.5px;line-height:1.85;min-height:74px}
+.demo .db div{opacity:0;transform:translateX(9px);animation:in .34s ease forwards;color:var(--lime)}
+.demo .db div.rm{color:var(--orange);text-decoration:line-through}
+@keyframes in{to{opacity:1;transform:none}}
+
+/* ── 静态文档 ── */
+.doc{margin:52px 0 70px}
+.doc h2{font-size:26px;font-weight:850;letter-spacing:-.6px}
+.doc h2 em{font-style:normal;color:var(--lime)}
+.doc>p{margin-top:8px;color:var(--t2);max-width:720px}
+.dgrid{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.dcard{padding:16px 18px;border-radius:13px;background:var(--panel);border:1px solid var(--bd)}
+.dcard h3{font-size:15.5px;font-weight:800;color:var(--lime);display:flex;align-items:center;gap:8px}
+.dcard .grp{font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:1.1px;color:var(--lime-d);text-transform:uppercase}
+.dcard p{margin-top:8px;font-size:13.5px;color:var(--t2)}
+.dcard .eff{margin-top:9px;padding-top:9px;border-top:1px solid var(--bd);font-size:13px;color:var(--t3)}
+.dcard .eff b{color:var(--lime-d);font-weight:750}
+.back{display:inline-flex;align-items:center;gap:7px;margin:26px 0 0;padding:9px 16px;border-radius:9px;
+  border:1px solid var(--bd);color:var(--t2);text-decoration:none;font-size:14px;font-weight:650}
+.back:hover{border-color:var(--lime);color:var(--lime)}
+
+/* ── 各功能页的仿真件:形态照 app 的真实页面,带 app 同款动效 ── */
+.tabs{display:flex;gap:6px;margin-top:14px}
+.tab{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:var(--panel2);border:1px solid var(--bd);color:var(--t3);cursor:pointer}
+.tab.on{background:linear-gradient(180deg,#D7F866,var(--lime));color:#0B0B0D;border-color:transparent}
+.logbox{margin-top:12px;border-radius:11px;border:1px solid var(--bd);background:rgba(0,0,0,.26);padding:12px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.95}
+.logbox div{opacity:0;animation:in .3s ease forwards;color:var(--lime)}
+.logbox .o{color:var(--cyan)} .logbox .w{color:var(--orange)}
+.bars{margin-top:16px;display:flex;align-items:flex-end;gap:7px;height:118px}
+.bars i{flex:1;border-radius:5px 5px 0 0;background:linear-gradient(180deg,var(--lime),rgba(201,240,61,.28));
+  transform-origin:bottom;animation:gw .5s cubic-bezier(.2,.8,.2,1) forwards;transform:scaleY(0)}
+@keyframes gw{to{transform:scaleY(1)}}
+.ring{margin:18px auto 0;width:126px;height:126px;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:34px;font-weight:850;color:var(--lime)}
+.ring circle.p{stroke-dasharray:339;stroke-dashoffset:339;animation:ring 1.1s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes ring{to{stroke-dashoffset:44}}
+.chips{margin-top:14px;display:flex;flex-wrap:wrap;gap:7px}
+.chip{padding:5px 11px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(201,240,61,.12);
+  border:1px solid rgba(201,240,61,.28);color:var(--lime);opacity:0;animation:in .3s ease forwards}
+.gnodes{margin-top:14px;height:150px;position:relative;border-radius:11px;background:rgba(0,0,0,.22);border:1px solid var(--bd);overflow:hidden}
+.gnodes i{position:absolute;width:11px;height:11px;border-radius:11px;background:var(--lime);
+  box-shadow:0 0 10px var(--lime);opacity:0;animation:pp .5s ease forwards}
+@keyframes pp{to{opacity:1}}
+.plots{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.plot{aspect-ratio:1;border-radius:10px;background:rgba(201,240,61,.08);border:1px solid rgba(201,240,61,.24);
+  display:flex;align-items:center;justify-content:center;font-size:24px;opacity:0;animation:in .3s ease forwards}
+.wallprev{margin-top:14px;height:150px;border-radius:11px;position:relative;overflow:hidden;
+  background:linear-gradient(150deg,#2b3a2a,#101a14 60%,#0b0f0d)}
+.wallprev i{position:absolute;width:4px;height:4px;border-radius:4px;background:var(--lime);
+  box-shadow:0 0 7px var(--lime);animation:fl 2.6s ease-in-out infinite}
+@keyframes fl{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-9px)}}
+.permcard{margin-top:14px;border-radius:12px;border:1px solid rgba(255,159,69,.42);background:rgba(0,0,0,.28);overflow:hidden}
+.permcard .ph{padding:10px 14px;display:flex;gap:9px;align-items:center;border-bottom:1px solid rgba(255,159,69,.2)}
+.permcard .pb{padding:11px 14px;font-family:var(--mono);font-size:13px;color:var(--lime)}
+.permcard .life{height:3px;margin:0 14px;border-radius:3px;background:rgba(201,240,61,.14)}
+.permcard .life i{display:block;height:100%;border-radius:3px;background:var(--lime);width:100%;animation:drain 6s linear forwards}
+@keyframes drain{to{width:8%}}
+.permcard .pa{padding:12px 14px;display:flex;gap:8px;justify-content:flex-end}
+.pbtn{padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:750;border:1px solid rgba(201,240,61,.26);color:var(--lime-d);background:rgba(201,240,61,.08)}
+.pbtn.on{background:var(--lime);color:#0B0B0D;border-color:transparent}
+.pbtn.no{color:var(--orange);border-color:rgba(255,159,69,.34);background:rgba(255,159,69,.10)}
+.expo{margin-top:14px;padding:12px 14px;border-radius:11px;background:rgba(201,240,61,.07);
+  border:1px solid rgba(201,240,61,.24);font-size:13.5px;color:var(--t2)}
+.expo b{color:var(--lime);font-weight:750}
+
+/* ── 静态文档:每条带视觉 + 步骤 + 收益 ── */
+.dcard .dvis{margin-top:11px;border-radius:10px;overflow:hidden;border:1px solid rgba(201,240,61,.22);background:rgba(0,0,0,.26)}
+.dcard .dvis .vh{padding:6px 11px;border-bottom:1px solid rgba(201,240,61,.16);font-family:var(--mono);font-size:9.5px;font-weight:800;letter-spacing:1.1px;color:var(--lime-d)}
+.dcard .dvis .vb{padding:9px 12px;font-family:var(--mono);font-size:11.5px;line-height:1.75;color:var(--lime)}
+.dcard .dvis .vb .rm{color:var(--orange);text-decoration:line-through}
+.dcard ol{margin:10px 0 0 17px;font-size:13px;color:var(--t2)}
+.dcard ol li{margin-top:3px}
+.dcard .gain{margin-top:10px;padding:8px 11px;border-radius:8px;background:rgba(201,240,61,.10);
+  border:1px solid rgba(201,240,61,.26);font-size:13px;font-weight:700;color:var(--lime)}
+
+/* ── 方法论区块 ── */
+.meth{margin:56px 0 10px}
+.meth h2{font-size:26px;font-weight:850;letter-spacing:-.6px}
+.meth h2 em{font-style:normal;color:var(--lime)}
+.meth>p{margin-top:8px;color:var(--t2);max-width:760px}
+.mgrp{margin-top:26px}
+.mgrp .mt{display:flex;align-items:baseline;gap:11px}
+.mgrp .mt h3{font-size:19px;font-weight:800;color:var(--lime)}
+.mgrp .mt span{font-size:14px;color:var(--t3)}
+.mgrp .ml{margin-top:6px;font-size:14.5px;color:var(--t2);max-width:780px}
+.mlist{margin-top:13px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:11px}
+.mitem{padding:14px 16px;border-radius:12px;background:var(--panel);border:1px solid var(--bd)}
+.mitem .h{display:flex;align-items:center;gap:9px}
+.mitem .h b{font-size:14.5px;font-weight:750;color:var(--t1)}
+.mitem .h .lv{margin-left:auto;flex-shrink:0;font-family:var(--mono);font-size:11px;font-weight:800;
+  padding:3px 8px;border-radius:6px;background:rgba(201,240,61,.14);color:var(--lime)}
+.mitem p{margin-top:7px;font-size:13.5px;color:var(--t2)}
+
+/* ── 页面外壳:真实 app 每一页都有的工具条 / 搜索 / 分区标题 / 底部操作 ── */
+.ptools{margin-top:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.psearch{flex:1;min-width:150px;display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:9px;
+  background:rgba(0,0,0,.28);border:1px solid var(--bd);color:var(--t3);font-size:12.5px}
+.pbtn2{padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:750;border:1px solid rgba(201,240,61,.28);
+  background:rgba(201,240,61,.10);color:var(--lime);cursor:pointer}
+.pbtn2.solid{background:linear-gradient(180deg,#D7F866,var(--lime));color:#0B0B0D;border-color:transparent}
+.shead{margin-top:16px;display:flex;align-items:baseline;gap:9px}
+.shead b{font-size:11px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:var(--lime-d)}
+.shead span{font-size:11.5px;color:var(--t3)}
+.pfoot{margin-top:14px;padding-top:12px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:10px;
+  font-size:12.5px;color:var(--t3)}
+.pfoot .sp{margin-left:auto}
+.row .sub{display:block;font-size:11.5px;font-weight:500;color:var(--t3);margin-top:2px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="gh">
+    <div class="eyebrow" data-i18n="guide.eyebrow">Interactive guide</div>
+    <h1 id="gH1">Click through <em>the real app</em></h1>
+    <p id="gSub"></p>
+    <div class="hint"><span class="dot"></span><span id="gHint"></span></div>
+  </header>
+
+  <div class="stage">
+    <!-- app 主界面复刻 -->
+    <div class="app">
+      <div class="tbar">
+        <span class="tl" style="background:#FF5F57"></span>
+        <span class="tl" style="background:#FEBC2E"></span>
+        <span class="tl" style="background:#28C840"></span>
+        <span class="ttl">Terse</span>
+      </div>
+      <div class="shell">
+        <aside class="side">
+          <div class="brand">
+            <div class="logo">T</div>
+            <div class="bname">Terse<span data-i18n="guide.butler">Agent Butler</span></div>
+          </div>
+          <nav id="nav"></nav>
+        </aside>
+        <div class="pane" id="pane"></div>
+      </div>
+    </div>
+
+    <!-- 解释 + 下游影响 -->
+    <aside class="expl" id="expl"></aside>
+  </div>
+
+  <!-- Terse 到底用什么手法省 token / 加速 -->
+  <section class="meth">
+    <h2 id="mH"></h2>
+    <p id="mSub"></p>
+    <div id="mBody"></div>
+  </section>
+
+  <!-- 静态文档 -->
+  <section class="doc">
+    <h2 id="gDocH"></h2>
+    <p id="gDocSub"></p>
+    <div class="dgrid" id="dgrid"></div>
+    <a class="back" href="/index.html">← <span id="gBack"></span></a>
+  </section>
+</div>
+
+<script src="i18n.js"></script>
+<script src="guide-data.js"></script>
+<script src="guide-methods.js"></script>
+<script>
+(function(){
+  var G = window.TERSE_GUIDE;
+  // 跟着站点的语言机制走:zh 用中文,其余语言回落英文(和站点其它页一致)
+  function lang(){
+    var l = (window.i18n && window.i18n.lang) || document.documentElement.lang || 'en';
+    return String(l).indexOf('zh') === 0 ? 'zh' : 'en';
+  }
+  function tx(o){ return o ? (o[lang()] || o.en) : ''; }
+
+  var ALL = G.FEATURES.concat([G.ISLAND]);
+  var cur = ALL[0];
+
+  /* ── 侧边栏:分组和顺序与 app 一致 ── */
+  function nav(){
+    var h = '';
+    G.GROUPS.forEach(function(g){
+      h += '<div class="glabel">' + tx(G.GROUP_NAME[g]) + '</div>';
+      G.FEATURES.filter(function(f){ return f.group === g; }).forEach(function(f){
+        h += '<button class="item' + (f.key === cur.key ? ' on' : '') + '" data-k="' + f.key + '">' +
+             '<span class="ic">' + f.icon + '</span><span>' + tx(f.name) + '</span>' +
+             (f.pro ? '<span class="pro">PRO</span>' : '') + '</button>';
+      });
+    });
+    // 灵动岛不在侧边栏,但它是用得最多的界面 —— 单独给一栏,指南里必须点得到
+    h += '<div class="glabel">' + tx(G.GROUP_NAME.Monitor ? {en:'Island',zh:'灵动岛'} : {en:'Island',zh:'灵动岛'}) + '</div>';
+    h += '<button class="item' + (cur.key === 'island' ? ' on' : '') + '" data-k="island">' +
+         '<span class="ic">' + G.ISLAND.icon + '</span><span>' + tx(G.ISLAND.name) + '</span></button>';
+    document.getElementById('nav').innerHTML = h;
+    document.querySelectorAll('.item').forEach(function(b){
+      b.onclick = function(){ pick(b.dataset.k); };
+    });
+  }
+
+  /* ── 中间:被选中那一页的界面复刻 ── */
+
+  /* ══ 交互层 ══════════════════════════════════════════════════════════════
+     指南要"能点着用",不是点了只换文字。这里给每一页一份状态,点击真的改状态、
+     改完重画,数字跟着变 —— 和 app 里点下去的因果一致。
+     不做的是把各页的 JS 原样搬过来:那些代码依赖 Tauri API(invoke/listen),
+     在网页里跑不起来,mock 一层反而比重写更脆。所以这里重写因果,不是搬运。 */
+  var ST = {
+    doctor:  { scanned: false, fixed: 0, score: 74 },
+    rules:   { on: [1,1,0,0,1] },
+    mcp:     { off: {} },
+    cleanup: { swept: false, mb: 24.7 },
+    boost:   { on: true },
+    farm:    { lv: 2, xp: 640, bal: 12962 },
+    island:  { pick: null },
+    stats:   { tab: 0 },
+    prompts: { used: null }
+  };
+
+  /* 每页可点的东西 → 干什么。返回 true 表示要重画本页 */
+  var ACT = {
+    doctor: function(t){
+      if (/扫描|Scan/.test(t)) { ST.doctor.scanned = true; return true; }
+      if (/修复|Fix/.test(t))  { ST.doctor.fixed = 3; ST.doctor.score = 96; return true; }
+    },
+    cleanup: function(t){ if (/清理|Sweep/.test(t)) { ST.cleanup.swept = true; return true; } },
+    farm: function(t){
+      if (/收获|Harvest/.test(t)) { ST.farm.xp += 200; ST.farm.bal += 240; return true; }
+      if (/浇水|Water/.test(t))   { ST.farm.bal -= 1200; ST.farm.lv = 3; return true; }
+    },
+    boost: function(t){ if (/测速|Benchmark/.test(t)) { ST.boost.on = !ST.boost.on; return true; } }
+  };
+
+  /* 点行:开关翻转,并把它对应的数字重算 —— 规则页最明显,开一条省一截 */
+  function rowToggled(key, idx, on){
+    if (key === 'rules') ST.rules.on[idx] = on ? 1 : 0;
+    if (key === 'mcp')   ST.mcp.off[idx] = !on;
+    if (key === 'island'){ ST.island.pick = idx; }
+    return true;
+  }
+
+  /* 规则页:开着的规则决定这一轮压到多少 */
+  function ruleSaving(){
+    var w = [67, 12, 9, 38, 0], tot = 0;
+    ST.rules.on.forEach(function(v,i){ if (v) tot += w[i]; });
+    return Math.min(82, tot);
+  }
+
+  /* ── 中间:每个功能页的仿真件。形态照 app 的真实页面来,动效也照搬:
+        KPI 跳数、日志逐行滚、柱状图长起来、体检环形绕圈、权限卡倒计时。 ── */
+  function kpis(a){
+    return '<div class="kpis">' + a.map(function(x){
+      return '<div class="kpi"><div class="k">' + x[0] + '</div><div class="v">' + x[1] + '</div></div>';
+    }).join('') + '</div>';
+  }
+  function rows(a){
+    return '<div class="rows">' + a.map(function(x){
+      return '<div class="row' + (x[2] ? ' act' : '') + '"><span class="rn">' + x[0] +
+        '</span><span class="rv">' + x[1] + '</span>' + (x[3] === 0 ? '' : '<span class="sw"><i></i></span>') + '</div>';
+    }).join('') + '</div>';
+  }
+  function loglines(a){
+    return '<div class="logbox">' + a.map(function(x, i){
+      return '<div class="' + (x[1] || '') + '" style="animation-delay:' + (i * .18) + 's">' + x[0] + '</div>';
+    }).join('') + '</div>';
+  }
+  function zh(){ return lang() === 'zh'; }
+
+  var UI = {
+    /* Overview —— 主窗口 KPI + 已接管会话 */
+    kpi: function(){
+      return kpis([[zh()?'今日已省':'SAVED TODAY','12,962'],[zh()?'花费':'SPEND','$5,624'],
+                   [zh()?'消耗速率':'BURN','20,311/h'],[zh()?'上下文':'CONTEXT','47%']]) +
+        rows([['Claude Code','+2,148 tok',1],['Cursor Agent','+1,284 tok',1],['Codex','+96 tok',0]]);
+    },
+    /* Observe —— agent 标签 + live 流 */
+    log: function(){
+      return '<div class="tabs"><span class="tab on">claude-code</span><span class="tab">codex</span><span class="tab">cursor</span></div>' +
+        loglines([['⚙ Read(src/auth.ts)          +614'],['← Read → 312 ' + (zh()?'行已折叠':'lines folded') + '   −1.2k','o'],
+                  ['⚙ Grep("verifyToken")        +96'],['← Grep → 4 hits · 3 files    +128','o'],
+                  ['◆ ' + (zh()?'合并校验到一个守卫':'Merging verification…') + '      +842'],
+                  ['⚙ Bash(npm test)             +64'],['✓ 42 passed · 0 failed       +38','o']]);
+    },
+    /* Statistics —— 真实分区:小票 / 图表 / 成本,Used·Saved·By Source·By Model·Insights */
+    chart: function(){
+      var h=[46,62,38,74,55,88,67];
+      return '<div class="tabs"><span class="tab on">' + (zh()?'小票':'Receipt') + '</span><span class="tab">' + (zh()?'图表':'Charts') + '</span><span class="tab">' + (zh()?'成本':'Cost') + '</span></div>' +
+        kpis([['EST. COST','$5,624'],['TOKENS USED','336.6M'],['TOKENS SAVED','12,962'],['MESSAGES','4,182']]) +
+        '<div class="shead"><b>' + (zh()?'用量走势':'Usage Over Time') + '</b><span>Used · Saved</span></div>' +
+        '<div class="bars">' + h.map(function(v,i){ return '<i style="height:'+v+'%;animation-delay:'+(i*.07)+'s"></i>'; }).join('') + '</div>' +
+        '<div class="shead"><b>' + (zh()?'按来源':'By Source') + '</b><span>' + (zh()?'按模型':'By Model') + '</span></div>' +
+        rows([['claude-code · opus','$3,180',0],['codex · sonnet','$1,742',0],['cursor · haiku','$702',0]]);
+    },
+    /* Doctor —— 真实的 11 项扫描器名称 + Findings */
+    score: function(){
+      var sc=['Cache','MCP','Loop','Context','Prompt','Cost','Config','Junk','Disk','Guard','Runtime'];
+      var sd = ST.doctor;
+      return '<div class="ring"><svg width="126" height="126"><circle cx="63" cy="63" r="54" fill="none" stroke="rgba(201,240,61,.14)" stroke-width="9"/>' +
+        (sd.scanned ? '<circle class="p" cx="63" cy="63" r="54" fill="none" stroke="#C9F03D" stroke-width="9" stroke-linecap="round"/>' : '') +
+        '</svg><div class="num">' + (sd.scanned ? sd.score : '--') + '</div></div>' +
+        '<div class="shead"><b>' + (zh()?'11 项扫描':'11 scanners') + '</b><span>Health</span></div>' +
+        '<div class="chips">' + sc.map(function(c,i){ return '<span class="chip" style="animation-delay:'+(i*.06)+'s">● '+c+'</span>'; }).join('') + '</div>' +
+        '<div class="shead"><b>Findings</b><span>' + (zh()?'按影响排序':'by impact') + '</span></div>' +
+        (sd.scanned
+          ? rows([[(zh()?'重复读取 ×7':'Redundant reads ×7'), sd.fixed?(zh()?'已修复':'fixed'):'−1.8k', sd.fixed?1:0],
+                  [(zh()?'陈旧会话 ×4':'Stale sessions ×4'), sd.fixed?(zh()?'已清':'swept'):'8.1 MB', sd.fixed?1:0],
+                  [(zh()?'MCP 重复项':'Duplicate MCP'), sd.fixed?(zh()?'已关':'disabled'):'−7.4k', sd.fixed?1:0]])
+          : '<div class="expo">' + (zh()?'点上面的「重新扫描」开始':'Press Scan again above to start') + '</div>');
+    },
+    /* Knowledge Graph —— 真实的 Kinds 过滤 + Edit/Digest */
+    graph: function(){
+      var pts=[[18,30],[34,52],[52,26],[68,58],[80,34],[26,72],[46,80],[62,44],[88,66],[12,54]];
+      return '<div class="tabs"><span class="tab on">fn</span><span class="tab">class</span><span class="tab">method</span><span class="tab">module</span><span class="tab">external</span></div>' +
+        '<div class="gnodes">' + pts.map(function(pt,i){ return '<i style="left:'+pt[0]+'%;top:'+pt[1]+'%;animation-delay:'+(i*.08)+'s"></i>'; }).join('') + '</div>' +
+        kpis([[zh()?'符号':'SYMBOLS','1,284'],[zh()?'调用':'EDGES','3,916'],[zh()?'文件':'FILES','412'],['DIGEST','8.4k']]) +
+        '<div class="shead"><b>Code digest</b><span>✎ Edit · ⤓ Digest</span></div>';
+    },
+    /* Team —— 真实分区 Live / Activity / Stats / Inbox */
+    team: function(){
+      return '<div class="tabs"><span class="tab on">Live</span><span class="tab">Activity</span><span class="tab">Stats</span><span class="tab">Inbox</span></div>' +
+        rows([['Ava · refactor-auth','+88k ctx',1],['Leo · cleanup-checklist','+12k',1],['Mia · prompt-pack','idle',0]]) +
+        '<div class="shead"><b>My Budget</b><span>24h · 7d · 30d</span></div>' +
+        kpis([['SPEND','$5,624'],['OF','$8,000'],['USED','70%'],['STATUS',zh()?'正常':'On track']]);
+    },
+    /* Alerts —— 真实的 Channels + 严重度阈值 */
+    alertspage: function(){
+      return '<div class="tabs"><span class="tab on">Recent</span><span class="tab">Settings</span></div>' +
+        '<div class="shead"><b>Channels</b><span>' + (zh()?'总开关':'Master switch') + '</span></div>' +
+        rows([['🖥️ ' + (zh()?'桌面提醒':'Desktop alerts'),'ON',1],[(zh()?'应用内提醒中心':'In-app Alert Center'),'ON',1],
+              ['Slack','—',0],[(zh()?'手机推送':'Phone push'),'—',0]]) +
+        '<div class="shead"><b>' + (zh()?'什么情况下提醒':'What to alert on') + '</b><span>' + (zh()?'最低严重度':'Minimum severity') + '</span></div>' +
+        '<div class="tabs"><span class="tab">All</span><span class="tab on">Medium+</span><span class="tab">High only</span></div>';
+    },
+    /* History —— 真实分区 Today/Week/Month/All + Cost by project */
+    historypage: function(){
+      return '<div class="tabs"><span class="tab on">' + (zh()?'今天':'Today') + '</span><span class="tab">' + (zh()?'本周':'Week') + '</span><span class="tab">' + (zh()?'本月':'Month') + '</span><span class="tab">' + (zh()?'全部':'All') + '</span></div>' +
+        kpis([['SPEND','$5,624'],['SESSIONS','128'],['TOKENS','336.6M'],['SAVED','12,962']]) +
+        '<div class="shead"><b>' + (zh()?'按项目的花费':'Cost by project') + '</b><span>' + (zh()?'含锚点,可恢复':'restorable, with anchors') + '</span></div>' +
+        rows([['2026-08-09 · claude-code','182k',1],['2026-08-07 · codex','96k',1],['2026-08-04 · cursor','41k',1]]);
+    },
+    list: function(f){
+      var L = {
+        connection:[['Claude Code','live',1],['Codex','live',1],['Cursor','connect',0],['Copilot','connect',0],['Cline','connect',0],['Windsurf','connect',0]],
+        cleanup:[[zh()?'缓存垃圾':'cache junk','14.2 MB',1],[zh()?'陈旧会话 ×4':'4 stale sessions','8.1 MB',1],[zh()?'孤儿日志':'orphaned logs','2.4 MB',1]],
+        mcp:[['filesystem','9 tools',1],['filesystem-2','dup · 7.4k',0],['filesystem-3','dup · 7.4k',0],['github','6 tools',1],['slack','4 tools',1]],
+        prompts:[[zh()?'代码审查':'Code review','386 → 214',1],[zh()?'写测试':'Write tests','291 → 168',1],[zh()?'解释这段':'Explain this','142 → 96',1]]
+      };
+      return rows(L[f.key] || [[tx(f.name),'live',1]]);
+    },
+    toggle: function(f){
+      var L = {
+        rules:[[zh()?'同一文件不再重读':'Never re-read the same file','−67%',ST.rules.on[0]],[zh()?'折叠搜索结果':'Fold search results','−1.2k',ST.rules.on[1]],
+               [zh()?'限制工具输出':'Cap tool output','2.1k→180',ST.rules.on[2]],[zh()?'剥掉冗余表达':'Strip filler','−38%',ST.rules.on[3]],
+               [zh()?'缓存安全模式':'Cache-safe mode','ON',ST.rules.on[4]]],
+        boost:[[zh()?'走 Terse 加速':'Route via Terse','2.1×',1],[zh()?'自动模型路由':'Auto model routing','Opus→Sonnet',1],
+               [zh()?'流式优先':'Stream first','TTFB −54%',1]],
+        settings:[[zh()?'开机自动接管':'Attach on launch','ON',1],[zh()?'默认压缩档':'Default mode',zh()?'标准':'Normal',0],
+                  [zh()?'自动授权':'Auto-approve',zh()?'始终':'Always',1],[zh()?'语言':'Language',zh()?'中文':'English',0]]
+      };
+      var out = rows(L[f.key] || [[tx(f.name),'ON',1]]);
+      if (f.key === 'rules') out += '<div class="expo"><b>' + (zh()?'当前这套规则':'With these rules') + '</b> · ' +
+        (zh()?'下一轮 prompt 压到 ':'next prompt compresses ') + '−' + ruleSaving() + '%</div>';
+      return out;
+    },
+    farm: function(){
+      var c=['🌾','🌱','🌾','🥕','🌱','🌾','🌽','🌱','🥕'];
+      return '<div class="ptools" style="margin-top:0"><span class="pbtn2">🌾 ' + (zh()?'一键收获':'Harvest all') +
+        '</span><span class="pbtn2">💧 ' + (zh()?'一键浇水':'Water all') + '</span><span class="pbtn2">🐛 ' +
+        (zh()?'一键除虫':'De-bug all') + '</span></div>' +
+        '<div class="plots">' + c.map(function(x,i){ return '<div class="plot" style="animation-delay:'+(i*.05)+'s">'+x+'</div>'; }).join('') + '</div>' +
+        '<div class="shead"><b>Lv.' + ST.farm.lv + ' · ' + ST.farm.xp + ' XP</b><span>R ' + (zh()?'收割':'reap') + ' · W ' + (zh()?'浇水':'water') +
+        ' · E ' + (zh()?'施肥':'fertilise') + ' · S ' + (zh()?'铲除':'clear') + '</span></div>' +
+        rows([[(zh()?'商店':'Shop'),'☀ 50/' + (zh()?'次':'ea'),0],[(zh()?'每日任务':'Daily quests'),'2/3',0]]) +
+        '<div class="expo"><b>' + (zh()?'余额':'Balance') + ' ' + ST.farm.bal.toLocaleString() + '</b> · ' + (zh()?'已省 tokens → 小麦 Lv.2 → Lv.3':'saved tokens → wheat Lv.2 → Lv.3') + '</div>';
+    },
+    wall: function(){
+      var d=[];for(var i=0;i<40;i++)d.push([Math.round(Math.random()*96),Math.round(Math.random()*86),(Math.random()*2.4).toFixed(2)]);
+      return '<div class="wallprev">' + d.map(function(pt){ return '<i style="left:'+pt[0]+'%;top:'+pt[1]+'%;animation-delay:'+pt[2]+'s"></i>'; }).join('') + '</div>' +
+        rows([['🖥️ ' + (zh()?'设为桌面壁纸':'Set as desktop wallpaper'),'ON',1]]) +
+        '<div class="shead"><b>' + (zh()?'引擎':'Engine') + '</b><span>FREE · PRO</span></div>' +
+        rows([[(zh()?'你的壁纸 · 粒子律动':'Your wallpaper · particles') + '<span class="sub">' +
+                 (zh()?'用你当前那张桌面壁纸':'uses your current desktop picture') + '</span>','FREE',1],
+              [(zh()?'电影级粒子聚合':'Cinematic particle text') + '<span class="sub">' +
+                 (zh()?'统计由粒子聚合成字':'stats formed out of particles') + '</span>','PRO',0],
+              [(zh()?'音域回响 · 光柱地形':'Sonic topography'),'FREE',0]]) +
+        '<div class="shead"><b>Theme</b><span>10 presets</span></div>' +
+        '<div class="chips">' + ['indigo','ocean','ice','emerald','gold','amber','blood','coral','neon','mono']
+          .map(function(c,i){ return '<span class="chip" style="animation-delay:'+(i*.05)+'s">'+c+'</span>'; }).join('') + '</div>' +
+        '<div class="shead"><b>Feel</b><span>' + (zh()?'律动 · 机位 · 密度':'intensity · angle · density') + '</span></div>' +
+        rows([[(zh()?'Intensity 律动':'Intensity'),'1.0×',0],[(zh()?'Camera angle 机位':'Camera angle'),'42°',0]]);
+    },
+    pal: function(){
+      return '<div class="wallprev" style="display:flex;align-items:center;justify-content:center;gap:22px;font-size:44px">🐾 🦊 🐧 🐢</div>' +
+        '<div class="shead"><b>' + (zh()?'挑一只':'Pick your Terse Pal') + '</b><span>' + (zh()?'新手那只免费':'your starter is free') + '</span></div>' +
+        rows([[(zh()?'放到桌面':'Drop on desktop'),'ON',1],[(zh()?'随 agent 活动变表情':'reacts to agent activity'),'live',0]]) +
+        '<div class="pfoot" style="border:none;padding:0;margin-top:12px"><span>' +
+        (zh()?'余额：12,962 已省 tokens':'Balance: 12,962 saved tokens') + '</span></div>';
+    },
+    perm: function(){
+      return '<div class="permcard"><div class="ph"><span style="color:var(--orange);font-family:var(--mono);font-size:11px;font-weight:800">' +
+        (zh()?'权限请求':'PERMISSION') + '</span><b style="font-family:var(--mono);color:var(--lime)">Bash</b>' +
+        '<span style="margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--t3)">~/Desktop/Terse</span></div>' +
+        '<div class="pb" style="color:var(--cyan)">' + (zh()?'来自这一轮：清理构建产物后重跑测试':'from this turn: clean build output, then re-run tests') + '</div>' +
+        '<div class="pb">rm -rf build/ &amp;&amp; npm test</div><div class="life"><i></i></div>' +
+        '<div class="pa"><span class="pbtn no">' + (zh()?'拒绝':'Deny') + '</span><span class="pbtn">' + (zh()?'始终允许':'Always allow') +
+        '</span><span class="pbtn on">' + (zh()?'仅此一次':'Allow once') + '</span></div></div>' +
+        '<div class="shead"><b>' + (zh()?'这一轮省下多少':'How tokens were saved') + '</b><span>Monitoring</span></div>' +
+        rows([[(zh()?'Would have used 本该用':'Would have used'),'1,284',0],
+              [(zh()?'Actually used 实际用':'Actually used'),'796',0],
+              [(zh()?'Terse saved 省下':'Terse saved'),'−38%',0]]) +
+        '<div class="shead"><b>Cache</b><span>hit rate · cost ↓ · faster</span></div>' +
+        kpis([['HIT RATE','61%'],['CTX','47%'],['TRIMMED','41k'],['FASTER','2.1×']]) +
+        '<div class="expo"><b>' + (zh()?'选「始终允许」之后':'After Always allow') + '</b> · ' +
+        (zh()?'下次同类调用秒回，卡片根本不出现':'the next call is answered instantly — no card at all') + '</div>';
+    }
+  };
+
+  /* 每一页的工具条/分区/底部状态 —— 真实 app 的每一页都有这些,少了就显得是占位图 */
+  var CHROME_PAGE = {
+    overview:  { tools: [['search', zhs('搜索 agent 或会话','Search agents or sessions')], ['btn', zhs('刷新','Refresh')]],
+                 sect: [zhs('已连接的会话','Connected sessions'), zhs('按 token 消耗排序','sorted by burn')], foot: zhs('4 个已连接 · 每 2 秒刷新','4 attached · refreshes every 2s') },
+    observe:   { tools: [['search', zhs('过滤工具调用','Filter tool calls')], ['btn', zhs('暂停','Pause')]],
+                 sect: [zhs('实时流','Live stream'), zhs((zh()?'实时':'live'),(zh()?'实时':'live'))], foot: zhs('实时 · 本轮 +1,684 tok','live · +1,684 tok this turn') },
+    stats:     { tools: [['btn2', zhs('导出 CSV','Export CSV')]],
+                 sect: [zhs('本周消耗','This week'), zhs('按天','by day')], foot: zhs('数据源 Terse usage log','from Terse usage log') },
+    connection:{ tools: [['search', zhs('搜索 agent','Search agents')], ['btn2', zhs('自动检测','Auto-detect')]],
+                 sect: [zhs('可接管的 agent','Attachable agents'), zhs('已接管的会亮 live','connected ones show live')], foot: zhs('接上就生效，无需配置','connects itself — nothing to configure') },
+    doctor:    { tools: [['btn2', zhs('重新扫描','Scan again')], ['btn', zhs('全部修复','Fix all')]],
+                 sect: [zhs('11 项扫描','11 scanners'), zhs('按影响排序','sorted by impact')], foot: zhs('上次扫描 2 分钟前','last scan 2 min ago') },
+    cleanup:   { tools: [['btn2', zhs('清理','Sweep')]],
+                 sect: [zhs('可清理','Sweepable'), zhs('取消勾选即保留','uncheck to keep')], foot: zhs('合计 24.7 MB · 不含正在用的会话','24.7 MB total · active sessions excluded') },
+    rules:     { tools: [['search', zhs('搜索规则','Search rules')], ['btn2', zhs('新建规则','New rule')]],
+                 sect: [zhs('长期生效','Standing rules'), zhs('对每一条 prompt','on every prompt')], foot: zhs('下一轮即生效 · 无需重启','applies next turn · no restart') },
+    mcp:       { tools: [['btn2', zhs('重新扫描','Rescan')]],
+                 sect: [zhs('已注册的 server','Registered servers'), zhs('重复项已标出','duplicates flagged')], foot: zhs('改写 Agent config','rewrites Agent config') },
+    alerts:    { tools: [['btn2', zhs('新建预警','New alert')]],
+                 sect: [zhs('触发条件','Triggers'), zhs('越线就通知','fires on crossing')], foot: zhs('通过 macOS 系统通知送达','delivered via macOS notifications') },
+    prompts:   { tools: [['search', zhs('搜索提示词  ⌘⇧P','Search prompts  ⌘⇧P')], ['btn2', zhs('新建','New')]],
+                 sect: [zhs('你的模板','Your templates'), zhs('压缩前 → 压缩后','before → after')], foot: zhs('⌘⇧P 可在任何 app 里唤起','⌘⇧P works in any app') },
+    graph:     { tools: [['search', zhs('搜索符号','Search symbols')], ['btn2', zhs('重建','Rebuild')]],
+                 sect: [zhs('~/Desktop/Terse','~/Desktop/Terse'), zhs('tree-sitter 原生解析','native tree-sitter')], foot: zhs('输出 Code digest','writes Code digest') },
+    history:   { tools: [['search', zhs('按日期或项目搜索','Search by date or project')]],
+                 sect: [zhs('已保存的会话','Saved sessions'), zhs('含锚点','with anchors')], foot: zhs('恢复后接着上次继续','restore picks up where you left off') },
+    team:      { tools: [['search', zhs('搜索成员','Search members')], ['btn2', zhs('邀请','Invite')]],
+                 sect: [zhs('团队实时','Team live'), zhs('共享缓存','shared cache')], foot: zhs('今日团队共省 18,412 tok','team saved 18,412 tok today') },
+    farm:      { tools: [['btn2', zhs('浇水','Water')], ['btn', zhs('收割','Harvest')]],
+                 sect: [zhs('9 块地','9 plots'), zhs('用省下的 token 支付','paid in saved tokens')], foot: zhs('余额 12,962 已省 tokens','balance 12,962 saved tokens') },
+    boost:     { tools: [['btn2', zhs('测速','Benchmark')]],
+                 sect: [zhs('加速','Boost'), zhs('本地运行','runs locally')], foot: zhs('自动模型路由:Opus → Sonnet','auto routing: Opus → Sonnet') },
+    wallpaper: { tools: [['btn2', zhs('换引擎','Switch engine')]],
+                 sect: [zhs('预览','Preview'), zhs('你的桌面壁纸 + 粒子','your wallpaper + particles')], foot: zhs('钉在图标之下 · 点击穿透','below icons · click-through') },
+    pals:      { tools: [['btn2', zhs('换一只','Switch pal')]],
+                 sect: [zhs('桌面伙伴','Desktop pal'), zhs('随 agent 活动变化','reacts to agents')], foot: zhs('省下 token 会解锁更多','saving unlocks more') },
+    settings:  { tools: [['search', zhs('搜索设置','Search settings')]],
+                 sect: [zhs('常用','Common'), zhs('改完即存','saves as you go')], foot: zhs('写入 Terse settings','writes Terse settings') },
+    island:    { tools: [['btn2', zhs('自动授权:始终','Auto-approve: Always')]],
+                 sect: [zhs('待处理的请求','Pending request'), zhs('10 秒后交还给 agent','handed back after 10s')], foot: zhs('规则存进 Terse settings','rules stored in Terse settings') }
+  };
+  function zhs(a, b){ return (b === undefined) ? (zh() ? a[0] : a[1]) : (zh() ? a : b); }
+
+  function pane(f){
+    var c = CHROME_PAGE[f.key] || {};
+    var head = '<div class="ptitle"><h2>' + tx(f.name) + '</h2>' + (f.pro ? '<span class="tag">PRO</span>' : '') + '</div>';
+    var tools = c.tools ? '<div class="ptools">' + c.tools.map(function(t){
+      if (t[0] === 'search') return '<div class="psearch">⌕ <span>' + t[1] + '</span></div>';
+      return '<span class="pbtn2' + (t[0] === 'btn' ? ' solid' : '') + '">' + t[1] + '</span>';
+    }).join('') + '</div>' : '';
+    var sect = c.sect ? '<div class="shead"><b>' + c.sect[0] + '</b><span>' + c.sect[1] + '</span></div>' : '';
+    var foot = c.foot ? '<div class="pfoot"><span>' + c.foot + '</span><span class="sp"></span></div>' : '';
+    var render = UI[f.ui] || UI.list;
+    document.getElementById('pane').innerHTML = head + tools + sect + render(f) + foot;
+    // 工具条按钮:真的改这一页的状态,然后重画
+    document.querySelectorAll('.pane .pbtn2, .pane .pbtn').forEach(function(b){
+      b.style.cursor = 'pointer';
+      b.onclick = function(){
+        var h = ACT[f.key];
+        if (h && h(b.textContent)) { pane(f); replay(); }
+      };
+    });
+    // 行:开关翻转 + 回写状态,数字跟着重算
+    document.querySelectorAll('.pane .row').forEach(function(r, i){
+      r.onclick = function(){
+        r.classList.toggle('act');
+        if (rowToggled(f.key, i, r.classList.contains('act'))) {
+          if (f.key === 'rules' || f.key === 'mcp') pane(f);
+        }
+        replay();
+      };
+    });
+    // 权限卡三个按钮:选了之后卡片给出真实后果
+    document.querySelectorAll('.pane .permcard .pbtn').forEach(function(b){
+      b.style.cursor = 'pointer';
+      b.onclick = function(){
+        var t = b.textContent, box = document.querySelector('.pane .expo');
+        if (!box) return;
+        box.innerHTML = /始终|Always/.test(t)
+          ? '<b>' + (zh()?'已记住':'Remembered') + '</b> · ' + (zh()?'下次同类调用秒回，卡片根本不出现，agent 不用等':'next call answered instantly — no card, no waiting')
+          : /拒绝|Deny/.test(t)
+          ? '<b>' + (zh()?'已拒绝':'Denied') + '</b> · ' + (zh()?'agent 收到拒绝理由，会换一条路走':'the agent gets the reason and takes another route')
+          : '<b>' + (zh()?'仅此一次':'Allowed once') + '</b> · ' + (zh()?'这一次放行，下次还会问':'allowed now — it will ask again next time');
+      };
+    });
+  }
+
+  /* ── 右侧:说明 + 下游影响动画 ── */
+  var DEMO_LABEL = {
+    terminal:{en:'TERMINAL',zh:'终端'}, claude:{en:'CLAUDE CODE',zh:'CLAUDE CODE'},
+    file:{en:'FINDER',zh:'访达'}, notify:{en:'NOTIFICATION',zh:'系统通知'},
+    config:{en:'CONFIG FILE',zh:'配置文件'}, desktop:{en:'DESKTOP',zh:'桌面'}
+  };
+  function expl(f){
+    var L = { what:{en:'What it is',zh:'这是什么'}, how:{en:'How to use it',zh:'怎么用'},
+              eff:{en:'What it changes outside the app',zh:'它在 app 之外改了什么'} };
+    document.getElementById('expl').innerHTML =
+      '<div class="eh"><div class="g">' + tx(G.GROUP_NAME[f.group] || {en:f.group,zh:f.group}) + '</div>' +
+      '<div class="n">' + tx(f.name) + '</div></div>' +
+      sec(tx(L.what), tx(f.what)) + sec(tx(L.how), tx(f.how)) + sec(tx(L.eff), tx(f.effect)) +
+      '<div class="demo"><div class="dh"><span class="dot"></span><b>' +
+        tx(DEMO_LABEL[f.demo.kind]) + '</b></div><div class="db" id="db"></div></div>';
+    replay();
+  }
+  function sec(l, p){ return '<div class="sec"><div class="lab">' + l + '</div><p>' + p + '</p></div>'; }
+
+  function replay(){
+    var db = document.getElementById('db'); if (!db) return;
+    db.innerHTML = '';
+    cur.demo.lines.forEach(function(ln, i){
+      var t = tx(ln);
+      var d = document.createElement('div');
+      // 行首 − 的是被删掉的东西,画删除线更直白
+      if (t.charAt(0) === '−' || t.charAt(0) === '-') d.className = 'rm';
+      d.style.animationDelay = (i * 0.24) + 's';
+      d.textContent = t;
+      db.appendChild(d);
+    });
+  }
+
+  function pick(k){
+    cur = ALL.filter(function(f){ return f.key === k; })[0] || ALL[0];
+    nav(); pane(cur); expl(cur);
+  }
+
+  /* ── 底部静态文档:同一份内容,可通读可搜索 ── */
+  function doc(){
+    document.getElementById('dgrid').innerHTML = ALL.map(function(f){
+      var effL = zh() ? '在 app 之外' : 'Outside the app';
+      var stepL = zh() ? '怎么做' : 'Steps';
+      var vis = '<div class="dvis"><div class="vh">' + tx(DEMO_LABEL[f.demo.kind]) + '</div><div class="vb">' +
+        f.demo.lines.map(function(ln){
+          var t = tx(ln);
+          var rm = (t.charAt(0) === '−' || t.charAt(0) === '-') ? ' class="rm"' : '';
+          return '<div' + rm + '>' + t + '</div>';
+        }).join('') + '</div></div>';
+      var steps = (f.steps || []).length
+        ? '<div class="lab" style="margin-top:11px;font-family:var(--mono);font-size:10.5px;font-weight:800;letter-spacing:1.1px;color:var(--lime-d)">' + stepL + '</div>' +
+          '<ol>' + f.steps.map(function(x){ return '<li>' + tx(x) + '</li>'; }).join('') + '</ol>'
+        : '';
+      var gain = f.gain ? '<div class="gain">→ ' + tx(f.gain) + '</div>' : '';
+      return '<div class="dcard"><div class="grp">' + tx(G.GROUP_NAME[f.group] || {en:f.group,zh:f.group}) + '</div>' +
+        '<h3>' + f.icon + ' ' + tx(f.name) + (f.pro ? ' · PRO' : '') + '</h3>' +
+        '<p>' + tx(f.what) + '</p>' + vis + steps +
+        '<div class="eff"><b>' + effL + '：</b>' + tx(f.effect) + '</div>' + gain + '</div>';
+    }).join('');
+  }
+
+
+  /* 顶部/文档区的固定文案也跟着同一套语言机制 —— 不然会出现"侧栏中文、标题英文" */
+  var CH = {
+    h1:   { en: 'Click through <em>the real app</em>', zh: '点着用一遍<em>真正的 app</em>' },
+    sub:  { en: 'A working replica of the Terse main window. Click anything in the sidebar — you get what it does, how to use it, and the part most guides skip: what it changes outside the app.',
+            zh: '这是 Terse 主窗口的可用复刻。侧边栏随便点 —— 每一项都会告诉你它是什么、怎么用，以及大多数说明书都略过的那部分：它在 app 之外改了什么。' },
+    hint: { en: 'Click any item on the left', zh: '点左边任意一项' },
+    docH: { en: 'Every feature, <em>in writing</em>', zh: '每个功能，<em>都写下来了</em>' },
+    docSub:{ en: 'The same content as above, with the interface it belongs to and the steps to get there.',
+             zh: '和上面同一份内容，附上它对应的界面和具体操作步骤。' },
+    back: { en: 'Back to Terse', zh: '返回 Terse' }
+  };
+  function chrome(){
+    document.getElementById('gH1').innerHTML = tx(CH.h1);
+    document.getElementById('gSub').textContent = tx(CH.sub);
+    document.getElementById('gHint').textContent = tx(CH.hint);
+    document.getElementById('gDocH').innerHTML = tx(CH.docH);
+    document.getElementById('gDocSub').textContent = tx(CH.docSub);
+    document.getElementById('gBack').textContent = tx(CH.back);
+    document.title = zh() ? '交互式使用指南 — Terse' : 'Interactive Guide — Terse';
+  }
+
+
+  /* ── Terse 用什么手法省 token / 加速 ── */
+  var MH = {
+    h:   { en: 'How it actually <em>saves and speeds up</em>', zh: '它到底<em>怎么省、怎么快</em>' },
+    sub: { en: 'Not "AI magic" — a specific list. Every item below is a specific thing Terse does: the three compression levels, the context rules, and how it routes your traffic.',
+           zh: '不是「AI 魔法」，是一份具体清单。下面每一条都是 Terse 实际做的事：三个压缩档位、上下文规则，以及它怎么给你的请求提速。' }
+  };
+  function methods(){
+    var M = window.TERSE_METHODS; if (!M) return;
+    document.getElementById('mH').innerHTML = tx(MH.h);
+    document.getElementById('mSub').textContent = tx(MH.sub);
+    document.getElementById('mBody').innerHTML = M.SECTIONS.map(function(sec){
+      return '<div class="mgrp"><div class="mt"><h3>' + tx(sec.title) + '</h3></div>' +
+        '<div class="ml">' + tx(sec.lede) + '</div>' +
+        '<div class="mlist">' + sec.items.map(function(it){
+          return '<div class="mitem"><div class="h"><b>' + tx(it.t) + '</b>' +
+            '<span class="lv">' + tx(it.lv) + '</span></div><p>' + tx(it.d) + '</p></div>';
+        }).join('') + '</div></div>';
+    }).join('');
+  }
+
+  function boot(){ chrome(); nav(); pane(cur); expl(cur); methods(); doc(); }
+  boot();
+  // 站点切语言时整页跟着重建
+  document.addEventListener('click', function(e){
+    if (e.target.closest && e.target.closest('[data-lang]')) setTimeout(boot, 60);
+  });
+})();
+</script>
+</body>
+</html>

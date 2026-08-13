@@ -2291,12 +2291,54 @@ fn find_all_active_jsonl_globally() -> Vec<PathBuf> {
 /// Codex stores sessions at: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
 fn find_codex_session() -> Option<PathBuf> {
     let home = dirs::home_dir()?;
-    let sessions_dir = home.join(".codex/sessions");
-    if !sessions_dir.exists() { return None; }
-
+    // EVERY Codex home, not just ~/.codex.
+    //
+    // Detection already used codex_home_dirs() - CODEX_HOME, LocalAppData\Codex,
+    // the Store package's LocalCache\Roaming\Codex, and ~/.codex - but this
+    // lookup hardcoded ~/.codex/sessions. The CLI writes there; Codex Desktop
+    // does not. So a Desktop user got the card (detection found the app) and
+    // file=None (the session lookup searched one directory the app never writes
+    // to), which is exactly the "connected, every metric 0" report. The comment
+    // on the Codex AgentDef has described this for a while; the lookup was never
+    // taught the other paths.
+    let mut searched: Vec<String> = Vec::new();
     let mut newest: Option<(PathBuf, SystemTime)> = None;
+    for base in codex_home_dirs(&home) {
+        let sessions_dir = base.join("sessions");
+        searched.push(format!("{}{}", sessions_dir.display(),
+                              if sessions_dir.exists() { "" } else { " (missing)" }));
+        if !sessions_dir.exists() { continue; }
+        scan_codex_sessions_dir(&sessions_dir, &mut newest);
+    }
+    // The freshness filter lives here rather than in the walker so the log can
+    // separate "no rollout anywhere" from "found one but it is stale". Both
+    // surfaced identically as file=None, and they need different fixes.
+    let (path, age_secs) = match newest {
+        Some((p, mtime)) => {
+            let age = SystemTime::now().duration_since(mtime)
+                .unwrap_or(Duration::from_secs(u64::MAX));
+            (Some(p), age.as_secs())
+        }
+        None => (None, 0),
+    };
+    let fresh = path.is_some() && age_secs < 30 * 60;
+    crate::diag_log("agent-monitor", &format!(
+        "codex session search: [{}] -> {}{}",
+        searched.join(", "),
+        path.as_ref().map(|p| p.display().to_string())
+            .unwrap_or_else(|| "NO ROLLOUT FOUND".into()),
+        match path.as_ref() {
+            Some(_) if fresh => format!("  (age {}s, fresh)", age_secs),
+            Some(_) => format!("  (age {}s, STALE - past the 30 min window, rejected)", age_secs),
+            None => String::new(),
+        }
+    ));
+    if fresh { path } else { None }
+}
 
-    let Ok(years) = fs::read_dir(&sessions_dir) else { return None };
+/// Walk one `<codex home>/sessions/YYYY/MM/DD/` tree, keeping the newest rollout.
+fn scan_codex_sessions_dir(sessions_dir: &Path, newest: &mut Option<(PathBuf, SystemTime)>) {
+    let Ok(years) = fs::read_dir(sessions_dir) else { return };
     for year in years.flatten() {
         if !year.file_type().map(|t| t.is_dir()).unwrap_or(false) { continue; }
         let Ok(months) = fs::read_dir(year.path()) else { continue };
@@ -2313,7 +2355,7 @@ fn find_codex_session() -> Option<PathBuf> {
                     if let Ok(meta) = fs::metadata(&p) {
                         if let Ok(mtime) = meta.modified() {
                             if newest.as_ref().map_or(true, |(_, t)| mtime > *t) {
-                                newest = Some((p, mtime));
+                                *newest = Some((p, mtime));
                             }
                         }
                     }
@@ -2321,15 +2363,6 @@ fn find_codex_session() -> Option<PathBuf> {
             }
         }
     }
-
-    if let Some((path, mtime)) = newest {
-        let age = SystemTime::now().duration_since(mtime).unwrap_or(Duration::from_secs(u64::MAX));
-        if age < Duration::from_secs(30 * 60) {
-            eprintln!("[terse-agent] codex session: {:?}", path);
-            return Some(path);
-        }
-    }
-    None
 }
 
 /// Read recent Cursor conversations from the cursorDiskKV SQLite table (Windows paths).

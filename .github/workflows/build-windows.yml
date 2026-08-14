@@ -761,15 +761,39 @@ jobs:
         run: |
           Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class P{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumChildWindows(IntPtr p,Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint f);public struct R{public int L,T,Rr,B;}}'
           Add-Type -AssemblyName System.Drawing
-          $target = [IntPtr]::Zero
-          $scan = [P+Cb]{ param($h,$l)
+          # $script: on BOTH the variable and the recursive reference.
+          #
+          # As a plain $scan the delegate could not resolve itself at call time,
+          # so the EnumChildWindows recursion silently did nothing and only
+          # top-level windows were ever searched. That went unnoticed while the
+          # wallpaper was still a top-level window; now that pinning makes it
+          # WS_CHILD under WorkerW - EnumWindows does not report child windows at
+          # all - the same capture reported WALLPAPER WINDOW NOT FOUND while the
+          # style dump three steps earlier had it right there, visible and
+          # correctly parented.
+          $script:target = [IntPtr]::Zero
+          $script:scan = [P+Cb]{ param($h,$l)
             $sb = New-Object System.Text.StringBuilder 256
             [void][P]::GetWindowTextW($h, $sb, 256)
             if ($sb.ToString() -eq 'Terse Wallpaper') { $script:target = $h; return $false }
-            [void][P]::EnumChildWindows($h, $scan, [IntPtr]::Zero)
+            [void][P]::EnumChildWindows($h, $script:scan, [IntPtr]::Zero)
             return $true }
-          [void][P]::EnumWindows($scan, [IntPtr]::Zero)
+          [void][P]::EnumWindows($script:scan, [IntPtr]::Zero)
+          $target = $script:target
+          if ($target -eq [IntPtr]::Zero) {
+            Write-Host 'not found among top-level windows - walking the shell hosts'
+            Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class F{[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern IntPtr FindWindowExW(IntPtr p,IntPtr c,string cls,string t);}'
+            $hosts = @([F]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"Progman",$null))
+            $w = [F]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"WorkerW",$null)
+            while ($w -ne [IntPtr]::Zero) { $hosts += $w; $w = [F]::FindWindowExW([IntPtr]::Zero,$w,"WorkerW",$null) }
+            foreach ($hh in $hosts) {
+              if ($script:target -ne [IntPtr]::Zero) { break }
+              [void][P]::EnumChildWindows($hh, $script:scan, [IntPtr]::Zero)
+            }
+            $target = $script:target
+          }
           if ($target -eq [IntPtr]::Zero) { Write-Host 'WALLPAPER WINDOW NOT FOUND'; exit 0 }
+          Write-Host "wallpaper hwnd found: $target"
           $r = New-Object P+R
           [void][P]::GetWindowRect($target, [ref]$r)
           $w = $r.Rr - $r.L; $h2 = $r.B - $r.T

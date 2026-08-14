@@ -73,6 +73,50 @@ fn shutdown_children(app: &AppHandle) {
             .stderr(std::process::Stdio::null())
             .status();
     }
+    // Undo the agent config ourselves. The proxy has its own cleanupOnExit, but
+    // it is wired to SIGINT/SIGTERM/'exit' — and `taskkill /F` above is
+    // TerminateProcess, which runs no handler at all. Windows has no signals, so
+    // that cleanup has never once executed here.
+    //
+    // The cost of the gap is not cosmetic: openai_base_url = "http://127.0.0.1:
+    // 7860/v1" stays in the user's ~/.codex/config.toml after Terse quits, and
+    // Codex keeps sending requests to a port nothing is listening on — 502 Bad
+    // Gateway, forever, until they find and delete the line by hand. A Pro user
+    // on Windows 11 lost a working Codex to exactly this and had to diagnose it
+    // themselves. Terse must not leave another program broken behind it.
+    clear_codex_proxy_config();
+}
+
+/// Strip a terse-managed `openai_base_url` (a 127.0.0.1 address) from
+/// `~/.codex/config.toml`, leaving everything else byte-for-byte alone.
+///
+/// Only ever removes OUR line — a user's own base URL pointing somewhere else is
+/// left untouched. Safe to call when the file is absent or was never modified.
+fn clear_codex_proxy_config() -> bool {
+    let Some(home) = dirs::home_dir() else { return false };
+    let p = home.join(".codex").join("config.toml");
+    let Ok(content) = std::fs::read_to_string(&p) else { return false };
+    let cleaned: String = content
+        .lines()
+        .filter(|l| {
+            let t = l.trim_start();
+            !(t.starts_with("openai_base_url") && t.contains("127.0.0.1"))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    // `lines()` drops a trailing newline; put one back only if there was one.
+    let cleaned = if content.ends_with('\n') && !cleaned.is_empty() {
+        format!("{cleaned}\n")
+    } else {
+        cleaned
+    };
+    if cleaned != content {
+        if std::fs::write(&p, cleaned).is_ok() {
+            eprintln!("[terse] removed terse openai_base_url from {}", p.display());
+            return true;
+        }
+    }
+    false
 }
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -3752,6 +3796,20 @@ pub fn run() {
                         std::thread::sleep(std::time::Duration::from_millis(400));
                     }
                 }
+                // Heal a config left behind by any earlier crash, force-kill or
+                // older build, BEFORE the new proxy decides what to write.
+                //
+                // Users already stranded by this cannot be reached by a fix that
+                // only runs on exit — their config.toml is broken right now, and
+                // the only symptom is Codex failing with 502 against a dead port,
+                // which reads like an OpenAI outage rather than something Terse
+                // did. Clearing it at startup means installing the update is the
+                // whole repair; nobody has to hand-edit a TOML file.
+                //
+                // Safe to do unconditionally: the proxy re-adds the line moments
+                // later if this session should be routed, and now skips it
+                // entirely for ChatGPT-account sessions.
+                clear_codex_proxy_config();
             }
 
             // Clean up any stale proxy config from previous crash

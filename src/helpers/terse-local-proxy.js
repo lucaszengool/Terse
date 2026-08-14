@@ -51,6 +51,23 @@ let mlClassifier = null;
 })();
 
 // ── Configuration ──
+// ── Doctor toggles (~/.terse/doctor.json) ──
+// Written by the Doctor's one-click fixes in Rust. Re-read at most every 5s so
+// a fix takes effect on the next request without restarting the proxy, but a
+// busy request path never stats the file in a loop.
+let _docCache = { at: 0, val: {} };
+function doctorSettings() {
+  const now = Date.now();
+  if (now - _docCache.at < 5000) return _docCache.val;
+  let val = {};
+  try {
+    const p = require('path').join(require('os').homedir(), '.terse', 'doctor.json');
+    val = JSON.parse(require('fs').readFileSync(p, 'utf8')) || {};
+  } catch (e) { val = {}; }
+  _docCache = { at: now, val };
+  return val;
+}
+
 const PORT = parseInt(process.argv.find((a, i) => process.argv[i - 1] === '--port') || '7860');
 const LOG_FILE = require('path').join(require('os').tmpdir(), 'terse-proxy.log');
 
@@ -263,10 +280,22 @@ function analyzeComplexity(userText, messages, body) {
   return { score, reasons };
 }
 
-async function shouldRoute(model, messages, body) {
+async function shouldRoute(model, messages, body, forceRoute) {
   // Check if model is expensive (static map + dynamic detection)
   const cheaperModel = getRouteForModel(model);
   if (!cheaperModel) return null;
+
+  // The Doctor's frontier-overuse fix asks for mechanical turns to leave the
+  // frontier model. Short prompts are the safe, unambiguous slice of that — a
+  // blanket downgrade would silently degrade real work, which is not something
+  // a one-click "fix" should ever do behind the user's back.
+  if (forceRoute) {
+    const t = extractLastUserMessage(messages, body) || '';
+    if (t.length > 0 && t.length < 180) {
+      log(`ROUTE ${model}→${cheaperModel} [doctor:short-turn]`);
+      return cheaperModel;
+    }
+  }
 
   const userText = extractLastUserMessage(messages, body);
 
@@ -336,10 +365,26 @@ function forwardRequest(provider, originalReq, bodyBuf, effectiveModel, res) {
     body = null;
   }
 
+  let bodyDirty = false;
   if (body && effectiveModel && effectiveModel !== 'unknown') {
     body.model = effectiveModel;
-    sendBuf = Buffer.from(JSON.stringify(body));
+    bodyDirty = true;
   }
+
+  // ── Doctor toggles that can only be enforced here ──
+  // cap_output is the one Doctor finding whose remediation is impossible in the
+  // webview: the ceiling has to be on the request the agent actually sends. The
+  // Doctor writes the flag to ~/.terse/doctor.json; this reads it (cached, so a
+  // hot path doesn't stat the file per request) and clamps max_tokens.
+  if (body && doctorSettings().capOutput) {
+    const CAP = 8192;
+    if (typeof body.max_tokens !== 'number' || body.max_tokens > CAP) {
+      body.max_tokens = CAP;
+      bodyDirty = true;
+      log(`CAP max_tokens → ${CAP}`);
+    }
+  }
+  if (bodyDirty) sendBuf = Buffer.from(JSON.stringify(body));
   const originalModel = (body && body.model) || effectiveModel;
 
   // Forward headers, replacing host
@@ -465,7 +510,11 @@ const server = http.createServer((req, res) => {
     const normalizedModel = model.replace(/\[.*?\]$/, '');
 
     // Check if we should route to a cheaper model (async — ML + keyword fallback)
-    const routedModel = await shouldRoute(normalizedModel, messages, body);
+    // Doctor's cost:frontier-overuse fix (routeCheapModels) force-enables
+    // routing. When the flag is off the proxy keeps whatever it decided on its
+    // own, so this only ever adds routing — it never disables existing behaviour.
+    const forceRoute = !!doctorSettings().routeCheapModels;
+    const routedModel = await shouldRoute(normalizedModel, messages, body, forceRoute);
     const effectiveModel = routedModel || normalizedModel;
 
     forwardRequest(provider, req, bodyBuf, effectiveModel, res);
@@ -521,8 +570,47 @@ function configureAgents() {
     const codexDir = path.join(home, '.codex');
     const codexConfig = path.join(codexDir, 'config.toml');
     fs.mkdirSync(codexDir, { recursive: true });
+
+    // NOT for ChatGPT-account sessions.
+    //
+    // Codex signs in two ways: an API key, or a ChatGPT subscription via OAuth.
+    // Only the API key can call /v1/responses. Pointing a ChatGPT-authenticated
+    // session at our proxy makes every request fail with
+    //   401 Unauthorized ... Missing scopes: api.responses.write
+    // and Codex then loops on reconnect — reported by a Pro user on Windows 11.
+    // Their token is not an API key and no amount of proxying makes it one.
+    //
+    // auth.json holds whichever was used: OPENAI_API_KEY for key mode, `tokens`
+    // for OAuth. Absent or unreadable → assume OAuth and stay out of the way;
+    // declining to optimise is recoverable, breaking their Codex is not.
+    let hasApiKey = false;
+    try {
+      const auth = JSON.parse(fs.readFileSync(path.join(codexDir, 'auth.json'), 'utf8'));
+      hasApiKey = typeof auth.OPENAI_API_KEY === 'string' && auth.OPENAI_API_KEY.length > 0;
+    } catch (e) { /* no auth.json → treat as OAuth */ }
+    if (!hasApiKey) {
+      // Still strip a stale line we may have left behind on an earlier run.
+      try {
+        const prev = fs.readFileSync(codexConfig, 'utf8');
+        const cleaned = prev.replace(/^openai_base_url\s*=\s*"[^"]*127\.0\.0\.1[^"]*"[^\n]*\n/m, '');
+        if (cleaned !== prev) {
+          fs.writeFileSync(codexConfig, cleaned);
+          log('Codex: removed stale terse openai_base_url (ChatGPT-account session)');
+        }
+      } catch (e) {}
+      log('Codex: ChatGPT-account auth detected — NOT routing through the proxy');
+      throw new Error('__codex_skip__');
+    }
+
     let content = '';
     try { content = fs.readFileSync(codexConfig, 'utf8'); } catch (e) {}
+    // Back up before the first modification, so there is always something to
+    // restore by hand. Written once — never overwrite a good backup with an
+    // already-modified file.
+    try {
+      const bak = codexConfig + '.terse-backup';
+      if (content && !fs.existsSync(bak)) fs.writeFileSync(bak, content);
+    } catch (e) {}
     // Remove any stale terse-managed openai_base_url pointing to 127.0.0.1
     content = content.replace(/^openai_base_url\s*=\s*"[^"]*127\.0\.0\.1[^"]*"[^\n]*\n/m, '');
     // Only inject if the user hasn't set their own openai_base_url
@@ -534,7 +622,10 @@ function configureAgents() {
       // User has their own — just write back cleaned content if stale line was removed
       fs.writeFileSync(codexConfig, content);
     }
-  } catch (e) { log('Codex config failed: ' + e.message); }
+  } catch (e) {
+    if (e && e.message === '__codex_skip__') { /* deliberate: ChatGPT-account auth */ }
+    else log('Codex config failed: ' + e.message);
+  }
 
   // Write PID file so Rust watchdog knows we're alive
   try {

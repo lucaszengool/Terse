@@ -436,7 +436,19 @@ jobs:
         run: |
           $cfg = Join-Path $env:USERPROFILE ".codex\config.toml"
           if (-not (Test-Path $cfg)) { Write-Warning "CODEX-CONFIG: file vanished entirely"; exit 0 }
+          # POLL, do not snapshot. The previous run checked 1s after the launch
+          # step returned and found the file untouched - but the app's setup() was
+          # still running (its first diagnostic landed 25s later), so the cleanup
+          # simply had not been reached yet. A fixed sleep read a race as a
+          # failure. Wait for the line to go, up to 90s, and report how long it
+          # took; only a genuine timeout is a failure.
           $t = Get-Content $cfg -Raw
+          $waited = 0
+          while (($t -match 'openai_base_url\s*=\s*"[^"]*127\.0\.0\.1') -and $waited -lt 90) {
+            Start-Sleep -Seconds 3; $waited += 3
+            $t = Get-Content $cfg -Raw
+          }
+          Write-Host "waited ${waited}s for startup cleanup"
           Write-Host "--- config.toml after launch ---"; Write-Host $t
           $stale = $t -match 'openai_base_url\s*=\s*"[^"]*127\.0\.0\.1'
           $keptModel = $t -match 'model_provider\s*=\s*"openai"'

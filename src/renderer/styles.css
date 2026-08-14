@@ -1115,3 +1115,43 @@ button:not(:disabled):active, .sb-item:active, .session-item:active, .theme-dot:
 .conn-detail { font-size: 12px; color: var(--t2); margin-top: 2px; }
 .conn-sugg { font-size: 12px; color: var(--t3); margin-top: 5px; line-height: 1.5; }
 .conn-tag { font-size: 10px; font-weight: 700; color: var(--ac); background: color-mix(in srgb, var(--ac) 15%, transparent); padding: 2px 7px; border-radius: 6px; flex-shrink: 0; }
+/* ── Decorative loops idle when the page is not being watched ──────────────
+   Opt-IN by class, never a blanket `*` rule. The previous attempt paused every
+   animation whenever a class was absent, and that class was only ever set by
+   one page — six pages froze at 0% and rendered invisible.
+
+   Here the default is RUNNING: if the script never runs, `page-awake` is simply
+   absent and only .decor-loop elements are affected. Nothing that carries
+   content can be hidden by this. */
+html:not(.page-awake) .decor-loop,
+html:not(.page-awake) .decor-loop::before,
+html:not(.page-awake) .decor-loop::after { animation-play-state: paused !important; }
+/* The perpetual ones, marked explicitly. */
+.dash-sheen::after, .island-aurora, .sb-pro, .status-dot { }
+
+/* ── Decorative loops idle until the page is actually being looked at ──────
+   `page-awake` is added by tauri-bridge.js, which every window loads, and the
+   default state is RUNNING — if that script never executes the class is simply
+   absent from the html element and these rules pause the listed elements only.
+
+   Scoped to NAMED selectors, never `*`. The version of this I shipped earlier
+   paused every animation whenever a class was missing, and that class was set
+   by app.js which only index.html loads — six pages froze at 0% and, because 24
+   of their entrance animations start at opacity:0 with a fill-mode, rendered
+   completely blank. Only elements that loop forever and carry no content appear
+   below, so the worst case here is a still decoration, never a hidden page. */
+html:not(.page-awake) #cleanupView.scanning .cl-orb span,
+html:not(.page-awake) .status-dot,
+html:not(.page-awake) .dash-sheen::after,
+html:not(.page-awake) .island-aurora,
+html:not(.page-awake) .sc-cache .blk,
+html:not(.page-awake) .sc-cache .ci,
+html:not(.page-awake) .sc-cache .spill span,
+html:not(.page-awake) .sc-cache .badge .bi,
+html:not(.page-awake) .sc-mcp .reqdot {
+  animation-play-state: paused !important;
+}
+
+/* And the Doctor's scene animations do not run until its page is open at all —
+   they are inside #doctorScenes, which only exists once you click 体检. Nothing
+   to gate: the cost is already zero until then. */

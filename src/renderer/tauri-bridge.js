@@ -442,3 +442,35 @@ if (window.__TAURI__) {
   // Expose invoke for popup.js optimization pipeline
   T._invoke = invoke;
 }
+
+/* ── Decoration runs only while the page is actually being looked at ────────
+   Every window that loads this bridge gets the class; that is the fix for the
+   version of this I shipped in styles.css, which gated on a class only app.js
+   set and so froze six pages permanently.
+
+   Two further safeguards, because the failure mode of getting this wrong is an
+   invisible page rather than a slow one:
+     · only INFINITE animations are paused. Entrance animations are finite and
+       many start at opacity:0 with a fill-mode, which is exactly what was
+       getting frozen. They are marked by the .decor-loop class below.
+     · the class is added on load, so the default state is RUNNING. If this
+       script never executes, nothing is paused and nothing can hide. */
+(function decorOnlyWhenVisible() {
+  const upd = () => {
+    // VISIBILITY only, not focus.
+    //
+    // Seven windows are created at launch and never destroyed — palette,
+    // wallpaper, pet, farm, doctor, island, toast — and most sit hidden the
+    // whole session while their webviews keep animating. document.hidden is
+    // exactly that state, so gating on it stops the real waste.
+    //
+    // Focus is deliberately NOT part of this. The island is always-on-top and
+    // almost never focused; requiring focus would freeze the one window whose
+    // animation is the point of it.
+    document.documentElement.classList.toggle('page-awake', !document.hidden);
+  };
+  upd();
+  window.addEventListener('focus', upd);
+  window.addEventListener('blur', upd);
+  document.addEventListener('visibilitychange', upd);
+})();

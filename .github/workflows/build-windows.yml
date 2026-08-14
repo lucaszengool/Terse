@@ -294,6 +294,37 @@ jobs:
           Write-Host "planted $file  ($($lines.Count) lines, 6 turns) - mtime backdated 45 min"
           "CODEX_ROLLOUT=$file" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      # Reproduce the Pro user's broken Codex, so the repair is testable.
+      #
+      # Their ~/.codex/config.toml kept openai_base_url = "http://127.0.0.1:7860
+      # /v1" after Terse quit, and Codex then 502'd against a dead port until
+      # they deleted the line by hand. Planting that exact line before launch
+      # means startup either heals it or does not.
+      #
+      # auth.json has no OPENAI_API_KEY - a ChatGPT-account session, the case
+      # that also 401s with "Missing scopes: api.responses.write". So the proxy
+      # must NOT put the line back either. Both halves are checked after launch.
+      #
+      # The surrounding TOML is real settings that must survive untouched: the
+      # cleanup is only allowed to remove our own line.
+      - name: Plant the reported broken Codex config
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".codex"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          @(
+            'openai_base_url = "http://127.0.0.1:7860/v1"'
+            'model = "gpt-5-codex"'
+            'model_provider = "openai"'
+            'approval_policy = "on-request"'
+            ''
+            '[mcp_servers.example]'
+            'command = "npx"'
+          ) | Set-Content (Join-Path $dir "config.toml") -Encoding ascii
+          '{ "tokens": { "access_token": "ci-fake-oauth", "refresh_token": "ci-fake" } }' |
+            Set-Content (Join-Path $dir "auth.json") -Encoding ascii
+          Write-Host "planted broken config.toml (stale proxy URL) + ChatGPT-style auth.json"
+
       # Detection is by PROCESS NAME, not by transcript.
       # agent_defs() lists process_names: ["claude"] and ["codex"], so a planted
       # transcript alone is invisible - accept_agent never fires, nothing is
@@ -392,6 +423,32 @@ jobs:
           # rather than the process merely existing.
           $titles = $p | ForEach-Object { $_.MainWindowTitle } | Where-Object { $_ }
           Write-Host "window titles: $($titles -join ' | ')"
+
+      # Did startup actually repair the config, and did the proxy leave it alone?
+      #
+      # Three assertions, all failable:
+      #   1. our 127.0.0.1 line is gone  — the reported bug is fixed
+      #   2. the user's other settings survive — we removed only our own line
+      #   3. it is still gone after the proxy has been up ~40s — the ChatGPT-auth
+      #      check held and the proxy did not re-inject it
+      - name: Verify the Codex config was repaired and left alone
+        continue-on-error: true
+        run: |
+          $cfg = Join-Path $env:USERPROFILE ".codex\config.toml"
+          if (-not (Test-Path $cfg)) { Write-Warning "CODEX-CONFIG: file vanished entirely"; exit 0 }
+          $t = Get-Content $cfg -Raw
+          Write-Host "--- config.toml after launch ---"; Write-Host $t
+          $stale = $t -match 'openai_base_url\s*=\s*"[^"]*127\.0\.0\.1'
+          $keptModel = $t -match 'model_provider\s*=\s*"openai"'
+          $keptMcp = $t -match '\[mcp_servers\.example\]'
+          if ($stale)      { Write-Warning "CODEX-CONFIG FAIL: the stale 127.0.0.1 line is STILL there" }
+          else             { Write-Host    "CODEX-CONFIG OK: stale proxy line removed" }
+          if (-not $keptModel -or -not $keptMcp) {
+            Write-Warning "CODEX-CONFIG FAIL: cleanup destroyed the user's own settings (model_provider=$keptModel mcp=$keptMcp)"
+          } else {
+            Write-Host "CODEX-CONFIG OK: the user's other settings survived intact"
+          }
+          if (Test-Path "$cfg.terse-backup") { Write-Host "CODEX-CONFIG: backup present" }
 
       # The user starts working in Codex, 40 seconds after Terse launched.
       #

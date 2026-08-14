@@ -1516,6 +1516,97 @@ fn scan_secret_exposure(out: &mut Vec<Finding>) {
     }
 }
 
+/// guard:codex-proxy-stale — Terse's proxy URL is in the user's Codex config
+/// while the proxy is unreachable, or while Codex is signed in with a ChatGPT
+/// account that cannot use it.
+///
+/// Both states make Codex unusable in a way that looks like OpenAI's fault. A
+/// Pro user on Windows 11 spent a session diagnosing the first one: Terse quit,
+/// the line stayed, and every Codex request became 502 Bad Gateway against a
+/// dead port. Startup cleanup now prevents it, but a crash mid-session, an older
+/// build, or a second machine can still leave it — and silence is exactly what
+/// made it hard to find. Say it out loud, with a one-click fix.
+fn scan_codex_proxy_stale(out: &mut Vec<Finding>) {
+    let cfg = home().join(".codex").join("config.toml");
+    let Some(text) = read_capped(&cfg) else { return };
+    let Some(line) = text
+        .lines()
+        .map(str::trim_start)
+        .find(|l| l.starts_with("openai_base_url") && l.contains("127.0.0.1"))
+    else {
+        return;
+    };
+
+    // Reachable? A live proxy makes the line correct, not stale.
+    let port = line
+        .rsplit("127.0.0.1:")
+        .next()
+        .and_then(|rest| rest.split(|c: char| !c.is_ascii_digit()).find(|s| !s.is_empty()))
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(7860);
+    let reachable = std::net::TcpStream::connect_timeout(
+        &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+        std::time::Duration::from_millis(300),
+    )
+    .is_ok();
+
+    // Only an API key can call /v1/responses; a ChatGPT-account session gets
+    // 401 Missing scopes: api.responses.write on every request.
+    let chatgpt_auth = std::fs::read_to_string(home().join(".codex").join("auth.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .map(|v| {
+            !v.get("OPENAI_API_KEY")
+                .and_then(|k| k.as_str())
+                .is_some_and(|k| !k.is_empty())
+        })
+        .unwrap_or(false);
+
+    if reachable && !chatgpt_auth {
+        return; // routed, and able to be routed — nothing wrong
+    }
+
+    let (title, detail) = if !reachable {
+        (
+            "Codex is pointed at a Terse proxy that is not running".to_string(),
+            format!(
+                "~/.codex/config.toml still contains openai_base_url = \"http://127.0.0.1:{port}/v1\", \
+                 but nothing is listening on that port. Every Codex request will fail with \
+                 502 Bad Gateway until the line is removed — which looks like an OpenAI or network \
+                 outage rather than a leftover setting. Terse writes this line to route Codex \
+                 through its optimizer and is supposed to remove it on exit."
+            ),
+        )
+    } else {
+        (
+            "Codex is signed in with a ChatGPT account and cannot use the Terse proxy".to_string(),
+            "This Codex session authenticates with a ChatGPT subscription, not an OpenAI API key. \
+             Only an API key can call /v1/responses, so routing it through the proxy returns \
+             401 Unauthorized — Missing scopes: api.responses.write — on every request, and Codex \
+             retries in a loop. Removing the line restores normal operation immediately; Codex \
+             optimization stays off for ChatGPT-account sessions."
+                .to_string(),
+        )
+    };
+
+    out.push(Finding {
+        id: "guard:codex-proxy-stale".into(),
+        category: "guard".into(),
+        category_label: "Protection".into(),
+        severity: "high".into(),
+        title,
+        detail,
+        tokens_wasted: 0,
+        usd_wasted: 0.0,
+        bytes: 0,
+        latency_note: "Codex cannot complete any request while this is set.".into(),
+        fix_kind: "fix-codex-proxy".into(),
+        fix_label: "Restore Codex config".into(),
+        fixable: true,
+        paths: vec![cfg.to_string_lossy().to_string()],
+    });
+}
+
 fn scan_permission_risk(out: &mut Vec<Finding>) {
     let h = home();
     let mut risky: Vec<String> = Vec::new();
@@ -1862,6 +1953,7 @@ pub fn scan_full(attr: &Value, summary: &Value, sessions: &[Value], period: &str
     // Protection (防护)
     scan_secret_exposure(&mut findings);
     scan_permission_risk(&mut findings);
+    scan_codex_proxy_stale(&mut findings);
 
     // Agent runtime (加速) + config-level context taxes
     let (agents_running, agents_rss_bytes) = scan_agent_runtime(&mut findings);
@@ -2180,6 +2272,17 @@ pub fn apply_fix(app: &AppHandle, finding: &Value) -> Value {
             } else {
                 json!({ "ok": false,
                         "message": "Nothing stopped — the processes already exited." })
+            }
+        }
+        "fix-codex-proxy" => {
+            // The same removal shutdown and startup perform, on demand. Only the
+            // 127.0.0.1 line goes; a user's own openai_base_url is untouched.
+            if crate::clear_codex_proxy_config() {
+                json!({ "ok": true, "kind": "config",
+                    "message": "Removed the Terse proxy URL from ~/.codex/config.toml. Restart Codex and it will talk to OpenAI directly again." })
+            } else {
+                json!({ "ok": true, "kind": "config",
+                    "message": "Nothing to remove — the Codex config no longer points at a Terse proxy." })
             }
         }
         "fix-bypass" => match fix_bypass_permissions() {

@@ -540,6 +540,29 @@ jobs:
           # says that is happening; it cannot say whether it is the wallpaper
           # software-rendering a particle field on a GPU-less runner or something
           # that would hurt on real hardware too. Per-process deltas can.
+          # Which WINDOW does the hot process belong to?
+          #
+          # Last run pinned 485% on a single msedgewebview2 pid with the other
+          # nine at 0%. Everything about it fit the wallpaper - the only window
+          # still drawing, multi-threaded like software rasterisation, the largest
+          # heap - but "fits" is not "is", and there was no data joining a pid to
+          # a window. GetWindowThreadProcessId is that join.
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class M{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumChildWindows(IntPtr p,Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern int GetWindowThreadProcessId(IntPtr h,out uint p);}'
+          $script:owner = @{}
+          $script:map = [M+Cb]{ param($h,$l)
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][M]::GetWindowTextW($h, $sb, 256)
+            $t = $sb.ToString()
+            if ($t -like 'Terse*') {
+              $procId = 0; [void][M]::GetWindowThreadProcessId($h, [ref]$procId)
+              if (-not $script:owner.ContainsKey($procId)) { $script:owner[$procId] = $t }
+            }
+            [void][M]::EnumChildWindows($h, $script:map, [IntPtr]::Zero)
+            return $true }
+          [void][M]::EnumWindows($script:map, [IntPtr]::Zero)
+          Write-Host "--- window -> owning pid ---"
+          $script:owner.GetEnumerator() | ForEach-Object { "  pid {0,-6} {1}" -f $_.Key, $_.Value }
+
           $before = @{}
           foreach ($p in Get-Process -Name msedgewebview2, Terse -ErrorAction SilentlyContinue) {
             $before[$p.Id] = $p.CPU
@@ -549,10 +572,11 @@ jobs:
           Get-Process -Name msedgewebview2, Terse -ErrorAction SilentlyContinue |
             ForEach-Object {
               $d = $_.CPU - $(if ($before.ContainsKey($_.Id)) { $before[$_.Id] } else { 0 })
+              $win = if ($script:owner.ContainsKey([uint32]$_.Id)) { $script:owner[[uint32]$_.Id] } else { '(no window - shared/GPU/utility)' }
               [pscustomobject]@{ Pid = $_.Id; Name = $_.ProcessName; DeltaCpu = [math]::Round($d,1)
-                                 Pct = [math]::Round($d / 15 * 100); MB = [math]::Round($_.WorkingSet64/1MB) }
+                                 Pct = [math]::Round($d / 15 * 100); MB = [math]::Round($_.WorkingSet64/1MB); Win = $win }
             } | Sort-Object DeltaCpu -Descending |
-            ForEach-Object { "  pid {0,-6} {1,-16} {2,6}s  {3,5}%  {4,6} MB" -f $_.Pid, $_.Name, $_.DeltaCpu, $_.Pct, $_.MB }
+            ForEach-Object { "  pid {0,-6} {1,6}s {2,5}% {3,6} MB  {4}" -f $_.Pid, $_.DeltaCpu, $_.Pct, $_.MB, $_.Win }
 
       - name: Screenshot the desktop
         continue-on-error: true

@@ -5573,10 +5573,22 @@ fn wallpaper_config_path() -> std::path::PathBuf {
 
 fn wallpaper_default_config() -> serde_json::Value {
     serde_json::json!({
-        // On by default: the particle wallpaper is the feature people
-        // install Terse to see. Defaults apply only when wallpaper.json
-        // is absent, so an existing user who turned it off stays off.
-        "enabled": true,
+        // OFF by default.
+        //
+        // It was on, reasoning that the particle wallpaper is what people
+        // install Terse to see. But that made it the one heavy thing running
+        // before the user had clicked anything: a four-slot, 60000-particle-per-
+        // line WebGL field, started for everyone at launch. Without hardware
+        // acceleration that is the largest single cost the app has - the CI
+        // runner showed one renderer at 485% with the app otherwise idle.
+        //
+        // Everything else now waits for a click too: pet, farm, palette, Doctor
+        // and the nine dashboards are built on first use and destroyed on close.
+        // This was the last thing starting on its own.
+        //
+        // Defaults apply only when wallpaper.json is absent, so anyone who has
+        // already turned it ON keeps it on. Switching it on persists.
+        "enabled": false,
         // 默认引擎 = mineradio(真桌面壁纸 + 粒子律动);"topography" 切回音域回响光柱地形
         "engine": "mineradio",
         "theme": "neon", "quality": 56, "angle": 55, "intensity": 1.0

@@ -533,10 +533,26 @@ jobs:
           $b = Snap "idle+20s"; Write-Host $b
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           "$a`n$b" | Set-Content artifacts/resident-cost.txt
-          $wv = @(Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue)
-          Write-Host "--- webview2 processes ---"
-          $wv | Sort-Object WorkingSet64 -Descending |
-            ForEach-Object { "  pid {0,-6} {1,7:N0} MB" -f $_.Id, ($_.WorkingSet64/1MB) }
+          # WHICH process is burning it.
+          #
+          # The first run of this step showed CPU climbing 78s in 20s of wall
+          # clock - about 390%, four cores saturated, with the app idle. A total
+          # says that is happening; it cannot say whether it is the wallpaper
+          # software-rendering a particle field on a GPU-less runner or something
+          # that would hurt on real hardware too. Per-process deltas can.
+          $before = @{}
+          foreach ($p in Get-Process -Name msedgewebview2, Terse -ErrorAction SilentlyContinue) {
+            $before[$p.Id] = $p.CPU
+          }
+          Start-Sleep -Seconds 15
+          Write-Host "--- per-process CPU over 15s (highest first) ---"
+          Get-Process -Name msedgewebview2, Terse -ErrorAction SilentlyContinue |
+            ForEach-Object {
+              $d = $_.CPU - $(if ($before.ContainsKey($_.Id)) { $before[$_.Id] } else { 0 })
+              [pscustomobject]@{ Pid = $_.Id; Name = $_.ProcessName; DeltaCpu = [math]::Round($d,1)
+                                 Pct = [math]::Round($d / 15 * 100); MB = [math]::Round($_.WorkingSet64/1MB) }
+            } | Sort-Object DeltaCpu -Descending |
+            ForEach-Object { "  pid {0,-6} {1,-16} {2,6}s  {3,5}%  {4,6} MB" -f $_.Pid, $_.Name, $_.DeltaCpu, $_.Pct, $_.MB }
 
       - name: Screenshot the desktop
         continue-on-error: true

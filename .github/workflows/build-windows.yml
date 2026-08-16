@@ -701,12 +701,29 @@ jobs:
           # whole job down with it - twice, and the first time I blamed the A/B
           # step instead of the page it was actually stuck on.
           foreach ($p in Get-ChildItem "src/renderer" -Filter *.html |
-                         Where-Object { $_.BaseName -notlike '*-verify' -and
-                                        $_.BaseName -notin @('wallpaper','_cap_wp') }) {
+                         Where-Object { $_.BaseName -notlike '*-verify' }) {
             $out = Join-Path $dest "$($p.BaseName).png"
-            & $edge --headless=new --disable-gpu --no-sandbox --hide-scrollbars=false `
-                    --virtual-time-budget=4000 --window-size=1280,900 `
-                    --screenshot="$out" ("file:///" + $p.FullName.Replace('\','/')) 2>$null
+            # A HARD timeout per page, instead of excluding pages one at a time.
+            #
+            # This step hung three builds in a row - an hour each, taking the job
+            # and its logs down with it - and each time I excluded whatever page I
+            # believed was responsible and declared it solved. It never was: a
+            # third page hangs even with the verify rigs and the wallpaper gone.
+            # --virtual-time-budget does not interrupt a busy render loop, so ANY
+            # page with one can do this, and guessing which is a game with no end.
+            #
+            # 30s and it is killed. Nothing can hang the step, and the log names
+            # whatever timed out rather than leaving me to infer it.
+            $proc = Start-Process -FilePath $edge -PassThru -WindowStyle Hidden -ArgumentList @(
+              '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars=false',
+              '--virtual-time-budget=4000', '--window-size=1280,900',
+              "--screenshot=$out", ("file:///" + $p.FullName.Replace('\','/'))
+            )
+            if (-not $proc.WaitForExit(30000)) {
+              try { $proc.Kill($true) } catch {}
+              Write-Host "  TIMEOUT  $($p.Name) - killed after 30s"
+              continue
+            }
             if (Test-Path $out) { Write-Host "  rendered $($p.Name)" }
             else { Write-Host "  FAILED   $($p.Name)" }
           }

@@ -682,6 +682,17 @@ jobs:
           # page's own scripts get to paint before the shot is taken.
           $root = (Get-Location).Path
           $dest = Join-Path $root "artifacts/pages"
+          # Skip the *-verify harnesses AND wallpaper.html.
+          #
+          # Excluding only the rigs was not enough - the next run hung here too,
+          # on the wallpaper itself. The Pro glyph work raised it to 60000
+          # particles per line across four slots, each drawn twice for the
+          # additive glow twin; that is a quarter of a million points a frame,
+          # and headless Edge with --disable-gpu rasterises them on the CPU.
+          # There is nothing to learn from the attempt either: a later step
+          # photographs the real wallpaper out of the running app, on the desktop,
+          # where it is actually composited.
+          #
           # Skip the *-verify harnesses. They are development rigs, not product
           # pages: wallpaper-verify.html drives the WebGL particle field through
           # mineradio-verify.js, and under --disable-gpu that is a software
@@ -690,7 +701,8 @@ jobs:
           # whole job down with it - twice, and the first time I blamed the A/B
           # step instead of the page it was actually stuck on.
           foreach ($p in Get-ChildItem "src/renderer" -Filter *.html |
-                         Where-Object { $_.BaseName -notlike '*-verify' }) {
+                         Where-Object { $_.BaseName -notlike '*-verify' -and
+                                        $_.BaseName -notin @('wallpaper','_cap_wp') }) {
             $out = Join-Path $dest "$($p.BaseName).png"
             & $edge --headless=new --disable-gpu --no-sandbox --hide-scrollbars=false `
                     --virtual-time-budget=4000 --window-size=1280,900 `

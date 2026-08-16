@@ -1801,6 +1801,10 @@ fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
         // and DWM paints its backdrop over the whole rectangle ignoring that
         // region — mica on the island fills the pill's corners back in. They
         // stay plain transparent, which is also what Mac does with them.
+        // Remembered for windows that do not exist yet: build_lazy_window reads
+        // this so a Doctor opened after a theme change is not the one surface
+        // still wearing the old finish.
+        CLEAR_GLASS.store(enabled, std::sync::atomic::Ordering::Relaxed);
         for lbl in ["main", "doctor", "farm", "palette"] {
             if let Some(win) = app.get_webview_window(lbl) {
                 // Both error on pre-22000 builds, where the window is simply
@@ -2032,7 +2036,7 @@ fn equip_pet(pet_id: String, state: tauri::State<'_, AppState>, app: AppHandle) 
         let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
         pet_store.equip_pet(&pet_id)?;
     }
-    if let Some(w) = app.get_webview_window("pet") { let _ = w.show(); }
+    if let Some(w) = ensure_window(&app, "pet") { let _ = w.show(); }
     let _ = app.emit("pet-equipped", serde_json::json!({ "petId": pet_id }));
     Ok(())
 }
@@ -2428,6 +2432,198 @@ fn island_set_expanded(expanded: bool, app: AppHandle) {
 /// the whole rectangular window, so without this the island shows as a rectangle with a
 /// tinted halo instead of the Mac's clean rounded pill. A GDI region is fixed to the size
 /// it was built for, so this MUST be re-applied after every resize (pill <-> card).
+/// Whether the last `set_clear_glass` asked for bare glass (horizon) or a
+/// material. A window built after that call has to be told, or it would be the
+/// one surface on screen wearing the wrong finish.
+static CLEAR_GLASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
+/// Everything setup() used to do to these windows AFTER building them.
+///
+/// The rounding, frame-stripping and event handlers live in loops in setup()
+/// that run once, over the windows that exist at that moment. A window built
+/// later is invisible to them, so it would come up with square corners, a native
+/// caption and no re-strip on focus. This is that treatment, applied at build
+/// time instead.
+#[cfg(target_os = "windows")]
+fn attach_lazy_chrome(w: &tauri::WebviewWindow, radius: f64) {
+    // make_rounded calls strip_native_frame internally, so this covers both.
+    let round = move |win: &tauri::WebviewWindow| {
+        if let Ok(sz) = win.inner_size() {
+            let sf = win.scale_factor().unwrap_or(1.0);
+            make_rounded(win, sz.width as f64 / sf, sz.height as f64 / sf, radius);
+        }
+    };
+    round(w);
+
+    // DWM corner preference — the setup loop applies this to main/doctor/farm/
+    // palette, because a GDI region does not clip a DWM backdrop.
+    if let Ok(raw) = w.hwnd() {
+        use windows::Win32::Graphics::Dwm::{
+            DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND,
+        };
+        let pref = DWMWCP_ROUND;
+        unsafe {
+            let _ = DwmSetWindowAttribute(
+                windows::Win32::Foundation::HWND(raw.0),
+                DWMWA_WINDOW_CORNER_PREFERENCE,
+                &pref as *const _ as *const std::ffi::c_void,
+                std::mem::size_of_val(&pref) as u32,
+            );
+        }
+    }
+
+    // Match the material the rest of the app is wearing right now.
+    if !CLEAR_GLASS.load(std::sync::atomic::Ordering::Relaxed) {
+        let _ = window_vibrancy::apply_mica(w, Some(true));
+    }
+
+    let w2 = w.clone();
+    w.on_window_event(move |ev| {
+        match ev {
+            tauri::WindowEvent::Resized(_) => {
+                round(&w2);
+                if let Ok(raw) = w2.hwnd() {
+                    strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+                }
+            }
+            tauri::WindowEvent::Focused(_) => {
+                if let Ok(raw) = w2.hwnd() {
+                    strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+                }
+            }
+            _ => {}
+        }
+    });
+    clear_ghost_titlebar(w);
+}
+
+/// Build one of the on-demand windows.
+///
+/// Moved out of setup() so these four are no longer created at launch. Each was
+/// a full WebView2 instance — its own renderer process, resident for the whole
+/// session — sitting hidden behind `.visible(false)` for users who never open
+/// the pet, the farm, the palette or the Doctor. Gating their animations helped
+/// with drawing; it could not give back the process.
+///
+/// The geometry is derived here rather than inherited from setup's locals, which
+/// is the only change from the original blocks.
+#[cfg(target_os = "windows")]
+fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+    let (screen_width, monitor_h) = app
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|m| {
+            let sf = m.scale_factor();
+            (m.size().width as f64 / sf, m.size().height as f64 / sf)
+        })
+        .unwrap_or((1920.0, 1080.0));
+
+    let (w, radius) = match label {
+        "palette" => {
+            let pw = 560.0;
+            let ph = 480.0;
+            (
+                WebviewWindowBuilder::new(app, "palette", WebviewUrl::App("palette.html".into()))
+                    .title("Terse Prompt Palette")
+                    .inner_size(pw, ph)
+                    .position(((screen_width - pw) / 2.0) as f64, 120.0)
+                    .decorations(false)
+                    .transparent(true)
+                    .always_on_top(true)
+                    .resizable(false)
+                    .shadow(false)
+                    .skip_taskbar(true)
+                    .focused(false)
+                    .visible(false)
+                    .build()?,
+                14.0,
+            )
+        }
+        "pet" => {
+            let pw = 240.0;
+            let ph = 260.0;
+            (
+                WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("pet.html".into()))
+                    .title("Terse Pet")
+                    .inner_size(pw, ph)
+                    .position((screen_width - pw - 24.0) as f64, (monitor_h - ph - 60.0) as f64)
+                    .decorations(false)
+                    .transparent(true)
+                    .always_on_top(true)
+                    .resizable(false)
+                    .shadow(false)
+                    .skip_taskbar(true)
+                    .focused(false)
+                    .visible(false)
+                    .build()?,
+                0.0,
+            )
+        }
+        "farm" => (
+            WebviewWindowBuilder::new(app, "farm", WebviewUrl::App("farm.html".into()))
+                .title("Terse Farm")
+                .decorations(false)
+                .transparent(true)
+                .shadow(false)
+                .inner_size(1366.0, 768.0)
+                .min_inner_size(1100.0, 618.0)
+                .position((screen_width / 2.0 - 683.0) as f64, 80.0)
+                .always_on_top(false)
+                .resizable(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .visible(false)
+                .build()?,
+            16.0,
+        ),
+        "doctor" => (
+            WebviewWindowBuilder::new(app, "doctor", WebviewUrl::App("doctor.html".into()))
+                .title("Terse Doctor")
+                .decorations(false)
+                .transparent(true)
+                .shadow(false)
+                .inner_size(1040.0, 800.0)
+                .min_inner_size(820.0, 640.0)
+                .position((screen_width / 2.0 - 520.0) as f64, 70.0)
+                .always_on_top(false)
+                .resizable(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .visible(false)
+                .build()?,
+            16.0,
+        ),
+        _ => return Ok(()),
+    };
+
+    // The pet is a shaped sprite, not a card — rounding it would clip the art.
+    if radius > 0.0 {
+        attach_lazy_chrome(&w, radius);
+    } else if let Ok(raw) = w.hwnd() {
+        strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
+    }
+    eprintln!("[terse] built '{label}' on demand");
+    Ok(())
+}
+
+/// The window, building it first if this is the first time it has been asked for.
+///
+/// Drop-in for `get_webview_window` at every site that is about to SHOW one of
+/// the on-demand windows. Sites that merely poke an already-open window still use
+/// get_webview_window, so nothing is created as a side effect of a status check.
+fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
+    if let Some(w) = app.get_webview_window(label) {
+        return Some(w);
+    }
+    #[cfg(target_os = "windows")]
+    if let Err(e) = build_lazy_window(app, label) {
+        eprintln!("[terse] could not build '{label}': {e}");
+    }
+    app.get_webview_window(label)
+}
+
 fn make_rounded(win: &tauri::WebviewWindow, w_logical: f64, h_logical: f64, radius: f64) {
     #[cfg(target_os = "windows")]
     {
@@ -2708,7 +2904,7 @@ fn pick_starter_pet(pet_id: String, state: tauri::State<'_, AppState>, app: AppH
     };
     if picked {
         // Show pet window + emit event so popup + pet windows refresh
-        if let Some(w) = app.get_webview_window("pet") { let _ = w.show(); }
+        if let Some(w) = ensure_window(&app, "pet") { let _ = w.show(); }
         let _ = app.emit("pet-equipped", serde_json::json!({ "petId": pet_id }));
     }
     Ok(picked)
@@ -2843,7 +3039,7 @@ fn set_speed_mode(enabled: bool) -> serde_json::Value {
 
 #[tauri::command]
 fn show_doctor_window(app: AppHandle) -> Result<(), String> {
-    if let Some(w) = app.get_webview_window("doctor") {
+    if let Some(w) = ensure_window(&app, "doctor") {
         #[cfg(target_os = "windows")]
         if let Ok(raw) = w.hwnd() {
             strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
@@ -2856,7 +3052,7 @@ fn show_doctor_window(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn show_farm_window(app: AppHandle) -> Result<(), String> {
-    if let Some(w) = app.get_webview_window("farm") {
+    if let Some(w) = ensure_window(&app, "farm") {
         w.show().map_err(|e| e.to_string())?;
         w.set_focus().map_err(|e| e.to_string())?;
     }
@@ -2887,7 +3083,7 @@ fn show_main_window(app: AppHandle) {
 
 #[tauri::command]
 fn show_pet_window(app: AppHandle) -> Result<(), String> {
-    if let Some(w) = app.get_webview_window("pet") {
+    if let Some(w) = ensure_window(&app, "pet") {
         w.show().map_err(|e| e.to_string())?;
     }
     Ok(())
@@ -3194,22 +3390,9 @@ pub fn run() {
             // Frameless, transparent, always-on-top, centred near the top of the
             // screen like a Spotlight/Raycast launcher. Hidden until the hotkey.
             // Without this window `show_palette` had nothing to show.
-            let palette_w = 560.0;
-            let palette_h = 480.0;
-            let palette_x = ((screen_width - palette_w) / 2.0) as f64;
-            let _palette = WebviewWindowBuilder::new(app, "palette", WebviewUrl::App("palette.html".into()))
-                .title("Terse Prompt Palette")
-                .inner_size(palette_w, palette_h)
-                .position(palette_x, 120.0)
-                .decorations(false)
-                .transparent(true)
-                .always_on_top(true)
-                .resizable(false)
-                .shadow(false)
-                .skip_taskbar(true)
-                .focused(false)
-                .visible(false)
-                .build()?;
+            // palette / pet / farm / doctor are NOT built here any more — see
+            // build_lazy_window. Each was a resident WebView2 renderer process for
+            // a window most users never open.
 
             // ── Live token wallpaper window (desktop-pinned; hidden until enabled) ──
             // Built once here on the main thread; enable/disable just shows/hides it.
@@ -3236,65 +3419,6 @@ pub fn run() {
                     .visible(false)
                     .build()?;
             }
-
-            // ── Pet companion window (Windows: bottom-right, transparent, on-top) ──
-            let pet_w = 240.0;
-            let pet_h = 260.0;
-            let monitor_h = monitor.size().height as f64 / monitor.scale_factor();
-            let pet_x = (screen_width - pet_w - 24.0) as f64;
-            let pet_y = (monitor_h - pet_h - 60.0) as f64;
-            // The pet starts hidden, whether or not one is equipped. It is a
-            // companion the user opens deliberately from the app, not something
-            // that should plant itself on the desktop the moment Terse starts.
-            // Equipping still persists; this only changes what launch looks like.
-            let pet_visible = false;
-            let _pet_win = WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("pet.html".into()))
-                .title("Terse Pet")
-                .inner_size(pet_w, pet_h)
-                .position(pet_x, pet_y)
-                .decorations(false)
-                .transparent(true)
-                .always_on_top(true)
-                .resizable(false)
-                .shadow(false)
-                .skip_taskbar(true)
-                .focused(false)
-                .visible(pet_visible)
-                .build()?;
-
-            // ── Farm window (hidden until opened) ──
-            let farm_x = (screen_width / 2.0 - 683.0) as f64;
-            let _farm_win = WebviewWindowBuilder::new(app, "farm", WebviewUrl::App("farm.html".into()))
-                .title("Terse Farm")
-                .decorations(false)
-                .transparent(true)
-                .shadow(false)
-                .inner_size(1366.0, 768.0)
-                .min_inner_size(1100.0, 618.0)
-                .position(farm_x, 80.0)
-                .always_on_top(false)
-                .resizable(true)
-                .skip_taskbar(true)
-                .focused(false)
-                .visible(false)
-                .build()?;
-
-            // ── Doctor window (体检 — hidden until opened) ──
-            let doc_x = (screen_width / 2.0 - 520.0) as f64;
-            let _doctor_win = WebviewWindowBuilder::new(app, "doctor", WebviewUrl::App("doctor.html".into()))
-                .title("Terse Doctor")
-                .decorations(false)
-                .transparent(true)
-                .shadow(false)
-                .inner_size(1040.0, 800.0)
-                .min_inner_size(820.0, 640.0)
-                .position(doc_x, 70.0)
-                .always_on_top(false)
-                .resizable(true)
-                .skip_taskbar(true)
-                .focused(false)
-                .visible(false)
-                .build()?;
 
             // ── Dynamic Island window (灵动岛 — agent monitor pill) ──
             let island_x = ((screen_width - ISLAND_PILL_W) / 2.0) as f64;
@@ -3613,7 +3737,7 @@ pub fn run() {
                     match event.id().as_ref() {
                         "tray_show" => toggle_main(&app),
                         "tray_doctor" => {
-                            if let Some(win) = app.get_webview_window("doctor") {
+                            if let Some(win) = ensure_window(&app, "doctor") {
                                 #[cfg(target_os = "windows")]
                                 if let Ok(raw) = win.hwnd() {
                                     strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
@@ -3695,7 +3819,7 @@ pub fn run() {
             // Doctor (体检) toggle — parity with macOS ⌘⇧D.
             let app_handle_doctor = app.handle().clone();
             if let Err(e) = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+D", move |_app, _shortcut, _event| {
-                if let Some(win) = app_handle_doctor.get_webview_window("doctor") {
+                if let Some(win) = ensure_window(&app_handle_doctor, "doctor") {
                     if win.is_visible().unwrap_or(false) {
                         let _ = win.hide();
                     } else {
@@ -4202,7 +4326,7 @@ fn open_palette(app: &AppHandle) {
         if let Some(st) = app.try_state::<AppState>() {
             let _ = st.palette_target.lock().map(|mut g| { *g = front.name.clone(); });
         }
-        if let Some(w) = app.get_webview_window("palette") {
+        if let Some(w) = ensure_window(&app, "palette") {
             #[cfg(target_os = "windows")]
             if let Ok(raw) = w.hwnd() {
                 strip_native_frame(windows::Win32::Foundation::HWND(raw.0));

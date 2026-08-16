@@ -2595,7 +2595,39 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .build()?,
             16.0,
         ),
-        _ => return Ok(()),
+        _ => {
+            // The nine floating dashboards. Same treatment, geometry straight
+            // from dash_layout so it cannot drift from the reposition path.
+            //
+            // These were the real resident cost, not the four above: the window
+            // dump showed 'Terse Dashboard' NINE times at launch, one webview
+            // each, for panels that appear on pill hover and are almost never
+            // all open at once.
+            let Some((_, kind, dx, dy, dw, dh)) = dash_layout(island_screen_width(app))
+                .into_iter()
+                .find(|(l, ..)| l == label)
+            else {
+                return Ok(());
+            };
+            let w = WebviewWindowBuilder::new(
+                app, label, WebviewUrl::App(format!("dash.html?w={kind}").into()),
+            )
+            .title("Terse Dashboard")
+            .inner_size(dw, dh)
+            .position(dx, dy)
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .resizable(false)
+            .shadow(false)
+            .skip_taskbar(true)
+            .focused(false)
+            .visible(false)
+            .build()?;
+            make_rounded(&w, dw, dh, 20.0);
+            eprintln!("[terse] built dashboard '{label}' on demand");
+            return Ok(());
+        }
     };
 
     // The pet is a shaped sprite, not a card — rounding it would clip the art.
@@ -2846,7 +2878,9 @@ fn open_cloud_teams(path: Option<String>, state: tauri::State<'_, AppState>) {
 #[tauri::command]
 fn open_dashboards(app: AppHandle) {
     for (label, _, _, _, _, _) in dash_layout(island_screen_width(&app)) {
-        if let Some(win) = app.get_webview_window(&label) {
+        // ensure_window, not get_webview_window: these are no longer built at
+        // launch, so the first hover on the pill is what creates them.
+        if let Some(win) = ensure_window(&app, &label) {
             let _ = win.show();
             let _ = win.set_always_on_top(true);
         }
@@ -3458,21 +3492,8 @@ pub fn run() {
                 .build()?;
 
             // ── Floating dashboard widget windows (灵动仪表盘) ──
-            for (label, kind, dx, dy, dw, dh) in dash_layout(screen_width) {
-                let _ = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(format!("dash.html?w={}", kind).into()))
-                    .title("Terse Dashboard")
-                    .inner_size(dw, dh)
-                    .position(dx, dy)
-                    .decorations(false)
-                    .transparent(true)
-                    .always_on_top(true)
-                    .resizable(false)
-                    .shadow(false)
-                    .skip_taskbar(true)
-                    .focused(false)
-                    .visible(false)
-                    .build();
-            }
+            // Built on first hover, not here — see build_lazy_window. The window
+            // dump showed NINE of these resident at launch, one webview each.
 
             // Backdrop material: bare transparency at startup, Mica on demand.
             //

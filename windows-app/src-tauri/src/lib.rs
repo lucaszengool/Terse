@@ -2306,7 +2306,15 @@ fn hide_dashboards(app: AppHandle) {
     // NOTE: the cursor poll stays alive — it also drives hover-OPEN on the pill.
     for (label, _, _, _, _, _) in dash_layout(island_screen_width(&app)) {
         if let Some(win) = app.get_webview_window(&label) {
-            let _ = win.hide();
+            // DESTROY, not hide. Hiding a webview keeps its renderer process
+            // resident for the rest of the session, so nine dashboards opened
+            // once by a stray hover stayed in memory all day. They hold no state
+            // worth preserving — every number is re-read from the backend on
+            // open — and ensure_window rebuilds them on the next hover.
+            //
+            // No CloseRequested handler is registered for these, so nothing can
+            // veto it and nothing is left half-closed.
+            let _ = win.destroy();
         }
     }
 }
@@ -2336,7 +2344,9 @@ fn hide_island_window(app: AppHandle) {
 #[tauri::command]
 fn hide_pet_window(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("pet") {
-        w.hide().map_err(|e| e.to_string())?;
+        // The pet's state lives in pet_store on the Rust side, not in the page,
+        // so closing it costs nothing and frees a renderer.
+        w.destroy().map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -4367,7 +4377,9 @@ fn show_palette(app: AppHandle) {
 #[tauri::command]
 fn hide_palette(app: AppHandle) {
     if let Some(w) = app.get_webview_window("palette") {
-        let _ = w.hide();
+        // Same reasoning as the dashboards: the palette is a stateless picker,
+        // rebuilt from the prompt store each time it opens.
+        let _ = w.destroy();
     }
 }
 

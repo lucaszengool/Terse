@@ -504,6 +504,40 @@ jobs:
             else { Write-Warning "LATE-ATTACH DID NOT FIRE - the retry is not working" }
           } else { Write-Host "no agent-monitor.log yet" }
 
+      # What does Terse actually cost at rest?
+      #
+      # The lazy-window change claims 7 resident WebView2 renderers drop to 3.
+      # That is countable here - one msedgewebview2.exe process per webview plus
+      # a shared browser process - so it does not need a human with Task Manager.
+      # Working set and CPU time come along because "still stuttering" is about
+      # both, and a process count alone could fall while memory stayed flat.
+      #
+      # Measured twice, 20s apart: the first is startup cost, the second says
+      # whether anything keeps climbing once idle. Numbers only - the runner has
+      # no GPU and a 2-core CPU, so treat them as a floor for comparison between
+      # builds, not as what a real desktop sees.
+      - name: Measure resident cost at idle
+        continue-on-error: true
+        run: |
+          function Snap($label) {
+            $t  = @(Get-Process -Name Terse -ErrorAction SilentlyContinue)
+            $wv = @(Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue)
+            $tw = ($t  | Measure-Object WorkingSet64 -Sum).Sum
+            $ww = ($wv | Measure-Object WorkingSet64 -Sum).Sum
+            $cpu = ($t + $wv | Measure-Object CPU -Sum).Sum
+            "{0,-8} Terse:{1} proc {2:N0} MB | WebView2:{3} proc {4:N0} MB | total {5:N0} MB | cpu {6:N1}s" -f `
+              $label, $t.Count, ($tw/1MB), $wv.Count, ($ww/1MB), (($tw+$ww)/1MB), $cpu
+          }
+          $a = Snap "startup"; Write-Host $a
+          Start-Sleep -Seconds 20
+          $b = Snap "idle+20s"; Write-Host $b
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          "$a`n$b" | Set-Content artifacts/resident-cost.txt
+          $wv = @(Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue)
+          Write-Host "--- webview2 processes ---"
+          $wv | Sort-Object WorkingSet64 -Descending |
+            ForEach-Object { "  pid {0,-6} {1,7:N0} MB" -f $_.Id, ($_.WorkingSet64/1MB) }
+
       - name: Screenshot the desktop
         continue-on-error: true
         run: |

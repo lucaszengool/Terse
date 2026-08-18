@@ -681,9 +681,22 @@ function configureAgents() {
         log('ANTHROPIC_BASE_URL is remote (' + prev + ') — leaving it alone');
         throw new Error('__claude_skip__');
       }
+    } else if (prev === proxyUrl) {
+      // Our own address is already there, which means this is a RESTART, not a
+      // fresh claim. Reload the upstream we recorded the first time instead of
+      // treating "nobody else owns it" as true - the previous version deleted
+      // the file here and silently dropped the chain on every restart, which is
+      // what CI caught: settings.json said 7860 and no upstream was remembered.
+      try {
+        const u = new URL(JSON.parse(fs.readFileSync(upstreamFile, 'utf8')).url);
+        if (Number(u.port) && Number(u.port) !== PORT) {
+          CHAINED_ANTHROPIC = { host: '127.0.0.1', port: Number(u.port) };
+          log('Restored chain to existing proxy at 127.0.0.1:' + u.port);
+        }
+      } catch (e) { /* no upstream recorded — we were never chained */ }
     } else {
-      // Nobody else owns it now; drop any upstream remembered from a past run so
-      // we do not forward to a relay that is no longer there.
+      // The key is absent entirely: nobody owns it, so forget any relay from a
+      // past run rather than forwarding to something that may be gone.
       try { fs.unlinkSync(upstreamFile); } catch (e) {}
     }
 

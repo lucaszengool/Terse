@@ -1235,6 +1235,8 @@ app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
 // Rooms: shared wallpaper sessions. Same prefix, distinct paths — a room is
 // its own unit, so it does NOT go through team auth.
 app.use('/api/cloud/rooms', cloudIngestLimiter, require('./rooms'));
+// Friends: the durable edge between two people who met in a room.
+app.use('/api/cloud/friends', cloudIngestLimiter, require('./friends'));
 
 // Sweep stale cowork sessions + presence every 30s (broadcasts changes over SSE).
 setInterval(() => coworkRouter.sweepStale(), 30 * 1000).unref();

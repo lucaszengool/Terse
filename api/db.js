@@ -355,6 +355,26 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_id, last_seen_at);
   CREATE INDEX IF NOT EXISTS idx_room_messages_room ON room_messages(room_id, created_at);
 
+  -- ── Friends ──────────────────────────────────────────────────────────────
+  -- A friendship is between two EMAILS, not two room members: rooms are
+  -- ephemeral and their member ids die with them, so storing the edge by member
+  -- id would mean losing every friend when a room closes. It is stored once, in
+  -- the direction it was asked, and read in both.
+  CREATE TABLE IF NOT EXISTS friends (
+    id TEXT PRIMARY KEY,
+    a_email TEXT NOT NULL,           -- who asked
+    b_email TEXT NOT NULL,           -- who was asked
+    a_name TEXT,
+    b_name TEXT,
+    status TEXT DEFAULT 'pending',   -- pending | accepted | declined
+    room_id TEXT,                    -- where they met, for context
+    created_at TEXT DEFAULT (datetime('now')),
+    responded_at TEXT,
+    UNIQUE(a_email, b_email)
+  );
+  CREATE INDEX IF NOT EXISTS idx_friends_a ON friends(a_email, status);
+  CREATE INDEX IF NOT EXISTS idx_friends_b ON friends(b_email, status);
+
   -- ── Terse Docs (Google-style collaborative documents) ──
   -- A standalone, shareable file (document | sheet | slides) that humans AND
   -- multiple people's agents co-edit live. The authoritative content is a JSON
@@ -968,6 +988,25 @@ const addRoomMessage = db.prepare(`
   VALUES (@id, @room_id, @member_id, @name, @body, @image_url)
 `);
 const getRoomMessage = db.prepare('SELECT * FROM room_messages WHERE id = ?');
+// ── Friends ──
+const addFriendRequest = db.prepare(`
+  INSERT INTO friends (id, a_email, b_email, a_name, b_name, room_id)
+  VALUES (@id, @a_email, @b_email, @a_name, @b_name, @room_id)
+`);
+const getFriendById = db.prepare('SELECT * FROM friends WHERE id = ?');
+// Read in both directions: the edge is stored once, in the direction it was asked.
+const getFriendEdge = db.prepare(`
+  SELECT * FROM friends
+  WHERE (a_email = @x AND b_email = @y) OR (a_email = @y AND b_email = @x)
+`);
+const listFriendEdges = db.prepare(`
+  SELECT * FROM friends WHERE a_email = ? OR b_email = ? ORDER BY created_at DESC
+`);
+const respondFriend = db.prepare(`
+  UPDATE friends SET status = ?, responded_at = datetime('now') WHERE id = ?
+`);
+const deleteFriend = db.prepare('DELETE FROM friends WHERE id = ?');
+
 const getRoomMessages = db.prepare(`
   SELECT * FROM room_messages WHERE room_id = ? ORDER BY created_at DESC LIMIT ?
 `);
@@ -1090,6 +1129,8 @@ module.exports = {
   addCloudEvent, getTeamEvents, getTeamSummary,
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
   getTeamByModel, getTeamByMode, getTeamByAgent, getTeamAgentTotals,
+  // Friends
+  addFriendRequest, getFriendById, getFriendEdge, listFriendEdges, respondFriend, deleteFriend,
   // Terse Rooms
   createRoom, getRoomById, getRoomByCode, closeRoom, renameRoom,
   addRoomMember, getRoomMember, findRoomMemberByKey, getRoomMembers,

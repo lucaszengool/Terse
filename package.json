@@ -7,7 +7,8 @@
     "dev": "node api/server.js",
     "test": "node api/cowork.test.js",
     "test:cowork": "node api/cowork.test.js",
-    "test:rooms": "node api/rooms.test.js"
+    "test:rooms": "node api/rooms.test.js",
+    "test:friends": "node api/friends.test.js"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

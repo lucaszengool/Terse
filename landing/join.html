@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>加入 Terse · Join Terse</title>
+<!--
+  Preview metadata. Worth stating plainly what it does and does not buy:
+  WeChat has NOT scraped page images since 6.5.5 — for a page without a signed
+  JS-SDK config it shows its own default thumbnail and ignores og:image
+  entirely, which is why a forwarded invite looks generic there. The TITLE does
+  come through, so that is the one thing worth tuning for WeChat. Everywhere
+  else these tags work normally (iMessage, Telegram, Feishu, Slack, browsers),
+  and that is who they are here for.
+-->
+<meta name="description" content="有人邀请你一起用 Terse — 接受邀请后，你们的 agent 会出现在彼此的壁纸上。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="加入 Terse · Join Terse">
+<meta property="og:description" content="有人邀请你一起用 Terse — 接受邀请后，你们的 agent 会出现在彼此的壁纸上。">
+<meta property="og:image" content="https://www.terseai.org/join-card.png">
+<meta property="og:site_name" content="Terse">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="加入 Terse · Join Terse">
+<meta name="twitter:description" content="有人邀请你一起用 Terse — 接受邀请后，你们的 agent 会出现在彼此的壁纸上。">
+<meta name="twitter:image" content="https://www.terseai.org/join-card.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/favicon.png">
+<!--
+  The invite landing page — a "deepview".
+
+  WHY THIS PAGE EXISTS AT ALL. The obvious invite is a `terse://?token=…` link,
+  and it cannot work where invites actually get sent: WeChat and Douyin open
+  links in their own webview, which BLOCKS custom URL schemes outright and does
+  not support Universal Links either. A scheme link pasted into WeChat can never
+  launch the app — the user just sees a dead link, or nothing at all.
+
+  So the shared link is always HTTPS (this page). It works in every in-app
+  browser because it is only a web page, and it does three things in order of
+  preference:
+
+    1. In a normal browser, try to hand off to the app immediately.
+    2. Inside WeChat/Douyin, where 1 is impossible, tell the user how to escape
+       the in-app browser — that is the documented workaround, not a hack.
+    3. Always show the invite CODE and the downloads, because a code the user can
+       copy is the one mechanism no in-app browser can block, and it behaves
+       identically on macOS and Windows.
+
+  (3) is deliberately not hidden behind a failure. Someone without Terse
+  installed is the common case for an invite, and they should see the download
+  and the code without having to fail at anything first.
+-->
+<style>
+  :root { --bg:#0B0B0D; --fg:#fff; --dim:rgba(255,255,255,.62); --lime:#C9F03D; --card:rgba(255,255,255,.06); }
+  * { box-sizing:border-box }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",system-ui,sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:24px }
+  .wrap { width:100%; max-width:420px }
+  .logo { width:56px;height:56px;border-radius:15px;background:var(--lime);color:#0B0B0D;
+    display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;margin:0 auto 18px }
+  h1 { font-size:22px; text-align:center; margin:0 0 6px; font-weight:800 }
+  .sub { text-align:center; color:var(--dim); font-size:13.5px; margin:0 0 22px }
+  .card { background:var(--card); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:16px; margin-bottom:12px }
+  .label { font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--dim); font-weight:700 }
+  .code { margin-top:8px; font:600 13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    word-break:break-all; background:rgba(0,0,0,.35); border-radius:9px; padding:10px 12px; color:var(--lime) }
+  .btn { display:block; width:100%; text-align:center; padding:13px; border-radius:12px; border:none;
+    background:var(--lime); color:#0B0B0D; font-size:14px; font-weight:800; text-decoration:none;
+    cursor:pointer; margin-top:10px }
+  .btn.ghost { background:transparent; color:var(--fg); border:1px solid rgba(255,255,255,.22) }
+  .row { display:flex; gap:10px }
+  .row > * { flex:1 }
+  /* The WeChat/Douyin escape hatch. Shown only in those webviews, where it is
+     the ONLY way to reach the app — an arrow toward the ⋯ menu they all have. */
+  #wx { display:none; position:fixed; inset:0; background:rgba(0,0,0,.86); padding:26px;
+    text-align:right; z-index:9 }
+  #wx .arrow { font-size:40px; color:var(--lime) }
+  #wx p { text-align:left; margin-top:12px; font-size:15px }
+  .hint { font-size:11.5px; color:var(--dim); margin-top:10px }
+  /* Share mode — what the page turns into inside WeChat/Douyin, where the only
+     real way onward is their own ⋯ menu. The pointer stays on screen instead of
+     hiding in a modal, because it IS the instruction, not an error message. */
+  #point { display:none; position:fixed; top:10px; right:14px; z-index:8;
+    align-items:flex-start; gap:8px; text-align:right;
+    font-size:12.5px; color:var(--lime); line-height:1.45 }
+  #point .arrow { font-size:22px; line-height:1 }
+  /* Share mode leaves room for the pointer and flips the emphasis: in these
+     webviews 「打开 Terse」 is the dead end and forwarding is the live action,
+     so the loud button has to be the one that goes somewhere. */
+  body.share { align-items:flex-start; padding-top:86px }
+  body.share .logo { width:44px;height:44px;font-size:24px;margin-bottom:12px }
+  body.share h1 { font-size:19px }
+  body.share #send { background:var(--lime); color:#0B0B0D; border:none }
+  body.share #open { background:transparent; color:var(--fg); border:1px solid rgba(255,255,255,.22) }
+  #toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(8px);
+    background:rgba(255,255,255,.94); color:#0B0B0D; font-size:13px; font-weight:700;
+    white-space:nowrap; padding:9px 16px; border-radius:999px; opacity:0; pointer-events:none;
+    transition:opacity .18s, transform .18s; z-index:12 }
+  #toast.on { opacity:1; transform:translateX(-50%) translateY(0) }
+</style>
+</head>
+<body>
+<!-- The ⋯ pointer lives at the top-right of the viewport, not in the content
+     flow: it points at a real button in WeChat's own chrome, so it only reads
+     as an instruction if it sits under that button. -->
+<div id="point"><span>点右上角 ⋯ ，选择<b>「发送给朋友」</b><br>把这张邀请卡转给任何人</span><span class="arrow">↗</span></div>
+
+<div class="wrap">
+  <div class="logo">T</div>
+  <h1 id="title">有人邀请你一起用 Terse</h1>
+  <p class="sub" id="sub">接受邀请后，你们的 agent 会出现在彼此的壁纸上</p>
+
+  <a class="btn" id="open" href="#">打开 Terse 加入 · Open Terse</a>
+  <button class="btn ghost" id="send">发送给朋友 · Send to a friend</button>
+
+  <div class="card">
+    <div class="label">邀请码 · Invite code</div>
+    <div class="code" id="code">—</div>
+    <div class="row">
+      <button class="btn ghost" id="copyLink">复制链接 · Copy link</button>
+      <button class="btn ghost" id="copy">复制邀请码 · Copy code</button>
+    </div>
+    <p class="hint">
+      还没装 Terse？先下载，安装后打开「好友」页，粘贴这个邀请码即可加入。
+      这一步在 macOS 和 Windows 上完全一样。
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="label">下载 · Download</div>
+    <div class="row">
+      <a class="btn ghost" id="dlMac" href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.3_x64.dmg">macOS</a>
+      <a class="btn ghost" id="dlWin" href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.3_x64-setup.exe">Windows</a>
+    </div>
+  </div>
+</div>
+
+<div id="wx">
+  <div class="arrow">↗</div>
+  <p id="wxText"></p>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // The token travels as ?c= so the link stays short enough to paste anywhere.
+  var code = new URLSearchParams(location.search).get('c') || '';
+  document.getElementById('code').textContent = code || '（链接缺少邀请码）';
+
+  var ua = navigator.userAgent.toLowerCase();
+  var inWeChat = /micromessenger/.test(ua);
+  var inDouyin = /aweme|douyin|bytedance|tiktok/.test(ua);
+  var trapped  = inWeChat || inDouyin;
+
+  var deep = 'terse://?token=' + encodeURIComponent(code);
+  var open = document.getElementById('open');
+  open.href = deep;
+
+  // The same overlay serves two different dead ends in these webviews — opening
+  // the app, and forwarding the invite — and the ⋯ menu item to pick is not the
+  // same one, so the text is set by whichever button raised it.
+  var app = inWeChat ? '微信' : '抖音';
+  function trap(which) {
+    document.getElementById('wxText').innerHTML = which === 'send'
+      ? '<b>请点击右上角 ⋯ ，选择「发送给朋友」</b><br>' +
+        app + '不允许网页直接打开选择好友的界面。<br><br>' +
+        '也可以先「复制链接」，再粘贴到聊天窗口发送。'
+      : '<b>请点击右上角 ⋯ ，选择「在浏览器中打开」</b><br>' +
+        app + '的内置浏览器无法直接启动应用。<br><br>' +
+        '或者直接复制上面的邀请码，在 Terse 的「好友」页粘贴。';
+    document.getElementById('wx').style.display = 'block';
+  }
+
+  open.addEventListener('click', function (e) {
+    if (!trapped) return;                 // a real browser can just follow it
+    // In WeChat/Douyin the scheme is blocked outright, so following the link
+    // would fail silently. Show the escape route instead of pretending.
+    e.preventDefault();
+    trap('open');
+  });
+  document.getElementById('wx').addEventListener('click', function () { this.style.display = 'none'; });
+
+  // Outside an in-app browser, try the hand-off immediately — but never assume
+  // it worked. There is no reliable way to detect a failed scheme launch, so the
+  // page simply stays, with the code and downloads already visible.
+  if (!trapped && code) {
+    setTimeout(function () { location.href = deep; }, 350);
+  }
+  if (trapped) {
+    // Share mode. Scanning the QR from WeChat/Douyin lands here, and from here
+    // the ⋯ menu is the only route both onward (a browser) and outward (a
+    // friend) — so the pointer to it is part of the page, not a popup.
+    document.body.className = 'share';
+    document.getElementById('point').style.display = 'flex';
+    document.getElementById('sub').textContent =
+      '把这张卡片转发给朋友，或复制下面的邀请码在 Terse 里加入';
+  }
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('on');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.classList.remove('on'); }, 2200);
+  }
+
+  /* Copy the invite the moment it is scanned.
+
+     Browsers only allow a clipboard write during a user gesture, and a QR scan
+     is not one — so the write is TRIED on load (it succeeds where permission is
+     already granted) and otherwise armed to fire on the very first touch
+     anywhere on the page. Either way the user gets the link without hunting for
+     a button; the buttons stay for the cases where even that is refused. */
+  (function autoCopy() {
+    if (!code) return;
+    // `pending` matters: the clipboard write resolves a tick later, so without
+    // it a second tap fires a second write before the first has reported back.
+    var url = location.href, done = false, pending = false;
+    function copied() {
+      if (done) return;
+      done = true;
+      toast('邀请链接已复制 ✓');
+      document.removeEventListener('touchstart', armed, true);
+      document.removeEventListener('click', armed, true);
+    }
+    function attempt() {
+      if (done || pending) return false;
+      if (navigator.clipboard && location.protocol === 'https:') {
+        pending = true;
+        navigator.clipboard.writeText(url).then(
+          function () { pending = false; copied(); },
+          function () { pending = false; }   // refused: stay armed for the next tap
+        );
+        return true;
+      }
+      var ta = document.createElement('textarea');
+      ta.value = url; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+      if (ok) copied();
+      return ok;
+    }
+    function armed(e) {
+      // A tap on a button is that button's job — copying the link out from
+      // under "复制邀请码" would put the wrong thing on the clipboard and toast
+      // a contradiction. Only unclaimed taps arm the copy.
+      if (e && e.target && e.target.closest && e.target.closest('.btn')) return;
+      attempt();
+    }
+    attempt();
+    // Capture phase: the tap only has to reach the document, not any element.
+    document.addEventListener('touchstart', armed, true);
+    document.addEventListener('click', armed, true);
+  })();
+
+  // One copy routine for both buttons. The clipboard API is unavailable on http
+  // and in some webviews; the textarea fallback is what actually works inside
+  // WeChat, so it is the path that has to be reliable, not the modern one.
+  function copyText(text, btn, label) {
+    if (!text) return;
+    var done = function () {
+      btn.textContent = '已复制 ✓';
+      setTimeout(function () { btn.textContent = label; }, 1800);
+    };
+    if (navigator.clipboard && location.protocol === 'https:') {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      ta.remove();
+    }
+  }
+  document.getElementById('copy').addEventListener('click', function () {
+    copyText(code, this, '复制邀请码 · Copy code');
+  });
+  document.getElementById('copyLink').addEventListener('click', function () {
+    copyText(location.href, this, '复制链接 · Copy link');
+  });
+
+  /* 发送给朋友 — forwarding this invite onward.
+
+     What is actually possible depends on where the page is open, and only one
+     of the three cases can reach a friend picker directly:
+
+       • Ordinary mobile browser (including what a phone camera opens): the Web
+         Share API hands off to the SYSTEM share sheet, and choosing WeChat or
+         Douyin there lands on their "pick a friend" screen. This is the case
+         the request describes, and it works.
+       • Inside WeChat/Douyin's own webview: there is NO public API to open the
+         friend picker. WeChat's JS-SDK could, but it requires an Official
+         Account and a server-signed config, which this static page has neither
+         of. The honest answer is their own ⋯ → 发送给朋友, so that is what the
+         page points at, rather than a button that quietly does nothing.
+       • Desktop: no share sheet, so copy the link. */
+  var send = document.getElementById('send');
+  send.addEventListener('click', function () {
+    var shareUrl = location.href;
+    var title = '一起用 Terse';
+    var text = '我在用 Terse，加入我的团队 —— 点开这条链接就能加入。';
+    if (trapped) { trap('send'); return; }
+    if (navigator.share) {
+      navigator.share({ title: title, text: text, url: shareUrl }).catch(function () {
+        // A cancelled sheet throws the same way a failed one does; either way the
+        // link is still worth having on the clipboard.
+        copyText(shareUrl, send, '发送给朋友 · Send to a friend');
+      });
+      return;
+    }
+    copyText(shareUrl, send, '发送给朋友 · Send to a friend');
+  });
+  if (trapped) send.textContent = '发送给朋友 · 用右上角 ⋯';
+  else if (!navigator.share) send.textContent = '复制链接发给朋友 · Copy link to send';
+</script>
+</body>
+</html>

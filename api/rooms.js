@@ -43,7 +43,9 @@ function makeCode() {
 
 function roster(roomId) {
   db.ageOutRoomMembers.run(PRESENCE_STALE);
-  return db.getRoomMembers.all(roomId);
+  // identity_hash is what a friendship is keyed by, so it stays server-side: the
+  // roster goes to everyone in the room, and a friend request names a member id.
+  return db.getRoomMembers.all(roomId).map(({ identity_hash, ...m }) => m);
 }
 
 function publicRoom(room) {
@@ -74,7 +76,7 @@ function requireMember(req, res, next) {
 //  Lifecycle
 // ════════════════════════════════════════
 
-// POST /api/cloud/rooms   Body: { name?, member_name?, email? }
+// POST /api/cloud/rooms   Body: { name?, member_name?, email?, identity? }
 router.post('/', (req, res) => {
   const b = req.body || {};
   const key = crypto.randomBytes(24).toString('base64url');
@@ -90,14 +92,15 @@ router.post('/', (req, res) => {
     key_hash: hash(key),
     member_id: uuid(),
     name: clip((b.member_name || '').toString().trim(), 40) || null,
-    // The creator gets an email for the same reason a joiner does: without one
-    // they are anonymous, and an anonymous member cannot be added as a friend.
+    // Email is optional and only ever a label. What makes a member addable as a
+    // friend is the install identity, whose hash is all the server keeps.
     user_email: (b.email || '').toString().trim().toLowerCase() || null,
+    identity_hash: b.identity ? hash(b.identity.toString()) : null,
   });
   res.json({ ok: true, room: publicRoom(room), key, owner: true });
 });
 
-// POST /api/cloud/rooms/join   Body: { code, name?, email? }
+// POST /api/cloud/rooms/join   Body: { code, name?, email?, identity? }
 // Deliberately unauthenticated: a code IS the credential, which is what lets
 // someone join without an account, an invite, or becoming anyone's friend.
 router.post('/join', (req, res) => {
@@ -114,6 +117,7 @@ router.post('/join', (req, res) => {
     member_id: uuid(),
     name: clip((b.name || '').toString().trim(), 40) || null,
     user_email: (b.email || '').toString().trim().toLowerCase() || null,
+    identity_hash: b.identity ? hash(b.identity.toString()) : null,
   };
   db.addRoomMember.run(member);
   const list = roster(room.id);

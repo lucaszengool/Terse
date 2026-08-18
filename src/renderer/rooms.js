@@ -21,6 +21,7 @@
   var API = 'https://www.terseai.org/api/cloud/rooms';
   var FRIENDS = 'https://www.terseai.org/api/cloud/friends';
   var LS = 'terse-room';           // { id, code, name, key, memberId, owner }
+  var LS_ID = 'terse-identity';    // this install's secret — never leaves as-is
   var HEARTBEAT_MS = 20000;        // server ages a member out at 45s
 
   function readState() {
@@ -31,6 +32,22 @@
       if (s) localStorage.setItem(LS, JSON.stringify(s));
       else localStorage.removeItem(LS);
     } catch (e) {}
+  }
+
+  /* This install's identity. Generated once, kept forever, and the ONLY thing a
+     friendship is keyed by — which is why adding someone needs no account, no
+     email and no sign-in, exactly like joining a room needs none. The server
+     stores only its hash. */
+  function identity() {
+    var v = null;
+    try { v = localStorage.getItem(LS_ID); } catch (e) {}
+    if (!v) {
+      var a = new Uint8Array(32);
+      (self.crypto || window.crypto).getRandomValues(a);
+      v = Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      try { localStorage.setItem(LS_ID, v); } catch (e) {}
+    }
+    return v;
   }
 
   function call(path, opts) {
@@ -58,6 +75,7 @@
     var st = readState();
     var headers = { 'Content-Type': 'application/json' };
     if (st && st.key) headers['x-terse-room-key'] = st.key;
+    headers['x-terse-identity'] = identity();
     return fetch(FRIENDS + path, {
       method: opts.method || 'GET',
       headers: headers,
@@ -76,7 +94,7 @@
 
     create: function (name, memberName, email) {
       return call('', { method: 'POST',
-        body: { name: name, member_name: memberName, email: email } })
+        body: { name: name, member_name: memberName, email: email, identity: identity() } })
         .then(function (j) {
           writeState({ id: j.room.id, code: j.room.code, name: j.room.name,
                        key: j.key, memberId: null, owner: true });
@@ -92,7 +110,8 @@
 
     join: function (code, memberName, email) {
       return call('/join', { method: 'POST',
-        body: { code: String(code || '').trim().toUpperCase(), name: memberName, email: email } })
+        body: { code: String(code || '').trim().toUpperCase(), name: memberName,
+                email: email, identity: identity() } })
         .then(function (j) {
           writeState({ id: j.room.id, code: j.room.code, name: j.room.name,
                        key: j.key, memberId: j.member_id, owner: false });

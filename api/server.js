@@ -329,7 +329,7 @@ app.use(express.json());
 // checks this list against the headers the renderer actually sets.
 app.use('/api', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token, x-terse-room-key');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token, x-terse-room-key, x-terse-identity');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();

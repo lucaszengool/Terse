@@ -2425,13 +2425,15 @@ async function friendsInit() {
     // this page showed before friendships existed at all.
     let members = Array.isArray(cfg?.members) ? cfg.members : [];
     try {
+      // No room needed: the install identity is the credential, so friends and
+      // pending requests are readable whether or not you are in a room today.
       const R = window.TerseRooms;
-      if (R && R.inRoom()) {
+      if (R && R.listFriends) {
         const f = await R.listFriends();
-        members = (f.friends || []).map(x => ({ name: x.name || x.email, user_email: x.email, online: false }));
+        members = (f.friends || []).map(x => ({ name: x.name || x.email || 'friend', user_email: x.email, online: false }));
         renderFriendRequests(f.incoming || []);
       }
-    } catch (e) { /* not signed in, or no room — fall back to the team list */ }
+    } catch (e) { /* offline, or nothing yet — fall back to the team list */ }
     const box = $('#frRoster'), cnt = $('#frCount');
     if (cnt) cnt.textContent = members.length ? `(${members.length})` : '';
     if (box) {

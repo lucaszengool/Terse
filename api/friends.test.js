@@ -3,8 +3,11 @@
  *
  *   node api/friends.test.js
  *
- * The interesting cases are the refusals: adding someone who is not in your
- * room, answering on someone else's behalf, and adding a member with no account.
+ * The point of the model: NO ACCOUNT IS NEEDED. Two people who never signed in
+ * can become friends, because the link is keyed by an install identity, not an
+ * email. The refusals are what is worth pinning down: adding someone outside
+ * your room, answering on someone else's behalf, and a client too old to have an
+ * identity at all.
  */
 const express = require('express');
 const http = require('http');
@@ -23,7 +26,7 @@ app.use('/rooms', roomsRouter);
 app.use('/friends', friendsRouter);
 const server = http.createServer(app);
 
-function req(method, path, { key, body } = {}) {
+function req(method, path, { key, identity, body } = {}) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const r = http.request({
@@ -31,6 +34,7 @@ function req(method, path, { key, body } = {}) {
       headers: {
         ...(data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {}),
         ...(key ? { 'x-terse-room-key': key } : {}),
+        ...(identity ? { 'x-terse-identity': identity } : {}),
       },
     }, (res) => {
       let out = '';
@@ -44,78 +48,94 @@ function req(method, path, { key, body } = {}) {
 
 (async () => {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  const mail = (n) => `${n}-${crypto.randomBytes(3).toString('hex')}@test.dev`;
-  const ann = mail('ann'), bob = mail('bob'), carl = mail('carl');
+  const id = (n) => `identity-${n}-${crypto.randomBytes(8).toString('hex')}`;
+  // Deliberately NO emails: the whole point is that friendship needs no account.
+  const annId = id('ann'), bobId = id('bob'), carlId = id('carl');
 
-  const room = (await req('POST', '/rooms', { body: { name: 'R', member_name: 'ann' } })).json;
-  // The creator joins again as a signed-in member so it has an email to link.
-  const annJoin = (await req('POST', '/rooms/join', { body: { code: room.room.code, name: 'ann', email: ann } })).json;
-  const bobJoin = (await req('POST', '/rooms/join', { body: { code: room.room.code, name: 'bob', email: bob } })).json;
-  const anonJoin = (await req('POST', '/rooms/join', { body: { code: room.room.code, name: 'ghost' } })).json;
-  const roomId = room.room.id;
+  const room = (await req('POST', '/rooms', { body: { name: 'R', member_name: 'ann', identity: annId } })).json;
+  const roomId = room.room.id, annKey = room.key;
+  const bob = (await req('POST', '/rooms/join', { body: { code: room.room.code, name: 'bob', identity: bobId } })).json;
+  const old = (await req('POST', '/rooms/join', { body: { code: room.room.code, name: 'legacy' } })).json;
+  const annMe = (await req('GET', `/rooms/${roomId}`, { key: annKey })).json.you;
 
-  console.log('\n── asking ──');
-  const ask = await req('POST', '/friends/request', { key: annJoin.key, body: { room_id: roomId, to_member_id: bobJoin.member_id } });
-  eq('a request is accepted', ask.status, 200);
+  console.log('\n── no account required ──');
+  const ask = await req('POST', '/friends/request',
+    { key: annKey, identity: annId, body: { room_id: roomId, to_member_id: bob.member_id } });
+  eq('two signed-OUT people can become friends', ask.status, 200);
   eq('it starts pending', ask.json.friendship.status, 'pending');
   eq('it is outgoing for the asker', ask.json.friendship.direction, 'outgoing');
-  eq('it names the other person', ask.json.friendship.email, bob);
+  eq('it carries the other name, not an email', ask.json.friendship.name, 'bob');
+  ok('and no email is invented', ask.json.friendship.email === null);
 
-  const again = await req('POST', '/friends/request', { key: annJoin.key, body: { room_id: roomId, to_member_id: bobJoin.member_id } });
+  const again = await req('POST', '/friends/request',
+    { key: annKey, identity: annId, body: { room_id: roomId, to_member_id: bob.member_id } });
   ok('asking twice does not duplicate', again.json.existing === true);
 
-  console.log('\n── refusals ──');
-  // An anonymous member has no durable identity to attach a friendship to.
-  eq('an anonymous member cannot ask',
-     (await req('POST', '/friends/request', { key: anonJoin.key, body: { room_id: roomId, to_member_id: bobJoin.member_id } })).status, 403);
-  eq('an anonymous member cannot be added',
-     (await req('POST', '/friends/request', { key: annJoin.key, body: { room_id: roomId, to_member_id: anonJoin.member_id } })).status, 409);
-  eq('you cannot add yourself',
-     (await req('POST', '/friends/request', { key: annJoin.key, body: { room_id: roomId, to_member_id: annJoin.member_id } })).status, 400);
-  eq('an unknown member 404s',
-     (await req('POST', '/friends/request', { key: annJoin.key, body: { room_id: roomId, to_member_id: 'nobody' } })).status, 404);
-  eq('no credential is rejected',
-     (await req('POST', '/friends/request', { body: { room_id: roomId, to_member_id: bobJoin.member_id } })).status, 401);
+  console.log('\n── the identity is the credential, not the room ──');
+  const listNoRoom = await req('GET', '/friends', { identity: annId });
+  eq('friends list works with NO room key at all', listNoRoom.status, 200);
+  eq('and shows the pending request', listNoRoom.json.outgoing.length, 1);
 
-  // A key for another room must not reach into this one's roster.
-  const other = (await req('POST', '/rooms', { body: { name: 'Other' } })).json;
-  const carlJoin = (await req('POST', '/rooms/join', { body: { code: other.room.code, name: 'carl', email: carl } })).json;
-  eq("another room's member cannot ask through this room",
-     (await req('POST', '/friends/request', { key: carlJoin.key, body: { room_id: roomId, to_member_id: bobJoin.member_id } })).status, 403);
+  console.log('\n── refusals ──');
+  eq('an identity-less client is told to update',
+     (await req('POST', '/friends/request', { key: old.key, body: { room_id: roomId, to_member_id: bob.member_id } })).status, 403);
+  eq('someone on an old client cannot be added',
+     (await req('POST', '/friends/request', { key: annKey, identity: annId, body: { room_id: roomId, to_member_id: old.member_id } })).status, 409);
+  eq('you cannot add yourself',
+     (await req('POST', '/friends/request', { key: annKey, identity: annId, body: { room_id: roomId, to_member_id: annMe } })).status, 400);
+  eq('an unknown member 404s',
+     (await req('POST', '/friends/request', { key: annKey, identity: annId, body: { room_id: roomId, to_member_id: 'nobody' } })).status, 404);
+  eq('no credential at all is rejected',
+     (await req('POST', '/friends/request', { body: { room_id: roomId, to_member_id: bob.member_id } })).status, 401);
+
+  const other = (await req('POST', '/rooms', { body: { name: 'Other', identity: carlId } })).json;
+  eq("a key for another room cannot reach this roster",
+     (await req('POST', '/friends/request', { key: other.key, identity: carlId, body: { room_id: roomId, to_member_id: bob.member_id } })).status, 403);
+
+  console.log('\n── the roster must not leak what a friendship is keyed by ──');
+  const snap = (await req('GET', `/rooms/${roomId}`, { key: annKey })).json;
+  ok('no identity_hash on any roster row', snap.members.every((m) => m.identity_hash === undefined));
 
   console.log('\n── answering ──');
-  const pendingId = ask.json.friendship.id;
+  const pid = ask.json.friendship.id;
   eq('the asker cannot accept their own request',
-     (await req('POST', `/friends/${pendingId}/respond`, { key: annJoin.key, body: { accept: true } })).status, 403);
-  const acc = await req('POST', `/friends/${pendingId}/respond`, { key: bobJoin.key, body: { accept: true } });
+     (await req('POST', `/friends/${pid}/respond`, { identity: annId, body: { accept: true } })).status, 403);
+  const acc = await req('POST', `/friends/${pid}/respond`, { identity: bobId, body: { accept: true } });
   eq('the person asked can accept', acc.status, 200);
-  eq('the edge becomes accepted', acc.json.friendship.status, 'accepted');
+  eq('the link becomes accepted', acc.json.friendship.status, 'accepted');
   eq('answering twice is refused',
-     (await req('POST', `/friends/${pendingId}/respond`, { key: bobJoin.key, body: { accept: true } })).status, 409);
+     (await req('POST', `/friends/${pid}/respond`, { identity: bobId, body: { accept: true } })).status, 409);
 
   console.log('\n── listing ──');
-  const annList = (await req('GET', '/friends', { key: annJoin.key })).json;
-  eq('the asker now has one friend', annList.friends.length, 1);
-  eq('and it is the right person', annList.friends[0].email, bob);
-  const bobList = (await req('GET', '/friends', { key: bobJoin.key })).json;
-  eq('the friendship reads from both sides', bobList.friends.length, 1);
-  eq('and points back', bobList.friends[0].email, ann);
+  eq('the asker now has one friend', (await req('GET', '/friends', { identity: annId })).json.friends.length, 1);
+  const bobList = (await req('GET', '/friends', { identity: bobId })).json;
+  eq('it reads from both sides', bobList.friends.length, 1);
+  eq('and points back', bobList.friends[0].name, 'ann');
+
+  console.log('\n── the friendship outlives the room ──');
+  await req('POST', `/rooms/${roomId}/close`, { key: annKey });
+  const after = await req('GET', '/friends', { identity: annId });
+  eq('closing the room does not delete the friendship', after.json.friends.length, 1);
+  eq('and the identity still authenticates without any room', after.status, 200);
 
   console.log('\n── mutual requests ──');
-  const c2 = (await req('POST', '/rooms/join', { body: { code: room.room.code, name: 'carl', email: carl } })).json;
-  await req('POST', '/friends/request', { key: c2.key, body: { room_id: roomId, to_member_id: bobJoin.member_id } });
-  const mutual = await req('POST', '/friends/request', { key: bobJoin.key, body: { room_id: roomId, to_member_id: c2.member_id } });
+  const r2 = (await req('POST', '/rooms', { body: { name: 'M', member_name: 'ann', identity: annId } })).json;
+  const c2 = (await req('POST', '/rooms/join', { body: { code: r2.room.code, name: 'carl', identity: carlId } })).json;
+  const me2 = (await req('GET', `/rooms/${r2.room.id}`, { key: r2.key })).json.you;
+  await req('POST', '/friends/request', { key: c2.key, identity: carlId, body: { room_id: r2.room.id, to_member_id: me2 } });
+  const mutual = await req('POST', '/friends/request', { key: r2.key, identity: annId, body: { room_id: r2.room.id, to_member_id: c2.member_id } });
   ok('both asking counts as agreeing', mutual.json.accepted === true);
   eq('and lands accepted, not pending', mutual.json.friendship.status, 'accepted');
 
   console.log('\n── removing ──');
   eq('a stranger cannot remove your friendship',
-     (await req('DELETE', `/friends/${pendingId}`, { key: carlJoin.key })).status, 403);
-  eq('either side can remove it', (await req('DELETE', `/friends/${pendingId}`, { key: bobJoin.key })).status, 200);
-  eq('and it is gone', (await req('GET', '/friends', { key: annJoin.key })).json.friends.length, 0);
+     (await req('DELETE', `/friends/${pid}`, { identity: carlId })).status, 403);
+  eq('either side can remove it', (await req('DELETE', `/friends/${pid}`, { identity: bobId })).status, 200);
+  eq('and it is gone', (await req('GET', '/friends', { identity: annId })).json.friends.length, 1);
 
-  db.closeRoom.run(roomId); db.closeRoom.run(other.room.id);
-  for (const e of db.listFriendEdges.all(bob, bob)) db.deleteFriend.run(e.id);
+  for (const rid of [roomId, other.room.id, r2.room.id]) db.closeRoom.run(rid);
+  for (const e of db.listFriendEdges.all(crypto.createHash('sha256').update(annId).digest('hex'),
+                                         crypto.createHash('sha256').update(annId).digest('hex'))) db.deleteFriend.run(e.id);
   server.close();
   console.log(`\n${pass} passed, ${fail} failed\n`);
   process.exit(fail ? 1 : 0);

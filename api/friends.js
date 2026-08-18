@@ -1,30 +1,31 @@
 /**
- * Friends — the durable edge between two people who met in a room.
+ * Friends — the durable link between two people who met in a room.
  *
- * WHY IT IS KEYED BY EMAIL. Rooms are deliberately ephemeral and a room member
- * id dies with the room, so storing friendships by member id would delete every
- * friend the moment a room closed. The edge is therefore between two emails,
- * which is also the honest constraint: you can only befriend someone who is
- * signed in, because there is otherwise nothing durable to point at. Anonymous
- * room members can be seen and chatted with — they just cannot be added.
+ * WHY IT IS KEYED BY AN INSTALL IDENTITY, NOT AN EMAIL. A room needs no account:
+ * the code is the credential, anyone can join, and that is the point. Demanding
+ * an email the moment you want to KEEP someone would contradict that — and it is
+ * not even necessary. What a friendship needs is something durable to point at,
+ * and a room member id is not it (those die with the room). So each install
+ * generates a secret once and keeps it; the server only ever stores its hash,
+ * exactly like a room key. No sign-in, no account, nothing to enumerate.
+ *
+ * An email is recorded when there happens to be one, purely so the other person
+ * sees a friendlier label than a random name.
  *
  * WHY IT IS ROOM-MEDIATED. A request names a member of a room you are both in,
- * never a raw email. That means you cannot enumerate or spam strangers: you can
- * only ask someone who is standing in the same room as you, and the room key you
- * already hold is the proof.
+ * never a raw identity. You cannot enumerate or spam strangers: you can only ask
+ * someone standing in the same room, and the room key you already hold is the
+ * proof. The other person's identity hash is resolved server-side and never
+ * leaves it.
  *
  * Mounted at /api/cloud/friends.
  */
 const express = require('express');
 const crypto = require('crypto');
-const { jwtVerify, createRemoteJWKSet } = require('jose');
 const db = require('./db');
 const bus = require('./cowork-bus');
 
 const router = express.Router();
-
-const CLERK_JWKS = createRemoteJWKSet(new URL('https://clerk.terseai.org/.well-known/jwks.json'));
-const CLERK_ISSUER = 'https://clerk.terseai.org';
 
 const chan = (roomId) => `room:${roomId}`;
 const uuid = () => crypto.randomUUID();
@@ -33,49 +34,52 @@ const lc = (s) => ((s || '').toString().trim().toLowerCase() || null);
 const clip = (s, n) => (typeof s === 'string' ? s.slice(0, n) : s);
 
 /**
- * Who is calling. Two credentials are accepted because two surfaces call this:
- * the wallpaper, which holds a room key and nothing else, and the app, which may
- * be signed in but not in a room. Either way the answer is an email — without
- * one there is no durable identity to attach a friendship to.
+ * Who is calling. Two credentials, because two surfaces call this: the wallpaper
+ * and the app both hold the install secret, and the room key is accepted as a
+ * shorthand when the caller is already in a room. Either way the answer is an
+ * identity HASH — never an account.
  */
-async function requireIdentity(req, res, next) {
+function requireIdentity(req, res, next) {
+  const secret = req.headers['x-terse-identity'] || req.query.identity;
+  if (secret) {
+    req.idHash = hash(secret.toString());
+    req.roomKey = req.headers['x-terse-room-key'] || req.query.key;
+    if (req.roomKey) {
+      const m = db.findRoomMemberByKey.get(hash(req.roomKey.toString()));
+      if (m) { req.roomMember = m; req.name = m.name || null; req.email = lc(m.user_email); }
+    }
+    return next();
+  }
+
+  // Falling back to the room key alone: usable only if the member registered an
+  // identity when they joined. An older client that never sent one cannot make
+  // friendships — and is told so, rather than failing vaguely.
   const roomKey = req.headers['x-terse-room-key'] || req.query.key;
   if (roomKey) {
-    const member = db.findRoomMemberByKey.get(hash(roomKey));
-    if (member) {
-      if (!member.user_email) {
-        return res.status(403).json({
-          error: 'Sign in to add friends — an anonymous room member has no account to link to',
-        });
+    const m = db.findRoomMemberByKey.get(hash(roomKey.toString()));
+    if (m) {
+      if (!m.identity_hash) {
+        return res.status(403).json({ error: 'This copy of Terse is too old to keep friends — update it' });
       }
-      req.email = lc(member.user_email);
-      req.name = member.name || null;
-      req.roomMember = member;
+      req.idHash = m.identity_hash;
+      req.roomMember = m;
+      req.name = m.name || null;
+      req.email = lc(m.user_email);
       return next();
     }
   }
-
-  const auth = req.headers.authorization;
-  if (auth?.startsWith('Bearer ')) {
-    try {
-      const { payload } = await jwtVerify(auth.slice(7), CLERK_JWKS, { issuer: CLERK_ISSUER });
-      const email = lc(payload.email || req.query.email);
-      if (email) { req.email = email; req.name = null; return next(); }
-    } catch { /* fall through */ }
-  }
-
-  return res.status(401).json({ error: 'Authentication required' });
+  return res.status(401).json({ error: 'Missing identity' });
 }
 
-/** The other person's side of an edge, from the caller's point of view. */
-function shape(edge, me) {
-  const outgoing = edge.a_email === me;
+/** The other person's side of a link, from the caller's point of view. */
+function shape(edge, meHash) {
+  const outgoing = edge.a_hash === meHash;
   return {
     id: edge.id,
     status: edge.status,
     direction: outgoing ? 'outgoing' : 'incoming',
-    email: outgoing ? edge.b_email : edge.a_email,
     name: (outgoing ? edge.b_name : edge.a_name) || null,
+    email: (outgoing ? edge.b_email : edge.a_email) || null,
     room_id: edge.room_id || null,
     created_at: edge.created_at,
   };
@@ -87,8 +91,8 @@ router.post('/request', requireIdentity, (req, res) => {
   const toId = (req.body?.to_member_id || '').toString();
   if (!roomId || !toId) return res.status(400).json({ error: 'Missing room_id or to_member_id' });
 
-  // The caller must be in the room they are asking through — a room key alone
-  // is not enough, or one room's key would let you reach into another's roster.
+  // The caller must be in the room they are asking through — otherwise one
+  // room's key would let you reach into another room's roster.
   if (req.roomMember && req.roomMember.room_id !== roomId) {
     return res.status(403).json({ error: 'Key is for a different room' });
   }
@@ -97,49 +101,57 @@ router.post('/request', requireIdentity, (req, res) => {
 
   const target = db.getRoomMembers.all(roomId).find((m) => m.member_id === toId);
   if (!target) return res.status(404).json({ error: 'That person is not in this room' });
-  if (!target.user_email) {
-    return res.status(409).json({ error: 'That person is not signed in, so they cannot be added yet' });
+  if (!target.identity_hash) {
+    return res.status(409).json({ error: 'That person is on an older Terse that cannot keep friends yet' });
   }
-  const them = lc(target.user_email);
-  if (them === req.email) return res.status(400).json({ error: 'You cannot add yourself' });
+  const them = target.identity_hash;
+  if (them === req.idHash) return res.status(400).json({ error: 'You cannot add yourself' });
 
-  const existing = db.getFriendEdge.get({ x: req.email, y: them });
+  const existing = db.getFriendEdge.get({ x: req.idHash, y: them });
   if (existing) {
     // Both sides asking is agreement, so it is honoured as one: the second
     // request accepts the first instead of creating a mirror-image pending row
-    // that neither person can resolve.
-    if (existing.status === 'pending' && existing.b_email === req.email) {
+    // that neither person could resolve.
+    if (existing.status === 'pending' && existing.b_hash === req.idHash) {
       db.respondFriend.run('accepted', existing.id);
       const now = db.getFriendById.get(existing.id);
-      bus.emit(chan(roomId), { type: 'friend', edge: now });
-      return res.json({ ok: true, friendship: shape(now, req.email), accepted: true });
+      bus.emit(chan(roomId), { type: 'friend', edge: publicEdge(now) });
+      return res.json({ ok: true, friendship: shape(now, req.idHash), accepted: true });
     }
-    return res.json({ ok: true, friendship: shape(existing, req.email), existing: true });
+    return res.json({ ok: true, friendship: shape(existing, req.idHash), existing: true });
   }
 
   const edge = {
     id: uuid(),
-    a_email: req.email,
-    b_email: them,
+    a_hash: req.idHash,
+    b_hash: them,
     a_name: clip(req.name, 40),
     b_name: clip(target.name, 40),
+    a_email: req.email || null,
+    b_email: lc(target.user_email),
     room_id: roomId,
   };
   db.addFriendRequest.run(edge);
   const stored = db.getFriendById.get(edge.id);
   // Fanned out on the ROOM channel: both people are already listening there, so
-  // the request lands live without inventing a second delivery mechanism.
-  bus.emit(chan(roomId), { type: 'friend', edge: stored });
-  res.json({ ok: true, friendship: shape(stored, req.email) });
+  // it lands live without inventing a second delivery mechanism.
+  bus.emit(chan(roomId), { type: 'friend', edge: publicEdge(stored) });
+  res.json({ ok: true, friendship: shape(stored, req.idHash) });
 });
+
+/** What may leave the server. Identity hashes are secrets-adjacent: they are
+    what a friendship is keyed by, so they never go out over the room channel. */
+function publicEdge(e) {
+  return { id: e.id, status: e.status, a_name: e.a_name, b_name: e.b_name, room_id: e.room_id };
+}
 
 // POST /api/cloud/friends/:id/respond   Body: { accept: true|false }
 router.post('/:id/respond', requireIdentity, (req, res) => {
   const edge = db.getFriendById.get(req.params.id);
   if (!edge) return res.status(404).json({ error: 'No such request' });
-  // Only the person who was ASKED may answer. Without this the requester could
-  // accept on the other person's behalf.
-  if (edge.b_email !== req.email) {
+  // Only the person who was ASKED may answer, or the requester could accept on
+  // the other person's behalf.
+  if (edge.b_hash !== req.idHash) {
     return res.status(403).json({ error: 'Only the person who was asked can answer' });
   }
   if (edge.status !== 'pending') {
@@ -147,16 +159,16 @@ router.post('/:id/respond', requireIdentity, (req, res) => {
   }
   db.respondFriend.run(req.body?.accept === false ? 'declined' : 'accepted', edge.id);
   const now = db.getFriendById.get(edge.id);
-  if (now.room_id) bus.emit(chan(now.room_id), { type: 'friend', edge: now });
-  res.json({ ok: true, friendship: shape(now, req.email) });
+  if (now.room_id) bus.emit(chan(now.room_id), { type: 'friend', edge: publicEdge(now) });
+  res.json({ ok: true, friendship: shape(now, req.idHash) });
 });
 
 // GET /api/cloud/friends  → { friends, incoming, outgoing }
+// Works anywhere, room or no room: the install secret is the credential.
 router.get('/', requireIdentity, (req, res) => {
-  const edges = db.listFriendEdges.all(req.email, req.email).map((e) => shape(e, req.email));
+  const edges = db.listFriendEdges.all(req.idHash, req.idHash).map((e) => shape(e, req.idHash));
   res.json({
     ok: true,
-    email: req.email,
     friends: edges.filter((e) => e.status === 'accepted'),
     incoming: edges.filter((e) => e.status === 'pending' && e.direction === 'incoming'),
     outgoing: edges.filter((e) => e.status === 'pending' && e.direction === 'outgoing'),
@@ -167,7 +179,7 @@ router.get('/', requireIdentity, (req, res) => {
 router.delete('/:id', requireIdentity, (req, res) => {
   const edge = db.getFriendById.get(req.params.id);
   if (!edge) return res.status(404).json({ error: 'No such friendship' });
-  if (edge.a_email !== req.email && edge.b_email !== req.email) {
+  if (edge.a_hash !== req.idHash && edge.b_hash !== req.idHash) {
     return res.status(403).json({ error: 'Not yours to remove' });
   }
   db.deleteFriend.run(edge.id);

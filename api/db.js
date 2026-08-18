@@ -356,24 +356,25 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_room_messages_room ON room_messages(room_id, created_at);
 
   -- ── Friends ──────────────────────────────────────────────────────────────
-  -- A friendship is between two EMAILS, not two room members: rooms are
-  -- ephemeral and their member ids die with them, so storing the edge by member
-  -- id would mean losing every friend when a room closes. It is stored once, in
-  -- the direction it was asked, and read in both.
-  CREATE TABLE IF NOT EXISTS friends (
+  -- Keyed by INSTALL IDENTITY, not by email. A room needs no account — the code
+  -- is the credential — so demanding one the moment you want to keep someone
+  -- would contradict the whole design. Each install holds a secret it generated
+  -- itself; only its hash is ever stored, exactly like a room key. Email is kept
+  -- when there is one, but purely to show a friendlier label.
+  CREATE TABLE IF NOT EXISTS friend_links (
     id TEXT PRIMARY KEY,
-    a_email TEXT NOT NULL,           -- who asked
-    b_email TEXT NOT NULL,           -- who was asked
-    a_name TEXT,
-    b_name TEXT,
+    a_hash TEXT NOT NULL,            -- who asked (hash of their install secret)
+    b_hash TEXT NOT NULL,            -- who was asked
+    a_name TEXT, b_name TEXT,
+    a_email TEXT, b_email TEXT,      -- optional, display only
     status TEXT DEFAULT 'pending',   -- pending | accepted | declined
-    room_id TEXT,                    -- where they met, for context
+    room_id TEXT,                    -- where they met
     created_at TEXT DEFAULT (datetime('now')),
     responded_at TEXT,
-    UNIQUE(a_email, b_email)
+    UNIQUE(a_hash, b_hash)
   );
-  CREATE INDEX IF NOT EXISTS idx_friends_a ON friends(a_email, status);
-  CREATE INDEX IF NOT EXISTS idx_friends_b ON friends(b_email, status);
+  CREATE INDEX IF NOT EXISTS idx_friend_links_a ON friend_links(a_hash, status);
+  CREATE INDEX IF NOT EXISTS idx_friend_links_b ON friend_links(b_hash, status);
 
   -- ── Terse Docs (Google-style collaborative documents) ──
   -- A standalone, shareable file (document | sheet | slides) that humans AND
@@ -950,6 +951,10 @@ const addCoworkMessage = db.prepare(`
 `);
 const getCoworkMessage = db.prepare('SELECT * FROM cowork_messages WHERE id = ?');
 
+// A room member carries the install identity that outlives the room, so a
+// friendship made inside one survives it closing.
+try { db.exec(`ALTER TABLE room_members ADD COLUMN identity_hash TEXT`); } catch {}
+
 // ── Terse Rooms ──
 const createRoom = db.prepare(`
   INSERT INTO rooms (id, code, name, owner_key_hash) VALUES (@id, @code, @name, @owner_key_hash)
@@ -960,15 +965,15 @@ const closeRoom = db.prepare("UPDATE rooms SET closed_at = datetime('now') WHERE
 const renameRoom = db.prepare('UPDATE rooms SET name = ? WHERE id = ?');
 
 const addRoomMember = db.prepare(`
-  INSERT INTO room_members (room_id, key_hash, member_id, name, user_email)
-  VALUES (@room_id, @key_hash, @member_id, @name, @user_email)
+  INSERT INTO room_members (room_id, key_hash, member_id, name, user_email, identity_hash)
+  VALUES (@room_id, @key_hash, @member_id, @name, @user_email, @identity_hash)
   ON CONFLICT(room_id, key_hash) DO UPDATE SET
     name = excluded.name, status = 'online', last_seen_at = datetime('now')
 `);
 const getRoomMember = db.prepare('SELECT * FROM room_members WHERE room_id = ? AND key_hash = ?');
 const findRoomMemberByKey = db.prepare('SELECT * FROM room_members WHERE key_hash = ?');
 const getRoomMembers = db.prepare(`
-  SELECT member_id, name, user_email, status, last_seen_at, joined_at
+  SELECT member_id, name, user_email, status, last_seen_at, joined_at, identity_hash
   FROM room_members WHERE room_id = ? ORDER BY joined_at
 `);
 const touchRoomMember = db.prepare(`
@@ -990,22 +995,22 @@ const addRoomMessage = db.prepare(`
 const getRoomMessage = db.prepare('SELECT * FROM room_messages WHERE id = ?');
 // ── Friends ──
 const addFriendRequest = db.prepare(`
-  INSERT INTO friends (id, a_email, b_email, a_name, b_name, room_id)
-  VALUES (@id, @a_email, @b_email, @a_name, @b_name, @room_id)
+  INSERT INTO friend_links (id, a_hash, b_hash, a_name, b_name, a_email, b_email, room_id)
+  VALUES (@id, @a_hash, @b_hash, @a_name, @b_name, @a_email, @b_email, @room_id)
 `);
-const getFriendById = db.prepare('SELECT * FROM friends WHERE id = ?');
+const getFriendById = db.prepare('SELECT * FROM friend_links WHERE id = ?');
 // Read in both directions: the edge is stored once, in the direction it was asked.
 const getFriendEdge = db.prepare(`
-  SELECT * FROM friends
-  WHERE (a_email = @x AND b_email = @y) OR (a_email = @y AND b_email = @x)
+  SELECT * FROM friend_links
+  WHERE (a_hash = @x AND b_hash = @y) OR (a_hash = @y AND b_hash = @x)
 `);
 const listFriendEdges = db.prepare(`
-  SELECT * FROM friends WHERE a_email = ? OR b_email = ? ORDER BY created_at DESC
+  SELECT * FROM friend_links WHERE a_hash = ? OR b_hash = ? ORDER BY created_at DESC
 `);
 const respondFriend = db.prepare(`
-  UPDATE friends SET status = ?, responded_at = datetime('now') WHERE id = ?
+  UPDATE friend_links SET status = ?, responded_at = datetime('now') WHERE id = ?
 `);
-const deleteFriend = db.prepare('DELETE FROM friends WHERE id = ?');
+const deleteFriend = db.prepare('DELETE FROM friend_links WHERE id = ?');
 
 const getRoomMessages = db.prepare(`
   SELECT * FROM room_messages WHERE room_id = ? ORDER BY created_at DESC LIMIT ?

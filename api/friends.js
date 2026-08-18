@@ -145,6 +145,70 @@ function publicEdge(e) {
   return { id: e.id, status: e.status, a_name: e.a_name, b_name: e.b_name, room_id: e.room_id };
 }
 
+// ════════════════════════════════════════
+//  Friend links — no room required
+// ════════════════════════════════════════
+
+// POST /api/cloud/friends/link   → { url, token }
+// A link you can paste anywhere. Possession IS the consent: whoever opens it is
+// befriended immediately, with no request to approve, because the person who
+// generated it already decided by sending it. That is the difference from a
+// knock, where the decision belongs to whoever is being asked.
+//
+// It is a token rather than a bare identity because a token can be revoked and
+// counted; an identity in a URL is forever and tells you nothing.
+router.post('/link', requireIdentity, (req, res) => {
+  const existing = db.getFriendInviteByOwner.get(req.idHash);
+  if (existing) {
+    return res.json({ ok: true, token: existing.token, url: linkUrl(existing.token), reused: true });
+  }
+  const token = crypto.randomBytes(12).toString('base64url');
+  db.addFriendInvite.run({
+    token, owner_hash: req.idHash,
+    owner_name: clip(req.name, 40) || null,
+    owner_email: req.email || null,
+  });
+  res.json({ ok: true, token, url: linkUrl(token) });
+});
+
+const linkUrl = (t) => `https://www.terseai.org/join?friend=${encodeURIComponent(t)}`;
+
+// DELETE /api/cloud/friends/link/:token — revoke it; existing friendships stay.
+router.delete('/link/:token', requireIdentity, (req, res) => {
+  const inv = db.getFriendInvite.get(req.params.token);
+  if (!inv) return res.status(404).json({ error: 'No such link' });
+  if (inv.owner_hash !== req.idHash) return res.status(403).json({ error: 'Not your link' });
+  db.deleteFriendInvite.run(inv.token);
+  res.json({ ok: true });
+});
+
+// POST /api/cloud/friends/link/:token/accept — open the link, become friends.
+router.post('/link/:token/accept', requireIdentity, (req, res) => {
+  const inv = db.getFriendInvite.get(req.params.token);
+  if (!inv) return res.status(404).json({ error: 'That link is no longer valid' });
+  if (inv.owner_hash === req.idHash) {
+    return res.status(400).json({ error: 'That is your own link' });
+  }
+  const existing = db.getFriendEdge.get({ x: req.idHash, y: inv.owner_hash });
+  if (existing) {
+    // A pending request between the two is settled by the link, not duplicated:
+    // the link is consent, so it can only move things forward.
+    if (existing.status !== 'accepted') db.respondFriend.run('accepted', existing.id);
+    return res.json({ ok: true, friendship: shape(db.getFriendById.get(existing.id), req.idHash), existing: true });
+  }
+  const edge = {
+    id: uuid(),
+    a_hash: inv.owner_hash, b_hash: req.idHash,
+    a_name: inv.owner_name, b_name: clip(req.body?.name || req.name, 40) || null,
+    a_email: inv.owner_email, b_email: req.email || null,
+    room_id: null,
+  };
+  db.addFriendRequest.run(edge);
+  db.respondFriend.run('accepted', edge.id);   // no approval step — see above
+  db.bumpFriendInvite.run(inv.token);
+  res.json({ ok: true, friendship: shape(db.getFriendById.get(edge.id), req.idHash) });
+});
+
 // POST /api/cloud/friends/:id/respond   Body: { accept: true|false }
 router.post('/:id/respond', requireIdentity, (req, res) => {
   const edge = db.getFriendById.get(req.params.id);

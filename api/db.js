@@ -355,6 +355,33 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_id, last_seen_at);
   CREATE INDEX IF NOT EXISTS idx_room_messages_room ON room_messages(room_id, created_at);
 
+  -- Knocking: asking to enter a public room. The owner decides. A knock is keyed
+  -- by the asker's install identity so the same person cannot flood a room with
+  -- requests, and so an approval can be claimed later without a login.
+  CREATE TABLE IF NOT EXISTS room_knocks (
+    id TEXT PRIMARY KEY,
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    identity_hash TEXT NOT NULL,
+    name TEXT,
+    status TEXT DEFAULT 'pending',   -- pending | approved | denied | claimed
+    created_at TEXT DEFAULT (datetime('now')),
+    responded_at TEXT,
+    UNIQUE(room_id, identity_hash)
+  );
+  CREATE INDEX IF NOT EXISTS idx_knocks_room ON room_knocks(room_id, status);
+
+  -- A friend link: possession IS the consent, so opening one befriends directly.
+  -- It is revocable and countable, which a bare identity in a URL would not be.
+  CREATE TABLE IF NOT EXISTS friend_invites (
+    token TEXT PRIMARY KEY,
+    owner_hash TEXT NOT NULL,
+    owner_name TEXT,
+    owner_email TEXT,
+    uses INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_friend_invites_owner ON friend_invites(owner_hash);
+
   -- ── Friends ──────────────────────────────────────────────────────────────
   -- Keyed by INSTALL IDENTITY, not by email. A room needs no account — the code
   -- is the credential — so demanding one the moment you want to keep someone
@@ -951,6 +978,16 @@ const addCoworkMessage = db.prepare(`
 `);
 const getCoworkMessage = db.prepare('SELECT * FROM cowork_messages WHERE id = ?');
 
+// Ownership follows the PERSON, not the key they happened to create with. A room
+// outlives everyone leaving, so an owner who leaves and comes back — or joins
+// from a second window — must still own it.
+try { db.exec(`ALTER TABLE rooms ADD COLUMN owner_identity TEXT`); } catch {}
+
+// Discovery. A room is PRIVATE unless its owner opts in — strangers finding you
+// has to be a decision, never a default.
+try { db.exec(`ALTER TABLE rooms ADD COLUMN visibility TEXT DEFAULT 'private'`); } catch {}
+try { db.exec(`ALTER TABLE rooms ADD COLUMN category TEXT`); } catch {}
+
 // A room member carries the install identity that outlives the room, so a
 // friendship made inside one survives it closing.
 try { db.exec(`ALTER TABLE room_members ADD COLUMN identity_hash TEXT`); } catch {}
@@ -993,6 +1030,56 @@ const addRoomMessage = db.prepare(`
   VALUES (@id, @room_id, @member_id, @name, @body, @image_url)
 `);
 const getRoomMessage = db.prepare('SELECT * FROM room_messages WHERE id = ?');
+// ── Discovery + knocking ──
+const setRoomOwnerIdentity = db.prepare('UPDATE rooms SET owner_identity = ? WHERE id = ?');
+const setRoomListing = db.prepare('UPDATE rooms SET visibility = ?, category = ? WHERE id = ?');
+// The plaza must not advertise dead rooms, so a listing is only as real as its
+// live members: rooms with nobody online are simply not there.
+const listPublicRooms = db.prepare(`
+  SELECT r.id, r.code, r.name, r.category, r.created_at,
+         COUNT(m.member_id) AS members,
+         COALESCE(SUM(CASE WHEN m.status = 'online' THEN 1 ELSE 0 END), 0) AS online
+  FROM rooms r
+  LEFT JOIN room_members m ON m.room_id = r.id
+  WHERE r.closed_at IS NULL AND r.visibility = 'public'
+    AND (@category IS NULL OR r.category = @category)
+  GROUP BY r.id
+  ORDER BY online DESC, members DESC, r.created_at DESC
+  LIMIT @limit
+`);
+// One active room at a time. Membership is NOT revoked — a room you joined is
+// still yours to return to — you simply go quiet everywhere you are not.
+const goOfflineElsewhere = db.prepare(`
+  UPDATE room_members SET status = 'offline'
+  WHERE identity_hash = @identity AND room_id != @room_id AND status != 'offline'
+`);
+const roomsIdleFor = db.prepare(`
+  SELECT DISTINCT room_id FROM room_members
+  WHERE identity_hash = ? AND room_id != ? AND status != 'offline'
+`);
+
+const addKnock = db.prepare(`
+  INSERT INTO room_knocks (id, room_id, identity_hash, name)
+  VALUES (@id, @room_id, @identity_hash, @name)
+  ON CONFLICT(room_id, identity_hash) DO UPDATE SET
+    name = excluded.name,
+    status = CASE WHEN room_knocks.status = 'denied' THEN 'denied' ELSE 'pending' END
+`);
+const getKnock = db.prepare('SELECT * FROM room_knocks WHERE id = ?');
+const getKnockFor = db.prepare('SELECT * FROM room_knocks WHERE room_id = ? AND identity_hash = ?');
+const listKnocks = db.prepare("SELECT * FROM room_knocks WHERE room_id = ? AND status = 'pending' ORDER BY created_at");
+const setKnockStatus = db.prepare("UPDATE room_knocks SET status = ?, responded_at = datetime('now') WHERE id = ?");
+
+// ── Friend links ──
+const addFriendInvite = db.prepare(`
+  INSERT INTO friend_invites (token, owner_hash, owner_name, owner_email)
+  VALUES (@token, @owner_hash, @owner_name, @owner_email)
+`);
+const getFriendInvite = db.prepare('SELECT * FROM friend_invites WHERE token = ?');
+const bumpFriendInvite = db.prepare('UPDATE friend_invites SET uses = uses + 1 WHERE token = ?');
+const getFriendInviteByOwner = db.prepare('SELECT * FROM friend_invites WHERE owner_hash = ? ORDER BY created_at DESC LIMIT 1');
+const deleteFriendInvite = db.prepare('DELETE FROM friend_invites WHERE token = ?');
+
 // ── Friends ──
 const addFriendRequest = db.prepare(`
   INSERT INTO friend_links (id, a_hash, b_hash, a_name, b_name, a_email, b_email, room_id)
@@ -1134,6 +1221,11 @@ module.exports = {
   addCloudEvent, getTeamEvents, getTeamSummary,
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
   getTeamByModel, getTeamByMode, getTeamByAgent, getTeamAgentTotals,
+  // Discovery, knocking, friend links
+  setRoomListing, setRoomOwnerIdentity, listPublicRooms,
+  addKnock, getKnock, getKnockFor, listKnocks, setKnockStatus,
+  goOfflineElsewhere, roomsIdleFor,
+  addFriendInvite, getFriendInvite, bumpFriendInvite, getFriendInviteByOwner, deleteFriendInvite,
   // Friends
   addFriendRequest, getFriendById, getFriendEdge, listFriendEdges, respondFriend, deleteFriend,
   // Terse Rooms

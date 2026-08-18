@@ -8,7 +8,8 @@
     "test": "node api/cowork.test.js",
     "test:cowork": "node api/cowork.test.js",
     "test:rooms": "node api/rooms.test.js",
-    "test:friends": "node api/friends.test.js"
+    "test:friends": "node api/friends.test.js",
+    "test:cors": "node api/cors.test.js"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

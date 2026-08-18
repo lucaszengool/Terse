@@ -322,10 +322,14 @@ async function syncSubscription(sub) {
 app.use('/api/docs', express.json({ limit: '6mb' }));
 app.use(express.json());
 
-// CORS for Tauri app + marketplace
+// CORS for Tauri app + marketplace.
+// Every custom request header the app sends MUST be listed below. A missing one
+// is invisible server-side — the browser rejects the preflight itself, the real
+// request is never sent, and the app only sees "Load failed". api/cors.test.js
+// checks this list against the headers the renderer actually sets.
 app.use('/api', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token, x-terse-room-key');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();

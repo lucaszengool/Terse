@@ -1,0 +1,1215 @@
+/* WebView2 renders every scrollbar and form control the ::-webkit-scrollbar
+   rules don't match in LIGHT mode unless this is declared — classic silver
+   #C0C0C0 widgets on a dark page. macOS happened to default to the look we
+   wanted, so this was never needed there. */
+:root { color-scheme: dark; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Dynamic Island (灵动岛) overlay.
+   Loaded AFTER popup.css. The agent monitor (#agentPanel) keeps all of popup.css's
+   styling and theme vars (var(--bg)/var(--t1)/var(--ac)…) so it renders identically
+   to the popup. This file only: (1) hides the non-panel popup chrome, (2) styles the
+   collapsed pill + multi-agent selector, (3) lays out collapsed vs expanded states.
+   The window itself is transparent with a rounded (22px) clip applied natively, so the
+   theme background fills the pill/card shape.
+   ────────────────────────────────────────────────────────────────────────── */
+
+html, body { height: 100%; }
+body.island-mode {
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0c0d11 0%, #060709 100%);
+  color: var(--t1);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── HORIZON glass island ──────────────────────────────────────────────────
+   Same material as the main window and as the macdemo film's island
+   (remotion-macdemo/src/lib/island.tsx → liquidGlass(22)): the pill/card is a
+   near-clear dark slab with a white crystal rim, so the desktop shows through
+   instead of the opaque obsidian gradient above. */
+body.island-mode[data-theme="horizon"],
+[data-theme="horizon"] body.island-mode {
+  background: linear-gradient(160deg, rgba(15,17,22,0.26), rgba(7,9,13,0.48));
+  backdrop-filter: blur(3px) saturate(1.25) brightness(1.02);
+  -webkit-backdrop-filter: blur(3px) saturate(1.25) brightness(1.02);
+}
+[data-theme="horizon"] #islandRoot {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.34),
+    inset 0 0 30px 8px rgba(255,255,255,0.045),
+    inset 0 -18px 40px -22px rgba(255,255,255,0.10),
+    0 0 0 1px rgba(255,255,255,0.14);
+}
+/* Hover peek keeps the rim, just lifts the inner glow (no accent floor — the
+   film's glass is colourless; only the content carries the lime). */
+[data-theme="horizon"] body.island-mode #islandRoot:has(#islandPill.peek) {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.70),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.42),
+    inset 0 0 34px 10px rgba(255,255,255,0.07),
+    0 0 0 1px rgba(255,255,255,0.18);
+}
+/* The context ring's inner disc punches back to the glass, not to obsidian. */
+[data-theme="horizon"] .island-pill-ring::after {
+  background: rgba(9,11,15,0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+#islandRoot {
+  width: 100%; height: 100%;
+  position: relative;
+  border-radius: 22px;
+  /* Liquid-glass edge: bright top hairline + faint full rim + soft accent floor */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    inset 0 0 0 0.5px rgba(255,255,255,0.05),
+    inset 0 -16px 32px -16px var(--ac-glow-wide);
+}
+
+/* ── Collapsed pill ── */
+#islandPill {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 22px;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+body.island-mode.expanded #islandPill { display: none; }
+
+/* Hover "peek" — while the floating metric windows are open, the pill itself lifts
+   slightly and its accent floor brightens, so it reads as the live anchor of the set. */
+#islandPill.peek {
+  transform: translateY(0.5px) scale(1.012);
+  transition: transform .22s cubic-bezier(.2,.9,.3,1);
+}
+body.island-mode #islandRoot:has(#islandPill.peek) {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 0 0 0.5px rgba(255,255,255,0.08),
+    inset 0 -20px 40px -16px var(--ac-glow-wide),
+    0 6px 26px -8px var(--ac-glow-wide);
+}
+
+/* Liquid sheen — a soft accent light that sweeps across the pill/card to signal "live" */
+.island-sheen {
+  /* Swept with transform, not background-position. The island is on screen
+     permanently, so this animation never stops — and background-position is a
+     paint property, meaning Chromium repainted the whole pill (through a
+     mix-blend-mode: screen layer) every frame, forever. transform and opacity
+     are compositor-only, so the same sweep now costs no repaint at all. */
+  position: absolute; top: 0; bottom: 0;
+  left: -70%; width: 70%;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(105deg,
+    transparent 0%,
+    var(--ac-glow) 38%,
+    rgba(255,255,255,0.10) 50%,
+    var(--ac-glow) 62%,
+    transparent 100%);
+  opacity: 0.0;
+  will-change: transform, opacity;
+  animation: islandSheen 4.2s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+.island-sheen-card { animation-duration: 6.5s; opacity: 0; }
+@keyframes islandSheen {
+  0%   { transform: translate3d(0,0,0);    opacity: 0; }
+  35%  { opacity: 0.9; }
+  60%  { opacity: 0.9; }
+  100% { transform: translate3d(250%,0,0); opacity: 0; }
+}
+
+.island-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--ac);
+  box-shadow: 0 0 8px var(--ac-glow), 0 0 2px var(--ac), inset 0 0 2px rgba(255,255,255,0.6);
+  flex-shrink: 0;
+  animation: islandPulse 1.8s ease-in-out infinite;
+}
+@keyframes islandPulse {
+  /* opacity only — animating box-shadow repainted the dot every frame for the
+     entire time the island was open. The shadow is now static and the pulse
+     comes from opacity, which the compositor handles for free. */
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .55; }
+}
+
+.island-pill-icon { font-size: 15px; line-height: 1; flex-shrink: 0; z-index: 1; }
+
+/* Middle column: agent name + a live "now doing" action ticker that slides on change */
+.island-pill-mid {
+  display: flex; flex-direction: column; justify-content: center;
+  flex: 1; min-width: 0; gap: 1px; z-index: 1;
+  overflow: hidden; height: 30px;
+}
+.island-pill-name {
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--t1); line-height: 1.15;
+}
+/* When an action is showing, dim the name to a tiny caption */
+.island-pill-mid.has-action .island-pill-name { font-size: 9px; font-weight: 600; color: var(--t2); opacity: 0.7; }
+.island-pill-action {
+  font-size: 11px; font-weight: 650; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--ac); display: none;
+}
+.island-pill-mid.has-action .island-pill-action { display: block; }
+.island-pill-action.swap { animation: tickerIn 0.34s cubic-bezier(.2,.9,.25,1); }
+@keyframes tickerIn {
+  0%   { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+  100% { opacity: 1; transform: translateY(0);   filter: blur(0); }
+}
+.island-pill-action .act-ico { display: inline-block; margin-right: 4px; opacity: 0.9; }
+
+/* Live savings chip — flashes + scales when the number ticks up */
+.island-pill-save {
+  display: flex; align-items: center; gap: 3px; flex-shrink: 0; z-index: 1;
+  font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums;
+  color: var(--ac); background: var(--acd);
+  padding: 2px 7px 2px 6px; border-radius: 8px;
+  box-shadow: inset 0 0 0 0.5px var(--ac-glow);
+  letter-spacing: 0.2px;
+  transition: transform .25s cubic-bezier(.2,.9,.25,1);
+}
+.island-pill-save:empty, .island-pill-save.zero { display: none; }
+.island-pill-save .save-bolt { font-size: 9px; filter: drop-shadow(0 0 4px var(--ac-glow)); }
+.island-pill-save.bump { animation: saveBump 0.5s ease; }
+@keyframes saveBump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.22); box-shadow: inset 0 0 0 0.5px var(--ac), 0 0 14px var(--ac-glow); }
+  100% { transform: scale(1); }
+}
+
+/* Conic context ring (collapsed pill, 24px) */
+.island-pill-ring {
+  position: relative; z-index: 1; flex-shrink: 0;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: conic-gradient(var(--ring-col, var(--ac)) calc(var(--ring-p) * 1%), rgba(255,255,255,0.10) 0);
+  display: grid; place-items: center;
+  transition: --ring-p .6s ease;
+}
+.island-pill-ring::after {
+  content: ''; position: absolute; inset: 3px; border-radius: 50%;
+  background: var(--di-canvas, #0c0d11);
+}
+.island-pill-ring .ring-label {
+  position: relative; z-index: 1;
+  font-size: 8px; font-weight: 800; color: var(--ring-col, var(--ac));
+  font-variant-numeric: tabular-nums;
+}
+.island-pill-ring:not([data-ctx]) { display: none; }
+
+/* Live equalizer — three audio-style bars signalling an active monitor */
+.island-pill-glyph {
+  position: relative;
+  width: 3px; height: 10px; border-radius: 2px;
+  background: var(--ac); flex-shrink: 0;
+  margin: 0 6px 0 2px; opacity: .9;
+  transform-origin: bottom;
+  transition: filter .2s;
+  animation: eqMid 1.1s ease-in-out infinite;
+}
+.island-pill-glyph::before,
+.island-pill-glyph::after {
+  content: ''; position: absolute; bottom: 0;
+  width: 3px; height: 10px; border-radius: 2px; background: var(--ac);
+  transform-origin: bottom;
+}
+.island-pill-glyph::before { left: -5px; animation: eqLo 0.9s  ease-in-out infinite; }
+.island-pill-glyph::after  { left:  5px; animation: eqHi 1.35s ease-in-out infinite; }
+.island-pill-glyph.tick { filter: drop-shadow(0 0 5px var(--ac-glow)); }
+@keyframes eqMid { 0%,100% { transform: scaleY(0.9); } 50% { transform: scaleY(0.35); } }
+@keyframes eqLo  { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(0.85); } }
+@keyframes eqHi  { 0%,100% { transform: scaleY(0.6); } 50% { transform: scaleY(0.3);  } }
+
+/* ── Expanded card ── */
+#islandExpanded { display: none; }
+body.island-mode.expanded #islandExpanded { display: block; }
+
+/* Multi-agent selector (only shown when >1 agent connected) */
+.island-agent-tabs { display: none; }
+.island-agent-tabs.show {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 9px 10px 3px;
+}
+.island-agent-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--sf);
+  color: var(--t2);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 3px 9px;
+  font-size: 11px; font-weight: 600;
+  cursor: pointer;
+}
+.island-agent-chip:hover { background: var(--sfh); }
+.island-agent-chip.active {
+  background: var(--acd); color: var(--ac);
+  border-color: var(--ac-glow);
+  box-shadow: 0 0 10px var(--ac-glow-wide);
+}
+.island-agent-chip .chip-ico { font-size: 12px; }
+.island-agent-chip .chip-name {
+  max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── Hide ALL of the verbatim popup body in island mode ──
+   The big embedded agent-monitor panel (#bar → #agentPanel: proxy bar, summary, the
+   scrolling activity log) is no longer shown — its information now lives in the rich
+   bento board grid below. The #bar subtree is kept in the DOM (not removed) so popup.js
+   keeps running unchanged and keeps window._terseHookStats fresh for the boards. */
+body.island-mode #favicon,
+body.island-mode #bar { display: none !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   VIVID UPGRADE — animated context ring, live hero, agent-flow strip,
+   scrollable expand so the chevron details always reveal fully.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Smooth conic-ring fill animation (Safari/WKWebView ≥16.4). Falls back to a snap. */
+@property --ring-p { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+/* ── Expanded card: let it grow tall, scroll past the cap so details never clip ──
+   max-height is set from the *screen* height in island.js (NOT 100vh — that would cap
+   the measured content to the current small window and stop it from growing). */
+#islandExpanded { position: relative; }
+body.island-mode.expanded #islandExpanded {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+body.island-mode #islandExpanded::-webkit-scrollbar { width: 6px; }
+body.island-mode #islandExpanded::-webkit-scrollbar-thumb {
+  background: var(--ac-glow); border-radius: 3px;
+}
+
+/* ── Live hero header (island-only) ── */
+.island-hero {
+  position: relative;
+  margin: 8px 10px 2px;
+  padding: 11px 12px 9px;
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--ac-glow-wide), transparent 60%),
+    rgba(255,255,255,0.035);
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.05);
+  overflow: hidden;
+}
+.island-hero-row { display: flex; align-items: center; gap: 10px; }
+.island-hero-icon {
+  font-size: 22px; line-height: 1; flex-shrink: 0;
+  filter: drop-shadow(0 0 10px var(--ac-glow));
+  animation: heroBob 3.4s ease-in-out infinite;
+}
+@keyframes heroBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+.island-hero-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.island-hero-name {
+  font-size: 13.5px; font-weight: 800; letter-spacing: 0.1px; color: var(--t1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.island-hero-status { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; color: var(--t2); }
+.hero-live-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--ac);
+  box-shadow: 0 0 8px var(--ac-glow); animation: islandPulse 1.6s ease-in-out infinite;
+}
+.island-hero-status.idle .hero-live-dot { background: #888; box-shadow: none; animation: none; }
+#islandHeroStatusText.working::after {
+  content: ''; animation: heroDots 1.4s steps(4,end) infinite;
+}
+@keyframes heroDots { 0% { content: ''; } 25% { content: '·'; } 50% { content: '··'; } 75% { content: '···'; } }
+
+/* Big count-up savings */
+.island-hero-saved-wrap { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; line-height: 1; }
+.island-hero-saved {
+  font-size: 20px; font-weight: 850; color: var(--ac);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.5px;
+  text-shadow: 0 0 16px var(--ac-glow);
+}
+.island-hero-saved.bump { animation: saveBump 0.5s ease; }
+.island-hero-saved-unit { font-size: 8.5px; font-weight: 650; color: var(--t2); margin-top: 2px; letter-spacing: 0.2px; }
+
+/* Hero context ring (36px) */
+.island-hero-ring {
+  position: relative; flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: conic-gradient(var(--ring-col, var(--ac)) calc(var(--ring-p) * 1%), rgba(255,255,255,0.10) 0);
+  display: grid; place-items: center; transition: --ring-p .6s ease;
+}
+.island-hero-ring::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: rgba(12,13,17,0.92); }
+.hero-ring-pct { position: relative; z-index: 1; font-size: 11px; font-weight: 800; color: var(--ring-col, var(--ac)); font-variant-numeric: tabular-nums; line-height: 1; }
+.hero-ring-cap { position: relative; z-index: 1; font-size: 6.5px; font-weight: 700; color: var(--t2); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── Agent-flow strip — recent steps as chips that flow in from the right ── */
+.island-flow {
+  display: flex; align-items: center; gap: 5px;
+  margin-top: 9px; padding-bottom: 1px;
+  overflow: hidden; min-height: 22px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 18px);
+          mask-image: linear-gradient(90deg, transparent 0, #000 18px);
+}
+.island-flow:empty { display: none; }
+.flow-chip {
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+  height: 19px; padding: 0 7px; border-radius: 9px;
+  font-size: 9.5px; font-weight: 700; white-space: nowrap;
+  background: rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.07);
+  color: var(--t2); max-width: 130px; overflow: hidden; text-overflow: ellipsis;
+}
+.flow-chip .fc-ico { font-size: 9px; opacity: 0.95; }
+.flow-chip .fc-tok { font-size: 8.5px; font-weight: 800; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.flow-chip.user   { color: #cfe3ff; box-shadow: inset 0 0 0 0.5px rgba(120,170,255,0.30); }
+.flow-chip.asst   { color: var(--ac); background: var(--acd); box-shadow: inset 0 0 0 0.5px var(--ac-glow); }
+.flow-chip.tool   { color: #ffd27a; box-shadow: inset 0 0 0 0.5px rgba(255,200,90,0.28); }
+.flow-chip.result { color: #9ee6c4; box-shadow: inset 0 0 0 0.5px rgba(120,230,180,0.26); }
+.flow-chip.fresh  { animation: flowChipIn 0.42s cubic-bezier(.2,.9,.25,1); }
+@keyframes flowChipIn {
+  0%   { opacity: 0; transform: translateX(26px) scale(0.85); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+/* Connector arrow between flow chips */
+.flow-arrow { flex-shrink: 0; color: var(--t2); opacity: 0.4; font-size: 9px; }
+
+/* Pill activity flash — brief accent rim when the agent does something new */
+#islandPill.activity { animation: pillFlash 0.6s ease; }
+@keyframes pillFlash {
+  0% { box-shadow: inset 0 0 0 0.5px var(--ac-glow); }
+  30% { box-shadow: inset 0 0 0 1px var(--ac), inset 0 -18px 30px -16px var(--ac-glow); }
+  100% { box-shadow: inset 0 0 0 0.5px transparent; }
+}
+
+/* Equalizer reacts to activity — speeds up briefly */
+.island-pill-glyph.active,
+.island-pill-glyph.active::before,
+.island-pill-glyph.active::after { animation-duration: 0.45s !important; }
+
+/* ── Idle attention (collapsed) ──
+   When NOT hovered, the pill gently "breathes" an accent glow so the live monitor draws
+   the eye even at rest. The window is natively rounded-clipped, so only inset shadows
+   show — the breathe is built from inset rings + an accent floor. */
+body.island-mode:not(.expanded) #islandRoot::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; z-index: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 0 0 1px var(--ac-glow),
+    inset 0 -22px 40px -14px var(--ac-glow);
+  opacity: 0; will-change: opacity;
+  animation: glowBreathe 3.8s ease-in-out infinite;
+}
+/* opacity-only: the resting shadow stays on #islandRoot, the lit state rides an
+   overlay. Animating box-shadow here repainted the whole island continuously. */
+@keyframes glowBreathe { 0%,100% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes islandBreathe {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 0 0 0.5px rgba(255,255,255,0.05),
+      inset 0 -16px 32px -16px var(--ac-glow-wide);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.12),
+      inset 0 0 0 1px var(--ac-glow),
+      inset 0 -22px 40px -14px var(--ac-glow);
+  }
+}
+/* The live sheen sweep reads stronger when idle so "something is happening" is obvious */
+body.island-mode:not(.expanded) #islandPill .island-sheen { opacity: 1; }
+body.island-mode:not(.expanded) #islandPill .island-sheen { animation-duration: 3.4s; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WORKING STATE — when the agent is actively running, the island shows, vividly
+   but cleanly, HOW Terse is helping: live token reduction, cache, healthy context.
+   Motion is physics-eased and subtle (high-end, not flashy).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Collapsed pill: "working" reads hotter than idle ── */
+#islandPill.working { }
+#islandPill.working .island-pill-glyph,
+#islandPill.working .island-pill-glyph::before,
+#islandPill.working .island-pill-glyph::after { animation-duration: 0.6s; }
+#islandPill.working .island-pill-action { color: var(--ac); }
+/* A thin accent progress sweep along the pill's bottom edge while working */
+/* Progress sweep along the pill's bottom edge while an agent works. Translated,
+   not background-position'd, and clipped by #islandPill's own overflow:hidden —
+   so the pill is not repainted 60x/s at exactly the moment the machine is
+   busiest doing real work. */
+#islandPill.working::before {
+  content: ''; position: absolute; left: 12px; right: 12px; bottom: 5px; height: 1.5px;
+  border-radius: 2px; pointer-events: none; opacity: 0.85; z-index: 2;
+  background: linear-gradient(90deg, transparent, var(--ac), transparent);
+  will-change: transform;
+  animation: pillWorkX 1.5s linear infinite;
+}
+/* Composited variant used by the rules below: same sweep, transform-driven. */
+@keyframes pillWorkX {
+  0%   { transform: translate3d(-100%,0,0); }
+  100% { transform: translate3d(200%,0,0); }
+}
+/* Working overrides idle breathing with a livelier accent pulse */
+body.island-mode:not(.expanded) #islandRoot:has(#islandPill.working)::before {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.14),
+    inset 0 0 0 1px var(--ac),
+    inset 0 -24px 44px -12px var(--ac-glow);
+  animation-duration: 2.4s;
+}
+@keyframes islandBreatheWork {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), inset 0 0 0 0.5px var(--ac-glow-wide), inset 0 -18px 34px -16px var(--ac-glow); }
+  50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 0 0 1px var(--ac), inset 0 -24px 44px -12px var(--ac-glow); }
+}
+
+/* ── Reduce badge — live "−12%" token-reduction chip beside the saved count ── */
+.island-hero-reduce {
+  display: none; align-self: flex-end;
+  margin-top: 3px; padding: 1px 6px; border-radius: 7px;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+  color: #06131f; background: var(--ac);
+  box-shadow: 0 0 12px var(--ac-glow);
+}
+.island-hero-reduce.show { display: inline-block; }
+.island-hero-reduce.bump { animation: saveBump 0.5s ease; }
+
+/* ── Live quality strip — three compact pills: Reduce · Cache · Context ── */
+.island-hero-metrics {
+  display: flex; gap: 6px; margin-top: 9px;
+}
+.island-hero-metrics:empty { display: none; }
+.hero-metric {
+  display: flex; align-items: center; gap: 4px; flex: 1;
+  padding: 4px 8px; border-radius: 9px;
+  background: rgba(255,255,255,0.04);
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.07);
+  font-size: 9px; font-weight: 700; color: var(--t2);
+  white-space: nowrap; overflow: hidden;
+}
+.hero-metric .hm-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--hm-col, var(--ac)); box-shadow: 0 0 6px var(--hm-col, var(--ac-glow));
+}
+.hero-metric .hm-label { color: var(--t3); }
+.hero-metric .hm-val {
+  margin-left: auto; font-weight: 850; color: var(--hm-col, var(--t1));
+  font-variant-numeric: tabular-nums;
+}
+.hero-metric.bump { animation: metricBump 0.5s ease; }
+@keyframes metricBump {
+  0% { transform: scale(1); } 40% { transform: scale(1.05); box-shadow: inset 0 0 0 0.5px var(--hm-col, var(--ac-glow)), 0 0 12px var(--ac-glow-wide); } 100% { transform: scale(1); }
+}
+
+/* ── FX layer — floating "+N saved" gains rise & fade on each optimization ── */
+.island-hero-fx { position: absolute; right: 14px; top: 8px; width: 0; height: 0; pointer-events: none; }
+.hero-float {
+  position: absolute; right: 0; top: 0; white-space: nowrap;
+  font-size: 11px; font-weight: 850; color: var(--ac);
+  text-shadow: 0 0 12px var(--ac-glow); font-variant-numeric: tabular-nums;
+  animation: heroFloat 1.15s cubic-bezier(.2,.7,.2,1) forwards;
+}
+@keyframes heroFloat {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.85); }
+  25%  { opacity: 1; transform: translateY(-2px) scale(1.04); }
+  100% { opacity: 0; transform: translateY(-26px) scale(1); }
+}
+
+/* ── Hero "saving" ripple — a brief accent wash when savings tick up ── */
+.island-hero.saving::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(120% 140% at 100% 0%, var(--ac-glow), transparent 55%);
+  animation: heroSaveWash 0.9s ease-out forwards;
+}
+@keyframes heroSaveWash { 0% { opacity: 0; } 25% { opacity: 0.9; } 100% { opacity: 0; } }
+
+/* Working hero: the live dot + status already animate; add a faint scanning sheen */
+.island-hero-status #islandHeroStatusText.working { color: var(--ac); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BENTO DASHBOARD — promo-style 2×2 stat boards revealed on hover. All boards
+   aggregate across every connected agent. Cards mirror the promo's Surface:
+   rounded, hairline-rimmed, soft inner light. Motion = easeOutQuint cascade.
+   ══════════════════════════════════════════════════════════════════════════ */
+.island-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 7px;
+  margin: 8px 10px 8px;
+}
+.island-bento:empty { display: none; }
+
+.bento-tile {
+  position: relative; overflow: hidden;
+  border-radius: 14px;
+  padding: 9px 10px 10px;
+  background:
+    radial-gradient(120% 130% at 100% 0%, var(--ac-glow-wide), transparent 58%),
+    rgba(255,255,255,0.035);
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255,255,255,0.07),
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 8px 22px -16px rgba(0,0,0,0.8);
+  min-height: 76px;
+  /* Cascade reveal — replays whenever the card is (re)shown */
+  opacity: 0; transform: translateY(10px) scale(0.985);
+}
+/* Activity board spans the full row — it replaces the old big monitor log */
+.bento-tile.bento-activity { grid-column: 1 / -1; min-height: 0; }
+body.island-mode.expanded #islandBento.reveal .bento-tile {
+  animation: bentoIn 0.5s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+#islandBento.reveal .bento-tile:nth-child(1) { animation-delay: 0.00s; }
+#islandBento.reveal .bento-tile:nth-child(2) { animation-delay: 0.05s; }
+#islandBento.reveal .bento-tile:nth-child(3) { animation-delay: 0.10s; }
+#islandBento.reveal .bento-tile:nth-child(4) { animation-delay: 0.15s; }
+#islandBento.reveal .bento-tile:nth-child(5) { animation-delay: 0.20s; }
+#islandBento.reveal .bento-tile:nth-child(6) { animation-delay: 0.25s; }
+#islandBento.reveal .bento-tile:nth-child(7) { animation-delay: 0.30s; }
+@keyframes bentoIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Tighter type in the denser 3-up grid so big numbers never clip */
+.island-bento .bt-num { font-size: 19px; }
+.island-bento .bt-title { font-size: 8.5px; letter-spacing: 0.5px; }
+
+.bt-head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.bt-title {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  color: var(--t3);
+}
+.bt-delta {
+  margin-left: auto; font-size: 8.5px; font-weight: 850; letter-spacing: 0.2px;
+  padding: 1px 5px; border-radius: 6px; font-variant-numeric: tabular-nums;
+  color: #06131f; background: var(--ac); box-shadow: 0 0 10px var(--ac-glow);
+}
+.bt-delta:empty { display: none; }
+.bt-delta.good { color: var(--ac); background: var(--acd); box-shadow: none; }
+.bt-live {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+  font-size: 8.5px; font-weight: 700; color: var(--t3); letter-spacing: 0.3px; text-transform: uppercase;
+}
+.bt-live i {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--ac);
+  box-shadow: 0 0 7px var(--ac-glow); animation: islandPulse 1.6s ease-in-out infinite;
+}
+
+.bt-num {
+  font-size: 22px; font-weight: 850; line-height: 1; letter-spacing: -0.6px;
+  color: var(--t1); font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono','SF Mono', Menlo, ui-monospace, monospace;
+}
+.bt-num.bump { animation: saveBump 0.5s ease; }
+.bt-num-unit { font-size: 9.5px; font-weight: 700; color: var(--t3); letter-spacing: 0; font-family: -apple-system,'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'; }
+.bt-sub { font-size: 8.5px; font-weight: 600; color: var(--t3); margin-top: 4px; letter-spacing: 0.2px; }
+
+/* Mini sparkline-ish bar row (Saved tile) */
+.bt-spark { display: flex; align-items: flex-end; gap: 2px; height: 16px; margin-top: 6px; }
+.bt-spark i {
+  flex: 1; min-width: 2px; border-radius: 1.5px;
+  background: linear-gradient(180deg, var(--ac), var(--ac-glow));
+  box-shadow: 0 0 6px var(--ac-glow-wide);
+  transform-origin: bottom; transition: height 0.5s cubic-bezier(0.22,1,0.36,1);
+}
+.bt-spark i:last-child { box-shadow: 0 0 8px var(--ac-glow); }
+
+/* Cache draw bar */
+.bt-bar { height: 4px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 8px; }
+.bt-bar-fill {
+  height: 100%; width: 0; border-radius: 3px; background: var(--ac);
+  box-shadow: 0 0 7px var(--ac-glow);
+  transition: width 0.6s cubic-bezier(0.22,1,0.36,1), background 0.4s ease;
+}
+.bt-bar-fill.warn { background: #ffc533; box-shadow: 0 0 7px rgba(255,197,51,0.45); }
+.bt-bar-fill.danger { background: #ff6161; box-shadow: 0 0 7px rgba(255,97,97,0.45); }
+
+/* Agent avatar stack */
+.bt-avatars { display: flex; align-items: center; margin-top: 7px; height: 18px; }
+.bt-avatars .bt-av {
+  width: 18px; height: 18px; border-radius: 50%; margin-left: -5px;
+  display: grid; place-items: center; font-size: 10px;
+  background: rgba(20,22,28,0.95); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.12), 0 0 8px var(--ac-glow-wide);
+}
+.bt-avatars .bt-av:first-child { margin-left: 0; }
+
+/* Agent equalizer (decorative live signal) */
+.bt-eq { display: flex; align-items: flex-end; gap: 2.5px; height: 14px; margin-top: 7px; }
+.bt-eq i {
+  width: 3px; border-radius: 2px; background: var(--ac); opacity: 0.85;
+  box-shadow: 0 0 5px var(--ac-glow-wide); transform-origin: bottom;
+  animation: btEq 1.1s ease-in-out infinite;
+}
+.bt-eq i:nth-child(1){ height: 60%; animation-delay: 0s; }
+.bt-eq i:nth-child(2){ height: 100%; animation-delay: .12s; }
+.bt-eq i:nth-child(3){ height: 45%; animation-delay: .24s; }
+.bt-eq i:nth-child(4){ height: 80%; animation-delay: .36s; }
+.bt-eq i:nth-child(5){ height: 55%; animation-delay: .48s; }
+.bt-eq i:nth-child(6){ height: 90%; animation-delay: .6s; }
+.bt-eq i:nth-child(7){ height: 50%; animation-delay: .72s; }
+@keyframes btEq { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+
+/* Focus context ring (40px) */
+.bt-ring {
+  position: relative; width: 42px; height: 42px; border-radius: 50%; margin: 6px auto 2px;
+  background: conic-gradient(var(--ring-col, var(--ac)) calc(var(--ring-p) * 1%), rgba(255,255,255,0.10) 0);
+  display: grid; place-items: center; transition: --ring-p 0.7s cubic-bezier(0.22,1,0.36,1);
+}
+.bt-ring::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: rgba(12,13,17,0.94); }
+.bt-ring-pct {
+  position: relative; z-index: 1; font-size: 12px; font-weight: 850;
+  color: var(--ring-col, var(--ac)); font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono','SF Mono', Menlo, ui-monospace, monospace;
+}
+
+/* ── Savings tile — $ money read-out (mirrors the dash "savings" widget) ── */
+.bt-money { display: flex; align-items: baseline; gap: 1px; margin-top: 2px; }
+.bt-money .bt-cur {
+  font-size: 13px; font-weight: 800; color: var(--ac); opacity: 0.85;
+  text-shadow: 0 0 12px var(--ac-glow);
+}
+.bt-money .bt-num { color: var(--ac); text-shadow: 0 0 14px var(--ac-glow); }
+.bt-money .bt-cents {
+  font-size: 12px; font-weight: 800; color: var(--ac); opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono','SF Mono', Menlo, ui-monospace, monospace;
+}
+
+/* ── Activity board — vertical live flow chips; replaces the big monitor log ── */
+.bento-activity .bt-live { color: var(--t3); }
+.bento-activity .bt-live.working i { background: var(--ac); }
+.bt-flow {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 6px; max-height: 150px; overflow-y: auto;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 12px);
+          mask-image: linear-gradient(180deg, transparent 0, #000 12px);
+}
+.bt-flow::-webkit-scrollbar { width: 5px; }
+.bt-flow::-webkit-scrollbar-thumb { background: var(--ac-glow); border-radius: 3px; }
+.bt-flow .bt-empty {
+  display: flex; align-items: center; gap: 6px; padding: 8px 2px;
+  font-size: 9.5px; font-weight: 600; color: var(--t3);
+}
+.bt-fchip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border-radius: 9px;
+  background: rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.07);
+  font-size: 9.5px; font-weight: 700; color: var(--t2);
+}
+.bt-fchip .fc-ico { font-size: 9px; opacity: 0.95; flex-shrink: 0; }
+.bt-fchip .fc-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bt-fchip .fc-tok {
+  flex-shrink: 0; font-size: 8.5px; font-weight: 800; opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+.bt-fchip.user   { color: #cfe3ff; box-shadow: inset 0 0 0 0.5px rgba(120,170,255,0.30); }
+.bt-fchip.asst   { color: var(--ac); background: var(--acd); box-shadow: inset 0 0 0 0.5px var(--ac-glow); }
+.bt-fchip.tool   { color: #ffd27a; box-shadow: inset 0 0 0 0.5px rgba(255,200,90,0.28); }
+.bt-fchip.result { color: #9ee6c4; box-shadow: inset 0 0 0 0.5px rgba(120,230,180,0.26); }
+.bt-fchip.fresh  { animation: flowChipIn 0.42s cubic-bezier(.2,.9,.25,1); }
+
+/* ── Pre-compaction pill states (context ≥75% amber, ≥90% pulsing red) ── */
+#islandPill.ctx-warn   { box-shadow: 0 0 0 1px rgba(255,197,51,0.45), 0 0 12px rgba(255,197,51,0.25); }
+#islandPill.ctx-danger { box-shadow: 0 0 0 1px rgba(255,97,97,0.55), 0 0 14px rgba(255,97,97,0.35); }
+#islandPill.ctx-danger::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(255,97,97,0.85), 0 0 22px rgba(255,97,97,0.55);
+  opacity: 0; will-change: opacity;
+  animation: glowBreathe 1.6s ease-in-out infinite;
+}
+@keyframes ctxDangerPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255,97,97,0.55), 0 0 14px rgba(255,97,97,0.35); }
+  50%      { box-shadow: 0 0 0 1px rgba(255,97,97,0.85), 0 0 22px rgba(255,97,97,0.55); }
+}
+
+/* ═══ Aurora rim — Apple-Intelligence-style rotating gradient edge ═══
+   A conic gradient masked to a 1.5px ring, slowly rotating. Idle it's a faint
+   living shimmer; while the agent is working it blazes brighter and faster;
+   on a savings milestone it flares to full saturation for a beat. */
+@property --aur { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.island-aurora {
+  position: absolute; inset: 0; border-radius: inherit; padding: 1.5px;
+  pointer-events: none; z-index: 2;
+  background: conic-gradient(from var(--aur),
+    #5ea8ff, #a78bfa, #f472b6, #ffc533, #38e8c6, #5ea8ff);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0.38; filter: saturate(1.25);
+  animation: aurSpin 9s linear infinite;
+}
+@keyframes aurSpin { to { --aur: 360deg; } }
+#islandPill.working .island-aurora { opacity: 0.85; animation-duration: 2.8s; }
+#islandPill.ctx-danger .island-aurora {
+  background: conic-gradient(from var(--aur), #ff6161, #ffc533, #ff6161);
+  opacity: 0.9; animation-duration: 1.6s;
+}
+/* Milestone blaze — every 10K tokens saved, the rim goes incandescent and the
+   pill pops. Short and celebratory, never looping. */
+#islandPill.milestone { animation: pillPop 0.6s cubic-bezier(.34,1.56,.64,1); }
+#islandPill.milestone .island-aurora {
+  opacity: 1; filter: saturate(2) brightness(1.5);
+  animation-duration: 0.9s;
+  transition: filter 0.2s;
+}
+#islandPill.milestone .island-pill-save {
+  color: #ffc533; text-shadow: 0 0 12px rgba(255,197,51,0.8);
+}
+@keyframes pillPop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* Counting motion — while the savings number rolls, it streaks slightly so the
+   motion reads as a live meter, then lands with a micro-bounce. */
+.island-pill-save.counting #islandPillSaveNum,
+.island-pill-save.counting .save-num {
+  filter: blur(0.4px);
+}
+.island-pill-save.landed { animation: numLand 0.32s cubic-bezier(.34,1.56,.64,1); }
+@keyframes numLand { 0% { transform: scale(1.14); } 100% { transform: scale(1); } }
+
+/* Aurora requires ring masking — without it the gradient would paint over the
+   pill content, so gate the whole effect on real support. */
+.island-aurora { display: none; }
+@supports (mask-composite: exclude) or (-webkit-mask-composite: xor) {
+  .island-aurora { display: block; }
+}
+
+/* ── Focus / calm mode + reduced-motion + density ──────────────────────────
+   The island is animation-heavy (aurora shimmer, EQ bars, FX gains, breathe).
+   Delightful, but distracting during deep work and a problem for motion
+   sensitivity. Calm mode freezes all of it; we also honor the OS-level
+   reduced-motion setting automatically. Compact trims the density. */
+@media (prefers-reduced-motion: reduce) {
+  .island-mode *, .island-mode *::before, .island-mode *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+  .island-aurora { display: none !important; }
+}
+body.calm *, body.calm *::before, body.calm *::after {
+  animation: none !important;
+}
+body.calm .island-aurora { display: none !important; }
+
+/* Compact density — scale the expanded card down without touching every rule. */
+body.compact #islandExpanded { zoom: 0.88; }
+
+/* The injected calm/compact toggles (added by island.js). */
+.island-prefs { display: flex; gap: 6px; justify-content: flex-end;
+  padding: 6px 10px 8px; }
+.island-pref-btn { -webkit-app-region: no-drag; cursor: pointer; border: none;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.2px; border-radius: 7px;
+  padding: 3px 8px; color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.06); }
+.island-pref-btn.on { color: #34d399; background: rgba(52,211,153,0.14); }
+.island-pref-btn:hover { color: rgba(255,255,255,0.85); }
+
+/* ── Capture / Replace — optimize selected text in any app, folded into the island ── */
+body.island-mode .island-capture { margin-top: 10px; padding: 0 2px 2px; }
+.icap-cta { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px;
+  border: none; border-radius: 14px; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 800;
+  color: var(--btn-t, #fff);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ac, #6d5efc) 92%, #fff 8%), var(--ac, #6d5efc));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 6px 18px rgba(0,0,0,.22);
+  transition: transform .15s ease, filter .15s ease; will-change: transform; }
+.icap-cta:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.icap-cta:active { transform: translateY(0) scale(.98); }
+.icap-cta svg { opacity: .95; }
+.icap-result { margin-top: 10px; background: color-mix(in srgb, var(--bg, #1c1c22) 66%, transparent);
+  border: 1px solid var(--bd, rgba(255,255,255,.12)); border-radius: 14px; padding: 11px;
+  animation: viewInIsland .24s cubic-bezier(.22,.61,.36,1) both; }
+@keyframes viewInIsland { from { opacity: 0; transform: translate3d(0,6px,0); } to { opacity: 1; transform: none; } }
+.icap-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.icap-stat { font-size: 12px; color: var(--t2, #cfcfd6); font-variant-numeric: tabular-nums; }
+.icap-stat b { color: var(--t1, #fff); font-weight: 800; }
+.icap-pct { font-size: 11px; font-weight: 800; color: #34d399; }
+.icap-text { width: 100%; min-height: 64px; max-height: 150px; resize: none; border-radius: 10px; padding: 9px 11px;
+  background: var(--sf, rgba(255,255,255,.05)); border: 1px solid var(--bd, rgba(255,255,255,.12));
+  color: var(--t1, #fff); font-family: 'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace; font-size: 11px; line-height: 1.5; outline: none; }
+.icap-actions { display: flex; gap: 7px; margin-top: 9px; }
+.icap-a { flex: 1; border: none; border-radius: 10px; padding: 9px; cursor: pointer; font-family: inherit; font-size: 12px;
+  font-weight: 800; color: var(--t1, #fff); background: var(--sf, rgba(255,255,255,.06));
+  box-shadow: inset 0 0 0 1px var(--bd, rgba(255,255,255,.12)); transition: transform .14s ease, filter .14s ease; }
+.icap-a:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.icap-a:active { transform: translateY(0) scale(.97); }
+.icap-a.primary { color: #fff; background: var(--ac, #6d5efc); box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+.icap-a.primary:disabled { opacity: .5; cursor: default; transform: none; }
+.icap-a.ghost { flex: 0 0 auto; padding: 9px 14px; color: var(--t3, #9a9aa2); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ALERT STATE — the pill morphs into a notification banner.
+   Same liquid-glass vocabulary as the pill/card (aurora, sheen, accent floor,
+   22px rim); the only new signal is a severity hue so urgency reads instantly.
+   ══════════════════════════════════════════════════════════════════════════ */
+#islandAlert { display: none; }
+body.island-mode.alerting #islandPill,
+body.island-mode.alerting #islandExpanded { display: none; }
+body.island-mode.alerting #islandAlert {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px 13px 16px;
+  border-radius: 22px;
+  position: relative;
+  overflow: hidden;
+  /* Morph out of the pill: squash-and-stretch, not a plain fade. */
+  animation: iaMorph .46s cubic-bezier(.16,1.16,.3,1) both;
+}
+@keyframes iaMorph {
+  0%   { opacity: 0; transform: scale(.82, .46); filter: blur(7px); }
+  55%  { opacity: 1; filter: blur(0); }
+  72%  { transform: scale(1.012, 1.03); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+body.island-mode.alerting.ia-leaving #islandAlert {
+  animation: iaMorphOut .3s cubic-bezier(.4,0,.7,.2) both;
+}
+@keyframes iaMorphOut {
+  0%   { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(.86, .42); filter: blur(6px); }
+}
+
+/* Severity accent — drives rim, bar and icon glow from one custom property. */
+#islandAlert { --sev: var(--ac); --sev-glow: var(--ac-glow); }
+body.island-mode.alerting[data-sev="high"]     #islandAlert { --sev: #ff6161; --sev-glow: rgba(255,97,97,.5); }
+body.island-mode.alerting[data-sev="critical"] #islandAlert { --sev: #ff6161; --sev-glow: rgba(255,97,97,.62); }
+body.island-mode.alerting[data-sev="medium"]   #islandAlert { --sev: #ffc533; --sev-glow: rgba(255,197,51,.45); }
+body.island-mode.alerting[data-sev="low"]      #islandAlert { --sev: var(--ac); --sev-glow: var(--ac-glow); }
+
+/* Rim picks up the severity and breathes while the alert is up. */
+body.island-mode.alerting #islandRoot {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.14),
+    inset 0 0 0 0.5px rgba(255,255,255,0.08),
+    inset 0 -22px 44px -18px var(--sev-glow, var(--ac-glow-wide)),
+    0 10px 40px -10px var(--sev-glow, var(--ac-glow-wide));
+  animation: iaBreathe 2.6s ease-in-out infinite;
+}
+@keyframes iaBreathe {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.09); }
+}
+
+/* Left severity bar — wipes down on entry, then holds with a soft glow. */
+#islandAlert .ia-bar {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, var(--sev), color-mix(in srgb, var(--sev) 35%, transparent));
+  box-shadow: 0 0 12px var(--sev-glow);
+  transform-origin: top;
+  animation: iaBarWipe .5s cubic-bezier(.2,.9,.3,1) both .06s;
+}
+@keyframes iaBarWipe { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+#islandAlert .ia-head { display: flex; align-items: center; gap: 7px; }
+#islandAlert .ia-sp { flex: 1; }
+
+/* Icon pops in with an expanding halo. */
+#islandAlert .ia-ic {
+  font-size: 13px; line-height: 1;
+  filter: drop-shadow(0 0 6px var(--sev-glow));
+  animation: iaPop .5s cubic-bezier(.2,1.5,.4,1) both .1s;
+}
+@keyframes iaPop {
+  0%   { transform: scale(0) rotate(-25deg); opacity: 0; }
+  70%  { transform: scale(1.22) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+#islandAlert .ia-kind {
+  font-size: 8.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--sev); padding: 2px 7px; border-radius: 9999px;
+  background: color-mix(in srgb, var(--sev) 14%, transparent);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--sev) 40%, transparent);
+}
+#islandAlert .ia-count {
+  font-size: 8.5px; font-weight: 700; color: var(--t3);
+  font-variant-numeric: tabular-nums;
+}
+#islandAlert .ia-x {
+  width: 17px; height: 17px; flex: 0 0 auto; padding: 0;
+  display: grid; place-items: center;
+  border: none; border-radius: 50%; cursor: pointer;
+  background: var(--sf); color: var(--t3); font-size: 8px;
+  transition: transform .15s ease, color .15s ease, background .15s ease;
+}
+#islandAlert .ia-x:hover { transform: scale(1.14); color: var(--t1); background: color-mix(in srgb, var(--sev) 22%, var(--sf)); }
+
+/* Text rises in, staggered under the header. */
+#islandAlert .ia-title {
+  font-size: 12.5px; font-weight: 800; color: var(--t1); line-height: 1.35;
+  animation: iaRise .42s cubic-bezier(.22,.61,.36,1) both .16s;
+}
+#islandAlert .ia-body {
+  font-size: 10.5px; color: var(--t2); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  animation: iaRise .42s cubic-bezier(.22,.61,.36,1) both .22s;
+}
+@keyframes iaRise { from { opacity: 0; transform: translate3d(0,7px,0); } to { opacity: 1; transform: none; } }
+
+#islandAlert .ia-acts {
+  display: flex; gap: 6px; margin-top: 3px;
+  animation: iaRise .42s cubic-bezier(.22,.61,.36,1) both .28s;
+}
+#islandAlert .ia-btn {
+  border: none; border-radius: 9999px; padding: 6px 13px; cursor: pointer;
+  font-family: inherit; font-size: 10.5px; font-weight: 800;
+  background: var(--sev); color: #0b0b0d;
+  box-shadow: 0 3px 14px -4px var(--sev-glow);
+  transition: transform .14s ease, filter .14s ease;
+}
+#islandAlert .ia-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+#islandAlert .ia-btn:active { transform: translateY(0) scale(.96); }
+#islandAlert .ia-btn.ghost {
+  background: var(--sf); color: var(--t2);
+  box-shadow: inset 0 0 0 1px var(--bd);
+}
+#islandAlert .ia-btn.ghost:hover { color: var(--t1); }
+
+/* Life bar — the alert's remaining dwell time, pausable on hover. */
+#islandAlert .ia-life {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: color-mix(in srgb, var(--t3) 18%, transparent);
+}
+#islandAlert .ia-life > i {
+  display: block; height: 100%; width: 100%; transform-origin: left;
+  background: linear-gradient(90deg, var(--sev), color-mix(in srgb, var(--sev) 45%, transparent));
+  box-shadow: 0 0 8px var(--sev-glow);
+}
+@keyframes iaDrain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+body.island-mode.alerting #islandAlert:hover .ia-life > i { animation-play-state: paused; }
+
+/* Incoming-alert jolt on the pill, just before it morphs. */
+#islandPill.ia-knock { animation: iaKnock .34s cubic-bezier(.3,1.4,.4,1) both; }
+@keyframes iaKnock {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06, .9); }
+  70%  { transform: scale(.98, 1.04); }
+  100% { transform: scale(1); }
+}
+
+/* ── Approval prompts ─────────────────────────────────────────────────────
+   An approval is not a passing alert: the agent is BLOCKED. So the card has no
+   life bar, doesn't auto-dismiss, and its options wrap to as many rows as needed. */
+#islandAlert .ia-opts { flex-wrap: wrap; gap: 5px; }
+#islandAlert .ia-opts .ia-btn {
+  font-size: 10px; padding: 5px 11px; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* "always / don't ask again" is the consequential one — warn rather than invite. */
+#islandAlert .ia-opts .ia-btn.sticky {
+  background: color-mix(in srgb, #ffc533 20%, transparent);
+  color: #ffc533;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #ffc533 40%, transparent);
+}
+#islandAlert .ia-opts .ia-btn.sticky:hover { background: color-mix(in srgb, #ffc533 30%, transparent); }
+/* Blocked agents get a steadier, more insistent rim than a transient alert. */
+body.island-mode.approving #islandRoot { animation: iaBreathe 1.7s ease-in-out infinite; }
+body.island-mode.approving #islandAlert .ia-life { display: none; }
+/* The window that's asking, shown small next to the kind chip. */
+body.island-mode.approving #islandAlert .ia-count {
+  font-size: 8px; opacity: .75; max-width: 190px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SAVINGS LEDGER — the before/after the island never showed.
+   A single bar whose filled part is what you actually spent and whose hatched
+   tail is what Terse cut. Reads as one sentence: would-have → actual → saved.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ilg { margin: 8px 2px 0; }
+
+.ilg-bar {
+  position: relative; display: flex; height: 7px; border-radius: 9999px;
+  overflow: hidden; background: color-mix(in srgb, var(--t3) 16%, transparent);
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,.06);
+}
+/* Actual spend — solid, the honest part of the bill. */
+.ilg-fill {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ac) 72%, #fff 8%), var(--ac));
+  box-shadow: 0 0 10px -2px var(--ac-glow);
+  transition: width .9s cubic-bezier(.22,.61,.36,1);
+}
+/* The removed slice — hatched so it reads as "not paid", not as more spend. */
+.ilg-cut {
+  position: relative; height: 100%; width: 0; display: flex; align-items: center; justify-content: center;
+  background-color: color-mix(in srgb, var(--ac) 26%, transparent);
+  background-image: repeating-linear-gradient(115deg,
+    color-mix(in srgb, var(--ac) 75%, transparent) 0 2px,
+    transparent 2px 5px);
+  transition: width .9s cubic-bezier(.22,.61,.36,1);
+}
+.ilg-cut-lbl {
+  font-size: 7px; font-weight: 900; letter-spacing: .3px;
+  color: var(--ac); text-shadow: 0 0 6px rgba(0,0,0,.9);
+  white-space: nowrap; opacity: 0; transition: opacity .4s ease .5s;
+}
+.ilg-cut.wide .ilg-cut-lbl { opacity: 1; }
+
+.ilg-row { display: flex; align-items: flex-end; gap: 8px; margin-top: 6px; }
+.ilg-col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ilg-right { margin-left: auto; align-items: flex-end; }
+.ilg-k { font-size: 7.5px; font-weight: 700; letter-spacing: .3px; color: var(--t3);
+         text-transform: uppercase; white-space: nowrap; }
+.ilg-v { font-size: 12px; font-weight: 800; color: var(--t1);
+         font-variant-numeric: tabular-nums; line-height: 1.1; }
+/* The counterfactual is struck through — it's the bill that never arrived. */
+.ilg-was { color: var(--t3); text-decoration: line-through;
+           text-decoration-color: color-mix(in srgb, var(--t3) 60%, transparent); }
+.ilg-good { color: var(--ac); font-size: 14px;
+             text-shadow: 0 0 16px var(--ac-glow); }
+.ilg-arrow { font-size: 10px; color: var(--t3); padding-bottom: 1px; }
+
+/* A value that just changed ticks up, so live savings feel live. */
+@keyframes ilgTick {
+  0%   { transform: translateY(0);   }
+  35%  { transform: translateY(-2px); }
+  100% { transform: translateY(0);   }
+}
+.ilg-v.bump { animation: ilgTick .42s cubic-bezier(.22,.61,.36,1); }
+body.island-mode.calm .ilg-v.bump { animation: none; }
+
+
+/* ── Permission prompt card ──────────────────────────────────────────────
+   Answering Claude Code's Allow/Deny from the island. The preview block is
+   the point of the card — approving a command you cannot see is worse than
+   switching to the terminal. */
+#islandPerm { padding: 10px 12px 11px; }
+#islandPerm[hidden] { display: none; }
+body.island-mode.permitting #islandPill,
+body.island-mode.permitting #islandCard { display: none; }
+
+/* The card is the same slab of glass as the pill, in EVERY theme — not a black
+   panel that happens to appear where the island was. The horizon material is
+   restated here rather than inherited because the permission card can come up
+   under any theme, and a decision this consequential should not look like a
+   different app's dialog. */
+body.island-mode.permitting {
+  /* Real glass, not a black panel. The readability comes from DARKENING THE
+     BACKDROP — brightness() inside backdrop-filter — rather than from piling on
+     alpha. That is the difference between the desktop showing through (you can
+     see your wallpaper's shapes and colour move behind the card) and a slab
+     that merely happens to sit where the island was. An earlier pass used 0.74
+     → 0.88 alpha and looked solid black, which is exactly what this avoids. */
+  background: linear-gradient(160deg, rgba(16,18,24,0.30), rgba(8,10,14,0.44));
+  backdrop-filter: blur(22px) saturate(1.5) brightness(0.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5) brightness(0.5);
+}
+body.island-mode.permitting #islandRoot {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.34),
+    inset 0 0 30px 8px rgba(255,255,255,0.045),
+    inset 0 -18px 40px -22px rgba(255,255,255,0.10),
+    0 0 0 1px rgba(255,255,255,0.14);
+}
+
+/* Type on glass: white or the island's own accent, never grey. Grey text was
+   legible on the opaque panel and stopped being legible the moment the desktop
+   showed through it. */
+.ip-head { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+.ip-badge { font-size: 8.5px; font-weight: 800; letter-spacing: .07em;
+  padding: 2px 6px; border-radius: 9999px; background: var(--ac); color: #0b0b0d; }
+.ip-tool { font-size: 12px; font-weight: 700; color: #fff; }
+.ip-cwd { font-size: 9.5px; color: rgba(255,255,255,0.78); margin-left: auto;
+  max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; }
+/* Context above the command: what the user asked, then what the agent said it
+   was doing. Read to make sense of the command, so it sits above it. */
+.ip-task { font-size: 10px; line-height: 1.45; color: rgba(255,255,255,0.82); margin-bottom: 5px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ip-task::before { content: '❝ '; color: var(--ac); }
+.ip-context { font-size: 10.5px; line-height: 1.5; color: #fff; margin-bottom: 7px;
+  padding-left: 8px; border-left: 2px solid var(--ac);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ip-preview { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; line-height: 1.5;
+  /* The command is the thing being judged, so it gets the highest contrast on
+     the card: white on a darkened well. The accent is reserved for the chrome
+     (badge, quote, rule) — as an accent it changes with the theme, and a
+     command you have to squint at is a command you approve blind. */
+  color: #fff; background: rgba(0,0,0,0.34); border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 9px; padding: 7px 9px; max-height: 92px; overflow: auto;
+  white-space: pre-wrap; word-break: break-all; margin-bottom: 9px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+.ip-actions { display: flex; gap: 6px; }
+.ip-btn { flex: 1; padding: 7px 8px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.22);
+  font-size: 11px; font-weight: 700; cursor: default; background: rgba(255,255,255,0.06); color: #fff;
+  transition: background .15s ease, color .15s ease, transform .15s ease; }
+.ip-btn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.13); }
+.ip-allow { background: var(--ac); color: #0b0b0d; border-color: transparent; }
+.ip-always { color: #fff; }
+.ip-deny { color: #ff9b9b; border-color: rgba(255,155,155,0.38); }
+
+/* Countdown to the terminal hand-off. Mirrors the alert layer's iaDrain so the
+   two timed cards read as the same mechanism. */
+/* The track is a white hairline, not the theme's border grey: on glass, grey on
+   grey leaves the bar with no visible end to drain towards. */
+.ip-life { height: 3px; border-radius: 9999px; background: rgba(255,255,255,0.18);
+  overflow: hidden; margin: 0 0 9px; }
+.ip-life > span { display: block; height: 100%; width: 100%;
+  background: var(--ac); transform-origin: left center; }
+.ip-life > span.run { animation: ipDrain 10s linear forwards; }
+@keyframes ipDrain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* ── Glass = rim only. No fill, no backdrop-filter. ────────────────────────
+   backdrop-filter does NOT see behind a transparent window on macOS — it only
+   blurs content inside the app (tauri#2827, #12804, #12437). So every blur here
+   was paying a full-card separable convolution per frame to produce nothing
+   visible, and the only thing actually dimming the desktop was the tint fill.
+   Remove both and the window is genuinely 100% clear, at zero GPU cost.
+
+   What still reads as glass is the EDGE: a bright hairline along the top, a
+   faint inner glow, one crisp outline. That is what the eye uses to infer a
+   pane of glass — not the fill. */
+
+body.island-mode,
+body.island-mode[data-theme="horizon"],
+[data-theme="horizon"] body.island-mode,
+#islandRoot {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#islandRoot {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.58),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.32),
+    inset 0 -16px 36px -22px rgba(255,255,255,0.12),
+    0 0 0 1px rgba(255,255,255,0.15),
+    0 14px 40px rgba(0,0,0,0.42) !important;
+}
+#islandRoot, #islandRoot span, #islandRoot b, #islandRoot div {
+  text-shadow: 0 0 1px rgba(0,0,0,.95), 0 1px 2px rgba(0,0,0,.85), 0 0 8px rgba(0,0,0,.5);
+}
+#islandRoot .ip-btn, #islandRoot button { text-shadow: 0 1px 1px rgba(0,0,0,.5); }
+
+/* ── Global: no backdrop-filter anywhere ───────────────────────────────────
+   On a transparent macOS window backdrop-filter cannot reach the desktop; it
+   only ever blurred content inside the app (tauri#2827, #12804, #12437). With
+   the panels now unfilled there IS no in-app content behind them, so every
+   remaining rule was a full-surface separable convolution per frame producing
+   an invisible result — the single largest avoidable GPU cost in the app.
+
+   Declared last and !important so it neutralises the rules above without having
+   to hunt each one down and risk missing a state (hover, expanded, peek).
+   Nothing else about those elements changes: fills, borders, fonts, layout and
+   every animation are exactly as they were. */
+*, *::before, *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}

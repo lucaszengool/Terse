@@ -1,0 +1,72 @@
+/* WebView2 renders every scrollbar and form control the ::-webkit-scrollbar
+   rules don't match in LIGHT mode unless this is declared — classic silver
+   #C0C0C0 widgets on a dark page. macOS happened to default to the look we
+   wanted, so this was never needed there. */
+:root { color-scheme: dark; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Guided sidebar tour — spotlight coach marks over the left nav.
+   The dim is produced by a huge box-shadow spread on the hole element,
+   so the highlighted buttons show through at full fidelity.
+   ══════════════════════════════════════════════════════════════════ */
+#tourRoot { position: fixed; inset: 0; z-index: 9600; display: none; }
+#tourRoot.show { display: block; }
+
+.tour-hole { position: absolute; border-radius: 14px; pointer-events: none;
+  box-shadow: 0 0 0 9999px color-mix(in srgb, var(--bg) 74%, transparent),
+              0 0 0 2px color-mix(in srgb, var(--ac) 70%, transparent),
+              0 0 0 7px color-mix(in srgb, var(--ac) 16%, transparent);
+  transition: top .38s var(--ease), left .38s var(--ease),
+              width .38s var(--ease), height .38s var(--ease); }
+
+/* Catches clicks so the app underneath can't be operated mid-tour. */
+.tour-catch { position: absolute; inset: 0; }
+
+.tour-card { position: absolute; width: 302px; background: var(--sf); color: var(--t1);
+  border: 1px solid var(--bd); border-radius: var(--r, 18px); padding: 15px 16px 13px;
+  box-shadow: inset 0 1px 0 var(--hl), var(--shadow-lg);
+  transition: top .38s var(--ease), left .38s var(--ease); }
+.tour-card::before { content: ''; position: absolute; left: -6px; top: var(--arrow, 28px);
+  width: 11px; height: 11px; background: var(--sf); border-left: 1px solid var(--bd);
+  border-bottom: 1px solid var(--bd); transform: rotate(45deg); border-radius: 0 0 0 3px; }
+
+.tour-step { font-size: 8.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ac); }
+.tour-title { font-size: 14.5px; font-weight: 800; letter-spacing: -.015em; margin-top: 5px; line-height: 1.3; }
+.tour-sub { font-size: 11px; color: var(--t2); line-height: 1.55; margin-top: 5px; }
+
+.tour-list { margin-top: 11px; display: flex; flex-direction: column; gap: 8px; }
+.tour-row { display: flex; gap: 9px; align-items: flex-start; }
+.tour-ic { width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0; display: flex;
+  align-items: center; justify-content: center; font-size: 11px; background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--bd); }
+.tour-rt { flex: 1; min-width: 0; }
+.tour-rn { font-size: 11.5px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
+.tour-rn .pro { font-size: 7.5px; font-weight: 800; letter-spacing: .06em; padding: 1px 5px;
+  border-radius: 9999px; color: var(--btn-t); background: var(--btn); }
+.tour-rd { font-size: 10.5px; color: var(--t3); line-height: 1.45; margin-top: 1px; }
+
+.tour-foot { display: flex; align-items: center; gap: 8px; margin-top: 14px;
+  padding-top: 11px; border-top: 1px solid var(--bd); }
+.tour-dots { display: flex; gap: 4px; flex: 1; }
+.tour-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--bdl); transition: all .3s var(--ease); }
+.tour-dot.on { width: 15px; border-radius: 3px; background: var(--ac); }
+.tour-btn { border: none; border-radius: 9px; font-size: 11px; font-weight: 800; padding: 7px 14px;
+  cursor: pointer; font-family: inherit; color: var(--btn-t);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--btn) 88%, #fff 12%), var(--btn));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), var(--shadow-sm);
+  transition: transform .15s var(--ease); }
+.tour-btn:hover { transform: translateY(-1px); }
+.tour-btn.ghost { background: transparent; color: var(--t3); border: 1px solid var(--bd); box-shadow: none; }
+.tour-btn.ghost:hover { color: var(--t1); border-color: var(--bdl); }
+.tour-skip { position: absolute; top: 14px; right: 16px; border: none; background: none;
+  font-family: inherit; font-size: 10.5px; font-weight: 700; color: var(--t3); cursor: pointer; }
+.tour-skip:hover { color: var(--t1); }
+
+/* Sidebar "replay the guide" affordance, sitting in the brand row. */
+#sbHelp { -webkit-app-region: no-drag; margin-left: auto; width: 21px; height: 21px; flex-shrink: 0;
+  border: 1px solid var(--bd); border-radius: 50%; background: var(--sf); color: var(--t3);
+  font-family: inherit; font-size: 11px; font-weight: 800; cursor: pointer; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s, transform .15s var(--spring); }
+#sbHelp:hover { background: var(--btn); color: var(--btn-t); border-color: transparent; transform: scale(1.12); }

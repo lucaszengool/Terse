@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="color-scheme" content="dark">
+  <meta charset="UTF-8">
+  <title>Terse Live Wallpaper</title>
+  <script type="importmap">
+  { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/jsm/" } }
+  </script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;width:100%;overflow:hidden;background:#05060a}
+    #stage{position:fixed;inset:0;display:block;width:100vw;height:100vh}
+    #panel{position:fixed;left:30px;bottom:30px;padding:15px 20px;border-radius:18px;
+      background:rgba(10,12,20,.30);backdrop-filter:blur(18px) saturate(1.2);
+      -webkit-backdrop-filter:blur(18px) saturate(1.2);border:1px solid rgba(255,255,255,.11);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 12px 44px rgba(0,0,0,.45);
+      color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';
+      pointer-events:none;user-select:none;min-width:230px;transition:opacity .4s}
+    #panel.off{opacity:0}
+    #panel .brand{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:800;
+      letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+    #panel .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent,#e146eb);
+      box-shadow:0 0 9px var(--accent,#e146eb)}
+    #panel .big{font-size:38px;font-weight:850;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+      margin-top:7px;line-height:1;text-shadow:0 0 22px var(--accent,#e146eb)}
+    #panel .sub{font-size:11px;color:rgba(255,255,255,.68);margin-top:6px;font-variant-numeric:tabular-nums}
+    #panel .rate{color:var(--accent,#e146eb);font-weight:800}
+    /* richer HUD sections — same glass aesthetic */
+    #panel .divide{height:1px;margin:12px -2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent)}
+    #panel .krow{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+    #panel .klab{font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+    #panel .kval{font-size:15px;font-weight:850;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+    #panel .kval .pct{font-size:11px;font-weight:800;color:var(--accent,#e146eb);margin-left:5px}
+    #panel .kval.saved{color:#6ee7a0}
+    #panel .agents{margin-top:9px;display:flex;flex-direction:column;gap:7px}
+    #panel .ag{display:flex;align-items:center;gap:8px;font-size:11px}
+    #panel .ag .ic{width:16px;text-align:center;flex-shrink:0;font-size:12px}
+    #panel .ag .nm{flex:1;min-width:0;font-weight:700;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #panel .ag .rt{color:var(--accent,#e146eb);font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0}
+    #panel .ag .dotlive{width:6px;height:6px;border-radius:50%;background:#6ee7a0;flex-shrink:0;
+      box-shadow:0 0 7px #6ee7a0;animation:blink 1.8s ease-in-out infinite}
+    #panel .empty{font-size:10.5px;color:rgba(255,255,255,.4);margin-top:8px;font-style:italic}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div id="panel">
+    <div class="brand"><span class="dot"></span>Terse · Live</div>
+    <div class="big" id="pTokens">0</div>
+    <div class="sub"><span class="rate" id="pRate">0</span> tok/min · <span id="pTheme">neon</span></div>
+
+    <div class="divide"></div>
+    <div class="krow">
+      <span class="klab">Saved by Terse 优化</span>
+      <span class="kval saved"><span id="pSaved">0</span><span class="pct" id="pPct">0%</span></span>
+    </div>
+
+    <div class="divide"></div>
+    <div class="krow">
+      <span class="klab">Agents · <span id="pAgentCount">0</span> active</span>
+    </div>
+    <div class="agents" id="pAgents"></div>
+    <div class="empty" id="pAgentsEmpty">No agents connected</div>
+  </div>
+
+  <!-- ── Room layer ─────────────────────────────────────────────────────────
+       Everything here is display:none until this machine is actually in a room.
+       A solo wallpaper must be byte-for-byte what it was: no roster, no chat
+       box, no timer, no connection. -->
+  <div id="roomRoster">
+    <div class="rr-head"><span class="rr-dot"></span><span id="rrName">Room</span><span id="rrCount"></span></div>
+    <div id="rrList"></div>
+  </div>
+
+  <div id="roomChat">
+    <div id="rcLog"></div>
+    <div class="rc-row">
+      <button id="rcEmoji" title="Emoji">☺</button>
+      <input id="rcInput" placeholder="Message the room…" maxlength="2000" autocomplete="off">
+      <button id="rcSend">Send</button>
+    </div>
+    <div id="rcEmojiPad"></div>
+  </div>
+
+  <style>
+    /* The room UI is glass on top of the field: it must read over a moving
+       particle background without hiding it, so everything is translucent and
+       the text carries its own shadow rather than a solid plate. */
+    #roomRoster, #roomChat {
+      position: fixed; z-index: 6; display: none;
+      font: 12px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", system-ui, sans-serif;
+      color: rgba(255,255,255,.92); text-shadow: 0 1px 3px rgba(0,0,0,.75);
+      background: rgba(12,14,18,.42); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,.14); border-radius: 14px;
+    }
+    #roomRoster { top: 22px; right: 22px; width: 208px; padding: 12px 13px; }
+    .rr-head { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 11px;
+      letter-spacing: .06em; text-transform: uppercase; opacity: .82; margin-bottom: 9px }
+    .rr-dot { width: 7px; height: 7px; border-radius: 50%; background: #C9F03D; flex: none }
+    #rrCount { margin-left: auto; opacity: .6; font-weight: 700 }
+    .rr-row { display: flex; align-items: center; gap: 8px; padding: 4px 0 }
+    .rr-swatch { width: 9px; height: 9px; border-radius: 50%; flex: none }
+    .rr-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .rr-row.off .rr-name, .rr-row.off .rr-swatch { opacity: .38 }
+    .rr-add { border: 1px solid rgba(255,255,255,.22); background: transparent; color: inherit;
+      border-radius: 999px; font-size: 10px; font-weight: 700; padding: 1px 7px; cursor: pointer; flex: none }
+    .rr-add[disabled] { opacity: .45; cursor: default }
+
+    #roomChat { bottom: 22px; right: 22px; width: 300px; padding: 10px }
+    #rcLog { max-height: 190px; overflow-y: auto; margin-bottom: 8px; padding-right: 2px }
+    #rcLog:empty { display: none }
+    .rc-msg { margin: 3px 0; word-break: break-word }
+    .rc-who { font-weight: 800 }
+    .rc-msg img { max-width: 100%; border-radius: 8px; margin-top: 4px; display: block }
+    .rc-row { display: flex; gap: 6px; align-items: center }
+    #rcInput { flex: 1; min-width: 0; background: rgba(0,0,0,.32); border: 1px solid rgba(255,255,255,.16);
+      border-radius: 9px; padding: 7px 9px; color: #fff; font: inherit; outline: none }
+    #rcInput::placeholder { color: rgba(255,255,255,.42) }
+    #rcEmoji, #rcSend { border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06);
+      color: inherit; border-radius: 9px; padding: 7px 10px; font: inherit; font-weight: 700; cursor: pointer; flex: none }
+    #rcEmojiPad { display: none; flex-wrap: wrap; gap: 3px; margin-top: 7px; max-height: 104px; overflow-y: auto }
+    #rcEmojiPad button { border: none; background: transparent; font-size: 17px; line-height: 1;
+      padding: 3px; cursor: pointer; border-radius: 6px }
+    #rcEmojiPad button:hover { background: rgba(255,255,255,.12) }
+  </style>
+
+  <script src="tauri-bridge.js"></script>
+  <script src="roomqueue.js"></script>
+  <script src="rooms.js"></script>
+  <script type="module">
+    import TokenWallpaper3D from './token-wallpaper-3d.js';
+    import MineradioWallpaper from './mineradio-wallpaper.js';
+    const T = window.terse;
+    // 两个引擎 API 完全一致,所以下面的轮询/统计代码一行都不用分叉。
+    //   mineradio  = 用户自己的真桌面壁纸 + Mineradio 粒子(默认)
+    //   topography = 音域回响光柱地形(原引擎)
+    // 'cinematic' is the Pro tier of the mineradio engine, not a separate
+    // renderer — it was missing from this map, so picking Pro silently fell
+    // back to the free engine and the desktop looked identical.
+    const ENGINES = { mineradio: MineradioWallpaper, cinematic: MineradioWallpaper,
+                      topography: TokenWallpaper3D };
+    const engineOf = c => ENGINES[c && c.engine] || MineradioWallpaper;
+    const canvas = document.getElementById('stage');
+    const panel = document.getElementById('panel');
+    const ACCENTS = { indigo:'#8b6bff', ocean:'#3aa0ff', ice:'#7fe9ff', emerald:'#40e0a0',
+      gold:'#ffcf5a', amber:'#ff9f43', blood:'#ff5a5a', coral:'#ff7a9c', neon:'#e146eb', mono:'#e8e8f0' };
+
+    let wp = null, lastTokens = null, cfg = { engine:'mineradio', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
+    /** null = not checked yet (treat as entitled), true/false = a definite answer.
+     *  Only an explicit false downgrades the field — see mountEngine. */
+    let proOK = null;
+    /** Same entitlement rule the control panel uses, so the two can never
+     *  disagree about what "Pro" means: an active or trialing subscription on a
+     *  tier that is neither empty nor 'expired'. */
+    async function refreshEntitlement(){
+      try {
+        const lic = await (T.getLicense ? T.getLicense() : null);
+        if (!lic) return;                       // no command → leave as-is
+        const tier = ((lic.tier) || '').toLowerCase();
+        const st = ((lic.status) || '').toLowerCase();
+        proOK = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
+      } catch (e) { /* offline → leave proOK alone, fail open */ }
+    }
+    const rateBuf = [];
+
+    function applyAccent(theme){
+      document.documentElement.style.setProperty('--accent', ACCENTS[theme] || ACCENTS.neon);
+      document.getElementById('pTheme').textContent = theme;
+    }
+    function fmt(n){ n=+n||0; if(n>=1e6)return (n/1e6).toFixed(2)+'M'; if(n>=1e3)return (n/1e3).toFixed(1)+'K'; return String(n|0); }
+
+    /** 换引擎:整台拆掉重建(两者的 WebGL 上下文/几何完全不同,没法热切) */
+    function mountEngine(){
+      if (wp) { try { wp.dispose(); } catch(e){} wp = null; }
+      // mineradio 会把用户的真壁纸铺到 body 上;切回音域回响要清掉,否则底图还留着
+      document.body.style.background = '#05060a';
+      const E = engineOf(cfg);
+      // pro MUST be forwarded here: without it the engine builds its free
+      // field no matter what the user picked in the control panel.
+      //
+      // But `cfg.engine === 'cinematic'` alone is not entitlement. The control
+      // panel checks the licence at the moment you click, and never again — so a
+      // subscription that lapses leaves 'cinematic' sitting in wallpaper.json
+      // and the Pro field keeps rendering forever, as does hand-editing that
+      // file. entitled() re-checks here, where the pixels actually get drawn.
+      //
+      // Deliberately fails OPEN: a thrown call (offline, backend hiccup) keeps
+      // whatever the user already had. The wallpaper is persistent, unlike the
+      // settings panel that can fail closed for a moment without anyone losing
+      // anything — downgrading a paying user's desktop over a dropped request
+      // would be the worse error.
+      wp = new E(canvas, { theme: cfg.theme, quality: cfg.quality, angle: cfg.angle,
+                           intensity: cfg.intensity,
+                           pro: cfg.engine === 'cinematic' && proOK !== false });
+      window.wp = wp;   // dev aid: drive from console / preview harness
+      wp.start();
+    }
+
+    function applyConfig(c){
+      const prevEngine = cfg.engine;
+      cfg = Object.assign(cfg, c || {});
+      if (cfg.engine !== prevEngine) { mountEngine(); applyAccent(cfg.theme);
+        panel.classList.toggle('off', cfg.showPanel === false); return; }
+      if (!wp) return;
+      wp.setTheme(cfg.theme); wp.setQuality(cfg.quality|0); wp.setAngle(cfg.angle|0);
+      wp.setIntensity(+cfg.intensity || 1);
+      applyAccent(cfg.theme);
+      panel.classList.toggle('off', cfg.showPanel === false);
+      if (cfg.showPanel === false) { wp.setAgents([]); wp.setStageItems([]); wp.setAgentLog && wp.setAgentLog(null); } // clear in-scene overlays
+    }
+    function pulseForDelta(d){
+      if (d <= 0) return;
+      const s = Math.min(1.8, 0.12 + Math.log10(1 + d) * 0.42);
+      if (!wp) return;
+      wp.pulse(s);
+      if (cfg.showPanel !== false) wp.floatToken(d, 'consume'); // rising "+N" over the columns
+    }
+    async function poll(){
+      try {
+        const total = await T.getTokenPulse();
+        if (lastTokens === null) lastTokens = total;
+        const d = Math.max(0, total - lastTokens);
+        lastTokens = total;
+        if (d > 0){
+          pulseForDelta(d);
+          const now = Date.now(); rateBuf.push({ t: now, d });
+          while (rateBuf.length && now - rateBuf[0].t > 60000) rateBuf.shift();
+        }
+        document.getElementById('pTokens').textContent = fmt(total);
+        document.getElementById('pRate').textContent = fmt(rateBuf.reduce((a,b)=>a+b.d,0));
+      } catch(e){}
+    }
+
+    // Slower poll for the richer HUD: tokens Terse optimized + live agent activity, feeding BOTH the
+    // corner panel and the in-scene overlays (rising savings, hovering agent tags, centre stage).
+    const AGENT_ICON = { claude:'✳️', 'claude-code':'✳️', cursor:'▹', codex:'◆', copilot:'⧉', windsurf:'≈', gemini:'✦', hermes:'⬡', 'deepseek-harness':'🐋', deepseek:'🐋' };
+    const shortLog = t => (t||'').replace(/\s+/g,' ').trim().slice(0,46);
+    // "Saveable" = the concrete waste Terse could trim from an agent's REAL traffic (agent traffic
+    // never credits tokens_saved, so today's saved is ~0 — this is the honest, non-zero number).
+    function saveableOf(a){
+      return (+a.rereadWaste||0)
+        + ((a.toolCachePotential && +a.toolCachePotential.tokensWasted)||0)
+        + ((a.toolResultStats && +a.toolResultStats.compressibleTokens)||0)
+        + ((a.optimizationStats && +a.optimizationStats.potentialSavings)||0);
+    }
+    // Map one recent agent message → a log line (matches the Dynamic Island's step vocabulary).
+    function fmtTok(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(n); }
+    function msgToLine(m){
+      const name = (m.toolName||m.tool_name||'').toString();
+      if (m.type==='tool_use')    return { kind:'tool',   ico:'⚙', label: name||'tool',                    tok:+m.tokens||0 };
+      if (m.type==='tool_result') return { kind:'result', ico:'←', label: (name? name+' → result':'result'), tok:+m.tokens||0 };
+      if (m.role==='assistant')   return { kind:'asst',   ico:'◆', label: shortLog(m.text)||'responding',   tok:+m.tokens||0 };
+      return                             { kind:'user',   ico:'→', label: shortLog(m.text)||'prompt',        tok:+m.tokens||0 };
+    }
+    let lastSaved = null;
+    async function pollMeta(){
+      const show = cfg.showPanel !== false;
+      let saved = 0, pct = 0, active = [], sessions = [];
+      // Tokens saved by Terse (today) — captured here, but the DISPLAYED value falls back to agent
+      // "saveable" below (see savedShown) since agent traffic doesn't credit tokens_saved.
+      try {
+        const s = await T.getStats('day'); // 'day' = today; 'today' falls through to all-time
+        const sum = (s && (s.summary || s)) || {};
+        saved = +sum.tokensSaved || 0;
+        pct = +sum.percentSaved || (sum.tokensIn ? Math.round(saved / sum.tokensIn * 100) : 0);
+      } catch(e){}
+      // Live agents
+      try {
+        const list = (await T.getAgentSessions()) || [];
+        sessions = list;   // needed after this try block (log groups)
+        active = list.filter(a => a && a.connected !== false);
+        document.getElementById('pAgentCount').textContent = active.length;
+        const wrap = document.getElementById('pAgents');
+        const empty = document.getElementById('pAgentsEmpty');
+        empty.style.display = active.length ? 'none' : '';
+        wrap.innerHTML = active.slice(0, 4).map(a => {
+          const ic = a.agentIcon || AGENT_ICON[(a.agentType||'').toLowerCase()] || '🤖';
+          const nm = a.agentName || a.agentType || 'Agent';
+          const rt = (+a.burnRate || 0) > 0 ? fmt(a.burnRate) + '/min' : fmt(a.totalTokens || 0);
+          return `<div class="ag"><span class="dotlive"></span><span class="ic">${ic}</span>`+
+                 `<span class="nm">${nm}</span><span class="rt">${rt}</span></div>`;
+        }).join('');
+      } catch(e){}
+
+      // Saved fallback: show today's real saved OR the aggregate agent "saveable" (whichever is
+      // larger) so the number is meaningful instead of a perpetual 0.
+      const saveableAgg = active.reduce((s,a) => s + saveableOf(a), 0);
+      const totalAgentTok = active.reduce((s,a) => s + (+a.totalTokens || 0), 0);
+      const savedShown = Math.max(saved, saveableAgg);
+      const pctShown = saved > 0 ? pct : (totalAgentTok > 0 ? Math.round(saveableAgg / totalAgentTok * 100) : 0);
+      document.getElementById('pSaved').textContent = fmt(savedShown);
+      document.getElementById('pPct').textContent = pctShown + '%';
+      if (lastSaved !== null && show && wp) { const ds = savedShown - lastSaved; if (ds > 0) wp.floatToken(ds, 'saved'); }
+      lastSaved = savedShown;
+
+      if (!wp) return;
+      // Drive the field's 律动 from REAL agent activity (aggregate burn rate) — always, even when the
+      // stats panel is hidden. No agents / all idle → calm field; agents burning tokens → it dances.
+      const totalBurn = active.reduce((s,a) => s + (+a.burnRate || 0), 0);
+      const activity = Math.min(1, (active.length ? 0.08 : 0) + totalBurn / 4500);
+      wp.setActivity(activity);
+
+      // Feed the in-scene overlays (or clear them when the panel is hidden).
+      if (!show) { wp.setAgents([]); wp.setStageItems([]); wp.setAgentLog(null); return; }
+      // Hovering agent tags over the columns.
+      wp.setAgents(active.slice(0, 5).map(a => ({
+        key: a.agentType || a.agentName,
+        name: a.agentName || a.agentType || 'Agent',
+        icon: a.agentIcon || AGENT_ICON[(a.agentType||'').toLowerCase()] || '🤖',
+        rate: (+a.burnRate || 0) > 0 ? a.burnRate : null,
+      })));
+      // Centre "now playing" stage — rotates consumed → saveable → each active agent.
+      const stage = [
+        { k:'Today · consumed', v: fmt(lastTokens || 0), u:'tokens' },
+        { k:'Terse 可省 · saveable', v: fmt(savedShown), u: pctShown + '%', saved:true },
+      ];
+      active.slice(0, 3).forEach(a => stage.push({
+        ic: a.agentIcon || AGENT_ICON[(a.agentType||'').toLowerCase()] || '🤖',
+        k: (a.agentName || a.agentType || 'Agent'),
+        v: fmt((+a.burnRate||0) > 0 ? a.burnRate : (a.totalTokens||0)),
+        u: (+a.burnRate||0) > 0 ? 'tok/min' : 'tokens',
+      }));
+      wp.setStageItems(stage);
+
+      // Live agent log — EACH active agent gets its own headed group of recent steps (detailed
+      // tool/result/text lines), busiest first, up to 3 agents.
+      // Source the log from ALL sessions, not just `active`. The island shows a
+      // last-known line whether or not a session is currently flagged
+      // connected; the wallpaper filtered on `connected !== false` first, so a
+      // session the island was happily displaying produced NOTHING here — the
+      // centre stayed empty even while the island scrolled its log.
+      const logGroups = (sessions || [])
+        .filter(a => a && (a.recentMessages||[]).length)
+        .sort((a,b) => (+b.burnRate||0) - (+a.burnRate||0))
+        .slice(0, 3)
+        .map(a => ({
+          name: a.agentName || a.agentType || 'Agent',
+          icon: a.agentIcon || AGENT_ICON[(a.agentType||'').toLowerCase()] || '🤖',
+          project: a.project ? String(a.project).split('/').filter(Boolean).pop() : '',
+          lines: (a.recentMessages||[]).map(msgToLine),
+        }));
+      // Fall back to facts we KNOW exist. recentMessages can be empty even for a
+      // busy session (the monitor only fills it once it has parsed transcript
+      // lines), and an empty centre reads as a broken feature. Everything here
+      // is still real session data — nothing is invented.
+      if (!logGroups.length && sessions.length) {
+        const s0 = sessions.slice().sort((a,b) => (+b.totalTokens||0) - (+a.totalTokens||0))[0];
+        if (s0) {
+          const bits = [];
+          if (s0.turns) bits.push(s0.turns + ' turns');
+          if (s0.totalTokens) bits.push(fmtTok(s0.totalTokens) + ' in');
+          if (s0.model) bits.push(String(s0.model));
+          logGroups.push({
+            name: s0.agentName || s0.agentType || 'Agent',
+            icon: s0.agentIcon || '🤖',
+            lines: [{ label: (s0.agentName || 'Agent') + ' · ' + (bits.join(' · ') || 'connected') }],
+          });
+        }
+      }
+      wp.setAgentLog(logGroups);
+      // Tee the same line into the room, if this machine is in one. The room
+      // layer installs the hook and throttles it; when there is no room the
+      // hook does not exist and this is a single undefined check.
+      if (window.__terseRoomPublish && logGroups.length) {
+        var l0 = (logGroups[0].lines || [])[0];
+        var txt = typeof l0 === 'string' ? l0 : (l0 && (l0.label || l0.text)) || '';
+        if (txt) window.__terseRoomPublish(txt);
+      }
+    }
+
+    async function boot(){
+      try { const c = await T.getWallpaperConfig(); if (c) cfg = Object.assign(cfg, c); } catch(e){}
+      // Before the first mount, so a lapsed subscription never gets one frame of
+      // the Pro field. Re-checked every 5 min: this window lives for days, and a
+      // subscription can start or end while it runs.
+      await refreshEntitlement();
+      mountEngine();
+      setInterval(async () => {
+        const was = proOK;
+        await refreshEntitlement();
+        if (was !== proOK && cfg.engine === 'cinematic') mountEngine();
+      }, 300000);
+      applyAccent(cfg.theme);
+      panel.classList.toggle('off', cfg.showPanel === false);
+      poll();
+      setInterval(poll, 650);
+      pollMeta();
+      setInterval(pollMeta, 2500);
+      // NB: no random ambient sparks — the field's motion comes only from real token flow (pulses on
+      // actual deltas) and agent activity (setActivity), so the 律动 always means something.
+      if (window.__TAURI__?.event?.listen){
+        window.__TAURI__.event.listen('wallpaper-config', ev => applyConfig(ev.payload || {}));
+      }
+      document.addEventListener('visibilitychange', () => { if (!wp) return; document.hidden ? wp.stop() : wp.start(); });
+      window.addEventListener('resize', () => wp && wp.resize());
+    }
+    boot();
+
+    /* ── Glyphs as buttons ──────────────────────────────────────────────────
+       The field draws live data — the agent that is working, what this session
+       has cost, what Terse has saved — and until now it was a readout you could
+       only look at. The renderer already knows each glyph's centre and box
+       (the shader needs them to form the letters), so hit-testing is free and
+       the wallpaper becomes the fastest launcher on the machine: the thing you
+       want to open is already on screen, you just could not press it.
+
+       ARMED, not always-on. The wallpaper lives at desktop level with
+       setIgnoresMouseEvents:YES because it must never swallow clicks meant for
+       the desktop or its icons. ⌘⇧W flips that for a few seconds; Esc, a click,
+       or the timeout puts it straight back. That way the default behaviour of a
+       wallpaper is untouched and the data on it is still reachable. */
+    (function glyphButtons() {
+      var T = window.terse, core = window.__TAURI__ && window.__TAURI__.core;
+      if (!core) return;
+      var armed = false, armTimer = 0, hint = null, lastHover = null;
+
+      function setArmed(on) {
+        if (armed === on) return;
+        armed = on;
+        core.invoke('wallpaper_set_interactive', { on: on }).catch(function () {});
+        document.body.style.cursor = on ? 'default' : 'none';
+        showHint(on);
+        clearTimeout(armTimer);
+        // Safety net only. Hover normally disarms as soon as the pointer leaves
+        // the glyph, but if the cursor feed ever stalls, an armed wallpaper
+        // would keep eating desktop clicks — so it always expires on its own.
+        if (on) armTimer = setTimeout(function () { setArmed(false); }, 8000);
+        if (!on && wp) wp.setHover(null);
+      }
+
+      function showHint(on) {
+        if (!hint) {
+          hint = document.createElement('div');
+          hint.style.cssText = 'position:fixed;left:50%;bottom:38px;transform:translateX(-50%);' +
+            'padding:7px 14px;border-radius:9999px;font:600 12px -apple-system,sans-serif;' +
+            'color:#0B0B0D;background:#C9F03D;box-shadow:0 6px 24px rgba(0,0,0,.35);' +
+            'pointer-events:none;opacity:0;transition:opacity .18s;z-index:9';
+          document.body.appendChild(hint);
+        }
+        hint.textContent = '点击数据打开 · Click any number';
+        hint.style.opacity = (on && !lastHover) ? '1' : '0';
+      }
+
+      /* Auto-arm on hover.
+         A click-through window gets no mouse events, so the cursor position
+         arrives from the native side instead (NSEvent.mouseLocation, polled
+         while the wallpaper is visible). We hit-test that, and only ask to
+         become clickable when the pointer is really over a glyph — so the
+         wallpaper borrows the cursor for the width of a number and gives it
+         straight back. No shortcut to discover: hover a number, click it. */
+      if (window.__TAURI__.event) {
+        window.__TAURI__.event.listen('wallpaper-arm-toggle', function () { setArmed(!armed); });
+        window.__TAURI__.event.listen('wallpaper-cursor', function (ev) {
+          if (!wp || !wp.hitTest) return;
+          var pt = ev.payload || [];
+          // Cocoa is bottom-left origin and in points; the DOM is top-left.
+          var x = pt[0], y = (window.screen.height - pt[1]);
+          // The wallpaper covers the whole screen, so screen == client here.
+          var hit = wp.hitTest(x, y);
+          var g = hit && hit.glyph;
+          if (g !== lastHover) { lastHover = g; wp.setHover(g); }
+          if (g && !armed) setArmed(true);
+          else if (!g && armed) setArmed(false);
+        });
+      }
+      window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') setArmed(false);
+      });
+
+      window.addEventListener('mousemove', function (e) {
+        if (!armed || !wp || !wp.hitTest) return;
+        var hit = wp.hitTest(e.clientX, e.clientY);
+        var g = hit && hit.glyph;
+        if (g !== lastHover) { lastHover = g; wp.setHover(g); }
+        document.body.style.cursor = g ? 'pointer' : 'default';
+        if (armed) { clearTimeout(armTimer); armTimer = setTimeout(function () { setArmed(false); }, 6000); }
+      });
+
+      window.addEventListener('click', function (e) {
+        if (!armed || !wp || !wp.hitTest) return;
+        var hit = wp.hitTest(e.clientX, e.clientY);
+        if (!hit) { setArmed(false); return; }      // click on empty field = dismiss
+        var g = hit.glyph;
+        // Route by what the glyph IS. These are the same kinds the engine already
+        // tags for colour, so no new taxonomy is needed.
+        try {
+          if (g.kind === 'log') {
+            // A log line belongs to a specific agent — open its timeline.
+            if (T && T.navigateToHistory) T.navigateToHistory();
+            else if (T && T.showMainWindow) T.showMainWindow();
+          } else if (g.kind === 'saved' || g.kind === 'spent' || g.kind === 'cache') {
+            if (T && T.navigateToStats) T.navigateToStats();
+          } else if (g.kind === 'agents') {
+            if (T && T.navigateToCowork) T.navigateToCowork();
+          } else if (T && T.showMainWindow) {
+            T.showMainWindow();
+          }
+        } catch (err) { /* a dead link must never leave the wallpaper armed */ }
+        setArmed(false);
+      });
+    })();
+
+    /* ── Multiplayer: teammates' agents in the same field ───────────────────
+       Strictly opt-in and strictly additive. This block does nothing at all
+       unless the machine is in a team session: no connection is opened, no
+       timer runs, no peer glyph exists, and the wallpaper's look, cost and
+       behaviour are byte-for-byte what they are today for a solo user.
+
+       The connection itself is shared — one EventSource per machine, owned by
+       whichever window claims it, rebroadcast to the rest (see cowork-relay.js).
+       This window never opens its own stream; it only listens. */
+    (function peers() {
+      var TE = window.__TAURI__ && window.__TAURI__.event;
+      if (!TE || !TE.listen) return;
+      var roster = new Map();
+      var sessionOwner = new Map();   // session_id → display name
+
+      // Whether we are in a session at all is the app's decision, not the
+      // wallpaper's — it arrives as an event. Absent that, nothing below fires.
+      TE.listen('cowork-session', function (ev) {
+        var p = (ev && ev.payload) || {};
+        var members = Array.isArray(p.members) ? p.members : [];
+        roster = new Map(members.map(function (m) { return [String(m.id), m]; }));
+        if (wp && wp.setPeers) wp.setPeers(members);
+      });
+
+      TE.listen('cowork-peer', function (ev) {
+        if (!wp || !wp.peerLog || !roster.size) return;   // solo → ignore entirely
+        var m = (ev && ev.payload) || {};
+        // Never echo our own activity back into the field: it is already there
+        // through the local path, and a duplicate in a peer colour would read
+        // as a second person doing your work.
+        if (m.self) return;
+        // Use the server's REAL event shape, not an invented one. cowork.js has
+        // always emitted { type:'log', entry:{ session_id, role, kind, text } }
+        // and { type:'session', session:{ agent_name, device, ... } }; my first
+        // pass listened for a { text, peerId, name } shape that nothing sends,
+        // so no peer glyph could ever have appeared.
+        if (m.type === 'log' && m.entry && m.entry.text) {
+          var e2 = m.entry;
+          var who = sessionOwner.get(e2.session_id) || '';
+          wp.peerLog(e2.session_id, who, e2.text);
+        } else if (m.type === 'session' && m.session) {
+          // Remember which person each session belongs to, so a log line can be
+          // attributed without the server repeating the name on every entry.
+          var ss = m.session;
+          sessionOwner.set(ss.id, ss.agent_name || ss.device || '');
+        } else if (m.type === 'stat' && typeof m.activity === 'number') {
+          // Peer load nudges the field without printing a glyph — presence you
+          // feel rather than read.
+          wp.pulse(Math.min(0.6, 0.15 + m.activity * 0.45));
+        }
+      });
+    })();
+
+    /* ── Room: many people, one field ──────────────────────────────────────
+       Joined from the app; this window only renders what the room sends. If
+       localStorage holds no room, NOTHING below runs — no stream is opened, no
+       timer is registered, and the wallpaper behaves exactly as it does solo.
+
+       This window is the only one that opens the stream (see rooms.js), which
+       is also why the chat box lives here rather than in the main window: the
+       data is already here. */
+    (function room() {
+      var R = window.TerseRooms, Q = window.TerseRoomQueue;
+      if (!R || !Q || !R.inRoom()) return;
+
+      var roster = new Map();                 // memberId → member
+      var queue = new Q.RoomQueue();
+      var me = (R.state() || {}).memberId || null;
+      var rosterEl = document.getElementById('roomRoster');
+      var chatEl = document.getElementById('roomChat');
+      var listEl = document.getElementById('rrList');
+      var logEl = document.getElementById('rcLog');
+
+      rosterEl.style.display = 'block';
+      chatEl.style.display = 'block';
+
+      function esc(t) {
+        return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      // Colour comes from the ENGINE, so a person is the same colour in the
+      // roster, in the chat and in the particles. Two sources would drift.
+      function colourOf(id) {
+        try { return (wp && wp._peerColor) ? wp._peerColor(id) : '#C9F03D'; }
+        catch (e) { return '#C9F03D'; }
+      }
+      function nameOf(id) {
+        var m = roster.get(String(id));
+        return (m && (m.name || m.user_email)) || 'someone';
+      }
+
+      function drawRoster(members) {
+        roster = new Map(members.map(function (m) { return [String(m.member_id), m]; }));
+        document.getElementById('rrCount').textContent = members.length;
+        var st = R.state() || {};
+        document.getElementById('rrName').textContent = st.name || st.code || 'Room';
+        listEl.innerHTML = members.map(function (m) {
+          var id = String(m.member_id), mine = id === me;
+          var col = mine ? '#C9F03D' : colourOf(id);
+          // Adding a friend is offered only for people who are NOT already one
+          // and not yourself — joining a room deliberately does not befriend
+          // anyone, so this is the one place the two ideas meet.
+          var add = mine ? '' :
+            '<button class="rr-add" data-add="' + esc(id) + '" data-email="' + esc(m.user_email || '') + '">+</button>';
+          return '<div class="rr-row ' + (m.status === 'online' ? '' : 'off') + '">' +
+                 '<span class="rr-swatch" style="background:' + col + '"></span>' +
+                 '<span class="rr-name">' + esc(m.name || m.user_email || 'someone') +
+                 (mine ? ' <span style="opacity:.55">(you)</span>' : '') + '</span>' + add + '</div>';
+        }).join('');
+        // The engine paints peers by id, so hand it the same list.
+        if (wp && wp.setPeers) {
+          wp.setPeers(members.filter(function (m) { return String(m.member_id) !== me; })
+                             .map(function (m) { return { id: m.member_id, name: m.name || m.user_email || '' }; }));
+        }
+      }
+
+      listEl.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-add]');
+        if (!b) return;
+        b.disabled = true; b.textContent = '…';
+        R.requestFriend(b.getAttribute('data-add')).then(function (r) {
+          // Both sides asking is agreement, so the server may answer "accepted"
+          // rather than "pending" — say which, since they mean different things.
+          b.textContent = (r.friendship && r.friendship.status === 'accepted') ? '✓' : 'asked';
+        }, function (err) {
+          // The usual failure is "they are not signed in", which is information,
+          // not an error to swallow.
+          b.disabled = false; b.textContent = '+';
+          b.title = String(err && err.message || err);
+          chatNote(String(err && err.message || err));
+        });
+      });
+
+      /* A one-line system note in the chat log. Used for outcomes that belong to
+         the room but were not said by anyone in it. */
+      function chatNote(text) {
+        var row = document.createElement('div');
+        row.className = 'rc-msg';
+        row.style.opacity = '.65';
+        row.innerHTML = '<span class="rc-who" style="color:rgba(255,255,255,.6)">·</span> ' + esc(text);
+        logEl.appendChild(row);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function appendChat(m) {
+        var id = String(m.member_id);
+        var col = id === me ? '#C9F03D' : colourOf(id);
+        var row = document.createElement('div');
+        row.className = 'rc-msg';
+        row.innerHTML = '<span class="rc-who" style="color:' + col + '">' +
+          esc(m.name || nameOf(id)) + '</span> ' + esc(m.body || '') +
+          (m.image_url ? '<img src="' + esc(m.image_url) + '" alt="">' : '');
+        logEl.appendChild(row);
+        while (logEl.children.length > 60) logEl.removeChild(logEl.firstChild);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      /* The strip. take() decides WHAT is said; this decides how often, and the
+         rate is fixed — a fuller room is fairer, never faster. */
+      setInterval(function () {
+        var next = queue.take();
+        if (!next || !wp) return;
+        var id = next.memberId, who = nameOf(id);
+        if (next.kind === 'message') {
+          // A message must not be mistaken for an agent's output, so it is
+          // marked as speech before it ever reaches the particles.
+          if (wp.peerLog) wp.peerLog(id, who, '💬 ' + next.item);
+        } else if (wp.peerLog) {
+          wp.peerLog(id, who, next.item);
+        }
+      }, 2600);
+
+      var stop = R.connect({
+        onSnapshot: function (s) {
+          me = s.you || me;
+          drawRoster(s.members || []);
+          (s.messages || []).forEach(appendChat);
+        },
+        onRoster: function (members) {
+          var seen = new Set(members.map(function (m) { return String(m.member_id); }));
+          roster.forEach(function (_v, id) { if (!seen.has(id)) queue.drop(id); });
+          drawRoster(members);
+        },
+        onLog: function (e) {
+          if (String(e.member_id) === me) return;   // our own lines already play locally
+          queue.pushLog(e.member_id, e.text);
+        },
+        onMessage: function (m) {
+          appendChat(m);
+          queue.pushMessage(m.member_id, m.body || '[image]');
+        },
+        onFriend: function (edge) {
+          // Announced in the room because that is where it happened; the app's
+          // Friends page owns the durable list.
+          var who = edge.b_name || edge.a_name || 'someone';
+          chatNote(edge.status === 'accepted'
+            ? who + ' and ' + (edge.a_name || 'someone') + ' are now friends'
+            : who + ' was asked to connect');
+        },
+        onClosed: function () {
+          rosterEl.style.display = 'none';
+          chatEl.style.display = 'none';
+        },
+      });
+      window.addEventListener('beforeunload', stop);
+
+      // ── Composer ──
+      var input = document.getElementById('rcInput');
+      function send() {
+        var v = (input.value || '').trim();
+        if (!v) return;
+        input.value = '';
+        R.sendMessage(v).catch(function (err) {
+          // Put the text back rather than losing what they typed.
+          input.value = v;
+          console.error('[room] send failed', err);
+        });
+      }
+      document.getElementById('rcSend').addEventListener('click', send);
+      input.addEventListener('keydown', function (e) { if (e.key === 'Enter') send(); });
+
+      var pad = document.getElementById('rcEmojiPad');
+      var EMOJI = ('😀😂🥹😍🤔😅😭😡👍👎🙏👏🎉🔥💯✅❌⚡️🚀🐛💡📌🕐☕️🍕🌙⭐️❤️🧠🤖').match(/./gu) || [];
+      pad.innerHTML = EMOJI.map(function (e) { return '<button type="button">' + e + '</button>'; }).join('');
+      document.getElementById('rcEmoji').addEventListener('click', function () {
+        pad.style.display = pad.style.display === 'flex' ? 'none' : 'flex';
+      });
+      pad.addEventListener('click', function (e) {
+        if (e.target.tagName !== 'BUTTON') return;
+        input.value += e.target.textContent;
+        input.focus();
+      });
+
+      /* Publish OUR agent's lines to the room. The wallpaper already receives
+         them for the local field, so this is a tee, not a second source —
+         throttled, because the room is a place to be seen working, not a log
+         shipper. */
+      var lastPub = 0, lastText = '';
+      window.__terseRoomPublish = function (text) {
+        var t = String(text || '').trim();
+        if (!t || t === lastText) return;
+        var now = Date.now();
+        if (now - lastPub < 3000) return;
+        lastPub = now; lastText = t;
+        R.publishLog(t.slice(0, 300), 'log');
+      };
+    })();
+  </script>
+</body>
+</html>

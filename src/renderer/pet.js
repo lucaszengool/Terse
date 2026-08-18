@@ -1,9 +1,27 @@
 // Floating pet companion logic
-(function () {
+(function boot() {
   'use strict';
   const T = window.terse;
   const TP = window.TERSE_PALS;
-  if (!T || !TP) { console.warn('[pet] terse or pals not ready'); return; }
+  // Wait for the dependencies instead of giving up permanently.
+  //
+  // pet.html's loader chains the three scripts with `s.onerror = resolve`, so a
+  // dependency that fails to load is swallowed silently and pet.js still runs.
+  // The old code then hit this guard, returned, and the window stayed blank
+  // forever — "equipped, but no pet" with nothing in the log. tauri-bridge.js
+  // also only assigns window.terse on its LAST line, so anything that throws
+  // while building that object leaves us here too.
+  //
+  // Retrying costs nothing and recovers from every one of those cases; only a
+  // genuinely never-arriving dependency reaches the error, which is now
+  // console.error so the bridge forwards it to the Rust log where it is visible.
+  if (!T || !TP) {
+    boot._tries = (boot._tries || 0) + 1;
+    if (boot._tries < 200) { setTimeout(boot, 50); return; }   // ~10s
+    console.error('[pet] giving up — terse=' + (!!window.terse) +
+                  ' TERSE_PALS=' + (!!window.TERSE_PALS) + '; pet cannot render');
+    return;
+  }
 
   const stage = document.getElementById('stage');
   const host = document.getElementById('pet-host');

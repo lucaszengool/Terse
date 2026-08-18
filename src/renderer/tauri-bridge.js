@@ -15,6 +15,27 @@ if (window.__TAURI__) {
   // Registry of JS-side listeners (same API as Electron's ipcRenderer.on)
   const _listeners = {};
 
+  // ── Doctor toggles → live optimizer ──
+  // The Doctor's fixes write ~/.terse/doctor.json in Rust; the optimizer runs
+  // here. This is the bridge between them, so "Enable cache-safe mode" actually
+  // changes how the next prompt is optimized instead of just clearing a card.
+  function syncDoctorSettings() {
+    if (!window._terseOptimizer) return;
+    invoke('get_doctor_settings').then((s) => {
+      if (!s || !window._terseOptimizer) return;
+      window._terseOptimizer.updateSettings({
+        cacheSafeMode: !!s.cacheSafeMode,
+        responseCache: !!s.responseCache,
+        compression: !!s.compression,
+      });
+    }).catch(() => { /* no settings yet → optimizer keeps its defaults */ });
+  }
+  // The optimizer bundle loads after this file, so wait for it to appear.
+  (function waitForOptimizer(tries) {
+    if (window._terseOptimizer) { syncDoctorSettings(); return; }
+    if ((tries || 0) < 100) setTimeout(() => waitForOptimizer((tries || 0) + 1), 60);
+  })(0);
+
   // Dispatch an event locally to all JS listeners registered via T.on()
   function _dispatch(channel, payload) {
     if (_listeners[channel]) {
@@ -85,6 +106,22 @@ if (window.__TAURI__) {
     resizePopup: (h) => invoke('resize_popup', { h }),
     movePopupBy: (dx, dy) => invoke('move_popup_by', { dx, dy }),
 
+    // Dynamic Island (灵动岛)
+    showIslandWindow: () => invoke('show_island_window'),
+    hideIslandWindow: () => invoke('hide_island_window'),
+    islandSetExpanded: (expanded) => invoke('island_set_expanded', { expanded }),
+    islandResize: (h) => invoke('island_resize', { h }),
+    islandAlertSize: (w, h) => invoke('island_alert_size', { w, h }),
+    focusApp: (app) => invoke('focus_app', { app }),
+    focusIsland: (agentType) => invoke('focus_island', { agentType: agentType || null }),
+
+    // Floating dashboard widget windows (saved · cache · focus · agents · compression · activity · savings)
+    openDashboards: () => invoke('open_dashboards'),
+    hideDashboards: () => invoke('hide_dashboards'),
+    toggleDashboard: (kind) => invoke('toggle_dashboard', { kind }),
+    tileDashboards: () => invoke('tile_dashboards'),
+    dashboardsVisible: () => invoke('dashboards_visible'),
+
     // Agent Monitor
     getAgentDetections: () => invoke('get_agent_detections'),
     getAgentSessions: () => invoke('get_agent_sessions'),
@@ -98,8 +135,71 @@ if (window.__TAURI__) {
 
     // Stats
     getStats: (period) => invoke('get_stats', { period }),
+    getBudget: () => invoke('get_budget'),
+    setBudget: (budget) => invoke('set_budget', { budget }),
+    getBudgetStatus: () => invoke('get_budget_status'),
+    getAttribution: (period) => invoke('get_agent_attribution', { period }),
     navigateToStats: () => invoke('navigate_to_stats'),
     navigateBack: () => invoke('navigate_back'),
+
+    // Doctor (360-style health scanner)
+    doctorScan: (period) => invoke('doctor_scan', { period: period || null }),
+    cleanupScan: () => invoke('cleanup_scan'),
+    cleanupClean: (paths) => invoke('cleanup_clean', { paths }),
+    speedModeStatus: () => invoke('speed_mode_status'),
+    setSpeedMode: (enabled) => invoke('set_speed_mode', { enabled }),
+    // After a fix lands, push the new toggles straight into the live optimizer —
+    // otherwise the setting only takes effect on the next app launch and the fix
+    // looks like it did nothing.
+    doctorApplyFix: (finding) =>
+      invoke('doctor_apply_fix', { finding }).then((r) => { syncDoctorSettings(); return r; }),
+    doctorDismiss: (id) => invoke('doctor_dismiss', { id }),
+    showDoctorWindow: () => invoke('show_doctor_window'),
+    hideDoctorWindow: () => invoke('hide_doctor_window'),
+    navigateToDoctor: () => invoke('navigate_to_doctor'),
+    showMainWindow: () => invoke('show_main_window'),
+
+    // Prompt library + palette (⌘⇧K)
+    showPalette: () => invoke('show_palette'),
+    hidePalette: () => invoke('hide_palette'),
+    insertPromptText: (text) => invoke('insert_prompt_text', { text }),
+    listPrompts: () => invoke('list_prompts'),
+    getPrompt: (id) => invoke('get_prompt', { id }),
+    savePrompt: (prompt) => invoke('save_prompt', { prompt }),
+    deletePrompt: (id) => invoke('delete_prompt', { id }),
+    recordPromptUse: (id) => invoke('record_prompt_use', { id }),
+
+    // Live token wallpaper (desktop-pinned)
+    navigateToWallpaper: () => invoke('navigate_to_wallpaper'),
+    getWallpaperConfig: () => invoke('get_wallpaper_config'),
+    // 用户当前那张真桌面壁纸(1920 宽 JPEG data URL)—— mineradio 引擎的底图
+    getDesktopPicture: (force) => invoke('get_desktop_picture', { force: !!force }),
+    setWallpaperConfig: (config) => invoke('set_wallpaper_config', { config }),
+    setWallpaperEnabled: (on) => invoke('set_wallpaper_enabled', { on }),
+    getTokenPulse: () => invoke('get_token_pulse'),
+
+    // Session history
+    navigateToHistory: () => invoke('navigate_to_history'),
+    listSessionHistory: (period) => invoke('list_session_history', { period: period || null }),
+    getSessionHistory: (id) => invoke('get_session_history', { id }),
+    deleteSessionHistory: (id) => invoke('delete_session_history', { id }),
+    clearSessionHistory: () => invoke('clear_session_history'),
+
+    // Alert Center (unified notifications)
+    navigateToAlerts: () => invoke('navigate_to_alerts'),
+    getAlertSettings: () => invoke('get_alert_settings'),
+    setAlertSettings: (settings) => invoke('set_alert_settings', { settings }),
+    getRecentAlerts: () => invoke('get_recent_alerts'),
+    markAlertsRead: () => invoke('mark_alerts_read'),
+    clearAlerts: () => invoke('clear_alerts'),
+    dispatchAlert: (kind, title, body, severity) => invoke('dispatch_alert', { kind, title, body, severity }),
+    snoozeAlertKind: (kind, minutes) => invoke('snooze_alert_kind', { kind, minutes }),
+    toastAction: (action) => invoke('toast_action', { action }),
+    // Budget guardrail / circuit breaker
+    getCircuitSettings: () => invoke('get_circuit_settings'),
+    setCircuitSettings: (settings) => invoke('set_circuit_settings', { settings }),
+    getCircuitTrips: () => invoke('get_circuit_trips'),
+    circuitResume: (sessionId) => invoke('circuit_resume', { sessionId }),
 
     // Cowork (team collaboration)
     navigateToCowork: () => invoke('navigate_to_cowork'),
@@ -109,6 +209,8 @@ if (window.__TAURI__) {
     setCoworkShareStats: (enabled) => invoke('set_cowork_share_stats', { enabled }),
     clearCoworkToken: () => invoke('clear_cowork_token'),
     openCloudTeams: (path) => invoke('open_cloud_teams', { path: path || null }),
+    openUrl: (url) => invoke('open_url', { url }),
+    sendSlackAlert: (webhook, text) => invoke('send_slack_alert', { webhook, text }),
 
     // Pets (Phase 1 — picker + foundation)
     getPetState: () => invoke('get_pet_state'),
@@ -186,7 +288,33 @@ if (window.__TAURI__) {
     hidePetWindow: () => invoke('hide_pet_window'),
     // Farm window
     showFarmWindow: () => invoke('show_farm_window'),
+    // MCP Manager (Secure)
+    mcpList: () => invoke('mcp_list'),
+    mcpSetEnabled: (sourcePath, name, enabled) => invoke('mcp_set_enabled', { sourcePath, name, enabled }),
+    // Session Timeline + replay (Observe)
+    getSessionTimeline: (agentType) => invoke('get_session_timeline', { agentType: agentType || null }),
+    exportSessionReplay: (agentType) => invoke('export_session_replay', { agentType: agentType || null }),
+    // Rules / Memory Manager (Remember)
+    claudeMdList: () => invoke('claude_md_list'),
+    claudeMdRead: (path) => invoke('claude_md_read', { path }),
+    claudeMdWrite: (path, content) => invoke('claude_md_write', { path, content }),
+    // Connection Doctor
+    connectivityScan: () => invoke('connectivity_scan'),
+    connectivityFixAll: () => invoke('connectivity_fix_all'),
     hideFarmWindow: () => invoke('hide_farm_window'),
+    navigateToFarm: () => invoke('navigate_to_farm'),
+
+    // Knowledge Graph
+    navigateToGraph: () => invoke('navigate_to_graph'),
+    graphStatus: (path) => invoke('graph_status', { path: path || null }),
+    graphBuild: (path) => invoke('graph_build', { path: path || null }),
+    graphGet: (path) => invoke('graph_get', { path: path || null }),
+    graphList: () => invoke('graph_list'),
+    graphAddFolder: (path) => invoke('graph_add_folder', { path }),
+    graphRemove: (path) => invoke('graph_remove', { path }),
+    graphSaveOverlay: (overlay, path) => invoke('graph_save_overlay', { overlay, path: path || null }),
+    graphWriteDigest: (path) => invoke('graph_write_digest', { path: path || null }),
+    graphSetWatch: (enabled, path) => invoke('graph_set_watch', { enabled, path: path || null }),
 
     // Hook (RTK-style compression)
     checkAgentHook: () => invoke('check_agent_hook'),
@@ -260,9 +388,14 @@ if (window.__TAURI__) {
 
     // License
     getLicense: () => invoke('get_license'),
+    getDoctorSettings: () => invoke('get_doctor_settings'),
     setClerkUser: (clerkUserId) => invoke('set_clerk_user', { clerkUserId }),
     verifyLicense: (clerkUserId) => invoke('verify_license_remote', { clerkUserId }),
     checkCanOptimize: () => invoke('check_can_optimize'),
+    requestUpgrade: (reason) => invoke('request_upgrade', { reason: reason || null }),
+    getReferralInfo: () => invoke('get_referral_info'),
+    redeemReferralCode: (code) => invoke('redeem_referral_code', { code }),
+    trialGraceStatus: () => invoke('trial_grace_status'),
     recordOptimizationUsage: () => invoke('record_optimization_usage'),
     checkCanAddSession: () => invoke('check_can_add_session'),
 
@@ -309,3 +442,35 @@ if (window.__TAURI__) {
   // Expose invoke for popup.js optimization pipeline
   T._invoke = invoke;
 }
+
+/* ── Decoration runs only while the page is actually being looked at ────────
+   Every window that loads this bridge gets the class; that is the fix for the
+   version of this I shipped in styles.css, which gated on a class only app.js
+   set and so froze six pages permanently.
+
+   Two further safeguards, because the failure mode of getting this wrong is an
+   invisible page rather than a slow one:
+     · only INFINITE animations are paused. Entrance animations are finite and
+       many start at opacity:0 with a fill-mode, which is exactly what was
+       getting frozen. They are marked by the .decor-loop class below.
+     · the class is added on load, so the default state is RUNNING. If this
+       script never executes, nothing is paused and nothing can hide. */
+(function decorOnlyWhenVisible() {
+  const upd = () => {
+    // VISIBILITY only, not focus.
+    //
+    // Seven windows are created at launch and never destroyed — palette,
+    // wallpaper, pet, farm, doctor, island, toast — and most sit hidden the
+    // whole session while their webviews keep animating. document.hidden is
+    // exactly that state, so gating on it stops the real waste.
+    //
+    // Focus is deliberately NOT part of this. The island is always-on-top and
+    // almost never focused; requiring focus would freeze the one window whose
+    // animation is the point of it.
+    document.documentElement.classList.toggle('page-awake', !document.hidden);
+  };
+  upd();
+  window.addEventListener('focus', upd);
+  window.addEventListener('blur', upd);
+  document.addEventListener('visibilitychange', upd);
+})();

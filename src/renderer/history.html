@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="color-scheme" content="dark">
+  <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
+  <meta charset="UTF-8">
+  <title>Terse Session History 历史</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:var(--bg);color:var(--t1);
+      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';
+      font-size:12px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden}
+    body{display:flex;flex-direction:column;height:100vh;border-radius:16px}
+    .wrap{width:100%;max-width:700px;margin:0 auto}
+
+    .header{display:flex;align-items:center;gap:10px;padding:14px 18px 8px;-webkit-app-region:drag;flex-shrink:0}
+    .back-btn{-webkit-app-region:no-drag;width:28px;height:28px;border-radius:50%;border:none;flex-shrink:0;
+      background:var(--sf);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:background .15s,transform .15s}
+    .back-btn:hover{background:var(--sfh);color:var(--t1);transform:scale(1.08)}
+    .hd-ic{width:22px;height:22px;color:var(--ac)}
+    .header h1{font-size:15px;font-weight:800;flex:1;letter-spacing:-.01em}
+    .header h1 .cn{font-weight:600;color:var(--t3);font-size:12px;margin-left:4px}
+
+    .period-tabs{display:flex;gap:2px;background:var(--sf);border:1px solid var(--bd);border-radius:9999px;
+      padding:3px;width:fit-content;margin:2px auto 0}
+    .period-tabs button{-webkit-app-region:no-drag;border:none;background:none;cursor:pointer;font-size:10.5px;
+      font-weight:700;padding:6px 16px;border-radius:9999px;color:var(--t3);transition:all .18s}
+    .period-tabs button.active{color:var(--btn-t);
+      background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.35),var(--shadow-sm)}
+
+    .scroll{flex:1;overflow-y:auto;padding:14px 18px 24px}
+    .scroll::-webkit-scrollbar{width:4px}
+    .scroll::-webkit-scrollbar-thumb{background:var(--bdl);border-radius:4px}
+
+    /* summary cards */
+    .sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+    .sum{padding:14px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);text-align:center;
+      box-shadow:inset 0 1px 0 var(--hl)}
+    .sum .n{display:block;font-size:20px;font-weight:850;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+    .sum .n.accent{color:var(--ac)}
+    .sum .l{display:block;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;font-weight:700}
+
+    /* project rollup */
+    .rollup{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;
+      box-shadow:inset 0 1px 0 var(--hl)}
+    .rollup .rt{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);font-weight:800;margin-bottom:10px}
+    .prow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .prow:last-child{margin-bottom:0}
+    .prow .pn{font-size:11px;font-weight:700;color:var(--t1);width:40%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .prow .track{flex:1;height:8px;border-radius:9999px;background:var(--bd);overflow:hidden}
+    .prow .fill{height:100%;border-radius:9999px;background:linear-gradient(90deg,var(--ac),color-mix(in srgb,var(--ac) 55%,#7bd5a0));
+      transition:width .6s var(--ease)}
+    .prow .pc{font-size:11px;font-weight:800;color:var(--ac);font-variant-numeric:tabular-nums;width:56px;text-align:right}
+
+    .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    .search{flex:1;display:flex;align-items:center;gap:8px;background:var(--sf);border:1px solid var(--bd);
+      border-radius:9999px;padding:7px 13px}
+    .search svg{width:13px;height:13px;color:var(--t3)}
+    .search input{flex:1;background:none;border:none;outline:none;color:var(--t1);font-size:11.5px;user-select:text;font-family:inherit}
+    .search input::placeholder{color:var(--t3)}
+    .sec-title{font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 9px}
+
+    /* session cards */
+    #list{display:flex;flex-direction:column;gap:8px}
+    .sess{display:flex;align-items:center;gap:11px;padding:12px 13px;background:var(--sf);border:1px solid var(--bd);
+      border-radius:13px;box-shadow:inset 0 1px 0 var(--hl),var(--shadow-sm);
+      opacity:0;transform:translateY(8px);animation:cardIn .4s var(--ease) calc(var(--i,0)*40ms) both}
+    @keyframes cardIn{to{opacity:1;transform:none}}
+    .sess .av{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+      font-size:16px;background:var(--bg);box-shadow:inset 0 0 0 1px var(--bd)}
+    .sess .info{flex:1;min-width:0}
+    .sess .st{font-size:12.5px;font-weight:800;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sess .sm{font-size:10px;color:var(--t3);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+    .sess .mtag{font-size:8.5px;font-weight:800;color:var(--t2);background:var(--bg);border:1px solid var(--bd);
+      border-radius:9999px;padding:2px 7px;margin-left:6px}
+    .sess .right{text-align:right;flex-shrink:0}
+    .sess .cost{font-size:14px;font-weight:850;color:var(--ac);font-variant-numeric:tabular-nums}
+    .sess .tok{font-size:9.5px;color:var(--t3);font-variant-numeric:tabular-nums;margin-top:1px}
+    .sess .del{-webkit-app-region:no-drag;background:none;border:none;color:var(--t3);cursor:pointer;padding:4px;
+      display:flex;opacity:0;transition:opacity .15s}
+    .sess:hover .del{opacity:1}
+    .sess .del:hover{color:var(--red)}
+
+    .empty{text-align:center;padding:48px 20px}
+    .empty-ic{width:64px;height:64px;margin:0 auto 14px;border-radius:20px;display:flex;align-items:center;justify-content:center;
+      font-size:30px;color:var(--ac);background:color-mix(in srgb,var(--ac) 10%,transparent);
+      box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 22%,transparent)}
+    .empty-t{font-size:13px;font-weight:800;margin-bottom:4px}
+    .empty-s{font-size:11px;color:var(--t3);line-height:1.5;max-width:340px;margin:0 auto}
+    .hidden{display:none!important}
+  </style>
+</head>
+<body>
+  <div class="header wrap">
+    <button class="back-btn" id="btnBack" title="Back">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <svg class="hd-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+    <h1>Session History<span class="cn">历史</span></h1>
+  </div>
+  <div class="period-tabs wrap" id="periodTabs">
+    <button data-p="day">Today</button>
+    <button data-p="week" class="active">Week</button>
+    <button data-p="month">Month</button>
+    <button data-p="all">All</button>
+  </div>
+
+  <div class="scroll">
+    <div class="wrap">
+      <div class="sum-grid">
+        <div class="sum"><span class="n accent" id="sCost">$0</span><span class="l">Spend</span></div>
+        <div class="sum"><span class="n" id="sSessions">0</span><span class="l">Sessions</span></div>
+        <div class="sum"><span class="n" id="sTokens">0</span><span class="l">Tokens</span></div>
+      </div>
+
+      <div class="rollup hidden" id="rollup">
+        <div class="rt">Cost by project</div>
+        <div id="projRows"></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="q" type="text" placeholder="Search project, agent, model…" spellcheck="false">
+        </div>
+      </div>
+
+      <div class="sec-title" id="secTitle">Sessions</div>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <script src="tauri-bridge.js"></script>
+  <script>
+    const T = window.terse;
+    const $ = s => document.querySelector(s);
+    let all = [], period = 'week';
+
+    const AGENT_EMOJI = { 'claudeCode':'🟠','claude-code':'🟠','cursor-agent':'⌨️','cursor':'⌨️','codex':'🔷','cline':'🤖','copilot':'🐙','windsurf':'🏄' };
+    function agentEmoji(t){ return AGENT_EMOJI[t] || '🤖'; }
+    function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    function fmtUSD(n){ n=+n||0; return n>=100?'$'+n.toFixed(0):n>=1?'$'+n.toFixed(2):'$'+n.toFixed(3); }
+    function fmtTok(n){ n=+n||0; if(n>=1e9)return (n/1e9).toFixed(1)+'B'; if(n>=1e6)return (n/1e6).toFixed(1)+'M'; if(n>=1e3)return (n/1e3).toFixed(1)+'K'; return String(n); }
+    function shortModel(m){ if(!m)return '—'; return m.replace(/^(anthropic\/|openai\/)/,'').replace('claude-','').replace(/-\d{8}$/,''); }
+    function relTime(iso){ const d=new Date(iso); if(isNaN(d))return ''; const s=Math.floor((Date.now()-d)/1000);
+      if(s<3600)return Math.max(1,Math.round(s/60))+'m ago'; if(s<86400)return Math.round(s/3600)+'h ago'; return Math.round(s/86400)+'d ago'; }
+
+    async function load(){
+      const data = await T.listSessionHistory(period).catch(()=>({sessions:[],summary:{},byProject:[]}));
+      all = data.sessions || [];
+      const sm = data.summary || {};
+      $('#sCost').textContent = fmtUSD(sm.costUsd);
+      $('#sSessions').textContent = sm.count || 0;
+      $('#sTokens').textContent = fmtTok(sm.totalTokens);
+
+      const proj = (data.byProject || []).filter(p => p.costUsd > 0).slice(0, 5);
+      const rollup = $('#rollup');
+      if (proj.length){
+        rollup.classList.remove('hidden');
+        const max = Math.max(...proj.map(p=>p.costUsd), 0.0001);
+        $('#projRows').innerHTML = proj.map(p=>{
+          const name = p.name.split('/').pop() || p.name;
+          return `<div class="prow"><span class="pn" title="${esc(p.name)}">${esc(name)}</span>
+            <span class="track"><span class="fill" style="width:${Math.round(p.costUsd/max*100)}%"></span></span>
+            <span class="pc">${fmtUSD(p.costUsd)}</span></div>`;
+        }).join('');
+      } else rollup.classList.add('hidden');
+      renderList();
+    }
+
+    function renderList(){
+      const term = $('#q').value.trim().toLowerCase();
+      const items = !term ? all : all.filter(s =>
+        (s.project||'').toLowerCase().includes(term) ||
+        (s.agentName||'').toLowerCase().includes(term) ||
+        (s.model||'').toLowerCase().includes(term));
+      $('#secTitle').textContent = `Sessions${items.length?' · '+items.length:''}`;
+      const el = $('#list');
+      if (!items.length){
+        el.innerHTML = `<div class="empty"><div class="empty-ic">🕓</div>
+          <div class="empty-t">${all.length?'No sessions match':'No history yet'}</div>
+          <div class="empty-s">${all.length?'Try a different search or period.':'Connect a coding agent (Claude Code, Cursor…) and Terse will log each session here with its token use and cost.'}</div></div>`;
+        return;
+      }
+      el.innerHTML = items.map((s,i)=>{
+        const proj = (s.project||'').split('/').pop() || 'session';
+        return `<div class="sess" style="--i:${i}">
+          <div class="av">${agentEmoji(s.agentType)}</div>
+          <div class="info">
+            <div class="st">${esc(proj)}${s.model?`<span class="mtag">${esc(shortModel(s.model))}</span>`:''}</div>
+            <div class="sm">${esc(s.agentName||s.agentType||'agent')} · ${s.turns||0} turns · ${s.toolCalls||0} tools · ${relTime(s.lastSeen)}</div>
+          </div>
+          <div class="right"><div class="cost">${fmtUSD(s.costUsd)}</div><div class="tok">${fmtTok(s.totalTokens)} tok</div></div>
+          <button class="del" data-id="${esc(s.id)}" title="Remove">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+          </button>
+        </div>`;
+      }).join('');
+      el.querySelectorAll('.del').forEach(b=>b.addEventListener('click',async()=>{
+        await T.deleteSessionHistory(b.dataset.id); load();
+      }));
+    }
+
+    $('#btnBack').addEventListener('click',()=>T.navigateBack());
+    $('#q').addEventListener('input',renderList);
+    document.querySelectorAll('#periodTabs button').forEach(b=>b.addEventListener('click',()=>{
+      period=b.dataset.p; document.querySelectorAll('#periodTabs button').forEach(x=>x.classList.toggle('active',x===b)); load();
+    }));
+    load();
+  </script>
+</body>
+</html>

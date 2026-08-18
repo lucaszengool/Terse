@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="color-scheme" content="dark">
+  <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
+  <meta charset="UTF-8">
+  <title>Terse Prompt Palette</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:transparent;overflow:hidden;
+      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';-webkit-font-smoothing:antialiased}
+    body{padding:10px;user-select:none}
+    .panel{height:calc(100vh - 20px);display:flex;flex-direction:column;
+      background:color-mix(in srgb,var(--bg) 92%,transparent);
+      backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);
+      border:1px solid var(--bdl);border-radius:16px;overflow:hidden;
+      box-shadow:inset 0 1px 0 var(--hl),var(--shadow-lg);color:var(--t1)}
+
+    /* search bar */
+    .search{display:flex;align-items:center;gap:9px;padding:13px 15px;-webkit-app-region:drag;
+      border-bottom:1px solid var(--bd)}
+    .search svg{width:16px;height:16px;color:var(--t3);flex-shrink:0}
+    .search input{-webkit-app-region:no-drag;flex:1;background:none;border:none;outline:none;
+      color:var(--t1);font-size:14px;font-family:inherit;user-select:text}
+    .search input::placeholder{color:var(--t3)}
+    .esc{-webkit-app-region:no-drag;font-size:9px;font-weight:700;color:var(--t3);border:1px solid var(--bd);
+      border-bottom-width:2px;border-radius:5px;padding:2px 6px;cursor:pointer}
+    .esc:hover{color:var(--t1);background:var(--sf)}
+
+    .body{flex:1;overflow-y:auto;padding:6px}
+    .body::-webkit-scrollbar{width:4px}
+    .body::-webkit-scrollbar-thumb{background:var(--bdl);border-radius:4px}
+
+    /* list rows */
+    .row{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;cursor:pointer}
+    .row .ic{width:28px;height:28px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;
+      justify-content:center;font-size:14px;background:var(--sf);box-shadow:inset 0 0 0 1px var(--bd)}
+    .row .tx{flex:1;min-width:0}
+    .row .rt{font-size:12.5px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .row .rs{font-size:10px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+    .row .meta{display:flex;align-items:center;gap:5px;flex-shrink:0}
+    .row .vtag{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;
+      color:var(--ac);background:color-mix(in srgb,var(--ac) 14%,transparent);padding:2px 7px;border-radius:9999px}
+    .row.sel{background:var(--sfh);box-shadow:inset 2px 0 0 var(--ac)}
+    .row .del{opacity:0;background:none;border:none;color:var(--t3);cursor:pointer;padding:3px;display:flex}
+    .row.sel .del{opacity:1}
+    .row .del:hover{color:var(--red)}
+
+    .empty{text-align:center;padding:34px 20px;color:var(--t3);font-size:11.5px;line-height:1.6}
+    .empty b{color:var(--t2)}
+
+    /* footer */
+    .foot{display:flex;align-items:center;gap:14px;padding:8px 14px;border-top:1px solid var(--bd);
+      font-size:9.5px;color:var(--t3)}
+    .foot .sp{display:flex;align-items:center;gap:5px}
+    .foot kbd{display:inline-block;padding:1px 5px;background:var(--sf);border:1px solid var(--bd);
+      border-bottom-width:2px;border-radius:4px;font-family:inherit;font-size:9px;color:var(--t2)}
+    .foot .grow{flex:1}
+    .foot .newbtn{-webkit-app-region:no-drag;display:flex;align-items:center;gap:5px;cursor:pointer;
+      color:var(--ac);font-weight:700}
+    .foot .newbtn:hover{opacity:.8}
+
+    /* variable fill + editor share a scrolling stage */
+    .stage{flex:1;overflow-y:auto;padding:14px 16px}
+    .stage h2{font-size:14px;font-weight:800;letter-spacing:-.01em;margin-bottom:2px}
+    .stage .sub{font-size:10.5px;color:var(--t3);margin-bottom:14px}
+    .fld{margin-bottom:12px}
+    .fld label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);
+      font-weight:700;margin-bottom:5px}
+    .fld input,.fld textarea{width:100%;padding:9px 11px;background:var(--sf);border:1px solid var(--bd);
+      border-radius:10px;color:var(--t1);font-size:12px;font-family:inherit;outline:none;user-select:text;
+      transition:border-color .2s,box-shadow .2s}
+    .fld textarea{min-height:120px;resize:vertical;font-family:'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace;font-size:11.5px;line-height:1.5}
+    .fld input:focus,.fld textarea:focus{border-color:color-mix(in srgb,var(--ac) 45%,transparent);box-shadow:var(--ring)}
+    .preview{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;
+      font-size:11px;line-height:1.55;color:var(--t2);white-space:pre-wrap;max-height:120px;overflow:auto;
+      font-family:'SF Mono',Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace}
+    .preview mark{background:color-mix(in srgb,var(--ac) 22%,transparent);color:var(--t1);border-radius:3px;padding:0 2px}
+    .actions{display:flex;gap:8px;margin-top:6px;padding:12px 16px;border-top:1px solid var(--bd)}
+    .btn{flex:1;-webkit-app-region:no-drag;border:none;border-radius:11px;padding:11px;cursor:pointer;
+      font-size:12.5px;font-weight:800;color:var(--btn-t);
+      background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.35),var(--shadow-sm);
+      display:flex;align-items:center;justify-content:center;gap:7px;transition:transform .15s var(--ease)}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.ghost{flex:0 0 auto;padding:11px 16px;color:var(--t2);background:var(--sf);
+      box-shadow:inset 0 0 0 1px var(--bd)}
+    .btn.danger{flex:0 0 auto;padding:11px 16px;color:#fff;background:var(--red);box-shadow:none}
+    .hidden{display:none!important}
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <!-- LIST -->
+    <div id="listView">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="q" type="text" placeholder="Search prompts…" spellcheck="false" autocomplete="off">
+        <span class="esc" id="escBtn">esc</span>
+      </div>
+      <div class="body" id="list"></div>
+      <div class="foot">
+        <span class="sp"><kbd>↑↓</kbd> navigate</span>
+        <span class="sp"><kbd>↵</kbd> use</span>
+        <span class="grow"></span>
+        <span class="newbtn" id="newBtn">＋ New prompt</span>
+      </div>
+    </div>
+
+    <!-- VARIABLE FILL -->
+    <div id="varsView" class="hidden" style="display:flex;flex-direction:column;height:100%">
+      <div class="stage" id="varsStage"></div>
+      <div class="actions">
+        <button class="btn ghost" id="varsBack">Back</button>
+        <button class="btn" id="varsInsert">Insert ⏎</button>
+      </div>
+    </div>
+
+    <!-- EDITOR -->
+    <div id="editView" class="hidden" style="display:flex;flex-direction:column;height:100%">
+      <div class="stage">
+        <h2 id="editTitle">New prompt</h2>
+        <div class="sub">Use <b style="color:var(--ac)">{{variable}}</b> or <b style="color:var(--ac)">{{tone=formal}}</b> for fill-in fields.</div>
+        <div class="fld"><label>Title</label><input id="eTitle" type="text" placeholder="e.g. Code review request"></div>
+        <div class="fld"><label>Prompt</label><textarea id="eBody" placeholder="Review {{file}} for {{focus=bugs and edge cases}} and suggest fixes."></textarea></div>
+        <div class="fld"><label>Tags (comma-separated)</label><input id="eTags" type="text" placeholder="review, coding"></div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="editBack">Cancel</button>
+        <button class="btn danger hidden" id="editDelete">Delete</button>
+        <button class="btn" id="editSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="tauri-bridge.js"></script>
+  <script>
+    const T = window.terse;
+    const $ = s => document.querySelector(s);
+    let prompts = [], filtered = [], sel = 0, current = null;
+
+    function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    // ── Templating (#14) ── replace {{name}} / {{name=default}} / {{name|hint}}
+    function parseVar(raw){ const seg=raw.split(/[=|]/); const name=seg[0].trim();
+      const def = raw.includes('=') ? raw.slice(raw.indexOf('=')+1).trim() : '';
+      return { name, def }; }
+    function fillTemplate(body, values){
+      return body.replace(/\{\{([^}]+)\}\}/g, (_,raw)=>{ const {name,def}=parseVar(raw);
+        const v = values[name]; return (v!==undefined && v!=='') ? v : def; });
+    }
+    function previewHtml(body, values){
+      return esc(body).replace(/\{\{([^}]+)\}\}/g,(_,raw)=>{ const {name,def}=parseVar(raw);
+        const v = values[name]; const out=(v!==undefined&&v!=='')?v:def;
+        return out?`<mark>${esc(out)}</mark>`:`<mark>{{${esc(name)}}}</mark>`; });
+    }
+
+    // ── List ──
+    function applyFilter(){
+      const term = $('#q').value.trim().toLowerCase();
+      filtered = !term ? prompts.slice() : prompts.filter(p =>
+        (p.title||'').toLowerCase().includes(term) ||
+        (p.body||'').toLowerCase().includes(term) ||
+        (p.tags||[]).some(t=>t.toLowerCase().includes(term)));
+      if (sel >= filtered.length) sel = Math.max(0, filtered.length-1);
+      renderList();
+    }
+    function renderList(){
+      const el = $('#list');
+      if (!filtered.length){
+        el.innerHTML = prompts.length
+          ? `<div class="empty">No prompts match.</div>`
+          : `<div class="empty">Your prompt library is empty.<br>Press <b>＋ New prompt</b> to save your first reusable prompt.</div>`;
+        return;
+      }
+      el.innerHTML = filtered.map((p,i)=>{
+        const nv=(p.variables||[]).length;
+        const snip=(p.body||'').replace(/\s+/g,' ').slice(0,60);
+        return `<div class="row ${i===sel?'sel':''}" data-i="${i}">
+          <div class="ic">📝</div>
+          <div class="tx"><div class="rt">${esc(p.title||'Untitled')}</div><div class="rs">${esc(snip)}</div></div>
+          <div class="meta">${nv?`<span class="vtag">${nv} field${nv>1?'s':''}</span>`:''}
+            <button class="del" data-del="${p.id}" title="Delete">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+            </button></div>
+        </div>`;
+      }).join('');
+      el.querySelectorAll('.row').forEach(r=>r.addEventListener('click',e=>{
+        if(e.target.closest('.del')) return; sel=+r.dataset.i; choose(); }));
+      el.querySelectorAll('.del').forEach(b=>b.addEventListener('click',async e=>{
+        e.stopPropagation(); await T.deletePrompt(b.dataset.del); await load(); }));
+      const cur = el.querySelector('.row.sel'); if(cur) cur.scrollIntoView({block:'nearest'});
+    }
+
+    // ── Views ──
+    function showView(v){
+      $('#listView').classList.toggle('hidden', v!=='list');
+      $('#varsView').classList.toggle('hidden', v!=='vars');
+      $('#editView').classList.toggle('hidden', v!=='edit');
+    }
+
+    function choose(){
+      current = filtered[sel]; if(!current) return;
+      if ((current.variables||[]).length){ openVars(); }
+      else { doInsert(current.body); }
+    }
+
+    // ── Variable fill ──
+    function openVars(){
+      const vals = {};
+      $('#varsStage').innerHTML = `<h2>${esc(current.title)}</h2>
+        <div class="sub">Fill in the fields, then Insert.</div>
+        ${current.variables.map((name,i)=>`<div class="fld"><label>${esc(name)}</label>
+          <input class="vin" data-name="${esc(name)}" type="text" ${i===0?'autofocus':''} placeholder="${esc(name)}"></div>`).join('')}
+        <div class="fld"><label>Preview</label><div class="preview" id="vprev"></div></div>`;
+      showView('vars');
+      const inputs = [...document.querySelectorAll('.vin')];
+      const upd = ()=>{ inputs.forEach(i=>vals[i.dataset.name]=i.value);
+        $('#vprev').innerHTML = previewHtml(current.body, vals); };
+      inputs.forEach(i=>i.addEventListener('input',upd));
+      upd();
+      if(inputs[0]) inputs[0].focus();
+      $('#varsInsert').onclick = ()=>{ inputs.forEach(i=>vals[i.dataset.name]=i.value);
+        doInsert(fillTemplate(current.body, vals)); };
+      $('#varsBack').onclick = ()=>{ showView('list'); $('#q').focus(); };
+    }
+
+    async function doInsert(text){
+      if (current && current.id) T.recordPromptUse(current.id);
+      await T.insertPromptText(text);   // copies + pastes into the prior app, hides palette
+    }
+
+    // ── Editor ──
+    function openEdit(p){
+      current = p || null;
+      $('#editTitle').textContent = p ? 'Edit prompt' : 'New prompt';
+      $('#eTitle').value = p?.title || '';
+      $('#eBody').value = p?.body || '';
+      $('#eTags').value = (p?.tags||[]).join(', ');
+      $('#editDelete').classList.toggle('hidden', !p);
+      showView('edit');
+      setTimeout(()=>$('#eTitle').focus(),20);
+    }
+    $('#newBtn').addEventListener('click',()=>openEdit(null));
+    $('#editBack').addEventListener('click',()=>{ showView('list'); $('#q').focus(); });
+    $('#editSave').addEventListener('click',async()=>{
+      const body=$('#eBody').value; if(!body.trim() && !$('#eTitle').value.trim()){ showView('list'); return; }
+      const payload={ id: current?.id||'', title:$('#eTitle').value, body,
+        tags:$('#eTags').value.split(',').map(t=>t.trim()).filter(Boolean) };
+      await T.savePrompt(payload); await load(); showView('list'); $('#q').focus();
+    });
+    $('#editDelete').addEventListener('click',async()=>{
+      if(current?.id){ await T.deletePrompt(current.id); await load(); } showView('list'); $('#q').focus();
+    });
+
+    // ── Data ──
+    async function load(){
+      const r = await T.listPrompts().catch(()=>({prompts:[]}));
+      prompts = r.prompts || []; sel = 0; applyFilter();
+    }
+
+    // ── Keyboard ──
+    $('#q').addEventListener('input',()=>{ sel=0; applyFilter(); });
+    document.addEventListener('keydown',e=>{
+      const inList = !$('#listView').classList.contains('hidden');
+      if (e.key==='Escape'){ e.preventDefault();
+        if(!inList){ showView('list'); $('#q').focus(); } else { T.hidePalette(); } return; }
+      if (!inList) {
+        if (e.key==='Enter' && !$('#varsView').classList.contains('hidden')){ e.preventDefault(); $('#varsInsert').click(); }
+        return;
+      }
+      if (e.key==='ArrowDown'){ e.preventDefault(); sel=Math.min(filtered.length-1,sel+1); renderList(); }
+      else if (e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(0,sel-1); renderList(); }
+      else if (e.key==='Enter'){ e.preventDefault(); choose(); }
+    });
+    $('#escBtn').addEventListener('click',()=>T.hidePalette());
+
+    // Re-focus + refresh each time the palette is summoned.
+    if (window.__TAURI__?.event?.listen){
+      window.__TAURI__.event.listen('palette-open',()=>{
+        showView('list'); $('#q').value=''; load().then(()=>$('#q').focus());
+      });
+    }
+    load().then(()=>$('#q').focus());
+  </script>
+</body>
+</html>

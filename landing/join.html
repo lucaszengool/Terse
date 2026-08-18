@@ -77,6 +77,10 @@
   #wx .arrow { font-size:40px; color:var(--lime) }
   #wx p { text-align:left; margin-top:12px; font-size:15px }
   .hint { font-size:11.5px; color:var(--dim); margin-top:10px }
+  #lang { position:fixed; top:12px; left:12px; z-index:10; display:flex; gap:6px }
+  #lang button { background:transparent; border:1px solid rgba(255,255,255,.18); color:var(--dim);
+    font-size:11px; font-weight:700; padding:4px 9px; border-radius:999px; cursor:pointer }
+  #lang button[aria-pressed="true"] { color:#0B0B0D; background:var(--lime); border-color:var(--lime) }
   /* Share mode — what the page turns into inside WeChat/Douyin, where the only
      real way onward is their own ⋯ menu. The pointer stays on screen instead of
      hiding in a modal, because it IS the instruction, not an error message. */
@@ -103,31 +107,35 @@
 <!-- The ⋯ pointer lives at the top-right of the viewport, not in the content
      flow: it points at a real button in WeChat's own chrome, so it only reads
      as an instruction if it sits under that button. -->
-<div id="point"><span>点右上角 ⋯ ，选择<b>「发送给朋友」</b><br>把这张邀请卡转给任何人</span><span class="arrow">↗</span></div>
+<div id="point"><span data-i="point">点右上角 ⋯ ，选择「发送给朋友」<br>把这张邀请卡转给任何人</span><span class="arrow">↗</span></div>
 
 <div class="wrap">
   <div class="logo">T</div>
-  <h1 id="title">有人邀请你一起用 Terse</h1>
-  <p class="sub" id="sub">接受邀请后，你们的 agent 会出现在彼此的壁纸上</p>
+  <h1 id="title" data-i="h1">有人邀请你一起用 Terse</h1>
+  <p class="sub" id="sub" data-i="sub">接受邀请后，你们的 agent 会出现在彼此的壁纸上</p>
 
-  <a class="btn" id="open" href="#">打开 Terse 加入 · Open Terse</a>
-  <button class="btn ghost" id="send">发送给朋友 · Send to a friend</button>
+  <a class="btn" id="open" href="#" data-i="open">打开 Terse 加入</a>
+  <button class="btn ghost" id="send" data-i="send">发送给朋友</button>
 
-  <div class="card">
-    <div class="label">邀请码 · Invite code</div>
-    <div class="code" id="code">—</div>
-    <div class="row">
-      <button class="btn ghost" id="copyLink">复制链接 · Copy link</button>
-      <button class="btn ghost" id="copy">复制邀请码 · Copy code</button>
-    </div>
-    <p class="hint">
-      还没装 Terse？先下载，安装后打开「好友」页，粘贴这个邀请码即可加入。
-      这一步在 macOS 和 Windows 上完全一样。
+  <div class="card" style="border-color:rgba(201,240,61,.35);background:rgba(201,240,61,.07)">
+    <div class="label" style="color:var(--lime)" data-i="proLabel">免费得 Pro</div>
+    <p style="margin-top:6px;font-size:13px;line-height:1.6" data-i="proBody">
+      接受邀请后，你和邀请你的人各得 14 天 Pro —— 不用付款，也不用填卡。
     </p>
   </div>
 
   <div class="card">
-    <div class="label">下载 · Download</div>
+    <div class="label" data-i="codeLabel">邀请码</div>
+    <div class="code" id="code">—</div>
+    <div class="row">
+      <button class="btn ghost" id="copyLink" data-i="copyLink">复制链接</button>
+      <button class="btn ghost" id="copy" data-i="copyCode">复制邀请码</button>
+    </div>
+    <p class="hint" data-i="hint">还没装 Terse？先下载，安装后打开「好友」页，粘贴这个邀请码即可加入。</p>
+  </div>
+
+  <div class="card">
+    <div class="label" data-i="download">下载</div>
     <div class="row">
       <a class="btn ghost" id="dlMac" href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.3_x64.dmg">macOS</a>
       <a class="btn ghost" id="dlWin" href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.3_x64-setup.exe">Windows</a>
@@ -142,10 +150,109 @@
 
 <div id="toast"></div>
 
+<!-- Language. Auto-detected from the browser, overridable, remembered. An
+     invite is the one page that is always opened by a stranger, so it cannot
+     assume the sender's language is the reader's. -->
+<div id="lang"></div>
+
 <script>
+  /* ── Language ─────────────────────────────────────────────────────────────
+     An invite is the one page that is always opened by a STRANGER, so it cannot
+     inherit the sender's language. It picks from the reader's browser, offers a
+     switch, and remembers the choice. Three languages, matching what the app's
+     own invite surfaces carry; anything else falls back to English. */
+  var STR = {
+    en: {
+      h1: 'You have been invited to Terse', sub: 'Once you join, your agents show up on each other\'s wallpaper',
+      open: 'Open Terse to join', send: 'Send to a friend',
+      sendTrapped: 'Send to a friend · use ⋯ top right', sendCopy: 'Copy the link to send',
+      proLabel: 'Pro, free', proBody: 'When you accept, you and the person who invited you each get 14 days of Pro — no payment, no card.',
+      codeLabel: 'Invite code', copyLink: 'Copy link', copyCode: 'Copy code',
+      hint: 'No Terse yet? Download it, open the Friends page, and paste this code to join.',
+      download: 'Download', codeMissing: '(this link has no invite code)',
+      point: 'Tap ⋯ top right and choose "Send to a friend"<br>to forward this invite to anyone',
+      subShare: 'Forward this card to a friend, or copy the code below and join from inside Terse',
+      copied: 'Copied ✓', toastCopied: 'Invite link copied ✓',
+      shareText: 'I am using Terse — join my team, and we both get 14 days of Pro.',
+      wxSend: '<b>Tap ⋯ at the top right and choose "Send to a friend"</b><br>{app} does not let a web page open the friend picker.<br><br>You can also Copy link first, then paste it into a chat.',
+      wxOpen: '<b>Tap ⋯ at the top right and choose "Open in browser"</b><br>{app}\'s built-in browser cannot launch an app.<br><br>Or just copy the invite code above and paste it on Terse\'s Friends page.'
+    },
+    'zh-Hans': {
+      h1: '有人邀请你一起用 Terse', sub: '接受邀请后，你们的 agent 会出现在彼此的壁纸上',
+      open: '打开 Terse 加入', send: '发送给朋友',
+      sendTrapped: '发送给朋友 · 用右上角 ⋯', sendCopy: '复制链接发给朋友',
+      proLabel: '免费得 Pro', proBody: '接受邀请后，你和邀请你的人各得 14 天 Pro —— 不用付款，也不用填卡。',
+      codeLabel: '邀请码', copyLink: '复制链接', copyCode: '复制邀请码',
+      hint: '还没装 Terse？先下载，安装后打开「好友」页，粘贴这个邀请码即可加入。',
+      download: '下载', codeMissing: '（链接缺少邀请码）',
+      point: '点右上角 ⋯ ，选择「发送给朋友」<br>把这张邀请卡转给任何人',
+      subShare: '把这张卡片转发给朋友，或复制下面的邀请码在 Terse 里加入',
+      copied: '已复制 ✓', toastCopied: '邀请链接已复制 ✓',
+      shareText: '我在用 Terse，加入我的团队 —— 我们各得 14 天 Pro。',
+      wxSend: '<b>请点击右上角 ⋯ ，选择「发送给朋友」</b><br>{app}不允许网页直接打开选择好友的界面。<br><br>也可以先「复制链接」，再粘贴到聊天窗口发送。',
+      wxOpen: '<b>请点击右上角 ⋯ ，选择「在浏览器中打开」</b><br>{app}的内置浏览器无法直接启动应用。<br><br>或者直接复制上面的邀请码，在 Terse 的「好友」页粘贴。'
+    },
+    'zh-Hant': {
+      h1: '有人邀請你一起用 Terse', sub: '接受邀請後，你們的 agent 會出現在彼此的桌布上',
+      open: '打開 Terse 加入', send: '傳送給朋友',
+      sendTrapped: '傳送給朋友 · 用右上角 ⋯', sendCopy: '複製連結傳給朋友',
+      proLabel: '免費得 Pro', proBody: '接受邀請後，你和邀請你的人各得 14 天 Pro —— 不用付款，也不用填卡。',
+      codeLabel: '邀請碼', copyLink: '複製連結', copyCode: '複製邀請碼',
+      hint: '還沒裝 Terse？先下載，安裝後打開「好友」頁，貼上這個邀請碼即可加入。',
+      download: '下載', codeMissing: '（連結缺少邀請碼）',
+      point: '點右上角 ⋯ ，選擇「傳送給朋友」<br>把這張邀請卡轉給任何人',
+      subShare: '把這張卡片轉傳給朋友，或複製下面的邀請碼在 Terse 裡加入',
+      copied: '已複製 ✓', toastCopied: '邀請連結已複製 ✓',
+      shareText: '我在用 Terse，加入我的團隊 —— 我們各得 14 天 Pro。',
+      wxSend: '<b>請點擊右上角 ⋯ ，選擇「傳送給朋友」</b><br>{app}不允許網頁直接開啟選擇好友的介面。<br><br>也可以先「複製連結」，再貼到聊天視窗傳送。',
+      wxOpen: '<b>請點擊右上角 ⋯ ，選擇「在瀏覽器中開啟」</b><br>{app}的內建瀏覽器無法直接啟動應用程式。<br><br>或者直接複製上面的邀請碼，在 Terse 的「好友」頁貼上。'
+    }
+  };
+  function pickLang() {
+    var saved = null;
+    try { saved = localStorage.getItem('terse-join-lang'); } catch (e) {}
+    if (saved && STR[saved]) return saved;
+    var n = (navigator.language || 'en').toLowerCase();
+    if (n.indexOf('zh') === 0) {
+      // Script, not region: zh-TW/HK/MO and any -Hant tag read Traditional.
+      return /hant|tw|hk|mo/.test(n) ? 'zh-Hant' : 'zh-Hans';
+    }
+    return 'en';
+  }
+  var lang = pickLang();
+  function L(key) { return (STR[lang] && STR[lang][key]) || STR.en[key] || ''; }
+  function applyLang() {
+    document.documentElement.lang = lang === 'en' ? 'en' : (lang === 'zh-Hant' ? 'zh-Hant' : 'zh-Hans');
+    var nodes = document.querySelectorAll('[data-i]');
+    for (var i = 0; i < nodes.length; i++) {
+      var v = L(nodes[i].getAttribute('data-i'));
+      if (v) nodes[i].innerHTML = v;
+    }
+  }
+  (function buildLangPicker() {
+    var box = document.getElementById('lang');
+    var opts = [['en', 'EN'], ['zh-Hans', '简'], ['zh-Hant', '繁']];
+    for (var i = 0; i < opts.length; i++) {
+      (function (code, label) {
+        var b = document.createElement('button');
+        b.textContent = label;
+        b.setAttribute('aria-pressed', String(code === lang));
+        b.addEventListener('click', function () {
+          lang = code;
+          try { localStorage.setItem('terse-join-lang', code); } catch (e) {}
+          applyLang(); refreshDynamic();
+          var all = box.querySelectorAll('button');
+          for (var j = 0; j < all.length; j++) all[j].setAttribute('aria-pressed', String(opts[j][0] === code));
+        });
+        box.appendChild(b);
+      })(opts[i][0], opts[i][1]);
+    }
+  })();
+  applyLang();
+
   // The token travels as ?c= so the link stays short enough to paste anywhere.
   var code = new URLSearchParams(location.search).get('c') || '';
-  document.getElementById('code').textContent = code || '（链接缺少邀请码）';
+  document.getElementById('code').textContent = code || L('codeMissing');
 
   var ua = navigator.userAgent.toLowerCase();
   var inWeChat = /micromessenger/.test(ua);
@@ -159,15 +266,11 @@
   // The same overlay serves two different dead ends in these webviews — opening
   // the app, and forwarding the invite — and the ⋯ menu item to pick is not the
   // same one, so the text is set by whichever button raised it.
-  var app = inWeChat ? '微信' : '抖音';
+  var app = inWeChat ? 'WeChat' : 'Douyin';
   function trap(which) {
-    document.getElementById('wxText').innerHTML = which === 'send'
-      ? '<b>请点击右上角 ⋯ ，选择「发送给朋友」</b><br>' +
-        app + '不允许网页直接打开选择好友的界面。<br><br>' +
-        '也可以先「复制链接」，再粘贴到聊天窗口发送。'
-      : '<b>请点击右上角 ⋯ ，选择「在浏览器中打开」</b><br>' +
-        app + '的内置浏览器无法直接启动应用。<br><br>' +
-        '或者直接复制上面的邀请码，在 Terse 的「好友」页粘贴。';
+    lastTrap = which;
+    document.getElementById('wxText').innerHTML =
+      L(which === 'send' ? 'wxSend' : 'wxOpen').replace(/\{app\}/g, app);
     document.getElementById('wx').style.display = 'block';
   }
 
@@ -192,8 +295,7 @@
     // friend) — so the pointer to it is part of the page, not a popup.
     document.body.className = 'share';
     document.getElementById('point').style.display = 'flex';
-    document.getElementById('sub').textContent =
-      '把这张卡片转发给朋友，或复制下面的邀请码在 Terse 里加入';
+    document.getElementById('sub').textContent = L('subShare');
   }
 
   function toast(msg) {
@@ -218,7 +320,7 @@
     function copied() {
       if (done) return;
       done = true;
-      toast('邀请链接已复制 ✓');
+      toast(L('toastCopied'));
       document.removeEventListener('touchstart', armed, true);
       document.removeEventListener('click', armed, true);
     }
@@ -257,11 +359,14 @@
   // One copy routine for both buttons. The clipboard API is unavailable on http
   // and in some webviews; the textarea fallback is what actually works inside
   // WeChat, so it is the path that has to be reliable, not the modern one.
-  function copyText(text, btn, label) {
+  function copyText(text, btn, labelKey) {
     if (!text) return;
     var done = function () {
-      btn.textContent = '已复制 ✓';
-      setTimeout(function () { btn.textContent = label; }, 1800);
+      btn.textContent = L('copied');
+      // The label is a KEY, not a string: the language can change while the
+      // 1.8s timer is still running, and restoring the old wording would undo
+      // the switch on exactly one button.
+      setTimeout(function () { btn.textContent = L(labelKey); }, 1800);
     };
     if (navigator.clipboard && location.protocol === 'https:') {
       navigator.clipboard.writeText(text).then(done, fallback);
@@ -275,10 +380,10 @@
     }
   }
   document.getElementById('copy').addEventListener('click', function () {
-    copyText(code, this, '复制邀请码 · Copy code');
+    copyText(code, this, 'copyCode');
   });
   document.getElementById('copyLink').addEventListener('click', function () {
-    copyText(location.href, this, '复制链接 · Copy link');
+    copyText(location.href, this, 'copyLink');
   });
 
   /* 发送给朋友 — forwarding this invite onward.
@@ -299,21 +404,32 @@
   var send = document.getElementById('send');
   send.addEventListener('click', function () {
     var shareUrl = location.href;
-    var title = '一起用 Terse';
-    var text = '我在用 Terse，加入我的团队 —— 点开这条链接就能加入。';
+    var title = L('h1');
+    var text = L('shareText');
     if (trapped) { trap('send'); return; }
     if (navigator.share) {
       navigator.share({ title: title, text: text, url: shareUrl }).catch(function () {
         // A cancelled sheet throws the same way a failed one does; either way the
         // link is still worth having on the clipboard.
-        copyText(shareUrl, send, '发送给朋友 · Send to a friend');
+        copyText(shareUrl, send, sendKey());
       });
       return;
     }
-    copyText(shareUrl, send, '发送给朋友 · Send to a friend');
+    copyText(shareUrl, send, sendKey());
   });
-  if (trapped) send.textContent = '发送给朋友 · 用右上角 ⋯';
-  else if (!navigator.share) send.textContent = '复制链接发给朋友 · Copy link to send';
+  /* The send button says three different things depending on what it can
+     actually do, so its wording is derived, not assigned once — and re-derived
+     when the reader switches language. */
+  function sendKey() {
+    return trapped ? 'sendTrapped' : (navigator.share ? 'send' : 'sendCopy');
+  }
+  function refreshDynamic() {
+    send.textContent = L(sendKey());
+    if (trapped) document.getElementById('sub').textContent = L('subShare');
+    if (document.getElementById('wx').style.display === 'block') trap(lastTrap);
+  }
+  var lastTrap = 'send';
+  refreshDynamic();
 </script>
 </body>
 </html>

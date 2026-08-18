@@ -313,6 +313,48 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_cowork_messages_team ON cowork_messages(team_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_cowork_messages_inbox ON cowork_messages(team_id, to_email, status);
 
+  -- ── Terse Rooms (shared wallpaper sessions) ──────────────────────────────
+  -- A room is deliberately NOT a team. A team is who you work for; a room is who
+  -- you are on the wallpaper with right now. You join one by code, which is why
+  -- joining never implies friendship and leaving costs nothing.
+  CREATE TABLE IF NOT EXISTS rooms (
+    id TEXT PRIMARY KEY,
+    code TEXT UNIQUE NOT NULL,          -- the short share code (also the QR payload)
+    name TEXT,
+    owner_key_hash TEXT NOT NULL,       -- whoever created it; can rename/close it
+    created_at TEXT DEFAULT (datetime('now')),
+    closed_at TEXT
+  );
+
+  -- One row per participant. key_hash is the member's bearer credential: it is
+  -- handed out once at join and never stored in the clear, same as team tokens.
+  CREATE TABLE IF NOT EXISTS room_members (
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    key_hash TEXT NOT NULL,
+    member_id TEXT NOT NULL,            -- stable public id: what the wallpaper colours by
+    name TEXT,
+    user_email TEXT,                    -- optional; only set when the joiner is signed in
+    status TEXT DEFAULT 'online',       -- online | away | offline
+    last_seen_at TEXT DEFAULT (datetime('now')),
+    joined_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (room_id, key_hash)
+  );
+
+  -- Chat. image_url is the only attachment kind: arbitrary file relay was
+  -- deliberately left out, so anything else travels as a link inside body.
+  CREATE TABLE IF NOT EXISTS room_messages (
+    id TEXT PRIMARY KEY,
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    member_id TEXT NOT NULL,
+    name TEXT,
+    body TEXT,
+    image_url TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_id, last_seen_at);
+  CREATE INDEX IF NOT EXISTS idx_room_messages_room ON room_messages(room_id, created_at);
+
   -- ── Terse Docs (Google-style collaborative documents) ──
   -- A standalone, shareable file (document | sheet | slides) that humans AND
   -- multiple people's agents co-edit live. The authoritative content is a JSON
@@ -887,6 +929,48 @@ const addCoworkMessage = db.prepare(`
   VALUES (@id, @team_id, @from_email, @to_email, @session_id, @kind, @body, @status)
 `);
 const getCoworkMessage = db.prepare('SELECT * FROM cowork_messages WHERE id = ?');
+
+// ── Terse Rooms ──
+const createRoom = db.prepare(`
+  INSERT INTO rooms (id, code, name, owner_key_hash) VALUES (@id, @code, @name, @owner_key_hash)
+`);
+const getRoomById = db.prepare('SELECT * FROM rooms WHERE id = ? AND closed_at IS NULL');
+const getRoomByCode = db.prepare('SELECT * FROM rooms WHERE code = ? AND closed_at IS NULL');
+const closeRoom = db.prepare("UPDATE rooms SET closed_at = datetime('now') WHERE id = ?");
+const renameRoom = db.prepare('UPDATE rooms SET name = ? WHERE id = ?');
+
+const addRoomMember = db.prepare(`
+  INSERT INTO room_members (room_id, key_hash, member_id, name, user_email)
+  VALUES (@room_id, @key_hash, @member_id, @name, @user_email)
+  ON CONFLICT(room_id, key_hash) DO UPDATE SET
+    name = excluded.name, status = 'online', last_seen_at = datetime('now')
+`);
+const getRoomMember = db.prepare('SELECT * FROM room_members WHERE room_id = ? AND key_hash = ?');
+const findRoomMemberByKey = db.prepare('SELECT * FROM room_members WHERE key_hash = ?');
+const getRoomMembers = db.prepare(`
+  SELECT member_id, name, user_email, status, last_seen_at, joined_at
+  FROM room_members WHERE room_id = ? ORDER BY joined_at
+`);
+const touchRoomMember = db.prepare(`
+  UPDATE room_members SET status = ?, last_seen_at = datetime('now')
+  WHERE room_id = ? AND key_hash = ?
+`);
+const removeRoomMember = db.prepare('DELETE FROM room_members WHERE room_id = ? AND key_hash = ?');
+// Presence decays instead of relying on a clean disconnect: a closed laptop never
+// sends "offline", so anyone who stops heartbeating is aged out by the reader.
+const ageOutRoomMembers = db.prepare(`
+  UPDATE room_members SET status = 'offline'
+  WHERE status != 'offline' AND last_seen_at < datetime('now', ?)
+`);
+
+const addRoomMessage = db.prepare(`
+  INSERT INTO room_messages (id, room_id, member_id, name, body, image_url)
+  VALUES (@id, @room_id, @member_id, @name, @body, @image_url)
+`);
+const getRoomMessage = db.prepare('SELECT * FROM room_messages WHERE id = ?');
+const getRoomMessages = db.prepare(`
+  SELECT * FROM room_messages WHERE room_id = ? ORDER BY created_at DESC LIMIT ?
+`);
 const getCoworkMessages = db.prepare(`
   SELECT * FROM cowork_messages WHERE team_id = ? AND created_at > ?
   ORDER BY created_at DESC LIMIT 200
@@ -1006,6 +1090,11 @@ module.exports = {
   addCloudEvent, getTeamEvents, getTeamSummary,
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
   getTeamByModel, getTeamByMode, getTeamByAgent, getTeamAgentTotals,
+  // Terse Rooms
+  createRoom, getRoomById, getRoomByCode, closeRoom, renameRoom,
+  addRoomMember, getRoomMember, findRoomMemberByKey, getRoomMembers,
+  touchRoomMember, removeRoomMember, ageOutRoomMembers,
+  addRoomMessage, getRoomMessage, getRoomMessages,
   // Terse Cowork
   upsertCoworkSession, getCoworkSessionByKey, getCoworkSession, getCoworkSessions,
   bumpCoworkSessionSeq, endStaleCoworkSessions, idleStaleCoworkSessions,

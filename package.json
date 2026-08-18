@@ -6,7 +6,8 @@
     "start": "node api/server.js",
     "dev": "node api/server.js",
     "test": "node api/cowork.test.js",
-    "test:cowork": "node api/cowork.test.js"
+    "test:cowork": "node api/cowork.test.js",
+    "test:rooms": "node api/rooms.test.js"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

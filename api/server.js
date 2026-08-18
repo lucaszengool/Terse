@@ -1232,6 +1232,9 @@ app.use('/api/cloud', cloudIngestLimiter, cloudRouter);
 // MCP server mounted first so JSON-RPC isn't subject to the telemetry limiter.
 app.use('/api/cloud/mcp', mcpRouter);
 app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
+// Rooms: shared wallpaper sessions. Same prefix, distinct paths — a room is
+// its own unit, so it does NOT go through team auth.
+app.use('/api/cloud/rooms', cloudIngestLimiter, require('./rooms'));
 
 // Sweep stale cowork sessions + presence every 30s (broadcasts changes over SSE).
 setInterval(() => coworkRouter.sweepStale(), 30 * 1000).unref();

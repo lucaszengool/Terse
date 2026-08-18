@@ -74,7 +74,7 @@ function requireMember(req, res, next) {
 //  Lifecycle
 // ════════════════════════════════════════
 
-// POST /api/cloud/rooms   Body: { name?, member_name? }
+// POST /api/cloud/rooms   Body: { name?, member_name?, email? }
 router.post('/', (req, res) => {
   const b = req.body || {};
   const key = crypto.randomBytes(24).toString('base64url');
@@ -90,7 +90,9 @@ router.post('/', (req, res) => {
     key_hash: hash(key),
     member_id: uuid(),
     name: clip((b.member_name || '').toString().trim(), 40) || null,
-    user_email: null,
+    // The creator gets an email for the same reason a joiner does: without one
+    // they are anonymous, and an anonymous member cannot be added as a friend.
+    user_email: (b.email || '').toString().trim().toLowerCase() || null,
   });
   res.json({ ok: true, room: publicRoom(room), key, owner: true });
 });

@@ -74,17 +74,19 @@
     state: readState,
     inRoom: function () { var s = readState(); return !!(s && s.key && s.id); },
 
-    create: function (name, memberName) {
-      return call('', { method: 'POST', body: { name: name, member_name: memberName } })
+    create: function (name, memberName, email) {
+      return call('', { method: 'POST',
+        body: { name: name, member_name: memberName, email: email } })
         .then(function (j) {
           writeState({ id: j.room.id, code: j.room.code, name: j.room.name,
                        key: j.key, memberId: null, owner: true });
-          // The creator's member id only comes back from the snapshot, and the
-          // wallpaper needs it to know which glyphs are its own.
+          // The member id comes from the snapshot, but the room already EXISTS
+          // by now — so a failed snapshot must not report failure and strand an
+          // orphan room. The stream teaches us the id again on connect.
           return Rooms.snapshot().then(function (s) {
-            var st = readState(); st.memberId = s.you; writeState(st);
+            var st = readState(); if (st) { st.memberId = s.you; writeState(st); }
             return j.room;
-          });
+          }, function () { return j.room; });
         });
     },
 

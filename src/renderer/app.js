@@ -2263,7 +2263,7 @@ async function roomInit() {
       const msg = $('#rmOutMsg');
       msg.textContent = 'Creating…';
       try {
-        await R.create(($('#rmName')?.value || '').trim(), await displayName());
+        await R.create(($('#rmName')?.value || '').trim(), await displayName(), await currentEmail());
         msg.textContent = '';
         refresh();
         window.showToast?.(TT('rm_created'));
@@ -2276,7 +2276,7 @@ async function roomInit() {
       if (!code) { msg.textContent = TT('rm_need_code'); return; }
       msg.textContent = 'Joining…';
       try {
-        await R.join(code, await displayName());
+        await R.join(code, await displayName(), await currentEmail());
         msg.textContent = '';
         refresh();
         window.showToast?.(TT('rm_joined'));
@@ -2318,6 +2318,16 @@ async function roomInit() {
   }
 
   refresh();
+}
+
+/** The signed-in email, or null. A room member without one is anonymous: they
+    can be seen and chatted with, but not added as a friend, because there is
+    nothing durable to attach the friendship to. */
+async function currentEmail() {
+  try {
+    const a = await T.getAuthState?.();
+    return a?.email || null;
+  } catch (e) { return null; }
 }
 
 /** Whatever name the room should show for us. Falls back to the device. */

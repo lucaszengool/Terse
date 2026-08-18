@@ -95,6 +95,17 @@ function stream(roomId, key, want, timeoutMs = 3000) {
   eq('join with a bad code 404s', (await req('POST', '/rooms/join', { body: { code: 'ZZZZZZZ' } })).status, 404);
   eq('join without a code 400s', (await req('POST', '/rooms/join', { body: {} })).status, 400);
 
+  // The creator needs an email for the same reason a joiner does: without one
+  // they are anonymous, and an anonymous member can never be added as a friend.
+  // The app had no way to pass one, so every room owner was anonymous.
+  {
+    const withEmail = await req('POST', '/rooms', { body: { name: 'E', member_name: 'eve', email: 'Eve@Test.dev' } });
+    created.push(withEmail.json.room.id);
+    const snap = await req('GET', `/rooms/${withEmail.json.room.id}`, { key: withEmail.json.key });
+    eq("the creator's email is stored", snap.json.members[0].user_email, 'eve@test.dev');
+    ok('and is lower-cased', snap.json.members[0].user_email === snap.json.members[0].user_email.toLowerCase());
+  }
+
   console.log('\n── auth ──');
   eq('no key is rejected', (await req('GET', `/rooms/${roomId}`)).status, 401);
   eq('a made-up key is rejected', (await req('GET', `/rooms/${roomId}`, { key: 'nope' })).status, 401);

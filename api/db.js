@@ -1017,6 +1017,12 @@ const touchRoomMember = db.prepare(`
   UPDATE room_members SET status = ?, last_seen_at = datetime('now')
   WHERE room_id = ? AND key_hash = ?
 `);
+const renameRoomMember = db.prepare(
+  'UPDATE room_members SET name = ? WHERE room_id = ? AND key_hash = ?');
+// A nickname is a property of the PERSON, not of one seat: changing it should
+// change it everywhere they are, not only in the room they happen to be in.
+const renameRoomMemberEverywhere = db.prepare(
+  'UPDATE room_members SET name = ? WHERE identity_hash = ?');
 const removeRoomMember = db.prepare('DELETE FROM room_members WHERE room_id = ? AND key_hash = ?');
 // Re-entering a room you already belong to must REPLACE your seat, never add a
 // second one: a new key is minted on every join, so without this a person who
@@ -1038,7 +1044,14 @@ const addRoomMessage = db.prepare(`
   INSERT INTO room_messages (id, room_id, member_id, name, body, image_url)
   VALUES (@id, @room_id, @member_id, @name, @body, @image_url)
 `);
-const getRoomMessage = db.prepare('SELECT * FROM room_messages WHERE id = ?');
+const getRoomMessage = db.prepare('SELECT rowid AS seq, * FROM room_messages WHERE id = ?');
+// Scrollback. A chat window is judged on whether yesterday is still there, and
+// the snapshot deliberately carries only the tail — so older pages are fetched
+// by asking for what came before the oldest line already on screen, by seq.
+const getRoomMessagesBefore = db.prepare(`
+  SELECT rowid AS seq, * FROM room_messages
+  WHERE room_id = ? AND rowid < ? ORDER BY rowid DESC LIMIT ?
+`);
 // ── Discovery + knocking ──
 const setRoomOwnerIdentity = db.prepare('UPDATE rooms SET owner_identity = ? WHERE id = ?');
 const setRoomListing = db.prepare('UPDATE rooms SET visibility = ?, category = ? WHERE id = ?');
@@ -1140,8 +1153,14 @@ const respondFriend = db.prepare(`
 `);
 const deleteFriend = db.prepare('DELETE FROM friend_links WHERE id = ?');
 
+/* Ordered by ROWID, not by created_at. created_at has one-second resolution, so
+   several messages routinely share it — and the tie was being broken by a random
+   UUID, which is to say arbitrarily: two lines sent in the same second could come
+   back in the wrong order, and a "give me what came before this" cursor could not
+   be expressed at all. rowid is insertion order and strictly increasing, which is
+   what both the ordering and the scrollback cursor actually need. */
 const getRoomMessages = db.prepare(`
-  SELECT * FROM room_messages WHERE room_id = ? ORDER BY created_at DESC LIMIT ?
+  SELECT rowid AS seq, * FROM room_messages WHERE room_id = ? ORDER BY rowid DESC LIMIT ?
 `);
 const getCoworkMessages = db.prepare(`
   SELECT * FROM cowork_messages WHERE team_id = ? AND created_at > ?
@@ -1273,8 +1292,9 @@ module.exports = {
   createRoom, getRoomById, getRoomByCode, closeRoom, renameRoom,
   addRoomMember, getRoomMember, findRoomMemberByKey, getRoomMembers,
   touchRoomMember, removeRoomMember, ageOutRoomMembers,
+  renameRoomMember, renameRoomMemberEverywhere,
   findRoomMemberByIdentity, removeRoomMembersByIdentity,
-  addRoomMessage, getRoomMessage, getRoomMessages,
+  addRoomMessage, getRoomMessage, getRoomMessages, getRoomMessagesBefore,
   // Terse Cowork
   upsertCoworkSession, getCoworkSessionByKey, getCoworkSession, getCoworkSessions,
   bumpCoworkSessionSeq, endStaleCoworkSessions, idleStaleCoworkSessions,

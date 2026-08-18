@@ -151,6 +151,37 @@ function stream(roomId, key, want, timeoutMs = 3000) {
   eq('https image accepted', (await req('POST', `/rooms/${roomId}/messages`, { key: bobKey, body: { image_url: 'https://x/a.png' } })).status, 200);
   ok('chat persists for late joiners', (await req('GET', `/rooms/${roomId}`, { key: annKey })).json.messages.length >= 2);
 
+  console.log('\n── scrollback ──');
+  for (let i = 0; i < 6; i++) {
+    await req('POST', `/rooms/${roomId}/messages`, { key: bobKey, body: { body: 'line ' + i } });
+  }
+  {
+    const page1 = await req('GET', `/rooms/${roomId}/messages?limit=3`, { key: annKey });
+    eq('a page is capped where asked', page1.json.messages.length, 3);
+    eq('and comes back oldest-first, ready to render', page1.json.messages[2].body, 'line 5');
+    ok('ordering is by insertion, so a same-second burst keeps its order',
+       page1.json.messages[0].seq < page1.json.messages[1].seq);
+    const first = page1.json.messages[0];
+    const page2 = await req('GET', `/rooms/${roomId}/messages?limit=3&before=${first.seq}`, { key: annKey });
+    eq('the older page is really older', page2.json.messages.length, 3);
+    ok('and does not repeat the line it was anchored on',
+       !page2.json.messages.some((m) => m.id === first.id));
+    eq('scrollback needs the room key',
+       (await req('GET', `/rooms/${roomId}/messages`)).status, 401);
+  }
+
+  console.log('\n── your name ──');
+  {
+    const before = (await req('GET', `/rooms/${roomId}`, { key: bobKey })).json.members
+      .find((m) => m.member_id === bobId);
+    eq('renaming needs a name', (await req('POST', `/rooms/${roomId}/name`, { key: bobKey, body: { name: '  ' } })).status, 400);
+    eq('you can rename yourself', (await req('POST', `/rooms/${roomId}/name`, { key: bobKey, body: { name: '小明' } })).json.name, '小明');
+    const after = (await req('GET', `/rooms/${roomId}`, { key: annKey })).json.members
+      .find((m) => m.member_id === bobId);
+    eq('and everyone in the room sees it', after.name, '小明');
+    ok('it really was a change', before.name !== after.name);
+  }
+
   console.log('\n── presence ──');
   {
     const before = (await req('GET', `/rooms/${roomId}`, { key: annKey })).json.members;

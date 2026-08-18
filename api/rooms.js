@@ -361,6 +361,18 @@ router.get('/:id', requireMember, (req, res) => {
   });
 });
 
+// GET /api/cloud/rooms/:id/messages?before=<created_at>&before_id=<id>&limit=
+// Older pages, for a chat window scrolling up. Returned oldest-first so the
+// caller can prepend the block as-is.
+router.get('/:id/messages', requireMember, (req, res) => {
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+  const before = parseInt(req.query.before, 10);
+  const rows = Number.isFinite(before)
+    ? db.getRoomMessagesBefore.all(req.room.id, before, limit)
+    : db.getRoomMessages.all(req.room.id, limit);
+  res.json({ ok: true, messages: rows.reverse(), more: rows.length === limit });
+});
+
 // ════════════════════════════════════════
 //  Live channel
 // ════════════════════════════════════════
@@ -385,6 +397,22 @@ router.get('/:id/stream', requireMember, (req, res) => {
   const unsubscribe = bus.subscribe(chan(req.room.id), res);
   const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch { /* closed */ } }, 25000);
   req.on('close', () => { clearInterval(ping); unsubscribe(); });
+});
+
+// POST /api/cloud/rooms/:id/name   Body: { name }
+// Your nickname — what everyone else sees in the roster. It is applied to every
+// room this install sits in, not just this one: a name is who you are, and
+// having to rename yourself once per room is how people end up as "someone".
+router.post('/:id/name', requireMember, (req, res) => {
+  const name = clip((req.body?.name || '').toString().trim(), 40) || null;
+  if (!name) return res.status(400).json({ error: 'Missing name' });
+  if (req.member.identity_hash) {
+    db.renameRoomMemberEverywhere.run(name, req.member.identity_hash);
+  } else {
+    db.renameRoomMember.run(name, req.room.id, hash(req.rawKey));
+  }
+  bus.emit(chan(req.room.id), { type: 'roster', members: roster(req.room.id) });
+  res.json({ ok: true, name });
 });
 
 // POST /api/cloud/rooms/:id/presence   Body: { status? }

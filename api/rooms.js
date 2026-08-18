@@ -56,11 +56,14 @@ function roster(roomId) {
 
 /* Who owns this room. The creation key still counts — an owner who never sent
    an identity (or created the room before identities existed) must not be locked
-   out of their own room — but the identity is what actually persists. */
+   out of their own room — but the identity is what actually persists: a key is
+   replaced every time you walk back in, an install identity is not. */
+function ownsRoom(room, identityHash) {
+  return !!(identityHash && room.owner_identity && room.owner_identity === identityHash);
+}
 function isOwner(req) {
   if (req.room.owner_key_hash === hash(req.rawKey)) return true;
-  const secret = req.headers['x-terse-identity'] || req.query.identity;
-  return !!(secret && req.room.owner_identity && req.room.owner_identity === hash(secret.toString()));
+  return ownsRoom(req.room, idHash(req));
 }
 
 /* One room at a time. Entering a room makes you go quiet in every other room you
@@ -77,6 +80,12 @@ function makeActiveRoom(identityHash, roomId) {
   // Everyone still watching those rooms should see the person go quiet.
   for (const id of others) bus.emit(chan(id), { type: 'roster', members: roster(id) });
 }
+
+/** This caller's install identity, hashed. Headers for POSTs, query for SSE. */
+const idHash = (req) => {
+  const secret = req.headers['x-terse-identity'] || req.query.identity;
+  return secret ? hash(secret.toString()) : null;
+};
 
 function publicRoom(room) {
   return {
@@ -149,22 +158,37 @@ router.post('/join', (req, res) => {
   if (!room) return res.status(404).json({ error: 'No such room' });
 
   const key = crypto.randomBytes(24).toString('base64url');
+  const identity = b.identity ? hash(b.identity.toString()) : null;
   const member = {
     room_id: room.id,
     key_hash: hash(key),
     member_id: uuid(),
     name: clip((b.name || '').toString().trim(), 40) || null,
     user_email: (b.email || '').toString().trim().toLowerCase() || null,
-    identity_hash: b.identity ? hash(b.identity.toString()) : null,
+    identity_hash: identity,
   };
+  /* Coming back is RE-entering, not arriving. Every join mints a fresh key, so
+     without replacing the old seat the same person accumulates rows: a roster
+     full of their own offline ghosts and a member count that only ever grows.
+     The member id is carried over so their past messages stay theirs. */
+  const prior = identity ? db.findRoomMemberByIdentity.get(room.id, identity) : null;
+  if (prior) {
+    member.member_id = prior.member_id;
+    db.removeRoomMembersByIdentity.run(room.id, identity);
+  }
   db.addRoomMember.run(member);
-  makeActiveRoom(member.identity_hash, room.id);
+  makeActiveRoom(identity, room.id);
   const list = roster(room.id);
   bus.emit(chan(room.id), { type: 'roster', members: list });
-  res.json({ ok: true, room: publicRoom(room), key, member_id: member.member_id, members: list });
+  res.json({ ok: true, room: publicRoom(room), key, member_id: member.member_id,
+             owner: ownsRoom(room, identity), members: list });
 });
 
 // POST /api/cloud/rooms/:id/leave
+// Gives up your SEAT, not the room. The owner leaving is the interesting case:
+// the room stays open, everybody still in it keeps talking, the code still
+// works, and the owner walks back in later as the owner — ownership lives on
+// the room's identity, not on the key that happened to be sitting in a browser.
 router.post('/:id/leave', requireMember, (req, res) => {
   db.removeRoomMember.run(req.room.id, hash(req.rawKey));
   bus.emit(chan(req.room.id), { type: 'roster', members: roster(req.room.id) });
@@ -192,18 +216,51 @@ router.post('/:id/close', requireMember, (req, res) => {
 // rooms whose owners opted in, and only ones with somebody actually online —
 // a directory full of dead rooms is worse than an empty one.
 router.get('/public', (req, res) => {
+  const me = idHash(req);
   const rows = db.listPublicRooms.all({
+    identity: me,
     category: category(req.query.category),
     limit: Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50)),
   });
   res.json({
     ok: true,
     categories: CATEGORIES,
-    // The CODE is deliberately withheld: a public listing that handed out the
-    // credential would make "ask to join" meaningless.
     rooms: rows.map((r) => ({
       id: r.id, name: r.name || null, category: r.category || null,
       members: r.members, online: r.online, created_at: r.created_at,
+      // Whether the browser is already inside. Offering "ask to join" for a room
+      // you own is a button that can never do anything: the knock arrives, and
+      // the only person who could answer it is the one who pressed it.
+      joined: !!r.joined, owner: !!r.owner,
+      // The CODE is withheld from strangers — a listing that handed out the
+      // credential would make "ask to join" theatre — but not from people who
+      // already hold it. Returning it to them is what makes walking back into
+      // your own room survive a cleared browser store.
+      code: (r.joined || r.owner) ? r.code : undefined,
+    })),
+  });
+});
+
+// GET /api/cloud/rooms/mine   (identity, no room key)
+// Every room this install can walk back into: the ones it joined and the ones it
+// owns, present in them or not. This is server-side on purpose — membership
+// outlives presence, so the way back into a room must not be a browser store
+// that a reinstall wipes.
+router.get('/mine', (req, res) => {
+  const me = idHash(req);
+  if (!me) return res.status(401).json({ error: 'Missing identity' });
+  const rows = db.listRoomsForIdentity.all({
+    identity: me,
+    limit: Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20)),
+  });
+  res.json({
+    ok: true,
+    rooms: rows.map((r) => ({
+      id: r.id, code: r.code, name: r.name || null,
+      category: r.category || null, visibility: r.visibility || 'private',
+      members: r.members, online: r.online,
+      owner: !!r.owner, joined: !!r.joined,
+      last_seen_at: r.last_seen_at || null, created_at: r.created_at,
     })),
   });
 });
@@ -225,11 +282,6 @@ router.post('/:id/listing', requireMember, (req, res) => {
 // ════════════════════════════════════════
 //  Knocking — asking to enter, owner decides
 // ════════════════════════════════════════
-
-const idHash = (req) => {
-  const secret = req.headers['x-terse-identity'] || req.query.identity;
-  return secret ? hash(secret.toString()) : null;
-};
 
 // POST /api/cloud/rooms/:id/knock   Body: { name? }   (identity, no room key)
 router.post('/:id/knock', (req, res) => {

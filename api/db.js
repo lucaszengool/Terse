@@ -1018,6 +1018,15 @@ const touchRoomMember = db.prepare(`
   WHERE room_id = ? AND key_hash = ?
 `);
 const removeRoomMember = db.prepare('DELETE FROM room_members WHERE room_id = ? AND key_hash = ?');
+// Re-entering a room you already belong to must REPLACE your seat, never add a
+// second one: a new key is minted on every join, so without this a person who
+// comes back three times is three people in the roster and three in the plaza's
+// member count — all but one of them permanently offline ghosts.
+const findRoomMemberByIdentity = db.prepare(`
+  SELECT * FROM room_members WHERE room_id = ? AND identity_hash = ? ORDER BY joined_at LIMIT 1
+`);
+const removeRoomMembersByIdentity = db.prepare(
+  'DELETE FROM room_members WHERE room_id = ? AND identity_hash = ?');
 // Presence decays instead of relying on a clean disconnect: a closed laptop never
 // sends "offline", so anyone who stops heartbeating is aged out by the reader.
 const ageOutRoomMembers = db.prepare(`
@@ -1033,18 +1042,50 @@ const getRoomMessage = db.prepare('SELECT * FROM room_messages WHERE id = ?');
 // ── Discovery + knocking ──
 const setRoomOwnerIdentity = db.prepare('UPDATE rooms SET owner_identity = ? WHERE id = ?');
 const setRoomListing = db.prepare('UPDATE rooms SET visibility = ?, category = ? WHERE id = ?');
-// The plaza must not advertise dead rooms, so a listing is only as real as its
-// live members: rooms with nobody online are simply not there.
+// Ordered by who is actually there — a directory whose first screen is dead
+// rooms is worse than an empty one — but nothing is hidden: a room with nobody
+// online is still a room you can knock on, and its owner may well be back.
+// `joined`/`owner` are answered for the BROWSER, not about the room: a plaza
+// that offers "ask to join" for a room you are already in (or own) is a dead
+// button — you knock, the owner never sees a stranger, and nothing happens.
 const listPublicRooms = db.prepare(`
   SELECT r.id, r.code, r.name, r.category, r.created_at,
          COUNT(m.member_id) AS members,
-         COALESCE(SUM(CASE WHEN m.status = 'online' THEN 1 ELSE 0 END), 0) AS online
+         COALESCE(SUM(CASE WHEN m.status = 'online' THEN 1 ELSE 0 END), 0) AS online,
+         CASE WHEN @identity IS NOT NULL AND r.owner_identity = @identity THEN 1 ELSE 0 END AS owner,
+         (SELECT COUNT(*) FROM room_members x
+           WHERE x.room_id = r.id AND x.identity_hash = @identity) AS joined
   FROM rooms r
   LEFT JOIN room_members m ON m.room_id = r.id
   WHERE r.closed_at IS NULL AND r.visibility = 'public'
     AND (@category IS NULL OR r.category = @category)
   GROUP BY r.id
   ORDER BY online DESC, members DESC, r.created_at DESC
+  LIMIT @limit
+`);
+/* Every room this install can walk back into — the ones it joined and the ones
+   it owns, whether or not it is present in them right now. Membership outlives
+   presence (only the owner can close a room), so "recent rooms" is a server
+   fact, not a browser one: clearing localStorage, or reinstalling, must not be
+   what destroys the way back into a room you own.
+   Counts are subqueries rather than joins on purpose — a join against
+   room_members twice multiplies the SUM once someone has two seats. */
+const listRoomsForIdentity = db.prepare(`
+  SELECT r.id, r.code, r.name, r.category, r.visibility, r.created_at,
+         CASE WHEN r.owner_identity = @identity THEN 1 ELSE 0 END AS owner,
+         (SELECT COUNT(*) FROM room_members m WHERE m.room_id = r.id) AS members,
+         (SELECT COUNT(*) FROM room_members m
+           WHERE m.room_id = r.id AND m.status = 'online') AS online,
+         (SELECT COUNT(*) FROM room_members m
+           WHERE m.room_id = r.id AND m.identity_hash = @identity) AS joined,
+         (SELECT MAX(m.last_seen_at) FROM room_members m
+           WHERE m.room_id = r.id AND m.identity_hash = @identity) AS last_seen_at
+  FROM rooms r
+  WHERE r.closed_at IS NULL
+    AND (r.owner_identity = @identity
+         OR EXISTS (SELECT 1 FROM room_members m
+                     WHERE m.room_id = r.id AND m.identity_hash = @identity))
+  ORDER BY COALESCE(last_seen_at, r.created_at) DESC
   LIMIT @limit
 `);
 // One active room at a time. Membership is NOT revoked — a room you joined is
@@ -1222,7 +1263,7 @@ module.exports = {
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
   getTeamByModel, getTeamByMode, getTeamByAgent, getTeamAgentTotals,
   // Discovery, knocking, friend links
-  setRoomListing, setRoomOwnerIdentity, listPublicRooms,
+  setRoomListing, setRoomOwnerIdentity, listPublicRooms, listRoomsForIdentity,
   addKnock, getKnock, getKnockFor, listKnocks, setKnockStatus,
   goOfflineElsewhere, roomsIdleFor,
   addFriendInvite, getFriendInvite, bumpFriendInvite, getFriendInviteByOwner, deleteFriendInvite,
@@ -1232,6 +1273,7 @@ module.exports = {
   createRoom, getRoomById, getRoomByCode, closeRoom, renameRoom,
   addRoomMember, getRoomMember, findRoomMemberByKey, getRoomMembers,
   touchRoomMember, removeRoomMember, ageOutRoomMembers,
+  findRoomMemberByIdentity, removeRoomMembersByIdentity,
   addRoomMessage, getRoomMessage, getRoomMessages,
   // Terse Cowork
   upsertCoworkSession, getCoworkSessionByKey, getCoworkSession, getCoworkSessions,

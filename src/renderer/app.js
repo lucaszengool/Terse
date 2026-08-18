@@ -3,13 +3,13 @@ const $$ = s => document.querySelectorAll(s);
 const T = window.terse;
 
 let prevView = 'sessions';
-const views = { sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView'), island: $('#islandView'), friends: $('#friendsView'), room: $('#roomView') };
+const views = { sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView'), island: $('#islandView'), friends: $('#friendsView'), room: $('#roomView'), plaza: $('#plazaView') };
 function show(name) {
   Object.values(views).forEach(v => v && v.classList.add('hidden'));
   views[name].classList.remove('hidden');
   if (name !== 'settings') prevView = name;
   // keep the sidebar highlight in sync with the visible page
-  const page = ['cleanup', 'settings', 'boost', 'prompts', 'observe', 'mcp', 'rules', 'connection', 'island', 'friends', 'room'].includes(name) ? name : 'overview';
+  const page = ['cleanup', 'settings', 'boost', 'prompts', 'observe', 'mcp', 'rules', 'connection', 'island', 'friends', 'room', 'plaza'].includes(name) ? name : 'overview';
   $$('.sb-item').forEach(b => b.classList.toggle('active', b.dataset.page === page));
 }
 
@@ -1433,6 +1433,7 @@ const SB_ACTIONS = {
   island:   () => { show('island'); islPermInit(); },
   friends:  () => { show('friends'); friendsInit(); },
   room:     () => { show('room'); roomInit(); },
+  plaza:    () => { show('plaza'); plazaInit(); },
   pals:     () => $('#btnPalsTitle')?.click(),
 };
 // Pro-only destinations. Clicking one on the free tier is the strongest upsell
@@ -2218,6 +2219,27 @@ async function roomInit() {
     }
 
     $('#rmClose').style.display = st.owner ? '' : 'none';
+    $('#rmListingGroup').style.display = st.owner ? '' : 'none';
+    if ($('#rmListed')) $('#rmListed').checked = st.visibility === 'public';
+
+    // Only the owner can see or answer these, so only the owner asks for them.
+    if (st.owner) {
+      try {
+        const k = await R.knocks();
+        const list = k.knocks || [];
+        $('#rmKnockGroup').style.display = list.length ? '' : 'none';
+        $('#rmKnocks').innerHTML = list.map(x => `
+          <div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
+            <span>${esc(x.name || 'someone')}</span>
+            <span style="margin-left:auto;display:flex;gap:6px">
+              <button class="ob-btn" style="font-size:10.5px;padding:2px 10px" data-knock-yes="${esc(x.id)}">Let in</button>
+              <button class="ob-btn ghost" style="font-size:10.5px;padding:2px 10px" data-knock-no="${esc(x.id)}">Decline</button>
+            </span>
+          </div>`).join('');
+      } catch (e) { $('#rmKnockGroup').style.display = 'none'; }
+    } else {
+      $('#rmKnockGroup').style.display = 'none';
+    }
 
     let snap = null;
     try { snap = await R.snapshot(); } catch (e) {
@@ -2263,7 +2285,9 @@ async function roomInit() {
       const msg = $('#rmOutMsg');
       msg.textContent = 'Creating…';
       try {
-        await R.create(($('#rmName')?.value || '').trim(), await displayName(), await currentEmail());
+        await R.create(($('#rmName')?.value || '').trim(), await displayName(), await currentEmail(),
+                       { visibility: $('#rmPublic')?.checked ? 'public' : 'private',
+                         category: $('#rmCategory')?.value });
         msg.textContent = '';
         refresh();
         window.showToast?.(TT('rm_created'));
@@ -2302,6 +2326,26 @@ async function roomInit() {
       refresh();
     });
 
+    $('#rmKnocks')?.addEventListener('click', async e => {
+      const yes = e.target.closest('[data-knock-yes]'), no = e.target.closest('[data-knock-no]');
+      const btn = yes || no;
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        await R.answerKnock(yes ? yes.dataset.knockYes : no.dataset.knockNo, !!yes);
+        refresh();
+      } catch (err) { btn.disabled = false; $('#rmMsg').textContent = String(err.message || err); }
+    });
+
+    $('#rmListed')?.addEventListener('change', async e => {
+      try {
+        await R.setListing(e.target.checked ? 'public' : 'private', null);
+        $('#rmMsg').textContent = e.target.checked
+          ? 'Listed on the Plaza — people can ask to join.'
+          : 'Unlisted. Only the code gets people in.';
+      } catch (err) { $('#rmMsg').textContent = String(err.message || err); }
+    });
+
     $('#rmRefresh')?.addEventListener('click', refresh);
 
     $('#rmFriends')?.addEventListener('click', async e => {
@@ -2337,6 +2381,84 @@ async function displayName() {
     if (a?.email) return String(a.email).split('@')[0];
   } catch (e) {}
   return 'someone';
+}
+
+/* ── 广场 · Plaza ────────────────────────────────────────────────────────────
+   Browsing is not joining. The listing deliberately does NOT carry room codes —
+   if it did, "ask to join" would be theatre, since anyone could simply use the
+   code. So the only way in from here is to knock and wait for the owner. */
+let plazaWired = false, plazaCat = null, knockPoll = null;
+async function plazaInit() {
+  const R = window.TerseRooms;
+  if (!R) return;
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  async function refresh() {
+    let data;
+    try { data = await R.plaza(plazaCat); }
+    catch (e) { $('#pzMsg').textContent = String(e.message || e); return; }
+
+    $('#pzCats').innerHTML = ['all', ...(data.categories || [])].map(c => {
+      const on = (c === 'all' && !plazaCat) || c === plazaCat;
+      return `<button class="ob-btn ${on ? '' : 'ghost'}" style="font-size:11px;padding:3px 11px"
+                data-cat="${c}">${c}</button>`;
+    }).join('');
+
+    const rooms = data.rooms || [];
+    $('#pzList').innerHTML = rooms.length
+      ? rooms.map(r => `
+          <div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:8px">
+            <span style="width:8px;height:8px;border-radius:50%;background:${r.online ? 'var(--btn)' : 'var(--t3)'}"></span>
+            <span>
+              <div>${esc(r.name || 'Untitled room')}</div>
+              <div style="font-size:10.5px;color:var(--t3)">${esc(r.category || 'other')} · ${r.online} online · ${r.members} member${r.members === 1 ? '' : 's'}</div>
+            </span>
+            <button class="ob-btn" style="margin-left:auto;font-size:10.5px;padding:3px 11px"
+                    data-knock="${esc(r.id)}">Ask to join</button>
+          </div>`).join('')
+      : `<p style="font-size:11px;color:var(--t3);margin:4px 0 0">No public rooms yet. Create one and tick “List it on the Plaza”.</p>`;
+  }
+
+  if (!plazaWired) {
+    plazaWired = true;
+    $('#pzRefresh')?.addEventListener('click', refresh);
+    $('#pzCats')?.addEventListener('click', e => {
+      const b = e.target.closest('[data-cat]');
+      if (!b) return;
+      plazaCat = b.dataset.cat === 'all' ? null : b.dataset.cat;
+      refresh();
+    });
+    $('#pzList')?.addEventListener('click', async e => {
+      const b = e.target.closest('[data-knock]');
+      if (!b) return;
+      b.disabled = true; b.textContent = 'Asked';
+      try {
+        const k = await R.knock(b.dataset.knock, await displayName());
+        $('#pzMsg').textContent = 'Waiting for the owner to let you in…';
+        // Poll for the verdict. The same call hands over the key on approval,
+        // so a yes puts us straight into the room.
+        clearInterval(knockPoll);
+        knockPoll = setInterval(async () => {
+          try {
+            const st = await R.knockStatus(k.knock.id);
+            if (st.status === 'approved') {
+              clearInterval(knockPoll);
+              $('#pzMsg').textContent = 'You are in — opening the room.';
+              window.__terseOpenPage?.('room');
+            } else if (st.status === 'denied') {
+              clearInterval(knockPoll);
+              $('#pzMsg').textContent = 'The owner declined.';
+              b.disabled = false; b.textContent = 'Ask to join';
+            }
+          } catch (err) { clearInterval(knockPoll); }
+        }, 3000);
+      } catch (err) {
+        b.disabled = false; b.textContent = 'Ask to join';
+        $('#pzMsg').textContent = String(err.message || err);
+      }
+    });
+  }
+  refresh();
 }
 
 /* Incoming friend requests. They arrive from the room and are answered here,
@@ -2464,6 +2586,18 @@ async function friendsInit() {
     $('#frJoin')?.addEventListener('click', async () => {
       const msg = $('#frJoinMsg');
       let raw = ($('#frJoinCode')?.value || '').trim();
+      // A friend link is the common case now, so it is checked first — pasting
+      // one into the "join" box is what people will actually do.
+      const friend = raw.match(/[?&]friend=([^&\s]+)/);
+      if (friend) {
+        if (msg) msg.textContent = TT('fr_joining');
+        try {
+          await window.TerseRooms.acceptFriendLink(decodeURIComponent(friend[1]), await displayName());
+          if (msg) msg.textContent = TT('fr_joined');
+          refresh();
+        } catch (e) { if (msg) msg.textContent = String(e?.message || e); }
+        return;
+      }
       const m = raw.match(/[?&]c=([^&\s]+)/);
       if (m) raw = decodeURIComponent(m[1]);
       raw = raw.replace(/^terse:\/\/\?token=/, '');
@@ -2488,6 +2622,22 @@ async function friendsInit() {
         await window.TerseRooms.respondFriend(yes ? yes.dataset.accept : no.dataset.decline, !!yes);
         refresh();
       } catch (err) { btn.disabled = false; window.showToast?.(String(err.message || err)); }
+    });
+
+    $('#frLinkBtn')?.addEventListener('click', async () => {
+      const out = $('#frLinkOut'), qr = $('#frLinkQr');
+      try {
+        const j = await window.TerseRooms.friendLink();
+        out.value = j.url;
+        try { await navigator.clipboard.writeText(j.url); window.showToast?.(TT('fr_copied')); } catch (e) {}
+        if (qr && window.TerseQR) {
+          qr.innerHTML = window.TerseQR.svg(j.url, { size: 132, quiet: 2 }) +
+            `<div style="font-size:11px;color:var(--t3);line-height:1.6">
+               <div>Scan the code with any phone camera</div>
+               <div style="opacity:.8;margin-top:4px">Whoever opens it is added — no approval needed.</div>
+             </div>`;
+        }
+      } catch (e) { out.value = ''; window.showToast?.(String(e.message || e)); }
     });
 
     $('#frRefresh')?.addEventListener('click', refresh);

@@ -20,16 +20,36 @@
 
   var API = 'https://www.terseai.org/api/cloud/rooms';
   var FRIENDS = 'https://www.terseai.org/api/cloud/friends';
-  var LS = 'terse-room';           // { id, code, name, key, memberId, owner }
+  var LS = 'terse-room';           // the ACTIVE room: { id, code, key, memberId, … }
+  var LS_ROOMS = 'terse-rooms';    // every room this install belongs to, by id
   var LS_ID = 'terse-identity';    // this install's secret — never leaves as-is
   var HEARTBEAT_MS = 20000;        // server ages a member out at 45s
 
   function readState() {
     try { return JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { return null; }
   }
+  /* Rooms you belong to are remembered separately from the one you are IN.
+     You can only be active in one room at a time, but a room you joined stays
+     joined — it exists until its owner deletes it — so switching must not throw
+     away the key that gets you back. */
+  function knownRooms() {
+    try { return JSON.parse(localStorage.getItem(LS_ROOMS) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function remember(st) {
+    if (!st || !st.id) return;
+    var all = knownRooms();
+    all[st.id] = st;
+    try { localStorage.setItem(LS_ROOMS, JSON.stringify(all)); } catch (e) {}
+  }
+  function forget(id) {
+    var all = knownRooms();
+    delete all[id];
+    try { localStorage.setItem(LS_ROOMS, JSON.stringify(all)); } catch (e) {}
+  }
+
   function writeState(s) {
     try {
-      if (s) localStorage.setItem(LS, JSON.stringify(s));
+      if (s) { localStorage.setItem(LS, JSON.stringify(s)); remember(s); }
       else localStorage.removeItem(LS);
     } catch (e) {}
   }
@@ -88,13 +108,30 @@
     });
   }
 
+  /* Knocking happens BEFORE you have a room key — that is the whole point — so
+     these calls carry only the identity. */
+  function idCall(path, opts) {
+    opts = opts || {};
+    return fetch(API + path, {
+      method: opts.method || 'GET',
+      headers: { 'Content-Type': 'application/json', 'x-terse-identity': identity() },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      });
+    });
+  }
+
   var Rooms = {
     state: readState,
     inRoom: function () { var s = readState(); return !!(s && s.key && s.id); },
 
-    create: function (name, memberName, email) {
+    create: function (name, memberName, email, opts) {
       return call('', { method: 'POST',
-        body: { name: name, member_name: memberName, email: email, identity: identity() } })
+        body: { name: name, member_name: memberName, email: email, identity: identity(),
+                visibility: opts && opts.visibility, category: opts && opts.category } })
         .then(function (j) {
           writeState({ id: j.room.id, code: j.room.code, name: j.room.name,
                        key: j.key, memberId: null, owner: true });
@@ -126,14 +163,14 @@
       if (!st) return Promise.resolve();
       return call('/' + st.id + '/leave', { method: 'POST' })
         .catch(function () {})
-        .then(function () { writeState(null); });
+        .then(function () { forget(st.id); writeState(null); });
     },
 
     close: function () {
       var st = readState();
       if (!st) return Promise.resolve();
       return call('/' + st.id + '/close', { method: 'POST' })
-        .then(function () { writeState(null); });
+        .then(function () { forget(st.id); writeState(null); });
     },
 
     snapshot: function () {
@@ -169,6 +206,70 @@
       return friendCall('/' + id + '/respond', { method: 'POST', body: { accept: !!accept } });
     },
     removeFriend: function (id) { return friendCall('/' + id, { method: 'DELETE' }); },
+
+    rooms: knownRooms,
+    /** Re-enter a room you already belong to. No code, no knock — you are
+        already a member; this only changes which one you are present in. */
+    activate: function (id) {
+      var st = knownRooms()[id];
+      if (!st) return Promise.reject(new Error('You are not in that room'));
+      writeState(st);
+      return call('/' + id + '/presence', { method: 'POST', body: { status: 'online' } })
+        .then(function () { return st; });
+    },
+
+    // ── 广场 ──
+    plaza: function (category) {
+      return fetch(API + '/public' + (category ? '?category=' + encodeURIComponent(category) : ''))
+        .then(function (r) { return r.json(); });
+    },
+    setListing: function (visibility, category) {
+      var st = readState();
+      if (!st) return Promise.reject(new Error('Not in a room'));
+      return call('/' + st.id + '/listing', { method: 'POST',
+        body: { visibility: visibility, category: category } })
+        .then(function (j) {
+          var s2 = readState();
+          if (s2) { s2.visibility = j.room.visibility; s2.category = j.room.category; writeState(s2); }
+          return j.room;
+        });
+    },
+
+    // ── knocking ──
+    knock: function (roomId, name) {
+      return idCall('/' + roomId + '/knock', { method: 'POST', body: { name: name } });
+    },
+    /** Poll a verdict. When approved, this is also where the key is handed over —
+        so a successful call puts you IN the room. */
+    knockStatus: function (knockId) {
+      return idCall('/knock/' + knockId).then(function (j) {
+        if (j.status === 'approved' && j.key) {
+          writeState({ id: j.room.id, code: j.room.code, name: j.room.name,
+                       key: j.key, memberId: j.member_id, owner: false,
+                       visibility: j.room.visibility, category: j.room.category });
+        }
+        return j;
+      });
+    },
+    knocks: function () {
+      var st = readState();
+      if (!st) return Promise.resolve({ knocks: [] });
+      return call('/' + st.id + '/knocks');
+    },
+    answerKnock: function (knockId, accept) {
+      var st = readState();
+      if (!st) return Promise.reject(new Error('Not in a room'));
+      return call('/' + st.id + '/knocks/' + knockId, { method: 'POST', body: { accept: !!accept } });
+    },
+
+    // ── friend links ──
+    friendLink: function () { return friendCall('/link', { method: 'POST' }); },
+    acceptFriendLink: function (token, name) {
+      return friendCall('/link/' + encodeURIComponent(token) + '/accept', { method: 'POST', body: { name: name } });
+    },
+    revokeFriendLink: function (token) {
+      return friendCall('/link/' + encodeURIComponent(token), { method: 'DELETE' });
+    },
 
     inviteUrl: function () {
       var st = readState();

@@ -213,6 +213,12 @@
           <span class="sb-emoji">🪟</span>
           <span>Room</span>
         </button>
+        <!-- 广场 — where rooms are found. Separate from Room because browsing
+             strangers' rooms and being in one are different activities. -->
+        <button class="sb-item" data-page="plaza" title="Plaza">
+          <span class="sb-emoji">🏛</span>
+          <span>Plaza</span>
+        </button>
         <button class="sb-item" data-page="island"
                 title="Answer Claude's permission prompts on the Dynamic Island">
           <span class="sb-emoji">🛡</span>
@@ -497,10 +503,26 @@
 
       <!-- The other direction: someone who was sent a code rather than a working
            link. join.html tells them to paste it here, so here has to exist. -->
+      <!-- A link is enough. Whoever opens it is added — sending it WAS the
+           decision, so there is nothing left to approve. -->
+      <div class="setting-group">
+        <label class="setting-label">Your friend link</label>
+        <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+          Anyone who opens this is added as a friend — no room, no account, no approval.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="frLinkOut" readonly spellcheck="false" placeholder="Tap Get link"
+                 style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                        padding:8px 10px;color:var(--t1);font:11px ui-monospace,Menlo,monospace">
+          <button class="ob-btn" id="frLinkBtn">Get link</button>
+        </div>
+        <div id="frLinkQr" style="margin-top:12px;display:flex;gap:12px;align-items:center"></div>
+      </div>
+
       <div class="setting-group">
         <label class="setting-label">Join with a code</label>
         <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
-          Paste a friend's invite code to join their team.
+          Paste a friend link, or a room code someone sent you.
         </p>
         <div style="display:flex;gap:8px;align-items:center">
           <input id="frJoinCode" spellcheck="false" placeholder="Invite code"
@@ -559,8 +581,23 @@
             <input id="rmName" placeholder="Room name" spellcheck="false"
                    style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
                           padding:8px 10px;color:var(--t1);font-size:12px">
+            <select id="rmCategory" style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                          padding:8px 6px;color:var(--t1);font-size:12px">
+              <option value="coding">Coding</option>
+              <option value="study">Study</option>
+              <option value="work">Work</option>
+              <option value="gaming">Gaming</option>
+              <option value="chat">Chat</option>
+              <option value="other">Other</option>
+            </select>
             <button class="ob-btn" id="rmCreate">Create</button>
           </div>
+          <!-- Private is the default on purpose: being findable by strangers
+               should be a decision, never something that happens to you. -->
+          <label style="display:flex;gap:7px;align-items:center;margin-top:9px;font-size:11px;color:var(--t3)">
+            <input type="checkbox" id="rmPublic">
+            <span>List it on the Plaza so anyone can ask to join</span>
+          </label>
         </div>
         <div class="setting-group">
           <label class="setting-label">Join a room</label>
@@ -590,6 +627,20 @@
           <div id="rmQr" style="margin-top:12px;display:flex;gap:12px;align-items:center"></div>
         </div>
 
+        <!-- Only the owner ever sees this, and only when someone is waiting. -->
+        <div class="setting-group" id="rmKnockGroup" style="display:none">
+          <label class="setting-label">Asking to join</label>
+          <div id="rmKnocks" class="mcp-list" style="margin-top:6px"></div>
+        </div>
+
+        <div class="setting-group" id="rmListingGroup" style="display:none">
+          <label class="setting-label">Plaza listing</label>
+          <label style="display:flex;gap:7px;align-items:center;margin-top:6px;font-size:11px;color:var(--t3)">
+            <input type="checkbox" id="rmListed">
+            <span>Anyone can find this room and ask to join</span>
+          </label>
+        </div>
+
         <div class="setting-group">
           <label class="setting-label"><span>In this room</span> <span id="rmCount" style="color:var(--t3)"></span></label>
           <div id="rmRoster" class="mcp-list" style="margin-top:6px"></div>
@@ -608,6 +659,28 @@
           <button class="ob-btn ghost" id="rmClose" style="margin-left:8px;display:none">Close room</button>
           <p id="rmMsg" style="font-size:11px;color:var(--t3);margin:8px 0 0;min-height:14px"></p>
         </div>
+      </div>
+    </div>
+
+    <!-- 广场 · Plaza — public rooms anyone can ask to join -->
+    <div id="plazaView" class="hidden">
+      <div class="ob-head">
+        <div>
+          <div class="ob-title">Plaza</div>
+          <div class="ob-sub">Rooms anyone can ask to join — the owner decides who comes in</div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="pzRefresh">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div id="pzCats" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+
+      <div class="setting-group">
+        <div id="pzList" class="mcp-list"></div>
+        <p id="pzMsg" style="font-size:11px;color:var(--t3);margin:8px 0 0;min-height:14px"></p>
       </div>
     </div>
 

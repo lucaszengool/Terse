@@ -108,6 +108,10 @@ const MODEL_ROUTES = {
   // ── OpenAI Codex models ──
   'o4': 'o4-mini',
   'codex-davinci-002': 'o4-mini',
+
+  // ── DeepSeek Harness: pro → flash (same 1M context, ~1/3 the price) ──
+  'deepseek-v4-pro': 'deepseek-v4-flash',
+  'deepseek-reasoner': 'deepseek-v4-flash',
 };
 
 // Also match models dynamically (for aliases we haven't seen yet)
@@ -168,6 +172,7 @@ let stats = { total: 0, routed: 0, savedEstimate: 0 };
 
 // Cumulative Codex/OpenAI token stats extracted from SSE response streams
 let codexTokenStats = { inputTokens: 0, outputTokens: 0, cachedTokens: 0, calls: 0 };
+let dshTokenStats = { inputTokens: 0, outputTokens: 0, cachedTokens: 0, calls: 0 };
 
 // Write codex token stats to a file so the Rust backend can read them
 function flushCodexTokenStats() {
@@ -176,6 +181,36 @@ function flushCodexTokenStats() {
     const statsFile = path.join(require('os').homedir(), '.terse', 'codex-proxy-tokens.json');
     require('fs').writeFileSync(statsFile, JSON.stringify(codexTokenStats));
   } catch (e) {}
+}
+
+function flushDshTokenStats() {
+  try {
+    const path = require('path');
+    const statsFile = path.join(require('os').homedir(), '.terse', 'dsh-proxy-tokens.json');
+    require('fs').writeFileSync(statsFile, JSON.stringify(dshTokenStats));
+  } catch (e) {}
+}
+
+// DeepSeek reports usage on the final chat/completions SSE chunk. Unlike OpenAI,
+// `prompt_tokens` is the whole prompt *including* cache hits, and the split is
+// reported separately — so fresh input is the cache-miss half, which is also what
+// DeepSeek actually bills at the full rate.
+function extractDeepSeekTokensFromSSELine(line) {
+  if (!line.startsWith('data: ')) return null;
+  const json = line.slice(6).trim();
+  if (json === '[DONE]') return null;
+  try {
+    const obj = JSON.parse(json);
+    const usage = obj.usage;
+    if (!usage || usage.prompt_tokens === undefined) return null;
+    const hit = usage.prompt_cache_hit_tokens || 0;
+    const miss = usage.prompt_cache_miss_tokens;
+    return {
+      input: miss !== undefined ? miss : Math.max(0, (usage.prompt_tokens || 0) - hit),
+      output: usage.completion_tokens || 0,
+      cached: hit,
+    };
+  } catch (e) { return null; }
 }
 
 // Parse a single SSE data line and extract token usage from response.done events
@@ -199,13 +234,33 @@ function extractTokensFromSSELine(line) {
   } catch (e) { return null; }
 }
 
+// Another local proxy that already owned ANTHROPIC_BASE_URL when we started.
+//
+// A relay that re-points Claude Code at a different backend writes its own
+// address into ~/.claude/settings.json. Terse used to overwrite that outright,
+// which silently broke the relay - the user's Claude Code stopped working and
+// nothing said why. Same fault as the Codex config we just fixed: editing
+// somebody else's file as if we were the only tenant.
+//
+// So chain instead of replace. Claude Code talks to us on PORT, we forward to
+// whatever was there before, and the relay keeps working while Terse still sees
+// the traffic it needs to count. { host, port } when chained, null otherwise.
+let CHAINED_ANTHROPIC = null;
+
 // Provider endpoints
 const PROVIDERS = {
   anthropic: { host: 'api.anthropic.com', basePath: '/v1' },
   openai: { host: 'api.openai.com', basePath: '/v1' },
+  deepseek: { host: 'api.deepseek.com', basePath: '' },
 };
 
+// DeepSeek Harness speaks the OpenAI-compatible /chat/completions dialect, so path
+// shape alone can't tell it apart from OpenAI. Terse points $DEEPSEEK_BASE_URL at
+// http://127.0.0.1:<port>/deepseek and routes on that prefix instead.
+const DEEPSEEK_PREFIX = '/deepseek';
+
 function detectProvider(path, headers) {
+  if (path.startsWith(DEEPSEEK_PREFIX)) return 'deepseek';
   if (headers['anthropic-version'] || path.includes('/messages')) return 'anthropic';
   if (path.includes('/chat/completions') || path.includes('/responses')) return 'openai';
   return null;
@@ -393,20 +448,56 @@ function forwardRequest(provider, originalReq, bodyBuf, effectiveModel, res) {
   delete headers['content-length'];
   headers['content-length'] = sendBuf.length;
 
+  // dsh reaches us at /deepseek/... — strip the routing prefix before forwarding.
+  const isDeepSeek = provider === 'deepseek';
+  const upstreamPath = isDeepSeek
+    ? (originalReq.url.slice(DEEPSEEK_PREFIX.length) || '/')
+    : originalReq.url;
+
+  // Chained: send Anthropic traffic to the relay that owned the setting before
+  // us, over plain http on loopback, instead of out to api.anthropic.com.
+  const chain = provider === 'anthropic' ? CHAINED_ANTHROPIC : null;
   const options = {
-    hostname: providerInfo.host,
-    port: 443,
-    path: originalReq.url,
+    hostname: chain ? chain.host : providerInfo.host,
+    port: chain ? chain.port : 443,
+    path: upstreamPath,
     method: originalReq.method,
     headers,
   };
+  if (chain) {
+    // The Host header must name the hop we are actually talking to, or the
+    // relay may route on a hostname it never serves.
+    headers.host = `${chain.host}:${chain.port}`;
+  }
 
   const isResponsesApi = originalReq.url.includes('/responses');
 
-  const proxyReq = https.request(options, (proxyRes) => {
+  const transport = chain ? http : https;
+  const proxyReq = transport.request(options, (proxyRes) => {
     res.writeHead(proxyRes.statusCode, proxyRes.headers);
 
-    if (isResponsesApi && proxyRes.statusCode === 200) {
+    if (isDeepSeek && proxyRes.statusCode === 200) {
+      // Tap the chat/completions SSE stream for DeepSeek's usage chunk.
+      let dsBuffer = '';
+      proxyRes.on('data', (chunk) => {
+        res.write(chunk);
+        dsBuffer += chunk.toString();
+        const lines = dsBuffer.split('\n');
+        dsBuffer = lines.pop() || '';
+        for (const line of lines) {
+          const tokens = extractDeepSeekTokensFromSSELine(line.trim());
+          if (tokens && (tokens.input > 0 || tokens.output > 0)) {
+            dshTokenStats.inputTokens += tokens.input;
+            dshTokenStats.outputTokens += tokens.output;
+            dshTokenStats.cachedTokens += tokens.cached;
+            dshTokenStats.calls++;
+            flushDshTokenStats();
+            log(`dsh tokens: in=${tokens.input} out=${tokens.output} cached=${tokens.cached} (total in=${dshTokenStats.inputTokens})`);
+          }
+        }
+      });
+      proxyRes.on('end', () => { res.end(); });
+    } else if (isResponsesApi && proxyRes.statusCode === 200) {
       // Tap the SSE stream to extract token usage from response.done events
       let sseBuffer = '';
       proxyRes.on('data', (chunk) => {
@@ -474,6 +565,7 @@ const server = http.createServer((req, res) => {
       port: PORT,
       stats,
       codexTokens: codexTokenStats,
+      dshTokens: dshTokenStats,
       routing: MODEL_ROUTES,
     }));
     return;
@@ -560,10 +652,52 @@ function configureAgents() {
     let settings = {};
     try { settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8')); } catch {}
     if (!settings.env) settings.env = {};
+
+    // Chain, do not evict.
+    //
+    // A relay that re-points Claude Code at another backend puts its own address
+    // here. Overwriting it broke that relay outright - Claude Code stopped
+    // working and nothing explained why, which is how one user lost terminal
+    // sync entirely. If something else already owns this setting, keep it as our
+    // upstream and sit in front: Claude Code -> Terse -> relay -> wherever.
+    //
+    // Only loopback addresses on another port are chained. A remote base URL is
+    // somebody's real gateway and forwarding it through us would move their
+    // traffic somewhere they did not ask for, so we leave it alone entirely.
+    const prev = settings.env.ANTHROPIC_BASE_URL;
+    const upstreamFile = path.join(home, '.terse', 'anthropic-upstream.json');
+    if (typeof prev === 'string' && prev && prev !== proxyUrl) {
+      let u = null;
+      try { u = new URL(prev); } catch (e) { u = null; }
+      const local = u && (u.hostname === '127.0.0.1' || u.hostname === 'localhost');
+      if (local && Number(u.port) && Number(u.port) !== PORT) {
+        CHAINED_ANTHROPIC = { host: '127.0.0.1', port: Number(u.port) };
+        try {
+          fs.mkdirSync(path.join(home, '.terse'), { recursive: true });
+          fs.writeFileSync(upstreamFile, JSON.stringify({ url: prev }));
+        } catch (e) {}
+        log('Chaining Claude Code through existing proxy at ' + prev);
+      } else if (!local) {
+        log('ANTHROPIC_BASE_URL is remote (' + prev + ') — leaving it alone');
+        throw new Error('__claude_skip__');
+      }
+    } else {
+      // Nobody else owns it now; drop any upstream remembered from a past run so
+      // we do not forward to a relay that is no longer there.
+      try { fs.unlinkSync(upstreamFile); } catch (e) {}
+    }
+
     settings.env.ANTHROPIC_BASE_URL = proxyUrl;
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
-    log('Configured Claude Code: ANTHROPIC_BASE_URL=' + proxyUrl);
-  } catch (e) { log('Claude Code config failed: ' + e.message); }
+    log('Configured Claude Code: ANTHROPIC_BASE_URL=' + proxyUrl +
+        (CHAINED_ANTHROPIC ? ' -> 127.0.0.1:' + CHAINED_ANTHROPIC.port : ''));
+  } catch (e) {
+    if (e && e.message === '__claude_skip__') { /* deliberate: remote base URL */ }
+    else log('Claude Code config failed: ' + e.message);
+  }
+
+  // Route DeepSeek Harness through the proxy via its per-profile patch overlay
+  configureDsh(proxyUrl);
 
   // Write openai_base_url to ~/.codex/config.toml for Codex Desktop routing
   try {
@@ -641,6 +775,95 @@ function configureAgents() {
 // Remove direct config modifications from OLDER Terse versions (shell profiles only).
 // NOTE: settings.json cleanup is handled by the Rust watchdog on app exit and by
 // cleanupOnExit() below — NOT here, because configureAgents() just wrote the URL.
+// ── DeepSeek Harness (dsh) ──────────────────────────────────────────────────
+// dsh composes its plugin tree from bundle layers plus one user overlay per
+// profile (`~/.dsh/profiles/<name>/cordis.patch.yml`). Overriding llm-deepseek's
+// baseURL there routes dsh through this proxy. The block is fenced by markers so
+// a user's own patch entries in the same file are never touched, and it is pulled
+// back out on shutdown — a stale override would point dsh at a dead port.
+const DSH_BEGIN = '# >>> terse-managed — removed when Terse stops';
+const DSH_END = '# <<< terse-managed';
+
+function dshProfileDirs() {
+  const fs = require('fs');
+  const path = require('path');
+  const root = process.env.DSH_HOME
+    ? path.join(process.env.DSH_HOME, 'profiles')
+    : path.join(require('os').homedir(), '.dsh', 'profiles');
+  try {
+    return fs.readdirSync(root)
+      .map(n => path.join(root, n))
+      .filter(d => {
+        try { return fs.statSync(path.join(d, 'cordis.patch.yml')).isFile(); }
+        catch (e) { return false; }
+      });
+  } catch (e) { return []; }
+}
+
+function stripTerseBlock(content) {
+  const re = new RegExp(`\\n?${DSH_BEGIN}[\\s\\S]*?${DSH_END}\\n?`, 'g');
+  let out = content.replace(re, '\n');
+  // An overlay with no entries left must go back to the empty-array form; a file
+  // of only comments is not a valid patch list.
+  const body = out.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).join('\n').trim();
+  if (body === '') {
+    out = out.split('\n').filter(l => !l.trim() || l.trim().startsWith('#')).join('\n').trimEnd() + '\n[]\n';
+  }
+  return out;
+}
+
+function configureDsh(proxyUrl) {
+  const fs = require('fs');
+  const path = require('path');
+  for (const dir of dshProfileDirs()) {
+    const file = path.join(dir, 'cordis.patch.yml');
+    try {
+      let content = fs.readFileSync(file, 'utf8');
+
+      // Back up once, before the first modification.
+      const bak = file + '.terse-backup';
+      try { if (!fs.existsSync(bak)) fs.writeFileSync(bak, content); } catch (e) {}
+
+      content = stripTerseBlock(content);
+
+      // Never fight a baseURL the user set themselves.
+      if (/^\s*baseURL\s*:/m.test(content)) {
+        fs.writeFileSync(file, content);
+        log(`dsh: ${path.basename(dir)} has its own baseURL — not routing`);
+        continue;
+      }
+
+      // `[]` is the empty-overlay form and cannot be mixed with block entries.
+      const lines = content.split('\n').filter(l => l.trim() !== '[]');
+      const block = [
+        DSH_BEGIN,
+        '- id: llm-deepseek',
+        '  config:',
+        `    baseURL: ${proxyUrl}${DEEPSEEK_PREFIX}`,
+        DSH_END,
+      ].join('\n');
+      fs.writeFileSync(file, lines.join('\n').trimEnd() + '\n' + block + '\n');
+      log(`Configured dsh: ${path.basename(dir)} baseURL=${proxyUrl}${DEEPSEEK_PREFIX}`);
+    } catch (e) {
+      log(`dsh config failed for ${dir}: ${e.message}`);
+    }
+  }
+}
+
+function cleanupDsh() {
+  const fs = require('fs');
+  const path = require('path');
+  for (const dir of dshProfileDirs()) {
+    const file = path.join(dir, 'cordis.patch.yml');
+    try {
+      const content = fs.readFileSync(file, 'utf8');
+      if (!content.includes(DSH_BEGIN)) continue;
+      fs.writeFileSync(file, stripTerseBlock(content));
+      log(`Cleaned up terse baseURL from dsh profile ${path.basename(dir)}`);
+    } catch (e) {}
+  }
+}
+
 function cleanupDirectConfigs() {
   const fs = require('fs');
   const path = require('path');
@@ -678,7 +901,20 @@ function cleanupOnExit() {
     if (fs.existsSync(settingsFile)) {
       const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
       if (settings.env?.ANTHROPIC_BASE_URL?.includes('127.0.0.1')) {
-        delete settings.env.ANTHROPIC_BASE_URL;
+        // Hand the setting back to whoever had it, instead of deleting it. A
+        // chained relay was working before Terse started and must still be
+        // working after it quits.
+        let restored = null;
+        try {
+          restored = JSON.parse(fs.readFileSync(
+            path.join(home, '.terse', 'anthropic-upstream.json'), 'utf8')).url;
+        } catch (e) {}
+        if (restored) {
+          settings.env.ANTHROPIC_BASE_URL = restored;
+          log('Restored ANTHROPIC_BASE_URL to ' + restored);
+        } else {
+          delete settings.env.ANTHROPIC_BASE_URL;
+        }
         if (settings.env && Object.keys(settings.env).length === 0) delete settings.env;
         fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
         log('Cleaned up ANTHROPIC_BASE_URL from settings.json');
@@ -698,6 +934,12 @@ function cleanupOnExit() {
       }
     }
   } catch (e) {}
+
+  // Pull our baseURL override back out of every dsh profile overlay
+  cleanupDsh();
+
+  // Remove dsh token stats file (stale after proxy stops)
+  try { fs.unlinkSync(path.join(home, '.terse', 'dsh-proxy-tokens.json')); } catch (e) {}
 
   // Remove Codex token stats file (stale after proxy stops)
   try { fs.unlinkSync(path.join(home, '.terse', 'codex-proxy-tokens.json')); } catch (e) {}

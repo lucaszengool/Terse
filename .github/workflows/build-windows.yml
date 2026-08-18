@@ -336,6 +336,26 @@ jobs:
       # fail on it, which is fine and worth exercising: find_claude_project_dir
       # is meant to fall back to scanning all project dirs for the most recent
       # session, and that fallback is what the planted transcript tests.
+      # Plant a rival relay, the one that broke a user's Claude Code sync.
+      #
+      # Their settings.json was owned by a relay on 127.0.0.1:15721 mapping Claude
+      # model names onto gpt-5.6-*. Terse overwrote it, the relay wrote it back,
+      # and sync died in the crossfire. The fix chains instead of evicting, and
+      # this is the state it has to survive.
+      - name: Plant a rival Claude Code proxy
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".claude"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $f = Join-Path $dir "settings.json"
+          $cur = @{}
+          if (Test-Path $f) { try { $cur = Get-Content $f -Raw | ConvertFrom-Json -AsHashtable } catch {} }
+          if (-not $cur.env) { $cur.env = @{} }
+          $cur.env.ANTHROPIC_BASE_URL = 'http://127.0.0.1:15721'
+          $cur.env.ANTHROPIC_AUTH_TOKEN = 'PROXY_MANAGED'
+          ConvertTo-Json $cur -Depth 8 | Set-Content $f -Encoding ascii
+          Write-Host "planted rival relay: ANTHROPIC_BASE_URL=http://127.0.0.1:15721"
+
       - name: Give the agent scanner processes to find
         continue-on-error: true
         run: |
@@ -577,6 +597,40 @@ jobs:
                                  Pct = [math]::Round($d / 15 * 100); MB = [math]::Round($_.WorkingSet64/1MB); Win = $win }
             } | Sort-Object DeltaCpu -Descending |
             ForEach-Object { "  pid {0,-6} {1,6}s {2,5}% {3,6} MB  {4}" -f $_.Pid, $_.DeltaCpu, $_.Pct, $_.MB, $_.Win }
+
+      # Did Terse chain in front of the relay, or evict it?
+      #
+      # Pass = our port in settings.json AND the relay's address remembered as the
+      # upstream. Either alone is a failure: taking the setting without recording
+      # the upstream is exactly the eviction that broke the user.
+      - name: Verify Claude Code was chained, not evicted
+        continue-on-error: true
+        run: |
+          $f = Join-Path $env:USERPROFILE ".claude\settings.json"
+          $up = Join-Path $env:USERPROFILE ".terse\anthropic-upstream.json"
+          $waited = 0
+          while ($waited -lt 60) {
+            $v = $null
+            try { $v = (Get-Content $f -Raw | ConvertFrom-Json).env.ANTHROPIC_BASE_URL } catch {}
+            if ($v -like '*:7860*') { break }
+            Start-Sleep -Seconds 3; $waited += 3
+          }
+          $now = $null
+          try { $now = (Get-Content $f -Raw | ConvertFrom-Json).env.ANTHROPIC_BASE_URL } catch {}
+          Write-Host "after ${waited}s  ANTHROPIC_BASE_URL = $now"
+          $chained = $false
+          if (Test-Path $up) {
+            $u = (Get-Content $up -Raw | ConvertFrom-Json).url
+            Write-Host "remembered upstream = $u"
+            $chained = ($u -eq 'http://127.0.0.1:15721')
+          } else { Write-Host "no anthropic-upstream.json" }
+          if ($now -like '*:7860*' -and $chained) {
+            Write-Host "CHAIN OK: Terse took the port and remembered the relay as upstream"
+          } elseif ($now -like '*:7860*') {
+            Write-Warning "CHAIN FAIL: Terse took the setting but did NOT record the relay - this is the eviction bug"
+          } else {
+            Write-Warning "CHAIN FAIL: Terse never configured Claude Code (base url = $now)"
+          }
 
       - name: Screenshot the desktop
         continue-on-error: true

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="color-scheme" content="dark">
+  <title>Terse Room</title>
+  <style>
+    /* ── Why this is a WINDOW and not part of the wallpaper ──────────────────
+       The wallpaper is pinned at kCGDesktopWindowLevel, which is *below*
+       Finder's desktop-icon layer — and that layer covers the whole screen. So
+       a click aimed at anything drawn on the wallpaper is taken by Finder
+       before the wallpaper ever sees it, no matter what the wallpaper does with
+       ignoresMouseEvents. A chat box there can be drawn but never used: it was
+       not that the room UI was broken, it was unreachable by construction.
+       Everything you have to TOUCH therefore lives here, in an ordinary window
+       that can take clicks, keyboard focus and an IME. The wallpaper keeps what
+       it is good at: showing the room, in big text, from across the desk. */
+    * { margin: 0; padding: 0; box-sizing: border-box }
+    :root {
+      --bg: #0b0d12; --panel: rgba(255,255,255,.045); --line: rgba(255,255,255,.10);
+      --t1: #f2f4f8; --t2: rgba(242,244,248,.72); --t3: rgba(242,244,248,.42);
+      --accent: #C9F03D;
+    }
+    /* The window is transparent; THIS is the surface. Glass over the desktop,
+       but a dark plate under the blur — text on pure blur is legible over a dark
+       wallpaper and unreadable over a bright one, and the wallpaper underneath
+       is a moving particle field, which is the worst case for contrast. */
+    html, body { height: 100%; background: transparent; color: var(--t1); overflow: hidden;
+      font: 13px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", system-ui, sans-serif; }
+    body { display: flex; flex-direction: column;
+      background: rgba(11,13,18,.46);
+      backdrop-filter: blur(16px) saturate(1.3); -webkit-backdrop-filter: blur(16px) saturate(1.3);
+      border: 1px solid rgba(255,255,255,.12); border-radius: 14px; overflow: hidden;
+      box-shadow: 0 18px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10);
+      }
+    /* Dragging is done by hand, in JS, further down — NOT by -webkit-app-region.
+       That property is Electron's; WKWebView ignores it, which is why the
+       window would not move no matter what it was set on. Tauri's own hook is
+       `data-tauri-drag-region`, and the fallback below calls startDragging()
+       directly so the whole frame works as a handle either way. */
+    .msg, .p-row { user-select: text }
+
+    /* Header — the room, who you are in it, and the one switch that changes
+       what you broadcast. */
+    header { display: flex; align-items: center; gap: 10px; padding: 12px 14px 11px;
+      border-bottom: 1px solid var(--line); padding-left: 78px;
+      background: rgba(255,255,255,.03); cursor: default }
+    header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none }
+    #rmName { font-weight: 800; letter-spacing: -.01em; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; max-width: 240px }
+    #rmCode { font: 11px ui-monospace, Menlo, monospace; color: var(--t3); letter-spacing: 1.5px }
+    header .spacer { flex: 1 }
+    header .ctl { display: flex; align-items: center; gap: 8px }
+    .chip { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--t2);
+      border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer;
+      background: transparent; white-space: nowrap }
+    .chip:hover { background: var(--panel) }
+    .chip.on { border-color: var(--accent); color: var(--accent) }
+
+    main { flex: 1; display: flex; min-height: 0 }
+
+    /* Left — who is here. Scrolls on its own so a full room never pushes the
+       chat off the window. */
+    #people { width: 188px; flex: none; border-right: 1px solid var(--line);
+      overflow-y: auto; padding: 8px; background: rgba(0,0,0,.16) }
+    .p-head { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+      color: var(--t3); padding: 4px 6px 8px; display: flex; gap: 6px; align-items: center }
+    .p-row { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 9px }
+    .p-row:hover { background: var(--panel) }
+    .p-row .sw { width: 9px; height: 9px; border-radius: 50%; flex: none }
+    .p-row.off .sw, .p-row.off .nm { opacity: .38 }
+    .p-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .p-row .add { border: 1px solid var(--line); background: transparent; color: var(--t2);
+      border-radius: 999px; font-size: 10px; font-weight: 700; padding: 1px 7px; cursor: pointer; flex: none }
+    .p-row .add[disabled] { opacity: .45; cursor: default }
+
+    /* Right — the conversation. */
+    #chat { flex: 1; display: flex; flex-direction: column; min-width: 0 }
+    #log { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px }
+    #more { align-self: center; font-size: 11px; color: var(--t3); border: 1px solid var(--line);
+      background: transparent; border-radius: 999px; padding: 3px 12px; cursor: pointer; display: none }
+    .msg { display: flex; gap: 9px; align-items: flex-start }
+    .msg .av { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center;
+      font-size: 11px; font-weight: 800; color: #0b0d12 }
+    .msg .bd { min-width: 0 }
+    .msg .who { font-size: 11px; font-weight: 800; margin-bottom: 1px }
+    /* A shadow, not a plate: it is what keeps a message readable when the
+       particle field behind the glass happens to be bright. */
+    .msg .tx { white-space: pre-wrap; word-break: break-word; color: var(--t1);
+      text-shadow: 0 1px 2px rgba(0,0,0,.55) }
+    .msg .who, #rmName, .p-row .nm { text-shadow: 0 1px 2px rgba(0,0,0,.5) }
+    .msg .ts { font-size: 10px; color: var(--t3); margin-left: 6px; font-weight: 500 }
+    .msg img { max-width: 260px; border-radius: 10px; margin-top: 5px; display: block }
+    .note { font-size: 11.5px; color: var(--t3); text-align: center; padding: 2px 0 }
+
+    #composer { border-top: 1px solid var(--line); padding: 10px 12px; display: flex; gap: 8px; align-items: center }
+    #input { flex: 1; min-width: 0; background: rgba(0,0,0,.28); border: 1px solid var(--line);
+      border-radius: 10px; padding: 9px 11px; color: var(--t1); font: inherit; outline: none; resize: none;
+      max-height: 96px }
+    #input:focus { border-color: rgba(201,240,61,.45) }
+    #input::placeholder { color: var(--t3) }
+    #emoji, #send { border: 1px solid var(--line); background: var(--panel); color: var(--t1);
+      border-radius: 10px; padding: 9px 12px; font: inherit; font-weight: 700; cursor: pointer; flex: none }
+    #send { background: var(--accent); color: #0b0d12; border-color: transparent }
+    #pad { display: none; flex-wrap: wrap; gap: 3px; padding: 8px 12px; border-top: 1px solid var(--line);
+      max-height: 118px; overflow-y: auto }
+    #pad button { border: none; background: transparent; font-size: 18px; line-height: 1; padding: 4px;
+      cursor: pointer; border-radius: 7px }
+    #pad button:hover { background: var(--panel) }
+
+    /* The empty state has to say what this window is for, because a room you
+       just made is empty by definition. */
+    #empty { margin: auto; text-align: center; color: var(--t3); font-size: 12px; line-height: 1.8; padding: 20px }
+
+    #rename { position: absolute; inset: 0; background: rgba(6,8,12,.72); backdrop-filter: blur(6px);
+      display: none; place-items: center; z-index: 5 }
+    #rename .card { background: #12151c; border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px; width: 280px }
+    #rename h3 { font-size: 13px; margin-bottom: 4px }
+    #rename p { font-size: 11px; color: var(--t3); margin-bottom: 10px; line-height: 1.6 }
+    #rename input { width: 100%; background: rgba(0,0,0,.3); border: 1px solid var(--line);
+      border-radius: 9px; padding: 8px 10px; color: var(--t1); font: inherit; outline: none }
+    #rename .row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end }
+  </style>
+</head>
+<body>
+  <header data-tauri-drag-region>
+    <span class="dot" data-tauri-drag-region></span>
+    <span id="rmName" data-tauri-drag-region>Room</span>
+    <span id="rmCode" data-tauri-drag-region></span>
+    <span class="spacer" data-tauri-drag-region></span>
+    <div class="ctl">
+      <button class="chip" id="btnName">✎ <span id="myName">Nickname</span></button>
+      <button class="chip" id="btnMute" title="Stop sending your agent log to this room">
+        <span id="muteIcon">📡</span><span id="muteText">Sharing my agent log</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <aside id="people" data-tauri-drag-region>
+      <div class="p-head" data-tauri-drag-region><span>In this room</span><span id="pCount"></span></div>
+      <div id="pList"></div>
+    </aside>
+
+    <section id="chat">
+      <div id="log">
+        <button id="more">Load earlier messages</button>
+        <div id="empty">Nobody has said anything yet.<br>Whatever is typed here shows up on everyone's wallpaper.</div>
+      </div>
+      <div id="pad"></div>
+      <div id="composer">
+        <button id="emoji" title="Emoji">☺</button>
+        <textarea id="input" rows="1" placeholder="Message the room…" maxlength="2000"></textarea>
+        <button id="send">Send</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="rename">
+    <div class="card">
+      <h3>Your nickname</h3>
+      <p>This is what everyone in the room sees. It changes your name in every room you are in.</p>
+      <input id="nameInput" maxlength="40" placeholder="e.g. 小明" spellcheck="false">
+      <div class="row">
+        <button class="chip" id="nameCancel">Cancel</button>
+        <button class="chip" id="nameSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="tauri-bridge.js"></script>
+  <script src="rooms.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var R = window.TerseRooms;
+    var $ = function (s) { return document.querySelector(s); };
+    var esc = function (t) {
+      return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    };
+
+    var roster = new Map(), me = null, stop = null, oldestSeq = null, moreAbove = true;
+    // The empty state says two different things — "nobody has spoken" and "you
+    // are not in a room" — so the first one has to be kept to be put back.
+    var EMPTY_IN_ROOM = document.getElementById('empty').innerHTML;
+
+    /* Same palette as the wallpaper engine, on purpose: a person must be the
+       same colour in the chat, in the member list and in the big text, or they
+       read as three different people. */
+    var HUES = [0, 25, 108, 133, 158, 183, 208, 233, 258, 283, 308, 333];
+    function colourOf(id) {
+      if (String(id) === String(me)) return '#C9F03D';
+      var h = 0, str = String(id || '');
+      for (var i = 0; i < str.length; i++) h = (h * 131 + str.charCodeAt(i)) >>> 0;
+      return 'hsl(' + HUES[h % HUES.length] + ', 78%, 62%)';
+    }
+    function nameOf(id) {
+      var m = roster.get(String(id));
+      return (m && (m.name || m.user_email)) || 'someone';
+    }
+    function timeOf(iso) {
+      if (!iso) return '';
+      var d = new Date(String(iso).replace(' ', 'T') + 'Z');
+      if (isNaN(d)) return '';
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ── People ──
+    function drawRoster(members) {
+      roster = new Map(members.map(function (m) { return [String(m.member_id), m]; }));
+      $('#pCount').textContent = members.length ? '· ' + members.length : '';
+      $('#pList').innerHTML = members.map(function (m) {
+        var id = String(m.member_id), mine = id === String(me);
+        var add = mine ? '' :
+          '<button class="add" data-add="' + esc(id) + '" title="Add as a friend">+</button>';
+        return '<div class="p-row ' + (m.status === 'online' ? '' : 'off') + '">' +
+          '<span class="sw" style="background:' + colourOf(id) + '"></span>' +
+          '<span class="nm">' + esc(m.name || m.user_email || 'someone') +
+          (mine ? ' <span style="color:var(--t3)">(you)</span>' : '') + '</span>' + add + '</div>';
+      }).join('');
+    }
+
+    $('#pList').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-add]');
+      if (!b) return;
+      b.disabled = true; b.textContent = '…';
+      R.requestFriend(b.getAttribute('data-add')).then(function (r) {
+        b.textContent = (r.friendship && r.friendship.status === 'accepted') ? '✓' : 'asked';
+      }, function (err) {
+        b.disabled = false; b.textContent = '+';
+        note(String(err && err.message || err));
+      });
+    });
+
+    // ── Chat ──
+    function row(m, prepend) {
+      var id = String(m.member_id);
+      var el = document.createElement('div');
+      el.className = 'msg';
+      el.dataset.id = m.id || '';
+      var who = m.name || nameOf(id);
+      el.innerHTML =
+        '<span class="av" style="background:' + colourOf(id) + '">' + esc(who.slice(0, 1).toUpperCase()) + '</span>' +
+        '<span class="bd"><span class="who" style="color:' + colourOf(id) + '">' + esc(who) +
+        '<span class="ts">' + esc(timeOf(m.created_at)) + '</span></span>' +
+        '<div class="tx">' + esc(m.body || '') + '</div>' +
+        (m.image_url ? '<img src="' + esc(m.image_url) + '" alt="">' : '') + '</span>';
+      var log = $('#log');
+      if (prepend) log.insertBefore(el, $('#more').nextSibling);
+      else log.appendChild(el);
+      $('#empty').style.display = 'none';
+      return el;
+    }
+    function note(text) {
+      var el = document.createElement('div');
+      el.className = 'note';
+      el.textContent = text;
+      $('#log').appendChild(el);
+      atBottom(true);
+    }
+    /** Stick to the bottom only when the reader is already there — scrolling up
+        to read history must not be yanked back by someone else typing. */
+    function atBottom(force) {
+      var log = $('#log');
+      var near = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+      if (force || near) log.scrollTop = log.scrollHeight;
+    }
+    function seen(id) {
+      return !!(id && $('#log').querySelector('[data-id="' + CSS.escape(String(id)) + '"]'));
+    }
+
+    function loadOlder() {
+      if (!moreAbove) return;
+      var btn = $('#more');
+      btn.disabled = true; btn.textContent = 'Loading…';
+      R.history(oldestSeq, 50).then(function (j) {
+        var list = j.messages || [];
+        // Prepend in reverse so the block keeps its order above what is there.
+        for (var i = list.length - 1; i >= 0; i--) if (!seen(list[i].id)) row(list[i], true);
+        if (list.length) oldestSeq = list[0].seq;
+        moreAbove = !!j.more && list.length > 0;
+        btn.style.display = moreAbove ? 'block' : 'none';
+        btn.disabled = false; btn.textContent = 'Load earlier messages';
+      }, function () {
+        btn.disabled = false; btn.textContent = 'Load earlier messages';
+      });
+    }
+    $('#more').addEventListener('click', loadOlder);
+    $('#log').addEventListener('scroll', function () {
+      if ($('#log').scrollTop < 24 && moreAbove && !$('#more').disabled) loadOlder();
+    });
+
+    // ── Composer ──
+    var input = $('#input');
+    function send() {
+      var v = (input.value || '').trim();
+      if (!v) return;
+      input.value = '';
+      input.style.height = 'auto';
+      R.sendMessage(v).catch(function (err) {
+        input.value = v;              // never lose what they typed
+        note(String(err && err.message || err));
+      });
+    }
+    $('#send').addEventListener('click', send);
+    input.addEventListener('keydown', function (e) {
+      // Enter sends, Shift+Enter breaks the line — and while an IME is composing
+      // Enter belongs to the IME, or every Chinese message sends half-typed.
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+    });
+    input.addEventListener('input', function () {
+      input.style.height = 'auto';
+      input.style.height = Math.min(96, input.scrollHeight) + 'px';
+    });
+
+    var pad = $('#pad');
+    var EMOJI = ('😀😂🥹😍🤔😅😭😡👍👎🙏👏🎉🔥💯✅❌⚡️🚀🐛💡📌🕐☕️🍕🌙⭐️❤️🧠🤖').match(/./gu) || [];
+    pad.innerHTML = EMOJI.map(function (e) { return '<button type="button">' + e + '</button>'; }).join('');
+    $('#emoji').addEventListener('click', function () {
+      pad.style.display = pad.style.display === 'flex' ? 'none' : 'flex';
+    });
+    pad.addEventListener('click', function (e) {
+      if (e.target.tagName !== 'BUTTON') return;
+      input.value += e.target.textContent;
+      input.focus();
+    });
+
+    // ── My agent log: shared, or not ──
+    function paintMute() {
+      var muted = R.logMuted();
+      $('#btnMute').classList.toggle('on', !muted);
+      $('#muteIcon').textContent = muted ? '🔇' : '📡';
+      $('#muteText').textContent = muted ? 'My agent log is hidden' : 'Sharing my agent log';
+      $('#btnMute').title = muted
+        ? 'Nobody in the room sees what your agents are doing'
+        : "Your agent's log lines appear on everyone's wallpaper";
+    }
+    $('#btnMute').addEventListener('click', function () {
+      R.muteLog(!R.logMuted());
+      paintMute();
+    });
+
+    // ── Nickname ──
+    function paintName() {
+      var n = R.nickname();
+      $('#myName').textContent = n || 'Set a nickname';
+    }
+    $('#btnName').addEventListener('click', function () {
+      $('#nameInput').value = R.nickname();
+      $('#rename').style.display = 'grid';
+      $('#nameInput').focus();
+    });
+    $('#nameCancel').addEventListener('click', function () { $('#rename').style.display = 'none'; });
+    $('#nameSave').addEventListener('click', function () {
+      var v = ($('#nameInput').value || '').trim();
+      if (!v) return;
+      R.setNickname(v).then(function () { paintName(); $('#rename').style.display = 'none'; });
+    });
+    $('#nameInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.isComposing) $('#nameSave').click();
+      if (e.key === 'Escape') $('#nameCancel').click();
+    });
+
+    // ── Live ──
+    function startRoom() {
+      var st = R.state() || {};
+      me = st.memberId || null;
+      $('#rmName').textContent = st.name || 'Room';
+      $('#rmCode').textContent = st.code || '';
+      $('#log').querySelectorAll('.msg, .note').forEach(function (n) { n.remove(); });
+      $('#empty').innerHTML = EMPTY_IN_ROOM;
+      $('#empty').style.display = '';
+      oldestSeq = null; moreAbove = true;
+
+      stop = R.connect({
+        onSnapshot: function (s) {
+          me = s.you || me;
+          drawRoster(s.members || []);
+          var list = s.messages || [];
+          list.forEach(function (m) { if (!seen(m.id)) row(m); });
+          if (list.length) {
+            oldestSeq = list[0].seq;
+            $('#more').style.display = 'block';
+          }
+          atBottom(true);
+        },
+        onRoster: drawRoster,
+        onMessage: function (m) { if (!seen(m.id)) { row(m); atBottom(); } },
+        onFriend: function (edge) {
+          note((edge.b_name || edge.a_name || 'someone') +
+               (edge.status === 'accepted' ? ' is now a friend' : ' was asked to connect'));
+        },
+        onClosed: function () { note('The owner closed this room.'); stopRoom(); },
+      });
+    }
+    function stopRoom() {
+      if (stop) { try { stop(); } catch (e) {} stop = null; }
+      roster = new Map();
+      $('#pList').innerHTML = '';
+      $('#pCount').textContent = '';
+      $('#rmName').textContent = 'Room';
+      $('#rmCode').textContent = '';
+    }
+
+    /* ── Showing itself ────────────────────────────────────────────────────
+       Being in a room means being in the conversation, so this window comes up
+       with the room rather than waiting to be found in a menu. It is not
+       insistent about it: closing the window records THAT room, and it stays
+       shut until you enter a different one or ask for it from the Room page.
+       (Closing also only hides — see the CloseRequested handler in lib.rs — so
+       a window that has been dismissed can still be shown again.) */
+    /* ── Moving the window ──────────────────────────────────────────────────
+       `-webkit-app-region: drag` is an Electron property; WKWebView, which is
+       what Tauri renders in on macOS, ignores it completely — which is why the
+       window sat still however the CSS was written. Tauri's hook is the
+       `data-tauri-drag-region` attribute, and this is the belt to its braces:
+       a mousedown anywhere that is not something you USE starts a real window
+       drag. So the header, the frame and the empty part of the member list are
+       all handles, while buttons, the composer, the list rows and message text
+       (which you may want to select) are not. */
+    var winApi = null;
+    try {
+      var W = window.__TAURI__ && window.__TAURI__.window;
+      winApi = W && (W.getCurrentWindow ? W.getCurrentWindow() : W.getCurrent && W.getCurrent());
+    } catch (e) { /* dev preview outside Tauri */ }
+    var NO_DRAG = 'button, input, textarea, a, select, .msg, .p-row, #log, #pad, #composer, #rename';
+    document.addEventListener('mousedown', function (e) {
+      if (e.button !== 0 || !winApi || !winApi.startDragging) return;
+      if (e.target.closest && e.target.closest(NO_DRAG)) return;
+      // Double-click on a title bar zooms the window; keep that.
+      if (e.detail === 2 && winApi.toggleMaximize) { winApi.toggleMaximize(); return; }
+      try { winApi.startDragging(); } catch (err) {}
+    });
+
+    var CLOSED = 'terse-room-win-closed';
+    function dismissedFor(id) {
+      try { return localStorage.getItem(CLOSED) === String(id); } catch (e) { return false; }
+    }
+    function rememberDismissal(id) {
+      try { id ? localStorage.setItem(CLOSED, String(id)) : localStorage.removeItem(CLOSED); } catch (e) {}
+    }
+    try {
+      if (winApi && winApi.onCloseRequested) {
+        winApi.onCloseRequested(function () {
+          var st = R.state() || {};
+          rememberDismissal(st.id || '');
+        });
+      }
+    } catch (e) { /* not in Tauri (dev preview) — nothing to hook */ }
+
+    paintMute();
+    paintName();
+    // Joining, leaving and switching rooms all happen in the main window; this
+    // one follows whatever the install is currently in.
+    R.watch(function (st) {
+      stopRoom();
+      if (st && st.id && st.key) {
+        startRoom();
+        // Shown, but never stolen: coming up beside the wallpaper must not take
+        // the keyboard out of whatever the person is actually doing.
+        if (!dismissedFor(st.id) && window.terse && window.terse.showRoomWindow) {
+          window.terse.showRoomWindow(false);
+        }
+      }
+      else {
+        $('#log').querySelectorAll('.msg, .note').forEach(function (n) { n.remove(); });
+        $('#empty').style.display = '';
+        $('#empty').innerHTML = 'You are not in a room.<br>Open the Room page in Terse to create or join one.';
+      }
+    });
+    window.addEventListener('beforeunload', stopRoom);
+  })();
+  </script>
+  <script src="i18n.js"></script>
+</body>
+</html>

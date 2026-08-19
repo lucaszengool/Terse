@@ -2352,6 +2352,30 @@ fn hide_dashboards(app: AppHandle) {
     }
 }
 
+/// Terse Rooms — parity with macOS show_room_window / hide_room_window.
+#[tauri::command]
+fn show_room_window(app: AppHandle, focus: Option<bool>) -> Result<(), String> {
+    // ensure_window: the room is built on first open like the pet and the farm,
+    // not kept resident from launch.
+    if let Some(w) = ensure_window(&app, "room") {
+        w.show().map_err(|e| e.to_string())?;
+        // Appears BESIDE what you are doing when it opens itself with the room;
+        // it only takes the keyboard when you asked for it by hand.
+        if focus.unwrap_or(true) {
+            w.set_focus().map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_room_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("room") {
+        w.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn hide_doctor_window(app: AppHandle) {
     if let Some(w) = app.get_webview_window("doctor") {
@@ -2613,6 +2637,28 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .inner_size(1366.0, 768.0)
                 .min_inner_size(1100.0, 618.0)
                 .position((screen_width / 2.0 - 683.0) as f64, 80.0)
+                .always_on_top(false)
+                .resizable(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .visible(false)
+                .build()?,
+            16.0,
+        ),
+        "room" => (
+            // Terse Rooms. Ported from macOS, minus the AppKit-only bits:
+            // title_bar_style(Overlay) / hidden_title / accept_first_mouse have no
+            // Windows equivalent, so this uses the frameless + transparent shape
+            // every other window here uses and gets its rounding from
+            // attach_lazy_chrome.
+            WebviewWindowBuilder::new(app, "room", WebviewUrl::App("room.html".into()))
+                .title("Terse Room")
+                .decorations(false)
+                .transparent(true)
+                .shadow(false)
+                .inner_size(780.0, 480.0)
+                .min_inner_size(560.0, 340.0)
+                .position((screen_width / 2.0 - 390.0) as f64, 90.0)
                 .always_on_top(false)
                 .resizable(true)
                 .skip_taskbar(true)
@@ -4187,6 +4233,8 @@ pub fn run() {
             set_speed_mode,
             show_doctor_window,
             hide_doctor_window,
+            show_room_window,
+            hide_room_window,
             navigate_to_doctor,
             show_main_window,
             navigate_to_cowork,

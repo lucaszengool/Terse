@@ -1850,15 +1850,48 @@ fn cleanup_proxy_configs() {
             if let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&data) {
                 if let Some(env) = json.get_mut("env").and_then(|e| e.as_object_mut()) {
                     if let Some(url) = env.get("ANTHROPIC_BASE_URL").and_then(|v| v.as_str()) {
-                        if url.contains("127.0.0.1") {
-                            env.remove("ANTHROPIC_BASE_URL");
+                        // OUR port only — not any loopback address.
+                        //
+                        // This matched every 127.0.0.1 URL, so it deleted a rival
+                        // relay's setting at startup, before the proxy's chaining
+                        // logic ever saw it. The proxy then found the key absent,
+                        // concluded nobody owned it, and claimed the port outright.
+                        // That is the whole "Claude Code sync stopped working"
+                        // report: not the proxy overwriting the relay, this
+                        // erasing it a moment earlier. CI reproduced it as
+                        // CHAIN FAIL with settings.json reading 7860 and no
+                        // upstream recorded.
+                        let ours = url.contains(":7860");
+                        if ours {
+                            // Hand the setting back to whoever we chained in
+                            // front of, rather than leaving Claude Code with
+                            // nothing.
+                            let restored = std::fs::read_to_string(
+                                home.join(".terse").join("anthropic-upstream.json"),
+                            )
+                            .ok()
+                            .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+                            .and_then(|v| v.get("url").and_then(|u| u.as_str()).map(String::from));
+                            match restored {
+                                Some(up) => {
+                                    env.insert(
+                                        "ANTHROPIC_BASE_URL".into(),
+                                        serde_json::Value::String(up.clone()),
+                                    );
+                                    eprintln!("[terse] restored ANTHROPIC_BASE_URL to {up}");
+                                }
+                                None => {
+                                    env.remove("ANTHROPIC_BASE_URL");
+                                }
+                            }
                             if env.is_empty() {
                                 json.as_object_mut().map(|o| o.remove("env"));
                             }
                             if let Ok(out) = serde_json::to_string_pretty(&json) {
                                 let _ = std::fs::write(&settings_file, out);
-                                eprintln!("[terse] cleaned up proxy config from ~/.claude/settings.json");
                             }
+                        } else {
+                            eprintln!("[terse] leaving another proxy's ANTHROPIC_BASE_URL alone: {url}");
                         }
                     }
                 }
@@ -5591,6 +5624,9 @@ fn wallpaper_default_config() -> serde_json::Value {
         "enabled": false,
         // 默认引擎 = mineradio(真桌面壁纸 + 粒子律动);"topography" 切回音域回响光柱地形
         "engine": "mineradio",
+        // Pro 的粒子风格(src/renderer/wallpaper-styles.js)。"cinematic" 是原来那一种,
+        // 也是老配置文件里缺这个字段时前端自己会退回的那一种 —— 升级不会改变任何人看到的画面。
+        "style": "cinematic",
         "theme": "neon", "quality": 56, "angle": 55, "intensity": 1.0
     })
 }

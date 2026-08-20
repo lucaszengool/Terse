@@ -1238,7 +1238,12 @@ app.use('/api/cloud/mcp', mcpRouter);
 app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
 // Rooms: shared wallpaper sessions. Same prefix, distinct paths — a room is
 // its own unit, so it does NOT go through team auth.
-app.use('/api/cloud/rooms', cloudIngestLimiter, require('./rooms'));
+const roomsRouter = require('./rooms');
+app.use('/api/cloud/rooms', cloudIngestLimiter, roomsRouter);
+// Presence decays on a timer, not off the back of whoever happens to read next:
+// that way a member who closed their laptop goes offline once, promptly, and
+// everybody still in the room is told. 20s is comfortably inside the 45s window.
+setInterval(() => roomsRouter.sweepPresence(), 20 * 1000).unref();
 // Friends: the durable edge between two people who met in a room.
 app.use('/api/cloud/friends', cloudIngestLimiter, require('./friends'));
 

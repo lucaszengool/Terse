@@ -10,7 +10,8 @@
     "test:rooms": "node api/rooms.test.js",
     "test:friends": "node api/friends.test.js",
     "test:cors": "node api/cors.test.js",
-    "test:plaza": "node api/plaza.test.js"
+    "test:plaza": "node api/plaza.test.js",
+    "test:presence": "node api/presence.test.js"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

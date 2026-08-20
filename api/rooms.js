@@ -47,8 +47,11 @@ function makeCode() {
   return out;
 }
 
+/* A PURE read. Ageing-out used to happen here, which meant whichever request
+   happened to read next performed the transition — and if that request had no
+   reason to broadcast, everyone already connected simply never found out the
+   person had gone. Reads are now reads; sweepPresence() below owns the change. */
 function roster(roomId) {
-  db.ageOutRoomMembers.run(PRESENCE_STALE);
   // identity_hash is what a friendship is keyed by, so it stays server-side: the
   // roster goes to everyone in the room, and a friend request names a member id.
   return db.getRoomMembers.all(roomId).map(({ identity_hash, ...m }) => m);
@@ -86,6 +89,22 @@ const idHash = (req) => {
   const secret = req.headers['x-terse-identity'] || req.query.identity;
   return secret ? hash(secret.toString()) : null;
 };
+
+/* What a client would actually SEE of the roster. Presence heartbeats are the
+   most frequent call in the product and almost never change this, so it is the
+   right thing to compare before deciding to wake everyone up. */
+function sigOf(members) {
+  // Sorted: this compares WHO IS HERE and how, not the order a query happened to
+  // return them in. Without the sort, two people who joined in the same second
+  // tie on joined_at and can come back either way round, which reads as a change
+  // and broadcasts to everyone — the exact storm this is meant to prevent.
+  return members.map((m) => m.member_id + '|' + (m.name || '') + '|' + m.status).sort().join('~');
+}
+/* Deliberately WITHOUT ageing anybody out. roster() ages out as a side effect,
+   so using it for the "before" snapshot hides the very transition this is meant
+   to detect: the member who closed their laptop would be marked offline while
+   computing the baseline, and then compare equal to themselves. */
+const rosterSigRaw = (roomId) => sigOf(db.getRoomMembers.all(roomId));
 
 function publicRoom(room) {
   return {
@@ -416,15 +435,30 @@ router.post('/:id/name', requireMember, (req, res) => {
 });
 
 // POST /api/cloud/rooms/:id/presence   Body: { status? }
+// A heartbeat is the most frequent call in the product and almost never changes
+// anything: it refreshes last_seen_at on somebody who was already online. If it
+// broadcast the roster regardless, N people in a room would generate N² roster
+// deliveries every heartbeat interval, and every one of them makes every client
+// re-render a list that is identical to the list it already has. That is felt as
+// stutter while typing, and it gets worse as the room fills — the opposite of
+// what a room is for. So the roster only goes out when it actually changed.
 router.post('/:id/presence', requireMember, (req, res) => {
   const status = ['online', 'away', 'offline'].includes(req.body?.status) ? req.body.status : 'online';
+  // Compare the roster around the write rather than just checking my own status.
+  // Ageing-out happens inside roster(), and it used to reach clients only because
+  // every heartbeat broadcast; with that removed, a member who closed their
+  // laptop would silently stay "online" forever unless the comparison notices.
+  const before = rosterSigRaw(req.room.id);
   db.touchRoomMember.run(status, req.room.id, hash(req.rawKey));
-  // A heartbeat says where you ARE, so it also settles where you are not.
+  // A heartbeat says where you ARE, so it also settles where you are not. That
+  // one DOES change other rooms, and makeActiveRoom broadcasts to them itself.
   if (status === 'online' && req.member.identity_hash) {
     makeActiveRoom(req.member.identity_hash, req.room.id);
   }
-  bus.emit(chan(req.room.id), { type: 'roster', members: roster(req.room.id) });
-  res.json({ ok: true });
+  const after = roster(req.room.id);
+  const changed = before !== sigOf(after);
+  if (changed) bus.emit(chan(req.room.id), { type: 'roster', members: after });
+  res.json({ ok: true, changed });
 });
 
 // POST /api/cloud/rooms/:id/log   Body: { text, kind? }
@@ -470,5 +504,17 @@ router.post('/:id/messages', requireMember, (req, res) => {
   bus.emit(chan(req.room.id), { type: 'message', message: stored });
   res.json({ ok: true, message: stored });
 });
+
+/* Age out anyone who stopped heartbeating, and TELL the rooms they were in.
+   Runs on a timer rather than off the back of a read, so the transition happens
+   once, at a predictable moment, and always reaches the people watching. Paired
+   with server.js, which calls this well inside the staleness window. */
+router.sweepPresence = function sweepPresence() {
+  const affected = db.roomsWithStaleMembers.all(PRESENCE_STALE).map((r) => r.room_id);
+  if (!affected.length) return 0;
+  db.ageOutRoomMembers.run(PRESENCE_STALE);
+  for (const id of affected) bus.emit(chan(id), { type: 'roster', members: roster(id) });
+  return affected.length;
+};
 
 module.exports = router;

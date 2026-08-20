@@ -191,11 +191,18 @@ function stream(roomId, key, want, timeoutMs = 3000) {
     eq('away is reflected', after.find((m) => m.member_id === bobId)?.status, 'away');
   }
   {
-    // Presence must DECAY: a closed laptop never sends "offline".
+    // Presence must DECAY: a closed laptop never sends "offline". The decay is a
+    // sweep on a timer, not a side effect of whoever reads next — reading used to
+    // perform it, which meant the transition reached nobody if that particular
+    // request had no reason to broadcast.
     db.db.prepare("UPDATE room_members SET status='online', last_seen_at=datetime('now','-5 minutes') WHERE room_id=? AND member_id=?")
       .run(roomId, bobId);
+    const stillThere = (await req('GET', `/rooms/${roomId}`, { key: annKey })).json.members;
+    eq('a plain read does not silently mutate presence',
+       stillThere.find((m) => m.member_id === bobId)?.status, 'online');
+    roomsRouter.sweepPresence();
     const aged = (await req('GET', `/rooms/${roomId}`, { key: annKey })).json.members;
-    eq('a silent member ages out to offline', aged.find((m) => m.member_id === bobId)?.status, 'offline');
+    eq('the sweep ages a silent member out to offline', aged.find((m) => m.member_id === bobId)?.status, 'offline');
   }
 
   console.log('\n── leaving and closing ──');

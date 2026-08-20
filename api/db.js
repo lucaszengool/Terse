@@ -1011,7 +1011,7 @@ const getRoomMember = db.prepare('SELECT * FROM room_members WHERE room_id = ? A
 const findRoomMemberByKey = db.prepare('SELECT * FROM room_members WHERE key_hash = ?');
 const getRoomMembers = db.prepare(`
   SELECT member_id, name, user_email, status, last_seen_at, joined_at, identity_hash
-  FROM room_members WHERE room_id = ? ORDER BY joined_at
+  FROM room_members WHERE room_id = ? ORDER BY joined_at, member_id
 `);
 const touchRoomMember = db.prepare(`
   UPDATE room_members SET status = ?, last_seen_at = datetime('now')
@@ -1103,6 +1103,13 @@ const listRoomsForIdentity = db.prepare(`
 `);
 // One active room at a time. Membership is NOT revoked — a room you joined is
 // still yours to return to — you simply go quiet everywhere you are not.
+// Which rooms are about to be affected by an age-out. Asked BEFORE the update,
+// so the sweep knows exactly who to tell.
+const roomsWithStaleMembers = db.prepare(`
+  SELECT DISTINCT room_id FROM room_members
+  WHERE status != 'offline' AND last_seen_at < datetime('now', ?)
+`);
+
 const goOfflineElsewhere = db.prepare(`
   UPDATE room_members SET status = 'offline'
   WHERE identity_hash = @identity AND room_id != @room_id AND status != 'offline'
@@ -1284,7 +1291,7 @@ module.exports = {
   // Discovery, knocking, friend links
   setRoomListing, setRoomOwnerIdentity, listPublicRooms, listRoomsForIdentity,
   addKnock, getKnock, getKnockFor, listKnocks, setKnockStatus,
-  goOfflineElsewhere, roomsIdleFor,
+  goOfflineElsewhere, roomsIdleFor, roomsWithStaleMembers,
   addFriendInvite, getFriendInvite, bumpFriendInvite, getFriendInviteByOwner, deleteFriendInvite,
   // Friends
   addFriendRequest, getFriendById, getFriendEdge, listFriendEdges, respondFriend, deleteFriend,

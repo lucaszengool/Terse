@@ -773,6 +773,15 @@ jobs:
               '--virtual-time-budget=4000', '--window-size=1280,900',
               "--screenshot=$out", ("file:///" + $p.FullName.Replace('\','/'))
             )
+            # Touch .Handle before waiting.
+            #
+            # Start-Process -PassThru returns a Process that has not cached its
+            # handle, and WaitForExit(ms) on such an object never reports success
+            # - so every page was killed at 30s no matter how fast Edge actually
+            # finished. 20 of 22 "timed out" and I read that as pages with
+            # runaway render loops, including the new room.html, which was
+            # innocent. Reading .Handle forces the cache and makes the wait real.
+            $null = $proc.Handle
             if (-not $proc.WaitForExit(30000)) {
               try { $proc.Kill($true) } catch {}
               Write-Host "  TIMEOUT  $($p.Name) - killed after 30s"

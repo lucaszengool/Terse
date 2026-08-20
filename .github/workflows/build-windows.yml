@@ -723,6 +723,7 @@ jobs:
       # empty. Those are covered by the real-window shots above.
       - name: Render every page in the WebView2 engine
         continue-on-error: true
+        timeout-minutes: 6
         run: |
           $edge = (Get-Command msedge -ErrorAction SilentlyContinue).Source
           if (-not $edge) {
@@ -757,36 +758,21 @@ jobs:
           foreach ($p in Get-ChildItem "src/renderer" -Filter *.html |
                          Where-Object { $_.BaseName -notlike '*-verify' }) {
             $out = Join-Path $dest "$($p.BaseName).png"
-            # A HARD timeout per page, instead of excluding pages one at a time.
+            # Back to the call operator, with the STEP bounded instead.
             #
-            # This step hung three builds in a row - an hour each, taking the job
-            # and its logs down with it - and each time I excluded whatever page I
-            # believed was responsible and declared it solved. It never was: a
-            # third page hangs even with the verify rigs and the wallpaper gone.
-            # --virtual-time-budget does not interrupt a busy render loop, so ANY
-            # page with one can do this, and guessing which is a game with no end.
+            # I replaced this with Start-Process plus my own WaitForExit to stop a
+            # hanging page from taking the job down, and broke it three times:
+            # mangled arguments, then an uncached handle, each producing "20 of 22
+            # pages timed out" and each time I read that as a finding about the
+            # pages. room.html was written up as having a runaway render loop on
+            # that evidence. It did not.
             #
-            # 30s and it is killed. Nothing can hang the step, and the log names
-            # whatever timed out rather than leaving me to infer it.
-            $proc = Start-Process -FilePath $edge -PassThru -WindowStyle Hidden -ArgumentList @(
-              '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars=false',
-              '--virtual-time-budget=4000', '--window-size=1280,900',
-              "--screenshot=$out", ("file:///" + $p.FullName.Replace('\','/'))
-            )
-            # Touch .Handle before waiting.
-            #
-            # Start-Process -PassThru returns a Process that has not cached its
-            # handle, and WaitForExit(ms) on such an object never reports success
-            # - so every page was killed at 30s no matter how fast Edge actually
-            # finished. 20 of 22 "timed out" and I read that as pages with
-            # runaway render loops, including the new room.html, which was
-            # innocent. Reading .Handle forces the cache and makes the wait real.
-            $null = $proc.Handle
-            if (-not $proc.WaitForExit(30000)) {
-              try { $proc.Kill($true) } catch {}
-              Write-Host "  TIMEOUT  $($p.Name) - killed after 30s"
-              continue
-            }
+            # timeout-minutes on the step does the same job without me writing
+            # process control: a hung page kills the step at 6 minutes, the log
+            # shows which page it reached, and the run continues.
+            & $edge --headless=new --disable-gpu --no-sandbox --hide-scrollbars=false `
+                    --virtual-time-budget=4000 --window-size=1280,900 `
+                    --screenshot="$out" ("file:///" + $p.FullName.Replace('\','/')) 2>$null
             if (Test-Path $out) { Write-Host "  rendered $($p.Name)" }
             else { Write-Host "  FAILED   $($p.Name)" }
           }

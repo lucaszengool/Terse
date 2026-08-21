@@ -2764,8 +2764,24 @@ fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
         diag_log("lazy-window", &format!("ensure_window('{label}') — not open, dispatching build"));
         let dispatched = app
             .run_on_main_thread(move || {
-                if let Err(e) = build_lazy_window(&a, &lbl) {
-                    eprintln!("[terse] could not build '{lbl}': {e}");
+                match build_lazy_window(&a, &lbl) {
+                    Err(e) => eprintln!("[terse] could not build '{lbl}': {e}"),
+                    Ok(()) => {
+                        // Show it HERE, on the main thread, in the same dispatch.
+                        //
+                        // Creation was only half the problem. These windows are
+                        // built .visible(false) and revealed by the caller's
+                        // .show() - which runs on the same worker thread that
+                        // could not create them. CI proved it: the log recorded
+                        // "built 'doctor' on demand" and no window ever appeared.
+                        //
+                        // A caller that shows again finds it already visible, so
+                        // this is additive rather than a behaviour change; it just
+                        // guarantees the one path that was silently failing.
+                        if let Some(w) = a.get_webview_window(&lbl) {
+                            let _ = w.show();
+                        }
+                    }
                 }
                 let _ = tx.send(());
             })

@@ -245,10 +245,14 @@
   }
   function renderMetrics(s) {
     const red = reductionPct(s);
-    const cache = s.cacheEfficiency || 0;
+    // null = never measured. Coercing to 0 painted a red 0% for sessions whose
+    // logs we could not read at all.
+    const cache = (s.cacheEfficiency == null ? null : s.cacheEfficiency);
     const ctx = s.contextFill || 0;
     setMetric('red',  'Reduce',  red > 0 ? '−' + red + '%' : '0%', 'var(--ac)');
-    setMetric('cache','Cache',   cache + '%', cache > 50 ? 'var(--ac)' : cache > 20 ? '#ffc533' : '#ff6161');
+    setMetric('cache','Cache',   cache == null ? '—' : cache + '%',
+      cache == null ? 'var(--t3, rgba(255,255,255,.45))'
+        : cache > 50 ? 'var(--ac)' : cache > 20 ? '#ffc533' : '#ff6161');
     setMetric('ctx',  'Context', ctx + '%',   ctx > 85 ? '#ff6161' : ctx > 60 ? '#ffc533' : 'var(--ac)');
   }
 

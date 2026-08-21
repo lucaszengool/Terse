@@ -18,6 +18,15 @@ const CODEX_DEFAULT_TOOLS: &[&str] = &[
     "command_execution", "local_shell_call", "file_read",
 ];
 
+// DeepSeek Harness (dsh) registers tools through Cordis plugins; these are the names
+// the stock `web`/`headless` profiles ship with (dsh-tool-fs / -bash / -web / -todo /
+// -skill / -ask-user / -jobs / -goal).
+const DSH_DEFAULT_TOOLS: &[&str] = &[
+    "read", "write", "edit", "read_image", "bash", "web_search", "web_fetch",
+    "todo_write", "skill", "ask_user_question", "job_output", "job_list",
+    "job_kill", "get_goal", "create_goal", "update_goal",
+];
+
 // ── Agent Definitions ──
 
 #[derive(Debug, Clone)]
@@ -334,6 +343,36 @@ fn agent_defs() -> Vec<(&'static str, AgentDef)> {
             log_dir: None,
             parser: "generic",
         }),
+        ("hermes", AgentDef {
+            name: "Hermes",
+            icon: "\u{1F9E0}",
+            // Hermes Agent (Nous Research), HERMES_HOME = ~/.hermes. agent.log is
+            // appended every turn, so its file mtime is a reliable "running" signal
+            // (the scan checks modified() on each path directly, so a file works
+            // like a dir). Sessions are in a SQLite state.db, not JSONL — detection
+            // + island display only, no token/message parsing yet.
+            process_names: &["hermes"],
+            config_detect_dirs: vec![
+                home.join(".hermes/logs/agent.log"),
+                home.join(".hermes/state.db"),
+                home.join(".hermes"),
+            ],
+            log_dir: None,
+            parser: "generic",
+        }),
+        ("deepseek-harness", AgentDef {
+            name: "DeepSeek Harness",
+            icon: "\u{1F40B}",
+            // The launcher binary is `dsh`; profiles run as node children of it.
+            process_names: &["dsh"],
+            // ~/.dsh/sessions/<project>/<session-id>/session.jsonl[.zstd]. The sessions
+            // root's mtime moves every turn; ~/.dsh alone still catches a session root
+            // relocated via $DSH_HOME.
+            config_detect_dirs: vec![home.join(".dsh/sessions"), home.join(".dsh")],
+            // log_dir is None — find_dsh_session() walks the project/session tree instead.
+            log_dir: None,
+            parser: "deepseek",
+        }),
     ]
 }
 
@@ -359,7 +398,13 @@ pub struct AgentSessionData {
     pub turns: u32,
     pub tool_call_count: u32,
     pub messages: Vec<AgentMessage>,
-    pub cache_efficiency: u32,
+    /// None = never measured. NOT the same as 0.
+    ///
+    /// A session whose log we cannot read produces no usage records at all, and
+    /// a plain `u32` reported that as a hard 0% — which the Doctor then wrote up
+    /// as "running at 0% cache efficiency" and the dashboards drew as an empty
+    /// bar. Both were inventing a measurement out of an absence of one.
+    pub cache_efficiency: Option<u32>,
     pub watcher_offset: u64,
     pub started_at: std::time::Instant,
     pub file_reads: HashMap<String, u32>,  // path → read count
@@ -375,6 +420,22 @@ pub struct AgentSessionData {
     codex_pending_input: u64,
     codex_pending_output: u64,
     pub context_window: u64,                        // from model_context_window in task_started
+    // ── Attention layer (done / blocked / idle detection) ──
+    /// Last time this session produced new activity (message/token growth).
+    pub last_activity: std::time::Instant,
+    /// Whether the session's log was actually readable on the last poll.
+    ///
+    /// Silence has two causes and they mean opposite things: the agent is
+    /// waiting for you, or its log moved and we are reading nothing. Codex is
+    /// the live example — ~/.codex/sessions can be empty while Codex is busy,
+    /// and treating that silence as "finished" is how a still-working agent got
+    /// announced as done.
+    pub source_readable: bool,
+    /// Role of the most recent message — drives done-vs-stalled classification.
+    pub last_role: String,
+    /// Whether we've already fired the idle/attention alert for the current
+    /// quiet stretch (reset when activity resumes).
+    pub idle_notified: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -408,7 +469,7 @@ impl AgentSessionData {
             turns: 0,
             tool_call_count: 0,
             messages: Vec::new(),
-            cache_efficiency: 0,
+            cache_efficiency: None,
             watcher_offset: 0,
             started_at: std::time::Instant::now(),
             file_reads: HashMap::new(),
@@ -423,7 +484,105 @@ impl AgentSessionData {
             codex_pending_input: 0,
             codex_pending_output: 0,
             context_window: 0,
+            last_activity: std::time::Instant::now(),
+            source_readable: true,
+            last_role: String::new(),
+            idle_notified: false,
         }
+    }
+
+    /// Cheap (burn_rate tok/min, total tokens, est cost USD) for the circuit
+    /// breaker — avoids rebuilding the whole snapshot every tick.
+    fn quick_metrics(&self) -> (u64, u64, f64) {
+        let total = self.total_input_tokens + self.total_output_tokens;
+        let pricing = self.get_model_pricing();
+        let est_cost = (self.total_input_tokens as f64 / 1000.0) * pricing.0
+            + (self.total_output_tokens as f64 / 1000.0) * pricing.1
+            + (self.total_cache_read_tokens as f64 / 1000.0) * pricing.2;
+        let elapsed_secs = self.started_at.elapsed().as_secs().max(1);
+        let burn = (total as f64 / (elapsed_secs as f64 / 60.0)).round() as u64;
+        (burn, total, est_cost)
+    }
+
+    /// Compact end-of-session report for the summary card. Leans on numbers we
+    /// already track; "saveable" is the concrete waste Terse would have trimmed.
+    fn get_summary(&self) -> serde_json::Value {
+        let total = self.total_input_tokens + self.total_output_tokens;
+        let pricing = self.get_model_pricing();
+        let est_cost = (self.total_input_tokens as f64 / 1000.0) * pricing.0
+            + (self.total_output_tokens as f64 / 1000.0) * pricing.1
+            + (self.total_cache_read_tokens as f64 / 1000.0) * pricing.2;
+        let reread_waste: u64 = self.file_reads.iter()
+            .filter(|(_, c)| **c >= 2)
+            .map(|(_, c)| (*c as u64 - 1) * 800)
+            .sum();
+        let saveable = self.duplicate_tool_tokens + reread_waste + self.tool_result_compressible;
+        let elapsed_min = (self.started_at.elapsed().as_secs() as f64 / 60.0).round() as u64;
+        serde_json::json!({
+            "id": format!("agent-{}-{}", self.agent_type, self.pid),
+            "agentType": self.agent_type,
+            "agentName": self.agent_name,
+            "agentIcon": self.agent_icon,
+            "project": self.project,
+            "model": self.detected_model,
+            "turns": self.turns,
+            "toolCallCount": self.tool_call_count,
+            "totalTokens": total,
+            "totalInputTokens": self.total_input_tokens,
+            "totalOutputTokens": self.total_output_tokens,
+            "cacheEfficiency": self.cache_efficiency,
+            "estimatedCost": (est_cost * 1000.0).round() / 1000.0,
+            "saveableTokens": saveable,
+            "duplicateCalls": self.duplicate_tool_calls,
+            "elapsedMinutes": elapsed_min,
+        })
+    }
+
+    /// Build a step-by-step timeline for the Observe view / HTML replay from the
+    /// parsed message log. `limit` caps how many recent steps we return so the
+    /// payload stays sane on very long sessions.
+    pub fn get_timeline(&self, limit: usize) -> serde_json::Value {
+        let pricing = self.get_model_pricing();
+        let start = self.messages.len().saturating_sub(limit);
+        let steps: Vec<serde_json::Value> = self.messages.iter().enumerate().skip(start).map(|(i, m)| {
+            // Rough per-step cost: assistant text is output, everything else input.
+            let cost = if m.role == "assistant" {
+                m.tokens as f64 / 1000.0 * pricing.1
+            } else {
+                m.tokens as f64 / 1000.0 * pricing.0
+            };
+            serde_json::json!({
+                "i": i,
+                "role": m.role,
+                "type": m.msg_type,
+                "toolName": m.tool_name,
+                "text": safe_truncate(&m.text, 4000),
+                "tokens": m.tokens,
+                "cost": (cost * 1000.0).round() / 1000.0,
+                "timestamp": m.timestamp,
+            })
+        }).collect();
+        let redundant_reads = self.file_reads.values().filter(|c| **c >= 2).count();
+        serde_json::json!({
+            "agentType": self.agent_type,
+            "agentName": self.agent_name,
+            "agentIcon": self.agent_icon,
+            "project": self.project,
+            "model": self.detected_model,
+            "turns": self.turns,
+            "totalSteps": self.messages.len(),
+            "totalTokens": self.total_input_tokens + self.total_output_tokens,
+            "quality": {
+                "duplicateCalls": self.duplicate_tool_calls,
+                "cacheEfficiency": self.cache_efficiency,
+                "redundantReads": redundant_reads,
+                "looping": self.duplicate_tool_calls >= 3,
+                // Only ever claimed when a hit rate was actually observed.
+                "lowCache": matches!(self.cache_efficiency, Some(e) if e < 40)
+                    && self.turns >= 3 && self.total_input_tokens > 20_000,
+            },
+            "steps": steps,
+        })
     }
 
     fn get_snapshot(&self) -> serde_json::Value {
@@ -443,6 +602,20 @@ impl AgentSessionData {
         // Burn rate: tokens per minute
         let elapsed_secs = self.started_at.elapsed().as_secs().max(1);
         let burn_rate = (total as f64 / (elapsed_secs as f64 / 60.0)).round() as u64;
+
+        // ── Predictions (self-contained; the fuel gauge extrapolates current pace) ──
+        let elapsed_hours = elapsed_secs as f64 / 3600.0;
+        let cost_per_hour = if elapsed_hours > 0.0 { est_cost / elapsed_hours } else { 0.0 };
+        // Context ETA: at the average rate context has been growing, how many
+        // minutes until it fills the window. Null once effectively full.
+        let elapsed_min_f = (elapsed_secs as f64 / 60.0).max(0.1);
+        let ctx_growth_per_min = current_context as f64 / elapsed_min_f;
+        let context_eta_minutes: Option<u64> = if context_fill < 98 && ctx_growth_per_min > 1.0 {
+            let remaining = context_max.saturating_sub(current_context) as f64;
+            Some((remaining / ctx_growth_per_min).round().max(0.0) as u64)
+        } else {
+            None
+        };
 
         // Redundant file reads
         let redundant_reads: Vec<_> = self.file_reads.iter()
@@ -513,6 +686,8 @@ impl AgentSessionData {
             "currentContext": current_context,
             "contextMax": context_max,
             "burnRate": burn_rate,
+            "costPerHour": (cost_per_hour * 1000.0).round() / 1000.0,
+            "contextEtaMinutes": context_eta_minutes,
             "elapsedMinutes": (elapsed_secs as f64 / 60.0).round() as u64,
             "redundantReads": redundant_reads,
             "rereadWaste": reread_waste,
@@ -576,6 +751,18 @@ impl AgentSessionData {
         if m.contains("gpt-4o") { return (0.0025, 0.010, 0.00125); }
         // Codex agent with no model detected — use GPT-4o as default for cost estimate
         if self.agent_type == "codex" { return (0.0025, 0.010, 0.00125); }
+        // DeepSeek bills at half rate off-peak, so the live rate depends on the clock.
+        if m.contains("deepseek") || self.agent_type == "deepseek-harness" {
+            let peak = deepseek_is_peak();
+            // v4-pro is the premium tier; flash (the dsh default) is 1/3 the price.
+            let pro = m.contains("pro");
+            return match (pro, peak) {
+                (true, true)   => (0.00132, 0.00396, 0.000044),
+                (true, false)  => (0.00066, 0.00198, 0.000022),
+                (false, true)  => (0.00044, 0.00132, 0.000014),
+                (false, false) => (0.00022, 0.00066, 0.000007),
+            };
+        }
         (0.003, 0.015, 0.0003)
     }
 
@@ -585,10 +772,10 @@ impl AgentSessionData {
             .collect();
 
         // Unused tool estimate: only count after 5+ turns
-        let default_tools: &[&str] = if self.agent_type == "codex" {
-            CODEX_DEFAULT_TOOLS
-        } else {
-            CLAUDE_CODE_DEFAULT_TOOLS
+        let default_tools: &[&str] = match self.agent_type.as_str() {
+            "codex" => CODEX_DEFAULT_TOOLS,
+            "deepseek-harness" => DSH_DEFAULT_TOOLS,
+            _ => CLAUDE_CODE_DEFAULT_TOOLS,
         };
         let (unused_estimate, estimated_overhead) = if self.turns >= 5 {
             let unused = default_tools.iter()
@@ -692,8 +879,8 @@ impl AgentSessionData {
             }
 
             if self.total_input_tokens > 0 {
-                self.cache_efficiency = ((self.total_cache_read_tokens as f64
-                    / self.total_input_tokens as f64) * 100.0) as u32;
+                self.cache_efficiency = Some(((self.total_cache_read_tokens as f64
+                    / self.total_input_tokens as f64) * 100.0) as u32);
             }
         }
 
@@ -1071,7 +1258,7 @@ impl AgentSessionData {
                     self.total_output_tokens = output + reasoning;
                     self.last_input_tokens = input;
                     if self.total_input_tokens > 0 {
-                        self.cache_efficiency = ((cached as f64 / self.total_input_tokens as f64) * 100.0) as u32;
+                        self.cache_efficiency = Some(((cached as f64 / self.total_input_tokens as f64) * 100.0) as u32);
                     }
                 }
                 self.turns += 1;
@@ -1098,8 +1285,8 @@ impl AgentSessionData {
                     self.total_output_tokens = output + reasoning;
                     self.last_input_tokens = input + cached;
                     if self.total_input_tokens > 0 {
-                        self.cache_efficiency = ((self.total_cache_read_tokens as f64
-                            / self.total_input_tokens as f64) * 100.0) as u32;
+                        self.cache_efficiency = Some(((self.total_cache_read_tokens as f64
+                            / self.total_input_tokens as f64) * 100.0) as u32);
                     }
                 }
             }
@@ -1238,6 +1425,196 @@ impl AgentSessionData {
     /// Generic JSONL parser for agents that use OpenAI API format.
     /// Handles: {"role","content","usage":{"prompt_tokens","completion_tokens"}}
     /// and also {"role","content","usage":{"input_tokens","output_tokens"}}
+    /// Parse one line of a DeepSeek Harness session log.
+    ///
+    /// Layout (see @deepseek-ai/dsh-session-persistence-jsonl): line 1 is the session
+    /// header, every later line is an event `{ seq, time, type, data }`. Unlike Codex,
+    /// dsh persists real provider usage, so nothing here is estimated from text length.
+    ///
+    /// Usage reaches us in two vocabularies and we accept both: pi-ai's own
+    /// `{ input, output, cacheRead, cacheWrite }` on the persisted message, and
+    /// token-meter's `{ inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens }`.
+    fn parse_dsh_line(&mut self, obj: &serde_json::Value) {
+        // ── Header line: no `type`, carries the session id + project cwd ──
+        let Some(event_type) = obj.get("type").and_then(|t| t.as_str()) else {
+            if obj.get("id").is_some() && obj.get("createdAt").is_some() {
+                if let Some(cwd) = obj.get("cwd").and_then(|v| v.as_str()) {
+                    if let Some(base) = Path::new(cwd).file_name().and_then(|n| n.to_str()) {
+                        self.project = base.to_string();
+                    }
+                }
+            }
+            return;
+        };
+
+        let ts = obj.get("time")
+            .and_then(|t| t.as_str().map(|s| s.to_string())
+                .or_else(|| t.as_u64().map(|n| n.to_string())))
+            .unwrap_or_default();
+        let data = obj.get("data").cloned().unwrap_or(serde_json::Value::Null);
+
+        match event_type {
+            "user/message" => {
+                // `event.data` *is* the message for this type.
+                let text = dsh_content_text(data.get("content"));
+                self.turns += 1;
+                if !text.is_empty() {
+                    let tokens = estimate_tokens(&text);
+                    self.messages.push(AgentMessage {
+                        role: "user".to_string(),
+                        text,
+                        tokens,
+                        timestamp: ts,
+                        msg_type: "text".to_string(),
+                        tool_name: None,
+                    });
+                }
+            }
+            "assistant/message" => {
+                let message = data.get("message").unwrap_or(&data);
+
+                if let Some(m) = message.get("model").and_then(|v| v.as_str()) {
+                    if !m.is_empty() { self.detected_model = Some(m.to_string()); }
+                }
+
+                // Usage may sit on the envelope or on the message itself.
+                let usage = data.get("usage").or_else(|| message.get("usage"));
+                self.apply_dsh_usage(usage);
+
+                let text = dsh_content_text(message.get("content"));
+                if !text.is_empty() {
+                    let tokens = estimate_tokens(&text);
+                    self.messages.push(AgentMessage {
+                        role: "assistant".to_string(),
+                        text,
+                        tokens,
+                        timestamp: ts.clone(),
+                        msg_type: "text".to_string(),
+                        tool_name: None,
+                    });
+                }
+
+                // Tool calls are content blocks of the assistant message.
+                if let Some(blocks) = message.get("content").and_then(|c| c.as_array()) {
+                    for block in blocks {
+                        if block.get("type").and_then(|t| t.as_str()) != Some("toolCall") { continue; }
+                        let name = block.get("name").and_then(|n| n.as_str()).unwrap_or("tool").to_string();
+                        let arg = dsh_tool_arg(block);
+                        self.tool_call_count += 1;
+                        *self.tools_used.entry(name.clone()).or_insert(0) += 1;
+
+                        // Duplicate detection mirrors the Claude Code path: same tool,
+                        // same primary argument seen twice is repeated work.
+                        let key = format!("{}::{}", name, arg);
+                        if !self.tool_call_hashes.insert(key) {
+                            self.duplicate_tool_calls += 1;
+                        }
+                        if name == "read" && !arg.is_empty() {
+                            *self.file_reads.entry(arg.clone()).or_insert(0) += 1;
+                        }
+
+                        let text = if arg.is_empty() { name.clone() } else { format!("{}: {}", name, arg) };
+                        self.messages.push(AgentMessage {
+                            role: "assistant".to_string(),
+                            tokens: estimate_tokens(&text),
+                            text,
+                            timestamp: ts.clone(),
+                            msg_type: "tool_use".to_string(),
+                            tool_name: Some(name),
+                        });
+                    }
+                }
+            }
+            // Streaming usage sample; survives a later request failure that never
+            // produces a finalized assistant/message.
+            "assistant/chunk" => {
+                let chunk = data.get("chunk");
+                if chunk.and_then(|c| c.get("type")).and_then(|t| t.as_str()) == Some("usage") {
+                    self.apply_dsh_usage(chunk.and_then(|c| c.get("usage")));
+                }
+            }
+            "tool/result" => {
+                let message = data.get("message").unwrap_or(&data);
+                let name = message.get("toolName").and_then(|n| n.as_str()).unwrap_or("tool").to_string();
+                let text = dsh_content_text(message.get("content"));
+                let tokens = estimate_tokens(&text);
+
+                self.tool_result_total_tokens += tokens;
+                if tokens > 1000 {
+                    self.large_results.push((name.clone(), tokens));
+                    self.tool_result_compressible +=
+                        (tokens as f64 * estimate_bash_compressibility(&text)) as u64;
+                }
+                if !text.is_empty() {
+                    self.messages.push(AgentMessage {
+                        role: "tool".to_string(),
+                        text,
+                        tokens,
+                        timestamp: ts,
+                        msg_type: "tool_result".to_string(),
+                        tool_name: Some(name),
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Clear everything derived from the session log, keeping identity (model, project,
+    /// session file, start time). Used before re-parsing a compressed log end-to-end.
+    fn reset_for_full_reparse(&mut self) {
+        self.total_input_tokens = 0;
+        self.total_output_tokens = 0;
+        self.total_cache_read_tokens = 0;
+        self.total_cache_create_tokens = 0;
+        self.last_input_tokens = 0;
+        self.cache_efficiency = None;
+        self.turns = 0;
+        self.tool_call_count = 0;
+        self.messages.clear();
+        self.tools_used.clear();
+        self.file_reads.clear();
+        self.large_results.clear();
+        self.tool_result_total_tokens = 0;
+        self.tool_result_compressible = 0;
+        self.duplicate_tool_calls = 0;
+        self.duplicate_tool_tokens = 0;
+        self.tool_call_hashes.clear();
+    }
+
+    /// Fold one dsh usage report into the running totals.
+    ///
+    /// dsh reports *uncached* input separately from cache traffic, so the context-size
+    /// figure Terse shows is input + cacheRead + cacheWrite — the same prompt-side
+    /// pressure dsh's own token-meter computes.
+    fn apply_dsh_usage(&mut self, usage: Option<&serde_json::Value>) {
+        let Some(u) = usage else { return };
+        let field = |a: &str, b: &str| -> u64 {
+            u.get(a).and_then(|v| v.as_u64())
+                .or_else(|| u.get(b).and_then(|v| v.as_u64()))
+                .unwrap_or(0)
+        };
+        let input = field("input", "inputTokens");
+        let output = field("output", "outputTokens");
+        let cache_read = field("cacheRead", "cacheReadTokens");
+        let cache_write = field("cacheWrite", "cacheWriteTokens");
+        if input == 0 && output == 0 && cache_read == 0 && cache_write == 0 { return; }
+
+        self.total_input_tokens += input;
+        self.total_output_tokens += output;
+        self.total_cache_read_tokens += cache_read;
+        self.total_cache_create_tokens += cache_write;
+
+        // Prompt-side pressure of this request = current context size.
+        self.last_input_tokens = input + cache_read + cache_write;
+
+        let prompt_total = self.total_input_tokens + self.total_cache_read_tokens;
+        if prompt_total > 0 {
+            self.cache_efficiency =
+                Some(((self.total_cache_read_tokens as f64 / prompt_total as f64) * 100.0) as u32);
+        }
+    }
+
     fn parse_generic_line(&mut self, obj: &serde_json::Value) {
         // If this looks like Claude Code format, delegate
         if obj.get("message").is_some() {
@@ -1271,8 +1648,8 @@ impl AgentSessionData {
                 self.total_output_tokens += output;
                 if input > 0 { self.last_input_tokens = input; }
                 if self.total_input_tokens > 0 {
-                    self.cache_efficiency = ((self.total_cache_read_tokens as f64
-                        / self.total_input_tokens as f64) * 100.0) as u32;
+                    self.cache_efficiency = Some(((self.total_cache_read_tokens as f64
+                        / self.total_input_tokens as f64) * 100.0) as u32);
                 }
             }
         }
@@ -1337,6 +1714,21 @@ impl AgentSessionData {
     }
 
     /// Read new lines from session file
+    /// Is the thing we tail still there and still ours to read?
+    ///
+    /// Deliberately conservative: anything we cannot positively confirm as
+    /// missing counts as readable, so this can only ever SUPPRESS an alert we
+    /// were not entitled to make — it can never invent one.
+    fn source_is_readable(&self) -> bool {
+        if let Some(f) = &self.session_file {
+            return f.exists();
+        }
+        if !self.watched_files.is_empty() {
+            return self.watched_files.iter().any(|(path, _)| path.exists());
+        }
+        true
+    }
+
     fn read_new_lines(&mut self) {
         // Cursor: re-read from SQLite to pick up new messages
         if self.agent_type == "cursor-agent" && self.session_file.is_none() && self.watched_files.is_empty() {
@@ -1365,6 +1757,14 @@ impl AgentSessionData {
         if self.agent_type == "codex" && self.session_file.is_none() {
             if let Some(new_file) = find_codex_session() {
                 eprintln!("[terse-agent] codex: found session file (was stale on connect): {:?}", new_file);
+                self.session_file = Some(new_file);
+                self.watcher_offset = 0;
+            }
+        }
+        // dsh: same story — the log only appears once the user sends a first prompt.
+        if self.agent_type == "deepseek-harness" && self.session_file.is_none() {
+            if let Some(new_file) = find_dsh_session() {
+                eprintln!("[terse-agent] dsh: found session file (was stale on connect): {:?}", new_file);
                 self.session_file = Some(new_file);
                 self.watcher_offset = 0;
             }
@@ -1429,6 +1829,7 @@ impl AgentSessionData {
                     match self.agent_type.as_str() {
                         "claude-code" => self.parse_claude_code_line(&obj),
                         "codex"       => self.parse_codex_line(&obj),
+                        "deepseek-harness" => self.parse_dsh_line(&obj),
                         _             => self.parse_generic_line(&obj),
                     }
                     total_parsed += 1;
@@ -1444,24 +1845,39 @@ impl AgentSessionData {
     }
 
     fn read_file_from_offset(&mut self, file_path: &Path, offset: &mut u64) {
-        // .jsonl.zst (Codex Desktop compressed sessions) can't be seeked.
-        // Re-decompress the whole file and re-parse from scratch when size changes.
+        // Compressed sessions can't be seeked: re-decompress and re-parse the whole
+        // file whenever it grows. Codex Desktop writes `.jsonl.zst`, dsh `.jsonl.zstd`.
         let name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        if name.ends_with(".jsonl.zst") {
+        let dsh_compressed = name.ends_with(".jsonl.zstd");
+        if name.ends_with(".jsonl.zst") || dsh_compressed {
             let metadata = match fs::metadata(file_path) {
                 Ok(m) => m,
                 Err(_) => return,
             };
             let file_size = metadata.len();
             if file_size <= *offset { return; }
+
+            let content = if dsh_compressed {
+                read_dsh_session_file(file_path)
+            } else {
+                read_codex_session_file(file_path)
+            };
+            // Only commit the new offset once the decompress actually succeeded —
+            // zstd fails on a half-written frame, and we want the next poll to retry.
+            let Some(content) = content else { return };
             *offset = file_size;
-            if let Some(content) = read_codex_session_file(file_path) {
-                for line in content.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.is_empty() { continue; }
-                    if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                        self.parse_codex_line(&obj);
-                    }
+
+            // The codex parser folds re-reads in with max(), but dsh sums real usage
+            // per event, so a full re-parse has to start from a clean slate or every
+            // poll would count the whole session again.
+            if dsh_compressed { self.reset_for_full_reparse(); }
+
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() { continue; }
+                if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                    if dsh_compressed { self.parse_dsh_line(&obj); }
+                    else { self.parse_codex_line(&obj); }
                 }
             }
             return;
@@ -1501,6 +1917,7 @@ impl AgentSessionData {
                 match self.agent_type.as_str() {
                     "claude-code" => self.parse_claude_code_line(&obj),
                     "codex"       => self.parse_codex_line(&obj),
+                    "deepseek-harness" => self.parse_dsh_line(&obj),
                     _             => self.parse_generic_line(&obj),
                 }
                 parsed += 1;
@@ -1514,6 +1931,31 @@ impl AgentSessionData {
 
         // For codex: if session_file changed (new run started), switch to the new file.
         // Also read proxy-captured token stats (Desktop format has no tokens in JSONL).
+        if self.agent_type == "deepseek-harness" {
+            if let Some(new_file) = find_dsh_session() {
+                if self.session_file.as_ref() != Some(&new_file) {
+                    eprintln!("[terse-agent] dsh: switching to new session file {:?}", new_file);
+                    self.session_file = Some(new_file);
+                    self.reset_for_full_reparse();
+                    *offset = 0;
+                }
+            }
+            // Fallback only. dsh's session log carries real provider usage and is the
+            // better source; the proxy counts exist for the case where the log can't be
+            // read at all (zstd-compressed sessions with no zstd binary anywhere).
+            if self.total_input_tokens == 0 && self.total_output_tokens == 0 {
+                if let Some((in_tok, out_tok, cached)) = read_dsh_proxy_tokens() {
+                    self.total_input_tokens = in_tok;
+                    self.total_output_tokens = out_tok;
+                    self.total_cache_read_tokens = cached;
+                    self.last_input_tokens = in_tok + cached;
+                    let prompt_total = in_tok + cached;
+                    if prompt_total > 0 {
+                        self.cache_efficiency = Some(((cached as f64 / prompt_total as f64) * 100.0) as u32);
+                    }
+                }
+            }
+        }
         if self.agent_type == "codex" {
             if let Some(new_file) = find_codex_session() {
                 if self.session_file.as_ref() != Some(&new_file) {
@@ -1531,12 +1973,26 @@ impl AgentSessionData {
                     self.total_cache_read_tokens = cached;
                     self.last_input_tokens = in_tok;
                     if in_tok > 0 {
-                        self.cache_efficiency = ((cached as f64 / in_tok as f64) * 100.0) as u32;
+                        self.cache_efficiency = Some(((cached as f64 / in_tok as f64) * 100.0) as u32);
                     }
                 }
             }
         }
     }
+}
+
+/// Read dsh token stats written by the local proxy when it taps DeepSeek's
+/// /chat/completions SSE streams (see terse-local-proxy.js).
+fn read_dsh_proxy_tokens() -> Option<(u64, u64, u64)> {
+    let home = dirs::home_dir()?;
+    let stats_file = home.join(".terse").join("dsh-proxy-tokens.json");
+    let data = fs::read_to_string(&stats_file).ok()?;
+    let json: serde_json::Value = serde_json::from_str(&data).ok()?;
+    let input = json["inputTokens"].as_u64().unwrap_or(0);
+    let output = json["outputTokens"].as_u64().unwrap_or(0);
+    let cached = json["cachedTokens"].as_u64().unwrap_or(0);
+    if input == 0 && output == 0 { return None; }
+    Some((input, output, cached))
 }
 
 /// Read Codex token stats written by the local proxy when it taps /v1/responses SSE streams.
@@ -1720,6 +2176,9 @@ pub struct AgentMonitor {
     plan_cache: HashMap<String, (AgentPlanInfo, std::time::Instant)>,
     /// Agents manually disconnected by user — suppressed from auto-detection until explicit reconnect
     suppressed: std::collections::HashSet<String>,
+    /// Session summaries captured at teardown, drained by the scan loop to emit
+    /// the completion card. (agent_type, summary json)
+    pub ended_summaries: Vec<(String, serde_json::Value)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1754,6 +2213,7 @@ impl AgentMonitor {
             miss_count: HashMap::new(),
             plan_cache: HashMap::new(),
             suppressed: std::collections::HashSet::new(),
+            ended_summaries: Vec::new(),
         }
     }
 
@@ -1796,8 +2256,36 @@ impl AgentMonitor {
         self.sessions.values().any(|s| s.connected)
     }
 
+    /// Connected sessions that sent a request but have been quiet for a while —
+    /// i.e. the last log entry is a user/tool message (awaiting Claude) and no
+    /// activity for 30s+. Used by the Connection Doctor to flag "not responding".
+    pub fn stalled_agents(&self) -> Vec<String> {
+        let now = std::time::Instant::now();
+        self.sessions.values()
+            .filter(|s| s.connected
+                && s.turns > 0
+                && (s.last_role == "user" || s.last_role == "tool")
+                && now.duration_since(s.last_activity).as_secs() >= 30)
+            .map(|s| s.agent_name.clone())
+            .collect()
+    }
+
     pub fn get_session_snapshot(&self, agent_type: &str) -> Option<serde_json::Value> {
         self.sessions.get(agent_type).map(|s| s.get_snapshot())
+    }
+
+    /// Timeline for the Observe view. Falls back to the first connected session
+    /// when `agent_type` is empty (the common single-agent case).
+    pub fn get_timeline_for(&self, agent_type: &str, limit: usize) -> Option<serde_json::Value> {
+        if !agent_type.is_empty() {
+            return self.sessions.get(agent_type).map(|s| s.get_timeline(limit));
+        }
+        let mut sessions: Vec<&AgentSessionData> = self.sessions.values().filter(|s| s.connected).collect();
+        sessions.sort_by(|a, b| {
+            let score = |s: &&AgentSessionData| s.total_input_tokens + s.turns as u64 * 1000;
+            score(b).cmp(&score(a))
+        });
+        sessions.first().map(|s| s.get_timeline(limit))
     }
 
     pub fn accept_agent(&mut self, agent_type: &str) -> Option<serde_json::Value> {
@@ -1846,6 +2334,30 @@ impl AgentMonitor {
             }
             // Mark as cursor-db sourced (has some data, just no exact token counts)
             // session_file stays None (SQLite, not a file we tail)
+        } else if detection.parser == "deepseek" {
+            // dsh: newest ~/.dsh/sessions/<project>/<id>/session.jsonl[.zstd]
+            let session_file = find_dsh_session();
+            eprintln!("[terse-agent] accept_agent dsh: session_file = {:?}", session_file);
+            if let Some(ref file) = session_file {
+                if let Some(content) = read_dsh_session_file(file) {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.is_empty() { continue; }
+                        if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                            session.parse_dsh_line(&obj);
+                        }
+                    }
+                }
+                // Plain JSONL tails incrementally from here. The zstd variant can't be
+                // seeked, so leave the offset at 0 and let read_file_from_offset do a
+                // clean full re-parse each time the file grows.
+                if file.extension().map_or(false, |e| e == "jsonl") {
+                    if let Ok(meta) = fs::metadata(file) {
+                        session.watcher_offset = meta.len();
+                    }
+                }
+                session.session_file = Some(file.clone());
+            }
         } else if detection.parser == "codex" {
             // Codex: find rollout file in ~/.codex/sessions/YYYY/MM/DD/
             // Supports plain .jsonl (CLI) and .jsonl.zst (Desktop, decompressed via system zstd)
@@ -1952,6 +2464,13 @@ impl AgentMonitor {
                 }
             }
 
+            // Method 1b: dsh hides behind `node`, so look at full argv for it.
+            if matched_pid.is_none() && *type_key == "deepseek-harness" {
+                if let Some(pid) = find_dsh_pid() {
+                    matched_pid = Some(pid);
+                }
+            }
+
             // Method 2: Config dir detection (for agents like Cline that run inside
             // another process). Check if any config dir was modified in the last 2 minutes.
             if matched_pid.is_none() && !def.config_detect_dirs.is_empty() {
@@ -2008,6 +2527,13 @@ impl AgentMonitor {
             if *count >= 3 {
                 self.detected.remove(&key);
                 self.miss_count.remove(&key);
+                // Capture a completion summary before the session data is dropped,
+                // but only for sessions that actually did work.
+                if let Some(sess) = self.sessions.get(&key) {
+                    if sess.connected && sess.turns > 0 {
+                        self.ended_summaries.push((key.clone(), sess.get_summary()));
+                    }
+                }
                 self.sessions.remove(&key);
                 self.pending.retain(|d| d.agent_type != key);
                 lost_types.push(key);
@@ -2126,7 +2652,7 @@ fn read_codex_session_file(path: &std::path::Path) -> Option<String> {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     if name.ends_with(".jsonl.zst") {
         // Try to decompress with the system zstd binary
-        let out = std::process::Command::new("zstd")
+        let out = std::process::Command::new(zstd_binary()?)
             .args(["-d", "--stdout", "-q"])
             .arg(path)
             .output()
@@ -2135,6 +2661,173 @@ fn read_codex_session_file(path: &std::path::Path) -> Option<String> {
             return String::from_utf8(out.stdout).ok();
         }
         // zstd not found or failed — content unavailable
+        return None;
+    }
+    fs::read_to_string(path).ok()
+}
+
+/// Find a running `dsh` process by inspecting full argv.
+///
+/// `ps -axo pid,comm` (what list_processes uses) reports only the executable, and dsh
+/// runs as `node .../bin/dsh <profile>` — so its comm is plain `node`. Matching the
+/// def's process_names against "node" would claim every Node process on the machine,
+/// Terse's own proxy included, so dsh gets this narrower argv scan instead.
+fn find_dsh_pid() -> Option<u32> {
+    let output = std::process::Command::new("ps")
+        .args(["-axo", "pid=,args="])
+        .output()
+        .ok()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        let Some(space) = trimmed.find(' ') else { continue };
+        let Ok(pid) = trimmed[..space].parse::<u32>() else { continue };
+        let args = &trimmed[space + 1..];
+        // Require the dsh launcher script itself, not merely the string "dsh"
+        // somewhere in an unrelated command line (a grep for it, an editor on
+        // this very file, …).
+        let is_dsh = args.split_whitespace().any(|tok| {
+            tok.ends_with("/dsh") || tok.ends_with("/dsh/lib/bin.js") || tok == "dsh"
+        });
+        if is_dsh && !args.contains("grep") {
+            return Some(pid);
+        }
+    }
+    None
+}
+
+/// Locate a `zstd` binary.
+///
+/// A GUI app launched from Finder inherits a minimal PATH (`/usr/bin:/bin:/usr/sbin:
+/// /sbin`), so a Homebrew/conda zstd that works in the user's shell is invisible here.
+/// Both dsh (`.jsonl.zstd`, its default) and Codex Desktop (`.jsonl.zst`) need it, so
+/// fall back to the usual install locations before giving up.
+fn zstd_binary() -> Option<PathBuf> {
+    const CANDIDATES: &[&str] = &[
+        "/opt/homebrew/bin/zstd",
+        "/usr/local/bin/zstd",
+        "/usr/bin/zstd",
+        "/opt/local/bin/zstd",
+    ];
+    for c in CANDIDATES {
+        let p = PathBuf::from(c);
+        if p.exists() { return Some(p); }
+    }
+    // Anything on the inherited PATH, plus a conda install under the home dir.
+    if let Ok(path) = std::env::var("PATH") {
+        for dir in path.split(':') {
+            if dir.is_empty() { continue; }
+            let p = Path::new(dir).join("zstd");
+            if p.exists() { return Some(p); }
+        }
+    }
+    if let Some(home) = dirs::home_dir() {
+        for rel in ["miniconda3/bin/zstd", "anaconda3/bin/zstd", ".local/bin/zstd"] {
+            let p = home.join(rel);
+            if p.exists() { return Some(p); }
+        }
+    }
+    None
+}
+
+/// DeepSeek charges full rate during peak hours and half rate otherwise.
+/// Peak is 01:00–04:00 and 06:00–10:00 UTC (see api-docs.deepseek.com pricing).
+fn deepseek_is_peak() -> bool {
+    use chrono::Timelike;
+    let h = chrono::Utc::now().hour();
+    (1..4).contains(&h) || (6..10).contains(&h)
+}
+
+/// Flatten a pi-ai message `content` into plain text.
+/// Accepts the bare-string form (`UserMessage.content` may be a string) and the
+/// block-array form, keeping only `text` blocks — thinking and images are skipped.
+fn dsh_content_text(content: Option<&serde_json::Value>) -> String {
+    match content {
+        Some(serde_json::Value::String(s)) => s.clone(),
+        Some(serde_json::Value::Array(blocks)) => blocks
+            .iter()
+            .filter(|b| b.get("type").and_then(|t| t.as_str()) == Some("text"))
+            .filter_map(|b| b.get("text").and_then(|t| t.as_str()))
+            .collect::<Vec<_>>()
+            .join(""),
+        _ => String::new(),
+    }
+}
+
+/// Pick the argument that best identifies a dsh tool call, for the activity feed and
+/// duplicate detection (`read`/`edit` → path, `bash` → command, `web_*` → query/url).
+fn dsh_tool_arg(block: &serde_json::Value) -> String {
+    let Some(args) = block.get("arguments") else { return String::new() };
+    for key in ["path", "file_path", "command", "query", "url", "pattern", "id"] {
+        if let Some(v) = args.get(key).and_then(|v| v.as_str()) {
+            if !v.is_empty() { return v.chars().take(200).collect(); }
+        }
+    }
+    String::new()
+}
+
+/// DeepSeek Harness stores sessions at
+/// `~/.dsh/sessions/--<project-key>--/<session-id>/session.jsonl[.zstd]`.
+/// Compression defaults to zstd, so both suffixes are accepted.
+///
+/// `$DSH_HOME` relocates the whole tree; honor it the way dsh itself does.
+fn find_dsh_session() -> Option<PathBuf> {
+    let root = match std::env::var("DSH_HOME") {
+        Ok(h) if !h.is_empty() => PathBuf::from(h),
+        _ => dirs::home_dir()?.join(".dsh"),
+    }
+    .join("sessions");
+    if !root.exists() { return None; }
+
+    let mut newest: Option<(PathBuf, SystemTime)> = None;
+
+    // sessions/<project>/<session-id>/session.jsonl[.zstd]
+    let Ok(projects) = fs::read_dir(&root) else { return None };
+    for project in projects.flatten() {
+        if !project.file_type().map(|t| t.is_dir()).unwrap_or(false) { continue; }
+        let Ok(sessions) = fs::read_dir(project.path()) else { continue };
+        for session in sessions.flatten() {
+            if !session.file_type().map(|t| t.is_dir()).unwrap_or(false) { continue; }
+            for name in ["session.jsonl", "session.jsonl.zstd"] {
+                let p = session.path().join(name);
+                if !p.exists() { continue; }
+                if let Ok(meta) = fs::metadata(&p) {
+                    if let Ok(mtime) = meta.modified() {
+                        if newest.as_ref().map_or(true, |(_, t)| mtime > *t) {
+                            newest = Some((p, mtime));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Same 24h window as Codex: one dsh session stays open across a working day, and
+    // process detection already rules out genuinely stale sessions.
+    if let Some((path, mtime)) = newest {
+        let age = SystemTime::now().duration_since(mtime).unwrap_or(Duration::from_secs(u64::MAX));
+        if age < Duration::from_secs(24 * 60 * 60) {
+            eprintln!("[terse-agent] dsh session: {:?}", path);
+            return Some(path);
+        }
+    }
+    None
+}
+
+/// Read a dsh session log — plain JSONL or zstd-compressed JSONL.
+/// Note the suffix is `.jsonl.zstd` here, not Codex's `.jsonl.zst`.
+fn read_dsh_session_file(path: &std::path::Path) -> Option<String> {
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    if name.ends_with(".zstd") {
+        let out = std::process::Command::new(zstd_binary()?)
+            .args(["-d", "--stdout", "-q"])
+            .arg(path)
+            .output()
+            .ok()?;
+        if out.status.success() {
+            return String::from_utf8(out.stdout).ok();
+        }
+        // zstd binary missing or the write is mid-flight — try again next poll.
         return None;
     }
     fs::read_to_string(path).ok()
@@ -2384,7 +3077,7 @@ pub fn start_scanning(app: AppHandle) {
         // cursor-agent: auto-connect when Cursor IDE is open; also auto-install hook so
         //   beforeShellExecution / preToolUse interception works like Claude Code
         // codex: auto-connect when codex process is running
-        const AUTO_CONNECT: &[&str] = &["claude-code", "cursor-agent", "codex"];
+        const AUTO_CONNECT: &[&str] = &["claude-code", "cursor-agent", "codex", "deepseek-harness"];
         for (_, detection) in &new_detections {
             if AUTO_CONNECT.contains(&detection.agent_type.as_str()) {
                 let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
@@ -2444,10 +3137,20 @@ pub fn start_scanning(app: AppHandle) {
                     if !session.connected { continue; }
                     let prev_msg_count = session.messages.len();
                     let prev_tokens = session.total_input_tokens + session.total_output_tokens;
+                    // Can we still see what this agent is doing? A session file
+                    // that has vanished or become unreadable means every
+                    // conclusion below is about our own blindness, not the agent.
+                    session.source_readable = session.source_is_readable();
                     session.read_new_lines();
                     // Detect changes by message count or token growth
                     let new_tokens = session.total_input_tokens + session.total_output_tokens;
                     if session.messages.len() != prev_msg_count || new_tokens != prev_tokens {
+                        // Activity resumed — reset the attention clock so a later
+                        // quiet stretch fires exactly one idle alert.
+                        session.last_activity = std::time::Instant::now();
+                        session.idle_notified = false;
+                        session.last_role = session.messages.last()
+                            .map(|m| m.role.clone()).unwrap_or_default();
                         updates.push((agent_type.clone(), session.get_snapshot()));
                     }
                 }
@@ -2472,6 +3175,94 @@ pub fn start_scanning(app: AppHandle) {
                 "session": snapshot,
             }));
         }
+
+        // ── Attention layer + circuit breaker + completion summaries ──
+        // Gather under one lock, then dispatch/emit/enforce outside it.
+        const IDLE_THRESHOLD_SECS: u64 = 40;
+        let (ended, idle_events, circuit_readings) = {
+            let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+            let ended: Vec<(String, serde_json::Value)> = std::mem::take(&mut monitor.ended_summaries);
+            let mut idle_events: Vec<serde_json::Value> = Vec::new();
+            let mut circuit_readings: Vec<crate::circuit::Reading> = Vec::new();
+            let now_i = std::time::Instant::now();
+            let types: Vec<String> = monitor.sessions.keys().cloned().collect();
+            for at in types {
+                if let Some(s) = monitor.sessions.get_mut(&at) {
+                    if !s.connected { continue; }
+                    let (burn, total, cost) = s.quick_metrics();
+                    circuit_readings.push(crate::circuit::Reading {
+                        session_id: format!("agent-{}-{}", s.agent_type, s.pid),
+                        agent_type: s.agent_type.clone(),
+                        pid: s.pid,
+                        burn_rate: burn,
+                        tokens: total,
+                        cost,
+                    });
+                    let idle_secs = now_i.duration_since(s.last_activity).as_secs();
+                    // s.source_readable gates the whole alert: without it, losing
+                    // sight of an agent reliably produced "finished" the moment
+                    // the idle timer elapsed, whatever the agent was really doing.
+                    if s.turns > 0 && !s.idle_notified && s.source_readable
+                        && idle_secs >= IDLE_THRESHOLD_SECS {
+                        s.idle_notified = true;
+                        // Classify: assistant last → finished & waiting; otherwise
+                        // it went quiet mid-work → likely blocked on a prompt.
+                        let done = s.last_role == "assistant";
+                        idle_events.push(serde_json::json!({
+                            "agentType": s.agent_type,
+                            "agentName": s.agent_name,
+                            "agentIcon": s.agent_icon,
+                            "project": s.project,
+                            "state": if done { "done" } else { "blocked" },
+                            "idleSecs": idle_secs,
+                            "turns": s.turns,
+                        }));
+                    }
+                }
+            }
+            (ended, idle_events, circuit_readings)
+        };
+
+        // Completion summary cards.
+        for (_at, summary) in ended {
+            let name = summary.get("agentName").and_then(|v| v.as_str()).unwrap_or("Agent").to_string();
+            let saved = summary.get("saveableTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            let cost = summary.get("estimatedCost").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let turns = summary.get("turns").and_then(|v| v.as_u64()).unwrap_or(0);
+            let _ = app.emit("agent-summary", &summary);
+            let body = format!("{} turns · ~${:.2} · {} tokens saveable", turns, cost, saved);
+            crate::notifications::notify(
+                &app, "summary", &format!("{} session wrapped", name), &body,
+                "low", &format!("summary:{}", _at), Some("open-stats"),
+            );
+        }
+
+        // Attention alerts — one deliberate interrupt when the agent needs you.
+        for ev in idle_events {
+            let name = ev.get("agentName").and_then(|v| v.as_str()).unwrap_or("Agent");
+            let icon = ev.get("agentIcon").and_then(|v| v.as_str()).unwrap_or("🤖");
+            let done = ev.get("state").and_then(|v| v.as_str()) == Some("done");
+            let (title, body, sev) = if done {
+                (format!("{} {} finished", icon, name), "Waiting for your next prompt.".to_string(), "medium")
+            } else {
+                (format!("{} {} is waiting", icon, name), "Idle mid-task — it may be blocked on a prompt or approval.".to_string(), "medium")
+            };
+            // Per-episode dedupe: turn count changes between genuine idle
+            // episodes, so distinct "waiting" moments aren't collapsed by the
+            // hourly throttle, while accidental double-fires still dedupe.
+            let turns = ev.get("turns").and_then(|v| v.as_u64()).unwrap_or(0);
+            let dedupe = format!("attention:{}:{}", name, turns);
+            crate::notifications::notify(&app, "agent", &title, &body, sev, &dedupe, Some("open-popup"));
+            let _ = app.emit("agent-attention", &ev);
+        }
+
+        // Circuit breaker — evaluate every live session's burn/spend.
+        for r in &circuit_readings {
+            let _ = crate::circuit::evaluate(&app, r);
+        }
+
+        // Weekly digest — self-throttled to one check/hour, one send/ISO-week.
+        crate::digest::maybe_send_weekly(&app);
 
         // Heartbeat presence whenever something is happening, so teammates see us online.
         if had_updates {
@@ -2619,4 +3410,202 @@ pub fn fetch_cursor_plan_info() -> Option<AgentPlanInfo> {
         requests_used,
         requests_max,
     })
+}
+
+#[cfg(test)]
+mod dsh_tests {
+    use super::*;
+
+    fn feed(lines: &[&str]) -> AgentSessionData {
+        let mut s = AgentSessionData::new("deepseek-harness", "DeepSeek Harness", "\u{1F40B}", 1);
+        for l in lines {
+            let obj: serde_json::Value = serde_json::from_str(l).expect("fixture line is valid JSON");
+            s.parse_dsh_line(&obj);
+        }
+        s
+    }
+
+    /// Header line carries the project cwd, and must not be mistaken for an event.
+    #[test]
+    fn header_sets_project() {
+        let s = feed(&[r#"{"version":1,"id":"abc","createdAt":"2026-08-18T12:00:00Z","cwd":"/Users/j/Desktop/Terse","delegationDepth":0}"#]);
+        assert_eq!(s.project, "Terse");
+        assert_eq!(s.turns, 0);
+        assert!(s.messages.is_empty());
+    }
+
+    /// pi-ai vocabulary: usage lives on the message as input/output/cacheRead/cacheWrite.
+    #[test]
+    fn assistant_message_records_real_usage_and_model() {
+        let s = feed(&[r#"{"seq":2,"time":"t","type":"assistant/message","data":{"message":{"role":"assistant","model":"deepseek-v4-flash","content":[{"type":"text","text":"hi"}],"usage":{"input":100,"output":20,"cacheRead":300,"cacheWrite":50}}}}"#]);
+        assert_eq!(s.total_input_tokens, 100);
+        assert_eq!(s.total_output_tokens, 20);
+        assert_eq!(s.total_cache_read_tokens, 300);
+        assert_eq!(s.total_cache_create_tokens, 50);
+        // context size = prompt-side pressure, matching dsh's own token-meter
+        assert_eq!(s.last_input_tokens, 450);
+        assert_eq!(s.detected_model.as_deref(), Some("deepseek-v4-flash"));
+        assert_eq!(s.messages.len(), 1);
+    }
+
+    /// token-meter vocabulary (…Tokens suffix) on the envelope must work too.
+    #[test]
+    fn accepts_token_meter_usage_vocabulary() {
+        let s = feed(&[r#"{"seq":3,"time":"t","type":"assistant/message","data":{"usage":{"inputTokens":10,"outputTokens":5,"cacheReadTokens":1,"cacheWriteTokens":2},"message":{"role":"assistant","content":[]}}}"#]);
+        assert_eq!(s.total_input_tokens, 10);
+        assert_eq!(s.total_output_tokens, 5);
+        assert_eq!(s.total_cache_read_tokens, 1);
+    }
+
+    /// A usage chunk is the early sample that survives a failed request.
+    #[test]
+    fn usage_chunk_counts() {
+        let s = feed(&[r#"{"seq":4,"time":"t","type":"assistant/chunk","data":{"chunk":{"type":"usage","usage":{"input":7,"output":3,"cacheRead":0,"cacheWrite":0}}}}"#]);
+        assert_eq!(s.total_input_tokens, 7);
+        assert_eq!(s.total_output_tokens, 3);
+    }
+
+    /// User messages drive the turn counter; content may be a bare string.
+    #[test]
+    fn user_message_counts_a_turn_from_string_content() {
+        let s = feed(&[r#"{"seq":1,"time":"t","type":"user/message","data":{"role":"user","content":"refactor the parser","timestamp":0}}"#]);
+        assert_eq!(s.turns, 1);
+        assert_eq!(s.messages.len(), 1);
+        assert_eq!(s.messages[0].text, "refactor the parser");
+    }
+
+    /// toolCall blocks become tool activity; a repeat of the same call is a duplicate.
+    #[test]
+    fn tool_calls_tracked_and_deduped() {
+        let call = r#"{"seq":5,"time":"t","type":"assistant/message","data":{"message":{"role":"assistant","content":[{"type":"toolCall","id":"c1","name":"read","arguments":{"path":"/tmp/a.rs"}}],"usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0}}}}"#;
+        let s = feed(&[call, call]);
+        assert_eq!(s.tool_call_count, 2);
+        assert_eq!(*s.tools_used.get("read").unwrap(), 2);
+        assert_eq!(s.duplicate_tool_calls, 1);
+        assert_eq!(*s.file_reads.get("/tmp/a.rs").unwrap(), 2);
+    }
+
+    /// tool/result feeds the tool-result token accounting.
+    #[test]
+    fn tool_result_accounted() {
+        let s = feed(&[r#"{"seq":6,"time":"t","type":"tool/result","data":{"message":{"role":"toolResult","toolCallId":"c1","toolName":"bash","content":[{"type":"text","text":"ok"}]}}}"#]);
+        assert!(s.tool_result_total_tokens > 0);
+        assert_eq!(s.messages[0].tool_name.as_deref(), Some("bash"));
+    }
+
+    /// A full re-parse of a compressed log must not double-count usage.
+    #[test]
+    fn reset_clears_totals_so_reparse_does_not_double_count() {
+        let line = r#"{"seq":2,"time":"t","type":"assistant/message","data":{"message":{"role":"assistant","content":[],"usage":{"input":100,"output":20,"cacheRead":0,"cacheWrite":0}}}}"#;
+        let mut s = feed(&[line]);
+        s.reset_for_full_reparse();
+        let obj: serde_json::Value = serde_json::from_str(line).unwrap();
+        s.parse_dsh_line(&obj);
+        assert_eq!(s.total_input_tokens, 100, "re-parse must not accumulate twice");
+    }
+
+    /// Walk the real on-disk layout: <root>/sessions/<project>/<id>/session.jsonl[.zstd].
+    /// $DSH_HOME relocates it, which keeps this test out of the user's real ~/.dsh.
+    #[test]
+    fn finds_session_under_dsh_home_layout() {
+        let base = std::env::temp_dir().join(format!("terse-dsh-test-{}", std::process::id()));
+        let dir = base.join("sessions").join("--Users-j-Desktop-Terse--").join("sess-1");
+        fs::create_dir_all(&dir).unwrap();
+        let log = dir.join("session.jsonl");
+        fs::write(&log, "{}\n").unwrap();
+
+        std::env::set_var("DSH_HOME", &base);
+        let found = find_dsh_session();
+        std::env::remove_var("DSH_HOME");
+        let _ = fs::remove_dir_all(&base);
+
+        assert_eq!(found.as_deref(), Some(log.as_path()));
+    }
+
+    /// dsh compresses session logs with zstd by default, so the whole
+    /// decompress → parse path has to work on a real compressed artifact.
+    #[test]
+    fn reads_and_parses_a_real_zstd_session() {
+        let Some(zstd) = zstd_binary() else {
+            eprintln!("no zstd binary — skipping");
+            return;
+        };
+        let dir = std::env::temp_dir().join(format!("terse-dsh-zstd-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let plain = dir.join("session.jsonl");
+        let log = concat!(
+            r#"{"version":1,"id":"s1","createdAt":"2026-08-18T00:00:00Z","cwd":"/tmp/proj","delegationDepth":0}"#, "\n",
+            r#"{"seq":1,"time":"t","type":"user/message","data":{"role":"user","content":"hi","timestamp":0}}"#, "\n",
+            r#"{"seq":2,"time":"t","type":"assistant/message","data":{"message":{"role":"assistant","model":"deepseek-v4-flash","content":[{"type":"text","text":"yo"}],"usage":{"input":42,"output":7,"cacheRead":9,"cacheWrite":0}}}}"#, "\n",
+        );
+        fs::write(&plain, log).unwrap();
+
+        let out = std::process::Command::new(&zstd)
+            .args(["-q", "-f"]).arg(&plain).arg("-o").arg(dir.join("session.jsonl.zstd"))
+            .output().unwrap();
+        assert!(out.status.success(), "zstd compress failed");
+
+        let content = read_dsh_session_file(&dir.join("session.jsonl.zstd"))
+            .expect("decompress should succeed");
+        let mut sess = AgentSessionData::new("deepseek-harness", "d", "d", 1);
+        for line in content.lines() {
+            if line.trim().is_empty() { continue; }
+            sess.parse_dsh_line(&serde_json::from_str(line).unwrap());
+        }
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(sess.project, "proj");
+        assert_eq!(sess.turns, 1);
+        assert_eq!(sess.total_input_tokens, 42);
+        assert_eq!(sess.total_output_tokens, 7);
+        assert_eq!(sess.total_cache_read_tokens, 9);
+        assert_eq!(sess.detected_model.as_deref(), Some("deepseek-v4-flash"));
+    }
+
+    /// Peak/off-peak must be a real split, not a constant.
+    #[test]
+    fn deepseek_pricing_halves_off_peak() {
+        let mut s = AgentSessionData::new("deepseek-harness", "d", "d", 1);
+        s.detected_model = Some("deepseek-v4-pro".into());
+        let (i, o, c) = s.get_model_pricing();
+        let peak = deepseek_is_peak();
+        let expect = if peak { (0.00132, 0.00396, 0.000044) } else { (0.00066, 0.00198, 0.000022) };
+        assert_eq!((i, o, c), expect);
+    }
+}
+
+#[cfg(test)]
+mod dsh_proc_tests {
+    use super::*;
+
+    /// Against the live process table: if a dsh is running, we must find it, and the
+    /// pid we return must really be a dsh (not some other node process).
+    #[test]
+    fn argv_scan_matches_live_dsh_only() {
+        let out = std::process::Command::new("ps").args(["-axo", "pid=,args="]).output().unwrap();
+        let table = String::from_utf8_lossy(&out.stdout).to_string();
+        let running: Vec<&str> = table.lines()
+            .filter(|l| l.split_whitespace().any(|t| t.ends_with("/dsh") || t == "dsh"))
+            .filter(|l| !l.contains("grep"))
+            .collect();
+
+        match find_dsh_pid() {
+            Some(pid) => {
+                assert!(!running.is_empty(), "claimed pid {} with no dsh in ps", pid);
+                let line = table.lines()
+                    .find(|l| l.trim().starts_with(&pid.to_string()))
+                    .expect("returned pid must exist in ps");
+                assert!(line.contains("dsh"), "pid {} is not a dsh process: {}", pid, line);
+            }
+            None => assert!(running.is_empty(), "missed a running dsh: {:?}", running),
+        }
+    }
+
+    /// The whole point of the argv scan: never claim a bare node process.
+    #[test]
+    fn does_not_match_plain_node() {
+        let defs = agent_defs();
+        let (_, def) = defs.iter().find(|(k, _)| *k == "deepseek-harness").unwrap();
+        assert!(!def.process_names.contains(&"node"), "matching 'node' would claim every node process");
+    }
 }

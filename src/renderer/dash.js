@@ -178,7 +178,10 @@
     return {
       list: [s], count: 1,
       saved: savedTokensFor(s), red: reductionPct(s),
-      cache: s.cacheEfficiency || 0,
+      // NOT `|| 0`: a null hit rate means we never measured one, and coercing
+      // it to zero is how this widget came to display a confident "0%" for a
+      // session it had no usage data for at all.
+      cache: (s.cacheEfficiency == null ? null : s.cacheEfficiency),
       ctx: s.contextFill || 0, headroom: Math.max(0, 100 - (s.contextFill || 0)),
       currentContext: s.currentContext || 0, contextMax: s.contextMax || 200000,
       tools: s.toolCallCount || 0,
@@ -248,7 +251,7 @@
       A.contextMax = Math.max(A.contextMax, b.contextMax);
       A.breakdown.user += b.breakdown.user; A.breakdown.assistant += b.breakdown.assistant; A.breakdown.tool += b.breakdown.tool;
       if (b.approx) A.approx = true;
-      if (s.cacheEfficiency != null) { cacheSum += s.cacheEfficiency; cacheN++; }
+      if (s.cacheEfficiency != null) { cacheSum += s.cacheEfficiency; cacheN++; }   // unmeasured sessions must not drag the average toward zero
       if (b.working) A.working = true;
       Object.keys(b.toolsUsed).forEach((k) => { A.toolsUsed[k] = (A.toolsUsed[k] || 0) + b.toolsUsed[k]; });
       (b.redundantReads || []).forEach((r) => A.redundantReads.push(r));
@@ -422,7 +425,7 @@
         const ctxEl = $('#d_ctx');
         ctxEl.textContent = Math.round(M.ctx) + '%';
         ctxEl.style.color = M.ctx >= 90 ? '#ff6161' : M.ctx >= 75 ? '#ffc533' : '';
-        $('#d_cachehit').textContent = Math.round(M.cache) + '%';
+        $('#d_cachehit').textContent = M.cache == null ? '—' : Math.round(M.cache) + '%';
         const avg = M.turns > 0 ? Math.round((M.inTok + M.outTok) / M.turns) : 0;
         $('#d_avgturn').textContent = fmtTok(avg);
         const hr = M.elapsedMin >= 1 ? M.cost / M.elapsedMin * 60 : 0;
@@ -506,12 +509,23 @@
           '<div class="w-info"><span class="w-info-l">' + tr('dash_cache_writes') + '</span><span class="w-info-v" id="d_write">0</span></div>' +
         '</div>',
       render(M, an) {
-        animNum($('#d_num'), M.cache, an, (n) => Math.round(n) + '%');
+        if (M.cache == null) {
+          // An em dash is the honest reading: nothing to animate toward.
+          $('#d_num').textContent = '—';
+          $('#d_sub') && ($('#d_sub').textContent = tr('cacheUnknown'));
+        } else animNum($('#d_num'), M.cache, an, (n) => Math.round(n) + '%');
         const bar = $('#d_bar'), badge = $('#d_badge');
-        bar.style.width = Math.min(M.cache, 100) + '%';
-        bar.className = 'w-bar-fill' + (M.cache > 50 ? '' : M.cache > 20 ? ' warn' : ' danger');
-        badge.className = 'w-pill' + (M.cache > 50 ? '' : M.cache > 20 ? ' warn' : ' bad');
-        badge.textContent = M.cache > 50 ? tr('dash_faster') : M.cache > 20 ? tr('dash_warming') : tr('dash_cold');
+        bar.style.width = (M.cache == null ? 0 : Math.min(M.cache, 100)) + '%';
+        // An unknown must not be styled as a verdict. Every comparison against
+        // null is false, so the old chain fell through to "danger" and painted a
+        // red COLD badge for a session Terse simply had not measured — the loudest
+        // possible way to present missing data.
+        const known = M.cache != null;
+        const tone = !known ? ' idle' : M.cache > 50 ? '' : M.cache > 20 ? ' warn' : ' danger';
+        bar.className = 'w-bar-fill' + tone;
+        badge.className = 'w-pill' + (!known ? ' idle' : M.cache > 50 ? '' : M.cache > 20 ? ' warn' : ' bad');
+        badge.textContent = !known ? tr('cacheUnknown')
+          : M.cache > 50 ? tr('dash_faster') : M.cache > 20 ? tr('dash_warming') : tr('dash_cold');
         $('#d_read').textContent = fmtTok(M.cacheRead);
         $('#d_write').textContent = fmtTok(M.cacheCreate);
       },

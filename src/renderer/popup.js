@@ -952,10 +952,13 @@ function updateAgentPanel(snapshot) {
   const approxPrefix = approx ? '~' : '';
   document.getElementById('agentCtxShort').textContent = approx ? '—' : ctxFill + '%';
   document.getElementById('agentInputShort').textContent = approxPrefix + formatTokens(snapshot.totalInputTokens || 0);
-  const cacheVal = snapshot.cacheEfficiency || 0;
+  // Same rule as the ctx field just above, which already prints '—' when it does
+  // not know: an unmeasured hit rate is not a zero one.
+  const cacheVal = (snapshot.cacheEfficiency == null ? null : snapshot.cacheEfficiency);
   const cacheShort = document.getElementById('agentCacheShort');
-  cacheShort.textContent = cacheVal + '%';
-  cacheShort.style.color = cacheVal > 50 ? 'var(--ac)' : cacheVal > 20 ? '#fbbf24' : '#f87171';
+  cacheShort.textContent = cacheVal == null ? '—' : cacheVal + '%';
+  cacheShort.style.color = cacheVal == null ? 'var(--t3, #8a8a8a)'
+    : cacheVal > 50 ? 'var(--ac)' : cacheVal > 20 ? '#fbbf24' : '#f87171';
   document.getElementById('agentToolShort').textContent = snapshot.toolCallCount || 0;
 
   // Burn rate
@@ -1106,13 +1109,14 @@ function updateAgentPanel(snapshot) {
   // ── Compact stats ──
   document.getElementById('agentTurns').textContent = snapshot.turns || '0';
   document.getElementById('agentInputTok').textContent = formatTokens(snapshot.totalInputTokens || 0);
-  document.getElementById('agentCacheEff').textContent = (snapshot.cacheEfficiency || 0) + '%';
+  const effVal = (snapshot.cacheEfficiency == null ? null : snapshot.cacheEfficiency);
+  document.getElementById('agentCacheEff').textContent = effVal == null ? '—' : effVal + '%';
   document.getElementById('agentToolCount').textContent = snapshot.toolCallCount || 0;
 
   // Color-code cache
   const cacheEl = document.getElementById('agentCacheEff');
-  cacheEl.style.color = (snapshot.cacheEfficiency || 0) > 50 ? 'var(--ac)' :
-    (snapshot.cacheEfficiency || 0) > 20 ? '#fbbf24' : '#f87171';
+  cacheEl.style.color = effVal == null ? 'var(--t3, #8a8a8a)'
+    : effVal > 50 ? 'var(--ac)' : effVal > 20 ? '#fbbf24' : '#f87171';
 
   // ── Token breakdown by type ──
   const bd = snapshot.tokenBreakdown || {};

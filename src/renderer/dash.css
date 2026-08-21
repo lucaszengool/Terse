@@ -124,7 +124,10 @@ html, body.dash-mode {
 }
 .dash-tab .tab-ico { font-size: 11px; }
 .dash-close {
-  flex-shrink: 0; width: 18px; height: 18px; border-radius: 6px;
+  /* First in the header's flex row — top-left, matching every other window on
+     this platform. `order` is not used: the DOM order is the tab order too, and
+     the dismiss control should come first there as well. */
+  flex-shrink: 0; width: 18px; height: 18px; border-radius: 6px; margin-right: 2px;
   display: flex; align-items: center; justify-content: center;
   background: transparent; border: none; cursor: pointer;
   color: var(--t3, rgba(255,255,255,0.4)); font-size: 12px; line-height: 1;
@@ -255,6 +258,11 @@ html, body.dash-mode {
   animation: eq 1.1s ease-in-out infinite;
 }
 .w-eq.idle i { animation: none; height: 14%; opacity: 0.4; }
+
+/* "We have not measured this yet" — deliberately quiet. It must not read as a
+   good result or a bad one, because it is neither. */
+.w-bar-fill.idle { background: rgba(255,255,255,0.16); }
+.w-pill.idle { background: rgba(255,255,255,0.08); color: var(--t3, rgba(255,255,255,0.45)); }
 @keyframes eq { 0%,100% { transform: scaleY(0.22); } 50% { transform: scaleY(0.92); } }
 
 /* ── Savings money ── */

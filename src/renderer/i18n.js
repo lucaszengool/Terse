@@ -186,6 +186,7 @@ en: {
   user: 'User',
   asst: 'Asst',
   saveable: 'saveable',
+  cacheUnknown: 'no cache data yet',
   saved: 'saved',
   tokens_saveable: 'tokens saveable',
   tokens_saved: 'tokens saved',
@@ -2103,7 +2104,8 @@ Object.assign(EN_TEXT_MAP, {
   'Invite friends — their agents appear on your wallpaper': 'fr_sub',
   'Invite link': 'fr_link_label',
   'Send it anywhere — WeChat, Douyin, QQ, WhatsApp, Telegram, X, or any chat app. Or have them scan the code.': 'fr_link_desc',
-  'Invite friends and get Pro free — when a friend joins, you both get 14 days.': 'fr_free',
+  'Invite friends and get Pro free — when someone NEW to Terse signs up with your link, you both get 14 days.': 'fr_free',
+  'Paste a friend link, or a room code someone sent you.': 'fr_join_desc',
   'Scan the code with any phone camera': 'fr_qr_hint',
   'They do not need Terse to scan it — the page has the download and the code.': 'fr_qr_note',
   'No team yet — create one on the Team page': 'fr_no_team',
@@ -2129,8 +2131,22 @@ Object.assign(EN_TEXT_MAP, {
   'Rooms anyone can ask to join — the owner decides who comes in': 'pz_sub',
   'Ask to join': 'pz_ask',
   'List it on the Plaza so anyone can ask to join': 'rm_list_hint',
+  'Your nickname': 'rm_nick',
+  'What everyone in the room sees in the member list. Change it any time — it updates for them live.': 'rm_nick_desc',
+  '💬 Open the chat window': 'rm_open_chat',
+  'The member list and the conversation live in their own window — the wallpaper sits behind the desktop icons, so nothing drawn on it can be clicked. The wallpaper shows the room in big text; the window is where you talk.': 'rm_open_chat_desc',
+  'In this room': 'rm_here',
+  'Message the room…': 'rm_ph',
+  'Send': 'rm_send',
+  'Load earlier messages': 'rm_older',
+  'Nobody has said anything yet.': 'rm_chat_empty',
+  "Whatever is typed here shows up on everyone's wallpaper.": 'rm_chat_empty2',
+  'Sharing my agent log': 'rm_log_on',
+  'My agent log is hidden': 'rm_log_off',
+  'Set a nickname': 'rm_nick_set',
+  'This is what everyone in the room sees. It changes your name in every room you are in.': 'rm_nick_modal',
+  'Cancel': 'rm_cancel', 'Save': 'rm_save',
   'Plaza listing': 'rm_listing',
-  'Anyone can find this room and ask to join': 'rm_listed_hint',
   'Asking to join': 'rm_knocks',
   'Let in': 'rm_letin',
   'Your friend link': 'fr_flink_title',
@@ -2148,22 +2164,31 @@ Object.assign(EN_TEXT_MAP, {
   'Leave room': 'rm_leave',
   'Close room': 'rm_close',
   'Everyone on your friends list is already here.': 'rm_all_here',
+  'Plaza listing': 'rm_listing',
+  'This room is private — only people you send the code to can get in.': 'rm_listed_no',
+  'Publish to the Plaza': 'rm_publish',
+  'Recent rooms': 'rm_recent',
+  'Rooms you have been in. A room outlives everyone leaving it, so any of these opens again in one click.': 'rm_recent_desc',
+  'Leaving only takes you out — the room stays open, everyone in it keeps talking, and it stays in Recent rooms below. Closing ends it for everybody.': 'rm_leave_note',
   'Or let them scan': 'inv_qr_label',
   'It opens your invite — they get Pro free, and so do you.': 'inv_qr_note',
   'Send it anywhere — WeChat, Douyin, WhatsApp, Telegram, X, or any chat app.': 'inv_share_any',
 });
 if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Invite code'] = 'fr_join_ph';
+// The composer's placeholder is the only prompt in the chat window, so it has to
+// speak the reader's language too.
+if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Message the room…'] = 'rm_ph';
 (function augmentFriendsI18n() {
   const add = (lang, obj) => { TRANSLATIONS[lang] = Object.assign({}, TRANSLATIONS[lang], obj); };
   add('en', {
     fr_title: 'Friends', fr_sub: 'Invite friends — their agents appear on your wallpaper',
     fr_link_label: 'Invite link',
     fr_link_desc: 'Send it anywhere — WeChat, Douyin, QQ, WhatsApp, Telegram, X, or any chat app. Or have them scan the code.',
-    fr_free: 'Invite friends and get Pro free — when a friend joins, you both get 14 days.',
+    fr_free: 'Invite friends and get Pro free — when someone NEW to Terse signs up with your link, you both get 14 days.',
     fr_qr_hint: 'Scan the code with any phone camera',
     fr_qr_note: 'They do not need Terse to scan it — the page has the download and the code.',
     fr_no_team: 'No team yet — create one on the Team page',
-    fr_join_label: 'Join with a code', fr_join_desc: "Paste a friend's invite code to join their team.",
+    fr_join_label: 'Join with a code', fr_join_desc: 'Paste a friend link, or a room code someone sent you.',
     fr_join_btn: 'Join', fr_join_ph: 'Invite code', fr_joining: 'Joining…', fr_joined: 'Joined ✓',
     fr_join_empty: 'Paste a code first.',
     fr_wall_label: 'Show friends on wallpaper', fr_wall_h: 'Teammates in the same field',
@@ -2177,6 +2202,7 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Invite code'] = 
     rm_knocks: 'Asking to join', rm_letin: 'Let in',
     fr_flink_title: 'Your friend link', fr_flink_btn: 'Get link',
     fr_flink_desc: 'Anyone who opens this is added as a friend — no room, no account, no approval.',
+    cacheUnknown: 'no cache data yet',
     rm_title: 'Room', rm_sub: 'Everyone in the room shares one wallpaper — logs, roster and chat',
     rm_start: 'Start a room',
     rm_start_desc: 'Anyone you send the code to can join — no account needed, and joining does not add them as a friend.',
@@ -2198,11 +2224,11 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Invite code'] = 
     fr_title: '好友', fr_sub: '邀请好友 —— 他们的 agent 会出现在你的壁纸上',
     fr_link_label: '邀请链接',
     fr_link_desc: '发到任何地方 —— 微信、抖音、QQ、小红书、微博、WhatsApp、Telegram、X 都行，或者让对方扫码。',
-    fr_free: '邀请好友即可免费得 Pro —— 好友加入后，你们各得 14 天。',
+    fr_free: '邀请好友即可免费得 Pro —— 新用户用你的链接注册后，你们各得 14 天。',
     fr_qr_hint: '用手机相机直接扫这个码',
     fr_qr_note: '对方没装 Terse 也能扫 —— 页面里有下载和邀请码。',
     fr_no_team: '还没有团队 —— 先在「团队」页创建一个',
-    fr_join_label: '用邀请码加入', fr_join_desc: '把好友发来的邀请码粘贴到这里，即可加入他的团队。',
+    fr_join_label: '用邀请码加入', fr_join_desc: '粘贴好友链接，或者别人发给你的房间码。',
     fr_join_btn: '加入', fr_join_ph: '邀请码', fr_joining: '正在加入…', fr_joined: '已加入 ✓',
     fr_join_empty: '先粘贴邀请码。',
     fr_wall_label: '在壁纸上显示好友', fr_wall_h: '同一片星野里的队友',
@@ -2216,6 +2242,7 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Invite code'] = 
     rm_knocks: '正在申请加入', rm_letin: '放进来',
     fr_flink_title: '你的好友链接', fr_flink_btn: '获取链接',
     fr_flink_desc: '任何人点开这条链接都会直接成为你的好友 —— 不需要房间、账号或验证。',
+    cacheUnknown: '还没有缓存数据',
     rm_title: '房间', rm_sub: '同一个房间的人共享一张壁纸 —— 日志、成员和聊天',
     rm_start: '创建房间',
     rm_start_desc: '把房间码发给谁，谁就能进 —— 不需要账号，进来也不会自动加为好友。',
@@ -2237,11 +2264,11 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Invite code'] = 
     fr_title: '好友', fr_sub: '邀請好友 —— 他們的 agent 會出現在你的桌布上',
     fr_link_label: '邀請連結',
     fr_link_desc: '發到任何地方 —— 微信、抖音、QQ、小紅書、微博、WhatsApp、Telegram、X 都行，或者讓對方掃碼。',
-    fr_free: '邀請好友即可免費得 Pro —— 好友加入後，你們各得 14 天。',
+    fr_free: '邀請好友即可免費得 Pro —— 新用戶用你的連結註冊後，你們各得 14 天。',
     fr_qr_hint: '用手機相機直接掃這個碼',
     fr_qr_note: '對方沒裝 Terse 也能掃 —— 頁面裡有下載和邀請碼。',
     fr_no_team: '還沒有團隊 —— 先在「團隊」頁建立一個',
-    fr_join_label: '用邀請碼加入', fr_join_desc: '把好友發來的邀請碼貼到這裡，即可加入他的團隊。',
+    fr_join_label: '用邀請碼加入', fr_join_desc: '貼上好友連結，或者別人發給你的房間碼。',
     fr_join_btn: '加入', fr_join_ph: '邀請碼', fr_joining: '正在加入…', fr_joined: '已加入 ✓',
     fr_join_empty: '先貼上邀請碼。',
     fr_wall_label: '在桌布上顯示好友', fr_wall_h: '同一片星野裡的隊友',
@@ -2255,6 +2282,7 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Invite code'] = 
     rm_knocks: '正在申請加入', rm_letin: '放進來',
     fr_flink_title: '你的好友連結', fr_flink_btn: '取得連結',
     fr_flink_desc: '任何人點開這條連結都會直接成為你的好友 —— 不需要房間、帳號或驗證。',
+    cacheUnknown: '還沒有快取資料',
     rm_title: '房間', rm_sub: '同一個房間的人共享一張桌布 —— 日誌、成員和聊天',
     rm_start: '建立房間',
     rm_start_desc: '把房間碼發給誰，誰就能進 —— 不需要帳號，進來也不會自動加為好友。',
@@ -2274,6 +2302,128 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Invite code'] = 
   });
 })();
 
+/* Recent rooms, and the Plaza's live states. Most of these are built in JS, so
+   they exist only in TRANSLATIONS — the English-text matcher never sees them in
+   the DOM long enough to swap them, and app.js asks for them by key. */
+(function augmentRoomsI18n() {
+  const add = (lang, obj) => { TRANSLATIONS[lang] = Object.assign({}, TRANSLATIONS[lang], obj); };
+  add('en', {
+    rm_recent: 'Recent rooms',
+    rm_recent_desc: 'Rooms you have been in. A room outlives everyone leaving it, so any of these opens again in one click.',
+    rm_leave_note: 'Leaving only takes you out — the room stays open, everyone in it keeps talking, and it stays in Recent rooms below. Closing ends it for everybody.',
+    rm_rejoin: 'Rejoin', rm_you_here: 'You are here', rm_untitled: 'Untitled room',
+    rm_yours: 'yours', rm_member_of: 'you are a member',
+    rm_online_n: '{n} online', rm_members_n: '{n} members', rm_member_1: '1 member',
+    rm_room_closed: 'That room has been closed by its owner',
+    rm_nick: 'Your nickname', rm_nick_set: 'Set a nickname', rm_save: 'Save', rm_cancel: 'Cancel',
+    rm_nick_desc: 'What everyone in the room sees in the member list. Change it any time — it updates for them live.',
+    rm_nick_modal: 'This is what everyone in the room sees. It changes your name in every room you are in.',
+    rm_nick_saved: 'Nickname saved — everyone in the room sees it now',
+    rm_open_chat: '💬 Open the chat window',
+    rm_open_chat_desc: "The member list and the conversation live in their own window — the wallpaper sits behind the desktop icons, so nothing drawn on it can be clicked. The wallpaper shows the room in big text; the window is where you talk.",
+    rm_ph: 'Message the room…', rm_send: 'Send', rm_older: 'Load earlier messages',
+    rm_chat_empty: 'Nobody has said anything yet.',
+    rm_chat_empty2: "Whatever is typed here shows up on everyone's wallpaper.",
+    rm_log_on: 'Sharing my agent log', rm_log_off: 'My agent log is hidden',
+    rm_listed_no: 'This room is private — only people you send the code to can get in.',
+    rm_listed_yes: 'Listed on the Plaza — anyone can find it and ask to join, and you decide who comes in.',
+    rm_publish: 'Publish to the Plaza', rm_unpublish: 'Remove from the Plaza',
+    rm_published: 'Listed on the Plaza — people can now ask to join.',
+    rm_unpublished: 'Unlisted. Only the code gets people in now.',
+    pz_cat_all: 'all', pz_cat_coding: 'coding', pz_cat_study: 'study', pz_cat_work: 'work',
+    pz_cat_gaming: 'gaming', pz_cat_chat: 'chat', pz_cat_other: 'other',
+    pz_open_yours: 'Open yours', pz_looking: 'Looking…', pz_asked: 'Asked',
+    pz_offline: 'Could not reach the Plaza. Check your connection and refresh.',
+    pz_waiting: 'Waiting for the owner to let you in…',
+    pz_nobody_home: 'Asked — but nobody is in that room right now. Only its owner can let you in, so this stays pending until they are back.',
+    pz_denied: 'The owner declined.', pz_entering: 'You are in — opening the room.',
+    pz_empty: 'No public rooms yet.', pz_empty_cat: 'No public rooms in this category yet.',
+    pz_empty_hint: 'A room is private until its owner lists it —',
+    pz_empty_cta: 'start one', pz_empty_tail: 'and tick “List it on the Plaza”.',
+    pz_knock_queue: '{n} waiting to join your room — answer on the Room page.',
+  });
+  add('zh-Hans', {
+    rm_recent: '最近的房间',
+    rm_recent_desc: '你待过的房间。人走光了房间也还在，点一下就能再进去。',
+    rm_leave_note: '离开只是你自己出来 —— 房间照常开着，里面的人继续聊，它也会留在下面的「最近的房间」里。关闭才是把房间对所有人结束掉。',
+    rm_rejoin: '重新进入', rm_you_here: '你在这个房间', rm_untitled: '未命名房间',
+    rm_yours: '你创建的', rm_member_of: '你是成员',
+    rm_online_n: '{n} 人在线', rm_members_n: '{n} 位成员', rm_member_1: '1 位成员',
+    rm_room_closed: '这个房间已被房主关闭',
+    rm_nick: '你的昵称', rm_nick_set: '设置昵称', rm_save: '保存', rm_cancel: '取消',
+    rm_nick_desc: '房间成员列表里别人看到的就是这个名字。随时可以改，对方那边会立刻更新。',
+    rm_nick_modal: '房间里所有人看到的就是这个名字。改了之后，你所在的每个房间都会跟着变。',
+    rm_nick_saved: '昵称已保存 —— 房间里的人马上就能看到',
+    rm_open_chat: '💬 打开聊天窗口',
+    rm_open_chat_desc: '成员列表和聊天在自己的窗口里 —— 壁纸在桌面图标层下面，画在上面的东西点不到。壁纸负责用大字显示房间动态，说话在窗口里。',
+    rm_ph: '给房间发消息…', rm_send: '发送', rm_older: '加载更早的消息',
+    rm_chat_empty: '还没有人说话。',
+    rm_chat_empty2: '在这里打的字，会出现在房间里每个人的壁纸上。',
+    rm_log_on: '正在共享我的 agent log', rm_log_off: '已隐藏我的 agent log',
+    rm_listed_no: '这个房间现在是私密的 —— 只有你把房间码发给的人才能进来。',
+    rm_listed_yes: '已发布到广场 —— 任何人都能找到它并申请加入，放谁进来由你决定。',
+    rm_publish: '发布到广场', rm_unpublish: '从广场撤下',
+    rm_published: '已发布到广场 —— 现在别人可以申请加入了。',
+    rm_unpublished: '已撤下。现在只有拿到房间码的人能进来。',
+    pz_cat_all: '全部', pz_cat_coding: '写代码', pz_cat_study: '学习', pz_cat_work: '工作',
+    pz_cat_gaming: '游戏', pz_cat_chat: '闲聊', pz_cat_other: '其他',
+    pz_open_yours: '进入我的房间', pz_looking: '正在加载…', pz_asked: '已申请',
+    pz_offline: '连不上广场，检查一下网络再刷新。',
+    pz_waiting: '等房主放你进来…',
+    pz_nobody_home: '已申请 —— 但那个房间现在没人。只有房主能放你进去，所以要等他回来。',
+    pz_denied: '房主拒绝了。', pz_entering: '已进入 —— 正在打开房间。',
+    pz_empty: '广场上还没有公开房间。', pz_empty_cat: '这个分类下还没有公开房间。',
+    pz_empty_hint: '房间默认是私密的，除非房主发布它 ——',
+    pz_empty_cta: '创建一个', pz_empty_tail: '并勾选「发布到广场」。',
+    pz_knock_queue: '有 {n} 个人在申请加入你的房间 —— 到「房间」页面处理。',
+  });
+  add('zh-Hant', {
+    rm_recent: '最近的房間',
+    rm_recent_desc: '你待過的房間。人走光了房間也還在，點一下就能再進去。',
+    rm_leave_note: '離開只是你自己出來 —— 房間照常開著，裡面的人繼續聊，它也會留在下面的「最近的房間」裡。關閉才是把房間對所有人結束掉。',
+    rm_rejoin: '重新進入', rm_you_here: '你在這個房間', rm_untitled: '未命名房間',
+    rm_yours: '你建立的', rm_member_of: '你是成員',
+    rm_online_n: '{n} 人在線', rm_members_n: '{n} 位成員', rm_member_1: '1 位成員',
+    rm_room_closed: '這個房間已被房主關閉',
+    rm_nick: '你的暱稱', rm_nick_set: '設定暱稱', rm_save: '儲存', rm_cancel: '取消',
+    rm_nick_desc: '房間成員列表裡別人看到的就是這個名字。隨時可以改，對方那邊會立刻更新。',
+    rm_nick_modal: '房間裡所有人看到的就是這個名字。改了之後，你所在的每個房間都會跟著變。',
+    rm_nick_saved: '暱稱已儲存 —— 房間裡的人馬上就能看到',
+    rm_open_chat: '💬 開啟聊天視窗',
+    rm_open_chat_desc: '成員列表和聊天在自己的視窗裡 —— 桌布在桌面圖示層下面，畫在上面的東西點不到。桌布負責用大字顯示房間動態，說話在視窗裡。',
+    rm_ph: '給房間發訊息…', rm_send: '發送', rm_older: '載入更早的訊息',
+    rm_chat_empty: '還沒有人說話。',
+    rm_chat_empty2: '在這裡打的字，會出現在房間裡每個人的桌布上。',
+    rm_log_on: '正在共享我的 agent log', rm_log_off: '已隱藏我的 agent log',
+    rm_listed_no: '這個房間現在是私密的 —— 只有你把房間碼發給的人才能進來。',
+    rm_listed_yes: '已發布到廣場 —— 任何人都能找到它並申請加入，放誰進來由你決定。',
+    rm_publish: '發布到廣場', rm_unpublish: '從廣場撤下',
+    rm_published: '已發布到廣場 —— 現在別人可以申請加入了。',
+    rm_unpublished: '已撤下。現在只有拿到房間碼的人能進來。',
+    pz_cat_all: '全部', pz_cat_coding: '寫程式', pz_cat_study: '學習', pz_cat_work: '工作',
+    pz_cat_gaming: '遊戲', pz_cat_chat: '閒聊', pz_cat_other: '其他',
+    pz_open_yours: '進入我的房間', pz_looking: '正在載入…', pz_asked: '已申請',
+    pz_offline: '連不上廣場，檢查一下網路再重新整理。',
+    pz_waiting: '等房主放你進來…',
+    pz_nobody_home: '已申請 —— 但那個房間現在沒人。只有房主能放你進去，所以要等他回來。',
+    pz_denied: '房主拒絕了。', pz_entering: '已進入 —— 正在開啟房間。',
+    pz_empty: '廣場上還沒有公開房間。', pz_empty_cat: '這個分類下還沒有公開房間。',
+    pz_empty_hint: '房間預設是私密的，除非房主發布它 ——',
+    pz_empty_cta: '建立一個', pz_empty_tail: '並勾選「發布到廣場」。',
+    pz_knock_queue: '有 {n} 個人在申請加入你的房間 —— 到「房間」頁面處理。',
+  });
+})();
+
+/* EN_TEXT_MAP keeps being extended BELOW its own definition — the friends, room
+   and invite blocks all add to it — but the whitespace-collapsed view of it was
+   built once, right after the literal. Everything added later therefore only
+   ever matched by exact text: single-line labels translated, and every
+   multi-line paragraph (which is most of the prose) silently stayed English.
+   Rebuild the collapsed view after the last extension, before the first pass. */
+Object.assign(EN_TEXT_MAP_NORM, Object.fromEntries(
+  Object.entries(EN_TEXT_MAP).map(([k, v]) => [k.replace(/\s+/g, ' '), v])
+));
+
 // ── Init: apply translations on load ──
 applyTranslations();
 
@@ -2287,7 +2437,12 @@ if (_currentLang !== 'en' && typeof MutationObserver !== 'undefined') {
   const _observer = new MutationObserver(() => {
     if (_pending) return;
     _pending = true;
-    requestAnimationFrame(() => {
+    // setTimeout, not requestAnimationFrame: rAF never fires in a window that is
+    // hidden or in the background, and Terse creates windows hidden (the room
+    // window, the toast, the island). With rAF the first mutation in such a
+    // window sets _pending, the callback never runs, and translation stops for
+    // good — the page comes back to English and stays there.
+    setTimeout(() => {
       _pending = false;
       _observer.disconnect();
       try { applyTranslations(); } finally {

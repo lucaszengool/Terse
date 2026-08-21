@@ -2738,9 +2738,37 @@ fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
     if let Some(w) = app.get_webview_window(label) {
         return Some(w);
     }
+    // Build on the MAIN thread, and wait for it.
+    //
+    // Every call site here is a #[tauri::command], which runs on a worker
+    // thread. Creating a webview off the main thread is not supported: on
+    // Windows it produced a window that came up as about:blank with room.html
+    // never loading, and the calling command hung. Reported exactly that way
+    // after the Rooms build. setup() got away with it only because setup()
+    // already runs on the main thread - moving creation to first use is what
+    // exposed it, and it affects the pet, farm, palette, Doctor and the nine
+    // dashboards equally, not just the room.
+    //
+    // run_on_main_thread is fire-and-forget, so a channel carries the result
+    // back and this blocks until the window exists. Callers immediately call
+    // .show() on what we return; handing them a half-built window is the bug.
     #[cfg(target_os = "windows")]
-    if let Err(e) = build_lazy_window(app, label) {
-        eprintln!("[terse] could not build '{label}': {e}");
+    {
+        let (tx, rx) = std::sync::mpsc::channel::<()>();
+        let a = app.clone();
+        let lbl = label.to_string();
+        let dispatched = app
+            .run_on_main_thread(move || {
+                if let Err(e) = build_lazy_window(&a, &lbl) {
+                    eprintln!("[terse] could not build '{lbl}': {e}");
+                }
+                let _ = tx.send(());
+            })
+            .is_ok();
+        if dispatched {
+            // Bounded: a wedged main thread must not hang the command for ever.
+            let _ = rx.recv_timeout(std::time::Duration::from_secs(10));
+        }
     }
     app.get_webview_window(label)
 }

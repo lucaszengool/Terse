@@ -87,6 +87,9 @@
   </div>
 
   <!-- 360-style shell: left sidebar navigation + content pane -->
+  <!-- Liquid glass. Same reason as the island: WKWebView renders nothing for an
+       SVG filter in backdrop-filter and drops the rest of the chain with it, so
+       the lens is drawn in WebGL under the UI. See liquid-glass.js. -->
   <div id="shell">
     <aside id="sidebar" data-tauri-drag-region>
       <div class="sb-brand" data-tauri-drag-region>
@@ -188,6 +191,66 @@
         <button class="sb-item" data-page="pals">
           <span class="sb-emoji" id="sbPalIcon">🐾</span>
           <span>Pals</span>
+        </button>
+        <!-- Friends / Room / Plaza — the views for these already existed in this
+             file (friendsView, roomView, plazaView) and the room window and its
+             commands are in the Windows backend now, but the rail had no buttons,
+             so on Windows there was no way to reach any of it. A user reported
+             exactly that: installed the build, could not find rooms, friends or
+             the plaza anywhere.
+
+             Taken from main verbatim. NOT taken: the `island` entry beside them
+             there, which opens the permission-control page. Windows has no
+             permission backend at all - permission_control_status and the eight
+             commands around it do not exist - so that button would open a page
+             whose every control errors. It is also the feature the other session
+             was told to hide and default off because it is not ready. -->
+        <button class="sb-item" data-page="friends" title="Friends">
+          <span class="sb-emoji">👥</span>
+          <span>Friends</span>
+        </button>
+        <button class="sb-item" data-page="room" title="Room">
+          <span class="sb-emoji">🪟</span>
+          <span>Room</span>
+        </button>
+        <button class="sb-item" data-page="plaza" title="Plaza">
+          <span class="sb-emoji">🏛</span>
+          <span>Plaza</span>
+        </button>
+        <!-- Island permission control — its own PAGE, not a toggle in the rail.
+             It was a chip here with an ON/OFF pill, which made a mode that
+             reaches into every running agent a single stray click away, with
+             nowhere to show what it was actually doing. Default OFF still: it
+             puts a PreToolUse hook in the agent's critical path, so it must be
+             a deliberate choice, never something an untouched install inherits
+             (lib.rs forces it off on every launch). -->
+        <!-- 好友 — the social surface: invite link, roster, and the switch that
+             puts teammates' agents on your wallpaper. Sits at the bottom with
+             the other "people" items rather than in Settings, because it is a
+             place you go, not a preference you set. -->
+        <button class="sb-item" data-page="friends" title="Friends">
+          <span class="sb-emoji">👥</span>
+          <span>Friends</span>
+        </button>
+        <!-- Room — the live session, distinct from Friends on purpose: friends
+             are who you know, a room is who you are on the wallpaper with now. -->
+        <button class="sb-item" data-page="room" title="Room">
+          <span class="sb-emoji">🪟</span>
+          <span>Room</span>
+        </button>
+        <!-- 广场 — where rooms are found. Separate from Room because browsing
+             strangers' rooms and being in one are different activities. -->
+        <button class="sb-item" data-page="plaza" title="Plaza">
+          <span class="sb-emoji">🏛</span>
+          <span>Plaza</span>
+        </button>
+        <button class="sb-item" data-page="island"
+                title="Answer Claude's permission prompts on the Dynamic Island">
+          <span class="sb-emoji">🛡</span>
+          <span>灵动岛授权</span>
+          <span id="sbIslandPermState" style="margin-left:auto;font-size:9px;font-weight:800;
+            letter-spacing:.06em;padding:1px 6px;border-radius:9999px;
+            background:var(--sf);color:var(--t3)">OFF</span>
         </button>
         <button class="sb-item" data-page="settings">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -314,7 +377,7 @@
       </div>
       <div id="clIdle" class="cl-center">
         <div class="cl-orb"><span></span></div>
-        <p class="cl-idle-tip">扫描 ~/.claude · ~/.codex · ~/.terse</p>
+        <p class="cl-idle-tip">扫描 ~/.claude · ~/.codex · ~/.dsh · ~/.terse</p>
         <button id="btnClScan" class="cl-scan-btn">开始扫描 · Scan</button>
       </div>
       <div id="clResults" class="hidden">
@@ -365,11 +428,11 @@
         </div>
       </div>
       <div class="boost-tradeoffs">
-        <div class="boost-tr-title">诚实的代价 · The honest tradeoffs</div>
+        <div class="boost-tr-title">The honest tradeoffs</div>
         <ul>
-          <li><b>Less total token reduction.</b> Cache-safe trimming skips history rewrites, so raw token savings are smaller than Aggressive mode — you trade savings for speed.</li>
-          <li><b>Repeats can be stale.</b> If a file changed between two identical reads, the local cache can serve the older result for that session. Terse invalidates on write, but external changes aren't seen.</li>
-          <li><b>Compression can drop rare detail.</b> Compacted tool output keeps structure and key values, but an unusual detail deep in verbose output may be trimmed. Turn Speed Up off for forensic debugging sessions.</li>
+          <li><b>Less total token reduction.</b> <span>Cache-safe trimming skips history rewrites, so raw token savings are smaller than Aggressive mode — you trade savings for speed.</span></li>
+          <li><b>Repeats can be stale.</b> <span>If a file changed between two identical reads, the local cache can serve the older result for that session. Terse invalidates on write, but external changes aren't seen.</span></li>
+          <li><b>Compression can drop rare detail.</b> <span>Compacted tool output keeps structure and key values, but an unusual detail deep in verbose output may be trimmed. Turn Speed Up off for forensic debugging sessions.</span></li>
         </ul>
       </div>
     </div>
@@ -426,6 +489,380 @@
       <input id="obSearch" class="ob-search" type="text" placeholder="Search this session…" spellcheck="false" autocomplete="off">
       <div class="ob-files" id="obFiles"></div>
       <div class="ob-steps" id="obSteps"></div>
+    </div>
+
+    <!-- 好友 · Friends — invites, roster, and the wallpaper multiplayer switch -->
+    <div id="friendsView" class="hidden">
+      <div class="ob-head">
+        <div>
+          <div class="ob-title">Friends</div>
+          <div class="ob-sub">Invite friends — their agents appear on your wallpaper</div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="frRefresh">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- The invite. An https link, NOT the terse:// deep link it used to be:
+           invites get sent through WeChat and Douyin, whose in-app browsers
+           block custom schemes outright, so a terse:// invite was dead on
+           arrival exactly where people send it. The https page (landing/join)
+           hands off to the app when it can and shows the code when it can't.
+           The QR carries the same string, so a phone camera works too. -->
+      <div class="setting-group">
+        <label class="setting-label">Invite link</label>
+        <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 6px">
+          Send it anywhere — WeChat, Douyin, QQ, WhatsApp, Telegram, X, or any chat app. Or have them scan the code.
+        </p>
+        <p style="font-size:11px;color:var(--btn);font-weight:700;line-height:1.6;margin:0 0 8px">
+          Invite friends and get Pro free — when someone NEW to Terse signs up with your link, you both get 14 days.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="frLink" readonly spellcheck="false"
+                 style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                        padding:8px 10px;color:var(--t1);font:11px ui-monospace,Menlo,monospace">
+          <button class="ob-btn" id="frCopy">Copy</button>
+        </div>
+        <div id="frQr" style="margin-top:12px;display:flex;gap:12px;align-items:center"></div>
+      </div>
+
+      <!-- The other direction: someone who was sent a code rather than a working
+           link. join.html tells them to paste it here, so here has to exist. -->
+      <!-- A link is enough. Whoever opens it is added — sending it WAS the
+           decision, so there is nothing left to approve. -->
+      <div class="setting-group">
+        <label class="setting-label">Your friend link</label>
+        <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+          Anyone who opens this is added as a friend — no room, no account, no approval.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="frLinkOut" readonly spellcheck="false" placeholder="Tap Get link"
+                 style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                        padding:8px 10px;color:var(--t1);font:11px ui-monospace,Menlo,monospace">
+          <button class="ob-btn" id="frLinkBtn">Get link</button>
+        </div>
+        <div id="frLinkQr" style="margin-top:12px;display:flex;gap:12px;align-items:center"></div>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label">Join with a code</label>
+        <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+          Paste a friend link, or a room code someone sent you.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="frJoinCode" spellcheck="false" placeholder="Invite code"
+                 style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                        padding:8px 10px;color:var(--t1);font:11px ui-monospace,Menlo,monospace">
+          <button class="ob-btn" id="frJoin">Join</button>
+        </div>
+        <p id="frJoinMsg" style="font-size:11px;color:var(--t3);margin:8px 0 0;min-height:14px"></p>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label">Show friends on wallpaper</label>
+        <div class="cl-hero" style="margin-top:6px">
+          <div class="cl-hero-tx">
+            <h3>Teammates in the same field</h3>
+            <p>A friend's agent log appears on your wallpaper in their own colour, name first,
+               distinct from your own green. Turning it off leaves the wallpaper untouched.</p>
+          </div>
+          <label class="boost-switch">
+            <input type="checkbox" id="frWallpaper">
+            <span class="boost-track"><span class="boost-knob"></span></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-group" style="display:none">
+        <label class="setting-label">Friend requests</label>
+        <div id="frRequests" class="mcp-list" style="margin-top:6px"></div>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label"><span>Members</span> <span id="frCount" style="color:var(--t3)"></span></label>
+        <div id="frRoster" class="mcp-list" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- Room — create or join a live shared-wallpaper session -->
+    <div id="roomView" class="hidden">
+      <div class="ob-head">
+        <div>
+          <div class="ob-title">Room</div>
+          <div class="ob-sub">Everyone in the room shares one wallpaper — logs, roster and chat</div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="rmRefresh">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Above both panels on purpose: your name is the thing everyone else
+           sees, whether you are in a room right now or about to make one. -->
+      <div class="setting-group">
+        <label class="setting-label">Your nickname</label>
+        <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+          What everyone in the room sees in the member list. Change it any time — it updates for them live.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="rmNick" placeholder="e.g. 小明" maxlength="40" spellcheck="false"
+                 style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                        padding:8px 10px;color:var(--t1);font-size:12px">
+          <button class="ob-btn" id="rmNickSave">Save</button>
+        </div>
+      </div>
+
+      <div id="rmOut">
+        <div class="setting-group">
+          <label class="setting-label">Start a room</label>
+          <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+            Anyone you send the code to can join — no account needed, and joining does not add them as a friend.
+          </p>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="rmName" placeholder="Room name" spellcheck="false"
+                   style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                          padding:8px 10px;color:var(--t1);font-size:12px">
+            <select id="rmCategory" style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                          padding:8px 6px;color:var(--t1);font-size:12px">
+              <option value="coding">Coding</option>
+              <option value="study">Study</option>
+              <option value="work">Work</option>
+              <option value="gaming">Gaming</option>
+              <option value="chat">Chat</option>
+              <option value="other">Other</option>
+            </select>
+            <button class="ob-btn" id="rmCreate">Create</button>
+          </div>
+          <!-- Private is the default on purpose: being findable by strangers
+               should be a decision, never something that happens to you. -->
+          <label style="display:flex;gap:7px;align-items:center;margin-top:9px;font-size:11px;color:var(--t3)">
+            <input type="checkbox" id="rmPublic">
+            <span>List it on the Plaza so anyone can ask to join</span>
+          </label>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">Join a room</label>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <input id="rmCode" placeholder="Room code" spellcheck="false"
+                   style="flex:1;text-transform:uppercase;background:var(--bg);border:1px solid var(--bd);
+                          border-radius:8px;padding:8px 10px;color:var(--t1);
+                          font:12px ui-monospace,Menlo,monospace;letter-spacing:2px">
+            <button class="ob-btn" id="rmJoin">Join</button>
+          </div>
+          <p id="rmOutMsg" style="font-size:11px;color:var(--t3);margin:8px 0 0;min-height:14px"></p>
+        </div>
+      </div>
+
+      <div id="rmIn" class="hidden">
+        <div class="setting-group">
+          <label class="setting-label">Room code</label>
+          <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+            Send it anywhere, or let them scan. Wallpaper multiplayer is live for everyone in this room.
+          </p>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="rmLink" readonly spellcheck="false"
+                   style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                          padding:8px 10px;color:var(--t1);font:11px ui-monospace,Menlo,monospace">
+            <button class="ob-btn" id="rmCopy">Copy</button>
+          </div>
+          <div id="rmQr" style="margin-top:12px;display:flex;gap:12px;align-items:center"></div>
+          <div style="margin-top:12px">
+            <button class="ob-btn" id="rmOpenChat">💬 Open the chat window</button>
+            <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:8px 0 0">
+              The member list and the conversation live in their own window — the wallpaper sits behind
+              the desktop icons, so nothing drawn on it can be clicked. The wallpaper shows the room in
+              big text; the window is where you talk.
+            </p>
+          </div>
+        </div>
+
+        <!-- Owner-only, and directly under the code, because "how do people find
+             this room?" is the question this page exists to answer. It was a
+             checkbox further down, which is why nobody found the way to publish. -->
+        <div class="setting-group" id="rmListingGroup" style="display:none">
+          <label class="setting-label">Plaza listing</label>
+          <p id="rmListingState" style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 9px">
+            This room is private — only people you send the code to can get in.
+          </p>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="rmListCategory" style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                          padding:8px 6px;color:var(--t1);font-size:12px">
+              <option value="coding">Coding</option>
+              <option value="study">Study</option>
+              <option value="work">Work</option>
+              <option value="gaming">Gaming</option>
+              <option value="chat">Chat</option>
+              <option value="other">Other</option>
+            </select>
+            <button class="ob-btn" id="rmListToggle">Publish to the Plaza</button>
+          </div>
+        </div>
+
+        <!-- Only the owner ever sees this, and only when someone is waiting. -->
+        <div class="setting-group" id="rmKnockGroup" style="display:none">
+          <label class="setting-label">Asking to join</label>
+          <div id="rmKnocks" class="mcp-list" style="margin-top:6px"></div>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label"><span>In this room</span> <span id="rmCount" style="color:var(--t3)"></span></label>
+          <div id="rmRoster" class="mcp-list" style="margin-top:6px"></div>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">Bring a friend in</label>
+          <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+            Send the room code straight to someone already on your friends list.
+          </p>
+          <div id="rmFriends" class="mcp-list"></div>
+        </div>
+
+        <div class="setting-group">
+          <button class="ob-btn ghost" id="rmLeave">Leave room</button>
+          <button class="ob-btn ghost" id="rmClose" style="margin-left:8px;display:none">Close room</button>
+          <!-- Leaving and closing are different verbs and the difference matters:
+               one is you going home, the other is the room ceasing to exist for
+               everybody in it. Say so where the buttons are. -->
+          <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:8px 0 0">
+            Leaving only takes you out — the room stays open, everyone in it keeps talking,
+            and it stays in Recent rooms below. Closing ends it for everybody.
+          </p>
+          <p id="rmMsg" style="font-size:11px;color:var(--t3);margin:8px 0 0;min-height:14px"></p>
+        </div>
+      </div>
+
+      <!-- Recent rooms — shown whether or not you are in one, because its whole
+           job is being the way back into the ones you are not in. -->
+      <div class="setting-group" id="rmRecentGroup" style="display:none">
+        <label class="setting-label"><span>Recent rooms</span> <span id="rmRecentCount" style="color:var(--t3)"></span></label>
+        <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+          Rooms you have been in. A room outlives everyone leaving it, so any of these opens again in one click.
+        </p>
+        <div id="rmRecent" class="mcp-list"></div>
+      </div>
+    </div>
+
+    <!-- 广场 · Plaza — public rooms anyone can ask to join -->
+    <div id="plazaView" class="hidden">
+      <div class="ob-head">
+        <div>
+          <div class="ob-title">Plaza</div>
+          <div class="ob-sub">Rooms anyone can ask to join — the owner decides who comes in</div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="pzRefresh">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div id="pzCats" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+
+      <div class="setting-group">
+        <div id="pzList" class="mcp-list"></div>
+        <p id="pzMsg" style="font-size:11px;color:var(--t3);margin:8px 0 0;min-height:14px"></p>
+      </div>
+    </div>
+
+    <!-- 灵动岛授权 · Dynamic Island permission control -------------------------
+         Its own page rather than a Settings row: this is a mode you switch on
+         for a working session, with state worth showing (is it armed, what has
+         it learned, what did it last do). A checkbox in a settings list could
+         say none of that. -->
+    <div id="islandView" class="hidden">
+      <div class="ob-head">
+        <div>
+          <div class="ob-title">Island permission control<span class="pro-chip" style="margin-left:8px;
+            font-size:9px;font-weight:800;letter-spacing:.06em;padding:1px 6px;border-radius:9999px;
+            background:var(--btn);color:var(--btn-t);vertical-align:middle">PRO</span></div>
+          <div class="ob-sub" id="islPermSub">Answer Claude's permission prompts from the Dynamic Island</div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="islPermRefresh">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="cl-hero" style="margin-top:2px">
+        <div class="cl-hero-tx">
+          <h3>Answer prompts from the island</h3>
+          <p>When Claude Code asks to run something, the card appears on the Dynamic Island with a
+             preview of the command — tap Allow once, Always allow, or Deny. You have 10 seconds;
+             after that Claude Code's own prompt takes over, so nothing ever blocks.</p>
+        </div>
+        <label class="boost-switch">
+          <input type="checkbox" id="islPermToggle">
+          <span class="boost-track"><span class="boost-knob"></span></span>
+        </label>
+      </div>
+
+      <!-- The honest explanation of the trade-off. Users hit the first-time
+           behaviour immediately and would otherwise read it as "broken". -->
+      <div class="setting-group" style="margin-top:12px">
+        <label class="setting-label">How it decides what to ask about</label>
+        <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 0">
+          Terse never guesses. The first time Claude Code asks about a particular command it is
+          answered in the terminal as usual, and Terse notes that this command really does prompt.
+          From then on that command comes to the island instead. Anything Claude Code has never
+          asked about is passed straight through and never delays your agent.
+        </p>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label"><span>Learned commands</span><span id="islPermCount"
+          style="color:var(--t3);font-weight:600;margin-left:5px"></span></label>
+        <div id="islPermLearned" class="mcp-list" style="margin-top:6px"></div>
+        <div class="ob-actions" style="justify-content:flex-end;margin-top:8px">
+          <button class="ob-btn ghost" id="islPermForget">Clear learned</button>
+        </div>
+      </div>
+
+      <!-- Auto-approval. The card still appears with the full preview and the
+           button is pressed after 2s, so approvals stay visible. This grants
+           the same reach as Claude Code's bypass mode — hence off by default
+           and labelled plainly. -->
+      <!-- HIDDEN: auto-approve is not finished. It presses the button for you after
+           2s, which is the same reach as bypass mode — an unfinished version of that
+           is not something to leave reachable. The controls stay in the DOM so the
+           existing get/set_permission_auto wiring keeps working untouched; drop the
+           inline display:none to bring it back. -->
+      <div class="setting-group" style="display:none">
+        <label class="setting-label">Auto-approve<span class="pro-chip" style="margin-left:6px;font-size:9px;
+          font-weight:800;letter-spacing:.06em;padding:1px 6px;border-radius:9999px;
+          background:var(--btn);color:var(--btn-t)">PRO</span></label>
+        <p id="islPermAutoNote" style="display:none;font-size:10.5px;color:var(--t3);margin:6px 0 0">
+          灵动岛授权开启时不可用 — 两者互斥：灵动岛让你看清每次请求再决定，自动批准会替你按下。
+          Disabled while island permission control is on — the two are mutually exclusive.
+        </p>
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11.5px;color:var(--t2);flex:1">Claude auto-approve</span>
+            <select id="autoClaude" style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+              padding:5px 8px;color:var(--t1);font-size:11px">
+              <option value="">Off — ask every time</option>
+              <option value="once">Auto Allow once</option>
+              <option value="always">Auto Always allow</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11.5px;color:var(--t2);flex:1">Codex auto-approve</span>
+            <select id="autoCodex" style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+              padding:5px 8px;color:var(--t1);font-size:11px">
+              <option value="">Off — ask every time</option>
+              <option value="once">Auto Allow once</option>
+              <option value="always">Auto Always allow</option>
+            </select>
+          </div>
+        </div>
+        <p style="font-size:10px;color:var(--t3);line-height:1.5;margin:8px 0 0">
+          The island still shows a preview of every request and presses the button after 2 seconds.
+          This grants the same reach as bypass mode, including destructive commands — only turn it on
+          for an agent you trust. Codex has no equivalent hook yet; the setting takes effect once it does.
+        </p>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label">Recent activity</label>
+        <div id="islPermLog" class="mcp-list" style="margin-top:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px"></div>
+      </div>
     </div>
 
     <!-- MCP · Manager + risk scoring -->
@@ -712,13 +1149,21 @@
         <button id="inviteClose" style="position:absolute;top:12px;right:14px;width:28px;height:28px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer">✕</button>
         <div style="font-size:34px;text-align:center">🎁</div>
         <h2 style="color:var(--t1);font-size:16px;font-weight:800;text-align:center;margin:6px 0 2px">Give Pro, get Pro</h2>
-        <p id="inviteReward" style="color:var(--t3);font-size:11px;text-align:center;margin:0 0 14px;line-height:1.5">Share your code. When a friend starts Pro, you <b style="color:var(--t1)">both</b> get 14 days of Pro free.</p>
+        <p id="inviteReward" style="color:var(--t3);font-size:11px;text-align:center;margin:0 0 14px;line-height:1.5">Share your code. When someone <b style="color:var(--t1)">new to Terse</b> signs up with it and starts Pro, you both get 14 days of Pro free.</p>
 
         <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:5px">Your invite code</div>
         <div style="display:flex;gap:6px;margin-bottom:12px">
           <div id="inviteCode" style="flex:1;font-family:ui-monospace,Menlo,'Cascadia Code','Cascadia Mono',Consolas,'Microsoft YaHei Mono',monospace;font-size:18px;font-weight:800;letter-spacing:2px;color:var(--t1);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;text-align:center">······</div>
           <button id="inviteCopy" style="padding:0 14px;background:var(--btn);color:var(--btn-t);border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer">Copy link</button>
         </div>
+
+        <p style="font-size:10px;color:var(--t3);text-align:center;margin:-4px 0 10px;line-height:1.5">Send it anywhere — WeChat, Douyin, WhatsApp, Telegram, X, or any chat app.</p>
+
+        <!-- The same share link as a QR. A code you read aloud and a link you
+             paste both fail in the case that matters most on a phone: the other
+             person is sitting next to you. -->
+        <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:5px">Or let them scan</div>
+        <div id="inviteQr" style="display:flex;gap:10px;align-items:center;margin-bottom:14px"></div>
 
         <div id="inviteStats" style="display:flex;gap:8px;margin-bottom:14px">
           <div style="flex:1;text-align:center;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:8px 4px"><div id="inviteSent" style="font-size:18px;font-weight:800;color:var(--t1)">0</div><div style="font-size:9px;color:var(--t3)">invited</div></div>
@@ -836,7 +1281,7 @@
 
     function _loadScripts() {
       if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
-      ['tauri-bridge.js','pals.js','optimizer-bundle.js','doctor-theater.js','onboarding.js','tour.js','app.js'].reduce(function(p, src) {
+      ['tauri-bridge.js','pals.js','qr.js','roomqueue.js','rooms.js','optimizer-bundle.js','doctor-theater.js','onboarding.js','tour.js','app.js'].reduce(function(p, src) {
         return p.then(function() {
           return new Promise(function(resolve) {
             var s = document.createElement('script'); s.src = src;

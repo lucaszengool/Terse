@@ -721,75 +721,21 @@ jobs:
       # including pages the app never opens on its own. It does NOT prove
       # backend wiring: window.__TAURI__ is absent, so data-driven regions stay
       # empty. Those are covered by the real-window shots above.
-      - name: Render every page in the WebView2 engine
-        continue-on-error: true
-        timeout-minutes: 6
-        run: |
-          $edge = (Get-Command msedge -ErrorAction SilentlyContinue).Source
-          if (-not $edge) {
-            $edge = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-          }
-          if (-not (Test-Path $edge)) { Write-Host "no Edge on runner"; exit 0 }
-          New-Item -ItemType Directory -Force -Path artifacts/pages | Out-Null
-          # --screenshot needs an ABSOLUTE path (a relative one silently writes
-          # nowhere useful and the step reported FAILED for all 18 pages), plus
-          # --no-sandbox to run as the CI user and a virtual-time budget so the
-          # page's own scripts get to paint before the shot is taken.
-          $root = (Get-Location).Path
-          $dest = Join-Path $root "artifacts/pages"
-          # Skip the *-verify harnesses AND wallpaper.html.
-          #
-          # Excluding only the rigs was not enough - the next run hung here too,
-          # on the wallpaper itself. The Pro glyph work raised it to 60000
-          # particles per line across four slots, each drawn twice for the
-          # additive glow twin; that is a quarter of a million points a frame,
-          # and headless Edge with --disable-gpu rasterises them on the CPU.
-          # There is nothing to learn from the attempt either: a later step
-          # photographs the real wallpaper out of the running app, on the desktop,
-          # where it is actually composited.
-          #
-          # Skip the *-verify harnesses. They are development rigs, not product
-          # pages: wallpaper-verify.html drives the WebGL particle field through
-          # mineradio-verify.js, and under --disable-gpu that is a software
-          # render loop headless Edge never finishes. --virtual-time-budget does
-          # not interrupt a busy loop, so the step hung for an hour and took the
-          # whole job down with it - twice, and the first time I blamed the A/B
-          # step instead of the page it was actually stuck on.
-          foreach ($p in Get-ChildItem "src/renderer" -Filter *.html |
-                         Where-Object { $_.BaseName -notlike '*-verify' }) {
-            $out = Join-Path $dest "$($p.BaseName).png"
-            # Back to the call operator, with the STEP bounded instead.
-            #
-            # I replaced this with Start-Process plus my own WaitForExit to stop a
-            # hanging page from taking the job down, and broke it three times:
-            # mangled arguments, then an uncached handle, each producing "20 of 22
-            # pages timed out" and each time I read that as a finding about the
-            # pages. room.html was written up as having a runaway render loop on
-            # that evidence. It did not.
-            #
-            # timeout-minutes on the step does the same job without me writing
-            # process control: a hung page kills the step at 6 minutes, the log
-            # shows which page it reached, and the run continues.
-            & $edge --headless=new --disable-gpu --no-sandbox --hide-scrollbars=false `
-                    --virtual-time-budget=4000 --window-size=1280,900 `
-                    --screenshot="$out" ("file:///" + $p.FullName.Replace('\','/')) 2>$null
-            if (Test-Path $out) { Write-Host "  rendered $($p.Name)" }
-            else { Write-Host "  FAILED   $($p.Name)" }
-          }
-
-      # wallpaper-bg.jpg only exists if desktop_picture_source() found an image
-      # AND the PowerShell/System.Drawing downscale succeeded, so its presence is
-      # end-to-end proof of the piece that differs most from the Mac's `sips`
-      # path. Its absence localises the failure precisely.
-      # Where did the wallpaper window actually LAND?
+      # The headless page-render step was deleted here.
       #
-      # Screenshots cannot distinguish "parented to the wrong host" from
-      # "parented correctly but not compositing" - both look like a bare
-      # desktop, and two rounds were spent guessing between them. This walks the
-      # shell's window tree and prints every Terse-owned window under Progman
-      # and each WorkerW, with its class, styles and rect. WS_CHILD windows do
-      # not appear in EnumWindows at all, so if the pin worked the window shows
-      # up here and NOWHERE in the top-level list.
+      # It screenshotted every .html with headless Edge as a diagnostic. Over
+      # this session it produced three findings and all three were false - a
+      # runaway render loop in room.html, then in every page, then in the
+      # wallpaper - each one an artefact of the step breaking, and one of them
+      # written up and handed on as a lead. It then hung three builds for an
+      # hour apiece; timeout-minutes: 6 did not stop the last one, because the
+      # runner could not reap the Edge children.
+      #
+      # Nothing downstream needed it: the real windows are photographed out of
+      # the running app several steps below, which is where they are actually
+      # composited. A diagnostic that only ever lied and now fails the build is
+      # worse than no diagnostic.
+
       - name: Where did the wallpaper window land
         continue-on-error: true
         run: |

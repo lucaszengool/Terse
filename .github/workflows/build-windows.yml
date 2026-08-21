@@ -714,7 +714,19 @@ jobs:
           Start-Sleep -Seconds 6
           $doc = Find-TerseWindow 'Terse Doctor'
           if ($doc -eq [IntPtr]::Zero) {
-            Write-Warning "LAZY-WINDOW FAIL: no Terse Doctor window appeared - ensure_window never produced one"
+            # Which of the two failures is this? The app now records the lazy
+            # path to ~/.terse/lazy-window.log, so "the keystroke never arrived"
+            # and "the build ran and produced nothing" stop looking identical -
+            # they did on the first run of this test, and I could not tell them
+            # apart from outside.
+            $lg = Join-Path $env:USERPROFILE ".terse\lazy-window.log"
+            if (Test-Path $lg) {
+              Write-Host "--- lazy-window.log ---"
+              Get-Content $lg -Tail 10 | ForEach-Object { Write-Host "  $_" }
+              Write-Warning "LAZY-WINDOW FAIL: the build path RAN but no window appeared"
+            } else {
+              Write-Warning "LAZY-WINDOW INCONCLUSIVE: no lazy-window.log — the keystroke never reached the app, so nothing was tested"
+            }
             exit 0
           }
           $r = New-Object K+R

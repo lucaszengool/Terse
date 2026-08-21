@@ -2725,7 +2725,11 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
     } else if let Ok(raw) = w.hwnd() {
         strip_native_frame(windows::Win32::Foundation::HWND(raw.0));
     }
-    eprintln!("[terse] built '{label}' on demand");
+    // To a file, not stderr. A release build has windows_subsystem = "windows"
+    // and no console, so every eprintln! in this path has gone nowhere - which
+    // is why "no Doctor window appeared" could not be told apart from "the
+    // keystroke never arrived". One line here separates them.
+    diag_log("lazy-window", &format!("built '{label}' on demand"));
     Ok(())
 }
 
@@ -2757,6 +2761,7 @@ fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
         let (tx, rx) = std::sync::mpsc::channel::<()>();
         let a = app.clone();
         let lbl = label.to_string();
+        diag_log("lazy-window", &format!("ensure_window('{label}') — not open, dispatching build"));
         let dispatched = app
             .run_on_main_thread(move || {
                 if let Err(e) = build_lazy_window(&a, &lbl) {

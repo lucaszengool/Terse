@@ -6188,14 +6188,28 @@ fn get_token_pulse(state: tauri::State<'_, AppState>) -> u64 {
 /// Resolving against the window's CURRENT url gets the right origin on both.
 fn navigate_main(app: &AppHandle, page: &str) {
     let Some(win) = app.get_webview_window("main") else { return };
-    if let Ok(cur) = win.url() {
-        if let Ok(url) = cur.join(page) {
-            let _ = win.navigate(url);
-            return;
+    // navigate() must run on the main thread — every caller is a
+    // #[tauri::command] on a worker thread, and off-thread WebView2 navigation
+    // does nothing at all. Same class as the blank about:blank windows.
+    let w = win.clone();
+    let page_owned = page.to_string();
+    let _ = app.run_on_main_thread(move || {
+        if let Ok(cur) = w.url() {
+            if let Ok(url) = cur.join(&page_owned) {
+                // The result was discarded and the function returned regardless,
+                // so the fallback below was unreachable whenever join() worked -
+                // which is always. A failed navigate therefore looked exactly
+                // like a click that did nothing, which is how "clicking
+                // Wallpaper does nothing" was reported.
+                match w.navigate(url) {
+                    Ok(()) => return,
+                    Err(e) => eprintln!("[terse] navigate to {page_owned} failed: {e}"),
+                }
+            }
         }
-    }
-    // Last resort: let the page itself do a relative navigation.
-    let _ = win.eval(&format!("window.location.replace('/{}');", page));
+        // Last resort: let the page itself do a relative navigation.
+        let _ = w.eval(&format!("window.location.replace('/{}');", page_owned));
+    });
 }
 
 /// Navigate the MAIN window to the wallpaper control page in-place.

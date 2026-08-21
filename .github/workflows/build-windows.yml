@@ -677,6 +677,74 @@ jobs:
             return $true }
           [void][D]::EnumWindows($dcb, [IntPtr]::Zero)
 
+      # DRIVE the app: open a lazy window for real and look at what appears.
+      #
+      # Two bugs shipped because nothing here ever opened one. Windows built off
+      # the main thread came up as about:blank with the calling command hung, and
+      # navigate_main did nothing at all off-thread - both reported by a user, not
+      # caught here, because every check so far only looked at windows that
+      # already existed at launch.
+      #
+      # Ctrl+Shift+D is the Doctor toggle and runs the same ensure_window ->
+      # build_lazy_window path as the room, the pet, the farm and the palette. If
+      # that path is broken the window is either missing or blank, and both are
+      # visible from outside the process.
+      - name: Open a lazy window with a keystroke and check it rendered
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class K{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint f);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);public struct R{public int L,T,Rr,B;}}'
+          function Find-TerseWindow($title) {
+            $script:hit = [IntPtr]::Zero
+            $cb = [K+Cb]{ param($h,$l)
+              if ([K]::IsWindowVisible($h)) {
+                $sb = New-Object System.Text.StringBuilder 256
+                [void][K]::GetWindowTextW($h, $sb, 256)
+                if ($sb.ToString() -eq $title) { $script:hit = $h; return $false }
+              }
+              return $true }
+            [void][K]::EnumWindows($cb, [IntPtr]::Zero)
+            return $script:hit
+          }
+          # Front the main window so the global shortcut reaches the app.
+          $main = Find-TerseWindow 'Terse'
+          if ($main -ne [IntPtr]::Zero) { [void][K]::SetForegroundWindow($main); Start-Sleep -Milliseconds 800 }
+          Write-Host "sending Ctrl+Shift+D"
+          [System.Windows.Forms.SendKeys]::SendWait('^+d')
+          Start-Sleep -Seconds 6
+          $doc = Find-TerseWindow 'Terse Doctor'
+          if ($doc -eq [IntPtr]::Zero) {
+            Write-Warning "LAZY-WINDOW FAIL: no Terse Doctor window appeared - ensure_window never produced one"
+            exit 0
+          }
+          $r = New-Object K+R
+          [void][K]::GetWindowRect($doc, [ref]$r)
+          $w = $r.Rr - $r.L; $h2 = $r.B - $r.T
+          Write-Host "Doctor window ${w}x${h2}"
+          if ($w -le 0 -or $h2 -le 0) { Write-Warning "LAZY-WINDOW FAIL: zero-sized"; exit 0 }
+          $bmp = New-Object System.Drawing.Bitmap $w, $h2
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $dc = $g.GetHdc(); [void][K]::PrintWindow($doc, $dc, 2); $g.ReleaseHdc($dc)
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $bmp.Save("artifacts/lazy-doctor.png")
+          # about:blank is a flat white sheet. Real content is not: sample a grid
+          # and count distinct colours. A blank page yields 1.
+          $colors = @{}
+          for ($x = 10; $x -lt $w - 10; $x += 37) {
+            for ($y = 10; $y -lt $h2 - 10; $y += 29) {
+              $c = $bmp.GetPixel($x, $y).ToArgb()
+              $colors[$c] = 1
+            }
+          }
+          $n = $colors.Count
+          Write-Host "distinct sampled colours: $n"
+          if ($n -le 2) {
+            Write-Warning "LAZY-WINDOW FAIL: the window is blank ($n colour(s)) - this is the about:blank bug"
+          } else {
+            Write-Host "LAZY-WINDOW OK: window opened on demand and rendered real content"
+          }
+          $g.Dispose(); $bmp.Dispose()
+
       - name: Screenshot every window the app actually opened
         continue-on-error: true
         run: |

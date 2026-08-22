@@ -65,66 +65,19 @@
     <div class="empty" id="pAgentsEmpty">No agents connected</div>
   </div>
 
-  <!-- ── Room layer ─────────────────────────────────────────────────────────
-       Everything here is display:none until this machine is actually in a room.
-       A solo wallpaper must be byte-for-byte what it was: no roster, no chat
-       box, no timer, no connection. -->
-  <div id="roomRoster">
-    <div class="rr-head"><span class="rr-dot"></span><span id="rrName">Room</span><span id="rrCount"></span></div>
-    <div id="rrList"></div>
-  </div>
+  <!-- The room has no UI here on purpose.
 
-  <div id="roomChat">
-    <div id="rcLog"></div>
-    <div class="rc-row">
-      <button id="rcEmoji" title="Emoji">☺</button>
-      <input id="rcInput" placeholder="Message the room…" maxlength="2000" autocomplete="off">
-      <button id="rcSend">Send</button>
-    </div>
-    <div id="rcEmojiPad"></div>
-  </div>
+       The wallpaper is pinned at kCGDesktopWindowLevel — below the layer Finder
+       draws desktop icons on, and that layer covers the whole screen. So a click
+       aimed at anything painted here is taken by Finder before this window sees
+       it, whatever it does with ignoresMouseEvents: a chat box drawn on the
+       wallpaper can be looked at and never typed in. The roster, the history and
+       the composer therefore live in room.html, an ordinary window that can take
+       clicks, keyboard focus and an IME.
 
-  <style>
-    /* The room UI is glass on top of the field: it must read over a moving
-       particle background without hiding it, so everything is translucent and
-       the text carries its own shadow rather than a solid plate. */
-    #roomRoster, #roomChat {
-      position: fixed; z-index: 6; display: none;
-      font: 12px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", system-ui, sans-serif;
-      color: rgba(255,255,255,.92); text-shadow: 0 1px 3px rgba(0,0,0,.75);
-      background: rgba(12,14,18,.42); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(255,255,255,.14); border-radius: 14px;
-    }
-    #roomRoster { top: 22px; right: 22px; width: 208px; padding: 12px 13px; }
-    .rr-head { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 11px;
-      letter-spacing: .06em; text-transform: uppercase; opacity: .82; margin-bottom: 9px }
-    .rr-dot { width: 7px; height: 7px; border-radius: 50%; background: #C9F03D; flex: none }
-    #rrCount { margin-left: auto; opacity: .6; font-weight: 700 }
-    .rr-row { display: flex; align-items: center; gap: 8px; padding: 4px 0 }
-    .rr-swatch { width: 9px; height: 9px; border-radius: 50%; flex: none }
-    .rr-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-    .rr-row.off .rr-name, .rr-row.off .rr-swatch { opacity: .38 }
-    .rr-add { border: 1px solid rgba(255,255,255,.22); background: transparent; color: inherit;
-      border-radius: 999px; font-size: 10px; font-weight: 700; padding: 1px 7px; cursor: pointer; flex: none }
-    .rr-add[disabled] { opacity: .45; cursor: default }
-
-    #roomChat { bottom: 22px; right: 22px; width: 300px; padding: 10px }
-    #rcLog { max-height: 190px; overflow-y: auto; margin-bottom: 8px; padding-right: 2px }
-    #rcLog:empty { display: none }
-    .rc-msg { margin: 3px 0; word-break: break-word }
-    .rc-who { font-weight: 800 }
-    .rc-msg img { max-width: 100%; border-radius: 8px; margin-top: 4px; display: block }
-    .rc-row { display: flex; gap: 6px; align-items: center }
-    #rcInput { flex: 1; min-width: 0; background: rgba(0,0,0,.32); border: 1px solid rgba(255,255,255,.16);
-      border-radius: 9px; padding: 7px 9px; color: #fff; font: inherit; outline: none }
-    #rcInput::placeholder { color: rgba(255,255,255,.42) }
-    #rcEmoji, #rcSend { border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06);
-      color: inherit; border-radius: 9px; padding: 7px 10px; font: inherit; font-weight: 700; cursor: pointer; flex: none }
-    #rcEmojiPad { display: none; flex-wrap: wrap; gap: 3px; margin-top: 7px; max-height: 104px; overflow-y: auto }
-    #rcEmojiPad button { border: none; background: transparent; font-size: 17px; line-height: 1;
-      padding: 3px; cursor: pointer; border-radius: 6px }
-    #rcEmojiPad button:hover { background: rgba(255,255,255,.12) }
-  </style>
+       What stays here is what the wallpaper is actually good at: saying, in text
+       you can read from across the desk, who is talking and what their agents are
+       doing. -->
 
   <script src="tauri-bridge.js"></script>
   <script src="roomqueue.js"></script>
@@ -147,7 +100,7 @@
     const ACCENTS = { indigo:'#8b6bff', ocean:'#3aa0ff', ice:'#7fe9ff', emerald:'#40e0a0',
       gold:'#ffcf5a', amber:'#ff9f43', blood:'#ff5a5a', coral:'#ff7a9c', neon:'#e146eb', mono:'#e8e8f0' };
 
-    let wp = null, lastTokens = null, cfg = { engine:'mineradio', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
+    let wp = null, lastTokens = null, cfg = { engine:'mineradio', style:'cinematic', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
     /** null = not checked yet (treat as entitled), true/false = a definite answer.
      *  Only an explicit false downgrades the field — see mountEngine. */
     let proOK = null;
@@ -193,6 +146,11 @@
       // would be the worse error.
       wp = new E(canvas, { theme: cfg.theme, quality: cfg.quality, angle: cfg.angle,
                            intensity: cfg.intensity,
+                           // 粒子风格。引擎自己会把非 Pro 一律钉回默认风格,所以这里
+                           // 照传即可 —— 掉出 Pro 的用户会同时失去 Pro 的字和 Pro 的风格。
+                           style: cfg.style,
+                           // 用户自己调的那份差量,和 style 一起走同一条 Pro 闸门。
+                           custom: cfg.customStyle || null,
                            pro: cfg.engine === 'cinematic' && proOK !== false });
       window.wp = wp;   // dev aid: drive from console / preview harness
       wp.start();
@@ -204,6 +162,10 @@
       if (cfg.engine !== prevEngine) { mountEngine(); applyAccent(cfg.theme);
         panel.classList.toggle('off', cfg.showPanel === false); return; }
       if (!wp) return;
+      // 换风格不重建引擎 —— setStyle 只改每帧读的参数,正在显示的那条字会用旧手法
+      // 散完再换。音域回响引擎没有这个方法,判空即可。
+      // 第二个参数一定要传:省略表示"别动自定义",而这里正是自定义可能变了的地方。
+      if (wp.setStyle) wp.setStyle(cfg.style, cfg.customStyle || null);
       wp.setTheme(cfg.theme); wp.setQuality(cfg.quality|0); wp.setAngle(cfg.angle|0);
       wp.setIntensity(+cfg.intensity || 1);
       applyAccent(cfg.theme);
@@ -359,15 +321,19 @@
           });
         }
       }
-      wp.setAgentLog(logGroups);
-      // Tee the same line into the room, if this machine is in one. The room
-      // layer installs the hook and throttles it; when there is no room the
-      // hook does not exist and this is a single undefined check.
-      if (window.__terseRoomPublish && logGroups.length) {
-        var l0 = (logGroups[0].lines || [])[0];
-        var txt = typeof l0 === 'string' ? l0 : (l0 && (l0.label || l0.text)) || '';
-        if (txt) window.__terseRoomPublish(txt);
-      }
+      // In a room, OUR OWN line is drawn by the room layer instead — with our
+      // name on it, exactly like everyone else's. Solo, nothing here changes:
+      // the hook does not exist and this is a single undefined check.
+      //
+      // The name matters more than it sounds. Without it the field showed four
+      // people's lines with three names on them, and the unnamed ones — yours —
+      // were indistinguishable from the wallpaper's own chatter.
+      var l0 = logGroups.length ? (logGroups[0].lines || [])[0] : null;
+      var txt = typeof l0 === 'string' ? l0 : (l0 && (l0.label || l0.text)) || '';
+      var mine = window.__terseRoomOwnLine && window.__terseRoomOwnLine(logGroups, txt);
+      if (!mine) wp.setAgentLog(logGroups);
+      // Tee the same line into the room. Throttled and mute-checked by the hook.
+      if (window.__terseRoomPublish && txt) window.__terseRoomPublish(txt);
     }
 
     async function boot(){
@@ -556,192 +522,172 @@
     })();
 
     /* ── Room: many people, one field ──────────────────────────────────────
-       Joined from the app; this window only renders what the room sends. If
-       localStorage holds no room, NOTHING below runs — no stream is opened, no
-       timer is registered, and the wallpaper behaves exactly as it does solo.
+       The room's WINDOW is room.html. What happens here is the other half: the
+       big text says who is talking and what everyone's agents are doing, which
+       is the part you read from across the desk and the part a window cannot do.
 
-       This window is the only one that opens the stream (see rooms.js), which
-       is also why the chat box lives here rather than in the main window: the
-       data is already here. */
-    (function room() {
+       Two rules decide what the field says, and they are the room's manners:
+
+         · A person speaking outranks any machine. A chat message is shown next,
+           immediately — not on the next tick — because waiting three seconds
+           behind a build log is how a room starts to feel dead. Several people
+           talking at once are shown in the order they spoke, and faster, so a
+           burst reads as a conversation instead of a slideshow.
+         · Agent logs only ever fill the silence. They play round-robin, one line
+           per person per turn, and only when nobody has said anything.
+
+       Watched, not read once: rooms are joined in the MAIN window, and this one
+       is already running by then. */
+    (function roomLayer() {
       var R = window.TerseRooms, Q = window.TerseRoomQueue;
-      if (!R || !Q || !R.inRoom()) return;
+      if (!R || !Q) return;
 
       var roster = new Map();                 // memberId → member
       var queue = new Q.RoomQueue();
-      var me = (R.state() || {}).memberId || null;
-      var rosterEl = document.getElementById('roomRoster');
-      var chatEl = document.getElementById('roomChat');
-      var listEl = document.getElementById('rrList');
-      var logEl = document.getElementById('rcLog');
+      var me = null;
+      var stopStream = null, timer = 0;
 
-      rosterEl.style.display = 'block';
-      chatEl.style.display = 'block';
+      var QUIET_MS = 2600;    // agent-log cadence: a room is not a race
+      var TALK_MS = 1300;     // while people are talking, keep up with them
 
-      function esc(t) {
-        return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
-          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-        });
-      }
-      // Colour comes from the ENGINE, so a person is the same colour in the
-      // roster, in the chat and in the particles. Two sources would drift.
-      function colourOf(id) {
-        try { return (wp && wp._peerColor) ? wp._peerColor(id) : '#C9F03D'; }
-        catch (e) { return '#C9F03D'; }
-      }
       function nameOf(id) {
         var m = roster.get(String(id));
         return (m && (m.name || m.user_email)) || 'someone';
       }
 
+      /* Everyone, including us. The engine only draws people it has been told
+         about, so leaving ourselves out meant our own messages never appeared —
+         and in a room of one, nothing did. */
       function drawRoster(members) {
         roster = new Map(members.map(function (m) { return [String(m.member_id), m]; }));
-        document.getElementById('rrCount').textContent = members.length;
-        var st = R.state() || {};
-        document.getElementById('rrName').textContent = st.name || st.code || 'Room';
-        listEl.innerHTML = members.map(function (m) {
-          var id = String(m.member_id), mine = id === me;
-          var col = mine ? '#C9F03D' : colourOf(id);
-          // Adding a friend is offered only for people who are NOT already one
-          // and not yourself — joining a room deliberately does not befriend
-          // anyone, so this is the one place the two ideas meet.
-          var add = mine ? '' :
-            '<button class="rr-add" data-add="' + esc(id) + '" data-email="' + esc(m.user_email || '') + '">+</button>';
-          return '<div class="rr-row ' + (m.status === 'online' ? '' : 'off') + '">' +
-                 '<span class="rr-swatch" style="background:' + col + '"></span>' +
-                 '<span class="rr-name">' + esc(m.name || m.user_email || 'someone') +
-                 (mine ? ' <span style="opacity:.55">(you)</span>' : '') + '</span>' + add + '</div>';
-        }).join('');
-        // The engine paints peers by id, so hand it the same list.
         if (wp && wp.setPeers) {
-          wp.setPeers(members.filter(function (m) { return String(m.member_id) !== me; })
-                             .map(function (m) { return { id: m.member_id, name: m.name || m.user_email || '' }; }));
+          wp.setPeers(members.map(function (m) {
+            return { id: m.member_id, name: m.name || m.user_email || '' };
+          }));
         }
       }
 
-      listEl.addEventListener('click', function (e) {
-        var b = e.target.closest('[data-add]');
-        if (!b) return;
-        b.disabled = true; b.textContent = '…';
-        R.requestFriend(b.getAttribute('data-add')).then(function (r) {
-          // Both sides asking is agreement, so the server may answer "accepted"
-          // rather than "pending" — say which, since they mean different things.
-          b.textContent = (r.friendship && r.friendship.status === 'accepted') ? '✓' : 'asked';
-        }, function (err) {
-          // The usual failure is "they are not signed in", which is information,
-          // not an error to swallow.
-          b.disabled = false; b.textContent = '+';
-          b.title = String(err && err.message || err);
-          chatNote(String(err && err.message || err));
-        });
-      });
-
-      /* A one-line system note in the chat log. Used for outcomes that belong to
-         the room but were not said by anyone in it. */
-      function chatNote(text) {
-        var row = document.createElement('div');
-        row.className = 'rc-msg';
-        row.style.opacity = '.65';
-        row.innerHTML = '<span class="rc-who" style="color:rgba(255,255,255,.6)">·</span> ' + esc(text);
-        logEl.appendChild(row);
-        logEl.scrollTop = logEl.scrollHeight;
-      }
-
-      function appendChat(m) {
-        var id = String(m.member_id);
-        var col = id === me ? '#C9F03D' : colourOf(id);
-        var row = document.createElement('div');
-        row.className = 'rc-msg';
-        row.innerHTML = '<span class="rc-who" style="color:' + col + '">' +
-          esc(m.name || nameOf(id)) + '</span> ' + esc(m.body || '') +
-          (m.image_url ? '<img src="' + esc(m.image_url) + '" alt="">' : '');
-        logEl.appendChild(row);
-        while (logEl.children.length > 60) logEl.removeChild(logEl.firstChild);
-        logEl.scrollTop = logEl.scrollHeight;
-      }
-
-      /* The strip. take() decides WHAT is said; this decides how often, and the
-         rate is fixed — a fuller room is fairer, never faster. */
-      setInterval(function () {
+      /* One item onto the field. Everything carries a NAME: a line of big text
+         with no author is just noise arriving, and in a shared field the author
+         is most of the meaning. */
+      function pump() {
         var next = queue.take();
-        if (!next || !wp) return;
-        var id = next.memberId, who = nameOf(id);
-        if (next.kind === 'message') {
-          // A message must not be mistaken for an agent's output, so it is
-          // marked as speech before it ever reaches the particles.
-          if (wp.peerLog) wp.peerLog(id, who, '💬 ' + next.item);
-        } else if (wp.peerLog) {
-          wp.peerLog(id, who, next.item);
+        if (next && wp) {
+          var who = nameOf(next.memberId);
+          var self = String(next.memberId) === String(me);
+          // The CENTRE, not the statistics band. peerLog scatters a line into
+          // the small band around the edge, which is right for a stray build log
+          // and wrong for the room: what someone said is the headline, and so is
+          // an agent line once you are sharing a field with other people.
+          if (wp.roomLine) {
+            // Speech is marked before it reaches the particles, so a person is
+            // never mistaken for their agent's output — and gets more room,
+            // because it is the thing worth reading.
+            wp.roomLine(next.memberId, who,
+                        next.kind === 'message' ? '💬 ' + next.item : next.item,
+                        { max: next.kind === 'message' ? 24 : 18, self: self });
+          } else if (wp.peerLog) {
+            wp.peerLog(next.memberId, who, next.item);   // older engine
+          }
         }
-      }, 2600);
+        schedule();
+      }
+      function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(pump, queue.pendingMessages() ? TALK_MS : QUIET_MS);
+      }
+      /** Someone spoke: say it NOW, and re-time everything after it. */
+      function speakNow() {
+        clearTimeout(timer);
+        pump();
+      }
 
-      var stop = R.connect({
-        onSnapshot: function (s) {
-          me = s.you || me;
-          drawRoster(s.members || []);
-          (s.messages || []).forEach(appendChat);
-        },
-        onRoster: function (members) {
-          var seen = new Set(members.map(function (m) { return String(m.member_id); }));
-          roster.forEach(function (_v, id) { if (!seen.has(id)) queue.drop(id); });
-          drawRoster(members);
-        },
-        onLog: function (e) {
-          if (String(e.member_id) === me) return;   // our own lines already play locally
-          queue.pushLog(e.member_id, e.text);
-        },
-        onMessage: function (m) {
-          appendChat(m);
-          queue.pushMessage(m.member_id, m.body || '[image]');
-        },
-        onFriend: function (edge) {
-          // Announced in the room because that is where it happened; the app's
-          // Friends page owns the durable list.
-          var who = edge.b_name || edge.a_name || 'someone';
-          chatNote(edge.status === 'accepted'
-            ? who + ' and ' + (edge.a_name || 'someone') + ' are now friends'
-            : who + ' was asked to connect');
-        },
-        onClosed: function () {
-          rosterEl.style.display = 'none';
-          chatEl.style.display = 'none';
-        },
-      });
-      window.addEventListener('beforeunload', stop);
-
-      // ── Composer ──
-      var input = document.getElementById('rcInput');
-      function send() {
-        var v = (input.value || '').trim();
-        if (!v) return;
-        input.value = '';
-        R.sendMessage(v).catch(function (err) {
-          // Put the text back rather than losing what they typed.
-          input.value = v;
-          console.error('[room] send failed', err);
+      function startRoom() {
+        me = (R.state() || {}).memberId || null;
+        schedule();
+        stopStream = R.connect({
+          onSnapshot: function (s) {
+            me = s.you || me;
+            drawRoster(s.members || []);
+            // The backlog is history, not news: the window shows it, the field
+            // does not replay an hour of other people's conversation.
+          },
+          onRoster: function (members) {
+            var seen = new Set(members.map(function (m) { return String(m.member_id); }));
+            roster.forEach(function (_v, id) { if (!seen.has(id)) queue.drop(id); });
+            drawRoster(members);
+          },
+          onLog: function (e) {
+            if (String(e.member_id) === me) return;   // our own lines already play locally
+            queue.pushLog(e.member_id, e.text);
+          },
+          onMessage: function (m) {
+            queue.pushMessage(m.member_id, m.body || '[image]');
+            speakNow();
+          },
+          onClosed: function () { stopRoom(); },
         });
       }
-      document.getElementById('rcSend').addEventListener('click', send);
-      input.addEventListener('keydown', function (e) { if (e.key === 'Enter') send(); });
 
-      var pad = document.getElementById('rcEmojiPad');
-      var EMOJI = ('😀😂🥹😍🤔😅😭😡👍👎🙏👏🎉🔥💯✅❌⚡️🚀🐛💡📌🕐☕️🍕🌙⭐️❤️🧠🤖').match(/./gu) || [];
-      pad.innerHTML = EMOJI.map(function (e) { return '<button type="button">' + e + '</button>'; }).join('');
-      document.getElementById('rcEmoji').addEventListener('click', function () {
-        pad.style.display = pad.style.display === 'flex' ? 'none' : 'flex';
-      });
-      pad.addEventListener('click', function (e) {
-        if (e.target.tagName !== 'BUTTON') return;
-        input.value += e.target.textContent;
-        input.focus();
-      });
+      function stopRoom() {
+        if (stopStream) { try { stopStream(); } catch (e) {} stopStream = null; }
+        clearTimeout(timer); timer = 0;
+        roster = new Map();
+        queue = new Q.RoomQueue();
+        me = null;
+        if (wp && wp.setPeers) wp.setPeers([]);
+      }
 
-      /* Publish OUR agent's lines to the room. The wallpaper already receives
-         them for the local field, so this is a tee, not a second source —
-         throttled, because the room is a place to be seen working, not a log
-         shipper. */
+      R.watch(function (st) {
+        stopRoom();
+        if (st && st.id && st.key) startRoom();
+      });
+      window.addEventListener('beforeunload', stopRoom);
+
+      /* Publish OUR agent's lines to the room. A tee, not a second source — the
+         wallpaper already receives them for the local field — and throttled,
+         because the room is a place to be seen working, not a log shipper.
+         Muting is checked HERE, at the moment of sending: "hide my agent log"
+         has to mean nobody else receives it, not that it is hidden after the
+         fact. */
+      /* Our own agent line, while we are in a room.
+         Returns true when it has taken responsibility for the line, so the
+         wallpaper's solo path stays untouched when we are in no room.
+
+         Two things happen here that could not happen anywhere else:
+           · the line is drawn through the SAME path as everyone else's, so it
+             carries our name and our colour and is legible as ours;
+           · "hide my agent log" hides it HERE too. A switch that stopped the
+             broadcast but left the line burning across your own wallpaper is
+             not what hiding your log means to the person who pressed it. */
+      window.__terseRoomOwnLine = function (groups, text) {
+        if (!R.inRoom()) return false;
+        // The pulse is the wallpaper's heartbeat and belongs to the machine, not
+        // to the room — it keeps beating whether or not the line is shown.
+        try {
+          var first = (groups && groups[0] && groups[0].lines || [])[0];
+          if (first && +first.tok > 0 && wp && wp.pulse) {
+            wp.pulse(Math.min(1.2, 0.15 + Math.log10(1 + first.tok) * 0.3));
+          }
+        } catch (e) {}
+        if (R.logMuted()) {
+          // Hidden means hidden: the headline rotation replays the last few
+          // lines, so the ones already in it have to go as well or a muted log
+          // keeps coming back round.
+          if (wp && wp.clearHeadline) wp.clearHeadline();
+          return true;
+        }
+        var t = String(text || '').trim();
+        if (t && wp && me) {
+          if (wp.roomLine) wp.roomLine(me, nameOf(me), t, { max: 18, self: true });
+          else if (wp.peerLog) wp.peerLog(me, nameOf(me), t);
+        }
+        return true;
+      };
+
       var lastPub = 0, lastText = '';
       window.__terseRoomPublish = function (text) {
+        if (!R.inRoom() || R.logMuted()) return;
         var t = String(text || '').trim();
         if (!t || t === lastText) return;
         var now = Date.now();

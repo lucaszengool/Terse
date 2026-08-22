@@ -27,6 +27,7 @@
  */
 import * as THREE from 'three';
 import { MR_VS, MR_FS, MR_BLOOM_VS, MR_BLOOM_FS } from './mineradio-shaders.js';
+import { getProStyle, resolveStyle, DEFAULT_STYLE_ID } from './wallpaper-styles.js';
 
 /* ── Mineradio 原值 ── */
 const PLANE_SIZE = 4.8;        // 00-pointer-cover-particles.js:218
@@ -46,20 +47,16 @@ const PULSE_CAM_Z = 62, PULSE_HALF_H = 11.5;
  *  只占屏幕中间一小块,我们铺满整幅画面,照搬会让粒子直接飞过相机。 */
 const RIPPLE_Z = 0.18;
 
-/** 数字的出场包络(毫秒) */
-/* The film's glyph life, converted from frames at 30fps: GLYPH_IN 12, HOLD 30,
-   OUT 20 (tokenstats.ts). The old 420/1100/700 was close enough to look like a
-   different edit — the assembly landed late and the scatter dragged. */
-const G_IN = 400, G_HOLD = 1000, G_OUT = 667, G_LIFE = G_IN + G_HOLD + G_OUT;
+/* 数字的出场包络(毫秒)和 Pro 的多槽位调色板,都搬到 wallpaper-styles.js 去了 ——
+   每种风格的节奏和配色本来就该各不相同。默认风格 `cinematic` 里的值就是原来这两个
+   常量:400 / 1000 / 667(片子按 30fps 的 GLYPH_IN 12、HOLD 30、OUT 20 换算来的),
+   以及下面那六个色。 */
 
 /** 每种统计的品牌色 */
 const STAT_TINT = {
   saved: '#C9F03D', spent: '#FF9F45', cache: '#5AD8FF',
   compact: '#B98CFF', cost: '#FFD75A', agents: '#7CF5C0',
 };
-/** Pro 的多槽位调色板 —— 同屏几条字各用一色。STAT_TINT 只有按 kind 的 3~6 色,
- *  同类事件连着来会撞成一片单色,这一组按槽位分配,保证同屏永远是多彩的。 */
-const PRO_TINT = ['#C9F03D', '#5AD8FF', '#FF9F45', '#B98CFF', '#7CF5C0', '#FFD75A'];
 
 /** 主题只影响染色倾向(配色本体来自用户壁纸)—— 保留选择器的意义 */
 const THEME_TINT = {
@@ -194,23 +191,76 @@ attribute vec2 aUv;
 attribute float aRand;
 attribute float aOn;
 uniform float uForm, uVis, uPixel, uPointScale, uTime, uBloomSize;
-uniform vec2 uCenter, uSize;
+// 风格参数(wallpaper-styles.js)。uInMode/uOutMode 让**聚出来**和**散回去**成为两件
+// 独立的事 —— 原来它们共用同一条 uForm 曲线,所以字只会"怎么来的怎么回去"。
+uniform float uOut, uInMode, uOutMode, uStagger, uStaggerUv, uDispFade, uTwinkle, uSwirl;
+uniform vec2 uCenter, uSize, uDrift;
 uniform vec3 uTint;
 varying vec3 vColor;
 varying float vA;
+
+/** 一颗粒子"还没落位"时,相对它在字上那个目标点的位移。
+ *
+ *  u = 1 完全散开,u = 0 已经贴在笔画上。聚和散走的是同一个函数、不同的 mode:
+ *  聚 = u 从 1 走到 0,散 = u 从 0 走到 uOutDepth。编号见 GLYPH_MOVE。 */
+vec3 dispAt(float mode, float u, vec2 rel) {
+  float a = aRand * 6.2831;
+  if (mode < 0.5) {
+// 0 BURST —— 原版:每颗朝自己的方向、按自己的距离炸开
+return vec3(vec2(cos(a), sin(a)) * (0.55 + aRand * 1.35) * u, u * (aRand - 0.5) * 1.6);
+  } else if (mode < 1.5) {
+// 1 ABOVE —— 散开的位置在画面上方(当 in 就是坠落,当 out 就是升腾)
+return vec3(vec2(sin(aRand * 31.0) * 0.34, 1.05 + aRand * 2.10) * u, u * (aRand - 0.5) * 0.7);
+  } else if (mode < 2.5) {
+// 2 VORTEX —— 绕字心旋进/旋出,半径同时张开,轨迹是螺线不是直线
+float ang = u * uSwirl * (0.55 + aRand * 0.90);
+float c = cos(ang), s = sin(ang);
+return vec3(mat2(c, -s, s, c) * rel * (1.0 + u * 1.15) - rel, u * (aRand - 0.5) * 1.2);
+  } else if (mode < 3.5) {
+// 3 SIDE —— 整句从一侧过来;配 uStaggerUv=1(按字里的横向位置错峰)就是打字机
+return vec3(vec2(-2.90 * u, sin(aRand * 17.0) * 0.22 * u), u * (aRand - 0.5) * 0.5);
+  } else if (mode < 4.5) {
+// 4 DIFFUSE —— 几乎不位移。字是靠 uDispFade 的逐粒子渐显"显影"出来的,
+//   所以这一种必须配大的 uStagger + 大的 uDispFade 才成立(见 ink 风格)
+return vec3(vec2(cos(a), sin(a)) * (0.06 + aRand * 0.30) * u * u, u * (aRand - 0.5) * 0.35);
+  } else if (mode < 5.5) {
+// 5 RING —— 半径是**公共的**(不是每颗自己随机),所以看到的是一整圈在收 / 在摊开
+float ang = a + u * uSwirl;
+return vec3(vec2(cos(ang), sin(ang)) * (2.35 * u), sin(ang * 3.0) * u * 0.80);
+  } else if (mode < 6.5) {
+// 6 SHATTER —— 沿"离字心的方向"崩开:字是在原地裂开的,不是整团飞走的
+vec2 dir = rel / max(length(rel), 0.001);
+return vec3(dir * (u * (1.15 + aRand * 2.30)) + vec2(cos(a), sin(a)) * u * 0.45,
+            u * (aRand - 0.5) * 3.0);
+  } else if (mode < 7.5) {
+// 7 DRIFT —— 整句朝同一个方向流走。方向每次成型重抽,所以同一种手法不会看腻
+return vec3(uDrift * (u * 3.20) + vec2(0.0, sin(aRand * 23.0) * 0.30 * u), u * (aRand - 0.5) * 0.6);
+  }
+// 8 BELOW —— 散开的位置在画面下方(当 in 是浮起,当 out 是沉落)
+  return vec3(vec2(sin(aRand * 19.0) * 0.28, -(0.95 + aRand * 1.75)) * u, u * (aRand - 0.5) * 0.6);
+}
+
 void main(){
   // 字形遮罩在 CPU 上采好后直接喂 aUv/aOn —— 这里不做 vertex texture fetch:
   // Windows/WebView2 走 ANGLE,顶点纹理单元在软件渲染(WARP/SwiftShader)下会是 0,
   // 采样恒返回 0 → 整句统计文字一个粒子都不亮。CPU 采样在两个平台上都成立。
   float on = aOn;
   vec2 target = uCenter + (aUv - 0.5) * uSize;
-  float a = aRand * 6.2831;
-  vec2 scatter = vec2(cos(a), sin(a)) * (0.55 + aRand * 1.35);
-  vec2 p = mix(target + scatter, target, uForm);
-  float z = (1.0 - uForm) * (aRand - 0.5) * 1.6;
+  vec2 rel = target - uCenter;
+  // 散开程度仍然只由 uForm 一条曲线驱动(JS 那边聚/散共用它),风格只换**手法**和
+  // **错峰**。默认风格 uInMode=uOutMode=0、uStagger=0、uDispFade=0,下面这段因此
+  // 逐位等于改造前的 mix(target + scatter, target, uForm)。
+  float amt = 1.0 - uForm;
+  float mode = uOut > 0.0 ? uOutMode : uInMode;
+  // 排队依据:随机 = 一片一片地到,aUv.x = 一列一列地到(打字机/扫描)
+  float ord = mix(fract(aRand * 7.13), aUv.x, uStaggerUv);
+  float u = clamp((amt - ord * uStagger) / max(1e-3, 1.0 - uStagger), 0.0, 1.0);
+  vec3 d = dispAt(mode, u, rel);
   vColor = uTint;
-  vA = on * uVis * (0.62 + 0.38 * sin(uTime * 2.6 + aRand * 21.0));
-  vec4 mv = modelViewMatrix * vec4(p, z, 1.0);
+  // uDispFade:散在外面时压暗。0 = 原版(粒子一路都亮着,是"飞"进来的);
+  // 接近 1 = 只有落位的粒子才亮,字于是像在原地"显影"。
+  vA = on * uVis * (0.62 + 0.38 * sin(uTime * uTwinkle + aRand * 21.0)) * (1.0 - u * uDispFade);
+  vec4 mv = modelViewMatrix * vec4(target + d.xy, d.z, 1.0);
   gl_PointSize = (2.5 + uForm * 1.5) * uPixel * uPointScale * uBloomSize;
   gl_Position = projectionMatrix * mv;
 }
@@ -249,6 +299,14 @@ export default class MineradioWallpaper {
     // any divergence a user sees is a real product difference, not two code
     // paths that drifted apart.
     this.pro = !!(opts && opts.pro);
+    // 风格只对 Pro 开放,而且 **free 必须永远停在原版那一套** —— 控制面板里两个预览
+    // 并排跑,免费那半边一换风格,对比就不再是"免费 vs Pro",而是两种风格。
+    // 自定义也只对 Pro 开放,而且走同一条路:预设 + 差量。free 传什么都会被
+    // resolveStyle 的第二个参数为空的分支挡掉,拿到逐字节相同的原版。
+    this._custom = this.pro ? ((opts && opts.custom) || null) : null;
+    this._style = this.pro
+      ? resolveStyle((opts && opts.style) || DEFAULT_STYLE_ID, this._custom)
+      : getProStyle(DEFAULT_STYLE_ID);
     this._glyphQueue = [];
     this._glyphSlots = [];       // each: { ..., glyph: { label, kind, x, y, t0, col } }
     this._glyphSide = 1;
@@ -401,6 +459,7 @@ export default class MineradioWallpaper {
    *  behind it, so Pro looked identical to free no matter how it was tuned.
    *  Slots are independent, so N of them run concurrently in N colours. */
   _buildGlyphSlot(n) {
+    const g = this._style.glyph;
     const cv = document.createElement('canvas');
     // 1024×128 is the film's atlas row. The taller 160 spread the same strokes
     // over more canvas, so the sampled mask came back thinner and the letters
@@ -441,17 +500,26 @@ export default class MineradioWallpaper {
       uTint: { value: new THREE.Color('#C9F03D') },
       uPixel: { value: 1 }, uPointScale: { value: 1 }, uTime: this.u.uTime,
       uAlpha: { value: 0.95 }, uBloomSize: { value: 1 }, uSoft: { value: 0 },
+      // ── 风格参数(见 wallpaper-styles.js / GLYPH_VS 的 dispAt)──
+      // uOut 既是消散进度也是"现在该用 out 那套手法了"的开关;其余每次成型时重写。
+      uOut: { value: 0 }, uInMode: { value: 0 }, uOutMode: { value: 0 },
+      uStagger: { value: g.stagger }, uStaggerUv: { value: g.staggerUv },
+      uDispFade: { value: g.dispFade }, uTwinkle: { value: g.twinkle },
+      uSwirl: { value: g.swirl }, uDrift: { value: new THREE.Vector2(1, 0) },
     };
+    const styleBloom = g.bloomSize;
     // 辉光孪生:同一份几何再画一遍,点更大、核更软、加性叠加(和 Mineradio 一个套路)
+    // Object.assign 是浅拷贝 —— 除下面这三个,其余 uniform 对象和 base **是同一个**,
+    // 所以风格参数只要写一次两层就都跟着变。
     const bloom = Object.assign({}, base, {
-      uBloomSize: { value: 2.4 }, uSoft: { value: 1 }, uAlpha: { value: 0.52 },
+      uBloomSize: { value: g.bloomSize }, uSoft: { value: 1 }, uAlpha: { value: 0.52 },
     });
     const mat = new THREE.ShaderMaterial({ uniforms: base, vertexShader: GLYPH_VS, fragmentShader: GLYPH_FS,
       transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
     const matB = new THREE.ShaderMaterial({ uniforms: bloom, vertexShader: GLYPH_VS, fragmentShader: GLYPH_FS,
       transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
     return {
-      cv, ctx, geo, mat, matB, u: base, uB: bloom, n,
+      cv, ctx, geo, mat, matB, u: base, uB: bloom, n, _styleBloom: styleBloom,
       attr: { uv: geo.attributes.aUv, on: geo.attributes.aOn },
       glyph: null,
     };
@@ -599,27 +667,35 @@ export default class MineradioWallpaper {
     this._rippleIdx = (this._rippleIdx + 1) % RIPPLE_MAX;
   }
 
-  /** Pick a choreography without ever repeating the last one.
+  /** Pick from `list` without ever repeating the last one, per `key`.
    *
    *  Uniform random re-picks the same one ~1 time in 6, and two identical
    *  dances in a row is exactly what reads as "it always does the same thing" —
    *  the one impression this layer must never give. A shuffled bag spends every
-   *  choreography before any repeats. */
-  _nextShape(n) {
-    let bag = this._shapeBag;
-    if (!bag || !bag.length || bag._n !== n) {
-      bag = this._shapeBag = Array.from({ length: n }, (_, i) => i);
-      bag._n = n;
-      for (let i = n - 1; i > 0; i--) {
+   *  entry before any repeats.
+   *
+   *  每种风格有三条独立的牌堆:编舞、字的出现手法、字的消散手法。分开发牌,
+   *  才会出现"同一段编舞下,这条字是旋进来的、下一条是从上面落下来的"。 */
+  _bagPick(key, list) {
+    if (!list || !list.length) return 0;
+    if (list.length === 1) return list[0];
+    const bags = this._bags || (this._bags = {});
+    const last = this._lastPick || (this._lastPick = {});
+    const sig = list.join(',');
+    let bag = bags[key];
+    if (!bag || !bag.length || bag._sig !== sig) {
+      bag = bags[key] = list.slice();
+      bag._sig = sig;
+      for (let i = bag.length - 1; i > 0; i--) {
         const j = (Math.random() * (i + 1)) | 0;
         [bag[i], bag[j]] = [bag[j], bag[i]];
       }
-      // Never let a reshuffle put the previous pattern first.
-      if (bag[bag.length - 1] === this._lastShape && n > 1) {
+      // Never let a reshuffle put the previous pick first.
+      if (bag[bag.length - 1] === last[key]) {
         [bag[bag.length - 1], bag[0]] = [bag[0], bag[bag.length - 1]];
       }
     }
-    return (this._lastShape = bag.pop());
+    return (last[key] = bag.pop());
   }
 
   _updateRipples(dt) {
@@ -756,7 +832,10 @@ export default class MineradioWallpaper {
     for (const slot of this._glyphSlots || []) {
       const on = slot.glyph && this._hover && slot.glyph === this._hover;
       slot.u.uAlpha.value = on ? 1.0 : 0.95;
-      slot.uB.uBloomSize.value = on ? 3.4 : 2.65;
+      // 原来是写死的 3.4 / 2.65,那两个数是按默认风格的 bloomSize 2.4 调出来的。
+      // 换成按比例,cinematic 得到的仍旧正好是 3.4 / 2.65。
+      const b = slot._styleBloom || 2.4;
+      slot.uB.uBloomSize.value = b * (on ? 3.4 / 2.4 : 2.65 / 2.4);
     }
     if (this._hover) this.pulse(0.25);       // a nudge, so the field acknowledges it
   }
@@ -803,13 +882,64 @@ export default class MineradioWallpaper {
     return `hsl(${HUES[h % HUES.length]}, 78%, 62%)`;
   }
 
-  /** A teammate's agent log line. Same rendering path as your own glyphs. */
-  peerLog(peerId, name, text) {
+  /* ── The room, in the CENTRE ─────────────────────────────────────────────
+     peerLog puts a line in the scattered statistics band. That is right for a
+     teammate's build log and wrong for everything a room is actually about: a
+     message someone typed, and — once you are in a room — your own agent log,
+     which used to be the only line here without a name on it.
+
+     The headline path is where those belong. It is one reserved slot in the
+     centre at the largest type, it preempts whatever is there, and unlike the
+     statistics band it carries the speaker's own colour, so who is talking is
+     readable before the words are. */
+  roomLine(peerId, name, text, opts) {
+    const t = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+    if (!t) return;
+    // The glyph canvas is a fixed 1024px and the type auto-shrinks to fit, so a
+    // long line does not wrap — it renders small and stretched, which is the
+    // opposite of a headline. Keep the name, spend the rest on the words.
+    const who = String(name || peerId || '').slice(0, 8);
+    const max = Math.max(8, Math.min(30, (opts && opts.max) || 20));
+    const body = t.length > max ? t.slice(0, max - 1) + '…' : t;
+    const now = performance.now();
+    this._logPending = {
+      label: who + ' · ' + body,
+      kind: 'log', size: 'big',
+      col: (opts && opts.self) ? '#C9F03D' : this._peerColor(peerId),
+    };
+    this._logNextAt = 0;
+    // Preempt: a new line takes the centre now. Its life is cut short rather
+    // than popped, so the one leaving fades instead of vanishing mid-frame.
+    for (const sl of (this._glyphSlots || [])) {
+      if (sl.glyph && sl.glyph.size === 'big') {
+        sl.glyph.life = Math.min(sl.glyph.life, (now - sl.glyph.t0) + 260);
+      }
+    }
+  }
+
+  /** Forget the headline rotation. Used when the room hides your own agent log:
+   *  the rotation replays the last five lines, so without this a muted log keeps
+   *  coming back round for another minute. */
+  clearHeadline() {
+    this._logRecent = [];
+    this._logPending = null;
+    this._logRot = null;
+    this._lastLogLine = '';
+  }
+
+  /** A teammate's line — agent log, or something they actually said.
+   *
+   *  The NAME is always drawn, and always first: a line of big text with no
+   *  author is just noise arriving, and in a shared field the author carries
+   *  most of the meaning. `opts.max` lets a spoken line run longer than a log
+   *  line, because a message is the thing worth reading. */
+  peerLog(peerId, name, text, opts) {
     if (!this._peers || !this._peers.size) return;   // not in a session — ignore
     const t = String(text || '').replace(/\s+/g, ' ').trim();
     if (!t) return;
-    const who = String(name || peerId || '').slice(0, 10);
-    const body = t.length > 16 ? t.slice(0, 15) + '…' : t;
+    const max = Math.max(8, Math.min(40, (opts && opts.max) || 16));
+    const who = String(name || peerId || '').slice(0, 12);
+    const body = t.length > max ? t.slice(0, max - 1) + '…' : t;
     this._pendingAct = { type: 'peer', peerId, name: who };
     this._pendingCol = this._peerColor(peerId);
     this._queueGlyph(who + ' · ' + body, 'peer');
@@ -830,6 +960,39 @@ export default class MineradioWallpaper {
     this._buildLayers();
   }
   getThemes() { return Object.keys(THEME_TINT); }
+
+  /** 换一种 Pro 风格 —— 不用重建引擎。
+   *
+   *  风格改的全是**每帧读**的参数(配色、编舞牌堆、节奏、场感),唯一在建槽位时写死
+   *  的只有那几个 GLSL uniform,这里补写一遍就行 —— 几何、纹理、WebGL 上下文都留着。
+   *  切换因此是无缝的:正在显示的那条字会用旧手法散完,下一条才换新的。
+   *
+   *  free 一律留在默认风格(见构造函数里的说明)。 */
+  setStyle(id, custom) {
+    // custom === undefined 表示"这次只换风格,别动我的自定义";传 null 才是清空。
+    if (custom !== undefined) this._custom = this.pro ? custom : null;
+    const next = this.pro
+      ? resolveStyle(id || DEFAULT_STYLE_ID, this._custom)
+      : getProStyle(DEFAULT_STYLE_ID);
+    // 自定义每动一格都会生成一个新对象,所以这里不能只比引用 —— 但也不必深比:
+    // 值一样时下面那圈赋值本来就是幂等的。
+    if (next === this._style && custom === undefined) return;
+    this._style = next;
+    const g = next.glyph;
+    for (const slot of this._glyphSlots || []) {
+      slot._styleBloom = g.bloomSize;
+      slot.u.uStagger.value = g.stagger;
+      slot.u.uStaggerUv.value = g.staggerUv;
+      slot.u.uDispFade.value = g.dispFade;
+      slot.u.uTwinkle.value = g.twinkle;
+      slot.u.uSwirl.value = g.swirl;
+      slot.uB.uBloomSize.value = g.bloomSize;
+    }
+    // 牌堆是按上一种风格的列表洗的,留着会先发完一手旧手法才换过来。
+    this._bags = null; this._lastPick = null;
+    this.u.uDanceMode.value = next.field.idleDance;
+  }
+  getStyle() { return this._style.id; }
 
   /* ── 统计融入:这些 API 原本是往场景里丢 DOM 标签的,
         在这个引擎里改成"粒子聚成那个数字" ── */
@@ -868,7 +1031,7 @@ export default class MineradioWallpaper {
     this._pendingAct = null; this._pendingCol = null;
     // Pro: a second, smaller callout trails the headline — the film's look is
     // a FIELD of numbers at mixed sizes, not one line at a time.
-    if (this.pro && Math.random() < 0.7) {
+    if (this.pro && Math.random() < this._style.field.trail) {
       const trail = this._proTrail(label, kind);
       if (trail) this._glyphQueue.push({ label: trail, kind: kind || 'saved', size: 'small' });
     }
@@ -1012,7 +1175,7 @@ export default class MineradioWallpaper {
     //    只有 rippleSumAt 那一种运动 —— 从一点向外扩散的圆环。补得再密、位置
     //    再变,看到的还是「单一的向外扩散成圈」,只是圈更多、更吵。
     //
-    // 换成 shader 里的 danceAt():六段真正不同的编舞(行云/回旋/呼吸/摇曳/
+    // 换成 shader 里的 danceAt():十段真正不同的编舞(行云/回旋/呼吸/摇曳/
     // 星落/涟纹),每段都是持续、轻柔的位移,包络跟着这句话一起浮起和落下。
     //
     // 只有 big 这一层会触发。统计数字那些小字照常聚散,但不再推动背景 —— 之前
@@ -1031,14 +1194,16 @@ export default class MineradioWallpaper {
     // 所以给一条很低的地板:一段固定的慢编舞,幅度只有正式起舞的六分之一左右。
     // 它不产生任何涟漪(涟漪才是之前吵的那个东西),只是让粒子始终在缓慢呼吸,
     // 大字出现时再从这个底噪长上去。
-    const IDLE_AMT = 0.16;
+    const IDLE_AMT = this._style.field.idleAmt;
     const amt = Math.max(this._danceAmt, IDLE_AMT);
     // 时间一直走,否则从待机切到起舞时相位会跳一下。
     this._danceT = (this._danceT || 0) + dt;
     u.uDanceAmt.value = this.pro ? amt : IDLE_AMT * 0.7;
     u.uDanceT.value = this._danceT;
-    // 待机用固定的「摇曳」,是六段里最安静、最不像图案的一段。
-    if (this._danceAmt < 0.02) u.uDanceMode.value = 3;
+    // 待机用固定的一段慢编舞。默认是「摇曳」(十段里最安静、最不像图案的一段);
+    // 每种风格挑自己那段,所以**没有字的时候**几种风格看起来也是不一样的 ——
+    // 壁纸大部分时间正是这个状态。
+    if (this._danceAmt < 0.02) u.uDanceMode.value = this._style.field.idleDance;
 
     const act = clamp01(this._activity);
     const beat = Math.min(2.2, this._kick);
@@ -1061,7 +1226,7 @@ export default class MineradioWallpaper {
     // while the word was still on screen. Taking the max with the headline's own
     // envelope holds the field expanded for exactly as long as the text is up
     // and releases it as the letters dissolve.
-    u.uBurstAmt.value = clamp01(Math.max(beat * 0.45, bigV * 0.55));
+    u.uBurstAmt.value = clamp01(Math.max(beat * 0.45, bigV * this._style.field.burst));
 
     u.uIntensity.value = 0.5 * this.intensity;
 
@@ -1072,7 +1237,7 @@ export default class MineradioWallpaper {
     // 现在跟着舞蹈包络开合:字浮起来,平面跟着淡入起舞;字散了,平面也退回去。
     // 底噪也要能让它现身,否则闲置时这层依然是关的 —— 那正是预览看起来空掉的原因。
     const g0 = clamp01(Math.max(amt, (beat - 0.30) / 0.70));
-    this._silk.u.uAlpha.value = 0.20 * (g0 * g0 * (3 - 2 * g0));
+    this._silk.u.uAlpha.value = this._style.field.silkAlpha * (g0 * g0 * (3 - 2 * g0));
 
     this._updateGlyph();
   }
@@ -1120,7 +1285,10 @@ export default class MineradioWallpaper {
     // set appear and vanish in unison — a pulse, not a stream. One slot may take
     // a glyph per window, so they overlap in a rolling succession instead.
     if (this._nextFillAt == null) this._nextFillAt = 0;
-    const FILL_GAP = this.pro ? 520 : 1400;   // ms between successive formations
+    const st = this._style;
+    const T = st.timing;
+    const G_LIFE = T.in + T.hold + T.out;
+    const FILL_GAP = this.pro ? st.field.fillGap : 1400;   // ms between successive formations
     for (let si = 0; si < slots.length; si++) {
       const slot = slots[si];
       if (slot.glyph) continue;
@@ -1163,8 +1331,9 @@ export default class MineradioWallpaper {
       // even when several events share one kind; free keeps the by-kind tint.
       // A peer's own colour wins over the palette — that is what makes whose
       // line it is readable at a glance.
+      const pal = st.tints;
       const col = next.col ? next.col
-                : (this.pro ? PRO_TINT[(si + this._glyphIdx) % PRO_TINT.length]
+                : (this.pro ? pal[(si + this._glyphIdx) % pal.length]
                             : (STAT_TINT[next.kind] || STAT_TINT.saved));
       const tier = next.size || 'mid';
       // The headline owns the centre; statistics scatter around it. Putting the
@@ -1183,23 +1352,37 @@ export default class MineradioWallpaper {
                      life: G_LIFE };
       this._drawGlyphLabel(slot, next.label, tier);
 
+      // 每成一次型,单独发两张牌:这条字**怎么聚出来**、**怎么散回去**。两者是分开的,
+      // 所以会出现"从上面落下来、又往下沉掉"和"旋进来、原地裂开"这种不同的组合;
+      // 牌堆不重样,连着两条也不会用同一种手法。默认风格两个牌堆各只有一张 BURST,
+      // 于是永远发到 0 —— 和改造前完全一样。
+      slot.u.uInMode.value = this._bagPick('in', st.in);
+      slot.u.uOutMode.value = this._bagPick('out', st.out);
+      slot.u.uOut.value = 0;
+      // DRIFT 那一路的流向每次重抽 —— 同一种手法换个朝向就是另一个样子。
+      const dAng = Math.random() * Math.PI * 2;
+      slot.u.uDrift.value.set(Math.cos(dAng), Math.sin(dAng));
+
       // ── 只有中间那句 big text 会让背景动 ──────────────────────────────
       // 统计数字(mid / small)照旧聚散,但不再碰背景。之前每条都会甩一组涟漪
       // 出去,Pro 四条并发时画面根本没安静过 —— 「太频繁太乱」的一半原因在这。
       if (tier === 'big') {
-        // 挑一段编舞,洗牌发牌,不会连着两次一样。六段在 shader 的 danceAt() 里:
-        // 0 行云 / 1 回旋 / 2 呼吸 / 3 摇曳 / 4 星落 / 5 涟纹。
-        const mode = this._nextShape(6);
+        // 挑一段编舞,洗牌发牌,不会连着两次一样。牌堆由风格给(默认风格就是原来的
+        // 那六段)。全部十段在 shader 的 danceAt() 里:
+        // 0 行云 / 1 回旋 / 2 呼吸 / 3 摇曳 / 4 星落 / 5 涟纹
+        // 6 星涡 / 7 潮汐 / 8 心跳 / 9 落雪。
+        const mode = this._bagPick('dance', st.dance);
         this.u.uDanceMode.value = mode;
         this.u.uDanceCenter.value.set(gx, gy);
-        // 方向每次重抽 —— 同一段编舞换个朝向就是另一个样子,六段实际不止六种。
+        // 方向每次重抽 —— 同一段编舞换个朝向就是另一个样子,实际远不止十种。
         const ang = Math.random() * Math.PI * 2;
         this.u.uDanceDir.value.set(Math.cos(ang), Math.sin(ang));
         this._danceT = 0;
         // 一发很轻的涟漪当"落位"的重音。留一发是因为字浮现的瞬间总要有个着地感,
         // 但也就一发 —— 原来那 3~13 发一组的图案,不管排成环、扫掠还是柱子,
         // 出来的都是同一种向外扩散的圈,叠在一起只是更吵。
-        this._triggerRipple(gx, gy, 0.55 * RIPPLE_Z * 1.6);
+        // 静水/水墨这类风格把它调到接近 0:那两种的美感就在于**什么都不推**。
+        if (st.field.ripple > 0.01) this._triggerRipple(gx, gy, st.field.ripple * RIPPLE_Z * 1.6);
         this._kick = Math.max(this._kick, 0.5);
       }
     }
@@ -1211,10 +1394,17 @@ export default class MineradioWallpaper {
       if (!g0) { slot.u.uVis.value = 0; slot.uB.uVis.value = 0; continue; }
       const age = now - g0.t0;
       if (age > g0.life) { slot.glyph = null; slot.u.uVis.value = 0; slot.uB.uVis.value = 0; continue; }
-      let form, vis;
-      if (age < G_IN) { const t = age / G_IN; form = smoother(t); vis = smoother(Math.min(1, t * 1.6)); }
-      else if (age < G_IN + G_HOLD) { form = 1; vis = 1; }
-      else { const t = (age - G_IN - G_HOLD) / G_OUT; form = 1 - smoother(t) * 0.75; vis = 1 - smoother(t); }
+      let form, vis, out;
+      if (age < T.in) { const t = age / T.in; form = smoother(t); vis = smoother(Math.min(1, t * 1.6)); out = 0; }
+      else if (age < T.in + T.hold) { form = 1; vis = 1; out = 0; }
+      else {
+        const t = (age - T.in - T.hold) / T.out;
+        // outDepth = 散开的幅度。原版只散到 0.75 就整条淡没了(所以看着像"淡出+微散");
+        // 调到 1.0 的风格会真的把字散尽,消散手法才看得清。
+        form = 1 - smoother(t) * st.glyph.outDepth; vis = 1 - smoother(t);
+        // >0 就是给 shader 的开关:从这一刻起改用 uOutMode 那套手法。
+        out = Math.max(1e-4, t);
+      }
 
       // No float. The film pins uCenter to the event's position for the whole
       // life of the glyph (mrwallpaper.tsx: u.uCenter.set(a.ev.x, a.ev.y)), so
@@ -1224,7 +1414,7 @@ export default class MineradioWallpaper {
       const fx = g0.x, fy = g0.y;
 
       for (const u of [slot.u, slot.uB]) {
-        u.uForm.value = form; u.uVis.value = vis;
+        u.uForm.value = form; u.uVis.value = vis; u.uOut.value = out;
         u.uCenter.value.set(fx, fy);
         u.uTint.value.set(g0.col);
         // Size comes from the BOX, not the dots — exactly as the film does it
@@ -1262,7 +1452,7 @@ export default class MineradioWallpaper {
 
     // 壁纸自己的粒子短暂偏向最亮那条统计的品牌色 —— 走 Mineradio 原有的染色通道
     if (strongestCol) this.u.uTintColor.value.set(strongestCol);
-    this.u.uTintStrength.value = strongest * 0.30;
+    this.u.uTintStrength.value = strongest * this._style.field.tint;
   }
 
   _render() {

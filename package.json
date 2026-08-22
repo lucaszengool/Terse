@@ -10,6 +10,7 @@
     "test:rooms": "node api/rooms.test.js",
     "test:friends": "node api/friends.test.js",
     "test:cors": "node api/cors.test.js",
+    "test:wallpaper": "node src/renderer/wallpaper-styles.test.mjs",
     "test:plaza": "node api/plaza.test.js",
     "test:presence": "node api/presence.test.js"
   },

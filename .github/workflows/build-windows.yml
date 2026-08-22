@@ -707,11 +707,30 @@ jobs:
             return $script:hit
           }
           # Front the main window so the global shortcut reaches the app.
-          $main = Find-TerseWindow 'Terse'
-          if ($main -ne [IntPtr]::Zero) { [void][K]::SetForegroundWindow($main); Start-Sleep -Milliseconds 800 }
-          Write-Host "sending Ctrl+Shift+D"
-          [System.Windows.Forms.SendKeys]::SendWait('^+d')
-          Start-Sleep -Seconds 6
+          # Retry until the app actually receives it.
+          #
+          # One run the keystroke landed, the next it did not - CI has no
+          # interactive session and SetForegroundWindow is refused there as often
+          # as not. A single attempt makes the test a coin flip, and a coin flip
+          # that reports FAIL is worse than no test.
+          #
+          # lazy-window.log is the receipt: if the app wrote a line, the keystroke
+          # arrived and there is something to judge. Up to four attempts.
+          $lg = Join-Path $env:USERPROFILE ".terse\lazy-window.log"
+          Remove-Item $lg -ErrorAction SilentlyContinue
+          $landed = $false
+          for ($try = 1; $try -le 4 -and -not $landed; $try++) {
+            $main = Find-TerseWindow 'Terse'
+            if ($main -ne [IntPtr]::Zero) { [void][K]::SetForegroundWindow($main); Start-Sleep -Milliseconds 900 }
+            Write-Host "attempt ${try}: sending Ctrl+Shift+D"
+            [System.Windows.Forms.SendKeys]::SendWait('^+d')
+            for ($w = 0; $w -lt 8 -and -not $landed; $w++) {
+              Start-Sleep -Seconds 1
+              if (Test-Path $lg) { $landed = $true }
+            }
+          }
+          if ($landed) { Write-Host "keystroke reached the app on attempt $($try - 1)" }
+          Start-Sleep -Seconds 4
           $doc = Find-TerseWindow 'Terse Doctor'
           if ($doc -eq [IntPtr]::Zero) {
             # Which of the two failures is this? The app now records the lazy

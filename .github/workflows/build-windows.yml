@@ -831,8 +831,30 @@ jobs:
           $root = [System.Windows.Automation.AutomationElement]::FromHandle($script:main)
           $cond = New-Object System.Windows.Automation.PropertyCondition(
                     [System.Windows.Automation.AutomationElement]::NameProperty, 'Wallpaper')
-          $el = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
-          if (-not $el) { Write-Warning "CLICK INCONCLUSIVE: no element named 'Wallpaper' in the UIA tree"; exit 0 }
+          # Retry: Chromium builds its UIA tree lazily, only once a client asks,
+          # so the first query after attaching routinely finds nothing. One shot
+          # reported "no element named Wallpaper" and proved nothing.
+          $el = $null
+          for ($t = 0; $t -lt 10 -and -not $el; $t++) {
+            $el = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+            if (-not $el) { Start-Sleep -Seconds 2 }
+          }
+          if (-not $el) {
+            # Say what IS there, rather than only what is not. If the tree is
+            # empty the webview never exposed itself; if it is full of other
+            # names, the item is simply called something else.
+            $all = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+                     [System.Windows.Automation.Condition]::TrueCondition)
+            Write-Host "UIA descendants: $($all.Count)"
+            $shown = 0
+            foreach ($e in $all) {
+              if ($shown -ge 40) { break }
+              $nm = $e.Current.Name
+              if ($nm) { Write-Host "  '$nm'"; $shown++ }
+            }
+            Write-Warning "CLICK INCONCLUSIVE: no element named 'Wallpaper' after 20s"
+            exit 0
+          }
           Write-Host "found the Wallpaper item; invoking"
           try {
             $el.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()

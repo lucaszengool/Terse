@@ -2765,7 +2765,12 @@ fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
         let dispatched = app
             .run_on_main_thread(move || {
                 match build_lazy_window(&a, &lbl) {
-                    Err(e) => eprintln!("[terse] could not build '{lbl}': {e}"),
+                    // To the file, like the success line. This went to stderr,
+                    // which a windows_subsystem = "windows" build discards, so a
+                    // failed build was indistinguishable from one that never ran:
+                    // the log showed "dispatching build" and then nothing, and I
+                    // could not tell which.
+                    Err(e) => diag_log("lazy-window", &format!("BUILD FAILED for '{lbl}': {e}")),
                     Ok(()) => {
                         // Show it HERE, on the main thread, in the same dispatch.
                         //
@@ -2788,7 +2793,16 @@ fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
             .is_ok();
         if dispatched {
             // Bounded: a wedged main thread must not hang the command for ever.
-            let _ = rx.recv_timeout(std::time::Duration::from_secs(10));
+            if rx.recv_timeout(std::time::Duration::from_secs(10)).is_err() {
+                // The closure never ran. That is a blocked main thread - which
+                // happens if the CALLER is itself on the main thread, since it is
+                // then waiting on work only it could perform.
+                diag_log("lazy-window", &format!(
+                    "TIMED OUT waiting for the main thread to build '{label}' — \
+                     the caller may itself be on the main thread"));
+            }
+        } else {
+            diag_log("lazy-window", &format!("run_on_main_thread REFUSED for '{label}'"));
         }
     }
     app.get_webview_window(label)

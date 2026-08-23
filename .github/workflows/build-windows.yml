@@ -730,8 +730,18 @@ jobs:
             }
           }
           if ($landed) { Write-Host "keystroke reached the app on attempt $($try - 1)" }
-          Start-Sleep -Seconds 4
-          $doc = Find-TerseWindow 'Terse Doctor'
+          # Poll for the window, do not sleep a guess.
+          #
+          # The receipt is written BEFORE the build is dispatched, and the build
+          # took 3.7s in an earlier run, so a fixed 4s wait was racing it. Every
+          # verification step in this file written as a fixed sleep has read a
+          # race as a verdict at least once.
+          $doc = [IntPtr]::Zero
+          for ($w = 0; $w -lt 30 -and $doc -eq [IntPtr]::Zero; $w++) {
+            Start-Sleep -Seconds 1
+            $doc = Find-TerseWindow 'Terse Doctor'
+          }
+          Write-Host ("waited {0}s for the window" -f $w)
           if ($doc -eq [IntPtr]::Zero) {
             # Which of the two failures is this? The app now records the lazy
             # path to ~/.terse/lazy-window.log, so "the keystroke never arrived"
@@ -775,6 +785,83 @@ jobs:
             Write-Host "LAZY-WINDOW OK: window opened on demand and rendered real content"
           }
           $g.Dispose(); $bmp.Dispose()
+
+      # Click "Wallpaper" and look at the window. That is the whole report.
+      #
+      # A user said clicking it did nothing. I checked the command existed, the
+      # bridge exposed it, the page's calls all resolved - and it was still
+      # broken, because navigate_main ran off the main thread and swallowed the
+      # failure. None of that reading would have caught it; opening the app and
+      # clicking would have, in seconds.
+      #
+      # UI Automation reaches into the WebView2 DOM, so the button is found by
+      # its accessible name rather than by guessing coordinates. Screenshot
+      # before and after: if the pane does not change, the click did nothing.
+      - name: Click Wallpaper and see whether the page changes
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class C{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint f);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);public struct R{public int L,T,Rr,B;}}'
+          $script:main = [IntPtr]::Zero
+          $cb = [C+Cb]{ param($h,$l)
+            if ([C]::IsWindowVisible($h)) {
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][C]::GetWindowTextW($h, $sb, 256)
+              if ($sb.ToString() -eq 'Terse') { $script:main = $h; return $false }
+            }
+            return $true }
+          [void][C]::EnumWindows($cb, [IntPtr]::Zero)
+          if ($script:main -eq [IntPtr]::Zero) { Write-Warning "CLICK INCONCLUSIVE: no main window"; exit 0 }
+          [void][C]::SetForegroundWindow($script:main); Start-Sleep -Milliseconds 700
+
+          function Shot($tag) {
+            $r = New-Object C+R; [void][C]::GetWindowRect($script:main, [ref]$r)
+            $w = $r.Rr - $r.L; $h = $r.B - $r.T
+            if ($w -le 0 -or $h -le 0) { return $null }
+            $b = New-Object System.Drawing.Bitmap $w, $h
+            $g = [System.Drawing.Graphics]::FromImage($b); $dc = $g.GetHdc()
+            [void][C]::PrintWindow($script:main, $dc, 2); $g.ReleaseHdc($dc); $g.Dispose()
+            New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+            $b.Save("artifacts/click-$tag.png")
+            return $b
+          }
+          $before = Shot 'before'
+          if (-not $before) { Write-Warning "CLICK INCONCLUSIVE: main window has no size"; exit 0 }
+
+          $root = [System.Windows.Automation.AutomationElement]::FromHandle($script:main)
+          $cond = New-Object System.Windows.Automation.PropertyCondition(
+                    [System.Windows.Automation.AutomationElement]::NameProperty, 'Wallpaper')
+          $el = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+          if (-not $el) { Write-Warning "CLICK INCONCLUSIVE: no element named 'Wallpaper' in the UIA tree"; exit 0 }
+          Write-Host "found the Wallpaper item; invoking"
+          try {
+            $el.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+          } catch {
+            # Not every DOM node exposes Invoke; fall back to a real click on it.
+            $p = $el.Current.BoundingRectangle
+            [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point(
+              [int]($p.X + $p.Width/2), [int]($p.Y + $p.Height/2))
+            Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class M{[DllImport("user32.dll")]public static extern void mouse_event(uint f,uint x,uint y,uint d,IntPtr e);}'
+            [M]::mouse_event(0x0002,0,0,0,[IntPtr]::Zero); [M]::mouse_event(0x0004,0,0,0,[IntPtr]::Zero)
+          }
+          Start-Sleep -Seconds 5
+          $after = Shot 'after'
+          if (-not $after) { Write-Warning "CLICK INCONCLUSIVE: window vanished"; exit 0 }
+
+          # Same size, so compare directly. A page change moves a lot of pixels;
+          # a dead click moves almost none.
+          $diff = 0; $n = 0
+          for ($x = 4; $x -lt $before.Width - 4; $x += 11) {
+            for ($y = 4; $y -lt $before.Height - 4; $y += 13) {
+              $n++
+              if ($before.GetPixel($x,$y).ToArgb() -ne $after.GetPixel($x,$y).ToArgb()) { $diff++ }
+            }
+          }
+          $pct = if ($n) { [math]::Round($diff * 100 / $n) } else { 0 }
+          Write-Host "pixels changed: $pct% ($diff of $n)"
+          if ($pct -ge 8) { Write-Host "CLICK OK: the pane changed — Wallpaper responded" }
+          else { Write-Warning "CLICK FAIL: the pane did not change — clicking Wallpaper did nothing" }
+          $before.Dispose(); $after.Dispose()
 
       - name: Screenshot every window the app actually opened
         continue-on-error: true

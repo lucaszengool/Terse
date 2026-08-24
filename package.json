@@ -13,7 +13,8 @@
     "test:wallpaper": "node src/renderer/wallpaper-styles.test.mjs",
     "test:plaza": "node api/plaza.test.js",
     "test:presence": "node api/presence.test.js",
-    "test:wallpaper-gate": "node src/renderer/wallpaper-gate.test.mjs"
+    "test:wallpaper-gate": "node src/renderer/wallpaper-gate.test.mjs",
+    "test:i18n": "node src/renderer/i18n-coverage.test.mjs"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

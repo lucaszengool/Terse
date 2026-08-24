@@ -1922,7 +1922,11 @@ const EN_TEXT_MAP_NORM = Object.fromEntries(
 );
 
 function applyTranslations() {
-  if (_currentLang === 'en') return; // No translation needed for English
+  // Keys resolve in EVERY language, English included: the inline fallback in the
+  // markup is a convenience, not the source of truth, and data-driven strings
+  // have no inline text at all.
+  try { applyKeys(document); } catch (e) {}
+  if (_currentLang === 'en') return; // the English matcher below has nothing to do
   // Translate text content
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
   while (walker.nextNode()) {
@@ -2050,6 +2054,17 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['ENTER CODE'] = '
 (function augmentFreemiumI18n() {
   const add = (lang, obj) => { TRANSLATIONS[lang] = Object.assign({}, TRANSLATIONS[lang], obj); };
   add('en', {
+    common_language: "Language",
+    dr_tab: "Checkup",
+    dr_readonly: "That was a read-only checkup — nothing was changed",
+    dr_next: "Continue →",
+    isl_capture: "Optimise selected text",
+    al_tab: "Alerts",
+    hi_tab: "History",
+    room_name_ph: "e.g. Ann",
+    wpp_saved: "Saved by Terse",
+    wpp_saveable: "Terse saveable",
+    wpp_click_hint: "Click any number",
     fh_title: "You're watching the waste — Pro fixes it",
     fh_sub: 'Live optimization, Speed Up, Cleanup & Team are Pro. Auto-trim every prompt and cut your agent bill.',
     fh_btn: 'Start free trial →', fh_note: 'Monitoring, stats & wallpaper stay free forever · cancel anytime',
@@ -2065,6 +2080,17 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['ENTER CODE'] = '
     pro_gate_connection: 'Connection Doctor is a Pro feature. Start your free trial to auto-fix agent connectivity.',
   });
   add('zh-Hans', {
+    common_language: "语言",
+    dr_tab: "体检",
+    dr_readonly: "这是一次只读体检 —— 没有改动任何东西",
+    dr_next: "下一步 →",
+    isl_capture: "优化选中文本",
+    al_tab: "提醒",
+    hi_tab: "历史",
+    room_name_ph: "例如:小明",
+    wpp_saved: "Terse 优化省下",
+    wpp_saveable: "Terse 可省",
+    wpp_click_hint: "点击任意数据打开",
     fh_title: '你在看着浪费 —— Pro 帮你省下', fh_sub: '实时优化、加速、清理和团队均为 Pro 功能。自动精简每条提示词，削减你的智能体账单。',
     fh_btn: '开始免费试用 →', fh_note: '监控、统计和壁纸永久免费 · 随时取消',
     sb_invite: '邀请赚 Pro', inv_title: '送 Pro，得 Pro', inv_code_label: '你的邀请码', inv_copy: '复制链接',
@@ -2079,6 +2105,17 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['ENTER CODE'] = '
     pro_gate_connection: '连接体检是 Pro 功能。开始免费试用，自动修复智能体连接问题。',
   });
   add('zh-Hant', {
+    common_language: "語言",
+    dr_tab: "體檢",
+    dr_readonly: "這是一次唯讀體檢 —— 沒有改動任何東西",
+    dr_next: "下一步 →",
+    isl_capture: "最佳化選取文字",
+    al_tab: "提醒",
+    hi_tab: "歷史",
+    room_name_ph: "例如:小明",
+    wpp_saved: "Terse 最佳化省下",
+    wpp_saveable: "Terse 可省",
+    wpp_click_hint: "點擊任意數據開啟",
     fh_title: '你正看著浪費 —— Pro 幫你省下', fh_sub: '即時最佳化、加速、清理和團隊皆為 Pro 功能。自動精簡每條提示詞，削減你的代理帳單。',
     fh_btn: '開始免費試用 →', fh_note: '監控、統計和桌布永久免費 · 隨時取消',
     sb_invite: '邀請賺 Pro', inv_title: '送 Pro，得 Pro', inv_code_label: '你的邀請碼', inv_copy: '複製連結',
@@ -2175,6 +2212,7 @@ Object.assign(EN_TEXT_MAP, {
   'Send it anywhere — WeChat, Douyin, WhatsApp, Telegram, X, or any chat app.': 'inv_share_any',
 });
 if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Invite code'] = 'fr_join_ph';
+if (typeof EN_TITLE_MAP === 'object') EN_TITLE_MAP['Language'] = 'common_language';
 // The composer's placeholder is the only prompt in the chat window, so it has to
 // speak the reader's language too.
 if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['Message the room…'] = 'rm_ph';
@@ -2424,6 +2462,311 @@ Object.assign(EN_TEXT_MAP_NORM, Object.fromEntries(
   Object.entries(EN_TEXT_MAP).map(([k, v]) => [k.replace(/\s+/g, ' '), v])
 ));
 
+/* Key-based translation, for text the English-matcher cannot reach.
+   applyTranslations() works by matching English leaf text, which is fine for
+   static markup but useless for two cases that keep producing untranslated UI:
+   strings built in JS, and strings that live in DATA (the wallpaper styles, the
+   tune schema). Those carry a key instead, and this resolves it.
+
+   Markup opts in with data-i18n="key" and keeps its English as the inline
+   fallback, so the page reads correctly even before this runs. */
+function applyKeys(root) {
+  const scope = root || document;
+  scope.querySelectorAll('[data-i18n]').forEach((el) => {
+    const k = el.getAttribute('data-i18n');
+    const v = t(k);
+    if (v && v !== k) el.textContent = v;
+  });
+  scope.querySelectorAll('[data-i18n-html]').forEach((el) => {
+    const k = el.getAttribute('data-i18n-html');
+    const v = t(k);
+    if (v && v !== k) el.innerHTML = v;      // only for strings that carry <b>
+  });
+  scope.querySelectorAll('[data-i18n-ph]').forEach((el) => {
+    const k = el.getAttribute('data-i18n-ph');
+    const v = t(k);
+    if (v && v !== k) el.placeholder = v;
+  });
+}
+
+/* ── 壁纸 · Wallpaper ─────────────────────────────────────────────────────────
+   壁纸那一整套(引擎卡片、8 种风格、22 个自定义参数)以前是**直接把中文写在
+   模板和数据里**的 —— 英文用户看到的就是一屏中文,而 applyTranslations() 那套
+   "按英文原文匹配"的机制根本够不着数据文件里的字符串。
+
+   所以这些走 key:标记里写 data-i18n,数据里写 nameKey / labelKey / hintKey,
+   由 applyKeys() 和 t() 解析。i18n-coverage.test.mjs 会盯着不让它们再退回去。 */
+(function wallpaperI18n() {
+  const add = (lang, obj) => { TRANSLATIONS[lang] = Object.assign({}, TRANSLATIONS[lang], obj); };
+  add('en', {
+    wp_eng_cine_d: "A layer on top of the motion: tokens saved, cache hit rate and spend surface the way a title sequence does — <b>assembled out of particles</b>. Every time a line forms, the scattered field ripples in a way it has not before. It also shows the agent's live log.",
+    wp_eng_cine_t: "Cinematic · particle typography",
+    wp_eng_mine_d: "Uses <b>your current desktop wallpaper</b> as the bed: particles take its colours and move over it, and agent activity and token counts surface as numbers formed out of those particles.",
+    wp_eng_mine_t: "Your wallpaper · particle motion",
+    wp_eng_topo_d: "The original 3D column terrain: token flow raises ripples, and a big spend drops a meteor.",
+    wp_eng_topo_t: "Spectrum · light-column terrain",
+    wp_engine: "Engine",
+    wp_free: "Free",
+    wp_h1_sub: "Real-time motion",
+    wp_preview_only: "Previewing — these changes need Pro to apply to your desktop",
+    wp_style: "Particle style",
+    wp_style_note: "Each one brings <b>a whole set</b> of things: the palette, how the surrounding particles move, and <b>how the text gathers and how it scatters</b>. Within a style, no two consecutive lines use the same move. Click one and watch it live in the <b>PRO</b> preview above.",
+    wp_tune: "Fine-tune",
+    wp_tune_note_a: "Tuned on top of",
+    wp_tune_note_b: ". Only your changes are stored, so when a preset improves later, your edits ride along.",
+    wp_upgrade: "Upgrade",
+    wps_aurora_d: "One wide ribbon of flow. Text is carried in from upstream and drifts away on the same current — never once an explosion.",
+    wps_aurora_n: "Aurora Silk",
+    wps_bloom_d: "Particles draw in from a ring to form the text, hold, then the whole line bursts outward from its own centre — one bloom at a time.",
+    wps_bloom_n: "Fireworks",
+    wps_cinematic_d: "Title-sequence particle type, six moves in rotation. The original Pro feel.",
+    wps_cinematic_n: "Cinematic",
+    wps_ink_d: "Almost no travel — the text develops like ink dropped into water, then dissolves the same way. The quietest one.",
+    wps_ink_n: "Ink Wash",
+    wps_neon_d: "Typed onto the screen column by column, held, then shattered in place. Fastest rhythm, densest flicker.",
+    wps_neon_n: "Neon Cyber",
+    wps_starfall_d: "Text drops in from above, strikes a ripple, and keeps falling as it scatters. The field falls with it, one grain at a time.",
+    wps_starfall_n: "Starfall",
+    wps_vortex_d: "The whole field orbits the line; text spirals in along that curve and is pulled apart by the same gravity.",
+    wps_vortex_n: "Gravity Vortex",
+    wps_zen_d: "Text rises slowly from below, holds a long time, then evaporates upward. Barely any ripple.",
+    wps_zen_n: "Still Water",
+    wpt_base: "the current style",
+    wpt_changed: "{n} changed",
+    wpt_collapse: "Collapse",
+    wpt_dance_h: "Moves the surrounding particles may use — one is drawn per line, so more choices means less repetition",
+    wpt_dance_l: "Motion pool",
+    wpt_expand: "Expand",
+    wpt_field_burst_h: "How far the whole field is pushed out as text appears",
+    wpt_field_burst_l: "Push-out",
+    wpt_field_fillGap_h: "How long between one line and the next",
+    wpt_field_fillGap_l: "Gap",
+    wpt_field_idleAmt_h: "How much the particles move on their own with no text",
+    wpt_field_idleAmt_l: "Idle amount",
+    wpt_field_idleDance_h: "Which motion plays while idle",
+    wpt_field_idleDance_l: "Idle motion",
+    wpt_field_ripple_h: "Strength of the shockwave when the text lands",
+    wpt_field_ripple_l: "Ripple",
+    wpt_field_silkAlpha_h: "Visibility of the rippling background layer",
+    wpt_field_silkAlpha_l: "Silk layer",
+    wpt_field_tint_h: "How far the field is tinted toward the text's colour",
+    wpt_field_tint_l: "Tint",
+    wpt_field_trail_h: "Chance a headline is followed by a small line",
+    wpt_field_trail_l: "Follow-up line",
+    wpt_g_colour: "Colour",
+    wpt_g_field: "Field",
+    wpt_g_glyph: "Glyph",
+    wpt_g_motion: "Motion",
+    wpt_g_timing: "Timing",
+    wpt_glyph_bloomSize_h: "Size and glow of each particle",
+    wpt_glyph_bloomSize_l: "Bloom",
+    wpt_glyph_dispFade_h: "0 = the text flies in; near 1 = it develops in place",
+    wpt_glyph_dispFade_l: "Develop-in",
+    wpt_glyph_outDepth_h: "How far it flies when scattering. Above 1 it leaves the screen",
+    wpt_glyph_outDepth_l: "Scatter distance",
+    wpt_glyph_staggerUv_h: "Order the stagger by horizontal position — with stagger, this types left to right",
+    wpt_glyph_staggerUv_l: "Typewriter",
+    wpt_glyph_stagger_h: "0 = every particle lands together; higher = one after another",
+    wpt_glyph_stagger_l: "Per-particle stagger",
+    wpt_glyph_swirl_h: "How much the swirl and ring moves turn",
+    wpt_glyph_swirl_l: "Rotation",
+    wpt_glyph_twinkle_h: "How fast each particle rises and falls in brightness",
+    wpt_glyph_twinkle_l: "Breath rate",
+    wpt_in_h: "How the text gathers",
+    wpt_in_l: "Gather move",
+    wpt_out_h: "How the text scatters",
+    wpt_out_l: "Scatter move",
+    wpt_reset: "Reset to this style",
+    wpt_timing_hold_h: "How long it holds once formed, before scattering",
+    wpt_timing_hold_l: "Hold",
+    wpt_timing_in_h: "How long the text takes to gather out of loose particles",
+    wpt_timing_in_l: "Gather",
+    wpt_timing_out_h: "How long it takes to fall back into particles",
+    wpt_timing_out_l: "Scatter",
+    wpt_tints_h: "One colour per line on screen — taken in order",
+    wpt_tints_l: "Palette",
+    wpt_unchanged: "unchanged",
+  });
+  add('zh-Hans', {
+    wp_eng_cine_d: "在粒子律动之上再加一层:省下的 token、缓存命中率、花费金额会像片头那样<b>由粒子聚合成字</b>浮现;每次成型时,全局散落的粒子会泛起一次各不相同的波动。还会实时显示 agent 的日志流。",
+    wp_eng_cine_t: "电影级 · 粒子聚合",
+    wp_eng_mine_d: "用你<b>当前那张桌面壁纸</b>当底,粒子按它取色、在它上面律动;agent 活动和 token 统计会被粒子聚成数字浮现出来。",
+    wp_eng_mine_t: "你的壁纸 · 粒子律动",
+    wp_eng_topo_d: "原来的 3D 光柱地形:token 流动掀起涟漪,大额消耗砸下陨石。",
+    wp_eng_topo_t: "音域回响 · 光柱地形",
+    wp_engine: "引擎",
+    wp_free: "免费版 · FREE",
+    wp_h1_sub: "壁纸 · 实时律动",
+    wp_preview_only: "预览中 —— 这些改动需要 Pro 才能应用到桌面壁纸",
+    wp_style: "粒子风格",
+    wp_style_note: "每一种都自带<b>一整套</b>东西:配色、周围粒子的编舞、还有<b>字怎么聚出来、怎么散回去</b>。同一种风格里,连着两条字也不会用同一种手法。点一下即可在右上角的 <b>PRO</b> 预览里实时看到。",
+    wp_tune: "自定义参数",
+    wp_tune_note_a: "在",
+    wp_tune_note_b: "的基础上改。存的是差量,所以预设以后变好了,你改过的地方还留着。",
+    wp_upgrade: "升级",
+    wps_aurora_d: "一整片缎带般的横流。字从流的上游被带出来,再顺着同一道流散走 —— 全程没有一次爆炸。",
+    wps_aurora_n: "极光 · 丝绸流",
+    wps_bloom_d: "粒子从一圈环上收拢成字,停住,然后整句沿着自己的中心炸开 —— 一次一朵。",
+    wps_bloom_n: "花火 · 绽放",
+    wps_cinematic_d: "片头式的粒子聚字,六段编舞轮换。Pro 的原始质感。",
+    wps_cinematic_n: "电影级 · 粒子聚合",
+    wps_ink_d: "粒子几乎不飞 —— 字像墨滴进水里,一点点显影,又一点点化开。最安静的一种。",
+    wps_ink_n: "水墨 · 晕染",
+    wps_neon_d: "字一列列被打上屏幕,停一下,再原地崩裂。节奏最快,闪烁最密。",
+    wps_neon_n: "霓虹 · 赛博",
+    wps_starfall_d: "字从画面上方坠入、砸出涟漪,散时继续往下掉。周围粒子跟着一颗颗闪。",
+    wps_starfall_n: "星陨 · 陨星雨",
+    wps_vortex_d: "整片粒子绕着那句话缓缓公转;字沿着螺线旋进画面,再被同一道引力甩散。",
+    wps_vortex_n: "星涡 · 引力",
+    wps_zen_d: "字从画面下方缓缓浮起,停很久,再像水汽一样向上蒸发。几乎不推涟漪。",
+    wps_zen_n: "静水 · 呼吸",
+    wpt_base: "当前风格",
+    wpt_changed: "{n} 项已改",
+    wpt_collapse: "收起",
+    wpt_dance_h: "周围粒子会跳的段落 —— 每次成型从里面摸一张,所以选得越多越不重样",
+    wpt_dance_l: "编舞池",
+    wpt_expand: "展开",
+    wpt_field_burst_h: "字浮现时整片粒子被推开多少",
+    wpt_field_burst_l: "外扩",
+    wpt_field_fillGap_h: "两条字之间空多久",
+    wpt_field_fillGap_l: "间隔",
+    wpt_field_idleAmt_h: "没有字的时候,粒子自己动多大",
+    wpt_field_idleAmt_l: "待机幅度",
+    wpt_field_idleDance_h: "没有字的时候跳哪一段",
+    wpt_field_idleDance_l: "待机编舞",
+    wpt_field_ripple_h: "字落位那一下的冲击波强度",
+    wpt_field_ripple_l: "涟漪",
+    wpt_field_silkAlpha_h: "背景那层起伏粒子的可见度",
+    wpt_field_silkAlpha_l: "丝绸层",
+    wpt_field_tint_h: "整片粒子被字的颜色染走多少",
+    wpt_field_tint_l: "染色",
+    wpt_field_trail_h: "大字后面跟一条小字的概率",
+    wpt_field_trail_l: "跟一条小字",
+    wpt_g_colour: "配色 · Colour",
+    wpt_g_field: "场 · Field",
+    wpt_g_glyph: "字 · Glyph",
+    wpt_g_motion: "编舞 · Motion",
+    wpt_g_timing: "节奏 · Timing",
+    wpt_glyph_bloomSize_h: "每颗粒子的大小与辉光",
+    wpt_glyph_bloomSize_l: "光晕",
+    wpt_glyph_dispFade_h: "0 = 字是飞进来的;接近 1 = 字是在原地显影出来的",
+    wpt_glyph_dispFade_l: "显影感",
+    wpt_glyph_outDepth_h: "消散时飞多远。1 以上会飞出画面",
+    wpt_glyph_outDepth_l: "散开距离",
+    wpt_glyph_staggerUv_h: "错峰按横向位置排序 —— 配合错峰就是从左往右打出来",
+    wpt_glyph_staggerUv_l: "打字机",
+    wpt_glyph_stagger_h: "0 = 所有粒子同时到位;大 = 一颗颗先后落位",
+    wpt_glyph_stagger_l: "逐粒错峰",
+    wpt_glyph_swirl_h: "旋进 / 环收这类手法转多少",
+    wpt_glyph_swirl_l: "旋转量",
+    wpt_glyph_twinkle_h: "每颗粒子明暗起伏的快慢",
+    wpt_glyph_twinkle_l: "呼吸频率",
+    wpt_in_h: "字怎么聚出来",
+    wpt_in_l: "聚合手法",
+    wpt_out_h: "字怎么散掉",
+    wpt_out_l: "消散手法",
+    wpt_reset: "恢复该风格默认",
+    wpt_timing_hold_h: "成形后停多久才开始散",
+    wpt_timing_hold_l: "停留",
+    wpt_timing_in_h: "字从散粒聚成形要多久",
+    wpt_timing_in_l: "聚合",
+    wpt_timing_out_h: "散回粒子要多久",
+    wpt_timing_out_l: "消散",
+    wpt_tints_h: "同屏几条字各用一色 —— 一次一条,按顺序取",
+    wpt_tints_l: "调色板",
+    wpt_unchanged: "未改动",
+  });
+  add('zh-Hant', {
+    wp_eng_cine_d: "在粒子律動之上再加一層:省下的 token、緩存命中率、花費金额會像片頭那樣<b>由粒子聚合成字</b>浮現;每次成型時,全局散落的粒子會泛起一次各不相同的波動。還會實時顯示 agent 的日志流。",
+    wp_eng_cine_t: "電影級 · 粒子聚合",
+    wp_eng_mine_d: "用你<b>當前那張桌面壁紙</b>當底,粒子按它取色、在它上面律動;agent 活動和 token 統計會被粒子聚成數字浮現出來。",
+    wp_eng_mine_t: "你的壁紙 · 粒子律動",
+    wp_eng_topo_d: "原來的 3D 光柱地形:token 流動掀起漣漪,大额消耗砸下隕石。",
+    wp_eng_topo_t: "音域回響 · 光柱地形",
+    wp_engine: "引擎",
+    wp_free: "免費版 · FREE",
+    wp_h1_sub: "壁紙 · 實時律動",
+    wp_preview_only: "預覽中 —— 這些改動需要 Pro 才能應用到桌面壁紙",
+    wp_style: "粒子風格",
+    wp_style_note: "每一種都自帶<b>一整套</b>東西:配色、周圍粒子的編舞、還有<b>字怎麼聚出來、怎麼散回去</b>。同一種風格裡,連著兩條字也不會用同一種手法。點一下即可在右上角的 <b>PRO</b> 預覽裡實時看到。",
+    wp_tune: "自定義參數",
+    wp_tune_note_a: "在",
+    wp_tune_note_b: "的基礎上改。存的是差量,所以預設以後變好了,你改過的地方還留著。",
+    wp_upgrade: "升級",
+    wps_aurora_d: "一整片缎帶般的橫流。字從流的上游被帶出來,再順著同一道流散走 —— 全程沒有一次爆炸。",
+    wps_aurora_n: "極光 · 絲綢流",
+    wps_bloom_d: "粒子從一圈環上收拢成字,停住,然後整句沿著自己的中心炸開 —— 一次一朵。",
+    wps_bloom_n: "花火 · 綻放",
+    wps_cinematic_d: "片頭式的粒子聚字,六段編舞輪換。Pro 的原始质感。",
+    wps_cinematic_n: "電影級 · 粒子聚合",
+    wps_ink_d: "粒子幾乎不飛 —— 字像墨滴進水裡,一點點顯影,又一點點化開。最安靜的一種。",
+    wps_ink_n: "水墨 · 暈染",
+    wps_neon_d: "字一列列被打上屏幕,停一下,再原地崩裂。節奏最快,閃爍最密。",
+    wps_neon_n: "霓虹 · 賽博",
+    wps_starfall_d: "字從畫面上方墜入、砸出漣漪,散時繼續往下掉。周圍粒子跟著一顆顆閃。",
+    wps_starfall_n: "星隕 · 隕星雨",
+    wps_vortex_d: "整片粒子繞著那句话緩緩公轉;字沿著螺線旋進畫面,再被同一道引力甩散。",
+    wps_vortex_n: "星渦 · 引力",
+    wps_zen_d: "字從畫面下方緩緩浮起,停很久,再像水汽一樣向上蒸发。幾乎不推漣漪。",
+    wps_zen_n: "靜水 · 呼吸",
+    wpt_base: "當前風格",
+    wpt_changed: "{n} 項已改",
+    wpt_collapse: "收起",
+    wpt_dance_h: "周圍粒子會跳的段落 —— 每次成型從裡面摸一張,所以选得越多越不重樣",
+    wpt_dance_l: "編舞池",
+    wpt_expand: "展開",
+    wpt_field_burst_h: "字浮現時整片粒子被推開多少",
+    wpt_field_burst_l: "外扩",
+    wpt_field_fillGap_h: "兩條字之間空多久",
+    wpt_field_fillGap_l: "間隔",
+    wpt_field_idleAmt_h: "沒有字的時候,粒子自己動多大",
+    wpt_field_idleAmt_l: "待機幅度",
+    wpt_field_idleDance_h: "沒有字的時候跳哪一段",
+    wpt_field_idleDance_l: "待機編舞",
+    wpt_field_ripple_h: "字落位那一下的冲擊波強度",
+    wpt_field_ripple_l: "漣漪",
+    wpt_field_silkAlpha_h: "背景那層起伏粒子的可見度",
+    wpt_field_silkAlpha_l: "絲綢層",
+    wpt_field_tint_h: "整片粒子被字的颜色染走多少",
+    wpt_field_tint_l: "染色",
+    wpt_field_trail_h: "大字後面跟一條小字的概率",
+    wpt_field_trail_l: "跟一條小字",
+    wpt_g_colour: "配色 · Colour",
+    wpt_g_field: "场 · Field",
+    wpt_g_glyph: "字 · Glyph",
+    wpt_g_motion: "編舞 · Motion",
+    wpt_g_timing: "節奏 · Timing",
+    wpt_glyph_bloomSize_h: "每顆粒子的大小与輝光",
+    wpt_glyph_bloomSize_l: "光暈",
+    wpt_glyph_dispFade_h: "0 = 字是飛進來的;接近 1 = 字是在原地顯影出來的",
+    wpt_glyph_dispFade_l: "顯影感",
+    wpt_glyph_outDepth_h: "消散時飛多遠。1 以上會飛出畫面",
+    wpt_glyph_outDepth_l: "散開距離",
+    wpt_glyph_staggerUv_h: "錯峰按橫向位置排序 —— 配合錯峰就是從左往右打出來",
+    wpt_glyph_staggerUv_l: "打字機",
+    wpt_glyph_stagger_h: "0 = 所有粒子同時到位;大 = 一顆顆先後落位",
+    wpt_glyph_stagger_l: "逐粒錯峰",
+    wpt_glyph_swirl_h: "旋進 / 環收這類手法轉多少",
+    wpt_glyph_swirl_l: "旋轉量",
+    wpt_glyph_twinkle_h: "每顆粒子明暗起伏的快慢",
+    wpt_glyph_twinkle_l: "呼吸頻率",
+    wpt_in_h: "字怎麼聚出來",
+    wpt_in_l: "聚合手法",
+    wpt_out_h: "字怎麼散掉",
+    wpt_out_l: "消散手法",
+    wpt_reset: "恢復該風格默認",
+    wpt_timing_hold_h: "成形後停多久才開始散",
+    wpt_timing_hold_l: "停留",
+    wpt_timing_in_h: "字從散粒聚成形要多久",
+    wpt_timing_in_l: "聚合",
+    wpt_timing_out_h: "散回粒子要多久",
+    wpt_timing_out_l: "消散",
+    wpt_tints_h: "同屏幾條字各用一色 —— 一次一條,按順序取",
+    wpt_tints_l: "調色板",
+    wpt_unchanged: "未改動",
+  });
+})();
+
 // ── Init: apply translations on load ──
 applyTranslations();
 
@@ -2468,4 +2811,4 @@ setInterval(() => {
 }, 500);
 
 // Export
-window.i18n = { t, setLang, getLang, getLangs, applyTranslations, createLangPicker };
+window.i18n = { t, setLang, getLang, getLangs, applyTranslations, applyKeys, createLangPicker };

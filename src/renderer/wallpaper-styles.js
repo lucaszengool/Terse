@@ -93,16 +93,14 @@ export const PRO_STYLES = [
   /* ── 0. 原版。改这一条 = 改所有已经在用户桌面上跑着的 Pro 壁纸 ── */
   merge({
     id: 'cinematic',
-    name: '电影级 · 粒子聚合', en: 'Cinematic',
-    desc: '片头式的粒子聚字,六段编舞轮换。Pro 的原始质感。',
+    nameKey: 'wps_cinematic_n', descKey: 'wps_cinematic_d', en: 'Cinematic',
     swatch: ['#C9F03D', '#5AD8FF'],
   }),
 
   /* ── 1. 极光丝绸:横向流动的缎带,字顺着流向来、顺着流向走 ── */
   merge({
     id: 'aurora',
-    name: '极光 · 丝绸流', en: 'Aurora Silk',
-    desc: '一整片缎带般的横流。字从流的上游被带出来,再顺着同一道流散走 —— 全程没有一次爆炸。',
+    nameKey: 'wps_aurora_n', descKey: 'wps_aurora_d', en: 'Aurora Silk',
     swatch: ['#7CF5C0', '#5AD8FF'],
     tints: ['#7CF5C0', '#5AD8FF', '#8B6BFF', '#B0FFE4', '#69E0FF', '#A9E8FF'],
     dance: [D.CLOUD, D.RIPPLE, D.SWAY, D.TIDE],
@@ -117,8 +115,7 @@ export const PRO_STYLES = [
   /* ── 2. 星陨:字从上面砸下来,散的时候继续往下掉 ── */
   merge({
     id: 'starfall',
-    name: '星陨 · 陨星雨', en: 'Starfall',
-    desc: '字从画面上方坠入、砸出涟漪,散时继续往下掉。周围粒子跟着一颗颗闪。',
+    nameKey: 'wps_starfall_n', descKey: 'wps_starfall_d', en: 'Starfall',
     swatch: ['#FFD75A', '#FF9F45'],
     tints: ['#FFD75A', '#FF9F45', '#FFF3C4', '#FF6B4A', '#FFC26B', '#FFE9A8'],
     dance: [D.STARFALL, D.BREATHE, D.SNOW, D.HEARTBEAT],
@@ -133,8 +130,7 @@ export const PRO_STYLES = [
   /* ── 3. 水墨:字几乎不移动,是在原地"显影"和"化开"的 ── */
   merge({
     id: 'ink',
-    name: '水墨 · 晕染', en: 'Ink Wash',
-    desc: '粒子几乎不飞 —— 字像墨滴进水里,一点点显影,又一点点化开。最安静的一种。',
+    nameKey: 'wps_ink_n', descKey: 'wps_ink_d', en: 'Ink Wash',
     swatch: ['#E8ECF4', '#7E93A8'],
     tints: ['#E8ECF4', '#9FB4C7', '#C9D8E8', '#7E93A8', '#FFFFFF', '#B8C9DA'],
     dance: [D.BREATHE, D.SWAY, D.TIDE],
@@ -149,8 +145,7 @@ export const PRO_STYLES = [
   /* ── 4. 赛博霓虹:最快最硬的一种,字是"打"上去、"炸"掉的 ── */
   merge({
     id: 'neon',
-    name: '霓虹 · 赛博', en: 'Neon Cyber',
-    desc: '字一列列被打上屏幕,停一下,再原地崩裂。节奏最快,闪烁最密。',
+    nameKey: 'wps_neon_n', descKey: 'wps_neon_d', en: 'Neon Cyber',
     swatch: ['#FF3DCB', '#00F0FF'],
     tints: ['#FF3DCB', '#00F0FF', '#B14CFF', '#FFE14D', '#3DFF9E', '#FF5A8A'],
     dance: [D.SPIRAL, D.HEARTBEAT, D.RIPPLE, D.SWIRL],
@@ -166,8 +161,7 @@ export const PRO_STYLES = [
   /* ── 5. 星涡:一切都绕着字心转 —— 字旋进来,再被旋出去 ── */
   merge({
     id: 'vortex',
-    name: '星涡 · 引力', en: 'Gravity Vortex',
-    desc: '整片粒子绕着那句话缓缓公转;字沿着螺线旋进画面,再被同一道引力甩散。',
+    nameKey: 'wps_vortex_n', descKey: 'wps_vortex_d', en: 'Gravity Vortex',
     swatch: ['#B98CFF', '#5A3DFF'],
     tints: ['#B98CFF', '#6C7CFF', '#E36BFF', '#8FD0FF', '#5A3DFF', '#C7A8FF'],
     dance: [D.SWIRL, D.SPIRAL, D.BREATHE],
@@ -182,8 +176,7 @@ export const PRO_STYLES = [
   /* ── 6. 花火:向内收成字,再像烟花一样整句炸开 ── */
   merge({
     id: 'bloom',
-    name: '花火 · 绽放', en: 'Fireworks',
-    desc: '粒子从一圈环上收拢成字,停住,然后整句沿着自己的中心炸开 —— 一次一朵。',
+    nameKey: 'wps_bloom_n', descKey: 'wps_bloom_d', en: 'Fireworks',
     swatch: ['#FF7A9C', '#FFB35A'],
     tints: ['#FF7A9C', '#FFB35A', '#FF5A5A', '#FFE08A', '#FF9ED8', '#FFC9A8'],
     dance: [D.HEARTBEAT, D.BREATHE, D.STARFALL, D.SWIRL],
@@ -198,8 +191,7 @@ export const PRO_STYLES = [
   /* ── 7. 静水:最慢的一种。字从下面浮上来,再蒸发掉 ── */
   merge({
     id: 'zen',
-    name: '静水 · 呼吸', en: 'Still Water',
-    desc: '字从画面下方缓缓浮起,停很久,再像水汽一样向上蒸发。几乎不推涟漪。',
+    nameKey: 'wps_zen_n', descKey: 'wps_zen_d', en: 'Still Water',
     swatch: ['#BFE9FF', '#DFF6EC'],
     tints: ['#BFE9FF', '#DFF6EC', '#A8D8F0', '#EAF6FF', '#9FC8E8', '#CFE9F5'],
     dance: [D.TIDE, D.BREATHE, D.SWAY],
@@ -235,54 +227,54 @@ export function getProStyle(id) {
 
 /** 一个参数的可编辑描述。type 决定控件,min/max/step 决定手感。 */
 export const STYLE_SCHEMA = [
-  { group: '节奏 · Timing', key: 'timing.in',   label: '聚合', unit: 'ms', type: 'range', min: 120, max: 2400, step: 10,
-    hint: '字从散粒聚成形要多久' },
-  { group: '节奏 · Timing', key: 'timing.hold', label: '停留', unit: 'ms', type: 'range', min: 200, max: 6000, step: 10,
-    hint: '成形后停多久才开始散' },
-  { group: '节奏 · Timing', key: 'timing.out',  label: '消散', unit: 'ms', type: 'range', min: 120, max: 3000, step: 1,
-    hint: '散回粒子要多久' },
-  { group: '节奏 · Timing', key: 'field.fillGap', label: '间隔', unit: 'ms', type: 'range', min: 0, max: 4000, step: 10,
-    hint: '两条字之间空多久' },
-  { group: '节奏 · Timing', key: 'field.trail', label: '跟一条小字', type: 'range', min: 0, max: 1, step: 0.01,
-    hint: '大字后面跟一条小字的概率' },
+  { groupKey: 'wpt_g_timing', key: 'timing.in',   labelKey: 'wpt_timing_in_l', unit: 'ms', type: 'range', min: 120, max: 2400, step: 10,
+    hintKey: 'wpt_timing_in_h' },
+  { groupKey: 'wpt_g_timing', key: 'timing.hold', labelKey: 'wpt_timing_hold_l', unit: 'ms', type: 'range', min: 200, max: 6000, step: 10,
+    hintKey: 'wpt_timing_hold_h' },
+  { groupKey: 'wpt_g_timing', key: 'timing.out',  labelKey: 'wpt_timing_out_l', unit: 'ms', type: 'range', min: 120, max: 3000, step: 1,
+    hintKey: 'wpt_timing_out_h' },
+  { groupKey: 'wpt_g_timing', key: 'field.fillGap', labelKey: 'wpt_field_fillGap_l', unit: 'ms', type: 'range', min: 0, max: 4000, step: 10,
+    hintKey: 'wpt_field_fillGap_h' },
+  { groupKey: 'wpt_g_timing', key: 'field.trail', labelKey: 'wpt_field_trail_l', type: 'range', min: 0, max: 1, step: 0.01,
+    hintKey: 'wpt_field_trail_h' },
 
-  { group: '字 · Glyph', key: 'glyph.outDepth',  label: '散开距离', type: 'range', min: 0, max: 1.5, step: 0.01,
-    hint: '消散时飞多远。1 以上会飞出画面' },
-  { group: '字 · Glyph', key: 'glyph.stagger',   label: '逐粒错峰', type: 'range', min: 0, max: 0.95, step: 0.01,
-    hint: '0 = 所有粒子同时到位;大 = 一颗颗先后落位' },
-  { group: '字 · Glyph', key: 'glyph.staggerUv', label: '打字机', type: 'range', min: 0, max: 1, step: 0.01,
-    hint: '错峰按横向位置排序 —— 配合错峰就是从左往右打出来' },
-  { group: '字 · Glyph', key: 'glyph.dispFade',  label: '显影感', type: 'range', min: 0, max: 1, step: 0.01,
-    hint: '0 = 字是飞进来的;接近 1 = 字是在原地显影出来的' },
-  { group: '字 · Glyph', key: 'glyph.twinkle',   label: '呼吸频率', type: 'range', min: 0, max: 8, step: 0.1,
-    hint: '每颗粒子明暗起伏的快慢' },
-  { group: '字 · Glyph', key: 'glyph.swirl',     label: '旋转量', unit: 'rad', type: 'range', min: 0, max: 8, step: 0.1,
-    hint: '旋进 / 环收这类手法转多少' },
-  { group: '字 · Glyph', key: 'glyph.bloomSize', label: '光晕', type: 'range', min: 0.5, max: 6, step: 0.1,
-    hint: '每颗粒子的大小与辉光' },
+  { groupKey: 'wpt_g_glyph', key: 'glyph.outDepth',  labelKey: 'wpt_glyph_outDepth_l', type: 'range', min: 0, max: 1.5, step: 0.01,
+    hintKey: 'wpt_glyph_outDepth_h' },
+  { groupKey: 'wpt_g_glyph', key: 'glyph.stagger',   labelKey: 'wpt_glyph_stagger_l', type: 'range', min: 0, max: 0.95, step: 0.01,
+    hintKey: 'wpt_glyph_stagger_h' },
+  { groupKey: 'wpt_g_glyph', key: 'glyph.staggerUv', labelKey: 'wpt_glyph_staggerUv_l', type: 'range', min: 0, max: 1, step: 0.01,
+    hintKey: 'wpt_glyph_staggerUv_h' },
+  { groupKey: 'wpt_g_glyph', key: 'glyph.dispFade',  labelKey: 'wpt_glyph_dispFade_l', type: 'range', min: 0, max: 1, step: 0.01,
+    hintKey: 'wpt_glyph_dispFade_h' },
+  { groupKey: 'wpt_g_glyph', key: 'glyph.twinkle',   labelKey: 'wpt_glyph_twinkle_l', type: 'range', min: 0, max: 8, step: 0.1,
+    hintKey: 'wpt_glyph_twinkle_h' },
+  { groupKey: 'wpt_g_glyph', key: 'glyph.swirl',     labelKey: 'wpt_glyph_swirl_l', unit: 'rad', type: 'range', min: 0, max: 8, step: 0.1,
+    hintKey: 'wpt_glyph_swirl_h' },
+  { groupKey: 'wpt_g_glyph', key: 'glyph.bloomSize', labelKey: 'wpt_glyph_bloomSize_l', type: 'range', min: 0.5, max: 6, step: 0.1,
+    hintKey: 'wpt_glyph_bloomSize_h' },
 
-  { group: '场 · Field', key: 'field.silkAlpha', label: '丝绸层', type: 'range', min: 0, max: 0.6, step: 0.01,
-    hint: '背景那层起伏粒子的可见度' },
-  { group: '场 · Field', key: 'field.burst',     label: '外扩', type: 'range', min: 0, max: 1.5, step: 0.01,
-    hint: '字浮现时整片粒子被推开多少' },
-  { group: '场 · Field', key: 'field.ripple',    label: '涟漪', type: 'range', min: 0, max: 1.5, step: 0.01,
-    hint: '字落位那一下的冲击波强度' },
-  { group: '场 · Field', key: 'field.tint',      label: '染色', type: 'range', min: 0, max: 1, step: 0.01,
-    hint: '整片粒子被字的颜色染走多少' },
-  { group: '场 · Field', key: 'field.idleAmt',   label: '待机幅度', type: 'range', min: 0, max: 0.6, step: 0.01,
-    hint: '没有字的时候,粒子自己动多大' },
-  { group: '场 · Field', key: 'field.idleDance', label: '待机编舞', type: 'enum', options: DANCE,
-    hint: '没有字的时候跳哪一段' },
+  { groupKey: 'wpt_g_field', key: 'field.silkAlpha', labelKey: 'wpt_field_silkAlpha_l', type: 'range', min: 0, max: 0.6, step: 0.01,
+    hintKey: 'wpt_field_silkAlpha_h' },
+  { groupKey: 'wpt_g_field', key: 'field.burst',     labelKey: 'wpt_field_burst_l', type: 'range', min: 0, max: 1.5, step: 0.01,
+    hintKey: 'wpt_field_burst_h' },
+  { groupKey: 'wpt_g_field', key: 'field.ripple',    labelKey: 'wpt_field_ripple_l', type: 'range', min: 0, max: 1.5, step: 0.01,
+    hintKey: 'wpt_field_ripple_h' },
+  { groupKey: 'wpt_g_field', key: 'field.tint',      labelKey: 'wpt_field_tint_l', type: 'range', min: 0, max: 1, step: 0.01,
+    hintKey: 'wpt_field_tint_h' },
+  { groupKey: 'wpt_g_field', key: 'field.idleAmt',   labelKey: 'wpt_field_idleAmt_l', type: 'range', min: 0, max: 0.6, step: 0.01,
+    hintKey: 'wpt_field_idleAmt_h' },
+  { groupKey: 'wpt_g_field', key: 'field.idleDance', labelKey: 'wpt_field_idleDance_l', type: 'enum', options: DANCE,
+    hintKey: 'wpt_field_idleDance_h' },
 
-  { group: '编舞 · Motion', key: 'dance', label: '编舞池', type: 'multi', options: DANCE,
-    hint: '周围粒子会跳的段落 —— 每次成型从里面摸一张,所以选得越多越不重样' },
-  { group: '编舞 · Motion', key: 'in',    label: '聚合手法', type: 'multi', options: GLYPH_MOVE,
-    hint: '字怎么聚出来' },
-  { group: '编舞 · Motion', key: 'out',   label: '消散手法', type: 'multi', options: GLYPH_MOVE,
-    hint: '字怎么散掉' },
+  { groupKey: 'wpt_g_motion', key: 'dance', labelKey: 'wpt_dance_l', type: 'multi', options: DANCE,
+    hintKey: 'wpt_dance_h' },
+  { groupKey: 'wpt_g_motion', key: 'in',    labelKey: 'wpt_in_l', type: 'multi', options: GLYPH_MOVE,
+    hintKey: 'wpt_in_h' },
+  { groupKey: 'wpt_g_motion', key: 'out',   labelKey: 'wpt_out_l', type: 'multi', options: GLYPH_MOVE,
+    hintKey: 'wpt_out_h' },
 
-  { group: '配色 · Colour', key: 'tints', label: '调色板', type: 'colors',
-    hint: '同屏几条字各用一色 —— 一次一条,按顺序取' },
+  { groupKey: 'wpt_g_colour', key: 'tints', labelKey: 'wpt_tints_l', type: 'colors',
+    hintKey: 'wpt_tints_h' },
 ];
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);

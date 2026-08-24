@@ -4,7 +4,7 @@
   <meta name="color-scheme" content="dark">
   <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
   <meta charset="UTF-8">
-  <title>Terse Session History 历史</title>
+  <title>Terse Session History</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -99,7 +99,7 @@
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <svg class="hd-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
-    <h1>Session History<span class="cn">历史</span></h1>
+    <h1>Session History<span class="cn" data-i18n="hi_tab">History</span></h1>
   </div>
   <div class="period-tabs wrap" id="periodTabs">
     <button data-p="day">Today</button>
@@ -211,5 +211,7 @@
     }));
     load();
   </script>
+  <!-- 语言机制。最后加载:先让页面把自己的东西画出来,再统一翻译。 -->
+  <script src="i18n.js"></script>
 </body>
 </html>

@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
   <meta name="color-scheme" content="dark">
-  <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
+  <script>
+    /* 取译文,取不到用英文兜底。取代原来散在各处的 `zh ? 中文 : English`
+       —— 那种写法只认得两种语言,而且没人找得到它去翻。 */
+    function DT(key, fallback){
+      var v = (window.i18n && window.i18n.t) ? window.i18n.t(key) : null;
+      return (v && v !== key) ? v : fallback;
+    }
+(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
   <meta charset="UTF-8">
-  <title>Terse Doctor 体检</title>
+  <title>Terse Doctor</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -1420,8 +1427,8 @@
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
       <path d="m9 12 2 2 4-4"/>
     </svg>
-    <h1>Terse Doctor<span class="cn">体检</span></h1>
-    <button class="close-btn" id="btnLang" title="Language / 语言" aria-label="Language" style="margin-left:auto">
+    <h1>Terse Doctor<span class="cn" data-i18n="dr_tab">Checkup</span></h1>
+    <button class="close-btn" id="btnLang" title="Language" aria-label="Language" style="margin-left:auto">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
     </button>
     <button class="close-btn" id="closeBtn" title="Close" aria-label="Close">
@@ -1601,8 +1608,8 @@
         var cta = document.getElementById('firstRunCta');
         var hint = document.getElementById('firstRunHint');
         if (!bar || !cta) return;
-        hint.textContent = zh ? '这是一次只读体检 — 没有改动任何东西' : 'That was a read-only checkup — nothing was changed';
-        cta.textContent = zh ? '下一步 →' : 'Continue →';
+        hint.textContent = DT('dr_readonly', 'That was a read-only checkup — nothing was changed');
+        cta.textContent = DT('dr_next', 'Continue →');
         cta.addEventListener('click', function () {
           if (T && T.navigateBack) T.navigateBack();
           else if (T && T.showMainWindow) T.showMainWindow();

@@ -53,7 +53,7 @@
 
     <div class="divide"></div>
     <div class="krow">
-      <span class="klab">Saved by Terse 优化</span>
+      <span class="klab" data-i18n="wpp_saved">Saved by Terse</span>
       <span class="kval saved"><span id="pSaved">0</span><span class="pct" id="pPct">0%</span></span>
     </div>
 
@@ -99,6 +99,13 @@
     const panel = document.getElementById('panel');
     const ACCENTS = { indigo:'#8b6bff', ocean:'#3aa0ff', ice:'#7fe9ff', emerald:'#40e0a0',
       gold:'#ffcf5a', amber:'#ff9f43', blood:'#ff5a5a', coral:'#ff7a9c', neon:'#e146eb', mono:'#e8e8f0' };
+
+    /** 取译文,取不到就用调用处的英文 —— 壁纸的字大多是 JS 拼出来的,
+        按英文原文匹配的那套机制够不着,所以这里走 key。 */
+    const WT = (key, fallback) => {
+      const v = (window.i18n && window.i18n.t && key) ? window.i18n.t(key) : null;
+      return (v && v !== key) ? v : fallback;
+    };
 
     let wp = null, lastTokens = null, cfg = { engine:'mineradio', style:'cinematic', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
     /** null = not checked yet (treat as entitled), true/false = a definite answer.
@@ -276,7 +283,7 @@
       // Centre "now playing" stage — rotates consumed → saveable → each active agent.
       const stage = [
         { k:'Today · consumed', v: fmt(lastTokens || 0), u:'tokens' },
-        { k:'Terse 可省 · saveable', v: fmt(savedShown), u: pctShown + '%', saved:true },
+        { k: WT('wpp_saveable', 'Terse saveable'), v: fmt(savedShown), u: pctShown + '%', saved:true },
       ];
       active.slice(0, 3).forEach(a => stage.push({
         ic: a.agentIcon || AGENT_ICON[(a.agentType||'').toLowerCase()] || '🤖',
@@ -405,7 +412,7 @@
             'pointer-events:none;opacity:0;transition:opacity .18s;z-index:9';
           document.body.appendChild(hint);
         }
-        hint.textContent = '点击数据打开 · Click any number';
+        hint.textContent = WT('wpp_click_hint', 'Click any number');
         hint.style.opacity = (on && !lastHover) ? '1' : '0';
       }
 
@@ -697,5 +704,7 @@
       };
     })();
   </script>
+  <!-- 语言机制:data-i18n 的键在这里被解析。放最后,让它在页面自己的脚本之后跑。 -->
+  <script src="i18n.js"></script>
 </body>
 </html>

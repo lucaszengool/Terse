@@ -4,7 +4,7 @@
   <meta name="color-scheme" content="dark">
   <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
   <meta charset="UTF-8">
-  <title>Terse Wallpaper 壁纸</title>
+  <title>Terse Wallpaper</title>
   <script type="importmap">
   { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/jsm/" } }
   </script>
@@ -158,15 +158,15 @@
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <svg class="hd-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 14l4-4 4 4 4-5 6 6"/></svg>
-    <h1>Live Wallpaper<span class="cn">壁纸 · 实时律动</span></h1>
+    <h1>Live Wallpaper<span class="cn" data-i18n="wp_h1_sub">Real-time motion</span></h1>
   </div>
 
   <div class="scroll">
     <div class="wrap">
       <div class="prev-pair">
-        <div class="preview"><canvas id="prev"></canvas><span class="tag">免费版 · FREE</span></div>
+        <div class="preview"><canvas id="prev"></canvas><span class="tag" data-i18n="wp_free">Free</span></div>
         <div class="preview preview-pro"><canvas id="prevPro"></canvas>
-          <span class="tag tag-pro" id="proTag">PRO · 电影级粒子聚合</span></div>
+          <span class="tag tag-pro" id="proTag">PRO</span></div>
       </div>
 
       <div class="card">
@@ -181,25 +181,28 @@
       </div>
 
       <div class="card">
-        <div class="card-t">Engine 引擎</div>
+        <div class="card-t" data-i18n="wp_engine">Engine</div>
         <div class="engines" id="engines">
           <div class="eng" data-e="mineradio">
-            <div class="et">你的壁纸 · 粒子律动</div>
-            <div class="ed">用你<b>当前那张桌面壁纸</b>当底,粒子按它取色、在它上面律动;
-              agent 活动和 token 统计会被粒子聚成数字浮现出来。</div>
+            <div class="et" data-i18n="wp_eng_mine_t">Your wallpaper · particle motion</div>
+            <div class="ed" data-i18n-html="wp_eng_mine_d">Uses <b>your current desktop wallpaper</b> as the bed:
+              particles take its colours and move over it, and agent activity and token counts
+              surface as numbers formed out of those particles.</div>
           </div>
           <!-- Pro tier. Free users may SELECT it to watch the live preview —
                that preview is the pitch — but applying it to the desktop opens
                the plan window instead. -->
           <div class="eng eng-pro" data-e="cinematic" data-pro="1">
-            <div class="et">电影级 · 粒子聚合 <span class="pro-tag">PRO</span></div>
-            <div class="ed">在粒子律动之上再加一层:省下的 token、缓存命中率、花费金额
-              会像片头那样<b>由粒子聚合成字</b>浮现;每次成型时,全局散落的粒子会泛起
-              一次各不相同的波动。还会实时显示 agent 的日志流。</div>
+            <div class="et"><span data-i18n="wp_eng_cine_t">Cinematic · particle typography</span> <span class="pro-tag">PRO</span></div>
+            <div class="ed" data-i18n-html="wp_eng_cine_d">A layer on top of the motion: tokens saved, cache hit
+              rate and spend surface the way a title sequence does — <b>assembled out of particles</b>.
+              Every time a line forms, the scattered field ripples in a way it has not before.
+              It also shows the agent's live log.</div>
           </div>
           <div class="eng" data-e="topography">
-            <div class="et">音域回响 · 光柱地形</div>
-            <div class="ed">原来的 3D 光柱地形:token 流动掀起涟漪,大额消耗砸下陨石。</div>
+            <div class="et" data-i18n="wp_eng_topo_t">Spectrum · light-column terrain</div>
+            <div class="ed" data-i18n="wp_eng_topo_d">The original 3D column terrain: token flow raises ripples,
+              and a big spend drops a meteor.</div>
           </div>
         </div>
       </div>
@@ -207,26 +210,28 @@
       <!-- Pro 风格。引擎决定"有没有粒子聚字",风格决定"那些字长什么样、周围怎么动"。
            和引擎同一个规矩:预览对所有人开放(那就是卖点本身),存成桌面壁纸才要 Pro。 -->
       <div class="card" id="styleCard">
-        <div class="card-t">Particle style · 粒子风格 <span class="pro-tag">PRO</span></div>
+        <div class="card-t">Particle style <span class="pro-tag">PRO</span></div>
         <div class="styles" id="styles"></div>
-        <div class="note" style="padding-top:8px">每一种都自带<b>一整套</b>东西:配色、周围粒子的编舞、
-          还有<b>字怎么聚出来、怎么散回去</b>。同一种风格里,连着两条字也不会用同一种手法。
-          点一下即可在右上角的 <b>PRO</b> 预览里实时看到。</div>
+        <div class="note" style="padding-top:8px" data-i18n-html="wp_style_note">Each one brings <b>a whole
+          set</b> of things: the palette, how the surrounding particles move, and <b>how the text gathers
+          and how it scatters</b>. Within a style, no two consecutive lines use the same move.
+          Click one and watch it live in the <b>PRO</b> preview above.</div>
       </div>
 
       <!-- 自定义。八种风格是起点,不是上限:从当前这一种出发,22 个参数全都能改,
            每动一格右边的 PRO 预览就立刻变。控件是照 STYLE_SCHEMA 生成的,不是手写的。 -->
       <div class="card" id="tuneCard">
         <div class="card-t" style="display:flex;align-items:center;gap:8px">
-          <span>Fine-tune · 自定义参数 <span class="pro-tag">PRO</span></span>
-          <button id="tuneToggle" class="tune-btn" style="margin-left:auto">展开</button>
+          <span>Fine-tune <span class="pro-tag">PRO</span></span>
+          <button id="tuneToggle" class="tune-btn" style="margin-left:auto" data-i18n="wpt_expand">Expand</button>
         </div>
-        <div class="note">在<b id="tuneBase">当前风格</b>的基础上改。存的是差量,所以预设以后变好了,
-          你改过的地方还留着。</div>
+        <div class="note"><span data-i18n="wp_tune_note_a">Tuned on top of</span>
+          <b id="tuneBase">the current style</b><span data-i18n="wp_tune_note_b">. Only your changes are stored,
+          so when a preset improves later, your edits ride along.</span></div>
         <div id="tuneBody" style="display:none">
           <div id="tuneGroups"></div>
           <div class="tune-foot">
-            <button id="tuneReset" class="tune-btn">恢复该风格默认</button>
+            <button id="tuneReset" class="tune-btn" data-i18n="wpt_reset">Reset to this style</button>
             <span id="tuneCount" class="tune-count"></span>
           </div>
         </div>
@@ -236,8 +241,8 @@
            事件,每个都弹一次会把人赶走。 -->
       <div id="previewOnly" style="display:none">
         <span class="po-dot"></span>
-        <span class="po-t">预览中 —— 这些改动需要 Pro 才能应用到桌面壁纸</span>
-        <button id="poUpgrade" class="tune-btn po-btn">升级</button>
+        <span class="po-t" data-i18n="wp_preview_only">Previewing — these changes need Pro to apply to your desktop</span>
+        <button id="poUpgrade" class="tune-btn po-btn" data-i18n="wp_upgrade">Upgrade</button>
       </div>
 
       <div class="card">
@@ -247,7 +252,7 @@
 
       <div class="card">
         <div class="card-t">Feel</div>
-        <div class="slider"><div class="lab"><span>Intensity 律动</span><span class="val" id="vInt">1.0×</span></div>
+        <div class="slider"><div class="lab"><span>Intensity</span><span class="val" id="vInt">1.0×</span></div>
           <input type="range" id="sInt" min="0.3" max="2" step="0.1" value="1"></div>
         <div class="slider"><div class="lab"><span>Camera angle</span><span class="val" id="vAng">42°</span></div>
           <input type="range" id="sAng" min="28" max="75" step="1" value="42"></div>
@@ -291,6 +296,12 @@
 
        改动一律先进预览、后进磁盘,和风格选择走同一条 Pro 闸门:免费用户能拖、能看,
        松手不写盘。看得见才会想要,而写盘是要付费的那一步。 */
+    /** 取一条译文;没有译文就用调用处写的英文兜底 —— 缺一个 key 也不会显示成 key。 */
+    const TT = (key, fallback) => {
+      const v = (window.i18n && window.i18n.t && key) ? window.i18n.t(key) : null;
+      return (v && v !== key) ? v : (fallback || '');
+    };
+
     const tuneCustom = () => (cfg.customStyle && typeof cfg.customStyle === 'object') ? cfg.customStyle : {};
     /** 当前生效值 = 预设 + 差量。控件显示的永远是**生效值**,不是差量。 */
     const tuneEffective = () => resolveStyle(shownStyle(), tuneCustom());
@@ -303,33 +314,33 @@
     function tuneRow(f, eff, custom){
       const val = readPath(eff, f.key);
       const dirty = readPath(custom, f.key) !== undefined;
-      const head = `<div class="tune-l">${f.label}</div>`;
+      const head = `<div class="tune-l">${TT(f.labelKey, f.key)}</div>`;
       if (f.type === 'range') {
         const shown = (f.step >= 1) ? Math.round(val) : (+val).toFixed(2);
         return `<div class="tune-r ${dirty?'dirty':''}" data-k="${f.key}">
             ${head}
             <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}" data-k="${f.key}">
             <span class="tune-v" data-v="${f.key}">${shown}${f.unit?('<span style="opacity:.5">'+f.unit+'</span>'):''}</span>
-          </div><div class="tune-h">${f.hint}</div>`;
+          </div><div class="tune-h">${TT(f.hintKey, '')}</div>`;
       }
       if (f.type === 'enum') {
         const opts = Object.entries(f.options)
           .map(([n,v]) => `<button class="tune-chip ${v===val?'on':''}" data-k="${f.key}" data-v="${v}">${n.toLowerCase()}</button>`).join('');
         return `<div class="tune-r ${dirty?'dirty':''}">${head}<div class="tune-chips">${opts}</div></div>
-                <div class="tune-h">${f.hint}</div>`;
+                <div class="tune-h">${TT(f.hintKey, '')}</div>`;
       }
       if (f.type === 'multi') {
         const cur = Array.isArray(val) ? val : [];
         const opts = Object.entries(f.options)
           .map(([n,v]) => `<button class="tune-chip ${cur.includes(v)?'on':''}" data-m="${f.key}" data-v="${v}">${n.toLowerCase()}</button>`).join('');
         return `<div class="tune-r ${dirty?'dirty':''}">${head}<div class="tune-chips">${opts}</div></div>
-                <div class="tune-h">${f.hint}</div>`;
+                <div class="tune-h">${TT(f.hintKey, '')}</div>`;
       }
       if (f.type === 'colors') {
         const cur = Array.isArray(val) ? val : [];
         const sw = cur.map((c,i) => `<input type="color" value="${c}" data-c="${f.key}" data-i="${i}">`).join('');
         return `<div class="tune-r ${dirty?'dirty':''}">${head}<div class="tune-sw">${sw}</div></div>
-                <div class="tune-h">${f.hint}</div>`;
+                <div class="tune-h">${TT(f.hintKey, '')}</div>`;
       }
       return '';
     }
@@ -344,19 +355,19 @@
       const eff = tuneEffective(), custom = tuneCustom();
       const groups = [];
       for (const f of STYLE_SCHEMA) {
-        if (!groups.length || groups[groups.length-1].name !== f.group) groups.push({ name: f.group, rows: [] });
+        if (!groups.length || groups[groups.length-1].name !== f.groupKey) groups.push({ name: f.groupKey, rows: [] });
         groups[groups.length-1].rows.push(tuneRow(f, eff, custom));
       }
       $('#tuneGroups').innerHTML = groups.map(g =>
-        `<div class="tune-g"><div class="tune-gt">${g.name}</div>${g.rows.join('')}</div>`).join('');
+        `<div class="tune-g"><div class="tune-gt">${TT(g.name, g.name)}</div>${g.rows.join('')}</div>`).join('');
       updateTuneMeta();
     }
 
     function updateTuneMeta(){
       const meta = PRO_STYLES.find(x => x.id === shownStyle());
-      const b = $('#tuneBase'); if (b) b.textContent = meta ? meta.name : '当前风格';
+      const b = $('#tuneBase'); if (b) b.textContent = meta ? TT(meta.nameKey, meta.en) : TT('wpt_base', 'the current style');
       const n = tuneDirtyCount();
-      const c = $('#tuneCount'); if (c) c.textContent = n ? (n + ' 项已改') : '未改动';
+      const c = $('#tuneCount'); if (c) c.textContent = n ? TT('wpt_changed','{n} changed').replace('{n}', n) : TT('wpt_unchanged','unchanged');
     }
 
     /** 一次改动。预览立刻跟上;写盘要 Pro。 */
@@ -407,7 +418,7 @@
         const body = $('#tuneBody');
         const open = body.style.display === 'none';
         body.style.display = open ? '' : 'none';
-        t.textContent = open ? '收起' : '展开';
+        t.textContent = open ? TT('wpt_collapse','Collapse') : TT('wpt_expand','Expand');
         if (open) renderTune();
       });
       $('#tuneReset') && $('#tuneReset').addEventListener('click', async () => {
@@ -474,14 +485,14 @@
       // 预览角标跟着选中的风格走,否则点了半天不知道右边这块正在演哪一种
       const meta = PRO_STYLES.find(s => s.id === cur) || PRO_STYLES[0];
       const tag = $('#proTag');
-      if (tag) tag.textContent = 'PRO · ' + meta.name;
+      if (tag) tag.textContent = 'PRO · ' + TT(meta.nameKey, meta.en);
       $('#styles').innerHTML = PRO_STYLES.map(s => `
         <div class="sty ${s.id===cur?'sel':''}" data-s="${s.id}">
           ${s.id===cur?'<span class="cur">ON</span>':''}
           <div class="bar" style="background:linear-gradient(90deg,${s.swatch[0]},${s.swatch[1]})"></div>
-          <div class="sn">${s.name}</div>
+          <div class="sn">${TT(s.nameKey, s.en)}</div>
           <div class="se">${s.en}</div>
-          <div class="sd">${s.desc}</div>
+          <div class="sd">${TT(s.descKey, '')}</div>
         </div>`).join('');
       document.querySelectorAll('.sty').forEach(el =>
         el.addEventListener('click', () => pickStyle(el.dataset.s)));
@@ -755,5 +766,7 @@
         d(); }, 4000);
     })();
   </script>
+  <!-- 语言机制:data-i18n 的键在这里被解析。放最后,让它在页面自己的脚本之后跑。 -->
+  <script src="i18n.js"></script>
 </body>
 </html>

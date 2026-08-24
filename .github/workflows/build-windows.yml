@@ -707,41 +707,33 @@ jobs:
             return $script:hit
           }
           # Front the main window so the global shortcut reaches the app.
-          # Retry until the app actually receives it.
+          # ONE keystroke. Ctrl+Shift+D is a TOGGLE.
           #
-          # One run the keystroke landed, the next it did not - CI has no
-          # interactive session and SetForegroundWindow is refused there as often
-          # as not. A single attempt makes the test a coin flip, and a coin flip
-          # that reports FAIL is worse than no test.
+          # The retry loop sent it up to four times, stopping when the app wrote
+          # a receipt. If the first press landed but the receipt lagged, the
+          # second press closed the window that the first had just opened - which
+          # matches exactly what the last run showed: the build logged, no window
+          # visible. Two runs of identical code disagreed, and a toggle pressed a
+          # variable number of times is reason enough for that.
           #
-          # lazy-window.log is the receipt: if the app wrote a line, the keystroke
-          # arrived and there is something to judge. Up to four attempts.
+          # Pressing once cannot produce that. If the press is lost, the window
+          # never appears and the log stays empty, which reports as INCONCLUSIVE
+          # and is honest.
           $lg = Join-Path $env:USERPROFILE ".terse\lazy-window.log"
-          Remove-Item $lg -ErrorAction SilentlyContinue
-          $landed = $false
-          for ($try = 1; $try -le 4 -and -not $landed; $try++) {
-            $main = Find-TerseWindow 'Terse'
-            if ($main -ne [IntPtr]::Zero) { [void][K]::SetForegroundWindow($main); Start-Sleep -Milliseconds 900 }
-            Write-Host "attempt ${try}: sending Ctrl+Shift+D"
-            [System.Windows.Forms.SendKeys]::SendWait('^+d')
-            for ($w = 0; $w -lt 8 -and -not $landed; $w++) {
-              Start-Sleep -Seconds 1
-              if (Test-Path $lg) { $landed = $true }
-            }
-          }
-          if ($landed) { Write-Host "keystroke reached the app on attempt $($try - 1)" }
-          # Poll for the window, do not sleep a guess.
-          #
-          # The receipt is written BEFORE the build is dispatched, and the build
-          # took 3.7s in an earlier run, so a fixed 4s wait was racing it. Every
-          # verification step in this file written as a fixed sleep has read a
-          # race as a verdict at least once.
+          $main = Find-TerseWindow 'Terse'
+          if ($main -ne [IntPtr]::Zero) { [void][K]::SetForegroundWindow($main); Start-Sleep -Milliseconds 900 }
+          Write-Host "sending Ctrl+Shift+D once"
+          [System.Windows.Forms.SendKeys]::SendWait('^+d')
+
+          # Wait on the WINDOW, not on a receipt. The window is the thing being
+          # tested; the receipt only ever said the app had started trying.
           $doc = [IntPtr]::Zero
-          for ($w = 0; $w -lt 30 -and $doc -eq [IntPtr]::Zero; $w++) {
+          for ($w = 0; $w -lt 45 -and $doc -eq [IntPtr]::Zero; $w++) {
             Start-Sleep -Seconds 1
             $doc = Find-TerseWindow 'Terse Doctor'
           }
           Write-Host ("waited {0}s for the window" -f $w)
+
           if ($doc -eq [IntPtr]::Zero) {
             # Which of the two failures is this? The app now records the lazy
             # path to ~/.terse/lazy-window.log, so "the keystroke never arrived"

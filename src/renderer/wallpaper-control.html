@@ -126,6 +126,16 @@
     .tune-foot{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:9px;
       border-top:1px solid var(--bd)}
     .tune-count{margin-left:auto;font-size:10px;color:var(--t3)}
+    /* 预览中 —— 提示,不是错误。语气要像"还差一步",不是"你做错了"。 */
+    #previewOnly{position:sticky;bottom:8px;z-index:5;display:flex;align-items:center;gap:8px;
+      margin:10px 0;padding:9px 12px;border-radius:12px;
+      background:color-mix(in srgb, var(--ac) 14%, rgba(10,11,18,.92));
+      border:1px solid color-mix(in srgb, var(--ac) 45%, transparent);
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    #previewOnly .po-dot{width:7px;height:7px;border-radius:50%;background:var(--ac);flex:none;
+      box-shadow:0 0 8px var(--ac)}
+    #previewOnly .po-t{font-size:11.5px;color:var(--t1);line-height:1.45}
+    #previewOnly .po-btn{margin-left:auto;flex:none;border-color:var(--ac);color:var(--ac);font-weight:800}
     .sty{position:relative;border:1px solid var(--bd);border-radius:10px;padding:8px 9px 9px;
       cursor:pointer;overflow:hidden;background:rgba(255,255,255,.02);transition:border-color .15s,background .15s}
     .sty:hover{background:rgba(255,255,255,.05)}
@@ -220,6 +230,14 @@
             <span id="tuneCount" class="tune-count"></span>
           </div>
         </div>
+      </div>
+
+      <!-- 免费用户改了东西才出现。常驻一条,而不是弹窗 —— 拖一次滑块会连发几十个
+           事件,每个都弹一次会把人赶走。 -->
+      <div id="previewOnly" style="display:none">
+        <span class="po-dot"></span>
+        <span class="po-t">预览中 —— 这些改动需要 Pro 才能应用到桌面壁纸</span>
+        <button id="poUpgrade" class="tune-btn po-btn">升级</button>
       </div>
 
       <div class="card">
@@ -364,12 +382,23 @@
         } catch (e) {}
       }
       if (!pro) {
-        try { if (T.requestUpgrade) await T.requestUpgrade('wallpaper_tune'); } catch (e) {}
+        // 常驻提示,不弹窗:拖一格滑块就是几十个事件,弹几十次窗没人受得了。
+        showPreviewOnly();
         return;                       // 预览留着,cfg 不动
       }
       cfg.customStyle = custom;
       save();
       updateTuneMeta();
+    }
+
+    function wirePreviewOnly(){
+      const b = document.getElementById('poUpgrade');
+      if (b) b.addEventListener('click', async () => {
+        try {
+          if (T.requestUpgrade) await T.requestUpgrade('wallpaper');
+          else if (T.showMainWindow) await T.showMainWindow();
+        } catch (e) {}
+      });
     }
 
     function wireTune(){
@@ -383,7 +412,7 @@
       });
       $('#tuneReset') && $('#tuneReset').addEventListener('click', async () => {
         if (prevPro && prevPro.setStyle) prevPro.setStyle(shownStyle(), null);
-        if (!window.__wpPro) { try { if (T.requestUpgrade) await T.requestUpgrade('wallpaper_tune'); } catch(e){} return; }
+        if (!proApply()) return;
         cfg.customStyle = null; save(); renderTune();
       });
 
@@ -429,9 +458,10 @@
           style="background:radial-gradient(120% 120% at 30% 20%, ${b}, ${a} 70%, #0a0b12)">
           <span class="nm">${n}</span></div>`).join('');
       document.querySelectorAll('.th').forEach(el=>el.addEventListener('click',()=>{
-        cfg.theme = el.dataset.t;
+        const t = el.dataset.t;
         document.querySelectorAll('.th').forEach(x=>x.classList.toggle('sel',x===el));
-        prev && prev.setTheme(cfg.theme); save();
+        prev && prev.setTheme(t); prevPro && prevPro.setTheme && prevPro.setTheme(t);
+        if (proApply()) { cfg.theme = t; save(); }
       }));
     }
 
@@ -562,6 +592,33 @@
      *  see — the controls are visibly there, visibly locked, and one click
      *  explains why.
      */
+    /* ── Pro 闸门 ────────────────────────────────────────────────────────────
+       规矩只有一条:**预览永远跟手,写盘才要 Pro。**
+
+       之前是把控件 disabled 掉、再给一层 pointer-events:none —— 免费用户连拖都拖不动,
+       于是永远看不到 Pro 到底长什么样。看不见的东西没人会买,这个锁法既挡住了转化,
+       也让面板显得坏了。
+
+       换成:随便拖,预览实时跟着变,只有"应用到桌面"这一步需要 Pro。拖动时不弹窗
+       —— 拖一次滑块会连发几十个 input,每个都弹一次会把人赶走 —— 改成底部一条常驻
+       提示,升级按钮就在那儿。 */
+
+    /** 免费用户改的东西只进预览,不进 cfg。
+     *  和风格选择同一个道理:提前写 cfg,之后任何一次 save 都会把 Pro 的值带上去。 */
+    function proApply(){
+      if (window.__wpPro) { hidePreviewOnly(); return true; }
+      showPreviewOnly();
+      return false;
+    }
+    function showPreviewOnly(){
+      const b = document.getElementById('previewOnly');
+      if (b) b.style.display = 'flex';
+    }
+    function hidePreviewOnly(){
+      const b = document.getElementById('previewOnly');
+      if (b) b.style.display = 'none';
+    }
+
     async function applyProLock(){
       let pro = false;
       try {
@@ -571,16 +628,12 @@
         pro = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
       } catch (e) { /* offline → treat as free */ }
       window.__wpPro = pro;
-      const ids = ['sInt','sAng','sQual','showPanel'];
-      ids.forEach(function(id){
+      // 控件一律保持可用 —— 免费用户要能拖、能点、能看见结果。
+      ['sInt','sAng','sQual','showPanel'].forEach(function(id){
         const el = document.getElementById(id);
-        if (!el) return;
-        el.disabled = !pro;
-        const row = el.closest('.card') || el.parentElement;
-        if (row) row.classList.toggle('locked', !pro);
+        if (el) el.disabled = false;
       });
-      const th = document.getElementById('themes');
-      if (th) th.classList.toggle('locked', !pro);
+      if (pro) hidePreviewOnly();
       document.querySelectorAll('.pro-lock-tag').forEach(function(n){ n.remove(); });
       if (!pro) {
         [document.getElementById('themes'), document.getElementById('sInt')].forEach(function(anchor){
@@ -596,16 +649,9 @@
       }
     }
 
-    document.addEventListener('click', function (e) {
-      // A locked control should explain itself rather than silently do nothing.
-      const card = e.target.closest && e.target.closest('.locked');
-      if (!card || window.__wpPro) return;
-      e.preventDefault(); e.stopPropagation();
-      try {
-        if (T.requestUpgrade) T.requestUpgrade('wallpaper_settings');
-        else if (T.navigateBack) T.navigateBack();
-      } catch (err) { /* ignore */ }
-    }, true);
+    /* 旧的锁模型留下的拦截器已经删掉。它在捕获阶段吃掉 .locked 卡片上的所有点击 ——
+       现在没有任何东西再加 .locked,而只要它还在,以后谁再用这个类名做纯视觉标记,
+       那张卡片就会静默地不可点。 */
 
     function renderEngines(){
       document.querySelectorAll('.eng').forEach(el=>{
@@ -625,7 +671,7 @@
     }
 
     function wire(){
-      wireTune();
+      wireTune(); wirePreviewOnly();
       $('#btnBack').addEventListener('click',()=>T.navigateBack());
       document.querySelectorAll('.eng').forEach(el=>el.addEventListener('click',async ()=>{
         if (cfg.engine === el.dataset.e) return;
@@ -664,13 +710,31 @@
         save();
       }));
       $('#enable').addEventListener('change', e=>{ cfg.enabled = e.target.checked; T.setWallpaperEnabled(cfg.enabled); });
-      $('#showPanel').addEventListener('change', e=>{ cfg.showPanel = e.target.checked; save(); });
-      $('#sInt').addEventListener('input', e=>{ cfg.intensity = +e.target.value; $('#vInt').textContent = cfg.intensity.toFixed(1)+'×';
-        prev && prev.setIntensity && prev.setIntensity(cfg.intensity); save(); });
-      $('#sAng').addEventListener('input', e=>{ cfg.angle = +e.target.value; $('#vAng').textContent = cfg.angle+'°';
-        prev && prev.setAngle(cfg.angle); save(); });
-      $('#sQual').addEventListener('input', e=>{ cfg.quality = +e.target.value; $('#vQual').textContent = cfg.quality;
-        prev && prev.setQuality(cfg.quality); save(); });
+      // 每一个都是:先动预览,再决定要不要写盘。cfg 只在 Pro 时更新 —— 否则免费用户
+      // 拖过的值会藏在 cfg 里,等下一次任何 save 一起写出去。
+      $('#showPanel').addEventListener('change', e=>{
+        const v = e.target.checked;
+        if (proApply()) { cfg.showPanel = v; save(); }
+      });
+      $('#sInt').addEventListener('input', e=>{
+        const v = +e.target.value;
+        $('#vInt').textContent = v.toFixed(1)+'×';
+        prev && prev.setIntensity && prev.setIntensity(v);
+        prevPro && prevPro.setIntensity && prevPro.setIntensity(v);
+        if (proApply()) { cfg.intensity = v; save(); }
+      });
+      $('#sAng').addEventListener('input', e=>{
+        const v = +e.target.value;
+        $('#vAng').textContent = v+'°';
+        prev && prev.setAngle(v); prevPro && prevPro.setAngle && prevPro.setAngle(v);
+        if (proApply()) { cfg.angle = v; save(); }
+      });
+      $('#sQual').addEventListener('input', e=>{
+        const v = +e.target.value;
+        $('#vQual').textContent = v;
+        prev && prev.setQuality(v); prevPro && prevPro.setQuality && prevPro.setQuality(v);
+        if (proApply()) { cfg.quality = v; save(); }
+      });
     }
 
     (async () => {

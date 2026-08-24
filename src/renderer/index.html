@@ -192,6 +192,19 @@
           <span class="sb-emoji" id="sbPalIcon">🐾</span>
           <span>Pals</span>
         </button>
+        <!-- Friends / Room / Plaza — the views for these already existed in this
+             file (friendsView, roomView, plazaView) and the room window and its
+             commands are in the Windows backend now, but the rail had no buttons,
+             so on Windows there was no way to reach any of it. A user reported
+             exactly that: installed the build, could not find rooms, friends or
+             the plaza anywhere.
+
+             Taken from main verbatim. NOT taken: the `island` entry beside them
+             there, which opens the permission-control page. Windows has no
+             permission backend at all - permission_control_status and the eight
+             commands around it do not exist - so that button would open a page
+             whose every control errors. It is also the feature the other session
+             was told to hide and default off because it is not ready. -->
         <!-- Island permission control — its own PAGE, not a toggle in the rail.
              It was a chip here with an ON/OFF pill, which made a mode that
              reaches into every running agent a single stray click away, with
@@ -490,7 +503,7 @@
           Send it anywhere — WeChat, Douyin, QQ, WhatsApp, Telegram, X, or any chat app. Or have them scan the code.
         </p>
         <p style="font-size:11px;color:var(--btn);font-weight:700;line-height:1.6;margin:0 0 8px">
-          Invite friends and get Pro free — when a friend joins, you both get 14 days.
+          Invite friends and get Pro free — when someone NEW to Terse signs up with your link, you both get 14 days.
         </p>
         <div style="display:flex;gap:8px;align-items:center">
           <input id="frLink" readonly spellcheck="false"
@@ -571,6 +584,21 @@
         </div>
       </div>
 
+      <!-- Above both panels on purpose: your name is the thing everyone else
+           sees, whether you are in a room right now or about to make one. -->
+      <div class="setting-group">
+        <label class="setting-label">Your nickname</label>
+        <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+          What everyone in the room sees in the member list. Change it any time — it updates for them live.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="rmNick" placeholder="e.g. 小明" maxlength="40" spellcheck="false"
+                 style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                        padding:8px 10px;color:var(--t1);font-size:12px">
+          <button class="ob-btn" id="rmNickSave">Save</button>
+        </div>
+      </div>
+
       <div id="rmOut">
         <div class="setting-group">
           <label class="setting-label">Start a room</label>
@@ -625,20 +653,42 @@
             <button class="ob-btn" id="rmCopy">Copy</button>
           </div>
           <div id="rmQr" style="margin-top:12px;display:flex;gap:12px;align-items:center"></div>
+          <div style="margin-top:12px">
+            <button class="ob-btn" id="rmOpenChat">💬 Open the chat window</button>
+            <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:8px 0 0">
+              The member list and the conversation live in their own window — the wallpaper sits behind
+              the desktop icons, so nothing drawn on it can be clicked. The wallpaper shows the room in
+              big text; the window is where you talk.
+            </p>
+          </div>
+        </div>
+
+        <!-- Owner-only, and directly under the code, because "how do people find
+             this room?" is the question this page exists to answer. It was a
+             checkbox further down, which is why nobody found the way to publish. -->
+        <div class="setting-group" id="rmListingGroup" style="display:none">
+          <label class="setting-label">Plaza listing</label>
+          <p id="rmListingState" style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 9px">
+            This room is private — only people you send the code to can get in.
+          </p>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="rmListCategory" style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                          padding:8px 6px;color:var(--t1);font-size:12px">
+              <option value="coding">Coding</option>
+              <option value="study">Study</option>
+              <option value="work">Work</option>
+              <option value="gaming">Gaming</option>
+              <option value="chat">Chat</option>
+              <option value="other">Other</option>
+            </select>
+            <button class="ob-btn" id="rmListToggle">Publish to the Plaza</button>
+          </div>
         </div>
 
         <!-- Only the owner ever sees this, and only when someone is waiting. -->
         <div class="setting-group" id="rmKnockGroup" style="display:none">
           <label class="setting-label">Asking to join</label>
           <div id="rmKnocks" class="mcp-list" style="margin-top:6px"></div>
-        </div>
-
-        <div class="setting-group" id="rmListingGroup" style="display:none">
-          <label class="setting-label">Plaza listing</label>
-          <label style="display:flex;gap:7px;align-items:center;margin-top:6px;font-size:11px;color:var(--t3)">
-            <input type="checkbox" id="rmListed">
-            <span>Anyone can find this room and ask to join</span>
-          </label>
         </div>
 
         <div class="setting-group">
@@ -657,8 +707,25 @@
         <div class="setting-group">
           <button class="ob-btn ghost" id="rmLeave">Leave room</button>
           <button class="ob-btn ghost" id="rmClose" style="margin-left:8px;display:none">Close room</button>
+          <!-- Leaving and closing are different verbs and the difference matters:
+               one is you going home, the other is the room ceasing to exist for
+               everybody in it. Say so where the buttons are. -->
+          <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:8px 0 0">
+            Leaving only takes you out — the room stays open, everyone in it keeps talking,
+            and it stays in Recent rooms below. Closing ends it for everybody.
+          </p>
           <p id="rmMsg" style="font-size:11px;color:var(--t3);margin:8px 0 0;min-height:14px"></p>
         </div>
+      </div>
+
+      <!-- Recent rooms — shown whether or not you are in one, because its whole
+           job is being the way back into the ones you are not in. -->
+      <div class="setting-group" id="rmRecentGroup" style="display:none">
+        <label class="setting-label"><span>Recent rooms</span> <span id="rmRecentCount" style="color:var(--t3)"></span></label>
+        <p style="font-size:11px;color:var(--t3);line-height:1.6;margin:6px 0 8px">
+          Rooms you have been in. A room outlives everyone leaving it, so any of these opens again in one click.
+        </p>
+        <div id="rmRecent" class="mcp-list"></div>
       </div>
     </div>
 
@@ -1070,7 +1137,7 @@
         <button id="inviteClose" style="position:absolute;top:12px;right:14px;width:28px;height:28px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer">✕</button>
         <div style="font-size:34px;text-align:center">🎁</div>
         <h2 style="color:var(--t1);font-size:16px;font-weight:800;text-align:center;margin:6px 0 2px">Give Pro, get Pro</h2>
-        <p id="inviteReward" style="color:var(--t3);font-size:11px;text-align:center;margin:0 0 14px;line-height:1.5">Share your code. When a friend starts Pro, you <b style="color:var(--t1)">both</b> get 14 days of Pro free.</p>
+        <p id="inviteReward" style="color:var(--t3);font-size:11px;text-align:center;margin:0 0 14px;line-height:1.5">Share your code. When someone <b style="color:var(--t1)">new to Terse</b> signs up with it and starts Pro, you both get 14 days of Pro free.</p>
 
         <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:5px">Your invite code</div>
         <div style="display:flex;gap:6px;margin-bottom:12px">

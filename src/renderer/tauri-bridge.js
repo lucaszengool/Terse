@@ -176,6 +176,9 @@ if (window.__TAURI__) {
     getDesktopPicture: (force) => invoke('get_desktop_picture', { force: !!force }),
     setWallpaperConfig: (config) => invoke('set_wallpaper_config', { config }),
     setWallpaperEnabled: (on) => invoke('set_wallpaper_enabled', { on }),
+    // Pro: lift the particles above every window (or drop them back to the
+    // desktop layer). Re-levels the live window immediately.
+    setWallpaperOverlay: (on) => invoke('set_wallpaper_overlay', { on }),
     getTokenPulse: () => invoke('get_token_pulse'),
 
     // Session history
@@ -288,6 +291,10 @@ if (window.__TAURI__) {
     hidePetWindow: () => invoke('hide_pet_window'),
     // Farm window
     showFarmWindow: () => invoke('show_farm_window'),
+    // The room's chat lives in a real window: the wallpaper sits below Finder's
+    // desktop-icon layer, so nothing drawn on it can ever be clicked.
+    showRoomWindow: (focus) => invoke('show_room_window', { focus: focus !== false }),
+    hideRoomWindow: () => invoke('hide_room_window'),
     // MCP Manager (Secure)
     mcpList: () => invoke('mcp_list'),
     mcpSetEnabled: (sourcePath, name, enabled) => invoke('mcp_set_enabled', { sourcePath, name, enabled }),

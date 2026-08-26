@@ -2054,6 +2054,9 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['ENTER CODE'] = '
 (function augmentFreemiumI18n() {
   const add = (lang, obj) => { TRANSLATIONS[lang] = Object.assign({}, TRANSLATIONS[lang], obj); };
   add('en', {
+    wp_top_t: "Always on top",
+    wp_top_label: "Float the particles above every window",
+    wp_top_note: "The field and the particle text stay visible over apps, browsers and full-screen windows instead of sitting behind them. Still click-through — it never takes a click meant for what is underneath.",
     common_language: "Language",
     dr_tab: "Checkup",
     dr_readonly: "That was a read-only checkup — nothing was changed",
@@ -2080,6 +2083,9 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['ENTER CODE'] = '
     pro_gate_connection: 'Connection Doctor is a Pro feature. Start your free trial to auto-fix agent connectivity.',
   });
   add('zh-Hans', {
+    wp_top_t: "始终置顶",
+    wp_top_label: "让粒子浮在所有窗口之上",
+    wp_top_note: "粒子和粒子文字会一直显示在应用、浏览器和全屏窗口的上面,而不是被它们盖住。依然是点击穿透的 —— 不会抢走本该落在下面那层的任何一次点击。",
     common_language: "语言",
     dr_tab: "体检",
     dr_readonly: "这是一次只读体检 —— 没有改动任何东西",
@@ -2105,6 +2111,9 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['ENTER CODE'] = '
     pro_gate_connection: '连接体检是 Pro 功能。开始免费试用，自动修复智能体连接问题。',
   });
   add('zh-Hant', {
+    wp_top_t: "始終置頂",
+    wp_top_label: "讓粒子浮在所有視窗之上",
+    wp_top_note: "粒子和粒子文字會一直顯示在應用程式、瀏覽器和全螢幕視窗的上面,而不是被它們蓋住。依然是點擊穿透的 —— 不會搶走本該落在下面那層的任何一次點擊。",
     common_language: "語言",
     dr_tab: "體檢",
     dr_readonly: "這是一次唯讀體檢 —— 沒有改動任何東西",

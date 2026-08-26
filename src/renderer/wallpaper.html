@@ -10,6 +10,9 @@
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;width:100%;overflow:hidden;background:#05060a}
+    /* 置顶模式:页面自己不能有底色。窗口已经是 non-opaque + clearColor,
+       只要这里还留着 #05060a,置顶后就是一块盖住整个屏幕的黑板。 */
+    html.overlay, html.overlay body, html.overlay #stage { background: transparent !important; }
     #stage{position:fixed;inset:0;display:block;width:100vw;height:100vh}
     #panel{position:fixed;left:30px;bottom:30px;padding:15px 20px;border-radius:18px;
       background:rgba(10,12,20,.30);backdrop-filter:blur(18px) saturate(1.2);
@@ -163,16 +166,27 @@
       wp.start();
     }
 
+    /** 置顶模式的页面这一半:窗口层级由 Rust 改,这里只负责"别画背景"。 */
+    function applyOverlay(on){
+      document.documentElement.classList.toggle('overlay', !!on);
+      if (wp && wp.setOverlay) wp.setOverlay(!!on);
+    }
+
     function applyConfig(c){
       const prevEngine = cfg.engine;
       cfg = Object.assign(cfg, c || {});
       if (cfg.engine !== prevEngine) { mountEngine(); applyAccent(cfg.theme);
+        // A fresh engine knows nothing about the mode, and this branch RETURNS —
+        // so without re-applying here, switching engines while overlaying paints
+        // the desktop-picture bed back over every window on screen.
+        applyOverlay(cfg.overlay === true);
         panel.classList.toggle('off', cfg.showPanel === false); return; }
       if (!wp) return;
       // 换风格不重建引擎 —— setStyle 只改每帧读的参数,正在显示的那条字会用旧手法
       // 散完再换。音域回响引擎没有这个方法,判空即可。
       // 第二个参数一定要传:省略表示"别动自定义",而这里正是自定义可能变了的地方。
       if (wp.setStyle) wp.setStyle(cfg.style, cfg.customStyle || null);
+      applyOverlay(cfg.overlay === true);
       wp.setTheme(cfg.theme); wp.setQuality(cfg.quality|0); wp.setAngle(cfg.angle|0);
       wp.setIntensity(+cfg.intensity || 1);
       applyAccent(cfg.theme);

@@ -649,9 +649,11 @@ export default class MineradioWallpaper {
         this._edgeTex.needsUpdate = true;
         this.u.uHasDepth.value = 1;
       } catch (e) { /* 边缘图失败也能跑,只是没有浮雕 */ }
-      // 底图同时铺到画布背后,粒子只是在它上面律动
-      if (this.canvas && this.canvas.parentElement) {
-        this.canvas.parentElement.style.background = `#05060a url(${JSON.stringify(src)}) center/cover no-repeat`;
+      // 底图同时铺到画布背后,粒子只是在它上面律动 —— 但**置顶模式下不能铺**:
+      // 那一层会盖在所有窗口上面,等于把桌面壁纸复制一份糊在屏幕最前面。
+      this._bedCss = `#05060a url(${JSON.stringify(src)}) center/cover no-repeat`;
+      if (this.canvas && this.canvas.parentElement && !this._overlay) {
+        this.canvas.parentElement.style.background = this._bedCss;
       }
     };
     img.src = src;
@@ -968,6 +970,17 @@ export default class MineradioWallpaper {
    *  切换因此是无缝的:正在显示的那条字会用旧手法散完,下一条才换新的。
    *
    *  free 一律留在默认风格(见构造函数里的说明)。 */
+  /** 置顶模式:只留粒子,底图那一层必须撤掉。
+   *
+   *  渲染器本来就是 alpha:true / clearColor(…, 0),所以画布自己是透明的;
+   *  唯一不透明的是画布背后那张底图,以及页面的背景色(在 wallpaper.html)。 */
+  setOverlay(on) {
+    this._overlay = !!on;
+    const host = this.canvas && this.canvas.parentElement;
+    if (!host) return;
+    host.style.background = this._overlay ? 'transparent' : (this._bedCss || '');
+  }
+
   setStyle(id, custom) {
     // custom === undefined 表示"这次只换风格,别动我的自定义";传 null 才是清空。
     if (custom !== undefined) this._custom = this.pro ? custom : null;

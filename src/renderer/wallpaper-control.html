@@ -220,6 +220,20 @@
 
       <!-- 自定义。八种风格是起点,不是上限:从当前这一种出发,22 个参数全都能改,
            每动一格右边的 PRO 预览就立刻变。控件是照 STYLE_SCHEMA 生成的,不是手写的。 -->
+      <!-- 置顶。放在风格/参数之前:它改的是"这东西在哪一层",比它长什么样更根本。 -->
+      <div class="card">
+        <div class="card-t"><span data-i18n="wp_top_t">Always on top</span> <span class="pro-tag">PRO</span></div>
+        <label style="display:flex;gap:9px;align-items:flex-start;margin-top:8px;cursor:pointer">
+          <input type="checkbox" id="wpTop" style="margin-top:2px">
+          <span>
+            <div style="font-size:12px;color:var(--t1)" data-i18n="wp_top_label">Float the particles above every window</div>
+            <div class="note" style="padding:0;margin-top:3px" data-i18n="wp_top_note">The field and the particle text stay visible over
+              apps, browsers and full-screen windows instead of sitting behind them. Still click-through — it never
+              takes a click meant for what is underneath.</div>
+          </span>
+        </label>
+      </div>
+
       <div class="card" id="tuneCard">
         <div class="card-t" style="display:flex;align-items:center;gap:8px">
           <span>Fine-tune <span class="pro-tag">PRO</span></span>
@@ -400,6 +414,21 @@
       cfg.customStyle = custom;
       save();
       updateTuneMeta();
+    }
+
+    /* 置顶开关。和这一页其他控件同一条规矩:预览随便看,写盘要 Pro。
+       但这一个有个不同之处 —— 它改的是**真窗口的层级**,预览里没有"层级"这回事,
+       所以免费用户能看到的是说明,而不是一个假的预览。这里如实说明,不假装。 */
+    function wireTop(){
+      const t = document.getElementById('wpTop');
+      if (!t) return;
+      t.addEventListener('change', async (e) => {
+        const on = e.target.checked;
+        if (!proApply()) { e.target.checked = !on; return; }   // 不写盘就不留状态
+        cfg.overlay = on;
+        try { if (T.setWallpaperOverlay) await T.setWallpaperOverlay(on); } catch (err) {}
+        save();
+      });
     }
 
     function wirePreviewOnly(){
@@ -675,6 +704,7 @@
     function paint(){
       $('#enable').checked = !!cfg.enabled;
       $('#showPanel').checked = cfg.showPanel !== false;
+      { const t = $('#wpTop'); if (t) t.checked = cfg.overlay === true; }
       $('#sInt').value = cfg.intensity; $('#vInt').textContent = (+cfg.intensity).toFixed(1)+'×';
       $('#sAng').value = cfg.angle; $('#vAng').textContent = cfg.angle+'°';
       $('#sQual').value = cfg.quality; $('#vQual').textContent = cfg.quality;
@@ -682,7 +712,7 @@
     }
 
     function wire(){
-      wireTune(); wirePreviewOnly();
+      wireTune(); wirePreviewOnly(); wireTop();
       $('#btnBack').addEventListener('click',()=>T.navigateBack());
       document.querySelectorAll('.eng').forEach(el=>el.addEventListener('click',async ()=>{
         if (cfg.engine === el.dataset.e) return;

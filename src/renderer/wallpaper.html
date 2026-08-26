@@ -137,8 +137,9 @@
     /** 换引擎:整台拆掉重建(两者的 WebGL 上下文/几何完全不同,没法热切) */
     function mountEngine(){
       if (wp) { try { wp.dispose(); } catch(e){} wp = null; }
-      // mineradio 会把用户的真壁纸铺到 body 上;切回音域回响要清掉,否则底图还留着
-      document.body.style.background = '#05060a';
+      // mineradio 会把用户的真壁纸铺到 body 上;切回音域回响要清掉,否则底图还留着。
+      // 置顶时不能写这个纯色 —— 那正是"整块黑板盖住屏幕"的来源;置空即可。
+      document.body.style.background = overlayOK() ? '' : '#05060a';
       const E = engineOf(cfg);
       // pro MUST be forwarded here: without it the engine builds its free
       // field no matter what the user picked in the control panel.
@@ -166,6 +167,21 @@
       wp.start();
     }
 
+    /** 只有粒子引擎能透明:mineradio/cinematic 是 alpha:true + clearColor 全 0,
+     *  而 topography 走 bloom+grade 的 composer,最后一道全屏 pass 天生不透明 ——
+     *  把它抬到屏保层就是一整块盖住屏幕的地形。Rust 侧有同样一条否决(overlay_allowed),
+     *  这里这条只是让画面和窗口层级保持一致。 */
+    function overlayOK(c){
+      const k = c || cfg;
+      // 置顶是 Pro 功能。控制面板在你点的那一刻查过一次许可,之后再也不查 ——
+      // 于是订阅到期后 wallpaper.json 里那个 "overlay":true 会一直生效,手改文件
+      // 同理。和 cinematic 引擎一样,在真正画像素的地方再查一次。
+      // proOK === null 表示还没查到(离线):沿用 fail-open,不为难已经付过钱的人。
+      if (proOK === false) return false;
+      return k.overlay === true &&
+             (k.engine === 'mineradio' || k.engine === 'cinematic');
+    }
+
     /** 置顶模式的页面这一半:窗口层级由 Rust 改,这里只负责"别画背景"。 */
     function applyOverlay(on){
       document.documentElement.classList.toggle('overlay', !!on);
@@ -179,14 +195,14 @@
         // A fresh engine knows nothing about the mode, and this branch RETURNS —
         // so without re-applying here, switching engines while overlaying paints
         // the desktop-picture bed back over every window on screen.
-        applyOverlay(cfg.overlay === true);
+        applyOverlay(overlayOK());
         panel.classList.toggle('off', cfg.showPanel === false); return; }
       if (!wp) return;
       // 换风格不重建引擎 —— setStyle 只改每帧读的参数,正在显示的那条字会用旧手法
       // 散完再换。音域回响引擎没有这个方法,判空即可。
       // 第二个参数一定要传:省略表示"别动自定义",而这里正是自定义可能变了的地方。
       if (wp.setStyle) wp.setStyle(cfg.style, cfg.customStyle || null);
-      applyOverlay(cfg.overlay === true);
+      applyOverlay(overlayOK());
       wp.setTheme(cfg.theme); wp.setQuality(cfg.quality|0); wp.setAngle(cfg.angle|0);
       wp.setIntensity(+cfg.intensity || 1);
       applyAccent(cfg.theme);
@@ -364,10 +380,23 @@
       // subscription can start or end while it runs.
       await refreshEntitlement();
       mountEngine();
+      // The gap that made this look broken: on startup with overlay saved ON,
+      // nothing applied the mode, so the desktop-picture bed was painted — at
+      // screen-saver level that is a copy of your wallpaper laid over every
+      // window. applyConfig covers the later paths; boot has to cover the first.
+      applyOverlay(overlayOK());
       setInterval(async () => {
         const was = proOK;
         await refreshEntitlement();
         if (was !== proOK && cfg.engine === 'cinematic') mountEngine();
+        if (was !== proOK) {
+          applyOverlay(overlayOK());
+          // 页面不画背景还不够 —— 窗口层级在 Rust 那边,得让它按同一条规则重算。
+          // relevel 而不是 setWallpaperOverlay:后者会写盘,等于用一次许可查询的
+          // 结果覆盖掉用户自己存的偏好,续订回来开关就没了。
+          try { if (window.terse && window.terse.relevelWallpaperWindow)
+                  window.terse.relevelWallpaperWindow(overlayOK()); } catch(e){}
+        }
       }, 300000);
       applyAccent(cfg.theme);
       panel.classList.toggle('off', cfg.showPanel === false);

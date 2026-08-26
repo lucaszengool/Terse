@@ -3597,7 +3597,15 @@ pub fn run() {
                     .inner_size(ww, wh)
                     .position(0.0, 0.0)
                     .decorations(false)
-                    .transparent(false)
+                    // transparent(true), even though desktop mode paints an
+                    // opaque bed over it. Per-pixel alpha on Windows needs the
+                    // window composited that way from creation - it cannot be
+                    // switched on later - and the Pro overlay is worthless
+                    // without it: a non-transparent window at the top level is a
+                    // black sheet over the whole screen. Desktop mode is
+                    // unaffected because the page paints the user's picture as a
+                    // background, so there is nothing to see through.
+                    .transparent(true)
                     .resizable(false)
                     .shadow(false)
                     .skip_taskbar(true)
@@ -4424,6 +4432,7 @@ pub fn run() {
             get_wallpaper_config,
             set_wallpaper_config,
             set_wallpaper_enabled,
+            set_wallpaper_overlay,
             get_token_pulse,
             // ── Parity: referrals + upgrade prompt ──
             request_upgrade,
@@ -6168,8 +6177,21 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
     let _ = win.show();
     // Re-parenting touches the shell's window tree — must run on the main thread,
     // so this is safe whether called from `setup` or from a command handler thread.
+    // Honour the Pro overlay across restarts. Without this the switch survives
+    // in wallpaper.json but the window silently drops back behind every other
+    // window on the next launch, which reads as the setting having been lost.
+    let overlay = get_wallpaper_config()
+        .get("overlay")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let win2 = win.clone();
-    let _ = app.run_on_main_thread(move || pin_wallpaper_window(&win2));
+    let _ = app.run_on_main_thread(move || {
+        if overlay {
+            apply_wallpaper_overlay(&win2);
+        } else {
+            pin_wallpaper_window(&win2);
+        }
+    });
 
     // Then again, twice, a beat later. On Windows 11 24H2 the wallpaper WorkerW
     // frequently does not exist yet when an app launches with the session — it
@@ -6184,7 +6206,96 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
         for delay_ms in [1500u64, 5000] {
             std::thread::sleep(std::time::Duration::from_millis(delay_ms));
             let w = win3.clone();
-            let _ = app2.run_on_main_thread(move || pin_wallpaper_window(&w));
+            // Re-read each time: the user may have flipped the switch during the
+            // wait, and re-pinning an overlay to the desktop would undo it.
+            let ov = get_wallpaper_config()
+                .get("overlay")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let _ = app2.run_on_main_thread(move || {
+                if ov { apply_wallpaper_overlay(&w) } else { pin_wallpaper_window(&w) }
+            });
+        }
+    });
+    Ok(())
+}
+
+/// Pro: lift the wallpaper ABOVE every window instead of pinning it behind them.
+///
+/// The desktop pin makes this window a WS_CHILD of the shell's WorkerW at the
+/// bottom of the z-order — which is what makes it wallpaper, and also why the
+/// first window you open hides it. Overlay mode inverts all of that: detach from
+/// WorkerW, become a top-level popup again, and go HWND_TOPMOST.
+///
+/// Two properties are asserted rather than assumed, because either one missing
+/// makes the machine unusable:
+///
+///   · It stays click-through. A window covering the whole screen at the top of
+///     the z-order that accepted clicks would swallow every click on the desktop.
+///     WS_EX_TRANSPARENT | WS_EX_NOACTIVATE, plus set_ignore_cursor_events.
+///   · It stays see-through. WS_EX_LAYERED with a 255 alpha does not tint
+///     anything; the transparency comes per-pixel from the webview, which the
+///     page switches to by dropping its background in overlay mode. Without the
+///     page's half this would be an opaque rectangle over everything.
+#[cfg(target_os = "windows")]
+fn apply_wallpaper_overlay(win: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::{COLORREF, HWND};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetLayeredWindowAttributes, SetParent, SetWindowLongPtrW, SetWindowPos,
+        GWL_EXSTYLE, GWL_STYLE, HWND_TOPMOST, LWA_ALPHA, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
+        SWP_NOACTIVATE, SWP_SHOWWINDOW, WS_CHILD, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+        WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_POPUP, WS_VISIBLE,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::GetSystemMetrics;
+    let Ok(raw) = win.hwnd() else { return };
+    unsafe {
+        let hwnd = HWND(raw.0);
+        // Out of WorkerW and back to being a real top-level window. A WS_CHILD
+        // cannot be topmost — its z-order is its parent's, and its parent is the
+        // desktop.
+        let _ = SetParent(hwnd, None);
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        SetWindowLongPtrW(
+            hwnd,
+            GWL_STYLE,
+            (style & !(WS_CHILD.0 as isize)) | (WS_POPUP.0 | WS_VISIBLE.0) as isize,
+        );
+        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        let add = (WS_EX_LAYERED.0 | WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0
+            | WS_EX_TOOLWINDOW.0) as isize;
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | add);
+        // Uniform alpha 255 = no tint. WS_EX_LAYERED without this can leave the
+        // window unpainted entirely.
+        let _ = SetLayeredWindowAttributes(hwnd, COLORREF(0), 255, LWA_ALPHA);
+        let cx = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+        let cy = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+        if cx > 0 && cy > 0 {
+            let _ = SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, cx, cy,
+                                 SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        }
+    }
+    let _ = win.set_ignore_cursor_events(true);
+    diag_log("wallpaper", "overlay ON — topmost, click-through");
+}
+
+/// Pro toggle for the always-on-top wallpaper. Off re-pins it to the desktop.
+#[tauri::command]
+fn set_wallpaper_overlay(on: bool, app: AppHandle) -> Result<(), String> {
+    let mut cfg = get_wallpaper_config();
+    cfg["overlay"] = serde_json::json!(on);
+    let _ = set_wallpaper_config(cfg, app.clone());
+    let Some(win) = app.get_webview_window("wallpaper") else {
+        return Err("wallpaper window not initialized".into());
+    };
+    // Both paths touch the shell's window tree, so both must run on the main
+    // thread — the lesson from three separate off-thread window bugs this week.
+    let w = win.clone();
+    let _ = app.run_on_main_thread(move || {
+        if on {
+            apply_wallpaper_overlay(&w);
+        } else {
+            pin_wallpaper_window(&w);
+            diag_log("wallpaper", "overlay OFF — re-pinned to the desktop");
         }
     });
     Ok(())

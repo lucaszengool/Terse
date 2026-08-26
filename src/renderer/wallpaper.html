@@ -10,6 +10,9 @@
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;width:100%;overflow:hidden;background:#05060a}
+    /* 置顶模式:页面自己不能有底色。窗口已经是 non-opaque + clearColor,
+       只要这里还留着 #05060a,置顶后就是一块盖住整个屏幕的黑板。 */
+    html.overlay, html.overlay body, html.overlay #stage { background: transparent !important; }
     #stage{position:fixed;inset:0;display:block;width:100vw;height:100vh}
     #panel{position:fixed;left:30px;bottom:30px;padding:15px 20px;border-radius:18px;
       background:rgba(10,12,20,.30);backdrop-filter:blur(18px) saturate(1.2);
@@ -53,7 +56,7 @@
 
     <div class="divide"></div>
     <div class="krow">
-      <span class="klab">Saved by Terse 优化</span>
+      <span class="klab" data-i18n="wpp_saved">Saved by Terse</span>
       <span class="kval saved"><span id="pSaved">0</span><span class="pct" id="pPct">0%</span></span>
     </div>
 
@@ -65,7 +68,23 @@
     <div class="empty" id="pAgentsEmpty">No agents connected</div>
   </div>
 
+  <!-- The room has no UI here on purpose.
+
+       The wallpaper is pinned at kCGDesktopWindowLevel — below the layer Finder
+       draws desktop icons on, and that layer covers the whole screen. So a click
+       aimed at anything painted here is taken by Finder before this window sees
+       it, whatever it does with ignoresMouseEvents: a chat box drawn on the
+       wallpaper can be looked at and never typed in. The roster, the history and
+       the composer therefore live in room.html, an ordinary window that can take
+       clicks, keyboard focus and an IME.
+
+       What stays here is what the wallpaper is actually good at: saying, in text
+       you can read from across the desk, who is talking and what their agents are
+       doing. -->
+
   <script src="tauri-bridge.js"></script>
+  <script src="roomqueue.js"></script>
+  <script src="rooms.js"></script>
   <script type="module">
     import TokenWallpaper3D from './token-wallpaper-3d.js';
     import MineradioWallpaper from './mineradio-wallpaper.js';
@@ -84,7 +103,14 @@
     const ACCENTS = { indigo:'#8b6bff', ocean:'#3aa0ff', ice:'#7fe9ff', emerald:'#40e0a0',
       gold:'#ffcf5a', amber:'#ff9f43', blood:'#ff5a5a', coral:'#ff7a9c', neon:'#e146eb', mono:'#e8e8f0' };
 
-    let wp = null, lastTokens = null, cfg = { engine:'mineradio', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
+    /** 取译文,取不到就用调用处的英文 —— 壁纸的字大多是 JS 拼出来的,
+        按英文原文匹配的那套机制够不着,所以这里走 key。 */
+    const WT = (key, fallback) => {
+      const v = (window.i18n && window.i18n.t && key) ? window.i18n.t(key) : null;
+      return (v && v !== key) ? v : fallback;
+    };
+
+    let wp = null, lastTokens = null, cfg = { engine:'mineradio', style:'cinematic', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
     /** null = not checked yet (treat as entitled), true/false = a definite answer.
      *  Only an explicit false downgrades the field — see mountEngine. */
     let proOK = null;
@@ -130,17 +156,37 @@
       // would be the worse error.
       wp = new E(canvas, { theme: cfg.theme, quality: cfg.quality, angle: cfg.angle,
                            intensity: cfg.intensity,
+                           // 粒子风格。引擎自己会把非 Pro 一律钉回默认风格,所以这里
+                           // 照传即可 —— 掉出 Pro 的用户会同时失去 Pro 的字和 Pro 的风格。
+                           style: cfg.style,
+                           // 用户自己调的那份差量,和 style 一起走同一条 Pro 闸门。
+                           custom: cfg.customStyle || null,
                            pro: cfg.engine === 'cinematic' && proOK !== false });
       window.wp = wp;   // dev aid: drive from console / preview harness
       wp.start();
+    }
+
+    /** 置顶模式的页面这一半:窗口层级由 Rust 改,这里只负责"别画背景"。 */
+    function applyOverlay(on){
+      document.documentElement.classList.toggle('overlay', !!on);
+      if (wp && wp.setOverlay) wp.setOverlay(!!on);
     }
 
     function applyConfig(c){
       const prevEngine = cfg.engine;
       cfg = Object.assign(cfg, c || {});
       if (cfg.engine !== prevEngine) { mountEngine(); applyAccent(cfg.theme);
+        // A fresh engine knows nothing about the mode, and this branch RETURNS —
+        // so without re-applying here, switching engines while overlaying paints
+        // the desktop-picture bed back over every window on screen.
+        applyOverlay(cfg.overlay === true);
         panel.classList.toggle('off', cfg.showPanel === false); return; }
       if (!wp) return;
+      // 换风格不重建引擎 —— setStyle 只改每帧读的参数,正在显示的那条字会用旧手法
+      // 散完再换。音域回响引擎没有这个方法,判空即可。
+      // 第二个参数一定要传:省略表示"别动自定义",而这里正是自定义可能变了的地方。
+      if (wp.setStyle) wp.setStyle(cfg.style, cfg.customStyle || null);
+      applyOverlay(cfg.overlay === true);
       wp.setTheme(cfg.theme); wp.setQuality(cfg.quality|0); wp.setAngle(cfg.angle|0);
       wp.setIntensity(+cfg.intensity || 1);
       applyAccent(cfg.theme);
@@ -172,7 +218,7 @@
 
     // Slower poll for the richer HUD: tokens Terse optimized + live agent activity, feeding BOTH the
     // corner panel and the in-scene overlays (rising savings, hovering agent tags, centre stage).
-    const AGENT_ICON = { claude:'✳️', 'claude-code':'✳️', cursor:'▹', codex:'◆', copilot:'⧉', windsurf:'≈', gemini:'✦', hermes:'⬡' };
+    const AGENT_ICON = { claude:'✳️', 'claude-code':'✳️', cursor:'▹', codex:'◆', copilot:'⧉', windsurf:'≈', gemini:'✦', hermes:'⬡', 'deepseek-harness':'🐋', deepseek:'🐋' };
     const shortLog = t => (t||'').replace(/\s+/g,' ').trim().slice(0,46);
     // "Saveable" = the concrete waste Terse could trim from an agent's REAL traffic (agent traffic
     // never credits tokens_saved, so today's saved is ~0 — this is the honest, non-zero number).
@@ -251,7 +297,7 @@
       // Centre "now playing" stage — rotates consumed → saveable → each active agent.
       const stage = [
         { k:'Today · consumed', v: fmt(lastTokens || 0), u:'tokens' },
-        { k:'Terse 可省 · saveable', v: fmt(savedShown), u: pctShown + '%', saved:true },
+        { k: WT('wpp_saveable', 'Terse saveable'), v: fmt(savedShown), u: pctShown + '%', saved:true },
       ];
       active.slice(0, 3).forEach(a => stage.push({
         ic: a.agentIcon || AGENT_ICON[(a.agentType||'').toLowerCase()] || '🤖',
@@ -296,7 +342,19 @@
           });
         }
       }
-      wp.setAgentLog(logGroups);
+      // In a room, OUR OWN line is drawn by the room layer instead — with our
+      // name on it, exactly like everyone else's. Solo, nothing here changes:
+      // the hook does not exist and this is a single undefined check.
+      //
+      // The name matters more than it sounds. Without it the field showed four
+      // people's lines with three names on them, and the unnamed ones — yours —
+      // were indistinguishable from the wallpaper's own chatter.
+      var l0 = logGroups.length ? (logGroups[0].lines || [])[0] : null;
+      var txt = typeof l0 === 'string' ? l0 : (l0 && (l0.label || l0.text)) || '';
+      var mine = window.__terseRoomOwnLine && window.__terseRoomOwnLine(logGroups, txt);
+      if (!mine) wp.setAgentLog(logGroups);
+      // Tee the same line into the room. Throttled and mute-checked by the hook.
+      if (window.__terseRoomPublish && txt) window.__terseRoomPublish(txt);
     }
 
     async function boot(){
@@ -326,6 +384,341 @@
       window.addEventListener('resize', () => wp && wp.resize());
     }
     boot();
+
+    /* ── Glyphs as buttons ──────────────────────────────────────────────────
+       The field draws live data — the agent that is working, what this session
+       has cost, what Terse has saved — and until now it was a readout you could
+       only look at. The renderer already knows each glyph's centre and box
+       (the shader needs them to form the letters), so hit-testing is free and
+       the wallpaper becomes the fastest launcher on the machine: the thing you
+       want to open is already on screen, you just could not press it.
+
+       ARMED, not always-on. The wallpaper lives at desktop level with
+       setIgnoresMouseEvents:YES because it must never swallow clicks meant for
+       the desktop or its icons. ⌘⇧W flips that for a few seconds; Esc, a click,
+       or the timeout puts it straight back. That way the default behaviour of a
+       wallpaper is untouched and the data on it is still reachable. */
+    (function glyphButtons() {
+      var T = window.terse, core = window.__TAURI__ && window.__TAURI__.core;
+      if (!core) return;
+      var armed = false, armTimer = 0, hint = null, lastHover = null;
+
+      function setArmed(on) {
+        if (armed === on) return;
+        armed = on;
+        core.invoke('wallpaper_set_interactive', { on: on }).catch(function () {});
+        document.body.style.cursor = on ? 'default' : 'none';
+        showHint(on);
+        clearTimeout(armTimer);
+        // Safety net only. Hover normally disarms as soon as the pointer leaves
+        // the glyph, but if the cursor feed ever stalls, an armed wallpaper
+        // would keep eating desktop clicks — so it always expires on its own.
+        if (on) armTimer = setTimeout(function () { setArmed(false); }, 8000);
+        if (!on && wp) wp.setHover(null);
+      }
+
+      function showHint(on) {
+        if (!hint) {
+          hint = document.createElement('div');
+          hint.style.cssText = 'position:fixed;left:50%;bottom:38px;transform:translateX(-50%);' +
+            'padding:7px 14px;border-radius:9999px;font:600 12px -apple-system,sans-serif;' +
+            'color:#0B0B0D;background:#C9F03D;box-shadow:0 6px 24px rgba(0,0,0,.35);' +
+            'pointer-events:none;opacity:0;transition:opacity .18s;z-index:9';
+          document.body.appendChild(hint);
+        }
+        hint.textContent = WT('wpp_click_hint', 'Click any number');
+        hint.style.opacity = (on && !lastHover) ? '1' : '0';
+      }
+
+      /* Auto-arm on hover.
+         A click-through window gets no mouse events, so the cursor position
+         arrives from the native side instead (NSEvent.mouseLocation, polled
+         while the wallpaper is visible). We hit-test that, and only ask to
+         become clickable when the pointer is really over a glyph — so the
+         wallpaper borrows the cursor for the width of a number and gives it
+         straight back. No shortcut to discover: hover a number, click it. */
+      if (window.__TAURI__.event) {
+        window.__TAURI__.event.listen('wallpaper-arm-toggle', function () { setArmed(!armed); });
+        window.__TAURI__.event.listen('wallpaper-cursor', function (ev) {
+          if (!wp || !wp.hitTest) return;
+          var pt = ev.payload || [];
+          // Cocoa is bottom-left origin and in points; the DOM is top-left.
+          var x = pt[0], y = (window.screen.height - pt[1]);
+          // The wallpaper covers the whole screen, so screen == client here.
+          var hit = wp.hitTest(x, y);
+          var g = hit && hit.glyph;
+          if (g !== lastHover) { lastHover = g; wp.setHover(g); }
+          if (g && !armed) setArmed(true);
+          else if (!g && armed) setArmed(false);
+        });
+      }
+      window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') setArmed(false);
+      });
+
+      window.addEventListener('mousemove', function (e) {
+        if (!armed || !wp || !wp.hitTest) return;
+        var hit = wp.hitTest(e.clientX, e.clientY);
+        var g = hit && hit.glyph;
+        if (g !== lastHover) { lastHover = g; wp.setHover(g); }
+        document.body.style.cursor = g ? 'pointer' : 'default';
+        if (armed) { clearTimeout(armTimer); armTimer = setTimeout(function () { setArmed(false); }, 6000); }
+      });
+
+      window.addEventListener('click', function (e) {
+        if (!armed || !wp || !wp.hitTest) return;
+        var hit = wp.hitTest(e.clientX, e.clientY);
+        if (!hit) { setArmed(false); return; }      // click on empty field = dismiss
+        var g = hit.glyph;
+        // Route by what the glyph IS. These are the same kinds the engine already
+        // tags for colour, so no new taxonomy is needed.
+        try {
+          if (g.kind === 'log') {
+            // A log line belongs to a specific agent — open its timeline.
+            if (T && T.navigateToHistory) T.navigateToHistory();
+            else if (T && T.showMainWindow) T.showMainWindow();
+          } else if (g.kind === 'saved' || g.kind === 'spent' || g.kind === 'cache') {
+            if (T && T.navigateToStats) T.navigateToStats();
+          } else if (g.kind === 'agents') {
+            if (T && T.navigateToCowork) T.navigateToCowork();
+          } else if (T && T.showMainWindow) {
+            T.showMainWindow();
+          }
+        } catch (err) { /* a dead link must never leave the wallpaper armed */ }
+        setArmed(false);
+      });
+    })();
+
+    /* ── Multiplayer: teammates' agents in the same field ───────────────────
+       Strictly opt-in and strictly additive. This block does nothing at all
+       unless the machine is in a team session: no connection is opened, no
+       timer runs, no peer glyph exists, and the wallpaper's look, cost and
+       behaviour are byte-for-byte what they are today for a solo user.
+
+       The connection itself is shared — one EventSource per machine, owned by
+       whichever window claims it, rebroadcast to the rest (see cowork-relay.js).
+       This window never opens its own stream; it only listens. */
+    (function peers() {
+      var TE = window.__TAURI__ && window.__TAURI__.event;
+      if (!TE || !TE.listen) return;
+      var roster = new Map();
+      var sessionOwner = new Map();   // session_id → display name
+
+      // Whether we are in a session at all is the app's decision, not the
+      // wallpaper's — it arrives as an event. Absent that, nothing below fires.
+      TE.listen('cowork-session', function (ev) {
+        var p = (ev && ev.payload) || {};
+        var members = Array.isArray(p.members) ? p.members : [];
+        roster = new Map(members.map(function (m) { return [String(m.id), m]; }));
+        if (wp && wp.setPeers) wp.setPeers(members);
+      });
+
+      TE.listen('cowork-peer', function (ev) {
+        if (!wp || !wp.peerLog || !roster.size) return;   // solo → ignore entirely
+        var m = (ev && ev.payload) || {};
+        // Never echo our own activity back into the field: it is already there
+        // through the local path, and a duplicate in a peer colour would read
+        // as a second person doing your work.
+        if (m.self) return;
+        // Use the server's REAL event shape, not an invented one. cowork.js has
+        // always emitted { type:'log', entry:{ session_id, role, kind, text } }
+        // and { type:'session', session:{ agent_name, device, ... } }; my first
+        // pass listened for a { text, peerId, name } shape that nothing sends,
+        // so no peer glyph could ever have appeared.
+        if (m.type === 'log' && m.entry && m.entry.text) {
+          var e2 = m.entry;
+          var who = sessionOwner.get(e2.session_id) || '';
+          wp.peerLog(e2.session_id, who, e2.text);
+        } else if (m.type === 'session' && m.session) {
+          // Remember which person each session belongs to, so a log line can be
+          // attributed without the server repeating the name on every entry.
+          var ss = m.session;
+          sessionOwner.set(ss.id, ss.agent_name || ss.device || '');
+        } else if (m.type === 'stat' && typeof m.activity === 'number') {
+          // Peer load nudges the field without printing a glyph — presence you
+          // feel rather than read.
+          wp.pulse(Math.min(0.6, 0.15 + m.activity * 0.45));
+        }
+      });
+    })();
+
+    /* ── Room: many people, one field ──────────────────────────────────────
+       The room's WINDOW is room.html. What happens here is the other half: the
+       big text says who is talking and what everyone's agents are doing, which
+       is the part you read from across the desk and the part a window cannot do.
+
+       Two rules decide what the field says, and they are the room's manners:
+
+         · A person speaking outranks any machine. A chat message is shown next,
+           immediately — not on the next tick — because waiting three seconds
+           behind a build log is how a room starts to feel dead. Several people
+           talking at once are shown in the order they spoke, and faster, so a
+           burst reads as a conversation instead of a slideshow.
+         · Agent logs only ever fill the silence. They play round-robin, one line
+           per person per turn, and only when nobody has said anything.
+
+       Watched, not read once: rooms are joined in the MAIN window, and this one
+       is already running by then. */
+    (function roomLayer() {
+      var R = window.TerseRooms, Q = window.TerseRoomQueue;
+      if (!R || !Q) return;
+
+      var roster = new Map();                 // memberId → member
+      var queue = new Q.RoomQueue();
+      var me = null;
+      var stopStream = null, timer = 0;
+
+      var QUIET_MS = 2600;    // agent-log cadence: a room is not a race
+      var TALK_MS = 1300;     // while people are talking, keep up with them
+
+      function nameOf(id) {
+        var m = roster.get(String(id));
+        return (m && (m.name || m.user_email)) || 'someone';
+      }
+
+      /* Everyone, including us. The engine only draws people it has been told
+         about, so leaving ourselves out meant our own messages never appeared —
+         and in a room of one, nothing did. */
+      function drawRoster(members) {
+        roster = new Map(members.map(function (m) { return [String(m.member_id), m]; }));
+        if (wp && wp.setPeers) {
+          wp.setPeers(members.map(function (m) {
+            return { id: m.member_id, name: m.name || m.user_email || '' };
+          }));
+        }
+      }
+
+      /* One item onto the field. Everything carries a NAME: a line of big text
+         with no author is just noise arriving, and in a shared field the author
+         is most of the meaning. */
+      function pump() {
+        var next = queue.take();
+        if (next && wp) {
+          var who = nameOf(next.memberId);
+          var self = String(next.memberId) === String(me);
+          // The CENTRE, not the statistics band. peerLog scatters a line into
+          // the small band around the edge, which is right for a stray build log
+          // and wrong for the room: what someone said is the headline, and so is
+          // an agent line once you are sharing a field with other people.
+          if (wp.roomLine) {
+            // Speech is marked before it reaches the particles, so a person is
+            // never mistaken for their agent's output — and gets more room,
+            // because it is the thing worth reading.
+            wp.roomLine(next.memberId, who,
+                        next.kind === 'message' ? '💬 ' + next.item : next.item,
+                        { max: next.kind === 'message' ? 24 : 18, self: self });
+          } else if (wp.peerLog) {
+            wp.peerLog(next.memberId, who, next.item);   // older engine
+          }
+        }
+        schedule();
+      }
+      function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(pump, queue.pendingMessages() ? TALK_MS : QUIET_MS);
+      }
+      /** Someone spoke: say it NOW, and re-time everything after it. */
+      function speakNow() {
+        clearTimeout(timer);
+        pump();
+      }
+
+      function startRoom() {
+        me = (R.state() || {}).memberId || null;
+        schedule();
+        stopStream = R.connect({
+          onSnapshot: function (s) {
+            me = s.you || me;
+            drawRoster(s.members || []);
+            // The backlog is history, not news: the window shows it, the field
+            // does not replay an hour of other people's conversation.
+          },
+          onRoster: function (members) {
+            var seen = new Set(members.map(function (m) { return String(m.member_id); }));
+            roster.forEach(function (_v, id) { if (!seen.has(id)) queue.drop(id); });
+            drawRoster(members);
+          },
+          onLog: function (e) {
+            if (String(e.member_id) === me) return;   // our own lines already play locally
+            queue.pushLog(e.member_id, e.text);
+          },
+          onMessage: function (m) {
+            queue.pushMessage(m.member_id, m.body || '[image]');
+            speakNow();
+          },
+          onClosed: function () { stopRoom(); },
+        });
+      }
+
+      function stopRoom() {
+        if (stopStream) { try { stopStream(); } catch (e) {} stopStream = null; }
+        clearTimeout(timer); timer = 0;
+        roster = new Map();
+        queue = new Q.RoomQueue();
+        me = null;
+        if (wp && wp.setPeers) wp.setPeers([]);
+      }
+
+      R.watch(function (st) {
+        stopRoom();
+        if (st && st.id && st.key) startRoom();
+      });
+      window.addEventListener('beforeunload', stopRoom);
+
+      /* Publish OUR agent's lines to the room. A tee, not a second source — the
+         wallpaper already receives them for the local field — and throttled,
+         because the room is a place to be seen working, not a log shipper.
+         Muting is checked HERE, at the moment of sending: "hide my agent log"
+         has to mean nobody else receives it, not that it is hidden after the
+         fact. */
+      /* Our own agent line, while we are in a room.
+         Returns true when it has taken responsibility for the line, so the
+         wallpaper's solo path stays untouched when we are in no room.
+
+         Two things happen here that could not happen anywhere else:
+           · the line is drawn through the SAME path as everyone else's, so it
+             carries our name and our colour and is legible as ours;
+           · "hide my agent log" hides it HERE too. A switch that stopped the
+             broadcast but left the line burning across your own wallpaper is
+             not what hiding your log means to the person who pressed it. */
+      window.__terseRoomOwnLine = function (groups, text) {
+        if (!R.inRoom()) return false;
+        // The pulse is the wallpaper's heartbeat and belongs to the machine, not
+        // to the room — it keeps beating whether or not the line is shown.
+        try {
+          var first = (groups && groups[0] && groups[0].lines || [])[0];
+          if (first && +first.tok > 0 && wp && wp.pulse) {
+            wp.pulse(Math.min(1.2, 0.15 + Math.log10(1 + first.tok) * 0.3));
+          }
+        } catch (e) {}
+        if (R.logMuted()) {
+          // Hidden means hidden: the headline rotation replays the last few
+          // lines, so the ones already in it have to go as well or a muted log
+          // keeps coming back round.
+          if (wp && wp.clearHeadline) wp.clearHeadline();
+          return true;
+        }
+        var t = String(text || '').trim();
+        if (t && wp && me) {
+          if (wp.roomLine) wp.roomLine(me, nameOf(me), t, { max: 18, self: true });
+          else if (wp.peerLog) wp.peerLog(me, nameOf(me), t);
+        }
+        return true;
+      };
+
+      var lastPub = 0, lastText = '';
+      window.__terseRoomPublish = function (text) {
+        if (!R.inRoom() || R.logMuted()) return;
+        var t = String(text || '').trim();
+        if (!t || t === lastText) return;
+        var now = Date.now();
+        if (now - lastPub < 3000) return;
+        lastPub = now; lastText = t;
+        R.publishLog(t.slice(0, 300), 'log');
+      };
+    })();
   </script>
+  <!-- 语言机制:data-i18n 的键在这里被解析。放最后,让它在页面自己的脚本之后跑。 -->
+  <script src="i18n.js"></script>
 </body>
 </html>

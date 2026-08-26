@@ -4,7 +4,7 @@
   <meta name="color-scheme" content="dark">
   <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
   <meta charset="UTF-8">
-  <title>Terse Wallpaper 壁纸</title>
+  <title>Terse Wallpaper</title>
   <script type="importmap">
   { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/jsm/" } }
   </script>
@@ -100,6 +100,54 @@
       background:var(--btn);color:var(--btn-t);margin-left:6px;vertical-align:middle}
     .eng .ed{font-size:10px;color:var(--t3);line-height:1.55;margin-top:3px}
 
+    /* Pro 粒子风格选择器 —— 两列卡片,每张自带一条配色带 */
+    .styles{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    /* 自定义面板 —— 密集但不拥挤:一行一个参数,值就在标签右边,拖的时候不用移开视线。 */
+    .tune-g{margin-top:10px}
+    .tune-gt{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+      color:var(--t3);margin-bottom:5px}
+    .tune-r{display:flex;align-items:center;gap:8px;padding:3px 0}
+    .tune-l{flex:0 0 74px;font-size:11px;color:var(--t2)}
+    .tune-r input[type=range]{flex:1;min-width:0;accent-color:var(--ac)}
+    .tune-v{flex:0 0 52px;text-align:right;font:600 10.5px ui-monospace,Menlo,monospace;color:var(--t1);
+      font-variant-numeric:tabular-nums}
+    .tune-r.dirty .tune-l{color:var(--ac)}
+    .tune-h{font-size:10px;color:var(--t3);line-height:1.5;margin:0 0 4px 82px}
+    .tune-chips{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+    .tune-chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:9999px;cursor:pointer;
+      border:1px solid var(--bd);background:transparent;color:var(--t3)}
+    .tune-chip.on{background:var(--ac);border-color:var(--ac);color:#0b0b0d}
+    .tune-sw{display:flex;gap:5px;flex:1;flex-wrap:wrap}
+    .tune-sw input[type=color]{width:26px;height:22px;padding:0;border:1px solid var(--bd);
+      border-radius:6px;background:transparent;cursor:pointer}
+    .tune-btn{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:9999px;
+      border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer}
+    .tune-btn:hover{color:var(--t1);border-color:var(--t3)}
+    .tune-foot{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:9px;
+      border-top:1px solid var(--bd)}
+    .tune-count{margin-left:auto;font-size:10px;color:var(--t3)}
+    /* 预览中 —— 提示,不是错误。语气要像"还差一步",不是"你做错了"。 */
+    #previewOnly{position:sticky;bottom:8px;z-index:5;display:flex;align-items:center;gap:8px;
+      margin:10px 0;padding:9px 12px;border-radius:12px;
+      background:color-mix(in srgb, var(--ac) 14%, rgba(10,11,18,.92));
+      border:1px solid color-mix(in srgb, var(--ac) 45%, transparent);
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    #previewOnly .po-dot{width:7px;height:7px;border-radius:50%;background:var(--ac);flex:none;
+      box-shadow:0 0 8px var(--ac)}
+    #previewOnly .po-t{font-size:11.5px;color:var(--t1);line-height:1.45}
+    #previewOnly .po-btn{margin-left:auto;flex:none;border-color:var(--ac);color:var(--ac);font-weight:800}
+    .sty{position:relative;border:1px solid var(--bd);border-radius:10px;padding:8px 9px 9px;
+      cursor:pointer;overflow:hidden;background:rgba(255,255,255,.02);transition:border-color .15s,background .15s}
+    .sty:hover{background:rgba(255,255,255,.05)}
+    .sty.sel{border-color:var(--btn);background:rgba(255,255,255,.06)}
+    .sty .bar{height:4px;border-radius:3px;margin-bottom:7px}
+    .sty .sn{font-size:11px;font-weight:800;letter-spacing:.01em}
+    .sty .se{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+      color:var(--t3);margin-top:1px}
+    .sty .sd{font-size:9.5px;color:var(--t3);line-height:1.55;margin-top:5px}
+    .sty .cur{position:absolute;right:7px;top:9px;font-size:8px;font-weight:800;letter-spacing:.07em;
+      padding:1px 5px;border-radius:9999px;background:var(--btn);color:var(--btn-t)}
+
     .note{font-size:10px;color:var(--t3);line-height:1.6;padding:2px 2px 0}
     .note b{color:var(--t2)}
   </style>
@@ -110,15 +158,15 @@
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <svg class="hd-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 14l4-4 4 4 4-5 6 6"/></svg>
-    <h1>Live Wallpaper<span class="cn">壁纸 · 实时律动</span></h1>
+    <h1>Live Wallpaper<span class="cn" data-i18n="wp_h1_sub">Real-time motion</span></h1>
   </div>
 
   <div class="scroll">
     <div class="wrap">
       <div class="prev-pair">
-        <div class="preview"><canvas id="prev"></canvas><span class="tag">免费版 · FREE</span></div>
+        <div class="preview"><canvas id="prev"></canvas><span class="tag" data-i18n="wp_free">Free</span></div>
         <div class="preview preview-pro"><canvas id="prevPro"></canvas>
-          <span class="tag tag-pro">PRO · 电影级粒子聚合</span></div>
+          <span class="tag tag-pro" id="proTag">PRO</span></div>
       </div>
 
       <div class="card">
@@ -133,27 +181,82 @@
       </div>
 
       <div class="card">
-        <div class="card-t">Engine 引擎</div>
+        <div class="card-t" data-i18n="wp_engine">Engine</div>
         <div class="engines" id="engines">
           <div class="eng" data-e="mineradio">
-            <div class="et">你的壁纸 · 粒子律动</div>
-            <div class="ed">用你<b>当前那张桌面壁纸</b>当底,粒子按它取色、在它上面律动;
-              agent 活动和 token 统计会被粒子聚成数字浮现出来。</div>
+            <div class="et" data-i18n="wp_eng_mine_t">Your wallpaper · particle motion</div>
+            <div class="ed" data-i18n-html="wp_eng_mine_d">Uses <b>your current desktop wallpaper</b> as the bed:
+              particles take its colours and move over it, and agent activity and token counts
+              surface as numbers formed out of those particles.</div>
           </div>
           <!-- Pro tier. Free users may SELECT it to watch the live preview —
                that preview is the pitch — but applying it to the desktop opens
                the plan window instead. -->
           <div class="eng eng-pro" data-e="cinematic" data-pro="1">
-            <div class="et">电影级 · 粒子聚合 <span class="pro-tag">PRO</span></div>
-            <div class="ed">在粒子律动之上再加一层:省下的 token、缓存命中率、花费金额
-              会像片头那样<b>由粒子聚合成字</b>浮现;每次成型时,全局散落的粒子会泛起
-              一次各不相同的波动。还会实时显示 agent 的日志流。</div>
+            <div class="et"><span data-i18n="wp_eng_cine_t">Cinematic · particle typography</span> <span class="pro-tag">PRO</span></div>
+            <div class="ed" data-i18n-html="wp_eng_cine_d">A layer on top of the motion: tokens saved, cache hit
+              rate and spend surface the way a title sequence does — <b>assembled out of particles</b>.
+              Every time a line forms, the scattered field ripples in a way it has not before.
+              It also shows the agent's live log.</div>
           </div>
           <div class="eng" data-e="topography">
-            <div class="et">音域回响 · 光柱地形</div>
-            <div class="ed">原来的 3D 光柱地形:token 流动掀起涟漪,大额消耗砸下陨石。</div>
+            <div class="et" data-i18n="wp_eng_topo_t">Spectrum · light-column terrain</div>
+            <div class="ed" data-i18n="wp_eng_topo_d">The original 3D column terrain: token flow raises ripples,
+              and a big spend drops a meteor.</div>
           </div>
         </div>
+      </div>
+
+      <!-- Pro 风格。引擎决定"有没有粒子聚字",风格决定"那些字长什么样、周围怎么动"。
+           和引擎同一个规矩:预览对所有人开放(那就是卖点本身),存成桌面壁纸才要 Pro。 -->
+      <div class="card" id="styleCard">
+        <div class="card-t">Particle style <span class="pro-tag">PRO</span></div>
+        <div class="styles" id="styles"></div>
+        <div class="note" style="padding-top:8px" data-i18n-html="wp_style_note">Each one brings <b>a whole
+          set</b> of things: the palette, how the surrounding particles move, and <b>how the text gathers
+          and how it scatters</b>. Within a style, no two consecutive lines use the same move.
+          Click one and watch it live in the <b>PRO</b> preview above.</div>
+      </div>
+
+      <!-- 自定义。八种风格是起点,不是上限:从当前这一种出发,22 个参数全都能改,
+           每动一格右边的 PRO 预览就立刻变。控件是照 STYLE_SCHEMA 生成的,不是手写的。 -->
+      <!-- 置顶。放在风格/参数之前:它改的是"这东西在哪一层",比它长什么样更根本。 -->
+      <div class="card">
+        <div class="card-t"><span data-i18n="wp_top_t">Always on top</span> <span class="pro-tag">PRO</span></div>
+        <label style="display:flex;gap:9px;align-items:flex-start;margin-top:8px;cursor:pointer">
+          <input type="checkbox" id="wpTop" style="margin-top:2px">
+          <span>
+            <div style="font-size:12px;color:var(--t1)" data-i18n="wp_top_label">Float the particles above every window</div>
+            <div class="note" style="padding:0;margin-top:3px" data-i18n="wp_top_note">The field and the particle text stay visible over
+              apps, browsers and full-screen windows instead of sitting behind them. Still click-through — it never
+              takes a click meant for what is underneath.</div>
+          </span>
+        </label>
+      </div>
+
+      <div class="card" id="tuneCard">
+        <div class="card-t" style="display:flex;align-items:center;gap:8px">
+          <span>Fine-tune <span class="pro-tag">PRO</span></span>
+          <button id="tuneToggle" class="tune-btn" style="margin-left:auto" data-i18n="wpt_expand">Expand</button>
+        </div>
+        <div class="note"><span data-i18n="wp_tune_note_a">Tuned on top of</span>
+          <b id="tuneBase">the current style</b><span data-i18n="wp_tune_note_b">. Only your changes are stored,
+          so when a preset improves later, your edits ride along.</span></div>
+        <div id="tuneBody" style="display:none">
+          <div id="tuneGroups"></div>
+          <div class="tune-foot">
+            <button id="tuneReset" class="tune-btn" data-i18n="wpt_reset">Reset to this style</button>
+            <span id="tuneCount" class="tune-count"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 免费用户改了东西才出现。常驻一条,而不是弹窗 —— 拖一次滑块会连发几十个
+           事件,每个都弹一次会把人赶走。 -->
+      <div id="previewOnly" style="display:none">
+        <span class="po-dot"></span>
+        <span class="po-t" data-i18n="wp_preview_only">Previewing — these changes need Pro to apply to your desktop</span>
+        <button id="poUpgrade" class="tune-btn po-btn" data-i18n="wp_upgrade">Upgrade</button>
       </div>
 
       <div class="card">
@@ -163,7 +266,7 @@
 
       <div class="card">
         <div class="card-t">Feel</div>
-        <div class="slider"><div class="lab"><span>Intensity 律动</span><span class="val" id="vInt">1.0×</span></div>
+        <div class="slider"><div class="lab"><span>Intensity</span><span class="val" id="vInt">1.0×</span></div>
           <input type="range" id="sInt" min="0.3" max="2" step="0.1" value="1"></div>
         <div class="slider"><div class="lab"><span>Camera angle</span><span class="val" id="vAng">42°</span></div>
           <input type="range" id="sAng" min="28" max="75" step="1" value="42"></div>
@@ -183,6 +286,7 @@
   <script type="module">
     import TokenWallpaper3D from './token-wallpaper-3d.js';
     import MineradioWallpaper from './mineradio-wallpaper.js';
+    import { PRO_STYLES, DEFAULT_STYLE_ID, STYLE_SCHEMA, resolveStyle, readPath, writePath } from './wallpaper-styles.js';
     const T = window.terse;
     const ENGINES = { mineradio: MineradioWallpaper, cinematic: MineradioWallpaper,
                       topography: TokenWallpaper3D };
@@ -192,10 +296,201 @@
       ['emerald','#0a5a3e','#40e0a0'],['gold','#7a5a10','#ffcf5a'],['amber','#8a4a10','#ff9f43'],
       ['blood','#6a1414','#ff5a5a'],['coral','#8a2a4a','#ff7a9c'],['neon','#4a1a6a','#c46bff'],['mono','#3a3a44','#e8e8f0']
     ];
-    let cfg = { enabled:false, engine:'mineradio', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
+    let cfg = { enabled:false, engine:'mineradio', style:DEFAULT_STYLE_ID, theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
     let prev = null, prevPro = null, saveT = null, previewOnlyEngine = null;
+    /** 免费用户点风格时,预览要跟着走但 cfg 不能被写脏 —— 和 previewOnlyEngine 同一个道理。 */
+    let previewOnlyStyle = null;
+    const shownStyle = () => previewOnlyStyle || cfg.style || DEFAULT_STYLE_ID;
 
     function save(){ clearTimeout(saveT); saveT = setTimeout(()=>{ T.setWallpaperConfig(cfg); }, 200); }
+
+    /* ── 自定义参数 ─────────────────────────────────────────────────────────
+       控件全部由 STYLE_SCHEMA 生成。手写一个 22 项的面板,迟早会漏掉一项,而漏掉的
+       那一项没人会发现 —— 生成的话,schema 里加一行,面板上就多一个控件。
+
+       改动一律先进预览、后进磁盘,和风格选择走同一条 Pro 闸门:免费用户能拖、能看,
+       松手不写盘。看得见才会想要,而写盘是要付费的那一步。 */
+    /** 取一条译文;没有译文就用调用处写的英文兜底 —— 缺一个 key 也不会显示成 key。 */
+    const TT = (key, fallback) => {
+      const v = (window.i18n && window.i18n.t && key) ? window.i18n.t(key) : null;
+      return (v && v !== key) ? v : (fallback || '');
+    };
+
+    const tuneCustom = () => (cfg.customStyle && typeof cfg.customStyle === 'object') ? cfg.customStyle : {};
+    /** 当前生效值 = 预设 + 差量。控件显示的永远是**生效值**,不是差量。 */
+    const tuneEffective = () => resolveStyle(shownStyle(), tuneCustom());
+
+    function tuneDirtyCount(){
+      const c = tuneCustom();
+      return STYLE_SCHEMA.filter(f => readPath(c, f.key) !== undefined).length;
+    }
+
+    function tuneRow(f, eff, custom){
+      const val = readPath(eff, f.key);
+      const dirty = readPath(custom, f.key) !== undefined;
+      const head = `<div class="tune-l">${TT(f.labelKey, f.key)}</div>`;
+      if (f.type === 'range') {
+        const shown = (f.step >= 1) ? Math.round(val) : (+val).toFixed(2);
+        return `<div class="tune-r ${dirty?'dirty':''}" data-k="${f.key}">
+            ${head}
+            <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}" data-k="${f.key}">
+            <span class="tune-v" data-v="${f.key}">${shown}${f.unit?('<span style="opacity:.5">'+f.unit+'</span>'):''}</span>
+          </div><div class="tune-h">${TT(f.hintKey, '')}</div>`;
+      }
+      if (f.type === 'enum') {
+        const opts = Object.entries(f.options)
+          .map(([n,v]) => `<button class="tune-chip ${v===val?'on':''}" data-k="${f.key}" data-v="${v}">${n.toLowerCase()}</button>`).join('');
+        return `<div class="tune-r ${dirty?'dirty':''}">${head}<div class="tune-chips">${opts}</div></div>
+                <div class="tune-h">${TT(f.hintKey, '')}</div>`;
+      }
+      if (f.type === 'multi') {
+        const cur = Array.isArray(val) ? val : [];
+        const opts = Object.entries(f.options)
+          .map(([n,v]) => `<button class="tune-chip ${cur.includes(v)?'on':''}" data-m="${f.key}" data-v="${v}">${n.toLowerCase()}</button>`).join('');
+        return `<div class="tune-r ${dirty?'dirty':''}">${head}<div class="tune-chips">${opts}</div></div>
+                <div class="tune-h">${TT(f.hintKey, '')}</div>`;
+      }
+      if (f.type === 'colors') {
+        const cur = Array.isArray(val) ? val : [];
+        const sw = cur.map((c,i) => `<input type="color" value="${c}" data-c="${f.key}" data-i="${i}">`).join('');
+        return `<div class="tune-r ${dirty?'dirty':''}">${head}<div class="tune-sw">${sw}</div></div>
+                <div class="tune-h">${TT(f.hintKey, '')}</div>`;
+      }
+      return '';
+    }
+
+    function renderTune(){
+      const card = $('#tuneCard');
+      const eng = previewOnlyEngine || cfg.engine || 'mineradio';
+      // 光柱地形没有粒子聚字,给它一排粒子参数是在承诺不存在的东西(和风格卡同理)。
+      if (card) card.style.display = (eng === 'topography') ? 'none' : '';
+      const body = $('#tuneBody');
+      if (!body || body.style.display === 'none') { updateTuneMeta(); return; }
+      const eff = tuneEffective(), custom = tuneCustom();
+      const groups = [];
+      for (const f of STYLE_SCHEMA) {
+        if (!groups.length || groups[groups.length-1].name !== f.groupKey) groups.push({ name: f.groupKey, rows: [] });
+        groups[groups.length-1].rows.push(tuneRow(f, eff, custom));
+      }
+      $('#tuneGroups').innerHTML = groups.map(g =>
+        `<div class="tune-g"><div class="tune-gt">${TT(g.name, g.name)}</div>${g.rows.join('')}</div>`).join('');
+      updateTuneMeta();
+    }
+
+    function updateTuneMeta(){
+      const meta = PRO_STYLES.find(x => x.id === shownStyle());
+      const b = $('#tuneBase'); if (b) b.textContent = meta ? TT(meta.nameKey, meta.en) : TT('wpt_base', 'the current style');
+      const n = tuneDirtyCount();
+      const c = $('#tuneCount'); if (c) c.textContent = n ? TT('wpt_changed','{n} changed').replace('{n}', n) : TT('wpt_unchanged','unchanged');
+    }
+
+    /** 一次改动。预览立刻跟上;写盘要 Pro。 */
+    async function tuneSet(key, value){
+      const custom = JSON.parse(JSON.stringify(tuneCustom()));
+      if (value === undefined) {
+        // 恢复该项默认:把差量里的这一格删掉,而不是写回预设的值 —— 写回去就成了
+        // 一个"钉住"的差量,以后预设变了它也不会跟着变。
+        const ks = key.split('.'); const last = ks.pop();
+        let cur = custom; for (const k of ks) { if (!cur[k]) { cur = null; break; } cur = cur[k]; }
+        if (cur) delete cur[last];
+      } else writePath(custom, key, value);
+
+      // 预览先走一步,不查授权 —— 看不见的东西没人会买。
+      if (prevPro && prevPro.setStyle) prevPro.setStyle(shownStyle(), custom);
+      let pro = !!window.__wpPro;
+      if (!pro) {
+        try {
+          const lic = await (T.getLicense ? T.getLicense() : null);
+          const tier = ((lic && lic.tier) || '').toLowerCase();
+          const st = ((lic && lic.status) || '').toLowerCase();
+          pro = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
+        } catch (e) {}
+      }
+      if (!pro) {
+        // 常驻提示,不弹窗:拖一格滑块就是几十个事件,弹几十次窗没人受得了。
+        showPreviewOnly();
+        return;                       // 预览留着,cfg 不动
+      }
+      cfg.customStyle = custom;
+      save();
+      updateTuneMeta();
+    }
+
+    /* 置顶开关。和这一页其他控件同一条规矩:预览随便看,写盘要 Pro。
+       但这一个有个不同之处 —— 它改的是**真窗口的层级**,预览里没有"层级"这回事,
+       所以免费用户能看到的是说明,而不是一个假的预览。这里如实说明,不假装。 */
+    function wireTop(){
+      const t = document.getElementById('wpTop');
+      if (!t) return;
+      t.addEventListener('change', async (e) => {
+        const on = e.target.checked;
+        if (!proApply()) { e.target.checked = !on; return; }   // 不写盘就不留状态
+        cfg.overlay = on;
+        try { if (T.setWallpaperOverlay) await T.setWallpaperOverlay(on); } catch (err) {}
+        save();
+      });
+    }
+
+    function wirePreviewOnly(){
+      const b = document.getElementById('poUpgrade');
+      if (b) b.addEventListener('click', async () => {
+        try {
+          if (T.requestUpgrade) await T.requestUpgrade('wallpaper');
+          else if (T.showMainWindow) await T.showMainWindow();
+        } catch (e) {}
+      });
+    }
+
+    function wireTune(){
+      const t = $('#tuneToggle');
+      if (t) t.addEventListener('click', () => {
+        const body = $('#tuneBody');
+        const open = body.style.display === 'none';
+        body.style.display = open ? '' : 'none';
+        t.textContent = open ? TT('wpt_collapse','Collapse') : TT('wpt_expand','Expand');
+        if (open) renderTune();
+      });
+      $('#tuneReset') && $('#tuneReset').addEventListener('click', async () => {
+        if (prevPro && prevPro.setStyle) prevPro.setStyle(shownStyle(), null);
+        if (!proApply()) return;
+        cfg.customStyle = null; save(); renderTune();
+      });
+
+      // 一个委托监听器管所有控件 —— 面板是重画的,逐个绑定会在每次重画后失效。
+      const g = $('#tuneGroups');
+      if (!g) return;
+      g.addEventListener('input', (e) => {
+        const el = e.target;
+        if (el.type === 'range') {
+          const key = el.dataset.k, v = +el.value;
+          const f = STYLE_SCHEMA.find(x => x.key === key);
+          const lab = g.querySelector(`[data-v="${key}"]`);
+          if (lab) lab.innerHTML = (f.step >= 1 ? Math.round(v) : v.toFixed(2)) +
+            (f.unit ? '<span style="opacity:.5">'+f.unit+'</span>' : '');
+          const row = el.closest('.tune-r'); if (row) row.classList.add('dirty');
+          tuneSet(key, v);
+        } else if (el.type === 'color') {
+          const key = el.dataset.c, i = +el.dataset.i;
+          const cur = (readPath(tuneEffective(), key) || []).slice();
+          cur[i] = el.value;
+          tuneSet(key, cur);
+        }
+      });
+      g.addEventListener('click', (e) => {
+        const chip = e.target.closest('.tune-chip');
+        if (!chip) return;
+        if (chip.dataset.m !== undefined) {          // 多选:至少留一个,空池子等于关掉这套动画
+          const key = chip.dataset.m, v = +chip.dataset.v;
+          const cur = (readPath(tuneEffective(), key) || []).slice();
+          const at = cur.indexOf(v);
+          if (at >= 0) { if (cur.length === 1) return; cur.splice(at, 1); } else cur.push(v);
+          tuneSet(key, cur.sort((a,b)=>a-b));
+        } else {                                      // 单选
+          tuneSet(chip.dataset.k, +chip.dataset.v);
+        }
+        renderTune();
+      });
+    }
 
     function renderThemes(){
       $('#themes').innerHTML = THEMES.map(([n,a,b])=>`
@@ -203,10 +498,67 @@
           style="background:radial-gradient(120% 120% at 30% 20%, ${b}, ${a} 70%, #0a0b12)">
           <span class="nm">${n}</span></div>`).join('');
       document.querySelectorAll('.th').forEach(el=>el.addEventListener('click',()=>{
-        cfg.theme = el.dataset.t;
+        const t = el.dataset.t;
         document.querySelectorAll('.th').forEach(x=>x.classList.toggle('sel',x===el));
-        prev && prev.setTheme(cfg.theme); save();
+        prev && prev.setTheme(t); prevPro && prevPro.setTheme && prevPro.setTheme(t);
+        if (proApply()) { cfg.theme = t; save(); }
       }));
+    }
+
+    function renderStyles(){
+      // 光柱地形那个引擎根本没有粒子聚字,给它显示一排粒子风格是在承诺不存在的东西。
+      const eng = previewOnlyEngine || cfg.engine || 'mineradio';
+      const card = $('#styleCard');
+      if (card) card.style.display = (eng === 'topography') ? 'none' : '';
+      const cur = shownStyle();
+      // 预览角标跟着选中的风格走,否则点了半天不知道右边这块正在演哪一种
+      const meta = PRO_STYLES.find(s => s.id === cur) || PRO_STYLES[0];
+      const tag = $('#proTag');
+      if (tag) tag.textContent = 'PRO · ' + TT(meta.nameKey, meta.en);
+      $('#styles').innerHTML = PRO_STYLES.map(s => `
+        <div class="sty ${s.id===cur?'sel':''}" data-s="${s.id}">
+          ${s.id===cur?'<span class="cur">ON</span>':''}
+          <div class="bar" style="background:linear-gradient(90deg,${s.swatch[0]},${s.swatch[1]})"></div>
+          <div class="sn">${TT(s.nameKey, s.en)}</div>
+          <div class="se">${s.en}</div>
+          <div class="sd">${TT(s.descKey, '')}</div>
+        </div>`).join('');
+      document.querySelectorAll('.sty').forEach(el =>
+        el.addEventListener('click', () => pickStyle(el.dataset.s)));
+    }
+
+    /** 选一种风格。
+     *
+     *  预览一律先换 —— 看不见的东西没人会买。真正写进 wallpaper.json 之前再查一次
+     *  授权,和引擎那边的规矩完全一样(而且同样**不提前动 cfg**:早期的引擎版本先
+     *  写 cfg 再查授权,结果之后任何一次 save 都会把 Pro 的选择带上去)。 */
+    async function pickStyle(id){
+      if (id === shownStyle()) return;
+      previewOnlyStyle = id;
+      renderStyles();
+      // 换风格不用重建预览:setStyle 改的都是每帧读的参数。
+      if (prevPro && prevPro.setStyle) prevPro.setStyle(id);
+      else mountPreview();
+      let pro = false;
+      try {
+        const lic = await (T.getLicense ? T.getLicense() : null);
+        const tier = ((lic && lic.tier) || '').toLowerCase();
+        const st = ((lic && lic.status) || '').toLowerCase();
+        pro = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
+      } catch (e) { /* offline → treat as free */ }
+      if (!pro) {
+        try {
+          if (T.requestUpgrade) await T.requestUpgrade('wallpaper_style');
+          else if (T.showMainWindow) await T.showMainWindow();
+        } catch (e) { /* ignore */ }
+        return;                                   // 预览留着,cfg 不动
+      }
+      previewOnlyStyle = null;
+      cfg.style = id;
+      renderStyles();
+      // 差量是**相对**当前预设的,换了预设就要照新底重画一遍显示值。
+      renderTune();
+      save();
     }
 
     /** 预览也跟着引擎走 —— 选哪个就预览哪个 */
@@ -221,7 +573,7 @@
       // it is the entire pitch — a user cannot want what they have not seen.
       prev = new E($('#prev'), Object.assign({}, base, { pro:false }));
       prev.start(); prev.setActivity(0.7);
-      prevPro = new E($('#prevPro'), Object.assign({}, base, { pro:true }));
+      prevPro = new E($('#prevPro'), Object.assign({}, base, { pro:true, style:shownStyle() }));
       prevPro.start(); prevPro.setActivity(0.7);
       startPreviewFeed();
     }
@@ -280,6 +632,33 @@
      *  see — the controls are visibly there, visibly locked, and one click
      *  explains why.
      */
+    /* ── Pro 闸门 ────────────────────────────────────────────────────────────
+       规矩只有一条:**预览永远跟手,写盘才要 Pro。**
+
+       之前是把控件 disabled 掉、再给一层 pointer-events:none —— 免费用户连拖都拖不动,
+       于是永远看不到 Pro 到底长什么样。看不见的东西没人会买,这个锁法既挡住了转化,
+       也让面板显得坏了。
+
+       换成:随便拖,预览实时跟着变,只有"应用到桌面"这一步需要 Pro。拖动时不弹窗
+       —— 拖一次滑块会连发几十个 input,每个都弹一次会把人赶走 —— 改成底部一条常驻
+       提示,升级按钮就在那儿。 */
+
+    /** 免费用户改的东西只进预览,不进 cfg。
+     *  和风格选择同一个道理:提前写 cfg,之后任何一次 save 都会把 Pro 的值带上去。 */
+    function proApply(){
+      if (window.__wpPro) { hidePreviewOnly(); return true; }
+      showPreviewOnly();
+      return false;
+    }
+    function showPreviewOnly(){
+      const b = document.getElementById('previewOnly');
+      if (b) b.style.display = 'flex';
+    }
+    function hidePreviewOnly(){
+      const b = document.getElementById('previewOnly');
+      if (b) b.style.display = 'none';
+    }
+
     async function applyProLock(){
       let pro = false;
       try {
@@ -289,16 +668,12 @@
         pro = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
       } catch (e) { /* offline → treat as free */ }
       window.__wpPro = pro;
-      const ids = ['sInt','sAng','sQual','showPanel'];
-      ids.forEach(function(id){
+      // 控件一律保持可用 —— 免费用户要能拖、能点、能看见结果。
+      ['sInt','sAng','sQual','showPanel'].forEach(function(id){
         const el = document.getElementById(id);
-        if (!el) return;
-        el.disabled = !pro;
-        const row = el.closest('.card') || el.parentElement;
-        if (row) row.classList.toggle('locked', !pro);
+        if (el) el.disabled = false;
       });
-      const th = document.getElementById('themes');
-      if (th) th.classList.toggle('locked', !pro);
+      if (pro) hidePreviewOnly();
       document.querySelectorAll('.pro-lock-tag').forEach(function(n){ n.remove(); });
       if (!pro) {
         [document.getElementById('themes'), document.getElementById('sInt')].forEach(function(anchor){
@@ -314,33 +689,30 @@
       }
     }
 
-    document.addEventListener('click', function (e) {
-      // A locked control should explain itself rather than silently do nothing.
-      const card = e.target.closest && e.target.closest('.locked');
-      if (!card || window.__wpPro) return;
-      e.preventDefault(); e.stopPropagation();
-      try {
-        if (T.requestUpgrade) T.requestUpgrade('wallpaper_settings');
-        else if (T.navigateBack) T.navigateBack();
-      } catch (err) { /* ignore */ }
-    }, true);
+    /* 旧的锁模型留下的拦截器已经删掉。它在捕获阶段吃掉 .locked 卡片上的所有点击 ——
+       现在没有任何东西再加 .locked,而只要它还在,以后谁再用这个类名做纯视觉标记,
+       那张卡片就会静默地不可点。 */
 
     function renderEngines(){
       document.querySelectorAll('.eng').forEach(el=>{
         el.classList.toggle('sel', el.dataset.e === (previewOnlyEngine || cfg.engine || 'mineradio'));
       });
+      if ($('#styles')) renderStyles();
+      renderTune();
     }
 
     function paint(){
       $('#enable').checked = !!cfg.enabled;
       $('#showPanel').checked = cfg.showPanel !== false;
+      { const t = $('#wpTop'); if (t) t.checked = cfg.overlay === true; }
       $('#sInt').value = cfg.intensity; $('#vInt').textContent = (+cfg.intensity).toFixed(1)+'×';
       $('#sAng').value = cfg.angle; $('#vAng').textContent = cfg.angle+'°';
       $('#sQual').value = cfg.quality; $('#vQual').textContent = cfg.quality;
-      renderThemes(); renderEngines(); applyProLock();
+      renderThemes(); renderEngines(); applyProLock(); renderTune();
     }
 
     function wire(){
+      wireTune(); wirePreviewOnly(); wireTop();
       $('#btnBack').addEventListener('click',()=>T.navigateBack());
       document.querySelectorAll('.eng').forEach(el=>el.addEventListener('click',async ()=>{
         if (cfg.engine === el.dataset.e) return;
@@ -379,13 +751,31 @@
         save();
       }));
       $('#enable').addEventListener('change', e=>{ cfg.enabled = e.target.checked; T.setWallpaperEnabled(cfg.enabled); });
-      $('#showPanel').addEventListener('change', e=>{ cfg.showPanel = e.target.checked; save(); });
-      $('#sInt').addEventListener('input', e=>{ cfg.intensity = +e.target.value; $('#vInt').textContent = cfg.intensity.toFixed(1)+'×';
-        prev && prev.setIntensity && prev.setIntensity(cfg.intensity); save(); });
-      $('#sAng').addEventListener('input', e=>{ cfg.angle = +e.target.value; $('#vAng').textContent = cfg.angle+'°';
-        prev && prev.setAngle(cfg.angle); save(); });
-      $('#sQual').addEventListener('input', e=>{ cfg.quality = +e.target.value; $('#vQual').textContent = cfg.quality;
-        prev && prev.setQuality(cfg.quality); save(); });
+      // 每一个都是:先动预览,再决定要不要写盘。cfg 只在 Pro 时更新 —— 否则免费用户
+      // 拖过的值会藏在 cfg 里,等下一次任何 save 一起写出去。
+      $('#showPanel').addEventListener('change', e=>{
+        const v = e.target.checked;
+        if (proApply()) { cfg.showPanel = v; save(); }
+      });
+      $('#sInt').addEventListener('input', e=>{
+        const v = +e.target.value;
+        $('#vInt').textContent = v.toFixed(1)+'×';
+        prev && prev.setIntensity && prev.setIntensity(v);
+        prevPro && prevPro.setIntensity && prevPro.setIntensity(v);
+        if (proApply()) { cfg.intensity = v; save(); }
+      });
+      $('#sAng').addEventListener('input', e=>{
+        const v = +e.target.value;
+        $('#vAng').textContent = v+'°';
+        prev && prev.setAngle(v); prevPro && prevPro.setAngle && prevPro.setAngle(v);
+        if (proApply()) { cfg.angle = v; save(); }
+      });
+      $('#sQual').addEventListener('input', e=>{
+        const v = +e.target.value;
+        $('#vQual').textContent = v;
+        prev && prev.setQuality(v); prevPro && prevPro.setQuality && prevPro.setQuality(v);
+        if (proApply()) { cfg.quality = v; save(); }
+      });
     }
 
     (async () => {
@@ -406,5 +796,7 @@
         d(); }, 4000);
     })();
   </script>
+  <!-- 语言机制:data-i18n 的键在这里被解析。放最后,让它在页面自己的脚本之后跑。 -->
+  <script src="i18n.js"></script>
 </body>
 </html>

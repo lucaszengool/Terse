@@ -1243,6 +1243,10 @@ jobs:
             [void][W2]::SetForegroundWindow($np.MainWindowHandle)
           }
           Start-Sleep -Seconds 6
+          # If Notepad never opened there is nothing for the overlay to cover and
+          # a pass would mean nothing.
+          $npAlive = $null -ne (Get-Process -Id $np.Id -ErrorAction SilentlyContinue)
+          Write-Host "notepad running: $npAlive  hwnd: $($np.MainWindowHandle)"
 
           $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
@@ -1252,14 +1256,30 @@ jobs:
           $bmp.Save("artifacts/overlay-over-notepad.png")
           Write-Host "saved artifacts/overlay-over-notepad.png ($($b.Width)x$($b.Height))"
 
-          # The HUD sits bottom-left on a dark glass panel. Notepad is white. If
-          # that corner is bright, the overlay is NOT on top.
-          $sx = 60; $sy = $b.Height - 120
-          $px = $bmp.GetPixel($sx, $sy)
-          $lum = (0.299*$px.R + 0.587*$px.G + 0.114*$px.B)
-          Write-Host ("bottom-left pixel ({0},{1}) = R{2} G{3} B{4}  luminance {5:N0}" -f $sx,$sy,$px.R,$px.G,$px.B,$lum)
-          if ($lum -lt 140) { Write-Host "OVERLAY OK: dark HUD glass over a white Notepad — the wallpaper is on top" }
-          else { Write-Warning "OVERLAY FAIL: that corner is bright — Notepad is covering the wallpaper" }
+          # Count NEAR-WHITE pixels across the screen.
+          #
+          # The first version sampled one point inside the HUD and expected it to
+          # be dark. The HUD is rgba(10,12,20,.30) glass - 30% opaque - so over a
+          # bright wallpaper it reads light blue-grey, and the check called a
+          # working overlay a failure. The screenshot showed the truth plainly:
+          # no Notepad, no taskbar, and none of the desktop icons that appear in
+          # every desktop-mode shot.
+          #
+          # A maximised Notepad is a white sheet. If it is on top, most of the
+          # screen is near-white; if the overlay is on top, almost none of it is.
+          # That does not depend on guessing any one pixel's colour.
+          $white = 0; $tot = 0
+          for ($x = 8; $x -lt $b.Width - 8; $x += 17) {
+            for ($y = 8; $y -lt $b.Height - 8; $y += 19) {
+              $tot++
+              $p2 = $bmp.GetPixel($x, $y)
+              if ($p2.R -gt 235 -and $p2.G -gt 235 -and $p2.B -gt 235) { $white++ }
+            }
+          }
+          $wpct = if ($tot) { [math]::Round($white * 100 / $tot) } else { 0 }
+          Write-Host "near-white pixels: $wpct% ($white of $tot)"
+          if ($wpct -lt 25) { Write-Host "OVERLAY OK: the screen is the wallpaper, not the maximised Notepad under it" }
+          else { Write-Warning "OVERLAY FAIL: the screen is mostly white — Notepad is covering the wallpaper" }
           $g.Dispose(); $bmp.Dispose()
           try { $np | Stop-Process -Force } catch {}
 

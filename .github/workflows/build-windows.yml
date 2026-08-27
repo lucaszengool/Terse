@@ -1260,6 +1260,14 @@ jobs:
           $ll = Join-Path $env:USERPROFILE ".terse\license.log"
           if (Test-Path $ll) { Get-Content $ll -Tail 3 | ForEach-Object { Write-Host "  $_" } }
           else { Write-Host "  (no license.log — get_license was never called)" }
+          # The two halves of this feature, each reporting itself. A screenshot of
+          # a black screen cannot tell "the page painted its background" from "the
+          # page went transparent and the compositor painted black"; these lines
+          # can - overlay_allowed prints its three inputs, and the page prints its
+          # computed background.
+          $wl = Join-Path $env:USERPROFILE ".terse\wallpaper.log"
+          if (Test-Path $wl) { Get-Content $wl -Tail 12 | ForEach-Object { Write-Host "  $_" } }
+          else { Write-Host "  (no wallpaper.log — neither half reported)" }
 
           # Count NEAR-WHITE pixels across the screen.
           #
@@ -1287,6 +1295,20 @@ jobs:
           else { Write-Warning "OVERLAY FAIL: the screen is mostly white — Notepad is covering the wallpaper" }
           $g.Dispose(); $bmp.Dispose()
           try { $np | Stop-Process -Force } catch {}
+
+      # A SECOND collection, because the first one runs before the overlay step
+      # restarts the app - so every log written during the overlay test was
+      # missing from the artifact, and the only evidence left was the picture.
+      # That is the whole reason this feature was diagnosed wrong four times.
+      - name: Collect the app's logs again, after the overlay test
+        continue-on-error: true
+        run: |
+          $log = Join-Path $env:USERPROFILE ".terse"
+          if (Test-Path $log) {
+            New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+            Copy-Item -Recurse -Force $log artifacts/dot-terse-after-overlay
+            Get-ChildItem -Recurse artifacts/dot-terse-after-overlay | Select-Object FullName, Length
+          } else { Write-Host "no ~/.terse" }
 
       - name: A/B the wallpaper against idle CPU
         continue-on-error: true

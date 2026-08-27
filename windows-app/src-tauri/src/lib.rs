@@ -4449,6 +4449,9 @@ pub fn run() {
             set_wallpaper_config,
             set_wallpaper_enabled,
             set_wallpaper_overlay,
+            wallpaper_overlay_effective,
+            relevel_wallpaper_window,
+            diag_note,
             get_token_pulse,
             // ── Parity: referrals + upgrade prompt ──
             request_upgrade,
@@ -5911,6 +5914,17 @@ fn set_wallpaper_config(config: serde_json::Value, app: AppHandle) -> bool {
         let _ = std::fs::create_dir_all(dir);
     }
     let ok = std::fs::write(&p, serde_json::to_string_pretty(&config).unwrap_or_default()).is_ok();
+    // Re-level on every write: the engine can change here, and the engine holds a
+    // veto over overlay mode. Switching to a non-particle engine while lifted has
+    // to drop the window back to the desktop, or an opaque engine mounts on top
+    // of everything.
+    let level_on = overlay_allowed(&config);
+    if let Some(win) = app.get_webview_window("wallpaper") {
+        let _ = app.run_on_main_thread(move || {
+            if level_on { apply_wallpaper_overlay(&win) } else { pin_wallpaper_window(&win) }
+        });
+    }
+    let _ = app.emit("wallpaper-overlay", level_on);
     // Live update: the wallpaper window re-reads theme/quality/angle on this event.
     let _ = app.emit("wallpaper-config", &config);
     ok
@@ -6196,10 +6210,7 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
     // Honour the Pro overlay across restarts. Without this the switch survives
     // in wallpaper.json but the window silently drops back behind every other
     // window on the next launch, which reads as the setting having been lost.
-    let overlay = get_wallpaper_config()
-        .get("overlay")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let overlay = overlay_allowed(&get_wallpaper_config());
     let win2 = win.clone();
     let _ = app.run_on_main_thread(move || {
         if overlay {
@@ -6208,6 +6219,9 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
             pin_wallpaper_window(&win2);
         }
     });
+    // The page asks for this answer at boot and then listens for changes. Without
+    // the event the two halves only agree by coincidence.
+    let _ = app.emit("wallpaper-overlay", overlay);
 
     // Then again, twice, a beat later. On Windows 11 24H2 the wallpaper WorkerW
     // frequently does not exist yet when an app launches with the session — it
@@ -6224,10 +6238,7 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
             let w = win3.clone();
             // Re-read each time: the user may have flipped the switch during the
             // wait, and re-pinning an overlay to the desktop would undo it.
-            let ov = get_wallpaper_config()
-                .get("overlay")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
+            let ov = overlay_allowed(&get_wallpaper_config());
             let _ = app2.run_on_main_thread(move || {
                 if ov { apply_wallpaper_overlay(&w) } else { pin_wallpaper_window(&w) }
             });
@@ -6304,26 +6315,110 @@ fn apply_wallpaper_overlay(win: &tauri::WebviewWindow) {
     diag_log("wallpaper", "overlay ON — topmost, click-through");
 }
 
+/// Whether the wallpaper window may actually be lifted above other windows.
+///
+/// The toggle alone is not enough. Only the particle engines can be transparent:
+/// mineradio/cinematic run on an `alpha:true` renderer that clears to (0,0,0,0),
+/// so lifting them shows particles over your windows and nothing else. Any
+/// engine that ends on an opaque full-screen pass becomes a solid sheet over the
+/// whole display the moment it is lifted - click-through and impossible to
+/// dismiss.
+///
+/// Entitlement belongs HERE too, not only in the UI. wallpaper.json is a plain
+/// file a user can hand-edit, and `"overlay": true` left behind after a lapsed
+/// subscription or an engine switch must not be able to black out the screen.
+///
+/// This is the single answer both halves read: the level comes from it, and the
+/// page's decision to drop its background comes from it via
+/// `wallpaper_overlay_effective` and the `wallpaper-overlay` event. Windows had
+/// neither command, so the page fell back to its own optimistic guess and the
+/// two halves could disagree - which is a lifted window still painting a
+/// background, i.e. a sheet over the whole screen.
+fn overlay_allowed(cfg: &serde_json::Value) -> bool {
+    let on = cfg.get("overlay").and_then(|v| v.as_bool()).unwrap_or(false);
+    let engine = cfg.get("engine").and_then(|v| v.as_str()).unwrap_or("mineradio");
+    let particle = matches!(engine, "mineradio" | "cinematic");
+    let pro = license::License::load().is_pro();
+    // Logged, not inferred. Four diagnoses of the black-sheet overlay were wrong
+    // because the inputs to this decision were never printed - a screenshot
+    // shows the outcome and nothing about which of the three terms failed.
+    diag_log(
+        "wallpaper",
+        &format!(
+            "overlay_allowed -> {} (flag={on} engine={engine} particle={particle} pro={pro})",
+            on && particle && pro
+        ),
+    );
+    on && particle && pro
+}
+
+/// Let a page write into the same diagnostic log the Rust side uses.
+///
+/// The overlay bug is half native and half CSS, and only the native half could
+/// ever be observed - which is why four rounds of reading the screenshot all
+/// guessed wrong. A screenshot of a black screen cannot distinguish "the page
+/// still painted its background" from "the page went transparent and the window
+/// composited black"; the page reporting its own computed background can.
+#[tauri::command]
+fn diag_note(name: String, line: String) {
+    // Bounded: this is reachable from page JS, and an unbounded name would let a
+    // page choose the file it writes to.
+    let name = match name.as_str() {
+        "wallpaper" | "island" | "page" => name,
+        _ => "page".to_string(),
+    };
+    diag_log(&name, &line);
+}
+
+/// The effective overlay state - the single answer both halves must agree on.
+#[tauri::command]
+fn wallpaper_overlay_effective() -> bool {
+    overlay_allowed(&get_wallpaper_config())
+}
+
+/// Re-level the live window WITHOUT touching wallpaper.json.
+///
+/// The page calls this when entitlement changes. It must not persist: a lapsed
+/// (or merely unreachable) licence check would otherwise overwrite the user's
+/// own `"overlay": true` with false, and resubscribing would silently come back
+/// with the switch off. Preference and entitlement are different things - only
+/// the user gets to write the preference.
+#[tauri::command]
+fn relevel_wallpaper_window(on: bool, app: AppHandle) -> Result<(), String> {
+    let allowed = on && overlay_allowed(&get_wallpaper_config());
+    if let Some(win) = app.get_webview_window("wallpaper") {
+        let _ = app.run_on_main_thread(move || {
+            if allowed { apply_wallpaper_overlay(&win) } else { pin_wallpaper_window(&win) }
+        });
+    }
+    let _ = app.emit("wallpaper-overlay", allowed);
+    Ok(())
+}
+
 /// Pro toggle for the always-on-top wallpaper. Off re-pins it to the desktop.
 #[tauri::command]
 fn set_wallpaper_overlay(on: bool, app: AppHandle) -> Result<(), String> {
     let mut cfg = get_wallpaper_config();
     cfg["overlay"] = serde_json::json!(on);
+    // set_wallpaper_config re-levels and emits from the same answer, so the level
+    // used here has to be that answer too - not the raw request.
+    let level_on = overlay_allowed(&cfg);
     let _ = set_wallpaper_config(cfg, app.clone());
     let Some(win) = app.get_webview_window("wallpaper") else {
         return Err("wallpaper window not initialized".into());
     };
     // Both paths touch the shell's window tree, so both must run on the main
-    // thread — the lesson from three separate off-thread window bugs this week.
+    // thread - the lesson from three separate off-thread window bugs this week.
     let w = win.clone();
     let _ = app.run_on_main_thread(move || {
-        if on {
+        if level_on {
             apply_wallpaper_overlay(&w);
         } else {
             pin_wallpaper_window(&w);
-            diag_log("wallpaper", "overlay OFF — re-pinned to the desktop");
+            diag_log("wallpaper", "overlay OFF - re-pinned to the desktop");
         }
     });
+    let _ = app.emit("wallpaper-overlay", level_on);
     Ok(())
 }
 

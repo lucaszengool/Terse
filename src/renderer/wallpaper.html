@@ -194,6 +194,30 @@
       if (wp && wp.setOverlay) wp.setOverlay(!!on);
     }
 
+    /** 把这一半**实际画成什么样**如实写进日志,而不是留给下一个人看截图猜。
+     *
+     *  置顶壁纸连着四轮诊断错误,每一轮都是"看一张全黑的图,推一个说得通的原因"。
+     *  但一张全黑的图恰恰分不清两件事:页面还在画自己的底色,还是页面已经透明、
+     *  黑的是合成器。前者 computed background 是 rgb(5,6,10),后者是 rgba(…, 0) ——
+     *  一行就能定案。Windows 才有 diag_note,别处 invoke 直接 reject,catch 掉即可。 */
+    function reportOverlayState(why){
+      try {
+        if (!(window.terse && window.terse.diagNote)) return;
+        const cs = getComputedStyle(document.documentElement);
+        const bs = getComputedStyle(document.body);
+        window.terse.diagNote('wallpaper',
+          'page ' + why +
+          ' cfg.overlay=' + JSON.stringify(cfg.overlay) +
+          ' engine=' + JSON.stringify(cfg.engine) +
+          ' overlayOK=' + overlayOK() +
+          ' class=' + document.documentElement.classList.contains('overlay') +
+          ' htmlBg=' + cs.backgroundColor +
+          ' bodyBg=' + bs.backgroundColor +
+          ' bodyImg=' + (bs.backgroundImage || 'none').slice(0, 40) +
+          ' engineSetOverlay=' + !!(wp && wp.setOverlay)).catch(() => {});
+      } catch (e) {}
+    }
+
     function applyConfig(c){
       const prevEngine = cfg.engine;
       cfg = Object.assign(cfg, c || {});
@@ -393,15 +417,19 @@
       applyOverlay(overlayOK());
       // 然后立刻用 Rust 的判定覆盖掉上面那个乐观值,并订阅后续变化 ——
       // 窗口层级和这里的底色必须永远出自同一个判断。
+      let effective = 'not-called';
       try {
-        if (window.terse && window.terse.wallpaperOverlayEffective)
-          applyOverlay((await window.terse.wallpaperOverlayEffective()) === true);
-      } catch (e) {}
+        if (window.terse && window.terse.wallpaperOverlayEffective) {
+          effective = await window.terse.wallpaperOverlayEffective();
+          applyOverlay(effective === true);
+        }
+      } catch (e) { effective = 'threw: ' + (e && e.message || e); }
       try {
         if (window.__TAURI__ && window.__TAURI__.event)
           window.__TAURI__.event.listen('wallpaper-overlay',
-            (ev) => applyOverlay(ev.payload === true));
+            (ev) => { applyOverlay(ev.payload === true); reportOverlayState('event ' + ev.payload); });
       } catch (e) {}
+      reportOverlayState('boot effective=' + JSON.stringify(effective));
       setInterval(async () => {
         const was = proOK;
         await refreshEntitlement();

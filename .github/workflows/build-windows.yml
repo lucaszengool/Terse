@@ -1323,10 +1323,21 @@ jobs:
           $wpct = if ($tot) { [math]::Round($white * 100 / $tot) } else { 0 }
           # The HUD card sits at left:30px bottom:30px, 230px wide - sample well
           # inside it.
+          #
+          # RELATIVE to the page behind it, not against a fixed threshold. The
+          # card is rgba(10,12,20,.30) glass: 30% opaque, so over a white Notepad
+          # it reads light grey (~181) and an absolute "is it dark" test calls a
+          # working overlay a failure. This step's own comment warned about that
+          # exact mistake and the check made it again anyway. What actually
+          # identifies the card is that it is meaningfully DARKER than the sheet
+          # around it.
+          $ref = $bmp.GetPixel([int]($b.Width * 0.75), [int]($b.Height * 0.25))
           $hud = $bmp.GetPixel(80, $b.Height - 90)
-          $hudDark = ($hud.R -lt 120 -and $hud.G -lt 120 -and $hud.B -lt 120)
+          $hudLum = ($hud.R + $hud.G + $hud.B) / 3
+          $refLum = ($ref.R + $ref.G + $ref.B) / 3
+          $hudDark = ($refLum - $hudLum) -gt 25
           Write-Host "near-white pixels: $wpct% ($white of $tot)"
-          Write-Host ("HUD sample at 80,{0}: R={1} G={2} B={3} (dark={4})" -f ($b.Height - 90), $hud.R, $hud.G, $hud.B, $hudDark)
+          Write-Host ("HUD sample at 80,{0}: R={1} G={2} B={3} lum={4:N0} vs page lum={5:N0} (darker by {6:N0}, need 25)" -f ($b.Height - 90), $hud.R, $hud.G, $hud.B, $hudLum, $refLum, ($refLum - $hudLum))
           if ($wpct -ge 55 -and $hudDark) {
             Write-Host "OVERLAY OK: Notepad is still readable underneath and the wallpaper is drawn over it"
           } elseif ($wpct -lt 55 -and $hudDark) {

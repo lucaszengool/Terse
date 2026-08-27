@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found — Terse</title>
+  <meta name="description" content="That page does not exist on terseai.org. Here are the pages people usually want.">
+  <!-- A 404 must never be indexed, but its links should still pass equity, so
+       the crawler is told to follow them. -->
+  <meta name="robots" content="noindex, follow">
+  <meta name="theme-color" content="#0b0d17">
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32">
+  <link rel="icon" type="image/png" href="/favicon-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg2:hsl(250,21%,11%);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+    }
+    body{
+      background:var(--bg0);color:var(--t1);
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+      min-height:100vh;display:flex;align-items:center;justify-content:center;
+      padding:96px 24px 64px;position:relative;z-index:3;
+    }
+    .wrap{width:100%;max-width:660px;text-align:center}
+    .code{
+      font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;
+      letter-spacing:.22em;color:var(--ac);text-transform:uppercase;
+      display:inline-flex;align-items:center;gap:9px;margin-bottom:22px;
+      padding:7px 14px;border-radius:999px;
+      background:var(--acd);border:1px solid var(--acm);
+    }
+    h1{font-size:clamp(30px,5.4vw,48px);font-weight:900;letter-spacing:-1.6px;line-height:1.08;margin-bottom:16px}
+    .sub{font-size:17px;color:var(--t2);max-width:46ch;margin:0 auto 40px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;text-align:left}
+    .card{
+      display:block;padding:16px 18px;border-radius:12px;text-decoration:none;color:inherit;
+      background:hsla(250,21%,11%,0.44);border:1px solid var(--bd);
+      -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(0.72);
+      backdrop-filter:blur(14px) saturate(1.4) brightness(0.72);
+      box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.12);
+      transition:border-color .2s,transform .2s;
+    }
+    .card:hover{border-color:var(--bdl);transform:translateY(-2px)}
+    .card b{display:block;font-size:14.5px;font-weight:700;margin-bottom:3px}
+    .card span{font-size:12.5px;color:var(--t3);line-height:1.45}
+    .home{
+      display:inline-flex;align-items:center;gap:8px;margin-top:34px;
+      font-size:14px;font-weight:700;color:var(--ac);text-decoration:none;
+    }
+    .home:hover{text-decoration:underline;text-underline-offset:3px}
+  </style>
+  <link rel="stylesheet" href="/terse-glass.css">
+  <script defer src="/terse-field.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <span class="code">404 · not found</span>
+    <h1>That page isn't here.</h1>
+    <p class="sub">The link may be old, or the address may have a typo. These are the pages people usually want.</p>
+
+    <div class="grid">
+      <a class="card" href="/">
+        <b>Home</b><span>What Terse is, and what it costs you to run agents without it</span>
+      </a>
+      <a class="card" href="/get-started">
+        <b>Download &amp; start</b><span>macOS and Windows, 30-day free trial</span>
+      </a>
+      <a class="card" href="/docs">
+        <b>Documentation</b><span>Install, connect your tools, optimization modes</span>
+      </a>
+      <a class="card" href="/blog">
+        <b>Writing</b><span>Where agent tokens actually go, and how to cut them</span>
+      </a>
+      <a class="card" href="/for-windows">
+        <b>Terse for Windows</b><span>The full app on Windows</span>
+      </a>
+      <a class="card" href="/zh/">
+        <b>中文</b><span>Terse 中文站 — Token 优化完全指南</span>
+      </a>
+    </div>
+
+    <a class="home" href="/">← Back to terseai.org</a>
+  </div>
+</body>
+</html>

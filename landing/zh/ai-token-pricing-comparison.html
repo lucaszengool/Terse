@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026 AI Token 定价对比:Claude vs GPT vs Gemini — 完整成本指南</title>
+  <meta name="description" content="2026 年 AI token 定价完整对比:Claude Opus 4、Sonnet 4、GPT-4o、o1、Gemini 2.0 Flash 等。每百万 token 的输入、输出与缓存价格,以及真实的按任务成本拆解。">
+  <link rel="canonical" href="https://www.terseai.org/zh/ai-token-pricing-comparison">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="2026 AI Token 定价对比:Claude vs GPT vs Gemini — 完整成本指南">
+  <meta property="og:description" content="2026 年 Claude、GPT、Gemini 各模型 AI token 定价完整对比。输入、输出与缓存价格,以及真实的按任务成本拆解。">
+  <meta property="og:url" content="https://www.terseai.org/zh/ai-token-pricing-comparison">
+  <meta property="og:site_name" content="Terse">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="2026 AI Token 定价对比:Claude vs GPT vs Gemini — 完整成本指南">
+  <meta name="twitter:description" content="2026 年 AI token 定价完整对比。Claude Opus 4、Sonnet 4、GPT-4o、o1、Gemini 2.0 Flash — 输入、输出、缓存价格与按任务成本拆解。">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "2026 AI Token 定价对比:Claude vs GPT vs Gemini — 完整成本指南",
+    "description": "2026 年 AI token 定价完整对比:Claude Opus 4、Sonnet 4、GPT-4o、o1、Gemini 2.0 Flash 等。每百万 token 的输入、输出与缓存价格,以及真实的按任务成本拆解。",
+    "inLanguage": "zh-Hans",
+    "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
+    "datePublished": "2026-03-18",
+    "dateModified": "2026-03-18",
+    "mainEntityOfPage": "https://www.terseai.org/zh/ai-token-pricing-comparison",
+    "keywords": ["AI token 定价", "Claude vs GPT 价格", "2026 AI 模型成本", "token 价格对比", "Claude Opus 4 定价", "GPT-4o 定价", "Gemini 定价", "AI API 成本", "LLM 定价"]
+  }
+  </script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);--sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);--bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);--t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);--ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--gradient:linear-gradient(135deg,#6ee7b7,#3b82f6)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter','PingFang SC','Hiragino Sans GB','Microsoft YaHei',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .article{max-width:720px;margin:0 auto;padding:120px 32px 80px}
+    .article h1{font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-1px;line-height:1.2;margin-bottom:16px;color:var(--t1)}
+    .article .subtitle{font-size:18px;color:var(--t2);line-height:1.7;margin-bottom:40px}
+    .article h2{font-size:24px;font-weight:800;color:var(--t1);margin:48px 0 16px;letter-spacing:-0.5px}
+    .article h3{font-size:18px;font-weight:700;color:var(--t1);margin:32px 0 12px}
+    .article p{font-size:16px;color:var(--t2);line-height:1.8;margin-bottom:20px}
+    .article ul,.article ol{margin:0 0 20px 24px;color:var(--t2);line-height:1.8}
+    .article li{margin-bottom:8px}
+    .article code{background:var(--sf);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ac)}
+    .article pre{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:20px;margin:20px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:1.6}
+    .article a{color:var(--ac);text-decoration:none;border-bottom:1px solid var(--acd)}
+    .article a:hover{border-color:var(--ac)}
+    .article .tag{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;background:var(--acd);color:var(--ac);margin-bottom:18px}
+    .article .cta-box{margin:48px 0;padding:32px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;text-align:center}
+    .article .cta-box h3{margin-top:0}
+    .article .cta-box a.btn{display:inline-block;padding:12px 28px;background:var(--gradient);color:var(--bg0);font-weight:700;border-radius:10px;text-decoration:none;border:none;margin-top:12px}
+
+    .pricing-table{width:100%;border-collapse:collapse;margin:20px 0 28px;font-size:14px}
+    .pricing-table th,.pricing-table td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--bd)}
+    .pricing-table th{color:var(--t3);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;background:var(--bg2)}
+    .pricing-table td{color:var(--t2)}
+    .pricing-table tr:hover td{background:var(--sf)}
+    .pricing-table .provider-row td{background:var(--bg2);color:var(--ac);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:10px 14px}
+    .pricing-table .highlight td{background:var(--acd)}
+    .pricing-table .price-val{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t1)}
+
+    .cost-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:20px 0 28px}
+    .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px}
+    .cost-card h4{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px}
+    .cost-card .tokens{font-size:12px;color:var(--t3);margin-bottom:12px}
+    .cost-card .cost-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:var(--t2);border-bottom:1px solid var(--sf)}
+    .cost-card .cost-row:last-child{border-bottom:none}
+    .cost-card .cost-row .model-name{color:var(--t2)}
+    .cost-card .cost-row .cost-val{font-family:'JetBrains Mono',monospace;color:var(--t1);font-weight:600}
+
+    .savings-table{width:100%;border-collapse:collapse;margin:20px 0 28px;font-size:14px}
+    .savings-table th,.savings-table td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--bd)}
+    .savings-table th{color:var(--t3);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;background:var(--bg2)}
+    .savings-table td{color:var(--t2)}
+    .savings-table .saved{color:var(--ac);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:13px}
+
+    .updated{font-size:12px;color:var(--t3);margin-bottom:8px;font-style:italic}
+
+    .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px 28px;margin-bottom:48px}
+    .toc h4{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:12px}
+    .toc ol{margin:0 0 0 20px;color:var(--t2);font-size:14px;line-height:2}
+    .toc a{color:var(--ac);border-bottom:none}
+    .toc a:hover{border-bottom:1px solid var(--ac)}
+
+    .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0 28px}
+    .decision-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px}
+    .decision-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:8px}
+    .decision-card p{font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:8px}
+    .decision-card .rec{font-size:13px;color:var(--ac);font-weight:600}
+
+    @media(max-width:700px){
+      .cost-grid{grid-template-columns:1fr}
+      .decision-grid{grid-template-columns:1fr}
+      .pricing-table{font-size:12px}
+      .pricing-table th,.pricing-table td{padding:8px 10px}
+    }
+  </style>
+  <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/ai-token-pricing-comparison">
+  <link rel="alternate" hreflang="en" href="https://www.terseai.org/ai-token-pricing-comparison">
+  <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/ai-token-pricing-comparison">
+  <link rel="stylesheet" href="/terse-glass.css">
+  <script defer src="/terse-field.js"></script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Terse",
+      "item": "https://www.terseai.org/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "2026 AI Token 定价对比:Claude vs GPT vs Gemini — 完整成本指南",
+      "item": "https://www.terseai.org/zh/ai-token-pricing-comparison"
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+
+<nav style="position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)">
+  <a href="/zh/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px"><div style="width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)">T</div>Terse</a>
+  <div style="display:flex;gap:24px;font-size:13px"><a href="/zh/#how-it-works" style="color:var(--t2);text-decoration:none">工作原理</a><a href="/zh/#pipeline" style="color:var(--t2);text-decoration:none">优化管线</a><a href="/zh/#agents" style="color:var(--t2);text-decoration:none">Agent 监控</a><a href="/zh/#pricing" style="color:var(--t2);text-decoration:none">定价</a></div>
+</nav>
+
+<div class="article">
+  <span class="tag">定价指南</span>
+  <p class="updated">最后更新:2026 年 3 月 &middot; 价格核实于 2026 年 3 月</p>
+  <h1>2026 AI Token 定价对比:Claude vs GPT vs Gemini — 完整成本指南</h1>
+  <p class="subtitle">2026 年,最便宜与最昂贵的 AI 模型之间价差超过 100 倍。取决于你选择哪个模型、提示词写得多高效,单次 agent 会话的成本可以在 0.02 美元到 45 美元之间浮动。本指南拆解每个主流模型的定价,对比真实的按任务成本,并展示 token 优化如何把经济账扭转到对你有利的一边。</p>
+
+  <div class="toc">
+    <h4>目录</h4>
+    <ol>
+      <li><a href="#understanding">理解 AI Token 定价</a></li>
+      <li><a href="#pricing-table">完整定价表(所有主流模型)</a></li>
+      <li><a href="#cost-per-task">按任务的成本拆解</a></li>
+      <li><a href="#hidden-costs">大多数开发者忽视的隐性成本</a></li>
+      <li><a href="#optimization">Token 优化如何改写这笔账</a></li>
+      <li><a href="#which-model">你该用哪个模型?</a></li>
+      <li><a href="#terse-helps">无论用什么模型,Terse 都能帮上忙</a></li>
+    </ol>
+  </div>
+
+  <h2 id="understanding">理解 AI Token 定价</h2>
+  <p>在对比具体模型之前,值得先弄清 AI token 定价的实际运作方式。所有商用 LLM 都按 token 计费——token 是文本的小单位,大约对应四分之三个英文单词。单词 "understanding" 是两个 token,短语 "Please help me write a function that" 是九个 token。一段典型的自然语言段落大约是 60 到 100 个 token。</p>
+  <p>价格按每百万 token(MTok)报价,每个模型有三个需要区分的价格点:</p>
+
+  <h3>输入 Token(提示词价格)</h3>
+  <p>输入 token 是你发送给模型的内容:指令、上下文、对话历史、系统提示词,以及你附上的任何文档或代码。这是模型<em>读取</em>你提示词的费用。输入价格几乎总是低于输出价格,因为读取的计算成本低于生成。对大多数工作流来说,输入 token 的数量远超输出——一条典型提示词可能是 2,000 个 token,回复只有 500 个。在 Claude Code 或 Cursor 这类带工具的 agent 会话中,这个比例还会进一步倾斜:模型为了生成每一次简短的工具调用,都要读取数千行代码上下文。</p>
+
+  <h3>输出 Token(生成价格)</h3>
+  <p>输出 token 是模型针对你的提示词生成的内容,包括实际的回答、写出的代码、推理过程,以及工具调用参数。输出 token 更贵——通常是输入价格的 3 到 5 倍——因为生成需要串行计算:每个输出 token 都依赖之前的所有 token,天然比输入侧的并行处理更昂贵。对编程任务来说,输出成本常常主导账单,因为模型会生成冗长的代码块、解释说明和多步工具调用序列。</p>
+
+  <h3>缓存读取价格</h3>
+  <p>缓存价格是最新、影响也最大的维度。当你在多次请求中发送相同的前缀(系统提示词、对话历史或文档上下文)时,提供商可以缓存首次请求的 KV(键值)表示并在后续请求中复用。缓存的输入 token 便宜得多——通常比标准输入价低 90%。Anthropic、OpenAI 和 Google 现在都提供某种形式的提示词缓存,只是实现方式各异。对每一轮都要重发相同上下文的 agent 会话而言,真正决定成本的是缓存价格。一次 200K token 的 agent 会话,如果每轮输入的 90% 命中缓存,实际花费只是牌面输入价的一小部分。</p>
+
+  <h2 id="pricing-table">完整定价表:所有主流模型(2026 年 3 月)</h2>
+  <p>下表列出了通过商用 API 可用的各主流模型当前的每百万 token 定价。价格单位为美元。</p>
+
+  <table class="pricing-table">
+    <thead>
+      <tr><th>模型</th><th>输入 / MTok</th><th>输出 / MTok</th><th>缓存读取 / MTok</th><th>上下文窗口</th></tr>
+    </thead>
+    <tbody>
+      <tr class="provider-row"><td colspan="5">Anthropic (Claude)</td></tr>
+      <tr><td>Claude Opus 4</td><td class="price-val">$15.00</td><td class="price-val">$75.00</td><td class="price-val">$1.50</td><td>200K</td></tr>
+      <tr><td>Claude Sonnet 4</td><td class="price-val">$3.00</td><td class="price-val">$15.00</td><td class="price-val">$0.30</td><td>200K</td></tr>
+      <tr><td>Claude Haiku 3.5</td><td class="price-val">$0.80</td><td class="price-val">$4.00</td><td class="price-val">$0.08</td><td>200K</td></tr>
+      <tr class="provider-row"><td colspan="5">OpenAI</td></tr>
+      <tr><td>GPT-4o</td><td class="price-val">$2.50</td><td class="price-val">$10.00</td><td class="price-val">$1.25</td><td>128K</td></tr>
+      <tr><td>GPT-4o-mini</td><td class="price-val">$0.15</td><td class="price-val">$0.60</td><td class="price-val">$0.075</td><td>128K</td></tr>
+      <tr><td>o1</td><td class="price-val">$15.00</td><td class="price-val">$60.00</td><td class="price-val">$7.50</td><td>200K</td></tr>
+      <tr class="provider-row"><td colspan="5">Google (Gemini)</td></tr>
+      <tr><td>Gemini 2.0 Flash</td><td class="price-val">$0.10</td><td class="price-val">$0.40</td><td class="price-val">$0.025</td><td>1M</td></tr>
+      <tr><td>Gemini 1.5 Pro</td><td class="price-val">$1.25</td><td class="price-val">$5.00</td><td class="price-val">$0.3125</td><td>2M</td></tr>
+    </tbody>
+  </table>
+
+  <p>价差惊人。发送 100 万个输入 token,在 Gemini 2.0 Flash 上花 0.10 美元,在 Claude Opus 4 或 o1 上要 15.00 美元——相差 150 倍。输出价格的跨度类似:Gemini Flash 每 MTok 0.40 美元,Claude Opus 4 则是 75.00 美元,相差 187 倍。这不是可以忽略的边际差异。给任务选错模型,或把不必要的冗长提示词发给昂贵的模型,能把一个 0.50 美元的工作流变成 50 美元。</p>
+  <p>缓存价格缩小了多轮工作流的差距,但没有消除它。Claude Opus 4 的缓存输入价 $1.50/MTok,仍是 Gemini Flash 缓存价 $0.025/MTok 的 60 倍。模型选择的经济账会在 agent 会话的每一轮上复利放大。</p>
+
+  <h2 id="cost-per-task">按任务的成本拆解</h2>
+  <p>裸的每百万 token 价格很难有直观感受。真正重要的是一个真实任务到底要花多少钱。以下是三个常见场景在各模型上的具体成本,按典型的输入输出比例估算。</p>
+
+  <div class="cost-grid">
+    <div class="cost-card">
+      <h4>简单问答</h4>
+      <p class="tokens">约 500 输入 / 约 200 输出 token</p>
+      <div class="cost-row"><span class="model-name">Opus 4</span><span class="cost-val">$0.0225</span></div>
+      <div class="cost-row"><span class="model-name">Sonnet 4</span><span class="cost-val">$0.0045</span></div>
+      <div class="cost-row"><span class="model-name">Haiku 3.5</span><span class="cost-val">$0.0012</span></div>
+      <div class="cost-row"><span class="model-name">GPT-4o</span><span class="cost-val">$0.0033</span></div>
+      <div class="cost-row"><span class="model-name">4o-mini</span><span class="cost-val">$0.0002</span></div>
+      <div class="cost-row"><span class="model-name">o1</span><span class="cost-val">$0.0195</span></div>
+      <div class="cost-row"><span class="model-name">Gemini Flash</span><span class="cost-val">$0.0001</span></div>
+      <div class="cost-row"><span class="model-name">Gemini Pro</span><span class="cost-val">$0.0016</span></div>
+    </div>
+    <div class="cost-card">
+      <h4>代码评审</h4>
+      <p class="tokens">约 5K 输入 / 约 1K 输出 token</p>
+      <div class="cost-row"><span class="model-name">Opus 4</span><span class="cost-val">$0.150</span></div>
+      <div class="cost-row"><span class="model-name">Sonnet 4</span><span class="cost-val">$0.030</span></div>
+      <div class="cost-row"><span class="model-name">Haiku 3.5</span><span class="cost-val">$0.008</span></div>
+      <div class="cost-row"><span class="model-name">GPT-4o</span><span class="cost-val">$0.023</span></div>
+      <div class="cost-row"><span class="model-name">4o-mini</span><span class="cost-val">$0.001</span></div>
+      <div class="cost-row"><span class="model-name">o1</span><span class="cost-val">$0.135</span></div>
+      <div class="cost-row"><span class="model-name">Gemini Flash</span><span class="cost-val">$0.001</span></div>
+      <div class="cost-row"><span class="model-name">Gemini Pro</span><span class="cost-val">$0.011</span></div>
+    </div>
+    <div class="cost-card">
+      <h4>Agent 会话</h4>
+      <p class="tokens">约 200K 输入 / 约 50K 输出(40 轮)</p>
+      <div class="cost-row"><span class="model-name">Opus 4</span><span class="cost-val">$6.75</span></div>
+      <div class="cost-row"><span class="model-name">Sonnet 4</span><span class="cost-val">$1.35</span></div>
+      <div class="cost-row"><span class="model-name">Haiku 3.5</span><span class="cost-val">$0.36</span></div>
+      <div class="cost-row"><span class="model-name">GPT-4o</span><span class="cost-val">$1.00</span></div>
+      <div class="cost-row"><span class="model-name">4o-mini</span><span class="cost-val">$0.060</span></div>
+      <div class="cost-row"><span class="model-name">o1</span><span class="cost-val">$6.00</span></div>
+      <div class="cost-row"><span class="model-name">Gemini Flash</span><span class="cost-val">$0.040</span></div>
+      <div class="cost-row"><span class="model-name">Gemini Pro</span><span class="cost-val">$0.50</span></div>
+    </div>
+  </div>
+
+  <p>Agent 会话这一列才是数字变得真实的地方。一位每天跑 10 次 Claude Opus 4 agent 会话的开发者,每天在 API token 上就要花 67.50 美元,一个月约 1,350 美元。同样的会话换成 Sonnet 4,每月 270 美元;换成 Gemini 2.0 Flash,月账单降到 8 美元。这些不是假想的推演——它们反映的是 2025 年至 2026 年间开发者使用 Claude Code、Cursor 等 agent 工具的真实用量模式。</p>
+  <p>简单问答与 agent 会话之间的成本鸿沟,说明了为什么上下文窗口越大,单 token 效率就越呈指数级重要。提示词很短时,模型选择几乎无所谓——就算是 Opus 4,回答一个小问题也只要 0.02 美元。但当你在一次 40 轮编程会话的每一轮里都塞进 200,000 个 token 的上下文时,提示词里每一个浪费的 token 都被放大了 40 倍,模型之间的价差也就成了一杯咖啡与一期车贷的区别。</p>
+
+  <h2 id="hidden-costs">大多数开发者忽视的隐性成本</h2>
+  <p>定价表告诉你每个 token 多少钱,却不会告诉你浪费了多少 token。实际上,大多数开发者在 token 上的花费比必要水平高出 30-50%,而浪费的来源往往并不显眼。</p>
+
+  <h3>上下文窗口浪费</h3>
+  <p>Agent 框架每一轮都会重发完整的对话历史。到第 20 轮,模型在重读它早已处理过的 19 轮上下文。如果你早期的提示词写得啰嗦,这份啰嗦现在正在每一次后续请求中被反复计费。第 1 轮里一条本可以 60 词却写了 100 词的提示词,那多出的 40 词要乘以会话剩余的每一轮。在一次 40 轮的 Opus 4 会话中,第 1 轮里一段不必要的冗长文字就能给总账单添上好几美元。</p>
+
+  <h3>重复 API 调用</h3>
+  <p>Agent 会话经常发出冗余的 API 调用:模型把同一个文件读两遍、同一条搜索再跑一次,或因为忘了自己已经取过数据而用相同参数再次调用工具。每次重复调用都会把完整的上下文窗口连同工具结果再过一遍模型。Terse 的 <a href="/zh/#agents">agent 监控器</a>常规检测到会话中 5-15% 的工具调用属于重复,每一次都要为重读完整上下文付输入 token、为重复的响应付输出 token。</p>
+
+  <h3>冗长的提示词</h3>
+  <p>人写的提示词充满了花 token 却不加信息的模式。"I would really appreciate it if you could please" 与 "Please" 传达的指令完全相同——而 "Please" 本身与什么都不写也一样,因为 LLM 不需要客套就能给出好结果。<a href="/llmlingua">LLMLingua(EMNLP 2023)</a>的研究量化了这一点:典型提示词包含 40-70% 的冗余 token。含糊措辞("I think maybe")、赘词("basically"、"actually"、"just")、元语言("what I'm trying to do is")和过度限定,都在消耗模型处理时直接忽略的 token。</p>
+
+  <h3>错别字引发的重试循环</h3>
+  <p>一个拼错的变量名、一个不正确的函数签名,或一条含混的指令,都可能让模型产出错误结果,进而引发一轮追加纠正——把整个上下文窗口再发送一遍。在 Opus 4 上,一次由错别字引发的、上下文为 100K token 的重试,光输入 token 就要 1.50 美元。错别字本身也许只有两个字符——但重试的代价是整个上下文窗口被重新处理一遍。在提示词发送之前、在入口处做拼写纠正,可以把这一整类浪费彻底消除。</p>
+
+  <h3>Markdown 与格式开销</h3>
+  <p>许多提示词里塞满了 Markdown 标题、项目符号、加粗标记等格式字符——它们对阅读提示词的人有意义,对处理提示词的模型却无关紧要。一条充斥着 <code>**bold**</code>、<code>### headers</code> 和 <code>- bullet points</code> 的提示词,可能把 5-10% 的 token 预算花在格式字符上。去掉它们,模型的输出同样出色。</p>
+
+  <h2 id="optimization">Token 优化如何改写这笔账</h2>
+  <p>上面描述的隐性成本并非不可撼动。通过 <a href="/zh/what-is-token-optimization">token 优化</a>——在提示词发送给模型之前进行压缩,去除冗余、保留模型真正需要的指令——它们可以被系统性地削减。</p>
+  <p>Terse 应用一条在本机运行、耗时不到 5 毫秒的 <a href="/docs">7 级优化管线</a>。它对成本的影响相当可观,并会在 agent 会话中复利放大。以下是各类任务在使用 Terse Normal 模式(削减 25-40%)前后的数字对比:</p>
+
+  <table class="savings-table">
+    <thead>
+      <tr><th>场景</th><th>模型</th><th>使用 Terse 前</th><th>使用 Terse 后(削减 30%)</th><th>节省</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>简单问答(500 token)</td><td>Opus 4</td><td>$0.0225</td><td>$0.0158</td><td class="saved">$0.007</td></tr>
+      <tr><td>简单问答(500 token)</td><td>GPT-4o</td><td>$0.0033</td><td>$0.0023</td><td class="saved">$0.001</td></tr>
+      <tr><td>代码评审(5K token)</td><td>Opus 4</td><td>$0.150</td><td>$0.105</td><td class="saved">$0.045</td></tr>
+      <tr><td>代码评审(5K token)</td><td>Sonnet 4</td><td>$0.030</td><td>$0.021</td><td class="saved">$0.009</td></tr>
+      <tr><td>Agent 会话(200K token)</td><td>Opus 4</td><td>$6.75</td><td>$4.73</td><td class="saved">$2.02</td></tr>
+      <tr><td>Agent 会话(200K token)</td><td>Sonnet 4</td><td>$1.35</td><td>$0.95</td><td class="saved">$0.40</td></tr>
+      <tr><td>Agent 会话(200K token)</td><td>GPT-4o</td><td>$1.00</td><td>$0.70</td><td class="saved">$0.30</td></tr>
+      <tr><td>Agent 会话(200K token)</td><td>o1</td><td>$6.00</td><td>$4.20</td><td class="saved">$1.80</td></tr>
+    </tbody>
+  </table>
+
+  <p>就单次请求而言,一个简单问题上的节省看起来微不足道。但 agent 会话中的复利效应让数字变得可观。一位每天跑 10 次 Opus 4 agent 会话的开发者,每天省 20.20 美元,每月省 404 美元。一支五人开发团队,每月就是 2,020 美元——足以覆盖额外的工具、基础设施,或直接把 AI 预算砍掉四分之一。</p>
+  <p>节省还会进一步复利,因为 token 优化抑制了上下文窗口的增长。当第 1 到第 10 轮的提示词缩短 30% 时,第 11 到第 40 轮重发的累计上下文也随之缩短。一次 40 轮会话的实际节省通常比线性的 30% 再高 5-10 个百分点,因为压缩会沿着对话历史层层传导。</p>
+  <p>在 Aggressive 模式(削减 40-60%)下,节省大致翻倍。习惯了电报式提示词——更短、更直接、剥离所有赘料——的开发者,可以把 Opus 4 agent 会话的成本从 6.75 美元压到 3.00 美元以下。到那时,Opus 4 与 Sonnet 4 之间的成本差距已经小到:对于确实能体现质量差异的任务,直接选更强的模型也变得合理。</p>
+
+  <h2 id="which-model">你该用哪个模型?</h2>
+  <p>模型选择取决于两个因素:你在做什么,以及你愿意花多少钱。以下是一个基于任务类型和预算敏感度的决策框架。</p>
+
+  <div class="decision-grid">
+    <div class="decision-card">
+      <h4>快速提问与闲聊</h4>
+      <p>简单查询、头脑风暴、解释说明和对话类任务。token 量低,几乎不需要上下文。</p>
+      <p class="rec">最划算:GPT-4o-mini($0.0002/次)或 Gemini 2.0 Flash($0.0001/次)</p>
+    </div>
+    <div class="decision-card">
+      <h4>代码生成</h4>
+      <p>按规格编写函数、类和模块。上下文中等、输出量大,正确性对质量要求高。</p>
+      <p class="rec">最均衡:Claude Sonnet 4($0.030/次)或 GPT-4o($0.023/次)</p>
+    </div>
+    <div class="decision-card">
+      <h4>复杂推理</h4>
+      <p>多步逻辑、数学证明、架构决策、研究分析。准确性压倒一切。</p>
+      <p class="rec">最高质量:Claude Opus 4($0.15/任务)或 o1($0.135/任务)</p>
+    </div>
+    <div class="decision-card">
+      <h4>Agent 会话(编程)</h4>
+      <p>带工具调用的长多轮会话:Claude Code、Cursor、Aider。token 量大,上下文逐轮增长。</p>
+      <p class="rec">最均衡:Claude Sonnet 4($1.35/会话)。省钱:Haiku 3.5($0.36/会话)</p>
+    </div>
+    <div class="decision-card">
+      <h4>批处理</h4>
+      <p>文档分类、数据提取、大规模摘要。请求数以千计,单位成本最重要。</p>
+      <p class="rec">最划算:Gemini 2.0 Flash($0.10/MTok)或 GPT-4o-mini($0.15/MTok)</p>
+    </div>
+    <div class="decision-card">
+      <h4>长文档分析</h4>
+      <p>处理大型 PDF、代码库或研究论文。需要大上下文窗口和强理解力。</p>
+      <p class="rec">最合适:Gemini 1.5 Pro(2M 上下文,$1.25/MTok)或 Claude Sonnet 4(200K,$3/MTok)</p>
+    </div>
+  </div>
+
+  <p>基本原则很简单:用能为你的任务产出可接受结果的最便宜模型。对大多数编程工作流,Claude Sonnet 4 或 GPT-4o 在能力与成本之间的平衡最好。Opus 4 和 o1 留给它们更强的推理确实能带来可度量提升的任务——复杂的架构决策、隐蔽的 bug 分析,或换成便宜模型就得多次重试(重试本身也要花 token)的多文件重构。</p>
+  <p>对于数据处理、分类和提取这类高吞吐工作,Gemini 2.0 Flash 和 GPT-4o-mini 独一档。分别以每百万输入 token 0.10 和 0.15 美元的价格,它们让那些在前沿模型上贵得离谱的任务变得经济可行。质量差距是真实存在的——这些模型在复杂推理上比不了 Opus 4——但对于结构清晰、定义明确的任务,它们能以极小的成本达到相近的表现。</p>
+  <p>还有一个重要的考量:最便宜的模型未必是最便宜的选择。如果一个廉价模型要两次尝试才能得到正确答案,而更贵的模型一次就对,那廉价模型实际反而更贵。每次重试都要重发完整的上下文窗口。在一次 100K token 的 agent 会话中,Sonnet 4 上的一次重试要 0.30 美元的输入 token。如果更贵的 Opus 4 避免了那次重试,你为 Opus 4 输入价多付的 0.15 美元就被抵消了。真正的成本指标不是每 token 的价格,而是每个成功结果的价格。</p>
+
+  <h2 id="terse-helps">无论用什么模型,Terse 都能帮上忙</h2>
+  <p>Token 优化与模型无关。不管你把提示词发给 Opus 4、GPT-4o-mini 还是 Gemini Flash,里面的冗余都同样存在。Terse 之所以对所有模型都有效,是因为它工作在提示词层面——在文本到达任何 API 之前。</p>
+
+  <h3>通用压缩</h3>
+  <p>Terse 的<a href="/docs">优化管线</a>处理的是纯文本。它不依赖任何模型的分词器、API 格式或定价结构。无论提示词发往 Anthropic、OpenAI 还是 Google,压缩的应用方式完全一致。赘词就是赘词,不管终点是哪个模型;含糊措辞在每家提供商那里都要花 token。Terse 在 Normal 模式下实现的 30-40% 削减,会在任何模型、任何价位上直接转化为 30-40% 更少的计费 token。</p>
+
+  <h3>节省随价格同步放大</h3>
+  <p>优化的美元价值与模型价格成正比。在 Gemini Flash 上削减 30%,每百万 token 省 0.03 美元;同样的 30% 在 Opus 4 上,每百万 token 省 4.50 美元——同一次优化,美元收益放大 150 倍。这意味着 Terse 在最贵的模型上回本最快,而这些模型恰恰是开发者最不愿在质量上妥协的。与其从 Opus 4 降级到便宜模型,不如继续用最好的模型,通过压缩提示词来<a href="/zh/reduce-ai-api-costs">降低它的实际成本</a>。</p>
+
+  <h3>Agent 会话监控</h3>
+  <p>在提示词压缩之外,Terse 的 <a href="/zh/#agents">agent 监控</a>能力让你实时看清 token 都去了哪里。监控面板跟踪每个 agent 会话的输入 token、输出 token、缓存命中、工具调用和累计成本;标记重复工具调用,检测冗余文件读取,并在上下文占用超过 85% 时发出警报。这些洞察帮你优化的不只是提示词,而是整个工作流——找出 agent 浪费 token 的模式,进而调整做法,或更新你的 <code>CLAUDE.md</code> 规则,让浪费不再重演。</p>
+
+  <h3>跨会话的复利效应</h3>
+  <p>大多数开发者每天跑的不是一次 agent 会话,而是五次、十次、二十次。Token 优化的节省在会话之间线性累积,在单次会话内部(由于上下文窗口重发)则指数放大。一位用 Terse 优化提示词、每天跑 10 次 Sonnet 4 agent 会话的开发者,大约每天省 4.00 美元、每月省 80 美元、每年省 960 美元。换成 Opus 4,同样的用量模式每天省 20 美元、每月 400 美元、每年 4,800 美元。团队的话,按人数相乘即可。</p>
+  <p>算术很简单,含义却很重大:对在意成本的开发者来说,token 优化不是可有可无的点缀。按 2026 年当前的价格水平,它是直接作用于你 AI 预算的一项输入,并随你运行的每一次会话复利增长。</p>
+
+  <div class="cta-box">
+    <h3>别再为 Token 多花冤枉钱</h3>
+    <p style="color:var(--t2);margin-bottom:0">Terse 在提示词到达任何 API 之前将其压缩 30-60%。本机运行、耗时不到 5 毫秒,兼容 Claude、GPT、Gemini 及所有其他模型。在 agent 监控面板中实时查看你的节省。</p>
+    <a href="/zh/#pricing" class="btn">下载 Terse</a>
+  </div>
+
+  <h2>延伸阅读</h2>
+  <p>探索更多降低 AI 成本的指南与技术:</p>
+  <ul>
+    <li><a href="/zh/">Terse 首页</a> &mdash; 本机 token 优化器与 agent 监控器概览</li>
+    <li><a href="/docs">文档</a> &mdash; 安装、配置与使用指南</li>
+    <li><a href="/zh/what-is-token-optimization">什么是 Token 优化?</a> &mdash; 提示词压缩及其原理入门</li>
+    <li><a href="/zh/reduce-ai-api-costs">如何降低 AI API 成本</a> &mdash; 模型选择之外的实用策略</li>
+    <li><a href="/llmlingua">LLMLingua 与提示词压缩</a> &mdash; token 优化背后的研究</li>
+    <li><a href="/pattern-optimization">模式优化</a> &mdash; 20 多条确定性压缩规则</li>
+    <li><a href="/telegraph-compression">电报式压缩</a> &mdash; Aggressive 模式的最大化压缩</li>
+  </ul>
+</div>
+
+<footer style="padding:60px 40px 30px;border-top:1px solid var(--bd);background:var(--bg0)">
+  <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px">
+    <div><a href="/zh/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--t1);font-weight:800;font-size:18px;margin-bottom:12px"><div style="width:28px;height:28px;background:var(--gradient);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--bg0)">T</div>Terse</a><p style="color:var(--t3);line-height:1.7">Agent 会话优化器 + 监控器。压缩提示词、检测重复工具调用、跟踪每轮成本。全部在本机完成。</p></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">产品</h4><a href="/zh/#pipeline" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">优化管线</a><a href="/zh/#techniques" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">优化技术</a><a href="/zh/#agents" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Agent 监控</a><a href="/zh/#pricing" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">定价</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">优化技术</h4><a href="/spell-correction" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">拼写纠正</a><a href="/pattern-optimization" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">模式优化</a><a href="/nlp-analysis" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">NLP 分析</a><a href="/telegraph-compression" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">电报式压缩</a></div>
+    <div><h4 style="color:var(--t1);margin-bottom:16px;font-size:12px;text-transform:uppercase;letter-spacing:1px">研究</h4><a href="/llmlingua" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">LLMLingua</a><a href="/norvig-spelling" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">Norvig 拼写</a><a href="/selective-context" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">选择性上下文</a><a href="/docs" style="color:var(--t3);text-decoration:none;display:block;padding:4px 0">文档</a></div>
+  </div>
+  <div style="max-width:1000px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)"><span>&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+</footer>
+
+</body>
+</html>

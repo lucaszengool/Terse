@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>降低 Claude Code Token 成本 — Terse for Claude Code</title>
+  <meta name="description" content="Terse 可将 Claude Code 的 token 成本降低 40-89%。自动检测会话、压缩提示词、拦截重复工具调用、标记冗余文件读取,并自动生成 CLAUDE.md 规则。免费试用 30 天。">
+  <link rel="canonical" href="https://www.terseai.org/zh/for-claude-code">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="降低 Claude Code Token 成本 — Terse for Claude Code">
+  <meta property="og:description" content="Terse 可将 Claude Code 的 token 成本降低 40-89%。自动检测会话、压缩提示词、拦截重复工具调用,并自动生成 CLAUDE.md 规则。">
+  <meta property="og:url" content="https://www.terseai.org/zh/for-claude-code">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="降低 Claude Code Token 成本 — Terse for Claude Code">
+  <meta name="twitter:description" content="Terse 可将 Claude Code 的 token 成本降低 40-89%。自动检测会话、压缩提示词、拦截重复工具调用,并自动生成 CLAUDE.md 规则。">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "降低 Claude Code Token 成本 — Terse for Claude Code",
+        "url": "https://www.terseai.org/zh/for-claude-code",
+        "inLanguage": "zh-Hans",
+        "description": "Terse 通过提示词压缩、重复工具调用检测和 CLAUDE.md 规则生成,将 Claude Code 的 token 成本降低 40-89%。",
+        "dateModified": "2026-04-25",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "首页", "item": "https://www.terseai.org/zh/"},
+            {"@type": "ListItem", "position": 2, "name": "适用于 Claude Code", "item": "https://www.terseai.org/zh/for-claude-code"}
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Terse 如何降低 Claude Code 的 token 成本?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse 通过进程扫描自动检测 Claude Code 会话,并附加一个悬浮优化条。它会压缩你输入的每一条提示词(去除赘词、错别字和冗余内容),检测 Claude Code 发出的重复工具调用,标记冗余的文件读取,并实时跟踪每轮的 token 开销。在一次典型的 2 小时会话中,总 token 用量可减少 40-89%。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Terse 能自动配合 Claude Code 工作吗?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "可以。Terse 每 5 秒扫描一次运行中的进程,Claude Code 一启动就会被自动识别,悬浮优化条会出现在终端上方。无需任何配置——检测完全自动。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "什么是 CLAUDE.md 规则生成?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "在监控完一次 Claude Code 会话后,Terse 会分析其中的模式——重复的工具调用、常见的提示词结构、冗余的上下文——并生成能在未来会话中避免这些低效行为的 CLAUDE.md 规则。把这些规则放进项目的 CLAUDE.md 文件,就能让 Claude Code 从每次会话一开始就以更高效的方式工作。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "不用 Terse 的情况下,一次 Claude Code 会话要花多少钱?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "使用 Claude Opus 的一次典型 2 小时 Claude Code 会话会产生约 210,000 个 token 的 CLI 输出噪音(文件读取、工具调用、重复上下文)。按 Claude Opus 每百万 token 15-75 美元的价格计算,单次会话花费 3-15 美元。每天跑 3-4 次会话的重度用户每月要花 200-500 美元。Terse 可将这些输出压缩 40-89%,直接降低这笔开销。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Terse 会拦截或把我的 Claude Code 提示词发送到别处吗?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "不会。Terse 100% 在本机运行。它通过 macOS 辅助功能 API 读取终端中的文本,用 Rust 引擎在本地处理,再把优化后的文本写回同一个终端。任何文本都不会被发送到任何服务器。你的代码和提示词永远不会离开你的电脑。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Claude Code 中的重复工具调用是什么?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "重复工具调用是指 Claude Code 在同一次会话中多次读取同一个文件,或把同一条搜索查询跑了两遍。每次工具调用都会为调用本身以及进入上下文的结果消耗 token。Terse 的 Agent 监控器会实时检测这些模式并提醒你,让你可以在浪费的 token 累积起来之前打断并纠正 Claude。"
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg1:hsl(250,24%,9%);--bg2:hsl(250,21%,11%);--bg3:hsl(250,18%,14%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);--ac3:#a7f3d0;
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter','PingFang SC','Hiragino Sans GB','Microsoft YaHei',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+
+    .hero{padding:140px 40px 80px;text-align:center;position:relative;overflow:hidden;max-width:900px;margin:0 auto}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07) 0%,transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-1px;line-height:1.1;margin-bottom:16px}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:600px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:0}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1px;margin-bottom:8px}
+    section .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:600px}
+    .divider{max-width:100%;height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .demo-box{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;max-width:760px;margin:0 auto}
+    .demo-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .demo-title{margin-left:8px;font-size:11px;color:var(--t3);flex:1}
+    .demo-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+    .demo-body{padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px}
+    .term-line{line-height:1.8;opacity:0;transition:opacity .3s}
+    .term-line.show{opacity:1}
+    .term-line.cmd{color:#fff}
+    .term-line.out{color:var(--t3)}
+    .term-line.green{color:var(--ac)}
+    .term-line.warn{color:#fbbf24}
+    .terse-banner{margin-top:10px;padding:10px 14px;background:var(--acd);border:1px solid var(--acm);border-radius:8px;display:flex;align-items:center;gap:10px;opacity:0;transition:opacity .4s}
+    .terse-banner.show{opacity:1}
+    .terse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;opacity:0;transition:opacity .4s}
+    .terse-stats.show{opacity:1}
+    .ts-box{background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:8px;text-align:center}
+    .ts-val{font-size:13px;font-weight:800;display:block;color:var(--ac)}
+    .ts-lbl{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-1px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+      .stats-row{gap:8px}
+    }
+  </style>
+  <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/for-claude-code">
+  <link rel="alternate" hreflang="en" href="https://www.terseai.org/for-claude-code">
+  <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/for-claude-code">
+  <link rel="stylesheet" href="/terse-glass.css">
+  <script defer src="/terse-field.js"></script>
+</head>
+<body>
+
+<nav>
+  <a href="/zh/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/zh/#how-it-works">工作原理</a>
+    <a href="/zh/#pipeline">优化管线</a>
+    <a href="/zh/#agents">Agent 监控</a>
+    <a href="/zh/#pricing">定价</a>
+  </div>
+  <a href="/zh/#pricing" class="nav-cta">开始免费试用</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Claude Code</div>
+  <h1>把你的 <span class="gradient-text">Claude Code</span> 账单砍掉 40–89%</h1>
+  <p class="sub">Terse 自动检测 Claude Code 会话,压缩每一条提示词,拦截重复工具调用,并自动生成 CLAUDE.md 规则——花得更少,交付更快。</p>
+  <div class="hero-actions">
+    <a href="/zh/#pricing" class="btn-primary">开始 30 天免费试用</a>
+    <a href="#how-it-works" class="btn-ghost">了解工作原理</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">89%</span><span class="lbl">CLI 噪音削减</span></div>
+    <div class="stat-pill"><span class="val">40–70%</span><span class="lbl">提示词压缩</span></div>
+    <div class="stat-pill"><span class="val">自动</span><span class="lbl">会话检测</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">数据离开设备</span></div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section id="how-it-works">
+  <h2>Terse 如何配合 <span class="gradient-text">Claude Code</span> 工作</h2>
+  <p class="section-sub">一次 2 小时的 Claude Code 会话会产生约 210,000 个 token 的输出噪音。Terse 自动拦截、压缩并监控每一轮对话。</p>
+
+  <div style="margin-bottom:40px">
+    <div class="demo-box">
+      <div class="demo-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><div class="demo-title">终端 — Claude Code 会话</div><div class="demo-badge">Terse 已激活</div></div>
+      <div class="demo-body" id="ccDemo">
+        <div class="term-line cmd">$ claude</div>
+        <div class="term-line out">Claude Code v1.2.4 — type /help for commands</div>
+        <div class="term-line out" style="color:var(--ac);font-size:10px">● Terse 已检测 — 正在监控会话 (Opus · $15/M tokens)</div>
+        <div class="term-line cmd" style="margin-top:8px">&gt; refactor the authetication middlewre to use asynchrnous handlers</div>
+        <div class="terse-banner" id="ccBanner">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0"></div>
+          <div style="flex:1;font-size:10px;color:var(--t2)">Terse 已优化: <span style="text-decoration:line-through;opacity:.4">authetication middlewre asynchrnous</span> → <span style="color:var(--ac)">authentication middleware asynchronous</span> · 节省 3 个 token · 避免了 2 次重试工具调用</div>
+        </div>
+        <div class="term-line out" style="margin-top:8px">Reading: src/middleware/authentication.ts [847 tokens]</div>
+        <div class="term-line warn" id="ccWarn">⚠ Terse: 检测到重复文件读取(本次会话第 3 次)· 已标记生成 CLAUDE.md 规则</div>
+        <div class="terse-stats" id="ccStats">
+          <div class="ts-box"><span class="ts-val">23.4K</span><span class="ts-lbl">已用 token</span></div>
+          <div class="ts-box"><span class="ts-val" style="color:#fbbf24">210K</span><span class="ts-lbl">不用 Terse</span></div>
+          <div class="ts-box"><span class="ts-val">89%</span><span class="ts-lbl">已压缩</span></div>
+          <div class="ts-box"><span class="ts-val">$0.31</span><span class="ts-lbl">会话成本</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <h3>自动会话检测</h3>
+      <p>Terse 每 5 秒扫描一次进程。Claude Code 一启动,悬浮监控条立即出现——无需设置,零配置。</p>
+      <span class="tag">全自动</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🗜️</div>
+      <h3>提示词压缩</h3>
+      <p>你输入的每条提示词都会经过 7 级管线:错别字修正、空白规整、赘词去除、模式优化等等。代码块始终受到保护。</p>
+      <span class="tag">7 级管线</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔍</div>
+      <h3>重复工具调用检测</h3>
+      <p>Terse 监视会话中重复的 <code>Read</code>、<code>Bash</code> 和 <code>Search</code> 调用。每次重复都会在烧掉 token 之前被实时标记。</p>
+      <span class="tag">Agent 监控</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📁</div>
+      <h3>冗余文件读取标记</h3>
+      <p>当 Claude Code 多次读取同一个文件——一种非常常见的模式——Terse 会高亮提示,并记录到 CLAUDE.md 规则生成器中。</p>
+      <span class="tag">会话分析</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📋</div>
+      <h3>CLAUDE.md 规则生成</h3>
+      <p>每次会话结束后,Terse 分析行为模式并写出 CLAUDE.md 规则,防止同样的低效行为再次发生。你的会话会越用越省。</p>
+      <span class="tag">Terse 独有</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💰</div>
+      <h3>每轮成本跟踪</h3>
+      <p>实时看到每一轮对话消耗了多少 token。当一条提示词正在烧掉 0.50 美元时立刻知晓,在会话变贵之前及时纠偏。</p>
+      <span class="tag">实时跟踪</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>Claude Code 的 Token 难题</h2>
+  <p class="section-sub">你的 token 开销大头并不是提示词本身——而是 Claude Code 每一轮悄悄产生的隐形开销。</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px">
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">不用 Terse — 2 小时会话</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">CLI 输出噪音</span><span style="color:#f87171;font-weight:700">~150,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">重复文件读取</span><span style="color:#f87171;font-weight:700">~30,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">冗长提示词</span><span style="color:#f87171;font-weight:700">~30,000 tokens</span></div>
+        <div style="height:1px;background:var(--bd);margin:4px 0"></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800"><span>合计</span><span style="color:#f87171">~210,000 tokens</span></div>
+        <div style="font-size:12px;color:var(--t3)">Opus 约 $3.15 · Sonnet 约 $0.63</div>
+      </div>
+    </div>
+    <div style="padding:28px;background:var(--bg2);border:1px solid var(--acm);border-radius:14px;background:linear-gradient(160deg,rgba(110,231,183,0.05),var(--bg2))">
+      <div style="font-size:12px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">使用 Terse — 同一次会话</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">CLI 输出噪音</span><span style="color:var(--ac);font-weight:700">~16,500 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">重复文件读取</span><span style="color:var(--ac);font-weight:700">~3,000 tokens</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">压缩后的提示词</span><span style="color:var(--ac);font-weight:700">~9,000–18,000 tokens</span></div>
+        <div style="height:1px;background:var(--bd);margin:4px 0"></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800"><span>合计</span><span style="color:var(--ac)">~23,000–37,000 tokens</span></div>
+        <div style="font-size:12px;color:var(--t3)">Opus 约 $0.35–$0.55 · Sonnet 约 $0.07–$0.11</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>常见<span class="gradient-text">问题</span></h2>
+  <p class="section-sub">关于在 Claude Code 中使用 Terse 的一切。</p>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">Terse 如何降低 Claude Code 的 token 成本?</div>
+      <div class="faq-a">Terse 通过进程扫描自动检测 Claude Code,并附加一个悬浮优化器。它压缩每条提示词(去除赘词、错别字、冗余),检测重复工具调用,标记冗余文件读取,并实时跟踪每轮开销。一次典型的 2 小时会话中,总 token 用量可下降 40–89%。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Terse 能自动配合 Claude Code 工作吗?</div>
+      <div class="faq-a">可以。Terse 每 5 秒扫描一次运行中的进程,Claude Code 一启动就会被自动识别。悬浮监控条会出现在终端上方,无需任何设置。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">什么是 CLAUDE.md 规则生成?</div>
+      <div class="faq-a">监控完一次会话后,Terse 会分析其中的模式——重复的工具调用、常见的提示词结构、冗余的上下文——并生成 CLAUDE.md 规则。把这些规则放进你的项目,Claude Code 在之后的每次会话中一开始就会以更高效的方式工作。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Terse 会把我的 Claude Code 提示词发送到别处吗?</div>
+      <div class="faq-a">不会。Terse 100% 在本机运行。它通过 macOS 辅助功能 API 读取文本,用 Rust 引擎在本地压缩,再写回终端。你的代码和提示词永远不会离开你的电脑。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">什么是重复工具调用?</div>
+      <div class="faq-a">重复工具调用是指 Claude Code 多次读取同一个文件,或把同一次搜索跑了两遍。每次调用都要为调用本身和进入上下文的结果付出 token。Terse 的 Agent 监控器会实时标记这些行为,让你在成本累积之前及时打断。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">不用 Terse 的话,一次 Claude Code 会话要花多少钱?</div>
+      <div class="faq-a">一次典型的 2 小时 Claude Opus 会话会产生约 210,000 个 token 的 CLI 噪音。按每百万 token 15–75 美元计算,单次会话就是 3–15 美元。重度用户每月要花 200–500 美元。Terse 可将其压缩 40–89%。</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section>
+  <h2>同样支持</h2>
+  <p class="section-sub">Terse 支持所有主流 AI 编程工具和基于浏览器的 AI 助手。</p>
+  <div class="also-grid">
+    <a href="/for-cursor" class="also-card">
+      <span style="font-size:18px">⌨️</span>
+      <span>Cursor — AI 代码编辑器</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a href="/for-chatgpt" class="also-card">
+      <span style="font-size:18px">💬</span>
+      <span>ChatGPT — 浏览器</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a class="also-card" href="/for-github-copilot">
+      <span style="font-size:18px">🤖</span>
+      <span>GitHub Copilot — VS Code</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a class="also-card" href="/for-aider">
+      <span style="font-size:18px">🖥️</span>
+      <span>Aider — 终端 Agent</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+    <a class="also-card" href="/zh/#agents">
+      <span style="font-size:18px">🌐</span>
+      <span>Claude.ai、Gemini — 浏览器</span>
+      <span style="color:var(--t3);font-size:11px;margin-left:auto">→</span>
+    </a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>别再把 Token 烧在<span class="gradient-text">噪音</span>上</h2>
+  <p>30 天免费试用。试用期结束前无需信用卡。随时可取消。</p>
+  <div class="hero-actions" style="justify-content:center">
+    <a href="/zh/#pricing" class="btn-primary">开始免费试用 — macOS</a>
+    <a href="/token-calculator" class="btn-ghost">计算你的节省</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/zh/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Agent 会话优化器。压缩提示词、检测重复工具调用、跟踪每轮成本。全部在本机完成。</p>
+    </div>
+    <div class="footer-col"><h4>适用 AI 工具</h4><a href="/zh/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-chatgpt">ChatGPT</a><a href="/for-github-copilot">GitHub Copilot</a><a href="/for-aider">Aider</a></div>
+    <div class="footer-col"><h4>优化技术</h4><a href="/spell-correction">拼写纠正</a><a href="/nlp-analysis">NLP 分析</a><a href="/telegraph-compression">电报式压缩</a><a href="/selective-context">选择性上下文</a></div>
+    <div class="footer-col"><h4>了解更多</h4><a href="/zh/reduce-ai-api-costs">降低 AI API 成本</a><a href="/token-calculator">Token 计算器</a><a href="/llmlingua">LLMLingua 研究</a><a href="/docs">文档</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Rust · Swift</span></div>
+</footer>
+
+<script>
+(function(){
+  const lines = document.querySelectorAll('#ccDemo .term-line');
+  const banner = document.getElementById('ccBanner');
+  const warn = document.getElementById('ccWarn');
+  const stats = document.getElementById('ccStats');
+  let started = false;
+
+  function run() {
+    if (started) return;
+    started = true;
+    lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), i * 400));
+    setTimeout(() => banner.classList.add('show'), lines.length * 400 + 200);
+    setTimeout(() => warn.classList.add('show'), lines.length * 400 + 900);
+    setTimeout(() => stats.classList.add('show'), lines.length * 400 + 1400);
+  }
+
+  const obs = new IntersectionObserver(e => e.forEach(x => { if (x.isIntersecting) run(); }), { threshold: 0.3 });
+  obs.observe(document.querySelector('.demo-box'));
+})();
+</script>
+</body>
+</html>

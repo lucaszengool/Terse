@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hans">
 <head>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
@@ -11,14 +11,14 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terse — The AI Agent Butler: Monitor, Control Cost & Optimize</title>
-  <meta name="description" content="Terse is the on-device butler for your AI coding agents — live-monitor Claude Code, Cursor & 6 more, cap runaway spend before the next API call, compress prompts, and manage MCP servers. Cut token costs 40-70%.">
+  <title>Terse — 智能 LLM Token 优化器,节省 40-70% AI 成本</title>
+  <meta name="description" content="节省 40-70% 的 AI token 成本。Terse 实时监控 agent 会话——压缩提示词、拦截重复工具调用,并跟踪 Claude Code、Cursor 等工具的每轮开销。">
 
   <!-- Open Graph (Facebook, LinkedIn, iMessage, Slack, Discord) -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://www.terseai.org/">
-  <meta property="og:title" content="Terse — The AI Agent Butler for Claude Code, Cursor & More">
-  <meta property="og:description" content="One butler for every AI agent: live monitoring, a budget breaker that stops runaway spend, MCP management, and 40-70% prompt compression. On-device.">
+  <meta property="og:url" content="https://www.terseai.org/zh/">
+  <meta property="og:title" content="Terse — 让每一个 Token 都物尽其用">
+  <meta property="og:description" content="节省 40-70% 的 AI token 成本。压缩提示词、拦截重复工具调用,跟踪 Claude Code、Cursor、ChatGPT 等工具的每轮开销。">
   <meta property="og:image" content="https://www.terseai.org/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -26,9 +26,9 @@
 
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="https://www.terseai.org/">
-  <meta name="twitter:title" content="Terse — The AI Agent Butler for Claude Code, Cursor & More">
-  <meta name="twitter:description" content="One butler for every AI agent: live monitoring, a budget breaker that stops runaway spend, MCP management, and 40-70% prompt compression. On-device.">
+  <meta name="twitter:url" content="https://www.terseai.org/zh/">
+  <meta name="twitter:title" content="Terse — 让每一个 Token 都物尽其用">
+  <meta name="twitter:description" content="节省 40-70% 的 AI token 成本。压缩提示词、拦截重复工具调用,跟踪 Claude Code、Cursor、ChatGPT 等工具的每轮开销。">
   <meta name="twitter:image" content="https://www.terseai.org/og-image.png">
 
   <!-- Extras: theme color, canonical, robots, author -->
@@ -36,7 +36,7 @@
   <meta name="robots" content="index, follow">
   <meta name="author" content="Terse">
   <meta name="keywords" content="token optimization, AI cost reduction, prompt compression, Claude Code, Cursor, ChatGPT, LLM token savings, AI agent monitor, reduce AI API costs, prompt optimizer, reduce Claude Code costs, cursor token optimizer, macOS AI tool, AI session monitor, LLM token cost tracker">
-  <link rel="canonical" href="https://www.terseai.org/">
+  <link rel="canonical" href="https://www.terseai.org/zh/">
 
   <!-- LLM ingestion files -->
   <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-friendly site summary">
@@ -50,238 +50,205 @@
 
   <!-- JSON-LD Structured Data -->
   <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "name": "Terse",
-      "url": "https://www.terseai.org",
-      "logo": "https://www.terseai.org/apple-touch-icon.png",
-      "description": "Terse is an on-device AI agent butler for macOS and Windows: it live-monitors 8 coding agents, caps runaway spend with a budget circuit breaker, manages MCP servers, runs waste-scan diagnostics, and cuts token costs 40-70% through prompt compression.",
-      "foundingDate": "2026",
-      "sameAs": [
-        "https://github.com/Terse-AI/terseai",
-        "https://www.producthunt.com/products/terse",
-        "https://twitter.com/terseai"
-      ]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "name": "Terse",
-      "url": "https://www.terseai.org",
-      "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "macOS, Windows",
-      "description": "Terse is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider.",
-      "offers": [
-        {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD",
-          "name": "Free",
-          "description": "Free tier with the full on-device optimization pipeline"
-        },
-        {
-          "@type": "Offer",
-          "price": "4.99",
-          "priceCurrency": "USD",
-          "name": "Pro",
-          "description": "30-day free trial, then $4.99/month. Unlimited optimizations and agent monitoring."
-        },
-        {
-          "@type": "Offer",
-          "price": "99",
-          "priceCurrency": "USD",
-          "name": "Premium",
-          "description": "Unlimited everything, unlimited devices, priority support"
-        }
-      ],
-      "featureList": [
-        "40-70% token cost reduction on AI prompts",
-        "35+ optimization techniques in a 7-stage on-device pipeline",
-        "Live monitoring of 8 coding agents: Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider",
-        "Budget circuit breaker that pauses or kills a runaway agent before its next API call",
-        "MCP server manager with security risk scoring",
-        "Terse Doctor waste scans: prompt-cache waste, duplicate tool calls, redundant file reads, context burn",
-        "Per-turn cost, cache efficiency, burn rate and context-window tracking",
-        "3 optimization modes: Soft, Normal, Aggressive — code blocks always protected",
-        "CLAUDE.md rule generation from session patterns",
-        "100% on-device, zero cloud dependency"
-      ],
-      "screenshot": "https://www.terseai.org/og-image.png",
-      "softwareVersion": "1.3.3",
-      "datePublished": "2026-01-15",
-      "dateModified": "2026-08-28",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "reviewCount": "47",
-        "bestRating": "5",
-        "worstRating": "1"
-      }
-    },
-    {
-      "@type": "WebSite",
-      "name": "Terse",
-      "url": "https://www.terseai.org"
-    },
-    {
-      "@type": "WebPage",
-      "name": "Terse — Intelligent Token Optimizer for LLMs",
-      "url": "https://www.terseai.org",
-      "speakable": {
-        "@type": "SpeakableSpecification",
-        "cssSelector": [
-          ".hero .sub",
-          ".faq-a",
-          ".usage-headline",
-          ".demo-sub"
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": "https://www.terseai.org/apple-touch-icon.png",
+        "description": "Terse is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate detection, and real-time agent session monitoring.",
+        "foundingDate": "2026",
+        "sameAs": [
+          "https://github.com/Terse-AI/terseai",
+          "https://www.producthunt.com/products/terse",
+          "https://twitter.com/terseai"
         ]
       },
-      "breadcrumb": {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Windows",
+        "description": "Terse is an on-device AI agent butler for macOS and Windows that cuts token costs 40-70%: prompt compression, live monitoring of 8 coding agents (Claude Code, Cursor, Codex, Copilot CLI, Cline, Windsurf, OpenClaw, Aider), a budget circuit breaker that pauses runaway agents, MCP server management with security risk scoring, and Terse Doctor waste scans.",
+        "offers": [
           {
-            "@type": "ListItem",
+            "@type": "Offer",
+            "price": "4.99",
+            "priceCurrency": "USD",
+            "name": "Pro",
+            "description": "30-day free trial. Unlimited optimizations, 3 sessions, agent monitoring"
+          },
+          {
+            "@type": "Offer",
+            "price": "99",
+            "priceCurrency": "USD",
+            "name": "Premium",
+            "description": "Unlimited everything, unlimited devices, priority support"
+          }
+        ],
+        "featureList": [
+          "40-70% token cost reduction on AI prompts",
+          "Live monitoring of 8 coding agents: Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider",
+          "Budget circuit breaker — pauses or kills runaway agents before the next API call",
+          "MCP server manager with security risk scoring",
+          "Terse Doctor: 25 scans for cache waste, duplicate tool calls, redundant reads, context burn",
+          "Per-turn cost, cache efficiency, burn rate, and context-window tracking",
+          "35+ token reduction techniques including spell correction",
+          "3 optimization modes: Soft, Normal, Aggressive",
+          "Alert Center with Slack and push notifications, weekly savings digest",
+          "CLAUDE.md rule generation from session patterns",
+          "100% on-device, zero cloud dependency"
+        ],
+        "screenshot": "https://www.terseai.org/og-image.png",
+        "softwareVersion": "1.3.3",
+        "datePublished": "2026-01-15",
+        "dateModified": "2026-07-17"
+      },
+      {
+        "@type": "WebSite",
+        "name": "Terse",
+        "url": "https://www.terseai.org"
+      },
+      {
+        "@type": "WebPage",
+        "name": "Terse — Intelligent Token Optimizer for LLMs",
+        "url": "https://www.terseai.org",
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": [".hero .sub", ".faq-a", ".usage-headline", ".demo-sub"]
+        },
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"}
+          ]
+        }
+      },
+      {
+        "@type": "ItemList",
+        "name": "Terse Pricing Plans",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "Pro $4.99/mo (30-day free trial) — Unlimited optimizations, agent monitoring, CLAUDE.md generation", "url": "https://www.terseai.org/#pricing"},
+          {"@type": "ListItem", "position": 2, "name": "Premium $99/mo (30-day free trial) — Unlimited everything, priority support", "url": "https://www.terseai.org/#pricing"}
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is token optimization?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 35+ techniques — including spell correction, filler removal, prompt compression, and semantic deduplication — to cut token usage by 40-70%, directly lowering AI API costs and extending context windows."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much can Terse save on AI costs?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse reduces token usage by 40-70% on verbose prompts and agent commands. In real-world testing, a typical 2-hour coding session with an AI agent generates ~210K tokens of CLI noise, which Terse compresses to ~23K tokens (89% reduction). Combined with duplicate tool call detection and redundant file read flagging, total session costs drop significantly."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Terse work with Claude Code, Cursor, and ChatGPT?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Terse auto-detects Claude Code, Cursor, OpenClaw, Aider, and any terminal-based AI agent via process scanning every 5 seconds. It also works with browser-based tools like ChatGPT, Claude.ai, and Gemini through macOS Accessibility API integration with Chrome, Safari, and other browsers."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does prompt compression work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Terse runs a 7-stage pipeline on every prompt: spell correction (400+ built-in typo fixes), whitespace normalization, pattern optimization (130+ phrase-shortening rules), redundancy elimination, NLP analysis (filler and hedging removal), aggressive compression (telegraph-style rewriting), and final cleanup. Code blocks, URLs, and technical terms are protected throughout."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Terse free to use?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Both plans include a 30-day free trial. Pro ($4.99/mo) includes unlimited optimizations, 3 sessions, agent monitoring, and CLAUDE.md rule generation. Premium ($99/mo) includes unlimited sessions, devices, and priority support. Cancel anytime during the trial."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does token optimization reduce AI output quality?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Token optimization removes noise (filler words, hedging, redundant phrases, typos) that adds cost without improving results. Research from LLMLingua (EMNLP 2023) shows that compressed prompts maintain or even improve LLM output quality because the model receives a cleaner, more focused instruction. Terse's Soft mode preserves 100% of meaning for critical prompts."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between token optimization and prompt engineering?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Prompt engineering focuses on crafting better instructions to get better AI outputs. Token optimization focuses on reducing the cost of those instructions by removing waste — filler, typos, redundancy, verbose phrasing — without changing the intent. Terse handles token optimization automatically so developers can focus on prompt engineering for quality."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do AI tokens affect cost?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "AI models charge per token (roughly 4 characters per token). GPT-4o costs $2.50-$10 per million tokens, Claude Opus costs $15-$75 per million tokens. A single AI agent session can consume 200K+ tokens. At these rates, heavy users spend $200-500+/month on API costs. Terse reduces token count by 40-70%, directly cutting these costs."
+            }
+          }
+        ]
+      },
+      {
+        "@type": "HowTo",
+        "name": "How to reduce Claude Code and Cursor token costs with Terse",
+        "description": "Install Terse on macOS to automatically compress AI prompts, catch duplicate tool calls, and track per-turn token costs across Claude Code, Cursor, and ChatGPT.",
+        "totalTime": "PT5M",
+        "step": [
+          {
+            "@type": "HowToStep",
             "position": 1,
-            "name": "Home",
-            "item": "https://www.terseai.org/"
+            "name": "Download Terse",
+            "text": "Download the Terse macOS app from terseai.org and open the DMG to install.",
+            "url": "https://www.terseai.org/#dl"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Grant Accessibility permission",
+            "text": "Open System Settings → Privacy & Security → Accessibility and enable Terse. This lets the app read and optimize text in Claude Code, Cursor, and browser tabs.",
+            "url": "https://www.terseai.org/#how-it-works"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Launch your AI agent",
+            "text": "Open Claude Code, Cursor, or any supported tool. Terse auto-detects the session within 5 seconds and shows a floating optimization bar.",
+            "url": "https://www.terseai.org/#agents"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 4,
+            "name": "Choose an optimization mode",
+            "text": "Select Soft (typo fix only), Normal (filler + hedging removal), or Aggressive (maximum compression). Terse compresses every prompt before it reaches the model.",
+            "url": "https://www.terseai.org/#pipeline"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 5,
+            "name": "Monitor savings in real time",
+            "text": "The Agent Monitor tab shows per-turn token counts, duplicate tool call alerts, redundant file read flags, and cumulative session cost reduction.",
+            "url": "https://www.terseai.org/#agents"
           }
         ]
       }
-    },
-    {
-      "@type": "ItemList",
-      "name": "Terse Pricing Plans",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Pro $4.99/mo (30-day free trial) — Unlimited optimizations, agent monitoring, CLAUDE.md generation",
-          "url": "https://www.terseai.org/#pricing"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Premium $99/mo (30-day free trial) — Unlimited everything, priority support",
-          "url": "https://www.terseai.org/#pricing"
-        }
-      ]
-    },
-    {
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "What is token optimization?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 35+ techniques — including spell correction, filler removal, prompt compression, and semantic deduplication — to cut token usage by 40-70%, directly lowering AI API costs and extending context windows."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How much can Terse save on AI costs?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Terse reduces token usage by 40-70% on verbose prompts and agent commands. In real-world testing, a typical 2-hour coding session with an AI agent generates ~210K tokens of CLI noise, which Terse compresses to ~23K tokens (89% reduction). Combined with duplicate tool call detection and redundant file read flagging, total session costs drop significantly."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does Terse work with Claude Code, Cursor, and ChatGPT?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Terse auto-detects Claude Code, Cursor, OpenClaw, Aider, and any terminal-based AI agent via process scanning every 5 seconds. It also works with browser-based tools like ChatGPT, Claude.ai, and Gemini through macOS Accessibility API integration with Chrome, Safari, and other browsers."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How does prompt compression work?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Terse runs a 7-stage pipeline on every prompt: spell correction (400+ built-in typo fixes), whitespace normalization, pattern optimization (130+ phrase-shortening rules), redundancy elimination, NLP analysis (filler and hedging removal), aggressive compression (telegraph-style rewriting), and final cleanup. Code blocks, URLs, and technical terms are protected throughout."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is Terse free to use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Both plans include a 30-day free trial. Pro ($4.99/mo) includes unlimited optimizations, 3 sessions, agent monitoring, and CLAUDE.md rule generation. Premium ($99/mo) includes unlimited sessions, devices, and priority support. Cancel anytime during the trial."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does token optimization reduce AI output quality?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. Token optimization removes noise (filler words, hedging, redundant phrases, typos) that adds cost without improving results. Research from LLMLingua (EMNLP 2023) shows that compressed prompts maintain or even improve LLM output quality because the model receives a cleaner, more focused instruction. Terse's Soft mode preserves 100% of meaning for critical prompts."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What is the difference between token optimization and prompt engineering?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Prompt engineering focuses on crafting better instructions to get better AI outputs. Token optimization focuses on reducing the cost of those instructions by removing waste — filler, typos, redundancy, verbose phrasing — without changing the intent. Terse handles token optimization automatically so developers can focus on prompt engineering for quality."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How do AI tokens affect cost?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "AI models charge per token (roughly 4 characters per token). GPT-4o costs $2.50-$10 per million tokens, Claude Opus costs $15-$75 per million tokens. A single AI agent session can consume 200K+ tokens. At these rates, heavy users spend $200-500+/month on API costs. Terse reduces token count by 40-70%, directly cutting these costs."
-          }
-        }
-      ]
-    },
-    {
-      "@type": "HowTo",
-      "name": "How to reduce Claude Code and Cursor token costs with Terse",
-      "description": "Install Terse on macOS to automatically compress AI prompts, catch duplicate tool calls, and track per-turn token costs across Claude Code, Cursor, and ChatGPT.",
-      "totalTime": "PT5M",
-      "step": [
-        {
-          "@type": "HowToStep",
-          "position": 1,
-          "name": "Download Terse",
-          "text": "Download the Terse macOS app from terseai.org and open the DMG to install.",
-          "url": "https://www.terseai.org/#dl"
-        },
-        {
-          "@type": "HowToStep",
-          "position": 2,
-          "name": "Grant Accessibility permission",
-          "text": "Open System Settings → Privacy & Security → Accessibility and enable Terse. This lets the app read and optimize text in Claude Code, Cursor, and browser tabs.",
-          "url": "https://www.terseai.org/#how-it-works"
-        },
-        {
-          "@type": "HowToStep",
-          "position": 3,
-          "name": "Launch your AI agent",
-          "text": "Open Claude Code, Cursor, or any supported tool. Terse auto-detects the session within 5 seconds and shows a floating optimization bar.",
-          "url": "https://www.terseai.org/#agents"
-        },
-        {
-          "@type": "HowToStep",
-          "position": 4,
-          "name": "Choose an optimization mode",
-          "text": "Select Soft (typo fix only), Normal (filler + hedging removal), or Aggressive (maximum compression). Terse compresses every prompt before it reaches the model.",
-          "url": "https://www.terseai.org/#pipeline"
-        },
-        {
-          "@type": "HowToStep",
-          "position": 5,
-          "name": "Monitor savings in real time",
-          "text": "The Agent Monitor tab shows per-turn token counts, duplicate tool call alerts, redundant file read flags, and cumulative session cost reduction.",
-          "url": "https://www.terseai.org/#agents"
-        }
-      ]
-    }
-  ]
-}
+    ]
+  }
   </script>
 
   <!-- Article/News JSON-LD for GEO/SEO authority signals -->
@@ -388,8 +355,6 @@
   }
   </script>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -954,22 +919,19 @@
     .trust-div{width:1px;height:34px;background:var(--bd)}
     @media (max-width:600px){.trust-div{display:none}.trust-wrap{gap:16px}.trust-strip{padding:14px 16px}.trust-big{font-size:19px}}
   </style>
-  <!-- Live agent-log particle wallpaper + liquid-glass surfaces.
-       Purely additive: both files only override existing tokens and
-       insert their own two elements. Remove these two lines to revert. -->
+  <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/">
+  <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
+  <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
   <link rel="stylesheet" href="/terse-glass.css">
   <script defer src="/terse-field.js"></script>
-  <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
-  <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/">
-  <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
 </head>
 <body>
 
 <nav id="nav">
   <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
   <div class="nav-links">
-            <a href="guide.html" data-i18n="nav.guide">Guide</a>
-            <a href="#how-it-works" data-i18n="nav.howItWorks">How It Works</a><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="#terse-api" style="color:var(--ac);font-weight:700">API</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API Docs</a><a href="/vibe-projects" style="color:var(--ac);font-weight:700">Vibe Projects</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Docs <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="#cloud" data-i18n="nav.cloud">Cloud</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="#faq" data-i18n="nav.faq">FAQ</a><a href="#news">News</a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Demo <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
+            <a href="../guide.html" data-i18n="nav.guide">使用指南</a>
+            <a href="#how-it-works" data-i18n="nav.howItWorks">工作原理</a><a href="#pipeline" data-i18n="nav.pipeline">处理流程</a><a href="#agents" data-i18n="nav.agentMonitor">Agent 监控</a><a href="#terse-api" style="color:var(--ac);font-weight:700">API</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API Docs</a><a href="/vibe-projects" style="color:var(--ac);font-weight:700">Vibe Projects</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Docs <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="#cloud" data-i18n="nav.cloud">云端</a><a href="#pricing" data-i18n="nav.pricing">价格</a><a href="#faq" data-i18n="nav.faq">常见问题</a><a href="#news">News</a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Demo <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
   <div style="display:flex;gap:10px;align-items:center">
     <div style="position:relative" id="lang-switcher">
       <button onclick="document.getElementById('lang-menu').style.display=document.getElementById('lang-menu').style.display==='block'?'none':'block'" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px">
@@ -978,12 +940,12 @@
       </button>
       <div id="lang-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:6px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:999;max-height:300px;overflow-y:auto"></div>
     </div>
-    <button class="nav-sign-in" onclick="openClerkSignIn()" style="padding:8px 16px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s" data-i18n="nav.signIn">Sign In</button>
+    <button class="nav-sign-in" onclick="openClerkSignIn()" style="padding:8px 16px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s" data-i18n="nav.signIn">登录</button>
     <!-- Sign Up hidden — users sign up via Sign In flow -->
     <button class="nav-cta" onclick="openClerkSignUp()" style="display:none">Sign Up</button>
     <div id="clerk-user" style="display:none;align-items:center;gap:8px">
       <img id="clerk-avatar" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--bd)" />
-      <button onclick="clerkSignOut()" style="padding:6px 14px;background:transparent;color:var(--t3);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer" data-i18n="nav.signOut">Sign Out</button>
+      <button onclick="clerkSignOut()" style="padding:6px 14px;background:transparent;color:var(--t3);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer" data-i18n="nav.signOut">退出登录</button>
     </div>
   </div>
 </nav>
@@ -1000,8 +962,8 @@
 <main>
 <section class="hero" aria-label="Hero">
   <div class="hero-glow"></div>
-  <h1 class="rv"><span data-i18n="hero.title1">Save every token.</span><br><span class="gradient-text" data-i18n="hero.title2">Power your team.</span></h1>
-  <p class="sub rv d1" data-i18n-html="hero.subtitle">Cut 40-70% of your AI token costs with on-device optimization &mdash; then give your whole team full visibility with <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a>. Token analytics by developer, project, and tool.</p>
+  <h1 class="rv"><span data-i18n="hero.title1">节省每一个 token。</span><br><span class="gradient-text" data-i18n="hero.title2">赋能你的团队。</span></h1>
+  <p class="sub rv d1" data-i18n-html="hero.subtitle">通过本地优化削减 40-70% 的 AI token 开销——再用 <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a> 让全团队掌握完整用量可视化。按开发者、项目和工具分析 token 开销。</p>
   <div class="hero-actions rv d2" style="flex-wrap:wrap;gap:10px">
     <a href="/demo" class="btn-primary" style="text-decoration:none;background:var(--gradient);color:#000"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><polygon points="5 3 19 12 5 21 5 3"/></svg> Try Live Demo</a>
     <a href="#" onclick="handleDownload(event,'mac')" class="btn-primary" style="text-decoration:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> macOS</a>
@@ -1014,15 +976,12 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 8h9.5M12 8a4 4 0 00-3.46 6M12 8a4 4 0 013.46 6M2.5 8H12M8.54 14L3.8 5.5M15.46 14l4.74-8.5M8.54 14L12 20M15.46 14L12 20" stroke="currentColor" stroke-width="1.5"/></svg>
       Chrome
     </a>
-    <a href="/teams" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(110,231,183,0.35);color:var(--ac);background:rgba(110,231,183,0.07);transition:all .2s" onmouseover="this.style.background='rgba(110,231,183,0.13)'" onmouseout="this.style.background='rgba(110,231,183,0.07)'" data-i18n="hero.cloudCta">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-      Terse Cloud
-    </a>
+    <a href="/teams" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(110,231,183,0.35);color:var(--ac);background:rgba(110,231,183,0.07);transition:all .2s" onmouseover="this.style.background='rgba(110,231,183,0.13)'" onmouseout="this.style.background='rgba(110,231,183,0.07)'" data-i18n="hero.cloudCta">Terse Cloud</a>
     <a href="/workspace" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(110,231,183,0.35);color:var(--ac);background:rgba(110,231,183,0.07);transition:all .2s" onmouseover="this.style.background='rgba(110,231,183,0.13)'" onmouseout="this.style.background='rgba(110,231,183,0.07)'">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>
       Terse Docs <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px">NEW</span>
     </a>
-    <a data-slack-join href="https://join.slack.com/t/tersehq/shared_invite/zt-4757mog9y-aOms9wtPO8m2IBs5PsQmrw" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+    <a href="https://join.slack.com/t/tersehq/shared_invite/zt-4757mog9y-aOms9wtPO8m2IBs5PsQmrw" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
       <svg width="16" height="16" viewBox="0 0 122.8 122.8" style="flex-shrink:0"><path d="M25.8 77.6c0 7.1-5.8 12.9-12.9 12.9S0 84.7 0 77.6s5.8-12.9 12.9-12.9h12.9v12.9zm6.5 0c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V77.6z" fill="#E01E5A"/><path d="M45.2 25.8c-7.1 0-12.9-5.8-12.9-12.9S38.1 0 45.2 0s12.9 5.8 12.9 12.9v12.9H45.2zm0 6.5c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H12.9C5.8 58.1 0 52.3 0 45.2s5.8-12.9 12.9-12.9h32.3z" fill="#36C5F0"/><path d="M97 45.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9-5.8 12.9-12.9 12.9H97V45.2zm-6.5 0c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V12.9C64.7 5.8 70.5 0 77.6 0s12.9 5.8 12.9 12.9v32.3z" fill="#2EB67D"/><path d="M77.6 97c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9-12.9-5.8-12.9-12.9V97h12.9zm0-6.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H77.6z" fill="#ECB22E"/></svg>
       Join our Slack
     </a>
@@ -1037,47 +996,37 @@
     <div style="background:rgba(110,231,183,0.06);border:1px solid rgba(110,231,183,0.18);border-radius:12px;padding:18px 20px;text-align:left">
       <p style="font-size:14px;font-weight:700;color:var(--ac);margin:0 0 12px;display:flex;align-items:center;gap:8px">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <span data-i18n="security.heading">First Launch &mdash; macOS Security Step (one-time only)</span>
+        <span data-i18n="security.heading">首次启动 — macOS 安全步骤（仅需一次）</span>
       </p>
-      <p style="font-size:13px;color:var(--t2);margin:0 0 10px" data-i18n="security.subtitle">macOS blocks unsigned apps by default. Pick whichever method works for you:</p>
+      <p style="font-size:13px;color:var(--t2);margin:0 0 10px" data-i18n="security.subtitle">macOS 默认阻止未签名的应用程序。请选择适合您的方法：</p>
 
       <div style="display:flex;flex-direction:column;gap:8px">
         <!-- Method A -->
         <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
           <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
             <span style="background:var(--ac);color:#000;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">A</span>
-            <span data-i18n="security.methodA">System Settings</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodATag">&mdash; easiest, no Terminal needed</span>
+            <span data-i18n="security.methodA">系统设置</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodATag">— 最简单，无需终端</span>
           </summary>
-          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodASteps">
-            1. Open Terse &mdash; click <strong style="color:var(--t1)">OK</strong> on the security warning<br>
-            2. Open <strong style="color:var(--t1)">System Settings → Privacy &amp; Security</strong><br>
-            3. Scroll to the Security section &mdash; click <strong style="color:var(--ac)">"Open Anyway"</strong> next to Terse<br>
-            4. Confirm in the popup &mdash; done. Terse opens normally from now on.
-          </div>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodASteps">1. 打开 Terse — 在安全警告上点击<strong style="color:var(--t1)">好</strong><br>2. 打开<strong style="color:var(--t1)">系统设置 → 隐私与安全性</strong><br>3. 滚动到安全性部分 — 点击 Terse 旁边的<strong style="color:var(--ac)">“仍要打开”</strong><br>4. 在弹窗中确认 — 完成。此后 Terse 可正常启动。</div>
         </details>
 
         <!-- Method B -->
         <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
           <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
             <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">B</span>
-            <span data-i18n="security.methodB">Right-click to open</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodBTag">&mdash; works on macOS Ventura and earlier</span>
+            <span data-i18n="security.methodB">右键点击打开</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodBTag">— 适用于 macOS Ventura 及更早版本</span>
           </summary>
-          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodBSteps">
-            1. In Finder, <strong style="color:var(--t1)">right-click</strong> (or Control+click) on Terse.app<br>
-            2. Choose <strong style="color:var(--t1)">Open</strong> from the menu<br>
-            3. Click <strong style="color:var(--ac)">Open</strong> in the dialog that appears<br>
-            <span style="color:var(--t3);font-size:12px">Note: macOS Sequoia (15+) removed this option — use Method A instead.</span>
-          </div>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodBSteps">1. 在 Finder 中，<strong style="color:var(--t1)">右键点击</strong>（或 Control+点击）Terse.app<br>2. 从菜单中选择<strong style="color:var(--t1)">打开</strong><br>3. 在弹出的对话框中点击<strong style="color:var(--ac)">打开</strong><br><span style="color:var(--t3);font-size:12px">注意：macOS Sequoia（15+）已移除此选项 — 请使用方法 A。</span></div>
         </details>
 
         <!-- Method C -->
         <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
           <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
             <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">C</span>
-            <span data-i18n="security.methodC">Terminal command</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodCTag">&mdash; one command, works on all versions</span>
+            <span data-i18n="security.methodC">终端命令</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodCTag">— 一条命令，适用所有版本</span>
           </summary>
           <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
-            <span data-i18n-html="security.methodCStep">Drag Terse to <strong style="color:var(--t1)">/Applications</strong>, then paste this in Terminal:</span><br>
+            <span data-i18n-html="security.methodCStep">将 Terse 拖到<strong style="color:var(--t1)">/Applications</strong>，然后在终端中粘贴以下命令：</span><br>
             <code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 12px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ac);cursor:pointer;word-break:break-all;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app &amp;&amp; /Applications/Terse.app/Contents/MacOS/terse 2&gt;/dev/null &amp; <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:5px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
           </div>
         </details>
@@ -1093,14 +1042,14 @@
         <div class="openclaw-body">
           <div class="oc-toolbar">
             <div class="oc-model">claude-sonnet-4-6</div>
-            <div class="oc-status"><div class="oc-status-dot" id="s0statusDot"></div><span id="s0statusText" data-i18n="hero.scene.connected">Connected</span></div>
+            <div class="oc-status"><div class="oc-status-dot" id="s0statusDot"></div><span id="s0statusText" data-i18n="hero.scene.connected">已连接</span></div>
             <div class="oc-stats-bar" id="s0statsBar">
-              <span class="oc-stat"><span class="oc-stat-n" id="s0turns">0</span> <span data-i18n="hero.scene.turns">turns</span></span>
-              <span class="oc-stat"><span class="oc-stat-n" id="s0input_tok">0</span> <span data-i18n="hero.scene.in">in</span></span>
-              <span class="oc-stat"><span class="oc-stat-n" id="s0output_tok">0</span> <span data-i18n="hero.scene.out">out</span></span>
-              <span class="oc-stat"><span class="oc-stat-n" id="s0cache">0</span> <span data-i18n="hero.scene.cache">cache</span></span>
+              <span class="oc-stat"><span class="oc-stat-n" id="s0turns">0</span> <span data-i18n="hero.scene.turns">轮</span></span>
+              <span class="oc-stat"><span class="oc-stat-n" id="s0input_tok">0</span> <span data-i18n="hero.scene.in">输入</span></span>
+              <span class="oc-stat"><span class="oc-stat-n" id="s0output_tok">0</span> <span data-i18n="hero.scene.out">输出</span></span>
+              <span class="oc-stat"><span class="oc-stat-n" id="s0cache">0</span> <span data-i18n="hero.scene.cache">缓存</span></span>
               <span class="oc-stat">$<span class="oc-stat-n" id="s0cost">0.000</span></span>
-              <span class="oc-stat oc-stat-saved"><span class="oc-stat-n" id="s0saved">0</span> <span data-i18n="hero.scene.saved">saved</span></span>
+              <span class="oc-stat oc-stat-saved"><span class="oc-stat-n" id="s0saved">0</span> <span data-i18n="hero.scene.saved">已节省</span></span>
             </div>
           </div>
           <div class="oc-chat" id="s0chat" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 14px;display:flex;flex-direction:column;gap:5px;justify-content:flex-end"></div>
@@ -1120,7 +1069,7 @@
           <div class="prune-panel" id="s1panel">
             <div class="tp-header">
               <div class="prune-dot" id="s1dot"></div>
-              <span class="tp-stage" id="s1stage" data-i18n="hero.scene.ready">Ready</span>
+              <span class="tp-stage" id="s1stage" data-i18n="hero.scene.ready">就绪</span>
               <span class="tp-tok-counter mono" id="s1tok"></span>
             </div>
             <div class="tp-steps">
@@ -1168,7 +1117,7 @@
               <div class="prune-panel" id="s2panel" style="margin:6px -10px -10px;padding:6px 10px;border-radius:0">
                 <div class="tp-header">
                   <div class="prune-dot" id="s2dot"></div>
-                  <span class="tp-stage" id="s2stage" data-i18n="hero.scene.ready">Ready</span>
+                  <span class="tp-stage" id="s2stage" data-i18n="hero.scene.ready">就绪</span>
                   <span class="tp-tok-counter mono" id="s2tok"></span>
                 </div>
                 <div class="tp-steps" style="margin-bottom:4px">
@@ -1199,14 +1148,14 @@
           <div id="s3lines"></div>
           <div class="agent-banner-anim" id="s3banner">
             <div class="prune-dot"></div>
-            <span style="font-size:11px" data-i18n="hero.scene.detected">Claude Code detected</span>
-            <span class="agent-connect-btn" id="s3connectBtn" data-i18n="hero.scene.connect">Connect</span>
+            <span style="font-size:11px" data-i18n="hero.scene.detected">检测到 Claude Code</span>
+            <span class="agent-connect-btn" id="s3connectBtn" data-i18n="hero.scene.connect">连接</span>
           </div>
           <div class="agent-mini-stats" id="s3stats">
-            <div class="ams"><span class="ams-v" id="s3turns">0</span><span class="ams-l" data-i18n="hero.scene.turns">Turns</span></div>
-            <div class="ams"><span class="ams-v" id="s3input">0</span><span class="ams-l" data-i18n="hero.scene.input">Input</span></div>
-            <div class="ams"><span class="ams-v" id="s3output">0</span><span class="ams-l" data-i18n="hero.scene.output">Output</span></div>
-            <div class="ams"><span class="ams-v" id="s3cost">$0</span><span class="ams-l" data-i18n="hero.scene.cost">Cost</span></div>
+            <div class="ams"><span class="ams-v" id="s3turns">0</span><span class="ams-l" data-i18n="hero.scene.turns">轮</span></div>
+            <div class="ams"><span class="ams-v" id="s3input">0</span><span class="ams-l" data-i18n="hero.scene.input">输入</span></div>
+            <div class="ams"><span class="ams-v" id="s3output">0</span><span class="ams-l" data-i18n="hero.scene.output">输出</span></div>
+            <div class="ams"><span class="ams-v" id="s3cost">$0</span><span class="ams-l" data-i18n="hero.scene.cost">成本</span></div>
           </div>
         </div>
       </div>
@@ -1220,7 +1169,7 @@
           <div class="sess-item active" id="s4s1"><div class="sess-dot"></div><div style="flex:1"><div class="sess-name">Google Chrome</div><div class="sess-sub">ChatGPT — claude.ai</div></div><span class="sess-badge">ACTIVE</span></div>
           <div class="sess-item" id="s4s2"><div class="sess-dot"></div><div style="flex:1"><div class="sess-name">VS Code</div><div class="sess-sub">terse-project — main.js</div></div></div>
           <div class="sess-item" id="s4s3"><div class="sess-dot"></div><div style="flex:1"><div class="sess-name">Cursor</div><div class="sess-sub">my-project — index.ts</div></div></div>
-          <div class="sess-add" id="s4add" data-i18n="hero.scene.addSession">+ Add Session</div>
+          <div class="sess-add" id="s4add" data-i18n="hero.scene.addSession">+ 添加会话</div>
         </div>
       </div>
     </div>
@@ -1303,18 +1252,18 @@
     <div class="features-grid">
       <div class="feat rv">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
-        <h3 data-i18n="features.optimizeTitle">Optimize every message</h3>
-        <p data-i18n="features.optimizeDesc">Intercepts prompts and agent commands before they hit the API — strips filler, fixes typos, shortens phrases, compresses verbose text. <a href="/what-is-token-optimization" style="color:var(--ac)">35+ techniques</a> including output compression: log deduplication, stack trace collapsing, JSON schema extraction, and terminal noise stripping. 40-80% fewer input tokens.</p>
+        <h3 data-i18n="features.optimizeTitle">优化每一条消息</h3>
+        <p data-i18n="features.optimizeDesc">在提示和 Agent 命令到达 API 之前拦截——去除填充词、修正拼写、缩短短语、压缩冗长文本。减少 40-80% 的输入 token。</p>
       </div>
       <div class="feat rv d1">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
-        <h3 data-i18n="features.monitorTitle">Monitor agent sessions</h3>
-        <p data-i18n="features.monitorDesc">Auto-detects Claude Code, OpenClaw, Cursor, and Aider. Tails JSONL session logs in real time — tracking input/output tokens, cache efficiency, tool call overhead, duplicate calls, redundant file reads, and per-turn cost with model-aware pricing.</p>
+        <h3 data-i18n="features.monitorTitle">监控 Agent 会话</h3>
+        <p data-i18n="features.monitorDesc">自动检测 Claude Code、OpenClaw、Cursor 和 Aider。跟踪输入/输出 token、缓存效率、工具调用开销和每轮成本。</p>
       </div>
       <div class="feat rv d2">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
-        <h3 data-i18n="features.eliminateTitle">Eliminate wasted tokens</h3>
-        <p data-i18n="features.eliminateDesc">Detects duplicate tool calls, flags files read multiple times, estimates compressible tool results (git 85%, tests 90%, builds 80%), and catches typos that cause costly retry loops. <a href="/reduce-ai-api-costs" style="color:var(--ac)">See how to cut AI API costs by 60-80%</a>.</p>
+        <h3 data-i18n="features.eliminateTitle">消除浪费的 token</h3>
+        <p data-i18n="features.eliminateDesc">检测重复工具调用，标记多次读取的文件，估算可压缩的工具结果，捕获导致高成本重试循环的拼写错误。</p>
       </div>
       <div class="feat rv d1">
         <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
@@ -1338,7 +1287,7 @@
       </div>
       <div class="feat-divider"></div>
       <div class="works-with rv d1">
-        <span class="works-with-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg> <span data-i18n="features.worksWith">Works with</span></span>
+        <span class="works-with-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg> <span data-i18n="features.worksWith">兼容</span></span>
         <div class="works-with-logos">
           <div class="ww-logo">C</div>
           <div class="ww-logo" style="color:var(--ac)">CC</div>
@@ -1354,82 +1303,21 @@
   </div>
 </section>
 
-
-<!-- ═══ CAPABILITY PILLARS — Terse is an agent butler, not just a compressor ═══ -->
-<style>
-  #pillars .pillar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:36px}
-  #pillars .pillar-card{position:relative;display:block;padding:24px 22px 40px;background:var(--sf);border:1px solid var(--bd);border-radius:16px;text-decoration:none;transition:border-color .2s,background .2s,transform .2s}
-  #pillars .pillar-card:hover{border-color:var(--ac);background:var(--sfh);transform:translateY(-3px)}
-  #pillars .pillar-ic{font-size:26px;line-height:1;margin-bottom:14px}
-  #pillars .pillar-card h3{font-size:16px;font-weight:700;color:var(--t1);margin:0 0 6px}
-  #pillars .pillar-card p{font-size:13px;line-height:1.55;color:var(--t3);margin:0}
-  #pillars .pillar-arrow{position:absolute;bottom:16px;left:22px;color:var(--ac);font-size:15px;opacity:0;transform:translateX(-4px);transition:opacity .2s,transform .2s}
-  #pillars .pillar-card:hover .pillar-arrow{opacity:1;transform:translateX(0)}
-</style>
-<section class="section" id="pillars" style="background:var(--bg1);border-top:1px solid var(--bd)">
-  <div class="glow" style="top:-120px;left:-180px"></div>
-  <div class="s-inner">
-    <div class="rvl" style="text-align:center;max-width:720px;margin:0 auto">
-      <div class="label" data-i18n="pillars.label">One butler, every agent</div>
-      <h2 data-i18n-html="pillars.heading">Not just a compressor.<br><span class="gradient-text">A butler for your AI agents.</span></h2>
-      <p class="desc" data-i18n="pillars.subtitle" style="margin-left:auto;margin-right:auto">Terse handles the whole lifecycle of every AI coding agent you run — watching it, capping its spend, keeping its tools clean, and trimming every token. All on-device.</p>
-    </div>
-    <div class="pillar-grid rvl d1">
-      <a class="pillar-card" href="/what-is-token-optimization">
-        <div class="pillar-ic" aria-hidden="true">⚡</div>
-        <h3 data-i18n="pillars.optimize.title">Optimize</h3>
-        <p data-i18n="pillars.optimize.desc">Compress every prompt 40–70% before it hits the API — 35+ on-device techniques, code always protected.</p>
-        <span class="pillar-arrow" aria-hidden="true">→</span>
-      </a>
-      <a class="pillar-card" href="/for-claude-code">
-        <div class="pillar-ic" aria-hidden="true">📡</div>
-        <h3 data-i18n="pillars.monitor.title">Monitor</h3>
-        <p data-i18n="pillars.monitor.desc">Live tokens, cost, cache efficiency, burn rate and context fill across 8 coding agents.</p>
-        <span class="pillar-arrow" aria-hidden="true">→</span>
-      </a>
-      <a class="pillar-card" href="/agent-budget-circuit-breaker">
-        <div class="pillar-ic" aria-hidden="true">🛑</div>
-        <h3 data-i18n="pillars.budget.title">Budget breaker</h3>
-        <p data-i18n="pillars.budget.desc">Set spend ceilings that pause or kill a runaway agent before its next API call.</p>
-        <span class="pillar-arrow" aria-hidden="true">→</span>
-      </a>
-      <a class="pillar-card" href="/mcp-manager">
-        <div class="pillar-ic" aria-hidden="true">🔌</div>
-        <h3 data-i18n="pillars.mcp.title">MCP manager</h3>
-        <p data-i18n="pillars.mcp.desc">Discover every MCP server across your configs, risk-score each, toggle without editing JSON.</p>
-        <span class="pillar-arrow" aria-hidden="true">→</span>
-      </a>
-      <a class="pillar-card" href="/reduce-ai-api-costs">
-        <div class="pillar-ic" aria-hidden="true">🩺</div>
-        <h3 data-i18n="pillars.doctor.title">Doctor</h3>
-        <p data-i18n="pillars.doctor.desc">25 waste scans — cache thrash, duplicate tool calls, redundant reads, context burn — with one-click fixes.</p>
-        <span class="pillar-arrow" aria-hidden="true">→</span>
-      </a>
-      <a class="pillar-card" href="/teams">
-        <div class="pillar-ic" aria-hidden="true">👥</div>
-        <h3 data-i18n="pillars.team.title">Team</h3>
-        <p data-i18n="pillars.team.desc">Share live agent sessions and team analytics — by developer, project, and tool.</p>
-        <span class="pillar-arrow" aria-hidden="true">→</span>
-      </a>
-    </div>
-  </div>
-</section>
-
 <!-- ═══ HOW IT WORKS: AGENT TOKEN REDUCTION — FULL WALKTHROUGH ═══ -->
 <section class="section" id="how-it-works" style="background:var(--bg0);border-top:1px solid var(--bd)">
   <div class="glow" style="top:-100px;right:-200px"></div>
   <div class="s-inner">
     <div class="rvl">
-      <div class="label" data-i18n="howItWorks.label">Agent Token Optimization</div>
-      <h2 data-i18n-html="howItWorks.heading">Every turn optimized,<br><span class="gradient-text">automatically.</span></h2>
-      <p class="desc" data-i18n="howItWorks.desc">A single agent task can consume 50x more tokens than a chat message. Terse runs 5 parallel optimization strategies: compressing your prompts, detecting duplicate tool calls, flagging redundant file reads, estimating compressible tool results, and auto-generating CLAUDE.md rules that teach agents to waste fewer tokens next session.</p>
+      <div class="label" data-i18n="howItWorks.label">Agent Token 优化</div>
+      <h2 data-i18n-html="howItWorks.heading">每一轮自动优化。</h2>
+      <p class="desc" data-i18n="howItWorks.desc">单个 Agent 任务消耗的 token 可达聊天消息的 50 倍。Terse 在每一轮运行 5 种并行优化策略。</p>
       <ul class="flist">
-        <li data-i18n="howItWorks.f1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Compresses every user message before it hits the API</li>
-        <li data-i18n="howItWorks.f2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Detects duplicate tool calls — same tool + input = wasted tokens</li>
-        <li data-i18n="howItWorks.f3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Flags files read multiple times (~800 tok wasted per re-read)</li>
-        <li data-i18n="howItWorks.f4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Estimates compressible tool results (Read: 60%, Grep: 40%)</li>
-        <li data-i18n="howItWorks.f5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tracks unused tools — ~300 tok overhead per unused tool per call</li>
-        <li data-i18n="howItWorks.f6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Generates CLAUDE.md rules from session patterns for future savings</li>
+        <li data-i18n="howItWorks.f1">在用户消息到达 API 之前进行压缩</li>
+        <li data-i18n="howItWorks.f2">检测重复工具调用——相同工具 + 输入 = 浪费的 token</li>
+        <li data-i18n="howItWorks.f3">标记多次读取的文件（每次重读浪费约 800 token）</li>
+        <li data-i18n="howItWorks.f4">估算可压缩的工具结果（Read: 60%，Grep: 40%）</li>
+        <li data-i18n="howItWorks.f5">跟踪未使用的工具——每次调用中每个未使用工具约 300 token 开销</li>
+        <li data-i18n="howItWorks.f6">根据会话模式生成 CLAUDE.md 规则以实现未来节省</li>
       </ul>
       <div class="alts"><span>Claude Code</span><span>OpenClaw</span><span>Aider</span><span>Cursor Agent</span></div>
     </div>
@@ -1499,14 +1387,14 @@
   <div class="glow" style="top:0;left:-200px"></div>
   <div class="s-inner">
     <div class="rvl">
-      <div class="label" data-i18n="setup.label">Works in seconds</div>
-      <h2 data-i18n-html="setup.heading">Download. Click connect.<br><span class="gradient-text">Everything just works.</span></h2>
-      <p class="desc" data-i18n="setup.desc">No config files. No API keys to paste. No terminal commands. Open Terse, see your running agent, click Connect — optimization starts immediately. Every message compressed, every session tracked, every wasted token flagged.</p>
+      <div class="label" data-i18n="setup.label">秒级上手</div>
+      <h2 data-i18n-html="setup.heading">下载，点击连接。<br><span class="gradient-text">一切开箱即用。</span></h2>
+      <p class="desc" data-i18n="setup.desc">无需配置文件，无需粘贴 API 密钥，无需终端命令。打开 Terse，看到正在运行的 Agent，点击连接——优化立即开始。</p>
       <ul class="flist">
-        <li data-i18n="setup.f1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-detects Claude Code, Cursor Agent, Aider, OpenClaw via process scan</li>
-        <li data-i18n="setup.f2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>One click to connect — optimization starts on the next message</li>
-        <li data-i18n="setup.f3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Live popup bar shows savings on every single turn</li>
-        <li data-i18n="setup.f4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Works with existing sessions — no restart required</li>
+        <li data-i18n="setup.f1">通过进程扫描自动检测 Claude Code、Cursor Agent、Aider、OpenClaw</li>
+        <li data-i18n="setup.f2">一键连接——下一条消息即开始优化</li>
+        <li data-i18n="setup.f3">实时弹出栏显示每轮节省情况</li>
+        <li data-i18n="setup.f4">兼容现有会话——无需重启</li>
       </ul>
       <div class="alts"><span>Claude Code</span><span>Cursor Agent</span><span>Aider</span><span>OpenClaw</span></div>
     </div>
@@ -1517,8 +1405,8 @@
           <div class="agent-term mono" id="setupTerm" style="min-height:160px"></div>
           <div class="agent-connect-banner" id="setupBanner">
             <div class="prune-dot"></div>
-            <span style="font-size:11px;flex:1" data-i18n="setup.detected">Claude Code detected — monitor session?</span>
-            <span class="agent-connect-btn" id="setupConnectBtn" data-i18n="setup.connect">Connect</span>
+            <span style="font-size:11px;flex:1" data-i18n="setup.detected">检测到 Claude Code — 监控此会话？</span>
+            <span class="agent-connect-btn" id="setupConnectBtn" data-i18n="setup.connect">连接</span>
           </div>
           <div class="agent-panel-anim" id="setupPanel">
             <div class="ap-grid" style="grid-template-columns:repeat(4,1fr)">
@@ -1541,69 +1429,69 @@
 <section class="section" style="background:var(--bg0);border-top:1px solid var(--bd)">
   <div class="s-inner" style="max-width:900px">
     <div style="text-align:center;margin-bottom:48px">
-      <div class="label" data-i18n="rtk.label">Why Terse</div>
-      <h2 data-i18n-html="rtk.heading">Terse vs RTK &amp; other<br><span class="gradient-text">token libraries</span></h2>
-      <p class="desc" data-i18n="rtk.desc">RTK (Reduce Token Kit) and similar libraries offer basic prompt trimming. Terse goes far beyond with agent-aware optimization, real-time monitoring, and output compression — techniques RTK doesn't support.</p>
+      <div class="label" data-i18n="rtk.label">为什么选择 Terse</div>
+      <h2 data-i18n-html="rtk.heading">Terse 对比 RTK 及其他<br><span class="gradient-text">Token 工具库</span></h2>
+      <p class="desc" data-i18n="rtk.desc">RTK（Reduce Token Kit）等类似工具库仅提供基本的提示词精简功能。Terse 远不止于此——支持智能体感知优化、实时监控和输出压缩，这些都是 RTK 不具备的能力。</p>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--bd);border-radius:16px;overflow:hidden;background:var(--bg1)">
       <!-- Header row -->
-      <div style="padding:16px 20px;font-size:13px;font-weight:700;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--bd)" data-i18n="rtk.feature">Feature</div>
+      <div style="padding:16px 20px;font-size:13px;font-weight:700;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--bd)" data-i18n="rtk.feature">功能</div>
       <div style="padding:16px 20px;font-size:14px;font-weight:800;color:var(--ac);background:var(--bg2);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Terse</div>
       <div style="padding:16px 20px;font-size:14px;font-weight:700;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">RTK / Others</div>
       <!-- Rows -->
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.optTechniques">Optimization techniques</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.optTechniques">优化技术</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">35+</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">5-10</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.toolOutput">Tool output compression</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.toolOutput">工具输出压缩</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ RTK-style + more</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Basic</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.gitDiff">Git diff compression</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.gitDiff">Git diff 压缩</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ 70% reduction</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.caching">Prompt caching awareness</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.caching">提示词缓存感知</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ 50-90% on repeats</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.agentMonitor">Agent session monitoring</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.agentMonitor">智能体会话监控</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Real-time</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.dupDetect">Duplicate tool call detection</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.dupDetect">重复工具调用检测</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.historySumm">History summarization</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.historySumm">历史记录摘要</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Auto-compress</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.modelSpecific">Model-specific optimization</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.modelSpecific">模型专属优化</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Claude / GPT modes</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.multilingual">Multilingual support</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.multilingual">多语言支持</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ 11 languages</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">English only</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.spellcheck">Spellcheck pipeline</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.spellcheck">拼写检查管道</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Dict + Norvig + macOS</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Basic / None</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.codeProtect">Code protection</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.codeProtect">代码保护</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Backtick-aware</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Partial</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.exchange">Token Exchange marketplace</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.exchange">Token 交易市场</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Buy/sell tokens</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
 
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2)" data-i18n="rtk.privacy">On-device / privacy</div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--t2)" data-i18n="rtk.privacy">本地处理 / 隐私保护</div>
       <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-left:1px solid var(--bd);text-align:center">✓ 100% local</div>
       <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-left:1px solid var(--bd);text-align:center">Varies</div>
     </div>
-    <p style="text-align:center;font-size:12px;color:var(--t3);margin-top:16px" data-i18n="rtk.footnote">RTK = Reduce Token Kit. Comparison based on publicly documented features as of March 2026.</p>
+    <p style="text-align:center;font-size:12px;color:var(--t3);margin-top:16px" data-i18n="rtk.footnote">RTK = Reduce Token Kit。对比基于截至 2026 年 3 月的公开功能文档。</p>
   </div>
 </section>
 
@@ -1616,13 +1504,13 @@
   <div class="glow" style="top:-100px;left:-200px"></div>
   <div class="s-inner">
     <div class="rvl">
-      <div class="label" data-i18n="worksEverywhere.label">Works Everywhere</div>
-      <h2 data-i18n-html="worksEverywhere.heading">Runs on<br><span class="gradient-text">any app, automatically.</span></h2>
-      <p class="desc" data-i18n="worksEverywhere.desc">Connect Terse to Chrome, Cursor, VS Code, OpenClaw, or any terminal — it auto-detects text fields via macOS Accessibility and agent sessions via process scanning. No plugins to install. Agent sessions are detected automatically every 5 seconds.</p>
+      <div class="label" data-i18n="worksEverywhere.label">随处可用</div>
+      <h2 data-i18n-html="worksEverywhere.heading">在任何应用上自动运行。</h2>
+      <p class="desc" data-i18n="worksEverywhere.desc">将 Terse 连接到 Chrome、Cursor、VS Code 或任何终端——自动检测文本框和 Agent 会话，无需安装插件。</p>
       <ul class="flist">
-        <li data-i18n="worksEverywhere.f1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-detects agent processes — Claude Code, OpenClaw, Cursor, Aider</li>
-        <li data-i18n="worksEverywhere.f2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>7-stage pipeline runs on every prompt and agent command</li>
-        <li data-i18n="worksEverywhere.f3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Code blocks, URLs, inline code all protected · on-device · zero latency</li>
+        <li data-i18n="worksEverywhere.f1">自动检测 Agent 进程——Claude Code、OpenClaw、Cursor、Aider</li>
+        <li data-i18n="worksEverywhere.f2">7 阶段流水线在每个提示和 Agent 命令上运行</li>
+        <li data-i18n="worksEverywhere.f3">代码块、URL、行内代码全部受保护 · 本地运行 · 零延迟</li>
       </ul>
     </div>
     <div class="rvr d1">
@@ -1633,13 +1521,13 @@
           <div class="pipe-text-in mono" id="pipeIn"></div>
           <div class="pipe-stages-wrap">
             <div class="pipe-stages-col">
-              <div class="pipe-step"><span class="pipe-n">1</span><span class="pipe-nm" data-i18n="pipeline.stage1">Spell Correction</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">2</span><span class="pipe-nm" data-i18n="pipeline.stage2">Whitespace</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">3</span><span class="pipe-nm" data-i18n="pipeline.stage3">Pattern Optimization</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">4</span><span class="pipe-nm" data-i18n="pipeline.stage4">Redundancy Elimination</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">5</span><span class="pipe-nm" data-i18n="pipeline.stage5">NLP Analysis</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">6</span><span class="pipe-nm" data-i18n="pipeline.stage6">Aggressive Compression</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">7</span><span class="pipe-nm" data-i18n="pipeline.stage7">Final Cleanup</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">1</span><span class="pipe-nm" data-i18n="pipeline.stage1">拼写校正</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">2</span><span class="pipe-nm" data-i18n="pipeline.stage2">空白处理</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">3</span><span class="pipe-nm" data-i18n="pipeline.stage3">模式优化</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">4</span><span class="pipe-nm" data-i18n="pipeline.stage4">冗余消除</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">5</span><span class="pipe-nm" data-i18n="pipeline.stage5">NLP 分析</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">6</span><span class="pipe-nm" data-i18n="pipeline.stage6">激进压缩</span><span class="pipe-tok"></span></div>
+              <div class="pipe-step"><span class="pipe-n">7</span><span class="pipe-nm" data-i18n="pipeline.stage7">最终清理</span><span class="pipe-tok"></span></div>
             </div>
             <div class="pipe-live-text mono" id="pipeLive"></div>
           </div>
@@ -1657,14 +1545,14 @@
   <div class="glow" style="top:50px;right:-200px"></div>
   <div class="s-inner rev">
     <div class="rvr">
-      <div class="label" data-i18n="spell.label">Live Token Optimization</div>
-      <h2 data-i18n-html="spell.heading">Every message<br><span class="gradient-text">optimized live.</span></h2>
-      <p class="desc" data-i18n="spell.desc">As you type, Terse rewrites your prompt in real time — fixing typos, stripping filler, compressing verbose phrasing. But it doesn't stop there: when agents take actions, Terse optimizes their commands too. Every token saved — from your prompts and agent operations — means lower cost and better responses.</p>
+      <div class="label" data-i18n="spell.label">实时 Token 优化</div>
+      <h2 data-i18n-html="spell.heading">每条消息实时优化。</h2>
+      <p class="desc" data-i18n="spell.desc">在你输入时，Terse 实时重写你的提示——修正拼写、去除填充词、压缩冗长表达。</p>
       <ul class="flist">
-        <li data-i18n="spell.f1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Rewrites prompts and agent commands before they're sent</li>
-        <li data-i18n="spell.f2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Context-aware: "what souls I do" → "what should I do"</li>
-        <li data-i18n="spell.f3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Optimizes agent tool calls, file reads, and context passing</li>
-        <li data-i18n="spell.f4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Safe: skips ALL-CAPS, Capitalized, code tokens</li>
+        <li data-i18n="spell.f1">在发送前重写提示和 Agent 命令</li>
+        <li data-i18n="spell.f2">上下文感知的拼写校正</li>
+        <li data-i18n="spell.f3">优化 Agent 工具调用、文件读取和上下文传递</li>
+        <li data-i18n="spell.f4">安全：跳过全大写、首字母大写和代码 token</li>
       </ul>
     </div>
     <div class="rvl d1">
@@ -1693,25 +1581,25 @@
   <div class="glow" style="bottom:-100px;left:-150px"></div>
   <div class="s-inner">
     <div class="rvl">
-      <div class="label" data-i18n="techniques.label">35+ Techniques</div>
-      <h2 data-i18n-html="techniques.heading">Every wasted<br><span class="gradient-text">token found.</span></h2>
-      <p class="desc" data-i18n="techniques.desc">Filler removal, question-to-imperative, Jaccard deduplication, telegraph compression — each technique targets a different source of token waste. Applied to your prompts and agent commands alike.</p>
+      <div class="label" data-i18n="techniques.label">20+ 种技术</div>
+      <h2 data-i18n-html="techniques.heading">找到每一个浪费的 token。</h2>
+      <p class="desc" data-i18n="techniques.desc">填充词去除、疑问句转祈使句、去重、电报式压缩——每种技术针对不同的浪费来源。</p>
       <ul class="flist">
-        <li data-i18n="techniques.f1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>130+ phrase-shortening rules for prompts and agent messages</li>
-        <li data-i18n="techniques.f2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Semantic dedup — catches repeated context across agent turns</li>
-        <li data-i18n="techniques.f3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tool result compression — flags large Read/Grep results for trimming</li>
+        <li data-i18n="techniques.f1">130+ 条短语缩减规则，适用于提示和 Agent 消息</li>
+        <li data-i18n="techniques.f2">语义去重——捕获 Agent 轮次间重复的上下文</li>
+        <li data-i18n="techniques.f3">工具结果压缩——标记大型 Read/Grep 结果以供裁剪</li>
       </ul>
     </div>
     <div class="rvr d1">
       <div class="win">
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Techniques — Live</span></div>
         <div class="tech-cards" id="techViz">
-          <div class="tc" id="tc0"><h4 data-i18n="techniques.card1">Redundant Read Detection</h4><div class="tc-demo mono" id="td0"></div></div>
-          <div class="tc" id="tc1"><h4 data-i18n="techniques.card2">Question → Imperative</h4><div class="tc-demo mono" id="td1"></div></div>
-          <div class="tc" id="tc2"><h4 data-i18n="techniques.card3">Duplicate Tool Call</h4><div class="tc-demo mono" id="td2"></div></div>
-          <div class="tc" id="tc3"><h4 data-i18n="techniques.card4">Semantic Dedup</h4><div class="tc-demo mono" id="td3"></div></div>
-          <div class="tc" id="tc4"><h4 data-i18n="techniques.card5">Filler Removal</h4><div class="tc-demo mono" id="td4"></div></div>
-          <div class="tc" id="tc5"><h4 data-i18n="techniques.card6">Unused Tool Overhead</h4><div class="tc-demo mono" id="td5"></div></div>
+          <div class="tc" id="tc0"><h4 data-i18n="techniques.card1">冗余读取检测</h4><div class="tc-demo mono" id="td0"></div></div>
+          <div class="tc" id="tc1"><h4 data-i18n="techniques.card2">疑问句 → 祈使句</h4><div class="tc-demo mono" id="td1"></div></div>
+          <div class="tc" id="tc2"><h4 data-i18n="techniques.card3">重复工具调用</h4><div class="tc-demo mono" id="td2"></div></div>
+          <div class="tc" id="tc3"><h4 data-i18n="techniques.card4">语义去重</h4><div class="tc-demo mono" id="td3"></div></div>
+          <div class="tc" id="tc4"><h4 data-i18n="techniques.card5">填充词去除</h4><div class="tc-demo mono" id="td4"></div></div>
+          <div class="tc" id="tc5"><h4 data-i18n="techniques.card6">未使用工具开销</h4><div class="tc-demo mono" id="td5"></div></div>
         </div>
       </div>
     </div>
@@ -1725,20 +1613,20 @@
 <section class="section" style="background:var(--bg2)">
   <div class="s-inner rev">
     <div class="rvr">
-      <div class="label" data-i18n="modes.label">Three Modes</div>
-      <h2 data-i18n-html="modes.heading">You control<br><span class="gradient-text">how much to save.</span></h2>
-      <p class="desc" data-i18n="modes.desc">Different contexts need different levels. Soft for careful prompts, Normal for everyday chat, Aggressive for agent sessions where a single task can burn through thousands of tokens.</p>
+      <div class="label" data-i18n="modes.label">三种模式</div>
+      <h2 data-i18n-html="modes.heading">你控制节省多少。</h2>
+      <p class="desc" data-i18n="modes.desc">不同场景需要不同级别。Soft 适合谨慎提示，Normal 适合日常聊天，Aggressive 适合 Agent 会话。</p>
       <ul class="flist">
-        <li data-i18n-html="modes.f1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Soft:</strong> Typo-fix + whitespace only. Perfect for critical prompts.</li>
-        <li data-i18n-html="modes.f2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Normal:</strong> Strips filler, hedging, and meta-language. Best for chat.</li>
-        <li data-i18n-html="modes.f3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Aggressive:</strong> Max compression + telegraph style. Built for agent sessions.</li>
+        <li data-i18n-html="modes.f1">Soft：仅拼写修正 + 空白处理。适合关键提示。</li>
+        <li data-i18n-html="modes.f2">Normal：去除填充词、犹豫和元语言。最适合聊天。</li>
+        <li data-i18n-html="modes.f3">Aggressive：最大压缩 + 电报风格。专为 Agent 会话设计。</li>
       </ul>
     </div>
     <div class="rvl d1">
       <div class="win">
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Mode Comparison</span></div>
         <div class="mode-viz" id="modeViz">
-          <div class="mode-slider"><div class="mode-opt active" id="mo0" data-i18n="modes.soft">Soft</div><div class="mode-opt" id="mo1" data-i18n="modes.normal">Normal</div><div class="mode-opt" id="mo2" data-i18n="modes.aggr">Aggr</div></div>
+          <div class="mode-slider"><div class="mode-opt active" id="mo0" data-i18n="modes.soft">轻柔</div><div class="mode-opt" id="mo1" data-i18n="modes.normal">标准</div><div class="mode-opt" id="mo2" data-i18n="modes.aggr">激进</div></div>
           <div class="mode-input-box mono" style="font-size:11px">"I was just wondering if you could perhaps help me understand how to implement a binary search tree in Python please?"</div>
           <div class="mode-output-box mono" id="modeOut" style="font-size:11px"></div>
           <div class="mode-stats-row"><span style="color:var(--t3);font-size:11px" id="modeTok">22 tok</span><div class="mode-bar"><div class="mode-bar-fill" id="modeBar"></div></div><span style="font-size:13px;font-weight:800;color:var(--ac)" id="modePct">0%</span></div>
@@ -1755,16 +1643,16 @@
   <div class="glow" style="top:0;right:-200px"></div>
   <div class="s-inner">
     <div class="rvl">
-      <div class="label" data-i18n="agentMonitor.label">Agent Monitor</div>
-      <h2 data-i18n-html="agentMonitor.heading">See everything<br><span class="gradient-text">your agent does.</span></h2>
-      <p class="desc" data-i18n="agentMonitor.desc">Terse auto-detects Claude Code, OpenClaw, Aider, and Cursor Agent via process scanning every 5 seconds. It tails JSONL session logs in real time with model-aware pricing (Opus, Sonnet, Haiku) — giving you full visibility into where every token goes.</p>
+      <div class="label" data-i18n="agentMonitor.label">Agent 监控</div>
+      <h2 data-i18n-html="agentMonitor.heading">查看 Agent 的一切操作。</h2>
+      <p class="desc" data-i18n="agentMonitor.desc">Terse 通过进程扫描自动检测 Claude Code、OpenClaw、Aider 和 Cursor Agent。实时追踪会话日志，内置模型感知定价。</p>
       <ul class="flist">
-        <li data-i18n="agentMonitor.f1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Live token tracking: input, output, cache reads, context fill %</li>
-        <li data-i18n="agentMonitor.f2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Model-aware cost estimation — Opus/Sonnet/Haiku pricing built in</li>
-        <li data-i18n="agentMonitor.f3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Duplicate tool call detection + redundant file read alerts</li>
-        <li data-i18n="agentMonitor.f4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Unused tool overhead tracking (~300 tok per unused tool per call)</li>
-        <li data-i18n="agentMonitor.f5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Context fill meter — warns at 60% and alerts at 85% to run /compact</li>
-        <li data-i18n="agentMonitor.f6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Auto-generates CLAUDE.md optimization rules from session patterns</li>
+        <li data-i18n="agentMonitor.f1">实时 token 跟踪：输入、输出、缓存读取、上下文填充百分比</li>
+        <li data-i18n="agentMonitor.f2">模型感知成本估算——内置 Opus/Sonnet/Haiku 定价</li>
+        <li data-i18n="agentMonitor.f3">重复工具调用检测 + 冗余文件读取告警</li>
+        <li data-i18n="agentMonitor.f4">未使用工具开销跟踪（每次调用中每个未使用工具约 300 token）</li>
+        <li data-i18n="agentMonitor.f5">上下文填充度指示器——60% 时警告，85% 时告警</li>
+        <li data-i18n="agentMonitor.f6">根据会话模式自动生成 CLAUDE.md 优化规则</li>
       </ul>
       <div class="alts"><span>Claude Code</span><span>OpenClaw</span><span>Aider</span><span>Cursor Agent</span></div>
     </div>
@@ -1773,7 +1661,7 @@
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Agent Monitor — Live</span></div>
         <div class="agent-full" id="agentViz">
           <div class="agent-term mono" id="agTerm"></div>
-          <div class="agent-connect-banner" id="agBanner"><div class="prune-dot"></div><span style="font-size:11px;flex:1" data-i18n="agentMonitor.detected">Claude Code detected — monitor session?</span><span class="agent-connect-btn" data-i18n="agentMonitor.connect">Connect</span></div>
+          <div class="agent-connect-banner" id="agBanner"><div class="prune-dot"></div><span style="font-size:11px;flex:1" data-i18n="agentMonitor.detected">检测到 Claude Code——监控会话？</span><span class="agent-connect-btn" data-i18n="agentMonitor.connect">连接</span></div>
           <div class="agent-panel-anim" id="agPanel">
             <div class="ap-grid">
               <div class="ap-stat"><span class="ap-v" id="agTurns">0</span><span class="ap-l">Turns</span></div>
@@ -1802,13 +1690,13 @@
   <div class="glow" style="top:0;left:-200px"></div>
   <div class="s-inner rev">
     <div class="rvl">
-      <div class="label" data-i18n="routing.label">Auto Model Routing</div>
-      <h2 data-i18n-html="routing.heading">Opus billed.<br><span class="gradient-text">Sonnet delivered.</span></h2>
-      <p class="desc" data-i18n="routing.desc">Terse runs a local proxy on port 7860 that intercepts every API call. Simple tasks — short prompts, lookups, edits — are silently rerouted from Opus ($15/MTok) to Sonnet ($3/MTok). Complex tasks stay on Opus. You pay 80% less with zero code changes.</p>
+      <div class="label" data-i18n="routing.label">自动模型路由</div>
+      <h2 data-i18n-html="routing.heading">Opus 计费。<br><span class="gradient-text">Sonnet 响应。</span></h2>
+      <p class="desc" data-i18n="routing.desc">Terse 在 7860 端口运行本地代理，拦截每个 API 请求。简单任务——短提示词、查询、编辑——自动从 Opus（$15/MTok）路由到 Sonnet（$3/MTok）。复杂任务保留 Opus。无需修改任何代码，费用减少 80%。</p>
       <ul class="flist">
-        <li data-i18n="routing.f1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Complexity scoring — short prompts, lookups, edits → Sonnet</li>
-        <li data-i18n="routing.f2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Architecture, security reviews, deep refactors → stay on Opus</li>
-        <li data-i18n="routing.f3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Transparent — zero changes to Claude Code, Cursor, or Codex</li>
+        <li data-i18n="routing.f1">复杂度评分——短提示词、查询、编辑 → Sonnet</li>
+        <li data-i18n="routing.f2">架构设计、安全审查、深度重构 → 保留 Opus</li>
+        <li data-i18n="routing.f3">透明无感——Claude Code、Cursor、Codex 无需任何改动</li>
 
       </ul>
       <div class="alts"><span>Claude Code</span><span>Cursor</span><span>Codex</span><span>Any OpenAI-compat client</span></div>
@@ -1839,13 +1727,13 @@
 <section class="section" id="benchmarks" style="background:var(--bg2)">
   <div class="s-inner rev">
     <div class="rvr">
-      <div class="label" data-i18n="benchmarks.sectionTitle">Benchmarks</div>
-      <h2 data-i18n-html="benchmarks.heading">Tested on<br><span class="gradient-text">real sessions.</span></h2>
-      <p class="desc" data-i18n="features.description">Tested on real ChatGPT prompts, Claude Code agent sessions, and multi-turn agent workflows. Clean technical prompts pass untouched. Verbose prompts and agent messages see 40-70% reduction. Combined with tool overhead savings, total session reduction reaches 30-60%.</p>
+      <div class="label" data-i18n="benchmarks.sectionTitle">性能测试</div>
+      <h2 data-i18n-html="benchmarks.heading">基于真实会话测试。</h2>
+      <p class="desc" data-i18n="features.description">在真实的 ChatGPT 提示、Claude Code Agent 会话和多轮 Agent 工作流上测试。简洁的技术提示原样通过，冗长的提示和 Agent 消息可减少 40-70%。</p>
       <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench1">Benchmarked across manual prompts, agent turns, and tool calls</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench2">Clean prompts correctly return 0% — no false changes</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench3">Savings compound: 5-turn agent session saves 200-400+ tokens</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench1">覆盖手动提示、Agent 对话轮次及工具调用的基准测试</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench2">简洁提示正确返回 0%——不会产生误改</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench3">节省可累积：5 轮 Agent 会话可节省 200-400+ token</span></li>
       </ul>
     </div>
     <div class="rvl d1">
@@ -1870,9 +1758,9 @@
 <!-- ═══ SEE THE DIFFERENCE ═══ -->
 <section class="demo-section" id="demo">
   <div class="demo-inner">
-    <div class="label rv" style="margin:0 auto 18px" data-i18n="pipeline.sectionTitle">See the difference</div>
-    <h2 class="rv" data-i18n-html="pipeline.subtitle">Real outputs, <span class="gradient-text">real savings.</span></h2>
-    <p class="demo-sub rv d1" data-i18n="pipeline.description">Side-by-side comparison on actual prompts and agent commands.</p>
+    <div class="label rv" style="margin:0 auto 18px" data-i18n="pipeline.sectionTitle">看看效果</div>
+    <h2 class="rv" data-i18n-html="pipeline.subtitle">真实输出，真实节省。</h2>
+    <p class="demo-sub rv d1" data-i18n="pipeline.description">在实际提示和 Agent 命令上的逐行对比。</p>
 
     <div class="demo-tabs rv d1">
       <div class="demo-tab active" data-demo="0">find . -name "*.rs"</div>
@@ -2139,26 +2027,26 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ TOKEN USAGE — NO AI TOOL IS UNLIMITED ═══ -->
 <section class="usage-section" id="usage">
   <div class="usage-inner">
-    <h2 class="rv" data-i18n-html="usage.heading">No AI tool offers <span class="gradient-text">unlimited usage.</span></h2>
-    <p class="usage-sub rv d1" data-i18n-html="usage.subtitle">Even at $200/mo, every tool has caps. Terse compresses prompts so your limits stretch further &mdash; and <a href="/teams" style="color:var(--ac)">Terse Cloud</a> gives your team full visibility into exactly where tokens are going.</p>
+    <h2 class="rv" data-i18n-html="usage.heading">没有任何 AI 工具提供无限使用。</h2>
+    <p class="usage-sub rv d1" data-i18n-html="usage.subtitle">即使每月 200 美元的方案也有上限。Terse 压缩提示让额度用得更久——<a href="/teams" style="color:var(--ac)">Terse Cloud</a> 让你的团队清晰掌握每个 token 的去向。</p>
 
     <div class="usage-callout rv d2">
-      <div class="usage-headline" data-i18n="usage.calloutTitle">A typical 2h coding session with an AI agent:</div>
+      <div class="usage-headline" data-i18n="usage.calloutTitle">一次典型的 2 小时 AI Agent 编程会话：</div>
       <div class="usage-stats-row">
         <div class="usage-stat">
           <div class="usage-num" data-ut="60" data-us="~">0</div>
-          <div class="usage-label" data-i18n="usage.stat1">CLI commands run</div>
+          <div class="usage-label" data-i18n="usage.stat1">条 CLI 命令执行</div>
         </div>
         <div class="usage-stat">
           <div class="usage-num" data-ut="210" data-us="~" data-ue="K">0</div>
-          <div class="usage-label" data-i18n="usage.stat2">tokens of prompt + CLI noise</div>
+          <div class="usage-label" data-i18n="usage.stat2">个 token 的提示 + CLI 噪声</div>
         </div>
         <div class="usage-stat">
           <div class="usage-num accent" data-ut="23" data-us="~" data-ue="K">0</div>
-          <div class="usage-label" data-i18n="usage.stat3">with Terse (89% less)</div>
+          <div class="usage-label" data-i18n="usage.stat3">使用 Terse 后（减少 89%）</div>
         </div>
       </div>
-      <p class="usage-note" data-i18n="usage.note">Without Terse, CLI output and verbose prompts alone can overflow a 200K context window. Based on avg 3,500 tokens/command measured across real coding sessions.</p>
+      <p class="usage-note" data-i18n="usage.note">没有 Terse，CLI 输出和冗长提示就能撑爆 200K 上下文窗口。</p>
     </div>
   </div>
 </section>
@@ -2166,9 +2054,9 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ TOOL COMPARISON CARDS ═══ -->
 <section class="tools-section" id="tool-comparison">
   <div class="tools-inner" style="text-align:center">
-    <div class="label rv" style="margin:0 auto 18px" data-i18n="tools.sectionTitle">Every tool has limits</div>
-    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:10px" data-i18n-html="tools.heading">Terse stretches <span class="gradient-text">every plan further.</span></h2>
-    <p class="rv d1" style="color:var(--t2);max-width:580px;margin:0 auto 0;font-size:15px;line-height:1.7" data-i18n-html="tools.description">No matter which AI tool your team uses, token costs add up fast. Terse compresses what goes in &mdash; and <a href="/teams" style="color:var(--ac)">Terse Cloud</a> gives you team-wide analytics to track spend by developer, project, and tool.</p>
+    <div class="label rv" style="margin:0 auto 18px" data-i18n="tools.sectionTitle">每款工具都有限制</div>
+    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:10px" data-i18n-html="tools.heading">Terse 让每个方案都更耐用。</h2>
+    <p class="rv d1" style="color:var(--t2);max-width:580px;margin:0 auto 0;font-size:15px;line-height:1.7" data-i18n-html="tools.description">无论团队使用哪款 AI 工具，token 成本都会快速累积。Terse 压缩输入内容——<a href="/teams" style="color:var(--ac)">Terse Cloud</a> 提供团队级分析，按开发者、项目和工具追踪开销。</p>
 
     <div class="tools-grid rv d2">
       <!-- Claude Code -->
@@ -2178,12 +2066,12 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">Terminal</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">~45 msgs/5h (Pro), 5-20x on Max</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">200K tokens</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">~45 msgs/5h (Pro), 5-20x on Max</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">200K tokens</span></div>
         </div>
         <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.claudeCode.impact">Sessions ~3x longer</span>
+          <span class="impact-badge" data-i18n="tools.claudeCode.impact">会话时长约 3 倍</span>
         </div>
         <div class="tool-card-detail">Even Max $200/mo (20x Pro) has weekly caps (240-480h). Quota resets every 5h. Terse compresses prompts and CLI outputs by avg 89%, so each message carries less noise and your quota stretches ~3x.</div>
       </div>
@@ -2195,12 +2083,12 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">IDE</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">$20 credits/mo (Pro), ~225 Claude reqs</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">Up to 200K (Max mode)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">$20 credits/mo (Pro), ~225 Claude reqs</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">Up to 200K (Max mode)</span></div>
         </div>
         <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.cursor.impact">Credits go ~2x further</span>
+          <span class="impact-badge" data-i18n="tools.cursor.impact">额度使用效率约 2 倍</span>
         </div>
         <div class="tool-card-detail">Even Ultra $200/mo (20x credits) is capped. Each request consumes credits based on model &mdash; Claude burns 2.4x faster than Gemini. Terse compresses prompts and CLI outputs so each request starts cleaner.</div>
       </div>
@@ -2212,12 +2100,12 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">Agent</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">$20/mo (Plus) &mdash; $200/mo (Pro)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">30-1,500 msgs/5h by plan</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">192K tokens</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">$20/mo (Plus) &mdash; $200/mo (Pro)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">30-1,500 msgs/5h by plan</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">192K tokens</span></div>
         </div>
         <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.codex.impact">More iterations per cap</span>
+          <span class="impact-badge" data-i18n="tools.codex.impact">更多迭代次数</span>
         </div>
         <div class="tool-card-detail">Included with ChatGPT plans. Pro $200/mo caps at 1,500 msgs/5h. The agent runs commands autonomously &mdash; each output eats your cap. Terse compresses them for more iterations per window.</div>
       </div>
@@ -2229,12 +2117,12 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">IDE</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">$15 &mdash; $60/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">500 credits/mo (Pro)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">200K tokens</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">$15 &mdash; $60/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">500 credits/mo (Pro)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">200K tokens</span></div>
         </div>
         <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.windsurf.impact">Credits last ~2x longer</span>
+          <span class="impact-badge" data-i18n="tools.windsurf.impact">额度持续约 2 倍</span>
         </div>
         <div class="tool-card-detail">Enterprise $60/user gets 1,000 credits/mo &mdash; still capped. Cascade consumes credits per prompt. Terse compresses prompts and CLI outputs so each interaction uses fewer tokens, stretching your credits.</div>
       </div>
@@ -2246,12 +2134,12 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">Terminal</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">Free &mdash; pay-per-token</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">1,000 req/day, 60 req/min (free)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">1M tokens</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">Free &mdash; pay-per-token</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">1,000 req/day, 60 req/min (free)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">1M tokens</span></div>
         </div>
         <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.gemini.impact">~70% less on token bill</span>
+          <span class="impact-badge" data-i18n="tools.gemini.impact">token 账单减少约 70%</span>
         </div>
         <div class="tool-card-detail">Free tier is generous (1,000 req/day) but still rate-limited. Beyond that, you pay per token. Terse compresses prompts and CLI outputs by avg 89%, cutting your bill or freeing rate limit headroom.</div>
       </div>
@@ -2263,12 +2151,12 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">Terminal</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">Free + API costs ($5-300+/mo)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">Per API provider</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">Free + API costs ($5-300+/mo)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">Per API provider</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">Per model (up to 200K)</span></div>
         </div>
         <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.aider.impact">~70% less API cost</span>
+          <span class="impact-badge" data-i18n="tools.aider.impact">API 成本减少约 70%</span>
         </div>
         <div class="tool-card-detail">BYO API key &mdash; you pay per token to OpenAI, Anthropic, etc. Terse compresses every prompt and command output before it reaches the model, directly cutting your API bill by ~70% on verbose workflows.</div>
       </div>
@@ -2280,12 +2168,12 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">IDE</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">Free &mdash; $39/mo (Pro+)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">50-1,500 premium req/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">Free &mdash; $39/mo (Pro+)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">50-1,500 premium req/mo</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">Per model (up to 200K)</span></div>
         </div>
         <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.copilot.impact">Better context quality</span>
+          <span class="impact-badge" data-i18n="tools.copilot.impact">更好的上下文质量</span>
         </div>
         <div class="tool-card-detail">Enterprise $39/user: 1,000 premium req/mo. Base completions are unlimited, but Chat and the coding agent have caps. Terse keeps terminal output lean so premium requests carry more useful context.</div>
       </div>
@@ -2297,18 +2185,18 @@ bug fixes (6), features (5), docs (2)</pre>
           <span class="tool-card-type">VS Code</span>
         </div>
         <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">Price</span><span class="tc-value">Free + API costs ($0-500+/mo)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">Limits</span><span class="tc-value">Per API provider</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">Context</span><span class="tc-value">Per model (up to 200K)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">Free + API costs ($0-500+/mo)</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">Per API provider</span></div>
+          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">Per model (up to 200K)</span></div>
         </div>
         <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.cline.impact">~70% less API cost</span>
+          <span class="impact-badge" data-i18n="tools.cline.impact">API 成本减少约 70%</span>
         </div>
         <div class="tool-card-detail">No tool-side limit, but your API provider caps apply. Heavy users report $200-500+/mo. Terse compresses every output by avg 89%, directly cutting your bill and reducing context overflow.</div>
       </div>
     </div>
 
-    <p class="rv d3" style="margin-top:24px;font-size:11px;color:var(--t3)" data-i18n="tools.footnote">Pricing verified Feb 2026. Limits vary by usage and plan. Terse savings based on avg 89% compression across real prompts and CLI outputs.</p>
+    <p class="rv d3" style="margin-top:24px;font-size:11px;color:var(--t3)" data-i18n="tools.footnote">价格信息已于 2026 年 2 月核实。限制因使用量和方案而异。</p>
   </div>
 </section>
 
@@ -2396,7 +2284,7 @@ bug fixes (6), features (5), docs (2)</pre>
   </div>
 </section>
 
-<script src="pals.js"></script>
+<script src="/pals.js"></script>
 <script>
 (function(){
   const TP = window.TERSE_PALS;
@@ -2480,15 +2368,15 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ TESTIMONIALS ═══ -->
 <section class="testimonials-section">
   <div class="testimonials-inner">
-    <h2 class="rv" data-i18n-html="testimonials.heading">...and loved by <span class="gradient-text">developers</span></h2>
-    <p class="testimonials-sub rv d1" data-i18n="testimonials.subtitle">Engineers and AI power users cutting costs and gaining visibility into their token usage.</p>
+    <h2 class="rv" data-i18n-html="testimonials.heading">……深受开发者喜爱</h2>
+    <p class="testimonials-sub rv d1" data-i18n="testimonials.subtitle">工程师和 AI 重度用户正在降低成本，同时全面掌控 token 使用情况。</p>
     <div class="testimonials-track">
       <div class="testi-card">
         <div class="testi-header">
           <div class="testi-avatar">M</div>
           <div><div class="testi-name">Marcus Chen</div><div class="testi-handle">@marcuschen_dev</div></div>
         </div>
-        <div class="testi-body" data-i18n-html="testimonials.1.body">Been using <span class="hl">@Terse_App</span> with Claude Code for a week. Token usage dropped ~40% on agent sessions. The spellcheck alone saves me from costly correction loops — and the monitor shows exactly where tokens go.</div>
+        <div class="testi-body" data-i18n-html="testimonials.1.body">用 @Terse_App 配合 Claude Code 一周了。Agent 会话的 token 用量下降了约 40%。仅拼写检查就帮我避免了高成本的纠错循环。</div>
         <div class="testi-tag">Claude Code</div>
       </div>
       <div class="testi-card">
@@ -2496,7 +2384,7 @@ bug fixes (6), features (5), docs (2)</pre>
           <div class="testi-avatar">S</div>
           <div><div class="testi-name">Sarah Kim</div><div class="testi-handle">@sarahk_ai</div></div>
         </div>
-        <div class="testi-body" data-i18n-html="testimonials.2.body">I type verbose ChatGPT prompts out of habit. <span class="hl">Terse</span> catches all my filler words and hedging in real time. -60% tokens on average. It's like Grammarly for token efficiency.</div>
+        <div class="testi-body" data-i18n-html="testimonials.2.body">我习惯性地输入冗长的 ChatGPT 提示。Terse 实时捕获我所有的填充词和犹豫表达。平均减少 60% 的 token。</div>
         <div class="testi-tag">ChatGPT</div>
       </div>
       <div class="testi-card">
@@ -2504,7 +2392,7 @@ bug fixes (6), features (5), docs (2)</pre>
           <div class="testi-avatar">J</div>
           <div><div class="testi-name">Jake Ortiz</div><div class="testi-handle">@jakeortiz</div></div>
         </div>
-        <div class="testi-body" data-i18n-html="testimonials.3.body">The agent monitor alone is worth it. I can see input/output/cache per turn, tool call costs, and which <span class="hl">Cursor</span> sessions are burning the most tokens. Finally have visibility into agent spend.</div>
+        <div class="testi-body" data-i18n-html="testimonials.3.body">仅 Agent 监控就物超所值。我可以看到每轮的输入/输出/缓存、工具调用成本，以及哪些会话消耗最多 token。</div>
         <div class="testi-tag">Cursor Agent</div>
       </div>
       <div class="testi-card">
@@ -2512,7 +2400,7 @@ bug fixes (6), features (5), docs (2)</pre>
           <div class="testi-avatar">A</div>
           <div><div class="testi-name">Amara Patel</div><div class="testi-handle">@amara_codes</div></div>
         </div>
-        <div class="testi-body" data-i18n-html="testimonials.4.body">Runs 100% on-device. No API calls, no cloud. As someone who works with sensitive codebases, this was the only token optimizer I'd actually trust. <span class="hl">Privacy-first</span> done right.</div>
+        <div class="testi-body" data-i18n-html="testimonials.4.body">100% 本地运行。无 API 调用，无云端。作为处理敏感代码库的人，这是我唯一信任的 token 优化器。</div>
         <div class="testi-tag">Privacy</div>
       </div>
       <div class="testi-card">
@@ -2520,7 +2408,7 @@ bug fixes (6), features (5), docs (2)</pre>
           <div class="testi-avatar">R</div>
           <div><div class="testi-name">Ravi Nguyen</div><div class="testi-handle">@ravi_ng</div></div>
         </div>
-        <div class="testi-body" data-i18n-html="testimonials.5.body">Set up <span class="hl">OpenClaw</span> + Terse and my API bill dropped immediately. Auto-mode rewrites prompts before send, the monitor tracks every turn's cost, and catching typos means fewer "sorry, I meant..." follow-ups.</div>
+        <div class="testi-body" data-i18n-html="testimonials.5.body">配置了 OpenClaw + Terse，API 账单立刻降低。自动模式在发送前重写提示，监控器跟踪每轮成本。</div>
         <div class="testi-tag">OpenClaw</div>
       </div>
       <div class="testi-card">
@@ -2528,7 +2416,7 @@ bug fixes (6), features (5), docs (2)</pre>
           <div class="testi-avatar">E</div>
           <div><div class="testi-name">Elena Vasquez</div><div class="testi-handle">@elena_v</div></div>
         </div>
-        <div class="testi-body" data-i18n-html="testimonials.6.body">The three modes are perfect. Soft for important prompts where every word matters, Aggressive for quick throwaway questions. <span class="hl">Terse</span> adapts to how I work, not the other way around.</div>
+        <div class="testi-body" data-i18n-html="testimonials.6.body">三种模式非常完美。Soft 用于重要提示，Aggressive 用于快速随手问题。Terse 适应我的工作方式。</div>
         <div class="testi-tag">3 Modes</div>
       </div>
       <div class="testi-card">
@@ -2536,7 +2424,7 @@ bug fixes (6), features (5), docs (2)</pre>
           <div class="testi-avatar">D</div>
           <div><div class="testi-name">Daniel Park</div><div class="testi-handle">@dpark_dev</div></div>
         </div>
-        <div class="testi-body" data-i18n-html="testimonials.7.body">I had $40/mo of Claude API credits going unused. Listed my key on the <span class="hl">Token Exchange</span> in 2 minutes &mdash; now I earn ~$25/mo from other devs using my spare capacity. Basically free money from tokens I was wasting.</div>
+        <div class="testi-body" data-i18n-html="testimonials.7.body">我每月有 $40 的 Claude API 额度闲置。在 Token 交易所上架了我的密钥——现在每月从其他开发者那里赚约 $25。</div>
         <div class="testi-tag">Token Exchange</div>
       </div>
       <div class="testi-card">
@@ -2544,7 +2432,7 @@ bug fixes (6), features (5), docs (2)</pre>
           <div class="testi-avatar">L</div>
           <div><div class="testi-name">Lisa Chen</div><div class="testi-handle">@lisachen_ai</div></div>
         </div>
-        <div class="testi-body" data-i18n-html="testimonials.8.body">As a student, paying full price for Claude API was painful. <span class="hl">Token Exchange</span> gets me Sonnet at 40% off retail. One env var and Claude Code just works through the proxy. Plus Terse optimizes my prompts, so tokens go even further.</div>
+        <div class="testi-body" data-i18n-html="testimonials.8.body">作为学生，全价购买 Claude API 很心痛。Token 交易所让我以 6 折获得 Sonnet。</div>
         <div class="testi-tag">Token Exchange</div>
       </div>
     </div>
@@ -2554,13 +2442,13 @@ bug fixes (6), features (5), docs (2)</pre>
 <!-- ═══ STATS ═══ -->
 <section class="stats-section">
   <div class="stats-inner">
-    <h2 class="rv" data-i18n-html="stats.heading">Built on <span class="gradient-text">research.</span></h2>
-    <p class="rv d1" style="color:var(--t3);font-size:15px;max-width:480px;margin:-40px auto 50px" data-i18n="stats.subtitle">Grounded in LLMLingua, Norvig spelling, selective context pruning, and real-world agent session analysis across thousands of Claude Code turns.</p>
+    <h2 class="rv" data-i18n-html="stats.heading">基于学术研究。</h2>
+    <p class="rv d1" style="color:var(--t3);font-size:15px;max-width:480px;margin:-40px auto 50px" data-i18n="stats.subtitle">基于 LLMLingua、Norvig 拼写校正、选择性上下文剪枝以及真实 Agent 会话分析。</p>
     <div class="stats-grid">
-      <div class="stat-card rv d1"><div class="stat-num" data-t="5" data-s="">0</div><div class="stat-lbl" data-i18n="stats.strategies">Optimization strategies</div></div>
-      <div class="stat-card rv d1"><div class="stat-num" data-t="20" data-s="+">0</div><div class="stat-lbl" data-i18n="stats.techniques">Token reduction techniques</div></div>
-      <div class="stat-card rv d2"><div class="stat-num" data-t="3" data-s="">0</div><div class="stat-lbl" data-i18n="stats.providers">API providers supported</div></div>
-      <div class="stat-card rv d3"><div class="stat-num" data-t="50" data-s="">0</div><div class="stat-lbl" data-i18n="stats.discount">% max discount on Exchange</div></div>
+      <div class="stat-card rv d1"><div class="stat-num" data-t="5" data-s="">0</div><div class="stat-lbl" data-i18n="stats.strategies">种优化策略</div></div>
+      <div class="stat-card rv d1"><div class="stat-num" data-t="20" data-s="+">0</div><div class="stat-lbl" data-i18n="stats.techniques">项 token 压缩技术</div></div>
+      <div class="stat-card rv d2"><div class="stat-num" data-t="3" data-s="">0</div><div class="stat-lbl" data-i18n="stats.providers">家 API 服务商支持</div></div>
+      <div class="stat-card rv d3"><div class="stat-num" data-t="50" data-s="">0</div><div class="stat-lbl" data-i18n="stats.discount">% 交易所最高折扣</div></div>
     </div>
   </div>
 </section>
@@ -2963,46 +2851,46 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
 <!-- ═══ PRICING ═══ -->
 <section class="section" id="pricing" style="background:var(--bg0)">
   <div style="max-width:1200px;margin:0 auto;text-align:center">
-    <div class="label rv" style="margin:0 auto 18px" data-i18n="pricing.sectionTitle">Pricing</div>
-    <h2 class="rv" style="margin-bottom:12px;text-align:center" data-i18n="pricing.heading">Simple, transparent plans</h2>
-    <p class="rv" style="color:var(--t2);max-width:520px;margin:0 auto 48px;text-align:center;font-size:15px;line-height:1.7" data-i18n-html="pricing.trialNote">Monthly plans include a <strong>30-day free trial</strong> — $0 today. Prefer flexibility? Weekly and quarterly billing available.</p>
+    <div class="label rv" style="margin:0 auto 18px" data-i18n="pricing.sectionTitle">价格</div>
+    <h2 class="rv" style="margin-bottom:12px;text-align:center" data-i18n="pricing.heading">简单透明的方案</h2>
+    <p class="rv" style="color:var(--t2);max-width:520px;margin:0 auto 48px;text-align:center;font-size:15px;line-height:1.7" data-i18n-html="pricing.trialNote">按月方案含 <strong>30 天免费试用</strong> — 今天 $0。也可选择按周或按季付费。</p>
 
     <div class="pricing-grid rv d1">
       <!-- PRO -->
       <div class="price-card recommended">
         <div class="price-tier" style="color:var(--ac)" data-i18n="pricing.pro">Pro</div>
         <div class="price-amount"><span class="curr">$</span>4<span style="font-size:32px">.99</span><span class="period">/mo</span></div>
-        <div style="text-align:center;font-size:12.5px;color:var(--t3);margin:-4px 0 12px" data-i18n-html="pricing.proIntervals">or <strong>$1.99</strong>/week &middot; <strong>$12</strong>/quarter (~$4/mo &mdash; save 20%)</div>
-        <p class="price-desc" data-i18n="pricing.proDesc">For developers running agent sessions daily. Unlimited prompts, multi-session monitoring.</p>
-        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)" data-i18n="pricing.proTrial">30-day free trial &mdash; cancel anytime</div>
+        <div style="text-align:center;font-size:12.5px;color:var(--t3);margin:-4px 0 12px" data-i18n-html="pricing.proIntervals">或 <strong>$1.99</strong>/周 · <strong>$12</strong>/季（约 $4/月 — 省 20%）</div>
+        <p class="price-desc" data-i18n="pricing.proDesc">面向每日使用 Agent 的开发者。无限提示优化，多会话监控。</p>
+        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)" data-i18n="pricing.proTrial">30 天免费试用——随时取消</div>
         <ul class="price-features">
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.proF1"><strong>Unlimited</strong>&nbsp;optimizations</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF2">3 connected sessions</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF3">2 devices</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF4">All 3 optimization modes</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF5">Agent monitoring + duplicate detection</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF6">Auto-replace &amp; Send-mode</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF7">CLAUDE.md rule generation</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.proF1">无限次优化</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF2">3 个连接会话</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF3">2 台设备</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF4">全部 3 种优化模式</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF5">Agent 监控 + 重复检测</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF6">自动替换和发送模式</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF7">CLAUDE.md 规则生成</span></li>
         </ul>
-        <button class="price-btn accent" onclick="handlePricing('pro')" data-i18n="pricing.startTrial">Start Free Trial</button>
+        <button class="price-btn accent" onclick="handlePricing('pro')" data-i18n="pricing.startTrial">开始免费试用</button>
       </div>
 
       <!-- PREMIUM -->
       <div class="price-card">
         <div class="price-tier" style="color:var(--ac)" data-i18n="pricing.premium">Premium</div>
         <div class="price-amount"><span class="curr">$</span>99<span class="period">/mo</span></div>
-        <p class="price-desc" data-i18n="pricing.premiumDesc">For teams and power users. Unlimited everything, priority support.</p>
-        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)" data-i18n="pricing.proTrial">30-day free trial &mdash; cancel anytime</div>
+        <p class="price-desc" data-i18n="pricing.premiumDesc">面向团队和重度用户。全部功能无限制，优先支持。</p>
+        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)" data-i18n="pricing.proTrial">30 天免费试用——随时取消</div>
         <ul class="price-features">
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.proF1"><strong>Unlimited</strong>&nbsp;optimizations</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.premiumF2"><strong>Unlimited</strong>&nbsp;connected sessions</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.premiumF3"><strong>Unlimited</strong>&nbsp;devices</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF4">All 3 optimization modes</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.premiumF5">Full agent analytics + rule generation</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF6">Auto-replace &amp; Send-mode</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.premiumF7">Priority support</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.proF1">无限次优化</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.premiumF2">无限连接会话</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.premiumF3">无限设备</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF4">全部 3 种优化模式</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.premiumF5">完整 Agent 分析 + 规则生成</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF6">自动替换和发送模式</span></li>
+          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.premiumF7">优先支持</span></li>
         </ul>
-        <button class="price-btn primary" onclick="handlePricing('premium')" data-i18n="pricing.startTrial">Start Free Trial</button>
+        <button class="price-btn primary" onclick="handlePricing('premium')" data-i18n="pricing.startTrial">开始免费试用</button>
       </div>
     </div>
   </div>
@@ -3011,50 +2899,50 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
 <!-- ═══ FAQ ═══ -->
 <section class="faq-section" id="faq">
   <div class="faq-inner" style="text-align:center">
-    <div class="label rv" style="margin:0 auto 18px" data-i18n="faq.sectionTitle">FAQ</div>
-    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:6px" data-i18n-html="faq.heading">Frequently asked <span class="gradient-text">questions</span></h2>
-    <p class="rv d1" style="color:var(--t2);font-size:15px;max-width:520px;margin:0 auto" data-i18n="faq.subtitle">Everything you need to know about token optimization and how Terse saves you money.</p>
+    <div class="label rv" style="margin:0 auto 18px" data-i18n="faq.sectionTitle">常见问题</div>
+    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:6px" data-i18n-html="faq.heading">常见问题解答</h2>
+    <p class="rv d1" style="color:var(--t2);font-size:15px;max-width:520px;margin:0 auto" data-i18n="faq.subtitle">关于 token 优化以及 Terse 如何帮你省钱，你需要了解的一切。</p>
 
     <div class="faq-grid rv d2" style="text-align:left">
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q1">What is token optimization?</div>
-        <div class="faq-a" data-i18n-html="faq.a1">Token optimization is the process of reducing the number of tokens in AI prompts and outputs without losing meaning. Terse uses 35+ techniques &mdash; including <a href="/spell-correction" style="color:var(--ac)">spell correction</a>, filler removal, <a href="/pattern-optimization" style="color:var(--ac)">prompt compression</a>, and semantic deduplication &mdash; to cut token usage by 40-70%, directly lowering AI API costs. <a href="/what-is-token-optimization" style="color:var(--ac)">Read the full guide &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q1">什么是 token 优化？</div>
+        <div class="faq-a" data-i18n-html="faq.a1">Token 优化在不丢失语义的前提下减少 AI 提示中的 token 数量。Terse 使用 20 多种技术将用量降低 40-70%，直接降低 AI API 成本。</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q2">How much can Terse save on AI costs?</div>
-        <div class="faq-a" data-i18n="faq.a2">Terse reduces token usage by 40-70% on verbose prompts and up to 89% on CLI output noise. A typical 2-hour coding session generates ~210K tokens of raw output, which Terse compresses to ~23K. Combined with duplicate detection and redundant read flagging, total session costs drop 3-5x. <a href="/reduce-ai-api-costs" style="color:var(--ac)">See the cost breakdown &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q2">Terse 能节省多少？</div>
+        <div class="faq-a" data-i18n="faq.a2">冗长提示节省 40-70%，CLI 输出最高节省 89%。典型的 2 小时会话从约 21 万 token 降至约 2.3 万。</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q3">Which AI tools does Terse work with?</div>
-        <div class="faq-a" data-i18n="faq.a3">Terse auto-detects Claude Code, Cursor, OpenClaw, Aider, and any terminal-based AI agent via process scanning. It also works with browser-based tools like ChatGPT, Claude.ai, and Gemini through macOS Accessibility API integration with Chrome and Safari. <a href="#agents" style="color:var(--ac)">See agent monitoring &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q3">哪些 AI 工具可以配合 Terse 使用？</div>
+        <div class="faq-a" data-i18n="faq.a3">Claude Code、Cursor、OpenClaw、Aider 及所有终端 AI Agent。也支持通过 macOS 辅助功能 API 使用的浏览器工具。</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q4">How does prompt compression work?</div>
-        <div class="faq-a" data-i18n="faq.a4">Terse runs a <a href="#pipeline" style="color:var(--ac)">7-stage pipeline</a>: spell correction (400+ typo fixes), whitespace normalization, pattern optimization (130+ rules), redundancy elimination, <a href="/nlp-analysis" style="color:var(--ac)">NLP analysis</a>, <a href="/telegraph-compression" style="color:var(--ac)">telegraph compression</a>, and final cleanup. Code blocks, URLs, and technical terms are protected throughout.</div>
+        <div class="faq-q" data-i18n="faq.q4">提示压缩是怎么实现的？</div>
+        <div class="faq-a" data-i18n="faq.a4">7 阶段流水线：拼写校正、空白规范化、模式优化、冗余消除、NLP 分析、电报式压缩和清理。</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q5">Does optimization reduce AI output quality?</div>
-        <div class="faq-a" data-i18n="faq.a5">No. Token optimization removes noise &mdash; filler words, hedging, redundant phrases, typos &mdash; without changing intent. Research from <a href="/llmlingua" style="color:var(--ac)">LLMLingua (EMNLP 2023)</a> shows compressed prompts maintain or improve output quality because models receive cleaner, more focused instructions.</div>
+        <div class="faq-q" data-i18n="faq.q5">会降低输出质量吗？</div>
+        <div class="faq-a" data-i18n="faq.a5">不会。它只去除噪声——填充词、犹豫表达、拼写错误——不改变意图。研究表明压缩后的提示能保持甚至提升质量。</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q6">What&rsquo;s the difference from prompt engineering?</div>
-        <div class="faq-a" data-i18n="faq.a6">Prompt engineering focuses on crafting better instructions for better AI outputs. Token optimization reduces the cost of those instructions by removing waste &mdash; filler, typos, redundancy &mdash; without changing meaning. Terse handles optimization automatically so you can focus on engineering for quality. <a href="/what-is-token-optimization" style="color:var(--ac)">Learn more &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q6">和提示工程有什么区别？</div>
+        <div class="faq-a" data-i18n="faq.a6">提示工程是编写更好的指令，token 优化是通过去除冗余来降低成本。Terse 自动完成优化工作。</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q7">Is Terse free to use?</div>
-        <div class="faq-a" data-i18n="faq.a7">Yes. Both plans include a 30-day free trial &mdash; no charge until your trial ends. <a href="#pricing" style="color:var(--ac)">Pro ($4.99/mo)</a> includes unlimited optimizations, 3 sessions, agent monitoring, and CLAUDE.md generation. Premium ($99/mo) includes unlimited sessions, devices, and priority support. Cancel anytime.</div>
+        <div class="faq-q" data-i18n="faq.q7">Terse 免费吗？</div>
+        <div class="faq-a" data-i18n="faq.a7">两种方案均包含 30 天免费试用。Pro 版 $4.99/月，Premium 版 $99/月，随时可取消。</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q8">How do AI tokens affect cost?</div>
-        <div class="faq-a" data-i18n="faq.a8">AI models charge per token (~4 characters each). Claude Opus costs $15-$75 per million tokens, GPT-4o costs $2.50-$10. A single agent session can consume 200K+ tokens, costing $3-$15. Heavy users spend $200-500+/month on API costs alone. <a href="/ai-token-pricing-comparison" style="color:var(--ac)">See the full pricing comparison &rarr;</a></div>
+        <div class="faq-q" data-i18n="faq.q8">Token 如何影响成本？</div>
+        <div class="faq-a" data-i18n="faq.a8">AI 模型按 token 计费（约 4 个字符为 1 个 token）。单次 Agent 会话可消耗 20 万以上 token，费用 $3-$15。</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q9">What is the Token Exchange?</div>
-        <div class="faq-a" data-i18n="faq.a9">The <a href="/marketplace" style="color:var(--ac)">Token Exchange</a> is a marketplace where users trade unused AI API tokens. Sellers list their API keys at a discount, buyers get cheaper access. Terse runs a proxy that optimizes every request before forwarding, so the actual API cost is 30-60% less. Terse takes a 15% commission. Your API keys are encrypted with AES-256 and never exposed to buyers.</div>
+        <div class="faq-q" data-i18n="faq.q9">什么是 Token 交易所？</div>
+        <div class="faq-a" data-i18n="faq.a9">一个交易闲置 AI API token 的市场。卖家折价出售密钥，买家获得更便宜的访问。</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q10">How do I buy or sell tokens?</div>
-        <div class="faq-a" data-i18n="faq.a10">Sign in at <a href="/marketplace" style="color:var(--ac)">terseai.org/marketplace</a>. To sell: paste your API key, drag a slider to set your discount, done. To buy: top up your balance, generate a Terse API key, and use it in any SDK &mdash; just set the base URL to Terse's proxy. One terminal command to configure.</div>
+        <div class="faq-q" data-i18n="faq.q10">如何买卖 token？</div>
+        <div class="faq-a" data-i18n="faq.a10">在 terseai.org/marketplace 登录。卖出：粘贴密钥，设定折扣。买入：充值，生成 API 密钥。</div>
       </div>
     </div>
   </div>
@@ -3064,28 +2952,28 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
 <section class="section" id="exchange" style="display:none;background:var(--bg0);padding:80px 40px;border-top:1px solid var(--bd)">
   <div style="max-width:1100px;margin:0 auto">
     <div style="text-align:center;margin-bottom:48px">
-      <div class="label rv" style="margin:0 auto 18px" data-i18n="exchange.label">Token Exchange</div>
-      <h2 class="rv" style="font-size:clamp(28px,5vw,44px);font-weight:900;letter-spacing:-2px;margin-bottom:14px" data-i18n-html="exchange.heading">Trade tokens in<br><span class="gradient-text">3 clicks. Save 50%+.</span></h2>
-      <p class="rv d1" style="color:var(--t2);max-width:560px;margin:0 auto;font-size:15px;line-height:1.7" data-i18n="exchange.desc">Whether you're selling unused credits or buying at a discount, the entire flow takes under 2 minutes.</p>
+      <div class="label rv" style="margin:0 auto 18px" data-i18n="exchange.label">Token 交易所</div>
+      <h2 class="rv" style="font-size:clamp(28px,5vw,44px);font-weight:900;letter-spacing:-2px;margin-bottom:14px" data-i18n-html="exchange.heading">3 次点击交易 token，节省 50% 以上。</h2>
+      <p class="rv d1" style="color:var(--t2);max-width:560px;margin:0 auto;font-size:15px;line-height:1.7" data-i18n="exchange.desc">无论是出售闲置额度还是折扣购买，整个流程不到 2 分钟。</p>
     </div>
     <!-- Animated flow — Seller side -->
     <div class="rv d2" style="margin-bottom:48px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ac);margin-bottom:16px;padding-left:4px" data-i18n="exchange.sellerLabel">Seller flow — earn from idle credits</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ac);margin-bottom:16px;padding-left:4px" data-i18n="exchange.sellerLabel">卖家流程——从闲置额度中获利</div>
       <div class="win" style="max-width:900px">
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">terseai.org/marketplace — Sell Tokens</span><span class="win-badge">Exchange</span></div>
         <div style="padding:20px;background:var(--bg1)">
           <div id="ex-seller-flow" style="display:flex;flex-direction:column;gap:12px">
             <div class="ex-step" id="exs1" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.seller.step1">Pick your provider</span></div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.seller.step1">选择你的服务商</span></div>
               <div style="display:flex;gap:8px;padding-left:36px"><div style="padding:10px 20px;background:var(--acd);border:1px solid var(--ac);border-radius:8px;font-size:13px;font-weight:700;color:var(--ac)">Anthropic</div><div style="padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--t3)">OpenAI</div><div style="padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--t3)">Google</div></div>
             </div>
             <div class="ex-step" id="exs2" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.seller.step2">Paste your API key</span></div>
-              <div style="padding-left:36px"><div style="padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);display:flex;align-items:center;gap:8px"><span id="exKeyType" style="color:var(--ac)"></span><span style="display:flex;align-items:center;gap:4px;margin-left:auto;font-size:10px;color:var(--ac)"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect width="10" height="10" rx="2" fill="rgba(110,231,183,0.2)"/><path d="M3 5L4.5 6.5L7 3.5" stroke="#6ee7b7" stroke-width="1.2" stroke-linecap="round"/></svg> <span data-i18n="exchange.encrypted">AES-256 encrypted</span></span></div></div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.seller.step2">粘贴你的 API 密钥</span></div>
+              <div style="padding-left:36px"><div style="padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);display:flex;align-items:center;gap:8px"><span id="exKeyType" style="color:var(--ac)"></span><span style="display:flex;align-items:center;gap:4px;margin-left:auto;font-size:10px;color:var(--ac)"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect width="10" height="10" rx="2" fill="rgba(110,231,183,0.2)"/><path d="M3 5L4.5 6.5L7 3.5" stroke="#6ee7b7" stroke-width="1.2" stroke-linecap="round"/></svg> <span data-i18n="exchange.encrypted">AES-256 加密</span></span></div></div>
             </div>
             <div class="ex-step" id="exs3" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.seller.step3">Drag to set your discount</span></div>
-              <div style="padding-left:36px;display:flex;align-items:center;gap:16px"><div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;position:relative"><div id="exSliderFill" style="height:100%;width:0%;background:var(--ac);border-radius:3px;transition:width 1.5s ease"></div><div id="exSliderThumb" style="position:absolute;top:-8px;left:0%;width:22px;height:22px;border-radius:50%;background:var(--ac);border:2px solid var(--bg0);box-shadow:0 2px 8px rgba(110,231,183,0.3);transition:left 1.5s ease"></div></div><div style="text-align:center;min-width:60px"><div id="exDiscountPct" style="font-size:24px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac);line-height:1">0%</div><div style="font-size:9px;color:var(--t3)" data-i18n="exchange.offRetail">off retail</div></div></div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.seller.step3">拖动设置你的折扣</span></div>
+              <div style="padding-left:36px;display:flex;align-items:center;gap:16px"><div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;position:relative"><div id="exSliderFill" style="height:100%;width:0%;background:var(--ac);border-radius:3px;transition:width 1.5s ease"></div><div id="exSliderThumb" style="position:absolute;top:-8px;left:0%;width:22px;height:22px;border-radius:50%;background:var(--ac);border:2px solid var(--bg0);box-shadow:0 2px 8px rgba(110,231,183,0.3);transition:left 1.5s ease"></div></div><div style="text-align:center;min-width:60px"><div id="exDiscountPct" style="font-size:24px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac);line-height:1">0%</div><div style="font-size:9px;color:var(--t3)" data-i18n="exchange.offRetail">低于官方价</div></div></div>
             </div>
             <div class="ex-step" id="exs4" style="opacity:0;transform:translateY(10px);transition:all .5s">
               <div style="padding:14px 16px;background:rgba(110,231,183,0.06);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span style="font-size:13px;font-weight:700;color:var(--ac)">Key verified &amp; listed! You'll earn $<span id="exEarnRate">0</span>/mo at current volume.</span></div><div style="font-size:11px;color:var(--t3)">Took 45 seconds</div></div>
@@ -3096,21 +2984,21 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
     </div>
     <!-- Animated flow — Buyer side -->
     <div class="rv d3" style="margin-bottom:48px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#60a5fa;margin-bottom:16px;padding-left:4px" data-i18n="exchange.buyerLabel">Buyer flow — save up to 50%</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#60a5fa;margin-bottom:16px;padding-left:4px" data-i18n="exchange.buyerLabel">买家流程——最高节省 50%</div>
       <div class="win" style="max-width:900px">
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Terminal — Setup</span><span class="win-badge" style="background:rgba(96,165,250,0.1);color:#60a5fa">1 command</span></div>
         <div style="padding:20px;background:var(--bg1)">
           <div id="ex-buyer-flow" style="display:flex;flex-direction:column;gap:12px">
             <div class="ex-step" id="exb1" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.1);color:#60a5fa;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.buyer.step1">Generate your Terse key (1 click on marketplace)</span></div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.1);color:#60a5fa;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.buyer.step1">生成你的 Terse 密钥（在市场上一键完成）</span></div>
               <div style="padding-left:36px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;color:#60a5fa" id="exBuyerKey"></div>
             </div>
             <div class="ex-step" id="exb2" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.1);color:#60a5fa;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.buyer.step2">Paste in terminal &mdash; done forever</span></div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.1);color:#60a5fa;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.buyer.step2">粘贴到终端——一劳永逸</span></div>
               <div style="padding-left:36px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;line-height:1.8"><span style="color:var(--t3)">$</span> <span style="color:#60a5fa">export</span> ANTHROPIC_API_KEY=<span style="color:#fbbf24" id="exCmdKey"></span><br><span style="color:var(--t3)">$</span> <span style="color:#60a5fa">export</span> ANTHROPIC_BASE_URL=<span style="color:#fbbf24">https://www.terseai.org/api/proxy</span></div>
             </div>
             <div class="ex-step" id="exb3" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.1);color:#60a5fa;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.buyer.step3">Run claude, cursor, python &mdash; everything works automatically</span></div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.1);color:#60a5fa;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.buyer.step3">运行 claude、cursor、python——一切自动运行</span></div>
               <div style="padding-left:36px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;line-height:1.8"><span style="color:var(--t3)">$</span> <span style="color:#60a5fa">claude</span> <span style="color:var(--t2)">"fix the auth bug"</span><br><span style="color:var(--ac)">Claude Code v1.2.0</span> &mdash; <span style="color:var(--t3)">routed via Terse proxy</span><br><span style="color:var(--t3)"># optimized + 35% cheaper than retail</span></div>
             </div>
             <div class="ex-step" id="exb4" style="opacity:0;transform:translateY(10px);transition:all .5s">
@@ -3123,10 +3011,10 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
     <!-- Exchange CTA -->
     <div class="rv d3" style="text-align:center">
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
-        <a href="/marketplace" class="btn-primary" style="text-decoration:none;font-size:16px;padding:14px 36px" data-i18n="exchange.ctaSell">Start Selling Tokens <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:4px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
-        <a href="/marketplace" class="btn-ghost" style="text-decoration:none;font-size:16px;padding:14px 36px" data-i18n="exchange.ctaBuy">Buy Tokens at a Discount</a>
+        <a href="/marketplace" class="btn-primary" style="text-decoration:none;font-size:16px;padding:14px 36px" data-i18n="exchange.ctaSell">开始出售 Token</a>
+        <a href="/marketplace" class="btn-ghost" style="text-decoration:none;font-size:16px;padding:14px 36px" data-i18n="exchange.ctaBuy">折扣购买 Token</a>
       </div>
-      <p style="font-size:12px;color:var(--t3)" data-i18n="exchange.footnote">15% commission &middot; AES-256 encrypted &middot; Stripe payouts &middot; Anthropic, OpenAI, Google supported</p>
+      <p style="font-size:12px;color:var(--t3)" data-i18n="exchange.footnote">15% 佣金 &middot; AES-256 加密 &middot; Stripe 打款 &middot; 支持 Anthropic、OpenAI、Google</p>
     </div>
   </div>
 </section>
@@ -3273,8 +3161,8 @@ async function handleNewsletterSubmit(e) {
 <!-- ═══ CTA ═══ -->
 <section class="cta" id="dl">
   <div class="cta-glow"></div>
-  <h2 class="rv" data-i18n-html="cta.heading">Stop wasting<br><span class="gradient-text">tokens and money.</span></h2>
-  <p class="rv d1" data-i18n="cta.subtitle">Optimize every prompt. Monitor every agent session. And give your whole team visibility with Terse Cloud &mdash; analytics by developer, project, and tool.</p>
+  <h2 class="rv" data-i18n-html="cta.heading">别再浪费 token 和金钱。</h2>
+  <p class="rv d1" data-i18n="cta.subtitle">优化每一条提示，监控每一个会话。用 Terse Cloud 为全团队提供可视化——按开发者、项目和工具分析。</p>
   <div class="hero-actions rv d2" style="flex-wrap:wrap;justify-content:center;gap:10px">
     <a href="#" onclick="handleDownload(event,'mac')" class="btn-primary" style="text-decoration:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> macOS</a>
     <a href="#" onclick="handleDownload(event,'windows')" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M3 3h9v9H3zm0 9h9v9H3zm9-9h9v9h-9zm0 9h9v9h-9z"/></svg> Windows</a>
@@ -3286,11 +3174,8 @@ async function handleNewsletterSubmit(e) {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 8h9.5M12 8a4 4 0 00-3.46 6M12 8a4 4 0 013.46 6M2.5 8H12M8.54 14L3.8 5.5M15.46 14l4.74-8.5M8.54 14L12 20M15.46 14L12 20" stroke="currentColor" stroke-width="1.5"/></svg>
       Chrome
     </a>
-    <a href="/teams" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(110,231,183,0.35);color:var(--ac);background:rgba(110,231,183,0.07);transition:all .2s" onmouseover="this.style.background='rgba(110,231,183,0.13)'" onmouseout="this.style.background='rgba(110,231,183,0.07)'" data-i18n="hero.cloudCta">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-      Terse Cloud
-    </a>
-    <a data-slack-join href="https://join.slack.com/t/tersehq/shared_invite/zt-4757mog9y-aOms9wtPO8m2IBs5PsQmrw" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+    <a href="/teams" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(110,231,183,0.35);color:var(--ac);background:rgba(110,231,183,0.07);transition:all .2s" onmouseover="this.style.background='rgba(110,231,183,0.13)'" onmouseout="this.style.background='rgba(110,231,183,0.07)'" data-i18n="hero.cloudCta">Terse Cloud</a>
+    <a href="https://join.slack.com/t/tersehq/shared_invite/zt-4757mog9y-aOms9wtPO8m2IBs5PsQmrw" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
       <svg width="16" height="16" viewBox="0 0 122.8 122.8" style="flex-shrink:0"><path d="M25.8 77.6c0 7.1-5.8 12.9-12.9 12.9S0 84.7 0 77.6s5.8-12.9 12.9-12.9h12.9v12.9zm6.5 0c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V77.6z" fill="#E01E5A"/><path d="M45.2 25.8c-7.1 0-12.9-5.8-12.9-12.9S38.1 0 45.2 0s12.9 5.8 12.9 12.9v12.9H45.2zm0 6.5c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H12.9C5.8 58.1 0 52.3 0 45.2s5.8-12.9 12.9-12.9h32.3z" fill="#36C5F0"/><path d="M97 45.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9-5.8 12.9-12.9 12.9H97V45.2zm-6.5 0c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V12.9C64.7 5.8 70.5 0 77.6 0s12.9 5.8 12.9 12.9v32.3z" fill="#2EB67D"/><path d="M77.6 97c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9-12.9-5.8-12.9-12.9V97h12.9zm0-6.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H77.6z" fill="#ECB22E"/></svg>
       Join our Slack
     </a>
@@ -3299,44 +3184,34 @@ async function handleNewsletterSubmit(e) {
     <div style="background:rgba(110,231,183,0.06);border:1px solid rgba(110,231,183,0.18);border-radius:12px;padding:18px 20px;text-align:left">
       <p style="font-size:14px;font-weight:700;color:var(--ac);margin:0 0 12px;display:flex;align-items:center;gap:8px">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <span data-i18n="security.heading">First Launch &mdash; macOS Security Step (one-time only)</span>
+        <span data-i18n="security.heading">首次启动 — macOS 安全步骤（仅需一次）</span>
       </p>
-      <p style="font-size:13px;color:var(--t2);margin:0 0 10px" data-i18n="security.subtitle">macOS blocks unsigned apps by default. Pick whichever method works for you:</p>
+      <p style="font-size:13px;color:var(--t2);margin:0 0 10px" data-i18n="security.subtitle">macOS 默认阻止未签名的应用程序。请选择适合您的方法：</p>
 
       <div style="display:flex;flex-direction:column;gap:8px">
         <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
           <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
             <span style="background:var(--ac);color:#000;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">A</span>
-            <span data-i18n="security.methodA">System Settings</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodATag">&mdash; easiest, no Terminal needed</span>
+            <span data-i18n="security.methodA">系统设置</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodATag">— 最简单，无需终端</span>
           </summary>
-          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodASteps">
-            1. Open Terse &mdash; click <strong style="color:var(--t1)">OK</strong> on the security warning<br>
-            2. Open <strong style="color:var(--t1)">System Settings → Privacy &amp; Security</strong><br>
-            3. Scroll to the Security section &mdash; click <strong style="color:var(--ac)">"Open Anyway"</strong> next to Terse<br>
-            4. Confirm in the popup &mdash; done. Terse opens normally from now on.
-          </div>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodASteps">1. 打开 Terse — 在安全警告上点击<strong style="color:var(--t1)">好</strong><br>2. 打开<strong style="color:var(--t1)">系统设置 → 隐私与安全性</strong><br>3. 滚动到安全性部分 — 点击 Terse 旁边的<strong style="color:var(--ac)">“仍要打开”</strong><br>4. 在弹窗中确认 — 完成。此后 Terse 可正常启动。</div>
         </details>
 
         <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
           <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
             <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">B</span>
-            <span data-i18n="security.methodB">Right-click to open</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodBTag">&mdash; works on macOS Ventura and earlier</span>
+            <span data-i18n="security.methodB">右键点击打开</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodBTag">— 适用于 macOS Ventura 及更早版本</span>
           </summary>
-          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodBSteps">
-            1. In Finder, <strong style="color:var(--t1)">right-click</strong> (or Control+click) on Terse.app<br>
-            2. Choose <strong style="color:var(--t1)">Open</strong> from the menu<br>
-            3. Click <strong style="color:var(--ac)">Open</strong> in the dialog that appears<br>
-            <span style="color:var(--t3);font-size:12px">Note: macOS Sequoia (15+) removed this option — use Method A instead.</span>
-          </div>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodBSteps">1. 在 Finder 中，<strong style="color:var(--t1)">右键点击</strong>（或 Control+点击）Terse.app<br>2. 从菜单中选择<strong style="color:var(--t1)">打开</strong><br>3. 在弹出的对话框中点击<strong style="color:var(--ac)">打开</strong><br><span style="color:var(--t3);font-size:12px">注意：macOS Sequoia（15+）已移除此选项 — 请使用方法 A。</span></div>
         </details>
 
         <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
           <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
             <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">C</span>
-            <span data-i18n="security.methodC">Terminal command</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodCTag">&mdash; one command, works on all versions</span>
+            <span data-i18n="security.methodC">终端命令</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodCTag">— 一条命令，适用所有版本</span>
           </summary>
           <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
-            <span data-i18n-html="security.methodCStep">Drag Terse to <strong style="color:var(--t1)">/Applications</strong>, then paste this in Terminal:</span><br>
+            <span data-i18n-html="security.methodCStep">将 Terse 拖到<strong style="color:var(--t1)">/Applications</strong>，然后在终端中粘贴以下命令：</span><br>
             <code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 12px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ac);cursor:pointer;word-break:break-all;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app &amp;&amp; /Applications/Terse.app/Contents/MacOS/terse 2&gt;/dev/null &amp; <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:5px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
           </div>
         </details>
@@ -3344,8 +3219,8 @@ async function handleNewsletterSubmit(e) {
     </div>
   </div>
   <div class="rv d3" style="margin-top:40px;display:flex;justify-content:center;gap:32px;position:relative;z-index:1">
-    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span data-i18n="cta.onDevice">100% on-device</span></span>
-    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><span data-i18n="cta.zeroLatency">Zero latency</span></span>
+    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span data-i18n="cta.onDevice">100% 本地运行</span></span>
+    <span style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><span data-i18n="cta.zeroLatency">零延迟</span></span>
   </div>
 </section>
 </main>
@@ -3366,27 +3241,27 @@ async function handleNewsletterSubmit(e) {
 @media(max-width:620px){.facts dl{grid-template-columns:1fr;gap:3px 0}
   .facts dd{margin-bottom:12px}}
 </style>
-<section class="facts" aria-label="Terse at a glance">
-  <h2>Terse at a glance</h2>
-  <p class="asof">Terse v1.3.3 · verified 2026-08-28</p>
+<section class="facts" aria-label="Terse 关键事实">
+  <h2>Terse 关键事实</h2>
+  <p class="asof">Terse v1.3.3 · 数据核对于 2026-08-28</p>
   <dl>
-    <dt>Token reduction</dt><dd>40-70% on verbose prompts, up to 89% on CLI output</dd>
-    <dt>How</dt><dd>35+ techniques in a 7-stage pipeline that runs on-device in under 5 ms</dd>
-    <dt>Agents monitored</dt><dd>8 — Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider</dd>
-    <dt>Platforms</dt><dd>macOS and Windows, plus Chrome and VS Code extensions</dd>
-    <dt>Privacy</dt><dd>100% on-device. Prompts, source and session data never leave the machine.</dd>
-    <dt>Price</dt><dd>Free tier; Pro $4.99/month after a 30-day free trial; Premium $99/month</dd>
+    <dt>Token 削减</dt><dd>冗长提示词降低 40-70%,CLI 输出最高 89%</dd>
+    <dt>原理</dt><dd>7 段流水线、35+ 项技术,全部本地运行,耗时低于 5 毫秒</dd>
+    <dt>监控的智能体</dt><dd>8 个 —— Claude Code、Cursor、OpenAI Codex、GitHub Copilot CLI、Cline、Windsurf、OpenClaw、Aider</dd>
+    <dt>支持平台</dt><dd>macOS 与 Windows,另有 Chrome 与 VS Code 扩展</dd>
+    <dt>隐私</dt><dd>100% 本地处理。提示词、源码与会话数据不离开本机。</dd>
+    <dt>价格</dt><dd>免费版;Pro 每月 $4.99(30 天免费试用);Premium 每月 $99</dd>
   </dl>
 </section>
 <footer>
   <div class="footer-inner">
-    <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">The butler for your AI coding agents &mdash; live monitoring, a runaway-spend breaker, MCP management, and 40-70% prompt compression. On-device, with team analytics via Terse Cloud.</p></div>
-    <div class="footer-col"><h4 data-i18n="footer.product">Product</h4><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#techniques" data-i18n="footer.techniques">Techniques</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="#dl" data-i18n="footer.download">Download</a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener">GitHub ★</a></div>
-    <div class="footer-col"><h4 data-i18n="footer.techniques">Techniques</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">Spell Correction</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">Pattern Optimization</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP Analysis</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">Telegraph Compression</a></div>
-    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/for-github-copilot">Terse for GitHub Copilot</a><a href="/for-aider">Terse for Aider</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="/i-built-an-app-to-steal-50m-back">How Terse Works</a><a href="/blog">The Terse Blog</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">Refund Policy</a></div>
-    <div class="footer-col"><h4 data-i18n="footer.support">Support</h4><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Ask a question</a><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Join our Slack</a><a href="mailto:support@terseai.org">Email support</a><a href="/zh/" hreflang="zh-Hans">中文站</a></div>
+    <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">Token 优化器 + 团队分析。压缩提示、监控 Agent、检测重复——用 Terse Cloud 追踪团队 AI 开销。</p></div>
+    <div class="footer-col"><h4 data-i18n="footer.product">产品</h4><a href="#pipeline" data-i18n="nav.pipeline">处理流程</a><a href="#techniques" data-i18n="footer.techniques">技术</a><a href="#agents" data-i18n="nav.agentMonitor">Agent 监控</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token 交易所</a><a href="#pricing" data-i18n="nav.pricing">价格</a><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="#dl" data-i18n="footer.download">下载</a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener">GitHub ★</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.techniques">技术</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">拼写校正</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">模式优化</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP 分析</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">电报式压缩</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.learn">了解更多</h4><a href="/blog">Blog</a><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/for-github-copilot">Terse for GitHub Copilot</a><a href="/for-aider">Terse for Aider</a><a href="/for-cline">Terse for Cline</a><a href="/for-windsurf">Terse for Windsurf</a><a href="/for-codex">Terse for Codex</a><a href="/terse-vs-llmlingua">Terse vs LLMLingua</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">如何降低 AI API 成本</a><a href="/i-built-an-app-to-steal-50m-back">How Terse Works</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">退款政策</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.support">支持</h4><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Ask a question</a><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Join our Slack</a><a href="mailto:support@terseai.org">Email support</a></div>
   </div>
-  <div class="footer-bottom"><span data-i18n="footer.copyright">&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
+  <div class="footer-bottom"><span data-i18n="footer.copyright">© 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
 </footer>
 
 <script>
@@ -4368,9 +4243,8 @@ function updateClerkUI() {
         a.click();
         document.body.removeChild(a);
       }
-      // A user who asked to download gets the download — and stays on the landing
-      // page. These used to route to /get-started (the trial/payment page), so
-      // signing in to grab the app dropped you on a paywall instead of a file.
+      // 用户点的是下载，就给下载并留在落地页 —— 以前会跳到 /get-started（试用付费页），
+      // 等于把用户要的文件换成了付费墙。
       if (pending === 'download_mac' || pending === 'download') {
         openTab(PLATFORM_URLS.mac);
       } else if (pending === 'download_windows') {
@@ -4480,7 +4354,7 @@ function clerkSignOut() {
 
 // ═══ DOWNLOAD (requires sign-in) ═══
 const DMG_URL = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.3_x64.dmg';
-const EXE_URL = 'https://github.com/lucaszengool/Terse/releases/download/v1.3.3/Terse_1.3.3_x64-setup.exe';
+const EXE_URL = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.3_x64-setup.exe';
 
 const PLATFORM_URLS = {
   mac: DMG_URL,
@@ -4497,9 +4371,7 @@ async function handleDownload(e, platform) {
   if (window.Clerk && !window.Clerk.loaded) await window.Clerk.load();
   if (window.Clerk?.user) {
     gtag('event', 'download_started', { user_id: window.Clerk.user.id, platform: p });
-    // Download and stay put. This used to jump to /get-started (the trial/payment
-    // page), which hijacked a download the user had just asked for and pushed a
-    // paywall at them instead of letting the file arrive.
+    // 下载后留在落地页，不再跳转到试用付费页。
     window.open(url, '_blank');
   } else {
     sessionStorage.setItem('pendingAction', p === 'mac' ? 'download_mac' : p === 'windows' ? 'download_windows' : p);
@@ -4756,7 +4628,8 @@ function showPricingToast(msg) {
   }
 })();
 </script>
-<script src="i18n.js"></script>
+<script>try{localStorage.setItem('terse-lang','zh-Hans')}catch(e){}</script>
+<script src="/i18n.js"></script>
 <script>
 // Language switcher
 function initLangSwitcher(){
@@ -4916,21 +4789,5 @@ if (document.readyState === 'loading') {
 </script>
   <!-- Support / QA widget -->
   <script src="/support-widget.js" defer></script>
-
-<script>
-// Slack shared-invite links EXPIRE (30 days, or a use cap), and this URL was
-// hardcoded here — so each expiry silently turned "Join our Slack" into a dead
-// link until someone edited and redeployed. The server already serves the live
-// link from SLACK_INVITE_URL; read it so refreshing the invite is a one-variable
-// change with no deploy. The baked-in href stays as the fallback.
-(function () {
-  var els = document.querySelectorAll('[data-slack-join]');
-  if (!els.length) return;
-  fetch('/api/support/config')
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (c) { if (c && c.inviteUrl) els.forEach(function (a) { a.href = c.inviteUrl; }); })
-    .catch(function () {});
-})();
-</script>
 </body>
 </html>

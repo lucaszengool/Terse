@@ -1396,9 +1396,24 @@ app.get('/d/:id', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'landing', 'doc.html'));
 });
 
-// SPA fallback — but not for marketplace (it has its own HTML)
+// Unknown paths → a real 404.
+//
+// This used to answer every unmatched path with index.html and a 200. Anything
+// reaching here has already failed express.static (which resolves /about to
+// about.html) and been declined by every route above, so it is genuinely
+// unknown — and answering 200 meant every typo, every stale backlink and every
+// crawler probe looked like a real page. Google calls that a soft 404 and
+// spends crawl budget on it: /obviously-not-a-page-9182, /a/b/c/d and
+// /zh/anything all returned the English home page, turning a 96-page site into
+// an unbounded crawl space. Googlebot was down to 24 requests in the window we
+// could measure.
+//
+// Every client-routed page is already declared explicitly above — /teams,
+// /teams/:id, /d/:id, /vibe-projects — and the only URLs the client routers
+// push are /teams and /marketplace, both of which resolve. So nothing that
+// needs the shell lands here.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'landing', 'index.html'));
+  res.status(404).sendFile(path.join(__dirname, '..', 'landing', '404.html'));
 });
 
 app.listen(PORT, () => {

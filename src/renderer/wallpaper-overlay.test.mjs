@@ -111,6 +111,25 @@ ok('boot decides the background BEFORE mounting the engine',
             return b.indexOf('applyOverlay(overlayOK())') < b.indexOf('mountEngine()'); })());
 ok('and a throwing engine cannot skip the rest of boot', /try \{\s*mountEngine\(\);\s*\} catch/.test(page));
 
+// ── no await in boot may be unbounded ──
+//
+// This is the real Windows failure, reproduced in a browser with a bridge whose
+// every call never settles: boot() stalled on its FIRST line and the page froze
+// before it could apply the overlay class. It looked fine on a Mac dev machine
+// for the worst possible reason - with no `window.terse` the same call throws
+// instantly instead of hanging, so the bug was invisible exactly where it was
+// being looked for.
+ok('boot bounds the calls that can hang', /function settle\(p, ms, tag\)/.test(page));
+['getWallpaperConfig', 'refreshEntitlement', 'wallpaperOverlayEffective'].forEach(c =>
+  ok(`${c} is bounded`, new RegExp("settle\\([^)]*" + c + "[\\s\\S]{0,80}?\\d{3,4},\\s*'" + c + "'").test(page)
+                        || new RegExp("settle\\(" + c + "\\(\\), \\d+, '" + c + "'").test(page)));
+ok('a call that never answers is named in the log', /DID NOT ANSWER in/.test(page));
+
+// "We could not find out" is not "the overlay is off", and only one of those is
+// safe to paint a background for.
+ok('an unsure boot goes transparent', /bootUnsure[\s\S]{0,500}classList\.add\('overlay'\)/.test(page));
+ok('an unsure boot drops to the desktop layer', /bootUnsure[\s\S]{0,700}relevelWallpaperWindow\(false\)/.test(page));
+
 // ── the page reports what it actually painted ──
 //
 // Four diagnoses of this feature were wrong because a black screenshot was the

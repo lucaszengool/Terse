@@ -102,11 +102,33 @@
     var note = function (line) {
       try { if (T && T.diagNote) T.diagNote('wallpaper', line).catch(function(){}); } catch (e) {}
     };
-    note('page script loaded');
+    note('page script loaded  tauri=' + !!window.__TAURI__ + '  bridge=' + !!T);
+    // CAPTURE phase, deliberately. A module that fails to FETCH or PARSE fires
+    // its error event at the <script> element, and element error events do not
+    // bubble - so a plain window listener never sees them. That is why the last
+    // run reported "DID NOT BOOT" with no error beside it: the hook could only
+    // ever have caught runtime errors from a module that was already running.
     window.addEventListener('error', function (e) {
+      var t = e && e.target;
+      if (t && t !== window && t.tagName) {
+        note('page RESOURCE FAILED <' + t.tagName.toLowerCase() + '> ' +
+             (t.src || t.href || '(inline)'));
+        return;
+      }
       note('page ERROR ' + (e && (e.message || e.type)) + ' @ ' +
            ((e && e.filename) || '?') + ':' + ((e && e.lineno) || '?'));
-    });
+    }, true);
+    // Ask the questions directly instead of inferring them from a screenshot:
+    // can the page actually reach the module and the three.js bundle its
+    // importmap points at? A 404 here is the whole story; a 200 rules it out.
+    ['./vendor/three.module.min.js', './mineradio-wallpaper.js', './token-wallpaper-3d.js']
+      .forEach(function (u) {
+        try {
+          fetch(u, { method: 'GET' })
+            .then(function (r) { note('page fetch ' + u + ' -> ' + r.status); })
+            .catch(function (err) { note('page fetch ' + u + ' -> THREW ' + (err && err.message || err)); });
+        } catch (err) { note('page fetch ' + u + ' -> sync throw ' + err); }
+      });
     window.addEventListener('unhandledrejection', function (e) {
       var r = e && e.reason;
       note('page REJECTED ' + ((r && (r.message || r)) || '?'));
@@ -445,12 +467,50 @@
       if (window.__terseRoomPublish && txt) window.__terseRoomPublish(txt);
     }
 
+    /** Await something, but never forever, and say so when it did not answer.
+     *
+     *  Every await in boot() used to be unbounded, and boot() is what decides
+     *  whether this window paints a background. So ONE call that never settles —
+     *  an invoke with no reply, an entitlement check waiting on a network that
+     *  is not there — froze the page before it could apply the overlay class,
+     *  and the window sat over the whole screen as an opaque sheet.
+     *
+     *  That is exactly what CI kept photographing. Locally the same page boots
+     *  fine, because with no `window.terse` the first call throws instantly
+     *  instead of hanging — which is why "works on my machine" held for so long
+     *  while every Windows run was frozen. */
+    const LATE = Symbol('timed out');
+    /** Set the moment any bounded call fails to answer. "We could not find out"
+     *  is NOT the same as "overlay is off", and only one of those two is safe to
+     *  paint a background for. */
+    let bootUnsure = false;
+    function settle(p, ms, tag){
+      return Promise.race([
+        Promise.resolve(p).catch(e => {
+          bootUnsure = true;
+          reportOverlayState('boot ' + tag + ' THREW ' + (e && e.message || e));
+          return LATE;
+        }),
+        new Promise(r => setTimeout(() => {
+          bootUnsure = true;
+          reportOverlayState('boot ' + tag + ' DID NOT ANSWER in ' + ms + 'ms — carrying on without it');
+          r(LATE);
+        }, ms)),
+      ]);
+    }
+
     async function boot(){
-      try { const c = await T.getWallpaperConfig(); if (c) cfg = Object.assign(cfg, c); } catch(e){}
+      const c = await settle(T && T.getWallpaperConfig && T.getWallpaperConfig(), 3000, 'getWallpaperConfig');
+      if (c && c !== LATE) cfg = Object.assign(cfg, c);
       // Before the first mount, so a lapsed subscription never gets one frame of
       // the Pro field. Re-checked every 5 min: this window lives for days, and a
       // subscription can start or end while it runs.
-      await refreshEntitlement();
+      //
+      // Bounded, because this one talks to the licence backend: on a machine
+      // that cannot reach it, an unbounded await here is a frozen wallpaper.
+      // proOK stays null on a timeout, and null means "not checked yet", which
+      // is already the entitled-until-proven-otherwise case.
+      await settle(refreshEntitlement(), 4000, 'refreshEntitlement');
       // The gap that made this look broken: on startup with overlay saved ON,
       // nothing applied the mode, so the desktop-picture bed was painted — at
       // screen-saver level that is a copy of your wallpaper laid over every
@@ -476,7 +536,8 @@
       let effective = 'not-called';
       try {
         if (window.terse && window.terse.wallpaperOverlayEffective) {
-          effective = await window.terse.wallpaperOverlayEffective();
+          effective = await settle(window.terse.wallpaperOverlayEffective(), 3000, 'wallpaperOverlayEffective');
+          if (effective === LATE) effective = 'timed-out';
           applyOverlay(effective === true);
         }
       } catch (e) { effective = 'threw: ' + (e && e.message || e); }
@@ -485,6 +546,18 @@
           window.__TAURI__.event.listen('wallpaper-overlay',
             (ev) => { applyOverlay(ev.payload === true); reportOverlayState('event ' + ev.payload); });
       } catch (e) {}
+      // Booted, but possibly blind. If any bounded call went unanswered we do
+      // not actually know whether this window is lifted — and the saved config,
+      // which is what overlayOK() just read, may be the one thing that never
+      // arrived. Painting a background on a guess is how the screen gets
+      // covered, so an unsure boot takes the same way out as no boot at all:
+      // transparent, and back on the desktop layer. Transparent is safe at
+      // either level — down there it simply shows the real desktop picture.
+      if (bootUnsure) {
+        reportOverlayState('boot UNSURE — going transparent and dropping to the desktop layer');
+        try { document.documentElement.classList.add('overlay'); } catch (e) {}
+        try { if (T && T.relevelWallpaperWindow) T.relevelWallpaperWindow(false); } catch (e) {}
+      }
       window.__terseWallpaperBooted = true;   // disarms the dead-man's switch
       reportOverlayState('boot effective=' + JSON.stringify(effective));
       setInterval(async () => {

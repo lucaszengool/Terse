@@ -1255,6 +1255,11 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           $bmp.Save("artifacts/overlay-over-notepad.png")
           Write-Host "saved artifacts/overlay-over-notepad.png ($($b.Width)x$($b.Height))"
+          # What did the page's Pro gate actually see? overlayOK() needs
+          # proOK !== false, and proOK is whatever get_license returned.
+          $ll = Join-Path $env:USERPROFILE ".terse\license.log"
+          if (Test-Path $ll) { Get-Content $ll -Tail 3 | ForEach-Object { Write-Host "  $_" } }
+          else { Write-Host "  (no license.log — get_license was never called)" }
 
           # Count NEAR-WHITE pixels across the screen.
           #

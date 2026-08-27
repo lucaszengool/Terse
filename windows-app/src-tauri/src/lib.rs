@@ -1615,7 +1615,23 @@ async fn install_bridge() -> serde_json::Value {
 #[tauri::command]
 fn get_license(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let lic = lock_or_recover(&state.license);
-    lic.get_snapshot()
+    let snap = lic.get_snapshot();
+    // Log the answer the wallpaper's Pro gate actually receives, once.
+    //
+    // The Pro overlay came up as a black sheet: the window was correctly on top
+    // and click-through, but the PAGE never entered overlay mode, so it painted
+    // its own #05060a background - which at that level is a board over the whole
+    // screen. overlayOK() needs proOK !== false, and proOK comes from here.
+    // Guessing at it from screenshots produced four wrong diagnoses; this is the
+    // value itself.
+    static ONCE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if !ONCE.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        diag_log("license", &format!(
+            "get_license -> tier={:?} status={:?} isPro={:?}",
+            snap.get("tier"), snap.get("status"), snap.get("isPro")
+        ));
+    }
+    snap
 }
 
 #[tauri::command]

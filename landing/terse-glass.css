@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   terse-glass.css — Horizon liquid-glass layer for the marketing site.
+
+   PURELY ADDITIVE. Load this AFTER each page's own <style> block. It changes
+   no markup, no script, no API call, no auth flow — it only:
+
+     1. Re-declares the four --bgN surface tokens as TRANSLUCENT, so every
+        panel, card and section that already paints with var(--bg0..3) turns
+        into glass without a single markup edit (inline styles included).
+     2. Adds the app's own rim recipe (src/renderer/styles.css → --glass-rim)
+        and a backdrop blur to the large card surfaces only.
+     3. Paints the fixed "desktop" bed that terse-field.js draws particles on.
+
+   Because every surface on the site already resolves through var(--bgN),
+   redefining those four tokens converts the whole page at once. Small chips
+   (.ams, .oc-model, .scene-dot, badges) deliberately get NO backdrop-filter —
+   stacking dozens of blurred layers is what kills the frame budget.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* the same hues the site already uses, now with alpha so the wallpaper reads
+     through them. Section grounds stay the most opaque so long-form copy keeps
+     its contrast; cards sit lighter because they carry a rim instead. */
+  /* Deep space is dark enough that the glass can run at real glassmorphism
+     opacity — 0.10-0.30 — instead of the near-opaque values a bright bed
+     forced. Sections stay the most solid because long-form copy sits directly
+     on them; cards go lighter because they carry a rim and a blur. */
+  --bg0:hsla(250,28%,7%,0.34);
+  --bg1:hsla(250,28%,10%,0.26);
+  --bg2:hsla(250,24%,13%,0.20);
+  --bg3:hsla(250,22%,16%,0.26);
+
+  /* the app's crystal rim, exposed so anything can opt in */
+  --glass-rim:
+    inset 0 1px 0 hsla(0,0%,100%,0.26),
+    inset 0 0 0 1px hsla(0,0%,100%,0.055),
+    inset 0 -26px 48px -34px rgba(110,231,183,0.28),
+    0 34px 80px -34px hsla(250,50%,3%,0.9);
+  /* brightness() inside backdrop-filter is what buys legibility — the app
+     does the same thing (src/renderer/island.css:1105). Darken what is
+     BEHIND the pane instead of stacking more opacity on top of it. */
+  --glass-blur:blur(16px) saturate(1.5) brightness(0.55);
+}
+
+/* The desktop the particles live on. When WebGL is available terse-field.js
+   paints the bed itself (an animated iridescent mesh gradient, shared with the
+   particle shader so the particles ARE the wallpaper). #terse-desk is the
+   still fallback for no-WebGL, phones and prefers-reduced-motion — same colour
+   family, no canvas. body goes clear so whichever one is live shows through. */
+html{background:hsl(250,36%,4%)}
+body{background:transparent}
+
+#terse-desk{
+  position:fixed; inset:0; z-index:-2; pointer-events:none;
+  background:
+    radial-gradient(46% 40% at 24% 30%, rgba(96,36,150,0.42), transparent 64%),
+    radial-gradient(42% 38% at 74% 62%, rgba(12,88,116,0.40), transparent 64%),
+    radial-gradient(34% 30% at 58% 18%, rgba(150,32,86,0.28), transparent 64%),
+    linear-gradient(112deg, transparent 34%, rgba(120,116,146,0.16) 50%, transparent 66%),
+    linear-gradient(170deg, hsl(250,40%,7%) 0%, hsl(250,36%,4%) 60%, hsl(250,34%,3%) 100%);
+}
+#terse-field{
+  position:fixed; inset:0; z-index:-1; pointer-events:none;
+}
+
+/* ── Large surfaces become real glass ─────────────────────────────────────
+   Rim first, blur second. The rim is what reads as glass; the blur is what
+   keeps type legible over a moving field.
+
+   ONLY elements that already painted their own card ground are listed. Things
+   like .feat (a bare reveal wrapper), .tp-step (a 3px progress bar) and
+   .hw-stage (an 8px pill) have no background of their own — giving them a rim
+   would invent a card the design never had. */
+.win,
+.demo-card,
+.faq-item,
+.news-card,
+.tool-card,
+.testi-card,
+.price-card,
+.usage-callout{
+  -webkit-backdrop-filter:var(--glass-blur);
+  backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-rim);
+  will-change:transform;
+}
+
+/* The app window mock keeps its heavier drop shadow — it is meant to float. */
+.win{
+  -webkit-backdrop-filter:blur(20px) saturate(1.55) brightness(0.56);
+  backdrop-filter:blur(20px) saturate(1.55) brightness(0.56);
+  box-shadow:
+    inset 0 1px 0 hsla(0,0%,100%,0.30),
+    inset 0 0 0 1px hsla(0,0%,100%,0.06),
+    0 40px 100px hsla(250,50%,4%,0.72);
+}
+
+/* Section grounds: translucent, but no blur — a full-width backdrop-filter on
+   every band is the single most expensive thing you can do on a long page. */
+.features-section,
+.demo-section,
+.news-section,
+.tools-section,
+.testimonials-section,
+.stats-section,
+.usage-section,
+.faq-section,
+.trust-strip{
+  background-color:var(--bg1);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.055);
+}
+
+/* Nav and footer are the last two opaque slabs on the page — make them glass
+   too, or the wallpaper stops at a hard edge top and bottom. */
+nav{
+  background:hsla(250,30%,6%,0.10);
+  -webkit-backdrop-filter:blur(22px) saturate(1.7) brightness(0.72);
+  backdrop-filter:blur(22px) saturate(1.7) brightness(0.72);
+  border-bottom:1px solid hsla(0,0%,100%,0.07);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.16);
+}
+/* Scrolled still has to stay glass — the old 0.86 was the black bar in the
+   screenshot. The readability comes from brightness() inside the blur, which
+   darkens what is BEHIND the bar, not from stacking opacity on top of it. */
+nav.scrolled{
+  background:hsla(250,30%,6%,0.22);
+  -webkit-backdrop-filter:blur(26px) saturate(1.7) brightness(0.52);
+  backdrop-filter:blur(26px) saturate(1.7) brightness(0.52);
+}
+/* the logo chip and the sign-in button were the last two solid blocks up there */
+.logo-icon{background:hsla(158,64%,58%,0.12);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.nav-cta{background:hsla(0,0%,100%,0.92)}
+footer{
+  -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(0.62);
+  backdrop-filter:blur(14px) saturate(1.4) brightness(0.62);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.08);
+}
+/* The RTK comparison table and the technique chips carried their own ground. */
+.tc{
+  -webkit-backdrop-filter:blur(10px) saturate(1.4) brightness(0.7);
+  backdrop-filter:blur(10px) saturate(1.4) brightness(0.7);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.14);
+}
+.tc-demo{background:hsla(250,30%,4%,0.34)}
+
+/* Hover states were written against opaque grounds — keep them visible. */
+.win:hover,
+.demo-card:hover,
+.tool-card:hover,
+.news-card:hover,
+.price-card:hover,
+.testi-card:hover{
+  box-shadow:
+    inset 0 1px 0 hsla(0,0%,100%,0.34),
+    inset 0 0 0 1px hsla(0,0%,100%,0.09),
+    inset 0 -26px 48px -34px rgba(110,231,183,0.34),
+    0 40px 90px -34px hsla(250,50%,3%,0.92);
+}
+
+/* The recommended plan's gradient ends in var(--bg2), which is now translucent —
+   re-state it so the card keeps its mint wash instead of going flat. */
+.price-card.recommended{
+  background:linear-gradient(180deg,rgba(110,231,183,0.07) 0%,var(--bg2) 40%);
+}
+
+/* Modals and popovers must stay readable over the field. */
+#clerk-modal > div,
+#lang-menu{
+  -webkit-backdrop-filter:blur(22px) saturate(1.4) brightness(0.5);
+  backdrop-filter:blur(22px) saturate(1.4) brightness(0.5);
+}
+
+/* Anything that draws its own solid ground inside a card (code blocks, terminal
+   panes) stays dark so syntax colour keeps its contrast. */
+pre, code, .term-line{background-color:transparent}
+
+@media (prefers-reduced-motion:reduce){
+  #terse-field{opacity:.55}
+}
+
+/* Phones: keep the bed, drop the blur cost. The field itself renders a single
+   static frame (see terse-field.js) rather than animating. */
+@media (max-width:760px){
+  :root{
+    --bg0:hsla(250,28%,7%,0.74);
+    --bg1:hsla(250,28%,10%,0.66);
+    --bg2:hsla(250,24%,13%,0.62);
+    --bg3:hsla(250,22%,16%,0.66);
+  }
+  .win,.demo-card,.faq-item,.news-card,.tool-card,.testi-card,.price-card,
+  .usage-callout{
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+    will-change:auto;
+  }
+}

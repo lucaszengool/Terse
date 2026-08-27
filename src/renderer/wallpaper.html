@@ -85,7 +85,49 @@
   <script src="tauri-bridge.js"></script>
   <script src="roomqueue.js"></script>
   <script src="rooms.js"></script>
+  <!-- Deliberately a CLASSIC script, and deliberately before the module.
+       Nothing inside the module can report the module failing to load. On a
+       machine where the WebGL/three import throws, the module below never runs
+       at all: no boot(), no overlay class, no diagnostics - just the static HUD
+       and `html{background:#05060a}`. Lift THAT to the top of the z-order and
+       the user gets an opaque, click-through black sheet over their whole screen
+       with no way to dismiss it.
+       CI proved this is not hypothetical: twenty wallpaper frames sampled over
+       time were byte-identical to each other and to the previous run's, on three
+       different commits - the page was frozen the whole time, and every earlier
+       diagnosis was made from a picture of a dead page. -->
+  <script>
+  (function wallpaperDeadMansSwitch(){
+    var T = window.terse;
+    var note = function (line) {
+      try { if (T && T.diagNote) T.diagNote('wallpaper', line).catch(function(){}); } catch (e) {}
+    };
+    note('page script loaded');
+    window.addEventListener('error', function (e) {
+      note('page ERROR ' + (e && (e.message || e.type)) + ' @ ' +
+           ((e && e.filename) || '?') + ':' + ((e && e.lineno) || '?'));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e && e.reason;
+      note('page REJECTED ' + ((r && (r.message || r)) || '?'));
+    });
+    // If the module never signals that it came up, stop being a sheet: drop the
+    // background AND ask Rust to put the window back on the desktop layer. Both,
+    // because either alone still leaves a way to cover the screen - and going
+    // transparent is safe at the desktop level too, where it simply shows the
+    // real desktop picture.
+    setTimeout(function () {
+      if (window.__terseWallpaperBooted) return;
+      note('page DID NOT BOOT within 8s - dropping to the desktop layer');
+      try { document.documentElement.classList.add('overlay'); } catch (e) {}
+      try { if (T && T.relevelWallpaperWindow) T.relevelWallpaperWindow(false); } catch (e) {}
+    }, 8000);
+  })();
+  </script>
   <script type="module">
+    // Earliest possible proof of life, before any import can throw. The switch
+    // above is armed until this is set.
+    window.__terseWallpaperBooted = 'module-start';
     import TokenWallpaper3D from './token-wallpaper-3d.js';
     import MineradioWallpaper from './mineradio-wallpaper.js';
     const T = window.terse;
@@ -409,12 +451,26 @@
       // the Pro field. Re-checked every 5 min: this window lives for days, and a
       // subscription can start or end while it runs.
       await refreshEntitlement();
-      mountEngine();
       // The gap that made this look broken: on startup with overlay saved ON,
       // nothing applied the mode, so the desktop-picture bed was painted — at
       // screen-saver level that is a copy of your wallpaper laid over every
       // window. applyConfig covers the later paths; boot has to cover the first.
+      //
+      // BEFORE mountEngine, not after. The engine is the part that can fail —
+      // it needs a WebGL context, and on a machine without one `new E(...)`
+      // throws and takes the whole rest of boot() with it. Deciding the
+      // background first means a dead engine leaves a transparent window rather
+      // than an opaque sheet, which is the difference between "the wallpaper did
+      // not come up" and "the screen is covered and cannot be dismissed".
       applyOverlay(overlayOK());
+      try {
+        mountEngine();
+      } catch (e) {
+        // Reported, not swallowed: this is exactly the failure that produced
+        // twenty identical frames and no explanation.
+        try { if (T && T.diagNote) T.diagNote('wallpaper',
+          'page mountEngine THREW ' + (e && e.message || e)).catch(() => {}); } catch (e2) {}
+      }
       // 然后立刻用 Rust 的判定覆盖掉上面那个乐观值,并订阅后续变化 ——
       // 窗口层级和这里的底色必须永远出自同一个判断。
       let effective = 'not-called';
@@ -429,6 +485,7 @@
           window.__TAURI__.event.listen('wallpaper-overlay',
             (ev) => { applyOverlay(ev.payload === true); reportOverlayState('event ' + ev.payload); });
       } catch (e) {}
+      window.__terseWallpaperBooted = true;   // disarms the dead-man's switch
       reportOverlayState('boot effective=' + JSON.stringify(effective));
       setInterval(async () => {
         const was = proOK;

@@ -1137,6 +1137,22 @@ jobs:
           }
           Write-Host "burst done"
 
+          # Is anything actually MOVING? The burst existed to catch a glyph, but
+          # nothing ever checked that the frames differ - so twenty pictures of a
+          # dead page looked exactly like twenty pictures of a working one, and
+          # four rounds of diagnosis were made from them. All twenty frames were
+          # byte-identical to each other AND to the previous run's, across three
+          # different commits. A live particle field cannot do that.
+          $hashes = Get-ChildItem "artifacts/wallpaper-frame-*.png" |
+            ForEach-Object { (Get-FileHash $_.FullName -Algorithm MD5).Hash }
+          $distinct = ($hashes | Sort-Object -Unique).Count
+          Write-Host "frame liveness: $distinct distinct frames out of $($hashes.Count)"
+          if ($distinct -le 1) {
+            Write-Warning "WALLPAPER FROZEN: every frame is identical - the page is not rendering. Any conclusion drawn from these pictures is worthless; read wallpaper.log instead."
+          } else {
+            Write-Host "WALLPAPER LIVE: the field is animating"
+          }
+
       # The ghost titlebar is intermittent - two runs of IDENTICAL app code
       # disagreed about whether the island had one. So a single frame is a coin
       # flip here too, exactly as it was for the wallpaper glyphs. Burst the
@@ -1271,16 +1287,23 @@ jobs:
 
           # Count NEAR-WHITE pixels across the screen.
           #
-          # The first version sampled one point inside the HUD and expected it to
-          # be dark. The HUD is rgba(10,12,20,.30) glass - 30% opaque - so over a
-          # bright wallpaper it reads light blue-grey, and the check called a
-          # working overlay a failure. The screenshot showed the truth plainly:
-          # no Notepad, no taskbar, and none of the desktop icons that appear in
-          # every desktop-mode shot.
+          # This criterion has been wrong twice, in opposite directions, and both
+          # times it agreed with whatever the build was already doing.
           #
-          # A maximised Notepad is a white sheet. If it is on top, most of the
-          # screen is near-white; if the overlay is on top, almost none of it is.
-          # That does not depend on guessing any one pixel's colour.
+          # The point of the feature is that the overlay is TRANSPARENT. A
+          # maximised Notepad under a working overlay is still a white sheet you
+          # can read - particles float over it. So "almost no white" does not
+          # mean success; it means the overlay is opaque and has covered the
+          # screen, which is the exact bug. The previous version printed
+          # "OVERLAY OK" at 0% white while the artifact was a solid black sheet.
+          #
+          # Success needs BOTH halves, because either alone is satisfied by a
+          # failure:
+          #   · most of the screen near-white  -> you can still see through it
+          #   · the HUD corner dark            -> the wallpaper is drawn on top
+          # A window merely sitting on top gives the first without the second; a
+          # dead page painting its own background gives the second without the
+          # first.
           $white = 0; $tot = 0
           for ($x = 8; $x -lt $b.Width - 8; $x += 17) {
             for ($y = 8; $y -lt $b.Height - 8; $y += 19) {
@@ -1290,9 +1313,19 @@ jobs:
             }
           }
           $wpct = if ($tot) { [math]::Round($white * 100 / $tot) } else { 0 }
+          # The HUD card sits at left:30px bottom:30px, 230px wide - sample well
+          # inside it.
+          $hud = $bmp.GetPixel(80, $b.Height - 90)
+          $hudDark = ($hud.R -lt 120 -and $hud.G -lt 120 -and $hud.B -lt 120)
           Write-Host "near-white pixels: $wpct% ($white of $tot)"
-          if ($wpct -lt 25) { Write-Host "OVERLAY OK: the screen is the wallpaper, not the maximised Notepad under it" }
-          else { Write-Warning "OVERLAY FAIL: the screen is mostly white — Notepad is covering the wallpaper" }
+          Write-Host ("HUD sample at 80,{0}: R={1} G={2} B={3} (dark={4})" -f ($b.Height - 90), $hud.R, $hud.G, $hud.B, $hudDark)
+          if ($wpct -ge 55 -and $hudDark) {
+            Write-Host "OVERLAY OK: Notepad is still readable underneath and the wallpaper is drawn over it"
+          } elseif ($wpct -lt 55 -and $hudDark) {
+            Write-Warning "OVERLAY FAIL: the overlay is OPAQUE - it has covered the screen instead of floating over it"
+          } else {
+            Write-Warning "OVERLAY FAIL: the wallpaper is not on top at all (white $wpct%, HUD not found)"
+          }
           $g.Dispose(); $bmp.Dispose()
           try { $np | Stop-Process -Force } catch {}
 

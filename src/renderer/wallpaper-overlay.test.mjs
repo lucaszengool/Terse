@@ -95,6 +95,22 @@ ok('the bed is not painted while overlaying', /&& !this\._overlay/.test(eng));
   ok('and clears it if an older build left it on', /& !\(WS_EX_LAYERED\.0 as isize\)/.test(win));
 }
 
+// ── a page that never boots must not be able to cover the screen ──
+//
+// The module needs a WebGL context. Where it cannot get one, `new E(...)` throws
+// and boot() dies before it ever applies the overlay class - so the page keeps
+// painting `html{background:#05060a}` and the native half faithfully lifts that
+// to the top of the z-order. CI measured exactly this: twenty frames sampled
+// over time, byte-identical, on three different commits.
+ok('the dead-man\'s switch is a classic script, so a module failure still reports',
+   page.indexOf('wallpaperDeadMansSwitch') < page.indexOf('<script type="module">'));
+ok('a page that never boots drops its background', /__terseWallpaperBooted[\s\S]{0,400}classList\.add\('overlay'\)/.test(page));
+ok('and asks Rust to put it back on the desktop layer', /__terseWallpaperBooted[\s\S]{0,600}relevelWallpaperWindow\(false\)/.test(page));
+ok('boot decides the background BEFORE mounting the engine',
+   (() => { const b = page.slice(page.indexOf('async function boot()'));
+            return b.indexOf('applyOverlay(overlayOK())') < b.indexOf('mountEngine()'); })());
+ok('and a throwing engine cannot skip the rest of boot', /try \{\s*mountEngine\(\);\s*\} catch/.test(page));
+
 // ── the page reports what it actually painted ──
 //
 // Four diagnoses of this feature were wrong because a black screenshot was the

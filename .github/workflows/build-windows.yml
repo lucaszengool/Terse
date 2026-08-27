@@ -18,6 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Before anything expensive. A renderer file that was never committed is
+      # invisible on the author's machine and fatal in a checkout - one of them
+      # cost this branch several rounds of native z-order debugging, because a
+      # failed import kills the whole page and a dead page still renders a
+      # convincing screenshot.
+      - name: Every renderer import must exist in the checkout
+        run: node src/renderer/renderer-deps.test.mjs
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:

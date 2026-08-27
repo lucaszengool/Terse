@@ -171,13 +171,19 @@
      *  而 topography 走 bloom+grade 的 composer,最后一道全屏 pass 天生不透明 ——
      *  把它抬到屏保层就是一整块盖住屏幕的地形。Rust 侧有同样一条否决(overlay_allowed),
      *  这里这条只是让画面和窗口层级保持一致。 */
+    /** 画面这一半的判断。
+     *
+     *  ⚠ 这里**故意不查 Pro**。真正决定窗口层级的是 Rust 的 overlay_allowed(),
+     *  许可也在那边查;这里再查一次只会让两边算出不同答案,而这两个答案不对称:
+     *
+     *    · 透明 + 桌面层  → 无害(下面就是同一张桌面图,看起来一模一样)
+     *    · 不透明 + 置顶  → 整个屏幕被壁纸糊死
+     *
+     *  免费用户遇到的就是后者:Rust 把窗口抬上去了(它当时不查 Pro),页面却因为
+     *  查了 Pro 而继续画不透明底色。所以这一半只能比 Rust 更宽松,不能更严格。
+     *  真正的答案由 Rust 用 wallpaper-overlay 事件推过来,见 boot()。 */
     function overlayOK(c){
       const k = c || cfg;
-      // 置顶是 Pro 功能。控制面板在你点的那一刻查过一次许可,之后再也不查 ——
-      // 于是订阅到期后 wallpaper.json 里那个 "overlay":true 会一直生效,手改文件
-      // 同理。和 cinematic 引擎一样,在真正画像素的地方再查一次。
-      // proOK === null 表示还没查到(离线):沿用 fail-open,不为难已经付过钱的人。
-      if (proOK === false) return false;
       return k.overlay === true &&
              (k.engine === 'mineradio' || k.engine === 'cinematic');
     }
@@ -385,13 +391,23 @@
       // screen-saver level that is a copy of your wallpaper laid over every
       // window. applyConfig covers the later paths; boot has to cover the first.
       applyOverlay(overlayOK());
+      // 然后立刻用 Rust 的判定覆盖掉上面那个乐观值,并订阅后续变化 ——
+      // 窗口层级和这里的底色必须永远出自同一个判断。
+      try {
+        if (window.terse && window.terse.wallpaperOverlayEffective)
+          applyOverlay((await window.terse.wallpaperOverlayEffective()) === true);
+      } catch (e) {}
+      try {
+        if (window.__TAURI__ && window.__TAURI__.event)
+          window.__TAURI__.event.listen('wallpaper-overlay',
+            (ev) => applyOverlay(ev.payload === true));
+      } catch (e) {}
       setInterval(async () => {
         const was = proOK;
         await refreshEntitlement();
         if (was !== proOK && cfg.engine === 'cinematic') mountEngine();
         if (was !== proOK) {
-          applyOverlay(overlayOK());
-          // 页面不画背景还不够 —— 窗口层级在 Rust 那边,得让它按同一条规则重算。
+          // 只请 Rust 重新判定,自己不下结论 —— 结果会由 wallpaper-overlay 事件推回来。
           // relevel 而不是 setWallpaperOverlay:后者会写盘,等于用一次许可查询的
           // 结果覆盖掉用户自己存的偏好,续订回来开关就没了。
           try { if (window.terse && window.terse.relevelWallpaperWindow)

@@ -6239,10 +6239,10 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
 ///     page's half this would be an opaque rectangle over everything.
 #[cfg(target_os = "windows")]
 fn apply_wallpaper_overlay(win: &tauri::WebviewWindow) {
-    use windows::Win32::Foundation::{COLORREF, HWND};
+    use windows::Win32::Foundation::HWND;
     use windows::Win32::UI::WindowsAndMessaging::{
-        GetWindowLongPtrW, SetLayeredWindowAttributes, SetParent, SetWindowLongPtrW, SetWindowPos,
-        GWL_EXSTYLE, GWL_STYLE, HWND_TOPMOST, LWA_ALPHA, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
+        GetWindowLongPtrW, SetParent, SetWindowLongPtrW, SetWindowPos,
+        GWL_EXSTYLE, GWL_STYLE, HWND_TOPMOST, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
         SWP_NOACTIVATE, SWP_SHOWWINDOW, WS_CHILD, WS_EX_LAYERED, WS_EX_NOACTIVATE,
         WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_POPUP, WS_VISIBLE,
     };
@@ -6260,13 +6260,23 @@ fn apply_wallpaper_overlay(win: &tauri::WebviewWindow) {
             GWL_STYLE,
             (style & !(WS_CHILD.0 as isize)) | (WS_POPUP.0 | WS_VISIBLE.0) as isize,
         );
+        // NO WS_EX_LAYERED, and no SetLayeredWindowAttributes.
+        //
+        // I added both as insurance and they destroyed the very thing they were
+        // meant to protect. Tauri's transparent(true) composites this window
+        // per-pixel through DWM; SetLayeredWindowAttributes replaces that with a
+        // single uniform alpha, so every pixel the page leaves transparent is
+        // composited as BLACK. The screenshot was a black sheet over the whole
+        // screen with only the HUD panel on it - the particles were drawing, but
+        // onto an opaque black background.
+        //
+        // WS_EX_TRANSPARENT alone gives click-through on a DWM-composited
+        // window, and set_ignore_cursor_events below is Tauri's own guarantee of
+        // the same thing.
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        let add = (WS_EX_LAYERED.0 | WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0
-            | WS_EX_TOOLWINDOW.0) as isize;
-        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | add);
-        // Uniform alpha 255 = no tint. WS_EX_LAYERED without this can leave the
-        // window unpainted entirely.
-        let _ = SetLayeredWindowAttributes(hwnd, COLORREF(0), 255, LWA_ALPHA);
+        let add = (WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0 | WS_EX_TOOLWINDOW.0) as isize;
+        // And clear LAYERED if an earlier run of this code left it on.
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, (ex | add) & !(WS_EX_LAYERED.0 as isize));
         let cx = GetSystemMetrics(SM_CXVIRTUALSCREEN);
         let cy = GetSystemMetrics(SM_CYVIRTUALSCREEN);
         if cx > 0 && cy > 0 {

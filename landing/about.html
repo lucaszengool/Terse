@@ -124,6 +124,54 @@
        insert their own two elements. Remove these two lines to revert. -->
   <link rel="stylesheet" href="/terse-glass.css">
   <script defer src="/terse-field.js"></script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why do AI coding agents get expensive?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Agents re-send a growing context window on every turn. The system prompt, the conversation history, and every file read or tool result get transmitted again and again, so the bill keeps climbing long after you have stopped typing."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why does compressing a prompt once keep saving money?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Because agents carry context forward. Terse compresses at the point of entry, before the text enters the conversation history, so tokens saved once stay saved on every subsequent turn that includes that context."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does Terse read my source code?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It processes it entirely on your machine. Optimization runs 100% on-device — prompt text, source and files are never sent anywhere. The text you hand an AI coding tool is often your most sensitive material, and a token optimizer that routed it through a remote service would trade one problem for another."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Who is Terse for?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Developers who work with AI coding agents daily and feel the token bill growing — individuals running Claude Code, Cursor or Copilot for hours a day who want to stop paying for redundant context, and the teams who pay for them."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is there a free version?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Terse has a free tier so you can start cutting token costs at no cost, alongside paid plans for developers and teams who want the full optimization stack."
+      }
+    }
+  ]
+}
+  </script>
 </head>
 <body>
 

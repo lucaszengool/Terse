@@ -1,44 +1,97 @@
-# Terse — Token Optimizer for AI
+# Terse — the AI agent butler
 # https://www.terseai.org
+#
+# The canonical host is www.terseai.org. terseai.org 301s to it at the edge,
+# and every /page.html 301s to /page, so each page has exactly one URL.
 
 User-agent: *
 Allow: /
 
-# Allow AI crawlers explicitly
+# The API is not content. It was absorbing a large share of the crawl budget
+# through auth-poll and presence endpoints that change on every request and
+# have nothing to index.
+Disallow: /api/
+
+# Handshakes, the signed-in app shell, and the promo-video render harnesses.
+# These also carry <meta name="robots" content="noindex, follow">.
+Disallow: /auth-callback
+Disallow: /dashboard
+Disallow: /workspace
+Disallow: /pet-success
+Disallow: /promo-video
+
+# ── Answer engines ────────────────────────────────────────────────────────────
+# Split deliberately, because these are three different jobs and a site can want
+# them differently: training crawl, search index, and the live fetch that happens
+# while someone is mid-conversation. All three are welcome here.
+
+# OpenAI — training / search index / live fetch on a user's behalf
 User-agent: GPTBot
 Allow: /
-
 User-agent: OAI-SearchBot
 Allow: /
-
 User-agent: ChatGPT-User
 Allow: /
 
+# Anthropic
 User-agent: ClaudeBot
 Allow: /
+User-agent: Claude-User
+Allow: /
+User-agent: Claude-SearchBot
+Allow: /
+User-agent: anthropic-ai
+Allow: /
 
+# Perplexity
 User-agent: PerplexityBot
 Allow: /
-
-User-agent: Google-Extended
+User-agent: Perplexity-User
 Allow: /
 
+# Google — Google-Extended governs Gemini and AI Overviews grounding, and is
+# separate from Googlebot's ordinary index crawl.
 User-agent: Googlebot
 Allow: /
-
-User-agent: Bingbot
+User-agent: Google-Extended
+Allow: /
+User-agent: Googlebot-Image
 Allow: /
 
+# Microsoft / Bing — also the substrate Copilot answers from
+User-agent: Bingbot
+Allow: /
+User-agent: msnbot
+Allow: /
+
+# Apple Intelligence / Siri
+User-agent: Applebot
+Allow: /
 User-agent: Applebot-Extended
 Allow: /
 
+# The rest
+User-agent: Amazonbot
+Allow: /
+User-agent: meta-externalagent
+Allow: /
+User-agent: Meta-ExternalAgent
+Allow: /
+User-agent: DuckAssistBot
+Allow: /
+User-agent: MistralAI-User
+Allow: /
 User-agent: cohere-ai
 Allow: /
-
+User-agent: cohere-training-data-crawler
+Allow: /
 User-agent: YouBot
 Allow: /
-
-# Block utility pages
-Disallow: /auth-callback.html
+User-agent: CCBot
+Allow: /
+User-agent: Diffbot
+Allow: /
+User-agent: omgili
+Allow: /
 
 Sitemap: https://www.terseai.org/sitemap.xml

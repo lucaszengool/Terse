@@ -101,6 +101,82 @@
        insert their own two elements. Remove these two lines to revert. -->
   <link rel="stylesheet" href="/terse-glass.css">
   <script defer src="/terse-field.js"></script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Terse",
+      "item": "https://www.terseai.org/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Terse Documentation",
+      "item": "https://www.terseai.org/docs"
+    }
+  ]
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does Terse send my prompts to a server?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Terse is designed with a strict on-device architecture: optimization runs locally, and your prompts, text content and agent session data never leave your machine. There are no API calls to external services for text processing."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What are Terse's three optimization modes?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Soft applies the lightest transformations — typo correction and whitespace compression only. Normal adds filler, politeness and hedging removal plus phrase shortening. Aggressive adds abbreviations and strips markdown. Code blocks are protected in every mode. You switch modes from the popup bar."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does Auto-Mode work?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "With Auto-Mode enabled from the popup bar, Terse watches the active app's text field and writes the optimized version back whenever it changes. You type or paste a prompt in the connected app and the compressed version replaces it in place — the workflow is hands-free."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does Terse detect which app I am using?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Automatically, through a combination of the macOS Accessibility API and process scanning; no manual configuration is needed for supported apps. ChatGPT in Chrome or Safari is read directly from the page's textarea via AXTextArea/AXValue, and agent processes are re-scanned every few seconds so a new session is picked up on its own."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is Terse built with?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tauri — a Rust-based application framework — which handles window management, process scanning, IPC and the agent-monitoring backend, and produces a roughly 15 MB binary rather than the much larger bundle an Electron build would ship."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does Terse need an internet connection?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Not for optimization. Licences are validated locally and do not require a persistent internet connection after the initial activation, and the compression pipeline itself never makes a network call."
+      }
+    }
+  ]
+}
+  </script>
 </head>
 <body>
 

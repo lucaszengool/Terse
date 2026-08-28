@@ -1,0 +1,14 @@
+{
+  "_comment": "Single source of truth for advertised prices. The tier->price-id mapping lives in api/server.js (PRICES); this file records what each of those costs, because the amount lives in Stripe and nothing in the repo could otherwise verify the copy. Update here first, then run: node scripts/check-prices.mjs",
+  "tiers": {
+    "free":     { "usd": 0,     "label": "Free" },
+    "pro":      { "usd": 4.99,  "label": "Pro",      "interval": "month", "env": "STRIPE_PRICE_PRO" },
+    "premium":  { "usd": 99,    "label": "Premium",  "interval": "month", "env": "STRIPE_PRICE_PREMIUM" },
+    "weekly":   { "usd": 1.99,  "label": "Pro weekly",    "interval": "week",    "env": "STRIPE_PRICE_PRO_WEEKLY" },
+    "quarterly":{ "usd": 12,    "label": "Pro quarterly", "interval": "quarter", "env": "STRIPE_PRICE_PRO_QUARTERLY" },
+    "yearly":   { "usd": 15.99, "label": "Pro yearly",    "interval": "year",    "env": "STRIPE_PRICE_PRO_ANNUAL" },
+    "lifetime": { "usd": 25.99, "label": "Pro lifetime",  "interval": "one-time","env": "STRIPE_PRICE_PRO_LIFETIME" }
+  },
+  "retired": [7.99],
+  "trialDays": 30
+}

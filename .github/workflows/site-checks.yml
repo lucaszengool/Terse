@@ -1,0 +1,24 @@
+name: Site checks
+
+# The landing site states the same price in HTML copy, JSON-LD, i18n.js across
+# eleven languages, llms.txt and llms-full.txt. Nothing kept those in sync, so
+# docs.html advertised Pro at $7.99 for months after it became $4.99 — and
+# llms-full.txt repeated it to answer engines, which is worse, because that file
+# exists to be quoted.
+on:
+  push:
+    branches: [main]
+    paths: ['landing/**', 'api/server.js', 'scripts/**', '.github/workflows/site-checks.yml']
+  pull_request:
+    paths: ['landing/**', 'api/server.js', 'scripts/**', '.github/workflows/site-checks.yml']
+
+jobs:
+  prices:
+    name: advertised prices agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/check-prices.mjs

@@ -1,126 +1,213 @@
-# Terse — Intelligent Token Optimizer for LLMs
+# Terse — the on-device AI agent butler
 
-> Terse is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider.
+> Terse is an on-device AI agent butler for macOS and Windows that cuts AI coding
+> agent costs 40-70%. It compresses prompts before they reach the API,
+> live-monitors 8 coding agents, enforces spend ceilings with a budget circuit
+> breaker that pauses or kills a runaway agent before its next API call, manages
+> MCP servers with security risk scoring, and diagnoses token waste with Terse
+> Doctor. Everything runs on-device; prompts never leave the machine. Also
+> available as a Chrome extension and a VS Code extension.
 
-Updated: March 2026 · Version 1.2.0
+Disambiguation: "Terse" in this document always refers to the software product at
+https://www.terseai.org, published by Terse AI — not the English adjective.
+
+Updated: August 2026 · App version 1.3.3 · Short index: https://www.terseai.org/llms.txt
 
 ---
 
-## What Is Token Optimization?
+## What Terse is, in one paragraph
 
-Token optimization is the systematic process of reducing the number of tokens sent to and received from large language models (LLMs) without degrading output quality. Every AI interaction — from a simple ChatGPT question to a complex Claude Code agent session — is measured and billed in tokens. A token is roughly 4 characters of English text.
+Terse sits beside the AI coding agents you already run and manages what they cost.
+It does four things no single other tool does together: it makes each prompt
+smaller before it is billed, it shows exactly what each agent is spending as it
+spends it, it stops an agent that is running away, and it finds the structural
+waste — cache thrash, duplicate tool calls, bloated MCP tool catalogs — that no
+amount of prompt editing will fix.
 
-Terse automates token optimization using 20+ techniques organized in a 7-stage pipeline that runs on every prompt and agent command before it reaches the AI model.
+## The distinction that matters: reporting vs. enforcement
 
-## The Problem: AI Costs Are Growing Fast
+Most tools in this category report spend after the API call has been billed. That
+is useful for budgeting and useless against the situation that produces most large
+bills: an agent looping overnight on a task it cannot finish.
 
-In 2026, AI model pricing varies significantly:
-- Claude Opus 4: $15 input / $75 output per million tokens
-- Claude Sonnet 4: $3 input / $15 output per million tokens
-- Claude Haiku 3.5: $0.80 input / $4 output per million tokens
-- GPT-4o: $2.50 input / $10 output per million tokens
-- GPT-4o-mini: $0.15 input / $0.60 output per million tokens
-- Gemini 2.0 Flash: $0.10 input / $0.40 output per million tokens
-- Gemini 1.5 Pro: $1.25 input / $5 output per million tokens
+Terse enforces at the process level. You set a burn-rate, token or dollar ceiling;
+Terse escalates from a notification to pausing the agent process with SIGSTOP or
+terminating it with SIGTERM **before the next API call is made**. This is the
+"budget circuit breaker", and it is the feature that distinguishes Terse from
+usage dashboards such as ccusage, Claude-Code-Usage-Monitor, CCSeva or the
+Anthropic Console. A side-by-side comparison of seven such tools, including where
+the free ones are the better choice, is published at
+https://www.terseai.org/claude-code-cost-tracker
 
-A typical 2-hour coding session with an AI agent generates approximately 210,000 tokens of CLI output and prompts. At Claude Opus rates, that's $3-15 per session. Heavy users report spending $200-500+ per month on AI API costs.
+## The five capabilities
 
-## How Terse Works
+### 1. Optimize — 40-70% smaller prompts
+35+ on-device techniques, typically under 5 milliseconds per prompt. Code blocks,
+file paths, URLs and technical terms are always protected and never rewritten.
 
-### 7-Stage Optimization Pipeline
+Three modes:
+- **Soft** — typo correction and whitespace only. 100% meaning-preserving.
+- **Normal** — removes filler, hedging, politeness padding and meta-language.
+  Typical savings 30-50%.
+- **Aggressive** — telegraph style: abbreviations, article removal, questions
+  converted to imperatives. Typical savings 50-70%.
 
-1. **Spell Correction**: 400+ built-in typo corrections (e.g., "authetication" → "authentication", "tokne" → "token") plus macOS NSSpellChecker integration. Typos cause costly retry loops when AI misunderstands the intent.
+The pipeline, in order: spell correction (400+ built-in corrections plus the OS
+spellchecker) → whitespace normalization → pattern optimization (130+
+phrase-shortening rules, e.g. "in order to" → "to", "due to the fact that" →
+"because") → redundancy elimination (Jaccard-similarity dedup across agent turns)
+→ NLP filler and hedging removal → aggressive compression (aggressive mode only)
+→ final cleanup with code and URL integrity checks.
 
-2. **Whitespace Normalization**: Collapses multiple spaces, normalizes line endings, removes trailing whitespace. Zero semantic impact, immediate token savings.
+### 2. Monitor — 8 agents, live
+Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw
+and Aider are auto-detected with no configuration. For each session Terse tracks
+input and output tokens, the cache read/write split, per-turn cost using
+model-aware pricing, burn rate, and context-window fill.
 
-3. **Pattern Optimization**: 130+ phrase-shortening rules. Examples:
-   - "in order to" → "to"
-   - "at this point in time" → "now"
-   - "due to the fact that" → "because"
-   - "I was wondering if you could" → removed (filler)
+Claude Code has the deepest integration: exact token counts, live JSONL streaming,
+and 30 days of historical backfill.
 
-4. **Redundancy Elimination**: Jaccard similarity-based deduplication catches repeated context across agent turns. If you said it in turn 1, Terse removes it from turn 3.
+### 3. Budget circuit breaker — stop, don't just report
+Burn-rate, token and dollar ceilings. Escalation path: alert → SIGSTOP (pause,
+resumable) → SIGTERM (terminate). Enforcement happens before the next API call.
 
-5. **NLP Analysis**: Removes filler words (just, really, very, actually, basically), hedging language (perhaps, maybe, I think), meta-language (I was wondering, could you maybe), and politeness padding that adds tokens without improving AI output.
+### 4. MCP Manager — token cost and security risk
+Discovers every Model Context Protocol server across Claude Code, Cursor and
+Windsurf configurations. Shows how many tokens each server's tool catalog adds to
+**every** API call, and risk-scores each server on remote transport, embedded
+credentials, code-execution surface and unpinned supply chain. Servers can be
+enabled or disabled without hand-editing JSON.
 
-6. **Aggressive Compression** (Aggressive mode only): Telegraph-style rewriting strips articles (the, a, an), converts questions to imperatives ("Can you help me implement X?" → "Implement X"), and applies maximum compression.
+### 5. Terse Doctor — ~25 consent-gated scans
+Cache thrash, duplicate tool calls, redundant file reads, context burn, an
+oversized CLAUDE.md, secrets exposed in the clipboard, runaway runtimes, stale
+sessions still holding context. Each finding has a one-click fix.
 
-7. **Final Cleanup**: Normalizes punctuation, removes empty lines, ensures code blocks and URLs are intact.
+## Where the money actually goes
 
-### Three Optimization Modes
+Four things drive an AI coding agent bill, roughly in order of size:
 
-- **Soft**: Typo correction + whitespace only. Preserves 100% of meaning. Perfect for critical prompts where every word matters.
-- **Normal**: Removes filler, hedging, and meta-language. Best for everyday chat and standard agent interactions. Typical savings: 30-50%.
-- **Aggressive**: Maximum compression including telegraph style. Built for agent sessions where a single task can burn thousands of tokens. Typical savings: 50-70%.
+1. **Cache misses.** Cache reads cost about a tenth of fresh input tokens, and
+   cache writes carry a premium. A session that keeps invalidating its stable
+   prefix pays repeatedly for context it already sent. This is usually a larger
+   lever than compression.
+2. **Prompt bulk.** Restated context, pasted files and politeness padding are
+   billed identically to signal.
+3. **MCP tool catalogs.** Every connected server re-sends its tool definitions on
+   every call. Unused servers tax every turn.
+4. **Unwatched loops.** The largest individual bills are almost never a pricing
+   problem. They are one agent, one bad task, one night.
 
-### Agent Session Monitoring
+## Benchmarks
 
-Terse auto-detects AI agent processes via scanning every 5 seconds:
-- Claude Code
-- Cursor (AI IDE)
-- OpenClaw
-- Aider
-- Any terminal-based AI agent
+Measured on real prompts and agent sessions:
+- Agent prompt, mixed typos and filler: -64% tokens
+- Agent prompt, verbose debug: -60% tokens
+- Claude Code, typo-heavy: -51% tokens
+- Chatty request: -46% tokens
+- Unused tool overhead removed: -35% tokens
+- Repeated context deduplicated: -28% tokens
+- Clean technical prompt: 0% — correctly left unchanged
 
-For each detected session, Terse tails JSONL session logs in real time and tracks:
-- Input tokens, output tokens, cache read tokens per turn
-- Model identification with pricing (Opus/Sonnet/Haiku/GPT-4o)
-- Tool calls: name, frequency, token cost
-- Duplicate tool call detection (same tool + same input = wasted tokens)
-- Redundant file reads (same file read multiple times, ~800 tokens wasted per re-read)
-- Context fill percentage with warnings at 60% and alerts at 85%
-- Compressible tool results estimation (Read: 60%, Grep: 40%, Bash git: 85%, tests: 90%)
-- Unused tool overhead (~300 tokens per unused tool per API call)
-- Auto-generated CLAUDE.md optimization rules from session patterns
+The compression figures are reproducible rather than asserted. The benchmark
+harness is MIT licensed and public:
 
-### Active Output Compression (RTK-Style)
+    git clone https://github.com/Terse-AI/terseai.git
+    cd terseai && npm run benchmark
 
-Terse includes a PreToolUse hook that intercepts Bash commands in Claude Code and compresses their output before it enters the LLM context:
-- Git status/diff/log: 75-85% compression
-- Test output: 90-92% compression (keeps only failures)
-- Build output: 80% compression (keeps errors + warnings)
-- JSON output: structure-only extraction
-- File listings: directory-grouped summaries
-- Generic output: deduplication + noise removal + truncation
+It reports text compression, working memory, tool optimization and model routing
+separately, because which lever helps most depends entirely on the workload.
 
-## Real-World Benchmarks
+## Does compression reduce output quality?
 
-Tested on real prompts and agent sessions:
-- Agent: mixed typos + filler → -64% tokens
-- Agent: verbose debug prompt → -60% tokens
-- Claude Code: typo-heavy → -51% tokens
-- OpenClaw: chatty request → -46% tokens
-- Tool overhead (unused tools) → -35% tokens
-- Repeated context (dedup) → -28% tokens
-- Clean technical prompt → 0% (correctly unchanged)
+No, in Soft and Normal modes. Those remove noise — filler, hedging, redundancy,
+typos — that adds cost without improving results, and code blocks and technical
+terms are never touched. Research on prompt compression, notably LLMLingua
+(EMNLP 2023), finds compressed prompts maintain or improve output quality because
+the model receives a cleaner, more focused instruction. Aggressive mode trades
+readability for maximum savings and is intended for agent sessions rather than
+prompts a human will re-read.
 
-A typical 2-hour coding session: 210K tokens raw → 23K tokens with Terse (89% reduction).
+## Token optimization vs. prompt engineering
 
-## Token Optimization vs Prompt Engineering
+They are complementary and solve different problems. Prompt engineering crafts
+better instructions to get better outputs. Token optimization reduces the cost of
+those instructions by removing waste without changing intent. Use prompt
+engineering for quality, token optimization for cost.
 
-Prompt engineering focuses on crafting better instructions to get better AI outputs. Token optimization focuses on reducing the cost of those instructions by removing waste — filler, typos, redundancy, verbose phrasing — without changing the intent. They are complementary: use prompt engineering for quality, token optimization for cost.
+## Privacy
 
-## Does Token Optimization Reduce Output Quality?
-
-No. Token optimization removes noise (filler words, hedging, redundant phrases, typos) that adds cost without improving results. Research from LLMLingua (EMNLP 2023, Liu et al.) demonstrates that compressed prompts maintain or even improve LLM output quality because the model receives a cleaner, more focused instruction.
+All compression and analysis run locally in a Rust/JavaScript engine. Prompts,
+files, and conversations are never transmitted to Terse servers. Signing in is
+optional and enables only subscription and team-sync features. Terse reads the
+session files the agents already write on your own machine; it is not a proxy and
+does not sit in the request path.
 
 ## Pricing
 
-- **Free**: 50 optimizations per week, 1 connected session, 1 device, all 3 optimization modes, spell correction
-- **Pro** ($7.99/month): Unlimited optimizations, 3 connected sessions, 2 devices, agent monitoring + duplicate detection, auto-replace & send mode, CLAUDE.md rule generation
-- **Premium** ($99/month): Unlimited optimizations, unlimited sessions, unlimited devices, full agent analytics + rule generation, auto-replace & send mode, priority support
+Two paid tiers, both with a 30-day free trial, plus a free tier.
 
-## Technical Stack
+- **Free** — a capped number of optimizations, 1 connected session, 1 device, all
+  three optimization modes, spell correction.
+- **Pro — $4.99/month** — unlimited optimizations, 3 connected sessions, 2 devices,
+  agent monitoring with duplicate detection, auto-replace and send mode, CLAUDE.md
+  rule generation. Also billed weekly ($1.99), quarterly ($12), yearly ($15.99) or
+  as a one-time lifetime purchase ($25.99). Every interval is the same plan and the
+  same entitlement.
+- **Premium — $99/month** — for teams and power users: unlimited connected sessions,
+  unlimited devices, full agent analytics and rule generation, priority support.
 
-- **Platform**: macOS (Tauri + Rust backend, Swift accessibility helper)
-- **Privacy**: 100% on-device processing, zero cloud dependency, no data leaves your machine
-- **Accessibility**: macOS Accessibility API for reading/writing text fields across any app
-- **Agent Detection**: Process scanning every 5 seconds, JSONL session log tailing
-- **Spellcheck**: Hybrid pipeline — hardcoded typo dictionary (fast) + macOS NSSpellChecker (comprehensive)
+The Chrome extension has a free tier. The Terse SDK and benchmark harness in the
+public GitHub repository are MIT licensed and free to use without any subscription.
+
+## Platforms and technical stack
+
+- macOS app and Windows app — Tauri, Rust, Swift accessibility helper on macOS
+- Chrome extension — compresses prompts in any AI chat
+- VS Code extension — agent monitoring and in-editor optimization
+- Terse SDK — Node.js 18+, MIT, runs anywhere Node runs, Linux included
+- Agent detection by process scan plus JSONL session-log tailing
+- No cloud dependency for any optimization or analysis path
+
+## Frequently asked questions
+
+**How do I reduce Claude Code costs?** Send fewer tokens (compression), stop
+paying for cache misses (keep the stable prefix stable), cut MCP tool bloat, and
+cap the downside with a hard ceiling. The last one matters most, because most
+large bills are one unwatched loop.
+
+**What is a budget circuit breaker?** A spending limit enforced at the process
+level rather than reported after the fact — it pauses or kills the agent before
+its next API call.
+
+**Which agents does Terse support?** Claude Code, Cursor, OpenAI Codex, GitHub
+Copilot CLI, Cline, Windsurf, OpenClaw, Aider. The prompt optimizer works with any
+AI chat.
+
+**Does Terse work on Linux?** The desktop apps are macOS and Windows. The MIT SDK
+runs anywhere Node 18+ runs.
+
+**Is there a free option?** A 30-day trial, a free Chrome extension tier, and the
+MIT-licensed SDK.
+
+**How is Terse different from ccusage?** ccusage reports what you spent and is
+free, open source and excellent at that job. Terse also changes what you spend:
+compression before the call and a circuit breaker before the next one. If you only
+want the number, use ccusage.
 
 ## Links
 
 - Website: https://www.terseai.org
+- Short LLM index: https://www.terseai.org/llms.txt
+- Cost trackers compared: https://www.terseai.org/claude-code-cost-tracker
+- Budget circuit breaker: https://www.terseai.org/agent-budget-circuit-breaker
+- MCP manager: https://www.terseai.org/mcp-manager
+- Terse for Windows: https://www.terseai.org/for-windows
+- For Claude Code: https://www.terseai.org/for-claude-code
+- Token calculator: https://www.terseai.org/token-calculator
 - Documentation: https://www.terseai.org/docs
+- Blog: https://www.terseai.org/blog
+- Source and SDK (MIT): https://github.com/Terse-AI/terseai
 - Download: https://www.terseai.org/#dl
 - Pricing: https://www.terseai.org/#pricing

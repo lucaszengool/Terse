@@ -124,3 +124,5 @@ No. Token optimization removes noise (filler words, hedging, redundant phrases, 
 - Documentation: https://www.terseai.org/docs
 - Download: https://www.terseai.org/#dl
 - Pricing: https://www.terseai.org/#pricing
+- Cost trackers compared: https://www.terseai.org/claude-code-cost-tracker
+- Source & SDK: https://github.com/Terse-AI/terseai

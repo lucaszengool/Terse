@@ -29,6 +29,7 @@
 ### Comparisons & Alternatives
 - [AI coding agent costs (pillar guide)](https://www.terseai.org/ai-coding-agent-costs)
 - [Cursor vs Claude Code](https://www.terseai.org/cursor-vs-claude-code) · [Claude Code vs GitHub Copilot](https://www.terseai.org/claude-code-vs-github-copilot) · [Claude Code vs Codex CLI](https://www.terseai.org/claude-code-vs-codex-cli) · [Windsurf vs Claude Code](https://www.terseai.org/windsurf-vs-claude-code) · [Windsurf vs Cursor](https://www.terseai.org/windsurf-vs-cursor) · [Cursor vs GitHub Copilot](https://www.terseai.org/cursor-vs-github-copilot)
+- [Claude Code cost trackers compared](https://www.terseai.org/claude-code-cost-tracker): seven tools rated — ccusage, Claude-Code-Usage-Monitor, TokenTracker, CCSeva, Anthropic Console, LiteLLM, Terse — and which of them can actually stop spend rather than only report it
 - [Claude Code alternatives](https://www.terseai.org/claude-code-alternatives) · [Cursor alternatives](https://www.terseai.org/cursor-alternatives) · [GitHub Copilot alternatives](https://www.terseai.org/github-copilot-alternatives)
 
 ### Cost & Pricing Guides

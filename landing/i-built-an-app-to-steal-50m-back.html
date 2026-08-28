@@ -636,7 +636,7 @@ if !self.tool_call_hashes.insert(cache_key) {
       <table>
         <thead><tr><th>Limitation</th><th>Why</th></tr></thead>
         <tbody>
-          <tr><td><strong>macOS only</strong></td><td>AX API is mature and consistent on macOS. Windows UIA is unreliable across Electron apps. Roadmap.</td></tr>
+          <tr><td><strong>No Linux build</strong></td><td>macOS reads text through the Accessibility API; Windows does the same through UI Automation and <code>terse-uia.exe</code>, which shipped after this was written. Linux has no equivalent yet.</td></tr>
           <tr><td><strong>No browser-terminal Claude Code</strong></td><td>Desktop client and VS Code terminal only. Browser-based terminal isn't AX-readable.</td></tr>
           <tr><td><strong>Aggressive mode loses precision</strong></td><td>By design. For batch Agent automation, not nuanced technical discussions.</td></tr>
           <tr><td><strong>Agent Monitor requires local Claude Code</strong></td><td>Reads <code>~/.claude/projects/</code> JSONL. Remote/SSH sessions not watched.</td></tr>

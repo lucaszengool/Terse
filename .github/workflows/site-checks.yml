@@ -5,6 +5,12 @@ name: Site checks
 # docs.html advertised Pro at $7.99 for months after it became $4.99 — and
 # llms-full.txt repeated it to answer engines, which is worse, because that file
 # exists to be quoted.
+#
+# Prices were one instance of a general problem. The SoftwareApplication node
+# also spent four months claiming operatingSystem "macOS" with no Windows,
+# softwareVersion 1.2.0 against a v1.3.3 download, 20+ techniques against 35+,
+# and four agents against eight — and an essay still listed Windows as a
+# roadmap item after the Windows app shipped. check-facts.mjs holds those.
 on:
   push:
     branches: [main]
@@ -22,3 +28,13 @@ jobs:
         with:
           node-version: '22'
       - run: node scripts/check-prices.mjs
+
+  facts:
+    name: product facts agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/check-facts.mjs

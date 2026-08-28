@@ -12,13 +12,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Terse — The AI Agent Butler: Monitor, Control Cost & Optimize</title>
-  <meta name="description" content="Terse is the on-device butler for your AI coding agents — live-monitor Claude Code, Cursor & 6 more, cap runaway spend before the next API call, compress prompts, and manage MCP servers. Cut token costs 40-70%.">
+  <meta name="description" content="The on-device butler for your AI coding agents: live-monitor 8 agents, cap runaway spend, manage MCP servers, and cut token costs 40-70%.">
 
   <!-- Open Graph (Facebook, LinkedIn, iMessage, Slack, Discord) -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.terseai.org/">
   <meta property="og:title" content="Terse — The AI Agent Butler for Claude Code, Cursor & More">
-  <meta property="og:description" content="One butler for every AI agent: live monitoring, a budget breaker that stops runaway spend, MCP management, and 40-70% prompt compression. On-device.">
+  <meta property="og:description" content="The on-device butler for your AI coding agents: live-monitor 8 agents, cap runaway spend, manage MCP servers, and cut token costs 40-70%.">
   <meta property="og:image" content="https://www.terseai.org/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -28,7 +28,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://www.terseai.org/">
   <meta name="twitter:title" content="Terse — The AI Agent Butler for Claude Code, Cursor & More">
-  <meta name="twitter:description" content="One butler for every AI agent: live monitoring, a budget breaker that stops runaway spend, MCP management, and 40-70% prompt compression. On-device.">
+  <meta name="twitter:description" content="The on-device butler for your AI coding agents: live-monitor 8 agents, cap runaway spend, manage MCP servers, and cut token costs 40-70%.">
   <meta name="twitter:image" content="https://www.terseai.org/og-image.png">
 
   <!-- Extras: theme color, canonical, robots, author -->
@@ -1260,6 +1260,35 @@
   </div>
 </section>
 
+
+<style>
+.facts{max-width:860px;margin:64px auto 8px;padding:0 24px}
+.facts h2{font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:hsla(0,0%,100%,.38);margin-bottom:6px}
+.facts .asof{font-size:12px;color:hsla(0,0%,100%,.28);margin-bottom:18px;
+  font-family:'JetBrains Mono',ui-monospace,monospace}
+.facts dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:0;
+  background:hsla(250,21%,11%,.42);border:1px solid hsla(0,0%,100%,.08);border-radius:14px;
+  padding:22px 24px;backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
+  -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,.12)}
+.facts dt{font-size:13px;font-weight:700;color:#6ee7b7;white-space:nowrap;line-height:1.55}
+.facts dd{margin:0;font-size:14px;color:hsla(0,0%,100%,.78);line-height:1.55}
+@media(max-width:620px){.facts dl{grid-template-columns:1fr;gap:3px 0}
+  .facts dd{margin-bottom:12px}}
+</style>
+<section class="facts" aria-label="Terse at a glance">
+  <h2>Terse at a glance</h2>
+  <p class="asof">Terse v1.3.3 · verified 2026-08-28</p>
+  <dl>
+    <dt>Token reduction</dt><dd>40-70% on verbose prompts, up to 89% on CLI output</dd>
+    <dt>How</dt><dd>35+ techniques in a 7-stage pipeline that runs on-device in under 5 ms</dd>
+    <dt>Agents monitored</dt><dd>8 — Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider</dd>
+    <dt>Platforms</dt><dd>macOS and Windows, plus Chrome and VS Code extensions</dd>
+    <dt>Privacy</dt><dd>100% on-device. Prompts, source and session data never leave the machine.</dd>
+    <dt>Price</dt><dd>Free tier; Pro $4.99/month after a 30-day free trial; Premium $99/month</dd>
+  </dl>
+</section>
 <!-- Quotable definition for AI crawlers and GEO -->
 <div style="max-width:800px;margin:0 auto;padding:0 40px 30px;text-align:center">
   <p style="font-size:14px;color:var(--t3);line-height:1.7"><strong style="color:var(--t2)">Terse</strong> is a macOS &amp; iOS token optimization tool that reduces AI prompt costs by 40-70% through 35+ intelligent compression techniques — including git diff compression, prompt caching awareness, conversation history summarization, model-specific optimization, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider. Built on research from <a href="/llmlingua" style="color:var(--ac)">LLMLingua (EMNLP 2023)</a>, <a href="/norvig-spelling" style="color:var(--ac)">Norvig spelling correction</a>, and <a href="/selective-context" style="color:var(--ac)">selective context pruning</a>.</p>
@@ -3350,34 +3379,6 @@ async function handleNewsletterSubmit(e) {
 </section>
 </main>
 
-<style>
-.facts{max-width:860px;margin:64px auto 8px;padding:0 24px}
-.facts h2{font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  color:hsla(0,0%,100%,.38);margin-bottom:6px}
-.facts .asof{font-size:12px;color:hsla(0,0%,100%,.28);margin-bottom:18px;
-  font-family:'JetBrains Mono',ui-monospace,monospace}
-.facts dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:0;
-  background:hsla(250,21%,11%,.42);border:1px solid hsla(0,0%,100%,.08);border-radius:14px;
-  padding:22px 24px;backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
-  -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
-  box-shadow:inset 0 1px 0 hsla(0,0%,100%,.12)}
-.facts dt{font-size:13px;font-weight:700;color:#6ee7b7;white-space:nowrap;line-height:1.55}
-.facts dd{margin:0;font-size:14px;color:hsla(0,0%,100%,.78);line-height:1.55}
-@media(max-width:620px){.facts dl{grid-template-columns:1fr;gap:3px 0}
-  .facts dd{margin-bottom:12px}}
-</style>
-<section class="facts" aria-label="Terse at a glance">
-  <h2>Terse at a glance</h2>
-  <p class="asof">Terse v1.3.3 · verified 2026-08-28</p>
-  <dl>
-    <dt>Token reduction</dt><dd>40-70% on verbose prompts, up to 89% on CLI output</dd>
-    <dt>How</dt><dd>35+ techniques in a 7-stage pipeline that runs on-device in under 5 ms</dd>
-    <dt>Agents monitored</dt><dd>8 — Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider</dd>
-    <dt>Platforms</dt><dd>macOS and Windows, plus Chrome and VS Code extensions</dd>
-    <dt>Privacy</dt><dd>100% on-device. Prompts, source and session data never leave the machine.</dd>
-    <dt>Price</dt><dd>Free tier; Pro $4.99/month after a 30-day free trial; Premium $99/month</dd>
-  </dl>
-</section>
 <footer>
   <div class="footer-inner">
     <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">The butler for your AI coding agents &mdash; live monitoring, a runaway-spend breaker, MCP management, and 40-70% prompt compression. On-device, with team analytics via Terse Cloud.</p></div>

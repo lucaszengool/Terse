@@ -12,17 +12,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Terse Documentation — Getting Started with Token Optimization</title>
-  <meta name="description" content="Complete documentation for Terse, the on-device token optimizer for AI agents. Learn how to install, configure, and use Terse with Claude Code, ChatGPT, OpenClaw, and Cursor.">
+  <meta name="description" content="Terse documentation: install on macOS or Windows, connect your AI tools, pick an optimization mode, and read agent sessions live. Everything runs on-device.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://www.terseai.org/docs">
   <meta property="og:title" content="Terse Documentation — Getting Started with Token Optimization">
-  <meta property="og:description" content="Complete documentation for Terse, the on-device token optimizer for AI agents. Install, configure, and optimize with Claude Code, ChatGPT, Cursor, and more.">
+  <meta property="og:description" content="Terse documentation: install on macOS or Windows, connect your AI tools, pick an optimization mode, and read agent sessions live. Everything runs on-device.">
   <meta property="og:url" content="https://www.terseai.org/docs">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Terse">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Terse Documentation — Getting Started with Token Optimization">
-  <meta name="twitter:description" content="Complete documentation for Terse. Install, configure, and optimize prompts for Claude Code, ChatGPT, Cursor, and more.">
+  <meta name="twitter:description" content="Terse documentation: install on macOS or Windows, connect your AI tools, pick an optimization mode, and read agent sessions live. Everything runs on-device.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -209,10 +209,10 @@
   <h2 id="getting-started">Getting Started</h2>
 
   <h3>Download and Install</h3>
-  <p>Terse is distributed as a DMG file from <a href="https://github.com/Terse-AI/terseai/releases">GitHub Releases</a>. Download the latest <code>.dmg</code> file for macOS, open it, and drag the Terse app into your Applications folder.</p>
+  <p>Terse ships for macOS and Windows from <a href="https://github.com/Terse-AI/terseai/releases">GitHub Releases</a>. On macOS, download the latest <code>.dmg</code>, open it, and drag Terse into your Applications folder. On Windows, download the <code>.exe</code> installer and run it — see <a href="/for-windows">Terse for Windows</a>.</p>
 
   <h3>First-Time Setup</h3>
-  <p>Terse is not currently signed with an Apple Developer certificate. On first launch, macOS will block the app. To open it:</p>
+  <p>On macOS, Terse is not yet signed with an Apple Developer certificate, so the first launch is blocked by Gatekeeper. To open it:</p>
   <ol>
     <li>Open Finder and navigate to <strong>Applications</strong></li>
     <li>Right-click (or Control-click) on <strong>Terse</strong></li>
@@ -280,7 +280,7 @@
   <p>The <a href="/#agents">agent monitoring</a> system provides real-time visibility into what your AI agents are doing, how much they cost, and where efficiency can be improved.</p>
 
   <h3>Session Detection</h3>
-  <p>Terse scans running processes every 5 seconds to detect active agent sessions. When a supported agent process is found (Claude Code, Cursor, OpenClaw, Aider), Terse begins monitoring its activity automatically.</p>
+  <p>Terse scans running processes every 5 seconds to detect active agent sessions. When a supported agent process is found — Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw or Aider — Terse begins monitoring its activity automatically.</p>
 
   <h3>Metrics Tracked</h3>
   <ul>
@@ -418,7 +418,7 @@
   <p>All plans include the full on-device optimization pipeline. Paid plans are billed monthly and can be cancelled at any time. Licenses are validated locally and do not require a persistent internet connection after initial activation.</p>
 
   <h2 id="tech-stack">Tech Stack</h2>
-  <p>Terse is built on a modern, performant stack optimized for macOS:</p>
+  <p>Terse is built on a modern, performant stack, and runs on both macOS and Windows:</p>
   <ul>
     <li><strong>Tauri</strong> — Rust-based application framework. Handles window management, process scanning, IPC, and the agent monitoring backend. Tauri produces small, fast binaries (~15 MB) compared to Electron alternatives.</li>
     <li><strong>Rust backend</strong> — the agent monitor, session manager, and JSONL log parser are implemented in Rust for performance and reliability. Token counting, cost computation, and <a href="/selective-context">context analysis</a> run in Rust threads.</li>

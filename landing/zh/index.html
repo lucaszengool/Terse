@@ -1183,6 +1183,35 @@
     </div>
   </div>
 </section>
+<style>
+.facts{max-width:860px;margin:64px auto 8px;padding:0 24px}
+.facts h2{font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:hsla(0,0%,100%,.38);margin-bottom:6px}
+.facts .asof{font-size:12px;color:hsla(0,0%,100%,.28);margin-bottom:18px;
+  font-family:'JetBrains Mono',ui-monospace,monospace}
+.facts dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:0;
+  background:hsla(250,21%,11%,.42);border:1px solid hsla(0,0%,100%,.08);border-radius:14px;
+  padding:22px 24px;backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
+  -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,.12)}
+.facts dt{font-size:13px;font-weight:700;color:#6ee7b7;white-space:nowrap;line-height:1.55}
+.facts dd{margin:0;font-size:14px;color:hsla(0,0%,100%,.78);line-height:1.55}
+@media(max-width:620px){.facts dl{grid-template-columns:1fr;gap:3px 0}
+  .facts dd{margin-bottom:12px}}
+</style>
+<section class="facts" aria-label="Terse 关键事实">
+  <h2>Terse 关键事实</h2>
+  <p class="asof">Terse v1.3.3 · 数据核对于 2026-08-28</p>
+  <dl>
+    <dt>Token 削减</dt><dd>冗长提示词降低 40-70%,CLI 输出最高 89%</dd>
+    <dt>原理</dt><dd>7 段流水线、35+ 项技术,全部本地运行,耗时低于 5 毫秒</dd>
+    <dt>监控的智能体</dt><dd>8 个 —— Claude Code、Cursor、OpenAI Codex、GitHub Copilot CLI、Cline、Windsurf、OpenClaw、Aider</dd>
+    <dt>支持平台</dt><dd>macOS 与 Windows,另有 Chrome 与 VS Code 扩展</dd>
+    <dt>隐私</dt><dd>100% 本地处理。提示词、源码与会话数据不离开本机。</dd>
+    <dt>价格</dt><dd>免费版;Pro 每月 $4.99(30 天免费试用);Premium 每月 $99</dd>
+  </dl>
+</section>
+
 
 <!-- Trust + social-proof strip (research: early social proof lifts B2B SaaS conversions ~37%) -->
 <section class="trust-strip" aria-label="Trusted by developers">
@@ -3225,34 +3254,6 @@ async function handleNewsletterSubmit(e) {
 </section>
 </main>
 
-<style>
-.facts{max-width:860px;margin:64px auto 8px;padding:0 24px}
-.facts h2{font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  color:hsla(0,0%,100%,.38);margin-bottom:6px}
-.facts .asof{font-size:12px;color:hsla(0,0%,100%,.28);margin-bottom:18px;
-  font-family:'JetBrains Mono',ui-monospace,monospace}
-.facts dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:0;
-  background:hsla(250,21%,11%,.42);border:1px solid hsla(0,0%,100%,.08);border-radius:14px;
-  padding:22px 24px;backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
-  -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
-  box-shadow:inset 0 1px 0 hsla(0,0%,100%,.12)}
-.facts dt{font-size:13px;font-weight:700;color:#6ee7b7;white-space:nowrap;line-height:1.55}
-.facts dd{margin:0;font-size:14px;color:hsla(0,0%,100%,.78);line-height:1.55}
-@media(max-width:620px){.facts dl{grid-template-columns:1fr;gap:3px 0}
-  .facts dd{margin-bottom:12px}}
-</style>
-<section class="facts" aria-label="Terse 关键事实">
-  <h2>Terse 关键事实</h2>
-  <p class="asof">Terse v1.3.3 · 数据核对于 2026-08-28</p>
-  <dl>
-    <dt>Token 削减</dt><dd>冗长提示词降低 40-70%,CLI 输出最高 89%</dd>
-    <dt>原理</dt><dd>7 段流水线、35+ 项技术,全部本地运行,耗时低于 5 毫秒</dd>
-    <dt>监控的智能体</dt><dd>8 个 —— Claude Code、Cursor、OpenAI Codex、GitHub Copilot CLI、Cline、Windsurf、OpenClaw、Aider</dd>
-    <dt>支持平台</dt><dd>macOS 与 Windows,另有 Chrome 与 VS Code 扩展</dd>
-    <dt>隐私</dt><dd>100% 本地处理。提示词、源码与会话数据不离开本机。</dd>
-    <dt>价格</dt><dd>免费版;Pro 每月 $4.99(30 天免费试用);Premium 每月 $99</dd>
-  </dl>
-</section>
 <footer>
   <div class="footer-inner">
     <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">Token 优化器 + 团队分析。压缩提示、监控 Agent、检测重复——用 Terse Cloud 追踪团队 AI 开销。</p></div>

@@ -231,6 +231,37 @@
 
 <div class="divider"></div>
 
+<style>
+.facts{max-width:860px;margin:64px auto 8px;padding:0 24px}
+.facts h2{font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:hsla(0,0%,100%,.38);margin-bottom:6px}
+.facts .asof{font-size:12px;color:hsla(0,0%,100%,.28);margin-bottom:18px;
+  font-family:'JetBrains Mono',ui-monospace,monospace}
+.facts dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:0;
+  background:hsla(250,21%,11%,.42);border:1px solid hsla(0,0%,100%,.08);border-radius:14px;
+  padding:22px 24px;backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
+  -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,.12)}
+.facts dt{font-size:13px;font-weight:700;color:#6ee7b7;white-space:nowrap;line-height:1.55}
+.facts dd{margin:0;font-size:14px;color:hsla(0,0%,100%,.78);line-height:1.55}
+@media(max-width:620px){.facts dl{grid-template-columns:1fr;gap:3px 0}
+  .facts dd{margin-bottom:12px}}
+</style>
+<section class="facts" aria-label="Terse at a glance">
+  <h2>Terse at a glance</h2>
+  <p class="asof">Terse v1.3.3 · verified 2026-08-28</p>
+  <dl>
+    <dt>Token reduction</dt><dd>40-70% on verbose prompts, up to 89% on CLI output</dd>
+    <dt>How</dt><dd>35+ techniques in a 7-stage pipeline that runs on-device in under 5 ms</dd>
+    <dt>Agents monitored</dt><dd>8 — Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider</dd>
+    <dt>Platforms</dt><dd>macOS and Windows, plus Chrome and VS Code extensions</dd>
+    <dt>Privacy</dt><dd>100% on-device. Prompts, source and session data never leave the machine.</dd>
+    <dt>Price</dt><dd>Free tier; Pro $4.99/month after a 30-day free trial; Premium $99/month</dd>
+  </dl>
+</section>
+
+
+
 <section id="how-it-works">
   <h2>Everything the Mac App Does — <span class="gradient-text">On Windows</span></h2>
   <p class="section-sub">The Windows app shares the same frontend with a ported Rust backend. Where macOS uses the Accessibility API and a Swift helper, Windows uses UI Automation and terse-uia.exe.</p>
@@ -274,7 +305,6 @@
     </div>
   </div>
 </section>
-
 <div class="divider"></div>
 
 <section>
@@ -354,34 +384,6 @@
   </div>
 </div>
 
-<style>
-.facts{max-width:860px;margin:64px auto 8px;padding:0 24px}
-.facts h2{font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  color:hsla(0,0%,100%,.38);margin-bottom:6px}
-.facts .asof{font-size:12px;color:hsla(0,0%,100%,.28);margin-bottom:18px;
-  font-family:'JetBrains Mono',ui-monospace,monospace}
-.facts dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:0;
-  background:hsla(250,21%,11%,.42);border:1px solid hsla(0,0%,100%,.08);border-radius:14px;
-  padding:22px 24px;backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
-  -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
-  box-shadow:inset 0 1px 0 hsla(0,0%,100%,.12)}
-.facts dt{font-size:13px;font-weight:700;color:#6ee7b7;white-space:nowrap;line-height:1.55}
-.facts dd{margin:0;font-size:14px;color:hsla(0,0%,100%,.78);line-height:1.55}
-@media(max-width:620px){.facts dl{grid-template-columns:1fr;gap:3px 0}
-  .facts dd{margin-bottom:12px}}
-</style>
-<section class="facts" aria-label="Terse at a glance">
-  <h2>Terse at a glance</h2>
-  <p class="asof">Terse v1.3.3 · verified 2026-08-28</p>
-  <dl>
-    <dt>Token reduction</dt><dd>40-70% on verbose prompts, up to 89% on CLI output</dd>
-    <dt>How</dt><dd>35+ techniques in a 7-stage pipeline that runs on-device in under 5 ms</dd>
-    <dt>Agents monitored</dt><dd>8 — Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider</dd>
-    <dt>Platforms</dt><dd>macOS and Windows, plus Chrome and VS Code extensions</dd>
-    <dt>Privacy</dt><dd>100% on-device. Prompts, source and session data never leave the machine.</dd>
-    <dt>Price</dt><dd>Free tier; Pro $4.99/month after a 30-day free trial; Premium $99/month</dd>
-  </dl>
-</section>
 <footer>
   <div class="footer-inner">
     <div>

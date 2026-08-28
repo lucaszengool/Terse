@@ -107,6 +107,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.terseai.org/context-window-diet</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.terseai.org/cursor-alternatives</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
@@ -198,6 +204,12 @@
   </url>
   <url>
     <loc>https://www.terseai.org/for-github-copilot</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/for-openclaw</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -371,6 +383,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.terseai.org/politeness-tax</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.terseai.org/privacy</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
@@ -408,6 +426,18 @@
   </url>
   <url>
     <loc>https://www.terseai.org/spell-correction</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/subagent-hygiene</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/system-prompt-bloat</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -455,7 +485,19 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.terseai.org/token-optimization-results</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.terseai.org/token-optimization-techniques</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/tokenization-101</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -522,6 +564,12 @@
   </url>
   <url>
     <loc>https://www.terseai.org/why-is-cursor-so-expensive</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/why-optimize-tokens</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

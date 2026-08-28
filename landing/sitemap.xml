@@ -173,6 +173,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.terseai.org/for-codex</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.terseai.org/for-codex-cli</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
@@ -216,6 +222,12 @@
   </url>
   <url>
     <loc>https://www.terseai.org/for-zed</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/git-diff-compression</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -317,6 +329,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.terseai.org/llmlingua-vs-rule-compression</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.terseai.org/luz-wang</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
@@ -354,6 +372,12 @@
   </url>
   <url>
     <loc>https://www.terseai.org/privacy</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/prompt-caching-guide</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -413,6 +437,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.terseai.org/terse-vs-llmlingua</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.terseai.org/the-true-cost-of-vibe-coding</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
@@ -426,6 +456,12 @@
   </url>
   <url>
     <loc>https://www.terseai.org/token-optimization-techniques</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/typos-ai-agent-cost</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

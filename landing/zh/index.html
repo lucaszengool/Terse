@@ -271,106 +271,134 @@
 
   <!-- Article/News JSON-LD for GEO/SEO authority signals -->
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    "name": "Terse AI — Token Optimization Insights",
-    "description": "Expert articles on reducing LLM token costs, AI agent optimization, prompt caching, and model routing for developers.",
-    "url": "https://www.terseai.org/#news",
-    "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "item": {
-          "@type": "Article",
-          "@id": "https://www.terseai.org/prompt-caching-guide",
-          "headline": "Prompt Caching in 2026: How to Cut Claude Code Costs by 73%",
-          "description": "Prompt caching is the single highest-ROI technique for AI agent cost reduction. Cached tokens cost 10x less than standard input tokens.",
-          "datePublished": "2026-05-01",
-          "dateModified": "2026-05-01",
-          "author": {"@type": "Organization", "name": "Terse AI", "url": "https://www.terseai.org"},
-          "publisher": {"@type": "Organization", "name": "Terse AI", "logo": {"@type": "ImageObject", "url": "https://www.terseai.org/apple-touch-icon.png"}},
-          "url": "https://www.terseai.org/prompt-caching-guide",
-          "about": [{"@type": "Thing", "name": "Prompt Caching"}, {"@type": "Thing", "name": "Claude Code"}, {"@type": "Thing", "name": "LLM Cost Optimization"}]
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "item": {
-          "@type": "Article",
-          "@id": "https://www.terseai.org/git-diff-compression",
-          "headline": "Git Diff Compression: Reclaim 70% of Your Agent Context Window",
-          "description": "When Claude Code runs git diff, the output can consume 30-60K tokens per turn. Compressing to changed lines plus context is the fastest win in any agent workflow.",
-          "datePublished": "2026-05-07",
-          "dateModified": "2026-05-07",
-          "author": {"@type": "Organization", "name": "Terse AI", "url": "https://www.terseai.org"},
-          "publisher": {"@type": "Organization", "name": "Terse AI", "logo": {"@type": "ImageObject", "url": "https://www.terseai.org/apple-touch-icon.png"}},
-          "url": "https://www.terseai.org/git-diff-compression"
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
-        "item": {
-          "@type": "Article",
-          "@id": "https://www.terseai.org/duplicate-tool-call-cost",
-          "headline": "The Real Cost of Duplicate Tool Calls in AI Agent Sessions",
-          "description": "Analysis of 500 real Claude Code sessions found 34% of Read tool calls were redundant. Each repeated file read wastes tokens at scale.",
-          "datePublished": "2026-04-22",
-          "dateModified": "2026-04-22",
-          "author": {"@type": "Organization", "name": "Terse AI", "url": "https://www.terseai.org"},
-          "publisher": {"@type": "Organization", "name": "Terse AI", "logo": {"@type": "ImageObject", "url": "https://www.terseai.org/apple-touch-icon.png"}},
-          "url": "https://www.terseai.org/duplicate-tool-call-cost"
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 4,
-        "item": {
-          "@type": "Article",
-          "@id": "https://www.terseai.org/model-routing-guide-2026",
-          "headline": "Model Routing in 2026: When Sonnet Outperforms Opus at 1/5th the Cost",
-          "description": "Not every agent task needs Claude Opus. Single-file edits and short lookups perform identically on Sonnet, saving teams $200+/month.",
-          "datePublished": "2026-04-15",
-          "dateModified": "2026-04-15",
-          "author": {"@type": "Organization", "name": "Terse AI", "url": "https://www.terseai.org"},
-          "publisher": {"@type": "Organization", "name": "Terse AI", "logo": {"@type": "ImageObject", "url": "https://www.terseai.org/apple-touch-icon.png"}},
-          "url": "https://www.terseai.org/model-routing-guide-2026"
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 5,
-        "item": {
-          "@type": "Article",
-          "@id": "https://www.terseai.org/llmlingua-vs-rule-compression",
-          "headline": "LLMLingua vs. Rule-Based Compression: A Developer's Benchmark",
-          "description": "LLMLingua uses perplexity scoring to drop tokens at inference time. Deterministic rule pipelines work at the prompt layer. Tested on 1,000 developer prompts.",
-          "datePublished": "2026-03-20",
-          "dateModified": "2026-03-20",
-          "author": {"@type": "Organization", "name": "Terse AI", "url": "https://www.terseai.org"},
-          "publisher": {"@type": "Organization", "name": "Terse AI", "logo": {"@type": "ImageObject", "url": "https://www.terseai.org/apple-touch-icon.png"}},
-          "url": "https://www.terseai.org/llmlingua-vs-rule-compression"
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 6,
-        "item": {
-          "@type": "Article",
-          "@id": "https://www.terseai.org/typos-ai-agent-cost",
-          "headline": "Why Typos in Agent Prompts Cost More Than You Think",
-          "description": "A single typo in an agent prompt can trigger a clarification turn, adding 200-500 tokens of overhead. Typo retries account for 8-15% of total token spend weekly.",
-          "datePublished": "2026-03-10",
-          "dateModified": "2026-03-10",
-          "author": {"@type": "Organization", "name": "Terse AI", "url": "https://www.terseai.org"},
-          "publisher": {"@type": "Organization", "name": "Terse AI", "logo": {"@type": "ImageObject", "url": "https://www.terseai.org/apple-touch-icon.png"}},
-          "url": "https://www.terseai.org/typos-ai-agent-cost"
-        }
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Terse AI — Token Optimization Insights",
+  "description": "Expert articles on reducing LLM token costs, AI agent optimization, prompt caching, and model routing for developers.",
+  "url": "https://www.terseai.org/#news",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "item": {
+        "@type": "Article",
+        "@id": "https://www.terseai.org/prompt-caching-guide",
+        "headline": "Prompt Caching in 2026: How to Cut Claude Code Costs by 73%",
+        "description": "Prompt caching is the single highest-ROI technique for AI agent cost reduction. Cached tokens cost 10x less than standard input tokens.",
+        "datePublished": "2026-05-01",
+        "dateModified": "2026-05-01",
+        "author": {
+          "@type": "Organization",
+          "name": "Terse AI",
+          "url": "https://www.terseai.org"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse AI",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.terseai.org/apple-touch-icon.png"
+          }
+        },
+        "url": "https://www.terseai.org/prompt-caching-guide",
+        "about": [
+          {
+            "@type": "Thing",
+            "name": "Prompt Caching"
+          },
+          {
+            "@type": "Thing",
+            "name": "Claude Code"
+          },
+          {
+            "@type": "Thing",
+            "name": "LLM Cost Optimization"
+          }
+        ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "item": {
+        "@type": "Article",
+        "@id": "https://www.terseai.org/git-diff-compression",
+        "headline": "Git Diff Compression: Reclaim 70% of Your Agent Context Window",
+        "description": "When Claude Code runs git diff, the output can consume 30-60K tokens per turn. Compressing to changed lines plus context is the fastest win in any agent workflow.",
+        "datePublished": "2026-05-07",
+        "dateModified": "2026-05-07",
+        "author": {
+          "@type": "Organization",
+          "name": "Terse AI",
+          "url": "https://www.terseai.org"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse AI",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.terseai.org/apple-touch-icon.png"
+          }
+        },
+        "url": "https://www.terseai.org/git-diff-compression"
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "item": {
+        "@type": "Article",
+        "@id": "https://www.terseai.org/llmlingua-vs-rule-compression",
+        "headline": "LLMLingua vs. Rule-Based Compression: A Developer's Benchmark",
+        "description": "LLMLingua uses perplexity scoring to drop tokens at inference time. Deterministic rule pipelines work at the prompt layer. Tested on 1,000 developer prompts.",
+        "datePublished": "2026-03-20",
+        "dateModified": "2026-03-20",
+        "author": {
+          "@type": "Organization",
+          "name": "Terse AI",
+          "url": "https://www.terseai.org"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse AI",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.terseai.org/apple-touch-icon.png"
+          }
+        },
+        "url": "https://www.terseai.org/llmlingua-vs-rule-compression"
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "item": {
+        "@type": "Article",
+        "@id": "https://www.terseai.org/typos-ai-agent-cost",
+        "headline": "Why Typos in Agent Prompts Cost More Than You Think",
+        "description": "A single typo in an agent prompt can trigger a clarification turn, adding 200-500 tokens of overhead. Typo retries account for 8-15% of total token spend weekly.",
+        "datePublished": "2026-03-10",
+        "dateModified": "2026-03-10",
+        "author": {
+          "@type": "Organization",
+          "name": "Terse AI",
+          "url": "https://www.terseai.org"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Terse AI",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.terseai.org/apple-touch-icon.png"
+          }
+        },
+        "url": "https://www.terseai.org/typos-ai-agent-cost"
+      }
+    }
+  ],
+  "numberOfItems": 4
+}
   </script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -3111,7 +3139,7 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
         <h3 itemprop="headline">The Real Cost of Duplicate Tool Calls in AI Agent Sessions</h3>
         <p itemprop="description">Analysis of 500 real Claude Code sessions found 34% of Read tool calls were redundant. At $15/MTok for Opus, each repeated file read wastes ~$0.006 — small per turn, painful at scale.</p>
         <div class="news-footer">
-          <a href="/duplicate-tool-call-cost" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+          <a href="/how-to-stop-ai-agents-re-reading-files" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
           <span class="news-read-time">5 min read</span>
         </div>
       </article>
@@ -3124,7 +3152,7 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
         <h3 itemprop="headline">Model Routing in 2026: When Sonnet Outperforms Opus at 1/5th the Cost</h3>
         <p itemprop="description">Not every agent task needs Claude Opus. Single-file edits, test generation, and short lookups perform identically on Sonnet — saving teams $200+/month with zero quality loss on routine tasks.</p>
         <div class="news-footer">
-          <a href="/model-routing-guide-2026" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+          <a href="/ai-token-pricing-comparison" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
           <span class="news-read-time">7 min read</span>
         </div>
       </article>

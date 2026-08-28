@@ -41,6 +41,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.terseai.org/ai-free-tier-math</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.terseai.org/ai-token-pricing-comparison</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
@@ -353,6 +359,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.terseai.org/markdown-token-tax</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.terseai.org/marketplace</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
@@ -462,6 +474,12 @@
   </url>
   <url>
     <loc>https://www.terseai.org/terms-and-conditions</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.terseai.org/terse-mindset</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

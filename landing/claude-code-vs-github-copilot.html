@@ -28,86 +28,123 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "Claude Code vs GitHub Copilot (2026): Autonomy, Pricing and Which to Choose",
-        "description": "A balanced 2026 head-to-head comparison of Claude Code and GitHub Copilot — interface, pricing, inline completions vs agentic autonomy, billing models, and which tool fits which workflow.",
-        "url": "https://www.terseai.org/claude-code-vs-github-copilot",
-        "datePublished": "2026-07-09",
-        "dateModified": "2026-07-09",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "Claude Code vs GitHub Copilot", "item": "https://www.terseai.org/claude-code-vs-github-copilot"}
-          ]
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-          {"@type": "ListItem", "position": 2, "name": "Claude Code vs GitHub Copilot", "item": "https://www.terseai.org/claude-code-vs-github-copilot"}
-        ]
-      },
-      {
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Claude Code vs GitHub Copilot (2026): Autonomy, Pricing and Which to Choose",
+      "description": "A balanced 2026 head-to-head comparison of Claude Code and GitHub Copilot — interface, pricing, inline completions vs agentic autonomy, billing models, and which tool fits which workflow.",
+      "url": "https://www.terseai.org/claude-code-vs-github-copilot",
+      "datePublished": "2026-07-09",
+      "dateModified": "2026-07-09",
+      "author": {
         "@type": "Organization",
         "name": "Terse",
         "url": "https://www.terseai.org",
-        "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
           {
-            "@type": "Question",
-            "name": "Is Claude Code or GitHub Copilot cheaper?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "GitHub Copilot has the cheaper entry: a Free tier and a $10/month Pro plan, with Pro+ at $39, Max at $100, and Business/Enterprise at $19–$39 per user. Claude Code starts at $20/month via a Claude subscription, with higher team seats around $125 per user. For light or completion-heavy use, Copilot wins on price. For heavy autonomous multi-file work, Claude Code can be more efficient per task because it tends to use fewer tokens, so the cheaper option depends on how you work."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "What is the main difference between Claude Code and GitHub Copilot?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "GitHub Copilot is an IDE extension (VS Code, JetBrains, Neovim) built around best-in-class inline code completions and Next Edit suggestions, with an added agent mode and chat. Claude Code is a terminal-first autonomous agent that reads your whole codebase, edits across many files, and runs tests from a single brief. Copilot keeps you in the editor with the AI assisting as you type; Claude Code takes a task and drives it end to end."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which has better inline code completions, Claude Code or GitHub Copilot?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "GitHub Copilot. Inline, as-you-type completions are Copilot's core strength and remain best-in-class in 2026 — and its code completions plus Next Edit suggestions are free and do not consume AI credits. Claude Code is a terminal agent and does not offer inline editor completions at all; its value is autonomous, multi-file work rather than keystroke-level suggestions."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How does GitHub Copilot billing work in 2026?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "As of June 2026, GitHub Copilot moved to usage-based AI Credits. Code completions and Next Edit suggestions stay free and do not draw credits. Agent mode, chat, and code review consume a monthly credit pool based on tokens — input, output, and cached. Paid tiers (Free, $10 Pro, $39 Pro+, $100 Max, plus Business at $19 and Enterprise at $39 per user) each include a credit allowance, and heavy frontier-model use can run through it faster."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which is better for large multi-file refactors, Claude Code or GitHub Copilot?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Claude Code is generally the stronger choice for large, autonomous refactors. Its terminal-first agentic model lets you brief it once and have it reason over the whole codebase, edit across many files, and run tests, and it tends to be very token-efficient on that kind of work. GitHub Copilot's agent mode can handle multi-file tasks too, but Copilot is at its best on inline completions and interactive, IDE-embedded editing rather than long autonomous jobs."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Claude Code vs GitHub Copilot",
+            "item": "https://www.terseai.org/claude-code-vs-github-copilot"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Claude Code vs GitHub Copilot",
+          "item": "https://www.terseai.org/claude-code-vs-github-copilot"
+        }
+      ]
+    },
+    {
+      "@type": "Organization",
+      "name": "Terse",
+      "url": "https://www.terseai.org",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.terseai.org/og-image.png"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Claude Code or GitHub Copilot cheaper?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "GitHub Copilot has the cheaper entry: a Free tier and a $10/month Pro plan, with Pro+ at $39, Max at $100, and Business/Enterprise at $19–$39 per user. Claude Code starts at $20/month via a Claude subscription, with higher team seats around $125 per user. For light or completion-heavy use, Copilot wins on price. For heavy autonomous multi-file work, Claude Code can be more efficient per task because it tends to use fewer tokens, so the cheaper option depends on how you work."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the main difference between Claude Code and GitHub Copilot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "GitHub Copilot is an IDE extension (VS Code, JetBrains, Neovim) built around best-in-class inline code completions and Next Edit suggestions, with an added agent mode and chat. Claude Code is a terminal-first autonomous agent that reads your whole codebase, edits across many files, and runs tests from a single brief. Copilot keeps you in the editor with the AI assisting as you type; Claude Code takes a task and drives it end to end."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which has better inline code completions, Claude Code or GitHub Copilot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "GitHub Copilot. Inline, as-you-type completions are Copilot's core strength and remain best-in-class in 2026 — and its code completions plus Next Edit suggestions are free and do not consume AI credits. Claude Code is a terminal agent and does not offer inline editor completions at all; its value is autonomous, multi-file work rather than keystroke-level suggestions."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does GitHub Copilot billing work in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "As of June 2026, GitHub Copilot moved to usage-based AI Credits. Code completions and Next Edit suggestions stay free and do not draw credits. Agent mode, chat, and code review consume a monthly credit pool based on tokens — input, output, and cached. Paid tiers (Free, $10 Pro, $39 Pro+, $100 Max, plus Business at $19 and Enterprise at $39 per user) each include a credit allowance, and heavy frontier-model use can run through it faster."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is better for large multi-file refactors, Claude Code or GitHub Copilot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Claude Code is generally the stronger choice for large, autonomous refactors. Its terminal-first agentic model lets you brief it once and have it reason over the whole codebase, edit across many files, and run tests, and it tends to be very token-efficient on that kind of work. GitHub Copilot's agent mode can handle multi-file tasks too, but Copilot is at its best on inline completions and interactive, IDE-embedded editing rather than long autonomous jobs."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

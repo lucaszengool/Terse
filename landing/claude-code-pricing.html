@@ -28,81 +28,105 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "Claude Code Pricing 2026: Real API Costs, Per-Month Math and How to Cut Your Bill",
-        "description": "Complete breakdown of Claude Code pricing in 2026 — per-token costs for Sonnet 4.6 and Opus 4, real monthly estimates by usage tier, and how to reduce your bill by 40-70%.",
-        "url": "https://www.terseai.org/claude-code-pricing",
-        "datePublished": "2026-07-08",
-        "dateModified": "2026-07-08",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "Claude Code Pricing 2026", "item": "https://www.terseai.org/claude-code-pricing"}
-          ]
-        }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Claude Code Pricing 2026: Real API Costs, Per-Month Math and How to Cut Your Bill",
+      "description": "Complete breakdown of Claude Code pricing in 2026 — per-token costs for Sonnet 4.6 and Opus 4, real monthly estimates by usage tier, and how to reduce your bill by 40-70%.",
+      "url": "https://www.terseai.org/claude-code-pricing",
+      "datePublished": "2026-07-08",
+      "dateModified": "2026-07-08",
+      "author": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
           {
-            "@type": "Question",
-            "name": "How much does Claude Code cost per month?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Claude Code costs $150–$400 per developer per month for most professional users. Light users (1-2 focused sessions/day) spend $50–$100/month. Daily developers doing multi-file work spend $130–$260/month. Power users running multiple concurrent agent sessions spend $400–$1,200+/month. Anthropic's published average is $6 per developer per active day across enterprise deployments."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "What is the per-token cost for Claude Code in 2026?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Claude Code uses Anthropic's API pricing. Claude Sonnet 4.6 costs $3 per million input tokens and $15 per million output tokens. Claude Opus 4 costs $15 per million input tokens and $75 per million output tokens. Prompt caching reduces input token costs by 90% for cached portions. Most Claude Code sessions use Sonnet 4.6 by default."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How many tokens does a typical Claude Code session use?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "A typical 2-hour Claude Code session generates approximately 150,000–210,000 tokens. This includes CLI output noise (~150,000 tokens), duplicate file reads (~30,000 tokens), and the actual prompts you type (~30,000 tokens). With Terse active, session token usage drops to 23,000–37,000 tokens — an 82–89% reduction."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does Claude Code have a subscription plan?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Anthropic offers Claude Pro ($20/month) and Claude Max ($100–$200/month) subscription plans that include Claude Code. These plans provide usage-limited access, suitable for moderate use. Heavy users or teams typically need API-direct billing, where costs scale with actual token usage. Enterprise plans are also available with volume discounts."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How can I reduce my Claude Code API costs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The most effective ways to reduce Claude Code costs: (1) Use Terse to compress prompts and CLI output by 40-89%, (2) Set up prompt caching for repeated context (saves 90% on cached tokens), (3) Use CLAUDE.md rules to prevent redundant file reads, (4) Route simpler tasks to Haiku 4.5 instead of Sonnet (10x cheaper), (5) Use /compact proactively before context gets bloated, (6) Monitor per-turn costs with Terse's Agent Monitor to catch expensive turns before they accumulate."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What is the difference between Claude Code's token costs and subscription costs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Claude Code subscriptions ($20–$200/month) are usage-limited — you get a set amount of compute. API-direct billing charges per token, which is better for heavy or unpredictable use. At $6–$13/developer/active-day average, professionals on API billing typically spend $150–$400/month. The Max plan at $200/month can break even if you use Claude Code heavily every day."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Claude Code Pricing 2026",
+            "item": "https://www.terseai.org/claude-code-pricing"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How much does Claude Code cost per month?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Claude Code costs $150–$400 per developer per month for most professional users. Light users (1-2 focused sessions/day) spend $50–$100/month. Daily developers doing multi-file work spend $130–$260/month. Power users running multiple concurrent agent sessions spend $400–$1,200+/month. Anthropic's published average is $6 per developer per active day across enterprise deployments."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the per-token cost for Claude Code in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Claude Code uses Anthropic's API pricing. Claude Sonnet 4.6 costs $3 per million input tokens and $15 per million output tokens. Claude Opus 4 costs $15 per million input tokens and $75 per million output tokens. Prompt caching reduces input token costs by 90% for cached portions. Most Claude Code sessions use Sonnet 4.6 by default."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How many tokens does a typical Claude Code session use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A typical 2-hour Claude Code session generates approximately 150,000–210,000 tokens. This includes CLI output noise (~150,000 tokens), duplicate file reads (~30,000 tokens), and the actual prompts you type (~30,000 tokens). With Terse active, session token usage drops to 23,000–37,000 tokens — an 82–89% reduction."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Claude Code have a subscription plan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Anthropic offers Claude Pro ($20/month) and Claude Max ($100–$200/month) subscription plans that include Claude Code. These plans provide usage-limited access, suitable for moderate use. Heavy users or teams typically need API-direct billing, where costs scale with actual token usage. Enterprise plans are also available with volume discounts."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How can I reduce my Claude Code API costs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The most effective ways to reduce Claude Code costs: (1) Use Terse to compress prompts and CLI output by 40-89%, (2) Set up prompt caching for repeated context (saves 90% on cached tokens), (3) Use CLAUDE.md rules to prevent redundant file reads, (4) Route simpler tasks to Haiku 4.5 instead of Sonnet (10x cheaper), (5) Use /compact proactively before context gets bloated, (6) Monitor per-turn costs with Terse's Agent Monitor to catch expensive turns before they accumulate."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between Claude Code's token costs and subscription costs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Claude Code subscriptions ($20–$200/month) are usage-limited — you get a set amount of compute. API-direct billing charges per token, which is better for heavy or unpredictable use. At $6–$13/developer/active-day average, professionals on API billing typically spend $150–$400/month. The Max plan at $200/month can break even if you use Claude Code heavily every day."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

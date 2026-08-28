@@ -28,111 +28,190 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "AI Coding Agent Costs in 2026: The Complete Guide to Cutting Your Bill",
-        "description": "A comprehensive 2026 guide to what AI coding agents cost — Claude Code, Cursor, GitHub Copilot, Codex CLI, Gemini CLI, Aider, Cline, Windsurf, and opencode — what drives token spend, and how to reduce your bill 40–70%.",
-        "url": "https://www.terseai.org/ai-coding-agent-costs",
-        "datePublished": "2026-07-08",
-        "dateModified": "2026-07-08",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "AI Coding Agent Costs", "item": "https://www.terseai.org/ai-coding-agent-costs"}
-          ]
-        }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "AI Coding Agent Costs in 2026: The Complete Guide to Cutting Your Bill",
+      "description": "A comprehensive 2026 guide to what AI coding agents cost — Claude Code, Cursor, GitHub Copilot, Codex CLI, Gemini CLI, Aider, Cline, Windsurf, and opencode — what drives token spend, and how to reduce your bill 40–70%.",
+      "url": "https://www.terseai.org/ai-coding-agent-costs",
+      "datePublished": "2026-07-08",
+      "dateModified": "2026-07-08",
+      "author": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
         "@type": "BreadcrumbList",
         "itemListElement": [
-          {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-          {"@type": "ListItem", "position": 2, "name": "AI Coding Agent Costs", "item": "https://www.terseai.org/ai-coding-agent-costs"}
-        ]
-      },
-      {
-        "@type": "ItemList",
-        "name": "AI Coding Agents Covered — Costs 2026",
-        "itemListElement": [
-          {"@type": "ListItem", "position": 1, "name": "Claude Code", "url": "https://www.terseai.org/for-claude-code"},
-          {"@type": "ListItem", "position": 2, "name": "Cursor", "url": "https://www.terseai.org/for-cursor"},
-          {"@type": "ListItem", "position": 3, "name": "GitHub Copilot", "url": "https://www.terseai.org/for-github-copilot"},
-          {"@type": "ListItem", "position": 4, "name": "Codex CLI (OpenAI)", "url": "https://www.terseai.org/for-codex-cli"},
-          {"@type": "ListItem", "position": 5, "name": "Gemini CLI (Google)", "url": "https://www.terseai.org/for-gemini-cli"},
-          {"@type": "ListItem", "position": 6, "name": "Aider", "url": "https://www.terseai.org/for-aider"},
-          {"@type": "ListItem", "position": 7, "name": "Cline", "url": "https://www.terseai.org/for-cline"},
-          {"@type": "ListItem", "position": 8, "name": "Windsurf", "url": "https://www.terseai.org/for-windsurf"},
-          {"@type": "ListItem", "position": 9, "name": "opencode", "url": "https://www.terseai.org/for-opencode"}
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
           {
-            "@type": "Question",
-            "name": "How much do AI coding agents cost in 2026?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Most AI coding agents start at $10–$20/month for an individual subscription (GitHub Copilot Pro $10, Cursor Pro $20, Claude Pro $20), but real cost depends on token usage. Active professional developers commonly spend $150–$400/month once they run agents heavily, because subscriptions cap usage and API-direct billing scales per token. Open-source clients like Aider, Cline, and opencode are free software — you pay only for the model tokens you consume — and Gemini CLI has a large free tier."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "Why is my AI coding agent bill higher than the subscription price?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Flat subscriptions include a compute or credit allowance, not unlimited use. Once you exceed it — or use premium models — you pay per token or per credit. The biggest hidden drivers are CLI output noise, redundant file reads (the same file loaded 3–5 times per session), verbose prompts, and context that accumulates every turn. These inflate input tokens far beyond what your typed prompts suggest."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What is the cheapest AI coding agent?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The open-source clients are cheapest because the software is free and you only pay for model tokens: Aider, Cline, opencode, and Gemini CLI. Gemini CLI's large free tier makes it effectively free for many individual users. Among paid subscriptions, GitHub Copilot Pro at $10/month is the lowest fixed price, followed by Cursor Pro and Claude Pro at $20/month."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How can I reduce my AI coding agent token costs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The highest-impact tactics are: compress prompts and CLI output before they reach the context window (Terse cuts this 40–70% on-device), eliminate redundant file reads and stale context, enable prompt caching for repeated context (90% cheaper on cached tokens), right-size the model so simple tasks use a cheaper model, and monitor per-turn cost so you catch expensive turns before they accumulate. Terse automates the first four across every agent."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which AI coding agent is the most token-efficient?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Efficiency depends more on how a tool feeds context to the model than on the brand. Repo-map agents like Aider are efficient by design because they send a compact project map instead of whole files, and Claude Code is efficient thanks to prompt caching and proactive compaction. But across every tool the dominant cost drivers are the same — CLI noise, duplicate reads, verbose prompts — which is why on-device compression with Terse cuts usage 40–70% regardless of which agent you run."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does prompt caching actually lower AI coding costs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. Prompt caching reduces the cost of cached input tokens by roughly 90%. In a multi-turn coding session, your system prompt, project context, and codebase overview are re-sent every turn; caching them means you pay full price once and a small fraction thereafter. It is one of the single biggest levers for long agentic sessions, and it stacks with prompt compression."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Do I need a separate tool for each agent to cut costs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "No. Terse is tool-agnostic and works on-device across Claude Code, Cursor, GitHub Copilot, Codex CLI, Gemini CLI, Aider, Cline, Windsurf, and opencode. It compresses prompts and CLI output, flags duplicate tool calls, and tracks per-turn cost the same way regardless of which agent — or mix of agents — you use."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "AI Coding Agent Costs",
+            "item": "https://www.terseai.org/ai-coding-agent-costs"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "AI Coding Agent Costs",
+          "item": "https://www.terseai.org/ai-coding-agent-costs"
+        }
+      ]
+    },
+    {
+      "@type": "ItemList",
+      "name": "AI Coding Agents Covered — Costs 2026",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Claude Code",
+          "url": "https://www.terseai.org/for-claude-code"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Cursor",
+          "url": "https://www.terseai.org/for-cursor"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "GitHub Copilot",
+          "url": "https://www.terseai.org/for-github-copilot"
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "name": "Codex CLI (OpenAI)",
+          "url": "https://www.terseai.org/for-codex-cli"
+        },
+        {
+          "@type": "ListItem",
+          "position": 5,
+          "name": "Gemini CLI (Google)",
+          "url": "https://www.terseai.org/for-gemini-cli"
+        },
+        {
+          "@type": "ListItem",
+          "position": 6,
+          "name": "Aider",
+          "url": "https://www.terseai.org/for-aider"
+        },
+        {
+          "@type": "ListItem",
+          "position": 7,
+          "name": "Cline",
+          "url": "https://www.terseai.org/for-cline"
+        },
+        {
+          "@type": "ListItem",
+          "position": 8,
+          "name": "Windsurf",
+          "url": "https://www.terseai.org/for-windsurf"
+        },
+        {
+          "@type": "ListItem",
+          "position": 9,
+          "name": "opencode",
+          "url": "https://www.terseai.org/for-opencode"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How much do AI coding agents cost in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Most AI coding agents start at $10–$20/month for an individual subscription (GitHub Copilot Pro $10, Cursor Pro $20, Claude Pro $20), but real cost depends on token usage. Active professional developers commonly spend $150–$400/month once they run agents heavily, because subscriptions cap usage and API-direct billing scales per token. Open-source clients like Aider, Cline, and opencode are free software — you pay only for the model tokens you consume — and Gemini CLI has a large free tier."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why is my AI coding agent bill higher than the subscription price?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Flat subscriptions include a compute or credit allowance, not unlimited use. Once you exceed it — or use premium models — you pay per token or per credit. The biggest hidden drivers are CLI output noise, redundant file reads (the same file loaded 3–5 times per session), verbose prompts, and context that accumulates every turn. These inflate input tokens far beyond what your typed prompts suggest."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the cheapest AI coding agent?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The open-source clients are cheapest because the software is free and you only pay for model tokens: Aider, Cline, opencode, and Gemini CLI. Gemini CLI's large free tier makes it effectively free for many individual users. Among paid subscriptions, GitHub Copilot Pro at $10/month is the lowest fixed price, followed by Cursor Pro and Claude Pro at $20/month."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How can I reduce my AI coding agent token costs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The highest-impact tactics are: compress prompts and CLI output before they reach the context window (Terse cuts this 40–70% on-device), eliminate redundant file reads and stale context, enable prompt caching for repeated context (90% cheaper on cached tokens), right-size the model so simple tasks use a cheaper model, and monitor per-turn cost so you catch expensive turns before they accumulate. Terse automates the first four across every agent."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which AI coding agent is the most token-efficient?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Efficiency depends more on how a tool feeds context to the model than on the brand. Repo-map agents like Aider are efficient by design because they send a compact project map instead of whole files, and Claude Code is efficient thanks to prompt caching and proactive compaction. But across every tool the dominant cost drivers are the same — CLI noise, duplicate reads, verbose prompts — which is why on-device compression with Terse cuts usage 40–70% regardless of which agent you run."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does prompt caching actually lower AI coding costs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Prompt caching reduces the cost of cached input tokens by roughly 90%. In a multi-turn coding session, your system prompt, project context, and codebase overview are re-sent every turn; caching them means you pay full price once and a small fraction thereafter. It is one of the single biggest levers for long agentic sessions, and it stacks with prompt compression."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a separate tool for each agent to cut costs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Terse is tool-agnostic and works on-device across Claude Code, Cursor, GitHub Copilot, Codex CLI, Gemini CLI, Aider, Cline, Windsurf, and opencode. It compresses prompts and CLI output, flags duplicate tool calls, and tracks per-turn cost the same way regardless of which agent — or mix of agents — you use."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

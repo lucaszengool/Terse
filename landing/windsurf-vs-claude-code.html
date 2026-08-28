@@ -28,86 +28,123 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "Windsurf vs Claude Code (2026): AI IDE vs Terminal Agent and Which to Pick",
-        "description": "A balanced 2026 head-to-head comparison of Windsurf and Claude Code — the Cascade AI IDE vs the terminal-first agent, pricing, billing models, IDE support, token efficiency, and which fits which workflow.",
-        "url": "https://www.terseai.org/windsurf-vs-claude-code",
-        "datePublished": "2026-07-09",
-        "dateModified": "2026-07-09",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "Windsurf vs Claude Code", "item": "https://www.terseai.org/windsurf-vs-claude-code"}
-          ]
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-          {"@type": "ListItem", "position": 2, "name": "Windsurf vs Claude Code", "item": "https://www.terseai.org/windsurf-vs-claude-code"}
-        ]
-      },
-      {
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Windsurf vs Claude Code (2026): AI IDE vs Terminal Agent and Which to Pick",
+      "description": "A balanced 2026 head-to-head comparison of Windsurf and Claude Code — the Cascade AI IDE vs the terminal-first agent, pricing, billing models, IDE support, token efficiency, and which fits which workflow.",
+      "url": "https://www.terseai.org/windsurf-vs-claude-code",
+      "datePublished": "2026-07-09",
+      "dateModified": "2026-07-09",
+      "author": {
         "@type": "Organization",
         "name": "Terse",
         "url": "https://www.terseai.org",
-        "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
           {
-            "@type": "Question",
-            "name": "Is Windsurf or Claude Code cheaper?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "For individuals, both start at $20/month. Windsurf Pro is $20/mo, with Teams at $40 per seat and a Max tier at $200/mo for heavy users. Claude Code is also $20/mo, with team Premium seats typically around $125 per user per month. Windsurf's quota-based billing caps daily and weekly usage so you never get a surprise overage, while Claude Code uses rolling weekly rate limits. On raw per-task cost, Claude Code can be cheaper because it tends to use fewer tokens on complex multi-file work — so the true answer depends on team size and workload."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "What is the main difference between Windsurf and Claude Code?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Windsurf is a polished AI IDE built around the Cascade agent: it reads files, finds all call sites, edits, and runs tests inside a graphical editor, and it plugs into 40+ IDEs like JetBrains, Vim, Neovim, and Xcode. Claude Code is a terminal-first autonomous agent with no GUI — you brief it in the terminal and it drives multi-file work directly. Windsurf suits developers who want a GUI and broad IDE support; Claude Code suits those who want raw terminal power and token efficiency on large codebases."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is Windsurf's Cascade agent as autonomous as Claude Code?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Both are highly autonomous. Windsurf's Cascade reads files, finds all call sites, makes edits, runs tests, and only pauses to ask when something is genuinely ambiguous — all inside the IDE. Claude Code runs an autonomous agentic loop in the terminal and excels at deep reasoning across large codebases and multi-file refactors. The practical difference is the surface: Cascade keeps you in a graphical editor with visible diffs, while Claude Code drives from the command line and tends to be more token-efficient on heavy work."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which is faster, Windsurf or Claude Code?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "It depends on the model and task. Windsurf's SWE-1.5 model is roughly 13x faster than Sonnet 4.5, so Cascade can feel very snappy on interactive edits and quick iterations. Claude Code with Opus 4.8 is optimized for deep reasoning on large codebases rather than raw speed, and its token efficiency means fewer round trips on complex multi-file work. For fast interactive coding, Windsurf often feels quicker; for heavy autonomous refactors, Claude Code's efficiency can win on total time and cost."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which is better for teams and compliance, Windsurf or Claude Code?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Windsurf is often the easier fit for regulated teams: it offers HIPAA and FedRAMP compliance, quota-based billing that prevents surprise overages, and Teams seats at $40/user/mo. Claude Code's team Premium seats run around $125/user/mo and shine on autonomous, large-codebase work. Many teams run both — Windsurf as the everyday AI IDE with predictable billing and broad IDE support, Claude Code in the terminal for token-efficient large refactors and automated testing."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Windsurf vs Claude Code",
+            "item": "https://www.terseai.org/windsurf-vs-claude-code"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Windsurf vs Claude Code",
+          "item": "https://www.terseai.org/windsurf-vs-claude-code"
+        }
+      ]
+    },
+    {
+      "@type": "Organization",
+      "name": "Terse",
+      "url": "https://www.terseai.org",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.terseai.org/og-image.png"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Windsurf or Claude Code cheaper?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For individuals, both start at $20/month. Windsurf Pro is $20/mo, with Teams at $40 per seat and a Max tier at $200/mo for heavy users. Claude Code is also $20/mo, with team Premium seats typically around $125 per user per month. Windsurf's quota-based billing caps daily and weekly usage so you never get a surprise overage, while Claude Code uses rolling weekly rate limits. On raw per-task cost, Claude Code can be cheaper because it tends to use fewer tokens on complex multi-file work — so the true answer depends on team size and workload."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the main difference between Windsurf and Claude Code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Windsurf is a polished AI IDE built around the Cascade agent: it reads files, finds all call sites, edits, and runs tests inside a graphical editor, and it plugs into 40+ IDEs like JetBrains, Vim, Neovim, and Xcode. Claude Code is a terminal-first autonomous agent with no GUI — you brief it in the terminal and it drives multi-file work directly. Windsurf suits developers who want a GUI and broad IDE support; Claude Code suits those who want raw terminal power and token efficiency on large codebases."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Windsurf's Cascade agent as autonomous as Claude Code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Both are highly autonomous. Windsurf's Cascade reads files, finds all call sites, makes edits, runs tests, and only pauses to ask when something is genuinely ambiguous — all inside the IDE. Claude Code runs an autonomous agentic loop in the terminal and excels at deep reasoning across large codebases and multi-file refactors. The practical difference is the surface: Cascade keeps you in a graphical editor with visible diffs, while Claude Code drives from the command line and tends to be more token-efficient on heavy work."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is faster, Windsurf or Claude Code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It depends on the model and task. Windsurf's SWE-1.5 model is roughly 13x faster than Sonnet 4.5, so Cascade can feel very snappy on interactive edits and quick iterations. Claude Code with Opus 4.8 is optimized for deep reasoning on large codebases rather than raw speed, and its token efficiency means fewer round trips on complex multi-file work. For fast interactive coding, Windsurf often feels quicker; for heavy autonomous refactors, Claude Code's efficiency can win on total time and cost."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is better for teams and compliance, Windsurf or Claude Code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Windsurf is often the easier fit for regulated teams: it offers HIPAA and FedRAMP compliance, quota-based billing that prevents surprise overages, and Teams seats at $40/user/mo. Claude Code's team Premium seats run around $125/user/mo and shine on autonomous, large-codebase work. Many teams run both — Windsurf as the everyday AI IDE with predictable billing and broad IDE support, Claude Code in the terminal for token-efficient large refactors and automated testing."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

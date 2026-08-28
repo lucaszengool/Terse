@@ -28,81 +28,105 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "Cursor Pricing 2026: Plans, Real Token Costs and How to Cut Your Bill",
-        "description": "Complete breakdown of Cursor pricing in 2026 — the five plan tiers, how the credit pool works, real token math for Auto vs frontier models, and how to reduce your bill.",
-        "url": "https://www.terseai.org/cursor-pricing",
-        "datePublished": "2026-07-08",
-        "dateModified": "2026-07-08",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "Cursor Pricing", "item": "https://www.terseai.org/cursor-pricing"}
-          ]
-        }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Cursor Pricing 2026: Plans, Real Token Costs and How to Cut Your Bill",
+      "description": "Complete breakdown of Cursor pricing in 2026 — the five plan tiers, how the credit pool works, real token math for Auto vs frontier models, and how to reduce your bill.",
+      "url": "https://www.terseai.org/cursor-pricing",
+      "datePublished": "2026-07-08",
+      "dateModified": "2026-07-08",
+      "author": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
           {
-            "@type": "Question",
-            "name": "How much does Cursor cost?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Cursor has five tiers in 2026: Hobby is free ($0), Pro is $20/month, Pro+ is $60/month, Ultra is $200/month, and Teams is $40 per user per month. Every paid plan includes a monthly usage credit pool equal to the plan price — so Pro comes with $20 of model credit, Pro+ with $60, and so on. Cursor's own Auto mode is included at no extra cost even after the pool is spent."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "What is the Cursor credit pool and how does it work?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Each paid Cursor plan bundles a monthly credit pool equal to the plan price (Pro = $20). Using Auto mode — where Cursor picks a cost-efficient model — is included at no extra cost and does not draw from the pool. When you manually select a frontier model (Claude, GPT, or Gemini), that usage is billed by tokens and drawn from your credit pool. Once the pool is empty you either switch back to Auto (unlimited) or pay overages at API rates with no markup."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Why did my Cursor bill spike?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Bill spikes almost always come from manually selecting frontier models (like Claude Opus or GPT) on large contexts. Token-based billing means a big repo, long agent runs, and repeated large file reads burn the credit pool fast — a full day of frontier-model agent work can blow through the entire $20 Pro pool and push you into overages. Auto mode usage, by contrast, is included and never causes a spike."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is Cursor worth it compared to paying API rates directly?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "For most developers, yes. Cursor charges frontier-model overages at API rates with no markup, and Auto mode is unlimited and included — so Pro's $20 effectively buys you unlimited Auto plus $20 of frontier-model credit and the editor itself. If you only ever hand-pick Opus-class models on huge contexts all day, direct API billing plus a bare editor could be cheaper, but you lose Tab completion, Cloud Agents, and Cursor's model routing."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I reduce my Cursor costs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The highest-impact steps: (1) Use Auto mode for routine work — it's included and never touches your credit pool. (2) Reserve frontier models for genuinely hard problems. (3) Use Terse to compress the prompts you type into Cursor by 40–70%, cutting input tokens before they draw from the pool. (4) Trim context — avoid dragging whole folders into chat when a file or two will do. (5) Track per-request cost with Terse's Agent Monitor so you catch expensive turns before the pool drains."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What are Cursor's token rates in Auto mode?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Cursor bills by tokens under the hood. Approximate Auto-mode rates are around $0.25 per million cache-read tokens, $1.25 per million input tokens, and $6.00 per million output tokens. Because Auto usage is included in paid plans at no extra cost, these rates mainly matter for understanding overage charges when you manually run frontier models past your credit pool."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Cursor Pricing",
+            "item": "https://www.terseai.org/cursor-pricing"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How much does Cursor cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Cursor has five tiers in 2026: Hobby is free ($0), Pro is $20/month, Pro+ is $60/month, Ultra is $200/month, and Teams is $40 per user per month. Every paid plan includes a monthly usage credit pool equal to the plan price — so Pro comes with $20 of model credit, Pro+ with $60, and so on. Cursor's own Auto mode is included at no extra cost even after the pool is spent."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the Cursor credit pool and how does it work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Each paid Cursor plan bundles a monthly credit pool equal to the plan price (Pro = $20). Using Auto mode — where Cursor picks a cost-efficient model — is included at no extra cost and does not draw from the pool. When you manually select a frontier model (Claude, GPT, or Gemini), that usage is billed by tokens and drawn from your credit pool. Once the pool is empty you either switch back to Auto (unlimited) or pay overages at API rates with no markup."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why did my Cursor bill spike?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Bill spikes almost always come from manually selecting frontier models (like Claude Opus or GPT) on large contexts. Token-based billing means a big repo, long agent runs, and repeated large file reads burn the credit pool fast — a full day of frontier-model agent work can blow through the entire $20 Pro pool and push you into overages. Auto mode usage, by contrast, is included and never causes a spike."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Cursor worth it compared to paying API rates directly?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For most developers, yes. Cursor charges frontier-model overages at API rates with no markup, and Auto mode is unlimited and included — so Pro's $20 effectively buys you unlimited Auto plus $20 of frontier-model credit and the editor itself. If you only ever hand-pick Opus-class models on huge contexts all day, direct API billing plus a bare editor could be cheaper, but you lose Tab completion, Cloud Agents, and Cursor's model routing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I reduce my Cursor costs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The highest-impact steps: (1) Use Auto mode for routine work — it's included and never touches your credit pool. (2) Reserve frontier models for genuinely hard problems. (3) Use Terse to compress the prompts you type into Cursor by 40–70%, cutting input tokens before they draw from the pool. (4) Trim context — avoid dragging whole folders into chat when a file or two will do. (5) Track per-request cost with Terse's Agent Monitor so you catch expensive turns before the pool drains."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are Cursor's token rates in Auto mode?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Cursor bills by tokens under the hood. Approximate Auto-mode rates are around $0.25 per million cache-read tokens, $1.25 per million input tokens, and $6.00 per million output tokens. Because Auto usage is included in paid plans at no extra cost, these rates mainly matter for understanding overage charges when you manually run frontier models past your credit pool."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

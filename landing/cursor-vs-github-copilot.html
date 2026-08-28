@@ -28,86 +28,123 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "Cursor vs GitHub Copilot (2026): Pricing and Which to Pick",
-        "description": "A balanced 2026 head-to-head comparison of Cursor and GitHub Copilot — pricing, interface, inline completions, agent autonomy, billing models, and which tool fits which workflow.",
-        "url": "https://www.terseai.org/cursor-vs-github-copilot",
-        "datePublished": "2026-07-08",
-        "dateModified": "2026-07-08",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "Cursor vs GitHub Copilot", "item": "https://www.terseai.org/cursor-vs-github-copilot"}
-          ]
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-          {"@type": "ListItem", "position": 2, "name": "Cursor vs GitHub Copilot", "item": "https://www.terseai.org/cursor-vs-github-copilot"}
-        ]
-      },
-      {
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Cursor vs GitHub Copilot (2026): Pricing and Which to Pick",
+      "description": "A balanced 2026 head-to-head comparison of Cursor and GitHub Copilot — pricing, interface, inline completions, agent autonomy, billing models, and which tool fits which workflow.",
+      "url": "https://www.terseai.org/cursor-vs-github-copilot",
+      "datePublished": "2026-07-08",
+      "dateModified": "2026-07-08",
+      "author": {
         "@type": "Organization",
         "name": "Terse",
         "url": "https://www.terseai.org",
-        "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
           {
-            "@type": "Question",
-            "name": "Is Cursor or GitHub Copilot cheaper?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "GitHub Copilot is cheaper to start. It has a genuinely free tier, and paid plans begin at $10/month for Pro, with Pro+ at $39 and Max at $100. Cursor has no free tier for serious use and starts at $20/month for Pro. For teams, Copilot Business is $19/user/month and Enterprise is $39/user/month, versus Cursor's team pricing. So Copilot wins on entry cost, especially because its inline code completions and Next Edit stay free and don't consume AI Credits. The real cost picture depends on how much agent and chat usage you drive, since both draw from credit pools on heavy work."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "Which is better for beginners, Cursor or GitHub Copilot?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "GitHub Copilot is usually the gentler on-ramp for beginners. You add it as an extension to VS Code (or JetBrains, Neovim, and others) that you may already know, it has a free tier to learn on, and its inline completions are the most polished in the market. Cursor is also approachable because it's a VS Code fork, but it asks you to adopt a new editor and is oriented toward deeper agentic work that beginners may not need yet. Start with Copilot to learn; graduate to Cursor when you want heavier whole-codebase automation."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which has better inline code completions, Cursor or GitHub Copilot?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Both are excellent, and it's close. GitHub Copilot pioneered best-in-class inline completions and its code completions plus Next Edit stay free and don't draw AI Credits, which makes it hard to beat for flow-state typing. Cursor's Tab feature is also outstanding and is unlimited on the Pro plan, with strong multi-line and multi-cursor prediction that many developers say feels a step ahead on larger edits. In practice, Copilot has the broader, more battle-tested completion engine, while Cursor's Tab shines on bigger, multi-line refactors inside its own editor."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which is better for large projects, Cursor or GitHub Copilot?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Cursor generally has the edge on large, whole-codebase projects. It was purpose-built as an AI IDE with a stronger autonomous Agent and Composer, Cloud Agents that run tasks in the background, deep codebase indexing, MCP support, and .cursorrules for per-repo guidance. GitHub Copilot has closed much of the gap with its own agent mode, code review, and broad IDE reach, but Cursor's multi-file agent is still the more powerful tool for sweeping refactors and complex, cross-module work."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Can I use both Cursor and GitHub Copilot?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. Both live in the VS Code ecosystem — Cursor is a VS Code fork and Copilot is an extension you add to standard VS Code or other IDEs — so many developers keep Copilot in their main VS Code setup for cheap, free-tier completions and switch to Cursor when they want its more powerful agent for a big task. You can hold subscriptions to both, though for most people that's overkill; pick your primary editor and add the other only if a specific workflow demands it."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Cursor vs GitHub Copilot",
+            "item": "https://www.terseai.org/cursor-vs-github-copilot"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Cursor vs GitHub Copilot",
+          "item": "https://www.terseai.org/cursor-vs-github-copilot"
+        }
+      ]
+    },
+    {
+      "@type": "Organization",
+      "name": "Terse",
+      "url": "https://www.terseai.org",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.terseai.org/og-image.png"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Cursor or GitHub Copilot cheaper?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "GitHub Copilot is cheaper to start. It has a genuinely free tier, and paid plans begin at $10/month for Pro, with Pro+ at $39 and Max at $100. Cursor has no free tier for serious use and starts at $20/month for Pro. For teams, Copilot Business is $19/user/month and Enterprise is $39/user/month, versus Cursor's team pricing. So Copilot wins on entry cost, especially because its inline code completions and Next Edit stay free and don't consume AI Credits. The real cost picture depends on how much agent and chat usage you drive, since both draw from credit pools on heavy work."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is better for beginners, Cursor or GitHub Copilot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "GitHub Copilot is usually the gentler on-ramp for beginners. You add it as an extension to VS Code (or JetBrains, Neovim, and others) that you may already know, it has a free tier to learn on, and its inline completions are the most polished in the market. Cursor is also approachable because it's a VS Code fork, but it asks you to adopt a new editor and is oriented toward deeper agentic work that beginners may not need yet. Start with Copilot to learn; graduate to Cursor when you want heavier whole-codebase automation."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which has better inline code completions, Cursor or GitHub Copilot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Both are excellent, and it's close. GitHub Copilot pioneered best-in-class inline completions and its code completions plus Next Edit stay free and don't draw AI Credits, which makes it hard to beat for flow-state typing. Cursor's Tab feature is also outstanding and is unlimited on the Pro plan, with strong multi-line and multi-cursor prediction that many developers say feels a step ahead on larger edits. In practice, Copilot has the broader, more battle-tested completion engine, while Cursor's Tab shines on bigger, multi-line refactors inside its own editor."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is better for large projects, Cursor or GitHub Copilot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Cursor generally has the edge on large, whole-codebase projects. It was purpose-built as an AI IDE with a stronger autonomous Agent and Composer, Cloud Agents that run tasks in the background, deep codebase indexing, MCP support, and .cursorrules for per-repo guidance. GitHub Copilot has closed much of the gap with its own agent mode, code review, and broad IDE reach, but Cursor's multi-file agent is still the more powerful tool for sweeping refactors and complex, cross-module work."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use both Cursor and GitHub Copilot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Both live in the VS Code ecosystem — Cursor is a VS Code fork and Copilot is an extension you add to standard VS Code or other IDEs — so many developers keep Copilot in their main VS Code setup for cheap, free-tier completions and switch to Cursor when they want its more powerful agent for a big task. You can hold subscriptions to both, though for most people that's overkill; pick your primary editor and add the other only if a specific workflow demands it."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

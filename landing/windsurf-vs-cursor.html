@@ -28,86 +28,123 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "Windsurf vs Cursor (2026): Pricing, Autonomy and Which AI IDE to Choose",
-        "description": "A balanced 2026 head-to-head comparison of Windsurf and Cursor — pricing, billing models, agent autonomy, IDE support, models and speed, compliance, and which fits which developer.",
-        "url": "https://www.terseai.org/windsurf-vs-cursor",
-        "datePublished": "2026-07-08",
-        "dateModified": "2026-07-08",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "Windsurf vs Cursor", "item": "https://www.terseai.org/windsurf-vs-cursor"}
-          ]
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-          {"@type": "ListItem", "position": 2, "name": "Windsurf vs Cursor", "item": "https://www.terseai.org/windsurf-vs-cursor"}
-        ]
-      },
-      {
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Windsurf vs Cursor (2026): Pricing, Autonomy and Which AI IDE to Choose",
+      "description": "A balanced 2026 head-to-head comparison of Windsurf and Cursor — pricing, billing models, agent autonomy, IDE support, models and speed, compliance, and which fits which developer.",
+      "url": "https://www.terseai.org/windsurf-vs-cursor",
+      "datePublished": "2026-07-08",
+      "dateModified": "2026-07-08",
+      "author": {
         "@type": "Organization",
         "name": "Terse",
         "url": "https://www.terseai.org",
-        "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
           {
-            "@type": "Question",
-            "name": "Is Windsurf or Cursor cheaper?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "They are priced almost identically. As of 2026 both Windsurf Pro and Cursor Pro are $20/month for individuals, and both team plans are $40 per seat per month. Windsurf adds a Max tier at $200/month for heavy users. The more meaningful difference is the billing model: Cursor bills on real infrastructure costs and can produce overage charges when you lean on frontier models, while Windsurf uses a quota system that caps daily and weekly usage — so you never get a surprise overage bill."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "Which is more autonomous, Windsurf or Cursor?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Windsurf's Cascade agent is the more autonomous of the two. It reads the relevant files on its own, finds all call sites, makes the changes, runs tests, and only stops to ask you on genuinely ambiguous decisions. Cursor's Composer is more granular by design: it plans, edits, and shows you a diff for approval at each step, keeping you in control of every change. Pick Windsurf if you want to delegate; pick Cursor if you want to review each step."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which supports JetBrains, Vim, and Xcode — Windsurf or Cursor?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Windsurf. It ships plugins for 40+ IDEs, including JetBrains (IntelliJ, PyCharm, GoLand), Vim, Neovim, and Xcode, so you can keep your existing editor and add the AI agent to it. Cursor is a standalone VS Code fork only — you use Cursor's own editor rather than adding it to another IDE. If you are committed to JetBrains, Vim, or Xcode, Windsurf is the clear fit."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which has no overage bills, Windsurf or Cursor?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Windsurf. Its quota system caps daily and weekly usage, so heavy use throttles rather than generating extra charges — there are no surprise overage bills. Cursor bills on real infrastructure costs, which means leaning on frontier models can produce overage charges beyond your plan. If predictable, capped spend matters more to you than uncapped headroom, Windsurf's model is safer."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which is better for solo developers, Windsurf or Cursor?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "For solo devs and indie hackers, Windsurf often wins on speed and minimal setup: its autonomous Cascade agent and fast SWE-1.5 model let you brief once and ship, with capped billing that avoids surprise bills. Cursor is better for solo developers who are VS Code power users, want .cursorrules and MCP configurability, and prefer granular, step-by-step control over every change. Both are excellent — the choice comes down to autonomy versus control."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Windsurf vs Cursor",
+            "item": "https://www.terseai.org/windsurf-vs-cursor"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Windsurf vs Cursor",
+          "item": "https://www.terseai.org/windsurf-vs-cursor"
+        }
+      ]
+    },
+    {
+      "@type": "Organization",
+      "name": "Terse",
+      "url": "https://www.terseai.org",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.terseai.org/og-image.png"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Windsurf or Cursor cheaper?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "They are priced almost identically. As of 2026 both Windsurf Pro and Cursor Pro are $20/month for individuals, and both team plans are $40 per seat per month. Windsurf adds a Max tier at $200/month for heavy users. The more meaningful difference is the billing model: Cursor bills on real infrastructure costs and can produce overage charges when you lean on frontier models, while Windsurf uses a quota system that caps daily and weekly usage — so you never get a surprise overage bill."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is more autonomous, Windsurf or Cursor?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Windsurf's Cascade agent is the more autonomous of the two. It reads the relevant files on its own, finds all call sites, makes the changes, runs tests, and only stops to ask you on genuinely ambiguous decisions. Cursor's Composer is more granular by design: it plans, edits, and shows you a diff for approval at each step, keeping you in control of every change. Pick Windsurf if you want to delegate; pick Cursor if you want to review each step."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which supports JetBrains, Vim, and Xcode — Windsurf or Cursor?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Windsurf. It ships plugins for 40+ IDEs, including JetBrains (IntelliJ, PyCharm, GoLand), Vim, Neovim, and Xcode, so you can keep your existing editor and add the AI agent to it. Cursor is a standalone VS Code fork only — you use Cursor's own editor rather than adding it to another IDE. If you are committed to JetBrains, Vim, or Xcode, Windsurf is the clear fit."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which has no overage bills, Windsurf or Cursor?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Windsurf. Its quota system caps daily and weekly usage, so heavy use throttles rather than generating extra charges — there are no surprise overage bills. Cursor bills on real infrastructure costs, which means leaning on frontier models can produce overage charges beyond your plan. If predictable, capped spend matters more to you than uncapped headroom, Windsurf's model is safer."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is better for solo developers, Windsurf or Cursor?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For solo devs and indie hackers, Windsurf often wins on speed and minimal setup: its autonomous Cascade agent and fast SWE-1.5 model let you brief once and ship, with capped billing that avoids surprise bills. Cursor is better for solo developers who are VS Code power users, want .cursorrules and MCP configurability, and prefer granular, step-by-step control over every change. Both are excellent — the choice comes down to autonomy versus control."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

@@ -29,71 +29,94 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BlogPosting",
-        "headline": "Input vs Output Tokens: What's the Difference?",
-        "description": "Input vs output tokens explained: what each means, why output usually costs 3-5x more, and how to manage both to lower your AI and coding-agent bills.",
-        "datePublished": "2026-07-09",
-        "dateModified": "2026-07-09",
-        "author": { "@type": "Organization", "name": "Terse" },
-        "publisher": {
-          "@type": "Organization",
-          "name": "Terse",
-          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "headline": "Input vs Output Tokens: What's the Difference?",
+      "description": "Input vs output tokens explained: what each means, why output usually costs 3-5x more, and how to manage both to lower your AI and coding-agent bills.",
+      "datePublished": "2026-07-09",
+      "dateModified": "2026-07-09",
+      "author": {
+        "@type": "Organization",
+        "name": "Terse",
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
         },
-        "image": "https://www.terseai.org/og-image.png",
-        "mainEntityOfPage": "https://www.terseai.org/input-vs-output-tokens"
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
-          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
-          { "@type": "ListItem", "position": 3, "name": "Input vs Output Tokens", "item": "https://www.terseai.org/input-vs-output-tokens" }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is the difference between input and output tokens?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Input tokens are everything you send to the model — your prompt, the system prompt, attached context, files, and conversation history. Output tokens are what the model generates in response. Providers count and price them separately."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Why do output tokens cost more than input tokens?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Output usually costs 3-5x more than input because generating tokens is more compute-intensive. The model reads the whole input in one parallel pass, but it must produce output autoregressively — one token at a time, each requiring a full forward pass through the network."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Do input or output tokens cost more in a coding agent?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "It depends on the session. Re-sent context inflates input tokens on every turn, so long agent runs are often input-heavy. But large diffs and verbose explanations inflate output tokens, which are priced higher per token. Both need managing."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I reduce output token costs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Ask for concise responses, set a max output token cap, and avoid requesting long restatements or full-file rewrites when a diff will do. Because output is priced 3-5x higher than input, trimming verbose responses has an outsized effect on the bill."
-            }
+      "image": "https://www.terseai.org/og-image.png",
+      "mainEntityOfPage": "https://www.terseai.org/input-vs-output-tokens"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://www.terseai.org/blog"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Input vs Output Tokens",
+          "item": "https://www.terseai.org/input-vs-output-tokens"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the difference between input and output tokens?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Input tokens are everything you send to the model — your prompt, the system prompt, attached context, files, and conversation history. Output tokens are what the model generates in response. Providers count and price them separately."
           }
-        ]
-      }
-    ]
-  }
+        },
+        {
+          "@type": "Question",
+          "name": "Why do output tokens cost more than input tokens?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Output usually costs 3-5x more than input because generating tokens is more compute-intensive. The model reads the whole input in one parallel pass, but it must produce output autoregressively — one token at a time, each requiring a full forward pass through the network."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do input or output tokens cost more in a coding agent?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It depends on the session. Re-sent context inflates input tokens on every turn, so long agent runs are often input-heavy. But large diffs and verbose explanations inflate output tokens, which are priced higher per token. Both need managing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I reduce output token costs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ask for concise responses, set a max output token cap, and avoid requesting long restatements or full-file rewrites when a diff will do. Because output is priced 3-5x higher than input, trimming verbose responses has an outsized effect on the bill."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}

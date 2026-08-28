@@ -30,74 +30,109 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BlogPosting",
-        "headline": "How Many Tokens Do AI Coding Agents Use? (2026)",
-        "description": "AI coding agents commonly burn 50K–500K+ tokens per task, sometimes over 1M. Here's why context — not your prompt — dominates token usage, with typical 2026 ranges.",
-        "datePublished": "2026-07-09",
-        "dateModified": "2026-07-09",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": {
-          "@type": "Organization",
-          "name": "Terse",
-          "url": "https://www.terseai.org",
-          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "headline": "How Many Tokens Do AI Coding Agents Use? (2026)",
+      "description": "AI coding agents commonly burn 50K–500K+ tokens per task, sometimes over 1M. Here's why context — not your prompt — dominates token usage, with typical 2026 ranges.",
+      "datePublished": "2026-07-09",
+      "dateModified": "2026-07-09",
+      "author": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
         },
-        "image": "https://www.terseai.org/og-image.png",
-        "mainEntityOfPage": { "@type": "WebPage", "@id": "https://www.terseai.org/how-many-tokens-ai-coding-agents-use" },
-        "keywords": ["how many tokens do AI coding agents use", "AI agent token usage", "Claude Code token usage", "Aider token usage", "Cursor token usage", "agent token consumption", "LLM context window"]
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
-          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
-          { "@type": "ListItem", "position": 3, "name": "How Many Tokens Do AI Coding Agents Use?", "item": "https://www.terseai.org/how-many-tokens-ai-coding-agents-use" }
-        ]
+      "image": "https://www.terseai.org/og-image.png",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://www.terseai.org/how-many-tokens-ai-coding-agents-use"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "How many tokens does a single coding task use?",
-            "acceptedText": "",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "A single non-trivial coding task run through an agent commonly consumes 50,000 to 500,000+ tokens. Long autonomous sessions that read many files and iterate over multiple turns can exceed 1 million tokens. The exact figure depends on repo size, how many files the agent reads, and how many turns it takes."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Why do AI coding agents use so many tokens?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Agents re-send accumulated context on every turn — the system prompt, tool definitions, files read, command output, and prior messages. Because each new turn includes everything before it, total token usage grows super-linearly with the number of turns rather than linearly with your prompt length."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Do terminal agents use more tokens than IDE agents?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "It varies by task and configuration, but the main difference is how much context each tool auto-includes. Some observations show one agent using roughly 5x more tokens than another on the same task, largely because of differences in repo-mapping, file-inclusion, and history-management defaults."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does my prompt length matter for token cost?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Your typed prompt is usually a small share of total tokens — context dominates. But verbose prompts and redundant file reads still compound across a long session, because everything you add to the conversation gets re-sent on every subsequent turn."
-            }
+      "keywords": [
+        "how many tokens do AI coding agents use",
+        "AI agent token usage",
+        "Claude Code token usage",
+        "Aider token usage",
+        "Cursor token usage",
+        "agent token consumption",
+        "LLM context window"
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://www.terseai.org/blog"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "How Many Tokens Do AI Coding Agents Use?",
+          "item": "https://www.terseai.org/how-many-tokens-ai-coding-agents-use"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How many tokens does a single coding task use?",
+          "acceptedText": "",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A single non-trivial coding task run through an agent commonly consumes 50,000 to 500,000+ tokens. Long autonomous sessions that read many files and iterate over multiple turns can exceed 1 million tokens. The exact figure depends on repo size, how many files the agent reads, and how many turns it takes."
           }
-        ]
-      }
-    ]
-  }
+        },
+        {
+          "@type": "Question",
+          "name": "Why do AI coding agents use so many tokens?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Agents re-send accumulated context on every turn — the system prompt, tool definitions, files read, command output, and prior messages. Because each new turn includes everything before it, total token usage grows super-linearly with the number of turns rather than linearly with your prompt length."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do terminal agents use more tokens than IDE agents?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It varies by task and configuration, but the main difference is how much context each tool auto-includes. Some observations show one agent using roughly 5x more tokens than another on the same task, largely because of differences in repo-mapping, file-inclusion, and history-management defaults."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does my prompt length matter for token cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Your typed prompt is usually a small share of total tokens — context dominates. But verbose prompts and redundant file reads still compound across a long session, because everything you add to the conversation gets re-sent on every subsequent turn."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}

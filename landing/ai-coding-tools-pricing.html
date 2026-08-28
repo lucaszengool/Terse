@@ -28,97 +28,171 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "AI Coding Tools Pricing 2026: Every Major Tool's Plans Compared Side by Side",
-        "description": "A comprehensive 2026 reference of AI coding tool subscription pricing — Claude Code, Cursor, GitHub Copilot, Windsurf, Codex CLI, Gemini CLI, Aider, Cline, opencode and Zed. Cheapest options, free open-source tools, best value for teams, and how to cut token costs.",
-        "url": "https://www.terseai.org/ai-coding-tools-pricing",
-        "datePublished": "2026-07-09",
-        "dateModified": "2026-07-09",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "AI Coding Tools Pricing", "item": "https://www.terseai.org/ai-coding-tools-pricing"}
-          ]
-        }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "AI Coding Tools Pricing 2026: Every Major Tool's Plans Compared Side by Side",
+      "description": "A comprehensive 2026 reference of AI coding tool subscription pricing — Claude Code, Cursor, GitHub Copilot, Windsurf, Codex CLI, Gemini CLI, Aider, Cline, opencode and Zed. Cheapest options, free open-source tools, best value for teams, and how to cut token costs.",
+      "url": "https://www.terseai.org/ai-coding-tools-pricing",
+      "datePublished": "2026-07-09",
+      "dateModified": "2026-07-09",
+      "author": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
           {
-            "@type": "Question",
-            "name": "What is the cheapest AI coding tool in 2026?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The cheapest AI coding tools are the open-source ones — Aider, Cline, opencode and Gemini CLI cost $0 for the tool itself; you only pay your model provider's API tokens (and Gemini CLI has a very large free tier). Among paid closed-source tools, GitHub Copilot Pro at $10/month and Zed Pro at $10/month are the cheapest entry points, followed by Claude Code, Cursor and Windsurf at $20/month."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "Which AI coding tools are free or open-source?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Aider (terminal), Cline (VS Code), opencode (terminal), Gemini CLI (terminal) and Codex CLI (terminal) are open-source. Aider, Cline and opencode are free tools with bring-your-own-model billing — you pay only for the model API tokens you use. Gemini CLI has a very large free usage tier. GitHub Copilot, Cursor, Windsurf and Zed also offer free tiers, though those tools themselves are closed-source."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which AI coding tool is the best value for teams?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "For teams, GitHub Copilot Business at $19/user/month is the cheapest managed option with admin controls and completions included. Cursor Teams and Windsurf Teams both run $40/user/month with pooled or quota-based usage. Zed Business is $30/seat. Claude Code offers Premium seats (~$125/user) for token-heavy teams. The best value depends on how token-heavy your workflow is — quota tools like Windsurf avoid surprise overages, while credit or API models scale with real use."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Subscription or API billing — which is cheaper for AI coding tools?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Flat subscriptions ($10–$20/month) are cheaper and more predictable for light to moderate use — you get a fixed compute allowance. API or usage-based billing (Aider, Cline, opencode, or Copilot/Cursor overages) is better for heavy or spiky use because you pay only for what you consume, with no cap. Heavy daily developers often spend more on API tokens than any flat plan, so a subscription with generous limits usually wins until you exceed it."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I cut token costs on AI coding tools?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Token costs scale with how much text hits the model, so the biggest lever is reducing input. Terse compresses your prompts by 40–70% and CLI output by up to 89% on-device before it reaches any tool, works across Claude Code, Cursor, Copilot, Windsurf and every tool listed here, and catches duplicate file reads. Combine that with prompt caching, CLAUDE.md-style rules, routing simple tasks to cheaper models, and compacting long sessions."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Do AI coding tool subscriptions include unlimited usage?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "No. Most 2026 plans are limited by rolling rate limits, credit pools or quotas. Claude Code uses rolling weekly rate limits; Cursor Pro gives a credit pool with Auto mode; GitHub Copilot moved to usage-based AI Credits in June 2026 (completions stay free); Windsurf uses fixed quotas with no overage. Heavy users hitting limits either upgrade tiers or switch to API-direct billing."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "AI Coding Tools Pricing",
+            "item": "https://www.terseai.org/ai-coding-tools-pricing"
           }
         ]
-      },
-      {
-        "@type": "ItemList",
-        "name": "Major AI Coding Tools 2026",
-        "itemListElement": [
-          {"@type": "ListItem", "position": 1, "name": "Claude Code", "url": "https://www.terseai.org/claude-code-pricing"},
-          {"@type": "ListItem", "position": 2, "name": "Cursor", "url": "https://www.terseai.org/cursor-pricing"},
-          {"@type": "ListItem", "position": 3, "name": "GitHub Copilot", "url": "https://www.terseai.org/github-copilot-pricing"},
-          {"@type": "ListItem", "position": 4, "name": "Windsurf", "url": "https://www.terseai.org/for-windsurf"},
-          {"@type": "ListItem", "position": 5, "name": "Codex CLI", "url": "https://www.terseai.org/for-codex-cli"},
-          {"@type": "ListItem", "position": 6, "name": "Gemini CLI", "url": "https://www.terseai.org/for-gemini-cli"},
-          {"@type": "ListItem", "position": 7, "name": "Aider", "url": "https://www.terseai.org/for-aider"},
-          {"@type": "ListItem", "position": 8, "name": "Cline", "url": "https://www.terseai.org/for-cline"},
-          {"@type": "ListItem", "position": 9, "name": "opencode", "url": "https://www.terseai.org/for-opencode"},
-          {"@type": "ListItem", "position": 10, "name": "Zed", "url": "https://www.terseai.org/for-zed"}
-        ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the cheapest AI coding tool in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The cheapest AI coding tools are the open-source ones — Aider, Cline, opencode and Gemini CLI cost $0 for the tool itself; you only pay your model provider's API tokens (and Gemini CLI has a very large free tier). Among paid closed-source tools, GitHub Copilot Pro at $10/month and Zed Pro at $10/month are the cheapest entry points, followed by Claude Code, Cursor and Windsurf at $20/month."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which AI coding tools are free or open-source?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Aider (terminal), Cline (VS Code), opencode (terminal), Gemini CLI (terminal) and Codex CLI (terminal) are open-source. Aider, Cline and opencode are free tools with bring-your-own-model billing — you pay only for the model API tokens you use. Gemini CLI has a very large free usage tier. GitHub Copilot, Cursor, Windsurf and Zed also offer free tiers, though those tools themselves are closed-source."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which AI coding tool is the best value for teams?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For teams, GitHub Copilot Business at $19/user/month is the cheapest managed option with admin controls and completions included. Cursor Teams and Windsurf Teams both run $40/user/month with pooled or quota-based usage. Zed Business is $30/seat. Claude Code offers Premium seats (~$125/user) for token-heavy teams. The best value depends on how token-heavy your workflow is — quota tools like Windsurf avoid surprise overages, while credit or API models scale with real use."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Subscription or API billing — which is cheaper for AI coding tools?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Flat subscriptions ($10–$20/month) are cheaper and more predictable for light to moderate use — you get a fixed compute allowance. API or usage-based billing (Aider, Cline, opencode, or Copilot/Cursor overages) is better for heavy or spiky use because you pay only for what you consume, with no cap. Heavy daily developers often spend more on API tokens than any flat plan, so a subscription with generous limits usually wins until you exceed it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I cut token costs on AI coding tools?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Token costs scale with how much text hits the model, so the biggest lever is reducing input. Terse compresses your prompts by 40–70% and CLI output by up to 89% on-device before it reaches any tool, works across Claude Code, Cursor, Copilot, Windsurf and every tool listed here, and catches duplicate file reads. Combine that with prompt caching, CLAUDE.md-style rules, routing simple tasks to cheaper models, and compacting long sessions."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do AI coding tool subscriptions include unlimited usage?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Most 2026 plans are limited by rolling rate limits, credit pools or quotas. Claude Code uses rolling weekly rate limits; Cursor Pro gives a credit pool with Auto mode; GitHub Copilot moved to usage-based AI Credits in June 2026 (completions stay free); Windsurf uses fixed quotas with no overage. Heavy users hitting limits either upgrade tiers or switch to API-direct billing."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "ItemList",
+      "name": "Major AI Coding Tools 2026",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Claude Code",
+          "url": "https://www.terseai.org/claude-code-pricing"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Cursor",
+          "url": "https://www.terseai.org/cursor-pricing"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "GitHub Copilot",
+          "url": "https://www.terseai.org/github-copilot-pricing"
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "name": "Windsurf",
+          "url": "https://www.terseai.org/for-windsurf"
+        },
+        {
+          "@type": "ListItem",
+          "position": 5,
+          "name": "Codex CLI",
+          "url": "https://www.terseai.org/for-codex-cli"
+        },
+        {
+          "@type": "ListItem",
+          "position": 6,
+          "name": "Gemini CLI",
+          "url": "https://www.terseai.org/for-gemini-cli"
+        },
+        {
+          "@type": "ListItem",
+          "position": 7,
+          "name": "Aider",
+          "url": "https://www.terseai.org/for-aider"
+        },
+        {
+          "@type": "ListItem",
+          "position": 8,
+          "name": "Cline",
+          "url": "https://www.terseai.org/for-cline"
+        },
+        {
+          "@type": "ListItem",
+          "position": 9,
+          "name": "opencode",
+          "url": "https://www.terseai.org/for-opencode"
+        },
+        {
+          "@type": "ListItem",
+          "position": 10,
+          "name": "Zed",
+          "url": "https://www.terseai.org/for-zed"
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

@@ -29,71 +29,94 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BlogPosting",
-        "headline": "How to Use CLAUDE.md to Save Tokens (2026)",
-        "description": "How to use CLAUDE.md to save tokens: it loads into context every session, so every wasted line is a recurring token tax. Keep it lean, high-signal, and pruned.",
-        "datePublished": "2026-07-09",
-        "dateModified": "2026-07-09",
-        "author": { "@type": "Organization", "name": "Terse" },
-        "publisher": {
-          "@type": "Organization",
-          "name": "Terse",
-          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "headline": "How to Use CLAUDE.md to Save Tokens (2026)",
+      "description": "How to use CLAUDE.md to save tokens: it loads into context every session, so every wasted line is a recurring token tax. Keep it lean, high-signal, and pruned.",
+      "datePublished": "2026-07-09",
+      "dateModified": "2026-07-09",
+      "author": {
+        "@type": "Organization",
+        "name": "Terse",
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
         },
-        "image": "https://www.terseai.org/og-image.png",
-        "mainEntityOfPage": "https://www.terseai.org/how-to-use-claude-md-to-save-tokens"
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
-          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
-          { "@type": "ListItem", "position": 3, "name": "How to Use CLAUDE.md to Save Tokens", "item": "https://www.terseai.org/how-to-use-claude-md-to-save-tokens" }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Does CLAUDE.md use tokens on every session?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. Claude Code loads your CLAUDE.md into context at the start of every session, before you type anything. That means every line — useful or not — is billed on each new session and carried through the conversation. A lean file pays off repeatedly; a bloated one is a recurring token tax."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What should go in CLAUDE.md?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Durable, project-specific facts the model cannot infer: build and test commands, key directory layout, coding conventions, and hard constraints. Keep it to concise bullets. Leave out transient notes, general language basics the model already knows, and large code or config blocks — reference those files instead of pasting them."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I keep CLAUDE.md from bloating over time?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Prune it regularly. Every few weeks, delete stale notes, one-off reminders, and anything the model no longer needs told. Prefer references over pasted content, and split project-specific rules into per-directory CLAUDE.md files so only the relevant context loads for the area you are working in."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Can a bloated CLAUDE.md hurt accuracy, not just cost?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. Beyond the token cost, a long CLAUDE.md worsens context rot — the more low-signal text the model carries, the harder it is for it to attend to what matters. A lean, high-signal file both saves tokens and keeps the model focused on the instructions that actually change its behavior."
-            }
+      "image": "https://www.terseai.org/og-image.png",
+      "mainEntityOfPage": "https://www.terseai.org/how-to-use-claude-md-to-save-tokens"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://www.terseai.org/blog"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "How to Use CLAUDE.md to Save Tokens",
+          "item": "https://www.terseai.org/how-to-use-claude-md-to-save-tokens"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Does CLAUDE.md use tokens on every session?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Claude Code loads your CLAUDE.md into context at the start of every session, before you type anything. That means every line — useful or not — is billed on each new session and carried through the conversation. A lean file pays off repeatedly; a bloated one is a recurring token tax."
           }
-        ]
-      }
-    ]
-  }
+        },
+        {
+          "@type": "Question",
+          "name": "What should go in CLAUDE.md?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Durable, project-specific facts the model cannot infer: build and test commands, key directory layout, coding conventions, and hard constraints. Keep it to concise bullets. Leave out transient notes, general language basics the model already knows, and large code or config blocks — reference those files instead of pasting them."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I keep CLAUDE.md from bloating over time?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Prune it regularly. Every few weeks, delete stale notes, one-off reminders, and anything the model no longer needs told. Prefer references over pasted content, and split project-specific rules into per-directory CLAUDE.md files so only the relevant context loads for the area you are working in."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can a bloated CLAUDE.md hurt accuracy, not just cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Beyond the token cost, a long CLAUDE.md worsens context rot — the more low-signal text the model carries, the harder it is for it to attend to what matters. A lean, high-signal file both saves tokens and keeps the model focused on the instructions that actually change its behavior."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}

@@ -28,86 +28,123 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "Claude Code vs Codex CLI (2026): Benchmarks, Pricing and Token Cost",
-        "description": "A balanced 2026 comparison of the two leading terminal coding agents — Claude Code (Anthropic) and Codex CLI (OpenAI). Benchmarks, pricing models, open-source status, and how to reduce token cost on both.",
-        "url": "https://www.terseai.org/claude-code-vs-codex-cli",
-        "datePublished": "2026-07-08",
-        "dateModified": "2026-07-08",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "Claude Code vs Codex CLI", "item": "https://www.terseai.org/claude-code-vs-codex-cli"}
-          ]
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-          {"@type": "ListItem", "position": 2, "name": "Claude Code vs Codex CLI", "item": "https://www.terseai.org/claude-code-vs-codex-cli"}
-        ]
-      },
-      {
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Claude Code vs Codex CLI (2026): Benchmarks, Pricing and Token Cost",
+      "description": "A balanced 2026 comparison of the two leading terminal coding agents — Claude Code (Anthropic) and Codex CLI (OpenAI). Benchmarks, pricing models, open-source status, and how to reduce token cost on both.",
+      "url": "https://www.terseai.org/claude-code-vs-codex-cli",
+      "datePublished": "2026-07-08",
+      "dateModified": "2026-07-08",
+      "author": {
         "@type": "Organization",
         "name": "Terse",
         "url": "https://www.terseai.org",
-        "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
           {
-            "@type": "Question",
-            "name": "Which is better on benchmarks, Claude Code or Codex CLI?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "On Terminal-Bench 2.1 — the leading benchmark for terminal agents — Codex CLI paired with GPT-5.5 currently ranks #1 at around 83.4%. Claude Code with Claude Opus 4.8 is the top Claude pairing at roughly 78.9%. Codex CLI is slightly ahead on that specific benchmark, but benchmark scores don't tell the whole story: Claude Code is widely praised for reliability and reasoning across large, messy codebases, where careful multi-step refactors matter more than raw pass rates."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "Which is cheaper, Claude Code or Codex CLI?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Neither is universally cheaper — it depends on the model and the task. Claude Code bills through a Claude subscription (Pro at $20/month, higher tiers and Premium seats for teams) or the Anthropic API, with rolling weekly rate limits. Codex CLI bills through a ChatGPT/Codex subscription or OpenAI API usage. GPT-5-class and Claude Opus output pricing differ, and both agents accumulate context (files, diffs, command output) every turn, so real cost tracks how much context you feed the model — not the sticker rate alone."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which is better for large codebases, Claude Code or Codex CLI?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Claude Code is widely favored for deep reasoning on large codebases and careful, multi-file refactors — it tends to hold context and plan across many files reliably. Codex CLI is extremely strong too and leads on raw Terminal-Bench scores, with tight OpenAI ecosystem integration. For sprawling legacy repos where careful reasoning beats raw speed, many developers reach for Claude Code; for top benchmark performance and OpenAI-native workflows, Codex CLI is the pick."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Are Claude Code and Codex CLI open source?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Codex CLI is an open-source command-line tool you can inspect, fork, and self-host, though it calls OpenAI's proprietary models. Claude Code is a proprietary CLI from Anthropic that runs against Claude models. Both are terminal-first agents, and both are friendly to power users who bring their own API key and want to watch token spend closely."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Can Terse track token usage for both Claude Code and Codex CLI?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. Terse is an on-device optimizer that works with both terminal agents. It compresses prompts, flags duplicate file reads, and monitors per-turn token usage regardless of which agent or model you run. Because both Claude Code and Codex CLI accumulate context each turn, Terse's compression and monitoring reduce token cost the same way on either one — and you can track both side by side from a single dashboard."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Claude Code vs Codex CLI",
+            "item": "https://www.terseai.org/claude-code-vs-codex-cli"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Claude Code vs Codex CLI",
+          "item": "https://www.terseai.org/claude-code-vs-codex-cli"
+        }
+      ]
+    },
+    {
+      "@type": "Organization",
+      "name": "Terse",
+      "url": "https://www.terseai.org",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.terseai.org/og-image.png"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Which is better on benchmarks, Claude Code or Codex CLI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "On Terminal-Bench 2.1 — the leading benchmark for terminal agents — Codex CLI paired with GPT-5.5 currently ranks #1 at around 83.4%. Claude Code with Claude Opus 4.8 is the top Claude pairing at roughly 78.9%. Codex CLI is slightly ahead on that specific benchmark, but benchmark scores don't tell the whole story: Claude Code is widely praised for reliability and reasoning across large, messy codebases, where careful multi-step refactors matter more than raw pass rates."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is cheaper, Claude Code or Codex CLI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Neither is universally cheaper — it depends on the model and the task. Claude Code bills through a Claude subscription (Pro at $20/month, higher tiers and Premium seats for teams) or the Anthropic API, with rolling weekly rate limits. Codex CLI bills through a ChatGPT/Codex subscription or OpenAI API usage. GPT-5-class and Claude Opus output pricing differ, and both agents accumulate context (files, diffs, command output) every turn, so real cost tracks how much context you feed the model — not the sticker rate alone."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is better for large codebases, Claude Code or Codex CLI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Claude Code is widely favored for deep reasoning on large codebases and careful, multi-file refactors — it tends to hold context and plan across many files reliably. Codex CLI is extremely strong too and leads on raw Terminal-Bench scores, with tight OpenAI ecosystem integration. For sprawling legacy repos where careful reasoning beats raw speed, many developers reach for Claude Code; for top benchmark performance and OpenAI-native workflows, Codex CLI is the pick."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are Claude Code and Codex CLI open source?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Codex CLI is an open-source command-line tool you can inspect, fork, and self-host, though it calls OpenAI's proprietary models. Claude Code is a proprietary CLI from Anthropic that runs against Claude models. Both are terminal-first agents, and both are friendly to power users who bring their own API key and want to watch token spend closely."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can Terse track token usage for both Claude Code and Codex CLI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Terse is an on-device optimizer that works with both terminal agents. It compresses prompts, flags duplicate file reads, and monitors per-turn token usage regardless of which agent or model you run. Because both Claude Code and Codex CLI accumulate context each turn, Terse's compression and monitoring reduce token cost the same way on either one — and you can track both side by side from a single dashboard."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

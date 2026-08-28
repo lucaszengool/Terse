@@ -28,94 +28,131 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        "headline": "GitHub Copilot Pricing 2026: Plans, AI Credits and How to Cut Your Bill",
-        "description": "Complete breakdown of GitHub Copilot pricing in 2026 — Free, Pro, Pro+, Max, Business and Enterprise plans, the June 2026 usage-based AI Credits change, and how to reduce your bill.",
-        "url": "https://www.terseai.org/github-copilot-pricing",
-        "datePublished": "2026-07-08",
-        "dateModified": "2026-07-08",
-        "author": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org" },
-        "publisher": { "@type": "Organization", "name": "Terse", "url": "https://www.terseai.org", "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" } },
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-            {"@type": "ListItem", "position": 2, "name": "GitHub Copilot Pricing", "item": "https://www.terseai.org/github-copilot-pricing"}
-          ]
-        }
-      },
-      {
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "GitHub Copilot Pricing 2026: Plans, AI Credits and How to Cut Your Bill",
+      "description": "Complete breakdown of GitHub Copilot pricing in 2026 — Free, Pro, Pro+, Max, Business and Enterprise plans, the June 2026 usage-based AI Credits change, and how to reduce your bill.",
+      "url": "https://www.terseai.org/github-copilot-pricing",
+      "datePublished": "2026-07-08",
+      "dateModified": "2026-07-08",
+      "author": {
         "@type": "Organization",
         "name": "Terse",
         "url": "https://www.terseai.org",
-        "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "url": "https://www.terseai.org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
+        },
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "breadcrumb": {
         "@type": "BreadcrumbList",
         "itemListElement": [
-          {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/"},
-          {"@type": "ListItem", "position": 2, "name": "GitHub Copilot Pricing", "item": "https://www.terseai.org/github-copilot-pricing"}
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
           {
-            "@type": "Question",
-            "name": "How much does GitHub Copilot cost in 2026?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "GitHub Copilot has a Free plan at $0, Pro at $10/month, Pro+ at $39/month, and Max at $100/month for individuals. For organizations, Business is $19/user/month (including $19/month in AI Credits) and Enterprise is $39/user/month (including $39/month in AI Credits). Since June 1, 2026, every plan also includes a monthly allotment of usage-based GitHub AI Credits, and heavy agent-mode or chat usage can push costs above the base subscription price."
-            }
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
           },
           {
-            "@type": "Question",
-            "name": "What are GitHub Copilot AI Credits?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "AI Credits are GitHub Copilot's usage-based billing unit introduced on June 1, 2026. Every plan includes a monthly allotment of AI Credits, and paid plans can buy more. Credits are consumed based on token consumption — input, output and cached tokens — charged at each model's listed API rates. Agent mode, chat, and code review draw from your credit pool. When your monthly credits run out, additional usage is billed as overage at API token rates."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Did GitHub Copilot code completions become paid in 2026?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "No. Code completions and Next Edit suggestions do NOT consume AI Credits on any plan, including Free. They remain part of your base subscription. Only agent mode, chat, and code review draw from the monthly AI Credit pool, so ordinary autocomplete-style coding stays predictable in cost."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Why did my GitHub Copilot bill change in 2026?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "On June 1, 2026, GitHub Copilot moved from counting fixed 'premium requests' to usage-based AI Credits billed on actual token consumption at each model's API rates. Heavy agent-mode and chat usage on frontier models now burns your monthly credit pool faster, and once credits run out you pay overage at API token rates. Business and Enterprise plans get 2x promotional AI Credits through August 2026 during the transition."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I reduce GitHub Copilot costs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The most effective ways to reduce Copilot costs under AI Credits billing: (1) Use Terse to compress prompts and context in VS Code before they hit the model, (2) Lean on free code completions and Next Edit suggestions, which don't spend credits, (3) Avoid dumping redundant context into chat and agent mode, (4) Route simple tasks to cheaper models to stretch your credit pool, (5) Track per-request token cost so you can catch expensive agent turns before they drain credits and trigger overage charges."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is GitHub Copilot Pro or Pro+ worth it?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Pro at $10/month is worth it for most individual developers who mainly use code completions and light chat — completions don't spend AI Credits, so day-to-day autocomplete stays free within the plan. Pro+ at $39/month makes sense if you use agent mode and frontier-model chat heavily, since it includes a larger monthly AI Credit allotment and access to more powerful models. If you regularly exhaust your credits and pay overage, stepping up a tier or reducing token usage with Terse is usually cheaper than the overage."
-            }
+            "@type": "ListItem",
+            "position": 2,
+            "name": "GitHub Copilot Pricing",
+            "item": "https://www.terseai.org/github-copilot-pricing"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "@type": "Organization",
+      "name": "Terse",
+      "url": "https://www.terseai.org",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.terseai.org/og-image.png"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "GitHub Copilot Pricing",
+          "item": "https://www.terseai.org/github-copilot-pricing"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How much does GitHub Copilot cost in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "GitHub Copilot has a Free plan at $0, Pro at $10/month, Pro+ at $39/month, and Max at $100/month for individuals. For organizations, Business is $19/user/month (including $19/month in AI Credits) and Enterprise is $39/user/month (including $39/month in AI Credits). Since June 1, 2026, every plan also includes a monthly allotment of usage-based GitHub AI Credits, and heavy agent-mode or chat usage can push costs above the base subscription price."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are GitHub Copilot AI Credits?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AI Credits are GitHub Copilot's usage-based billing unit introduced on June 1, 2026. Every plan includes a monthly allotment of AI Credits, and paid plans can buy more. Credits are consumed based on token consumption — input, output and cached tokens — charged at each model's listed API rates. Agent mode, chat, and code review draw from your credit pool. When your monthly credits run out, additional usage is billed as overage at API token rates."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Did GitHub Copilot code completions become paid in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Code completions and Next Edit suggestions do NOT consume AI Credits on any plan, including Free. They remain part of your base subscription. Only agent mode, chat, and code review draw from the monthly AI Credit pool, so ordinary autocomplete-style coding stays predictable in cost."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why did my GitHub Copilot bill change in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "On June 1, 2026, GitHub Copilot moved from counting fixed 'premium requests' to usage-based AI Credits billed on actual token consumption at each model's API rates. Heavy agent-mode and chat usage on frontier models now burns your monthly credit pool faster, and once credits run out you pay overage at API token rates. Business and Enterprise plans get 2x promotional AI Credits through August 2026 during the transition."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I reduce GitHub Copilot costs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The most effective ways to reduce Copilot costs under AI Credits billing: (1) Use Terse to compress prompts and context in VS Code before they hit the model, (2) Lean on free code completions and Next Edit suggestions, which don't spend credits, (3) Avoid dumping redundant context into chat and agent mode, (4) Route simple tasks to cheaper models to stretch your credit pool, (5) Track per-request token cost so you can catch expensive agent turns before they drain credits and trigger overage charges."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is GitHub Copilot Pro or Pro+ worth it?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Pro at $10/month is worth it for most individual developers who mainly use code completions and light chat — completions don't spend AI Credits, so day-to-day autocomplete stays free within the plan. Pro+ at $39/month makes sense if you use agent mode and frontier-model chat heavily, since it includes a larger monthly AI Credit allotment and access to more powerful models. If you regularly exhaust your credits and pay overage, stepping up a tier or reducing token usage with Terse is usually cheaper than the overage."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <style>

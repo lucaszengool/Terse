@@ -29,71 +29,94 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BlogPosting",
-        "headline": "Why Is Claude Code So Expensive? (2026)",
-        "description": "Why is Claude Code so expensive? The real cost drivers in 2026 — Opus pricing, context that re-sends every turn, long runs, a bloated CLAUDE.md — plus how to cut it.",
-        "datePublished": "2026-07-09",
-        "dateModified": "2026-07-09",
-        "author": { "@type": "Organization", "name": "Terse" },
-        "publisher": {
-          "@type": "Organization",
-          "name": "Terse",
-          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "headline": "Why Is Claude Code So Expensive? (2026)",
+      "description": "Why is Claude Code so expensive? The real cost drivers in 2026 — Opus pricing, context that re-sends every turn, long runs, a bloated CLAUDE.md — plus how to cut it.",
+      "datePublished": "2026-07-09",
+      "dateModified": "2026-07-09",
+      "author": {
+        "@type": "Organization",
+        "name": "Terse",
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
         },
-        "image": "https://www.terseai.org/og-image.png",
-        "mainEntityOfPage": "https://www.terseai.org/why-is-claude-code-so-expensive"
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
-          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
-          { "@type": "ListItem", "position": 3, "name": "Why Is Claude Code So Expensive?", "item": "https://www.terseai.org/why-is-claude-code-so-expensive" }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Why is Claude Code so expensive?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Claude Code costs add up mainly because Opus is a premium model (roughly $15 per million input tokens and $75 per million output) and because context accumulates every turn — files you read, tool and command output, and the full conversation history are re-sent on each request. Long autonomous runs, a bloated CLAUDE.md, and redundant file reads multiply that. On the same task it is often more token-efficient than many IDE agents; the spend comes from how it is used."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is Claude Code billed by subscription or by API?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Both options exist. You can use Claude Code through a Claude subscription — $20/month Pro, or Premium seats around $125/user for teams — with rolling weekly rate limits, or you can bill directly through the Anthropic API and pay per token. Heavy Opus usage tends to hit subscription limits or run up API charges faster than people expect."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What drives up the token count in Claude Code?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Context re-sends dominate. Every turn resends the full conversation history, the contents of files you read, and the output of every tool or shell command, so long sessions balloon. A large CLAUDE.md rides along on every request, and redundant file reads add tokens you pay for more than once."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I reduce Claude Code costs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Use Sonnet for routine work and reserve Opus for genuinely hard problems, run /compact and /clear to shrink conversation history, keep CLAUDE.md lean, scope tasks tightly instead of one sprawling run, and avoid re-reading files you already have in context."
-            }
+      "image": "https://www.terseai.org/og-image.png",
+      "mainEntityOfPage": "https://www.terseai.org/why-is-claude-code-so-expensive"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://www.terseai.org/blog"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Why Is Claude Code So Expensive?",
+          "item": "https://www.terseai.org/why-is-claude-code-so-expensive"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why is Claude Code so expensive?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Claude Code costs add up mainly because Opus is a premium model (roughly $15 per million input tokens and $75 per million output) and because context accumulates every turn — files you read, tool and command output, and the full conversation history are re-sent on each request. Long autonomous runs, a bloated CLAUDE.md, and redundant file reads multiply that. On the same task it is often more token-efficient than many IDE agents; the spend comes from how it is used."
           }
-        ]
-      }
-    ]
-  }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Claude Code billed by subscription or by API?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Both options exist. You can use Claude Code through a Claude subscription — $20/month Pro, or Premium seats around $125/user for teams — with rolling weekly rate limits, or you can bill directly through the Anthropic API and pay per token. Heavy Opus usage tends to hit subscription limits or run up API charges faster than people expect."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What drives up the token count in Claude Code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Context re-sends dominate. Every turn resends the full conversation history, the contents of files you read, and the output of every tool or shell command, so long sessions balloon. A large CLAUDE.md rides along on every request, and redundant file reads add tokens you pay for more than once."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I reduce Claude Code costs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use Sonnet for routine work and reserve Opus for genuinely hard problems, run /compact and /clear to shrink conversation history, keep CLAUDE.md lean, scope tasks tightly instead of one sprawling run, and avoid re-reading files you already have in context."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}

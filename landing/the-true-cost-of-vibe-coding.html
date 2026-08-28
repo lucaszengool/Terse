@@ -29,71 +29,94 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BlogPosting",
-        "headline": "The True Cost of Vibe Coding (2026)",
-        "description": "The true cost of vibe coding goes far past the subscription — ballooning token spend, review time, tech debt, and skill atrophy. Here is how to do it cost-effectively.",
-        "datePublished": "2026-07-09",
-        "dateModified": "2026-07-09",
-        "author": { "@type": "Organization", "name": "Terse" },
-        "publisher": {
-          "@type": "Organization",
-          "name": "Terse",
-          "logo": { "@type": "ImageObject", "url": "https://www.terseai.org/og-image.png" }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "headline": "The True Cost of Vibe Coding (2026)",
+      "description": "The true cost of vibe coding goes far past the subscription — ballooning token spend, review time, tech debt, and skill atrophy. Here is how to do it cost-effectively.",
+      "datePublished": "2026-07-09",
+      "dateModified": "2026-07-09",
+      "author": {
+        "@type": "Organization",
+        "name": "Terse",
+        "@id": "https://www.terseai.org/#organization"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Terse",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.terseai.org/og-image.png"
         },
-        "image": "https://www.terseai.org/og-image.png",
-        "mainEntityOfPage": "https://www.terseai.org/the-true-cost-of-vibe-coding"
+        "@id": "https://www.terseai.org/#organization"
       },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.terseai.org/" },
-          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.terseai.org/blog" },
-          { "@type": "ListItem", "position": 3, "name": "The True Cost of Vibe Coding", "item": "https://www.terseai.org/the-true-cost-of-vibe-coding" }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is vibe coding?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Vibe coding means leaning on an AI agent to generate most of the code from high-level prompts and accepting the output without deep review. You describe what you want, the model writes it, and you keep moving. It is fast and productive, but the code is largely written by a system you did not audit line by line."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How much does vibe coding actually cost?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The subscription is the floor, not the ceiling. Long autonomous runs re-send growing context every turn, so token or API spend can climb into the hundreds per month. On top of that sit hidden costs: time reviewing and debugging code you did not write, tech debt from unreviewed output, and skill atrophy over time."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is vibe coding bad?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "No. Used deliberately it is a genuine productivity multiplier. The problem is doing it carelessly — unscoped prompts, unreviewed diffs, frontier models on trivial tasks, and no visibility into spend. Vibe coding cost-effectively means scoping prompts, reviewing diffs, keeping context tight, and tracking what each turn costs."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I reduce the cost of vibe coding?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Scope prompts narrowly, always review the diff before accepting, use efficient models for routine work and reserve frontier models for hard reasoning, keep context tight so you stop re-paying for irrelevant files, and track per-turn spend so a spike is something you notice early rather than on the invoice."
-            }
+      "image": "https://www.terseai.org/og-image.png",
+      "mainEntityOfPage": "https://www.terseai.org/the-true-cost-of-vibe-coding"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.terseai.org/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://www.terseai.org/blog"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "The True Cost of Vibe Coding",
+          "item": "https://www.terseai.org/the-true-cost-of-vibe-coding"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is vibe coding?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Vibe coding means leaning on an AI agent to generate most of the code from high-level prompts and accepting the output without deep review. You describe what you want, the model writes it, and you keep moving. It is fast and productive, but the code is largely written by a system you did not audit line by line."
           }
-        ]
-      }
-    ]
-  }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does vibe coding actually cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The subscription is the floor, not the ceiling. Long autonomous runs re-send growing context every turn, so token or API spend can climb into the hundreds per month. On top of that sit hidden costs: time reviewing and debugging code you did not write, tech debt from unreviewed output, and skill atrophy over time."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is vibe coding bad?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Used deliberately it is a genuine productivity multiplier. The problem is doing it carelessly — unscoped prompts, unreviewed diffs, frontier models on trivial tasks, and no visibility into spend. Vibe coding cost-effectively means scoping prompts, reviewing diffs, keeping context tight, and tracking what each turn costs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I reduce the cost of vibe coding?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Scope prompts narrowly, always review the diff before accepting, use efficient models for routine work and reserve frontier models for hard reasoning, keep context tight so you stop re-paying for irrelevant files, and track per-turn spend so a spike is something you notice early rather than on the invoice."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}

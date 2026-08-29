@@ -6447,8 +6447,19 @@ fn set_wallpaper_overlay(on: bool, app: AppHandle) -> Result<(), String> {
     // used here has to be that answer too - not the raw request.
     let level_on = overlay_allowed(&cfg);
     let _ = set_wallpaper_config(cfg, app.clone());
+    // No window is a normal state now, not a failure: with the wallpaper off
+    // there is nothing built to level. The preference is already persisted by
+    // set_wallpaper_config above, and show_wallpaper_window re-reads
+    // overlay_allowed when the wallpaper is next turned on - so the switch is
+    // honoured, just later.
+    //
+    // This branch could not be reached while the window was built for everyone.
+    // Making the window lazy made it live, and returning Err here would surface
+    // a failure for a toggle that in fact worked.
+    // (set_wallpaper_config above already emitted wallpaper-overlay for this
+    // same answer, so there is nothing left to tell the frontend here.)
     let Some(win) = app.get_webview_window("wallpaper") else {
-        return Err("wallpaper window not initialized".into());
+        return Ok(());
     };
     // Both paths touch the shell's window tree, so both must run on the main
     // thread - the lesson from three separate off-thread window bugs this week.

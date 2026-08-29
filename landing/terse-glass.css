@@ -147,12 +147,16 @@ section.section, section[id]{
    seen whole, and nothing here may dim it. A scrim was the first attempt and it
    was wrong: it darkened the plate exactly where the plate is the point. The
    type carries its own contrast instead, which changes nothing behind it. */
-.hero h1, .hero .sub, .hero .label{
+.hero h1, .hero .sub, .hero .label, .hero .trust-cell-t{
   text-shadow:
-    0 1px 2px hsla(250,40%,4%,0.55),
-    0 2px 14px hsla(250,40%,4%,0.45),
-    0 0 42px hsla(250,40%,4%,0.30);
+    0 1px 2px hsla(250,45%,3%,0.70),
+    0 2px 10px hsla(250,45%,3%,0.60),
+    0 4px 30px hsla(250,45%,3%,0.50),
+    0 0 60px hsla(250,45%,3%,0.35);
 }
+/* The subtitle is the one that struggles — it is 19px at 0.72 alpha, and a
+   noon-bright meadow sits right behind it. Nothing here touches the plate. */
+.hero .sub{ color:hsla(0,0%,100%,0.92); }
 
 /* ── Nothing may push the document wider than the phone ───────────────────
    37% of visits are mobile and no page had been checked at 375px. Five of the

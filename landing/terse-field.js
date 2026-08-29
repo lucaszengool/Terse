@@ -918,6 +918,11 @@ vec3 procColor(vec2 p, float t){
     var img = new Image();
     img.onload = function () {
       gl.bindTexture(gl.TEXTURE_2D, self.tex);
+      /* WebGL's texture origin is bottom-left, an image's is top-left, so an
+         unflipped upload samples upside down. It went unnoticed while the beds
+         were a galaxy and an abstract night street — neither has an obvious up.
+         A meadow under a sky does: the grass was at the top. */
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
       self.img = img;
       self.coverAspect = img.width / img.height;
@@ -1140,6 +1145,7 @@ vec3 procColor(vec2 p, float t){
     if (this.vid && this.vid.readyState >= 2 && !this.vid.paused) {
       this._vtick = (this._vtick || 0) + 1;
       if (this._vtick % 2 === 0) {
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, this.vid); }
         catch (e) { this.vid = null; }
       }

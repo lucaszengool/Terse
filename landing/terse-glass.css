@@ -25,10 +25,16 @@
      opacity — 0.10-0.30 — instead of the near-opaque values a bright bed
      forced. Sections stay the most solid because long-form copy sits directly
      on them; cards go lighter because they carry a rim and a blur. */
-  --bg0:hsla(250,28%,7%,0.34);
-  --bg1:hsla(250,28%,10%,0.26);
-  --bg2:hsla(250,24%,13%,0.20);
-  --bg3:hsla(250,22%,16%,0.26);
+  /* Near-zero fills. Readability no longer comes from stacking opacity on top
+     of the wallpaper — it comes from brightness() INSIDE backdrop-filter, which
+     darkens what sits behind the glass instead of hiding it. The wallpaper and
+     the particles stay visible through every surface; they are simply dimmer
+     and softer behind text than beside it, which is what a pane of glass
+     actually does. */
+  --bg0:hsla(250,28%,7%,0.10);
+  --bg1:hsla(250,28%,10%,0.07);
+  --bg2:hsla(250,24%,13%,0.06);
+  --bg3:hsla(250,22%,16%,0.09);
 
   /* the app's crystal rim, exposed so anything can opt in */
   --glass-rim:
@@ -39,7 +45,7 @@
   /* brightness() inside backdrop-filter is what buys legibility — the app
      does the same thing (src/renderer/island.css:1105). Darken what is
      BEHIND the pane instead of stacking more opacity on top of it. */
-  --glass-blur:blur(16px) saturate(1.5) brightness(0.55);
+  --glass-blur:blur(22px) saturate(1.6) brightness(0.42);
 }
 
 /* The desktop the particles live on. When WebGL is available terse-field.js
@@ -107,7 +113,17 @@ body{background:transparent}
 .faq-section,
 .trust-strip{
   background-color:var(--bg1);
+  -webkit-backdrop-filter:blur(18px) saturate(1.5) brightness(0.46);
+  backdrop-filter:blur(18px) saturate(1.5) brightness(0.46);
   box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.055);
+}
+
+/* The inline-styled bands. index.html sets background:var(--bg0|bg1) directly
+   on ~28 sections, so the token change alone makes them transparent — but with
+   no filter they would have nothing to read against. */
+section.section, section[id]{
+  -webkit-backdrop-filter:blur(18px) saturate(1.5) brightness(0.46);
+  backdrop-filter:blur(18px) saturate(1.5) brightness(0.46);
 }
 
 
@@ -126,6 +142,18 @@ body{background:transparent}
 @media (prefers-reduced-motion:reduce){
   #terse-sky-name{transition:none}
 }
+
+/* The hero has no glass under it — that is where the wallpaper is meant to be
+   seen whole, and nothing here may dim it. A scrim was the first attempt and it
+   was wrong: it darkened the plate exactly where the plate is the point. The
+   type carries its own contrast instead, which changes nothing behind it. */
+.hero h1, .hero .sub, .hero .label{
+  text-shadow:
+    0 1px 2px hsla(250,40%,4%,0.55),
+    0 2px 14px hsla(250,40%,4%,0.45),
+    0 0 42px hsla(250,40%,4%,0.30);
+}
+
 /* ── Nothing may push the document wider than the phone ───────────────────
    37% of visits are mobile and no page had been checked at 375px. Five of the
    ones sampled scrolled sideways: /for-windows by 162px, /what-is-context-rot
@@ -210,8 +238,12 @@ section:not([class]):not(#pals):not(#newsletter)::before{
   inset:-26px -30px;
   z-index:-1;
   border-radius:20px;
-  background:hsla(250,28%,8%,0.72);
-  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.055);
+  /* was a 0.72 fill, which hid the wallpaper behind every article. Now it is
+     glass: the plate still shows through, blurred and dimmed. */
+  background:hsla(250,28%,8%,0.14);
+  -webkit-backdrop-filter:blur(20px) saturate(1.45) brightness(0.40);
+  backdrop-filter:blur(20px) saturate(1.45) brightness(0.40);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.07);
 }
 
 /* Nav and footer are the last two opaque slabs on the page — make them glass
@@ -235,8 +267,8 @@ nav.scrolled{
 .logo-icon{background:hsla(158,64%,58%,0.12);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .nav-cta{background:hsla(0,0%,100%,0.92)}
 footer{
-  -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(0.62);
-  backdrop-filter:blur(14px) saturate(1.4) brightness(0.62);
+  -webkit-backdrop-filter:blur(20px) saturate(1.5) brightness(0.42);
+  backdrop-filter:blur(20px) saturate(1.5) brightness(0.42);
   box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.08);
 }
 /* The RTK comparison table and the technique chips carried their own ground. */
@@ -286,10 +318,10 @@ pre, code, .term-line{background-color:transparent}
    static frame (see terse-field.js) rather than animating. */
 @media (max-width:760px){
   :root{
-    --bg0:hsla(250,28%,7%,0.74);
-    --bg1:hsla(250,28%,10%,0.66);
-    --bg2:hsla(250,24%,13%,0.62);
-    --bg3:hsla(250,22%,16%,0.66);
+    --bg0:hsla(250,28%,7%,0.46);
+    --bg1:hsla(250,28%,10%,0.40);
+    --bg2:hsla(250,24%,13%,0.38);
+    --bg3:hsla(250,22%,16%,0.42);
   }
   .win,.demo-card,.faq-item,.news-card,.tool-card,.testi-card,.price-card,
   .usage-callout{

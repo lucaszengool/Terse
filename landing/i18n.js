@@ -2,6 +2,19 @@
   const T = {};
 
   T.en = {
+  // Live wallpaper section
+  'wp.label': 'Live wallpaper',
+  'wp.heading': 'Your agents, written on<br><span class="gradient-text">your own desktop.</span>',
+  'wp.subtitle': 'Terse replaces your wallpaper with a particle field that reads your real desktop picture and keeps it. Every tool call your agents make, every token they spend, condenses out of that field as text, holds, and dissolves back. Nothing loops — the motion is the data.',
+  'wp.livenote': 'The background of this page is the same engine, running now. Click anywhere to change the wallpaper under it.',
+  'wp.k1': 'Four lines at once',
+  'wp.v1': 'One slot is reserved for the agent log so the numbers can never crowd it out; three more carry tokens, cache rate, burn and cost. They arrive staggered, never in unison.',
+  'wp.k2': 'Driven by real spend',
+  'wp.v2': 'A token delta pushes a ripple out from where the text landed. A large one throws a meteor. When your agents go quiet the field settles — it never fakes activity.',
+  'wp.k3': 'It keeps your picture',
+  'wp.v3': 'The particles take their colour from the desktop picture you already chose, so the wallpaper still looks like yours — dissolved into light rather than replaced.',
+  'wp.k4': 'Eight Pro styles',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen. Each changes the palette, the choreography, and how the text gathers and breaks apart.',
     'guide.back': 'Back to Terse',
     'guide.butler': 'Agent Butler',
     'guide.hint': 'Click any item on the left',
@@ -380,6 +393,19 @@
   };
 
   T['zh-Hans'] = {
+  // Live wallpaper section
+  'wp.label': '动态壁纸',
+  'wp.heading': '你的智能体，<br><span class="gradient-text">写在你自己的桌面上。</span>',
+  'wp.subtitle': 'Terse 把桌面换成一层粒子场——它读取你原本的桌面图片并保留下来。智能体的每一次工具调用、每一笔 token 消耗，都会从这片粒子里聚成文字，停住，再散回去。没有任何循环动画，动的就是数据本身。',
+  'wp.livenote': '这个页面的背景就是同一套引擎，正在运行。点击任意位置可以换掉它下面的壁纸。',
+  'wp.k1': '四条同时在跑',
+  'wp.v1': '其中一条槽位专门留给智能体日志，数字再多也挤不掉它；另外三条承载 token、缓存命中率、消耗速率和成本。它们错峰出现，不会齐刷刷一起来。',
+  'wp.k2': '由真实开销驱动',
+  'wp.v2': '一笔 token 增量会从文字落位的地方推出一圈涟漪，大的还会甩出一颗流星。智能体安静下来，粒子场也跟着沉下去——它不会假装有活动。',
+  'wp.k3': '保留你的图',
+  'wp.v3': '粒子的颜色取自你本来就选好的桌面图片，所以壁纸看起来仍然是你的那张——只是被打散成了光，而不是被替换掉。',
+  'wp.k4': '八种 Pro 风格',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen。每一种都会换掉配色、编舞，以及文字聚拢和碎裂的手法。',
     // Nav
     'nav.howItWorks': '工作原理',
     'nav.pipeline': '处理流程',
@@ -751,6 +777,19 @@
   };
 
   T['zh-Hant'] = {
+  // Live wallpaper section
+  'wp.label': '動態桌布',
+  'wp.heading': '你的智慧代理，<br><span class="gradient-text">寫在你自己的桌面上。</span>',
+  'wp.subtitle': 'Terse 把桌面換成一層粒子場——它讀取你原本的桌布並保留下來。代理的每一次工具呼叫、每一筆 token 消耗，都會從這片粒子裡聚成文字，停住，再散回去。沒有任何循環動畫，動的就是資料本身。',
+  'wp.livenote': '這個頁面的背景就是同一套引擎，正在執行。點擊任意位置可以換掉它下面的桌布。',
+  'wp.k1': '四行同時在跑',
+  'wp.v1': '其中一個欄位專門留給代理日誌，數字再多也擠不掉它；另外三個承載 token、快取命中率、消耗速率與成本。它們錯開出現，不會一起湧上來。',
+  'wp.k2': '由真實開銷驅動',
+  'wp.v2': '一筆 token 增量會從文字落位的地方推出一圈漣漪，大的還會甩出一顆流星。代理安靜下來，粒子場也跟著沉下去——它不會假裝有活動。',
+  'wp.k3': '保留你的圖',
+  'wp.v3': '粒子的顏色取自你本來就選好的桌布，所以桌布看起來仍然是你的那張——只是被打散成了光，而不是被取代掉。',
+  'wp.k4': '八種 Pro 風格',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen。每一種都會換掉配色、編舞，以及文字聚攏和碎裂的手法。',
     // Nav
     'nav.howItWorks': '運作原理',
     'nav.pipeline': '處理流程',
@@ -1122,6 +1161,19 @@
   };
 
   T.ja = {
+  // Live wallpaper section
+  'wp.label': 'ライブ壁紙',
+  'wp.heading': 'エージェントの動きが、<br><span class="gradient-text">あなたのデスクトップに書かれる。</span>',
+  'wp.subtitle': 'Terse は壁紙を粒子のフィールドに置き換えます。あなたが選んだデスクトップ画像を読み取り、そのまま保ちます。エージェントのツール呼び出しも、消費したトークンも、その粒子から文字として立ち上がり、留まり、また散っていきます。ループ再生ではありません。動きそのものがデータです。',
+  'wp.livenote': 'このページの背景が、まさにその同じエンジンです。どこかをクリックすると下の壁紙が変わります。',
+  'wp.k1': '同時に4行',
+  'wp.v1': '1つの枠はエージェントのログ専用です。数値に押し出されることはありません。残る3つがトークン、キャッシュ率、消費速度、コストを運びます。出現は時間をずらし、一斉には現れません。',
+  'wp.k2': '実際の消費が動かす',
+  'wp.v2': 'トークンの増分が、文字の着地点から波紋を押し出します。大きければ流星も飛びます。エージェントが静かになればフィールドも静まります。活動を偽ることはありません。',
+  'wp.k3': 'あなたの画像を残す',
+  'wp.v3': '粒子の色は、あなたが元々選んだデスクトップ画像から取られます。だから壁紙は今もあなたのものに見えます。置き換えではなく、光に分解されただけです。',
+  'wp.k4': '8つの Pro スタイル',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen。配色も、群れの振る舞いも、文字の集まり方と崩れ方も、それぞれ変わります。',
     'guide.back': 'Terse に戻る',
     'guide.hint': '左の項目をクリック',
     'guide.eyebrow': 'インタラクティブガイド',
@@ -1476,6 +1528,19 @@
   };
 
   T.ko = {
+  // Live wallpaper section
+  'wp.label': '라이브 배경화면',
+  'wp.heading': '에이전트의 작업이<br><span class="gradient-text">당신의 바탕화면에 새겨집니다.</span>',
+  'wp.subtitle': 'Terse는 배경화면을 입자 필드로 바꿉니다. 당신이 쓰던 바탕화면 이미지를 읽어 그대로 유지합니다. 에이전트의 도구 호출과 소비한 토큰이 그 입자에서 글자로 뭉쳤다가, 잠시 머물고, 다시 흩어집니다. 반복 재생이 아니라 움직임 자체가 데이터입니다.',
+  'wp.livenote': '이 페이지의 배경이 바로 그 엔진입니다. 아무 곳이나 클릭하면 아래 배경화면이 바뀝니다.',
+  'wp.k1': '동시에 네 줄',
+  'wp.v1': '한 자리는 에이전트 로그 전용이라 숫자에 밀리지 않습니다. 나머지 셋이 토큰, 캐시 적중률, 소모 속도, 비용을 나릅니다. 시차를 두고 나타나며 한꺼번에 몰리지 않습니다.',
+  'wp.k2': '실제 지출이 움직입니다',
+  'wp.v2': '토큰 증가분이 글자가 내려앉은 자리에서 파문을 밀어냅니다. 크면 유성이 지나갑니다. 에이전트가 조용해지면 필드도 가라앉습니다. 활동을 꾸며내지 않습니다.',
+  'wp.k3': '당신의 이미지를 지킵니다',
+  'wp.v3': '입자의 색은 당신이 이미 고른 바탕화면에서 가져옵니다. 그래서 배경화면은 여전히 당신의 것으로 보입니다. 교체가 아니라 빛으로 흩어진 것뿐입니다.',
+  'wp.k4': '여덟 가지 Pro 스타일',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen. 각각 색조와 움직임, 글자가 모이고 부서지는 방식이 달라집니다.',
     'guide.back': 'Terse로 돌아가기',
     'guide.hint': '왼쪽 항목을 클릭하세요',
     'guide.eyebrow': '인터랙티브 가이드',
@@ -1830,6 +1895,19 @@
   };
 
   T.es = {
+  // Live wallpaper section
+  'wp.label': 'Fondo de pantalla en vivo',
+  'wp.heading': 'Tus agentes, escritos en<br><span class="gradient-text">tu propio escritorio.</span>',
+  'wp.subtitle': 'Terse sustituye tu fondo por un campo de partículas que lee tu imagen de escritorio real y la conserva. Cada llamada a herramientas de tus agentes, cada token que gastan, se condensa en ese campo como texto, se detiene y vuelve a disolverse. Nada se repite en bucle: el movimiento son los datos.',
+  'wp.livenote': 'El fondo de esta página es el mismo motor, funcionando ahora. Haz clic en cualquier sitio para cambiar el fondo que hay debajo.',
+  'wp.k1': 'Cuatro líneas a la vez',
+  'wp.v1': 'Una ranura queda reservada al registro del agente para que las cifras nunca lo desplacen; las otras tres llevan tokens, tasa de caché, consumo y coste. Llegan escalonadas, nunca al unísono.',
+  'wp.k2': 'Movido por el gasto real',
+  'wp.v2': 'Un delta de tokens lanza una onda desde donde aterrizó el texto. Uno grande arroja un meteoro. Cuando tus agentes callan, el campo se calma: nunca finge actividad.',
+  'wp.k3': 'Conserva tu imagen',
+  'wp.v3': 'Las partículas toman su color de la imagen de escritorio que ya elegiste, así que el fondo sigue pareciendo el tuyo, disuelto en luz en lugar de reemplazado.',
+  'wp.k4': 'Ocho estilos Pro',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen. Cada uno cambia la paleta, la coreografía y cómo el texto se reúne y se rompe.',
     'guide.back': 'Volver a Terse',
     'guide.hint': 'Haz clic en cualquier elemento',
     'guide.eyebrow': 'Guía interactiva',
@@ -2184,6 +2262,19 @@
   };
 
   T.fr = {
+  // Live wallpaper section
+  'wp.label': 'Fond d\'écran animé',
+  'wp.heading': 'Vos agents, écrits sur<br><span class="gradient-text">votre propre bureau.</span>',
+  'wp.subtitle': 'Terse remplace votre fond d\'écran par un champ de particules qui lit votre véritable image de bureau et la conserve. Chaque appel d\'outil de vos agents, chaque token dépensé se condense en texte à partir de ce champ, s\'arrête, puis se dissout. Rien ne tourne en boucle : le mouvement, ce sont les données.',
+  'wp.livenote': 'Le fond de cette page, c\'est le même moteur, en direct. Cliquez n\'importe où pour changer le fond d\'écran en dessous.',
+  'wp.k1': 'Quatre lignes à la fois',
+  'wp.v1': 'Un emplacement est réservé au journal de l\'agent pour que les chiffres ne le chassent jamais ; les trois autres portent tokens, taux de cache, consommation et coût. Ils arrivent décalés, jamais à l\'unisson.',
+  'wp.k2': 'Piloté par la dépense réelle',
+  'wp.v2': 'Un delta de tokens propage une onde depuis l\'endroit où le texte s\'est posé. Un gros delta lance un météore. Quand vos agents se taisent, le champ retombe : il ne simule jamais d\'activité.',
+  'wp.k3': 'Votre image est conservée',
+  'wp.v3': 'Les particules prennent leur couleur dans l\'image de bureau que vous aviez déjà choisie : le fond reste le vôtre, dissous en lumière plutôt que remplacé.',
+  'wp.k4': 'Huit styles Pro',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen. Chacun change la palette, la chorégraphie, et la façon dont le texte se rassemble et se disperse.',
     'guide.back': 'Retour à Terse',
     'guide.hint': 'Cliquez sur un élément à gauche',
     'guide.eyebrow': 'Guide interactif',
@@ -2538,6 +2629,19 @@
   };
 
   T.de = {
+  // Live wallpaper section
+  'wp.label': 'Lebendes Hintergrundbild',
+  'wp.heading': 'Deine Agenten, geschrieben auf<br><span class="gradient-text">deinen eigenen Desktop.</span>',
+  'wp.subtitle': 'Terse ersetzt dein Hintergrundbild durch ein Partikelfeld, das dein echtes Desktop-Bild einliest und beibehält. Jeder Tool-Aufruf deiner Agenten, jedes Token verdichtet sich aus diesem Feld zu Text, hält kurz an und löst sich wieder auf. Nichts läuft in Schleife — die Bewegung ist die Datenlage.',
+  'wp.livenote': 'Der Hintergrund dieser Seite ist dieselbe Engine, live. Klick irgendwohin, um das Hintergrundbild darunter zu wechseln.',
+  'wp.k1': 'Vier Zeilen gleichzeitig',
+  'wp.v1': 'Ein Slot bleibt dem Agenten-Log vorbehalten, damit die Zahlen ihn nie verdrängen; drei weitere tragen Tokens, Cache-Rate, Verbrauch und Kosten. Sie erscheinen versetzt, nie gleichzeitig.',
+  'wp.k2': 'Von echten Kosten getrieben',
+  'wp.v2': 'Ein Token-Delta schickt eine Welle von der Stelle aus, an der der Text landete. Ein großes wirft einen Meteor. Werden deine Agenten still, beruhigt sich das Feld — es täuscht nie Aktivität vor.',
+  'wp.k3': 'Dein Bild bleibt',
+  'wp.v3': 'Die Partikel nehmen ihre Farbe aus dem Desktop-Bild, das du ohnehin gewählt hast. Das Hintergrundbild sieht weiterhin nach deinem aus — in Licht aufgelöst statt ersetzt.',
+  'wp.k4': 'Acht Pro-Stile',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen. Jeder ändert Palette, Choreografie und die Art, wie der Text sich sammelt und zerfällt.',
     'guide.back': 'Zurück zu Terse',
     'guide.hint': 'Klicke links auf einen Eintrag',
     'guide.eyebrow': 'Interaktive Anleitung',
@@ -2892,6 +2996,19 @@
   };
 
   T.ar = {
+  // Live wallpaper section
+  'wp.label': 'خلفية حية',
+  'wp.heading': 'وكلاؤك، مكتوبين على<br><span class="gradient-text">سطح مكتبك أنت.</span>',
+  'wp.subtitle': 'يستبدل Terse خلفيتك بحقل من الجسيمات يقرأ صورة سطح مكتبك الحقيقية ويحتفظ بها. كل استدعاء أداة يقوم به وكلاؤك، وكل رمز ينفقونه، يتكثف من ذلك الحقل نصا، يثبت، ثم يتلاشى عائدا. لا شيء يتكرر في حلقة — الحركة نفسها هي البيانات.',
+  'wp.livenote': 'خلفية هذه الصفحة هي المحرك نفسه، يعمل الآن. انقر في أي مكان لتغيير الخلفية تحتها.',
+  'wp.k1': 'أربعة أسطر معا',
+  'wp.v1': 'خانة واحدة محجوزة لسجل الوكيل حتى لا تزحمه الأرقام أبدا؛ وثلاث أخرى تحمل الرموز ونسبة التخزين المؤقت ومعدل الاستهلاك والتكلفة. تظهر متفرقة، لا دفعة واحدة.',
+  'wp.k2': 'يقوده الإنفاق الحقيقي',
+  'wp.v2': 'فارق الرموز يدفع موجة من حيث حط النص. والفارق الكبير يطلق شهابا. وحين يهدأ وكلاؤك يهدأ الحقل — لا يفتعل نشاطا أبدا.',
+  'wp.k3': 'يبقي صورتك',
+  'wp.v3': 'تأخذ الجسيمات ألوانها من صورة سطح المكتب التي اخترتها أصلا، فتظل الخلفية تبدو خلفيتك — مذابة في الضوء لا مستبدلة.',
+  'wp.k4': 'ثمانية أنماط Pro',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen. كل واحد يغير الألوان والحركة وطريقة تجمع النص وتفتته.',
     'guide.back': 'العودة إلى Terse',
     'guide.hint': 'انقر أي عنصر على اليسار',
     'guide.eyebrow': 'دليل تفاعلي',
@@ -3246,6 +3363,19 @@
   };
 
   T.it = {
+  // Live wallpaper section
+  'wp.label': 'Sfondo animato',
+  'wp.heading': 'I tuoi agenti, scritti sul<br><span class="gradient-text">tuo stesso desktop.</span>',
+  'wp.subtitle': 'Terse sostituisce lo sfondo con un campo di particelle che legge la tua vera immagine del desktop e la mantiene. Ogni chiamata a strumenti dei tuoi agenti, ogni token speso si condensa da quel campo in testo, si ferma e si dissolve. Nulla va in loop: il movimento sono i dati.',
+  'wp.livenote': 'Lo sfondo di questa pagina è lo stesso motore, in funzione adesso. Clicca ovunque per cambiare lo sfondo sottostante.',
+  'wp.k1': 'Quattro righe insieme',
+  'wp.v1': 'Uno slot è riservato al log dell\'agente perché i numeri non lo soffochino mai; gli altri tre portano token, cache, consumo e costo. Arrivano sfalsati, mai all\'unisono.',
+  'wp.k2': 'Guidato dalla spesa reale',
+  'wp.v2': 'Un delta di token spinge un\'onda dal punto in cui il testo è atterrato. Uno grande lancia un meteorite. Quando gli agenti tacciono il campo si placa: non finge mai attività.',
+  'wp.k3': 'La tua immagine resta',
+  'wp.v3': 'Le particelle prendono il colore dall\'immagine del desktop che avevi già scelto, così lo sfondo sembra ancora il tuo: disciolto in luce, non sostituito.',
+  'wp.k4': 'Otto stili Pro',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen. Ognuno cambia palette, coreografia e il modo in cui il testo si raccoglie e si sgretola.',
     'guide.back': 'Torna a Terse',
     'guide.hint': 'Clicca una voce a sinistra',
     'guide.eyebrow': 'Guida interattiva',
@@ -3600,6 +3730,19 @@
   };
 
   T['pt-BR'] = {
+  // Live wallpaper section
+  'wp.label': 'Papel de parede ao vivo',
+  'wp.heading': 'Seus agentes, escritos na<br><span class="gradient-text">sua própria área de trabalho.</span>',
+  'wp.subtitle': 'O Terse troca seu papel de parede por um campo de partículas que lê a sua imagem real da área de trabalho e a mantém. Cada chamada de ferramenta dos seus agentes, cada token gasto, se condensa desse campo em texto, permanece e volta a se dissolver. Nada fica em loop: o movimento são os dados.',
+  'wp.livenote': 'O fundo desta página é o mesmo motor, rodando agora. Clique em qualquer lugar para trocar o papel de parede embaixo dele.',
+  'wp.k1': 'Quatro linhas ao mesmo tempo',
+  'wp.v1': 'Um espaço fica reservado ao log do agente para que os números nunca o expulsem; os outros três levam tokens, taxa de cache, consumo e custo. Chegam escalonados, nunca em uníssono.',
+  'wp.k2': 'Movido pelo gasto real',
+  'wp.v2': 'Um delta de tokens empurra uma onda a partir de onde o texto pousou. Um grande lança um meteoro. Quando seus agentes silenciam, o campo assenta: ele nunca finge atividade.',
+  'wp.k3': 'Mantém a sua imagem',
+  'wp.v3': 'As partículas tiram a cor da imagem de área de trabalho que você já escolheu, então o papel de parede continua parecendo o seu — dissolvido em luz, não substituído.',
+  'wp.k4': 'Oito estilos Pro',
+  'wp.v4': 'cinematic · aurora · starfall · ink · neon · vortex · bloom · zen. Cada um muda a paleta, a coreografia e o modo como o texto se junta e se parte.',
     // Nav
     'nav.howItWorks': 'Como funciona',
     'nav.pipeline': 'Pipeline',

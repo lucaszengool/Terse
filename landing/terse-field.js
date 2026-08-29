@@ -100,6 +100,35 @@
   ];
 
 
+
+  /* The wallpaper set. Sky-and-meadow plates at 3840x2160, downscaled to 1920
+     and re-encoded for the web — 114-518 KB each, and only the current one is
+     ever fetched, so a page load costs one image rather than sixteen.
+
+     These are stills. The engine takes a .mp4 here just as happily and plays it
+     as a live wallpaper, which is what the desktop app does; swapping any entry
+     for its video is a one-word change once the videos are on disk. */
+  /* Twenty LIVE wallpapers — the same sky-and-meadow set, as video rather
+     than stills. Source is 1920x1080/30fps/30s at 12 Mbps, which is 43 MB a
+     piece and unusable on the web; re-encoded to 1280x720/24fps/12s at CRF
+     32 they average 0.55 MB, a 96% cut, and the plate spends its life
+     blurred and dimmed behind glass anyway. Each has a poster frame beside
+     it: the engine shows that immediately and hands over to the decoded
+     video once it can actually play, so a click never opens onto black. */
+  var WALLS = [
+    'SK0_horizon-wanderer', 'SK1_horizon-gateway',
+    'SK2_horizon-tree', 'SK3_horizon-cello',
+    'SK4_torii-sky', 'SK5_sunny-horizon',
+    'SK6_green-meadow', 'SK7_moonlit-meadow',
+    'SK8_meadow-evening', 'SK9_rolling-hills',
+    'SL0_hilltop-serenity', 'SL1_summer-hillside',
+    'SL2_dreaming-clouds', 'SL3_reading-clouds',
+    'SL4_mountains-hills', 'SL5_house-hills',
+    'SL6_windmill-field', 'SL7_bliss-winxp',
+    'SL8_girl-cat-clouds', 'SL9_pink-clouds'
+  ];
+  var wallIdx = -1;
+
   /* Sky palettes for the procedural bed. Weighted toward dusk, storm and blue
      hour on purpose: the page sets white type at 0.72 alpha, and a noon-bright
      sky cannot carry it. The exposure pass measures whatever comes out and
@@ -791,13 +820,35 @@ vec3 procColor(vec2 p, float t){
       }
     }
     this.bedVar = gN ? gsum / gN : 0;
-    this.soften = Math.min(1, Math.max(0, (this.bedVar - 0.003) / 0.011));
+    /* The wallpaper is shown exactly as it was authored — no defocus, no
+       exposure, no tint. Earlier passes measured the plate and corrected it so
+       page copy would survive on top; that is the wrong trade for a site whose
+       whole point is the wallpaper. Readability is the glass panels' job now:
+       brightness() inside their backdrop-filter darkens what sits BEHIND each
+       panel, leaving the plate itself untouched everywhere else. */
+    this.soften = 0;
 
     var e = Math.pow(0.11 / Math.max(this.bedLum, 0.012), 0.32);
-    this.exposure = Math.min(1.55, Math.max(0.45, e));
+    this.exposure = 1;
     this._sampleColors();
   };
 
+
+
+  /* Roll a new wallpaper. Never repeats the one already showing, so a click
+     always visibly does something. Falls back to a procedural sky if the image
+     cannot be fetched, which also covers the case of the set not being
+     deployed yet. */
+  Field.prototype.rollWall = function () {
+    if (!WALLS.length) return this.rollSky();
+    var i = (Math.random() * WALLS.length) | 0;
+    if (i === wallIdx) i = (i + 1 + ((Math.random() * (WALLS.length - 1)) | 0)) % WALLS.length;
+    wallIdx = i;
+    var name = WALLS[i];
+    this.skyName = name.replace(/^S[KL]\d+_/, '').replace(/-/g, ' ');
+    this.setBed('/wpv/' + name + '.mp4');
+    return this.skyName;
+  };
 
   /* Roll a new sky. The palette, the cloud seed and the sun's position all
      move, so this is an unbounded set rather than a rotation through N files —
@@ -874,7 +925,9 @@ vec3 procColor(vec2 p, float t){
       self._rasterBed(img);
       self.draw();
     };
-    img.onerror = function () { if (!self.vid) { self.hasCover = 0; self.bedPix = null; } };
+    img.onerror = function () {
+      /* a missing plate must not leave a black page */
+      if (self.skyMode !== 1) { self.rollSky(); return; } if (!self.vid) { self.hasCover = 0; self.bedPix = null; } };
     img.src = stillUrl;
 
     if (!isVideo || REDUCE) return;
@@ -1243,7 +1296,8 @@ vec3 procColor(vec2 p, float t){
     var downX = 0, downY = 0;
     document.addEventListener('pointerdown', function (e) { downX = e.clientX; downY = e.clientY; }, true);
     document.addEventListener('click', function (e) {
-      if (!field.ok || field.skyMode !== 1) return;
+      if (!field.ok) return;
+      if (tag && tag.hasAttribute('data-bed')) return;   /* the page pinned its own */
       if (e.target.closest && e.target.closest(CLICKABLE)) return;
       if (Math.abs(e.clientX - downX) > 6 || Math.abs(e.clientY - downY) > 6) return;
       if (String(window.getSelection())) return;
@@ -1254,13 +1308,13 @@ vec3 procColor(vec2 p, float t){
     function rollWithFade() {
       if (rolling) return;
       rolling = true;
-      if (REDUCE) { field.rollSky(); announce(); rolling = false; return; }
+      if (REDUCE) { field.rollWall(); announce(); rolling = false; return; }
       cv.style.transition = 'opacity .26s ease';
       desk.style.transition = 'opacity .26s ease';
       cv.style.opacity = '0';
       setTimeout(function () {
-        field.rollSky();
-        announce();
+        field.rollWall();
+        setTimeout(announce, 60);
         cv.style.opacity = '';
         setTimeout(function () { rolling = false; }, 280);
       }, 260);
@@ -1294,7 +1348,7 @@ vec3 procColor(vec2 p, float t){
        drawing buffer returns nothing, the measured luminance comes back 0, and
        the exposure correction then runs the wrong way — it brightens a sky that
        needed darkening. */
-    if (!bed) { field.rollSky(); }
+    if (!bed) { field.rollWall(); }
 
     var rt;
     function debounced() { clearTimeout(rt); rt = setTimeout(sync, 180); }

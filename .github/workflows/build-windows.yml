@@ -405,6 +405,65 @@ jobs:
           ConvertTo-Json $lic -Depth 6 | Set-Content (Join-Path $dir "license.json") -Encoding ascii
           Write-Host "license.json written: tier=pro status=active"
 
+      # What does Terse cost with the wallpaper OFF - which is the default, and
+      # so what almost every user actually runs?
+      #
+      # A user reported "a pile" of Terse processes in Task Manager. Some of that
+      # is WebView2 being WebView2: one renderer per window, plus a shared
+      # browser, GPU and crashpad. But the wallpaper window was built for
+      # EVERYONE at startup even though `enabled` defaults to false - so its
+      # renderer sat resident, and wallpaper.html booted, for a feature that was
+      # switched off. The field was gated; the window was not.
+      #
+      # Every other step here runs with the wallpaper deliberately ON, so none of
+      # them can see this. That is exactly why it survived: the suite only ever
+      # measured the configuration the bug does not appear in.
+      - name: Count what Terse costs with the wallpaper OFF
+        continue-on-error: true
+        run: |
+          # Start from a known state. The installer may already have launched the
+          # app, and single-instance would hand our Start-Process straight back to
+          # that older instance - which read its config before we touched it, so
+          # the census would describe the wrong configuration entirely.
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Remove-Item (Join-Path $dir "wallpaper.json") -ErrorAction SilentlyContinue
+          Write-Host "wallpaper.json removed - the app will use its own defaults (enabled=false)"
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 45
+
+          $t  = @(Get-Process -Name Terse -ErrorAction SilentlyContinue)
+          $wv = @(Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue)
+          $mb = ((($t + $wv) | Measure-Object WorkingSet64 -Sum).Sum / 1MB)
+          Write-Host ("wallpaper OFF: Terse:{0} proc  WebView2:{1} proc  {2:N0} MB" -f $t.Count, $wv.Count, $mb)
+
+          # The assertion that matters is not a process count - that number moves
+          # with WebView2's own internals and would be a flaky thing to pin. It is
+          # whether the window exists at all.
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class WQ{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);}'
+          $script:titles = @()
+          $cb = [WQ+Cb]{ param($h,$l)
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][WQ]::GetWindowTextW($h, $sb, 256)
+            $t2 = $sb.ToString()
+            if ($t2 -like 'Terse*') { $script:titles += $t2 }
+            return $true }
+          [void][WQ]::EnumWindows($cb, [IntPtr]::Zero)
+          Write-Host "--- Terse windows with the wallpaper off ---"
+          $script:titles | Sort-Object -Unique | ForEach-Object { Write-Host "  $_" }
+          if ($script:titles -contains 'Terse Wallpaper') {
+            Write-Warning "RESIDENT WALLPAPER: the window was built even though the wallpaper is off - that is a WebView2 renderer nobody asked for"
+          } else {
+            Write-Host "WALLPAPER NOT RESIDENT OK: no wallpaper window while the feature is off"
+          }
+
+          # Leave nothing running: the next step turns the wallpaper on and
+          # launches again, and single-instance would hand it back to this one.
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+
       - name: Give the runner a desktop picture and turn the wallpaper on
         continue-on-error: true
         run: |

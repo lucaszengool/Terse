@@ -2700,6 +2700,40 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .build()?,
             16.0,
         ),
+        // The wallpaper, built on the first enable rather than at every launch.
+        //
+        // `enabled` already defaults to false - turned off because the particle
+        // field was "the one heavy thing running before the user had clicked
+        // anything", one renderer at 485% on the CI box. But only the FIELD was
+        // gated: the window itself was still built for everyone at startup, so
+        // the WebView2 renderer process stayed resident and wallpaper.html still
+        // booted, for a feature that was off. That is the process a user finds in
+        // Task Manager and cannot account for.
+        //
+        // transparent(true) at creation is not why it had to be eager - that is a
+        // property of whenever the window is built, and this builds it the same
+        // way. Per-pixel alpha still cannot be switched on later, so it stays
+        // here, on the builder.
+        "wallpaper" => {
+            let (ww, wh) = (screen_width, monitor_h);
+            let _wall = WebviewWindowBuilder::new(app, "wallpaper", WebviewUrl::App("wallpaper.html".into()))
+                .title("Terse Wallpaper")
+                .inner_size(ww, wh)
+                .position(0.0, 0.0)
+                .decorations(false)
+                .transparent(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .visible(false)
+                .build()?;
+            // Early return like the dashboards: the shared tail below rounds
+            // corners and strips the frame, and a full-screen wallpaper wants
+            // neither.
+            diag_log("lazy-window", "built 'wallpaper' on demand");
+            return Ok(());
+        }
         _ => {
             // The nine floating dashboards. Same treatment, geometry straight
             // from dash_layout so it cannot drift from the reposition path.
@@ -3597,8 +3631,14 @@ pub fn run() {
             // a window most users never open.
 
             // ── Live token wallpaper window (desktop-pinned; hidden until enabled) ──
-            // Built once here on the main thread; enable/disable just shows/hides it.
-            {
+            //
+            // Built here ONLY when the user already has it on. Off (the default)
+            // means no window and no WebView2 renderer for it at all - the first
+            // enable builds it through ensure_window. It has to stay eager in the
+            // enabled case: show_wallpaper_window is called from setup(), which is
+            // the main thread, and ensure_window would be waiting on the very
+            // thread that has to do the building.
+            if get_wallpaper_config().get("enabled").and_then(|v| v.as_bool()).unwrap_or(false) {
                 let (ww, wh) = app
                     .primary_monitor()
                     .ok()
@@ -6194,9 +6234,12 @@ fn pin_wallpaper_window(_win: &tauri::WebviewWindow) {}
 /// behind the desktop, and show it. The window itself is built once in `setup`
 /// on the main thread; commands only show/hide it (thread-safe).
 fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
-    let win = app
-        .get_webview_window("wallpaper")
-        .ok_or_else(|| "wallpaper window not initialized".to_string())?;
+    // ensure_window, not get_webview_window: with the wallpaper off at launch the
+    // window does not exist yet, and this is the one path that is about to show
+    // it. Already-open is the startup case and returns immediately, so setup()
+    // never waits on the main thread it is already holding.
+    let win = ensure_window(app, "wallpaper")
+        .ok_or_else(|| "wallpaper window could not be created".to_string())?;
     if let Ok(Some(m)) = app.primary_monitor() {
         let sf = m.scale_factor();
         let w = m.size().width as f64 / sf;

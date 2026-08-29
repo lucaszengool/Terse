@@ -110,6 +110,22 @@ body{background:transparent}
   box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.055);
 }
 
+
+/* The name of the sky the last click rolled. Sits low and quiet — it is a
+   label, not a notification. */
+#terse-sky-name{
+  position:fixed; left:18px; bottom:16px; z-index:4; pointer-events:none;
+  font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:hsla(0,0%,100%,.52);
+  background:hsla(250,28%,8%,.52); border:1px solid hsla(0,0%,100%,.10);
+  border-radius:999px; padding:6px 13px;
+  opacity:0; transform:translateY(5px); transition:opacity .3s ease, transform .3s ease;
+}
+#terse-sky-name.on{ opacity:1; transform:translateY(0); }
+@media (prefers-reduced-motion:reduce){
+  #terse-sky-name{transition:none}
+}
 /* ── Nothing may push the document wider than the phone ───────────────────
    37% of visits are mobile and no page had been checked at 375px. Five of the
    ones sampled scrolled sideways: /for-windows by 162px, /what-is-context-rot

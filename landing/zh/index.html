@@ -970,6 +970,24 @@
   <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
   <link rel="stylesheet" href="/terse-glass.css">
   <script defer src="/terse-field.js"></script>
+
+<style>
+/* Live-wallpaper section */
+.wp-live{display:flex;align-items:flex-start;gap:11px;padding:14px 18px;border-radius:12px;
+  background:rgba(110,231,183,0.07);border:1px solid rgba(110,231,183,0.22)}
+.wp-live p{margin:0;font-size:14px;color:var(--t2);line-height:1.55}
+.wp-live-dot{width:8px;height:8px;border-radius:50%;background:var(--ac);flex-shrink:0;margin-top:6px;
+  box-shadow:0 0 0 0 rgba(110,231,183,0.5);animation:wpPulse 2.4s ease-out infinite}
+@keyframes wpPulse{
+  0%{box-shadow:0 0 0 0 rgba(110,231,183,0.45)}
+  70%{box-shadow:0 0 0 9px rgba(110,231,183,0)}
+  100%{box-shadow:0 0 0 0 rgba(110,231,183,0)}}
+.wp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px}
+.wp-card{padding:18px 20px;border-radius:13px;background:var(--sf);border:1px solid var(--bd)}
+.wp-k{font-size:14.5px;font-weight:700;color:var(--t1);margin-bottom:7px}
+.wp-card p{margin:0;font-size:13px;color:var(--t2);line-height:1.6}
+@media (prefers-reduced-motion:reduce){.wp-live-dot{animation:none}}
+</style>
 </head>
 <body>
 
@@ -1283,6 +1301,43 @@
     </div>
   </div>
 </section>
+
+<!-- ═══ 动态壁纸 —— 站点从未提过的功能 ═══════════════════════════════════ -->
+<section class="section" id="wallpaper" style="background:var(--bg1);border-top:1px solid var(--bd)">
+  <div class="glow" style="top:-140px;right:-160px"></div>
+  <div class="s-inner">
+    <div class="rvl" style="text-align:center;max-width:760px;margin:0 auto">
+      <div class="label">动态壁纸</div>
+      <h2>你的智能体，<br><span class="gradient-text">写在你自己的桌面上。</span></h2>
+      <p class="desc" style="margin-left:auto;margin-right:auto">Terse 把桌面换成一层粒子场 —— 它读取你原本的桌面图片并保留下来。智能体的每一次工具调用、每一笔 token 消耗，都会从这片粒子里聚成文字，停住，再散回去。没有任何循环动画,动的就是数据本身。</p>
+    </div>
+
+    <div class="wp-live rv" style="max-width:760px;margin:26px auto 0">
+      <span class="wp-live-dot" aria-hidden="true"></span>
+      <p>这个页面的背景就是同一套引擎,正在运行。点击任意位置可以换掉它下面的壁纸。</p>
+    </div>
+
+    <div class="wp-grid rv" style="max-width:960px;margin:30px auto 0">
+      <div class="wp-card">
+        <div class="wp-k">四条同时在跑</div>
+        <p>其中一条槽位专门留给智能体日志,数字再多也挤不掉它;另外三条承载 token、缓存命中率、消耗速率和成本。它们错峰出现,不会齐刷刷一起来。</p>
+      </div>
+      <div class="wp-card">
+        <div class="wp-k">由真实开销驱动</div>
+        <p>一笔 token 增量会从文字落位的地方推出一圈涟漪,大的还会甩出一颗流星。智能体安静下来,粒子场也跟着沉下去 —— 它不会假装有活动。</p>
+      </div>
+      <div class="wp-card">
+        <div class="wp-k">保留你的图</div>
+        <p>粒子的颜色取自你本来就选好的桌面图片,所以壁纸看起来仍然是你的那张 —— 只是被打散成了光,而不是被替换掉。</p>
+      </div>
+      <div class="wp-card">
+        <div class="wp-k">八种 Pro 风格</div>
+        <p>cinematic · aurora · starfall · ink · neon · vortex · bloom · zen。每一种都会换掉配色、编舞,以及文字聚拢和碎裂的手法。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 
 <!-- Quotable definition for AI crawlers and GEO -->
 <div style="max-width:800px;margin:0 auto;padding:0 40px 30px;text-align:center">

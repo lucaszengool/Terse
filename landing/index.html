@@ -1032,6 +1032,24 @@
   <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
   <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/">
   <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
+
+<style>
+/* Live-wallpaper section */
+.wp-live{display:flex;align-items:flex-start;gap:11px;padding:14px 18px;border-radius:12px;
+  background:rgba(110,231,183,0.07);border:1px solid rgba(110,231,183,0.22)}
+.wp-live p{margin:0;font-size:14px;color:var(--t2);line-height:1.55}
+.wp-live-dot{width:8px;height:8px;border-radius:50%;background:var(--ac);flex-shrink:0;margin-top:6px;
+  box-shadow:0 0 0 0 rgba(110,231,183,0.5);animation:wpPulse 2.4s ease-out infinite}
+@keyframes wpPulse{
+  0%{box-shadow:0 0 0 0 rgba(110,231,183,0.45)}
+  70%{box-shadow:0 0 0 9px rgba(110,231,183,0)}
+  100%{box-shadow:0 0 0 0 rgba(110,231,183,0)}}
+.wp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px}
+.wp-card{padding:18px 20px;border-radius:13px;background:var(--sf);border:1px solid var(--bd)}
+.wp-k{font-size:14.5px;font-weight:700;color:var(--t1);margin-bottom:7px}
+.wp-card p{margin:0;font-size:13px;color:var(--t2);line-height:1.6}
+@media (prefers-reduced-motion:reduce){.wp-live-dot{animation:none}}
+</style>
 </head>
 <body>
 
@@ -1329,6 +1347,45 @@
     </div>
   </div>
 </section>
+
+<!-- ═══ LIVE WALLPAPER — the feature the site had never mentioned ═══════════
+     Placed directly under the trust strip because the visitor is already
+     looking at it: this page's background runs the same engine. -->
+<section class="section" id="wallpaper" style="background:var(--bg1);border-top:1px solid var(--bd)">
+  <div class="glow" style="top:-140px;right:-160px"></div>
+  <div class="s-inner">
+    <div class="rvl" style="text-align:center;max-width:760px;margin:0 auto">
+      <div class="label" data-i18n="wp.label">Live wallpaper</div>
+      <h2 data-i18n-html="wp.heading">Your agents, written on<br><span class="gradient-text">your own desktop.</span></h2>
+      <p class="desc" data-i18n="wp.subtitle" style="margin-left:auto;margin-right:auto">Terse replaces your wallpaper with a particle field that reads your real desktop picture and keeps it. Every tool call your agents make, every token they spend, condenses out of that field as text, holds, and dissolves back. Nothing loops — the motion is the data.</p>
+    </div>
+
+    <div class="wp-live rv" style="max-width:760px;margin:26px auto 0">
+      <span class="wp-live-dot" aria-hidden="true"></span>
+      <p data-i18n="wp.livenote">The background of this page is the same engine, running now. Click anywhere to change the wallpaper under it.</p>
+    </div>
+
+    <div class="wp-grid rv" style="max-width:960px;margin:30px auto 0">
+      <div class="wp-card">
+        <div class="wp-k" data-i18n="wp.k1">Four lines at once</div>
+        <p data-i18n="wp.v1">One slot is reserved for the agent log so the numbers can never crowd it out; three more carry tokens, cache rate, burn and cost. They arrive staggered, never in unison.</p>
+      </div>
+      <div class="wp-card">
+        <div class="wp-k" data-i18n="wp.k2">Driven by real spend</div>
+        <p data-i18n="wp.v2">A token delta pushes a ripple out from where the text landed. A large one throws a meteor. When your agents go quiet the field settles — it never fakes activity.</p>
+      </div>
+      <div class="wp-card">
+        <div class="wp-k" data-i18n="wp.k3">It keeps your picture</div>
+        <p data-i18n="wp.v3">The particles take their colour from the desktop picture you already chose, so the wallpaper still looks like yours — dissolved into light rather than replaced.</p>
+      </div>
+      <div class="wp-card">
+        <div class="wp-k" data-i18n="wp.k4">Eight Pro styles</div>
+        <p data-i18n="wp.v4">cinematic · aurora · starfall · ink · neon · vortex · bloom · zen. Each changes the palette, the choreography, and how the text gathers and breaks apart.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 
 
 <style>

@@ -99,6 +99,22 @@
     ['opus → sonnet',     'warm']
   ];
 
+
+  /* Sky palettes for the procedural bed. Weighted toward dusk, storm and blue
+     hour on purpose: the page sets white type at 0.72 alpha, and a noon-bright
+     sky cannot carry it. The exposure pass measures whatever comes out and
+     corrects regardless, but starting close costs nothing. */
+  var SKIES = [
+    { n: 'dusk',       top: [0.10, 0.13, 0.34], haze: [0.86, 0.36, 0.42], sun: [1.00, 0.55, 0.38] },
+    { n: 'blue hour',  top: [0.04, 0.09, 0.26], haze: [0.24, 0.36, 0.62], sun: [0.55, 0.70, 1.00] },
+    { n: 'storm',      top: [0.09, 0.11, 0.16], haze: [0.30, 0.33, 0.40], sun: [0.72, 0.76, 0.84] },
+    { n: 'ember',      top: [0.13, 0.08, 0.19], haze: [0.68, 0.22, 0.18], sun: [1.00, 0.60, 0.26] },
+    { n: 'aurora sky', top: [0.03, 0.09, 0.21], haze: [0.09, 0.38, 0.42], sun: [0.42, 1.00, 0.70] },
+    { n: 'alpenglow',  top: [0.08, 0.11, 0.30], haze: [0.74, 0.44, 0.56], sun: [1.00, 0.72, 0.62] },
+    { n: 'monsoon',    top: [0.07, 0.12, 0.22], haze: [0.36, 0.45, 0.52], sun: [0.86, 0.90, 0.94] },
+    { n: 'deep field', top: [0.05, 0.07, 0.18], haze: [0.16, 0.20, 0.38], sun: [0.70, 0.78, 1.00] }
+  ];
+
   /* ═══════════════════════════════════════════════════════════════════════
      BED — deep space. Shared by the bed's fragment shader and the field's
      vertex shader, so the particles are literally the wallpaper.
@@ -144,7 +160,75 @@
     '  c += vec3(0.640, 0.510, 0.380) * exp(-dot(k, k) * 0.85) * lit * 0.34;',
     '  return c;',
     '}'
-  ].join('\n');
+  ].join('\n') + `
+/* ── Cinematic sky ────────────────────────────────────────────────────────
+   A horizon-facing sky: graded dome, sun glow with its own scattering, two
+   octave-stacked cloud layers that are domain-warped so they billow rather
+   than tile, lit from the sun so their tops catch light and their undersides
+   stay heavy, and a haze band that thickens toward the horizon.
+
+   The palette arrives as uniforms rather than being baked in, so a new sky is
+   a uniform write — no shader recompile, which is what makes rolling one on
+   every click cheap. */
+uniform float uSkyMode, uSkySeed;
+uniform vec3 uSkyTop, uSkyHaze, uSkySun;
+uniform vec2 uSunPos;
+
+vec3 skyColor(vec2 p, float t){
+  float h = clamp(p.y * 0.5 + 0.5, 0.0, 1.0);
+  vec3 sky = mix(uSkyHaze, uSkyTop, pow(h, 0.82));
+
+  vec2 sun = uSunPos;
+  float sd = length((p - sun) * vec2(0.72, 1.0));
+  sky += uSkySun * exp(-sd * 2.1) * 0.85;          /* the disc's near glow    */
+  sky += uSkySun * exp(-sd * 0.55) * 0.18;         /* the wide scatter around */
+
+  /* Clouds. The warp is what stops fbm reading as noise: it drags the field
+     through itself, so edges pile up into billows. */
+  /* The seed must stay SMALL. h21 hashes with fract(sin(dot(p,k))*43758.5),
+     and sin() loses its low bits well before p reaches the hundreds — pushing
+     the sample point out by seed*23 collapsed the hash to a near-constant, fbm
+     returned a flat value, and the clouds vanished entirely: the measured
+     horizontal spread across the frame was 2-7 out of 255 while the vertical
+     gradient was fine. Rotating by the seed and nudging by a couple of units
+     decorrelates the field just as well and keeps the coordinates in range. */
+  float sa = uSkySeed * 2.399;
+  mat2 sr = mat2(cos(sa), -sin(sa), sin(sa), cos(sa));
+  vec2 q = sr * (p * 1.05) + vec2(t * 0.0095, t * 0.0035) + vec2(uSkySeed * 1.7, uSkySeed * -1.1);
+  vec2 w = vec2(fbm(q * 0.78), fbm(q * 0.78 + 4.7));
+  float base   = fbm(q * 1.25 + w * 1.35);
+  float detail = fbm(q * 3.30 + w * 1.90);
+  float cloud  = smoothstep(0.34, 0.74, base * 0.80 + detail * 0.36);
+
+  /* cumulus sit above the horizon and thin out as they recede into it */
+  cloud *= smoothstep(-0.72, 0.02, p.y);
+
+  /* Cloud lighting. The first version tied brightness to distance from the sun
+     alone, which put dark grey cumulus on a dark sky and made them invisible —
+     the whole field read as a flat gradient. Clouds need an ambient floor as
+     well as a key light: the top of a cumulus is bright even facing away. */
+  float lit = clamp(1.0 - sd * 0.20, 0.18, 1.0);
+  float up  = smoothstep(-0.2, 0.7, p.y);                 /* tops catch more   */
+  vec3 body = mix(vec3(0.40, 0.42, 0.50), vec3(1.0, 0.965, 0.93),
+                  pow(lit, 1.35) * (0.45 + up * 0.55));
+  body = mix(body, uSkySun, exp(-sd * 1.15) * 0.62);      /* rim near the sun  */
+
+  vec3 c = mix(sky, body, cloud);
+  c = mix(c, uSkyHaze * 1.10, smoothstep(0.16, -0.45, p.y) * 0.55);
+
+  /* A sky lit for a photograph is far brighter than a page of white type can
+     sit on. The exposure pass corrects, but it clamps at 0.45, so a sky that
+     starts at .5 luminance cannot reach the .11 target. Bring it down here and
+     let exposure do the fine work. */
+  return c * 0.52;
+}
+
+/* One entry point for whichever procedural bed is active, so the field's
+   vertex shader and the bed's fragment shader can never disagree. */
+vec3 procColor(vec2 p, float t){
+  return uSkyMode > 0.5 ? skyColor(p, t) : spaceColor(p, t);
+}
+`;
 
   var BED_VS = [
     'attribute vec2 aPos;',
@@ -203,7 +287,7 @@
        and vice versa — and the picker offers 21 of them. See _rasterBed. */
     '    c = pow(max(c, 0.0), vec3(0.94)) * uExposure;',
     '  } else {',
-    '    c = spaceColor(p, uTime);',
+    '    c = procColor(p, uTime);',
     '  }',
     '  float s = starLayer(p, 16.0, 0.80, uTime) * 0.85',
     '          + starLayer(p, 34.0, 0.86, uTime) * 0.52',
@@ -213,7 +297,7 @@
     '  float ang2 = -0.46;',
     '  float by2 = p.x * sin(ang2) + p.y * cos(ang2);',
     '  s *= 0.55 + 0.85 * exp(-by2 * by2 * 1.2);',
-    '  c += vec3(0.82, 0.88, 1.0) * s * mix(1.0, 0.38, uHasCover);',
+    '  c += vec3(0.82, 0.88, 1.0) * s * mix(1.0, 0.38, uHasCover) * (1.0 - uSkyMode);',
     /* Deep space is mostly dark — the drama is the CONTRAST between the voids
        and the hot filaments, not the average level. Pulling the whole frame
        down keeps the nebula structure while letting page copy sit on top of it
@@ -337,7 +421,7 @@
 
     /* colour from the wallpaper, lifted — a galaxy is dark, so the particles
        need the gain the app gets from uColorBoost */
-    '  vec3 bed = spaceColor(aHome * uAspect, t);',
+    '  vec3 bed = procColor(aHome * uAspect, t);',
     '  bed = pow(max(bed * 3.1, 0.0), vec3(1.0 / 1.65));',
     '  bed = max(bed, vec3(0.055, 0.075, 0.125));',
     '  vec3 cov = pow(max(aColor * 1.90 * uExposure, 0.0), vec3(1.0 / 1.45));',
@@ -493,8 +577,10 @@
     this.bSeed = gl.createBuffer();
     this.bColor = gl.createBuffer();
 
-    this.uBed = u(gl, this.bedProg, ['time', 'aspect', 'hasCover', 'coverScale', 'coverDrift', 'cover', 'exposure', 'soften']);
+    this.uBed = u(gl, this.bedProg, ['time', 'aspect', 'hasCover', 'coverScale', 'coverDrift', 'cover', 'exposure', 'soften',
+                                     'skyMode', 'skySeed', 'skyTop', 'skyHaze', 'skySun', 'sunPos']);
     this.uFld = u(gl, this.fldProg, ['time', 'bloom', 'dpr', 'aspect', 'ripples', 'alphaScale', 'hasCover', 'exposure',
+                                     'skyMode', 'skySeed', 'skyTop', 'skyHaze', 'skySun', 'sunPos',
                                      'danceAmt', 'danceMode', 'danceT', 'danceCenter', 'danceDir']);
     this.uGly = u(gl, this.glyProg, ['form', 'vis', 'out', 'inMode', 'outMode', 'stagger', 'time',
                                      'bloom', 'dpr', 'center', 'size', 'drift', 'aspect', 'tint', 'alphaScale']);
@@ -530,6 +616,8 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     this.hasCover = 0; this.coverAspect = 1; this.bedName = null;
+    this.skyMode = 0; this.sky = SKIES[0]; this.skySeed = 0;
+    this.sunPos = [0.35, -0.05]; this.skyName = null;
     this.exposure = 1; this.bedLum = 0; this.bedVar = 0; this.soften = 0;
     this.samp = document.createElement('canvas');
     this.sctx = this.samp.getContext('2d', { willReadFrequently: true });
@@ -710,6 +798,56 @@
     this._sampleColors();
   };
 
+
+  /* Roll a new sky. The palette, the cloud seed and the sun's position all
+     move, so this is an unbounded set rather than a rotation through N files —
+     which is the whole reason it is a shader and not a folder of downloads. */
+  Field.prototype.rollSky = function (i) {
+    if (this.vid) { try { this.vid.pause(); } catch (e) {} this.vid = null; }
+    var prev = this.sky;
+    var pick = SKIES[(i == null ? (Math.random() * SKIES.length) | 0 : i) % SKIES.length];
+    if (SKIES.length > 1 && pick === prev && i == null) {
+      pick = SKIES[(SKIES.indexOf(prev) + 1 + ((Math.random() * (SKIES.length - 1)) | 0)) % SKIES.length];
+    }
+    this.sky = pick;
+    this.skyName = pick.n;
+    this.skySeed = Math.random() * 3.4;
+    /* the sun stays low — this is a horizon, not a noon sky */
+    this.sunPos = [(Math.random() * 1.6 - 0.8), -0.30 + Math.random() * 0.34];
+    this.skyMode = 1;
+    this.hasCover = 0;
+    this.bedName = 'sky:' + pick.n;
+    this.bedPix = null;
+    this.img = null;
+    this.exposure = 1; this.soften = 0;
+    this.draw();
+    this._measureDrawn();
+    this.draw();
+    return pick.n;
+  };
+
+  /* Exposure for a procedural bed. Photographs are measured off an offscreen
+     raster in _rasterBed; a shader has no such raster, so this reads back the
+     frame that was just drawn. One block from the middle rather than the whole
+     canvas — a full readPixels at devicePixelRatio is megabytes, and the mean
+     of a centre block is within a percent of the mean of the frame. */
+  Field.prototype._measureDrawn = function () {
+    var gl = this.gl;
+    var W = Math.min(256, this.c.width), H = Math.min(144, this.c.height);
+    var x = Math.max(0, ((this.c.width - W) / 2) | 0), y = Math.max(0, ((this.c.height - H) / 2) | 0);
+    var px = new Uint8Array(W * H * 4);
+    try { gl.readPixels(x, y, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); }
+    catch (e) { return; }
+    var sum = 0, n = W * H;
+    for (var i = 0; i < n; i++) {
+      var o = i * 4;
+      sum += 0.2126 * px[o] + 0.7152 * px[o + 1] + 0.0722 * px[o + 2];
+    }
+    this.bedLum = (sum / n) / 255;
+    var e = Math.pow(0.11 / Math.max(this.bedLum, 0.012), 0.32);
+    this.exposure = Math.min(1.55, Math.max(0.45, e));
+  };
+
   /* Swap the wallpaper. Pass null for the procedural galaxy, a .jpg/.png for a
      still, or a .mp4 for a LIVE wallpaper — the same thing the Tauri app plays
      on the desktop. A video bed shows its poster still first (instant, and it
@@ -719,6 +857,7 @@
   Field.prototype.setBed = function (url) {
     var self = this, gl = this.gl;
     this.bedName = url;
+    this.skyMode = 0;
     if (this.vid) { try { this.vid.pause(); } catch (e) {} this.vid = null; }
     if (!url) { this.hasCover = 0; this.bedPix = null; this.img = null; this.draw(); return; }
 
@@ -931,6 +1070,12 @@
     gl.uniform1f(this.uBed.hasCover, this.hasCover);
     gl.uniform1f(this.uBed.exposure, this.exposure);
     gl.uniform1f(this.uBed.soften, this.soften);
+    gl.uniform1f(this.uBed.skyMode, this.skyMode);
+    gl.uniform1f(this.uBed.skySeed, this.skySeed);
+    gl.uniform3fv(this.uBed.skyTop, this.sky.top);
+    gl.uniform3fv(this.uBed.skyHaze, this.sky.haze);
+    gl.uniform3fv(this.uBed.skySun, this.sky.sun);
+    gl.uniform2fv(this.uBed.sunPos, this.sunPos);
     /* cover-fit: crop the long axis, then leave a 6% margin for the drift */
     var va = this.w / this.h, ia = this.coverAspect;
     var csx = ia > va ? (va / ia) : 1, csy = ia > va ? 1 : (ia / va);
@@ -967,6 +1112,12 @@
 
     gl.uniform1f(this.uFld.hasCover, this.hasCover);
     gl.uniform1f(this.uFld.exposure, this.exposure);
+    gl.uniform1f(this.uFld.skyMode, this.skyMode);
+    gl.uniform1f(this.uFld.skySeed, this.skySeed);
+    gl.uniform3fv(this.uFld.skyTop, this.sky.top);
+    gl.uniform3fv(this.uFld.skyHaze, this.sky.haze);
+    gl.uniform3fv(this.uFld.skySun, this.sky.sun);
+    gl.uniform2fv(this.uFld.sunPos, this.sunPos);
     gl.uniform1f(this.uFld.time, t);
     gl.uniform1f(this.uFld.dpr, this.dpr);
     gl.uniform2fv(this.uFld.aspect, this.aspect);
@@ -1076,8 +1227,61 @@
        data-bed="" falls back to the procedural galaxy. A .mp4 here works too and
        plays as a live wallpaper, at the cost of its download. */
     var tag = document.querySelector('script[src*="terse-field"]');
-    var bed = tag && tag.hasAttribute('data-bed') ? tag.getAttribute('data-bed') : '/bg-cyber1.jpg';
+    var bed = tag && tag.hasAttribute('data-bed') ? tag.getAttribute('data-bed') : null;
     if (bed) field.setBed(bed);
+
+    /* ── A click rolls a new sky ───────────────────────────────────────────
+       Only when the page is showing a procedural sky: a page that pinned its
+       own plate with data-bed asked for that plate, and should keep it.
+
+       Ignored on anything the visitor might actually be trying to use — a
+       link, a button, a form control, a summary, anything with its own click
+       handler behind [role] or [onclick] — and on a drag, because selecting a
+       paragraph ends in a click event and having the wallpaper change under a
+       selection is startling rather than delightful. */
+    var CLICKABLE = 'a,button,input,select,textarea,label,summary,details,[role="button"],[onclick],[contenteditable]';
+    var downX = 0, downY = 0;
+    document.addEventListener('pointerdown', function (e) { downX = e.clientX; downY = e.clientY; }, true);
+    document.addEventListener('click', function (e) {
+      if (!field.ok || field.skyMode !== 1) return;
+      if (e.target.closest && e.target.closest(CLICKABLE)) return;
+      if (Math.abs(e.clientX - downX) > 6 || Math.abs(e.clientY - downY) > 6) return;
+      if (String(window.getSelection())) return;
+      rollWithFade();
+    });
+
+    var rolling = false;
+    function rollWithFade() {
+      if (rolling) return;
+      rolling = true;
+      if (REDUCE) { field.rollSky(); announce(); rolling = false; return; }
+      cv.style.transition = 'opacity .26s ease';
+      desk.style.transition = 'opacity .26s ease';
+      cv.style.opacity = '0';
+      setTimeout(function () {
+        field.rollSky();
+        announce();
+        cv.style.opacity = '';
+        setTimeout(function () { rolling = false; }, 280);
+      }, 260);
+    }
+
+    /* A one-line label so the change reads as deliberate rather than as a
+       glitch, and so the palette has a name the visitor can ask for. */
+    var badge = null, badgeT = 0;
+    function announce() {
+      if (!field.skyName) return;
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'terse-sky-name';
+        badge.setAttribute('aria-live', 'polite');
+        document.body.appendChild(badge);
+      }
+      badge.textContent = field.skyName;
+      badge.classList.add('on');
+      clearTimeout(badgeT);
+      badgeT = setTimeout(function () { badge.classList.remove('on'); }, 1900);
+    }
 
     function sync() {
       field.resize();
@@ -1086,6 +1290,11 @@
       else field.start();
     }
     sync();
+    /* Roll the first sky only once the canvas has a size. readPixels on a 0x0
+       drawing buffer returns nothing, the measured luminance comes back 0, and
+       the exposure correction then runs the wrong way — it brightens a sky that
+       needed darkening. */
+    if (!bed) { field.rollSky(); }
 
     var rt;
     function debounced() { clearTimeout(rt); rt = setTimeout(sync, 180); }

@@ -31,10 +31,10 @@
      the particles stay visible through every surface; they are simply dimmer
      and softer behind text than beside it, which is what a pane of glass
      actually does. */
-  --bg0:hsla(250,28%,7%,0.10);
-  --bg1:hsla(250,28%,10%,0.07);
-  --bg2:hsla(250,24%,13%,0.06);
-  --bg3:hsla(250,22%,16%,0.09);
+  --bg0:hsla(250,28%,7%,0.05);
+  --bg1:hsla(250,28%,10%,0.03);
+  --bg2:hsla(250,24%,13%,0.03);
+  --bg3:hsla(250,22%,16%,0.05);
 
   /* the app's crystal rim, exposed so anything can opt in */
   --glass-rim:
@@ -45,7 +45,7 @@
   /* brightness() inside backdrop-filter is what buys legibility — the app
      does the same thing (src/renderer/island.css:1105). Darken what is
      BEHIND the pane instead of stacking more opacity on top of it. */
-  --glass-blur:blur(22px) saturate(1.6) brightness(0.42);
+  --glass-blur:blur(26px) saturate(1.35) brightness(0.86);
 }
 
 /* The desktop the particles live on. When WebGL is available terse-field.js
@@ -93,8 +93,9 @@ body{background:transparent}
 
 /* The app window mock keeps its heavier drop shadow — it is meant to float. */
 .win{
-  -webkit-backdrop-filter:blur(20px) saturate(1.55) brightness(0.56);
-  backdrop-filter:blur(20px) saturate(1.55) brightness(0.56);
+  background:hsla(250,24%,13%,0.05) !important;
+  -webkit-backdrop-filter:blur(20px) saturate(1.55) brightness(0.90);
+  backdrop-filter:blur(20px) saturate(1.55) brightness(0.90);
   box-shadow:
     inset 0 1px 0 hsla(0,0%,100%,0.30),
     inset 0 0 0 1px hsla(0,0%,100%,0.06),
@@ -113,17 +114,17 @@ body{background:transparent}
 .faq-section,
 .trust-strip{
   background-color:var(--bg1);
-  -webkit-backdrop-filter:blur(18px) saturate(1.5) brightness(0.46);
-  backdrop-filter:blur(18px) saturate(1.5) brightness(0.46);
-  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.055);
+  -webkit-backdrop-filter:blur(24px) saturate(1.3) brightness(0.88);
+  backdrop-filter:blur(24px) saturate(1.3) brightness(0.88);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.16);
 }
 
 /* The inline-styled bands. index.html sets background:var(--bg0|bg1) directly
    on ~28 sections, so the token change alone makes them transparent — but with
    no filter they would have nothing to read against. */
 section.section, section[id]{
-  -webkit-backdrop-filter:blur(18px) saturate(1.5) brightness(0.46);
-  backdrop-filter:blur(18px) saturate(1.5) brightness(0.46);
+  -webkit-backdrop-filter:blur(24px) saturate(1.3) brightness(0.88);
+  backdrop-filter:blur(24px) saturate(1.3) brightness(0.88);
 }
 
 
@@ -259,18 +260,18 @@ section:not([class]):not(#pals):not(#newsletter)::before{
   border-radius:20px;
   /* was a 0.72 fill, which hid the wallpaper behind every article. Now it is
      glass: the plate still shows through, blurred and dimmed. */
-  background:hsla(250,28%,8%,0.14);
-  -webkit-backdrop-filter:blur(20px) saturate(1.45) brightness(0.40);
-  backdrop-filter:blur(20px) saturate(1.45) brightness(0.40);
-  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.07);
+  background:hsla(250,28%,8%,0.05);
+  -webkit-backdrop-filter:blur(20px) saturate(1.45) brightness(0.86);
+  backdrop-filter:blur(20px) saturate(1.45) brightness(0.86);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.18);
 }
 
 /* Nav and footer are the last two opaque slabs on the page — make them glass
    too, or the wallpaper stops at a hard edge top and bottom. */
 nav{
   background:hsla(250,30%,6%,0.10);
-  -webkit-backdrop-filter:blur(22px) saturate(1.7) brightness(0.72);
-  backdrop-filter:blur(22px) saturate(1.7) brightness(0.72);
+  -webkit-backdrop-filter:blur(22px) saturate(1.7) brightness(0.92);
+  backdrop-filter:blur(22px) saturate(1.7) brightness(0.92);
   border-bottom:1px solid hsla(0,0%,100%,0.07);
   box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.16);
 }
@@ -279,21 +280,21 @@ nav{
    darkens what is BEHIND the bar, not from stacking opacity on top of it. */
 nav.scrolled{
   background:hsla(250,30%,6%,0.22);
-  -webkit-backdrop-filter:blur(26px) saturate(1.7) brightness(0.52);
-  backdrop-filter:blur(26px) saturate(1.7) brightness(0.52);
+  -webkit-backdrop-filter:blur(26px) saturate(1.7) brightness(0.90);
+  backdrop-filter:blur(26px) saturate(1.7) brightness(0.90);
 }
 /* the logo chip and the sign-in button were the last two solid blocks up there */
 .logo-icon{background:hsla(158,64%,58%,0.12);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .nav-cta{background:hsla(0,0%,100%,0.92)}
 footer{
-  -webkit-backdrop-filter:blur(20px) saturate(1.5) brightness(0.42);
-  backdrop-filter:blur(20px) saturate(1.5) brightness(0.42);
+  -webkit-backdrop-filter:blur(24px) saturate(1.3) brightness(0.86);
+  backdrop-filter:blur(24px) saturate(1.3) brightness(0.86);
   box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.08);
 }
 /* The RTK comparison table and the technique chips carried their own ground. */
 .tc{
-  -webkit-backdrop-filter:blur(10px) saturate(1.4) brightness(0.7);
-  backdrop-filter:blur(10px) saturate(1.4) brightness(0.7);
+  -webkit-backdrop-filter:blur(10px) saturate(1.4) brightness(0.92);
+  backdrop-filter:blur(10px) saturate(1.4) brightness(0.92);
   box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.14);
 }
 .tc-demo{background:hsla(250,30%,4%,0.34)}
@@ -321,8 +322,8 @@ footer{
 /* Modals and popovers must stay readable over the field. */
 #clerk-modal > div,
 #lang-menu{
-  -webkit-backdrop-filter:blur(22px) saturate(1.4) brightness(0.5);
-  backdrop-filter:blur(22px) saturate(1.4) brightness(0.5);
+  -webkit-backdrop-filter:blur(22px) saturate(1.4) brightness(0.88);
+  backdrop-filter:blur(22px) saturate(1.4) brightness(0.88);
 }
 
 /* Anything that draws its own solid ground inside a card (code blocks, terminal

@@ -442,21 +442,36 @@ jobs:
           # The assertion that matters is not a process count - that number moves
           # with WebView2's own internals and would be a flaky thing to pin. It is
           # whether the window exists at all.
-          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class WQ{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);}'
+          # EnumChildWindows as well as EnumWindows. The first version used only
+          # the top-level sweep and enumerated NOTHING, while the step further
+          # down - which recurses - reliably finds these windows. Same reason the
+          # window dump in the artifact can photograph 'Terse Wallpaper'.
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class WQ{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumChildWindows(IntPtr p,Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);}'
           $script:titles = @()
-          $cb = [WQ+Cb]{ param($h,$l)
+          $script:cb = [WQ+Cb]{ param($h,$l)
             $sb = New-Object System.Text.StringBuilder 256
             [void][WQ]::GetWindowTextW($h, $sb, 256)
             $t2 = $sb.ToString()
             if ($t2 -like 'Terse*') { $script:titles += $t2 }
+            [void][WQ]::EnumChildWindows($h, $script:cb, [IntPtr]::Zero)
             return $true }
-          [void][WQ]::EnumWindows($cb, [IntPtr]::Zero)
+          [void][WQ]::EnumWindows($script:cb, [IntPtr]::Zero)
           Write-Host "--- Terse windows with the wallpaper off ---"
           $script:titles | Sort-Object -Unique | ForEach-Object { Write-Host "  $_" }
-          if ($script:titles -contains 'Terse Wallpaper') {
+
+          # The count is the real evidence, and it is recorded for the ON step to
+          # compare against. A title check on its own is worthless here: the first
+          # version of this step printed an EMPTY window list and still said OK -
+          # it would have passed just as happily if the app had never started.
+          # Absence only means something next to a presence measured the same way.
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          "$($wv.Count)" | Set-Content artifacts/webview-count-off.txt
+          if ($script:titles.Count -eq 0) {
+            Write-Warning "INCONCLUSIVE: no Terse windows enumerated at all - cannot tell 'the wallpaper window is absent' from 'nothing is running'"
+          } elseif ($script:titles -contains 'Terse Wallpaper') {
             Write-Warning "RESIDENT WALLPAPER: the window was built even though the wallpaper is off - that is a WebView2 renderer nobody asked for"
           } else {
-            Write-Host "WALLPAPER NOT RESIDENT OK: no wallpaper window while the feature is off"
+            Write-Host "WALLPAPER NOT RESIDENT OK: no wallpaper window among $($script:titles.Count) Terse windows while the feature is off"
           }
 
           # Leave nothing running: the next step turns the wallpaper on and
@@ -620,6 +635,27 @@ jobs:
           $b = Snap "idle+20s"; Write-Host $b
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           "$a`n$b" | Set-Content artifacts/resident-cost.txt
+
+          # The wallpaper is ON here and OFF in the earlier census, so the two
+          # counts bracket what the wallpaper window actually costs. A differential
+          # cannot pass by accident the way an absence check can: if the app failed
+          # to start, this side collapses to zero and the comparison fails loudly
+          # instead of reporting a tidy OK.
+          $offFile = "artifacts/webview-count-off.txt"
+          if (Test-Path $offFile) {
+            $off = [int](Get-Content $offFile -Raw).Trim()
+            $on  = @(Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue).Count
+            Write-Host "WebView2 renderers - wallpaper off: $off, on: $on"
+            if ($on -le 0 -or $off -le 0) {
+              Write-Warning "INCONCLUSIVE: one side measured no WebView2 processes at all"
+            } elseif ($off -lt $on) {
+              Write-Host "LAZY WALLPAPER OK: turning it off costs $($on - $off) fewer renderer process(es)"
+            } else {
+              Write-Warning "LAZY WALLPAPER FAIL: off ($off) is not below on ($on) - the window is resident either way"
+            }
+          } else {
+            Write-Warning "no webview-count-off.txt - the wallpaper-off census did not run"
+          }
           # WHICH process is burning it.
           #
           # The first run of this step showed CPU climbing 78s in 20s of wall

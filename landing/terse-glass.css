@@ -110,6 +110,46 @@ body{background:transparent}
   box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.055);
 }
 
+/* Long-form prose had no ground of its own.
+   The article and comparison pages put their body text straight onto <body>,
+   which this stylesheet made translucent — so the prose was reading against a
+   live particle field with nothing in between. Measured on the deployed site:
+   15 of 17 body paragraphs on /what-is-context-rot, 8 of 9 on /tokenization-101
+   and 6 of 12 on /cursor-pricing had no background anywhere up their ancestor
+   chain. That shipped with the first wallpaper commit and went unnoticed
+   because only the home page was ever checked.
+
+   The hero keeps its transparency — that is where the wallpaper is meant to
+   show. Only the reading column gets a ground.
+
+   Drawn as a pseudo-element that bleeds outward rather than a background on the
+   column itself, so no padding, width or vertical rhythm changes anywhere. No
+   backdrop-filter either: a 720px column runs thousands of pixels tall, and
+   blurring that surface costs more than the band rule above warns about. The
+   alpha alone carries the contrast.
+
+   Unclassed <section> is the content band on 63 pages — the head-to-heads use
+   eight each — so it is the right target there. The two exceptions are #pals
+   and #newsletter, the only unclassed sections on the home page, and they are
+   deliberately transparent so the field shows between the classed bands above
+   and below them. They are excluded by id rather than by dropping the rule,
+   because that would leave 63 pages unfixed to protect two sections. */
+.article,
+section:not([class]):not(#pals):not(#newsletter){
+  position:relative;
+  z-index:0;
+}
+.article::before,
+section:not([class]):not(#pals):not(#newsletter)::before{
+  content:"";
+  position:absolute;
+  inset:-26px -30px;
+  z-index:-1;
+  border-radius:20px;
+  background:hsla(250,28%,8%,0.72);
+  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.055);
+}
+
 /* Nav and footer are the last two opaque slabs on the page — make them glass
    too, or the wallpaper stops at a hard edge top and bottom. */
 nav{

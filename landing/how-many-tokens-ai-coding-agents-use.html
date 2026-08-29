@@ -170,7 +170,7 @@
     .pricing-table td:first-child{color:var(--t1);font-weight:600}
 
     .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
-    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card h4, .cost-card h3{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
     .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
     .cost-card .row:last-child{border-bottom:none}
     .cost-card .row .label{color:var(--t3)}
@@ -265,7 +265,7 @@
   <p>The consequence: a file the agent reads on turn 3 is re-transmitted on turns 4, 5, 6, and every turn after. Over a 30-turn session, that one file might be sent 27 times. This is why total token usage grows <strong>super-linearly</strong> with the number of turns rather than linearly with your prompt length. Doubling the length of a session more than doubles the tokens.</p>
 
   <div class="cost-card">
-    <h4>The compounding effect (illustrative)</h4>
+    <h3>The compounding effect (illustrative)</h3>
     <div class="row"><span class="label">Turn 1 context</span><span>~8K tokens</span></div>
     <div class="row"><span class="label">Turn 5 context (history + 3 files read)</span><span>~35K tokens</span></div>
     <div class="row"><span class="label">Turn 15 context (more history + 8 files)</span><span>~90K tokens</span></div>

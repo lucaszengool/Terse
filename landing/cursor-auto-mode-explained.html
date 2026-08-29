@@ -153,7 +153,7 @@
     .pricing-table td:first-child{color:var(--t1);font-weight:600}
 
     .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
-    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card h4, .cost-card h3{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
     .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
     .cost-card .row:last-child{border-bottom:none}
     .cost-card .row .label{color:var(--t3)}
@@ -237,7 +237,7 @@
   <p>In <strong>Auto mode</strong>, requests are covered by your subscription and do not spend the credit pool. In <strong>manual mode</strong>, the moment you pin a frontier model — Claude Opus, GPT-5, or another top-tier model — every request draws from your roughly $20 monthly credit pool. Big requests on large contexts drain it quickly.</p>
   <p>When that pool is exhausted, Cursor does not stop working. You have two paths: fall back to Auto and keep going at no extra cost, or stay on the frontier model and pay <strong>overages at API rates</strong> for every token until the month resets. There is no automatic downgrade, so a forgotten frontier default is exactly how bills spike. Our guide on <a href="/why-is-cursor-so-expensive">why Cursor gets expensive</a> walks through how that plays out across a month.</p>
   <div class="cost-card">
-    <h4>Auto vs Manual at a glance</h4>
+    <h3>Auto vs Manual at a glance</h3>
     <div class="row"><span class="label">Auto mode</span><span>Included &mdash; does not touch credit pool</span></div>
     <div class="row"><span class="label">Manual frontier model</span><span>Draws from ~$20 monthly pool</span></div>
     <div class="row"><span class="label">Pool exhausted</span><span>Fall back to Auto, or pay API overages</span></div>

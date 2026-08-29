@@ -85,7 +85,7 @@
     .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0 24px}
     .pricing-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px}
     .pricing-card.featured{border-color:var(--ac);position:relative}
-    .pricing-card h4{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px}
+    .pricing-card h4, .pricing-card h3{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px}
     .pricing-card .price{font-size:28px;font-weight:900;color:var(--t1);margin:8px 0}
     .pricing-card .price span{font-size:14px;font-weight:500;color:var(--t3)}
     .pricing-card ul{list-style:none;margin:12px 0 0;padding:0}
@@ -381,7 +381,7 @@
   <h2 id="pricing">Pricing</h2>
   <div class="pricing-grid">
     <div class="pricing-card">
-      <h4>Free</h4>
+      <h3>Free</h3>
       <div class="price">$0<span>/mo</span></div>
       <ul>
         <li>50 optimizations per week</li>
@@ -392,7 +392,7 @@
       </ul>
     </div>
     <div class="pricing-card featured">
-      <h4>Pro</h4>
+      <h3>Pro</h3>
       <div class="price">$4.99<span>/mo</span></div>
       <ul>
         <li>Unlimited optimizations</li>
@@ -404,7 +404,7 @@
       </ul>
     </div>
     <div class="pricing-card">
-      <h4>Premium</h4>
+      <h3>Premium</h3>
       <div class="price">$99<span>/mo</span></div>
       <ul>
         <li>Unlimited everything</li>

@@ -95,7 +95,7 @@
 
     .cost-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:20px 0 28px}
     .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px}
-    .cost-card h4{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px}
+    .cost-card h4, .cost-card h3{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px}
     .cost-card .tokens{font-size:12px;color:var(--t3);margin-bottom:12px}
     .cost-card .cost-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:var(--t2);border-bottom:1px solid var(--sf)}
     .cost-card .cost-row:last-child{border-bottom:none}
@@ -118,7 +118,7 @@
 
     .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0 28px}
     .decision-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px}
-    .decision-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:8px}
+    .decision-card h4, .decision-card h3{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:8px}
     .decision-card p{font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:8px}
     .decision-card .rec{font-size:13px;color:var(--ac);font-weight:600}
 
@@ -244,7 +244,7 @@
 
   <div class="cost-grid">
     <div class="cost-card">
-      <h4>Simple Q&amp;A</h4>
+      <h3>Simple Q&amp;A</h3>
       <p class="tokens">~500 input / ~200 output tokens</p>
       <div class="cost-row"><span class="model-name">Opus 4</span><span class="cost-val">$0.0225</span></div>
       <div class="cost-row"><span class="model-name">Sonnet 4</span><span class="cost-val">$0.0045</span></div>
@@ -256,7 +256,7 @@
       <div class="cost-row"><span class="model-name">Gemini Pro</span><span class="cost-val">$0.0016</span></div>
     </div>
     <div class="cost-card">
-      <h4>Code Review</h4>
+      <h3>Code Review</h3>
       <p class="tokens">~5K input / ~1K output tokens</p>
       <div class="cost-row"><span class="model-name">Opus 4</span><span class="cost-val">$0.150</span></div>
       <div class="cost-row"><span class="model-name">Sonnet 4</span><span class="cost-val">$0.030</span></div>
@@ -268,7 +268,7 @@
       <div class="cost-row"><span class="model-name">Gemini Pro</span><span class="cost-val">$0.011</span></div>
     </div>
     <div class="cost-card">
-      <h4>Agent Session</h4>
+      <h3>Agent Session</h3>
       <p class="tokens">~200K input / ~50K output (40 turns)</p>
       <div class="cost-row"><span class="model-name">Opus 4</span><span class="cost-val">$6.75</span></div>
       <div class="cost-row"><span class="model-name">Sonnet 4</span><span class="cost-val">$1.35</span></div>
@@ -331,32 +331,32 @@
 
   <div class="decision-grid">
     <div class="decision-card">
-      <h4>Quick Questions &amp; Chat</h4>
+      <h3>Quick Questions &amp; Chat</h3>
       <p>Simple queries, brainstorming, explanations, and conversational tasks. Low token counts, minimal context needed.</p>
       <p class="rec">Best value: GPT-4o-mini ($0.0002/query) or Gemini 2.0 Flash ($0.0001/query)</p>
     </div>
     <div class="decision-card">
-      <h4>Code Generation</h4>
+      <h3>Code Generation</h3>
       <p>Writing functions, classes, and modules from specifications. Moderate context, high output. Quality matters for correctness.</p>
       <p class="rec">Best balance: Claude Sonnet 4 ($0.030/review) or GPT-4o ($0.023/review)</p>
     </div>
     <div class="decision-card">
-      <h4>Complex Reasoning</h4>
+      <h3>Complex Reasoning</h3>
       <p>Multi-step logic, mathematical proofs, architecture decisions, research analysis. Accuracy is paramount.</p>
       <p class="rec">Best quality: Claude Opus 4 ($0.15/task) or o1 ($0.135/task)</p>
     </div>
     <div class="decision-card">
-      <h4>Agent Sessions (Coding)</h4>
+      <h3>Agent Sessions (Coding)</h3>
       <p>Extended multi-turn sessions with tool use: Claude Code, Cursor, Aider. High token volume, context grows per turn.</p>
       <p class="rec">Best balance: Claude Sonnet 4 ($1.35/session). Budget: Haiku 3.5 ($0.36/session)</p>
     </div>
     <div class="decision-card">
-      <h4>Batch Processing</h4>
+      <h3>Batch Processing</h3>
       <p>Classifying documents, extracting data, summarizing at scale. Thousands of requests, cost per unit matters most.</p>
       <p class="rec">Best value: Gemini 2.0 Flash ($0.10/MTok) or GPT-4o-mini ($0.15/MTok)</p>
     </div>
     <div class="decision-card">
-      <h4>Long Document Analysis</h4>
+      <h3>Long Document Analysis</h3>
       <p>Processing large PDFs, codebases, or research papers. Needs large context window and strong comprehension.</p>
       <p class="rec">Best fit: Gemini 1.5 Pro (2M context, $1.25/MTok) or Claude Sonnet 4 (200K, $3/MTok)</p>
     </div>

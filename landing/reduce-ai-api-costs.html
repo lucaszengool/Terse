@@ -91,7 +91,7 @@
     .pricing-table td:first-child{color:var(--t1);font-weight:600}
 
     .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
-    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card h4, .cost-card h3{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
     .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
     .cost-card .row:last-child{border-bottom:none}
     .cost-card .row .label{color:var(--t3)}
@@ -209,7 +209,7 @@
   <p>Before you can reduce AI API costs, you need to understand where your tokens are being consumed. Most developers assume the prompt they type is the main cost driver. It is not. In a typical agent session or production pipeline, the token breakdown looks like this:</p>
 
   <div class="cost-card">
-    <h4>Typical Agent Session Token Breakdown</h4>
+    <h3>Typical Agent Session Token Breakdown</h3>
     <div class="row"><span class="label">System prompts &amp; instructions</span><span>~20%</span></div>
     <div class="row"><span class="label">User prompts (what you actually type)</span><span>~15%</span></div>
     <div class="row"><span class="label">Conversation history &amp; context</span><span>~25%</span></div>
@@ -331,7 +331,7 @@
   <p>Let us run the numbers on a concrete scenario. Consider a developer using Claude Opus for agent-assisted coding, consuming 100,000 input tokens per day across multiple sessions.</p>
 
   <div class="cost-card">
-    <h4>Without Optimization — Claude Opus, 100K input tokens/day</h4>
+    <h3>Without Optimization — Claude Opus, 100K input tokens/day</h3>
     <div class="row"><span class="label">Daily input cost</span><span>$1.50</span></div>
     <div class="row"><span class="label">Monthly input cost (22 workdays)</span><span>$33.00</span></div>
     <div class="row"><span class="label">Output tokens (est. 30K/day at $75/MTok)</span><span>$2.25/day</span></div>
@@ -340,7 +340,7 @@
   </div>
 
   <div class="cost-card">
-    <h4>With Terse (Normal mode, ~40% input reduction)</h4>
+    <h3>With Terse (Normal mode, ~40% input reduction)</h3>
     <div class="row"><span class="label">Effective input tokens</span><span>60,000/day</span></div>
     <div class="row"><span class="label">Daily input cost</span><span>$0.90</span></div>
     <div class="row"><span class="label">Monthly input cost</span><span>$19.80</span></div>
@@ -350,7 +350,7 @@
   </div>
 
   <div class="cost-card">
-    <h4>With Terse (Aggressive mode, ~60% input reduction) + Caching</h4>
+    <h3>With Terse (Aggressive mode, ~60% input reduction) + Caching</h3>
     <div class="row"><span class="label">Effective input tokens</span><span>40,000/day</span></div>
     <div class="row"><span class="label">Cached tokens (est. 50% cache hit)</span><span>20,000 at 90% discount</span></div>
     <div class="row"><span class="label">Daily input cost</span><span>$0.33</span></div>
@@ -366,7 +366,7 @@
   <p>Here is the same calculation for GPT-4o, which many teams use as their primary model:</p>
 
   <div class="cost-card">
-    <h4>GPT-4o — 100K input tokens/day, before vs. after optimization</h4>
+    <h3>GPT-4o — 100K input tokens/day, before vs. after optimization</h3>
     <div class="row"><span class="label">Before: monthly input cost</span><span>$5.50</span></div>
     <div class="row"><span class="label">Before: monthly output cost (30K/day)</span><span>$6.60</span></div>
     <div class="row"><span class="label">Before: total monthly</span><span>$12.10</span></div>

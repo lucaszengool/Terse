@@ -90,7 +90,7 @@
     .pricing-table td:first-child{color:var(--t1);font-weight:600}
 
     .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin:20px 0 28px}
-    .cost-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cost-card h4, .cost-card h3{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
     .cost-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--t2);border-bottom:1px solid var(--sf)}
     .cost-card .row:last-child{border-bottom:none}
     .cost-card .row .label{color:var(--t3)}
@@ -205,7 +205,7 @@
   <p>在降低 AI API 成本之前,你需要先弄清楚 token 消耗在什么地方。大多数开发者以为自己输入的提示词是主要成本来源。并非如此。在一次典型的 agent 会话或生产管线中,token 的构成大致如下:</p>
 
   <div class="cost-card">
-    <h4>典型 Agent 会话的 Token 构成</h4>
+    <h3>典型 Agent 会话的 Token 构成</h3>
     <div class="row"><span class="label">系统提示词与指令</span><span>~20%</span></div>
     <div class="row"><span class="label">用户提示词(你实际输入的内容)</span><span>~15%</span></div>
     <div class="row"><span class="label">对话历史与上下文</span><span>~25%</span></div>
@@ -327,7 +327,7 @@
   <p>让我们用一个具体场景算笔账。假设一位开发者用 Claude Opus 做 agent 辅助编程,每天在多个会话中消耗 100,000 个输入 token。</p>
 
   <div class="cost-card">
-    <h4>未优化 — Claude Opus,每天 10 万输入 token</h4>
+    <h3>未优化 — Claude Opus,每天 10 万输入 token</h3>
     <div class="row"><span class="label">每日输入成本</span><span>$1.50</span></div>
     <div class="row"><span class="label">每月输入成本(22 个工作日)</span><span>$33.00</span></div>
     <div class="row"><span class="label">输出 token(估计每天 3 万,$75/MTok)</span><span>$2.25/天</span></div>
@@ -336,7 +336,7 @@
   </div>
 
   <div class="cost-card">
-    <h4>使用 Terse(Normal 模式,输入约削减 40%)</h4>
+    <h3>使用 Terse(Normal 模式,输入约削减 40%)</h3>
     <div class="row"><span class="label">实际输入 token</span><span>60,000/天</span></div>
     <div class="row"><span class="label">每日输入成本</span><span>$0.90</span></div>
     <div class="row"><span class="label">每月输入成本</span><span>$19.80</span></div>
@@ -346,7 +346,7 @@
   </div>
 
   <div class="cost-card">
-    <h4>使用 Terse(Aggressive 模式,输入约削减 60%)+ 缓存</h4>
+    <h3>使用 Terse(Aggressive 模式,输入约削减 60%)+ 缓存</h3>
     <div class="row"><span class="label">实际输入 token</span><span>40,000/天</span></div>
     <div class="row"><span class="label">缓存 token(估计 50% 命中)</span><span>20,000 个享 90% 折扣</span></div>
     <div class="row"><span class="label">每日输入成本</span><span>$0.33</span></div>
@@ -362,7 +362,7 @@
   <p>下面是许多团队作为主力模型的 GPT-4o 的同一笔账:</p>
 
   <div class="cost-card">
-    <h4>GPT-4o — 每天 10 万输入 token,优化前后对比</h4>
+    <h3>GPT-4o — 每天 10 万输入 token,优化前后对比</h3>
     <div class="row"><span class="label">优化前:每月输入成本</span><span>$5.50</span></div>
     <div class="row"><span class="label">优化前:每月输出成本(每天 3 万)</span><span>$6.60</span></div>
     <div class="row"><span class="label">优化前:每月合计</span><span>$12.10</span></div>

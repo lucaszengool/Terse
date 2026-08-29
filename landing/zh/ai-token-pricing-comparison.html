@@ -94,7 +94,7 @@
 
     .cost-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:20px 0 28px}
     .cost-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px}
-    .cost-card h4{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px}
+    .cost-card h4, .cost-card h3{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px}
     .cost-card .tokens{font-size:12px;color:var(--t3);margin-bottom:12px}
     .cost-card .cost-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:var(--t2);border-bottom:1px solid var(--sf)}
     .cost-card .cost-row:last-child{border-bottom:none}
@@ -117,7 +117,7 @@
 
     .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0 28px}
     .decision-card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px}
-    .decision-card h4{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:8px}
+    .decision-card h4, .decision-card h3{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:8px}
     .decision-card p{font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:8px}
     .decision-card .rec{font-size:13px;color:var(--ac);font-weight:600}
 
@@ -240,7 +240,7 @@
 
   <div class="cost-grid">
     <div class="cost-card">
-      <h4>简单问答</h4>
+      <h3>简单问答</h3>
       <p class="tokens">约 500 输入 / 约 200 输出 token</p>
       <div class="cost-row"><span class="model-name">Opus 4</span><span class="cost-val">$0.0225</span></div>
       <div class="cost-row"><span class="model-name">Sonnet 4</span><span class="cost-val">$0.0045</span></div>
@@ -252,7 +252,7 @@
       <div class="cost-row"><span class="model-name">Gemini Pro</span><span class="cost-val">$0.0016</span></div>
     </div>
     <div class="cost-card">
-      <h4>代码评审</h4>
+      <h3>代码评审</h3>
       <p class="tokens">约 5K 输入 / 约 1K 输出 token</p>
       <div class="cost-row"><span class="model-name">Opus 4</span><span class="cost-val">$0.150</span></div>
       <div class="cost-row"><span class="model-name">Sonnet 4</span><span class="cost-val">$0.030</span></div>
@@ -264,7 +264,7 @@
       <div class="cost-row"><span class="model-name">Gemini Pro</span><span class="cost-val">$0.011</span></div>
     </div>
     <div class="cost-card">
-      <h4>Agent 会话</h4>
+      <h3>Agent 会话</h3>
       <p class="tokens">约 200K 输入 / 约 50K 输出(40 轮)</p>
       <div class="cost-row"><span class="model-name">Opus 4</span><span class="cost-val">$6.75</span></div>
       <div class="cost-row"><span class="model-name">Sonnet 4</span><span class="cost-val">$1.35</span></div>
@@ -327,32 +327,32 @@
 
   <div class="decision-grid">
     <div class="decision-card">
-      <h4>快速提问与闲聊</h4>
+      <h3>快速提问与闲聊</h3>
       <p>简单查询、头脑风暴、解释说明和对话类任务。token 量低,几乎不需要上下文。</p>
       <p class="rec">最划算:GPT-4o-mini($0.0002/次)或 Gemini 2.0 Flash($0.0001/次)</p>
     </div>
     <div class="decision-card">
-      <h4>代码生成</h4>
+      <h3>代码生成</h3>
       <p>按规格编写函数、类和模块。上下文中等、输出量大,正确性对质量要求高。</p>
       <p class="rec">最均衡:Claude Sonnet 4($0.030/次)或 GPT-4o($0.023/次)</p>
     </div>
     <div class="decision-card">
-      <h4>复杂推理</h4>
+      <h3>复杂推理</h3>
       <p>多步逻辑、数学证明、架构决策、研究分析。准确性压倒一切。</p>
       <p class="rec">最高质量:Claude Opus 4($0.15/任务)或 o1($0.135/任务)</p>
     </div>
     <div class="decision-card">
-      <h4>Agent 会话(编程)</h4>
+      <h3>Agent 会话(编程)</h3>
       <p>带工具调用的长多轮会话:Claude Code、Cursor、Aider。token 量大,上下文逐轮增长。</p>
       <p class="rec">最均衡:Claude Sonnet 4($1.35/会话)。省钱:Haiku 3.5($0.36/会话)</p>
     </div>
     <div class="decision-card">
-      <h4>批处理</h4>
+      <h3>批处理</h3>
       <p>文档分类、数据提取、大规模摘要。请求数以千计,单位成本最重要。</p>
       <p class="rec">最划算:Gemini 2.0 Flash($0.10/MTok)或 GPT-4o-mini($0.15/MTok)</p>
     </div>
     <div class="decision-card">
-      <h4>长文档分析</h4>
+      <h3>长文档分析</h3>
       <p>处理大型 PDF、代码库或研究论文。需要大上下文窗口和强理解力。</p>
       <p class="rec">最合适:Gemini 1.5 Pro(2M 上下文,$1.25/MTok)或 Claude Sonnet 4(200K,$3/MTok)</p>
     </div>

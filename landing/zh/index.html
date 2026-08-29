@@ -633,7 +633,7 @@
     .tc{padding:12px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;position:relative;overflow:hidden;transition:all .4s}
     .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0;transition:opacity .3s}
     .tc.pulse{border-color:var(--acm)}.tc.pulse::before{opacity:1}
-    .tc h4{font-size:11px;font-weight:700;margin-bottom:3px}
+    .tc h4, .tc h3{font-size:11px;font-weight:700;margin-bottom:3px}
     .tc-demo{font-size:10px;color:var(--t3);min-height:28px;margin-top:4px;padding:4px 6px;background:hsla(0,0%,0%,0.2);border-radius:3px;line-height:1.5;transition:all .3s}
     .tc-demo .del{text-decoration:line-through;opacity:.5}
 
@@ -1669,12 +1669,12 @@
       <div class="win">
         <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Techniques — Live</span></div>
         <div class="tech-cards" id="techViz">
-          <div class="tc" id="tc0"><h4 data-i18n="techniques.card1">冗余读取检测</h4><div class="tc-demo mono" id="td0"></div></div>
-          <div class="tc" id="tc1"><h4 data-i18n="techniques.card2">疑问句 → 祈使句</h4><div class="tc-demo mono" id="td1"></div></div>
-          <div class="tc" id="tc2"><h4 data-i18n="techniques.card3">重复工具调用</h4><div class="tc-demo mono" id="td2"></div></div>
-          <div class="tc" id="tc3"><h4 data-i18n="techniques.card4">语义去重</h4><div class="tc-demo mono" id="td3"></div></div>
-          <div class="tc" id="tc4"><h4 data-i18n="techniques.card5">填充词去除</h4><div class="tc-demo mono" id="td4"></div></div>
-          <div class="tc" id="tc5"><h4 data-i18n="techniques.card6">未使用工具开销</h4><div class="tc-demo mono" id="td5"></div></div>
+          <div class="tc" id="tc0"><h3 data-i18n="techniques.card1">冗余读取检测</h3><div class="tc-demo mono" id="td0"></div></div>
+          <div class="tc" id="tc1"><h3 data-i18n="techniques.card2">疑问句 → 祈使句</h3><div class="tc-demo mono" id="td1"></div></div>
+          <div class="tc" id="tc2"><h3 data-i18n="techniques.card3">重复工具调用</h3><div class="tc-demo mono" id="td2"></div></div>
+          <div class="tc" id="tc3"><h3 data-i18n="techniques.card4">语义去重</h3><div class="tc-demo mono" id="td3"></div></div>
+          <div class="tc" id="tc4"><h3 data-i18n="techniques.card5">填充词去除</h3><div class="tc-demo mono" id="td4"></div></div>
+          <div class="tc" id="tc5"><h3 data-i18n="techniques.card6">未使用工具开销</h3><div class="tc-demo mono" id="td5"></div></div>
         </div>
       </div>
     </div>

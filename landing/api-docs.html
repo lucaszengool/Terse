@@ -104,6 +104,20 @@
     .key-pill{font-family:var(--mono);font-size:13px;background:var(--bg3);border:1px solid var(--bd);padding:8px 14px;border-radius:8px;display:inline-block;color:var(--t1)}
 
     @media(max-width:800px){
+      /* The grid column is 1fr, but a grid item's default min-width:auto stops
+         it shrinking below its content — and the content includes a 1411px
+         unwrapped code sample, so the whole layout sat 860px wide inside a
+         375px viewport: 485px of horizontal scroll, 92 elements past the right
+         edge. min-width:0 is what actually lets the column shrink. The pre
+         keeps overflow-x:auto, so code scrolls inside its own box instead of
+         being wrapped or lost — measured after: 0 overflow, and every element
+         still past the edge is inside a scrollable parent. */
+      html,body{overflow-x:clip}
+      .docs-layout>*{min-width:0}
+      .docs-main{max-width:100%;min-width:0}
+      pre{max-width:100%;overflow-x:auto}
+      table{display:block;overflow-x:auto;max-width:100%}
+      .endpoint{max-width:100%}
       .docs-layout{grid-template-columns:1fr}
       .sidebar{display:none}
       .docs-main{padding:32px 20px}

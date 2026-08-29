@@ -455,8 +455,12 @@
      rather than clamp, because clamping 0 to 1 silently poisons every ratio
      computed from it. */
   function vw() {
-    return Math.max(window.innerWidth || 0,
-                    (document.documentElement && document.documentElement.clientWidth) || 0);
+    /* clientWidth, not max(innerWidth, clientWidth). If anything on the page
+       overflows horizontally, innerWidth follows it and the canvas sizes itself
+       to the overflow — which then keeps the document wide on its own. Taking
+       the smaller of the two makes the field a passenger rather than a cause. */
+    var c = (document.documentElement && document.documentElement.clientWidth) || 0;
+    return c || window.innerWidth || 0;
   }
   function vh() {
     /* documentElement.clientHeight only — NOT document.body.clientHeight, which

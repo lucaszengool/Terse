@@ -130,5 +130,17 @@
   }
 
   listen('terse-toast', (e) => { if (e && e.payload) render(e.payload); });
+
+  // Drain anything raised before this listener existed.
+  //
+  // This window is built on the first alert now, not at startup, and the build
+  // returns as soon as the webview exists - long before this file runs. The
+  // alert that CAUSED the build is therefore raised into a page with no
+  // listener, so Rust holds it and we collect it here. Ordered after listen()
+  // so a second alert arriving mid-drain cannot slip between the two.
+  invoke('take_pending_toasts')
+    .then((pending) => { (pending || []).forEach(render); })
+    .catch(() => {});
+
   window.addEventListener('resize', syncSize);
 })();

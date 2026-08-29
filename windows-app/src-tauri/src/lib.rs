@@ -2700,6 +2700,43 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .build()?,
             16.0,
         ),
+        // The alert banner, built on the first alert rather than at every launch.
+        //
+        // Hidden from startup to the first notification, which for most sessions
+        // is the whole session - and the island takes the alert whenever it is on
+        // screen, so this window is the fallback, not the usual path.
+        //
+        // The reason this could not simply be moved like the others: notify()
+        // shows the window and emits to it in the same breath, and a freshly
+        // built page has not registered its listener yet, so the first alert
+        // would vanish. It is queued instead - see PENDING_TOASTS and
+        // take_pending_toasts.
+        "toast" => {
+            let toast_x = screen_width - notifications::TOAST_W - 14.0;
+            let toast_win = WebviewWindowBuilder::new(app, "toast", WebviewUrl::App("toast.html".into()))
+                .title("Terse Alert")
+                .inner_size(notifications::TOAST_W, 140.0)
+                .position(toast_x, 42.0)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible_on_all_workspaces(true)
+                .visible(false)
+                .build()?;
+            // Through the shared tail, NOT an early return like the wallpaper.
+            // The startup loop that rounds the frameless surfaces gave this
+            // window a 14px radius, and skipping that leaves four opaque black
+            // square corners poking out past the card's own border - the exact
+            // artefact that loop's comment describes. attach_lazy_chrome also
+            // re-cuts the region on Resized, which this window needs more than
+            // most: toast.js grows it to fit the card stack.
+            (toast_win, 14.0)
+        }
         // The wallpaper, built on the first enable rather than at every launch.
         //
         // `enabled` already defaults to false - turned off because the particle
@@ -2788,7 +2825,7 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
 /// Drop-in for `get_webview_window` at every site that is about to SHOW one of
 /// the on-demand windows. Sites that merely poke an already-open window still use
 /// get_webview_window, so nothing is created as a side effect of a status check.
-fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
+pub(crate) fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
     if let Some(w) = app.get_webview_window(label) {
         return Some(w);
     }
@@ -3689,23 +3726,9 @@ pub fn run() {
             // ── Alert toast window ──
             // Terse's own notification banner, top-right, always on top. It replaces
             // the OS notification (unthemeable, English-only, absent on Windows).
-            // Created hidden and resized to its card stack by toast.js.
-            let toast_x = screen_width - notifications::TOAST_W - 14.0;
-            let _toast_win = WebviewWindowBuilder::new(app, "toast", WebviewUrl::App("toast.html".into()))
-                .title("Terse Alert")
-                .inner_size(notifications::TOAST_W, 140.0)
-                .position(toast_x, 42.0)
-                .decorations(false)
-                .transparent(true)
-                .always_on_top(true)
-                .resizable(false)
-                .shadow(false)
-                .skip_taskbar(true)
-                .focused(false)
-                .accept_first_mouse(true)
-                .visible_on_all_workspaces(true)
-                .visible(false)
-                .build()?;
+            // Built on the first alert now — see build_lazy_window — because it
+            // spent most sessions as a hidden window costing a WebView2 renderer
+            // for a card that never appeared.
 
             // ── Floating dashboard widget windows (灵动仪表盘) ──
             // Built on first hover, not here — see build_lazy_window. The window
@@ -4430,6 +4453,7 @@ pub fn run() {
             notifications::snooze_alert_kind,
             notifications::toast_resize,
             notifications::toast_hide,
+            notifications::take_pending_toasts,
             notifications::toast_action,
             // ── Parity: circuit breaker ──
             circuit::get_circuit_settings,

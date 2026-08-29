@@ -313,10 +313,52 @@ fn notify_desktop(app: &AppHandle, rec: &AlertRecord) {
         let _ = app.emit_to("island", "terse-toast", rec);
         return;
     }
+    // Was the window already up? That decides how the record reaches the page,
+    // and getting it wrong loses the alert.
+    //
+    // An open window has a page that registered its listener long ago, so the
+    // event arrives. A window built just now does NOT - build returns as soon as
+    // the webview exists, well before toast.js runs - so emitting here would fire
+    // into a page that is not listening yet and the first alert of the session
+    // would simply never appear. That one race is why this window stayed resident
+    // when the others were made lazy.
     if let Some(win) = app.get_webview_window("toast") {
         let _ = win.show();
         let _ = app.emit_to("toast", "terse-toast", rec);
+        return;
     }
+
+    // No window yet, so queue BEFORE building rather than after.
+    //
+    // Ordering is the whole point: ensure_window can fail, or time out waiting on
+    // the main thread, and an alert recorded only after a successful build would
+    // be the one lost in exactly that case. Queued first, the record simply waits
+    // for whenever the window does come up.
+    if let Ok(mut q) = PENDING_TOASTS.lock() {
+        if let Ok(v) = serde_json::to_value(rec) {
+            q.push(v);
+        }
+    }
+    if let Some(win) = crate::ensure_window(app, "toast") {
+        let _ = win.show();
+    }
+}
+
+/// Alerts raised before the toast page finished loading.
+///
+/// Only ever holds records from the build-it-now path; an already-open window
+/// gets its event directly, so nothing is queued twice.
+static PENDING_TOASTS: std::sync::Mutex<Vec<serde_json::Value>> =
+    std::sync::Mutex::new(Vec::new());
+
+/// Drained by toast.js as soon as it has its listener up. Anything raised while
+/// the page was still loading is rendered from here.
+#[tauri::command]
+pub fn take_pending_toasts() -> Vec<serde_json::Value> {
+    PENDING_TOASTS
+        .lock()
+        .map(|mut q| std::mem::take(&mut *q))
+        .unwrap_or_default()
 }
 
 fn post_slack(webhook: &str, text: &str) {

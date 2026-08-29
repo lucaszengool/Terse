@@ -154,6 +154,21 @@ section.section, section[id]{
     0 4px 30px hsla(250,45%,3%,0.50),
     0 0 60px hsla(250,45%,3%,0.35);
 }
+/* The second headline line is .gradient-text: mint gradient painted through
+   the glyphs with background-clip:text and -webkit-text-fill-color:transparent.
+   The shadow above broke it — with a transparent fill you see the SHADOW
+   through the glyph, and the shadow is near-black, so the line rendered as dark
+   green on a bright plate. It is white here, which is what it needed to be over
+   a live wallpaper anyway, and the fill is opaque again so the shadow sits
+   behind the letters instead of inside them. */
+.hero h1 .gradient-text{
+  background:none;
+  -webkit-background-clip:initial;
+  background-clip:initial;
+  -webkit-text-fill-color:#fff;
+  color:#fff;
+}
+
 /* The subtitle is the one that struggles — it is 19px at 0.72 alpha, and a
    noon-bright meadow sits right behind it. Nothing here touches the plate. */
 .hero .sub{ color:hsla(0,0%,100%,0.92); }

@@ -282,8 +282,16 @@ fn scan_cache_idle_ttl(summary: &Value, attr: &Value, out: &mut Vec<Finding>) {
 fn scan_cache_session_pinned(sessions: &[Value], out: &mut Vec<Finding>) {
     for sess in sessions {
         let turns = u(sess, "turns");
-        let eff = u(sess, "cacheEfficiency");
         let ctx = u(sess, "currentContext");
+        // A MEASURED hit rate, or nothing. cacheEfficiency is null for a session
+        // whose log we could not read — and reading that as 0 is how this scanner
+        // came to announce "running at 0% cache efficiency" about a session it had
+        // never seen a single usage record from. An unreadable session is not an
+        // inefficient one; there is no finding to make.
+        let eff = match sess.get("cacheEfficiency").and_then(|v| v.as_u64()) {
+            Some(e) => e,
+            None => continue,
+        };
         if turns < 3 || eff >= 15 || ctx < 2_000 {
             continue;
         }
@@ -1204,6 +1212,8 @@ fn scan_agent_disk(out: &mut Vec<Finding>) {
     collect_transcripts(&h.join(".claude").join("projects"), 2, &mut stale, &mut live_bytes);
     // Codex CLI transcripts: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
     collect_transcripts(&h.join(".codex").join("sessions"), 4, &mut stale, &mut live_bytes);
+    // DeepSeek Harness transcripts: ~/.dsh/sessions/<project>/<session-id>/session.jsonl[.zstd]
+    collect_transcripts(&h.join(".dsh").join("sessions"), 3, &mut stale, &mut live_bytes);
 
     if !stale.is_empty() {
         let total: u64 = stale.iter().map(|(_, s)| s).sum();
@@ -1652,7 +1662,7 @@ fn scan_agent_runtime(out: &mut Vec<Finding>) -> (u32, u64) {
     };
     let text = String::from_utf8_lossy(&output.stdout);
 
-    const AGENT_BINS: &[&str] = &["claude", "codex"];
+    const AGENT_BINS: &[&str] = &["claude", "codex", "dsh"];
     let mut count = 0u32;
     let mut total_rss_kb = 0u64;
     let mut hot: Vec<String> = Vec::new(); // "claude (pid 123) at 97% CPU"
@@ -2562,7 +2572,7 @@ fn trim_one_claude_md(path: &Path) -> Result<Option<(usize, String)>, String> {
 /// agent CLI binary — a stale finding (or forged payload) can never kill an
 /// arbitrary process.
 fn stop_agent_processes(pids: &[String]) -> u32 {
-    const AGENT_BINS: &[&str] = &["claude", "codex"];
+    const AGENT_BINS: &[&str] = &["claude", "codex", "dsh"];
     let mut stopped = 0u32;
     for pid_s in pids {
         let Ok(pid) = pid_s.trim().parse::<u32>() else { continue };
@@ -2787,6 +2797,7 @@ fn delete_paths(paths: &[String]) -> (u64, u64) {
         (h.join(".claude").join("projects"), &["jsonl"][..], STALE_DAYS - 5),
         (h.join(".claude").join("shell-snapshots"), &["sh"][..], STALE_DAYS - 5),
         (h.join(".codex").join("sessions"), &["jsonl"][..], STALE_DAYS - 5),
+        (h.join(".dsh").join("sessions"), &["jsonl", "zstd"][..], STALE_DAYS - 5),
     ];
     for t in CACHE_TARGETS {
         rules.push((target_root(t), t.exts, t.days.saturating_sub(2).max(3)));
@@ -2915,10 +2926,25 @@ fn short_model(m: &str) -> String {
 mod tests {
     use super::*;
 
-    /// End-to-end proof the 清理 button really deletes: the bash harness plants
+    /// End-to-end proof the 清理 button really deletes: a harness plants
     /// `terse-test-fixture` files with backdated mtimes in the real target dirs;
     /// this test scans, finds them, deletes them, and verifies they are gone.
+    ///
+    /// #[ignore] because that harness does not exist in this repo. It was a
+    /// `touch -t` run by hand, so the test could only ever pass on its author's
+    /// machine, in the minutes after they ran it - it failed for everyone else,
+    /// and went unnoticed because CI had never run the crate's tests at all.
+    /// Wiring `cargo test` in is what surfaced it.
+    ///
+    /// It cannot simply plant its own fixture: `delete_paths` re-checks staleness
+    /// and refuses anything under three days old, and there is no way to backdate
+    /// an mtime in std. Making this live needs a dev-dependency (filetime) or
+    /// SetFileTime, which is a bigger change than the one that exposed it.
+    ///
+    /// To run it: plant a `terse-test-fixture.log` in ~/.terse with an mtime a
+    /// month old, then `cargo test -- --ignored`.
     #[test]
+    #[ignore = "needs a fixture harness that was never committed - see doc comment"]
     fn cleanup_deletes_stale_fixtures() {
         let marker = "terse-test-fixture";
         let report = cleanup_scan();

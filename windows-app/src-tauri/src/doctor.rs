@@ -2777,10 +2777,25 @@ fn short_model(m: &str) -> String {
 mod tests {
     use super::*;
 
-    /// End-to-end proof the 清理 button really deletes: the bash harness plants
+    /// End-to-end proof the 清理 button really deletes: a harness plants
     /// `terse-test-fixture` files with backdated mtimes in the real target dirs;
     /// this test scans, finds them, deletes them, and verifies they are gone.
+    ///
+    /// #[ignore] because that harness does not exist in this repo. It was a
+    /// `touch -t` run by hand, so the test could only ever pass on its author's
+    /// machine, in the minutes after they ran it - it failed for everyone else,
+    /// and went unnoticed because CI had never run the crate's tests at all.
+    /// Wiring `cargo test` in is what surfaced it.
+    ///
+    /// It cannot simply plant its own fixture: `delete_paths` re-checks staleness
+    /// and refuses anything under three days old, and there is no way to backdate
+    /// an mtime in std. Making this live needs a dev-dependency (filetime) or
+    /// SetFileTime, which is a bigger change than the one that exposed it.
+    ///
+    /// To run it: plant a `terse-test-fixture.log` in ~/.terse with an mtime a
+    /// month old, then `cargo test -- --ignored`.
     #[test]
+    #[ignore = "needs a fixture harness that was never committed - see doc comment"]
     fn cleanup_deletes_stale_fixtures() {
         let marker = "terse-test-fixture";
         let report = cleanup_scan();

@@ -106,6 +106,22 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      # The crate's unit tests have never been run by CI. That was survivable
+      # while they only covered pure helpers; it is not now that alert DELIVERY
+      # depends on a queue - the toast window is built on first alert, so the
+      # record has to survive the gap between "window exists" and "toast.js is
+      # listening". Nothing in the smoke test can see that: no alert fires during
+      # a run, so the toast path is never exercised end to end, before or after
+      # the change.
+      #
+      # --lib on purpose: unit tests only, no integration targets. Placed after
+      # the upload so a failure is loud without costing the installer, and NOT
+      # continue-on-error, because a test that cannot fail the build is theatre.
+      - name: Run the crate's unit tests
+        run: |
+          cd windows-app\src-tauri
+          cargo test --target x86_64-pc-windows-msvc --lib
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:

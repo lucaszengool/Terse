@@ -551,3 +551,41 @@ pub fn toast_action(action: String, app: AppHandle) {
 pub fn notify(app: &AppHandle, kind: &str, title: &str, body: &str, severity: &str, dedupe_key: &str, action: Option<&str>) {
     dispatch(app, kind, title, body, severity, dedupe_key, action.map(|s| s.to_string()));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The queue exists so the alert that CAUSES the toast window to be built is
+    /// not fired into a page with no listener yet. This covers the two ways that
+    /// can still go wrong once the record is queued: losing it, or showing it
+    /// twice.
+    ///
+    /// Deliberately ONE test. PENDING_TOASTS is a process-wide static and cargo
+    /// runs tests in parallel, so splitting this in two would have them clearing
+    /// each other's queue mid-assertion.
+    #[test]
+    fn draining_the_queue_yields_each_alert_exactly_once() {
+        PENDING_TOASTS.lock().unwrap().clear();
+
+        // Empty is the overwhelmingly common case - the window was already open,
+        // nothing was queued, and toast.js still calls this on every load.
+        assert!(take_pending_toasts().is_empty(), "an empty drain is not an error");
+
+        PENDING_TOASTS.lock().unwrap().push(serde_json::json!({"title": "first"}));
+        PENDING_TOASTS.lock().unwrap().push(serde_json::json!({"title": "second"}));
+
+        let drained = take_pending_toasts();
+        assert_eq!(drained.len(), 2, "both queued alerts must survive to the drain");
+        assert_eq!(drained[0]["title"], "first", "order is the order they were raised");
+        assert_eq!(drained[1]["title"], "second");
+
+        // The second drain is the one that matters. toast.js calls this on load,
+        // and the window is shown again on every later alert - if a reload could
+        // re-drain, a long-dismissed alert would silently reappear on screen.
+        assert!(
+            take_pending_toasts().is_empty(),
+            "draining must consume: a second call cannot replay old alerts"
+        );
+    }
+}

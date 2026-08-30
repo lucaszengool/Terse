@@ -49,7 +49,14 @@
 
   /* text lattice per slot — 256 x 64 = 16,384 points, the web-scale version of
      the app's 60,000 per line. Dense enough that strokes read as solid. */
-  var GW = 256, GH = 64;
+  /* Glyph particles per slot. The app's number (mineradio-wallpaper.js:539),
+     and the reason its text is dense and bright instead of a dusting of dots.
+     These are unlit, depth-less, additive points — the cheapest thing a GPU
+     draws — but the mask is sampled on the CPU once per line, so this also sets
+     how long a re-form takes. MW is the mask canvas: the app uses 1024×128 and
+     notes that spreading the same strokes over a TALLER canvas made the letters
+     read soft, because the sampled mask comes back thinner. */
+  var GLYPH_N = 60000, MW = 1024, MH = 128;
 
   /* the app's cinematic timing (wallpaper-styles.js DEFAULT) */
   var T_IN = 460, T_HOLD = 1450, T_OUT = 720, FILL_GAP = 560;
@@ -661,7 +668,7 @@ vec3 procColor(vec2 p, float t){
     this.t = 0; this.raf = 0;
 
     this.off = document.createElement('canvas');
-    this.off.width = GW * 2; this.off.height = GH * 2;
+    this.off.width = MW; this.off.height = MH;
     this.octx = this.off.getContext('2d', { willReadFrequently: true });
 
     /* wallpaper bed state */
@@ -684,20 +691,37 @@ vec3 procColor(vec2 p, float t){
     this.resize();
   }
 
-  /* One lattice, shared by all four slots — only the stroke mask differs. */
+  /* One point cloud, shared by all four slots — only the stroke mask differs.
+   *
+   * This used to be a rigid GW×GH lattice: one particle per mask texel, on a
+   * perfect grid. That is what made the text look like a screen door rather
+   * than like the app's. Two things go wrong with a grid, and no amount of
+   * point-size tuning fixes either:
+   *
+   *   · a regular grid beats against the pixel grid it is drawn onto, so the
+   *     strokes shimmer and alias instead of reading as solid;
+   *   · density is capped by the LATTICE, not by the particle budget — every
+   *     stroke is exactly one particle per cell, so letters can never get
+   *     denser or brighter than the grid allows.
+   *
+   * The real wallpaper engine (src/renderer/mineradio-wallpaper.js:471) does it
+   * the other way round: every particle keeps a fixed RANDOM uv it was born
+   * with, and simply asks the mask "am I on a stroke?". No grid to alias, and
+   * density is set by how many particles you spend. Its budget is 60000 per
+   * line, with the comment that this is "the whole reason the text reads as
+   * dense, bright and sharp rather than as a dusting of dots" — against the
+   * 16384 a 256×64 lattice allowed here. Same model, same number. */
   Field.prototype._buildGlyphLattice = function () {
-    var gl = this.gl, n = GW * GH;
+    var gl = this.gl, n = GLYPH_N;
     var uv = new Float32Array(n * 2), rnd = new Float32Array(n);
-    var i = 0;
-    for (var y = 0; y < GH; y++) {
-      for (var x = 0; x < GW; x++) {
-        uv[i * 2] = (x + 0.5) / GW;
-        uv[i * 2 + 1] = 1.0 - (y + 0.5) / GH;
-        rnd[i] = Math.random();
-        i++;
-      }
+    for (var i = 0; i < n; i++) {
+      uv[i * 2] = Math.random();
+      uv[i * 2 + 1] = Math.random();
+      rnd[i] = Math.random();
     }
     this.glyphN = n;
+    /* kept on the CPU too — the mask is now sampled at each particle's own uv */
+    this.glyphUv = uv;
     this.bUv = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bUv); gl.bufferData(gl.ARRAY_BUFFER, uv, gl.STATIC_DRAW);
     this.bRand = gl.createBuffer();
@@ -992,27 +1016,39 @@ vec3 procColor(vec2 p, float t){
     o.clearRect(0, 0, W, H);
     o.fillStyle = '#fff';
     o.textAlign = 'center'; o.textBaseline = 'middle';
-    /* fit the line to the box so every slot renders at the same on-screen size */
-    var size = Math.round(H * 0.58);
-    o.font = '700 ' + size + "px 'JetBrains Mono','SF Mono',Menlo,monospace";
-    var mw = o.measureText(text).width;
-    if (mw > W * 0.96) {
-      size = Math.max(8, Math.floor(size * (W * 0.96) / mw));
-      o.font = '700 ' + size + "px 'JetBrains Mono','SF Mono',Menlo,monospace";
-      mw = o.measureText(text).width;
+    /* 800, and stepped down 78 → 28, exactly as the app's atlas does it
+       (mineradio-wallpaper.js:566). Weight matters more than it looks: a 700
+       stroke is thin enough that the mask samples too few pixels across it, and
+       a letter built from a one-particle-wide stroke can only ever read as a
+       hairline. The floor is a floor for the same reason — below it the mask
+       starves and the glyph stops being legible at any particle count. */
+    var FONT = "'JetBrains Mono','SF Mono',ui-monospace,SFMono-Regular,Menlo," +
+               "Consolas,'Segoe UI Mono',monospace";
+    var size = 78;
+    for (; size > 28; size -= 2) {
+      o.font = '800 ' + size + 'px ' + FONT;
+      if (o.measureText(text).width < W * 0.92) break;
     }
+    o.font = '800 ' + size + 'px ' + FONT;
+    var mw = o.measureText(text).width;
     o.fillText(text, W / 2, H / 2);
 
+    /* Per-particle mask lookup, not a per-texel one. Each particle keeps the
+       fixed random uv it was born with and asks whether it happens to be on a
+       stroke — the app's model (mineradio-wallpaper.js:_sampleGlyphMask), and
+       the reason its letters have no grid in them. Same clamps it uses, which
+       keep particles off the very edge of the atlas where the glyph never
+       reaches. */
     var d = o.getImageData(0, 0, W, H).data;
-    var mask = slot.mask, lit = 0, i = 0;
-    for (var y = 0; y < GH; y++) {
-      for (var x = 0; x < GW; x++) {
-        /* the lattice is GWxGH, the canvas is 2x that — sample the centre */
-        var sx = x * 2 + 1, sy = y * 2 + 1;
-        var on = d[(sy * W + sx) * 4 + 3] > 115 ? 1 : 0;
-        mask[i] = on; lit += on;
-        i++;
-      }
+    var mask = slot.mask, uv = this.glyphUv, lit = 0;
+    for (var i = 0; i < this.glyphN; i++) {
+      var ux = Math.min(0.998, Math.max(0.002, uv[i * 2]));
+      var uy = Math.min(0.94, Math.max(0.06, uv[i * 2 + 1]));
+      var x = Math.min(W - 1, (ux * W) | 0);
+      /* canvas y runs down, uv y runs up */
+      var y = Math.min(H - 1, ((1 - uy) * H) | 0);
+      var on = d[(y * W + x) * 4 + 3] > 115 ? 1 : 0;
+      mask[i] = on; lit += on;
     }
     if (lit < 12) return false;
 
@@ -1262,12 +1298,17 @@ vec3 procColor(vec2 p, float t){
          keeps its colour on a bright bed and still burns on a dark one. */
       var g = Math.min(1.2, Math.max(0.5, this.exposure));
 
-      /* One lattice cell in device pixels. uSize is the box in clip space, where
-         2.0 spans the canvas height, so (sy/2)*h is its height in CSS px and
-         dividing by the GH rows gives the cell. 1.25 leaves a hair of overlap —
-         enough to close the gaps in a stroke, not enough to melt it. */
-      var cellPx = (s.sy * 0.5 * this.h) / GH;
-      gl.uniform1f(this.uGly.ptPx, Math.max(1.0, cellPx * this.dpr * 1.25));
+      /* Mean spacing between neighbouring particles, in device pixels. With the
+         cloud scattered uniformly over the box, that is sqrt(area / count) —
+         and it is the same over a stroke as over the whole box, since both the
+         area and the particle share scale together, so stroke coverage drops
+         out of it. uSize is the box in clip space, where 2.0 spans the canvas,
+         so (sx/2)*w and (sy/2)*h are its CSS pixel dimensions. 1.35 is a little
+         deliberate overlap: enough that the dots fuse into a continuous stroke,
+         not so much that the stroke swells past its own outline. */
+      var boxW = s.sx * 0.5 * this.w, boxH = s.sy * 0.5 * this.h;
+      var gap = Math.sqrt((boxW * boxH) / this.glyphN);
+      gl.uniform1f(this.uGly.ptPx, Math.max(1.0, gap * this.dpr * 1.35));
 
       gl.uniform1f(this.uGly.bloom, 1.0);
       gl.uniform1f(this.uGly.alphaScale, 1.45 * g);

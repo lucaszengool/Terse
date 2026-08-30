@@ -57,6 +57,12 @@
      notes that spreading the same strokes over a TALLER canvas made the letters
      read soft, because the sampled mask comes back thinner. */
   var GLYPH_N = 60000, MW = 1024, MH = 128;
+  /* Phones get a smaller cloud, not no cloud. A phone screen is roughly a fifth
+     of a desktop's pixels and the text sits smaller on it, so the same particle
+     count would be spent packing a far denser stroke than anyone can see, while
+     costing a weaker GPU the full fill. Measured at mount, not on resize —
+     rebuilding the buffers mid-rotation would blink the text out. */
+  if (window.innerWidth < MINW) GLYPH_N = 26000;
 
   /* the app's cinematic timing (wallpaper-styles.js DEFAULT) */
   var T_IN = 460, T_HOLD = 1450, T_OUT = 720, FILL_GAP = 560;
@@ -1065,7 +1071,24 @@ vec3 procColor(vec2 p, float t){
        the INVERSE of that in-canvas size cancels it out, so both arrive at the
        same F pixels tall on screen. Getting this backwards is what made short
        metrics three times the size of the log line. */
+    /* Height alone is the wrong budget in PORTRAIT. On a phone the height is
+       generous and the width is not, and this line only ever consulted the
+       height: a 35-character log line came out 922px wide on a 390px screen —
+       2.4x the display, which the +-0.98 clamp in _place cannot rescue, so it
+       simply sat mostly off-screen. Landscape hid it because width was never
+       the scarce axis there.
+
+       The text is F tall and mw/size wide per unit of height, so the widest F
+       that still fits is (w * 0.82) / (mw / size). Take whichever budget binds.
+       On desktop the height budget still binds for every line, so nothing about
+       the wide layout changes; in portrait a long log line now shrinks to fit
+       while a short metric keeps its full size. */
+    var ratio = mw / size;                                /* width per 1px of height */
     var F = Math.max(22, Math.min(52, this.h * 0.052));   /* on-screen px */
+    F = Math.min(F, (this.w * 0.82) / ratio);
+    /* below this it stops reading as text at all, at which point it is better
+       to let the line run a little wider than the budget */
+    F = Math.max(11, F);
     slot.sy = 2 * F * H / (size * this.h);
     slot.sx = slot.sy * (W / H) * (this.h / this.w);
     /* the strokes only occupy mw of the W-wide box — clamp against what is
@@ -1428,7 +1451,13 @@ vec3 procColor(vec2 p, float t){
     function sync() {
       field.resize();
       if (!field.ready) { field.start(); return; }          /* still measuring */
-      if (REDUCE || field.w < MINW) { field.stop(); field.step(16); field.draw(); }
+      /* Narrow screens used to be frozen here alongside prefers-reduced-motion:
+         one static step(16) frame and no loop, which meant a phone never saw
+         the agent-log text at all — it only ever cycles while the loop runs.
+         The wallpaper is the product on this page, so phones animate too, on a
+         smaller particle budget (GLYPH_N above) and the same 40fps cap.
+         prefers-reduced-motion still freezes, which is the whole point of it. */
+      if (REDUCE) { field.stop(); field.step(16); field.draw(); }
       else field.start();
     }
     sync();
@@ -1446,7 +1475,7 @@ vec3 procColor(vec2 p, float t){
 
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) field.stop();
-      else if (!REDUCE && field.w >= MINW) field.start();
+      else if (!REDUCE) field.start();
     });
 
     cv.addEventListener('webglcontextlost', function (e) {

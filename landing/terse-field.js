@@ -470,7 +470,7 @@ vec3 procColor(vec2 p, float t){
     'attribute vec2 aUv;',
     'attribute float aRand;',
     'attribute float aOn;',
-    'uniform float uForm, uVis, uOut, uInMode, uOutMode, uStagger, uTime, uBloom, uDpr;',
+    'uniform float uForm, uVis, uOut, uInMode, uOutMode, uStagger, uTime, uBloom, uDpr, uPtPx;',
     'uniform vec2 uCenter, uSize, uDrift, uAspect;',
     'uniform vec3 uTint;',
     'varying vec3 vColor;',
@@ -513,8 +513,20 @@ vec3 procColor(vec2 p, float t){
     /* twinkle deeper than the field's so the text reads as ALIVE, not printed;
        the (1 - u) term means scattered particles are dim and only the ones that
        have landed on a stroke burn — that is what makes it snap into focus */
-    '  vA = aOn * uVis * (0.55 + 0.45 * sin(uTime * 3.4 + aRand * 21.0)) * (1.0 - u * 0.55);',
-    '  gl_PointSize = (2.3 + uForm * 2.0) * uDpr * uBloom;',
+    /* Twinkle amplitude falls away as the line forms. While the particles are
+       still flying, a deep flicker is what makes them read as embers; once they
+       have LANDED on a stroke, that same flicker is just noise chewing holes in
+       the letterforms, so a formed line sits almost steady. */
+    '  float amp = mix(0.45, 0.13, uForm);',
+    '  vA = aOn * uVis * ((1.0 - amp) + amp * sin(uTime * 3.4 + aRand * 21.0)) * (1.0 - u * 0.55);',
+    /* uPtPx is one lattice cell measured in device pixels, computed on the CPU
+       where the on-screen size of the box is actually known. It used to be a
+       constant 2.3-4.3 CSS px scaled by dpr — up to 8.6 device px per particle,
+       against a cell that is only 1.2-2.8 device px wide. Every dot was three to
+       seven times its own cell, so neighbouring dots buried each other and the
+       strokes fused into a smear. Sizing to the lattice is what makes the text
+       legible; the small uForm term keeps a little swell as it lands. */
+    '  gl_PointSize = max(1.0, uPtPx * (0.90 + 0.10 * uForm)) * uBloom;',
     '}'
   ].join('\n');
 
@@ -534,7 +546,23 @@ vec3 procColor(vec2 p, float t){
     '  gl_FragColor = vec4(vColor * f, 1.0) * vAlpha * uAlphaScale;',
     '}'
   ].join('\n');
-  var GLYPH_FS = PT_FS.replace(/vAlpha/g, 'vA');
+  /* The glyph sprite is NOT the field's sprite. PT_FS starts falling off at the
+     very centre (0.96 at d=0, 0.78 by d=0.42), which is right for a star — it
+     has no edge — and wrong for a letter, which is nothing but edges. Held flat
+     across the core and dropped hard at the rim, the dots tile into a stroke
+     instead of dissolving into one another. */
+  var GLYPH_FS = [
+    'precision highp float;',
+    'varying vec3 vColor;',
+    'varying float vA;',
+    'uniform float uAlphaScale;',
+    'void main(){',
+    '  float d = length(gl_PointCoord - 0.5) * 2.0;',
+    '  if (d > 1.0) discard;',
+    '  float f = 1.0 - smoothstep(0.55, 1.0, d);',
+    '  gl_FragColor = vec4(vColor * f, 1.0) * vA * uAlphaScale;',
+    '}'
+  ].join('\n');
 
   /* ── GL helpers ─────────────────────────────────────────────────────────── */
   function compile(gl, type, src) {
@@ -612,7 +640,7 @@ vec3 procColor(vec2 p, float t){
                                      'skyMode', 'skySeed', 'skyTop', 'skyHaze', 'skySun', 'sunPos',
                                      'danceAmt', 'danceMode', 'danceT', 'danceCenter', 'danceDir']);
     this.uGly = u(gl, this.glyProg, ['form', 'vis', 'out', 'inMode', 'outMode', 'stagger', 'time',
-                                     'bloom', 'dpr', 'center', 'size', 'drift', 'aspect', 'tint', 'alphaScale']);
+                                     'bloom', 'dpr', 'ptPx', 'center', 'size', 'drift', 'aspect', 'tint', 'alphaScale']);
 
     this.aBedPos = gl.getAttribLocation(this.bedProg, 'aPos');
     this.aHome = gl.getAttribLocation(this.fldProg, 'aHome');
@@ -1233,11 +1261,24 @@ vec3 procColor(vec2 p, float t){
          wallpaper. Ride the glyph gain on the measured exposure so the text
          keeps its colour on a bright bed and still burns on a dark one. */
       var g = Math.min(1.2, Math.max(0.5, this.exposure));
+
+      /* One lattice cell in device pixels. uSize is the box in clip space, where
+         2.0 spans the canvas height, so (sy/2)*h is its height in CSS px and
+         dividing by the GH rows gives the cell. 1.25 leaves a hair of overlap —
+         enough to close the gaps in a stroke, not enough to melt it. */
+      var cellPx = (s.sy * 0.5 * this.h) / GH;
+      gl.uniform1f(this.uGly.ptPx, Math.max(1.0, cellPx * this.dpr * 1.25));
+
       gl.uniform1f(this.uGly.bloom, 1.0);
-      gl.uniform1f(this.uGly.alphaScale, 1.35 * g);
+      gl.uniform1f(this.uGly.alphaScale, 1.45 * g);
       gl.drawArrays(gl.POINTS, 0, this.glyphN);
-      gl.uniform1f(this.uGly.bloom, 3.6);
-      gl.uniform1f(this.uGly.alphaScale, 0.34 * g);
+      /* The glow pass was 3.6x the point size at 0.34 alpha. Against a stroke
+         one or two particles wide that is not a glow around the text, it IS the
+         text — a soft blob per particle, swamping the sharp pass underneath and
+         leaving the line permanently out of focus. Halved, and dimmer, so it
+         reads as light coming off the letters rather than as the letters. */
+      gl.uniform1f(this.uGly.bloom, 1.9);
+      gl.uniform1f(this.uGly.alphaScale, 0.20 * g);
       gl.drawArrays(gl.POINTS, 0, this.glyphN);
     }
 

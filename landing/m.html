@@ -158,6 +158,23 @@
   .divider{display:flex;align-items:center;gap:11px;color:var(--faint);font-size:11.5px;margin:1px 0}
   .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line)}
 
+  .wallprev{aspect-ratio:9/19.5;max-height:200px;border-radius:12px;border:1px solid var(--line);
+    background:rgba(0,0,0,.35);display:grid;place-items:center;overflow:hidden;margin:0 auto}
+  .wallprev img{width:100%;height:100%;object-fit:cover;display:block}
+  ol.steps{list-style:none;display:flex;flex-direction:column;gap:9px;counter-reset:s;padding:0;margin:0}
+  ol.steps li{display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;font-size:12.5px;color:var(--dim);line-height:1.5}
+  ol.steps li::before{counter-increment:s;content:counter(s);width:20px;height:20px;border-radius:6px;
+    background:var(--accent-dim);color:var(--accent);display:grid;place-items:center;font-size:10px;font-weight:700;
+    font-family:ui-monospace,monospace}
+  /* Both text nodes belong in the second column. Without this the <span> is the
+     grid's THIRD item and wraps onto a new row inside the 20px number column,
+     which renders the sentence one character per line. */
+  ol.steps li b,ol.steps li span{grid-column:2}
+  ol.steps li b{color:var(--ink);font-weight:600}
+  /* The closing note is a caveat, not a step — numbering it would tell the
+     reader to go and do it. */
+  ol.steps li.note{grid-template-columns:1fr;opacity:.72}
+  ol.steps li.note::before{content:none}
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tabbar) + var(--safe-b) + 18px);
     z-index:20;padding:11px 17px;border-radius:12px;background:rgba(20,24,30,.96);border:1px solid var(--line2);
     font-size:13.5px;max-width:86vw;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.5)}
@@ -269,6 +286,28 @@
         </div>
         <button class="btn ghost wide" id="signOutBtn" type="button" data-t="sign_out">Sign out</button>
       </div>
+      <!-- ── The actual iPhone wallpaper ──
+           Not the in-app field: a still captured FROM it, which an iOS Shortcut
+           automation sets as the real Home Screen wallpaper. iOS has no API for
+           this — for web apps or native ones — and Shortcuts can only set a
+           still, so this is the furthest the platform goes. -->
+      <div class="card" id="wallCard">
+        <div class="row">
+          <h2 class="grow" data-t="wall_title">iPhone wallpaper</h2>
+          <span class="tiny" id="wallAge"></span>
+        </div>
+        <p data-t="wall_body"></p>
+        <div class="wallprev" id="wallPrev"><span class="tiny" data-t="wall_none">No frame captured yet</span></div>
+        <button class="btn primary wide" id="wallCapture" type="button" data-t="wall_capture">Capture from my wallpaper</button>
+        <div id="wallSetup" class="hide" style="display:flex;flex-direction:column;gap:10px">
+          <div class="row">
+            <input type="text" id="wallUrl" class="grow" readonly style="font-size:12px;font-family:ui-monospace,monospace">
+            <button class="btn" id="wallCopy" type="button" data-t="copy">Copy</button>
+          </div>
+          <ol class="steps" id="wallSteps"></ol>
+          <button class="btn ghost wide" id="wallRotate" type="button" data-t="wall_rotate">Reset this link</button>
+        </div>
+      </div>
       <div class="card" id="installCard">
         <h2 data-t="install_title">Add to Home Screen</h2>
         <p data-t="install_body"></p>
@@ -304,6 +343,7 @@
   src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
 <script src="/app-assets/rooms.js"></script>
 <script src="/phone/terse-web.js"></script>
+<script src="/phone/capture.js"></script>
 <script src="/phone/app.js"></script>
 </body>
 </html>

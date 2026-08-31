@@ -1257,6 +1257,12 @@ app.use('/api/cloud/link', cloudIngestLimiter, require('./link'));
 // what applying for those actually involves.
 app.use('/api/auth/wechat', require('./wechat'));
 
+// ── Phone wallpaper ──
+// The frame the phone captures out of the live field, and the public URL an iOS
+// Shortcut fetches to set it as the actual Home Screen wallpaper.
+const wallpaperRouter = require('./wallpaper');
+app.use('/api/cloud/wallpaper', wallpaperRouter);
+
 // Sweep stale cowork sessions + presence every 30s (broadcasts changes over SSE).
 setInterval(() => coworkRouter.sweepStale(), 30 * 1000).unref();
 
@@ -1429,6 +1435,10 @@ app.get('/mobile', (req, res) => {
 app.get(['/m', '/m/*'], (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'landing', 'm.html'));
 });
+
+// The wallpaper image itself. Above the SPA catch-all, and outside /api, because
+// an iOS Shortcut fetches it with no headers at all — the URL is the credential.
+app.get('/w/:token', wallpaperRouter.serveFrame);
 
 // Unknown paths → a real 404.
 //

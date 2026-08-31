@@ -549,6 +549,44 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_device_links_code
     ON device_links(pair_code) WHERE pair_code IS NOT NULL;
   CREATE INDEX IF NOT EXISTS idx_device_links_user ON device_links(clerk_user_id);
+
+  -- ── Phone wallpaper ───────────────────────────────────────────────────────
+  -- Frames captured BY THE PHONE out of the real particle field, so what lands
+  -- on the Home Screen is the actual wallpaper — its particles, its glyph text,
+  -- the user's own style and photo — and not a server-side redrawing that would
+  -- have to be kept in sync with the engine.
+  --
+  -- SEVERAL frames, not one, because of how iOS actually animates a wallpaper.
+  -- It cannot: Shortcuts sets a still, and Live Photos only move on the Lock
+  -- Screen. But Photo Shuffle can cycle an ALBUM on every lock or tap — so a
+  -- Shortcut that saves a handful of different frames gives a wallpaper that
+  -- genuinely changes as the phone is used. The ring is what makes each fetch
+  -- return a different one.
+  CREATE TABLE IF NOT EXISTS wallpaper_frames (
+    clerk_user_id TEXT NOT NULL,
+    slot INTEGER NOT NULL,
+    png BLOB,
+    width INTEGER,
+    height INTEGER,
+    bytes INTEGER,
+    updated_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (clerk_user_id, slot)
+  );
+
+  -- The public URL, kept apart from the frames. The URL is pasted into an iOS
+  -- Shortcut, which sends no headers and can sign nothing, so the URL IS the
+  -- credential. Being its own row is what lets it be rotated without touching
+  -- the frames, and keeps the account id out of a string that ends up in
+  -- somebody's Shortcuts library.
+  CREATE TABLE IF NOT EXISTS wallpaper_links (
+    clerk_user_id TEXT PRIMARY KEY,
+    token TEXT UNIQUE NOT NULL,
+    cursor INTEGER DEFAULT 0,           -- which frame the next fetch returns
+    fetched_at TEXT,                    -- when the Shortcut last collected one
+    fetch_count INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_wallpaper_token ON wallpaper_links(token);
 `);
 
 const setReferralCode      = db.prepare(`UPDATE users SET referral_code = ? WHERE id = ?`);
@@ -1325,6 +1363,57 @@ const setLinkSnapshot = db.prepare(`
 const renameDeviceLink = db.prepare('UPDATE device_links SET device_name = ? WHERE id = ?');
 const deleteDeviceLink = db.prepare('DELETE FROM device_links WHERE id = ?');
 // Unclaimed codes are litter; a paired link is never swept.
+// ── Phone wallpaper ──
+// An intermediate build shipped wallpaper_frames as ONE row per account, keyed
+// by clerk_user_id with the token in it. CREATE TABLE IF NOT EXISTS cannot
+// reshape that, and the columns are different enough that ALTER cannot either —
+// so the old table is dropped outright. Nothing is lost that matters: a frame is
+// a still of the live field that the phone re-captures on demand, and the token
+// it held is re-minted on the next request.
+try {
+  const cols = db.prepare("PRAGMA table_info(wallpaper_frames)").all().map((c) => c.name);
+  if (cols.length && !cols.includes('slot')) {
+    db.exec('DROP TABLE wallpaper_frames');
+    db.exec(`CREATE TABLE IF NOT EXISTS wallpaper_frames (
+      clerk_user_id TEXT NOT NULL, slot INTEGER NOT NULL, png BLOB,
+      width INTEGER, height INTEGER, bytes INTEGER,
+      updated_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (clerk_user_id, slot))`);
+  }
+} catch { /* fresh database — the CREATE above already made the right shape */ }
+
+const getWallLink = db.prepare('SELECT * FROM wallpaper_links WHERE clerk_user_id = ?');
+const getWallLinkByToken = db.prepare('SELECT * FROM wallpaper_links WHERE token = ?');
+const createWallLink = db.prepare(`
+  INSERT INTO wallpaper_links (clerk_user_id, token) VALUES (?, ?)
+  ON CONFLICT(clerk_user_id) DO NOTHING
+`);
+const rotateWallToken = db.prepare('UPDATE wallpaper_links SET token = ? WHERE clerk_user_id = ?');
+// The cursor advances on the SERVER, so a Shortcut looping "fetch, save to
+// album" collects different frames without having to know how many there are.
+const advanceWallCursor = db.prepare(`
+  UPDATE wallpaper_links
+     SET cursor = (cursor + 1) % ?, fetched_at = datetime('now'), fetch_count = fetch_count + 1
+   WHERE clerk_user_id = ?
+`);
+const deleteWallLink = db.prepare('DELETE FROM wallpaper_links WHERE clerk_user_id = ?');
+
+const putWallFrame = db.prepare(`
+  INSERT INTO wallpaper_frames (clerk_user_id, slot, png, width, height, bytes, updated_at)
+  VALUES (@clerk_user_id, @slot, @png, @width, @height, @bytes, datetime('now'))
+  ON CONFLICT(clerk_user_id, slot) DO UPDATE SET
+    png = excluded.png, width = excluded.width, height = excluded.height,
+    bytes = excluded.bytes, updated_at = datetime('now')
+`);
+const getWallFrame = db.prepare('SELECT * FROM wallpaper_frames WHERE clerk_user_id = ? AND slot = ?');
+const listWallSlots = db.prepare(`
+  SELECT slot, width, height, bytes, updated_at FROM wallpaper_frames
+   WHERE clerk_user_id = ? ORDER BY slot
+`);
+const countWallFrames = db.prepare('SELECT COUNT(*) AS n FROM wallpaper_frames WHERE clerk_user_id = ?');
+const deleteWallFrames = db.prepare('DELETE FROM wallpaper_frames WHERE clerk_user_id = ?');
+const trimWallFrames = db.prepare('DELETE FROM wallpaper_frames WHERE clerk_user_id = ? AND slot >= ?');
+
 const sweepPairCodes = db.prepare(`
   DELETE FROM device_links
    WHERE clerk_user_id IS NULL AND pair_expires_at IS NOT NULL
@@ -1349,6 +1438,11 @@ module.exports = {
   // Device links (desktop ⇄ phone)
   createDeviceLink, findLinkBySecret, findLinkByCode, claimDeviceLink,
   listLinksForUser, setLinkSnapshot, renameDeviceLink, deleteDeviceLink, sweepPairCodes,
+  // Phone wallpaper
+  getWallLink, getWallLinkByToken, createWallLink, rotateWallToken,
+  advanceWallCursor, deleteWallLink,
+  putWallFrame, getWallFrame, listWallSlots, countWallFrames,
+  deleteWallFrames, trimWallFrames,
   // Terse Cloud
   createTeam, getTeamById, getTeamBySlug, getTeamsByOwner, getTeamsByMemberEmail, getTeamsByMemberUserId, updateTeam, deleteTeam,
   addTeamMember, getTeamMembers, removeTeamMember, getMemberByEmail, setMemberUserId,

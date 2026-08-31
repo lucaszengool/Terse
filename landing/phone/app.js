@@ -61,6 +61,22 @@
       ask_to_join: 'ask to join', knocked: 'Asked to join — waiting for the owner',
       knock_declined: 'The owner declined',
       wechat_failed: 'WeChat sign-in did not complete',
+      wall_title: 'iPhone wallpaper', copy: 'Copy', copied: 'Copied',
+      wall_body: 'iOS has no way for any app — web or native — to set an animated wallpaper. What it does allow is a Shortcut that fetches a picture and sets it. So Terse captures a real frame of your field, glyph text and all, and your phone re-sets it on a schedule.',
+      wall_none: 'No frame captured yet',
+      wall_capture: 'Capture from my wallpaper',
+      wall_capturing: 'Rendering…', wall_uploading: 'Uploading…',
+      wall_rotate: 'Reset this link',
+      wall_rotated: 'Link reset — update it in your Shortcut',
+      wall_failed: 'Could not capture the field on this device',
+      wall_hidden: 'Keep Terse on screen while it captures',
+      wall_never: 'never collected', wall_ago: 'collected {t} ago',
+      wall_s1b: 'Copy the link above', wall_s1s: 'It is the picture itself, and it is the only credential — treat it like a password.',
+      wall_s2b: 'Shortcuts → Automation → new automation', wall_s2s: 'Pick a trigger: a time of day, or when you unlock, or when charging starts.',
+      wall_s3b: 'Add Get Contents of URL, paste the link', wall_s3s: 'Then add Set Wallpaper below it and choose Lock Screen, Home Screen, or both.',
+      wall_s4b: 'Turn off Ask Before Running', wall_s4s: 'Otherwise it prompts every time and never runs on its own.',
+      wall_s5b: 'To make it MOVE, shuffle an album instead', wall_s5s: 'Have the Shortcut Save to Album in a loop — each fetch returns a different moment of your field — then set that album as a Photo Shuffle wallpaper with Shuffle Frequency set to On Lock. iOS then changes it every time you pick the phone up.',
+      wall_note: 'Only a still can be set this way. Live wallpapers are Live Photos, they animate on the Lock Screen only, and Shortcuts cannot set one — that limit is iOS, not Terse.',
       signed_out_note: 'Sign in to link a computer.',
     },
     zh: {
@@ -98,6 +114,22 @@
       ask_to_join: '申请加入', knocked: '已申请加入 — 等房主同意',
       knock_declined: '房主拒绝了',
       wechat_failed: '微信登录没有完成',
+      wall_title: 'iPhone 壁纸', copy: '复制', copied: '已复制',
+      wall_body: 'iOS 不给任何 App——网页的也好，原生的也好——设置动态壁纸的接口。唯一开放的是「快捷指令」：抓一张图，设成壁纸。所以 Terse 把你粒子场的真实一帧连同粒子字一起截下来，让手机按计划自动换上。',
+      wall_none: '还没有截过帧',
+      wall_capture: '从我的壁纸截一帧',
+      wall_capturing: '渲染中…', wall_uploading: '上传中…',
+      wall_rotate: '重置这个链接',
+      wall_rotated: '链接已重置——记得在快捷指令里换掉',
+      wall_failed: '这台设备上截不了粒子场',
+      wall_hidden: '截图时请让 Terse 保持在前台',
+      wall_never: '还没被取过', wall_ago: '{t}前取过',
+      wall_s1b: '复制上面的链接', wall_s1s: '它本身就是那张图，也是唯一的凭证——当密码看待。',
+      wall_s2b: '快捷指令 → 自动化 → 新建', wall_s2s: '选一个触发条件：某个时间、解锁时、或者开始充电时。',
+      wall_s3b: '加「获取 URL 内容」，粘贴链接', wall_s3s: '下面再加「设置墙纸」，选锁定屏幕、主屏幕，或者两个都选。',
+      wall_s4b: '关掉「运行前询问」', wall_s4s: '不关的话每次都会弹窗，就不会自己跑了。',
+      wall_s5b: '想让它「动」起来，就用相册轮播', wall_s5s: '让快捷指令循环「存储到相册」——每次抓取拿到的都是粒子场的不同瞬间——然后把那个相册设成「照片随机播放」壁纸，频率选「锁定时」。这样每次拿起手机，iOS 都会自己换一张。',
+      wall_note: '这条路只能设静态图。动态壁纸是 Live Photo，只在锁屏动，而且快捷指令设不了——这是 iOS 的限制，不是 Terse 的。',
       signed_out_note: '登录后才能连接电脑。',
     },
   };
@@ -214,12 +246,23 @@
 
   // ── HUD ──────────────────────────────────────────────────────────────────
 
+  /* The readouts drawn INSIDE the field — the hovering agent tags, the rotating
+     centre stage, the live log line — are the same derivation the Mac uses, from
+     the same module. They are not decoration: `setStageItems` and `setAgentLog`
+     are what the engine turns into PARTICLE TEXT, so a phone that never called
+     them had the particles but none of the writing. */
+  var HUD = null;
+  import('/app-assets/wallpaper-hud.js')
+    .then(function (m) { HUD = m; renderHUD(); })
+    .catch(function () { /* the numbers below still render without it */ });
+
   var AGENT_ICON = {
     claude: '✳️', 'claude-code': '✳️', cursor: '▹', codex: '◆', copilot: '⧉',
     windsurf: '≈', gemini: '✦', hermes: '⬡', 'deepseek-harness': '🐋', deepseek: '🐋',
   };
 
   var lastTotal = null;
+  var lastSaved = null;
 
   function renderHUD() {
     var st = T.link.state();
@@ -229,6 +272,8 @@
     var active = sessions.filter(function (a) { return a && a.connected !== false; });
 
     $('sTokens').textContent = fmt((+stats.tokensIn || 0) + (+stats.tokensOut || 0));
+    // Overwritten below with the HUD's honest number once that module is up:
+    // agent traffic never credits tokensSaved, so this alone reads a permanent 0.
     $('sSaved').textContent = fmt(+stats.tokensSaved || 0);
     $('sAgents').textContent = String(active.length);
 
@@ -253,18 +298,25 @@
     empty.textContent = active.length ? '' : (st.linked ? t('no_agents') : t('no_agents_unlinked'));
     empty.classList.toggle('hide', active.length > 0);
 
-    // Drive the field itself. Same formula the desktop wallpaper uses, so the
-    // phone dances for the same reasons the Mac does.
-    if (wp) {
-      var burn = active.reduce(function (s, a) { return s + (+a.burnRate || 0); }, 0);
-      wp.setActivity(Math.min(1, (active.length ? 0.08 : 0) + burn / 4500));
-      wp.setAgents(active.slice(0, 4).map(function (a) {
-        return {
-          key: a.agentType || a.agentName,
-          name: a.agentName || a.agentType || 'Agent',
-          icon: a.agentIcon || AGENT_ICON[(a.agentType || '').toLowerCase()] || '🤖',
-        };
-      }));
+    // Drive the field itself, from the same derivation the Mac uses.
+    if (wp && HUD) {
+      var o = HUD.buildOverlays({
+        stats: stats,
+        sessions: sessions,
+        tokens: lastTotal || 0,
+        t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
+      });
+      wp.setActivity(o.activity);
+      wp.setAgents(o.agents);
+      // The two that become particle text. setStageItems rate-limits itself to
+      // one glyph every 12s inside the engine, so calling it on every poll is
+      // how the rotation advances — not something to throttle out here.
+      wp.setStageItems(o.stage);
+      wp.setAgentLog(o.logGroups);
+      // Savings rise out of the field as their own glyph, the same as on the Mac.
+      if (lastSaved !== null && o.saved > lastSaved) wp.floatToken(o.saved - lastSaved, 'saved');
+      lastSaved = o.saved;
+      $('sSaved').textContent = fmt(o.saved);
     }
 
     // Pulse on real consumption, exactly like the desktop: diff a monotonic
@@ -610,6 +662,178 @@
     }).catch(function () { $('friendEmpty').classList.remove('hide'); });
   }
 
+  // ── The actual iPhone wallpaper ───────────────────────────────────────────
+
+  var wallState = null;
+
+  function ago(iso) {
+    if (!iso) return null;
+    var ms = Date.now() - Date.parse(iso.replace(' ', 'T') + 'Z');
+    if (!isFinite(ms) || ms < 0) return null;
+    var m = Math.round(ms / 60000);
+    if (m < 1) return lang === 'zh' ? '刚刚' : 'just now';
+    if (m < 60) return m + (lang === 'zh' ? ' 分钟' : 'm');
+    var h = Math.round(m / 60);
+    if (h < 48) return h + (lang === 'zh' ? ' 小时' : 'h');
+    return Math.round(h / 24) + (lang === 'zh' ? ' 天' : 'd');
+  }
+
+  function renderWall() {
+    var card = $('wallCard');
+    if (!card) return;
+    // The whole feature is per-account: the URL is minted for one, and the
+    // capture is of that account's own styling and entitlement.
+    card.classList.toggle('hide', !T.signedIn());
+    if (!wallState) return;
+
+    $('wallSetup').classList.toggle('hide', !wallState.url);
+    if (wallState.url) $('wallUrl').value = wallState.url;
+
+    var age = ago(wallState.fetched_at);
+    $('wallAge').textContent = !wallState.ready ? ''
+      : (wallState.frames + ' · ' + (age ? t('wall_ago').replace('{t}', age) : t('wall_never')));
+
+    if (wallState.ready && wallState.url) {
+      var prev = $('wallPrev');
+      if (!prev.querySelector('img')) {
+        var img = document.createElement('img');
+        // Cache-busted: the endpoint sends no-store, but an <img> that already
+        // painted will happily keep showing the old frame after a re-capture.
+        img.src = wallState.url + '?v=' + Date.now();
+        img.alt = '';
+        prev.innerHTML = '';
+        prev.appendChild(img);
+      } else {
+        prev.querySelector('img').src = wallState.url + '?v=' + Date.now();
+      }
+    }
+  }
+
+  function loadWall() {
+    if (!T.signedIn()) return Promise.resolve(null);
+    return T.authToken().then(function (tok) {
+      if (!tok) return null;
+      return fetch('/api/cloud/wallpaper', { headers: { Authorization: 'Bearer ' + tok } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { wallState = j; renderWall(); return j; });
+    }).catch(function () { return null; });
+  }
+
+  /* The glyph lines that go into the burst. Real numbers from the real snapshot,
+     one per frame, so an album of these reads as the same wallpaper at different
+     moments rather than six copies of one picture. */
+  function wallTexts(ov) {
+    var out = [];
+    (ov && ov.stage || []).forEach(function (it) {
+      out.push(((it.v != null ? it.v : '') + ' ' + (it.u || '')).trim());
+    });
+    (ov && ov.agents || []).forEach(function (a) {
+      if (a.rate) out.push(a.name + ' ' + fmt(a.rate) + '/min');
+    });
+    var line = ov && ov.logGroups && ov.logGroups[0] && ov.logGroups[0].lines;
+    var last = line && line[line.length - 1];
+    if (last && (last.label || last.text)) out.push(last.label || last.text);
+    return out.filter(Boolean);
+  }
+
+  on($('wallCapture'), 'click', function () {
+    var btn = $('wallCapture');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = t('wall_capturing');
+
+    // Captured from the SAME overlay derivation the live field uses, so the
+    // stills carry the real glyph text rather than an empty field.
+    var st = T.link.state();
+    var ov = HUD ? HUD.buildOverlays({
+      stats: (st.frame && st.frame.stats) || {},
+      sessions: (st.frame && st.frame.sessions) || [],
+      tokens: lastTotal || 0,
+      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
+    }) : null;
+
+    window.TerseCapture.capture({
+      style: T.isPro() ? styleId() : 'cinematic',
+      pro: T.isPro(),
+      photo: T.photo(),
+      overlays: ov,
+      count: (wallState && wallState.slots) || 6,
+      texts: wallTexts(ov),
+      onStep: function (p, label) {
+        btn.textContent = t('wall_capturing') + ' ' + (label || Math.round(p * 100) + '%');
+      },
+    }).then(function (res) {
+      var blobs = (res && res.blobs) || [];
+      if (!blobs.length) throw new Error('no frame');
+      btn.textContent = t('wall_uploading');
+      return T.authToken().then(function (tok) {
+        // Sequential, not parallel: these are megabytes each, often over
+        // cellular, and six at once is how a phone upload stalls.
+        return blobs.reduce(function (chain, blob, i) {
+          return chain.then(function () {
+            btn.textContent = t('wall_uploading') + ' ' + (i + 1) + '/' + blobs.length;
+            return fetch('/api/cloud/wallpaper?slot=' + i, {
+              method: 'POST',
+              headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'image/png' },
+              body: blob,
+            }).then(function (r) {
+              if (!r.ok) throw new Error('upload failed');
+              return r.json();
+            });
+          });
+        }, Promise.resolve());
+      });
+    }).then(function (j) {
+      wallState = j;
+      renderWall();
+      toast('✓');
+    }).catch(function (err) {
+      // Being backgrounded is not a failure of the device — it is the one cause
+      // the user can actually do something about, so it says so.
+      toast(t(err && err.code === 'hidden' ? 'wall_hidden' : 'wall_failed'));
+    }).then(function () {
+      btn.disabled = false;
+      btn.textContent = t('wall_capture');
+    });
+  });
+
+  on($('wallCopy'), 'click', function () {
+    var v = $('wallUrl').value;
+    if (!v) return;
+    (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject())
+      .then(function () { toast(t('copied')); })
+      .catch(function () { $('wallUrl').select(); });
+  });
+
+  on($('wallRotate'), 'click', function () {
+    T.authToken().then(function (tok) {
+      return fetch('/api/cloud/wallpaper/rotate', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + tok },
+      });
+    }).then(function (r) { return r.json(); })
+      .then(function (j) { wallState = j; renderWall(); toast(t('wall_rotated')); })
+      .catch(function () {});
+  });
+
+  function renderWallSteps() {
+    var ol = $('wallSteps');
+    if (!ol) return;
+    ol.innerHTML = '';
+    [['wall_s1b', 'wall_s1s'], ['wall_s2b', 'wall_s2s'], ['wall_s3b', 'wall_s3s'],
+     ['wall_s4b', 'wall_s4s'], ['wall_s5b', 'wall_s5s']]
+      .forEach(function (pair) {
+        var li = document.createElement('li');
+        var b = document.createElement('b'); b.textContent = t(pair[0]);
+        var sp = document.createElement('span'); sp.textContent = ' ' + t(pair[1]);
+        li.appendChild(b); li.appendChild(sp);
+        ol.appendChild(li);
+      });
+    var note = document.createElement('li');
+    note.className = 'note';
+    note.textContent = t('wall_note');
+    ol.appendChild(note);
+  }
+
   // ── Me / linking ─────────────────────────────────────────────────────────
 
   function renderMe() {
@@ -646,6 +870,10 @@
       : devices.length ? t('link_help_some') : t('link_help_none');
     $('pairCode').classList.toggle('hide', !signedIn);
     $('pairBtn').classList.toggle('hide', !signedIn);
+
+    renderWallSteps();
+    renderWall();
+    if (signedIn && !wallState) loadWall();
   }
 
   function claim(code) {

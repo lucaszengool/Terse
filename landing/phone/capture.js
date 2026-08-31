@@ -1,0 +1,326 @@
+/**
+ * capture.js — taking a still of the REAL particle field, at wallpaper size, so
+ * it can become the iPhone's actual Home Screen wallpaper.
+ *
+ * WHY THE PHONE DOES THIS AND NOT THE SERVER. What has to land on the Home
+ * Screen is *this user's* field: their style, their photo, their Pro
+ * entitlement, their agents' names in the glyph text. Re-drawing that on a
+ * server means a second implementation of a WebGL scene that would drift from
+ * the engine within a release, rendered without any of those settings. The
+ * device that already renders it correctly is the phone.
+ *
+ * THE READBACK TRICK. A WebGL canvas is unreadable after compositing unless its
+ * context was created with `preserveDrawingBuffer`, and the engine creates its
+ * own renderer without it. But `getContext` returns the EXISTING context and
+ * ignores the attributes when one is already present — so creating the context
+ * first, with the flag, and then handing the canvas to the engine gives a
+ * readable buffer without touching the engine at all.
+ *
+ * WHY IT CAPTURES SEVERAL FRAMES. The glyph text — the whole point — is a timed
+ * animation: it assembles, holds, then scatters. Grabbing one frame at a fixed
+ * delay lands on an empty field about as often as not. So it samples across the
+ * hold window and keeps the busiest frame, measured rather than guessed.
+ */
+(function (root) {
+  'use strict';
+
+  /* Match the panel, capped. iOS scales anything bigger down anyway, and past
+     roughly this size a phone GPU starts failing the capture outright rather
+     than returning a smaller image. */
+  function targetSize() {
+    var dpr = Math.min(root.devicePixelRatio || 1, 3);
+    var w = Math.round((root.screen && root.screen.width ? root.screen.width : 390) * dpr);
+    var h = Math.round((root.screen && root.screen.height ? root.screen.height : 844) * dpr);
+    var cap = 3200;
+    if (Math.max(w, h) > cap) {
+      var k = cap / Math.max(w, h);
+      w = Math.round(w * k); h = Math.round(h * k);
+    }
+    return { w: w, h: h };
+  }
+
+  /** How much is going on in a frame. Mean luminance over a coarse grid: an
+   *  empty field is nearly black, a frame mid-glyph is not. Cheap enough to run
+   *  on every candidate. */
+  function liveliness(canvas) {
+    var s = 96;
+    var probe = document.createElement('canvas');
+    probe.width = s; probe.height = s;
+    var ctx = probe.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(canvas, 0, 0, s, s);
+    var d = ctx.getImageData(0, 0, s, s).data;
+    var sum = 0;
+    for (var i = 0; i < d.length; i += 4) {
+      sum += (d[i] * 0.2126 + d[i + 1] * 0.7152 + d[i + 2] * 0.0722) * (d[i + 3] / 255);
+    }
+    return sum / (s * s);
+  }
+
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+  /* A frame boundary, but never a wait that cannot end.
+     requestAnimationFrame does not fire at all while the page is hidden, so a
+     bare `await raf()` hangs forever the moment someone switches apps
+     mid-capture — the button sticks on "Rendering…" and never comes back.
+     The timeout is the escape hatch; `stalled` tells the caller to give up
+     rather than capture a frame the engine never drew. */
+  function raf(limitMs) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = setTimeout(function () { if (!done) { done = true; resolve({ stalled: true }); } }, limitMs || 400);
+      requestAnimationFrame(function () {
+        if (done) return;
+        done = true; clearTimeout(timer); resolve({ stalled: false });
+      });
+    });
+  }
+
+  var visible = function () { return document.visibilityState === 'visible'; };
+
+  /* A backdrop for the particles to take their colour from.
+     On the Mac the field is laid over the user's REAL desktop picture, so there
+     is always something to sample. A phone has no such thing, and with no photo
+     chosen the shader falls back to its own near-black default — which reads as
+     an almost empty image on a Home Screen. This is the phone's equivalent of
+     that desktop picture: quiet, dark enough to keep icons legible, and with
+     enough colour in it that the field has something to be. */
+  function defaultBed(w, h) {
+    var c = document.createElement('canvas');
+    c.width = Math.max(2, Math.round(w / 2));
+    c.height = Math.max(2, Math.round(h / 2));
+    var x = c.getContext('2d');
+    var g = x.createLinearGradient(0, 0, c.width * 0.6, c.height);
+    g.addColorStop(0, '#0d1b2a');
+    g.addColorStop(0.45, '#1b2f3d');
+    g.addColorStop(1, '#07100f');
+    x.fillStyle = g;
+    x.fillRect(0, 0, c.width, c.height);
+    // Two soft pools of accent light. The engine builds an edge/depth map from
+    // this image, so a flat fill would give it nothing to work with.
+    [[0.28, 0.30, '#2FE6A8', 0.30], [0.74, 0.66, '#5AD8FF', 0.22]].forEach(function (p) {
+      var r = Math.max(c.width, c.height) * 0.45;
+      var rg = x.createRadialGradient(c.width * p[0], c.height * p[1], 0, c.width * p[0], c.height * p[1], r);
+      rg.addColorStop(0, p[2]);
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      x.globalAlpha = p[3];
+      x.fillStyle = rg;
+      x.fillRect(0, 0, c.width, c.height);
+    });
+    x.globalAlpha = 1;
+    return c.toDataURL('image/jpeg', 0.9);
+  }
+
+  /**
+   * Render and capture. Returns a PNG Blob.
+   *
+   *   opts.engineUrl  module to import for the engine
+   *   opts.style      style id, opts.pro   entitlement
+   *   opts.overlays   { activity, agents, stage, logGroups } from wallpaper-hud
+   *   opts.count      how many distinct frames to bring back (1..8)
+   *   opts.texts      one glyph line per frame, cycled
+   *   opts.onStep     progress callback (0..1, label)
+   *
+   * Returns { blobs[], blob, width, height, score }.
+   */
+  async function capture(opts) {
+    var o = opts || {};
+    var step = o.onStep || function () {};
+
+    /* Refused rather than attempted while hidden. This is not defensiveness
+       about the timing above — a hidden page's engine is not rendering either,
+       so the only thing there is to capture is the black it was left on. */
+    if (!visible()) {
+      var e = new Error('hidden');
+      e.code = 'hidden';
+      throw e;
+    }
+
+    var size = targetSize();
+
+    var canvas = document.createElement('canvas');
+    canvas.width = size.w;
+    canvas.height = size.h;
+    // Off-screen but LAID OUT: the engine measures clientWidth/clientHeight and
+    // falls back to the window size when they are zero, so a `display:none`
+    // canvas would silently render at the wrong aspect ratio.
+    canvas.style.cssText = 'position:fixed;left:-99999px;top:0;width:' +
+      size.w + 'px;height:' + size.h + 'px;pointer-events:none';
+    document.body.appendChild(canvas);
+
+    // Must happen BEFORE the engine attaches — see the header.
+    canvas.getContext('webgl2', {
+      preserveDrawingBuffer: true, alpha: true, premultipliedAlpha: true, antialias: false,
+    }) || canvas.getContext('webgl', {
+      preserveDrawingBuffer: true, alpha: true, premultipliedAlpha: true, antialias: false,
+    });
+
+    var wp = null;
+    try {
+      step(0.1, 'engine');
+      var mod = await import(o.engineUrl || '/app-assets/mineradio-wallpaper.js');
+      var Engine = mod.default;
+
+      // Quality is raised above the live tier on purpose: this renders once, for
+      // a still, so there is no sustained thermal cost to pay — and the result
+      // is looked at on a Home Screen all day.
+      wp = new Engine(canvas, {
+        theme: o.theme || 'neon',
+        quality: 56,
+        angle: 42,
+        // A still is looked at all day and never animates, so it can carry more
+        // than the live field does without costing anything.
+        intensity: 1.15,
+        style: o.style || 'cinematic',
+        pro: !!o.pro,
+        // Explicit, so the engine never falls through to getDesktopPicture() —
+        // which on a phone answers with the user's chosen photo or nothing.
+        photo: o.photo || defaultBed(size.w, size.h),
+      });
+      /* The engine sizes its OWN drawing buffer: it measures the canvas's CSS box
+         and multiplies by min(1.5, devicePixelRatio). So canvas.width is
+         overwritten, and the field ends up filling only part of the bitmap —
+         about three quarters of the width on a 2x phone, with the rest left
+         black. Pinning the ratio to 1 and re-setting the size makes the buffer
+         exactly the wallpaper we asked for.
+
+         The CSS box is set to the full pixel size for the same reason: resize()
+         re-measures it, so a half-size box would undo this on the first
+         ResizeObserver tick. */
+      if (wp.renderer) {
+        wp.renderer.setPixelRatio(1);
+        wp.renderer.setSize(size.w, size.h, false);
+      }
+      wp.start();
+
+      // Feed it the same overlays the live field gets, so the capture contains
+      // the real glyph text and not a blank field with nothing to say.
+      var ov = o.overlays || {};
+      if (wp.setActivity) wp.setActivity(typeof ov.activity === 'number' ? ov.activity : 0.35);
+      if (wp.setAgents && ov.agents) wp.setAgents(ov.agents);
+      if (wp.setAgentLog && ov.logGroups && ov.logGroups.length) wp.setAgentLog(ov.logGroups);
+
+      step(0.25, 'settling');
+      // The photo bed and the edge/depth maps load asynchronously; capturing
+      // before they land gives a field with no colour in it.
+      await wait(900);
+
+      // Ask for a glyph, then sample across its hold window. setStageItems
+      // rate-limits itself to one glyph every 12 seconds, so this is the one
+      // request that matters and its timing is what the sampling is aligned to.
+      if (wp.setStageItems && ov.stage && ov.stage.length) wp.setStageItems(ov.stage);
+
+      /* The bed has to be PAINTED, not just sampled.
+         On the Mac the wallpaper window is transparent and the real desktop
+         picture shows through it — the engine only reads the image to colour its
+         particles, it never draws it. A capture of the canvas alone is therefore
+         particles on nothing, which is why the first version came out almost
+         black. Compositing the bed underneath here is what the transparent
+         window does on the desktop. */
+      var bed = await new Promise(function (resolve) {
+        var img = new Image();
+        img.onload = function () { resolve(img); };
+        img.onerror = function () { resolve(null); };
+        img.src = o.photo || defaultBed(size.w, size.h);
+      });
+
+      function compose(src) {
+        var out = document.createElement('canvas');
+        out.width = size.w; out.height = size.h;
+        var x = out.getContext('2d');
+        x.fillStyle = '#05060a';
+        x.fillRect(0, 0, size.w, size.h);
+        if (bed) {
+          // Cover, not stretch: a portrait wallpaper from a landscape photo must
+          // crop rather than distort.
+          var k = Math.max(size.w / bed.width, size.h / bed.height);
+          var dw = bed.width * k, dh = bed.height * k;
+          x.drawImage(bed, (size.w - dw) / 2, (size.h - dh) / 2, dw, dh);
+          // Held back so the particles and the glyph stay the subject, and so
+          // Home Screen icons and their labels stay readable on top.
+          x.fillStyle = 'rgba(5,6,10,0.42)';
+          x.fillRect(0, 0, size.w, size.h);
+        }
+        x.drawImage(src, 0, 0, size.w, size.h);
+        return out;
+      }
+
+      /* One engine spin-up, several frames.
+         Capturing N times would mean N cold starts — the photo bed, the edge and
+         depth maps and the geometry rebuilt each time, for the better part of a
+         minute. Sampling one running field is both faster and more honest: these
+         really are different moments of the same wallpaper.
+
+         Each frame gets its OWN glyph text, which is what makes an album of them
+         worth shuffling. setStageItems throttles itself to one glyph per twelve
+         seconds, so it is used once, for the first; setAgentLog carries the rest,
+         since it only suppresses a line it is already showing. */
+      var lines = (o.texts && o.texts.length) ? o.texts : [null];
+      var want = Math.max(1, Math.min(o.count || 1, 8));
+      var frames = [];
+
+      for (var f = 0; f < want; f++) {
+        if (f === 0) {
+          if (wp.setStageItems && ov.stage && ov.stage.length) wp.setStageItems(ov.stage);
+        } else if (wp.setAgentLog) {
+          var line = lines[f % lines.length];
+          if (line) wp.setAgentLog([{ name: '', icon: '', lines: [{ label: line }] }]);
+        }
+
+        // Sample across the glyph's hold window and keep the liveliest moment.
+        // A fixed delay lands on an empty field about as often as not.
+        var best = null, bestScore = -1;
+        var offsets = [650, 1000, 1350, 1700];
+        var prev = 0;
+        for (var i = 0; i < offsets.length; i++) {
+          await wait(offsets[i] - prev);
+          prev = offsets[i];
+          var tick = await raf(400);
+          // Backgrounded mid-capture. Keep whatever is already good and stop —
+          // but never hand back nothing without saying why.
+          if (tick.stalled || !visible()) {
+            if (!frames.length && !best) { var h = new Error('hidden'); h.code = 'hidden'; throw h; }
+            f = want; break;
+          }
+          var score = liveliness(canvas);
+          if (score > bestScore) {
+            bestScore = score;
+            // Composed immediately: the next frame overwrites the buffer, and a
+            // reference to the live canvas would capture whatever is there at
+            // the end rather than the moment that actually scored best.
+            best = { canvas: compose(canvas), score: score };
+          }
+        }
+        if (best) frames.push(best);
+        step(0.25 + 0.55 * ((f + 1) / want), 'frame ' + (f + 1) + '/' + want);
+      }
+
+      if (!frames.length) frames.push({ canvas: compose(canvas), score: 0 });
+
+      step(0.85, 'encoding');
+      var blobs = [];
+      for (var b = 0; b < frames.length; b++) {
+        blobs.push(await new Promise(function (resolve) {
+          frames[b].canvas.toBlob(function (x) { resolve(x); }, 'image/png');
+        }));
+      }
+
+      step(1, 'done');
+      return {
+        blobs: blobs,
+        // The single-frame shape is kept so a caller that only wants one still
+        // reads naturally.
+        blob: blobs[0],
+        width: size.w,
+        height: size.h,
+        score: frames[0] ? frames[0].score : 0,
+      };
+    } finally {
+      // Always: a leaked WebGL context is one of the few ways a phone browser
+      // tab gets killed outright, and this runs on demand from a button.
+      if (wp) { try { wp.dispose(); } catch (e) {} }
+      try { canvas.remove(); } catch (e) {}
+    }
+  }
+
+  root.TerseCapture = { capture: capture, targetSize: targetSize };
+})(window);

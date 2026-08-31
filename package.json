@@ -12,6 +12,8 @@
     "test:cors": "node api/cors.test.js",
     "test:link": "node api/link.test.js",
     "test:qr": "node src/renderer/qr.test.mjs",
+    "test:wallpaper-api": "node api/wallpaper.test.js",
+    "test:wallpaper-hud": "node src/renderer/wallpaper-hud.test.mjs",
     "test:wallpaper": "node src/renderer/wallpaper-styles.test.mjs",
     "test:plaza": "node api/plaza.test.js",
     "test:presence": "node api/presence.test.js",

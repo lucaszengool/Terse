@@ -322,5 +322,189 @@
     }
   }
 
-  root.TerseCapture = { capture: capture, targetSize: targetSize };
+  /* ── Video, for a Live Photo ────────────────────────────────────────────────
+     The still above lands on the Home Screen but does not move. A Live Photo
+     DOES move — it plays on the Lock Screen when the phone wakes — and Shortcuts
+     has a native "Make Live Photo" action that takes a video. So this records
+     the real field to an .mp4, and the phone's own Shortcut turns it into the
+     animated wallpaper.
+
+     WebCodecs, not MediaRecorder. canvas.captureStream() + MediaRecorder is the
+     obvious route and is broken on iOS Safari: the video track carries no valid
+     data and the stop event often never fires, so the recording simply never
+     ends. VideoEncoder has shipped in Safari since 16.4 and is fully supported
+     as of Safari 26, and it hands back frames we drive ourselves rather than a
+     stream we have to hope about. */
+
+  function canEncodeVideo() {
+    return typeof root.VideoEncoder === 'function' && typeof root.VideoFrame === 'function';
+  }
+
+  /** Live Photos are short by nature — iOS plays about 1.5s of one — and a
+   *  4-second source is what "Make Live Photo" wants to work from. */
+  var VIDEO_FPS = 24;
+  var VIDEO_SECONDS = 4;
+
+  async function captureVideo(opts) {
+    var o = opts || {};
+    var step = o.onStep || function () {};
+    if (!canEncodeVideo()) {
+      var u = new Error('no-webcodecs'); u.code = 'no-webcodecs'; throw u;
+    }
+    if (!visible()) { var e = new Error('hidden'); e.code = 'hidden'; throw e; }
+
+    /* Encoded at half the still's resolution, capped. H.264 wants even
+       dimensions, a phone encoding 1290x2796 in real time is asking for a
+       dropped frame every few, and a Live Photo is displayed scaled anyway. */
+    var full = targetSize();
+    var scale = Math.min(1, 720 / Math.min(full.w, full.h));
+    var size = {
+      w: Math.round(full.w * scale / 2) * 2,
+      h: Math.round(full.h * scale / 2) * 2,
+    };
+
+    var canvas = document.createElement('canvas');
+    canvas.width = size.w; canvas.height = size.h;
+    canvas.style.cssText = 'position:fixed;left:-99999px;top:0;width:' +
+      size.w + 'px;height:' + size.h + 'px;pointer-events:none';
+    document.body.appendChild(canvas);
+    canvas.getContext('webgl2', { preserveDrawingBuffer: true, alpha: true, premultipliedAlpha: true })
+      || canvas.getContext('webgl', { preserveDrawingBuffer: true, alpha: true, premultipliedAlpha: true });
+
+    var wp = null, encoder = null;
+    try {
+      step(0.05, 'engine');
+      var mod = await import(o.engineUrl || '/app-assets/mineradio-wallpaper.js');
+      wp = new mod.default(canvas, {
+        theme: o.theme || 'neon', quality: 44, angle: 42, intensity: 1.15,
+        style: o.style || 'cinematic', pro: !!o.pro,
+        photo: o.photo || defaultBed(size.w, size.h),
+      });
+      if (wp.renderer) { wp.renderer.setPixelRatio(1); wp.renderer.setSize(size.w, size.h, false); }
+      wp.start();
+
+      var ov = o.overlays || {};
+      if (wp.setActivity) wp.setActivity(typeof ov.activity === 'number' ? ov.activity : 0.45);
+      if (wp.setAgents && ov.agents) wp.setAgents(ov.agents);
+
+      // The bed, composited under every frame — same reason as the still: the
+      // engine samples the image but never draws it.
+      var bed = await new Promise(function (resolve) {
+        var img = new Image();
+        img.onload = function () { resolve(img); };
+        img.onerror = function () { resolve(null); };
+        img.src = o.photo || defaultBed(size.w, size.h);
+      });
+      var out = document.createElement('canvas');
+      out.width = size.w; out.height = size.h;
+      var octx = out.getContext('2d');
+
+      function composite() {
+        octx.fillStyle = '#05060a';
+        octx.fillRect(0, 0, size.w, size.h);
+        if (bed) {
+          var k = Math.max(size.w / bed.width, size.h / bed.height);
+          var dw = bed.width * k, dh = bed.height * k;
+          octx.drawImage(bed, (size.w - dw) / 2, (size.h - dh) / 2, dw, dh);
+          octx.fillStyle = 'rgba(5,6,10,0.42)';
+          octx.fillRect(0, 0, size.w, size.h);
+        }
+        octx.drawImage(canvas, 0, 0, size.w, size.h);
+      }
+
+      step(0.12, 'settling');
+      await wait(800);
+      if (wp.setStageItems && ov.stage && ov.stage.length) wp.setStageItems(ov.stage);
+
+      // ── Encode ──
+      var chunks = [];
+      var description = null;
+      var encoderError = null;
+      encoder = new root.VideoEncoder({
+        output: function (chunk, meta) {
+          if (meta && meta.decoderConfig && meta.decoderConfig.description && !description) {
+            description = new Uint8Array(meta.decoderConfig.description);
+          }
+          var buf = new Uint8Array(chunk.byteLength);
+          chunk.copyTo(buf);
+          chunks.push({ data: buf, isKey: chunk.type === 'key', duration: 90000 / VIDEO_FPS });
+        },
+        // Kept, not swallowed. A no-op here turns any encoder failure into
+        // "Cannot call encode on a closed codec" thirty frames later, with the
+        // real reason gone.
+        error: function (err) { encoderError = err; },
+      });
+
+      /* The codec string carries a LEVEL, and the level caps the frame size.
+         A phone-shaped 720x1560 is about 1.1M pixels, which is already past
+         level 3.1's ~920k ceiling — so a hardcoded avc1.42001f fails to
+         configure on the one aspect ratio this feature exists for. Ask the
+         browser which of these it will actually take, largest capability last
+         so the first match is the most compatible one that fits. */
+      var base = {
+        width: size.w, height: size.h,
+        framerate: VIDEO_FPS,
+        bitrate: 6_000_000,
+        avc: { format: 'avc' },          // AVCC, which is what the muxer expects
+        latencyMode: 'quality',
+      };
+      var candidates = ['avc1.42e028', 'avc1.42e02a', 'avc1.4d0028', 'avc1.640028', 'avc1.42001f'];
+      var chosen = null;
+      for (var ci = 0; ci < candidates.length; ci++) {
+        var cfg = Object.assign({}, base, { codec: candidates[ci] });
+        try {
+          var sup = await root.VideoEncoder.isConfigSupported(cfg);
+          if (sup && sup.supported) { chosen = cfg; break; }
+        } catch (e) { /* try the next */ }
+      }
+      if (!chosen) { var nc = new Error('no-codec'); nc.code = 'no-codec'; throw nc; }
+      step(0.14, 'codec ' + chosen.codec);
+      encoder.configure(chosen);
+      if (encoderError) throw encoderError;
+      step(0.15, 'recording');
+
+      var totalFrames = VIDEO_FPS * VIDEO_SECONDS;
+      var frameDurUs = Math.round(1e6 / VIDEO_FPS);
+      var lines = (o.texts && o.texts.length) ? o.texts : [];
+      var nextLineAt = Math.round(totalFrames / Math.max(1, lines.length + 1));
+
+      for (var i = 0; i < totalFrames; i++) {
+        var tick = await raf(400);
+        if (tick.stalled || !visible()) {
+          if (i < VIDEO_FPS) { var h = new Error('hidden'); h.code = 'hidden'; throw h; }
+          break;                        // enough recorded to still be worth having
+        }
+        // Rotate the glyph text through the clip so it says more than one thing.
+        if (lines.length && i > 0 && i % nextLineAt === 0 && wp.setAgentLog) {
+          wp.setAgentLog([{ name: '', icon: '', lines: [{ label: lines[(i / nextLineAt) % lines.length | 0] }] }]);
+        }
+        composite();
+        var frame = new root.VideoFrame(out, { timestamp: i * frameDurUs, duration: frameDurUs });
+        // A keyframe every second: Photos seeks into these, and a single one at
+        // the start makes scrubbing behave badly.
+        encoder.encode(frame, { keyFrame: i % VIDEO_FPS === 0 });
+        frame.close();
+        if (encoderError) throw encoderError;
+        if (i % 8 === 0) step(0.15 + 0.7 * (i / totalFrames), 'frame ' + i + '/' + totalFrames);
+      }
+
+      step(0.9, 'encoding');
+      await encoder.flush();
+      if (encoderError) throw encoderError;
+      if (!chunks.length || !description) throw new Error('encoder produced nothing');
+
+      var bytes = root.TerseMP4.mux({
+        samples: chunks, description: description,
+        width: size.w, height: size.h, timescale: 90000,
+      });
+      step(1, 'done');
+      return { blob: new Blob([bytes], { type: 'video/mp4' }), width: size.w, height: size.h, frames: chunks.length };
+    } finally {
+      try { if (encoder && encoder.state !== 'closed') encoder.close(); } catch (e) {}
+      if (wp) { try { wp.dispose(); } catch (e) {} }
+      try { canvas.remove(); } catch (e) {}
+    }
+  }
+
+  root.TerseCapture = { capture: capture, captureVideo: captureVideo, canEncodeVideo: canEncodeVideo, targetSize: targetSize };
 })(window);

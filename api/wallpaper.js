@@ -52,6 +52,9 @@ const MAX_EDGE = 3200;
  *  varied, few enough that one account is a handful of megabytes. */
 const SLOTS = 6;
 
+/** A four-second 720-wide H.264 clip lands around 2-5 MB. */
+const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
+
 const newToken = () => crypto.randomBytes(18).toString('base64url');
 
 function publicUrl(req, token) {
@@ -90,8 +93,13 @@ function ensureLink(userId) {
 function shape(req, userId) {
   const row = ensureLink(userId);
   const slots = db.listWallSlots.all(userId);
+  const video = db.getWallVideoMeta.get(userId);
   return {
     url: publicUrl(req, row.token),
+    // The animated one. Same token, different extension — a Live Photo needs a
+    // video, and Shortcuts fetches it by URL exactly like the still.
+    video_url: publicUrl(req, row.token).replace(/\.png$/, '.mp4'),
+    video: video ? { bytes: video.bytes, updated_at: video.updated_at } : null,
     slots: SLOTS,
     frames: slots.length,
     ready: slots.length > 0,
@@ -135,6 +143,28 @@ router.post('/', requireUser, express.raw({ type: 'image/png', limit: MAX_BYTES 
   res.json(shape(req, req.userId));
 });
 
+// POST /api/cloud/wallpaper/video — the mp4 the phone encoded of its own field,
+// which Shortcuts turns into a Live Photo. Raw body, same reasoning as the PNG.
+router.post('/video', requireUser, express.raw({ type: 'video/mp4', limit: MAX_VIDEO_BYTES }), (req, res) => {
+  const mp4 = req.body;
+  if (!Buffer.isBuffer(mp4) || mp4.length < 32) {
+    return res.status(400).json({ error: 'Expected an MP4 body' });
+  }
+  // Sniffed, not trusted: bytes 4..8 of an MP4 are the 'ftyp' box type. This is
+  // served back to a device that will hand it to Photos.
+  if (mp4.subarray(4, 8).toString('ascii') !== 'ftyp') {
+    return res.status(400).json({ error: 'That is not an MP4' });
+  }
+  ensureLink(req.userId);
+  db.putWallVideo.run({
+    clerk_user_id: req.userId, mp4,
+    width: parseInt(req.query.w, 10) || null,
+    height: parseInt(req.query.h, 10) || null,
+    bytes: mp4.length,
+  });
+  res.json(shape(req, req.userId));
+});
+
 // POST /api/cloud/wallpaper/rotate — new URL, old one dead immediately. The URL
 // is the only credential, so burning it is the only revocation there is: it may
 // have been pasted into a shared Shortcut or read off a screen.
@@ -147,6 +177,7 @@ router.post('/rotate', requireUser, (req, res) => {
 // DELETE /api/cloud/wallpaper — stop serving it at all.
 router.delete('/', requireUser, (req, res) => {
   db.deleteWallFrames.run(req.userId);
+  db.deleteWallVideo.run(req.userId);
   db.deleteWallLink.run(req.userId);
   res.json({ ok: true, ready: false, frames: 0 });
 });
@@ -164,9 +195,27 @@ router.delete('/', requireUser, (req, res) => {
  * plain "fetch, set wallpaper" automation gets a different one each run.
  */
 function serveFrame(req, res) {
-  const token = String(req.params.token || '').replace(/\.png$/i, '');
+  const raw = String(req.params.token || '');
+  const wantsVideo = /\.mp4$/i.test(raw);
+  const token = raw.replace(/\.(png|mp4)$/i, '');
   const row = token && db.getWallLinkByToken.get(token);
   if (!row) return res.status(404).type('text/plain').send('Not found');
+
+  // The animated one. Served whole rather than by range: Shortcuts downloads it
+  // in one go to hand to "Make Live Photo", and it is a few megabytes.
+  if (wantsVideo) {
+    const v = db.getWallVideo.get(row.clerk_user_id);
+    if (!v || !v.mp4) return res.status(404).type('text/plain').send('Not found');
+    res.set({
+      'Content-Type': 'video/mp4',
+      'Content-Length': String(v.mp4.length),
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Referrer-Policy': 'no-referrer',
+      'X-Robots-Tag': 'noindex, nofollow',
+      'Content-Disposition': 'inline; filename="terse-wallpaper.mp4"',
+    });
+    return res.send(v.mp4);
+  }
 
   const slots = db.listWallSlots.all(row.clerk_user_id);
   if (!slots.length) return res.status(404).type('text/plain').send('Not found');

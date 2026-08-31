@@ -173,6 +173,33 @@ const OTHER = 'user_wall_other';
   ok('and gets a different URL', stranger.json.url !== counted.json.url);
   eq('a made-up token 404s', (await req('GET', '/w/not-a-real-token.png')).status, 404);
 
+  // ── The video, which is what actually animates ──
+  // A minimal but structurally real MP4: ftyp is what the endpoint sniffs for,
+  // and sniffing rather than trusting the content type is the point.
+  const mp4 = Buffer.concat([
+    Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftyp', 'ascii'),
+    Buffer.from('isom', 'ascii'), Buffer.from([0, 0, 2, 0]), Buffer.from('isomavc1', 'ascii'),
+    Buffer.from([0, 0, 0, 8]), Buffer.from('free', 'ascii'),
+  ]);
+  eq('a non-MP4 body is refused',
+    (await req('POST', '/api/cloud/wallpaper/video', { user: USER, body: Buffer.alloc(64), type: 'video/mp4' })).status, 400);
+  const vup = await req('POST', '/api/cloud/wallpaper/video?w=720&h=1560', { user: USER, body: mp4, type: 'video/mp4' });
+  eq('the video uploads', vup.status, 200);
+  ok('and is reported', !!vup.json.video);
+  ok('with an .mp4 URL beside the .png one', /\.mp4$/.test(vup.json.video_url || ''));
+
+  const vurl = new URL(vup.json.video_url).pathname;
+  const got = await req('GET', vurl);
+  eq('the public .mp4 serves', got.status, 200);
+  eq('as video/mp4', got.headers['content-type'], 'video/mp4');
+  ok('byte-identical to what was uploaded', got.buf.equals(mp4));
+  ok('and uncacheable, like the still', /no-store/.test(got.headers['cache-control'] || ''));
+
+  // The two extensions share one token but are different resources; asking for
+  // the video must never fall through to a still.
+  const strangerVideo = await req('GET', `/w/${new URL(stranger.json.url).pathname.split('/').pop().replace('.png', '.mp4')}`);
+  eq('an account with no video 404s on .mp4', strangerVideo.status, 404);
+
   // ── Rotation: the URL is the only credential, so burning it is the only revocation ──
   const rotated = await req('POST', '/api/cloud/wallpaper/rotate', { user: USER });
   ok('rotating changes the URL', rotated.json.url !== counted.json.url);
@@ -183,10 +210,11 @@ const OTHER = 'user_wall_other';
   // ── Deleting ──
   eq('delete succeeds', (await req('DELETE', '/api/cloud/wallpaper', { user: USER })).status, 200);
   eq('the image is gone', (await req('GET', new URL(rotated.json.url).pathname)).status, 404);
+  eq('the video is gone too', (await req('GET', new URL(rotated.json.video_url).pathname)).status, 404);
   eq('and so are the frames', db.countWallFrames.get(USER).n, 0);
 
   for (const u of [USER, OTHER]) {
-    try { db.deleteWallFrames.run(u); db.deleteWallLink.run(u); } catch { /* already gone */ }
+    try { db.deleteWallFrames.run(u); db.deleteWallVideo.run(u); db.deleteWallLink.run(u); } catch { /* already gone */ }
   }
 
   console.log(`\n${pass} passed, ${fail} failed\n`);

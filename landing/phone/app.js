@@ -70,6 +70,14 @@
       wall_rotated: 'Link reset — update it in your Shortcut',
       wall_failed: 'Could not capture the field on this device',
       wall_hidden: 'Keep Terse on screen while it captures',
+      wall_video: 'Make it move (Live Photo)',
+      wall_recording: 'Recording the field…',
+      wall_video_ready: 'Video ready — build the Live Photo in Shortcuts',
+      wall_video_unsupported: 'This browser cannot encode video — update iOS, or use the still above',
+      wall_v1b: 'For MOTION, use the .mp4 link', wall_v1s: 'Same link with .mp4 instead of .png. A Live Photo is the only iPhone wallpaper that actually animates.',
+      wall_v2b: 'Shortcut: Get Contents of URL → Make Live Photo → Save to Photos', wall_v2s: '“Make Live Photo” is built into Shortcuts — no extra app.',
+      wall_v3b: 'Settings → Wallpaper → Add New → Photos → Live Photo', wall_v3s: 'Pick it, make sure the play button is on. It now plays every time you wake the phone.',
+      wall_v4b: 'The Home Screen stays still', wall_v4s: 'Live wallpapers animate on the Lock Screen only. That is iOS, and it is the same for every app.',
       wall_never: 'never collected', wall_ago: 'collected {t} ago',
       wall_s1b: 'Copy the link above', wall_s1s: 'It is the picture itself, and it is the only credential — treat it like a password.',
       wall_s2b: 'Shortcuts → Automation → new automation', wall_s2s: 'Pick a trigger: a time of day, or when you unlock, or when charging starts.',
@@ -123,6 +131,14 @@
       wall_rotated: '链接已重置——记得在快捷指令里换掉',
       wall_failed: '这台设备上截不了粒子场',
       wall_hidden: '截图时请让 Terse 保持在前台',
+      wall_video: '让它动起来（Live Photo）',
+      wall_recording: '正在录制粒子场…',
+      wall_video_ready: '视频好了——去快捷指令里做成 Live Photo',
+      wall_video_unsupported: '这个浏览器编不了视频——升级 iOS，或者用上面的静态图',
+      wall_v1b: '要「动」就用 .mp4 那个链接', wall_v1s: '同一个链接，把 .png 换成 .mp4。Live Photo 是 iPhone 上唯一真的会动的壁纸。',
+      wall_v2b: '快捷指令：获取 URL 内容 → 制作实况照片 → 存储到相册', wall_v2s: '「制作实况照片」是系统自带的，不用装别的 App。',
+      wall_v3b: '设置 → 墙纸 → 添加新墙纸 → 照片 → 实况照片', wall_v3s: '选中它，确认播放按钮是开的。之后每次唤醒手机它都会动。',
+      wall_v4b: '主屏幕还是静止的', wall_v4s: '动态壁纸只在锁屏动。这是 iOS 的规矩，所有 App 都一样。',
       wall_never: '还没被取过', wall_ago: '{t}前取过',
       wall_s1b: '复制上面的链接', wall_s1s: '它本身就是那张图，也是唯一的凭证——当密码看待。',
       wall_s2b: '快捷指令 → 自动化 → 新建', wall_s2s: '选一个触发条件：某个时间、解锁时、或者开始充电时。',
@@ -687,7 +703,11 @@
     if (!wallState) return;
 
     $('wallSetup').classList.toggle('hide', !wallState.url);
-    if (wallState.url) $('wallUrl').value = wallState.url;
+    // The .mp4 link once a video exists: it is the one that animates, so it is
+    // the one worth copying.
+    if (wallState.url) {
+      $('wallUrl').value = (wallState.video && wallState.video_url) ? wallState.video_url : wallState.url;
+    }
 
     var age = ago(wallState.fetched_at);
     $('wallAge').textContent = !wallState.ready ? ''
@@ -797,6 +817,56 @@
     });
   });
 
+  on($('wallVideo'), 'click', function () {
+    var btn = $('wallVideo');
+    if (btn.disabled) return;
+    if (!window.TerseCapture.canEncodeVideo()) { toast(t('wall_video_unsupported')); return; }
+    btn.disabled = true;
+    btn.textContent = t('wall_recording');
+
+    var st = T.link.state();
+    var ov = HUD ? HUD.buildOverlays({
+      stats: (st.frame && st.frame.stats) || {},
+      sessions: (st.frame && st.frame.sessions) || [],
+      tokens: lastTotal || 0,
+      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
+    }) : null;
+
+    window.TerseCapture.captureVideo({
+      style: T.isPro() ? styleId() : 'cinematic',
+      pro: T.isPro(),
+      photo: T.photo(),
+      overlays: ov,
+      texts: wallTexts(ov),
+      onStep: function (p, label) {
+        btn.textContent = t('wall_recording') + ' ' + (label || Math.round(p * 100) + '%');
+      },
+    }).then(function (res) {
+      return T.authToken().then(function (tok) {
+        return fetch('/api/cloud/wallpaper/video?w=' + res.width + '&h=' + res.height, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'video/mp4' },
+          body: res.blob,
+        });
+      });
+    }).then(function (r) {
+      if (!r || !r.ok) throw new Error('upload failed');
+      return r.json();
+    }).then(function (j) {
+      wallState = j;
+      renderWall();
+      toast(t('wall_video_ready'));
+    }).catch(function (err) {
+      var code = err && err.code;
+      toast(t(code === 'hidden' ? 'wall_hidden'
+        : (code === 'no-webcodecs' || code === 'no-codec') ? 'wall_video_unsupported'
+        : 'wall_failed'));
+    }).then(function () {
+      btn.disabled = false;
+      btn.textContent = t('wall_video');
+    });
+  });
+
   on($('wallCopy'), 'click', function () {
     var v = $('wallUrl').value;
     if (!v) return;
@@ -820,7 +890,8 @@
     if (!ol) return;
     ol.innerHTML = '';
     [['wall_s1b', 'wall_s1s'], ['wall_s2b', 'wall_s2s'], ['wall_s3b', 'wall_s3s'],
-     ['wall_s4b', 'wall_s4s'], ['wall_s5b', 'wall_s5s']]
+     ['wall_s4b', 'wall_s4s'], ['wall_s5b', 'wall_s5s'],
+     ['wall_v1b', 'wall_v1s'], ['wall_v2b', 'wall_v2s'], ['wall_v3b', 'wall_v3s'], ['wall_v4b', 'wall_v4s']]
       .forEach(function (pair) {
         var li = document.createElement('li');
         var b = document.createElement('b'); b.textContent = t(pair[0]);

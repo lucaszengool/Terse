@@ -587,6 +587,19 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_wallpaper_token ON wallpaper_links(token);
+
+  -- The animated version. A Live Photo is the only way an iPhone wallpaper
+  -- actually MOVES, Shortcuts' "Make Live Photo" action builds one from a video,
+  -- so this is the mp4 the phone encoded of its own field. One per account: it
+  -- is the current wallpaper, not a library.
+  CREATE TABLE IF NOT EXISTS wallpaper_videos (
+    clerk_user_id TEXT PRIMARY KEY,
+    mp4 BLOB,
+    width INTEGER,
+    height INTEGER,
+    bytes INTEGER,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 const setReferralCode      = db.prepare(`UPDATE users SET referral_code = ? WHERE id = ?`);
@@ -1398,6 +1411,17 @@ const advanceWallCursor = db.prepare(`
 `);
 const deleteWallLink = db.prepare('DELETE FROM wallpaper_links WHERE clerk_user_id = ?');
 
+const putWallVideo = db.prepare(`
+  INSERT INTO wallpaper_videos (clerk_user_id, mp4, width, height, bytes, updated_at)
+  VALUES (@clerk_user_id, @mp4, @width, @height, @bytes, datetime('now'))
+  ON CONFLICT(clerk_user_id) DO UPDATE SET
+    mp4 = excluded.mp4, width = excluded.width, height = excluded.height,
+    bytes = excluded.bytes, updated_at = datetime('now')
+`);
+const getWallVideo = db.prepare('SELECT * FROM wallpaper_videos WHERE clerk_user_id = ?');
+const getWallVideoMeta = db.prepare('SELECT width, height, bytes, updated_at FROM wallpaper_videos WHERE clerk_user_id = ?');
+const deleteWallVideo = db.prepare('DELETE FROM wallpaper_videos WHERE clerk_user_id = ?');
+
 const putWallFrame = db.prepare(`
   INSERT INTO wallpaper_frames (clerk_user_id, slot, png, width, height, bytes, updated_at)
   VALUES (@clerk_user_id, @slot, @png, @width, @height, @bytes, datetime('now'))
@@ -1443,6 +1467,7 @@ module.exports = {
   advanceWallCursor, deleteWallLink,
   putWallFrame, getWallFrame, listWallSlots, countWallFrames,
   deleteWallFrames, trimWallFrames,
+  putWallVideo, getWallVideo, getWallVideoMeta, deleteWallVideo,
   // Terse Cloud
   createTeam, getTeamById, getTeamBySlug, getTeamsByOwner, getTeamsByMemberEmail, getTeamsByMemberUserId, updateTeam, deleteTeam,
   addTeamMember, getTeamMembers, removeTeamMember, getMemberByEmail, setMemberUserId,

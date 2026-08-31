@@ -125,6 +125,12 @@ if (window.__TAURI__) {
     // Agent Monitor
     getAgentDetections: () => invoke('get_agent_detections'),
     getAgentSessions: () => invoke('get_agent_sessions'),
+
+    // Phone link (desktop ⇄ the Terse phone web app)
+    phonePair: () => invoke('phone_pair'),
+    phoneStatus: () => invoke('phone_status'),
+    phoneSetShare: (on) => invoke('phone_set_share', { on }),
+    phoneUnlink: () => invoke('phone_unlink'),
     acceptAgent: (agentType) => invoke('accept_agent', { agentType }),
     dismissAgent: (agentType) => invoke('dismiss_agent', { agentType }),
     disconnectAgent: (agentType) => invoke('disconnect_agent', { agentType }),

@@ -2660,3 +2660,125 @@ async function friendsInit() {
   }
   refresh();
 }
+
+/* ── Link phone ───────────────────────────────────────────────────────────────
+   The pairing sheet in Settings. The QR is drawn locally with TerseQR — this
+   webview has no network guarantee, and "link my phone" failing because a CDN is
+   unreachable would be the worst possible moment for it.
+
+   Polling only runs while the sheet is open. A background poll would keep a
+   request going every few seconds for a screen nobody is looking at, forever.
+   ---------------------------------------------------------------------------- */
+(function initPhoneLink() {
+  var pairBtn = document.getElementById('btnPhonePair');
+  if (!pairBtn) return;                       // not the main window
+
+  var idle = document.getElementById('phoneIdle');
+  var sheet = document.getElementById('phonePairing');
+  var statusEl = document.getElementById('phoneStatus');
+  var unlinkBtn = document.getElementById('btnPhoneUnlink');
+  var cancelBtn = document.getElementById('btnPhoneCancel');
+  var shareRow = document.getElementById('phoneShareRow');
+  var shareBox = document.getElementById('phoneShare');
+  var codeEl = document.getElementById('phoneCode');
+  var qrCanvas = document.getElementById('phoneQr');
+  var poll = null;
+
+  var PT = function (key, fallback) {
+    var v = (window.i18n && window.i18n.t) ? window.i18n.t(key) : null;
+    return (v && v !== key) ? v : fallback;
+  };
+
+  function render(st) {
+    st = st || {};
+    var linked = !!st.linked;
+    statusEl.textContent = linked
+      ? PT('phone_linked', 'Linked to your phone')
+      : PT('phone_not_linked', 'Not linked');
+    unlinkBtn.classList.toggle('hidden', !st.paired);
+    shareRow.classList.toggle('hidden', !linked);
+    shareBox.checked = !!st.share;
+    pairBtn.textContent = st.paired
+      ? PT('phone_relink', 'Link another phone')
+      : PT('phone_link', 'Link phone');
+  }
+
+  function stopPolling() {
+    if (poll) { clearInterval(poll); poll = null; }
+  }
+
+  function closeSheet() {
+    stopPolling();
+    sheet.classList.add('hidden');
+    idle.classList.remove('hidden');
+  }
+
+  /* Draw the QR at a size a phone camera can actually resolve from a normal
+     desk distance, snapped to whole device pixels — a fractional module size
+     makes some rows a pixel wider than others, and that blur is what a scanner
+     fails on. */
+  function drawQR(url) {
+    var mod = window.TerseQR.matrix(url, 'M');
+    var quiet = 4;                            // the standard's margin; without it many scanners never see the code
+    var total = mod.length + quiet * 2;
+    var dpr = Math.min(window.devicePixelRatio || 1, 3);
+    var scale = Math.max(1, Math.floor((150 * dpr) / total));
+    var px = total * scale;
+    qrCanvas.width = px;
+    qrCanvas.height = px;
+    qrCanvas.style.width = qrCanvas.style.height = (px / dpr) + 'px';
+    var ctx = qrCanvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, px, px);
+    ctx.fillStyle = '#0b0b0d';
+    for (var y = 0; y < mod.length; y++) {
+      for (var x = 0; x < mod.length; x++) {
+        if (mod[y][x]) ctx.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
+      }
+    }
+  }
+
+  pairBtn.addEventListener('click', function () {
+    pairBtn.disabled = true;
+    T.phonePair().then(function (r) {
+      drawQR(r.url);
+      codeEl.textContent = r.code;
+      idle.classList.add('hidden');
+      sheet.classList.remove('hidden');
+
+      // Watch for the phone claiming it. The code expires in ten minutes, and
+      // polling past that would ask forever about a link that can never form.
+      var until = Date.now() + (r.expiresIn || 600) * 1000;
+      stopPolling();
+      poll = setInterval(function () {
+        if (Date.now() > until) { closeSheet(); refreshStatus(); return; }
+        T.phoneStatus().then(function (st) {
+          if (!st.linked) return;
+          closeSheet();
+          render(st);
+          // Sharing is off by default, but a person who just scanned a code
+          // plainly wants it on — leaving them to find a second switch would
+          // make the pairing look broken.
+          return T.phoneSetShare(true).then(render);
+        }).catch(function () {});
+      }, 2000);
+    }).catch(function (e) {
+      window.showToast?.(e.message || String(e));
+    }).then(function () { pairBtn.disabled = false; });
+  });
+
+  cancelBtn.addEventListener('click', function () { closeSheet(); refreshStatus(); });
+  unlinkBtn.addEventListener('click', function () { T.phoneUnlink().then(render); });
+  shareBox.addEventListener('change', function () { T.phoneSetShare(shareBox.checked).then(render); });
+
+  function refreshStatus() {
+    if (!T.phoneStatus) return;
+    T.phoneStatus().then(render).catch(function () {});
+  }
+
+  // The sheet is inside Settings, so its state only needs to be current when
+  // Settings is opened — not on a timer for the life of the app.
+  var settingsBtn = document.getElementById('btnSettings');
+  if (settingsBtn) settingsBtn.addEventListener('click', refreshStatus);
+  refreshStatus();
+})();

@@ -517,6 +517,38 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_gift_codes_batch ON gift_codes(batch);
+
+  -- ── Device links (desktop ⇄ phone) ────────────────────────────────────────
+  -- One row per paired DESKTOP. The desktop holds a secret (stored hashed, like
+  -- a room key or a team token); the phone is identified by the Clerk account it
+  -- signed in with, because the phone app requires sign-in and an account is the
+  -- one thing that survives clearing Safari's storage.
+  --
+  -- A row exists from the moment the desktop asks for a pair code, with
+  -- clerk_user_id NULL — that is what "waiting to be scanned" looks like. The
+  -- code is short and therefore guessable given long enough, so it is single-use
+  -- and expires; after the claim it is nulled out and the row lives on by secret.
+  --
+  -- The live snapshot is deliberately kept in this row rather than a history
+  -- table: the phone renders what is happening NOW, exactly like the room log,
+  -- and a paired desktop that has been shut for a week should show nothing
+  -- rather than replay a week-old field.
+  CREATE TABLE IF NOT EXISTS device_links (
+    id TEXT PRIMARY KEY,
+    secret_hash TEXT UNIQUE NOT NULL,   -- the desktop's bearer credential (sha256)
+    pair_code TEXT,                     -- NULL once claimed; UNIQUE while it is not
+    pair_expires_at TEXT,
+    clerk_user_id TEXT,                 -- the phone's owner; NULL = unclaimed
+    device TEXT DEFAULT 'mac',          -- mac | windows
+    device_name TEXT,
+    snapshot TEXT,                      -- last { stats, sessions } pushed, as JSON
+    snapshot_at TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    linked_at TEXT
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_device_links_code
+    ON device_links(pair_code) WHERE pair_code IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_device_links_user ON device_links(clerk_user_id);
 `);
 
 const setReferralCode      = db.prepare(`UPDATE users SET referral_code = ? WHERE id = ?`);
@@ -1266,6 +1298,39 @@ const addPetPurchase = db.prepare(`
 `);
 const getPetPurchases = db.prepare('SELECT pet_id FROM pet_purchases WHERE user_id = ?');
 
+// ── Device links (desktop ⇄ phone) ──
+const createDeviceLink = db.prepare(`
+  INSERT INTO device_links (id, secret_hash, pair_code, pair_expires_at, device, device_name)
+  VALUES (@id, @secret_hash, @pair_code, @pair_expires_at, @device, @device_name)
+`);
+const findLinkBySecret = db.prepare('SELECT * FROM device_links WHERE secret_hash = ?');
+// Claiming checks expiry in SQL rather than in JS so a stale code cannot be
+// claimed by two phones racing the read.
+const findLinkByCode = db.prepare(`
+  SELECT * FROM device_links
+  WHERE pair_code = ? AND clerk_user_id IS NULL AND pair_expires_at > datetime('now')
+`);
+const claimDeviceLink = db.prepare(`
+  UPDATE device_links
+     SET clerk_user_id = @clerk_user_id, linked_at = datetime('now'),
+         pair_code = NULL, pair_expires_at = NULL
+   WHERE id = @id AND clerk_user_id IS NULL
+`);
+const listLinksForUser = db.prepare(`
+  SELECT * FROM device_links WHERE clerk_user_id = ? ORDER BY linked_at DESC
+`);
+const setLinkSnapshot = db.prepare(`
+  UPDATE device_links SET snapshot = @snapshot, snapshot_at = datetime('now') WHERE id = @id
+`);
+const renameDeviceLink = db.prepare('UPDATE device_links SET device_name = ? WHERE id = ?');
+const deleteDeviceLink = db.prepare('DELETE FROM device_links WHERE id = ?');
+// Unclaimed codes are litter; a paired link is never swept.
+const sweepPairCodes = db.prepare(`
+  DELETE FROM device_links
+   WHERE clerk_user_id IS NULL AND pair_expires_at IS NOT NULL
+     AND pair_expires_at < datetime('now', '-1 hour')
+`);
+
 module.exports = {
   db,
   upsertUser, getUser, ensureUser, updateStripeConnect,
@@ -1281,6 +1346,9 @@ module.exports = {
   getListings, getDetailedListings,
   addNotification, getNotifications, markNotificationRead, markNotificationEmailed, getUnreadCount,
   addPetPurchase, getPetPurchases,
+  // Device links (desktop ⇄ phone)
+  createDeviceLink, findLinkBySecret, findLinkByCode, claimDeviceLink,
+  listLinksForUser, setLinkSnapshot, renameDeviceLink, deleteDeviceLink, sweepPairCodes,
   // Terse Cloud
   createTeam, getTeamById, getTeamBySlug, getTeamsByOwner, getTeamsByMemberEmail, getTeamsByMemberUserId, updateTeam, deleteTeam,
   addTeamMember, getTeamMembers, removeTeamMember, getMemberByEmail, setMemberUserId,

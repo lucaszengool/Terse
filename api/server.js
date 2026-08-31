@@ -329,7 +329,7 @@ app.use(express.json());
 // checks this list against the headers the renderer actually sets.
 app.use('/api', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token, x-terse-room-key, x-terse-identity');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token, x-terse-room-key, x-terse-identity, x-terse-device');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -1247,6 +1247,16 @@ setInterval(() => roomsRouter.sweepPresence(), 20 * 1000).unref();
 // Friends: the durable edge between two people who met in a room.
 app.use('/api/cloud/friends', cloudIngestLimiter, require('./friends'));
 
+// ── Device links (desktop ⇄ phone web app) ──
+// The desktop pushes a live frame every few seconds and the phone streams it, so
+// this rides the same ingest limiter as rooms and cowork rather than the default.
+app.use('/api/cloud/link', cloudIngestLimiter, require('./link'));
+
+// ── WeChat sign-in (phone web app) ──
+// Inert until WECHAT_APP_ID / WECHAT_APP_SECRET are set; see api/wechat.js for
+// what applying for those actually involves.
+app.use('/api/auth/wechat', require('./wechat'));
+
 // Sweep stale cowork sessions + presence every 30s (broadcasts changes over SSE).
 setInterval(() => coworkRouter.sweepStale(), 30 * 1000).unref();
 
@@ -1394,6 +1404,30 @@ app.get(['/workspace', '/docs-app'], (req, res) => {
 });
 app.get('/d/:id', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'landing', 'doc.html'));
+});
+
+// ── Terse for phone (installable web app) ──
+// The wallpaper engines, the rooms client and the style table are served
+// straight out of src/renderer rather than copied into landing/. There is ONE
+// copy of each: a fork would drift, and the whole reason the phone can render
+// the real wallpaper is that those files never depended on Tauri in the first
+// place.
+app.use('/app-assets', express.static(path.join(__dirname, '..', 'src', 'renderer'), {
+  extensions: ['js', 'mjs'],
+  setHeaders: (res, filePath) => {
+    // The engines are large and change rarely; the shim and the room client
+    // change often enough that a stale copy would be a support ticket.
+    if (/vendor[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=604800');
+    else res.setHeader('Cache-Control', 'public, max-age=300');
+  },
+}));
+
+// /mobile → how to install it. /m → the app itself (client-side routed).
+app.get('/mobile', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'mobile.html'));
+});
+app.get(['/m', '/m/*'], (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'm.html'));
 });
 
 // Unknown paths → a real 404.

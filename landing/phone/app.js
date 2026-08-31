@@ -1,0 +1,792 @@
+/**
+ * app.js — the Terse phone web app.
+ *
+ * It renders the REAL wallpaper: the engine, the shaders and the style table are
+ * the same files the Mac loads, served from /app-assets straight out of
+ * src/renderer. Nothing here reimplements the look, and nothing here forks it.
+ *
+ * Three states, all of them supported on purpose:
+ *   · signed out          → the field runs, nothing else does (the gate is up)
+ *   · signed in, unpaired → field + rooms + plaza + friends. This is a complete
+ *                           product, not a nag screen: someone who never owns a
+ *                           Mac should still get the particles and the chat.
+ *   · signed in, paired   → the field is driven by that machine's real agents.
+ */
+(function () {
+  'use strict';
+
+  var Rooms = window.TerseRooms;
+  var T = window.terse;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var on = function (el, ev, fn) { el && el.addEventListener(ev, fn); };
+
+  // ── Strings ──────────────────────────────────────────────────────────────
+  // A local dictionary rather than src/renderer/i18n.js: that file is ~900 lines
+  // of desktop-app vocabulary of which this app would use none, and it is a
+  // module the phone would pay to download on every cold start.
+  var STR = {
+    en: {
+      brand: 'Terse',
+      t_wallpaper: 'Wallpaper', t_plaza: 'Plaza', t_room: 'Room', t_friends: 'Friends', t_me: 'Me',
+      k_today: 'Today', k_saved: 'Saved', k_agents: 'Agents',
+      live_agents: 'Live agents', style: 'Style',
+      pick_photo: 'Use my photo', clear_photo: 'Clear',
+      keep_awake: 'Keep the screen awake while this tab is open',
+      join_code: 'Join with a code', join: 'Join', create_room: 'Create a room',
+      public_rooms: 'Public rooms', refresh: 'Refresh',
+      plaza_empty: 'No open rooms right now.',
+      room_none: 'You are not in a room.\nJoin one from the plaza.',
+      leave: 'Leave', send: 'Send',
+      friends_empty: "No friends yet.\nAdd someone from a room's roster.",
+      devices: 'Your computers', pair: 'Link this phone',
+      account: 'Account', upgrade: 'Upgrade', language: 'Language', sign_out: 'Sign out',
+      install_title: 'Add to Home Screen',
+      install_body: 'Tap the Share button in Safari, then “Add to Home Screen”. Installed, Terse opens without browser chrome and can send you notifications — neither works from a Safari tab on iPhone.',
+      gate_title: 'Your agents, on your phone.',
+      gate_body: 'Sign in to see the live wallpaper, your rooms and your friends.',
+      sign_in: 'Sign in', wechat: 'Continue with WeChat', or: 'or',
+      guest: 'Just look around',
+      gate_note: 'The same account as the Mac app. Rooms need no account of their own.',
+      not_linked: 'Not linked', linked_idle: 'asleep', guest_mode: 'Guest',
+      no_agents: 'No agents running.',
+      no_agents_unlinked: 'Link a computer to see your agents here. Everything else already works.',
+      link_help_none: 'Open Terse on your Mac or PC, choose Link phone, and scan the code it shows — or type it in below.',
+      link_help_some: 'Scanning another code adds a second computer.',
+      pairing: 'Linking…', paired: 'Linked',
+      pro_only: 'Pro', free_tag: 'Free plan · default style',
+      leave_confirm: 'Leave this room?',
+      you: 'You', locked: 'Pro style — upgrade to use it',
+      photo_too_big: 'That photo is too large to store. Try a smaller one.',
+      ask_to_join: 'ask to join', knocked: 'Asked to join — waiting for the owner',
+      knock_declined: 'The owner declined',
+      wechat_failed: 'WeChat sign-in did not complete',
+      signed_out_note: 'Sign in to link a computer.',
+    },
+    zh: {
+      brand: 'Terse',
+      t_wallpaper: '壁纸', t_plaza: '广场', t_room: '房间', t_friends: '好友', t_me: '我',
+      k_today: '今日', k_saved: '已省', k_agents: '智能体',
+      live_agents: '运行中的智能体', style: '风格',
+      pick_photo: '使用我的照片', clear_photo: '清除',
+      keep_awake: '本页打开时保持屏幕常亮',
+      join_code: '用房间码加入', join: '加入', create_room: '创建房间',
+      public_rooms: '公开房间', refresh: '刷新',
+      plaza_empty: '现在还没有开放的房间。',
+      room_none: '你还没有在任何房间里。\n去广场加入一个。',
+      leave: '离开', send: '发送',
+      friends_empty: '还没有好友。\n在房间成员列表里添加。',
+      devices: '你的电脑', pair: '连接这台手机',
+      account: '账号', upgrade: '升级', language: '语言', sign_out: '退出登录',
+      install_title: '添加到主屏幕',
+      install_body: '点 Safari 的分享按钮，选「添加到主屏幕」。装好之后 Terse 会像 App 一样全屏打开，也才能收到通知——在 Safari 标签页里这两样都用不了。',
+      gate_title: '你的智能体，装进手机。',
+      gate_body: '登录后即可看到实时壁纸、你的房间和好友。',
+      sign_in: '登录 / 注册', wechat: '微信登录', or: '或',
+      guest: '先随便看看',
+      gate_note: '和 Mac 版同一个账号。房间本身不需要账号。',
+      not_linked: '未连接', linked_idle: '休眠中', guest_mode: '访客',
+      no_agents: '没有正在运行的智能体。',
+      no_agents_unlinked: '连接一台电脑就能在这里看到你的智能体。其他功能现在就能用。',
+      link_help_none: '在 Mac 或 Windows 上打开 Terse，选「连接手机」，扫描它显示的二维码——也可以在下面直接输入。',
+      link_help_some: '再扫一个码就能加上第二台电脑。',
+      pairing: '连接中…', paired: '已连接',
+      pro_only: 'Pro', free_tag: '免费版 · 默认风格',
+      leave_confirm: '确定离开这个房间？',
+      you: '我', locked: 'Pro 风格 — 升级后可用',
+      photo_too_big: '这张照片太大了，存不下。换一张小一点的。',
+      ask_to_join: '申请加入', knocked: '已申请加入 — 等房主同意',
+      knock_declined: '房主拒绝了',
+      wechat_failed: '微信登录没有完成',
+      signed_out_note: '登录后才能连接电脑。',
+    },
+  };
+
+  var LS_LANG = 'terse-phone-lang';
+  var lang = (function () {
+    try { var v = localStorage.getItem(LS_LANG); if (v) return v; } catch (e) {}
+    return /^zh/i.test(navigator.language || '') ? 'zh' : 'en';
+  })();
+  function t(k) { return (STR[lang] && STR[lang][k]) || STR.en[k] || k; }
+
+  function applyStrings() {
+    document.documentElement.lang = lang === 'zh' ? 'zh-Hans' : 'en';
+    var nodes = document.querySelectorAll('[data-t]');
+    for (var i = 0; i < nodes.length; i++) {
+      var s = t(nodes[i].getAttribute('data-t'));
+      // \n in a string means a real line break in the UI, and these are all
+      // plain labels, so innerText is both correct and safe.
+      nodes[i].innerText = s;
+    }
+    if ($('langSel')) $('langSel').value = lang;
+  }
+
+  function toast(msg) {
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 2600);
+  }
+
+  var fmt = function (n) {
+    n = +n || 0;
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return String(n | 0);
+  };
+
+  // ── The wallpaper ────────────────────────────────────────────────────────
+
+  var canvas = $('stage');
+  var wp = null, Engine = null;
+  var LS_STYLE = 'terse-phone-style';
+
+  /* Mobile GPUs throttle hard: a field that opens at 60fps drops to a third of
+     that within about half a minute of sustained rendering, and the phone gets
+     hot doing it. So the phone runs its own quality tier — this is not the
+     desktop's `quality`, which the memory note pins to its pre-refactor
+     constants; that pin is about the DESKTOP cinematic values, and a phone
+     rendering the desktop's particle count is not a truer wallpaper, just a
+     slideshow. Pixel ratio is capped at 2 for the same reason. */
+  function quality() {
+    var px = Math.min(window.devicePixelRatio || 1, 2);
+    var area = (window.innerWidth * window.innerHeight * px * px);
+    if (area > 3.2e6) return 30;      // Pro Max at 3x
+    if (area > 2.2e6) return 34;
+    return 38;
+  }
+
+  function styleId() {
+    try { return localStorage.getItem(LS_STYLE) || 'cinematic'; } catch (e) { return 'cinematic'; }
+  }
+
+  function mountEngine() {
+    if (!Engine) return;
+    if (wp) { try { wp.dispose(); } catch (e) {} wp = null; }
+    var pro = T.isPro();
+    wp = new Engine(canvas, {
+      theme: 'neon',
+      quality: quality(),
+      angle: 42,
+      intensity: 1,
+      style: pro ? styleId() : 'cinematic',
+      // The engine pins a non-Pro caller to the default style itself; passing
+      // `pro` honestly here is what makes that pin work, exactly as on the Mac.
+      pro: pro,
+    });
+    // The constructor builds the scene but does NOT start the animation loop —
+    // start() is a separate call, and without it the canvas stays black forever
+    // with no error anywhere. The desktop wallpaper page calls it too.
+    wp.start();
+  }
+
+  /* iOS drops the WebGL context when the app is backgrounded and does not
+     reliably restore it — the canvas comes back blank or frozen, and this is the
+     single most likely way a page whose whole point is a persistent animation
+     breaks. Both halves matter: preventDefault on `lost` is what allows a
+     restore to happen at all, and the rebuild on `restored` is what actually
+     puts pixels back. */
+  canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); }, false);
+  canvas.addEventListener('webglcontextrestored', function () { mountEngine(); }, false);
+
+  function loadEngine() {
+    // Dynamic, not static: a static import of a module that fails to
+    // INSTANTIATE (not 404 — instantiate) takes the whole script down with no
+    // catchable error, and the app would be a black screen with no explanation.
+    return import('/app-assets/mineradio-wallpaper.js')
+      .then(function (m) { Engine = m.default; mountEngine(); })
+      .catch(function () { /* no WebGL, or an old device: the app still works */ });
+  }
+
+  // Wake lock. Supported on iOS since 16.4, and the long-standing bug that broke
+  // it inside installed web apps was fixed in 18.4 — so it is worth asking for,
+  // and worth re-asking after every resume, because the lock is dropped when the
+  // page is hidden and is not restored on its own.
+  var wakeLock = null, wantWake = false;
+  function requestWake() {
+    if (!wantWake || !navigator.wakeLock || document.visibilityState !== 'visible') return;
+    navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; }).catch(function () {});
+  }
+  function releaseWake() {
+    if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
+  }
+
+  // ── HUD ──────────────────────────────────────────────────────────────────
+
+  var AGENT_ICON = {
+    claude: '✳️', 'claude-code': '✳️', cursor: '▹', codex: '◆', copilot: '⧉',
+    windsurf: '≈', gemini: '✦', hermes: '⬡', 'deepseek-harness': '🐋', deepseek: '🐋',
+  };
+
+  var lastTotal = null;
+
+  function renderHUD() {
+    var st = T.link.state();
+    var frame = st.frame;
+    var sessions = (frame && frame.sessions) || [];
+    var stats = (frame && frame.stats) || {};
+    var active = sessions.filter(function (a) { return a && a.connected !== false; });
+
+    $('sTokens').textContent = fmt((+stats.tokensIn || 0) + (+stats.tokensOut || 0));
+    $('sSaved').textContent = fmt(+stats.tokensSaved || 0);
+    $('sAgents').textContent = String(active.length);
+
+    var list = $('agentList');
+    list.innerHTML = '';
+    active.slice(0, 6).forEach(function (a) {
+      var row = document.createElement('div');
+      row.className = 'agent';
+      var ic = document.createElement('span');
+      ic.className = 'ic';
+      ic.textContent = a.agentIcon || AGENT_ICON[(a.agentType || '').toLowerCase()] || '🤖';
+      var nm = document.createElement('span');
+      nm.className = 'grow ell';
+      nm.textContent = a.agentName || a.agentType || 'Agent';
+      var rt = document.createElement('span');
+      rt.className = 'rate mono';
+      rt.textContent = (+a.burnRate > 0) ? (fmt(a.burnRate) + '/min') : '';
+      row.appendChild(ic); row.appendChild(nm); row.appendChild(rt);
+      list.appendChild(row);
+    });
+    var empty = $('agentEmpty');
+    empty.textContent = active.length ? '' : (st.linked ? t('no_agents') : t('no_agents_unlinked'));
+    empty.classList.toggle('hide', active.length > 0);
+
+    // Drive the field itself. Same formula the desktop wallpaper uses, so the
+    // phone dances for the same reasons the Mac does.
+    if (wp) {
+      var burn = active.reduce(function (s, a) { return s + (+a.burnRate || 0); }, 0);
+      wp.setActivity(Math.min(1, (active.length ? 0.08 : 0) + burn / 4500));
+      wp.setAgents(active.slice(0, 4).map(function (a) {
+        return {
+          key: a.agentType || a.agentName,
+          name: a.agentName || a.agentType || 'Agent',
+          icon: a.agentIcon || AGENT_ICON[(a.agentType || '').toLowerCase()] || '🤖',
+        };
+      }));
+    }
+
+    // Pulse on real consumption, exactly like the desktop: diff a monotonic
+    // total, never trust a per-frame number.
+    T.getTokenPulse().then(function (total) {
+      if (lastTotal === null) { lastTotal = total; return; }
+      var d = total - lastTotal;
+      lastTotal = total;
+      if (d > 0 && wp) {
+        wp.pulse(Math.min(1.8, 0.12 + Math.log10(1 + d) * 0.42));
+        wp.floatToken(d, 'consume');
+      }
+    });
+
+    renderChip();
+  }
+
+  function renderChip() {
+    var st = T.link.state();
+    var chip = $('linkChip'), txt = $('linkChipText');
+    chip.classList.remove('live', 'idle');
+    if (!st.signedIn) { txt.textContent = t('guest_mode'); return; }
+    if (!st.linked) { txt.textContent = t('not_linked'); return; }
+    var d = st.devices[0];
+    var label = d.name || (d.device === 'windows' ? 'Windows' : 'Mac');
+    if (st.live) { chip.classList.add('live'); txt.textContent = label; }
+    else { chip.classList.add('idle'); txt.textContent = label + ' · ' + t('linked_idle'); }
+  }
+
+  // ── Style picker ─────────────────────────────────────────────────────────
+
+  /* The English names come from wallpaper-styles.js itself (`en`), so they can
+     never drift. The Chinese ones are copied from i18n.js's wps_*_n keys rather
+     than read from it: that file installs a MutationObserver that retranslates
+     the whole document by matching English text, and a 500ms poll that RELOADS
+     the page whenever localStorage disagrees with it. Loading it here would
+     fight this app's own strings and could reload it in a loop. */
+  var STYLE_ZH = {
+    cinematic: '电影级 · 粒子聚合', aurora: '极光 · 丝绸流', starfall: '星陨',
+    ink: '水墨', neon: '霓虹', vortex: '漩涡', bloom: '绽放', zen: '静水 · 呼吸',
+  };
+
+  function renderStyles() {
+    import('/app-assets/wallpaper-styles.js').then(function (m) {
+      var grid = $('styleGrid');
+      var pro = T.isPro();
+      $('proTag').textContent = pro ? 'Pro' : t('free_tag');
+      grid.innerHTML = '';
+      m.PRO_STYLES.forEach(function (s) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sty' + (styleId() === s.id && pro ? ' on' : '');
+        // The swatch is the style's own two colours, so the grid reads as a set
+        // of looks rather than a list of words — which is what a style is.
+        var sw = document.createElement('span');
+        sw.className = 'sw';
+        if (s.swatch && s.swatch.length > 1) {
+          sw.style.background = 'linear-gradient(135deg,' + s.swatch[0] + ',' + s.swatch[1] + ')';
+        }
+        b.appendChild(sw);
+        var label = document.createElement('span');
+        label.textContent = (lang === 'zh' && STYLE_ZH[s.id]) || s.en || s.id;
+        b.appendChild(label);
+        if (!pro && s.id !== 'cinematic') {
+          var lk = document.createElement('span');
+          lk.className = 'lock'; lk.textContent = '🔒';
+          b.appendChild(lk);
+        }
+        b.onclick = function () {
+          if (!pro) { toast(t('locked')); return; }
+          try { localStorage.setItem(LS_STYLE, s.id); } catch (e) {}
+          if (wp && wp.setStyle) wp.setStyle(s.id, null);
+          renderStyles();
+        };
+        grid.appendChild(b);
+      });
+    }).catch(function () {});
+  }
+
+  // ── The user's own backdrop ──────────────────────────────────────────────
+
+  on($('pickPhoto'), 'click', function () { $('photoInput').click(); });
+  on($('photoInput'), 'change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    // Downscaled before storing. A modern iPhone photo is several megabytes and
+    // localStorage is about five in total, so storing the original would fail —
+    // and the engine only ever samples this at screen resolution anyway.
+    var img = new Image();
+    img.onload = function () {
+      var max = 1600;
+      var k = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      var url = c.toDataURL('image/jpeg', 0.82);
+      if (!T.setPhoto(url)) { toast(t('photo_too_big')); return; }
+      URL.revokeObjectURL(img.src);
+      $('clearPhoto').classList.remove('hide');
+      mountEngine();
+    };
+    img.src = URL.createObjectURL(f);
+  });
+  on($('clearPhoto'), 'click', function () {
+    T.setPhoto(null);
+    $('clearPhoto').classList.add('hide');
+    mountEngine();
+  });
+
+  on($('keepAwake'), 'change', function (e) {
+    wantWake = e.target.checked;
+    if (wantWake) requestWake(); else releaseWake();
+  });
+
+  // ── Tabs ─────────────────────────────────────────────────────────────────
+
+  var current = 'wallpaper';
+  function show(tab) {
+    current = tab;
+    var views = document.querySelectorAll('.view');
+    for (var i = 0; i < views.length; i++) views[i].classList.toggle('on', views[i].id === 'v-' + tab);
+    var btns = document.querySelectorAll('nav button');
+    for (var j = 0; j < btns.length; j++) btns[j].classList.toggle('on', btns[j].dataset.tab === tab);
+    // The wallpaper tab is the only one meant to be looked THROUGH; everywhere
+    // else the field is a backdrop and the text has to win.
+    $('scrim').classList.toggle('clear', tab === 'wallpaper');
+    if (tab === 'plaza') loadPlaza();
+    if (tab === 'friends') loadFriends();
+    if (tab === 'room') renderRoom();
+    if (tab === 'me') renderMe();
+    try { history.replaceState(null, '', '/m/' + tab); } catch (e) {}
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
+    b.onclick = function () { show(b.dataset.tab); };
+  });
+
+  // ── Plaza ────────────────────────────────────────────────────────────────
+
+  function loadPlaza() {
+    Rooms.plaza().then(function (d) {
+      var rooms = (d && d.rooms) || [];
+      var list = $('plazaList');
+      list.innerHTML = '';
+      $('plazaEmpty').classList.toggle('hide', rooms.length > 0);
+      rooms.forEach(function (r) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'item';
+        var av = document.createElement('span');
+        av.className = 'av'; av.textContent = (r.name || 'R').slice(0, 1).toUpperCase();
+        var box = document.createElement('span'); box.className = 'grow';
+        var nm = document.createElement('b'); nm.className = 'ell'; nm.textContent = r.name || 'Room';
+        var sub = document.createElement('span'); sub.className = 'tiny';
+        sub.textContent = (r.members || 0) + ' · ' + (r.category || '');
+        box.appendChild(nm); box.appendChild(sub);
+        b.appendChild(av); b.appendChild(box);
+        // A public listing withholds the CODE from people who are not already
+        // in the room — handing out the credential would make "ask to join"
+        // theatre. So there are two doors here, and only one of them is open:
+        // walk straight back into a room you already hold a code for, and knock
+        // on every other one.
+        b.onclick = function () { if (r.code) doJoin(r.code); else doKnock(r); };
+        if (!r.code) sub.textContent += ' · ' + t('ask_to_join');
+        list.appendChild(b);
+      });
+    }).catch(function () { $('plazaEmpty').classList.remove('hide'); });
+  }
+  on($('plazaRefresh'), 'click', loadPlaza);
+
+  function nickname() {
+    var u = T.user();
+    return Rooms.nickname() || (u && (u.firstName || (u.primaryEmailAddress && u.primaryEmailAddress.emailAddress))) || 'Guest';
+  }
+
+  function doJoin(code) {
+    if (!code) return;
+    var u = T.user();
+    Rooms.join(code, nickname(), u && u.primaryEmailAddress && u.primaryEmailAddress.emailAddress)
+      .then(function () { connectRoom(); show('room'); })
+      .catch(function (e) { toast(e.message || 'Could not join'); });
+  }
+  /* Knocking is asynchronous by nature: a person has to answer it. The poll
+     stops on any settled answer, and after two minutes on no answer at all —
+     leaving it running would keep a request alive against a room whose owner has
+     already walked away from their screen. */
+  function doKnock(room) {
+    Rooms.knock(room.id, nickname()).then(function (d) {
+      var kid = d && d.knock && d.knock.id;
+      if (!kid) return;
+      toast(t('knocked'));
+      var until = Date.now() + 120000;
+      var timer = setInterval(function () {
+        if (Date.now() > until) { clearInterval(timer); return; }
+        Rooms.knockStatus(kid).then(function (k) {
+          if (!k || k.status === 'pending') return;
+          clearInterval(timer);
+          if (k.status === 'approved') { connectRoom(); show('room'); }
+          else toast(t('knock_declined'));
+        }).catch(function () { clearInterval(timer); });
+      }, 3000);
+    }).catch(function (e) { toast(e.message || '—'); });
+  }
+
+  on($('joinBtn'), 'click', function () { doJoin(($('joinCode').value || '').trim()); });
+  on($('createRoomBtn'), 'click', function () {
+    var u = T.user();
+    Rooms.create(nickname() + "'s room", nickname(), u && u.primaryEmailAddress && u.primaryEmailAddress.emailAddress)
+      .then(function () { connectRoom(); show('room'); })
+      .catch(function (e) { toast(e.message || 'Could not create'); });
+  });
+
+  // ── Room ─────────────────────────────────────────────────────────────────
+
+  var stopRoom = null;
+  var roster = [];
+  var myMemberId = null;
+
+  function renderRoom() {
+    var inRoom = Rooms.inRoom();
+    $('roomNone').classList.toggle('hide', inRoom);
+    $('roomLive').classList.toggle('hide', !inRoom);
+    if (!inRoom) return;
+    var st = Rooms.state();
+    $('roomName').textContent = st.name || 'Room';
+    $('roomCode').textContent = st.code || '';
+  }
+
+  function renderRoster(members) {
+    roster = members || [];
+    var box = $('roster');
+    box.innerHTML = '';
+    roster.forEach(function (m) {
+      var row = document.createElement('div');
+      row.className = 'row';
+      var av = document.createElement('span');
+      av.className = 'av'; av.style.width = av.style.height = '26px';
+      av.textContent = (m.name || '?').slice(0, 1).toUpperCase();
+      var nm = document.createElement('span');
+      nm.className = 'grow ell muted';
+      nm.textContent = (m.name || 'someone') + (m.member_id === myMemberId ? ' · ' + t('you') : '');
+      row.appendChild(av); row.appendChild(nm);
+      if (m.member_id !== myMemberId) {
+        var add = document.createElement('button');
+        add.type = 'button'; add.className = 'btn ghost'; add.style.minHeight = '32px';
+        add.style.padding = '6px 11px'; add.textContent = '+';
+        add.onclick = function () {
+          Rooms.requestFriend(m.member_id)
+            .then(function () { toast('✓'); add.disabled = true; })
+            .catch(function (e) { toast(e.message || '—'); });
+        };
+        row.appendChild(add);
+      }
+      box.appendChild(row);
+    });
+
+    // Room members become peers in the particle field, exactly as they do on the
+    // desktop — this is what makes an unlinked, agentless phone still worth
+    // looking at.
+    if (wp && wp.setPeers) {
+      wp.setPeers(roster.map(function (m) { return { id: m.member_id, name: m.name || 'someone' }; }));
+    }
+  }
+
+  function addMsg(m) {
+    var box = $('msgs');
+    var el = document.createElement('div');
+    el.className = 'msg' + (m.member_id === myMemberId ? ' me' : '');
+    var who = document.createElement('span');
+    who.className = 'who'; who.textContent = m.name || 'someone';
+    el.appendChild(who);
+    el.appendChild(document.createTextNode(m.body || ''));
+    box.appendChild(el);
+    box.scrollIntoView({ block: 'end' });
+    if (wp && wp.peerLog && m.member_id !== myMemberId) {
+      wp.peerLog(m.member_id, m.name || 'someone', m.body || '', { max: 30 });
+    }
+  }
+
+  function connectRoom() {
+    if (stopRoom) { stopRoom(); stopRoom = null; }
+    if (!Rooms.inRoom()) { renderRoom(); return; }
+    stopRoom = Rooms.connect({
+      onSnapshot: function (s) {
+        myMemberId = s.you || null;
+        renderRoom();
+        renderRoster(s.members);
+        $('msgs').innerHTML = '';
+        (s.messages || []).forEach(addMsg);
+      },
+      onRoster: renderRoster,
+      onMessage: addMsg,
+      onClosed: function () { renderRoom(); toast('Room closed'); },
+    });
+    renderRoom();
+  }
+
+  on($('sendBtn'), 'click', sendChat);
+  on($('chatInput'), 'keydown', function (e) { if (e.key === 'Enter') sendChat(); });
+  function sendChat() {
+    var v = ($('chatInput').value || '').trim();
+    if (!v) return;
+    $('chatInput').value = '';
+    Rooms.sendMessage(v).catch(function (e) { toast(e.message || '—'); });
+  }
+  on($('leaveBtn'), 'click', function () {
+    if (!confirm(t('leave_confirm'))) return;
+    Rooms.leave().then(function () {
+      if (stopRoom) { stopRoom(); stopRoom = null; }
+      if (wp && wp.setPeers) wp.setPeers([]);
+      renderRoom();
+    });
+  });
+
+  // ── Friends ──────────────────────────────────────────────────────────────
+
+  function loadFriends() {
+    Rooms.listFriends().then(function (d) {
+      // The server answers with three lists, not one: accepted friends, and the
+      // pending requests in each direction. Reading only `friends` would hide
+      // every incoming request — which is the one thing on this screen that
+      // actually needs the user to do something.
+      var fr = [].concat((d && d.incoming) || [], (d && d.friends) || [], (d && d.outgoing) || []);
+      var list = $('friendList');
+      list.innerHTML = '';
+      $('friendEmpty').classList.toggle('hide', fr.length > 0);
+      fr.forEach(function (f) {
+        var row = document.createElement('div');
+        row.className = 'item';
+        var av = document.createElement('span');
+        av.className = 'av'; av.textContent = (f.name || '?').slice(0, 1).toUpperCase();
+        var box = document.createElement('span'); box.className = 'grow';
+        var nm = document.createElement('b'); nm.className = 'ell'; nm.textContent = f.name || f.email || 'someone';
+        var sub = document.createElement('span'); sub.className = 'tiny'; sub.textContent = f.status;
+        box.appendChild(nm); box.appendChild(sub);
+        row.appendChild(av); row.appendChild(box);
+        if (f.status === 'pending' && f.direction === 'incoming') {
+          var yes = document.createElement('button');
+          yes.type = 'button'; yes.className = 'btn ghost'; yes.style.minHeight = '32px'; yes.textContent = '✓';
+          yes.onclick = function () { Rooms.respondFriend(f.id, true).then(loadFriends); };
+          row.appendChild(yes);
+        }
+        list.appendChild(row);
+      });
+    }).catch(function () { $('friendEmpty').classList.remove('hide'); });
+  }
+
+  // ── Me / linking ─────────────────────────────────────────────────────────
+
+  function renderMe() {
+    var u = T.user();
+    $('meEmail').textContent = (u && u.primaryEmailAddress && u.primaryEmailAddress.emailAddress) || t('guest_mode');
+    $('mePlan').textContent = T.isPro() ? 'Pro' : 'Free';
+    $('upgradeBtn').classList.toggle('hide', T.isPro());
+    $('signOutBtn').classList.toggle('hide', !u);
+
+    var devices = T.link.devices();
+    var box = $('deviceList');
+    box.innerHTML = '';
+    devices.forEach(function (d) {
+      var row = document.createElement('div');
+      row.className = 'item';
+      var av = document.createElement('span');
+      av.className = 'av'; av.textContent = d.device === 'windows' ? '⊞' : '';
+      var g = document.createElement('span'); g.className = 'grow';
+      var nm = document.createElement('b'); nm.className = 'ell';
+      nm.textContent = d.name || (d.device === 'windows' ? 'Windows PC' : 'Mac');
+      var sub = document.createElement('span'); sub.className = 'tiny';
+      sub.textContent = d.live ? t('paired') : t('linked_idle');
+      g.appendChild(nm); g.appendChild(sub);
+      var del = document.createElement('button');
+      del.type = 'button'; del.className = 'btn ghost danger'; del.style.minHeight = '32px';
+      del.style.padding = '6px 11px'; del.textContent = '✕';
+      del.onclick = function () { T.link.unlink(d.id).then(renderMe); };
+      row.appendChild(av); row.appendChild(g); row.appendChild(del);
+      box.appendChild(row);
+    });
+
+    var signedIn = !!u;
+    $('linkHelp').textContent = !signedIn ? t('signed_out_note')
+      : devices.length ? t('link_help_some') : t('link_help_none');
+    $('pairCode').classList.toggle('hide', !signedIn);
+    $('pairBtn').classList.toggle('hide', !signedIn);
+  }
+
+  function claim(code) {
+    if (!code) return;
+    $('pairBtn').disabled = true;
+    $('pairBtn').textContent = t('pairing');
+    T.link.claim(code).then(function () {
+      toast(t('paired'));
+      $('pairCode').value = '';
+      renderMe(); renderHUD();
+    }).catch(function (e) {
+      toast(e.message || '—');
+    }).then(function () {
+      $('pairBtn').disabled = false;
+      $('pairBtn').textContent = t('pair');
+    });
+  }
+  on($('pairBtn'), 'click', function () { claim(($('pairCode').value || '').trim()); });
+
+  on($('upgradeBtn'), 'click', function () { location.href = '/#pricing'; });
+  on($('signOutBtn'), 'click', function () {
+    if (window.Clerk) window.Clerk.signOut().then(function () { location.href = '/m'; });
+  });
+  on($('langSel'), 'change', function (e) {
+    lang = e.target.value;
+    try { localStorage.setItem(LS_LANG, lang); } catch (err) {}
+    applyStrings();
+    renderHUD(); renderMe();
+  });
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+
+  applyStrings();
+  loadEngine();
+
+  // A code scanned with the iPhone's own Camera app lands on /m/pair?c=CODE.
+  // Deliberately not an in-page camera: the native scanner is one tap from the
+  // lock screen, needs no permission prompt inside the app, and needs no QR
+  // decoding library — and Safari has no BarcodeDetector to do it with anyway.
+  var pending = null;
+  (function () {
+    var m = location.pathname.match(/^\/m\/pair/);
+    var c = new URLSearchParams(location.search).get('c');
+    if (m && c) pending = c;
+  })();
+
+  function afterAuth() {
+    T.start().then(function () {
+      renderHUD();
+      renderStyles();
+      if (pending) { claim(pending); pending = null; show('me'); }
+    });
+  }
+
+  function openApp(signedIn) {
+    $('gate').classList.add('hide');
+    $('app').classList.remove('hide');
+    if (T.photo()) $('clearPhoto').classList.remove('hide');
+    connectRoom();
+    renderStyles();
+    // Painted for EVERY state, not just the signed-in one: the empty state is
+    // the whole message for a guest ("link a computer to see your agents"), and
+    // gating it behind sign-in left a silent, blank card.
+    renderHUD();
+    if (signedIn) afterAuth();
+    var start = (location.pathname.match(/^\/m\/(wallpaper|plaza|room|friends|me)/) || [])[1];
+    show(start || (pending ? 'me' : 'wallpaper'));
+  }
+
+  on($('guestBtn'), 'click', function () { openApp(false); });
+  on($('signInBtn'), 'click', function () {
+    if (window.Clerk) window.Clerk.openSignIn({ redirectUrl: location.pathname + location.search });
+  });
+  on($('wechatBtn'), 'click', function () {
+    // Server-side redirect: the WeChat authorize URL needs the app id and a
+    // signed state, and neither belongs in a page anyone can read.
+    location.href = '/api/auth/wechat/start?redirect=' + encodeURIComponent(location.pathname);
+  });
+
+  // The link chip is a shortcut to the one screen that can change what it says.
+  on($('linkChip'), 'click', function () { show('me'); });
+
+  /* WeChat comes back with a single-use Clerk sign-in ticket in the URL. Redeem
+     it BEFORE anything else looks at Clerk.user, or the app decides the visitor
+     is signed out a moment before they are signed in. The ticket is stripped
+     from the address bar either way: it is one-shot, and a reload carrying a
+     spent one would look like a failure. */
+  function redeemTicket(ticket) {
+    return window.Clerk.client.signIn
+      .create({ strategy: 'ticket', ticket: ticket })
+      .then(function (res) { return window.Clerk.setActive({ session: res.createdSessionId }); })
+      .then(function () { history.replaceState(null, '', '/m'); return true; })
+      .catch(function () { history.replaceState(null, '', '/m'); toast(t('wechat_failed')); return false; });
+  }
+
+  // Clerk is loaded async; nothing that needs an account may run before this.
+  window.addEventListener('load', function () {
+    if (!window.Clerk) { openApp(false); return; }
+    var q = new URLSearchParams(location.search);
+    var ticket = q.get('ticket');
+    if (q.get('wechat')) { history.replaceState(null, '', '/m'); toast(t('wechat_failed')); }
+
+    window.Clerk.load()
+      .then(function () { return ticket ? redeemTicket(ticket) : null; })
+      .then(function () {
+        if (window.Clerk.user) { openApp(true); return; }
+        if (pending) {
+          // Arriving from a scanned code while signed out: sign in FIRST, and
+          // come back to this exact URL so the code is still in hand afterwards.
+          window.Clerk.openSignIn({ redirectUrl: location.pathname + location.search });
+        }
+      })
+      .catch(function () { openApp(false); });
+  });
+
+  // The WeChat button appears only where it can actually work: the credentials
+  // are an enterprise 开放平台 account, not something every deployment has.
+  fetch('/api/auth/wechat/config')
+    .then(function (r) { return r.json(); })
+    .then(function (c) { if (c && c.enabled) $('wechatBtn').classList.remove('hide'); })
+    .catch(function () {});
+
+  T.link.onChange(function () { renderHUD(); if (current === 'me') renderMe(); });
+
+  // The HUD is redrawn on a timer as well as on every frame, because "how long
+  // ago was the last push" changes with nothing arriving — a machine going to
+  // sleep is a UI change with no event behind it.
+  setInterval(function () { if (document.visibilityState === 'visible') renderHUD(); }, 5000);
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible') { if (wp) wp.stop(); return; }
+    if (wp) wp.start();
+    requestWake();
+    // Rooms' own EventSource is subject to the same iOS silent-close as the link
+    // stream, and rooms.js cannot fix it from inside: it never learns the app was
+    // backgrounded. Reconnecting from out here is the only place that knows.
+    if (Rooms.inRoom()) connectRoom();
+    renderHUD();
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+  }
+})();

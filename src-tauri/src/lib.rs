@@ -6,6 +6,7 @@ mod agent_usage_scan;
 mod stats_store;
 mod license;
 mod cowork;
+mod phone;
 mod pet_store;
 mod farm_store;
 
@@ -680,6 +681,33 @@ fn get_agent_sessions(state: tauri::State<'_, AppState>) -> Vec<serde_json::Valu
     let sessions = monitor.get_connected_sessions();
     eprintln!("[terse] get_agent_sessions: {} connected", sessions.len());
     sessions
+}
+
+// ── Phone link (desktop ⇄ Terse phone web app) ──
+
+/// Mint a pair code. The sheet renders `url` as a QR and `code` underneath it,
+/// so the phone can be linked by camera or by typing six characters.
+#[tauri::command]
+fn phone_pair() -> Result<serde_json::Value, String> {
+    crate::phone::pair()
+}
+
+/// Whether a phone has claimed the pairing. Polled by the sheet while it is up.
+#[tauri::command]
+fn phone_status() -> serde_json::Value {
+    crate::phone::status()
+}
+
+/// The master switch for sending anything to the phone at all.
+#[tauri::command]
+fn phone_set_share(on: bool) -> serde_json::Value {
+    crate::phone::set_share(on)
+}
+
+/// Forget the pairing on this machine.
+#[tauri::command]
+fn phone_unlink() -> serde_json::Value {
+    crate::phone::unlink()
 }
 
 #[tauri::command]
@@ -2784,6 +2812,10 @@ pub fn run() {
             debug_log,
             get_agent_detections,
             get_agent_sessions,
+            phone_pair,
+            phone_status,
+            phone_set_share,
+            phone_unlink,
             accept_agent,
             dismiss_agent,
             disconnect_agent,

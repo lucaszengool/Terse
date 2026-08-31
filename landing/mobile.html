@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05060a">
+<title>Terse for phone — install the web app</title>
+<meta name="description" content="Terse on your phone: the live agent wallpaper, rooms, plaza and friends. No App Store — it installs straight from the web.">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" href="/favicon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<style>
+  :root{
+    --bg:#05060a; --ink:#f2f5f4; --dim:rgba(242,245,244,.58); --faint:rgba(242,245,244,.34);
+    --line:rgba(242,245,244,.10); --line2:rgba(242,245,244,.18);
+    --card:rgba(255,255,255,.045); --accent:#6ee7b7; --accent-dim:rgba(110,231,183,.14);
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
+    -webkit-font-smoothing:antialiased;padding:0 20px calc(var(--safe-b) + 64px)}
+  .wrap{max-width:640px;margin:0 auto}
+  a{color:var(--accent)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+  header{padding:56px 0 34px;display:flex;flex-direction:column;gap:16px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600}
+  .brand i{width:26px;height:26px;border-radius:7px;background:var(--accent-dim);
+    border:1px solid rgba(110,231,183,.28);color:var(--accent);display:grid;place-items:center;
+    font-style:normal;font-size:13px;font-weight:800}
+  h1{font-size:clamp(30px,7.6vw,42px);font-weight:660;letter-spacing:-.03em;line-height:1.1;text-wrap:balance}
+  .lede{color:var(--dim);font-size:17px;max-width:34em}
+
+  .cta{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 20px;border-radius:13px;
+    background:var(--accent);color:#04120d;font-weight:650;text-decoration:none;font-size:16px;border:0}
+  .btn.ghost{background:none;border:1px solid var(--line2);color:var(--ink);font-weight:500}
+
+  section{padding:36px 0 0;display:flex;flex-direction:column;gap:16px}
+  h2{font-size:20px;font-weight:620;letter-spacing:-.015em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:18px 19px;
+    display:flex;flex-direction:column;gap:9px}
+  .card h3{font-size:15px;font-weight:600}
+  .card p{color:var(--dim);font-size:14.5px}
+
+  ol.steps{list-style:none;display:flex;flex-direction:column;gap:14px;counter-reset:s}
+  ol.steps li{display:grid;grid-template-columns:26px 1fr;gap:14px;align-items:start}
+  ol.steps li::before{counter-increment:s;content:counter(s);
+    width:26px;height:26px;border-radius:8px;background:var(--accent-dim);color:var(--accent);
+    display:grid;place-items:center;font-size:12px;font-weight:700;font-family:ui-monospace,monospace}
+  /* Both text nodes belong in the second column. Without this the <span> is the
+     grid's THIRD item and wraps onto a new row inside the 26px number column,
+     which renders the sentence one character per line. */
+  ol.steps li b,ol.steps li span{grid-column:2}
+  ol.steps b{display:block;font-weight:600;font-size:15px}
+  ol.steps span{color:var(--dim);font-size:14.5px}
+
+  .grid{display:grid;gap:12px}
+  @media(min-width:560px){.grid{grid-template-columns:1fr 1fr}}
+
+  .note{border-left:2px solid rgba(251,191,36,.5);padding:12px 16px;background:rgba(251,191,36,.05);
+    border-radius:0 10px 10px 0;color:var(--dim);font-size:14px}
+
+  footer{padding:44px 0 0;color:var(--faint);font-size:13px;display:flex;gap:18px;flex-wrap:wrap}
+  footer a{color:var(--faint)}
+  .lang{position:absolute;top:20px;right:20px}
+  .lang button{background:none;border:1px solid var(--line2);color:var(--dim);border-radius:999px;
+    padding:6px 13px;font:inherit;font-size:13px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="lang"><button id="langBtn" type="button">中文</button></div>
+<div class="wrap">
+
+<header>
+  <span class="brand"><i>T</i>Terse</span>
+  <h1 data-t="h1">Terse on your phone.</h1>
+  <p class="lede" data-t="lede">The same live wallpaper your Mac runs, driven by your agents — plus rooms, the plaza and friends. It installs from this page. There is no App Store download and no waiting for review.</p>
+  <div class="cta">
+    <a class="btn" href="/m" data-t="open">Open Terse</a>
+    <a class="btn ghost" href="#install" data-t="how">How to install it</a>
+  </div>
+</header>
+
+<section id="install">
+  <h2 data-t="install_h">Install it</h2>
+  <div class="card">
+    <h3 data-t="ios_h">iPhone · Safari</h3>
+    <ol class="steps">
+      <li><b data-t="i1b">Open this page in Safari</b><span data-t="i1s">Chrome and in-app browsers on iPhone cannot install web apps — only Safari can.</span></li>
+      <li><b data-t="i2b">Tap Share, then “Add to Home Screen”</b><span data-t="i2s">The Share button is the square with the arrow, at the bottom of the screen.</span></li>
+      <li><b data-t="i3b">Open Terse from your Home Screen</b><span data-t="i3s">It opens with no browser chrome, keeps you signed in, and can send notifications — none of which work from a Safari tab.</span></li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3 data-t="and_h">Android · Chrome</h3>
+    <p data-t="and_p">Chrome offers “Install app” in its menu, or prompts you on its own. Everything below works the same way afterwards.</p>
+  </div>
+</section>
+
+<section>
+  <h2 data-t="link_h">Link it to your computer</h2>
+  <div class="card">
+    <ol class="steps">
+      <li><b data-t="l1b">Open Terse on your Mac or PC</b><span data-t="l1s">Settings → Link phone. It shows a QR code and a six-character code.</span></li>
+      <li><b data-t="l2b">Scan it with the Camera app</b><span data-t="l2s">Point your iPhone's own camera at it and tap the link. You can also type the code into Terse under Me.</span></li>
+      <li><b data-t="l3b">The wallpaper comes alive</b><span data-t="l3s">Your agents, their token burn and what they are doing now drive the field on your phone, live.</span></li>
+    </ol>
+  </div>
+  <div class="note" data-t="nolink">Don't want to link anything? You don't have to. Without a computer attached, Terse is still the particle wallpaper, the rooms, the plaza and your friends — the field simply runs calm instead of reacting to your agents.</div>
+</section>
+
+<section>
+  <h2 data-t="what_h">What you get</h2>
+  <div class="grid">
+    <div class="card"><h3 data-t="f1h">The real wallpaper</h3><p data-t="f1p">Not a screenshot of it — the same engine, the same shaders, the same eight Pro styles, running on your phone's GPU.</p></div>
+    <div class="card"><h3 data-t="f2h">Rooms &amp; the plaza</h3><p data-t="f2p">Join by code or ask to join an open room. Everyone in it appears in your particle field.</p></div>
+    <div class="card"><h3 data-t="f3h">Friends</h3><p data-t="f3p">Keep the people you meet in a room. No phone number, no address book, no account required for them.</p></div>
+    <div class="card"><h3 data-t="f4h">One account</h3><p data-t="f4p">The same sign-in as the desktop app. Pro is Pro on every screen you own.</p></div>
+  </div>
+</section>
+
+<footer>
+  <a href="/">terseai.org</a><a href="/privacy">Privacy</a><a href="/m" data-t="open2">Open the app</a>
+</footer>
+</div>
+
+<script>
+  // Two languages, no framework: this page is a door, and a translation bundle
+  // would cost more than the page.
+  var ZH = {
+    h1:'把 Terse 装进手机。',
+    lede:'和 Mac 上一模一样的实时壁纸，由你的智能体驱动——还有房间、广场和好友。直接从这个页面安装，不用上架，不用等审核。',
+    open:'打开 Terse', how:'怎么安装', open2:'打开应用',
+    install_h:'安装',
+    ios_h:'iPhone · Safari',
+    i1b:'用 Safari 打开这个页面', i1s:'iPhone 上的 Chrome 和各种内置浏览器都装不了网页应用，只有 Safari 可以。',
+    i2b:'点分享，选「添加到主屏幕」', i2s:'分享按钮是屏幕下方那个带箭头的方块。',
+    i3b:'从主屏幕打开 Terse', i3s:'打开后没有浏览器边框，登录状态一直在，还能收通知——这三件事在 Safari 标签页里都做不到。',
+    and_h:'Android · Chrome', and_p:'Chrome 菜单里有「安装应用」，有时也会自己弹出来。装好之后下面的都一样。',
+    link_h:'连接你的电脑',
+    l1b:'在 Mac 或 Windows 上打开 Terse', l1s:'设置 → 连接手机。会显示一个二维码和六位码。',
+    l2b:'用相机 App 扫一下', l2s:'用 iPhone 自带的相机对着扫，点弹出的链接。也可以在 Terse 的「我」里直接输入六位码。',
+    l3b:'壁纸就活了', l3s:'你的智能体、它们烧掉的 token、它们此刻在做什么，实时驱动手机上的粒子场。',
+    nolink:'不想连电脑？完全可以。不连电脑，Terse 依然是那套粒子壁纸、房间、广场和好友——只是粒子场安静地跑，不跟着智能体动。',
+    what_h:'你会得到什么',
+    f1h:'真正的那套壁纸', f1p:'不是截图——同一个引擎、同一套 shader、同样八种 Pro 风格，跑在你手机的 GPU 上。',
+    f2h:'房间和广场', f2p:'用房间码加入，或者申请进一个公开房间。房间里的每个人都会出现在你的粒子场里。',
+    f3h:'好友', f3p:'把在房间里遇到的人留下来。不要手机号，不读通讯录，对方也不需要注册账号。',
+    f4h:'一个账号', f4p:'和桌面版同一个登录。Pro 就是 Pro，在你所有屏幕上都一样。',
+  };
+  var zh = /^zh/i.test(navigator.language || '');
+  // The English copy is the markup itself, so switching TO English is a reload
+  // rather than a second dictionary that could drift out of sync with the HTML.
+  function applyZh() {
+    document.documentElement.lang = 'zh-Hans';
+    var n = document.querySelectorAll('[data-t]');
+    for (var i = 0; i < n.length; i++) {
+      var v = ZH[n[i].getAttribute('data-t')];
+      if (v) n[i].textContent = v;
+    }
+  }
+  try { var saved = localStorage.getItem('terse-phone-lang'); if (saved) zh = saved === 'zh'; } catch (e) {}
+  var btn = document.getElementById('langBtn');
+  btn.textContent = zh ? 'EN' : '中文';
+  if (zh) applyZh();
+  btn.onclick = function () {
+    zh = !zh;
+    try { localStorage.setItem('terse-phone-lang', zh ? 'zh' : 'en'); } catch (e) {}
+    if (zh) { btn.textContent = 'EN'; applyZh(); } else location.reload();
+  };
+</script>
+</body>
+</html>

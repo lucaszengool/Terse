@@ -18,7 +18,14 @@ const path = require('path');
 let pass = 0; const fails = [];
 const ok = (l, c) => c ? (pass++, console.log('  ✓ ' + l)) : (fails.push(l), console.error('  ✗ ' + l));
 
-const R = path.join(__dirname, '..', 'src', 'renderer');
+// Both browser clients, because both are subject to the same preflight: the
+// desktop renderer, and the phone web app served off landing/. The phone was the
+// second surface to learn this the hard way — it sends x-terse-device.
+const DIRS = [
+  path.join(__dirname, '..', 'src', 'renderer'),
+  path.join(__dirname, '..', 'landing'),
+  path.join(__dirname, '..', 'landing', 'phone'),
+];
 const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
 
 const m = server.match(/Access-Control-Allow-Headers['"],\s*['"]([^'"]+)['"]/);
@@ -28,13 +35,16 @@ console.log('\nallowed: ' + [...allowed].join(', ') + '\n');
 
 // Every x-terse-* header the renderer sets, wherever it sets it.
 const sent = new Map();   // header → files that send it
-for (const f of fs.readdirSync(R)) {
-  if (!f.endsWith('.js') && !f.endsWith('.html')) continue;
-  const src = fs.readFileSync(path.join(R, f), 'utf8');
-  for (const hit of src.matchAll(/['"](x-terse-[a-z-]+)['"]/gi)) {
-    const h = hit[1].toLowerCase();
-    if (!sent.has(h)) sent.set(h, []);
-    if (!sent.get(h).includes(f)) sent.get(h).push(f);
+for (const dir of DIRS) {
+  if (!fs.existsSync(dir)) continue;
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.js') && !f.endsWith('.html')) continue;
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    for (const hit of src.matchAll(/['"](x-terse-[a-z-]+)['"]/gi)) {
+      const h = hit[1].toLowerCase();
+      if (!sent.has(h)) sent.set(h, []);
+      if (!sent.get(h).includes(f)) sent.get(h).push(f);
+    }
   }
 }
 

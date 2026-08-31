@@ -968,6 +968,30 @@
           </div>
         </div>
       </div>
+      <!-- ── Phone ──
+           The QR is drawn locally by src/renderer/qr.js, not fetched: this
+           webview has no network guarantee, and "link my phone" failing because
+           a CDN is unreachable would be the worst possible time for it. -->
+      <div class="setting-group">
+        <label class="setting-label">Phone</label>
+        <div id="phoneIdle">
+          <div id="phoneStatus" style="font-size:10px;color:var(--t3);padding:2px 0 6px">Not linked</div>
+          <button id="btnPhonePair" class="secondary-btn">Link phone</button>
+          <button id="btnPhoneUnlink" class="secondary-btn hidden" style="margin-top:4px;font-size:10px;color:var(--t3)">Unlink</button>
+          <label class="setting-row hidden" id="phoneShareRow" style="margin-top:6px">
+            <span>Show my agents on my phone</span>
+            <input type="checkbox" id="phoneShare">
+          </label>
+        </div>
+        <div id="phonePairing" class="hidden" style="text-align:center;padding-top:4px">
+          <canvas id="phoneQr" style="border-radius:8px;background:#fff;display:block;margin:0 auto 8px"></canvas>
+          <div id="phoneCode" style="font-family:ui-monospace,Menlo,monospace;font-size:17px;letter-spacing:.24em;font-weight:600;color:var(--t1)"></div>
+          <div style="font-size:10px;color:var(--t3);line-height:1.5;padding:6px 2px 8px" id="phonePairHelp">
+            Scan it with your iPhone's Camera app, or open terseai.org/m and type the code.
+          </div>
+          <button id="btnPhoneCancel" class="secondary-btn" style="font-size:10px">Cancel</button>
+        </div>
+      </div>
       <button id="btnCloseSettings" class="secondary-btn">Done</button>
     </div>
 

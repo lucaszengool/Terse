@@ -3269,6 +3269,28 @@ pub fn start_scanning(app: AppHandle) {
             let cw = state.cowork.lock().unwrap_or_else(|e| e.into_inner());
             crate::cowork::publish_presence(&cw, member_email.as_deref());
         }
+
+        // ── The phone ──
+        // Sent every tick, not only on `had_updates`: the phone's field must go
+        // CALM when the agents stop, and a push that only happens while
+        // something is happening can never say "nothing is happening". The
+        // pacing, the off-switch and the nobody-is-watching check all live in
+        // phone::maybe_push, so this stays one call.
+        //
+        // Both locks are taken and released before the push, which does network
+        // I/O — holding the monitor lock across a curl would stall every window
+        // that wants to read a session.
+        {
+            let sessions = {
+                let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+                monitor.get_connected_sessions()
+            };
+            let stats = {
+                let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
+                store.get_stats("day")
+            };
+            crate::phone::maybe_push(&stats, &sessions);
+        }
     }
 }
 

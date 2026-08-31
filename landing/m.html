@@ -148,6 +148,9 @@
   /* ── field failure ── */
   .fielderr{border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.06)}
   .fielderr .grow{font-size:13.5px;font-weight:550;color:var(--warn)}
+  .savehint{font-size:12.5px;line-height:1.55;color:var(--accent);
+    background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.22);
+    border-radius:10px;padding:10px 12px}
   pre.diag{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;line-height:1.5;
     color:var(--dim);background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;
     padding:11px 12px;max-height:280px;overflow:auto;white-space:pre-wrap;word-break:break-word}
@@ -226,6 +229,34 @@
           <button class="btn ghost grow" id="fieldErrCopy" type="button" data-t="field_copy">Copy details</button>
         </div>
         <pre class="diag hide" id="fieldErrDump"></pre>
+      </div>
+
+      <!-- ── The actual iPhone wallpaper ──
+           Not the in-app field: a still captured FROM it, which an iOS Shortcut
+           automation sets as the real Home Screen wallpaper. iOS has no API for
+           this — for web apps or native ones — and Shortcuts can only set a
+           still, so this is the furthest the platform goes. -->
+      <div class="card" id="wallCard">
+        <div class="row">
+          <h2 class="grow" data-t="wall_title">iPhone wallpaper</h2>
+          <span class="tiny" id="wallAge"></span>
+        </div>
+        <p data-t="wall_body"></p>
+        <div class="wallprev" id="wallPrev"><span class="tiny" data-t="wall_none">No frame captured yet</span></div>
+        <!-- The fastest route to a real wallpaper, and the one that needs no
+             Shortcut at all: iOS lets you long-press any image in a web page and
+             "Add to Photos". Hidden until there is actually an image to press. -->
+        <p class="savehint hide" id="wallSaveHint" data-t="wall_longpress"></p>
+        <button class="btn primary wide" id="wallCapture" type="button" data-t="wall_capture">Capture from my wallpaper</button>
+        <button class="btn wide" id="wallVideo" type="button" data-t="wall_video">Make it move (Live Photo)</button>
+        <div id="wallSetup" class="hide" style="display:flex;flex-direction:column;gap:10px">
+          <div class="row">
+            <input type="text" id="wallUrl" class="grow" readonly style="font-size:12px;font-family:ui-monospace,monospace">
+            <button class="btn" id="wallCopy" type="button" data-t="copy">Copy</button>
+          </div>
+          <ol class="steps" id="wallSteps"></ol>
+          <button class="btn ghost wide" id="wallRotate" type="button" data-t="wall_rotate">Reset this link</button>
+        </div>
       </div>
 
       <div class="stats">
@@ -319,29 +350,6 @@
           </select>
         </div>
         <button class="btn ghost wide" id="signOutBtn" type="button" data-t="sign_out">Sign out</button>
-      </div>
-      <!-- ── The actual iPhone wallpaper ──
-           Not the in-app field: a still captured FROM it, which an iOS Shortcut
-           automation sets as the real Home Screen wallpaper. iOS has no API for
-           this — for web apps or native ones — and Shortcuts can only set a
-           still, so this is the furthest the platform goes. -->
-      <div class="card" id="wallCard">
-        <div class="row">
-          <h2 class="grow" data-t="wall_title">iPhone wallpaper</h2>
-          <span class="tiny" id="wallAge"></span>
-        </div>
-        <p data-t="wall_body"></p>
-        <div class="wallprev" id="wallPrev"><span class="tiny" data-t="wall_none">No frame captured yet</span></div>
-        <button class="btn primary wide" id="wallCapture" type="button" data-t="wall_capture">Capture from my wallpaper</button>
-        <button class="btn wide" id="wallVideo" type="button" data-t="wall_video">Make it move (Live Photo)</button>
-        <div id="wallSetup" class="hide" style="display:flex;flex-direction:column;gap:10px">
-          <div class="row">
-            <input type="text" id="wallUrl" class="grow" readonly style="font-size:12px;font-family:ui-monospace,monospace">
-            <button class="btn" id="wallCopy" type="button" data-t="copy">Copy</button>
-          </div>
-          <ol class="steps" id="wallSteps"></ol>
-          <button class="btn ghost wide" id="wallRotate" type="button" data-t="wall_rotate">Reset this link</button>
-        </div>
       </div>
       <div class="card" id="installCard">
         <h2 data-t="install_title">Add to Home Screen</h2>

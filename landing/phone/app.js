@@ -62,7 +62,7 @@
       knock_declined: 'The owner declined',
       wechat_failed: 'WeChat sign-in did not complete',
       wall_title: 'iPhone wallpaper', copy: 'Copy', copied: 'Copied',
-      wall_body: 'iOS has no way for any app — web or native — to set an animated wallpaper. What it does allow is a Shortcut that fetches a picture and sets it. So Terse captures a real frame of your field, glyph text and all, and your phone re-sets it on a schedule.',
+      wall_body: 'Home Screen and Lock Screen both work. A still image can go on either, and can keep itself up to date on a schedule. Motion is Lock Screen only — that is an iOS rule, not a Terse one: no app of any kind can animate the Home Screen.',
       wall_none: 'No frame captured yet',
       wall_capture: 'Capture from my wallpaper',
       wall_capturing: 'Rendering…', wall_uploading: 'Uploading…',
@@ -92,6 +92,7 @@
       /* Romanised on purpose, in BOTH languages: the glyph layer rasterises a
          Latin typeface, so Chinese characters come out as empty boxes. */
       field_idle_1: 'Terse', field_idle_2: 'link a computer',
+      wall_longpress: 'Quickest way: press and hold the picture above → Add to Photos. Then Settings → Wallpaper → Add New Wallpaper → Photos, and pick it. That is a real Home Screen and Lock Screen wallpaper, with no Shortcut at all. The steps below are only for keeping it up to date by itself.',
     },
     zh: {
       brand: 'Terse',
@@ -129,7 +130,7 @@
       knock_declined: '房主拒绝了',
       wechat_failed: '微信登录没有完成',
       wall_title: 'iPhone 壁纸', copy: '复制', copied: '已复制',
-      wall_body: 'iOS 不给任何 App——网页的也好，原生的也好——设置动态壁纸的接口。唯一开放的是「快捷指令」：抓一张图，设成壁纸。所以 Terse 把你粒子场的真实一帧连同粒子字一起截下来，让手机按计划自动换上。',
+      wall_body: '主屏幕和锁屏都能用。静态图两个屏幕都能放，还能让它自己定时更新。会动的只有锁屏——这是 iOS 的规矩，不是 Terse 的：任何 App 都没法让主屏幕动起来。',
       wall_none: '还没有截过帧',
       wall_capture: '从我的壁纸截一帧',
       wall_capturing: '渲染中…', wall_uploading: '上传中…',
@@ -157,6 +158,7 @@
       field_no_frames: '图形引擎启动了，但一帧都没画出来。',
       field_details: '查看详情', field_copy: '复制详情', field_copied: '已复制',
       field_idle_1: 'Terse', field_idle_2: 'link a computer',
+      wall_longpress: '最快的办法：长按上面那张图 →「存储到照片」。然后 设置 → 墙纸 → 添加新墙纸 → 照片，选它。这就是真正的主屏幕和锁屏壁纸，完全不用快捷指令。下面那些步骤只是为了让它自己定时更新。',
     },
   };
 
@@ -861,6 +863,7 @@
       } else {
         prev.querySelector('img').src = wallState.url + '?v=' + Date.now();
       }
+      $('wallSaveHint').classList.remove('hide');
     }
   }
 

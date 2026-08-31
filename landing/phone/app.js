@@ -86,6 +86,12 @@
       wall_s5b: 'To make it MOVE, shuffle an album instead', wall_s5s: 'Have the Shortcut Save to Album in a loop — each fetch returns a different moment of your field — then set that album as a Photo Shuffle wallpaper with Shuffle Frequency set to On Lock. iOS then changes it every time you pick the phone up.',
       wall_note: 'Only a still can be set this way. Live wallpapers are Live Photos, they animate on the Lock Screen only, and Shortcuts cannot set one — that limit is iOS, not Terse.',
       signed_out_note: 'Sign in to link a computer.',
+      field_err: "The wallpaper isn't drawing on this device",
+      field_no_frames: 'The graphics engine started but produced no frames.',
+      field_details: 'Show details', field_copy: 'Copy details', field_copied: 'Copied',
+      /* Romanised on purpose, in BOTH languages: the glyph layer rasterises a
+         Latin typeface, so Chinese characters come out as empty boxes. */
+      field_idle_1: 'Terse', field_idle_2: 'link a computer',
     },
     zh: {
       brand: 'Terse',
@@ -147,6 +153,10 @@
       wall_s5b: '想让它「动」起来，就用相册轮播', wall_s5s: '让快捷指令循环「存储到相册」——每次抓取拿到的都是粒子场的不同瞬间——然后把那个相册设成「照片随机播放」壁纸，频率选「锁定时」。这样每次拿起手机，iOS 都会自己换一张。',
       wall_note: '这条路只能设静态图。动态壁纸是 Live Photo，只在锁屏动，而且快捷指令设不了——这是 iOS 的限制，不是 Terse 的。',
       signed_out_note: '登录后才能连接电脑。',
+      field_err: '这台设备上壁纸没有画出来',
+      field_no_frames: '图形引擎启动了，但一帧都没画出来。',
+      field_details: '查看详情', field_copy: '复制详情', field_copied: '已复制',
+      field_idle_1: 'Terse', field_idle_2: 'link a computer',
     },
   };
 
@@ -212,7 +222,31 @@
   function mountEngine() {
     if (!Engine) return;
     if (wp) { try { wp.dispose(); } catch (e) {} wp = null; }
+    // Deliberately NOT wrapped in try/catch: a constructor that throws is the
+    // single most useful signal there is, and loadEngine's catch turns it into
+    // something the user can read and send on.
     var pro = T.isPro();
+
+    /* THE BED. This is why the phone looked empty.
+       On the Mac the wallpaper window is TRANSPARENT and the user's real desktop
+       picture shows through it; the engine only samples that image to colour its
+       particles, it never draws it. A phone has no desktop picture, so the
+       engine sampled nothing, the particles came out near-black on black, and
+       the field read as "no particle effect at all" even though it was running
+       perfectly. So the phone paints its own backdrop behind the canvas — the
+       equivalent of the desktop showing through — and hands the engine the same
+       image so the particle colours match what is behind them. */
+    var bed = T.photo() || (window.TerseCapture && window.TerseCapture.defaultBed(
+      Math.max(2, canvas.clientWidth || window.innerWidth || 390),
+      Math.max(2, canvas.clientHeight || window.innerHeight || 844)));
+    if (bed) {
+      document.body.style.backgroundImage = 'url("' + bed + '")';
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundPosition = 'center';
+      document.body.style.backgroundRepeat = 'no-repeat';
+      document.body.style.backgroundAttachment = 'fixed';
+    }
+
     wp = new Engine(canvas, {
       theme: 'neon',
       quality: quality(),
@@ -222,11 +256,26 @@
       // The engine pins a non-Pro caller to the default style itself; passing
       // `pro` honestly here is what makes that pin work, exactly as on the Mac.
       pro: pro,
+      // Passed explicitly so the engine never falls through to
+      // getDesktopPicture(), which on a phone answers with nothing.
+      photo: bed || undefined,
     });
     // The constructor builds the scene but does NOT start the animation loop —
     // start() is a separate call, and without it the canvas stays black forever
     // with no error anywhere. The desktop wallpaper page calls it too.
     wp.start();
+
+    /* The engine measures the canvas in its constructor and falls back to
+       1920x1080 when the element has not been laid out yet — which is exactly
+       what happens when the module resolves before first paint. It carries a
+       ResizeObserver for this, but that only fires on a CHANGE, and a canvas
+       that was already the right size on screen never changes. One explicit
+       resize on the next frame pins the buffer to the real viewport. */
+    requestAnimationFrame(function () { try { wp && wp.resize && wp.resize(); } catch (e) {} });
+
+    // The field should say something immediately rather than waiting for the
+    // next poll — the glyph text is most of what makes it feel alive.
+    renderHUD();
   }
 
   /* iOS drops the WebGL context when the app is backgrounded and does not
@@ -238,13 +287,61 @@
   canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); }, false);
   canvas.addEventListener('webglcontextrestored', function () { mountEngine(); }, false);
 
+  /* Why the field is not drawing, if it is not drawing.
+     Set by loadEngine; rendered by showFieldError. Kept as a string rather than
+     a boolean because the useful part is always the REASON. */
+  var fieldError = null;
+
+  function showFieldError(reason) {
+    fieldError = reason;
+    var box = $('fieldErr');
+    if (!box) return;
+    box.classList.remove('hide');
+    $('fieldErrWhy').textContent = reason;
+  }
+
   function loadEngine() {
     // Dynamic, not static: a static import of a module that fails to
     // INSTANTIATE (not 404 — instantiate) takes the whole script down with no
     // catchable error, and the app would be a black screen with no explanation.
+    //
+    // Everything below exists because a blank field has four causes that look
+    // identical and only two of them throw. See diag.js.
+    var D = window.TerseDiag;
+    if (D) D.startCapture();
+
     return import('/app-assets/mineradio-wallpaper.js')
-      .then(function (m) { Engine = m.default; mountEngine(); })
-      .catch(function () { /* no WebGL, or an old device: the app still works */ });
+      .then(function (m) {
+        window.__terseDynImport = 'ok';
+        if (!m || !m.default) throw new Error('engine module loaded but exported nothing');
+        Engine = m.default;
+        mountEngine();
+        if (!wp) throw new Error('engine did not start');
+
+        /* The silent case: a shader that fails to compile throws nothing at all.
+           three.js logs it and then draws nothing, so the only way to know is to
+           ask the renderer whether it has produced a frame. */
+        if (D) {
+          return D.watchFrames(wp, 2500).then(function (frames) {
+            D.stopCapture();
+            if (frames === null) return;             // renderer not reachable; leave it
+            if (frames > 0) return;                  // drawing — nothing to report
+            // A backgrounded page has its animation frames throttled to nothing,
+            // so zero frames there means "not on screen", not "broken". Crying
+            // wolf about that would train people to ignore this banner.
+            if (document.visibilityState !== 'visible') return;
+            var logged = D.captured().filter(function (l) { return /shader|program|compile|GL_|WebGL/i.test(l); });
+            showFieldError(logged.length ? logged[0] : t('field_no_frames'));
+          });
+        }
+      })
+      .catch(function (err) {
+        if (D) D.stopCapture();
+        window.__terseDynImport = 'failed';
+        var msg = (err && (err.message || err.name)) || String(err);
+        if (D) D.push('threw: ' + msg);
+        showFieldError(msg);
+      });
   }
 
   // Wake lock. Supported on iOS since 16.4, and the long-standing bug that broke
@@ -270,7 +367,13 @@
   var HUD = null;
   import('/app-assets/wallpaper-hud.js')
     .then(function (m) { HUD = m; renderHUD(); })
-    .catch(function () { /* the numbers below still render without it */ });
+    .catch(function (err) {
+      // Not silent any more: without this module there is no particle text at
+      // all, and a blank-looking field with no explanation is what sent this
+      // whole investigation down the wrong path once already.
+      if (window.TerseDiag) window.TerseDiag.push('hud import failed: ' + (err && err.message || err));
+      showFieldError('overlay module failed to load — the field will have no text');
+    });
 
   var AGENT_ICON = {
     claude: '✳️', 'claude-code': '✳️', cursor: '▹', codex: '◆', copilot: '⧉',
@@ -324,6 +427,19 @@
       });
       wp.setActivity(o.activity);
       wp.setAgents(o.agents);
+
+      /* With no computer linked there is nothing to count, and the shared
+         derivation honestly produces "0 tokens" — which is true, and useless as
+         the one thing the field spells out. So an unlinked phone writes what is
+         actually the case instead. Nothing is invented: the moment a machine is
+         linked the real numbers take over again. */
+      if (!st.linked && !sessions.length) {
+        o.stage = [
+          { k: 'Terse', v: t('field_idle_1'), u: '' },
+          { k: 'Terse', v: t('field_idle_2'), u: '' },
+        ];
+        o.logGroups = [];
+      }
       // The two that become particle text. setStageItems rate-limits itself to
       // one glyph every 12s inside the engine, so calling it on every poll is
       // how the rotation advances — not something to throttle out here.
@@ -440,6 +556,25 @@
     T.setPhoto(null);
     $('clearPhoto').classList.add('hide');
     mountEngine();
+  });
+
+  on($('fieldErrShow'), 'click', function () {
+    var dump = $('fieldErrDump');
+    dump.textContent = window.TerseDiag ? window.TerseDiag.report() : (fieldError || '');
+    dump.classList.toggle('hide');
+  });
+  on($('fieldErrCopy'), 'click', function () {
+    var text = (fieldError ? 'reason: ' + fieldError + '\n\n' : '')
+      + (window.TerseDiag ? window.TerseDiag.report() : '');
+    // A phone has no console anyone can reach, so the report has to leave the
+    // device some other way.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(t('field_copied')); },
+        function () { $('fieldErrDump').textContent = text; $('fieldErrDump').classList.remove('hide'); });
+    } else {
+      $('fieldErrDump').textContent = text;
+      $('fieldErrDump').classList.remove('hide');
+    }
   });
 
   on($('keepAwake'), 'change', function (e) {

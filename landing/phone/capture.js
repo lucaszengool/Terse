@@ -506,5 +506,11 @@
     }
   }
 
-  root.TerseCapture = { capture: capture, captureVideo: captureVideo, canEncodeVideo: canEncodeVideo, targetSize: targetSize };
+  root.TerseCapture = {
+    capture: capture, captureVideo: captureVideo, canEncodeVideo: canEncodeVideo,
+    targetSize: targetSize,
+    // Shared with the LIVE field, which needs exactly the same backdrop for
+    // exactly the same reason — see app.js.
+    defaultBed: defaultBed,
+  };
 })(window);

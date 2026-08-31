@@ -18,7 +18,12 @@
  * cleared Safari — with no update prompt available on iOS to tell them to. The
  * cached copy is the offline fallback, not the normal path.
  */
-const VERSION = 'terse-phone-v1';
+/* Bumped whenever a shipped asset must not be served from an old cache.
+   v2: the field was invisible on phones (an opaque canvas covering the backdrop)
+   and the overlay module was absent from earlier caches. Neither is fixed by a
+   deploy on its own — activate() only deletes caches that do NOT match VERSION,
+   so an unchanged name keeps serving the broken copy forever. */
+const VERSION = 'terse-phone-v2';
 const SHELL = `${VERSION}-shell`;
 
 /* Precached at install: the smallest set that renders SOMETHING useful offline.

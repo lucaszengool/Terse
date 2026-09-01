@@ -203,6 +203,32 @@ router.post('/push', requireDevice, (req, res) => {
   res.json({ ok: true, watching: bus.subscriberCount(chan(req.link.id)) > 0 });
 });
 
+// POST /api/cloud/link/notify   Header: x-terse-device   Body: { title, body, tag, url }
+// The desktop asking for the phone to be interrupted.
+//
+// The DESKTOP decides, not this server. It already knows when an agent is
+// blocked on approval or a budget is about to break — that logic lives in
+// circuit.rs and approvals.rs, and re-deriving it here from a snapshot would be
+// a second, worse copy of it that disagrees at the edges.
+router.post('/notify', requireDevice, async (req, res) => {
+  if (!req.link.clerk_user_id) return res.status(409).json({ error: 'Device is not linked to a phone yet' });
+  const push = require('./push');
+  const clip2 = (v, n) => (v == null ? '' : String(v)).replace(/\s+/g, ' ').trim().slice(0, n);
+  const title = clip2(req.body?.title, 60) || 'Terse';
+  const body = clip2(req.body?.body, 160);
+  if (!body) return res.status(400).json({ error: 'Nothing to say' });
+
+  const result = await push.notify(req.link.clerk_user_id, {
+    title,
+    body,
+    // Tagged by kind so a second budget warning REPLACES the first on the lock
+    // screen instead of stacking up behind it.
+    tag: clip2(req.body?.tag, 40) || 'terse-agent',
+    url: '/m',
+  });
+  res.json({ ok: true, ...result });
+});
+
 // ── Phone side ─────────────────────────────────────────────────────────────
 
 // POST /api/cloud/link/claim   Body: { code }

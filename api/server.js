@@ -1253,6 +1253,10 @@ app.use('/api/cloud/friends', cloudIngestLimiter, require('./friends'));
 // this rides the same ingest limiter as rooms and cowork rather than the default.
 app.use('/api/cloud/link', cloudIngestLimiter, require('./link'));
 
+// ── Push notifications (phone web app) ──
+// Inert until VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY are set; see api/push.js.
+app.use('/api/cloud/push', require('./push'));
+
 // ── WeChat sign-in (phone web app) ──
 // Inert until WECHAT_APP_ID / WECHAT_APP_SECRET are set; see api/wechat.js for
 // what applying for those actually involves.

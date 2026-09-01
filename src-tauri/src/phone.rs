@@ -19,6 +19,7 @@
 //!     instead of one every three seconds.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -29,6 +30,9 @@ const API_BASE: &str = "https://www.terseai.org";
 const PUSH_EVERY: Duration = Duration::from_secs(3);
 /// How often we bother to ask whether anyone started looking again.
 const IDLE_PROBE: Duration = Duration::from_secs(30);
+
+/// The shortest gap between two notifications carrying the SAME tag.
+const NOTIFY_EVERY: Duration = Duration::from_secs(15 * 60);
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct PhoneConfig {
@@ -92,6 +96,10 @@ struct Pacing {
 }
 
 static PACING: Mutex<Pacing> = Mutex::new(Pacing { last_push: None, watching: true });
+
+/// When each tag was last sent. Not persisted: a restart is a fresh start, and
+/// re-announcing a still-blocked agent once after one is the right behaviour.
+static NOTIFIED: Mutex<BTreeMap<String, Instant>> = Mutex::new(BTreeMap::new());
 
 // ── HTTP ───────────────────────────────────────────────────────────────────
 // Shelling out to curl, the same way cowork.rs does. It keeps this module free
@@ -218,6 +226,41 @@ pub fn unlink() -> serde_json::Value {
     cfg.linked = false;
     cfg.save();
     cfg.snapshot()
+}
+
+/// Ask the phone to interrupt its owner.
+///
+/// THIS SIDE DECIDES, not the server. The desktop already knows when an agent is
+/// blocked on approval or a budget is about to break; the server sees only a
+/// snapshot and would have to re-derive that badly. So the rule stays here and
+/// the server just delivers.
+///
+/// Rate-limited per `tag`, because the conditions that call this are usually
+/// evaluated on a scan tick — a blocked agent is still blocked on the next one,
+/// and a phone that buzzes every few seconds gets its notifications turned off
+/// for good. The same tag inside the window is dropped; a different one is not,
+/// so a budget warning is never swallowed by an approval that fired first.
+pub fn notify(title: &str, body: &str, tag: &str) -> bool {
+    let cfg = PhoneConfig::load();
+    if !cfg.share || !cfg.linked { return false; }
+    let secret = match cfg.secret.clone() { Some(s) => s, None => return false };
+    if body.trim().is_empty() { return false; }
+
+    {
+        let mut seen = match NOTIFIED.lock() { Ok(g) => g, Err(e) => e.into_inner() };
+        let now = Instant::now();
+        // Anything older than the window is not worth remembering, and pruning
+        // here keeps this from growing for the life of the process.
+        seen.retain(|_, at| now.duration_since(*at) < NOTIFY_EVERY);
+        if seen.contains_key(tag) { return false; }
+        seen.insert(tag.to_string(), now);
+    }
+
+    let body_json = serde_json::json!({ "title": title, "body": body, "tag": tag }).to_string();
+    let url = format!("{}/api/cloud/link/notify", API_BASE);
+    let header = format!("x-terse-device: {}", secret);
+    curl(&["-X", "POST", "-H", "Content-Type: application/json",
+           "-H", &header, "-d", &body_json, &url]).is_some()
 }
 
 /// Send one frame, if it is time and there is anyone to send it to.

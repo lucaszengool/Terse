@@ -588,6 +588,32 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_wallpaper_token ON wallpaper_links(token);
 
+  -- ── Web Push subscriptions ────────────────────────────────────────────────
+  -- One row per installed web app. Keyed by endpoint because that is what the
+  -- push service issues and what identifies the device — a person can have the
+  -- app on a phone and an iPad, and both must be reachable.
+  --
+  -- The keys are the SUBSCRIPTION's, not ours: p256dh is the device's public key
+  -- and auth is a shared secret, and both are needed to encrypt for it. They are
+  -- useless without a message and cannot be used to send one.
+  --
+  -- iOS delivers push only to a web app added to the Home Screen — never a
+  -- Safari tab — so the standalone column records whether the app was installed
+  -- when the subscription was made. That is the difference between "they
+  -- declined" and "they were never able to accept in the first place".
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    endpoint TEXT PRIMARY KEY,
+    clerk_user_id TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    ua TEXT,
+    standalone INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    last_sent_at TEXT,
+    failures INTEGER DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(clerk_user_id);
+
   -- The animated version. A Live Photo is the only way an iPhone wallpaper
   -- actually MOVES, Shortcuts' "Make Live Photo" action builds one from a video,
   -- so this is the mp4 the phone encoded of its own field. One per account: it
@@ -1411,6 +1437,21 @@ const advanceWallCursor = db.prepare(`
 `);
 const deleteWallLink = db.prepare('DELETE FROM wallpaper_links WHERE clerk_user_id = ?');
 
+// ── Web Push ──
+const addPushSub = db.prepare(`
+  INSERT INTO push_subscriptions (endpoint, clerk_user_id, p256dh, auth, ua, standalone)
+  VALUES (@endpoint, @clerk_user_id, @p256dh, @auth, @ua, @standalone)
+  ON CONFLICT(endpoint) DO UPDATE SET
+    clerk_user_id = excluded.clerk_user_id, p256dh = excluded.p256dh,
+    auth = excluded.auth, ua = excluded.ua, standalone = excluded.standalone,
+    failures = 0
+`);
+const getPushSubs = db.prepare('SELECT * FROM push_subscriptions WHERE clerk_user_id = ?');
+const deletePushSub = db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?');
+const deletePushSubsForUser = db.prepare('DELETE FROM push_subscriptions WHERE clerk_user_id = ?');
+const touchPushSub = db.prepare("UPDATE push_subscriptions SET last_sent_at = datetime('now'), failures = 0 WHERE endpoint = ?");
+const failPushSub = db.prepare('UPDATE push_subscriptions SET failures = failures + 1 WHERE endpoint = ?');
+
 const putWallVideo = db.prepare(`
   INSERT INTO wallpaper_videos (clerk_user_id, mp4, width, height, bytes, updated_at)
   VALUES (@clerk_user_id, @mp4, @width, @height, @bytes, datetime('now'))
@@ -1468,6 +1509,8 @@ module.exports = {
   putWallFrame, getWallFrame, listWallSlots, countWallFrames,
   deleteWallFrames, trimWallFrames,
   putWallVideo, getWallVideo, getWallVideoMeta, deleteWallVideo,
+  // Web Push
+  addPushSub, getPushSubs, deletePushSub, deletePushSubsForUser, touchPushSub, failPushSub,
   // Terse Cloud
   createTeam, getTeamById, getTeamBySlug, getTeamsByOwner, getTeamsByMemberEmail, getTeamsByMemberUserId, updateTeam, deleteTeam,
   addTeamMember, getTeamMembers, removeTeamMember, getMemberByEmail, setMemberUserId,

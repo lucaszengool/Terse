@@ -710,6 +710,13 @@ fn phone_unlink() -> serde_json::Value {
     crate::phone::unlink()
 }
 
+/// Ask the paired phone to interrupt its owner. Rate-limited per tag inside
+/// phone.rs, so a caller on a scan tick does not have to throttle itself.
+#[tauri::command]
+fn phone_notify(title: String, body: String, tag: String) -> bool {
+    crate::phone::notify(&title, &body, &tag)
+}
+
 #[tauri::command]
 async fn accept_agent(agent_type: String, state: tauri::State<'_, AppState>, app: AppHandle) -> Result<Option<serde_json::Value>, String> {
     eprintln!("[terse] accept_agent called for type={}", agent_type);
@@ -2816,6 +2823,7 @@ pub fn run() {
             phone_status,
             phone_set_share,
             phone_unlink,
+            phone_notify,
             accept_agent,
             dismiss_agent,
             disconnect_agent,

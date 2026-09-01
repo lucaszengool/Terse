@@ -92,6 +92,13 @@
       /* Romanised on purpose, in BOTH languages: the glyph layer rasterises a
          Latin typeface, so Chinese characters come out as empty boxes. */
       field_idle_1: 'Terse', field_idle_2: 'link a computer',
+      push_title: 'Notifications',
+      push_body: 'Terse can tell you when an agent is waiting on you, or a budget is about to break. Only things worth interrupting for — not every step it takes.',
+      push_enable: 'Turn on notifications', push_test: 'Send a test', push_off: 'Turn off',
+      push_on: 'on', push_blocked: 'blocked in Settings', push_unsupported: 'not supported here',
+      push_need_install: 'Add Terse to your Home Screen first — iPhone only delivers notifications to an installed web app, never a Safari tab.',
+      push_sent: 'Sent — check your Lock Screen', push_failed: 'Could not turn notifications on',
+      push_denied: 'You declined notifications. Turn them back on in iOS Settings → Terse → Notifications.',
       wall_longpress: 'Quickest way: press and hold the picture above → Add to Photos. Then Settings → Wallpaper → Add New Wallpaper → Photos, and pick it. That is a real Home Screen and Lock Screen wallpaper, with no Shortcut at all. The steps below are only for keeping it up to date by itself.',
     },
     zh: {
@@ -158,6 +165,13 @@
       field_no_frames: '图形引擎启动了，但一帧都没画出来。',
       field_details: '查看详情', field_copy: '复制详情', field_copied: '已复制',
       field_idle_1: 'Terse', field_idle_2: 'link a computer',
+      push_title: '通知',
+      push_body: '智能体在等你确认、或者预算快超了的时候，Terse 会告诉你。只发值得打断你的事，不是每一步都发。',
+      push_enable: '打开通知', push_test: '发个测试', push_off: '关掉',
+      push_on: '已开启', push_blocked: '被系统设置挡住了', push_unsupported: '这里不支持',
+      push_need_install: '先把 Terse 添加到主屏幕——iPhone 只给装好的网页应用发通知，Safari 标签页里收不到。',
+      push_sent: '发出去了，看看锁屏', push_failed: '通知没能打开',
+      push_denied: '你拒绝了通知。去 iOS 设置 → Terse → 通知 里重新打开。',
       wall_longpress: '最快的办法：长按上面那张图 →「存储到照片」。然后 设置 → 墙纸 → 添加新墙纸 → 照片，选它。这就是真正的主屏幕和锁屏壁纸，完全不用快捷指令。下面那些步骤只是为了让它自己定时更新。',
     },
   };
@@ -1077,6 +1091,7 @@
     var signedIn = !!u;
     $('linkHelp').textContent = !signedIn ? t('signed_out_note')
       : devices.length ? t('link_help_some') : t('link_help_none');
+    renderPush();
     $('pairCode').classList.toggle('hide', !signedIn);
     $('pairBtn').classList.toggle('hide', !signedIn);
 
@@ -1101,6 +1116,122 @@
     });
   }
   on($('pairBtn'), 'click', function () { claim(($('pairCode').value || '').trim()); });
+
+  /* ── Notifications ──────────────────────────────────────────────────────
+     iOS delivers push ONLY to a web app installed on the Home Screen, never
+     from a Safari tab, and asking from a tab spends the one permission prompt
+     the user gets — declined, it can only be undone in iOS Settings. So the
+     button explains the install requirement instead of prompting, until the app
+     is actually running standalone. */
+  var pushKey = null;
+  var pushSubscribed = false;
+
+  function standalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || window.navigator.standalone === true;
+  }
+  function pushSupported() {
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  }
+
+  function renderPush() {
+    var card = $('pushCard');
+    if (!T.signedIn() || !pushKey || !pushKey.enabled) { card.classList.add('hide'); return; }
+    card.classList.remove('hide');
+
+    var state = $('pushState'), enable = $('pushEnable'), test = $('pushTest'), off = $('pushOff');
+    if (!pushSupported()) {
+      state.textContent = t('push_unsupported');
+      enable.classList.add('hide'); test.classList.add('hide'); off.classList.add('hide');
+      return;
+    }
+    var perm = Notification.permission;
+    var on = perm === 'granted' && pushSubscribed;
+    state.textContent = on ? t('push_on') : (perm === 'denied' ? t('push_blocked') : '');
+    enable.classList.toggle('hide', on);
+    enable.disabled = perm === 'denied';
+    test.classList.toggle('hide', !on);
+    off.classList.toggle('hide', !on);
+  }
+
+  function refreshPushState() {
+    if (!pushSupported()) { renderPush(); return Promise.resolve(); }
+    return navigator.serviceWorker.ready
+      .then(function (reg) { return reg.pushManager.getSubscription(); })
+      .then(function (sub) { pushSubscribed = !!sub; renderPush(); })
+      .catch(function () { renderPush(); });
+  }
+
+  on($('pushEnable'), 'click', function () {
+    if (!standalone() && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      toast(t('push_need_install'));
+      return;
+    }
+    var btn = $('pushEnable');
+    btn.disabled = true;
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== 'granted') { toast(t('push_denied')); return null; }
+      return navigator.serviceWorker.ready.then(function (reg) {
+        return reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          // The key must be raw bytes, not the base64url string the server sends.
+          applicationServerKey: (function (b64) {
+            var pad = '='.repeat((4 - b64.length % 4) % 4);
+            var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+            var out = new Uint8Array(raw.length);
+            for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+            return out;
+          })(pushKey.publicKey),
+        });
+      }).then(function (sub) {
+        var j = sub.toJSON();
+        j.standalone = standalone();
+        return T.authToken().then(function (tok) {
+          return fetch('/api/cloud/push/subscribe', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+            body: JSON.stringify(j),
+          });
+        });
+      });
+    }).then(function (r) {
+      if (r && !r.ok) throw new Error('subscribe failed');
+      if (r) toast('✓');
+      return refreshPushState();
+    }).catch(function () {
+      toast(t('push_failed'));
+    }).then(function () { btn.disabled = false; renderPush(); });
+  });
+
+  on($('pushTest'), 'click', function () {
+    T.authToken().then(function (tok) {
+      return fetch('/api/cloud/push/test', { method: 'POST', headers: { Authorization: 'Bearer ' + tok } });
+    }).then(function (r) { return r.json(); })
+      .then(function (j) { toast(j && j.sent ? t('push_sent') : t('push_failed')); })
+      .catch(function () { toast(t('push_failed')); });
+  });
+
+  on($('pushOff'), 'click', function () {
+    navigator.serviceWorker.ready
+      .then(function (reg) { return reg.pushManager.getSubscription(); })
+      .then(function (sub) {
+        var endpoint = sub && sub.endpoint;
+        // Unsubscribed on the DEVICE as well as forgotten on the server: leaving
+        // the browser subscription alive means the push service keeps a route to
+        // a device nothing will ever send to again.
+        return (sub ? sub.unsubscribe() : Promise.resolve()).then(function () {
+          return T.authToken().then(function (tok) {
+            return fetch('/api/cloud/push/subscribe', {
+              method: 'DELETE',
+              headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ endpoint: endpoint }),
+            });
+          });
+        });
+      })
+      .then(refreshPushState)
+      .catch(function () { toast(t('push_failed')); });
+  });
 
   on($('upgradeBtn'), 'click', function () { location.href = '/#pricing'; });
   on($('signOutBtn'), 'click', function () {
@@ -1200,6 +1331,12 @@
 
   // The WeChat button appears only where it can actually work: the credentials
   // are an enterprise 开放平台 account, not something every deployment has.
+  // Whether this deployment can push at all — the card stays hidden otherwise.
+  fetch('/api/cloud/push/key')
+    .then(function (r) { return r.json(); })
+    .then(function (k) { pushKey = k; return refreshPushState(); })
+    .catch(function () {});
+
   fetch('/api/auth/wechat/config')
     .then(function (r) { return r.json(); })
     .then(function (c) { if (c && c.enabled) $('wechatBtn').classList.remove('hide'); })

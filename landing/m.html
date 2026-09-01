@@ -351,6 +351,20 @@
         </div>
         <button class="btn ghost wide" id="signOutBtn" type="button" data-t="sign_out">Sign out</button>
       </div>
+      <!-- Notifications. Below the account card because on iPhone this only works
+           once the app is on the Home Screen, and the install card sits right
+           under it explaining exactly that. -->
+      <div class="card hide" id="pushCard">
+        <div class="row">
+          <h2 class="grow" data-t="push_title">Notifications</h2>
+          <span class="tiny" id="pushState"></span>
+        </div>
+        <p data-t="push_body"></p>
+        <button class="btn primary wide" id="pushEnable" type="button" data-t="push_enable">Turn on notifications</button>
+        <button class="btn ghost wide hide" id="pushTest" type="button" data-t="push_test">Send a test</button>
+        <button class="btn ghost wide hide" id="pushOff" type="button" data-t="push_off">Turn off</button>
+      </div>
+
       <div class="card" id="installCard">
         <h2 data-t="install_title">Add to Home Screen</h2>
         <p data-t="install_body"></p>

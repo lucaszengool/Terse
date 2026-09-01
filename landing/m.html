@@ -378,6 +378,23 @@
             <button class="btn" id="wallCopy" type="button" data-t="copy">Copy</button>
           </div>
           <ol class="steps" id="wallSteps"></ol>
+
+        <!-- The optional route where the SERVER drives it. Everything above
+             waits for the user to unlock or open an app; this does not. -->
+        <details class="fold">
+          <summary data-t="pc_title">Have Terse push it, instead of waiting for you</summary>
+          <p data-t="pc_body"></p>
+          <div class="row">
+            <input type="text" id="pcUrl" class="grow" placeholder="https://api.pushcut.io/…/execute?shortcut=…"
+                   autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+          <div class="row">
+            <button class="btn grow" id="pcSave" type="button" data-t="pc_save">Save</button>
+            <button class="btn ghost hide" id="pcTest" type="button" data-t="pc_test">Test</button>
+            <button class="btn ghost danger hide" id="pcOff" type="button" data-t="pc_off">Remove</button>
+          </div>
+          <p class="tiny" id="pcState"></p>
+        </details>
           <button class="btn ghost wide" id="wallRotate" type="button" data-t="wall_rotate">Reset this link</button>
         </div>
       </div>

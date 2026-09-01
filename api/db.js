@@ -588,6 +588,26 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_wallpaper_token ON wallpaper_links(token);
 
+  -- Pushcut: the one way the SERVER can make a wallpaper change.
+  --
+  -- Everything else here waits for the user — a Shortcut automation fires when
+  -- they open an app or unlock the phone, because iOS gives a server no way in.
+  -- Pushcut's Automation Server runs shortcuts from an HTTPS call instead, so
+  -- Terse can refresh the wallpaper the moment an agent starts working rather
+  -- than the next time the phone is picked up.
+  --
+  -- The URL contains a secret and is stored whole because it must be replayed
+  -- verbatim; it is never sent to a client, only ever a masked form.
+  CREATE TABLE IF NOT EXISTS wallpaper_pushcut (
+    clerk_user_id TEXT PRIMARY KEY,
+    url TEXT NOT NULL,
+    enabled INTEGER DEFAULT 1,
+    last_fired_at TEXT,
+    fire_count INTEGER DEFAULT 0,
+    last_error TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   -- ── Web Push subscriptions ────────────────────────────────────────────────
   -- One row per installed web app. Keyed by endpoint because that is what the
   -- push service issues and what identifies the device — a person can have the
@@ -1472,6 +1492,19 @@ const deletePushSubsForUser = db.prepare('DELETE FROM push_subscriptions WHERE c
 const touchPushSub = db.prepare("UPDATE push_subscriptions SET last_sent_at = datetime('now'), failures = 0 WHERE endpoint = ?");
 const failPushSub = db.prepare('UPDATE push_subscriptions SET failures = failures + 1 WHERE endpoint = ?');
 
+const setPushcut = db.prepare(`
+  INSERT INTO wallpaper_pushcut (clerk_user_id, url, enabled) VALUES (@clerk_user_id, @url, 1)
+  ON CONFLICT(clerk_user_id) DO UPDATE SET url = excluded.url, enabled = 1, last_error = NULL
+`);
+const getPushcut = db.prepare('SELECT * FROM wallpaper_pushcut WHERE clerk_user_id = ?');
+const deletePushcut = db.prepare('DELETE FROM wallpaper_pushcut WHERE clerk_user_id = ?');
+const firePushcut = db.prepare(`
+  UPDATE wallpaper_pushcut
+     SET last_fired_at = datetime('now'), fire_count = fire_count + 1, last_error = NULL
+   WHERE clerk_user_id = ?
+`);
+const failPushcut = db.prepare('UPDATE wallpaper_pushcut SET last_error = ? WHERE clerk_user_id = ?');
+
 const putWallOverlay = db.prepare(`
   INSERT INTO wallpaper_overlays (clerk_user_id, png, width, height, bytes, updated_at)
   VALUES (@clerk_user_id, @png, @width, @height, @bytes, datetime('now'))
@@ -1541,6 +1574,7 @@ module.exports = {
   deleteWallFrames, trimWallFrames,
   putWallVideo, getWallVideo, getWallVideoMeta, deleteWallVideo,
   putWallOverlay, getWallOverlay, getWallOverlayMeta, deleteWallOverlay,
+  setPushcut, getPushcut, deletePushcut, firePushcut, failPushcut,
   // Web Push
   addPushSub, getPushSubs, deletePushSub, deletePushSubsForUser, touchPushSub, failPushSub,
   // Terse Cloud

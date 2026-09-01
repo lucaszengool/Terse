@@ -332,6 +332,8 @@ function serveFrame(req, res) {
   res.send(frame.png);
 }
 
+router.use('/pushcut', require('./pushcut'));
+
 module.exports = router;
 module.exports.serveFrame = serveFrame;
 module.exports.MAX_BYTES = MAX_BYTES;

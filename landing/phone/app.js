@@ -99,6 +99,12 @@
       wall_o2b: 'Shortcut: Get Contents of URL (the .overlay.png link)', wall_o2s: 'That layer is the particles and the text on nothing — fully transparent behind them.',
       wall_o3b: 'Add Overlay Images', wall_o3s: 'Base = the photo from your album, overlay = what you just fetched. Then Set Wallpaper.',
       wall_o4b: 'Trigger it on unlock', wall_o4s: 'Automation → Personal → When I unlock iPhone. That is the closest iOS gets to continuous: fresh numbers every time you pick the phone up.',
+      pc_title: 'Have Terse push it, instead of waiting for you',
+      pc_body: 'Everything above waits for you — a Shortcut runs when you unlock or open an app, because iOS gives a server no way in. Pushcut is a third-party app whose Automation Server runs a shortcut from a web request, so Terse can refresh the wallpaper the moment an agent starts working. Paste its execute URL: Terse fires it at most once a minute, and only while something is actually running.',
+      pc_save: 'Save', pc_test: 'Test', pc_off: 'Remove',
+      pc_saved: 'Saved', pc_fired: 'Fired — your phone should update',
+      pc_failed: 'Pushcut did not answer. Is the Automation Server running?',
+      pc_on: 'On · {shortcut}', pc_never: 'never fired yet', pc_last: 'last fired {t}',
       wall_deploy: 'Deploy to my iPhone',
       wall_deploy_note: 'Renders the wallpaper and puts it on your account. One step is left that no app can do for you — iOS lets nothing but you set a wallpaper — and Terse shows exactly what it is once this is done.',
       wall_adv: 'Other ways to use it',
@@ -206,6 +212,12 @@
       wall_o2b: '快捷指令：获取 URL 内容（.overlay.png 那个链接）', wall_o2s: '那个图层只有粒子和字，背后是全透明的。',
       wall_o3b: '加一步「叠加图像」', wall_o3s: '底图 = 相册里那张，叠加 = 刚抓下来的。然后「设置墙纸」。',
       wall_o4b: '用「解锁时」触发', wall_o4s: '自动化 → 个人 → 解锁 iPhone 时。这是 iOS 能做到的最接近「实时」的程度：每次拿起手机，数字都是新的。',
+      pc_title: '让 Terse 主动推，而不是等你',
+      pc_body: '上面那些都在等你——快捷指令要等你解锁或者打开某个 App 才跑，因为 iOS 不给服务器任何入口。Pushcut 是个第三方 App，它的自动化服务器能被一个网络请求唤起去跑快捷指令，所以 Terse 可以在智能体刚开始干活的那一刻就刷新壁纸。把它的 execute 链接粘进来：Terse 最快一分钟触发一次，而且只在真的有东西在跑的时候。',
+      pc_save: '保存', pc_test: '测试', pc_off: '移除',
+      pc_saved: '已保存', pc_fired: '已触发 —— 手机应该会更新',
+      pc_failed: 'Pushcut 没有响应。自动化服务器开着吗？',
+      pc_on: '已开启 · {shortcut}', pc_never: '还没触发过', pc_last: '上次触发 {t}',
       wall_deploy: '部署到我的 iPhone',
       wall_deploy_note: '渲染壁纸并存到你的账号上。最后还剩一步是任何 App 都替你做不了的——iOS 只允许你本人设置壁纸——做完这步 Terse 会明确告诉你那一步是什么。',
       wall_adv: '其他用法',
@@ -686,7 +698,7 @@
     if (tab === 'wallpaper') {
       renderWall();
       mountPreviewField();
-      if (T.signedIn() && !wallState) loadWall();
+      if (T.signedIn() && !wallState) { loadWall(); loadPushcut(); }
     } else {
       unmountPreviewField();     // nothing is looking at it
     }
@@ -1143,6 +1155,70 @@
       $('ipHome').classList.toggle('hide', !home);
       $('ipLock').classList.toggle('hide', home);
     };
+  });
+
+    /* ── Pushcut ─────────────────────────────────────────────────────────────
+     Optional, and stays that way: a third-party paid app, and the headline
+     feature of Terse must not require buying somebody else's. */
+  var pcState = null;
+
+  function renderPushcut() {
+    var st = pcState, lab = $('pcState');
+    if (!lab) return;
+    var on = !!(st && st.configured);
+    $('pcTest').classList.toggle('hide', !on);
+    $('pcOff').classList.toggle('hide', !on);
+    if (!on) { lab.textContent = ''; return; }
+    // The stored URL is a secret and never comes back; show the hint instead.
+    $('pcUrl').value = '';
+    $('pcUrl').placeholder = st.hint || '';
+    var bits = [t('pc_on').replace('{shortcut}', st.shortcut || '—')];
+    bits.push(st.last_fired_at ? t('pc_last').replace('{t}', ago(st.last_fired_at)) : t('pc_never'));
+    if (st.last_error) bits.push('⚠ ' + st.last_error);
+    lab.textContent = bits.join(' · ');
+  }
+
+  function loadPushcut() {
+    if (!T.signedIn()) return Promise.resolve(null);
+    return T.authToken().then(function (tok) {
+      if (!tok) return null;
+      return fetch('/api/cloud/wallpaper/pushcut', { headers: { Authorization: 'Bearer ' + tok } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { pcState = j; renderPushcut(); return j; });
+    }).catch(function () { return null; });
+  }
+
+  function pcCall(method, body) {
+    return T.authToken().then(function (tok) {
+      return fetch('/api/cloud/wallpaper/pushcut' + (method === 'TEST' ? '/test' : ''), {
+        method: method === 'TEST' ? 'POST' : method,
+        headers: Object.assign({ Authorization: 'Bearer ' + tok },
+          body ? { 'Content-Type': 'application/json' } : {}),
+        body: body ? JSON.stringify(body) : undefined,
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+          return j;
+        });
+      });
+    });
+  }
+
+  on($('pcSave'), 'click', function () {
+    var url = ($('pcUrl').value || '').trim();
+    if (!url) return;
+    pcCall('PUT', { url: url }).then(function (j) {
+      pcState = j; renderPushcut(); toast(t('pc_saved'));
+    }).catch(function (e) { toast(e.message || t('pc_failed')); });
+  });
+  on($('pcTest'), 'click', function () {
+    pcCall('TEST').then(function (j) {
+      toast(j && j.fired ? t('pc_fired') : (j && j.reason ? j.reason : t('pc_failed')));
+      return loadPushcut();
+    }).catch(function () { toast(t('pc_failed')); });
+  });
+  on($('pcOff'), 'click', function () {
+    pcCall('DELETE').then(function () { pcState = null; renderPushcut(); }).catch(function () {});
   });
 
     /* ── Backdrops ───────────────────────────────────────────────────────────

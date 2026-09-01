@@ -201,6 +201,22 @@ router.post('/push', requireDevice, (req, res) => {
   db.setLinkSnapshot.run({ id: req.link.id, snapshot: json });
   bus.emit(chan(req.link.id), { type: 'frame', ...frame });
   res.json({ ok: true, watching: bus.subscriberCount(chan(req.link.id)) > 0 });
+
+  /* Poke the phone's wallpaper, if the user set Pushcut up.
+   *
+   * The only path by which a wallpaper changes without the user doing something
+   * first — everywhere else waits for them to unlock or open an app. Fired
+   * AFTER the response and never awaited: the frame is stored whether or not a
+   * phone could be reached, and the desktop must not wait on a round-trip to
+   * somebody else's server.
+   *
+   * Only when an agent is actually working. An idle machine pushes frames too,
+   * and refreshing the wallpaper to show the same zeroes would spend the rate
+   * limit that a real burst of activity needs. */
+  try {
+    const busy = sessions.some((s) => s && s.connected !== false && (+s.burnRate || 0) > 0);
+    if (busy) require('./pushcut').fire(req.link.clerk_user_id).catch(() => {});
+  } catch { /* a frame must never fail because of a notification */ }
 });
 
 // POST /api/cloud/link/notify   Header: x-terse-device   Body: { title, body, tag, url }

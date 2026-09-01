@@ -74,3 +74,30 @@ otherwise:
 
 For the overlay route they also add their wallpaper photo to an album, because
 iOS exposes no way for any app to read the wallpaper they already have.
+
+## Optional: let the server drive it (Pushcut)
+
+Everything above waits for the user. iOS gives a server no way to reach a phone
+and change its wallpaper, so a Shortcut automation fires when they unlock or open
+an app, and in between the wallpaper is stale.
+
+[Pushcut](https://www.pushcut.io)'s **Automation Server** runs a shortcut in
+response to an HTTPS request, which inverts that: Terse can refresh the wallpaper
+the moment an agent starts burning tokens.
+
+Deliberately optional. Pushcut is a third-party paid app, its Automation Server
+only runs while its app is open or the device is charging, and the headline
+feature of Terse must not require buying somebody else's app.
+
+1. In Pushcut: **Automation Server** → note the **execute** URL, of the form
+   `https://api.pushcut.io/<secret>/execute?shortcut=<name>`
+2. Name the shortcut there the same as the wallpaper shortcut built above.
+3. Paste the URL into Terse under 壁纸 → *Have Terse push it*.
+
+Terse fires it **at most once a minute**, and **only while an agent is actually
+working** — an idle machine pushes frames too, and refreshing to show the same
+zeroes would spend the rate limit a real burst needs.
+
+The URL is a bearer credential: the path *is* the secret. Stored whole because it
+must be replayed verbatim, never returned to a client — only a masked hint and
+the shortcut name.

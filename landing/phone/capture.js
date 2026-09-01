@@ -270,7 +270,7 @@
          seconds, so it is used once, for the first; setAgentLog carries the rest,
          since it only suppresses a line it is already showing. */
       var lines = (o.texts && o.texts.length) ? o.texts : [null];
-      var want = Math.max(1, Math.min(o.count || 1, 8));
+      var want = Math.max(1, Math.min(o.count || 1, 12));
       var frames = [];
 
       for (var f = 0; f < want; f++) {

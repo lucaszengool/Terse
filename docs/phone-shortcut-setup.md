@@ -19,10 +19,24 @@ what `TERSE_SHORTCUT_URL` does.
 
 On an iPhone, in Shortcuts → **+**:
 
-### The still (Home Screen and Lock Screen, refreshes on a schedule)
+### The still, on a loop (the closest thing to a live wallpaper)
 
-1. **Get Contents of URL** — the `…​/w/<token>.png` link from the app.
-2. **Set Wallpaper** — pick Home Screen, Lock Screen, or both.
+1. **Repeat** — 20 times
+2. &nbsp;&nbsp;**Get Contents of URL** — the `…​/w/<token>.png` link from the app
+3. &nbsp;&nbsp;**Set Wallpaper** — Home Screen, Lock Screen, or both
+4. &nbsp;&nbsp;**Wait** — 2 seconds
+
+Every fetch returns the **next** frame in the ring, so this is a real
+two-second animation rather than the same picture re-set twenty times. The ring
+holds twelve, which is why a burst does not visibly repeat.
+
+Twenty rounds is not arbitrary: iOS stops a background shortcut after roughly
+30–60 seconds, and twenty two-second rounds fills that. Asking for more does not
+run longer — it gets cut off partway.
+
+Attach it to **App → Is Opened** for two or three apps used all day, with *Ask
+Before Running* off, plus one on unlock. After that the user does nothing and
+the wallpaper runs another burst several times an hour.
 
 ### Or the overlay (keeps the user's own wallpaper, adds only the text)
 

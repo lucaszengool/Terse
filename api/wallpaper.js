@@ -48,9 +48,23 @@ const MAX_BYTES = 8 * 1024 * 1024;
  *  failing the capture outright rather than returning something smaller. */
 const MAX_EDGE = 3200;
 
-/** How many moments of the field to keep. Enough for Photo Shuffle to feel
- *  varied, few enough that one account is a handful of megabytes. */
-const SLOTS = 6;
+/** How many moments of the field to keep.
+ *
+ *  Sized for the BURST LOOP, which is the closest iOS gets to a live wallpaper.
+ *  A background shortcut is allowed roughly 30-60 seconds before the system
+ *  stops it, so an automation running
+ *
+ *      Repeat 20 × [ Get Contents of URL → Set Wallpaper → Wait 2 seconds ]
+ *
+ *  produces about forty seconds of genuine two-second updates every time it
+ *  fires. Each fetch returns the NEXT frame, so the ring has to be long enough
+ *  that a burst does not visibly loop — six meant seeing the same frame three
+ *  times in one run.
+ *
+ *  Not raised further because these are full-resolution wallpapers: at twelve
+ *  an account is roughly twenty megabytes, and the capture that produces them
+ *  already takes long enough to feel slow on a phone. */
+const SLOTS = 12;
 
 /* A ready-made Shortcut, so the user taps a link instead of building one.
  *

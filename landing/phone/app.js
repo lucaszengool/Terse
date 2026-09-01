@@ -62,7 +62,7 @@
       knock_declined: 'The owner declined',
       wechat_failed: 'WeChat sign-in did not complete',
       wall_title: 'iPhone wallpaper', copy: 'Copy', copied: 'Copied',
-      wall_body: 'Home Screen and Lock Screen both work. A still image can go on either, and can keep itself up to date on a schedule. Motion is Lock Screen only — that is an iOS rule, not a Terse one: no app of any kind can animate the Home Screen.',
+      wall_body: 'Home Screen and Lock Screen both work, and once it is set up you do nothing. A Shortcut can loop it every 2 seconds in bursts of about 40 — that is as long as iOS lets anything run in the background — fired every time you open an app you use anyway. Motion on the Lock Screen is a Live Photo; the Home Screen never animates for any app, which is iOS, not Terse.',
       wall_none: 'No frame captured yet',
       wall_capture: 'Capture from my wallpaper',
       wall_capturing: 'Rendering…', wall_uploading: 'Uploading…',
@@ -99,6 +99,11 @@
       wall_o2b: 'Shortcut: Get Contents of URL (the .overlay.png link)', wall_o2s: 'That layer is the particles and the text on nothing — fully transparent behind them.',
       wall_o3b: 'Add Overlay Images', wall_o3s: 'Base = the photo from your album, overlay = what you just fetched. Then Set Wallpaper.',
       wall_o4b: 'Trigger it on unlock', wall_o4s: 'Automation → Personal → When I unlock iPhone. That is the closest iOS gets to continuous: fresh numbers every time you pick the phone up.',
+      wall_auto_h: 'Make it update by itself',
+      wall_a1b: 'Wrap the two actions in Repeat', wall_a1s: 'Repeat 20 times → Get Contents of URL → Set Wallpaper → Wait 2 seconds. Every fetch returns a different moment of your field, so this really is a two-second loop.',
+      wall_a2b: 'Why 20 and not forever', wall_a2s: 'iOS stops a background shortcut after roughly 30–60 seconds. Twenty rounds fills that. Asking for more does not run longer, it just gets cut off.',
+      wall_a3b: 'Trigger it on apps you open all day', wall_a3s: 'Automation → Personal → App → Is Opened, and pick a few you actually use. Turn OFF “Ask Before Running”. From then on you do nothing: every time you open one of them, the wallpaper runs another burst.',
+      wall_a4b: 'Add unlock as well', wall_a4s: 'One more automation on unlock covers the times you pick the phone up without opening anything.',
       wall_getshortcut: 'Add the Terse shortcut',
       wall_getshortcut_note: 'Tap it, then Add Shortcut. It already has the link and the steps in it — you only choose when it runs.',
       ins_title: 'Add Terse to your Home Screen',
@@ -156,7 +161,7 @@
       knock_declined: '房主拒绝了',
       wechat_failed: '微信登录没有完成',
       wall_title: 'iPhone 壁纸', copy: '复制', copied: '已复制',
-      wall_body: '主屏幕和锁屏都能用。静态图两个屏幕都能放，还能让它自己定时更新。会动的只有锁屏——这是 iOS 的规矩，不是 Terse 的：任何 App 都没法让主屏幕动起来。',
+      wall_body: '主屏幕和锁屏都能用，而且设好之后你什么都不用做。快捷指令可以 2 秒一换、一轮跑 40 秒左右——这已经是 iOS 允许后台跑的极限——挂在你本来就天天开的 App 上自动触发。锁屏上会动的那种是 Live Photo；主屏幕对任何 App 都不会动，这是 iOS 的规矩，不是 Terse 的。',
       wall_none: '还没有截过帧',
       wall_capture: '从我的壁纸截一帧',
       wall_capturing: '渲染中…', wall_uploading: '上传中…',
@@ -191,6 +196,11 @@
       wall_o2b: '快捷指令：获取 URL 内容（.overlay.png 那个链接）', wall_o2s: '那个图层只有粒子和字，背后是全透明的。',
       wall_o3b: '加一步「叠加图像」', wall_o3s: '底图 = 相册里那张，叠加 = 刚抓下来的。然后「设置墙纸」。',
       wall_o4b: '用「解锁时」触发', wall_o4s: '自动化 → 个人 → 解锁 iPhone 时。这是 iOS 能做到的最接近「实时」的程度：每次拿起手机，数字都是新的。',
+      wall_auto_h: '让它自己更新',
+      wall_a1b: '把那两步包进「重复」里', wall_a1s: '重复 20 次 → 获取 URL 内容 → 设置墙纸 → 等待 2 秒。每次抓取拿到的都是粒子场的不同瞬间，所以这真的是 2 秒一换的循环。',
+      wall_a2b: '为什么是 20 次而不是一直跑', wall_a2s: 'iOS 大约 30–60 秒就会掐掉后台运行的快捷指令。20 次刚好填满。写更多不会跑更久，只会被中途切断。',
+      wall_a3b: '挂在你一天到晚会开的 App 上', wall_a3s: '自动化 → 个人 → App → 打开时，选几个你真的常用的。把「运行前询问」关掉。之后你什么都不用做：每次打开这些 App，壁纸就再跑一轮。',
+      wall_a4b: '再加一个解锁触发', wall_a4s: '再建一个「解锁时」的自动化，覆盖那些你拿起手机但没开 App 的时候。',
       wall_getshortcut: '一键添加 Terse 快捷指令',
       wall_getshortcut_note: '点一下，再点「添加快捷指令」。链接和步骤都已经写好在里面了，你只需要选它什么时候跑。',
       ins_title: '把 Terse 添加到主屏幕',
@@ -1148,7 +1158,8 @@
     [['wall_s1b', 'wall_s1s'], ['wall_s2b', 'wall_s2s'], ['wall_s3b', 'wall_s3s'],
      ['wall_s4b', 'wall_s4s'], ['wall_s5b', 'wall_s5s'],
      ['wall_v1b', 'wall_v1s'], ['wall_v2b', 'wall_v2s'], ['wall_v3b', 'wall_v3s'], ['wall_v4b', 'wall_v4s'],
-     ['wall_o1b', 'wall_o1s'], ['wall_o2b', 'wall_o2s'], ['wall_o3b', 'wall_o3s'], ['wall_o4b', 'wall_o4s']]
+     ['wall_o1b', 'wall_o1s'], ['wall_o2b', 'wall_o2s'], ['wall_o3b', 'wall_o3s'], ['wall_o4b', 'wall_o4s'],
+     ['wall_a1b', 'wall_a1s'], ['wall_a2b', 'wall_a2s'], ['wall_a3b', 'wall_a3s'], ['wall_a4b', 'wall_a4s']]
       .forEach(function (pair) {
         var li = document.createElement('li');
         var b = document.createElement('b'); b.textContent = t(pair[0]);

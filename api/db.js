@@ -618,6 +618,26 @@ db.exec(`
   -- actually MOVES, Shortcuts' "Make Live Photo" action builds one from a video,
   -- so this is the mp4 the phone encoded of its own field. One per account: it
   -- is the current wallpaper, not a library.
+  -- The TRANSPARENT layer: particles and glyph text on nothing.
+  --
+  -- iOS exposes no way to read the wallpaper somebody already has — Shortcuts
+  -- has a Set Wallpaper action and no Get. But it does have Overlay Images, so
+  -- the phone can take the user's OWN wallpaper photo out of an album, lay this
+  -- on top of it, and set the result. Their wallpaper stays theirs; Terse only
+  -- adds the writing. That is as close to the Mac — where the field is literally
+  -- a transparent window over the desktop — as the platform allows.
+  --
+  -- One per account rather than a ring: this is composited onto a base image at
+  -- the moment it is used, so there is nothing for Photo Shuffle to cycle.
+  CREATE TABLE IF NOT EXISTS wallpaper_overlays (
+    clerk_user_id TEXT PRIMARY KEY,
+    png BLOB,
+    width INTEGER,
+    height INTEGER,
+    bytes INTEGER,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS wallpaper_videos (
     clerk_user_id TEXT PRIMARY KEY,
     mp4 BLOB,
@@ -1452,6 +1472,17 @@ const deletePushSubsForUser = db.prepare('DELETE FROM push_subscriptions WHERE c
 const touchPushSub = db.prepare("UPDATE push_subscriptions SET last_sent_at = datetime('now'), failures = 0 WHERE endpoint = ?");
 const failPushSub = db.prepare('UPDATE push_subscriptions SET failures = failures + 1 WHERE endpoint = ?');
 
+const putWallOverlay = db.prepare(`
+  INSERT INTO wallpaper_overlays (clerk_user_id, png, width, height, bytes, updated_at)
+  VALUES (@clerk_user_id, @png, @width, @height, @bytes, datetime('now'))
+  ON CONFLICT(clerk_user_id) DO UPDATE SET
+    png = excluded.png, width = excluded.width, height = excluded.height,
+    bytes = excluded.bytes, updated_at = datetime('now')
+`);
+const getWallOverlay = db.prepare('SELECT * FROM wallpaper_overlays WHERE clerk_user_id = ?');
+const getWallOverlayMeta = db.prepare('SELECT width, height, bytes, updated_at FROM wallpaper_overlays WHERE clerk_user_id = ?');
+const deleteWallOverlay = db.prepare('DELETE FROM wallpaper_overlays WHERE clerk_user_id = ?');
+
 const putWallVideo = db.prepare(`
   INSERT INTO wallpaper_videos (clerk_user_id, mp4, width, height, bytes, updated_at)
   VALUES (@clerk_user_id, @mp4, @width, @height, @bytes, datetime('now'))
@@ -1509,6 +1540,7 @@ module.exports = {
   putWallFrame, getWallFrame, listWallSlots, countWallFrames,
   deleteWallFrames, trimWallFrames,
   putWallVideo, getWallVideo, getWallVideoMeta, deleteWallVideo,
+  putWallOverlay, getWallOverlay, getWallOverlayMeta, deleteWallOverlay,
   // Web Push
   addPushSub, getPushSubs, deletePushSub, deletePushSubsForUser, touchPushSub, failPushSub,
   // Terse Cloud

@@ -31,7 +31,7 @@ const server = http.createServer(app);
 
 /** A real, minimal PNG. Hand-built rather than pulled from a fixture so the
  *  dimensions the endpoint reads out of IHDR are known exactly. */
-function png(w, h, tag) {
+function png(w, h, tag, rgba) {
   const chunk = (type, data) => {
     const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
     const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
@@ -40,13 +40,17 @@ function png(w, h, tag) {
   };
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
-  ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;   // 8-bit RGB
-  const raw = Buffer.alloc(h * (1 + w * 3));
+  const ch = rgba ? 4 : 3;
+  ihdr[8] = 8; ihdr[9] = rgba ? 6 : 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  const raw = Buffer.alloc(h * (1 + w * ch));
   // A per-frame tint, so a test can tell one stored frame from another.
   for (let y = 0; y < h; y++) {
-    const off = y * (1 + w * 3);
+    const off = y * (1 + w * ch);
     raw[off] = 0;
-    for (let x = 0; x < w; x++) raw[off + 1 + x * 3] = tag & 0xff;
+    for (let x = 0; x < w; x++) {
+      raw[off + 1 + x * ch] = tag & 0xff;
+      if (rgba) raw[off + 1 + x * ch + 3] = 0x80;   // half-transparent
+    }
   }
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
@@ -200,6 +204,30 @@ const OTHER = 'user_wall_other';
   const strangerVideo = await req('GET', `/w/${new URL(stranger.json.url).pathname.split('/').pop().replace('.png', '.mp4')}`);
   eq('an account with no video 404s on .mp4', strangerVideo.status, 404);
 
+  // ── The transparent layer, for Overlay Images ──
+  // This is the route that keeps the user's OWN wallpaper: iOS exposes no way to
+  // read the one they already have, so Shortcuts composites this on top of a
+  // photo they pick.
+  const opaque = await req('POST', '/api/cloud/wallpaper/overlay', { user: USER, body: png(4, 8, 7), type: 'image/png' });
+  eq('an opaque overlay is refused', opaque.status, 400);
+  ok('and says why', /transparency/.test(opaque.json.error || ''));
+
+  const oup = await req('POST', '/api/cloud/wallpaper/overlay', { user: USER, body: png(4, 8, 9, true), type: 'image/png' });
+  eq('a transparent overlay uploads', oup.status, 200);
+  ok('and is reported', !!oup.json.overlay);
+  ok('with its own URL', /\.overlay\.png$/.test(oup.json.overlay_url || ''));
+
+  const opath = new URL(oup.json.overlay_url).pathname;
+  const ogot = await req('GET', opath);
+  eq('the overlay serves', ogot.status, 200);
+  eq('as a PNG', ogot.headers['content-type'], 'image/png');
+  ok('byte-identical', ogot.buf.equals(png(4, 8, 9, true)));
+
+  // ".overlay.png" also ends in ".png", so a naive suffix strip would serve it
+  // as an ordinary frame — the two must not be confusable.
+  const plain = await req('GET', new URL(oup.json.url).pathname);
+  ok('a plain .png is still a frame, not the overlay', !plain.buf.equals(ogot.buf));
+
   // ── Rotation: the URL is the only credential, so burning it is the only revocation ──
   const rotated = await req('POST', '/api/cloud/wallpaper/rotate', { user: USER });
   ok('rotating changes the URL', rotated.json.url !== counted.json.url);
@@ -211,10 +239,11 @@ const OTHER = 'user_wall_other';
   eq('delete succeeds', (await req('DELETE', '/api/cloud/wallpaper', { user: USER })).status, 200);
   eq('the image is gone', (await req('GET', new URL(rotated.json.url).pathname)).status, 404);
   eq('the video is gone too', (await req('GET', new URL(rotated.json.video_url).pathname)).status, 404);
+  eq('and the overlay', (await req('GET', new URL(rotated.json.overlay_url).pathname)).status, 404);
   eq('and so are the frames', db.countWallFrames.get(USER).n, 0);
 
   for (const u of [USER, OTHER]) {
-    try { db.deleteWallFrames.run(u); db.deleteWallVideo.run(u); db.deleteWallLink.run(u); } catch { /* already gone */ }
+    try { db.deleteWallFrames.run(u); db.deleteWallVideo.run(u); db.deleteWallOverlay.run(u); db.deleteWallLink.run(u); } catch { /* already gone */ }
   }
 
   console.log(`\n${pass} passed, ${fail} failed\n`);

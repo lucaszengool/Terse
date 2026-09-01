@@ -94,12 +94,17 @@ function shape(req, userId) {
   const row = ensureLink(userId);
   const slots = db.listWallSlots.all(userId);
   const video = db.getWallVideoMeta.get(userId);
+  const overlay = db.getWallOverlayMeta.get(userId);
   return {
     url: publicUrl(req, row.token),
     // The animated one. Same token, different extension — a Live Photo needs a
     // video, and Shortcuts fetches it by URL exactly like the still.
     video_url: publicUrl(req, row.token).replace(/\.png$/, '.mp4'),
     video: video ? { bytes: video.bytes, updated_at: video.updated_at } : null,
+    // The transparent layer, for the Overlay Images route — the one that keeps
+    // the user's own wallpaper and only adds the writing.
+    overlay_url: publicUrl(req, row.token).replace(/\.png$/, '.overlay.png'),
+    overlay: overlay ? { bytes: overlay.bytes, updated_at: overlay.updated_at } : null,
     slots: SLOTS,
     frames: slots.length,
     ready: slots.length > 0,
@@ -165,6 +170,32 @@ router.post('/video', requireUser, express.raw({ type: 'video/mp4', limit: MAX_V
   res.json(shape(req, req.userId));
 });
 
+// POST /api/cloud/wallpaper/overlay — the transparent layer, as a raw PNG.
+// Same validation as a frame; it is served back to a device that hands it to
+// Shortcuts' Overlay Images action.
+router.post('/overlay', requireUser, express.raw({ type: 'image/png', limit: MAX_BYTES }), (req, res) => {
+  const png = req.body;
+  const SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (!Buffer.isBuffer(png) || png.length < 24 || !png.subarray(0, 8).equals(SIG)) {
+    return res.status(400).json({ error: 'That is not a PNG' });
+  }
+  const width = png.readUInt32BE(16);
+  const height = png.readUInt32BE(20);
+  if (!width || !height || width > MAX_EDGE || height > MAX_EDGE) {
+    return res.status(400).json({ error: 'Unusable image dimensions' });
+  }
+  // Colour type 6 is RGBA. A layer meant to be composited MUST carry an alpha
+  // channel — an opaque one would hide the wallpaper it is supposed to sit on,
+  // and that failure only shows up on the phone, at the end of the setup.
+  const colourType = png.readUInt8(25);
+  if (colourType !== 6 && colourType !== 4) {
+    return res.status(400).json({ error: 'The overlay has no transparency' });
+  }
+  ensureLink(req.userId);
+  db.putWallOverlay.run({ clerk_user_id: req.userId, png, width, height, bytes: png.length });
+  res.json(shape(req, req.userId));
+});
+
 // POST /api/cloud/wallpaper/rotate — new URL, old one dead immediately. The URL
 // is the only credential, so burning it is the only revocation there is: it may
 // have been pasted into a shared Shortcut or read off a screen.
@@ -178,6 +209,7 @@ router.post('/rotate', requireUser, (req, res) => {
 router.delete('/', requireUser, (req, res) => {
   db.deleteWallFrames.run(req.userId);
   db.deleteWallVideo.run(req.userId);
+  db.deleteWallOverlay.run(req.userId);
   db.deleteWallLink.run(req.userId);
   res.json({ ok: true, ready: false, frames: 0 });
 });
@@ -197,7 +229,10 @@ router.delete('/', requireUser, (req, res) => {
 function serveFrame(req, res) {
   const raw = String(req.params.token || '');
   const wantsVideo = /\.mp4$/i.test(raw);
-  const token = raw.replace(/\.(png|mp4)$/i, '');
+  // Checked BEFORE the plain .png suffix is stripped, since ".overlay.png" ends
+  // in .png too and would otherwise be served as an ordinary frame.
+  const wantsOverlay = /\.overlay\.png$/i.test(raw);
+  const token = raw.replace(/\.overlay\.png$/i, '').replace(/\.(png|mp4)$/i, '');
   const row = token && db.getWallLinkByToken.get(token);
   if (!row) return res.status(404).type('text/plain').send('Not found');
 
@@ -215,6 +250,20 @@ function serveFrame(req, res) {
       'Content-Disposition': 'inline; filename="terse-wallpaper.mp4"',
     });
     return res.send(v.mp4);
+  }
+
+  if (wantsOverlay) {
+    const o = db.getWallOverlay.get(row.clerk_user_id);
+    if (!o || !o.png) return res.status(404).type('text/plain').send('Not found');
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Length': String(o.png.length),
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Referrer-Policy': 'no-referrer',
+      'X-Robots-Tag': 'noindex, nofollow',
+      'Content-Disposition': 'inline; filename="terse-overlay.png"',
+    });
+    return res.send(o.png);
   }
 
   const slots = db.listWallSlots.all(row.clerk_user_id);

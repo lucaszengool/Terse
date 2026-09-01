@@ -116,6 +116,7 @@
    *   opts.engineUrl  module to import for the engine
    *   opts.style      style id, opts.pro   entitlement
    *   opts.overlays   { activity, agents, stage, logGroups } from wallpaper-hud
+   *   opts.transparent  return the field alone, with alpha, for Overlay Images
    *   opts.count      how many distinct frames to bring back (1..8)
    *   opts.texts      one glyph line per frame, cycled
    *   opts.onStep     progress callback (0..1, label)
@@ -227,6 +228,20 @@
         var out = document.createElement('canvas');
         out.width = size.w; out.height = size.h;
         var x = out.getContext('2d');
+
+        /* TRANSPARENT MODE — the layer that goes on the user's OWN wallpaper.
+           iOS exposes no way to read the wallpaper somebody already has, but
+           Shortcuts' Overlay Images action can lay this on top of a photo they
+           pick. So this returns the field alone, on nothing: the engine already
+           renders with alpha, and drawImage from its canvas preserves it.
+
+           The bed is still LOADED (it tints the particles, and the tint should
+           match whatever this ends up sitting on) — it is simply not painted. */
+        if (o.transparent) {
+          x.drawImage(src, 0, 0, size.w, size.h);
+          return out;
+        }
+
         x.fillStyle = '#05060a';
         x.fillRect(0, 0, size.w, size.h);
         if (bed) {

@@ -92,6 +92,13 @@
       /* Romanised on purpose, in BOTH languages: the glyph layer rasterises a
          Latin typeface, so Chinese characters come out as empty boxes. */
       field_idle_1: 'Terse', field_idle_2: 'link a computer',
+      wall_overlay: 'Keep my own wallpaper, add the text',
+      wall_overlaying: 'Making the layer…',
+      wall_overlay_ready: 'Layer ready — build the Overlay shortcut below',
+      wall_o1b: 'Put your wallpaper photo in an album', wall_o1s: 'Photos → the picture you actually use → add it to an album of its own. iOS gives no app a way to READ your current wallpaper, so this is how Terse knows what it is.',
+      wall_o2b: 'Shortcut: Get Contents of URL (the .overlay.png link)', wall_o2s: 'That layer is the particles and the text on nothing — fully transparent behind them.',
+      wall_o3b: 'Add Overlay Images', wall_o3s: 'Base = the photo from your album, overlay = what you just fetched. Then Set Wallpaper.',
+      wall_o4b: 'Trigger it on unlock', wall_o4s: 'Automation → Personal → When I unlock iPhone. That is the closest iOS gets to continuous: fresh numbers every time you pick the phone up.',
       push_title: 'Notifications',
       push_body: 'Terse can tell you when an agent is waiting on you, or a budget is about to break. Only things worth interrupting for — not every step it takes.',
       push_enable: 'Turn on notifications', push_test: 'Send a test', push_off: 'Turn off',
@@ -165,6 +172,13 @@
       field_no_frames: '图形引擎启动了，但一帧都没画出来。',
       field_details: '查看详情', field_copy: '复制详情', field_copied: '已复制',
       field_idle_1: 'Terse', field_idle_2: 'link a computer',
+      wall_overlay: '保留我自己的壁纸，只加字',
+      wall_overlaying: '正在做图层…',
+      wall_overlay_ready: '图层好了——照下面建 Overlay 快捷指令',
+      wall_o1b: '把你的壁纸原图放进一个相册', wall_o1s: 'Photos → 你现在真正在用的那张 → 单独建个相册放进去。iOS 不给任何 App 读取当前壁纸的接口，所以只能这样让 Terse 知道它是哪张。',
+      wall_o2b: '快捷指令：获取 URL 内容（.overlay.png 那个链接）', wall_o2s: '那个图层只有粒子和字，背后是全透明的。',
+      wall_o3b: '加一步「叠加图像」', wall_o3s: '底图 = 相册里那张，叠加 = 刚抓下来的。然后「设置墙纸」。',
+      wall_o4b: '用「解锁时」触发', wall_o4s: '自动化 → 个人 → 解锁 iPhone 时。这是 iOS 能做到的最接近「实时」的程度：每次拿起手机，数字都是新的。',
       push_title: '通知',
       push_body: '智能体在等你确认、或者预算快超了的时候，Terse 会告诉你。只发值得打断你的事，不是每一步都发。',
       push_enable: '打开通知', push_test: '发个测试', push_off: '关掉',
@@ -857,7 +871,11 @@
     // The .mp4 link once a video exists: it is the one that animates, so it is
     // the one worth copying.
     if (wallState.url) {
-      $('wallUrl').value = (wallState.video && wallState.video_url) ? wallState.video_url : wallState.url;
+      // Preference order reflects which route keeps the most of what the user
+      // already has: their own wallpaper, then motion, then a whole frame.
+      $('wallUrl').value = (wallState.overlay && wallState.overlay_url) ? wallState.overlay_url
+        : (wallState.video && wallState.video_url) ? wallState.video_url
+        : wallState.url;
     }
 
     var age = ago(wallState.fetched_at);
@@ -1019,6 +1037,56 @@
     });
   });
 
+  on($('wallOverlay'), 'click', function () {
+    var btn = $('wallOverlay');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = t('wall_overlaying');
+
+    var st = T.link.state();
+    var ov = HUD ? HUD.buildOverlays({
+      stats: (st.frame && st.frame.stats) || {},
+      sessions: (st.frame && st.frame.sessions) || [],
+      tokens: lastTotal || 0,
+      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
+    }) : null;
+
+    window.TerseCapture.capture({
+      style: T.isPro() ? styleId() : 'cinematic',
+      pro: T.isPro(),
+      // Still passed: it TINTS the particles, and the tint should match whatever
+      // this layer ends up sitting on. It is simply never painted.
+      photo: T.photo(),
+      overlays: ov,
+      transparent: true,
+      count: 1,
+      texts: wallTexts(ov),
+      onStep: function (p, label) {
+        btn.textContent = t('wall_overlaying') + ' ' + (label || Math.round(p * 100) + '%');
+      },
+    }).then(function (res) {
+      return T.authToken().then(function (tok) {
+        return fetch('/api/cloud/wallpaper/overlay', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'image/png' },
+          body: res.blob,
+        });
+      });
+    }).then(function (r) {
+      if (!r || !r.ok) throw new Error('upload failed');
+      return r.json();
+    }).then(function (j) {
+      wallState = j;
+      renderWall();
+      toast(t('wall_overlay_ready'));
+    }).catch(function (err) {
+      toast(t(err && err.code === 'hidden' ? 'wall_hidden' : 'wall_failed'));
+    }).then(function () {
+      btn.disabled = false;
+      btn.textContent = t('wall_overlay');
+    });
+  });
+
   on($('wallCopy'), 'click', function () {
     var v = $('wallUrl').value;
     if (!v) return;
@@ -1043,7 +1111,8 @@
     ol.innerHTML = '';
     [['wall_s1b', 'wall_s1s'], ['wall_s2b', 'wall_s2s'], ['wall_s3b', 'wall_s3s'],
      ['wall_s4b', 'wall_s4s'], ['wall_s5b', 'wall_s5s'],
-     ['wall_v1b', 'wall_v1s'], ['wall_v2b', 'wall_v2s'], ['wall_v3b', 'wall_v3s'], ['wall_v4b', 'wall_v4s']]
+     ['wall_v1b', 'wall_v1s'], ['wall_v2b', 'wall_v2s'], ['wall_v3b', 'wall_v3s'], ['wall_v4b', 'wall_v4s'],
+     ['wall_o1b', 'wall_o1s'], ['wall_o2b', 'wall_o2s'], ['wall_o3b', 'wall_o3s'], ['wall_o4b', 'wall_o4s']]
       .forEach(function (pair) {
         var li = document.createElement('li');
         var b = document.createElement('b'); b.textContent = t(pair[0]);

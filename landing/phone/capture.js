@@ -77,37 +77,18 @@
 
   var visible = function () { return document.visibilityState === 'visible'; };
 
-  /* A backdrop for the particles to take their colour from.
-     On the Mac the field is laid over the user's REAL desktop picture, so there
-     is always something to sample. A phone has no such thing, and with no photo
-     chosen the shader falls back to its own near-black default — which reads as
-     an almost empty image on a Home Screen. This is the phone's equivalent of
-     that desktop picture: quiet, dark enough to keep icons legible, and with
-     enough colour in it that the field has something to be. */
-  function defaultBed(w, h) {
-    var c = document.createElement('canvas');
-    c.width = Math.max(2, Math.round(w / 2));
-    c.height = Math.max(2, Math.round(h / 2));
-    var x = c.getContext('2d');
-    var g = x.createLinearGradient(0, 0, c.width * 0.6, c.height);
-    g.addColorStop(0, '#0d1b2a');
-    g.addColorStop(0.45, '#1b2f3d');
-    g.addColorStop(1, '#07100f');
-    x.fillStyle = g;
-    x.fillRect(0, 0, c.width, c.height);
-    // Two soft pools of accent light. The engine builds an edge/depth map from
-    // this image, so a flat fill would give it nothing to work with.
-    [[0.28, 0.30, '#2FE6A8', 0.30], [0.74, 0.66, '#5AD8FF', 0.22]].forEach(function (p) {
-      var r = Math.max(c.width, c.height) * 0.45;
-      var rg = x.createRadialGradient(c.width * p[0], c.height * p[1], 0, c.width * p[0], c.height * p[1], r);
-      rg.addColorStop(0, p[2]);
-      rg.addColorStop(1, 'rgba(0,0,0,0)');
-      x.globalAlpha = p[3];
-      x.fillStyle = rg;
-      x.fillRect(0, 0, c.width, c.height);
-    });
-    x.globalAlpha = 1;
-    return c.toDataURL('image/jpeg', 0.9);
+  /* The backdrop the particles take their colour from — and, for a still, the
+     thing actually painted behind them.
+
+     On the Mac this is the user's real desktop picture, showing through a
+     transparent window. A phone has none, so Terse ships its own (beds.js) and
+     the user picks one; a photo of their own overrides it. Either way the engine
+     is handed the same image it is composited over, so the particle colours
+     match what is behind them. */
+  function bedImage(o, w, h) {
+    if (o && o.photo) return o.photo;
+    if (root.TerseBeds) return root.TerseBeds.render((o && o.bedId) || root.TerseBeds.DEFAULT_ID, w, h);
+    return null;
   }
 
   /**
@@ -116,6 +97,7 @@
    *   opts.engineUrl  module to import for the engine
    *   opts.style      style id, opts.pro   entitlement
    *   opts.overlays   { activity, agents, stage, logGroups } from wallpaper-hud
+   *   opts.bedId      which shipped backdrop to use (beds.js); opts.photo wins
    *   opts.transparent  return the field alone, with alpha, for Overlay Images
    *   opts.count      how many distinct frames to bring back (1..8)
    *   opts.texts      one glyph line per frame, cycled
@@ -175,7 +157,7 @@
         pro: !!o.pro,
         // Explicit, so the engine never falls through to getDesktopPicture() —
         // which on a phone answers with the user's chosen photo or nothing.
-        photo: o.photo || defaultBed(size.w, size.h),
+        photo: bedImage(o, size.w, size.h),
       });
       /* The engine sizes its OWN drawing buffer: it measures the canvas's CSS box
          and multiplies by min(1.5, devicePixelRatio). So canvas.width is
@@ -221,7 +203,7 @@
         var img = new Image();
         img.onload = function () { resolve(img); };
         img.onerror = function () { resolve(null); };
-        img.src = o.photo || defaultBed(size.w, size.h);
+        img.src = bedImage(o, size.w, size.h);
       });
 
       function compose(src) {
@@ -393,7 +375,7 @@
       wp = new mod.default(canvas, {
         theme: o.theme || 'neon', quality: 44, angle: 42, intensity: 1.15,
         style: o.style || 'cinematic', pro: !!o.pro,
-        photo: o.photo || defaultBed(size.w, size.h),
+        photo: bedImage(o, size.w, size.h),
       });
       if (wp.renderer) { wp.renderer.setPixelRatio(1); wp.renderer.setSize(size.w, size.h, false); }
       wp.start();
@@ -408,7 +390,7 @@
         var img = new Image();
         img.onload = function () { resolve(img); };
         img.onerror = function () { resolve(null); };
-        img.src = o.photo || defaultBed(size.w, size.h);
+        img.src = bedImage(o, size.w, size.h);
       });
       var out = document.createElement('canvas');
       out.width = size.w; out.height = size.h;
@@ -526,6 +508,6 @@
     targetSize: targetSize,
     // Shared with the LIVE field, which needs exactly the same backdrop for
     // exactly the same reason — see app.js.
-    defaultBed: defaultBed,
+    bedImage: bedImage,
   };
 })(window);

@@ -148,6 +148,18 @@
   /* ── field failure ── */
   .fielderr{border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.06)}
   .fielderr .grow{font-size:13.5px;font-weight:550;color:var(--warn)}
+  .bedrow{display:flex;gap:9px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none}
+  .bedrow::-webkit-scrollbar{display:none}
+  .bed{flex:0 0 auto;width:54px;display:flex;flex-direction:column;align-items:center;gap:5px;
+    background:none;border:0;padding:0}
+  .bed img{width:54px;height:96px;border-radius:11px;display:block;object-fit:cover;
+    border:1.5px solid var(--line);transition:border-color .16s ease,transform .16s ease}
+  .bed.on img{border-color:var(--accent);transform:translateY(-2px)}
+  .bed span{font-size:10.5px;color:var(--faint);line-height:1.2;text-align:center}
+  .bed.on span{color:var(--accent)}
+  @media (prefers-reduced-motion:reduce){.bed img{transition:none}}
+
   .savehint{font-size:12.5px;line-height:1.55;color:var(--accent);
     background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.22);
     border-radius:10px;padding:10px 12px}
@@ -267,6 +279,11 @@
           <span class="tiny" id="wallAge"></span>
         </div>
         <p data-t="wall_body"></p>
+        <!-- The backdrops Terse ships. Picking one is the whole setup: it starts
+             the capture immediately, so there is a wallpaper ready without the
+             user having to find a photo first. -->
+        <div class="row"><span class="grow tiny" data-t="wall_pickbed">Pick a backdrop</span></div>
+        <div class="bedrow" id="bedRow"></div>
         <div class="wallprev" id="wallPrev"><span class="tiny" data-t="wall_none">No frame captured yet</span></div>
         <!-- The fastest route to a real wallpaper, and the one that needs no
              Shortcut at all: iOS lets you long-press any image in a web page and
@@ -431,6 +448,7 @@
   data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck"
   src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
 <script src="/app-assets/rooms.js"></script>
+<script src="/phone/beds.js"></script>
 <script src="/phone/install.js"></script>
 <script src="/phone/diag.js"></script>
 <script src="/phone/terse-web.js"></script>

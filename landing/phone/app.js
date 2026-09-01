@@ -99,6 +99,11 @@
       wall_o2b: 'Shortcut: Get Contents of URL (the .overlay.png link)', wall_o2s: 'That layer is the particles and the text on nothing — fully transparent behind them.',
       wall_o3b: 'Add Overlay Images', wall_o3s: 'Base = the photo from your album, overlay = what you just fetched. Then Set Wallpaper.',
       wall_o4b: 'Trigger it on unlock', wall_o4s: 'Automation → Personal → When I unlock iPhone. That is the closest iOS gets to continuous: fresh numbers every time you pick the phone up.',
+      wall_pickbed: 'Pick a backdrop — Terse builds the wallpaper from it',
+      wall_bed_photo: 'My photo',
+      wall_capturing_auto: 'Building your wallpaper…',
+      wall_bed_done: 'Ready — now set it up below, once',
+      wall_ok: 'Wallpaper rebuilt',
       wall_auto_h: 'Make it update by itself',
       wall_a1b: 'Wrap the two actions in Repeat', wall_a1s: 'Repeat 20 times → Get Contents of URL → Set Wallpaper → Wait 2 seconds. Every fetch returns a different moment of your field, so this really is a two-second loop.',
       wall_a2b: 'Why 20 and not forever', wall_a2s: 'iOS stops a background shortcut after roughly 30–60 seconds. Twenty rounds fills that. Asking for more does not run longer, it just gets cut off.',
@@ -196,6 +201,11 @@
       wall_o2b: '快捷指令：获取 URL 内容（.overlay.png 那个链接）', wall_o2s: '那个图层只有粒子和字，背后是全透明的。',
       wall_o3b: '加一步「叠加图像」', wall_o3s: '底图 = 相册里那张，叠加 = 刚抓下来的。然后「设置墙纸」。',
       wall_o4b: '用「解锁时」触发', wall_o4s: '自动化 → 个人 → 解锁 iPhone 时。这是 iOS 能做到的最接近「实时」的程度：每次拿起手机，数字都是新的。',
+      wall_pickbed: '选个底图 —— Terse 用它来做壁纸',
+      wall_bed_photo: '我的照片',
+      wall_capturing_auto: '正在生成你的壁纸…',
+      wall_bed_done: '好了 —— 下面按一次设置就行',
+      wall_ok: '壁纸已重新生成',
       wall_auto_h: '让它自己更新',
       wall_a1b: '把那两步包进「重复」里', wall_a1s: '重复 20 次 → 获取 URL 内容 → 设置墙纸 → 等待 2 秒。每次抓取拿到的都是粒子场的不同瞬间，所以这真的是 2 秒一换的循环。',
       wall_a2b: '为什么是 20 次而不是一直跑', wall_a2s: 'iOS 大约 30–60 秒就会掐掉后台运行的快捷指令。20 次刚好填满。写更多不会跑更久，只会被中途切断。',
@@ -300,7 +310,7 @@
        perfectly. So the phone paints its own backdrop behind the canvas — the
        equivalent of the desktop showing through — and hands the engine the same
        image so the particle colours match what is behind them. */
-    var bed = T.photo() || (window.TerseCapture && window.TerseCapture.defaultBed(
+    var bed = T.photo() || (window.TerseBeds && window.TerseBeds.render(bedId(),
       Math.max(2, canvas.clientWidth || window.innerWidth || 390),
       Math.max(2, canvas.clientHeight || window.innerHeight || 844)));
     if (bed) {
@@ -894,6 +904,9 @@
   }
 
   function renderWall() {
+    // Drawn before the early return below: the backdrops are local and should
+    // be pickable immediately, not after the first API round-trip.
+    renderBeds();
     var card = $('wallCard');
     if (!card) return;
     // The whole feature is per-account: the URL is minted for one, and the
@@ -945,17 +958,83 @@
     }
   }
 
+  /** How stale the stored frames may get before opening the app rebuilds them.
+   *  Six hours: long enough that opening Terse repeatedly does not re-render a
+   *  dozen wallpapers on a phone, short enough that the numbers on the Home
+   *  Screen are from today. */
+  var WALL_STALE_MS = 6 * 60 * 60 * 1000;
+
   function loadWall() {
     if (!T.signedIn()) return Promise.resolve(null);
     return T.authToken().then(function (tok) {
       if (!tok) return null;
       return fetch('/api/cloud/wallpaper', { headers: { Authorization: 'Bearer ' + tok } })
         .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { wallState = j; renderWall(); return j; });
+        .then(function (j) {
+          wallState = j;
+          renderWall();
+          /* Keep it current on its own. Once somebody has set the Shortcut up,
+             the frames on their Home Screen are only as fresh as the last
+             capture — and the only moment this app can run is while it is open,
+             so this is the one chance it gets. Never on a page that is not
+             visible: the capture needs animation frames, which a hidden page
+             does not get, and it would fail for a reason nobody could see. */
+          if (j && j.ready && document.visibilityState === 'visible') {
+            var at = j.updated_at ? Date.parse(j.updated_at.replace(' ', 'T') + 'Z') : 0;
+            if (at && Date.now() - at > WALL_STALE_MS) captureRing(true);
+          }
+          return j;
+        });
     }).catch(function () { return null; });
   }
 
-  /* The glyph lines that go into the burst. Real numbers from the real snapshot,
+  /* ── Backdrops ───────────────────────────────────────────────────────────
+     The one choice this feature needs. Picking a backdrop is also what starts
+     everything: the capture runs immediately, so there is a wallpaper waiting
+     rather than another button to find. */
+  var LS_BED = 'terse-phone-bed';
+
+  function bedId() {
+    try { return localStorage.getItem(LS_BED) || (window.TerseBeds && window.TerseBeds.DEFAULT_ID) || 'aurora'; }
+    catch (e) { return 'aurora'; }
+  }
+
+  function renderBeds() {
+    var row = $('bedRow');
+    if (!row || !window.TerseBeds) return;
+    var current = T.photo() ? '__photo' : bedId();
+    row.innerHTML = '';
+
+    // The user's own photo sits first when they have one — it outranks anything
+    // Terse ships, and hiding it in a separate control made it feel unrelated.
+    if (T.photo()) {
+      row.appendChild(bedButton('__photo', t('wall_bed_photo'), T.photo(), current));
+    }
+    window.TerseBeds.list().forEach(function (b) {
+      row.appendChild(bedButton(b.id, (lang === 'zh' ? b.zh : b.en), window.TerseBeds.thumb(b.id, 96), current));
+    });
+  }
+
+  function bedButton(id, label, src, current) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bed' + (id === current ? ' on' : '');
+    var img = document.createElement('img');
+    img.src = src; img.alt = '';
+    var cap = document.createElement('span');
+    cap.textContent = label;
+    b.appendChild(img); b.appendChild(cap);
+    b.onclick = function () {
+      if (id === '__photo') { /* already theirs; just re-select */ }
+      else { try { localStorage.setItem(LS_BED, id); } catch (e) {} T.setPhoto(null); }
+      renderBeds();
+      mountEngine();          // the live field changes immediately
+      captureRing(true);      // and the wallpaper is rebuilt from it
+    };
+    return b;
+  }
+
+    /* The glyph lines that go into the burst. Real numbers from the real snapshot,
      one per frame, so an album of these reads as the same wallpaper at different
      moments rather than six copies of one picture. */
   function wallTexts(ov) {
@@ -972,14 +1051,22 @@
     return out.filter(Boolean);
   }
 
-  on($('wallCapture'), 'click', function () {
-    var btn = $('wallCapture');
-    if (btn.disabled) return;
-    btn.disabled = true;
-    btn.textContent = t('wall_capturing');
+  /* Capture the whole ring and upload it.
+     Shared by the button and by picking a backdrop, because they are the same
+     action — "make my wallpaper from this" — and having two copies of it was
+     how the two paths drifted apart the first time. */
+  var capturing = false;
 
-    // Captured from the SAME overlay derivation the live field uses, so the
-    // stills carry the real glyph text rather than an empty field.
+  function captureRing(auto) {
+    if (capturing) return Promise.resolve(null);
+    if (!T.signedIn()) return Promise.resolve(null);
+    capturing = true;
+
+    var btn = $('wallCapture');
+    var label = auto ? 'wall_capturing_auto' : 'wall_capturing';
+    btn.disabled = true;
+    btn.textContent = t(label);
+
     var st = T.link.state();
     var ov = HUD ? HUD.buildOverlays({
       stats: (st.frame && st.frame.stats) || {},
@@ -988,23 +1075,21 @@
       t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
     }) : null;
 
-    window.TerseCapture.capture({
+    return window.TerseCapture.capture({
       style: T.isPro() ? styleId() : 'cinematic',
       pro: T.isPro(),
       photo: T.photo(),
+      bedId: bedId(),
       overlays: ov,
-      count: (wallState && wallState.slots) || 6,
+      count: (wallState && wallState.slots) || 12,
       texts: wallTexts(ov),
-      onStep: function (p, label) {
-        btn.textContent = t('wall_capturing') + ' ' + (label || Math.round(p * 100) + '%');
-      },
+      onStep: function (p, l) { btn.textContent = t(label) + ' ' + (l || Math.round(p * 100) + '%'); },
     }).then(function (res) {
       var blobs = (res && res.blobs) || [];
       if (!blobs.length) throw new Error('no frame');
-      btn.textContent = t('wall_uploading');
       return T.authToken().then(function (tok) {
         // Sequential, not parallel: these are megabytes each, often over
-        // cellular, and six at once is how a phone upload stalls.
+        // cellular, and a dozen at once is how a phone upload stalls.
         return blobs.reduce(function (chain, blob, i) {
           return chain.then(function () {
             btn.textContent = t('wall_uploading') + ' ' + (i + 1) + '/' + blobs.length;
@@ -1022,66 +1107,20 @@
     }).then(function (j) {
       wallState = j;
       renderWall();
-      toast('✓');
+      toast(t(auto ? 'wall_bed_done' : 'wall_ok'));
+      return j;
     }).catch(function (err) {
-      // Being backgrounded is not a failure of the device — it is the one cause
-      // the user can actually do something about, so it says so.
       toast(t(err && err.code === 'hidden' ? 'wall_hidden' : 'wall_failed'));
-    }).then(function () {
+      return null;
+    }).then(function (j) {
+      capturing = false;
       btn.disabled = false;
       btn.textContent = t('wall_capture');
+      return j;
     });
-  });
+  }
 
-  on($('wallVideo'), 'click', function () {
-    var btn = $('wallVideo');
-    if (btn.disabled) return;
-    if (!window.TerseCapture.canEncodeVideo()) { toast(t('wall_video_unsupported')); return; }
-    btn.disabled = true;
-    btn.textContent = t('wall_recording');
-
-    var st = T.link.state();
-    var ov = HUD ? HUD.buildOverlays({
-      stats: (st.frame && st.frame.stats) || {},
-      sessions: (st.frame && st.frame.sessions) || [],
-      tokens: lastTotal || 0,
-      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
-    }) : null;
-
-    window.TerseCapture.captureVideo({
-      style: T.isPro() ? styleId() : 'cinematic',
-      pro: T.isPro(),
-      photo: T.photo(),
-      overlays: ov,
-      texts: wallTexts(ov),
-      onStep: function (p, label) {
-        btn.textContent = t('wall_recording') + ' ' + (label || Math.round(p * 100) + '%');
-      },
-    }).then(function (res) {
-      return T.authToken().then(function (tok) {
-        return fetch('/api/cloud/wallpaper/video?w=' + res.width + '&h=' + res.height, {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'video/mp4' },
-          body: res.blob,
-        });
-      });
-    }).then(function (r) {
-      if (!r || !r.ok) throw new Error('upload failed');
-      return r.json();
-    }).then(function (j) {
-      wallState = j;
-      renderWall();
-      toast(t('wall_video_ready'));
-    }).catch(function (err) {
-      var code = err && err.code;
-      toast(t(code === 'hidden' ? 'wall_hidden'
-        : (code === 'no-webcodecs' || code === 'no-codec') ? 'wall_video_unsupported'
-        : 'wall_failed'));
-    }).then(function () {
-      btn.disabled = false;
-      btn.textContent = t('wall_video');
-    });
-  });
+  on($('wallCapture'), 'click', function () { captureRing(false); });
 
   on($('wallOverlay'), 'click', function () {
     var btn = $('wallOverlay');

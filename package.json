@@ -12,6 +12,7 @@
     "test:cors": "node api/cors.test.js",
     "test:cache": "node api/cache.test.js",
     "test:push": "node api/push.test.js",
+    "test:beds": "node landing/phone/beds.test.js",
     "test:webpush": "node api/webpush.test.js",
     "test:link": "node api/link.test.js",
     "test:qr": "node src/renderer/qr.test.mjs",

@@ -192,9 +192,40 @@
   .divider{display:flex;align-items:center;gap:11px;color:var(--faint);font-size:11.5px;margin:1px 0}
   .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line)}
 
-  .wallprev{aspect-ratio:9/19.5;max-height:200px;border-radius:12px;border:1px solid var(--line);
-    background:rgba(0,0,0,.35);display:grid;place-items:center;overflow:hidden;margin:0 auto}
-  .wallprev img{width:100%;height:100%;object-fit:cover;display:block}
+  /* ── the iPhone preview ── */
+  .ipreview{display:flex;flex-direction:column;align-items:center;gap:11px}
+  .iphone{position:relative;width:186px;aspect-ratio:9/19.5;border-radius:30px;overflow:hidden;
+    background:#000;border:2.5px solid #1c2026;
+    box-shadow:0 10px 34px rgba(0,0,0,.55),inset 0 0 0 1.5px rgba(255,255,255,.07)}
+  .iscreen{position:absolute;inset:0;display:grid;place-items:center;background:#0a0d11}
+  .iscreen img{width:100%;height:100%;object-fit:cover;display:block}
+  /* Cross-faded rather than swapped: at two seconds a hard cut reads as a
+     glitch, and the loop on the phone looks like this too. */
+  .iscreen img{position:absolute;inset:0;opacity:0;transition:opacity .5s ease}
+  .iscreen img.on{opacity:1}
+  @media (prefers-reduced-motion:reduce){.iscreen img{transition:none}}
+  .inotch{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:56px;height:16px;
+    border-radius:9px;background:#000;z-index:3}
+  .istatus{position:absolute;top:9px;left:0;right:0;padding:0 15px;display:flex;justify-content:space-between;
+    font-size:8.5px;color:#fff;font-weight:600;z-index:2;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .istatus-r{letter-spacing:-.5px}
+  .ilock{position:absolute;top:30px;left:0;right:0;text-align:center;z-index:2;color:#fff;
+    text-shadow:0 2px 10px rgba(0,0,0,.45)}
+  .ilock-day{font-size:9px;opacity:.92;letter-spacing:.01em}
+  .ilock-time{font-size:44px;font-weight:280;line-height:1.04;letter-spacing:-.02em;margin-top:-2px}
+  .ihome{position:absolute;inset:0;padding:34px 13px 9px;display:flex;flex-direction:column;z-index:2}
+  .igrid{flex:1 1 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:11px 12px;align-content:start}
+  .iapp{display:flex;flex-direction:column;align-items:center;gap:3px}
+  .iapp i{width:100%;aspect-ratio:1;border-radius:9px;display:block;
+    box-shadow:0 1px 3px rgba(0,0,0,.35)}
+  .iapp span{font-size:6px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);letter-spacing:.01em}
+  .idock{height:44px;border-radius:16px;background:rgba(255,255,255,.16);
+    -webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);
+    display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:7px 9px;align-items:center}
+  .idock i{width:100%;aspect-ratio:1;border-radius:8px;display:block}
+  .iseg{display:flex;gap:4px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:3px}
+  .iseg button{padding:6px 14px;border-radius:999px;font-size:11.5px;color:var(--dim)}
+  .iseg button.on{background:var(--accent-dim);color:var(--accent)}
   ol.steps{list-style:none;display:flex;flex-direction:column;gap:9px;counter-reset:s;padding:0;margin:0}
   ol.steps li{display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;font-size:12.5px;color:var(--dim);line-height:1.5}
   ol.steps li::before{counter-increment:s;content:counter(s);width:20px;height:20px;border-radius:6px;
@@ -284,7 +315,29 @@
              user having to find a photo first. -->
         <div class="row"><span class="grow tiny" data-t="wall_pickbed">Pick a backdrop</span></div>
         <div class="bedrow" id="bedRow"></div>
-        <div class="wallprev" id="wallPrev"><span class="tiny" data-t="wall_none">No frame captured yet</span></div>
+        <!-- A real iPhone, showing the real frames. Once captured, these ARE the
+             images that go on the Home Screen, cycled at the same two seconds
+             the Shortcut loop uses — so the preview is the feature running, not
+             an illustration of it. -->
+        <div class="ipreview">
+          <div class="iphone">
+            <div class="iscreen" id="wallPrev"><span class="tiny" data-t="wall_none">No frame captured yet</span></div>
+            <div class="inotch"></div>
+            <div class="istatus"><span id="ipTime">9:41</span><span class="istatus-r">▮▮▮ ⌁ ▊</span></div>
+            <div class="ilock" id="ipLock">
+              <div class="ilock-day" data-t="ip_day">Monday, 1 September</div>
+              <div class="ilock-time">9:41</div>
+            </div>
+            <div class="ihome hide" id="ipHome">
+              <div class="igrid" id="ipGrid"></div>
+              <div class="idock" id="ipDock"></div>
+            </div>
+          </div>
+          <div class="iseg">
+            <button type="button" class="on" data-screen="lock" data-t="ip_lock">Lock Screen</button>
+            <button type="button" data-screen="home" data-t="ip_home">Home Screen</button>
+          </div>
+        </div>
         <!-- The fastest route to a real wallpaper, and the one that needs no
              Shortcut at all: iOS lets you long-press any image in a web page and
              "Add to Photos". Hidden until there is actually an image to press. -->

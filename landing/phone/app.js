@@ -70,14 +70,14 @@
       wall_rotated: 'Link reset — update it in your Shortcut',
       wall_failed: 'Could not capture the field on this device',
       wall_hidden: 'Keep Terse on screen while it captures',
-      wall_video: 'Make it move (Live Photo)',
+      wall_video: 'Live Photo (may not animate)',
       wall_recording: 'Recording the field…',
       wall_video_ready: 'Video ready — build the Live Photo in Shortcuts',
       wall_video_unsupported: 'This browser cannot encode video — update iOS, or use the still above',
-      wall_v1b: 'For MOTION, use the .mp4 link', wall_v1s: 'Same link with .mp4 instead of .png. A Live Photo is the only iPhone wallpaper that actually animates.',
+      wall_v1b: 'The .mp4 link, and an honest warning', wall_v1s: 'Apple’s own engineers say a Live Photo BUILT by software (rather than captured by the camera) often shows “Motion not available” and can only be set as a still. It may work on your device; it may not, and nobody outside Apple can make it. The loop above is the route that reliably moves.',
       wall_v2b: 'Shortcut: Get Contents of URL → Make Live Photo → Save to Photos', wall_v2s: '“Make Live Photo” is built into Shortcuts — no extra app.',
       wall_v3b: 'Settings → Wallpaper → Add New → Photos → Live Photo', wall_v3s: 'Pick it, make sure the play button is on. It now plays every time you wake the phone.',
-      wall_v4b: 'The Home Screen stays still', wall_v4s: 'Live wallpapers animate on the Lock Screen only. That is iOS, and it is the same for every app.',
+      wall_v4b: 'And the Home Screen never moves', wall_v4s: 'Even a Live Photo that does animate does so on the Lock Screen only. That is iOS, and it is the same for every app, native ones included.',
       wall_never: 'never collected', wall_ago: 'collected {t} ago',
       wall_s1b: 'Copy the link above', wall_s1s: 'It is the picture itself, and it is the only credential — treat it like a password.',
       wall_s2b: 'Shortcuts → Automation → new automation', wall_s2s: 'Pick a trigger: a time of day, or when you unlock, or when charging starts.',
@@ -99,6 +99,7 @@
       wall_o2b: 'Shortcut: Get Contents of URL (the .overlay.png link)', wall_o2s: 'That layer is the particles and the text on nothing — fully transparent behind them.',
       wall_o3b: 'Add Overlay Images', wall_o3s: 'Base = the photo from your album, overlay = what you just fetched. Then Set Wallpaper.',
       wall_o4b: 'Trigger it on unlock', wall_o4s: 'Automation → Personal → When I unlock iPhone. That is the closest iOS gets to continuous: fresh numbers every time you pick the phone up.',
+      ip_lock: 'Lock Screen', ip_home: 'Home Screen', ip_day: 'Monday, 1 September',
       wall_pickbed: 'Pick a backdrop — Terse builds the wallpaper from it',
       wall_bed_photo: 'My photo',
       wall_capturing_auto: 'Building your wallpaper…',
@@ -174,14 +175,14 @@
       wall_rotated: '链接已重置——记得在快捷指令里换掉',
       wall_failed: '这台设备上截不了粒子场',
       wall_hidden: '截图时请让 Terse 保持在前台',
-      wall_video: '让它动起来（Live Photo）',
+      wall_video: 'Live Photo（可能不会动）',
       wall_recording: '正在录制粒子场…',
       wall_video_ready: '视频好了——去快捷指令里做成 Live Photo',
       wall_video_unsupported: '这个浏览器编不了视频——升级 iOS，或者用上面的静态图',
-      wall_v1b: '要「动」就用 .mp4 那个链接', wall_v1s: '同一个链接，把 .png 换成 .mp4。Live Photo 是 iPhone 上唯一真的会动的壁纸。',
+      wall_v1b: '.mp4 链接，以及一句实话', wall_v1s: '苹果自己的工程师说：软件「做」出来的实况照片（不是相机拍的）经常会显示「动态效果不可用」，只能当静态壁纸用。你的设备上可能行，也可能不行，苹果之外没人能保证。上面那个循环才是真正稳定会动的方案。',
       wall_v2b: '快捷指令：获取 URL 内容 → 制作实况照片 → 存储到相册', wall_v2s: '「制作实况照片」是系统自带的，不用装别的 App。',
       wall_v3b: '设置 → 墙纸 → 添加新墙纸 → 照片 → 实况照片', wall_v3s: '选中它，确认播放按钮是开的。之后每次唤醒手机它都会动。',
-      wall_v4b: '主屏幕还是静止的', wall_v4s: '动态壁纸只在锁屏动。这是 iOS 的规矩，所有 App 都一样。',
+      wall_v4b: '而且主屏幕永远不会动', wall_v4s: '就算实况照片真的动起来了，也只在锁屏动。这是 iOS 的规矩，所有 App 都一样，原生 App 也一样。',
       wall_never: '还没被取过', wall_ago: '{t}前取过',
       wall_s1b: '复制上面的链接', wall_s1s: '它本身就是那张图，也是唯一的凭证——当密码看待。',
       wall_s2b: '快捷指令 → 自动化 → 新建', wall_s2s: '选一个触发条件：某个时间、解锁时、或者开始充电时。',
@@ -201,6 +202,7 @@
       wall_o2b: '快捷指令：获取 URL 内容（.overlay.png 那个链接）', wall_o2s: '那个图层只有粒子和字，背后是全透明的。',
       wall_o3b: '加一步「叠加图像」', wall_o3s: '底图 = 相册里那张，叠加 = 刚抓下来的。然后「设置墙纸」。',
       wall_o4b: '用「解锁时」触发', wall_o4s: '自动化 → 个人 → 解锁 iPhone 时。这是 iOS 能做到的最接近「实时」的程度：每次拿起手机，数字都是新的。',
+      ip_lock: '锁屏', ip_home: '主屏幕', ip_day: '9月1日 星期一',
       wall_pickbed: '选个底图 —— Terse 用它来做壁纸',
       wall_bed_photo: '我的照片',
       wall_capturing_auto: '正在生成你的壁纸…',
@@ -668,6 +670,11 @@
     // The wallpaper tab is the only one meant to be looked THROUGH; everywhere
     // else the field is a backdrop and the text has to win.
     $('scrim').classList.toggle('clear', tab === 'wallpaper');
+    /* The wallpaper card moved to this tab but its render was still being
+       driven from the Me tab, where it used to live — so the backdrops, the
+       phone preview and its icons only appeared if you happened to visit Me
+       first. It belongs with the tab it is on. */
+    if (tab === 'wallpaper') { renderWall(); if (T.signedIn() && !wallState) loadWall(); }
     if (tab === 'plaza') loadPlaza();
     if (tab === 'friends') loadFriends();
     if (tab === 'room') renderRoom();
@@ -904,9 +911,13 @@
   }
 
   function renderWall() {
-    // Drawn before the early return below: the backdrops are local and should
-    // be pickable immediately, not after the first API round-trip.
+    /* Both drawn before the early return below. They are local — the backdrops
+       and the phone's own icons and clock — and should be there immediately,
+       not after the first API round-trip. The chrome sat after the return once,
+       and the Home Screen came up with an empty dock and no icons whenever the
+       wallpaper state had not loaded. */
     renderBeds();
+    renderPhoneChrome();
     var card = $('wallCard');
     if (!card) return;
     // The whole feature is per-account: the URL is minted for one, and the
@@ -942,18 +953,15 @@
       : (wallState.frames + ' · ' + (age ? t('wall_ago').replace('{t}', age) : t('wall_never')));
 
     if (wallState.ready && wallState.url) {
-      var prev = $('wallPrev');
-      if (!prev.querySelector('img')) {
-        var img = document.createElement('img');
-        // Cache-busted: the endpoint sends no-store, but an <img> that already
-        // painted will happily keep showing the old frame after a re-capture.
-        img.src = wallState.url + '?v=' + Date.now();
-        img.alt = '';
-        prev.innerHTML = '';
-        prev.appendChild(img);
-      } else {
-        prev.querySelector('img').src = wallState.url + '?v=' + Date.now();
-      }
+      /* One <img> per stored frame. Each fetch of the URL returns the NEXT one,
+         so asking for it `frames` times with different cache-busters collects
+         the whole ring — the same mechanism the Shortcut relies on, which is
+         why seeing it work here is worth something. */
+      var n = Math.max(1, Math.min(wallState.frames || 1, 12));
+      var stamp = Date.now();
+      var urls = [];
+      for (var i = 0; i < n; i++) urls.push(wallState.url + '?v=' + stamp + '-' + i);
+      startPreviewCycle(urls);
       $('wallSaveHint').classList.remove('hide');
     }
   }
@@ -988,7 +996,87 @@
     }).catch(function () { return null; });
   }
 
-  /* ── Backdrops ───────────────────────────────────────────────────────────
+  /* ── The iPhone preview ──────────────────────────────────────────────────
+     Shows the REAL captured frames inside a phone, cycled at the same two
+     seconds the Shortcut loop uses. So this is not an illustration of the
+     feature — it is the feature running, with the icons and clock that will
+     actually be sitting on top of it.
+
+     The icons are flat colour, deliberately. Anything resembling real app
+     artwork would be someone else's trademark on a page that is not theirs,
+     and the point here is legibility of the wallpaper behind them. */
+  var IP_APPS = [
+    ['#4CA5F5', 'Phone'], ['#5BC85B', 'Messages'], ['#F5A623', 'Notes'], ['#E8544E', 'Music'],
+    ['#7B68EE', 'Photos'], ['#2FC4B2', 'Health'], ['#F0C419', 'Weather'], ['#8E8E93', 'Settings'],
+  ];
+  var IP_DOCK = ['#4CA5F5', '#5BC85B', '#8E8E93', '#E8544E'];
+
+  var ipTimer = null, ipIdx = 0;
+
+  function renderPhoneChrome() {
+    var grid = $('ipGrid'), dock = $('ipDock');
+    if (!grid || grid.children.length) return;      // built once
+    IP_APPS.forEach(function (a) {
+      var el = document.createElement('div');
+      el.className = 'iapp';
+      var i = document.createElement('i');
+      i.style.background = a[0];
+      var sp = document.createElement('span');
+      sp.textContent = a[1];
+      el.appendChild(i); el.appendChild(sp);
+      grid.appendChild(el);
+    });
+    IP_DOCK.forEach(function (c) {
+      var i = document.createElement('i');
+      i.style.background = c;
+      dock.appendChild(i);
+    });
+    var now = new Date();
+    var hh = now.getHours(), mm = String(now.getMinutes()).padStart(2, '0');
+    var clock = hh + ':' + mm;
+    $('ipTime').textContent = clock;
+    document.querySelector('.ilock-time').textContent = clock;
+  }
+
+  /** Cycle the captured frames, exactly as the loop on the phone will. */
+  function startPreviewCycle(urls) {
+    var screen = $('wallPrev');
+    if (!screen) return;
+    if (ipTimer) { clearInterval(ipTimer); ipTimer = null; }
+    screen.innerHTML = '';
+    if (!urls.length) return;
+
+    var imgs = urls.map(function (u, i) {
+      var im = document.createElement('img');
+      im.src = u; im.alt = '';
+      if (i === 0) im.className = 'on';
+      screen.appendChild(im);
+      return im;
+    });
+    ipIdx = 0;
+    if (imgs.length < 2) return;
+    // Two seconds, because that is the Wait the shortcut uses. Seeing the
+    // preview and the phone move at the same rate is the point.
+    ipTimer = setInterval(function () {
+      if (document.visibilityState !== 'visible') return;
+      imgs[ipIdx].classList.remove('on');
+      ipIdx = (ipIdx + 1) % imgs.length;
+      imgs[ipIdx].classList.add('on');
+    }, 2000);
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.iseg button'), function (b) {
+    b.onclick = function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.iseg button'), function (o) {
+        o.classList.toggle('on', o === b);
+      });
+      var home = b.dataset.screen === 'home';
+      $('ipHome').classList.toggle('hide', !home);
+      $('ipLock').classList.toggle('hide', home);
+    };
+  });
+
+    /* ── Backdrops ───────────────────────────────────────────────────────────
      The one choice this feature needs. Picking a backdrop is also what starts
      everything: the capture runs immediately, so there is a wallpaper waiting
      rather than another button to find. */
@@ -1254,8 +1342,6 @@
     $('pairBtn').classList.toggle('hide', !signedIn);
 
     renderWallSteps();
-    renderWall();
-    if (signedIn && !wallState) loadWall();
   }
 
   function claim(code) {

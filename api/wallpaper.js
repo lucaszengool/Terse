@@ -13,9 +13,14 @@
  *
  * And iOS will only take a STILL image that way. Live wallpapers are Live
  * Photos, they animate on the Lock Screen only (the Home Screen always shows a
- * frozen frame), and Shortcuts cannot set one. So a genuinely animated system
- * wallpaper is not achievable by anyone, by any route, from a web app or a
- * native one.
+ * frozen frame), and Shortcuts cannot set one.
+ *
+ * ⚠ AND A BUILT LIVE PHOTO MAY NOT ANIMATE AT ALL. An Apple DTS engineer, on
+ * Live Photos created through PHLivePhoto rather than captured by the camera:
+ * they show "Motion not available" and can only be set as a still, there are
+ * "undocumented requirements", and the advice is not to reverse-engineer it
+ * (developer.apple.com/forums/thread/798044). That applies to native apps too,
+ * so the mp4 route here is offered with that stated rather than promised.
  *
  * WHAT IS ACHIEVABLE, AND IS WHAT THIS DOES: the frames are captured BY THE
  * PHONE out of the live engine — real particles, real glyph text, the user's own

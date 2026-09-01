@@ -67,5 +67,28 @@ const policyAt = server.indexOf('const NEVER_CACHE');
 const staticAt = server.indexOf("express.static(path.join(__dirname, '..', 'landing')");
 ok('the policy is registered before the static mount', policyAt > 0 && staticAt > policyAt);
 
+// ── Build stamping ──
+// The header policy above fixed the HTML, but it cannot evict an entry the edge
+// already holds for the scripts — and that entry was six hours old. A version in
+// the URL is the only lever that works from the origin: a new build is a new
+// URL, so there is nothing to hit.
+ok('the shell is rewritten, not sent as a file', /fs\.readFile\(file, 'utf8'/.test(server));
+ok('phone scripts get the build stamp', /src="\)\(\\\/phone/.test(server) || /\/phone\\\/\[a-z0-9/.test(server));
+ok('the stamp is derived from the files themselves', /statSync\(path\.join\(__dirname, '\.\.', 'landing', rel\)\)/.test(server));
+ok('and computed once, not per request', /const PHONE_BUILD = buildStamp\(\);/.test(server));
+ok('sw.js is among the stamped files', /PHONE_ASSETS = \[[^\]]*'sw\.js'/.test(server));
+ok('the build is handed to the page', /__TERSE_BUILD/.test(server));
+
+// Ordering again, and for the same reason as the policy: express.static is
+// mounted with extensions:['html'], so it answers /m with m.html directly and a
+// handler registered after it never runs.
+const mAt = server.indexOf("app.get(['/m', '/m/*']");
+ok('the /m handler is registered before the static mount', mAt > 0 && staticAt > mAt);
+
+// The engines must NOT be stamped: three quarters of a megabyte of Three.js plus
+// shaders shared with the desktop, re-downloaded on every deploy, would cost far
+// more than it saves.
+ok('the engines are left unstamped', !/app-assets[^\n]*\?v=/.test(server));
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 process.exit(fails.length ? 1 : 0);

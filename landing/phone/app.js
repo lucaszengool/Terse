@@ -1224,6 +1224,12 @@
   });
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(function () {});
+    /* Stamped with the build. The browser fetches this URL directly, so no HTML
+       rewrite can reach it, and an edge cache holding an old sw.js pins the
+       whole app to whatever that worker cached. A query string does not change
+       the script's PATH, so the worker still gets root scope. */
+    var build = window.__TERSE_BUILD;
+    navigator.serviceWorker.register('/sw.js' + (build ? '?v=' + encodeURIComponent(build) : ''))
+      .catch(function () {});
   }
 })();

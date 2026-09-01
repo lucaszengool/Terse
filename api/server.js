@@ -1,6 +1,7 @@
 const express = require('express');
 const Stripe = require('stripe');
 const path = require('path');
+const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
@@ -1416,6 +1417,55 @@ app.use((req, res, next) => {
   next();
 });
 
+/* The phone app's build stamp, and why the shell is rewritten rather than sent
+   as a file.
+
+   The CDN in front of this was observed serving /phone/*.js from a cache entry
+   six and a half hours old, with cf-cache-status: HIT, against the five-minute
+   max-age the origin sends — an edge TTL override that ignores origin headers
+   outright. The no-store policy above fixed the HTML (it now comes back
+   DYNAMIC) but cannot evict an entry the edge already holds for the scripts.
+
+   A version in the URL is the one lever that works from here: a new build is a
+   new URL, so there is no entry to hit. It is derived from the files themselves,
+   so it changes exactly when they do and never needs remembering.
+
+   Only the app's own code is stamped. The engines keep their plain URLs: they
+   are three quarters of a megabyte of Three.js plus shaders shared with the
+   desktop, they change rarely, and re-downloading them on every deploy would
+   cost far more than it saves. */
+const PHONE_ASSETS = ['phone/app.js', 'phone/terse-web.js', 'phone/capture.js', 'phone/mp4.js', 'phone/diag.js', 'sw.js'];
+function buildStamp() {
+  let acc = 0;
+  for (const rel of PHONE_ASSETS) {
+    try {
+      const st = fs.statSync(path.join(__dirname, '..', 'landing', rel));
+      acc = (acc * 31 + st.size + Math.floor(st.mtimeMs)) >>> 0;
+    } catch { /* a missing file simply does not contribute */ }
+  }
+  return acc.toString(36);
+}
+// Computed once: the files cannot change under a running process, and doing this
+// per request would stat six files on every load of the app.
+const PHONE_BUILD = buildStamp();
+
+app.get(['/m', '/m/*'], (req, res) => {
+  const file = path.join(__dirname, '..', 'landing', 'm.html');
+  fs.readFile(file, 'utf8', (err, html) => {
+    if (err) return res.status(500).type('text/plain').send('Could not load the app');
+    const stamped = html
+      .replace(/(src=")(\/phone\/[a-z0-9.-]+\.js)(")/gi, `$1$2?v=${PHONE_BUILD}$3`)
+      // Handed to the page so it can stamp what it loads itself — the service
+      // worker registration above all, which the browser fetches directly and
+      // which no HTML rewrite can reach.
+      .replace('</head>', `<script>window.__TERSE_BUILD=${JSON.stringify(PHONE_BUILD)};</script>\n</head>`);
+    res.type('html').send(stamped);
+  });
+});
+
+// Registered BEFORE the static mount on purpose: `extensions: ['html']` makes
+// express.static answer /m with m.html directly, so a handler after it never
+// runs and the shell goes out unstamped.
 app.use(express.static(path.join(__dirname, '..', 'landing'), { extensions: ['html'] }));
 
 // /teams/:id → serve the dashboard page (loads team via API client-side)
@@ -1462,9 +1512,7 @@ app.use('/app-assets', express.static(path.join(__dirname, '..', 'src', 'rendere
 app.get('/mobile', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'landing', 'mobile.html'));
 });
-app.get(['/m', '/m/*'], (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'landing', 'm.html'));
-});
+
 
 // The wallpaper image itself. Above the SPA catch-all, and outside /api, because
 // an iOS Shortcut fetches it with no headers at all — the URL is the credential.

@@ -102,6 +102,39 @@ for (const fn of ['renderBeds()', 'renderPhoneChrome()']) {
   ok(`${fn} runs before the wallState guard`, at > 0 && (guard < 0 || at < guard));
 }
 
+// ── WebGL contexts ──
+// iOS gives a page very few, and this app holds two before a capture starts:
+// the full-screen field and the one inside the phone preview. A capture asking
+// for a third killed the whole web app — Safari does not warn or degrade, it
+// reloads or goes blank, which is what "Deploy does nothing" turned out to be.
+// Desktop allows far more, so it never reproduced here.
+for (const [fn, why] of [
+  ['captureRing', 'the 12-frame deploy'],
+  ['captureOverlay', 'the transparent layer'],
+]) {
+  const at = appJs.indexOf(`function ${fn}(`);
+  ok(`${fn} exists`, at > 0);
+  if (at < 0) continue;
+  const body = appJs.slice(at, at + 2600);
+  ok(`${fn} frees the other contexts first (${why})`, body.includes('releaseFields()'));
+}
+
+// The video path holds a context for its whole four-second encode.
+const videoAt = appJs.indexOf("on($('wallVideo')");
+const videoBody = videoAt > 0 ? appJs.slice(videoAt, videoAt + 2600) : '';
+ok('the Live Photo encode frees them too', videoBody.includes('releaseFields()'));
+
+// Restoring matters as much: leaving the app with no field at all is worse than
+// whatever failure got us there, so it must happen on the failure path too.
+ok('releaseFields is always paired with restoreFields',
+  (appJs.match(/releaseFields\(\)/g) || []).length
+    <= (appJs.match(/restoreFields\(\)/g) || []).length);
+ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,200}mountEngine\(\)/.test(appJs));
+ok('and the preview one', /function restoreFields\(\)[\s\S]{0,200}mountPreviewField\(\)/.test(appJs));
+
+// The generic failure message sent me looking in the wrong place for a day.
+ok('a capture failure reports the actual reason', /wall_failed'\) \+ \(err && err\.message/.test(appJs));
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

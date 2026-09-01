@@ -1069,7 +1069,10 @@
 
   function unmountPreviewField() {
     if (!ipWp) return;
-    try { ipWp.dispose(); } catch (e) {}
+    // Same reason as releaseFields: dispose() on its own keeps the context, and
+    // this runs on every tab change — so it leaked one per switch.
+    try { ipWp.stop(); } catch (e) {}
+    dropContext(ipWp, 'ipStage');
     ipWp = null;
   }
 
@@ -1292,10 +1295,59 @@
      how the two paths drifted apart the first time. */
   var capturing = false;
 
+  /* Capturing needs a WebGL context of its own, and iOS gives a page very few.
+     By the time Deploy is pressed this app is already holding two — the
+     full-screen field, and the small one inside the phone preview — so the
+     capture asks for a THIRD and the whole web app is killed. Safari does not
+     warn and does not degrade; it reloads the page or goes blank, which is
+     exactly what "deploy does nothing" looked like.
+
+     Desktop browsers allow far more, which is why this never showed up here.
+
+     So both are torn down for the duration and rebuilt afterwards. It costs a
+     visible flicker on a button press that already takes several seconds, which
+     is a fair trade for the feature working at all. */
+  /* Actually giving a context back, which dispose() alone does not do.
+     The engine's dispose() frees geometries, materials and textures and calls
+     renderer.dispose() — but three.js's dispose() releases GPU MEMORY and keeps
+     the WebGL context. Measured: tearing the field down and capturing left two
+     live contexts, not one, because the first was never handed back.
+
+     Two steps are needed. forceContextLoss() is what actually drops it, and the
+     canvas is then replaced, because a canvas whose context has been force-lost
+     is not reliably able to hand out a new one — and this canvas gets a new
+     engine a few seconds later.
+
+     Deliberately NOT fixed inside the shared engine: the desktop's mountEngine
+     disposes and immediately re-attaches to the SAME canvas element, so adding
+     a forced loss there would break engine switching on the Mac. The phone owns
+     its canvases, so it can do the honest thing here. */
+  function dropContext(engine, canvasId) {
+    try { if (engine && engine.renderer) engine.renderer.forceContextLoss(); } catch (e) {}
+    try { if (engine) engine.dispose(); } catch (e) {}
+    var old = document.getElementById(canvasId);
+    if (!old || !old.parentNode) return;
+    var fresh = document.createElement('canvas');
+    fresh.id = old.id;
+    fresh.className = old.className;
+    fresh.style.cssText = old.style.cssText;
+    old.parentNode.replaceChild(fresh, old);
+  }
+
+  function releaseFields() {
+    if (ipWp) { try { ipWp.stop(); } catch (e) {} dropContext(ipWp, 'ipStage'); ipWp = null; }
+    if (wp) { try { wp.stop(); } catch (e) {} dropContext(wp, 'stage'); wp = null; }
+  }
+  function restoreFields() {
+    if (!wp) mountEngine();
+    if (current === 'wallpaper') mountPreviewField();
+  }
+
   function captureRing(auto) {
     if (capturing) return Promise.resolve(null);
     if (!T.signedIn()) return Promise.resolve(null);
     capturing = true;
+    releaseFields();
 
     var btn = $('wallCapture');
     var label = auto ? 'wall_capturing_auto' : 'wall_capturing';
@@ -1349,10 +1401,16 @@
       if (!auto) captureOverlay().catch(function () {});
       return j;
     }).catch(function (err) {
-      toast(t(err && err.code === 'hidden' ? 'wall_hidden' : 'wall_failed'));
+      /* The message matters more than the label here. "This device cannot
+         capture the field" is true of a lost WebGL context, a refused upload and
+         an expired session alike, and it sent me looking in the wrong place for
+         a day. */
+      toast(err && err.code === 'hidden' ? t('wall_hidden')
+        : t('wall_failed') + (err && err.message ? ' — ' + err.message : ''));
       return null;
     }).then(function (j) {
       capturing = false;
+      restoreFields();
       btn.disabled = false;
       btn.textContent = t('wall_deploy');
       return j;
@@ -1365,6 +1423,7 @@
       deploy button can produce it too — nobody should have to understand the
       difference between the two routes before either of them works. */
   function captureOverlay() {
+    releaseFields();          // same three-context problem as captureRing
     var st = T.link.state();
     var ov = HUD ? HUD.buildOverlays({
       stats: (st.frame && st.frame.stats) || {},
@@ -1393,7 +1452,10 @@
     }).then(function (r) {
       if (!r || !r.ok) throw new Error('upload failed');
       return r.json();
-    }).then(function (j) { wallState = j; renderWall(); return j; });
+    }).then(function (j) { wallState = j; renderWall(); return j; })
+      // Restored whether it worked or not: leaving the app with no field at all
+      // is worse than the failure that got us here.
+      .finally(function () { restoreFields(); });
   }
 
   on($('wallOverlay'), 'click', function () {
@@ -1418,6 +1480,7 @@
     if (!window.TerseCapture.canEncodeVideo()) { toast(t('wall_video_unsupported')); return; }
     btn.disabled = true;
     btn.textContent = t('wall_recording');
+    releaseFields();          // the encode holds a context for four seconds
 
     var st = T.link.state();
     var ov = HUD ? HUD.buildOverlays({
@@ -1458,6 +1521,7 @@
         : (code === 'no-webcodecs' || code === 'no-codec') ? 'wall_video_unsupported'
         : 'wall_failed'));
     }).then(function () {
+      restoreFields();
       btn.disabled = false;
       btn.textContent = t('wall_video');
     });

@@ -120,6 +120,10 @@
       wall_a2b: 'Why 20 and not forever', wall_a2s: 'iOS stops a background shortcut after roughly 30–60 seconds. Twenty rounds fills that. Asking for more does not run longer, it just gets cut off.',
       wall_a3b: 'Trigger it on apps you open all day', wall_a3s: 'Automation → Personal → App → Is Opened, and pick a few you actually use. Turn OFF “Ask Before Running”. From then on you do nothing: every time you open one of them, the wallpaper runs another burst.',
       wall_a4b: 'Add unlock as well', wall_a4s: 'One more automation on unlock covers the times you pick the phone up without opening anything.',
+      wall_open_shortcuts: 'Open Shortcuts',
+      wall_g_loop: 'The main way — it updates itself',
+      wall_g_own: 'Or: keep your own wallpaper, add only the text',
+      wall_g_live: 'Or: a Live Photo (may not animate)',
       wall_getshortcut: 'Add the Terse shortcut',
       wall_getshortcut_note: 'Tap it, then Add Shortcut. It already has the link and the steps in it — you only choose when it runs.',
       ins_title: 'Add Terse to your Home Screen',
@@ -233,6 +237,10 @@
       wall_a2b: '为什么是 20 次而不是一直跑', wall_a2s: 'iOS 大约 30–60 秒就会掐掉后台运行的快捷指令。20 次刚好填满。写更多不会跑更久，只会被中途切断。',
       wall_a3b: '挂在你一天到晚会开的 App 上', wall_a3s: '自动化 → 个人 → App → 打开时，选几个你真的常用的。把「运行前询问」关掉。之后你什么都不用做：每次打开这些 App，壁纸就再跑一轮。',
       wall_a4b: '再加一个解锁触发', wall_a4s: '再建一个「解锁时」的自动化，覆盖那些你拿起手机但没开 App 的时候。',
+      wall_open_shortcuts: '打开快捷指令',
+      wall_g_loop: '主要方案 —— 它会自己更新',
+      wall_g_own: '或者：保留你自己的壁纸，只加字',
+      wall_g_live: '或者：Live Photo（可能不会动）',
       wall_getshortcut: '一键添加 Terse 快捷指令',
       wall_getshortcut_note: '点一下，再点「添加快捷指令」。链接和步骤都已经写好在里面了，你只需要选它什么时候跑。',
       ins_title: '把 Terse 添加到主屏幕',
@@ -945,6 +953,11 @@
        wallpaper state had not loaded. */
     renderBeds();
     renderPhoneChrome();
+    // Drawn here, not from renderMe. The steps belong to this card, and being
+    // rendered from the tab the card used to live on meant they only appeared
+    // if you happened to open Me first — the fifth time that exact mistake was
+    // made in this file, which is why the wiring test now asserts it.
+    renderWallSteps();
     var card = $('wallCard');
     if (!card) return;
     // The whole feature is per-account: the URL is minted for one, and the
@@ -965,6 +978,13 @@
 
     // The ready-made Shortcut, when one has been published. Its absence is a
     // supported state — the written steps below work on their own.
+    /* shortcuts:// only exists on iOS. On anything else the button is a link
+       that fails silently, which is exactly the dead-control problem the wiring
+       test was written for. */
+    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    $('wallOpenShortcuts').classList.toggle('hide', !isIOS);
+
     var sc = $('wallShortcut'), scNote = $('wallShortcutNote');
     if (wallState.shortcut_url) {
       sc.href = wallState.shortcut_url;
@@ -1545,26 +1565,57 @@
       .catch(function () {});
   });
 
+  /* The setup, as three routes rather than seventeen numbered steps in a row.
+     Flat, they read as one impossibly long procedure and nobody finishes; the
+     truth is they are alternatives, and only the first is the one most people
+     want. So the first is open and the other two are folded, each numbered from
+     one, because each really does start from the beginning. */
+  var STEP_GROUPS = [
+    {
+      key: 'wall_g_loop', open: true,
+      steps: [['wall_s1b', 'wall_s1s'], ['wall_s2b', 'wall_s2s'], ['wall_s3b', 'wall_s3s'],
+              ['wall_a1b', 'wall_a1s'], ['wall_a2b', 'wall_a2s'], ['wall_a3b', 'wall_a3s'], ['wall_a4b', 'wall_a4s']],
+    },
+    {
+      key: 'wall_g_own', open: false,
+      steps: [['wall_o1b', 'wall_o1s'], ['wall_o2b', 'wall_o2s'], ['wall_o3b', 'wall_o3s'], ['wall_o4b', 'wall_o4s']],
+    },
+    {
+      key: 'wall_g_live', open: false,
+      steps: [['wall_v1b', 'wall_v1s'], ['wall_v2b', 'wall_v2s'], ['wall_v3b', 'wall_v3s'], ['wall_v4b', 'wall_v4s']],
+    },
+  ];
+
   function renderWallSteps() {
-    var ol = $('wallSteps');
-    if (!ol) return;
-    ol.innerHTML = '';
-    [['wall_s1b', 'wall_s1s'], ['wall_s2b', 'wall_s2s'], ['wall_s3b', 'wall_s3s'],
-     ['wall_s4b', 'wall_s4s'], ['wall_s5b', 'wall_s5s'],
-     ['wall_v1b', 'wall_v1s'], ['wall_v2b', 'wall_v2s'], ['wall_v3b', 'wall_v3s'], ['wall_v4b', 'wall_v4s'],
-     ['wall_o1b', 'wall_o1s'], ['wall_o2b', 'wall_o2s'], ['wall_o3b', 'wall_o3s'], ['wall_o4b', 'wall_o4s'],
-     ['wall_a1b', 'wall_a1s'], ['wall_a2b', 'wall_a2s'], ['wall_a3b', 'wall_a3s'], ['wall_a4b', 'wall_a4s']]
-      .forEach(function (pair) {
+    var host = $('wallSteps');
+    if (!host) return;
+    host.innerHTML = '';
+
+    STEP_GROUPS.forEach(function (g) {
+      var box = document.createElement('details');
+      box.className = 'fold stepgroup';
+      if (g.open) box.open = true;
+      var sum = document.createElement('summary');
+      sum.textContent = t(g.key);
+      box.appendChild(sum);
+
+      var ol = document.createElement('ol');
+      ol.className = 'steps';
+      g.steps.forEach(function (pair) {
         var li = document.createElement('li');
         var b = document.createElement('b'); b.textContent = t(pair[0]);
-        var sp = document.createElement('span'); sp.textContent = ' ' + t(pair[1]);
+        var sp = document.createElement('span'); sp.textContent = t(pair[1]);
         li.appendChild(b); li.appendChild(sp);
         ol.appendChild(li);
       });
-    var note = document.createElement('li');
+      box.appendChild(ol);
+      host.appendChild(box);
+    });
+
+    var note = document.createElement('p');
     note.className = 'note';
     note.textContent = t('wall_note');
-    ol.appendChild(note);
+    host.appendChild(note);
   }
 
   // ── Me / linking ─────────────────────────────────────────────────────────
@@ -1607,8 +1658,6 @@
       !!(window.TerseInstall && window.TerseInstall.standalone()));
     $('pairCode').classList.toggle('hide', !signedIn);
     $('pairBtn').classList.toggle('hide', !signedIn);
-
-    renderWallSteps();
   }
 
   function claim(code) {

@@ -72,6 +72,10 @@ ok('the shell has controls to check', buttons.length > 5);
 const DRIVEN_ELSEWHERE = {
   // Its href is assigned in renderWall; it is a link, not a button.
   wallShortcut: 'href set in renderWall',
+  // A static href in the markup. It is only shown on iOS — checked below,
+  // because shortcuts:// fails silently everywhere else and a link that does
+  // nothing is the exact problem this file exists to catch.
+  wallOpenShortcuts: 'static shortcuts:// href, gated to iOS',
 };
 
 for (const id of buttons) {
@@ -92,6 +96,21 @@ const show = appJs.slice(appJs.indexOf('function show(tab)'), appJs.indexOf('fun
 for (const [tab, fn] of [['plaza', 'loadPlaza'], ['friends', 'loadFriends'], ['room', 'renderRoom'], ['me', 'renderMe'], ['wallpaper', 'renderWall']]) {
   ok(`switching to ${tab} calls ${fn}`, show.includes(fn));
 }
+
+/* A render that draws into a card must be called from the render that OWNS
+   that card. Getting this wrong is invisible: the section is simply absent
+   unless you first visit the tab it used to live on. It has happened five
+   times in this file — renderBeds, renderPhoneChrome, renderWall itself,
+   renderWallSteps, and the preview's icons. */
+const renderWallFull = appJs.slice(appJs.indexOf('function renderWall()'),
+  appJs.indexOf('function loadWall()'));
+for (const fn of ['renderBeds()', 'renderPhoneChrome()', 'renderWallSteps()']) {
+  ok(`${fn} is called by renderWall, which owns that card`, renderWallFull.includes(fn));
+}
+const renderMeFull = appJs.slice(appJs.indexOf('function renderMe()'),
+  appJs.indexOf('function renderMe()') + 2600);
+ok('and renderMe no longer draws the wallpaper card',
+  !renderMeFull.includes('renderWallSteps()') && !renderMeFull.includes('renderWall()'));
 
 // The two that were left behind an early return. They draw local content and
 // must not wait on an API round-trip that may never happen.
@@ -134,6 +153,14 @@ ok('and the preview one', /function restoreFields\(\)[\s\S]{0,200}mountPreviewFi
 
 // The generic failure message sent me looking in the wrong place for a day.
 ok('a capture failure reports the actual reason', /wall_failed'\) \+ \(err && err\.message/.test(appJs));
+
+// The one deep link iOS honours, and only there. There is no scheme for the
+// Automation tab, and App-Prefs stopped navigating to a Settings category in
+// iOS 18 — so this is the only one worth shipping, and it must not appear on
+// platforms where it silently does nothing.
+ok('the Shortcuts link is a shortcuts:// href', /id="wallOpenShortcuts"[^>]*href="shortcuts:\/\//.test(html)
+  || /href="shortcuts:\/\/"[^>]*id="wallOpenShortcuts"/.test(html));
+ok('and is hidden off iOS', /wallOpenShortcuts'\)\.classList\.toggle\('hide', !isIOS\)/.test(appJs));
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');

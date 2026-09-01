@@ -1386,6 +1386,36 @@ app.get('/api/health', (req, res) => {
 });
 
 // ── Serve landing page ──
+/* ── Cache policy for the phone web app ───────────────────────────────────
+   A CDN sits in front of this and was observed serving these files SIX AND A
+   HALF HOURS after they changed, despite the five-minute max-age express.static
+   sends (age: 23435, cf-cache-status: HIT). For most of the marketing site that
+   is harmless. For these five paths it is not:
+
+     · sw.js  — a stale service worker keeps serving its own stale cache of the
+       whole app, so one old copy of THIS file pins everything else to the
+       version that shipped with it. A shipped fix then never reaches anyone.
+     · /m and the phone scripts — the shell and its code, which must match the
+       API they talk to.
+
+   no-store rather than a shorter max-age: the point is that an intermediary
+   must not hold these at all, and a max-age is advice a CDN has already been
+   seen to ignore. The engines under /app-assets keep their own longer cache —
+   they are large, they change rarely, and the service worker revalidates them.
+   ------------------------------------------------------------------------- */
+const NEVER_CACHE = /^\/(sw\.js|manifest\.webmanifest|m|m\/.*|phone\/.*)$/;
+app.use((req, res, next) => {
+  if (req.method === 'GET' && NEVER_CACHE.test(req.path)) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    // Service workers are additionally governed by their own header: without
+    // this, a browser may reuse a cached script for up to 24 hours.
+    if (req.path === '/sw.js') res.set('Service-Worker-Allowed', '/');
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, '..', 'landing'), { extensions: ['html'] }));
 
 // /teams/:id → serve the dashboard page (loads team via API client-side)

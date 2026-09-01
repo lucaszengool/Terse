@@ -10,6 +10,7 @@
     "test:rooms": "node api/rooms.test.js",
     "test:friends": "node api/friends.test.js",
     "test:cors": "node api/cors.test.js",
+    "test:cache": "node api/cache.test.js",
     "test:link": "node api/link.test.js",
     "test:qr": "node src/renderer/qr.test.mjs",
     "test:wallpaper-api": "node api/wallpaper.test.js",

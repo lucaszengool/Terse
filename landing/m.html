@@ -160,6 +160,14 @@
   .bed.on span{color:var(--accent)}
   @media (prefers-reduced-motion:reduce){.bed img{transition:none}}
 
+  details.fold{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:9px}
+  details.fold summary{font-size:13px;font-weight:550;cursor:pointer;list-style:none;color:var(--ink)}
+  details.fold summary::-webkit-details-marker{display:none}
+  details.fold summary::before{content:'＋ ';color:var(--faint)}
+  details.fold[open] summary::before{content:'－ '}
+  details.fold p{font-size:12.5px;color:var(--dim);line-height:1.55}
+  details.fold input{font-size:13px}
+
   .savehint{font-size:12.5px;line-height:1.55;color:var(--accent);
     background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.22);
     border-radius:10px;padding:10px 12px}
@@ -201,6 +209,7 @@
   .iscreen img{width:100%;height:100%;object-fit:cover;display:block}
   /* Cross-faded rather than swapped: at two seconds a hard cut reads as a
      glitch, and the loop on the phone looks like this too. */
+  .iscreen canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   .iscreen img{position:absolute;inset:0;opacity:0;transition:opacity .5s ease}
   .iscreen img.on{opacity:1}
   @media (prefers-reduced-motion:reduce){.iscreen img{transition:none}}
@@ -321,7 +330,12 @@
              an illustration of it. -->
         <div class="ipreview">
           <div class="iphone">
-            <div class="iscreen" id="wallPrev"><span class="tiny" data-t="wall_none">No frame captured yet</span></div>
+            <div class="iscreen" id="wallPrev">
+              <!-- The field, running, behind the clock and the icons. Before
+                   anything is captured this IS the preview; afterwards the real
+                   frames cross-fade over it. -->
+              <canvas id="ipStage"></canvas>
+            </div>
             <div class="inotch"></div>
             <div class="istatus"><span id="ipTime">9:41</span><span class="istatus-r">▮▮▮ ⌁ ▊</span></div>
             <div class="ilock" id="ipLock">
@@ -342,9 +356,17 @@
              Shortcut at all: iOS lets you long-press any image in a web page and
              "Add to Photos". Hidden until there is actually an image to press. -->
         <p class="savehint hide" id="wallSaveHint" data-t="wall_longpress"></p>
-        <button class="btn primary wide" id="wallCapture" type="button" data-t="wall_capture">Capture from my wallpaper</button>
-        <button class="btn wide" id="wallOverlay" type="button" data-t="wall_overlay">Keep my own wallpaper, add the text</button>
-        <button class="btn wide" id="wallVideo" type="button" data-t="wall_video">Make it move (Live Photo)</button>
+        <!-- One button. It renders the frames AND the transparent layer and
+             uploads both — there is no reason to make somebody choose between
+             them before they know what either one is. -->
+        <button class="btn primary wide" id="wallCapture" type="button" data-t="wall_deploy">Deploy to my iPhone</button>
+        <p class="tiny" id="wallDeployNote" data-t="wall_deploy_note"></p>
+
+        <details class="fold">
+          <summary data-t="wall_adv">Other ways to use it</summary>
+          <button class="btn wide" id="wallOverlay" type="button" data-t="wall_overlay">Keep my own wallpaper, add the text</button>
+          <button class="btn wide" id="wallVideo" type="button" data-t="wall_video">Live Photo (may not animate)</button>
+        </details>
         <div id="wallSetup" class="hide" style="display:flex;flex-direction:column;gap:10px">
           <!-- The one-tap route, when a ready-made Shortcut has been published.
                Hidden otherwise, and the written steps below stand alone. -->

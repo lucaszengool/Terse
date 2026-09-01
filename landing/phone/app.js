@@ -99,6 +99,10 @@
       wall_o2b: 'Shortcut: Get Contents of URL (the .overlay.png link)', wall_o2s: 'That layer is the particles and the text on nothing — fully transparent behind them.',
       wall_o3b: 'Add Overlay Images', wall_o3s: 'Base = the photo from your album, overlay = what you just fetched. Then Set Wallpaper.',
       wall_o4b: 'Trigger it on unlock', wall_o4s: 'Automation → Personal → When I unlock iPhone. That is the closest iOS gets to continuous: fresh numbers every time you pick the phone up.',
+      wall_deploy: 'Deploy to my iPhone',
+      wall_deploy_note: 'Renders the wallpaper and puts it on your account. One step is left that no app can do for you — iOS lets nothing but you set a wallpaper — and Terse shows exactly what it is once this is done.',
+      wall_adv: 'Other ways to use it',
+      wall_deployed: 'Done — here is the one step left',
       ip_lock: 'Lock Screen', ip_home: 'Home Screen', ip_day: 'Monday, 1 September',
       wall_pickbed: 'Pick a backdrop — Terse builds the wallpaper from it',
       wall_bed_photo: 'My photo',
@@ -202,6 +206,10 @@
       wall_o2b: '快捷指令：获取 URL 内容（.overlay.png 那个链接）', wall_o2s: '那个图层只有粒子和字，背后是全透明的。',
       wall_o3b: '加一步「叠加图像」', wall_o3s: '底图 = 相册里那张，叠加 = 刚抓下来的。然后「设置墙纸」。',
       wall_o4b: '用「解锁时」触发', wall_o4s: '自动化 → 个人 → 解锁 iPhone 时。这是 iOS 能做到的最接近「实时」的程度：每次拿起手机，数字都是新的。',
+      wall_deploy: '部署到我的 iPhone',
+      wall_deploy_note: '渲染壁纸并存到你的账号上。最后还剩一步是任何 App 都替你做不了的——iOS 只允许你本人设置壁纸——做完这步 Terse 会明确告诉你那一步是什么。',
+      wall_adv: '其他用法',
+      wall_deployed: '好了 —— 就剩这一步',
       ip_lock: '锁屏', ip_home: '主屏幕', ip_day: '9月1日 星期一',
       wall_pickbed: '选个底图 —— Terse 用它来做壁纸',
       wall_bed_photo: '我的照片',
@@ -540,6 +548,7 @@
     });
 
     renderChip();
+    feedPreviewField();
   }
 
   function renderChip() {
@@ -674,7 +683,13 @@
        driven from the Me tab, where it used to live — so the backdrops, the
        phone preview and its icons only appeared if you happened to visit Me
        first. It belongs with the tab it is on. */
-    if (tab === 'wallpaper') { renderWall(); if (T.signedIn() && !wallState) loadWall(); }
+    if (tab === 'wallpaper') {
+      renderWall();
+      mountPreviewField();
+      if (T.signedIn() && !wallState) loadWall();
+    } else {
+      unmountPreviewField();     // nothing is looking at it
+    }
     if (tab === 'plaza') loadPlaza();
     if (tab === 'friends') loadFriends();
     if (tab === 'room') renderRoom();
@@ -1013,6 +1028,58 @@
 
   var ipTimer = null, ipIdx = 0;
 
+  /* A second, small engine inside the preview.
+     The preview exists to answer "what will this look like on my phone", and
+     before anything has been captured a flat backdrop answers nothing — the
+     particles and the glyph text ARE the wallpaper. So the mockup runs its own
+     field.
+
+     Cheap on purpose: it is 186 points wide, so quality sits near the engine's
+     floor, and it is disposed the moment the tab is left or the page hidden.
+     Two WebGL contexts on a phone is a real cost, and this one earns it only
+     while somebody is looking at it. */
+  var ipWp = null;
+
+  function mountPreviewField() {
+    var c = $('ipStage');
+    if (!c || !Engine || ipWp) return;
+    try {
+      ipWp = new Engine(c, {
+        theme: 'neon', quality: 26, angle: 42, intensity: 1,
+        style: T.isPro() ? styleId() : 'cinematic',
+        pro: T.isPro(),
+        photo: T.photo() || (window.TerseBeds && window.TerseBeds.render(bedId(), 190, 410)),
+      });
+      ipWp.start();
+      feedPreviewField();
+    } catch (e) { ipWp = null; }
+  }
+
+  function unmountPreviewField() {
+    if (!ipWp) return;
+    try { ipWp.dispose(); } catch (e) {}
+    ipWp = null;
+  }
+
+  /** The same overlays the big field gets, so the preview shows the real numbers
+   *  and the real glyph text rather than an idle field. */
+  function feedPreviewField() {
+    if (!ipWp || !HUD) return;
+    var st = T.link.state();
+    var ov = HUD.buildOverlays({
+      stats: (st.frame && st.frame.stats) || {},
+      sessions: (st.frame && st.frame.sessions) || [],
+      tokens: lastTotal || 0,
+      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
+    });
+    try {
+      ipWp.setActivity(ov.activity || 0.3);
+      if (ipWp.setAgents) ipWp.setAgents(ov.agents);
+      if (ipWp.setStageItems && ov.stage.length) ipWp.setStageItems(ov.stage);
+      if (ipWp.setAgentLog && ov.logGroups.length) ipWp.setAgentLog(ov.logGroups);
+    } catch (e) {}
+  }
+
   function renderPhoneChrome() {
     var grid = $('ipGrid'), dock = $('ipDock');
     if (!grid || grid.children.length) return;      // built once
@@ -1043,7 +1110,9 @@
     var screen = $('wallPrev');
     if (!screen) return;
     if (ipTimer) { clearInterval(ipTimer); ipTimer = null; }
-    screen.innerHTML = '';
+    // Only the images: the live canvas underneath stays, so the preview never
+    // drops to an empty rectangle between states.
+    Array.prototype.forEach.call(screen.querySelectorAll('img'), function (n) { n.remove(); });
     if (!urls.length) return;
 
     var imgs = urls.map(function (u, i) {
@@ -1116,8 +1185,10 @@
       if (id === '__photo') { /* already theirs; just re-select */ }
       else { try { localStorage.setItem(LS_BED, id); } catch (e) {} T.setPhoto(null); }
       renderBeds();
-      mountEngine();          // the live field changes immediately
-      captureRing(true);      // and the wallpaper is rebuilt from it
+      mountEngine();            // the live field changes immediately
+      unmountPreviewField();    // and so does the one inside the phone
+      mountPreviewField();
+      captureRing(true);        // and the wallpaper is rebuilt from it
     };
     return b;
   }
@@ -1195,7 +1266,11 @@
     }).then(function (j) {
       wallState = j;
       renderWall();
-      toast(t(auto ? 'wall_bed_done' : 'wall_ok'));
+      toast(t(auto ? 'wall_bed_done' : 'wall_deployed'));
+      /* The transparent layer costs one more short render and makes the "keep
+         my own wallpaper" route work with no second decision. Never awaited and
+         never fatal — the deploy has already succeeded by this point. */
+      if (!auto) captureOverlay().catch(function () {});
       return j;
     }).catch(function (err) {
       toast(t(err && err.code === 'hidden' ? 'wall_hidden' : 'wall_failed'));
@@ -1203,19 +1278,17 @@
     }).then(function (j) {
       capturing = false;
       btn.disabled = false;
-      btn.textContent = t('wall_capture');
+      btn.textContent = t('wall_deploy');
       return j;
     });
   }
 
   on($('wallCapture'), 'click', function () { captureRing(false); });
 
-  on($('wallOverlay'), 'click', function () {
-    var btn = $('wallOverlay');
-    if (btn.disabled) return;
-    btn.disabled = true;
-    btn.textContent = t('wall_overlaying');
-
+  /** The transparent layer, for the Overlay Images route. Extracted so the one
+      deploy button can produce it too — nobody should have to understand the
+      difference between the two routes before either of them works. */
+  function captureOverlay() {
     var st = T.link.state();
     var ov = HUD ? HUD.buildOverlays({
       stats: (st.frame && st.frame.stats) || {},
@@ -1224,19 +1297,15 @@
       t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
     }) : null;
 
-    window.TerseCapture.capture({
+    return window.TerseCapture.capture({
       style: T.isPro() ? styleId() : 'cinematic',
       pro: T.isPro(),
-      // Still passed: it TINTS the particles, and the tint should match whatever
-      // this layer ends up sitting on. It is simply never painted.
       photo: T.photo(),
+      bedId: bedId(),
       overlays: ov,
       transparent: true,
       count: 1,
       texts: wallTexts(ov),
-      onStep: function (p, label) {
-        btn.textContent = t('wall_overlaying') + ' ' + (label || Math.round(p * 100) + '%');
-      },
     }).then(function (res) {
       return T.authToken().then(function (tok) {
         return fetch('/api/cloud/wallpaper/overlay', {
@@ -1248,15 +1317,73 @@
     }).then(function (r) {
       if (!r || !r.ok) throw new Error('upload failed');
       return r.json();
+    }).then(function (j) { wallState = j; renderWall(); return j; });
+  }
+
+  on($('wallOverlay'), 'click', function () {
+    var btn = $('wallOverlay');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = t('wall_overlaying');
+    captureOverlay()
+      .then(function () { toast(t('wall_overlay_ready')); })
+      .catch(function (err) { toast(t(err && err.code === 'hidden' ? 'wall_hidden' : 'wall_failed')); })
+      .then(function () { btn.disabled = false; btn.textContent = t('wall_overlay'); });
+  });
+
+  /* ⚠ This button had no handler at all between the commit that added it and
+     this one — it was lost in a cleanup and shipped dead. Restored rather than
+     deleted because the endpoint and the encoder behind it are built and
+     tested; the honest warning about whether iOS will animate the result lives
+     in the label and the steps, not in a button that silently does nothing. */
+  on($('wallVideo'), 'click', function () {
+    var btn = $('wallVideo');
+    if (btn.disabled) return;
+    if (!window.TerseCapture.canEncodeVideo()) { toast(t('wall_video_unsupported')); return; }
+    btn.disabled = true;
+    btn.textContent = t('wall_recording');
+
+    var st = T.link.state();
+    var ov = HUD ? HUD.buildOverlays({
+      stats: (st.frame && st.frame.stats) || {},
+      sessions: (st.frame && st.frame.sessions) || [],
+      tokens: lastTotal || 0,
+      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
+    }) : null;
+
+    window.TerseCapture.captureVideo({
+      style: T.isPro() ? styleId() : 'cinematic',
+      pro: T.isPro(),
+      photo: T.photo(),
+      bedId: bedId(),
+      overlays: ov,
+      texts: wallTexts(ov),
+      onStep: function (p, label) {
+        btn.textContent = t('wall_recording') + ' ' + (label || Math.round(p * 100) + '%');
+      },
+    }).then(function (res) {
+      return T.authToken().then(function (tok) {
+        return fetch('/api/cloud/wallpaper/video?w=' + res.width + '&h=' + res.height, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'video/mp4' },
+          body: res.blob,
+        });
+      });
+    }).then(function (r) {
+      if (!r || !r.ok) throw new Error('upload failed');
+      return r.json();
     }).then(function (j) {
       wallState = j;
       renderWall();
-      toast(t('wall_overlay_ready'));
+      toast(t('wall_video_ready'));
     }).catch(function (err) {
-      toast(t(err && err.code === 'hidden' ? 'wall_hidden' : 'wall_failed'));
+      var code = err && err.code;
+      toast(t(code === 'hidden' ? 'wall_hidden'
+        : (code === 'no-webcodecs' || code === 'no-codec') ? 'wall_video_unsupported'
+        : 'wall_failed'));
     }).then(function () {
       btn.disabled = false;
-      btn.textContent = t('wall_overlay');
+      btn.textContent = t('wall_video');
     });
   });
 
@@ -1609,8 +1736,13 @@
   setInterval(function () { if (document.visibilityState === 'visible') renderHUD(); }, 5000);
 
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState !== 'visible') { if (wp) wp.stop(); return; }
+    if (document.visibilityState !== 'visible') {
+      if (wp) wp.stop();
+      unmountPreviewField();
+      return;
+    }
     if (wp) wp.start();
+    if (current === 'wallpaper') mountPreviewField();
     requestWake();
     // Rooms' own EventSource is subject to the same iOS silent-close as the link
     // stream, and rooms.js cannot fix it from inside: it never learns the app was

@@ -197,6 +197,31 @@
      reader to go and do it. */
   ol.steps li.note{grid-template-columns:1fr;opacity:.72}
   ol.steps li.note::before{content:none}
+  /* ── install sheet ── */
+  .insheet{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:0 12px calc(var(--safe-b) + 12px);
+    transform:translateY(120%);transition:transform .32s cubic-bezier(.22,1,.36,1);pointer-events:none}
+  .insheet.on{transform:translateY(0);pointer-events:auto}
+  @media (prefers-reduced-motion:reduce){.insheet{transition:none}}
+  .insheet-card{background:rgba(16,20,26,.94);border:1px solid var(--line2);border-radius:18px;
+    padding:16px 16px 15px;display:flex;flex-direction:column;gap:12px;
+    box-shadow:0 -6px 40px rgba(0,0,0,.55);
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%)}
+  .insheet-head{display:flex;align-items:center;gap:12px}
+  .insheet-icon img{border-radius:9px;display:block}
+  .insheet-title{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .insheet-title b{font-size:15px;font-weight:600}
+  .insheet-title span{font-size:12.5px;color:var(--faint)}
+  .insheet-x{width:30px;height:30px;border-radius:50%;background:var(--card2);color:var(--dim);
+    font-size:13px;flex:0 0 auto;display:grid;place-items:center}
+  .insheet p{font-size:13.5px;line-height:1.55;color:var(--dim)}
+  ol.insteps{list-style:none;display:flex;flex-direction:column;gap:10px;counter-reset:n;margin:0;padding:0}
+  ol.insteps li{display:flex;align-items:center;gap:11px;font-size:13.5px;line-height:1.45}
+  ol.insteps li::before{counter-increment:n;content:counter(n);
+    width:20px;height:20px;flex:0 0 auto;border-radius:6px;background:var(--accent-dim);color:var(--accent);
+    display:grid;place-items:center;font-size:10.5px;font-weight:700;font-family:ui-monospace,monospace}
+  .insico{width:30px;height:30px;flex:0 0 auto;border-radius:8px;background:var(--card2);
+    border:1px solid var(--line);color:var(--ink);display:grid;place-items:center}
+
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tabbar) + var(--safe-b) + 18px);
     z-index:20;padding:11px 17px;border-radius:12px;background:rgba(20,24,30,.96);border:1px solid var(--line2);
     font-size:13.5px;max-width:86vw;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.5)}
@@ -251,6 +276,11 @@
         <button class="btn wide" id="wallOverlay" type="button" data-t="wall_overlay">Keep my own wallpaper, add the text</button>
         <button class="btn wide" id="wallVideo" type="button" data-t="wall_video">Make it move (Live Photo)</button>
         <div id="wallSetup" class="hide" style="display:flex;flex-direction:column;gap:10px">
+          <!-- The one-tap route, when a ready-made Shortcut has been published.
+               Hidden otherwise, and the written steps below stand alone. -->
+          <a class="btn primary wide hide" id="wallShortcut" target="_blank" rel="noopener"
+             data-t="wall_getshortcut">Add the Terse shortcut</a>
+          <p class="tiny hide" id="wallShortcutNote" data-t="wall_getshortcut_note"></p>
           <div class="row">
             <input type="text" id="wallUrl" class="grow" readonly style="font-size:12px;font-family:ui-monospace,monospace">
             <button class="btn" id="wallCopy" type="button" data-t="copy">Copy</button>
@@ -369,6 +399,7 @@
       <div class="card" id="installCard">
         <h2 data-t="install_title">Add to Home Screen</h2>
         <p data-t="install_body"></p>
+        <button class="btn wide" id="installShow" type="button" data-t="ins_show">Show me how</button>
       </div>
     </section>
   </main>
@@ -400,6 +431,7 @@
   data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck"
   src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
 <script src="/app-assets/rooms.js"></script>
+<script src="/phone/install.js"></script>
 <script src="/phone/diag.js"></script>
 <script src="/phone/terse-web.js"></script>
 <script src="/phone/mp4.js"></script>

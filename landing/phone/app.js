@@ -99,6 +99,18 @@
       wall_o2b: 'Shortcut: Get Contents of URL (the .overlay.png link)', wall_o2s: 'That layer is the particles and the text on nothing — fully transparent behind them.',
       wall_o3b: 'Add Overlay Images', wall_o3s: 'Base = the photo from your album, overlay = what you just fetched. Then Set Wallpaper.',
       wall_o4b: 'Trigger it on unlock', wall_o4s: 'Automation → Personal → When I unlock iPhone. That is the closest iOS gets to continuous: fresh numbers every time you pick the phone up.',
+      wall_getshortcut: 'Add the Terse shortcut',
+      wall_getshortcut_note: 'Tap it, then Add Shortcut. It already has the link and the steps in it — you only choose when it runs.',
+      ins_title: 'Add Terse to your Home Screen',
+      ins_sub: 'Opens like an app · keeps you signed in',
+      ins_body_prompt: 'One tap. It opens without browser chrome, stays signed in, and can send you notifications.',
+      ins_body_safari: 'Two taps in Safari. Installed, Terse opens without browser chrome, stays signed in, and can send you notifications — none of which work from a tab.',
+      ins_body_other: 'This browser cannot install web apps on iPhone — only Safari can. Open this link in Safari and the option appears.',
+      ins_step_share: 'Tap Share in the Safari toolbar',
+      ins_step_add: 'Choose “Add to Home Screen”',
+      ins_install: 'Install', ins_copy: 'Copy the link', ins_copied: 'Copied — now paste it in Safari',
+      ins_dismiss: 'Not now', ins_show: 'Show me how',
+      ins_already: 'Already installed',
       push_title: 'Notifications',
       push_body: 'Terse can tell you when an agent is waiting on you, or a budget is about to break. Only things worth interrupting for — not every step it takes.',
       push_enable: 'Turn on notifications', push_test: 'Send a test', push_off: 'Turn off',
@@ -179,6 +191,18 @@
       wall_o2b: '快捷指令：获取 URL 内容（.overlay.png 那个链接）', wall_o2s: '那个图层只有粒子和字，背后是全透明的。',
       wall_o3b: '加一步「叠加图像」', wall_o3s: '底图 = 相册里那张，叠加 = 刚抓下来的。然后「设置墙纸」。',
       wall_o4b: '用「解锁时」触发', wall_o4s: '自动化 → 个人 → 解锁 iPhone 时。这是 iOS 能做到的最接近「实时」的程度：每次拿起手机，数字都是新的。',
+      wall_getshortcut: '一键添加 Terse 快捷指令',
+      wall_getshortcut_note: '点一下，再点「添加快捷指令」。链接和步骤都已经写好在里面了，你只需要选它什么时候跑。',
+      ins_title: '把 Terse 添加到主屏幕',
+      ins_sub: '像 App 一样打开 · 不用反复登录',
+      ins_body_prompt: '一下就好。装好后没有浏览器边框，登录状态一直在，还能收通知。',
+      ins_body_safari: '在 Safari 里两步。装好后没有浏览器边框，登录状态一直在，还能收通知——这几样在标签页里都做不到。',
+      ins_body_other: 'iPhone 上只有 Safari 能安装网页应用，这个浏览器不行。把链接在 Safari 里打开就会出现这个选项。',
+      ins_step_share: '点 Safari 工具栏里的「分享」',
+      ins_step_add: '选「添加到主屏幕」',
+      ins_install: '安装', ins_copy: '复制链接', ins_copied: '已复制——去 Safari 里粘贴',
+      ins_dismiss: '以后再说', ins_show: '教我怎么装',
+      ins_already: '已经装好了',
       push_title: '通知',
       push_body: '智能体在等你确认、或者预算快超了的时候，Terse 会告诉你。只发值得打断你的事，不是每一步都发。',
       push_enable: '打开通知', push_test: '发个测试', push_off: '关掉',
@@ -878,6 +902,18 @@
         : wallState.url;
     }
 
+    // The ready-made Shortcut, when one has been published. Its absence is a
+    // supported state — the written steps below work on their own.
+    var sc = $('wallShortcut'), scNote = $('wallShortcutNote');
+    if (wallState.shortcut_url) {
+      sc.href = wallState.shortcut_url;
+      sc.classList.remove('hide');
+      scNote.classList.remove('hide');
+    } else {
+      sc.classList.add('hide');
+      scNote.classList.add('hide');
+    }
+
     var age = ago(wallState.fetched_at);
     $('wallAge').textContent = !wallState.ready ? ''
       : (wallState.frames + ' · ' + (age ? t('wall_ago').replace('{t}', age) : t('wall_never')));
@@ -1161,6 +1197,9 @@
     $('linkHelp').textContent = !signedIn ? t('signed_out_note')
       : devices.length ? t('link_help_some') : t('link_help_none');
     renderPush();
+    // Nothing to say about installing once it IS installed.
+    $('installCard').classList.toggle('hide',
+      !!(window.TerseInstall && window.TerseInstall.standalone()));
     $('pairCode').classList.toggle('hide', !signedIn);
     $('pairBtn').classList.toggle('hide', !signedIn);
 
@@ -1302,6 +1341,13 @@
       .catch(function () { toast(t('push_failed')); });
   });
 
+  // A way back to it for anyone who dismissed the sheet, or who came looking.
+  on($('installShow'), 'click', function () {
+    if (!window.TerseInstall) return;
+    if (window.TerseInstall.standalone()) { toast(t('ins_already')); return; }
+    window.TerseInstall.show(t, true);
+  });
+
   on($('upgradeBtn'), 'click', function () { location.href = '/#pricing'; });
   on($('signOutBtn'), 'click', function () {
     if (window.Clerk) window.Clerk.signOut().then(function () { location.href = '/m'; });
@@ -1350,6 +1396,14 @@
     if (signedIn) afterAuth();
     var start = (location.pathname.match(/^\/m\/(wallpaper|plaza|room|friends|me)/) || [])[1];
     show(start || (pending ? 'me' : 'wallpaper'));
+
+    /* The install sheet, after a beat. Held back deliberately: the first thing
+       anyone should see is the field, not a prompt asking for something. It
+       never appears once installed, and a dismissal is remembered — an install
+       prompt that returns every launch is an advert. */
+    if (window.TerseInstall) {
+      setTimeout(function () { window.TerseInstall.show(t, false); }, 2600);
+    }
   }
 
   on($('guestBtn'), 'click', function () { openApp(false); });

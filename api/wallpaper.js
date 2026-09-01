@@ -52,6 +52,20 @@ const MAX_EDGE = 3200;
  *  varied, few enough that one account is a handful of megabytes. */
 const SLOTS = 6;
 
+/* A ready-made Shortcut, so the user taps a link instead of building one.
+ *
+ * This CANNOT be generated. Since iOS 15 shortcuts must be signed, signing
+ * cannot be done on-device or on a server, and unsigned .shortcut import was
+ * removed — the only distributable form is an iCloud share link, which is
+ * produced by sharing a shortcut FROM an Apple device.
+ *
+ * So it is built once, by hand, on an iPhone, and its link goes in the
+ * environment. Empty is a supported state: the app falls back to the written
+ * steps, which is what every user got before this existed. See
+ * docs/phone-shortcut-setup.md.
+ */
+const SHORTCUT_URL = process.env.TERSE_SHORTCUT_URL || '';
+
 /** A four-second 720-wide H.264 clip lands around 2-5 MB. */
 const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
 
@@ -111,6 +125,9 @@ function shape(req, userId) {
     updated_at: slots.length ? slots.map((s) => s.updated_at).sort().pop() : null,
     fetched_at: row.fetched_at,
     fetch_count: row.fetch_count || 0,
+    // Only ever an icloud.com/shortcuts link — anything else here would be an
+    // arbitrary URL the app invites people to tap.
+    shortcut_url: /^https:\/\/(www\.)?icloud\.com\/shortcuts\//.test(SHORTCUT_URL) ? SHORTCUT_URL : null,
   };
 }
 

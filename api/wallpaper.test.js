@@ -204,6 +204,50 @@ const OTHER = 'user_wall_other';
   const strangerVideo = await req('GET', `/w/${new URL(stranger.json.url).pathname.split('/').pop().replace('.png', '.mp4')}`);
   eq('an account with no video 404s on .mp4', strangerVideo.status, 404);
 
+  // ── JPEG frames ──
+  // This is what the phone actually sends. Measured on a real 1290x2796 frame:
+  // 1.78 MB as PNG against 578 KB as JPEG; twelve of the former is 20.3 MB
+  // uploaded serially from a phone, which left a real capture stuck with
+  // nothing stored.
+  function jpeg(w, h, tag) {
+    // Minimal but structurally real: SOI, an APP0, an SOF0 carrying the
+    // dimensions the endpoint reads, then EOI.
+    const sof = Buffer.from([0xff, 0xc0, 0x00, 0x11, 0x08,
+      (h >> 8) & 0xff, h & 0xff, (w >> 8) & 0xff, w & 0xff,
+      0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01]);
+    return Buffer.concat([
+      Buffer.from([0xff, 0xd8]),
+      Buffer.from([0xff, 0xe0, 0x00, 0x10]), Buffer.from('JFIF\0', 'ascii'),
+      Buffer.from([0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]),
+      sof,
+      Buffer.from([tag & 0xff]),
+      Buffer.from([0xff, 0xd9]),
+    ]);
+  }
+
+  const jup = await req('POST', '/api/cloud/wallpaper?slot=0', { user: USER, body: jpeg(1290, 2796, 3), type: 'image/jpeg' });
+  eq('a JPEG frame uploads', jup.status, 200);
+  const jslots = db.listWallSlots.all(USER);
+  eq('and its width is read from the SOF marker', jslots[0].width, 1290);
+  eq('and its height too', jslots[0].height, 2796);
+
+  /* The endpoint hands back the NEXT frame each time, so a single fetch lands
+     on whichever slot the cursor is at — cycling the whole ring is the only
+     way to see the JPEG one. A mixed ring is the realistic state anyway: the
+     frames are JPEG and an older PNG may still be sitting in a slot. */
+  const seenTypes = new Set();
+  for (let i = 0; i < db.listWallSlots.all(USER).length; i++) {
+    seenTypes.add((await req('GET', new URL(jup.json.url).pathname)).headers['content-type']);
+  }
+  ok('a JPEG frame is served as image/jpeg, not announced as PNG', seenTypes.has('image/jpeg'));
+  ok('and PNG frames in the same ring still serve as image/png', seenTypes.has('image/png'));
+
+  // Neither format may be a lie: the bytes decide, not the Content-Type header.
+  eq('a JPEG content-type with PNG bytes is still stored correctly',
+    (await req('POST', '/api/cloud/wallpaper?slot=1', { user: USER, body: png(4, 8, 5), type: 'image/jpeg' })).status, 200);
+  eq('and rubbish is still refused',
+    (await req('POST', '/api/cloud/wallpaper?slot=2', { user: USER, body: Buffer.alloc(64), type: 'image/jpeg' })).status, 400);
+
   // ── The transparent layer, for Overlay Images ──
   // This is the route that keeps the user's OWN wallpaper: iOS exposes no way to
   // read the one they already have, so Shortcuts composites this on top of a

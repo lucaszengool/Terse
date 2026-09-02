@@ -1313,6 +1313,30 @@
      Shared by the button and by picking a backdrop, because they are the same
      action — "make my wallpaper from this" — and having two copies of it was
      how the two paths drifted apart the first time. */
+  /** One frame, with a deadline and a single retry.
+   *  30s is generous for a few hundred kilobytes and short enough that a dead
+   *  connection surfaces as an error rather than a frozen button. */
+  function uploadFrame(tok, slot, blob, retried) {
+    return fetch('/api/cloud/wallpaper?slot=' + slot, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tok, 'Content-Type': blob.type || 'image/jpeg' },
+      body: blob,
+      signal: AbortSignal.timeout(30000),
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          throw new Error(j.error || ('upload failed (' + r.status + ')'));
+        });
+      }
+      return r.json();
+    }).catch(function (err) {
+      // One retry, because a single dropped request on a phone is normal and
+      // losing the whole capture to it is not.
+      if (retried) throw err;
+      return uploadFrame(tok, slot, blob, true);
+    });
+  }
+
   var capturing = false;
 
   /* Capturing needs a WebGL context of its own, and iOS gives a page very few.
@@ -1400,14 +1424,11 @@
         return blobs.reduce(function (chain, blob, i) {
           return chain.then(function () {
             btn.textContent = t('wall_uploading') + ' ' + (i + 1) + '/' + blobs.length;
-            return fetch('/api/cloud/wallpaper?slot=' + i, {
-              method: 'POST',
-              headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'image/png' },
-              body: blob,
-            }).then(function (r) {
-              if (!r.ok) throw new Error('upload failed');
-              return r.json();
-            });
+            /* Bounded, and retried once.
+               An upload with no timeout that stalls simply never settles — the
+               button sat on "12/12" forever with no error and nothing stored,
+               which is indistinguishable from the app having crashed. */
+            return uploadFrame(tok, i, blob);
           });
         }, Promise.resolve());
       });

@@ -90,6 +90,39 @@ const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
 
 const newToken = () => crypto.randomBytes(18).toString('base64url');
 
+const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** What this actually is, from its bytes. The client's Content-Type is not good
+ *  enough: the buffer is served back to a device that will treat it as an
+ *  image, so it has to be one. */
+function imageKind(buf) {
+  if (buf.length >= 24 && buf.subarray(0, 8).equals(PNG_SIG)) return 'png';
+  if (buf.length >= 4 && buf[0] === 0xff && buf[1] === 0xd8 && buf[buf.length - 2] === 0xff) return 'jpeg';
+  return null;
+}
+
+/** Dimensions, read out of the file. PNG keeps them at a fixed offset in IHDR;
+ *  JPEG requires walking the segment markers to the SOF, which is why this is
+ *  more than one line. */
+function dimensions(buf, kind) {
+  if (kind === 'png') return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  let i = 2;
+  while (i < buf.length - 9) {
+    if (buf[i] !== 0xff) { i++; continue; }
+    const marker = buf[i + 1];
+    // SOF0..SOF15, excluding the four that are not frame headers.
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+    }
+    i += 2 + buf.readUInt16BE(i + 2);
+  }
+  return { width: 0, height: 0 };
+}
+
+/** Served back with the type it actually is, so a JPEG frame is not announced
+ *  as a PNG to a device deciding whether it can use it. */
+const contentTypeOf = (buf) => (imageKind(buf) === 'jpeg' ? 'image/jpeg' : 'image/png');
+
 function publicUrl(req, token) {
   const host = process.env.PUBLIC_ORIGIN || `${req.protocol}://${req.get('host')}`;
   return `${host}/w/${token}.png`;
@@ -156,22 +189,24 @@ router.get('/', requireUser, (req, res) => res.json(shape(req, req.userId)));
 // POST /api/cloud/wallpaper?slot=N — one captured frame, as a raw PNG body.
 // Raw rather than base64 in JSON: base64 inflates a 3 MB frame by a third, on a
 // connection that is often cellular, for no gain.
-router.post('/', requireUser, express.raw({ type: 'image/png', limit: MAX_BYTES }), (req, res) => {
+router.post('/', requireUser, express.raw({ type: ['image/png', 'image/jpeg'], limit: MAX_BYTES }), (req, res) => {
   const png = req.body;
   if (!Buffer.isBuffer(png) || !png.length) {
-    return res.status(400).json({ error: 'Expected a PNG body' });
+    return res.status(400).json({ error: 'Expected an image body' });
   }
-  // Verified rather than trusted: this buffer is served straight back to a
-  // device that will treat it as an image, so the client's content type is not
-  // good enough on its own.
-  const SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  if (png.length < 24 || !png.subarray(0, 8).equals(SIG)) {
-    return res.status(400).json({ error: 'That is not a PNG' });
-  }
-  // Dimensions come out of the IHDR chunk rather than a query parameter, so what
-  // is reported is what was actually stored.
-  const width = png.readUInt32BE(16);
-  const height = png.readUInt32BE(20);
+  /* JPEG as well as PNG, and JPEG is what the phone actually sends for frames.
+     Measured on a real 1290x2796 frame: 1.78 MB as PNG against 578 KB as
+     JPEG at 0.92. Twelve of the former is 20.3 MB uploaded serially from a
+     phone, which is what left a capture stuck with nothing stored. A wallpaper
+     has no alpha to preserve, so nothing is lost. The transparent overlay still requires
+     PNG — see the /overlay route, which checks for an alpha channel. */
+  const kind = imageKind(png);
+  if (!kind) return res.status(400).json({ error: 'That is not a PNG or JPEG' });
+
+  // Read from the image itself rather than a query parameter, so what is
+  // reported is what was actually stored.
+  const dim = dimensions(png, kind);
+  const width = dim.width, height = dim.height;
   if (!width || !height || width > MAX_EDGE || height > MAX_EDGE) {
     return res.status(400).json({ error: 'Unusable image dimensions' });
   }
@@ -312,7 +347,7 @@ function serveFrame(req, res) {
   if (!frame || !frame.png) return res.status(404).type('text/plain').send('Not found');
 
   res.set({
-    'Content-Type': 'image/png',
+    'Content-Type': contentTypeOf(frame.png),
     'Content-Length': String(frame.png.length),
     // Shortcuts runs on a schedule and must never be handed a cached copy: a
     // wallpaper that silently stops changing is indistinguishable from one that

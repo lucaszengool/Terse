@@ -1324,12 +1324,25 @@
   /** One frame, with a deadline and a single retry.
    *  30s is generous for a few hundred kilobytes and short enough that a dead
    *  connection surfaces as an error rather than a frozen button. */
-  function uploadFrame(tok, slot, blob, retried) {
-    return fetch('/api/cloud/wallpaper?slot=' + slot, {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + tok, 'Content-Type': blob.type || 'image/jpeg' },
-      body: blob,
-      signal: AbortSignal.timeout(30000),
+  /** One frame, with a FRESH token, a deadline and a single retry.
+   *
+   *  The token is fetched per request, not once for the run. A Clerk session
+   *  token lives about a minute; a capture plus a dozen uploads takes longer
+   *  than that. Taking one at the start meant the first frame stored and every
+   *  later one came back 401 — which is precisely why a real account ended up
+   *  with exactly one frame and a "session expired" message at the end.
+   *
+   *  getToken() is cheap and returns the cached token until it is near expiry,
+   *  so this costs nothing per call and refreshes exactly when it must. */
+  function uploadFrame(slot, blob, retried) {
+    return T.authToken().then(function (tok) {
+      if (!tok) throw new Error('signed out');
+      return fetch('/api/cloud/wallpaper?slot=' + slot, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + tok, 'Content-Type': blob.type || 'image/jpeg' },
+        body: blob,
+        signal: AbortSignal.timeout(30000),
+      });
     }).then(function (r) {
       if (!r.ok) {
         return r.json().catch(function () { return {}; }).then(function (j) {
@@ -1341,7 +1354,7 @@
       // One retry, because a single dropped request on a phone is normal and
       // losing the whole capture to it is not.
       if (retried) throw err;
-      return uploadFrame(tok, slot, blob, true);
+      return uploadFrame(slot, blob, true);
     });
   }
 
@@ -1426,7 +1439,7 @@
     }).then(function (res) {
       var blobs = (res && res.blobs) || [];
       if (!blobs.length) throw new Error('no frame');
-      return T.authToken().then(function (tok) {
+      return (function () {
         /* Three at a time, not one after another.
            A twelve-long serial chain is only as fast as its slowest link and
            only as reliable as its unluckiest one: a single stalled request
@@ -1440,7 +1453,7 @@
         var done = 0;
         var failed = [];
         function runOne(i) {
-          return uploadFrame(tok, i, blobs[i])
+          return uploadFrame(i, blobs[i])
             .then(function (j) { done++; return j; })
             .catch(function (e) { failed.push(i); throw e; })
             .then(function (j) {
@@ -1458,7 +1471,7 @@
           if (failed.length) throw new Error(failed.length + ' frame(s) failed to upload');
           return last;
         });
-      });
+      })();
     }).then(function (j) {
       wallState = j;
       renderWall();

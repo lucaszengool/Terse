@@ -174,6 +174,16 @@ ok('and never prefers the overlay link there', !/wallUrl'\)\.value = [^;]*overla
    reached "12/12" with a single frame stored. */
 ok('frames upload with bounded concurrency', /Promise\.all\(\[worker\(\), worker\(\), worker\(\)\]\)/.test(appJs));
 ok('and each has a deadline', /AbortSignal\.timeout\(/.test(appJs));
+
+/* Each upload takes a FRESH token. A Clerk session token lives about a minute
+   and a capture plus a dozen uploads takes longer, so one token fetched for the
+   whole run meant the first frame stored and every later one came back 401 —
+   which is exactly how a real account ended up with one frame and a "session
+   expired" message. */
+const upFn = appJs.slice(appJs.indexOf('function uploadFrame('),
+  appJs.indexOf('function uploadFrame(') + 900);
+ok('each upload fetches its own token', /T\.authToken\(\)/.test(upFn));
+ok('and uploadFrame is not handed a stale one', !/function uploadFrame\(tok/.test(appJs));
 ok('and one retry', /if \(retried\) throw err;/.test(appJs));
 
 // Progress counts COMPLETIONS. The old label was set before each request and

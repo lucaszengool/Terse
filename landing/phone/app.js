@@ -109,6 +109,7 @@
       wall_deploy_note: 'Renders the wallpaper and puts it on your account. One step is left that no app can do for you — iOS lets nothing but you set a wallpaper — and Terse shows exactly what it is once this is done.',
       wall_adv: 'Other ways to use it',
       wall_deployed: 'Done — here is the one step left',
+      wall_frames: '{n} frames',
       ip_lock: 'Lock Screen', ip_home: 'Home Screen', ip_day: 'Monday, 1 September',
       wall_pickbed: 'Pick a backdrop — Terse builds the wallpaper from it',
       wall_bed_photo: 'My photo',
@@ -226,6 +227,7 @@
       wall_deploy_note: '渲染壁纸并存到你的账号上。最后还剩一步是任何 App 都替你做不了的——iOS 只允许你本人设置壁纸——做完这步 Terse 会明确告诉你那一步是什么。',
       wall_adv: '其他用法',
       wall_deployed: '好了 —— 就剩这一步',
+      wall_frames: '{n} 帧',
       ip_lock: '锁屏', ip_home: '主屏幕', ip_day: '9月1日 星期一',
       wall_pickbed: '选个底图 —— Terse 用它来做壁纸',
       wall_bed_photo: '我的照片',
@@ -971,9 +973,15 @@
     if (wallState.url) {
       // Preference order reflects which route keeps the most of what the user
       // already has: their own wallpaper, then motion, then a whole frame.
-      $('wallUrl').value = (wallState.overlay && wallState.overlay_url) ? wallState.overlay_url
-        : (wallState.video && wallState.video_url) ? wallState.video_url
-        : wallState.url;
+      /* ALWAYS the frame link.
+         This used to prefer the overlay when one existed, on the theory that
+         the newest thing was the most wanted. It is the opposite: the overlay
+         is a transparent layer for the Overlay Images route, and handing it to
+         Set Wallpaper gives iOS an image with nothing behind it — which fails
+         as "com.apple.extensionKit.errorDomain 错误 2", a message that says
+         nothing about the cause. The other two links live in their own
+         sections, where what they are is written next to them. */
+      $('wallUrl').value = wallState.url;
     }
 
     // The ready-made Shortcut, when one has been published. Its absence is a
@@ -1419,23 +1427,47 @@
       var blobs = (res && res.blobs) || [];
       if (!blobs.length) throw new Error('no frame');
       return T.authToken().then(function (tok) {
-        // Sequential, not parallel: these are megabytes each, often over
-        // cellular, and a dozen at once is how a phone upload stalls.
-        return blobs.reduce(function (chain, blob, i) {
-          return chain.then(function () {
-            btn.textContent = t('wall_uploading') + ' ' + (i + 1) + '/' + blobs.length;
-            /* Bounded, and retried once.
-               An upload with no timeout that stalls simply never settles — the
-               button sat on "12/12" forever with no error and nothing stored,
-               which is indistinguishable from the app having crashed. */
-            return uploadFrame(tok, i, blob);
-          });
-        }, Promise.resolve());
+        /* Three at a time, not one after another.
+           A twelve-long serial chain is only as fast as its slowest link and
+           only as reliable as its unluckiest one: a single stalled request
+           blocks the eleven behind it, which is how the button sat on "12/12"
+           with one frame stored. Three is enough to keep the connection busy
+           without being the dozen-at-once that stalls a phone.
+
+           done counts COMPLETIONS, so the label cannot claim more progress
+           than actually happened — the old one was set before each request and
+           reached 12/12 while eleven frames were still in flight. */
+        var done = 0;
+        var failed = [];
+        function runOne(i) {
+          return uploadFrame(tok, i, blobs[i])
+            .then(function (j) { done++; return j; })
+            .catch(function (e) { failed.push(i); throw e; })
+            .then(function (j) {
+              btn.textContent = t('wall_uploading') + ' ' + done + '/' + blobs.length;
+              return j;
+            });
+        }
+        var next = 0, last = null;
+        function worker() {
+          if (next >= blobs.length) return Promise.resolve(last);
+          var i = next++;
+          return runOne(i).then(function (j) { last = j; return worker(); });
+        }
+        return Promise.all([worker(), worker(), worker()]).then(function () {
+          if (failed.length) throw new Error(failed.length + ' frame(s) failed to upload');
+          return last;
+        });
       });
     }).then(function (j) {
       wallState = j;
       renderWall();
-      toast(t(auto ? 'wall_bed_done' : 'wall_deployed'));
+      /* The COUNT, not just "done". One frame and twelve both used to look
+         identical here, and one frame means the loop sets the same picture
+         over and over — which is the difference between a wallpaper that
+         animates and one that does not. */
+      var n = (j && j.frames) || 0;
+      toast(t(auto ? 'wall_bed_done' : 'wall_deployed') + ' · ' + t('wall_frames').replace('{n}', n));
       /* The transparent layer costs one more short render and makes the "keep
          my own wallpaper" route work with no second decision. Never awaited and
          never fatal — the deploy has already succeeded by this point. */

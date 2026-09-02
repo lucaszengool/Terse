@@ -162,6 +162,26 @@ ok('the Shortcuts link is a shortcuts:// href', /id="wallOpenShortcuts"[^>]*href
   || /href="shortcuts:\/\/"[^>]*id="wallOpenShortcuts"/.test(html));
 ok('and is hidden off iOS', /wallOpenShortcuts'\)\.classList\.toggle\('hide', !isIOS\)/.test(appJs));
 
+/* The copy box must offer the FRAME link.
+   It preferred the overlay when one existed, and handing that transparent layer
+   to Set Wallpaper fails as "com.apple.extensionKit.errorDomain 错误 2" — a
+   message that says nothing about the cause and cost hours to trace. */
+ok('the copy box uses the frame URL', /\$\('wallUrl'\)\.value = wallState\.url;/.test(appJs));
+ok('and never prefers the overlay link there', !/wallUrl'\)\.value = [^;]*overlay_url/.test(appJs));
+
+/* Uploads run a few at a time. A serial chain of twelve is only as reliable as
+   its unluckiest request: one stall blocks the rest, which is how the button
+   reached "12/12" with a single frame stored. */
+ok('frames upload with bounded concurrency', /Promise\.all\(\[worker\(\), worker\(\), worker\(\)\]\)/.test(appJs));
+ok('and each has a deadline', /AbortSignal\.timeout\(/.test(appJs));
+ok('and one retry', /if \(retried\) throw err;/.test(appJs));
+
+// Progress counts COMPLETIONS. The old label was set before each request and
+// showed 12/12 while eleven were still in flight.
+ok('progress counts completions, not attempts', /done\+\+;/.test(appJs));
+ok('and a partial upload is an error, not a success', /frame\(s\) failed to upload/.test(appJs));
+ok('the result reports how many frames landed', /wall_frames'\)\.replace\('\{n\}', n\)/.test(appJs));
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

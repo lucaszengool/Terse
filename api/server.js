@@ -1402,13 +1402,20 @@ app.get('/api/health', (req, res) => {
        version that shipped with it. A shipped fix then never reaches anyone.
      · /m and the phone scripts — the shell and its code, which must match the
        API they talk to.
+     · /w/* — the wallpaper images. Each fetch is MEANT to return the next frame
+       in the ring; that is what makes the Shortcut's loop an animation rather
+       than the same picture set ten times. The edge cached one for 46 minutes
+       (age: 2776, cf-cache-status: HIT) and served it to every request, so a
+       correct twelve-frame deploy looked exactly like a broken one-frame deploy
+       from the phone. The endpoint already sends no-store itself; this is here
+       because that alone was evidently not what reached the edge.
 
    no-store rather than a shorter max-age: the point is that an intermediary
    must not hold these at all, and a max-age is advice a CDN has already been
    seen to ignore. The engines under /app-assets keep their own longer cache —
    they are large, they change rarely, and the service worker revalidates them.
    ------------------------------------------------------------------------- */
-const NEVER_CACHE = /^\/(sw\.js|manifest\.webmanifest|m|m\/.*|phone\/.*)$/;
+const NEVER_CACHE = /^\/(sw\.js|manifest\.webmanifest|m|m\/.*|phone\/.*|w\/.*)$/;
 app.use((req, res, next) => {
   if (req.method === 'GET' && NEVER_CACHE.test(req.path)) {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');

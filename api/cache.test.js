@@ -43,6 +43,14 @@ ok('the shim is never cached', re.test('/phone/terse-web.js'));
 ok('the capture code is never cached', re.test('/phone/capture.js'));
 ok('diag is never cached', re.test('/phone/diag.js'));
 
+/* The wallpaper images. Each fetch returns the NEXT frame, which is the whole
+   mechanism behind the Shortcut loop being an animation. The edge held one for
+   46 minutes and served it to everything, so a correct twelve-frame deploy was
+   indistinguishable from a broken one-frame deploy. */
+ok('wallpaper frames are never cached', re.test('/w/abc123.png'));
+ok('nor the transparent overlay', re.test('/w/abc123.overlay.png'));
+ok('nor the Live Photo clip', re.test('/w/abc123.mp4'));
+
 // The other side of the contract. These are large, they change rarely, and the
 // service worker revalidates them itself — sweeping them in would mean
 // re-downloading three quarters of a megabyte of Three.js on every launch.

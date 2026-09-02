@@ -26,6 +26,7 @@ linkRouter.verifyUser = async (raw) => (raw && raw !== 'bad' ? String(raw) : nul
 const app = express();
 app.use(express.json());
 app.use('/api/cloud/wallpaper', wallpaperRouter);
+app.get('/w/:token/:kind', wallpaperRouter.serveFrame);
 app.get('/w/:token', wallpaperRouter.serveFrame);
 const server = http.createServer(app);
 
@@ -118,7 +119,11 @@ const OTHER = 'user_wall_other';
   eq('first read succeeds', first.status, 200);
   eq('and is not ready yet', first.json.ready, false);
   eq('with no frames', first.json.frames, 0);
-  ok('but already has a URL', /\/w\/[A-Za-z0-9_-]{20,}\.png$/.test(first.json.url || ''));
+  /* Extensionless. A CDN caches by file extension and rewrote no-store to
+     max-age=300 on the .png form, serving one frame for forty-six minutes —
+     which for a rotating endpoint is not a slow animation but no animation. */
+  ok('but already has a URL', /\/w\/[A-Za-z0-9_-]{20,}$/.test(first.json.url || ''));
+  ok('and it carries no file extension', !/\.(png|jpe?g|mp4)$/i.test(first.json.url || ''));
   const url = new URL(first.json.url).pathname;
 
   // Nothing to serve yet — and it must not leak that the account exists.
@@ -190,7 +195,7 @@ const OTHER = 'user_wall_other';
   const vup = await req('POST', '/api/cloud/wallpaper/video?w=720&h=1560', { user: USER, body: mp4, type: 'video/mp4' });
   eq('the video uploads', vup.status, 200);
   ok('and is reported', !!vup.json.video);
-  ok('with an .mp4 URL beside the .png one', /\.mp4$/.test(vup.json.video_url || ''));
+  ok('with its own URL beside the frame one', /\/clip$/.test(vup.json.video_url || ''));
 
   const vurl = new URL(vup.json.video_url).pathname;
   const got = await req('GET', vurl);
@@ -259,7 +264,7 @@ const OTHER = 'user_wall_other';
   const oup = await req('POST', '/api/cloud/wallpaper/overlay', { user: USER, body: png(4, 8, 9, true), type: 'image/png' });
   eq('a transparent overlay uploads', oup.status, 200);
   ok('and is reported', !!oup.json.overlay);
-  ok('with its own URL', /\.overlay\.png$/.test(oup.json.overlay_url || ''));
+  ok('with its own URL', /\/overlay$/.test(oup.json.overlay_url || ''));
 
   const opath = new URL(oup.json.overlay_url).pathname;
   const ogot = await req('GET', opath);

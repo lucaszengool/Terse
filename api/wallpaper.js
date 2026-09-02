@@ -123,9 +123,25 @@ function dimensions(buf, kind) {
  *  as a PNG to a device deciding whether it can use it. */
 const contentTypeOf = (buf) => (imageKind(buf) === 'jpeg' ? 'image/jpeg' : 'image/png');
 
-function publicUrl(req, token) {
+/* Extensionless, on purpose, and this is not a style preference.
+ *
+ * These were /w/<token>.png, and a CDN in front of this caches by FILE
+ * EXTENSION: it rewrote the origin's no-store to max-age=300 and served one
+ * frame for forty-six minutes (age: 2776, cf-cache-status: HIT). The same
+ * middleware sends no-store for /m, which comes back DYNAMIC and uncached — the
+ * only difference between them is that one ends in .png.
+ *
+ * That is fatal here rather than merely slow, because each fetch is MEANT to
+ * return the NEXT frame. Caching it does not slow the animation down; it
+ * removes it, and leaves a correct twelve-frame deploy looking exactly like a
+ * broken one-frame deploy.
+ *
+ * Shortcuts' Get Contents of URL reads the Content-Type and does not care about
+ * the path, so nothing is lost. The old .png / .overlay.png / .mp4 forms still
+ * resolve, for anyone who already pasted one into a Shortcut. */
+function publicUrl(req, token, kind) {
   const host = process.env.PUBLIC_ORIGIN || `${req.protocol}://${req.get('host')}`;
-  return `${host}/w/${token}.png`;
+  return `${host}/w/${token}${kind ? '/' + kind : ''}`;
 }
 
 /** Reuse link.js's Clerk verification rather than keeping a second copy of the
@@ -165,11 +181,11 @@ function shape(req, userId) {
     url: publicUrl(req, row.token),
     // The animated one. Same token, different extension — a Live Photo needs a
     // video, and Shortcuts fetches it by URL exactly like the still.
-    video_url: publicUrl(req, row.token).replace(/\.png$/, '.mp4'),
+    video_url: publicUrl(req, row.token, 'clip'),
     video: video ? { bytes: video.bytes, updated_at: video.updated_at } : null,
     // The transparent layer, for the Overlay Images route — the one that keeps
     // the user's own wallpaper and only adds the writing.
-    overlay_url: publicUrl(req, row.token).replace(/\.png$/, '.overlay.png'),
+    overlay_url: publicUrl(req, row.token, 'overlay'),
     overlay: overlay ? { bytes: overlay.bytes, updated_at: overlay.updated_at } : null,
     slots: SLOTS,
     frames: slots.length,
@@ -298,11 +314,15 @@ router.delete('/', requireUser, (req, res) => {
  * plain "fetch, set wallpaper" automation gets a different one each run.
  */
 function serveFrame(req, res) {
+  /* Two shapes, one meaning.
+     The extensionless /w/<token>/overlay is what the app hands out now; the old
+     /w/<token>.overlay.png still resolves because it may already be sitting in
+     somebody's Shortcut. The suffix form checks .overlay.png BEFORE the plain
+     .png, since it ends in .png too and would otherwise serve a frame. */
   const raw = String(req.params.token || '');
-  const wantsVideo = /\.mp4$/i.test(raw);
-  // Checked BEFORE the plain .png suffix is stripped, since ".overlay.png" ends
-  // in .png too and would otherwise be served as an ordinary frame.
-  const wantsOverlay = /\.overlay\.png$/i.test(raw);
+  const kind = String(req.params.kind || '').toLowerCase();
+  const wantsVideo = kind === 'clip' || /\.mp4$/i.test(raw);
+  const wantsOverlay = kind === 'overlay' || /\.overlay\.png$/i.test(raw);
   const token = raw.replace(/\.overlay\.png$/i, '').replace(/\.(png|mp4)$/i, '');
   const row = token && db.getWallLinkByToken.get(token);
   if (!row) return res.status(404).type('text/plain').send('Not found');

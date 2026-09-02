@@ -1527,6 +1527,11 @@ app.get('/mobile', (req, res) => {
 
 // The wallpaper image itself. Above the SPA catch-all, and outside /api, because
 // an iOS Shortcut fetches it with no headers at all — the URL is the credential.
+/* Both shapes. The extensionless one is what the app hands out — a CDN caches
+   by file extension, and a cached wallpaper frame is a removed animation rather
+   than a slow one (see publicUrl in api/wallpaper.js). The suffixed form stays
+   so a Shortcut somebody already built keeps working. */
+app.get('/w/:token/:kind', wallpaperRouter.serveFrame);
 app.get('/w/:token', wallpaperRouter.serveFrame);
 
 // Unknown paths → a real 404.

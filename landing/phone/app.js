@@ -105,6 +105,12 @@
       pc_save: 'Save', pc_test: 'Test', pc_off: 'Remove',
       pc_saved: 'Saved', pc_fired: 'Fired — your phone should update',
       pc_failed: 'Pushcut did not answer. Is the Automation Server running?',
+      la_title: 'Put your agents in the Dynamic Island',
+      la_body: 'A Live Activity can only be created by a native app — a web page cannot start one on any iPhone, so this pushes to one that already can. Install ActivitySmith, pair the device, make an API key on their site with the same email, and paste it here. Terse then updates the Island on every frame your Mac sends. Their app, their branding, their free tier; nothing here runs until you paste a key.',
+      la_save: 'Save', la_test: 'Test', la_off: 'Remove',
+      la_saved: 'Saved — try Test', la_pushed: 'Pushed — look at your Island',
+      la_failed: 'That did not go through',
+      la_on: 'Live Activity via {name}', la_last: 'last update {t}', la_never: 'no update yet',
       pc_on: 'On · {shortcut}', pc_never: 'never fired yet', pc_last: 'last fired {t}',
       wall_deploy: 'Deploy to my iPhone',
       wall_deploy_note: 'Renders the wallpaper and puts it on your account. One step is left that no app can do for you — iOS lets nothing but you set a wallpaper — and Terse shows exactly what it is once this is done.',
@@ -225,6 +231,12 @@
       pc_save: '保存', pc_test: '测试', pc_off: '移除',
       pc_saved: '已保存', pc_fired: '已触发 —— 手机应该会更新',
       pc_failed: 'Pushcut 没有响应。自动化服务器开着吗？',
+      la_title: '把你的智能体放进灵动岛',
+      la_body: '灵动岛只有原生 App 能创建——网页在任何 iPhone 上都起不了，所以这里是推给一个已经做到的 App。装 ActivitySmith、配对设备、用同一个邮箱在它网站上建一个 API key，粘到这里。之后你 Mac 每推一帧，Terse 就更新一次灵动岛。它是别人的 App、别人的品牌、别人的免费额度；不粘 key 这里什么都不会跑。',
+      la_save: '保存', la_test: '测试', la_off: '移除',
+      la_saved: '已保存——点「测试」试试', la_pushed: '推出去了——看一眼灵动岛',
+      la_failed: '没成功',
+      la_on: '灵动岛（{name}）', la_last: '最近更新 {t}', la_never: '还没推过',
       pc_on: '已开启 · {shortcut}', pc_never: '还没触发过', pc_last: '上次触发 {t}',
       wall_deploy: '部署到我的 iPhone',
       wall_deploy_note: '渲染壁纸并存到你的账号上。最后还剩一步是任何 App 都替你做不了的——iOS 只允许你本人设置壁纸——做完这步 Terse 会明确告诉你那一步是什么。',
@@ -712,7 +724,7 @@
     if (tab === 'wallpaper') {
       renderWall();
       mountPreviewField();
-      if (T.signedIn() && !wallState) { loadWall(); loadPushcut(); }
+      if (T.signedIn() && !wallState) { loadWall(); loadPushcut(); loadLiveActivity(); }
     } else {
       unmountPreviewField();     // nothing is looking at it
     }
@@ -1254,6 +1266,76 @@
   });
   on($('pcOff'), 'click', function () {
     pcCall('DELETE').then(function () { pcState = null; renderPushcut(); }).catch(function () {});
+  });
+
+  /* ── The Dynamic Island ──────────────────────────────────────────────────
+     Same shape as Pushcut above, and for the same reason: the work happens on
+     somebody else's device and all this page holds is a credential it must
+     never show again.
+
+     Why a relay at all — a Live Activity can ONLY be created by ActivityKit,
+     which is native. No web app starts one, on any iPhone, at any price. The
+     one route that does not require shipping an app of our own is to push to
+     an app that already did that work and exposes it over HTTP. */
+  var laState = null;
+
+  function renderLiveActivity() {
+    var st = laState, lab = $('laState');
+    if (!lab) return;
+    var on = !!(st && st.configured);
+    $('laTest').classList.toggle('hide', !on);
+    $('laOff').classList.toggle('hide', !on);
+    if (!on) { lab.textContent = ''; return; }
+    // The key is a secret and never comes back; show the masked hint instead.
+    $('laKey').value = '';
+    $('laKey').placeholder = st.hint || '';
+    var bits = [t('la_on').replace('{name}', st.label || st.provider || '—')];
+    bits.push(st.last_pushed_at ? t('la_last').replace('{t}', ago(st.last_pushed_at)) : t('la_never'));
+    if (st.last_error) bits.push('⚠ ' + st.last_error);
+    lab.textContent = bits.join(' · ');
+  }
+
+  function loadLiveActivity() {
+    if (!T.signedIn()) return Promise.resolve(null);
+    return T.authToken().then(function (tok) {
+      if (!tok) return null;
+      return fetch('/api/cloud/liveactivity', { headers: { Authorization: 'Bearer ' + tok } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { laState = j; renderLiveActivity(); return j; });
+    }).catch(function () { return null; });
+  }
+
+  function laCall(method, body) {
+    return T.authToken().then(function (tok) {
+      return fetch('/api/cloud/liveactivity' + (method === 'TEST' ? '/test' : ''), {
+        method: method === 'TEST' ? 'POST' : method,
+        headers: Object.assign({ Authorization: 'Bearer ' + tok },
+          body ? { 'Content-Type': 'application/json' } : {}),
+        body: body ? JSON.stringify(body) : undefined,
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+          return j;
+        });
+      });
+    });
+  }
+
+  on($('laSave'), 'click', function () {
+    var key = ($('laKey').value || '').trim();
+    if (!key) return;
+    laCall('PUT', { provider: 'activitysmith', api_key: key }).then(function (j) {
+      laState = j; renderLiveActivity(); toast(t('la_saved'));
+    }).catch(function (e) { toast(e.message || t('la_failed')); });
+  });
+  on($('laTest'), 'click', function () {
+    laCall('TEST').then(function (j) {
+      toast(j && j.pushed ? t('la_pushed') : (j && j.reason ? j.reason : t('la_failed')));
+      return loadLiveActivity();
+    }).catch(function () { toast(t('la_failed')); });
+  });
+  on($('laOff'), 'click', function () {
+    laCall('DELETE').then(function () { laState = null; renderLiveActivity(); }).catch(function () {});
   });
 
     /* ── Backdrops ───────────────────────────────────────────────────────────

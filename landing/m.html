@@ -409,6 +409,24 @@
           </div>
           <p class="tiny" id="pcState"></p>
         </details>
+
+        <!-- The Dynamic Island. Not ours, and it cannot be: a Live Activity is
+             ActivityKit only, so a web app cannot start one at any price. What
+             it CAN do is push to an app that already did that work. -->
+        <details class="fold">
+          <summary data-t="la_title">Put your agents in the Dynamic Island</summary>
+          <p data-t="la_body"></p>
+          <div class="row">
+            <input type="text" id="laKey" class="grow" placeholder="ActivitySmith API key"
+                   autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+          <div class="row">
+            <button class="btn grow" id="laSave" type="button" data-t="la_save">Save</button>
+            <button class="btn ghost hide" id="laTest" type="button" data-t="la_test">Test</button>
+            <button class="btn ghost danger hide" id="laOff" type="button" data-t="la_off">Remove</button>
+          </div>
+          <p class="tiny" id="laState"></p>
+        </details>
           <button class="btn ghost wide" id="wallRotate" type="button" data-t="wall_rotate">Reset this link</button>
         </div>
       </div>

@@ -14,6 +14,48 @@
        只要这里还留着 #05060a,置顶后就是一块盖住整个屏幕的黑板。 */
     html.overlay, html.overlay body, html.overlay #stage { background: transparent !important; }
     #stage{position:fixed;inset:0;display:block;width:100vw;height:100vh}
+    /* ── 消息投屏 ─────────────────────────────────────────────────────────── */
+    #msgLayer{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:6;
+      display:flex;flex-direction:column;align-items:center;gap:14px;pointer-events:none;
+      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','PingFang SC',system-ui,sans-serif;
+      max-width:min(78vw,980px)}
+    #msgLayer.hidden{display:none}
+    #msgBig{text-align:center;transition:opacity .5s,transform .5s}
+    #msgBig.swap{opacity:0;transform:translateY(9px)}
+    .mb-meta{display:flex;align-items:center;justify-content:center;gap:8px;
+      font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+      color:var(--accent,#e146eb);text-shadow:0 0 18px color-mix(in srgb,var(--accent,#e146eb) 55%,transparent)}
+    .mb-dot{opacity:.5}
+    .mb-room:empty,.mb-dot.off{display:none}
+    .mb-sender{margin-top:7px;font-size:34px;font-weight:800;color:#fff;letter-spacing:.01em;
+      text-shadow:0 3px 26px rgba(0,0,0,.66)}
+    .mb-body{margin-top:10px;font-size:20px;font-weight:600;line-height:1.5;
+      color:rgba(255,255,255,.9);text-shadow:0 2px 18px rgba(0,0,0,.6);
+      overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+    /* 悬停后展开的那一层:全文 + 直接回复 */
+    #msgPanel{width:min(70vw,720px);padding:16px 18px 14px;border-radius:18px;
+      opacity:0;transform:translateY(-8px) scale(.985);pointer-events:none;
+      transition:opacity .22s ease,transform .22s cubic-bezier(.2,.9,.25,1);
+      background:rgba(10,12,20,.88);border:1px solid rgba(255,255,255,.14);
+      -webkit-backdrop-filter:blur(26px) saturate(1.25);backdrop-filter:blur(26px) saturate(1.25);
+      box-shadow:0 26px 70px rgba(0,0,0,.62)}
+    #msgLayer.open #msgPanel{opacity:1;transform:none;pointer-events:auto}
+    .mp-head{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:800;
+      letter-spacing:.09em;text-transform:uppercase;color:var(--accent,#e146eb)}
+    .mp-head .mp-time{margin-left:auto;color:rgba(255,255,255,.42);letter-spacing:.04em}
+    .mp-sender{margin-top:9px;font-size:15px;font-weight:800;color:#fff}
+    .mp-body{margin-top:6px;font-size:14px;line-height:1.6;color:rgba(255,255,255,.88);
+      max-height:34vh;overflow:auto;white-space:pre-wrap;word-break:break-word}
+    .mp-reply{display:flex;gap:8px;margin-top:13px}
+    .mp-reply input{flex:1;padding:9px 12px;border-radius:10px;font-size:13px;color:#fff;
+      background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);outline:none}
+    .mp-reply input:focus{border-color:var(--accent,#e146eb)}
+    .mp-reply button{padding:9px 18px;border-radius:10px;border:0;cursor:pointer;
+      font-size:13px;font-weight:800;color:#0b0c12;background:var(--accent,#e146eb)}
+    .mp-reply button:disabled{opacity:.45;cursor:default}
+    .mp-note{margin-top:8px;font-size:10.5px;line-height:1.5;color:rgba(255,255,255,.45);min-height:14px}
+
     #panel{position:fixed;left:30px;bottom:30px;padding:15px 20px;border-radius:18px;
       background:rgba(10,12,20,.30);backdrop-filter:blur(18px) saturate(1.2);
       -webkit-backdrop-filter:blur(18px) saturate(1.2);border:1px solid rgba(255,255,255,.11);
@@ -49,6 +91,30 @@
 </head>
 <body>
   <canvas id="stage"></canvas>
+
+  <!-- ── 消息投屏 ───────────────────────────────────────────────────────────
+       壁纸窗口是点击穿透的(桌面层和置顶层都是),所以这一块不能靠 DOM 的
+       mouseenter 来展开 —— 指针根本不会进到这个窗口里来。做法是把这块的屏幕
+       矩形报给 Rust,由那边轮询真实光标位置,进出时才临时打开这个窗口的鼠标
+       事件并广播 wallpaper-hover。和岛屿那套 dash cursor poll 是同一个思路。 -->
+  <div id="msgLayer" class="hidden">
+    <div id="msgBig">
+      <div class="mb-meta"><span class="mb-app"></span><span class="mb-dot">·</span><span class="mb-room"></span></div>
+      <div class="mb-sender"></div>
+      <div class="mb-body"></div>
+    </div>
+    <div id="msgPanel">
+      <div class="mp-head"><span class="mp-app"></span><span class="mp-room"></span><span class="mp-time"></span></div>
+      <div class="mp-sender"></div>
+      <div class="mp-body"></div>
+      <div class="mp-reply">
+        <input id="mpInput" type="text" placeholder="回复…" autocomplete="off" spellcheck="false">
+        <button id="mpSend">发送</button>
+      </div>
+      <div class="mp-note"></div>
+    </div>
+  </div>
+
   <div id="panel">
     <div class="brand"><span class="dot"></span>Terse · Live</div>
     <div class="big" id="pTokens">0</div>
@@ -261,6 +327,12 @@
                            style: cfg.style,
                            // 用户自己调的那份差量,和 style 一起走同一条 Pro 闸门。
                            custom: cfg.customStyle || null,
+                           // 保存下来的 3D 机位。引擎对非 Pro 一律把 on 与掉,
+                           // 所以和 style 一样照传即可。
+                           view3d: cfg.view3d || null,
+                           // 3D 按**许可**卖,不按引擎:付了钱但把引擎留在默认
+                           // mineradio 的人,照样该能把桌面上的壁纸转起来。
+                           proView: proOK !== false,
                            pro: cfg.engine === 'cinematic' && proOK !== false });
       window.wp = wp;   // dev aid: drive from console / preview harness
       wp.start();
@@ -334,10 +406,110 @@
       applyOverlay(overlayOK());
       wp.setTheme(cfg.theme); wp.setQuality(cfg.quality|0); wp.setAngle(cfg.angle|0);
       wp.setIntensity(+cfg.intensity || 1);
+      // 3D 自由视角。控制面板里一拖,桌面上这幅画就跟着转 —— 那是这个功能最直接的
+      // 演示方式。正在桌面上拖的时候不接受外来的机位,否则自己的手会被覆盖掉。
+      if (wp.setView3D && !(wp.isOrbiting && wp.isOrbiting())) wp.setView3D(cfg.view3d || { on:false });
+      apply3dMode();
       applyAccent(cfg.theme);
       panel.classList.toggle('off', cfg.showPanel === false);
       if (cfg.showPanel === false) { wp.setAgents([]); wp.setStageItems([]); wp.setAgentLog && wp.setAgentLog(null); } // clear in-scene overlays
     }
+    /* ── 3D 自由视角:在**自己的桌面上**拖 ──────────────────────────────────
+       桌面层的窗口收得到光标位置,收不到点击 —— Finder 画图标的那个窗口铺满屏幕、
+       压在我们上面,而且框选是它在做。所以开着 3D 的时候,Rust 把这层抬到图标层之上
+       并变透明(wallpaper_set_3d_mode)。
+
+       抬上去之后,"这一下归谁"完全由**光标位置**决定,每次光标动都重算一次:
+
+         · 指针压在某个桌面图标上 → 立刻还回穿透,那一下点击、双击、拖动都归 Finder,
+           文件照选照开,和没装这个东西一样;
+         · 指针在空壁纸上         → 我们接管,按下去就是转视角、滚轮就是推拉。
+
+       图标矩形来自 AX(desktopIconRects)。**拿不到就一律不接管** —— 少一个功能,
+       好过让人点不动自己的文件。app 的窗口不用管:我们远在普通窗口之下,它们的点击
+       根本不会落到这里。 */
+    let icon3d = [], icon3dT = 0, mode3d = false, icon3dOk = false, win3d = [];
+
+    function view3dActive(){
+      // 问引擎,不问配置文件:引擎那份是过了 sanitizeView 的,授权已经与在里面。
+      // 直接读 cfg.view3d.on 的话,一份掉出 Pro(或手改过)的配置就能把这层窗口
+      // 抬起来 —— 抬窗口是 Pro 的能力,判断只该有一处。
+      return !!(wp && wp.attachOrbit && wp.getView3D && wp.getView3D().on);
+    }
+
+    async function refreshIcons(){
+      if (!T || !T.desktopIconRects) { icon3dOk = false; icon3d = []; return; }
+      try {
+        const r = await T.desktopIconRects();
+        icon3dOk = !!(r && r.ok);
+        icon3d = (r && r.rects) || [];
+      } catch (e) { icon3dOk = false; icon3d = []; }
+      // 别人的窗口也要躲开。桌面层用不着这一条(我们远在普通窗口之下,那些点击根本
+      // 落不到这里),但**置顶模式**下这层在所有窗口之上 —— 那时不躲,指针一进到
+      // Chrome 上我们就把人家的点击吞了。
+      try {
+        const w = await T.listOpenWindows();
+        win3d = (w && w.windows) || [];
+      } catch (e) { win3d = []; }
+    }
+
+    /** 屏幕坐标(左上原点)落在某个图标上? 留一圈余量:图标的可点区域比它的框大一点,
+     *  而且宁可判成"是图标"(把鼠标还回去),也不要判错成"是空壁纸"(吞掉一次点击)。 */
+    function overIcon(x, y){
+      const PAD = 10;
+      for (const r of icon3d) {
+        if (x >= r.x - PAD && x <= r.x + r.w + PAD && y >= r.y - PAD && y <= r.y + r.h + PAD) return true;
+      }
+      return false;
+    }
+
+    /** 指针底下有别人的窗口? */
+    function overWindow(x, y){
+      for (const r of win3d) {
+        if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return true;
+      }
+      return false;
+    }
+
+    /** 这一下该归我们吗 —— 空壁纸才算。 */
+    function bareSpot(x, y){ return !overIcon(x, y) && !overWindow(x, y); }
+
+    /* ── 悬停视差 ─────────────────────────────────────────────────────────
+       真正的"按住拖"要满足一长串条件:窗口抬到图标层之上、能读到图标矩形(辅助功能
+       授权)、系统把那一下交给我们。任何一环缺了,桌面上就**一点反应都没有** ——
+       而"没反应"和"没装这个功能"在用户眼里是一模一样的。
+
+       这一层不一样:它只用光标位置(那是壁纸窗口在桌面层**本来就收得到**的东西),
+       不吃任何点击、不需要任何授权。鼠标一动,画面就跟着轻轻转 —— 3D 是活的,
+       这件事第一秒就成立;能不能按住拖,是它之上的加分项。
+
+       幅度刻意小:这是壁纸,不是游戏。它绕着用户自己存的那个机位轻轻晃,而不是
+       把机位改掉 —— 所以永远不写盘。 */
+    const HOVER_AZ = 0.30, HOVER_EL = 0.18;
+
+    function hoverParallax(x, y){
+      if (!wp || !wp.setView3D || !view3dActive()) return;
+      if (orbitOn) return;                 // 人正按着拖,别跟他抢
+      const base = cfg.view3d || {};
+      const sw = window.screen.width || 1, sh = window.screen.height || 1;
+      const nx = Math.max(-1, Math.min(1, (x / sw) * 2 - 1));
+      const ny = Math.max(-1, Math.min(1, (y / sh) * 2 - 1));
+      wp.setView3D({ on: true,
+                     az: (+base.az || 0) + nx * HOVER_AZ,
+                     el: (+base.el || 0) - ny * HOVER_EL,
+                     dist: +base.dist || 1 });
+    }
+
+    async function apply3dMode(){
+      const want = view3dActive();
+      if (want === mode3d) return;
+      mode3d = want;
+      if (!T || !T.wallpaperSet3dMode) return;
+      try { await T.wallpaperSet3dMode(want); } catch (e) { mode3d = false; return; }
+      if (want) { await refreshIcons(); clearInterval(icon3dT); icon3dT = setInterval(refreshIcons, 4000); }
+      else { clearInterval(icon3dT); icon3dT = 0; icon3d = []; }
+    }
+
     function pulseForDelta(d){
       if (d <= 0) return;
       const s = Math.min(1.8, 0.12 + Math.log10(1 + d) * 0.42);
@@ -534,6 +706,136 @@
       ]);
     }
 
+    /* ══════════════ 消息投屏 ══════════════
+       数据来自通知中心(见 messages.rs):一条通知就是 app + 谁 + 哪个群 + 正文。
+       这里只负责显示:大字是预览,鼠标移上去才展开全文和回复框。
+
+       两个必须知道的约束:
+        · 壁纸窗口点击穿透,DOM 的 mouseenter 永远不会触发 —— 所以进出由 Rust
+          轮询真实光标位置来判定,这里只听 wallpaper-hover 事件。
+        · 正文会显示在桌面上,谁看见你的屏幕就看见它,置顶时尤其如此。
+          cfg.msgPreview=false 时只显示"谁发的",不显示任何正文。 */
+    let msgs = [], msgIdx = 0, msgHot = false, curMsg = null;
+
+    function fmtTime(ts){
+      const d = new Date((ts||0) * 1000), n = new Date();
+      const p2 = (x) => String(x).padStart(2,'0');
+      const hm = p2(d.getHours()) + ':' + p2(d.getMinutes());
+      return (d.toDateString() === n.toDateString()) ? hm : (d.getMonth()+1) + '/' + d.getDate() + ' ' + hm;
+    }
+
+    function renderMsg(m){
+      if (!m) return;
+      curMsg = m;
+      const L = document.getElementById('msgLayer');
+      const big = document.getElementById('msgBig');
+      if (!L || !big) return;
+      const q = (sel) => L.querySelector(sel);
+      big.classList.add('swap');            // 先淡出再换字,避免硬跳
+      setTimeout(() => {
+        q('.mb-app').textContent  = m.app_name || '';
+        q('.mb-room').textContent = m.group || '';
+        q('.mb-dot').classList.toggle('off', !m.group);
+        q('.mb-sender').textContent = m.sender || '';
+        q('.mb-body').textContent = (cfg.msgPreview === false) ? '' : ('\u300c' + (m.body || '') + '\u300d');
+        q('.mp-app').textContent  = m.app_name || '';
+        q('.mp-room').textContent = m.group ? ('\u00b7 ' + m.group) : '';
+        q('.mp-time').textContent = fmtTime(m.ts);
+        q('.mp-sender').textContent = m.sender || '';
+        q('.mp-body').textContent = m.body || '';
+        q('.mp-note').textContent = '';
+        const inp = document.getElementById('mpInput');
+        if (inp) inp.value = '';
+        big.classList.remove('swap');
+        reportHotRect();
+      }, 260);
+    }
+
+    /** 把大字那块的屏幕矩形报给 Rust —— 它据此判断光标有没有压上来。 */
+    function reportHotRect(){
+      try {
+        const el = document.getElementById('msgBig');
+        if (!el || !T || !T.wallpaperSetHotRect) return;
+        const r = el.getBoundingClientRect();
+        T.wallpaperSetHotRect(Math.round(r.left), Math.round(r.top),
+                              Math.round(r.width), Math.round(r.height));
+      } catch (e) {}
+    }
+
+    function nextMsg(){
+      if (msgHot || !msgs.length) return;   // 展开时不要换 —— 人正在读
+      msgIdx = (msgIdx + 1) % msgs.length;
+      renderMsg(msgs[msgIdx]);
+    }
+
+    async function pullMessages(){
+      try {
+        if (!T || !T.messagesForWallpaper) return;
+        // 走 for_wallpaper 而不是 recent:被用户关掉的 app 在 Rust 那边就滤掉了,
+        // 免得两处各滤一遍、还滤得不一样。
+        const list = await T.messagesForWallpaper(20);
+        if (!Array.isArray(list) || !list.length) return;
+        const fresh = list[0] && (!msgs[0] || list[0].id !== msgs[0].id);
+        msgs = list;
+        document.getElementById('msgLayer')?.classList.remove('hidden');
+        if (fresh) { msgIdx = 0; renderMsg(msgs[0]); }   // 新消息立刻插队
+        else if (!curMsg) renderMsg(msgs[0]);
+      } catch (e) {}
+    }
+
+    function initMessages(){
+      if (cfg.messages === false) return;
+      pullMessages();
+      setInterval(pullMessages, 8000);
+      setInterval(nextMsg, 9000);
+      try {
+        if (window.__TAURI__ && window.__TAURI__.event) {
+          window.__TAURI__.event.listen('wallpaper-hover', (ev) => {
+            msgHot = ev.payload === true;
+            document.getElementById('msgLayer')?.classList.toggle('open', msgHot);
+          });
+        }
+      } catch (e) {}
+
+      const send = document.getElementById('mpSend');
+      const inp  = document.getElementById('mpInput');
+      const note = () => document.querySelector('#msgPanel .mp-note');
+      // 两步:先打开会话交给人看,确认了再发(微信不给读界面,机器无法自证收件人)
+      let armed = false;
+      const resetSend = () => { armed = false; if (send) send.textContent = '\u6253\u5f00\u4f1a\u8bdd'; };
+      resetSend();
+      const doSend = async () => {
+        const text = (inp && inp.value || '').trim();
+        if (!text || !curMsg) return;
+        const n = note();
+        send.disabled = true;
+        try {
+          if (!armed) {
+            const r = await T.messagesOpenChat(curMsg.app_id, curMsg.group || curMsg.sender);
+            if (r && r.ok) {
+              armed = true;
+              send.textContent = '\u786e\u8ba4\u53d1\u9001';
+              if (n) n.textContent = '\u5df2\u6253\u5f00\u4f1a\u8bdd \u2014\u2014 \u8bf7\u5148\u786e\u8ba4\u662f\u300c'
+                                   + (curMsg.group || curMsg.sender) + '\u300d\uff0c\u518d\u70b9\u53d1\u9001\u3002';
+            } else if (n) { n.textContent = '\u6253\u4e0d\u5f00\uff1a' + ((r && r.error) || ''); }
+          } else {
+            const r = await T.messagesSendOpen(curMsg.app_id, text);
+            if (n) n.textContent = (r && r.ok) ? '\u5df2\u53d1\u9001' : ('\u5931\u8d25\uff1a' + ((r && r.error) || ''));
+            if (r && r.ok && inp) inp.value = '';
+            resetSend();
+          }
+        } catch (e) {
+          if (n) n.textContent = '\u5931\u8d25\uff1a' + (e && e.message ? e.message : e);
+          resetSend();
+        }
+        send.disabled = false;
+      };
+      send && send.addEventListener('click', doSend);
+      inp && inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !armed) doSend(); });
+      inp && inp.addEventListener('input', () => { if (armed) resetSend(); });
+      window.addEventListener('resize', reportHotRect);
+    }
+
     async function boot(){
       const c = await settle(T && T.getWallpaperConfig && T.getWallpaperConfig(), 3000, 'getWallpaperConfig');
       if (c && c !== LATE) cfg = Object.assign(cfg, c);
@@ -558,6 +860,7 @@
       // than an opaque sheet, which is the difference between "the wallpaper did
       // not come up" and "the screen is covered and cannot be dismissed".
       applyOverlay(overlayOK());
+      initMessages();
       await loadEngines();
       try {
         mountEngine();
@@ -594,12 +897,16 @@
         try { document.documentElement.classList.add('overlay'); } catch (e) {}
         try { if (T && T.relevelWallpaperWindow) T.relevelWallpaperWindow(false); } catch (e) {}
       }
+      // 配置里存着 3D 的话,开机就要把窗口摆成能拖的样子 —— 否则要等到用户下一次
+      // 改配置才生效,而他上次关掉 app 时明明是开着的。
+      apply3dMode();
       window.__terseWallpaperBooted = true;   // disarms the dead-man's switch
       reportOverlayState('boot effective=' + JSON.stringify(effective));
       setInterval(async () => {
         const was = proOK;
         await refreshEntitlement();
         if (was !== proOK && cfg.engine === 'cinematic') mountEngine();
+        if (was !== proOK) apply3dMode();     // 掉出 Pro 就该把抬起来的这层放回去
         if (was !== proOK) {
           // 只请 Rust 重新判定,自己不下结论 —— 结果会由 wallpaper-overlay 事件推回来。
           // relevel 而不是 setWallpaperOverlay:后者会写盘,等于用一次许可查询的
@@ -618,6 +925,9 @@
       // actual deltas) and agent activity (setActivity), so the 律动 always means something.
       if (window.__TAURI__?.event?.listen){
         window.__TAURI__.event.listen('wallpaper-config', ev => applyConfig(ev.payload || {}));
+        // 抬到图标层之上时窗口是透明的 —— 页面必须同时停止画自己的底色,
+        // 否则那就是一块盖住桌面图标的黑板(和「始终置顶」同一个坑,同一套画法)。
+        window.__TAURI__.event.listen('wallpaper-lift', ev => applyOverlay(!!ev.payload || overlayOK()));
       }
       document.addEventListener('visibilitychange', () => { if (!wp) return; document.hidden ? wp.stop() : wp.start(); });
       window.addEventListener('resize', () => wp && wp.resize());
@@ -642,9 +952,91 @@
       if (!core) return;
       var armed = false, armTimer = 0, hint = null, lastHover = null;
 
+      /* ── 在自己的桌面上把这幅画转过去(3D 自由视角,Pro)─────────────────
+         同一把钥匙(⌘⇧W)开的还是同一扇门:壁纸暂时收下鼠标。区别只在于开着 3D
+         的时候,这段时间里除了能点数字,还能拖着转、滚轮推拉。
+
+         必须是**有头有尾的一段**,不能是常开:壁纸铺满整个屏幕,常开就等于桌面
+         再也点不动。所以它自己会过期(45 秒,每次交互续上),Esc 也随时关得掉。
+
+         为什么不是"鼠标一到就自动进入":上面那套自动 arm 是靠原生轮询光标做的,
+         判据是"指针正好压在某个字上"。转视角没有这样一个判据 —— 整幅画都是它的
+         热区,自动化的结果就是壁纸一直在抢鼠标。 */
+      var orbitOn = false, orbitTimer = 0, dragGuard = 0, lastArmAt = 0, orbitMoved = false;
+      var ORBIT_SECS = 45000;
+
+      function canOrbit() {
+        return !!(wp && wp.attachOrbit && cfg.view3d && cfg.view3d.on);
+      }
+
+      /** 会话续命。开场和每次交互都走这里。 */
+      function bumpOrbitTimer() {
+        clearTimeout(orbitTimer);
+        // 开着 3D 时不存在"到点收工":该不该接管由指针位置每次都重算,离开空壁纸
+        // 自然就还回去了。这里只负责给原生那道 75 秒看门狗续期。
+        if (mode3d) {
+          orbitTimer = setTimeout(function () {
+            if (!orbitOn) return;
+            lastArmAt = Date.now();
+            core.invoke('wallpaper_set_interactive', { on: true }).catch(function () {});
+            bumpOrbitTimer();
+          }, 20000);
+          return;
+        }
+        orbitTimer = setTimeout(function () { setOrbit(false); }, ORBIT_SECS);
+      }
+
+      /** 机位变了(拖/滚都算)。只续命 + 记时间戳,写盘留到松手那一刻。 */
+      function onOrbitChange() {
+        dragGuard = Date.now();
+        orbitMoved = true;
+        // 原生那边还有一道 75 秒的看门狗(页面死了也要把鼠标还回去)。转得久一点
+        // 很正常,所以每 20 秒续一次期 —— 不续,人正拖着,鼠标会被收走。
+        if (dragGuard - lastArmAt > 20000) {
+          lastArmAt = dragGuard;
+          core.invoke('wallpaper_set_interactive', { on: true }).catch(function () {});
+        }
+        bumpOrbitTimer();
+      }
+
+      /** 把这一次转好的机位落到 wallpaper.json。写在会话结束时,而不是每帧 ——
+       *  一次拖动是几十上百个事件,每个都写盘就是几十次磁盘写 + 几十次全窗口广播。 */
+      function saveView() {
+        // 开了一下又关掉、什么都没动:不写盘。一次写盘会向所有窗口广播一次配置。
+        if (!orbitMoved) return;
+        if (!wp || !wp.getView3D || !T || !T.setWallpaperConfig) return;
+        cfg.view3d = wp.getView3D();
+        try { T.setWallpaperConfig(cfg); } catch (e) {}
+      }
+
+      function setOrbit(on) {
+        if (on === orbitOn) return;
+        if (on) {
+          // attachOrbit 对非 Pro 直接返回 false —— 授权判断留在引擎那一处,
+          // 这里不再抄一遍(抄一遍就意味着两处会各自漂移)。
+          // wheelAlways:桌面上没有"页面"可以滚,两指一滑就该是推拉。
+          if (!canOrbit() || !wp.attachOrbit(canvas, onOrbitChange, { wheelAlways: true })) return;
+          orbitOn = true;
+          orbitMoved = false;      // 开一下又关掉、什么都没动 → 不写盘
+          setArmed(true);
+          bumpOrbitTimer();
+        } else {
+          orbitOn = false;
+          if (wp && wp.detachOrbit) wp.detachOrbit();
+          clearTimeout(orbitTimer);
+          saveView();
+          setArmed(false);
+        }
+        showHint(armed);
+      }
+
       function setArmed(on) {
+        // 转视角期间不许把鼠标还回去:自动 arm 那套的判据是"指针压在字上",
+        // 而拖动时指针大部分时间都不在字上 —— 让它说了算,拖到一半就断手。
+        if (!on && orbitOn) return;
         if (armed === on) return;
         armed = on;
+        lastArmAt = on ? Date.now() : 0;
         core.invoke('wallpaper_set_interactive', { on: on }).catch(function () {});
         document.body.style.cursor = on ? 'default' : 'none';
         showHint(on);
@@ -665,7 +1057,9 @@
             'pointer-events:none;opacity:0;transition:opacity .18s;z-index:9';
           document.body.appendChild(hint);
         }
-        hint.textContent = WT('wpp_click_hint', 'Click any number');
+        hint.textContent = orbitOn
+          ? WT('wpp_orbit_hint', 'Drag to turn · scroll to zoom · double-click to reset · Esc to finish')
+          : WT('wpp_click_hint', 'Click any number');
         hint.style.opacity = (on && !lastHover) ? '1' : '0';
       }
 
@@ -677,22 +1071,48 @@
          wallpaper borrows the cursor for the width of a number and gives it
          straight back. No shortcut to discover: hover a number, click it. */
       if (window.__TAURI__.event) {
-        window.__TAURI__.event.listen('wallpaper-arm-toggle', function () { setArmed(!armed); });
+        // ⌘⇧W(控制面板上的「在桌面上调整」也发这个事件)。开着 3D 就进转视角
+        // 的那一段,否则还是原来的"数字变按钮"。
+        window.__TAURI__.event.listen('wallpaper-arm-toggle', function () {
+          if (orbitOn) { setOrbit(false); return; }
+          if (canOrbit()) { setOrbit(true); if (orbitOn) return; }
+          setArmed(!armed);
+        });
         window.__TAURI__.event.listen('wallpaper-cursor', function (ev) {
           if (!wp || !wp.hitTest) return;
           var pt = ev.payload || [];
           // Cocoa is bottom-left origin and in points; the DOM is top-left.
-          var x = pt[0], y = (window.screen.height - pt[1]);
+          // Windows sends top-left already and says so with a third element —
+          // flipping those would put the pointer at the wrong end of the screen,
+          // and every icon test would then answer about somewhere else entirely.
+          var x = pt[0], y = pt[2] ? pt[1] : (window.screen.height - pt[1]);
           // The wallpaper covers the whole screen, so screen == client here.
           var hit = wp.hitTest(x, y);
           var g = hit && hit.glyph;
           if (g !== lastHover) { lastHover = g; wp.setHover(g); }
+          // ── 开着 3D 的时候,鼠标归**位置**说了算 ──────────────────────────
+          // 指针在空壁纸上就交给我们(按下去 = 转视角),压在图标上就立刻还回去
+          // (那一下归 Finder,文件照选照开)。icon3dOk 为假 = 图标读不出来,
+          // 那就一次也不接管。
+          // 光标一动,画面就跟着轻轻转。不需要授权,也不吃点击 —— 桌面上"3D 是活的"
+          // 靠这一层保证,按住拖是它之上的加分项。
+          hoverParallax(x, y);
+          if (mode3d && icon3dOk) {
+            var bare = bareSpot(x, y);
+            if (bare && !orbitOn) setOrbit(true);
+            else if (!bare && orbitOn) setOrbit(false);
+            return;
+          }
+          // 转视角那一段里,鼠标归拖动;这套"压在字上才 arm"的自动判据在那时
+          // 只会把窗口反复收回去。
+          if (orbitOn) return;
           if (g && !armed) setArmed(true);
           else if (!g && armed) setArmed(false);
         });
       }
       window.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') setArmed(false);
+        if (e.key !== 'Escape') return;
+        if (orbitOn) setOrbit(false); else setArmed(false);
       });
 
       window.addEventListener('mousemove', function (e) {
@@ -706,8 +1126,11 @@
 
       window.addEventListener('click', function (e) {
         if (!armed || !wp || !wp.hitTest) return;
+        // 拖完松手浏览器还会补一个 click。不挡掉的话,每转一次视角都会被判成
+        // "点在空处" → 立刻散场,转视角这件事就永远做不完一次。
+        if (Date.now() - dragGuard < 350) return;
         var hit = wp.hitTest(e.clientX, e.clientY);
-        if (!hit) { setArmed(false); return; }      // click on empty field = dismiss
+        if (!hit) { if (orbitOn) setOrbit(false); else setArmed(false); return; }  // click on empty field = dismiss
         var g = hit.glyph;
         // Route by what the glyph IS. These are the same kinds the engine already
         // tags for colour, so no new taxonomy is needed.

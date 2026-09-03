@@ -4470,6 +4470,7 @@ pub fn run() {
             notifications::toast_hide,
             notifications::take_pending_toasts,
             wallpaper_set_3d_mode,
+            desktop_icon_rects,
             wallpaper_set_interactive,
             notifications::toast_action,
             // ── Parity: circuit breaker ──
@@ -6721,6 +6722,10 @@ fn focus_app(app: String) {
 /// drop the window back onto the desktop when it disarms.
 static WP_3D_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
+/// The cursor feed is started by the first 3D activation and then parks on
+/// WP_3D_MODE, so a user who never turns 3D on never gets the thread at all.
+static WP_CURSOR_FEED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Every "armed" call takes a new number; the watchdog compares it on wake and
 /// stands down if anything happened in between.
 static WP_INTERACTIVE_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -6798,6 +6803,12 @@ fn wallpaper_set_3d_mode(app: AppHandle, on: bool) -> bool {
     use std::sync::atomic::Ordering;
     WP_3D_MODE.store(on, Ordering::SeqCst);
     let Some(win) = app.get_webview_window("wallpaper") else { return false };
+    // Started once, on the first activation, rather than at launch: the feed is
+    // useless while 3D is off and there is no reason to poll the cursor for
+    // every user who never turns it on.
+    if on && !WP_CURSOR_FEED.swap(true, Ordering::SeqCst) {
+        start_wallpaper_cursor_feed(app.clone());
+    }
     // Already topmost for Pro's always-on-top overlay? Then it is above
     // everything and already transparent — moving it would only demote it.
     let overlay = overlay_allowed(&get_wallpaper_config());
@@ -6942,4 +6953,215 @@ fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
         });
     }
     true
+}
+
+/// Where every desktop icon is, in screen coordinates.
+///
+/// The page uses this to decide, per cursor position, whether a click is its own
+/// or the user's: over an icon it hands the mouse straight back so the file
+/// selects and opens as if Terse were not installed; over bare wallpaper it takes
+/// the drag. So the contract that matters is not the rectangles, it is:
+///
+///   **`ok: false` and an empty `rects` must stay distinguishable.** A clean
+///   desktop genuinely has no icons and taking over there is correct. Failing to
+///   READ the icons and assuming none means eating clicks on the user's files.
+///   Every failure path below returns ok:false, and the page never takes over
+///   without ok:true.
+///
+/// Explorer draws the icons in a SysListView32, and LVM_GETITEMRECT fills a RECT
+/// through a pointer — which it dereferences in ITS address space, not ours. So
+/// the rectangle has to be allocated inside explorer.exe, the message sent, and
+/// the result read back. Passing a local pointer here silently returns garbage.
+#[tauri::command]
+fn desktop_icon_rects() -> serde_json::Value {
+    use windows::core::w;
+    use windows::Win32::Foundation::{CloseHandle, HANDLE, LPARAM, POINT, RECT, WPARAM};
+    use windows::Win32::System::Diagnostics::Debug::{ReadProcessMemory, WriteProcessMemory};
+    use windows::Win32::System::Memory::{
+        VirtualAllocEx, VirtualFreeEx, MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_READWRITE,
+    };
+    use windows::Win32::System::Threading::{
+        OpenProcess, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        ClientToScreen, FindWindowExW, GetWindowThreadProcessId, SendMessageW,
+    };
+
+    // LVM_FIRST + 4 / + 14. Not in the crate's constant set, and spelled out
+    // rather than pulled from a header we do not otherwise depend on.
+    const LVM_GETITEMCOUNT: u32 = 0x1004;
+    const LVM_GETITEMRECT: u32 = 0x100E;
+    const LVIR_BOUNDS: i32 = 0;
+    const FAILED: fn() -> serde_json::Value =
+        || serde_json::json!({ "ok": false, "rects": [] });
+
+    unsafe {
+        // The icon host is a SHELLDLL_DefView, which sits under Progman on most
+        // machines and under one of the WorkerWs on the rest — the same split
+        // pin_wallpaper_window already has to cope with.
+        let progman = FindWindowExW(None, None, w!("Progman"), None).unwrap_or_default();
+        let mut defview = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None)
+            .unwrap_or_default();
+        if defview.0.is_null() {
+            let mut worker = FindWindowExW(None, None, w!("WorkerW"), None).unwrap_or_default();
+            while !worker.0.is_null() {
+                let d = FindWindowExW(worker, None, w!("SHELLDLL_DefView"), None)
+                    .unwrap_or_default();
+                if !d.0.is_null() {
+                    defview = d;
+                    break;
+                }
+                worker = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
+            }
+        }
+        if defview.0.is_null() {
+            diag_log("wallpaper", "icon rects: no SHELLDLL_DefView — not taking the mouse");
+            return FAILED();
+        }
+        let lv = FindWindowExW(defview, None, w!("SysListView32"), None).unwrap_or_default();
+        if lv.0.is_null() {
+            diag_log("wallpaper", "icon rects: no SysListView32 — not taking the mouse");
+            return FAILED();
+        }
+
+        let count = SendMessageW(lv, LVM_GETITEMCOUNT, WPARAM(0), LPARAM(0)).0;
+        if count < 0 {
+            return FAILED();
+        }
+        // A genuinely empty desktop: ok:true, no rectangles. Every spot is bare,
+        // and taking the mouse there is right.
+        if count == 0 {
+            return serde_json::json!({ "ok": true, "rects": [] });
+        }
+
+        let mut pid: u32 = 0;
+        GetWindowThreadProcessId(lv, Some(&mut pid));
+        if pid == 0 {
+            return FAILED();
+        }
+        let proc: HANDLE = match OpenProcess(
+            PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE,
+            false,
+            pid,
+        ) {
+            Ok(h) => h,
+            Err(e) => {
+                diag_log("wallpaper", &format!("icon rects: OpenProcess failed ({e}) — not taking the mouse"));
+                return FAILED();
+            }
+        };
+        let size = std::mem::size_of::<RECT>();
+        let remote = VirtualAllocEx(proc, None, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        if remote.is_null() {
+            let _ = CloseHandle(proc);
+            return FAILED();
+        }
+
+        let mut rects: Vec<serde_json::Value> = Vec::with_capacity(count as usize);
+        for i in 0..count {
+            // LVM_GETITEMRECT reads which rectangle it is being asked for out of
+            // the RECT's own `left` field before it writes the answer back.
+            let ask = RECT { left: LVIR_BOUNDS, top: 0, right: 0, bottom: 0 };
+            if WriteProcessMemory(
+                proc,
+                remote,
+                &ask as *const RECT as *const std::ffi::c_void,
+                size,
+                None,
+            )
+            .is_err()
+            {
+                continue;
+            }
+            let got = SendMessageW(lv, LVM_GETITEMRECT, WPARAM(i as usize), LPARAM(remote as isize));
+            if got.0 == 0 {
+                continue;
+            }
+            let mut out = RECT::default();
+            if ReadProcessMemory(
+                proc,
+                remote,
+                &mut out as *mut RECT as *mut std::ffi::c_void,
+                size,
+                None,
+            )
+            .is_err()
+            {
+                continue;
+            }
+            // ListView client coordinates, and the page compares against screen
+            // ones. The list scrolls, so this is not a fixed offset.
+            let mut tl = POINT { x: out.left, y: out.top };
+            let mut br = POINT { x: out.right, y: out.bottom };
+            let _ = ClientToScreen(lv, &mut tl);
+            let _ = ClientToScreen(lv, &mut br);
+            rects.push(serde_json::json!({
+                "x": tl.x, "y": tl.y,
+                "w": (br.x - tl.x).max(0), "h": (br.y - tl.y).max(0),
+            }));
+        }
+
+        let _ = VirtualFreeEx(proc, remote, 0, MEM_RELEASE);
+        let _ = CloseHandle(proc);
+
+        // Asked for icons, got none of them back: that is a read failure wearing
+        // an empty desktop's clothes, and the two must not be confused.
+        if rects.is_empty() {
+            diag_log("wallpaper", &format!("icon rects: {count} icons reported but none readable — not taking the mouse"));
+            return FAILED();
+        }
+        serde_json::json!({ "ok": true, "rects": rects })
+    }
+}
+
+/// Feed the page the cursor position while 3D mode is on.
+///
+/// The window is click-through for all but the moment it is actually being
+/// dragged, and a click-through window gets no mouse messages at all — so the
+/// page cannot find out where the pointer is by listening. It has to be told.
+///
+/// Two conversions, both of which are silent if wrong:
+///
+///   · **Origin.** The page was written against Cocoa, where the screen origin is
+///     bottom-left, and flips what it receives. Windows is already top-left, so a
+///     third element marks the payload as needing no flip. Two elements keeps the
+///     old meaning, so macOS is untouched.
+///   · **Scale.** GetCursorPos is in physical pixels; the page works in CSS
+///     pixels. At 150% DPI — the default on a lot of laptops — an unscaled
+///     coordinate puts the pointer half a screen away from where it really is,
+///     and every icon test silently answers about the wrong place.
+///
+/// Only runs while 3D is on. There is no reason to poll the cursor for a
+/// wallpaper nobody can interact with, and this app is already heavier at rest
+/// than it should be.
+#[cfg(target_os = "windows")]
+fn start_wallpaper_cursor_feed(app: AppHandle) {
+    use std::sync::atomic::Ordering;
+    use windows::Win32::Foundation::POINT;
+    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    std::thread::spawn(move || {
+        let mut last = (i32::MIN, i32::MIN);
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            if !WP_3D_MODE.load(Ordering::SeqCst) {
+                continue;
+            }
+            let Some(win) = app.get_webview_window("wallpaper") else { continue };
+            let mut pt = POINT::default();
+            if unsafe { GetCursorPos(&mut pt) }.is_err() {
+                continue;
+            }
+            // Unchanged pointer, nothing to say. Idle desktops are the common
+            // case and this keeps the event channel quiet through them.
+            if (pt.x, pt.y) == last {
+                continue;
+            }
+            last = (pt.x, pt.y);
+            let sf = win.scale_factor().unwrap_or(1.0);
+            let x = pt.x as f64 / sf;
+            let y = pt.y as f64 / sf;
+            // The third element says "already top-left" — see above.
+            let _ = win.emit("wallpaper-cursor", (x, y, 1));
+        }
+    });
 }

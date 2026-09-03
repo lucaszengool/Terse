@@ -6,6 +6,9 @@ struct SettingsView: View {
     @EnvironmentObject var settings: TerseSettings
     @EnvironmentObject var auth: TerseAuth
     @StateObject private var store = TerseStore.shared
+    /* Not @StateObject: the manager is a singleton that outlives this screen —
+       an activity started here has to keep running once Settings is closed. */
+    @ObservedObject private var island = LiveActivityManager.shared
     @Binding var showKeyboardSetup: Bool
     @State private var showSubscription = false
     @State private var showDeleteConfirm = false
@@ -247,6 +250,28 @@ struct SettingsView: View {
                     }
                     .background(theme.sf)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .padding(.horizontal, 20)
+
+                // ── Dynamic Island ──
+                /* On its own, above Theme, because it is the only switch here
+                   that changes something OUTSIDE the app. */
+                VStack(alignment: .leading, spacing: 8) {
+                    sectionTitle("DYNAMIC ISLAND")
+
+                    VStack(spacing: 0) {
+                        settingsToggle("Dynamic Island monitor", isOn: $island.enabled)
+                    }
+                    .background(theme.sf)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .disabled(!island.isSupported)
+                    .opacity(island.isSupported ? 1 : 0.5)
+
+                    Text(island.isSupported
+                         ? "Your agents and what they have saved, live in the Island. It holds still — a Live Activity cannot animate, so this is the field's text, not the field."
+                         : "Not available on this iPhone. Live Activities need iOS 16.1 or later, and they must be switched on in Settings → Terse.")
+                        .font(.system(size: 11))
+                        .foregroundColor(theme.t3)
                 }
                 .padding(.horizontal, 20)
 

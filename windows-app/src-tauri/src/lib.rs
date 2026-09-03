@@ -6983,8 +6983,12 @@ fn desktop_icon_rects() -> serde_json::Value {
     use windows::Win32::System::Threading::{
         OpenProcess, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE,
     };
+    // ClientToScreen is a GDI entry point, not a WindowsAndMessaging one — the
+    // only signature in this command that was not checked against the vendored
+    // crate before it was written, and the only one that was wrong.
+    use windows::Win32::Graphics::Gdi::ClientToScreen;
     use windows::Win32::UI::WindowsAndMessaging::{
-        ClientToScreen, FindWindowExW, GetWindowThreadProcessId, SendMessageW,
+        FindWindowExW, GetWindowThreadProcessId, SendMessageW,
     };
 
     // LVM_FIRST + 4 / + 14. Not in the crate's constant set, and spelled out

@@ -40,9 +40,14 @@
   .note b{color:var(--ink);font-weight:600}
   .bad{color:var(--bad)} .warn{color:var(--warn)}
   #state{font-size:13px;min-height:20px;margin-top:12px;color:var(--dim)}
-  /* Off-screen but laid out: the engine measures its canvas, and PiP wants a
-     video that is genuinely playing, not one display:none has parked. */
-  #vid{position:fixed;left:-99999px;top:0;width:2px;height:2px}
+  /* ON SCREEN, AND THAT IS NOT COSMETIC. A 2x2 video parked off-canvas was
+     refused Picture in Picture by iOS — and webkitSetPresentationMode returns
+     void and throws nothing, so the page cheerfully reported success while
+     nothing floated. Safari gives a page no way to learn that PiP failed, so
+     the only defences are to make the video eligible in the first place and to
+     read the mode back afterwards. */
+  #vid{display:block;width:100%;border-radius:14px;background:#000;margin:14px 0 0}
+  #vid.hide{display:none}
 </style>
 </head>
 <body>
@@ -60,7 +65,10 @@
   <p>它会<b>持续解码视频</b>，比看着一张壁纸费电。不想要了就划掉那个窗口。</p>
 </div>
 
-<video id="vid" playsinline muted loop></video>
+<!-- controls on purpose: if the programmatic request is refused, iOS's own
+     control bar carries a Picture in Picture button the user can tap, and that
+     tap is a gesture Safari always honours. -->
+<video id="vid" class="hide" playsinline muted loop controls></video>
 
 <script src="/phone/beds.js"></script>
 <script src="/phone/mp4.js"></script>
@@ -84,12 +92,27 @@ function pipSupported() {
     || typeof vid.requestPictureInPicture === 'function';
 }
 
+function inPiP() {
+  return vid.webkitPresentationMode === 'picture-in-picture'
+    || document.pictureInPictureElement === vid;
+}
+
+/** Ask, then CHECK. webkitSetPresentationMode returns void and throws nothing
+ *  when the request is refused, so "it did not throw" means nothing at all —
+ *  which is exactly how a page ends up saying the field is floating while the
+ *  Home Screen is empty. */
 async function enterPiP() {
   if (typeof vid.webkitSetPresentationMode === 'function') {
     vid.webkitSetPresentationMode('picture-in-picture');
-    return;
+    // The transition is animated; the mode does not flip synchronously.
+    for (var i = 0; i < 12; i++) {
+      if (inPiP()) return true;
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    return inPiP();
   }
   await vid.requestPictureInPicture();
+  return inPiP();
 }
 
 function exitPiP() {
@@ -128,13 +151,19 @@ $('go').addEventListener('click', async () => {
   if (clip) {
     try {
       vid.play();          // deliberately NOT awaited — see above
-      await enterPiP();
-      btn.hidden = true;
-      $('stop').hidden = false;
-      say('浮起来了。现在回主屏幕，它会跟着你。', '');
-      $('lede').textContent = '窗口已经在上面了。回到主屏幕或者打开任何 App，粒子场都会浮着。';
+      const floated = await enterPiP();
+      if (floated) {
+        btn.hidden = true;
+        $('stop').hidden = false;
+        say('浮起来了。现在回主屏幕，它会跟着你。', '');
+        $('lede').textContent = '窗口已经在上面了。回到主屏幕或者打开任何 App，粒子场都会浮着。';
+      } else {
+        // Refused, silently. Hand them the one control that always works.
+        say('iOS 拒绝了自动开启。视频就在下面，点它右下角的画中画按钮（一个方框里带小方框的图标）——那一下是系统自己的手势，一定管用。', 'warn');
+        btn.textContent = '再试一次';
+      }
     } catch (e) {
-      say('没能浮起来：' + ((e && e.message) || '未知错误'), 'bad');
+      say('没能浮起来：' + ((e && e.message) || '未知错误') + '。也可以直接点下面视频的画中画按钮。', 'bad');
     }
     return;
   }
@@ -169,6 +198,7 @@ $('go').addEventListener('click', async () => {
       setTimeout(resolve, 3000);
     });
 
+    vid.classList.remove('hide');
     btn.disabled = false;
     btn.textContent = '开始悬浮';
     say('录好了（12 秒循环）。再点一下就浮起来。', '');

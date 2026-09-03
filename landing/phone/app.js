@@ -122,6 +122,7 @@
       wall_a2b: 'Why 20 and not forever', wall_a2s: 'iOS stops a background shortcut after roughly 30–60 seconds. Twenty rounds fills that. Asking for more does not run longer, it just gets cut off.',
       wall_a3b: 'Trigger it on apps you open all day', wall_a3s: 'Automation → Personal → App → Is Opened, and pick a few you actually use. Turn OFF “Ask Before Running”. From then on you do nothing: every time you open one of them, the wallpaper runs another burst.',
       wall_a4b: 'Add unlock as well', wall_a4s: 'One more automation on unlock covers the times you pick the phone up without opening anything.',
+      wall_a5b: 'Or skip the automation entirely', wall_a5s: 'Nobody can hand you a ready-made automation — they live on one device, do not sync, and cannot be shared, so those taps are Apple’s floor, not ours. If it is too much, put the shortcut somewhere one press reaches instead: a Home Screen widget, Control Centre, Back Tap (Settings → Accessibility → Touch → Back Tap), or the Action Button. Two steps each, and one press still runs the whole burst.',
       wall_open_shortcuts: 'Open Shortcuts',
       wall_g_loop: 'The main way — it updates itself',
       wall_g_own: 'Or: keep your own wallpaper, add only the text',
@@ -241,6 +242,7 @@
       wall_a2b: '为什么是 20 次而不是一直跑', wall_a2s: 'iOS 大约 30–60 秒就会掐掉后台运行的快捷指令。20 次刚好填满。写更多不会跑更久，只会被中途切断。',
       wall_a3b: '挂在你一天到晚会开的 App 上', wall_a3s: '自动化 → 个人 → App → 打开时，选几个你真的常用的。把「运行前询问」关掉。之后你什么都不用做：每次打开这些 App，壁纸就再跑一轮。',
       wall_a4b: '再加一个解锁触发', wall_a4s: '再建一个「解锁时」的自动化，覆盖那些你拿起手机但没开 App 的时候。',
+      wall_a5b: '嫌麻烦？可以完全不用自动化', wall_a5s: '没有人能替你把自动化做好递过来——它只存在本机、不同步、也不能分享，所以那几下是苹果的下限，不是我们偷懒。真嫌烦就把这条快捷指令放到一按就到的地方：主屏幕小组件、控制中心、轻点背面（设置 → 辅助功能 → 触控 → 轻点背面），或者操作按钮。每种都只要两步，按一下照样跑满整轮。',
       wall_open_shortcuts: '打开快捷指令',
       wall_g_loop: '主要方案 —— 它会自己更新',
       wall_g_own: '或者：保留你自己的壁纸，只加字',
@@ -1642,6 +1644,21 @@
       .catch(function () { $('wallUrl').select(); });
   });
 
+  /* Tapping the ready-made Shortcut copies the link on the way out.
+     A shared shortcut cannot carry somebody else's URL — shortcuts are signed,
+     signing only happens on an Apple device, so there is one shortcut for
+     everyone and the URL has to arrive from the user. Shortcuts asks for it
+     with an import question, and an import question is a paste field. Putting
+     the link on the clipboard in the same tap that opens Shortcuts turns the
+     whole setup into: tap, Add Shortcut, paste.
+
+     Deliberately not awaited: the navigation must not wait on the clipboard,
+     and a refused write is survivable — the link is still on screen above. */
+  on($('wallShortcut'), 'click', function () {
+    var v = $('wallUrl').value;
+    if (v && navigator.clipboard) navigator.clipboard.writeText(v).catch(function () {});
+  });
+
   on($('wallRotate'), 'click', function () {
     T.authToken().then(function (tok) {
       return fetch('/api/cloud/wallpaper/rotate', {
@@ -1661,7 +1678,8 @@
     {
       key: 'wall_g_loop', open: true,
       steps: [['wall_s1b', 'wall_s1s'], ['wall_s2b', 'wall_s2s'], ['wall_s3b', 'wall_s3s'],
-              ['wall_a1b', 'wall_a1s'], ['wall_a2b', 'wall_a2s'], ['wall_a3b', 'wall_a3s'], ['wall_a4b', 'wall_a4s']],
+              ['wall_a1b', 'wall_a1s'], ['wall_a2b', 'wall_a2s'], ['wall_a3b', 'wall_a3s'], ['wall_a4b', 'wall_a4s'],
+              ['wall_a5b', 'wall_a5s']],
     },
     {
       key: 'wall_g_own', open: false,

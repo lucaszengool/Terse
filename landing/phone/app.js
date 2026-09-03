@@ -1073,6 +1073,40 @@
    *  dozen wallpapers on a phone, short enough that the numbers on the Home
    *  Screen are from today. */
   var WALL_STALE_MS = 6 * 60 * 60 * 1000;
+  /* A capture costs about twenty seconds of GPU and warms the phone, so it is
+     not something to do every time a number ticks. Twenty minutes is short
+     enough that a working session shows up on the Home Screen and long enough
+     that a busy machine does not put the phone in a loop. */
+  var WALL_FRESH_MIN_MS = 20 * 60 * 1000;
+  var LS_WALL_FP = 'terse-wall-fp';
+
+  /** What the wallpaper would SAY, as one comparable string.
+   *
+   *  Time alone was the old trigger and it is the wrong question: a phone that
+   *  sat untouched for six hours got a new capture of identical numbers, while
+   *  an agent that started five minutes ago did not show up until the next day.
+   *  This compares the TEXT — if the field would draw the same words, there is
+   *  nothing to re-capture. */
+  function wallFingerprint(ov) {
+    if (!ov) return '';
+    return (ov.stage || []).map(function (it) {
+      return (it.v != null ? it.v : '') + '\u0001' + (it.u || '');
+    }).join('\u0002') + '\u0003' + (ov.agents || []).map(function (a) {
+      return (a.name || '') + '\u0001' + (a.rate || 0);
+    }).join('\u0002');
+  }
+
+  /** The overlays as they stand right now, from the linked desktop's frame. */
+  function currentOverlays() {
+    if (!HUD) return null;
+    var st = T.link.state();
+    return HUD.buildOverlays({
+      stats: (st.frame && st.frame.stats) || {},
+      sessions: (st.frame && st.frame.sessions) || [],
+      tokens: lastTotal || 0,
+      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
+    });
+  }
 
   function loadWall() {
     if (!T.signedIn()) return Promise.resolve(null);
@@ -1091,7 +1125,18 @@
              does not get, and it would fail for a reason nobody could see. */
           if (j && j.ready && document.visibilityState === 'visible') {
             var at = j.updated_at ? Date.parse(j.updated_at.replace(' ', 'T') + 'Z') : 0;
-            if (at && Date.now() - at > WALL_STALE_MS) captureRing(true);
+            var age = at ? Date.now() - at : 0;
+            /* Two reasons to re-capture, and the first is the one that matters:
+               the numbers on the Home Screen no longer match the numbers this
+               account has. The six-hour rule stays as a floor for the case
+               where nothing is linked and the fingerprint never changes. */
+            var fpNow = wallFingerprint(currentOverlays());
+            var fpHad = '';
+            try { fpHad = localStorage.getItem(LS_WALL_FP) || ''; } catch (e) {}
+            var changed = !!fpNow && !!fpHad && fpNow !== fpHad;
+            if (at && ((changed && age > WALL_FRESH_MIN_MS) || age > WALL_STALE_MS)) {
+              captureRing(true);
+            }
           }
           return j;
         });
@@ -1581,13 +1626,11 @@
     btn.disabled = true;
     btn.textContent = t(label);
 
-    var st = T.link.state();
-    var ov = HUD ? HUD.buildOverlays({
-      stats: (st.frame && st.frame.stats) || {},
-      sessions: (st.frame && st.frame.sessions) || [],
-      tokens: lastTotal || 0,
-      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
-    }) : null;
+    var ov = currentOverlays();
+    // Written BEFORE the capture, not after: if it fails halfway the numbers on
+    // the phone are whatever they were, and recording the attempt stops a
+    // failing capture from retrying on every single load.
+    try { localStorage.setItem(LS_WALL_FP, wallFingerprint(ov)); } catch (e) {}
 
     var shot = null;
     return window.TerseCapture.capture({

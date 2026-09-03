@@ -39,6 +39,20 @@
     return { w: w, h: h };
   }
 
+  /** The grid density to capture at.
+   *
+   *  Mirrors app.js's live tier off the CSS box, plus a small bump: a still is
+   *  looked at all day and can carry a little more than a field that has to
+   *  hold 60fps. Phones land at 34-46, desktops at 56 — the old constant. */
+  function captureQuality(w, h) {
+    var px = Math.min(root.devicePixelRatio || 1, 2);
+    var area = w * h * px * px;
+    if (area > 3.2e6) return 38;
+    if (area > 2.2e6) return 42;
+    if (area > 1.0e6) return 46;
+    return 56;
+  }
+
   /** How much is going on in a frame. Mean luminance over a coarse grid: an
    *  empty field is nearly black, a frame mid-glyph is not. Cheap enough to run
    *  on every candidate. */
@@ -120,6 +134,23 @@
 
     var size = targetSize();
 
+    /* THE CSS BOX IS THE SCREEN, NOT THE WALLPAPER.
+       The field is drawn from point sprites whose size is set in PIXELS, so it
+       does not scale with the drawing buffer: render the same scene into a
+       buffer three times wider and every particle covers a ninth of the frame
+       it used to. Measured on the live engine, mean luminance falls from
+       0.0067 at a 393x852 box to 0.00095 at 1290x2796 — a seven-fold drop, and
+       that is the whole difference between the field somebody sees in the app
+       and the near-empty picture that used to come out of here.
+
+       So the engine is given the same CSS box it has when it is on screen, and
+       renders at the same resolution it renders at live. compose() scales the
+       result up to the wallpaper size, which is what iOS would do to it in any
+       case. */
+    var cssW = Math.max(16, (root.screen && root.screen.width) || 390);
+    var cssH = Math.max(16, (root.screen && root.screen.height) || 844);
+    if ((size.w > size.h) !== (cssW > cssH)) { var sw = cssW; cssW = cssH; cssH = sw; }
+
     var canvas = document.createElement('canvas');
     canvas.width = size.w;
     canvas.height = size.h;
@@ -127,7 +158,7 @@
     // falls back to the window size when they are zero, so a `display:none`
     // canvas would silently render at the wrong aspect ratio.
     canvas.style.cssText = 'position:fixed;left:-99999px;top:0;width:' +
-      size.w + 'px;height:' + size.h + 'px;pointer-events:none';
+      cssW + 'px;height:' + cssH + 'px;pointer-events:none';
     document.body.appendChild(canvas);
 
     // Must happen BEFORE the engine attaches — see the header.
@@ -143,12 +174,18 @@
       var mod = await import(o.engineUrl || '/app-assets/mineradio-wallpaper.js');
       var Engine = mod.default;
 
-      // Quality is raised above the live tier on purpose: this renders once, for
-      // a still, so there is no sustained thermal cost to pay — and the result
-      // is looked at on a Home Screen all day.
+      /* Quality follows the LIVE tier rather than sitting above it.
+         The old flat 56 was chosen when this rendered into a full-resolution
+         wallpaper buffer, where a denser grid was the only way to fill the
+         frame. It now renders at the live buffer size and is scaled up in
+         compose(), so 56 buys roughly double the grid rows of the field the
+         phone already draws — for detail that the upscale throws away, at
+         twice the GPU cost, on the one code path where being slow is not
+         merely unpleasant: a capture that overruns gets its page backgrounded
+         and dies with `hidden`, losing the whole run. */
       wp = new Engine(canvas, {
         theme: o.theme || 'neon',
-        quality: 56,
+        quality: o.quality || captureQuality(cssW, cssH),
         angle: 42,
         // A still is looked at all day and never animates, so it can carry more
         // than the live field does without costing anything.
@@ -169,10 +206,10 @@
          The CSS box is set to the full pixel size for the same reason: resize()
          re-measures it, so a half-size box would undo this on the first
          ResizeObserver tick. */
-      if (wp.renderer) {
-        wp.renderer.setPixelRatio(1);
-        wp.renderer.setSize(size.w, size.h, false);
-      }
+      /* Left to size itself. It measures the CSS box above and multiplies by
+         min(1.5, devicePixelRatio) — the same buffer it uses live, which is the
+         point. Forcing the buffer to the full wallpaper resolution here is what
+         made the field vanish. */
       wp.start();
 
       // Feed it the same overlays the live field gets, so the capture contains

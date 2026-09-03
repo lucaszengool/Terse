@@ -427,6 +427,19 @@
           </div>
           <p class="tiny" id="laState"></p>
         </details>
+
+        <!-- Picture in Picture. The ONE way user content floats above other
+             apps on iOS — and it is refused in Home Screen web apps, which is
+             the mode this app otherwise wants to be in. See app.js. -->
+        <details class="fold">
+          <summary data-t="pip_title">Float the field over your other apps</summary>
+          <p data-t="pip_body"></p>
+          <p class="tiny warn" id="pipWhy"></p>
+          <div class="row">
+            <button class="btn grow" id="pipStart" type="button" data-t="pip_start">Start floating</button>
+          </div>
+          <p class="tiny" id="pipState"></p>
+        </details>
           <button class="btn ghost wide" id="wallRotate" type="button" data-t="wall_rotate">Reset this link</button>
         </div>
       </div>

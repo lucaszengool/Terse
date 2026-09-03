@@ -311,7 +311,14 @@
           var tick = await raf(400);
           // Backgrounded mid-capture. Keep whatever is already good and stop —
           // but never hand back nothing without saying why.
-          if (tick.stalled || !visible()) {
+          /* STALLED IS NOT HIDDEN, and conflating them told people to do the
+             one thing that cannot help. raf() gives up after 400ms, which a
+             slow phone exceeds all by itself — so a device that was merely
+             struggling was reported as "keep Terse on screen while it
+             captures", with the page in front the whole time.
+             Only an actually backgrounded page is fatal; a slow one just
+             samples a moment later than asked. */
+          if (!visible()) {
             if (!frames.length && !best) { var h = new Error('hidden'); h.code = 'hidden'; throw h; }
             f = want; break;
           }
@@ -514,14 +521,22 @@
       if (encoderError) throw encoderError;
       step(0.15, 'recording');
 
-      var totalFrames = VIDEO_FPS * VIDEO_SECONDS;
+      /* The float-over-other-apps loop wants a longer take than a Live Photo
+         does: a Live Photo plays about 1.5s and stops, while a Picture in
+         Picture window runs until it is dismissed, and a four-second loop
+         repeating for minutes reads as a stutter rather than a field. */
+      var totalFrames = VIDEO_FPS * Math.max(1, Math.min(20, o.seconds || VIDEO_SECONDS));
       var frameDurUs = Math.round(1e6 / VIDEO_FPS);
       var lines = (o.texts && o.texts.length) ? o.texts : [];
       var nextLineAt = Math.round(totalFrames / Math.max(1, lines.length + 1));
 
       for (var i = 0; i < totalFrames; i++) {
-        var tick = await raf(400);
-        if (tick.stalled || !visible()) {
+        // Same reason as the stills above: a missed 400ms deadline is a slow
+        // GPU, not a backgrounded page, and only the second one is fatal. A
+        // late frame is encoded late, which is what a dropped frame looks like
+        // in any recording.
+        await raf(400);
+        if (!visible()) {
           if (i < VIDEO_FPS) { var h = new Error('hidden'); h.code = 'hidden'; throw h; }
           break;                        // enough recorded to still be worth having
         }

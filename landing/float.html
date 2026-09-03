@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Terse · 悬浮粒子</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+
+<!-- THIS PAGE EXISTS BECAUSE OF ONE WEBKIT BUG.
+     requestPictureInPicture() is refused inside a Home Screen web app
+     (WebKit #303885, open since December 2025), and Picture in Picture is the
+     only way anything a page draws can float above other apps on iOS. The
+     phone app has to stay a Home Screen web app, because that is the only mode
+     iOS delivers Web Push to.
+     So the two live apart: the app keeps the icon and the notifications, and
+     hands off to THIS page in real Safari — via x-safari-https:, which still
+     opens Safari proper rather than the in-app browser — purely to start the
+     floating window. Nothing else belongs here. -->
+
+<script type="importmap">
+{ "imports": { "three": "/app-assets/vendor/three.module.min.js", "three/addons/": "/app-assets/vendor/jsm/" } }
+</script>
+
+<style>
+  :root { --bg:#05060a; --ink:#f2f5f4; --dim:rgba(242,245,244,.56); --accent:#6ee7b7;
+          --line:rgba(242,245,244,.12); --bad:#f87171; --warn:#fbbf24; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",system-ui,sans-serif;
+       padding:max(24px,env(safe-area-inset-top)) 22px max(24px,env(safe-area-inset-bottom));
+       -webkit-font-smoothing:antialiased}
+  h1{font-size:24px;line-height:1.25;margin:0 0 10px;letter-spacing:-.02em}
+  p{margin:0 0 14px;color:var(--dim)}
+  .btn{display:block;width:100%;padding:15px 18px;border-radius:14px;border:0;
+       background:var(--accent);color:#04120c;font-size:16px;font-weight:600;
+       font-family:inherit;cursor:pointer;-webkit-appearance:none}
+  .btn[disabled]{opacity:.55}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);margin-top:10px}
+  .note{font-size:13px;color:var(--dim);border-top:1px solid var(--line);margin-top:22px;padding-top:16px}
+  .note b{color:var(--ink);font-weight:600}
+  .bad{color:var(--bad)} .warn{color:var(--warn)}
+  #state{font-size:13px;min-height:20px;margin-top:12px;color:var(--dim)}
+  /* Off-screen but laid out: the engine measures its canvas, and PiP wants a
+     video that is genuinely playing, not one display:none has parked. */
+  #vid{position:fixed;left:-99999px;top:0;width:2px;height:2px}
+</style>
+</head>
+<body>
+
+<h1>把粒子场浮在其他 App 上</h1>
+<p id="lede">这是 iOS 上唯一能让网页内容浮在别的 App 之上的办法：画中画。点下面的按钮，粒子场会变成一个悬浮窗口，然后你可以回到主屏幕，它会一直浮在上面。</p>
+
+<button class="btn" id="go">录制粒子场</button>
+<button class="btn ghost hide" id="stop" hidden>停止</button>
+<div id="state"></div>
+
+<div class="note" id="note">
+  <p><b>要知道的几件事。</b>这是一个带播放控件的圆角窗口，不是透明图层——iOS 不给任何 App 画在别的 App 上面的权限，画中画是唯一的例外，而它长这个样子。</p>
+  <p>里面是一段<b>录好的循环</b>，不是实时数字。实时更新需要换视频源，而换源会直接退出画中画。</p>
+  <p>它会<b>持续解码视频</b>，比看着一张壁纸费电。不想要了就划掉那个窗口。</p>
+</div>
+
+<video id="vid" playsinline muted loop></video>
+
+<script src="/phone/beds.js"></script>
+<script src="/phone/mp4.js"></script>
+<script src="/phone/capture.js"></script>
+<script type="module">
+import { buildOverlays } from '/app-assets/wallpaper-hud.js';
+
+const $ = (id) => document.getElementById(id);
+const say = (msg, cls) => { const s = $('state'); s.textContent = msg; s.className = cls || ''; };
+
+const vid = $('vid');
+
+/* Standalone means the Home Screen web app, where PiP is refused outright.
+   Saying so here is the difference between "it is broken" and "you are in the
+   wrong window", which are indistinguishable from a thrown exception. */
+const standalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
+
+function pipSupported() {
+  return typeof vid.webkitSetPresentationMode === 'function'
+    || typeof vid.requestPictureInPicture === 'function';
+}
+
+async function enterPiP() {
+  if (typeof vid.webkitSetPresentationMode === 'function') {
+    vid.webkitSetPresentationMode('picture-in-picture');
+    return;
+  }
+  await vid.requestPictureInPicture();
+}
+
+function exitPiP() {
+  try {
+    if (typeof vid.webkitSetPresentationMode === 'function') vid.webkitSetPresentationMode('inline');
+    else if (document.pictureInPictureElement) document.exitPictureInPicture();
+  } catch (e) { /* already gone */ }
+}
+
+if (standalone) {
+  $('go').disabled = true;
+  say('你在主屏幕 App 里打开了这一页。画中画在这个模式下被 iOS 拒绝——请回到 Terse，用「悬浮粒子」那个按钮，它会把这一页交给 Safari 打开。', 'warn');
+} else if (!window.TerseCapture || !window.TerseCapture.canEncodeVideo()) {
+  $('go').disabled = true;
+  say('这台设备的浏览器没有 WebCodecs，编不出视频。iOS 17 以上的 Safari 才有。', 'bad');
+} else if (!pipSupported()) {
+  $('go').disabled = true;
+  say('这个浏览器不支持画中画。', 'bad');
+}
+
+/* TWO TAPS, AND IT CANNOT BE ONE.
+   Picture in Picture must be requested while the browser is handling a user
+   gesture. Encoding twelve seconds of field takes seconds on a phone and
+   minutes on a slow machine, so a single tap that encodes and then asks is
+   asking long after the gesture expired — the browser refuses with
+   "Must be handling a user gesture", which reads exactly like "PiP is not
+   supported here" and sent me looking at the wrong thing.
+   So: the first tap records, the second tap floats. The second one is a fresh
+   gesture, and nothing is awaited between it and the request. */
+var clip = null;
+
+$('go').addEventListener('click', async () => {
+  const btn = $('go');
+
+  // ── Second tap: float it. Synchronous from here to the request. ──
+  if (clip) {
+    try {
+      vid.play();          // deliberately NOT awaited — see above
+      await enterPiP();
+      btn.hidden = true;
+      $('stop').hidden = false;
+      say('浮起来了。现在回主屏幕，它会跟着你。', '');
+      $('lede').textContent = '窗口已经在上面了。回到主屏幕或者打开任何 App，粒子场都会浮着。';
+    } catch (e) {
+      say('没能浮起来：' + ((e && e.message) || '未知错误'), 'bad');
+    }
+    return;
+  }
+
+  // ── First tap: record. ──
+  btn.disabled = true;
+  try {
+    const ov = buildOverlays({ stats: {}, sessions: [], tokens: 0, t: (k, fb) => fb || k });
+    const texts = (ov.stage || []).map((it) => ((it.v != null ? it.v : '') + ' ' + (it.u || '')).trim())
+      .filter(Boolean);
+
+    /* Twelve seconds rather than the Live Photo's four. A Live Photo plays once
+       and stops; this loops until the user dismisses it, and a four-second
+       cycle repeating for minutes reads as a stutter instead of a field. */
+    const res = await window.TerseCapture.captureVideo({
+      seconds: 12,
+      bedId: localStorage.getItem('terse-phone-bed') || 'dusk',
+      overlays: ov,
+      texts,
+      onStep: (p, label) => { btn.textContent = '录制中 · ' + (label || Math.round(p * 100) + '%'); },
+    });
+
+    clip = URL.createObjectURL(res.blob);
+    vid.src = clip;
+    vid.load();
+    // Primed here so the second tap has nothing to wait for: a video that has
+    // never decoded a frame makes play() slow, and slow is what loses the
+    // gesture.
+    await new Promise((resolve) => {
+      if (vid.readyState >= 2) return resolve();
+      vid.addEventListener('loadeddata', resolve, { once: true });
+      setTimeout(resolve, 3000);
+    });
+
+    btn.disabled = false;
+    btn.textContent = '开始悬浮';
+    say('录好了（12 秒循环）。再点一下就浮起来。', '');
+  } catch (e) {
+    const code = e && (e.code || e.name);
+    say(code === 'hidden' ? '录制时页面被切到后台了——请让这一页保持在前台再试一次。'
+      : code === 'no-webcodecs' ? '这台设备编不出视频（需要 iOS 17 以上的 Safari）。'
+      : '录制失败：' + ((e && e.message) || code || '未知错误'), 'bad');
+    btn.disabled = false;
+    btn.textContent = '再试一次';
+  }
+});
+
+$('stop').addEventListener('click', () => {
+  exitPiP();
+  try { vid.pause(); } catch (e) {}
+  $('stop').hidden = true;
+  $('go').hidden = false;
+  $('go').disabled = false;
+  $('go').textContent = '开始悬浮';   // the clip is still in hand
+  say('停了。再点一下可以重新浮起来。');
+});
+
+/* The user can close the floating window from the window itself, and the page
+   has to notice or its buttons start lying about the state. */
+vid.addEventListener('webkitpresentationmodechanged', () => {
+  if (vid.webkitPresentationMode === 'inline') {
+    $('stop').hidden = true;
+    $('go').hidden = false;
+    $('go').disabled = false;
+  }
+});
+vid.addEventListener('leavepictureinpicture', () => {
+  $('stop').hidden = true;
+  $('go').hidden = false;
+  $('go').disabled = false;
+});
+</script>
+</body>
+</html>

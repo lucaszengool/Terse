@@ -111,6 +111,11 @@
       la_saved: 'Saved — try Test', la_pushed: 'Pushed — look at your Island',
       la_failed: 'That did not go through',
       la_on: 'Live Activity via {name}', la_last: 'last update {t}', la_never: 'no update yet',
+      pip_title: 'Float the field over your other apps',
+      pip_body: 'Picture in Picture is the only way anything a web page draws can sit on top of other apps on iOS. Terse can put the particle field in that floating window: start it, go back to your Home Screen, and it stays up there. It is a rounded video window with playback controls, not a transparent layer — iOS gives no app permission to draw over another, and this is the one exception. What plays is a recorded loop, not live numbers.',
+      pip_why_standalone: 'iOS refuses Picture in Picture inside a Home Screen app, so this opens Safari. Terse itself stays here, and so do your notifications.',
+      pip_why_browser: 'You are in Safari, where Picture in Picture works.',
+      pip_start: 'Start floating',
       pc_on: 'On · {shortcut}', pc_never: 'never fired yet', pc_last: 'last fired {t}',
       wall_deploy: 'Deploy to my iPhone',
       wall_deploy_note: 'Renders the wallpaper and puts it on your account. One step is left that no app can do for you — iOS lets nothing but you set a wallpaper — and Terse shows exactly what it is once this is done.',
@@ -237,6 +242,11 @@
       la_saved: '已保存——点「测试」试试', la_pushed: '推出去了——看一眼灵动岛',
       la_failed: '没成功',
       la_on: '灵动岛（{name}）', la_last: '最近更新 {t}', la_never: '还没推过',
+      pip_title: '把粒子场浮在其他 App 上',
+      pip_body: '画中画是 iOS 上唯一能让网页内容盖在别的 App 上面的办法。Terse 可以把粒子场放进那个悬浮窗：开启之后回到主屏幕，它会一直浮着。那是一个带播放控件的圆角视频窗口，不是透明图层——iOS 不给任何 App 画在别的 App 上的权限，画中画是唯一的例外。里面播的是一段录好的循环，不是实时数字。',
+      pip_why_standalone: 'iOS 在主屏幕 App 里禁用画中画，所以这一步会跳到 Safari。Terse 本身留在这里，通知也不受影响。',
+      pip_why_browser: '你现在在 Safari 里，画中画可以用。',
+      pip_start: '开始悬浮',
       pc_on: '已开启 · {shortcut}', pc_never: '还没触发过', pc_last: '上次触发 {t}',
       wall_deploy: '部署到我的 iPhone',
       wall_deploy_note: '渲染壁纸并存到你的账号上。最后还剩一步是任何 App 都替你做不了的——iOS 只允许你本人设置壁纸——做完这步 Terse 会明确告诉你那一步是什么。',
@@ -725,6 +735,7 @@
       renderWall();
       mountPreviewField();
       if (T.signedIn() && !wallState) { loadWall(); loadPushcut(); loadLiveActivity(); }
+      renderPip();
     } else {
       unmountPreviewField();     // nothing is looking at it
     }
@@ -1336,6 +1347,51 @@
   });
   on($('laOff'), 'click', function () {
     laCall('DELETE').then(function () { laState = null; renderLiveActivity(); }).catch(function () {});
+  });
+
+  /* ── Floating particles ──────────────────────────────────────────────────
+     Picture in Picture is the only way anything a web page draws can float
+     above other apps on iOS. It is also REFUSED inside a Home Screen web app
+     (WebKit #303885), which is the mode this app has to run in — Web Push is
+     delivered to Home Screen web apps and nowhere else.
+
+     So the two are not made to share a window. This button hands off to
+     /float in real Safari and comes straight back; the app keeps its icon and
+     its notifications, and the floating window is started next door.
+
+     x-safari-https: rather than a plain link, because a link from a Home
+     Screen web app opens the IN-APP browser, which refuses PiP for the same
+     reason this app does — the hand-off has to reach Safari proper. */
+  function floatUrl() {
+    return 'x-safari-https://' + location.host + '/float';
+  }
+
+  function renderPip() {
+    var lab = $('pipState'), why = $('pipWhy');
+    if (!lab) return;
+    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || window.navigator.standalone === true;
+    // Said up front, because "it opened Safari" looks like a bug otherwise.
+    if (why) why.textContent = standalone ? t('pip_why_standalone') : t('pip_why_browser');
+    // No Stop button here on purpose: the floating window belongs to the Safari
+    // tab that started it, and this app has no handle on it. It is dismissed
+    // from the window itself, or from /float.
+    lab.textContent = '';
+  }
+
+  on($('pipStart'), 'click', function () {
+    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || window.navigator.standalone === true;
+    if (standalone) {
+      location.href = floatUrl();
+      // If nothing happens the scheme was refused; a plain link at least gets
+      // them there, even if it lands in the in-app browser and says why.
+      setTimeout(function () { window.open('/float', '_blank'); }, 900);
+    } else {
+      // Already in Safari — no hand-off needed, and a hand-off here would open
+      // a second tab for no reason.
+      window.location.href = '/float';
+    }
   });
 
     /* ── Backdrops ───────────────────────────────────────────────────────────

@@ -1461,6 +1461,18 @@ function buildStamp() {
 // per request would stat six files on every load of the app.
 const PHONE_BUILD = buildStamp();
 
+/* The floating-particle page, stamped the same way /m is.
+   Separate from the app on purpose — see the comment at the top of float.html:
+   Picture in Picture is refused inside a Home Screen web app, so this page is
+   only ever opened in real Safari, and the app hands off to it. */
+app.get('/float', (req, res) => {
+  const file = path.join(__dirname, '..', 'landing', 'float.html');
+  fs.readFile(file, 'utf8', (err, html) => {
+    if (err) return res.status(500).type('text/plain').send('Could not load the page');
+    res.type('html').send(html.replace(/(src=")(\/phone\/[a-z0-9.-]+\.js)(")/gi, `$1$2?v=${PHONE_BUILD}$3`));
+  });
+});
+
 app.get(['/m', '/m/*'], (req, res) => {
   const file = path.join(__dirname, '..', 'landing', 'm.html');
   fs.readFile(file, 'utf8', (err, html) => {

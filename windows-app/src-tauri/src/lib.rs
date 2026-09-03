@@ -4107,6 +4107,21 @@ pub fn run() {
             }
 
             let app_handle2 = app.handle().clone();
+            // ⌘⇧W on the Mac, Ctrl+Shift+W here: arm the wallpaper for a drag.
+            // With 3D on this enters the orbit controller; with it off it falls
+            // back to the older "the numbers become buttons" behaviour. Both live
+            // in the page — this only delivers the event.
+            {
+                let h = app.handle().clone();
+                if let Err(e) = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+W", move |_a, _s, _e| {
+                    if let Some(w) = h.get_webview_window("wallpaper") {
+                        let _ = w.emit("wallpaper-arm-toggle", ());
+                    }
+                }) {
+                    eprintln!("[terse] Ctrl+Shift+W shortcut unavailable (already in use?): {e}");
+                }
+            }
+
             if let Err(e) = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+C", move |_app, _shortcut, _event| {
                 // Trigger capture on the active session
                 let app = app_handle2.clone();
@@ -4454,6 +4469,8 @@ pub fn run() {
             notifications::toast_resize,
             notifications::toast_hide,
             notifications::take_pending_toasts,
+            wallpaper_set_3d_mode,
+            wallpaper_set_interactive,
             notifications::toast_action,
             // ── Parity: circuit breaker ──
             circuit::get_circuit_settings,
@@ -5830,6 +5847,10 @@ fn wallpaper_default_config() -> serde_json::Value {
         // Pro 的粒子风格(src/renderer/wallpaper-styles.js)。"cinematic" 是原来那一种,
         // 也是老配置文件里缺这个字段时前端自己会退回的那一种 —— 升级不会改变任何人看到的画面。
         "style": "cinematic",
+        // 3D 自由视角(Pro)。az/el 是绕原点的方位角/仰角(弧度),dist 是推拉倍数。
+        // on=false 时前端把相机放回正对机位,画面和加这个字段之前逐位相同 ——
+        // 老配置缺这一段也走同一条路,升级不会改变任何人看到的壁纸。
+        "view3d": { "on": false, "az": 0.0, "el": 0.0, "dist": 1.0 },
         "theme": "neon", "quality": 56, "angle": 55, "intensity": 1.0
     })
 }
@@ -6680,4 +6701,245 @@ fn focus_app(app: String) {
     tauri::async_runtime::spawn(async move {
         capture::activate_app(&app).await;
     });
+}
+
+// ── 3D 自由视角:在真桌面上把粒子场转起来 ────────────────────────────────────
+//
+// The camera maths, the orbit controller and the Pro gate are all in the shared
+// frontend (`wallpaper-view3d.js`), so they came to Windows for free the day the
+// renderer did. What did NOT come across is the half that only the OS can do:
+// letting a wallpaper that lives *behind* the desktop icons receive a drag.
+//
+// Same shape as the macOS build, different mechanism. There, the window sits at
+// kCGDesktopWindowLevel and gets lifted to kCGDesktopIconWindowLevel+1. Here it
+// is a WS_CHILD of Explorer's WorkerW — behind SHELLDLL_DefView, which is what
+// actually draws and hit-tests the icons — so a click on the desktop is the icon
+// list's click, never ours, no matter what we do with our own styles. To take a
+// drag we have to leave WorkerW entirely.
+
+/// True while the page has 3D turned on, so the interactive toggle knows not to
+/// drop the window back onto the desktop when it disarms.
+static WP_3D_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Every "armed" call takes a new number; the watchdog compares it on wake and
+/// stands down if anything happened in between.
+static WP_INTERACTIVE_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// The hard ceiling on how long the wallpaper may hold the mouse.
+const WP_INTERACTIVE_MAX_SECS: u64 = 75;
+
+/// Out of WorkerW and up to just above the desktop icons.
+///
+/// HWND_BOTTOM is the whole trick: it makes this the bottom-most *ordinary*
+/// window, which is above Progman and the icon list but below every real
+/// application — the same place in the stack the Mac build asks for by name with
+/// kCGDesktopIconWindowLevel+1. Every other app keeps its clicks; only the bare
+/// desktop is ours.
+///
+/// It deliberately does NOT clear WS_EX_TRANSPARENT. Arriving here is not the
+/// same as taking the mouse: 3D mode lasts as long as the feature is on, while
+/// the mouse is borrowed a drag at a time by wallpaper_set_interactive.
+#[cfg(target_os = "windows")]
+fn lift_wallpaper_above_icons(win: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetSystemMetrics, GetWindowLongPtrW, SetParent, SetWindowLongPtrW, SetWindowPos,
+        GWL_STYLE, HWND_BOTTOM, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SWP_NOACTIVATE,
+        SWP_SHOWWINDOW, WS_CHILD, WS_POPUP, WS_VISIBLE,
+    };
+    let Ok(raw) = win.hwnd() else { return };
+    unsafe {
+        let hwnd = HWND(raw.0);
+        // Leave WorkerW. While parented there the window is clipped to, and
+        // ordered by, Explorer's tree — nothing we do to our own z-order applies.
+        let _ = SetParent(hwnd, None);
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        let restored = (style & !(WS_CHILD.0 as isize)) | (WS_POPUP.0 | WS_VISIBLE.0) as isize;
+        SetWindowLongPtrW(hwnd, GWL_STYLE, restored);
+        let w = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+        let h = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+        let _ = SetWindowPos(
+            hwnd, HWND_BOTTOM, 0, 0, w, h,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW,
+        );
+    }
+    diag_log("wallpaper", "3D: lifted out of WorkerW to just above the desktop icons");
+}
+
+/// Add or remove WS_EX_TRANSPARENT — the one bit that decides whether a click
+/// lands on this window or falls through to whatever is behind it.
+///
+/// Deliberately NOT Tauri's `set_ignore_cursor_events`, which on Windows also
+/// sets WS_EX_LAYERED. This app has already paid for that once: WS_EX_LAYERED on
+/// this window destroys the per-pixel alpha the overlay depends on and the
+/// wallpaper turns into a black sheet over the whole screen. Toggling the single
+/// bit keeps that fix intact.
+#[cfg(target_os = "windows")]
+fn set_wallpaper_click_through(win: &tauri::WebviewWindow, through: bool) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TRANSPARENT,
+    };
+    let Ok(raw) = win.hwnd() else { return };
+    unsafe {
+        let hwnd = HWND(raw.0);
+        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        let bit = WS_EX_TRANSPARENT.0 as isize;
+        let next = if through { ex | bit } else { ex & !bit };
+        if next != ex {
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, next);
+        }
+    }
+}
+
+/// Page-driven: 3D is on, so put this layer where a drag can reach it.
+#[tauri::command]
+fn wallpaper_set_3d_mode(app: AppHandle, on: bool) -> bool {
+    use std::sync::atomic::Ordering;
+    WP_3D_MODE.store(on, Ordering::SeqCst);
+    let Some(win) = app.get_webview_window("wallpaper") else { return false };
+    // Already topmost for Pro's always-on-top overlay? Then it is above
+    // everything and already transparent — moving it would only demote it.
+    let overlay = overlay_allowed(&get_wallpaper_config());
+    let win2 = win.clone();
+    let _ = app.run_on_main_thread(move || {
+        if overlay { return; }
+        if on { lift_wallpaper_above_icons(&win2); } else { pin_wallpaper_window(&win2); }
+    });
+    // The page drops its own background when lifted. Without that it is an opaque
+    // rectangle sitting on top of the desktop icons — the black-sheet failure this
+    // window has produced twice before, once for the overlay and once here.
+    let _ = app.emit("wallpaper-lift", on);
+    true
+}
+
+/// Where the wallpaper window belongs for a given combination of state.
+///
+/// Pulled out of the command purely so it can be tested: it is three booleans
+/// with one non-obvious interaction, and that interaction is a bug the macOS
+/// build hit first — releasing the mouse while 3D is still on must NOT push the
+/// window back down to the desktop layer, because the next time the pointer
+/// crosses bare wallpaper there would be nothing there to grab. Everything
+/// around it is Win32 side effects that a test cannot observe; this part is a
+/// pure function, so it gets one.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum WpPlacement {
+    /// Pro's always-on-top overlay: already above everything, already
+    /// transparent. Touching it here would only demote it.
+    LeaveTopmost,
+    /// Out of WorkerW, just above the desktop icons — reachable by a drag.
+    AboveIcons,
+    /// Back where it belongs, behind the icons.
+    Desktop,
+}
+
+fn wallpaper_placement(overlay_on: bool, three_d: bool, interactive_on: bool) -> WpPlacement {
+    if overlay_on {
+        WpPlacement::LeaveTopmost
+    } else if interactive_on || three_d {
+        WpPlacement::AboveIcons
+    } else {
+        WpPlacement::Desktop
+    }
+}
+
+#[cfg(test)]
+mod wallpaper_3d_tests {
+    use super::{wallpaper_placement, WpPlacement};
+
+    #[test]
+    fn overlay_outranks_everything() {
+        // The Pro overlay is already at the top of the z-order. Re-placing it for
+        // a drag would drop it below the windows it is meant to float over.
+        for three_d in [false, true] {
+            for on in [false, true] {
+                assert_eq!(
+                    wallpaper_placement(true, three_d, on),
+                    WpPlacement::LeaveTopmost,
+                    "overlay on, 3d={three_d}, interactive={on}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn releasing_the_mouse_with_3d_on_stays_above_the_icons() {
+        // The regression this whole function exists for. Disarming is not the
+        // same as leaving 3D: push the window back to the desktop here and the
+        // next drag on bare wallpaper finds nothing to grab, because the icon
+        // list is on top again.
+        assert_eq!(wallpaper_placement(false, true, false), WpPlacement::AboveIcons);
+    }
+
+    #[test]
+    fn armed_lifts_even_before_3d_is_on() {
+        // The older "numbers become buttons" path arms without 3D, and it needs
+        // the clicks just as much.
+        assert_eq!(wallpaper_placement(false, false, true), WpPlacement::AboveIcons);
+    }
+
+    #[test]
+    fn idle_and_flat_goes_back_behind_the_icons() {
+        // The only combination that may cover nothing: 3D off, not armed. If this
+        // ever returned AboveIcons the wallpaper would sit over the user's icons
+        // for the entire session.
+        assert_eq!(wallpaper_placement(false, false, false), WpPlacement::Desktop);
+    }
+}
+
+/// Page-driven: borrow the mouse for a drag, or give it back.
+#[tauri::command]
+fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
+    use std::sync::atomic::Ordering;
+    let generation = WP_INTERACTIVE_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    let Some(win) = app.get_webview_window("wallpaper") else { return false };
+    let overlay_on = overlay_allowed(&get_wallpaper_config());
+    let three_d = WP_3D_MODE.load(Ordering::SeqCst);
+
+    let placement = wallpaper_placement(overlay_on, three_d, on);
+    let win2 = win.clone();
+    let _ = app.run_on_main_thread(move || {
+        // Where the window sits, and whether it takes clicks, are two different
+        // questions — answered here in that order.
+        match placement {
+            WpPlacement::LeaveTopmost => {}
+            WpPlacement::AboveIcons => lift_wallpaper_above_icons(&win2),
+            WpPlacement::Desktop => pin_wallpaper_window(&win2),
+        }
+        set_wallpaper_click_through(&win2, !on);
+        // Armed means Esc has to reach the page, and a WS_EX_NOACTIVATE window
+        // gets no keyboard focus on its own.
+        if on { let _ = win2.set_focus(); }
+    });
+
+    if on {
+        // The last line of defence, and the reason it is native rather than in
+        // the page: it is the PAGE that gives the mouse back, so every way the
+        // page can die — a crash, a reload, an event that never arrives — ends
+        // with a full-screen window silently eating every click on the desktop,
+        // with nothing on screen to say why. This fires regardless of what the
+        // page intended.
+        let app2 = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(WP_INTERACTIVE_MAX_SECS));
+            // Renewed or already released in the meantime — this shot is stale.
+            if WP_INTERACTIVE_GEN.load(Ordering::SeqCst) != generation { return; }
+            // Cloned because the closure MOVES the handle it uses, and the
+            // call it is passed to needs one of its own.
+            let app3 = app2.clone();
+            let _ = app2.run_on_main_thread(move || {
+                if let Some(w) = app3.get_webview_window("wallpaper") {
+                    set_wallpaper_click_through(&w, true);
+                    if !overlay_allowed(&get_wallpaper_config())
+                        && !WP_3D_MODE.load(Ordering::SeqCst)
+                    {
+                        pin_wallpaper_window(&w);
+                    }
+                }
+                diag_log("wallpaper", &format!(
+                    "interactive watchdog fired after {WP_INTERACTIVE_MAX_SECS}s — mouse returned"));
+            });
+        });
+    }
+    true
 }

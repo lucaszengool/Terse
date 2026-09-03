@@ -1931,6 +1931,8 @@ const ISLAND_PILL_H: f64 = 44.0;
 const ISLAND_CARD_W: f64 = 440.0;
 const ISLAND_CARD_DEFAULT_H: f64 = 520.0;
 const ISLAND_Y: f64 = 4.0;
+/// Diameter of the round 3D button that sits beside the island.
+const WP3D_BTN: f64 = 36.0;
 
 const DASHBOARDS: &[(&str, f64, f64)] = &[
     ("session", 322.0, 372.0),
@@ -2700,6 +2702,35 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .build()?,
             16.0,
         ),
+        // The round 3D button, built the first time 3D is switched on.
+        //
+        // It sits just right of the dynamic island, because that is already where
+        // the user looks. It must stay ABOVE the wallpaper: the adjust state
+        // lifts the wallpaper over the desktop icons, and a button at ordinary
+        // floating height would be covered by the very layer it controls — you
+        // could get in and not back out.
+        "wp3d" => {
+            let x = ((screen_width - ISLAND_PILL_W) / 2.0) + ISLAND_PILL_W + 10.0;
+            let w = WebviewWindowBuilder::new(app, "wp3d", WebviewUrl::App("wp3d.html".into()))
+                .title("Terse 3D")
+                .inner_size(WP3D_BTN, WP3D_BTN)
+                .position(x, ISLAND_Y + (ISLAND_PILL_H - WP3D_BTN) / 2.0)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible_on_all_workspaces(true)
+                .visible(false)
+                .build()?;
+            // Round, and round through the shared tail so the region is re-cut if
+            // it is ever resized — a square GDI region on a circular button shows
+            // as four opaque corners.
+            (w, WP3D_BTN / 2.0)
+        }
         // The alert banner, built on the first alert rather than at every launch.
         //
         // Hidden from startup to the first notification, which for most sessions
@@ -4470,6 +4501,7 @@ pub fn run() {
             notifications::toast_hide,
             notifications::take_pending_toasts,
             wallpaper_set_3d_mode,
+            wallpaper_set_adjust,
             desktop_icon_rects,
             wallpaper_set_interactive,
             notifications::toast_action,
@@ -6722,6 +6754,10 @@ fn focus_app(app: String) {
 /// drop the window back onto the desktop when it disarms.
 static WP_3D_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
+/// True only while the user is inside the adjust state — the one thing that
+/// lifts the window, and so the one thing the placement rule asks about.
+static WP_ADJUST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// The cursor feed is started by the first 3D activation and then parks on
 /// WP_3D_MODE, so a user who never turns 3D on never gets the thread at all.
 static WP_CURSOR_FEED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -6797,42 +6833,102 @@ fn set_wallpaper_click_through(win: &tauri::WebviewWindow, through: bool) {
     }
 }
 
-/// Page-driven: 3D is on, so put this layer where a drag can reach it.
+/// The adjust state: the wallpaper owns the whole screen until the user leaves.
+///
+/// This is the only thing that lifts the window, and it exists because "can I
+/// drag my wallpaper" used to depend on a string of invisible conditions —
+/// window level, cursor position, whether an icon happened to be underneath —
+/// and when any one of them was not met the user pressed and *nothing happened*,
+/// which is indistinguishable from the feature not existing. Pressing a button
+/// that lights up is a state you can see.
+///
+/// Five links in the chain (licence, level, transparency, click-through, and the
+/// page having its listener up); any one missing reads as "the button does
+/// nothing", so it logs what it did.
 #[tauri::command]
-fn wallpaper_set_3d_mode(app: AppHandle, on: bool) -> bool {
+fn wallpaper_set_adjust(app: AppHandle, on: bool) -> bool {
     use std::sync::atomic::Ordering;
-    WP_3D_MODE.store(on, Ordering::SeqCst);
-    let Some(win) = app.get_webview_window("wallpaper") else { return false };
-    // Started once, on the first activation, rather than at launch: the feed is
-    // useless while 3D is off and there is no reason to poll the cursor for
-    // every user who never turns it on.
-    if on && !WP_CURSOR_FEED.swap(true, Ordering::SeqCst) {
-        start_wallpaper_cursor_feed(app.clone());
+    // Licence is checked HERE, in Rust, on the same rule as always-on-top:
+    // anything that changes how the window behaves asks the licence natively.
+    // Turning it OFF is always allowed — a lapsed subscription still has to be
+    // able to get out.
+    let pro = license::License::load().is_pro();
+    if on && !pro {
+        diag_log("wallpaper", "adjust REFUSED — not Pro");
+        return false;
     }
-    // Already topmost for Pro's always-on-top overlay? Then it is above
-    // everything and already transparent — moving it would only demote it.
+    WP_ADJUST.store(on, Ordering::SeqCst);
+    let Some(win) = app.get_webview_window("wallpaper") else { return false };
     let overlay = overlay_allowed(&get_wallpaper_config());
     let win2 = win.clone();
     let _ = app.run_on_main_thread(move || {
-        if overlay { return; }
+        if overlay { return; }   // already on top and already transparent
         if on { lift_wallpaper_above_icons(&win2); } else { pin_wallpaper_window(&win2); }
     });
-    // The page drops its own background when lifted. Without that it is an opaque
-    // rectangle sitting on top of the desktop icons — the black-sheet failure this
-    // window has produced twice before, once for the overlay and once here.
+    // The page's half: while lifted it must stop painting its own background, or
+    // it is a board over the desktop icons rather than a wallpaper above them.
     let _ = app.emit("wallpaper-lift", on);
+    let took = wallpaper_set_interactive(app.clone(), on);
+    diag_log("wallpaper", &format!("adjust on={on} pro={pro} interactive_ok={took}"));
+    // So the button's own light tracks the real state, including when something
+    // else (Esc, the watchdog, a lapsed licence) ends it.
+    let _ = app.emit("wallpaper-adjust", on);
+    took
+}
+
+/// Page-driven: 3D is on. Note what this does NOT do — move the window.
+///
+/// It used to. Turning 3D on lifted the layer above the desktop icons and made
+/// it transparent, so that a pointer over bare wallpaper could catch a drag. The
+/// cost was far too high: every desktop icon was covered for as long as 3D was
+/// on ("turn on 3D and the desktop is nothing but wallpaper"), and it collapsed
+/// 3D and always-on-top into one thing when they are two switches the user sets
+/// separately. macOS shipped that, hit it, and took it back out.
+///
+/// So with 3D merely on, this layer stays exactly what it was: behind the icons,
+/// click-through, drawn the same — only the camera is three-dimensional. The
+/// cursor feed still moves it (hoverParallax), which needs no permission and
+/// eats no clicks. Lifting is the adjust state's job alone.
+#[tauri::command]
+fn wallpaper_set_3d_mode(app: AppHandle, on: bool) -> bool {
+    use std::sync::atomic::Ordering;
+    if on && !license::License::load().is_pro() {
+        return false;
+    }
+    WP_3D_MODE.store(on, Ordering::SeqCst);
+    // Started on the first activation rather than at launch: the feed is useless
+    // while 3D is off, and a user who never turns it on never gets the thread.
+    if on && !WP_CURSOR_FEED.swap(true, Ordering::SeqCst) {
+        start_wallpaper_cursor_feed(app.clone());
+    }
+    // The round button exists only while 3D does. The rest of the time the screen
+    // should not carry a control for something that is off; while 3D is on it is
+    // the one route that is guaranteed to work.
+    if on {
+        if let Some(btn) = ensure_window(&app, "wp3d") {
+            let _ = btn.show();
+        }
+    } else if let Some(btn) = app.get_webview_window("wp3d") {
+        let _ = btn.hide();
+    }
+    diag_log("wallpaper", &format!("3d_mode on={on}"));
     true
 }
 
 /// Where the wallpaper window belongs for a given combination of state.
 ///
-/// Pulled out of the command purely so it can be tested: it is three booleans
-/// with one non-obvious interaction, and that interaction is a bug the macOS
-/// build hit first — releasing the mouse while 3D is still on must NOT push the
-/// window back down to the desktop layer, because the next time the pointer
-/// crosses bare wallpaper there would be nothing there to grab. Everything
-/// around it is Win32 side effects that a test cannot observe; this part is a
-/// pure function, so it gets one.
+/// Pulled out of the command purely so it can be tested, and then corrected once
+/// against the macOS build, which had already been through this:
+///
+/// **Turning 3D on must NOT lift the window.** The first version of this port
+/// lifted whenever 3D was on, so the wallpaper sat above SHELLDLL_DefView for
+/// the whole session and covered every desktop icon — the user turns on 3D and
+/// their desktop becomes nothing but wallpaper. It also silently merged the
+/// feature with "always on top", which is a separate switch the user owns.
+/// macOS shipped that, hit it, and reverted it; this is the reverted rule.
+///
+/// Lifting now belongs to the adjust state alone — the few tens of seconds the
+/// user is explicitly inside, having pressed the button for it.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum WpPlacement {
     /// Pro's always-on-top overlay: already above everything, already
@@ -6844,10 +6940,10 @@ enum WpPlacement {
     Desktop,
 }
 
-fn wallpaper_placement(overlay_on: bool, three_d: bool, interactive_on: bool) -> WpPlacement {
+fn wallpaper_placement(overlay_on: bool, adjusting: bool) -> WpPlacement {
     if overlay_on {
         WpPlacement::LeaveTopmost
-    } else if interactive_on || three_d {
+    } else if adjusting {
         WpPlacement::AboveIcons
     } else {
         WpPlacement::Desktop
@@ -6862,39 +6958,30 @@ mod wallpaper_3d_tests {
     fn overlay_outranks_everything() {
         // The Pro overlay is already at the top of the z-order. Re-placing it for
         // a drag would drop it below the windows it is meant to float over.
-        for three_d in [false, true] {
-            for on in [false, true] {
-                assert_eq!(
-                    wallpaper_placement(true, three_d, on),
-                    WpPlacement::LeaveTopmost,
-                    "overlay on, 3d={three_d}, interactive={on}"
-                );
-            }
+        for adjusting in [false, true] {
+            assert_eq!(
+                wallpaper_placement(true, adjusting),
+                WpPlacement::LeaveTopmost,
+                "overlay on, adjusting={adjusting}"
+            );
         }
     }
 
     #[test]
-    fn releasing_the_mouse_with_3d_on_stays_above_the_icons() {
-        // The regression this whole function exists for. Disarming is not the
-        // same as leaving 3D: push the window back to the desktop here and the
-        // next drag on bare wallpaper finds nothing to grab, because the icon
-        // list is on top again.
-        assert_eq!(wallpaper_placement(false, true, false), WpPlacement::AboveIcons);
+    fn adjusting_lifts_above_the_icons() {
+        // The one state that may cover the icons, and only because the user
+        // pressed the button to enter it.
+        assert_eq!(wallpaper_placement(false, true), WpPlacement::AboveIcons);
     }
 
     #[test]
-    fn armed_lifts_even_before_3d_is_on() {
-        // The older "numbers become buttons" path arms without 3D, and it needs
-        // the clicks just as much.
-        assert_eq!(wallpaper_placement(false, false, true), WpPlacement::AboveIcons);
-    }
-
-    #[test]
-    fn idle_and_flat_goes_back_behind_the_icons() {
-        // The only combination that may cover nothing: 3D off, not armed. If this
-        // ever returned AboveIcons the wallpaper would sit over the user's icons
-        // for the entire session.
-        assert_eq!(wallpaper_placement(false, false, false), WpPlacement::Desktop);
+    fn three_d_alone_never_lifts() {
+        // The regression this function exists to prevent, and the reason it takes
+        // no `three_d` argument at all: there is no combination of inputs that
+        // lifts the window merely because 3D is on. Expressed as an absent
+        // parameter rather than an assertion, because a rule that cannot be
+        // written down cannot be got wrong later.
+        assert_eq!(wallpaper_placement(false, false), WpPlacement::Desktop);
     }
 }
 
@@ -6905,9 +6992,11 @@ fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
     let generation = WP_INTERACTIVE_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     let Some(win) = app.get_webview_window("wallpaper") else { return false };
     let overlay_on = overlay_allowed(&get_wallpaper_config());
-    let three_d = WP_3D_MODE.load(Ordering::SeqCst);
+    // Deliberately the adjust flag and not WP_3D_MODE: 3D being on does not move
+    // this window. See wallpaper_placement.
+    let adjusting = WP_ADJUST.load(Ordering::SeqCst);
 
-    let placement = wallpaper_placement(overlay_on, three_d, on);
+    let placement = wallpaper_placement(overlay_on, adjusting);
     let win2 = win.clone();
     let _ = app.run_on_main_thread(move || {
         // Where the window sits, and whether it takes clicks, are two different
@@ -6939,14 +7028,19 @@ fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
             // call it is passed to needs one of its own.
             let app3 = app2.clone();
             let _ = app2.run_on_main_thread(move || {
+                // The watchdog ends the adjust state as well as the grab. Leaving
+                // WP_ADJUST set would keep the window lifted over the icons with
+                // nobody holding it, and leave the button lit for a state the
+                // user is no longer in.
+                WP_ADJUST.store(false, Ordering::SeqCst);
                 if let Some(w) = app3.get_webview_window("wallpaper") {
                     set_wallpaper_click_through(&w, true);
-                    if !overlay_allowed(&get_wallpaper_config())
-                        && !WP_3D_MODE.load(Ordering::SeqCst)
-                    {
+                    if !overlay_allowed(&get_wallpaper_config()) {
                         pin_wallpaper_window(&w);
                     }
                 }
+                let _ = app3.emit("wallpaper-adjust", false);
+                let _ = app3.emit("wallpaper-lift", false);
                 diag_log("wallpaper", &format!(
                     "interactive watchdog fired after {WP_INTERACTIVE_MAX_SECS}s — mouse returned"));
             });

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="color-scheme" content="dark">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Terse 3D</title>
+  <style>
+    /* 一颗圆按钮,贴在灵动岛旁边。
+       它存在的理由:桌面上"能不能拖"过去要靠一串看不见的条件(窗口层级、辅助功能
+       授权、光标压在哪儿),任何一环缺了就是**一点反应都没有** —— 而"没反应"和
+       "没这个功能"在用户眼里一模一样。一颗看得见、按得动、按下去有明确状态的按钮,
+       把这件事从"猜"变成"按"。 */
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:100%;height:100%;background:transparent;overflow:hidden;
+      -webkit-user-select:none;user-select:none;cursor:pointer}
+    #btn{position:absolute;inset:2px;border-radius:50%;
+      background:rgba(16,18,28,.82);border:1px solid rgba(255,255,255,.16);
+      backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);
+      box-shadow:0 6px 20px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.16);
+      display:flex;align-items:center;justify-content:center;
+      transition:transform .16s cubic-bezier(.2,.9,.25,1),background .2s,border-color .2s}
+    #btn:hover{transform:scale(1.06);background:rgba(26,29,42,.9)}
+    #btn:active{transform:scale(.95)}
+    /* 开着的时候必须一眼看出来:亮色描边 + 呼吸光环。用户是在"调节模式"里,
+       而这个模式会吃掉桌面上的点击 —— 状态不明确是不能接受的。 */
+    body.on #btn{background:var(--ac,#C9F03D);border-color:transparent}
+    body.on #btn svg{stroke:#0B0B0D}
+    body.on #ring{opacity:1;animation:pulse 1.8s ease-in-out infinite}
+    #ring{position:absolute;inset:0;border-radius:50%;opacity:0;
+      border:2px solid var(--ac,#C9F03D);pointer-events:none}
+    @keyframes pulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.14);opacity:.25}}
+    #btn svg{stroke:#E8ECF5;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+    /* 悬停时说清楚它是干什么的 —— 一个只有图标的圆钮,不解释就是个谜。 */
+    #tip{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
+      white-space:nowrap;font:700 10.5px -apple-system,BlinkMacSystemFont,'SF Pro Text',
+      'PingFang SC',system-ui,sans-serif;color:#fff;background:rgba(12,14,22,.92);
+      border:1px solid rgba(255,255,255,.14);padding:4px 9px;border-radius:9999px;
+      opacity:0;transition:opacity .16s;pointer-events:none}
+    body:hover #tip{opacity:1}
+  </style>
+</head>
+<body>
+  <div id="ring"></div>
+  <div id="btn" title="3D">
+    <!-- 一个被环绕的立方体:既是"三维",也是"绕着它转"。 -->
+    <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.6l6.4 3.7v7.4L12 18.4 5.6 14.7V7.3z"/>
+      <path d="M12 3.6v14.8M5.6 7.3L12 11l6.4-3.7"/>
+      <ellipse cx="12" cy="12" rx="10.2" ry="4.2" transform="rotate(-24 12 12)" opacity=".55"/>
+    </svg>
+  </div>
+  <div id="tip" data-i18n="wp3d_tip">Adjust the 3D view</div>
+  <script src="tauri-bridge.js"></script>
+  <script>
+    (function () {
+      var core = window.__TAURI__ && window.__TAURI__.core;
+      var ev = window.__TAURI__ && window.__TAURI__.event;
+      var on = false;
+
+      function paint() {
+        document.body.classList.toggle('on', on);
+        var t = document.getElementById('tip');
+        if (!t) return;
+        var k = on ? 'wp3d_tip_on' : 'wp3d_tip';
+        var f = on ? 'Done — keep this view' : 'Adjust the 3D view';
+        var v = (window.i18n && window.i18n.t) ? window.i18n.t(k) : null;
+        t.textContent = (v && v !== k) ? v : f;
+      }
+
+      document.body.addEventListener('click', function () {
+        console.log('[wp3d] button clicked, next state =', !on);
+        on = !on;
+        paint();
+        // 真正干活的是壁纸窗口和 Rust:这里只负责"按下去了"这件事。
+        if (core) core.invoke('wallpaper_set_adjust', { on: on }).catch(function () { on = !on; paint(); });
+      });
+
+      // 壁纸那边也可能自己退出(Esc、掉出 Pro、看门狗),状态得跟着回来 ——
+      // 一颗亮着的按钮配一个已经退出的模式,比没有按钮更糟。
+      if (ev) ev.listen('wallpaper-adjust', function (e) { on = !!e.payload; paint(); });
+      paint();
+    })();
+  </script>
+  <script src="i18n.js"></script>
+</body>
+</html>

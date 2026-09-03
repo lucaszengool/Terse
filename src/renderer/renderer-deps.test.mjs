@@ -50,5 +50,24 @@ for (const f of files) {
 ok('wallpaper-styles.js ships (mineradio-wallpaper.js and wallpaper-control.html import it)',
    existsSync(join(DIR, 'wallpaper-styles.js')));
 
+// The same failure one level up: a native window pointing at a page that is not
+// in the repository.
+//
+// `WebviewUrl::App("x.html")` is resolved at runtime, so a missing file is not a
+// build error — the window simply opens on nothing, which looks like "the button
+// does nothing" rather than like a missing file. Exactly how wallpaper-styles.js
+// presented, and exactly as hard to see.
+for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src/lib.rs']) {
+  const path = resolve(DIR, rs);
+  if (!existsSync(path)) continue;
+  const src = readFileSync(path, 'utf8');
+  const pages = new Set();
+  for (const m of src.matchAll(/WebviewUrl::App\(\s*"([^"?]+\.html)/g)) pages.add(m[1]);
+  for (const page of pages) {
+    ok(`${rs.split('/').slice(-3).join('/')} opens ${page}, which must exist in the repo`,
+       existsSync(join(DIR, page)));
+  }
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

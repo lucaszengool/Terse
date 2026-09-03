@@ -326,7 +326,10 @@ router.delete('/', requireUser, (req, res) => {
  * therefore collects different moments without knowing how many exist, and a
  * plain "fetch, set wallpaper" automation gets a different one each run.
  */
-function serveFrame(req, res) {
+/* async because the numbers are drawn on before the bytes go out; express
+   handles a returned promise fine, and every path inside already answers the
+   request itself rather than throwing. */
+async function serveFrame(req, res) {
   /* Two shapes, one meaning.
      The extensionless /w/<token>/overlay is what the app hands out now; the old
      /w/<token>.overlay.png still resolves because it may already be sitting in
@@ -379,9 +382,33 @@ function serveFrame(req, res) {
   const frame = db.getWallFrame.get(row.clerk_user_id, pick.slot);
   if (!frame || !frame.png) return res.status(404).type('text/plain').send('Not found');
 
+  /* The numbers, drawn on as they stand right now.
+     The ring holds stills, so without this the Home Screen shows whatever was
+     true at the last capture — and the app can only capture while it is open.
+     The field stays the phone's; only the type is added here. Falls back to the
+     untouched frame whenever there is nothing live to say or sharp is missing,
+     which is the behaviour this route had before. */
+  let body = frame.png;
+  try {
+    const links = db.listLinksForUser.all(row.clerk_user_id) || [];
+    let best = null;
+    for (const l of links) {
+      const at = l.snapshot_at ? Date.parse(l.snapshot_at + 'Z') : 0;
+      if (at && (!best || at > best.at)) best = { at, link: l };
+    }
+    if (best) {
+      let snap = null;
+      try { snap = JSON.parse(best.link.snapshot || 'null'); } catch { snap = null; }
+      if (snap) {
+        if (!snap.at) snap.at = best.at;
+        body = await require('./wallstamp').stamp(frame.png, snap);
+      }
+    }
+  } catch { /* a wallpaper must never fail because the numbers could not be drawn */ }
+
   res.set({
-    'Content-Type': contentTypeOf(frame.png),
-    'Content-Length': String(frame.png.length),
+    'Content-Type': contentTypeOf(body),
+    'Content-Length': String(body.length),
     // Shortcuts runs on a schedule and must never be handed a cached copy: a
     // wallpaper that silently stops changing is indistinguishable from one that
     // broke, and iOS is aggressive about reusing image responses.
@@ -397,7 +424,7 @@ function serveFrame(req, res) {
   // "last collected 12 minutes ago" is the only feedback the user gets, since
   // the Shortcut runs invisibly.
   try { db.advanceWallCursor.run(slots.length, row.clerk_user_id); } catch { /* never fail the image */ }
-  res.send(frame.png);
+  res.send(body);
 }
 
 router.use('/pushcut', require('./pushcut'));

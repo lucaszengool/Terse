@@ -29,7 +29,8 @@
     "dmg": "npm run build:mac && ./scripts/package-dmg.sh",
     "test:overlay": "node src/renderer/wallpaper-overlay.test.mjs",
     "test:liveactivity": "node api/liveactivity.test.js",
-    "test:liveactivity-e2e": "node api/liveactivity.e2e.test.js"
+    "test:liveactivity-e2e": "node api/liveactivity.e2e.test.js",
+    "test:wallstamp": "node api/wallstamp.test.js"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",
@@ -37,6 +38,7 @@
     "express": "^4.21.0",
     "express-rate-limit": "^7.5.0",
     "jose": "^4.15.9",
+    "sharp": "^0.35.4",
     "stripe": "^17.5.0"
   },
   "devDependencies": {

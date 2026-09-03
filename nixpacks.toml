@@ -1,10 +1,20 @@
 [phases.setup]
-nixPkgs = ["nodejs_18"]
+# fontconfig + a real font, because sharp draws the live wallpaper numbers
+# through resvg and resvg resolves families against the fonts INSTALLED IN THE
+# CONTAINER. A slim node image ships none, and the failure is silent: the text
+# renders as nothing at all and the wallpaper just looks unstamped. DejaVu is
+# small and covers what these numbers need.
+nixPkgs = ["nodejs_18", "fontconfig", "dejavu_fonts"]
 
 [phases.install]
 # prod deps only — skips puppeteer (dev-only; it downloads a full Chromium and
 # breaks the build) and any other devDependencies the API doesn't need at runtime.
 cmds = ["npm install --omit=dev --no-audit --no-fund"]
+
+[phases.install.variables]
+# Where fontconfig looks. Without this the fonts installed above are present on
+# disk and still invisible to resvg.
+FONTCONFIG_PATH = "/etc/fonts"
 
 [phases.build]
 cmds = []

@@ -28,7 +28,8 @@
     "build:mac": "cd src-tauri && cargo tauri build",
     "dmg": "npm run build:mac && ./scripts/package-dmg.sh",
     "test:overlay": "node src/renderer/wallpaper-overlay.test.mjs",
-    "test:liveactivity": "node api/liveactivity.test.js"
+    "test:liveactivity": "node api/liveactivity.test.js",
+    "test:liveactivity-e2e": "node api/liveactivity.e2e.test.js"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

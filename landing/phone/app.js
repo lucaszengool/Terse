@@ -105,6 +105,18 @@
       pc_save: 'Save', pc_test: 'Test', pc_off: 'Remove',
       pc_saved: 'Saved', pc_fired: 'Fired — your phone should update',
       pc_failed: 'Pushcut did not answer. Is the Automation Server running?',
+      pc_cost: '⚠ The Automation Server is a paid feature of Pushcut — their subscription, not ours. Everything else in Terse works without it; this only buys you a wallpaper that refreshes while the phone is in your pocket.',
+      pc_1b: 'Install Pushcut and subscribe to Pushcut Pro',
+      pc_1s: 'The Automation Server does not run on the free tier. This is the step that costs money, and it is the only one.',
+      pc_2b: 'Pushcut → Automation Server → Start Server On This Device',
+      pc_2s: 'It is meant for a spare device that is always on and plugged in. On the phone you carry, it runs while Pushcut is open or the phone is charging — so overnight and at your desk, not all day.',
+      pc_3b: 'Copy the execute URL',
+      pc_3s: 'Tap the URL cell to copy it. It looks like https://api.pushcut.io/SECRET/execute?shortcut=Name — the path IS the secret, so treat it like a password.',
+      pc_4b: 'Paste it above, Save, then Test',
+      pc_4s: 'Test fires immediately and ignores the rate limit, so you get an answer instead of a wait. Your wallpaper should run a burst within a second or two.',
+      pc_5b: 'What Terse does with it',
+      pc_5s: 'Fires at most once a minute, and only while an agent is actually burning tokens — an idle machine would spend the quota refreshing the same numbers. Nothing is sent until you paste a URL here.',
+
       la_title: 'Put your agents in the Dynamic Island',
       la_body: 'A Live Activity can only be created by a native app — a web page cannot start one on any iPhone, so this pushes to one that already can. Install ActivitySmith, pair the device, make an API key on their site with the same email, and paste it here. Terse then updates the Island on every frame your Mac sends. Their app, their branding, their free tier; nothing here runs until you paste a key.',
       la_save: 'Save', la_test: 'Test', la_off: 'Remove',
@@ -244,6 +256,18 @@
       pc_save: '保存', pc_test: '测试', pc_off: '移除',
       pc_saved: '已保存', pc_fired: '已触发 —— 手机应该会更新',
       pc_failed: 'Pushcut 没有响应。自动化服务器开着吗？',
+      pc_cost: '⚠ 自动化服务器是 Pushcut 的付费功能——是他们的订阅，不是我们的。Terse 其他所有功能不用它也能跑；它买到的只是「手机揣在兜里时壁纸也会刷新」。',
+      pc_1b: '装 Pushcut，并订阅 Pushcut Pro',
+      pc_1s: '自动化服务器在免费档不能用。这是唯一要花钱的一步。',
+      pc_2b: 'Pushcut → Automation Server → Start Server On This Device',
+      pc_2s: '它本来是给一台常年开机插电的备用设备用的。装在你随身那台上，只有 Pushcut 开着或者手机在充电时才跑——也就是过夜和在桌上的时候，不是全天。',
+      pc_3b: '复制 execute 链接',
+      pc_3s: '点那一行就能复制。形如 https://api.pushcut.io/密钥/execute?shortcut=名字 —— 路径本身就是密钥，当密码看待。',
+      pc_4b: '粘到上面，保存，然后点「测试」',
+      pc_4s: '「测试」会立刻触发、并且无视频率限制，所以你马上能看到结果。一两秒内壁纸就该跑一轮。',
+      pc_5b: 'Terse 会怎么用它',
+      pc_5s: '最快一分钟一次，而且只在真的有 agent 在烧 token 的时候——机器闲着的话，刷新同样的数字纯属浪费额度。你不粘链接，这里什么都不会发。',
+
       la_title: '把你的智能体放进灵动岛',
       la_body: '灵动岛只有原生 App 能创建——网页在任何 iPhone 上都起不了，所以这里是推给一个已经做到的 App。装 ActivitySmith、配对设备、用同一个邮箱在它网站上建一个 API key，粘到这里。之后你 Mac 每推一帧，Terse 就更新一次灵动岛。它是别人的 App、别人的品牌、别人的免费额度；不粘 key 这里什么都不会跑。',
       la_save: '保存', la_test: '测试', la_off: '移除',
@@ -1007,6 +1031,7 @@
     // if you happened to open Me first — the fifth time that exact mistake was
     // made in this file, which is why the wiring test now asserts it.
     renderWallSteps();
+    renderPushcutSteps();   // static copy — must not wait on a fetch
     var card = $('wallCard');
     if (!card) return;
     // The whole feature is per-account: the URL is minted for one, and the
@@ -1285,9 +1310,25 @@
      feature of Terse must not require buying somebody else's. */
   var pcState = null;
 
+  var PC_STEPS = [['pc_1b','pc_1s'], ['pc_2b','pc_2s'], ['pc_3b','pc_3s'],
+                  ['pc_4b','pc_4s'], ['pc_5b','pc_5s']];
+
+  function renderPushcutSteps() {
+    var ol = $('pcSteps');
+    if (!ol || ol.children.length) return;      // built once
+    PC_STEPS.forEach(function (pair) {
+      var li = document.createElement('li');
+      var b = document.createElement('b'); b.textContent = t(pair[0]);
+      var sp = document.createElement('span'); sp.textContent = t(pair[1]);
+      li.appendChild(b); li.appendChild(sp);
+      ol.appendChild(li);
+    });
+  }
+
   function renderPushcut() {
     var st = pcState, lab = $('pcState');
     if (!lab) return;
+    renderPushcutSteps();
     var on = !!(st && st.configured);
     $('pcTest').classList.toggle('hide', !on);
     $('pcOff').classList.toggle('hide', !on);

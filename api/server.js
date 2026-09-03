@@ -1267,6 +1267,7 @@ app.use('/api/auth/wechat', require('./wechat'));
 // Shortcut fetches to set it as the actual Home Screen wallpaper.
 const wallpaperRouter = require('./wallpaper');
 app.use('/api/cloud/wallpaper', wallpaperRouter);
+app.use('/api/cloud/liveactivity', require('./liveactivity'));
 
 // Sweep stale cowork sessions + presence every 30s (broadcasts changes over SSE).
 setInterval(() => coworkRouter.sweepStale(), 30 * 1000).unref();

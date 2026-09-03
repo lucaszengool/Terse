@@ -27,7 +27,8 @@
     "test:i18n": "node src/renderer/i18n-coverage.test.mjs",
     "build:mac": "cd src-tauri && cargo tauri build",
     "dmg": "npm run build:mac && ./scripts/package-dmg.sh",
-    "test:overlay": "node src/renderer/wallpaper-overlay.test.mjs"
+    "test:overlay": "node src/renderer/wallpaper-overlay.test.mjs",
+    "test:liveactivity": "node api/liveactivity.test.js"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

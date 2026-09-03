@@ -216,6 +216,12 @@ router.post('/push', requireDevice, (req, res) => {
   try {
     const busy = sessions.some((s) => s && s.connected !== false && (+s.burnRate || 0) > 0);
     if (busy) require('./pushcut').fire(req.link.clerk_user_id).catch(() => {});
+    /* And the Island, on every frame rather than only a busy one. Pushcut
+       exists to REPLACE a wallpaper, which is expensive and pointless when
+       nothing changed; a Live Activity is showing numbers that go stale, so it
+       is worth updating as they fall as well as as they rise. Its own floor is
+       ten seconds. */
+    require('./liveactivity').push(req.link.clerk_user_id, frame).catch(() => {});
   } catch { /* a frame must never fail because of a notification */ }
 });
 

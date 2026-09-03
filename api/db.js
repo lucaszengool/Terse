@@ -608,6 +608,26 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- ── Live Activity relay ───────────────────────────────────────────────────
+  -- The Dynamic Island, without an app of our own on the App Store. A Live
+  -- Activity can only be created by ActivityKit, so the choice is to ship a
+  -- native app or to push to somebody else's that already has. This row is the
+  -- second: which relay, and the key that reaches it.
+  --
+  -- The api_key is a credential, stored whole because it must be replayed
+  -- verbatim; it is never sent to a client, only ever a masked form.
+  CREATE TABLE IF NOT EXISTS wallpaper_liveactivity (
+    clerk_user_id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    api_key TEXT NOT NULL,
+    stream_key TEXT NOT NULL,
+    enabled INTEGER DEFAULT 1,
+    last_pushed_at TEXT,
+    push_count INTEGER DEFAULT 0,
+    last_error TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   -- ── Web Push subscriptions ────────────────────────────────────────────────
   -- One row per installed web app. Keyed by endpoint because that is what the
   -- push service issues and what identifies the device — a person can have the
@@ -1505,6 +1525,22 @@ const firePushcut = db.prepare(`
 `);
 const failPushcut = db.prepare('UPDATE wallpaper_pushcut SET last_error = ? WHERE clerk_user_id = ?');
 
+const setLiveActivity = db.prepare(`
+  INSERT INTO wallpaper_liveactivity (clerk_user_id, provider, api_key, stream_key, enabled)
+  VALUES (@clerk_user_id, @provider, @api_key, @stream_key, 1)
+  ON CONFLICT(clerk_user_id) DO UPDATE SET provider = excluded.provider,
+    api_key = excluded.api_key, stream_key = excluded.stream_key,
+    enabled = 1, last_error = NULL
+`);
+const getLiveActivity = db.prepare('SELECT * FROM wallpaper_liveactivity WHERE clerk_user_id = ?');
+const deleteLiveActivity = db.prepare('DELETE FROM wallpaper_liveactivity WHERE clerk_user_id = ?');
+const pushedLiveActivity = db.prepare(`
+  UPDATE wallpaper_liveactivity
+     SET last_pushed_at = datetime('now'), push_count = push_count + 1, last_error = NULL
+   WHERE clerk_user_id = ?
+`);
+const failLiveActivity = db.prepare('UPDATE wallpaper_liveactivity SET last_error = ? WHERE clerk_user_id = ?');
+
 const putWallOverlay = db.prepare(`
   INSERT INTO wallpaper_overlays (clerk_user_id, png, width, height, bytes, updated_at)
   VALUES (@clerk_user_id, @png, @width, @height, @bytes, datetime('now'))
@@ -1575,6 +1611,7 @@ module.exports = {
   putWallVideo, getWallVideo, getWallVideoMeta, deleteWallVideo,
   putWallOverlay, getWallOverlay, getWallOverlayMeta, deleteWallOverlay,
   setPushcut, getPushcut, deletePushcut, firePushcut, failPushcut,
+  setLiveActivity, getLiveActivity, deleteLiveActivity, pushedLiveActivity, failLiveActivity,
   // Web Push
   addPushSub, getPushSubs, deletePushSub, deletePushSubsForUser, touchPushSub, failPushSub,
   // Terse Cloud

@@ -83,7 +83,20 @@ const SLOTS = 12;
  * steps, which is what every user got before this existed. See
  * docs/phone-shortcut-setup.md.
  */
-const SHORTCUT_URL = process.env.TERSE_SHORTCUT_URL || '';
+/* The published shortcut, built on a real iPhone and shared from it.
+ *
+ * It CANNOT be generated. Since iOS 15 shortcuts must be signed, signing
+ * happens only on an Apple device, and unsigned .shortcut import was removed —
+ * an iCloud share link is the only distributable form there is.
+ *
+ * ⚠ ITS URL FIELD IS DELIBERATELY EMPTY. A shortcut carries whatever was in it
+ * when it was shared, so one built with a working link would hand every person
+ * who added it the author's own wallpaper token — and that token is the whole
+ * credential. This one ships blank and the person adding it pastes their own,
+ * which the app has already put on their clipboard by the time Shortcuts
+ * opens. */
+const SHORTCUT_URL = process.env.TERSE_SHORTCUT_URL
+  || 'https://www.icloud.com/shortcuts/95e89987ce194b7a807e989e5ef133e3';
 
 /** A four-second 720-wide H.264 clip lands around 2-5 MB. */
 const MAX_VIDEO_BYTES = 24 * 1024 * 1024;

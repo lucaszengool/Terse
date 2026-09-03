@@ -458,7 +458,11 @@
     var D = window.TerseDiag;
     if (D) D.startCapture();
 
-    return import('/app-assets/mineradio-wallpaper.js')
+    // Stamped for the same reason the phone scripts are — see engineUrl() in
+    // capture.js. An unstamped engine sat in Cloudflare's cache past its own
+    // max-age and users kept getting the broken one.
+    return import('/app-assets/mineradio-wallpaper.js'
+      + (window.__TERSE_BUILD ? '?v=' + encodeURIComponent(window.__TERSE_BUILD) : ''))
       .then(function (m) {
         window.__terseDynImport = 'ok';
         if (!m || !m.default) throw new Error('engine module loaded but exported nothing');

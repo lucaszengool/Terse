@@ -27,6 +27,20 @@
   /* Match the panel, capped. iOS scales anything bigger down anyway, and past
      roughly this size a phone GPU starts failing the capture outright rather
      than returning a smaller image. */
+  /* THE ENGINE NEEDS THE BUILD STAMP TOO.
+     The phone scripts are stamped and the engines deliberately were not — and
+     that decision means an engine fix does not reach anybody. Cloudflare
+     caches by file extension and overrides our headers: measured on a
+     .js served with max-age=300, the edge answered HIT at age 387 with the old
+     file, so a fix that shipped was invisible until the edge felt like it. The
+     stamp changes with the content, so a fixed engine is a URL the edge has
+     never seen. Same mechanism the phone scripts already use. */
+  function engineUrl(o) {
+    if (o && o.engineUrl) return o.engineUrl;
+    var b = root.__TERSE_BUILD;
+    return '/app-assets/mineradio-wallpaper.js' + (b ? '?v=' + encodeURIComponent(b) : '');
+  }
+
   function targetSize() {
     var dpr = Math.min(root.devicePixelRatio || 1, 3);
     var w = Math.round((root.screen && root.screen.width ? root.screen.width : 390) * dpr);
@@ -171,7 +185,7 @@
     var wp = null;
     try {
       step(0.1, 'engine');
-      var mod = await import(o.engineUrl || '/app-assets/mineradio-wallpaper.js');
+      var mod = await import(engineUrl(o));
       var Engine = mod.default;
 
       /* Quality follows the LIVE tier rather than sitting above it.
@@ -443,7 +457,7 @@
     var wp = null, encoder = null;
     try {
       step(0.05, 'engine');
-      var mod = await import(o.engineUrl || '/app-assets/mineradio-wallpaper.js');
+      var mod = await import(engineUrl(o));
       wp = new mod.default(canvas, {
         theme: o.theme || 'neon', quality: 44, angle: 42, intensity: 1.15,
         style: o.style || 'cinematic', pro: !!o.pro,

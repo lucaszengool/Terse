@@ -192,6 +192,8 @@
         intensity: 1.15,
         style: o.style || 'cinematic',
         pro: !!o.pro,
+        // Not a live field: see _paced in the engine.
+        capture: true,
         // Explicit, so the engine never falls through to getDesktopPicture() —
         // which on a phone answers with the user's chosen photo or nothing.
         photo: bedImage(o, size.w, size.h),
@@ -215,7 +217,16 @@
       // Feed it the same overlays the live field gets, so the capture contains
       // the real glyph text and not a blank field with nothing to say.
       var ov = o.overlays || {};
-      if (wp.setActivity) wp.setActivity(typeof ov.activity === 'number' ? ov.activity : 0.35);
+      /* A FLOOR, because a still is not a live field.
+         activity is how hard the field dances, and it is derived from real
+         burn rate — an account with nothing running lands at 0.08. The live
+         wallpaper SHOULD go quiet then: it is on screen, and calm is honest.
+         A capture is not. It is looked at all day, and at 0.08 the field never
+         gathers enough to form the glyph text at all — measured on an iPhone,
+         0.08 gave sparse dots and no text, 0.9 gave the numbers. So a captured
+         frame is asked to dance whatever the account is doing; what it SAYS is
+         still the real numbers. */
+      if (wp.setActivity) wp.setActivity(Math.max(0.55, typeof ov.activity === 'number' ? ov.activity : 0.35));
       if (wp.setAgents && ov.agents) wp.setAgents(ov.agents);
       if (wp.setAgentLog && ov.logGroups && ov.logGroups.length) wp.setAgentLog(ov.logGroups);
 
@@ -442,7 +453,8 @@
       wp.start();
 
       var ov = o.overlays || {};
-      if (wp.setActivity) wp.setActivity(typeof ov.activity === 'number' ? ov.activity : 0.45);
+      // Same floor as the stills — see there.
+      if (wp.setActivity) wp.setActivity(Math.max(0.55, typeof ov.activity === 'number' ? ov.activity : 0.45));
       if (wp.setAgents && ov.agents) wp.setAgents(ov.agents);
 
       // The bed, composited under every frame — same reason as the still: the

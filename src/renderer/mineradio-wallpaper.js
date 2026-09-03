@@ -299,6 +299,14 @@ export default class MineradioWallpaper {
     // any divergence a user sees is a real product difference, not two code
     // paths that drifted apart.
     this.pro = !!(opts && opts.pro);
+    /* PACING IS FOR A WALLPAPER THAT RUNS FOR HOURS, NOT A 20-SECOND CAPTURE.
+       The text throttles below — one stage item per 12s, one log line per 9s
+       on the free tier — exist so a live field does not flicker through every
+       number it is fed. A capture asks for a line per frame, roughly every
+       1.7 seconds, and under those throttles all but the first were dropped:
+       one frame in twelve carried text and the other eleven were bare field.
+       Capture says so explicitly rather than every caller having to know. */
+    this._paced = !(opts && opts.capture);
     // 风格只对 Pro 开放,而且 **free 必须永远停在原版那一套** —— 控制面板里两个预览
     // 并排跑,免费那半边一换风格,对比就不再是"免费 vs Pro",而是两种风格。
     // 自定义也只对 Pro 开放,而且走同一条路:预设 + 差量。free 传什么都会被
@@ -312,7 +320,14 @@ export default class MineradioWallpaper {
     this._glyphSide = 1;
     this._glyphIdx = 0;
     this._lastAgentSig = '';
-    this._lastStageAt = 0;
+    /* NOT 0. performance.now() counts from PAGE load, so 0 does not mean
+       "no glyph has been asked for yet" — it means "one was asked for the
+       instant the page opened". With a 12s throttle downstream, every
+       setStageItems call in the first twelve seconds of a page was dropped in
+       silence, and a capture, which builds a fresh engine and asks straight
+       away, never got its text at all. The sentinel has to be outside the
+       window, not at the origin of it. */
+    this._lastStageAt = -Infinity;
 
     // 兜底尺寸不是可有可无的:画布刚挂上去时 clientWidth 可能还是 0,
     // 而 0 会一路传成 aspect=NaN → 网格行列 NaN → 几何 0 个点(整个场景空白,
@@ -1109,7 +1124,7 @@ export default class MineradioWallpaper {
     // The FIRST line must never be throttled. performance.now() is page uptime,
     // so defaulting _lastLogAt to 0 meant any log arriving in the first few
     // seconds of the page's life was discarded as "too soon".
-    if (this._lastLogAt != null &&
+    if (this._paced && this._lastLogAt != null &&
         now - this._lastLogAt < (this.pro ? 1200 : 9000)) return;
     this._lastLogAt = now;
     this._lastLogLine = t;
@@ -1159,7 +1174,7 @@ export default class MineradioWallpaper {
     const arr = Array.isArray(items) ? items : [];
     if (!arr.length) return;
     const now = performance.now();
-    if (now - this._lastStageAt < 12000) return;
+    if (this._paced && now - this._lastStageAt < 12000) return;
     this._lastStageAt = now;
     const it = arr[(this._glyphIdx++) % arr.length];
     const label = (it.v != null ? String(it.v) : '') + (it.u ? ' ' + it.u : '');

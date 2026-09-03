@@ -358,6 +358,12 @@
         width: size.w,
         height: size.h,
         score: frames[0] ? frames[0].score : 0,
+        /* EVERY frame's score, not just the first.
+           liveliness() has always been computed and then thrown away, and that
+           is how a capture of nothing shipped: the bytes were fine, the upload
+           was fine, the ring was fine, and every frame was an empty gradient.
+           The caller cannot notice that without these. */
+        scores: frames.map(function (f) { return f.score; }),
       };
     } finally {
       // Always: a leaked WebGL context is one of the few ways a phone browser

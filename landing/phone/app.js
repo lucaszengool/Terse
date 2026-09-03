@@ -69,6 +69,7 @@
       wall_rotate: 'Reset this link',
       wall_rotated: 'Link reset — update it in your Shortcut',
       wall_failed: 'Could not capture the field on this device',
+      wall_blank: 'Uploaded — but the field drew nothing, so those frames are blank',
       wall_hidden: 'Keep Terse on screen while it captures',
       wall_video: 'Live Photo (may not animate)',
       wall_recording: 'Recording the field…',
@@ -189,6 +190,7 @@
       wall_rotate: '重置这个链接',
       wall_rotated: '链接已重置——记得在快捷指令里换掉',
       wall_failed: '这台设备上截不了粒子场',
+      wall_blank: '传上去了——但粒子场没画出来，这几帧是空的',
       wall_hidden: '截图时请让 Terse 保持在前台',
       wall_video: 'Live Photo（可能不会动）',
       wall_recording: '正在录制粒子场…',
@@ -1427,6 +1429,7 @@
       t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
     }) : null;
 
+    var shot = null;
     return window.TerseCapture.capture({
       style: T.isPro() ? styleId() : 'cinematic',
       pro: T.isPro(),
@@ -1437,6 +1440,7 @@
       texts: wallTexts(ov),
       onStep: function (p, l) { btn.textContent = t(label) + ' ' + (l || Math.round(p * 100) + '%'); },
     }).then(function (res) {
+      shot = res;
       var blobs = (res && res.blobs) || [];
       if (!blobs.length) throw new Error('no frame');
       return (function () {
@@ -1480,7 +1484,24 @@
          over and over — which is the difference between a wallpaper that
          animates and one that does not. */
       var n = (j && j.frames) || 0;
-      toast(t(auto ? 'wall_bed_done' : 'wall_deployed') + ' · ' + t('wall_frames').replace('{n}', n));
+      /* A capture can pass every check it has and still be a picture of
+         nothing. That is not hypothetical: the field was laid out for a
+         viewport three times too large for a long time, every frame came back
+         as bare backdrop, and this line cheerfully said "12 frames".
+
+         liveliness() is mean luminance of the PARTICLE layer alone — the
+         backdrop is composited afterwards and cannot prop the number up. A
+         drawing field measured 2.56 on a real iPhone; the broken one measured
+         0.001. Anything under this floor means the engine drew nothing, not
+         that the user is idle: the glyphs are drawn from the stats whatever
+         they say, so even a quiet account is far above it. */
+      var lit = 0;
+      ((shot && shot.scores) || []).forEach(function (v) { if (v > lit) lit = v; });
+      if (shot && shot.scores && shot.scores.length && lit < 0.05) {
+        toast(t('wall_blank'));
+      } else {
+        toast(t(auto ? 'wall_bed_done' : 'wall_deployed') + ' · ' + t('wall_frames').replace('{n}', n));
+      }
       /* The transparent layer costs one more short render and makes the "keep
          my own wallpaper" route work with no second decision. Never awaited and
          never fatal — the deploy has already succeeded by this point. */

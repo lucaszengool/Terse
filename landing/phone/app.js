@@ -93,6 +93,7 @@
       /* Romanised on purpose, in BOTH languages: the glyph layer rasterises a
          Latin typeface, so Chinese characters come out as empty boxes. */
       field_idle_1: 'Terse', field_idle_2: 'scan to connect',
+      sig_touch: 'touches', sig_here: 'here',
       wall_overlay: 'Keep my own wallpaper, add the text',
       wall_overlaying: 'Making the layer…',
       wall_overlay_ready: 'Layer ready — build the Overlay shortcut below',
@@ -245,6 +246,7 @@
       field_no_frames: '图形引擎启动了，但一帧都没画出来。',
       field_details: '查看详情', field_copy: '复制详情', field_copied: '已复制',
       field_idle_1: 'Terse', field_idle_2: '扫码连接',
+      sig_touch: '触碰', sig_here: '停留',
       wall_overlay: '保留我自己的壁纸，只加字',
       wall_overlaying: '正在做图层…',
       wall_overlay_ready: '图层好了——照下面建 Overlay 快捷指令',
@@ -698,10 +700,30 @@
          actually the case instead. Nothing is invented: the moment a machine is
          linked the real numbers take over again. */
       if (!st.linked && !sessions.length) {
-        o.stage = [
-          { k: 'Terse', v: t('field_idle_1'), u: '' },
-          { k: 'Terse', v: t('field_idle_2'), u: '' },
-        ];
+        /* Two fixed sentences beat "0 tokens", but they never changed — so the
+           field spelled the same thing forever and read as a screenshot. The
+           visitor drives it instead: the clock moves on its own, and touching
+           the screen moves the rest.
+
+           ⚠ It is the VISITOR and not the phone, on purpose. Every way to read
+           a device from a page — getBattery, navigator.connection,
+           deviceMemory — is Chrome-only and simply absent in iOS Safari, which
+           is the browser this ships to. Measured, not assumed. What Safari does
+           expose is static, and static facts cannot animate anything. Touch is
+           real, immediate, needs no permission, and exists everywhere. */
+        if (window.TerseSignals) {
+          var sig = window.TerseSignals.overlays(function (key, fb) {
+            return t(key) === key ? fb : t(key);
+          });
+          o.stage = sig.stage;
+          o.activity = Math.max(o.activity, sig.activity);
+          wp.setActivity(o.activity);
+        } else {
+          o.stage = [
+            { k: 'Terse', v: t('field_idle_1'), u: '' },
+            { k: 'Terse', v: t('field_idle_2'), u: '' },
+          ];
+        }
         o.logGroups = [];
       }
       // The two that become particle text. setStageItems rate-limits itself to

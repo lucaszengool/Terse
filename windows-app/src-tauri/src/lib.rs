@@ -5883,7 +5883,7 @@ fn wallpaper_default_config() -> serde_json::Value {
         // 3D 自由视角(Pro)。az/el 是绕原点的方位角/仰角(弧度),dist 是推拉倍数。
         // on=false 时前端把相机放回正对机位,画面和加这个字段之前逐位相同 ——
         // 老配置缺这一段也走同一条路,升级不会改变任何人看到的壁纸。
-        "view3d": { "on": false, "az": 0.0, "el": 0.0, "dist": 1.0 },
+        "view3d": { "on": false, "az": 0.0, "el": 0.0, "dist": 1.0, "dim": false },
         "theme": "neon", "quality": 56, "angle": 55, "intensity": 1.0
     })
 }

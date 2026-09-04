@@ -7,9 +7,11 @@ mod stats_store;
 mod pricing;
 mod license;
 mod cowork;
+mod phone;
 mod permission;
 mod pet_store;
 mod farm_store;
+mod messages;
 mod doctor;
 mod notifications;
 mod circuit;
@@ -22,6 +24,7 @@ mod prompt_store;
 mod session_history;
 mod graph_store;
 mod graph_extract;
+mod projects;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -712,6 +715,8 @@ const ISLAND_PILL_H: f64 = 44.0;
 const ISLAND_CARD_W: f64 = 440.0;
 const ISLAND_CARD_DEFAULT_H: f64 = 520.0;
 const ISLAND_Y: f64 = 4.0;
+/// 3D 视角按钮的直径。比灵动岛矮一点,并排放着不抢戏。
+const WP3D_BTN: f64 = 36.0;
 
 // ── Floating dashboard widget windows ──
 // Each entry is one small frameless always-on-top card showing ONE rich live
@@ -960,6 +965,12 @@ fn hide_island_window(app: AppHandle) {
 /// Hover toggle: collapse to the pill or expand to the monitor card, kept top-center.
 #[tauri::command]
 fn island_set_expanded(expanded: bool, app: AppHandle) {
+    // Hovering the island means the user is at it, which ends any permission
+    // back-off started by an unanswered card — otherwise coming back to the
+    // island would show nothing for up to a minute with no way to say so.
+    if expanded {
+        app.state::<permission::PermissionHub>().clear_quiet();
+    }
     if let Some(win) = app.get_webview_window("island") {
         let sw = island_screen_width(&app);
         let (w, h) = if expanded {
@@ -1059,6 +1070,33 @@ fn get_agent_sessions(state: tauri::State<'_, AppState>) -> Vec<serde_json::Valu
     let sessions = monitor.get_connected_sessions();
     eprintln!("[terse] get_agent_sessions: {} connected", sessions.len());
     sessions
+}
+
+// ── Phone link (desktop ⇄ Terse phone web app) ──
+
+/// Mint a pair code. The sheet renders `url` as a QR and `code` underneath it,
+/// so the phone can be linked by camera or by typing six characters.
+#[tauri::command]
+fn phone_pair() -> Result<serde_json::Value, String> {
+    crate::phone::pair()
+}
+
+/// Whether a phone has claimed the pairing. Polled by the sheet while it is up.
+#[tauri::command]
+fn phone_status() -> serde_json::Value {
+    crate::phone::status()
+}
+
+/// The master switch for sending anything to the phone at all.
+#[tauri::command]
+fn phone_set_share(on: bool) -> serde_json::Value {
+    crate::phone::set_share(on)
+}
+
+/// Forget the pairing on this machine.
+#[tauri::command]
+fn phone_unlink() -> serde_json::Value {
+    crate::phone::unlink()
 }
 
 #[tauri::command]
@@ -1521,7 +1559,21 @@ fn install_agent_hook_impl(agent_id: &str) -> Result<serde_json::Value, String> 
             let mut settings: serde_json::Value = if config.settings_path.exists() {
                 let content = std::fs::read_to_string(&config.settings_path)
                     .map_err(|e| format!("Failed to read settings: {}", e))?;
-                serde_json::from_str(&content).unwrap_or(serde_json::json!({}))
+                if content.trim().is_empty() {
+                    serde_json::json!({})
+                } else {
+                    // Refuse to proceed on a file we cannot parse. This used to
+                    // fall back to `{}`, which then got written back — silently
+                    // erasing every hook, permission rule and MCP server the user
+                    // had, for something as ordinary as catching the file
+                    // mid-edit. Failing the install is always the lesser harm.
+                    serde_json::from_str(&content).map_err(|e| {
+                        format!(
+                            "{} is not valid JSON, so it was left untouched: {e}",
+                            config.settings_path.display()
+                        )
+                    })?
+                }
             } else {
                 serde_json::json!({})
             };
@@ -1905,6 +1957,185 @@ async fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> Re
 fn get_stats(period: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     store.get_stats(&period)
+}
+
+/// The screen rect (logical points, top-left origin) of the wallpaper's message
+/// big-text, plus whether the cursor is currently inside it.
+static HOT_RECT: std::sync::Mutex<Option<(f64, f64, f64, f64)>> = std::sync::Mutex::new(None);
+static HOT_POLL_RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Tell the native side where the message big-text sits on screen.
+///
+/// The wallpaper window is click-through by design — at desktop level it must not
+/// eat clicks meant for icons, and in overlay mode it covers the whole screen, so
+/// swallowing clicks would be intolerable. That means the webview never receives
+/// mouseenter for this element: `setIgnoresMouseEvents:YES` makes the pointer pass
+/// straight through. The only way to know the cursor is over the text is to ask
+/// the window server where the cursor actually is, which is what the poll below
+/// does — the same approach the dashboard constellation already uses.
+#[tauri::command]
+fn wallpaper_set_hot_rect(x: f64, y: f64, w: f64, h: f64, app: AppHandle) {
+    *HOT_RECT.lock().unwrap_or_else(|e| e.into_inner()) = Some((x, y, w, h));
+    start_wallpaper_hover_poll(app);
+}
+
+#[cfg(target_os = "macos")]
+fn start_wallpaper_hover_poll(app: AppHandle) {
+    use std::sync::atomic::Ordering;
+    if HOT_POLL_RUNNING.swap(true, Ordering::SeqCst) { return; }
+    std::thread::spawn(move || {
+        use cocoa::base::{id, NO, YES};
+        use objc::{class, msg_send, sel, sel_impl};
+        let mut inside_last = false;
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(70));
+            let Some(win) = app.get_webview_window("wallpaper") else { continue };
+            if !win.is_visible().unwrap_or(false) { continue; }
+            let Some(rect) = *HOT_RECT.lock().unwrap_or_else(|e| e.into_inner()) else { continue };
+
+            // NSEvent.mouseLocation is bottom-left origin, in points; the rect from
+            // the page is top-left origin. Flip against the main screen height.
+            let (mx, my_bottom, screen_h): (f64, f64, f64) = unsafe {
+                let p: cocoa::foundation::NSPoint = msg_send![class!(NSEvent), mouseLocation];
+                let screen: id = msg_send![class!(NSScreen), mainScreen];
+                let fr: cocoa::foundation::NSRect = msg_send![screen, frame];
+                (p.x, p.y, fr.size.height)
+            };
+            let my = screen_h - my_bottom;
+            let (rx, ry, rw, rh) = rect;
+            // Generous slack: the panel opens BELOW the text, and the pointer has to
+            // be able to travel down into it without the hover dropping on the way.
+            const PAD: f64 = 26.0;
+            let inside = mx >= rx - PAD && mx <= rx + rw + PAD
+                      && my >= ry - PAD && my <= ry + rh + 420.0;
+
+            if inside != inside_last {
+                inside_last = inside;
+                let w2 = win.clone();
+                let _ = app.run_on_main_thread(move || {
+                    if let Ok(ptr) = w2.ns_window() {
+                        let ns: id = ptr as id;
+                        // Only while the pointer is over the text: the rest of the
+                        // time the window must stay click-through.
+                        unsafe { let _: () = msg_send![ns, setIgnoresMouseEvents: if inside { NO } else { YES }]; }
+                    }
+                });
+                let _ = app.emit("wallpaper-hover", inside);
+            }
+        }
+    });
+}
+
+#[cfg(not(target_os = "macos"))]
+fn start_wallpaper_hover_poll(_app: AppHandle) {}
+
+/// Per-app notification style, so the setup checklist can tell the user exactly
+/// which app is on Banner (invisible to the feed) and needs to be Alert.
+#[tauri::command]
+fn messages_notification_settings() -> serde_json::Value {
+    serde_json::to_value(messages::notification_settings()).unwrap_or_default()
+}
+
+/// Social apps Terse has actually seen messages from, each with its wallpaper switch.
+#[tauri::command]
+fn messages_detected_apps() -> Result<serde_json::Value, String> {
+    Ok(serde_json::to_value(messages::detected_apps()?).unwrap_or_default())
+}
+
+/// Turn one app's messages on or off for the wallpaper. Muting only affects the
+/// wallpaper — the message centre still shows everything, so this never loses mail.
+#[tauri::command]
+fn messages_set_app_on_wallpaper(app_id: String, on: bool) -> Result<(), String> {
+    messages::set_app_on_wallpaper(&app_id, on)
+}
+
+/// What the wallpaper should show: recent messages minus the muted apps.
+#[tauri::command]
+fn messages_for_wallpaper(limit: Option<usize>) -> Result<serde_json::Value, String> {
+    Ok(serde_json::to_value(messages::recent_for_wallpaper(limit.unwrap_or(20))?).unwrap_or_default())
+}
+
+/// Step 1 of replying: open the conversation and stop, sending nothing.
+///
+/// Split in two on purpose. WeChat 4.1.11 exposes no accessibility tree at all
+/// (measured: `entire contents` = 0, AXManualAccessibility → -25205), so no code
+/// can confirm which conversation the search actually opened. Typing still works
+/// — synthetic keys are input, not reading — so the machine *can* send, it just
+/// cannot prove to whom. Rather than send unverified, it hands the check to the
+/// person: you look at the chat that opened, then confirm.
+#[tauri::command]
+fn messages_open_chat(app_id: String, target: String) -> serde_json::Value {
+    serde_json::to_value(messages::open_chat(&app_id, &target)).unwrap_or_default()
+}
+
+/// Step 2: send into the conversation the user has just confirmed by eye.
+#[tauri::command]
+fn messages_send_open(app_id: String, text: String) -> serde_json::Value {
+    serde_json::to_value(messages::send_to_open_chat(&app_id, &text)).unwrap_or_default()
+}
+
+/// Can the message feed be read? Drives the Full Disk Access prompt in the UI.
+#[tauri::command]
+fn messages_status() -> serde_json::Value {
+    serde_json::to_value(messages::status()).unwrap_or_default()
+}
+
+/// Recent social-app messages, newest first.
+#[tauri::command]
+fn messages_recent(limit: Option<usize>, chat_only: Option<bool>) -> Result<serde_json::Value, String> {
+    let msgs = messages::recent(limit.unwrap_or(30), chat_only.unwrap_or(true))?;
+    Ok(serde_json::to_value(msgs).unwrap_or_default())
+}
+
+/// One place that reports every permission the message feature needs, so the UI
+/// can show a checklist and take the user straight to the exact pane for each.
+///
+/// Only the two we can actually detect are returned as booleans:
+///   • full disk access — provable by trying to read the notification db;
+///   • accessibility     — AXIsProcessTrusted() for this very process.
+/// WeChat's notification STYLE (banner vs alert) is deliberately NOT returned as
+/// a detected boolean: the flag layout in ncprefs is undocumented and a previous
+/// guess at it was wrong. Claiming a wrong "already on" is worse than sending the
+/// user to look, so that one is surfaced as a step with a deep link, not a check.
+#[tauri::command]
+fn messages_permission_report() -> serde_json::Value {
+    let fda = messages::status().available;
+    let ax = ax_is_trusted();
+    serde_json::json!({
+        "fullDiskAccess": fda,
+        "accessibility": ax,
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn ax_is_trusted() -> bool {
+    extern "C" { fn AXIsProcessTrusted() -> bool; }
+    unsafe { AXIsProcessTrusted() }
+}
+#[cfg(not(target_os = "macos"))]
+fn ax_is_trusted() -> bool { true }
+
+/// Open a specific Privacy pane. `which` = "fulldisk" | "accessibility" | "notifications".
+#[tauri::command]
+fn messages_open_settings(which: String) -> Result<(), String> {
+    let url = match which.as_str() {
+        "accessibility" => "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        "notifications" => "x-apple.systempreferences:com.apple.Notifications-Settings.extension",
+        // default and "fulldisk"
+        _ => "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+    };
+    std::process::Command::new("open").arg(url).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Open the Full Disk Access pane. The grant itself is the user's to make —
+/// there is no API to request it, so the most we can do is take them there.
+#[tauri::command]
+fn messages_open_permission_settings() -> Result<(), String> {
+    std::process::Command::new("open")
+        .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -2610,12 +2841,19 @@ fn wallpaper_default_config() -> serde_json::Value {
         "enabled": true,
         // 默认引擎 = mineradio(真桌面壁纸 + 粒子律动);"topography" 切回音域回响光柱地形
         "engine": "mineradio",
+        // Pro 的粒子风格(src/renderer/wallpaper-styles.js)。"cinematic" 是原来那一种,
+        // 也是老配置文件里缺这个字段时前端自己会退回的那一种 —— 升级不会改变任何人看到的画面。
+        "style": "cinematic",
+        // 3D 自由视角(Pro)。az/el 是绕原点的方位角/仰角(弧度),dist 是推拉倍数。
+        // on=false 时前端把相机放回正对机位,画面和加这个字段之前逐位相同 ——
+        // 老配置缺这一段也走同一条路,升级不会改变任何人看到的壁纸。
+        "view3d": { "on": false, "az": 0.0, "el": 0.0, "dist": 1.0, "dim": false },
         "theme": "neon", "quality": 56, "angle": 55, "intensity": 1.0
     })
 }
 
 /// 极简 base64(只为把一张 JPEG 塞进 data URL,不值得为它加一个依赖)
-fn b64(data: &[u8]) -> String {
+pub(crate) fn b64(data: &[u8]) -> String {
     const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
     for c in data.chunks(3) {
@@ -2708,37 +2946,113 @@ fn set_wallpaper_config(config: serde_json::Value, app: AppHandle) -> bool {
         let _ = std::fs::create_dir_all(dir);
     }
     let ok = std::fs::write(&p, serde_json::to_string_pretty(&config).unwrap_or_default()).is_ok();
+    // Re-level on every write: the engine can change here, and the engine holds a
+    // veto over overlay mode. Switching to topography while lifted has to drop the
+    // window back to the desktop, or the opaque engine mounts on top of everything.
+    let level_on = overlay_allowed(&config);
+    if let Some(win) = app.get_webview_window("wallpaper") {
+        let _ = app.run_on_main_thread(move || pin_wallpaper_window(&win, level_on));
+    }
+    let _ = app.emit("wallpaper-overlay", level_on);
     // Live update: the wallpaper window re-reads theme/quality/angle on this event.
     let _ = app.emit("wallpaper-config", &config);
     ok
 }
 
-/// Pin an existing window to the macOS desktop level: it renders behind the
-/// desktop icons (above the static desktop picture), is click-through so the
-/// desktop stays usable, and follows the user across all Spaces.
+/// Whether the wallpaper window may actually be lifted above other windows.
+///
+/// The toggle alone is not enough, because ONLY the particle engines can be
+/// transparent. Mineradio/cinematic run on a `alpha:true` renderer that clears
+/// to (0,0,0,0), so lifting them shows particles over your windows and nothing
+/// else. Topography renders through a bloom + grade composer chain whose final
+/// full-screen pass is opaque by construction — lifting it puts a solid sheet of
+/// terrain over the entire screen, above the menu bar, click-through and
+/// impossible to dismiss.
+///
+/// So the engine gets a veto, and it is enforced here rather than in the UI:
+/// wallpaper.json is a plain file a user can hand-edit, and "overlay":true left
+/// behind after switching engines must not be able to black out the screen.
+fn overlay_allowed(cfg: &serde_json::Value) -> bool {
+    let on = cfg.get("overlay").and_then(|v| v.as_bool()).unwrap_or(false);
+    let engine = cfg.get("engine").and_then(|v| v.as_str()).unwrap_or("mineradio");
+    // Entitlement belongs HERE, not only in the UI. It used to live solely in the
+    // renderer, which meant the two halves of this feature disagreed for a free
+    // user: Rust lifted the window to the screen-saver level (it only checked the
+    // flag and the engine) while the page refused to go transparent (it also
+    // checked Pro) — a lifted opaque window is the entire screen turned into
+    // wallpaper. Whatever decides the LEVEL must also decide the PAINT.
+    on && matches!(engine, "mineradio" | "cinematic") && license::License::load().is_pro()
+}
+
+/// The effective overlay state — the single answer both halves must agree on.
+#[tauri::command]
+fn wallpaper_overlay_effective() -> bool {
+    overlay_allowed(&get_wallpaper_config())
+}
+
+/// Place the wallpaper window at one of two levels.
+///
+/// DESKTOP (default): kCGDesktopWindowLevel — behind the desktop icons, above
+/// the static desktop picture. It is wallpaper in the literal sense.
+///
+/// OVERLAY (Pro): the screen-saver level, which is above ordinary windows, above
+/// the menu bar, and — with fullScreenAuxiliary — above apps that have taken a
+/// Space full-screen. The particles and the particle text stay visible over
+/// everything instead of being buried by the first window you open.
+///
+/// Two properties make that bearable rather than hostile:
+///
+///   · it stays click-through (setIgnoresMouseEvents), so a layer covering the
+///     whole screen at the highest level cannot swallow a single click; and
+///   · it becomes NON-opaque with a clear background, so only the particles are
+///     drawn. An opaque overlay at this level would be a black screen — which is
+///     exactly what would happen if this flag were copied from the desktop path.
 #[cfg(target_os = "macos")]
-fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
-    use cocoa::base::{id, NO, YES};
-    use objc::{msg_send, sel, sel_impl};
+fn pin_wallpaper_window(win: &tauri::WebviewWindow, overlay: bool) {
+    use cocoa::base::{id, nil, NO, YES};
+    use objc::{class, msg_send, sel, sel_impl};
     if let Ok(ptr) = win.ns_window() {
         let ns: id = ptr as id;
         unsafe {
-            // kCGDesktopWindowLevel — the live-wallpaper layer, behind icons.
-            let level: i64 = -2_147_483_623;
+            // kCGDesktopWindowLevel = -2147483623; kCGScreenSaverWindowLevel = 1000.
+            let level: i64 = if overlay { 1_000 } else { -2_147_483_623 };
             let _: () = msg_send![ns, setLevel: level];
+
             // canJoinAllSpaces(1<<0) | stationary(1<<4) | ignoresCycle(1<<6):
             // stays on every Space, out of Mission Control and window cycling.
-            let behavior: u64 = (1 << 0) | (1 << 4) | (1 << 6);
+            // fullScreenAuxiliary(1<<8) is what lets it sit over a full-screen
+            // app; without it the overlay simply disappears when anything goes
+            // full screen, which is the moment people most expect it to hold.
+            let mut behavior: u64 = (1 << 0) | (1 << 4) | (1 << 6);
+            if overlay { behavior |= 1 << 8; }
             let _: () = msg_send![ns, setCollectionBehavior: behavior];
+
             let _: () = msg_send![ns, setIgnoresMouseEvents: YES]; // click-through
             let _: () = msg_send![ns, setHasShadow: NO];
-            let _: () = msg_send![ns, setOpaque: YES];
+            if overlay {
+                let _: () = msg_send![ns, setOpaque: NO];
+                let clear: id = msg_send![class!(NSColor), clearColor];
+                let _: () = msg_send![ns, setBackgroundColor: clear];
+            } else {
+                let _: () = msg_send![ns, setOpaque: YES];
+                // DELIBERATELY nil, restored after a rollback.
+                //
+                // AppKit documents backgroundColor as non-nullable, so I changed
+                // this to blackColor on that reasoning alone — and the build that
+                // came out was wrong on screen, while the nil build was right.
+                // Observation beats the documentation here: whatever nil does on
+                // this window, it is what the desktop wallpaper actually needs,
+                // and the version with a real colour was the regression.
+                //
+                // Do not "fix" this again without watching both builds run.
+                let _: () = msg_send![ns, setBackgroundColor: nil];
+            }
         }
     }
 }
 
 #[cfg(not(target_os = "macos"))]
-fn pin_wallpaper_window(_win: &tauri::WebviewWindow) {}
+fn pin_wallpaper_window(_win: &tauri::WebviewWindow, _overlay: bool) {}
 
 /// Size the (already-created) wallpaper window to the primary display, pin it
 /// behind the desktop, and show it. The window itself is built once in `setup`
@@ -2757,8 +3071,48 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
     let _ = win.show();
     // Pinning touches AppKit (NSWindow) — must run on the main thread, so it is
     // safe whether called from `setup` or from a command handler thread.
+    let overlay = overlay_allowed(&get_wallpaper_config());
     let win2 = win.clone();
-    let _ = app.run_on_main_thread(move || pin_wallpaper_window(&win2));
+    let _ = app.run_on_main_thread(move || pin_wallpaper_window(&win2, overlay));
+    let _ = app.emit("wallpaper-overlay", overlay);
+    Ok(())
+}
+
+/// Re-level the live window WITHOUT touching wallpaper.json.
+///
+/// The page calls this when entitlement changes. It must not persist: a lapsed
+/// (or merely unreachable) licence check would otherwise overwrite the user's
+/// own "overlay": true with false, and resubscribing would silently come back
+/// with the switch off. Preference and entitlement are different things — only
+/// the user gets to write the preference.
+#[tauri::command]
+fn relevel_wallpaper_window(on: bool, app: AppHandle) -> Result<(), String> {
+    let allowed = on && overlay_allowed(&get_wallpaper_config());
+    if let Some(win) = app.get_webview_window("wallpaper") {
+        let _ = app.run_on_main_thread(move || pin_wallpaper_window(&win, allowed));
+    }
+    let _ = app.emit("wallpaper-overlay", allowed);
+    Ok(())
+}
+
+/// Turn the always-on-top overlay on or off (Pro).
+///
+/// Re-levels the live window immediately rather than asking the user to toggle
+/// the wallpaper off and on: the whole appeal is watching it lift above the
+/// windows in front of it.
+#[tauri::command]
+fn set_wallpaper_overlay(on: bool, app: AppHandle) -> Result<(), String> {
+    let mut cfg = get_wallpaper_config();
+    if let Some(o) = cfg.as_object_mut() {
+        o.insert("overlay".into(), serde_json::Value::Bool(on));
+    }
+    let level_on = overlay_allowed(&cfg);
+    let _ = set_wallpaper_config(cfg, app.clone());
+    if let Some(win) = app.get_webview_window("wallpaper") {
+        // AppKit only — must be the main thread.
+        let _ = app.run_on_main_thread(move || pin_wallpaper_window(&win, level_on));
+    }
+    let _ = app.emit("wallpaper-overlay", level_on);
     Ok(())
 }
 
@@ -2789,6 +3143,18 @@ fn navigate_to_wallpaper(app: AppHandle) {
             let _ = win.navigate(url);
         } else {
             let _ = win.eval("window.location.replace('/wallpaper-control.html');");
+        }
+    }
+}
+
+/// 打开「项目粒子」那一页。
+#[tauri::command]
+fn navigate_to_projects(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Ok(url) = "tauri://localhost/projects.html".parse() {
+            let _ = win.navigate(url);
+        } else {
+            let _ = win.eval("window.location.replace('/projects.html');");
         }
     }
 }
@@ -2961,6 +3327,30 @@ fn show_farm_window(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("farm") {
         w.show().map_err(|e| e.to_string())?;
         w.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Open the room's chat window. Called when you join or re-enter a room, and
+/// from the Room page — the wallpaper cannot host anything clickable, so this is
+/// where the roster, the history and the composer actually live.
+#[tauri::command]
+fn show_room_window(app: AppHandle, focus: Option<bool>) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("room") {
+        w.show().map_err(|e| e.to_string())?;
+        // The window appears BESIDE what you are doing when it opens itself with
+        // the room; it only takes the keyboard when you asked for it by hand.
+        if focus.unwrap_or(true) {
+            w.set_focus().map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_room_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("room") {
+        w.hide().map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -4043,6 +4433,40 @@ fn get_doctor_settings() -> doctor::DoctorSettings {
 /// Answer a pending Claude Code permission prompt from the island.
 /// `decision` is allow | deny | ask; anything else is rejected rather than
 /// forwarded, so a bad payload can never become an approval.
+/// Read/write the island permission-control switch from Settings.
+#[tauri::command]
+fn permission_control_status() -> bool { permission::is_enabled() }
+
+#[tauri::command]
+fn set_permission_control(enabled: bool) -> Result<bool, String> {
+    permission::set_enabled(enabled)
+}
+
+/// The island confirms it drew the card and can accept a click. Until this
+/// lands, permission.rs refuses to hold the agent — a window that exists but
+/// whose webview is wedged must never freeze a session.
+#[tauri::command]
+fn permission_learned() -> Vec<String> { permission::learned() }
+
+#[tauri::command]
+fn permission_forget_learned() -> Result<(), String> { permission::forget_learned() }
+
+#[tauri::command]
+fn permission_recent_log() -> Vec<String> { permission::recent_log(40) }
+
+#[tauri::command]
+fn get_permission_auto() -> permission::AutoModes { permission::get_auto_modes() }
+
+#[tauri::command]
+fn set_permission_auto(claude: String, codex: String) -> Result<(), String> {
+    permission::set_auto_modes(permission::AutoModes { claude, codex })
+}
+
+#[tauri::command]
+fn permission_ack(id: String, app: tauri::AppHandle) -> bool {
+    app.state::<permission::PermissionHub>().ack(&id)
+}
+
 #[tauri::command]
 fn permission_respond(id: String, decision: String, app: tauri::AppHandle) -> bool {
     if !matches!(decision.as_str(), "allow" | "deny" | "ask" | "always") {
@@ -4051,11 +4475,611 @@ fn permission_respond(id: String, decision: String, app: tauri::AppHandle) -> bo
     app.state::<permission::PermissionHub>().respond(&id, &decision)
 }
 
+/// Make the wallpaper clickable, or put it back behind the cursor.
+///
+/// The wallpaper sits at kCGDesktopWindowLevel with setIgnoresMouseEvents:YES —
+/// it has to, or it would eat every click meant for the desktop and its icons.
+/// So interaction is ARMED rather than always-on: a global shortcut flips this,
+/// the glyphs become buttons for a few seconds, and it flips back. That keeps
+/// the default behaviour of a wallpaper (you can click through it) while making
+/// the data on it reachable.
+// ── Cowork relay: exactly ONE SSE connection per machine ────────────────────
+//
+// Terse opens many windows (main, island, wallpaper, one dash per metric). If
+// each opened its own stream to the team endpoint they would collide with the
+// browser's HTTP/1.1 limit of six connections per domain — and the failure mode
+// is not an error, it is streams that silently never open. So one window claims
+// ownership, holds the single EventSource, and rebroadcasts what it receives to
+// every other window through Tauri's event bus.
+//
+// The claim is a plain atomic held by the app, not a lock file: it must not
+// survive a crash, because a stale claim would mean nobody ever connects.
+static COWORK_OWNER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Try to become the connection owner. Returns true for exactly one caller.
+/// `id` is any nonzero token the window makes up for itself.
+#[tauri::command]
+fn cowork_claim_owner(id: u64) -> bool {
+    use std::sync::atomic::Ordering::SeqCst;
+    id != 0 && COWORK_OWNER.compare_exchange(0, id, SeqCst, SeqCst).is_ok()
+}
+
+/// Release ownership (window closing, or team disconnected) so another window
+/// can take over. Only the current owner may release.
+#[tauri::command]
+fn cowork_release_owner(id: u64) {
+    use std::sync::atomic::Ordering::SeqCst;
+    let _ = COWORK_OWNER.compare_exchange(id, 0, SeqCst, SeqCst);
+}
+
+/// The owner forwards each SSE message here; it fans out to every window.
+/// Payload is passed through untouched — this is transport, not policy.
+#[tauri::command]
+fn cowork_relay(app: tauri::AppHandle, payload: serde_json::Value) {
+    let _ = app.emit("cowork-peer", payload);
+}
+
+// ── 项目粒子(把一个项目文件夹变成一颗可以在壁纸上演的胶囊)──────────────
+
+/// 已经加进来的项目。
+#[tauri::command]
+fn project_list() -> serde_json::Value {
+    serde_json::to_value(projects::load()).unwrap_or_else(|_| serde_json::json!([]))
+}
+
+/// 还没加进来、但**此刻正有 agent 在里面干活**的文件夹。
+///
+/// 这是这个功能的入口:你现在正在写的那个项目,本来就该是列表最上面那个,
+/// 而不是让人自己去找文件夹。
+#[tauri::command]
+fn project_candidates() -> serde_json::Value {
+    let have: std::collections::HashSet<String> =
+        projects::load().into_iter().map(|c| c.path).collect();
+    let out: Vec<serde_json::Value> = projects::agent_dirs()
+        .into_iter()
+        .filter(|d| !have.contains(d))
+        .map(|d| {
+            let name = std::path::Path::new(&d)
+                .file_name()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| d.clone());
+            serde_json::json!({ "path": d, "name": name })
+        })
+        .collect();
+    serde_json::json!(out)
+}
+
+/// 扫一个文件夹,加进来(或就地重扫)。扫描在后台线程上跑 —— 大仓库要走几千个文件,
+/// 不能卡住界面。
+#[tauri::command]
+async fn project_add(path: String) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let p = std::path::PathBuf::from(&path);
+        let mut list = projects::load();
+        let keep = list.iter().find(|c| c.path == path).cloned();
+        let cap = projects::scan(&p, keep.as_ref())?;
+        if let Some(i) = list.iter().position(|c| c.id == cap.id) {
+            list[i] = cap.clone();
+        } else {
+            list.insert(0, cap.clone());
+        }
+        projects::save(&list);
+        serde_json::to_value(cap).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// 用户改了标题/简介/某一行字/换了封面。改过的字段会被记进 `edited`,
+/// 以后重扫**不许覆盖**它们。
+#[tauri::command]
+fn project_update(id: String, patch: serde_json::Value) -> Result<serde_json::Value, String> {
+    let mut list = projects::load();
+    let Some(i) = list.iter().position(|c| c.id == id) else {
+        return Err("no such project".into());
+    };
+    let c = &mut list[i];
+    for key in ["title", "subtitle", "cover"] {
+        if let Some(v) = patch.get(key).and_then(|v| v.as_str()) {
+            match key {
+                "title" => c.title = v.to_string(),
+                "subtitle" => c.subtitle = v.to_string(),
+                _ => c.cover = v.to_string(),
+            }
+            if !c.edited.iter().any(|e| e == key) {
+                c.edited.push(key.to_string());
+            }
+        }
+    }
+    if let Some(v) = patch.get("lines").and_then(|v| v.as_array()) {
+        c.lines = v.iter().filter_map(|x| x.as_str()).map(|s| s.to_string()).take(4).collect();
+        if !c.edited.iter().any(|e| e == "lines") {
+            c.edited.push("lines".into());
+        }
+    }
+    if let Some(v) = patch.get("published").and_then(|v| v.as_bool()) {
+        c.published = v;
+    }
+    let out = serde_json::to_value(c.clone()).map_err(|e| e.to_string())?;
+    projects::save(&list);
+    Ok(out)
+}
+
+#[tauri::command]
+fn project_remove(id: String) -> bool {
+    let mut list = projects::load();
+    let before = list.len();
+    list.retain(|c| c.id != id);
+    projects::save(&list);
+    list.len() != before
+}
+
+/// 在壁纸上放一段这个项目的缩影。`ms` 默认 20 秒 —— 广场预览的标准长度。
+///
+/// 走事件而不是写配置:这是一次**演出**,不是一个设置。写进 wallpaper.json 就得再
+/// 想怎么把它擦掉。
+#[tauri::command]
+fn project_preview(app: AppHandle, capsule: serde_json::Value, ms: Option<u64>) -> bool {
+    let payload = serde_json::json!({ "capsule": capsule, "ms": ms.unwrap_or(20_000) });
+    let _ = app.emit("wallpaper-project", payload);
+    true
+}
+
+/// 一颗胶囊要上传的那一份(去掉本机路径),外加它有多大 —— 大小就是这个功能的
+/// 服务器成本,所以让调用方看得见。
+#[tauri::command]
+fn project_capsule(id: String) -> Result<serde_json::Value, String> {
+    let list = projects::load();
+    let c = list.into_iter().find(|c| c.id == id).ok_or("no such project")?;
+    let up = c.for_upload();
+    let bytes = serde_json::to_string(&up).map(|s| s.len()).unwrap_or(0);
+    if bytes > projects::MAX_CAPSULE_BYTES {
+        return Err(format!("capsule too large: {bytes} bytes"));
+    }
+    Ok(serde_json::json!({ "capsule": up, "bytes": bytes }))
+}
+
+/// 桌面图标的位置和大小。3D 壁纸靠它判断"鼠标底下是文件还是空壁纸"。
+///
+/// 拿不到(没有辅助功能授权、Finder 结构变了)就返回空数组 —— 前端据此**不接管鼠标**。
+/// 宁可少一个功能,也不能让人点不动自己的文件。
+#[tauri::command]
+fn desktop_icon_rects() -> serde_json::Value {
+    #[cfg(target_os = "macos")]
+    {
+        let pid = std::process::Command::new("pgrep")
+            .args(["-x", "Finder"])
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8_lossy(&o.stdout).split_whitespace().next()?.parse::<u32>().ok());
+        let Some(pid) = pid else { return serde_json::json!({ "ok": false, "rects": [] }) };
+        // ok=false 和 rects=[] 必须分得开:一张**干净的桌面**也没有图标,但那时接管
+        // 鼠标是安全的;而 AX 读不出来的时候接管,就是把人的文件点没了。
+        if !ax_read::is_trusted() {
+            return serde_json::json!({ "ok": false, "rects": [] });
+        }
+        let rects: Vec<serde_json::Value> = ax_read::desktop_icon_rects(pid)
+            .into_iter()
+            .map(|(x, y, w, h)| serde_json::json!({ "x": x, "y": y, "w": w, "h": h }))
+            .collect();
+        serde_json::json!({ "ok": true, "rects": rects })
+    }
+    #[cfg(not(target_os = "macos"))]
+    { serde_json::json!({ "ok": false, "rects": [] }) }
+}
+
+/// 3D 自由视角在**桌面上**打开时的窗口形态。
+///
+/// 桌面层收不到点击(Finder 画图标的那个窗口压在上面,它自己要处理框选),所以想让人
+/// 在自己的桌面上把壁纸拖起来,这层必须抬到图标层之上。抬上去之后有两个后果,都得处理:
+///
+///   · **必须变透明**。抬上去还画着不透明背景,就是一块盖住桌面图标的黑板。所以这里
+///     setOpaque:NO + 清背景,同时广播 wallpaper-lift,页面收到就把自己的背景也撤掉
+///     (和「始终置顶」用的是同一套画法)。粒子于是画在图标**上面**,而不是后面 ——
+///     这是 3D 模式下看得见的一个变化,也是它能被拖动的代价。
+///   · **默认仍旧穿透**。谁能拿到这一下点击,由光标位置说了算(见 wallpaper.html:
+///     指针在空壁纸上 → 交给我们;压在图标上 → 还给 Finder)。
+static WP_3D_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// 是否正在调节态(那颗圆钮亮着)。它决定壁纸抬到哪一层 —— 见 wallpaper_set_interactive。
+static WP_ADJUST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// 调节态:整块屏幕交给壁纸,直到用户再按一次。
+///
+/// 和"按光标位置自动接管"是两条不同的路,各有各的用处:
+///   · 自动接管 —— 不打断任何事,但**要读得到桌面图标**(辅助功能授权),而那条授权
+///     每次更新都会失效;缺了它就一次也不接管,桌面上于是毫无反应。
+///   · 调节态   —— 用户明确按下按钮才进来,所以可以直接把整块屏幕接过来:不需要知道
+///     图标在哪,也就没有任何前置条件。代价是这段时间桌面点不动,而这正是它必须
+///     **看得见、按一下就能退出**的原因(那颗圆钮亮着,Esc 也退得掉)。
+///
+/// 出口有三个:再按一次按钮、Esc、以及原生那道 75 秒看门狗(页面崩了也得还回去)。
+#[tauri::command]
+fn wallpaper_set_adjust(app: tauri::AppHandle, on: bool) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        let pro = license::License::load().is_pro();
+        if on && !pro {
+            eprintln!("[wp3d] adjust REFUSED on={on} pro={pro}");
+            return false;
+        }
+        WP_ADJUST.store(on, std::sync::atomic::Ordering::SeqCst);
+        // 抬窗口只发生在这几十秒里,而且**只抬到图标层之上**:
+        //   · 高过 Finder 画图标的那个窗口 → 按下去才轮得到我们(桌面层收不到点击);
+        //   · 仍旧远低于普通窗口 → 别人的窗口照样盖在前面,所以这**不是**「始终置顶」。
+        //     置顶是另一个开关,由用户自己决定,两者互不影响。
+        // 抬上去必须同时变透明,否则就是一块盖住桌面图标的板子。
+        if let Some(win) = app.get_webview_window("wallpaper") {
+            let overlay = overlay_allowed(&get_wallpaper_config());
+            let win2 = win.clone();
+            let _ = app.run_on_main_thread(move || {
+                if overlay { return; }        // 已经置顶了:本来就在最上面且透明,别动
+                if on {
+                    use cocoa::base::{id, NO};
+                    use objc::{class, msg_send, sel, sel_impl};
+                    if let Ok(ptr) = win2.ns_window() {
+                        let ns: id = ptr as id;
+                        unsafe {
+                            let _: () = msg_send![ns, setLevel: WP_LEVEL_ABOVE_ICONS];
+                            let _: () = msg_send![ns, setOpaque: NO];
+                            let clear: id = msg_send![class!(NSColor), clearColor];
+                            let _: () = msg_send![ns, setBackgroundColor: clear];
+                        }
+                    }
+                } else {
+                    // 回到本分:桌面层、不透明、穿透。
+                    pin_wallpaper_window(&win2, false);
+                }
+            });
+            // 页面那半边:抬起来的时候它必须停止画自己的底色,落回去再画上。
+            let _ = app.emit("wallpaper-lift", on);
+        }
+        let took = wallpaper_set_interactive(app.clone(), on);
+        // 这条链上有五个环节(许可、层级、透明、穿透、页面挂监听),缺一环就是"按了
+        // 没反应"。留一行日志,下一次不用再从头猜。
+        eprintln!("[wp3d] adjust on={on} pro={pro} interactive_ok={took}");
+        let _ = app.emit("wallpaper-adjust", on);
+        took
+    }
+    #[cfg(not(target_os = "macos"))]
+    { let _ = (app, on); false }
+}
+
+#[tauri::command]
+fn wallpaper_set_3d_mode(app: tauri::AppHandle, on: bool) -> bool {
+    use std::sync::atomic::Ordering;
+    // 授权判断放在这里,和「始终置顶」同一条规矩:凡是改变窗口行为的事,许可都在
+    // Rust 查。关永远允许(掉线、掉出 Pro 都得关得掉)。
+    if on && !license::License::load().is_pro() {
+        return false;
+    }
+    WP_3D_MODE.store(on, Ordering::SeqCst);
+    #[cfg(target_os = "macos")]
+    {
+        // **这里不再动窗口的层级和透明度。**
+        //
+        // 之前是"开 3D 就把这层抬到图标层之上并变透明",目的是让指针在空壁纸上时能
+        // 接住拖动。代价太大了:抬上去以后桌面图标全被这层盖住(用户看到的正是
+        // "开了 3D 桌面上就只剩壁纸"),而且它和「始终置顶」变成了同一件事 ——
+        // 那是两个独立的开关,3D 开着的时候置不置顶应该由用户自己决定。
+        //
+        // 现在抬窗口只发生在**调节态**那几十秒里(见 wallpaper_set_adjust),
+        // 而且只抬到图标层之上、绝不抬到置顶那一层。平时开着 3D,这一层还是老老实实
+        // 的壁纸:在图标后面、穿透鼠标、画面和以前一样,只是相机是三维的。
+        eprintln!("[wp3d] 3d_mode on={on}");
+        // 那颗圆钮只在 3D 开着的时候存在 —— 平时屏幕上不该多出一个不知道干什么的
+        // 按钮,而开着 3D 的时候它是唯一一条"一定按得动"的路。
+        if let Some(btn) = app.get_webview_window("wp3d") {
+            let _ = if on { btn.show() } else { btn.hide() };
+        }
+        true
+    }
+    #[cfg(not(target_os = "macos"))]
+    { let _ = (app, on); false }
+}
+
+/// 每一次"armed"都拿一个新编号,看门狗醒来时对不上号就说明中间又续过一次。
+static WP_INTERACTIVE_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// 看门狗兜底时长。页面自己的计时器(点数字 8 秒、转视角 45 秒并会续期)才是常规
+/// 出口;这个数只要比它们**都长**就行,它防的是页面根本没机会关的情况。
+const WP_INTERACTIVE_MAX_SECS: u64 = 75;
+
+/// 用户**此刻真的开着的那些窗口**:app 名 + 屏幕上的位置和大小。
+///
+/// 「始终置顶」那张卡原本画的是两个假白框。假框能说明层级关系,但说服不了人 ——
+/// 它演示的是"粒子会浮在窗口上面",而"窗口"如果不是他自己的窗口,那就只是一张示意图。
+/// 拿到真实的窗口之后,同一张卡画的是他自己的 Chrome、终端、微信,按真实的相对位置和
+/// 大小摆着,开关一拨就看见粒子从它们后面浮到前面。
+///
+/// 用 CGWindowListCopyWindowInfo,不是截屏:**不需要屏幕录制权限**。这条路拿得到窗口
+/// 的归属 app 和边框(标题拿不到,那才要录屏权限),而这张卡要的正好只是形状和名字。
+///
+/// 只留 layer==0 的普通应用窗口 —— 菜单栏、Dock、阴影、输入法候选框都在别的层,
+/// 混进来的话画面上会多出一堆莫名其妙的小方块。Terse 自己的窗口也去掉:演示"粒子浮在
+/// 你的窗口上面"时,把设置面板自己画进去只会让人困惑。
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn list_open_windows() -> serde_json::Value {
+    use core_foundation::base::TCFType;
+    use core_foundation::string::CFString;
+    use core_foundation_sys::array::{CFArrayGetCount, CFArrayGetValueAtIndex, CFArrayRef};
+    use core_foundation_sys::base::CFRelease;
+    use core_foundation_sys::dictionary::{CFDictionaryGetValue, CFDictionaryRef};
+    use core_foundation_sys::number::{kCFNumberDoubleType, CFNumberGetValue, CFNumberRef};
+    use core_foundation_sys::string::{kCFStringEncodingUTF8, CFStringGetCString, CFStringRef};
+    use std::os::raw::c_void;
+
+    extern "C" {
+        fn CGWindowListCopyWindowInfo(option: u32, relative_to_window: u32) -> CFArrayRef;
+    }
+    // kCGWindowListOptionOnScreenOnly (1<<0) | kCGWindowListExcludeDesktopElements (1<<4)
+    const OPTS: u32 = (1 << 0) | (1 << 4);
+
+    unsafe fn str_of(dict: CFDictionaryRef, key: &str) -> Option<String> {
+        let k = CFString::new(key);
+        let v = CFDictionaryGetValue(dict, k.as_concrete_TypeRef() as *const c_void);
+        if v.is_null() { return None; }
+        let mut buf = [0i8; 512];
+        if CFStringGetCString(v as CFStringRef, buf.as_mut_ptr(), 512, kCFStringEncodingUTF8) == 0 {
+            return None;
+        }
+        Some(std::ffi::CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned())
+    }
+    unsafe fn num_of(dict: CFDictionaryRef, key: &str) -> Option<f64> {
+        let k = CFString::new(key);
+        let v = CFDictionaryGetValue(dict, k.as_concrete_TypeRef() as *const c_void);
+        if v.is_null() { return None; }
+        let mut out: f64 = 0.0;
+        if CFNumberGetValue(v as CFNumberRef, kCFNumberDoubleType, &mut out as *mut f64 as *mut c_void) {
+            Some(out)
+        } else {
+            None
+        }
+    }
+    unsafe fn dict_of(dict: CFDictionaryRef, key: &str) -> Option<CFDictionaryRef> {
+        let k = CFString::new(key);
+        let v = CFDictionaryGetValue(dict, k.as_concrete_TypeRef() as *const c_void);
+        if v.is_null() { None } else { Some(v as CFDictionaryRef) }
+    }
+
+    let mut out: Vec<serde_json::Value> = Vec::new();
+    unsafe {
+        let arr = CGWindowListCopyWindowInfo(OPTS, 0);
+        if arr.is_null() {
+            return serde_json::json!({ "windows": [], "screen": screen_size_points() });
+        }
+        let n = CFArrayGetCount(arr);
+        for i in 0..n {
+            let d = CFArrayGetValueAtIndex(arr, i) as CFDictionaryRef;
+            if d.is_null() { continue; }
+            // 普通应用窗口只有这一层;其它层是菜单栏/Dock/阴影/输入法之类
+            if num_of(d, "kCGWindowLayer").unwrap_or(-1.0) != 0.0 { continue; }
+            let app = str_of(d, "kCGWindowOwnerName").unwrap_or_default();
+            if app.is_empty() || app == "Terse" || app == "Window Server" || app == "Dock" { continue; }
+            let Some(b) = dict_of(d, "kCGWindowBounds") else { continue };
+            let (x, y) = (num_of(b, "X").unwrap_or(0.0), num_of(b, "Y").unwrap_or(0.0));
+            let (w, h) = (num_of(b, "Width").unwrap_or(0.0), num_of(b, "Height").unwrap_or(0.0));
+            // 太小的多半不是"窗口":工具条、气泡、通知
+            if w < 160.0 || h < 120.0 { continue; }
+            // 窗口号:缩略图要靠它 —— screencapture -l<id> 只截这一个窗口。
+            let id = num_of(d, "kCGWindowNumber").unwrap_or(0.0) as u32;
+            // pid 是拿 app 图标的钥匙(见 app_icon)
+            let pid = num_of(d, "kCGWindowOwnerPID").unwrap_or(0.0) as u32;
+            out.push(serde_json::json!({ "id": id, "pid": pid, "app": app,
+                                         "x": x, "y": y, "w": w, "h": h }));
+            // 前 8 个就够画了(数组本来就是从最前面往后排的)
+            if out.len() >= 8 { break; }
+        }
+        CFRelease(arr as *const c_void);
+    }
+    serde_json::json!({ "windows": out, "screen": screen_size_points() })
+}
+
+/// 某个进程所属 app 的图标(PNG data URL,64pt)。
+///
+/// 「始终置顶」那张卡要让人一眼认出"这是**我的**窗口"。截窗口内容是做不到的:
+/// `screencapture -l<窗口号>` 在新版 macOS 上直接报 "could not create image from
+/// window"(整屏截图倒是可以,但那张图里最前面正是 Terse 自己的设置窗,三个窗口框
+/// 裁出来的全是这张设置页 —— 一个套娃)。
+///
+/// 图标就没有这些问题:**不需要任何权限**,不受遮挡影响,而且识别度极高 —— 一个
+/// 微信绿、一个 Finder 蓝,比一张糊掉的缩略图更快认出来。
+#[tauri::command]
+fn app_icon(pid: u32, size: Option<u32>) -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::base::{id, nil};
+        use objc::{class, msg_send, sel, sel_impl};
+        unsafe {
+            let ra: id = msg_send![class!(NSRunningApplication),
+                                   runningApplicationWithProcessIdentifier: pid as i32];
+            if ra == nil { return None; }
+            let icon: id = msg_send![ra, icon];
+            if icon == nil { return None; }
+            let px = size.unwrap_or(64) as f64;
+            let _: () = msg_send![icon, setSize: cocoa::foundation::NSSize::new(px, px)];
+            let tiff: id = msg_send![icon, TIFFRepresentation];
+            if tiff == nil { return None; }
+            let rep: id = msg_send![class!(NSBitmapImageRep), imageRepWithData: tiff];
+            if rep == nil { return None; }
+            // NSBitmapImageFileTypePNG = 4
+            let png: id = msg_send![rep, representationUsingType: 4u64 properties: nil];
+            if png == nil { return None; }
+            let len: usize = msg_send![png, length];
+            if len == 0 { return None; }
+            let ptr: *const u8 = msg_send![png, bytes];
+            if ptr.is_null() { return None; }
+            let bytes = std::slice::from_raw_parts(ptr, len);
+            Some(format!("data:image/png;base64,{}", b64(bytes)))
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    { let _ = (pid, size); None }
+}
+
+/// 主屏逻辑尺寸(点)。演示卡要按真实比例把窗口缩进那个小框里。
+#[cfg(target_os = "macos")]
+fn screen_size_points() -> serde_json::Value {
+    use cocoa::base::id;
+    use objc::{class, msg_send, sel, sel_impl};
+    unsafe {
+        let screen: id = msg_send![class!(NSScreen), mainScreen];
+        if screen.is_null() { return serde_json::json!({ "w": 1920.0, "h": 1080.0 }); }
+        let fr: cocoa::foundation::NSRect = msg_send![screen, frame];
+        serde_json::json!({ "w": fr.size.width, "h": fr.size.height })
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn list_open_windows() -> serde_json::Value {
+    // 别的平台还没有实现 —— 前端拿到空列表会退回那张示意图,不会空着。
+    serde_json::json!({ "windows": [], "screen": { "w": 1920.0, "h": 1080.0 } })
+}
+
+/// 把一个窗口变成**不抢焦点的面板**(nonactivating panel)。
+///
+/// AppKit 的默认规矩:点击一个非活动 app 的窗口,那一下只用来激活它,事件**不会**
+/// 送到视图。对普通窗口无所谓(第二下就正常了),但对这个 app 里那几层永远不会成为
+/// 活动窗口的浮层 —— 壁纸、灵动岛旁边那颗 3D 圆钮 —— 每一下都是"第一下":按钮要按
+/// 两次才响应,3D 里拖拽干脆毫无反应。
+///
+/// acceptsFirstMouse 解决不了(实测:webview 和 tao 的 view 都改成 YES 了,仍旧被
+/// 吃掉)。真正管用的是把 NSWindow 换成带 NSWindowStyleMaskNonactivatingPanel 的
+/// NSPanel —— 这是 tauri-nspanel / Electron 覆盖层用的同一招:NSPanel 没有比
+/// NSWindow 多出的 ivar,所以 object_setClass 换类是安全的,换完再补上那一位样式,
+/// 点它就**不再激活 app**,事件直接进 webview。
+#[cfg(target_os = "macos")]
+fn make_nonactivating_panel(win: &tauri::WebviewWindow) {
+    use cocoa::base::{id, YES};
+    use objc::runtime::{Class, Object};
+    use objc::{msg_send, sel, sel_impl};
+    extern "C" {
+        fn object_setClass(obj: *mut Object, cls: *const Class) -> *const Class;
+    }
+    let Ok(ptr) = win.ns_window() else { return };
+    unsafe {
+        let ns: id = ptr as id;
+        let Some(panel) = Class::get("NSPanel") else { return };
+        object_setClass(ns as *mut Object, panel as *const Class);
+        // NSWindowStyleMaskNonactivatingPanel = 1 << 7
+        let mask: u64 = msg_send![ns, styleMask];
+        let _: () = msg_send![ns, setStyleMask: mask | (1u64 << 7)];
+        // 只有真需要输入时才成为 key(Esc 还收得到),但不再把 app 拽到前台
+        let _: () = msg_send![ns, setBecomesKeyOnlyIfNeeded: YES];
+        let _: () = msg_send![ns, setFloatingPanel: YES];
+    }
+}
+
+/// 桌面层(kCGDesktopWindowLevel)、图标层、以及"暂时够得着鼠标"的那一层。
+///
+/// **为什么必须抬一层**:桌面层的窗口收得到光标位置,但收不到点击 —— Finder 画桌面
+/// 图标的那个窗口铺满整块屏幕、就压在我们上面,而且它自己要处理框选。所以在桌面层
+/// 解除穿透是没有用的:按下去仍旧是 Finder 在框选,壁纸一动不动(用户看到的正是这个)。
+///
+/// 抬到**图标层再上面一格**就够了,不要抬到屏保层:
+///   · 高过图标层 → 事件先到我们这里,拖得动;
+///   · 仍旧远低于普通窗口(0)→ 任何 app 的窗口照样盖在它前面,所以它**可以保持不
+///     透明**。抬到屏保层就必须同时改成透明,而一块"抬起来了但还在画不透明背景"的
+///     壁纸,就是一整块盖死屏幕的黑板 —— 这个坑这份文件里已经记过一次。
+/// 代价是这几十秒里桌面图标被盖住,结束就回来。
+const WP_LEVEL_DESKTOP: i64 = -2_147_483_623;
+const WP_LEVEL_ABOVE_ICONS: i64 = -2_147_483_602;   // kCGDesktopIconWindowLevel + 1
+const WP_LEVEL_OVERLAY: i64 = 1_000;                // 屏保层(Pro 的「始终置顶」)
+
+#[tauri::command]
+fn wallpaper_set_interactive(app: tauri::AppHandle, on: bool) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::base::{NO, YES};
+        use objc::{msg_send, sel, sel_impl};
+        use std::sync::atomic::Ordering;
+        let generation = WP_INTERACTIVE_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+        // 已经置顶的(Pro)本来就在所有东西上面,别把它拽下来
+        let overlay_on = overlay_allowed(&get_wallpaper_config());
+        // 3D 模式下这层本来就抬着(而且是透明的),放手时不能把它按回桌面层 ——
+        // 按回去,下一次指针进到空壁纸上就又拖不动了。
+        let three_d = WP_3D_MODE.load(Ordering::SeqCst);
+        // 调节态要**抬到所有窗口之上**,不只是图标层之上。
+        //
+        // 这是实测出来的:壁纸抬到图标层之上以后,它仍旧远低于普通窗口 —— 桌面上
+        // 只要有一个浏览器窗口铺着,人在那片区域按下去,事件就归浏览器,壁纸一动
+        // 不动("拖拽和之前一样"的真正原因)。调节态是用户明确进来的一段,期间把
+        // 整幅画面提到最前面是他要的效果;窗口此时是透明的(3d_mode 已经设好),
+        // 所以不会变成一块盖住屏幕的黑板。退出就落回原来的层。
+        let adjusting = WP_ADJUST.load(Ordering::SeqCst);
+        let _ = three_d;   // 开着 3D 本身不改变层级 —— 那是「始终置顶」的事
+        let level: i64 = if overlay_on { WP_LEVEL_OVERLAY }
+                         else if adjusting { WP_LEVEL_ABOVE_ICONS }
+                         else { WP_LEVEL_DESKTOP };
+        if let Some(win) = app.get_webview_window("wallpaper") {
+            if let Ok(ns) = win.ns_window() {
+                unsafe {
+                    let ns = ns as cocoa::base::id;
+                    let _: () = msg_send![ns, setLevel: level];
+                    let _: () = msg_send![ns, setIgnoresMouseEvents: if on { NO } else { YES }];
+                    let got: i64 = msg_send![ns, level];
+                    let ignores: bool = msg_send![ns, ignoresMouseEvents];
+                    eprintln!("[wp3d] interactive on={on} want_level={level} got_level={got} ignores={ignores}");
+                }
+                // Armed means it must also be able to take key events for Esc.
+                if on { let _ = win.set_focus(); }
+                if on {
+                    // 看门狗。解除穿透的是**页面**,恢复穿透的也是页面 —— 页面崩了、
+                    // 被重载了、事件没送到,这层壁纸就永远地吃掉整块桌面的点击,
+                    // 而它铺满整个屏幕,用户连一个图标都点不动,也看不出是谁干的。
+                    // 所以最后一道闸放在原生这边,和页面的意图无关。
+                    let app2 = app.clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_secs(WP_INTERACTIVE_MAX_SECS));
+                        // 中间又调用过(续期,或者已经关掉了)→ 这一发过期作废
+                        if WP_INTERACTIVE_GEN.load(Ordering::SeqCst) != generation { return; }
+                        let app3 = app2.clone();
+                        let _ = app2.run_on_main_thread(move || {
+                            // 看门狗醒来 = 页面没能自己收场,调节态一并作废
+                            WP_ADJUST.store(false, Ordering::SeqCst);
+                            let back = if overlay_allowed(&get_wallpaper_config()) {
+                                WP_LEVEL_OVERLAY
+                            } else {
+                                WP_LEVEL_DESKTOP
+                            };
+                            if let Some(w) = app3.get_webview_window("wallpaper") {
+                                if let Ok(ns) = w.ns_window() {
+                                    unsafe {
+                                        let ns = ns as cocoa::base::id;
+                                        // 穿透和层级一起还回去 —— 只还一半的话,壁纸
+                                        // 会一直压着桌面图标。
+                                        let _: () = msg_send![ns, setIgnoresMouseEvents: YES];
+                                        let _: () = msg_send![ns, setLevel: back];
+                                    }
+                                }
+                            }
+                        });
+                    });
+                }
+                return true;
+            }
+        }
+        false
+    }
+    #[cfg(not(target_os = "macos"))]
+    { let _ = (app, on); false }
+}
+
 #[tauri::command]
 fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
     #[cfg(target_os = "macos")]
     {
         use window_vibrancy::{apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial};
+        // Restored to per-theme behaviour.
+        //
+        // This was briefly forced to always-clear while chasing a "film" over the
+        // desktop. That was right for the default (horizon) theme, which is meant
+        // to be fully see-through — but it also stripped the frosted backing from
+        // every OTHER theme, which is what made all of them look like glass.
+        //
+        // An NSVisualEffectView is composited by the window server BEHIND the whole
+        // webview, so CSS cannot add or remove it; only this call can. horizon
+        // needs it gone, everything else needs it back.
         if let Some(win) = app.get_webview_window("main") {
             if enabled {
                 let _ = clear_vibrancy(&win);
@@ -4137,6 +5161,19 @@ pub(crate) fn cleanup_proxy_configs() {
 
 pub fn run() {
     tauri::Builder::default()
+        // Closing the room window PUTS IT AWAY, it does not destroy it. Tauri's
+        // default is to destroy on close, and a destroyed window cannot be shown
+        // again — the room would be unreachable until Terse restarted, which is
+        // not what pressing the red button means for a window that reopens with
+        // the next room you enter.
+        .on_window_event(|window, event| {
+            if window.label() == "room" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         // single-instance MUST be registered first; with the deep-link feature it
         // also forwards a `terse://` URL from a second launch to the running app.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -4180,6 +5217,65 @@ pub fn run() {
         .manage(AppState::default())
         .manage(permission::PermissionHub::default())
         .setup(|app| {
+            // 让**每一块 webview 都接住第一下点击**。
+            //
+            // AppKit 的默认规矩:点击一个非活动 app 的窗口,那一下只用来激活它,
+            // 事件不会送到视图 —— 除非鼠标底下那个 NSView 的 acceptsFirstMouse:
+            // 返回 YES。Tauri 的 accept_first_mouse 设的是 tao 那层 content view,
+            // 而真正被点到的是它上面的 WKWebView,后者默认返回 NO。
+            //
+            // 后果在这个 app 上特别难受:壁纸、灵动岛、那颗 3D 圆钮都是**永远不会
+            // 成为活动窗口**的浮层 —— 对它们来说"每一下都是第一下",于是永远要点
+            // 两次:第一次激活,第二次才算数。3D 里拖拽完全没反应,根源就在这儿。
+            //
+            // WKWebView 自己没实现这个方法(它继承 NSView 的),所以 class_addMethod
+            // 能直接给它挂一个 —— 不是 swizzle,没有被覆盖的原实现要保存。
+            #[cfg(target_os = "macos")]
+            unsafe {
+                use objc::runtime::{class_addMethod, Class, Object, Sel, BOOL, YES};
+                use objc::{class, sel, sel_impl};
+                extern "C" fn accepts_first_mouse(_this: &Object, _cmd: Sel, _event: *mut Object) -> BOOL {
+                    YES
+                }
+                let cls: *mut Class = class!(WKWebView) as *const Class as *mut Class;
+                let imp: objc::runtime::Imp = std::mem::transmute(
+                    accepts_first_mouse as extern "C" fn(&Object, Sel, *mut Object) -> BOOL,
+                );
+                // "c@:@" = 返回 char(BOOL)、self、_cmd、一个对象参数(NSEvent)
+                // wry 给 webview 套了自己的子类(WryWebView),子类如果**自己实现了**
+                // 这个方法,改父类是没用的 —— 所以每一层候选类都试一遍,而且是替换
+                // 实现,不是添加。类名不存在的直接跳过。
+                for name in ["WKWebView", "WryWebView", "WryView", "TaoView", "WinitView"] {
+                    let c = objc::runtime::Class::get(name);
+                    let Some(c) = c else { continue };
+                    let cptr: *mut Class = c as *const Class as *mut Class;
+                    let sel = sel!(acceptsFirstMouse:);
+                    let added = class_addMethod(cptr, sel, imp,
+                                                b"c@:@\0".as_ptr() as *const std::os::raw::c_char);
+                    if added == objc::runtime::NO {
+                        let m = objc::runtime::class_getInstanceMethod(cptr, sel);
+                        if !m.is_null() {
+                            objc::runtime::method_setImplementation(m as *mut objc::runtime::Method, imp);
+                        }
+                    }
+                    eprintln!("[terse] acceptsFirstMouse -> YES on {name}");
+                }
+                let sel = sel!(acceptsFirstMouse:);
+                // 先试着直接挂上去。WKWebView **自己实现了**这个方法(返回 NO),
+                // 所以 class_addMethod 会失败 —— 实测出来的,不是猜的。那就换成
+                // 替换它的实现。两条路都留着:换个系统版本它要是不再自己实现了,
+                // 第一条就会生效。
+                let added = class_addMethod(cls, sel, imp,
+                                            b"c@:@\0".as_ptr() as *const std::os::raw::c_char);
+                if added == objc::runtime::NO {
+                    let m = objc::runtime::class_getInstanceMethod(cls, sel);
+                    if m.is_null() {
+                        eprintln!("[terse] acceptsFirstMouse: no method to replace — overlays will need two clicks");
+                    } else {
+                        objc::runtime::method_setImplementation(m as *mut objc::runtime::Method, imp);
+                    }
+                }
+            }
             // Native vibrancy under the main window (macOS) — deliberately NOT applied
             // at startup any more. "horizon" is the default theme and it is clear glass:
             // an NSVisualEffectView under the window frosts the desktop into a flat grey
@@ -4188,13 +5284,22 @@ pub fn run() {
             // puts the frosted backing back. Starting without it means the first paint is
             // already glass, with no flash of grey while the JS boots.
             permission::start(app.handle().clone());
-            // Register the PreToolUse hook. Appends to whatever the user already
-            // has, and refuses to touch an unparseable settings.json.
-            match permission::install_hook() {
-                Ok(true) => eprintln!("[permission] hook installed in ~/.claude/settings.json"),
-                Ok(false) => {}
-                Err(e) => eprintln!("[permission] hook not installed: {e}"),
-            }
+            // Island permission control starts OFF on every launch, always.
+            //
+            // This used to reconcile: switch on → re-install the PreToolUse hook.
+            // Which meant enabling it once put Terse in the critical path of every
+            // Claude Code session the user ran from then on, across restarts,
+            // forever — a persistent, invisible dependency nobody re-consented to.
+            // A mode that can hold an agent's tool call should be something you
+            // switch on for the session in front of you, not something an install
+            // inherits from a click weeks ago.
+            //
+            // So: unconditional reset. Flag file removed, hook removed from
+            // ~/.claude/settings.json. This also subsumes the old drift repair —
+            // a hook left behind by a crash, a settings.json restored from backup,
+            // or a flag written by an older build all get cleaned up here.
+            // Settings → Island permission control turns it back on when wanted.
+            permission::reset_to_default();
             // Register the terse:// connect handler + handle a cold-start launch URL.
             {
                 let handle = app.handle().clone();
@@ -4305,13 +5410,26 @@ pub fn run() {
                     .inner_size(ww, wh)
                     .position(0.0, 0.0)
                     .decorations(false)
-                    .transparent(false)
+                    // Transparent at BUILD time — it cannot be turned on later,
+                    // and overlay mode needs it. Desktop mode is unaffected: the
+                    // page paints its own opaque background there, so it looks
+                    // exactly as before.
+                    .transparent(true)
                     .resizable(false)
                     .shadow(false)
                     .skip_taskbar(true)
                     .focused(false)
+                    // 不点两下才生效。这个窗口**永远不会是活动窗口**(focused(false),
+                    // 而且用户也不会去点它的标题栏 —— 它没有标题栏),而 AppKit 默认
+                    // 会把"点一个非活动窗口"的第一下吃掉,只用来激活它。对普通窗口
+                    // 那一下之后就正常了;对这一层,每一下都是"第一下",于是 3D 里
+                    // 怎么拖都没反应。acceptsFirstMouse 让事件直接进 webview。
+                    .accept_first_mouse(true)
                     .visible(false)
                     .build()?;
+                // 点它不该把 Terse 拽到前台,更不该把那一下吃掉(见 make_nonactivating_panel)
+                #[cfg(target_os = "macos")]
+                make_nonactivating_panel(&_wall);
             }
 
             // ── Floating pet companion window (Phase 2) ──
@@ -4402,6 +5520,71 @@ pub fn run() {
                 .focused(false)
                 .accept_first_mouse(true)
                 .visible_on_all_workspaces(true)
+                .visible(false)
+                .build()?;
+
+            // ── 3D 视角按钮(灵动岛旁边那颗圆钮)──
+            //
+            // 桌面上"能不能拖"取决于一串看不见的条件:窗口层级、辅助功能授权、
+            // 光标此刻压在图标上还是空壁纸上。任何一环缺了,用户按下去就是**一点
+            // 反应都没有** —— 而"没反应"和"没这个功能"在他眼里是同一件事。
+            //
+            // 这颗按钮把它变成一个明确的模式:看得见、按得动、按下去亮起来。开着
+            // 3D 才出现,按一下进调节态(整块屏幕交给壁纸),再按一下退出并把机位
+            // 定住。位置贴着灵动岛的右边,因为那里已经是用户会看的地方。
+            let wp3d_x = ((screen_width - ISLAND_PILL_W) / 2.0) as f64 + ISLAND_PILL_W + 10.0;
+            let _wp3d_win = WebviewWindowBuilder::new(app, "wp3d", WebviewUrl::App("wp3d.html".into()))
+                .title("Terse 3D")
+                .inner_size(WP3D_BTN, WP3D_BTN)
+                .position(wp3d_x, ISLAND_Y + (ISLAND_PILL_H - WP3D_BTN) / 2.0)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible_on_all_workspaces(true)
+                .visible(false)
+                .build()?;
+            #[cfg(target_os = "macos")]
+            make_nonactivating_panel(&_wp3d_win);
+            // 按钮必须**永远在壁纸之上**。调节态里壁纸被抬到屏保层(1000),按钮如果
+            // 还在普通的浮层高度,就被自己那张壁纸盖住了 —— 进得去出不来。
+            #[cfg(target_os = "macos")]
+            if let Ok(ptr) = _wp3d_win.ns_window() {
+                use objc::{msg_send, sel, sel_impl};
+                unsafe {
+                    let ns = ptr as cocoa::base::id;
+                    let _: () = msg_send![ns, setLevel: WP_LEVEL_OVERLAY + 200];
+                }
+            }
+
+            // ── Room window (群聊 — the room's member list and chat) ──
+            //
+            // Everything you TOUCH in a room lives here rather than on the
+            // wallpaper. The wallpaper is pinned at kCGDesktopWindowLevel, which
+            // is below Finder's desktop-icon layer, and that layer covers the
+            // whole screen — so a click aimed at the wallpaper is taken by
+            // Finder before the wallpaper sees it, whatever it does with
+            // ignoresMouseEvents. A chat box drawn there can never be typed in.
+            // An ordinary window can take clicks, keyboard focus and an IME,
+            // which a chat in Chinese needs; the wallpaper keeps the big text.
+            let room_x = (screen_width - 780.0 - 40.0).max(40.0);
+            let _room_win = WebviewWindowBuilder::new(app, "room", WebviewUrl::App("room.html".into()))
+                .title("Terse Room")
+                .inner_size(780.0, 480.0)
+                .min_inner_size(560.0, 340.0)
+                .position(room_x, 90.0)
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true)
+                .transparent(true)
+                .always_on_top(false)
+                .resizable(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
                 .visible(false)
                 .build()?;
 
@@ -4508,7 +5691,19 @@ pub fn run() {
                             // Make window background transparent
                             ns_win.setBackgroundColor_(NSColor::clearColor(nil));
                             ns_win.setOpaque_(NO);
-                            ns_win.setHasShadow_(YES);
+                            // NO, not YES.
+                            //
+                            // On a NON-OPAQUE window macOS derives the drop shadow
+                            // from the window's alpha mask and recomputes it every
+                            // time the content changes — which, with a streaming
+                            // agent monitor in the window, is continuous. It is one
+                            // of the few costs of a transparent window that is
+                            // actually ours to remove, and the visual loss is nil:
+                            // the panels draw their own rim and shadow in CSS.
+                            // tauri.conf.json sets `"shadow": false` to match; the
+                            // config format allows no comments, so the reasoning
+                            // lives here.
+                            ns_win.setHasShadow_(NO);
 
                             // Get content view and set corner radius via CALayer
                             let content_view: id = msg_send![ns_win, contentView];
@@ -4573,7 +5768,25 @@ pub fn run() {
                 }
             };
 
-            let _tray = TrayIconBuilder::new()
+            /* The menu bar icon.
+               Without an explicit one, Tauri falls back to the APP icon — a
+               full-bleed colour square — and macOS draws it at menu-bar size as
+               a solid block, which is exactly what it looked like. The menu bar
+               wants a TEMPLATE image: black plus alpha only, which the system
+               re-tints for light bars, dark bars and the highlighted state.
+               `icon_as_template` is what tells macOS it may do that; a coloured
+               icon with the flag off is left exactly as drawn. */
+            let tray_icon = tauri::image::Image::from_bytes(
+                include_bytes!("../icons/tray-Template@2x.png")
+            ).ok();
+
+            let mut tray_builder = TrayIconBuilder::new();
+            if let Some(img) = tray_icon {
+                tray_builder = tray_builder.icon(img);
+                #[cfg(target_os = "macos")]
+                { tray_builder = tray_builder.icon_as_template(true); }
+            }
+            let _tray = tray_builder
                 .tooltip("Terse")
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
@@ -4646,6 +5859,53 @@ pub fn run() {
 
             // Toggle the Doctor (体检) window with Cmd+Shift+D.
             let app_handle_doctor = app.handle().clone();
+            // ── Cursor watch: the wallpaper arms ITSELF when you hover a glyph ──
+            //
+            // A click-through window receives no mouse events at all, which is
+            // why the first version needed ⌘⇧W to borrow the cursor. A shortcut
+            // nobody knows about is not a feature — so instead we read the
+            // GLOBAL cursor position, which needs no events, and hand it to the
+            // wallpaper. It hit-tests, and only when the pointer is genuinely
+            // over a glyph does it ask to become clickable.
+            //
+            // Cost is deliberately tiny: one NSEvent.mouseLocation read, and
+            // only while the wallpaper window is actually visible. The position
+            // is sent only when it CHANGES, so a still cursor costs one
+            // comparison per tick and nothing crosses to JS.
+            {
+                let h = app.handle().clone();
+                std::thread::spawn(move || {
+                    let mut last = (f64::NAN, f64::NAN);
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(90));
+                        let Some(w) = h.get_webview_window("wallpaper") else { continue };
+                        if !w.is_visible().unwrap_or(false) { continue }
+                        #[cfg(target_os = "macos")]
+                        unsafe {
+                            use cocoa::foundation::NSPoint;
+                            use objc::{msg_send, sel, sel_impl};
+                            let Some(cls) = objc::runtime::Class::get("NSEvent") else { continue };
+                            let p: NSPoint = msg_send![cls, mouseLocation];
+                            if (p.x - last.0).abs() < 0.5 && (p.y - last.1).abs() < 0.5 { continue }
+                            last = (p.x, p.y);
+                            // Cocoa's origin is bottom-left; the DOM's is top-left.
+                            // Converting here keeps the JS side in CSS pixels.
+                            let _ = w.emit("wallpaper-cursor", (p.x, p.y));
+                        }
+                    }
+                });
+            }
+
+            // ⌘⇧W — arm the wallpaper. The glyphs on it are live data (agent
+            // names, cost, savings) and this is what turns them into buttons.
+            {
+                let h = app.handle().clone();
+                let _ = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+W", move |_a, _s, _e| {
+                    if let Some(w) = h.get_webview_window("wallpaper") {
+                        let _ = w.emit("wallpaper-arm-toggle", ());
+                    }
+                });
+            }
             app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+D", move |_app, _shortcut, _event| {
                 if let Some(win) = app_handle_doctor.get_webview_window("doctor") {
                     if win.is_visible().unwrap_or(false) {
@@ -4972,6 +6232,10 @@ pub fn run() {
             debug_log,
             get_agent_detections,
             get_agent_sessions,
+            phone_pair,
+            phone_status,
+            phone_set_share,
+            phone_unlink,
             accept_agent,
             dismiss_agent,
             disconnect_agent,
@@ -4991,6 +6255,18 @@ pub fn run() {
             get_hook_stats,
             get_stats,
             get_agent_attribution,
+            messages_status,
+            messages_recent,
+            messages_open_permission_settings,
+            messages_permission_report,
+            messages_open_settings,
+            messages_open_chat,
+            messages_send_open,
+            wallpaper_set_hot_rect,
+            messages_detected_apps,
+            messages_set_app_on_wallpaper,
+            messages_for_wallpaper,
+            messages_notification_settings,
             get_budget,
             set_budget,
             get_budget_status,
@@ -5013,6 +6289,9 @@ pub fn run() {
             set_wallpaper_config,
             get_desktop_picture,
             set_wallpaper_enabled,
+            set_wallpaper_overlay,
+            relevel_wallpaper_window,
+            wallpaper_overlay_effective,
             get_token_pulse,
             navigate_to_history,
             session_history::list_session_history,
@@ -5103,6 +6382,33 @@ pub fn run() {
             check_ax_permission,
             set_clear_glass,
             permission_respond,
+            permission_ack,
+            get_permission_auto,
+            set_permission_auto,
+            permission_control_status,
+            set_permission_control,
+            wallpaper_set_interactive,
+            list_open_windows,
+            desktop_icon_rects,
+            navigate_to_projects,
+            project_list,
+            project_candidates,
+            project_add,
+            project_update,
+            project_remove,
+            project_preview,
+            project_capsule,
+            app_icon,
+            wallpaper_set_3d_mode,
+            wallpaper_set_adjust,
+            show_room_window,
+            hide_room_window,
+            cowork_claim_owner,
+            cowork_release_owner,
+            cowork_relay,
+            permission_learned,
+            permission_forget_learned,
+            permission_recent_log,
             get_doctor_settings,
             request_accessibility,
             pet_work_detected,

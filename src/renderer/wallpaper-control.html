@@ -39,6 +39,19 @@
     .preview .tag{position:absolute;top:10px;left:12px;font-size:9px;font-weight:800;letter-spacing:.1em;
       text-transform:uppercase;color:rgba(255,255,255,.7);background:rgba(0,0,0,.3);
       padding:3px 9px;border-radius:9999px;backdrop-filter:blur(6px)}
+    /* PRO 预览上的两个东西。放在这里而不是页面下方的卡里:人第一眼看的就是这两块
+       预览,3D 要在**这儿**发生,不然它等于不存在。 */
+    .p3d-hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+      font-size:10px;font-weight:700;color:#fff;background:rgba(10,12,20,.62);
+      border:1px solid var(--bd);padding:5px 11px;border-radius:9999px;
+      backdrop-filter:blur(10px);pointer-events:none;white-space:nowrap;
+      transition:opacity .35s;animation:p3dBob 2.6s ease-in-out infinite}
+    .p3d-hint.gone{opacity:0}
+    @keyframes p3dBob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-3px)}}
+    .p3d-full{position:absolute;top:9px;right:10px;font-size:10px;font-weight:800;
+      padding:4px 10px;border-radius:9999px;border:1px solid var(--btn);cursor:pointer;
+      color:var(--btn-t);background:var(--btn);box-shadow:0 4px 14px rgba(0,0,0,.35)}
+    .p3d-full:hover{filter:brightness(1.08)}
 
     .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:14px 15px;margin-bottom:12px;
       box-shadow:inset 0 1px 0 var(--hl),var(--shadow-sm)}
@@ -80,6 +93,126 @@
       background:linear-gradient(180deg,color-mix(in srgb,var(--btn) 88%,#fff 12%),var(--btn));
       box-shadow:inset 0 1px 0 rgba(255,255,255,.4),var(--shadow-sm);cursor:pointer}
 
+    /* 置顶示意图。粒子层就是一张 canvas,窗口是两个假窗口;
+       .on 只改一件事 —— canvas 的 z-index 从窗口下面挪到窗口上面。
+       这正是真实功能干的事,只不过真实版本改的是 NSWindow 的 level。 */
+    .topdemo{position:relative;height:136px;border-radius:12px;overflow:hidden;margin-top:10px;
+      border:1px solid var(--bd);background:linear-gradient(155deg,#1d2748,#0c1120 58%,#131b2f)}
+    .topdemo canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
+    .topdemo.on canvas{z-index:3}
+    .topdemo .tw{position:absolute;z-index:2;border-radius:7px;overflow:hidden;
+      box-shadow:0 10px 26px rgba(0,0,0,.5);transition:transform .35s cubic-bezier(.2,.9,.25,1)}
+    .topdemo .tw i{display:block;height:12px;background:linear-gradient(#eef1f8,#dee4f0);
+      border-bottom:1px solid rgba(0,0,0,.07)}
+    .topdemo .tw b{display:block;height:calc(100% - 12px);background:#fbfcfe}
+    /* 真实窗口。和上面那两个假框长得一样(同一套标题栏 + 白底),区别只在于它们的
+       位置、大小和名字来自 CGWindowListCopyWindowInfo —— 也就是这台机器此刻真的
+       开着的窗口。拿不到就退回 .tw 那两个假框,卡片不会空着。 */
+    .topdemo .rw{position:absolute;z-index:2;border-radius:7px;overflow:hidden;
+      box-shadow:0 10px 26px rgba(0,0,0,.5);background:rgba(251,252,254,.93);
+      border:1px solid rgba(255,255,255,.5);
+      transition:transform .35s cubic-bezier(.2,.9,.25,1)}
+    .topdemo.on .rw{transform:translateY(2px) scale(.985)}
+    .topdemo .rw i{display:block;height:11px;background:linear-gradient(#eef1f8,#dee4f0);
+      border-bottom:1px solid rgba(0,0,0,.07)}
+    /* app 图标:窗口正中偏上,像一张"这是谁"的名片。名字挪到图标下面。 */
+    .topdemo .rw img.ic{position:absolute;left:50%;top:46%;width:26px;height:26px;
+      transform:translate(-50%,-60%);pointer-events:none;
+      filter:drop-shadow(0 2px 6px rgba(0,0,0,.28))}
+    .topdemo .rw.hasic u{top:auto;bottom:16%;left:0;right:0;text-align:center;color:#3d4557}
+    .topdemo .rw u{position:absolute;left:5px;top:12px;right:4px;font-size:8px;font-weight:800;
+      letter-spacing:.02em;color:#5b6478;text-decoration:none;white-space:nowrap;
+      overflow:hidden;text-overflow:ellipsis}
+    .topdemo .tw1{left:7%;top:20%;width:47%;height:56%}
+    .topdemo .tw2{left:40%;top:34%;width:51%;height:50%}
+    .topdemo.on .tw1{transform:translateY(2px) scale(.985)}
+    .topdemo.on .tw2{transform:translateY(2px) scale(.985)}
+    .topdemo .tdlab{position:absolute;left:9px;top:9px;z-index:4;padding:3px 9px;border-radius:999px;
+      font-size:9.5px;font-weight:800;letter-spacing:.02em;color:#fff;
+      background:rgba(6,10,20,.74);border:1px solid rgba(255,255,255,.15);
+      -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+    .topdemo.dim{opacity:.5;filter:saturate(.35)}
+    /* ── Pro 一览。四格全部用 CSS 动画,不占 WebGL 上下文,也不跟两块真预览抢 GPU ── */
+    .proshow{border-color:color-mix(in srgb, var(--ac) 34%, var(--bd))}
+    .ps-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+    .ps{border:1px solid var(--bd);border-radius:11px;padding:9px 10px 10px;
+      background:rgba(255,255,255,.02)}
+    .ps-vis{position:relative;height:52px;border-radius:8px;overflow:hidden;margin-bottom:8px;
+      background:linear-gradient(150deg,#161d33,#0b1020)}
+    .ps-n{font-size:11px;font-weight:800;color:var(--t1)}
+    .ps-d{font-size:9.5px;color:var(--t3);line-height:1.4;margin-top:2px}
+
+    /* 粒子聚成一行字,再散开 —— 这就是 cinematic 引擎在做的事 */
+    .ps-typo i{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--ac);
+      box-shadow:0 0 6px var(--ac);animation:psGather 3.6s ease-in-out infinite}
+    .ps-typo i:nth-child(1){left:12%;top:20%;animation-delay:0s}
+    .ps-typo i:nth-child(2){left:28%;top:72%;animation-delay:.12s}
+    .ps-typo i:nth-child(3){left:44%;top:16%;animation-delay:.24s}
+    .ps-typo i:nth-child(4){left:60%;top:78%;animation-delay:.36s}
+    .ps-typo i:nth-child(5){left:76%;top:28%;animation-delay:.48s}
+    .ps-typo i:nth-child(6){left:20%;top:52%;animation-delay:.6s}
+    .ps-typo i:nth-child(7){left:52%;top:44%;animation-delay:.72s}
+    .ps-typo i:nth-child(8){left:86%;top:60%;animation-delay:.84s}
+    @keyframes psGather{
+      0%,12%   {transform:none;opacity:.45}
+      42%,62%  {transform:translate(var(--gx,0),var(--gy,0));opacity:1}
+      92%,100% {transform:none;opacity:.45}}
+    .ps-typo i:nth-child(1){--gx:14px;--gy:9px}   .ps-typo i:nth-child(2){--gx:6px;--gy:-13px}
+    .ps-typo i:nth-child(3){--gx:-2px;--gy:11px}  .ps-typo i:nth-child(4){--gx:-8px;--gy:-15px}
+    .ps-typo i:nth-child(5){--gx:-16px;--gy:5px}  .ps-typo i:nth-child(6){--gx:11px;--gy:-3px}
+    .ps-typo i:nth-child(7){--gx:-4px;--gy:-2px}  .ps-typo i:nth-child(8){--gx:-22px;--gy:-7px}
+
+    /* 置顶:粒子从窗口后面浮到窗口前面 */
+    .ps-top u{position:absolute;display:block;border-radius:3px;background:#f7f9fc;
+      box-shadow:0 4px 10px rgba(0,0,0,.5)}
+    .ps-top u:nth-child(1){left:10%;top:26%;width:44%;height:46%}
+    .ps-top u:nth-child(2){left:40%;top:40%;width:46%;height:42%}
+    .ps-top i{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--ac);
+      box-shadow:0 0 5px var(--ac);animation:psRise 3.4s ease-in-out infinite}
+    .ps-top i:nth-child(3){left:22%;top:66%;animation-delay:0s}
+    .ps-top i:nth-child(4){left:46%;top:74%;animation-delay:.5s}
+    .ps-top i:nth-child(5){left:64%;top:60%;animation-delay:1s}
+    .ps-top i:nth-child(6){left:34%;top:50%;animation-delay:1.5s}
+    .ps-top i:nth-child(7){left:76%;top:70%;animation-delay:2s}
+    /* z-index 从窗口下(0)跳到窗口上(3):和真功能改窗口层级是同一件事 */
+    @keyframes psRise{
+      0%,45%   {z-index:0;opacity:.30;transform:translateY(0)}
+      55%,100% {z-index:3;opacity:1;transform:translateY(-13px)}}
+
+    /* 8 种风格:四条不同手法的轨迹轮流亮 */
+    .ps-sty b{position:absolute;left:8%;width:84%;height:3px;border-radius:2px;
+      animation:psSty 4s ease-in-out infinite}
+    .ps-sty b:nth-child(1){top:20%;background:linear-gradient(90deg,#c9f03d,transparent);animation-delay:0s}
+    .ps-sty b:nth-child(2){top:38%;background:linear-gradient(90deg,#4dd4ff,transparent);animation-delay:1s}
+    .ps-sty b:nth-child(3){top:56%;background:linear-gradient(90deg,#e146eb,transparent);animation-delay:2s}
+    .ps-sty b:nth-child(4){top:74%;background:linear-gradient(90deg,#ff9d4d,transparent);animation-delay:3s}
+    @keyframes psSty{0%{transform:translateX(-72%);opacity:0}
+      14%{opacity:1}62%{opacity:1}80%{transform:translateX(64%);opacity:0}100%{transform:translateX(64%);opacity:0}}
+
+    /* 10 套主题:色卡轮流点亮 */
+    .ps-thm b{position:absolute;top:32%;width:13%;height:36%;border-radius:4px;
+      animation:psThm 3.2s ease-in-out infinite}
+    .ps-thm b:nth-child(1){left:9%;background:#7c5cff;animation-delay:0s}
+    .ps-thm b:nth-child(2){left:26%;background:#2f9bff;animation-delay:.28s}
+    .ps-thm b:nth-child(3){left:43%;background:#37d3a0;animation-delay:.56s}
+    .ps-thm b:nth-child(4){left:60%;background:#ffc247;animation-delay:.84s}
+    .ps-thm b:nth-child(5){left:77%;background:#ff5f7a;animation-delay:1.12s}
+    @keyframes psThm{0%,100%{opacity:.26;transform:scaleY(.72)}
+      18%{opacity:1;transform:scaleY(1.12)}45%{opacity:.26;transform:scaleY(.72)}}
+
+    .ps-save{margin-top:10px;padding:8px 10px;border-radius:10px;font-size:11px;line-height:1.5;
+      color:var(--t1);background:color-mix(in srgb, var(--ac) 12%, rgba(255,255,255,.03));
+      border:1px solid color-mix(in srgb, var(--ac) 32%, transparent)}
+    .ps-save b{color:var(--ac);font-weight:800}
+    .ps-cta{width:100%;margin-top:10px;border-color:var(--ac);color:var(--ac);font-weight:800}
+
+    /* PRO 徽章的悬停解释 —— 研究里那个"好奇时刻":光是把鼠标停上去就该有答案 */
+    .pro-tag{position:relative}
+    .pro-tag[data-tip]:hover::after,
+    .pro-tag[data-tip].tip-open::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 6px);
+      z-index:20;width:210px;padding:7px 9px;border-radius:9px;font-size:10px;font-weight:600;
+      letter-spacing:0;line-height:1.45;color:var(--t1);text-align:left;white-space:normal;
+      background:rgba(10,12,20,.97);border:1px solid var(--bd);box-shadow:0 10px 26px rgba(0,0,0,.5)}
     .row{display:flex;align-items:center;gap:10px;padding:8px 0}
     .row .rt{flex:1;font-size:12px;font-weight:700;color:var(--t1)}
     .row .rd{font-size:10px;color:var(--t3)}
@@ -135,6 +268,12 @@
     #previewOnly .po-dot{width:7px;height:7px;border-radius:50%;background:var(--ac);flex:none;
       box-shadow:0 0 8px var(--ac)}
     #previewOnly .po-t{font-size:11.5px;color:var(--t1);line-height:1.45}
+    #previewOnly .po-t b{font-weight:800}
+    #previewOnly .po-sub{color:var(--t3);font-size:10.5px}
+    /* 换功能时重放一次,否则第二次点别的 Pro 控件横幅纹丝不动,像没反应 */
+    #previewOnly.pop{animation:poPop .34s cubic-bezier(.2,.9,.25,1)}
+    @keyframes poPop{from{transform:translateY(7px) scale(.985);opacity:.35}
+                     to{transform:none;opacity:1}}
     #previewOnly .po-btn{margin-left:auto;flex:none;border-color:var(--ac);color:var(--ac);font-weight:800}
     .sty{position:relative;border:1px solid var(--bd);border-radius:10px;padding:8px 9px 9px;
       cursor:pointer;overflow:hidden;background:rgba(255,255,255,.02);transition:border-color .15s,background .15s}
@@ -147,6 +286,40 @@
     .sty .sd{font-size:9.5px;color:var(--t3);line-height:1.55;margin-top:5px}
     .sty .cur{position:absolute;right:7px;top:9px;font-size:8px;font-weight:800;letter-spacing:.07em;
       padding:1px 5px;border-radius:9999px;background:var(--btn);color:var(--btn-t)}
+
+    /* 3D 试驾台。整页盖住 —— 一块 300px 的预览卡演示不了"自由",
+       手一拖就到边了。这里给的是整扇窗口,拖到哪儿是哪儿。 */
+    #stage3d{position:fixed;inset:0;z-index:60;background:#05060a;display:none;
+      opacity:0;transition:opacity .22s ease}
+    #stage3d.on{display:block}
+    #stage3d.vis{opacity:1}
+    #stage3d canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+    #stage3d .s3-top{position:absolute;left:0;right:0;top:0;padding:14px 16px;display:flex;
+      align-items:center;gap:10px;pointer-events:none;
+      background:linear-gradient(#05060acc,transparent)}
+    #stage3d .s3-t{font-size:13px;font-weight:800;letter-spacing:.01em;color:#fff}
+    #stage3d .s3-tag{font-size:8px;font-weight:800;letter-spacing:.07em;padding:2px 6px;
+      border-radius:9999px;background:var(--btn);color:var(--btn-t)}
+    #stage3d .s3-read{margin-left:auto;font:600 10.5px ui-monospace,SFMono-Regular,Menlo,monospace;
+      color:var(--t3);font-variant-numeric:tabular-nums}
+    #stage3d .s3-x{pointer-events:auto;margin-left:10px;width:26px;height:26px;border-radius:9999px;
+      border:1px solid var(--bd);background:rgba(255,255,255,.05);color:var(--t1);cursor:pointer;
+      font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}
+    #stage3d .s3-x:hover{background:rgba(255,255,255,.11)}
+    /* 提示不是说明书:三个动作,做过一个就划掉一个。 */
+    #stage3d .s3-hints{position:absolute;left:50%;transform:translateX(-50%);bottom:76px;
+      display:flex;gap:8px;pointer-events:none}
+    #stage3d .s3-h{font-size:10.5px;font-weight:700;color:var(--t2);padding:5px 11px;border-radius:9999px;
+      background:rgba(10,12,20,.62);border:1px solid var(--bd);backdrop-filter:blur(10px);
+      transition:opacity .3s,transform .3s}
+    #stage3d .s3-h.done{opacity:.32;transform:scale(.94)}
+    #stage3d .s3-foot{position:absolute;left:0;right:0;bottom:0;padding:16px;display:flex;
+      align-items:center;gap:10px;justify-content:center;
+      background:linear-gradient(transparent,#05060ae6)}
+    #stage3d .s3-btn{pointer-events:auto;font-size:11.5px;font-weight:800;padding:8px 16px;border-radius:9999px;
+      border:1px solid var(--bd);background:rgba(255,255,255,.05);color:var(--t1);cursor:pointer}
+    #stage3d .s3-btn.primary{background:var(--btn);color:var(--btn-t);border-color:transparent}
+    #stage3d .s3-sub{font-size:10.5px;color:var(--t3);margin-right:2px}
 
     .note{font-size:10px;color:var(--t3);line-height:1.6;padding:2px 2px 0}
     .note b{color:var(--t2)}
@@ -166,7 +339,86 @@
       <div class="prev-pair">
         <div class="preview"><canvas id="prev"></canvas><span class="tag" data-i18n="wp_free">Free</span></div>
         <div class="preview preview-pro"><canvas id="prevPro"></canvas>
-          <span class="tag tag-pro" id="proTag">PRO</span></div>
+          <span class="tag tag-pro" id="proTag">PRO</span>
+          <button class="p3d-full" id="p3dFull" data-i18n="wp_3d_full">3D ⤢</button>
+          <span class="p3d-hint" id="p3dHint" data-i18n="wp_3d_grab">Grab it — this one is in 3D</span></div>
+      </div>
+
+      <!-- 置顶(Pro)放在最上面 —— 这是这一页最需要一眼看懂的东西。
+           真窗口的层级没法在预览里复现(预览就是一块 canvas,没有"层级"),
+           所以这里给的是一个诚实的**示意图**:两个假窗口 + 一层粒子,
+           开关切的就是粒子画在它们前面还是后面。 -->
+      <div class="card">
+        <div class="row" style="padding-top:0">
+          <div class="rt"><span data-i18n="wp_top_t">Always on top</span> <span class="pro-tag">PRO</span>
+            <div class="rd">Float the particles above every window</div></div>
+          <input type="checkbox" class="sw sm" id="wpTop">
+        </div>
+        <div class="topdemo" id="topDemo">
+          <canvas id="topDemoCv"></canvas>
+          <div class="tw tw1"><i></i><b></b></div>
+          <div class="tw tw2"><i></i><b></b></div>
+          <div class="tdlab" id="topDemoLab"></div>
+        </div>
+        <div class="note" style="margin-top:9px" data-i18n="wp_top_note">The field and the particle text stay visible over apps, browsers and full-screen windows instead of sitting behind them. Still click-through — it never takes a click meant for what is underneath.</div>
+      </div>
+
+      <!-- 3D 自由视角。粒子本来就活在三维里,只是相机一直正对着看 —— 这张卡把相机
+           交给用户。说明写在哪儿都不如让人直接上手拖:整块 PRO 预览就是控件本身,
+           和别的 Pro 功能一样,拖给所有人看,存进桌面才要 Pro。 -->
+      <div class="card" id="view3dCard">
+        <div class="row" style="padding-top:0">
+          <div class="rt"><span data-i18n="wp_3d_t">Free 3D view</span> <span class="pro-tag">PRO</span>
+            <div class="rd" data-i18n="wp_3d_d">Drag the PRO preview to turn the field. Scroll to zoom, double-click to recentre.</div></div>
+          <input type="checkbox" class="sw sm" id="wp3d">
+        </div>
+        <!-- 只在没开「始终置顶」时才有意义:置顶模式下这一层是透明的,底下那张真壁纸
+             由系统自己画,压不压黑无从谈起。 -->
+        <div class="row" id="wp3dDimRow" style="border-top:1px solid var(--bd);margin-top:4px">
+          <div class="rt"><span data-i18n="wp_3d_dim_t">Black backdrop in 3D</span>
+            <div class="rd" data-i18n="wp_3d_dim_d">Fade your desktop picture to black while the field is in 3D, so the relief floats in empty space. Off = your own wallpaper stays.</div></div>
+          <input type="checkbox" class="sw sm" id="wp3dDim">
+        </div>
+        <div class="tune-foot">
+          <button id="wp3dTry" class="tune-btn" data-i18n="wp_3d_try">Take it for a spin</button>
+          <button id="wp3dReset" class="tune-btn" data-i18n="wp_3d_reset">Recentre</button>
+          <button id="wp3dDesk" class="tune-btn" data-i18n="wp_3d_desk">Turn it on the desktop</button>
+          <span id="wp3dRead" class="tune-count"></span>
+        </div>
+        <div class="note" style="margin-top:9px" data-i18n="wp_3d_note">The particle field stops being a picture
+          and becomes a place: the wallpaper's own depth lifts into relief, the aurora ribbons separate front from
+          back, and the numbers keep facing you from wherever you are standing. Your wallpaper is click-through, so
+          the desktop hands the mouse to it only for as long as you are turning it.</div>
+      </div>
+
+      <!-- 免费用户才出现。锁的图标只说明"你不能用什么",这张卡说明"你会得到什么" ——
+           每一格都自己动起来,不用点、不用等。 -->
+      <div class="card proshow" id="proShow" style="display:none">
+        <div class="card-t"><span data-i18n="wp_ps_title">What Pro adds</span></div>
+        <div class="ps-grid">
+          <div class="ps">
+            <div class="ps-vis ps-typo"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="ps-n" data-i18n="wp_ps_typo_t">Particle typography</div>
+            <div class="ps-d" data-i18n="wp_ps_typo_d">Your savings assemble out of the field, then scatter.</div>
+          </div>
+          <div class="ps">
+            <div class="ps-vis ps-top"><u></u><u></u><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="ps-n" data-i18n="wp_ps_top_t">Always on top</div>
+            <div class="ps-d" data-i18n="wp_ps_top_d">Particles float above every window instead of behind them.</div>
+          </div>
+          <div class="ps">
+            <div class="ps-vis ps-sty"><b></b><b></b><b></b><b></b></div>
+            <div class="ps-n" data-i18n="wp_ps_sty_t">8 particle styles</div>
+            <div class="ps-d" data-i18n="wp_ps_sty_d">Eight different choreographies, not eight colour swaps.</div>
+          </div>
+          <div class="ps">
+            <div class="ps-vis ps-thm"><b></b><b></b><b></b><b></b><b></b></div>
+            <div class="ps-n" data-i18n="wp_ps_thm_t">10 themes + fine-tune</div>
+            <div class="ps-d" data-i18n="wp_ps_thm_d">Density, angle and intensity on top of any style.</div>
+          </div>
+        </div>
+        <div class="ps-save" id="psSave" style="display:none"></div>
+        <button class="tune-btn ps-cta" id="psCta" data-i18n="wp_ps_cta">See plans</button>
       </div>
 
       <div class="card">
@@ -220,19 +472,11 @@
 
       <!-- 自定义。八种风格是起点,不是上限:从当前这一种出发,22 个参数全都能改,
            每动一格右边的 PRO 预览就立刻变。控件是照 STYLE_SCHEMA 生成的,不是手写的。 -->
-      <!-- 置顶。放在风格/参数之前:它改的是"这东西在哪一层",比它长什么样更根本。 -->
-      <div class="card">
-        <div class="card-t"><span data-i18n="wp_top_t">Always on top</span> <span class="pro-tag">PRO</span></div>
-        <label style="display:flex;gap:9px;align-items:flex-start;margin-top:8px;cursor:pointer">
-          <input type="checkbox" id="wpTop" style="margin-top:2px">
-          <span>
-            <div style="font-size:12px;color:var(--t1)" data-i18n="wp_top_label">Float the particles above every window</div>
-            <div class="note" style="padding:0;margin-top:3px" data-i18n="wp_top_note">The field and the particle text stay visible over
-              apps, browsers and full-screen windows instead of sitting behind them. Still click-through — it never
-              takes a click meant for what is underneath.</div>
-          </span>
-        </label>
-      </div>
+      <!-- 「始终置顶」已撤下。
+           它没有把粒子浮在窗口之上,而是用一整块不透明的画面盖住了整个屏幕:
+           窗口层设成了透明,但页面本身仍然在画不透明的背景,于是在 screen-saver
+           层上就是一张盖住一切的板子。留一个按下去会毁掉屏幕的开关,比没有更糟。 -->
+
 
       <div class="card" id="tuneCard">
         <div class="card-t" style="display:flex;align-items:center;gap:8px">
@@ -255,8 +499,8 @@
            事件,每个都弹一次会把人赶走。 -->
       <div id="previewOnly" style="display:none">
         <span class="po-dot"></span>
-        <span class="po-t" data-i18n="wp_preview_only">Previewing — these changes need Pro to apply to your desktop</span>
-        <button id="poUpgrade" class="tune-btn po-btn" data-i18n="wp_upgrade">Upgrade</button>
+        <span class="po-t">Previewing — these changes need Pro to apply to your desktop</span>
+        <button id="poUpgrade" class="tune-btn po-btn">Upgrade</button>
       </div>
 
       <div class="card">
@@ -279,6 +523,30 @@
       </div>
 
       <div class="note">The wallpaper is <b>click-through</b> — your desktop and icons stay fully usable. It follows you across Spaces and auto-restores on launch while enabled. Turn it off any time with the switch above.</div>
+    </div>
+  </div>
+
+  <!-- 3D 试驾台。这一屏存在的理由只有一个:让人**先转一圈**。
+       上面那张卡能讲清楚功能,讲不出"抓着自己的壁纸转"是什么感觉,而这正是要卖的东西。 -->
+  <div id="stage3d">
+    <canvas id="stageCv"></canvas>
+    <div class="s3-top">
+      <span class="s3-t" data-i18n="wp_3d_stage_t">Free 3D view</span>
+      <span class="s3-tag">PRO</span>
+      <span class="s3-read" id="s3Read"></span>
+      <button class="s3-x" id="s3Close" title="Esc">×</button>
+    </div>
+    <div class="s3-hints">
+      <span class="s3-h" id="s3hDrag" data-i18n="wp_3d_h_drag">Drag to turn</span>
+      <span class="s3-h" id="s3hZoom" data-i18n="wp_3d_h_zoom">Scroll to zoom</span>
+      <span class="s3-h" id="s3hReset" data-i18n="wp_3d_h_reset">Double-click to recentre</span>
+    </div>
+    <div class="s3-foot">
+      <!-- 这两条**没有** data-i18n:它们的文案取决于这个人有没有 Pro,由
+           paintStageCta() 决定。挂了 data-i18n 的话,语言层每重刷一次就会把
+           "解锁"改回"应用",免费用户于是看到一颗按下去只会弹升级页的"应用"。 -->
+      <span class="s3-sub" id="s3Sub">This is your own wallpaper, lifted into relief.</span>
+      <button class="s3-btn primary" id="s3Apply">Use this view on my desktop</button>
     </div>
   </div>
 
@@ -408,7 +676,7 @@
       }
       if (!pro) {
         // 常驻提示,不弹窗:拖一格滑块就是几十个事件,弹几十次窗没人受得了。
-        showPreviewOnly();
+        showPreviewOnly('theme');
         return;                       // 预览留着,cfg 不动
       }
       cfg.customStyle = custom;
@@ -424,10 +692,30 @@
       if (!t) return;
       t.addEventListener('change', async (e) => {
         const on = e.target.checked;
-        if (!proApply()) { e.target.checked = !on; return; }   // 不写盘就不留状态
+        // 许可只挡"打开"。关掉永远放行 ——
+        // 这个开关管的是一层盖住整个屏幕的东西,把"关掉"挡在付费墙后面是最坏的
+        // 一种失败:许可查询慢一拍或者掉线,用户就被锁在开着的状态里出不来了。
+        // (之前两个方向都走 proApply(),所以 Pro 用户想关反而被弹去升级页。)
+        if (on && !(await proApplyLive('top'))) { e.target.checked = false; return; }  // 不写盘就不留状态
         cfg.overlay = on;
+        paintTopDemo(on, true);          // 立刻回应,别等写盘
         try { if (T.setWallpaperOverlay) await T.setWallpaperOverlay(on); } catch (err) {}
         save();
+      });
+    }
+
+    // 点别处就收起解释气泡
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.pro-tag.tip-open').forEach(n => n.classList.remove('tip-open'));
+    });
+
+    function wireProShow(){
+      const b = document.getElementById('psCta');
+      if (b) b.addEventListener('click', async () => {
+        try {
+          if (T.requestUpgrade) await T.requestUpgrade('wallpaper_showcase');
+          else if (T.showMainWindow) await T.showMainWindow();
+        } catch (e) { /* ignore */ }
       });
     }
 
@@ -452,7 +740,7 @@
       });
       $('#tuneReset') && $('#tuneReset').addEventListener('click', async () => {
         if (prevPro && prevPro.setStyle) prevPro.setStyle(shownStyle(), null);
-        if (!proApply()) return;
+        if (!proApply('style')) return;
         cfg.customStyle = null; save(); renderTune();
       });
 
@@ -501,7 +789,7 @@
         const t = el.dataset.t;
         document.querySelectorAll('.th').forEach(x=>x.classList.toggle('sel',x===el));
         prev && prev.setTheme(t); prevPro && prevPro.setTheme && prevPro.setTheme(t);
-        if (proApply()) { cfg.theme = t; save(); }
+        if (proApply('theme')) { cfg.theme = t; save(); }
       }));
     }
 
@@ -573,8 +861,14 @@
       // it is the entire pitch — a user cannot want what they have not seen.
       prev = new E($('#prev'), Object.assign({}, base, { pro:false }));
       prev.start(); prev.setActivity(0.7);
-      prevPro = new E($('#prevPro'), Object.assign({}, base, { pro:true, style:shownStyle() }));
+      prevPro = new E($('#prevPro'), Object.assign({}, base, { pro:true, style:shownStyle(), view3d:view3d() }));
       prevPro.start(); prevPro.setActivity(0.7);
+      // 整块 PRO 预览就是那个 3D 控件。免费预览一律不挂 —— 两个预览并排放着,
+      // 差别看得见才是卖点;attachOrbit 对 pro:false 的引擎本来也会拒绝。
+      if (prevPro.attachOrbit) prevPro.attachOrbit($('#prevPro'), view3dChanged);
+      // 用户自己定过机位就照着放(那是他的设置);没定过就让它自己转起来演示。
+      if (view3d().on) stopDemoOrbit(); else startDemoOrbit();
+      renderView3D();
       startPreviewFeed();
     }
 
@@ -645,15 +939,140 @@
 
     /** 免费用户改的东西只进预览,不进 cfg。
      *  和风格选择同一个道理:提前写 cfg,之后任何一次 save 都会把 Pro 的值带上去。 */
-    function proApply(){
+    /* 付费墙文案按"你刚碰的是哪一个功能"来变。
+       一句泛泛的"需要 Pro"没有告诉任何人他们错过了什么;写清楚是哪个功能、
+       它到底做什么,才是这一刻真正缺的信息。CTA 也一样 —— "解锁 电影级"
+       比"升级"具体。 */
+    const PRO_PITCH = {
+      top:    ['wp_pitch_top_t',   'Always on top',        'wp_pitch_top_d',
+               'Particles and particle text stay visible over every window, instead of being buried by the first thing you open.'],
+      engine: ['wp_pitch_eng_t',   'Cinematic engine',     'wp_pitch_eng_d',
+               'Your token counts and savings assemble themselves out of the particles, the way a title sequence does.'],
+      style:  ['wp_pitch_sty_t',   'Particle styles',      'wp_pitch_sty_d',
+               '8 ways the particles gather and scatter — each one a whole choreography, not a colour swap.'],
+      theme:  ['wp_pitch_thm_t',   'Themes & fine-tune',   'wp_pitch_thm_d',
+               '10 colour presets plus density, angle and intensity — tuned on top of any style and saved as a diff.'],
+      view3d: ['wp_pitch_3d_t',    'Free 3D view',         'wp_pitch_3d_d',
+               'Take hold of the field and turn it — the flat sheet lifts into relief and you can look at your desktop from anywhere.'],
+    };
+    let poFeature = null;
+    function proApply(feature){
       if (window.__wpPro) { hidePreviewOnly(); return true; }
-      showPreviewOnly();
+      showPreviewOnly(feature);
       return false;
     }
-    function showPreviewOnly(){
-      const b = document.getElementById('previewOnly');
-      if (b) b.style.display = 'flex';
+    /** proApply() 的"现查一次"版本。
+     *
+     *  proApply() 只看 window.__wpPro,而那个值是 applyProLock() 异步取回来的。
+     *  页面刚打开、或者那次请求慢/失败时,它还是 undefined —— 于是一个真正的 Pro
+     *  用户会被当成免费用户,点一下就被弹去升级页。tuneSet() 早就这么防了,置顶
+     *  开关漏了。命中缓存就直接过,只有在"看起来不是 Pro"时才多花一次请求。 */
+    async function proApplyLive(feature){
+      if (window.__wpPro) { hidePreviewOnly(); return true; }
+      try {
+        const lic = await (T.getLicense ? T.getLicense() : null);
+        const tier = ((lic && lic.tier) || '').toLowerCase();
+        const st = ((lic && lic.status) || '').toLowerCase();
+        if ((st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired') {
+          window.__wpPro = true; hidePreviewOnly(); return true;
+        }
+      } catch (e) { /* 离线:退回下面的免费分支,不假装有 Pro */ }
+      showPreviewOnly(feature);
+      return false;
     }
+
+    function showPreviewOnly(feature){
+      const b = document.getElementById('previewOnly');
+      if (!b) return;
+      const pitch = PRO_PITCH[feature];
+      const t = b.querySelector('.po-t');
+      const btn = b.querySelector('.po-btn');
+      if (pitch && t) {
+        t.innerHTML = '<b>' + TT(pitch[0], pitch[1]) + '</b><br><span class="po-sub">'
+                    + TT(pitch[2], pitch[3]) + '</span>';
+      } else if (t) {
+        t.textContent = TT('wp_preview_only',
+          'Previewing — these changes need Pro to apply to your desktop');
+      }
+      if (btn) btn.textContent = pitch
+        ? TT('wp_unlock', 'Unlock') + ' ' + TT(pitch[0], pitch[1])
+        : TT('wp_upgrade', 'Upgrade');
+      // 换了功能就重放一次入场,否则第二次点别的 Pro 控件时横幅纹丝不动,
+      // 看起来像没反应。
+      if (poFeature !== feature) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+      poFeature = feature;
+      b.style.display = 'flex';
+    }
+    /* ── 免费用户的三件事:一览卡、PRO 徽章悬停解释、用真实数据说话 ────────── */
+
+    /** PRO 徽章:停上去就告诉你这一格到底给你什么,不用点、不用跳页。
+     *
+     *  按卡片里"有哪个控件"来认,不按文字认 —— 风格卡里有一条风格就叫
+     *  「电影级·粒子聚合」,拿文字匹配会把风格卡认成引擎卡(它确实认错了)。 */
+    const TIP_OWNER = [
+      ['top',    '#wpTop'],
+      ['engine', '#engines'],
+      ['style',  '#styles'],
+      ['theme',  '#themes'],
+      ['theme',  '#sInt'],
+      ['theme',  '#tuneToggle'],
+    ];
+    function wireProTips(){
+      document.querySelectorAll('.pro-tag').forEach((tag) => {
+        if (tag.dataset.tip || tag.closest('#proShow')) return;   // 一览卡自己就是解释
+        const card = tag.closest('.card');
+        if (!card) return;
+        const hit = TIP_OWNER.find(([, sel]) => card.querySelector(sel));
+        const pitch = hit && PRO_PITCH[hit[0]];
+        if (!pitch) return;
+        tag.dataset.tip = TT(pitch[2], pitch[3]);
+        // 点一下也能看。窄窗口和触摸屏没有 hover 状态,只挂 :hover 等于没有。
+        tag.style.cursor = 'help';
+        tag.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const open = tag.classList.contains('tip-open');
+          document.querySelectorAll('.pro-tag.tip-open').forEach(n => n.classList.remove('tip-open'));
+          if (!open) tag.classList.add('tip-open');
+        });
+      });
+    }
+
+    /** 一览卡只给免费用户看。Pro 用户已经买了,再挂一张推销卡是噪音。 */
+    function paintProShow(pro){
+      paintStageCta();
+      const c = document.getElementById('proShow');
+      if (c) c.style.display = pro ? 'none' : '';
+    }
+
+    /** 用他们自己的数字说话:泛泛的"解锁 Pro"谁都能写,
+     *  "你这周已经省下 42K token"只有这个应用写得出来 —— 而 Pro 的粒子文字
+     *  正是把这个数字每天摆到桌面上的那个功能。数据拿不到就整段不显示,
+     *  绝不编一个数字出来。 */
+    async function paintSavingsPitch(){
+      const box = document.getElementById('psSave');
+      if (!box) return;
+      try {
+        const st = await (T.getStats ? T.getStats('week') : null);
+        const saved = (st && st.summary && +st.summary.tokensSaved) || 0;
+        if (!saved) { box.style.display = 'none'; return; }
+        const n = saved >= 1e6 ? (saved/1e6).toFixed(2) + 'M'
+                : saved >= 1e3 ? (saved/1e3).toFixed(1) + 'K' : String(saved|0);
+        box.innerHTML = TT('wp_ps_saved_a', 'You saved') + ' <b>' + n + '</b> '
+                      + TT('wp_ps_saved_b', 'tokens this week — Pro puts that number on your desktop, assembled out of the particles.');
+        box.style.display = '';
+      } catch (e) { box.style.display = 'none'; }
+    }
+
+    /** 初次渲染时给横幅一份当前语言的默认文案(它已不再由 data-i18n 托管)。 */
+    function initPreviewOnlyCopy(){
+      const b = document.getElementById('previewOnly');
+      if (!b) return;
+      const t = b.querySelector('.po-t'), btn = b.querySelector('.po-btn');
+      if (t) t.textContent = TT('wp_preview_only',
+        'Previewing — these changes need Pro to apply to your desktop');
+      if (btn) btn.textContent = TT('wp_upgrade', 'Upgrade');
+    }
+
     function hidePreviewOnly(){
       const b = document.getElementById('previewOnly');
       if (b) b.style.display = 'none';
@@ -668,6 +1087,9 @@
         pro = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
       } catch (e) { /* offline → treat as free */ }
       window.__wpPro = pro;
+      paintProShow(pro);
+      wireProTips();
+      if (!pro) paintSavingsPitch();
       // 控件一律保持可用 —— 免费用户要能拖、能点、能看见结果。
       ['sInt','sAng','sQual','showPanel'].forEach(function(id){
         const el = document.getElementById(id);
@@ -693,26 +1115,448 @@
        现在没有任何东西再加 .locked,而只要它还在,以后谁再用这个类名做纯视觉标记,
        那张卡片就会静默地不可点。 */
 
+    /* ── 置顶示意图 ───────────────────────────────────────────────────────
+       粒子在窗口前面还是后面 —— 这是这个功能唯一需要看懂的一件事,所以就演它。
+       真实版本改的是 NSWindow 的层级,预览里没有层级,于是用 z-index 演同一件事。
+       这是示意,不是真窗口,note 里写清楚了它实际作用在哪。 */
+    // 置顶演示卡:一台真引擎(tdWp)画在几个真实窗口的前面或后面。
+    // tdOn 只是当前开关状态,给标签用。
+    let tdCv = null, tdOn = false, tdWp = null, tdPulseT = null;
+    /* 「始终置顶」演示里的窗口 —— 用户**自己此刻开着的**那些。
+       假白框能说明层级,但说服不了人:这张卡讲的是"粒子会浮在你的窗口上面",而"你的
+       窗口"如果是两个凭空画的方块,它就只是一张示意图。真窗口来自 Rust 的
+       list_open_windows(CGWindowList,不需要录屏权限,只拿得到 app 名和边框,
+       而这里要的正好只有形状和名字)。
+
+       拿不到就什么都不做,那两个假框还在原处 —— 别的平台、权限不足、旧版本后端,
+       都落到这条路上。 */
+    let tdWinT = null;
+
+    /* app 图标按 pid 缓存。图标不会变,所以缓存不过期 —— 每次重画都去 invoke 一遍
+       是白花的开销(这张卡每 5 秒重画一次)。 */
+    const appIcons = new Map();
+
+    async function paintIcon(el, pid){
+      if (!pid || !T || !T.appIcon) return;
+      let url = appIcons.get(pid);
+      if (url === undefined) {
+        try { url = await T.appIcon(pid, 64); } catch (e) { url = null; }
+        appIcons.set(pid, url);
+      }
+      if (!url || !el.isConnected) return;
+      const img = document.createElement('img');
+      img.className = 'ic';
+      img.src = url;
+      el.appendChild(img);
+      el.classList.add('hasic');
+    }
+
+    async function paintRealWindows(){
+      const box = document.getElementById('topDemo');
+      if (!box || !T || !T.listOpenWindows) return;
+      let data = null;
+      try { data = await T.listOpenWindows(); } catch (e) { return; }
+      const wins = (data && data.windows) || [];
+      const screen = (data && data.screen) || {};
+      const sw = +screen.w || 0, sh = +screen.h || 0;
+      if (!wins.length || !sw || !sh) return;      // 退回示意图
+      // 假框让位。留在 DOM 里 —— 万一下一次抓不到窗口了,还得靠它们。
+      box.querySelectorAll('.tw').forEach(n => { n.style.display = 'none'; });
+      box.querySelectorAll('.rw').forEach(n => n.remove());
+      // 数组是从最前面往后排的,所以倒着画:后画的盖在前面 = 真实的前后关系。
+      const shown = wins.slice(0, 3).reverse();
+      // 整幅屏幕缩到卡片的 78% 并居中。1:1 铺满的话,一个最大化的窗口就占满整张卡,
+      // 粒子无处可画 —— 而这张卡要讲的正是"粒子在窗口前面还是后面"。留白之后,
+      // 窗口之间的相对位置和大小仍旧是真的,只是整体退后了一点。
+      const K = 0.78, OFF = (1 - K) / 2 * 100;
+      for (let i = 0; i < shown.length; i++) {
+        const w = shown[i];
+        const el = document.createElement('div');
+        el.className = 'rw';
+        // 夹一下边界:窗口可以有一半在屏幕外面,不夹的话卡片里会伸出去一条。
+        const L = OFF + Math.max(0, Math.min(100, (+w.x / sw) * 100)) * K;
+        const Tp = OFF + Math.max(0, Math.min(100, (+w.y / sh) * 100)) * K;
+        el.style.left = L + '%';
+        el.style.top = Tp + '%';
+        el.style.width = Math.max(12, Math.min(100 - L - 1, (+w.w / sw) * 100 * K)) + '%';
+        el.style.height = Math.max(14, Math.min(100 - Tp - 1, (+w.h / sh) * 100 * K)) + '%';
+        el.style.zIndex = String(2);
+        const bar = document.createElement('i');
+        const name = document.createElement('u');
+        name.textContent = String(w.app || '').slice(0, 24);
+        el.appendChild(bar); el.appendChild(name);
+        box.appendChild(el);
+        // 窗口里放它此刻真正的样子。截不到(没有屏幕录制权限)就保持白框 + 名字 ——
+        // 那条路必须是正常的,不是异常:Terse 没签名,这条授权每次更新都会失效。
+        // 一眼认出"这是我的窗口"靠的是图标 —— 窗口内容在新版 macOS 上截不了。
+        paintIcon(el, w.pid);
+      }
+    }
+
+    function initTopDemo(){
+      tdCv = document.getElementById('topDemoCv');
+      if (!tdCv) return;
+      // 开着页面的时候每 5 秒对一次:人换个窗口、拖一下大小,这张卡跟着变,
+      // 才看得出画的是"现在"。
+      paintRealWindows();
+      clearInterval(tdWinT);
+      tdWinT = setInterval(() => { if (!document.hidden) paintRealWindows(); }, 5000);
+      // 这里跑的是**真正的那台引擎**,不是一层手画的圆点。
+      //
+      // 原来是一个 canvas 2D 的漂浮点动画:它能说明"有粒子",但说明不了"你的壁纸
+      // 会浮在窗口上面" —— 上面那两块预览是真引擎,这块是假的,同一页里两种粒子,
+      // 一眼就看得出这张卡是示意图。现在三块都是同一台引擎,开关切的只是它画在
+      // 那几个真实窗口的前面还是后面。
+      //
+      // quality 拉到最低:这块画布只有 136px 高,而它是这一页上第三个 WebGL 上下文。
+      if (tdWp) { try { tdWp.dispose(); } catch (e) {} tdWp = null; }
+      const E3 = ENGINES[cfg.engine] || MineradioWallpaper;
+      try {
+        tdWp = new E3(tdCv, { theme: cfg.theme, quality: 24, intensity: 0.85,
+                              pro: true, style: shownStyle(),
+                              custom: cfg.customStyle || null });
+        tdWp.start();
+        tdWp.setActivity(0.55);
+      } catch (e) { tdWp = null; }
+      // 真实的 token 律动这里没有,给一点很轻的脉冲,粒子才会流动而不是站着。
+      clearInterval(tdPulseT);
+      tdPulseT = setInterval(() => {
+        if (!tdWp || document.hidden) return;
+        tdWp.pulse(0.18 + Math.random() * 0.22);
+      }, 1700);
+    }
+
+    const TD_FB = { wp_top_demo_on:   'ON — particles float above your windows',
+                    wp_top_demo_now:  'Now — particles sit behind your windows',
+                    wp_top_demo_after:'With it on — particles float above your windows',
+                    wp_top_demo_na:   'Not available on this engine' };
+    function tdSay(key){
+      const lab = document.getElementById('topDemoLab');
+      if (!lab) return;
+      lab.textContent = (window.i18n && window.i18n.t && window.i18n.t(key)) || TD_FB[key];
+    }
+    let tdCycle = 0;
+
+    /** on = 已经真的开着;particle=false 表示这个引擎根本不能置顶。
+     *
+     *  关着的时候不是静止不动 —— 而是在两种状态之间来回演。这个功能唯一的卖点
+     *  就是"粒子在窗口上面还是下面",免费用户点开关只会撞到付费墙,永远看不到
+     *  上面那半边;那样这块示意图就只证明了一半。所以关着时自己来回切,并且把
+     *  两种状态如实标成「现在」和「开启后」,而不是假装开关已经打开。 */
+    function paintTopDemo(on, particle){
+      const d = document.getElementById('topDemo');
+      if (!d) return;
+      clearInterval(tdCycle); tdCycle = 0;
+      d.classList.toggle('dim', !particle);
+
+      const set = (up) => { tdOn = up; d.classList.toggle('on', up); };
+
+      if (!particle) { set(false); tdSay('wp_top_demo_na'); return; }
+      if (on)        { set(true);  tdSay('wp_top_demo_on'); return; }
+
+      let up = false;
+      const step = () => { up = !up; set(up); tdSay(up ? 'wp_top_demo_after' : 'wp_top_demo_now'); };
+      step();
+      tdCycle = setInterval(step, 2600);
+    }
+
+    /** 置顶那一行的状态。换引擎也要刷新,所以挂在 renderEngines 上而不是只在 paint 里。 */
+    function paintTop(){
+    // 置顶只对粒子引擎成立(见 wallpaper.html / lib.rs 的同一条否决):
+    // 光谱引擎的画布本身不透明,抬到屏保层就是一整块盖住屏幕的地形。
+    // 与其给一个按了没用的开关,不如说清楚为什么不能按。
+    { const t = $('#wpTop'); const row = t && t.closest('.row');
+      const particle = cfg.engine === 'mineradio' || cfg.engine === 'cinematic';
+      if (t) {
+        t.checked = cfg.overlay === true && particle;
+        // 只在"本来就关着"的时候禁用。如果 overlay 还留着 true(比如换引擎之前
+        // 开着的),必须留一条关掉它的路,不能把人锁在里面。
+        t.disabled = !particle && cfg.overlay !== true;
+        if (row) row.style.opacity = particle ? '' : '.45';
+        const rd = row && row.querySelector('.rd');
+        if (rd) rd.textContent = particle
+          ? (window.i18n&&window.i18n.t ? window.i18n.t('wp_top_label') : 'Float the particles above every window')
+          : (window.i18n&&window.i18n.t ? window.i18n.t('wp_top_engine') : 'Only the particle engines can float on top — the spectrum terrain is not transparent.');
+        paintTopDemo(t.checked, particle);
+      } }
+    }
+
+    /* ── 3D 自由视角 ───────────────────────────────────────────────────────
+       控件不是那个开关,是**整块 PRO 预览** —— 按住一拖画面就转起来了,这一下比
+       任何说明都清楚。开关只负责"要不要把它带到桌面上"。
+
+       和这一页其他 Pro 功能同一条闸门:拖给所有人看,写进 cfg 才查授权。写盘还
+       多一层去抖 —— 一次拖动是几十上百个事件,每个都写就是几十次磁盘写加几十次
+       全窗口广播。 */
+    const VIEW3D_OFF = { on:false, az:0, el:0, dist:1 };
+    /* PRO 预览**自己就在转**。
+       页面下方那张卡藏在一颗按钮后面,而人第一眼只看这两块预览 —— 藏起来的功能等于
+       没有。所以只要用户还没自己定过机位,右边这块就慢慢自转:左边是平的,右边在转,
+       免费和 Pro 的差别不用读一个字就看见了。手一碰就停下,交给人。
+
+       它**不写盘**:自转只改预览引擎,cfg 一个字节都不动(写盘的唯一入口仍旧是
+       view3dChanged,而那只由用户的拖动触发)。 */
+    let demoOrbitT = null, demoOrbitOn = false, demoT = 0;
+
+    function stopDemoOrbit(){
+      demoOrbitOn = false;
+      clearInterval(demoOrbitT); demoOrbitT = null;
+      const h = $('#p3dHint'); if (h) h.classList.add('gone');
+    }
+
+    function startDemoOrbit(){
+      clearInterval(demoOrbitT);
+      demoOrbitOn = true; demoT = 0;
+      const h = $('#p3dHint'); if (h) h.classList.remove('gone');
+      demoOrbitT = setInterval(() => {
+        if (!demoOrbitOn || !prevPro || !prevPro.setView3D) return;
+        demoT += 0.05;
+        // 幅度刻意小:预览只有 300px 高,转大了整片粒子会自己转出画外。
+        prevPro.setView3D({ on: true, az: Math.sin(demoT * 0.42) * 0.46,
+                            el: 0.22 + Math.sin(demoT * 0.27) * 0.10,
+                            dist: 1.08 + Math.sin(demoT * 0.19) * 0.07 });
+      }, 50);
+    }
+
+    const view3d = () => Object.assign({}, VIEW3D_OFF, (cfg.view3d && typeof cfg.view3d === 'object') ? cfg.view3d : null);
+    let view3dSaveT = null;
+
+    /** 机位读数。给的是度数和倍数,不是弧度 —— 面板上要能对着说"转了 40 度"。 */
+    function view3dRead(v){
+      const el = $('#wp3dRead');
+      if (!el) return;
+      if (!v || !v.on) { el.textContent = TT('wp_3d_flat', 'flat on'); return; }
+      const deg = (r) => Math.round(r * 180 / Math.PI);
+      el.textContent = deg(v.az) + '° · ' + deg(v.el) + '° · ' + (+v.dist).toFixed(2) + '×';
+    }
+
+    function renderView3D(){
+      // 光柱地形是另一台引擎,它自己有俯仰角滑块,没有这套轨道相机。
+      const eng = previewOnlyEngine || cfg.engine || 'mineradio';
+      const card = $('#view3dCard');
+      if (card) card.style.display = (eng === 'topography') ? 'none' : '';
+      // 开关反映的是**用户的设置**(cfg),不是预览此刻的样子 —— 自转期间预览的
+      // on 是 true,照它勾上就等于替用户做了主。
+      const saved = view3d();
+      const sw = $('#wp3d'); if (sw) sw.checked = !!saved.on;
+      const dsw = $('#wp3dDim'); if (dsw) dsw.checked = !!saved.dim;
+      // 置顶模式下这一层是透明的,底下那张壁纸是系统在画 —— 压黑无从谈起
+      const drow = $('#wp3dDimRow');
+      if (drow) drow.style.display = cfg.overlay ? 'none' : '';
+      view3dRead(saved.on && prevPro && prevPro.getView3D ? prevPro.getView3D() : saved);
+    }
+
+    /** 预览里的机位变了。存盘去抖到 400ms —— 松手之后才落一次盘。 */
+    function view3dChanged(v){
+      stopDemoOrbit();                       // 人接手了,自转让开
+      const sw = $('#wp3d'); if (sw) sw.checked = !!v.on;
+      view3dRead(v);
+      clearTimeout(view3dSaveT);
+      view3dSaveT = setTimeout(() => {
+        if (prevPro && prevPro.isOrbiting && prevPro.isOrbiting()) { view3dChanged(v); return; }  // 还按着,再等
+        if (!proApply('view3d')) return;
+        cfg.view3d = prevPro && prevPro.getView3D ? prevPro.getView3D() : v;
+        save();
+      }, 400);
+    }
+
+    function wireView3D(){
+      const dsw = $('#wp3dDim');
+      if (dsw) dsw.addEventListener('change', () => {
+        const dim = dsw.checked;
+        // 预览先走一步(闸门只挡写盘)
+        if (prevPro && prevPro.setView3D) prevPro.setView3D({ dim });
+        if (!proApply('view3d')) return;
+        cfg.view3d = Object.assign(view3d(), { dim });
+        save();
+      });
+      const sw = $('#wp3d');
+      if (sw) sw.addEventListener('change', () => {
+        const on = sw.checked;
+        stopDemoOrbit();                     // 明确表过态了,不再自作主张地转
+        // 预览先走一步,不查授权 —— 看不见的东西没人会买。
+        if (prevPro && prevPro.setView3D) prevPro.setView3D({ on });
+        view3dRead(prevPro && prevPro.getView3D ? prevPro.getView3D() : Object.assign(view3d(), { on }));
+        if (!proApply('view3d')) return;
+        cfg.view3d = prevPro && prevPro.getView3D ? prevPro.getView3D() : Object.assign(view3d(), { on });
+        save();
+      });
+      const rs = $('#wp3dReset');
+      if (rs) rs.addEventListener('click', () => {
+        if (prevPro && prevPro.resetView) view3dChanged(prevPro.resetView());
+      });
+      const dk = $('#wp3dDesk');
+      if (dk) dk.addEventListener('click', async () => {
+        if (!await proApplyLive('view3d')) return;
+        // 壁纸窗口是穿透鼠标的,得先请它把鼠标收下。走的是 ⌘⇧W 那条现成的通路 ——
+        // 事件在窗口之间广播,壁纸页自己决定这一段是"点数字"还是"转视角"。
+        try { await window.__TAURI__.event.emit('wallpaper-arm-toggle'); } catch (e) {}
+      });
+    }
+
+    /* ── 3D 试驾台 ─────────────────────────────────────────────────────────
+       一块 300px 的预览卡演示不了"自由":手一拖就到边了,推近一格就出画。所以另开
+       一屏,整扇窗口都是那片粒子。
+
+       两个细节是这一屏成立的关键:
+       · **一进来就已经在转**。要人先动手才看得见的东西,大部分人不会动手 —— 慢速
+         自转把"这是三维的"在第一秒就说完了,手一碰就交还给人。
+       · **三条提示会被划掉**。转过、缩放过、回正过各划掉一条,人自己就走完了全部
+         三种操作;写成一段说明文字没人读。
+
+       试驾期间把两块小预览停掉:三个 WebGL 上下文同时跑,弱一点的机器直接掉帧,
+       而那两块此刻谁也看不见。 */
+    let stage3d = null, stageT = null, stageTouched = false;
+
+    function stageRead(v){
+      const el = $('#s3Read');
+      if (!el || !v) return;
+      const deg = (r) => Math.round(r * 180 / Math.PI);
+      el.textContent = deg(v.az) + '° · ' + deg(v.el) + '° · ' + (+v.dist).toFixed(2) + '×';
+    }
+
+    /** 做过的动作划掉一条。三条都划掉 = 这个人已经会用了。 */
+    function stageMark(id){
+      const el = $('#' + id);
+      if (el) el.classList.add('done');
+    }
+
+    function openStage3D(){
+      const host = $('#stage3d'), cv = $('#stageCv');
+      if (!host || !cv || stage3d) return;
+      host.classList.add('on');
+      // 先上屏再淡入,否则 display:none → block 同一帧改 opacity 不会有过渡。
+      // 用**强制回流**而不是 requestAnimationFrame:窗口在后台时 rAF 可以一帧都不
+      // 发,那样 .vis 永远加不上,整块试驾台停在 opacity:0 —— 点了按钮什么都没发生。
+      void host.offsetWidth;
+      host.classList.add('vis');
+      // 两块小预览让位(见上面的注释)
+      if (prev && prev.stop) prev.stop();
+      if (prevPro && prevPro.stop) prevPro.stop();
+      const E = ENGINES[cfg.engine] || MineradioWallpaper;
+      stage3d = new E(cv, { theme: cfg.theme, quality: Math.max(cfg.quality, 56),
+                            intensity: cfg.intensity, pro: true, style: shownStyle(),
+                            custom: cfg.customStyle || null,
+                            // 一进门就已经在三维里,而且是个好看的机位 —— 不是让人
+                            // 对着一张正对的平面自己去发现可以拖。
+                            view3d: { on: true, az: 0.42, el: 0.30, dist: 1.15 } });
+      stage3d.start();
+      stage3d.setActivity(0.75);
+      stageTouched = false;
+      // 光柱地形没有轨道相机(那张卡在它下面本来就是隐藏的,这里只是不让一个
+      // 将来的调用把整页脚本打断)。
+      if (stage3d.attachOrbit) stage3d.attachOrbit(cv, (v) => {
+        stageRead(v);
+        if (!stageTouched) { stageTouched = true; stageMark('s3hDrag'); }
+        if (Math.abs(v.dist - 1.15) > 0.06) stageMark('s3hZoom');
+        if (Math.abs(v.az) < 1e-6 && Math.abs(v.el) < 1e-6 && Math.abs(v.dist - 1) < 1e-6) stageMark('s3hReset');
+      });
+      stageRead(stage3d.getView3D());
+      ['s3hDrag','s3hZoom','s3hReset'].forEach(id => { const e = $('#' + id); if (e) e.classList.remove('done'); });
+
+      // 没人碰的时候自己慢慢转。碰过一次就彻底交给人 —— 手上正拖着、画面还自己在
+      // 飘,是最惹人烦的那种"帮忙"。
+      clearInterval(stageT);
+      let t = 0;
+      stageT = setInterval(() => {
+        if (!stage3d || stageTouched) return;
+        t += 0.05;
+        stage3d.setView3D({ on: true, az: 0.42 + Math.sin(t * 0.55) * 0.42,
+                            el: 0.30 + Math.sin(t * 0.31) * 0.12,
+                            dist: 1.15 + Math.sin(t * 0.23) * 0.12 });
+        stageRead(stage3d.getView3D());
+      }, 50);
+
+      // 试驾台也要有内容可看:统计数字聚成字,和真壁纸上跑的是同一套。
+      let n = 0;
+      stage3d._demo = setInterval(() => {
+        if (!stage3d) return;
+        const d = [ () => stage3d.floatToken(1200 + Math.random() * 900, 'saved'),
+                    () => stage3d.floatToken(820 + Math.random() * 900, 'consume'),
+                    () => stage3d.setAgents([{ name:'claude-code', rate:1400 }, { name:'codex', rate:600 }]),
+                    () => stage3d.setStageItems([{ k:'cache', v:'61%', u:'hit' }]) ][n++ % 4];
+        d(); stage3d.pulse(0.45);
+      }, 2200);
+      paintStageCta();
+    }
+
+    /** 底下那颗按钮说什么,取决于这个人能不能把它带走。 */
+    function paintStageCta(){
+      const b = $('#s3Apply'), sub = $('#s3Sub');
+      if (!b) return;
+      const pro = !!window.__wpPro;
+      b.textContent = pro ? TT('wp_3d_apply', 'Use this view on my desktop')
+                          : TT('wp_3d_unlock', 'Unlock it for my desktop');
+      if (sub) sub.textContent = pro
+        ? TT('wp_3d_stage_sub', 'This is your own wallpaper, lifted into relief.')
+        : TT('wp_3d_stage_sub_free', 'Turn it all you like here — putting it on your desktop is Pro.');
+    }
+
+    function closeStage3D(){
+      const host = $('#stage3d');
+      clearInterval(stageT); stageT = null;
+      if (stage3d) {
+        clearInterval(stage3d._demo);
+        try { stage3d.dispose(); } catch (e) {}
+        stage3d = null;
+      }
+      if (host) { host.classList.remove('vis'); setTimeout(() => host.classList.remove('on'), 220); }
+      if (prev && prev.start) prev.start();
+      if (prevPro && prevPro.start) prevPro.start();
+    }
+
+    function wireStage3D(){
+      const t = $('#wp3dTry');
+      if (t) t.addEventListener('click', openStage3D);
+      // 预览右上角那颗「3D ⤢」—— 页面下方那颗按钮的同一扇门,开在人正在看的地方。
+      const f = $('#p3dFull');
+      if (f) f.addEventListener('click', openStage3D);
+      const x = $('#s3Close');
+      if (x) x.addEventListener('click', closeStage3D);
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && stage3d) closeStage3D();
+      });
+      const a = $('#s3Apply');
+      if (a) a.addEventListener('click', async () => {
+        const v = stage3d && stage3d.getView3D ? stage3d.getView3D() : null;
+        if (!await proApplyLive('view3d')) {
+          // 免费:横幅已经由 proApplyLive 亮起来了,再把升级页打开 —— 这颗按钮上
+          // 写的就是"解锁",按下去什么都不发生才是最糟的。
+          try { if (T.requestUpgrade) await T.requestUpgrade('wallpaper_3d'); } catch (e) {}
+          return;
+        }
+        if (v) {
+          cfg.view3d = v; save();
+          if (prevPro && prevPro.setView3D) prevPro.setView3D(v);
+          renderView3D();
+        }
+        closeStage3D();
+      });
+    }
+
     function renderEngines(){
       document.querySelectorAll('.eng').forEach(el=>{
         el.classList.toggle('sel', el.dataset.e === (previewOnlyEngine || cfg.engine || 'mineradio'));
       });
       if ($('#styles')) renderStyles();
+      paintTop();
       renderTune();
+      renderView3D();
     }
 
     function paint(){
       $('#enable').checked = !!cfg.enabled;
       $('#showPanel').checked = cfg.showPanel !== false;
-      { const t = $('#wpTop'); if (t) t.checked = cfg.overlay === true; }
+      paintTop();
       $('#sInt').value = cfg.intensity; $('#vInt').textContent = (+cfg.intensity).toFixed(1)+'×';
       $('#sAng').value = cfg.angle; $('#vAng').textContent = cfg.angle+'°';
       $('#sQual').value = cfg.quality; $('#vQual').textContent = cfg.quality;
-      renderThemes(); renderEngines(); applyProLock(); renderTune();
+      renderThemes(); renderEngines(); applyProLock(); renderTune(); renderView3D();
     }
 
     function wire(){
-      wireTune(); wirePreviewOnly(); wireTop();
+      wireTune(); wirePreviewOnly(); wireTop(); initPreviewOnlyCopy(); wireProShow(); wireView3D(); wireStage3D();
+      initTopDemo();
       $('#btnBack').addEventListener('click',()=>T.navigateBack());
       document.querySelectorAll('.eng').forEach(el=>el.addEventListener('click',async ()=>{
         if (cfg.engine === el.dataset.e) return;
@@ -735,6 +1579,9 @@
             pro = (st === 'active' || st === 'trialing') && tier !== '' && tier !== 'expired';
           } catch (e) { /* offline → treat as free */ }
           if (!pro) {
+            // 先把有上下文的横幅亮出来:预览还在跑,他们刚点的那个引擎正活着,
+            // 这才是最有说服力的一刻。升级按钮就在横幅上,不必现在把人赶走。
+            showPreviewOnly('engine');
             try {
               if (T.requestUpgrade) await T.requestUpgrade('wallpaper_pro');
               else if (T.showMainWindow) await T.showMainWindow();
@@ -762,19 +1609,19 @@
         $('#vInt').textContent = v.toFixed(1)+'×';
         prev && prev.setIntensity && prev.setIntensity(v);
         prevPro && prevPro.setIntensity && prevPro.setIntensity(v);
-        if (proApply()) { cfg.intensity = v; save(); }
+        if (proApply('theme')) { cfg.intensity = v; save(); }
       });
       $('#sAng').addEventListener('input', e=>{
         const v = +e.target.value;
         $('#vAng').textContent = v+'°';
         prev && prev.setAngle(v); prevPro && prevPro.setAngle && prevPro.setAngle(v);
-        if (proApply()) { cfg.angle = v; save(); }
+        if (proApply('theme')) { cfg.angle = v; save(); }
       });
       $('#sQual').addEventListener('input', e=>{
         const v = +e.target.value;
         $('#vQual').textContent = v;
         prev && prev.setQuality(v); prevPro && prevPro.setQuality && prevPro.setQuality(v);
-        if (proApply()) { cfg.quality = v; save(); }
+        if (proApply('theme')) { cfg.quality = v; save(); }
       });
     }
 

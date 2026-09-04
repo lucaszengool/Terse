@@ -1,7 +1,7 @@
 {
   "identifier": "default",
   "description": "Default capability for Terse windows",
-  "windows": ["main", "popup", "pet", "farm", "doctor", "island", "palette", "wallpaper", "toast"],
+  "windows": ["main", "popup", "pet", "farm", "doctor", "island", "palette", "wallpaper", "wp3d", "toast", "room"],
   "permissions": [
     "core:default",
     "dialog:allow-open",

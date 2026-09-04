@@ -6,7 +6,22 @@
     "start": "node api/server.js",
     "dev": "node api/server.js",
     "test": "node api/cowork.test.js",
-    "test:cowork": "node api/cowork.test.js"
+    "test:cowork": "node api/cowork.test.js",
+    "test:rooms": "node api/rooms.test.js",
+    "test:friends": "node api/friends.test.js",
+    "test:plaza": "node api/plaza.test.js",
+    "test:presence": "node api/presence.test.js",
+    "test:cors": "node api/cors.test.js",
+    "test:link": "node api/link.test.js",
+    "test:qr": "node src/renderer/qr.test.mjs",
+    "test:wallpaper": "node src/renderer/wallpaper-styles.test.mjs",
+    "test:wallpaper-gate": "node src/renderer/wallpaper-gate.test.mjs",
+    "test:wallpaper-3d": "node src/renderer/wallpaper-3d.test.mjs",
+    "test:projects": "node src/renderer/projects.test.mjs",
+    "test:i18n": "node src/renderer/i18n-coverage.test.mjs",
+    "build:mac": "cd src-tauri && cargo tauri build",
+    "dmg": "npm run build:mac && ./scripts/package-dmg.sh",
+    "test:overlay": "node src/renderer/wallpaper-overlay.test.mjs"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

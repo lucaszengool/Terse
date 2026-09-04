@@ -59,6 +59,54 @@ const TRIAL_DAYS_BY_TIER = { pro: 30, premium: 30, pro_weekly: 7 };
 const trialDaysFor = (t) => TRIAL_DAYS_BY_TIER[t] || 0;
 const TIER_OFFERS_TRIAL = (t) => trialDaysFor(t) > 0;
 
+// ── Checkout payment methods ──────────────────────────────────────────────
+// Pinned to card. Passing NOTHING here makes Checkout fall back to the Dashboard's
+// dynamic payment methods, which silently turns Link on — and over the 365 days to
+// 2026-08-30 Link was the worst-performing method on this account: 17 succeeded /
+// 38 failed (31%), against 63% for plain card. Naming payment_method_types opts out
+// of dynamic payment methods entirely, so Link is not offered.
+//
+// Honest caveat: a failed subscription charge is retried, and each retry is its own
+// failed charge — so those 38 failures come from rather fewer than 38 people. Even
+// halved, Link still trailed card badly.
+//
+// This is the in-repo half of the switch. The Dashboard toggle (Settings → Payment
+// methods → Link) is the authoritative one; flip that too if Link ever reappears.
+// To A/B it back without editing code: CHECKOUT_PAYMENT_METHODS="card,link", or
+// CHECKOUT_PAYMENT_METHODS="dynamic" to restore the old Dashboard-driven behaviour.
+//
+// Careful if you widen this list: wechat_pay/alipay are one-time methods and Stripe
+// rejects them in mode:'subscription', so adding them here would break the app and
+// API subscription checkouts even though the pet/marketplace ones would be fine.
+// wechat_pay additionally needs payment_method_options.wechat_pay.client. The China
+// recurring path deliberately does not come through here at all — see the
+// send_invoice branch in /api/checkout.
+const CHECKOUT_PAYMENT_METHODS = (process.env.CHECKOUT_PAYMENT_METHODS || 'card')
+  .split(',').map((m) => m.trim()).filter(Boolean);
+const checkoutMethods = () =>
+  CHECKOUT_PAYMENT_METHODS.includes('dynamic')
+    ? {}
+    : { payment_method_types: CHECKOUT_PAYMENT_METHODS };
+
+// One-time (mode:'payment') checkouts — pet unlock, marketplace top-up. These CAN
+// carry the wallets, and both are enabled on this account (they have real successful
+// charges), so the list keeps them and drops only Link. Kept separate from
+// CHECKOUT_PAYMENT_METHODS because the subscription checkouts cannot accept these:
+// Stripe rejects wechat_pay/alipay in mode:'subscription'.
+const ONETIME_PAYMENT_METHODS = (process.env.CHECKOUT_PAYMENT_METHODS_ONETIME || 'card,wechat_pay,alipay')
+  .split(',').map((m) => m.trim()).filter(Boolean);
+// wechat_pay refuses to create a session without being told which client renders it.
+// Only send the option when the method is actually in the list, or Stripe 400s.
+const onetimeMethods = () =>
+  ONETIME_PAYMENT_METHODS.includes('dynamic')
+    ? {}
+    : {
+        payment_method_types: ONETIME_PAYMENT_METHODS,
+        ...(ONETIME_PAYMENT_METHODS.includes('wechat_pay')
+          ? { payment_method_options: { wechat_pay: { client: 'web' } } }
+          : {}),
+      };
+
 // ── API price IDs (NO free trial — pay immediately, separate product) ─────
 const API_PRICES = {
   api_pro: process.env.STRIPE_API_PRICE_PRO || 'price_1Tc5rbGf9QijP49FQTiQ77Br',
@@ -322,10 +370,14 @@ async function syncSubscription(sub) {
 app.use('/api/docs', express.json({ limit: '6mb' }));
 app.use(express.json());
 
-// CORS for Tauri app + marketplace
+// CORS for Tauri app + marketplace.
+// Every custom request header the app sends MUST be listed below. A missing one
+// is invisible server-side — the browser rejects the preflight itself, the real
+// request is never sent, and the app only sees "Load failed". api/cors.test.js
+// checks this list against the headers the renderer actually sets.
 app.use('/api', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token, x-terse-room-key, x-terse-identity, x-terse-device');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -529,6 +581,7 @@ app.post('/api/checkout', async (req, res) => {
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
+        ...checkoutMethods(),
         // Lifetime is a one-off charge; everything else is recurring.
         mode: lifetime ? 'payment' : 'subscription',
         success_url: `${baseUrl}/?checkout=success&tier=${entTier}`,
@@ -649,6 +702,7 @@ app.post('/api/api-checkout', async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
+      ...checkoutMethods(),
       mode: 'subscription',
       success_url: `${baseUrl}/dashboard?api_upgraded=1`,
       cancel_url:  `${baseUrl}/#api-pricing`,
@@ -733,6 +787,7 @@ app.post('/api/pet-checkout', express.json(), async (req, res) => {
       mode: 'payment',
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
+      ...onetimeMethods(),
       metadata: { type: 'pet_unlock', clerk_user_id: clerkUserId, pet_id: petId },
       success_url: `${baseUrl}/pet-success.html?pet=${petId}`,
       cancel_url: `${baseUrl}/`,
@@ -1232,6 +1287,36 @@ app.use('/api/cloud', cloudIngestLimiter, cloudRouter);
 // MCP server mounted first so JSON-RPC isn't subject to the telemetry limiter.
 app.use('/api/cloud/mcp', mcpRouter);
 app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
+// Rooms: shared wallpaper sessions. Same prefix, distinct paths — a room is
+// its own unit, so it does NOT go through team auth.
+const roomsRouter = require('./rooms');
+app.use('/api/cloud/rooms', cloudIngestLimiter, roomsRouter);
+
+// 项目粒子的广场。只存 JSON、只发 JSON —— 画面是在每个人自己的机器上生成的。
+const projectsRouter = require('./projects');
+app.use('/api/cloud/projects', cloudIngestLimiter, projectsRouter);
+// Presence decays on a timer, not off the back of whoever happens to read next:
+// that way a member who closed their laptop goes offline once, promptly, and
+// everybody still in the room is told. 20s is comfortably inside the 45s window.
+setInterval(() => roomsRouter.sweepPresence(), 20 * 1000).unref();
+// Friends: the durable edge between two people who met in a room.
+app.use('/api/cloud/friends', cloudIngestLimiter, require('./friends'));
+
+// ── Device links (desktop ⇄ phone web app) ──
+// The desktop pushes a live frame every few seconds and the phone streams it, so
+// this rides the same ingest limiter as rooms and cowork rather than the default.
+app.use('/api/cloud/link', cloudIngestLimiter, require('./link'));
+
+/* ── iPhone 壁纸 PNG(给快捷指令用)──────────────────────────────────
+   ⚠️ 没有鉴权中间件是**故意的**:令牌就在 URL 路径里,因为快捷指令
+      发不了自定义请求头。所以那个令牌必须只读、可吊销、只能换这一张图
+      —— 具体见 wallpaper-png.js 顶上的说明。 */
+app.use('/api/wp', require('./wallpaper-png'));
+
+// ── WeChat sign-in (phone web app) ──
+// Inert until WECHAT_APP_ID / WECHAT_APP_SECRET are set; see api/wechat.js for
+// what applying for those actually involves.
+app.use('/api/auth/wechat', require('./wechat'));
 
 // Sweep stale cowork sessions + presence every 30s (broadcasts changes over SSE).
 setInterval(() => coworkRouter.sweepStale(), 30 * 1000).unref();
@@ -1380,6 +1465,30 @@ app.get(['/workspace', '/docs-app'], (req, res) => {
 });
 app.get('/d/:id', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'landing', 'doc.html'));
+});
+
+// ── Terse for phone (installable web app) ──
+// The wallpaper engines, the rooms client and the style table are served
+// straight out of src/renderer rather than copied into landing/. There is ONE
+// copy of each: a fork would drift, and the whole reason the phone can render
+// the real wallpaper is that those files never depended on Tauri in the first
+// place.
+app.use('/app-assets', express.static(path.join(__dirname, '..', 'src', 'renderer'), {
+  extensions: ['js', 'mjs'],
+  setHeaders: (res, filePath) => {
+    // The engines are large and change rarely; the shim and the room client
+    // change often enough that a stale copy would be a support ticket.
+    if (/vendor[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=604800');
+    else res.setHeader('Cache-Control', 'public, max-age=300');
+  },
+}));
+
+// /mobile → how to install it. /m → the app itself (client-side routed).
+app.get('/mobile', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'mobile.html'));
+});
+app.get(['/m', '/m/*'], (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'm.html'));
 });
 
 // SPA fallback — but not for marketplace (it has its own HTML)

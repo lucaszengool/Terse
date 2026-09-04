@@ -244,6 +244,21 @@ db.exec(`
 
   -- ── Terse Cowork (collaborative multi-agent office) ──
   -- One row per live coding-agent session, upserted as the agent works.
+  -- ── 项目粒子的广场 ──
+  -- 存的是一颗"胶囊":标题 + 96px 封面 data URL + 几行字。服务器不渲染、不转码,
+  -- 收到的人在自己机器上用同一台粒子引擎生成画面 —— 所以这张表就是这个功能的
+  -- 全部服务器成本,而 capsule 的大小就是那张账单。
+  CREATE TABLE IF NOT EXISTS wall_projects (
+    id TEXT PRIMARY KEY,
+    identity TEXT NOT NULL,
+    title TEXT NOT NULL,
+    capsule TEXT NOT NULL,
+    views INTEGER DEFAULT 0,
+    published_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_wall_projects_time ON wall_projects(published_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_wall_projects_identity ON wall_projects(identity);
+
   CREATE TABLE IF NOT EXISTS cowork_sessions (
     id TEXT PRIMARY KEY,
     team_id TEXT NOT NULL REFERENCES cloud_teams(id) ON DELETE CASCADE,
@@ -312,6 +327,96 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_cowork_log_team ON cowork_log(team_id, occurred_at);
   CREATE INDEX IF NOT EXISTS idx_cowork_messages_team ON cowork_messages(team_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_cowork_messages_inbox ON cowork_messages(team_id, to_email, status);
+
+  -- ── Terse Rooms (shared wallpaper sessions) ──────────────────────────────
+  -- A room is deliberately NOT a team. A team is who you work for; a room is who
+  -- you are on the wallpaper with right now. You join one by code, which is why
+  -- joining never implies friendship and leaving costs nothing.
+  CREATE TABLE IF NOT EXISTS rooms (
+    id TEXT PRIMARY KEY,
+    code TEXT UNIQUE NOT NULL,          -- the short share code (also the QR payload)
+    name TEXT,
+    owner_key_hash TEXT NOT NULL,       -- whoever created it; can rename/close it
+    created_at TEXT DEFAULT (datetime('now')),
+    closed_at TEXT
+  );
+
+  -- One row per participant. key_hash is the member's bearer credential: it is
+  -- handed out once at join and never stored in the clear, same as team tokens.
+  CREATE TABLE IF NOT EXISTS room_members (
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    key_hash TEXT NOT NULL,
+    member_id TEXT NOT NULL,            -- stable public id: what the wallpaper colours by
+    name TEXT,
+    user_email TEXT,                    -- optional; only set when the joiner is signed in
+    status TEXT DEFAULT 'online',       -- online | away | offline
+    last_seen_at TEXT DEFAULT (datetime('now')),
+    joined_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (room_id, key_hash)
+  );
+
+  -- Chat. image_url is the only attachment kind: arbitrary file relay was
+  -- deliberately left out, so anything else travels as a link inside body.
+  CREATE TABLE IF NOT EXISTS room_messages (
+    id TEXT PRIMARY KEY,
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    member_id TEXT NOT NULL,
+    name TEXT,
+    body TEXT,
+    image_url TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_id, last_seen_at);
+  CREATE INDEX IF NOT EXISTS idx_room_messages_room ON room_messages(room_id, created_at);
+
+  -- Knocking: asking to enter a public room. The owner decides. A knock is keyed
+  -- by the asker's install identity so the same person cannot flood a room with
+  -- requests, and so an approval can be claimed later without a login.
+  CREATE TABLE IF NOT EXISTS room_knocks (
+    id TEXT PRIMARY KEY,
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    identity_hash TEXT NOT NULL,
+    name TEXT,
+    status TEXT DEFAULT 'pending',   -- pending | approved | denied | claimed
+    created_at TEXT DEFAULT (datetime('now')),
+    responded_at TEXT,
+    UNIQUE(room_id, identity_hash)
+  );
+  CREATE INDEX IF NOT EXISTS idx_knocks_room ON room_knocks(room_id, status);
+
+  -- A friend link: possession IS the consent, so opening one befriends directly.
+  -- It is revocable and countable, which a bare identity in a URL would not be.
+  CREATE TABLE IF NOT EXISTS friend_invites (
+    token TEXT PRIMARY KEY,
+    owner_hash TEXT NOT NULL,
+    owner_name TEXT,
+    owner_email TEXT,
+    uses INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_friend_invites_owner ON friend_invites(owner_hash);
+
+  -- ── Friends ──────────────────────────────────────────────────────────────
+  -- Keyed by INSTALL IDENTITY, not by email. A room needs no account — the code
+  -- is the credential — so demanding one the moment you want to keep someone
+  -- would contradict the whole design. Each install holds a secret it generated
+  -- itself; only its hash is ever stored, exactly like a room key. Email is kept
+  -- when there is one, but purely to show a friendlier label.
+  CREATE TABLE IF NOT EXISTS friend_links (
+    id TEXT PRIMARY KEY,
+    a_hash TEXT NOT NULL,            -- who asked (hash of their install secret)
+    b_hash TEXT NOT NULL,            -- who was asked
+    a_name TEXT, b_name TEXT,
+    a_email TEXT, b_email TEXT,      -- optional, display only
+    status TEXT DEFAULT 'pending',   -- pending | accepted | declined
+    room_id TEXT,                    -- where they met
+    created_at TEXT DEFAULT (datetime('now')),
+    responded_at TEXT,
+    UNIQUE(a_hash, b_hash)
+  );
+  CREATE INDEX IF NOT EXISTS idx_friend_links_a ON friend_links(a_hash, status);
+  CREATE INDEX IF NOT EXISTS idx_friend_links_b ON friend_links(b_hash, status);
 
   -- ── Terse Docs (Google-style collaborative documents) ──
   -- A standalone, shareable file (document | sheet | slides) that humans AND
@@ -427,6 +532,55 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_gift_codes_batch ON gift_codes(batch);
+
+  -- ── Device links (desktop ⇄ phone) ────────────────────────────────────────
+  -- One row per paired DESKTOP. The desktop holds a secret (stored hashed, like
+  -- a room key or a team token); the phone is identified by the Clerk account it
+  -- signed in with, because the phone app requires sign-in and an account is the
+  -- one thing that survives clearing Safari's storage.
+  --
+  -- A row exists from the moment the desktop asks for a pair code, with
+  -- clerk_user_id NULL — that is what "waiting to be scanned" looks like. The
+  -- code is short and therefore guessable given long enough, so it is single-use
+  -- and expires; after the claim it is nulled out and the row lives on by secret.
+  --
+  -- The live snapshot is deliberately kept in this row rather than a history
+  -- table: the phone renders what is happening NOW, exactly like the room log,
+  -- and a paired desktop that has been shut for a week should show nothing
+  -- rather than replay a week-old field.
+  CREATE TABLE IF NOT EXISTS device_links (
+    id TEXT PRIMARY KEY,
+    secret_hash TEXT UNIQUE NOT NULL,   -- the desktop's bearer credential (sha256)
+    pair_code TEXT,                     -- NULL once claimed; UNIQUE while it is not
+    pair_expires_at TEXT,
+    clerk_user_id TEXT,                 -- the phone's owner; NULL = unclaimed
+    device TEXT DEFAULT 'mac',          -- mac | windows
+    device_name TEXT,
+    snapshot TEXT,                      -- last { stats, sessions } pushed, as JSON
+    snapshot_at TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    linked_at TEXT
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_device_links_code
+    ON device_links(pair_code) WHERE pair_code IS NOT NULL;
+
+  /* ── iPhone 壁纸令牌 ────────────────────────────────────────────────
+     ⚠️ 为什么不能复用 Clerk 的 JWT:这个 URL 是给**快捷指令**用的
+        (「获取 URL 内容」→「设置墙纸」,再挂个人自动化定时跑)。
+        快捷指令不会刷新 token,JWT 一过期壁纸就停更,而且用户根本
+        看不到任何报错 —— 只会觉得"这功能坏了"。
+        所以发一个**长期、可吊销、只读**的随机令牌,只能换那一张图。
+     ⚠️ 存的是 sha256,不存明文 —— 库被读走也换不出别人的壁纸。 */
+  CREATE TABLE IF NOT EXISTS wallpaper_tokens (
+    token_hash TEXT PRIMARY KEY,
+    clerk_user_id TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    last_used_at TEXT,
+    uses INTEGER DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_wp_tokens_user
+    ON wallpaper_tokens(clerk_user_id);
+  CREATE INDEX IF NOT EXISTS idx_device_links_user ON device_links(clerk_user_id);
 `);
 
 const setReferralCode      = db.prepare(`UPDATE users SET referral_code = ? WHERE id = ?`);
@@ -887,6 +1041,198 @@ const addCoworkMessage = db.prepare(`
   VALUES (@id, @team_id, @from_email, @to_email, @session_id, @kind, @body, @status)
 `);
 const getCoworkMessage = db.prepare('SELECT * FROM cowork_messages WHERE id = ?');
+
+// Ownership follows the PERSON, not the key they happened to create with. A room
+// outlives everyone leaving, so an owner who leaves and comes back — or joins
+// from a second window — must still own it.
+try { db.exec(`ALTER TABLE rooms ADD COLUMN owner_identity TEXT`); } catch {}
+
+// Discovery. A room is PRIVATE unless its owner opts in — strangers finding you
+// has to be a decision, never a default.
+try { db.exec(`ALTER TABLE rooms ADD COLUMN visibility TEXT DEFAULT 'private'`); } catch {}
+try { db.exec(`ALTER TABLE rooms ADD COLUMN category TEXT`); } catch {}
+
+// A room member carries the install identity that outlives the room, so a
+// friendship made inside one survives it closing.
+try { db.exec(`ALTER TABLE room_members ADD COLUMN identity_hash TEXT`); } catch {}
+
+// ── Terse Rooms ──
+const createRoom = db.prepare(`
+  INSERT INTO rooms (id, code, name, owner_key_hash) VALUES (@id, @code, @name, @owner_key_hash)
+`);
+const getRoomById = db.prepare('SELECT * FROM rooms WHERE id = ? AND closed_at IS NULL');
+const getRoomByCode = db.prepare('SELECT * FROM rooms WHERE code = ? AND closed_at IS NULL');
+const closeRoom = db.prepare("UPDATE rooms SET closed_at = datetime('now') WHERE id = ?");
+const renameRoom = db.prepare('UPDATE rooms SET name = ? WHERE id = ?');
+
+const addRoomMember = db.prepare(`
+  INSERT INTO room_members (room_id, key_hash, member_id, name, user_email, identity_hash)
+  VALUES (@room_id, @key_hash, @member_id, @name, @user_email, @identity_hash)
+  ON CONFLICT(room_id, key_hash) DO UPDATE SET
+    name = excluded.name, status = 'online', last_seen_at = datetime('now')
+`);
+const getRoomMember = db.prepare('SELECT * FROM room_members WHERE room_id = ? AND key_hash = ?');
+const findRoomMemberByKey = db.prepare('SELECT * FROM room_members WHERE key_hash = ?');
+const getRoomMembers = db.prepare(`
+  SELECT member_id, name, user_email, status, last_seen_at, joined_at, identity_hash
+  FROM room_members WHERE room_id = ? ORDER BY joined_at, member_id
+`);
+const touchRoomMember = db.prepare(`
+  UPDATE room_members SET status = ?, last_seen_at = datetime('now')
+  WHERE room_id = ? AND key_hash = ?
+`);
+const renameRoomMember = db.prepare(
+  'UPDATE room_members SET name = ? WHERE room_id = ? AND key_hash = ?');
+// A nickname is a property of the PERSON, not of one seat: changing it should
+// change it everywhere they are, not only in the room they happen to be in.
+const renameRoomMemberEverywhere = db.prepare(
+  'UPDATE room_members SET name = ? WHERE identity_hash = ?');
+const removeRoomMember = db.prepare('DELETE FROM room_members WHERE room_id = ? AND key_hash = ?');
+// Re-entering a room you already belong to must REPLACE your seat, never add a
+// second one: a new key is minted on every join, so without this a person who
+// comes back three times is three people in the roster and three in the plaza's
+// member count — all but one of them permanently offline ghosts.
+const findRoomMemberByIdentity = db.prepare(`
+  SELECT * FROM room_members WHERE room_id = ? AND identity_hash = ? ORDER BY joined_at LIMIT 1
+`);
+const removeRoomMembersByIdentity = db.prepare(
+  'DELETE FROM room_members WHERE room_id = ? AND identity_hash = ?');
+// Presence decays instead of relying on a clean disconnect: a closed laptop never
+// sends "offline", so anyone who stops heartbeating is aged out by the reader.
+const ageOutRoomMembers = db.prepare(`
+  UPDATE room_members SET status = 'offline'
+  WHERE status != 'offline' AND last_seen_at < datetime('now', ?)
+`);
+
+const addRoomMessage = db.prepare(`
+  INSERT INTO room_messages (id, room_id, member_id, name, body, image_url)
+  VALUES (@id, @room_id, @member_id, @name, @body, @image_url)
+`);
+const getRoomMessage = db.prepare('SELECT rowid AS seq, * FROM room_messages WHERE id = ?');
+// Scrollback. A chat window is judged on whether yesterday is still there, and
+// the snapshot deliberately carries only the tail — so older pages are fetched
+// by asking for what came before the oldest line already on screen, by seq.
+const getRoomMessagesBefore = db.prepare(`
+  SELECT rowid AS seq, * FROM room_messages
+  WHERE room_id = ? AND rowid < ? ORDER BY rowid DESC LIMIT ?
+`);
+// ── Discovery + knocking ──
+const setRoomOwnerIdentity = db.prepare('UPDATE rooms SET owner_identity = ? WHERE id = ?');
+const setRoomListing = db.prepare('UPDATE rooms SET visibility = ?, category = ? WHERE id = ?');
+// Ordered by who is actually there — a directory whose first screen is dead
+// rooms is worse than an empty one — but nothing is hidden: a room with nobody
+// online is still a room you can knock on, and its owner may well be back.
+// `joined`/`owner` are answered for the BROWSER, not about the room: a plaza
+// that offers "ask to join" for a room you are already in (or own) is a dead
+// button — you knock, the owner never sees a stranger, and nothing happens.
+const listPublicRooms = db.prepare(`
+  SELECT r.id, r.code, r.name, r.category, r.created_at,
+         COUNT(m.member_id) AS members,
+         COALESCE(SUM(CASE WHEN m.status = 'online' THEN 1 ELSE 0 END), 0) AS online,
+         CASE WHEN @identity IS NOT NULL AND r.owner_identity = @identity THEN 1 ELSE 0 END AS owner,
+         (SELECT COUNT(*) FROM room_members x
+           WHERE x.room_id = r.id AND x.identity_hash = @identity) AS joined
+  FROM rooms r
+  LEFT JOIN room_members m ON m.room_id = r.id
+  WHERE r.closed_at IS NULL AND r.visibility = 'public'
+    AND (@category IS NULL OR r.category = @category)
+  GROUP BY r.id
+  ORDER BY online DESC, members DESC, r.created_at DESC
+  LIMIT @limit
+`);
+/* Every room this install can walk back into — the ones it joined and the ones
+   it owns, whether or not it is present in them right now. Membership outlives
+   presence (only the owner can close a room), so "recent rooms" is a server
+   fact, not a browser one: clearing localStorage, or reinstalling, must not be
+   what destroys the way back into a room you own.
+   Counts are subqueries rather than joins on purpose — a join against
+   room_members twice multiplies the SUM once someone has two seats. */
+const listRoomsForIdentity = db.prepare(`
+  SELECT r.id, r.code, r.name, r.category, r.visibility, r.created_at,
+         CASE WHEN r.owner_identity = @identity THEN 1 ELSE 0 END AS owner,
+         (SELECT COUNT(*) FROM room_members m WHERE m.room_id = r.id) AS members,
+         (SELECT COUNT(*) FROM room_members m
+           WHERE m.room_id = r.id AND m.status = 'online') AS online,
+         (SELECT COUNT(*) FROM room_members m
+           WHERE m.room_id = r.id AND m.identity_hash = @identity) AS joined,
+         (SELECT MAX(m.last_seen_at) FROM room_members m
+           WHERE m.room_id = r.id AND m.identity_hash = @identity) AS last_seen_at
+  FROM rooms r
+  WHERE r.closed_at IS NULL
+    AND (r.owner_identity = @identity
+         OR EXISTS (SELECT 1 FROM room_members m
+                     WHERE m.room_id = r.id AND m.identity_hash = @identity))
+  ORDER BY COALESCE(last_seen_at, r.created_at) DESC
+  LIMIT @limit
+`);
+// One active room at a time. Membership is NOT revoked — a room you joined is
+// still yours to return to — you simply go quiet everywhere you are not.
+// Which rooms are about to be affected by an age-out. Asked BEFORE the update,
+// so the sweep knows exactly who to tell.
+const roomsWithStaleMembers = db.prepare(`
+  SELECT DISTINCT room_id FROM room_members
+  WHERE status != 'offline' AND last_seen_at < datetime('now', ?)
+`);
+
+const goOfflineElsewhere = db.prepare(`
+  UPDATE room_members SET status = 'offline'
+  WHERE identity_hash = @identity AND room_id != @room_id AND status != 'offline'
+`);
+const roomsIdleFor = db.prepare(`
+  SELECT DISTINCT room_id FROM room_members
+  WHERE identity_hash = ? AND room_id != ? AND status != 'offline'
+`);
+
+const addKnock = db.prepare(`
+  INSERT INTO room_knocks (id, room_id, identity_hash, name)
+  VALUES (@id, @room_id, @identity_hash, @name)
+  ON CONFLICT(room_id, identity_hash) DO UPDATE SET
+    name = excluded.name,
+    status = CASE WHEN room_knocks.status = 'denied' THEN 'denied' ELSE 'pending' END
+`);
+const getKnock = db.prepare('SELECT * FROM room_knocks WHERE id = ?');
+const getKnockFor = db.prepare('SELECT * FROM room_knocks WHERE room_id = ? AND identity_hash = ?');
+const listKnocks = db.prepare("SELECT * FROM room_knocks WHERE room_id = ? AND status = 'pending' ORDER BY created_at");
+const setKnockStatus = db.prepare("UPDATE room_knocks SET status = ?, responded_at = datetime('now') WHERE id = ?");
+
+// ── Friend links ──
+const addFriendInvite = db.prepare(`
+  INSERT INTO friend_invites (token, owner_hash, owner_name, owner_email)
+  VALUES (@token, @owner_hash, @owner_name, @owner_email)
+`);
+const getFriendInvite = db.prepare('SELECT * FROM friend_invites WHERE token = ?');
+const bumpFriendInvite = db.prepare('UPDATE friend_invites SET uses = uses + 1 WHERE token = ?');
+const getFriendInviteByOwner = db.prepare('SELECT * FROM friend_invites WHERE owner_hash = ? ORDER BY created_at DESC LIMIT 1');
+const deleteFriendInvite = db.prepare('DELETE FROM friend_invites WHERE token = ?');
+
+// ── Friends ──
+const addFriendRequest = db.prepare(`
+  INSERT INTO friend_links (id, a_hash, b_hash, a_name, b_name, a_email, b_email, room_id)
+  VALUES (@id, @a_hash, @b_hash, @a_name, @b_name, @a_email, @b_email, @room_id)
+`);
+const getFriendById = db.prepare('SELECT * FROM friend_links WHERE id = ?');
+// Read in both directions: the edge is stored once, in the direction it was asked.
+const getFriendEdge = db.prepare(`
+  SELECT * FROM friend_links
+  WHERE (a_hash = @x AND b_hash = @y) OR (a_hash = @y AND b_hash = @x)
+`);
+const listFriendEdges = db.prepare(`
+  SELECT * FROM friend_links WHERE a_hash = ? OR b_hash = ? ORDER BY created_at DESC
+`);
+const respondFriend = db.prepare(`
+  UPDATE friend_links SET status = ?, responded_at = datetime('now') WHERE id = ?
+`);
+const deleteFriend = db.prepare('DELETE FROM friend_links WHERE id = ?');
+
+/* Ordered by ROWID, not by created_at. created_at has one-second resolution, so
+   several messages routinely share it — and the tie was being broken by a random
+   UUID, which is to say arbitrarily: two lines sent in the same second could come
+   back in the wrong order, and a "give me what came before this" cursor could not
+   be expressed at all. rowid is insertion order and strictly increasing, which is
+   what both the ordering and the scrollback cursor actually need. */
+const getRoomMessages = db.prepare(`
+  SELECT rowid AS seq, * FROM room_messages WHERE room_id = ? ORDER BY rowid DESC LIMIT ?
+`);
 const getCoworkMessages = db.prepare(`
   SELECT * FROM cowork_messages WHERE team_id = ? AND created_at > ?
   ORDER BY created_at DESC LIMIT 200
@@ -984,7 +1330,65 @@ const addPetPurchase = db.prepare(`
 `);
 const getPetPurchases = db.prepare('SELECT pet_id FROM pet_purchases WHERE user_id = ?');
 
+// ── Device links (desktop ⇄ phone) ──
+const createDeviceLink = db.prepare(`
+  INSERT INTO device_links (id, secret_hash, pair_code, pair_expires_at, device, device_name)
+  VALUES (@id, @secret_hash, @pair_code, @pair_expires_at, @device, @device_name)
+`);
+const findLinkBySecret = db.prepare('SELECT * FROM device_links WHERE secret_hash = ?');
+// Claiming checks expiry in SQL rather than in JS so a stale code cannot be
+// claimed by two phones racing the read.
+const findLinkByCode = db.prepare(`
+  SELECT * FROM device_links
+  WHERE pair_code = ? AND clerk_user_id IS NULL AND pair_expires_at > datetime('now')
+`);
+const claimDeviceLink = db.prepare(`
+  UPDATE device_links
+     SET clerk_user_id = @clerk_user_id, linked_at = datetime('now'),
+         pair_code = NULL, pair_expires_at = NULL
+   WHERE id = @id AND clerk_user_id IS NULL
+`);
+const upsertWallpaperToken = db.prepare(
+  `INSERT INTO wallpaper_tokens (token_hash, clerk_user_id) VALUES (?, ?)
+   ON CONFLICT(token_hash) DO NOTHING`);
+const getWallpaperToken = db.prepare(
+  `SELECT clerk_user_id FROM wallpaper_tokens WHERE token_hash = ?`);
+const touchWallpaperToken = db.prepare(
+  `UPDATE wallpaper_tokens SET last_used_at = datetime('now'), uses = uses + 1
+   WHERE token_hash = ?`);
+const deleteWallpaperTokens = db.prepare(
+  `DELETE FROM wallpaper_tokens WHERE clerk_user_id = ?`);
+
+const listLinksForUser = db.prepare(`
+  SELECT * FROM device_links WHERE clerk_user_id = ? ORDER BY linked_at DESC
+`);
+const setLinkSnapshot = db.prepare(`
+  UPDATE device_links SET snapshot = @snapshot, snapshot_at = datetime('now') WHERE id = @id
+`);
+const renameDeviceLink = db.prepare('UPDATE device_links SET device_name = ? WHERE id = ?');
+const deleteDeviceLink = db.prepare('DELETE FROM device_links WHERE id = ?');
+// Unclaimed codes are litter; a paired link is never swept.
+const sweepPairCodes = db.prepare(`
+  DELETE FROM device_links
+   WHERE clerk_user_id IS NULL AND pair_expires_at IS NOT NULL
+     AND pair_expires_at < datetime('now', '-1 hour')
+`);
+
+// ── 项目粒子广场 ──
+const upsertWallProject = db.prepare(`
+  INSERT INTO wall_projects (id, identity, title, capsule)
+  VALUES (@id, @identity, @title, @capsule)
+  ON CONFLICT(id) DO UPDATE SET title = @title, capsule = @capsule, published_at = datetime('now')
+`);
+const listWallProjects = db.prepare(
+  'SELECT id, title, capsule, views, published_at FROM wall_projects ORDER BY published_at DESC LIMIT @limit');
+const countWallProjects = db.prepare(
+  'SELECT COUNT(*) AS n FROM wall_projects WHERE identity = @identity');
+const bumpWallProjectViews = db.prepare('UPDATE wall_projects SET views = views + 1 WHERE id = ?');
+const deleteWallProject = db.prepare('DELETE FROM wall_projects WHERE id = @id AND identity = @identity');
+
 module.exports = {
+  upsertWallProject, listWallProjects, countWallProjects, bumpWallProjectViews, deleteWallProject,
   db,
   upsertUser, getUser, ensureUser, updateStripeConnect,
   addSellerKey, getSellerKeys, getSellerKeyFull, updateSellerKey, deleteSellerKey,
@@ -999,6 +1403,10 @@ module.exports = {
   getListings, getDetailedListings,
   addNotification, getNotifications, markNotificationRead, markNotificationEmailed, getUnreadCount,
   addPetPurchase, getPetPurchases,
+  // Device links (desktop ⇄ phone)
+  createDeviceLink, findLinkBySecret, findLinkByCode, claimDeviceLink,
+  listLinksForUser, setLinkSnapshot, renameDeviceLink, deleteDeviceLink, sweepPairCodes,
+  upsertWallpaperToken, getWallpaperToken, touchWallpaperToken, deleteWallpaperTokens,
   // Terse Cloud
   createTeam, getTeamById, getTeamBySlug, getTeamsByOwner, getTeamsByMemberEmail, getTeamsByMemberUserId, updateTeam, deleteTeam,
   addTeamMember, getTeamMembers, removeTeamMember, getMemberByEmail, setMemberUserId,
@@ -1006,6 +1414,20 @@ module.exports = {
   addCloudEvent, getTeamEvents, getTeamSummary,
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
   getTeamByModel, getTeamByMode, getTeamByAgent, getTeamAgentTotals,
+  // Discovery, knocking, friend links
+  setRoomListing, setRoomOwnerIdentity, listPublicRooms, listRoomsForIdentity,
+  addKnock, getKnock, getKnockFor, listKnocks, setKnockStatus,
+  goOfflineElsewhere, roomsIdleFor, roomsWithStaleMembers,
+  addFriendInvite, getFriendInvite, bumpFriendInvite, getFriendInviteByOwner, deleteFriendInvite,
+  // Friends
+  addFriendRequest, getFriendById, getFriendEdge, listFriendEdges, respondFriend, deleteFriend,
+  // Terse Rooms
+  createRoom, getRoomById, getRoomByCode, closeRoom, renameRoom,
+  addRoomMember, getRoomMember, findRoomMemberByKey, getRoomMembers,
+  touchRoomMember, removeRoomMember, ageOutRoomMembers,
+  renameRoomMember, renameRoomMemberEverywhere,
+  findRoomMemberByIdentity, removeRoomMembersByIdentity,
+  addRoomMessage, getRoomMessage, getRoomMessages, getRoomMessagesBefore,
   // Terse Cowork
   upsertCoworkSession, getCoworkSessionByKey, getCoworkSession, getCoworkSessions,
   bumpCoworkSessionSeq, endStaleCoworkSessions, idleStaleCoworkSessions,

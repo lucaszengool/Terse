@@ -181,6 +181,53 @@ if (window.__TAURI__) {
     setWallpaperOverlay: (on) => invoke('set_wallpaper_overlay', { on }),
     relevelWallpaperWindow: (on) => invoke('relevel_wallpaper_window', { on }),
     wallpaperOverlayEffective: () => invoke('wallpaper_overlay_effective'),
+    // 用户此刻真的开着的那些窗口(app 名 + 屏幕位置尺寸)。壁纸设置页的「始终置顶」
+    // 演示拿它画真实窗口,而不是两个假白框。macOS 走 CGWindowList,不需要录屏权限。
+    listOpenWindows: () => invoke('list_open_windows'),
+    // 桌面图标的矩形。3D 壁纸靠它判断"这一下是拖画面还是点文件"。拿不到就是空数组,
+    // 调用方据此**不接管鼠标** —— 宁可少一个功能,也不能让人点不动自己的文件。
+    desktopIconRects: () => invoke('desktop_icon_rects'),
+
+    // ── 项目粒子 ──
+    // 一个项目文件夹被压成一颗"胶囊"(标题 + 96px 封面 + 几行信息),壁纸拿它把项目
+    // 演成一段粒子缩影。上传的也是这颗胶囊 —— 别人在自己机器上生成同样的粒子,
+    // 服务器只存 JSON,不渲染、不转码。
+    navigateToProjects: () => invoke('navigate_to_projects'),
+    // 文件夹选择器复用知识图谱那条已经在用的命令 —— 不给同一件事开第二条路。
+    pickFolder: () => invoke('graph_pick_folder'),
+    projectList: () => invoke('project_list'),
+    projectCandidates: () => invoke('project_candidates'),
+    projectAdd: (path) => invoke('project_add', { path }),
+    projectUpdate: (id, patch) => invoke('project_update', { id, patch }),
+    projectRemove: (id) => invoke('project_remove', { id }),
+    projectPreview: (capsule, ms) => invoke('project_preview', { capsule, ms: ms || null }),
+    projectCapsule: (id) => invoke('project_capsule', { id }),
+    // 某个进程所属 app 的图标(PNG data URL)。不需要任何权限 —— 「始终置顶」演示卡
+    // 靠它让人一眼认出"这是我的窗口"(窗口内容截不了,见 lib.rs 的 app_icon)。
+    appIcon: (pid, size) => invoke('app_icon', { pid, size: size || null }),
+    // 3D 自由视角在桌面上打开/关闭:把壁纸抬到图标层之上并变透明,或放回桌面层。
+    wallpaperSet3dMode: (on) => invoke('wallpaper_set_3d_mode', { on }),
+    // 壁纸窗口是穿透鼠标的,所以要主动告诉原生侧"这块矩形是热区";光标进去时那边
+    // 才会临时把窗口交给鼠标。见 lib.rs 的 wallpaper_set_hot_rect。
+    wallpaperSetHotRect: (x, y, w, h) => invoke('wallpaper_set_hot_rect', { x, y, w, h }),
+
+    // 社交消息(消息中心 + 壁纸上的消息层)
+    messagesStatus: () => invoke('messages_status'),
+    messagesRecent: (limit, chatOnly) => invoke('messages_recent', { limit: limit ?? null, chatOnly: chatOnly ?? null }),
+    messagesDetectedApps: () => invoke('messages_detected_apps'),
+    messagesSetAppOnWallpaper: (appId, on) => invoke('messages_set_app_on_wallpaper', { appId, on }),
+    messagesForWallpaper: (limit) => invoke('messages_for_wallpaper', { limit: limit ?? null }),
+    messagesOpenChat: (appId, target) => invoke('messages_open_chat', { appId, target }),
+    messagesSendOpen: (appId, text) => invoke('messages_send_open', { appId, text }),
+    messagesNotificationSettings: () => invoke('messages_notification_settings'),
+    messagesPermissionReport: () => invoke('messages_permission_report'),
+    messagesOpenSettings: (which) => invoke('messages_open_settings', { which }),
+
+    // 手机端配对(Terse phone web app)
+    phonePair: () => invoke('phone_pair'),
+    phoneStatus: () => invoke('phone_status'),
+    phoneSetShare: (on) => invoke('phone_set_share', { on }),
+    phoneUnlink: () => invoke('phone_unlink'),
     // Write a line into the same ~/.terse/<name>.log the Rust side uses. Only
     // the native half of the overlay was ever observable, which is why four
     // rounds of reading the screenshot guessed wrong — a black screen looks the

@@ -431,6 +431,9 @@
     let icon3d = [], icon3dT = 0, mode3d = false, icon3dOk = false, win3d = [];
 
     function view3dActive(){
+      // 壁纸本身关着的时候不算:那种情况下这一层是隐藏的,抬它、给它配一颗按钮
+      // 都是在给一个看不见的东西做界面。
+      if (cfg.enabled === false) return false;
       // 问引擎,不问配置文件:引擎那份是过了 sanitizeView 的,授权已经与在里面。
       // 直接读 cfg.view3d.on 的话,一份掉出 Pro(或手改过)的配置就能把这层窗口
       // 抬起来 —— 抬窗口是 Pro 的能力,判断只该有一处。
@@ -925,6 +928,12 @@
       // actual deltas) and agent activity (setActivity), so the 律动 always means something.
       if (window.__TAURI__?.event?.listen){
         window.__TAURI__.event.listen('wallpaper-config', ev => applyConfig(ev.payload || {}));
+        // 项目缩影:一段有头有尾的演出(默认 20 秒),不是一个设置 —— 所以走事件,
+        // 不写 wallpaper.json。自己在列表里点预览、和广场上点别人的项目,同一条路。
+        window.__TAURI__.event.listen('wallpaper-project', ev => {
+          const p = ev.payload || {};
+          if (wp && wp.showProject) wp.showProject(p.capsule || null, +p.ms || 20000);
+        });
         // 抬到图标层之上时窗口是透明的 —— 页面必须同时停止画自己的底色,
         // 否则那就是一块盖住桌面图标的黑板(和「始终置顶」同一个坑,同一套画法)。
         window.__TAURI__.event.listen('wallpaper-lift', ev => applyOverlay(!!ev.payload || overlayOK()));
@@ -933,6 +942,14 @@
       window.addEventListener('resize', () => wp && wp.resize());
     }
     boot();
+    // 诊断:这一层到底收不收得到鼠标。桌面层的窗口收不到点击是这个功能最主要的坑,
+    // 而"收不到"和"收到了但没人处理"在外面看起来完全一样。
+    canvas.addEventListener('pointerdown', function (e) {
+      console.log('[wp3d] canvas pointerdown', e.clientX, e.clientY);
+    }, true);
+    window.addEventListener('wheel', function (e) {
+      console.log('[wp3d] wheel', e.deltaY);
+    }, { capture: true, passive: true });
 
     /* ── Glyphs as buttons ──────────────────────────────────────────────────
        The field draws live data — the agent that is working, what this session
@@ -951,6 +968,44 @@
       var T = window.terse, core = window.__TAURI__ && window.__TAURI__.core;
       if (!core) return;
       var armed = false, armTimer = 0, hint = null, lastHover = null;
+
+      /* ── 调节态(灵动岛旁边那颗圆钮)──────────────────────────────────────
+         按光标位置自动接管那条路要读得到桌面图标,而那条授权每次更新都会失效 ——
+         缺了它,桌面上就一次也不接管。这条路没有任何前置条件:用户明确按了按钮,
+         整块屏幕就交给壁纸,直到他再按一次(或 Esc)。
+
+         所以这里**不查 bareSpot**:调节态里连图标上的点击也归我们 —— 那正是用户
+         按那颗钮的意思。它有明确的进出,而且那颗钮一直亮着提醒他自己在哪。 */
+      var adjustOn = false;
+
+      function setAdjust(on) {
+        console.log('[wp3d] setAdjust', on, 'engine=', !!(wp && wp.attachOrbit),
+                    'view=', wp && wp.getView3D && JSON.stringify(wp.getView3D()));
+        if (on === adjustOn) return;
+        if (on && !(wp && wp.attachOrbit)) return;
+        adjustOn = on;
+        // 抬起来的时候页面必须停止画自己的底色(窗口这时是透明的),落回去再画上。
+        // Rust 也会广播 wallpaper-lift,这里再做一次是为了不依赖事件到达的时机。
+        applyOverlay(on || overlayOK());
+        if (on) {
+          if (!wp.attachOrbit(canvas, onOrbitChange, { wheelAlways: true })) {
+            console.log('[wp3d] attachOrbit REFUSED (no licence in the engine)');
+            adjustOn = false; return;
+          }
+          console.log('[wp3d] orbit attached to the canvas');
+          orbitOn = true;                 // 复用同一套:armed、续期、写盘
+          orbitMoved = false;
+          setArmed(true);
+          bumpOrbitTimer();
+        } else {
+          orbitOn = false;
+          if (wp && wp.detachOrbit) wp.detachOrbit();
+          clearTimeout(orbitTimer);
+          saveView();                     // 退出时把这次转好的机位定住
+          setArmed(false);
+        }
+        showHint(armed);
+      }
 
       /* ── 在自己的桌面上把这幅画转过去(3D 自由视角,Pro)─────────────────
          同一把钥匙(⌘⇧W)开的还是同一扇门:壁纸暂时收下鼠标。区别只在于开着 3D
@@ -988,6 +1043,7 @@
 
       /** 机位变了(拖/滚都算)。只续命 + 记时间戳,写盘留到松手那一刻。 */
       function onOrbitChange() {
+        if (!orbitMoved) console.log('[wp3d] first orbit event — the drag is reaching us');
         dragGuard = Date.now();
         orbitMoved = true;
         // 原生那边还有一道 75 秒的看门狗(页面死了也要把鼠标还回去)。转得久一点
@@ -1057,7 +1113,7 @@
             'pointer-events:none;opacity:0;transition:opacity .18s;z-index:9';
           document.body.appendChild(hint);
         }
-        hint.textContent = orbitOn
+        hint.textContent = (orbitOn || adjustOn)
           ? WT('wpp_orbit_hint', 'Drag to turn · scroll to zoom · double-click to reset · Esc to finish')
           : WT('wpp_click_hint', 'Click any number');
         hint.style.opacity = (on && !lastHover) ? '1' : '0';
@@ -1073,6 +1129,8 @@
       if (window.__TAURI__.event) {
         // ⌘⇧W(控制面板上的「在桌面上调整」也发这个事件)。开着 3D 就进转视角
         // 的那一段,否则还是原来的"数字变按钮"。
+        // 那颗圆钮按下去,Rust 广播这个事件(壁纸和按钮各听各的,状态永远一致)。
+        window.__TAURI__.event.listen('wallpaper-adjust', function (e) { setAdjust(!!e.payload); });
         window.__TAURI__.event.listen('wallpaper-arm-toggle', function () {
           if (orbitOn) { setOrbit(false); return; }
           if (canOrbit()) { setOrbit(true); if (orbitOn) return; }
@@ -1097,12 +1155,12 @@
           // 光标一动,画面就跟着轻轻转。不需要授权,也不吃点击 —— 桌面上"3D 是活的"
           // 靠这一层保证,按住拖是它之上的加分项。
           hoverParallax(x, y);
-          if (mode3d && icon3dOk) {
-            var bare = bareSpot(x, y);
-            if (bare && !orbitOn) setOrbit(true);
-            else if (!bare && orbitOn) setOrbit(false);
-            return;
-          }
+          // 调节态里整块屏幕都归我们(那是用户按钮按进来的),不用再判位置。
+          if (adjustOn) return;
+          // 曾经这里还有一条"指针在空壁纸上就自动接管"的路。它作废了:平时这一层
+          // 老老实实待在桌面图标后面(开 3D 不再抬窗口 —— 抬上去桌面图标全被盖住,
+          // 而且和「始终置顶」变成同一件事),而桌面层的窗口**收不到点击**。
+          // 想在桌面上转,按灵动岛旁边那颗钮。
           // 转视角那一段里,鼠标归拖动;这套"压在字上才 arm"的自动判据在那时
           // 只会把窗口反复收回去。
           if (orbitOn) return;
@@ -1112,6 +1170,8 @@
       }
       window.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
+        // 调节态是用户明确进来的,退出也要走同一条路(Rust 会把那颗钮的灯灭掉)
+        if (adjustOn) { core.invoke('wallpaper_set_adjust', { on: false }).catch(function () {}); setAdjust(false); return; }
         if (orbitOn) setOrbit(false); else setArmed(false);
       });
 
@@ -1129,6 +1189,8 @@
         // 拖完松手浏览器还会补一个 click。不挡掉的话,每转一次视角都会被判成
         // "点在空处" → 立刻散场,转视角这件事就永远做不完一次。
         if (Date.now() - dragGuard < 350) return;
+        // 调节态里,点在空处是拖动的一部分,不是"我不玩了" —— 退出只认那颗钮和 Esc。
+        if (adjustOn) return;
         var hit = wp.hitTest(e.clientX, e.clientY);
         if (!hit) { if (orbitOn) setOrbit(false); else setArmed(false); return; }  // click on empty field = dismiss
         var g = hit.glyph;

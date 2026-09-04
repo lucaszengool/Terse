@@ -150,6 +150,89 @@ fn walk(el: CFTypeRef, depth: usize, out: &mut Vec<String>, budget: &mut usize) 
     }
 }
 
+/// 桌面图标的矩形(屏幕坐标,左上原点)。
+///
+/// 3D 壁纸要"看鼠标在哪儿"决定这一下算拖画面还是算点文件,所以必须知道图标在哪。
+/// Finder 的 AppleScript 在这台机器上问不出来(`position of every item of desktop`
+/// 全是 -1,`icon view options` 直接报错),但 AX 树里是齐的:
+///   Finder(app) → 第一个 AXScrollArea → 它的第一个孩子 → 每个孩子就是一个图标。
+///
+/// 拿不到就返回空 —— 调用方据此退回"不接管鼠标",宁可少一个功能,也不能让人点不动
+/// 自己的文件。
+pub fn desktop_icon_rects(finder_pid: u32) -> Vec<(f64, f64, f64, f64)> {
+    #[repr(C)]
+    #[derive(Default, Clone, Copy)]
+    struct CGPoint { x: f64, y: f64 }
+    #[repr(C)]
+    #[derive(Default, Clone, Copy)]
+    struct CGSize { width: f64, height: f64 }
+    extern "C" {
+        fn AXValueGetValue(value: CFTypeRef, the_type: u32, value_ptr: *mut std::ffi::c_void) -> bool;
+    }
+    const KAX_VALUE_CGPOINT: u32 = 1;
+    const KAX_VALUE_CGSIZE: u32 = 2;
+
+    let mut out = Vec::new();
+    if !is_trusted() { return out; }
+    unsafe {
+        let app = AXUIElementCreateApplication(finder_pid as pid_t);
+        if app.is_null() { return out; }
+
+        /// el 的第 i 个孩子(不持有,调用方别 release)
+        unsafe fn children(el: CFTypeRef) -> Option<CFArrayRef> {
+            let kids = copy_attr(el, "AXChildren")?;
+            if CFGetTypeID(kids) != CFArrayGetTypeID() { CFRelease(kids); return None; }
+            Some(kids as CFArrayRef)   // 调用方负责 CFRelease
+        }
+
+        let mut scroll: CFTypeRef = std::ptr::null();
+        if let Some(kids) = children(app) {
+            let n = CFArrayGetCount(kids);
+            for i in 0..n {
+                let kid = CFArrayGetValueAtIndex(kids, i) as CFTypeRef;
+                let role = copy_attr(kid, "AXRole").and_then(|r| { let s = as_string(r); CFRelease(r); s });
+                if role.as_deref() == Some("AXScrollArea") { scroll = kid; break; }
+            }
+            // scroll 是数组里的元素,数组释放后不能再用 —— 先把要的东西读完
+            if !scroll.is_null() {
+                if let Some(inner) = children(scroll) {
+                    if CFArrayGetCount(inner) > 0 {
+                        let list = CFArrayGetValueAtIndex(inner, 0) as CFTypeRef;
+                        if let Some(icons) = children(list) {
+                            let m = CFArrayGetCount(icons).min(400);
+                            for j in 0..m {
+                                let ic = CFArrayGetValueAtIndex(icons, j) as CFTypeRef;
+                                let mut p = CGPoint::default();
+                                let mut sz = CGSize::default();
+                                let mut got_p = false;
+                                let mut got_s = false;
+                                if let Some(v) = copy_attr(ic, "AXPosition") {
+                                    got_p = AXValueGetValue(v, KAX_VALUE_CGPOINT,
+                                                            &mut p as *mut CGPoint as *mut std::ffi::c_void);
+                                    CFRelease(v);
+                                }
+                                if let Some(v) = copy_attr(ic, "AXSize") {
+                                    got_s = AXValueGetValue(v, KAX_VALUE_CGSIZE,
+                                                            &mut sz as *mut CGSize as *mut std::ffi::c_void);
+                                    CFRelease(v);
+                                }
+                                if got_p && got_s && sz.width > 1.0 && sz.height > 1.0 {
+                                    out.push((p.x, p.y, sz.width, sz.height));
+                                }
+                            }
+                            CFRelease(icons as CFTypeRef);
+                        }
+                    }
+                    CFRelease(inner as CFTypeRef);
+                }
+            }
+            CFRelease(kids as CFTypeRef);
+        }
+        CFRelease(app);
+    }
+    out
+}
+
 /// One window's visible text.
 pub struct WindowText {
     pub title: String,

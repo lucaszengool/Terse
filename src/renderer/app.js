@@ -3,13 +3,13 @@ const $$ = s => document.querySelectorAll(s);
 const T = window.terse;
 
 let prevView = 'sessions';
-const views = { sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView') };
+const views = { msgs: $('#msgsView'), sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView'), island: $('#islandView'), friends: $('#friendsView'), room: $('#roomView'), plaza: $('#plazaView') };
 function show(name) {
   Object.values(views).forEach(v => v && v.classList.add('hidden'));
   views[name].classList.remove('hidden');
   if (name !== 'settings') prevView = name;
   // keep the sidebar highlight in sync with the visible page
-  const page = ['cleanup', 'settings', 'boost', 'prompts', 'observe', 'mcp', 'rules', 'connection'].includes(name) ? name : 'overview';
+  const page = ['cleanup', 'settings', 'boost', 'prompts', 'observe', 'mcp', 'rules', 'connection', 'island', 'friends', 'room', 'plaza', 'msgs'].includes(name) ? name : 'overview';
   $$('.sb-item').forEach(b => b.classList.toggle('active', b.dataset.page === page));
 }
 
@@ -80,8 +80,9 @@ async function updateLicenseBanner() {
           const g = await T.trialGraceStatus();
           if (g && g.inGrace && !g.hasPlan) {
             const mins = Math.max(1, Math.ceil((g.remainingSecs || 0) / 60));
-            $('#licenseTier').textContent = 'Free preview';
-            $('#licenseUsage').textContent = mins + ' min left · enjoy Terse';
+            $('#licenseTier').textContent = TT('trial_preview_tier');
+            $('#licenseUsage').textContent = mins + ' ' + TT('trial_min_left');
+            startTrialCountdown();
             banner.classList.remove('limit-warning');
             $('#btnUpgrade').textContent = 'Start Free Trial';
             return;
@@ -127,6 +128,72 @@ async function checkPaywall() {
   refreshUpgradeCta();
 }
 
+/* ── 试用倒计时 ──────────────────────────────────────────────────────────────
+   横幅原本只在 updateLicenseBanner() 被调用时才刷新一次,所以"还剩 12 分钟"
+   会一直挂在那儿不动,而 Pro 到点就没了。失去感只有在你知道自己拥有什么、
+   还剩多久的时候才成立,所以这里让它真的走字,并在最后阶段提醒一次。 */
+let _trialTick = null, _trialWarned = {};
+function startTrialCountdown() {
+  if (_trialTick) return;
+  _trialTick = setInterval(async () => {
+    try {
+      if (!T.trialGraceStatus) return;
+      const g = await T.trialGraceStatus();
+      if (!g || !g.inGrace || g.hasPlan) {
+        clearInterval(_trialTick); _trialTick = null;
+        return;
+      }
+      const secs = Math.max(0, g.remainingSecs | 0);
+      const mins = Math.ceil(secs / 60);
+      const usage = $('#licenseUsage');
+      if (usage) {
+        usage.textContent = (secs > 90)
+          ? mins + ' ' + TT('trial_min_left')
+          : secs + ' ' + TT('trial_sec_left');
+      }
+      // 提前打招呼,别让 Pro 无声消失 —— 到期那一下才不会显得是被坑了。
+      for (const at of [300, 60]) {
+        if (secs <= at && !_trialWarned[at]) {
+          _trialWarned[at] = true;
+          toast(TT(at === 300 ? 'trial_warn_5m' : 'trial_warn_1m'));
+        }
+      }
+    } catch {}
+  }, 1000);
+}
+
+/** 免费层的价值计量条。
+ *
+ *  免费层要先自己站得住:让人看见 Terse 这周确实替他省下了东西,再谈升级。
+ *  条子的比例是"已省 / 本可省" —— 后者按 Pro 的自动优化覆盖全部消息估算,
+ *  所以缺口本身就是升级的理由,而且是他自己的数字,不是我们编的。
+ *  取不到数据就整条不显示,绝不显示 0 充数。 */
+async function refreshFreeValueMeter() {
+  const box = $('#freeValueMeter');
+  if (!box) return;
+  try {
+    const st = await (T.getStats ? T.getStats('week') : null);
+    const sum = st && st.summary;
+    const saved = (sum && +sum.tokensSaved) || 0;
+    const total = (sum && +sum.messagesTotal) || 0;
+    const opt   = (sum && +sum.messagesOptimized) || 0;
+    if (!saved && !total) { box.classList.add('hidden'); return; }
+
+    const fmt = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + 'M'
+                     : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(n | 0);
+    $('#fvmSaved').textContent = fmt(saved);
+    $('#fvmSavedL').textContent = TT('fvm_saved_label');
+
+    // 覆盖率:已优化 / 总消息。Pro 的自动优化把它推到 100%。
+    const pct = total > 0 ? Math.min(100, Math.round((opt / total) * 100)) : 0;
+    setTimeout(() => { const b = $('#fvmBar'); if (b) b.style.width = Math.max(3, pct) + '%'; }, 30);
+    $('#fvmSub').textContent = total > 0
+      ? TT('fvm_sub_a') + ' ' + pct + '% ' + TT('fvm_sub_b')
+      : TT('fvm_sub_none');
+    box.classList.remove('hidden');
+  } catch { box.classList.add('hidden'); }
+}
+
 async function refreshUpgradeCta() {
   try {
     if (!T.getLicense) return;
@@ -141,7 +208,69 @@ async function refreshUpgradeCta() {
     document.body.classList.toggle('is-free', !pro);
     const cta = $('#sbUpgrade');
     if (cta) cta.style.display = pro ? 'none' : '';
+    if (!pro) refreshFreeValueMeter(); else $('#freeValueMeter')?.classList.add('hidden');
   } catch {}
+}
+
+/* ── 试用期用了什么 ──────────────────────────────────────────────────────────
+   逆向试用之所以有效,靠的是"失去"比"得到"更有分量 —— 但前提是用户知道自己
+   失去了什么。试用结束时弹一句泛泛的"升级吧"等于什么都没说;把他这 15 分钟
+   里真正用过的东西列出来,才有东西可失去。
+   只记功能名和一个时间戳,存在本地,不上传。 */
+const TRIAL_USED_KEY = 'terse.trialUsed';
+const TRIAL_FEATURE_NAMES = {
+  boost:      ['trial_f_boost',   'Speed Up'],
+  cleanup:    ['trial_f_cleanup', 'Cleanup'],
+  connection: ['trial_f_conn',    'Connection Doctor'],
+  stats:      ['trial_f_stats',   'Statistics'],
+  team:       ['trial_f_team',    'Team'],
+  wallpaper:  ['trial_f_wall',    'Live Wallpaper'],
+  doctor:     ['trial_f_doctor',  'Checkup'],
+  graph:      ['trial_f_graph',   'Knowledge Graph'],
+};
+function markTrialFeatureUsed(key) {
+  if (!TRIAL_FEATURE_NAMES[key]) return;
+  try {
+    const used = JSON.parse(localStorage.getItem(TRIAL_USED_KEY) || '{}');
+    if (used[key]) return;                       // 首次即可,不必累计
+    used[key] = Date.now();
+    localStorage.setItem(TRIAL_USED_KEY, JSON.stringify(used));
+  } catch {}
+}
+function trialFeaturesUsed() {
+  try {
+    const used = JSON.parse(localStorage.getItem(TRIAL_USED_KEY) || '{}');
+    return Object.keys(used).filter(k => TRIAL_FEATURE_NAMES[k]);
+  } catch { return []; }
+}
+
+/** 试用到期时的"挽留时刻"。
+ *
+ *  研究里把这一刻称作逆向试用中唯一最重要的一个设计点:降级本身应该是一次
+ *  被设计过的体验,而不是功能悄悄消失。所以这里不再弹那句通用文案,而是
+ *  拿他自己刚刚产生的事实说话 —— 用过哪几个功能、这段时间省下多少 token。 */
+async function openTrialEndedSheet() {
+  const feats = trialFeaturesUsed();
+  let saved = 0;
+  try {
+    const st = await (T.getStats ? T.getStats('day') : null);
+    saved = (st && st.summary && +st.summary.tokensSaved) || 0;
+  } catch {}
+
+  const lines = [];
+  if (feats.length) {
+    const names = feats.map(k => TT(TRIAL_FEATURE_NAMES[k][0]) || TRIAL_FEATURE_NAMES[k][1]);
+    lines.push(TT('trial_end_used') + ' ' + names.join(' · '));
+  }
+  if (saved > 0) {
+    const n = saved >= 1e6 ? (saved / 1e6).toFixed(2) + 'M'
+            : saved >= 1e3 ? (saved / 1e3).toFixed(1) + 'K' : String(saved | 0);
+    lines.push(TT('trial_end_saved_a') + ' ' + n + ' ' + TT('trial_end_saved_b'));
+  }
+  // 一个功能都没碰过、也没省下东西 —— 那就没有"失去"可讲,别硬编一个故事。
+  openPaywall(lines.length ? lines.join('\n') : TT('pro_gate_optimize'));
+  const t = $('#paywallTitle');
+  if (t && lines.length) t.textContent = TT('trial_end_title');
 }
 
 function openPaywall(reason) {
@@ -206,18 +335,45 @@ async function openInvite() {
   if (r.signedIn === false) {
     $('#inviteCode').textContent = 'sign in';
     $('#inviteMsg').textContent = 'Sign in to get your invite code.';
+    renderInviteQr('');
     return;
   }
   $('#inviteCode').textContent = r.code || '······';
   $('#inviteSent').textContent = r.invited || 0;
   $('#inviteConv').textContent = r.converted || 0;
   $('#inviteDays').textContent = r.proDaysEarned || 0;
-  // The referrer is credited the moment a friend REDEEMS now, not when they
-  // later subscribe — the old copy ("when a friend starts Pro") described the
-  // behaviour that left referrers on 0 days forever.
-  if (r.rewardText) $('#inviteReward').innerHTML = r.rewardText + '. Your days land the moment they redeem — you <b style="color:var(--t1)">both</b> win.';
+  // Credited on redemption, not on a later subscription — the old copy ("when a
+  // friend starts Pro") described behaviour that left referrers on 0 days
+  // forever. But the reward is for bringing someone NEW to Terse: the server
+  // owns that rule, and the app must not restate it more generously than it is.
+  if (r.rewardText) $('#inviteReward').innerHTML = esc(r.rewardText) +
+    '. Your days land when a new user signs up with your code — you <b style="color:var(--t1)">both</b> win.';
   if (r.pending) $('#inviteMsg').textContent = 'Referral rewards are rolling out — your code is ready to share.';
+  renderInviteQr(referralShareUrl());
   renderLifetimeProgress(r);
+}
+
+/* The referral link, from the server when it sends one and derived from the
+   code when it doesn't. Single source for the Copy button and the QR, so the
+   square and the clipboard can never carry different links. */
+function referralShareUrl() {
+  const code = ($('#inviteCode')?.textContent || '').trim();
+  if (!code || code === 'sign in' || code === '······') return '';
+  return (_referral && _referral.shareUrl) || ('https://www.terseai.org/?ref=' + code);
+}
+
+function renderInviteQr(url) {
+  const box = $('#inviteQr');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!url || !window.TerseQR) return;
+  try {
+    box.innerHTML = window.TerseQR.svg(url, { size: 104, quiet: 2 }) +
+      `<div style="font-size:10px;color:var(--t3);line-height:1.55">
+         <div>Scan the code with any phone camera</div>
+         <div style="opacity:.8;margin-top:3px">It opens your invite — they get Pro free, and so do you.</div>
+       </div>`;
+  } catch (e) { /* only throws when the payload is too long for any version */ }
 }
 // 10 successful invites → permanent 买断 (all features, all future updates).
 // Driven by lifetimeGoal/lifetimeRemaining from /api/referral; an older server
@@ -244,7 +400,8 @@ window.__terseOpenInvite = openInvite;
 
 $('#inviteClose')?.addEventListener('click', closeInvite);
 $('#inviteCopy')?.addEventListener('click', async () => {
-  const url = (_referral && _referral.shareUrl) || ('https://www.terseai.org/?ref=' + (($('#inviteCode').textContent) || ''));
+  const url = referralShareUrl();
+  if (!url) return;
   try { await navigator.clipboard.writeText(url); } catch { try { await T.applyToClipboard(url); } catch {} }
   $('#inviteMsg').textContent = 'Share link copied ✓';
 });
@@ -374,7 +531,8 @@ if (window.__TAURI__?.event?.listen) {
   // 15-minute "try it first" window ended with no plan → reveal the paywall.
   window.__TAURI__.event.listen('trial-grace-expired', () => {
     updateLicenseBanner();
-    checkPaywall();
+    refreshUpgradeCta();                 // 立刻切到免费界面,再讲失去了什么
+    openTrialEndedSheet();
     if (T.getAgentSessions && typeof renderSessions === 'function') {
       T.getAgentSessions().then(() => renderSessions()).catch(() => {});
     }
@@ -1386,6 +1544,261 @@ refreshHealthStrip();
 setInterval(refreshHealthStrip, 5 * 60 * 1000);
 
 // ── Sidebar navigation (360-style shell) ──
+/* ── Pro 预览横幅 ─────────────────────────────────────────────────────────────
+   免费用户进入一个 Pro 页面时,告诉他这一页开了 Pro 会多做什么。
+   研究里最稳的一条:有上下文的付费提示比一句泛泛的"升级"有效得多,而
+   "刚看见自己有 3.2G 可清理"正是那个有上下文的时刻。 */
+let proPreviewPage = null;
+const PRO_PREVIEW_COPY = {
+  boost:      ['#boostView',      'pro_gate_boost'],
+  cleanup:    ['#cleanupView',    'pro_gate_cleanup'],
+  connection: ['#connectionView', 'pro_gate_connection'],
+};
+function renderProPreviewBanner() {
+  let el = document.getElementById('proPreviewBar');
+  if (!proPreviewPage || !document.body.classList.contains('is-free')) {
+    if (el) el.remove();
+    return;
+  }
+  const copy = PRO_PREVIEW_COPY[proPreviewPage];
+  if (!copy) return;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'proPreviewBar';
+    el.innerHTML = '<span class="ppb-dot"></span><span class="ppb-t"></span>'
+                 + '<button class="ppb-btn"></button>';
+    el.querySelector('.ppb-btn').addEventListener('click', () => {
+      const c = PRO_PREVIEW_COPY[proPreviewPage];
+      openPaywall(c ? TT(c[1]) : undefined);
+    });
+  }
+  el.querySelector('.ppb-t').textContent = TT(copy[1]);
+  el.querySelector('.ppb-btn').textContent = TT('pro_prev_cta');
+  const host = document.querySelector(copy[0]);
+  if (!host) return;
+  if (el.parentElement !== host) host.insertBefore(el, host.firstChild);
+}
+
+/* ══════════════ 消息中心 ══════════════
+   壁纸上的大字只是预览;这里是全部。同一个数据源(通知中心),按 app 分类,
+   每条都能就地回复。回复走的是各 app 自己的 UI 自动化,只对验证过的 app 开放
+   —— 详见 messages.rs 里那段说明:发错人是收不回来的。 */
+let msgsAll = [], msgsFilter = '*', msgsTimer = null;
+
+function msgFmtTime(ts) {
+  const d = new Date((ts || 0) * 1000), n = new Date();
+  const p = (x) => String(x).padStart(2, '0');
+  const hm = p(d.getHours()) + ':' + p(d.getMinutes());
+  return d.toDateString() === n.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
+}
+
+function msgsRenderTabs() {
+  const host = $('#msgsTabs');
+  if (!host) return;
+  const counts = new Map();
+  msgsAll.forEach(m => counts.set(m.app_name, (counts.get(m.app_name) || 0) + 1));
+  const tabs = [['*', '全部', msgsAll.length]]
+    .concat([...counts.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => [n, n, c]));
+  host.innerHTML = tabs.map(([key, label, n]) =>
+    `<div class="msgs-tab${key === msgsFilter ? ' on' : ''}" data-k="${String(key).replace(/"/g, '&quot;')}">`
+    + `${label}<span class="mt-n">${n}</span></div>`).join('');
+  host.querySelectorAll('.msgs-tab').forEach(t => t.addEventListener('click', () => {
+    msgsFilter = t.dataset.k; msgsRenderTabs(); msgsRenderList();
+  }));
+}
+
+/** 哪些 app 能直接回复 —— 和 messages.rs 里的配方表一一对应。
+ *  提前告诉人,而不是等他打完一段字、按了发送才说"不支持"。 */
+const REPLYABLE = ['com.tencent.xinwechat', 'com.tencent.weworkmac',
+                   'com.bytedance.lark', 'com.electron.lark'];
+const canReply = (id) => REPLYABLE.includes(String(id || '').toLowerCase());
+
+function msgsRenderList() {
+  const host = $('#msgsList');
+  if (!host) return;
+  const list = msgsAll.filter(m => msgsFilter === '*' || m.app_name === msgsFilter);
+  $('#msgsEmpty')?.classList.toggle('hidden', list.length > 0);
+  const esc = (x) => String(x == null ? '' : x)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  host.innerHTML = list.map((m, i) => `
+    <div class="mrow" data-i="${i}">
+      <div class="mrow-top">
+        <span class="mrow-app">${esc(m.app_name)}</span>
+        ${m.group ? `<span class="mrow-room">${esc(m.group)}</span>` : ''}
+        <span class="mrow-time">${msgFmtTime(m.ts)}</span>
+      </div>
+      <div class="mrow-sender">${esc(m.sender)}</div>
+      <div class="mrow-body">${esc(m.body)}</div>
+      <div class="mrow-actions">
+        <input type="text" placeholder="${canReply(m.app_id) ? ('回复 ' + esc(m.group || m.sender) + '…') : (esc(m.app_name) + ' 暂不支持直接回复')}"
+               autocomplete="off"${canReply(m.app_id) ? '' : ' disabled'}>
+        <button${canReply(m.app_id) ? '' : ' disabled'}>发送</button>
+      </div>
+      <div class="mrow-note">${canReply(m.app_id) ? '' : '只有查证过搜索入口的 app 才开放回复,免得发错人。'}</div>
+    </div>`).join('');
+
+  host.querySelectorAll('.mrow').forEach(row => {
+    const m = list[+row.dataset.i];
+    const inp = row.querySelector('input'), btn = row.querySelector('button');
+    const note = row.querySelector('.mrow-note');
+    if (!canReply(m.app_id)) return;
+    // 两步:先打开会话让人看,确认了再发。
+    // 微信 4.1.11 不向 Accessibility 暴露任何界面,程序无法确认搜索打开的是谁 ——
+    // 所以确认这一步交给人眼,而不是假装机器验过了。
+    let armed = false;
+    const reset = () => { armed = false; btn.textContent = '打开会话'; };
+    reset();
+    const step = async () => {
+      const text = (inp.value || '').trim();
+      if (!text) { note.textContent = '先写点内容'; return; }
+      btn.disabled = true;
+      try {
+        if (!armed) {
+          note.textContent = '正在打开会话…';
+          const r = await T.messagesOpenChat(m.app_id, m.group || m.sender);
+          if (r && r.ok) {
+            armed = true;
+            btn.textContent = '确认发送';
+            note.textContent = '已在 ' + m.app_name + ' 打开会话 —— 请先看一眼是不是「'
+                             + (m.group || m.sender) + '」,确认无误再点发送。';
+          } else {
+            note.textContent = '打不开会话 — ' + ((r && r.error) || '未知原因');
+          }
+        } else {
+          note.textContent = '发送中…';
+          const r = await T.messagesSendOpen(m.app_id, text);
+          note.textContent = (r && r.ok) ? '已发送' : ('未发送 — ' + ((r && r.error) || '未知原因'));
+          if (r && r.ok) inp.value = '';
+          reset();
+        }
+      } catch (e) { note.textContent = '出错 — ' + (e && e.message ? e.message : e); reset(); }
+      btn.disabled = false;
+    };
+    btn.addEventListener('click', step);
+    // 回车只走第一步,不直接发 —— 手一滑就发出去正是要避免的事
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !armed) step(); });
+    inp.addEventListener('input', () => { if (armed) reset(); });
+  });
+}
+
+/** 社媒面板:检测到的 app + 每个的壁纸开关。 */
+async function msgsRenderApps() {
+  const host = $('#msgsApps');
+  if (!host) return;
+  let apps = [];
+  try { apps = await (T.messagesDetectedApps ? T.messagesDetectedApps() : []); } catch (e) { apps = []; }
+  if (!Array.isArray(apps) || !apps.length) {
+    host.innerHTML = '<div class="msgs-apps-empty">还没识别到社交 app。收到消息后会自动出现在这里。</div>';
+    return;
+  }
+  const esc = (x) => String(x == null ? '' : x)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  host.innerHTML = apps.map((a, i) => `
+    <div class="mapp${a.on_wallpaper ? '' : ' off'}" data-i="${i}">
+      <span class="mapp-n" title="${esc(a.app_id)}">${esc(a.app_name)}</span>
+      <span class="mapp-c">${a.count}</span>
+      <span class="mapp-sw${a.on_wallpaper ? ' on' : ''}"></span>
+    </div>`).join('');
+
+  host.querySelectorAll('.mapp').forEach(el => {
+    const a = apps[+el.dataset.i];
+    const sw = el.querySelector('.mapp-sw');
+    sw.addEventListener('click', async () => {
+      const next = !sw.classList.contains('on');
+      // 先动 UI 再写盘 —— 开关必须立刻有反应
+      sw.classList.toggle('on', next);
+      el.classList.toggle('off', !next);
+      try { await T.messagesSetAppOnWallpaper(a.app_id, next); }
+      catch (e) {                       // 写失败就把开关退回去,别让界面撒谎
+        sw.classList.toggle('on', !next);
+        el.classList.toggle('off', next);
+      }
+    });
+  });
+}
+
+/** 权限清单。能真检测的只报真状态(完全磁盘访问、辅助功能);
+ *  微信通知样式那一项检测不可靠,所以标成"建议",给深链让人自己看一眼,
+ *  而不是给一个可能是错的"已开启"。 */
+async function msgsRenderPerms(report) {
+  const host = $('#msgsPermList');
+  if (!host) return;
+  const rows = [
+    { key: 'fulldisk', dot: report.fullDiskAccess ? 'ok' : 'bad',
+      name: '完全磁盘访问权限',
+      desc: report.fullDiskAccess ? '已就绪 — 能读到通知' : '没有它,系统不让任何 app 读通知中心(包括 Terse)',
+      done: report.fullDiskAccess },
+    { key: 'accessibility', dot: report.accessibility ? 'ok' : 'bad',
+      name: '辅助功能',
+      desc: report.accessibility ? '已就绪 — 能代你打开会话并回复' : '回复需要它:靠它把会话切出来、把字打进去',
+      done: report.accessibility },
+  ];
+  // 每个聊天 app 的通知样式:样式=提醒 才留得住、读得到;横幅会自动消失。
+  // 这一段是真检测,不是泛泛提示 —— 直接点名哪个 app 设错了。
+  let notif = [];
+  try { notif = await (T.messagesNotificationSettings ? T.messagesNotificationSettings() : []); } catch (e) {}
+  // 只有一个能站得住的判断:这个 app 的通知我们**确实**读到过没有(它有没有
+  // 在 record 表里出现过)。macOS 不给可靠的"横幅/提醒"样式位,所以不谎报 ——
+  // 读到过=绿;没读到过=黄色提示"若收不到就把样式设成提醒",绝不红着脸冤枉人。
+  notif.forEach(n => {
+    const ok = n.persists;
+    rows.push({
+      key: 'notifications', app_id: n.app_id, dot: ok ? 'ok' : (n.allowed ? 'info' : 'bad'),
+      name: n.app_name + ' 消息读取',
+      desc: ok ? '已确认 — 它的通知能被读到并显示'
+          : (n.allowed
+              ? '还没读到它的消息。如果它有新消息却没出现在这里,把 系统设置→通知→' + n.app_name + ' 的样式设成「提醒」(横幅会自动消失、留不住)'
+              : '通知没开。先在 系统设置→通知 里允许它,再把样式设成「提醒」'),
+      done: ok });
+  });
+  const esc = (x) => String(x).replace(/</g,'&lt;');
+  host.innerHTML = rows.map(r => `
+    <div class="perm-row">
+      <span class="perm-dot ${r.dot === 'ok' ? 'ok' : (r.dot === 'info' ? 'info' : '')}"></span>
+      <div class="perm-txt"><div class="perm-name">${esc(r.name)}</div>
+        <div class="perm-desc">${esc(r.desc)}</div></div>
+      <button class="perm-btn ${r.done ? 'done' : ''}" data-k="${r.key}">${r.done ? '已就绪' : '去设置'}</button>
+    </div>`).join('');
+  host.querySelectorAll('.perm-btn').forEach(b => {
+    if (b.classList.contains('done')) return;
+    b.addEventListener('click', () => {
+      try { T.messagesOpenSettings && T.messagesOpenSettings(b.dataset.k); } catch (e) {}
+    });
+  });
+}
+
+async function msgsRefresh() {
+  try {
+    let report = { fullDiskAccess: false, accessibility: false };
+    try { report = await (T.messagesPermissionReport ? T.messagesPermissionReport() : report); } catch (e) {}
+    const st = await (T.messagesStatus ? T.messagesStatus() : null);
+    // 通知样式不算"缺权限":读不到某个 app 可能只是它最近没消息。
+    // 面板始终显示清单,但只有真缺 FDA/辅助功能时才当成"必须处理"。
+    const needPerm = !report.fullDiskAccess || !report.accessibility
+                  || (st && st.available === false && st.reason !== 'no_database');
+    $('#msgsPerm')?.classList.remove('hidden');   // 清单常驻:随时能看状态、去设置
+    msgsRenderPerms(report);
+    if (st && !st.available) { msgsAll = []; msgsRenderTabs(); msgsRenderList(); msgsRenderApps(); return; }
+    const list = await T.messagesRecent(120, true);
+    msgsAll = Array.isArray(list) ? list : [];
+    msgsRenderTabs(); msgsRenderList(); msgsRenderApps();
+    const b = $('#sbMsgBadge');
+    if (b) { b.textContent = String(msgsAll.length); b.classList.toggle('hidden', !msgsAll.length); }
+  } catch (e) { /* 读不到就保持空,不编内容 */ }
+}
+
+let msgsWired = false;
+function msgsInit() {
+  if (!msgsWired) {
+    msgsWired = true;
+    $('#msgsRefresh')?.addEventListener('click', msgsRefresh);
+    $('#msgsPermRefresh')?.addEventListener('click', msgsRefresh);
+  }
+  msgsRefresh();
+  clearInterval(msgsTimer);
+  msgsTimer = setInterval(msgsRefresh, 10000);
+}
+
 const SB_ACTIONS = {
   overview: () => show('sessions'),
   cleanup:  () => { show('cleanup'); if (!clState.scanned) clScan(); },
@@ -1395,38 +1808,62 @@ const SB_ACTIONS = {
   stats:    () => T.navigateToStats(),
   history:  () => T.navigateToHistory && T.navigateToHistory(),
   wallpaper:() => T.navigateToWallpaper && T.navigateToWallpaper(),
+  projects: () => T.navigateToProjects && T.navigateToProjects(),
   team:     () => T.navigateToCowork && T.navigateToCowork(),
   farm:     () => T.navigateToFarm ? T.navigateToFarm() : (T.showFarmWindow && T.showFarmWindow()),
   graph:    () => T.navigateToGraph && T.navigateToGraph(),
   boost:    () => { show('boost'); refreshBoost(); },
   prompts:  () => { show('prompts'); promptsInit(); },
   observe:  () => { show('observe'); observeInit(); },
+  msgs:     () => { show('msgs'); msgsInit(); },
   mcp:      () => { show('mcp'); mcpInit(); },
   rules:    () => { show('rules'); rulesInit(); },
   connection: () => { show('connection'); connInit(); },
+  island:   () => { show('island'); islPermInit(); },
+  friends:  () => { show('friends'); friendsInit(); },
+  room:     () => { show('room'); roomInit(); },
+  plaza:    () => { show('plaza'); plazaInit(); },
   pals:     () => $('#btnPalsTitle')?.click(),
 };
 // Pro-only destinations. Clicking one on the free tier is the strongest upsell
 // moment ("hitting a wall") — we open the trial sheet framed by that feature's
 // benefit instead of navigating. `is-free` is kept current by refreshUpgradeCta().
-const PRO_PAGES = {
+// 两类 Pro 页面,区别在于"让人看见"会不会等于"把功能送出去"。
+//
+// PREVIEW:扫描/诊断本身就是免费该给的价值 —— 让人看见自己有 3.2G 可清理、
+//   哪个 agent 连不上,正是最有说服力的一刻;真正的动作(执行清理、一键修复、
+//   开加速)各自带了闸门,所以放人进来看是安全的。
+// BLOCKED:统计和团队这两页,"看" 本身就是那个功能。开放浏览等于白送,
+//   所以仍然拦下来,只是把文案换成针对这一个功能的说明。
+const PRO_PREVIEW_PAGES = {
   boost:      'pro_gate_boost',
   cleanup:    'pro_gate_cleanup',
+  connection: 'pro_gate_connection',
+};
+const PRO_BLOCKED_PAGES = {
   team:       'pro_gate_team',
   stats:      'pro_gate_stats',
-  connection: 'pro_gate_connection',
 };
 $$('.sb-item').forEach(b => b.addEventListener('click', () => {
   const page = b.dataset.page;
-  if (PRO_PAGES[page] && document.body.classList.contains('is-free')) {
-    openPaywall(TT(PRO_PAGES[page]));
-    return;
-  }
+  // 免费用户点 Pro 页:让他进去看。
+  //
+  // 以前这里直接弹付费墙、根本不导航 —— 于是"这个功能到底给我什么"永远没有
+  // 答案,只剩一堵墙。现在页面照常打开,顶部挂一条说明这一页 Pro 会做什么的
+  // 横幅;真正的动作(开加速、执行清理、一键修复)各自有自己的闸门,所以
+  // 放人进来看不等于把功能送出去。
+  const free = document.body.classList.contains('is-free');
+  if (free && PRO_BLOCKED_PAGES[page]) { openPaywall(TT(PRO_BLOCKED_PAGES[page])); return; }
+  proPreviewPage = (free && PRO_PREVIEW_PAGES[page]) ? page : null;
+  // 试用期里(此时 is-free 还没挂上)真正打开过的 Pro 页面 —— 到期时用得上
+  if (!free) markTrialFeatureUsed(page);
   // Same-frame feedback: highlight instantly; for cross-page navigations also
   // dim the pane so the click visibly registered before the new page loads.
   if (page !== 'pals') $$('.sb-item').forEach(x => x.classList.toggle('active', x === b));
   if (['doctor', 'stats', 'team', 'alerts', 'history', 'farm', 'wallpaper', 'graph'].includes(page)) document.body.classList.add('navigating');
   SB_ACTIONS[page]?.();
+  // 页面切换是同步的,等一帧让新页可见再挂横幅
+  setTimeout(renderProPreviewBanner, 0);
 }));
 
 // Entry point for out-of-window callers (alert toasts) — routes through the same
@@ -1440,16 +1877,81 @@ window.__terseOpenPage = (page) => {
 function TT(key) {
   const map = {
     pro_gate_boost:      'Speed Up is a Pro feature. Start your free trial to cut your agent bill.',
+    pro_prev_cta:        'Unlock',
+    trial_preview_tier:  'Free preview',
+    trial_min_left:      'min left · enjoy Terse',
+    trial_sec_left:      'sec left · Pro ends shortly',
+    trial_warn_5m:       '5 minutes left of your free Pro preview',
+    trial_warn_1m:       '1 minute left — Pro features are about to lock',
+    trial_end_title:     'Your Pro preview ended',
+    trial_end_used:      'You just used:',
+    trial_end_saved_a:   'and saved',
+    trial_end_saved_b:   'tokens today.',
+    trial_f_boost:       'Speed Up',
+    trial_f_cleanup:     'Cleanup',
+    trial_f_conn:        'Connection Doctor',
+    trial_f_stats:       'Statistics',
+    trial_f_team:        'Team',
+    trial_f_wall:        'Live Wallpaper',
+    trial_f_doctor:      'Checkup',
+    trial_f_graph:       'Knowledge Graph',
+    fvm_saved_label:     'tokens saved this week',
+    fvm_sub_a:           'Terse trimmed',
+    fvm_sub_b:           'of your prompts. Pro auto-trims every one.',
+    fvm_sub_none:        'Pro auto-trims every prompt before it is sent.',
     pro_gate_cleanup:    'Cleanup is a Pro feature. Start your free trial to reclaim wasted tokens & disk.',
     pro_gate_team:       'Team is a Pro feature. Start your free trial to watch every agent together.',
     pro_gate_optimize:   'Live optimization is Pro. Start your free trial to auto-trim every prompt.',
     pro_gate_stats:      'Stats is a Pro feature. Start your free trial to see where your tokens go.',
     pro_gate_connection: 'Connection Doctor is a Pro feature. Start your free trial to auto-fix agent connectivity.',
+    pro_gate_autoapprove: 'Auto-approve is a Pro feature. Start your free trial to let Terse answer permission prompts for you.',
+    pro_gate_island_perm: 'Island permission control is a Pro feature. Start your free trial to answer Claude\'s prompts from the Dynamic Island.',
+    // Friends / invite — toasts and status lines, which never sit in the DOM
+    // long enough for the English-text matcher to catch them.
+    fr_copied: 'Invite link copied',
+    fr_join_empty: 'Paste a code first.',
+    fr_joining: 'Joining…',
+    fr_joined: 'Joined ✓',
+    fr_wall_on: 'Friends will show on your wallpaper',
+    fr_wall_off: 'Wallpaper is back to just you',
+    rm_created: 'Room created — share the code',
+    rm_joined: 'You are in the room',
+    rm_left: 'You left the room',
+    rm_copied: 'Room link copied',
+    rm_need_code: 'Enter a room code first.',
+    rm_sent_hint: 'Link copied — paste it to your friend in any chat.',
+    // Recent rooms + Plaza. These are built in JS, so the English-text matcher
+    // in i18n never sees them sitting in the DOM long enough to swap them.
+    rm_rejoin: 'Rejoin', rm_you_here: 'You are here', rm_untitled: 'Untitled room',
+    rm_yours: 'yours', rm_member_of: 'you are a member',
+    rm_online_n: '{n} online', rm_members_n: '{n} members', rm_member_1: '1 member',
+    rm_room_closed: 'That room has been closed by its owner',
+    rm_nick_saved: 'Nickname saved — everyone in the room sees it now',
+    rm_listed_no: 'This room is private — only people you send the code to can get in.',
+    rm_listed_yes: 'Listed on the Plaza — anyone can find it and ask to join, and you decide who comes in.',
+    rm_publish: 'Publish to the Plaza', rm_unpublish: 'Remove from the Plaza',
+    rm_published: 'Listed on the Plaza — people can now ask to join.',
+    rm_unpublished: 'Unlisted. Only the code gets people in now.',
+    pz_cat_all: 'all', pz_cat_coding: 'coding', pz_cat_study: 'study', pz_cat_work: 'work',
+    pz_cat_gaming: 'gaming', pz_cat_chat: 'chat', pz_cat_other: 'other',
+    pz_ask: 'Ask to join', pz_open_yours: 'Open yours',
+    pz_looking: 'Looking…', pz_asked: 'Asked',
+    pz_offline: 'Could not reach the Plaza. Check your connection and refresh.',
+    pz_waiting: 'Waiting for the owner to let you in…',
+    pz_nobody_home: 'Asked — but nobody is in that room right now. Only its owner can let you in, so this stays pending until they are back.',
+    pz_denied: 'The owner declined.', pz_entering: 'You are in — opening the room.',
+    pz_empty: 'No public rooms yet.', pz_empty_cat: 'No public rooms in this category yet.',
+    pz_empty_hint: 'A room is private until its owner lists it —',
+    pz_empty_cta: 'start one', pz_empty_tail: 'and tick “List it on the Plaza”.',
+    pz_knock_queue: '{n} waiting to join your room — answer on the Room page.',
   };
   const en = map[key] || key;
   try { return (window.i18n && window.i18n.t) ? (window.i18n.t(key) !== key ? window.i18n.t(key) : en) : en; }
   catch { return en; }
 }
+/** TT with numbers in it. Word order differs per language, so the count is a
+    placeholder inside the translated string rather than glued onto its end. */
+function TTn(key, n) { return TT(key).replace('{n}', n); }
 
 // ── Prompt Library (提示词) — in-shell panel, same store as the ⌘⇧K palette ──
 const PL = { prompts: [], filtered: [], sel: 0, current: null, view: 'list', wired: false };
@@ -1576,7 +2078,7 @@ async function observeInit(){
   let tl; try { tl = await T.getSessionTimeline(); } catch(e){ tl = null; }
   const steps = (tl && tl.steps) || [];
   if (!steps.length){
-    box.innerHTML = '<div class="ob-empty">No active session. Start Claude Code, Cursor, or Codex and its every step shows up here — with per-step token cost.</div>';
+    box.innerHTML = '<div class="ob-empty">No active session. Start Claude Code, Cursor, Codex, or DeepSeek Harness and its every step shows up here — with per-step token cost.</div>';
     $('#obSub').textContent = 'Live step-by-step trace of your agent';
     applyI18n();
     return;
@@ -1756,6 +2258,8 @@ async function connInit(){
     connWired = true;
     $('#connRescan').addEventListener('click', connInit);
     $('#connFixAll').addEventListener('click', async ()=>{
+      // 诊断免费,修复是 Pro —— 看得见问题正是最有说服力的一刻。
+      if (!(await ensurePro(TT('pro_gate_connection')))) return;
       const btn = $('#connFixAll'); const old = btn.textContent; btn.textContent = '🛠 Fixing…'; btn.disabled = true;
       $('#connBanner').classList.add('hidden');
       let r; try { r = await T.connectivityFixAll(); } catch(e){ r = null; }
@@ -1865,6 +2369,8 @@ $('#btnClScan')?.addEventListener('click', clScan);
 $('#btnClRescan')?.addEventListener('click', clScan);
 $('#btnClScanAgain')?.addEventListener('click', clScan);
 $('#btnClClean')?.addEventListener('click', async () => {
+  // 扫描免费(先让他们看见自己有多少可回收的东西),真正删除是 Pro。
+  if (!(await ensurePro(TT('pro_gate_cleanup')))) return;
   const sel = clSelected();
   if (!sel.files) return;
   if (!(await tconfirm('Delete ' + sel.files + ' files (' + clFmtBytes(sel.bytes) + ')?', 'Stats, auth and recent sessions are never touched.', '一键清理 · Clean'))) return;
@@ -1896,6 +2402,9 @@ async function refreshBoost() {
 }
 $('#boostToggle')?.addEventListener('change', async (e) => {
   const on = e.target.checked;
+  // 打开是 Pro 动作。以前这里没有任何检查 —— 唯一的保护是免费用户进不了这一页,
+  // 现在页面开放预览了,闸门必须落在这里。关掉永远放行:不能把人锁在开着的状态。
+  if (on && !(await ensurePro(TT('pro_gate_boost')))) { e.target.checked = false; return; }
   try {
     await T.setSpeedMode(on);
     $('#sbBoostPill')?.classList.toggle('hidden', !on);
@@ -1951,3 +2460,978 @@ function tconfirm(title, sub, okLabel) {
     ov.querySelector('.tc-ok').focus();
   });
 }
+
+/* ── 灵动岛授权 · Island permission control page ────────────────────────────
+   One controller for the whole page: the switch, what the gate has learned, the
+   auto-approve modes and the recent log. Previously this lived in two places —
+   a sidebar chip and a Settings row — which duplicated the enable/disable logic
+   and still had nowhere to show what the feature was actually doing.
+
+   Default OFF, and lib.rs forces it off on every launch: enabling installs a
+   PreToolUse hook into ~/.claude/settings.json, which sits in the agent's
+   critical path, and that must never be inherited from a click weeks ago. */
+let islPermWired = false;
+async function islPermInit() {
+  const T2 = window.__TAURI__;
+  if (!T2) return;
+  const invoke = T2.core.invoke;
+  const toggle = $('#islPermToggle');
+  const tag    = $('#sbIslandPermState');
+
+  const paintTag = (on) => {
+    if (!tag) return;
+    tag.textContent = on ? 'ON' : 'OFF';
+    tag.style.background = on ? 'var(--btn)' : 'var(--sf)';
+    tag.style.color = on ? 'var(--btn-t)' : 'var(--t3)';
+  };
+
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  async function refresh() {
+    let on = false;
+    try { on = await invoke('permission_control_status'); } catch {}
+    if (toggle) toggle.checked = !!on;
+    paintTag(!!on);
+
+    // What the gate has actually learned. This is the page's real content: it
+    // is the only honest answer to "why did/didn't the island ask me?".
+    let learned = [];
+    try { learned = await invoke('permission_learned') || []; } catch {}
+    const box = $('#islPermLearned');
+    const cnt = $('#islPermCount');
+    if (cnt) cnt.textContent = learned.length ? `(${learned.length})` : '';
+    if (box) {
+      box.innerHTML = learned.length
+        ? learned.slice().reverse().map(k =>
+            `<div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:5px 8px">
+               <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--t1)">${esc(k)}</span>
+             </div>`).join('')
+        : `<p style="font-size:11px;color:var(--t3);margin:4px 0 0">
+             Nothing yet. The next time Claude Code asks you to approve a command in the terminal,
+             it will be listed here — and from then on that command comes to the island.
+           </p>`;
+    }
+
+    let log = [];
+    try { log = await invoke('permission_recent_log') || []; } catch {}
+    const lg = $('#islPermLog');
+    if (lg) {
+      lg.innerHTML = log.length
+        ? log.slice(-14).reverse().map(l => `<div style="padding:2px 8px;color:var(--t3)">${esc(l)}</div>`).join('')
+        : `<p style="font-size:11px;color:var(--t3);margin:4px 0 0">No activity yet.</p>`;
+    }
+  }
+
+  if (!islPermWired) {
+    islPermWired = true;
+    toggle?.addEventListener('change', async () => {
+      // Pro gate. Answering prompts from the island installs a PreToolUse hook
+      // into every Claude Code session on the machine, which is the paid
+      // capability — so it goes through the same openPaywall path as every other
+      // Pro destination rather than being a free switch.
+      if (document.body.classList.contains('is-free')) {
+        toggle.checked = false;              // never leave a Pro state selected
+        openPaywall(TT('pro_gate_island_perm'));
+        return;
+      }
+      const want = toggle.checked;
+      try {
+        await invoke('set_permission_control', { enabled: want });
+        paintTag(want);
+        // The backend clears auto-approve when the island is switched on; mirror
+        // that here so the page never shows a stale "Always allow".
+        window.__islPaintAutoState?.();
+        window.showToast?.(want
+          ? '灵动岛授权已开启 — 对所有正在运行的 Claude Code 会话立即生效'
+          : '灵动岛授权已关闭 — 已从所有会话中移除');
+        refresh();
+      } catch (e) {
+        toggle.checked = !want;
+        window.showToast?.(String(e));
+      }
+    });
+    $('#islPermRefresh')?.addEventListener('click', refresh);
+    $('#islPermForget')?.addEventListener('click', async () => {
+      if (!(await tconfirm('清除已学会的命令？', '下次它们会先回到终端询问一次。', 'Clear'))) return;
+      try { await invoke('permission_forget_learned'); } catch (e) { window.showToast?.(String(e)); }
+      refresh();
+    });
+
+    // ── Auto-approve — Pro, and mutually exclusive with the island switch ────
+    // Pressing the button for the user is the same reach as bypass mode, so it
+    // sits behind the same gate as every other Pro destination rather than being
+    // a free switch buried in a page.
+    const c = $('#autoClaude'), x = $('#autoCodex');
+    if (c && x) {
+      invoke('get_permission_auto').then((m) => {
+        c.value = (m && m.claude) || '';
+        x.value = (m && m.codex) || '';
+        paintAutoState();
+      }).catch(() => {});
+
+      const isFree = () => document.body.classList.contains('is-free');
+      // Both on is incoherent: the island asks you to look and decide, auto
+      // presses the button anyway. The island wins, so auto is disabled while it
+      // is on — shown, not silently ignored, so the state is legible.
+      function paintAutoState() {
+        const on = $('#islPermToggle')?.checked;
+        [c, x].forEach(sel => {
+          sel.disabled = !!on;
+          sel.style.opacity = on ? '.45' : '';
+          sel.title = on ? '灵动岛授权开启时不可用 — 两者互斥' : '';
+        });
+        const note = $('#islPermAutoNote');
+        if (note) note.style.display = on ? 'block' : 'none';
+      }
+      window.__islPaintAutoState = paintAutoState;
+
+      const save = (sel) => {
+        if (isFree()) {
+          sel.value = '';                      // never leave a Pro value selected
+          openPaywall(TT('pro_gate_autoapprove'));
+          return;
+        }
+        invoke('set_permission_auto', { claude: c.value, codex: x.value })
+          .then(() => window.showToast?.('已保存'))
+          .catch((e) => window.showToast?.(String(e)));
+      };
+      c.addEventListener('change', () => save(c));
+      x.addEventListener('change', () => save(x));
+      // A disabled <select> fires no events, so catch the intent on the wrapper.
+      [c, x].forEach(sel => sel.addEventListener('mousedown', (e) => {
+        if (isFree()) { e.preventDefault(); openPaywall(TT('pro_gate_autoapprove')); }
+      }));
+    }
+  }
+  refresh().then?.(() => window.__islPaintAutoState?.()) ?? window.__islPaintAutoState?.();
+}
+
+// Keep the rail's ON/OFF pill honest even before the page is first opened.
+(function () {
+  if (!window.__TAURI__) return;
+  window.__TAURI__.core.invoke('permission_control_status').then((on) => {
+    const tag = $('#sbIslandPermState');
+    if (!tag) return;
+    tag.textContent = on ? 'ON' : 'OFF';
+    tag.style.background = on ? 'var(--btn)' : 'var(--sf)';
+    tag.style.color = on ? 'var(--btn-t)' : 'var(--t3)';
+  }).catch(() => {});
+})();
+
+/* ── Liquid glass: real refraction behind the main window ──────────────────
+   See liquid-glass.js for why this is not CSS. `html.lg-on` is set only once
+   the GL context and a real backdrop are both up, because that class strips the
+   existing frosted glass — turning it on speculatively would leave a flat
+   transparent shell on a machine without WebGL. */
+
+/* ── Pause decorative animation while the window is unfocused ───────────────
+   Pairs with the `body:not(.win-focused)` rule in styles.css. A transparent
+   window recomposites continuously (tauri#15471), so an app full of `infinite`
+   animations never lets the GPU idle even when it is behind another window and
+   nobody can see it. Focus is the honest signal: blurred means unwatched.
+
+   Cheap by construction — two listeners and a class toggle, no polling. */
+(function pauseWhenUnfocused() {
+  const set = (on) => document.body.classList.toggle('win-focused', on);
+  set(document.hasFocus());
+  window.addEventListener('focus', () => set(true));
+  window.addEventListener('blur', () => set(false));
+  // A minimised or fully-occluded window fires neither, so cover it too.
+  document.addEventListener('visibilitychange', () => set(!document.hidden && document.hasFocus()));
+})();
+
+
+
+/* ── Room · the shared wallpaper session ─────────────────────────────────────
+   A room is NOT a team and NOT the friends list. It is who you are on the
+   wallpaper with right now: created by anyone, entered with a code, left at no
+   cost. That is why this page can hand the code to a stranger without any of
+   the machinery an invite needs — the code IS the credential.
+
+   The wallpaper owns the live stream (one EventSource per machine, see
+   rooms.js); this page reads the cheap REST snapshot when it is open, which is
+   also why leaving here takes effect there: both read the same localStorage. */
+let roomWired = false;
+async function roomInit() {
+  const R = window.TerseRooms;
+  if (!R) return;
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  /* Every room this install can walk back into. It is drawn whether or not we
+     are in one — that is the point of it — and the server is asked as well as
+     localStorage, because membership outlives both presence and this browser
+     store: a reinstall must not be what destroys the way back into a room you
+     own. Rooms you LEFT stay here too; leaving gives up the seat, not the room. */
+  async function drawRecent() {
+    const box = $('#rmRecent');
+    if (!box) return;
+    try { await R.mine(); } catch (e) { /* offline: the local list still stands */ }
+    const active = R.state() || {};
+    const all = Object.values(R.rooms() || {})
+      .sort((a, b) => (b.seenAt || 0) - (a.seenAt || 0));
+    $('#rmRecentGroup').style.display = all.length ? '' : 'none';
+    $('#rmRecentCount').textContent = all.length ? `(${all.length})` : '';
+    box.innerHTML = all.map(r => {
+      const here = r.id === active.id;
+      const bits = [
+        r.owner ? TT('rm_yours') : null,
+        typeof r.online === 'number' ? TTn('rm_online_n', r.online) : null,
+        r.code ? esc(r.code) : null,
+      ].filter(Boolean).join(' · ');
+      return `
+        <div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:7px 8px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${r.online ? 'var(--btn)' : 'var(--t3)'}"></span>
+          <span>
+            <div>${esc(r.name || TT('rm_untitled'))}</div>
+            <div style="font-size:10.5px;color:var(--t3)">${bits}</div>
+          </span>
+          ${here
+            ? `<span style="margin-left:auto;font-size:10.5px;color:var(--t3)">${TT('rm_you_here')}</span>`
+            : `<button class="ob-btn" style="margin-left:auto;font-size:10.5px;padding:3px 11px"
+                       data-enter="${esc(r.id)}">${TT('rm_rejoin')}</button>`}
+        </div>`;
+    }).join('');
+  }
+
+  async function refresh() {
+    const inRoom = R.inRoom();
+    $('#rmOut')?.classList.toggle('hidden', inRoom);
+    $('#rmIn')?.classList.toggle('hidden', !inRoom);
+    drawRecent();
+    if (!inRoom) return;
+
+    const st = R.state() || {};
+    const url = R.inviteUrl();
+    const link = $('#rmLink'); if (link) link.value = url;
+
+    const qr = $('#rmQr');
+    if (qr) {
+      qr.innerHTML = '';
+      if (url && window.TerseQR) {
+        try {
+          qr.innerHTML = window.TerseQR.svg(url, { size: 132, quiet: 2 }) +
+            `<div style="font-size:11px;color:var(--t3);line-height:1.6">
+               <div style="font:700 17px ui-monospace,Menlo,monospace;color:var(--t1);letter-spacing:2px">${esc(st.code || '')}</div>
+               <div style="margin-top:4px">Scan the code with any phone camera</div>
+             </div>`;
+        } catch (e) {}
+      }
+    }
+
+    // Ownership and listing are answered by the SERVER. The local copy is a
+    // guess that goes stale the moment you rejoin with a fresh key — which is
+    // how an owner ends up looking at their own room with no Close button and a
+    // listing toggle showing the wrong state.
+    let snap = null;
+    try { snap = await R.snapshot(); } catch (e) {
+      // The room is gone (closed by its owner, or the server forgot it). Drop
+      // the stale local membership rather than showing a room nobody is in.
+      if (String(e.message).includes('404') || /closed|No such/i.test(e.message)) {
+        await R.leave().catch(() => {});
+        return refresh();
+      }
+      $('#rmMsg').textContent = String(e.message || e);
+      return;
+    }
+    const owner = !!snap.owner;
+    const listed = (snap.room || {}).visibility === 'public';
+    if (st.owner !== owner || st.visibility !== (snap.room || {}).visibility) {
+      R.remember?.({ id: st.id, owner, visibility: (snap.room || {}).visibility,
+                     category: (snap.room || {}).category, name: (snap.room || {}).name });
+    }
+
+    $('#rmClose').style.display = owner ? '' : 'none';
+    $('#rmListingGroup').style.display = owner ? '' : 'none';
+    if (owner) {
+      // State first, verb second. A checkbox could only say "on"; this has to
+      // say what being on MEANS, because listing a room is what exposes it to
+      // strangers and that should never be a switch someone flips by accident.
+      $('#rmListingState').textContent = listed ? TT('rm_listed_yes') : TT('rm_listed_no');
+      $('#rmListToggle').textContent = listed ? TT('rm_unpublish') : TT('rm_publish');
+      $('#rmListToggle').dataset.listed = listed ? '1' : '';
+      const cat = $('#rmListCategory');
+      if (cat) cat.value = (snap.room || {}).category || 'other';
+    }
+
+    // Only the owner can see or answer these, so only the owner asks for them.
+    if (owner) {
+      try {
+        const k = await R.knocks();
+        const list = k.knocks || [];
+        $('#rmKnockGroup').style.display = list.length ? '' : 'none';
+        $('#rmKnocks').innerHTML = list.map(x => `
+          <div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
+            <span>${esc(x.name || 'someone')}</span>
+            <span style="margin-left:auto;display:flex;gap:6px">
+              <button class="ob-btn" style="font-size:10.5px;padding:2px 10px" data-knock-yes="${esc(x.id)}">Let in</button>
+              <button class="ob-btn ghost" style="font-size:10.5px;padding:2px 10px" data-knock-no="${esc(x.id)}">Decline</button>
+            </span>
+          </div>`).join('');
+      } catch (e) { $('#rmKnockGroup').style.display = 'none'; }
+    } else {
+      $('#rmKnockGroup').style.display = 'none';
+    }
+
+    const members = snap.members || [];
+    $('#rmCount').textContent = members.length ? `(${members.length})` : '';
+    $('#rmRoster').innerHTML = members.map(m => `
+      <div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${m.status === 'online' ? 'var(--btn)' : 'var(--t3)'}"></span>
+        <span>${esc(m.name || m.user_email || 'someone')}${m.member_id === snap.you ? ' <span style="color:var(--t3)">(you)</span>' : ''}</span>
+        <span style="margin-left:auto;color:var(--t3);font-size:10.5px">${esc(m.status || '')}</span>
+      </div>`).join('');
+
+    // Friends who are not already here — the one-click "pull them in" path.
+    let cfg = null;
+    try { cfg = await T.getCoworkConfig?.(); } catch (e) {}
+    const here = new Set(members.map(m => (m.user_email || '').toLowerCase()).filter(Boolean));
+    const friends = (Array.isArray(cfg?.members) ? cfg.members : [])
+      .filter(f => !here.has((f.user_email || '').toLowerCase()));
+    $('#rmFriends').innerHTML = friends.length
+      ? friends.map(f => `
+          <div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
+            <span>${esc(f.name || f.user_email || '—')}</span>
+            <button class="ob-btn ghost" style="margin-left:auto;font-size:10.5px;padding:2px 10px"
+                    data-invite="${esc(f.user_email || '')}">Send code</button>
+          </div>`).join('')
+      : `<p style="font-size:11px;color:var(--t3);margin:4px 0 0">Everyone on your friends list is already here.</p>`;
+  }
+
+  if (!roomWired) {
+    roomWired = true;
+
+    $('#rmCreate')?.addEventListener('click', async () => {
+      const msg = $('#rmOutMsg');
+      msg.textContent = 'Creating…';
+      try {
+        await R.create(($('#rmName')?.value || '').trim(), await displayName(), await currentEmail(),
+                       { visibility: $('#rmPublic')?.checked ? 'public' : 'private',
+                         category: $('#rmCategory')?.value });
+        msg.textContent = '';
+        refresh();
+        // Being in a room means being in the conversation, so the window that
+        // holds it opens with it rather than waiting to be found.
+        T.showRoomWindow?.();
+        window.showToast?.(TT('rm_created'));
+      } catch (e) { msg.textContent = String(e.message || e); }
+    });
+
+    $('#rmJoin')?.addEventListener('click', async () => {
+      const msg = $('#rmOutMsg');
+      const code = ($('#rmCode')?.value || '').trim().toUpperCase();
+      if (!code) { msg.textContent = TT('rm_need_code'); return; }
+      msg.textContent = 'Joining…';
+      try {
+        await R.join(code, await displayName(), await currentEmail());
+        msg.textContent = '';
+        refresh();
+        T.showRoomWindow?.();
+        window.showToast?.(TT('rm_joined'));
+      } catch (e) { msg.textContent = String(e.message || e); }
+    });
+    $('#rmCode')?.addEventListener('keydown', e => { if (e.key === 'Enter') $('#rmJoin')?.click(); });
+
+    $('#rmCopy')?.addEventListener('click', async () => {
+      const v = $('#rmLink')?.value || '';
+      if (!v) return;
+      try { await navigator.clipboard.writeText(v); window.showToast?.(TT('rm_copied')); }
+      catch (e) { window.showToast?.(String(e)); }
+    });
+
+    $('#rmLeave')?.addEventListener('click', async () => {
+      await R.leave();
+      refresh();
+      window.showToast?.(TT('rm_left'));
+    });
+
+    $('#rmClose')?.addEventListener('click', async () => {
+      try { await R.close(); } catch (e) { $('#rmMsg').textContent = String(e.message || e); }
+      refresh();
+    });
+
+    $('#rmKnocks')?.addEventListener('click', async e => {
+      const yes = e.target.closest('[data-knock-yes]'), no = e.target.closest('[data-knock-no]');
+      const btn = yes || no;
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        await R.answerKnock(yes ? yes.dataset.knockYes : no.dataset.knockNo, !!yes);
+        refresh();
+      } catch (err) { btn.disabled = false; $('#rmMsg').textContent = String(err.message || err); }
+    });
+
+    $('#rmListToggle')?.addEventListener('click', async e => {
+      const b = e.currentTarget;
+      const publish = !b.dataset.listed;
+      b.disabled = true;
+      try {
+        // The category goes WITH it. Sending null is not "leave it alone", it is
+        // "clear it" — which quietly dropped every listed room into the
+        // uncategorised pile the first time its owner touched this control.
+        await R.setListing(publish ? 'public' : 'private', $('#rmListCategory')?.value);
+        $('#rmMsg').textContent = publish ? TT('rm_published') : TT('rm_unpublished');
+      } catch (err) { $('#rmMsg').textContent = String(err.message || err); }
+      b.disabled = false;
+      refresh();
+    });
+
+    // Re-categorising only means something once the room is listed; while it is
+    // private this just records where it will appear when it is published.
+    $('#rmListCategory')?.addEventListener('change', async e => {
+      const st = R.state() || {};
+      if (st.visibility !== 'public') return;
+      try {
+        await R.setListing('public', e.target.value);
+        $('#rmMsg').textContent = TT('rm_published');
+      } catch (err) { $('#rmMsg').textContent = String(err.message || err); }
+    });
+
+    /* Walking back into a room you already belong to. No code to retype and no
+       knock to wait on — you are a member; this is a door, not a request. If the
+       seat was given up on the way out, rooms.js mints a new one from the code,
+       which is why leaving keeps it. */
+    const nick = $('#rmNick');
+    if (nick) nick.value = R.nickname();
+    async function saveNick() {
+      const v = ($('#rmNick')?.value || '').trim();
+      if (!v) return;
+      await R.setNickname(v);
+      window.showToast?.(TT('rm_nick_saved'));
+      refresh();
+    }
+    $('#rmNickSave')?.addEventListener('click', saveNick);
+    $('#rmNick')?.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) saveNick(); });
+
+    $('#rmOpenChat')?.addEventListener('click', () => T.showRoomWindow?.());
+
+    $('#rmRecent')?.addEventListener('click', async e => {
+      const b = e.target.closest('[data-enter]');
+      if (!b) return;
+      const label = b.textContent;
+      b.disabled = true; b.textContent = '…';
+      try {
+        await R.rejoin(b.dataset.enter, await displayName(), await currentEmail());
+        window.showToast?.(TT('rm_joined'));
+        T.showRoomWindow?.();
+        refresh();
+      } catch (err) {
+        b.disabled = false; b.textContent = label;
+        $('#rmMsg').textContent = String(err.message || err);
+        drawRecent();
+      }
+    });
+
+    $('#rmRefresh')?.addEventListener('click', refresh);
+
+    $('#rmFriends')?.addEventListener('click', async e => {
+      const b = e.target.closest('[data-invite]');
+      if (!b) return;
+      // Sending is the invite page's job; here it is a copy plus a nudge, so a
+      // friend gets the code through whatever channel they actually read.
+      try { await navigator.clipboard.writeText(R.inviteUrl()); } catch (err) {}
+      b.textContent = 'Copied ✓';
+      $('#rmMsg').textContent = TT('rm_sent_hint');
+    });
+
+
+  }
+
+  refresh();
+}
+
+/** The signed-in email, or null. A room member without one is anonymous: they
+    can be seen and chatted with, but not added as a friend, because there is
+    nothing durable to attach the friendship to. */
+async function currentEmail() {
+  try {
+    const a = await T.getAuthState?.();
+    return a?.email || null;
+  } catch (e) { return null; }
+}
+
+/** Whatever name the room should show for us.
+    The nickname wins over the email: it is the only one the person actually
+    chose, and "someone" — the old last resort — is what a roster full of
+    strangers looked like. */
+async function displayName() {
+  const nick = window.TerseRooms?.nickname?.();
+  if (nick) return nick;
+  try {
+    const a = await T.getAuthState?.();
+    if (a?.email) return String(a.email).split('@')[0];
+  } catch (e) {}
+  return 'someone';
+}
+
+/* ── 广场 · Plaza ────────────────────────────────────────────────────────────
+   Browsing is not joining. The listing deliberately does NOT carry room codes —
+   if it did, "ask to join" would be theatre, since anyone could simply use the
+   code. So the only way in from here is to knock and wait for the owner. */
+let plazaWired = false, plazaCat = null, knockPoll = null, plazaAsked = {};
+async function plazaInit() {
+  const R = window.TerseRooms;
+  if (!R) return;
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  async function refresh() {
+    let data;
+    if (!$('#pzList').innerHTML) $('#pzList').innerHTML =
+      `<p style="font-size:11px;color:var(--t3);margin:4px 0 0">${TT('pz_looking')}</p>`;
+    try { data = await R.plaza(plazaCat); }
+    catch (e) {
+      // A dead plaza used to look exactly like an empty one. It is not the same
+      // thing, and the difference is the only thing worth saying here.
+      $('#pzList').innerHTML =
+        `<p style="font-size:11px;color:var(--t3);margin:4px 0 0">${TT('pz_offline')}</p>`;
+      $('#pzMsg').textContent = String(e.message || e);
+      return;
+    }
+    $('#pzMsg').textContent = '';
+
+    // The chip's VALUE is the server's enum; only its label is translated.
+    $('#pzCats').innerHTML = ['all', ...(data.categories || [])].map(c => {
+      const on = (c === 'all' && !plazaCat) || c === plazaCat;
+      return `<button class="ob-btn ${on ? '' : 'ghost'}" style="font-size:11px;padding:3px 11px"
+                data-cat="${c}">${TT('pz_cat_' + c)}</button>`;
+    }).join('');
+
+    const active = R.state() || {};
+    const rooms = data.rooms || [];
+    $('#pzList').innerHTML = rooms.length
+      ? rooms.map(r => {
+          /* Three different buttons, because they are three different acts.
+             Offering "ask to join" for a room you own is a button that can never
+             do anything — the knock arrives, and the only person who could
+             answer it is the one who pressed it. */
+          const here = r.id === active.id;
+          const mine = r.joined || r.owner;
+          const asked = plazaAsked[r.id];
+          const action = here
+            ? `<span style="margin-left:auto;font-size:10.5px;color:var(--t3)">${TT('rm_you_here')}</span>`
+            : mine
+              ? `<button class="ob-btn" style="margin-left:auto;font-size:10.5px;padding:3px 11px"
+                         data-enter="${esc(r.id)}">${r.owner ? TT('pz_open_yours') : TT('rm_rejoin')}</button>`
+              : `<button class="ob-btn" style="margin-left:auto;font-size:10.5px;padding:3px 11px"
+                         data-knock="${esc(r.id)}" data-online="${r.online}"
+                         ${asked ? 'disabled' : ''}>${asked ? TT('pz_asked') : TT('pz_ask')}</button>`;
+          const bits = [
+            TT('pz_cat_' + (r.category || 'other')),
+            TTn('rm_online_n', r.online),
+            r.members === 1 ? TT('rm_member_1') : TTn('rm_members_n', r.members),
+            r.owner ? TT('rm_yours') : (r.joined ? TT('rm_member_of') : null),
+          ].filter(Boolean).join(' · ');
+          return `
+            <div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:8px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${r.online ? 'var(--btn)' : 'var(--t3)'}"></span>
+              <span>
+                <div>${esc(r.name || TT('rm_untitled'))}</div>
+                <div style="font-size:10.5px;color:var(--t3)">${bits}</div>
+              </span>
+              ${action}
+            </div>`;
+        }).join('')
+      : `<p style="font-size:11px;color:var(--t3);margin:4px 0 0;line-height:1.7">
+           ${plazaCat ? TT('pz_empty_cat') : TT('pz_empty')} ${TT('pz_empty_hint')}
+           <a href="#" data-go-room="1" style="color:var(--t1)">${TT('pz_empty_cta')}</a>
+           ${TT('pz_empty_tail')}</p>`;
+
+    // Someone who owns a listed room is the person who answers its knocks, so
+    // being told there is a queue belongs here as much as on the Room page.
+    if (active.id && rooms.some(r => r.id === active.id && r.owner)) {
+      try {
+        const k = await R.knocks();
+        if ((k.knocks || []).length) {
+          $('#pzMsg').textContent = TTn('pz_knock_queue', k.knocks.length);
+        }
+      } catch (e) { /* not fatal: the Room page is the real queue */ }
+    }
+  }
+
+  if (!plazaWired) {
+    plazaWired = true;
+    $('#pzRefresh')?.addEventListener('click', refresh);
+    $('#pzCats')?.addEventListener('click', e => {
+      const b = e.target.closest('[data-cat]');
+      if (!b) return;
+      plazaCat = b.dataset.cat === 'all' ? null : b.dataset.cat;
+      refresh();
+    });
+    $('#pzList')?.addEventListener('click', async e => {
+      const go = e.target.closest('[data-go-room]');
+      if (go) { e.preventDefault(); window.__terseOpenPage?.('room'); return; }
+
+      // A room you already belong to opens; it does not get knocked on.
+      const open = e.target.closest('[data-enter]');
+      if (open) {
+        open.disabled = true; open.textContent = '…';
+        try {
+          await R.rejoin(open.dataset.enter, await displayName(), await currentEmail());
+          T.showRoomWindow?.();
+          window.__terseOpenPage?.('room');
+        } catch (err) {
+          open.disabled = false; open.textContent = TT('rm_rejoin');
+          $('#pzMsg').textContent = String(err.message || err);
+        }
+        return;
+      }
+
+      const b = e.target.closest('[data-knock]');
+      if (!b) return;
+      b.disabled = true; b.textContent = TT('pz_asked');
+      try {
+        const k = await R.knock(b.dataset.knock, await displayName());
+        plazaAsked[b.dataset.knock] = k.knock.id;
+        // Only the owner can answer a knock. Saying "waiting…" at an empty room
+        // is how a working feature comes across as a dead button.
+        $('#pzMsg').textContent = b.dataset.online === '0' ? TT('pz_nobody_home') : TT('pz_waiting');
+        // Poll for the verdict. The same call hands over the key on approval,
+        // so a yes puts us straight into the room.
+        clearInterval(knockPoll);
+        knockPoll = setInterval(async () => {
+          try {
+            const st = await R.knockStatus(k.knock.id);
+            if (st.status === 'approved') {
+              clearInterval(knockPoll);
+              delete plazaAsked[b.dataset.knock];
+              $('#pzMsg').textContent = TT('pz_entering');
+              T.showRoomWindow?.();
+              window.__terseOpenPage?.('room');
+            } else if (st.status === 'denied') {
+              clearInterval(knockPoll);
+              delete plazaAsked[b.dataset.knock];
+              $('#pzMsg').textContent = TT('pz_denied');
+              b.disabled = false; b.textContent = TT('pz_ask');
+            }
+          } catch (err) { clearInterval(knockPoll); }
+        }, 3000);
+      } catch (err) {
+        b.disabled = false; b.textContent = TT('pz_ask');
+        delete plazaAsked[b.dataset.knock];
+        $('#pzMsg').textContent = String(err.message || err);
+      }
+    });
+  }
+  refresh();
+}
+
+/* Incoming friend requests. They arrive from the room and are answered here,
+   because accepting is a durable decision and the wallpaper is not the place to
+   make one — it is glanceable by design. */
+function renderFriendRequests(incoming) {
+  const box = $('#frRequests');
+  if (!box) return;
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  box.innerHTML = incoming.length
+    ? incoming.map(r => `
+        <div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
+          <span>${esc(r.name || r.email)}</span>
+          <span style="margin-left:auto;display:flex;gap:6px">
+            <button class="ob-btn" style="font-size:10.5px;padding:2px 10px" data-accept="${esc(r.id)}">Accept</button>
+            <button class="ob-btn ghost" style="font-size:10.5px;padding:2px 10px" data-decline="${esc(r.id)}">Decline</button>
+          </span>
+        </div>`).join('')
+    : '';
+  box.parentElement.style.display = incoming.length ? '' : 'none';
+}
+
+/* ── 好友 · Friends ─────────────────────────────────────────────────────────
+   The social surface. Four jobs: hand out an invite, show who is in, switch
+   teammates on or off the wallpaper, and take a pasted code from someone whose
+   link never worked.
+
+   The invite USED to be a `terse://` deep link, because the app already handles
+   those (handle_connect_url resolves the token, saves it, opens Cowork). It was
+   the wrong artifact to hand out: invites travel through WeChat and Douyin, and
+   their in-app browsers block custom schemes AND ignore Universal Links, so the
+   link was guaranteed to be dead in the one place it gets sent. What ships now
+   is the https page, which those webviews can always open; the deep link still
+   exists, it just moved behind the page. The QR encodes that same https string —
+   one artifact, three ways to send it (paste, scan, or forward in WeChat). */
+const INVITE_BASE = 'https://www.terseai.org/join';
+let friendsWired = false;
+async function friendsInit() {
+  const inv = window.__TAURI__?.core?.invoke;
+  let cfg = null;
+  if (!inv) return;
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  async function refresh() {
+    // Use the accessors that actually exist — cowork.js has always read the
+    // config through T.getCoworkConfig(); I had invented a command name.
+    // Assigns the OUTER cfg on purpose: a local `let cfg` here shadowed it, so
+    // the wallpaper switch below always read null and published an empty roster,
+    // i.e. switching peers on quietly did nothing.
+    try { cfg = await T.getCoworkConfig?.(); } catch (e) {}
+    const token = cfg?.token || cfg?.teamToken || '';
+    const link = token ? `${INVITE_BASE}?c=${encodeURIComponent(token)}` : '';
+    const el = $('#frLink');
+    if (el) el.value = link || 'No team yet — create one on the Team page';
+
+    // The QR is the whole point of the https switch: a WeChat or Douyin camera
+    // can scan it. Drawn from the same string in the box, so the two can never
+    // disagree, and cleared entirely when there is no team yet — an inviting
+    // square that resolves to nothing would be worse than no square.
+    const qr = $('#frQr');
+    if (qr) {
+      qr.innerHTML = '';
+      if (link && window.TerseQR) {
+        try {
+          // 132px for a ~37-module code is roughly 0.9mm per module on a normal
+          // display — comfortably above what a phone camera resolves at reading
+          // distance. Smaller looked tidier and scanned worse.
+          // Text goes in as ENGLISH, never bilingual: i18n.js translates by
+          // matching English leaf text, so a hardcoded 中文/English pair is
+          // invisible to it and stays wrong in all ten languages.
+          qr.innerHTML = window.TerseQR.svg(link, { size: 132, quiet: 2 }) +
+            `<div style="font-size:11px;color:var(--t3);line-height:1.6">
+               <div>Scan the code with any phone camera</div>
+               <div style="opacity:.8;margin-top:4px">They do not need Terse to scan it — the page has the download and the code.</div>
+             </div>`;
+        } catch (e) { /* payload too long is the only throw; leave the box empty */ }
+      }
+    }
+
+    // Roster
+    // The roster comes from the team feed the app already fetches; there is no
+    // members command, and inventing one would just be a second source of
+    // truth. Presence arrives over the shared stream instead.
+    // Real friendships, when the room key can prove who we are. The team member
+    // list is the fallback for anyone who has never been in a room — it is what
+    // this page showed before friendships existed at all.
+    let members = Array.isArray(cfg?.members) ? cfg.members : [];
+    try {
+      // No room needed: the install identity is the credential, so friends and
+      // pending requests are readable whether or not you are in a room today.
+      const R = window.TerseRooms;
+      if (R && R.listFriends) {
+        const f = await R.listFriends();
+        members = (f.friends || []).map(x => ({ name: x.name || x.email || 'friend', user_email: x.email, online: false }));
+        renderFriendRequests(f.incoming || []);
+      }
+    } catch (e) { /* offline, or nothing yet — fall back to the team list */ }
+    const box = $('#frRoster'), cnt = $('#frCount');
+    if (cnt) cnt.textContent = members.length ? `(${members.length})` : '';
+    if (box) {
+      box.innerHTML = members.length
+        ? members.map(m => `<div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
+             <span style="width:8px;height:8px;border-radius:50%;background:${m.online ? 'var(--btn)' : 'var(--t3)'}"></span>
+             <span>${esc(m.name || m.user_email || m.device || '—')}</span>
+             <span style="margin-left:auto;color:var(--t3);font-size:10.5px">${esc(m.status || '')}</span>
+           </div>`).join('')
+        : `<p style="font-size:11px;color:var(--t3);margin:4px 0 0">
+             ${TT('fr_empty')}</p>`;
+    }
+  }
+
+  if (!friendsWired) {
+    friendsWired = true;
+    $('#frCopy')?.addEventListener('click', async () => {
+      const v = $('#frLink')?.value || '';
+      // Guard on the invite prefix, not on a scheme — the link is https now, and
+      // the box also holds the "no team yet" sentence, which must not be copied.
+      if (!v.startsWith(INVITE_BASE)) return;
+      try { await navigator.clipboard.writeText(v); window.showToast?.(TT('fr_copied')); }
+      catch (e) { window.showToast?.(String(e)); }
+    });
+
+    // Join with a pasted code. Accepts the bare token or the whole invite URL,
+    // because people paste whatever they were sent.
+    $('#frJoin')?.addEventListener('click', async () => {
+      const msg = $('#frJoinMsg');
+      let raw = ($('#frJoinCode')?.value || '').trim();
+      // A friend link is the common case now, so it is checked first — pasting
+      // one into the "join" box is what people will actually do.
+      const friend = raw.match(/[?&]friend=([^&\s]+)/);
+      if (friend) {
+        if (msg) msg.textContent = TT('fr_joining');
+        try {
+          await window.TerseRooms.acceptFriendLink(decodeURIComponent(friend[1]), await displayName());
+          if (msg) msg.textContent = TT('fr_joined');
+          refresh();
+        } catch (e) { if (msg) msg.textContent = String(e?.message || e); }
+        return;
+      }
+      const m = raw.match(/[?&]c=([^&\s]+)/);
+      if (m) raw = decodeURIComponent(m[1]);
+      raw = raw.replace(/^terse:\/\/\?token=/, '');
+      if (!raw) { if (msg) msg.textContent = TT('fr_join_empty'); return; }
+      if (msg) msg.textContent = TT('fr_joining');
+      try {
+        await T.setCoworkToken(raw);
+        if (msg) msg.textContent = TT('fr_joined');
+        refresh();
+      } catch (e) {
+        if (msg) msg.textContent = String(e?.message || e);
+      }
+    });
+    $('#frJoinCode')?.addEventListener('keydown', e => { if (e.key === 'Enter') $('#frJoin')?.click(); });
+
+    $('#frRequests')?.addEventListener('click', async e => {
+      const yes = e.target.closest('[data-accept]'), no = e.target.closest('[data-decline]');
+      const btn = yes || no;
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        await window.TerseRooms.respondFriend(yes ? yes.dataset.accept : no.dataset.decline, !!yes);
+        refresh();
+      } catch (err) { btn.disabled = false; window.showToast?.(String(err.message || err)); }
+    });
+
+    $('#frLinkBtn')?.addEventListener('click', async () => {
+      const out = $('#frLinkOut'), qr = $('#frLinkQr');
+      try {
+        const j = await window.TerseRooms.friendLink();
+        out.value = j.url;
+        try { await navigator.clipboard.writeText(j.url); window.showToast?.(TT('fr_copied')); } catch (e) {}
+        if (qr && window.TerseQR) {
+          qr.innerHTML = window.TerseQR.svg(j.url, { size: 132, quiet: 2 }) +
+            `<div style="font-size:11px;color:var(--t3);line-height:1.6">
+               <div>Scan the code with any phone camera</div>
+               <div style="opacity:.8;margin-top:4px">Whoever opens it is added — no approval needed.</div>
+             </div>`;
+        }
+      } catch (e) { out.value = ''; window.showToast?.(String(e.message || e)); }
+    });
+
+    $('#frRefresh')?.addEventListener('click', refresh);
+    // The wallpaper switch is purely local: it decides whether THIS machine
+    // renders peers. It never changes what the team publishes, so turning it
+    // off cannot affect anyone else.
+    const wt = $('#frWallpaper');
+    if (wt) {
+      wt.checked = localStorage.getItem('terse-wallpaper-peers') === '1';
+      wt.addEventListener('change', () => {
+        localStorage.setItem('terse-wallpaper-peers', wt.checked ? '1' : '0');
+        // Local-only switch: tell the wallpaper directly rather than adding a
+        // native command for a preference that never leaves this machine.
+        try { window.__TAURI__?.event?.emit('cowork-session',
+              { members: wt.checked ? (cfg?.members || []) : [] }); } catch (e) {}
+        window.showToast?.(wt.checked ? TT('fr_wall_on')
+                                     : TT('fr_wall_off'));
+      });
+    }
+  }
+  refresh();
+}
+
+/* ── Link phone ───────────────────────────────────────────────────────────────
+   The pairing sheet in Settings. The QR is drawn locally with TerseQR — this
+   webview has no network guarantee, and "link my phone" failing because a CDN is
+   unreachable would be the worst possible moment for it.
+
+   Polling only runs while the sheet is open. A background poll would keep a
+   request going every few seconds for a screen nobody is looking at, forever.
+   ---------------------------------------------------------------------------- */
+(function initPhoneLink() {
+  var pairBtn = document.getElementById('btnPhonePair');
+  if (!pairBtn) return;                       // not the main window
+
+  var idle = document.getElementById('phoneIdle');
+  var sheet = document.getElementById('phonePairing');
+  var statusEl = document.getElementById('phoneStatus');
+  var unlinkBtn = document.getElementById('btnPhoneUnlink');
+  var cancelBtn = document.getElementById('btnPhoneCancel');
+  var shareRow = document.getElementById('phoneShareRow');
+  var shareBox = document.getElementById('phoneShare');
+  var codeEl = document.getElementById('phoneCode');
+  var qrCanvas = document.getElementById('phoneQr');
+  var poll = null;
+
+  var PT = function (key, fallback) {
+    var v = (window.i18n && window.i18n.t) ? window.i18n.t(key) : null;
+    return (v && v !== key) ? v : fallback;
+  };
+
+  function render(st) {
+    st = st || {};
+    var linked = !!st.linked;
+    statusEl.textContent = linked
+      ? PT('phone_linked', 'Linked to your phone')
+      : PT('phone_not_linked', 'Not linked');
+    unlinkBtn.classList.toggle('hidden', !st.paired);
+    shareRow.classList.toggle('hidden', !linked);
+    shareBox.checked = !!st.share;
+    pairBtn.textContent = st.paired
+      ? PT('phone_relink', 'Link another phone')
+      : PT('phone_link', 'Link phone');
+  }
+
+  function stopPolling() {
+    if (poll) { clearInterval(poll); poll = null; }
+  }
+
+  function closeSheet() {
+    stopPolling();
+    sheet.classList.add('hidden');
+    idle.classList.remove('hidden');
+  }
+
+  /* Draw the QR at a size a phone camera can actually resolve from a normal
+     desk distance, snapped to whole device pixels — a fractional module size
+     makes some rows a pixel wider than others, and that blur is what a scanner
+     fails on. */
+  function drawQR(url) {
+    var mod = window.TerseQR.matrix(url, 'M');
+    var quiet = 4;                            // the standard's margin; without it many scanners never see the code
+    var total = mod.length + quiet * 2;
+    var dpr = Math.min(window.devicePixelRatio || 1, 3);
+    var scale = Math.max(1, Math.floor((150 * dpr) / total));
+    var px = total * scale;
+    qrCanvas.width = px;
+    qrCanvas.height = px;
+    qrCanvas.style.width = qrCanvas.style.height = (px / dpr) + 'px';
+    var ctx = qrCanvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, px, px);
+    ctx.fillStyle = '#0b0b0d';
+    for (var y = 0; y < mod.length; y++) {
+      for (var x = 0; x < mod.length; x++) {
+        if (mod[y][x]) ctx.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
+      }
+    }
+  }
+
+  pairBtn.addEventListener('click', function () {
+    pairBtn.disabled = true;
+    T.phonePair().then(function (r) {
+      drawQR(r.url);
+      codeEl.textContent = r.code;
+      idle.classList.add('hidden');
+      sheet.classList.remove('hidden');
+
+      // Watch for the phone claiming it. The code expires in ten minutes, and
+      // polling past that would ask forever about a link that can never form.
+      var until = Date.now() + (r.expiresIn || 600) * 1000;
+      stopPolling();
+      poll = setInterval(function () {
+        if (Date.now() > until) { closeSheet(); refreshStatus(); return; }
+        T.phoneStatus().then(function (st) {
+          if (!st.linked) return;
+          closeSheet();
+          render(st);
+          // Sharing is off by default, but a person who just scanned a code
+          // plainly wants it on — leaving them to find a second switch would
+          // make the pairing look broken.
+          return T.phoneSetShare(true).then(render);
+        }).catch(function () {});
+      }, 2000);
+    }).catch(function (e) {
+      window.showToast?.(e.message || String(e));
+    }).then(function () { pairBtn.disabled = false; });
+  });
+
+  cancelBtn.addEventListener('click', function () { closeSheet(); refreshStatus(); });
+  unlinkBtn.addEventListener('click', function () { T.phoneUnlink().then(render); });
+  shareBox.addEventListener('change', function () { T.phoneSetShare(shareBox.checked).then(render); });
+
+  function refreshStatus() {
+    if (!T.phoneStatus) return;
+    T.phoneStatus().then(render).catch(function () {});
+  }
+
+  // The sheet is inside Settings, so its state only needs to be current when
+  // Settings is opened — not on a timer for the life of the app.
+  var settingsBtn = document.getElementById('btnSettings');
+  if (settingsBtn) settingsBtn.addEventListener('click', refreshStatus);
+  refreshStatus();
+})();

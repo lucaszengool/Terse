@@ -8,6 +8,7 @@
  *   · MR_BLOOM_VS 由 MR_VS 按原项目的两处 replace 派生(点大小 ×uBloomSize)
  *
  * 机械抽取生成 —— 不要手改,要改就改上游再重新抽取。
+ * 例外是标了 (Terse) 的两段:danceAt / uSpace。它们不在上游,重新抽取之后要补回来。
  */
 
 export const MR_VS = `
@@ -31,6 +32,10 @@ uniform vec2 uDanceCenter, uDanceDir;
 // PULSE 层的取景比 SILK 大得多(半高 11.5 对 2.4),两层坐标不是一个尺度。
 // uDanceScale = PULSE_HALF_H / (PLANE_SIZE/2),用来把字的位置和动作幅度换算过去。
 uniform float uDanceScale;
+// ── 3D 自由视角 (Terse) ─────────────────────────────────────────────────────
+// 0 = 原来那张平的丝绸(逐位不变),1 = 把深度图撑成真正的浮雕。相机绕着它转的时候
+// 前后景要分得开,否则转到侧面只剩一条线 —— 这个 uniform 就是"这幅画有多厚"。
+uniform float uSpace;
 attribute vec2 aUv;
 attribute float aRand;
 varying vec3 vColor;
@@ -121,7 +126,7 @@ maxAmp = max(maxAmp, abs(local));
 
 // ── 轻轻起舞 (Terse) ────────────────────────────────────────────────────────
 // rippleSumAt 只会做一种运动:从一个点向外扩散的圆环。八种"图案"其实都是同一个
-// 圆环在不同位置重复,所以看久了永远是"一圈一圈往外推"。这里给的是六段真正不同
+// 圆环在不同位置重复,所以看久了永远是"一圈一圈往外推"。这里给的是十段真正不同
 // 的编舞 —— 平移波、旋绕、呼吸、摇曳、闪烁、涟纹 —— 每段都是**持续而轻柔**的,
 // 靠 uDanceAmt 的包络随中间那句 big text 一起浮起、落下,而不是砸一下就没了。
 //
@@ -163,11 +168,38 @@ o.z = sway * 0.20 * (0.35 + reach);
 float ph = t * 1.45 + rnd * 6.2831;
 o.z = sin(ph) * 0.32 * (0.40 + reach);
 o.xy = vec2(cos(ph * 0.7), sin(ph * 0.5)) * 0.055;
-  } else {
+  } else if (m < 5.5) {
 // 5 涟纹 —— 会漂移的驻波脊,像水下的沙纹
 float ph = dot(p, uDanceDir) * 1.75 + sin(t * 0.55) * 1.5;
 o.z = sin(ph) * cos(dist * 0.45 - t * 0.75) * 0.38;
 o.xy = uDanceDir * sin(ph) * 0.065;
+  } else if (m < 6.5) {
+// 6 星涡 —— 星系式的剪切旋转:越远的粒子转得越"落后",整片粒子拧成旋臂
+float a = 0.52 * reach * sin(t * 0.62) + dist * 0.15 * sin(t * 0.30);
+float c = cos(a), s = sin(a);
+o.xy = mat2(c, -s, s, c) * d - d;
+o.z = sin(dist * 0.90 - t * 1.10) * 0.30 * (0.35 + reach);
+  } else if (m < 7.5) {
+// 7 潮汐 —— 唯一一段**不以字为中心**的编舞:整幅画面一起缓慢起落,
+//    所以它在没有字的时候也成立(静水风格拿它当底噪就是为了这个)
+float ph = p.y * 0.42 + t * 0.42;
+o.z = sin(ph) * 0.30 + sin(p.x * 0.26 - t * 0.31) * 0.22;
+o.xy = vec2(sin(t * 0.36 + p.y * 0.22) * 0.10, cos(t * 0.28) * 0.06);
+  } else if (m < 8.5) {
+// 8 心跳 —— 从字里推出去的同心环,一次强一次弱(收缩压/舒张压那种双拍)
+float bt = fract(t * 0.46);
+float env = exp(-bt * 3.2) + 0.62 * exp(-fract(bt + 0.72) * 3.6);
+float ring = sin(dist * 2.4 - t * 3.0);
+o.z = ring * env * 0.46 * (0.30 + reach);
+o.xy = d / max(dist, 0.001) * ring * env * 0.10;
+  } else {
+// 9 落雪 —— 每颗粒子按自己的相位慢慢往下飘,边飘边摆。
+//    w 这个窗函数是关键:相位绕回 0 的那一刻位移必须也是 0,否则粒子会瞬移一下。
+float f = fract(t * 0.16 + rnd);
+float w = sin(f * 3.14159265);
+o.y = (0.5 - f) * 0.40 * w;
+o.x = sin(t * 0.70 + rnd * 6.2831) * 0.09 * w;
+o.z = sin(t * 0.50 + rnd * 12.0) * 0.22 * (0.35 + reach);
   }
   return o * uDanceAmt;
 }
@@ -219,6 +251,17 @@ float bassBreath = snoise(vec3(pos.x*0.35, pos.y*0.35, t*0.4)) * uBass * 0.42 * 
 float depthZ = (depthVal - 0.5) * uAiBoost * uDepth * 1.40 * uHasDepth;
 
 pos.z = rippleZ * 1.30 + midDisp + trebleJ + bassBreath + depthZ;
+
+// 3D 自由视角:平面 → 体积。深度图负责前后景的分层,噪声负责起伏 —— 没有深度图的
+// 机器(uHasDepth=0)也得有东西可看。uSpace=0 时整段短路,静止画面不受影响。
+if (uSpace > 0.001) {
+  // 幅度是量出来的:平面半高 2.4,总位移超过 ±1.5 就不再是"一张有起伏的面",
+  // 而是一团厚度和画面一样高的云 —— 转到侧面只看得到噪声,看不到自己的壁纸。
+  float relief = (depthVal - 0.5) * 1.70 * uHasDepth;
+  float swell  = snoise(vec3(pos.x * 0.42, pos.y * 0.42, 17.0)) * 0.42
+               + snoise(vec3(pos.x * 1.10, pos.y * 1.10, 31.0)) * 0.17;
+  pos.z += (relief + swell + (aRand - 0.5) * 0.16) * uSpace;
+}
 
 // 编舞叠在最后 —— SILK 就是那层会起伏的粒子平面,舞台在这儿
 vec3 dnc = danceAt(pos.xy, aRand);
@@ -427,7 +470,7 @@ if (transition > 0.001) {
 // ── 那团 blur 的粒子也起舞 ──────────────────────────────────────────────
 // 就是屏幕中间那一团(极光带 + 星尘),外加它的辉光孪生层,所以看起来是"糊"的。
 // 之前这里只有一句通用的摇摆,幅度 0.55 —— 这层可视半高是 11.5 个世界单位,
-// 0.55 只有 5%,等于没动。现在换成和 SILK 同一套六段编舞,并且:
+// 0.55 只有 5%,等于没动。现在换成和 SILK 同一套编舞(十段),并且:
 //   · 中心换算过来(× uDanceScale),动作是从那句话所在的位置长出来的;
 //   · 幅度按取景比例放大,再乘 1.5 —— 「幅度大一点」。
 if (uDanceAmt > 0.001) {
@@ -469,11 +512,36 @@ o5.z = sway * 0.20 * (0.35 + reach5);
 float ph = t5 * 1.45 + aRand * 6.2831;
 o5.z = sin(ph) * 0.32 * (0.40 + reach5);
 o5.xy = vec2(cos(ph * 0.7), sin(ph * 0.5)) * 0.16;
-  } else {
+  } else if (m5 < 5.5) {
 // 5 涟纹
 float ph = dot(pos.xy, uDanceDir) * (1.75 / uDanceScale) + sin(t5 * 0.55) * 1.5;
 o5.z = sin(ph) * cos(dist5 * (0.45 / uDanceScale) - t5 * 0.75) * 0.38;
 o5.xy = uDanceDir * sin(ph) * 0.22;
+  } else if (m5 < 6.5) {
+// 6 星涡
+float a = 0.52 * reach5 * sin(t5 * 0.62) + dist5 * (0.15 / uDanceScale) * sin(t5 * 0.30);
+float c = cos(a), s = sin(a);
+o5.xy = (mat2(c, -s, s, c) * d5 - d5) / uDanceScale;   // 旋转本身已经带尺度
+o5.z = sin(dist5 * (0.90 / uDanceScale) - t5 * 1.10) * 0.30 * (0.35 + reach5);
+  } else if (m5 < 7.5) {
+// 7 潮汐
+float ph = pos.y * (0.42 / uDanceScale) + t5 * 0.42;
+o5.z = sin(ph) * 0.30 + sin(pos.x * (0.26 / uDanceScale) - t5 * 0.31) * 0.22;
+o5.xy = vec2(sin(t5 * 0.36 + pos.y * (0.22 / uDanceScale)) * 0.30, cos(t5 * 0.28) * 0.18);
+  } else if (m5 < 8.5) {
+// 8 心跳
+float bt = fract(t5 * 0.46);
+float env = exp(-bt * 3.2) + 0.62 * exp(-fract(bt + 0.72) * 3.6);
+float ring = sin(dist5 * (2.4 / uDanceScale) - t5 * 3.0);
+o5.z = ring * env * 0.46 * (0.30 + reach5);
+o5.xy = d5 / max(dist5, 0.001) * ring * env * (0.10 / uDanceScale);
+  } else {
+// 9 落雪
+float f = fract(t5 * 0.16 + aRand);
+float w = sin(f * 3.14159265);
+o5.y = (0.5 - f) * 0.40 * w;
+o5.x = sin(t5 * 0.70 + aRand * 6.2831) * 0.26 * w;
+o5.z = sin(t5 * 0.50 + aRand * 12.0) * 0.22 * (0.35 + reach5);
   }
 
   pos.xy += o5.xy * A;

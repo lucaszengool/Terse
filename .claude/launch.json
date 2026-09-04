@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "terse-api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--env-file=.env",
+        "api/server.js"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "terse-landing",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/serve-landing.mjs"
+      ],
+      "port": 8435
+    },
+    {
+      "name": "terse-renderer",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/serve-renderer.mjs"
+      ],
+      "port": 8434
+    }
+  ]
+}

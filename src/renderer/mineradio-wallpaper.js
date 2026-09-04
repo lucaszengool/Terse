@@ -28,6 +28,9 @@
 import * as THREE from 'three';
 import { MR_VS, MR_FS, MR_BLOOM_VS, MR_BLOOM_FS } from './mineradio-shaders.js';
 import { getProStyle, resolveStyle, DEFAULT_STYLE_ID } from './wallpaper-styles.js';
+import { sanitizeView, orbitPosition, shortestArc,
+         ORBIT_AZ_PER_PX, ORBIT_EL_PER_PX } from './wallpaper-view3d.js';
+import { ProjectLayer } from './wallpaper-project.js';
 
 /* ── Mineradio 原值 ── */
 const PLANE_SIZE = 4.8;        // 00-pointer-cover-particles.js:218
@@ -46,6 +49,22 @@ const PULSE_CAM_Z = 62, PULSE_HALF_H = 11.5;
  *  而 pos.z = (bulge*2.4+ring*1.30)*env*str*1.30 峰值能到 ~11 个单位;原项目的封面平面
  *  只占屏幕中间一小块,我们铺满整幅画面,照搬会让粒子直接飞过相机。 */
 const RIPPLE_Z = 0.18;
+
+/* ── 3D 自由视角(Pro)────────────────────────────────────────────────────
+   两层粒子本来就活在三维里(PULSE 的极光丝带 z∈−32..18),只是相机一直钉在 z 轴上
+   正对着看,所以看上去是平的。这一套做的就是两件事:
+
+     · 相机绕着原点转 —— 每层用**自己的** camZ 当半径,两层的取景关系才不会散架;
+     · SILK 那张平面被 uSpace 撑成浮雕(见 mineradio-shaders.js),否则转到侧面
+       只剩一条线。
+
+   az=0 / el=0 / dist=1 时,相机落回 (0,0,camZ)、uSpace=0 —— 和改造前逐位相同。
+   关掉 3D 不是"停在原地",是沿着这条路插值回去,所以开关是一段动画。 */
+// 机位的取值范围、灵敏度和球坐标换算都在 wallpaper-view3d.js —— 那一份没有 three、
+// 没有 DOM,所以是唯一能被测到的部分,而它正是"关掉 3D 必须逐位回到原样"的地方。
+/** 复用的投影暂存,避免命中测试每次 new 一个 Vector3(鼠标一动就是几十次)。 */
+const _V3 = new THREE.Vector3();
+
 
 /* 数字的出场包络(毫秒)和 Pro 的多槽位调色板,都搬到 wallpaper-styles.js 去了 ——
    每种风格的节奏和配色本来就该各不相同。默认风格 `cinematic` 里的值就是原来这两个
@@ -307,6 +326,22 @@ export default class MineradioWallpaper {
     this._style = this.pro
       ? resolveStyle((opts && opts.style) || DEFAULT_STYLE_ID, this._custom)
       : getProStyle(DEFAULT_STYLE_ID);
+    // 自由视角同样是 Pro:免费一律停在正对机位。_sanitizeView 里就把 on 和 pro
+    // 与了起来,所以从磁盘读到一份 "on": true 的旧配置也不会让免费用户进 3D。
+    // 3D 自由视角的授权和"选了哪台引擎"是两件事。
+    //
+    // this.pro 的真正含义是**用户选了 cinematic 那台引擎**(粒子聚字、多槽位、
+    // 风格),而 3D 是按许可卖的:一个付了钱、但把引擎留在默认 mineradio 的用户,
+    // 照样该能把壁纸转起来。原来这里直接用 this.pro,结果就是他在面板上把 3D
+    // 打开了、预览也在转,桌面上却一动不动 —— 而且不报错。
+    // proView 省略时退回 this.pro,所以控制面板那两块预览一行都不用改。
+    this._proView = (opts && opts.proView !== undefined) ? !!opts.proView : this.pro;
+    this._view = this._sanitizeView(opts.view3d);
+    // 当前**看到**的机位。它追着 _view 走,是为了让开关和拖拽都是连续运动 ——
+    // amt 则是"3D 到什么程度"(0 = 完全是原来那幅平的画),uSpace 直接读它。
+    this._viewCur = { az: this._view.az, el: this._view.el, dist: this._view.dist,
+                      amt: this._view.on ? 1 : 0 };
+    this._orbit = null;
     this._glyphQueue = [];
     this._glyphSlots = [];       // each: { ..., glyph: { label, kind, x, y, t0, col } }
     this._glyphSide = 1;
@@ -377,10 +412,13 @@ export default class MineradioWallpaper {
       uHandXY: { value: new THREE.Vector2(-999, -999) }, uHandActive: { value: 0 },
       uGestureGrip: { value: 0 }, uPixel: { value: 1 },
       uParticleDim: { value: 1 }, uFloatAlpha: { value: 0 }, uLoading: { value: 0 },
+      // 3D 自由视角:0 = 平面(原样),1 = 深度图撑成的浮雕。见 _applyView。
+      uSpace: { value: 0 },
     };
 
     this._buildLayers();
     this._buildGlyphLayer();
+    this._applyView();               // 机位归位(关着的时候 = 原来的正对机位)
     this._loadPhoto(opts.photo);
 
     this._onResize = () => this.resize();
@@ -541,13 +579,18 @@ export default class MineradioWallpaper {
     const count = this.pro ? 4 : 1;
     const per = 60000;
     this._glyphSlots = [];
+    // 字全部挂在一个 Group 下,3D 模式里整组朝相机转(见 _applyView)。字是拿来读的:
+    // 让它跟着地面一起倾斜,转到 70° 就只剩一条亮线,那不是三维,是没了。
+    // Group 在 2D 下是单位变换,所以不改变现在的任何一帧。
+    const group = new THREE.Group();
+    scene.add(group);
     for (let i = 0; i < count; i++) {
       const slot = this._buildGlyphSlot(per);
-      const b = new THREE.Points(slot.geo, slot.matB); b.frustumCulled = false; b.renderOrder = 0; scene.add(b);
-      const p = new THREE.Points(slot.geo, slot.mat);  p.frustumCulled = false; p.renderOrder = 1; scene.add(p);
+      const b = new THREE.Points(slot.geo, slot.matB); b.frustumCulled = false; b.renderOrder = 0; group.add(b);
+      const p = new THREE.Points(slot.geo, slot.mat);  p.frustumCulled = false; p.renderOrder = 1; group.add(p);
       this._glyphSlots.push(slot);
     }
-    this._glyphLayer = { scene, slots: this._glyphSlots };
+    this._glyphLayer = { scene, group, slots: this._glyphSlots };
   }
 
   /** 把当前这句话画进字形画布,再在 CPU 上把亮像素采成每颗粒子的落点 */
@@ -654,6 +697,10 @@ export default class MineradioWallpaper {
       this._bedCss = `#05060a url(${JSON.stringify(src)}) center/cover no-repeat`;
       if (this.canvas && this.canvas.parentElement && !this._overlay) {
         this.canvas.parentElement.style.background = this._bedCss;
+        // 图可能是在 3D 已经开着的时候才到的(异步)。刚写下去的是没压暗的那版,
+        // 强制重算一次,否则底图会一直亮到下一次机位变化。
+        this._bedDim = null;
+        this._dimBed(this._viewCur ? this._viewCur.amt : 0);
       }
     };
     img.src = src;
@@ -752,6 +799,7 @@ export default class MineradioWallpaper {
     this._disposeLayers();
     this._buildLayers();
     for (const L of this.layers) { L.cam.aspect = W / H; L.cam.updateProjectionMatrix(); }
+    this._applyView();      // 新相机是按正对机位建的,自由视角要重新摆一次
   }
 
   /** 一次 token 冲击:节拍 + 一圈涟漪(有数字在显示就从数字那儿推出去) */
@@ -793,21 +841,34 @@ export default class MineradioWallpaper {
   _glyphScreenBox(g) {
     const cam = this._silk && this._silk.cam;
     if (!cam || !cam.isPerspectiveCamera) return null;
-    const halfH = Math.tan(cam.fov * Math.PI / 360) * cam.position.z;
-    const halfW = halfH * cam.aspect;
     const sc = g.size === 'big' ? 1.55 : g.size === 'small' ? 0.58 : 1;
     // The atlas is 1024x128 but the drawn text rarely fills it; 0.62 of the box
     // is a close fit for the ink and keeps the target honest rather than a wide
     // invisible strip either side of short labels.
     const w = 3.05 * sc * 0.62, h = 0.52 * sc;
-    const cx = (g.x / halfW * 0.5 + 0.5) * this.W;
-    const cy = (0.5 - g.y / halfH * 0.5) * this.H;
-    const pw = (w / (2 * halfW)) * this.W;
-    const ph = (h / (2 * halfH)) * this.H;
+    // 用真正的投影,而不是"按 fov 和 cam.position.z 反算" —— 自由视角下相机不在
+    // z 轴上,也不再正对平面,那套反算就不成立了(字看起来在左边,命中框还在中间)。
+    // 正对机位时两者数值相同,所以 2D 下的按钮位置逐像素不变。
+    const grp = this._glyphLayer && this._glyphLayer.group;
+    const toPx = (x, y) => {
+      _V3.set(x, y, 0);
+      if (grp) _V3.applyMatrix4(grp.matrixWorld);
+      _V3.project(cam);
+      return { x: (_V3.x * 0.5 + 0.5) * this.W, y: (0.5 - _V3.y * 0.5) * this.H, z: _V3.z };
+    };
+    const c = toPx(g.x, g.y);
+    if (!(c.z < 1)) return null;                       // 转到了相机背后
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const q = toPx(g.x + sx * w / 2, g.y + sy * h / 2);
+      x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x);
+      y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y);
+    }
+    const pw = x1 - x0, ph = y1 - y0;
     // A generous minimum: these are particle letters over a desktop, and a
     // pixel-tight target would be unusable.
-    return { x: cx - pw / 2, y: cy - ph / 2, w: Math.max(pw, 90), h: Math.max(ph, 34),
-             cx, cy, glyph: g };
+    return { x: c.x - pw / 2, y: c.y - ph / 2, w: Math.max(pw, 90), h: Math.max(ph, 34),
+             cx: c.x, cy: c.y, glyph: g };
   }
 
   /** Topmost visible glyph under a CSS-pixel point, or null. */
@@ -951,6 +1012,240 @@ export default class MineradioWallpaper {
 
   setIntensity(v) { this.intensity = +v || 1; }
   setAngle() { /* 这个引擎是长焦定机位,俯仰角没有意义 —— 接受但忽略,保持 API 一致 */ }
+
+  /* ══════════════ 3D 自由视角(Pro)══════════════
+     壁纸窗口是穿透鼠标的,所以"拖"这件事发生在**拿得到鼠标事件的地方**:控制面板
+     里的 PRO 预览,以及桌面壁纸被显式唤醒去接事件的那几十秒(wallpaper.html)。
+     引擎只管一件事 —— 给定一个机位,把两层相机和字都摆对。 */
+
+  /** 外面传进来的机位一律先过这里:范围夹住、角度归一、授权与上。
+   *  夹范围不是防御式编程 —— 这几个值会被写进用户能手改的 wallpaper.json。 */
+  _sanitizeView(v) { return sanitizeView(v, this._proView); }
+
+  /** 把 _viewCur 推向 _view,再据此摆相机。dt 省略 = 立刻到位(建场景/改窗口大小)。
+   *
+   *  两层相机各用自己的 camZ 当半径,而不是一个公共距离:SILK 在 12、PULSE 在 62,
+   *  它们本来就是两个尺度的取景,共用半径会让极光那层直接飞出画面。 */
+  _applyView(dt = 0) {
+    const V = this._view, C = this._viewCur;
+    // 关着、而且已经退回到正对机位了:相机、uSpace、字的朝向全都已经是对的,
+    // 再算一遍只会得到同样的数。壁纸是常驻的,没开这个功能的人不该为它付每帧的账。
+    if (!V.on && C.amt === 0 && C.az === 0 && C.el === 0 && C.dist === 1) return;
+    const tAz = V.on ? V.az : 0, tEl = V.on ? V.el : 0, tD = V.on ? V.dist : 1;
+    const k = dt > 0 ? Math.min(1, dt * 7.0) : 1;      // 跟手:~0.15s 追上
+    const kA = dt > 0 ? Math.min(1, dt * 2.4) : 1;     // 开关:~0.4s 的进出场
+    // 方位角走最短弧,否则从 +179° 拖到 −179° 会绕一整圈回来
+    C.az += shortestArc(C.az, tAz) * k;
+    C.el += (tEl - C.el) * k;
+    C.dist += (tD - C.dist) * k;
+    C.amt += ((V.on ? 1 : 0) - C.amt) * kA;
+    if (!V.on && C.amt < 0.0008) { C.amt = 0; C.az = 0; C.el = 0; C.dist = 1; }
+
+    // 待机时极慢的视差呼吸。壁纸一天要被看几百眼,一个**完全**静止的三维机位
+    // 会立刻退化成一张斜着的图片。拖的时候不加,否则手感是飘的。
+    const drift = this.isOrbiting() ? 0 : C.amt * 0.055;
+    const az = C.az + Math.sin(this._time * 0.11) * drift;
+    const el = C.el + Math.sin(this._time * 0.083 + 1.7) * drift * 0.5;
+
+    for (const L of this.layers || []) {
+      const p = orbitPosition(L.camZ * C.dist, az, el);
+      L.cam.position.set(p.x, p.y, p.z);
+      L.cam.lookAt(0, 0, 0);
+    }
+    this.u.uSpace.value = C.amt;
+    this._dimBed(C.amt);
+
+    // 字整组朝相机转,但只转 0.85 —— 留下的那点倾斜正是"它在一个三维空间里"的
+    // 唯一提示。转满就是贴在镜头上的一张 HUD,和背后的场景脱开了。
+    const grp = this._glyphLayer && this._glyphLayer.group;
+    if (grp) {
+      const cam = this._silk && this._silk.cam;
+      grp.quaternion.identity();
+      if (cam && C.amt > 0.0005) grp.quaternion.slerp(cam.quaternion, 0.85 * C.amt);
+      grp.updateMatrixWorld();
+    }
+  }
+
+  /** 底图是**平的**,粒子转起来之后它就成了一张贴在后面的原图 —— 而粒子的颜色正是
+   *  从它身上取的,两者叠在一起是一团糊,浮雕反而看不见了。所以进 3D 时把它压暗,
+   *  退出时原样还回去。
+   *
+   *  压到全黑而不是压一半:留一半的话,那张平的原图会和粒子的浮雕**错开叠在一起**
+   *  —— 池塘的边在两个角度上各画一次,看着就是重影。试出来的,不是猜的。底图仍旧在
+   *  画面里,只是它现在长在粒子身上(粒子的颜色本来就是从它取的);退出 3D 时亮回来。
+   *
+   *  压的是 background 里叠的一层纯色,不是 filter:filter 加在父元素上会连画布
+   *  一起压暗,粒子跟着一起没了。amt=0 时写回**原来那个字符串**,不是"透明度为 0
+   *  的渐变" —— 没开过这个功能的机器上,连这条 CSS 都该和以前一模一样。 */
+  _dimBed(amt) {
+    const host = this.canvas && this.canvas.parentElement;
+    if (!host || !this._bedCss || this._overlay) return;
+    // 没打开"3D 时全黑"就一档都不压 —— 底下那张是用户自己的桌面壁纸。
+    const q = this._view.dim ? Math.round(amt * 20) / 20 : 0;   // 每 5% 一档,避免每帧改样式
+    if (q === this._bedDim) return;
+    this._bedDim = q;
+    if (q <= 0) { host.style.background = this._bedCss; return; }
+    const a = q.toFixed(3);
+    host.style.background = `linear-gradient(rgba(5,6,10,${a}),rgba(5,6,10,${a})), ${this._bedCss}`;
+  }
+
+  /* ══════════════ 项目缩影 ══════════════
+     一个项目在壁纸上演一段:它的封面由粒子聚成,标题和几行信息跟着浮现,停一会儿
+     再散回去。广场上点别人的项目、或者自己在列表里点预览,走的都是这一条。
+
+     图**必须也是粒子**:贴一张图上去在技术上更省事,但那就成了"壁纸上贴了张图片",
+     和周围的极光、统计数字不是一个世界的东西 —— 而且贴图不会跟着 3D 视角一起转。
+     见 wallpaper-project.js。 */
+
+  /** @param {{title?:string, subtitle?:string, cover?:string, lines?:string[]}} cap
+   *  @param {number} ms 整段时长,默认 20 秒(广场预览的标准长度) */
+  showProject(cap, ms = 20000) {
+    if (!cap) return false;
+    if (!this._projLayer) {
+      this._projLayer = new ProjectLayer(this.u.uDotTex.value);
+      // 和字形层同一个 Group:3D 里一起朝相机转,缩影和它的标题不会分家。
+      const grp = this._glyphLayer && this._glyphLayer.group;
+      if (grp) grp.add(this._projLayer.points);
+      else return false;
+    }
+    const layer = this._projLayer;
+    const start = () => {
+      layer.play(Math.max(3000, ms | 0));
+      // 标题必须**一定出现**。走 _queueGlyph 是不行的:那条队列有节流、有配额、还要
+      // 等空槽位 —— 用户看到的就是"只有图,没有字"。大字这条路(_logPending)是
+      // 头条槽位专用的,而且下一帧就会被取走。
+      this._glyphQueue.length = 0;
+      this._nextFillAt = 0;
+      if (cap.title) {
+        this._logPending = { label: String(cap.title).slice(0, 26), kind: 'log', size: 'big' };
+      }
+      // 其余信息跟在后面,和平时的统计数字用同一套聚散手法。
+      if (cap.subtitle) this._queueGlyph(String(cap.subtitle).slice(0, 34), 'cache');
+      for (const l of (cap.lines || []).slice(0, 3)) {
+        if (l) this._queueGlyph(String(l).slice(0, 30), 'agents');
+      }
+      this.pulse(0.8);
+    };
+    if (!cap.cover) {
+      // 没有封面也要能演:标题和信息本来就是粒子。
+      layer.stop();
+      start();
+      return true;
+    }
+    const img = new Image();
+    img.onload = () => {
+      // 缩影摆多大:SILK 平面半高 2.4,给它 1.5 —— 是"缩影",不是铺满。
+      // 缩影摆多大:SILK 平面半高 2.4,给它 1.25 —— 留出上下给标题,
+      // 而且同样的粒子数摊在更小的面上,图就更清楚。
+      if (layer.setImage(img, 1.25)) start();
+      else { layer.stop(); start(); }
+    };
+    img.onerror = () => { layer.stop(); start(); };
+    img.src = cap.cover;
+    return true;
+  }
+
+  /** 提前收场(用户点了别的项目,或者关掉了预览)。 */
+  hideProject() { if (this._projLayer) this._projLayer.stop(); }
+
+  /** 设机位(通常来自 wallpaper.json 或控制面板)。 */
+  setView3D(v) {
+    const next = this._sanitizeView(Object.assign({}, this._view, v));
+    this._view = next;
+    if (!this._running) this._applyView();   // 停着的时候也要摆对(预览是静止的)
+    return this.getView3D();
+  }
+
+  getView3D() { return Object.assign({}, this._view); }
+
+  /** 回到正对机位,但**留在 3D 里** —— 双击是"我转迷路了",不是"我不要 3D"。 */
+  resetView() { return this.setView3D({ az: 0, el: 0, dist: 1 }); }
+
+  /** 把一个元素(通常就是画布)变成轨道控制器。
+   *
+   *  第一次拖就自动进入 3D:开关在面板上,但真正让人明白这功能是什么的是"按住一拖
+   *  画面转起来了"。免费用户身上不挂任何监听 —— 免费预览必须始终是那幅平的画,
+   *  两个预览并排放着,差别才看得见。
+   *
+   *  @param {HTMLElement} target
+   *  @param {(view:{on:boolean,az:number,el:number,dist:number})=>void} [onChange]
+   *         每次机位变化都会调用(拖动时很密集)。存盘节流是调用方的事。 */
+  attachOrbit(target, onChange, opts) {
+    this.detachOrbit();
+    if (!target || !this._proView) return false;
+    // wheelArmed:滚轮**先要抓过一次**才归这里管。控制面板里这块预览就长在一张
+    // 可滚动的设置页上,一上来就吃掉滚轮,用户想往下翻页面会变成把画面推远 ——
+    // 一个看不出原因的故障。抓过一次(按下过)就说明人是在跟它较劲,指针离开再还回去。
+    // wheelAlways:整屏就是这块画布、页面根本没得滚(桌面壁纸就是这种),那就不该
+    // 要求"先按一下才认滚轮" —— 两指一滑什么都不发生,人只会以为坏了。
+    const st = { dragging: false, id: null, x: 0, y: 0, moved: 0,
+                 wheel: !!(opts && opts.wheelAlways) };
+    const wheelAlways = !!(opts && opts.wheelAlways);
+    const notify = () => { if (onChange) { try { onChange(this.getView3D()); } catch (e) {} } };
+
+    const down = (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      st.dragging = true; st.id = e.pointerId; st.x = e.clientX; st.y = e.clientY; st.moved = 0;
+      st.wheel = true;
+      try { target.setPointerCapture(e.pointerId); } catch (err) {}
+      target.style.cursor = 'grabbing';
+    };
+    const move = (e) => {
+      if (!st.dragging || (st.id !== null && e.pointerId !== st.id)) return;
+      const dx = e.clientX - st.x, dy = e.clientY - st.y;
+      st.x = e.clientX; st.y = e.clientY; st.moved += Math.abs(dx) + Math.abs(dy);
+      // 往左拖 = 场景往左转,也就是相机往右绕
+      this.setView3D({ on: true, az: this._view.az - dx * ORBIT_AZ_PER_PX,
+                       el: this._view.el + dy * ORBIT_EL_PER_PX });
+      notify();
+    };
+    const up = (e) => {
+      if (!st.dragging) return;
+      st.dragging = false;
+      try { target.releasePointerCapture(st.id); } catch (err) {}
+      st.id = null;
+      target.style.cursor = 'grab';
+    };
+    const leave = () => { st.wheel = wheelAlways; };
+    // 触控板双指和滚轮走同一条路(浏览器把捏合报成 ctrlKey 的 wheel)。
+    const wheel = (e) => {
+      if (!st.wheel) return;          // 还没抓过 —— 滚轮属于页面
+      e.preventDefault();
+      const step = e.ctrlKey ? 0.010 : 0.0016;
+      this.setView3D({ on: true, dist: this._view.dist * Math.exp(e.deltaY * step) });
+      notify();
+    };
+    const dbl = () => { this.resetView(); notify(); };
+
+    target.addEventListener('pointerdown', down);
+    target.addEventListener('pointermove', move);
+    target.addEventListener('pointerup', up);
+    target.addEventListener('pointercancel', up);
+    target.addEventListener('pointerleave', leave);
+    target.addEventListener('wheel', wheel, { passive: false });
+    target.addEventListener('dblclick', dbl);
+    target.style.cursor = 'grab';
+    target.style.touchAction = 'none';       // 否则移动端/触控板会把拖动当成滚动
+    this._orbit = { target, st, off: () => {
+      target.removeEventListener('pointerdown', down);
+      target.removeEventListener('pointermove', move);
+      target.removeEventListener('pointerup', up);
+      target.removeEventListener('pointercancel', up);
+      target.removeEventListener('pointerleave', leave);
+      target.removeEventListener('wheel', wheel);
+      target.removeEventListener('dblclick', dbl);
+      target.style.cursor = '';
+    } };
+    return true;
+  }
+
+  detachOrbit() {
+    if (this._orbit) { try { this._orbit.off(); } catch (e) {} }
+    this._orbit = null;
+  }
+
+  /** 正在被拖 —— 调用方用它决定要不要把机位写盘(松手再写)。 */
+  isOrbiting() { return !!(this._orbit && this._orbit.st.dragging); }
   setTheme(t) {
     this.theme = t;
     this.u.uTintColor.value.set(THEME_TINT[t] || '#9db8cf');
@@ -1222,6 +1517,7 @@ export default class MineradioWallpaper {
     const beat = Math.min(2.2, this._kick);
 
     this._updateRipples(dt);
+    this._applyView(dt);
 
     // ── 频段合成:音频 FFT 的位置,喂的是真实 token 消耗 + agent 活动 ──
     //    静息刻意压低(壁纸就该是安静的),每次 burst 才是事件。
@@ -1250,9 +1546,15 @@ export default class MineradioWallpaper {
     // 现在跟着舞蹈包络开合:字浮起来,平面跟着淡入起舞;字散了,平面也退回去。
     // 底噪也要能让它现身,否则闲置时这层依然是关的 —— 那正是预览看起来空掉的原因。
     const g0 = clamp01(Math.max(amt, (beat - 0.30) / 0.70));
-    this._silk.u.uAlpha.value = this._style.field.silkAlpha * (g0 * g0 * (3 - 2 * g0));
+    const silkA = this._style.field.silkAlpha;
+    // 3D 里这层是主角,门要一直开着。上面那个"常亮会织出半调网点"的理由在这里
+    // 不成立:平面已经被 uSpace 撑成浮雕,而且是斜着看的 —— 规则网格正是从这个
+    // 角度才显出它是一片有厚度的东西。地板跟着 amt 抬起来,关掉 3D 时一起退回去。
+    this._silk.u.uAlpha.value = Math.max(silkA * (g0 * g0 * (3 - 2 * g0)),
+                                         silkA * 0.92 * this._viewCur.amt);
 
     this._updateGlyph();
+    if (this._projLayer) this._projLayer.update(this._time);
   }
 
   /** Headline rotation: the newest log line first, then the four before it, and
@@ -1334,10 +1636,13 @@ export default class MineradioWallpaper {
       // 这些偏移是按 16:9 定的。竖屏/窄屏下视锥半宽只有 ~1.9,整句会飞出画面。
       const cam = this._silk && this._silk.cam;
       if (cam && cam.isPerspectiveCamera) {
-        const halfW = Math.tan(cam.fov * Math.PI / 360) * cam.position.z * cam.aspect;
-        const room = Math.max(0, halfW * 0.96 - slot.u.uSize.value.x / 2);
+        // 取景半高要用**相机到原点的距离**,不是 position.z。正对时两者相同,
+        // 但转到侧面时 z 会趋近 0 —— 用 z 算出来的 room 就是 0,四条字全被挤到
+        // 正中间叠成一团。字是绕着原点摆的,量的自然也该是到原点的距离。
+        const camDist = cam.position.length();
+        const halfH = Math.tan(cam.fov * Math.PI / 360) * camDist;
+        const room = Math.max(0, halfH * cam.aspect * 0.96 - slot.u.uSize.value.x / 2);
         gx = Math.sign(gx) * Math.min(Math.abs(gx), room);
-        const halfH = Math.tan(cam.fov * Math.PI / 360) * cam.position.z;
         gy = Math.max(-halfH * 0.82, Math.min(halfH * 0.82, gy));
       }
       // Colour: Pro spreads slots across the palette so the field is multicolour
@@ -1474,18 +1779,23 @@ export default class MineradioWallpaper {
     for (const L of this.layers) r.render(L.scene, L.cam);
     // 字形层用 SILK 的相机(同一套平面坐标),最后画,叠在最上面
     // Any live slot means the layer has something to draw.
-    if ((this._glyphSlots || []).some(sl => sl.u.uVis.value > 0.001)) {
+    // 缩影和字挂在同一个 Group 下,所以只要有一样活着就得画这一层。
+    const glyphLive = (this._glyphSlots || []).some(sl => sl.u.uVis.value > 0.001);
+    const projLive = !!(this._projLayer && this._projLayer.u.uVis.value > 0.001);
+    if (glyphLive || projLive) {
       r.render(this._glyphLayer.scene, this._silk.cam);
     }
   }
 
   dispose() {
     this.stop();
+    this.detachOrbit();
     window.removeEventListener('resize', this._onResize);
     if (this._ro) { try { this._ro.disconnect(); } catch (e) {} this._ro = null; }
     try {
       this._disposeLayers();
       for (const sl of (this._glyphSlots || [])) { sl.geo.dispose(); sl.mat.dispose(); sl.matB.dispose(); }
+      if (this._projLayer) { this._projLayer.dispose(); this._projLayer = null; }
       this._coverTex.dispose(); this._edgeTex.dispose(); this._rippleTex.dispose();
       this.renderer.dispose();
     } catch (e) {}

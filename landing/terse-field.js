@@ -366,6 +366,8 @@ vec3 procColor(vec2 p, float t){
     'attribute vec3 aColor;',
     'uniform float uTime, uBloom, uDpr, uHasCover, uExposure;',
     'uniform vec2 uAspect;',
+    'uniform mat4 uViewProj;',
+    'uniform float uCamR, uDepth, uSlab;',
     'uniform vec3 uRipples[' + MAX_RIPPLES + '];',
     'uniform float uDanceAmt, uDanceMode, uDanceT;',
     'uniform vec2 uDanceCenter, uDanceDir;',
@@ -454,7 +456,27 @@ vec3 procColor(vec2 p, float t){
     '    ripAmp = max(ripAmp, ring);',
     '  }',
 
-    '  gl_Position = vec4((p + disp) / uAspect, 0.0, 1.0);',
+    /* ── into three dimensions ──────────────────────────────────────────
+       danceAt() has always returned a real o.z — all ten modes displace in
+       depth — and this line used to read `vec4((p+disp)/uAspect, 0.0, 1.0)`,
+       which threw every one of them away. The field was a 3D choreography
+       being watched through a flattening lens.
+
+       uSlab is the other half, and it is the half that makes the field read
+       as a volume rather than as a sheet with a wobble: a fixed per-particle
+       depth, so the cloud has real thickness even at rest, when the dance
+       envelope is down at 0.16 and every particle would otherwise be within a
+       hair of the same plane. The hash decorrelates it from aSeed's other
+       jobs (drift phase, twinkle rate) — reusing s2 directly would tie a
+       particle's depth to how fast it blinks. */
+    '  float dz = fract(sin(dot(aSeed, vec2(41.73, 289.31))) * 43758.5453) - 0.5;',
+    '  vec3 world = vec3(p + disp, dnc.z * uDepth + dz * uSlab);',
+    '  vec4 clip = uViewProj * vec4(world, 1.0);',
+    '  gl_Position = clip;',
+    /* Perspective size falloff. At the resting pose clip.w == uCamR exactly,
+       so this term is 1.0 and the point sizes are the ones the flat field
+       drew. */
+    '  float persp = uCamR / max(clip.w, 0.35);',
 
     '  float tw = pow(0.5 + 0.5 * sin(t * (0.9 + s2 * 1.7) + s1 * 17.0), 5.0);',
     /* density banks so the field drifts in clouds, never an even speckle */
@@ -470,8 +492,11 @@ vec3 procColor(vec2 p, float t){
     '  cov = max(cov, vec3(0.075, 0.090, 0.135));',
     '  bed = mix(bed, cov, uHasCover);',
     '  vColor = mix(bed, vec3(0.86, 0.93, 1.0), tw * 0.30) * (0.85 + tw * 0.55 + ripAmp * 0.9);',
-    '  vAlpha = (0.075 + tw * 0.24 + ripAmp * 0.38) * cloud;',
-    '  gl_PointSize = (1.2 + tw * 1.3) * uDpr * uBloom;',
+    /* Aerial perspective: the back of the slab sits back. Without this the
+       far particles stay as bright as the near ones and the volume reads
+       flat again no matter how much parallax the camera gives it. */
+    '  vAlpha = (0.075 + tw * 0.24 + ripAmp * 0.38) * cloud * clamp(0.34 + persp * 0.72, 0.30, 1.35);',
+    '  gl_PointSize = (1.2 + tw * 1.3) * uDpr * uBloom * clamp(persp, 0.45, 2.6);',
     '}'
   ].join('\n');
 
@@ -485,6 +510,8 @@ vec3 procColor(vec2 p, float t){
     'attribute float aOn;',
     'uniform float uForm, uVis, uOut, uInMode, uOutMode, uStagger, uTime, uBloom, uDpr, uPtPx;',
     'uniform vec2 uCenter, uSize, uDrift, uAspect;',
+    'uniform mat4 uViewProj;',
+    'uniform float uCamR;',
     'uniform vec3 uTint;',
     'varying vec3 vColor;',
     'varying float vA;',
@@ -521,7 +548,25 @@ vec3 procColor(vec2 p, float t){
     '  float ord = fract(aRand * 7.13);',
     '  float u = clamp((amt - ord * uStagger) / max(1e-3, 1.0 - uStagger), 0.0, 1.0);',
     '  vec2 d = dispAt(mode, u, rel);',
-    '  gl_Position = vec4(target + d, 0.0, 1.0);',
+    /* ── the line rides the camera, but never turns with it ─────────────
+       The glyph plane is BILLBOARDED: only the line's CENTRE goes through the
+       camera, and the letterform is then laid out flat around wherever that
+       centre landed. The app slerps 0.85 toward the camera rather than 1.0,
+       keeping a little tilt, because there the text is decoration on your own
+       desktop. Here it is copy on a marketing page that a visitor is actually
+       reading — a sheared "1.2M tok month" is a rendering fault, not depth —
+       so it is a full billboard.
+
+       What the camera still gives it is the two things that sell the volume:
+       PARALLAX (the line slides against the particles as the view swings,
+       because it sits at z=0 inside a slab that spans ±uSlab/2) and SCALE
+       (uCamR/w shrinks it as the camera pulls back). At the resting pose
+       cc.w == uCamR exactly, so this reduces to `target + d` — the flat
+       formula it replaces, bit for bit. */
+    '  vec4 cc = uViewProj * vec4(uCenter * uAspect, 0.0, 1.0);',
+    '  float w = max(cc.w, 0.35);',
+    '  float persp = uCamR / w;',
+    '  gl_Position = vec4(cc.xy / w + (target - uCenter + d) * persp, 0.0, 1.0);',
     '  vColor = uTint;',
     /* twinkle deeper than the field's so the text reads as ALIVE, not printed;
        the (1 - u) term means scattered particles are dim and only the ones that
@@ -539,7 +584,7 @@ vec3 procColor(vec2 p, float t){
        seven times its own cell, so neighbouring dots buried each other and the
        strokes fused into a smear. Sizing to the lattice is what makes the text
        legible; the small uForm term keeps a little swell as it lands. */
-    '  gl_PointSize = max(1.0, uPtPx * (0.90 + 0.10 * uForm)) * uBloom;',
+    '  gl_PointSize = max(1.0, uPtPx * (0.90 + 0.10 * uForm) * clamp(persp, 0.5, 2.2)) * uBloom;',
     '}'
   ].join('\n');
 
@@ -603,6 +648,100 @@ vec3 procColor(vec2 p, float t){
     return o;
   }
   function ease(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return 1 - Math.pow(1 - t, 3); }
+  function easeInOut(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     THE CAMERA — a port of src/renderer/wallpaper-view3d.js (the app's Pro
+     「3D 自由视角」). Same spherical model, same sensitivities, same exactness
+     rule; only the LIMITS differ, and deliberately so. In the app this field
+     IS the screen and the user is holding it, so it opens to 66°. Here it is
+     the background behind a page of copy — swing it that far and the reader
+     is on a boat. The ranges below are the widest that still read as "someone
+     is flying this" without the text appearing to move.
+
+     Everything the choreography already computes in 3D is finally used: the
+     ten danceAt() modes each return a real o.z, and every one of them was
+     being thrown away by `gl_Position = vec4(..., 0.0, 1.0)`.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* Reference distance — and the strength of the whole effect. It is the only
+     number here that decides how three-dimensional the field looks, because it
+     sets the field of view: the slab is a fixed depth, so a nearer camera sees
+     more difference between its front and its back. At 3.0 a front particle was
+     23% bigger than a back one and it read as a flat field with a wobble. At
+     2.35 it is 44%, and the cloud has an inside.
+
+     Lower still starts to fish-eye the corners on a wide monitor. sx/sy are
+     derived from THIS, never from the live radius, which is what leaves dist
+     free to zoom instead of cancelling itself out. */
+  var CAM_R = 2.35;
+
+  var VIEW_AZ_MAX = 0.30, VIEW_EL_MAX = 0.185;
+  /* Mostly zoom IN. Pulling back shrinks the particle sheet away from the
+     screen edge, and past the overscan below that reads as the field ending;
+     pushing in only ever crops. */
+  var VIEW_DIST_MIN = 0.74, VIEW_DIST_MAX = 1.07;
+  /* Seed the sheet wider than the screen so a rotated or pulled-back field
+     never shows its own edge. 1.07 dist insets 6.5%, 0.30rad az insets 4.5%,
+     and the back of the slab now pulls in 15% of its own accord as it recedes.
+     24% covers all three; below that the far particles thin out along the edges
+     and you can see where the sheet stops. */
+  var FIELD_OVERSCAN = 1.24;
+
+  /* The app's numbers: one screen-width of drag ≈ half a turn. */
+  var ORBIT_AZ_PER_PX = 0.0062, ORBIT_EL_PER_PX = 0.0048;
+
+  /* az=el=0, dist=1 must give EXACTLY (0,0,r) — not 1e-17 off it. Everything
+     below (reduced-motion, the pre-first-gesture frames, the resting pose the
+     demo returns to) has to render bit-identically to the flat field this
+     replaced, and a camera a hair off axis moves every particle a hair. */
+  function orbitPosition(r, az, el) {
+    var ce = Math.cos(el), se = Math.sin(el);
+    return { x: r * ce * Math.sin(az), y: r * se, z: r * ce * Math.cos(az) };
+  }
+
+  /* Shortest way round. Handing back from a drag that wrapped past ±180°
+     should travel 2°, not 358°. */
+  function shortestArc(from, to) {
+    var d = to - from, TAU = Math.PI * 2;
+    while (d > Math.PI) d -= TAU;
+    while (d < -Math.PI) d += TAU;
+    return d;
+  }
+
+  var clamp = function (v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; };
+
+  /* view-projection, column-major for uniformMatrix4fv.
+
+     The projection is deliberately degenerate in Z (row 2 is all zeros, so
+     gl_Position.z is always 0). There is no depth buffer here — the context is
+     created with depth:false and the blend is additive, so ordering is free —
+     and a zeroed clip z can never fall outside [-w, w]. A conventional
+     near/far would start clipping particles out of the slab for no gain. */
+  function viewProj(out, az, el, dist, aspectX, aspectY) {
+    var r = CAM_R * dist;
+    var eye = orbitPosition(r, az, el);
+    /* forward = normalize(origin - eye) = -eye/r */
+    var fx = -eye.x / r, fy = -eye.y / r, fz = -eye.z / r;
+    /* s = normalize(cross(f, up)) with up = +Y, which expands to (-f.z, 0, f.x).
+       |el| <= 0.185 so this never degenerates. */
+    var sx0 = -fz, sy0 = 0, sz0 = fx;
+    var sl = Math.sqrt(sx0 * sx0 + sz0 * sz0) || 1;
+    sx0 /= sl; sz0 /= sl;
+    /* u = cross(s, f) */
+    var ux = sy0 * fz - sz0 * fy, uy = sz0 * fx - sx0 * fz, uz = sx0 * fy - sy0 * fx;
+    var ds = sx0 * eye.x + sy0 * eye.y + sz0 * eye.z;
+    var du = ux * eye.x + uy * eye.y + uz * eye.z;
+    var df = fx * eye.x + fy * eye.y + fz * eye.z;
+    /* At z=0 this reproduces the old `p / uAspect` exactly. */
+    var px = CAM_R / aspectX, py = CAM_R / aspectY;
+    /* rows: [px*s, py*u, 0, f] → transposed into columns */
+    out[0] = px * sx0; out[4] = px * sy0; out[8]  = px * sz0; out[12] = px * -ds;
+    out[1] = py * ux;  out[5] = py * uy;  out[9]  = py * uz;  out[13] = py * -du;
+    out[2] = 0;        out[6] = 0;        out[10] = 0;        out[14] = 0;
+    out[3] = fx;       out[7] = fy;       out[11] = fz;       out[15] = -df;
+    return out;
+  }
   /* Ask every source, because there are real situations — a webview still
      laying out, a background-restored tab, an offscreen iframe — where the
      first two report 0. Returning 0 is the honest answer; the caller must wait
@@ -651,9 +790,11 @@ vec3 procColor(vec2 p, float t){
                                      'skyMode', 'skySeed', 'skyTop', 'skyHaze', 'skySun', 'sunPos']);
     this.uFld = u(gl, this.fldProg, ['time', 'bloom', 'dpr', 'aspect', 'ripples', 'alphaScale', 'hasCover', 'exposure',
                                      'skyMode', 'skySeed', 'skyTop', 'skyHaze', 'skySun', 'sunPos',
-                                     'danceAmt', 'danceMode', 'danceT', 'danceCenter', 'danceDir']);
+                                     'danceAmt', 'danceMode', 'danceT', 'danceCenter', 'danceDir',
+                                     'viewProj', 'camR', 'depth', 'slab']);
     this.uGly = u(gl, this.glyProg, ['form', 'vis', 'out', 'inMode', 'outMode', 'stagger', 'time',
-                                     'bloom', 'dpr', 'ptPx', 'center', 'size', 'drift', 'aspect', 'tint', 'alphaScale']);
+                                     'bloom', 'dpr', 'ptPx', 'center', 'size', 'drift', 'aspect', 'tint', 'alphaScale',
+                                     'viewProj', 'camR']);
 
     this.aBedPos = gl.getAttribLocation(this.bedProg, 'aPos');
     this.aHome = gl.getAttribLocation(this.fldProg, 'aHome');
@@ -672,6 +813,18 @@ vec3 procColor(vec2 p, float t){
     this.glyphIdx = 0; this.glyphSide = 1;
     this.nextFillAt = 0;
     this.t = 0; this.raf = 0;
+
+    /* The camera, and the hand on it. `az/el/dist` are what gets rendered;
+       `to*` is where the current gesture is taking them. `grab` is a real
+       pointer holding it, which outranks the demo. */
+    this.view = {
+      az: 0, el: 0, dist: 1,
+      fromAz: 0, fromEl: 0, fromDist: 1,
+      toAz: 0, toEl: 0, toDist: 1,
+      t: 0, dur: 0, hold: 1400, kind: 'rest',
+      grab: null, vAz: 0, vEl: 0, idle: 0, on: !REDUCE
+    };
+    this.vp = new Float32Array(16);
 
     this.off = document.createElement('canvas');
     this.off.width = MW; this.off.height = MH;
@@ -790,15 +943,18 @@ vec3 procColor(vec2 p, float t){
 
   Field.prototype.seed = function () {
     var gl = this.gl;
-    var want = Math.min(26000, Math.round((this.w * this.h) / 64));
+    /* Overscanning without paying for it would simply spread the same dots
+       over a bigger sheet and thin the field out everywhere. Buy the area
+       back, but keep the same ceiling so the top end is unchanged. */
+    var want = Math.min(26000, Math.round((this.w * this.h) / 64 * FIELD_OVERSCAN * FIELD_OVERSCAN));
     var cols = Math.max(2, Math.round(Math.sqrt(want * (this.w / this.h))));
     var rows = Math.max(2, Math.round(want / cols));
     var n = cols * rows; this.n = n;
     var home = new Float32Array(n * 2), seed = new Float32Array(n * 2), i = 0;
     for (var y = 0; y < rows; y++) {
       for (var x = 0; x < cols; x++) {
-        home[i * 2] = ((x + 0.5 + (Math.random() - 0.5) * 0.92) / cols) * 2 - 1;
-        home[i * 2 + 1] = 1 - ((y + 0.5 + (Math.random() - 0.5) * 0.92) / rows) * 2;
+        home[i * 2] = (((x + 0.5 + (Math.random() - 0.5) * 0.92) / cols) * 2 - 1) * FIELD_OVERSCAN;
+        home[i * 2 + 1] = (1 - ((y + 0.5 + (Math.random() - 0.5) * 0.92) / rows) * 2) * FIELD_OVERSCAN;
         seed[i * 2] = Math.random(); seed[i * 2 + 1] = Math.random();
         i++;
       }
@@ -1132,10 +1288,112 @@ vec3 procColor(vec2 p, float t){
     this.ripples.push({ x: x, y: y, t: 0, s: s == null ? 1 : s });
   };
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     THE HAND — a simulated user flying the camera.
+
+     The brief was "simulate a real user dragging and zooming", and the thing
+     that separates that from a screensaver is not the path, it is the TIMING.
+     A camera on a sine wave reads as an animation within about two seconds:
+     constant speed, no destination, perfectly periodic. A person moves in
+     discrete gestures — reach, ease out, STOP, look, reach again — at
+     unpredictable intervals, and never quite holds still while they do it.
+
+     So: a queue of one gesture at a time (drag / zoom / dwell), each with its
+     own eased ramp and its own dwell afterwards, all durations randomised, and
+     a continuous low-frequency tremor underneath so no pose is ever perfectly
+     static. The tremor is what stops the dwells from looking like the tab
+     froze.
+     ═══════════════════════════════════════════════════════════════════════ */
+  Field.prototype._pickGesture = function () {
+    var v = this.view, R = Math.random();
+    v.fromAz = v.az; v.fromEl = v.el; v.fromDist = v.dist;
+    v.t = 0;
+    if (R < 0.50) {
+      /* A drag. Aim somewhere genuinely else, not a nudge — but bias away from
+         wherever it already is, so it does not shuffle around one spot. */
+      v.kind = 'drag';
+      var wantAz = (Math.random() * 2 - 1) * VIEW_AZ_MAX;
+      var wantEl = (Math.random() * 2 - 1) * VIEW_EL_MAX;
+      if (Math.abs(wantAz - v.az) < VIEW_AZ_MAX * 0.55) wantAz = -wantAz * 0.85;
+      v.toAz = clamp(wantAz, -VIEW_AZ_MAX, VIEW_AZ_MAX);
+      v.toEl = clamp(wantEl, -VIEW_EL_MAX, VIEW_EL_MAX);
+      v.toDist = v.dist;
+      /* 1.1s is a flick, 3.4s is a slow considered swing. Both happen. */
+      v.dur = 1100 + Math.random() * 2300;
+      v.hold = 420 + Math.random() * 1500;
+    } else if (R < 0.78) {
+      /* A zoom. Nobody zooms on a perfectly straight axis, so it carries a
+         small azimuth drift with it. */
+      v.kind = 'zoom';
+      v.toDist = VIEW_DIST_MIN + Math.random() * (VIEW_DIST_MAX - VIEW_DIST_MIN);
+      if (Math.abs(v.toDist - v.dist) < 0.10) v.toDist = v.dist > 0.9 ? VIEW_DIST_MIN : VIEW_DIST_MAX;
+      v.toAz = clamp(v.az + (Math.random() * 2 - 1) * 0.10, -VIEW_AZ_MAX, VIEW_AZ_MAX);
+      v.toEl = clamp(v.el + (Math.random() * 2 - 1) * 0.05, -VIEW_EL_MAX, VIEW_EL_MAX);
+      v.dur = 1600 + Math.random() * 1900;
+      v.hold = 600 + Math.random() * 1700;
+    } else {
+      /* Stop and look at it. */
+      v.kind = 'dwell';
+      v.toAz = v.az; v.toEl = v.el; v.toDist = v.dist;
+      v.dur = 300;
+      v.hold = 900 + Math.random() * 2000;
+    }
+  };
+
+  Field.prototype._stepView = function (dt) {
+    var v = this.view;
+    if (!v.on) { v.az = 0; v.el = 0; v.dist = 1; return; }
+
+    if (v.grab) {
+      /* A real pointer outranks the demo entirely. */
+      v.idle = 0;
+      return;
+    }
+
+    /* Just let go: coast on the flick, then hand back to the demo. */
+    if (v.vAz || v.vEl) {
+      v.az = clamp(v.az + v.vAz * dt, -VIEW_AZ_MAX * 1.9, VIEW_AZ_MAX * 1.9);
+      v.el = clamp(v.el + v.vEl * dt, -VIEW_EL_MAX * 1.9, VIEW_EL_MAX * 1.9);
+      var damp = Math.pow(0.0016, dt / 1000);
+      v.vAz *= damp; v.vEl *= damp;
+      if (Math.abs(v.vAz) < 1e-6 && Math.abs(v.vEl) < 1e-6) { v.vAz = 0; v.vEl = 0; }
+    }
+
+    v.idle += dt;
+    /* Two and a half seconds of stillness before the demo takes the controls
+       back. Any less and it feels like the page is wrestling the user for the
+       mouse the moment they pause mid-drag. */
+    if (v.idle < 2500) return;
+
+    v.t += dt;
+    if (v.t >= v.dur + v.hold) this._pickGesture();
+
+    var u = v.dur > 0 ? clamp(v.t / v.dur, 0, 1) : 1;
+    var k = easeInOut(u);
+    /* A hand overshoots a little and settles back; a tween does not. Only on
+       the drags, and only on the tail, where a real arm actually does it. */
+    if (v.kind === 'drag' && u > 0.55) k += Math.sin((u - 0.55) / 0.45 * Math.PI) * 0.055;
+
+    v.az = v.fromAz + shortestArc(v.fromAz, v.toAz) * k;
+    v.el = v.fromEl + (v.toEl - v.fromEl) * k;
+    v.dist = v.fromDist + (v.toDist - v.fromDist) * easeInOut(u);
+
+    /* The tremor. Three incommensurate periods so it never repeats inside a
+       visit, at an amplitude you read rather than see. */
+    var ts = this.t * 0.001;
+    v.az += Math.sin(ts * 0.27) * 0.0075 + Math.sin(ts * 0.61 + 1.7) * 0.0034;
+    v.el += Math.cos(ts * 0.23 + 0.9) * 0.0052 + Math.sin(ts * 0.49) * 0.0021;
+
+    v.az = clamp(v.az, -VIEW_AZ_MAX * 1.15, VIEW_AZ_MAX * 1.15);
+    v.el = clamp(v.el, -VIEW_EL_MAX * 1.15, VIEW_EL_MAX * 1.15);
+    v.dist = clamp(v.dist, VIEW_DIST_MIN, VIEW_DIST_MAX);
+  };
+
   Field.prototype.step = function (dt) {
     if (!this.ready) { this.resize(); if (!this.ready) return; }
     this.t += dt;
     var now = this.t;
+    this._stepView(dt);
 
     /* ── advance every live slot ── */
     for (var i = 0; i < SLOTS; i++) {
@@ -1203,6 +1461,14 @@ vec3 procColor(vec2 p, float t){
     if (!this.ready) return;
     var gl = this.gl, t = this.t * 0.001;
     gl.disable(gl.DEPTH_TEST);
+    /* One matrix per frame, shared by the field and the glyphs — they have
+       to agree exactly or the text drifts off the particles it belongs to.
+       The BED is deliberately left out of it: it stays a flat full-screen
+       pass. Rotating the plate as well would swing its edges into view, and
+       there is nothing behind it to show. Keeping it fixed is also what
+       makes the parallax legible — the particles move against something. */
+    var vv = this.view;
+    viewProj(this.vp, vv.az, vv.el, vv.dist, this.aspect[0], this.aspect[1]);
 
     /* ── 1. the galaxy ── */
     gl.useProgram(this.bedProg);
@@ -1273,6 +1539,14 @@ vec3 procColor(vec2 p, float t){
     gl.uniform1f(this.uFld.danceT, this.dance.t);
     gl.uniform2f(this.uFld.danceCenter, this.dance.cx, this.dance.cy);
     gl.uniform2f(this.uFld.danceDir, this.dance.dx, this.dance.dy);
+    gl.uniformMatrix4fv(this.uFld.viewProj, false, this.vp);
+    gl.uniform1f(this.uFld.camR, CAM_R);
+    /* How hard the choreography pushes in depth, and how thick the resting
+       slab is. Both are in the same units as the sheet (which spans ±aspect),
+       so 0.85 is a slab about as deep as the screen is tall — the field is a
+       volume of stars rather than a curtain of them. */
+    gl.uniform1f(this.uFld.depth, 1.30);
+    gl.uniform1f(this.uFld.slab, 0.85);
 
     var fg = Math.min(1.15, Math.max(0.55, this.exposure));
     gl.uniform1f(this.uFld.bloom, 1.0);
@@ -1298,6 +1572,8 @@ vec3 procColor(vec2 p, float t){
     gl.uniform1f(this.uGly.time, t);
     gl.uniform1f(this.uGly.dpr, this.dpr);
     gl.uniform2fv(this.uGly.aspect, this.aspect);
+    gl.uniformMatrix4fv(this.uGly.viewProj, false, this.vp);
+    gl.uniform1f(this.uGly.camR, CAM_R);
 
     for (var i = 0; i < SLOTS; i++) {
       var s = this.slots[i];
@@ -1406,6 +1682,83 @@ vec3 procColor(vec2 p, float t){
     var CLICKABLE = 'a,button,input,select,textarea,label,summary,details,[role="button"],[onclick],[contenteditable]';
     var downX = 0, downY = 0;
     document.addEventListener('pointerdown', function (e) { downX = e.clientX; downY = e.clientY; }, true);
+
+    /* ── The visitor can fly it too ────────────────────────────────────────
+       The demo above is the default state; a real drag takes over from it and
+       hands back 2.5s after release.
+
+       Three rules keep a background from behaving like a foreground:
+
+       · MOUSE ONLY. On a touch screen a drag IS the scroll gesture, and there
+         is no way to know which one was meant until the page has already
+         failed to move. Phones get the demo and nothing else.
+
+       · BLANK SPACE ONLY. Not a link, not a control — and not on top of live
+         text either, which is the case the CLICKABLE list misses: dragging
+         across a paragraph is how you select it. The test is whether the
+         element under the press owns a non-empty text node of its own, which
+         is true of a <p> and false of the section padding around it.
+
+       · THE WHEEL IS NOT OURS. This page is a hundred screens tall; a
+         background that swallowed wheel events to zoom would break the only
+         gesture that matters on it. Zoom is something the demo does.
+
+       Selection is suppressed only for the duration of a drag that already
+       started on blank space, and restored on release. The existing
+       click-rolls-a-new-sky handler needs no change — it already ignores any
+       pointer that moved more than 6px, so an orbit never also rolls the sky. */
+    var HAS_TEXT = function (el) {
+      if (!el || !el.childNodes) return false;
+      for (var i = 0; i < el.childNodes.length; i++) {
+        var n = el.childNodes[i];
+        if (n.nodeType === 3 && n.textContent && n.textContent.trim()) return true;
+      }
+      return false;
+    };
+    var prevSel = '';
+    function endGrab() {
+      var v = field.view;
+      if (!v.grab) return;
+      /* Carry the flick. Sampled over the last move rather than the whole
+         drag, so a slow reposition ending in a stop coasts nowhere. */
+      v.vAz = clamp(v.grab.vAz, -0.0022, 0.0022);
+      v.vEl = clamp(v.grab.vEl, -0.0018, 0.0018);
+      v.grab = null; v.idle = 0;
+      document.body.style.userSelect = prevSel;
+      document.body.style.webkitUserSelect = prevSel;
+    }
+    document.addEventListener('pointerdown', function (e) {
+      if (!field.ok || REDUCE || !field.view.on) return;
+      if (e.pointerType && e.pointerType !== 'mouse') return;
+      if (e.button !== 0) return;
+      if (e.target.closest && e.target.closest(CLICKABLE)) return;
+      if (HAS_TEXT(e.target)) return;
+      field.view.grab = { x: e.clientX, y: e.clientY, vAz: 0, vEl: 0, moved: false };
+      field.view.vAz = 0; field.view.vEl = 0;
+    });
+    document.addEventListener('pointermove', function (e) {
+      var v = field.view, g = v.grab;
+      if (!g) return;
+      var dx = e.clientX - g.x, dy = e.clientY - g.y;
+      g.x = e.clientX; g.y = e.clientY;
+      if (!g.moved && Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY) < 4) return;
+      if (!g.moved) {
+        g.moved = true;
+        prevSel = document.body.style.userSelect || '';
+        document.body.style.userSelect = 'none';
+        document.body.style.webkitUserSelect = 'none';
+      }
+      /* Wider than the demo's own range — a hand that pulls should get further
+         than the demo goes — but still bounded, and it springs back once the
+         demo resumes. */
+      v.az = clamp(v.az + dx * ORBIT_AZ_PER_PX, -VIEW_AZ_MAX * 1.9, VIEW_AZ_MAX * 1.9);
+      v.el = clamp(v.el - dy * ORBIT_EL_PER_PX, -VIEW_EL_MAX * 1.9, VIEW_EL_MAX * 1.9);
+      g.vAz = dx * ORBIT_AZ_PER_PX / 16;
+      g.vEl = -dy * ORBIT_EL_PER_PX / 16;
+    });
+    document.addEventListener('pointerup', endGrab);
+    document.addEventListener('pointercancel', endGrab);
+    window.addEventListener('blur', endGrab);
     document.addEventListener('click', function (e) {
       if (!field.ok) return;
       if (tag && tag.hasAttribute('data-bed')) return;   /* the page pinned its own */

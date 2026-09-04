@@ -244,6 +244,21 @@ db.exec(`
 
   -- ── Terse Cowork (collaborative multi-agent office) ──
   -- One row per live coding-agent session, upserted as the agent works.
+  -- ── 项目粒子的广场 ──
+  -- 存的是一颗"胶囊":标题 + 224px 封面 data URL + 几行字。服务器不渲染、不转码,
+  -- 收到的人在自己机器上用同一台粒子引擎生成画面 —— 所以这张表就是这个功能的
+  -- 全部服务器成本,而 capsule 的大小就是那张账单。
+  CREATE TABLE IF NOT EXISTS wall_projects (
+    id TEXT PRIMARY KEY,
+    identity TEXT NOT NULL,
+    title TEXT NOT NULL,
+    capsule TEXT NOT NULL,
+    views INTEGER DEFAULT 0,
+    published_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_wall_projects_time ON wall_projects(published_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_wall_projects_identity ON wall_projects(identity);
+
   CREATE TABLE IF NOT EXISTS cowork_sessions (
     id TEXT PRIMARY KEY,
     team_id TEXT NOT NULL REFERENCES cloud_teams(id) ON DELETE CASCADE,
@@ -1585,7 +1600,21 @@ const sweepPairCodes = db.prepare(`
      AND pair_expires_at < datetime('now', '-1 hour')
 `);
 
+// ── 项目粒子广场 ──
+const upsertWallProject = db.prepare(`
+  INSERT INTO wall_projects (id, identity, title, capsule)
+  VALUES (@id, @identity, @title, @capsule)
+  ON CONFLICT(id) DO UPDATE SET title = @title, capsule = @capsule, published_at = datetime('now')
+`);
+const listWallProjects = db.prepare(
+  'SELECT id, title, capsule, views, published_at FROM wall_projects ORDER BY published_at DESC LIMIT @limit');
+const countWallProjects = db.prepare(
+  'SELECT COUNT(*) AS n FROM wall_projects WHERE identity = @identity');
+const bumpWallProjectViews = db.prepare('UPDATE wall_projects SET views = views + 1 WHERE id = ?');
+const deleteWallProject = db.prepare('DELETE FROM wall_projects WHERE id = @id AND identity = @identity');
+
 module.exports = {
+  upsertWallProject, listWallProjects, countWallProjects, bumpWallProjectViews, deleteWallProject,
   db,
   upsertUser, getUser, ensureUser, updateStripeConnect,
   addSellerKey, getSellerKeys, getSellerKeyFull, updateSellerKey, deleteSellerKey,

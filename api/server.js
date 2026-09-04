@@ -1241,6 +1241,10 @@ app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
 // its own unit, so it does NOT go through team auth.
 const roomsRouter = require('./rooms');
 app.use('/api/cloud/rooms', cloudIngestLimiter, roomsRouter);
+
+// 项目粒子的广场。只存 JSON、只发 JSON —— 画面是在每个人自己的机器上生成的。
+const projectsRouter = require('./projects');
+app.use('/api/cloud/projects', cloudIngestLimiter, projectsRouter);
 // Presence decays on a timer, not off the back of whoever happens to read next:
 // that way a member who closed their laptop goes offline once, promptly, and
 // everybody still in the room is told. 20s is comfortably inside the 45s window.

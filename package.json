@@ -17,6 +17,7 @@
     "test:pushcut": "node api/pushcut.test.js",
     "test:webpush": "node api/webpush.test.js",
     "test:link": "node api/link.test.js",
+    "test:projects": "node api/projects.test.js",
     "test:qr": "node src/renderer/qr.test.mjs",
     "test:wallpaper-api": "node api/wallpaper.test.js",
     "test:wallpaper-hud": "node src/renderer/wallpaper-hud.test.mjs",

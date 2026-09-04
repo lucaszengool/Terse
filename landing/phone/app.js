@@ -1174,7 +1174,12 @@
   var LS_BED = 'terse-phone-bed';
 
   function bedId() {
-    try { return localStorage.getItem(LS_BED) || (window.TerseBeds && window.TerseBeds.DEFAULT_ID) || 'aurora'; }
+    /* VOID BY DEFAULT. The app is a black room with particles in it, and every
+       other backdrop paints a coloured wash across the whole screen — aurora
+       put a teal cast on the cards, the tab bar and the type, and the field
+       stopped being the only light in the picture. The coloured beds stay, one
+       tap away, for people who want them. */
+    try { return localStorage.getItem(LS_BED) || 'void'; }
     catch (e) { return 'aurora'; }
   }
 

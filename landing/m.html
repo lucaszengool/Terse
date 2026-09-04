@@ -300,7 +300,7 @@
 
   <main>
     <!-- ── 壁纸 ─────────────────────────────────────────────────────── -->
-    <section class="view on" id="v-wallpaper">
+    <section class="view on" id="v-field">
       <!-- Shown only when the field genuinely failed to draw. A blank canvas is
            otherwise indistinguishable from a calm one, which is how this went
            unnoticed in the first place. -->
@@ -316,65 +316,21 @@
         <pre class="diag hide" id="fieldErrDump"></pre>
       </div>
 
-      <!-- ── The actual iPhone wallpaper ──
-           Not the in-app field: a still captured FROM it, which an iOS Shortcut
-           automation sets as the real Home Screen wallpaper. iOS has no API for
-           this — for web apps or native ones — and Shortcuts can only set a
-           still, so this is the furthest the platform goes. -->
-      <div class="card" id="wallCard">
+      <!-- ── The field ──
+           This is the app now. #stage is already fixed behind everything, so
+           this card holds only what CHANGES the field — a backdrop to light the
+           particles, and a note about turning it. Deploying it as a wallpaper,
+           and every route that tried to keep it alive with the app closed, was
+           taken out: each one needed somebody else's paid product or ran into
+           an Apple limit that no amount of work moves. -->
+      <div class="card" id="fieldCard">
         <div class="row">
-          <h2 class="grow" data-t="wall_title">iPhone wallpaper</h2>
-          <span class="tiny" id="wallAge"></span>
+          <h2 class="grow" data-t="wall_title">Your agents, as a field</h2>
         </div>
         <p data-t="wall_body"></p>
-        <!-- The backdrops Terse ships. Picking one is the whole setup: it starts
-             the capture immediately, so there is a wallpaper ready without the
-             user having to find a photo first. -->
         <div class="row"><span class="grow tiny" data-t="wall_pickbed">Pick a backdrop</span></div>
         <div class="bedrow" id="bedRow"></div>
-        <!-- A real iPhone, showing the real frames. Once captured, these ARE the
-             images that go on the Home Screen, cycled at the same two seconds
-             the Shortcut loop uses — so the preview is the feature running, not
-             an illustration of it. -->
-        <div class="ipreview">
-        </div>
-        <!-- The fastest route to a real wallpaper, and the one that needs no
-             Shortcut at all: iOS lets you long-press any image in a web page and
-             "Add to Photos". Hidden until there is actually an image to press. -->
-        <p class="savehint hide" id="wallSaveHint" data-t="wall_longpress"></p>
-        <!-- One button. It renders the frames AND the transparent layer and
-             uploads both — there is no reason to make somebody choose between
-             them before they know what either one is. -->
-        <button class="btn primary wide" id="wallCapture" type="button" data-t="wall_deploy">Deploy to my iPhone</button>
-        <p class="tiny" id="wallDeployNote" data-t="wall_deploy_note"></p>
-
-        <details class="fold">
-          <summary data-t="wall_adv">Other ways to use it</summary>
-          <button class="btn wide" id="wallOverlay" type="button" data-t="wall_overlay">Keep my own wallpaper, add the text</button>
-          <button class="btn wide" id="wallVideo" type="button" data-t="wall_video">Live Photo (may not animate)</button>
-        </details>
-        <div id="wallSetup" class="hide" style="display:flex;flex-direction:column;gap:10px">
-          <!-- The one-tap route, when a ready-made Shortcut has been published.
-               Hidden otherwise, and the written steps below stand alone. -->
-          <a class="btn primary wide hide" id="wallShortcut" target="_blank" rel="noopener"
-             data-t="wall_getshortcut">Add the Terse shortcut</a>
-          <p class="tiny hide" id="wallShortcutNote" data-t="wall_getshortcut_note"></p>
-          <div class="row">
-            <input type="text" id="wallUrl" class="grow" readonly style="font-size:12px;font-family:ui-monospace,monospace">
-            <button class="btn" id="wallCopy" type="button" data-t="copy">Copy</button>
-          </div>
-          <!-- The one deep link iOS actually honours. There is no scheme that
-               opens the Automation tab, and App-Prefs stopped navigating to a
-               Settings category in iOS 18 — so this opens Shortcuts and the
-               checklist below says what to do once there. -->
-          <a class="btn wide" id="wallOpenShortcuts" href="shortcuts://" data-t="wall_open_shortcuts">Open Shortcuts</a>
-
-          <div id="wallSteps"></div>
-
-
-
-          <button class="btn ghost wide" id="wallRotate" type="button" data-t="wall_rotate">Reset this link</button>
-        </div>
+        <p class="tiny" data-t="field_turn">Drag to turn it. Pinch to move closer. Double-tap to recentre.</p>
       </div>
 
       <div class="stats">
@@ -492,7 +448,7 @@
   </main>
 
   <nav>
-    <button data-tab="wallpaper" class="on" type="button"><span class="g">◆</span><span data-t="t_wallpaper">Wallpaper</span></button>
+    <button data-tab="field" class="on" type="button"><span class="g">◆</span><span data-t="t_field">Field</span></button>
     <button data-tab="plaza" type="button"><span class="g">◎</span><span data-t="t_plaza">Plaza</span></button>
     <button data-tab="room" type="button"><span class="g">▣</span><span data-t="t_room">Room</span></button>
     <button data-tab="friends" type="button"><span class="g">☰</span><span data-t="t_friends">Friends</span></button>

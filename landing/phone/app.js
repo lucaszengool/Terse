@@ -28,7 +28,7 @@
   var STR = {
     en: {
       brand: 'Terse',
-      t_wallpaper: 'Wallpaper', t_plaza: 'Plaza', t_room: 'Room', t_friends: 'Friends', t_me: 'Me',
+      t_field: 'Field', t_plaza: 'Plaza', t_room: 'Room', t_friends: 'Friends', t_me: 'Me',
       k_today: 'Today', k_saved: 'Saved', k_agents: 'Agents',
       live_agents: 'Live agents', style: 'Style',
       pick_photo: 'Use my photo', clear_photo: 'Clear',
@@ -181,7 +181,7 @@
     },
     zh: {
       brand: 'Terse',
-      t_wallpaper: '壁纸', t_plaza: '广场', t_room: '房间', t_friends: '好友', t_me: '我',
+      t_field: '场', t_plaza: '广场', t_room: '房间', t_friends: '好友', t_me: '我',
       k_today: '今日', k_saved: '已省', k_agents: '智能体',
       live_agents: '运行中的智能体', style: '风格',
       pick_photo: '使用我的照片', clear_photo: '清除',
@@ -838,7 +838,7 @@
 
   // ── Tabs ─────────────────────────────────────────────────────────────────
 
-  var current = 'wallpaper';
+  var current = 'field';
   function show(tab) {
     current = tab;
     var views = document.querySelectorAll('.view');
@@ -847,15 +847,7 @@
     for (var j = 0; j < btns.length; j++) btns[j].classList.toggle('on', btns[j].dataset.tab === tab);
     // The wallpaper tab is the only one meant to be looked THROUGH; everywhere
     // else the field is a backdrop and the text has to win.
-    $('scrim').classList.toggle('clear', tab === 'wallpaper');
-    /* The wallpaper card moved to this tab but its render was still being
-       driven from the Me tab, where it used to live — so the backdrops, the
-       phone preview and its icons only appeared if you happened to visit Me
-       first. It belongs with the tab it is on. */
-    if (tab === 'wallpaper') {
-      renderWall();
-      if (T.signedIn() && !wallState) loadWall();
-    }
+    $('scrim').classList.toggle('clear', tab === 'field');
     if (tab === 'plaza') loadPlaza();
     if (tab === 'friends') loadFriends();
     if (tab === 'room') renderRoom();
@@ -1077,7 +1069,6 @@
 
   // ── The actual iPhone wallpaper ───────────────────────────────────────────
 
-  var wallState = null;
 
   function ago(iso) {
     if (!iso) return null;
@@ -1089,78 +1080,6 @@
     var h = Math.round(m / 60);
     if (h < 48) return h + (lang === 'zh' ? ' 小时' : 'h');
     return Math.round(h / 24) + (lang === 'zh' ? ' 天' : 'd');
-  }
-
-  function renderWall() {
-    /* Both drawn before the early return below. They are local — the backdrops
-       and the phone's own icons and clock — and should be there immediately,
-       not after the first API round-trip. The chrome sat after the return once,
-       and the Home Screen came up with an empty dock and no icons whenever the
-       wallpaper state had not loaded. */
-    renderBeds();
-    // Drawn here, not from renderMe. The steps belong to this card, and being
-    // rendered from the tab the card used to live on meant they only appeared
-    // if you happened to open Me first — the fifth time that exact mistake was
-    // made in this file, which is why the wiring test now asserts it.
-    renderWallSteps();
-    var card = $('wallCard');
-    if (!card) return;
-    // The whole feature is per-account: the URL is minted for one, and the
-    // capture is of that account's own styling and entitlement.
-    card.classList.toggle('hide', !T.signedIn());
-    if (!wallState) return;
-
-    $('wallSetup').classList.toggle('hide', !wallState.url);
-    // The .mp4 link once a video exists: it is the one that animates, so it is
-    // the one worth copying.
-    if (wallState.url) {
-      // Preference order reflects which route keeps the most of what the user
-      // already has: their own wallpaper, then motion, then a whole frame.
-      /* ALWAYS the frame link.
-         This used to prefer the overlay when one existed, on the theory that
-         the newest thing was the most wanted. It is the opposite: the overlay
-         is a transparent layer for the Overlay Images route, and handing it to
-         Set Wallpaper gives iOS an image with nothing behind it — which fails
-         as "com.apple.extensionKit.errorDomain 错误 2", a message that says
-         nothing about the cause. The other two links live in their own
-         sections, where what they are is written next to them. */
-      $('wallUrl').value = wallState.url;
-    }
-
-    // The ready-made Shortcut, when one has been published. Its absence is a
-    // supported state — the written steps below work on their own.
-    /* shortcuts:// only exists on iOS. On anything else the button is a link
-       that fails silently, which is exactly the dead-control problem the wiring
-       test was written for. */
-    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
-      || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-    $('wallOpenShortcuts').classList.toggle('hide', !isIOS);
-
-    var sc = $('wallShortcut'), scNote = $('wallShortcutNote');
-    if (wallState.shortcut_url) {
-      sc.href = wallState.shortcut_url;
-      sc.classList.remove('hide');
-      scNote.classList.remove('hide');
-    } else {
-      sc.classList.add('hide');
-      scNote.classList.add('hide');
-    }
-
-    var age = ago(wallState.fetched_at);
-    $('wallAge').textContent = !wallState.ready ? ''
-      : (wallState.frames + ' · ' + (age ? t('wall_ago').replace('{t}', age) : t('wall_never')));
-
-    if (wallState.ready && wallState.url) {
-      /* One <img> per stored frame. Each fetch of the URL returns the NEXT one,
-         so asking for it `frames` times with different cache-busters collects
-         the whole ring — the same mechanism the Shortcut relies on, which is
-         why seeing it work here is worth something. */
-      var n = Math.max(1, Math.min(wallState.frames || 1, 12));
-      var stamp = Date.now();
-      var urls = [];
-      for (var i = 0; i < n; i++) urls.push(wallState.url + '?v=' + stamp + '-' + i);
-      $('wallSaveHint').classList.remove('hide');
-    }
   }
 
   /** How stale the stored frames may get before opening the app rebuilds them.
@@ -1201,41 +1120,6 @@
       tokens: lastTotal || 0,
       t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
     });
-  }
-
-  function loadWall() {
-    if (!T.signedIn()) return Promise.resolve(null);
-    return T.authToken().then(function (tok) {
-      if (!tok) return null;
-      return fetch('/api/cloud/wallpaper', { headers: { Authorization: 'Bearer ' + tok } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) {
-          wallState = j;
-          renderWall();
-          /* Keep it current on its own. Once somebody has set the Shortcut up,
-             the frames on their Home Screen are only as fresh as the last
-             capture — and the only moment this app can run is while it is open,
-             so this is the one chance it gets. Never on a page that is not
-             visible: the capture needs animation frames, which a hidden page
-             does not get, and it would fail for a reason nobody could see. */
-          if (j && j.ready && document.visibilityState === 'visible') {
-            var at = j.updated_at ? Date.parse(j.updated_at.replace(' ', 'T') + 'Z') : 0;
-            var age = at ? Date.now() - at : 0;
-            /* Two reasons to re-capture, and the first is the one that matters:
-               the numbers on the Home Screen no longer match the numbers this
-               account has. The six-hour rule stays as a floor for the case
-               where nothing is linked and the fingerprint never changes. */
-            var fpNow = wallFingerprint(currentOverlays());
-            var fpHad = '';
-            try { fpHad = localStorage.getItem(LS_WALL_FP) || ''; } catch (e) {}
-            var changed = !!fpNow && !!fpHad && fpNow !== fpHad;
-            if (at && ((changed && age > WALL_FRESH_MIN_MS) || age > WALL_STALE_MS)) {
-              captureRing(true);
-            }
-          }
-          return j;
-        });
-    }).catch(function () { return null; });
   }
 
   /* ── The iPhone preview ──────────────────────────────────────────────────
@@ -1313,8 +1197,7 @@
       if (id === '__photo') { /* already theirs; just re-select */ }
       else { try { localStorage.setItem(LS_BED, id); } catch (e) {} T.setPhoto(null); }
       renderBeds();
-      mountEngine();            // the live field changes immediately
-      captureRing(true);        // and the wallpaper is rebuilt from it
+      mountEngine();            // the field relights immediately
     };
     return b;
   }
@@ -1322,19 +1205,6 @@
     /* The glyph lines that go into the burst. Real numbers from the real snapshot,
      one per frame, so an album of these reads as the same wallpaper at different
      moments rather than six copies of one picture. */
-  function wallTexts(ov) {
-    var out = [];
-    (ov && ov.stage || []).forEach(function (it) {
-      out.push(((it.v != null ? it.v : '') + ' ' + (it.u || '')).trim());
-    });
-    (ov && ov.agents || []).forEach(function (a) {
-      if (a.rate) out.push(a.name + ' ' + fmt(a.rate) + '/min');
-    });
-    var line = ov && ov.logGroups && ov.logGroups[0] && ov.logGroups[0].lines;
-    var last = line && line[line.length - 1];
-    if (last && (last.label || last.text)) out.push(last.label || last.text);
-    return out.filter(Boolean);
-  }
 
   /* Capture the whole ring and upload it.
      Shared by the button and by picking a backdrop, because they are the same
@@ -1353,29 +1223,6 @@
    *
    *  getToken() is cheap and returns the cached token until it is near expiry,
    *  so this costs nothing per call and refreshes exactly when it must. */
-  function uploadFrame(slot, blob, retried) {
-    return T.authToken().then(function (tok) {
-      if (!tok) throw new Error('signed out');
-      return fetch('/api/cloud/wallpaper?slot=' + slot, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + tok, 'Content-Type': blob.type || 'image/jpeg' },
-        body: blob,
-        signal: AbortSignal.timeout(30000),
-      });
-    }).then(function (r) {
-      if (!r.ok) {
-        return r.json().catch(function () { return {}; }).then(function (j) {
-          throw new Error(j.error || ('upload failed (' + r.status + ')'));
-        });
-      }
-      return r.json();
-    }).catch(function (err) {
-      // One retry, because a single dropped request on a phone is normal and
-      // losing the whole capture to it is not.
-      if (retried) throw err;
-      return uploadFrame(slot, blob, true);
-    });
-  }
 
   var capturing = false;
 
@@ -1426,236 +1273,15 @@
     if (!wp) mountEngine();
   }
 
-  function captureRing(auto) {
-    if (capturing) return Promise.resolve(null);
-    if (!T.signedIn()) return Promise.resolve(null);
-    capturing = true;
-    releaseFields();
-
-    var btn = $('wallCapture');
-    var label = auto ? 'wall_capturing_auto' : 'wall_capturing';
-    btn.disabled = true;
-    btn.textContent = t(label);
-
-    var ov = currentOverlays();
-    // Written BEFORE the capture, not after: if it fails halfway the numbers on
-    // the phone are whatever they were, and recording the attempt stops a
-    // failing capture from retrying on every single load.
-    try { localStorage.setItem(LS_WALL_FP, wallFingerprint(ov)); } catch (e) {}
-
-    var shot = null;
-    return window.TerseCapture.capture({
-      style: T.isPro() ? styleId() : 'cinematic',
-      pro: T.isPro(),
-      photo: T.photo(),
-      bedId: bedId(),
-      overlays: ov,
-      count: (wallState && wallState.slots) || 12,
-      texts: wallTexts(ov),
-      onStep: function (p, l) { btn.textContent = t(label) + ' ' + (l || Math.round(p * 100) + '%'); },
-    }).then(function (res) {
-      shot = res;
-      var blobs = (res && res.blobs) || [];
-      if (!blobs.length) throw new Error('no frame');
-      return (function () {
-        /* Three at a time, not one after another.
-           A twelve-long serial chain is only as fast as its slowest link and
-           only as reliable as its unluckiest one: a single stalled request
-           blocks the eleven behind it, which is how the button sat on "12/12"
-           with one frame stored. Three is enough to keep the connection busy
-           without being the dozen-at-once that stalls a phone.
-
-           done counts COMPLETIONS, so the label cannot claim more progress
-           than actually happened — the old one was set before each request and
-           reached 12/12 while eleven frames were still in flight. */
-        var done = 0;
-        var failed = [];
-        function runOne(i) {
-          return uploadFrame(i, blobs[i])
-            .then(function (j) { done++; return j; })
-            .catch(function (e) { failed.push(i); throw e; })
-            .then(function (j) {
-              btn.textContent = t('wall_uploading') + ' ' + done + '/' + blobs.length;
-              return j;
-            });
-        }
-        var next = 0, last = null;
-        function worker() {
-          if (next >= blobs.length) return Promise.resolve(last);
-          var i = next++;
-          return runOne(i).then(function (j) { last = j; return worker(); });
-        }
-        return Promise.all([worker(), worker(), worker()]).then(function () {
-          if (failed.length) throw new Error(failed.length + ' frame(s) failed to upload');
-          return last;
-        });
-      })();
-    }).then(function (j) {
-      wallState = j;
-      renderWall();
-      /* The COUNT, not just "done". One frame and twelve both used to look
-         identical here, and one frame means the loop sets the same picture
-         over and over — which is the difference between a wallpaper that
-         animates and one that does not. */
-      var n = (j && j.frames) || 0;
-      /* A capture can pass every check it has and still be a picture of
-         nothing. That is not hypothetical: the field was laid out for a
-         viewport three times too large for a long time, every frame came back
-         as bare backdrop, and this line cheerfully said "12 frames".
-
-         liveliness() is mean luminance of the PARTICLE layer alone — the
-         backdrop is composited afterwards and cannot prop the number up. A
-         drawing field measured 2.56 on a real iPhone; the broken one measured
-         0.001. Anything under this floor means the engine drew nothing, not
-         that the user is idle: the glyphs are drawn from the stats whatever
-         they say, so even a quiet account is far above it. */
-      var lit = 0;
-      ((shot && shot.scores) || []).forEach(function (v) { if (v > lit) lit = v; });
-      if (shot && shot.scores && shot.scores.length && lit < 0.05) {
-        toast(t('wall_blank'));
-      } else {
-        toast(t(auto ? 'wall_bed_done' : 'wall_deployed') + ' · ' + t('wall_frames').replace('{n}', n));
-      }
-      /* The transparent layer costs one more short render and makes the "keep
-         my own wallpaper" route work with no second decision. Never awaited and
-         never fatal — the deploy has already succeeded by this point. */
-      if (!auto) captureOverlay().catch(function () {});
-      return j;
-    }).catch(function (err) {
-      /* The message matters more than the label here. "This device cannot
-         capture the field" is true of a lost WebGL context, a refused upload and
-         an expired session alike, and it sent me looking in the wrong place for
-         a day. */
-      toast(err && err.code === 'hidden' ? t('wall_hidden')
-        : t('wall_failed') + (err && err.message ? ' — ' + err.message : ''));
-      return null;
-    }).then(function (j) {
-      capturing = false;
-      restoreFields();
-      btn.disabled = false;
-      btn.textContent = t('wall_deploy');
-      return j;
-    });
-  }
-
-  on($('wallCapture'), 'click', function () { captureRing(false); });
-
   /** The transparent layer, for the Overlay Images route. Extracted so the one
       deploy button can produce it too — nobody should have to understand the
       difference between the two routes before either of them works. */
-  function captureOverlay() {
-    releaseFields();          // same three-context problem as captureRing
-    var st = T.link.state();
-    var ov = HUD ? HUD.buildOverlays({
-      stats: (st.frame && st.frame.stats) || {},
-      sessions: (st.frame && st.frame.sessions) || [],
-      tokens: lastTotal || 0,
-      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
-    }) : null;
-
-    return window.TerseCapture.capture({
-      style: T.isPro() ? styleId() : 'cinematic',
-      pro: T.isPro(),
-      photo: T.photo(),
-      bedId: bedId(),
-      overlays: ov,
-      transparent: true,
-      count: 1,
-      texts: wallTexts(ov),
-    }).then(function (res) {
-      return T.authToken().then(function (tok) {
-        return fetch('/api/cloud/wallpaper/overlay', {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'image/png' },
-          body: res.blob,
-        });
-      });
-    }).then(function (r) {
-      if (!r || !r.ok) throw new Error('upload failed');
-      return r.json();
-    }).then(function (j) { wallState = j; renderWall(); return j; })
-      // Restored whether it worked or not: leaving the app with no field at all
-      // is worse than the failure that got us here.
-      .finally(function () { restoreFields(); });
-  }
-
-  on($('wallOverlay'), 'click', function () {
-    var btn = $('wallOverlay');
-    if (btn.disabled) return;
-    btn.disabled = true;
-    btn.textContent = t('wall_overlaying');
-    captureOverlay()
-      .then(function () { toast(t('wall_overlay_ready')); })
-      .catch(function (err) { toast(t(err && err.code === 'hidden' ? 'wall_hidden' : 'wall_failed')); })
-      .then(function () { btn.disabled = false; btn.textContent = t('wall_overlay'); });
-  });
 
   /* ⚠ This button had no handler at all between the commit that added it and
      this one — it was lost in a cleanup and shipped dead. Restored rather than
      deleted because the endpoint and the encoder behind it are built and
      tested; the honest warning about whether iOS will animate the result lives
      in the label and the steps, not in a button that silently does nothing. */
-  on($('wallVideo'), 'click', function () {
-    var btn = $('wallVideo');
-    if (btn.disabled) return;
-    if (!window.TerseCapture.canEncodeVideo()) { toast(t('wall_video_unsupported')); return; }
-    btn.disabled = true;
-    btn.textContent = t('wall_recording');
-    releaseFields();          // the encode holds a context for four seconds
-
-    var st = T.link.state();
-    var ov = HUD ? HUD.buildOverlays({
-      stats: (st.frame && st.frame.stats) || {},
-      sessions: (st.frame && st.frame.sessions) || [],
-      tokens: lastTotal || 0,
-      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
-    }) : null;
-
-    window.TerseCapture.captureVideo({
-      style: T.isPro() ? styleId() : 'cinematic',
-      pro: T.isPro(),
-      photo: T.photo(),
-      bedId: bedId(),
-      overlays: ov,
-      texts: wallTexts(ov),
-      onStep: function (p, label) {
-        btn.textContent = t('wall_recording') + ' ' + (label || Math.round(p * 100) + '%');
-      },
-    }).then(function (res) {
-      return T.authToken().then(function (tok) {
-        return fetch('/api/cloud/wallpaper/video?w=' + res.width + '&h=' + res.height, {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'video/mp4' },
-          body: res.blob,
-        });
-      });
-    }).then(function (r) {
-      if (!r || !r.ok) throw new Error('upload failed');
-      return r.json();
-    }).then(function (j) {
-      wallState = j;
-      renderWall();
-      toast(t('wall_video_ready'));
-    }).catch(function (err) {
-      var code = err && err.code;
-      toast(t(code === 'hidden' ? 'wall_hidden'
-        : (code === 'no-webcodecs' || code === 'no-codec') ? 'wall_video_unsupported'
-        : 'wall_failed'));
-    }).then(function () {
-      restoreFields();
-      btn.disabled = false;
-      btn.textContent = t('wall_video');
-    });
-  });
-
-  on($('wallCopy'), 'click', function () {
-    var v = $('wallUrl').value;
-    if (!v) return;
-    (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject())
-      .then(function () { toast(t('copied')); })
-      .catch(function () { $('wallUrl').select(); });
-  });
-
   /* Tapping the ready-made Shortcut copies the link on the way out.
      A shared shortcut cannot carry somebody else's URL — shortcuts are signed,
      signing only happens on an Apple device, so there is one shortcut for
@@ -1666,85 +1292,11 @@
 
      Deliberately not awaited: the navigation must not wait on the clipboard,
      and a refused write is survivable — the link is still on screen above. */
-  on($('wallShortcut'), 'click', function () {
-    var v = $('wallUrl').value;
-    if (v && navigator.clipboard) navigator.clipboard.writeText(v).catch(function () {});
-  });
-
-  on($('wallRotate'), 'click', function () {
-    T.authToken().then(function (tok) {
-      return fetch('/api/cloud/wallpaper/rotate', {
-        method: 'POST', headers: { Authorization: 'Bearer ' + tok },
-      });
-    }).then(function (r) { return r.json(); })
-      .then(function (j) { wallState = j; renderWall(); toast(t('wall_rotated')); })
-      .catch(function () {});
-  });
-
   /* The setup, as three routes rather than seventeen numbered steps in a row.
      Flat, they read as one impossibly long procedure and nobody finishes; the
      truth is they are alternatives, and only the first is the one most people
      want. So the first is open and the other two are folded, each numbered from
      one, because each really does start from the beginning. */
-  var STEP_GROUPS = [
-    /* BUILD THE SHORTCUT FIRST, THEN CHOOSE HOW IT FIRES.
-       These used to be one list that went straight from "make the shortcut"
-       into building a personal automation, which is six screens deep in
-       Settings and cannot be shared or synced — Apple's own limit, not ours.
-       Back Tap reaches the same shortcut in three, and firing it is two knocks
-       on the back of the phone. So the shortcut is its own group, and the
-       triggers are a menu underneath it with the cheapest one first. */
-    {
-      key: 'wall_g_loop', open: true,
-      steps: [['wall_s1b', 'wall_s1s'], ['wall_s2b', 'wall_s2s'], ['wall_s3b', 'wall_s3s'],
-              ['wall_a1b', 'wall_a1s'], ['wall_a2b', 'wall_a2s']],
-    },
-    {
-      key: 'wall_g_trigger', open: true,
-      steps: [['wall_t1b', 'wall_t1s'], ['wall_t2b', 'wall_t2s'],
-              ['wall_t3b', 'wall_t3s'], ['wall_t4b', 'wall_t4s'], ['wall_t5b', 'wall_t5s']],
-    },
-    {
-      key: 'wall_g_own', open: false,
-      steps: [['wall_o1b', 'wall_o1s'], ['wall_o2b', 'wall_o2s'], ['wall_o3b', 'wall_o3s'], ['wall_o4b', 'wall_o4s']],
-    },
-    {
-      key: 'wall_g_live', open: false,
-      steps: [['wall_v1b', 'wall_v1s'], ['wall_v2b', 'wall_v2s'], ['wall_v3b', 'wall_v3s'], ['wall_v4b', 'wall_v4s']],
-    },
-  ];
-
-  function renderWallSteps() {
-    var host = $('wallSteps');
-    if (!host) return;
-    host.innerHTML = '';
-
-    STEP_GROUPS.forEach(function (g) {
-      var box = document.createElement('details');
-      box.className = 'fold stepgroup';
-      if (g.open) box.open = true;
-      var sum = document.createElement('summary');
-      sum.textContent = t(g.key);
-      box.appendChild(sum);
-
-      var ol = document.createElement('ol');
-      ol.className = 'steps';
-      g.steps.forEach(function (pair) {
-        var li = document.createElement('li');
-        var b = document.createElement('b'); b.textContent = t(pair[0]);
-        var sp = document.createElement('span'); sp.textContent = t(pair[1]);
-        li.appendChild(b); li.appendChild(sp);
-        ol.appendChild(li);
-      });
-      box.appendChild(ol);
-      host.appendChild(box);
-    });
-
-    var note = document.createElement('p');
-    note.className = 'note';
-    note.textContent = t('wall_note');
-    host.appendChild(note);
-  }
 
   // ── Me / linking ─────────────────────────────────────────────────────────
 
@@ -1969,13 +1521,18 @@
     if (T.photo()) $('clearPhoto').classList.remove('hide');
     connectRoom();
     renderStyles();
+    /* The backdrops used to be painted by renderWall, which went out with the
+       wallpaper card. They belong to the field, which every state has — a guest
+       who never signs in still picks what lights the particles — so they are
+       painted here beside the styles rather than from a tab hook. */
+    renderBeds();
     // Painted for EVERY state, not just the signed-in one: the empty state is
     // the whole message for a guest ("link a computer to see your agents"), and
     // gating it behind sign-in left a silent, blank card.
     renderHUD();
     if (signedIn) afterAuth();
-    var start = (location.pathname.match(/^\/m\/(wallpaper|plaza|room|friends|me)/) || [])[1];
-    show(start || (pending ? 'me' : 'wallpaper'));
+    var start = (location.pathname.match(/^\/m\/(field|plaza|room|friends|me)/) || [])[1];
+    show(start || (pending ? 'me' : 'field'));
 
     /* The install sheet, after a beat. Held back deliberately: the first thing
        anyone should see is the field, not a prompt asking for something. It

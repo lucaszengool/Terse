@@ -124,8 +124,19 @@
       font-size:14px;font-weight:700;color:var(--ac);text-decoration:none}
     .back:hover{text-decoration:underline;text-underline-offset:3px}
     @media(max-width:560px){dl{grid-template-columns:1fr;gap:2px 0}dd{margin-bottom:10px}}
-  </style>
-  <link rel="stylesheet" href="/terse-glass.css?v=6004be57">
+  
+@media (min-width:1250px){/* desktop type scale - see terse-glass.css */
+.eyebrow{font-size:calc(11.5px + var(--fs-up))}
+.card h2{font-size:calc(13px + var(--fs-up))}
+.card p{font-size:calc(15px + var(--fs-up))}
+dt{font-size:calc(12.5px + var(--fs-up))}
+dd{font-size:calc(14.5px + var(--fs-up))}
+.topic{font-size:calc(11.5px + var(--fs-up))}
+.post b{font-size:calc(14px + var(--fs-up))}
+.back{font-size:calc(14px + var(--fs-up))}
+}
+</style>
+  <link rel="stylesheet" href="/terse-glass.css?v=6d5120a8">
   <script defer src="/terse-field.js?v=b24a72c8"></script>
 </head>
 <body>

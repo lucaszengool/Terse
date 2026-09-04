@@ -57,8 +57,15 @@
       font-size:14px;font-weight:700;color:var(--ac);text-decoration:none;
     }
     .home:hover{text-decoration:underline;text-underline-offset:3px}
-  </style>
-  <link rel="stylesheet" href="/terse-glass.css?v=6004be57">
+  
+@media (min-width:1250px){/* desktop type scale - see terse-glass.css */
+.code{font-size:calc(12px + var(--fs-up))}
+.card b{font-size:calc(14.5px + var(--fs-up))}
+.card span{font-size:calc(12.5px + var(--fs-up))}
+.home{font-size:calc(14px + var(--fs-up))}
+}
+</style>
+  <link rel="stylesheet" href="/terse-glass.css?v=6d5120a8">
   <script defer src="/terse-field.js?v=b24a72c8"></script>
 </head>
 <body>

@@ -968,7 +968,7 @@
   <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/">
   <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
   <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
-  <link rel="stylesheet" href="/terse-glass.css?v=6004be57">
+  <link rel="stylesheet" href="/terse-glass.css?v=6d5120a8">
   <script defer src="/terse-field.js?v=b24a72c8"></script>
 
 <style>
@@ -2399,6 +2399,149 @@ bug fixes (6), features (5), docs (2)</pre>
     border:4px solid transparent;border-top-color:var(--bg1);z-index:1;
   }
   @media(max-width:600px){.pals-grid{gap:10px}.pal-card{width:120px;padding:16px 10px 12px}.pal-inner{width:78px;height:78px}}
+
+@media (min-width:1250px){/* desktop type scale - see terse-glass.css */
+.logo-icon{font-size:calc(14px + var(--fs-up))}
+.nav-links a{font-size:calc(14px + var(--fs-up))}
+.nav-cta{font-size:calc(13px + var(--fs-up))}
+.btn-primary{font-size:calc(15px + var(--fs-up))}
+.btn-ghost{font-size:calc(15px + var(--fs-up))}
+.win-title{font-size:calc(11px + var(--fs-up))}
+.win-badge{font-size:calc(9px + var(--fs-up))}
+.chatgpt-input-text{font-size:calc(13px + var(--fs-up))}
+.prune-label{font-size:calc(10px + var(--fs-up))}
+.prune-savings{font-size:calc(12px + var(--fs-up))}
+.vscode-sidebar{font-size:calc(11px + var(--fs-up))}
+.vscode-chat-label{font-size:calc(9px + var(--fs-up))}
+.vscode-chat-input{font-size:calc(12px + var(--fs-up))}
+.term-line{font-size:calc(12px + var(--fs-up))}
+.ams-v{font-size:calc(14px + var(--fs-up))}
+.ams-l{font-size:calc(8px + var(--fs-up))}
+.oc-model{font-size:calc(10px + var(--fs-up))}
+.oc-status{font-size:calc(9px + var(--fs-up))}
+.oc-msg{font-size:calc(12px + var(--fs-up))}
+.oc-input-text{font-size:calc(12px + var(--fs-up))}
+.oc-msg .msg-original{font-size:calc(10px + var(--fs-up))}
+.oc-msg .msg-sent{font-size:calc(12px + var(--fs-up))}
+.oc-msg .msg-badge{font-size:calc(9px + var(--fs-up))}
+.oc-prune-line{font-size:calc(10px + var(--fs-up))}
+.oc-stat{font-size:calc(8px + var(--fs-up))}
+.oc-tool-line{font-size:calc(10px + var(--fs-up))}
+.oc-tool-line .tool-icon{font-size:calc(9px + var(--fs-up))}
+.tp-stage{font-size:calc(9px + var(--fs-up))}
+.tp-tok-counter{font-size:calc(11px + var(--fs-up))}
+.tp-result-text{font-size:calc(11px + var(--fs-up))}
+.tp-result-pct{font-size:calc(14px + var(--fs-up))}
+.tp-before-after{font-size:calc(10px + var(--fs-up))}
+.tp-extra-icon{font-size:calc(9px + var(--fs-up))}
+.tp-extra-val{font-size:calc(13px + var(--fs-up))}
+.tp-extra-lbl{font-size:calc(8px + var(--fs-up))}
+.sess-name{font-size:calc(12px + var(--fs-up))}
+.sess-sub{font-size:calc(10px + var(--fs-up))}
+.sess-badge{font-size:calc(9px + var(--fs-up))}
+.sess-add{font-size:calc(12px + var(--fs-up))}
+.section .label{font-size:calc(10px + var(--fs-up))}
+.flist li{font-size:calc(14px + var(--fs-up))}
+.alts span{font-size:calc(11px + var(--fs-up))}
+.pipe-text-in{font-size:calc(11px + var(--fs-up))}
+.pipe-n{font-size:calc(9px + var(--fs-up))}
+.pipe-nm{font-size:calc(12px + var(--fs-up))}
+.pipe-live-text{font-size:calc(10px + var(--fs-up))}
+.pipe-text-out{font-size:calc(11px + var(--fs-up))}
+.spell-sentence{font-size:calc(13px + var(--fs-up))}
+.spell-stage-pill{font-size:calc(10px + var(--fs-up))}
+.spell-detect{font-size:calc(9px + var(--fs-up))}
+.spell-result{font-size:calc(10px + var(--fs-up))}
+.tc h4, .tc h3{font-size:calc(11px + var(--fs-up))}
+.tc-demo{font-size:calc(10px + var(--fs-up))}
+.mode-opt{font-size:calc(11px + var(--fs-up))}
+.mode-input-box{font-size:calc(12px + var(--fs-up))}
+.mode-output-box{font-size:calc(12px + var(--fs-up))}
+.mode-stats-row{font-size:calc(12px + var(--fs-up))}
+.at-line{font-size:calc(11px + var(--fs-up))}
+.agent-connect-btn{font-size:calc(10px + var(--fs-up))}
+.ap-l{font-size:calc(8px + var(--fs-up))}
+.ap-sv-label{font-size:calc(11px + var(--fs-up))}
+.ap-sv-val{font-size:calc(14px + var(--fs-up))}
+.ap-feed{font-size:calc(10px + var(--fs-up))}
+.ap-model-row{font-size:calc(10px + var(--fs-up))}
+.ap-model-status{font-size:calc(9px + var(--fs-up))}
+.bb-label{font-size:calc(11px + var(--fs-up))}
+.bb-pct{font-size:calc(12px + var(--fs-up))}
+.prune-stage-text{font-size:calc(9px + var(--fs-up))}
+.pipe-detect{font-size:calc(10px + var(--fs-up))}
+.pipe-tok{font-size:calc(9px + var(--fs-up))}
+.pipe-tok-badge{font-size:calc(9px + var(--fs-up))}
+.hw-phase-label{font-size:calc(10px + var(--fs-up))}
+.hw-phase-num{font-size:calc(8px + var(--fs-up))}
+.hw-prompt-box{font-size:calc(10px + var(--fs-up))}
+.hw-tok-badge{font-size:calc(9px + var(--fs-up))}
+.hw-sn{font-size:calc(8px + var(--fs-up))}
+.hw-snm{font-size:calc(9px + var(--fs-up))}
+.hw-sval{font-size:calc(9px + var(--fs-up))}
+.hw-agent-act{font-size:calc(9px + var(--fs-up))}
+.hw-agent-act .act-icon{font-size:calc(8px + var(--fs-up))}
+.hw-stat-v{font-size:calc(11px + var(--fs-up))}
+.hw-stat-l{font-size:calc(7px + var(--fs-up))}
+.hw-savings-bar{font-size:calc(10px + var(--fs-up))}
+.trust-item{font-size:calc(14px + var(--fs-up))}
+.trust-icon{font-size:calc(10px + var(--fs-up))}
+.feat h3{font-size:calc(15px + var(--fs-up))}
+.feat p{font-size:calc(13px + var(--fs-up))}
+.works-with-label{font-size:calc(12px + var(--fs-up))}
+.ww-logo{font-size:calc(10px + var(--fs-up))}
+.testimonials-sub{font-size:calc(14px + var(--fs-up))}
+.testi-avatar{font-size:calc(14px + var(--fs-up))}
+.testi-name{font-size:calc(13px + var(--fs-up))}
+.testi-handle{font-size:calc(11px + var(--fs-up))}
+.testi-body{font-size:calc(13px + var(--fs-up))}
+.testi-tag{font-size:calc(9px + var(--fs-up))}
+.stat-lbl{font-size:calc(13px + var(--fs-up))}
+.footer-brand p{font-size:calc(12px + var(--fs-up))}
+.footer-col h4{font-size:calc(11px + var(--fs-up))}
+.footer-col a{font-size:calc(12px + var(--fs-up))}
+.footer-bottom{font-size:calc(11px + var(--fs-up))}
+.price-tier{font-size:calc(13px + var(--fs-up))}
+.price-desc{font-size:calc(14px + var(--fs-up))}
+.price-features li{font-size:calc(13px + var(--fs-up))}
+.price-btn{font-size:calc(14px + var(--fs-up))}
+.demo-sub{font-size:calc(15px + var(--fs-up))}
+.demo-tab{font-size:calc(12px + var(--fs-up))}
+.demo-card-header{font-size:calc(12px + var(--fs-up))}
+.demo-tokens{font-size:calc(11px + var(--fs-up))}
+.demo-savings{font-size:calc(11px + var(--fs-up))}
+.demo-card pre{font-size:calc(11px + var(--fs-up))}
+.usage-sub{font-size:calc(15px + var(--fs-up))}
+.usage-label{font-size:calc(12px + var(--fs-up))}
+.usage-note{font-size:calc(12px + var(--fs-up))}
+.tool-card-name{font-size:calc(15px + var(--fs-up))}
+.tool-card-type{font-size:calc(10px + var(--fs-up))}
+.tool-card-row{font-size:calc(12px + var(--fs-up))}
+.impact-badge{font-size:calc(11px + var(--fs-up))}
+.tool-card-detail{font-size:calc(12px + var(--fs-up))}
+.faq-q{font-size:calc(14px + var(--fs-up))}
+.faq-a{font-size:calc(13px + var(--fs-up))}
+.news-tag{font-size:calc(10px + var(--fs-up))}
+.news-meta{font-size:calc(11px + var(--fs-up))}
+.news-card h3{font-size:calc(15px + var(--fs-up))}
+.news-card p{font-size:calc(13px + var(--fs-up))}
+.news-read-more{font-size:calc(12px + var(--fs-up))}
+.news-read-time{font-size:calc(11px + var(--fs-up))}
+.trust-stars{font-size:calc(15px + var(--fs-up))}
+.trust-cell-t{font-size:calc(12px + var(--fs-up))}
+.trust-cell-t2{font-size:calc(10px + var(--fs-up))}
+.trust-tools{font-size:calc(12px + var(--fs-up))}
+.wp-live p{font-size:calc(14px + var(--fs-up))}
+.wp-k{font-size:calc(14.5px + var(--fs-up))}
+.wp-card p{font-size:calc(13px + var(--fs-up))}
+.facts h2{font-size:calc(14px + var(--fs-up))}
+.facts .asof{font-size:calc(12px + var(--fs-up))}
+.facts dt{font-size:calc(13px + var(--fs-up))}
+.facts dd{font-size:calc(14px + var(--fs-up))}
+.pal-name{font-size:calc(14px + var(--fs-up))}
+.pal-sub{font-size:calc(11px + var(--fs-up))}
+.pal-bubble{font-size:calc(12px + var(--fs-up))}
+}
 </style>
 
 <section id="pals" style="padding:100px 40px;background:var(--bg1);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);overflow:visible;position:relative">

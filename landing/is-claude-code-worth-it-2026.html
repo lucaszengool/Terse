@@ -176,7 +176,7 @@
   <!-- Live agent-log particle wallpaper + liquid-glass surfaces.
        Purely additive: both files only override existing tokens and
        insert their own two elements. Remove these two lines to revert. -->
-  <link rel="stylesheet" href="/terse-glass.css?v=6004be57">
+  <link rel="stylesheet" href="/terse-glass.css?v=6d5120a8">
   <script defer src="/terse-field.js?v=b24a72c8"></script>
 </head>
 <body>
@@ -349,6 +349,26 @@
 .rel-card b{display:block;font-size:14.5px;font-weight:700;line-height:1.3;margin-bottom:4px;
   color:var(--t1,#fff)}
 .rel-card span{font-size:12.5px;line-height:1.45;color:var(--t3,hsla(0,0%,100%,.38))}
+
+@media (min-width:1250px){/* desktop type scale - see terse-glass.css */
+.article code{font-size:calc(14px + var(--fs-up))}
+.article pre{font-size:calc(13px + var(--fs-up))}
+.article .tag{font-size:calc(10px + var(--fs-up))}
+.article .updated{font-size:calc(13px + var(--fs-up))}
+.article .back-blog{font-size:calc(13px + var(--fs-up))}
+.pricing-table th,.pricing-table td{font-size:calc(14px + var(--fs-up))}
+.pricing-table th{font-size:calc(12px + var(--fs-up))}
+.cost-card h4{font-size:calc(15px + var(--fs-up))}
+.cost-card .row{font-size:calc(14px + var(--fs-up))}
+.toc h2{font-size:calc(13px + var(--fs-up))}
+.toc ol{font-size:calc(14px + var(--fs-up))}
+.strategy-num{font-size:calc(13px + var(--fs-up))}
+.byline{font-size:calc(13.5px + var(--fs-up))}
+.byline .av{font-size:calc(12px + var(--fs-up))}
+.rel-block h2{font-size:calc(15px + var(--fs-up))}
+.rel-card b{font-size:calc(14.5px + var(--fs-up))}
+.rel-card span{font-size:calc(12.5px + var(--fs-up))}
+}
 </style>
 
 <section class="rel-block" aria-label="Related reading">

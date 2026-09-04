@@ -95,11 +95,24 @@
     @media(max-width:700px){
       .pricing-grid{grid-template-columns:1fr}
     }
-  </style>
+  
+@media (min-width:1250px){/* desktop type scale - see terse-glass.css */
+.article code{font-size:calc(14px + var(--fs-up))}
+.article pre{font-size:calc(13px + var(--fs-up))}
+.article .tag{font-size:calc(10px + var(--fs-up))}
+.toc h2{font-size:calc(13px + var(--fs-up))}
+.toc ol{font-size:calc(14px + var(--fs-up))}
+.shortcut-table th,.shortcut-table td{font-size:calc(14px + var(--fs-up))}
+.shortcut-table th{font-size:calc(12px + var(--fs-up))}
+.shortcut-table kbd{font-size:calc(12px + var(--fs-up))}
+.pricing-card .price span{font-size:calc(14px + var(--fs-up))}
+.pricing-card li{font-size:calc(13px + var(--fs-up))}
+}
+</style>
   <!-- Live agent-log particle wallpaper + liquid-glass surfaces.
        Purely additive: both files only override existing tokens and
        insert their own two elements. Remove these two lines to revert. -->
-  <link rel="stylesheet" href="/terse-glass.css?v=6004be57">
+  <link rel="stylesheet" href="/terse-glass.css?v=6d5120a8">
   <script defer src="/terse-field.js?v=b24a72c8"></script>
   <script type="application/ld+json">
 {

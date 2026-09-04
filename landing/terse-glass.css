@@ -508,3 +508,81 @@ pre, code, .term-line{background-color:transparent}
     will-change:auto;
   }
 }
+
+
+/* ══ Desktop reads too small ═══════════════════════════════════════════════
+   Users report the type is too small on desktop, and the numbers agree:
+   across the 101 pages loading this file the body scale is ~1,570 inline
+   font-size declarations sitting at 8-15px. That scale was picked on a
+   laptop; on a 27" monitor a 12px caption is a smudge.
+
+   THREE APPROACHES WERE TRIED AND MEASURED BEFORE THIS ONE:
+
+   1. `zoom` on the root — what native browser zoom does, three lines, scales
+      type and panels together. MEASURED on the live page at 1600x900 with
+      zoom:1.22: documentElement.clientWidth stayed 1600 while 100vw became
+      1952, so the document overflowed horizontally by 352px and the wallpaper
+      canvas (it sizes itself from clientWidth/innerHeight) inflated to
+      1952x1098. Viewport units are NOT compensated, and there are ~50 vh/vw
+      declarations across the site — every 100vh hero, every 90vh modal, every
+      width:min(620px,88vw) card. Rejected.
+
+   2. Harvesting the pages' own <style> rules and re-emitting them scaled.
+      Rejected twice, for two DIFFERENT measured failures. First, rules
+      harvested from inside the pages' max-width blocks came back out at
+      desktop. Then, even restricted to top-level rules, pooling selectors
+      across 101 pages CONTAMINATES: `.nav-links{font-size:13px}` exists on
+      some pages, so emitting it globally dragged the home page's nav — which
+      has no such rule and inherits 16px — DOWN to 15px. A keyed diff of every
+      element at 1440px caught seven containers shrinking that way. A rule
+      lifted from one page is not safe to apply to another.
+
+   3. Rewriting the declarations in place: 101 files, and the inline half
+      cannot be reached by an ordinary rule at all.
+
+   WHAT THIS DOES: scales the inline declarations only. `[style*=...]` matches
+   an element only if that element itself literally declares that size, so it
+   cannot contaminate a page that never had the rule — the failure mode of
+   approach 2 is structurally impossible here. Each size keeps its identity
+   (9px and 15px stay six steps apart) while the small end gains
+   proportionally more, which is the end that was failing: at the first tier
+   an 11px caption grows 18% and a 15px button 13%.
+
+   MOBILE IS UNTOUCHED BY CONSTRUCTION: every rule lives inside a min-width
+   query, so below 1250px none of them exist and --fs-up is never defined.
+   Verified, not asserted — a DOM-path-keyed diff of all 2,518 elements at
+   375px against the previous stylesheet reports zero differing sizes. Every
+   breakpoint already in these pages is a max-width, so none can collide.
+
+   HOW BIG. +3px at the first tier, not more: measured at 1440px, +2px and
+   +3px produce the IDENTICAL count of elements crossing the viewport edge and
+   zero clipped controls, while +4px introduces two new overflows. So +3 is the
+   most this layout takes for free — a 12px caption becomes 15px, up 25%.
+
+   Tune the whole site from the six numbers below. */
+@media (min-width:1250px){
+  :root{ --fs-up:3px; --win-up:40px }
+
+  [style*="font-size:8px"]{font-size:calc(8px + var(--fs-up)) !important}
+  [style*="font-size:9px"]{font-size:calc(9px + var(--fs-up)) !important}
+  [style*="font-size:10px"]{font-size:calc(10px + var(--fs-up)) !important}
+  [style*="font-size:11px"]{font-size:calc(11px + var(--fs-up)) !important}
+  [style*="font-size:11.5px"]{font-size:calc(11.5px + var(--fs-up)) !important}
+  [style*="font-size:12px"]{font-size:calc(12px + var(--fs-up)) !important}
+  [style*="font-size:12.5px"]{font-size:calc(12.5px + var(--fs-up)) !important}
+  [style*="font-size:13px"]{font-size:calc(13px + var(--fs-up)) !important}
+  [style*="font-size:13.5px"]{font-size:calc(13.5px + var(--fs-up)) !important}
+  [style*="font-size:14px"]{font-size:calc(14px + var(--fs-up)) !important}
+  [style*="font-size:14.5px"]{font-size:calc(14.5px + var(--fs-up)) !important}
+  [style*="font-size:15px"]{font-size:calc(15px + var(--fs-up)) !important}
+
+  /* The literal "windows are too small": the mock product windows are the
+     screenshots of the app, capped at 620-680px on any monitor. Still a min()
+     against vw further up the cascade, so phones are unaffected. */
+  .win, .hero-stage{ max-width:calc(680px + var(--win-up)) }
+}
+
+/* Bigger monitors, more room. Only the two variables move; every rule above is
+   already written in terms of them. */
+@media (min-width:1600px){ :root{ --fs-up:4.5px; --win-up:90px } }
+@media (min-width:2000px){ :root{ --fs-up:6px;   --win-up:150px } }

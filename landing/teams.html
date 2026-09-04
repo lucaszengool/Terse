@@ -124,11 +124,40 @@
     .modal-close:hover{color:var(--t1)}
 
     .info-banner{background:var(--acd);border:1px solid var(--acm);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--ac);margin-bottom:16px}
-  </style>
+  
+@media (min-width:1250px){/* desktop type scale - see terse-glass.css */
+body{font-size:calc(15px + var(--fs-up))}
+.logo-icon{font-size:calc(14px + var(--fs-up))}
+.nav-links a{font-size:calc(14px + var(--fs-up))}
+.nav-right{font-size:calc(13px + var(--fs-up))}
+#nav-email{font-size:calc(12px + var(--fs-up))}
+.subhead{font-size:calc(14px + var(--fs-up))}
+.input,select,textarea{font-size:calc(14px + var(--fs-up))}
+label{font-size:calc(12px + var(--fs-up))}
+.btn{font-size:calc(14px + var(--fs-up))}
+.btn-sm{font-size:calc(12px + var(--fs-up))}
+.stat-label{font-size:calc(11px + var(--fs-up))}
+.stat-sub{font-size:calc(12px + var(--fs-up))}
+table{font-size:calc(13px + var(--fs-up))}
+th{font-size:calc(11px + var(--fs-up))}
+.empty{font-size:calc(13px + var(--fs-up))}
+.token-pill{font-size:calc(13px + var(--fs-up))}
+.token-pill .action{font-size:calc(11px + var(--fs-up))}
+.badge{font-size:calc(10px + var(--fs-up))}
+.period-tab{font-size:calc(13px + var(--fs-up))}
+.alert-box{font-size:calc(13px + var(--fs-up))}
+.toast{font-size:calc(13px + var(--fs-up))}
+.loading{font-size:calc(14px + var(--fs-up))}
+#auth-gate p{font-size:calc(14px + var(--fs-up))}
+.team-card-info h3{font-size:calc(15px + var(--fs-up))}
+.team-card-info p{font-size:calc(12px + var(--fs-up))}
+.info-banner{font-size:calc(12px + var(--fs-up))}
+}
+</style>
   <!-- Live agent-log particle wallpaper + liquid-glass surfaces.
        Purely additive: both files only override existing tokens and
        insert their own two elements. Remove these two lines to revert. -->
-  <link rel="stylesheet" href="/terse-glass.css?v=6004be57">
+  <link rel="stylesheet" href="/terse-glass.css?v=6d5120a8">
   <script defer src="/terse-field.js?v=b24a72c8"></script>
   <script type="application/ld+json">
 {

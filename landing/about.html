@@ -117,11 +117,22 @@
     @media(max-width:600px){
       .mode-card .row{flex-direction:column;gap:4px}
     }
-  </style>
+  
+@media (min-width:1250px){/* desktop type scale - see terse-glass.css */
+.article code{font-size:calc(14px + var(--fs-up))}
+.article .tag{font-size:calc(10px + var(--fs-up))}
+.feature-card h4, .feature-card h3{font-size:calc(15px + var(--fs-up))}
+.feature-card p{font-size:calc(14px + var(--fs-up))}
+.mode-card .row{font-size:calc(14px + var(--fs-up))}
+.tool-list span{font-size:calc(13px + var(--fs-up))}
+.contact-grid a .k{font-size:calc(14px + var(--fs-up))}
+.contact-grid a .v{font-size:calc(13px + var(--fs-up))}
+}
+</style>
   <!-- Live agent-log particle wallpaper + liquid-glass surfaces.
        Purely additive: both files only override existing tokens and
        insert their own two elements. Remove these two lines to revert. -->
-  <link rel="stylesheet" href="/terse-glass.css?v=6004be57">
+  <link rel="stylesheet" href="/terse-glass.css?v=6d5120a8">
   <script defer src="/terse-field.js?v=b24a72c8"></script>
   <script type="application/ld+json">
 {

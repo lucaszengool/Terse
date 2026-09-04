@@ -102,8 +102,29 @@ body{background:transparent}
     0 40px 100px hsla(250,50%,4%,0.72);
 }
 
-/* Section grounds: translucent, but no blur — a full-width backdrop-filter on
-   every band is the single most expensive thing you can do on a long page. */
+/* ── No full-width plates ─────────────────────────────────────────────────
+   Every band on the page used to sit on its own sheet of glass: a
+   backdrop-filter across the whole viewport width, a fill, and a bright inset
+   top edge. Stacked down a hundred-screen page that is not a material, it is a
+   stack of grey slabs with the wallpaper showing only in the seams between
+   them — and the seams are where the hero is, which is why the hero always
+   looked like a different site from everything under it.
+
+   The HERO is the proof that the plates were never load-bearing: it has never
+   had one, it sits directly on the brightest wallpaper the roll can produce,
+   and it is the most legible block on the page. It gets away with it because
+   the type carries its own contrast — the halo below, which already applies to
+   every heading, paragraph and list item in <main>. Taking the plates away
+   does not remove any contrast the halo was not already supplying; it removes
+   a second, redundant, expensive one.
+
+   SMALL panels stay glass. A card, a window mock, a callout, a menu — anything
+   bounded, that reads as an object sitting on the scene — is what the glass
+   idiom is actually for. It is only the page-wide bands that were wrong.
+
+   Dropping the filters is also, incidentally, the single biggest paint win
+   available here: a backdrop-filter is a full-viewport-width readback per
+   band, and there were roughly thirty of them. */
 .features-section,
 .demo-section,
 .news-section,
@@ -113,19 +134,21 @@ body{background:transparent}
 .usage-section,
 .faq-section,
 .trust-strip{
-  background-color:var(--bg1);
-  -webkit-backdrop-filter:blur(3px) saturate(1.3) brightness(0.97);
-  backdrop-filter:blur(3px) saturate(1.3) brightness(0.97);
-  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.16);
+  background-color:transparent;
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+  box-shadow:none;
 }
 
-/* The inline-styled bands. index.html sets background:var(--bg0|bg1) directly
-   on ~28 sections, so the token change alone makes them transparent — but with
-   no filter they would have nothing to read against. */
+/* index.html sets background:var(--bg0|bg1) inline on ~28 sections. The tokens
+   are already near-clear (3-5% alpha), so with the filter gone there is
+   nothing left to read as a band — but pin them to transparent anyway so a
+   page that hardcodes a heavier value cannot reintroduce one. */
 section.section, section[id]{
-  -webkit-backdrop-filter:blur(3px) saturate(1.3) brightness(0.97);
-  backdrop-filter:blur(3px) saturate(1.3) brightness(0.97);
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
 }
+section.section, section[id]{ background-color:transparent !important; }
 
 
 /* The name of the sky the last click rolled. Sits low and quiet — it is a
@@ -398,17 +421,7 @@ section:not([class]):not(#pals):not(#newsletter){
 }
 .article::before,
 section:not([class]):not(#pals):not(#newsletter)::before{
-  content:"";
-  position:absolute;
-  inset:-26px -30px;
-  z-index:-1;
-  border-radius:20px;
-  /* was a 0.72 fill, which hid the wallpaper behind every article. Now it is
-     glass: the plate still shows through, blurred and dimmed. */
-  background:hsla(250,28%,8%,0.05);
-  -webkit-backdrop-filter:blur(3px) saturate(1.45) brightness(0.97);
-  backdrop-filter:blur(3px) saturate(1.45) brightness(0.97);
-  box-shadow:inset 0 1px 0 hsla(0,0%,100%,0.18);
+  content:none;
 }
 
 /* Nav and footer are the last two opaque slabs on the page — make them glass

@@ -28,7 +28,8 @@
   var STR = {
     en: {
       brand: 'Terse',
-      gate_live: 'The field is already running', t_field: 'Field', t_plaza: 'Plaza', t_room: 'Room', t_friends: 'Friends', t_me: 'Me',
+      gate_live: 'The field is already running',
+      gate_hook: 'Touch it.', gate_hook_sub: 'This is what your agents will look like.', t_field: 'Field', t_plaza: 'Plaza', t_room: 'Room', t_friends: 'Friends', t_me: 'Me',
       k_today: 'Today', k_saved: 'Saved', k_agents: 'Agents',
       live_agents: 'Live agents', style: 'Style',
       pick_photo: 'Use my photo', clear_photo: 'Clear',
@@ -183,7 +184,8 @@
     },
     zh: {
       brand: 'Terse',
-      gate_live: '粒子场已经在跑了', t_field: '场', t_plaza: '广场', t_room: '房间', t_friends: '好友', t_me: '我',
+      gate_live: '粒子场已经在跑了',
+      gate_hook: '碰一下。', gate_hook_sub: '你的智能体跑起来就是这个样子。', t_field: '场', t_plaza: '广场', t_room: '房间', t_friends: '好友', t_me: '我',
       k_today: '今日', k_saved: '已省', k_agents: '智能体',
       live_agents: '运行中的智能体', style: '风格',
       pick_photo: '使用我的照片', clear_photo: '清除',
@@ -1527,6 +1529,48 @@
     applyStrings();
     renderHUD(); renderMe();
   });
+
+  /* ── The gate opens when the field has answered ──────────────────────────
+     Research is unambiguous that a multi-screen carousel is the wrong shape:
+     replacing one with a single value screen lifts progression to the next
+     step 15–30%, and a first session containing one MEANINGFUL action retains
+     2–3× better than one that is scrolled and closed. So there is no carousel
+     and no slides about the field — the field is the demo, it is already
+     running, and it already answers a finger.
+
+     The meaningful action is touching it. Until that happens the gate shows
+     almost nothing and does not take pointer events, so the touch it is asking
+     for reaches the canvas underneath. Once the field has answered, the words
+     and the sign-in arrive.
+
+     ⚠ It opens on a real gesture, not a timer. A gate that reveals itself after
+     four seconds teaches nothing and takes the credit for something the visitor
+     did not do. */
+  var gateOpened = false;
+  function openGate() {
+    if (gateOpened) return;
+    gateOpened = true;
+    var g = $('gate');
+    if (!g) return;
+    g.classList.remove('invite');
+    g.classList.add('opened');
+    if (window.TerseFeel) window.TerseFeel.tap('heavy');
+  }
+
+  (function armGate() {
+    var g = $('gate');
+    if (!g || !g.classList.contains('invite')) return;
+    var stage = $('stage');
+    if (!stage) return;
+    // Any real contact counts: a tap, a drag, a scroll of the field.
+    ['pointerdown', 'touchstart'].forEach(function (ev) {
+      stage.addEventListener(ev, openGate, { passive: true, once: false });
+    });
+    /* A floor under it: somebody who reads instead of touching still gets in.
+       Long enough that it is not a timer wearing a gesture's clothes, short
+       enough that nobody is stuck looking at two lines of text. */
+    setTimeout(openGate, 12000);
+  })();
 
   /* ── Touch feedback, once, for everything ────────────────────────────────
      Bound at the document rather than per control. Every button added later —

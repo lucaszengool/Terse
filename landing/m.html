@@ -224,6 +224,35 @@
 
   /* A live marker, because the field behind this IS running and saying so is
      the difference between a screenshot and a thing that is happening. */
+  /* Two stages in one screen. Both stay laid out so neither reflows the other
+     when they swap — a gate that jumps as it changes state is the opposite of
+     premium. */
+  /* ⚠ SWAPPED BY display, NOT opacity, and that is a retreat from something I
+     could not explain. With the stages positioned and faded, `#gate.opened .g1`
+     matched the element, carried opacity:0, had no competing animation, no
+     !important and no inline style — and the computed opacity stayed 1. Rather
+     than ship a gate that half-works on a cascade I had not root-caused, the
+     state is now carried by display, which cannot lose that fight. The incoming
+     stage still fades in, so the transition survives. */
+  #gate .g1, #gate .g2{display:flex;flex-direction:column;gap:13px}
+  #gate.invite .g2{display:none}
+  #gate.opened .g1{display:none}
+  @media (prefers-reduced-motion:no-preference){
+    #gate.opened .g2{animation:rise var(--t-slow) var(--snap) both}
+  }
+
+  /* ⚠ THE GATE MUST NOT EAT THE TOUCH IT IS ASKING FOR. It covers the field, so
+     while it is inviting one it lets pointer events through to the canvas and
+     takes them back only once it has controls worth pressing. */
+  #gate.invite{pointer-events:none}
+
+  /* A nudge that stops the moment they touch — an arrow still bouncing after
+     you have done the thing is nagging, not guiding. */
+  @media (prefers-reduced-motion:no-preference){
+    #gate.invite .g1 h1{animation:sway 3.6s ease-in-out 1.4s infinite}
+    @keyframes sway{0%,100%{transform:none}50%{transform:translate3d(0,-5px,0)}}
+  }
+
   #gate .pulse{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;
     padding:5px 11px 5px 9px;border-radius:999px;font-size:11.5px;letter-spacing:.02em;
     color:var(--dim);background:rgba(255,255,255,.05);border:1px solid var(--line);
@@ -235,12 +264,18 @@
      reading order, which is not the DOM order by accident. */
   @media (prefers-reduced-motion:no-preference){
     #gate .pulse{animation:breathe 2.4s ease-in-out infinite}
-    #gate .inner > *{animation:rise var(--t-slow) var(--snap) both}
-    #gate .inner > *:nth-child(1){animation-delay:60ms}
-    #gate .inner > *:nth-child(2){animation-delay:130ms}
-    #gate .inner > *:nth-child(3){animation-delay:200ms}
-    #gate .inner > *:nth-child(4){animation-delay:250ms}
-    #gate .inner > *:nth-child(n+5){animation-delay:300ms}
+    /* ⚠ ONE LEVEL DOWN, and that is not tidying. A CSS animation BEATS a normal
+       declaration in the cascade, so while this targeted .inner's children —
+       which are now the two stages themselves — the rise animation's final
+       opacity:1 overrode `#gate.invite .g2{opacity:0}` and both stages drew on
+       top of each other. Staggering the contents instead leaves the stage's own
+       opacity to the state rules. */
+    #gate .g1 > *, #gate .g2 > *{animation:rise var(--t-slow) var(--snap) both}
+    #gate .g1 > *:nth-child(1), #gate .g2 > *:nth-child(1){animation-delay:60ms}
+    #gate .g1 > *:nth-child(2), #gate .g2 > *:nth-child(2){animation-delay:130ms}
+    #gate .g1 > *:nth-child(3), #gate .g2 > *:nth-child(3){animation-delay:200ms}
+    #gate .g1 > *:nth-child(4), #gate .g2 > *:nth-child(4){animation-delay:250ms}
+    #gate .g1 > *:nth-child(n+5), #gate .g2 > *:nth-child(n+5){animation-delay:300ms}
   }
   /* ── Motion ───────────────────────────────────────────────────────────────
      Two curves for the whole app. SNAP is finger-driven — fast out of the gate,
@@ -530,16 +565,27 @@
 </div>
 
 <!-- ── sign-in gate ─────────────────────────────────────────────────── -->
-<div id="gate">
+<!-- ONE SCREEN, AND THE PRODUCT IS THE ONBOARDING.
+     The field is already running behind this and already answers a finger, so
+     the most convincing thing available is not a slide about the field — it is
+     the field. It opens asking to be touched, and the sign-in appears only once
+     it has been: a meaningful action first, the account second. -->
+<div id="gate" class="invite">
   <div class="inner">
-    <span class="pulse"><i></i><span data-t="gate_live">The field is already running</span></span>
-    <h1 data-t="gate_title">Your agents, on your phone.</h1>
-    <p data-t="gate_body">Sign in to see the live wallpaper, your rooms and your friends.</p>
-    <button class="btn primary wide" id="signInBtn" type="button" data-t="sign_in">Sign in</button>
-    <button class="btn wechat wide hide" id="wechatBtn" type="button" data-t="wechat">Continue with WeChat</button>
-    <div class="divider" data-t="or">or</div>
-    <button class="btn ghost wide" id="guestBtn" type="button" data-t="guest">Just look around</button>
-    <p class="tiny" data-t="gate_note"></p>
+    <div class="g1">
+      <span class="pulse"><i></i><span data-t="gate_live">The field is already running</span></span>
+      <h1 data-t="gate_hook">Touch it.</h1>
+      <p data-t="gate_hook_sub">This is what your agents will look like.</p>
+    </div>
+    <div class="g2">
+      <h1 data-t="gate_title">Your agents, on your phone.</h1>
+      <p data-t="gate_body">Sign in to see the live wallpaper, your rooms and your friends.</p>
+      <button class="btn primary wide" id="signInBtn" type="button" data-t="sign_in">Sign in</button>
+      <button class="btn wechat wide hide" id="wechatBtn" type="button" data-t="wechat">Continue with WeChat</button>
+      <div class="divider" data-t="or">or</div>
+      <button class="btn ghost wide" id="guestBtn" type="button" data-t="guest">Just look around</button>
+      <p class="tiny" data-t="gate_note"></p>
+    </div>
   </div>
 </div>
 

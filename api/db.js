@@ -259,6 +259,45 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_wall_projects_time ON wall_projects(published_at DESC);
   CREATE INDEX IF NOT EXISTS idx_wall_projects_identity ON wall_projects(identity);
 
+  -- 广场上的互动:点赞、收藏、评论。
+  --
+  -- 点赞和收藏是同一张表两种 kind:它们的形状完全一样(谁、对哪个项目、一次),
+  -- 拆成两张表只会把同一段逻辑写两遍。主键就是 (project_id, identity, kind) ——
+  -- **同一个人对同一个项目只能点一次**,由数据库保证,而不是靠应用层记得去查。
+  CREATE TABLE IF NOT EXISTS wall_reactions (
+    project_id TEXT NOT NULL,
+    identity TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (project_id, identity, kind)
+  );
+  CREATE INDEX IF NOT EXISTS idx_wall_reactions_proj ON wall_reactions(project_id, kind);
+
+  -- 评论。parent_id 为空 = 顶层,否则是某条评论下的回复。
+  --
+  -- 用最朴素的邻接表(parent_id),而且**深度只允许 1 层**。嵌套集合/闭包表是为
+  -- 无限层级和大规模读优化的,代价是每次插入都要改一大片行;而这里要的就是
+  -- "评论 + 它下面的回复"。深度封顶之后,整棵树一条 SQL 就查得完,在内存里拼起来,
+  -- 不需要递归查询,也不需要为写放大付账。
+  CREATE TABLE IF NOT EXISTS wall_comments (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    parent_id TEXT,
+    identity TEXT NOT NULL,
+    author TEXT,
+    body TEXT NOT NULL,
+    likes INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_wall_comments_proj ON wall_comments(project_id, likes DESC, created_at);
+
+  -- 评论的赞。和上面同一个道理:主键保证一人一次。
+  CREATE TABLE IF NOT EXISTS wall_comment_likes (
+    comment_id TEXT NOT NULL,
+    identity TEXT NOT NULL,
+    PRIMARY KEY (comment_id, identity)
+  );
+
   CREATE TABLE IF NOT EXISTS cowork_sessions (
     id TEXT PRIMARY KEY,
     team_id TEXT NOT NULL REFERENCES cloud_teams(id) ON DELETE CASCADE,
@@ -1613,8 +1652,54 @@ const countWallProjects = db.prepare(
 const bumpWallProjectViews = db.prepare('UPDATE wall_projects SET views = views + 1 WHERE id = ?');
 const deleteWallProject = db.prepare('DELETE FROM wall_projects WHERE id = @id AND identity = @identity');
 
+// ── 广场互动 ──
+// INSERT OR IGNORE + DELETE 两条,合起来就是"切换":插不进去说明已经点过了。
+const addWallReaction = db.prepare(
+  'INSERT OR IGNORE INTO wall_reactions (project_id, identity, kind) VALUES (@project_id, @identity, @kind)');
+const removeWallReaction = db.prepare(
+  'DELETE FROM wall_reactions WHERE project_id = @project_id AND identity = @identity AND kind = @kind');
+const hasWallReaction = db.prepare(
+  'SELECT 1 AS yes FROM wall_reactions WHERE project_id = @project_id AND identity = @identity AND kind = @kind');
+// 一次把所有项目的计数取回来,而不是每个项目查一次 —— 列表页是 N 个项目,
+// 逐个查就是 N 次往返。
+const countWallReactions = db.prepare(
+  'SELECT project_id, kind, COUNT(*) AS n FROM wall_reactions GROUP BY project_id, kind');
+const myWallReactions = db.prepare(
+  'SELECT project_id, kind FROM wall_reactions WHERE identity = @identity');
+
+const insertWallComment = db.prepare(`
+  INSERT INTO wall_comments (id, project_id, parent_id, identity, author, body)
+  VALUES (@id, @project_id, @parent_id, @identity, @author, @body)`);
+// 整棵树一条 SQL —— 深度封顶在 1,所以拼装在内存里做就够了。
+const listWallComments = db.prepare(
+  'SELECT * FROM wall_comments WHERE project_id = @project_id ORDER BY likes DESC, created_at ASC LIMIT 400');
+const getWallComment = db.prepare('SELECT * FROM wall_comments WHERE id = ?');
+const deleteWallComment = db.prepare(
+  'DELETE FROM wall_comments WHERE id = @id AND identity = @identity');
+const deleteWallCommentReplies = db.prepare('DELETE FROM wall_comments WHERE parent_id = ?');
+const countWallComments = db.prepare(
+  'SELECT project_id, COUNT(*) AS n FROM wall_comments GROUP BY project_id');
+// 预览时要"最高赞的三条" —— 直接在列表接口里带出来,省掉一次往返。
+const topWallComments = db.prepare(`
+  SELECT project_id, body, likes FROM wall_comments
+  WHERE parent_id IS NULL AND likes > 0
+  ORDER BY project_id, likes DESC, created_at ASC`);
+
+const likeWallComment = db.prepare(
+  'INSERT OR IGNORE INTO wall_comment_likes (comment_id, identity) VALUES (@comment_id, @identity)');
+const unlikeWallComment = db.prepare(
+  'DELETE FROM wall_comment_likes WHERE comment_id = @comment_id AND identity = @identity');
+const syncWallCommentLikes = db.prepare(
+  'UPDATE wall_comments SET likes = (SELECT COUNT(*) FROM wall_comment_likes WHERE comment_id = @id) WHERE id = @id');
+const myWallCommentLikes = db.prepare(
+  'SELECT comment_id FROM wall_comment_likes WHERE identity = @identity');
+
 module.exports = {
   upsertWallProject, listWallProjects, countWallProjects, bumpWallProjectViews, deleteWallProject,
+  addWallReaction, removeWallReaction, hasWallReaction, countWallReactions, myWallReactions,
+  insertWallComment, listWallComments, getWallComment, deleteWallComment, deleteWallCommentReplies,
+  countWallComments, topWallComments,
+  likeWallComment, unlikeWallComment, syncWallCommentLikes, myWallCommentLikes,
   db,
   upsertUser, getUser, ensureUser, updateStripeConnect,
   addSellerKey, getSellerKeys, getSellerKeyFull, updateSellerKey, deleteSellerKey,

@@ -28,7 +28,7 @@
   var STR = {
     en: {
       brand: 'Terse',
-      t_field: 'Field', t_plaza: 'Plaza', t_room: 'Room', t_friends: 'Friends', t_me: 'Me',
+      gate_live: 'The field is already running', t_field: 'Field', t_plaza: 'Plaza', t_room: 'Room', t_friends: 'Friends', t_me: 'Me',
       k_today: 'Today', k_saved: 'Saved', k_agents: 'Agents',
       live_agents: 'Live agents', style: 'Style',
       pick_photo: 'Use my photo', clear_photo: 'Clear',
@@ -61,8 +61,8 @@
       ask_to_join: 'ask to join', knocked: 'Asked to join — waiting for the owner',
       knock_declined: 'The owner declined',
       wechat_failed: 'WeChat sign-in did not complete',
-      wall_title: 'iPhone wallpaper', copy: 'Copy', copied: 'Copied',
-      wall_body: 'Home Screen and Lock Screen both work, and once it is set up you do nothing. A Shortcut can loop it every 2 seconds in bursts of about 40 — that is as long as iOS lets anything run in the background — fired every time you open an app you use anyway. Motion on the Lock Screen is a Live Photo; the Home Screen never animates for any app, which is iOS, not Terse.',
+      wall_title: 'Your agents, as a field', copy: 'Copy', copied: 'Copied',
+      wall_body: 'Every agent on your linked machine becomes light in this field — the busier they are, the harder it moves, and what it spells out is what they are actually burning. It lives while this app is open. Drag to turn it.',
       wall_none: 'No frame captured yet',
       wall_capture: 'Capture from my wallpaper',
       wall_capturing: 'Rendering…', wall_uploading: 'Uploading…',
@@ -135,7 +135,8 @@
       wall_deployed: 'Done — here is the one step left',
       wall_frames: '{n} frames',
       ip_lock: 'Lock Screen', ip_home: 'Home Screen', ip_day: 'Monday, 1 September',
-      wall_pickbed: 'Pick a backdrop — Terse builds the wallpaper from it',
+      wall_pickbed: 'Backdrop — it lights the particles',
+      field_turn: 'Drag to turn it. Pinch to move closer. Double-tap to recentre.',
       wall_bed_photo: 'My photo',
       wall_capturing_auto: 'Building your wallpaper…',
       wall_bed_done: 'Ready — now set it up below, once',
@@ -181,7 +182,7 @@
     },
     zh: {
       brand: 'Terse',
-      t_field: '场', t_plaza: '广场', t_room: '房间', t_friends: '好友', t_me: '我',
+      gate_live: '粒子场已经在跑了', t_field: '场', t_plaza: '广场', t_room: '房间', t_friends: '好友', t_me: '我',
       k_today: '今日', k_saved: '已省', k_agents: '智能体',
       live_agents: '运行中的智能体', style: '风格',
       pick_photo: '使用我的照片', clear_photo: '清除',
@@ -214,8 +215,8 @@
       ask_to_join: '申请加入', knocked: '已申请加入 — 等房主同意',
       knock_declined: '房主拒绝了',
       wechat_failed: '微信登录没有完成',
-      wall_title: 'iPhone 壁纸', copy: '复制', copied: '已复制',
-      wall_body: '主屏幕和锁屏都能用，而且设好之后你什么都不用做。快捷指令可以 2 秒一换、一轮跑 40 秒左右——这已经是 iOS 允许后台跑的极限——挂在你本来就天天开的 App 上自动触发。锁屏上会动的那种是 Live Photo；主屏幕对任何 App 都不会动，这是 iOS 的规矩，不是 Terse 的。',
+      wall_title: '你的智能体，一片粒子场', copy: '复制', copied: '已复制',
+      wall_body: '你连上的那台机器里，每一个智能体都会变成这片场里的光——跑得越凶，场动得越厉害，浮出来的数字就是它们真实烧掉的量。它只在这个 App 开着的时候活着。拖一下可以转动它。',
       wall_none: '还没有截过帧',
       wall_capture: '从我的壁纸截一帧',
       wall_capturing: '渲染中…', wall_uploading: '上传中…',
@@ -286,7 +287,8 @@
       wall_deployed: '好了 —— 就剩这一步',
       wall_frames: '{n} 帧',
       ip_lock: '锁屏', ip_home: '主屏幕', ip_day: '9月1日 星期一',
-      wall_pickbed: '选个底图 —— Terse 用它来做壁纸',
+      wall_pickbed: '底图 —— 粒子的颜色从它来',
+      field_turn: '拖动可以转动，捏合拉近，双击回正。',
       wall_bed_photo: '我的照片',
       wall_capturing_auto: '正在生成你的壁纸…',
       wall_bed_done: '好了 —— 下面按一次设置就行',
@@ -1498,6 +1500,24 @@
     applyStrings();
     renderHUD(); renderMe();
   });
+
+  /* ── Touch feedback, once, for everything ────────────────────────────────
+     Bound at the document rather than per control. Every button added later —
+     a room, a friend, a backdrop rendered from data — gets the same answer
+     without anybody remembering to ask for it, and there is one place to
+     change how the whole app feels.
+
+     pointerdown, not click: the tick has to land when the finger lands. On
+     release it arrives after the thing already happened and reads as lag. */
+  document.addEventListener('pointerdown', function (e) {
+    if (!window.TerseFeel) return;
+    var el = e.target && e.target.closest && e.target.closest('button,.item,.bed,.style,a.btn');
+    if (!el || el.disabled) return;
+    // Primary actions get a heavier tick than incidental ones. iOS web gives a
+    // single texture, so this only changes the rate limit — but it keeps the
+    // call sites honest, and it is free if the platform ever grows more.
+    window.TerseFeel.tap(el.classList.contains('primary') ? 'heavy' : 'select');
+  }, { passive: true });
 
   // ── Boot ─────────────────────────────────────────────────────────────────
 

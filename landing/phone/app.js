@@ -391,8 +391,86 @@
     try { return localStorage.getItem(LS_STYLE) || 'cinematic'; } catch (e) { return 'cinematic'; }
   }
 
+  /* ── 3D free view ────────────────────────────────────────────────────────
+     The two particle layers already live in three dimensions — the aurora sits
+     at z −32..18 — and the camera was simply nailed to the z axis looking
+     straight at them. This unpins it.
+
+     UNLOCKED ON THE PHONE, deliberately, while the Mac keeps it behind Pro.
+     Turning the field with a finger is the thing that makes this feel like a
+     toy worth opening, and putting the best twenty seconds of the app behind a
+     paywall we have no conversion data for is how you get neither.
+
+     ⚠ OFF MUST BE BIT-IDENTICAL TO NEVER HAVING EXISTED. orbitPosition(r,0,0)
+     returns exactly (0,0,r), and apply() returns early when the view is home,
+     so a user who never drags pays nothing — not a per-frame matrix, not a
+     rounded float. */
+  var V3 = null;                       // the pure-maths module, loaded with the engine
+  var view = { az: 0, el: 0, dist: 1 };
+  var viewHome = true;
+  var camZ = null;                     // each layer's own framing distance
+
+  function view3dReady() { return !!(V3 && wp && wp.layers && wp.layers.length); }
+
+  function applyView() {
+    if (!view3dReady()) return;
+    // Nothing to do, and nothing to cost, while the camera is where it started.
+    if (viewHome && !view.az && !view.el && view.dist === 1) return;
+    if (!camZ) camZ = wp.layers.map(function (L) { return L.cam.position.z; });
+    for (var i = 0; i < wp.layers.length; i++) {
+      var L = wp.layers[i];
+      // Each layer keeps its OWN radius: silk frames at ~12 and the aurora at
+      // ~62, so one absolute distance would fling the aurora out of frame.
+      var p = V3.orbitPosition(camZ[i] * view.dist, view.az, view.el);
+      L.cam.position.set(p.x, p.y, p.z);
+      L.cam.lookAt(0, 0, 0);
+    }
+    viewHome = (!view.az && !view.el && view.dist === 1);
+  }
+
+  function recentre() {
+    view.az = 0; view.el = 0; view.dist = 1;
+    applyView();
+    viewHome = true;
+    if (window.TerseFeel) window.TerseFeel.tap('heavy');
+  }
+
+  function bindView3d() {
+    var stage = $('stage');
+    if (!stage || !window.TerseFeel) return;
+    var stopGlide = null;
+    window.TerseFeel.gestures(stage, {
+      onStart: function () { if (stopGlide) { stopGlide(); stopGlide = null; } },
+      onMove: function (dx, dy) {
+        if (!view3dReady()) return;
+        view.az -= dx * V3.ORBIT_AZ_PER_PX;
+        view.el = Math.max(-V3.VIEW_EL_MAX, Math.min(V3.VIEW_EL_MAX,
+          view.el + dy * V3.ORBIT_EL_PER_PX));
+        viewHome = false;
+        applyView();
+        window.TerseFeel.tap('drag');
+      },
+      onPinch: function (k) {
+        if (!view3dReady()) return;
+        view.dist = Math.max(V3.VIEW_DIST_MIN, Math.min(V3.VIEW_DIST_MAX, view.dist / k));
+        viewHome = false;
+        applyView();
+      },
+      onDouble: recentre,
+      onEnd: function () { if (window.TerseFeel) window.TerseFeel.tap(); },
+    });
+  }
+
   function mountEngine() {
     if (!Engine) return;
+    // Loaded once, next to the engine, and stamped for the same CDN reason.
+    if (!V3) {
+      import('/app-assets/wallpaper-view3d.js'
+        + (window.__TERSE_BUILD ? '?v=' + encodeURIComponent(window.__TERSE_BUILD) : ''))
+        .then(function (m) { V3 = m; bindView3d(); })
+        .catch(function () { /* the field simply stays flat */ });
+    }
+    camZ = null;                       // a new engine means new cameras
     if (wp) { try { wp.dispose(); } catch (e) {} wp = null; }
     // Deliberately NOT wrapped in try/catch: a constructor that throws is the
     // single most useful signal there is, and loadEngine's catch turns it into

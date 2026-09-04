@@ -718,7 +718,6 @@
     });
 
     renderChip();
-    feedPreviewField();
   }
 
   function renderChip() {
@@ -855,10 +854,7 @@
        first. It belongs with the tab it is on. */
     if (tab === 'wallpaper') {
       renderWall();
-      mountPreviewField();
       if (T.signedIn() && !wallState) loadWall();
-    } else {
-      unmountPreviewField();     // nothing is looking at it
     }
     if (tab === 'plaza') loadPlaza();
     if (tab === 'friends') loadFriends();
@@ -1102,7 +1098,6 @@
        and the Home Screen came up with an empty dock and no icons whenever the
        wallpaper state had not loaded. */
     renderBeds();
-    renderPhoneChrome();
     // Drawn here, not from renderMe. The steps belong to this card, and being
     // rendered from the tab the card used to live on meant they only appeared
     // if you happened to open Me first — the fifth time that exact mistake was
@@ -1164,7 +1159,6 @@
       var stamp = Date.now();
       var urls = [];
       for (var i = 0; i < n; i++) urls.push(wallState.url + '?v=' + stamp + '-' + i);
-      startPreviewCycle(urls);
       $('wallSaveHint').classList.remove('hide');
     }
   }
@@ -1273,113 +1267,11 @@
      while somebody is looking at it. */
   var ipWp = null;
 
-  function mountPreviewField() {
-    var c = $('ipStage');
-    if (!c || !Engine || ipWp) return;
-    try {
-      ipWp = new Engine(c, {
-        theme: 'neon', quality: 26, angle: 42, intensity: 1,
-        style: T.isPro() ? styleId() : 'cinematic',
-        pro: T.isPro(),
-        photo: T.photo() || (window.TerseBeds && window.TerseBeds.render(bedId(), 190, 410)),
-      });
-      ipWp.start();
-      feedPreviewField();
-    } catch (e) { ipWp = null; }
-  }
-
-  function unmountPreviewField() {
-    if (!ipWp) return;
-    // Same reason as releaseFields: dispose() on its own keeps the context, and
-    // this runs on every tab change — so it leaked one per switch.
-    try { ipWp.stop(); } catch (e) {}
-    dropContext(ipWp, 'ipStage');
-    ipWp = null;
-  }
-
   /** The same overlays the big field gets, so the preview shows the real numbers
    *  and the real glyph text rather than an idle field. */
-  function feedPreviewField() {
-    if (!ipWp || !HUD) return;
-    var st = T.link.state();
-    var ov = HUD.buildOverlays({
-      stats: (st.frame && st.frame.stats) || {},
-      sessions: (st.frame && st.frame.sessions) || [],
-      tokens: lastTotal || 0,
-      t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
-    });
-    try {
-      ipWp.setActivity(ov.activity || 0.3);
-      if (ipWp.setAgents) ipWp.setAgents(ov.agents);
-      if (ipWp.setStageItems && ov.stage.length) ipWp.setStageItems(ov.stage);
-      if (ipWp.setAgentLog && ov.logGroups.length) ipWp.setAgentLog(ov.logGroups);
-    } catch (e) {}
-  }
-
-  function renderPhoneChrome() {
-    var grid = $('ipGrid'), dock = $('ipDock');
-    if (!grid || grid.children.length) return;      // built once
-    IP_APPS.forEach(function (a) {
-      var el = document.createElement('div');
-      el.className = 'iapp';
-      var i = document.createElement('i');
-      i.style.background = a[0];
-      var sp = document.createElement('span');
-      sp.textContent = a[1];
-      el.appendChild(i); el.appendChild(sp);
-      grid.appendChild(el);
-    });
-    IP_DOCK.forEach(function (c) {
-      var i = document.createElement('i');
-      i.style.background = c;
-      dock.appendChild(i);
-    });
-    var now = new Date();
-    var hh = now.getHours(), mm = String(now.getMinutes()).padStart(2, '0');
-    var clock = hh + ':' + mm;
-    $('ipTime').textContent = clock;
-    document.querySelector('.ilock-time').textContent = clock;
-  }
 
   /** Cycle the captured frames, exactly as the loop on the phone will. */
-  function startPreviewCycle(urls) {
-    var screen = $('wallPrev');
-    if (!screen) return;
-    if (ipTimer) { clearInterval(ipTimer); ipTimer = null; }
-    // Only the images: the live canvas underneath stays, so the preview never
-    // drops to an empty rectangle between states.
-    Array.prototype.forEach.call(screen.querySelectorAll('img'), function (n) { n.remove(); });
-    if (!urls.length) return;
 
-    var imgs = urls.map(function (u, i) {
-      var im = document.createElement('img');
-      im.src = u; im.alt = '';
-      if (i === 0) im.className = 'on';
-      screen.appendChild(im);
-      return im;
-    });
-    ipIdx = 0;
-    if (imgs.length < 2) return;
-    // Two seconds, because that is the Wait the shortcut uses. Seeing the
-    // preview and the phone move at the same rate is the point.
-    ipTimer = setInterval(function () {
-      if (document.visibilityState !== 'visible') return;
-      imgs[ipIdx].classList.remove('on');
-      ipIdx = (ipIdx + 1) % imgs.length;
-      imgs[ipIdx].classList.add('on');
-    }, 2000);
-  }
-
-  Array.prototype.forEach.call(document.querySelectorAll('.iseg button'), function (b) {
-    b.onclick = function () {
-      Array.prototype.forEach.call(document.querySelectorAll('.iseg button'), function (o) {
-        o.classList.toggle('on', o === b);
-      });
-      var home = b.dataset.screen === 'home';
-      $('ipHome').classList.toggle('hide', !home);
-      $('ipLock').classList.toggle('hide', home);
-    };
-  });
 
       /* ── Backdrops ───────────────────────────────────────────────────────────
      The one choice this feature needs. Picking a backdrop is also what starts
@@ -1422,8 +1314,6 @@
       else { try { localStorage.setItem(LS_BED, id); } catch (e) {} T.setPhoto(null); }
       renderBeds();
       mountEngine();            // the live field changes immediately
-      unmountPreviewField();    // and so does the one inside the phone
-      mountPreviewField();
       captureRing(true);        // and the wallpaper is rebuilt from it
     };
     return b;
@@ -1534,7 +1424,6 @@
   }
   function restoreFields() {
     if (!wp) mountEngine();
-    if (current === 'wallpaper') mountPreviewField();
   }
 
   function captureRing(auto) {
@@ -2166,11 +2055,9 @@
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') {
       if (wp) wp.stop();
-      unmountPreviewField();
       return;
     }
     if (wp) wp.start();
-    if (current === 'wallpaper') mountPreviewField();
     requestWake();
     // Rooms' own EventSource is subject to the same iOS silent-close as the link
     // stream, and rooms.js cannot fix it from inside: it never learns the app was

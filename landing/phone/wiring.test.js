@@ -100,11 +100,12 @@ for (const [tab, fn] of [['plaza', 'loadPlaza'], ['friends', 'loadFriends'], ['r
 /* A render that draws into a card must be called from the render that OWNS
    that card. Getting this wrong is invisible: the section is simply absent
    unless you first visit the tab it used to live on. It has happened five
-   times in this file — renderBeds, renderPhoneChrome, renderWall itself,
-   renderWallSteps, and the preview's icons. */
+   times in this file — renderBeds, renderWall itself and renderWallSteps.
+   (renderPhoneChrome and the in-app phone preview were two more, and were
+   removed with the wallpaper deployment UI rather than fixed again.) */
 const renderWallFull = appJs.slice(appJs.indexOf('function renderWall()'),
   appJs.indexOf('function loadWall()'));
-for (const fn of ['renderBeds()', 'renderPhoneChrome()', 'renderWallSteps()']) {
+for (const fn of ['renderBeds()', 'renderWallSteps()']) {
   ok(`${fn} is called by renderWall, which owns that card`, renderWallFull.includes(fn));
 }
 const renderMeFull = appJs.slice(appJs.indexOf('function renderMe()'),
@@ -116,7 +117,7 @@ ok('and renderMe no longer draws the wallpaper card',
 // must not wait on an API round-trip that may never happen.
 const renderWall = appJs.slice(appJs.indexOf('function renderWall()'), appJs.indexOf('function renderWall()') + 900);
 const guard = renderWall.indexOf('if (!wallState) return;');
-for (const fn of ['renderBeds()', 'renderPhoneChrome()']) {
+for (const fn of ['renderBeds()']) {
   const at = renderWall.indexOf(fn);
   ok(`${fn} runs before the wallState guard`, at > 0 && (guard < 0 || at < guard));
 }
@@ -149,7 +150,6 @@ ok('releaseFields is always paired with restoreFields',
   (appJs.match(/releaseFields\(\)/g) || []).length
     <= (appJs.match(/restoreFields\(\)/g) || []).length);
 ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,200}mountEngine\(\)/.test(appJs));
-ok('and the preview one', /function restoreFields\(\)[\s\S]{0,200}mountPreviewField\(\)/.test(appJs));
 
 // The generic failure message sent me looking in the wrong place for a day.
 ok('a capture failure reports the actual reason', /wall_failed'\) \+ \(err && err\.message/.test(appJs));

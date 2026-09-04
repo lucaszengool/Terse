@@ -856,8 +856,7 @@
     if (tab === 'wallpaper') {
       renderWall();
       mountPreviewField();
-      if (T.signedIn() && !wallState) { loadWall(); loadPushcut(); loadLiveActivity(); }
-      renderPip();
+      if (T.signedIn() && !wallState) loadWall();
     } else {
       unmountPreviewField();     // nothing is looking at it
     }
@@ -1109,7 +1108,6 @@
     // if you happened to open Me first — the fifth time that exact mistake was
     // made in this file, which is why the wiring test now asserts it.
     renderWallSteps();
-    renderPushcutSteps();   // static copy — must not wait on a fetch
     var card = $('wallCard');
     if (!card) return;
     // The whole feature is per-account: the URL is minted for one, and the
@@ -1383,202 +1381,7 @@
     };
   });
 
-    /* ── Pushcut ─────────────────────────────────────────────────────────────
-     Optional, and stays that way: a third-party paid app, and the headline
-     feature of Terse must not require buying somebody else's. */
-  var pcState = null;
-
-  var PC_STEPS = [['pc_1b','pc_1s'], ['pc_2b','pc_2s'], ['pc_3b','pc_3s'],
-                  ['pc_4b','pc_4s'], ['pc_5b','pc_5s']];
-
-  function renderPushcutSteps() {
-    var ol = $('pcSteps');
-    if (!ol || ol.children.length) return;      // built once
-    PC_STEPS.forEach(function (pair) {
-      var li = document.createElement('li');
-      var b = document.createElement('b'); b.textContent = t(pair[0]);
-      var sp = document.createElement('span'); sp.textContent = t(pair[1]);
-      li.appendChild(b); li.appendChild(sp);
-      ol.appendChild(li);
-    });
-  }
-
-  function renderPushcut() {
-    var st = pcState, lab = $('pcState');
-    if (!lab) return;
-    renderPushcutSteps();
-    var on = !!(st && st.configured);
-    $('pcTest').classList.toggle('hide', !on);
-    $('pcOff').classList.toggle('hide', !on);
-    if (!on) { lab.textContent = ''; return; }
-    // The stored URL is a secret and never comes back; show the hint instead.
-    $('pcUrl').value = '';
-    $('pcUrl').placeholder = st.hint || '';
-    var bits = [t('pc_on').replace('{shortcut}', st.shortcut || '—')];
-    bits.push(st.last_fired_at ? t('pc_last').replace('{t}', ago(st.last_fired_at)) : t('pc_never'));
-    if (st.last_error) bits.push('⚠ ' + st.last_error);
-    lab.textContent = bits.join(' · ');
-  }
-
-  function loadPushcut() {
-    if (!T.signedIn()) return Promise.resolve(null);
-    return T.authToken().then(function (tok) {
-      if (!tok) return null;
-      return fetch('/api/cloud/wallpaper/pushcut', { headers: { Authorization: 'Bearer ' + tok } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { pcState = j; renderPushcut(); return j; });
-    }).catch(function () { return null; });
-  }
-
-  function pcCall(method, body) {
-    return T.authToken().then(function (tok) {
-      return fetch('/api/cloud/wallpaper/pushcut' + (method === 'TEST' ? '/test' : ''), {
-        method: method === 'TEST' ? 'POST' : method,
-        headers: Object.assign({ Authorization: 'Bearer ' + tok },
-          body ? { 'Content-Type': 'application/json' } : {}),
-        body: body ? JSON.stringify(body) : undefined,
-      }).then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (j) {
-          if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-          return j;
-        });
-      });
-    });
-  }
-
-  on($('pcSave'), 'click', function () {
-    var url = ($('pcUrl').value || '').trim();
-    if (!url) return;
-    pcCall('PUT', { url: url }).then(function (j) {
-      pcState = j; renderPushcut(); toast(t('pc_saved'));
-    }).catch(function (e) { toast(e.message || t('pc_failed')); });
-  });
-  on($('pcTest'), 'click', function () {
-    pcCall('TEST').then(function (j) {
-      toast(j && j.fired ? t('pc_fired') : (j && j.reason ? j.reason : t('pc_failed')));
-      return loadPushcut();
-    }).catch(function () { toast(t('pc_failed')); });
-  });
-  on($('pcOff'), 'click', function () {
-    pcCall('DELETE').then(function () { pcState = null; renderPushcut(); }).catch(function () {});
-  });
-
-  /* ── The Dynamic Island ──────────────────────────────────────────────────
-     Same shape as Pushcut above, and for the same reason: the work happens on
-     somebody else's device and all this page holds is a credential it must
-     never show again.
-
-     Why a relay at all — a Live Activity can ONLY be created by ActivityKit,
-     which is native. No web app starts one, on any iPhone, at any price. The
-     one route that does not require shipping an app of our own is to push to
-     an app that already did that work and exposes it over HTTP. */
-  var laState = null;
-
-  function renderLiveActivity() {
-    var st = laState, lab = $('laState');
-    if (!lab) return;
-    var on = !!(st && st.configured);
-    $('laTest').classList.toggle('hide', !on);
-    $('laOff').classList.toggle('hide', !on);
-    if (!on) { lab.textContent = ''; return; }
-    // The key is a secret and never comes back; show the masked hint instead.
-    $('laKey').value = '';
-    $('laKey').placeholder = st.hint || '';
-    var bits = [t('la_on').replace('{name}', st.label || st.provider || '—')];
-    bits.push(st.last_pushed_at ? t('la_last').replace('{t}', ago(st.last_pushed_at)) : t('la_never'));
-    if (st.last_error) bits.push('⚠ ' + st.last_error);
-    lab.textContent = bits.join(' · ');
-  }
-
-  function loadLiveActivity() {
-    if (!T.signedIn()) return Promise.resolve(null);
-    return T.authToken().then(function (tok) {
-      if (!tok) return null;
-      return fetch('/api/cloud/liveactivity', { headers: { Authorization: 'Bearer ' + tok } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { laState = j; renderLiveActivity(); return j; });
-    }).catch(function () { return null; });
-  }
-
-  function laCall(method, body) {
-    return T.authToken().then(function (tok) {
-      return fetch('/api/cloud/liveactivity' + (method === 'TEST' ? '/test' : ''), {
-        method: method === 'TEST' ? 'POST' : method,
-        headers: Object.assign({ Authorization: 'Bearer ' + tok },
-          body ? { 'Content-Type': 'application/json' } : {}),
-        body: body ? JSON.stringify(body) : undefined,
-      }).then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (j) {
-          if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-          return j;
-        });
-      });
-    });
-  }
-
-  on($('laSave'), 'click', function () {
-    var key = ($('laKey').value || '').trim();
-    if (!key) return;
-    laCall('PUT', { provider: 'activitysmith', api_key: key }).then(function (j) {
-      laState = j; renderLiveActivity(); toast(t('la_saved'));
-    }).catch(function (e) { toast(e.message || t('la_failed')); });
-  });
-  on($('laTest'), 'click', function () {
-    laCall('TEST').then(function (j) {
-      toast(j && j.pushed ? t('la_pushed') : (j && j.reason ? j.reason : t('la_failed')));
-      return loadLiveActivity();
-    }).catch(function () { toast(t('la_failed')); });
-  });
-  on($('laOff'), 'click', function () {
-    laCall('DELETE').then(function () { laState = null; renderLiveActivity(); }).catch(function () {});
-  });
-
-  /* ── Floating particles ──────────────────────────────────────────────────
-     Picture in Picture is the only way anything a web page draws can float
-     above other apps on iOS. It is also REFUSED inside a Home Screen web app
-     (WebKit #303885), which is the mode this app has to run in — Web Push is
-     delivered to Home Screen web apps and nowhere else.
-
-     So the two are not made to share a window. This button hands off to
-     /float in real Safari and comes straight back; the app keeps its icon and
-     its notifications, and the floating window is started next door.
-
-     x-safari-https: rather than a plain link, because a link from a Home
-     Screen web app opens the IN-APP browser, which refuses PiP for the same
-     reason this app does — the hand-off has to reach Safari proper. */
-  function floatUrl() {
-    return 'x-safari-https://' + location.host + '/float';
-  }
-
-  function renderPip() {
-    var lab = $('pipState'), why = $('pipWhy');
-    if (!lab) return;
-    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-      || window.navigator.standalone === true;
-    // Said up front, because "it opened Safari" looks like a bug otherwise.
-    if (why) why.textContent = standalone ? t('pip_why_standalone') : t('pip_why_browser');
-    // No Stop button here on purpose: the floating window belongs to the Safari
-    // tab that started it, and this app has no handle on it. It is dismissed
-    // from the window itself, or from /float.
-    lab.textContent = '';
-  }
-
-  on($('pipStart'), 'click', function () {
-    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-      || window.navigator.standalone === true;
-    if (standalone) {
-      location.href = floatUrl();
-      // If nothing happens the scheme was refused; a plain link at least gets
-      // them there, even if it lands in the in-app browser and says why.
-      setTimeout(function () { window.open('/float', '_blank'); }, 900);
-    } else {
-      // Already in Safari — no hand-off needed, and a hand-off here would open
-      // a second tab for no reason.
-      window.location.href = '/float';
-    }
-  });
-
-    /* ── Backdrops ───────────────────────────────────────────────────────────
+      /* ── Backdrops ───────────────────────────────────────────────────────────
      The one choice this feature needs. Picking a backdrop is also what starts
      everything: the capture runs immediately, so there is a wallpaper waiting
      rather than another button to find. */

@@ -393,55 +393,8 @@
 
           <div id="wallSteps"></div>
 
-        <!-- The optional route where the SERVER drives it. Everything above
-             waits for the user to unlock or open an app; this does not. -->
-        <details class="fold">
-          <summary data-t="pc_title">Have Terse push it, instead of waiting for you</summary>
-          <p data-t="pc_body"></p>
-          <p class="tiny warn" data-t="pc_cost"></p>
-          <ol class="steps" id="pcSteps"></ol>
-          <div class="row">
-            <input type="text" id="pcUrl" class="grow" placeholder="https://api.pushcut.io/…/execute?shortcut=…"
-                   autocomplete="off" autocapitalize="off" spellcheck="false">
-          </div>
-          <div class="row">
-            <button class="btn grow" id="pcSave" type="button" data-t="pc_save">Save</button>
-            <button class="btn ghost hide" id="pcTest" type="button" data-t="pc_test">Test</button>
-            <button class="btn ghost danger hide" id="pcOff" type="button" data-t="pc_off">Remove</button>
-          </div>
-          <p class="tiny" id="pcState"></p>
-        </details>
 
-        <!-- The Dynamic Island. Not ours, and it cannot be: a Live Activity is
-             ActivityKit only, so a web app cannot start one at any price. What
-             it CAN do is push to an app that already did that work. -->
-        <details class="fold">
-          <summary data-t="la_title">Put your agents in the Dynamic Island</summary>
-          <p data-t="la_body"></p>
-          <div class="row">
-            <input type="text" id="laKey" class="grow" placeholder="ActivitySmith API key"
-                   autocomplete="off" autocapitalize="off" spellcheck="false">
-          </div>
-          <div class="row">
-            <button class="btn grow" id="laSave" type="button" data-t="la_save">Save</button>
-            <button class="btn ghost hide" id="laTest" type="button" data-t="la_test">Test</button>
-            <button class="btn ghost danger hide" id="laOff" type="button" data-t="la_off">Remove</button>
-          </div>
-          <p class="tiny" id="laState"></p>
-        </details>
 
-        <!-- Picture in Picture. The ONE way user content floats above other
-             apps on iOS — and it is refused in Home Screen web apps, which is
-             the mode this app otherwise wants to be in. See app.js. -->
-        <details class="fold">
-          <summary data-t="pip_title">Float the field over your other apps</summary>
-          <p data-t="pip_body"></p>
-          <p class="tiny warn" id="pipWhy"></p>
-          <div class="row">
-            <button class="btn grow" id="pipStart" type="button" data-t="pip_start">Start floating</button>
-          </div>
-          <p class="tiny" id="pipState"></p>
-        </details>
           <button class="btn ghost wide" id="wallRotate" type="button" data-t="wall_rotate">Reset this link</button>
         </div>
       </div>

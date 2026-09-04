@@ -92,7 +92,7 @@
       field_details: 'Show details', field_copy: 'Copy details', field_copied: 'Copied',
       /* Romanised on purpose, in BOTH languages: the glyph layer rasterises a
          Latin typeface, so Chinese characters come out as empty boxes. */
-      field_idle_1: 'Terse', field_idle_2: 'link a computer',
+      field_idle_1: 'Terse', field_idle_2: 'scan to connect',
       wall_overlay: 'Keep my own wallpaper, add the text',
       wall_overlaying: 'Making the layer…',
       wall_overlay_ready: 'Layer ready — build the Overlay shortcut below',
@@ -243,7 +243,7 @@
       field_err: '这台设备上壁纸没有画出来',
       field_no_frames: '图形引擎启动了，但一帧都没画出来。',
       field_details: '查看详情', field_copy: '复制详情', field_copied: '已复制',
-      field_idle_1: 'Terse', field_idle_2: 'link a computer',
+      field_idle_1: 'Terse', field_idle_2: '扫码连接',
       wall_overlay: '保留我自己的壁纸，只加字',
       wall_overlaying: '正在做图层…',
       wall_overlay_ready: '图层好了——照下面建 Overlay 快捷指令',
@@ -679,7 +679,15 @@
         tokens: lastTotal || 0,
         t: function (key, fallback) { return t(key) === key ? fallback : t(key); },
       });
-      wp.setActivity(o.activity);
+      /* A FLOOR WHILE NOTHING IS LINKED, for the same reason the capture has
+         one. `activity` is how hard the field dances and it is derived from
+         real burn rate, so an unlinked phone lands at 0 — and at 0 the field
+         never gathers enough for a glyph to form at all. Measured on an
+         iPhone: 0.08 gave sparse dots and no text, 0.55 gave the words.
+         So the FIRST thing anybody sees, before they have linked anything, is
+         a field alive enough to say what it is. Once a machine is linked the
+         real number takes over and the field is honest about being quiet. */
+      wp.setActivity(st.linked || sessions.length ? o.activity : Math.max(0.55, o.activity));
       wp.setAgents(o.agents);
 
       /* With no computer linked there is nothing to count, and the shared

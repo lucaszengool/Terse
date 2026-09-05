@@ -4,6 +4,7 @@
 
 mod capture;
 mod agent_monitor;
+mod projects;
 mod agent_usage_scan;
 mod stats_store;
 mod pricing;
@@ -4501,6 +4502,18 @@ pub fn run() {
             notifications::toast_hide,
             notifications::take_pending_toasts,
             wallpaper_set_3d_mode,
+            project_list,
+            project_candidates,
+            project_add,
+            project_update,
+            project_remove,
+            project_preview,
+            project_add_image,
+            project_remove_image,
+            project_capsule,
+            navigate_to_projects,
+            list_open_windows,
+            wallpaper_set_hot_rect,
             wallpaper_set_adjust,
             desktop_icon_rects,
             wallpaper_set_interactive,
@@ -7260,6 +7273,386 @@ fn start_wallpaper_cursor_feed(app: AppHandle) {
             let y = pt.y as f64 / sf;
             // The third element says "already top-left" — see above.
             let _ = win.emit("wallpaper-cursor", (x, y, 1));
+        }
+    });
+}
+
+// ── 项目粒子:the project commands, ported verbatim from the macOS build ──
+//
+// Nothing here is platform-specific — the scan, the capsule and the 64KB cap are
+// pure Rust over the filesystem. They are copied rather than reimplemented on
+// purpose: a capsule is uploaded to the same plaza and rebuilt by viewers on the
+// other platform, so any drift shows up as a project that looks different
+// depending on which machine made it.
+fn cowork_relay(app: tauri::AppHandle, payload: serde_json::Value) {
+    let _ = app.emit("cowork-peer", payload);
+}
+
+// ── 项目粒子(把一个项目文件夹变成一颗可以在壁纸上演的胶囊)──────────────
+
+/// 已经加进来的项目。
+#[tauri::command]
+fn project_list() -> serde_json::Value {
+    serde_json::to_value(projects::load()).unwrap_or_else(|_| serde_json::json!([]))
+}
+
+/// 还没加进来、但**此刻正有 agent 在里面干活**的文件夹。
+///
+/// 这是这个功能的入口:你现在正在写的那个项目,本来就该是列表最上面那个,
+/// 而不是让人自己去找文件夹。
+#[tauri::command]
+fn project_candidates() -> serde_json::Value {
+    let have: std::collections::HashSet<String> =
+        projects::load().into_iter().map(|c| c.path).collect();
+    let out: Vec<serde_json::Value> = projects::agent_dirs()
+        .into_iter()
+        .filter(|d| !have.contains(d))
+        .map(|d| {
+            let name = std::path::Path::new(&d)
+                .file_name()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| d.clone());
+            serde_json::json!({ "path": d, "name": name })
+        })
+        .collect();
+    serde_json::json!(out)
+}
+
+/// 扫一个文件夹,加进来(或就地重扫)。扫描在后台线程上跑 —— 大仓库要走几千个文件,
+/// 不能卡住界面。
+#[tauri::command]
+async fn project_add(path: String) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let p = std::path::PathBuf::from(&path);
+        let mut list = projects::load();
+        let keep = list.iter().find(|c| c.path == path).cloned();
+        let cap = projects::scan(&p, keep.as_ref())?;
+        if let Some(i) = list.iter().position(|c| c.id == cap.id) {
+            list[i] = cap.clone();
+        } else {
+            list.insert(0, cap.clone());
+        }
+        projects::save(&list);
+        serde_json::to_value(cap).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// 用户改了标题/简介/某一行字/换了封面。改过的字段会被记进 `edited`,
+/// 以后重扫**不许覆盖**它们。
+#[tauri::command]
+fn project_update(id: String, patch: serde_json::Value) -> Result<serde_json::Value, String> {
+    let mut list = projects::load();
+    let Some(i) = list.iter().position(|c| c.id == id) else {
+        return Err("no such project".into());
+    };
+    let c = &mut list[i];
+    for key in ["title", "subtitle", "cover"] {
+        if let Some(v) = patch.get(key).and_then(|v| v.as_str()) {
+            match key {
+                "title" => c.title = v.to_string(),
+                "subtitle" => c.subtitle = v.to_string(),
+                _ => c.cover = v.to_string(),
+            }
+            if !c.edited.iter().any(|e| e == key) {
+                c.edited.push(key.to_string());
+            }
+        }
+    }
+    if let Some(v) = patch.get("lines").and_then(|v| v.as_array()) {
+        c.lines = v.iter().filter_map(|x| x.as_str()).map(|s| s.to_string()).take(4).collect();
+        if !c.edited.iter().any(|e| e == "lines") {
+            c.edited.push("lines".into());
+        }
+    }
+    if let Some(v) = patch.get("published").and_then(|v| v.as_bool()) {
+        c.published = v;
+    }
+    let out = serde_json::to_value(c.clone()).map_err(|e| e.to_string())?;
+    projects::save(&list);
+    Ok(out)
+}
+
+#[tauri::command]
+fn project_remove(id: String) -> bool {
+    let mut list = projects::load();
+    let before = list.len();
+    list.retain(|c| c.id != id);
+    projects::save(&list);
+    list.len() != before
+}
+
+/// 在壁纸上放一段这个项目的缩影。`ms` 默认 20 秒 —— 广场预览的标准长度。
+///
+/// 走事件而不是写配置:这是一次**演出**,不是一个设置。写进 wallpaper.json 就得再
+/// 想怎么把它擦掉。
+#[tauri::command]
+fn project_preview(app: AppHandle, capsule: serde_json::Value, ms: Option<u64>) -> bool {
+    let payload = serde_json::json!({ "capsule": capsule, "ms": ms.unwrap_or(20_000) });
+    let _ = app.emit("wallpaper-project", payload);
+    true
+}
+
+/// 自己挑一张图加进项目(最多 5 张:封面 + 4)。
+///
+/// 扫描能自动找出 README 里那张图,但作者对"该拿哪张给人看"永远比启发式清楚。
+/// 挑完立刻缩到 224px 编码进胶囊 —— 存的是**参数**,不是文件路径:胶囊要能离线
+/// 生成,也要能整颗传给别人。
+#[tauri::command]
+async fn project_add_image(app: AppHandle, id: String) -> Result<serde_json::Value, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .add_filter("Images", &["png", "jpg", "jpeg", "webp", "gif"])
+        .pick_file(move |f| { let _ = tx.send(f); });
+    let picked = rx.await.map_err(|e| e.to_string())?;
+    let Some(path) = picked.and_then(|fp| fp.into_path().ok()) else {
+        return Ok(serde_json::json!({ "cancelled": true }));
+    };
+    let url = projects::image_data_url(&path).ok_or("could not read that image")?;
+
+    let mut list = projects::load();
+    let Some(i) = list.iter().position(|c| c.id == id) else { return Err("no such project".into()) };
+    let c = &mut list[i];
+    if c.cover.is_empty() {
+        c.cover = url;
+        if !c.edited.iter().any(|e| e == "cover") { c.edited.push("cover".into()); }
+    } else {
+        if c.shots.len() >= projects::MAX_SHOTS {
+            return Err(format!("at most {} images", projects::MAX_SHOTS + 1));
+        }
+        c.shots.push(url);
+        if !c.edited.iter().any(|e| e == "shots") { c.edited.push("shots".into()); }
+    }
+    let out = serde_json::to_value(c.clone()).map_err(|e| e.to_string())?;
+    projects::save(&list);
+    Ok(out)
+}
+
+/// 去掉第 n 张(0 = 封面)。删掉封面就让第一张附图顶上 —— 一个没有封面、却还留着
+/// 附图的项目在预览里只会是一堆字。
+#[tauri::command]
+fn project_remove_image(id: String, index: usize) -> Result<serde_json::Value, String> {
+    let mut list = projects::load();
+    let Some(i) = list.iter().position(|c| c.id == id) else { return Err("no such project".into()) };
+    let c = &mut list[i];
+    if index == 0 {
+        c.cover = if c.shots.is_empty() { String::new() } else { c.shots.remove(0) };
+    } else if index - 1 < c.shots.len() {
+        c.shots.remove(index - 1);
+    }
+    for f in ["cover", "shots"] {
+        if !c.edited.iter().any(|e| e == f) { c.edited.push(f.to_string()); }
+    }
+    let out = serde_json::to_value(c.clone()).map_err(|e| e.to_string())?;
+    projects::save(&list);
+    Ok(out)
+}
+
+/// 一颗胶囊要上传的那一份(去掉本机路径),外加它有多大 —— 大小就是这个功能的
+/// 服务器成本,所以让调用方看得见。
+#[tauri::command]
+fn project_capsule(id: String) -> Result<serde_json::Value, String> {
+    let list = projects::load();
+    let c = list.into_iter().find(|c| c.id == id).ok_or("no such project")?;
+    let up = c.for_upload();
+    let bytes = serde_json::to_string(&up).map(|s| s.len()).unwrap_or(0);
+    if bytes > projects::MAX_CAPSULE_BYTES {
+        return Err(format!("capsule too large: {bytes} bytes"));
+    }
+    Ok(serde_json::json!({ "capsule": up, "bytes": bytes }))
+}
+
+/// 桌面图标的位置和大小。3D 壁纸靠它判断"鼠标底下是文件还是空壁纸"。
+///
+
+/// Open the 项目粒子 page.
+///
+/// Through navigate_main rather than a hand-written URL: the macOS original
+/// parses "tauri://localhost/projects.html", and that string PARSES fine on
+/// Windows while pointing at a scheme WebView2 does not serve — so the
+/// navigation silently does nothing and the eval fallback never runs. That
+/// helper exists because this exact bug was already shipped once.
+#[tauri::command]
+fn navigate_to_projects(app: AppHandle) {
+    navigate_main(&app, "projects.html");
+}
+
+/// The windows the user actually has open right now: app name, position, size.
+///
+/// The always-on-top card used to draw two fake white rectangles. A fake shows
+/// the z-order relationship but does not convince anyone — the claim is
+/// "particles float in front of your windows", and if the windows are drawings
+/// then it is just a diagram. With this the same card draws the user's own
+/// Chrome, terminal and chat at their real relative positions, and flipping the
+/// switch shows the particles come forward over them.
+///
+/// EnumWindows already walks in z-order, front first, so the array order IS the
+/// stacking order the card relies on. Eight is plenty to draw.
+#[tauri::command]
+fn list_open_windows() -> serde_json::Value {
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM, RECT, TRUE};
+    use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindowLongPtrW, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId,
+        IsWindowVisible, GWL_EXSTYLE, WS_EX_TOOLWINDOW,
+    };
+
+    struct Found {
+        items: Vec<serde_json::Value>,
+        own_pid: u32,
+    }
+
+    unsafe extern "system" fn cb(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let found = &mut *(lparam.0 as *mut Found);
+        if found.items.len() >= 8 {
+            return TRUE; // keep enumerating cheaply; the cap is checked on push
+        }
+        if !IsWindowVisible(hwnd).as_bool() {
+            return TRUE;
+        }
+        // Tool windows are palettes and tray helpers — not what the user thinks
+        // of as "my windows", and they would crowd out the real ones.
+        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        if ex & (WS_EX_TOOLWINDOW.0 as isize) != 0 {
+            return TRUE;
+        }
+        // A visible-but-cloaked window is a real thing on Windows: minimised
+        // store apps and windows on another virtual desktop report visible and
+        // carry a stale rectangle. Drawing those puts phantom boxes on the card.
+        let mut cloaked: u32 = 0;
+        if DwmGetWindowAttribute(
+            hwnd,
+            DWMWA_CLOAKED,
+            &mut cloaked as *mut u32 as *mut core::ffi::c_void,
+            std::mem::size_of::<u32>() as u32,
+        )
+        .is_ok()
+            && cloaked != 0
+        {
+            return TRUE;
+        }
+        let mut buf = [0u16; 256];
+        let n = GetWindowTextW(hwnd, &mut buf);
+        if n <= 0 {
+            return TRUE;
+        }
+        let title = String::from_utf16_lossy(&buf[..n as usize]);
+
+        let mut pid: u32 = 0;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        // Our own windows are not "the user's windows" — and the wallpaper is
+        // full-screen, so including it would cover the whole card.
+        if pid == 0 || pid == found.own_pid {
+            return TRUE;
+        }
+        let mut rect = RECT::default();
+        if GetWindowRect(hwnd, &mut rect).is_err() {
+            return TRUE;
+        }
+        let (w, h) = (rect.right - rect.left, rect.bottom - rect.top);
+        if w <= 40 || h <= 40 {
+            return TRUE;
+        }
+
+        // The app's name, not the window title: the card labels a box "Chrome",
+        // not "(3) Inbox — Gmail — Google Chrome".
+        let mut app = title.clone();
+        if let Ok(h) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
+            let mut nbuf = [0u16; 512];
+            let mut len = nbuf.len() as u32;
+            if QueryFullProcessImageNameW(
+                h,
+                PROCESS_NAME_WIN32,
+                windows::core::PWSTR(nbuf.as_mut_ptr()),
+                &mut len,
+            )
+            .is_ok()
+            {
+                let full = String::from_utf16_lossy(&nbuf[..len as usize]);
+                if let Some(stem) = std::path::Path::new(&full).file_stem() {
+                    app = stem.to_string_lossy().to_string();
+                }
+            }
+            let _ = windows::Win32::Foundation::CloseHandle(h);
+        }
+
+        found.items.push(serde_json::json!({
+            "id": hwnd.0 as isize, "pid": pid, "app": app,
+            "x": rect.left, "y": rect.top, "w": w, "h": h,
+        }));
+        TRUE
+    }
+
+    let mut found = Found { items: Vec::new(), own_pid: std::process::id() };
+    unsafe {
+        let _ = EnumWindows(Some(cb), LPARAM(&mut found as *mut Found as isize));
+    }
+    let (sw, sh) = unsafe {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
+        };
+        (GetSystemMetrics(SM_CXVIRTUALSCREEN), GetSystemMetrics(SM_CYVIRTUALSCREEN))
+    };
+    serde_json::json!({ "windows": found.items, "screen": { "w": sw, "h": sh } })
+}
+
+/// One rectangle on the wallpaper that takes the mouse while the pointer is
+/// inside it, and gives it straight back on the way out.
+///
+/// The wallpaper is click-through, which is what stops it from swallowing the
+/// desktop. But parts of it are meant to be clickable — a project capsule, a
+/// number — and those are a few hundred pixels in the middle of a full-screen
+/// window. Rather than arm the whole surface, the page reports the rectangle it
+/// cares about and this borrows the cursor for exactly that area.
+#[tauri::command]
+fn wallpaper_set_hot_rect(x: f64, y: f64, w: f64, h: f64, app: AppHandle) {
+    *HOT_RECT.lock().unwrap_or_else(|e| e.into_inner()) = Some((x, y, w, h));
+    start_wallpaper_hot_poll(app);
+}
+
+static HOT_RECT: std::sync::Mutex<Option<(f64, f64, f64, f64)>> = std::sync::Mutex::new(None);
+static HOT_POLL_RUNNING: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(target_os = "windows")]
+fn start_wallpaper_hot_poll(app: AppHandle) {
+    use std::sync::atomic::Ordering;
+    use windows::Win32::Foundation::POINT;
+    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    if HOT_POLL_RUNNING.swap(true, Ordering::SeqCst) {
+        return; // one poll, however many rectangles are reported
+    }
+    std::thread::spawn(move || {
+        let mut inside_last = false;
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(70));
+            // The adjust state owns the mouse outright while it is on. Toggling
+            // click-through underneath it would take the cursor away mid-drag.
+            if WP_ADJUST.load(Ordering::SeqCst) {
+                inside_last = false;
+                continue;
+            }
+            let Some(win) = app.get_webview_window("wallpaper") else { continue };
+            if !win.is_visible().unwrap_or(false) { continue; }
+            let Some((rx, ry, rw, rh)) = *HOT_RECT.lock().unwrap_or_else(|e| e.into_inner())
+            else { continue };
+            let mut pt = POINT::default();
+            if unsafe { GetCursorPos(&mut pt) }.is_err() { continue; }
+            // Physical pixels from the OS, CSS pixels from the page — the same
+            // conversion the cursor feed needs, and just as silent when skipped.
+            let sf = win.scale_factor().unwrap_or(1.0);
+            let (cx, cy) = (pt.x as f64 / sf, pt.y as f64 / sf);
+            let inside = cx >= rx && cx <= rx + rw && cy >= ry && cy <= ry + rh;
+            if inside == inside_last { continue; }
+            inside_last = inside;
+            set_wallpaper_click_through(&win, !inside);
         }
     });
 }

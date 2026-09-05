@@ -100,6 +100,47 @@ fn get_process_cwd_by_pid(pid: u32) -> Option<String> {
     None
 }
 
+/// Working directories of every agent process we know how to spot.
+///
+/// The projects list uses this to offer "the folder you are working in right
+/// now" instead of scanning the disk. macOS gets the same answer from
+/// `lsof -c <name> -a -d cwd`; Windows has no such thing, so it goes through
+/// get_process_cwd_by_pid — the same path the agent attribution already uses,
+/// deliberately, so the two cannot disagree about which folder an agent is in.
+pub(crate) fn agent_working_dirs() -> Vec<String> {
+    let output = crate::hidden_command("powershell")
+        .args([
+            "-NoProfile", "-NonInteractive", "-Command",
+            "Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*claude*' -or $_.Name -like '*codex*' -or $_.Name -like '*cursor*' } | Select-Object ProcessId | ConvertTo-Json -Compress",
+        ])
+        .output();
+    let Ok(output) = output else { return Vec::new() };
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let trimmed = stdout.trim();
+    if trimmed.is_empty() { return Vec::new(); }
+    // PowerShell emits a bare object rather than a one-element array when a
+    // single process matches — the same shape the claude path already handles.
+    let entries: Vec<serde_json::Value> = if trimmed.starts_with('[') {
+        serde_json::from_str(trimmed).unwrap_or_default()
+    } else {
+        match serde_json::from_str::<serde_json::Value>(trimmed) {
+            Ok(v) => vec![v],
+            Err(_) => Vec::new(),
+        }
+    };
+    let mut out = Vec::new();
+    for entry in &entries {
+        let pid = entry["ProcessId"].as_u64().unwrap_or(0) as u32;
+        if pid == 0 { continue; }
+        if let Some(cwd) = get_process_cwd_by_pid(pid) {
+            if !cwd.is_empty() && !out.iter().any(|x: &String| *x == cwd) {
+                out.push(cwd);
+            }
+        }
+    }
+    out
+}
+
 /// Get CWDs of all running claude processes on Windows.
 /// Returns Vec<(pid, cwd)>.
 fn get_claude_pid_cwds() -> Vec<(u32, String)> {

@@ -6,18 +6,22 @@
  * buzzes. Scattered across call sites they drift, and an app whose transitions
  * disagree with each other reads as cheap however good each one is alone.
  *
- * ⚠ HAPTICS ON iOS SAFARI ARE NOT `navigator.vibrate`. WebKit does not
- * implement the Vibration API at all — every "haptics on iOS web" answer that
- * calls vibrate() is describing Android. What DOES fire the Taptic Engine from
- * a web page is a `<label>` bound to a `<select>`'s switch: Safari plays the
- * system selection tick when the picker opens. That trick is used here, kept
- * off-screen, and it is the only reason this works on an iPhone at all.
+ * ⚠ THERE ARE NO HAPTICS ON iOS SAFARI, and the trick that claims otherwise is
+ * worse than nothing. WebKit does not implement the Vibration API at all, so
+ * every "haptics on iOS web" answer calling vibrate() is describing Android.
+ * The workaround everyone reaches for is clicking a hidden `<label>` bound to a
+ * `<select>`, because Safari plays the selection tick when a picker opens.
  *
- * It must therefore be treated as a bonus, never as a signal: it is silent when
- * the user has haptics off, silent in Low Power Mode, and silent on every
- * browser but Safari. Nothing in the app may depend on the buzz to be
- * understood — Apple's own guidance is that good haptics are felt, not noticed,
- * and never the only channel.
+ * It was in this file and it has been taken out. The tick comes from the picker
+ * OPENING — on an iPhone that is a full-screen native sheet, and firing it on
+ * every pointerdown put a modal in front of the app on every tap. Reported as
+ * "the buttons do nothing", which is exactly what it looks like from the other
+ * side of a picker nobody asked for. Desktop Chrome shows none of this, which
+ * is why it survived review.
+ *
+ * So: vibrate() where it genuinely exists, and silence on iOS. Nothing in the
+ * app may depend on the buzz to be understood — which was already the rule, and
+ * is the reason removing it costs nothing.
  */
 (function (root) {
   'use strict';
@@ -42,22 +46,6 @@
 
   /* ── Haptics ───────────────────────────────────────────────────────────── */
 
-  var tapEl = null;
-  function hapticNode() {
-    if (tapEl) return tapEl;
-    /* A real <select> with a <label>, off-screen. Safari plays the selection
-       tick when a label bound to a switch-like control is activated. Built once
-       and reused: creating it per tap is a layout thrash for a 10ms effect. */
-    var wrap = document.createElement('div');
-    wrap.setAttribute('aria-hidden', 'true');
-    wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden';
-    wrap.innerHTML = '<label id="terse-hap-l" for="terse-hap-s"></label>' +
-                     '<select id="terse-hap-s"><option>1</option><option>2</option></select>';
-    document.body.appendChild(wrap);
-    tapEl = wrap.querySelector('label');
-    return tapEl;
-  }
-
   var lastTap = 0;
   /**
    * A tick. `kind` is advisory — iOS web gives one texture, so this exists to
@@ -73,13 +61,13 @@
     var gap = kind === 'drag' ? 90 : 30;
     if (now - lastTap < gap) return;
     lastTap = now;
-    try { hapticNode().click(); } catch (e) { /* never let feedback throw */ }
-    // Android and desktop Chrome do have the Vibration API; use it where real.
+    // Android and desktop Chrome have the Vibration API; iOS has nothing, and
+    // nothing is the right answer there — see the header.
     try {
       if (root.navigator && typeof root.navigator.vibrate === 'function') {
         root.navigator.vibrate(kind === 'heavy' ? 18 : kind === 'drag' ? 4 : 8);
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { /* never let feedback throw */ }
   }
 
   /* ── Gestures ──────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@
 
 mod capture;
 mod agent_monitor;
+mod messages;
 mod projects;
 mod agent_usage_scan;
 mod stats_store;
@@ -4514,6 +4515,8 @@ pub fn run() {
             navigate_to_projects,
             list_open_windows,
             wallpaper_set_hot_rect,
+            messages_for_wallpaper,
+            messages_set_app_on_wallpaper,
             wallpaper_set_adjust,
             desktop_icon_rects,
             wallpaper_set_interactive,
@@ -7655,4 +7658,24 @@ fn start_wallpaper_hot_poll(app: AppHandle) {
             set_wallpaper_click_through(&win, !inside);
         }
     });
+}
+
+// ── 评论投屏:the message feed the wallpaper plays as particles ──
+//
+// Only the two the wallpaper actually calls. The rest of the macOS messages
+// surface — opening a conversation, sending a reply — is per-app UI automation
+// (AppleScript into WeChat there), and the Windows equivalent would be a
+// different piece of work through terse-uia rather than a port of this one.
+
+/// Mute or unmute one app for the wallpaper. Does not touch notifications.
+#[tauri::command]
+fn messages_set_app_on_wallpaper(app_id: String, on: bool) -> Result<(), String> {
+    messages::set_app_on_wallpaper(&app_id, on)
+}
+
+/// What the wallpaper should show: recent messages minus the muted apps.
+#[tauri::command]
+fn messages_for_wallpaper(limit: Option<usize>) -> Result<serde_json::Value, String> {
+    Ok(serde_json::to_value(messages::recent_for_wallpaper(limit.unwrap_or(20))?)
+        .unwrap_or_default())
 }

@@ -30,6 +30,11 @@ tree-sitter-typescript = "0.23"
 # Acrylic/Mica blur behind the island + dashboards (Windows equivalent of the
 # macOS NSVisualEffectView vibrancy the shared frontend expects).
 window-vibrancy = "0.6"
+# 评论投屏 reads Windows' Action Center database, which is SQLite. "bundled"
+# compiles SQLite from source rather than trusting the host to have it — the CI
+# runner already builds C for tree-sitter, so the toolchain is there either way.
+rusqlite = { version = "0.32", features = ["bundled"] }
+
 windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_UI_Accessibility",

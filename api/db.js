@@ -1681,7 +1681,9 @@ const upsertWallProject = db.prepare(`
   ON CONFLICT(id) DO UPDATE SET title = @title, capsule = @capsule, published_at = datetime('now')
 `);
 const listWallProjects = db.prepare(
-  'SELECT id, title, capsule, views, published_at FROM wall_projects ORDER BY published_at DESC LIMIT @limit');
+  // identity 也带上:它是**发布者的短身份**,也就是私信要寄到的地址。没有它,
+  // "给作者发消息"就只剩一个名字,而名字不是地址。
+  'SELECT id, identity, title, capsule, views, published_at FROM wall_projects ORDER BY published_at DESC LIMIT @limit');
 const countWallProjects = db.prepare(
   'SELECT COUNT(*) AS n FROM wall_projects WHERE identity = @identity');
 const bumpWallProjectViews = db.prepare('UPDATE wall_projects SET views = views + 1 WHERE id = ?');

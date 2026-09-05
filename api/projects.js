@@ -128,6 +128,9 @@ router.get('/public', (req, res) => {
       const c = counts[r.id] || {};
       return {
         id: r.id, title: r.title, published_at: r.published_at, views: r.views, capsule,
+        // 作者的短身份 —— 私信寄到这里。发布本身就是一次公开动作,而这串 32 位
+        // 哈希除了"能给他发消息"什么也说明不了;那道闸仍然在 dm.js 上。
+        author: r.identity,
         likes: c.like || 0, favs: c.fav || 0, comments: c.comments || 0,
         liked: mine.like.has(r.id), faved: mine.fav.has(r.id),
         topComments: top[r.id] || [],

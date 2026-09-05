@@ -25,7 +25,7 @@ const ok = (l, c) => c ? (pass++, console.log('  ✓ ' + l)) : (fails.push(l), c
 
 const dir = __dirname;
 const html = fs.readFileSync(path.join(dir, '..', 'm.html'), 'utf8');
-const js = ['app.js', 'install.js', 'diag.js', 'terse-web.js', 'capture.js', 'beds.js']
+const js = ['app.js', 'install.js', 'diag.js', 'terse-web.js', 'capture.js', 'beds.js', 'social.js']
   .map((f) => { try { return fs.readFileSync(path.join(dir, f), 'utf8'); } catch { return ''; } })
   .join('\n');
 

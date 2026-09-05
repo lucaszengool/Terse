@@ -247,6 +247,74 @@
   .proj .meta b{font-size:14px;font-weight:600;letter-spacing:-.005em}
   .proj .meta span{font-size:11.5px;color:var(--faint)}
 
+  /* ── 广场的社交层 ─────────────────────────────────────────────────────────
+     The counts under a project were read-only: you could see that eleven people
+     liked it and had no way to be the twelfth. These are the actions, and they
+     sit UNDER the row rather than inside it, because the row itself already
+     means one thing — tap it and the project plays in the field — and a strip
+     of buttons inside a button is a row where nothing is safe to touch. */
+  .projwrap{display:flex;flex-direction:column;gap:6px}
+  .acts{display:flex;gap:6px;padding:0 2px}
+  .act{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:10px;
+    font-size:12.5px;color:var(--dim);background:rgba(0,0,0,.42);border:1px solid var(--line);
+    min-height:0;transition:transform var(--t-fast) var(--snap),background var(--t-fast) var(--glide),
+    color var(--t-fast) var(--glide),border-color var(--t-fast) var(--glide)}
+  .act:active{transform:scale(.94)}
+  /* Liked and saved are DIFFERENT colours. Two states drawn the same way are
+     one state as far as a thumb at arm's length is concerned. */
+  .act.on{color:var(--ink);background:rgba(244,114,182,.16);border-color:rgba(244,114,182,.34)}
+  .act.on.fav{background:var(--accent-dim);border-color:rgba(110,231,183,.3)}
+  .act .n{font-variant-numeric:tabular-nums}
+
+  /* ── a sheet ──
+     Comments come up over the app rather than replacing it: you are reading
+     what people said ABOUT the thing you are looking at, and losing the thing
+     to read about it is the wrong trade. */
+  .sheet{position:fixed;inset:0;z-index:9;display:flex;flex-direction:column;justify-content:flex-end;
+    background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+  .sheet .pane{background:var(--bg);border-top-left-radius:20px;border-top-right-radius:20px;
+    border-top:1px solid var(--line);padding:12px 15px calc(var(--safe-b) + 12px);
+    max-height:78vh;display:flex;flex-direction:column;gap:11px;
+    animation:sheetup .26s var(--snap) both}
+  @keyframes sheetup{from{transform:translateY(18px);opacity:.4}to{transform:none;opacity:1}}
+  .sheet .grab{width:34px;height:4px;border-radius:2px;background:var(--line2);align-self:center;flex:0 0 auto}
+  .sheet .scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px}
+
+  .cmt{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;
+    background:var(--card);border:1px solid var(--line)}
+  .cmt .top{display:flex;align-items:baseline;gap:7px}
+  .cmt .who{font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .cmt .body{font-size:14px;line-height:1.45;word-break:break-word}
+  .cmt .bar{display:flex;gap:8px;align-items:center}
+  .cmt .bar button{font-size:11.5px;color:var(--faint);padding:4px 0;min-height:0}
+  .cmt .bar button.on{color:var(--ink)}
+  /* Replies are INDENTED, not flattened with an @name. Two levels is the whole
+     depth the server stores, so the shape can just be drawn. */
+  .cmt .reps{display:flex;flex-direction:column;gap:8px;margin:2px 0 0 11px;
+    padding-left:10px;border-left:1px solid var(--line2)}
+
+  /* ── friends ── */
+  #fzFriends,#fzChats,#fzThread{display:flex;flex-direction:column;gap:12px}
+  /* Your own code, big and selectable. It IS your address here, and an address
+     you cannot read off the screen to somebody is not an address. */
+  .codebox{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;
+    background:rgba(0,0,0,.45);border:1px solid var(--line2)}
+  .codebox code{flex:1 1 auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:14px;letter-spacing:.02em;word-break:break-all;-webkit-user-select:all;user-select:all}
+  .unread{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);
+    color:#04110c;font-size:11px;font-weight:700;display:grid;place-items:center;flex:0 0 auto}
+
+  /* ── the pairing bar ──
+     It used to live at the bottom of the "Me" tab, behind two taps, which is
+     where you put something optional. Linking a computer is the thing that
+     turns this app from a demo into a window onto your own machine, so it says
+     so where it can be seen, and takes itself away the moment it is done. */
+  .pairbar{display:flex;align-items:center;gap:9px;margin:0 14px 8px;padding:9px 12px;
+    border-radius:12px;background:var(--accent-dim);border:1px solid rgba(110,231,183,.28);
+    font-size:12.5px;color:var(--ink);text-align:left}
+  .pairbar .g{flex:0 0 auto;opacity:.8}
+  .pairbar .go{margin-left:auto;color:var(--accent);font-weight:600;flex:0 0 auto}
+
   /* ── Bare by default ─────────────────────────────────────────────────────
      Everything in the field view except the peek handle is gone until asked
      for, so opening the app is a black room with particles in it and nothing
@@ -448,6 +516,14 @@
     <button class="chip" id="linkChip" type="button"><span class="dot"></span><span id="linkChipText">—</span></button>
   </header>
 
+  <!-- Linking a computer is what turns this from a demo into a window onto your
+       own machine. It used to be the last card of the last tab. -->
+  <button class="pairbar hide" id="pairBar" type="button">
+    <span class="g">⌘</span>
+    <span data-t="pair_bar">Link a computer to see your agents here</span>
+    <span class="go" data-t="pair_bar_go">Link →</span>
+  </button>
+
   <main>
     <!-- ── 壁纸 ─────────────────────────────────────────────────────── -->
     <!-- OPENS BARE. The field is the product, and a screenful of cards over
@@ -576,10 +652,61 @@
       </div>
     </section>
 
-    <!-- ── 好友 ─────────────────────────────────────────────────────── -->
+    <!-- ── 好友 · 私信 ──────────────────────────────────────────────────
+         Friends and messages are two views of ONE relationship, so they are a
+         segmented control here and not a sixth tab. A sixth tab would also be
+         the point where the bar stops being readable on a small phone. -->
     <section class="view" id="v-friends">
-      <div class="list" id="friendList"></div>
-      <div class="empty hide" id="friendEmpty" data-t="friends_empty">No friends yet.<br>Add someone from a room's roster.</div>
+      <div class="seg" id="frSeg">
+        <button class="on" data-fr="friends" type="button" data-t="fr_friends">Friends</button>
+        <button data-fr="chats" type="button" data-t="fr_chats">Messages</button>
+      </div>
+
+      <div id="fzFriends">
+        <!-- YOUR CODE IS YOUR ADDRESS. Adding someone used to require standing
+             in the same room together, which is right for a stranger and absurd
+             for a person you already know. A code can be sent over any channel
+             you already trust, and it is a revocable token rather than an
+             identity — so it can be handed out without handing out you. -->
+        <div class="card">
+          <h2 data-t="fr_my_code">Your friend code</h2>
+          <p class="tiny" data-t="fr_my_code_p">Send it to someone and they can add you. Anyone who has it can.</p>
+          <div class="codebox"><code id="myCode">····</code>
+            <button class="btn ghost" id="copyCode" type="button" style="min-height:34px;padding:7px 12px" data-t="copy">Copy</button></div>
+          <button class="btn ghost wide" id="shareCode" type="button" data-t="fr_share">Share</button>
+        </div>
+        <div class="card">
+          <h2 data-t="fr_add">Add by code</h2>
+          <div class="row">
+            <input type="text" id="frCode" class="grow" placeholder="paste a code" autocapitalize="off" autocomplete="off" spellcheck="false">
+            <button class="btn primary" id="frAdd" type="button" data-t="fr_add_btn">Add</button>
+          </div>
+        </div>
+        <div class="list" id="friendList"></div>
+        <div class="empty hide" id="friendEmpty" data-t="friends_empty">No friends yet.<br>Share your code, or add someone from a room's roster.</div>
+      </div>
+
+      <div id="fzChats" class="hide">
+        <div class="row"><h2 class="grow" style="font-size:14px;font-weight:600" data-t="fr_chats">Messages</h2>
+          <button class="btn ghost tiny" id="dmRefresh" type="button" style="min-height:0;padding:6px 10px" data-t="refresh">Refresh</button></div>
+        <div class="list" id="dmList"></div>
+        <div class="empty hide" id="dmEmpty" data-t="dm_empty">No messages yet.<br>Tap ✉ on someone's project, or on a friend.</div>
+      </div>
+
+      <!-- One conversation. It replaces the list rather than sliding over it:
+           there is one thing to do here and a back button to leave it. -->
+      <div id="fzThread" class="hide">
+        <div class="row">
+          <button class="btn ghost" id="dmBack" type="button" style="min-height:34px;padding:7px 12px">←</button>
+          <b class="grow ell" id="dmWho">—</b>
+        </div>
+        <p class="tiny hide" id="dmGate" data-t="dm_gate">Your first message goes with the project you tapped — that is what lets it through.</p>
+        <div class="msgs" id="dmMsgs"></div>
+        <div class="composer">
+          <input type="text" id="dmInput" class="grow" placeholder="Message" autocomplete="off">
+          <button class="btn primary" id="dmSend" type="button" data-t="send">Send</button>
+        </div>
+      </div>
     </section>
 
     <!-- ── 我 ───────────────────────────────────────────────────────── -->
@@ -634,6 +761,23 @@
   </nav>
 </div>
 
+<!-- ── 评论 ─────────────────────────────────────────────────────────────
+     Over the app, not instead of it. -->
+<div class="sheet hide" id="cmtSheet">
+  <div class="pane">
+    <div class="grab"></div>
+    <div class="row"><b class="grow ell" id="cmtTitle">—</b>
+      <button class="btn ghost" id="cmtClose" type="button" style="min-height:34px;padding:7px 12px">✕</button></div>
+    <div class="scroll" id="cmtList"></div>
+    <div class="empty hide" id="cmtEmpty" data-t="cmt_empty">Nothing said yet.</div>
+    <p class="tiny hide" id="cmtReplyTo"></p>
+    <div class="composer">
+      <input type="text" id="cmtInput" class="grow" placeholder="Say something" autocomplete="off">
+      <button class="btn primary" id="cmtSend" type="button" data-t="send">Send</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── sign-in gate ─────────────────────────────────────────────────── -->
 <!-- ONE SCREEN, AND THE PRODUCT IS THE ONBOARDING.
      The field is already running behind this and already answers a finger, so
@@ -673,6 +817,7 @@
 <script src="/phone/terse-web.js"></script>
 <script src="/phone/mp4.js"></script>
 <script src="/phone/capture.js"></script>
+<script src="/phone/social.js"></script>
 <script src="/phone/app.js"></script>
 </body>
 </html>

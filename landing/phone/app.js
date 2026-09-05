@@ -98,6 +98,22 @@
       pz_rooms: 'Rooms', pz_projects: 'Projects', pz_published: 'Published projects',
       pz_tap_hint: 'Tap one and it plays in the field.', pz_none: 'Nothing published yet.',
       pz_playing: 'Playing {name} in the field',
+      pz_liked: 'Liked', pz_saved: 'Saved',
+      cmt_title: 'Comments', cmt_empty: 'Nothing said yet.', cmt_reply: 'Reply',
+      cmt_reply_to: 'Replying to {name} · tap to cancel', cmt_delete: 'Delete',
+      fr_friends: 'Friends', fr_chats: 'Messages',
+      fr_my_code: 'Your friend code',
+      fr_my_code_p: 'Send it to someone and they can add you. Anyone who has it can.',
+      fr_share: 'Share', copy: 'Copy', copied: 'Copied',
+      fr_add: 'Add by code', fr_add_btn: 'Add', fr_added: 'Added {name}',
+      fr_add_empty: 'Paste a code first', fr_add_self: 'That is your own code',
+      fr_chat: 'Message', fr_accept: 'Accept',
+      dm_empty: 'No messages yet.<br>Tap ✉ on someone\u2019s project, or on a friend.',
+      dm_gate: 'Your first message goes with the project you tapped — that is what lets it through.',
+      dm_no_reason: 'You can only write to someone about a project they published — open one of theirs first.',
+      dm_sent: 'Sent', dm_someone: 'someone', dm_about: 'about {name}',
+      pair_bar: 'Link a computer to see your agents here', pair_bar_go: 'Link →',
+      signin_first: 'Sign in first',
       sig_touch: 'touches', sig_here: 'here', sig_screen: 'screen', sig_cores: 'cores',
       sig_memory: 'memory', sig_zone: 'zone', sig_day: 'day', sig_open: 'open', sig_installed: 'installed',
       wall_overlay: 'Keep my own wallpaper, add the text',
@@ -257,6 +273,22 @@
       pz_rooms: '房间', pz_projects: '项目', pz_published: '已发布的项目',
       pz_tap_hint: '点一个，它会在场里演一遍。', pz_none: '还没有人发布项目。',
       pz_playing: '正在场里播放 {name}',
+      pz_liked: '已赞', pz_saved: '已收藏',
+      cmt_title: '评论', cmt_empty: '还没有人说话。', cmt_reply: '回复',
+      cmt_reply_to: '正在回复 {name} · 点一下取消', cmt_delete: '删除',
+      fr_friends: '好友', fr_chats: '私信',
+      fr_my_code: '你的好友码',
+      fr_my_code_p: '发给谁，谁就能加你。拿到它的人都能加。',
+      fr_share: '分享', copy: '复制', copied: '已复制',
+      fr_add: '用好友码加人', fr_add_btn: '添加', fr_added: '已加 {name}',
+      fr_add_empty: '先粘一个码进来', fr_add_self: '这是你自己的码',
+      fr_chat: '发消息', fr_accept: '同意',
+      dm_empty: '还没有私信。<br>在别人的项目上点 ✉，或者在好友那一行点。',
+      dm_gate: '第一条消息会挂在你刚点的那个项目上 —— 它就是通行的由头。',
+      dm_no_reason: '给陌生人发消息要有由头：只能就他发布过的项目说话，先去打开他的一个项目。',
+      dm_sent: '已发送', dm_someone: '某人', dm_about: '关于 {name}',
+      pair_bar: '连一台电脑，你的 agent 就会出现在这里', pair_bar_go: '去连接 →',
+      signin_first: '请先登录',
       sig_touch: '触碰', sig_here: '停留', sig_screen: '屏幕', sig_cores: '核心',
       sig_memory: '内存', sig_zone: '时区', sig_day: '今天', sig_open: '已开', sig_installed: '已安装',
       sig_day_mon: '周一', sig_day_tue: '周二', sig_day_wed: '周三', sig_day_thu: '周四',
@@ -913,9 +945,10 @@
     // else the field is a backdrop and the text has to win.
     $('scrim').classList.toggle('clear', tab === 'field');
     if (tab === 'plaza') loadPlaza();
-    if (tab === 'friends') loadFriends();
+    if (tab === 'friends') loadFriendsTab();
     if (tab === 'room') renderRoom();
     if (tab === 'me') renderMe();
+    renderPairBar();
     try { history.replaceState(null, '', '/m/' + tab); } catch (e) {}
   }
   Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
@@ -954,9 +987,22 @@
   }
   on($('plazaRefresh'), 'click', loadPlaza);
 
+  /* ⚠ rooms.js HAS NO nickname(). This threw a TypeError on every call, which
+     means joining a room, creating one and knocking have all been dead on this
+     app — and silently, because each one is inside a click handler whose
+     rejection nobody was watching. It surfaced only when a new caller happened
+     to be one I was testing by hand.
+
+     rooms.js is the file the Mac and the phone SHARE, so the fix belongs here
+     rather than in it: this app is a guest in that module and should ask
+     whether a method exists before leaning on it. */
   function nickname() {
     var u = T.user();
-    return Rooms.nickname() || (u && (u.firstName || (u.primaryEmailAddress && u.primaryEmailAddress.emailAddress))) || 'Guest';
+    var saved = null;
+    try { if (typeof Rooms.nickname === 'function') saved = Rooms.nickname(); } catch (e) {}
+    return saved
+      || (u && (u.firstName || (u.primaryEmailAddress && u.primaryEmailAddress.emailAddress)))
+      || 'Guest';
   }
 
   function doJoin(code) {
@@ -1098,10 +1144,121 @@
     });
   });
 
-  // ── Friends ──────────────────────────────────────────────────────────────
+  // ── Friends · messages ───────────────────────────────────────────────────
+  /* Friends and messages are two views of ONE relationship, so they share a tab
+     behind a segmented control. A sixth tab is also where the bar stops being
+     readable on a small phone.
+
+     ⚠ EVERYTHING HERE NEEDS ONE IDENTITY. This backend grew two: the plaza and
+     private messages key off the Clerk user id, rooms and friends off a random
+     per-install secret. The same human was two people, so "add a friend, then
+     talk to them" could not work at all. Social.adopt() settles it on the phone
+     by feeding rooms.js the Clerk id — see social.js for why it is done by
+     feeding rather than by editing the shared file. */
+
+  var Social = window.TerseSocial;
+  var myPeer = '';        // my own 32-char id, the one other people message
+  var frSeg = 'friends';
+  var dmPeer = null;      // the conversation on screen
+  var dmName = '';
+  var dmReason = null;    // the project a first message has to name
+
+  /* My own short id. Worked out on the device rather than asked for, because it
+     is a pure function of something already here — and it is only ever used to
+     recognise MYSELF, so being briefly empty at boot costs nothing. */
+  function ensureMyPeerId() {
+    var raw = Social.identity();
+    if (!raw || myPeer) return Promise.resolve(myPeer);
+    var c = (window.crypto && window.crypto.subtle);
+    if (!c) return Promise.resolve('');
+    return c.digest('SHA-256', new TextEncoder().encode(raw)).then(function (buf) {
+      var hex = Array.prototype.map.call(new Uint8Array(buf), function (x) {
+        return ('0' + x.toString(16)).slice(-2);
+      }).join('');
+      myPeer = hex.slice(0, 32);
+      return myPeer;
+    }).catch(function () { return ''; });
+  }
+  function myPeerId() { return myPeer; }
+
+  /** Anything that writes needs a name on it. Said once, plainly, instead of
+   *  letting the server answer 401 into a catch that shows nothing. */
+  function requireIdentity() {
+    if (Social.identity()) return true;
+    toast(t('signin_first'));
+    return false;
+  }
+
+  function loadFriendsTab() {
+    if (frSeg === 'chats') loadDmList();
+    else { loadFriends(); loadMyCode(); }
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('#frSeg button'), function (b) {
+    b.onclick = function () {
+      Array.prototype.forEach.call(document.querySelectorAll('#frSeg button'), function (o) {
+        o.classList.toggle('on', o === b);
+      });
+      frSeg = b.dataset.fr;
+      closeThread();
+      $('fzFriends').classList.toggle('hide', frSeg !== 'friends');
+      $('fzChats').classList.toggle('hide', frSeg !== 'chats');
+      loadFriendsTab();
+    };
+  });
+
+  /* ── Your code is your address ───────────────────────────────────────────
+     Adding somebody used to mean standing in the same room as them, which is
+     right for a stranger and absurd for a person you already know. The server
+     hands the same token back every time, so this reads as "your code" rather
+     than "a link you just made" — and it is a revocable token, not an identity
+     hash, so handing it out is not handing out you. */
+  function loadMyCode() {
+    if (!Social.identity()) { $('myCode').textContent = '—'; return; }
+    Social.myCode().then(function (d) {
+      $('myCode').textContent = d.token || '—';
+      $('myCode').dataset.url = d.url || '';
+    }).catch(function () { $('myCode').textContent = '—'; });
+  }
+
+  on($('copyCode'), 'click', function () {
+    var c = $('myCode').textContent;
+    if (!c || c === '—') return;
+    if (navigator.clipboard) navigator.clipboard.writeText(c).then(function () { toast(t('copied')); });
+  });
+  on($('shareCode'), 'click', function () {
+    var c = $('myCode').textContent;
+    if (!c || c === '—') return;
+    var url = $('myCode').dataset.url || c;
+    // The share sheet when there is one: a code is meant to LEAVE this app, and
+    // making somebody copy, switch app and paste is three steps where iOS has
+    // one. Copy is the fallback, never a dead button.
+    if (navigator.share) navigator.share({ text: url }).catch(function () {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast(t('copied')); });
+  });
+
+  on($('frAdd'), 'click', addByCode);
+  on($('frCode'), 'keydown', function (e) { if (e.key === 'Enter') addByCode(); });
+  function addByCode() {
+    if (!requireIdentity()) return;
+    // Whatever they pasted. People copy the whole link out of a chat window;
+    // making them cut the token out of it is handing them our implementation.
+    var code = Social.codeFrom($('frCode').value);
+    if (!code) { toast(t('fr_add_empty')); return; }
+    $('frAdd').disabled = true;
+    Social.addByCode(code).then(function (d) {
+      $('frCode').value = '';
+      var f = d && d.friendship;
+      toast(t('fr_added').replace('{name}', (f && f.name) || t('dm_someone')));
+      if (window.TerseFeel) window.TerseFeel.tap();
+      loadFriends();
+    }).catch(function (e) {
+      toast(/own link/i.test(e.message || '') ? t('fr_add_self') : (e.message || '—'));
+    }).then(function () { $('frAdd').disabled = false; });
+  }
 
   function loadFriends() {
-    Rooms.listFriends().then(function (d) {
+    Social.friends().then(function (d) {
       // The server answers with three lists, not one: accepted friends, and the
       // pending requests in each direction. Reading only `friends` would hide
       // every incoming request — which is the one thing on this screen that
@@ -1116,20 +1273,309 @@
         var av = document.createElement('span');
         av.className = 'av'; av.textContent = (f.name || '?').slice(0, 1).toUpperCase();
         var box = document.createElement('span'); box.className = 'grow';
-        var nm = document.createElement('b'); nm.className = 'ell'; nm.textContent = f.name || f.email || 'someone';
+        var nm = document.createElement('b'); nm.className = 'ell'; nm.textContent = f.name || f.email || t('dm_someone');
         var sub = document.createElement('span'); sub.className = 'tiny'; sub.textContent = f.status;
         box.appendChild(nm); box.appendChild(sub);
         row.appendChild(av); row.appendChild(box);
         if (f.status === 'pending' && f.direction === 'incoming') {
           var yes = document.createElement('button');
           yes.type = 'button'; yes.className = 'btn ghost'; yes.style.minHeight = '32px'; yes.textContent = '✓';
-          yes.onclick = function () { Rooms.respondFriend(f.id, true).then(loadFriends); };
+          yes.onclick = function () { Social.respondFriend(f.id, true).then(loadFriends); };
           row.appendChild(yes);
+        } else if (f.status === 'accepted' && f.peer) {
+          // The whole point of the bridge: a friend row carries the id you can
+          // write to, so the answer to "now what?" is one tap away instead of
+          // being a name you can do nothing with.
+          var chat = document.createElement('button');
+          chat.type = 'button'; chat.className = 'btn ghost'; chat.style.minHeight = '32px';
+          chat.style.padding = '6px 11px'; chat.textContent = '✉';
+          chat.onclick = function () { openDm(f.peer, f.name || t('dm_someone'), null); };
+          row.appendChild(chat);
         }
         list.appendChild(row);
       });
     }).catch(function () { $('friendEmpty').classList.remove('hide'); });
   }
+
+  /* ── The inbox ───────────────────────────────────────────────────────────
+     One row per person, not per message: this screen answers "who wrote to me",
+     and a list of every sentence anybody ever sent answers a question nobody
+     asked. */
+  function loadDmList() {
+    if (!Social.identity()) { $('dmEmpty').classList.remove('hide'); return; }
+    Social.inbox().then(function (d) {
+      var threads = (d && d.threads) || [];
+      var list = $('dmList');
+      list.innerHTML = '';
+      $('dmEmpty').classList.toggle('hide', threads.length > 0);
+      threads.forEach(function (th) {
+        var row = document.createElement('button');
+        row.type = 'button'; row.className = 'item';
+        var av = document.createElement('span');
+        av.className = 'av'; av.textContent = (th.name || '?').slice(0, 1).toUpperCase();
+        var box = document.createElement('span'); box.className = 'grow';
+        var nm = document.createElement('b'); nm.className = 'ell';
+        nm.textContent = th.name || t('dm_someone');
+        var sub = document.createElement('span'); sub.className = 'tiny ell';
+        sub.textContent = (th.last && th.last.body) || '';
+        box.appendChild(nm); box.appendChild(sub);
+        row.appendChild(av); row.appendChild(box);
+        if (th.unread > 0) {
+          var n = document.createElement('span');
+          n.className = 'unread'; n.textContent = String(th.unread);
+          row.appendChild(n);
+        }
+        row.onclick = function () { openDm(th.peer, th.name || t('dm_someone'), null); };
+        list.appendChild(row);
+      });
+      markUnread(d && d.unread);
+    }).catch(function () { $('dmEmpty').classList.remove('hide'); });
+  }
+
+  /** The Friends tab wears the unread count, because a message that arrives
+   *  while you are looking at the field is otherwise silent. */
+  function markUnread(n) {
+    var btn = document.querySelector('nav button[data-tab="friends"] span:last-child');
+    if (!btn) return;
+    var base = t('t_friends');
+    btn.textContent = n > 0 ? base + ' · ' + n : base;
+  }
+
+  /** Open a conversation. `reason` is the project a FIRST message has to name —
+   *  carried from the ✉ on somebody's project, and simply absent between
+   *  friends, who need no reason. */
+  function openDm(peer, name, reason, about) {
+    if (!peer) return;
+    if (!requireIdentity()) return;
+    dmPeer = peer; dmName = name || t('dm_someone'); dmReason = reason || null;
+    show('friends');
+    frSeg = 'chats';
+    Array.prototype.forEach.call(document.querySelectorAll('#frSeg button'), function (o) {
+      o.classList.toggle('on', o.dataset.fr === 'chats');
+    });
+    $('fzFriends').classList.add('hide');
+    $('fzChats').classList.add('hide');
+    $('fzThread').classList.remove('hide');
+    /* A stranger has no name yet — all you know is what you were looking at.
+       Putting the project title where a name goes makes it read as if the
+       person is called "particle-city"; saying what it is ABOUT is the truth,
+       and their real name arrives with their first reply anyway. */
+    $('dmWho').textContent = name ? dmName : (about ? t('dm_about').replace('{name}', about) : dmName);
+    $('dmMsgs').innerHTML = '';
+    loadThread();
+  }
+
+  function closeThread() {
+    dmPeer = null; dmReason = null;
+    $('fzThread').classList.add('hide');
+  }
+  on($('dmRefresh'), 'click', loadDmList);
+  on($('dmBack'), 'click', function () {
+    closeThread();
+    $('fzChats').classList.toggle('hide', frSeg !== 'chats');
+    $('fzFriends').classList.toggle('hide', frSeg !== 'friends');
+    loadFriendsTab();
+  });
+
+  function loadThread() {
+    if (!dmPeer) return;
+    Social.thread(dmPeer).then(function (d) {
+      $('dmMsgs').innerHTML = '';
+      (d.messages || []).forEach(function (m) { addDm(m, false); });
+      // Say whether this line is open BEFORE anything is typed. Letting somebody
+      // write a paragraph and then telling them it cannot be sent is the worst
+      // possible moment to explain a rule.
+      var open = !!d.open;
+      $('dmGate').classList.toggle('hide', open || !dmReason);
+      if (!open && !dmReason) {
+        $('dmGate').textContent = t('dm_no_reason');
+        $('dmGate').classList.remove('hide');
+      } else if (!open) {
+        $('dmGate').textContent = t('dm_gate');
+      }
+      loadDmList();
+    }).catch(function (e) { toast(e.message || '—'); });
+  }
+
+  /* A message is a message wherever it is shown, so it goes to the field too —
+     the same headline path a room's chat uses, in the speaker's own colour.
+     That is what this app is: text that becomes particles. */
+  function addDm(m, alsoField) {
+    var box = $('dmMsgs');
+    var el = document.createElement('div');
+    el.className = 'msg' + (m.mine ? ' me' : '');
+    if (!m.mine) {
+      var who = document.createElement('span');
+      who.className = 'who'; who.textContent = m.author || dmName;
+      el.appendChild(who);
+    }
+    el.appendChild(document.createTextNode(m.body || ''));
+    box.appendChild(el);
+    box.scrollIntoView({ block: 'end' });
+    if (alsoField && wp && wp.roomLine) {
+      wp.roomLine(m.mine ? 'me' : dmPeer, m.mine ? nickname() : dmName, m.body || '',
+                  { self: !!m.mine, max: 26 });
+    }
+  }
+
+  on($('dmSend'), 'click', sendDm);
+  on($('dmInput'), 'keydown', function (e) { if (e.key === 'Enter') sendDm(); });
+  function sendDm() {
+    var v = ($('dmInput').value || '').trim();
+    if (!v || !dmPeer) return;
+    $('dmInput').value = '';
+    // Shown as sent immediately, and in the field immediately. If the server
+    // refuses it, it is taken back and the reason is said out loud — the one
+    // failure here that has a rule behind it deserves the words, not a shrug.
+    addDm({ mine: true, body: v }, true);
+    var bubble = $('dmMsgs').lastChild;
+    function undo(e) {
+      if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
+      var m = (e && e.message) || '';
+      toast(/reference a project/i.test(m) ? t('dm_no_reason') : (m || '—'));
+    }
+    // Promise.resolve().then, so that a THROW on the way to the request is
+    // undone too. A synchronous failure used to leave the message sitting there
+    // looking sent while nothing had left the phone — which is exactly how the
+    // missing Rooms.nickname() hid for as long as it did.
+    Promise.resolve()
+      .then(function () { return Social.send(dmPeer, v, { author: nickname(), projectId: dmReason }); })
+      .then(function () {
+        // The reason is NOT spent. Until the other person answers, every message
+        // still has to name the project (see api/dm.js) — dropping it here would
+        // make the second sentence of a conversation fail for no visible reason.
+        loadThread();
+      })
+      .catch(undo);
+  }
+
+  /* ── Comments ────────────────────────────────────────────────────────────
+     A sheet over the app rather than a page instead of it: you are reading what
+     people said ABOUT the thing on screen, and losing the thing to read about
+     it is the wrong trade. */
+  var cmtProject = null, cmtBtn = null, cmtParent = null;
+
+  function openComments(p, btn) {
+    cmtProject = p; cmtBtn = btn || null; cmtParent = null;
+    $('cmtTitle').textContent = (p.capsule && p.capsule.title) || p.title || t('cmt_title');
+    $('cmtList').innerHTML = '';
+    $('cmtReplyTo').classList.add('hide');
+    $('cmtSheet').classList.remove('hide');
+    loadComments();
+  }
+  function closeComments() { $('cmtSheet').classList.add('hide'); cmtProject = null; }
+  on($('cmtClose'), 'click', closeComments);
+  on($('cmtSheet'), 'click', function (e) { if (e.target === $('cmtSheet')) closeComments(); });
+
+  function loadComments() {
+    if (!cmtProject) return;
+    Social.comments(cmtProject.id).then(function (d) {
+      var list = $('cmtList');
+      list.innerHTML = '';
+      var tops = (d && d.comments) || [];
+      $('cmtEmpty').classList.toggle('hide', tops.length > 0);
+      tops.forEach(function (c) { list.appendChild(commentEl(c, true)); });
+      // Keep the row's count honest with what is on screen — a badge that
+      // disagrees with the list it opens is worse than no badge.
+      var n = tops.reduce(function (a, c) { return a + 1 + (c.replies || []).length; }, 0);
+      if (cmtProject) cmtProject.comments = n;
+      if (cmtBtn && cmtBtn.setCount) cmtBtn.setCount(n);
+    }).catch(function () { $('cmtEmpty').classList.remove('hide'); });
+  }
+
+  function commentEl(c, top) {
+    var el = document.createElement('div');
+    el.className = 'cmt';
+    var head = document.createElement('div'); head.className = 'top';
+    var who = document.createElement('span'); who.className = 'who';
+    who.textContent = c.author || t('dm_someone');
+    head.appendChild(who);
+    var body = document.createElement('div'); body.className = 'body';
+    body.textContent = c.body || '';
+    var bar = document.createElement('div'); bar.className = 'bar';
+
+    var like = document.createElement('button');
+    like.type = 'button';
+    like.className = c.liked ? 'on' : '';
+    like.textContent = '♥ ' + (c.likes || 0);
+    like.onclick = function () {
+      if (!requireIdentity()) return;
+      Social.likeComment(c.id).then(function (r) {
+        c.liked = !!r.on; c.likes = r.likes;
+        like.className = c.liked ? 'on' : '';
+        like.textContent = '♥ ' + (c.likes || 0);
+      }).catch(function (e) { toast(e.message || '—'); });
+    };
+    bar.appendChild(like);
+
+    // Two levels is the whole depth the server keeps, so replying is offered on
+    // top-level comments only rather than pretending at a thread that flattens.
+    if (top) {
+      var rep = document.createElement('button');
+      rep.type = 'button'; rep.textContent = t('cmt_reply');
+      rep.onclick = function () { setReplyTo(c); };
+      bar.appendChild(rep);
+    }
+    if (c.mine) {
+      var del = document.createElement('button');
+      del.type = 'button'; del.textContent = t('cmt_delete');
+      del.onclick = function () {
+        Social.deleteComment(c.id).then(loadComments).catch(function (e) { toast(e.message || '—'); });
+      };
+      bar.appendChild(del);
+    }
+
+    el.appendChild(head); el.appendChild(body); el.appendChild(bar);
+    if (top && (c.replies || []).length) {
+      var reps = document.createElement('div'); reps.className = 'reps';
+      c.replies.forEach(function (r) { reps.appendChild(commentEl(r, false)); });
+      el.appendChild(reps);
+    }
+    return el;
+  }
+
+  function setReplyTo(c) {
+    cmtParent = cmtParent && cmtParent.id === c.id ? null : c;
+    var lab = $('cmtReplyTo');
+    lab.classList.toggle('hide', !cmtParent);
+    if (cmtParent) lab.textContent = t('cmt_reply_to').replace('{name}', c.author || t('dm_someone'));
+    $('cmtInput').focus();
+  }
+  on($('cmtReplyTo'), 'click', function () { cmtParent = null; $('cmtReplyTo').classList.add('hide'); });
+
+  on($('cmtSend'), 'click', sendComment);
+  on($('cmtInput'), 'keydown', function (e) { if (e.key === 'Enter') sendComment(); });
+  function sendComment() {
+    var v = ($('cmtInput').value || '').trim();
+    if (!v || !cmtProject) return;
+    if (!requireIdentity()) return;
+    $('cmtInput').value = '';
+    Social.comment(cmtProject.id, v, cmtParent && cmtParent.id)
+      .then(function () {
+        cmtParent = null;
+        $('cmtReplyTo').classList.add('hide');
+        loadComments();
+      })
+      .catch(function (e) { toast(e.message || '—'); });
+  }
+
+  /* ── The pairing bar ─────────────────────────────────────────────────────
+     Linking a computer is what turns this from a demo into a window onto your
+     own machine, and it used to be the last card of the last tab. It says so
+     where it can be seen, and takes itself away the moment it is done — a
+     banner that stays after it has been acted on is an advert. */
+  function renderPairBar() {
+    var bar = $('pairBar');
+    if (!bar) return;
+    var signedIn = !!T.user();
+    var linked = (T.link.devices() || []).length > 0;
+    bar.classList.toggle('hide', !signedIn || linked || current === 'me');
+  }
+  on($('pairBar'), 'click', function () {
+    show('me');
+    var f = $('pairCode');
+    if (f) { f.focus(); f.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  });
 
   // ── The actual iPhone wallpaper ───────────────────────────────────────────
 
@@ -1407,6 +1853,7 @@
       !!(window.TerseInstall && window.TerseInstall.standalone()));
     $('pairCode').classList.toggle('hide', !signedIn);
     $('pairBtn').classList.toggle('hide', !signedIn);
+    renderPairBar();
   }
 
   function claim(code) {
@@ -1416,7 +1863,7 @@
     T.link.claim(code).then(function () {
       toast(t('paired'));
       $('pairCode').value = '';
-      renderMe(); renderHUD();
+      renderMe(); renderHUD(); renderPairBar();
     }).catch(function (e) {
       toast(e.message || '—');
     }).then(function () {
@@ -1601,8 +2048,81 @@
       meta.appendChild(name); meta.appendChild(sub);
       b.appendChild(meta);
       b.onclick = function () { playProject(p); };
-      list.appendChild(b);
+
+      // The actions go UNDER the row, not inside it. The row already means one
+      // thing — play this in the field — and a strip of buttons inside a button
+      // is a row where nothing is safe to touch.
+      var wrap = document.createElement('div');
+      wrap.className = 'projwrap';
+      wrap.appendChild(b);
+      wrap.appendChild(projectActions(p));
+      list.appendChild(wrap);
     });
+  }
+
+  /* ── What you can do about somebody else's project ───────────────────────
+     The counts were read-only: you could see that eleven people liked it and
+     had no way to be the twelfth.
+
+     Every one of these is optimistic — the heart fills on the tap, not on the
+     round trip — and puts itself back if the server disagrees. On a phone on a
+     train the honest-looking alternative is a button that does nothing for two
+     seconds, and people press it again. */
+  function actBtn(glyph, n, on) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'act' + (on ? ' on' : '');
+    var g = document.createElement('span'); g.textContent = glyph;
+    var c = document.createElement('span'); c.className = 'n'; c.textContent = n > 0 ? String(n) : '';
+    b.appendChild(g); b.appendChild(c);
+    b.setCount = function (v) { c.textContent = v > 0 ? String(v) : ''; };
+    return b;
+  }
+
+  function projectActions(p) {
+    var box = document.createElement('div');
+    box.className = 'acts';
+
+    var like = actBtn('♥', p.likes || 0, p.liked);
+    var fav = actBtn('☆', p.favs || 0, p.faved);
+    fav.classList.add('fav');
+    var cmt = actBtn('💬', p.comments || 0, false);
+    var dm = actBtn('✉', 0, false);
+
+    function toggle(btn, call, countKey, flagKey) {
+      btn.onclick = function () {
+        if (!requireIdentity()) return;
+        var was = btn.classList.contains('on');
+        var n = p[countKey] || 0;
+        // Draw the answer first, then ask.
+        btn.classList.toggle('on', !was);
+        p[flagKey] = !was; p[countKey] = Math.max(0, n + (was ? -1 : 1));
+        btn.setCount(p[countKey]);
+        if (window.TerseFeel) window.TerseFeel.tap();
+        call(p.id).then(function (r) {
+          // The server's count is the real one — an optimistic guess drifts as
+          // soon as anyone else touches the same project.
+          if (r && typeof r.count === 'number') { p[countKey] = r.count; btn.setCount(r.count); }
+          if (r && typeof r.on === 'boolean') { p[flagKey] = r.on; btn.classList.toggle('on', r.on); }
+        }).catch(function (e) {
+          btn.classList.toggle('on', was);
+          p[flagKey] = was; p[countKey] = n; btn.setCount(n);
+          toast(e.message || '—');
+        });
+      };
+    }
+    toggle(like, Social.like, 'likes', 'liked');
+    toggle(fav, Social.fav, 'favs', 'faved');
+    cmt.onclick = function () { openComments(p, cmt); };
+    dm.onclick = function () {
+      openDm(p.author, null, p.id, (p.capsule && p.capsule.title) || p.title);
+    };
+    // You cannot write to yourself, and offering the button is worse than not
+    // having it: it looks like the feature is broken rather than inapplicable.
+    if (!p.author || p.author === myPeerId()) dm.classList.add('hide');
+
+    box.appendChild(like); box.appendChild(fav); box.appendChild(cmt); box.appendChild(dm);
+    return box;
   }
 
   function playProject(p) {
@@ -1621,8 +2141,10 @@
   function loadProjects() {
     var list = $('projList');
     if (!list) return Promise.resolve();
-    return fetch('/api/cloud/projects/public?limit=40', { headers: { Accept: 'application/json' } })
-      .then(function (r) { return r.ok ? r.json() : null; })
+    // Through Social, because it sends the identity header — without it the
+    // server has no idea which of these YOU liked, and every heart comes back
+    // empty however many times you have pressed it.
+    return Social.projects(40)
       .then(function (j) {
         projPool = (j && Array.isArray(j.projects)) ? j.projects : [];
         renderProjects();
@@ -1750,11 +2272,24 @@
     T.start().then(function () {
       renderHUD();
       renderStyles();
+      renderPairBar();
+      // The unread count on the tab, once, at boot: a message that arrived
+      // while the app was closed is otherwise invisible until you go looking.
+      Social.inbox().then(function (d) { markUnread(d && d.unread); }).catch(function () {});
       if (pending) { claim(pending); pending = null; show('me'); }
     });
   }
 
   function openApp(signedIn) {
+    /* BEFORE anything talks to the cloud. Settling the identity after
+       connectRoom() would leave this session's room membership registered under
+       the old random secret while friends and messages used the new one — the
+       exact split this is here to close. */
+    if (signedIn) {
+      var who = T.user();
+      if (who && who.id) Social.adopt(who.id);
+      ensureMyPeerId();
+    }
     $('gate').classList.add('hide');
     $('app').classList.remove('hide');
     if (T.photo()) $('clearPhoto').classList.remove('hide');

@@ -60,19 +60,48 @@
   /** Static facts, each behind a check. Absent capabilities are omitted rather
    *  than reported as zero — a "0 GB" reads as broken, a missing line reads as
    *  nothing at all, which is the truth. */
-  function facts() {
+  function facts(tr) {
+    var t = tr || function (_k, fb) { return fb; };
     var out = [];
+    /* Labels stay SHORT on purpose. The engine only draws a metric's name when
+       name and value together fit inside twenty characters — past that the
+       glyph renders small and stretched — so "screen" earns its place and
+       "screen resolution" would silently lose the label it came for. */
     try {
       var w = (root.screen && root.screen.width) || 0;
       var h = (root.screen && root.screen.height) || 0;
       var dpr = Math.round(root.devicePixelRatio || 1);
-      if (w && h) out.push({ k: 'screen', v: (w * dpr) + '×' + (h * dpr), u: 'px' });
+      if (w && h) out.push({ k: t('sig_screen', 'screen'), v: (w * dpr) + '×' + (h * dpr), u: '' });
     } catch (e) { /* ignore */ }
+
     var cores = navigator.hardwareConcurrency;
-    if (cores) out.push({ k: 'cores', v: String(cores), u: '' });
-    // Chrome-only; present on Android, absent on the iPhone this ships to.
+    if (cores) out.push({ k: t('sig_cores', 'cores'), v: String(cores), u: '' });
+
+    // Every one of these is checked, never assumed: the ones Chrome has and
+    // Safari does not simply do not appear on an iPhone.
     if (typeof navigator.deviceMemory === 'number') {
-      out.push({ k: 'memory', v: String(navigator.deviceMemory), u: 'GB' });
+      out.push({ k: t('sig_memory', 'memory'), v: String(navigator.deviceMemory), u: 'GB' });
+    }
+    try {
+      var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // Just the city — "Asia/Shanghai" does not fit and the region adds nothing.
+      if (tz && tz.indexOf('/') > 0) out.push({ k: t('sig_zone', 'zone'), v: tz.split('/').pop().replace(/_/g, ' '), u: '' });
+    } catch (e) { /* ignore */ }
+
+    var day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
+    out.push({ k: t('sig_day', 'day'), v: t('sig_day_' + day.toLowerCase(), day), u: '' });
+
+    // Real and free: how long this page has been rendering, which is the one
+    // number that is genuinely about the field itself.
+    try {
+      var up = Math.round(performance.now() / 1000);
+      if (up > 3) out.push({ k: t('sig_open', 'open'), v: up < 90 ? up + 's' : Math.round(up / 60) + 'm', u: '' });
+    } catch (e) { /* ignore */ }
+
+    if (root.matchMedia) {
+      if (root.matchMedia('(display-mode: standalone)').matches) {
+        out.push({ k: 'Terse', v: t('sig_installed', 'installed'), u: '' });
+      }
     }
     return out;
   }
@@ -95,7 +124,7 @@
     var e = energy();
     var mins = Math.floor((Date.now() - started) / 60000);
     var stage = [clock()];
-    facts().forEach(function (f) { stage.push(f); });
+    facts(tr).forEach(function (f) { stage.push(f); });
     if (touches) stage.push({ k: tr('sig_touch', 'touches'), v: String(touches), u: '' });
     if (mins) stage.push({ k: tr('sig_here', 'here'), v: String(mins), u: 'min' });
     return {

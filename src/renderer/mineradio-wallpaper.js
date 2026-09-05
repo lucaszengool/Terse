@@ -328,6 +328,13 @@ export default class MineradioWallpaper {
        away, never got its text at all. The sentinel has to be outside the
        window, not at the origin of it. */
     this._lastStageAt = -Infinity;
+    /* HOW OFTEN THE FIELD SPEAKS. Twelve seconds was tuned for a wallpaper on a
+       Mac that is glanced at, where a number changing every few seconds is
+       restless. The phone is the opposite: it is being LOOKED at, often for the
+       first time, and a field that says one thing every twelve seconds reads as
+       broken rather than calm. The caller picks. */
+    this._stagePace = Number.isFinite(opts && opts.stagePace)
+      ? Math.max(600, opts.stagePace) : 12000;
 
     // 兜底尺寸不是可有可无的:画布刚挂上去时 clientWidth 可能还是 0,
     // 而 0 会一路传成 aspect=NaN → 网格行列 NaN → 几何 0 个点(整个场景空白,
@@ -1174,10 +1181,20 @@ export default class MineradioWallpaper {
     const arr = Array.isArray(items) ? items : [];
     if (!arr.length) return;
     const now = performance.now();
-    if (this._paced && now - this._lastStageAt < 12000) return;
+    if (this._paced && now - this._lastStageAt < this._stagePace) return;
     this._lastStageAt = now;
     const it = arr[(this._glyphIdx++) % arr.length];
-    const label = (it.v != null ? String(it.v) : '') + (it.u ? ' ' + it.u : '');
+    const value = (it.v != null ? String(it.v) : '') + (it.u ? ' ' + it.u : '');
+    /* NAME THE NUMBER, when there is room for it.
+       The label was thrown away here and only the value drawn, so the field
+       spelled "02:08" or "184.3k" with no way to know what either was, and a
+       number nobody can identify is decoration.
+       Only when it fits: the glyph canvas is a fixed width and the type
+       auto-shrinks, so a long line renders small and stretched rather than
+       wrapping. The desktop's own labels ("Today · consumed") blow that budget
+       by themselves, and those keep showing the bare value. */
+    const named = (it.k ? String(it.k) + ' ' : '') + value;
+    const label = named.length <= 20 ? named : value;
     this._queueGlyph(label.trim(), it.saved ? 'saved' : 'cache');
   }
 

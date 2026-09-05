@@ -94,7 +94,8 @@
       /* Romanised on purpose, in BOTH languages: the glyph layer rasterises a
          Latin typeface, so Chinese characters come out as empty boxes. */
       field_idle_1: 'Terse', field_idle_2: 'scan to connect',
-      sig_touch: 'touches', sig_here: 'here',
+      sig_touch: 'touches', sig_here: 'here', sig_screen: 'screen', sig_cores: 'cores',
+      sig_memory: 'memory', sig_zone: 'zone', sig_day: 'day', sig_open: 'open', sig_installed: 'installed',
       wall_overlay: 'Keep my own wallpaper, add the text',
       wall_overlaying: 'Making the layer…',
       wall_overlay_ready: 'Layer ready — build the Overlay shortcut below',
@@ -248,7 +249,10 @@
       field_no_frames: '图形引擎启动了，但一帧都没画出来。',
       field_details: '查看详情', field_copy: '复制详情', field_copied: '已复制',
       field_idle_1: 'Terse', field_idle_2: '扫码连接',
-      sig_touch: '触碰', sig_here: '停留',
+      sig_touch: '触碰', sig_here: '停留', sig_screen: '屏幕', sig_cores: '核心',
+      sig_memory: '内存', sig_zone: '时区', sig_day: '今天', sig_open: '已开', sig_installed: '已安装',
+      sig_day_mon: '周一', sig_day_tue: '周二', sig_day_wed: '周三', sig_day_thu: '周四',
+      sig_day_fri: '周五', sig_day_sat: '周六', sig_day_sun: '周日',
       wall_overlay: '保留我自己的壁纸，只加字',
       wall_overlaying: '正在做图层…',
       wall_overlay_ready: '图层好了——照下面建 Overlay 快捷指令',
@@ -514,6 +518,13 @@
       pro: pro,
       // Passed explicitly so the engine never falls through to
       // getDesktopPicture(), which on a phone answers with nothing.
+      /* HOW OFTEN THE FIELD SPEAKS. Twelve seconds is tuned for a wallpaper on
+         a Mac that is glanced at, where a number changing every few seconds is
+         restless. The phone is the opposite — it is being LOOKED at, often for
+         the first time and with nothing linked yet — and one glyph every twelve
+         seconds reads as broken rather than calm. Four keeps it talking without
+         turning it into a ticker. */
+      stagePace: 4000,
       photo: bed || undefined,
     });
     // The constructor builds the scene but does NOT start the animation loop —

@@ -534,6 +534,17 @@
     // with no error anywhere. The desktop wallpaper page calls it too.
     wp.start();
 
+    /* Other people's projects, drifting through an otherwise empty field.
+       Only while nothing is linked: once a machine is paired the field is
+       that person's agents, and a stranger's work playing over their own
+       live numbers is the wrong thing entirely. The check is re-asked each
+       cycle because pairing can happen mid-session. */
+    if (window.TersePlazaField) {
+      window.TersePlazaField.start(wp, function () {
+        return !(wallState && wallState.linked);
+      });
+    }
+
     /* The engine measures the canvas in its constructor and falls back to
        1920x1080 when the element has not been laid out yet — which is exactly
        what happens when the module resolves before first paint. It carries a

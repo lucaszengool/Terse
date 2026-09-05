@@ -26,6 +26,7 @@
  * 统计会被粒子**聚成数字**,浮现 → 停住 → 散回壁纸,涟漪同时从那个数字的位置推出去。
  */
 import * as THREE from 'three';
+import { ProjectLayer } from './wallpaper-project.js';
 import { MR_VS, MR_FS, MR_BLOOM_VS, MR_BLOOM_FS } from './mineradio-shaders.js';
 import { getProStyle, resolveStyle, DEFAULT_STYLE_ID } from './wallpaper-styles.js';
 
@@ -968,6 +969,72 @@ export default class MineradioWallpaper {
     this._pendingCol = this._peerColor(peerId);
     this._queueGlyph(who + ' · ' + body, 'peer');
   }
+
+  /* ══════════════ 项目缩影 ══════════════
+     A project plays on the field: its cover gathers out of the particles, the
+     title and a few lines surface with it, then it all scatters back. Tapping
+     somebody's project in the plaza runs this.
+
+     The image MUST be particles too. Pasting a texture is easier and it is the
+     wrong answer: it becomes "a picture stuck on the wallpaper", not part of
+     the same world as the aurora and the numbers around it — and a pasted
+     texture does not turn when the 3D view does. See wallpaper-project.js.
+
+     ⚠ Ported from the desktop engine, with one change. There the layer is
+     added to `_glyphLayer.group`, a Group that billboards toward the camera in
+     3D. This engine has no such group — its glyph layer is `{ scene, slots }`
+     — so the points go on the scene directly. The capsule therefore does not
+     billboard here; it turns with the field, which is the honest behaviour for
+     an engine that has no billboarding to inherit. */
+
+  /** @param {{title?:string, subtitle?:string, cover?:string, lines?:string[]}} cap
+   *  @param {number} ms whole run, default 20s (the plaza preview's length) */
+  showProject(cap, ms = 20000) {
+    if (!cap) return false;
+    if (!this._projLayer) {
+      this._projLayer = new ProjectLayer(this.u.uDotTex.value);
+      const host = this._glyphLayer && (this._glyphLayer.group || this._glyphLayer.scene);
+      if (host) host.add(this._projLayer.points);
+      else return false;
+    }
+    const layer = this._projLayer;
+    const start = () => {
+      layer.play(Math.max(3000, ms | 0));
+      /* The title has to appear, always. Going through _queueGlyph is not good
+         enough: that queue is throttled, has a quota and waits for a free slot,
+         so what the user sees is a picture with no words. The headline path
+         (_logPending) is the reserved slot and is taken on the next frame. */
+      this._glyphQueue.length = 0;
+      this._nextFillAt = 0;
+      if (cap.title) {
+        this._logPending = { label: String(cap.title).slice(0, 26), kind: 'log', size: 'big' };
+      }
+      if (cap.subtitle) this._queueGlyph(String(cap.subtitle).slice(0, 34), 'cache');
+      for (const l of (cap.lines || []).slice(0, 3)) {
+        if (l) this._queueGlyph(String(l).slice(0, 30), 'agents');
+      }
+      this.pulse(0.8);
+    };
+    if (!cap.cover) {
+      // No cover still plays: the title and the lines were always particles.
+      layer.stop();
+      start();
+      return true;
+    }
+    const img = new Image();
+    img.onload = () => {
+      // 1.25 against SILK's 2.4 half-height: a thumbnail, not a fill — and the
+      // same particle count over a smaller area reads sharper.
+      if (layer.setImage(img, 1.25)) start();
+      else { layer.stop(); start(); }
+    };
+    img.onerror = () => { layer.stop(); start(); };
+    img.src = cap.cover;
+    return true;
+  }
+
+  /** Cut it short — another project was tapped, or the preview was closed. */
+  hideProject() { if (this._projLayer) this._projLayer.stop(); }
 
   setActivity(a) { this._activityTarget = clamp01(+a || 0); }
 

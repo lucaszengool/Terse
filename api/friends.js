@@ -71,7 +71,17 @@ function requireIdentity(req, res, next) {
   return res.status(401).json({ error: 'Missing identity' });
 }
 
-/** The other person's side of a link, from the caller's point of view. */
+/** The other person's side of a link, from the caller's point of view.
+ *
+ * `peer` is the other person's identity hash TRUNCATED TO 32 — which is exactly
+ * the id the plaza and the DM router use, because all three derive from the same
+ * sha256 and the short one is the long one's prefix. It is here so that a friend
+ * can be MESSAGED: without it the friends list holds a name and nothing you can
+ * address, and "add a friend, then chat" is impossible.
+ *
+ * The full 64-char hash stays in. It is what a friendship is keyed by, and it
+ * still never leaves the server — see publicEdge for the room channel, which
+ * carries neither. */
 function shape(edge, meHash) {
   const outgoing = edge.a_hash === meHash;
   return {
@@ -80,6 +90,7 @@ function shape(edge, meHash) {
     direction: outgoing ? 'outgoing' : 'incoming',
     name: (outgoing ? edge.b_name : edge.a_name) || null,
     email: (outgoing ? edge.b_email : edge.a_email) || null,
+    peer: String(outgoing ? edge.b_hash : edge.a_hash).slice(0, 32),
     room_id: edge.room_id || null,
     created_at: edge.created_at,
   };

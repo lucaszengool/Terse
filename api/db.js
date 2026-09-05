@@ -298,6 +298,29 @@ db.exec(`
     PRIMARY KEY (comment_id, identity)
   );
 
+  -- 私信。**一对人只有一条线**:thread = 两个身份排序后拼起来,所以"我发给他"和
+  -- "他发给我"天然落在同一条线上 —— 不需要两张表,也不需要 join 把两半拼回来。
+  --
+  -- 为什么这里可以给陌生人发,而好友申请必须在同一个房间里(见 friends.js):
+  -- 发布到广场本身就是一次**公开动作** —— 你把项目摆出来给人看,就是在说"可以来
+  -- 找我聊这个"。所以第一条搭讪必须挂在**对方一个真的发布过的项目**上(project_id),
+  -- 这既是上下文,也是一道闸:发不出没有由头的私信,也就没法拿身份哈希去遍历人。
+  -- 对方回过一次之后这条线就通了,后面不用再挂项目;已经是好友也一样 —— friends.js
+  -- 那边已经答应过一次,再要个由头等于把同一件事问两遍。
+  CREATE TABLE IF NOT EXISTS dm_messages (
+    id TEXT PRIMARY KEY,
+    thread TEXT NOT NULL,
+    from_id TEXT NOT NULL,
+    to_id TEXT NOT NULL,
+    from_name TEXT,
+    project_id TEXT,
+    body TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    read_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_dm_thread ON dm_messages(thread, created_at);
+  CREATE INDEX IF NOT EXISTS idx_dm_inbox ON dm_messages(to_id, read_at);
+
   CREATE TABLE IF NOT EXISTS cowork_sessions (
     id TEXT PRIMARY KEY,
     team_id TEXT NOT NULL REFERENCES cloud_teams(id) ON DELETE CASCADE,
@@ -1383,6 +1406,18 @@ const respondFriend = db.prepare(`
 `);
 const deleteFriend = db.prepare('DELETE FROM friend_links WHERE id = ?');
 
+/* 这两个人是不是好友 —— 但只拿得到**32 位的短身份**。
+ *
+ * 私信和广场用的是 `sha256(身份).slice(0,32)`,好友用的是同一个哈希的**完整 64 位**。
+ * 短的那串正好是长的那串的前缀,所以这里用 substr 对前缀比,而不是去别处换算一次 ——
+ * 两套 id 之间没有映射表,能对上全靠它们本来就是同一个哈希。 */
+const friendedByShortHash = db.prepare(`
+  SELECT 1 AS yes FROM friend_links
+  WHERE status = 'accepted'
+    AND ((substr(a_hash, 1, 32) = @x AND substr(b_hash, 1, 32) = @y)
+      OR (substr(a_hash, 1, 32) = @y AND substr(b_hash, 1, 32) = @x))
+  LIMIT 1`);
+
 /* Ordered by ROWID, not by created_at. created_at has one-second resolution, so
    several messages routinely share it — and the tie was being broken by a random
    UUID, which is to say arbitrarily: two lines sent in the same second could come
@@ -1651,6 +1686,8 @@ const countWallProjects = db.prepare(
   'SELECT COUNT(*) AS n FROM wall_projects WHERE identity = @identity');
 const bumpWallProjectViews = db.prepare('UPDATE wall_projects SET views = views + 1 WHERE id = ?');
 const deleteWallProject = db.prepare('DELETE FROM wall_projects WHERE id = @id AND identity = @identity');
+// 谁发布了这个项目。私信那道闸要用它核对"第一条搭讪挂的是不是对方自己的项目"。
+const wallProjectOwner = db.prepare('SELECT identity FROM wall_projects WHERE id = ?');
 
 // ── 广场互动 ──
 // INSERT OR IGNORE + DELETE 两条,合起来就是"切换":插不进去说明已经点过了。
@@ -1685,6 +1722,39 @@ const topWallComments = db.prepare(`
   WHERE parent_id IS NULL AND likes > 0
   ORDER BY project_id, likes DESC, created_at ASC`);
 
+/* ── 私信 ────────────────────────────────────────────────────────────────── */
+const sendDm = db.prepare(`
+  INSERT INTO dm_messages (id, thread, from_id, to_id, from_name, project_id, body)
+  VALUES (@id, @thread, @from_id, @to_id, @from_name, @project_id, @body)
+`);
+const dmThread = db.prepare(
+  'SELECT * FROM dm_messages WHERE thread = @thread ORDER BY created_at ASC, id ASC LIMIT 200');
+// 收件箱:**一条线只回一行**(最后一条 + 未读数),不是把几百条消息全发回来再在
+// 前端分组。列表页要的是"谁找过我",不是每个人说过的每一句话。
+const dmInbox = db.prepare(`
+  SELECT m.thread,
+         MAX(m.created_at) AS last_at,
+         SUM(CASE WHEN m.to_id = @me AND m.read_at IS NULL THEN 1 ELSE 0 END) AS unread,
+         COUNT(*) AS n
+  FROM dm_messages m
+  WHERE m.from_id = @me OR m.to_id = @me
+  GROUP BY m.thread
+  ORDER BY last_at DESC
+  LIMIT 60
+`);
+const dmLast = db.prepare(
+  'SELECT * FROM dm_messages WHERE thread = @thread ORDER BY created_at DESC, id DESC LIMIT 1');
+const dmMarkRead = db.prepare(
+  "UPDATE dm_messages SET read_at = datetime('now') WHERE thread = @thread AND to_id = @me AND read_at IS NULL");
+const dmUnreadTotal = db.prepare(
+  'SELECT COUNT(*) AS n FROM dm_messages WHERE to_id = @me AND read_at IS NULL');
+// 反垃圾:同一个人一小时里能发多少条。免费的私信没有闸,广场第一天就会变成小广告墙。
+const dmSentSince = db.prepare(
+  "SELECT COUNT(*) AS n FROM dm_messages WHERE from_id = @me AND created_at > datetime('now', @window)");
+// 这条线上对方回过话没有 —— 回过就算通了,后面不用再挂项目。
+const dmRepliedBy = db.prepare(
+  'SELECT COUNT(*) AS n FROM dm_messages WHERE thread = @thread AND from_id = @peer');
+
 const likeWallComment = db.prepare(
   'INSERT OR IGNORE INTO wall_comment_likes (comment_id, identity) VALUES (@comment_id, @identity)');
 const unlikeWallComment = db.prepare(
@@ -1698,7 +1768,8 @@ module.exports = {
   upsertWallProject, listWallProjects, countWallProjects, bumpWallProjectViews, deleteWallProject,
   addWallReaction, removeWallReaction, hasWallReaction, countWallReactions, myWallReactions,
   insertWallComment, listWallComments, getWallComment, deleteWallComment, deleteWallCommentReplies,
-  countWallComments, topWallComments,
+  countWallComments, topWallComments, wallProjectOwner,
+  sendDm, dmThread, dmInbox, dmLast, dmMarkRead, dmUnreadTotal, dmSentSince, dmRepliedBy,
   likeWallComment, unlikeWallComment, syncWallCommentLikes, myWallCommentLikes,
   db,
   upsertUser, getUser, ensureUser, updateStripeConnect,
@@ -1735,6 +1806,7 @@ module.exports = {
   addCloudEvent, getTeamEvents, getTeamSummary,
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
   getTeamByModel, getTeamByMode, getTeamByAgent, getTeamAgentTotals,
+  friendedByShortHash,
   // Discovery, knocking, friend links
   setRoomListing, setRoomOwnerIdentity, listPublicRooms, listRoomsForIdentity,
   addKnock, getKnock, getKnockFor, listKnocks, setKnockStatus,

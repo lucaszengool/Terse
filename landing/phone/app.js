@@ -94,6 +94,7 @@
       /* Romanised on purpose, in BOTH languages: the glyph layer rasterises a
          Latin typeface, so Chinese characters come out as empty boxes. */
       field_idle_1: 'Terse', field_idle_2: 'scan to connect',
+      field_peek: 'Controls',
       sig_touch: 'touches', sig_here: 'here', sig_screen: 'screen', sig_cores: 'cores',
       sig_memory: 'memory', sig_zone: 'zone', sig_day: 'day', sig_open: 'open', sig_installed: 'installed',
       wall_overlay: 'Keep my own wallpaper, add the text',
@@ -249,6 +250,7 @@
       field_no_frames: '图形引擎启动了，但一帧都没画出来。',
       field_details: '查看详情', field_copy: '复制详情', field_copied: '已复制',
       field_idle_1: 'Terse', field_idle_2: '扫码连接',
+      field_peek: '设置',
       sig_touch: '触碰', sig_here: '停留', sig_screen: '屏幕', sig_cores: '核心',
       sig_memory: '内存', sig_zone: '时区', sig_day: '今天', sig_open: '已开', sig_installed: '已安装',
       sig_day_mon: '周一', sig_day_tue: '周二', sig_day_wed: '周三', sig_day_thu: '周四',
@@ -1540,6 +1542,33 @@
     applyStrings();
     renderHUD(); renderMe();
   });
+
+  /* ── Bare by default ─────────────────────────────────────────────────────
+     The field IS the app, so it opens as nothing but the field. Everything
+     that CHANGES it — backdrop, style, the numbers — is one tap away and not
+     in the way until then.
+
+     The choice is remembered: somebody who opened the controls once is telling
+     us they want them, and making them ask again every launch is the app
+     forgetting. */
+  var LS_BARE = 'terse-field-bare';
+  function setBare(on) {
+    var v = $('v-field');
+    if (!v) return;
+    v.classList.toggle('bare', !!on);
+    try { localStorage.setItem(LS_BARE, on ? '1' : '0'); } catch (e) {}
+    if (window.TerseFeel) window.TerseFeel.tap();
+  }
+  (function initBare() {
+    var v = $('v-field');
+    if (!v) return;
+    var saved = null;
+    try { saved = localStorage.getItem(LS_BARE); } catch (e) {}
+    // Default bare, and only a deliberate "0" opens it — an absent key is a
+    // first visit, which is exactly who should see the field and nothing else.
+    v.classList.toggle('bare', saved !== '0');
+  })();
+  on($('fieldPeek'), 'click', function () { setBare(false); });
 
   /* ── The gate opens when the field has answered ──────────────────────────
      Research is unambiguous that a multi-screen carousel is the wrong shape:

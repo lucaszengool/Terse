@@ -224,6 +224,25 @@
 
   /* A live marker, because the field behind this IS running and saying so is
      the difference between a screenshot and a thing that is happening. */
+  /* ── Bare by default ─────────────────────────────────────────────────────
+     Everything in the field view except the peek handle is gone until asked
+     for, so opening the app is a black room with particles in it and nothing
+     else. The handle is the one affordance, and it goes as soon as the
+     controls are up. */
+  #v-field.bare > *:not(.peek){display:none}
+  #v-field:not(.bare) .peek{display:none}
+  #v-field.bare{min-height:calc(100dvh - var(--tabbar) - var(--safe-b) - 96px);
+    justify-content:flex-end;align-items:center}
+
+  .peek{display:inline-flex;align-items:center;gap:8px;align-self:center;
+    padding:9px 15px 9px 12px;border-radius:999px;
+    background:rgba(0,0,0,.5);border:1px solid var(--line);color:var(--dim);
+    font-size:12px;letter-spacing:.02em;
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    transition:transform var(--t-fast) var(--snap),opacity var(--t-fast) var(--glide)}
+  .peek:active{transform:scale(.96)}
+  .peek i{width:16px;height:2px;border-radius:2px;background:var(--faint);display:block;flex:0 0 auto}
+
   /* Two stages in one screen. Both stay laid out so neither reflows the other
      when they swap — a gate that jumps as it changes state is the opposite of
      premium. */
@@ -408,7 +427,11 @@
 
   <main>
     <!-- ── 壁纸 ─────────────────────────────────────────────────────── -->
-    <section class="view on" id="v-field">
+    <!-- OPENS BARE. The field is the product, and a screenful of cards over
+         it is a settings page wearing the product's clothes. Everything here
+         is hidden until asked for; the tab bar stays, because that is
+         navigation and not chrome. -->
+    <section class="view on bare" id="v-field">
       <!-- Shown only when the field genuinely failed to draw. A blank canvas is
            otherwise indistinguishable from a calm one, which is how this went
            unnoticed in the first place. -->
@@ -431,6 +454,12 @@
            and every route that tried to keep it alive with the app closed, was
            taken out: each one needed somebody else's paid product or ran into
            an Apple limit that no amount of work moves. -->
+      <!-- The only thing on screen by default: small, low, and out of the way
+           of the field it is guarding. -->
+      <button class="peek" id="fieldPeek" type="button">
+        <i></i><span data-t="field_peek">Controls</span>
+      </button>
+
       <div class="card" id="fieldCard">
         <div class="row">
           <h2 class="grow" data-t="wall_title">Your agents, as a field</h2>

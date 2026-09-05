@@ -95,6 +95,9 @@
          Latin typeface, so Chinese characters come out as empty boxes. */
       field_idle_1: 'Terse', field_idle_2: 'scan to connect',
       field_peek: 'Controls',
+      pz_rooms: 'Rooms', pz_projects: 'Projects', pz_published: 'Published projects',
+      pz_tap_hint: 'Tap one and it plays in the field.', pz_none: 'Nothing published yet.',
+      pz_playing: 'Playing {name} in the field',
       sig_touch: 'touches', sig_here: 'here', sig_screen: 'screen', sig_cores: 'cores',
       sig_memory: 'memory', sig_zone: 'zone', sig_day: 'day', sig_open: 'open', sig_installed: 'installed',
       wall_overlay: 'Keep my own wallpaper, add the text',
@@ -251,6 +254,9 @@
       field_details: '查看详情', field_copy: '复制详情', field_copied: '已复制',
       field_idle_1: 'Terse', field_idle_2: '扫码连接',
       field_peek: '设置',
+      pz_rooms: '房间', pz_projects: '项目', pz_published: '已发布的项目',
+      pz_tap_hint: '点一个，它会在场里演一遍。', pz_none: '还没有人发布项目。',
+      pz_playing: '正在场里播放 {name}',
       sig_touch: '触碰', sig_here: '停留', sig_screen: '屏幕', sig_cores: '核心',
       sig_memory: '内存', sig_zone: '时区', sig_day: '今天', sig_open: '已开', sig_installed: '已安装',
       sig_day_mon: '周一', sig_day_tue: '周二', sig_day_wed: '周三', sig_day_thu: '周四',
@@ -1553,6 +1559,89 @@
     applyStrings();
     renderHUD(); renderMe();
   });
+
+  /* ── The plaza's projects ────────────────────────────────────────────────
+     A room is somewhere you GO and a project is something you WATCH, so they
+     are two halves of the plaza rather than one list where every row is
+     ambiguous.
+
+     Tapping a project does not open a detail page. It sends you to the FIELD
+     and plays it there — the capsule gathers out of the particles, the title
+     comes up in big type, the author's lines and the top comments follow. The
+     field is the viewer; a second, flatter rendering of the same capsule in a
+     card would be a worse copy of it. */
+  var projPool = [];
+
+  function renderProjects() {
+    var list = $('projList'), empty = $('projEmpty');
+    if (!list) return;
+    list.innerHTML = '';
+    empty.classList.toggle('hide', projPool.length > 0);
+    projPool.forEach(function (p) {
+      var cap = (p && p.capsule) || {};
+      var b = document.createElement('button');
+      b.className = 'proj';
+      b.type = 'button';
+      if (cap.cover) {
+        var img = document.createElement('img');
+        img.src = cap.cover; img.alt = '';
+        b.appendChild(img);
+      }
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+      var name = document.createElement('b');
+      name.textContent = cap.title || p.title || '—';
+      var sub = document.createElement('span');
+      // Counts, because they are what makes a stranger's project worth a tap.
+      var bits = [];
+      if (cap.subtitle) bits.push(cap.subtitle);
+      if (p.likes) bits.push('♥ ' + p.likes);
+      if (p.comments) bits.push('💬 ' + p.comments);
+      sub.textContent = bits.join('  ·  ');
+      meta.appendChild(name); meta.appendChild(sub);
+      b.appendChild(meta);
+      b.onclick = function () { playProject(p); };
+      list.appendChild(b);
+    });
+  }
+
+  function playProject(p) {
+    if (!window.TersePlazaField || !wp) return;
+    // Stop the ambient rotation first: two capsules dissolving into each other
+    // is not a transition, it is a mess.
+    try { window.TersePlazaField.stop(wp); } catch (e) {}
+    show('field');
+    var cap = window.TersePlazaField.toCapsule(p);
+    try { wp.showProject(cap, 30000); } catch (e) {}
+    // Told, not guessed at: the field is behind everything, and somebody who
+    // taps a row and lands on a black screen has no way to know it worked.
+    toast(t('pz_playing').replace('{name}', cap.title || ''));
+  }
+
+  function loadProjects() {
+    var list = $('projList');
+    if (!list) return Promise.resolve();
+    return fetch('/api/cloud/projects/public?limit=40', { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        projPool = (j && Array.isArray(j.projects)) ? j.projects : [];
+        renderProjects();
+      })
+      .catch(function () { renderProjects(); });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('#plazaSeg button'), function (b) {
+    b.onclick = function () {
+      Array.prototype.forEach.call(document.querySelectorAll('#plazaSeg button'), function (o) {
+        o.classList.toggle('on', o === b);
+      });
+      var projects = b.dataset.plaza === 'projects';
+      $('pzRooms').classList.toggle('hide', projects);
+      $('pzProjects').classList.toggle('hide', !projects);
+      if (projects && !projPool.length) loadProjects();
+    };
+  });
+  on($('projRefresh'), 'click', loadProjects);
 
   /* ── Bare by default ─────────────────────────────────────────────────────
      The field IS the app, so it opens as nothing but the field. Everything

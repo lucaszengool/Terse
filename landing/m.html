@@ -224,6 +224,29 @@
 
   /* A live marker, because the field behind this IS running and saying so is
      the difference between a screenshot and a thing that is happening. */
+  /* The plaza's two halves. A segmented control rather than another tab: these
+     are two views of one place, not two places. */
+  .seg{display:flex;gap:4px;padding:3px;border-radius:12px;background:rgba(0,0,0,.5);
+    border:1px solid var(--line);align-self:flex-start}
+  .seg button{padding:7px 14px;border-radius:9px;font-size:13px;color:var(--dim);
+    transition:background var(--t-fast) var(--glide),color var(--t-fast) var(--glide)}
+  .seg button.on{background:var(--card2);color:var(--ink)}
+  #pzRooms,#pzProjects{display:flex;flex-direction:column;gap:12px}
+
+  /* A project row carries its own cover, small — the FULL image is the thing
+     that gathers out of the field when you tap it, and duplicating it at size
+     here would give the preview away before it plays. */
+  .proj{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:13px;
+    background:rgba(0,0,0,.52);border:1px solid var(--line);width:100%;text-align:left;
+    -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+    transition:transform var(--t-fast) var(--snap)}
+  .proj:active{transform:scale(.978)}
+  .proj img{width:46px;height:46px;border-radius:9px;object-fit:cover;flex:0 0 auto;
+    background:#0b0d10}
+  .proj .meta{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .proj .meta b{font-size:14px;font-weight:600;letter-spacing:-.005em}
+  .proj .meta span{font-size:11.5px;color:var(--faint)}
+
   /* ── Bare by default ─────────────────────────────────────────────────────
      Everything in the field view except the peek handle is gone until asked
      for, so opening the app is a black room with particles in it and nothing
@@ -501,20 +524,38 @@
     </section>
 
     <!-- ── 广场 ─────────────────────────────────────────────────────── -->
-    <section class="view" id="v-plaza">
-      <div class="card">
-        <h2 data-t="join_code">Join with a code</h2>
-        <div class="row">
-          <input type="text" id="joinCode" class="grow" placeholder="ABC123" autocapitalize="characters" autocomplete="off">
-          <button class="btn primary" id="joinBtn" type="button" data-t="join">Join</button>
+      <section class="view" id="v-plaza">
+        <!-- Two things live in the plaza and they are not the same shape: a
+             room is somewhere you GO, a project is something you WATCH. One
+             list holding both made every row ambiguous. -->
+        <div class="seg" id="plazaSeg">
+          <button class="on" data-plaza="rooms" type="button" data-t="pz_rooms">Rooms</button>
+          <button data-plaza="projects" type="button" data-t="pz_projects">Projects</button>
         </div>
-        <button class="btn ghost wide" id="createRoomBtn" type="button" data-t="create_room">Create a room</button>
-      </div>
-      <div class="row"><h2 class="grow" style="font-size:14px;font-weight:600" data-t="public_rooms">Public rooms</h2>
-        <button class="btn ghost tiny" id="plazaRefresh" type="button" style="min-height:0;padding:6px 10px" data-t="refresh">Refresh</button></div>
-      <div class="list" id="plazaList"></div>
-      <div class="empty hide" id="plazaEmpty" data-t="plaza_empty">No open rooms right now.</div>
-    </section>
+
+        <div id="pzRooms">
+          <div class="card">
+            <h2 data-t="join_code">Join with a code</h2>
+            <div class="row">
+              <input type="text" id="joinCode" class="grow" placeholder="ABC123" autocapitalize="characters" autocomplete="off">
+              <button class="btn primary" id="joinBtn" type="button" data-t="join">Join</button>
+            </div>
+            <button class="btn ghost wide" id="createRoomBtn" type="button" data-t="create_room">Create a room</button>
+          </div>
+          <div class="row"><h2 class="grow" style="font-size:14px;font-weight:600" data-t="public_rooms">Public rooms</h2>
+            <button class="btn ghost tiny" id="plazaRefresh" type="button" style="min-height:0;padding:6px 10px" data-t="refresh">Refresh</button></div>
+          <div class="list" id="plazaList"></div>
+          <div class="empty hide" id="plazaEmpty" data-t="plaza_empty">No open rooms right now.</div>
+        </div>
+
+        <div id="pzProjects" class="hide">
+          <div class="row"><h2 class="grow" style="font-size:14px;font-weight:600" data-t="pz_published">Published projects</h2>
+            <button class="btn ghost tiny" id="projRefresh" type="button" style="min-height:0;padding:6px 10px" data-t="refresh">Refresh</button></div>
+          <p class="tiny" data-t="pz_tap_hint">Tap one and it plays in the field.</p>
+          <div class="list" id="projList"></div>
+          <div class="empty hide" id="projEmpty" data-t="pz_none">Nothing published yet.</div>
+        </div>
+      </section>
 
     <!-- ── 房间 ─────────────────────────────────────────────────────── -->
     <section class="view" id="v-room">

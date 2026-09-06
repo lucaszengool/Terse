@@ -126,6 +126,37 @@ ok('releaseFields is always paired with restoreFields',
 ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,200}mountEngine\(\)/.test(appJs));
 
 
+/* ── The cache stamp has to cover what the page LOADS ────────────────────
+   This is the bug that cost the most and showed the least. The engine, the
+   project layer and the shaders are shared with the Mac and served from
+   /app-assets out of src/renderer — but the stamp was computed from six files
+   under landing/ alone. So every renderer fix shipped with an unchanged stamp,
+   an unchanged URL, and a phone that went on serving the old engine out of
+   cache. The fix was deployed and never fetched, repeatedly.
+
+   Two halves, and BOTH fail silently:
+     · an import without ?v= is one a CDN can keep serving after it changed
+     · a file missing from ENGINE_ASSETS does not move the stamp when edited */
+{
+  const server = fs.readFileSync(path.join(dir, '..', '..', 'api', 'server.js'), 'utf8');
+  const appjs = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
+
+  const imports = [...appjs.matchAll(/import\(\s*'\/app-assets\/([a-z0-9.-]+\.js)'\s*(\+?)/gi)];
+  ok('the app imports something from /app-assets at all', imports.length > 0);
+  for (const m of imports) {
+    ok(`${m[1]} is imported with a cache stamp`, m[2] === '+');
+  }
+
+  const listed = (server.match(/const ENGINE_ASSETS = \[([\s\S]*?)\]/) || [])[1] || '';
+  for (const m of imports) {
+    ok(`${m[1]} is in ENGINE_ASSETS, so editing it moves the stamp`,
+       listed.includes("'" + m[1] + "'"));
+  }
+  // rooms.js is loaded by a plain <script> from /app-assets rather than an
+  // import, so the regex above cannot see it — and it changes often.
+  ok('rooms.js is in ENGINE_ASSETS too', listed.includes("'rooms.js'"));
+}
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

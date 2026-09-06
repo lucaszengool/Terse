@@ -369,6 +369,27 @@ export function sampleCity(dirs, n, styleId, links, commits) {
   // 两百张图的素材库高度是 0,城市里就少了这一块。
   const massOf = (d) => Math.max(+d.bytes || 0, (+d.files || 0) * 2000);
   const maxM = Math.max(1, ...list.map(massOf));
+  /* ⚠ HEIGHT IS LOGARITHMIC, and it has to be.
+     Every real repository has one directory that dwarfs the rest — a landing
+     folder full of images, a build output, a vendored dependency. Measured on
+     this project: `landing` is 115MB and the next building is 2.9MB, a spread
+     of forty to one. Against a linear scale that is one skyscraper standing on
+     a plain of stubs a few pixels high, and on a phone, where the whole city is
+     scaled down to fit, those stubs read as a flat dotted haze — which is
+     exactly how "the code city does not render" was reported.
+
+     A log scale is the standard answer for data spanning three orders of
+     magnitude, and this file already uses ln(bytes) for hotspot heat. Order is
+     preserved — the biggest is still the tallest — but every building keeps a
+     height you can compare. */
+  const minM = Math.max(1, Math.min(...list.map(massOf)));
+  const lgMin = Math.log(1 + minM), lgMax = Math.log(1 + maxM);
+  const lgSpan = Math.max(1e-6, lgMax - lgMin);
+  // All one size (a repo of equal folders) → everything at mid height rather
+  // than a divide-by-nothing that puts the whole city at zero.
+  const heightOf = (d) => (lgMax - lgMin < 1e-6
+    ? 0.6
+    : (Math.log(1 + massOf(d)) - lgMin) / lgSpan);
   const maxF = Math.max(1, ...list.map((d) => +d.files || 0));
   const maxChurn = Math.max(0, ...list.map((d) => +d.churn || 0));
   const cols = Math.ceil(Math.sqrt(list.length));
@@ -415,7 +436,9 @@ export function sampleCity(dirs, n, styleId, links, commits) {
     const foot = cell * (0.30 + 0.46 * Math.sqrt((+d.files || 0) / maxF));
     // 楼高压过一道 0.6 次幂:一个仓库里最大的目录常常比第二大的多一个数量级,
     // 线性画的话除了它以外全是地板。
-    let h = 0.14 + 1.16 * Math.pow(massOf(d) / maxM, 0.6);
+    // 0.30 floor rather than 0.14: the smallest building is still a building,
+    // and at a phone's scale anything under that is not a shape, it is a smudge.
+    let h = 0.30 + 1.00 * heightOf(d);
     // 形状决定体量的读法:厂房是趴着的,公园是平的,圆仓是矮胖的。
     if (kind === 'test') h *= 0.42;
     if (kind === 'docs') h *= 0.10;
@@ -1263,21 +1286,30 @@ export class ProjectLayer {
     // 本来就只有一条一米宽的横带。16:9 的两侧是空的 —— 城市在中间偏左,星座站到
     // 右边去,两块各自按自己的尺度缩放,谁也不挤谁。
     const narrow = !!(ex && ex.narrow);
-    /* On a narrow frame the beats alternate city → reading → city → reading, so
-       the rotation has to be twice as long or half of them would never come up.
-       ⚠ sceneCount is what the engine counts beats from — set it before the
-       early return below, or a project with no buildings rotates once and
-       stops. */
-    if (narrow && scenes.length) this.sceneCount = scenes.length * 2;
-    // Whose turn it is. Odd beats belong to the reading; even beats to the city.
-    const starTurn = narrow && !!pick && (((scene | 0) % 2) === 1);
+    /* ⚠ NO SIDE READING ON A PHONE. AT ALL.
+       16:9 has empty space beside the city, which is what that panel is for. A
+       phone has none, and two attempts to make it fit both failed in ways worth
+       recording:
+
+         · side by side made each half too small to read AND sliced the towers
+           at the screen edge;
+         · taking turns did not work either, because the city is drawn from the
+           SAME point budget — handing the reading 55% of it left the city
+           standing in the other 45% underneath, so what you got was a hotspot
+           disc smothering a city rather than replacing it. Measured on screen:
+           the city was perfect at 1.6s and buried under an orange disc at 3.6s.
+
+       The city is what somebody opened the project to see. On a frame this
+       narrow it gets the whole of it, and the readings stay what they were
+       built for — a wallpaper. */
+    if (narrow) this.sceneCount = 1;
+
     /* ⚠ NOT every point. Handing a reading the city's whole budget looked like
        a smear: sampleHotspots and friends size their dots for a quarter of the
        points in a small panel, so four times as many at nearly twice the radius
        is one solid cloud with no shape in it. A little over half is enough to
        read at full width. */
-    const nStar = pick ? (narrow ? (starTurn ? Math.round(this.nCity * 0.55) : 0)
-                                 : Math.round(this.nCity * 0.26)) : 0;
+    const nStar = (pick && !narrow) ? Math.round(this.nCity * 0.26) : 0;
     const nCityPts = this.nCity - nStar;
     const s = sampleCity(list, nCityPts, styleId, links, commits);
     if (!s.used && !nStar) { this.cityPoints.visible = false; mark(); return false; }
@@ -1337,10 +1369,9 @@ export class ProjectLayer {
         : samplePeople(ex.people, nStar);
       // Beside the city on a wallpaper; dead centre and much bigger when it has
       // the frame to itself.
-      const SR = starTurn ? 0.74 : 0.52;
-      const SCX = starTurn ? 0 : 1.16;
-      const SCY = starTurn ? 0.07 : 0.10;
-      const SCZ = starTurn ? 0.30 : 0.22;
+      // Beside the city — the only place it is ever drawn now, and only on a
+      // frame wide enough to have a beside.
+      const SR = 0.52, SCX = 1.16, SCY = 0.10, SCZ = 0.22;
       for (let i = 0; i < nStar; i++) {
         const o = (nCityPts + i) * 3;
         if (i < st.used) {

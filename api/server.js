@@ -1466,14 +1466,33 @@ app.use((req, res, next) => {
    desktop, they change rarely, and re-downloading them on every deploy would
    cost far more than it saves. */
 const PHONE_ASSETS = ['phone/app.js', 'phone/terse-web.js', 'phone/capture.js', 'phone/mp4.js', 'phone/diag.js', 'sw.js'];
+
+/* ⚠ AND THE ENGINE, WHICH WAS THE WHOLE PROBLEM.
+   The stamp used to come from the six files under landing/ alone. But the thing
+   that actually DRAWS the app — the particle engine, the project layer, the
+   shaders — is shared with the Mac and served from /app-assets out of
+   src/renderer. So every fix to the renderer shipped with an UNCHANGED stamp,
+   which means an unchanged URL, which means Cloudflare and the phone both kept
+   serving the old engine. Weeks of "it is still the same" with the fix sitting
+   deployed and never fetched.
+
+   The rule this encodes: the stamp must cover everything the page LOADS, not
+   everything that happens to live in one folder. */
+const ENGINE_ASSETS = [
+  'mineradio-wallpaper.js', 'mineradio-shaders.js', 'wallpaper-project.js',
+  'wallpaper-styles.js', 'wallpaper-view3d.js', 'wallpaper-hud.js',
+  'city-styles.js', 'lang-colors.js', 'rooms.js',
+];
 function buildStamp() {
   let acc = 0;
-  for (const rel of PHONE_ASSETS) {
+  const add = (base, rel) => {
     try {
-      const st = fs.statSync(path.join(__dirname, '..', 'landing', rel));
+      const st = fs.statSync(path.join(__dirname, '..', base, rel));
       acc = (acc * 31 + st.size + Math.floor(st.mtimeMs)) >>> 0;
     } catch { /* a missing file simply does not contribute */ }
-  }
+  };
+  for (const rel of PHONE_ASSETS) add('landing', rel);
+  for (const rel of ENGINE_ASSETS) add(path.join('src', 'renderer'), rel);
   return acc.toString(36);
 }
 // Computed once: the files cannot change under a running process, and doing this

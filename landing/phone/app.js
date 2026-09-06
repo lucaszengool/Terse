@@ -19,6 +19,12 @@
   var T = window.terse;
 
   var $ = function (id) { return document.getElementById(id); };
+  /** The cache-busting suffix for anything loaded out of /app-assets. Every one
+   *  of those modules needs it: the stamp is the only thing that tells a CDN
+   *  the file changed. */
+  var stamp = function () {
+    return window.__TERSE_BUILD ? '?v=' + encodeURIComponent(window.__TERSE_BUILD) : '';
+  };
   var on = function (el, ev, fn) { el && el.addEventListener(ev, fn); };
 
   // ── Strings ──────────────────────────────────────────────────────────────
@@ -701,7 +707,10 @@
      are what the engine turns into PARTICLE TEXT, so a phone that never called
      them had the particles but none of the writing. */
   var HUD = null;
-  import('/app-assets/wallpaper-hud.js')
+  // Stamped like the engine: an unstamped module is a module Cloudflare can
+  // keep serving after it changed, and this one is where all the writing on the
+  // field comes from.
+  import('/app-assets/wallpaper-hud.js' + stamp())
     .then(function (m) { HUD = m; renderHUD(); })
     .catch(function (err) {
       // Not silent any more: without this module there is no particle text at
@@ -861,7 +870,7 @@
   };
 
   function renderStyles() {
-    import('/app-assets/wallpaper-styles.js').then(function (m) {
+    import('/app-assets/wallpaper-styles.js' + stamp()).then(function (m) {
       var grid = $('styleGrid');
       var pro = T.isPro();
       $('proTag').textContent = pro ? 'Pro' : t('free_tag');
@@ -2365,6 +2374,10 @@
       // Same trap as the field: the constructor builds the scene, start() runs
       // the loop, and without it the canvas is black forever with no error.
       pjWp.start();
+      // Handles for diag.js and for answering "what did the engine actually
+      // measure?" without rebuilding — the field's own size is the input to
+      // every layout decision it makes, and it is otherwise unobservable.
+      window.__terseFieldWp = wp; window.__tersePreviewWp = pjWp;
       cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); }, false);
       cv.addEventListener('webglcontextrestored', function () {
         try { pjWp && pjWp.dispose(); } catch (e) {}
@@ -2416,11 +2429,15 @@
        puts it back exactly as it was, which is the whole promise of giving the
        preview its own surface. */
     try { wp && wp.stop && wp.stop(); } catch (e) {}
-    // The canvas has just been shown, so it had no size when the engine
-    // measured it — the same trap the field hits on a cold start.
-    requestAnimationFrame(function () { try { eng.resize && eng.resize(); } catch (e) {} });
+    /* The canvas has just been shown, so the engine's measurement is the
+       1920x1080 fallback until something asks. Reading it here forces the
+       layout the engine needs BEFORE the first frame is composed — a resize
+       deferred to rAF arrives one beat too late, and that first beat is laid
+       out as if this were a widescreen wallpaper. */
     eng.start();
+    try { eng.resize && eng.resize(); } catch (e) {}
     replayProject();
+    requestAnimationFrame(function () { try { eng.resize && eng.resize(); } catch (e) {} });
     clearInterval(pjTimer);
     pjTimer = setInterval(replayProject, showLen(p) + 900);
     try { Social.view && Social.view(p.id); } catch (e) {}

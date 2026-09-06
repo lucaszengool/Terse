@@ -991,6 +991,14 @@ export default class MineradioWallpaper {
    *  @param {number} ms whole run, default 20s (the plaza preview's length) */
   showProject(cap, ms = 20000) {
     if (!cap) return false;
+    /* ⚠ MEASURE FIRST. Every layout decision below is made from this.W/this.H,
+       and the constructor falls back to 1920x1080 when the canvas had not been
+       laid out yet — which is exactly the case for a preview whose window was
+       display:none a frame ago. The fallback is WIDE, so the phone was told it
+       had a wallpaper's proportions and used the wallpaper's layout: the city
+       shared a beat with a portrait screenshot and disappeared underneath it.
+       resize() returns immediately when nothing changed, so this is free. */
+    try { this.resize(); } catch (e) {}
     if (!this._projLayer) {
       this._projLayer = new ProjectLayer(this.u.uDotTex.value);
       // 挂在字形层里,和统计数字用同一台相机 —— 3D 里一起转。
@@ -1041,7 +1049,19 @@ export default class MineradioWallpaper {
     // 右边那一格**跟着拍子换读法**:星座 → 年轮 → 热点 → 人。城市是主语,它不动;
     // 换的是谓语。四种全塞进同一屏是不行的 —— 那一格只有巴掌大,塞四样等于四样都
     // 看不清,而且真正要紧的城市也会被挤瘦。
-    const textAt = (i) => ({
+    /* ⚠ ON A PHONE THE PICTURE AND THE CITY WERE IN THE SAME PLACE.
+       On a wallpaper the image sits in the top band and the city in the middle,
+       which works because 16:9 is wide and short. Upright, an image is scaled by
+       its OWN aspect — and a portrait screenshot then fills the whole height and
+       lands right on top of the city. What you saw was a big screenshot with a
+       city buried in it, which reads as "the city did not render".
+
+       So on a narrow frame they stop sharing a beat and take turns: the city and
+       its readings get beats to themselves, then each picture gets one. Nothing
+       is dropped — the author's screenshots still play — they just no longer
+       play ON the thing you opened the window to look at. */
+    const narrowFrame = (this.W / Math.max(1, this.H)) < 0.95;
+    const textAt = (i, withCity) => ({
       scene: i,
       title: cap.title || '',
       lines: infoLines,
@@ -1050,7 +1070,7 @@ export default class MineradioWallpaper {
       comments: notes.slice((i % pages) * PAGE, (i % pages) * PAGE + PAGE),
       // 代码城市:一个顶层目录一座塔。胶囊里就那十几个数字,城市是**在这台机器上
       // 摆出来的** —— 和封面走的是同一条"传参数、本地生成"的路。
-      dirs: cap.dirs || [],
+      dirs: (withCity === false) ? [] : (cap.dirs || []),
       // 建筑风格。认不出来的一律退回现代 —— 胶囊是别人机器上传来的。
       style: cap.style || '',
       // 目录之间的依赖 —— 城市上空那几道弧。没建过知识图谱就没有。
@@ -1065,7 +1085,7 @@ export default class MineradioWallpaper {
          layer cannot know that — it works in normalised units — so the engine,
          which owns the canvas, says so. Anything at least as wide as it is tall
          keeps the wallpaper's side-by-side layout exactly as it was. */
-      narrow: (this.W / Math.max(1, this.H)) < 0.95,
+      narrow: narrowFrame,
     });
     /* ⚠ 1.95 IS A DESKTOP NUMBER. The capsule's layout is normalised — the city
        occupies ±1.0 across and roughly ±0.9 down — and 1.95 world units is what
@@ -1091,8 +1111,20 @@ export default class MineradioWallpaper {
     const imgs = [];
     let shown = false;
 
+    /* Whether this project has a city to protect. Without one there is nothing
+       for a picture to collide with, so the wallpaper's shared-beat behaviour is
+       kept exactly as it was. */
+    const hasCity = !!((cap.dirs || []).length);
+    const takeTurns = narrowFrame && hasCity;
+    /* What this call decided, kept so it can be asked. Every layout choice here
+       depends on a canvas measurement that is wrong until the element has been
+       laid out, and "the city did not appear" is the same picture whether the
+       cause was the data, the measurement or the running order. */
+    this._lastProjLayout = { W: this.W, H: this.H, narrowFrame, hasCity, takeTurns,
+                             dirs: (cap.dirs || []).length, imgs: urls.length, SIZE };
+
     const render = (img, page) => {
-      if (!layer.setShow(img, textAt(page || 0), SIZE)) return false;
+      if (!layer.setShow(img, textAt(page || 0, !takeTurns), SIZE)) return false;
       if (!shown) { layer.play(Math.max(3000, ms | 0)); this.pulse(0.8); shown = true; }
       return true;
     };
@@ -1104,6 +1136,29 @@ export default class MineradioWallpaper {
       // 拍数取三者里最多的那个:图、评论页、右边那一格的读法数。少了谁都会有一样
       // 东西**永远轮不到** —— 而"轮不到"和"没做"在屏幕上是一回事。
       const scenes = Math.max(1, layer.sceneCount | 0);
+
+      /* Upright, with a city: an explicit running order instead of two axes
+         turning at once. The city and its readings come first and have the
+         frame to themselves, then each picture gets a beat of its own with the
+         city stood down. Sharing a beat is what buried the city under a
+         portrait screenshot. */
+      if (takeTurns) {
+        const plan = [];
+        for (let i = 0; i < scenes; i++) plan.push({ img: null, city: true, scene: i });
+        for (let i = 0; i < live.length; i++) plan.push({ img: live[i], city: false, scene: i });
+        if (plan.length <= 1) return;
+        const perT = Math.max(3200, Math.floor((ms - 1400) / plan.length));
+        let atT = 0;
+        this._projRotate = setInterval(() => {
+          if (!layer.show) { clearInterval(this._projRotate); return; }
+          atT = (atT + 1) % plan.length;
+          const b = plan[atT];
+          layer.setShow(b.img, textAt(b.scene, b.city), SIZE);
+          layer.reform();
+        }, perT);
+        return;
+      }
+
       const slots = Math.max(live.length, pages, scenes);
       if (slots <= 1) return;
       const per = Math.max(3200, Math.floor((ms - 1400) / slots));
@@ -1122,13 +1177,25 @@ export default class MineradioWallpaper {
       return ok;
     }
 
+    /* Upright, the CITY opens the show — not the cover.
+       It is what you tapped the project to see, and it needs no network: the
+       capsule already carries it. Opening on the cover meant several seconds of
+       a logo before anything else, which is most of a preview spent on the one
+       part you had already seen in the list. */
+    if (takeTurns) {
+      if (!layer.setShow(null, textAt(0, true), SIZE)) return false;
+      layer.play(Math.max(3000, ms | 0));
+      this.pulse(0.8);
+      shown = true;
+    }
+
     let loaded = 0;
     urls.forEach((u, i) => {
       const im = new Image();
       im.onload = () => {
         imgs[i] = im;
         // 第一张一到就开演,不等其余的 —— 等齐了再开场就是白白的一秒空白。
-        if (i === 0 || !shown) render(im, 0);
+        if (!takeTurns && (i === 0 || !shown)) render(im, 0);
         if (++loaded === urls.length) rotate(imgs.filter(Boolean));
       };
       im.onerror = () => {

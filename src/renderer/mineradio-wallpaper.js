@@ -993,48 +993,162 @@ export default class MineradioWallpaper {
     if (!cap) return false;
     if (!this._projLayer) {
       this._projLayer = new ProjectLayer(this.u.uDotTex.value);
+      // 挂在字形层里,和统计数字用同一台相机 —— 3D 里一起转。
       const host = this._glyphLayer && (this._glyphLayer.group || this._glyphLayer.scene);
-      if (host) host.add(this._projLayer.points);
-      else return false;
+      if (!host) return false;
+      host.add(this._projLayer.points);
+      // 城市**不挂在那个 Group 里**。那个 Group 在 3D 模式下会朝相机转正 0.85
+      // (字是拿来读的,转到 70° 就只剩一条亮线)—— 可城市恰恰是**转得到才成立**的
+      // 东西:不转的城市就是一张斜着的图,那还不如直接放封面。所以它挂在场景上,
+      // 跟着相机整个转。材质和 uniform 与图、字共用,所以三者仍旧同进同出。
+      const scene = this._glyphLayer && this._glyphLayer.scene;
+      (scene || host).add(this._projLayer.cityPoints);
     }
     const layer = this._projLayer;
-    const start = () => {
-      layer.play(Math.max(3000, ms | 0));
-      /* The title has to appear, always. Going through _queueGlyph is not good
-         enough: that queue is throttled, has a quota and waits for a free slot,
-         so what the user sees is a picture with no words. The headline path
-         (_logPending) is the reserved slot and is taken on the next frame. */
-      this._glyphQueue.length = 0;
-      this._nextFillAt = 0;
-      if (cap.title) {
-        this._logPending = { label: String(cap.title).slice(0, 26), kind: 'log', size: 'big' };
-      }
-      if (cap.subtitle) this._queueGlyph(String(cap.subtitle).slice(0, 34), 'cache');
-      for (const l of (cap.lines || []).slice(0, 3)) {
-        if (l) this._queueGlyph(String(l).slice(0, 30), 'agents');
-      }
-      this.pulse(0.8);
-    };
-    if (!cap.cover) {
-      // No cover still plays: the title and the lines were always particles.
-      layer.stop();
-      start();
-      return true;
+    clearInterval(this._projRotate);
+    // 广场预览带来的评论。列表接口已经把它们一起发过来了,所以这里
+    // **不需要再请求一次**。
+    //
+    // 每一条都带着**说话的人的名字**:壁纸上飘过的是"谁说了什么",不是几行
+    // 无主的字。字符串形式(老胶囊)还认,但那种就没有署名了。
+    const notes = (cap.comments || []).map((c) => (typeof c === 'string'
+      ? { body: c, author: '' }
+      : { body: (c && c.body) || '', author: (c && (c.author || c.name)) || '' }
+    )).filter((c) => c.body);
+
+    // **一屏三条,翻页给你看**,而不是把十条挤进同一块字里。
+    //
+    // 这一块字是按"总高"缩放到固定大小的:多塞一行,每一行就跟着细一分。九条挤在
+    // 一起的时候,九条都糊了 —— 那不是"看到更多评论",那是"一条也读不了"。翻页
+    // 之后每一屏都还是原来那个字号,而一段演出本来就有好几次重新聚拢,顺手就翻了。
+    const PAGE = 3;
+    const pages = Math.max(1, Math.ceil(notes.length / PAGE));
+    // 标题和信息**属于这一层**,和图一起采、一起浮现、一起散去。
+    //
+    // 走壁纸原有的字形队列是不行的,试过两次:那条队列有节流、有配额、要等空槽位,
+    // 槽位数量还随 Pro 变 —— 用户看到的就是"只有图,没有字"。项目自己的字不该去
+    // 排别人的队。
+    // 语言占比那一行原本是**一串字**("rust 86% · js 10%")。现在它由图例那一行
+    // 带颜色地画出来,所以要把纯文字的那份摘掉 —— 同一件事说两遍,还占掉一行。
+    // 用扫描端一模一样的写法拼一遍来比对:对不上就什么也不删(宁可重一行,
+    // 也不能误删人家自己写的一行字)。
+    const autoLangLine = (cap.langs || []).slice(0, 3)
+      .map((l) => `${l[0]} ${Math.round((+l[1] || 0) * 100)}%`).join(' · ');
+    const infoLines = [cap.subtitle, ...(cap.lines || [])]
+      .filter(Boolean)
+      .filter((l) => !(autoLangLine && String(l).trim() === autoLangLine));
+
+    // 右边那一格**跟着拍子换读法**:星座 → 年轮 → 热点 → 人。城市是主语,它不动;
+    // 换的是谓语。四种全塞进同一屏是不行的 —— 那一格只有巴掌大,塞四样等于四样都
+    // 看不清,而且真正要紧的城市也会被挤瘦。
+    const textAt = (i) => ({
+      scene: i,
+      title: cap.title || '',
+      lines: infoLines,
+      // 语言图例:哪个颜色是哪门语言。城市所有的颜色都指着它。
+      langs: cap.langs || [],
+      comments: notes.slice((i % pages) * PAGE, (i % pages) * PAGE + PAGE),
+      // 代码城市:一个顶层目录一座塔。胶囊里就那十几个数字,城市是**在这台机器上
+      // 摆出来的** —— 和封面走的是同一条"传参数、本地生成"的路。
+      dirs: cap.dirs || [],
+      // 建筑风格。认不出来的一律退回现代 —— 胶囊是别人机器上传来的。
+      style: cap.style || '',
+      // 目录之间的依赖 —— 城市上空那几道弧。没建过知识图谱就没有。
+      links: cap.links || [],
+      // 提交天际线(53 周 × 7 天)和依赖星座。都是扫描时算好的参数,不是画面。
+      commits: cap.commits || [],
+      graph: cap.graph || null,
+      // 右边那一格的四种读法要用的料:热点(改得最勤的文件)和贡献者。
+      hot: cap.hot || [],
+      people: cap.people || [],
+      /* A portrait frame has no room beside the city for a second thing. The
+         layer cannot know that — it works in normalised units — so the engine,
+         which owns the canvas, says so. Anything at least as wide as it is tall
+         keeps the wallpaper's side-by-side layout exactly as it was. */
+      narrow: (this.W / Math.max(1, this.H)) < 0.95,
+    });
+    /* ⚠ 1.95 IS A DESKTOP NUMBER. The capsule's layout is normalised — the city
+       occupies ±1.0 across and roughly ±0.9 down — and 1.95 world units is what
+       that comes to on a wide wallpaper. A phone held upright sees barely half
+       that much world across, so the same constant walks the city straight off
+       both edges. It did: the towers were sliced by the left of the screen.
+
+       So it is fitted to the frustum actually in front of us, and 1.95 stays as
+       the CAP — on a wide canvas nothing changes, to the pixel. */
+    let SIZE = 1.95;
+    const _cam = this._silk && this._silk.cam;
+    if (_cam && _cam.isPerspectiveCamera) {
+      const halfH = Math.tan(_cam.fov * Math.PI / 360) * _cam.position.z;
+      const halfW = halfH * _cam.aspect;
+      // 0.94 leaves the tower names room to sit inside the edge rather than
+      // against it — a label clipped in half is worse than a slightly smaller city.
+      SIZE = Math.min(SIZE, (halfW * 0.94) / 1.0, (halfH * 0.94) / 0.9);
     }
-    const img = new Image();
-    img.onload = () => {
-      // 1.25 against SILK's 2.4 half-height: a thumbnail, not a fill — and the
-      // same particle count over a smaller area reads sharper.
-      if (layer.setImage(img, 1.25)) start();
-      else { layer.stop(); start(); }
+
+    // 一个项目最多五张图。全部画完要 100 秒,而一段演出只有 20 秒 —— 所以是**轮播**:
+    // 每张停留一段,换图时粒子从上一张重新排成下一张,那正是这个功能最好看的地方。
+    const urls = [cap.cover, ...(cap.shots || [])].filter(Boolean);
+    const imgs = [];
+    let shown = false;
+
+    const render = (img, page) => {
+      if (!layer.setShow(img, textAt(page || 0), SIZE)) return false;
+      if (!shown) { layer.play(Math.max(3000, ms | 0)); this.pulse(0.8); shown = true; }
+      return true;
     };
-    img.onerror = () => { layer.stop(); start(); };
-    img.src = cap.cover;
+
+    /** 图和评论**同一拍**换:一次重新聚拢换掉整屏内容,而不是图先动、字过一会儿
+     *  再动 —— 那看起来像两个东西各转各的。轮播的拍数取两者里多的那个,所以就算
+     *  只有一张封面,评论照样翻得完。 */
+    const rotate = (live) => {
+      // 拍数取三者里最多的那个:图、评论页、右边那一格的读法数。少了谁都会有一样
+      // 东西**永远轮不到** —— 而"轮不到"和"没做"在屏幕上是一回事。
+      const scenes = Math.max(1, layer.sceneCount | 0);
+      const slots = Math.max(live.length, pages, scenes);
+      if (slots <= 1) return;
+      const per = Math.max(3200, Math.floor((ms - 1400) / slots));
+      let at = 0;
+      this._projRotate = setInterval(() => {
+        if (!layer.show) { clearInterval(this._projRotate); return; }
+        at = (at + 1) % slots;
+        layer.setShow(live.length ? live[at % live.length] : null, textAt(at), SIZE);
+        layer.reform();          // 重新聚一次,让换屏看得出来
+      }, per);
+    };
+
+    if (!urls.length) {
+      const ok = render(null, 0);
+      if (ok) rotate([]);        // 没有图,但评论可能不止一屏
+      return ok;
+    }
+
+    let loaded = 0;
+    urls.forEach((u, i) => {
+      const im = new Image();
+      im.onload = () => {
+        imgs[i] = im;
+        // 第一张一到就开演,不等其余的 —— 等齐了再开场就是白白的一秒空白。
+        if (i === 0 || !shown) render(im, 0);
+        if (++loaded === urls.length) rotate(imgs.filter(Boolean));
+      };
+      im.onerror = () => {
+        if (++loaded === urls.length) {
+          if (!shown) { if (render(null, 0)) rotate([]); }
+          else rotate(imgs.filter(Boolean));
+        }
+      };
+      im.src = u;
+    });
     return true;
   }
 
   /** Cut it short — another project was tapped, or the preview was closed. */
-  hideProject() { if (this._projLayer) this._projLayer.stop(); }
+  hideProject() {
+    // The carousel too, not just the layer: an interval left running keeps
+    // calling setShow on a hidden layer, and the next project inherits it.
+    clearInterval(this._projRotate);
+    if (this._projLayer) this._projLayer.stop();
+  }
 
   setActivity(a) { this._activityTarget = clamp01(+a || 0); }
 
@@ -1352,6 +1466,10 @@ export default class MineradioWallpaper {
     this._silk.u.uAlpha.value = this._style.field.silkAlpha * (g0 * g0 * (3 - 2 * g0));
 
     this._updateGlyph();
+    /* ⚠ THIS LINE WAS MISSING. The layer was constructed, filled and added to
+       the scene, and then never advanced — uVis/uForm stayed at 0 forever, so a
+       tapped project animated nothing and left no error behind. */
+    if (this._projLayer) this._projLayer.update(this._time);
   }
 
   /** Headline rotation: the newest log line first, then the four before it, and
@@ -1573,7 +1691,13 @@ export default class MineradioWallpaper {
     for (const L of this.layers) r.render(L.scene, L.cam);
     // 字形层用 SILK 的相机(同一套平面坐标),最后画,叠在最上面
     // Any live slot means the layer has something to draw.
-    if ((this._glyphSlots || []).some(sl => sl.u.uVis.value > 0.001)) {
+    /* ⚠ AND THIS GATE ASKED THE WRONG QUESTION. The project shares this layer
+       but is not a glyph slot, so a project with no text beside it was skipped
+       by the renderer even once it did animate. Either being alive is reason
+       enough to draw the layer. */
+    const glyphLive = (this._glyphSlots || []).some(sl => sl.u.uVis.value > 0.001);
+    const projLive = !!(this._projLayer && this._projLayer.u.uVis.value > 0.001);
+    if (glyphLive || projLive) {
       r.render(this._glyphLayer.scene, this._silk.cam);
     }
   }
@@ -1585,6 +1709,7 @@ export default class MineradioWallpaper {
     try {
       this._disposeLayers();
       for (const sl of (this._glyphSlots || [])) { sl.geo.dispose(); sl.mat.dispose(); sl.matB.dispose(); }
+      if (this._projLayer) { this._projLayer.dispose(); this._projLayer = null; }
       this._coverTex.dispose(); this._edgeTex.dispose(); this._rippleTex.dispose();
       this.renderer.dispose();
     } catch (e) {}

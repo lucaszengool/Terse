@@ -208,6 +208,10 @@
   .msg.me{align-self:flex-end;background:var(--accent-dim);border-color:rgba(110,231,183,.26)}
   .msg .who{display:block;font-size:10.5px;color:var(--faint);margin-bottom:3px;letter-spacing:.03em}
   .composer{position:sticky;bottom:0;display:flex;gap:8px;padding:9px 0 2px;background:linear-gradient(180deg,transparent,var(--bg) 34%)}
+  /* An unsent message keeps its words and says so, rather than disappearing and
+     making somebody retype from memory. */
+  .msg.failed{background:rgba(244,114,182,.12);border-color:rgba(244,114,182,.34);opacity:.9}
+  .msg.failed .who{color:rgb(244,150,196);margin:4px 0 0}
 
   /* ── gate ── */
   /* THE GATE IS A WINDOW, NOT A COVER. The field is already running behind it
@@ -314,6 +318,54 @@
     font-size:12.5px;color:var(--ink);text-align:left}
   .pairbar .g{flex:0 0 auto;opacity:.8}
   .pairbar .go{margin-left:auto;color:var(--accent);font-weight:600;flex:0 0 auto}
+
+  /* ── 项目窗口 ─────────────────────────────────────────────────────────────
+     Tapping a project used to switch to the Field tab and leave a toast behind
+     — the project played UNDER whatever you happened to have open, and there
+     was nothing to press. It gets its own window now, and the window is mostly
+     empty on purpose: the code city IS the content, and it lives on the canvas
+     behind every view. Chrome here is a title at the top and a bar for your
+     thumb at the bottom. */
+  /* In flow, not positioned. Taking it out of the flow put the title under the
+     app's own header and the action bar UNDER the tab bar — `main` already
+     reserves room for both, and fighting that with insets means re-deriving two
+     heights that are already correct. Full-bleed is a negative margin against
+     main's padding, nothing more. */
+  /* ⚠ NO `display` HERE. An id beats a class, so declaring it would beat
+     `.view{display:none}` and leave this window laid out on every other tab —
+     a screen of empty space above the plaza, which is exactly how it looked.
+     `.view.on` already supplies the flex. */
+  #v-project{flex-direction:column;gap:0;margin:0 -16px;padding:0;
+    min-height:calc(100dvh - var(--tabbar) - var(--safe-b) - var(--safe-t) - 88px)}
+  /* The middle is deliberately nothing: it is a hole you look at the city
+     through, and it takes the double-tap. */
+  #pjSpace{flex:1 1 auto;min-height:0;pointer-events:auto}
+  #pjHead{display:flex;align-items:flex-start;gap:10px;padding:10px 14px 12px;
+    background:linear-gradient(180deg,rgba(0,0,0,.72),rgba(0,0,0,0))}
+  #pjHead .txt{flex:1 1 auto;min-width:0}
+  #pjHead b{display:block;font-size:17px;font-weight:640;letter-spacing:-.02em}
+  #pjHead span{display:block;font-size:12px;color:var(--dim);margin-top:2px}
+  #pjBack{flex:0 0 auto;min-height:34px;padding:7px 12px}
+  /* The bar sits on the safe area above the tab bar, wide targets, one row. */
+  #pjBar{display:flex;gap:8px;padding:10px 14px 12px;
+    background:linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,0))}
+  #pjBar .act{flex:1 1 0;justify-content:center;padding:11px 8px;font-size:13.5px;
+    background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+  #pjNote{padding:0 16px 6px;font-size:11.5px;color:var(--faint)}
+  /* The list row and the window's bar are the same control; only the target
+     size differs, because a thumb reaching the bottom of a phone has the whole
+     width to land in. */
+  .acts.wide{gap:8px}
+
+  /* Double-tap to like, drawn where the thumb landed. Standard everywhere, and
+     the reason it is worth having is that the alternative — aim at a small
+     heart in a bar — is the one interaction people do most often. */
+  .heartpop{position:fixed;z-index:8;pointer-events:none;font-size:34px;
+    transform:translate(-50%,-50%) scale(.4);opacity:0;
+    animation:heartpop .72s var(--snap) forwards}
+  @keyframes heartpop{
+    22%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}
+    100%{opacity:0;transform:translate(-50%,-115%) scale(1)}}
 
   /* ── Bare by default ─────────────────────────────────────────────────────
      Everything in the field view except the peek handle is gone until asked
@@ -652,6 +704,19 @@
       </div>
     </section>
 
+    <!-- ── 一个项目 ─────────────────────────────────────────────────────
+         Its own window, and almost all of it is a hole you watch the code city
+         through. -->
+    <section class="view" id="v-project">
+      <div id="pjHead">
+        <button class="btn ghost" id="pjBack" type="button">←</button>
+        <span class="txt"><b id="pjTitle" class="ell">—</b><span id="pjSub" class="ell"></span></span>
+      </div>
+      <div id="pjSpace"></div>
+      <div id="pjNote"></div>
+      <div id="pjBar"></div>
+    </section>
+
     <!-- ── 好友 · 私信 ──────────────────────────────────────────────────
          Friends and messages are two views of ONE relationship, so they are a
          segmented control here and not a sixth tab. A sixth tab would also be
@@ -676,11 +741,21 @@
           <button class="btn ghost wide" id="shareCode" type="button" data-t="fr_share">Share</button>
         </div>
         <div class="card">
-          <h2 data-t="fr_add">Add by code</h2>
+          <h2 data-t="fr_add">Find someone by ID</h2>
+          <p class="tiny" data-t="fr_add_p">Type or paste their ID. You see who it is before you add them.</p>
           <div class="row">
-            <input type="text" id="frCode" class="grow" placeholder="paste a code" autocapitalize="off" autocomplete="off" spellcheck="false">
-            <button class="btn primary" id="frAdd" type="button" data-t="fr_add_btn">Add</button>
+            <input type="text" id="frCode" class="grow" placeholder="their ID" autocapitalize="off" autocomplete="off" spellcheck="false">
+            <button class="btn ghost" id="frFind" type="button" data-t="fr_find">Find</button>
           </div>
+          <!-- The result of a search, and the only place Add appears: adding
+               somebody you have not seen is how a mistyped ID becomes a
+               stranger in your list. -->
+          <div class="item hide" id="frHit">
+            <span class="av" id="frHitAv">?</span>
+            <span class="grow"><b class="ell" id="frHitName">—</b><span class="tiny" id="frHitSub"></span></span>
+            <button class="btn primary" id="frAdd" type="button" style="min-height:34px;padding:7px 13px" data-t="fr_add_btn">Add</button>
+          </div>
+          <div class="tiny hide" id="frMiss" data-t="fr_none">No one has that ID. Codes can be revoked — ask them for a fresh one.</div>
         </div>
         <div class="list" id="friendList"></div>
         <div class="empty hide" id="friendEmpty" data-t="friends_empty">No friends yet.<br>Share your code, or add someone from a room's roster.</div>

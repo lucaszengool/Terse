@@ -84,6 +84,8 @@
     like: function (id) { return call('/projects/' + encodeURIComponent(id) + '/like', { method: 'POST' }); },
     fav: function (id) { return call('/projects/' + encodeURIComponent(id) + '/fav', { method: 'POST' }); },
     comments: function (id) { return call('/projects/' + encodeURIComponent(id) + '/comments'); },
+    // 预览计数。故意做成"尽力而为" —— 数不准也没关系,但它是作者唯一能看到的反馈。
+    view: function (id) { return call('/projects/' + encodeURIComponent(id) + '/view', { method: 'POST' }); },
     comment: function (id, body, parentId) {
       return call('/projects/' + encodeURIComponent(id) + '/comments', {
         method: 'POST', body: { body: body, parentId: parentId || null },
@@ -106,6 +108,11 @@
       // 加人的时候也报上名字:对方的好友列表里那一行才有人,而不是一个问号。
       return call('/friends/link/' + encodeURIComponent(String(code).trim()) + '/accept',
                   { method: 'POST', body: { name: name || null } });
+    },
+    // 先看是谁,再决定加不加。粘错一个码就直接成了好友,是没有给人留下"看一眼"
+    // 的那一步 —— 而这一步正是搜索和添加的区别。
+    lookup: function (code) {
+      return call('/friends/lookup/' + encodeURIComponent(String(code).trim()));
     },
     friends: function () { return call('/friends'); },
     respondFriend: function (id, accept) {

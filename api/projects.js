@@ -49,7 +49,8 @@ function sanitize(capsule) {
     return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s) ? s : '';
   };
   const out = {
-    v: 1,
+    // 2 = 带代码城市。1 只有封面和几行字。
+    v: 2,
     // 客户端那颗胶囊自己的 id。服务端不直接用它当主键(那样别人就能覆盖你的项目),
     // 而是和身份一起哈希 —— 于是"同一个人的同一个项目"重复发布是覆盖,而且删除时
     // 客户端拿自己的本地 id 就能定位到它。
@@ -65,6 +66,89 @@ function sanitize(capsule) {
       ? capsule.langs.slice(0, 3).map((p) => [str(p && p[0], 16), Math.max(0, Math.min(1, +(p && p[1]) || 0))])
       : [],
   };
+
+  /* ── 代码城市 ─────────────────────────────────────────────────────────────────────
+     扫描端一直在传这些字段(projects.rs 的 for_upload),而这里一直把它们**全部
+     丢掉** —— 于是别人点开你的项目,只看得到封面和几行字,城市从来没有出现过。
+     不是渲染坏了,是这颗胶囊里根本没有城市。
+
+     它们**只是数字**:楼的名字和大小、周提交数、依赖的下标对。城市是在看的人
+     自己机器上摆出来的,和封面走同一条"传参数、不传画面"的路。整座城市加起来
+     不到 20KB。
+
+     ⚠ 字段名字是按 projects.rs 的结构体**逐个对过**的,不是猜的。猜错不报错 ——
+     渲染器只会安静地少画一层(星座要的是 `n`/`e`,不是 `nodes`/`edges`;
+     热点要的是 `name`,不是 `path`)。
+
+     每一项都自己夹长度。这颗胶囊会被别人的机器拿去生成画面,所以边界在这里,
+     不在客户端 —— 客户端是可以绕过去的。 */
+  const num = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(+v || 0)));
+  const frac = (v) => Math.max(0, Math.min(1, +v || 0));
+
+  out.style = str(capsule.style, 24);
+  // 一座楼 = 一个顶层目录。lang / depth / age_days / churn 一个都不能少 ——
+  // 它们分别是楼色、退台层数、窗户冷暖和那根信标，少一个就少一种看得见的信息。
+  out.dirs = Array.isArray(capsule.dirs) ? capsule.dirs.slice(0, 25).map((d) => ({
+    name: str(d && d.name, 40),
+    files: num(d && d.files, 0, 999999),
+    bytes: num(d && d.bytes, 0, 9999999999),
+    lang: str(d && d.lang, 24),
+    langs: Array.isArray(d && d.langs)
+      ? d.langs.slice(0, 3).map((l) => [str(l && l[0], 24), frac(l && l[1])]).filter((l) => l[0]) : [],
+    kind: str(d && d.kind, 16),
+    // [名字, 文件数, 字节] —— 三元组，放射年轮的第二圈靠它
+    kids: Array.isArray(d && d.kids)
+      ? d.kids.slice(0, 8)
+          .map((k) => (Array.isArray(k) ? [str(k[0], 40), num(k[1], 0, 999999), num(k[2], 0, 9999999999)] : null))
+          .filter((k) => k && k[0]) : [],
+    depth: num(d && d.depth, 0, 64),
+    age_days: num(d && d.age_days, 0, 9999),
+    churn: num(d && d.churn, 0, 999999),
+  })).filter((d) => d.name) : [];
+  // 楼之间的弧:[from, to, weight],下标指向 dirs。指到界外的直接扔掉 ——
+  // 一条画到虚空里的弧,在屏幕上就是一道没有来由的光。
+  out.links = Array.isArray(capsule.links)
+    ? capsule.links.slice(0, 120)
+        .map((l) => (Array.isArray(l) ? [num(l[0], 0, 24), num(l[1], 0, 24), num(l[2], 0, 99999)] : null))
+        .filter((l) => l && l[0] < out.dirs.length && l[1] < out.dirs.length && l[0] !== l[1])
+    : [];
+  // 提交天际线:53 周 × 7 天 = 371 个小整数。
+  out.commits = Array.isArray(capsule.commits)
+    ? capsule.commits.slice(0, 371).map((n) => num(n, 0, 65535)) : [];
+  /* 依赖星座。形状是 `{n, e, c}`:节点是 [x, y, z, 度数, 社区] 的定点整数,
+     边是下标对,c 是社区名。渲染器要求至少 4 个节点,不够就不画那一幕。 */
+  const g = capsule.graph;
+  out.graph = (g && typeof g === 'object' && Array.isArray(g.n) && Array.isArray(g.e)) ? {
+    n: g.n.slice(0, 160)
+        .map((p) => (Array.isArray(p) ? [num(p[0], -1000, 1000), num(p[1], -1000, 1000),
+                                         num(p[2], -1000, 1000), num(p[3], 0, 9999), num(p[4], 0, 63)] : null))
+        .filter(Boolean),
+    e: g.e.slice(0, 400)
+        .map((e) => (Array.isArray(e) ? [num(e[0], 0, 159), num(e[1], 0, 159)] : null))
+        .filter(Boolean),
+    c: Array.isArray(g.c) ? g.c.slice(0, 8).map((x) => str(x, 40)) : [],
+  } : null;
+  if (out.graph) {
+    // 指到不存在的节点的边会把星座拉到原点，在屏幕上是一条莫名的亮线。
+    out.graph.e = out.graph.e.filter((e) => e[0] < out.graph.n.length && e[1] < out.graph.n.length);
+    if (out.graph.n.length < 4 || !out.graph.e.length) out.graph = null;
+  }
+  // 热点文件。字段是 name / churn / bytes / dir —— dir 把它接回它那座楼的颜色。
+  out.hot = Array.isArray(capsule.hot) ? capsule.hot.slice(0, 40).map((h) => ({
+    name: str(h && h.name, 80),
+    churn: num(h && h.churn, 0, 999999),
+    bytes: num(h && h.bytes, 0, 9999999999),
+    dir: str(h && h.dir, 40),
+  })).filter((h) => h.name) : [];
+  /* 贡献者 [名字, 提交数]。⚠ 只留人名,**不留邮箱** —— 胶囊是要发到广场
+     给陌生人看的。扫描端已经滤过一次,服务端必须自己再滤一次:客户端是可以
+     绕过去的,而泄露一次就收不回来。 */
+  out.people = Array.isArray(capsule.people)
+    ? capsule.people.slice(0, 12)
+        .map((p) => (Array.isArray(p) ? [str(p[0], 40), num(p[1], 0, 999999)] : null))
+        .filter((p) => p && p[0] && p[0].indexOf('@') < 0)
+    : [];
+
   if (!out.title) return null;
   return out;
 }

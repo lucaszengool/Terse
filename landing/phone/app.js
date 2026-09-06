@@ -99,15 +99,22 @@
       pz_tap_hint: 'Tap one and it plays in the field.', pz_none: 'Nothing published yet.',
       pz_playing: 'Playing {name} in the field',
       pz_liked: 'Liked', pz_saved: 'Saved',
+      pj_no_city: 'This capsule has no code city — it was published by an older Terse.',
+      pj_tap_like: 'Double-tap to like',
       cmt_title: 'Comments', cmt_empty: 'Nothing said yet.', cmt_reply: 'Reply',
       cmt_reply_to: 'Replying to {name} · tap to cancel', cmt_delete: 'Delete',
       fr_friends: 'Friends', fr_chats: 'Messages',
       fr_my_code: 'Your friend code',
       fr_my_code_p: 'Send it to someone and they can add you. Anyone who has it can.',
       fr_share: 'Share', copy: 'Copy', copied: 'Copied',
-      fr_add: 'Add by code', fr_add_btn: 'Add', fr_added: 'Added {name}',
-      fr_add_empty: 'Paste a code first', fr_add_self: 'That is your own code',
+      fr_add: 'Find someone by ID', fr_add_btn: 'Add', fr_added: 'Added {name}',
+      fr_add_empty: 'Type an ID first', fr_add_self: 'That is your own code',
       fr_chat: 'Message', fr_accept: 'Accept',
+      fr_find: 'Find', fr_add_p: 'Type or paste their ID. You see who it is before you add them.',
+      fr_none: 'No one has that ID. Codes can be revoked — ask them for a fresh one.',
+      fr_already: 'Already your friend', fr_remove: 'Remove',
+      fr_remove_ask: 'Remove {name} from your friends?',
+      dm_failed: 'Not sent — tap to try again',
       dm_empty: 'No messages yet.<br>Tap ✉ on someone\u2019s project, or on a friend.',
       dm_gate: 'Your first message goes with the project you tapped — that is what lets it through.',
       dm_no_reason: 'You can only write to someone about a project they published — open one of theirs first.',
@@ -274,15 +281,22 @@
       pz_tap_hint: '点一个，它会在场里演一遍。', pz_none: '还没有人发布项目。',
       pz_playing: '正在场里播放 {name}',
       pz_liked: '已赞', pz_saved: '已收藏',
+      pj_no_city: '这颗胶囊里没有代码城市 —— 它是旧版 Terse 发布的。',
+      pj_tap_like: '双击点赞',
       cmt_title: '评论', cmt_empty: '还没有人说话。', cmt_reply: '回复',
       cmt_reply_to: '正在回复 {name} · 点一下取消', cmt_delete: '删除',
       fr_friends: '好友', fr_chats: '私信',
       fr_my_code: '你的好友码',
       fr_my_code_p: '发给谁，谁就能加你。拿到它的人都能加。',
       fr_share: '分享', copy: '复制', copied: '已复制',
-      fr_add: '用好友码加人', fr_add_btn: '添加', fr_added: '已加 {name}',
-      fr_add_empty: '先粘一个码进来', fr_add_self: '这是你自己的码',
+      fr_add: '按 ID 找人', fr_add_btn: '添加', fr_added: '已加 {name}',
+      fr_add_empty: '先输入一个 ID', fr_add_self: '这是你自己的码',
       fr_chat: '发消息', fr_accept: '同意',
+      fr_find: '查找', fr_add_p: '输入或粘贴对方的 ID。加之前先看清是谁。',
+      fr_none: '没有人用这个 ID。码是可以撤销的 —— 找他要一个新的。',
+      fr_already: '已经是好友了', fr_remove: '删除',
+      fr_remove_ask: '把 {name} 从好友里删掉?',
+      dm_failed: '没发出去 —— 点一下重试',
       dm_empty: '还没有私信。<br>在别人的项目上点 ✉，或者在好友那一行点。',
       dm_gate: '第一条消息会挂在你刚点的那个项目上 —— 它就是通行的由头。',
       dm_no_reason: '给陌生人发消息要有由头：只能就他发布过的项目说话，先去打开他的一个项目。',
@@ -793,8 +807,16 @@
       // The two that become particle text. setStageItems rate-limits itself to
       // one glyph every 12s inside the engine, so calling it on every poll is
       // how the rotation advances — not something to throttle out here.
-      wp.setStageItems(o.stage);
-      wp.setAgentLog(o.logGroups);
+      /* ⚠ NOT while a project is open. The field talks about the visitor when it
+         has nothing else to say — the screen size, the clock, how many times
+         they have touched it — and those glyphs kept surfacing straight over
+         somebody's code city. In that window the project IS what the field is
+         about; the ambient chatter is not paused for tidiness, it is paused
+         because it is answering a question nobody asked. */
+      if (!viewing) {
+        wp.setStageItems(o.stage);
+        wp.setAgentLog(o.logGroups);
+      }
       // Savings rise out of the field as their own glyph, the same as on the Mac.
       if (lastSaved !== null && o.saved > lastSaved) wp.floatToken(o.saved - lastSaved, 'saved');
       lastSaved = o.saved;
@@ -1237,19 +1259,58 @@
     else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast(t('copied')); });
   });
 
-  on($('frAdd'), 'click', addByCode);
-  on($('frCode'), 'keydown', function (e) { if (e.key === 'Enter') addByCode(); });
-  function addByCode() {
+  /* ── Find, then add ─────────────────────────────────────────────────────
+     Paste-and-you-are-friends gives you no moment to notice you pasted the
+     wrong thing, and no way to tell whether the ID you were sent is still live.
+     So searching and adding are two steps, and Add only exists once there is
+     somebody on screen to add. */
+  var frFound = null;
+
+  on($('frFind'), 'click', findByCode);
+  on($('frCode'), 'keydown', function (e) { if (e.key === 'Enter') findByCode(); });
+  // Looking again the moment the field changes: a stale result sitting under a
+  // half-typed ID is a result about somebody else.
+  on($('frCode'), 'input', function () { clearHit(); });
+
+  function clearHit() {
+    frFound = null;
+    $('frHit').classList.add('hide');
+    $('frMiss').classList.add('hide');
+  }
+
+  function findByCode() {
     if (!requireIdentity()) return;
     // Whatever they pasted. People copy the whole link out of a chat window;
     // making them cut the token out of it is handing them our implementation.
     var code = Social.codeFrom($('frCode').value);
     if (!code) { toast(t('fr_add_empty')); return; }
+    clearHit();
+    $('frFind').disabled = true;
+    Social.lookup(code).then(function (d) {
+      if (!d || !d.found) { $('frMiss').classList.remove('hide'); return; }
+      frFound = { code: code, name: d.name || t('dm_someone') };
+      $('frHitAv').textContent = (d.name || '?').slice(0, 1).toUpperCase();
+      $('frHitName').textContent = frFound.name;
+      $('frHitSub').textContent = d.mine ? t('fr_add_self')
+        : d.already ? t('fr_already') : '';
+      // Your own ID and somebody already in your list are both dead ends, and
+      // an Add button that will only ever fail is worse than no button.
+      $('frAdd').classList.toggle('hide', !!(d.mine || d.already));
+      $('frHit').classList.remove('hide');
+      if (window.TerseFeel) window.TerseFeel.tap();
+    }).catch(function (e) { toast(e.message || '—'); })
+      .then(function () { $('frFind').disabled = false; });
+  }
+
+  on($('frAdd'), 'click', addByCode);
+  function addByCode() {
+    if (!frFound || !requireIdentity()) return;
     $('frAdd').disabled = true;
-    Social.addByCode(code, nickname()).then(function (d) {
+    Social.addByCode(frFound.code, nickname()).then(function (d) {
       $('frCode').value = '';
+      clearHit();
       var f = d && d.friendship;
-      toast(t('fr_added').replace('{name}', (f && f.name) || t('dm_someone')));
+      toast(t('fr_added').replace('{name}', (f && f.name) || frFound.name));
       if (window.TerseFeel) window.TerseFeel.tap();
       loadFriends();
     }).catch(function (e) {
@@ -1291,6 +1352,17 @@
           chat.style.padding = '6px 11px'; chat.textContent = '✉';
           chat.onclick = function () { openDm(f.peer, f.name || t('dm_someone'), null); };
           row.appendChild(chat);
+          // Adding without removing is a list that only grows. It asks first —
+          // this is the one control here that cannot be undone with a tap.
+          var cut = document.createElement('button');
+          cut.type = 'button'; cut.className = 'btn ghost danger'; cut.style.minHeight = '32px';
+          cut.style.padding = '6px 10px'; cut.textContent = '✕';
+          cut.title = t('fr_remove');
+          cut.onclick = function () {
+            if (!confirm(t('fr_remove_ask').replace('{name}', f.name || t('dm_someone')))) return;
+            Social.unfriend(f.id).then(loadFriends).catch(function (e) { toast(e.message || '—'); });
+          };
+          row.appendChild(cut);
         }
         list.appendChild(row);
       });
@@ -1362,13 +1434,41 @@
        and their real name arrives with their first reply anyway. */
     $('dmWho').textContent = name ? dmName : (about ? t('dm_about').replace('{name}', about) : dmName);
     $('dmMsgs').innerHTML = '';
+    dmSeen = '';
     loadThread();
+    startThreadPoll();
   }
 
   function closeThread() {
     dmPeer = null; dmReason = null;
+    stopThreadPoll();
     $('fzThread').classList.add('hide');
   }
+
+  /* ── Keeping up ──────────────────────────────────────────────────────────
+     A chat you have to leave and come back to in order to see a reply is not a
+     chat. Polling rather than an event stream on purpose: since iOS 18 a
+     backgrounded EventSource closes while still reporting readyState === OPEN
+     and firing no error, so a stream here would go quietly dead in a pocket and
+     look exactly like a silent friend. A poll cannot lie about that.
+
+     It stops while the tab is hidden — a phone in a pocket asking every five
+     seconds is somebody's battery — and fires once immediately on return,
+     which is also when a reply is most likely waiting. */
+  var dmPoll = null;
+  function startThreadPoll() {
+    stopThreadPoll();
+    dmPoll = setInterval(function () {
+      if (document.hidden || !dmPeer) return;
+      loadThread({ quiet: true });
+    }, 5000);
+  }
+  function stopThreadPoll() { clearInterval(dmPoll); dmPoll = null; }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    if (dmPeer) loadThread({ quiet: true });
+    else if (Social.identity()) Social.inbox().then(function (d) { markUnread(d && d.unread); }).catch(function () {});
+  });
   on($('dmRefresh'), 'click', loadDmList);
   on($('dmBack'), 'click', function () {
     closeThread();
@@ -1377,11 +1477,29 @@
     loadFriendsTab();
   });
 
-  function loadThread() {
+  var dmSeen = '';
+  function loadThread(opts) {
     if (!dmPeer) return;
+    var quiet = !!(opts && opts.quiet);
     Social.thread(dmPeer).then(function (d) {
+      /* A poll that rebuilds the list every five seconds throws away the
+         scroll position and any text selection, whether or not anything
+         arrived. Only redraw when the conversation actually changed. */
+      var sig = (d.messages || []).map(function (m) { return m.id; }).join(',') + '|' + (d.open ? '1' : '0');
+      if (quiet && sig === dmSeen) return;
+      var fresh = quiet && dmSeen && sig !== dmSeen;
+      dmSeen = sig;
       $('dmMsgs').innerHTML = '';
       (d.messages || []).forEach(function (m) { addDm(m, false); });
+      // Somebody else's line arriving while you are looking at it belongs in
+      // the field too — that is where this app says things.
+      if (fresh) {
+        var last = (d.messages || [])[d.messages.length - 1];
+        if (last && !last.mine && wp && wp.roomLine) {
+          wp.roomLine(dmPeer, last.author || dmName, last.body || '', { max: 26 });
+        }
+        if (window.TerseFeel) window.TerseFeel.tap();
+      }
       // Say whether this line is open BEFORE anything is typed. Letting somebody
       // write a paragraph and then telling them it cannot be sent is the worst
       // possible moment to explain a rule.
@@ -1430,9 +1548,22 @@
     addDm({ mine: true, body: v }, true);
     var bubble = $('dmMsgs').lastChild;
     function undo(e) {
-      if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
       var m = (e && e.message) || '';
       toast(/reference a project/i.test(m) ? t('dm_no_reason') : (m || '—'));
+      /* The words STAY, marked as unsent and tappable. Deleting what somebody
+         just typed because the network blinked makes them type it again from
+         memory — and the one failure here with a rule behind it is exactly the
+         one they will want to retry unchanged. */
+      if (!bubble || !bubble.parentNode) return;
+      bubble.classList.add('failed');
+      var why = document.createElement('span');
+      why.className = 'who'; why.textContent = t('dm_failed');
+      bubble.appendChild(why);
+      bubble.onclick = function () {
+        bubble.parentNode.removeChild(bubble);
+        $('dmInput').value = v;
+        sendDm();
+      };
     }
     // Promise.resolve().then, so that a THROW on the way to the request is
     // undone too. A synchronous failure used to leave the message sitting there
@@ -2047,7 +2178,7 @@
       sub.textContent = bits.join('  ·  ');
       meta.appendChild(name); meta.appendChild(sub);
       b.appendChild(meta);
-      b.onclick = function () { playProject(p); };
+      b.onclick = function () { openProject(p); };
 
       // The actions go UNDER the row, not inside it. The row already means one
       // thing — play this in the field — and a strip of buttons inside a button
@@ -2079,9 +2210,13 @@
     return b;
   }
 
-  function projectActions(p) {
+  function projectActions(p, opts) {
+    opts = opts || {};
     var box = document.createElement('div');
-    box.className = 'acts';
+    // Same buttons, same handlers, wider targets in the window — the row in a
+    // list and the bar under a project are the SAME control, and building a
+    // second one would be where the two quietly stop agreeing.
+    box.className = 'acts' + (opts.wide ? ' wide' : '');
 
     var like = actBtn('♥', p.likes || 0, p.liked);
     var fav = actBtn('☆', p.favs || 0, p.faved);
@@ -2117,6 +2252,12 @@
     dm.onclick = function () {
       openDm(p.author, null, p.id, (p.capsule && p.capsule.title) || p.title);
     };
+    // Closing the window first: the conversation is a different place, and
+    // leaving the city playing behind a chat is two things at once.
+    if (opts.wide) {
+      var open = dm.onclick;
+      dm.onclick = function () { closeProject(); open(); };
+    }
     // You cannot write to yourself, and offering the button is worse than not
     // having it: it looks like the feature is broken rather than inapplicable.
     if (!p.author || p.author === myPeerId()) dm.classList.add('hide');
@@ -2125,17 +2266,107 @@
     return box;
   }
 
-  function playProject(p) {
+  /* ── The project window ──────────────────────────────────────────────────
+     Tapping a project used to switch to the Field TAB and leave a toast behind.
+     The project played under whatever you happened to have open, there was
+     nothing to press, and — because the engine never advanced the layer (see
+     mineradio-wallpaper.js) — usually nothing appeared at all.
+
+     It has its own window now, and the window is mostly a hole: the code city
+     is drawn on the same canvas that is behind every view, so the chrome is a
+     title at the top and a bar for your thumb at the bottom. Anything more
+     would be a card sitting on top of the thing you came to look at.
+
+     ⚠ THE SHOW IS RE-ARMED, NOT STRETCHED. `showProject(cap, ms)` spreads the
+     carousel across `ms`, so asking for a ten-minute show gives one frame every
+     two and a half minutes — the readings would never come round. It runs its
+     natural ~22s and starts again while the window is open. */
+  var viewing = null;
+  var pjTimer = null;
+
+  /** Long enough for the four readings to breathe, short enough that the
+   *  capsule re-gathers while you are still watching. */
+  function showLen(p) {
+    var cap = window.TersePlazaField ? window.TersePlazaField.toCapsule(p) : null;
+    var shots = 1 + ((cap && cap.shots) || []).length;
+    // ~4.5s a beat, and never fewer than the four readings the city rotates.
+    return 1400 + 4500 * Math.max(4, shots);
+  }
+
+  function openProject(p) {
     if (!window.TersePlazaField || !wp) return;
     // Stop the ambient rotation first: two capsules dissolving into each other
     // is not a transition, it is a mess.
     try { window.TersePlazaField.stop(wp); } catch (e) {}
-    show('field');
+    viewing = p;
     var cap = window.TersePlazaField.toCapsule(p);
-    try { wp.showProject(cap, 30000); } catch (e) {}
-    // Told, not guessed at: the field is behind everything, and somebody who
-    // taps a row and lands on a black screen has no way to know it worked.
-    toast(t('pz_playing').replace('{name}', cap.title || ''));
+    $('pjTitle').textContent = cap.title || '—';
+    $('pjSub').textContent = cap.subtitle || '';
+
+    // Say when there is no city rather than showing an empty sky. A capsule
+    // published by an older Terse carries a cover and some lines and nothing
+    // else, and "nothing happened" is indistinguishable from "broken".
+    var hasCity = !!(cap.dirs && cap.dirs.length);
+    $('pjNote').textContent = hasCity ? '' : t('pj_no_city');
+
+    var bar = $('pjBar');
+    bar.innerHTML = '';
+    bar.appendChild(projectActions(p, { wide: true }));
+
+    show('project');
+    // The plaza tab stays lit: this window is somewhere you went FROM the
+    // plaza, and an unlit tab bar reads as "you are nowhere".
+    var pz = document.querySelector('nav button[data-tab="plaza"]');
+    if (pz) pz.classList.add('on');
+
+    // Whatever the field was saying about the visitor goes now, rather than
+    // fading out over the city for the next minute — the headline rotation
+    // replays its last few lines, so stopping the feed is not enough.
+    try { wp.clearHeadline && wp.clearHeadline(); } catch (e) {}
+    var run = function () { try { wp.showProject(cap, showLen(p)); } catch (e) {} };
+    run();
+    clearInterval(pjTimer);
+    pjTimer = setInterval(run, showLen(p) + 900);
+    // Best-effort, and the author's only feedback.
+    try { Social.view && Social.view(p.id); } catch (e) {}
+  }
+
+  function closeProject() {
+    clearInterval(pjTimer); pjTimer = null;
+    viewing = null;
+    try { wp && wp.hideProject && wp.hideProject(); } catch (e) {}
+    show('plaza');
+  }
+  on($('pjBack'), 'click', closeProject);
+
+  /* Double-tap the sky to like it. The heart in the bar works too, but this is
+     the interaction people perform most often, and asking them to aim at a
+     small target for it is the wrong trade. Drawn where the thumb landed. */
+  (function () {
+    var last = 0, lastX = 0, lastY = 0;
+    on($('pjSpace'), 'pointerup', function (e) {
+      var now = Date.now();
+      var near = Math.abs(e.clientX - lastX) < 44 && Math.abs(e.clientY - lastY) < 44;
+      if (now - last < 380 && near) {
+        last = 0;
+        likeFromTap(e.clientX, e.clientY);
+      } else { last = now; lastX = e.clientX; lastY = e.clientY; }
+    });
+  }());
+
+  function likeFromTap(x, y) {
+    if (!viewing || !requireIdentity()) return;
+    var pop = document.createElement('div');
+    pop.className = 'heartpop';
+    pop.textContent = '♥';
+    pop.style.left = x + 'px'; pop.style.top = y + 'px';
+    document.body.appendChild(pop);
+    setTimeout(function () { pop.remove(); }, 760);
+    if (window.TerseFeel) window.TerseFeel.tap();
+    // A double tap only ever ADDS a like. Toggling here would mean the second
+    // enthusiastic tap of the evening quietly takes yours away.
+    var btn = $('pjBar').querySelector('.act');
+    if (btn && !btn.classList.contains('on')) btn.click();
   }
 
   function loadProjects() {

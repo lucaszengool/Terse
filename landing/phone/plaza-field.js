@@ -80,11 +80,33 @@
     }
     if (!lines.length && Array.isArray(c.tags) && c.tags.length) lines.push(c.tags.join(' · '));
 
+    /* ⚠ EVERYTHING THE ENGINE CAN DRAW HAS TO COME THROUGH HERE. This used to
+       return four fields — title, subtitle, cover, lines — and the code city
+       died right at this line even when the server sent it. A capsule is
+       PARAMETERS, and dropping them here is dropping the picture.
+
+       The comments are handed over as objects rather than folded into `lines`:
+       the engine pages them three at a time and draws the speaker's name with
+       each one, which it cannot do with a flattened string. `lines` keeps its
+       fallback copies for the ambient rotation, where three lines is the whole
+       show. */
     return {
       title: c.title || p.title || '',
       subtitle: c.subtitle || '',
       cover: c.cover || '',
       lines: lines.slice(0, 3),
+      shots: Array.isArray(c.shots) ? c.shots : [],
+      langs: Array.isArray(c.langs) ? c.langs : [],
+      files: c.files || 0,
+      // 代码城市 —— 数字,不是画面。城市在看的人自己的机器上摆出来。
+      dirs: Array.isArray(c.dirs) ? c.dirs : [],
+      style: c.style || '',
+      links: Array.isArray(c.links) ? c.links : [],
+      commits: Array.isArray(c.commits) ? c.commits : [],
+      graph: c.graph || null,
+      hot: Array.isArray(c.hot) ? c.hot : [],
+      people: Array.isArray(c.people) ? c.people : [],
+      comments: Array.isArray(p.topComments) ? p.topComments : [],
     };
   }
 

@@ -210,6 +210,35 @@ router.delete('/link/:token', requireIdentity, (req, res) => {
   res.json({ ok: true });
 });
 
+/* GET /api/cloud/friends/lookup/:token → { found, name, mine, already }
+ *
+ * LOOK BEFORE YOU ADD. Pasting a code and being befriended in the same gesture
+ * gives you no moment to notice you pasted the wrong thing, and no way to tell
+ * whether the code you were sent is even live any more. This answers the one
+ * question worth asking first — WHO is this? — and nothing else.
+ *
+ * It is safe to expose because a code is not an identity: it is a 96-bit random
+ * token its owner can revoke, so there is nothing here to enumerate. Guessing
+ * one is the whole difficulty, and knowing a name after you have guessed one
+ * adds nothing to an attacker who could already have added themselves.
+ *
+ * The owner's hash never leaves. Neither does their email — a name is what a
+ * person needs to recognise a friend; an address is a way to reach them
+ * somewhere else, and this code was not consent for that. */
+router.get('/lookup/:token', requireIdentity, (req, res) => {
+  const inv = db.getFriendInvite.get(req.params.token);
+  if (!inv) return res.json({ ok: true, found: false });
+  const mine = inv.owner_hash === req.idHash;
+  const edge = mine ? null : db.getFriendEdge.get({ x: req.idHash, y: inv.owner_hash });
+  res.json({
+    ok: true,
+    found: true,
+    name: inv.owner_name || null,
+    mine,
+    already: !!(edge && edge.status === 'accepted'),
+  });
+});
+
 // POST /api/cloud/friends/link/:token/accept — open the link, become friends.
 router.post('/link/:token/accept', requireIdentity, (req, res) => {
   const inv = db.getFriendInvite.get(req.params.token);

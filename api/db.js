@@ -1386,6 +1386,20 @@ const getFriendInvite = db.prepare('SELECT * FROM friend_invites WHERE token = ?
 const bumpFriendInvite = db.prepare('UPDATE friend_invites SET uses = uses + 1 WHERE token = ?');
 const getFriendInviteByOwner = db.prepare('SELECT * FROM friend_invites WHERE owner_hash = ? ORDER BY created_at DESC LIMIT 1');
 const deleteFriendInvite = db.prepare('DELETE FROM friend_invites WHERE token = ?');
+// A code is minted once and handed back forever, so the name on it has to stay
+// editable: somebody who generated theirs before picking a nickname would
+// otherwise be "someone" to every person who ever adds them.
+const renameFriendInvite = db.prepare(
+  'UPDATE friend_invites SET owner_name = @name WHERE token = @token');
+/* Renaming the invite is not enough: an edge COPIES the name at the moment the
+   friendship is made, so everybody who added you before you had one would keep
+   seeing "someone" forever. This renames your own side of every friendship you
+   are part of, and never the other person's. */
+const renameFriendSelf = db.prepare(`
+  UPDATE friend_links SET
+    a_name = CASE WHEN a_hash = @hash THEN @name ELSE a_name END,
+    b_name = CASE WHEN b_hash = @hash THEN @name ELSE b_name END
+  WHERE a_hash = @hash OR b_hash = @hash`);
 
 // ── Friends ──
 const addFriendRequest = db.prepare(`
@@ -1808,7 +1822,7 @@ module.exports = {
   addCloudEvent, getTeamEvents, getTeamSummary,
   getTeamByDeveloper, getTeamByTool, getTeamByProject, getTeamDaily,
   getTeamByModel, getTeamByMode, getTeamByAgent, getTeamAgentTotals,
-  friendedByShortHash,
+  friendedByShortHash, renameFriendInvite, renameFriendSelf,
   // Discovery, knocking, friend links
   setRoomListing, setRoomOwnerIdentity, listPublicRooms, listRoomsForIdentity,
   addKnock, getKnock, getKnockFor, listKnocks, setKnockStatus,

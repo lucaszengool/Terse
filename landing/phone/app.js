@@ -1215,7 +1215,7 @@
      hash, so handing it out is not handing out you. */
   function loadMyCode() {
     if (!Social.identity()) { $('myCode').textContent = '—'; return; }
-    Social.myCode().then(function (d) {
+    Social.myCode(nickname()).then(function (d) {
       $('myCode').textContent = d.token || '—';
       $('myCode').dataset.url = d.url || '';
     }).catch(function () { $('myCode').textContent = '—'; });
@@ -1246,7 +1246,7 @@
     var code = Social.codeFrom($('frCode').value);
     if (!code) { toast(t('fr_add_empty')); return; }
     $('frAdd').disabled = true;
-    Social.addByCode(code).then(function (d) {
+    Social.addByCode(code, nickname()).then(function (d) {
       $('frCode').value = '';
       var f = d && d.friendship;
       toast(t('fr_added').replace('{name}', (f && f.name) || t('dm_someone')));

@@ -120,6 +120,17 @@ const full = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
   eq('and the thread says so before you type',
      (await req('GET', `/dm/${short(pal)}`, { identity: author })).json.open, true);
 
+  console.log('\n── a code carries a name ──');
+  // `req.name` only exists when the caller holds a room key, and the phone holds
+  // none. Without a name on the body, every code minted outside a room is
+  // anonymous and everybody who adds you sees "someone" forever.
+  const named = (await req('POST', '/friends/link', { identity: pal, body: { name: 'Pal' } })).json;
+  eq('minting again returns the same code', named.token, link.token);
+  eq('and takes the name it was given', named.name, 'Pal');
+  const fl0 = (await req('GET', '/friends', { identity: author })).json;
+  eq('so the friend row has a person on it',
+     (fl0.friends.find((f) => f.peer === short(pal)) || {}).name, 'Pal');
+
   console.log('\n── the friends list can address a friend ──');
   const fl = (await req('GET', '/friends', { identity: author })).json;
   const edge = fl.friends.find((f) => f.peer === short(pal));

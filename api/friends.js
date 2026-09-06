@@ -169,17 +169,34 @@ function publicEdge(e) {
 // It is a token rather than a bare identity because a token can be revoked and
 // counted; an identity in a URL is forever and tells you nothing.
 router.post('/link', requireIdentity, (req, res) => {
+  // A name may be SENT, not only inferred from a room. `req.name` exists only
+  // when the caller happens to hold a room key, and the phone holds none — so
+  // without this every code minted outside a room is anonymous, and everybody
+  // who adds you sees "someone" forever.
+  const given = clip((req.body && req.body.name) || '', 40).trim() || null;
   const existing = db.getFriendInviteByOwner.get(req.idHash);
   if (existing) {
-    return res.json({ ok: true, token: existing.token, url: linkUrl(existing.token), reused: true });
+    // The code is reused for life, so the name on it stays editable: whoever
+    // generated theirs before picking a nickname would otherwise be stuck.
+    if (given && given !== existing.owner_name) {
+      db.renameFriendInvite.run({ token: existing.token, name: given });
+      // And on the friendships already made from it. An edge copies the name at
+      // the moment it is made, so without this everybody who added you before
+      // you had a name keeps seeing "someone" for good.
+      db.renameFriendSelf.run({ hash: req.idHash, name: given });
+    }
+    return res.json({
+      ok: true, token: existing.token, url: linkUrl(existing.token),
+      name: given || existing.owner_name || null, reused: true,
+    });
   }
   const token = crypto.randomBytes(12).toString('base64url');
   db.addFriendInvite.run({
     token, owner_hash: req.idHash,
-    owner_name: clip(req.name, 40) || null,
+    owner_name: given || clip(req.name, 40) || null,
     owner_email: req.email || null,
   });
-  res.json({ ok: true, token, url: linkUrl(token) });
+  res.json({ ok: true, token, url: linkUrl(token), name: given || clip(req.name, 40) || null });
 });
 
 const linkUrl = (t) => `https://www.terseai.org/join?friend=${encodeURIComponent(t)}`;

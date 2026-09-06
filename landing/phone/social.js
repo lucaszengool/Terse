@@ -99,9 +99,13 @@
     /* ── 好友 ───────────────────────────────────────────────────────────── */
     // 我的邀请码。服务端对同一个人**复用**同一个,所以这可以当作"我的 id"来给人 ——
     // 而它是一串随机 token,不是身份哈希:能撤销,也没法拿去遍历别人。
-    myCode: function () { return call('/friends/link', { method: 'POST' }); },
-    addByCode: function (code) {
-      return call('/friends/link/' + encodeURIComponent(String(code).trim()) + '/accept', { method: 'POST' });
+    // 名字必须**传上去**。服务端只有在调用方带着房间钥匙时才知道你叫什么,
+    // 而手机上没有房间钥匙 —— 不传的话,加你的人永远看到的是"某人"。
+    myCode: function (name) { return call('/friends/link', { method: 'POST', body: { name: name || null } }); },
+    addByCode: function (code, name) {
+      // 加人的时候也报上名字:对方的好友列表里那一行才有人,而不是一个问号。
+      return call('/friends/link/' + encodeURIComponent(String(code).trim()) + '/accept',
+                  { method: 'POST', body: { name: name || null } });
     },
     friends: function () { return call('/friends'); },
     respondFriend: function (id, accept) {

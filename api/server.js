@@ -321,6 +321,18 @@ async function syncSubscription(sub) {
 // JSON body for all other routes. Docs ops can carry Univer sheet snapshots
 // (styles, merges, col widths…) which exceed the 100kb default by far.
 app.use('/api/docs', express.json({ limit: '6mb' }));
+/* ⚠ THE DESKTOP'S LIVE FRAME IS BIGGER THAN 100kb, AND THAT KILLED THE FEATURE.
+   A session snapshot carries thirty recent messages with user prompts kept
+   whole, so a Mac with real agent history pushes hundreds of kilobytes — which
+   body-parser refused here, before link.js could run, with an HTML error the
+   desktop never reads. A linked phone showed no agent log at all, and nothing
+   anywhere said why.
+
+   Mounted BEFORE the default parser, because the first parser to run wins: the
+   route's own limit is unreachable otherwise. link.js then trims the frame down
+   to the few short lines the phone actually draws — this larger ceiling is what
+   lets the frame arrive to BE trimmed, not permission to store it. */
+app.use('/api/cloud/link/push', express.json({ limit: '4mb' }));
 app.use(express.json());
 
 // CORS for Tauri app + marketplace.

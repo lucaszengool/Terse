@@ -336,7 +336,11 @@
      a screen of empty space above the plaza, which is exactly how it looked.
      `.view.on` already supplies the flex. */
   #v-project{flex-direction:column;gap:0;margin:0 -16px;padding:0;
-    min-height:calc(100dvh - var(--tabbar) - var(--safe-b) - var(--safe-t) - 88px)}
+    min-height:calc(100dvh - var(--tabbar) - var(--safe-b) - var(--safe-t) - 88px);
+    /* The same ground the canvas paints. `main` keeps a gap under this for the
+       tab bar, and without it that gap showed the page's own backdrop as a
+       coloured band under the action row. */
+    background:#05070a}
   /* The middle is deliberately nothing: it is a hole you look at the city
      through, and it takes the double-tap. */
   #pjSpace{flex:1 1 auto;min-height:0;pointer-events:auto}
@@ -351,7 +355,12 @@
     background:linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,0))}
   #pjBar .act{flex:1 1 0;justify-content:center;padding:11px 8px;font-size:13.5px;
     background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
-  #pjNote{padding:0 16px 6px;font-size:11.5px;color:var(--faint)}
+  #pjNote{padding:0 16px 6px;font-size:12px;color:var(--dim);line-height:1.5}
+  /* Covers the field completely while a project is open — including the black
+     it paints — so the two never show through each other. */
+  #pjStage{position:absolute;inset:0;width:100%;height:100%;display:block;
+    background:#05070a;z-index:0}
+  #v-project > *:not(#pjStage){position:relative;z-index:1}
   /* The list row and the window's bar are the same control; only the target
      size differs, because a thumb reaching the bottom of a phone has the whole
      width to land in. */
@@ -457,6 +466,46 @@
   .btn.primary:active{transform:scale(.972);filter:brightness(1.06)}
   .item,.bed,.style{transition:transform var(--t-fast) var(--snap), background var(--t-fast) var(--glide)}
   .item:active,.bed:active,.style:active{transform:scale(.978)}
+
+  /* ── Motion ──────────────────────────────────────────────────────────────
+     EVERY control answers a finger, not the handful somebody remembered. A
+     button that does not move under the thumb reads as a dead button for the
+     200ms before its work lands, and that is most of what "not smooth" is.
+
+     `transform` and `opacity` only: they run on the compositor, so they cannot
+     be janked by whatever the main thread is doing — which on this app is a
+     particle engine. Anything that animates layout would stutter exactly when
+     the field is busiest. */
+  button,.act,.chip,.seg button,.pairbar{
+    transition:transform 130ms var(--snap), opacity 130ms var(--glide),
+               background 160ms var(--glide), border-color 160ms var(--glide)}
+  button:active,.chip:active,.pairbar:active{transform:scale(.955)}
+  .btn.primary:active{transform:scale(.94)}
+  .seg button:active{transform:scale(.96)}
+  /* A disabled control must NOT move: it is the one case where answering the
+     finger would be a lie about what is going to happen. */
+  button:disabled,button:disabled:active{transform:none;opacity:.45}
+
+  /* A view arriving settles in rather than appearing. 140ms is under the
+     threshold where a transition starts to feel like waiting. */
+  .view.on{animation:viewin 150ms var(--glide) both}
+  @keyframes viewin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  /* A row that was just fetched should not blink into place all at once. */
+  .list .item,.list .proj,.projwrap{animation:rowin 190ms var(--glide) both}
+  @keyframes rowin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .msgs .msg{animation:msgin 170ms var(--snap) both}
+  @keyframes msgin{from{opacity:0;transform:translateY(7px) scale(.985)}to{opacity:1;transform:none}}
+
+  /* ⚠ ALL OF IT OFF when the visitor asked for less motion. Somebody who set
+     that switch is often asking because motion makes them ill, and an app that
+     honours it for its big animations but not its small ones has not honoured
+     it. */
+  @media (prefers-reduced-motion: reduce){
+    .view.on,.list .item,.list .proj,.projwrap,.msgs .msg,.sheet .pane{animation:none}
+    button,.act,.chip,.seg button,.pairbar,.item,.bed,.style{transition:none}
+    button:active,.chip:active,.pairbar:active,.btn.primary:active,
+    .seg button:active,.item:active,.bed:active,.style:active{transform:none}
+  }
 
   /* Cards arrive staggered rather than all at once: a block of six appearing
      together reads as a page load, one after another reads as the app
@@ -656,12 +705,15 @@
         <!-- Two things live in the plaza and they are not the same shape: a
              room is somewhere you GO, a project is something you WATCH. One
              list holding both made every row ambiguous. -->
+        <!-- PROJECTS FIRST. A room needs somebody else to already be in it;
+             a project is there to be looked at the moment you arrive. Opening
+             on the half that is usually empty made the plaza look empty. -->
         <div class="seg" id="plazaSeg">
-          <button class="on" data-plaza="rooms" type="button" data-t="pz_rooms">Rooms</button>
-          <button data-plaza="projects" type="button" data-t="pz_projects">Projects</button>
+          <button class="on" data-plaza="projects" type="button" data-t="pz_projects">Projects</button>
+          <button data-plaza="rooms" type="button" data-t="pz_rooms">Rooms</button>
         </div>
 
-        <div id="pzRooms">
+        <div id="pzRooms" class="hide">
           <div class="card">
             <h2 data-t="join_code">Join with a code</h2>
             <div class="row">
@@ -676,7 +728,7 @@
           <div class="empty hide" id="plazaEmpty" data-t="plaza_empty">No open rooms right now.</div>
         </div>
 
-        <div id="pzProjects" class="hide">
+        <div id="pzProjects">
           <div class="row"><h2 class="grow" style="font-size:14px;font-weight:600" data-t="pz_published">Published projects</h2>
             <button class="btn ghost tiny" id="projRefresh" type="button" style="min-height:0;padding:6px 10px" data-t="refresh">Refresh</button></div>
           <p class="tiny" data-t="pz_tap_hint">Tap one and it plays in the field.</p>
@@ -708,6 +760,11 @@
          Its own window, and almost all of it is a hole you watch the code city
          through. -->
     <section class="view" id="v-project">
+      <!-- ITS OWN CANVAS. The preview used to play on #stage, which IS the
+           field — so looking at somebody else's project replaced the wallpaper
+           you had set up. They are different things and now they are different
+           surfaces: the field keeps running, untouched, behind this one. -->
+      <canvas id="pjStage"></canvas>
       <div id="pjHead">
         <button class="btn ghost" id="pjBack" type="button">←</button>
         <span class="txt"><b id="pjTitle" class="ell">—</b><span id="pjSub" class="ell"></span></span>

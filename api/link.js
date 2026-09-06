@@ -175,13 +175,65 @@ router.get('/status', requireDevice, (req, res) => {
   });
 });
 
+/** What the PHONE renders, and nothing else.
+ *
+ * The desktop sends a session snapshot built for the desktop: thirty recent
+ * messages with user prompts kept whole, tool breakdowns, redundant-read
+ * analysis. The phone's field draws a name, an icon, a burn rate and the last
+ * few log lines at about forty characters each.
+ *
+ * Trimming here rather than raising the limit is deliberate on two counts. It
+ * is somebody's cellular connection, every three seconds. And a user's PROMPTS
+ * are in that payload — the desktop needs them locally for the optimizer, the
+ * cloud has no use for them at all, and the least storable thing is the thing
+ * that is never stored.
+ *
+ * ⚠ The keys kept are the ones msgToLine() and buildOverlays() actually read
+ * (src/renderer/wallpaper-hud.js). Dropping one shows up as a field that draws
+ * nothing, not as an error. */
+const LOG_LINES = 8;        // the engine rotates the last five; a little slack
+const LOG_CHARS = 140;      // it truncates to ~46 on screen
+
+function trimSession(a) {
+  if (!a || typeof a !== 'object') return null;
+  const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
+  const num = (v) => (Number.isFinite(+v) ? +v : 0);
+  const msgs = Array.isArray(a.recentMessages) ? a.recentMessages.slice(-LOG_LINES) : [];
+  return {
+    id: str(a.id, 80),
+    agentType: str(a.agentType, 40),
+    agentName: str(a.agentName, 60),
+    agentIcon: str(a.agentIcon, 8),
+    connected: a.connected !== false,
+    project: str(a.project, 200),
+    model: str(a.model, 60),
+    turns: num(a.turns),
+    totalTokens: num(a.totalTokens),
+    totalInputTokens: num(a.totalInputTokens),
+    totalOutputTokens: num(a.totalOutputTokens),
+    burnRate: num(a.burnRate),
+    costPerHour: num(a.costPerHour),
+    contextFill: num(a.contextFill),
+    estimatedCost: num(a.estimatedCost),
+    elapsedMinutes: num(a.elapsedMinutes),
+    recentMessages: msgs.map((m) => ({
+      role: str(m && m.role, 16),
+      type: str(m && m.type, 24),
+      toolName: str(m && m.toolName, 40),
+      text: str(m && m.text, LOG_CHARS),
+      tokens: num(m && m.tokens),
+    })),
+  };
+}
+
 // POST /api/cloud/link/push   Header: x-terse-device   Body: { stats, sessions }
 // One live frame. The shapes are exactly what the wallpaper's own pollMeta()
 // consumes, so the phone can render it with the same code the desktop uses.
 router.post('/push', requireDevice, (req, res) => {
   if (!req.link.clerk_user_id) return res.status(409).json({ error: 'Device is not linked to a phone yet' });
 
-  const sessions = Array.isArray(req.body?.sessions) ? req.body.sessions.slice(0, 12) : [];
+  const sessions = (Array.isArray(req.body?.sessions) ? req.body.sessions.slice(0, 12) : [])
+    .map(trimSession).filter(Boolean);
   const frame = {
     stats: req.body?.stats && typeof req.body.stats === 'object' ? req.body.stats : {},
     sessions,
@@ -196,7 +248,20 @@ router.post('/push', requireDevice, (req, res) => {
   // that an oversized push fails HERE, with a JSON error a client can read,
   // rather than as body-parser's HTML error page. Raising the parser's limit
   // without raising this one would make this check unreachable again.
-  if (json.length > 64 * 1024) return res.status(413).json({ error: 'Frame too large' });
+  /* ⚠ THIS USED TO REJECT NEARLY EVERY REAL FRAME, AND SILENTLY.
+     A session snapshot carries THIRTY recent messages, and a user message's
+     text is kept whole up to 2000 characters because the desktop's optimizer
+     needs it. Eight of those is hundreds of kilobytes — so any Mac with actual
+     agent history pushed a frame that was refused here with a 413, and the
+     desktop's push reads only `watching` off the reply and ignores the status.
+     The result was a phone that says "linked" and shows no agent log at all,
+     forever, with nothing logged anywhere.
+
+     The frame is TRIMMED now rather than refused (see trimSession): the phone
+     draws a handful of short lines, so that is what gets stored. The limit
+     stays as a backstop for something genuinely malformed, well above what a
+     trimmed frame can reach. */
+  if (json.length > 256 * 1024) return res.status(413).json({ error: 'Frame too large' });
 
   db.setLinkSnapshot.run({ id: req.link.id, snapshot: json });
   bus.emit(chan(req.link.id), { type: 'frame', ...frame });

@@ -99,7 +99,7 @@
       pz_tap_hint: 'Tap one and it plays in the field.', pz_none: 'Nothing published yet.',
       pz_playing: 'Playing {name} in the field',
       pz_liked: 'Liked', pz_saved: 'Saved',
-      pj_no_city: 'This capsule has no code city — it was published by an older Terse.',
+      pj_no_city: 'No code city in this one. It was published before the plaza carried them — its owner can press Rescan in Terse on their Mac and publish it again.',
       pj_tap_like: 'Double-tap to like',
       cmt_title: 'Comments', cmt_empty: 'Nothing said yet.', cmt_reply: 'Reply',
       cmt_reply_to: 'Replying to {name} · tap to cancel', cmt_delete: 'Delete',
@@ -281,7 +281,7 @@
       pz_tap_hint: '点一个，它会在场里演一遍。', pz_none: '还没有人发布项目。',
       pz_playing: '正在场里播放 {name}',
       pz_liked: '已赞', pz_saved: '已收藏',
-      pj_no_city: '这颗胶囊里没有代码城市 —— 它是旧版 Terse 发布的。',
+      pj_no_city: '这个项目里没有代码城市。它是在广场开始携带城市之前发布的 —— 作者在 Mac 上点一次「重新扫描」再重新发布,城市就有了。',
       pj_tap_like: '双击点赞',
       cmt_title: '评论', cmt_empty: '还没有人说话。', cmt_reply: '回复',
       cmt_reply_to: '正在回复 {name} · 点一下取消', cmt_delete: '删除',
@@ -807,16 +807,13 @@
       // The two that become particle text. setStageItems rate-limits itself to
       // one glyph every 12s inside the engine, so calling it on every poll is
       // how the rotation advances — not something to throttle out here.
-      /* ⚠ NOT while a project is open. The field talks about the visitor when it
-         has nothing else to say — the screen size, the clock, how many times
-         they have touched it — and those glyphs kept surfacing straight over
-         somebody's code city. In that window the project IS what the field is
-         about; the ambient chatter is not paused for tidiness, it is paused
-         because it is answering a question nobody asked. */
-      if (!viewing) {
-        wp.setStageItems(o.stage);
-        wp.setAgentLog(o.logGroups);
-      }
+      /* The field carries on regardless of what is open in front of it. It used
+         to be muted while a project was up, because the project was playing on
+         THIS canvas and the ambient glyphs landed on top of it. The preview has
+         its own canvas now, so there is nothing to mute — and a field that
+         stops when you look away from it is not a wallpaper. */
+      wp.setStageItems(o.stage);
+      wp.setAgentLog(o.logGroups);
       // Savings rise out of the field as their own glyph, the same as on the Mac.
       if (lastSaved !== null && o.saved > lastSaved) wp.floatToken(o.saved - lastSaved, 'saved');
       lastSaved = o.saved;
@@ -966,7 +963,7 @@
     // The wallpaper tab is the only one meant to be looked THROUGH; everywhere
     // else the field is a backdrop and the text has to win.
     $('scrim').classList.toggle('clear', tab === 'field');
-    if (tab === 'plaza') loadPlaza();
+    if (tab === 'plaza') loadPlazaTab();
     if (tab === 'friends') loadFriendsTab();
     if (tab === 'room') renderRoom();
     if (tab === 'me') renderMe();
@@ -977,7 +974,41 @@
     b.onclick = function () { show(b.dataset.tab); };
   });
 
+  /* ── One tick for every control, in one place ────────────────────────────
+     Haptics were wired onto the handful of controls somebody remembered, which
+     is worse than none: feedback that arrives on some taps and not others reads
+     as the app missing the ones that were silent. This is a single delegated
+     listener on the document, so every button — the ones here, the ones built
+     at runtime for a project row or a comment, and the ones added tomorrow —
+     answers the same way without anyone having to remember.
+
+     `pointerdown`, not click: the tick belongs to the moment the finger lands.
+     Waiting for click puts it after the handler has run, which on a slow tap
+     feels like the phone answering late. */
+  document.addEventListener('pointerdown', function (e) {
+    if (!window.TerseFeel) return;
+    var el = e.target && e.target.closest && e.target.closest('button, .item, .proj, .sty, .bed, input, select');
+    if (!el || el.disabled) return;
+    // A text field getting focus is not a press; it is the keyboard arriving,
+    // and a tick there fires on every letter typed on some Android keyboards.
+    if (el.tagName === 'INPUT' || el.tagName === 'SELECT') return;
+    window.TerseFeel.tap(el.classList.contains('primary') ? 'heavy' : 'tap');
+  }, { passive: true });
+
   // ── Plaza ────────────────────────────────────────────────────────────────
+
+  /* Which half of the plaza is showing. Projects, because a room needs somebody
+     else to already be standing in it while a project is there to be looked at
+     the moment you arrive — opening on the usually-empty half made the whole
+     plaza look empty. Rooms is one tap away and remembers nothing: this is a
+     default, not a preference, and a plaza that opens differently depending on
+     what you did last week is a plaza you cannot describe to anyone. */
+  var plazaHalf = 'projects';
+
+  function loadPlazaTab() {
+    if (plazaHalf === 'rooms') loadPlaza();
+    else if (!projPool.length) loadProjects();
+  }
 
   function loadPlaza() {
     Rooms.plaza().then(function (d) {
@@ -1465,7 +1496,16 @@
   }
   function stopThreadPoll() { clearInterval(dmPoll); dmPoll = null; }
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden) return;
+    /* ⚠ A BACKGROUNDED TAB STILL RAN THE FIELD. iOS throttles rAF rather than
+       stopping it, so the engine kept simulating tens of thousands of particles
+       in a pocket — and the first seconds after coming back were spent catching
+       up, which is exactly the stutter you feel on returning to the app. Stop
+       on the way out, start on the way in. */
+    if (document.hidden) {
+      try { if (viewing && pjWp) pjWp.stop(); else if (wp) wp.stop(); } catch (e) {}
+      return;
+    }
+    try { if (viewing && pjWp) pjWp.start(); else if (wp) wp.start(); } catch (e) {}
     if (dmPeer) loadThread({ quiet: true });
     else if (Social.identity()) Social.inbox().then(function (d) { markUnread(d && d.unread); }).catch(function () {});
   });
@@ -2283,6 +2323,7 @@
      natural ~22s and starts again while the window is open. */
   var viewing = null;
   var pjTimer = null;
+  var pjWp = null;                 // the preview's OWN engine
 
   /** Long enough for the four readings to breathe, short enough that the
    *  capsule re-gathers while you are still watching. */
@@ -2293,21 +2334,68 @@
     return 1400 + 4500 * Math.max(4, shots);
   }
 
+  /* ── A SECOND ENGINE, ON ITS OWN CANVAS ──────────────────────────────────
+     The preview used to play on #stage — which IS the field — so opening
+     somebody else's project replaced the wallpaper you had set up, and closing
+     it left the field mid-recovery. They are different things: the field is
+     yours and persistent, a preview is a look at somebody else's and it ends.
+     Different things get different surfaces.
+
+     Built once and kept. A WebGL context is expensive and iOS Safari allows
+     only a handful, so this is the ONE extra we spend — and it is paused rather
+     than destroyed when the window closes, because rebuilding it on every tap
+     is a second of black each time.
+
+     No plaza rotation and no stage items on it: it exists to show one project.
+     Ambient chatter about the visitor's screen size belongs to the field. */
+  function previewEngine() {
+    if (pjWp || !Engine) return pjWp;
+    var cv = $('pjStage');
+    if (!cv) return null;
+    var pro = T.isPro();
+    var bed = T.photo() || (window.TerseBeds && window.TerseBeds.render(bedId(),
+      Math.max(2, cv.clientWidth || window.innerWidth || 390),
+      Math.max(2, cv.clientHeight || window.innerHeight || 700)));
+    try {
+      pjWp = new Engine(cv, {
+        theme: 'neon', quality: quality(), angle: 42, intensity: 1,
+        style: pro ? styleId() : 'cinematic', pro: pro,
+        photo: bed || undefined,
+      });
+      // Same trap as the field: the constructor builds the scene, start() runs
+      // the loop, and without it the canvas is black forever with no error.
+      pjWp.start();
+      cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); }, false);
+      cv.addEventListener('webglcontextrestored', function () {
+        try { pjWp && pjWp.dispose(); } catch (e) {}
+        pjWp = null;
+        if (viewing) { previewEngine(); replayProject(); }
+      }, false);
+    } catch (e) { pjWp = null; }
+    return pjWp;
+  }
+
+  function replayProject() {
+    if (!viewing || !pjWp) return;
+    var cap = window.TersePlazaField.toCapsule(viewing);
+    try { pjWp.showProject(cap, showLen(viewing)); } catch (e) {}
+  }
+
   function openProject(p) {
-    if (!window.TersePlazaField || !wp) return;
-    // Stop the ambient rotation first: two capsules dissolving into each other
-    // is not a transition, it is a mess.
-    try { window.TersePlazaField.stop(wp); } catch (e) {}
+    if (!window.TersePlazaField) return;
     viewing = p;
     var cap = window.TersePlazaField.toCapsule(p);
     $('pjTitle').textContent = cap.title || '—';
     $('pjSub').textContent = cap.subtitle || '';
 
-    // Say when there is no city rather than showing an empty sky. A capsule
-    // published by an older Terse carries a cover and some lines and nothing
-    // else, and "nothing happened" is indistinguishable from "broken".
+    /* Say when there is no city rather than showing an empty sky. A capsule
+       published before the plaza carried one has a cover and some lines and
+       nothing else — and "an empty field" is indistinguishable from "broken",
+       which is exactly how it was reported. So it says which of the two it is,
+       and what the owner has to do about it. */
     var hasCity = !!(cap.dirs && cap.dirs.length);
     $('pjNote').textContent = hasCity ? '' : t('pj_no_city');
+    $('pjNote').classList.toggle('hide', hasCity);
 
     var bar = $('pjBar');
     bar.innerHTML = '';
@@ -2319,22 +2407,33 @@
     var pz = document.querySelector('nav button[data-tab="plaza"]');
     if (pz) pz.classList.add('on');
 
-    // Whatever the field was saying about the visitor goes now, rather than
-    // fading out over the city for the next minute — the headline rotation
-    // replays its last few lines, so stopping the feed is not enough.
-    try { wp.clearHeadline && wp.clearHeadline(); } catch (e) {}
-    var run = function () { try { wp.showProject(cap, showLen(p)); } catch (e) {} };
-    run();
+    var eng = previewEngine();
+    if (!eng) return;
+    /* ⚠ ONE ENGINE AT A TIME. The field is completely covered by this window's
+       canvas, so a second WebGL loop under it is pure heat: two full-screen
+       particle systems on a phone GPU is where "not smooth" comes from. The
+       field's STATE is untouched — it is paused, not cleared — so closing this
+       puts it back exactly as it was, which is the whole promise of giving the
+       preview its own surface. */
+    try { wp && wp.stop && wp.stop(); } catch (e) {}
+    // The canvas has just been shown, so it had no size when the engine
+    // measured it — the same trap the field hits on a cold start.
+    requestAnimationFrame(function () { try { eng.resize && eng.resize(); } catch (e) {} });
+    eng.start();
+    replayProject();
     clearInterval(pjTimer);
-    pjTimer = setInterval(run, showLen(p) + 900);
-    // Best-effort, and the author's only feedback.
+    pjTimer = setInterval(replayProject, showLen(p) + 900);
     try { Social.view && Social.view(p.id); } catch (e) {}
   }
 
   function closeProject() {
     clearInterval(pjTimer); pjTimer = null;
     viewing = null;
-    try { wp && wp.hideProject && wp.hideProject(); } catch (e) {}
+    // Paused, not destroyed — see previewEngine. And the FIELD is not touched
+    // here at all any more, which is the whole point of the second canvas.
+    try { if (pjWp) { pjWp.hideProject(); pjWp.stop(); } } catch (e) {}
+    // And the field comes back exactly where it was.
+    try { wp && wp.start && wp.start(); } catch (e) {}
     show('plaza');
   }
   on($('pjBack'), 'click', closeProject);
@@ -2389,9 +2488,13 @@
         o.classList.toggle('on', o === b);
       });
       var projects = b.dataset.plaza === 'projects';
+      plazaHalf = projects ? 'projects' : 'rooms';
       $('pzRooms').classList.toggle('hide', projects);
       $('pzProjects').classList.toggle('hide', !projects);
-      if (projects && !projPool.length) loadProjects();
+      if (projects) { if (!projPool.length) loadProjects(); }
+      // Rooms are volatile in a way projects are not — somebody opened one
+      // while you were reading — so switching to them always re-asks.
+      else loadPlaza();
     };
   });
   on($('projRefresh'), 'click', loadProjects);

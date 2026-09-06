@@ -24,6 +24,7 @@ const eq = (name, got, want) => ok(`${name}${got === want ? '' : ` (got ${JSON.s
 linkRouter.verifyUser = async (raw) => (raw && raw !== 'bad' ? String(raw) : null);
 
 const app = express();
+app.use('/link/push', express.json({ limit: '4mb' }));
 app.use(express.json());
 app.use('/link', linkRouter);
 const server = http.createServer(app);
@@ -159,18 +160,59 @@ const created = [];
   eq('stream delivers the live frame', got[1]?.type, 'frame');
   eq('live frame carries the new number', got[1]?.stats?.tokensSaved, 9999);
 
-  // ── Oversized frames ──
-  // Sized to land between the handler's 64KB limit and body-parser's 100kb one,
-  // so this proves the handler's own check runs — a bigger blob would only prove
-  // that body-parser works, which is how this guard was dead code to begin with.
-  const huge = await req('POST', '/link/push', {
+  /* ── Fat frames are TRIMMED, not refused ────────────────────────────────
+     This used to assert that a big frame came back 413, which is what the
+     handler did — and it is why a linked phone never showed an agent log. A
+     real session snapshot carries thirty messages with user prompts kept whole
+     (the desktop's optimizer needs them locally), so ANY Mac with history
+     pushed a frame over the old 64KB limit, was refused, and said nothing: the
+     desktop reads only `watching` off the reply.
+
+     So the contract is the other way round now. The frame is cut down to what
+     the phone draws, and the prompts — which the cloud has no use for — do not
+     get stored at all. */
+  const fat = {
+    stats: { tokensSaved: 4242 },
+    sessions: Array.from({ length: 8 }, (_, i) => ({
+      id: 'agent-' + i, agentType: 'claude', agentName: 'Claude ' + i, agentIcon: '🤖',
+      connected: true, project: '/Users/someone/work/thing', burnRate: 100 - i,
+      turns: 12, totalTokens: 90000,
+      recentMessages: Array.from({ length: 30 }, (_, k) => ({
+        role: k % 2 ? 'user' : 'assistant', type: 'text', toolName: '',
+        // What a real prompt looks like on the wire: kept whole, up to 2000.
+        text: 'SECRETPROMPT ' + 'p'.repeat(1900) + ' ' + k,
+        tokens: 40,
+      })),
+    })),
+  };
+  const raw = JSON.stringify(fat).length;
+  ok('the frame a real Mac sends is far over the old limit', raw > 64 * 1024);
+  const fatRes = await req('POST', '/link/push', { device: secret, body: fat });
+  eq('and it is accepted now', fatRes.status, 200);
+
+  const afterFat = await req('GET', '/link', { user: 'user_phone' });
+  const fr = afterFat.json?.frame;
+  eq('the frame lands', fr?.stats?.tokensSaved, 4242);
+  eq('with every agent', fr?.sessions?.length, 8);
+  ok('and each keeps the log the field draws', (fr?.sessions?.[0]?.recentMessages || []).length > 0);
+  ok('trimmed to the last few', fr.sessions[0].recentMessages.length <= 8);
+  ok('the keys msgToLine reads survive',
+     ['role', 'type', 'toolName', 'text', 'tokens'].every((k) => k in fr.sessions[0].recentMessages[0]));
+  ok('so does what the HUD sorts on', typeof fr.sessions[0].burnRate === 'number');
+  // The point of trimming, not just a side effect of it.
+  ok('a whole prompt is NOT stored in the cloud',
+     fr.sessions[0].recentMessages.every((m) => m.text.length <= 140));
+  ok('and the stored frame is small', JSON.stringify(fr).length < 64 * 1024);
+
+  // The backstop is still a backstop.
+  const absurd = await req('POST', '/link/push', {
     device: secret,
-    body: { stats: { blob: 'x'.repeat(80 * 1024) }, sessions: [] },
+    body: { stats: { blob: 'x'.repeat(300 * 1024) }, sessions: [] },
   });
-  eq('an oversized frame is refused', huge.status, 413);
-  eq('and refused with a readable error', huge.json?.error, 'Frame too large');
-  const afterHuge = await req('GET', '/link', { user: 'user_phone' });
-  eq('the refused frame did not overwrite the good one', afterHuge.json?.frame?.stats?.tokensSaved, 9999);
+  eq('something genuinely malformed is still refused', absurd.status, 413);
+  eq('with a readable error', absurd.json?.error, 'Frame too large');
+  eq('and it did not overwrite the good frame',
+     (await req('GET', '/link', { user: 'user_phone' })).json?.frame?.stats?.tokensSaved, 4242);
 
   // ── Unpairing ──
   const id = list.json.devices[0].id;

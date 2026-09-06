@@ -336,11 +336,7 @@
      a screen of empty space above the plaza, which is exactly how it looked.
      `.view.on` already supplies the flex. */
   #v-project{flex-direction:column;gap:0;margin:0 -16px;padding:0;
-    min-height:calc(100dvh - var(--tabbar) - var(--safe-b) - var(--safe-t) - 88px);
-    /* The same ground the canvas paints. `main` keeps a gap under this for the
-       tab bar, and without it that gap showed the page's own backdrop as a
-       coloured band under the action row. */
-    background:#05070a}
+    min-height:calc(100dvh - var(--tabbar) - var(--safe-b) - var(--safe-t) - 88px)}
   /* The middle is deliberately nothing: it is a hole you look at the city
      through, and it takes the double-tap. */
   #pjSpace{flex:1 1 auto;min-height:0;pointer-events:auto}
@@ -356,11 +352,8 @@
   #pjBar .act{flex:1 1 0;justify-content:center;padding:11px 8px;font-size:13.5px;
     background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
   #pjNote{padding:0 16px 6px;font-size:12px;color:var(--dim);line-height:1.5}
-  /* Covers the field completely while a project is open — including the black
-     it paints — so the two never show through each other. */
-  #pjStage{position:absolute;inset:0;width:100%;height:100%;display:block;
-    background:#05070a;z-index:0}
-  #v-project > *:not(#pjStage){position:relative;z-index:1}
+  /* The window is a hole you watch the field through, so it paints nothing of
+     its own — a background here would hide the very thing it frames. */
   /* The list row and the window's bar are the same control; only the target
      size differs, because a thumb reaching the bottom of a phone has the whole
      width to land in. */
@@ -760,11 +753,11 @@
          Its own window, and almost all of it is a hole you watch the code city
          through. -->
     <section class="view" id="v-project">
-      <!-- ITS OWN CANVAS. The preview used to play on #stage, which IS the
-           field — so looking at somebody else's project replaced the wallpaper
-           you had set up. They are different things and now they are different
-           surfaces: the field keeps running, untouched, behind this one. -->
-      <canvas id="pjStage"></canvas>
+      <!-- NO CANVAS OF ITS OWN. It had one, briefly, so that a preview could
+           not disturb the field — and iOS Safari refuses a second full-screen
+           WebGL context, so on the device this ships to the window opened
+           black. The project plays on the field's canvas, which is behind every
+           view, and hideProject() takes it off again on the way out. -->
       <div id="pjHead">
         <button class="btn ghost" id="pjBack" type="button">←</button>
         <span class="txt"><b id="pjTitle" class="ell">—</b><span id="pjSub" class="ell"></span></span>

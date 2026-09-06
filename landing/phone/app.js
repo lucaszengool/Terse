@@ -107,6 +107,7 @@
       pz_liked: 'Liked', pz_saved: 'Saved',
       pj_no_city: 'No code city in this one. It was published before the plaza carried them — its owner can press Rescan in Terse on their Mac and publish it again.',
       pj_tap_like: 'Double-tap to like',
+      pj_no_engine: 'The particle field is not running on this device, so there is nothing to play the project in.',
       cmt_title: 'Comments', cmt_empty: 'Nothing said yet.', cmt_reply: 'Reply',
       cmt_reply_to: 'Replying to {name} · tap to cancel', cmt_delete: 'Delete',
       fr_friends: 'Friends', fr_chats: 'Messages',
@@ -289,6 +290,7 @@
       pz_liked: '已赞', pz_saved: '已收藏',
       pj_no_city: '这个项目里没有代码城市。它是在广场开始携带城市之前发布的 —— 作者在 Mac 上点一次「重新扫描」再重新发布,城市就有了。',
       pj_tap_like: '双击点赞',
+      pj_no_engine: '这台设备上粒子场没跑起来,所以没有地方演这个项目。',
       cmt_title: '评论', cmt_empty: '还没有人说话。', cmt_reply: '回复',
       cmt_reply_to: '正在回复 {name} · 点一下取消', cmt_delete: '删除',
       fr_friends: '好友', fr_chats: '私信',
@@ -611,6 +613,12 @@
        resize on the next frame pins the buffer to the real viewport. */
     requestAnimationFrame(function () { try { wp && wp.resize && wp.resize(); } catch (e) {} });
 
+    /* A handle on the engine, for diag.js and for answering "what did it
+       actually measure?" — every layout choice the project layer makes comes
+       from a canvas size that is wrong until the element has been laid out, and
+       that is otherwise unobservable from outside. */
+    window.__terseFieldWp = wp;
+
     // The field should say something immediately rather than waiting for the
     // next poll — the glyph text is most of what makes it feel alive.
     renderHUD();
@@ -816,13 +824,15 @@
       // The two that become particle text. setStageItems rate-limits itself to
       // one glyph every 12s inside the engine, so calling it on every poll is
       // how the rotation advances — not something to throttle out here.
-      /* The field carries on regardless of what is open in front of it. It used
-         to be muted while a project was up, because the project was playing on
-         THIS canvas and the ambient glyphs landed on top of it. The preview has
-         its own canvas now, so there is nothing to mute — and a field that
-         stops when you look away from it is not a wallpaper. */
-      wp.setStageItems(o.stage);
-      wp.setAgentLog(o.logGroups);
+      /* ⚠ NOT while a project is open. The field talks about the visitor when it
+         has nothing else to say — screen size, the clock, how many times they
+         have touched it — and with the project drawn on this same canvas those
+         glyphs land straight on top of somebody's code city. In that window the
+         project IS what the field is about. */
+      if (!viewing) {
+        wp.setStageItems(o.stage);
+        wp.setAgentLog(o.logGroups);
+      }
       // Savings rise out of the field as their own glyph, the same as on the Mac.
       if (lastSaved !== null && o.saved > lastSaved) wp.floatToken(o.saved - lastSaved, 'saved');
       lastSaved = o.saved;
@@ -1511,10 +1521,10 @@
        up, which is exactly the stutter you feel on returning to the app. Stop
        on the way out, start on the way in. */
     if (document.hidden) {
-      try { if (viewing && pjWp) pjWp.stop(); else if (wp) wp.stop(); } catch (e) {}
+      try { if (wp) wp.stop(); } catch (e) {}
       return;
     }
-    try { if (viewing && pjWp) pjWp.start(); else if (wp) wp.start(); } catch (e) {}
+    try { if (wp) wp.start(); } catch (e) {}
     if (dmPeer) loadThread({ quiet: true });
     else if (Social.identity()) Social.inbox().then(function (d) { markUnread(d && d.unread); }).catch(function () {});
   });
@@ -2332,7 +2342,6 @@
      natural ~22s and starts again while the window is open. */
   var viewing = null;
   var pjTimer = null;
-  var pjWp = null;                 // the preview's OWN engine
 
   /** Long enough for the four readings to breathe, short enough that the
    *  capsule re-gathers while you are still watching. */
@@ -2343,55 +2352,28 @@
     return 1400 + 4500 * Math.max(4, shots);
   }
 
-  /* ── A SECOND ENGINE, ON ITS OWN CANVAS ──────────────────────────────────
-     The preview used to play on #stage — which IS the field — so opening
-     somebody else's project replaced the wallpaper you had set up, and closing
-     it left the field mid-recovery. They are different things: the field is
-     yours and persistent, a preview is a look at somebody else's and it ends.
-     Different things get different surfaces.
+  /* ── ONE ENGINE. THIS IS A REVERSAL, AND THE REASON MATTERS ──────────────
+     The preview briefly had its own canvas and its own engine, so that opening
+     a project could not disturb the field. It worked on a desktop browser and
+     it failed on the thing it ships to: iOS Safari caps how many live WebGL
+     contexts a page may hold, and a second full-screen particle system is
+     exactly the request it refuses. The constructor threw, the catch set the
+     handle to null, openProject returned — and the window opened black, with
+     the chrome drawn and nothing in it. Reported three times as "I click the
+     project and nothing shows".
 
-     Built once and kept. A WebGL context is expensive and iOS Safari allows
-     only a handful, so this is the ONE extra we spend — and it is paused rather
-     than destroyed when the window closes, because rebuilding it on every tap
-     is a second of black each time.
+     So the preview draws on the field's own engine again, and the promise that
+     the field is left alone is kept a different way: the project is an OVERLAY
+     layer, and hideProject() takes it off. What was on the field before is what
+     is on it afterwards, to the particle.
 
-     No plaza rotation and no stage items on it: it exists to show one project.
-     Ambient chatter about the visitor's screen size belongs to the field. */
-  function previewEngine() {
-    if (pjWp || !Engine) return pjWp;
-    var cv = $('pjStage');
-    if (!cv) return null;
-    var pro = T.isPro();
-    var bed = T.photo() || (window.TerseBeds && window.TerseBeds.render(bedId(),
-      Math.max(2, cv.clientWidth || window.innerWidth || 390),
-      Math.max(2, cv.clientHeight || window.innerHeight || 700)));
-    try {
-      pjWp = new Engine(cv, {
-        theme: 'neon', quality: quality(), angle: 42, intensity: 1,
-        style: pro ? styleId() : 'cinematic', pro: pro,
-        photo: bed || undefined,
-      });
-      // Same trap as the field: the constructor builds the scene, start() runs
-      // the loop, and without it the canvas is black forever with no error.
-      pjWp.start();
-      // Handles for diag.js and for answering "what did the engine actually
-      // measure?" without rebuilding — the field's own size is the input to
-      // every layout decision it makes, and it is otherwise unobservable.
-      window.__terseFieldWp = wp; window.__tersePreviewWp = pjWp;
-      cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); }, false);
-      cv.addEventListener('webglcontextrestored', function () {
-        try { pjWp && pjWp.dispose(); } catch (e) {}
-        pjWp = null;
-        if (viewing) { previewEngine(); replayProject(); }
-      }, false);
-    } catch (e) { pjWp = null; }
-    return pjWp;
-  }
+     It is also the answer to the app being janky: one full-screen particle
+     system on a phone GPU, never two. */
 
   function replayProject() {
-    if (!viewing || !pjWp) return;
+    if (!viewing || !wp) return;
     var cap = window.TersePlazaField.toCapsule(viewing);
-    try { pjWp.showProject(cap, showLen(viewing)); } catch (e) {}
+    try { wp.showProject(cap, showLen(viewing)); } catch (e) {}
   }
 
   function openProject(p) {
@@ -2420,24 +2402,21 @@
     var pz = document.querySelector('nav button[data-tab="plaza"]');
     if (pz) pz.classList.add('on');
 
-    var eng = previewEngine();
-    if (!eng) return;
-    /* ⚠ ONE ENGINE AT A TIME. The field is completely covered by this window's
-       canvas, so a second WebGL loop under it is pure heat: two full-screen
-       particle systems on a phone GPU is where "not smooth" comes from. The
-       field's STATE is untouched — it is paused, not cleared — so closing this
-       puts it back exactly as it was, which is the whole promise of giving the
-       preview its own surface. */
-    try { wp && wp.stop && wp.stop(); } catch (e) {}
-    /* The canvas has just been shown, so the engine's measurement is the
-       1920x1080 fallback until something asks. Reading it here forces the
-       layout the engine needs BEFORE the first frame is composed — a resize
-       deferred to rAF arrives one beat too late, and that first beat is laid
-       out as if this were a widescreen wallpaper. */
-    eng.start();
-    try { eng.resize && eng.resize(); } catch (e) {}
+    /* No engine at all means the field itself failed to load — a WebGL refusal,
+       a dropped context. Say so instead of opening a black window: an empty
+       preview and a broken engine look identical, and one of them is worth
+       telling somebody about. */
+    if (!wp) { $('pjNote').textContent = t('pj_no_engine'); $('pjNote').classList.remove('hide'); return; }
+
+    // The ambient rotation of other people's projects has to stop first: two
+    // capsules dissolving into each other is not a transition, it is a mess.
+    try { window.TersePlazaField.stop(wp); } catch (e) {}
+    // And whatever the field was saying about the visitor goes — the headline
+    // rotation replays its last lines, so muting the feed is not enough on its
+    // own. Those glyphs land straight on top of somebody's code city.
+    try { wp.clearHeadline && wp.clearHeadline(); } catch (e) {}
+
     replayProject();
-    requestAnimationFrame(function () { try { eng.resize && eng.resize(); } catch (e) {} });
     clearInterval(pjTimer);
     pjTimer = setInterval(replayProject, showLen(p) + 900);
     try { Social.view && Social.view(p.id); } catch (e) {}
@@ -2446,11 +2425,11 @@
   function closeProject() {
     clearInterval(pjTimer); pjTimer = null;
     viewing = null;
-    // Paused, not destroyed — see previewEngine. And the FIELD is not touched
-    // here at all any more, which is the whole point of the second canvas.
-    try { if (pjWp) { pjWp.hideProject(); pjWp.stop(); } } catch (e) {}
-    // And the field comes back exactly where it was.
-    try { wp && wp.start && wp.start(); } catch (e) {}
+    /* The overlay comes off and the field is exactly what it was — that is the
+       whole of the promise that a preview does not disturb it. The ambient
+       rotation of strangers' projects restarts on its own from the poll, which
+       re-asks whether anything is linked. */
+    try { if (wp) wp.hideProject(); } catch (e) {}
     show('plaza');
   }
   on($('pjBack'), 'click', closeProject);

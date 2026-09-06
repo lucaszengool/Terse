@@ -270,6 +270,173 @@ pub fn save_config(cfg: &MsgConfig) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+
+/* ══════════════ 回复:开会话 / 发送 ══════════════
+
+   Deliberately two calls, not one, and the split is the safety property — not
+   an implementation detail.
+
+   Step 1 opens the conversation and sends NOTHING. Step 2 sends into whatever
+   conversation is open. In between, a person looks at the screen. The macOS
+   build did this because WeChat exposes no accessibility tree there, so no code
+   can confirm which conversation the search actually landed on: the machine can
+   send, it just cannot prove to whom. Windows is no better placed to promise it
+   — the search box is driven by a hotkey the user is free to rebind, and a
+   rebound hotkey means the paste goes somewhere else entirely. So the check
+   stays with the person, and nothing here sends without a second, separate call
+   that only the user's own click can make.
+
+   ⚠ NONE of these recipes has been verified on a real Windows machine. The
+   macOS file is honest that only its WeChat recipe was checked in place; here
+   not even that is true — CI has no chat app installed, and I have no Windows
+   box. They are transcriptions of each app's documented shortcut. A wrong
+   hotkey does not send to the wrong person (step 2 is a separate deliberate
+   act), it simply fails to open a search box, and the user sees that.
+*/
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReplyResult {
+    pub ok: bool,
+    pub error: Option<String>,
+}
+
+fn fail(msg: impl Into<String>) -> ReplyResult {
+    ReplyResult { ok: false, error: Some(msg.into()) }
+}
+
+struct ReplyRecipe {
+    /// Process name for Get-Process — Windows has no bundle identifier.
+    process: &'static str,
+    /// The app's search / quick-jump shortcut, in SendKeys notation.
+    search: &'static str,
+    /// How long the app needs after being fronted before it will take a hotkey.
+    open_delay_ms: u64,
+}
+
+fn recipe_for(app_id: &str) -> Option<ReplyRecipe> {
+    let lower = app_id.to_ascii_lowercase();
+    // Substring, not equality: a Windows AUMID is not a canonical identifier
+    // (see app_display_name) and arrives in several shapes for the same app.
+    if lower.contains("wechat") || lower.contains("weixin") {
+        return Some(ReplyRecipe { process: "WeChat", search: "^f", open_delay_ms: 900 });
+    }
+    if lower.contains("wxwork") || lower.contains("wework") {
+        return Some(ReplyRecipe { process: "WXWork", search: "^+f", open_delay_ms: 1100 });
+    }
+    if lower.contains("qq") {
+        return Some(ReplyRecipe { process: "QQ", search: "^f", open_delay_ms: 900 });
+    }
+    if lower.contains("lark") || lower.contains("feishu") {
+        return Some(ReplyRecipe { process: "Feishu", search: "^k", open_delay_ms: 1000 });
+    }
+    if lower.contains("dingtalk") {
+        return Some(ReplyRecipe { process: "DingTalk", search: "^f", open_delay_ms: 1000 });
+    }
+    if lower.contains("telegram") {
+        return Some(ReplyRecipe { process: "Telegram", search: "^f", open_delay_ms: 700 });
+    }
+    if lower.contains("slack") {
+        return Some(ReplyRecipe { process: "slack", search: "^k", open_delay_ms: 900 });
+    }
+    if lower.contains("discord") {
+        return Some(ReplyRecipe { process: "Discord", search: "^k", open_delay_ms: 900 });
+    }
+    None
+}
+
+/// Put text on the clipboard without letting it become PowerShell.
+///
+/// The existing set_clipboard interpolates into `Set-Clipboard -Value '…'`,
+/// which is fine for a word and wrong for a message: a newline ends the
+/// statement and a quote escapes the literal, so the reply someone actually
+/// typed is exactly the input most likely to break it. Base64 never contains a
+/// character the shell cares about.
+async fn clipboard_set_safe(text: &str) {
+    let b64 = crate::b64(text.as_bytes());
+    let script = format!(
+        "Set-Clipboard -Value ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{b64}')))"
+    );
+    let _ = crate::hidden_command("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output();
+}
+
+fn clipboard_get() -> String {
+    crate::hidden_command("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", "Get-Clipboard -Raw"])
+        .output()
+        .ok()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim_end_matches(['\r', '\n']).to_string())
+        .unwrap_or_default()
+}
+
+/// Step 1 of replying: open the conversation and stop, sending nothing.
+pub async fn open_chat(app_id: &str, target: &str) -> ReplyResult {
+    let Some(r) = recipe_for(app_id) else {
+        return fail(format!("{} 暂不支持", app_display_name(app_id)));
+    };
+    if target.trim().is_empty() {
+        return fail("没有会话名,不知道要打开哪一个");
+    }
+    // Saved and put back: quietly emptying somebody's clipboard is a nasty thing
+    // for a background app to do, and the search term is pasted rather than
+    // typed because Chinese through an IME gets eaten or mistyped.
+    let saved = clipboard_get();
+    crate::capture::activate_app(r.process).await;
+    tokio::time::sleep(std::time::Duration::from_millis(r.open_delay_ms)).await;
+    clipboard_set_safe(target).await;
+    crate::capture::send_keys(r.search).await;
+    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    crate::capture::send_keys("^v").await;
+    tokio::time::sleep(std::time::Duration::from_millis(450)).await;
+    crate::capture::send_keys("{ENTER}").await;
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    if !saved.is_empty() {
+        clipboard_set_safe(&saved).await;
+    }
+    ReplyResult { ok: true, error: None }
+}
+
+/// Step 2: send into the conversation the user has just confirmed by eye.
+///
+/// This types nothing on its own initiative. It runs only when the person has
+/// looked at the chat that step 1 opened and pressed send.
+pub async fn send_to_open_chat(app_id: &str, text: &str) -> ReplyResult {
+    let Some(r) = recipe_for(app_id) else {
+        return fail(format!("{} 暂不支持", app_display_name(app_id)));
+    };
+    if text.trim().is_empty() {
+        return fail("空消息");
+    }
+    let saved = clipboard_get();
+    crate::capture::activate_app(r.process).await;
+    tokio::time::sleep(std::time::Duration::from_millis(350)).await;
+    clipboard_set_safe(text).await;
+    crate::capture::send_keys("^v").await;
+    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    crate::capture::send_keys("{ENTER}").await;
+    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    if !saved.is_empty() {
+        clipboard_set_safe(&saved).await;
+    }
+    ReplyResult { ok: true, error: None }
+}
+
+/// Can the feed be read at all? Drives the UI's "why is this empty" line.
+pub fn status() -> serde_json::Value {
+    match db_path() {
+        None => serde_json::json!({
+            "ok": false,
+            "reason": "no-db",
+            "detail": "找不到 Windows 通知数据库(wpndatabase.db)",
+        }),
+        Some(p) => match recent(1, false) {
+            Ok(_) => serde_json::json!({ "ok": true, "path": p.to_string_lossy() }),
+            Err(e) => serde_json::json!({ "ok": false, "reason": "unreadable", "detail": e }),
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -312,6 +479,28 @@ mod tests {
         ] {
             assert_eq!(app_display_name(id), "微信", "{id}");
             assert!(is_chat_app(id), "{id}");
+        }
+    }
+
+    #[test]
+    fn every_app_the_feed_surfaces_has_a_reply_recipe() {
+        // A missing recipe is not a compile error, it is a reply button that
+        // appears and then says "not supported" — worth failing here instead.
+        for id in ["WeChat.exe", "Tencent.QQ", "Telegram", "slack", "Discord",
+                   "Feishu", "DingTalk", "WXWork"] {
+            assert!(recipe_for(id).is_some(), "no reply recipe for {id}");
+        }
+        // Mail apps pass the chat filter so their notifications show, but there
+        // is deliberately no way to "reply" into one with a paste and Enter.
+        assert!(recipe_for("Outlook").is_none());
+    }
+
+    #[test]
+    fn recipes_accept_the_same_aumid_shapes_the_feed_produces() {
+        // The recipe table and the name table must agree about what an AUMID
+        // looks like, or the feed shows a message the reply path cannot act on.
+        for id in [r"{6D809377}\Tencent\WeChat\WeChat.exe", "Tencent.WeChat_1.0.0.0"] {
+            assert_eq!(recipe_for(id).unwrap().process, "WeChat", "{id}");
         }
     }
 

@@ -4517,6 +4517,10 @@ pub fn run() {
             wallpaper_set_hot_rect,
             messages_for_wallpaper,
             messages_set_app_on_wallpaper,
+            messages_open_chat,
+            messages_send_open,
+            messages_status,
+            messages_recent,
             wallpaper_set_adjust,
             desktop_icon_rects,
             wallpaper_set_interactive,
@@ -5905,7 +5909,7 @@ fn wallpaper_default_config() -> serde_json::Value {
 }
 
 /// 极简 base64(只为把一张 JPEG 塞进 data URL,不值得为它加一个依赖)
-fn b64(data: &[u8]) -> String {
+pub(crate) fn b64(data: &[u8]) -> String {
     const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
     for c in data.chunks(3) {
@@ -7678,4 +7682,32 @@ fn messages_set_app_on_wallpaper(app_id: String, on: bool) -> Result<(), String>
 fn messages_for_wallpaper(limit: Option<usize>) -> Result<serde_json::Value, String> {
     Ok(serde_json::to_value(messages::recent_for_wallpaper(limit.unwrap_or(20))?)
         .unwrap_or_default())
+}
+
+/// Step 1 of replying from the wallpaper: open the conversation, send nothing.
+#[tauri::command]
+async fn messages_open_chat(app_id: String, target: String) -> serde_json::Value {
+    serde_json::to_value(messages::open_chat(&app_id, &target).await).unwrap_or_default()
+}
+
+/// Step 2: send into the conversation the user has just confirmed by eye.
+///
+/// Separate from step 1 on purpose — see the note above the recipes. Nothing
+/// here runs unless the person looked at what opened and pressed send.
+#[tauri::command]
+async fn messages_send_open(app_id: String, text: String) -> serde_json::Value {
+    serde_json::to_value(messages::send_to_open_chat(&app_id, &text).await).unwrap_or_default()
+}
+
+/// Can the message feed be read? Drives the UI's "why is this empty" line.
+#[tauri::command]
+fn messages_status() -> serde_json::Value {
+    messages::status()
+}
+
+/// Recent social-app messages, newest first.
+#[tauri::command]
+fn messages_recent(limit: Option<usize>, chat_only: Option<bool>) -> Result<serde_json::Value, String> {
+    let msgs = messages::recent(limit.unwrap_or(30), chat_only.unwrap_or(true))?;
+    Ok(serde_json::to_value(msgs).unwrap_or_default())
 }

@@ -166,10 +166,15 @@ const GIF_CAPTIONS = [
 function makePost(i) {
   const r = rng(SALT + ':' + i);
   const kind = i % 5 === 4 ? 'image' : (i % 5 === 3 ? 'gif' : 'text');
-  /* 曲子先走一遍,每绕回同一首时调号已经变了 —— 12 首 × 12 个调,五十条
-     各有各的配乐,相邻两条一定不是同一首。见 tunes.js 里为什么移调就够了。 */
-  const tune = TUNES[i % TUNES.length];
-  const key = (Math.floor(i / TUNES.length) * 5 + i) % 12;
+  /* 曲子先走一遍,每绕回同一首时调号已经变了 —— 12 首 × 12 个调,相邻两条一定
+     不是同一首。见 tunes.js 里为什么移调就够了。
+
+     ⚠ 偏移 50。城市那五十座用的是同一个公式的 0–49,不偏的话第 7 条帖子和第 7 座
+     城市会是同一段音乐 —— 各自那一组里都不重复,合在一起每种却正好出现两次。
+     实测这个公式在 0–99 上是无碰撞的,所以两组一共一百条,条条不同。 */
+  const mi = i + 50;
+  const tune = TUNES[mi % TUNES.length];
+  const key = (Math.floor(mi / TUNES.length) * 5 + mi) % 12;
   const base = { id: 'post_' + i, tune, key };
 
   if (kind === 'text') {

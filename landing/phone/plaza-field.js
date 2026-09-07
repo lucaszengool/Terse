@@ -101,6 +101,7 @@
       frames: Array.isArray(c.frames) ? c.frames : [],
       fps: c.fps || 12,
       tune: c.tune || '',
+      link: c.link || '',
       key: c.key || 0,
       cover: c.cover || '',
       lines: lines.slice(0, 3),

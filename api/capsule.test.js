@@ -176,6 +176,24 @@ console.log('\n── three kinds of post, one plaza ──');
        (l3.projects.find((p) => p.id === put6.json.id) || {}).capsule.tune, '');
     for (const id of [put5.json.id, put6.json.id]) db.deleteWallProject.run({ id, identity: short });
 
+console.log('\n── a link is a door, so only two protocols open it ──');
+    // This field becomes an href. A `javascript:` string reaching it is somebody
+    // else executing code on a reader's page, so it is checked here AND at the
+    // point it is put into the DOM — every place that builds a link checks.
+    const linked = async (link) => {
+      const r = await req('POST', '/projects', { identity: me,
+        body: { capsule: { id: 'lk' + Math.random(), kind: 'text', desc: 'x', link } } });
+      const l = (await req('GET', '/projects/public?limit=100', { identity: me })).json;
+      const row = l.projects.find((p) => p.id === r.json.id);
+      if (row) db.deleteWallProject.run({ id: row.id, identity: short });
+      return row && row.capsule.link;
+    };
+    eq('https passes', await linked('https://github.com/a/b'), 'https://github.com/a/b');
+    eq('http passes', await linked('http://ok.example/x'), 'http://ok.example/x');
+    eq('javascript: is dropped', await linked('javascript:alert(1)'), '');
+    eq('data: is dropped', await linked('data:text/html,<script>x'), '');
+    eq('nonsense is dropped', await linked('not a url'), '');
+
     eq('a note with no words is refused',
        (await req('POST', '/projects', { identity: me, body: { capsule: { id: 'x', kind: 'text' } } })).status, 400);
     eq('a picture post with no picture is refused',

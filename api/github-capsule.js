@@ -231,6 +231,8 @@ async function build(owner, repo) {
       .filter((p) => p && p.login && p.login.indexOf('@') < 0)
       .slice(0, 12)
       .map((p) => [String(p.login).slice(0, 40), Math.max(0, +p.contributions || 0)]),
+    // 点得开的那条链接。扫描出来的项目天然有一个 —— 就是它自己的仓库。
+    link: meta.html_url || '',
     source: { kind: 'github', owner, repo, url: meta.html_url || '' },
   };
 }

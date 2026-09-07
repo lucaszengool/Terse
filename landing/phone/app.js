@@ -2746,6 +2746,24 @@
         who.appendChild(c);
       }
       meta.appendChild(b); meta.appendChild(d);
+      /* 一条可以点开的链接。有些帖子指着一个真实存在的东西 —— 一个仓库、一个
+         网站 —— 而"看到了想去看看"是这条帖子最该有的下一步。
+         ⚠ 协议再挡一次。服务端已经挡过 `javascript:`,但这一段是把字符串塞进
+         href 的地方,而这种地方每一处都得自己挡:少挡一处,就等于让发帖的人
+         在别人的页面上执行代码。 */
+      if (cap.link && /^https?:\/\//i.test(cap.link)) {
+        var go = document.createElement('a');
+        go.className = 'golink';
+        go.href = cap.link;
+        go.target = '_blank';
+        // noopener 必须有:不加的话新开的那一页能通过 window.opener 改写这一页。
+        go.rel = 'noopener noreferrer';
+        var host = '';
+        try { host = new URL(cap.link).host.replace(/^www\./, ''); } catch (e) { host = 'link'; }
+        go.textContent = host + ' →';
+        go.onclick = function (e) { e.stopPropagation(); };
+        meta.appendChild(go);
+      }
       /* The toggle only appears when there is something hidden. Offering
          "more" on a caption that is already whole is a button that does
          nothing, and people stop trusting the ones that do. Measured after
@@ -3115,6 +3133,7 @@
       .then(function (j) {
         cmDraft = j.capsule;
         $('cmName').value = cmDraft.title || '';
+        if (cmDraft.link) $('cmLink').value = cmDraft.link;
         $('cmDesc').value = cmDraft.desc || '';
         note(t('cm_scanned').replace('{n}', (cmDraft.dirs || []).length));
       })
@@ -3175,6 +3194,9 @@
     }
 
     if (cmTune) cap.tune = cmTune;
+    // 自己发的帖子也能挂一条链接。服务端还会再验一次协议。
+    var lk = ($('cmLink').value || '').trim();
+    if (lk) cap.link = /^https?:\/\//i.test(lk) ? lk : 'https://' + lk;
     cap.title = name || cap.title || '';
     cap.desc = desc || cap.desc || '';
     if (cmKind === 'text') cap.desc = ($('cmBody').value || '').trim();

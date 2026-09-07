@@ -89,6 +89,16 @@ function sanitize(capsule) {
       ? capsule.frames.slice(0, MAX_FRAMES).map(dataUrl).filter(Boolean) : [],
     fps: Math.max(2, Math.min(24, parseInt(capsule.fps, 10) || 12)),
     tune: TUNES.indexOf(String(capsule.tune || '')) >= 0 ? String(capsule.tune) : '',
+    /* 一条可以点开的链接。⚠ **只收 http/https**:这个字段最后会变成界面上一个
+       可以点的东西,而 `javascript:` 开头的字符串一旦被当成链接放出去,就是让
+       发帖的人在别人的页面上执行代码。协议在这里挡一次,客户端再挡一次 ——
+       两边都挡,因为两边都可能被绕过。 */
+    link: (function () {
+      const raw = String(capsule.link || '').trim().slice(0, 300);
+      if (!/^https?:\/\//i.test(raw)) return '';
+      try { const u = new URL(raw); return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : ''; }
+      catch (e) { return ''; }
+    }()),
     // 调号。见 tunes.js:同一首换个调就是另一段音乐,而这是让五十条帖子各有各的
     // 配乐最省的办法 —— 存一个 0–11 的小整数,不存一秒钟音频。
     key: Math.max(0, Math.min(11, parseInt(capsule.key, 10) || 0)),

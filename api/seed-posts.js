@@ -502,6 +502,8 @@ function makePost(i) {
     desc: body,
     tags: uniq.map((t) => t.replace('#', '')).concat(repo.topics || []).slice(0, 4),
     cover: repo.cover,
+    // 点开就是那个仓库本身 —— 这类帖子最该有的下一步。
+    link: repo.url,
   };
 }
 

@@ -287,6 +287,13 @@
     overscroll-behavior:contain}
   /* A target a thumb can actually hit — 12px of text is not one. */
   .slide .meta .more{padding:7px 0;margin-top:1px}
+  /* 指向真实存在的那个东西。做成一个小胶囊而不是一行蓝字 —— 在一张图上面,
+     下划线的蓝字既不好按也不好看。 */
+  .golink{display:inline-flex;align-items:center;margin-top:8px;padding:6px 12px;
+    border-radius:9999px;font-size:12.5px;font-weight:600;text-decoration:none;
+    color:var(--accent);background:var(--accent-dim);
+    border:1px solid rgba(110,231,183,.3)}
+  .golink:active{transform:scale(.96)}
   .slide .meta .who{margin-top:7px;font-size:11.5px;color:var(--faint);
     display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .slide .meta .tag{padding:2px 7px;border-radius:9999px;background:rgba(255,255,255,.08)}
@@ -1275,6 +1282,7 @@
         <span class="tiny" style="flex:0 0 auto" data-t="cm_sound">Sound</span>
         <div class="tunes grow" id="cmTunes"></div>
       </div>
+      <input type="url" id="cmLink" placeholder="https://… (optional link)" autocapitalize="off" autocorrect="off" spellcheck="false" style="width:100%;margin-top:10px;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;color:var(--ink);font:inherit;font-size:14px;padding:11px 12px">
       <input type="text" id="cmName" placeholder="Title" maxlength="48" style="width:100%;margin-top:10px;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;color:var(--ink);font:inherit;font-size:15px;padding:11px 12px">
       <textarea id="cmDesc" rows="3" placeholder="Description" maxlength="600" style="width:100%;margin-top:8px;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;color:var(--ink);font:inherit;font-size:14px;padding:11px 12px;resize:vertical"></textarea>
       <p class="tiny hide" id="cmNote"></p>

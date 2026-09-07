@@ -178,7 +178,24 @@ router.post('/', (req, res) => {
 // 请求一次,粒子在他自己机器上生成。
 router.get('/public', (req, res) => {
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
-  const rows = db.listWallProjects.all({ limit });
+  /* 搜索。**在服务端过滤,不是让客户端筛它手上那一百个** —— 手机拿到的永远只是
+     最新的一页,而人搜的是"广场上有没有这个",不是"我刚才刷到的里面有没有"。
+     两者的区别在广场超过一页的那一天才会显出来,而那时候没人会想到是这里。
+
+     匹配标题、副标题、标签和语言。整颗胶囊是一段 JSON 文本,直接 LIKE 它会让
+     搜 "rust" 命中任何一个文件名里带 rust 的项目 —— 那不是搜索,是巧合。 */
+  const q = String(req.query.q || '').trim().slice(0, 64).toLowerCase();
+  // 有搜索词时多取一些再筛:限制的是**返回**多少,不是从多少里面找。
+  const rows0 = db.listWallProjects.all({ limit: q ? 400 : limit });
+  const rows = !q ? rows0 : rows0.filter((r) => {
+    let c = null;
+    try { c = JSON.parse(r.capsule); } catch (e) { return false; }
+    const hay = [c.title, c.subtitle]
+      .concat(Array.isArray(c.tags) ? c.tags : [])
+      .concat(Array.isArray(c.langs) ? c.langs.map((l) => l && l[0]) : [])
+      .filter(Boolean).join(' ').toLowerCase();
+    return hay.indexOf(q) >= 0;
+  }).slice(0, limit);
   const me = idHash(req);
 
   // 计数一次查完,不是每个项目查一次:列表是 N 个项目,逐个查就是 N 次往返。

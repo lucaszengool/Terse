@@ -283,6 +283,22 @@
   .rail .n{font-variant-numeric:tabular-nums;opacity:.92}
 
   /* A first-run hint that goes away for good once you have swiped once. */
+  /* ── Search, floating over the feed ──────────────────────────────────────
+     z-index above the slides so it survives the scroll, and a blur behind it so
+     it stays readable over whatever the field happens to be drawing under it. */
+  .fsearch{position:absolute;z-index:3;top:8px;left:14px;right:14px;
+    display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:11px;
+    background:rgba(10,12,15,.62);border:1px solid var(--line2);
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+  .fsearch .fs-i{font-size:15px;color:var(--faint);flex:0 0 auto;line-height:1}
+  .fsearch input{flex:1 1 auto;min-width:0;background:none;border:0;outline:none;
+    color:var(--ink);font-size:14.5px;padding:0}
+  .fsearch input::placeholder{color:var(--faint)}
+  /* Safari draws its own clear button on type=search, on top of ours. */
+  .fsearch input::-webkit-search-decoration,
+  .fsearch input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
+  .fs-x{flex:0 0 auto;min-height:0;padding:2px 4px;color:var(--faint);font-size:13px}
+
   .swipehint{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 74px);
     text-align:center;font-size:12px;color:var(--faint);pointer-events:none;
     animation:swipeUp 2.1s var(--glide) infinite}
@@ -923,6 +939,15 @@
              particle systems — which is the only reason this is affordable on a
              phone at all. -->
         <div id="pzProjects">
+          <!-- Over the feed, not above it. The feed is the whole screen — a bar
+               that pushed it down would cost a slide's worth of height on every
+               phone, and the search in every feed like this floats. -->
+          <div class="fsearch">
+            <span class="fs-i" aria-hidden="true">⌕</span>
+            <input type="search" id="projSearch" autocomplete="off" autocorrect="off"
+                   spellcheck="false" enterkeyhint="search" data-tph="pz_search">
+            <button class="fs-x hide" id="projSearchX" type="button" aria-label="Clear">✕</button>
+          </div>
           <div class="feed" id="projFeed"></div>
           <div class="empty hide" id="projEmpty" data-t="pz_none">Nothing published yet.</div>
         </div>

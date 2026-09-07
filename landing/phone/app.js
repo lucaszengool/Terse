@@ -118,6 +118,8 @@
       pj_tap_like: 'Double-tap to like',
       prev_free: 'Free',
       feed_files: 'files', feed_buildings: 'buildings', feed_hint: 'Swipe for the next ↑',
+      pz_search: 'Search projects', pz_nohits: 'Nothing matches “{q}”.',
+      pz_searching: 'Searching the whole plaza…',
       plan_title: 'Choose a plan', plan_sub: 'Everything in Pro, whichever length suits you.',
       plan_note: 'Cancel anytime. Prices in USD.',
       plan_signin: 'Sign in first — a subscription needs an account to live on.',
@@ -323,6 +325,8 @@
       pj_tap_like: '双击点赞',
       prev_free: '免费版',
       feed_files: '个文件', feed_buildings: '座楼', feed_hint: '上滑看下一个 ↑',
+      pz_search: '搜索项目', pz_nohits: '没有匹配「{q}」的项目。',
+      pz_searching: '正在搜整个广场…',
       plan_title: '选一个方案', plan_sub: 'Pro 的功能都一样,只是买多久。',
       plan_note: '随时可取消。价格为美元。',
       plan_signin: '先登录 —— 订阅要挂在一个账号上。',
@@ -464,6 +468,11 @@
       // plain labels, so innerText is both correct and safe.
       nodes[i].innerText = s;
     }
+    /* Placeholders are an attribute, not text, so data-t (which sets innerText)
+       cannot carry them — an input labelled with data-t gets its VALUE area
+       stuffed with a string node and shows nothing. */
+    var ph = document.querySelectorAll('[data-tph]');
+    for (var k = 0; k < ph.length; k++) ph[k].placeholder = t(ph[k].getAttribute('data-tph'));
     if ($('langSel')) $('langSel').value = lang;
   }
 
@@ -3081,6 +3090,70 @@
     if (btn && !btn.classList.contains('on')) btn.click();
   }
 
+  /* ── Searching the plaza ─────────────────────────────────────────────────
+     Two speeds on purpose, because they answer different questions.
+
+     Typing filters what is ALREADY loaded, on the keystroke, with no round
+     trip — that is what makes it feel like the search in a feed rather than a
+     form you submit. But the phone only ever holds the newest page, so a pause
+     then asks the SERVER, which searches the whole plaza. Without that half,
+     "is this project here?" quietly means "is it in the hundred I happen to
+     have", and the two only diverge on the day the plaza outgrows a page —
+     long after anybody would think to look here.
+
+     The local pass is kept as the fallback if the request fails: an offline
+     phone should still find what it is holding. */
+  var searchQ = '', searchT = null, poolAll = null;
+
+  function matches(p, q) {
+    var c = (p && p.capsule) || {};
+    var hay = [c.title || p.title || '', c.subtitle || '']
+      .concat(Array.isArray(c.tags) ? c.tags : [])
+      .concat(Array.isArray(c.langs) ? c.langs.map(function (l) { return l && l[0]; }) : [])
+      .filter(Boolean).join(' ').toLowerCase();
+    return hay.indexOf(q) >= 0;
+  }
+
+  function runSearch(raw) {
+    var q = String(raw || '').trim().toLowerCase();
+    searchQ = q;
+    $('projSearchX').classList.toggle('hide', !q);
+    // Keep the unfiltered pool once, so clearing the box is instant and does
+    // not cost a fetch.
+    if (!poolAll) poolAll = projPool.slice();
+    projPool = q ? poolAll.filter(function (p) { return matches(p, q); }) : poolAll.slice();
+    renderProjects();
+    showNoHits(q);
+
+    clearTimeout(searchT);
+    if (!q) return;
+    searchT = setTimeout(function () {
+      Social.projects(100, q).then(function (j) {
+        if (searchQ !== q) return;            // they kept typing; this answer is stale
+        var got = (j && Array.isArray(j.projects)) ? j.projects : [];
+        // Only replace if the server actually found more than the local pass —
+        // otherwise a slower, identical answer would rebuild the feed under
+        // somebody's thumb for nothing.
+        if (got.length > projPool.length) { projPool = got; renderProjects(); }
+        showNoHits(q);
+      }).catch(function () { /* the local filter already answered */ });
+    }, 340);
+  }
+
+  function showNoHits(q) {
+    var empty = $('projEmpty');
+    if (!empty) return;
+    empty.classList.toggle('hide', projPool.length > 0);
+    if (!projPool.length) empty.textContent = q ? t('pz_nohits').replace('{q}', q) : t('pz_none');
+  }
+
+  on($('projSearch'), 'input', function (e) { runSearch(e.target.value); });
+  on($('projSearchX'), 'click', function () {
+    $('projSearch').value = '';
+    runSearch('');
+    $('projSearch').blur();
+  });
+
   function loadProjects() {
     if (!$('projFeed')) return Promise.resolve();
     // Through Social, because it sends the identity header — without it the
@@ -3089,6 +3162,7 @@
     return Social.projects(100)
       .then(function (j) {
         projPool = (j && Array.isArray(j.projects)) ? j.projects : [];
+        poolAll = projPool.slice();     // a fresh page resets what search filters
         renderProjects();
       })
       .catch(function () { renderProjects(); });

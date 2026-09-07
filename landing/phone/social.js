@@ -78,8 +78,10 @@
 
     /* ── 广场 ───────────────────────────────────────────────────────────── */
     // 带身份取列表:`liked`/`faved` 只有带了身份才是真的,否则每颗心都是空的。
-    projects: function (limit) {
-      return call('/projects/public?limit=' + (limit || 40));
+    projects: function (limit, q) {
+      // 搜索交给服务端:手机手上只有最新的一页,而人问的是"广场上有没有"。
+      return call('/projects/public?limit=' + (limit || 40)
+                  + (q ? '&q=' + encodeURIComponent(q) : ''));
     },
     like: function (id) { return call('/projects/' + encodeURIComponent(id) + '/like', { method: 'POST' }); },
     fav: function (id) { return call('/projects/' + encodeURIComponent(id) + '/fav', { method: 'POST' }); },

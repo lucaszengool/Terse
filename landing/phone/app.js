@@ -63,7 +63,16 @@
       pairing: 'Linking…', paired: 'Linked',
       pro_only: 'Pro', free_tag: 'Free plan · default style',
       leave_confirm: 'Leave this room?',
-      you: 'You', locked: 'Pro style — upgrade to use it',
+      you: 'You', locked: 'Pro style — upgrade to use it', field_hide: 'Hide',
+      ps_title: 'What Pro adds', ps_cta: 'See plans',
+      ps_typo_t: 'Particle typography', ps_typo_d: 'Your numbers gather out of the field, then scatter.',
+      ps_3d_t: 'Free 3D view', ps_3d_d: 'Drag to turn it, pinch to move closer. It is a place, not a picture.',
+      ps_sty_t: '8 particle styles', ps_sty_d: 'Eight different choreographies, not eight colour swaps.',
+      ps_thm_t: 'Themes + fine-tune', ps_thm_d: 'Density, angle and intensity on top of any style.',
+      pro_style_t: '{name} is a Pro style', pro_style_d: 'Eight choreographies, and the field keeps whichever you pick.',
+      pro_3d_t: 'Turning the field is Pro', pro_3d_d: 'Drag to look around it, pinch to move closer, double-tap to recentre.',
+      pro_see: 'See plans', pro_later: 'Not now',
+      field_turn_free: 'Turning the field is a Pro feature.',
       photo_too_big: 'That photo is too large to store. Try a smaller one.',
       ask_to_join: 'ask to join', knocked: 'Asked to join — waiting for the owner',
       knock_declined: 'The owner declined',
@@ -250,7 +259,16 @@
       pairing: '连接中…', paired: '已连接',
       pro_only: 'Pro', free_tag: '免费版 · 默认风格',
       leave_confirm: '确定离开这个房间？',
-      you: '我', locked: 'Pro 风格 — 升级后可用',
+      you: '我', locked: 'Pro 风格 — 升级后可用', field_hide: '收起',
+      ps_title: 'Pro 能多给你什么', ps_cta: '看看方案',
+      ps_typo_t: '粒子字', ps_typo_d: '你的数字从场里聚出来,再散回去。',
+      ps_3d_t: '3D 自由视角', ps_3d_d: '拖着转,捏合拉近 —— 它是一个地方,不是一张图。',
+      ps_sty_t: '8 种粒子风格', ps_sty_d: '八套不同的编舞,不是八次换色。',
+      ps_thm_t: '主题 + 微调', ps_thm_d: '在任何风格之上再调密度、角度和强度。',
+      pro_style_t: '「{name}」是 Pro 风格', pro_style_d: '八套编舞,选了哪套场就一直是哪套。',
+      pro_3d_t: '转动这片场是 Pro 功能', pro_3d_d: '拖着看四周,捏合拉近,双击回正。',
+      pro_see: '看看方案', pro_later: '以后再说',
+      field_turn_free: '转动这片场是 Pro 功能。',
       photo_too_big: '这张照片太大了，存不下。换一张小一点的。',
       ask_to_join: '申请加入', knocked: '已申请加入 — 等房主同意',
       knock_declined: '房主拒绝了',
@@ -486,7 +504,11 @@
   var viewHome = true;
   var camZ = null;                     // each layer's own framing distance
 
-  function view3dReady() { return !!(V3 && wp && wp.layers && wp.layers.length); }
+  /* ⚠ TURNING THE FIELD IS PRO, and it was free here while being Pro on the
+     Mac — the same feature, two answers, depending on which screen you happened
+     to be looking at. The gate is here rather than inside the gesture handlers
+     so that there is exactly one place that decides it. */
+  function view3dReady() { return !!(V3 && wp && wp.layers && wp.layers.length && T.isPro()); }
 
   function applyView() {
     if (!view3dReady()) return;
@@ -516,7 +538,14 @@
     if (!stage || !window.TerseFeel) return;
     var stopGlide = null;
     window.TerseFeel.gestures(stage, {
-      onStart: function () { if (stopGlide) { stopGlide(); stopGlide = null; } },
+      onStart: function () {
+        if (stopGlide) { stopGlide(); stopGlide = null; }
+        /* Answered where they reached for it. A prompt at the exact feature
+           somebody just tried to use is the one that means something — a
+           banner on another screen is an advert. Once per session: this fires
+           on every touch of the field, and the second telling is nagging. */
+        if (!T.isPro() && !proNudged) { proNudged = true; proSheet('3d'); }
+      },
       onMove: function (dx, dy) {
         if (!view3dReady()) return;
         view.az -= dx * V3.ORBIT_AZ_PER_PX;
@@ -833,6 +862,9 @@
          have touched it — and with the project drawn on this same canvas those
          glyphs land straight on top of somebody's code city. In that window the
          project IS what the field is about. */
+      // Kept so that closing a project can put the field's own voice back
+      // straight away instead of leaving it mute until the next poll.
+      lastStage = o.stage;
       if (!viewing) {
         wp.setStageItems(o.stage);
         wp.setAgentLog(o.logGroups);
@@ -888,6 +920,14 @@
       var grid = $('styleGrid');
       var pro = T.isPro();
       $('proTag').textContent = pro ? 'Pro' : t('free_tag');
+      /* The showcase is for people who do not have it yet, and disappears the
+         moment they do — a card selling something you already bought is the
+         fastest way to make a paid product feel like a free one. */
+      $('proShow').classList.toggle('hide', pro);
+      /* And the line under the backdrops has to be TRUE. It promised drag,
+         pinch and double-tap to everybody while the gesture only answers Pro —
+         instructions for something that does nothing are worse than silence. */
+      $('fieldTurn').textContent = pro ? t('field_turn') : t('field_turn_free');
       grid.innerHTML = '';
       m.PRO_STYLES.forEach(function (s) {
         var b = document.createElement('button');
@@ -907,10 +947,14 @@
         if (!pro && s.id !== 'cinematic') {
           var lk = document.createElement('span');
           lk.className = 'lock'; lk.textContent = '🔒';
+          b.classList.add('locked');
           b.appendChild(lk);
         }
         b.onclick = function () {
-          if (!pro) { toast(t('locked')); return; }
+          /* Named with the SAME label the tile shows. `s.name` does not exist
+             on a style — the grid builds its label from the zh table or `en` —
+             so asking for it produced 「」, a prompt about nothing. */
+          if (!pro) { proSheet('style', label.textContent); return; }
           try { localStorage.setItem(LS_STYLE, s.id); } catch (e) {}
           if (wp && wp.setStyle) wp.setStyle(s.id, null);
           renderStyles();
@@ -978,6 +1022,13 @@
 
   var current = 'field';
   function show(tab) {
+    /* ⚠ LEAVING IS CLOSING. closeProject() only ever ran from the ← button, so
+       walking out through the TAB BAR left the re-arm timer running: the project
+       kept replaying onto the field every twenty seconds, and `viewing` stayed
+       set, which is what mutes the agent log. Reported as "I open a project and
+       can never get back to my own field" — and it was exactly that, for good.
+       Every way out of this view has to end it, not just the one I built. */
+    if (current === 'project' && tab !== 'project') endProject();
     current = tab;
     var views = document.querySelectorAll('.view');
     for (var i = 0; i < views.length; i++) views[i].classList.toggle('on', views[i].id === 'v-' + tab);
@@ -1289,6 +1340,27 @@
     toast(t('signin_first'));
     return false;
   }
+
+  /* ── The Pro prompt ──────────────────────────────────────────────────────
+     Named for the thing that was just reached for, because a prompt that says
+     "upgrade" answers a question nobody asked. Two buttons and no third: see
+     what it costs, or carry on with what you were doing. */
+  var proNudged = false;
+
+  function proSheet(kind, name) {
+    var titles = { '3d': 'pro_3d_t', style: 'pro_style_t' };
+    var bodies = { '3d': 'pro_3d_d', style: 'pro_style_d' };
+    var el = $('proSheet');
+    if (!el) { location.href = '/#pricing'; return; }
+    $('proSheetT').textContent = t(titles[kind] || 'ps_title').replace('{name}', name || '');
+    $('proSheetD').textContent = t(bodies[kind] || 'ps_typo_d');
+    el.classList.remove('hide');
+    if (window.TerseFeel) window.TerseFeel.tap();
+  }
+  on($('proSheetClose'), 'click', function () { $('proSheet').classList.add('hide'); });
+  on($('proSheet'), 'click', function (e) { if (e.target === $('proSheet')) $('proSheet').classList.add('hide'); });
+  on($('proSheetCta'), 'click', function () { location.href = '/#pricing'; });
+  on($('psCta'), 'click', function () { location.href = '/#pricing'; });
 
   function loadFriendsTab() {
     if (frSeg === 'chats') loadDmList();
@@ -2370,6 +2442,7 @@
      two and a half minutes — the readings would never come round. It runs its
      natural ~22s and starts again while the window is open. */
   var viewing = null;
+  var lastStage = null;
   var pjTimer = null;
 
   /** Long enough for the four readings to breathe, short enough that the
@@ -2566,6 +2639,18 @@
     try { Social.view && Social.view(p.id); } catch (e) {}
   }
 
+  /** Tear the preview down. Separate from closeProject so that show() can call
+   *  it while navigating without bouncing back through show() again. */
+  function endProject() {
+    clearInterval(pjTimer); pjTimer = null;
+    viewing = null;
+    try { if (wp) wp.hideProject(); } catch (e) {}
+    // The field goes back to talking about the visitor on the next poll, but a
+    // poll can be seconds away and the screen is already the field again — so
+    // say something now rather than leaving it silent.
+    try { if (wp && wp.setStageItems && lastStage) wp.setStageItems(lastStage); } catch (e) {}
+  }
+
   function closeProject() {
     clearInterval(pjTimer); pjTimer = null;
     viewing = null;
@@ -2665,6 +2750,7 @@
     v.classList.toggle('bare', saved !== '0');
   })();
   on($('fieldPeek'), 'click', function () { setBare(false); });
+  on($('fieldHide'), 'click', function () { setBare(true); });
 
   /* ── The gate opens when the field has answered ──────────────────────────
      Research is unambiguous that a multi-screen carousel is the wrong shape:

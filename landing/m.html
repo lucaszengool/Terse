@@ -319,6 +319,68 @@
   .pairbar .g{flex:0 0 auto;opacity:.8}
   .pairbar .go{margin-left:auto;color:var(--accent);font-weight:600;flex:0 0 auto}
 
+  /* ── What Pro adds ────────────────────────────────────────────────────────
+     Copied in spirit from the Mac's wallpaper panel, and for its reason: a lock
+     icon only says what you CANNOT have. Every tile here shows the thing
+     itself, moving, with no tap and no wait. The animations are pure CSS on
+     purpose — they must not take a WebGL context or compete with the field for
+     the GPU, which on a phone is the same GPU. */
+  .proshow{border-color:rgba(110,231,183,.24)}
+  .ps-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .ps{border:1px solid var(--line);border-radius:12px;padding:9px;background:rgba(0,0,0,.34);
+    display:flex;flex-direction:column;gap:6px}
+  .ps-vis{height:52px;border-radius:8px;background:#07090c;position:relative;overflow:hidden}
+  .ps-n{font-size:12px;font-weight:600;letter-spacing:-.005em}
+  .ps-d{font-size:10.5px;color:var(--faint);line-height:1.35}
+
+  /* 粒子字:一行小方块聚拢又散开 */
+  .ps-typo i{position:absolute;bottom:14px;width:3px;height:3px;border-radius:1px;background:var(--accent);
+    animation:psGather 3.2s var(--glide) infinite}
+  .ps-typo i:nth-child(1){left:16%;animation-delay:0s}    .ps-typo i:nth-child(2){left:26%;animation-delay:.08s}
+  .ps-typo i:nth-child(3){left:36%;animation-delay:.16s}  .ps-typo i:nth-child(4){left:46%;animation-delay:.24s}
+  .ps-typo i:nth-child(5){left:56%;animation-delay:.32s}  .ps-typo i:nth-child(6){left:66%;animation-delay:.4s}
+  .ps-typo i:nth-child(7){left:76%;animation-delay:.48s}
+  @keyframes psGather{0%,100%{transform:translate(0,0);opacity:.25}
+    42%,64%{transform:translate(0,-9px);opacity:1}}
+
+  /* 8 种风格:四条不同节奏的带子 */
+  .ps-sty b{position:absolute;left:8%;width:84%;height:4px;border-radius:2px;
+    animation:psSlide 2.8s var(--glide) infinite}
+  .ps-sty b:nth-child(1){top:10px;background:#6ee7b7;animation-delay:0s}
+  .ps-sty b:nth-child(2){top:20px;background:#7dd3fc;animation-delay:.25s}
+  .ps-sty b:nth-child(3){top:30px;background:#fbbf24;animation-delay:.5s}
+  .ps-sty b:nth-child(4){top:40px;background:#f472b6;animation-delay:.75s}
+  @keyframes psSlide{0%,100%{transform:scaleX(.28);opacity:.4;transform-origin:left}
+    50%{transform:scaleX(1);opacity:1;transform-origin:left}}
+
+  /* 3D:一个方块绕着自己转,说明它是可以拖的 */
+  .ps-3d u{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;
+    border:1.5px solid var(--accent);border-radius:4px;
+    animation:psTurn 4s linear infinite}
+  .ps-3d u:nth-child(2){width:16px;height:16px;margin:-8px 0 0 -8px;border-color:rgba(125,211,252,.75);
+    animation-duration:2.6s;animation-direction:reverse}
+  @keyframes psTurn{0%{transform:rotateY(0) rotateX(12deg)}100%{transform:rotateY(360deg) rotateX(12deg)}}
+
+  /* 主题:一排色点轮流亮 */
+  .ps-thm b{position:absolute;top:50%;width:9px;height:9px;margin-top:-4.5px;border-radius:50%;
+    animation:psPulse 2.4s var(--glide) infinite}
+  .ps-thm b:nth-child(1){left:14%;background:#6ee7b7;animation-delay:0s}
+  .ps-thm b:nth-child(2){left:30%;background:#7dd3fc;animation-delay:.2s}
+  .ps-thm b:nth-child(3){left:46%;background:#c4b5fd;animation-delay:.4s}
+  .ps-thm b:nth-child(4){left:62%;background:#fbbf24;animation-delay:.6s}
+  .ps-thm b:nth-child(5){left:78%;background:#f472b6;animation-delay:.8s}
+  @keyframes psPulse{0%,100%{transform:scale(.6);opacity:.35}45%{transform:scale(1.15);opacity:1}}
+
+  @media (prefers-reduced-motion: reduce){
+    .ps-typo i,.ps-sty b,.ps-3d u,.ps-thm b{animation:none;opacity:.9}
+  }
+
+  /* The PRO badge, and what a locked control looks like. Dimmed, never hidden:
+     you can see exactly what you are missing. */
+  .protag{font-size:8.5px;font-weight:800;letter-spacing:.07em;padding:2px 6px;border-radius:9999px;
+    background:var(--accent);color:#04110c;flex:0 0 auto}
+  .sty.locked{opacity:.55}
+
   /* ── 项目窗口 ─────────────────────────────────────────────────────────────
      Tapping a project used to switch to the Field tab and leave a toast behind
      — the project played UNDER whatever you happened to have open, and there
@@ -656,11 +718,47 @@
       <div class="card" id="fieldCard">
         <div class="row">
           <h2 class="grow" data-t="wall_title">Your agents, as a field</h2>
+          <!-- ⚠ THE WAY BACK. The handle that opens these controls hides itself
+               when they are open, so until now there was no way to put them
+               away again — the field, which is the whole product, stayed buried
+               under its own settings for the rest of the session. -->
+          <button class="btn ghost" id="fieldHide" type="button"
+                  style="min-height:32px;padding:6px 12px" data-t="field_hide">Hide</button>
         </div>
         <p data-t="wall_body"></p>
         <div class="row"><span class="grow tiny" data-t="wall_pickbed">Pick a backdrop</span></div>
         <div class="bedrow" id="bedRow"></div>
-        <p class="tiny" data-t="field_turn">Drag to turn it. Pinch to move closer. Double-tap to recentre.</p>
+        <p class="tiny" id="fieldTurn" data-t="field_turn">Drag to turn it. Pinch to move closer. Double-tap to recentre.</p>
+      </div>
+
+      <!-- Free users only. The lock icons on the styles below say what you
+           cannot have; this says what you would GET, and every tile shows it
+           moving rather than describing it. -->
+      <div class="card proshow hide" id="proShow">
+        <div class="row"><h2 class="grow" data-t="ps_title">What Pro adds</h2><span class="protag">PRO</span></div>
+        <div class="ps-grid">
+          <div class="ps">
+            <div class="ps-vis ps-typo"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="ps-n" data-t="ps_typo_t">Particle typography</div>
+            <div class="ps-d" data-t="ps_typo_d">Your numbers gather out of the field, then scatter.</div>
+          </div>
+          <div class="ps">
+            <div class="ps-vis ps-3d"><u></u><u></u></div>
+            <div class="ps-n" data-t="ps_3d_t">Free 3D view</div>
+            <div class="ps-d" data-t="ps_3d_d">Drag to turn it, pinch to move closer. It is a place, not a picture.</div>
+          </div>
+          <div class="ps">
+            <div class="ps-vis ps-sty"><b></b><b></b><b></b><b></b></div>
+            <div class="ps-n" data-t="ps_sty_t">8 particle styles</div>
+            <div class="ps-d" data-t="ps_sty_d">Eight different choreographies, not eight colour swaps.</div>
+          </div>
+          <div class="ps">
+            <div class="ps-vis ps-thm"><b></b><b></b><b></b><b></b><b></b></div>
+            <div class="ps-n" data-t="ps_thm_t">Themes + fine-tune</div>
+            <div class="ps-d" data-t="ps_thm_d">Density, angle and intensity on top of any style.</div>
+          </div>
+        </div>
+        <button class="btn primary wide" id="psCta" type="button" data-t="ps_cta">See plans</button>
       </div>
 
       <div class="stats">
@@ -884,6 +982,17 @@
     <button data-tab="friends" type="button"><span class="g">☰</span><span data-t="t_friends">Friends</span></button>
     <button data-tab="me" type="button"><span class="g">●</span><span data-t="t_me">Me</span></button>
   </nav>
+</div>
+
+<!-- ── Pro,asked for where it was reached for ─────────────────────────── -->
+<div class="sheet hide" id="proSheet">
+  <div class="pane">
+    <div class="grab"></div>
+    <div class="row"><b class="grow" id="proSheetT">Pro</b><span class="protag">PRO</span></div>
+    <p class="tiny" id="proSheetD"></p>
+    <button class="btn primary wide" id="proSheetCta" type="button" data-t="pro_see">See plans</button>
+    <button class="btn ghost wide" id="proSheetClose" type="button" data-t="pro_later">Not now</button>
+  </div>
 </div>
 
 <!-- ── 评论 ─────────────────────────────────────────────────────────────

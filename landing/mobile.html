@@ -56,6 +56,23 @@
   ol.steps b{display:block;font-weight:600;font-size:15px}
   ol.steps span{color:var(--dim);font-size:14.5px}
 
+  /* ── Show the control, do not describe it ─────────────────────────────────
+     "The Share button is the square with the arrow, at the bottom of the
+     screen" is a sentence somebody has to translate into a picture in their
+     head, while standing in the app, looking at the thing. So draw it: a small
+     true-to-life piece of the iOS chrome with a ring around exactly what to
+     press. Inline SVG rather than screenshots — nothing to load, it themes with
+     the page, and it cannot go stale when Apple changes a shade of grey. */
+  ol.steps figure{grid-column:2;margin:4px 0 0;border:1px solid var(--line);border-radius:11px;
+    background:#0d1014;padding:10px;overflow:hidden}
+  ol.steps figure svg{display:block;width:100%;height:auto}
+  ol.steps figcaption{margin-top:7px;font-size:12px;color:var(--faint);text-align:center}
+  /* The ring that says "here". Pulsing, because a static outline on a static
+     drawing reads as part of the drawing. */
+  .tapring{fill:none;stroke:var(--accent);stroke-width:2;animation:tapr 1.9s ease-in-out infinite}
+  @keyframes tapr{0%,100%{opacity:.35;r:15}50%{opacity:1;r:17}}
+  @media (prefers-reduced-motion: reduce){.tapring{animation:none;opacity:.9}}
+
   .grid{display:grid;gap:12px}
   @media(min-width:560px){.grid{grid-template-columns:1fr 1fr}}
 
@@ -88,9 +105,81 @@
   <div class="card">
     <h3 data-t="ios_h">iPhone · Safari</h3>
     <ol class="steps">
-      <li><b data-t="i1b">Open this page in Safari</b><span data-t="i1s">Chrome and in-app browsers on iPhone cannot install web apps — only Safari can.</span></li>
-      <li><b data-t="i2b">Tap Share, then “Add to Home Screen”</b><span data-t="i2s">The Share button is the square with the arrow, at the bottom of the screen.</span></li>
-      <li><b data-t="i3b">Open Terse from your Home Screen</b><span data-t="i3s">It opens with no browser chrome, keeps you signed in, and can send notifications — none of which work from a Safari tab.</span></li>
+      <li><b data-t="i1b">Open this page in Safari</b><span data-t="i1s">Chrome and in-app browsers on iPhone cannot install web apps — only Safari can.</span>
+        <figure>
+          <svg viewBox="0 0 300 66" role="img" aria-labelledby="figSafariT">
+            <title id="figSafariT">Safari's address bar showing terseai.org</title>
+            <rect x="1" y="1" width="298" height="64" rx="12" fill="#1c1c1e"/>
+            <rect x="22" y="18" width="256" height="30" rx="9" fill="#2c2c2e"/>
+            <text x="150" y="38" text-anchor="middle" font-family="-apple-system,sans-serif"
+                  font-size="13" fill="#e8ecf2">terseai.org</text>
+            <path d="M40 33h7M43.5 29.5 40 33l3.5 3.5" stroke="#8e8e93" stroke-width="1.6"
+                  fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="262" cy="33" r="7" fill="none" stroke="#8e8e93" stroke-width="1.6"/>
+            <path d="M262 29.5v7M258.5 33h7" stroke="#8e8e93" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <figcaption data-t="i1c">Safari looks like this — one address bar, no tabs strip.</figcaption>
+        </figure>
+      </li>
+      <li><b data-t="i2b">Tap Share, then “Add to Home Screen”</b><span data-t="i2s">The Share button is the square with the arrow, at the bottom of the screen.</span>
+        <figure>
+          <svg viewBox="0 0 300 74" role="img" aria-labelledby="figShareT">
+            <title id="figShareT">The Safari toolbar, with the Share button circled</title>
+            <rect x="1" y="1" width="298" height="72" rx="12" fill="#1c1c1e"/>
+            <path d="M42 37h-9M36 32l-5 5 5 5" stroke="#5b5b60" stroke-width="1.8" fill="none"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M92 37h9M98 32l5 5-5 5" stroke="#5b5b60" stroke-width="1.8" fill="none"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- the share glyph: a square with an arrow coming out of it -->
+            <g stroke="#0a84ff" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M150 28v18"/><path d="M144 34l6-6 6 6"/>
+              <path d="M140 40v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-9"/>
+            </g>
+            <circle class="tapring" cx="150" cy="40" r="16"/>
+            <path d="M198 32h14v12h-14z" fill="none" stroke="#5b5b60" stroke-width="1.8" stroke-linejoin="round"/>
+            <rect x="248" y="31" width="13" height="13" rx="3" fill="none" stroke="#5b5b60" stroke-width="1.8"/>
+            <rect x="252" y="35" width="13" height="13" rx="3" fill="none" stroke="#5b5b60" stroke-width="1.8"/>
+          </svg>
+          <figcaption data-t="i2c">This one — in the middle of the bottom bar.</figcaption>
+        </figure>
+        <figure>
+          <svg viewBox="0 0 300 96" role="img" aria-labelledby="figAddT">
+            <title id="figAddT">The share sheet, with Add to Home Screen circled</title>
+            <rect x="1" y="1" width="298" height="94" rx="12" fill="#2c2c2e"/>
+            <rect x="18" y="14" width="264" height="26" rx="8" fill="#3a3a3c"/>
+            <text x="34" y="31" font-family="-apple-system,sans-serif" font-size="12.5" fill="#9b9ba0">Copy</text>
+            <rect x="18" y="48" width="264" height="30" rx="8" fill="#3a3a3c"/>
+            <text x="46" y="67" font-family="-apple-system,sans-serif" font-size="12.5" fill="#e8ecf2"
+                  data-t="i2row">Add to Home Screen</text>
+            <g stroke="#e8ecf2" stroke-width="1.6" fill="none" stroke-linecap="round">
+              <rect x="26" y="55" width="15" height="15" rx="4"/><path d="M33.5 59.5v6M30.5 62.5h6"/>
+            </g>
+            <rect class="tapring" x="20" y="50" width="260" height="26" rx="8" style="animation:none;opacity:.95"/>
+          </svg>
+          <figcaption data-t="i2c2">Then this row in the sheet that slides up.</figcaption>
+        </figure>
+      </li>
+      <li><b data-t="i3b">Open Terse from your Home Screen</b><span data-t="i3s">It opens with no browser chrome, keeps you signed in, and can send notifications — none of which work from a Safari tab.</span>
+        <figure>
+          <svg viewBox="0 0 300 86" role="img" aria-labelledby="figHomeT">
+            <title id="figHomeT">The Terse icon on the Home Screen</title>
+            <rect x="1" y="1" width="298" height="84" rx="12" fill="#0d1014"/>
+            <g fill="#2a2f37">
+              <rect x="30" y="16" width="34" height="34" rx="9"/>
+              <rect x="86" y="16" width="34" height="34" rx="9"/>
+              <rect x="198" y="16" width="34" height="34" rx="9"/>
+              <rect x="254" y="16" width="34" height="34" rx="9"/>
+            </g>
+            <rect x="142" y="16" width="34" height="34" rx="9" fill="#0f1a16" stroke="#6ee7b7" stroke-width="1.4"/>
+            <text x="159" y="39" text-anchor="middle" font-family="-apple-system,sans-serif"
+                  font-size="17" font-weight="800" fill="#6ee7b7">T</text>
+            <text x="159" y="64" text-anchor="middle" font-family="-apple-system,sans-serif"
+                  font-size="10.5" fill="#c9ced6">Terse</text>
+            <circle class="tapring" cx="159" cy="33" r="25"/>
+          </svg>
+          <figcaption data-t="i3c">It sits with your other apps, and opens full screen.</figcaption>
+        </figure>
+      </li>
     </ol>
   </div>
   <div class="card">
@@ -137,6 +226,10 @@
     ios_h:'iPhone · Safari',
     i1b:'用 Safari 打开这个页面', i1s:'iPhone 上的 Chrome 和各种内置浏览器都装不了网页应用，只有 Safari 可以。',
     i2b:'点分享，选「添加到主屏幕」', i2s:'分享按钮是屏幕下方那个带箭头的方块。',
+    i1c:'Safari 长这样 —— 一条地址栏，没有标签页横条。',
+    i2c:'就是它 —— 底部工具栏正中间那个。', i2row:'添加到主屏幕',
+    i2c2:'然后在弹上来的面板里点这一行。',
+    i3c:'它就和你别的 App 放在一起，点开是全屏的。',
     i3b:'从主屏幕打开 Terse', i3s:'打开后没有浏览器边框，登录状态一直在，还能收通知——这三件事在 Safari 标签页里都做不到。',
     and_h:'Android · Chrome', and_p:'Chrome 菜单里有「安装应用」，有时也会自己弹出来。装好之后下面的都一样。',
     link_h:'连接你的电脑',

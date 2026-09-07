@@ -442,24 +442,44 @@ const POSTS = [
    'editor', { indent: [0, 0, 1, 0, 1, 1], segs: [[0.12, 0.22], [0.08, 0.26]], caret: 3 }],
 ];
 
-/* ⚠ 抖音上的文案**几乎都带话题标签**。搜出来的原帖长这样:
-   "什么是VibeCoding编程？ #vibecoding #AI编程 #程序员 #编程 #氛围编程"。
-   少了这一行,写得再像也只是"一段话",不是"一条帖子"。所以每条按它自己讲的事
-   配标签 —— 讲翻车的不挂 #教程,讲账单的才挂 #省钱。 */
-const TAGS = {
-  chat: ['#vibecoding', '#AI编程', '#提示词'],
-  editor: ['#vibecoding', '#AI编程', '#程序员'],
-  terminal: ['#vibecoding', '#踩坑', '#程序员'],
-  diff: ['#vibecoding', '#AI编程', '#代码审查'],
-  chart: ['#vibecoding', '#省钱', '#token'],
-  app: ['#vibecoding', '#独立开发', '#一个人做产品'],
-};
-const EXTRA_TAGS = ['#氛围编程', '#claudecode', '#cursor', '#副业', '#效率工具',
-                    '#新手教程', '#每天进步一点点', '#开发日常'];
+/* ── 帖子 ─────────────────────────────────────────────────────────────────
+   ⚠ 这一版把画出来的图**全换成了真的**。
+
+   之前是我画六种界面再换十套配色 —— 换了主题,轮廓还是同一个方窗口配横条,
+   一眼扫过去还是同一张图的五十种颜色。问题从来不在配色,在"这五十张图是一个
+   程序按一个模板生出来的"。
+
+   现在图是 GitHub 给每个真实仓库**自动生成的分享图**:仓库名、作者头像、简介、
+   星标、语言色条。它本来就是给人贴到社交平台上的那张图,所以
+     · 天然每张都不一样(不同的名字、头像、星标、语言);
+     · 天然和内容相关 —— 它就是那个项目本身;
+     · 也不用担版权 —— 它是 GitHub 为了分享而生成的。
+   文案用仓库自己的 description,不是我编的。 */
+const REPOS = (() => {
+  try { return require('./repos.json'); } catch (e) { return []; }
+})();
+
+const TAGS = ['#vibecoding', '#开源', '#AI编程', '#独立开发', '#效率工具',
+              '#github', '#程序员', '#每天一个开源项目'];
+
+/** 一条真项目的帖子该怎么写。用的是抖音那边的写法:一句自己的感想,
+ *  接仓库自己的介绍,最后挂标签。 */
+/* ⚠ 开场白**不能替我不知道的事下断言**。第一版里有"一个人做的""同事推的"
+   "我用了一个月",随机撒在五十个仓库上 —— 结果 aws-amplify/amplify-cli 顶着一句
+   "一个人做的"。那是 AWS 的项目,谁看都知道是假的,而这种一眼假会把整条街的
+   可信度一起带走。
+   所以只留**看着这张卡片就能说的话**:star 多少、介绍写得怎么样、想不想收藏。 */
+const OPENERS = [
+  '今天刷到的', 'star 涨得挺快的一个', '这个介绍写得很清楚', '先收藏了',
+  '这类工具我一直在找', '名字起得不错', '看着挺实用', '榜上又冒出来一个',
+  '这个方向的项目最近很多', '看 README 就想试一下', '又是一个我该早点知道的',
+  '这个分类下面的好东西不少',
+];
 
 function makePost(i) {
-  const r = rng(SALT + ':v2:' + i);
-  const [title, body, scene, opt] = POSTS[i % POSTS.length];
+  const r = rng(SALT + ':v3:' + i);
+  const repo = REPOS[i % Math.max(1, REPOS.length)];
+  if (!repo) return null;
 
   /* 曲子先走一遍,每绕回同一首时调号已经变了。⚠ 偏移 50:城市那五十座用的是
      同一个公式的 0–49,不偏的话第 7 条帖子和第 7 座城市会是同一段音乐。 */
@@ -467,33 +487,28 @@ function makePost(i) {
   const tune = TUNES[mi % TUNES.length];
   const key = (Math.floor(mi / TUNES.length) * 5 + mi) % 12;
 
-  // 这台"机器"长什么样,每条都不一样 —— 见 chromeFor。
-  const K = chromeFor(r);
+  const tags = [TAGS[0], pick(r, TAGS.slice(1)), pick(r, TAGS.slice(1))];
+  const uniq = tags.filter((t, k) => tags.indexOf(t) === k);
+  const lang = repo.lang ? ' · ' + repo.lang : '';
+  const body = pick(r, OPENERS) + ':' + repo.desc
+    + '\n★ ' + repo.stars.toLocaleString('en-US') + lang + ' · ' + repo.full
+    + '\n' + uniq.join(' ');
 
-  const tags = TAGS[scene].concat([pick(r, EXTRA_TAGS)]);
-  const desc = body + '\n' + tags.join(' ');
-
-  /* 动不动看这条讲的是不是一个**过程**。账单和成品截图不动;构建、打字、
-     一步步跑起来的动。 */
-  const animated = ['terminal', 'chat', 'diff'].indexOf(scene) >= 0 || r() < 0.35;
-
-  const base = { id: 'post_' + i, tune, key, kind: 'image', title, desc,
-                 tags: tags.slice(0, 4).map((t) => t.replace('#', '')) };
-  if (!animated) {
-    return Object.assign(base, { cover: url(frame(scene, 0.85, K, opt)) });
-  }
-  const n = 12;
-  const frames = [];
-  for (let f = 0; f < n; f++) frames.push(url(frame(scene, (f + 1) / n, K, opt)));
-  return Object.assign(base, {
-    cover: frames[Math.floor(n * 0.8)],
-    frames,
-    fps: int(r, 7, 11),
-  });
+  return {
+    id: 'post_' + i,
+    kind: 'image',
+    tune, key,
+    title: repo.name,
+    desc: body,
+    tags: uniq.map((t) => t.replace('#', '')).concat(repo.topics || []).slice(0, 4),
+    cover: repo.cover,
+  };
 }
+
+
 async function main() {
   const posts = [];
-  for (let i = 0; i < COUNT; i++) posts.push(makePost(i));
+  for (let i = 0; i < COUNT; i++) { const p = makePost(i); if (p) posts.push(p); }
   const bytes = posts.reduce((a, p) => a + JSON.stringify(p).length, 0);
   const kinds = posts.reduce((a, p) => { const k = p.frames ? 'gif' : p.kind; a[k] = (a[k] || 0) + 1; return a; }, {});
   console.log('built', posts.length, 'posts', JSON.stringify(kinds),

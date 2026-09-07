@@ -1178,7 +1178,8 @@ export class ProjectLayer {
     // 而笔画细得多。没有图的时候全部给字。
     // 背景板铺满整个取景框,面积是原来那条小带子的十几倍 —— 粒子得跟上,
     // 否则它不是一张背景,是一层沙。字只有六行,让出一点也还看得清。
-    const nImg = hasImg ? Math.round(this.n * (hasText ? (hasCity ? 0.72 : 0.62) : 1)) : 0;
+    // 图占大头。图片帖里字只是一行配文,不该分掉四成的点。
+    const nImg = hasImg ? Math.round(this.n * (hasText ? (hasCity ? 0.72 : 0.82) : 1)) : 0;
     const nText = this.n - nImg;
 
     /**
@@ -1220,10 +1221,15 @@ export class ProjectLayer {
        两件事让它读起来像"贴在后面的一张背景",而不是"另一张图":
          · **压暗**:背景板比主体亮,人眼会先看背景。压到四成半,城市自己就站出来了。
          · **点更大**:同样的粒子摊到大得多的面积上,点小了就成了一层稀疏的沙。 */
-    const imgCy = hasCity ? 0.10 : (hasText ? 0.62 : 0.10);
-    const imgHalf = hasCity ? 1.04 : (hasText ? 0.40 : 0.62);
-    const txtCy = hasCity ? -0.83 : (hasImg ? -0.42 : 0);
-    const txtHalf = hasCity ? 0.19 : (hasImg ? 0.30 : 0.52);
+    /* ⚠ 一条图片帖里,**图就是这条帖子**。原来给它的半高是 0.40 —— 不到半个画面,
+       于是一张真照片飘在屏幕上方一小块,像个缩略图,而不是像一条帖子。信息流里
+       的图是铺满的,文字退成底下一条。
+
+       有城市的时候不动:那种版面是"城市为主、图为辅",本来就该小。 */
+    const imgCy = hasCity ? 0.10 : (hasText ? 0.24 : 0.10);
+    const imgHalf = hasCity ? 1.04 : (hasText ? 1.02 : 1.10);
+    const txtCy = hasCity ? -0.83 : (hasImg ? -0.88 : 0);
+    const txtHalf = hasCity ? 0.19 : (hasImg ? 0.15 : 0.52);
     if (hasImg) {
       const s = sampleImage(img, nImg);
       if (place(s, 0, nImg, imgCy, imgHalf, hasCity ? 1.7 : 1,

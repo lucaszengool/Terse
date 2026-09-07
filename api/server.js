@@ -333,6 +333,12 @@ app.use('/api/docs', express.json({ limit: '6mb' }));
    to the few short lines the phone actually draws — this larger ceiling is what
    lets the frame arrive to BE trimmed, not permission to store it. */
 app.use('/api/cloud/link/push', express.json({ limit: '4mb' }));
+/* ⚠ 胶囊自己写着上限 160KB(projects.js 的 MAX_CAPSULE_BYTES),而 express.json()
+   默认只收 100kb —— 于是 100–160KB 之间的胶囊在**进到那段代码之前**就被 413 掉了,
+   那个 160KB 从来就没有真正生效过。发布的人只看到一个没有解释的 413。
+   这里的上限要**比它大一点**,好让那段代码自己去讲"太大了"这句话,并且讲清楚
+   大在哪里 —— 和 link/push 当初那次是同一个教训。 */
+app.use('/api/cloud/projects', express.json({ limit: '220kb' }));
 app.use(express.json());
 
 // CORS for Tauri app + marketplace.

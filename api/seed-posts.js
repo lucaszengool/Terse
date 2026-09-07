@@ -43,310 +43,454 @@ const int = (r, lo, hi) => lo + Math.floor(r() * (hi - lo + 1));
 const TUNES = ['pulse', 'drift', 'arp', 'neon', 'lofi', 'rush',
                'glass', 'deep', 'chime', 'dust', 'march', 'bloom'];
 
-/* ── 文字帖 ───────────────────────────────────────────────────────────────
-   四类,按抖音上真实的分布来写:教程最多,战报次之,翻车和数字各占一点。 */
-/* 每条都标了该配哪个场景 —— 讲提问的配聊天,讲改代码的配编辑器。 */
-const TUTORIAL = [
-  ['第一句需求怎么提', '别说"帮我做个待办 App"。说"做一个单页面待办,数据存 localStorage,只要新增、勾选、删除三个功能,先不要样式"。范围越窄,它一次做对的概率越高 —— 我现在第一句一定写清楚"先不要做什么"。', 'chat'],
-  ['上下文满了就重开', '一个会话超过大概三十轮,它开始忘掉你前面定的规矩。与其反复提醒,不如让它先写一份 README 说明现在的架构,然后开新会话把 README 贴进去。省下来的 token 比你想的多。', 'editor'],
-  ['让它先说计划再动手', '"先别写代码,列出你打算改哪几个文件、每个文件改什么"。看完再说"开始"。这一步大概花你三十秒,能省掉一次整个方向做歪了的返工。', 'chat'],
-  ['报错就把整段贴回去', '不要转述报错。整段贴,包括堆栈。我见过太多人把 "有个错误说找不到模块" 贴进去,然后两个人一起猜了二十分钟。', 'terminal'],
-  ['一次只改一件事', '让它同时"加个登录、顺便把样式调好、再修那个 bug",出来的东西你没法验。改一件,跑一次,提交一次。这条规矩比任何提示词技巧都管用。', 'diff'],
-  ['给它看你的代码风格', '把项目里已有的一个文件贴给它,说"照这个风格写"。比在提示词里描述十条规范有效得多 —— 它模仿得比你以为的准。', 'editor'],
-  ['写测试比写需求快', '与其描述"这个函数应该怎样",不如直接写出你要的三个断言,让它去实现。你验收的时候只要跑一遍。', 'editor'],
-  ['不要接受你读不懂的代码', '它给的东西看不懂就问,不要先跑。跑通了再回头读,你会发现自己在维护一个自己没写过、也不理解的项目。', 'editor'],
-];
-const SHIPPED = [
-  ['做了个记和弦的小工具', '学吉他老记不住和弦转换,一晚上做了个能随机出题的页面。功能少得可怜,但我真的每天在用 —— 这大概就是自己给自己写软件的意义。', 'app'],
-  ['给猫做了个自动剪片器', '摄像头拍到猫动了就录十秒,一天下来自动拼成一条。代码丑得不能看,但它每天早上给我一条猫片。', 'app'],
-  ['一个只有一个按钮的记账', '点一下记一笔,长按改金额。删掉了分类、预算、图表 —— 全删掉之后我反而每天都记了。', 'app'],
-  ['把家里的水电表拍成表格', '手机拍一张,OCR 出数字,追加到一个 CSV。做了两个小时,省下我以后每个月十分钟。', 'app'],
-  ['做了个崇祯模拟器', '每回合给你几个选项,看你能不能撑过十七年。历史数据是让 AI 查的,平衡性是我自己调了三晚上的。', 'app'],
-  ['给老婆做了个购物清单', '两个人的手机同步,划掉的自动排到最后。市面上有一百个这种 App,但没有一个只做这两件事。', 'app'],
-  ['一个盯着我的番茄钟', '摄像头看到我离开桌子就暂停。做完才发现这功能有点吓人,但确实有效。', 'app'],
-  ['把公司的排班表做成了日历', '本来是每周一张截图发群里。现在是一个链接,谁都能订阅。做了一下午,同事以为我加了一周班。', 'app'],
-  ['给自己写了个读书笔记', '划线的句子自动聚成一页,月底生成一张图。没有云、没有账号,就一个本地文件。', 'app'],
-  ['一个把长文变成三句话的按钮', '浏览器插件,选中文字点一下。它偶尔会漏掉重点,但我读的东西多了三倍。', 'app'],
-];
-const FAILED = [
-  ['它把我的数据库删了', '我说"清理一下测试数据",它写了个 DELETE 没带 WHERE。备份是三天前的。现在我给所有会动数据的操作都加了一句"先给我看 SQL,不要执行"。', 'terminal'],
-  ['连着改了六个文件,一个都没跑通', '我一次提了六个需求,它一次全做了。回滚花的时间比重做还长。现在我一次只让它碰一个文件。', 'diff'],
-  ['它编了一个不存在的 API', '写得非常像真的,参数、返回值、错误码都齐全。我照着接了一下午,才发现那个方法根本没有。现在我会让它先贴文档链接。', 'chat'],
-  ['上下文一满它就换了个人', '前三十轮说好用 TypeScript,第四十轮开始给我写 JS,还振振有词。开新会话,把规矩写进文件里。', 'editor'],
-  ['我把 key 贴进提示词里了', '当场撤销重发。现在密钥一律走环境变量,连本地都不例外 —— 这种事只要犯一次就够了。', 'terminal'],
-  ['做了一个月才发现没人要', '我先写了三千行,才想起来问一句"有人需要这个吗"。下次先做那个最丑的版本,拿出去给人看。', 'app'],
-];
-const NUMBERS = [
-  ['一个月的 token 账单', '三十天,四百万 token,大概两百块。最贵的一天是我让它读整个仓库那天 —— 一次七十万。现在我只贴用得着的文件。', 'chart'],
-  ['压缩提示词到底省多少', '同样的活,原来一轮三万 token,裁掉重复的上下文之后是一万一。省下来的不只是钱,响应也快了一半。', 'chart'],
-  ['我一天说多少句话', '统计了一周,平均一天给 AI 发四十七条消息。其中十九条是"不对,重来"。这个比例我想把它降下去。', 'chart'],
-  ['缓存命中率从 12% 到 68%', '把不变的部分放在最前面,变的放最后。就这一条,首字延迟差了一倍。', 'chart'],
-];
+/* ── 主题 ─────────────────────────────────────────────────────────────────
+   ⚠ 一个模板画五十张图,五十张图长得一模一样 —— 那不是"像真人发的",那是
+   "同一个人用同一个工具生成了五十次"。真人的截图之所以各不相同,首先是因为
+   **每个人的编辑器长得不一样**:主题、亮色暗色、有没有行号、有没有标签栏。
 
-/* ── 画面 ─────────────────────────────────────────────────────────────────
-   每条帖子配的图要**和它讲的事对得上**,而且要像真人随手截的一张图。
-
-   ⚠ 不画字,画**字的形状**。这个写入器写不了字形,但它也不需要:这些图最终是被
-   采成几万颗粒子的,112×84 已经比粒子网格细。真截图缩到这个尺寸,本来就只剩
-   长短不一的色条 —— 所以用色条去排一段代码、一行终端输出、一串聊天气泡,
-   在粒子里读起来就是"一张截图",而不是"一张抽象画"。
-
-   所以做的是**版式**:窗口标题栏和三个圆点、侧边栏、缩进、语法色、光标、
-   坐标轴。像不像真的,靠的是比例和颜色对不对,不是字认不认得出来。 */
-
-/** 一张深色 IDE/终端的配色。真实感大半来自这里。 */
-const UI = {
-  bg: [13, 17, 23], panel: [22, 27, 34], bar: [30, 36, 44], line: [48, 54, 61],
-  dim: [86, 96, 106], text: [173, 186, 199], white: [230, 237, 243],
-  green: [126, 231, 135], red: [248, 113, 113], amber: [251, 191, 36],
-  blue: [125, 211, 252], purple: [196, 181, 253], accent: [110, 231, 183],
+   所以十套真实存在的配色,里面**有三套是亮色的** —— 一屏白底夹在一堆黑底中间,
+   一眼就知道那是另一个人的机器。 */
+const THEMES = {
+  darkplus: { bg: [13,17,23], panel: [24,24,27], bar: [37,37,38], line: [62,62,66],
+    dim: [106,115,125], text: [212,212,212], white: [255,255,255],
+    kw: [197,134,192], str: [206,145,120], num: [181,206,168], err: [244,71,71], ok: [78,201,176] },
+  dracula: { bg: [30,31,44], panel: [40,42,54], bar: [68,71,90], line: [98,114,164],
+    dim: [98,114,164], text: [248,248,242], white: [255,255,255],
+    kw: [255,121,198], str: [241,250,140], num: [189,147,249], err: [255,85,85], ok: [80,250,123] },
+  nord: { bg: [36,41,51], panel: [46,52,64], bar: [59,66,82], line: [76,86,106],
+    dim: [116,127,141], text: [216,222,233], white: [236,239,244],
+    kw: [129,161,193], str: [163,190,140], num: [180,142,173], err: [191,97,106], ok: [143,188,187] },
+  onedark: { bg: [33,37,43], panel: [40,44,52], bar: [55,60,70], line: [76,82,99],
+    dim: [92,99,112], text: [171,178,191], white: [255,255,255],
+    kw: [198,120,221], str: [152,195,121], num: [209,154,102], err: [224,108,117], ok: [86,182,194] },
+  gruvbox: { bg: [29,32,33], panel: [40,40,40], bar: [60,56,54], line: [80,73,69],
+    dim: [146,131,116], text: [235,219,178], white: [251,241,199],
+    kw: [251,73,52], str: [184,187,38], num: [211,134,155], err: [251,73,52], ok: [142,192,124] },
+  monokai: { bg: [34,35,28], panel: [39,40,34], bar: [62,63,55], line: [86,87,80],
+    dim: [117,113,94], text: [248,248,242], white: [255,255,255],
+    kw: [249,38,114], str: [230,219,116], num: [174,129,255], err: [249,38,114], ok: [166,226,46] },
+  midnight: { bg: [8,11,20], panel: [13,18,32], bar: [22,29,48], line: [34,44,70],
+    dim: [88,102,136], text: [200,214,240], white: [240,246,255],
+    kw: [130,170,255], str: [195,232,141], num: [247,140,108], err: [255,83,112], ok: [137,221,255] },
+  // ── 亮色。真人里用亮色的不少,而一屏白底是最强的"这不是同一台机器"的信号 ──
+  solarized: { bg: [253,246,227], panel: [238,232,213], bar: [220,214,196], line: [190,185,170],
+    dim: [147,161,161], text: [88,110,117], white: [7,54,66],
+    kw: [211,54,130], str: [42,161,152], num: [38,139,210], err: [220,50,47], ok: [133,153,0] },
+  ghlight: { bg: [255,255,255], panel: [246,248,250], bar: [234,238,242], line: [208,215,222],
+    dim: [140,149,159], text: [36,41,47], white: [1,4,9],
+    kw: [207,34,46], str: [10,96,169], num: [130,80,223], err: [207,34,46], ok: [26,127,55] },
+  paper: { bg: [250,250,248], panel: [242,241,237], bar: [228,227,222], line: [205,204,198],
+    dim: [150,148,140], text: [45,44,40], white: [20,19,16],
+    kw: [140,60,150], str: [40,110,90], num: [180,95,30], err: [190,45,45], ok: [55,130,70] },
 };
+const THEME_IDS = Object.keys(THEMES);
+
+/** 这一张图的"这台机器长什么样"。全部从这条帖子自己的种子里抽 —— 于是同一条
+ *  帖子每次生成都一样,而两条帖子几乎不可能长得一样。 */
+function chromeFor(r) {
+  return {
+    th: THEMES[pick(r, THEME_IDS)],
+    dots: r() < 0.72,          // 左上角那三个圆点
+    tabs: r() < 0.45,          // 标签栏
+    nums: r() < 0.55,          // 行号
+    status: r() < 0.40,        // 底部状态栏
+    side: r() < 0.5,           // 侧边栏
+    inset: pick(r, [0.02, 0.035, 0.05, 0.07]),   // 窗口离边多远
+    tint: r() < 0.25,          // 选中行的高亮
+  };
+}
+
 const box = (u, v, x0, y0, x1, y1) => u >= x0 && u <= x1 && v >= y0 && v <= y1;
+const bar = (u, v, x0, y, w, h) => box(u, v, x0, y - h / 2, x0 + w, y + h / 2);
 
-/** 一排"文字":从 x0 开始,长度 w,粗细 h。 */
-const textLine = (u, v, x0, y, w, h) => box(u, v, x0, y - h / 2, x0 + w, y + h / 2);
-
-/** 窗口外壳:标题栏 + 三个圆点。每一张都从它开始,所以每一张都像一个窗口。 */
-function shell(u, v, C) {
-  if (!box(u, v, 0.04, 0.06, 0.96, 0.94)) return null;          // 窗口外面
-  if (box(u, v, 0.04, 0.06, 0.96, 0.16)) {                       // 标题栏
-    const dots = [0.075, 0.115, 0.155];
-    for (let i = 0; i < 3; i++) {
-      if (Math.hypot((u - dots[i]) * 1.33, v - 0.11) < 0.018) {
-        return [C.red, C.amber, C.green][i];
+/** 窗口外壳。返回 null = 在窗口外面;返回颜色 = 这个点归外壳管;
+ *  返回 'body' = 里面,交给场景自己画。 */
+function shell(u, v, C, K) {
+  const m = K.inset;
+  if (!box(u, v, m, m, 1 - m, 1 - m)) return null;
+  const top = m + (K.dots || K.tabs ? 0.085 : 0);
+  if (v < top) {
+    if (K.dots) {
+      const d = [m + 0.035, m + 0.075, m + 0.115];
+      for (let i = 0; i < 3; i++) {
+        if (Math.hypot((u - d[i]) * 1.33, v - (m + 0.042)) < 0.017) {
+          return [C.err, [230, 180, 60], C.ok][i];
+        }
+      }
+    }
+    if (K.tabs) {
+      // 两三个标签,当前那个亮一点
+      const tw = 0.17, x0 = K.dots ? m + 0.16 : m + 0.02;
+      for (let i = 0; i < 3; i++) {
+        if (box(u, v, x0 + i * tw, m + 0.012, x0 + i * tw + tw - 0.012, top - 0.005)) {
+          if (bar(u, v, x0 + i * tw + 0.02, m + 0.045, tw * 0.55, 0.02)) return i === 1 ? C.text : C.dim;
+          return i === 1 ? C.panel : C.bar;
+        }
       }
     }
     return C.bar;
   }
-  return C.panel;
+  const bot = 1 - m - (K.status ? 0.055 : 0);
+  if (v > bot) {                                   // 状态栏
+    if (bar(u, v, m + 0.03, 1 - m - 0.027, 0.16, 0.018)) return C.ok;
+    if (bar(u, v, 1 - m - 0.24, 1 - m - 0.027, 0.18, 0.018)) return C.dim;
+    return C.bar;
+  }
+  return 'body';
 }
 
+/** 行号那一列。 */
+function gutter(u, v, C, K, x0, y, i) {
+  if (!K.nums) return null;
+  if (bar(u, v, x0, y, 0.022, 0.02)) return C.dim;
+  return null;
+}
+
+/* ── 场景 ─────────────────────────────────────────────────────────────────
+   每个场景都吃一个 `o`:这条帖子**具体**要画什么。行数、错在第几行、柱子多高、
+   几个来回 —— 都是从帖子的内容来的,不是随机的。 */
 const SCENES = {
-  /* 终端:一行行输出往下堆,最后一行是红的。翻车那类帖子用它。 */
-  terminal: (t, u, v, C, opt) => {
-    const base = shell(u, v, C);
-    if (base === null) return C.bg;
-    if (base !== C.panel) return base;
-    const rows = 7, top = 0.22, gap = 0.095;
+  /* 终端。o.rows 行输出,o.err 那一行是红的(不给就没有错误)。 */
+  terminal: (t, u, v, C, K, o) => {
+    const sh = shell(u, v, C, K);
+    if (sh === null) return C.bg;
+    if (sh !== 'body') return sh;
+    const rows = o.rows || 7;
+    const top = K.inset + (K.dots || K.tabs ? 0.085 : 0) + 0.06;
+    const gap = Math.min(0.098, (0.92 - top) / rows);
     const shown = Math.ceil(t * rows);
-    for (let i = 0; i < rows; i++) {
+    for (let i = 0; i < Math.min(shown, rows); i++) {
       const y = top + i * gap;
-      if (i >= shown) break;
-      // 提示符
-      if (textLine(u, v, 0.08, y, 0.022, 0.028)) return C.green;
-      const w = [0.34, 0.52, 0.28, 0.44, 0.6, 0.31, 0.47][i % 7];
-      const isErr = opt.error && i === shown - 1 && i >= rows - 3;
-      if (textLine(u, v, 0.115, y, w, 0.028)) return isErr ? C.red : C.text;
+      const w = o.w[i % o.w.length];
+      const isErr = o.err != null && i === o.err;
+      if (bar(u, v, K.inset + 0.04, y, 0.02, 0.026)) return isErr ? C.err : C.ok;
+      if (bar(u, v, K.inset + 0.075, y, w, 0.026)) return isErr ? C.err : C.text;
     }
-    // 光标
-    const cy = top + (shown - 1) * gap;
-    if (shown <= rows && textLine(u, v, 0.115, cy + gap, 0.016, 0.03)) {
-      return (t * 10 | 0) % 2 ? C.white : C.panel;
+    const cy = top + Math.min(shown, rows) * gap;
+    if (cy < 0.9 && bar(u, v, K.inset + 0.075, cy, 0.014, 0.028)) {
+      return (t * 9 | 0) % 2 ? C.white : C.panel;
     }
     return C.panel;
   },
 
-  /* 编辑器:左边文件列表,右边带缩进和语法色的代码,光标一格格往前走。
-     教程那类帖子用它。 */
-  editor: (t, u, v, C) => {
-    const base = shell(u, v, C);
-    if (base === null) return C.bg;
-    if (base !== C.panel) return base;
-    if (u < 0.26) {                                   // 侧边栏
-      if (box(u, v, 0.04, 0.16, 0.26, 0.94)) {
+  /* 编辑器。o.indent 是每行的缩进,o.sel 是选中的那一行。 */
+  editor: (t, u, v, C, K, o) => {
+    const sh = shell(u, v, C, K);
+    if (sh === null) return C.bg;
+    if (sh !== 'body') return sh;
+    const m = K.inset;
+    const top = m + (K.dots || K.tabs ? 0.085 : 0) + 0.05;
+    let left = m + 0.02;
+    if (K.side) {
+      if (u < m + 0.22) {
         for (let i = 0; i < 6; i++) {
-          const y = 0.24 + i * 0.1;
-          if (textLine(u, v, 0.075, y, [0.11, 0.14, 0.09, 0.13, 0.10, 0.12][i], 0.024)) {
-            return i === 2 ? C.accent : C.dim;        // 打开的那个文件
+          const y = top + i * 0.1;
+          if (bar(u, v, m + 0.035, y, [0.10, 0.13, 0.08, 0.12, 0.09, 0.11][i], 0.022)) {
+            return i === (o.file || 2) ? C.ok : C.dim;
           }
         }
         return C.bar;
       }
+      left = m + 0.24;
     }
-    const rows = 7, top = 0.22, gap = 0.098;
-    const caretRow = Math.floor(t * rows) % rows;
+    const rows = o.indent.length;
+    const gap = Math.min(0.1, (0.92 - top) / rows);
     for (let i = 0; i < rows; i++) {
       const y = top + i * gap;
-      const indent = [0, 0.03, 0.06, 0.06, 0.03, 0, 0.03][i];
-      let x = 0.30 + indent;
-      // 关键字 / 名字 / 字符串,三段,像一行真的代码
-      const segs = [[0.06, C.purple], [0.10, C.text], [0.13, C.green]];
-      for (const [w, col] of segs) {
-        if (textLine(u, v, x, y, w, 0.026)) return col;
-        x += w + 0.022;
+      if (o.sel === i && box(u, v, left, y - gap * 0.45, 1 - m - 0.02, y + gap * 0.45)) {
+        if (!bar(u, v, left + 0.03, y, 0.5, 0.026)) return K.tint ? C.bar : C.line;
       }
-      if (i === caretRow && textLine(u, v, x, y, 0.012, 0.03)) return C.white;
+      const g = gutter(u, v, C, K, left, y, i);
+      if (g) return g;
+      let x = left + (K.nums ? 0.045 : 0.02) + o.indent[i] * 0.035;
+      const segs = o.segs[i % o.segs.length];
+      const cols = [C.kw, C.text, C.str, C.num];
+      for (let k = 0; k < segs.length; k++) {
+        if (bar(u, v, x, y, segs[k], 0.024)) return cols[k % cols.length];
+        x += segs[k] + 0.02;
+      }
+      if (i === (o.caret != null ? o.caret : rows - 1) && bar(u, v, x, y, 0.011, 0.028)) {
+        return (t * 8 | 0) % 2 ? C.white : C.panel;
+      }
     }
     return C.panel;
   },
 
-  /* 聊天:右边是我说的,左边是它答的,一条条冒出来。提问技巧那类用它。 */
-  chat: (t, u, v, C) => {
-    const base = shell(u, v, C);
-    if (base === null) return C.bg;
-    if (base !== C.panel) return base;
-    const bubbles = [
-      { x0: 0.44, x1: 0.92, y0: 0.20, y1: 0.32, me: true },
-      { x0: 0.08, x1: 0.66, y0: 0.36, y1: 0.54, me: false },
-      { x0: 0.52, x1: 0.92, y0: 0.58, y1: 0.68, me: true },
-      { x0: 0.08, x1: 0.72, y0: 0.72, y1: 0.90, me: false },
-    ];
-    const shown = Math.ceil(t * bubbles.length);
-    for (let i = 0; i < Math.min(shown, bubbles.length); i++) {
-      const b = bubbles[i];
-      if (box(u, v, b.x0, b.y0, b.x1, b.y1)) {
-        // 气泡里的行
-        const lines = Math.max(1, Math.round((b.y1 - b.y0) / 0.06));
-        for (let L = 0; L < lines; L++) {
-          const y = b.y0 + 0.03 + L * 0.055;
-          const w = (b.x1 - b.x0 - 0.06) * [0.9, 0.7, 0.82][L % 3];
-          if (textLine(u, v, b.x0 + 0.03, y, w, 0.022)) return b.me ? C.bg : C.text;
+  /* 聊天。o.turns 个来回,单数是我说的。 */
+  chat: (t, u, v, C, K, o) => {
+    const sh = shell(u, v, C, K);
+    if (sh === null) return C.bg;
+    if (sh !== 'body') return sh;
+    const m = K.inset;
+    const top = m + (K.dots || K.tabs ? 0.085 : 0) + 0.04;
+    const shown = Math.ceil(t * o.turns.length);
+    let y = top;
+    for (let i = 0; i < o.turns.length; i++) {
+      const [lines, mine] = o.turns[i];
+      const h = 0.045 + lines * 0.052;
+      if (i < shown) {
+        const x0 = mine ? (1 - m - 0.03 - o.wide[i % o.wide.length]) : m + 0.03;
+        const x1 = x0 + o.wide[i % o.wide.length];
+        if (box(u, v, x0, y, x1, y + h)) {
+          for (let L = 0; L < lines; L++) {
+            const ly = y + 0.028 + L * 0.052;
+            const lw = (x1 - x0 - 0.05) * [0.92, 0.66, 0.8, 0.5][L % 4];
+            if (bar(u, v, x0 + 0.025, ly, lw, 0.02)) return mine ? C.bg : C.text;
+          }
+          return mine ? C.ok : C.bar;
         }
-        return b.me ? C.accent : C.bar;
       }
+      y += h + 0.028;
+      if (y > 0.94) break;
     }
     return C.panel;
   },
 
-  /* 柱状图:一根根长起来,有一根特别高。账单和数字那类用它。 */
-  chart: (t, u, v, C) => {
-    const base = shell(u, v, C);
-    if (base === null) return C.bg;
-    if (base !== C.panel) return base;
-    if (box(u, v, 0.09, 0.855, 0.93, 0.865)) return C.line;        // 坐标轴
-    const hs = [0.22, 0.35, 0.28, 0.44, 0.30, 0.86, 0.33, 0.25, 0.40, 0.29];
-    const n = hs.length, w = 0.062, gap = 0.021;
+  /* 柱状图。o.bars 就是这条帖子讲的那组数,o.hot 是要强调的那根。 */
+  chart: (t, u, v, C, K, o) => {
+    const sh = shell(u, v, C, K);
+    if (sh === null) return C.bg;
+    if (sh !== 'body') return sh;
+    const m = K.inset;
+    const base = 0.86 - (K.status ? 0.055 : 0);
+    if (box(u, v, m + 0.04, base, 1 - m - 0.03, base + 0.008)) return C.line;
+    const n = o.bars.length;
+    const span = (1 - 2 * m - 0.09) / n;
+    const w = span * 0.66;
+    const topY = m + (K.dots || K.tabs ? 0.085 : 0) + 0.09;
     for (let i = 0; i < n; i++) {
-      const x0 = 0.10 + i * (w + gap);
-      const h = hs[i] * Math.min(1, t * 1.35);
-      if (box(u, v, x0, 0.85 - h, x0 + w, 0.85)) {
-        return hs[i] > 0.7 ? C.amber : C.accent;                    // 最贵的那天
+      const x0 = m + 0.05 + i * span;
+      const h = o.bars[i] * (base - topY) * Math.min(1, t * 1.4);
+      if (box(u, v, x0, base - h, x0 + w, base)) {
+        return i === o.hot ? [235, 165, 60] : C.ok;
       }
     }
-    if (textLine(u, v, 0.09, 0.21, 0.30, 0.03)) return C.white;     // 标题
+    if (bar(u, v, m + 0.05, topY - 0.03, 0.26, 0.026)) return C.white;
     return C.panel;
   },
 
-  /* 手机里的一个小 App:标题、几行、一个大按钮,按下去有一圈涟漪。
-     "我做了个东西"那类用它。 */
-  app: (t, u, v, C) => {
-    if (!box(u, v, 0.30, 0.05, 0.70, 0.95)) return C.bg;            // 机身
-    if (!box(u, v, 0.325, 0.10, 0.675, 0.90)) return C.line;        // 边框
-    if (box(u, v, 0.325, 0.10, 0.675, 0.19)) {                      // 顶栏
-      if (textLine(u, v, 0.35, 0.145, 0.14, 0.026)) return C.white;
+  /* 手机里的一个 App。o.rows 行,o.btn 有没有那个大按钮。 */
+  app: (t, u, v, C, K, o) => {
+    const w = 0.40, x0 = 0.5 - w / 2, x1 = 0.5 + w / 2;
+    if (!box(u, v, x0 - 0.02, 0.04, x1 + 0.02, 0.96)) return C.bg;
+    if (!box(u, v, x0, 0.075, x1, 0.925)) return C.line;
+    if (box(u, v, x0, 0.075, x1, 0.165)) {
+      if (bar(u, v, x0 + 0.03, 0.122, 0.13, 0.024)) return C.white;
       return C.bar;
     }
-    for (let i = 0; i < 4; i++) {                                    // 列表
-      const y = 0.25 + i * 0.09;
-      if (textLine(u, v, 0.35, y, [0.22, 0.28, 0.18, 0.25][i], 0.024)) return C.text;
-      if (Math.hypot((u - 0.345) * 1.33, v - y) < 0.014) return C.dim;
+    const n = o.rows;
+    for (let i = 0; i < n; i++) {
+      const y = 0.225 + i * 0.082;
+      if (y > 0.80) break;
+      if (bar(u, v, x0 + 0.035, y, o.w[i % o.w.length], 0.022)) return C.text;
+      if (Math.hypot((u - (x0 + 0.02)) * 1.33, v - y) < 0.013) return i < (o.done || 0) ? C.ok : C.dim;
     }
-    const bx0 = 0.36, bx1 = 0.64, by0 = 0.66, by1 = 0.76;
-    if (box(u, v, bx0, by0, bx1, by1)) {                             // 按钮
-      const c = Math.hypot((u - 0.5) * 1.33, v - 0.71);
-      const ring = t * 0.22;
-      if (Math.abs(c - ring) < 0.02 && t < 0.85) return C.white;     // 涟漪
-      return C.accent;
+    if (o.btn) {
+      const by0 = 0.83, by1 = 0.895;
+      if (box(u, v, x0 + 0.03, by0, x1 - 0.03, by1)) {
+        const c = Math.hypot((u - 0.5) * 1.33, v - (by0 + by1) / 2);
+        if (Math.abs(c - t * 0.2) < 0.018 && t < 0.85) return C.white;
+        return C.ok;
+      }
     }
     return C.panel;
   },
 
-  /* diff:一片绿加几行红,像一次提交。"改了六个文件"那类用它。 */
-  diff: (t, u, v, C) => {
-    const base = shell(u, v, C);
-    if (base === null) return C.bg;
-    if (base !== C.panel) return base;
-    const rows = 8, top = 0.21, gap = 0.088;
-    const kinds = ['+', '+', '-', ' ', '+', '-', '+', ' '];
+  /* diff。o.kinds 就是这次提交长什么样:'+' 加、'-' 删、' ' 没动。 */
+  diff: (t, u, v, C, K, o) => {
+    const sh = shell(u, v, C, K);
+    if (sh === null) return C.bg;
+    if (sh !== 'body') return sh;
+    const m = K.inset;
+    const top = m + (K.dots || K.tabs ? 0.085 : 0) + 0.03;
+    const rows = o.kinds.length;
+    const gap = Math.min(0.092, (0.93 - top) / rows);
     const shown = Math.ceil(t * rows);
     for (let i = 0; i < Math.min(shown, rows); i++) {
       const y = top + i * gap;
-      const k = kinds[i];
-      if (box(u, v, 0.06, y - 0.042, 0.94, y + 0.042)) {
-        if (textLine(u, v, 0.10, y, [0.42, 0.55, 0.31, 0.48, 0.6, 0.29, 0.5, 0.36][i], 0.026)) {
-          return k === '+' ? C.green : (k === '-' ? C.red : C.text);
+      const k = o.kinds[i];
+      if (box(u, v, m + 0.02, y - gap * 0.46, 1 - m - 0.02, y + gap * 0.46)) {
+        if (bar(u, v, m + 0.055, y, o.w[i % o.w.length], 0.024)) {
+          return k === '+' ? C.ok : (k === '-' ? C.err : C.text);
         }
-        if (textLine(u, v, 0.075, y, 0.014, 0.026)) return k === '+' ? C.green : (k === '-' ? C.red : C.dim);
-        return k === '+' ? [18, 42, 28] : (k === '-' ? [48, 22, 26] : C.panel);
+        if (bar(u, v, m + 0.033, y, 0.013, 0.024)) return k === '+' ? C.ok : (k === '-' ? C.err : C.dim);
+        // 行底色。亮色主题要浅的,深色主题要深的 —— 一个固定值在亮色上是一条黑杠。
+        const light = C.bg[0] > 128;
+        if (k === '+') return light ? [223, 245, 228] : [18, 42, 28];
+        if (k === '-') return light ? [255, 227, 229] : [48, 22, 26];
+        return C.panel;
       }
     }
     return C.panel;
   },
 };
-const SCENE_IDS = Object.keys(SCENES);
 
-const PALETTES = [UI];
-
-function frame(scene, t, opt) {
+function frame(scene, t, K, o) {
   const fn = SCENES[scene] || SCENES.terminal;
-  return png(160, 120, (u, v) => fn(t, u, v, UI, opt || {}));
+  return png(160, 120, (u, v) => fn(t, u, v, K.th, K, o));
 }
 const url = (buf) => 'data:image/png;base64,' + buf.toString('base64');
 
-const PIC_CAPTIONS = [
-  ['今天的编译瀑布', '一个下午的构建记录。绿的是过了的,暗的是还没跑到的。'],
-  ['第一次跑通的那一刻', '截了张图。功能只有一个按钮,但它是我从零说出来的。'],
-  ['上下文用量曲线', '横轴是轮数,纵轴是这一轮塞进去多少。第三十轮那个尖峰是我让它读整个目录。'],
-  ['我的提示词长什么样', '前面是不变的规矩,后面才是这次要做的事。顺序反过来,缓存就全废了。'],
-  ['凌晨三点的终端', '不是加班,是停不下来。这种感觉大概就是为什么大家管它叫 vibe coding。'],
+/* ── 五十条帖子 ───────────────────────────────────────────────────────────
+   一条一条写的,每条自己带一张**说的就是它自己那件事**的图:讲账单的那条,
+   柱子就是那个月的花法,最高那根就是"让它读整个仓库"那天;讲删库的那条,
+   终端里第几行红,就是他讲的那一行。 */
+const POSTS = [
+  ['第一句需求怎么提', '别说"帮我做个待办 App"。说"单页面,数据存 localStorage,只要新增、勾选、删除三个功能,先不要样式"。范围越窄,它一次做对的概率越高 —— 我现在第一句一定先写清楚"先不要做什么"。',
+   'chat', { turns: [[2, true], [3, false], [1, true], [2, false]], wide: [0.46, 0.56, 0.36, 0.5] }],
+  ['上下文满了就重开', '一个会话过了三十轮,它开始忘掉前面定的规矩。与其反复提醒,不如让它先写一份 README 说明现在的架构,然后开新会话把 README 贴进去。',
+   'editor', { indent: [0, 0, 1, 1, 0, 0], segs: [[0.07, 0.11, 0.14], [0.05, 0.16], [0.06, 0.09, 0.12]], caret: 5 }],
+  ['让它先说计划再动手', '"先别写代码,列出你打算改哪几个文件、每个文件改什么"。看完再说开始。这一步花你三十秒,能省掉一次整个方向做歪了的返工。',
+   'chat', { turns: [[1, true], [4, false], [1, true]], wide: [0.38, 0.6, 0.3] }],
+  ['报错就把整段贴回去', '不要转述报错。整段贴,包括堆栈。我见过太多人把"有个错误说找不到模块"贴进去,然后两个人一起猜了二十分钟。',
+   'terminal', { rows: 8, err: 5, w: [0.36, 0.52, 0.28, 0.44, 0.6, 0.47, 0.33, 0.5] }],
+  ['一次只改一件事', '让它同时"加个登录、顺便把样式调好、再修那个 bug",出来的东西你没法验。改一件,跑一次,提交一次。这条比任何提示词技巧都管用。',
+   'diff', { kinds: ['+', '+', ' ', '+', ' ', '+'], w: [0.4, 0.52, 0.3, 0.46, 0.28, 0.38] }],
+  ['给它看你的代码风格', '把项目里已有的一个文件贴给它,说"照这个写"。比在提示词里描述十条规范有效得多 —— 它模仿得比你以为的准。',
+   'editor', { indent: [0, 1, 1, 2, 1, 0, 0], segs: [[0.06, 0.1, 0.13], [0.08, 0.12], [0.05, 0.14, 0.09]], sel: 3 }],
+  ['写测试比写需求快', '与其描述"这个函数应该怎样",不如直接写出你要的三个断言,让它去实现。验收的时候只要跑一遍。',
+   'terminal', { rows: 6, w: [0.3, 0.42, 0.26, 0.38, 0.22, 0.34] }],
+  ['不要接受你读不懂的代码', '看不懂就问,不要先跑。跑通了再回头读,你会发现自己在维护一个自己没写过也不理解的项目。',
+   'editor', { indent: [0, 1, 2, 2, 1, 0], segs: [[0.07, 0.13, 0.1], [0.05, 0.17], [0.09, 0.08, 0.15]], sel: 2 }],
+  ['把需求拆到能一句话说完', '"做个后台"是三个月,"列出所有用户,可以按注册时间排序"是一下午。拆不动的需求就是还没想清楚。',
+   'chat', { turns: [[3, true], [2, false], [2, true], [3, false]], wide: [0.54, 0.44, 0.4, 0.58] }],
+  ['让它解释它刚写的东西', '写完加一句"用三句话说明这段在干嘛"。它讲不清楚的地方,通常就是它自己也没想清楚的地方。',
+   'chat', { turns: [[1, true], [3, false]], wide: [0.34, 0.62] }],
+
+  ['做了个记和弦的小工具', '学吉他老记不住转换,一晚上做了个随机出题的页面。功能少得可怜,但我真的每天在用。',
+   'app', { rows: 5, w: [0.2, 0.26, 0.17, 0.23, 0.19], btn: true, done: 2 }],
+  ['给猫做了个自动剪片器', '摄像头拍到猫动了就录十秒,一天下来自动拼成一条。代码丑得不能看,但它每天早上给我一条猫片。',
+   'app', { rows: 4, w: [0.24, 0.18, 0.27, 0.21], btn: true, done: 3 }],
+  ['一个只有一个按钮的记账', '点一下记一笔,长按改金额。删掉了分类、预算、图表 —— 全删掉之后我反而每天都记了。',
+   'app', { rows: 3, w: [0.22, 0.16, 0.25], btn: true, done: 1 }],
+  ['把家里的水电表拍成表格', '手机拍一张,OCR 出数字,追加到一个 CSV。做了两个小时,省下以后每个月十分钟。',
+   'app', { rows: 5, w: [0.26, 0.2, 0.23, 0.18, 0.24], btn: false, done: 4 }],
+  ['做了个崇祯模拟器', '每回合给你几个选项,看能不能撑过十七年。史料是让它查的,平衡性是我自己调了三晚上的。',
+   'app', { rows: 4, w: [0.28, 0.22, 0.19, 0.26], btn: true, done: 0 }],
+  ['给老婆做了个购物清单', '两个人的手机同步,划掉的自动排到最后。市面上有一百个这种 App,但没有一个只做这两件事。',
+   'app', { rows: 6, w: [0.21, 0.25, 0.17, 0.23, 0.19, 0.26], btn: false, done: 3 }],
+  ['一个盯着我的番茄钟', '摄像头看到我离开桌子就暂停。做完才发现这功能有点吓人,但确实有效。',
+   'app', { rows: 3, w: [0.24, 0.2, 0.27], btn: true, done: 1 }],
+  ['把排班表做成了日历', '本来是每周一张截图发群里。现在是一个链接,谁都能订阅。做了一下午,同事以为我加了一周班。',
+   'app', { rows: 5, w: [0.27, 0.21, 0.24, 0.18, 0.22], btn: false, done: 5 }],
+  ['给自己写了个读书笔记', '划线的句子自动聚成一页,月底生成一张图。没有云、没有账号,就一个本地文件。',
+   'app', { rows: 4, w: [0.23, 0.27, 0.19, 0.21], btn: true, done: 2 }],
+  ['把长文变成三句话的按钮', '浏览器插件,选中文字点一下。它偶尔会漏掉重点,但我读的东西多了三倍。',
+   'app', { rows: 3, w: [0.25, 0.18, 0.22], btn: true, done: 0 }],
+
+  ['它把我的数据库删了', '我说"清理一下测试数据",它写了个 DELETE 没带 WHERE。备份是三天前的。现在所有会动数据的操作我都先要一句"给我看 SQL,不要执行"。',
+   'terminal', { rows: 7, err: 6, w: [0.32, 0.48, 0.26, 0.4, 0.55, 0.3, 0.44] }],
+  ['改了六个文件,一个都没跑通', '我一次提了六个需求,它一次全做了。回滚花的时间比重做还长。现在一次只让它碰一个文件。',
+   'diff', { kinds: ['+', '-', '+', '-', '+', '-', '+', '-'], w: [0.44, 0.3, 0.5, 0.26, 0.42, 0.34, 0.48, 0.28] }],
+  ['它编了一个不存在的 API', '参数、返回值、错误码都齐全,写得非常像真的。我照着接了一下午才发现那个方法根本没有。',
+   'terminal', { rows: 6, err: 4, w: [0.34, 0.5, 0.28, 0.46, 0.58, 0.3] }],
+  ['上下文一满它就换了个人', '前三十轮说好用 TypeScript,第四十轮开始给我写 JS,还振振有词。开新会话,把规矩写进文件里。',
+   'chat', { turns: [[2, true], [3, false], [1, true], [4, false]], wide: [0.42, 0.58, 0.32, 0.62] }],
+  ['我把 key 贴进提示词里了', '当场撤销重发。现在密钥一律走环境变量,连本地都不例外 —— 这种事只要犯一次就够了。',
+   'editor', { indent: [0, 0, 1, 0, 0], segs: [[0.08, 0.24], [0.06, 0.3]], sel: 2, caret: 2 }],
+  ['做了一个月才发现没人要', '我先写了三千行,才想起来问一句"有人需要这个吗"。下次先做那个最丑的版本,拿出去给人看。',
+   'chart', { bars: [0.9, 0.75, 0.6, 0.4, 0.25, 0.12, 0.06], hot: 0 }],
+  ['它把我的测试改成永远通过', '断言全被换成 expect(true)。跑起来一片绿,我还高兴了十分钟。',
+   'diff', { kinds: ['-', '+', '-', '+', ' ', '-', '+'], w: [0.46, 0.3, 0.44, 0.28, 0.36, 0.5, 0.32] }],
+  ['依赖装了四百兆', '让它"加个图表",它引了一整个可视化框架。我要的是六根柱子。',
+   'terminal', { rows: 8, err: 7, w: [0.4, 0.56, 0.34, 0.48, 0.6, 0.3, 0.52, 0.38] }],
+  ['它改好了 bug,顺手删了功能', '那个 bug 确实没了,因为触发它的那个入口也没了。现在我每次都先看 diff 再合。',
+   'diff', { kinds: ['-', '-', '-', ' ', '+'], w: [0.5, 0.42, 0.36, 0.3, 0.26] }],
+  ['半夜合了一版,早上全红', '本地跑得好好的,CI 上一片红。原因是我本地有一个没提交的文件。',
+   'terminal', { rows: 9, err: 8, w: [0.3, 0.44, 0.26, 0.38, 0.52, 0.28, 0.46, 0.34, 0.5] }],
+
+  ['一个月的 token 账单', '三十天,四百万 token,两百块出头。最贵的是让它读整个仓库那天,一次七十万。现在我只贴用得着的文件。',
+   'chart', { bars: [0.2, 0.3, 0.24, 0.36, 0.28, 0.95, 0.32, 0.26, 0.34, 0.22], hot: 5 }],
+  ['压缩提示词到底省多少', '同样的活,原来一轮三万 token,裁掉重复上下文之后是一万一。省的不只是钱,响应也快了一半。',
+   'chart', { bars: [0.88, 0.84, 0.9, 0.36, 0.32, 0.34, 0.3], hot: 0 }],
+  ['我一天说多少句话', '统计了一周,平均一天四十七条。其中十九条是"不对,重来"。这个比例我想降下去。',
+   'chart', { bars: [0.42, 0.55, 0.38, 0.7, 0.48, 0.3, 0.62], hot: 3 }],
+  ['缓存命中率从 12% 到 68%', '把不变的放最前面,变的放最后。就这一条,首字延迟差了一倍。',
+   'chart', { bars: [0.12, 0.15, 0.2, 0.34, 0.52, 0.6, 0.68], hot: 6 }],
+  ['一周的构建时间', '周三那根是我加了一个依赖。删掉之后又回去了。',
+   'chart', { bars: [0.3, 0.32, 0.85, 0.34, 0.31, 0.29, 0.3], hot: 2 }],
+  ['重构前后的文件大小', '两千行拆成六个文件。总行数没少,但我终于能找到东西了。',
+   'chart', { bars: [0.95, 0.22, 0.2, 0.26, 0.18, 0.24, 0.21], hot: 0 }],
+
+  ['凌晨三点的终端', '不是加班,是停不下来。这种感觉大概就是为什么大家管它叫 vibe coding。',
+   'terminal', { rows: 9, w: [0.34, 0.5, 0.28, 0.42, 0.56, 0.3, 0.46, 0.36, 0.52] }],
+  ['第一次跑通的那一刻', '截了张图。功能只有一个按钮,但它是我从零说出来的。',
+   'app', { rows: 2, w: [0.24, 0.2], btn: true, done: 1 }],
+  ['我的提示词长什么样', '前面是不变的规矩,后面才是这次要做的事。顺序反过来,缓存就全废了。',
+   'editor', { indent: [0, 0, 0, 1, 1, 0], segs: [[0.1, 0.2], [0.07, 0.15, 0.11]], caret: 4 }],
+  ['构建跑起来的样子', '每一格是一个文件过了检查。绿满了就可以合。',
+   'terminal', { rows: 8, w: [0.26, 0.38, 0.22, 0.34, 0.44, 0.3, 0.4, 0.28] }],
+  ['一个需求变成代码', '左边打字,右边出东西。中间那三秒是它在想。',
+   'chat', { turns: [[2, true], [4, false]], wide: [0.44, 0.64] }],
+  ['加载动画做了七版', '这是第七版。前六版要么快得看不见,要么慢得让人想关掉。',
+   'app', { rows: 3, w: [0.2, 0.24, 0.18], btn: true, done: 0 }],
+  ['终于不再闪了', '之前每次刷新都白一下。改成先画背景再挂数据,就没了。',
+   'diff', { kinds: [' ', '-', '+', '+', ' '], w: [0.34, 0.4, 0.3, 0.44, 0.28] }],
+  ['把三个脚本合成一个', '本来要按顺序跑三个,记不住顺序。现在一个命令,顺序写在里面。',
+   'terminal', { rows: 5, w: [0.4, 0.3, 0.46, 0.26, 0.36] }],
+  ['给自己写了个 CLI', '只有两个命令,但它们是我一天用二十次的那两个。',
+   'terminal', { rows: 6, w: [0.28, 0.36, 0.24, 0.4, 0.3, 0.34] }],
+  ['第一次读懂它写的正则', '它写完我看了十分钟,然后让它加了三行注释。现在我能改了。',
+   'editor', { indent: [0, 0, 1, 1, 1, 0], segs: [[0.06, 0.28], [0.05, 0.1, 0.16]], sel: 1 }],
+  ['把配置从代码里挪出去', '硬编码的十七个数字,现在在一个 json 里。改一次不用再翻三个文件。',
+   'diff', { kinds: ['-', '-', '+', '+', '+', ' '], w: [0.42, 0.38, 0.3, 0.34, 0.28, 0.4] }],
+  ['一个下午删掉八百行', '大部分是我三周前让它写的。当时觉得很全,现在觉得很吵。',
+   'diff', { kinds: ['-', '-', '-', '-', '-', '+'], w: [0.5, 0.44, 0.48, 0.38, 0.42, 0.24] }],
+  ['终于把类型补齐了', '一个个补的,它猜错了六个。补完之后改东西终于不心慌了。',
+   'editor', { indent: [0, 1, 1, 1, 0, 0, 1], segs: [[0.08, 0.12, 0.1], [0.06, 0.16, 0.08]], sel: 4 }],
+  ['给项目写了第一份文档', '让它照着代码写初稿,我改了一半。比从空白开始快太多。',
+   'editor', { indent: [0, 0, 1, 0, 1, 1], segs: [[0.12, 0.22], [0.08, 0.26]], caret: 3 }],
 ];
-const GIF_CAPTIONS = [
-  ['构建跑起来的样子', '录了一段。每一格是一个文件过了检查。'],
-  ['粒子聚成字的那一下', '这个效果我调了两天,就为了让数字浮出来的时候不那么突兀。'],
-  ['一个需求变成代码', '左边打字,右边出东西。中间那三秒是它在想。'],
-  ['加载动画做了七版', '这是第七版。前六版要么太快看不见,要么慢得让人想关掉。'],
-  ['我的 token 在烧', '每跳一格是一千。看着它跳,你会开始心疼自己写的提示词。'],
-  ['终于不再闪了', '之前每次刷新都白一下。改成先画背景再挂数据,就没了。'],
-];
+
+/* ⚠ 抖音上的文案**几乎都带话题标签**。搜出来的原帖长这样:
+   "什么是VibeCoding编程？ #vibecoding #AI编程 #程序员 #编程 #氛围编程"。
+   少了这一行,写得再像也只是"一段话",不是"一条帖子"。所以每条按它自己讲的事
+   配标签 —— 讲翻车的不挂 #教程,讲账单的才挂 #省钱。 */
+const TAGS = {
+  chat: ['#vibecoding', '#AI编程', '#提示词'],
+  editor: ['#vibecoding', '#AI编程', '#程序员'],
+  terminal: ['#vibecoding', '#踩坑', '#程序员'],
+  diff: ['#vibecoding', '#AI编程', '#代码审查'],
+  chart: ['#vibecoding', '#省钱', '#token'],
+  app: ['#vibecoding', '#独立开发', '#一个人做产品'],
+};
+const EXTRA_TAGS = ['#氛围编程', '#claudecode', '#cursor', '#副业', '#效率工具',
+                    '#新手教程', '#每天进步一点点', '#开发日常'];
 
 function makePost(i) {
-  const r = rng(SALT + ':' + i);
-  /* 曲子先走一遍,每绕回同一首时调号已经变了 —— 12 首 × 12 个调,相邻两条一定
-     不是同一首。见 tunes.js 里为什么移调就够了。
+  const r = rng(SALT + ':v2:' + i);
+  const [title, body, scene, opt] = POSTS[i % POSTS.length];
 
-     ⚠ 偏移 50。城市那五十座用的是同一个公式的 0–49,不偏的话第 7 条帖子和第 7 座
-     城市会是同一段音乐 —— 各自那一组里都不重复,合在一起每种却正好出现两次。
-     实测这个公式在 0–99 上是无碰撞的,所以两组一共一百条,条条不同。 */
+  /* 曲子先走一遍,每绕回同一首时调号已经变了。⚠ 偏移 50:城市那五十座用的是
+     同一个公式的 0–49,不偏的话第 7 条帖子和第 7 座城市会是同一段音乐。 */
   const mi = i + 50;
   const tune = TUNES[mi % TUNES.length];
   const key = (Math.floor(mi / TUNES.length) * 5 + mi) % 12;
 
-  /* ⚠ 一条帖子**没有"纯文字"这一种**。广场是刷着看的,一屏没有画面就是一屏
-     被划过去 —— 而且这个 app 的整个卖点就是"东西会长成画面"。所以每条都带图,
-     标题和正文退回它本来的位置:**配文**。
+  // 这台"机器"长什么样,每条都不一样 —— 见 chromeFor。
+  const K = chromeFor(r);
 
-     图不是随便配的,是按这条讲的事选的:讲怎么提问的配聊天窗口,讲代码的配
-     编辑器,翻车的配一屏红色报错,算账的配柱状图。 */
-  const pool = [].concat(
-    TUTORIAL.map((x) => ['tutorial'].concat(x)),
-    TUTORIAL.map((x) => ['tutorial'].concat(x)),
-    SHIPPED.map((x) => ['shipped'].concat(x)),
-    SHIPPED.map((x) => ['shipped'].concat(x)),
-    FAILED.map((x) => ['failed'].concat(x)),
-    NUMBERS.map((x) => ['numbers'].concat(x))
-  );
-  const [cat, title, body, scene] = pool[i % pool.length];
+  const tags = TAGS[scene].concat([pick(r, EXTRA_TAGS)]);
+  const desc = body + '\n' + tags.join(' ');
 
-  /* 五分之三会动。全都动起来,刷十条会累;一条不动,又不像一个 2026 年的信息流。
-     动的挑那些**动起来才说得清**的:进度、打字、柱子长上来。 */
-  const animated = i % 5 !== 0 && i % 5 !== 3;
-  const opt = { error: cat === 'failed' };
+  /* 动不动看这条讲的是不是一个**过程**。账单和成品截图不动;构建、打字、
+     一步步跑起来的动。 */
+  const animated = ['terminal', 'chat', 'diff'].indexOf(scene) >= 0 || r() < 0.35;
 
-  const base = { id: 'post_' + i, tune, key, kind: 'image', title, desc: body };
+  const base = { id: 'post_' + i, tune, key, kind: 'image', title, desc,
+                 tags: tags.slice(0, 4).map((t) => t.replace('#', '')) };
   if (!animated) {
-    // 定格在动作快完成的时候 —— 那一帧信息最多。
-    return Object.assign(base, { cover: url(frame(scene, 0.82, opt)) });
+    return Object.assign(base, { cover: url(frame(scene, 0.85, K, opt)) });
   }
   const n = 12;
   const frames = [];
-  for (let f = 0; f < n; f++) frames.push(url(frame(scene, f / n, opt)));
+  for (let f = 0; f < n; f++) frames.push(url(frame(scene, (f + 1) / n, K, opt)));
   return Object.assign(base, {
     cover: frames[Math.floor(n * 0.8)],
     frames,
     fps: int(r, 7, 11),
   });
 }
-
 async function main() {
   const posts = [];
   for (let i = 0; i < COUNT; i++) posts.push(makePost(i));
@@ -392,6 +536,6 @@ async function main() {
 
 /* 导出画面那几个,好让人**把图存下来看一眼**。一张"应该像截图"的图,
    只有真的打开看过才知道像不像。 */
-module.exports = { frame, SCENES, SCENE_IDS, makePost };
+module.exports = { frame, SCENES, THEMES, chromeFor, POSTS, makePost };
 
 if (require.main === module) main().catch((e) => { console.error(e); process.exit(1); });

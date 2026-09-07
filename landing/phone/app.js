@@ -1607,6 +1607,7 @@
   on($('proSheet'), 'click', function (e) { if (e.target === $('proSheet')) $('proSheet').classList.add('hide'); });
   on($('proSheetCta'), 'click', function () { $('proSheet').classList.add('hide'); openPlans(); });
   on($('psCta'), 'click', openPlans);
+  on($('psCtaMe'), 'click', openPlans);
   on($('planClose'), 'click', function () { $('planSheet').classList.add('hide'); });
   on($('planSheet'), 'click', function (e) { if (e.target === $('planSheet')) $('planSheet').classList.add('hide'); });
 
@@ -2432,6 +2433,10 @@
     $('meEmail').textContent = (u && u.primaryEmailAddress && u.primaryEmailAddress.emailAddress) || t('guest_mode');
     $('mePlan').textContent = T.isPro() ? 'Pro' : 'Free';
     $('upgradeBtn').classList.toggle('hide', T.isPro());
+    // The showcase is for people who do not have it yet, and goes the moment
+    // they do — a card selling what you already bought makes a paid product
+    // feel like a free one.
+    $('proShowMe').classList.toggle('hide', T.isPro());
     $('signOutBtn').classList.toggle('hide', !u);
 
     var devices = T.link.devices();
@@ -2608,7 +2613,11 @@
     window.TerseInstall.show(t, true);
   });
 
-  on($('upgradeBtn'), 'click', function () { location.href = '/#pricing'; });
+  /* The same sheet as everywhere else. This used to leave the app for
+     /#pricing — a marketing page that asks the question again, in a browser
+     tab, having thrown away the fact that they were already signed in and one
+     tap from paying. */
+  on($('upgradeBtn'), 'click', openPlans);
   on($('signOutBtn'), 'click', function () {
     if (window.Clerk) window.Clerk.signOut().then(function () { location.href = '/m'; });
   });

@@ -1070,6 +1070,41 @@
 
     <!-- ── 我 ───────────────────────────────────────────────────────── -->
     <section class="view" id="v-me">
+      <!-- ── Pro, where somebody comes to look at their account ────────────
+           The field's copy of this sits beside the styles it is selling, which
+           is the right place to be persuaded. This one is where you arrive
+           already wondering what you are on — so it is the same four tiles and
+           the same one button, WITHOUT the two live preview panes. Those cost a
+           WebGL context each, and spending two of them on a settings screen to
+           repeat a card that exists one tab away is how a phone runs out.
+           Hidden the moment you are Pro. -->
+      <div class="card proshow hide" id="proShowMe">
+        <div class="row"><h2 class="grow" data-t="ps_title">What Pro adds</h2><span class="protag">PRO</span></div>
+        <div class="ps-grid">
+          <div class="ps">
+            <div class="ps-vis ps-typo"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="ps-n" data-t="ps_typo_t">Particle typography</div>
+            <div class="ps-d" data-t="ps_typo_d">Your numbers gather out of the field, then scatter.</div>
+          </div>
+          <div class="ps">
+            <div class="ps-vis ps-3d"><u></u><u></u></div>
+            <div class="ps-n" data-t="ps_3d_t">Free 3D view</div>
+            <div class="ps-d" data-t="ps_3d_d">Drag to turn it, pinch to move closer.</div>
+          </div>
+          <div class="ps">
+            <div class="ps-vis ps-sty"><b></b><b></b><b></b><b></b></div>
+            <div class="ps-n" data-t="ps_sty_t">8 particle styles</div>
+            <div class="ps-d" data-t="ps_sty_d">Eight different choreographies, not eight colour swaps.</div>
+          </div>
+          <div class="ps">
+            <div class="ps-vis ps-thm"><b></b><b></b><b></b><b></b><b></b></div>
+            <div class="ps-n" data-t="ps_thm_t">Themes + fine-tune</div>
+            <div class="ps-d" data-t="ps_thm_d">Density, angle and intensity on top of any style.</div>
+          </div>
+        </div>
+        <button class="btn primary wide" id="psCtaMe" type="button" data-t="ps_cta">See plans</button>
+      </div>
+
       <div class="card" id="linkCard">
         <h2 data-t="devices">Your computers</h2>
         <div class="list" id="deviceList"></div>

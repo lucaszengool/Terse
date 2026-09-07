@@ -266,5 +266,46 @@ function seed() {
               `(${(bytes / COUNT / 1024).toFixed(1)}KB each)`);
 }
 
-if (process.argv.includes('--clear')) clear();
+/* ── Seeding a server you cannot reach the database of ────────────────────
+   Production's database lives with the deployment, so `node seed-projects.js`
+   on a laptop fills the laptop. `--remote <base>` publishes the same capsules
+   through the public API instead, which is the same door a real Terse app uses.
+
+   The per-identity cap (24) is real and enforced server-side, so the hundred
+   are spread across enough identities to fit — the seeds already vary their
+   author, which is also what makes the feed look like more than one person.
+
+   `--remote <base> --clear` deletes them again, by the same route. */
+async function remote(base, doClear) {
+  const post = (path, identity, body, method) => fetch(base + path, {
+    method: method || 'POST',
+    headers: Object.assign({ 'x-terse-identity': identity },
+                           body ? { 'Content-Type': 'application/json' } : {}),
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})) }));
+
+  let ok = 0, failed = 0;
+  for (let i = 0; i < COUNT; i++) {
+    const cap = makeCapsule(i);
+    // The identity that will own it. Spread so nobody hits the 24 cap, and so
+    // the plaza reads as a place with several people in it.
+    const who = 'terse-seed-' + (i % 6);
+    const r = doClear
+      ? await post('/api/cloud/projects/' + encodeURIComponent(cap.srcId), who, null, 'DELETE')
+      : await post('/api/cloud/projects', who, { capsule: cap });
+    // Paced. The cloud routes sit behind an ingest limiter, and a hundred 7KB
+    // posts as fast as the loop can issue them is exactly what it is there to
+    // stop — a seeder that trips the rate limit reports failures that say
+    // nothing about the data.
+    await new Promise((res) => setTimeout(res, 120));
+    if (r.status === 200) ok++;
+    else { failed++; if (failed < 4) console.error(`  ${cap.title}: ${r.status} ${JSON.stringify(r.json).slice(0, 120)}`); }
+  }
+  console.log(`${doClear ? 'removed' : 'published'} ${ok}/${COUNT} to ${base}` +
+              (failed ? `, ${failed} failed` : ''));
+}
+
+const at = process.argv.indexOf('--remote');
+if (at >= 0) remote(process.argv[at + 1].replace(/\/+$/, ''), process.argv.includes('--clear'));
+else if (process.argv.includes('--clear')) clear();
 else seed();

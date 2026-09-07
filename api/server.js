@@ -1270,6 +1270,9 @@ app.use('/api/cloud/dm', cloudIngestLimiter, require('./dm'));
 // 一根临时探针:让真机自己说它量到了什么、报了什么错。见 clientlog.js 顶部。
 app.use('/api/cloud/clientlog', cloudIngestLimiter, require('./clientlog'));
 
+// 一条 GitHub 链接 → 一颗胶囊。手机上没有文件夹可扫,这是手机能发布项目的那条路。
+app.use('/api/cloud/github', cloudIngestLimiter, require('./github-capsule'));
+
 // ── Device links (desktop ⇄ phone web app) ──
 // The desktop pushes a live frame every few seconds and the phone streams it, so
 // this rides the same ingest limiter as rooms and cowork rather than the default.

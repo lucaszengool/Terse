@@ -305,6 +305,19 @@
   .fsearch input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
   .fs-x{flex:0 0 auto;min-height:0;padding:2px 4px;color:var(--faint);font-size:13px}
 
+  .fab{position:absolute;z-index:3;right:16px;bottom:calc(var(--safe-b) + 88px);
+    width:52px;height:52px;border-radius:50%;font-size:26px;font-weight:300;line-height:1;
+    background:var(--accent);color:#04110c;border:0;
+    box-shadow:0 6px 20px rgba(0,0,0,.45);display:grid;place-items:center;
+    transition:transform var(--t-fast) var(--snap)}
+  .fab:active{transform:scale(.9)}
+  /* The sampled frames, so you can see what was actually captured before it
+     goes out — an animation that lost its motion should be visible here, not
+     discovered by strangers in the feed. */
+  .cmframes{display:flex;gap:5px;margin-top:9px;overflow-x:auto;padding-bottom:3px}
+  .cmframes img{width:52px;height:52px;object-fit:cover;border-radius:7px;flex:0 0 auto;
+    border:1px solid var(--line2)}
+
   .swipehint{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 74px);
     text-align:center;font-size:12px;color:var(--faint);pointer-events:none;
     animation:swipeUp 2.1s var(--glide) infinite}
@@ -960,6 +973,9 @@
             <button class="fs-x hide" id="projSearchX" type="button" aria-label="Clear">✕</button>
           </div>
           <div class="feed" id="projFeed"></div>
+          <!-- Posting lives where the posts are. Bottom-right above the tab bar,
+               which is where a thumb already is after a swipe. -->
+          <button class="fab" id="composeFab" type="button" aria-label="Post">＋</button>
           <div class="empty hide" id="projEmpty" data-t="pz_none">Nothing published yet.</div>
         </div>
       </section>
@@ -1182,6 +1198,53 @@
   </div>
 </div>
 
+<!-- ── 发布 ─────────────────────────────────────────────────────────────
+     Three kinds of thing, one plaza. A project becomes a code city, a note
+     becomes its own words in particles, a picture gathers out of them — the
+     rule is that EVERYTHING here is made of particles; only the input differs. -->
+<div class="sheet hide" id="composeSheet">
+  <div class="pane">
+    <div class="grab"></div>
+    <div class="row"><b class="grow" data-t="cm_title">Post to the plaza</b>
+      <button class="btn ghost" id="cmClose" type="button" style="min-height:34px;padding:7px 12px">✕</button></div>
+
+    <div class="seg" id="cmSeg">
+      <button class="on" data-cm="project" type="button" data-t="cm_project">Project</button>
+      <button data-cm="text" type="button" data-t="cm_text">Note</button>
+      <button data-cm="image" type="button" data-t="cm_image">Picture</button>
+    </div>
+
+    <div class="scroll">
+      <!-- A repository link. The phone has no folder to scan, so this is how a
+           project gets published from one. -->
+      <div id="cmProject">
+        <p class="tiny" data-t="cm_project_p">Paste a GitHub link. The city is built from the repository — nothing is uploaded.</p>
+        <div class="row">
+          <input type="url" id="cmRepo" class="grow" placeholder="github.com/you/project" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button class="btn primary" id="cmScan" type="button" data-t="cm_scan">Scan</button>
+        </div>
+      </div>
+
+      <div id="cmText" class="hide">
+        <textarea id="cmBody" rows="5" placeholder="Say something" style="width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;color:var(--ink);font:inherit;font-size:15px;padding:11px 12px;resize:vertical"></textarea>
+      </div>
+
+      <div id="cmImage" class="hide">
+        <p class="tiny" data-t="cm_image_p">A picture, an animation or a short video. An animation is sampled into frames and replayed in particles.</p>
+        <input type="file" id="cmFile" accept="image/*,video/*" style="width:100%;color:var(--dim);font-size:13px">
+        <div class="cmframes hide" id="cmFrames"></div>
+      </div>
+
+      <!-- Every kind gets a caption, because every kind is a post. -->
+      <input type="text" id="cmName" placeholder="Title" maxlength="48" style="width:100%;margin-top:10px;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;color:var(--ink);font:inherit;font-size:15px;padding:11px 12px">
+      <textarea id="cmDesc" rows="3" placeholder="Description" maxlength="600" style="width:100%;margin-top:8px;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;color:var(--ink);font:inherit;font-size:14px;padding:11px 12px;resize:vertical"></textarea>
+      <p class="tiny hide" id="cmNote"></p>
+    </div>
+
+    <button class="btn primary wide" id="cmPost" type="button" data-t="cm_post">Post</button>
+  </div>
+</div>
+
 <!-- ── 评论 ─────────────────────────────────────────────────────────────
      Over the app, not instead of it. -->
 <div class="sheet hide" id="cmtSheet">
@@ -1239,6 +1302,7 @@
 <script src="/phone/mp4.js"></script>
 <script src="/phone/capture.js"></script>
 <script src="/phone/social.js"></script>
+<script src="/phone/frames.js"></script>
 <script src="/phone/app.js"></script>
 </body>
 </html>

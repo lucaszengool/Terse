@@ -137,6 +137,40 @@ const CITY = {
   ok('leaving only names', c2.people.every((p) => p[0].indexOf('@') < 0));
 
   const short = crypto.createHash('sha256').update(me).digest('hex').slice(0, 32);
+console.log('\n── three kinds of post, one plaza ──');
+  {
+    const gif = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q==';
+    const put3 = await req('POST', '/projects', { identity: me,
+      body: { capsule: { id: 'note1', kind: 'text', desc: 'shipped it' } } });
+    eq('a note publishes', put3.status, 200);
+    const put4 = await req('POST', '/projects', { identity: me,
+      body: { capsule: { id: 'loop1', kind: 'image', title: 'loop', cover: gif,
+                         frames: [gif, gif, gif], fps: 12 } } });
+    eq('an animation publishes', put4.status, 200);
+
+    const l2 = (await req('GET', '/projects/public?limit=50', { identity: me })).json;
+    const note = l2.projects.find((p) => p.id === put3.json.id);
+    const loop = l2.projects.find((p) => p.id === put4.json.id);
+
+    eq('a note keeps its kind', note && note.capsule.kind, 'text');
+    // A note has no title of its own — its words ARE the post, and asking
+    // somebody to name a sentence is asking for a second sentence.
+    eq('and takes its title from its words', note && note.capsule.title, 'shipped it');
+    eq('an animation keeps its frames', loop && loop.capsule.frames.length, 3);
+    eq('and the rate they play at', loop && loop.capsule.fps, 12);
+    // Frames and shots are different things: shots are stills that take turns,
+    // frames are one motion at a rate. Merged, the rate is lost.
+    eq('a project from before the field existed is still a project',
+       (l2.projects.find((p) => p.id === put.json.id) || {}).capsule.kind, 'project');
+
+    eq('a note with no words is refused',
+       (await req('POST', '/projects', { identity: me, body: { capsule: { id: 'x', kind: 'text' } } })).status, 400);
+    eq('a picture post with no picture is refused',
+       (await req('POST', '/projects', { identity: me, body: { capsule: { id: 'y', kind: 'image', title: 'x' } } })).status, 400);
+
+    for (const id of [put3.json.id, put4.json.id]) db.deleteWallProject.run({ id, identity: short });
+  }
+
   for (const id of ['cap1', 'cap2']) db.deleteWallProject.run({ id: 'wp_' + crypto.createHash('sha256').update(short + '|' + id).digest('hex').slice(0, 16), identity: short });
   server.close();
   console.log(`\n${pass} passed, ${fail} failed\n`);

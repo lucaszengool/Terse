@@ -119,6 +119,14 @@
       prev_free: 'Free',
       feed_files: 'files', feed_buildings: 'buildings', feed_hint: 'Swipe for the next ↑',
       pz_search: 'Search projects', pz_nohits: 'Nothing matches “{q}”.',
+      cm_title: 'Post to the plaza', cm_project: 'Project', cm_text: 'Note', cm_image: 'Picture',
+      cm_project_p: 'Paste a GitHub link. The city is built from the repository — nothing is uploaded.',
+      cm_image_p: 'A picture, an animation or a short video. An animation is sampled into frames and replayed in particles.',
+      cm_scan: 'Scan', cm_scanning: 'Reading…', cm_scanned: 'Found {n} buildings. Edit the words, then post.',
+      cm_reading: 'Reading the file…', cm_frames: 'Captured {n} frames.', cm_one: 'One picture.',
+      cm_post: 'Post', cm_posting: 'Posting…', cm_posted: 'Posted',
+      cm_need_scan: 'Scan a repository first', cm_need_text: 'Write something first',
+      cm_need_pic: 'Pick a picture first',
       feed_more: 'more', feed_less: 'less', prev_3d: 'drag · pinch',
       pz_searching: 'Searching the whole plaza…',
       plan_title: 'Choose a plan', plan_sub: 'Everything in Pro, whichever length suits you.',
@@ -327,6 +335,14 @@
       prev_free: '免费版',
       feed_files: '个文件', feed_buildings: '座楼', feed_hint: '上滑看下一个 ↑',
       pz_search: '搜索项目', pz_nohits: '没有匹配「{q}」的项目。',
+      cm_title: '发到广场', cm_project: '项目', cm_text: '文字', cm_image: '图片',
+      cm_project_p: '贴一条 GitHub 链接。城市是从仓库长出来的 —— 什么都不用上传。',
+      cm_image_p: '一张图、一张动图,或者一小段视频。动图会被采成帧,再用粒子放一遍。',
+      cm_scan: '扫描', cm_scanning: '读取中…', cm_scanned: '找到 {n} 座楼。改好文字就可以发了。',
+      cm_reading: '正在读这个文件…', cm_frames: '取到 {n} 帧。', cm_one: '一张图。',
+      cm_post: '发布', cm_posting: '发布中…', cm_posted: '已发布',
+      cm_need_scan: '先扫一个仓库', cm_need_text: '先写点什么',
+      cm_need_pic: '先选一张图',
       feed_more: '展开', feed_less: '收起', prev_3d: '拖着转 · 捏合',
       pz_searching: '正在搜整个广场…',
       plan_title: '选一个方案', plan_sub: 'Pro 的功能都一样,只是买多久。',
@@ -2939,6 +2955,141 @@
     box.appendChild(like); box.appendChild(fav); box.appendChild(cmt); box.appendChild(dm);
     return box;
   }
+
+  /* ── 发布 ─────────────────────────────────────────────────────────────────
+     Three kinds of thing go into one plaza, and all three come out as
+     particles — that is the only rule here. A project becomes a code city, a
+     note becomes its own words, a picture (or an animation) gathers out of the
+     field. What differs is the INPUT, never the medium.
+
+     A phone could not post at all before this: a capsule was scanned off a
+     local folder and a phone has no folder. The GitHub path is how a project
+     gets published from one; the other two need nothing but the phone. */
+  var cmKind = 'project';
+  var cmDraft = null;              // the capsule being prepared
+
+  function openCompose() {
+    if (!requireIdentity()) return;
+    cmDraft = null;
+    $('cmNote').classList.add('hide');
+    $('cmFrames').classList.add('hide');
+    $('cmFrames').innerHTML = '';
+    $('composeSheet').classList.remove('hide');
+  }
+  function closeCompose() { $('composeSheet').classList.add('hide'); }
+  on($('composeFab'), 'click', openCompose);
+  on($('cmClose'), 'click', closeCompose);
+  on($('composeSheet'), 'click', function (e) { if (e.target === $('composeSheet')) closeCompose(); });
+
+  Array.prototype.forEach.call(document.querySelectorAll('#cmSeg button'), function (b) {
+    b.onclick = function () {
+      Array.prototype.forEach.call(document.querySelectorAll('#cmSeg button'), function (o) {
+        o.classList.toggle('on', o === b);
+      });
+      cmKind = b.dataset.cm;
+      $('cmProject').classList.toggle('hide', cmKind !== 'project');
+      $('cmText').classList.toggle('hide', cmKind !== 'text');
+      $('cmImage').classList.toggle('hide', cmKind !== 'image');
+      cmDraft = null;
+      $('cmNote').classList.add('hide');
+    };
+  });
+
+  /* Scanning does NOT publish. It fills the title and description in from the
+     repository so they can be changed before anything goes out — seeing it
+     first is the whole difference between publishing and submitting. */
+  on($('cmScan'), 'click', function () {
+    var url = ($('cmRepo').value || '').trim();
+    if (!url) return;
+    var btn = $('cmScan');
+    btn.disabled = true; btn.textContent = t('cm_scanning');
+    fetch('/api/cloud/github/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-terse-identity': Social.identity() },
+      body: JSON.stringify({ url: url }),
+    }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'failed'); return j; }); })
+      .then(function (j) {
+        cmDraft = j.capsule;
+        $('cmName').value = cmDraft.title || '';
+        $('cmDesc').value = cmDraft.desc || '';
+        note(t('cm_scanned').replace('{n}', (cmDraft.dirs || []).length));
+      })
+      .catch(function (e) { note(e.message || '—', true); })
+      .then(function () { btn.disabled = false; btn.textContent = t('cm_scan'); });
+  });
+
+  function note(msg, bad) {
+    var el = $('cmNote');
+    el.textContent = msg;
+    el.style.color = bad ? 'var(--warn)' : 'var(--dim)';
+    el.classList.remove('hide');
+  }
+
+  /* A picture, an animation or a short video, all through the same door.
+     TerseFrames decides how to take it apart — see frames.js for why an
+     animation is SAMPLED rather than decoded. */
+  on($('cmFile'), 'change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f || !window.TerseFrames) return;
+    note(t('cm_reading'));
+    window.TerseFrames.extract(f).then(function (out) {
+      cmDraft = {
+        id: 'p_' + Date.now().toString(36),
+        kind: 'image',
+        cover: out.frames[0],
+        frames: out.frames.length > 1 ? out.frames : [],
+        fps: out.fps,
+      };
+      var box = $('cmFrames');
+      box.innerHTML = '';
+      out.frames.forEach(function (src) {
+        var im = document.createElement('img'); im.src = src; box.appendChild(im);
+      });
+      box.classList.remove('hide');
+      note(out.animated ? t('cm_frames').replace('{n}', out.frames.length) : t('cm_one'));
+    }).catch(function (err) { note(err.message || '—', true); });
+  });
+
+  on($('cmPost'), 'click', function () {
+    if (!requireIdentity()) return;
+    var name = ($('cmName').value || '').trim();
+    var desc = ($('cmDesc').value || '').trim();
+    var cap;
+
+    if (cmKind === 'project') {
+      if (!cmDraft) { note(t('cm_need_scan'), true); return; }
+      cap = cmDraft;
+    } else if (cmKind === 'text') {
+      var body = ($('cmBody').value || '').trim();
+      if (!body) { note(t('cm_need_text'), true); return; }
+      // A note IS its words. The engine already draws a title and lines as
+      // particles, so a text post needs no new renderer at all.
+      cap = { id: 'p_' + Date.now().toString(36), kind: 'text', desc: body };
+    } else {
+      if (!cmDraft) { note(t('cm_need_pic'), true); return; }
+      cap = cmDraft;
+    }
+
+    cap.title = name || cap.title || '';
+    cap.desc = desc || cap.desc || '';
+    if (cmKind === 'text') cap.desc = ($('cmBody').value || '').trim();
+
+    var btn = $('cmPost');
+    btn.disabled = true; btn.textContent = t('cm_posting');
+    fetch('/api/cloud/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-terse-identity': Social.identity() },
+      body: JSON.stringify({ capsule: cap }),
+    }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'failed'); return j; }); })
+      .then(function () {
+        closeCompose();
+        toast(t('cm_posted'));
+        if (window.TerseFeel) window.TerseFeel.tap();
+        projPool = []; loadProjects();          // it should be there when you look
+      })
+      .catch(function (e) { note(e.message || '—', true); })
+      .then(function () { btn.disabled = false; btn.textContent = t('cm_post'); });
+  });
 
   /* ── The project window ──────────────────────────────────────────────────
      Tapping a project used to switch to the Field TAB and leave a toast behind.

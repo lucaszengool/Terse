@@ -21,6 +21,18 @@ const router = express.Router();
 const MAX_CAPSULE_BYTES = 160 * 1024;
 /** 封面之外还能带几张。加上封面一共 5 张 —— 用户要的就是这个数。 */
 const MAX_SHOTS = 4;
+/* 动图是**一串帧**,不是一张图。帧多了整颗胶囊就大,所以帧要小、要少:12 张
+   128px 的图 ≈ 30–70KB,还在 160KB 的闸门里面,而 12 帧在 12fps 下是一秒 ——
+   够看出是什么动作,这正是一段循环需要的长度。 */
+const MAX_FRAMES = 12;
+
+/* 广场上有三种东西,不是一种。
+     project — 一个项目,长成代码城市
+     text    — 一段话,直接聚成字
+     image   — 一张图(或一段动图),聚成画面
+   全都以粒子呈现,这是这个广场唯一的规矩;区别只在**拿什么当输入**。
+   认不出来的一律当 project,因为在这个字段存在之前发布的每一颗都是项目。 */
+const KINDS = ['project', 'text', 'image'];
 /** 一个人最多挂多少个项目在广场上。防的是刷屏,不是防坏人。 */
 const MAX_PER_IDENTITY = 24;
 
@@ -63,6 +75,13 @@ function sanitize(capsule) {
     desc: str(capsule.desc, 600).trim(),
     tags: Array.isArray(capsule.tags) ? capsule.tags.slice(0, 4).map((t) => str(t, 16)) : [],
     cover: dataUrl(capsule.cover),
+    kind: KINDS.indexOf(String(capsule.kind || '')) >= 0 ? String(capsule.kind) : 'project',
+    /* 一段动图的帧。和 shots 分开存:shots 是"这个项目的几张截图",一张一拍;
+       frames 是**一个动作**,要按帧率连着放。混成一个字段,播放的那一端就分不出
+       该慢慢轮播还是该动起来。 */
+    frames: Array.isArray(capsule.frames)
+      ? capsule.frames.slice(0, MAX_FRAMES).map(dataUrl).filter(Boolean) : [],
+    fps: Math.max(2, Math.min(24, parseInt(capsule.fps, 10) || 12)),
     shots: Array.isArray(capsule.shots) ? capsule.shots.slice(0, MAX_SHOTS).map(dataUrl).filter(Boolean) : [],
     lines: Array.isArray(capsule.lines) ? capsule.lines.slice(0, 4).map((l) => str(l, 40)) : [],
     files: Math.max(0, Math.min(9_999_999, parseInt(capsule.files, 10) || 0)),
@@ -153,7 +172,13 @@ function sanitize(capsule) {
         .filter((p) => p && p[0] && p[0].indexOf('@') < 0)
     : [];
 
+  /* 标题以前是硬性的 —— 对项目是对的,对一条**纯文字**的帖子就不对了:那种帖子
+     的全部内容就是那段话。所以文字帖用它自己的正文当标题,而一条什么都没有的
+     胶囊仍然发不出去。 */
+  if (!out.title && out.kind === 'text' && out.desc) out.title = out.desc.slice(0, 48);
   if (!out.title) return null;
+  if (out.kind === 'text' && !out.desc && !out.subtitle) return null;
+  if (out.kind === 'image' && !out.cover && !out.frames.length) return null;
   return out;
 }
 

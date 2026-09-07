@@ -1131,6 +1131,42 @@ export default class MineradioWallpaper {
 
     // 一个项目最多五张图。全部画完要 100 秒,而一段演出只有 20 秒 —— 所以是**轮播**:
     // 每张停留一段,换图时粒子从上一张重新排成下一张,那正是这个功能最好看的地方。
+    /* ── 动图 ────────────────────────────────────────────────────────────
+       帧和截图**不是一回事**,所以走两条路。截图是"这个项目的几张图",一张一拍,
+       和城市轮着来;帧是**一个动作**,必须按帧率连着放 —— 用轮播的节奏放帧,
+       放出来的是一组莫名其妙的静图,不是动画。
+
+       每帧只换图,不重排文字:换一次文字就重新排一次版,12fps 下那是每秒十二次
+       重排,而且字会跟着抖。 */
+    const frames = (cap.frames || []).filter(Boolean);
+    if (frames.length > 1) {
+      const fps = Math.max(2, Math.min(24, +cap.fps || 12));
+      const imgs2 = [];
+      let ready = 0, started = false;
+      frames.forEach((u, i) => {
+        const im = new Image();
+        im.onload = im.onerror = () => {
+          imgs2[i] = im.naturalWidth ? im : null;
+          if (++ready < frames.length) return;
+          const live = imgs2.filter(Boolean);
+          if (!live.length) return;
+          if (!layer.setShow(live[0], textAt(0), SIZE)) return;
+          layer.play(Math.max(3000, ms | 0));
+          this.pulse(0.8);
+          started = true;
+          let f = 0;
+          this._projRotate = setInterval(() => {
+            if (!layer.show) { clearInterval(this._projRotate); return; }
+            f = (f + 1) % live.length;
+            // 只换图。文字和城市这一拍不动。
+            layer.setShow(live[f], null, SIZE);
+          }, Math.round(1000 / fps));
+        };
+        im.src = u;
+      });
+      return true;
+    }
+
     const urls = [cap.cover, ...(cap.shots || [])].filter(Boolean);
     const imgs = [];
     let shown = false;

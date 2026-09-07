@@ -94,6 +94,12 @@
       title: c.title || p.title || '',
       subtitle: c.subtitle || '',
       desc: c.desc || '',
+      /* ⚠ 新字段必须在这里加一遍,否则引擎永远看不到它 —— 这个函数是胶囊进入
+         渲染那一端的**唯一**入口,代码城市当初就是死在这一行没加上。
+         kind 缺省算 project:这个字段出现之前发布的每一颗都是项目。 */
+      kind: c.kind || 'project',
+      frames: Array.isArray(c.frames) ? c.frames : [],
+      fps: c.fps || 12,
       cover: c.cover || '',
       lines: lines.slice(0, 3),
       shots: Array.isArray(c.shots) ? c.shots : [],

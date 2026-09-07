@@ -119,6 +119,7 @@
       prev_free: 'Free',
       feed_files: 'files', feed_buildings: 'buildings', feed_hint: 'Swipe for the next ↑',
       pz_search: 'Search projects', pz_nohits: 'Nothing matches “{q}”.',
+      feed_more: 'more', feed_less: 'less', prev_3d: 'drag · pinch',
       pz_searching: 'Searching the whole plaza…',
       plan_title: 'Choose a plan', plan_sub: 'Everything in Pro, whichever length suits you.',
       plan_note: 'Cancel anytime. Prices in USD.',
@@ -326,6 +327,7 @@
       prev_free: '免费版',
       feed_files: '个文件', feed_buildings: '座楼', feed_hint: '上滑看下一个 ↑',
       pz_search: '搜索项目', pz_nohits: '没有匹配「{q}」的项目。',
+      feed_more: '展开', feed_less: '收起', prev_3d: '拖着转 · 捏合',
       pz_searching: '正在搜整个广场…',
       plan_title: '选一个方案', plan_sub: 'Pro 的功能都一样,只是买多久。',
       plan_note: '随时可取消。价格为美元。',
@@ -974,7 +976,7 @@
        · never while a project preview is running, which owns the field;
        · and if either constructor refuses, the whole row hides and the CSS
          tiles carry the message alone. A degraded card beats a dead field. */
-  var prevFree = null, prevPro = null, prevObs = null, prevCycle = null;
+  var prevFree = null, prevPro = null, prevObs = null, prevCycle = null, prevOrbit = null;
 
   function previewsUp() { return !!(prevFree || prevPro); }
 
@@ -1026,15 +1028,74 @@
       requestAnimationFrame(function () {
         try { prevFree.resize && prevFree.resize(); prevPro.resize && prevPro.resize(); } catch (e) {}
       });
-      /* The Pro pane walks through the styles it is selling. One frozen style
-         says "a different colour"; four in rotation say "different motion",
-         which is the actual difference. */
-      var ids = ['aurora', 'starfall', 'vortex', 'bloom'], at = 0;
+      /* ── MAKE THE DIFFERENCE VISIBLE ─────────────────────────────────────
+         Two panes of drifting particles are two panes of drifting particles.
+         The Mac's previews are not that: it feeds BOTH of them stage items and
+         an agent log every tick, and the free one comes back looking plainer —
+         because setAgentLog() returns early on a non-Pro engine. The particle
+         TEXT is the thing being sold, so the free pane has to be visibly
+         without it. Copied from wallpaper-control.html, including the two
+         throttle resets, which is how a demo shows in seconds what a wallpaper
+         does over minutes. */
+      var SAMPLES = [
+        { v: '-38%', u: '', saved: true }, { v: '+2,148', u: 'tok', saved: true },
+        { v: 'cache', u: '61%', saved: false }, { v: '$0.19', u: '', saved: true },
+        { v: '+488', u: 'saved', saved: true }, { v: 'ctx', u: '47%', saved: false },
+      ];
+      var LOG = [{ name: 'claude', icon: '◆', project: 'Terse',
+                   lines: ['Read src/app.js', 'Edit api/link.js', 'Bash npm test',
+                           'Grep recentMessages', 'Write social.js'] }];
+      var ids = ['aurora', 'starfall', 'vortex', 'bloom'], at = 0, tick = 0;
       clearInterval(prevCycle);
       prevCycle = setInterval(function () {
-        at = (at + 1) % ids.length;
-        try { prevPro.setStyle && prevPro.setStyle(ids[at]); } catch (e) {}
-      }, 3400);
+        tick++;
+        [prevFree, prevPro].forEach(function (e, k) {
+          if (!e) return;
+          try {
+            e._lastStageAt = 0;                       // bypass the 12s throttle
+            e.setStageItems([SAMPLES[(tick + k) % SAMPLES.length]]);
+            e._lastLogAt = 0;
+            // Sent to BOTH. The free engine drops it on the floor by design,
+            // and that refusal is exactly what the free pane is showing.
+            e.setAgentLog(LOG);
+          } catch (err) {}
+        });
+        if (tick % 3 === 0) {
+          at = (at + 1) % ids.length;
+          try { prevPro.setStyle && prevPro.setStyle(ids[at]); } catch (e) {}
+        }
+      }, 1200);
+
+      /* And it TURNS. 3D free view is on the list of what Pro adds, so the Pro
+         pane demonstrates it rather than describing it. Amplitude kept small on
+         purpose — the Mac's comment says it and it is truer here: the pane is
+         110px tall, and a big rotation swings the whole field out of frame. */
+      clearInterval(prevOrbit);
+      var dt = 0, proCamZ = null;
+      prevOrbit = setInterval(function () {
+        /* ⚠ NOT setView3D. That is the Mac engine's API; THIS engine has no 3D
+           of its own — the phone does it in applyView() by moving each layer's
+           camera directly, which is why dragging the field works at all. My
+           first version called prevPro.setView3D, which does not exist here, so
+           the guard skipped every tick and the Pro pane sat perfectly still
+           while claiming to show a 3D view.
+
+           Each layer keeps its OWN radius, exactly as applyView explains: silk
+           frames at ~12 and the aurora at ~62, so one absolute distance flings
+           the aurora out of shot. */
+        if (!prevPro || !V3 || !prevPro.layers || !prevPro.layers.length) return;
+        if (!proCamZ) proCamZ = prevPro.layers.map(function (L) { return L.cam.position.z; });
+        dt += 0.05;
+        var az = Math.sin(dt * 0.42) * 0.46;
+        var el = 0.22 + Math.sin(dt * 0.27) * 0.10;
+        var dist = 1.08 + Math.sin(dt * 0.19) * 0.07;      // the pinch, demonstrated
+        for (var li = 0; li < prevPro.layers.length; li++) {
+          var L = prevPro.layers[li];
+          var pos = V3.orbitPosition(proCamZ[li] * dist, az, el);
+          L.cam.position.set(pos.x, pos.y, pos.z);
+          L.cam.lookAt(0, 0, 0);
+        }
+      }, 50);
     } catch (e) {
       stopPreviews();
       $('prevRow').classList.add('hide');
@@ -1053,6 +1114,7 @@
 
   function stopPreviews() {
     clearInterval(prevCycle); prevCycle = null;
+    clearInterval(prevOrbit); prevOrbit = null;
     [prevFree, prevPro].forEach(function (p) {
       if (!p) return;
       try { p.stop(); } catch (e) {}
@@ -1200,6 +1262,8 @@
        timer that kept replaying: one path out, silently not taken. The observer
        stays for scrolling within the tab; leaving the tab is decided here. */
     if (tab !== 'field') stopPreviews();
+    // Give the page its scroll back on the way out of the plaza.
+    if (tab !== 'plaza') { var mn = document.querySelector('main'); if (mn) mn.style.overflow = ''; }
     /* The feed borrows the field the same way a project preview does, so
        leaving the plaza has to hand it back — otherwise a capsule keeps
        replaying over your own agents, which is the bug that took a whole round
@@ -2593,6 +2657,11 @@
   function sizeFeed() {
     var host = $('pzProjects'), main = document.querySelector('main'), seg = $('plazaSeg');
     if (!host || !main) return;
+    /* ⚠ ONE SCROLLER UNDER THE THUMB. `main` scrolls too, and with a feed
+       inside it a downward drag can be taken by whichever the browser decides
+       is closer — so the swipe sometimes nudges the page instead of advancing
+       the project. While the feed is up, main is not a scroller. */
+    main.style.overflow = 'hidden';
     var used = seg ? seg.getBoundingClientRect().height + 10 : 0;
     var h = Math.max(320, main.clientHeight - used);
     host.style.height = h + 'px';
@@ -2617,7 +2686,14 @@
       var meta = document.createElement('div');
       meta.className = 'meta';
       var b = document.createElement('b'); b.textContent = cap.title || p.title || '—';
-      var d = document.createElement('p'); d.textContent = cap.subtitle || '';
+      /* Title, one-line subtitle, then the description behind a tap. Same three
+         layers as a video caption: the name, the hook, and the whole story for
+         whoever wants it. The subtitle is shown when there is no description,
+         so a project that never wrote one still says something. */
+      var d = document.createElement('p');
+      var body = cap.desc || cap.subtitle || '';
+      d.textContent = body;
+      d.className = 'clamp';
       var who = document.createElement('div'); who.className = 'who';
       (cap.langs || []).slice(0, 2).forEach(function (l) {
         var tg = document.createElement('span'); tg.className = 'tag';
@@ -2634,7 +2710,34 @@
         c.textContent = cap.dirs.length + ' ' + t('feed_buildings');
         who.appendChild(c);
       }
-      meta.appendChild(b); meta.appendChild(d); meta.appendChild(who);
+      meta.appendChild(b); meta.appendChild(d);
+      /* The toggle only appears when there is something hidden. Offering
+         "more" on a caption that is already whole is a button that does
+         nothing, and people stop trusting the ones that do. Measured after
+         layout, because whether two lines is enough depends on the text, the
+         font and the width — not on a character count. */
+      if (body) {
+        var more = document.createElement('button');
+        more.type = 'button'; more.className = 'more hide';
+        more.textContent = t('feed_more');
+        more.onclick = function (e) {
+          e.stopPropagation();
+          var open = !d.classList.contains('clamp');
+          d.classList.toggle('clamp', open);
+          more.textContent = t(open ? 'feed_more' : 'feed_less');
+        };
+        meta.appendChild(more);
+        /* ⚠ Measured when the slide is LANDED ON, not at build time. A
+           requestAnimationFrame after render still runs while the plaza may be
+           display:none, where scrollHeight equals clientHeight for everything
+           and the toggle hides itself on every caption — which is what it did.
+           Same trap as the observers: nothing is measurable before it is on
+           screen. */
+        s.checkMore = function () {
+          more.classList.toggle('hide', d.scrollHeight - d.clientHeight <= 2);
+        };
+      }
+      meta.appendChild(who);
 
       s.appendChild(railFor(p));
       s.appendChild(meta);
@@ -2673,12 +2776,20 @@
           if (hint) hint.remove();
         }
         playInFeed(projPool[idx]);
+        var el = feed.querySelectorAll('.slide')[idx];
+        if (el && el.checkMore) el.checkMore();
       }, 140);
     });
     // And play the one you land on, without waiting for a scroll that may never
     // come — most people look at the first project before they touch anything.
     feedAt = 0;
     playInFeed(projPool[0]);
+    // The first slide is on screen as soon as the view is, so it can be
+    // measured on the next frame — but only once the view is actually shown.
+    setTimeout(function () {
+      var first = feed.querySelector('.slide');
+      if (first && first.checkMore) first.checkMore();
+    }, 120);
   }
 
   /** The rail: the four things you can do, at thumb height on the right. */
@@ -3161,7 +3272,22 @@
     // empty however many times you have pressed it.
     return Social.projects(100)
       .then(function (j) {
+        /* ── A DIFFERENT ORDER FOR EVERY VIEWER ─────────────────────────
+           Newest-first means the same three projects greet everybody and the
+           hundredth is seen by nobody — and on a wall of work by other people
+           that is the difference between a place and a noticeboard. Shuffled
+           per load, so two people opening the plaza are not handed the same
+           reel and one person opening it twice gets a second look at the
+           plaza rather than a rerun.
+
+           Fisher-Yates, which is the one shuffle that is actually uniform;
+           sorting by Math.random() - 0.5 is the famous wrong answer and it
+           biases toward leaving things where they started. */
         projPool = (j && Array.isArray(j.projects)) ? j.projects : [];
+        for (var k = projPool.length - 1; k > 0; k--) {
+          var r2 = Math.floor(Math.random() * (k + 1));
+          var tmp = projPool[k]; projPool[k] = projPool[r2]; projPool[r2] = tmp;
+        }
         poolAll = projPool.slice();     // a fresh page resets what search filters
         renderProjects();
       })

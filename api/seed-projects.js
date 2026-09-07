@@ -212,6 +212,14 @@ function makeCapsule(i) {
     srcId: 'seed-' + i,
     title: name,
     subtitle: pick(r, BLURBS),
+    // A paragraph behind the one-liner, so the feed's "more" has something to
+    // open and the shape of a real listing is visible from the first swipe.
+    desc: [
+      `${name} is ${pick(r, BLURBS)}.`,
+      `It started as a script I kept pasting between machines, and turned into ${int(r, 2, 9)} files I actually maintain.`,
+      `Written mostly in ${langs[0][0]}. ${int(r, 2, 40)} people have opened issues; ${int(r, 1, 12)} of them became features.`,
+      `No dependencies you have to think about, and it does the one thing on the tin.`,
+    ].join(' '),
     tags: [langs[0][0].toLowerCase(), pick(r, KINDS)],
     cover: cover(hue),
     shots: [],

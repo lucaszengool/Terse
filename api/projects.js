@@ -57,6 +57,10 @@ function sanitize(capsule) {
     srcId: str(capsule.id, 40),
     title: str(capsule.title, 48).trim(),
     subtitle: str(capsule.subtitle, 160).trim(),
+    /* 介绍。副标题是**一行**(卡片上那句),介绍是**一段**(展开才看得全)——
+       和抖音上传时的标题与文案是同一组关系。600 字够写清楚一个项目是什么、
+       为什么做,再长的东西属于 README,不属于一张卡片。 */
+    desc: str(capsule.desc, 600).trim(),
     tags: Array.isArray(capsule.tags) ? capsule.tags.slice(0, 4).map((t) => str(t, 16)) : [],
     cover: dataUrl(capsule.cover),
     shots: Array.isArray(capsule.shots) ? capsule.shots.slice(0, MAX_SHOTS).map(dataUrl).filter(Boolean) : [],

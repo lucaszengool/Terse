@@ -93,6 +93,7 @@
     return {
       title: c.title || p.title || '',
       subtitle: c.subtitle || '',
+      desc: c.desc || '',
       cover: c.cover || '',
       lines: lines.slice(0, 3),
       shots: Array.isArray(c.shots) ? c.shots : [],

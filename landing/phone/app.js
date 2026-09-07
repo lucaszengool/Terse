@@ -117,6 +117,15 @@
       pj_no_city: 'No code city in this one. It was published before the plaza carried them — its owner can press Rescan in Terse on their Mac and publish it again.',
       pj_tap_like: 'Double-tap to like',
       prev_free: 'Free',
+      plan_title: 'Choose a plan', plan_sub: 'Everything in Pro, whichever length suits you.',
+      plan_note: 'Cancel anytime. Prices in USD.',
+      plan_signin: 'Sign in first — a subscription needs an account to live on.',
+      plan_failed: 'Could not start checkout. Try again in a moment.',
+      plan_save: 'BEST VALUE',
+      plan_month_n: 'Monthly', plan_month_d: 'Billed every month', plan_month_p: '$4.99', plan_month_u: '/month',
+      plan_quarter_n: 'Every 3 months', plan_quarter_d: 'Billed quarterly, about $4 a month', plan_quarter_p: '$12', plan_quarter_u: '/quarter',
+      plan_year_n: 'Yearly', plan_year_d: 'Billed once a year, about $1.33 a month', plan_year_p: '$15.99', plan_year_u: '/year',
+      plan_life_n: 'Lifetime', plan_life_d: 'One payment. Nothing to cancel, ever.', plan_life_p: '$25.99', plan_life_u: 'once',
       pj_no_engine: 'The particle field is not running on this device, so there is nothing to play the project in.',
       pj_broke: 'The project could not be drawn: {why}',
       pj_nothing: 'The project could not be drawn on this device.',
@@ -312,6 +321,15 @@
       pj_no_city: '这个项目里没有代码城市。它是在广场开始携带城市之前发布的 —— 作者在 Mac 上点一次「重新扫描」再重新发布,城市就有了。',
       pj_tap_like: '双击点赞',
       prev_free: '免费版',
+      plan_title: '选一个方案', plan_sub: 'Pro 的功能都一样,只是买多久。',
+      plan_note: '随时可取消。价格为美元。',
+      plan_signin: '先登录 —— 订阅要挂在一个账号上。',
+      plan_failed: '没能打开支付页面,稍后再试。',
+      plan_save: '最划算',
+      plan_month_n: '按月', plan_month_d: '每月扣一次', plan_month_p: '$4.99', plan_month_u: '/月',
+      plan_quarter_n: '按季', plan_quarter_d: '每三个月一次,约合每月 $4', plan_quarter_p: '$12', plan_quarter_u: '/季',
+      plan_year_n: '按年', plan_year_d: '一年一次,约合每月 $1.33', plan_year_p: '$15.99', plan_year_u: '/年',
+      plan_life_n: '买断', plan_life_d: '付一次,永远是你的,不用取消。', plan_life_p: '$25.99', plan_life_u: '一次性',
       pj_no_engine: '这台设备上粒子场没跑起来,所以没有地方演这个项目。',
       pj_broke: '这个项目没能画出来:{why}',
       pj_nothing: '这个项目在这台设备上没能画出来。',
@@ -1507,8 +1525,83 @@
   }
   on($('proSheetClose'), 'click', function () { $('proSheet').classList.add('hide'); });
   on($('proSheet'), 'click', function (e) { if (e.target === $('proSheet')) $('proSheet').classList.add('hide'); });
-  on($('proSheetCta'), 'click', function () { location.href = '/#pricing'; });
-  on($('psCta'), 'click', function () { location.href = '/#pricing'; });
+  on($('proSheetCta'), 'click', function () { $('proSheet').classList.add('hide'); openPlans(); });
+  on($('psCta'), 'click', openPlans);
+  on($('planClose'), 'click', function () { $('planSheet').classList.add('hide'); });
+  on($('planSheet'), 'click', function (e) { if (e.target === $('planSheet')) $('planSheet').classList.add('hide'); });
+
+  /* ── Choosing a plan ─────────────────────────────────────────────────────
+     The Mac opens a window to pick one; here it is a sheet, and the tap goes
+     straight to Stripe rather than to a marketing page that then asks again.
+
+     ⚠ The tiers and their copy are the server's — api/server.js owns both the
+     price ids and the wording Stripe shows on the card. Writing prices into the
+     phone would let the number on screen drift from the number charged, which
+     is the one bug in a payment flow nobody forgives. */
+  var PLANS = [
+    { tier: 'pro',           k: 'plan_month' },
+    { tier: 'pro_quarterly', k: 'plan_quarter' },
+    { tier: 'pro_annual',    k: 'plan_year', best: true },
+    { tier: 'pro_lifetime',  k: 'plan_life' },
+  ];
+
+  function openPlans() {
+    var host = $('planList');
+    host.innerHTML = '';
+    $('planNote').textContent = T.user() ? t('plan_note') : t('plan_signin');
+    PLANS.forEach(function (pl) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'plan' + (pl.best ? ' best' : '');
+      var n = document.createElement('span'); n.className = 'pn';
+      var nb = document.createElement('b'); nb.textContent = t(pl.k + '_n');
+      var ns = document.createElement('span'); ns.textContent = t(pl.k + '_d');
+      n.appendChild(nb); n.appendChild(ns);
+      var pp = document.createElement('span'); pp.className = 'pp';
+      var pb = document.createElement('b'); pb.textContent = t(pl.k + '_p');
+      var ps = document.createElement('span'); ps.textContent = t(pl.k + '_u');
+      pp.appendChild(pb); pp.appendChild(ps);
+      if (pl.best) {
+        var sv = document.createElement('span'); sv.className = 'save'; sv.textContent = t('plan_save');
+        pp.appendChild(sv);
+      }
+      b.appendChild(n); b.appendChild(pp);
+      b.onclick = function () { buy(pl.tier, b); };
+      host.appendChild(b);
+    });
+    $('planSheet').classList.remove('hide');
+    if (window.TerseFeel) window.TerseFeel.tap();
+  }
+
+  function buy(tier, btn) {
+    var u = T.user();
+    /* Checkout needs an account to attach the subscription to. Sending a guest
+       to Stripe would take their money and have nowhere to put the entitlement,
+       so the sign-in comes first and says why. */
+    if (!u) {
+      toast(t('plan_signin'));
+      if (window.Clerk) window.Clerk.openSignIn({ redirectUrl: location.pathname });
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
+    fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tier: tier,
+        clerkUserId: u.id,
+        clerkUserEmail: (u.primaryEmailAddress && u.primaryEmailAddress.emailAddress) || '',
+      }),
+    }).then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (j) {
+        if (j && j.url) { location.href = j.url; return; }
+        // The server distinguishes "no such plan" from "plan exists but has no
+        // Stripe price yet" — pass its words through rather than "failed".
+        toast((j && j.error) || t('plan_failed'));
+      })
+      .catch(function () { toast(t('plan_failed')); })
+      .then(function () { if (btn) { btn.disabled = false; btn.style.opacity = ''; } });
+  }
 
   function loadFriendsTab() {
     if (frSeg === 'chats') loadDmList();

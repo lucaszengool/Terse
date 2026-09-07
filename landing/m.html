@@ -388,6 +388,23 @@
     padding:2px 6px;border-radius:9999px;background:rgba(0,0,0,.62);color:var(--dim)}
   .prevtag.on{background:var(--accent);color:#04110c}
 
+  /* One row per plan. The saving is on the row, not in a footnote: the reason
+     anybody picks the long one is that it is cheaper, and hiding that makes the
+     list look like four ways to pay the same money. */
+  .plan{display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:13px;
+    border:1px solid var(--line);background:var(--card);width:100%;text-align:left;
+    transition:transform var(--t-fast) var(--snap),border-color var(--t-fast) var(--glide)}
+  .plan:active{transform:scale(.978)}
+  .plan.best{border-color:rgba(110,231,183,.42)}
+  .plan .pn{flex:1 1 auto;min-width:0}
+  .plan .pn b{display:block;font-size:14.5px;font-weight:600}
+  .plan .pn span{display:block;font-size:11.5px;color:var(--faint);margin-top:2px}
+  .plan .pp{flex:0 0 auto;text-align:right}
+  .plan .pp b{display:block;font-size:15px;font-weight:650}
+  .plan .pp span{display:block;font-size:10.5px;color:var(--faint)}
+  .plan .save{font-size:9px;font-weight:800;letter-spacing:.05em;padding:2px 6px;border-radius:9999px;
+    background:var(--accent);color:#04110c;margin-top:4px;display:inline-block}
+
   .protag{font-size:8.5px;font-weight:800;letter-spacing:.07em;padding:2px 6px;border-radius:9999px;
     background:var(--accent);color:#04110c;flex:0 0 auto}
   .sty.locked{opacity:.55}
@@ -1009,6 +1026,22 @@
     <button data-tab="friends" type="button"><span class="g">☰</span><span data-t="t_friends">Friends</span></button>
     <button data-tab="me" type="button"><span class="g">●</span><span data-t="t_me">Me</span></button>
   </nav>
+</div>
+
+<!-- ── The plans, and the one tap to Stripe ─────────────────────────────
+     The Mac opens a window to choose a plan; on a phone that is a sheet. The
+     prices are NOT written here — they come from the same server that creates
+     the checkout session, so a price on screen can never disagree with the
+     price on the card. -->
+<div class="sheet hide" id="planSheet">
+  <div class="pane">
+    <div class="grab"></div>
+    <div class="row"><b class="grow" data-t="plan_title">Choose a plan</b>
+      <button class="btn ghost" id="planClose" type="button" style="min-height:32px;padding:6px 12px">✕</button></div>
+    <p class="tiny" data-t="plan_sub">Everything in Pro, whichever length suits you.</p>
+    <div class="scroll" id="planList"></div>
+    <p class="tiny" id="planNote"></p>
+  </div>
 </div>
 
 <!-- ── Pro,asked for where it was reached for ─────────────────────────── -->

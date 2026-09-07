@@ -92,7 +92,15 @@ for (const id of buttons) {
 // Cards moved between tabs twice, and their render stayed behind. Every render
 // that draws into a tab must be reachable from the code that switches to it.
 const appJs = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
-const show = appJs.slice(appJs.indexOf('function show(tab)'), appJs.indexOf('function show(tab)') + 1400);
+// ⚠ The WHOLE function, not a fixed slice. This used to take 1400 characters
+// from the start of show() and check the hooks were inside — so the day
+// somebody added a comment near the top, four assertions failed for a reason
+// that had nothing to do with what they assert. Read to the next top-level
+// declaration instead; the claim is "reachable from show()", so the evidence
+// should be all of show().
+const showAt = appJs.indexOf('function show(tab)');
+const showEnd = appJs.indexOf('\n  function ', showAt + 10);
+const show = appJs.slice(showAt, showEnd > 0 ? showEnd : showAt + 4000);
 for (const [tab, fn] of [['plaza', 'loadPlaza'], ['friends', 'loadFriends'], ['room', 'renderRoom'], ['me', 'renderMe']]) {
   ok(`switching to ${tab} calls ${fn}`, show.includes(fn));
 }

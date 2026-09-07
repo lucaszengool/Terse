@@ -108,6 +108,8 @@
       pj_no_city: 'No code city in this one. It was published before the plaza carried them — its owner can press Rescan in Terse on their Mac and publish it again.',
       pj_tap_like: 'Double-tap to like',
       pj_no_engine: 'The particle field is not running on this device, so there is nothing to play the project in.',
+      pj_broke: 'The project could not be drawn: {why}',
+      pj_nothing: 'The project could not be drawn on this device.',
       cmt_title: 'Comments', cmt_empty: 'Nothing said yet.', cmt_reply: 'Reply',
       cmt_reply_to: 'Replying to {name} · tap to cancel', cmt_delete: 'Delete',
       fr_friends: 'Friends', fr_chats: 'Messages',
@@ -291,6 +293,8 @@
       pj_no_city: '这个项目里没有代码城市。它是在广场开始携带城市之前发布的 —— 作者在 Mac 上点一次「重新扫描」再重新发布,城市就有了。',
       pj_tap_like: '双击点赞',
       pj_no_engine: '这台设备上粒子场没跑起来,所以没有地方演这个项目。',
+      pj_broke: '这个项目没能画出来:{why}',
+      pj_nothing: '这个项目在这台设备上没能画出来。',
       cmt_title: '评论', cmt_empty: '还没有人说话。', cmt_reply: '回复',
       cmt_reply_to: '正在回复 {name} · 点一下取消', cmt_delete: '删除',
       fr_friends: '好友', fr_chats: '私信',
@@ -1227,6 +1231,31 @@
      talk to them" could not work at all. Social.adopt() settles it on the phone
      by feeding rooms.js the Clerk id — see social.js for why it is done by
      feeding rather than by editing the shared file. */
+
+  /* ── What the console said ───────────────────────────────────────────────
+     A GLSL program that fails to compile does not throw. three.js writes the
+     driver's log to console.error and then draws nothing — the object stays
+     visible, its buffers stay perfect, and the screen stays empty. That is
+     indistinguishable from every other way this feature has failed, and it is
+     invisible on a desktop because desktop GL compilers accept things WebKit's
+     does not. So the last few console errors ride along with the probe. */
+  var conErr = [];
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      try {
+        var s = Array.prototype.map.call(arguments, function (a) {
+          return (a && a.message) || String(a);
+        }).join(' ');
+        conErr.push(s.slice(0, 500));
+        if (conErr.length > 6) conErr.shift();
+      } catch (e) {}
+      return real.apply(console, arguments);
+    };
+    window.addEventListener('error', function (e) {
+      try { conErr.push('onerror: ' + (e.message || '')); } catch (x) {}
+    });
+  }());
 
   var Social = window.TerseSocial;
   var myPeer = '';        // my own 32-char id, the one other people message
@@ -2370,10 +2399,125 @@
      It is also the answer to the app being janky: one full-screen particle
      system on a phone GPU, never two. */
 
+  /* ⚠ THIS CATCH USED TO BE EMPTY, AND THAT IS MOST OF WHY THIS TOOK FIVE
+     ROUNDS. Every way the preview has failed — stale data, a canvas measured
+     before layout, one thing drawn over another, a WebGL context iOS would not
+     grant — produced the same black window and not one word anywhere. An empty
+     catch on the single call that draws the thing is the worst place in this
+     app to hide a reason.
+
+     Now it says so on screen, and it TELLS THE SERVER, because "try it again
+     and see" is asking somebody else to do my debugging for me. See
+     api/clientlog.js. */
   function replayProject() {
     if (!viewing || !wp) return;
     var cap = window.TersePlazaField.toCapsule(viewing);
-    try { wp.showProject(cap, showLen(viewing)); } catch (e) {}
+    var ok = false, err = '';
+    try {
+      ok = wp.showProject(cap, showLen(viewing)) !== false;
+    } catch (e) {
+      err = (e && (e.message || String(e))) || 'threw';
+      ok = false;
+    }
+    if (!ok) {
+      $('pjNote').textContent = err ? t('pj_broke').replace('{why}', err) : t('pj_nothing');
+      $('pjNote').classList.remove('hide');
+    }
+    /* Sampled LATE on purpose. The first version of this probe fired the
+       instant showProject returned and reported an all-zero position buffer —
+       which was true and meant nothing, because the layer fills and uploads its
+       buffers on the animation frames that follow. A probe that reads before
+       the thing it is watching has happened invents a bug. */
+    setTimeout(function () { reportProject(cap, ok, err); }, 2500);
+  }
+
+  /** One line about what this device actually did. Sent once per open, never
+   *  per frame, and it carries sizes, flags and counts — no capsule, no title,
+   *  no identity. Best-effort by design: a probe that can break the thing it is
+   *  watching is worse than no probe. */
+  var reported = 0;
+  function reportProject(cap, ok, err) {
+    if (Date.now() - reported < 4000) return;
+    reported = Date.now();
+    var L = (wp && wp._lastProjLayout) || {};
+    var gl = '';
+    try {
+      var c = document.createElement('canvas');
+      var g = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (g) {
+        var dbg = g.getExtension('WEBGL_debug_renderer_info');
+        gl = dbg ? String(g.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : 'webgl';
+      } else { gl = 'no webgl'; }
+    } catch (e) { gl = 'gl threw'; }
+    var body = {
+      tag: 'project-open', ok: !!ok, err: err || '',
+      W: L.W || null, H: L.H || null, narrow: L.narrowFrame == null ? null : !!L.narrowFrame,
+      dpr: window.devicePixelRatio || 1,
+      dirs: (cap.dirs || []).length,
+      commits: (cap.commits || []).length,
+      graph: (cap.graph && cap.graph.n && cap.graph.n.length) || 0,
+      imgs: L.imgs == null ? null : L.imgs,
+      engine: !!wp,
+      started: !!(wp && wp._raf),
+      vis: (wp && wp._projLayer && wp._projLayer.u && wp._projLayer.u.uVis)
+        ? wp._projLayer.u.uVis.value : null,
+      // The scene state itself. Everything above can be right while the points
+      // are simply not in the picture — hidden, unparented, or drawn by a
+      // camera that cannot see where they were put.
+      scene: (function () {
+        try {
+          var L = wp._projLayer, cam = wp._silk && wp._silk.cam;
+          var g = L.cityPoints.geometry, pos = g && g.attributes && g.attributes.position;
+          /* The REAL extent, not three.js's cached boundingSphere — that is
+             computed once and kept, so a buffer filled after the first compute
+             reports the old answer forever. Read the array. */
+          /* ⚠ `position` is only where a point STARTS. The shader flies each
+             one from position to aTarget by uForm, so an all-zero `position` is
+             normal and says nothing — I read it first and nearly called it the
+             bug. aTarget is where the city actually is. */
+          function extent(attr) {
+            if (!attr || !attr.array) return 'none';
+            var arr = attr.array, lo = 1e9, hi = -1e9, nz = 0;
+            var step = Math.max(3, Math.floor(arr.length / 3000) * 3);
+            for (var k = 0; k < arr.length; k += step) {
+              var v = arr[k];
+              if (v < lo) lo = v;
+              if (v > hi) hi = v;
+              if (v !== 0) nz++;
+            }
+            return lo.toFixed(2) + '..' + hi.toFixed(2) + ' nz=' + nz + ' ver=' + attr.version;
+          }
+          var tgt = g && g.attributes && g.attributes.aTarget;
+          var col = g && g.attributes && g.attributes.aColor;
+          var scl = g && g.attributes && g.attributes.aScale;
+          return [
+            'cityVis=' + L.cityPoints.visible,
+            'imgVis=' + L.points.visible,
+            'cityParent=' + (L.cityPoints.parent ? L.cityPoints.parent.type : 'NONE'),
+            'imgParent=' + (L.points.parent ? L.points.parent.type : 'NONE'),
+            'count=' + (pos ? pos.count : -1),
+            'draw=' + (g ? g.drawRange.count : -1),
+            'aTarget[' + extent(tgt) + ']',
+            'aColor[' + extent(col) + ']',
+            'aScale[' + extent(scl) + ']',
+            'form=' + (L.u && L.u.uForm ? L.u.uForm.value.toFixed(2) : '?'),
+            'cam=' + (cam ? (cam.isPerspectiveCamera ? 'persp fov' + cam.fov + ' z' + Math.round(cam.position.z) : 'ortho ' + Math.round(cam.left) + '..' + Math.round(cam.right) + ' near' + cam.near + ' far' + cam.far) : 'none'),
+            'size=' + ((wp._lastProjLayout && wp._lastProjLayout.SIZE) || '?'),
+          ].join(' ');
+        } catch (e) { return 'scene threw: ' + (e && e.message); }
+      }()),
+      gl: gl,
+      console: conErr.join(' || ').slice(0, 900),
+      ua: navigator.userAgent,
+      build: window.__TERSE_BUILD || '',
+    };
+    try {
+      fetch('/api/cloud/clientlog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch(function () {});
+    } catch (e) {}
   }
 
   function openProject(p) {

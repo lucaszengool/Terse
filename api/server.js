@@ -1267,6 +1267,9 @@ app.use('/api/cloud/friends', cloudIngestLimiter, require('./friends'));
 // 私信。一对人一条线;第一条搭讪要有由头 —— 对方发布过的项目,或者已经是好友。
 app.use('/api/cloud/dm', cloudIngestLimiter, require('./dm'));
 
+// 一根临时探针:让真机自己说它量到了什么、报了什么错。见 clientlog.js 顶部。
+app.use('/api/cloud/clientlog', cloudIngestLimiter, require('./clientlog'));
+
 // ── Device links (desktop ⇄ phone web app) ──
 // The desktop pushes a live frame every few seconds and the phone streams it, so
 // this rides the same ingest limiter as rooms and cowork rather than the default.

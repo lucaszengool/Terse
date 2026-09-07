@@ -1013,6 +1013,30 @@ export default class MineradioWallpaper {
       (scene || host).add(this._projLayer.cityPoints);
     }
     const layer = this._projLayer;
+
+    /* ⚠ THE BUG THAT MADE THE CITY INVISIBLE ON EVERY PHONE.
+       `gl_PointSize` is in DRAWING-BUFFER pixels, and this renderer runs at
+       setPixelRatio(min(1.5, dpr)) — so on any phone the buffer is 1.5× the CSS
+       size while `uPixel` sat at its declared default of 1, forever. Nothing in
+       this codebase ever assigned it.
+
+       The engine's own particles survived that because they are big:
+       (2.5 + uForm*1.5) ≈ 4px. The project layer's are deliberately small, so
+       that an image made of them reads as an image rather than a blur:
+       (1.15 + uForm*0.75) * 1.6 * aScale = 0.74 … 1.2px. Below 1.0 a point does
+       not rasterise AT ALL, and the rest land on a third of a CSS pixel.
+
+       Measured on an iPhone 15 Pro: every buffer correct, uploaded and formed,
+       the object visible and inside the frustum, uVis 1.0, no console error —
+       and a black screen. It was drawing the whole time, too small to see.
+
+       Set on the project layer only. Doing it globally would grow the field's
+       own particles on every phone, and that is a shipped look, not a bug. */
+    try {
+      const pr = this.renderer.getPixelRatio ? this.renderer.getPixelRatio() : 1;
+      layer.u.uPixel.value = Math.max(1, pr || 1);
+    } catch (e) { /* a missing uniform must never stop the show */ }
+
     clearInterval(this._projRotate);
     // 广场预览带来的评论。列表接口已经把它们一起发过来了,所以这里
     // **不需要再请求一次**。

@@ -116,6 +116,7 @@
       pz_liked: 'Liked', pz_saved: 'Saved',
       pj_no_city: 'No code city in this one. It was published before the plaza carried them — its owner can press Rescan in Terse on their Mac and publish it again.',
       pj_tap_like: 'Double-tap to like',
+      prev_free: 'Free',
       pj_no_engine: 'The particle field is not running on this device, so there is nothing to play the project in.',
       pj_broke: 'The project could not be drawn: {why}',
       pj_nothing: 'The project could not be drawn on this device.',
@@ -310,6 +311,7 @@
       pz_liked: '已赞', pz_saved: '已收藏',
       pj_no_city: '这个项目里没有代码城市。它是在广场开始携带城市之前发布的 —— 作者在 Mac 上点一次「重新扫描」再重新发布,城市就有了。',
       pj_tap_like: '双击点赞',
+      prev_free: '免费版',
       pj_no_engine: '这台设备上粒子场没跑起来,所以没有地方演这个项目。',
       pj_broke: '这个项目没能画出来:{why}',
       pj_nothing: '这个项目在这台设备上没能画出来。',
@@ -652,6 +654,10 @@
        that is otherwise unobservable from outside. */
     window.__terseFieldWp = wp;
 
+    // The engine exists NOW, which may be after the showcase decided it did
+    // not. Ask again from this side; startPreviews is idempotent.
+    startPreviews();
+
     // The field should say something immediately rather than waiting for the
     // next poll — the glyph text is most of what makes it feel alive.
     renderHUD();
@@ -864,6 +870,14 @@
          project IS what the field is about. */
       // Kept so that closing a project can put the field's own voice back
       // straight away instead of leaving it mute until the next poll.
+      /* ⚠ SELF-HEALING, because every one-shot signal I tried here was raced.
+         The IntersectionObserver fires before the engine module resolves; a
+         setTimeout after a tab switch fires before the view has laid out and
+         reports an empty rect. Each failure left the panes dead with no second
+         chance. This poll already runs every few seconds — asking it to make
+         sure is idempotent, costs a rect read, and cannot get stuck. */
+      if (current === 'field' && !viewing && !T.isPro()) startPreviews();
+
       lastStage = o.stage;
       if (!viewing) {
         wp.setStageItems(o.stage);
@@ -915,6 +929,125 @@
     ink: '水墨', neon: '霓虹', vortex: '漩涡', bloom: '绽放', zen: '静水 · 呼吸',
   };
 
+  /* ── The two live previews ───────────────────────────────────────────────
+     The Mac runs a free engine and a Pro engine side by side in its wallpaper
+     panel, and it is right to: "eight choreographies, not eight colour swaps"
+     is a claim, while two panes moving differently is evidence.
+
+     Everything careful here is about the phone having ONE GPU and iOS capping
+     live WebGL contexts — the same limit that made a full-screen second engine
+     fail silently and cost five rounds to find. So:
+
+       · they are built only while the card is actually on screen, and disposed
+         the moment it leaves — an IntersectionObserver, not a boolean somebody
+         has to remember to clear;
+       · they are tiny, so their buffers are a fraction of the field's;
+       · never while a project preview is running, which owns the field;
+       · and if either constructor refuses, the whole row hides and the CSS
+         tiles carry the message alone. A degraded card beats a dead field. */
+  var prevFree = null, prevPro = null, prevObs = null, prevCycle = null;
+
+  function previewsUp() { return !!(prevFree || prevPro); }
+
+  /** Is the card actually on screen? Asked directly rather than trusting the
+   *  observer's last verdict, because that verdict can be stale by the time the
+   *  engine is ready to act on it. */
+  function proCardVisible() {
+    var c = $('proShow');
+    if (!c || c.classList.contains('hide')) return false;
+    var r = c.getBoundingClientRect();
+    return r.bottom > 0 && r.top < (window.innerHeight || 800);
+  }
+
+  function startPreviews() {
+    /* ⚠ THIS GUARD USED TO BE ONE-SHOT AGAINST AN ASYNC DEPENDENCY. The
+       IntersectionObserver fires once, immediately, when it starts observing a
+       card that is already on screen — and at that moment the engine module may
+       still be loading, so `Engine` is null and this returned. The card then
+       never leaves the viewport (the app scrolls an inner <main>, so it does
+       not even move), no second intersection event ever arrives, and the panes
+       never appear. Silent, and it looked exactly like the constructor failing.
+
+       So the engine now calls this too, once it exists, and visibility is asked
+       rather than remembered. */
+    if (previewsUp() || !Engine || T.isPro() || viewing) return;
+    if (!proCardVisible()) return;
+    /* ⚠ A FRESH CANVAS EACH TIME. stopPreviews calls forceContextLoss(), which
+       is the only way to actually hand a WebGL context back on iOS rather than
+       waiting for the GC — but it kills that canvas PERMANENTLY. The element
+       can never hold a context again, so reopening the controls a second time
+       built two engines onto dead canvases and silently drew nothing. Swap in
+       new elements, and the id stays where the CSS and the tests expect it. */
+    var a = freshCanvas('prevFree'), b = freshCanvas('prevPro');
+    if (!a || !b) return;
+    var bed = T.photo() || (window.TerseBeds && window.TerseBeds.render(bedId(), 220, 165));
+    var base = { theme: 'neon', quality: 'low', angle: 42, intensity: 1,
+                 photo: bed || undefined, stagePace: 100000 };
+    try {
+      prevFree = new Engine(a, Object.assign({}, base, { pro: false, style: 'cinematic' }));
+      prevPro = new Engine(b, Object.assign({}, base, { pro: true, style: 'aurora' }));
+      prevFree.start(); prevPro.start();
+      // Enough motion to read. Left at 0 the field never gathers, and two still
+      // panes compare nothing.
+      prevFree.setActivity(0.6); prevPro.setActivity(0.75);
+      $('prevRow').classList.remove('hide');
+      // Handles for diagnosis, same reason as the field's: "is it drawing?" is
+      // otherwise unanswerable from outside.
+      window.__tersePrevFree = prevFree; window.__tersePrevPro = prevPro;
+      requestAnimationFrame(function () {
+        try { prevFree.resize && prevFree.resize(); prevPro.resize && prevPro.resize(); } catch (e) {}
+      });
+      /* The Pro pane walks through the styles it is selling. One frozen style
+         says "a different colour"; four in rotation say "different motion",
+         which is the actual difference. */
+      var ids = ['aurora', 'starfall', 'vortex', 'bloom'], at = 0;
+      clearInterval(prevCycle);
+      prevCycle = setInterval(function () {
+        at = (at + 1) % ids.length;
+        try { prevPro.setStyle && prevPro.setStyle(ids[at]); } catch (e) {}
+      }, 3400);
+    } catch (e) {
+      stopPreviews();
+      $('prevRow').classList.add('hide');
+    }
+  }
+
+  /** Replace a canvas with an identical empty one, keeping id and position. */
+  function freshCanvas(id) {
+    var old = $(id);
+    if (!old) return null;
+    var next = document.createElement('canvas');
+    next.id = id;
+    old.parentNode.replaceChild(next, old);
+    return next;
+  }
+
+  function stopPreviews() {
+    clearInterval(prevCycle); prevCycle = null;
+    [prevFree, prevPro].forEach(function (p) {
+      if (!p) return;
+      try { p.stop(); } catch (e) {}
+      // forceContextLoss is what actually hands the context back; dispose alone
+      // leaves it held until the GC gets round to it, which on iOS is too late.
+      try { p.renderer && p.renderer.forceContextLoss && p.renderer.forceContextLoss(); } catch (e) {}
+      try { p.dispose(); } catch (e) {}
+    });
+    prevFree = prevPro = null;
+    window.__tersePrevFree = window.__tersePrevPro = null;
+  }
+
+  function watchPreviews() {
+    var card = $('proShow');
+    if (!card || !window.IntersectionObserver) return;
+    if (prevObs) prevObs.disconnect();
+    prevObs = new IntersectionObserver(function (entries) {
+      var vis = entries.some(function (e) { return e.isIntersecting; });
+      if (vis && !card.classList.contains('hide')) startPreviews();
+      else stopPreviews();
+    }, { threshold: 0.25 });
+    prevObs.observe(card);
+  }
+
   function renderStyles() {
     import('/app-assets/wallpaper-styles.js' + stamp()).then(function (m) {
       var grid = $('styleGrid');
@@ -924,6 +1057,8 @@
          moment they do — a card selling something you already bought is the
          fastest way to make a paid product feel like a free one. */
       $('proShow').classList.toggle('hide', pro);
+      if (pro) { stopPreviews(); if (prevObs) { prevObs.disconnect(); prevObs = null; } }
+      else watchPreviews();
       /* And the line under the backdrops has to be TRUE. It promised drag,
          pinch and double-tap to everybody while the gesture only answers Pro —
          instructions for something that does nothing are worse than silence. */
@@ -1029,6 +1164,13 @@
        can never get back to my own field" — and it was exactly that, for good.
        Every way out of this view has to end it, not just the one I built. */
     if (current === 'project' && tab !== 'project') endProject();
+    /* ⚠ NAVIGATION IS AUTHORITATIVE FOR THE PREVIEW PANES TOO. They were torn
+       down by an IntersectionObserver alone, and measured here it did not fire
+       when the field view was hidden — so two WebGL contexts stayed live while
+       somebody browsed the plaza. That is the same class of leak as the project
+       timer that kept replaying: one path out, silently not taken. The observer
+       stays for scrolling within the tab; leaving the tab is decided here. */
+    if (tab !== 'field') stopPreviews();
     current = tab;
     var views = document.querySelectorAll('.view');
     for (var i = 0; i < views.length; i++) views[i].classList.toggle('on', views[i].id === 'v-' + tab);
@@ -1037,6 +1179,12 @@
     // The wallpaper tab is the only one meant to be looked THROUGH; everywhere
     // else the field is a backdrop and the text has to win.
     $('scrim').classList.toggle('clear', tab === 'field');
+    /* Re-observe rather than poke startPreviews on a timer. A fixed delay is
+       another one-shot race — at 60ms the view has only just been shown and its
+       rect can still be empty, so the panes never come back after you leave the
+       tab once. Re-observing fires the callback with the REAL current
+       visibility, whenever that turns out to be. */
+    if (tab === 'field' && !T.isPro()) setTimeout(watchPreviews, 60);
     if (tab === 'plaza') loadPlazaTab();
     if (tab === 'friends') loadFriendsTab();
     if (tab === 'room') renderRoom();
@@ -2596,6 +2744,9 @@
   function openProject(p) {
     if (!window.TersePlazaField) return;
     viewing = p;
+    // The field is about to be somebody's project. Two showcase contexts on top
+    // of that is exactly the spend that broke this before.
+    stopPreviews();
     var cap = window.TersePlazaField.toCapsule(p);
     $('pjTitle').textContent = cap.title || '—';
     $('pjSub').textContent = cap.subtitle || '';
@@ -2739,6 +2890,15 @@
     v.classList.toggle('bare', !!on);
     try { localStorage.setItem(LS_BARE, on ? '1' : '0'); } catch (e) {}
     if (window.TerseFeel) window.TerseFeel.tap();
+    /* ⚠ THE ONE TRIGGER THAT IS NOT A RACE. Opening the controls IS the moment
+       the showcase becomes visible, it is a real tap so the view is laid out
+       and the engine long since loaded, and collapsing them is the moment it
+       stops being visible. Every indirect signal I tried — an observer, a
+       timeout after a tab switch, the poll — was either raced or simply not
+       running for a guest, and each failure left two blank canvases sitting
+       there. A user action cannot be early. */
+    if (on) stopPreviews();
+    else setTimeout(startPreviews, 80);
   }
   (function initBare() {
     var v = $('v-field');

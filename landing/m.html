@@ -377,6 +377,17 @@
 
   /* The PRO badge, and what a locked control looks like. Dimmed, never hidden:
      you can see exactly what you are missing. */
+  /* Two live panes. Deliberately small: enough to read the motion, cheap
+     enough that a phone can afford both alongside the field. */
+  .prevrow{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .prev{position:relative;aspect-ratio:4/3;border-radius:11px;overflow:hidden;
+    border:1px solid var(--line);background:#05070a}
+  .prev.pro{border-color:rgba(110,231,183,.42)}
+  .prev canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .prevtag{position:absolute;left:7px;bottom:6px;font-size:9px;font-weight:800;letter-spacing:.06em;
+    padding:2px 6px;border-radius:9999px;background:rgba(0,0,0,.62);color:var(--dim)}
+  .prevtag.on{background:var(--accent);color:#04110c}
+
   .protag{font-size:8.5px;font-weight:800;letter-spacing:.07em;padding:2px 6px;border-radius:9999px;
     background:var(--accent);color:#04110c;flex:0 0 auto}
   .sty.locked{opacity:.55}
@@ -736,6 +747,22 @@
            moving rather than describing it. -->
       <div class="card proshow hide" id="proShow">
         <div class="row"><h2 class="grow" data-t="ps_title">What Pro adds</h2><span class="protag">PRO</span></div>
+        <!-- ── The real thing, twice, side by side ─────────────────────────
+             The Mac's wallpaper panel runs two live engines here — free on the
+             left, Pro on the right — because the difference between eight
+             choreographies and one is not a sentence, it is a picture that
+             moves. These are the same engine at a fraction of the size.
+
+             ⚠ Built ONLY when this card is actually on screen, and torn down
+             the moment it is not. A phone has one GPU and iOS caps live WebGL
+             contexts; spending two of them on a card nobody is looking at is
+             how you lose the field itself. If either refuses to start, the row
+             hides and the CSS tiles below carry the message on their own. -->
+        <div class="prevrow hide" id="prevRow">
+          <div class="prev"><canvas id="prevFree"></canvas><span class="prevtag" data-t="prev_free">Free</span></div>
+          <div class="prev pro"><canvas id="prevPro"></canvas><span class="prevtag on">PRO</span></div>
+        </div>
+
         <div class="ps-grid">
           <div class="ps">
             <div class="ps-vis ps-typo"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>

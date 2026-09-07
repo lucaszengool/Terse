@@ -85,14 +85,51 @@ const hsl = (h, s, l) => {
   return [f(0), f(8), f(4)];
 };
 
-/** A soft two-colour field, 96px — enough for the sampler, ~1KB on the wire. */
-function cover(hue) {
-  const buf = png(96, 72, (u, v) => {
-    const t = (u * 0.65 + v * 0.35);
-    const c1 = hsl(hue, 0.62, 0.52), c2 = hsl((hue + 48) % 360, 0.55, 0.24);
-    return [0, 1, 2].map((i) => Math.round(c1[i] * (1 - t) + c2[i] * t));
-  });
-  return 'data:image/png;base64,' + buf.toString('base64');
+/* ── Covers ───────────────────────────────────────────────────────────────
+   SIX patterns, not one gradient. The cover is what gathers out of the
+   particles first, so it is the first thing that says "this is a different
+   project" — and a hundred diagonal fades in a hundred hues still read as a
+   hundred of the same thing, because the SHAPE is what the eye sorts on before
+   the colour. Each is a pure function of (u, v), which is all the PNG writer
+   wants, and each still costs about a kilobyte. */
+const PATTERNS = ['fade', 'rings', 'bars', 'rays', 'blob', 'grid'];
+
+function cover(hue, r) {
+  const kind = pick(r, PATTERNS);
+  const sat = 0.42 + r() * 0.4;
+  const spin = (hue + 40 + Math.round(r() * 200)) % 360;   // the partner hue
+  const a = hsl(hue, sat, 0.30 + r() * 0.28);
+  const b = hsl(spin, sat * 0.9, 0.16 + r() * 0.22);
+  const mix = (t) => [0, 1, 2].map((i) => Math.round(a[i] * (1 - t) + b[i] * t));
+  const k1 = 2 + Math.round(r() * 5);          // how many rings / bars / rays
+  const ang = r() * Math.PI;
+  const cx = 0.3 + r() * 0.4, cy = 0.3 + r() * 0.4;
+
+  const fn = {
+    fade: (u, v) => mix(u * Math.cos(ang) + v * Math.sin(ang)),
+    rings: (u, v) => {
+      const d = Math.hypot(u - cx, v - cy) * k1;
+      return mix((Math.sin(d * 6.28) + 1) / 2);
+    },
+    bars: (u, v) => {
+      const t = (u * Math.cos(ang) + v * Math.sin(ang)) * k1;
+      return mix(t - Math.floor(t) < 0.5 ? 0.12 : 0.88);
+    },
+    rays: (u, v) => {
+      const th = Math.atan2(v - cy, u - cx);
+      return mix((Math.sin(th * k1) + 1) / 2);
+    },
+    blob: (u, v) => {
+      const d = Math.hypot((u - cx) * 1.4, v - cy);
+      return mix(Math.min(1, Math.max(0, (d - 0.12) * 2.4)));
+    },
+    grid: (u, v) => {
+      const gu = Math.floor(u * k1), gv = Math.floor(v * k1);
+      return mix((gu + gv) % 2 ? 0.15 : 0.8);
+    },
+  }[kind];
+
+  return 'data:image/png;base64,' + png(96, 72, fn).toString('base64');
 }
 
 /* ── The material ─────────────────────────────────────────────────────────
@@ -125,16 +162,41 @@ const BLURBS = [
   'shrinking docker images by looking at them',
   'a linter that explains itself',
 ];
+/* ⚠ THE KEYS ARE LOWERCASE AND THEY ARE NOT DECORATIVE. lang-colors.js is keyed
+   'rust' / 'ts' / 'c++', and anything it does not recognise is painted with one
+   grey fallback. The first version of this file said 'TypeScript' and 'Rust',
+   so every tower in all hundred cities came out the same grey — which is most
+   of why they looked alike. These are the seventeen the table actually knows. */
 const LANGS = [
-  [['TypeScript', 0.71], ['CSS', 0.18], ['HTML', 0.11]],
-  [['Rust', 0.86], ['TOML', 0.08], ['Shell', 0.06]],
-  [['Python', 0.78], ['Jupyter', 0.14], ['Makefile', 0.08]],
-  [['Go', 0.91], ['Shell', 0.06], ['Dockerfile', 0.03]],
-  [['Swift', 0.74], ['Objective-C', 0.16], ['Ruby', 0.10]],
-  [['JavaScript', 0.64], ['SCSS', 0.22], ['HTML', 0.14]],
-  [['C++', 0.69], ['CMake', 0.19], ['C', 0.12]],
-  [['Elixir', 0.82], ['HEEx', 0.12], ['Shell', 0.06]],
+  [['ts', 0.71], ['css', 0.18], ['html', 0.11]],
+  [['rust', 0.86], ['shell', 0.09], ['c', 0.05]],
+  [['python', 0.78], ['shell', 0.14], ['sql', 0.08]],
+  [['go', 0.91], ['shell', 0.06], ['sql', 0.03]],
+  [['swift', 0.74], ['c', 0.16], ['ruby', 0.10]],
+  [['js', 0.64], ['css', 0.22], ['html', 0.14]],
+  [['c++', 0.69], ['c', 0.19], ['python', 0.12]],
+  [['java', 0.62], ['kotlin', 0.28], ['sql', 0.10]],
+  [['kotlin', 0.81], ['java', 0.13], ['shell', 0.06]],
+  [['ruby', 0.77], ['js', 0.15], ['css', 0.08]],
+  [['php', 0.68], ['sql', 0.20], ['html', 0.12]],
+  [['c#', 0.84], ['sql', 0.11], ['shell', 0.05]],
+  [['html', 0.46], ['css', 0.34], ['js', 0.20]],
+  [['sql', 0.58], ['python', 0.29], ['shell', 0.13]],
+  [['shell', 0.55], ['python', 0.27], ['c', 0.18]],
+  [['c', 0.88], ['shell', 0.08], ['python', 0.04]],
 ];
+
+/* The eight architectures in city-styles.js. Every seed used to leave this
+   empty, which means every one of the hundred was 'modern' — one skyline,
+   painted a hundred times. This is the single biggest difference between two
+   cities, so it is the first thing that should vary. */
+const STYLES = ['modern', 'tang', 'edo', 'giza', 'hellas', 'maya', 'persia', 'norse'];
+
+/* How a repository is SHAPED, which is the second biggest difference. A monorepo
+   is a wall of similar towers; a library is one tall thing with outbuildings;
+   a monolith is a single slab. Picking a shape and then generating to it is what
+   stops a hundred random draws from converging on the same average city. */
+const SHAPES = ['monorepo', 'library', 'monolith', 'scatter', 'twin'];
 const DIRNAMES = ['src', 'lib', 'core', 'cli', 'server', 'web', 'ui', 'docs', 'tests',
   'scripts', 'examples', 'internal', 'pkg', 'api', 'crates', 'tools', 'assets', 'bench'];
 const KIND_OF = { docs: 'docs', tests: 'test', assets: 'asset', examples: 'docs',
@@ -159,21 +221,52 @@ function makeCapsule(i) {
   const langs = pick(r, LANGS);
   const hue = int(r, 0, 359);
 
-  // Buildings. Sizes span orders of magnitude, like a real tree — which is what
-  // makes the log-scaled skyline worth having.
-  const n = int(r, 5, 13);
+  /* ── The skyline ─────────────────────────────────────────────────────────
+     Generated to a SHAPE rather than drawn from one distribution. A hundred
+     independent random draws all converge on the same average city — which is
+     exactly what the first version produced. A monorepo is a wall of similar
+     towers; a library is one tall thing with outbuildings; a monolith is a
+     single slab with a couple of sheds. Those read as different places from
+     across the room, which is the distance a feed is looked at from. */
+  const shape = pick(r, SHAPES);
+  const n = shape === 'monolith' ? int(r, 3, 5)
+          : shape === 'library' ? int(r, 4, 8)
+          : shape === 'twin' ? int(r, 6, 10)
+          : shape === 'monorepo' ? int(r, 12, 22)
+          : int(r, 7, 16);
   const names = [];
-  while (names.length < n) { const d = pick(r, DIRNAMES); if (!names.includes(d)) names.push(d); }
-  const dirs = names.map((nm) => {
-    const files = int(r, 3, 240);
+  while (names.length < n && names.length < DIRNAMES.length) {
+    const d = pick(r, DIRNAMES);
+    if (!names.includes(d)) names.push(d);
+  }
+  const dirs = names.map((nm, k) => {
+    let files;
+    if (shape === 'library')      files = k === 0 ? int(r, 180, 420) : int(r, 3, 40);
+    else if (shape === 'monolith') files = k === 0 ? int(r, 300, 900) : int(r, 2, 25);
+    else if (shape === 'twin')     files = k < 2 ? int(r, 140, 260) : int(r, 5, 60);
+    else if (shape === 'monorepo') files = int(r, 40, 160);          // a wall, evenly tall
+    else                           files = int(r, 3, 240);           // scatter
+    // Bytes per file varies by an order of magnitude too, so two buildings with
+    // the same file count are still not the same building.
+    const dense = 900 + Math.round(r() * r() * 40000);
+    // Sub-buildings on some, not all — the second ring of the sunburst and the
+    // smaller massing on the tower come from these.
+    const kidN = r() < 0.45 ? int(r, 1, 5) : 0;
+    const kids = [];
+    for (let q = 0; q < kidN; q++) kids.push([pick(r, DIRNAMES), int(r, 1, 60), int(r, 400, 90000)]);
     return {
       name: nm,
       files,
-      bytes: Math.round(files * int(r, 900, 26000)),
+      bytes: Math.round(files * dense),
       kind: KIND_OF[nm] || 'code',
-      langs: [[langs[0][0], 0.6 + r() * 0.4]],
-      kids: [],
+      // A building takes the colour of ITS OWN main language, not the project's
+      // — that is what makes a city multicoloured rather than one hue repeated.
+      langs: [[pick(r, langs)[0], 0.55 + r() * 0.45]],
+      kids,
       churn: int(r, 1, 400),
+      // Age drives the window warmth and the weathering in several styles.
+      age_days: int(r, 20, 2600),
+      depth: int(r, 1, 4),
     };
   });
 
@@ -220,13 +313,14 @@ function makeCapsule(i) {
       `Written mostly in ${langs[0][0]}. ${int(r, 2, 40)} people have opened issues; ${int(r, 1, 12)} of them became features.`,
       `No dependencies you have to think about, and it does the one thing on the tin.`,
     ].join(' '),
-    tags: [langs[0][0].toLowerCase(), pick(r, KINDS)],
-    cover: cover(hue),
+    tags: [langs[0][0], pick(r, KINDS)],
+    cover: cover(hue, r),
     shots: [],
     lines: [`${files} files`, `${people.length} contributor${people.length > 1 ? 's' : ''}`],
     files,
     langs,
-    style: '',
+    // One of the eight, so the plaza is eight architectures rather than one.
+    style: pick(r, STYLES),
     dirs,
     links,
     commits,

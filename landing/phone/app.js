@@ -2898,7 +2898,7 @@
       T.setMuted(false);
       var cur = projPool[feedAt];
       var tune = cur && window.TersePlazaField.toCapsule(cur).tune;
-      if (tune) T.play(tune);
+      if (tune) T.play(tune, { key: window.TersePlazaField.toCapsule(cur).key });
       startTuneDrive();
     } else {
       T.stop();
@@ -2940,7 +2940,7 @@
        inheriting the last one: the previous author's choice is not this one's. */
     if (sndOn && window.TerseTunes) {
       var tn = window.TersePlazaField.toCapsule(p).tune;
-      if (tn) window.TerseTunes.play(tn);
+      if (tn) window.TerseTunes.play(tn, { key: window.TersePlazaField.toCapsule(p).key });
       else window.TerseTunes.stop();
     }
     var cap = window.TersePlazaField.toCapsule(p);

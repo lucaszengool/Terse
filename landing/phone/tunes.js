@@ -33,8 +33,17 @@
     drift: { bpm: 72, name: 'Drift' },
     arp: { bpm: 120, name: 'Arp' },
     neon: { bpm: 96, name: 'Neon' },
+    lofi: { bpm: 84, name: 'Lo-fi' },
+    rush: { bpm: 140, name: 'Rush' },
+    glass: { bpm: 90, name: 'Glass' },
+    deep: { bpm: 68, name: 'Deep' },
+    chime: { bpm: 112, name: 'Chime' },
+    dust: { bpm: 60, name: 'Dust' },
+    march: { bpm: 100, name: 'March' },
+    bloom: { bpm: 80, name: 'Bloom' },
   };
-  var ORDER = ['pulse', 'drift', 'arp', 'neon'];
+  var ORDER = ['pulse', 'drift', 'arp', 'neon', 'lofi', 'rush',
+               'glass', 'deep', 'chime', 'dust', 'march', 'bloom'];
 
   function ensure() {
     if (ctx) return ctx;
@@ -108,7 +117,11 @@
 
   var A = 55;                                   // A1
   var MINOR = [0, 3, 7, 10, 12, 15, 19, 22];    // 小调七和弦音阶,怎么弹都不难听
-  var hz = function (semi) { return A * Math.pow(2, semi / 12); };
+  /* ⚠ 调号。十二首曲子分给五十条帖子,每首要出现四遍 —— "配了乐"就成了
+     "又是这首"。移调是最便宜的解法:同一套音型换个调,听上去就是另一段音乐,
+     而代码一个字节都不用多。12 首 × 12 个调 = 144 种不重样的组合。 */
+  var key = 0;
+  var hz = function (semi) { return A * Math.pow(2, (semi + key) / 12); };
 
   /* ── 四首曲子。参数 s = 第几个十六分音符 ────────────────────────────── */
   var PLAY = {
@@ -137,6 +150,59 @@
       }
       if (s % 2 === 1) tone(at, hz(MINOR[(s % 6)]), 0.1, 0.09, 'sawtooth');
     },
+    /* 这八首是后加的。四首撑不起一个广场:五十条帖子分四首,每一首都要出现十二遍,
+       "配了乐"就变成"又是那一首"。十二首之后,连着刷十条才可能撞上一次重复。 */
+    lofi: function (at, s) {
+      if (s % 8 === 0) tone(at, 110, 0.18, 0.55, 'sine', 48);
+      // 摇摆:反拍不落在正中间,落在三分之二处 —— lo-fi 的全部人格在这一点上。
+      if (s % 8 === 5) noise(at, 0.045, 0.07, 5200);
+      if (s % 16 === 0) chord(at, [hz(MINOR[0] + 12), hz(MINOR[2] + 12), hz(MINOR[4] + 12)], 1.6, 0.18);
+      if (s % 16 === 8) chord(at, [hz(MINOR[1] + 12), hz(MINOR[3] + 12), hz(MINOR[5] + 12)], 1.6, 0.18);
+    },
+    rush: function (at, s) {
+      tone(at, hz(MINOR[s % 4]), 0.07, 0.14, 'sawtooth');
+      if (s % 4 === 0) tone(at, 140, 0.12, 0.85, 'sine', 46);
+      if (s % 4 === 2) noise(at, 0.03, 0.11, 7500);
+      if (s % 16 === 12) tone(at, hz(MINOR[6] + 12), 0.22, 0.2, 'square');
+    },
+    glass: function (at, s) {
+      // 钟:三角波加一个高八度的泛音,衰减长。
+      if (s % 6 === 0) {
+        var n = hz(MINOR[(s / 6) % MINOR.length] + 24);
+        tone(at, n, 1.4, 0.10, 'triangle');
+        tone(at + 0.02, n * 2, 0.9, 0.04, 'sine');
+      }
+      if (s % 32 === 0) chord(at, [hz(MINOR[0]), hz(MINOR[4])], 2.6, 0.12);
+    },
+    deep: function (at, s) {
+      if (s % 16 === 0) tone(at, 96, 0.5, 1.0, 'sine', 34);
+      if (s % 8 === 0) tone(at, hz(MINOR[(s / 8) % 3]) / 2, 1.0, 0.22, 'sine');
+      if (s % 32 === 16) noise(at, 0.3, 0.03, 900);
+    },
+    chime: function (at, s) {
+      if (s % 3 === 0) tone(at, hz(MINOR[(s / 3) % MINOR.length] + 24), 0.5, 0.09, 'sine');
+      if (s % 8 === 0) tone(at, hz(MINOR[0] + 12), 0.3, 0.16, 'triangle');
+      if (s % 16 === 8) noise(at, 0.04, 0.06, 8000);
+    },
+    dust: function (at, s) {
+      // 几乎全是质感:一层低噪,偶尔一个音。安静的那一首,广场也需要一首安静的。
+      if (s % 4 === 0) noise(at, 0.5, 0.035, 700);
+      if (s % 24 === 0) tone(at, hz(MINOR[(s / 24) % 5] + 12), 1.8, 0.07, 'sine');
+    },
+    march: function (at, s) {
+      if (s % 4 === 0) tone(at, 150, 0.13, 0.6, 'sine', 70);
+      if (s % 4 === 2) tone(at, 190, 0.10, 0.35, 'sine', 90);
+      if (s % 8 === 6) noise(at, 0.05, 0.09, 4200);
+      if (s % 32 === 0) chord(at, [hz(MINOR[0] + 12), hz(MINOR[3] + 12)], 1.2, 0.14);
+    },
+    bloom: function (at, s) {
+      // 涨上来再散开。和弦的起音故意慢,所以它是"浮现",不是"敲下去"。
+      if (s % 24 === 0) {
+        var k = (s / 24) % 4;
+        chord(at, [hz(MINOR[k] + 12), hz(MINOR[k + 2] + 12), hz(MINOR[k + 4] + 12)], 2.8, 0.26);
+      }
+      if (s % 12 === 6) tone(at, hz(MINOR[(s / 12) % 6] + 24), 0.8, 0.06, 'triangle');
+    },
   };
 
   /* 排程器。WebAudio 的标准写法:用 setInterval 提前把音排进音频时钟,
@@ -151,11 +217,13 @@
     }
   }
 
-  function play(id) {
+  function play(id, opts) {
     if (!TRACKS[id]) { stop(); return false; }
     if (!ensure()) return false;
     if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
-    if (current === id) return true;
+    var k = Math.max(0, Math.min(11, ((opts && opts.key) | 0)));
+    if (current === id && key === k) return true;
+    key = k;
     current = id; step = 0;
     nextAt = ctx.currentTime + 0.06;
     master.gain.cancelScheduledValues(ctx.currentTime);

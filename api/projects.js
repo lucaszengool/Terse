@@ -37,7 +37,8 @@ const KINDS = ['project', 'text', 'image'];
 /* 配乐。胶囊里存的是**曲子的名字**,不是音频 —— 声音是每台设备自己用 WebAudio
    弹出来的(见 landing/phone/tunes.js)。所以这里只认这四个名字:别的一律当没有,
    而不是原样存下去,否则这个字段就成了一个可以往里塞任意字符串的洞。 */
-const TUNES = ['pulse', 'drift', 'arp', 'neon'];
+const TUNES = ['pulse', 'drift', 'arp', 'neon', 'lofi', 'rush',
+               'glass', 'deep', 'chime', 'dust', 'march', 'bloom'];
 /** 一个人最多挂多少个项目在广场上。防的是刷屏,不是防坏人。 */
 const MAX_PER_IDENTITY = 24;
 
@@ -88,6 +89,9 @@ function sanitize(capsule) {
       ? capsule.frames.slice(0, MAX_FRAMES).map(dataUrl).filter(Boolean) : [],
     fps: Math.max(2, Math.min(24, parseInt(capsule.fps, 10) || 12)),
     tune: TUNES.indexOf(String(capsule.tune || '')) >= 0 ? String(capsule.tune) : '',
+    // 调号。见 tunes.js:同一首换个调就是另一段音乐,而这是让五十条帖子各有各的
+    // 配乐最省的办法 —— 存一个 0–11 的小整数,不存一秒钟音频。
+    key: Math.max(0, Math.min(11, parseInt(capsule.key, 10) || 0)),
     shots: Array.isArray(capsule.shots) ? capsule.shots.slice(0, MAX_SHOTS).map(dataUrl).filter(Boolean) : [],
     lines: Array.isArray(capsule.lines) ? capsule.lines.slice(0, 4).map((l) => str(l, 40)) : [],
     files: Math.max(0, Math.min(9_999_999, parseInt(capsule.files, 10) || 0)),

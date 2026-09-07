@@ -318,6 +318,18 @@
   .cmframes img{width:52px;height:52px;object-fit:cover;border-radius:7px;flex:0 0 auto;
     border:1px solid var(--line2)}
 
+  .tunes{display:flex;gap:6px;overflow-x:auto}
+  .tunes button{flex:0 0 auto;padding:7px 13px;border-radius:9999px;font-size:12.5px;
+    color:var(--dim);background:rgba(0,0,0,.4);border:1px solid var(--line);min-height:0}
+  .tunes button.on{color:#04110c;background:var(--accent);border-color:transparent;font-weight:650}
+  .sndbtn{position:absolute;z-index:3;right:16px;bottom:calc(var(--safe-b) + 150px);
+    width:40px;height:40px;border-radius:50%;font-size:16px;
+    background:rgba(10,12,15,.62);border:1px solid var(--line2);color:var(--dim);
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    display:grid;place-items:center;transition:transform var(--t-fast) var(--snap)}
+  .sndbtn:active{transform:scale(.9)}
+  .sndbtn.on{color:var(--accent);border-color:rgba(110,231,183,.4)}
+
   .swipehint{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 74px);
     text-align:center;font-size:12px;color:var(--faint);pointer-events:none;
     animation:swipeUp 2.1s var(--glide) infinite}
@@ -976,6 +988,10 @@
           <!-- Posting lives where the posts are. Bottom-right above the tab bar,
                which is where a thumb already is after a swipe. -->
           <button class="fab" id="composeFab" type="button" aria-label="Post">＋</button>
+          <!-- Sound is OFF until asked for. iOS will not start audio without a
+               gesture anyway, and a feed that makes noise on open is a feed
+               people close. -->
+          <button class="sndbtn" id="sndBtn" type="button" aria-label="Sound">♪</button>
           <div class="empty hide" id="projEmpty" data-t="pz_none">Nothing published yet.</div>
         </div>
       </section>
@@ -1236,6 +1252,13 @@
       </div>
 
       <!-- Every kind gets a caption, because every kind is a post. -->
+      <!-- A sound, chosen not uploaded. The capsule carries the NAME; every
+           device plays it itself, which is the same bargain the rest of this
+           app makes with pictures. -->
+      <div class="row" style="margin-top:10px;align-items:center">
+        <span class="tiny" style="flex:0 0 auto" data-t="cm_sound">Sound</span>
+        <div class="tunes grow" id="cmTunes"></div>
+      </div>
       <input type="text" id="cmName" placeholder="Title" maxlength="48" style="width:100%;margin-top:10px;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;color:var(--ink);font:inherit;font-size:15px;padding:11px 12px">
       <textarea id="cmDesc" rows="3" placeholder="Description" maxlength="600" style="width:100%;margin-top:8px;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;color:var(--ink);font:inherit;font-size:14px;padding:11px 12px;resize:vertical"></textarea>
       <p class="tiny hide" id="cmNote"></p>
@@ -1303,6 +1326,7 @@
 <script src="/phone/capture.js"></script>
 <script src="/phone/social.js"></script>
 <script src="/phone/frames.js"></script>
+<script src="/phone/tunes.js"></script>
 <script src="/phone/app.js"></script>
 </body>
 </html>

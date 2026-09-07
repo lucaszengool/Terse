@@ -100,6 +100,7 @@
       kind: c.kind || 'project',
       frames: Array.isArray(c.frames) ? c.frames : [],
       fps: c.fps || 12,
+      tune: c.tune || '',
       cover: c.cover || '',
       lines: lines.slice(0, 3),
       shots: Array.isArray(c.shots) ? c.shots : [],

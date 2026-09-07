@@ -127,6 +127,7 @@
       cm_post: 'Post', cm_posting: 'Posting…', cm_posted: 'Posted',
       cm_need_scan: 'Scan a repository first', cm_need_text: 'Write something first',
       cm_need_pic: 'Pick a picture first',
+      cm_sound: 'Sound', cm_nosound: 'None',
       feed_more: 'more', feed_less: 'less', prev_3d: 'drag · pinch',
       pz_searching: 'Searching the whole plaza…',
       plan_title: 'Choose a plan', plan_sub: 'Everything in Pro, whichever length suits you.',
@@ -343,6 +344,7 @@
       cm_post: '发布', cm_posting: '发布中…', cm_posted: '已发布',
       cm_need_scan: '先扫一个仓库', cm_need_text: '先写点什么',
       cm_need_pic: '先选一张图',
+      cm_sound: '配乐', cm_nosound: '无',
       feed_more: '展开', feed_less: '收起', prev_3d: '拖着转 · 捏合',
       pz_searching: '正在搜整个广场…',
       plan_title: '选一个方案', plan_sub: 'Pro 的功能都一样,只是买多久。',
@@ -1279,7 +1281,15 @@
        stays for scrolling within the tab; leaving the tab is decided here. */
     if (tab !== 'field') stopPreviews();
     // Give the page its scroll back on the way out of the plaza.
-    if (tab !== 'plaza') { var mn = document.querySelector('main'); if (mn) mn.style.overflow = ''; }
+    if (tab !== 'plaza') {
+      var mn = document.querySelector('main'); if (mn) mn.style.overflow = '';
+      // Sound belongs to the feed. Walking away from it should be quiet, and a
+      // track still playing under another tab is the thing people reach for the
+      // hardware button to stop.
+      if (sndOn && window.TerseTunes) { window.TerseTunes.stop(); stopTuneDrive(); }
+      sndOn = false;
+      if ($('sndBtn')) $('sndBtn').classList.remove('on');
+    }
     /* The feed borrows the field the same way a project preview does, so
        leaving the plaza has to hand it back — otherwise a capsule keeps
        replaying over your own agents, which is the bug that took a whole round
@@ -2867,11 +2877,72 @@
   }
 
   /** Play the capsule you have landed on, on the field's own canvas. */
+  /* ── 声音 ─────────────────────────────────────────────────────────────────
+     OFF until asked for, and it has to be: iOS will not start audio without a
+     gesture, and a feed that makes noise the moment it opens is a feed people
+     close. The button IS the gesture, and after it the context stays alive.
+
+     ⚠ The sound is SYNTHESISED, not streamed (see tunes.js), which is what
+     makes the next part honest: the number driving the particles is the sound
+     being produced right now, not an analysis of a recording that then has to
+     be lined up with it. */
+  var sndOn = false, tuneRaf = null;
+
+  on($('sndBtn'), 'click', function () {
+    var T = window.TerseTunes;
+    if (!T) return;
+    sndOn = !sndOn;
+    $('sndBtn').classList.toggle('on', sndOn);
+    if (sndOn) {
+      T.unlock();                       // must be in this call stack
+      T.setMuted(false);
+      var cur = projPool[feedAt];
+      var tune = cur && window.TersePlazaField.toCapsule(cur).tune;
+      if (tune) T.play(tune);
+      startTuneDrive();
+    } else {
+      T.stop();
+      stopTuneDrive();
+    }
+    if (window.TerseFeel) window.TerseFeel.tap();
+  });
+
+  /** The field dances to it. Bass pushes a kick through the particles; the
+   *  overall level raises activity, which is the same dial the agents drive. */
+  function startTuneDrive() {
+    stopTuneDrive();
+    var loop = function () {
+      tuneRaf = requestAnimationFrame(loop);
+      if (!sndOn || !wp || !window.TerseTunes) return;
+      var l = window.TerseTunes.level();
+      /* `norm` and not `bass`, because the four tracks are not on one scale —
+         pulse has a kick drum and drift is a pad. tunes.js normalises against a
+         decaying peak so each one uses the whole range. A floor under it, so a
+         quiet bar makes the field breathe rather than stop. */
+      wp.setActivity(Math.max(0.35, Math.min(1, 0.35 + l.norm * 0.65)));
+      if (l.hit) { try { wp.pulse(Math.min(1.1, 0.45 + l.norm * 0.6)); } catch (e) {} }
+    };
+    loop();
+  }
+  function stopTuneDrive() {
+    if (tuneRaf) cancelAnimationFrame(tuneRaf);
+    tuneRaf = null;
+  }
+
   function playInFeed(p) {
     if (!p || !wp || !window.TersePlazaField) return;
     try { window.TersePlazaField.stop(wp); } catch (e) {}
     try { wp.clearHeadline && wp.clearHeadline(); } catch (e) {}
     viewing = p;                       // the field is about this now, not the visitor
+    /* Each post brings its own sound, so swiping changes the track — which is
+       most of what makes a feed feel like a feed rather than a slideshow with a
+       soundtrack over it. A post with no sound leaves silence rather than
+       inheriting the last one: the previous author's choice is not this one's. */
+    if (sndOn && window.TerseTunes) {
+      var tn = window.TersePlazaField.toCapsule(p).tune;
+      if (tn) window.TerseTunes.play(tn);
+      else window.TerseTunes.stop();
+    }
     var cap = window.TersePlazaField.toCapsule(p);
     clearInterval(pjTimer);
     var run = function () { try { wp.showProject(cap, showLen(p)); } catch (e) {} };
@@ -2966,6 +3037,7 @@
      local folder and a phone has no folder. The GitHub path is how a project
      gets published from one; the other two need nothing but the phone. */
   var cmKind = 'project';
+  var cmTune = '';
   var cmDraft = null;              // the capsule being prepared
 
   function openCompose() {
@@ -2974,9 +3046,41 @@
     $('cmNote').classList.add('hide');
     $('cmFrames').classList.add('hide');
     $('cmFrames').innerHTML = '';
+    buildTunes();
     $('composeSheet').classList.remove('hide');
   }
-  function closeCompose() { $('composeSheet').classList.add('hide'); }
+
+  /** The sound picker. Tapping a chip PLAYS it — choosing a sound you cannot
+   *  hear is choosing a word, and the tap is also what unlocks audio on iOS. */
+  function buildTunes() {
+    var box = $('cmTunes');
+    if (!box || box.children.length) return;
+    var T = window.TerseTunes;
+    if (!T) return;
+    var mk = function (id, label) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.className = id === cmTune ? 'on' : '';
+      b.onclick = function () {
+        cmTune = (cmTune === id) ? '' : id;
+        Array.prototype.forEach.call(box.children, function (c) { c.classList.remove('on'); });
+        if (cmTune) b.classList.add('on');
+        // Inside the gesture's own call stack — see tunes.js.
+        T.unlock();
+        if (cmTune) { T.setMuted(false); T.play(cmTune); } else { T.stop(); }
+        if (window.TerseFeel) window.TerseFeel.tap();
+      };
+      return b;
+    };
+    box.appendChild(mk('', t('cm_nosound')));
+    T.ORDER.forEach(function (id) { box.appendChild(mk(id, T.TRACKS[id].name)); });
+  }
+  function closeCompose() {
+    $('composeSheet').classList.add('hide');
+    // The preview stops with the sheet; only the feed decides what plays.
+    if (window.TerseTunes) window.TerseTunes.stop();
+  }
   on($('composeFab'), 'click', openCompose);
   on($('cmClose'), 'click', closeCompose);
   on($('composeSheet'), 'click', function (e) { if (e.target === $('composeSheet')) closeCompose(); });
@@ -3070,6 +3174,7 @@
       cap = cmDraft;
     }
 
+    if (cmTune) cap.tune = cmTune;
     cap.title = name || cap.title || '';
     cap.desc = desc || cap.desc || '';
     if (cmKind === 'text') cap.desc = ($('cmBody').value || '').trim();

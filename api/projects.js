@@ -33,6 +33,11 @@ const MAX_FRAMES = 12;
    全都以粒子呈现,这是这个广场唯一的规矩;区别只在**拿什么当输入**。
    认不出来的一律当 project,因为在这个字段存在之前发布的每一颗都是项目。 */
 const KINDS = ['project', 'text', 'image'];
+
+/* 配乐。胶囊里存的是**曲子的名字**,不是音频 —— 声音是每台设备自己用 WebAudio
+   弹出来的(见 landing/phone/tunes.js)。所以这里只认这四个名字:别的一律当没有,
+   而不是原样存下去,否则这个字段就成了一个可以往里塞任意字符串的洞。 */
+const TUNES = ['pulse', 'drift', 'arp', 'neon'];
 /** 一个人最多挂多少个项目在广场上。防的是刷屏,不是防坏人。 */
 const MAX_PER_IDENTITY = 24;
 
@@ -82,6 +87,7 @@ function sanitize(capsule) {
     frames: Array.isArray(capsule.frames)
       ? capsule.frames.slice(0, MAX_FRAMES).map(dataUrl).filter(Boolean) : [],
     fps: Math.max(2, Math.min(24, parseInt(capsule.fps, 10) || 12)),
+    tune: TUNES.indexOf(String(capsule.tune || '')) >= 0 ? String(capsule.tune) : '',
     shots: Array.isArray(capsule.shots) ? capsule.shots.slice(0, MAX_SHOTS).map(dataUrl).filter(Boolean) : [],
     lines: Array.isArray(capsule.lines) ? capsule.lines.slice(0, 4).map((l) => str(l, 40)) : [],
     files: Math.max(0, Math.min(9_999_999, parseInt(capsule.files, 10) || 0)),

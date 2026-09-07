@@ -117,6 +117,7 @@
       pj_no_city: 'No code city in this one. It was published before the plaza carried them — its owner can press Rescan in Terse on their Mac and publish it again.',
       pj_tap_like: 'Double-tap to like',
       prev_free: 'Free',
+      feed_files: 'files', feed_buildings: 'buildings', feed_hint: 'Swipe for the next ↑',
       plan_title: 'Choose a plan', plan_sub: 'Everything in Pro, whichever length suits you.',
       plan_note: 'Cancel anytime. Prices in USD.',
       plan_signin: 'Sign in first — a subscription needs an account to live on.',
@@ -321,6 +322,7 @@
       pj_no_city: '这个项目里没有代码城市。它是在广场开始携带城市之前发布的 —— 作者在 Mac 上点一次「重新扫描」再重新发布,城市就有了。',
       pj_tap_like: '双击点赞',
       prev_free: '免费版',
+      feed_files: '个文件', feed_buildings: '座楼', feed_hint: '上滑看下一个 ↑',
       plan_title: '选一个方案', plan_sub: 'Pro 的功能都一样,只是买多久。',
       plan_note: '随时可取消。价格为美元。',
       plan_signin: '先登录 —— 订阅要挂在一个账号上。',
@@ -1189,6 +1191,11 @@
        timer that kept replaying: one path out, silently not taken. The observer
        stays for scrolling within the tab; leaving the tab is decided here. */
     if (tab !== 'field') stopPreviews();
+    /* The feed borrows the field the same way a project preview does, so
+       leaving the plaza has to hand it back — otherwise a capsule keeps
+       replaying over your own agents, which is the bug that took a whole round
+       to find the first time. */
+    if (current === 'plaza' && tab !== 'plaza') endProject();
     current = tab;
     var views = document.querySelectorAll('.view');
     for (var i = 0; i < views.length; i++) views[i].classList.toggle('on', views[i].id === 'v-' + tab);
@@ -2551,46 +2558,183 @@
      card would be a worse copy of it. */
   var projPool = [];
 
+  /* ── The feed ────────────────────────────────────────────────────────────
+     One project filling the screen, swipe for the next — and the picture is the
+     FIELD, not a thumbnail. That is the whole reason this shape fits Terse:
+     every other feed has to fetch a video, while a capsule is a few kilobytes
+     of parameters that the phone already has, and the thing you scroll to is
+     drawn live on the one canvas that is already running.
+
+     So a slide holds only chrome — a title, two lines, a rail of buttons. A
+     hundred slides is a hundred small boxes of text. A hundred particle systems
+     would be a hundred WebGL contexts, which is not a thing a phone will give
+     you (see the preview panes, and the five rounds before them).
+
+     Snapping is native CSS scroll-snap rather than a gesture library: it is
+     what these feeds are actually built on, it inherits the platform's own
+     momentum and rubber-banding, and it keeps snapping while JavaScript is busy
+     assembling a city. */
+  var feedAt = -1, feedSwiped = false;
+
+  /** Fit the feed to whatever room is actually left. Measured, not computed
+   *  from constants: the header and the segmented control above it can change
+   *  height with the language, and on iOS the viewport itself changes as the
+   *  URL bar collapses. A snap feed whose slides are not exactly the container
+   *  height snaps to the wrong place, visibly. */
+  function sizeFeed() {
+    var host = $('pzProjects'), main = document.querySelector('main'), seg = $('plazaSeg');
+    if (!host || !main) return;
+    var used = seg ? seg.getBoundingClientRect().height + 10 : 0;
+    var h = Math.max(320, main.clientHeight - used);
+    host.style.height = h + 'px';
+  }
+  on(window, 'resize', function () { if (current === 'plaza') sizeFeed(); });
+  on(window, 'orientationchange', function () { setTimeout(sizeFeed, 260); });
+
   function renderProjects() {
-    var list = $('projList'), empty = $('projEmpty');
-    if (!list) return;
-    list.innerHTML = '';
+    var feed = $('projFeed'), empty = $('projEmpty');
+    if (!feed) return;
+    sizeFeed();
+    feed.innerHTML = '';
+    feedAt = -1;
     empty.classList.toggle('hide', projPool.length > 0);
-    projPool.forEach(function (p) {
+
+    projPool.forEach(function (p, idx) {
       var cap = (p && p.capsule) || {};
-      var b = document.createElement('button');
-      b.className = 'proj';
-      b.type = 'button';
-      if (cap.cover) {
-        var img = document.createElement('img');
-        img.src = cap.cover; img.alt = '';
-        b.appendChild(img);
-      }
+      var s = document.createElement('div');
+      s.className = 'slide';
+      s.dataset.i = String(idx);
+
       var meta = document.createElement('div');
       meta.className = 'meta';
-      var name = document.createElement('b');
-      name.textContent = cap.title || p.title || '—';
-      var sub = document.createElement('span');
-      // Counts, because they are what makes a stranger's project worth a tap.
-      var bits = [];
-      if (cap.subtitle) bits.push(cap.subtitle);
-      if (p.likes) bits.push('♥ ' + p.likes);
-      if (p.comments) bits.push('💬 ' + p.comments);
-      sub.textContent = bits.join('  ·  ');
-      meta.appendChild(name); meta.appendChild(sub);
-      b.appendChild(meta);
-      b.onclick = function () { openProject(p); };
+      var b = document.createElement('b'); b.textContent = cap.title || p.title || '—';
+      var d = document.createElement('p'); d.textContent = cap.subtitle || '';
+      var who = document.createElement('div'); who.className = 'who';
+      (cap.langs || []).slice(0, 2).forEach(function (l) {
+        var tg = document.createElement('span'); tg.className = 'tag';
+        tg.textContent = l[0] + ' ' + Math.round((+l[1] || 0) * 100) + '%';
+        who.appendChild(tg);
+      });
+      if (cap.files) {
+        var f = document.createElement('span');
+        f.textContent = cap.files + ' ' + t('feed_files');
+        who.appendChild(f);
+      }
+      if ((cap.dirs || []).length) {
+        var c = document.createElement('span');
+        c.textContent = cap.dirs.length + ' ' + t('feed_buildings');
+        who.appendChild(c);
+      }
+      meta.appendChild(b); meta.appendChild(d); meta.appendChild(who);
 
-      // The actions go UNDER the row, not inside it. The row already means one
-      // thing — play this in the field — and a strip of buttons inside a button
-      // is a row where nothing is safe to touch.
-      var wrap = document.createElement('div');
-      wrap.className = 'projwrap';
-      wrap.appendChild(b);
-      wrap.appendChild(projectActions(p));
-      list.appendChild(wrap);
+      s.appendChild(railFor(p));
+      s.appendChild(meta);
+      if (idx === 0 && !feedSwiped) {
+        var hint = document.createElement('div');
+        hint.className = 'swipehint';
+        hint.textContent = t('feed_hint');
+        s.appendChild(hint);
+      }
+      feed.appendChild(s);
     });
+
+    /* ⚠ WHICH SLIDE YOU ARE ON IS ARITHMETIC, NOT AN OBSERVER.
+       The first version used an IntersectionObserver per slide, and it never
+       fired once: it starts observing while the plaza view is still hidden, so
+       its root has zero height, and a zero-height root intersects nothing. The
+       feed scrolled beautifully and the field stayed blank.
+
+       That is the third time today an IntersectionObserver has been the wrong
+       tool for "has this become visible", so: every slide is exactly the
+       container height — that is what makes the snap exact — which means the
+       index is scrollTop / clientHeight, and there is nothing to observe or
+       mistime. Debounced to the end of the gesture so a fast flick through ten
+       projects starts one show, not ten. */
+    var settle = null;
+    on(feed, 'scroll', function () {
+      clearTimeout(settle);
+      settle = setTimeout(function () {
+        var h = feed.clientHeight || 1;
+        var idx = Math.max(0, Math.min(projPool.length - 1, Math.round(feed.scrollTop / h)));
+        if (idx === feedAt) return;
+        feedAt = idx;
+        if (idx > 0 && !feedSwiped) {
+          feedSwiped = true;
+          var hint = feed.querySelector('.swipehint');
+          if (hint) hint.remove();
+        }
+        playInFeed(projPool[idx]);
+      }, 140);
+    });
+    // And play the one you land on, without waiting for a scroll that may never
+    // come — most people look at the first project before they touch anything.
+    feedAt = 0;
+    playInFeed(projPool[0]);
   }
+
+  /** The rail: the four things you can do, at thumb height on the right. */
+  function railFor(p) {
+    var rail = document.createElement('div');
+    rail.className = 'rail';
+    function btn(glyph, n, on, cls) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = (on ? 'on ' : '') + (cls || '');
+      var g = document.createElement('span'); g.className = 'g'; g.textContent = glyph;
+      var c = document.createElement('span'); c.className = 'n'; c.textContent = n > 0 ? String(n) : '';
+      b.appendChild(g); b.appendChild(c);
+      b.setCount = function (v) { c.textContent = v > 0 ? String(v) : ''; };
+      rail.appendChild(b);
+      return b;
+    }
+    var like = btn('♥', p.likes || 0, p.liked);
+    var fav = btn('☆', p.favs || 0, p.faved, 'fav');
+    var cmt = btn('💬', p.comments || 0, false);
+    var dm = btn('✉', 0, false);
+
+    function toggle(b, call, countKey, flagKey) {
+      b.onclick = function (e) {
+        e.stopPropagation();
+        if (!requireIdentity()) return;
+        var was = b.classList.contains('on'), n = p[countKey] || 0;
+        b.classList.toggle('on', !was);
+        p[flagKey] = !was; p[countKey] = Math.max(0, n + (was ? -1 : 1));
+        b.setCount(p[countKey]);
+        if (window.TerseFeel) window.TerseFeel.tap();
+        call(p.id).then(function (r) {
+          if (r && typeof r.count === 'number') { p[countKey] = r.count; b.setCount(r.count); }
+          if (r && typeof r.on === 'boolean') { p[flagKey] = r.on; b.classList.toggle('on', r.on); }
+        }).catch(function (err) {
+          b.classList.toggle('on', was); p[flagKey] = was; p[countKey] = n; b.setCount(n);
+          toast(err.message || '—');
+        });
+      };
+    }
+    toggle(like, Social.like, 'likes', 'liked');
+    toggle(fav, Social.fav, 'favs', 'faved');
+    cmt.onclick = function (e) { e.stopPropagation(); openComments(p, cmt); };
+    dm.onclick = function (e) {
+      e.stopPropagation();
+      openDm(p.author, null, p.id, (p.capsule && p.capsule.title) || p.title);
+    };
+    if (!p.author || p.author === myPeerId()) dm.classList.add('hide');
+    return rail;
+  }
+
+  /** Play the capsule you have landed on, on the field's own canvas. */
+  function playInFeed(p) {
+    if (!p || !wp || !window.TersePlazaField) return;
+    try { window.TersePlazaField.stop(wp); } catch (e) {}
+    try { wp.clearHeadline && wp.clearHeadline(); } catch (e) {}
+    viewing = p;                       // the field is about this now, not the visitor
+    var cap = window.TersePlazaField.toCapsule(p);
+    clearInterval(pjTimer);
+    var run = function () { try { wp.showProject(cap, showLen(p)); } catch (e) {} };
+    run();
+    pjTimer = setInterval(run, showLen(p) + 900);
+    try { Social.view && Social.view(p.id); } catch (e) {}
+  }
+
 
   /* ── What you can do about somebody else's project ───────────────────────
      The counts were read-only: you could see that eleven people liked it and
@@ -2938,12 +3082,11 @@
   }
 
   function loadProjects() {
-    var list = $('projList');
-    if (!list) return Promise.resolve();
+    if (!$('projFeed')) return Promise.resolve();
     // Through Social, because it sends the identity header — without it the
     // server has no idea which of these YOU liked, and every heart comes back
     // empty however many times you have pressed it.
-    return Social.projects(40)
+    return Social.projects(100)
       .then(function (j) {
         projPool = (j && Array.isArray(j.projects)) ? j.projects : [];
         renderProjects();
@@ -2966,7 +3109,9 @@
       else loadPlaza();
     };
   });
-  on($('projRefresh'), 'click', loadProjects);
+  /* No Refresh button any more — the feed is the whole screen and a chrome
+     button on top of it would be the only thing in the way. Landing on the
+     plaza fetches; pulling past the end is the gesture people already use. */
 
   /* ── Bare by default ─────────────────────────────────────────────────────
      The field IS the app, so it opens as nothing but the field. Everything

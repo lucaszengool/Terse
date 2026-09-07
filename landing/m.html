@@ -235,7 +235,59 @@
   .seg button{padding:7px 14px;border-radius:9px;font-size:13px;color:var(--dim);
     transition:background var(--t-fast) var(--glide),color var(--t-fast) var(--glide)}
   .seg button.on{background:var(--card2);color:var(--ink)}
-  #pzRooms,#pzProjects{display:flex;flex-direction:column;gap:12px}
+  #pzRooms{display:flex;flex-direction:column;gap:12px}
+  /* Full-bleed: main carries 16px of side padding for every other screen, and
+     a feed that stops short of the edges is not a feed. Height is set from JS
+     (see sizeFeed) rather than a calc() of viewport minus guesses — Safari's
+     URL bar changes the viewport as you scroll, which is exactly when a
+     hardcoded height goes wrong. */
+  #pzProjects{position:relative;margin:0 -16px}
+
+  /* ── 刷 ───────────────────────────────────────────────────────────────────
+     Native CSS scroll-snap, not a gesture library: it is what every one of
+     these feeds is built on, it inherits the platform's own momentum and
+     rubber-banding, and it keeps working when JavaScript is busy drawing a
+     code city. Mandatory snapping on the Y axis, one slide per viewport. */
+  .feed{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+    scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;scrollbar-width:none}
+  .feed::-webkit-scrollbar{display:none}
+  .slide{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;
+    display:flex;flex-direction:column;justify-content:flex-end;
+    padding:0 0 calc(var(--safe-b) + 14px)}
+
+  /* The words sit at the bottom left, over the field, with a gradient under
+     them — the same arrangement every video feed uses, because it is the one
+     that keeps text readable over an image nobody chose. */
+  .slide .meta{padding:0 74px 0 16px;
+    background:linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,.34) 58%,transparent);
+    padding-top:44px}
+  .slide .meta b{display:block;font-size:19px;font-weight:660;letter-spacing:-.02em}
+  .slide .meta p{margin-top:4px;font-size:13.5px;color:var(--dim);line-height:1.45;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .slide .meta .who{margin-top:7px;font-size:11.5px;color:var(--faint);
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .slide .meta .tag{padding:2px 7px;border-radius:9999px;background:rgba(255,255,255,.08)}
+
+  /* The rail. Right edge, thumb height, one column — like every feed that has
+     ever been scrolled with one hand. */
+  .rail{position:absolute;right:8px;bottom:calc(var(--safe-b) + 96px);
+    display:flex;flex-direction:column;gap:14px;align-items:center}
+  .rail button{display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-size:11px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);min-height:0;padding:0;
+    transition:transform var(--t-fast) var(--snap)}
+  .rail button:active{transform:scale(.86)}
+  .rail .g{font-size:25px;line-height:1}
+  .rail button.on .g{color:#f472b6}
+  .rail button.on.fav .g{color:var(--accent)}
+  .rail .n{font-variant-numeric:tabular-nums;opacity:.92}
+
+  /* A first-run hint that goes away for good once you have swiped once. */
+  .swipehint{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 74px);
+    text-align:center;font-size:12px;color:var(--faint);pointer-events:none;
+    animation:swipeUp 2.1s var(--glide) infinite}
+  @keyframes swipeUp{0%,100%{transform:translateY(4px);opacity:.35}50%{transform:translateY(-4px);opacity:.85}}
+  @media (prefers-reduced-motion: reduce){.swipehint{animation:none}}
 
   /* A project row carries its own cover, small — the FULL image is the thing
      that gathers out of the field when you tap it, and duplicating it at size
@@ -863,11 +915,15 @@
           <div class="empty hide" id="plazaEmpty" data-t="plaza_empty">No open rooms right now.</div>
         </div>
 
+        <!-- ── The feed ─────────────────────────────────────────────────
+             One project at a time, filling the screen, swipe for the next.
+             The slides carry ONLY chrome: the picture is the field's own canvas
+             behind them, and the capsule playing on it is swapped as you land.
+             A hundred slides is a hundred small boxes of text, not a hundred
+             particle systems — which is the only reason this is affordable on a
+             phone at all. -->
         <div id="pzProjects">
-          <div class="row"><h2 class="grow" style="font-size:14px;font-weight:600" data-t="pz_published">Published projects</h2>
-            <button class="btn ghost tiny" id="projRefresh" type="button" style="min-height:0;padding:6px 10px" data-t="refresh">Refresh</button></div>
-          <p class="tiny" data-t="pz_tap_hint">Tap one and it plays in the field.</p>
-          <div class="list" id="projList"></div>
+          <div class="feed" id="projFeed"></div>
           <div class="empty hide" id="projEmpty" data-t="pz_none">Nothing published yet.</div>
         </div>
       </section>

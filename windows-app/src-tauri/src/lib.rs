@@ -7660,6 +7660,15 @@ fn start_wallpaper_hot_poll(app: AppHandle) {
             if inside == inside_last { continue; }
             inside_last = inside;
             set_wallpaper_click_through(&win, !inside);
+            // The other half, and the half that is visible.
+            //
+            // Taking the mouse is not the same as telling the page it has been
+            // taken. `wallpaper-hover` is what sets msgHot, which is what opens
+            // the message card — the full text and the reply box. Without it the
+            // rectangle becomes clickable and nothing on screen ever changes, so
+            // the whole 评论投屏 panel is unreachable while looking, from the
+            // outside, exactly like a feature that was never built.
+            let _ = win.emit("wallpaper-hover", inside);
         }
     });
 }

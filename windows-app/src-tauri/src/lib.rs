@@ -4531,6 +4531,9 @@ pub fn run() {
             messages_for_wallpaper,
             permission_control_status,
             phone_pair,
+            cowork_claim_owner,
+            cowork_release_owner,
+            cowork_relay,
             phone_status,
             phone_set_share,
             phone_unlink,
@@ -7822,4 +7825,36 @@ fn phone_set_share(on: bool) -> serde_json::Value {
 #[tauri::command]
 fn phone_unlink() -> serde_json::Value {
     crate::phone::unlink()
+}
+
+// ── Cowork 中继:one window owns the SSE connection, the rest are fed by it ──
+//
+// Ported verbatim. Pure atomics and one emit — the cowork module itself was
+// already here, only these three were missing, so a second Team window would
+// open its own SSE connection instead of being relayed to.
+// The claim is a plain atomic held by the app, not a lock file: it must not
+// survive a crash, because a stale claim would mean nobody ever connects.
+static COWORK_OWNER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Try to become the connection owner. Returns true for exactly one caller.
+/// `id` is any nonzero token the window makes up for itself.
+#[tauri::command]
+fn cowork_claim_owner(id: u64) -> bool {
+    use std::sync::atomic::Ordering::SeqCst;
+    id != 0 && COWORK_OWNER.compare_exchange(0, id, SeqCst, SeqCst).is_ok()
+}
+
+/// Release ownership (window closing, or team disconnected) so another window
+/// can take over. Only the current owner may release.
+#[tauri::command]
+fn cowork_release_owner(id: u64) {
+    use std::sync::atomic::Ordering::SeqCst;
+    let _ = COWORK_OWNER.compare_exchange(id, 0, SeqCst, SeqCst);
+}
+
+/// The owner forwards each SSE message here; it fans out to every window.
+/// Payload is passed through untouched — this is transport, not policy.
+#[tauri::command]
+fn cowork_relay(app: tauri::AppHandle, payload: serde_json::Value) {
+    let _ = app.emit("cowork-peer", payload);
 }

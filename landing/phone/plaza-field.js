@@ -102,6 +102,9 @@
       fps: c.fps || 12,
       tune: c.tune || '',
       link: c.link || '',
+      // 它在干什么 —— 城市说的是"由什么组成",这两样说的是"做什么"。
+      flow: c.flow || null,
+      verbs: Array.isArray(c.verbs) ? c.verbs : [],
       key: c.key || 0,
       cover: c.cover || '',
       lines: lines.slice(0, 3),

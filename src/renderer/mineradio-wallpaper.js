@@ -1105,6 +1105,9 @@ export default class MineradioWallpaper {
       // 右边那一格的四种读法要用的料:热点(改得最勤的文件)和贡献者。
       hot: cap.hot || [],
       people: cap.people || [],
+      // 这个项目**在干什么** —— 入口点和动词,见 api/repo-probe.js。
+      flow: cap.flow || null,
+      verbs: cap.verbs || [],
       /* A portrait frame has no room beside the city for a second thing. The
          layer cannot know that — it works in normalised units — so the engine,
          which owns the canvas, says so. Anything at least as wide as it is tall

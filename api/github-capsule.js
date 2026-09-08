@@ -31,6 +31,7 @@
  */
 const express = require('express');
 const { png } = require('./tinypng');
+const { probe } = require('./repo-probe');
 
 const router = express.Router();
 
@@ -195,6 +196,14 @@ async function build(owner, repo) {
 
   const langs = langsOf(langMap);
   const dirs = (tree && Array.isArray(tree.tree)) ? dirsOf(tree.tree) : [];
+
+  /* 它**在干什么**。城市说的是"由什么组成";这一步读入口点、动词,以及作者自己
+     录的那段演示。五个 raw 请求,**不占 API 配额**(见 repo-probe.js)。
+     ⚠ 探测失败不该让整次扫描失败 —— 少一层读法,不是少一个项目。 */
+  let probed = { demo: null, flow: null, verbs: [] };
+  try {
+    probed = await probe(owner, repo, branch, (tree && tree.tree) || []);
+  } catch (e) { /* 城市照样成立 */ }
   const files = dirs.reduce((a, d) => a + d.files, 0);
 
   const lines = [];
@@ -233,6 +242,12 @@ async function build(owner, repo) {
       .map((p) => [String(p.login).slice(0, 40), Math.max(0, +p.contributions || 0)]),
     // 点得开的那条链接。扫描出来的项目天然有一个 —— 就是它自己的仓库。
     link: meta.html_url || '',
+    // 入口点和动词 —— 参数,几百字节。
+    flow: probed.flow,
+    verbs: probed.verbs,
+    /* 作者自己录的演示的**地址**。发布前由客户端采成帧(frames),不直接进胶囊:
+       远程地址会让每一次预览都变成一次对第三方的请求,而那张图随时会变。 */
+    demoUrl: (probed.demo && probed.demo.motion) ? probed.demo.url : '',
     source: { kind: 'github', owner, repo, url: meta.html_url || '' },
   };
 }

@@ -130,6 +130,8 @@
       cm_sound: 'Sound', cm_nosound: 'None',
       rp_confirm: 'Report this post for review?',
       rp_thanks: 'Reported — thank you', rp_hidden: 'Reported — it is now hidden',
+      cm_demo_found: 'Found the author\u2019s own demo \u2014 reading it\u2026',
+      cm_demo_ok: 'Captured the demo, {n} frames.',
       feed_more: 'more', feed_less: 'less', prev_3d: 'drag · pinch',
       pz_searching: 'Searching the whole plaza…',
       plan_title: 'Choose a plan', plan_sub: 'Everything in Pro, whichever length suits you.',
@@ -349,6 +351,8 @@
       cm_sound: '配乐', cm_nosound: '无',
       rp_confirm: '举报这条帖子,交给人工复核?',
       rp_thanks: '已举报,谢谢', rp_hidden: '已举报 —— 这条已经不再出现在广场',
+      cm_demo_found: '找到了作者自己录的演示,正在读…',
+      cm_demo_ok: '演示已采到 {n} 帧。',
       feed_more: '展开', feed_less: '收起', prev_3d: '拖着转 · 捏合',
       pz_searching: '正在搜整个广场…',
       plan_title: '选一个方案', plan_sub: 'Pro 的功能都一样,只是买多久。',
@@ -3204,6 +3208,32 @@
         if (cmDraft.link) $('cmLink').value = cmDraft.link;
         $('cmDesc').value = cmDraft.desc || '';
         note(t('cm_scanned').replace('{n}', (cmDraft.dirs || []).length));
+
+        /* ⚠ 作者自己录的那段演示。调研里最有用的一条:最受欢迎的一百个仓库里
+           62% 的 README 已经有一段 GIF —— "一步步演示"这件事,大部分好项目
+           **已经做完了**,而且是作者本人做的。所以不去合成一个,去把它找出来。
+
+           在**发布前**采成帧存进胶囊,不存地址:存地址等于每次预览都要向第三方
+           请求一次,而那张图随时会变 —— 封面当初就是为这个只收内联的。 */
+        if (cmDraft.demoUrl && window.TerseFrames) {
+          note(t('cm_demo_found'));
+          window.TerseFrames.extractUrl(cmDraft.demoUrl).then(function (out) {
+            if (!out || out.frames.length < 2) return;
+            cmDraft.frames = out.frames;
+            cmDraft.fps = out.fps;
+            cmDraft.cover = out.frames[Math.floor(out.frames.length * 0.6)];
+            var box = $('cmFrames');
+            box.innerHTML = '';
+            out.frames.forEach(function (src) {
+              var im = document.createElement('img'); im.src = src; box.appendChild(im);
+            });
+            box.classList.remove('hide');
+            note(t('cm_demo_ok').replace('{n}', out.frames.length));
+          }).catch(function () {
+            // 取不到就算了 —— 城市和流程照样成立,少一段演示不是少一个项目。
+            note(t('cm_scanned').replace('{n}', (cmDraft.dirs || []).length));
+          });
+        }
       })
       .catch(function (e) { note(e.message || '—', true); })
       .then(function () { btn.disabled = false; btn.textContent = t('cm_scan'); });

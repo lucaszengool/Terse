@@ -123,6 +123,22 @@
     return Promise.reject(new Error('Pick an image or a video'));
   }
 
-  root.TerseFrames = { extract: extract, SIZE: SIZE, COUNT: COUNT };
+  /** 从一个**地址**取帧 —— 作者自己录的那段演示就在 README 里,是个 URL。
+   *
+   *  ⚠ 先下成 blob 再走同一条路。直接把远程地址塞给 <img> 也能动,但画进 canvas
+   *  的那一刻会把画布**污染**掉,`toDataURL` 随即抛 SecurityError —— 除非对方给了
+   *  CORS 头,而演示图常挂在 vhs.charm.sh 这类地方,给不给都有可能。
+   *  fetch 拿到的 blob 是同源的,画布不会被污染,能不能取到在**下载那一步**就有
+   *  答案,而不是等到采样时才炸。 */
+  function extractUrl(url) {
+    return fetch(url, { mode: 'cors' })
+      .then(function (r) { if (!r.ok) throw new Error('demo unreachable'); return r.blob(); })
+      .then(function (b) {
+        // blob 没有文件名,靠 MIME 判断该怎么拆 —— extract() 看的就是 type。
+        return extract(new File([b], 'demo', { type: b.type || 'image/gif' }));
+      });
+  }
+
+  root.TerseFrames = { extract: extract, extractUrl: extractUrl, SIZE: SIZE, COUNT: COUNT };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.TerseFrames;
 }(typeof window !== 'undefined' ? window : globalThis));

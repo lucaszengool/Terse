@@ -1045,6 +1045,113 @@ export function samplePeople(people, n) {
 }
 
 /**
+ * 流程:这个项目**在干什么**。
+ *
+ * 城市回答的是"由什么组成" —— 那是形状。它答不了"它做什么"。这一幕回答后者:
+ * 最上面是你敲的那个东西(命令名 / 服务 / 库),往下是它会做的那些动作 ——
+ * 命令的子命令,或者 README 里那几个不是套话的小标题(见 api/repo-probe.js)。
+ *
+ * ⚠ 一步一步亮,是**跟着拍子**走的,不是每帧算的。这一层的采样一拍只跑一次
+ * (_setCity 在换拍时调),而每帧去重写几万个颜色是白烧 GPU。所以 `step` 由拍号
+ * 给:第一拍亮入口,第二拍亮第一个动作,依次往下 —— 看到的就是一条流水线在推进,
+ * 而代价是零。
+ *
+ * @param {{kind:string, entry:string, cmds:string[]}} flow
+ * @param {string[]} verbs
+ * @param {number} step 现在亮到第几个节点
+ */
+export function sampleFlow(flow, verbs, n, step) {
+  const target = new Float32Array(n * 3);
+  const color = new Float32Array(n * 3);
+  const scale = new Float32Array(n); scale.fill(0.5);
+  if (!flow || n <= 0) return { target, color, scale, used: 0 };
+
+  /* 节点:入口一个,然后是动作。动作优先用**命令名** —— 那是作者自己给这个动作
+     起的名字;不够再拿小标题补。最多六个:再多就不是一条能看懂的流水线了。 */
+  const acts = [];
+  for (const c of (flow.cmds || [])) if (c && acts.indexOf(c) < 0) acts.push(c);
+  for (const v of (verbs || [])) { if (acts.length >= 5) break; if (v && acts.indexOf(v) < 0) acts.push(v); }
+  const KIND = { cli: 'command', service: 'service', app: 'app', lib: 'library' };
+  const nodes = [{ name: flow.entry || KIND[flow.kind] || 'project', head: true }]
+    .concat(acts.map((a) => ({ name: a, head: false })));
+  if (nodes.length < 2) return { target, color, scale, used: 0 };
+
+  let p = 0;
+  const put = (x, y, z, r, g, b, sc) => {
+    if (p >= n) return;
+    const o = p * 3;
+    target[o] = x; target[o + 1] = y; target[o + 2] = z;
+    color[o] = r; color[o + 1] = g; color[o + 2] = b;
+    scale[p] = sc; p++;
+  };
+
+  const rows = nodes.length;
+  const top = 0.80, bottom = -0.80;
+  const gap = rows > 1 ? (top - bottom) / (rows - 1) : 0;
+  const lit = ((step | 0) % rows + rows) % rows;
+
+  /* 三种状态,三种颜色。走过的留一点余温,当前的最亮,还没到的几乎是灰的 ——
+     一眼就知道进行到哪了。 */
+  const ON = [0.42, 0.95, 0.72], PAST = [0.24, 0.52, 0.44], WAIT = [0.26, 0.29, 0.34];
+  const budgetPer = Math.floor(n / rows);
+
+  for (let i = 0; i < rows && p < n; i++) {
+    const y = top - i * gap;
+    const nd = nodes[i];
+    const st = i === lit ? 2 : (i < lit ? 1 : 0);
+    const c = st === 2 ? ON : (st === 1 ? PAST : WAIT);
+    const room = Math.min(budgetPer, n - p);
+
+    /* 连线:从上一个节点垂下来。⚠ 线要**先于**节点画,而且点要少 —— 它是关系,
+       不是主角;线画得和节点一样密,整幅图就成了一根柱子。 */
+    if (i > 0) {
+      const nEdge = Math.max(8, Math.round(room * 0.16));
+      const yPrev = top - (i - 1) * gap;
+      for (let k = 0; k < nEdge && p < n; k++) {
+        const u = (k + 0.5) / nEdge;
+        const yy = yPrev - (yPrev - y) * u;
+        // 轻微的横向抖动,让线看起来是一束粒子而不是一条直线
+        const jx = (hash01c(k * 3.7 + i * 11) - 0.5) * 0.045;
+        const jz = (hash01c(k * 9.1 + i * 5) - 0.5) * 0.10;
+        const ec = i <= lit ? ON : WAIT;
+        const f = i <= lit ? (0.35 + 0.5 * u) : 0.5;
+        put(-0.42 + jx, yy, jz, ec[0] * f, ec[1] * f, ec[2] * f, 0.28);
+      }
+    }
+
+    // 节点本身:一个小球。入口的大一点 —— 它是起点,不是其中一步。
+    const rad = (nd.head ? 0.115 : 0.082) * (st === 2 ? 1.12 : 1);
+    const nDot = Math.max(20, Math.round(room * 0.30));
+    for (let k = 0; k < nDot && p < n; k++) {
+      const u = hash01c(k * 2.3 + i * 41), v = hash01c(k * 5.9 + i * 17), w = hash01c(k * 8.3 + i * 7);
+      const r = rad * Math.cbrt(u);
+      const th = v * Math.PI * 2, ph = Math.acos(2 * w - 1);
+      const core = 1 - r / rad;              // 中心亮一点,像一颗有芯的球
+      const g = (st === 2 ? 0.75 : 0.5) + 0.55 * core;
+      put(-0.42 + r * Math.sin(ph) * Math.cos(th), y + r * Math.cos(ph),
+          r * Math.sin(ph) * Math.sin(th),
+          Math.min(1, c[0] * g), Math.min(1, c[1] * g), Math.min(1, c[2] * g), 0.5);
+    }
+
+    // 名字:贴在球右边。字比球小 —— 它是标注。
+    const nName = Math.max(12, room - nDot - Math.round(room * 0.16));
+    const lab = sampleLabel(nd.name, nName, 8.5);
+    if (lab) {
+      const h = nd.head ? 0.155 : 0.115;
+      const w2 = h * lab.aspect;
+      const x0 = -0.42 + rad + 0.075;
+      const dim = st === 2 ? 1 : (st === 1 ? 0.62 : 0.42);
+      for (let k = 0; k < nName && p < n; k++) {
+        const lx = lab.pts[k * 2], ly = lab.pts[k * 2 + 1];
+        put(x0 + (lx + 0.5) * w2, y + ly * h, 0,
+            0.88 * dim, 0.92 * dim, 0.98 * dim, 0.3);
+      }
+    }
+  }
+  return { target, color, scale, used: p };
+}
+
+/**
  * 项目缩影层:一张由粒子构成的图,带自己的出场/退场包络。
  *
  * 生命周期是**一段有头有尾的演出**,不是一个开关:浮现(in)→ 停住(hold)→ 散去(out)。
@@ -1280,6 +1387,15 @@ export class ProjectLayer {
        知识图谱,也不是每个都是 git 仓库。凑不齐就少轮几幕,而不是留一格空白:
        一格空白看起来像坏了,少一幕没人看得出来。 */
     const scenes = [];
+    /* ⚠ 流程排在最前面,而且它**占好几拍** —— 一个节点一拍。
+       别的读法都是"看一眼就懂"的一张图,流程不是:它要一步一步走完才说得清这个
+       项目在干什么,而那正是这一幕存在的理由。轮播的拍数由 sceneCount 决定,
+       所以把它按节点数摊开,就自然得到了"一步一步演示"。 */
+    const flowNodes = ex.flow
+      ? 1 + Math.min(5, ((ex.flow.cmds || []).length
+          + (ex.verbs || []).filter((v) => (ex.flow.cmds || []).indexOf(v) < 0).length))
+      : 0;
+    for (let i = 0; i < flowNodes; i++) scenes.push({ k: 'flow', step: i });
     if (gph) scenes.push({ k: 'graph' });
     if (list.some((d) => Array.isArray(d.kids) && d.kids.length)) scenes.push({ k: 'rings' });
     if (Array.isArray(ex.hot) && ex.hot.length >= 3) scenes.push({ k: 'hot' });
@@ -1369,7 +1485,8 @@ export class ProjectLayer {
     // 右边那一格。半径按**自己**的尺度定,和城市多大无关 —— 一个只有三座楼的小
     // 项目,它的关系图不该跟着缩成一粒沙。
     if (nStar && pick) {
-      const st = pick.k === 'graph' ? sampleConstellation(gph, nStar)
+      const st = pick.k === 'flow' ? sampleFlow(ex.flow, ex.verbs, nStar, pick.step)
+        : pick.k === 'graph' ? sampleConstellation(gph, nStar)
         : pick.k === 'rings' ? sampleSunburst(list, nStar)
         : pick.k === 'hot' ? sampleHotspots(ex.hot, nStar)
         : samplePeople(ex.people, nStar);

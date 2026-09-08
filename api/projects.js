@@ -131,6 +131,25 @@ function sanitize(capsule) {
   const num = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(+v || 0)));
   const frac = (v) => Math.max(0, Math.min(1, +v || 0));
 
+  /* ── 这个项目在**干什么** ──────────────────────────────────────────────
+     代码城市说的是"由什么组成",这三样说的是"它做什么"。都是**参数**,加起来
+     不到一千字节 —— 画面还是在看的人自己机器上长出来的。
+
+       flow  入口点:它是命令行、服务、应用,还是库,以及你敲的那个名字。
+       verbs 它会做的动作,作者自己起的名字(命令名 + README 小标题)。
+       demo  作者自己录的那段演示 —— 调研说最受欢迎的一百个仓库里 62% 已经有了。
+             ⚠ 存的是**地址不是画面**:抓取那一端会把它采成帧再放进 frames,
+             远程地址不该在看的时候才去请求(封面当初就是为这个只收内联的)。 */
+  out.flow = (capsule.flow && typeof capsule.flow === 'object') ? {
+    kind: ['cli', 'service', 'app', 'lib'].indexOf(String(capsule.flow.kind)) >= 0
+      ? String(capsule.flow.kind) : 'lib',
+    entry: str(capsule.flow.entry, 40),
+    cmds: Array.isArray(capsule.flow.cmds)
+      ? capsule.flow.cmds.slice(0, 6).map((c) => str(c, 24)).filter(Boolean) : [],
+  } : null;
+  out.verbs = Array.isArray(capsule.verbs)
+    ? capsule.verbs.slice(0, 6).map((v) => str(v, 24)).filter(Boolean) : [];
+
   out.style = str(capsule.style, 24);
   // 一座楼 = 一个顶层目录。lang / depth / age_days / churn 一个都不能少 ——
   // 它们分别是楼色、退台层数、窗户冷暖和那根信标，少一个就少一种看得见的信息。

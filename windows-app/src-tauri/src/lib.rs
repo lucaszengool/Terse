@@ -5,6 +5,7 @@
 mod capture;
 mod agent_monitor;
 mod messages;
+mod permission;
 mod projects;
 mod agent_usage_scan;
 mod stats_store;
@@ -3649,6 +3650,7 @@ pub fn run() {
                 )
                 .build(),
         )
+        .manage(permission::PermissionHub::default())
         .manage(AppState::default())
         .setup(|app| {
             // Register the terse:// connect handler + handle a cold-start launch URL.
@@ -4354,6 +4356,16 @@ pub fn run() {
             // an up-to-date token-saving digest without the user lifting a finger.
             start_graph_autobuild(app.handle().clone());
 
+            // The localhost route Claude Code's hook posts to. One thread per
+            // request because each can block for up to WAIT — two agents can
+            // prompt at the same moment.
+            permission::start(app.handle().clone());
+            // Island permission control starts OFF on every launch, always: the
+            // hook is registered globally in ~/.claude/settings.json, so leaving
+            // it on would put Terse in the critical path of every agent session
+            // on the machine, not just this one.
+            permission::reset_to_default();
+
             // Restore the live desktop wallpaper if the user left it enabled.
             // (The window was created above; re-parenting behind the desktop is
             // dispatched to the main thread by show_wallpaper_window.)
@@ -4516,6 +4528,15 @@ pub fn run() {
             list_open_windows,
             wallpaper_set_hot_rect,
             messages_for_wallpaper,
+            permission_control_status,
+            set_permission_control,
+            permission_learned,
+            permission_forget_learned,
+            permission_recent_log,
+            get_permission_auto,
+            set_permission_auto,
+            permission_ack,
+            permission_respond,
             messages_set_app_on_wallpaper,
             messages_open_chat,
             messages_send_open,
@@ -7719,4 +7740,54 @@ fn messages_status() -> serde_json::Value {
 fn messages_recent(limit: Option<usize>, chat_only: Option<bool>) -> Result<serde_json::Value, String> {
     let msgs = messages::recent(limit.unwrap_or(30), chat_only.unwrap_or(true))?;
     Ok(serde_json::to_value(msgs).unwrap_or_default())
+}
+
+// ── 权限卡片:answer Claude Code permission prompts from the island ──
+//
+// Ported verbatim — every one of these is a thin call into permission.rs, which
+// is pure std + tauri. The island window, the hook and the localhost route are
+// the same on both platforms.
+/// Answer a pending Claude Code permission prompt from the island.
+/// `decision` is allow | deny | ask; anything else is rejected rather than
+/// forwarded, so a bad payload can never become an approval.
+/// Read/write the island permission-control switch from Settings.
+#[tauri::command]
+fn permission_control_status() -> bool { permission::is_enabled() }
+
+#[tauri::command]
+fn set_permission_control(enabled: bool) -> Result<bool, String> {
+    permission::set_enabled(enabled)
+}
+
+/// The island confirms it drew the card and can accept a click. Until this
+/// lands, permission.rs refuses to hold the agent — a window that exists but
+/// whose webview is wedged must never freeze a session.
+#[tauri::command]
+fn permission_learned() -> Vec<String> { permission::learned() }
+
+#[tauri::command]
+fn permission_forget_learned() -> Result<(), String> { permission::forget_learned() }
+
+#[tauri::command]
+fn permission_recent_log() -> Vec<String> { permission::recent_log(40) }
+
+#[tauri::command]
+fn get_permission_auto() -> permission::AutoModes { permission::get_auto_modes() }
+
+#[tauri::command]
+fn set_permission_auto(claude: String, codex: String) -> Result<(), String> {
+    permission::set_auto_modes(permission::AutoModes { claude, codex })
+}
+
+#[tauri::command]
+fn permission_ack(id: String, app: tauri::AppHandle) -> bool {
+    app.state::<permission::PermissionHub>().ack(&id)
+}
+
+#[tauri::command]
+fn permission_respond(id: String, decision: String, app: tauri::AppHandle) -> bool {
+    if !matches!(decision.as_str(), "allow" | "deny" | "ask" | "always") {
+        return false;
+    }
+    app.state::<permission::PermissionHub>().respond(&id, &decision)
 }

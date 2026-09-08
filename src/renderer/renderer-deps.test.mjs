@@ -69,5 +69,32 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
   }
 }
 
+// An event the Mac backend emits and the Windows one never does.
+//
+// This is the gap nothing else here could see. wallpaper-hover was emitted on
+// macOS and nowhere on Windows, and it is the event that opens the message card
+// — the full text and the reply box. Both halves of that feature compiled, were
+// registered, and passed their tests; the card simply never opened, which from
+// the outside is indistinguishable from a feature that was never built. A
+// command that is missing shows up as a rejected invoke. A missing EVENT shows
+// up as nothing at all.
+{
+  const read = (p) => { const f = resolve(DIR, p); return existsSync(f) ? readFileSync(f, 'utf8') : ''; };
+  const events = (src) => new Set(
+    [...src.matchAll(/\.emit(?:_to)?\(\s*(?:"[a-z0-9_-]+",\s*)?"([a-z0-9:_-]+)"/g)].map(m => m[1]));
+  const mac = events(read('../../src-tauri/src/lib.rs'));
+  const win = events(read('../../windows-app/src-tauri/src/lib.rs'));
+  // Genuinely platform-bound, with the reason, so the list cannot quietly grow.
+  const MAC_ONLY = new Map([
+    ['ax-status', 'macOS Accessibility authorisation; Windows has no equivalent state'],
+  ]);
+  if (mac.size && win.size) {
+    for (const e of [...mac].sort()) {
+      if (MAC_ONLY.has(e)) continue;
+      ok(`event "${e}" is emitted on Windows too, not just macOS`, win.has(e));
+    }
+  }
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -146,7 +146,6 @@ ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,
      · an import without ?v= is one a CDN can keep serving after it changed
      · a file missing from ENGINE_ASSETS does not move the stamp when edited */
 {
-  const server = fs.readFileSync(path.join(dir, '..', '..', 'api', 'server.js'), 'utf8');
   const appjs = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
 
   const imports = [...appjs.matchAll(/import\(\s*'\/app-assets\/([a-z0-9.-]+\.js)'\s*(\+?)/gi)];
@@ -155,14 +154,17 @@ ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,
     ok(`${m[1]} is imported with a cache stamp`, m[2] === '+');
   }
 
-  const listed = (server.match(/const ENGINE_ASSETS = \[([\s\S]*?)\]/) || [])[1] || '';
+  /* The stamped set now comes from the module that computes it, not from a
+     regex over server.js — the list used to be hand-written there and drifted
+     twice (see api/build-stamp.js). Asking the real thing means this check
+     keeps working however the list is built. */
+  const covered = new Set(require('../../api/build-stamp').stampedFiles().map((f) => f.rel));
   for (const m of imports) {
-    ok(`${m[1]} is in ENGINE_ASSETS, so editing it moves the stamp`,
-       listed.includes("'" + m[1] + "'"));
+    ok(`${m[1]} is stamped, so editing it changes the URL`, covered.has(m[1]));
   }
   // rooms.js is loaded by a plain <script> from /app-assets rather than an
   // import, so the regex above cannot see it — and it changes often.
-  ok('rooms.js is in ENGINE_ASSETS too', listed.includes("'rooms.js'"));
+  ok('rooms.js is stamped too', covered.has('rooms.js'));
 }
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);

@@ -82,10 +82,63 @@ ok('the policy is registered before the static mount', policyAt > 0 && staticAt 
 // URL, so there is nothing to hit.
 ok('the shell is rewritten, not sent as a file', /fs\.readFile\(file, 'utf8'/.test(server));
 ok('phone scripts get the build stamp', /src="\)\(\\\/phone/.test(server) || /\/phone\\\/\[a-z0-9/.test(server));
-ok('the stamp is derived from the files themselves', /statSync\(path\.join\(__dirname, '\.\.', 'landing', rel\)\)/.test(server));
 ok('and computed once, not per request', /const PHONE_BUILD = buildStamp\(\);/.test(server));
-ok('sw.js is among the stamped files', /PHONE_ASSETS = \[[^\]]*'sw\.js'/.test(server));
 ok('the build is handed to the page', /__TERSE_BUILD/.test(server));
+
+/* ── The stamp must cover everything the page LOADS ──
+   This is the assertion the last two cache failures were missing, and both had
+   the same shape: the list of stamped files was written by hand, and the page
+   kept growing. First the engine was outside it (every renderer fix shipped
+   with an unchanged URL and was never fetched); then this arc added social.js,
+   frames.js, plaza-field.js and tunes.js to m.html and the list stayed at five.
+
+   So the check is no longer "does the source contain a list" — a hand list can
+   be present and wrong. It asks the real module which files it stamps, and
+   compares that against the scripts the shells actually pull in. */
+const stamp = require('./build-stamp');
+const covered = new Set(stamp.stampedFiles().map((f) => f.rel));
+
+const shellText = stamp.SHELLS
+  .map((f) => { try { return fs.readFileSync(path.join(__dirname, '..', 'landing', f), 'utf8'); } catch { return ''; } })
+  .join('\n');
+
+const phoneRefs = [...new Set([...shellText.matchAll(/\/phone\/([A-Za-z0-9._-]+\.js)/g)].map((m) => m[1]))];
+ok('the shells were found and do load scripts', phoneRefs.length >= 5);
+const unstamped = phoneRefs.filter((r) => !covered.has('phone/' + r));
+ok('every phone script the app loads is stamped' + (unstamped.length ? ` (missing: ${unstamped.join(', ')})` : ''),
+   unstamped.length === 0);
+
+ok('sw.js is stamped too — a stale worker serves a stale copy of everything else',
+   covered.has('sw.js'));
+
+/* The engine half of the same rule. vendor/ is deliberately out: three.module
+   is three quarters of a megabyte, it barely changes, and its URL is pinned by
+   the importmap. */
+const appjs = (() => { try { return fs.readFileSync(path.join(__dirname, '..', 'landing', 'phone', 'app.js'), 'utf8'); } catch { return ''; } })();
+const engineRefs = [...new Set([...(shellText + appjs).matchAll(/\/app-assets\/([A-Za-z0-9._-]+\.js)/g)].map((m) => m[1]))];
+const engineMissing = engineRefs.filter((r) => !covered.has(r));
+ok('every engine file named in the app is stamped' + (engineMissing.length ? ` (missing: ${engineMissing.join(', ')})` : ''),
+   engineMissing.length === 0);
+ok('the transitively imported engine files are listed by hand, since no HTML names them',
+   stamp.ENGINE_ASSETS.includes('wallpaper-project.js') && stamp.ENGINE_ASSETS.includes('mineradio-shaders.js'));
+
+/* And behaviourally: editing a file must move the stamp. frames.js is the one
+   that proves it — under the old hand-written list, changing it left the stamp
+   byte-identical, so the fix would have deployed to a URL nobody re-fetched. */
+const probe = path.join(__dirname, '..', 'landing', 'phone', 'frames.js');
+if (fs.existsSync(probe)) {
+  const st = fs.statSync(probe);
+  const before = stamp.buildStamp();
+  let after = before;
+  try {
+    fs.utimesSync(probe, st.atime, new Date(st.mtimeMs + 60000));
+    after = stamp.buildStamp();
+  } finally {
+    fs.utimesSync(probe, st.atime, st.mtime);   // put the clock back either way
+  }
+  ok('touching a phone script changes the stamp', before !== after);
+  ok('and putting it back restores it', stamp.buildStamp() === before);
+}
 
 // Ordering again, and for the same reason as the policy: express.static is
 // mounted with extensions:['html'], so it answers /m with m.html directly and a
@@ -96,7 +149,7 @@ ok('the /m handler is registered before the static mount', mAt > 0 && staticAt >
 // The engines must NOT be stamped: three quarters of a megabyte of Three.js plus
 // shaders shared with the desktop, re-downloaded on every deploy, would cost far
 // more than it saves.
-ok('the engines are left unstamped', !/app-assets[^\n]*\?v=/.test(server));
+ok('the shell rewriter does not stamp engine URLs', !/app-assets[^\n]*\?v=/.test(server));
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 process.exit(fails.length ? 1 : 0);

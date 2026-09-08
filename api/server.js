@@ -1493,38 +1493,14 @@ app.use((req, res, next) => {
    are three quarters of a megabyte of Three.js plus shaders shared with the
    desktop, they change rarely, and re-downloading them on every deploy would
    cost far more than it saves. */
-const PHONE_ASSETS = ['phone/app.js', 'phone/terse-web.js', 'phone/capture.js', 'phone/mp4.js', 'phone/diag.js', 'sw.js'];
+/* ⚠ 名单不再手写 —— 它已经错过两次,两次都是同一个形状:名单是手写的,而页面
+   在长。第一次漏掉的是引擎(src/renderer,走 /app-assets),第二次是这一轮广场
+   自己长出来的 social.js / frames.js / plaza-field.js / tunes.js。
 
-/* ⚠ AND THE ENGINE, WHICH WAS THE WHOLE PROBLEM.
-   The stamp used to come from the six files under landing/ alone. But the thing
-   that actually DRAWS the app — the particle engine, the project layer, the
-   shaders — is shared with the Mac and served from /app-assets out of
-   src/renderer. So every fix to the renderer shipped with an UNCHANGED stamp,
-   which means an unchanged URL, which means Cloudflare and the phone both kept
-   serving the old engine. Weeks of "it is still the same" with the fix sitting
-   deployed and never fetched.
+   现在从 m.html / float.html 里**读**出来:页面加载什么,戳就盖什么。规则和理由
+   都在 api/build-stamp.js,由 api/cache.test.js 逐个对账。 */
+const { buildStamp } = require('./build-stamp');
 
-   The rule this encodes: the stamp must cover everything the page LOADS, not
-   everything that happens to live in one folder. */
-const ENGINE_ASSETS = [
-  'mineradio-wallpaper.js', 'mineradio-shaders.js', 'wallpaper-project.js',
-  'wallpaper-styles.js', 'wallpaper-view3d.js', 'wallpaper-hud.js',
-  'city-styles.js', 'lang-colors.js', 'rooms.js',
-];
-function buildStamp() {
-  let acc = 0;
-  const add = (base, rel) => {
-    try {
-      const st = fs.statSync(path.join(__dirname, '..', base, rel));
-      acc = (acc * 31 + st.size + Math.floor(st.mtimeMs)) >>> 0;
-    } catch { /* a missing file simply does not contribute */ }
-  };
-  for (const rel of PHONE_ASSETS) add('landing', rel);
-  for (const rel of ENGINE_ASSETS) add(path.join('src', 'renderer'), rel);
-  return acc.toString(36);
-}
-// Computed once: the files cannot change under a running process, and doing this
-// per request would stat six files on every load of the app.
 const PHONE_BUILD = buildStamp();
 
 /* The floating-particle page, stamped the same way /m is.

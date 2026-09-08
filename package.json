@@ -31,7 +31,9 @@
     "test:overlay": "node src/renderer/wallpaper-overlay.test.mjs",
     "test:liveactivity": "node api/liveactivity.test.js",
     "test:liveactivity-e2e": "node api/liveactivity.e2e.test.js",
-    "test:wallstamp": "node api/wallstamp.test.js"
+    "test:wallstamp": "node api/wallstamp.test.js",
+    "test:probe": "node api/repo-probe.test.js",
+    "test:project": "node --import ./src/renderer/testkit/loader.mjs src/renderer/wallpaper-project.test.mjs"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

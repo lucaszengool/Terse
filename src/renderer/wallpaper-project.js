@@ -1068,9 +1068,20 @@ export function sampleFlow(flow, verbs, n, step) {
 
   /* 节点:入口一个,然后是动作。动作优先用**命令名** —— 那是作者自己给这个动作
      起的名字;不够再拿小标题补。最多六个:再多就不是一条能看懂的流水线了。 */
+  const MAX_ACTS = 5;                    // 加上入口正好六个节点
   const acts = [];
-  for (const c of (flow.cmds || [])) if (c && acts.indexOf(c) < 0) acts.push(c);
-  for (const v of (verbs || [])) { if (acts.length >= 5) break; if (v && acts.indexOf(v) < 0) acts.push(v); }
+  /* ⚠ 命令那一轮原来**没有上限**,六个的规矩只写在这行注释里,真正拦住它的是
+     api/projects.js 那个 slice(0, 6) —— 也就是说这一层的排版正确与否,取决于
+     调用方替它做过一次裁剪。Mac 本地扫出来的项目不走那条路。两边都按同一个数
+     收口,幕的样子就只由这一幕自己决定。 */
+  for (const c of (flow.cmds || [])) {
+    if (acts.length >= MAX_ACTS) break;
+    if (c && acts.indexOf(c) < 0) acts.push(c);
+  }
+  for (const v of (verbs || [])) {
+    if (acts.length >= MAX_ACTS) break;
+    if (v && acts.indexOf(v) < 0) acts.push(v);
+  }
   const KIND = { cli: 'command', service: 'service', app: 'app', lib: 'library' };
   const nodes = [{ name: flow.entry || KIND[flow.kind] || 'project', head: true }]
     .concat(acts.map((a) => ({ name: a, head: false })));

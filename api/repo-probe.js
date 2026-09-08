@@ -174,6 +174,12 @@ const BORING = new Set([
   'requirements', 'prerequisites', 'configuration', 'config', 'development', 'testing',
   'credits', 'support', 'sponsors', 'star history', 'table of contents', 'about',
   'how to use', 'how it works', 'why', 'motivation', 'benchmarks', 'alternatives',
+  /* ⚠ 剥掉 emoji 之后剩下的那个词也要在这张表上。"## 📸 Demo" 去掉相机变成
+     "Demo" —— 而 BORING 里当时只有 "features",于是这一条一路走到了动词里。
+     "Demo" 讲的是这篇 README 有一段演示,不是这个项目会做什么。 */
+  'demo', 'demos', 'screenshot', 'screenshots', 'preview', 'gallery', 'showcase',
+  'video', 'videos', 'overview', 'introduction', 'intro', 'usage examples',
+  '演示', '截图', '预览', '简介', '概述',
   '安装', '使用', '快速开始', '特性', '功能', '文档', '贡献', '许可证', '目录',
 ]);
 
@@ -200,7 +206,11 @@ function verbsOf(md, entry) {
       /* ⚠ 安装说明不是"这个项目会做什么"。实测 bat 的小标题里混进来一串
          "On Ubuntu (using apt)"、"On Alpine Linux" —— 那讲的是怎么装,
          不是它能干嘛。 */
-      .filter((h) => !/^on\s|install|ubuntu|debian|alpine|arch\b|macos|windows|homebrew|brew\b|apt\b|yum|pacman|从源码|源码安装|build from source|binary release|from crates|download|prebuilt|^via\s|^using\s/i.test(h));
+      /* ⚠ "From source" 也是安装说明。原来的表里有 "build from source" 和
+         "from crates",光秃秃的 "From source" 却漏了 —— 而那正是最常见的写法。
+         这里只点名几种装法,不是 `^from\s` 一刀切:"From CSV to JSON" 是个真动作。 */
+      .filter((h) => !/^on\s|install|ubuntu|debian|alpine|arch\b|macos|windows|homebrew|brew\b|apt\b|yum|pacman|从源码|源码安装|build from source|binary release|from crates|download|prebuilt|^via\s|^using\s/i.test(h))
+      .filter((h) => !/^from\s+(source|binar|release|crates|pypi|npm|nix|aur|snap|tarball)/i.test(h));
     for (const h of heads) {
       if (out.length >= 6) break;
       if (out.indexOf(h) < 0) out.push(h);

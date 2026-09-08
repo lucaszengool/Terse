@@ -128,6 +128,8 @@
       cm_need_scan: 'Scan a repository first', cm_need_text: 'Write something first',
       cm_need_pic: 'Pick a picture first',
       cm_sound: 'Sound', cm_nosound: 'None',
+      rp_confirm: 'Report this post for review?',
+      rp_thanks: 'Reported — thank you', rp_hidden: 'Reported — it is now hidden',
       feed_more: 'more', feed_less: 'less', prev_3d: 'drag · pinch',
       pz_searching: 'Searching the whole plaza…',
       plan_title: 'Choose a plan', plan_sub: 'Everything in Pro, whichever length suits you.',
@@ -345,6 +347,8 @@
       cm_need_scan: '先扫一个仓库', cm_need_text: '先写点什么',
       cm_need_pic: '先选一张图',
       cm_sound: '配乐', cm_nosound: '无',
+      rp_confirm: '举报这条帖子,交给人工复核?',
+      rp_thanks: '已举报,谢谢', rp_hidden: '已举报 —— 这条已经不再出现在广场',
       feed_more: '展开', feed_less: '收起', prev_3d: '拖着转 · 捏合',
       pz_searching: '正在搜整个广场…',
       plan_title: '选一个方案', plan_sub: 'Pro 的功能都一样,只是买多久。',
@@ -3091,7 +3095,21 @@
     // having it: it looks like the feature is broken rather than inapplicable.
     if (!p.author || p.author === myPeerId()) dm.classList.add('hide');
 
+    /* 举报。放在最后、画得最轻 —— 它必须**在**,但它不是这一排里请人去按的东西。
+       ⚠ 要问一句再报:误按一下就把别人的东西送进待审,而按的人自己都不知道。 */
+    var flag = actBtn('⚑', 0, false);
+    flag.classList.add('quiet');
+    flag.onclick = function () {
+      if (!requireIdentity()) return;
+      if (!confirm(t('rp_confirm'))) return;
+      Social.report(p.id).then(function (r) {
+        toast(r && r.hidden ? t('rp_hidden') : t('rp_thanks'));
+        if (window.TerseFeel) window.TerseFeel.tap();
+      }).catch(function (e) { toast(e.message || '—'); });
+    };
+
     box.appendChild(like); box.appendChild(fav); box.appendChild(cmt); box.appendChild(dm);
+    box.appendChild(flag);
     return box;
   }
 

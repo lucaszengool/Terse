@@ -391,6 +391,9 @@
   .act.on{color:var(--ink);background:rgba(244,114,182,.16);border-color:rgba(244,114,182,.34)}
   .act.on.fav{background:var(--accent-dim);border-color:rgba(110,231,183,.3)}
   .act .n{font-variant-numeric:tabular-nums}
+  /* 举报要**在**,但不该跟点赞抢注意力 —— 它是给出问题的那少数几条准备的。 */
+  .act.quiet{opacity:.45;background:transparent;border-color:transparent}
+  .act.quiet:active{opacity:.9}
 
   /* ── a sheet ──
      Comments come up over the app rather than replacing it: you are reading

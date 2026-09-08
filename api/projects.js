@@ -12,7 +12,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const db = require('./db');
-const { spamReason } = require('./spam');
+const { spamReason, illegalReason, fingerprint } = require('./spam');
 
 const router = express.Router();
 
@@ -225,6 +225,54 @@ router.post('/', (req, res) => {
      见 api/spam.js。 */
   const bad = spamReason(capsule);
   if (bad) return res.status(422).json({ error: 'That post looks like spam', reason: bad });
+
+  /* 违法与不当内容。和灌水分开判,因为它是另一种性质的问题 —— 灌水是吵,
+     这一类是不能出现在一面公开的墙上。 */
+  const illegal = illegalReason(capsule);
+  if (illegal) {
+    console.warn('[plaza] blocked', illegal, '—', (capsule.title || '').slice(0, 40));
+    return res.status(422).json({ error: 'That content is not allowed here', reason: illegal });
+  }
+
+  /* ── 查重 ────────────────────────────────────────────────────────────────
+     ⚠ 灌水的下一招不是换身份,是**换个花样再来一遍**:把 `-113` 改成 `#114`,
+     规则就认不出来了。所以判据是归一化之后的指纹(数字全抹平,见 spam.js),
+     一小时之内出现过同一个指纹就拒。
+
+     对真实的人几乎没有影响:同一个人一小时内发两条**一模一样**的东西,本来就是
+     误触。改一版重发是允许的 —— 那走的是覆盖,不是新增。 */
+  const fp = fingerprint(capsule);
+  if (fp && fp.length >= 12) {
+    const recent = db.recentWallProjects.all({ window: '-1 hours' });
+    let same = 0;
+    for (const r of recent) {
+      let c = null;
+      try { c = JSON.parse(r.capsule); } catch (e) { continue; }
+      if (fingerprint(c) === fp) same++;
+    }
+    if (same >= 2) {
+      return res.status(429).json({ error: 'That looks like something already posted', reason: 'duplicate' });
+    }
+  }
+
+  /* ⚠ 这里本来还有一道"同一身份两条之间隔 30 秒"的冷却。**删掉了**,因为它
+     惩罚的正好是无辜的那一方:
+
+       · 换身份灌水的人根本碰不到它 —— 它是按身份算的,而那一百条来自九十九个
+         身份,每个只发一两条;
+       · 一个身份从一个地址连发,IP 那道闸(10 条/小时)本来就先拦住了;
+       · 真正被它挡住的,是一个人接连发布两个项目 —— 实测第二条直接 429。
+
+     一道只拦得住守规矩的人的闸,不是防御,是故障。 */
+  /* 冲量刹车。上面每一道都是"按人"或"按内容"算的,而一次真正的攻击是**同时**从
+     很多个身份、很多个地址进来 —— 每一条单看都合规。所以还要有一道看**整体**的:
+     十分钟内整个广场进来的东西超过这个数,就先停下来。
+     ⚠ 阈值要比任何正常时段都高得多:这不是限速,是保险丝。 */
+  const surge = (db.wallPostsSince.get({ window: '-10 minutes' }) || {}).n || 0;
+  if (surge >= 60) {
+    console.warn('[plaza] surge brake:', surge, 'posts in 10 minutes');
+    return res.status(503).json({ error: 'The plaza is busy right now — try again shortly', reason: 'surge' });
+  }
   // id 由**内容**决定:同一个项目重复发布是覆盖,不是又长出一个。
   const id = serverId(me, capsule.srcId || capsule.title);
   db.upsertWallProject.run({ id, identity: me, title: capsule.title, capsule: json });
@@ -255,6 +303,11 @@ router.get('/public', (req, res) => {
     return hay.indexOf(q) >= 0;
   }).slice(0, limit);
   const me = idHash(req);
+
+  /* 被举报够多次的先不出现。⚠ 是**过滤**不是删除:举报会被滥用,留着才有第二次
+     机会;而在被看过之前,它对刷广场的人来说已经不存在了。 */
+  const hidden = new Set(
+    db.reportedProjects.all({ threshold: REPORT_HIDE_AT }).map((r) => r.project_id));
 
   // 计数一次查完,不是每个项目查一次:列表是 N 个项目,逐个查就是 N 次往返。
   const counts = {};
@@ -294,7 +347,7 @@ router.get('/public', (req, res) => {
         liked: mine.like.has(r.id), faved: mine.fav.has(r.id),
         topComments: top[r.id] || [],
       };
-    }).filter((p) => p.capsule),
+    }).filter((p) => p.capsule && !hidden.has(p.id)),
   });
 });
 
@@ -396,6 +449,25 @@ router.delete('/comments/:cid', (req, res) => {
   // 顶层评论被删,它下面的回复不该变成孤儿挂在那儿
   db.deleteWallCommentReplies.run(req.params.cid);
   res.json({ ok: true });
+});
+
+/* ── 举报 ──────────────────────────────────────────────────────────────────
+   规则永远认不全。这次那一百条是因为号码好认才认出来的 —— 下一次可能只是一段
+   看着正常、其实在骗人的话,而**看的人认得出来**。所以留一条人来说话的路。
+
+   ⚠ 一人一票:主键是 (帖子, 举报人),按十次也还是一票。
+   ⚠ 到了阈值就**不再出现在列表里**,但不删 —— 举报会被滥用,而一条被误伤的帖子
+      至少还在,能查、能恢复。删掉就没有第二次机会了。 */
+const REPORT_HIDE_AT = 3;
+
+// POST /api/cloud/projects/:id/report  Body: { reason? }
+router.post('/:id/report', (req, res) => {
+  const me = idHash(req);
+  if (!me) return res.status(401).json({ error: 'Missing identity' });
+  const reason = String((req.body || {}).reason || '').slice(0, 40);
+  db.addWallReport.run({ project_id: req.params.id, identity: me, reason });
+  const n = (db.countWallReports.get({ project_id: req.params.id }) || {}).n || 0;
+  res.json({ ok: true, reports: n, hidden: n >= REPORT_HIDE_AT });
 });
 
 // POST /api/cloud/projects/:id/view — 预览计数。故意做成"尽力而为":

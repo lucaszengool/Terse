@@ -15,7 +15,7 @@
  * plaza is pinned here: star counts with commas, versioned titles, repo
  * descriptions full of numbers.
  */
-const { spamReason, findSpam } = require('./spam');
+const { spamReason, findSpam, illegalReason, fingerprint } = require('./spam');
 
 let pass = 0, fail = 0;
 const ok = (n, c) => (c ? (pass++, console.log('  ✓ ' + n)) : (fail++, console.error('  ✗ ' + n)));
@@ -66,6 +66,40 @@ console.log('\n── the sweep reads the same rules ──');
   ok('finds the spam row', hits.length === 1 && hits[0].id === 'a');
   ok('and reports why', hits[0] && !!hits[0].reason);
   ok('a row it cannot parse is left alone, not deleted', !hits.some((h) => h.id === 'c'));
+}
+
+console.log('\n── content that must not be here at all ──');
+{
+  const bans = (n, cap, want) => {
+    const r = illegalReason(cap);
+    ok(`${n} → ${want}` + (r === want ? '' : ` (got ${r})`), r === want);
+  };
+  bans('a drug sale', { title: '出售', desc: '冰毒 长期供货' }, 'drugs');
+  bans('forged documents', { title: '办证', desc: '高仿证件 驾照代办' }, 'forgery');
+  bans('a gambling agent', { title: '招代理', desc: '菠菜平台 包网 上分' }, 'gambling');
+  bans('laundering', { title: 'x', desc: '跑分 四件套 银行卡出租' }, 'money-laundering');
+  bans('stolen card data', { title: 'x', desc: 'fresh cc dumps and fullz' }, 'hacking-service');
+  bans('a shortener hiding its target', { title: 'look', desc: 'https://bit.ly/abcd' }, 'link-hiding');
+  bans('a shortener in the link field', { title: 'look', desc: '', link: 'https://t.cn/xyz' }, 'link-hiding');
+
+  // ⚠ The words alone are not the offence — the trade is. A post ABOUT security
+  // work, or a repo that scans for vulnerabilities, is exactly what belongs here.
+  bans('a security scanner repo', { title: 'VulnClaw', desc: 'A vulnerability scanner for web applications' }, null);
+  bans('a story about losing a database', { title: '它把我的数据库删了', desc: 'DELETE 没带 WHERE' }, null);
+  bans('a post about spam filtering', { title: 'anti-spam', desc: 'blocks casino and gambling ads' }, null);
+  bans('a normal repo link', { title: 'tach', desc: 'see it', link: 'https://github.com/tach-org/tach' }, null);
+}
+
+console.log('\n── the flood cannot just renumber itself ──');
+{
+  const a = fingerprint({ title: '教主牛逼QQ160319672-113', desc: '第113号 光辉永照' });
+  const b = fingerprint({ title: '教主牛逼QQ160319672#114', desc: '第114号 光辉永照' });
+  const c = fingerprint({ title: 'tach', desc: 'A Python tool ★ 2,807' });
+  ok('two numbered variants share one fingerprint', a === b && a.length > 0);
+  ok('a real post does not collide with them', c !== a);
+  // Different projects must stay different, or dedupe becomes censorship.
+  const d = fingerprint({ title: 'oryx', desc: 'A TUI for sniffing network traffic ★ 2,574' });
+  ok('two different repos keep different fingerprints', c !== d);
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

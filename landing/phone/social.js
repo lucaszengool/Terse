@@ -85,6 +85,12 @@
     },
     like: function (id) { return call('/projects/' + encodeURIComponent(id) + '/like', { method: 'POST' }); },
     fav: function (id) { return call('/projects/' + encodeURIComponent(id) + '/fav', { method: 'POST' }); },
+    /* 举报。规则永远认不全 —— 这次那一百条是号码好认才认出来的,下一次可能只是
+       一段看着正常、其实在骗人的话,而**看的人认得出来**。 */
+    report: function (id, reason) {
+      return call('/projects/' + encodeURIComponent(id) + '/report',
+                  { method: 'POST', body: { reason: reason || '' } });
+    },
     comments: function (id) { return call('/projects/' + encodeURIComponent(id) + '/comments'); },
     // 预览计数。故意做成"尽力而为" —— 数不准也没关系,但它是作者唯一能看到的反馈。
     view: function (id) { return call('/projects/' + encodeURIComponent(id) + '/view', { method: 'POST' }); },

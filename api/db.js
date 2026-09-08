@@ -264,6 +264,17 @@ db.exec(`
   -- 点赞和收藏是同一张表两种 kind:它们的形状完全一样(谁、对哪个项目、一次),
   -- 拆成两张表只会把同一段逻辑写两遍。主键就是 (project_id, identity, kind) ——
   -- **同一个人对同一个项目只能点一次**,由数据库保证,而不是靠应用层记得去查。
+  /* 举报。一条帖子被够多**不同的人**举报就自动下架 —— 这是这个广场唯一的
+     人工信号:规则认不出来的东西,看的人认得出来。
+     ⚠ 主键是 (帖子, 举报人),所以一个人举报十次还是一票。 */
+  CREATE TABLE IF NOT EXISTS wall_reports (
+    project_id TEXT NOT NULL,
+    identity TEXT NOT NULL,
+    reason TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (project_id, identity)
+  );
+
   CREATE TABLE IF NOT EXISTS wall_reactions (
     project_id TEXT NOT NULL,
     identity TEXT NOT NULL,
@@ -1705,6 +1716,26 @@ const deleteWallProject = db.prepare('DELETE FROM wall_projects WHERE id = @id A
 /* 不带身份的删除。⚠ **只给服务端自己的清理用**,没有任何路由暴露它 —— 广场上
    的删除永远要带发布者的身份,否则谁都能删别人的东西。 */
 const deleteWallProjectById = db.prepare('DELETE FROM wall_projects WHERE id = ?');
+/* 最近发了什么 —— 查重用。灌水的下一招就是把编号换成别的花样,所以判据不能是
+   "标题一样",得是"同一段内容短时间内又来了一次"。 */
+const recentWallProjects = db.prepare(
+  "SELECT title, capsule, identity, published_at FROM wall_projects"
+  + " WHERE published_at > datetime('now', @window) ORDER BY published_at DESC LIMIT 400");
+/* 这个身份最近一次发帖是什么时候 —— 冷却用。 */
+const lastWallPostAt = db.prepare(
+  "SELECT MAX(published_at) AS at, COUNT(*) AS n FROM wall_projects"
+  + " WHERE identity = @identity AND published_at > datetime('now', @window)");
+/* 整个广场最近进了多少条 —— 冲量刹车用。 */
+const wallPostsSince = db.prepare(
+  "SELECT COUNT(*) AS n FROM wall_projects WHERE published_at > datetime('now', @window)");
+
+/* ── 举报 ── */
+const addWallReport = db.prepare(
+  'INSERT OR IGNORE INTO wall_reports (project_id, identity, reason) VALUES (@project_id, @identity, @reason)');
+const countWallReports = db.prepare(
+  'SELECT COUNT(*) AS n FROM wall_reports WHERE project_id = @project_id');
+const reportedProjects = db.prepare(
+  'SELECT project_id, COUNT(*) AS n FROM wall_reports GROUP BY project_id HAVING n >= @threshold');
 /* 全部读出来给清理扫一遍。列表接口有 limit,清理不能有 —— 漏掉的那几条正是
    最新灌进来的那几条。 */
 const allWallProjects = db.prepare('SELECT id, identity, title, capsule FROM wall_projects');
@@ -1792,6 +1823,8 @@ module.exports = {
   insertWallComment, listWallComments, getWallComment, deleteWallComment, deleteWallCommentReplies,
   countWallComments, topWallComments, wallProjectOwner,
   deleteWallProjectById, allWallProjects,
+  recentWallProjects, lastWallPostAt, wallPostsSince,
+  addWallReport, countWallReports, reportedProjects,
   sendDm, dmThread, dmInbox, dmLast, dmMarkRead, dmUnreadTotal, dmSentSince, dmRepliedBy,
   likeWallComment, unlikeWallComment, syncWallCommentLikes, myWallCommentLikes,
   db,

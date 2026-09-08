@@ -12,6 +12,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const db = require('./db');
+const { spamReason } = require('./spam');
 
 const router = express.Router();
 
@@ -218,6 +219,12 @@ router.post('/', (req, res) => {
   if (db.countWallProjects.get({ identity: me }).n >= MAX_PER_IDENTITY) {
     return res.status(429).json({ error: 'Too many published projects', max: MAX_PER_IDENTITY });
   }
+  /* ⚠ 内容闸门。上面那道"每人 24 条"挡不住任何人:身份是客户端随便给的字符串,
+     换一个就是一个新人 —— 实际被灌进来的一百条垃圾来自**九十九个身份**,一次都
+     没碰到那道闸。所以真正管用的闸门只能建在**内容**和来源 IP 上,不能建在身份上。
+     见 api/spam.js。 */
+  const bad = spamReason(capsule);
+  if (bad) return res.status(422).json({ error: 'That post looks like spam', reason: bad });
   // id 由**内容**决定:同一个项目重复发布是覆盖,不是又长出一个。
   const id = serverId(me, capsule.srcId || capsule.title);
   db.upsertWallProject.run({ id, identity: me, title: capsule.title, capsule: json });

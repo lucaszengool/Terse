@@ -339,6 +339,22 @@ app.use('/api/cloud/link/push', express.json({ limit: '4mb' }));
    这里的上限要**比它大一点**,好让那段代码自己去讲"太大了"这句话,并且讲清楚
    大在哪里 —— 和 link/push 当初那次是同一个教训。 */
 app.use('/api/cloud/projects', express.json({ limit: '220kb' }));
+/* ⚠ 发帖要**按 IP** 限流,不能按身份。身份是客户端自己给的一串字符,想要多少有
+   多少 —— 灌进来的一百条垃圾就是一百个新身份,每个发一两条,per-identity 的上限
+   一次都没被碰到。IP 不是完美的(代理池能绕),但它是这条路上**唯一有成本**的东西。
+
+   /api/cloud 上那道限流是 600 次/分钟:那是给遥测上报定的,发帖跟着它走等于没有。
+   一小时 10 条,对真实的人绰绰有余 —— 每人总共也只能挂 24 个项目。 */
+const publishLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many posts from this address — try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // 只限"发",不限"看":浏览广场和发帖走的是同一个前缀。
+  skip: (req) => req.method !== 'POST',
+});
+app.use('/api/cloud/projects', publishLimiter);
 app.use(express.json());
 
 // CORS for Tauri app + marketplace.
@@ -1617,8 +1633,35 @@ app.get('*', (req, res) => {
   res.status(404).sendFile(path.join(__dirname, '..', 'landing', '404.html'));
 });
 
+/* ── 开机清一次垃圾帖 ──────────────────────────────────────────────────────
+   ⚠ 为什么是开机扫,不是加一个管理接口。已经灌进来的一百条,每条挂在**不同的**
+   身份下,而删除接口要求带发布者本人的身份 —— 也就是说没有任何一条能从公开 API
+   删掉。要清就得在服务端自己动手。
+
+   而"加一个管理接口"是拿一个新的攻击面去换一次清理:那个接口一旦有,它的密钥
+   就要保管、要轮换、泄露一次就是谁都能删。开机扫一遍不需要密钥,也没有可以被
+   打的门,而且清理逻辑和发布时那道闸**用的是同一份定义**(api/spam.js)。
+
+   规则见 spam.js。宁可漏掉一条也不误删:判据是联系方式和明着炫耀的话术,
+   不是"看起来不像正经项目"。 */
+function sweepSpam() {
+  try {
+    const { findSpam } = require('./spam');
+    const hits = findSpam(db.allWallProjects.all());
+    if (!hits.length) return;
+    for (const h of hits) db.deleteWallProjectById.run(h.id);
+    const by = hits.reduce((a, h) => { a[h.reason] = (a[h.reason] || 0) + 1; return a; }, {});
+    console.log('[plaza] removed', hits.length, 'spam posts', JSON.stringify(by));
+    console.log('[plaza] e.g.', hits.slice(0, 3).map((h) => h.title).join(' | '));
+  } catch (e) {
+    // 清理失败不能拖垮启动 —— 广场脏一点,好过整个服务起不来。
+    console.error('[plaza] spam sweep failed:', e.message);
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`[pruneai-api] running on port ${PORT}`);
+  sweepSpam();
   // Auto-seed marketplace if empty
   try {
     const count = db.getListings.all();

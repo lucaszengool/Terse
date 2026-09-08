@@ -1702,6 +1702,12 @@ const countWallProjects = db.prepare(
   'SELECT COUNT(*) AS n FROM wall_projects WHERE identity = @identity');
 const bumpWallProjectViews = db.prepare('UPDATE wall_projects SET views = views + 1 WHERE id = ?');
 const deleteWallProject = db.prepare('DELETE FROM wall_projects WHERE id = @id AND identity = @identity');
+/* 不带身份的删除。⚠ **只给服务端自己的清理用**,没有任何路由暴露它 —— 广场上
+   的删除永远要带发布者的身份,否则谁都能删别人的东西。 */
+const deleteWallProjectById = db.prepare('DELETE FROM wall_projects WHERE id = ?');
+/* 全部读出来给清理扫一遍。列表接口有 limit,清理不能有 —— 漏掉的那几条正是
+   最新灌进来的那几条。 */
+const allWallProjects = db.prepare('SELECT id, identity, title, capsule FROM wall_projects');
 // 谁发布了这个项目。私信那道闸要用它核对"第一条搭讪挂的是不是对方自己的项目"。
 const wallProjectOwner = db.prepare('SELECT identity FROM wall_projects WHERE id = ?');
 
@@ -1785,6 +1791,7 @@ module.exports = {
   addWallReaction, removeWallReaction, hasWallReaction, countWallReactions, myWallReactions,
   insertWallComment, listWallComments, getWallComment, deleteWallComment, deleteWallCommentReplies,
   countWallComments, topWallComments, wallProjectOwner,
+  deleteWallProjectById, allWallProjects,
   sendDm, dmThread, dmInbox, dmLast, dmMarkRead, dmUnreadTotal, dmSentSince, dmRepliedBy,
   likeWallComment, unlikeWallComment, syncWallCommentLikes, myWallCommentLikes,
   db,

@@ -6,6 +6,7 @@ mod capture;
 mod agent_monitor;
 mod messages;
 mod permission;
+mod phone;
 mod projects;
 mod agent_usage_scan;
 mod stats_store;
@@ -4529,6 +4530,10 @@ pub fn run() {
             wallpaper_set_hot_rect,
             messages_for_wallpaper,
             permission_control_status,
+            phone_pair,
+            phone_status,
+            phone_set_share,
+            phone_unlink,
             set_permission_control,
             permission_learned,
             permission_forget_learned,
@@ -7790,4 +7795,31 @@ fn permission_respond(id: String, decision: String, app: tauri::AppHandle) -> bo
         return false;
     }
     app.state::<permission::PermissionHub>().respond(&id, &decision)
+}
+
+// ── 手机配对:this machine ↔ the Terse phone web app ──
+
+/// Mint a pair code. The sheet renders `url` as a QR and `code` underneath it,
+/// so the phone can be linked by camera or by typing six characters.
+#[tauri::command]
+fn phone_pair() -> Result<serde_json::Value, String> {
+    crate::phone::pair()
+}
+
+/// Whether a phone has claimed the pairing. Polled by the sheet while it is up.
+#[tauri::command]
+fn phone_status() -> serde_json::Value {
+    crate::phone::status()
+}
+
+/// The master switch for sending anything to the phone at all.
+#[tauri::command]
+fn phone_set_share(on: bool) -> serde_json::Value {
+    crate::phone::set_share(on)
+}
+
+/// Forget the pairing on this machine.
+#[tauri::command]
+fn phone_unlink() -> serde_json::Value {
+    crate::phone::unlink()
 }

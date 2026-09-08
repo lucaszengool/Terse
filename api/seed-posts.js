@@ -40,8 +40,8 @@ function rng(seed) {
 const pick = (r, a) => a[Math.floor(r() * a.length) % a.length];
 const int = (r, lo, hi) => lo + Math.floor(r() * (hi - lo + 1));
 
-const TUNES = ['pulse', 'drift', 'arp', 'neon', 'lofi', 'rush',
-               'glass', 'deep', 'chime', 'dust', 'march', 'bloom'];
+// 真实音频文件的 id,和 landing/audio/tracks.json 对应。
+const TUNES = ["t01", "t02", "t03", "t04", "t05", "t06", "t07", "t08", "t09", "t10", "t11", "t12"];
 
 /* ── 主题 ─────────────────────────────────────────────────────────────────
    ⚠ 一个模板画五十张图,五十张图长得一模一样 —— 那不是"像真人发的",那是

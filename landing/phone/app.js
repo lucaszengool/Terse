@@ -1283,12 +1283,16 @@
     // Give the page its scroll back on the way out of the plaza.
     if (tab !== 'plaza') {
       var mn = document.querySelector('main'); if (mn) mn.style.overflow = '';
-      // Sound belongs to the feed. Walking away from it should be quiet, and a
-      // track still playing under another tab is the thing people reach for the
-      // hardware button to stop.
-      if (sndOn && window.TerseTunes) { window.TerseTunes.stop(); stopTuneDrive(); }
-      sndOn = false;
-      if ($('sndBtn')) $('sndBtn').classList.remove('on');
+      /* ⚠ 只在**真的从广场走开**的时候才停,不是"目标不是广场"就停。
+         这两句听着一样,差别在开机那一刻:启动时会先 show('field'),那一次
+         `tab !== 'plaza'` 也成立,于是默认开着的声音在你还没走到广场之前就被
+         关掉了 —— 开关默认是开的,人看到的却永远是关的。
+         音乐仍然只属于这个信息流:换到别的页就停,那是对的;错的是"从没在过
+         广场"也算离开。 */
+      if (current === 'plaza') {
+        if (sndOn && window.TerseTunes) { window.TerseTunes.stop(); stopTuneDrive(); }
+        if ($('sndBtn')) $('sndBtn').classList.remove('on');
+      }
     }
     /* The feed borrows the field the same way a project preview does, so
        leaving the plaza has to hand it back — otherwise a capsule keeps
@@ -1352,6 +1356,9 @@
   var plazaHalf = 'projects';
 
   function loadPlazaTab() {
+    // 进到广场就把声音挂上待命 —— 真正出声要等第一次触摸(见 armAudio)。
+    if ($('sndBtn')) $('sndBtn').classList.toggle('on', sndOn);
+    armAudio();
     if (plazaHalf === 'rooms') loadPlaza();
     else if (!projPool.length) loadProjects();
   }
@@ -2904,7 +2911,50 @@
      makes the next part honest: the number driving the particles is the sound
      being produced right now, not an analysis of a recording that then has to
      be lined up with it. */
-  var sndOn = false, tuneRaf = null;
+  /* ⚠ 默认**开着**。一个刷视频的信息流没有声音，少的不是一个功能，是一半的东西。
+     但 iOS 不给自动播放，而且第一次出声必须在一次真实手势的**调用栈里** —— 所以
+     开关默认是开的，真正出声是在你第一次碰屏幕那一刻。刷一下就是一次手势，
+     所以人感觉不到中间这层。 */
+  var sndOn = true, tuneRaf = null, armed = false;
+
+  /** 这一刻该放的那首。 */
+  function tuneHere() {
+    var cur = projPool[feedAt];
+    return cur && window.TersePlazaField.toCapsule(cur).tune;
+  }
+
+  /** 声音接上。先直接试着放 —— 如果上下文之前已经被解锁过(在这次会话里碰过
+   *  屏幕),那就立刻有声,不用再等一次手势。放不出来才挂一个一次性的监听。
+   *
+   *  ⚠ "已经装过监听"和"用户自己关掉了"是**两件事**。第一版用同一个标志管两者,
+   *  于是从广场走开再回来时,监听不会重装、也不会直接播 —— 回来永远是静音的。 */
+  function armAudio() {
+    if (!sndOn || !window.TerseTunes) return;
+    var T = window.TerseTunes;
+    T.setMuted(false);
+    var tn = tuneHere();
+    if (tn && T.unlock() && T.play(tn)) {
+      startTuneDrive();
+      if ($('sndBtn')) $('sndBtn').classList.add('on');
+      return;
+    }
+    if (armed) return;
+    armed = true;
+    var go = function () {
+      document.removeEventListener('pointerdown', go, true);
+      document.removeEventListener('touchstart', go, true);
+      armed = false;                       // 用过就摘掉,下次还能再装
+      if (!sndOn || !window.TerseTunes) return;
+      window.TerseTunes.unlock();          // 必须在这个调用栈里
+      window.TerseTunes.setMuted(false);
+      var t2 = tuneHere();
+      if (t2) window.TerseTunes.play(t2);
+      startTuneDrive();
+      if ($('sndBtn')) $('sndBtn').classList.add('on');
+    };
+    document.addEventListener('pointerdown', go, true);
+    document.addEventListener('touchstart', go, true);
+  }
 
   on($('sndBtn'), 'click', function () {
     var T = window.TerseTunes;
@@ -2916,7 +2966,7 @@
       T.setMuted(false);
       var cur = projPool[feedAt];
       var tune = cur && window.TersePlazaField.toCapsule(cur).tune;
-      if (tune) T.play(tune, { key: window.TersePlazaField.toCapsule(cur).key });
+      if (tune) T.play(tune);
       startTuneDrive();
     } else {
       T.stop();
@@ -2958,7 +3008,7 @@
        inheriting the last one: the previous author's choice is not this one's. */
     if (sndOn && window.TerseTunes) {
       var tn = window.TersePlazaField.toCapsule(p).tune;
-      if (tn) window.TerseTunes.play(tn, { key: window.TersePlazaField.toCapsule(p).key });
+      if (tn) window.TerseTunes.play(tn);
       else window.TerseTunes.stop();
     }
     var cap = window.TersePlazaField.toCapsule(p);
@@ -3701,6 +3751,9 @@
 
   applyStrings();
   loadEngine();
+  /* 曲库清单。读一次就够 —— 曲子是随仓库发布的静态文件。
+     ⚠ 读不到也不能让别的东西停下来:没有配乐的广场照样能刷。 */
+  if (window.TerseTunes) window.TerseTunes.load().catch(function () {});
 
   // A code scanned with the iPhone's own Camera app lands on /m/pair?c=CODE.
   // Deliberately not an in-page camera: the native scanner is one tap from the

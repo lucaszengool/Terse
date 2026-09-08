@@ -24,8 +24,8 @@ const REMOTE = (() => {
 })();
 const KEEP = 50;
 
-const TUNES = ['pulse', 'drift', 'arp', 'neon', 'lofi', 'rush',
-               'glass', 'deep', 'chime', 'dust', 'march', 'bloom'];
+// 真实音频文件的 id,和 landing/audio/tracks.json 对应。
+const TUNES = ["t01", "t02", "t03", "t04", "t05", "t06", "t07", "t08", "t09", "t10", "t11", "t12"];
 
 /** 按风格分组,组内按规模降序,然后一轮一轮地取 —— 见文件顶部。 */
 function chooseKeepers(cities, keep) {

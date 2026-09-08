@@ -37,8 +37,10 @@ const KINDS = ['project', 'text', 'image'];
 /* 配乐。胶囊里存的是**曲子的名字**,不是音频 —— 声音是每台设备自己用 WebAudio
    弹出来的(见 landing/phone/tunes.js)。所以这里只认这四个名字:别的一律当没有,
    而不是原样存下去,否则这个字段就成了一个可以往里塞任意字符串的洞。 */
-const TUNES = ['pulse', 'drift', 'arp', 'neon', 'lofi', 'rush',
-               'glass', 'deep', 'chime', 'dust', 'march', 'bloom'];
+/* 曲子的 id。⚠ 现在是**真的音频文件**(landing/audio/),不是合成器的名字 ——
+   所以这张表要跟 landing/audio/tracks.json 对上,那份清单是抓取脚本生成的。
+   还是要挡一次:这个字段最后会变成一个文件名去拼路径。 */
+const TUNES = ["t01", "t02", "t03", "t04", "t05", "t06", "t07", "t08", "t09", "t10", "t11", "t12"];
 /** 一个人最多挂多少个项目在广场上。防的是刷屏,不是防坏人。 */
 const MAX_PER_IDENTITY = 24;
 

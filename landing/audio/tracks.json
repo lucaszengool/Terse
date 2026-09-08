@@ -1,0 +1,98 @@
+[
+  {
+    "id": "t01",
+    "file": "/audio/t01.mp3",
+    "name": "Casio MT-40 Drumpattern",
+    "license": "public domain",
+    "artist": "drum pattern: Casio; recording: Maximilian Schönherr",
+    "source": "https://commons.wikimedia.org/wiki/File:Casio%20MT-40%20Drumpattern.mp3"
+  },
+  {
+    "id": "t02",
+    "file": "/audio/t02.mp3",
+    "name": "Hypnotic ambient electronic ",
+    "license": "public domain",
+    "artist": "MusicLM artificial intelligence; prompted by Nosferattus",
+    "source": "https://commons.wikimedia.org/wiki/File:Hypnotic%20ambient%20electronic%20music%20by%20MusicLM.mp3"
+  },
+  {
+    "id": "t03",
+    "file": "/audio/t03.mp3",
+    "name": "In the Loop - Touch 'N Go - ",
+    "license": "public domain",
+    "artist": "Composition: SSgt Dustin Trimble; Performance: United States",
+    "source": "https://commons.wikimedia.org/wiki/File:In%20the%20Loop%20-%20Touch%20'N%20Go%20-%20United%20States%20Air%20Forces%20in%20Europe%20Band.mp3"
+  },
+  {
+    "id": "t04",
+    "file": "/audio/t04.mp3",
+    "name": "Let the Music Send Me - Syst",
+    "license": "public domain",
+    "artist": "Composition: Steve Ward; Performance: United States Air Forc",
+    "source": "https://commons.wikimedia.org/wiki/File:Let%20the%20Music%20Send%20Me%20-%20Systems%20Go%20-%20United%20States%20Air%20Force%20Band%20of%20Flight.mp3"
+  },
+  {
+    "id": "t05",
+    "file": "/audio/t05.mp3",
+    "name": "Steve Pordon - (C8)(H10)(N4)",
+    "license": "public domain",
+    "artist": "Steve Pordon",
+    "source": "https://commons.wikimedia.org/wiki/File:Steve%20Pordon%20-%20(C8)(H10)(N4)(O2).mp3"
+  },
+  {
+    "id": "t06",
+    "file": "/audio/t06.mp3",
+    "name": "Lo-Res Legend",
+    "license": "cc0",
+    "artist": "NenhumaFênix",
+    "source": "https://commons.wikimedia.org/wiki/File:Lo-Res%20Legend.wav"
+  },
+  {
+    "id": "t07",
+    "file": "/audio/t07.mp3",
+    "name": "Drozerix - 4 RNDD!",
+    "license": "cc0",
+    "artist": "Drozerix",
+    "source": "https://commons.wikimedia.org/wiki/File:Drozerix%20-%204%20RNDD!.flac"
+  },
+  {
+    "id": "t08",
+    "file": "/audio/t08.mp3",
+    "name": "New Beginnings - Silver Wing",
+    "license": "public domain",
+    "artist": "Composition: Matthew G. Ascione; Performance: United States ",
+    "source": "https://commons.wikimedia.org/wiki/File:New%20Beginnings%20-%20Silver%20Wings%20-%20United%20States%20Air%20Force%20Band.mp3"
+  },
+  {
+    "id": "t09",
+    "file": "/audio/t09.mp3",
+    "name": "Drozerix - Girl From Mars",
+    "license": "public domain",
+    "artist": "Drozerix",
+    "source": "https://commons.wikimedia.org/wiki/File:Drozerix%20-%20Girl%20From%20Mars.wav"
+  },
+  {
+    "id": "t10",
+    "file": "/audio/t10.mp3",
+    "name": "Drozerix - Cabin Fever",
+    "license": "public domain",
+    "artist": "Drozerix",
+    "source": "https://commons.wikimedia.org/wiki/File:Drozerix%20-%20Cabin%20Fever.wav"
+  },
+  {
+    "id": "t11",
+    "file": "/audio/t11.mp3",
+    "name": "W. Tarnowski - Fantaisie-Imp",
+    "license": "public domain",
+    "artist": "Władysław Tarnowski ps. Ernest Buława",
+    "source": "https://commons.wikimedia.org/wiki/File:W.%20Tarnowski%20-%20Fantaisie-Impromptu%20(de%20Deux%20Morceaux).wav"
+  },
+  {
+    "id": "t12",
+    "file": "/audio/t12.mp3",
+    "name": "Drozerix - Sexxxy Bit 3!!!",
+    "license": "public domain",
+    "artist": "Drozerix",
+    "source": "https://commons.wikimedia.org/wiki/File:Drozerix%20-%20Sexxxy%20Bit%203!!!.wav"
+  }
+]

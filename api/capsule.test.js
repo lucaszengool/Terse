@@ -165,13 +165,17 @@ console.log('\n── three kinds of post, one plaza ──');
 
     // The capsule carries the NAME of a track, never audio — so this field is a
     // door into the player, and only four names may come through it.
+    /* ⚠ 曲子的 id 现在是**真实音频文件**的名字(landing/audio/tracks.json),
+       不再是合成器那几个名字。这条断言以前写死 'pulse',配乐一换成真曲子就红 ——
+       它红得对:白名单确实变了。第一首的 id 从清单里读,清单换了它跟着换。 */
+    const TRACK = require('../landing/audio/tracks.json')[0].id;
     const put5 = await req('POST', '/projects', { identity: me,
-      body: { capsule: { id: 'snd1', kind: 'text', desc: 'with a beat', tune: 'pulse' } } });
+      body: { capsule: { id: 'snd1', kind: 'text', desc: 'with a beat', tune: TRACK } } });
     const put6 = await req('POST', '/projects', { identity: me,
       body: { capsule: { id: 'snd2', kind: 'text', desc: 'with nonsense', tune: 'javascript:evil' } } });
     const l3 = (await req('GET', '/projects/public?limit=50', { identity: me })).json;
     eq('a known track is kept',
-       (l3.projects.find((p) => p.id === put5.json.id) || {}).capsule.tune, 'pulse');
+       (l3.projects.find((p) => p.id === put5.json.id) || {}).capsule.tune, TRACK);
     eq('an unknown one is dropped, not stored',
        (l3.projects.find((p) => p.id === put6.json.id) || {}).capsule.tune, '');
     for (const id of [put5.json.id, put6.json.id]) db.deleteWallProject.run({ id, identity: short });

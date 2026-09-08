@@ -96,5 +96,65 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
   }
 }
 
+// A command the shared bridge invokes that only one backend registers.
+//
+// The companion to the event check above, and needed because the two fail in
+// different ways. A missing command surfaces as a rejected invoke — the feature
+// is simply dead on that platform. A missing event surfaces as nothing at all.
+// Neither check sees the other's gap: `cowork-peer` was already emitted on
+// Windows from another path while the command the UI actually calls was absent,
+// so the event check was green over a dead feature.
+//
+// This is the check that would have found all twenty-two at once, instead of a
+// hand audit finding them one platform release later.
+{
+  const read = (p) => { const f = resolve(DIR, p); return existsSync(f) ? readFileSync(f, 'utf8') : ''; };
+  const registered = (dir) => {
+    const out = new Set();
+    for (const f of ['lib.rs','notifications.rs','messages.rs','projects.rs','permission.rs','phone.rs','doctor.rs','cowork.rs']) {
+      const src = read(`${dir}/${f}`);
+      for (const m of src.matchAll(/#\[tauri::command\][^\n]*\n\s*(?:pub )?(?:async )?fn ([a-z0-9_]+)/g)) out.add(m[1]);
+    }
+    return out;
+  };
+  const bridge = read('tauri-bridge.js');
+  const invoked = new Set([...bridge.matchAll(/invoke\(\s*'([a-z0-9_]+)'/g)].map(m => m[1]));
+  const mac = registered('../../src-tauri/src');
+  const win = registered('../../windows-app/src-tauri/src');
+
+  // Still to port, each with why. The list may only ever shrink — a new name
+  // here needs a reason, which is the point.
+  const KNOWN_GAPS = new Map([
+    ['app_icon', 'needs a Windows rewrite: NSWorkspace icon extraction → SHGetFileInfo'],
+    ['messages_detected_apps', 'messages settings page, not yet ported'],
+    ['messages_notification_settings', 'messages settings page, not yet ported'],
+    ['messages_open_settings', 'messages settings page, not yet ported'],
+    ['messages_permission_report', 'messages settings page, not yet ported'],
+    // The pm_* family appeared on macOS while this branch was being written and
+    // is still uncommitted there. Porting code that is still moving means
+    // porting it twice; it goes in once it settles.
+    ['pm_start', 'pm_* is new on macOS and still in flux'],
+    ['pm_stop', 'pm_* is new on macOS and still in flux'],
+    ['pm_status', 'pm_* is new on macOS and still in flux'],
+    ['pm_windows', 'pm_* is new on macOS and still in flux'],
+    ['pm_window_rect', 'pm_* is new on macOS and still in flux'],
+    ['pm_overlay', 'pm_* is new on macOS and still in flux'],
+    ['pm_overlay_hide', 'pm_* is new on macOS and still in flux'],
+    ['pm_has_permission', 'pm_* is new on macOS and still in flux'],
+    ['pm_request_permission', 'pm_* is new on macOS and still in flux'],
+  ]);
+  if (mac.size && win.size) {
+    for (const c of [...invoked].sort()) {
+      if (!mac.has(c)) continue;              // not a parity question
+      if (KNOWN_GAPS.has(c)) continue;
+      ok(`command "${c}" is registered on Windows too, not just macOS`, win.has(c));
+    }
+    // A gap that has been closed must leave the list, or it rots into a lie.
+    for (const [c, why] of KNOWN_GAPS) {
+      ok(`KNOWN_GAPS entry "${c}" (${why}) is still actually missing`, !win.has(c));
+    }
+  }
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

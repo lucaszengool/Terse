@@ -84,7 +84,7 @@ const ACK_WAIT: Duration = Duration::from_millis(1200);
 /// symptom is "my session froze", with nothing anywhere explaining why. Every
 /// decision is logged so the cause is one `tail` away.
 fn plog(msg: &str) {
-    let p = dirs::home_dir().unwrap_or_default().join(".terse").join("permission.log");
+    let p = home().join(".terse").join("permission.log");
     if let Some(d) = p.parent() { let _ = std::fs::create_dir_all(d); }
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
         use std::io::Write as _;
@@ -100,8 +100,30 @@ fn plog(msg: &str) {
 /// feature that sits in the agent's critical path must never be something a
 /// user discovers by having their session wedged. Settings → Island permission
 /// control creates and removes this file (see set_permission_control).
+
+/// The user's home directory, with a seam for the hook tests.
+///
+/// install_hook edits a real ~/.claude/settings.json, so its test must be
+/// pointed at a throwaway directory. The macOS test does that by setting $HOME,
+/// which dirs::home_dir() honours on unix — but on Windows it resolves the
+/// profile through SHGetKnownFolderPath and ignores EVERY environment variable,
+/// so there is no variable to set. The override exists only under cfg(test);
+/// release builds compile to a plain home_dir() call.
+fn home() -> std::path::PathBuf {
+    #[cfg(test)]
+    {
+        if let Some(p) = TEST_HOME.lock().unwrap_or_else(|e| e.into_inner()).clone() {
+            return p;
+        }
+    }
+    dirs::home_dir().unwrap_or_default()
+}
+
+#[cfg(test)]
+static TEST_HOME: std::sync::Mutex<Option<std::path::PathBuf>> = std::sync::Mutex::new(None);
+
 fn enabled() -> bool {
-    dirs::home_dir().unwrap_or_default().join(".terse").join("permission-on").exists()
+    home().join(".terse").join("permission-on").exists()
 }
 
 pub fn is_enabled() -> bool { enabled() }
@@ -109,7 +131,7 @@ pub fn is_enabled() -> bool { enabled() }
 /// Turn the feature on/off: flag file + hook registration in one place, so the
 /// two can never disagree (hook installed but feature off, or vice versa).
 pub fn set_enabled(on: bool) -> Result<bool, String> {
-    let f = dirs::home_dir().unwrap_or_default().join(".terse").join("permission-on");
+    let f = home().join(".terse").join("permission-on");
     if let Some(d) = f.parent() { let _ = std::fs::create_dir_all(d); }
     if on {
         std::fs::write(&f, b"1").map_err(|e| e.to_string())?;
@@ -145,7 +167,7 @@ pub fn set_enabled(on: bool) -> Result<bool, String> {
 /// "disabled by user" in permission.log would be a lie, and that log is the one
 /// place anybody looks when a session mysteriously stalls.
 pub fn reset_to_default() {
-    let f = dirs::home_dir().unwrap_or_default().join(".terse").join("permission-on");
+    let f = home().join(".terse").join("permission-on");
     let was_on = f.exists();
     if was_on {
         let _ = std::fs::remove_file(&f);
@@ -611,7 +633,7 @@ fn redact(key: &str) -> String {
 }
 
 fn observed_path() -> std::path::PathBuf {
-    dirs::home_dir().unwrap_or_default().join(".terse").join("permission-observed.json")
+    home().join(".terse").join("permission-observed.json")
 }
 
 fn load_observed() -> Vec<String> {
@@ -731,7 +753,7 @@ pub fn forget_learned() -> Result<(), String> {
 /// Tail of ~/.terse/permission.log — the page shows it so a user can see what
 /// the feature did without going hunting in a file.
 pub fn recent_log(n: usize) -> Vec<String> {
-    let p = dirs::home_dir().unwrap_or_default().join(".terse").join("permission.log");
+    let p = home().join(".terse").join("permission.log");
     let Ok(txt) = std::fs::read_to_string(&p) else { return Vec::new() };
     txt.lines().rev().take(n).map(|l| l.to_string()).collect::<Vec<_>>()
         .into_iter().rev().collect()
@@ -860,7 +882,7 @@ fn already_allowed(req: &PermissionRequest) -> bool {
             dir = d.parent();
         }
     }
-    if let Some(h) = dirs::home_dir() {
+    if let Some(h) = Some(home()) {
         files.push(h.join(".claude").join("settings.local.json"));
         files.push(h.join(".claude").join("settings.json"));
     }
@@ -1147,7 +1169,7 @@ pub struct AutoModes {
 }
 
 fn auto_path() -> std::path::PathBuf {
-    dirs::home_dir().unwrap_or_default().join(".terse").join("permission-auto.json")
+    home().join(".terse").join("permission-auto.json")
 }
 
 pub fn get_auto_modes() -> AutoModes {
@@ -1191,7 +1213,7 @@ fn agent_of(req: &PermissionRequest) -> &'static str {
 // may do forever. Terse remembers the decision on its own side instead, where
 // the matching is exact and revocable by deleting one file.
 fn rules_path() -> std::path::PathBuf {
-    dirs::home_dir().unwrap_or_default().join(".terse").join("permission-rules.json")
+    home().join(".terse").join("permission-rules.json")
 }
 
 /// A stable, CONSERVATIVE signature for "this kind of call".
@@ -1271,7 +1293,7 @@ pub fn install_hook() -> Result<bool, String> {
         plog("install skipped (feature off)");
         return Ok(false);
     }
-    let home = dirs::home_dir().ok_or("no home dir")?;
+    let home = home();
     let terse_dir = home.join(".terse");
     std::fs::create_dir_all(&terse_dir).map_err(|e| e.to_string())?;
 
@@ -1377,7 +1399,7 @@ pub fn install_hook() -> Result<bool, String> {
 
 /// Remove Terse's hook, leaving every other hook untouched.
 pub fn uninstall_hook() -> Result<bool, String> {
-    let settings = dirs::home_dir().unwrap_or_default().join(".claude").join("settings.json");
+    let settings = home().join(".claude").join("settings.json");
     if !settings.exists() {
         return Ok(false);
     }
@@ -1514,8 +1536,13 @@ mod hook_tests {
     use super::*;
 
     /// install_hook / uninstall_hook edit the user's real ~/.claude/settings.json,
-    /// so they are exercised against a throwaway HOME. dirs::home_dir() honours
-    /// $HOME on unix, which makes this safe to run anywhere.
+    /// so they are exercised against a throwaway home.
+    ///
+    /// Through TEST_HOME rather than $HOME, which is what the macOS original
+    /// does: dirs::home_dir() honours $HOME on unix, but on Windows it goes to
+    /// SHGetKnownFolderPath and ignores the environment entirely — so the copied
+    /// test wrote its fixture into a temp dir and then asserted against the real
+    /// profile, and failed on the first line.
     ///
     /// One test rather than several: $HOME is process-wide, and cargo runs tests
     /// in parallel threads, so splitting these would let them race each other.
@@ -1524,7 +1551,7 @@ mod hook_tests {
         let tmp = std::env::temp_dir().join(format!("terse-hooktest-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join(".claude")).unwrap();
-        std::env::set_var("HOME", &tmp);
+        *TEST_HOME.lock().unwrap_or_else(|e| e.into_inner()) = Some(tmp.clone());
 
         // A settings.json that already has the user's own hooks in it.
         let original = serde_json::json!({

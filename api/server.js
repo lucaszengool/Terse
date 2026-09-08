@@ -351,8 +351,13 @@ const publishLimiter = rateLimit({
   message: { error: 'Too many posts from this address — try again later' },
   standardHeaders: true,
   legacyHeaders: false,
-  // 只限"发",不限"看":浏览广场和发帖走的是同一个前缀。
-  skip: (req) => req.method !== 'POST',
+  /* 只限"发",不限"看":浏览广场和发帖走的是同一个前缀。
+     ⚠ 而"发"**只有一条路径**。原来这里只问方法,于是整棵子树下所有的 POST 都算进
+     这十条里 —— 点赞、收藏、评论、举报,以及每打开一个项目就发一次的 `/:id/view`。
+     也就是说一个人在广场上**看**十个项目,接下来一小时里就点不了赞、发不了评论、
+     也发不了自己的项目,而返回的话是"这个地址发帖太多了"。
+     浏览是这个页面最主要的动作,所以这道闸实际上主要拦的是逛广场的人。 */
+  skip: (req) => req.method !== 'POST' || req.path !== '/',
 });
 app.use('/api/cloud/projects', publishLimiter);
 app.use(express.json());

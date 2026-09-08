@@ -13,7 +13,7 @@
  *   不光栅化。周围的场是好的(它的点大),项目层是全黑的。所以下面有一条断言,
  *   就是拿着着色器里那个公式去算每一颗点的实际大小。
  */
-import { sampleFlow } from './wallpaper-project.js';
+import { sampleFlow, sampleGraphFlow, sampleTimeline, sampleCity } from './wallpaper-project.js';
 import { readFileSync } from 'node:fs';
 import './testkit/canvas.mjs';
 
@@ -132,6 +132,136 @@ function litY(o) {
     if (g > 0.85 && r < 0.6) { sum += o.target[i * 3 + 1]; k++; }
   }
   return k ? sum / k : null;
+}
+
+/* ══ E. 依赖流 ════════════════════════════════════════════════════════════
+   星座画的是同一张图的静态样子;这一幕画的是**从入口一层层走进去**。所以要钉的
+   是"走"这件事真的在动,以及它不会因为图里有孤岛就崩。 */
+{
+  /*  0 ── 1 ── 3
+      │
+      2        4(孤岛,谁也连不到)          0 度数最高 = 入口 */
+  const G = { n: [[0, 0, 0, 3, 0], [200, 100, 0, 2, 0], [-200, 100, 0, 1, 1],
+                  [400, 200, 0, 1, 1], [0, -400, 0, 0, 2]],
+              e: [[0, 1], [0, 2], [1, 3]] };
+
+  ok('an empty graph draws nothing', sampleGraphFlow(null, N, 0).used === 0);
+  ok('a graph with no edges draws nothing', sampleGraphFlow({ n: G.n, e: [] }, N, 0).used === 0);
+
+  const r0 = sampleGraphFlow(G, N, 0), r1 = sampleGraphFlow(G, N, 1), r2 = sampleGraphFlow(G, N, 2);
+  ok('it draws at every ring', r0.used > 0 && r1.used > 0 && r2.used > 0);
+  ok('it never writes past the budget', r0.used <= N && r2.used <= N);
+  ok('every position is finite', [...r1.target.slice(0, r1.used * 3)].every(Number.isFinite));
+
+  /* 亮的那一圈**在往外走**。判据用"亮点离入口的平均距离":第 0 拍只有入口亮,
+     距离是 0;往后每一拍亮的那圈更远。⚠ 用距离而不是坐标,因为图是任意摆的。 */
+  const litR = (o) => {
+    let sum = 0, k = 0;
+    for (let i = 0; i < o.used; i++) {
+      const g = o.color[i * 3 + 1], rr = o.color[i * 3];
+      if (g > 0.85 && rr < 0.6) {
+        const x = o.target[i * 3], y = o.target[i * 3 + 1];
+        sum += Math.hypot(x, y); k++;
+      }
+    }
+    return k ? sum / k : null;
+  };
+  const rr = [litR(r0), litR(r1), litR(r2)];
+  ok('the lit ring can be found at each step', rr.every((v) => v !== null));
+  ok(`the lit ring moves outward from the entry (${rr.map((v) => v?.toFixed(2)).join(' → ')})`,
+     rr[0] < rr[1] && rr[1] < rr[2]);
+
+  // 孤岛不该被硬塞进最后一层 —— 它永远是"还没到"的颜色。
+  ok('an unreachable node is never lit', (() => {
+    for (let s2 = 0; s2 < 6; s2++) {
+      const o = sampleGraphFlow(G, N, s2);
+      for (let i = 0; i < o.used; i++) {
+        const near = Math.abs(o.target[i * 3 + 1] + 0.4) < 0.06 && Math.abs(o.target[i * 3]) < 0.06;
+        if (near && o.color[i * 3 + 1] > 0.85) return false;
+      }
+    }
+    return true;
+  })());
+
+  ok('the step wraps rather than running off the end', sampleGraphFlow(G, N, 99).used > 0);
+  ok('and a negative step is survivable', sampleGraphFlow(G, N, -3).used > 0);
+}
+
+/* ══ D. 城市是怎么长出来的 ═══════════════════════════════════════════════ */
+{
+  const dirs = [
+    { name: 'core', files: 40, bytes: 400000, lang: 'Rust', depth: 2, age_days: 300 },
+    { name: 'docs', files: 8, bytes: 20000, lang: 'Markdown', depth: 1, age_days: 150 },
+    { name: 'web', files: 20, bytes: 150000, lang: 'TypeScript', depth: 2, age_days: 20 },
+  ];
+  const extent = (g) => {
+    const o = sampleCity(dirs, 6000, 'modern', [], [1, 2, 3], g);
+    let x0 = 9, x1 = -9, top = -9;
+    for (let i = 0; i < o.used; i++) {
+      x0 = Math.min(x0, o.target[i * 3]); x1 = Math.max(x1, o.target[i * 3]);
+      top = Math.max(top, o.target[i * 3 + 1]);
+    }
+    return { width: x1 - x0, top, used: o.used };
+  };
+
+  const early = extent(0.12), late = extent(1);
+  ok('early on the city is shorter than it ends up', early.top < late.top - 0.05);
+  ok('and it is narrower — the newer directories are not there yet', early.width < late.width);
+  ok('it still draws something at the very first beat', early.used > 0);
+
+  /* ★ grow = 1 必须和**根本不传** grow 走同一条路。这一幕是加在一个已经上线的
+     渲染器上的,今天的城市不能因为多了一个参数就变样。 */
+  const a = sampleCity(dirs, 4000, 'modern', [], [1], 1);
+  const b = sampleCity(dirs, 4000, 'modern', [], [1]);
+  ok('grow = 1 and no grow at all use the same code path (heights identical)',
+     Math.abs(Math.max(...a.target.filter((_, i) => i % 3 === 1))
+            - Math.max(...b.target.filter((_, i) => i % 3 === 1))) < 1e-9);
+
+  /* ⚠ 0 会让整座城市空掉,而一幕空城和"城市坏了"在屏幕上一模一样。 */
+  ok('grow = 0 is clamped, not an empty city', sampleCity(dirs, 4000, 'modern', [], [1], 0).used > 0);
+  ok('a nonsense grow is survivable', sampleCity(dirs, 4000, 'modern', [], [1], NaN).used > 0);
+
+  // 全都同龄的旧胶囊:不该崩,也不该除以零。
+  const sameAge = dirs.map((d) => Object.assign({}, d, { age_days: 0 }));
+  ok('directories with no age at all still build a city', sampleCity(sameAge, 4000, 'modern', [], [1], 0.5).used > 0);
+}
+
+/* ══ 时间轴(生长那几拍的读数)══════════════════════════════════════════ */
+{
+  const days = Array.from({ length: 371 }, (_, i) => (i % 11 === 0 ? 9 : i % 3));
+  ok('no commits, no timeline', sampleTimeline([], N, 1).used === 0);
+  ok('too few days is not a timeline', sampleTimeline([1, 2], N, 1).used === 0);
+
+  const t0 = sampleTimeline(days, N, 0.15), t1 = sampleTimeline(days, N, 1);
+  ok('the timeline draws', t1.used > 0);
+  const litX = (o) => {
+    let mx = -9;
+    for (let i = 0; i < o.used; i++) if (o.color[i * 3 + 1] > 0.85) mx = Math.max(mx, o.target[i * 3]);
+    return mx;
+  };
+  ok(`the cursor advances with grow (${litX(t0).toFixed(2)} → ${litX(t1).toFixed(2)})`, litX(t0) < litX(t1));
+  ok('371 days become ~53 weekly bars, not 371 needles', (() => {
+    const gap = 1.7 / 52;                       // 见 sampleTimeline:W 摊在 weeks-1 上
+    const buckets = new Set();
+    for (let i = 0; i < t1.used; i++) buckets.add(Math.round((t1.target[i * 3] + 0.85) / gap));
+    return buckets.size >= 40 && buckets.size <= 60;
+  })());
+}
+
+/* ══ ★ 新的两幕也要过点大小那一关 ═════════════════════════════════════════
+   这是这个文件里最该复用的一条:一幕画得再对,点不到一个设备像素就是全黑的。 */
+{
+  const G = { n: [[0, 0, 0, 3, 0], [200, 100, 0, 2, 0], [-200, 100, 0, 1, 1], [400, 200, 0, 1, 1]],
+              e: [[0, 1], [0, 2], [1, 3]] };
+  const days = Array.from({ length: 371 }, (_, i) => i % 5);
+  const RATIO = 1.5, UPS = 1.6;
+  const px = (sc) => (1.15 + 0.75) * RATIO * UPS * sc;
+  const minOf = (o) => { let m = Infinity; for (let i = 0; i < o.used; i++) m = Math.min(m, o.scale[i]); return m; };
+
+  const gmin = minOf(sampleGraphFlow(G, N, 1));
+  const tmin = minOf(sampleTimeline(days, N, 0.5));
+  ok(`every point in the dependency flow is at least one device pixel (${px(gmin).toFixed(2)}px)`, px(gmin) >= 1);
+  ok(`every point in the timeline is at least one device pixel (${px(tmin).toFixed(2)}px)`, px(tmin) >= 1);
 }
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);

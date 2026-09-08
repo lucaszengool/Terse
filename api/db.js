@@ -1705,6 +1705,15 @@ const upsertWallProject = db.prepare(`
   VALUES (@id, @identity, @title, @capsule)
   ON CONFLICT(id) DO UPDATE SET title = @title, capsule = @capsule, published_at = datetime('now')
 `);
+/* 只改胶囊,**不动 published_at**。
+   upsertWallProject 每次都会把发布时间刷成 now —— 对"重新发布"是对的,对"给已经
+   在墙上的项目补一层新数据"是错的:广场是按时间倒序排的,补一遍数据会把被补过的
+   那些整体顶到最前面,而这面墙的顺序是特意排过的(见 api/curate-plaza.js,八种
+   风格轮着取,就是为了让人连着刷两条不会长得像)。
+   views / 点赞 / 评论 / 举报都挂在 id 上,而 id 不变,所以它们原样留着。 */
+const updateWallProjectCapsule = db.prepare(
+  'UPDATE wall_projects SET title = @title, capsule = @capsule WHERE id = @id');
+
 const listWallProjects = db.prepare(
   // identity 也带上:它是**发布者的短身份**,也就是私信要寄到的地址。没有它,
   // "给作者发消息"就只剩一个名字,而名字不是地址。
@@ -1822,7 +1831,7 @@ module.exports = {
   addWallReaction, removeWallReaction, hasWallReaction, countWallReactions, myWallReactions,
   insertWallComment, listWallComments, getWallComment, deleteWallComment, deleteWallCommentReplies,
   countWallComments, topWallComments, wallProjectOwner,
-  deleteWallProjectById, allWallProjects,
+  deleteWallProjectById, allWallProjects, updateWallProjectCapsule,
   recentWallProjects, lastWallPostAt, wallPostsSince,
   addWallReport, countWallReports, reportedProjects,
   sendDm, dmThread, dmInbox, dmLast, dmMarkRead, dmUnreadTotal, dmSentSince, dmRepliedBy,

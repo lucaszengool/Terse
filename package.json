@@ -33,7 +33,8 @@
     "test:liveactivity-e2e": "node api/liveactivity.e2e.test.js",
     "test:wallstamp": "node api/wallstamp.test.js",
     "test:probe": "node api/repo-probe.test.js",
-    "test:project": "node --import ./src/renderer/testkit/loader.mjs src/renderer/wallpaper-project.test.mjs"
+    "test:project": "node --import ./src/renderer/testkit/loader.mjs src/renderer/wallpaper-project.test.mjs",
+    "test:backfill": "node api/backfill.test.js"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.6.1",

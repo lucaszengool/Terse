@@ -356,7 +356,15 @@ const KIND_RGB = {
  * @param {number} n
  * @returns {{target:Float32Array, color:Float32Array, used:number}} 落点在 −1..1 的立方体里
  */
-export function sampleCity(dirs, n, styleId, links, commits) {
+/* ── D. 这座城市**是怎么长出来的** ──────────────────────────────────────
+   城市说的是"现在有多大",而一个项目最像"一步一步"的东西,是它自己长成这样的
+   那三百七十一天。这一层不要任何新数据:楼已经带着 age_days(这块结构多老),
+   胶囊里也已经有按周的提交数。
+
+   `grow` ∈ (0,1] 就是把时钟拨到某一刻:比这一刻更晚才出现的目录**还没有**,
+   刚出现的那些正在往上长。1 就是今天,也就是这个函数原来的样子 —— 默认值给 1,
+   所以所有旧的调用一个字都不用改,画出来也和以前逐位相同。 */
+export function sampleCity(dirs, n, styleId, links, commits, grow) {
   const target = new Float32Array(n * 3);
   const color = new Float32Array(n * 3);
   // 每颗粒子画多大。楼身、地面、窗、标签要的点各不一样 —— 一个 40px 高的名字拿画
@@ -390,6 +398,16 @@ export function sampleCity(dirs, n, styleId, links, commits) {
   const heightOf = (d) => (lgMax - lgMin < 1e-6
     ? 0.6
     : (Math.log(1 + massOf(d)) - lgMin) / lgSpan);
+
+  /* 时钟的两个常量。GROW 夹在 (0,1]:0 会让整座城市空掉,而一幕什么都没有的
+     城市和"城市坏了"在屏幕上一模一样。maxAge 保底 1,免得所有目录同龄时除以零。 */
+  const GROW = (grow === undefined || grow === null) ? 1 : Math.max(0.001, Math.min(1, +grow || 0));
+  const maxAge = Math.max(1, ...list.map((d) => (Number.isFinite(+d.age_days) ? +d.age_days : 0)));
+  /* ⚠ 老胶囊的目录**根本没有 age_days**(扫描器后来才加的),于是每一座的年龄都是 0,
+     也就是"全都是今天新建的" —— 出生时刻算出来全是 0.78,时钟走到 0.78 之前
+     这座城市**一座楼都没有**。空城和"城市坏了"在屏幕上一模一样,而且不会报错。
+     没有年龄可比就没有先后可言:那就让所有楼从一开始就在,只是一起往上长。 */
+  const ordered = list.filter((d) => +d.age_days > 0).length >= 2;
   const maxF = Math.max(1, ...list.map((d) => +d.files || 0));
   const maxChurn = Math.max(0, ...list.map((d) => +d.churn || 0));
   const cols = Math.ceil(Math.sqrt(list.length));
@@ -427,7 +445,7 @@ export function sampleCity(dirs, n, styleId, links, commits) {
   const seatOf = new Array(list.length);
   order.forEach((li, pos) => { seatOf[li] = pos; });
 
-  const towers = list.map((d, i) => {
+  const towers0 = list.map((d, i) => {
     const kind = String(d.kind || 'source');
     const seat = seatOf[i];
     const cx = (seat % cols + 0.5) * cell - 1;
@@ -439,6 +457,22 @@ export function sampleCity(dirs, n, styleId, links, commits) {
     // 0.30 floor rather than 0.14: the smallest building is still a building,
     // and at a phone's scale anything under that is not a shape, it is a smudge.
     let h = 0.30 + 1.00 * heightOf(d);
+    /* 时钟。age_days 是"这块结构有多老",所以最老的那座最先立起来 —— 把年龄摊到
+       0..1 上就是它的出生时刻。⚠ 一座楼不是"啪"地出现的:出生后给它一小段时间
+       往上长(RAMP),否则整幕就是几次跳变,不是生长。 */
+    if (GROW < 1) {
+      const RAMP = 0.22;
+      /* ⚠ 出生时刻要压进 [0, 1−RAMP],不能直接用 1−age/maxAge。直接用的话,**最新**
+         的那座楼出生在 0.93,到 GROW=1 时才长了三成 —— 而 GROW=1 画的是今天,
+         必须和没有时钟时逐位相同。于是最后一拍会"啪"地跳一下,那一跳没有任何
+         报错,只是看起来像掉了一帧。压完之后每一座都在时钟走到头之前长满。 */
+      const born = ordered
+        ? (1 - Math.min(1, (Number.isFinite(+d.age_days) ? +d.age_days : 0) / maxAge)) * (1 - RAMP)
+        : 0;
+      const t = (GROW - born) / RAMP;
+      if (t <= 0) return null;                    // 那时候还没有这个目录
+      h *= Math.min(1, t);
+    }
     // 形状决定体量的读法:厂房是趴着的,公园是平的,圆仓是矮胖的。
     if (kind === 'test') h *= 0.42;
     if (kind === 'docs') h *= 0.10;
@@ -467,6 +501,12 @@ export function sampleCity(dirs, n, styleId, links, commits) {
       w: Math.sqrt(Math.max(1, massOf(d))),
     };
   });
+
+  /* ⚠ 还没出生的那些被上面返回成了 null,要在这儿滤掉 —— 留着的话 wSum、
+     包围盒和点的分配都会把它们算进去,于是画面里出现一片"看不见但占着地方"的
+     楼:城市会莫名其妙地偏到一边,而且没有任何报错。 */
+  const towers = towers0.filter(Boolean);
+  if (!towers.length) return { target, color, scale, used: 0 };
 
   const wSum = towers.reduce((a, t) => a + t.w, 0) || 1;
   const nGround = Math.round(n * 0.05);
@@ -1163,6 +1203,213 @@ export function sampleFlow(flow, verbs, n, step) {
 }
 
 /**
+ * E. 依赖**流**:从入口出发,一层一层走进这个仓库。
+ *
+ * 星座那一幕(sampleConstellation)画的是同一张图,但它是**静的** —— 看得出抱团,
+ * 看不出"从哪进来、先到哪、再到哪"。这一幕走的是同一份数据的另一半意思:
+ * 谁被谁引进来。
+ *
+ * 入口取**度数最大**的那个节点。没有别的信息可用(图里只有 x/y/z、度数、社区号),
+ * 而在一张 import 图里,被最多文件牵着的那个基本上就是主干。
+ *
+ * ⚠ 和流程幕一样,推进是**按拍**的,不是按帧。一拍走一层 BFS,所以看到的是
+ * 一圈一圈亮开,而代价是每拍重采一次,不是每帧重写四万个颜色。
+ *
+ * ⚠ 这一幕在广场上**多半不会出现**,而这不是 bug:github-capsule 拿不到 import 图
+ * (那要把仓库 clone 下来解析),所以它写的是 `graph: null`。实测线上一百颗里只有
+ * 两颗有图 —— 都是 Mac 扫出来的。轮播是"手上有哪几种就轮哪几种",少一幕没人看得
+ * 出来,所以它就静静地不出场。
+ */
+/** 生长分几拍。六拍够看出"先有什么、后有什么",再多就是把一件小事拉长。 */
+const GROW_STEPS = 6;
+
+/** 这张图从入口走出去有几层 —— 依赖流要按它排拍数。和 sampleGraphFlow 里那次
+ *  BFS 是同一套走法,单拆出来是因为排轮播的时候还没开始采点。 */
+function graphRings(g) {
+  const nodes = (g && Array.isArray(g.n)) ? g.n : [];
+  const edges = (g && Array.isArray(g.e)) ? g.e : [];
+  if (nodes.length < 4 || !edges.length) return 0;
+  const adj = nodes.map(() => []);
+  for (const e of edges) {
+    const a = e[0] | 0, b = e[1] | 0;
+    if (a === b || a < 0 || b < 0 || a >= nodes.length || b >= nodes.length) continue;
+    adj[a].push(b); adj[b].push(a);
+  }
+  let root = 0;
+  for (let i = 1; i < nodes.length; i++) if ((nodes[i][3] | 0) > (nodes[root][3] | 0)) root = i;
+  const depth = new Int16Array(nodes.length).fill(-1);
+  depth[root] = 0;
+  let q = [root], max = 0;
+  while (q.length) {
+    const next = [];
+    for (const i of q) for (const j of adj[i]) if (depth[j] < 0) { depth[j] = depth[i] + 1; max = depth[j]; next.push(j); }
+    q = next;
+  }
+  return max + 1;
+}
+
+export function sampleGraphFlow(g, n, step) {
+  const target = new Float32Array(n * 3);
+  const color = new Float32Array(n * 3);
+  const scale = new Float32Array(n); scale.fill(0.5);
+  const nodes = (g && Array.isArray(g.n)) ? g.n : [];
+  const edges = (g && Array.isArray(g.e)) ? g.e : [];
+  if (nodes.length < 4 || !edges.length || n <= 0) return { target, color, scale, used: 0 };
+
+  // 邻接表。图是无向着看的 —— import 的方向在这份数据里没有留下来。
+  const adj = nodes.map(() => []);
+  for (const e of edges) {
+    const a = e[0] | 0, b = e[1] | 0;
+    if (a === b || a < 0 || b < 0 || a >= nodes.length || b >= nodes.length) continue;
+    adj[a].push(b); adj[b].push(a);
+  }
+
+  let root = 0;
+  for (let i = 1; i < nodes.length; i++) {
+    if ((nodes[i][3] | 0) > (nodes[root][3] | 0)) root = i;
+  }
+
+  /* BFS 深度。走不到的节点留 −1 —— 一张 import 图里常有孤岛(测试夹具、脚本),
+     它们不属于任何一层,画成"还没到"比硬塞进最后一层诚实。 */
+  const depth = new Int16Array(nodes.length).fill(-1);
+  depth[root] = 0;
+  let queue = [root], maxDepth = 0;
+  while (queue.length) {
+    const next = [];
+    for (const i of queue) {
+      for (const j of adj[i]) if (depth[j] < 0) { depth[j] = depth[i] + 1; maxDepth = depth[j]; next.push(j); }
+    }
+    queue = next;
+  }
+  const rings = maxDepth + 1;
+  const front = ((step | 0) % rings + rings) % rings;
+
+  let p = 0;
+  const put = (x, y, z, r, gg, b, sc) => {
+    if (p >= n) return;
+    const o = p * 3;
+    target[o] = x; target[o + 1] = y; target[o + 2] = z;
+    color[o] = r; color[o + 1] = gg; color[o + 2] = b;
+    scale[p] = sc; p++;
+  };
+  const px = (i) => (nodes[i][0] || 0) / 1000;
+  const py = (i) => (nodes[i][1] || 0) / 1000;
+  const pz = (i) => (nodes[i][2] || 0) / 1000;
+
+  // 和流程幕同一套配色,因为说的是同一件事:走过的、正在走的、还没到的。
+  const ON = [0.42, 0.95, 0.72], PAST = [0.24, 0.52, 0.44], WAIT = [0.26, 0.29, 0.34];
+  const stateOf = (i) => (depth[i] < 0 || depth[i] > front ? 0 : (depth[i] === front ? 2 : 1));
+
+  /* 先画边,而且只画**这一拍正在被走过**的那些 —— 从上一层伸到当前层。全部边一起
+     画会把图糊成一团毛线,而这一幕要说的恰恰是"现在走到哪了"。 */
+  const nEdgePts = Math.round(n * 0.30);
+  const live = [];
+  for (const e of edges) {
+    const a = e[0] | 0, b = e[1] | 0;
+    if (a >= nodes.length || b >= nodes.length) continue;
+    const da = depth[a], db = depth[b];
+    if (da === front - 1 && db === front) live.push([a, b]);
+    else if (db === front - 1 && da === front) live.push([b, a]);
+  }
+  if (live.length) {
+    const per = Math.max(4, Math.floor(nEdgePts / live.length));
+    for (const [a, b] of live) {
+      for (let k = 0; k < per && p < n; k++) {
+        const u = (k + 0.5) / per;
+        const f = 0.30 + 0.62 * u;                 // 越靠近目的地越亮:方向就是这么画出来的
+        put(px(a) + (px(b) - px(a)) * u,
+            py(a) + (py(b) - py(a)) * u,
+            pz(a) + (pz(b) - pz(a)) * u,
+            ON[0] * f, ON[1] * f, ON[2] * f, 0.30);
+      }
+    }
+  }
+
+  // 节点。剩下的点按"这一层几个"平摊,当前层的球最大 —— 它是这一拍的主角。
+  const left = Math.max(0, n - p);
+  const per = Math.max(6, Math.floor(left / Math.max(1, nodes.length)));
+  for (let i = 0; i < nodes.length && p < n; i++) {
+    const st = stateOf(i);
+    const c = st === 2 ? ON : (st === 1 ? PAST : WAIT);
+    const rad = (i === root ? 0.055 : 0.030) * (st === 2 ? 1.35 : 1);
+    const cnt = st === 2 ? per : Math.max(4, Math.round(per * (st === 1 ? 0.7 : 0.42)));
+    for (let k = 0; k < cnt && p < n; k++) {
+      const u = hash01c(k * 2.3 + i * 41), v = hash01c(k * 5.9 + i * 17), w = hash01c(k * 8.3 + i * 7);
+      const r = rad * Math.cbrt(u);
+      const th = v * Math.PI * 2, ph = Math.acos(2 * w - 1);
+      const core = 1 - r / rad;
+      const gg = (st === 2 ? 0.72 : 0.5) + 0.55 * core;
+      put(px(i) + r * Math.sin(ph) * Math.cos(th),
+          py(i) + r * Math.cos(ph),
+          pz(i) + r * Math.sin(ph) * Math.sin(th),
+          Math.min(1, c[0] * gg), Math.min(1, c[1] * gg), Math.min(1, c[2] * gg),
+          st === 2 ? 0.5 : 0.34);
+    }
+  }
+  return { target, color, scale, used: p };
+}
+
+/**
+ * D 的读数:提交历史那条时间轴,跟着城市一起长。
+ *
+ * 城市在长的时候,右边这一格放的是**它长到哪一天了** —— 一排按周汇总的柱子,
+ * 走过的亮、没到的暗,和城市共用同一个 `grow`。没有这一格的话,生长那几拍右边
+ * 是空的,而一格空白看起来像坏了。
+ *
+ * ⚠ `commits` 是**每天一个数**(53 周 × 7 天 = 371)。这里按周汇总成 53 根柱子:
+ * 371 根柱子在一条一米宽的横带里,每根不到两个粒子宽,那不是图表,是噪点。
+ */
+export function sampleTimeline(commits, n, grow) {
+  const target = new Float32Array(n * 3);
+  const color = new Float32Array(n * 3);
+  const scale = new Float32Array(n); scale.fill(0.42);
+  const days = Array.isArray(commits) ? commits : [];
+  if (days.length < 7 || n <= 0) return { target, color, scale, used: 0 };
+
+  const weeks = [];
+  for (let i = 0; i < days.length; i += 7) {
+    let sum = 0;
+    for (let k = i; k < Math.min(days.length, i + 7); k++) sum += Math.max(0, +days[k] || 0);
+    weeks.push(sum);
+  }
+  const maxW = Math.max(1, ...weeks);
+  const G = (grow === undefined || grow === null) ? 1 : Math.max(0, Math.min(1, +grow || 0));
+  const cursor = G * weeks.length;
+
+  let p = 0;
+  const put = (x, y, z, r, g, b, sc) => {
+    if (p >= n) return;
+    const o = p * 3;
+    target[o] = x; target[o + 1] = y; target[o + 2] = z;
+    color[o] = r; color[o + 1] = g; color[o + 2] = b;
+    scale[p] = sc; p++;
+  };
+
+  const ON = [0.42, 0.95, 0.72], WAIT = [0.26, 0.29, 0.34];
+  const per = Math.max(3, Math.floor(n / Math.max(1, weeks.length)));
+  const W = 1.7, X0 = -0.85, BASE = -0.55;
+  for (let i = 0; i < weeks.length && p < n; i++) {
+    const x = X0 + (i / Math.max(1, weeks.length - 1)) * W;
+    /* 高度开方,不是线性:提交数的分布是长尾的,一周三十次的旁边全是一两次,
+       线性画就只剩一根针立在一条直线上。 */
+    const h = 0.06 + 0.62 * Math.sqrt(weeks[i] / maxW);
+    const past = i < cursor;
+    // 游标那一根最亮 —— "现在在这里"要看得出来,不然就只是一张静止的柱状图。
+    const here = past && i >= cursor - 1.35;
+    const c = past ? ON : WAIT;
+    const f = here ? 1 : (past ? 0.62 : 0.5);
+    const cnt = Math.max(2, Math.round(per * (past ? 1 : 0.55)));
+    for (let k = 0; k < cnt && p < n; k++) {
+      const u = (k + 0.5) / cnt;
+      const jx = (hash01c(k * 3.1 + i * 13) - 0.5) * 0.012;
+      put(x + jx, BASE + h * u * (past ? 1 : 0.42), (hash01c(k * 7.7 + i * 3) - 0.5) * 0.05,
+          c[0] * f, c[1] * f, c[2] * f, here ? 0.5 : 0.42);
+    }
+  }
+  return { target, color, scale, used: p };
+}
+
+/**
  * 项目缩影层:一张由粒子构成的图,带自己的出场/退场包络。
  *
  * 生命周期是**一段有头有尾的演出**,不是一个开关:浮现(in)→ 停住(hold)→ 散去(out)。
@@ -1408,6 +1655,18 @@ export class ProjectLayer {
       : 0;
     for (let i = 0; i < flowNodes; i++) scenes.push({ k: 'flow', step: i });
     if (gph) scenes.push({ k: 'graph' });
+    /* E. 依赖流:同一张图,走一遍。和星座并排放,因为它们是同一份数据的两半 ——
+       一半说"谁和谁抱团",一半说"从入口怎么走到这里"。一层一拍。 */
+    if (gph) {
+      const rings = Math.min(5, graphRings(gph));
+      for (let i = 0; i < rings; i++) scenes.push({ k: 'gflow', step: i });
+    }
+    /* D. 这座城市是怎么长出来的。⚠ 要楼上带 age_days 才有"先后"可言 —— 没有年龄
+       的胶囊(旧版扫描器出的)全都同龄,那样长出来是所有楼一起冒,不是生长,
+       所以干脆不排这一幕。 */
+    if (list.length >= 2 && list.filter((d) => +d.age_days > 0).length >= 2) {
+      for (let i = 0; i < GROW_STEPS; i++) scenes.push({ k: 'grow', step: i });
+    }
     if (list.some((d) => Array.isArray(d.kids) && d.kids.length)) scenes.push({ k: 'rings' });
     if (Array.isArray(ex.hot) && ex.hot.length >= 3) scenes.push({ k: 'hot' });
     if (Array.isArray(ex.people) && ex.people.length >= 2) scenes.push({ k: 'people' });
@@ -1444,7 +1703,9 @@ export class ProjectLayer {
        read at full width. */
     const nStar = (pick && !narrow) ? Math.round(this.nCity * 0.26) : 0;
     const nCityPts = this.nCity - nStar;
-    const s = sampleCity(list, nCityPts, styleId, links, commits);
+    /* 生长那几拍,城市自己被拨回到某一刻;其余每一拍都是今天(1),和以前逐位相同。 */
+    const grow = (pick && pick.k === 'grow') ? (pick.step + 1) / GROW_STEPS : 1;
+    const s = sampleCity(list, nCityPts, styleId, links, commits, grow);
     if (!s.used && !nStar) { this.cityPoints.visible = false; mark(); return false; }
 
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
@@ -1497,6 +1758,9 @@ export class ProjectLayer {
     // 项目,它的关系图不该跟着缩成一粒沙。
     if (nStar && pick) {
       const st = pick.k === 'flow' ? sampleFlow(ex.flow, ex.verbs, nStar, pick.step)
+        : pick.k === 'gflow' ? sampleGraphFlow(gph, nStar, pick.step)
+        // 城市在长的时候,右边放的是"长到哪一天了" —— 两块共用同一个 grow。
+        : pick.k === 'grow' ? sampleTimeline(commits, nStar, grow)
         : pick.k === 'graph' ? sampleConstellation(gph, nStar)
         : pick.k === 'rings' ? sampleSunburst(list, nStar)
         : pick.k === 'hot' ? sampleHotspots(ex.hot, nStar)

@@ -298,6 +298,51 @@ router.post('/', (req, res) => {
   res.json({ ok: true, id });
 });
 
+/* ── 给已经在墙上的项目补一层新数据 ─────────────────────────────────────
+   探针后来学会了读"这个项目在干什么"(flow / verbs / 演示),可**已经发出去的
+   胶囊里没有这些字段** —— `published:true` 只记得"发过一次",不会自己重发。实测
+   线上一百颗胶囊里,带 flow 的是 0,带 verbs 的是 0。也就是说升级完全看不见,
+   而这正是它看起来"什么都没变"的原因。
+
+   ⚠ 为什么不能走上面那个公开的发布口:
+     · 每个地址一小时十条,补一百条要十小时;
+     · 十分钟六十条的保险丝会被自己的补数据触发;
+     · upsert 会把 published_at 刷成 now,把这面特意排过顺序的墙搅乱。
+   都是**正确**的闸门,只是它们防的是陌生人,而这是运维动作。
+
+   所以单开一条口,拿环境变量里的密钥认。没设 PLAZA_ADMIN_TOKEN 就**根本不存在**
+   这条路由 —— 一个默认关着的后门,比一个默认开着但"应该没人猜得到"的强。 */
+const ADMIN_TOKEN = process.env.PLAZA_ADMIN_TOKEN || '';
+
+router.post('/backfill', (req, res) => {
+  if (!ADMIN_TOKEN) return res.status(404).json({ error: 'Not found' });
+  const given = String(req.get('x-terse-admin') || '');
+  /* 定长比较:密钥比对用 === 会在第一个不同的字节上返回,而那点时间差是可测的。 */
+  const ok = given.length === ADMIN_TOKEN.length
+    && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(ADMIN_TOKEN));
+  if (!ok) return res.status(403).json({ error: 'Forbidden' });
+
+  const updates = Array.isArray((req.body || {}).updates) ? req.body.updates.slice(0, 200) : [];
+  if (!updates.length) return res.status(400).json({ error: 'No updates' });
+
+  const done = [], failed = [];
+  for (const u of updates) {
+    const id = String((u && u.id) || '');
+    if (!id) { failed.push({ id, why: 'no id' }); continue; }
+    // ⚠ 照样 sanitize。这条口省掉的是限流和时间戳,不是"别人喂来的数据要夹一遍"
+    // 那道闸 —— 胶囊最后仍然会被别人的机器拿去生成画面。
+    const capsule = sanitize(u && u.capsule);
+    if (!capsule) { failed.push({ id, why: 'bad capsule' }); continue; }
+    const json = JSON.stringify(capsule);
+    if (json.length > MAX_CAPSULE_BYTES) { failed.push({ id, why: 'too large' }); continue; }
+    if (!db.wallProjectOwner.get(id)) { failed.push({ id, why: 'no such project' }); continue; }
+    db.updateWallProjectCapsule.run({ id, title: capsule.title, capsule: json });
+    done.push(id);
+  }
+  console.log('[plaza] backfill:', done.length, 'updated,', failed.length, 'failed');
+  res.json({ ok: true, updated: done.length, failed });
+});
+
 // GET /api/cloud/projects/public?limit=
 // 不需要身份:广场就是给人逛的。列表**直接带着整颗胶囊** —— 客户端点预览时不用再
 // 请求一次,粒子在他自己机器上生成。

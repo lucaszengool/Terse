@@ -7320,9 +7320,6 @@ fn start_wallpaper_cursor_feed(app: AppHandle) {
 // purpose: a capsule is uploaded to the same plaza and rebuilt by viewers on the
 // other platform, so any drift shows up as a project that looks different
 // depending on which machine made it.
-fn cowork_relay(app: tauri::AppHandle, payload: serde_json::Value) {
-    let _ = app.emit("cowork-peer", payload);
-}
 
 // ── 项目粒子(把一个项目文件夹变成一颗可以在壁纸上演的胶囊)──────────────
 

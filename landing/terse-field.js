@@ -1420,18 +1420,57 @@ vec3 procColor(vec2 p, float t){
    *  shows you the same city twice in a row about one time in eight, which
    *  reads as a bug rather than as chance. The rotation guarantees all eight
    *  before any repeat, which is what "all the styles show up" should mean. */
+  /** Lay out the next city AHEAD of the moment it is needed.
+   *
+   *  sampleCity is real main-thread work — measured on the live site at 19-46ms
+   *  for the 13000-point phone budget, so 60-105ms at the desktop's 30000. Run
+   *  from inside step(), that is up to six dropped frames every time a city
+   *  arrives, and it arrives every ~16s while the camera is orbiting: a visible
+   *  hitch on a page whose whole job is to look smooth.
+   *
+   *  It cannot go in a Worker as it stands — sampleLabel rasterises directory
+   *  names through document.createElement('canvas') — so instead it moves off
+   *  the FRAME path: requestIdleCallback runs it in whatever gap the browser
+   *  has, well before the city is due, and the fire itself becomes three
+   *  buffer uploads. The timeout means a permanently busy page still gets its
+   *  city rather than silently losing the layer. */
+  Field.prototype._prepCity = function () {
+    var C = window.TerseCity;
+    if (!C || !this.cityProg || this.cityPending || this.cityPrepping) return;
+    var self = this;
+    var st = C.CITY_STYLES[this.city.styleRot % C.CITY_STYLES.length];
+    this.city.styleRot++;
+    this.cityPrepping = true;
+
+    var build = function () {
+      self.cityPrepping = false;
+      var r;
+      /* If the repo data ever makes this throw, the city must fail alone and
+         leave the wallpaper running. */
+      try { r = C.sampleCity(CITY_DIRS, CITY_N, st.id, null, null); }
+      catch (e) { if (window.console) console.warn('[terse-field] city', e); self.cityProg = null; return; }
+      if (r && r.used) { r.styleId = st.id; self.cityPending = r; }
+    };
+    if (window.requestIdleCallback) window.requestIdleCallback(build, { timeout: 1200 });
+    else setTimeout(build, 0);
+  };
+
   Field.prototype._fireCity = function () {
     var C = window.TerseCity;
     if (!C || !this.cityProg) return false;
-    var st = C.CITY_STYLES[this.city.styleRot % C.CITY_STYLES.length];
-    this.city.styleRot++;
 
-    var r;
-    /* sampleCity is ~20-40ms of CPU and it runs on the main thread. It is a
-       once-per-city cost, never per frame — but if the repo data ever makes it
-       throw, the city must fail alone and leave the wallpaper running. */
-    try { r = C.sampleCity(CITY_DIRS, CITY_N, st.id, null, null); }
-    catch (e) { if (window.console) console.warn('[terse-field] city', e); this.cityProg = null; return false; }
+    /* Normally the layout is already done and this is just an upload. The
+       synchronous path is the fallback for the very first city, or if idle time
+       never came. */
+    var r = this.cityPending;
+    this.cityPending = null;
+    if (!r) {
+      var st = C.CITY_STYLES[this.city.styleRot % C.CITY_STYLES.length];
+      this.city.styleRot++;
+      try { r = C.sampleCity(CITY_DIRS, CITY_N, st.id, null, null); }
+      catch (e) { if (window.console) console.warn('[terse-field] city', e); this.cityProg = null; return false; }
+      if (r) r.styleId = st.id;
+    }
     if (!r || !r.used) return false;
 
     var gl = this.gl;
@@ -1440,7 +1479,7 @@ vec3 procColor(vec2 p, float t){
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bCScl); gl.bufferData(gl.ARRAY_BUFFER, r.scale, gl.DYNAMIC_DRAW);
 
     this.city.used = r.used;
-    this.city.style = st.id;
+    this.city.style = r.styleId;
     this.city.live = { t: 0 };
     this.city.form = 0; this.city.vis = 0;
     return true;
@@ -1604,6 +1643,12 @@ vec3 procColor(vec2 p, float t){
         }
       } else if (now >= this.nextCityAt) {
         if (!this._fireCity()) this.nextCityAt = now + CITY_GAP;
+      } else if (now >= this.nextCityAt - 2500) {
+        /* Lay the next one out during the gap, so the frame that actually
+           shows it only has to upload three buffers. 2.5s is comfortably
+           longer than the worst measured layout (~105ms) plus however long the
+           browser takes to hand out an idle slice. */
+        this._prepCity();
       }
     }
 

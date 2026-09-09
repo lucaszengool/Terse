@@ -79,6 +79,30 @@ function engineAssets() {
   return [...seen].sort();
 }
 
+
+/* ── 把版本号写进引擎**自己**的 import 里 ─────────────────────────────────
+   app.js 给它 import 的东西都挂了 ?v=<build>,所以 mineradio-wallpaper.js 每次都是
+   新的。可它接着用**裸相对路径**去 import 自己的模块 ——
+   `import { ProjectLayer } from './wallpaper-project.js'` —— 那个地址永远不变。
+
+   ⚠ 实测:部署完几分钟后源站已经是新文件,而边缘还在发一份 `age: 2518` 的旧的,
+   `max-age` 写着 300。这就是那个会无视源站头的 CDN TTL 覆盖,`/phone/*.js` 上
+   量到过 age 23435。从源站这边**没有任何一个头**能改变它。
+
+   能改变的只有地址:新的一版就是新的地址,没有旧条目可命中。所以在**发出去的
+   那一刻**把这些 specifier 重写掉。这是同一个形状的第四次 —— 戳漏了引擎、漏了手机
+   自己的脚本、service worker 又坐在两者前面 —— 而这一次补的是唯一一个从外面够不到
+   的地方。 */
+
+/** 只改**相对**且以 .js 结尾的 specifier:裸的 'three' 必须继续走 importmap,
+ *  已经带查询串的原样不动。 */
+const IMPORT_SPECIFIER = /(\bfrom\s*['"]|\bimport\s*\(\s*['"])(\.\/[A-Za-z0-9._-]+\.js)(['"])/g;
+
+function stampImports(text, build) {
+  if (typeof text !== 'string' || !build) return text;
+  return text.replace(IMPORT_SPECIFIER, (m, a, spec, b) => `${a}${spec}?v=${build}${b}`);
+}
+
 /** 参与计算的全部文件,`{base, rel}` —— 测试拿它去和页面对账。 */
 function stampedFiles() {
   return [
@@ -99,4 +123,4 @@ function buildStamp() {
   return acc.toString(36);
 }
 
-module.exports = { buildStamp, stampedFiles, phoneAssets, engineAssets, ENGINE_ASSETS, SHELLS };
+module.exports = { buildStamp, stampedFiles, phoneAssets, engineAssets, ENGINE_ASSETS, SHELLS, stampImports, IMPORT_SPECIFIER };

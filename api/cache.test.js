@@ -170,5 +170,42 @@ ok('a versioned asset may still be served from cache — its URL is immutable',
 ok('and the cache is still the offline fallback in both branches',
    (sw.match(/cache\.match\(req\)/g) || []).length >= 2);
 
+
+/* ── The engine's OWN imports must carry the version ────────────────────────
+   ★ This is the link that was still broken after everything else was fixed.
+   app.js stamps what it imports, so mineradio-wallpaper.js arrives fresh — but
+   it then imports its modules by bare relative specifier, and those URLs never
+   change. Measured on the live site minutes after a deploy: the origin had the
+   new file and the edge served one with `age: 2518` against `max-age: 300`.
+   No header sent from here changes that. Only a different URL does. */
+const { stampImports } = require('./build-stamp');
+
+ok('a relative .js import gets the build appended',
+   stampImports("import {A} from './a.js';", 'B1') === "import {A} from './a.js?v=B1';");
+ok('so does a dynamic import',
+   stampImports("import('./b.js')", 'B1') === "import('./b.js?v=B1')");
+ok('⚠ a BARE specifier is left alone — three must still resolve via the import map',
+   stampImports("import * as THREE from 'three';", 'B1') === "import * as THREE from 'three';");
+ok('a specifier that already has a query is not stamped twice',
+   stampImports("import {C} from './c.js?v=old';", 'B1') === "import {C} from './c.js?v=old';");
+ok('a parent-relative path is left alone', 
+   stampImports("import D from '../up/d.js';", 'B1') === "import D from '../up/d.js';");
+ok('no build, no rewrite', stampImports("import {A} from './a.js';", '') === "import {A} from './a.js';");
+
+// And the real engine really does contain such imports — otherwise the rewrite
+// is guarding nothing and this whole route is dead weight.
+const engine = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'mineradio-wallpaper.js'), 'utf8');
+const bare = (engine.match(/from\s*'\.\/[A-Za-z0-9._-]+\.js'/g) || []);
+ok(`the engine imports its own modules by bare specifier (${bare.length} of them)`, bare.length >= 2);
+ok('and the rewrite reaches every one of them',
+   (stampImports(engine, 'B1').match(/\.js\?v=B1'/g) || []).length === bare.length);
+
+ok('the route is registered BEFORE the static mount, or express.static answers first',
+   server.indexOf("app.get(/^\\/app-assets") > 0
+   && server.indexOf("app.get(/^\\/app-assets") < server.indexOf("app.use('/app-assets'"));
+ok('a versioned engine URL is cached hard — it is immutable by construction',
+   /max-age=31536000, immutable/.test(server));
+ok('the rewritten text is memoised, not re-run per request', /engineCache/.test(server));
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 process.exit(fails.length ? 1 : 0);

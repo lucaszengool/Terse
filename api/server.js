@@ -1569,7 +1569,54 @@ app.get('/d/:id', (req, res) => {
 // copy of each: a fork would drift, and the whole reason the phone can render
 // the real wallpaper is that those files never depended on Tauri in the first
 // place.
-app.use('/app-assets', express.static(path.join(__dirname, '..', 'src', 'renderer'), {
+/* ⚠ THE ENGINE'S OWN IMPORTS HAVE TO CARRY THE VERSION TOO.
+   app.js appends ?v=<build> to what IT imports, so mineradio-wallpaper.js is
+   always fetched fresh. But that file then imports its own modules by bare
+   specifier — `import { ProjectLayer } from './wallpaper-project.js'` — and
+   those URLs are the same forever. Measured on the live site, minutes after a
+   deploy the origin had the new file and the edge was still serving one
+   `age: 2518` against `max-age: 300`: a CDN TTL override that ignores what the
+   origin asks for, the same behaviour already recorded for /phone/*.js at
+   age 23435. There is no header that fixes that from here.
+
+   A version in the URL is the one lever that does work — a new build is a new
+   URL, so there is no entry to hit. So the specifiers are rewritten as the file
+   is served. This is the fourth time this exact failure has been paid for (the
+   stamp missed the engine, then the phone scripts, then the service worker sat
+   in front of both); rewriting here is what makes the version reach the ONLY
+   place that could not be reached from the outside.
+
+   Rewritten text is memoised: files cannot change under a running process, and
+   the alternative is a regex over three quarters of a megabyte per request. */
+const ENGINE_DIR = path.join(__dirname, '..', 'src', 'renderer');
+const engineCache = new Map();
+
+const { stampImports } = require('./build-stamp');
+
+function engineSource(rel) {
+  if (engineCache.has(rel)) return engineCache.get(rel);
+  let text = null;
+  try { text = fs.readFileSync(path.join(ENGINE_DIR, rel), 'utf8'); } catch { text = null; }
+  if (text !== null) text = stampImports(text, PHONE_BUILD);
+  engineCache.set(rel, text);
+  return text;
+}
+
+app.get(/^\/app-assets\/([A-Za-z0-9._-]+\.m?js)$/, (req, res, next) => {
+  const rel = req.params[0];
+  if (rel.includes('..')) return next();
+  const text = engineSource(rel);
+  if (text === null) return next();
+  /* A versioned URL is immutable, so it can be cached hard — that is the whole
+     point of putting the build in it. Unversioned, keep the short TTL that was
+     here before, since such a URL can change under the cache. */
+  res.setHeader('Cache-Control', req.query.v
+    ? 'public, max-age=31536000, immutable'
+    : 'public, max-age=300');
+  res.type('application/javascript').send(text);
+});
+
+app.use('/app-assets', express.static(ENGINE_DIR, {
   extensions: ['js', 'mjs'],
   setHeaders: (res, filePath) => {
     // The engines are large and change rarely; the shim and the room client

@@ -209,21 +209,40 @@ async function main() {
   console.log(`${targets.length} of them link to a GitHub repository\n`);
 
   const updates = [];
-  let n = 0;
+  let n = 0, rateLimited = false;
   for (const p of targets) {
     if (LIMIT && n >= LIMIT) break;
     n++;
     const { owner, repo } = parseRepo(p.capsule.link);
     const label = `${owner}/${repo}`.padEnd(30);
     try {
-      const got = await treeOf(owner, repo);
+      /* ⚠ 配额用光了**不要停**。文件树走 API(未认证一小时 60 次),而画面和 README
+         走 raw —— raw 不占配额。第一版撞到 429 就 break,于是 47 个里只补了 7 个,
+         而剩下 40 个真正缺的恰恰是画面,不是文件树。
+         所以:限流之后照常往下走,只是没有树。 */
+      let got = null;
+      if (!rateLimited) {
+        try { got = await treeOf(owner, repo); }
+        catch (e) {
+          if (e.message !== 'rate-limited') throw e;
+          rateLimited = true;
+          console.log('⚠ GitHub rate limit reached — continuing without file trees (media still works)');
+        }
+      }
       const tree = got ? got.tree : treeFromDirs(p.capsule.dirs);
       const branch = got ? got.branch : 'main';
       const pr = await probe(owner, repo, branch, tree);
 
       const cap = Object.assign({}, p.capsule);
       let did = [];
-      if (pr.flow && (pr.flow.entry || (pr.flow.cmds || []).length)) { cap.flow = pr.flow; did.push('flow'); }
+      /* ⚠ 没有真的文件树时**不要覆盖已经对的 flow**。src/main.rs、main.go、
+         __main__.py、cmd/x/ 全是文件判据,树里没有文件,排名就一路掉到最后一档,
+         而 "lib" 正是"什么都没匹配上"的默认值 —— 上一轮 47 个里 32 个被这样判成
+         了库。一个默认值冒充答案,比保留上一轮那个正确答案糟得多。 */
+      const trusted = !!got;
+      const better = pr.flow && (pr.flow.entry || (pr.flow.cmds || []).length)
+        && (trusted || !p.capsule.flow || pr.flow.kind !== 'lib');
+      if (better) { cap.flow = pr.flow; did.push('flow'); }
       if ((pr.verbs || []).length) { cap.verbs = pr.verbs; did.push(`verbs×${pr.verbs.length}`); }
 
       /* ── 画面:首图,然后按重要程度把能装下的都装进去 ──────────────────
@@ -234,6 +253,12 @@ async function main() {
          预算是一整颗胶囊 160KB,所以顺序就是优先级:先 cover,再 frames,
          剩下多少就放多少张 shots。⚠ 装不下的那一张**不装**,而不是让整颗超限。 */
       const media = pr.media || [];
+      /* ⚠ --refresh **不能直接清空**。sanitize 会拒收一颗 kind:'image' 却既没有
+         cover 又没有 frames 的胶囊(那确实不是一张图),于是"先清空、再去抓、
+         抓不到"就变成整条更新被拒:实测 40 条里 11 条 "bad capsule"。
+         服务端没有丢东西(拒收 = 保持原样),但那一轮对它们等于没跑。
+         所以腾出来的东西先留着,抓到了才换,没抓到就放回去。 */
+      const kept = { cover: cap.cover, frames: cap.frames || [], shots: cap.shots || [] };
       if (REFRESH) { cap.cover = ''; cap.frames = []; cap.shots = []; }
       const room = () => MAX_CAPSULE_BYTES - JSON.stringify(cap).length - 2048;
 
@@ -280,6 +305,13 @@ async function main() {
         if (shots.length) did.push(`shots×${shots.length}`);
       }
 
+      /* 抓不到就把原来的放回去 —— 空着比原来那张差。 */
+      if (REFRESH) {
+        if (!cap.cover && kept.cover) { cap.cover = kept.cover; did.push('cover kept'); }
+        if (!(cap.frames || []).length && kept.frames.length) { cap.frames = kept.frames; did.push('frames kept'); }
+        if (!(cap.shots || []).length && kept.shots.length) { cap.shots = kept.shots; did.push('shots kept'); }
+      }
+
       if (!did.length) { console.log(`${label} —`); continue; }
 
       /* ⚠ 加完再量一次。胶囊有 160KB 的闸,而帧是唯一会把它撑爆的东西 ——
@@ -295,7 +327,7 @@ async function main() {
       updates.push({ id: p.id, capsule: cap });
     } catch (e) {
       console.log(`${label} ✗ ${e.message}`);
-      if (e.message === 'rate-limited') break;
+      if (e.message === 'rate-limited') rateLimited = true;   // 不再中断,见上面
     }
   }
 

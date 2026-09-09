@@ -51,6 +51,22 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
+      # icon.ico is not committed — tauri-build needs it to make the Windows
+      # resource file, and without it the whole build fails at the last moment
+      # with "`icons/icon.ico` not found". build-windows.yml generates it the
+      # same way; ImageMagick is preinstalled on windows-latest.
+      - name: Convert icon to .ico
+        run: |
+          $dst = "windows-app/src-tauri/icons/icon.ico"
+          if (-not (Test-Path $dst)) {
+            magick "windows-app/src-tauri/icons/icon.png" `
+              -define icon:auto-resize=256,128,64,48,32,16 `
+              $dst
+            Write-Host "icon.ico created via ImageMagick"
+          } else {
+            Write-Host "icon.ico already exists"
+          }
+
       - name: Build the app (no installer — the MSIX carries its own payload)
         run: |
           cd windows-app\src-tauri

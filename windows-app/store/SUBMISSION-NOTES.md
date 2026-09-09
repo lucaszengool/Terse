@@ -1,86 +1,84 @@
 # Microsoft Store submission — text to paste
 
-> ⚠ The restricted-capability justification below describes what the code
-> ACTUALLY does, including keystroke capture. Read the "Keystroke capture"
-> section before submitting — it is a review risk and a policy decision, not
-> boilerplate. Do not submit a justification that omits it: an inaccurate
-> declaration to the Store is grounds for removal, and the low-level keyboard
-> hook is discoverable in the binary.
+## Keyboard hook: removed from Store builds
 
-## What the bundled helper (terse-uia.exe) actually does
+The direct-download app has a global keyboard hook (SetWindowsHookEx
+WH_KEYBOARD_LL) as a fallback for reading prompts out of editors UI Automation
+cannot read. The Store build compiles with `TERSE_MSSTORE`, which #if-excludes
+the entire hook — the key-monitor command, HandleKeyMonitor, the P/Invokes, and
+the state class.
 
-Verified against windows-app/helpers/terse-uia/Program.cs:
+Verified against the actual CI artifact:
+- Terse's own assembly (terse-uia.dll) contains NONE of SetWindowsHookEx,
+  UnhookWindowsHookEx, CallNextHookEx, or HandleKeyMonitor.
+- The single-file exe still shows `SetWindowsHookEx` only because it is a
+  self-contained build that bundles Microsoft's own System.Windows.Forms.dll,
+  which declares that import internally. That is framework code, present in
+  every self-contained WinForms app — not Terse calling a hook.
 
-1. **UI Automation reads** (`AutomationElement`, `ValuePattern`, `TextPattern`)
-   — reads the focused window and the text of the coding tool's input field,
-   to know which tool is active and to read the prompt being written.
-2. **A global low-level keyboard hook** (`SetWindowsHookEx(WH_KEYBOARD_LL)`),
-   the `key-monitor` mode. It buffers printable keystrokes and emits the text
-   on Enter. It is the fallback text-capture path used when UI Automation
-   cannot read a tool's editor (e.g. Electron/canvas editors like VS Code).
-   The shipped app uses it: `read_method == "keymonitor"` in lib.rs.
-   - It is gated to a target process: keys are only buffered while THAT tool's
-     window is in the foreground (`fgPid == TargetPid`), and the buffer is
-     dropped otherwise.
-   - But the hook itself is system-wide, and while the target is focused it
-     records the actual characters typed.
-3. **Synthesized keystrokes** (`keybd_event`) to paste optimized text back.
+So the Store build does not capture keystrokes. It reads prompts via UI
+Automation and the clipboard only.
 
-## Keystroke capture — decide before submitting
+## Restricted capability justification (`runFullTrust`)
 
-The hook is legitimate (it captures only the target coding tool's prompt, to
-optimize it) but it IS keystroke capture, and the Store treats a global
-keyboard hook under runFullTrust as high-scrutiny. Two honest options:
-
-- **Submit as-is** with the accurate justification below. Expect questions;
-  answer them with the gating detail. Higher rejection risk.
-- **Ship a Store build without key-monitor.** Fall back to clipboard/UIA
-  capture only (the app already has `read_method == "clipboard"` and selection
-  paths). Removes the keyboard hook from the Store binary entirely, which is
-  the lowest-friction path to approval. This needs a code change and is a
-  product decision — it slightly weakens capture in canvas editors.
-
-## Restricted capability justification (`runFullTrust`) — accurate version
-
-Paste into 提交选项 → 受限功能. Only valid if you submit the build that
-actually contains the keyboard hook.
+Paste into 提交选项 / Submission options → 受限功能 / Restricted capabilities.
 
 ```
-Terse is a Win32 desktop app packaged as MSIX; runFullTrust is required for it
-to run.
+Terse is a Win32 desktop application packaged as MSIX, so runFullTrust is
+required for it to run.
 
-It reads which AI coding tool (Cursor, VS Code, Codex, Copilot, Windsurf, etc.)
-is in the foreground and the prompt the user is currently writing in it, so it
-can show token usage for the right tool and offer to shorten the prompt before
-it is sent.
+It is used to show the user how much their AI coding tools are spending. A
+bundled helper reads, through the Windows UI Automation API, which coding tool
+(Cursor, VS Code, Codex, Copilot, Windsurf, etc.) is in the foreground and the
+prompt currently in its input field, so that usage is attributed to the right
+tool and the user can optionally shorten the prompt before sending it. It also
+reads and writes the user's own local configuration files for those tools, to
+install and remove optional prompt-optimization hooks at the user's request.
 
-Text is read two ways. Where the Windows UI Automation API can read the tool's
-input field, it is used directly. Where it cannot (some Electron/canvas
-editors), Terse falls back to a keyboard hook that buffers what the user types
-ONLY while that specific coding tool's window is in the foreground; the buffer
-is discarded whenever any other window is focused, and it is used solely to
-recover the prompt text for optimization.
-
-Terse does not run when those tools are not in focus, does not read document or
-file contents, and transmits nothing typed — prompt optimization runs on the
-local machine.
+Terse does not install a keyboard hook, does not capture keystrokes, does not
+inject code into other processes, and does not read document contents. Prompt
+optimization runs entirely on the local machine; nothing typed is transmitted.
 ```
 
 ## Product declarations
 
 - Accesses/transmits personal info? **Yes** — email (sign-in).
-- Uses Microsoft commerce? **No** — Stripe on the web (Store cut 0%, no payout
-  profile needed).
-- Age rating: declare **user-generated content** (rooms chat, plaza posts,
-  DMs). Moderation exists (illegal content, near-duplicate detection, report
-  path) — name it.
+- Uses the Microsoft commerce engine? **No** — subscriptions sell on the web
+  through Stripe (Store cut 0%, no payout/tax profile needed).
+- Age rating: declare **user-generated content** — rooms have chat, the plaza
+  has posts and DMs. Moderation exists (illegal content, near-duplicate
+  detection, report path); name it in the answer.
+
+## Listing text
+
+**Title:** Terse
+
+**Description:**
+
+```
+Terse shows you what your AI coding agents are actually spending.
+
+It watches the tools you already use — Claude Code, Cursor, Codex, Copilot,
+Windsurf and more — and turns their token usage into a live picture on your
+desktop: what is running now, what it costs, and what is left today.
+
+Link your phone to carry the same view with you. Open a room and watch the
+same field with other people. Publish a project to the plaza and it appears,
+drawn out of particles, on other people's screens.
+
+An optional prompt optimizer trims filler from what you type before you send
+it. It runs entirely on your machine — nothing you type is transmitted.
+
+Pro unlocks the full wallpaper style set and the 3D free-view.
+```
 
 ## Package
 
 Upload `Terse.msix` from the **Terse-MSIX** artifact of
 build-windows-store.yml. If it is named `Terse-MSIX-DRYRUN-not-submittable`,
-the identity secrets were unset at build time — set them and re-run.
+the identity secrets were unset at build time — set the three MSSTORE_IDENTITY_*
+secrets and re-run.
 
 ## Declared requirements
 
-- Min Windows 10 1809 (10.0.17763); x64; `terse://` protocol handler.
+- Minimum Windows 10 1809 (10.0.17763); x64; `terse://` protocol handler.

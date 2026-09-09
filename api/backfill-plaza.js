@@ -81,13 +81,23 @@ function treeFromDirs(dirs) {
   return out;
 }
 
+/* ⚠ **一个仓库一次调用**,靠猜分支,而不是先问 /repos 要 default_branch。
+   第一版是问的,两次调用 × 47 个仓库 = 94 次,而未认证的额度是一小时 60 次 ——
+   于是它干脆在没有 token 时**完全不取树**,退回到用城市倒推的那棵。结果实测出来
+   就摆在那儿:47 个里 32 个被判成 "lib",包括 oryx、dagu、gonzo 这些明摆着的命令行
+   工具。城市里只有目录,没有文件,而 src/main.rs、main.go、__main__.py、cmd/x/
+   全是**文件**判据 —— 少了它们,排名就一路掉到最后那一档,而 "lib" 恰好是
+   "什么都没匹配上"的默认值。一个默认值冒充答案,比没有答案更糟。
+
+   main 猜不中再试 master,绝大多数仓库两次之内命中,平均下来一个略多于一次。
+   顺带把**分支**也定下来了:README 是按分支从 raw 取的,分支猜错就一个动词都读
+   不到,而那和"这个仓库没写小标题"看起来一模一样。 */
 async function treeOf(owner, repo) {
-  if (!GH_TOKEN) return null;                     // 未认证时 60 次/小时,不够 47 个仓库用
-  const meta = await ghApi(`/repos/${owner}/${repo}`);
-  if (!meta) return null;
-  const branch = meta.default_branch || 'main';
-  const t = await ghApi(`/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`);
-  return { branch, tree: Array.isArray(t && t.tree) ? t.tree : [] };
+  for (const branch of ['main', 'master']) {
+    const t = await ghApi(`/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+    if (t && Array.isArray(t.tree) && t.tree.length) return { branch, tree: t.tree };
+  }
+  return null;
 }
 
 /* ── 演示 → 帧 ─────────────────────────────────────────────────────────── */
@@ -174,7 +184,7 @@ async function main() {
   const list = ((await res.json()).projects || []);
   console.log(`plaza: ${list.length} posts on ${BASE}`);
   if (!GH_TOKEN) {
-    console.log('⚠ no GITHUB_TOKEN — file trees come from the city instead of the API');
+    console.log('⚠ no GITHUB_TOKEN — 60 API calls an hour, roughly one per repo.');
   }
 
   const targets = list.filter((p) => p.capsule && parseRepo(p.capsule.link));
@@ -233,18 +243,35 @@ async function main() {
   if (!updates.length) return;
   if (!ADMIN) throw new Error('need --token or PLAZA_ADMIN_TOKEN to write');
 
-  for (let i = 0; i < updates.length; i += 25) {
-    const batch = updates.slice(i, i + 25);
+  /* ⚠ 分批要按**字节**,不是按条数。第一版一批 25 条,而 /api/cloud/projects 的
+     JSON parser 上限是 220kb —— 那个数是照着**一颗**胶囊定的(160KB 加一点余量)。
+     25 颗最大能到 4MB,于是整次补数据在第一批就撞回一个 413,而且 express 的 413
+     没有 body,报出来是个空对象,看不出是谁太大。
+     按大小攒,一批就自然是一到两颗,永远在闸门里面;顺带还把失败的影响缩小到
+     一颗 —— 一颗坏胶囊不该带走另外二十四颗。 */
+  const LIMIT_BYTES = 180 * 1024;
+  let wrote = 0, batch = [], bytes = 2;
+  const flush = async () => {
+    if (!batch.length) return;
     const r = await fetch(BASE + '/api/cloud/projects/backfill', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-terse-admin': ADMIN },
       body: JSON.stringify({ updates: batch }),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(`backfill failed: HTTP ${r.status} ${JSON.stringify(j)}`);
-    console.log(`  wrote ${j.updated}/${batch.length}` + (j.failed && j.failed.length ? ` (failed: ${JSON.stringify(j.failed)})` : ''));
+    if (!r.ok) throw new Error(`backfill failed after ${wrote} written: HTTP ${r.status} ${JSON.stringify(j)}`);
+    wrote += j.updated || 0;
+    if (j.failed && j.failed.length) console.log(`  ⚠ ${JSON.stringify(j.failed)}`);
+    process.stdout.write(`\r  wrote ${wrote}/${updates.length}`);
+    batch = []; bytes = 2;
+  };
+  for (const u of updates) {
+    const size = JSON.stringify(u).length + 2;
+    if (batch.length && bytes + size > LIMIT_BYTES) await flush();
+    batch.push(u); bytes += size;
   }
-  console.log('done');
+  await flush();
+  console.log(`\ndone — ${wrote} of ${updates.length} updated`);
 }
 
 if (require.main === module) main().catch((e) => { console.error('✗', e.message); process.exit(1); });

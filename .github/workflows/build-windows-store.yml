@@ -1,0 +1,128 @@
+name: Build Windows Store package (MSIX)
+
+# Produces the .msix that the Microsoft Store submission takes.
+#
+# It runs WITHOUT any Partner Center secrets. That is deliberate: the identity
+# values only exist after the app name is reserved, and packaging is exactly the
+# step you want proven before you start filling in a submission. With no
+# secrets it packs with placeholder identity and labels the artifact a dry run —
+# installable nowhere, but proof the layout and MakeAppx are right.
+on:
+  push:
+    branches: [feat/store-release]     # drop this line when merging to main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Four-part version, last part 0 (the Store reserves it)'
+        required: true
+        default: '1.3.3.0'
+
+jobs:
+  msix:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every renderer import must exist in the checkout
+        run: node src/renderer/renderer-deps.test.mjs
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: windows-app/src-tauri
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build terse-uia.exe
+        run: |
+          dotnet publish windows-app\helpers\terse-uia\terse-uia.csproj `
+            -c Release -r win-x64 --self-contained true `
+            /p:PublishSingleFile=true -o windows-app\helpers\ -v normal
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build the app (no installer — the MSIX carries its own payload)
+        run: |
+          cd windows-app\src-tauri
+          cargo tauri build --target x86_64-pc-windows-msvc --no-bundle
+
+      # An MSIX is a layout directory sealed by MakeAppx: the exe, the resources
+      # tauri.conf.json would have installed, the tiles, and the manifest.
+      - name: Stage the MSIX layout
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $layout = "$env:RUNNER_TEMP\msix"
+          New-Item -ItemType Directory -Force -Path $layout | Out-Null
+          $rel = "windows-app\src-tauri\target\x86_64-pc-windows-msvc\release"
+          Copy-Item "$rel\Terse.exe" $layout
+          Copy-Item -Recurse "windows-app\store\Assets" $layout
+          New-Item -ItemType Directory -Force -Path "$layout\hooks","$layout\ml" | Out-Null
+          Copy-Item "ml\model\complexity-vocab.json"              "$layout\ml\complexity-vocab.json"
+          Copy-Item "src\helpers\terse-compress.js"               $layout
+          Copy-Item "windows-app\helpers\terse-rewrite.ps1"       $layout
+          Copy-Item "windows-app\helpers\terse-optimize-tools.ps1" $layout
+          Copy-Item "windows-app\helpers\terse-uia.exe"           $layout
+          Copy-Item "windows-app\helpers\hooks\*"                 "$layout\hooks\"
+
+      - name: Fill in the identity (real if the secrets are set, placeholder if not)
+        id: identity
+        env:
+          IDENTITY_NAME: ${{ secrets.MSSTORE_IDENTITY_NAME }}
+          IDENTITY_PUBLISHER: ${{ secrets.MSSTORE_IDENTITY_PUBLISHER }}
+          PUBLISHER_DISPLAY: ${{ secrets.MSSTORE_PUBLISHER_DISPLAY }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = '${{ github.event.inputs.version }}'
+          if (-not $version) { $version = '1.3.3.0' }
+          if ($version -notmatch '^\d+\.\d+\.\d+\.0$') {
+            throw "Version must be four parts ending in 0. Got: $version"
+          }
+          $dry = -not ($env:IDENTITY_NAME -and $env:IDENTITY_PUBLISHER -and $env:PUBLISHER_DISPLAY)
+          if ($dry) {
+            Write-Host "::warning::No Partner Center secrets — DRY RUN. This MSIX proves packaging works but cannot be submitted."
+            $name = 'Placeholder.Terse'
+            $pub  = 'CN=00000000-0000-0000-0000-000000000000'
+            $disp = 'Placeholder'
+          } else {
+            $name = $env:IDENTITY_NAME; $pub = $env:IDENTITY_PUBLISHER; $disp = $env:PUBLISHER_DISPLAY
+          }
+          "dry=$dry" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $m = Get-Content windows-app\store\AppxManifest.xml -Raw
+          $m = $m.Replace('__IDENTITY_NAME__', $name).Replace('__IDENTITY_PUBLISHER__', $pub)
+          $m = $m.Replace('__PUBLISHER_DISPLAY__', $disp).Replace('__VERSION__', $version)
+          Set-Content "$env:RUNNER_TEMP\msix\AppxManifest.xml" $m -Encoding UTF8
+
+      - name: Pack the MSIX
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sdk = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+                 Where-Object { $_.Name -match '^10\.' } |
+                 Sort-Object Name -Descending | Select-Object -First 1
+          $makeappx = Join-Path $sdk.FullName "x64\makeappx.exe"
+          if (-not (Test-Path $makeappx)) { throw "makeappx.exe not found under $($sdk.FullName)" }
+          & $makeappx pack /d "$env:RUNNER_TEMP\msix" /p "$env:RUNNER_TEMP\Terse.msix" /o
+          if ($LASTEXITCODE -ne 0) { throw "makeappx failed with $LASTEXITCODE" }
+          "MSIX size: $((Get-Item "$env:RUNNER_TEMP\Terse.msix").Length) bytes"
+
+      # Deliberately UNSIGNED: the Store signs it after upload. Signing here
+      # would only make it sideloadable and would need a .pfx as a secret.
+      - name: Upload MSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.identity.outputs.dry == 'True' && 'Terse-MSIX-DRYRUN-not-submittable' || 'Terse-MSIX' }}
+          path: ${{ runner.temp }}/Terse.msix
+          if-no-files-found: error
+          retention-days: 30

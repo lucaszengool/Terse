@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX manifest for the Microsoft Store submission.
+
+  THE THREE VALUES BELOW ARE NOT GUESSABLE. Partner Center assigns them when you
+  reserve the app name (Product Identity page); an MSIX whose Identity does not
+  match byte-for-byte is rejected at upload with a generic error. The CI job
+  substitutes them from repository secrets, so nothing real is committed here:
+
+    __IDENTITY_NAME__       e.g. 12345PruneAI.Terse
+    __IDENTITY_PUBLISHER__  e.g. CN=A1B2C3D4-1234-5678-9ABC-DEF012345678
+    __PUBLISHER_DISPLAY__   e.g. PruneAI
+
+  Version must be four parts and the last MUST be 0 — the Store reserves it.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="__IDENTITY_NAME__"
+    Publisher="__IDENTITY_PUBLISHER__"
+    Version="__VERSION__"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Terse</DisplayName>
+    <PublisherDisplayName>__PUBLISHER_DISPLAY__</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Watch what your AI agents are burning, live on your desktop.</Description>
+  </Properties>
+
+  <Dependencies>
+    <!-- WebView2 needs 10.0.17763; Tauri v2 itself targets 1809 as the floor. -->
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0"
+                        MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="zh-cn" />
+  </Resources>
+
+  <Applications>
+    <Application Id="Terse" Executable="Terse.exe"
+                 EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Terse"
+        Description="Watch what your AI agents are burning, live on your desktop."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="Assets\Wide310x150Logo.png"
+          Square310x310Logo="Assets\Square310x310Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- terse:// — the same scheme the desktop app and the phone use. -->
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="terse">
+            <uap:DisplayName>Terse</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <!-- Terse reads which agent windows are focused through UI Automation, which
+         is a restricted capability: it must be declared here AND justified in
+         the submission's "Restricted capabilities" box, or review rejects it. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

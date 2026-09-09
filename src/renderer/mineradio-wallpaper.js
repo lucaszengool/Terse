@@ -1106,8 +1106,13 @@ export default class MineradioWallpaper {
       hot: cap.hot || [],
       people: cap.people || [],
       // 这个项目**在干什么** —— 入口点和动词,见 api/repo-probe.js。
-      flow: cap.flow || null,
-      verbs: cap.verbs || [],
+      /* ⚠ 读法要和城市**一起**站下来。`withCity` 原本只清空 dirs,可这些从 GitHub
+         导进来的项目一座楼都没有 —— 它们有的是流程。于是 takeTurns 判定为 false,
+         封面和流程被排进同一拍,那张分享卡就**直接压在流水线上**(实测:tach 的
+         节点和 Setup / Enforcement 两个名字被卡片盖掉一半)。
+         这正是城市当初被竖版截图埋掉的那个问题,只是换了一层。 */
+      flow: (withCity === false) ? null : (cap.flow || null),
+      verbs: (withCity === false) ? [] : (cap.verbs || []),
       /* A portrait frame has no room beside the city for a second thing. The
          layer cannot know that — it works in normalised units — so the engine,
          which owns the canvas, says so. Anything at least as wide as it is tall
@@ -1178,12 +1183,16 @@ export default class MineradioWallpaper {
        for a picture to collide with, so the wallpaper's shared-beat behaviour is
        kept exactly as it was. */
     const hasCity = !!((cap.dirs || []).length);
-    const takeTurns = narrowFrame && hasCity;
+    /* ⚠ 轮流的理由不是"有城市",是"画面正中有东西会被图压住"。流程幕也是那样的
+       东西 —— 而 GitHub 导进来的项目正好一座楼都没有,只有流程,所以按"有没有城市"
+       判就永远轮不上,封面直接盖在流水线上。 */
+    const hasFlow = !!(cap.flow && (cap.flow.entry || (cap.flow.cmds || []).length));
+    const takeTurns = narrowFrame && (hasCity || hasFlow);
     /* What this call decided, kept so it can be asked. Every layout choice here
        depends on a canvas measurement that is wrong until the element has been
        laid out, and "the city did not appear" is the same picture whether the
        cause was the data, the measurement or the running order. */
-    this._lastProjLayout = { W: this.W, H: this.H, narrowFrame, hasCity, takeTurns,
+    this._lastProjLayout = { W: this.W, H: this.H, narrowFrame, hasCity, hasFlow, takeTurns,
                              dirs: (cap.dirs || []).length, imgs: urls.length, SIZE };
 
     const render = (img, page) => {

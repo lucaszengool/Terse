@@ -1410,6 +1410,56 @@ export function sampleTimeline(commits, n, grow) {
 }
 
 /**
+ * 这一屏该轮哪几幕。
+ *
+ * ⚠ 单拆出来是因为**这里错过一次,而且是最贵的一种错**:竖屏上它曾经等价于
+ * "只画城市" —— 流程、依赖流、时间轴、星座、热点、贡献者全都排不进去,于是
+ * "这个项目在干什么"那一整套在这个 app 最主要的设备上一次都没出现过。没有报错,
+ * 因为少画一层和本来就没有在屏幕上一模一样。
+ *
+ * 排幕是纯逻辑 —— 进去几个数组,出来一个列表 —— 可它原来长在一个需要 WebGL
+ * 上下文才能构造的类里,所以一行测试都写不了。现在能了。
+ *
+ * 规矩:**手上有哪几种就轮哪几种**。不是每个仓库都有知识图谱,也不是每个都是
+ * git 仓库。凑不齐就少轮几幕,而不是留一格空白 —— 空白看起来像坏了,少一幕
+ * 没人看得出来。
+ */
+export function planScenes({ dirs = [], flow = null, verbs = [], graph = null,
+                             hot = [], people = [], narrow = false } = {}) {
+  const list = Array.isArray(dirs) ? dirs : [];
+  const gph = (graph && Array.isArray(graph.n) && graph.n.length >= 4
+               && Array.isArray(graph.e) && graph.e.length) ? graph : null;
+  const scenes = [];
+
+  /* ⚠ 流程排在最前面,而且它**占好几拍** —— 一个节点一拍。别的读法都是"看一眼
+     就懂"的一张图,流程不是:它要一步一步走完才说得清这个项目在干什么。 */
+  const flowNodes = flow
+    ? 1 + Math.min(5, ((flow.cmds || []).length
+        + (verbs || []).filter((v) => (flow.cmds || []).indexOf(v) < 0).length))
+    : 0;
+  for (let i = 0; i < flowNodes; i++) scenes.push({ k: 'flow', step: i });
+  if (gph) scenes.push({ k: 'graph' });
+  // E. 依赖流:同一张图,走一遍。一层一拍。
+  if (gph) {
+    const rings = Math.min(5, graphRings(gph));
+    for (let i = 0; i < rings; i++) scenes.push({ k: 'gflow', step: i });
+  }
+  /* D. 城市是怎么长出来的。⚠ 要楼上带 age_days 才有先后可言 —— 老扫描器出的胶囊
+     全都同龄,那样是所有楼一起冒,不是生长。 */
+  if (list.length >= 2 && list.filter((d) => +d.age_days > 0).length >= 2) {
+    for (let i = 0; i < GROW_STEPS; i++) scenes.push({ k: 'grow', step: i });
+  }
+  if (list.some((d) => Array.isArray(d.kids) && d.kids.length)) scenes.push({ k: 'rings' });
+  if (Array.isArray(hot) && hot.length >= 3) scenes.push({ k: 'hot' });
+  if (Array.isArray(people) && people.length >= 2) scenes.push({ k: 'people' });
+
+  /* 竖屏:城市自己也要占一拍。壁纸上城市一直在画,读法挤在右边那一格里;
+     竖屏没有"旁边",所以两边轮流,各自占满整幅。 */
+  if (narrow && list.length) scenes.unshift({ k: 'city' });
+  return scenes;
+}
+
+/**
  * 项目缩影层:一张由粒子构成的图,带自己的出场/退场包络。
  *
  * 生命周期是**一段有头有尾的演出**,不是一个开关:浮现(in)→ 停住(hold)→ 散去(out)。
@@ -1644,64 +1694,36 @@ export class ProjectLayer {
     /* 右边那一格现在有四种读法,**手上有哪几种就轮哪几种** —— 不是每个仓库都有
        知识图谱,也不是每个都是 git 仓库。凑不齐就少轮几幕,而不是留一格空白:
        一格空白看起来像坏了,少一幕没人看得出来。 */
-    const scenes = [];
-    /* ⚠ 流程排在最前面,而且它**占好几拍** —— 一个节点一拍。
-       别的读法都是"看一眼就懂"的一张图,流程不是:它要一步一步走完才说得清这个
-       项目在干什么,而那正是这一幕存在的理由。轮播的拍数由 sceneCount 决定,
-       所以把它按节点数摊开,就自然得到了"一步一步演示"。 */
-    const flowNodes = ex.flow
-      ? 1 + Math.min(5, ((ex.flow.cmds || []).length
-          + (ex.verbs || []).filter((v) => (ex.flow.cmds || []).indexOf(v) < 0).length))
-      : 0;
-    for (let i = 0; i < flowNodes; i++) scenes.push({ k: 'flow', step: i });
-    if (gph) scenes.push({ k: 'graph' });
-    /* E. 依赖流:同一张图,走一遍。和星座并排放,因为它们是同一份数据的两半 ——
-       一半说"谁和谁抱团",一半说"从入口怎么走到这里"。一层一拍。 */
-    if (gph) {
-      const rings = Math.min(5, graphRings(gph));
-      for (let i = 0; i < rings; i++) scenes.push({ k: 'gflow', step: i });
-    }
-    /* D. 这座城市是怎么长出来的。⚠ 要楼上带 age_days 才有"先后"可言 —— 没有年龄
-       的胶囊(旧版扫描器出的)全都同龄,那样长出来是所有楼一起冒,不是生长,
-       所以干脆不排这一幕。 */
-    if (list.length >= 2 && list.filter((d) => +d.age_days > 0).length >= 2) {
-      for (let i = 0; i < GROW_STEPS; i++) scenes.push({ k: 'grow', step: i });
-    }
-    if (list.some((d) => Array.isArray(d.kids) && d.kids.length)) scenes.push({ k: 'rings' });
-    if (Array.isArray(ex.hot) && ex.hot.length >= 3) scenes.push({ k: 'hot' });
-    if (Array.isArray(ex.people) && ex.people.length >= 2) scenes.push({ k: 'people' });
-    this.sceneCount = scenes.length;
-    const pick = scenes.length ? scenes[((scene | 0) % scenes.length + scenes.length) % scenes.length] : null;
-    if (!list.length && !pick) { this.cityPoints.visible = false; mark(); return false; }
+    const scenes = planScenes({
+      dirs: list, flow: ex.flow, verbs: ex.verbs, graph: gph,
+      hot: ex.hot, people: ex.people, narrow: !!(ex && ex.narrow),
+    });
+    const pickAt = (i) => (scenes.length ? scenes[((i | 0) % scenes.length + scenes.length) % scenes.length] : null);
 
     // 星座**不和城市共用一个包围盒**。摞在城市头顶试过:两个都被压扁,而且这一格
     // 本来就只有一条一米宽的横带。16:9 的两侧是空的 —— 城市在中间偏左,星座站到
     // 右边去,两块各自按自己的尺度缩放,谁也不挤谁。
     const narrow = !!(ex && ex.narrow);
-    /* ⚠ NO SIDE READING ON A PHONE. AT ALL.
-       16:9 has empty space beside the city, which is what that panel is for. A
-       phone has none, and two attempts to make it fit both failed in ways worth
-       recording:
-
-         · side by side made each half too small to read AND sliced the towers
-           at the screen edge;
-         · taking turns did not work either, because the city is drawn from the
-           SAME point budget — handing the reading 55% of it left the city
-           standing in the other 45% underneath, so what you got was a hotspot
-           disc smothering a city rather than replacing it. Measured on screen:
-           the city was perfect at 1.6s and buried under an orange disc at 3.6s.
-
-       The city is what somebody opened the project to see. On a frame this
-       narrow it gets the whole of it, and the readings stay what they were
-       built for — a wallpaper. */
-    if (narrow) this.sceneCount = 1;
+    /* ⚠ 竖屏为什么不能**并排**放,以及为什么"轮流"要轮得彻底:
+         · 并排:两半都小到看不清,而且塔会被屏幕边缘切掉;
+         · 只分一部分点给读法也不行 —— 城市still 站在剩下那些点里,读法压在它上面。
+           实测:1.6s 城市完好,3.6s 被一个橙色热点圆盘埋掉。
+       所以轮到读法的那一拍,城市的点是 **0**,不是"少一点"。 */
+    this.sceneCount = scenes.length;
+    const pick = pickAt(scene);
+    if (!list.length && !pick) { this.cityPoints.visible = false; mark(); return false; }
 
     /* ⚠ NOT every point. Handing a reading the city's whole budget looked like
        a smear: sampleHotspots and friends size their dots for a quarter of the
        points in a small panel, so four times as many at nearly twice the radius
        is one solid cloud with no shape in it. A little over half is enough to
        read at full width. */
-    const nStar = (pick && !narrow) ? Math.round(this.nCity * 0.26) : 0;
+    /* 竖屏上"读法自己那一拍"要拿走**全部**点数 —— 城市这一拍不画。分一部分给城市
+       正是当初把读法压在城市上的那个做法。'city' 和 'grow' 两种拍反过来:城市占满,
+       不画读法(生长本身就是城市在动,右边再挂一条时间轴只会把它挤小)。 */
+    const solo = narrow && pick && pick.k !== 'city' && pick.k !== 'grow';
+    const nStar = solo ? this.nCity
+      : ((pick && !narrow) ? Math.round(this.nCity * 0.26) : 0);
     const nCityPts = this.nCity - nStar;
     /* 生长那几拍,城市自己被拨回到某一刻;其余每一拍都是今天(1),和以前逐位相同。 */
     const grow = (pick && pick.k === 'grow') ? (pick.step + 1) / GROW_STEPS : 1;
@@ -1757,7 +1779,8 @@ export class ProjectLayer {
     // 右边那一格。半径按**自己**的尺度定,和城市多大无关 —— 一个只有三座楼的小
     // 项目,它的关系图不该跟着缩成一粒沙。
     if (nStar && pick) {
-      const st = pick.k === 'flow' ? sampleFlow(ex.flow, ex.verbs, nStar, pick.step)
+      const st = pick.k === 'city' ? { used: 0, target: [], color: [], scale: [] }
+        : pick.k === 'flow' ? sampleFlow(ex.flow, ex.verbs, nStar, pick.step)
         : pick.k === 'gflow' ? sampleGraphFlow(gph, nStar, pick.step)
         // 城市在长的时候,右边放的是"长到哪一天了" —— 两块共用同一个 grow。
         : pick.k === 'grow' ? sampleTimeline(commits, nStar, grow)
@@ -1765,11 +1788,15 @@ export class ProjectLayer {
         : pick.k === 'rings' ? sampleSunburst(list, nStar)
         : pick.k === 'hot' ? sampleHotspots(ex.hot, nStar)
         : samplePeople(ex.people, nStar);
-      // Beside the city on a wallpaper; dead centre and much bigger when it has
-      // the frame to itself.
-      // Beside the city — the only place it is ever drawn now, and only on a
-      // frame wide enough to have a beside.
-      const SR = 0.52, SCX = 1.16, SCY = 0.10, SCZ = 0.22;
+      /* 壁纸上它站在城市**旁边**(16:9 两侧是空的,那格就是为这个留的);
+         竖屏上轮到它那一拍,它**占满整幅**,所以要放大、要回到正中。
+         ⚠ 半径不是 1.0:读法自己的坐标是 ±1 的方框,而竖屏可用的高度只有 ±0.86 左右
+         (标题和那排字各占一条),撑到 1.0 会把最上和最下那一行切掉 —— 被切掉的
+         恰好是流程的入口和最后一个动作。 */
+      const SR = solo ? 0.86 : 0.52;
+      const SCX = solo ? 0 : 1.16;
+      const SCY = solo ? 0.06 : 0.10;
+      const SCZ = solo ? 0.30 : 0.22;
       for (let i = 0; i < nStar; i++) {
         const o = (nCityPts + i) * 3;
         if (i < st.used) {

@@ -13,7 +13,7 @@
  *   不光栅化。周围的场是好的(它的点大),项目层是全黑的。所以下面有一条断言,
  *   就是拿着着色器里那个公式去算每一颗点的实际大小。
  */
-import { sampleFlow, sampleGraphFlow, sampleTimeline, sampleCity } from './wallpaper-project.js';
+import { sampleFlow, sampleGraphFlow, sampleTimeline, sampleCity, planScenes } from './wallpaper-project.js';
 import { readFileSync } from 'node:fs';
 import './testkit/canvas.mjs';
 
@@ -262,6 +262,58 @@ function litY(o) {
   const tmin = minOf(sampleTimeline(days, N, 0.5));
   ok(`every point in the dependency flow is at least one device pixel (${px(gmin).toFixed(2)}px)`, px(gmin) >= 1);
   ok(`every point in the timeline is at least one device pixel (${px(tmin).toFixed(2)}px)`, px(tmin) >= 1);
+}
+
+/* ══ 轮播:手机上到底轮不轮得到 ═══════════════════════════════════════════
+   ★ 这是"补完数据、部署完了,手机上还是什么都没变"的真因。竖屏时 _setCity 里
+   写着 `sceneCount = 1` 和 `nStar = 0` —— 合起来就是**手机上永远只画城市**,
+   而流程、依赖流、时间轴、星座、热点、贡献者全都画在 nStar 那一格里。
+   没有任何报错:少画一层和本来就没有,在屏幕上一模一样。 */
+{
+  const dirs = [
+    { name: 'src', files: 40, bytes: 400000, age_days: 300, kids: [['a', 1, 2]] },
+    { name: 'web', files: 20, bytes: 150000, age_days: 30 },
+  ];
+  const flow = { kind: 'cli', entry: 'terse', cmds: ['scan', 'diff'] };
+  const graph = { n: [[0, 0, 0, 3, 0], [200, 100, 0, 2, 0], [-200, 100, 0, 1, 1], [400, 0, 0, 1, 1]],
+                  e: [[0, 1], [0, 2], [1, 3]] };
+
+  const wide = planScenes({ dirs, flow, verbs: ['audit'], graph });
+  const phone = planScenes({ dirs, flow, verbs: ['audit'], graph, narrow: true });
+
+  ok('a wallpaper rotates through several readings', wide.length > 3);
+  ok('★ a PHONE gets more than one beat too — this was 1, which meant only the city',
+     phone.length > 3);
+  ok('the flow is in the phone rotation at all', phone.some((s2) => s2.k === 'flow'));
+  ok('so is the dependency flow', phone.some((s2) => s2.k === 'gflow'));
+  ok('so is the growth', phone.some((s2) => s2.k === 'grow'));
+  ok('and the city gets a beat of its own, so it is not lost either',
+     phone[0].k === 'city' && phone.filter((s2) => s2.k === 'city').length === 1);
+  ok('a wallpaper needs no city beat — the city is always drawn beside the reading',
+     !wide.some((s2) => s2.k === 'city'));
+
+  // 一个项目可能什么都没有:那就一幕都不排,而不是排一幕空的。
+  ok('nothing to show plans nothing', planScenes({}).length === 0);
+  ok('and a phone with nothing to show does not get a bare city beat',
+     planScenes({ narrow: true }).length === 0);
+
+  /* 流程占好几拍 —— 一个节点一拍,这就是"一步一步演示"的由来。 */
+  ok('the flow takes one beat per node', wide.filter((s2) => s2.k === 'flow').length === 4);
+  // 没有图就没有依赖流。凑不齐少轮几幕,而不是留一格空白。
+  ok('no graph, no dependency flow', !planScenes({ dirs, flow }).some((s2) => s2.k === 'gflow'));
+  ok('no directories, no growth', !planScenes({ flow }).some((s2) => s2.k === 'grow'));
+  // 老胶囊的目录没有 age_days —— 那就没有先后可言,不排生长。
+  ok('directories with no age plan no growth',
+     !planScenes({ dirs: dirs.map((d) => ({ ...d, age_days: 0 })), flow }).some((s2) => s2.k === 'grow'));
+
+  /* 而这一条守着那个真正的杀手:solo 那一拍城市的点必须是 **0**,不是"少一点" ——
+     分一部分给城市,正是当初把读法压在城市上面的做法。 */
+  const src2 = readFileSync(new URL('./wallpaper-project.js', import.meta.url), 'utf8');
+  ok('a phone reading beat takes the whole point budget, leaving the city none',
+     /const solo = narrow && pick && pick\.k !== 'city' && pick\.k !== 'grow'/.test(src2)
+     && /const nStar = solo \? this\.nCity/.test(src2));
+  ok('and sceneCount is no longer pinned to 1 on a phone',
+     !/if \(narrow\) this\.sceneCount = 1;/.test(src2));
 }
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);

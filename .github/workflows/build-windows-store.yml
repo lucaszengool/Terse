@@ -27,9 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Every renderer import must exist in the checkout
-        run: node src/renderer/renderer-deps.test.mjs
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:

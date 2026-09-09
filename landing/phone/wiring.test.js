@@ -167,6 +167,37 @@ ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,
   ok('rooms.js is stamped too', covered.has('rooms.js'));
 }
 
+
+/* ── Every field the engine can draw has to survive the LAST hop ────────────
+   toCapsule already carries this warning, because dropping a field there once
+   killed the whole code city. It happened again one hop further in: textAt()
+   built `flow` and `verbs` out of the capsule, and the extras object handed to
+   _setCity listed only hot/people/narrow/noImage. So ex.flow was undefined,
+   planScenes could never schedule a flow beat, and the scene that explains what
+   a project DOES had never once been drawn — with no error anywhere.
+
+   Measured on the live phone before the fix: 0 lit nodes across 14 samples. */
+{
+  const eng = fs.readFileSync(path.join(dir, '..', '..', 'src', 'renderer', 'mineradio-wallpaper.js'), 'utf8');
+  const proj = fs.readFileSync(path.join(dir, '..', '..', 'src', 'renderer', 'wallpaper-project.js'), 'utf8');
+
+  // What textAt() puts on the object it hands over.
+  const at = eng.indexOf('const textAt = (i, withCity)');
+  const textAt = at > 0 ? eng.slice(at, eng.indexOf('\n    };', at)) : '';
+  const carried = ['flow', 'verbs', 'dirs', 'style', 'links', 'commits', 'graph', 'hot', 'people']
+    .filter((k) => new RegExp('\\b' + k + ':').test(textAt));
+  ok(`textAt carries the drawable fields (${carried.length})`, carried.length >= 8);
+
+  // And what _setCity is actually GIVEN — the hop where they were lost.
+  const call = proj.slice(proj.indexOf('this._setCity('), proj.indexOf('this._setCity(') + 700);
+  for (const k of ['flow', 'verbs', 'hot', 'people', 'narrow']) {
+    ok(`${k} survives the handoff into _setCity`, new RegExp(k + ':\\s*text && text\\.' + k).test(call));
+  }
+  // dirs/style/links/commits/graph go as positional arguments rather than in extras.
+  ok('the city fields go across as positional arguments',
+     /_setCity\(\(text && text\.dirs\)[\s\S]{0,160}text && text\.graph/.test(call));
+}
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

@@ -1588,7 +1588,14 @@ export class ProjectLayer {
     // 代码城市。它有**自己的一块粒子**,所以加上城市之后图和字一颗也没少。
     const hasCity = this._setCity((text && text.dirs) || [], text && text.style, text && text.links,
       text && text.commits, text && text.graph,
+      /* ⚠ 每一样引擎画得出来的东西都必须**在这里列一遍**。textAt() 一路把 flow 和
+         verbs 带到了这儿,而这个对象只挑了 hot / people / narrow / noImage —— 于是
+         `ex.flow` 永远是 undefined,planScenes 永远排不出流程那几拍,流程幕**一次
+         都没有被安排过**。没有报错:少一幕和没做过在屏幕上一模一样。
+         和 plaza-field.js 的 toCapsule 当初丢掉整座城市是同一个形状的错 ——
+         字段走完了全程,在最后一次转手时被丢掉。 */
       { hot: text && text.hot, people: text && text.people, narrow: text && text.narrow,
+        flow: text && text.flow, verbs: text && text.verbs,
         noImage: !img },
       (text && text.scene) | 0);
     // 字要**看得清**才有意义,所以粒子分配偏向字:图靠密度成形,字靠笔画成形,

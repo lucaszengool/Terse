@@ -68,6 +68,63 @@
   var T_IN = 460, T_HOLD = 1450, T_OUT = 720, FILL_GAP = 560;
   var G_LIFE = T_IN + T_HOLD + T_OUT;
 
+  /* ── The code city ────────────────────────────────────────────────────────
+     A second, slower rhythm running underneath the log lines: the repository
+     itself, built out of particles as a skyline. Height is code volume, the
+     footprint is file count, the colour bands are the language mix and the lit
+     windows are "has anyone touched this lately" — the mapping is fixed, and
+     only the ARCHITECTURE changes between styles. That is the whole point of
+     the eight civilisations: a style is a skin, never a different reading. If
+     switching to Maya made the towers shorter, a visitor would think the
+     project had changed.
+
+     Much slower than the text — a city takes a beat to read, and one arriving
+     every few seconds would be noise. It builds, holds, and disperses. */
+  var CITY_IN = 1700, CITY_HOLD = 7200, CITY_OUT = 2000, CITY_GAP = 6500;
+  var CITY_LIFE = CITY_IN + CITY_HOLD + CITY_OUT;
+  var CITY_N = 30000;
+  if (window.innerWidth < MINW) CITY_N = 13000;   /* same reasoning as GLYPH_N */
+
+  /* The repository, measured — not invented. Produced by
+     scripts/build-landing-citydata.mjs from `git ls-files` plus git log, so a
+     tower's height really is that directory's code volume and a dark tower
+     really has not been touched in months. The universe is what is COMMITTED:
+     a disk walk dragged in build artifacts, Pods and six never-committed
+     remotion-* video scratch projects, which stood in the skyline as tall dead
+     towers — wrong, and dull. Regenerate when the shape of the repo changes. */
+  var CITY_DIRS = [
+    { name:"api",               kind:"source",   files:   70, bytes: 8279529, churn: 124, age_days:   0, depth:1,
+      lang:"JSON", langs:[["JSON",0.886],["JavaScript",0.114]] },
+    { name:"landing",           kind:"source",   files:  277, bytes: 6143807, churn: 266, age_days:   1, depth:1,
+      lang:"HTML", langs:[["HTML",0.833],["JavaScript",0.155],["CSS",0.005],["Markdown",0.004]] },
+    { name:"src",               kind:"source",   files:  297, bytes: 5046276, churn:  65, age_days:   0, depth:1,
+      lang:"JavaScript", langs:[["JavaScript",0.72],["HTML",0.2],["CSS",0.063],["Shell",0.009]] },
+    { name:"android-app",       kind:"source",   files:  851, bytes: 4357650, churn:   1, age_days: 118, depth:1,
+      lang:"XML", langs:[["XML",0.566],["JSON",0.368],["Kotlin",0.036],["HTML",0.03]] },
+    { name:"src-tauri",         kind:"source",   files:   27, bytes: 1376942, churn:  38, age_days:   8, depth:1,
+      lang:"JSON", langs:[["JSON",0.709],["Rust",0.29],["TOML",0.001]] },
+    { name:"chrome-extension",  kind:"source",   files:   23, bytes: 1273740, churn:   2, age_days:  53, depth:1,
+      lang:"JavaScript", langs:[["JavaScript",0.97],["HTML",0.013],["CSS",0.012],["Markdown",0.004]] },
+    { name:"docs",              kind:"docs",     files:   11, bytes:  509192, churn:   9, age_days:   8, depth:1,
+      lang:"HTML", langs:[["HTML",0.956],["Markdown",0.044]] },
+    { name:"ml",                kind:"source",   files:    1, bytes:  464650, churn:   1, age_days: 132, depth:1,
+      lang:"JSON", langs:[["JSON",1]] },
+    { name:"ios-app",           kind:"source",   files:  105, bytes:  289673, churn:   4, age_days: 118, depth:1,
+      lang:"Swift", langs:[["Swift",0.952],["JSON",0.031],["Markdown",0.017]] },
+    { name:"windows-app",       kind:"source",   files:   31, bytes:  281151, churn:   9, age_days: 130, depth:1,
+      lang:"Rust", langs:[["Rust",0.86],["C#",0.103],["TypeScript",0.014],["JSON",0.012]] },
+    { name:"_t",                kind:"assets",   files:   37, bytes:   17705, churn:   2, age_days:   5, depth:1,
+      lang:"JavaScript", langs:[["JavaScript",0.899],["JSON",0.101]] },
+    { name:"vscode-extension",  kind:"source",   files:    6, bytes:   69532, churn:   4, age_days:  53, depth:1,
+      lang:"JavaScript", langs:[["JavaScript",0.92],["JSON",0.08]] },
+    { name:"scripts",           kind:"config",   files:   11, bytes:   37586, churn:   9, age_days:   8, depth:1,
+      lang:"JavaScript", langs:[["JavaScript",0.519],["Python",0.26],["Shell",0.192],["JSON",0.03]] },
+    { name:".github",           kind:"config",   files:    3, bytes:    7313, churn:  11, age_days:  11, depth:1,
+      lang:"YAML", langs:[["YAML",1]] },
+    { name:".claude",           kind:"source",   files:    1, bytes:     363, churn:   1, age_days:   3, depth:1,
+      lang:"JavaScript", langs:[["JavaScript",1]] }
+  ];
+
   /* Glyph tints — the app's Pro palette, biased to Terse's mint. */
   var TINTS = {
     tool:   [0.43, 0.90, 0.72],
@@ -622,6 +679,58 @@ vec3 procColor(vec2 p, float t){
     '}'
   ].join('\n');
 
+  /* ── The code city ────────────────────────────────────────────────────────
+     sampleCity() (terse-city.js, generated from the app) hands back real 3D
+     positions in a roughly ±1.6 cube, plus a colour and a per-particle size
+     class — ground, wall, window and label all want different dots, and a name
+     drawn with wall-sized dots is a solid bar rather than a word.
+
+     This is the one layer that is genuinely three-dimensional. The field is a
+     slab and the text is billboarded flat, but a skyline has to be a skyline:
+     it goes through uViewProj unmodified, so the same orbit that parallaxes
+     the field also walks the camera around the city. */
+  var CITY_VS = [
+    'precision highp float;',
+    'attribute vec3 aCPos;',
+    'attribute vec3 aCCol;',
+    'attribute float aCScl;',
+    'uniform mat4 uViewProj;',
+    'uniform float uCamR, uPtPx, uForm, uVis, uScale, uTime;',
+    'uniform vec3 uOrigin;',
+    'varying vec3 vColor;',
+    'varying float vA;',
+
+    'float h11(float p){ return fract(sin(p * 127.1 + 311.7) * 43758.5453); }',
+
+    'void main(){',
+    /* One hash per particle, off its own resting position — no extra attribute
+       buffer for something that is a pure function of where it belongs. */
+    '  float r = h11(dot(aCPos, vec3(12.9898, 78.233, 37.719)));',
+    '  float amt = 1.0 - uForm;',
+    /* Staggered like the glyph layer: without it the whole city snaps in as
+       one rigid block instead of assembling. */
+    '  float u = clamp((amt - fract(r * 7.13) * 0.55) / 0.45, 0.0, 1.0);',
+    /* A city should GROW, not fly in. Particles start sunk below the ground
+       plane and spread outward on the horizontal, so the skyline rises out of
+       the terrain rather than converging from the sky like the text does. */
+    '  float a = r * 6.2831;',
+    '  vec3 disp = vec3(cos(a), 0.0, sin(a)) * (0.30 + r * 0.55) * u',
+    '            + vec3(0.0, -1.15 * u, 0.0);',
+    '  vec3 world = uOrigin + (aCPos + disp) * uScale;',
+    '  vec4 clip = uViewProj * vec4(world, 1.0);',
+    '  gl_Position = clip;',
+    /* Same perspective falloff the field uses, so a tower at the back of the
+       city genuinely reads as further away. */
+    '  float persp = uCamR / max(clip.w, 0.35);',
+    '  gl_PointSize = max(1.0, uPtPx * persp * aCScl);',
+    /* A slow shimmer on the windows only (the bright end of the scale range),
+       so the lit ones look alive while the masonry stays still. */
+    '  float tw = 0.86 + 0.14 * sin(uTime * 2.1 + r * 21.0);',
+    '  vColor = aCCol * mix(1.0, tw, step(0.9, aCScl));',
+    '  vA = uVis * (1.0 - u * 0.72);',
+    '}'
+  ].join('\n');
+
   /* ── GL helpers ─────────────────────────────────────────────────────────── */
   function compile(gl, type, src) {
     var s = gl.createShader(type);
@@ -803,6 +912,28 @@ vec3 procColor(vec2 p, float t){
     this.aUv = gl.getAttribLocation(this.glyProg, 'aUv');
     this.aRand = gl.getAttribLocation(this.glyProg, 'aRand');
     this.aOn = gl.getAttribLocation(this.glyProg, 'aOn');
+
+    /* ── city layer ──────────────────────────────────────────────────────────
+       Optional on purpose: terse-city.js is a separate 60KB script, and if a
+       page does not load it (or it fails), the field and the text must carry on
+       exactly as before. Everything below is guarded on this.cityProg. */
+    if (window.TerseCity) {
+      this.cityProg = program(gl, CITY_VS, GLYPH_FS);
+      if (this.cityProg) {
+        this.uCity = u(gl, this.cityProg, ['viewProj', 'camR', 'ptPx', 'form', 'vis',
+                                           'scale', 'time', 'origin', 'alphaScale']);
+        this.aCPos = gl.getAttribLocation(this.cityProg, 'aCPos');
+        this.aCCol = gl.getAttribLocation(this.cityProg, 'aCCol');
+        this.aCScl = gl.getAttribLocation(this.cityProg, 'aCScl');
+        this.bCPos = gl.createBuffer();
+        this.bCCol = gl.createBuffer();
+        this.bCScl = gl.createBuffer();
+        /* used = 0 until the first city is built; nextCityAt staggers the first
+           one so the page does not open with a skyline already growing. */
+        this.city = { used: 0, live: null, form: 0, vis: 0, style: '', styleRot: (Math.random() * 8) | 0 };
+        this.nextCityAt = 2200;
+      }
+    }
 
     this._buildGlyphLattice();
 
@@ -1283,6 +1414,38 @@ vec3 procColor(vec2 p, float t){
     return true;
   };
 
+  /** Build one city and start it growing. Every appearance picks a different
+   *  civilisation — the eight are ROTATED with a random start, not sampled
+   *  independently, because independent draws repeat: at 8 styles a fair coin
+   *  shows you the same city twice in a row about one time in eight, which
+   *  reads as a bug rather than as chance. The rotation guarantees all eight
+   *  before any repeat, which is what "all the styles show up" should mean. */
+  Field.prototype._fireCity = function () {
+    var C = window.TerseCity;
+    if (!C || !this.cityProg) return false;
+    var st = C.CITY_STYLES[this.city.styleRot % C.CITY_STYLES.length];
+    this.city.styleRot++;
+
+    var r;
+    /* sampleCity is ~20-40ms of CPU and it runs on the main thread. It is a
+       once-per-city cost, never per frame — but if the repo data ever makes it
+       throw, the city must fail alone and leave the wallpaper running. */
+    try { r = C.sampleCity(CITY_DIRS, CITY_N, st.id, null, null); }
+    catch (e) { if (window.console) console.warn('[terse-field] city', e); this.cityProg = null; return false; }
+    if (!r || !r.used) return false;
+
+    var gl = this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.bCPos); gl.bufferData(gl.ARRAY_BUFFER, r.target, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.bCCol); gl.bufferData(gl.ARRAY_BUFFER, r.color, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.bCScl); gl.bufferData(gl.ARRAY_BUFFER, r.scale, gl.DYNAMIC_DRAW);
+
+    this.city.used = r.used;
+    this.city.style = st.id;
+    this.city.live = { t: 0 };
+    this.city.form = 0; this.city.vis = 0;
+    return true;
+  };
+
   Field.prototype.pulse = function (x, y, s) {
     if (this.ripples.length >= MAX_RIPPLES) this.ripples.shift();
     this.ripples.push({ x: x, y: y, t: 0, s: s == null ? 1 : s });
@@ -1417,6 +1580,30 @@ vec3 procColor(vec2 p, float t){
         this.dance.cy = s.cy * this.aspect[1];
         var da = Math.random() * 6.2831;
         this.dance.dx = Math.cos(da); this.dance.dy = Math.sin(da);
+      }
+    }
+
+    /* ── the city runs on its own clock, underneath the text ── */
+    if (this.city) {
+      var c = this.city;
+      if (c.live) {
+        c.live.t += dt;
+        var ct = c.live.t;
+        if (ct < CITY_IN) { c.form = ease(ct / CITY_IN); c.vis = Math.min(1, ct / (CITY_IN * 0.5)); }
+        else if (ct < CITY_IN + CITY_HOLD) { c.form = 1; c.vis = 1; }
+        else if (ct < CITY_LIFE) {
+          var ck = (ct - CITY_IN - CITY_HOLD) / CITY_OUT;
+          /* Unlike the text, the city does not scatter back out to 0.25 — it
+             sinks back into the ground it grew from, so form only relaxes a
+             little while the alpha carries the exit. */
+          c.form = 1 - ease(ck) * 0.55;
+          c.vis = 1 - ease(ck);
+        } else {
+          c.live = null; c.vis = 0; c.form = 0;
+          this.nextCityAt = now + CITY_GAP;
+        }
+      } else if (now >= this.nextCityAt) {
+        if (!this._fireCity()) this.nextCityAt = now + CITY_GAP;
       }
     }
 
@@ -1560,7 +1747,57 @@ vec3 procColor(vec2 p, float t){
     gl.disableVertexAttribArray(this.aSeed);
     gl.disableVertexAttribArray(this.aColor);
 
-    /* ── 3. the four glyph slots ── */
+    /* ── 3. the code city ──────────────────────────────────────────────────
+       Between the field and the text on purpose. It is a solid object and the
+       log lines are the foreground copy: drawn after the text, a skyline would
+       wash straight through the words it is supposed to sit behind. */
+    if (this.city && this.city.live && this.city.vis > 0.001 && this.city.used) {
+      gl.useProgram(this.cityProg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.bCPos);
+      gl.enableVertexAttribArray(this.aCPos);
+      gl.vertexAttribPointer(this.aCPos, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.bCCol);
+      gl.enableVertexAttribArray(this.aCCol);
+      gl.vertexAttribPointer(this.aCCol, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.bCScl);
+      gl.enableVertexAttribArray(this.aCScl);
+      gl.vertexAttribPointer(this.aCScl, 1, gl.FLOAT, false, 0, 0);
+
+      gl.uniformMatrix4fv(this.uCity.viewProj, false, this.vp);
+      gl.uniform1f(this.uCity.camR, CAM_R);
+      gl.uniform1f(this.uCity.time, t);
+      gl.uniform1f(this.uCity.form, this.city.form);
+      gl.uniform1f(this.uCity.vis, this.city.vis);
+      /* Fit the ±1.6 cube into the narrower of the two screen axes, so the
+         skyline is never wider than the viewport on a phone held upright —
+         the same width-vs-height trap the log lines fell into. */
+      var cs = 0.60 * Math.min(this.aspect[0], this.aspect[1]);
+      gl.uniform1f(this.uCity.scale, cs);
+      /* Sat low, on the horizon. Centred it read as a blob behind the hero
+         copy and the download buttons; a skyline wants to be along the bottom
+         edge, under the text rather than through it. */
+      gl.uniform3f(this.uCity.origin, 0, -0.40 * this.aspect[1], 0);
+      /* Same density rule as the text: mean spacing of a cloud of this many
+         points over the box it occupies, in device pixels. */
+      var cw = cs * this.w, ch = cs * this.h;
+      var cgap = Math.sqrt((cw * ch) / this.city.used);
+      gl.uniform1f(this.uCity.ptPx, Math.max(1.0, cgap * this.dpr * 1.15));
+
+      /* Much lower than the text's 1.45. The whole layer is additive, and a
+         city is a SOLID object with thousands of overlapping dots rather than a
+         thin stroke — at the text's gain every tower saturated to white and the
+         language bands (the entire point of the colour) disappeared. Keeping it
+         dim is what lets JSON read as yellow and Rust as rust. */
+      var cg = Math.min(1.2, Math.max(0.5, this.exposure));
+      gl.uniform1f(this.uCity.alphaScale, 0.46 * cg);
+      gl.drawArrays(gl.POINTS, 0, this.city.used);
+
+      gl.disableVertexAttribArray(this.aCPos);
+      gl.disableVertexAttribArray(this.aCCol);
+      gl.disableVertexAttribArray(this.aCScl);
+    }
+
+    /* ── 4. the four glyph slots ── */
     gl.useProgram(this.glyProg);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bUv);
     gl.enableVertexAttribArray(this.aUv);

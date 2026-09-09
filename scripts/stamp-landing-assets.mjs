@@ -26,6 +26,7 @@ const LANDING = path.join(ROOT, 'landing');
 const ASSETS = [
   { file: 'terse-glass.css', attr: 'href' },
   { file: 'terse-field.js', attr: 'src' },
+  { file: 'terse-city.js', attr: 'src' },
 ];
 
 const hashes = Object.fromEntries(

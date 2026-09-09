@@ -578,7 +578,9 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
 
   /** 这个高度上该是什么颜色:语言色带 + 越高越亮。 */
   const wallAt = (t, fy) => {
-    let rgb = t.bands.length ? t.bands[t.bands.length - 1].rgb : t.rgb;
+    // Guarded: an archetype that forgets to pass bands should lose its colour
+    // banding, not take the entire wallpaper down with a TypeError.
+    let rgb = (t.bands && t.bands.length) ? t.bands[t.bands.length - 1].rgb : t.rgb;
     for (const b of t.bands) if (fy <= b.upto) { rgb = b.rgb; break; }
     const lift = 0.52 + 0.42 * fy;
     return [Math.min(1, rgb[0] * lift), Math.min(1, rgb[1] * lift), Math.min(1, rgb[2] * lift)];

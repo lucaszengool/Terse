@@ -48,6 +48,10 @@ const ADMIN = arg('--token', process.env.PLAZA_ADMIN_TOKEN || '');
 const GH_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
 const DRY = has('--dry');
 const LIMIT = +arg('--limit', '0') || 0;
+/* 重新分配画面。默认**不覆盖**已有的 cover/frames/shots —— 那可能是作者自己传的。
+   但上一轮补数据把 12 帧铺满了预算,于是同一颗胶囊再也塞不下一张截图;要按
+   "首图 → 动图 → 其余"重新摊一遍,就得先把这三格腾出来。 */
+const REFRESH = has('--refresh');
 
 const ghHeaders = Object.assign({ 'User-Agent': UA, Accept: 'application/vnd.github+json' },
   GH_TOKEN ? { Authorization: 'Bearer ' + GH_TOKEN } : {});
@@ -141,6 +145,20 @@ async function framesFromVideo(buf, ext) {
   }
 }
 
+/** 一张静图 → 一个 data URL。SVG 也吃(sharp 会光栅化),失败就当没有这张。 */
+async function stillOf(url, size, quality) {
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (!r.ok) return '';
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > 25 * 1024 * 1024) return '';
+    const out = await sharp(buf, { pages: 1 })
+      .resize(size, size, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality }).toBuffer();
+    return toDataUrl(out);
+  } catch (e) { return ''; }
+}
+
 /* ⚠ 帧要**装进剩下的地方**,不是装进一个固定的尺寸。
    这些胶囊已经有封面和截图了,实测线上很多颗本身就有 130KB,而闸门在 160KB ——
    按 128px/q72 采十二帧几乎必然撑爆,于是第一版把每一段演示都丢掉了(日志里一排
@@ -208,15 +226,58 @@ async function main() {
       if (pr.flow && (pr.flow.entry || (pr.flow.cmds || []).length)) { cap.flow = pr.flow; did.push('flow'); }
       if ((pr.verbs || []).length) { cap.verbs = pr.verbs; did.push(`verbs×${pr.verbs.length}`); }
 
-      // 演示只在还没有帧的时候补 —— 已经有帧的说明作者自己传过东西,别覆盖他。
-      if (!(cap.frames || []).length && pr.demo && pr.demo.motion) {
-        // 剩下的地方 = 闸门 − 这颗胶囊现在的大小,再留 2KB 给 flow/verbs 和逗号。
-        const budget = MAX_CAPSULE_BYTES - JSON.stringify(cap).length - 2048;
-        const fr = budget > 8 * 1024 ? await sampleDemo(pr.demo.url, budget) : [];
+      /* ── 画面:首图,然后按重要程度把能装下的都装进去 ──────────────────
+         胶囊里有三个放画面的地方,各有各的读法,不能混:
+           cover  一张 —— 卡片上那张脸,用**首图**(作者选的门面);
+           frames 一串 —— 一个动作,按帧率连着放,用排最前的那段**动图**;
+           shots  几张 —— 各自独立的截图,轮播。
+         预算是一整颗胶囊 160KB,所以顺序就是优先级:先 cover,再 frames,
+         剩下多少就放多少张 shots。⚠ 装不下的那一张**不装**,而不是让整颗超限。 */
+      const media = pr.media || [];
+      if (REFRESH) { cap.cover = ''; cap.frames = []; cap.shots = []; }
+      const room = () => MAX_CAPSULE_BYTES - JSON.stringify(cap).length - 2048;
+
+      /* ⚠ 一段动图会把整颗胶囊吃光。12 帧 128px 实测 60–100KB,而闸门是 160KB ——
+         上一轮就是这么把 oryx、clawpanel 铺到 157KB,再也放不下一张截图的。
+         所以给动图**留一个上限**:它拿走的不能超过还剩下的一半多一点,另一半留给
+         其余的图。一个项目的画面不是一段录屏,是一整页。 */
+      const stillsAhead = media.filter((m) => !m.motion).length;
+
+      // 1. 首图 → cover。已经有封面的不覆盖(作者自己传的那张更该留着)。
+      const hero = media.find((m) => !m.motion) || null;
+      if (!cap.cover && hero && room() > 12 * 1024) {
+        const c = await stillOf(hero.url, 224, 74);
+        if (c && c.length < room()) { cap.cover = c; did.push('cover'); }
+      }
+
+      // 2. 排最前的那段动图 → frames。
+      const motion = media.find((m) => m.motion);
+      if (!(cap.frames || []).length && motion) {
+        const all = room();
+        const budget = stillsAhead > 1 ? Math.floor(all * 0.55) : all;
+        const fr = budget > 8 * 1024 ? await sampleDemo(motion.url, budget) : [];
         if (fr.length >= 2) {
           cap.frames = fr; cap.fps = 12;
           did.push(`demo×${fr.length}`);
         }
+      }
+
+      /* 3. 其余的图 → shots,按名次装到装不下为止。
+         ⚠ 已经当过 cover 或者已经被采成 frames 的那两张要跳过,否则同一张画面
+         在一颗胶囊里出现两遍 —— 看的人会以为轮播卡住了。 */
+      if (!(cap.shots || []).length) {
+        const used = new Set([hero && hero.url, motion && motion.url].filter(Boolean));
+        const shots = [];
+        for (const m of media) {
+          if (shots.length >= 10 || m.motion || used.has(m.url)) continue;
+          if (room() < 10 * 1024) break;
+          const one = await stillOf(m.url, 224, 68);
+          if (!one) continue;
+          // 每一张都**先量再放**:剩下的地方装不下这一张,就换下一张(可能更小)。
+          if (one.length + 3 > room()) continue;
+          shots.push(one); cap.shots = shots;
+        }
+        if (shots.length) did.push(`shots×${shots.length}`);
       }
 
       if (!did.length) { console.log(`${label} —`); continue; }

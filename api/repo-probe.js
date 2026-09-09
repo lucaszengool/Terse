@@ -43,33 +43,117 @@ async function raw(owner, repo, branch, file) {
  *  ⚠ 只看前面一截。README 底部往往挂着一堆徽章、赞助商 logo、贡献者头像 ——
  *  那些也是图片,但没有一张是"这个东西怎么用"。演示放在最前面,这是约定俗成的,
  *  调研里那句"冲到一千星的项目几乎都把它放在前三百行"说的就是这件事。 */
-function readmeDemo(md, owner, repo, branch) {
-  if (!md) return null;
-  const head = md.slice(0, 12000);              // 大约前三百行
-  const cands = [];
+/* 徽章、头像、赞助商 logo —— 都是图片,没有一张在讲这个东西怎么用。 */
+const NOT_MEDIA = /shields\.io|badge|travis|circleci|codecov|appveyor|sonarcloud|opencollective|buymeacoffee|ko-fi|patreon|gitpod|contrib\.rocks|starchart|star-history|forthebadge|visitor|hits\.seeyoufarm|profile-counter/i;
 
-  // ![alt](url) 和 <img src="url">,以及 <video src=…> / <source src=…>
-  const re = /!\[[^\]]*\]\(([^)\s]+)[^)]*\)|<img[^>]+src=["']([^"']+)["']|<(?:video|source)[^>]+src=["']([^"']+)["']/gi;
-  let m;
-  while ((m = re.exec(head))) cands.push(m[1] || m[2] || m[3]);
+const MOTION_EXT = /\.(gif|mp4|webm|mov|apng)(\?|$)/i;
+const STILL_EXT = /\.(png|jpe?g|webp|svg)(\?|$)/i;
+/* GitHub 自己的附件域:拖进 issue / README 的图和视频没有扩展名,而那恰恰是
+   最近几年**最常见**的演示放法。当动图算。 */
+const GH_ATTACH = /user-images\.githubusercontent\.com|github\.com\/user-attachments/i;
 
-  for (const c of cands) {
-    let u = String(c).trim();
-    if (!u) continue;
-    // 徽章不是演示。shields/badge/travis 那一排全是状态图标。
-    if (/shields\.io|badge|travis|circleci|codecov|appveyor|sonarcloud|opencollective/i.test(u)) continue;
-    // 相对路径要补成绝对的。
-    if (!/^https?:\/\//i.test(u)) {
-      u = `${RAW}/${owner}/${repo}/${branch}/${u.replace(/^\.?\//, '')}`;
+/** 相对路径补成 raw 的绝对地址。已经是绝对的原样返回。 */
+function absolutise(u, owner, repo, branch) {
+  const t = String(u || '').trim().replace(/^<|>$/g, '');
+  if (!t) return '';
+  if (/^https?:\/\//i.test(t)) return t;
+  if (t.startsWith('//')) return 'https:' + t;
+  if (t.startsWith('data:')) return '';                 // 内联的图不用再抓
+  return `${RAW}/${owner}/${repo}/${branch}/${t.replace(/^\.?\//, '')}`;
+}
+
+/**
+ * A. 这个项目**所有**能收集到的画面,按重要程度排好。
+ *
+ * 原来这里只取第一张会动的图就返回了。可一个项目的 README 常常是:一张主视觉,
+ * 底下几段各配一张截图,再往下还有一段录屏 —— 只取一张,等于把作者铺陈了一整页
+ * 的东西压成一格。这一版把它们**全部**收下来,再排序。
+ *
+ * 排序的依据,按份量从大到小:
+ *
+ *   · **位置**。README 是从上往下写的,越靠前越是作者想让你先看见的。首图几乎
+ *     总是主视觉 —— 所以第一张(排除徽章之后)单独加一大笔分,这就是"首图"。
+ *   · **会不会动**。一段 GIF 讲清楚的事,十张截图讲不清。
+ *   · **名字**。demo / preview / screenshot / usage 这些词是作者自己标的用途;
+ *     logo / icon / banner 是装饰,往后排(但不丢 —— 它常常就是首图)。
+ *   · **alt 文本**同理,而且它是作者用人话写的说明。
+ *
+ * ⚠ 仓库里的图也收:README 里没贴、但躺在 docs/ assets/ screenshots/ 里的
+ * GIF,是"这个项目里任何 gif 动图"这句话的字面意思。它们排在 README 里那些
+ * 之后 —— 作者没把它贴出来,多半有他的道理。
+ */
+function collectMedia(md, owner, repo, branch, tree) {
+  const seen = new Map();
+  const push = (rawUrl, score, why, alt) => {
+    const url = absolutise(rawUrl, owner, repo, branch);
+    if (!url || NOT_MEDIA.test(url)) return;
+    const motion = MOTION_EXT.test(url) || GH_ATTACH.test(url);
+    if (!motion && !STILL_EXT.test(url)) return;
+    // SVG 画不成粒子帧(要光栅化),而且多半是 logo。收下但排最后。
+    const isSvg = /\.svg(\?|$)/i.test(url);
+    const prev = seen.get(url);
+    const s = score + (motion ? 260 : 0) + (isSvg ? -220 : 0) + hintScore(url + ' ' + (alt || ''));
+    if (!prev || s > prev.score) seen.set(url, { url, motion, score: s, why, alt: alt || '' });
+  };
+
+  if (md) {
+    /* ⚠ 整篇都读,不再只看前 12000 字 —— 排序靠的是位置分,不是截断。截断会把
+       长 README 后半段的录屏整段丢掉,而那常常是最好的一段。 */
+    const re = /!\[([^\]]*)\]\(([^)\s]+)[^)]*\)|<img[^>]*?src=["']([^"']+)["'][^>]*?>|<(?:video|source)[^>]*?src=["']([^"']+)["'][^>]*?>/gi;
+    let m, order = 0;
+    while ((m = re.exec(md)) !== null) {
+      const alt = m[1] || (m[0].match(/alt=["']([^"']*)["']/i) || [])[1] || '';
+      const url = m[2] || m[3] || m[4];
+      /* 位置分。第一张(排除徽章后)就是首图,单独一大笔;之后按在文档里的深度
+         递减,到文末趋近于零 —— README 底部挂的是贡献者头像和赞助商。 */
+      const at = m.index / Math.max(1, md.length);
+      const pos = Math.round(620 * Math.pow(1 - at, 2.2));
+      push(url, pos + (order === 0 ? 300 : 0), order === 0 ? 'hero' : 'readme', alt);
+      order++;
     }
-    // GitHub 自己的附件域(拖进 issue 的图/视频)也算,它们是真的演示。
-    const isMotion = /\.(gif|mp4|webm|mov)(\?|$)/i.test(u)
-      || /user-images\.githubusercontent\.com|github\.com\/user-attachments/i.test(u);
-    const isStill = /\.(png|jpe?g|webp)(\?|$)/i.test(u);
-    if (isMotion) return { url: u, motion: true };
-    if (isStill && !cands.still) cands.still = u;
   }
-  return cands.still ? { url: cands.still, motion: false } : null;
+
+  /* 仓库里躺着的图。只看那几个**放给人看**的目录 —— 全仓库扫会把测试夹具、
+     图标集、node_modules 里的东西全捞进来。 */
+  for (const nd of (tree || [])) {
+    const path = (nd && nd.path) || '';
+    if (!/^(docs?|assets?|images?|img|screenshots?|media|examples?|\.github)\//i.test(path)) continue;
+    if (!MOTION_EXT.test(path) && !STILL_EXT.test(path)) continue;
+    // README 里贴过的不重复计分(push 里按 url 去重,分数取高的那个)。
+    push(path, 40, 'repo', path.split('/').pop());
+  }
+
+  const all = [...seen.values()].sort((a, b) => b.score - a.score);
+
+  /* ⚠ 首图**钉在第一位**,不参与排序。README 第一张图是作者选的门面 —— 哪怕它
+     只是个 logo,那也是他决定你先看见的东西,而排序会把它压到一段录屏底下
+     (实测 gum:第一张 gum.png 被 VHS 那段 GIF 挤到第二)。
+     "先放首图,再按重要程度放其余的" —— 顺序就是这么两段。 */
+  const heroAt = all.findIndex((m) => m.why === 'hero');
+  if (heroAt > 0) all.unshift(all.splice(heroAt, 1)[0]);
+  return all;
+}
+
+/** demo / screenshot 这些词是作者自己标的用途;logo / icon 是装饰。 */
+function hintScore(text) {
+  const t = String(text).toLowerCase();
+  let s = 0;
+  if (/demo|preview|usage|example|walkthrough|showcase|in-action|recording|screencast|vhs/.test(t)) s += 180;
+  if (/screenshot|screen-shot|shot\d|capture/.test(t)) s += 120;
+  if (/hero|cover|splash|header/.test(t)) s += 90;
+  if (/logo|icon|favicon|avatar|banner|wordmark|mascot/.test(t)) s -= 200;
+  if (/diagram|architecture|flow/.test(t)) s += 60;
+  if (/light|dark/.test(t)) s -= 30;          // 同一张图的明暗两版,留一张就够
+  return s;
+}
+
+/** 兼容旧调用:排第一的那个,外加"会动的里排第一的"。 */
+function readmeDemo(md, owner, repo, branch, tree) {
+  const all = collectMedia(md, owner, repo, branch, tree);
+  if (!all.length) return null;
+  const motion = all.find((x) => x.motion);
+  const pick = motion || all[0];
+  return { url: pick.url, motion: !!pick.motion };
 }
 
 /* ── B. 入口点 ───────────────────────────────────────────────────────────── */
@@ -240,11 +324,13 @@ async function probe(owner, repo, branch, tree) {
     raw(owner, repo, branch, 'go.mod'),
   ]);
   const entry = entryPoints({ pkg, cargo, pyproject, gomod }, tree);
+  const media = collectMedia(md, owner, repo, branch, tree);
   return {
-    demo: readmeDemo(md, owner, repo, branch),
+    media,
+    demo: readmeDemo(md, owner, repo, branch, tree),
     flow: { kind: entry.kind, entry: entry.entry || repo, cmds: entry.cmds },
     verbs: verbsOf(md, entry),
   };
 }
 
-module.exports = { probe, readmeDemo, entryPoints, verbsOf };
+module.exports = { probe, readmeDemo, collectMedia, entryPoints, verbsOf };

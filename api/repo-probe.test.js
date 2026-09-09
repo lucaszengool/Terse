@@ -14,7 +14,7 @@
  * ⚠ 全是纯函数,不联网。probe() 自己要发五个 raw 请求,那一层没什么可测的;
  * 值得钉的是它拿到东西之后**怎么判断**。
  */
-const { entryPoints, verbsOf, readmeDemo } = require('./repo-probe');
+const { entryPoints, verbsOf, readmeDemo, collectMedia } = require('./repo-probe');
 
 let pass = 0; const fails = [];
 const ok = (l, c) => c ? (pass++, console.log('  ✓ ' + l)) : (fails.push(l), console.error('  ✗ ' + l));
@@ -137,6 +137,8 @@ ok('at most six verbs — more is not a pipeline anyone can read',
            { cmds: ['a', 'b', 'c'] }).length <= 6);
 ok('no README at all is not an error', Array.isArray(verbsOf(null, { cmds: [] })));
 
+const M = (md, tree) => collectMedia(md, 'o', 'r', 'main', tree);
+
 /* ── 5. 作者自己录的那段演示 ────────────────────────────────────────────── */
 {
   const md = '# thing\n\n![demo](docs/demo.gif)\n';
@@ -169,13 +171,90 @@ ok('no README at all is not an error', Array.isArray(verbsOf(null, { cmds: [] })
      readmeDemo(md, 'o', 'r', 'main').motion === true);
 }
 {
-  /* ⚠ 只看前面一截。README 底部挂的是贡献者头像和赞助商 logo —— 也是图片,
-     但没有一张在讲这个东西怎么用。 */
+  /* ⚠ 这一条**改过**,而且是故意的。原来的规矩是"只看前 12000 字",于是长 README
+     后半段的录屏被整段丢掉 —— 而那常常是最好的一段。现在整篇都读,靠**位置分**
+     排先后,不靠截断。底部那些贡献者头像和赞助商 logo 由徽章过滤器挡,那才是
+     它们该被挡住的理由(它们是徽章),而不是"它们位置靠后"。 */
   const md = 'x\n'.repeat(7000) + '![late](late.gif)\n';
-  ok('an image past the first ~300 lines is not the demo',
-     readmeDemo(md, 'o', 'r', 'main') === null);
+  const d = readmeDemo(md, 'o', 'r', 'main');
+  ok('an image far down a long README is now found, not truncated away',
+     d && /late\.gif$/.test(d.url));
+  const withEarlier = readmeDemo('![early](early.gif)\n' + md, 'o', 'r', 'main');
+  ok('but an earlier one still wins', /early\.gif$/.test(withEarlier.url));
+  ok('and the sponsor logos at the bottom are still excluded — as badges',
+     M('x\n'.repeat(7000) + '![s](https://opencollective.com/x/backer.svg)').length === 0);
 }
 ok('no README, no demo, no crash', readmeDemo(null, 'o', 'r', 'main') === null);
+
+/* ── A2. 收集**全部**画面,并排出先后 ────────────────────────────────────
+   原来这里只取第一张会动的图就返回了。可作者常常铺了一整页:一张主视觉、几段
+   各配一张截图、末尾一段录屏 —— 只取一张等于把那一页压成一格。
+   规矩是两段:**首图钉在最前**,其余按重要程度排。 */
+{
+  const md = [
+    '# thing',
+    '![logo](assets/logo.png)',
+    '[![build](https://img.shields.io/badge/x.svg)](y)',
+    '![demo](docs/demo.gif)',
+    '![a screenshot](docs/shot1.png)',
+  ].join('\n\n');
+  const all = M(md);
+  ok('it collects every picture, not just the first', all.length === 3);
+  ok('the badge is not one of them', !all.some((m) => /shields/.test(m.url)));
+  ok('★ the README hero comes first even though a GIF outranks it',
+     all[0].why === 'hero' && /logo\.png$/.test(all[0].url));
+  ok('and the moving one is next, ahead of the still',
+     all[1].motion === true && /demo\.gif$/.test(all[1].url));
+  ok('the plain screenshot is last', /shot1\.png$/.test(all[2].url));
+  ok('every url is absolute', all.every((m) => /^https:\/\//.test(m.url)));
+}
+{
+  // 动图排在静图前面 —— 一段 GIF 讲清楚的事,十张截图讲不清。
+  const all = M('![x](a.png)\n\n![y](b.png)\n\n![z](c.gif)');
+  ok('motion outranks stills that came after the hero',
+     all[0].why === 'hero' && all[1].motion === true);
+}
+{
+  /* GitHub 附件没有扩展名,而那是近几年最常见的演示放法。 */
+  const all = M('<video src="https://github.com/user-attachments/assets/abc"></video>');
+  ok('a github attachment counts as motion without an extension',
+     all.length === 1 && all[0].motion === true);
+}
+{
+  // logo/icon 往后排,但**不丢** —— 它常常就是首图。
+  const all = M('![demo](demo.gif)\n\n![icon](icon.png)');
+  ok('an icon is kept but ranked below a demo',
+     all.length === 2 && /icon/.test(all[all.length - 1].url));
+}
+{
+  /* ⚠ 整篇都读。原来只看前 12000 字,长 README 后半段的录屏被整段丢掉 ——
+     而那常常是最好的一段。位置只影响**分数**,不再是一道截断。 */
+  const md = '![hero](h.png)\n\n' + 'filler paragraph.\n\n'.repeat(900) + '![late](late.gif)';
+  const all = M(md);
+  ok('a picture far down a long README is still collected', all.length === 2);
+  ok('but it ranks below the hero', all[0].why === 'hero');
+}
+{
+  // 仓库里躺着、README 没贴的图也收 —— "这个项目里任何 gif 动图"。
+  const tree = [{ path: 'docs/extra.gif' }, { path: 'src/main.rs' },
+                { path: 'test/fixtures/tiny.png' }, { path: 'assets/screenshot.png' }];
+  const all = M('![hero](h.png)', tree);
+  ok('a gif sitting in docs/ is collected even if the README never showed it',
+     all.some((m) => /extra\.gif$/.test(m.url)));
+  ok('and one in assets/ too', all.some((m) => /screenshot\.png$/.test(m.url)));
+  ok('but not a test fixture — that is not something to look at',
+     !all.some((m) => /tiny\.png$/.test(m.url)));
+  ok('repo finds rank below what the author actually put in the README',
+     all[0].why === 'hero');
+}
+{
+  // 同一个地址出现两次算一个,取分高的那次。
+  const all = M('![a](same.png)\n\n![a](same.png)');
+  ok('the same url is not collected twice', all.length === 1);
+}
+ok('no README and no tree is not an error', M(null).length === 0);
+ok('readmeDemo still answers with the best motion for older callers',
+   readmeDemo('![h](h.png)\n\n![d](d.gif)', 'o', 'r', 'main').motion === true);
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');

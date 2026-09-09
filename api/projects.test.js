@@ -123,15 +123,21 @@ const capsule = (over = {}) => Object.assign({
   r = await req('GET', '/projects/public?limit=20');
   eq('a preview counts once', r.body.projects.find((p) => p.title === 'Remote').views, 1);
 
-  // ── 五张图 ──
-  // 张数由这里挡,大小由 MAX_CAPSULE_BYTES 挡 —— 两道闸各管各的。
+  /* ── 图的张数 ──
+     张数由 MAX_SHOTS 挡,大小由 MAX_CAPSULE_BYTES 挡 —— 两道闸各管各的。
+     ⚠ 上限**从源码里读**,不写死。它从 4 涨到过 10(探针学会收集整页 README 的
+     画面之后),而写死的那一版当场就红了 —— 一个只是在复述常量的断言,除了每次
+     改常量都要跟着改一遍以外,什么也没守住。真正该钉的是"多给了就会被截断"。 */
+  const MAX_SHOTS = +(require('fs').readFileSync(require('path').join(__dirname, 'projects.js'), 'utf8')
+    .match(/const MAX_SHOTS = (\d+);/) || [])[1];
+  ok('MAX_SHOTS was found in the source', MAX_SHOTS > 0);
   await req('POST', '/projects', {
     identity: ME,
-    body: { capsule: capsule({ id: 'p_five', title: 'Five', shots: Array(7).fill(cover) }) },
+    body: { capsule: capsule({ id: 'p_five', title: 'Five', shots: Array(MAX_SHOTS + 3).fill(cover) }) },
   });
   r = await req('GET', '/projects/public?limit=20');
   const five = r.body.projects.find((p) => p.title === 'Five');
-  eq('at most five images survive (cover + 4)', 1 + five.capsule.shots.length, 5);
+  eq('more shots than the cap are truncated to the cap', five.capsule.shots.length, MAX_SHOTS);
 
   // ── 点赞 / 收藏:一人一次,再点是取消 ──
   const P = five.id;

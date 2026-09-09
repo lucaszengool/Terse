@@ -56,13 +56,31 @@ function spamReason(cap) {
 /** 把已经进来的清出去。`rows` 是 db.allWallProjects.all() 的结果。
  *  返回 [{id, title, reason}] —— **返回而不是直接删**,好让调用方决定是不是真删,
  *  也好让日志里能看到到底清掉了什么。 */
+/**
+ * 开机扫一遍墙上已经有的东西。
+ *
+ * ⚠⚠ 它必须问**发布口问的每一道规则**,不能只问灌水那一道。这里曾经只调
+ * `spamReason`,而发布口调的是 `spamReason` **和** `illegalReason` —— 于是两边
+ * 悄悄分了家:新的违法内容发不进来,可**已经在墙上的永远清不掉**。
+ *
+ * 实测代价:一条"专业办证 高仿证件 驾照代办"在一面公开的墙上挂了一天多
+ * (2026-09-08 15:33 发布,被看了 2 次),而同一条内容当时**发是发不进来的** ——
+ * 规则认得它,只是没有人拿这条规则去看过老帖子。
+ *
+ * 所以判据在这儿写成一个**列表**:以后再加一道闸,加进这个数组,扫描就自动跟上。
+ * "blocked" 和 "cleaned" 用同一份定义,不是靠谁记得两边都改。
+ */
+const WALL_RULES = [spamReason, illegalReason];
+
 function findSpam(rows) {
   const out = [];
   for (const r of rows || []) {
     let cap = null;
     try { cap = JSON.parse(r.capsule); } catch (e) { continue; }
-    const reason = spamReason(cap);
-    if (reason) out.push({ id: r.id, title: (cap.title || '').slice(0, 48), reason });
+    for (const rule of WALL_RULES) {
+      const reason = rule(cap);
+      if (reason) { out.push({ id: r.id, title: (cap.title || '').slice(0, 48), reason }); break; }
+    }
   }
   return out;
 }

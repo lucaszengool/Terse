@@ -16,6 +16,8 @@
  * descriptions full of numbers.
  */
 const { spamReason, findSpam, illegalReason, fingerprint } = require('./spam');
+const fs = require('fs');
+const path = require('path');
 
 let pass = 0, fail = 0;
 const ok = (n, c) => (c ? (pass++, console.log('  ✓ ' + n)) : (fail++, console.error('  ✗ ' + n)));
@@ -100,6 +102,46 @@ console.log('\n── the flood cannot just renumber itself ──');
   // Different projects must stay different, or dedupe becomes censorship.
   const d = fingerprint({ title: 'oryx', desc: 'A TUI for sniffing network traffic ★ 2,574' });
   ok('two different repos keep different fingerprints', c !== d);
+}
+
+
+/* ── ★ 开机扫的那一遍,必须问发布口问过的**每一道**规则 ──────────────────
+   这两边曾经分了家,而且分得很安静:发布口问 spamReason **和** illegalReason,
+   扫描只问 spamReason。于是新的违法内容发不进来,**已经在墙上的永远清不掉**。
+
+   实测代价:一条"专业办证 高仿证件 驾照代办"在公开的墙上挂了一天多
+   (2026-09-08 15:33 发布,2 次浏览),而同一条内容当时根本发不进来 ——
+   规则认得它,只是没人拿这条规则去看老帖子。 */
+{
+  const row = (id, cap) => ({ id, capsule: JSON.stringify(cap) });
+
+  const swept = findSpam([
+    row('forge', { title: '专业办证 高仿证件 驾照代办', desc: '专业办证 高仿证件 驾照代办' }),
+    row('ad', { title: '加微信 abc123 快速出款', desc: '加V:abc123' }),
+  ]);
+  ok('the sweep removes illegal content, not only flooding',
+     swept.some((h) => h.id === 'forge' && h.reason === 'forgery'));
+  ok('and it still removes contact ads', swept.some((h) => h.id === 'ad'));
+
+  /* 误删比漏删更糟:被挡住的人既看不到原因,也没处申诉。这三条必须活下来。 */
+  const real = findSpam([
+    row('scanner', { title: 'vulnerability scanner', desc: 'finds security holes in your dependencies' }),
+    row('story', { title: 'how I lost my database', desc: 'a postmortem about deleting prod' }),
+    row('casino', { title: 'adblock rules', desc: 'a list that blocks casino and gambling ads' }),
+  ]);
+  ok('a real project is never swept' + (real.length ? ` (caught: ${real.map((h) => h.id)})` : ''),
+     real.length === 0);
+
+  /* 真正的保险:规则写成一张表,扫描遍历它。以后再加一道闸只要加进数组,
+     两边自动一致 —— 不靠谁记得改两个地方。 */
+  const src = fs.readFileSync(path.join(__dirname, 'spam.js'), 'utf8');
+  ok('the sweep iterates a rule list rather than naming one rule',
+     /const WALL_RULES = \[spamReason, illegalReason\]/.test(src)
+     && /for \(const rule of WALL_RULES\)/.test(src));
+
+  const proj = fs.readFileSync(path.join(__dirname, 'projects.js'), 'utf8');
+  ok('the publish route still checks both rules too',
+     /spamReason\(capsule\)/.test(proj) && /illegalReason\(capsule\)/.test(proj));
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

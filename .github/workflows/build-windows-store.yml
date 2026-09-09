@@ -42,11 +42,15 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Build terse-uia.exe
+      # DefineConstants=TERSE_MSSTORE strips the global keyboard hook from the
+      # Store binary (see SUBMISSION-NOTES.md). Verified: SetWindowsHookEx is
+      # present in the normal build and absent under this define.
+      - name: Build terse-uia.exe (Store variant — no keyboard hook)
         run: |
           dotnet publish windows-app\helpers\terse-uia\terse-uia.csproj `
             -c Release -r win-x64 --self-contained true `
-            /p:PublishSingleFile=true -o windows-app\helpers\ -v normal
+            /p:PublishSingleFile=true /p:DefineConstants=TERSE_MSSTORE `
+            -o windows-app\helpers\ -v normal
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked

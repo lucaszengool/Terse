@@ -71,7 +71,14 @@ namespace TerseUIA
                     HandleEnableUia(args);
                     break;
                 case "key-monitor":
+#if TERSE_MSSTORE
+                    // Removed from Microsoft Store builds: no global keyboard
+                    // hook ships in the Store binary. The app falls back to
+                    // clipboard/UI-Automation capture. See SUBMISSION-NOTES.md.
+                    Console.WriteLine(Json(new() { ["ok"] = false, ["error"] = "key-monitor disabled in store build" }));
+#else
                     HandleKeyMonitor(args);
+#endif
                     break;
                 case "focus-check":
                     HandleFocusCheck(args);
@@ -423,6 +430,7 @@ namespace TerseUIA
         // ── key-monitor PID ──
         // Monitors keyboard input for a process using a low-level keyboard hook.
         // Builds a text buffer and emits JSON lines on stdout.
+#if !TERSE_MSSTORE
         static void HandleKeyMonitor(string[] args)
         {
             if (args.Length < 2 || !int.TryParse(args[1], out int targetPid))
@@ -602,7 +610,9 @@ namespace TerseUIA
             // Message pump (required for low-level keyboard hook)
             System.Windows.Forms.Application.Run();
         }
+#endif
 
+#if !TERSE_MSSTORE
         // ── Low-level keyboard hook imports ──
         delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
 
@@ -617,6 +627,7 @@ namespace TerseUIA
 
         [DllImport("kernel32.dll")]
         static extern IntPtr GetModuleHandle(string lpModuleName);
+#endif
 
         // ── UI Automation helpers ──
 
@@ -726,6 +737,7 @@ namespace TerseUIA
             return fallback;
         }
 
+#if !TERSE_MSSTORE
         class KeyMonitorState
         {
             public int TargetPid;
@@ -736,5 +748,6 @@ namespace TerseUIA
 
             public KeyMonitorState(int pid) { TargetPid = pid; }
         }
+#endif
     }
 }

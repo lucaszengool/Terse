@@ -32,7 +32,16 @@ const { probe } = require('./repo-probe');
 
 const execFileP = promisify(execFile);
 const UA = 'terse-plaza';
-const SIZE = 128;                  // 和 landing/phone/frames.js 一致
+/* ⚠ WebP,不是 JPEG,而且尺寸翻倍 —— 这两件事一起做**不花钱**。
+   同一张截图实测:JPEG 224px = 4.4KB,WebP 448px = 4.4KB;WebP 560px = 6.3KB,
+   比现在存着的那张 224px JPEG(7.1KB)还小。也就是说清晰度翻两倍半是白拿的,
+   代价是负数。sanitize 本来就收 data:image/webp。 */
+/* 448,不是 560。存得比粒子画得出来的更细是白花钱:图那一层拿到约 90000 颗粒子
+   (110000 的 82%),16:9 摊开就是 400×225 —— 再高的分辨率一颗粒子也表现不出来,
+   只是把胶囊撑大、把别的截图挤掉。448 给采样留一点余量,到此为止。 */
+const STILL_SIZE = 448, STILL_Q = 74;
+const SIZE = 256;                  // 动图每一帧;12 帧 WebP ≈ 53KB(原来 128px JPEG 是 45KB)
+const FRAME_Q = 72;
 const COUNT = 12;
 const MAX_CAPSULE_BYTES = 160 * 1024;
 
@@ -106,7 +115,10 @@ async function treeOf(owner, repo) {
 
 /* ── 演示 → 帧 ─────────────────────────────────────────────────────────── */
 
-const toDataUrl = (buf) => 'data:image/jpeg;base64,' + buf.toString('base64');
+const toDataUrl = (buf) => 'data:image/webp;base64,' + buf.toString('base64');
+/* ⚠ ffmpeg 那一路吐的是 JPEG。用上面那个函数会造出一个**声明成 webp 却装着 JPEG**
+   的 data URL —— 浏览器解不出来,而且不报错,只是那几帧是空的。格式和标签必须一起走。 */
+const toJpegUrl = (buf) => 'data:image/jpeg;base64,' + buf.toString('base64');
 
 /** GIF / 动图。sharp 按页解,**每一页都是合成好的整幅**(实测 800×450、alpha 全 255),
  *  不是那种只有变化矩形的差分帧 —— 差分帧直接存下来会是一堆碎片。 */
@@ -120,7 +132,7 @@ async function framesFromImage(buf, size, quality, count) {
     try {
       const f = await sharp(buf, { page })
         .resize(size, size, { fit: 'inside' })
-        .jpeg({ quality }).toBuffer();
+        .webp({ quality }).toBuffer();
       out.push(toDataUrl(f));
     } catch (e) { /* 单独一页解不出来就少一帧,不必让整段演示失败 */ }
   }
@@ -137,7 +149,7 @@ async function framesFromVideo(buf, ext) {
       '-vf', `fps=4,scale=${SIZE}:${SIZE}:force_original_aspect_ratio=decrease`,
       '-frames:v', String(COUNT), '-q:v', '6', path.join(dir, 'f%02d.jpg')]);
     return fs.readdirSync(dir).filter((f) => f.endsWith('.jpg')).sort()
-      .slice(0, COUNT).map((f) => toDataUrl(fs.readFileSync(path.join(dir, f))));
+      .slice(0, COUNT).map((f) => toJpegUrl(fs.readFileSync(path.join(dir, f))));
   } catch (e) {
     return [];
   } finally {
@@ -154,7 +166,7 @@ async function stillOf(url, size, quality) {
     if (buf.length > 25 * 1024 * 1024) return '';
     const out = await sharp(buf, { pages: 1 })
       .resize(size, size, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality }).toBuffer();
+      .webp({ quality }).toBuffer();
     return toDataUrl(out);
   } catch (e) { return ''; }
 }
@@ -167,10 +179,10 @@ async function stillOf(url, size, quality) {
    所以先算还剩多少地方,再挑一档采样。由细到粗试,第一个装得下的就用它;
    最粗的一档还装不下,才说明这颗胶囊真的没地方了。 */
 const LADDER = [
-  { size: 128, quality: 72, count: 12 },
-  { size: 112, quality: 64, count: 12 },
-  { size: 96, quality: 58, count: 10 },
-  { size: 80, quality: 52, count: 8 },
+  { size: 256, quality: 72, count: 12 },
+  { size: 208, quality: 66, count: 12 },
+  { size: 160, quality: 60, count: 10 },
+  { size: 128, quality: 54, count: 8 },
 ];
 
 async function sampleDemo(url, budget) {
@@ -271,7 +283,7 @@ async function main() {
       // 1. 首图 → cover。已经有封面的不覆盖(作者自己传的那张更该留着)。
       const hero = media.find((m) => !m.motion) || null;
       if (!cap.cover && hero && room() > 12 * 1024) {
-        const c = await stillOf(hero.url, 224, 74);
+        const c = await stillOf(hero.url, STILL_SIZE, STILL_Q);
         if (c && c.length < room()) { cap.cover = c; did.push('cover'); }
       }
 
@@ -296,7 +308,13 @@ async function main() {
         for (const m of media) {
           if (shots.length >= 10 || m.motion || used.has(m.url)) continue;
           if (room() < 10 * 1024) break;
-          const one = await stillOf(m.url, 224, 68);
+          /* ⚠ 清晰度也按名次花。前几张是人真正会看的,给足;越往后越是补充,
+             给小一点。一律 448 的结果是复杂的截图一张就吃掉半颗胶囊,后面的全被
+             挤掉(实测 PawWork 从 10 张掉到 1 张)—— 那不是"更清楚",那是更少。
+             媒体本来就是**按重要程度排好的**,分辨率跟着同一个顺序花就是了。 */
+          const rank = shots.length;
+          const size = rank < 3 ? STILL_SIZE : (rank < 6 ? 352 : 288);
+          const one = await stillOf(m.url, size, rank < 3 ? STILL_Q : 70);
           if (!one) continue;
           // 每一张都**先量再放**:剩下的地方装不下这一张,就换下一张(可能更小)。
           if (one.length + 3 > room()) continue;

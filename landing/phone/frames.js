@@ -17,9 +17,22 @@
 (function (root) {
   'use strict';
 
-  var SIZE = 128;          // 帧的长边
+  var SIZE = 256;          // 帧的长边。128 → 256:粒子那一层从 48000 涨到 110000,
+                           // 128px 的源已经比粒子画得出来的还粗了。
   var COUNT = 12;          // 取多少帧
   var QUALITY = 0.72;
+
+  /* ⚠ WebP 能不能用要**问出来**,不能假设。`toDataURL('image/webp')` 在不支持的
+     浏览器上不会报错,它会**默默返回一张 PNG** —— 于是帧变成 PNG,同样的画面大三到
+     五倍,胶囊那道闸当场把整段演示挡掉,而且没有任何提示。所以先画一像素问一次。
+     值得问:实测同一张图 WebP 448px 和 JPEG 224px 一样大,清晰度是白拿的。 */
+  var FMT = (function () {
+    try {
+      var c = document.createElement('canvas');
+      c.width = c.height = 1;
+      return c.toDataURL('image/webp').indexOf('data:image/webp') === 0 ? 'image/webp' : 'image/jpeg';
+    } catch (e) { return 'image/jpeg'; }
+  }());
 
   function canvasOf(w, h) {
     var c = document.createElement('canvas');
@@ -35,8 +48,8 @@
     var c = canvasOf(w, h);
     var g = c.getContext('2d');
     g.drawImage(src, 0, 0, w, h);
-    // JPEG,不是 PNG:这是照片和动图,PNG 在这种内容上大三到五倍,而胶囊有闸门。
-    return c.toDataURL('image/jpeg', QUALITY);
+    // 不是 PNG:这是照片和动图,PNG 在这种内容上大三到五倍,而胶囊有闸门。
+    return c.toDataURL(FMT, QUALITY);
   }
 
   /** 一张静图 → 一帧。 */

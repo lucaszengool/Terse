@@ -19,7 +19,12 @@ import { styleOf, DEFAULT_STYLE } from './city-styles.js';
 
 /** 一个项目缩影用多少颗粒子。24k 在 96px 封面上等于每个像素约 2.6 颗 —— 足够密到
  *  看得出是那张图,又不至于让常驻的壁纸多背一个几十万点的负担。 */
-export const PROJECT_POINTS = 48000;
+/* ⚠ 48000 → 110000。清晰度的**头号瓶颈是粒子太少**,不是图不够大:
+   手机的绘制缓冲区是 562×1218 ≈ 685k 像素,图铺在其中约 280k 像素上,而 48000 颗
+   点(每颗盖住 4 像素左右)只覆盖得了七成 —— 剩下三成是黑的,看起来就是一层沙。
+   实测这一层本来就已经在手机上跑 104000 颗(图 48000 + 城市 56000),所以再加
+   六万颗是它证明过能承受的量级之内。内存约 3.5MB。 */
+export const PROJECT_POINTS = 110000;
 /** 城市自己的粒子预算。**不从图和字里扣**:扣了就等于"加了城市之后字变糊了",
  *  而那正是这一层踩过两次的坑。城市只在演出的那 20 秒里存在(不演的时候整个对象
  *  是 visible=false 的),所以它是一笔按次付的账,不是常驻开销。 */
@@ -36,6 +41,9 @@ const COMMUNITY_NONE = [0.62, 0.66, 0.74];
 /** 采样画布。**必须比封面细**:采样格子比像素粗,图就糊成一片色块(第一版 128 配
  *  96px 封面就是这个下场 —— 一团绿,认不出是什么)。 */
 const SAMPLE_W = 224, SAMPLE_H = 224;
+/* 采样画布的长边上限。getImageData 是同步的,而这一层在换拍时跑 —— 超过这个尺寸
+   只是在为粒子画不出来的细节付 CPU。 */
+const SAMPLE_MAX = 640;
 /** 稳定的伪随机:同一颗胶囊每次都得长出同一座城,不能每次重聚都换个样。 */
 function hash01c(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
 /** 太暗的像素不占粒子:深色背景是图片里最不值钱的部分,把粒子让给有内容的地方。 */
@@ -105,23 +113,37 @@ void main(){
  * @returns {{target:Float32Array, color:Float32Array, aspect:number, used:number}}
  */
 export function sampleImage(img, n) {
-  const cv = document.createElement('canvas');
-  cv.width = SAMPLE_W; cv.height = SAMPLE_H;
-  const ctx = cv.getContext('2d', { willReadFrequently: true });
   const iw = img.naturalWidth || img.width || 1;
   const ih = img.naturalHeight || img.height || 1;
   const aspect = iw / ih;
-  // 图按自己的比例画进方形画布,空出来的地方是透明的 —— 那些像素不会分到粒子,
-  // 所以缩影保持原图的形状,而不是被拉成正方形。
-  let dw = SAMPLE_W, dh = SAMPLE_H;
-  if (aspect > 1) dh = Math.max(1, Math.round(SAMPLE_W / aspect));
-  else dw = Math.max(1, Math.round(SAMPLE_H * aspect));
-  ctx.clearRect(0, 0, SAMPLE_W, SAMPLE_H);
-  ctx.drawImage(img, (SAMPLE_W - dw) / 2, (SAMPLE_H - dh) / 2, dw, dh);
+
+  /* ⚠ 采样画布**按这张图的比例、按粒子预算**来定,不再是固定的 224×224 方框。
+     方框的浪费是隐形的:一张 16:9 的截图画进去只占 224×126 = 28k 像素,而这一层
+     有 48000 颗粒子 —— 1.7 颗挤在同一个像素上。多出来的那 0.7 颗不会让画面更清楚,
+     它们只是把同一个像素又画了一遍;而**真正的细节在缩图那一步就已经被扔掉了**。
+     按预算配:16:9 应该采成 292×164,同样的粒子数,横向多三成分辨率。
+
+     两道上限:
+       · 不超过原图本身(把 200px 的图采成 400px 是无中生有,只会放大 JPEG 的块);
+       · 不超过 SAMPLE_MAX(再大就是在为看不见的细节花 CPU,而 getImageData 是同步的)。 */
+  const budget = Math.max(64, Math.sqrt(Math.max(1, n)));
+  let W = Math.round(budget * Math.sqrt(aspect));
+  let H = Math.round(budget / Math.sqrt(aspect));
+  const shrink = Math.min(1, iw / Math.max(1, W), ih / Math.max(1, H),
+                          SAMPLE_MAX / Math.max(W, H));
+  W = Math.max(8, Math.round(W * shrink));
+  H = Math.max(8, Math.round(H * shrink));
+
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  // 画满整块画布 —— 画布本身就是这张图的比例,不再需要留边。
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(img, 0, 0, W, H);
 
   let data;
   try {
-    data = ctx.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data;
+    data = ctx.getImageData(0, 0, W, H).data;
   } catch (e) {
     // 画布被污染(跨域图)。胶囊里的封面是 data URL,不会走到这里 —— 但远程图会。
     return { target: new Float32Array(n * 3), color: new Float32Array(n * 3), aspect, used: 0 };
@@ -130,9 +152,9 @@ export function sampleImage(img, n) {
   // 先收集"值得给粒子"的像素,再把 n 颗粒子摊到它们身上。这样一张主体很小的图
   // 也会把粒子集中在主体上,而不是均匀地撒在一片空白里。
   const lit = [];
-  for (let y = 0; y < SAMPLE_H; y++) {
-    for (let x = 0; x < SAMPLE_W; x++) {
-      const i = (y * SAMPLE_W + x) * 4;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
       if (data[i + 3] < 24) continue;
       const luma = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
       if (luma < LUMA_FLOOR) continue;
@@ -148,13 +170,19 @@ export function sampleImage(img, n) {
     // 相邻粒子落在图上毫不相干的位置 —— 覆盖是均匀的,但**结构没了**:看到的是一片
     // 正确颜色的噪声,不是那张图。等距取样保住了图的骨架。
     const i = lit[Math.floor(p * lit.length / n)];
-    const px = (i / 4) % SAMPLE_W;
-    const py = Math.floor((i / 4) / SAMPLE_W);
+    const px = (i / 4) % W;
+    const py = Math.floor((i / 4) / W);
     // 抖动只是为了打散格点感,不能大到把边缘糊掉
     const jx = (Math.random() - 0.5) * 0.5;
     const jy = (Math.random() - 0.5) * 0.5;
-    target[p * 3]     = ((px + 0.5 + jx) / SAMPLE_W - 0.5) * 2;   // −1..1
-    target[p * 3 + 1] = (0.5 - (py + 0.5 + jy) / SAMPLE_H) * 2;
+    /* ⚠ 归一化要按**长边**,不能按各自的边。老画布是个方框,图在里面留白居中 ——
+       于是坐标天然是"长边 ±1、短边 ±(短/长)",比例**已经在坐标里**了,而 place()
+       正是靠这一点才用 `pre: true` 跳过再乘一次比例的。
+       新画布就是这张图本身,按各自的边归一会把图**拉成方的**,而且不会报错:
+       画面照样出现,只是每一张都被拉伸了。所以在这儿把比例重新放回坐标里。 */
+    const half = Math.max(W, H) / 2;
+    target[p * 3]     = ((px + 0.5 + jx) - W / 2) / half;         // 长边 −1..1
+    target[p * 3 + 1] = (H / 2 - (py + 0.5 + jy)) / half;
     target[p * 3 + 2] = 0;
     color[p * 3]     = data[i] / 255;
     color[p * 3 + 1] = data[i + 1] / 255;

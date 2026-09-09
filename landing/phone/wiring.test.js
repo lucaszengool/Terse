@@ -198,6 +198,38 @@ ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,
      /_setCity\(\(text && text\.dirs\)[\s\S]{0,160}text && text\.graph/.test(call));
 }
 
+
+/* ── 竖屏的出场顺序:先图,后读法 ────────────────────────────────────────
+   ⚠ 这一条是**用户看不到图**的真因,而且不是渲染坏了:图确实会画,只是排在
+   队伍最后面。takeTurns 的运行表原来是"所有读法 → 所有图",而 GitHub 导进来的
+   项目没有城市,所以"读法"就是流程 —— 五拍 × 4.5 秒 = 二十二秒之后才轮到第一张。
+   在广场里刷的时候,一条帖子活不到二十二秒。
+
+   showLen() = 1400 + 4500 × max(4, 1+shots),十张截图就是 51 秒的一场演出;
+   顺序错了,前面二十二秒全是流程。 */
+{
+  const eng = fs.readFileSync(path.join(dir, '..', '..', 'src', 'renderer', 'mineradio-wallpaper.js'), 'utf8');
+  const at = eng.indexOf('if (takeTurns) {\n        /*');
+  const plan = at > 0 ? eng.slice(at, at + 1400) : eng.slice(eng.indexOf('const plan = []'), eng.indexOf('const plan = []') + 600);
+  const imgAt = plan.indexOf("plan.push({ img: live[i]");
+  const cityAt = plan.indexOf("plan.push({ img: null, city: true");
+  ok('the running order puts pictures before the readings', imgAt > 0 && cityAt > 0 && imgAt < cityAt);
+
+  // 图的顺序就是"首图 → 按重要程度" —— cover 在最前,shots 按名次跟着。
+  ok('the picture list is the cover followed by the ranked shots',
+     /const urls = \[cap\.cover, \.\.\.\(cap\.shots \|\| \[\]\)\]/.test(eng));
+
+  /* 首图一解码好就要**立刻上屏**,不能等轮播走到它。原来这里挡着 `!takeTurns`。 */
+  ok('the hero swaps in as soon as it decodes, on a phone too',
+     /if \(i === 0 \|\| !shown\) \{ render\(im, 0\); if \(takeTurns\) layer\.reform\(\); \}/.test(eng));
+
+  // 一条帖子的时长要跟着图的张数走,否则十张图挤在四拍里谁也看不清。
+  const app2 = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
+  ok('how long a post plays grows with how many pictures it has',
+     /shots = 1 \+ \(\(cap && cap\.shots\) \|\| \[\]\)\.length/.test(app2)
+     && /4500 \* Math\.max\(4, shots\)/.test(app2));
+}
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

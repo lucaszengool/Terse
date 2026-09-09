@@ -1215,9 +1215,18 @@ export default class MineradioWallpaper {
          city stood down. Sharing a beat is what buried the city under a
          portrait screenshot. */
       if (takeTurns) {
+        /* ⚠ 图**排在最前面**,读法排后面 —— 这是一次**反转**,理由变了:
+           原来的规矩是"竖屏先开城市,不开封面",因为封面那时候就是个 logo,而且
+           你在列表里已经看过了。现在这两条都不成立:
+             · 从 GitHub 导进来的项目**一座楼都没有**,所以"先开城市"实际是先开
+               流程 —— 五拍 × 4.5 秒 = **二十二秒之后才轮到第一张图**;
+             · 而封面已经不是 logo 了,它是 README 的首图,后面还跟着十张按重要
+               程度排好的截图。
+           在广场里**刷**的时候没人等二十二秒:一条帖子还没轮到图就被划走了,
+           于是那些图等于不存在。先看图,再看它是什么做的。 */
         const plan = [];
-        for (let i = 0; i < scenes; i++) plan.push({ img: null, city: true, scene: i });
         for (let i = 0; i < live.length; i++) plan.push({ img: live[i], city: false, scene: i });
+        for (let i = 0; i < scenes; i++) plan.push({ img: null, city: true, scene: i });
         if (plan.length <= 1) return;
         const perT = Math.max(3200, Math.floor((ms - 1400) / plan.length));
         let atT = 0;
@@ -1249,11 +1258,9 @@ export default class MineradioWallpaper {
       return ok;
     }
 
-    /* Upright, the CITY opens the show — not the cover.
-       It is what you tapped the project to see, and it needs no network: the
-       capsule already carries it. Opening on the cover meant several seconds of
-       a logo before anything else, which is most of a preview spent on the one
-       part you had already seen in the list. */
+    /* 开场先给一帧读法,**只是为了不空着**:图是 data URL,解码要几十毫秒,而这
+       一帧不用等任何东西(胶囊里就有)。首图一解好就立刻换上去 —— 见下面。
+       ⚠ 这里曾经是"竖屏就用城市开场,不用封面",而且**停在那儿不动**。 */
     if (takeTurns) {
       if (!layer.setShow(null, textAt(0, true), SIZE)) return false;
       layer.play(Math.max(3000, ms | 0));
@@ -1266,8 +1273,10 @@ export default class MineradioWallpaper {
       const im = new Image();
       im.onload = () => {
         imgs[i] = im;
-        // 第一张一到就开演,不等其余的 —— 等齐了再开场就是白白的一秒空白。
-        if (!takeTurns && (i === 0 || !shown)) render(im, 0);
+        /* 第一张一到就开演,不等其余的 —— 等齐了再开场就是白白的一秒空白。
+           ⚠ 竖屏也要换。原来这里挡着 `!takeTurns`,于是首图解好了也不上屏,
+           要一直等到轮播把前面所有读法走完 —— 而"先看图"正是这一条要保证的事。 */
+        if (i === 0 || !shown) { render(im, 0); if (takeTurns) layer.reform(); }
         if (++loaded === urls.length) rotate(imgs.filter(Boolean));
       };
       im.onerror = () => {

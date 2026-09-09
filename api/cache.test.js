@@ -151,5 +151,24 @@ ok('the /m handler is registered before the static mount', mAt > 0 && staticAt >
 // more than it saves.
 ok('the shell rewriter does not stamp engine URLs', !/app-assets[^\n]*\?v=/.test(server));
 
+
+/* ── The service worker sits in front of all of it ──────────────────────────
+   The stamp puts a version in the URL, but the service worker answers from its
+   OWN cache before the network is consulted — so for a URL that never changes,
+   a shipped fix is still unreachable. The engine imports its own modules by
+   bare specifier (mineradio-wallpaper.js → './wallpaper-project.js'), so those
+   URLs never change, and cache-first meant the phone kept the old engine for a
+   whole extra launch. Third occurrence of this shape; this is the assertion. */
+const sw = fs.readFileSync(path.join(__dirname, '..', 'landing', 'sw.js'), 'utf8');
+ok('the worker never caches API responses', /pathname\.startsWith\('\/api\/'\)\) return/.test(sw));
+ok('it treats a versioned asset URL differently from an unversioned one',
+   /searchParams\.has\('v'\)/.test(sw));
+ok('an UNVERSIONED asset is fetched before the cache is consulted',
+   /const fresh = await fetch\(req\)[\s\S]{0,120}return fresh \|\| \(await cache\.match\(req\)\)/.test(sw));
+ok('a versioned asset may still be served from cache — its URL is immutable',
+   /if \(versioned\)[\s\S]{0,200}return hit \|\|/.test(sw));
+ok('and the cache is still the offline fallback in both branches',
+   (sw.match(/cache\.match\(req\)/g) || []).length >= 2);
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 process.exit(fails.length ? 1 : 0);

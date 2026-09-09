@@ -78,17 +78,36 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: serve from cache, and refresh in the background so a shipped
-  // fix reaches the next launch without ever blocking this one.
+  /* Static assets. ⚠ CACHE-FIRST IS ONLY SAFE FOR A VERSIONED URL.
+     Everything the app itself imports carries ?v=<build> (app.js appends it),
+     and those URLs are immutable — a new build is a new URL, so the cached copy
+     can never be wrong and serving it instantly is free.
+
+     But the engine imports its own modules by BARE specifier:
+     mineradio-wallpaper.js does `import { ProjectLayer } from
+     './wallpaper-project.js'`. That URL never changes. Served cache-first it is
+     answered from a copy that could be any age, and the background refresh only
+     helps the NEXT launch — so a fix ships, deploys, and the phone shows the old
+     engine anyway. That is the third time this exact shape has cost a day:
+     first the build stamp did not cover the engine, then it did not cover the
+     phone's own scripts, and now the service worker sits in front of both.
+
+     So: versioned URL → cache first (immutable, instant). Unversioned → network
+     first, cache only as the offline fallback. It costs one request on a file
+     that changes rarely, and it removes "the fix is deployed and unreachable"
+     as a possible state. */
   if (/^\/(app-assets|icon-|manifest)/.test(url.pathname)) {
+    const versioned = url.searchParams.has('v');
     event.respondWith((async () => {
       const cache = await caches.open(SHELL);
-      const hit = await cache.match(req);
-      const network = fetch(req).then((res) => {
-        if (res && res.ok) cache.put(req, res.clone());
-        return res;
-      }).catch(() => null);
-      return hit || (await network) || Response.error();
+      const store = (res) => { if (res && res.ok) cache.put(req, res.clone()); return res; };
+      if (versioned) {
+        const hit = await cache.match(req);
+        const network = fetch(req).then(store).catch(() => null);
+        return hit || (await network) || Response.error();
+      }
+      const fresh = await fetch(req).then(store).catch(() => null);
+      return fresh || (await cache.match(req)) || Response.error();
     })());
   }
 });

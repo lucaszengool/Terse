@@ -26,7 +26,7 @@
     ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>Terse</DisplayName>
+    <DisplayName>Terse AI</DisplayName>
     <PublisherDisplayName>__PUBLISHER_DISPLAY__</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
     <Description>Watch what your AI agents are burning, live on your desktop.</Description>
@@ -47,7 +47,7 @@
     <Application Id="Terse" Executable="Terse.exe"
                  EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="Terse"
+        DisplayName="Terse AI"
         Description="Watch what your AI agents are burning, live on your desktop."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
@@ -61,7 +61,7 @@
         <!-- terse:// — the same scheme the desktop app and the phone use. -->
         <uap:Extension Category="windows.protocol">
           <uap:Protocol Name="terse">
-            <uap:DisplayName>Terse</uap:DisplayName>
+            <uap:DisplayName>Terse AI</uap:DisplayName>
           </uap:Protocol>
         </uap:Extension>
       </Extensions>

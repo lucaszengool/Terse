@@ -55,6 +55,8 @@
     saved: '#C9F03D', spent: '#FF9F45', cache: '#5AD8FF',
     compact: '#B98CFF', cost: '#FFD75A', agents: '#7CF5C0'
   };
+  var TINT_RGB = {}, WHITE_RGB = [1, 1, 1];            /* parsed once, not per line per frame */
+  for (var tk in TINT) TINT_RGB[tk] = hex(TINT[tk]);
   /* statlyrics.tsx LINES — the English column */
   var LINES = [
     ['agents', '4 agents running'], ['spent', '336.6M tokens in'], ['compact', '−38% filler'],
@@ -208,6 +210,12 @@
     '  float sz = clamp(depthSize * (1.05 + flowDrive), 1.00, 5.45);',
     '  gl_PointSize = min(uMaxPt, sz * uPixel * uPointScale * uBloomSize);',
     '  gl_Position = uProj * mvPos;',
+    /* Alpha EXACTLY zero — the dust lane where smoothstep returns 0 (22%+ of it)
+       and the ribbons' bottom edge — used to rasterise a full point in both
+       passes and change nothing: with source alpha 0, the normal blend and the
+       additive blend both leave the framebuffer bit-for-bit as it was. Park it
+       outside the clip volume so it is never rasterised. Same pixels, less work. */
+    '  if (vAlpha <= 0.0) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);',
     '}'
   ].join('\n');
 
@@ -262,7 +270,6 @@
     'precision highp float;',
     'attribute vec2 aUv;',
     'attribute float aRand;',
-    'attribute float aOn;',
     'uniform mat4 uView, uProj;',
     'uniform float uForm, uVis, uPixel, uTime, uBloomSize, uOut, uInMode, uOutMode, uMaxPt;',
     'uniform vec2 uCenter, uSize;',
@@ -285,7 +292,7 @@
     '  float u = clamp(1.0 - uForm, 0.0, 1.0);',
     '  vec3 d = dispAt(uOut > 0.0 ? uOutMode : uInMode, u, rel);',
     '  vColor = uTint;',
-    '  vA = aOn * uVis * (0.62 + 0.38 * sin(uTime * 2.6 + aRand * 21.0));',
+    '  vA = uVis * (0.62 + 0.38 * sin(uTime * 2.6 + aRand * 21.0));',
     '  vec4 mv = uView * vec4(target + d.xy, d.z, 1.0);',
     '  gl_PointSize = min(uMaxPt, (2.5 + uForm * 1.5) * uPixel * uBloomSize);',
     '  gl_Position = uProj * mv;',
@@ -388,33 +395,38 @@
   var B0 = A_END, B_END = B0 + 270;
   var C0 = B_END, C_EACH = 90, C_N = 4, C_END = C0 + C_EACH * C_N;
   var D_END = C_END + 50, LOOP = D_END;
-  function viewOf(i) { var side = i % 2 === 0 ? -1 : 1; return { yaw: side * (26 + ((i * 13) % 13)), pitch: 8 + ((i * 7) % 8) }; }
+  function viewYaw(i) { var side = i % 2 === 0 ? -1 : 1; return side * (26 + ((i * 13) % 13)); }
+  function viewPitch(i) { return 8 + ((i * 7) % 8); }
 
-  function camAt(fr) {
+  /* Writes into `out` rather than returning a fresh object. This runs every
+     frame, and per-frame garbage is exactly what makes the collector stop the
+     page mid-animation. The arithmetic is the previous camAt's, expression for
+     expression, so the pose — and every pixel — is unchanged. */
+  function camAt(fr, out) {
     var f = fr % LOOP, t;
-    if (f < A0) return { yaw: 0, pitch: 0, zoom: 1 };
-    if (f < A_PUSH) return { yaw: 0, pitch: 0, zoom: lerp(1, NEAR, outExpo(seg(f, A0, A_PUSH))) };
-    if (f < A_SWING) { t = outExpo(seg(f, A_PUSH, A_SWING)); return { yaw: YAW_PRE * t, pitch: -PITCH_MAX * 0.55 * t, zoom: NEAR }; }
-    if (f < A_ORBIT) { t = smooth(seg(f, A_SWING, A_ORBIT)); return { yaw: lerp(YAW_PRE, YAW_MAX, t), pitch: lerp(-PITCH_MAX * 0.55, PITCH_MAX, t), zoom: NEAR }; }
-    if (f < A_SETTLE) { t = settleE(seg(f, A_ORBIT, A_SETTLE)); return { yaw: lerp(YAW_MAX, YAW_MAX * 0.68, t), pitch: lerp(PITCH_MAX, PITCH_MAX * 0.68, t), zoom: NEAR }; }
-    if (f < A_BACK) { t = smooth(seg(f, A_SETTLE, A_BACK)); return { yaw: lerp(YAW_MAX * 0.68, -16, t), pitch: lerp(PITCH_MAX * 0.68, 6, t), zoom: lerp(NEAR, 0.88, t) }; }
-    if (f < B0) return { yaw: -16, pitch: 6, zoom: 0.88 };
+    if (f < A0) { out.yaw = 0; out.pitch = 0; out.zoom = 1; return out; }
+    if (f < A_PUSH) { out.yaw = 0; out.pitch = 0; out.zoom = lerp(1, NEAR, outExpo(seg(f, A0, A_PUSH))); return out; }
+    if (f < A_SWING) { t = outExpo(seg(f, A_PUSH, A_SWING)); out.yaw = YAW_PRE * t; out.pitch = -PITCH_MAX * 0.55 * t; out.zoom = NEAR; return out; }
+    if (f < A_ORBIT) { t = smooth(seg(f, A_SWING, A_ORBIT)); out.yaw = lerp(YAW_PRE, YAW_MAX, t); out.pitch = lerp(-PITCH_MAX * 0.55, PITCH_MAX, t); out.zoom = NEAR; return out; }
+    if (f < A_SETTLE) { t = settleE(seg(f, A_ORBIT, A_SETTLE)); out.yaw = lerp(YAW_MAX, YAW_MAX * 0.68, t); out.pitch = lerp(PITCH_MAX, PITCH_MAX * 0.68, t); out.zoom = NEAR; return out; }
+    if (f < A_BACK) { t = smooth(seg(f, A_SETTLE, A_BACK)); out.yaw = lerp(YAW_MAX * 0.68, -16, t); out.pitch = lerp(PITCH_MAX * 0.68, 6, t); out.zoom = lerp(NEAR, 0.88, t); return out; }
+    if (f < B0) { out.yaw = -16; out.pitch = 6; out.zoom = 0.88; return out; }
     if (f < B_END) {
       var k = f - B0, i = 0;
       while (i < SHOW.length - 2 && k >= SHOW[i + 1].at) i++;
       var a = SHOW[i], b = SHOW[i + 1];
       t = i < 2 ? outExpo(seg(k, a.at, b.at)) : smooth(seg(k, a.at, b.at));
-      return { yaw: lerp(a.yaw, b.yaw, t), pitch: lerp(a.pitch, b.pitch, t), zoom: lerp(a.zoom, b.zoom, t) };
+      out.yaw = lerp(a.yaw, b.yaw, t); out.pitch = lerp(a.pitch, b.pitch, t); out.zoom = lerp(a.zoom, b.zoom, t); return out;
     }
     if (f < C_END) {
       var j = Math.floor((f - C0) / C_EACH), local = (f - C0) - j * C_EACH;
-      var from = j === 0 ? { yaw: -16, pitch: 6 } : viewOf(j - 1), to = viewOf(j);
+      var fy = j === 0 ? -16 : viewYaw(j - 1), fp = j === 0 ? 6 : viewPitch(j - 1);
       t = outExpo(seg(local, 0, 24));
       var energy = local < 24 ? Math.sin(Math.PI * seg(local, 0, 24)) : 0;
-      return { yaw: lerp(from.yaw, to.yaw, t), pitch: lerp(from.pitch, to.pitch, t), zoom: REST - 0.06 * energy };
+      out.yaw = lerp(fy, viewYaw(j), t); out.pitch = lerp(fp, viewPitch(j), t); out.zoom = REST - 0.06 * energy; return out;
     }
-    var last = viewOf(C_N - 1); t = smooth(seg(f, C_END, D_END));
-    return { yaw: lerp(last.yaw, 0, t), pitch: lerp(last.pitch, 0, t), zoom: lerp(REST, 1, t) };
+    t = smooth(seg(f, C_END, D_END));
+    out.yaw = lerp(viewYaw(C_N - 1), 0, t); out.pitch = lerp(viewPitch(C_N - 1), 0, t); out.zoom = lerp(REST, 1, t); return out;
   }
 
   /* flashcam.ts pulse(): the volume SWELLS while the camera moves — alpha +10%,
@@ -460,7 +472,14 @@
     this.view = new Float32Array(16); this.proj = new Float32Array(16);
     this.t0 = 0; this.frame = 0; this.par = { x: 0, y: 0, tx: 0, ty: 0 };
     this.labels = {};
+    /* per-frame state lives here and is overwritten in place — see camAt */
+    this.cam = { yaw: 0, pitch: 0, zoom: 1 };
+    this.pose = { yaw: 0, pitch: 0, zoom: 1, boost: 0 };
+    this.dr = { t: 0, bass: 0, mid: 0, treble: 0, beat: 0, energy: 0, burst: 0 };
+    this._pool = []; this._alv = [];
+    this.passes = [[this.pBloom, BLOOM_SIZE, 'add'], [this.pBody, 1, 'normal']];
     this._glyphGeo();
+    this._prewarm();
     this.resize();
     this._loadCover();
   }
@@ -504,15 +523,18 @@
   Cosmos.prototype._glyphGeo = function () {
     var gl = this.gl, n = GLYPH_N, uv = new Float32Array(n * 2), rnd = new Float32Array(n);
     for (var i = 0; i < n; i++) { uv[i * 2] = h1(i * 0.7071 + 1.3); uv[i * 2 + 1] = h1(i * 1.3137 + 7.9); rnd[i] = h1(i * 2.2361 + 4.1); }
-    this.glyphUv = uv;
-    this.bGUv = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.bGUv); gl.bufferData(gl.ARRAY_BUFFER, uv, gl.STATIC_DRAW);
-    this.bGRnd = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.bGRnd); gl.bufferData(gl.ARRAY_BUFFER, rnd, gl.STATIC_DRAW);
+    this.glyphUv = uv; this.glyphRnd = rnd;
     this.atlas = document.createElement('canvas'); this.atlas.width = 1024; this.atlas.height = 128;
     this.actx = this.atlas.getContext('2d', { willReadFrequently: true });
   };
 
-  /* One mask per LABEL, built the first time it is needed and kept: the same dozen
-     lines recur for as long as the page is open, and a mask is 60000 lookups. */
+  /* One mask per LABEL, kept: the same dozen lines recur for as long as the page
+     is open. A label is now stored as ONLY its lit particles, in their original
+     order. Every line used to draw all 60000 points in both passes, and the ones
+     off the strokes (most of them) ran the fragment shader to add exactly zero —
+     alpha 0 under an additive blend is a bit-for-bit no-op. Drawing just the lit
+     ones, in the same order, gives the same framebuffer for a fraction of the
+     fill. That matters most on Windows, where ANGLE emulates sized points. */
   Cosmos.prototype._mask = function (text) {
     var hit = this.labels[text];
     if (hit) return hit;
@@ -523,15 +545,39 @@
     for (; size > 28; size -= 2) { o.font = '800 ' + size + 'px ' + FONT; if (o.measureText(text).width < W * 0.92) break; }
     o.font = '800 ' + size + 'px ' + FONT;
     o.fillText(text, W / 2, H / 2);
-    var d = o.getImageData(0, 0, W, H).data, uv = this.glyphUv, on = new Float32Array(GLYPH_N);
+    var d = o.getImageData(0, 0, W, H).data, uv = this.glyphUv, rn = this.glyphRnd, idx = [];
     for (var i = 0; i < GLYPH_N; i++) {
       var ux = Math.min(0.998, Math.max(0.002, uv[i * 2])), uy = Math.min(0.94, Math.max(0.06, uv[i * 2 + 1]));
       var x = Math.min(W - 1, (ux * W) | 0), y = Math.min(H - 1, ((1 - uy) * H) | 0);
-      on[i] = d[(y * W + x) * 4 + 3] > 115 ? 1 : 0;
+      if (d[(y * W + x) * 4 + 3] > 115) idx.push(i);
     }
-    var gl = this.gl, b = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, on, gl.STATIC_DRAW);
-    return (this.labels[text] = b);
+    var n = idx.length, cu = new Float32Array(n * 2), cr = new Float32Array(n);
+    for (var j = 0; j < n; j++) { var q = idx[j]; cu[j * 2] = uv[q * 2]; cu[j * 2 + 1] = uv[q * 2 + 1]; cr[j] = rn[q]; }
+    var gl = this.gl, bu = gl.createBuffer(), br = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, bu); gl.bufferData(gl.ARRAY_BUFFER, cu, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, br); gl.bufferData(gl.ARRAY_BUFFER, cr, gl.STATIC_DRAW);
+    return (this.labels[text] = { uv: bu, rnd: br, n: n });
+  };
+
+  /* Build every label's mask during idle time, up front. Built on first use, a
+     mask (a canvas raster plus 60000 lookups) landed on the very frame its line
+     appeared — a hitch at each new line through the whole first loop. Waits for
+     document.fonts so no mask is ever baked in a fallback face; _mask still
+     builds synchronously for anything the pre-build has not reached yet. */
+  Cosmos.prototype._prewarm = function () {
+    var self = this, todo = [], seen = {}, i;
+    for (i = 0; i < LINES.length; i++) if (!seen[LINES[i][1]]) { seen[LINES[i][1]] = 1; todo.push(LINES[i][1]); }
+    for (i = 0; i < CYCLE.length; i++) if (!seen[CYCLE[i][1]]) { seen[CYCLE[i][1]] = 1; todo.push(CYCLE[i][1]); }
+    this._prewarmLeft = todo.length;
+    var ric = window.requestIdleCallback ? function (fn) { window.requestIdleCallback(fn, { timeout: 400 }); }
+                                          : function (fn) { setTimeout(function () { fn(null); }, 16); };
+    var step = function (dl) {
+      do { var tx = todo.shift(); if (tx) self._mask(tx); } while (todo.length && dl && dl.timeRemaining() > 6);
+      self._prewarmLeft = todo.length;
+      if (todo.length) ric(step);
+    };
+    var go = function () { ric(step); };
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(go, go); else go();
   };
 
   Cosmos.prototype.resize = function () {
@@ -559,39 +605,49 @@
     }
     beat = Math.min(2.2, beat);
     var act = clamp01(ACTIVITY + SWELL * Math.sin((t / SWELL_SEC) * Math.PI * 2));
-    return {
-      t: t,
-      bass: Math.min(1.6, 0.14 + act * 0.30 + beat * 0.42),
-      mid: Math.min(1.4, 0.12 + act * 0.26 + 0.04 * Math.sin(t * 0.55) + beat * 0.30),
-      treble: Math.min(1.0, 0.05 + act * 0.10 + beat * 0.20),
-      beat: Math.min(1.2, beat * 0.55),
-      energy: clamp01(0.12 + act * 0.34 + beat * 0.50),
-      burst: clamp01(big)
-    };
+    var o = this.dr;
+    o.t = t;
+    o.bass = Math.min(1.6, 0.14 + act * 0.30 + beat * 0.42);
+    o.mid = Math.min(1.4, 0.12 + act * 0.26 + 0.04 * Math.sin(t * 0.55) + beat * 0.30);
+    o.treble = Math.min(1.0, 0.05 + act * 0.10 + beat * 0.20);
+    o.beat = Math.min(1.2, beat * 0.55);
+    o.energy = clamp01(0.12 + act * 0.34 + beat * 0.50);
+    o.burst = clamp01(big);
+    return o;
   };
 
-  function glyphAt(age) {
-    if (age < 0 || age > G_LIFE) return null;
-    if (age < G_IN) { var u = age / G_IN; return { form: smoother(u), vis: smoother(Math.min(1, u * 1.6)), out: 0 }; }
-    if (age < G_IN + G_HOLD) return { form: 1, vis: 1, out: 0 };
+  function glyphAt(age, g) {
+    if (age < 0 || age > G_LIFE) return false;
+    if (age < G_IN) { var u = age / G_IN; g.form = smoother(u); g.vis = smoother(Math.min(1, u * 1.6)); g.out = 0; return true; }
+    if (age < G_IN + G_HOLD) { g.form = 1; g.vis = 1; g.out = 0; return true; }
     var v = (age - G_IN - G_HOLD) / G_OUT;
-    return { form: 1 - smoother(v) * 0.75, vis: 1 - smoother(v), out: 1 };
+    g.form = 1 - smoother(v) * 0.75; g.vis = 1 - smoother(v); g.out = 1; return true;
   }
+  function bySc(a, b) { return a.sc - b.sc; }
 
-  /* everything alive at frame gf: hero lines (centred, big) and small stats (sides) */
+  Cosmos.prototype._ev = function (n) {
+    return this._pool[n] || (this._pool[n] = { text: '', kind: '', x: 0, y: 0, sc: 0, mode: 0, g: { form: 0, vis: 0, out: 0 } });
+  };
+
+  /* everything alive at frame gf: hero lines (centred, big) and small stats (sides).
+     Pooled records, one reused array — same values, same order, no garbage. */
   Cosmos.prototype._alive = function (gf) {
-    var out = [], k, f, g, halfW = SILK_HALF_H * this.aspect;
+    var out = this._alv, n = 0, k, f, e, halfW = SILK_HALF_H * this.aspect;
+    out.length = 0;
     /* the hero line is 3.05 × 1.55 = 4.7 units wide; a phone's frame is ~2.2 */
     var heroSc = Math.min(HERO_SCALE, (halfW * 2 * 0.94) / GLYPH_W);
     var xFit = Math.min(1, this.aspect / (16 / 9));
     for (k = Math.max(0, Math.floor((gf - G_LIFE - HERO_FROM) / HERO_EVERY)); (f = HERO_FROM + k * HERO_EVERY) <= gf; k++) {
-      if ((g = glyphAt(gf - f))) {
+      e = this._ev(n);
+      if (glyphAt(gf - f, e.g)) {
         var L = LINES[k % LINES.length];
-        out.push({ text: L[1], kind: L[0], x: 0, y: 0.35, sc: heroSc, g: g, mode: (k * 5) % 5 === 0 ? 0 : (k % 4) });
+        e.text = L[1]; e.kind = L[0]; e.x = 0; e.y = 0.35; e.sc = heroSc; e.mode = (k * 5) % 5 === 0 ? 0 : (k % 4);
+        out.push(e); n++;
       }
     }
     for (k = Math.max(0, Math.floor((gf - G_LIFE - SMALL_FROM) / SMALL_EVERY)); (f = SMALL_FROM + k * SMALL_EVERY) <= gf; k++) {
-      if ((g = glyphAt(gf - f))) {
+      e = this._ev(n);
+      if (glyphAt(gf - f, e.g)) {
         var C = CYCLE[k % CYCLE.length], side = k % 2 === 0 ? -1 : 1;
         var x = side * (1.95 + ((k * 0.37) % 1) * 1.60) + (((k * 0.83) % 1) - 0.5) * 0.5;
         var y = (((k * 0.41) % 1) - 0.5) * 4.2;
@@ -602,22 +658,22 @@
            2.8 there and the clamp never binds. */
         var ssc = Math.min(SMALL_SCALE, (halfW * 2 * 0.62) / GLYPH_W);
         var lim = Math.max(0, halfW - GLYPH_W * ssc * 0.5 - 0.04);
-        var lx = Math.max(-lim, Math.min(lim, x * xFit));
-        out.push({ text: C[1], kind: C[0], x: lx, y: y, sc: ssc, g: g, mode: 0 });
+        e.text = C[1]; e.kind = C[0]; e.x = Math.max(-lim, Math.min(lim, x * xFit)); e.y = y; e.sc = ssc; e.mode = 0;
+        out.push(e); n++;
       }
     }
     /* small ones first, the hero line last — it sits on top */
-    return out.sort(function (a, b) { return a.sc - b.sc; });
+    return out.sort(bySc);
   };
 
   Cosmos.prototype.draw = function (gf) {
     var gl = this.gl, dr = this._drive(gf);
-    var cam = camAt(gf), p = this.par;
+    var cam = camAt(gf, this.cam), p = this.par;
     p.x += (p.tx - p.x) * 0.06; p.y += (p.ty - p.y) * 0.06;
     var yaw = cam.yaw + p.x * 10, pitch = cam.pitch - p.y * 6, zoom = cam.zoom;
     var boost = boostAt(gf);
     var pAlpha = Math.min(1, PULSE_ALPHA * (1 + 0.10 * boost)), pScale = PULSE_POINT * (1 + 0.55 * boost);
-    this.pose = { yaw: yaw, pitch: pitch, zoom: zoom, boost: boost };
+    var ps = this.pose; ps.yaw = yaw; ps.pitch = pitch; ps.zoom = zoom; ps.boost = boost;
 
     gl.viewport(0, 0, this.cv.width, this.cv.height);
     gl.clearColor(0, 0, 0, 1);
@@ -628,7 +684,7 @@
     /* ── PULSE: bloom twin first (renderOrder 0), then the body (1) ── */
     perspective(this.proj, 2 * Math.atan(PULSE_HALF_H / PULSE_CAM_Z), this.aspect, 0.1, 400);
     orbitView(this.view, PULSE_CAM_Z * zoom, yaw, pitch);
-    var passes = [[this.pBloom, BLOOM_SIZE, 'add'], [this.pBody, 1, 'normal']];
+    var passes = this.passes;
     for (var pi = 0; pi < 2; pi++) {
       var P = passes[pi][0];
       gl.useProgram(P.p);
@@ -662,14 +718,13 @@
     gl.uniformMatrix4fv(G.u.uProj, false, this.proj);
     gl.uniform1f(G.u.uTime, dr.t); gl.uniform1f(G.u.uPixel, this.pixel); gl.uniform1f(G.u.uMaxPt, this.maxPt);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.dot); gl.uniform1i(G.u.uDotTex, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.bGUv); gl.enableVertexAttribArray(G.a.aUv); gl.vertexAttribPointer(G.a.aUv, 2, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.bGRnd); gl.enableVertexAttribArray(G.a.aRand); gl.vertexAttribPointer(G.a.aRand, 1, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(G.a.aOn);
+    gl.enableVertexAttribArray(G.a.aUv); gl.enableVertexAttribArray(G.a.aRand);
     for (var i = 0; i < alive.length; i++) {
-      var e = alive[i];
-      gl.bindBuffer(gl.ARRAY_BUFFER, this._mask(e.text));
-      gl.vertexAttribPointer(G.a.aOn, 1, gl.FLOAT, false, 0, 0);
-      var tint = hex(TINT[e.kind] || '#ffffff');
+      var e = alive[i], m = this._mask(e.text);
+      if (!m.n) continue;
+      gl.bindBuffer(gl.ARRAY_BUFFER, m.uv); gl.vertexAttribPointer(G.a.aUv, 2, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, m.rnd); gl.vertexAttribPointer(G.a.aRand, 1, gl.FLOAT, false, 0, 0);
+      var tint = TINT_RGB[e.kind] || WHITE_RGB;
       gl.uniform2f(G.u.uCenter, e.x, e.y);
       gl.uniform2f(G.u.uSize, GLYPH_W * e.sc, GLYPH_H * e.sc);
       gl.uniform3f(G.u.uTint, tint[0], tint[1], tint[2]);
@@ -677,11 +732,11 @@
       gl.uniform1f(G.u.uInMode, e.mode); gl.uniform1f(G.u.uOutMode, (e.mode + 2) % 5);
       /* glow twin (2.4x, soft core, 0.55 of the alpha), then the sharp pass */
       gl.uniform1f(G.u.uBloomSize, 2.4); gl.uniform1f(G.u.uSoft, 1); gl.uniform1f(G.u.uAlpha, GLYPH_ALPHA * 0.55);
-      gl.drawArrays(gl.POINTS, 0, GLYPH_N);
+      gl.drawArrays(gl.POINTS, 0, m.n);
       gl.uniform1f(G.u.uBloomSize, 1); gl.uniform1f(G.u.uSoft, 0); gl.uniform1f(G.u.uAlpha, GLYPH_ALPHA);
-      gl.drawArrays(gl.POINTS, 0, GLYPH_N);
+      gl.drawArrays(gl.POINTS, 0, m.n);
     }
-    gl.disableVertexAttribArray(G.a.aUv); gl.disableVertexAttribArray(G.a.aRand); gl.disableVertexAttribArray(G.a.aOn);
+    gl.disableVertexAttribArray(G.a.aUv); gl.disableVertexAttribArray(G.a.aRand);
     this.lastAlive = alive.length;
   };
 

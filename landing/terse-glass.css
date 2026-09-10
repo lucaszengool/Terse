@@ -53,7 +53,7 @@
    particle shader so the particles ARE the wallpaper). #terse-desk is the
    still fallback for no-WebGL, phones and prefers-reduced-motion — same colour
    family, no canvas. body goes clear so whichever one is live shows through. */
-html{background:hsl(250,36%,4%)}
+html{background:#000}
 body{background:transparent}
 
 #terse-desk{
@@ -605,3 +605,30 @@ pre, code, .term-line{background-color:transparent}
    already written in terms of them. */
 @media (min-width:1600px){ :root{ --fs-up:4.5px; --win-up:90px } }
 @media (min-width:2000px){ :root{ --fs-up:6px;   --win-up:150px } }
+
+
+/* ── Black stage: every word white (2026-09-11) ─────────────────────────────
+   The wallpaper is gone. The page is pure black with the 3D particle field of
+   terse-cosmos.js behind it, so the per-wallpaper colouring (halo tint, adaptive
+   accent, text tinting) is retired and ALL copy is white — accent tokens and
+   gradient text included.
+
+   Two deliberate exceptions, both so nothing turns white-on-white:
+     - controls on a LIGHT ground keep their dark ink. That rule is !important
+       with class specificity (.btn-primary, .nav-cta, the [style*=bg0] inks
+       above), so it outranks the universal rule below;
+     - form fields keep their own colour — an input can have a light face. */
+:root{
+  --ac:#fff; --ac3:#fff;
+  --acd:rgba(255,255,255,0.10); --acm:rgba(255,255,255,0.22);
+  --gradient:linear-gradient(135deg,#fff 0%,#fff 100%);
+  --t1:#fff; --t2:#fff; --t3:hsla(0,0%,100%,0.86);
+}
+body *:not(input):not(textarea):not(select):not(option){ color:#fff !important; }
+.gradient-text, .hero h1 .gradient-text{
+  background:none !important;
+  -webkit-text-fill-color:#fff !important;
+  color:#fff !important;
+  filter:none !important;
+}
+#terse-desk{ background:#000 !important; }

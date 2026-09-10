@@ -118,6 +118,22 @@ ok('renderBeds() is painted on open, not from a tab hook', openApp.includes('ren
 /* 城市图例的词也在开场交出去 —— 交晚了,先刷到的项目就没有图例,而"少一行字"
    和"这个功能没做"在屏幕上是一回事。这个函数存在但没人调,是这个文件存在的理由。 */
 ok('the city legend words are handed over on open', openApp.includes('pushCityWords()'));
+
+/* ── 没有图的项目,城市也必须出现 ────────────────────────────────────────
+   ⚠ 竖屏的 render() 传的是 `!takeTurns`(= false),因为城市在轮播里**另有一拍**。
+   可一张图都没有的时候根本不存在"轮流":那条分支若也走 render(),城市和流程会被
+   一起清空 → planScenes 排不出任何一幕 → sceneCount 0 → 轮播不启动 → 城市一次
+   都不画。而屏幕上看起来就是"这个项目本来就没有城市"。
+   实测:kelivo(16 座楼)去掉图之后 cityPointsUsed = 0。 */
+{
+  const eng2 = fs.readFileSync(path.join(dir, '..', '..', 'src', 'renderer', 'mineradio-wallpaper.js'), 'utf8');
+  const at2 = eng2.indexOf('if (!urls.length) {');
+  const branch = at2 > 0 ? eng2.slice(at2, at2 + 1200) : '';
+  ok('a project with no pictures still draws its city',
+     /layer\.setShow\(null, textAt\(0, true\), SIZE\)/.test(branch));
+  ok('and it does not go through render(), which strips the city on a phone',
+     !/const ok = render\(null, 0\);/.test(branch));
+}
 ok('and so are the styles', openApp.includes('renderStyles()'));
 
 // ── WebGL contexts ──

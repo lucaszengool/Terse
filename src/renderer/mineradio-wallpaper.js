@@ -1256,8 +1256,16 @@ export default class MineradioWallpaper {
     };
 
     if (!urls.length) {
-      const ok = render(null, 0);
-      if (ok) rotate([]);        // 没有图,但评论可能不止一屏
+      /* ⚠ 一张图都没有的时候,**不存在轮流这件事** —— 没有东西会压住城市。
+         这里原来走的是 `render(null, 0)`,而 render 传的是 `!takeTurns`:竖屏上
+         那就是 false,于是城市和流程被一起清空,planScenes 排不出任何一幕,
+         sceneCount 变成 0,轮播直接不启动。
+         结果是**有城市但没有截图的项目,城市一次都不出现** —— 屏幕上只剩标题和
+         几行字,而那看起来完全像"这个项目就是没有城市"。
+         实测:kelivo(16 座楼)把图去掉之后 cityPointsUsed = 0。 */
+      const ok = layer.setShow(null, textAt(0, true), SIZE);
+      if (ok && !shown) { layer.play(Math.max(3000, ms | 0)); this.pulse(0.8); shown = true; }
+      if (ok) rotate([]);        // 没有图,但读法和评论都可能不止一屏
       return ok;
     }
 

@@ -28,7 +28,14 @@ export const PROJECT_POINTS = 110000;
 /** 城市自己的粒子预算。**不从图和字里扣**:扣了就等于"加了城市之后字变糊了",
  *  而那正是这一层踩过两次的坑。城市只在演出的那 20 秒里存在(不演的时候整个对象
  *  是 visible=false 的),所以它是一笔按次付的账,不是常驻开销。 */
-export const CITY_POINTS = 56000;
+/* ⚠ 56000 → 120000,和图那一层同一个理由:手机绘制缓冲区 562×1218 ≈ 685k 像素,
+   而城市要在里面同时画十六座楼的楼身、窗、色带、地面、地脉、天际线、每座楼的屋顶牌
+   和街上的图例 —— 56000 颗点摊到这么多东西上,每一样都只剩一层稀疏的沙。
+   屋顶牌和图例尤其吃亏:字是靠笔画成形的,笔画上没有足够的点就直接读不出来,
+   而这一轮加的两行读法**全靠读得出来才有意义**。
+   图那一层已经在手机上跑 110000,城市和它从不同时占满(演出时城市在,图那几拍
+   城市就站下来),所以这是同一个量级的账。 */
+export const CITY_POINTS = 120000;
 
 /** 社区配色。星座按"这几块是一伙的"上色 —— 社区是图谱自己聚出来的,不是语言。
  *  刻意和语言色分开:同一个屏幕上两套颜色说两件事,混用一套人就分不清在看什么。 */
@@ -1593,6 +1600,41 @@ export class ProjectLayer {
                      css: `rgb(${Math.round(rgb[0] * 140 + 110)},${Math.round(rgb[1] * 140 + 110)},${Math.round(rgb[2] * 140 + 110)})` });
       }
       rows.push({ px: 44, weight: 700, css: '#C9D4E6', parts });
+    }
+
+    /* ── 概况一行 + 读法一行 ────────────────────────────────────────────
+       城市把每一个数都画成了一样东西 —— 可**没有人生下来就知道高是代码量**。
+       语言图例解决了"哪个颜色是哪门语言";这两行解决剩下的那半:这座城市有多大,
+       以及它凭什么这么长。
+
+       第一行是**数**(几座楼、多大、多少文件、多久没动),第二行是**读法**
+       (高=代码量、灯=最近改动、塔尖=最活跃)。加起来两行,扫一眼就够 ——
+       再多就是把说明书贴在画上。
+
+       ⚠ 字**不在这儿翻译**。这一层是渲染器,Mac 和手机共用,而两边各有各的 i18n。
+       调用方把已经翻好的词放在 `words` 里传进来;没传就退回英文,而不是显示一个
+       key —— 一个渲染器不该知道用户在说哪种语言。 */
+    const cityDirs = (Array.isArray(text && text.dirs) ? text.dirs : [])
+      .filter((d) => d && (d.files > 0 || d.bytes > 0));
+    if (cityDirs.length) {
+      const W = (text && text.words) || {};
+      const bytes = cityDirs.reduce((a, d) => a + (+d.bytes || 0), 0);
+      const files = cityDirs.reduce((a, d) => a + (+d.files || 0), 0);
+      const ages = cityDirs.map((d) => +d.age_days).filter((v) => Number.isFinite(v) && v > 0);
+      const fresh = ages.length ? Math.min(...ages) : -1;
+
+      const facts = [`${cityDirs.length} ${W.blocks || 'blocks'}`, human(bytes), `${files} ${W.files || 'files'}`];
+      if (fresh >= 0) facts.push(`${W.touched || 'touched'} ${since(fresh)}`);
+      rows.push({ px: 42, weight: 700, css: '#9FB2CC',
+                  parts: [{ text: facts.join('  ·  ') }] });
+
+      /* 每一条前面那个小记号就是它在城市里的样子:▮ 是一座楼,● 是亮着的窗,
+         ▲ 是塔尖那根信标。记号和实物对得上,这一行才是图例而不是一句话。 */
+      rows.push({ px: 34, weight: 600, css: '#63748C', parts: [
+        { text: '▮ ', css: '#C9D4E6' }, { text: (W.keyHigh || 'height = code') + '   ' },
+        { text: '● ', css: '#FFE9A8' }, { text: (W.keyLit || 'lit = recent') + '   ' },
+        { text: '▲ ', css: '#FF9A6C' }, { text: W.keyHot || 'spire = busiest' },
+      ] });
     }
 
     // 评论 = 一句话 + **说这句话的人**。只画话不画名字,壁纸上就是几行来路不明的

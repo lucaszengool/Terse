@@ -29,6 +29,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { probe } = require('./repo-probe');
+const { buildCity } = require('./github-city');
 
 const execFileP = promisify(execFile);
 const UA = 'terse-plaza';
@@ -247,6 +248,26 @@ async function main() {
 
       const cap = Object.assign({}, p.capsule);
       let did = [];
+
+      /* ── 代码城市 ────────────────────────────────────────────────────
+         广场上四十八个 GitHub 项目一座楼都没有 —— github-capsule 从来不写 dirs,
+         因为目录级的字节数看起来非 clone 不可。其实不用:文件树**每个 blob 都带
+         size**,一次调用就够(见 api/github-city.js)。年龄和改动量还要每个目录
+         一次 commits 调用,合起来一个仓库约十三次 —— 未认证的一小时六十次撑不住
+         四个仓库,所以这一段**只在有 token 的时候跑**,没有就跳过,而不是盖一座
+         没有窗、没有信标的假城。 */
+      if (got && GH_TOKEN && !(cap.dirs || []).length) {
+        try {
+          const city = await buildCity(ghApi, owner, repo, branch, got.tree);
+          if (city.dirs.length) {
+            cap.dirs = city.dirs;
+            if (city.langs.length) cap.langs = city.langs;
+            did.push(`city×${city.dirs.length}`);
+          }
+        } catch (e) {
+          if (e.message === 'rate-limited') rateLimited = true;
+        }
+      }
       /* ⚠ 没有真的文件树时**不要覆盖已经对的 flow**。src/main.rs、main.go、
          __main__.py、cmd/x/ 全是文件判据,树里没有文件,排名就一路掉到最后一档,
          而 "lib" 正是"什么都没匹配上"的默认值 —— 上一轮 47 个里 32 个被这样判成

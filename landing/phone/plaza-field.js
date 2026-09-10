@@ -58,6 +58,14 @@
    *  Nothing extra is fetched: the list brings the capsule, the top comments
    *  and the counts down together, on the same reasoning the API states for
    *  itself — a preview should cost zero further round trips. */
+  /* 城市图例的词。⚠ 翻译不在这儿做,也不在渲染器里做 —— 渲染器是 Mac 和手机共用的,
+     两边各有各的 i18n。app.js 启动时把翻好的一份交过来,`toCapsule` 挂上去,于是
+     **每一条**通往 showProject 的路都带着它:广场里刷到的、点开的、以及场自己在
+     轮播的那一条。漏掉任何一条,图例就会在某个入口神秘消失 —— 而那正是这个文件
+     顶上那句"新字段必须在这里加一遍"说的事。 */
+  var WORDS = null;
+  function setWords(w) { WORDS = w || null; }
+
   function toCapsule(p) {
     var c = (p && p.capsule) || {};
     var lines = [];
@@ -103,6 +111,7 @@
       tune: c.tune || '',
       link: c.link || '',
       // 它在干什么 —— 城市说的是"由什么组成",这两样说的是"做什么"。
+      words: WORDS,
       flow: c.flow || null,
       verbs: Array.isArray(c.verbs) ? c.verbs : [],
       key: c.key || 0,
@@ -174,5 +183,5 @@
     try { if (wp && wp.hideProject) wp.hideProject(); } catch (e) {}
   }
 
-  root.TersePlazaField = { start: start, stop: stop, toCapsule: toCapsule, PLAY_MS: PLAY_MS };
+  root.TersePlazaField = { start: start, stop: stop, toCapsule: toCapsule, setWords: setWords, PLAY_MS: PLAY_MS };
 })(window);

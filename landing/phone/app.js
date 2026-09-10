@@ -209,6 +209,10 @@
       wall_adv: 'Other ways to use it',
       wall_deployed: 'Done — here is the one step left',
       wall_frames: '{n} frames',
+      /* 代码城市的图例。城市把每个数都画成了一样东西,而没有人生下来就知道
+         高是代码量 —— 这几个词是那张图的钥匙。渲染器不翻译,它只画传进去的字。 */
+      city_blocks: 'blocks', city_files: 'files', city_touched: 'touched',
+      city_key_high: 'height = code', city_key_lit: 'lit = recent', city_key_hot: 'spire = busiest',
       ip_lock: 'Lock Screen', ip_home: 'Home Screen', ip_day: 'Monday, 1 September',
       wall_pickbed: 'Backdrop — it lights the particles',
       field_turn: 'Drag to turn it. Pinch to move closer. Double-tap to recentre.',
@@ -432,6 +436,8 @@
       wall_adv: '其他用法',
       wall_deployed: '好了 —— 就剩这一步',
       wall_frames: '{n} 帧',
+      city_blocks: '座', city_files: '个文件', city_touched: '动过',
+      city_key_high: '高 = 代码量', city_key_lit: '灯 = 最近改动', city_key_hot: '塔尖 = 最活跃',
       ip_lock: '锁屏', ip_home: '主屏幕', ip_day: '9月1日 星期一',
       wall_pickbed: '底图 —— 粒子的颜色从它来',
       field_turn: '拖动可以转动，捏合拉近，双击回正。',
@@ -3337,6 +3343,18 @@
 
   /** Long enough for the four readings to breathe, short enough that the
    *  capsule re-gathers while you are still watching. */
+  /* 城市图例的词。⚠ 翻译**在这里**做,不在渲染器里:那一层是 Mac 和手机共用的,
+     两边各有各的 i18n,而一个渲染器不该知道用户在说哪种语言。 */
+  /* 城市图例的词,交给 plaza-field 一次 —— 之后每一条通往 showProject 的路都带着它。
+     翻译在这儿做:渲染器是 Mac 和手机共用的,它不该知道用户在说哪种语言。 */
+  function pushCityWords() {
+    if (!window.TersePlazaField || !window.TersePlazaField.setWords) return;
+    window.TersePlazaField.setWords({
+      blocks: t('city_blocks'), files: t('city_files'), touched: t('city_touched'),
+      keyHigh: t('city_key_high'), keyLit: t('city_key_lit'), keyHot: t('city_key_hot'),
+    });
+  }
+
   function showLen(p) {
     var cap = window.TersePlazaField ? window.TersePlazaField.toCapsule(p) : null;
     var shots = 1 + ((cap && cap.shots) || []).length;
@@ -3846,6 +3864,10 @@
        who never signs in still picks what lights the particles — so they are
        painted here beside the styles rather than from a tab hook. */
     renderBeds();
+    /* 城市图例的词交给 plaza-field 一次。⚠ 必须在这儿交,而且要在任何一次
+       showProject 之前 —— 交晚了,先刷到的那几条项目会**没有图例**,而"少一行字"
+       和"这个功能没做"在屏幕上是一回事。 */
+    pushCityWords();
     // Painted for EVERY state, not just the signed-in one: the empty state is
     // the whole message for a guest ("link a computer to see your agents"), and
     // gating it behind sign-in left a silent, blank card.

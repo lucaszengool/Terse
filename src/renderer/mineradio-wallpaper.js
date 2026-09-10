@@ -1111,6 +1111,9 @@ export default class MineradioWallpaper {
          封面和流程被排进同一拍,那张分享卡就**直接压在流水线上**(实测:tach 的
          节点和 Setup / Enforcement 两个名字被卡片盖掉一半)。
          这正是城市当初被竖版截图埋掉的那个问题,只是换了一层。 */
+      /* 图例和概况那两行要用的词。渲染器不翻译 —— 调用方把翻好的传进来,
+         没有就退回英文。见 wallpaper-project.js 里画这两行的地方。 */
+      words: cap.words || null,
       flow: (withCity === false) ? null : (cap.flow || null),
       verbs: (withCity === false) ? [] : (cap.verbs || []),
       /* A portrait frame has no room beside the city for a second thing. The

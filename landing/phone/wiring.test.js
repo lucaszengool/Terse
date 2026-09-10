@@ -115,6 +115,9 @@ for (const [tab, fn] of [['plaza', 'loadPlaza'], ['friends', 'loadFriends'], ['r
 const openApp = appJs.slice(appJs.indexOf('function openApp('),
   appJs.indexOf('function openApp(') + 1200);
 ok('renderBeds() is painted on open, not from a tab hook', openApp.includes('renderBeds()'));
+/* 城市图例的词也在开场交出去 —— 交晚了,先刷到的项目就没有图例,而"少一行字"
+   和"这个功能没做"在屏幕上是一回事。这个函数存在但没人调,是这个文件存在的理由。 */
+ok('the city legend words are handed over on open', openApp.includes('pushCityWords()'));
 ok('and so are the styles', openApp.includes('renderStyles()'));
 
 // ── WebGL contexts ──

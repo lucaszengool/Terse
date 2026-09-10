@@ -303,6 +303,19 @@ footer h4, footer a, footer p, nav a,
     0 0 16px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.62 * var(--halo-k, 1))),
     0 0 38px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.45 * var(--halo-k, 1))) !important;
 }
+/* Page copy that terse-field.js colours for the part of the wallpaper behind
+   it (textTint). It ALWAYS carries the halo its colour was judged against — a
+   tinted word without it would be measured against a ground it does not have.
+   An attribute selector outranks `main p` etc., and the display halo on
+   h1/h2 (a class + type selector) still outranks this, so big type keeps its
+   heavier recipe. --halo-k is set per element from that same patch. */
+[data-tc]{
+  text-shadow:
+    0 0  1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.85 * var(--halo-k, 1))),
+    0 1px 2px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.85 * var(--halo-k, 1))),
+    0 0  8px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.65 * var(--halo-k, 1))),
+    0 0 24px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.42 * var(--halo-k, 1)));
+}
 /* Surfaces that already have a ground of their own get none of it. */
 pre, code, kbd, samp,
 pre *, code *, .term-line, .term-line *,

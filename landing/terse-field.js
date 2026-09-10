@@ -783,6 +783,9 @@ vec3 procColor(vec2 p, float t){
   var NEUTRAL  = [PALETTE[0], PALETTE[1], PALETTE[2], PALETTE[5], PALETTE[6], PALETTE[7]]; /* + amber, no coral/pink */
   function lin1(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
   function relLum(c) { return 0.2126 * lin1(c[0]) + 0.7152 * lin1(c[1]) + 0.0722 * lin1(c[2]); }
+  /* sRGB byte -> linear, precomputed: the colour map reads every pixel of the
+     plate, and lin1's Math.pow per channel is most of that cost. */
+  var LIN = []; for (var li = 0; li < 256; li++) LIN.push(lin1(li / 255));
   function contrast(a, b) { var hi = a > b ? a : b, lo = a > b ? b : a; return (hi + 0.05) / (lo + 0.05); }
   function hueSat(c) {
     var r = c[0], g = c[1], b = c[2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0;
@@ -1528,6 +1531,54 @@ vec3 procColor(vec2 p, float t){
              hue: (Math.atan2(hy, hx) * 180 / Math.PI + 360) % 360, sat: sw / n };
   };
 
+  /** A coarse colour map of the plate, so page copy can ask "what is behind
+   *  me?" on every scroll frame without re-reading pixels. Per cell: the bright
+   *  end (p90), the summed colour, and the hue as a saturation-weighted vector
+   *  so neighbouring cells merge correctly. Rebuilt with the theme — a new
+   *  wallpaper, a resize, a rotation (resize re-rasters the plate). */
+  Field.prototype._buildGrid = function () {
+    var px = this.bedPix;
+    if (!px) { this.grid = null; return; }
+    var d = px.data, W = px.w, H = px.h, cols = 24;
+    var rows = Math.max(8, Math.min(48, Math.round(cols * H / W))), cells = new Array(cols * rows);
+    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+      var xa = (c * W / cols) | 0, xb = Math.max(xa + 1, ((c + 1) * W / cols) | 0);
+      var ya = (r * H / rows) | 0, yb = Math.max(ya + 1, ((r + 1) * H / rows) | 0);
+      var Ls = [], R = 0, G = 0, B = 0, hx = 0, hy = 0, sw = 0, n = 0;
+      for (var y = ya; y < yb; y += 2) for (var x = xa; x < xb; x += 2) {
+        var o = (y * W + x) * 4, r8 = d[o], g8 = d[o + 1], b8 = d[o + 2];
+        var mx = Math.max(r8, g8, b8), mn = Math.min(r8, g8, b8), dd = mx - mn, h = 0;
+        if (dd) { h = mx === r8 ? ((g8 - b8) / dd) % 6 : mx === g8 ? (b8 - r8) / dd + 2 : (r8 - g8) / dd + 4; h *= 60; if (h < 0) h += 360; }
+        var w = mx ? (dd / mx) * (mx / 255) : 0;
+        Ls.push(0.2126 * LIN[r8] + 0.7152 * LIN[g8] + 0.0722 * LIN[b8]);
+        R += r8; G += g8; B += b8; n++;
+        hx += Math.cos(h * 0.0174533) * w; hy += Math.sin(h * 0.0174533) * w; sw += w;
+      }
+      Ls.sort(function (a, b) { return a - b; });
+      cells[r * cols + c] = { p90: Ls[(Ls.length * 0.9) | 0], R: R / 255, G: G / 255, B: B / 255, hx: hx, hy: hy, sw: sw, n: n };
+    }
+    this.grid = { cols: cols, rows: rows, cells: cells };
+  };
+
+  /** What is behind a rectangle of the viewport (fractions 0..1)? The BRIGHTEST
+   *  cell decides p90 — a paragraph spanning cloud and sky must survive the
+   *  cloud — and the hue is the weighted mean of everything it covers. */
+  Field.prototype._region = function (x0, x1, y0, y1) {
+    var g = this.grid;
+    if (!g) return this.themeP || null;
+    var ca = Math.max(0, Math.floor(x0 * g.cols)), cb = Math.min(g.cols - 1, Math.floor(x1 * g.cols));
+    var ra = Math.max(0, Math.floor(y0 * g.rows)), rb = Math.min(g.rows - 1, Math.floor(y1 * g.rows));
+    if (cb < ca || rb < ra) return null;
+    var p90 = 0, R = 0, G = 0, B = 0, hx = 0, hy = 0, sw = 0, n = 0;
+    for (var r = ra; r <= rb; r++) for (var c = ca; c <= cb; c++) {
+      var e = g.cells[r * g.cols + c];
+      if (e.p90 > p90) p90 = e.p90;
+      R += e.R; G += e.G; B += e.B; hx += e.hx; hy += e.hy; sw += e.sw; n += e.n;
+    }
+    return { rgb: [R / n, G / n, B / n], p90: p90, hue: (Math.atan2(hy, hx) * 180 / Math.PI + 360) % 360,
+             sat: sw / n, key: ca + ',' + cb + ',' + ra + ',' + rb };
+  };
+
   /** Derive the page's colours from the wallpaper that just landed: the halo
    *  colour and strength (shared by page copy, particle text and the city), the
    *  accent the page copy uses, and the city's saturation and gain. */
@@ -1544,6 +1595,8 @@ vec3 procColor(vec2 p, float t){
     /* The halo is a SHADOW tinted with the scene's own colour — deep navy under
        a blue sky, deep forest under a meadow, plum under pink cloud — instead of
        one fixed indigo on every plate. Grey plates keep the indigo. */
+    this.themeP = p;
+    this.themeVer = (this.themeVer || 0) + 1;
     var grey = p.sat < 0.12;
     var hh = grey ? 257 : p.hue, hsat = grey ? 0.68 : 0.62, hl = 0.10;
     this.haloRGB = hslRgb(hh, hsat, hl);
@@ -1605,6 +1658,9 @@ vec3 procColor(vec2 p, float t){
       sat: 1.1 + 0.4 * c90,
       gain: c90 > 0.5 ? 0.92 : 1.1
     };
+    /* page copy re-colours itself from this map (textTint) */
+    this._buildGrid();
+    try { window.dispatchEvent(new Event('terse-theme')); } catch (e) { /* old browsers: no live recolour */ }
   };
 
   /** Colour one particle line for the plate directly under where it landed. */
@@ -2203,6 +2259,8 @@ vec3 procColor(vec2 p, float t){
     var field = new Field(cv);
     if (!field.ok) { cv.style.display = 'none'; return; }
     window.TerseField = field;
+    /* ...and the page copy takes its colour from the part of it behind each line */
+    textTint(field);
 
     /* Override per page with <script src="/terse-field.js" data-bed="/other.jpg">;
        data-bed="" falls back to the procedural galaxy. A .mp4 here works too and
@@ -2375,6 +2433,167 @@ vec3 procColor(vec2 p, float t){
     cv.addEventListener('webglcontextlost', function (e) {
       e.preventDefault(); field.stop(); cv.style.display = 'none';
     });
+  }
+
+  /* ── Page copy coloured by the wallpaper behind it ───────────────────────
+     The halo and the accent already adapted per wallpaper, but ordinary copy
+     stayed WHITE everywhere — exactly what vanishes on a noon sky, and the
+     least interesting thing on a dusk one. So every block of copy that sits
+     directly on the wallpaper is coloured for the part of the plate behind IT,
+     and re-coloured while the page scrolls: the plate is fixed, the copy moves
+     across it, so the ground under a paragraph changes as you read.
+
+     The rules are the ones the contrast sweep established:
+       - legibility is a floor (4.5:1 against the plate as its halo leaves it),
+         vividness only chooses among colours that clear it;
+       - the halo it was judged against is guaranteed ([data-tc] in
+         terse-glass.css), with a strength taken from that same patch;
+       - never red: copy is not a verdict, and red reads as an error.
+     Big type takes the most vivid colour, mid-size type the runner-up, body
+     copy a lighter tint of the first so long paragraphs stay easy to read.
+
+     Only copy that is currently near-white is touched. Anything with its own
+     colour (the accent, a warning, the savings column) keeps it, and anything
+     on a ground of its own (buttons, code, pills, price cards) is skipped —
+     its colour was never judged against the wallpaper.
+
+     Culling uses cached page offsets, so a scroll frame reads rects only for
+     the few dozen blocks near the viewport, never for all of them. */
+  function textTint(field) {
+    var SKIP_TAG = { PRE: 1, CODE: 1, KBD: 1, SAMP: 1, SVG: 1, CANVAS: 1, VIDEO: 1, IMG: 1, INPUT: 1,
+                     TEXTAREA: 1, SELECT: 1, OPTION: 1, SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, BUTTON: 1 };
+    var OWN_GROUND = 'pre,code,kbd,samp,button,.term-line,.btn-primary,.nav-cta,.badge,.pill,.win-badge,' +
+                     '.post-cat,.verdict,.oc-msg,.tc-demo,.cost-row,.price-card,.ams,#clerk-modal,#lang-menu';
+    /* Good news keeps to the positive pool — the rule the accent already
+       follows. Amber on "✓ 30-day free trial" reads as a caution. */
+    var GOOD_RE = /✓|✔|sav(e|ed|es|ing)\b|省|减少|免费|free\b/i;
+    var cands = [], cache = {}, pending = false, lastFull = 0;
+    var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    function rgba(str) {
+      var m = str && str.match(/[\d.]+/g);
+      return m && m.length >= 3 ? [m[0] / 255, m[1] / 255, m[2] / 255, m.length > 3 ? +m[3] : 1] : null;
+    }
+    function ownText(el) {
+      for (var nd = el.firstChild; nd; nd = nd.nextSibling) if (nd.nodeType === 3 && /\S/.test(nd.nodeValue)) return true;
+      return false;
+    }
+    function grounded(el) {
+      if (el.closest && el.closest(OWN_GROUND)) return true;
+      for (var a = el, i = 0; a && a !== document.body && i < 10; a = a.parentElement, i++) {
+        var cs = getComputedStyle(a), bg = rgba(cs.backgroundColor);
+        if (bg && bg[3] >= 0.35) return true;
+        /* a gradient ground on a SMALL box is a control (pill, CTA); on a whole
+           section it is decoration and the copy still sits on the wallpaper */
+        if (a !== el && cs.backgroundImage !== 'none' && a.getBoundingClientRect().height < 120) return true;
+      }
+      return false;
+    }
+    function fixedIn(el) {
+      for (var a = el; a && a !== document.body; a = a.parentElement)
+        if (getComputedStyle(a).position === 'fixed') return true;
+      return false;
+    }
+    function roleOf(el, cs) {
+      var fs = parseFloat(cs.fontSize) || 16, t = el.tagName;
+      if (t === 'H1' || t === 'H2' || fs >= 26) return 0;
+      if (/^H[3-6]$/.test(t) || t === 'STRONG' || t === 'B' || t === 'A' || t === 'LABEL' || fs >= 18) return 1;
+      return 2;
+    }
+    function measure() {
+      var sy = window.pageYOffset || 0, keep = [];
+      for (var i = 0; i < cands.length; i++) {
+        var el = cands[i];
+        if (!el.isConnected) continue;
+        var r = el.getBoundingClientRect();
+        el.__tcT = el.__tcFixed ? r.top : r.top + sy;
+        el.__tcB = el.__tcFixed ? r.bottom : r.bottom + sy;
+        keep.push(el);
+      }
+      cands = keep;
+      lastFull = Date.now();
+    }
+    function scan() {
+      var all = document.body.getElementsByTagName('*');
+      for (var i = 0; i < all.length; i++) {
+        var el = all[i];
+        if (el.__tc || el.__tcNo) continue;
+        /* no text yet is NOT a verdict — i18n may fill it in later */
+        if (SKIP_TAG[el.tagName] || el.id === 'terse-field' || !ownText(el)) continue;
+        var cs = getComputedStyle(el), c = rgba(cs.color);
+        if (!c || c[3] < 0.5) { el.__tcNo = 1; continue; }
+        var mx = Math.max(c[0], c[1], c[2]), mn = Math.min(c[0], c[1], c[2]);
+        if (mn < 0.55 || mx - mn > 0.18) { el.__tcNo = 1; continue; }      /* has a colour of its own */
+        var fill = rgba(cs.webkitTextFillColor);
+        if (fill && fill[3] < 0.05) { el.__tcNo = 1; continue; }            /* gradient text: --gradient owns it */
+        if (grounded(el)) { el.__tcNo = 1; continue; }
+        el.__tc = 1;
+        el.__tcRole = roleOf(el, cs);
+        el.__tcGood = GOOD_RE.test(el.textContent);
+        el.__tcFixed = fixedIn(el);
+        el.setAttribute('data-tc', '');
+        if (!reduce && cs.transitionDuration === '0s') el.style.transition = 'color .5s ease, -webkit-text-fill-color .5s ease';
+        cands.push(el);
+      }
+      measure();
+    }
+    function colourFor(reg, role, good) {
+      var k = Math.max(1.0, Math.min(1.45, 1.0 + 0.95 * (reg.p90 - 0.45)));
+      var a = Math.min(1, 0.85 * k), hL = relLum(field.haloRGB);
+      var pool = good ? POSITIVE : NEUTRAL;
+      var best = pickTint(reg, null, hL, a, pool), c = best;
+      if (role === 1) {
+        var rest = [];
+        for (var i = 0; i < pool.length; i++) if (pool[i] !== best) rest.push(pool[i]);
+        c = pickTint(reg, null, hL, a, rest);
+      } else if (role === 2) {
+        c = [best[0] + (1 - best[0]) * 0.35, best[1] + (1 - best[1]) * 0.35, best[2] + (1 - best[2]) * 0.35];
+      }
+      return { css: 'rgb(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ')',
+               k: k.toFixed(2) };
+    }
+    function update() {
+      pending = false;
+      if (!field.grid && !field.themeP) return;
+      if (Date.now() - lastFull > 2500) measure();
+      var W = window.innerWidth, H = window.innerHeight, sy = window.pageYOffset || 0, hits = [], rects = [], i;
+      for (i = 0; i < cands.length; i++) {
+        var e = cands[i], t = e.__tcFixed ? e.__tcT : e.__tcT - sy, b = e.__tcFixed ? e.__tcB : e.__tcB - sy;
+        if (b > -H * 0.25 && t < H * 1.25) hits.push(e);
+      }
+      for (i = 0; i < hits.length; i++) rects.push(hits[i].getBoundingClientRect());   /* all reads, then all writes */
+      for (i = 0; i < hits.length; i++) {
+        var el = hits[i], r = rects[i];
+        if (!r.width || !r.height || r.bottom < 0 || r.top > H) continue;
+        var reg = field._region(Math.max(0, r.left / W), Math.min(1, r.right / W),
+                                Math.max(0, r.top / H), Math.min(1, r.bottom / H));
+        if (!reg) continue;
+        var key = (reg.key || 'sky') + '|' + el.__tcRole + (el.__tcGood ? 'g' : '') + '|' + field.themeVer;
+        var res = cache[key] || (cache[key] = colourFor(reg, el.__tcRole, el.__tcGood));
+        if (el.__tcTag === res.css + res.k) continue;
+        el.__tcTag = res.css + res.k;
+        el.style.setProperty('color', res.css, 'important');
+        el.style.setProperty('-webkit-text-fill-color', res.css, 'important');
+        el.style.setProperty('--halo-k', res.k);
+      }
+    }
+    function schedule() {
+      if (pending) return;
+      pending = true;
+      if (window.requestAnimationFrame) window.requestAnimationFrame(update); else setTimeout(update, 16);
+    }
+    /* capture on document: the window's scroll AND any scrolling container's */
+    document.addEventListener('scroll', schedule, { passive: true, capture: true });
+    window.addEventListener('resize', function () { measure(); schedule(); });
+    window.addEventListener('load', function () { measure(); schedule(); });
+    window.addEventListener('terse-theme', function () { cache = {}; schedule(); });
+    var mt = 0;
+    if (window.MutationObserver) new MutationObserver(function () {
+      clearTimeout(mt); mt = setTimeout(function () { scan(); schedule(); }, 700);
+    }).observe(document.body, { childList: true, subtree: true });
+    var boot = function () { scan(); schedule(); };
+    if (window.requestIdleCallback) window.requestIdleCallback(boot, { timeout: 1500 }); else setTimeout(boot, 500);
+    field._tt = { scan: scan, measure: measure, update: update, list: function () { return cands; } };
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);

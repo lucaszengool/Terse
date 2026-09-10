@@ -1541,11 +1541,12 @@ vec3 procColor(vec2 p, float t){
     if (!px) { this.grid = null; return; }
     var d = px.data, W = px.w, H = px.h, cols = 24;
     var rows = Math.max(8, Math.min(48, Math.round(cols * H / W))), cells = new Array(cols * rows);
+    var gst = (W / cols) >= 12 ? 2 : 1;   /* poster raster 384 wide: every other pixel; live raster 192: every pixel */
     for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
       var xa = (c * W / cols) | 0, xb = Math.max(xa + 1, ((c + 1) * W / cols) | 0);
       var ya = (r * H / rows) | 0, yb = Math.max(ya + 1, ((r + 1) * H / rows) | 0);
       var Ls = [], R = 0, G = 0, B = 0, hx = 0, hy = 0, sw = 0, n = 0;
-      for (var y = ya; y < yb; y += 2) for (var x = xa; x < xb; x += 2) {
+      for (var y = ya; y < yb; y += gst) for (var x = xa; x < xb; x += gst) {
         var o = (y * W + x) * 4, r8 = d[o], g8 = d[o + 1], b8 = d[o + 2];
         var mx = Math.max(r8, g8, b8), mn = Math.min(r8, g8, b8), dd = mx - mn, h = 0;
         if (dd) { h = mx === r8 ? ((g8 - b8) / dd) % 6 : mx === g8 ? (b8 - r8) / dd + 2 : (r8 - g8) / dd + 4; h *= 60; if (h < 0) h += 360; }
@@ -1579,6 +1580,91 @@ vec3 procColor(vec2 p, float t){
              sat: sw / n, key: ca + ',' + cb + ',' + ra + ',' + rb };
   };
 
+  /** REAL TIME: re-read the wallpaper from the frame that is on screen NOW.
+   *
+   *  The plate used to be measured once, from the video's poster — so on a
+   *  wallpaper that drifts from noon to dusk, the page copy kept colours chosen
+   *  for noon. Twice a second (driven from step(), so it stops by itself when
+   *  the tab is hidden or reduced-motion is on) the current frame is drawn into
+   *  a small canvas with exactly _rasterBed's cover-fit and ken-burns margin, so
+   *  a screen fraction maps to the same pixel either way. The colour map is
+   *  rebuilt and the page copy re-coloured — with hysteresis in textTint, so
+   *  ordinary frame-to-frame noise re-picks nothing. Every sixth sample (~3s)
+   *  the whole theme follows too: halo, accent, city.
+   *
+   *  willReadFrequently keeps this canvas on the CPU side; without it Chromium
+   *  keeps it on the GPU and every getImageData is a synchronous readback. */
+  Field.prototype._liveSample = function (force) {
+    var v = this.vid, self = this;
+    if (!v || this._liveOff || this._livePending || (!force && v.paused) || v.readyState < 2 || !v.videoWidth) return false;
+    var SW = 192, SH = Math.max(1, Math.round(SW * (this.h || 9) / (this.w || 16)));
+    if (!this.lsamp) {
+      this.lsamp = document.createElement('canvas');
+      this.lctx = this.lsamp.getContext('2d', { willReadFrequently: true });
+    }
+    var cv = this.lsamp, c = this.lctx;
+    if (cv.width !== SW || cv.height !== SH) { cv.width = SW; cv.height = SH; }
+    /* the SOURCE rectangle that _rasterBed's cover-fit puts on screen */
+    var iw = v.videoWidth, ih = v.videoHeight, sc = Math.max(SW / iw, SH / ih) / 0.94;
+    var sw = SW / sc, sh = SH / sc, sx = (iw - sw) / 2, sy = (ih - sh) / 2;
+    if (window.createImageBitmap && !this._noBitmap) {
+      /* createImageBitmap does the crop AND the downscale — off the main thread
+         where the browser can — so the page only reads back a 192px bitmap.
+         Drawing the video straight into a canvas measured 16ms a sample on
+         either canvas kind: a dropped frame twice a second. */
+      this._livePending = true;
+      var tc = performance.now();
+      createImageBitmap(v, sx, sy, sw, sh, { resizeWidth: SW, resizeHeight: SH, resizeQuality: 'low' }).then(
+        function (bm) {
+          self._livePending = false;
+          var tl = performance.now(), px;
+          try { c.clearRect(0, 0, SW, SH); c.drawImage(bm, 0, 0); px = c.getImageData(0, 0, SW, SH).data; }
+          catch (e) { self._liveOff = true; return; }
+          finally { if (bm.close) bm.close(); }
+          self._liveLand(px, SW, SH, performance.now() - tl + callMs);
+        },
+        function () { self._livePending = false; self._noBitmap = true; });
+      var callMs = performance.now() - tc;
+      return true;
+    }
+    var t0 = performance.now(), px2;
+    try {
+      c.clearRect(0, 0, SW, SH);
+      c.drawImage(v, sx, sy, sw, sh, 0, 0, SW, SH);
+      px2 = c.getImageData(0, 0, SW, SH).data;
+    } catch (e) { this._liveOff = true; return false; }   /* a tainted frame: stay on the poster */
+    this._liveLand(px2, SW, SH, performance.now() - t0);
+    return true;
+  };
+
+  /** A live frame has been read: rebuild the map, re-colour, and decide when to
+   *  look again. */
+  Field.prototype._liveLand = function (px, SW, SH, ms) {
+    var prev = this.grid;
+    this.bedPix = { data: px, w: SW, h: SH };
+    this.liveVer = (this.liveVer || 0) + 1;
+    var themed = this.liveVer % 6 === 0;
+    if (themed) { this._liveCall = true; try { this._theme(); } finally { this._liveCall = false; } }
+    else this._buildGrid();
+    var g = this.grid, moved = 1;
+    if (prev && g && prev.cells.length === g.cells.length) {
+      moved = 0;
+      for (var i = 0; i < g.cells.length; i++) moved += Math.abs(g.cells[i].p90 - prev.cells[i].p90);
+      moved /= g.cells.length;
+    }
+    /* Adaptive cadence. Measured with ffmpeg over all 20 wallpaper videos: half
+       barely move across their loop (torii-sky max dL 0.011, reading-clouds
+       0.014) while girl-cat-clouds swings hue in 120 of 336 cells. Sampling a
+       still scene twice a second is pure cost, so the gap stretches toward 4s
+       while nothing moves and snaps back to 0.5s the moment it does — and
+       never drops under 1.5s on a machine where one sample proved expensive. */
+    var gap = this._liveGap || 500;
+    gap = moved < 0.004 ? Math.min(4000, gap * 1.6) : 500;
+    if (ms > 12) gap = Math.max(gap, 1500);
+    this._liveGap = gap; this._liveMs = ms; this._liveMoved = moved;
+    if (!themed) { try { window.dispatchEvent(new Event('terse-live')); } catch (e) { /* no live recolour */ } }
+  };
+
   /** Derive the page's colours from the wallpaper that just landed: the halo
    *  colour and strength (shared by page copy, particle text and the city), the
    *  accent the page copy uses, and the city's saturation and gain. */
@@ -1599,6 +1685,13 @@ vec3 procColor(vec2 p, float t){
     this.themeVer = (this.themeVer || 0) + 1;
     var grey = p.sat < 0.12;
     var hh = grey ? 257 : p.hue, hsat = grey ? 0.68 : 0.62, hl = 0.10;
+    /* live frames: the halo keeps its hue until the scene genuinely swings,
+       or a wisp of cloud crossing the hero would re-tint every shadow */
+    if (this._liveCall && this._haloHue != null && !grey) {
+      var dH = Math.abs(hh - this._haloHue); if (dH > 180) dH = 360 - dH;
+      if (dH < 25) hh = this._haloHue;
+    }
+    this._haloHue = hh;
     this.haloRGB = hslRgb(hh, hsat, hl);
     /* Tinted like the scene, but never LIGHTER than the indigo it replaced.
        Green and teal carry most of their weight in luminance (G is 0.7152 of
@@ -1633,20 +1726,27 @@ vec3 procColor(vec2 p, float t){
        for the same reason: a scene-tinted shadow must be as dark as the indigo. */
     var k = Math.max(1.0, Math.min(1.45, 1.0 + 0.95 * (p.p90 - 0.45)));
 
-    var ac = pickTint(p, MINT, relLum(this.haloRGB), Math.min(1, 0.85 * k), POSITIVE);
+    var acA = Math.min(1, 0.85 * k), acBg = p.p90 * (1 - acA) + relLum(this.haloRGB) * acA;
+    /* live frames keep the accent while it still reads — a button that
+       changes colour every three seconds is a bug, not a feature */
+    var ac = (this._liveCall && this.accent && contrast(relLum(this.accent), acBg) >= 4.5)
+      ? this.accent : pickTint(p, MINT, relLum(this.haloRGB), acA, POSITIVE);
     var r = Math.round(ac[0] * 255), g = Math.round(ac[1] * 255), b = Math.round(ac[2] * 255);
     var r3 = Math.round(r + (255 - r) * 0.45), g3 = Math.round(g + (255 - g) * 0.45), b3 = Math.round(b + (255 - b) * 0.45);
     var rd = Math.round(r * 0.78), gd = Math.round(g * 0.78), bd = Math.round(b * 0.78);
-    var st = document.documentElement.style;
-    st.setProperty('--halo-h', String(Math.round(hh)));
-    st.setProperty('--halo-s', Math.round(hsat * 100) + '%');
-    st.setProperty('--halo-l', (hlOut * 100).toFixed(1) + '%');
-    st.setProperty('--halo-k', k.toFixed(2));
-    st.setProperty('--ac', 'rgb(' + r + ',' + g + ',' + b + ')');
-    st.setProperty('--ac3', 'rgb(' + r3 + ',' + g3 + ',' + b3 + ')');
-    st.setProperty('--acd', 'rgba(' + r + ',' + g + ',' + b + ',0.10)');
-    st.setProperty('--acm', 'rgba(' + r + ',' + g + ',' + b + ',0.20)');
-    st.setProperty('--gradient', 'linear-gradient(135deg,rgb(' + r + ',' + g + ',' + b + ') 0%,rgb(' + rd + ',' + gd + ',' + bd + ') 100%)');
+    var st = document.documentElement.style, cssPrev = this._cssVars || (this._cssVars = {});
+    /* write a variable only when it changes: each root write restyles the
+       whole page, and live frames call this every ~3s */
+    var setv = function (n, v) { if (cssPrev[n] !== v) { cssPrev[n] = v; setv(n, v); } };
+    setv('--halo-h', String(Math.round(hh)));
+    setv('--halo-s', Math.round(hsat * 100) + '%');
+    setv('--halo-l', (hlOut * 100).toFixed(1) + '%');
+    setv('--halo-k', k.toFixed(2));
+    setv('--ac', 'rgb(' + r + ',' + g + ',' + b + ')');
+    setv('--ac3', 'rgb(' + r3 + ',' + g3 + ',' + b3 + ')');
+    setv('--acd', 'rgba(' + r + ',' + g + ',' + b + ',0.10)');
+    setv('--acm', 'rgba(' + r + ',' + g + ',' + b + ',0.20)');
+    setv('--gradient', 'linear-gradient(135deg,rgb(' + r + ',' + g + ',' + b + ') 0%,rgb(' + rd + ',' + gd + ',' + bd + ') 100%)');
     this.accent = ac;
 
     /* City: never the hue (that is the language), only how deep and how bright.
@@ -1879,6 +1979,8 @@ vec3 procColor(vec2 p, float t){
     this.t += dt;
     var now = this.t;
     this._stepView(dt);
+    /* follow the live video twice a second (see _liveSample) */
+    if (this.vid && now - (this._lastLive || 0) > (this._liveGap || 500)) { this._lastLive = now; this._liveSample(); }
 
     /* ── advance every live slot ── */
     for (var i = 0; i < SLOTS; i++) {
@@ -2467,7 +2569,7 @@ vec3 procColor(vec2 p, float t){
     /* Good news keeps to the positive pool — the rule the accent already
        follows. Amber on "✓ 30-day free trial" reads as a caution. */
     var GOOD_RE = /✓|✔|sav(e|ed|es|ing)\b|省|减少|免费|free\b/i;
-    var cands = [], cache = {}, pending = false, lastFull = 0;
+    var cands = [], cache = {}, pending = false, pendingHard = false, lastFull = 0;
     var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
     function rgba(str) {
@@ -2550,10 +2652,12 @@ vec3 procColor(vec2 p, float t){
         c = [best[0] + (1 - best[0]) * 0.35, best[1] + (1 - best[1]) * 0.35, best[2] + (1 - best[2]) * 0.35];
       }
       return { css: 'rgb(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ')',
-               k: k.toFixed(2) };
+               k: k.toFixed(2), rgb: c };
     }
     function update() {
       pending = false;
+      /* soft = only the video moved; hard = the page moved or the wallpaper changed */
+      var soft = !pendingHard; pendingHard = false;
       if (!field.grid && !field.themeP) return;
       if (Date.now() - lastFull > 2500) measure();
       var W = window.innerWidth, H = window.innerHeight, sy = window.pageYOffset || 0, hits = [], rects = [], i;
@@ -2568,16 +2672,34 @@ vec3 procColor(vec2 p, float t){
         var reg = field._region(Math.max(0, r.left / W), Math.min(1, r.right / W),
                                 Math.max(0, r.top / H), Math.min(1, r.bottom / H));
         if (!reg) continue;
-        var key = (reg.key || 'sky') + '|' + el.__tcRole + (el.__tcGood ? 'g' : '') + '|' + field.themeVer;
+        if (soft && el.__tcRGB) {
+          /* Live video: a block keeps the colour it has while that colour still
+             clears the floor on the new frame and the scene behind it has not
+             swung hue. Otherwise ordinary frame noise — a cloud edge drifting
+             across a heading — would re-pick it every half-second. A failing
+             colour, or a sky turning to sunset, still re-colours it. */
+          var kk = Math.max(1.0, Math.min(1.45, 1.0 + 0.95 * (reg.p90 - 0.45)));
+          var aa = Math.min(1, 0.85 * kk), bgL = reg.p90 * (1 - aa) + relLum(field.haloRGB) * aa;
+          var dh = Math.abs(reg.hue - el.__tcHue); if (dh > 180) dh = 360 - dh;
+          if (contrast(relLum(el.__tcRGB), bgL) >= 4.5 && (dh < 35 || reg.sat < 0.12)) {
+            var ks = kk.toFixed(2);
+            /* the halo may only get STRONGER while the colour is held */
+            if (parseFloat(ks) > parseFloat(el.__tcK || '1')) { el.__tcK = ks; el.style.setProperty('--halo-k', ks); }
+            continue;
+          }
+        }
+        var key = (reg.key || 'sky') + '|' + el.__tcRole + (el.__tcGood ? 'g' : '') + '|' + field.themeVer + '|' + (field.liveVer || 0);
         var res = cache[key] || (cache[key] = colourFor(reg, el.__tcRole, el.__tcGood));
         if (el.__tcTag === res.css + res.k) continue;
         el.__tcTag = res.css + res.k;
+        el.__tcRGB = res.rgb; el.__tcHue = reg.hue; el.__tcK = res.k;
         el.style.setProperty('color', res.css, 'important');
         el.style.setProperty('-webkit-text-fill-color', res.css, 'important');
         el.style.setProperty('--halo-k', res.k);
       }
     }
-    function schedule() {
+    function schedule(soft) {
+      if (soft !== true) pendingHard = true;   /* a scroll Event is not `true` */
       if (pending) return;
       pending = true;
       if (window.requestAnimationFrame) window.requestAnimationFrame(update); else setTimeout(update, 16);
@@ -2586,7 +2708,8 @@ vec3 procColor(vec2 p, float t){
     document.addEventListener('scroll', schedule, { passive: true, capture: true });
     window.addEventListener('resize', function () { measure(); schedule(); });
     window.addEventListener('load', function () { measure(); schedule(); });
-    window.addEventListener('terse-theme', function () { cache = {}; schedule(); });
+    window.addEventListener('terse-theme', function () { cache = {}; schedule(!!field._liveCall); });
+    window.addEventListener('terse-live', function () { cache = {}; schedule(true); });
     var mt = 0;
     if (window.MutationObserver) new MutationObserver(function () {
       clearTimeout(mt); mt = setTimeout(function () { scan(); schedule(); }, 700);

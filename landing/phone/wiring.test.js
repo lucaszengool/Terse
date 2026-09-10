@@ -256,6 +256,24 @@ ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,
      && /4500 \* Math\.max\(4, shots\)/.test(app2));
 }
 
+
+/* ── 演项目时,场自己的字不出场 —— 闸在引擎里,不在某一条路上 ──────────────
+   ⚠ 实测"now 01:57"几个大字叠在 nixtla 的楼后面。app.js 的闸看的是 `viewing`,只有
+   "刷到"和"点开"两条路设它;场自己的环境轮播(plaza-field.js playNext)从来不设。
+   所以闸放进引擎:每一条路最后都经过这几个函数,而引擎是唯一确切知道自己在画什么的一方。 */
+{
+  const eng3 = fs.readFileSync(path.join(dir, '..', '..', 'src', 'renderer', 'mineradio-wallpaper.js'), 'utf8');
+  // 窗口要够宽:showProject 开头是一大段注释,清队列那一行在第一千多个字符之后。
+  const bodyOf = (sig) => { const i = eng3.indexOf(sig); return i < 0 ? '' : eng3.slice(i, i + 2500); };
+  ok('the engine can say whether a project is showing', /isShowingProject\(\) \{\s*return !!\(this\._projLayer && this\._projLayer\.show\)/.test(eng3));
+  ok('ambient stage glyphs (clock, screen, touches) refuse while a project shows',
+     /if \(this\.isShowingProject\(\)\) return;/.test(bodyOf('  setStageItems(items) {')));
+  ok('so does the agent-log headline', /if \(this\.isShowingProject\(\)\) return;/.test(bodyOf('  setAgentLog(groups) {')));
+  ok('and its five-line replay', /_pumpLog\([^)]*\) \{\s*\/\*[\s\S]*?\*\/\s*if \(this\.isShowingProject\(\)\) return;/.test(eng3));
+  const sp = bodyOf('  showProject(cap, ms = 20000) {');
+  ok('a glyph already on screen fades when a project starts', /this\._fadeGlyphs\(\);/.test(sp));
+  ok('and the queue of ones waiting to spawn is emptied', /this\._glyphQueue\.length = 0/.test(sp));
+}
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

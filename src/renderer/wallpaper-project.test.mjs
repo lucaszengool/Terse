@@ -386,6 +386,24 @@ function litY(o) {
      [junk.cityHalf, junk.cityCy, junk.txtCy, junk.txtHalf].every(Number.isFinite));
 }
 
+/* ══ 竖屏街牌:两块、更大、读数两行 ══════════════════════════════════════ */
+{
+  const dirs = [
+    { name: 'nbs', files: 102, bytes: 33e6, lang: 'python', depth: 2, age_days: 2, churn: 40, authors: 5, owner: 0.5, tests: 0 },
+    { name: 'timegpt-docs', files: 186, bytes: 13e6, lang: 'python', depth: 3, age_days: 9, churn: 20, authors: 3, owner: 0.6, tests: 0.2 },
+    { name: 'action_files', files: 14, bytes: 8.7e6, lang: 'python', depth: 1, age_days: 40, churn: 6, authors: 2, owner: 0.9, tests: 0 },
+  ];
+  const wide = sampleCity(dirs, 60000, 'modern', [], [1, 2, 3]);
+  const phone = sampleCity(dirs, 60000, 'modern', [], [1, 2, 3], 1, { narrow: true });
+  ok('a phone city still spends at most its budget', phone.used <= 60000 && wide.used <= 60000);
+  ok('every phone-city position is finite', [...phone.target.slice(0, phone.used * 3)].every(Number.isFinite));
+  const src2 = readFileSync(new URL('./wallpaper-project.js', import.meta.url), 'utf8');
+  ok('on a phone the street labels are two, not three', /const nLabels = Math\.min\(NARROW \? 2 : 3, towers\.length\)/.test(src2));
+  ok('and the readout splits onto two lines instead of truncating', /const factLines = \(t\) => \{/.test(src2));
+  ok('the city is told it is on a phone', /sampleCity\(list, nCityPts, styleId, links, commits, grow, \{ narrow \}\)/.test(src2));
+  ok('narrow frames keep a width margin for the nearer street row', /const HALF_W = sharing \? 0\.82 : \(narrow \? 0\.90 : 1\.00\)/.test(src2));
+}
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

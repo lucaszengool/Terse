@@ -999,6 +999,13 @@ export default class MineradioWallpaper {
        shared a beat with a portrait screenshot and disappeared underneath it.
        resize() returns immediately when nothing changed, so this is free. */
     try { this.resize(); } catch (e) {}
+    /* 已经在屏幕上的环境字(比如正演到一半的"now 01:57")也要让开。setStageItems
+       那道闸只挡**新**的字;项目开场那一刻还挂着的那一个,得在这儿请它淡出,否则它会
+       在城市后面再待满自己剩下的十来秒。 */
+    this._fadeGlyphs();
+    // 排队等着出场的也清掉 —— _queueGlyph 只是往队里放,真正画要等下一个空槽。不清的话
+    // 城市刚聚好,排在后面的那几条就挨个落在它上面。
+    if (this._glyphQueue) this._glyphQueue.length = 0;
     if (!this._projLayer) {
       this._projLayer = new ProjectLayer(this.u.uDotTex.value);
       // 挂在字形层里,和统计数字用同一台相机 —— 3D 里一起转。
@@ -1463,6 +1470,8 @@ export default class MineradioWallpaper {
    *  而且壁纸刷屏会变成干扰而不是氛围。
    *  重复的行直接丢弃(agent 循环调同一个工具时会连发)。 */
   setAgentLog(groups) {
+    // 和 setStageItems 同一道闸:演项目时中央那行日志不出场,它会直接压在城市上。
+    if (this.isShowingProject()) return;
     // wallpaper.html feeds GROUPS — [{ name, icon, project, lines[] }], busiest
     // agent first. Take the newest line of the busiest one; a plain string is
     // accepted too so the method is usable on its own.
@@ -1540,9 +1549,33 @@ export default class MineradioWallpaper {
   }
 
   /** 中央"正在播放"那组数据 —— 每 12 秒挑一条,聚成数字 */
+  /** 这一刻场上是不是正在演一个项目。外面(手机 app、Mac 壁纸)要问"现在画的是什么"
+   *  时问这里 —— 引擎是唯一确切知道的一方。 */
+  isShowingProject() {
+    return !!(this._projLayer && this._projLayer.show);
+  }
+
+  /** 让场上所有还活着的字**淡出**,而不是啪地消失 —— 同一个办法已经在两处内联写过
+   *  (新的一行日志抢中央时),这里拿来给项目开场用。 */
+  _fadeGlyphs() {
+    const now = performance.now();
+    for (const sl of (this._glyphSlots || [])) {
+      if (sl.glyph) sl.glyph.life = Math.min(sl.glyph.life, (now - sl.glyph.t0) + 260);
+    }
+  }
+
   setStageItems(items) {
     const arr = Array.isArray(items) ? items : [];
     if (!arr.length) return;
+    /* ⚠ 演项目的时候,场自己的环境字(时钟、屏幕尺寸、碰了几下)**不出场**。它们和城市
+       画在同一张画布上,会直接压在别人的代码城市上 —— 实测"now 01:57"几个大字就叠在
+       nixtla 的楼后面。
+       app.js 里本来有一道同样的闸,但它看的是 `viewing`,而只有"刷到"和"点开"两条路
+       会设它;场自己的环境轮播(plaza-field.js 的 playNext)从来不设,于是这条路上时钟
+       照画不误。那个文件里已经三次写着同一句教训:一条出口,悄悄没走。
+       所以闸放在**这里** —— 每一条路最后都经过这个函数,而引擎是唯一确切知道自己正在
+       画什么的一方。 */
+    if (this.isShowingProject()) return;
     const now = performance.now();
     if (this._paced && now - this._lastStageAt < this._stagePace) return;
     this._lastStageAt = now;
@@ -1659,6 +1692,9 @@ export default class MineradioWallpaper {
    *  line that plays once and leaves a blank centre reads as broken, so the
    *  recent history keeps cycling until something newer arrives. */
   _pumpLog(now) {
+    /* 日志那一排会把最近五行轮着重播 —— 挡住 setAgentLog 只挡得住**新**的一行,挡不住
+       重播。演项目的时候整个停下,项目演完再从原来的地方接着转。 */
+    if (this.isShowingProject()) return;
     const list = this._logRecent || [];
     if (!list.length) return;
     // Never interrupt a headline that is still on screen.

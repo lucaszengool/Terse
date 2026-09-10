@@ -422,7 +422,7 @@ const KIND_RGB = {
    `grow` ∈ (0,1] 就是把时钟拨到某一刻:比这一刻更晚才出现的目录**还没有**,
    刚出现的那些正在往上长。1 就是今天,也就是这个函数原来的样子 —— 默认值给 1,
    所以所有旧的调用一个字都不用改,画出来也和以前逐位相同。 */
-export function sampleCity(dirs, n, styleId, links, commits, grow) {
+export function sampleCity(dirs, n, styleId, links, commits, grow, opts) {
   const target = new Float32Array(n * 3);
   const color = new Float32Array(n * 3);
   // 每颗粒子画多大。楼身、地面、窗、标签要的点各不一样 —— 一个 40px 高的名字拿画
@@ -572,7 +572,10 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
 
   const wSum = towers.reduce((a, t) => a + t.w, 0) || 1;
   const nGround = Math.round(n * 0.05);
-  const nLabels = Math.min(3, towers.length);
+  /* 竖屏:街牌只放两块。三块并排时每块只有 0.63 宽,读数要么被截断、要么缩成看不清的
+     小字 —— 实测那一行 ~7 个 CSS 像素。两块、各大三成、读数拆两行。 */
+  const NARROW = !!(opts && opts.narrow);
+  const nLabels = Math.min(NARROW ? 2 : 3, towers.length);
   // 提交天际线:53 周 × 7 天,摆在城市**后面**的一条带子。城市有结构、有材料、
   // 有关系,唯独没有时间;这条带子就是时间,而且过去理应在身后。
   const days = Array.isArray(commits) ? commits : [];
@@ -592,18 +595,31 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
      街牌读数 0.065 ≈ 35px。再高只是白要粒子。
      总量封顶 45%:再多楼就会被饿瘦,而楼本身也是要读的东西。超了就**等比例**缩,
      所有牌子一起稍微欠一点,而不是后面几块整块消失。 */
-  const TAG_H = 40, NAME_H = 44, METRIC_H = 34, LEADER = 110;
+  // 字大了,栅格也跟着细 —— 否则一颗粒子要盖好几个屏幕像素,笔画又断了。
+  const TAG_H = 40, NAME_H = NARROW ? 56 : 44, METRIC_H = NARROW ? 44 : 34, LEADER = 110;
   const tagH = 0.072, tagAspect = Math.max(3.2, (cell * 1.5) / tagH);
-  const boxW = (2 / Math.max(1, nLabels)) * 0.94, minH = 0.125, metH = minH * 0.52;
+  const boxW = (2 / Math.max(1, nLabels)) * 0.94, minH = NARROW ? 0.16 : 0.125, metH = minH * (NARROW ? 0.62 : 0.52);
   const factsOf = (t) => [
     t.files ? t.files + ' files' : '', human(t.bytesRaw), since(t.age),
     // 几个人在管这一块 —— CoderCity 用颜色切段,这里用一个数。
     t.authors ? t.authors + (t.authors === 1 ? ' dev' : ' devs') : '',
   ].filter(Boolean).join(' · ');
+  /* 竖屏上一行读数在这么窄的一格里放不下 —— 拆成两行:"多少文件 · 多大" 和
+     "多久没动 · 几个人"。宽屏一行放得下,照旧一行。 */
+  const factLines = (t) => {
+    if (!NARROW) return [factsOf(t)];
+    const a = [t.files ? t.files + ' files' : '', human(t.bytesRaw)].filter(Boolean).join(' · ');
+    const b = [since(t.age), t.authors ? t.authors + (t.authors === 1 ? ' dev' : ' devs') : '']
+      .filter(Boolean).join(' · ');
+    return [a, b].filter(Boolean);
+  };
   const litOf = (str0, asp, H) => { const r = rasterLabel(str0, asp, H); return r ? r.lit.length : 0; };
   const tagNeed = towers.slice(0, nTags).map((t) => litOf(t.name, tagAspect, TAG_H));
   const nameNeed = towers.slice(0, nLabels).map((t) => litOf(t.name, boxW / minH, NAME_H));
-  const metNeed = towers.slice(0, nLabels).map((t) => litOf(factsOf(t), boxW / metH, METRIC_H));
+  const metLineNeed = towers.slice(0, nLabels)
+    .map((t) => factLines(t).map((ln) => litOf(ln, boxW / metH, METRIC_H)));
+  // ⚠ 用内联的 reduce:下面那个 sum() 是在这之后才声明的,这里调它会掉进暂时性死区。
+  const metNeed = metLineNeed.map((arr) => arr.reduce((x, y) => x + y, 0));
   const sum = (arr) => arr.reduce((x, y) => x + y, 0);
   const needTotal = sum(tagNeed) + sum(nameNeed) + sum(metNeed) + LEADER * nLabels;
   const textCap = Math.round(n * 0.45);
@@ -876,15 +892,20 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
       }
       // 名字下面一行读数:**几个文件、多大、多久没动**。名字说"这是什么",
       // 读数说"它在这个项目里有多重" —— 少了后半句,一座楼再高也只是好看。
-      const facts = factsOf(t);
-      if (facts && nMetric > 8) {
+      const lines = factLines(t);
+      const need = metLineNeed[i] || [];
+      const needSum = need.reduce((x, y) => x + y, 0) || 1;
+      if (lines.length && nMetric > 8) {
         const mh = metH;
-        const ml = sampleLabel(facts, Math.min(nMetric, n - p), boxW / mh, METRIC_H);
-        if (ml) {
+        for (let j = 0; j < lines.length && p < n; j++) {
+          // 每一行按它自己的亮像素数分 —— 一颗粒子一个像素,笔画才是实心的。
+          const take2 = Math.min(Math.max(8, Math.round(nMetric * (need[j] || 0) / needSum)), n - p);
+          const ml = sampleLabel(lines[j], take2, boxW / mh, METRIC_H);
+          if (!ml) continue;
           const mw = mh * ml.aspect;
-          const take2 = Math.min(nMetric, n - p);
+          const yOff = -h * 0.86 - j * mh * 1.22;
           for (let k = 0; k < take2 && p < n; k++) {
-            const [dx, dy, dz] = unbake(ml.pts[k * 2] * mw, ml.pts[k * 2 + 1] * mh - h * 0.86);
+            const [dx, dy, dz] = unbake(ml.pts[k * 2] * mw, ml.pts[k * 2 + 1] * mh + yOff);
             put(ax + dx, ay + dy, az + dz, lr * 0.72, lg * 0.74, lb * 0.80, 0.40);
           }
         }
@@ -1956,7 +1977,7 @@ export class ProjectLayer {
     const nCityPts = this.nCity - nStar;
     /* 生长那几拍,城市自己被拨回到某一刻;其余每一拍都是今天(1),和以前逐位相同。 */
     const grow = (pick && pick.k === 'grow') ? (pick.step + 1) / GROW_STEPS : 1;
-    const s = sampleCity(list, nCityPts, styleId, links, commits, grow);
+    const s = sampleCity(list, nCityPts, styleId, links, commits, grow, { narrow });
     if (!s.used && !nStar) { this.cityPoints.visible = false; mark(); return false; }
 
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
@@ -1971,7 +1992,9 @@ export class ProjectLayer {
     // Sharing the frame is the only reason to shrink and shift; alternating
     // means the city always gets the middle and all of the width.
     const sharing = nStar > 0 && !narrow;
-    const HALF_W = sharing ? 0.82 : 1.00;
+    /* 竖屏留一成边:街牌那一排站在 z=1.52,比城市离相机近,透视会把它放大到配好的
+       宽度之外 —— 实测最左那块的读数被屏幕切掉了第一个字。 */
+    const HALF_W = sharing ? 0.82 : (narrow ? 0.90 : 1.00);
     /* The top band belongs to the cover image. A capsule with no cover — every
        capsule a scan produces for a repo with no screenshots — leaves it empty,
        and on a tall phone that is a third of the screen of nothing above a small

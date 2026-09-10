@@ -619,6 +619,10 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
      ⚠ 只在**真的查过**的时候画。Mac 扫出来的城市没有这个字段,那不是"没有测试",
      是"不知道";画成一圈红会冤枉每一个项目。 */
   const hasTests = towers.some((t) => t.tests !== undefined);
+  /* 仓库最近有几个人在写。巴士因子是**相对于团队**的:一个一人项目里,每一块当然都只有
+     一个人 —— 那是整个项目的事实,不是某一块的风险。实测:两人以下的 6 个仓库贡献了
+     33 座琥珀楼,其中 3 个一大半都是琥珀,那不是警示,是噪音。 */
+  const repoAuthors = Math.max(0, ...towers.map((t) => t.authors || 0));
   const RING = 72;
   const nRingPts = hasTests ? RING * towers.length : 0;
   const nTowers = n - nGround - nLabelPts - nTagPts - nPathPts - nSkyPts - nRingPts;
@@ -836,7 +840,7 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
       /* 巴士因子:一块**经常改**的代码,改动几乎全出自一个人 —— 他走了就没人懂了。
          名牌染成琥珀色。只看忙的那几块(改动 ≥10):一个没人碰的角落只有一个作者,
          那不是风险,那是安静。 */
-      const solo = t.owner >= 0.85 && t.churn >= 10;
+      const solo = repoAuthors >= 3 && t.owner >= 0.85 && t.churn >= 10;
       const [lr, lg, lb] = solo ? [1.0, 0.74, 0.34]
         : [t.rgb[0] * 0.35 + 0.62, t.rgb[1] * 0.35 + 0.62, t.rgb[2] * 0.35 + 0.62];
       for (let k = 0; k < take; k++) {
@@ -1575,6 +1579,33 @@ export function planScenes({ dirs = [], flow = null, verbs = [], graph = null,
 }
 
 /**
+ * 竖屏城市那一拍,城市和底下那几行字各占屏幕的哪一段。
+ *
+ * ⚠ 按**看得见的高度**排,不按这一层的 ±1 方框排。SIZE 在竖屏上按宽度配,所以那个方框
+ * 只盖住屏幕高度的四成出头;原来的城市半高 0.70 就是在方框里量的 —— 实测城市被挤在
+ * 屏幕 29%–60% 那一段,宽度只用了 58%,顶上三成空着。城市是高度受限的:它缩到塞得下
+ * 为止,于是也就窄了。
+ *
+ * 城市和字**用同一个函数**算,所以两块永远接得上、不会叠在一起 —— 分开写两套常数,
+ * 迟早有一次改了一边忘了另一边。
+ *
+ * @param {number} viewH  这一层单位下相机看得见的半高(相机半高 ÷ SIZE)
+ */
+export function phoneCityLayout(viewH) {
+  const v = Math.max(1.0, +viewH || 1.0);
+  // 顶上让给状态栏和"Terse / 访客"那一条,底下让给底栏和"设置"按钮。
+  const top = v * 0.86, bottom = -v * 0.70;
+  const usable = top - bottom;
+  const txtHalf = Math.min(0.34, usable * 0.085);
+  const gap = usable * 0.02;
+  // 1.35 封顶:再高城市就会被宽度卡住,多给的高度只会变成楼顶上的空白。
+  const cityHalf = Math.min(1.35, (usable - 2 * txtHalf - gap) / 2);
+  const cityCy = top - cityHalf;
+  const txtCy = cityCy - cityHalf - gap - txtHalf;
+  return { cityHalf, cityCy, txtCy, txtHalf, top, bottom };
+}
+
+/**
  * 项目缩影层:一张由粒子构成的图,带自己的出场/退场包络。
  *
  * 生命周期是**一段有头有尾的演出**,不是一个开关:浮现(in)→ 停住(hold)→ 散去(out)。
@@ -1773,6 +1804,7 @@ export class ProjectLayer {
          字段走完了全程,在最后一次转手时被丢掉。 */
       { hot: text && text.hot, people: text && text.people, narrow: text && text.narrow,
         flow: text && text.flow, verbs: text && text.verbs,
+        viewH: text && text.viewH,
         noImage: !img },
       (text && text.scene) | 0);
     // 字要**看得清**才有意义,所以粒子分配偏向字:图靠密度成形,字靠笔画成形,
@@ -1833,8 +1865,10 @@ export class ProjectLayer {
        CSS 像素。把城市往上让一点(见 _setCity 的 roomy),字的半高给到 0.27,每行
        约大四成。宽屏的布局不动。 */
     const narrowTxt = !!(text && text.narrow);
-    const txtCy = hasCity ? (narrowTxt ? -0.74 : -0.83) : (hasImg ? -0.88 : 0);
-    const txtHalf = hasCity ? (narrowTxt ? 0.27 : 0.19) : (hasImg ? 0.15 : 0.52);
+    // 和城市用同一个函数算 —— 两块永远接得上。
+    const PLt = (hasCity && narrowTxt) ? phoneCityLayout(text && text.viewH) : null;
+    const txtCy = hasCity ? (PLt ? PLt.txtCy : -0.83) : (hasImg ? -0.88 : 0);
+    const txtHalf = hasCity ? (PLt ? PLt.txtHalf : 0.19) : (hasImg ? 0.15 : 0.52);
     if (hasImg) {
       const s = sampleImage(img, nImg);
       if (place(s, 0, nImg, imgCy, imgHalf, hasCity ? 1.7 : 1,
@@ -1945,10 +1979,12 @@ export class ProjectLayer {
     const roomy = narrow && !!(ex && ex.noImage);
     // 0.78 → 0.70:给下面那几行读法让出一点高度。城市缩一成,字大四成 —— 读法读不出来
     // 的话,城市画得再清楚也只是好看。
-    const HALF_H = roomy ? 0.70 : 0.56;
+    // 竖屏城市那一拍:按看得见的高度排(见 phoneCityLayout)。宽屏照旧。
+    const PL = roomy ? phoneCityLayout(ex && ex.viewH) : null;
+    const HALF_H = PL ? PL.cityHalf : 0.56;
     const CITY_CX = sharing ? -0.46 : 0;
     // 整块往上抬一点:城市底下还挂着一排名字,不抬的话它们正好压在标题上。
-    const CITY_CY = roomy ? 0.27 : 0.07;
+    const CITY_CY = PL ? PL.cityCy : 0.07;
     // 一个目录都没有、只有图谱的项目是可能的(比如一个只有几个源文件的小仓库)。
     // 那时候包围盒是 ±Infinity,k 会算成 NaN,整块粒子静静地全落在原点 —— 屏幕上
     // 是一个亮点,而不是一个报错。这种"安静地错"最难查,所以在这儿挡掉。
@@ -2038,9 +2074,16 @@ export class ProjectLayer {
 
   /** 换了图之后再聚一次:粒子先散开一点再排成新的一张,换图才看得出来是**换**,
    *  而不是画面忽然跳了一下。 */
-  reform() {
+  /**
+   * 换一拍时让粒子散开再聚回来,好让"换了"看得出来。
+   * @param {number} [floor] 散到哪儿:0.35 是散开大半(换成另一张图时要的),
+   *   越接近 1 散得越少。⚠ 城市和它自己的生长那几拍之间用浅的 —— 结构没换,只是楼在长;
+   *   每一拍都炸开大半再拼回来,"生长"看起来就成了整座城市炸了六次。
+   */
+  reform(floor) {
     if (!this.show) return;
     this.show.reformAt = performance.now();
+    this.show.reformFloor = (floor == null) ? 0.35 : Math.max(0, Math.min(1, +floor));
   }
 
   stop() {
@@ -2071,7 +2114,8 @@ export class ProjectLayer {
       // 刚换过图:短暂地散开再聚回来
       if (this.show.reformAt) {
         const r = (performance.now() - this.show.reformAt) / 700;
-        if (r < 1) form = 0.35 + 0.65 * smooth(Math.max(0, Math.min(1, r)));
+        const F = this.show.reformFloor == null ? 0.35 : this.show.reformFloor;
+        if (r < 1) form = F + (1 - F) * smooth(Math.max(0, Math.min(1, r)));
         else this.show.reformAt = 0;
       }
     }

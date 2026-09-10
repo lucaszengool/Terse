@@ -13,7 +13,7 @@
  *   不光栅化。周围的场是好的(它的点大),项目层是全黑的。所以下面有一条断言,
  *   就是拿着着色器里那个公式去算每一颗点的实际大小。
  */
-import { sampleFlow, sampleGraphFlow, sampleTimeline, sampleCity, planScenes } from './wallpaper-project.js';
+import { sampleFlow, sampleGraphFlow, sampleTimeline, sampleCity, planScenes, phoneCityLayout } from './wallpaper-project.js';
 import { readFileSync } from 'node:fs';
 import './testkit/canvas.mjs';
 
@@ -344,10 +344,16 @@ function litY(o) {
 
   // 巴士因子:忙的一块几乎全出自一个人 → 名牌琥珀色
   const AMBER = (r, g, b) => r > 0.95 && g > 0.68 && g < 0.8 && b < 0.4;
-  const solo = sampleCity(base({ tests: 0.3, owner: 0.95, authors: 1 }), 60000, 'modern', [], [1]);
+  // 一个有团队的仓库(别的块有 6 个人),其中一块几乎全出自一个人 → 琥珀
+  const team = base({ tests: 0.3, owner: 0.4, authors: 6 });
+  team[0] = { ...team[0], owner: 0.95, authors: 1 };
+  const silo = sampleCity(team, 60000, 'modern', [], [1]);
   const shared = sampleCity(base({ tests: 0.3, owner: 0.4, authors: 6 }), 60000, 'modern', [], [1]);
-  ok('a busy block held by one person gets an amber nameplate', count(solo, AMBER) > 0);
+  const oneMan = sampleCity(base({ tests: 0.3, owner: 1, authors: 1 }), 60000, 'modern', [], [1]);
+  ok('in a team, a busy block held by one person gets an amber nameplate', count(silo, AMBER) > 0);
   ok('a block with many owners does not', count(shared, AMBER) === 0);
+  ok('★ a one-person project is not painted amber everywhere — that is the project, not a silo',
+     count(oneMan, AMBER) === 0);
 }
 {
   /* 不跳像素:n ≥ 亮像素数时,每个像素至少一颗。拿 sampleLabel 本身测不到(没导出),
@@ -358,6 +364,26 @@ function litY(o) {
   ok('text is capped so towers are not starved', /const textCap = Math\.round\(n \* 0\.45\)/.test(src));
   ok('over the cap, every label shrinks together instead of the last ones vanishing',
      /const kText = needTotal > textCap \? textCap \/ needTotal : 1/.test(src));
+}
+
+/* ══ 竖屏城市按看得见的高度排 ════════════════════════════════════════════
+   实测:城市被挤在屏幕 29%–60%,宽度只用了 58%,顶上三成空着 —— 因为它是在这一层的
+   ±1 方框里量的,而竖屏上那个方框只有屏幕高度的四成。 */
+{
+  const phone = phoneCityLayout(2.304);          // iPhone 竖屏实测
+  ok('the city gets far more height than the old 0.70 on a real phone', phone.cityHalf > 1.0);
+  ok('the city stays below the header band', phone.cityCy + phone.cityHalf <= phone.top + 1e-9);
+  ok('the words stay above the nav bar', phone.txtCy - phone.txtHalf >= phone.bottom - 1e-9);
+  ok('★ the words sit strictly below the city — they can never overlap',
+     phone.txtCy + phone.txtHalf < phone.cityCy - phone.cityHalf);
+  ok('the words get more room than the old 0.27', phone.txtHalf > 0.27);
+
+  const squarer = phoneCityLayout(1.42);          // 平板竖屏
+  ok('a squarer portrait frame still lays out without overlap',
+     squarer.txtCy + squarer.txtHalf < squarer.cityCy - squarer.cityHalf && squarer.cityHalf > 0.4);
+  const junk = phoneCityLayout(undefined);
+  ok('a missing viewH falls back instead of producing NaN',
+     [junk.cityHalf, junk.cityCy, junk.txtCy, junk.txtHalf].every(Number.isFinite));
 }
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);

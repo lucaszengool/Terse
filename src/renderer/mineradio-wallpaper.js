@@ -1114,6 +1114,7 @@ export default class MineradioWallpaper {
       /* 图例和概况那两行要用的词。渲染器不翻译 —— 调用方把翻好的传进来,
          没有就退回英文。见 wallpaper-project.js 里画这两行的地方。 */
       words: cap.words || null,
+      viewH: VIEW_H,
       meta: cap.meta || null,
       flow: (withCity === false) ? null : (cap.flow || null),
       verbs: (withCity === false) ? [] : (cap.verbs || []),
@@ -1140,6 +1141,12 @@ export default class MineradioWallpaper {
       // against it — a label clipped in half is worse than a slightly smaller city.
       SIZE = Math.min(SIZE, (halfW * 0.94) / 1.0, (halfH * 0.94) / 0.9);
     }
+    /* 这一层单位下,相机**实际看得见**的半高。SIZE 在竖屏上是按宽度配的,所以这一层的
+       ±1 方框只盖住屏幕高度的四成出头 —— 实测城市被挤在 29%–60% 那一段,顶上三成是空的,
+       而相机其实看得见 ±2.3。把这个数交下去,城市和字才能按真正的屏幕去排。
+       ⚠ 不能写死:它随手机的宽高比变(0.46 → 2.30,0.75 的平板竖屏 → 1.42)。 */
+    const VIEW_H = (_cam && _cam.isPerspectiveCamera)
+      ? (Math.tan(_cam.fov * Math.PI / 360) * _cam.position.z) / SIZE : 1;
 
     // 一个项目最多五张图。全部画完要 100 秒,而一段演出只有 20 秒 —— 所以是**轮播**:
     // 每张停留一段,换图时粒子从上一张重新排成下一张,那正是这个功能最好看的地方。
@@ -1242,12 +1249,17 @@ export default class MineradioWallpaper {
         if (plan.length <= 1) return;
         const perT = Math.max(3200, Math.floor((ms - 1400) / plan.length));
         let atT = 0;
+        /* 城市那一拍和生长那几拍是**同一座城市**,只是楼在长 —— 它们之间只轻轻晃一下
+           (散到 0.86),让楼升起来而不是整座城炸开再拼回来。换成图、或者从图换回来,
+           才是真的换了画面,照旧散开大半。 */
+        const cityBeat = (x) => !!x && !x.img && isCity(kinds[x.scene]);
         this._projRotate = setInterval(() => {
           if (!layer.show) { clearInterval(this._projRotate); return; }
+          const prev = plan[atT];
           atT = (atT + 1) % plan.length;
           const b = plan[atT];
           layer.setShow(b.img, textAt(b.scene, b.city), SIZE);
-          layer.reform();
+          layer.reform(cityBeat(prev) && cityBeat(b) ? 0.86 : undefined);
         }, perT);
         return;
       }

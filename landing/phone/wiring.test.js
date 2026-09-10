@@ -209,7 +209,7 @@ ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,
 
   // And what _setCity is actually GIVEN — the hop where they were lost.
   const call = proj.slice(proj.indexOf('this._setCity('), proj.indexOf('this._setCity(') + 700);
-  for (const k of ['flow', 'verbs', 'hot', 'people', 'narrow']) {
+  for (const k of ['flow', 'verbs', 'hot', 'people', 'narrow', 'viewH']) {
     ok(`${k} survives the handoff into _setCity`, new RegExp(k + ':\\s*text && text\\.' + k).test(call));
   }
   // dirs/style/links/commits/graph go as positional arguments rather than in extras.

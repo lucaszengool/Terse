@@ -1114,6 +1114,7 @@ export default class MineradioWallpaper {
       /* 图例和概况那两行要用的词。渲染器不翻译 —— 调用方把翻好的传进来,
          没有就退回英文。见 wallpaper-project.js 里画这两行的地方。 */
       words: cap.words || null,
+      meta: cap.meta || null,
       flow: (withCity === false) ? null : (cap.flow || null),
       verbs: (withCity === false) ? [] : (cap.verbs || []),
       /* A portrait frame has no room beside the city for a second thing. The
@@ -1218,18 +1219,26 @@ export default class MineradioWallpaper {
          city stood down. Sharing a beat is what buried the city under a
          portrait screenshot. */
       if (takeTurns) {
-        /* ⚠ 图**排在最前面**,读法排后面 —— 这是一次**反转**,理由变了:
-           原来的规矩是"竖屏先开城市,不开封面",因为封面那时候就是个 logo,而且
-           你在列表里已经看过了。现在这两条都不成立:
-             · 从 GitHub 导进来的项目**一座楼都没有**,所以"先开城市"实际是先开
-               流程 —— 五拍 × 4.5 秒 = **二十二秒之后才轮到第一张图**;
-             · 而封面已经不是 logo 了,它是 README 的首图,后面还跟着十张按重要
-               程度排好的截图。
-           在广场里**刷**的时候没人等二十二秒:一条帖子还没轮到图就被划走了,
-           于是那些图等于不存在。先看图,再看它是什么做的。 */
+        /* ⚠ 出场顺序:**城市先演,图后放**,然后才是流程和其余读法。
+           这一条来回改过两次,理由都写在这儿,免得第三次再改错方向:
+             · 最早是"读法全在前、图全在后" —— GitHub 项目那时**没有城市**,"读法"
+               就只剩流程,五拍 × 4.5 秒 = 第一张图要等到第 22 秒,刷广场的人一张
+               都看不到;
+             · 于是改成"图全在前" —— 对的,在当时;
+             · 现在四十八个 GitHub 项目**都有城市了**(api/github-city.js),而城市
+               是这个产品最像它自己的一层:先让人看见这个项目长什么样,再看作者的
+               截图。所以城市(连同它自己长出来的那几拍)排第一,图第二,流程等其余
+               读法最后。
+           ⚠ 按**幕的种类**排,不是按下标切:城市在第几拍取决于这个项目有没有流程、
+           有没有图谱,sceneKinds 就是为这个才加的。 */
+        const kinds = layer.sceneKinds || [];
+        const isCity = (k) => k === 'city' || k === 'grow';
+        const cityIdx = [], restIdx = [];
+        for (let i = 0; i < scenes; i++) (isCity(kinds[i]) ? cityIdx : restIdx).push(i);
         const plan = [];
+        for (const i of cityIdx) plan.push({ img: null, city: true, scene: i });
         for (let i = 0; i < live.length; i++) plan.push({ img: live[i], city: false, scene: i });
-        for (let i = 0; i < scenes; i++) plan.push({ img: null, city: true, scene: i });
+        for (const i of restIdx) plan.push({ img: null, city: true, scene: i });
         if (plan.length <= 1) return;
         const perT = Math.max(3200, Math.floor((ms - 1400) / plan.length));
         let atT = 0;
@@ -1287,7 +1296,9 @@ export default class MineradioWallpaper {
         /* 第一张一到就开演,不等其余的 —— 等齐了再开场就是白白的一秒空白。
            ⚠ 竖屏也要换。原来这里挡着 `!takeTurns`,于是首图解好了也不上屏,
            要一直等到轮播把前面所有读法走完 —— 而"先看图"正是这一条要保证的事。 */
-        if (i === 0 || !shown) { render(im, 0); if (takeTurns) layer.reform(); }
+        /* ⚠ 竖屏**不再**一解码就把首图换上屏:城市先演(见上面的出场顺序),首图要是
+           一到就顶上去,城市就只剩开场那几十毫秒。宽屏没有轮流,照旧第一张一到就开演。 */
+        if (!takeTurns && (i === 0 || !shown)) render(im, 0);
         if (++loaded === urls.length) rotate(imgs.filter(Boolean));
       };
       im.onerror = () => {

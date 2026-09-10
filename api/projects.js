@@ -173,6 +173,15 @@ function sanitize(capsule) {
     depth: num(d && d.depth, 0, 64),
     age_days: num(d && d.age_days, 0, 9999),
     churn: num(d && d.churn, 0, 999999),
+    /* ⚠ 新字段**必须在这里列一遍**,否则一进一出就被滤掉,而且不报错 —— 城市照样画,
+       只是少了"有没有测试""几个人在管"这两层。这个仓库在 sanitize / toCapsule /
+       _setCity 三处各吃过一次这个亏。 */
+    /* ⚠ **没有就不写**,不能写 0。frac(undefined) 是 0,而 0 在城市里的意思是"查过了,
+       没有测试"—— 画成一圈红。Mac 扫出来的城市根本没有这个字段,那样每一个项目都会
+       被冤枉成没有测试。JSON.stringify 会丢掉 undefined,所以缺的字段真的就不存在。 */
+    tests: (d && d.tests != null) ? frac(d.tests) : undefined,
+    authors: (d && d.authors != null) ? num(d.authors, 0, 9999) : undefined,
+    owner: (d && d.owner != null) ? frac(d.owner) : undefined,
   })).filter((d) => d.name) : [];
   // 楼之间的弧:[from, to, weight],下标指向 dirs。指到界外的直接扔掉 ——
   // 一条画到虚空里的弧,在屏幕上就是一道没有来由的光。
@@ -203,6 +212,13 @@ function sanitize(capsule) {
     if (out.graph.n.length < 4 || !out.graph.e.length) out.graph = null;
   }
   // 热点文件。字段是 name / churn / bytes / dir —— dir 把它接回它那座楼的颜色。
+  // 仓库级的几件事(星、fork、许可证、年纪、CI)。城市下面那几行字用。
+  const m0 = capsule.meta;
+  out.meta = (m0 && typeof m0 === 'object') ? {
+    stars: num(m0.stars, 0, 99999999), forks: num(m0.forks, 0, 99999999),
+    issues: num(m0.issues, 0, 9999999), license: str(m0.license, 24),
+    age_days: num(m0.age_days, 0, 99999), ci: !!m0.ci,
+  } : null;
   out.hot = Array.isArray(capsule.hot) ? capsule.hot.slice(0, 40).map((h) => ({
     name: str(h && h.name, 80),
     churn: num(h && h.churn, 0, 999999),

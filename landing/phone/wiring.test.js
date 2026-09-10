@@ -228,19 +228,26 @@ ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,
    顺序错了,前面二十二秒全是流程。 */
 {
   const eng = fs.readFileSync(path.join(dir, '..', '..', 'src', 'renderer', 'mineradio-wallpaper.js'), 'utf8');
-  const at = eng.indexOf('if (takeTurns) {\n        /*');
-  const plan = at > 0 ? eng.slice(at, at + 1400) : eng.slice(eng.indexOf('const plan = []'), eng.indexOf('const plan = []') + 600);
-  const imgAt = plan.indexOf("plan.push({ img: live[i]");
-  const cityAt = plan.indexOf("plan.push({ img: null, city: true");
-  ok('the running order puts pictures before the readings', imgAt > 0 && cityAt > 0 && imgAt < cityAt);
+  /* ⚠ 这条断言**改过方向**,而且是用户明确要的:四十八个 GitHub 项目都有了城市
+     之后,规矩变成"城市先演,图后放,其余读法最后"。上一版钉的是"图在读法之前"
+     —— 那是城市还不存在时的正确答案。 */
+  const at = eng.indexOf('const plan = [];');
+  const plan = at > 0 ? eng.slice(at, at + 700) : '';
+  const cityFirst = plan.indexOf('for (const i of cityIdx) plan.push');
+  const imgAt = plan.indexOf('plan.push({ img: live[i]');
+  const restAt = plan.indexOf('for (const i of restIdx) plan.push');
+  ok('the running order is: city → pictures → the other readings',
+     cityFirst > 0 && imgAt > cityFirst && restAt > imgAt);
+  ok('the city beats are chosen by KIND, not by index',
+     /const isCity = \(k\) => k === 'city' \|\| k === 'grow'/.test(eng) && /layer\.sceneKinds/.test(eng));
 
   // 图的顺序就是"首图 → 按重要程度" —— cover 在最前,shots 按名次跟着。
   ok('the picture list is the cover followed by the ranked shots',
      /const urls = \[cap\.cover, \.\.\.\(cap\.shots \|\| \[\]\)\]/.test(eng));
 
-  /* 首图一解码好就要**立刻上屏**,不能等轮播走到它。原来这里挡着 `!takeTurns`。 */
-  ok('the hero swaps in as soon as it decodes, on a phone too',
-     /if \(i === 0 \|\| !shown\) \{ render\(im, 0\); if \(takeTurns\) layer\.reform\(\); \}/.test(eng));
+  /* 竖屏上首图**不能**一解码就顶上屏 —— 城市先演。宽屏没有轮流,照旧第一张一到就开演。 */
+  ok('on a phone the hero does not jump in over the city',
+     /if \(!takeTurns && \(i === 0 \|\| !shown\)\) render\(im, 0\);/.test(eng));
 
   // 一条帖子的时长要跟着图的张数走,否则十张图挤在四拍里谁也看不清。
   const app2 = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');

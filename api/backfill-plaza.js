@@ -256,12 +256,16 @@ async function main() {
          一次 commits 调用,合起来一个仓库约十三次 —— 未认证的一小时六十次撑不住
          四个仓库,所以这一段**只在有 token 的时候跑**,没有就跳过,而不是盖一座
          没有窗、没有信标的假城。 */
-      if (got && GH_TOKEN && !(cap.dirs || []).length) {
+      /* 已经有城市、但那是**测试/作者字段出现之前**盖的 —— 也重盖一遍,否则那些城市
+         永远没有测试底座和琥珀名牌。判据:dirs 在,但一个 tests 都没有。 */
+      const stale = (cap.dirs || []).length && !(cap.dirs || []).some((d) => d && d.tests != null);
+      if (got && GH_TOKEN && (!(cap.dirs || []).length || stale)) {
         try {
           const city = await buildCity(ghApi, owner, repo, branch, got.tree);
           if (city.dirs.length) {
             cap.dirs = city.dirs;
             if (city.langs.length) cap.langs = city.langs;
+            if (city.meta) cap.meta = city.meta;
             did.push(`city×${city.dirs.length}`);
           }
         } catch (e) {

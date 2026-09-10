@@ -82,8 +82,12 @@ function dirsFromTree(tree) {
     }
 
     let d = acc.get(top);
-    if (!d) { d = { name: top, files: 0, bytes: 0, langs: new Map(), depth: 1, kids: new Map() }; acc.set(top, d); }
+    if (!d) { d = { name: top, files: 0, bytes: 0, langs: new Map(), depth: 1, kids: new Map(), tests: 0 }; acc.set(top, d); }
     d.files++; d.bytes += bytes;
+    /* 测试文件。CodeCharta 把"缺测试"画成红楼 —— 那是城市隐喻里最常被问的一个问题
+       ("这块有没有人兜底")。按**文件名约定**认:目录叫 test/spec,或文件名带
+       .test. / _test. / .spec. / test_ 前缀。认得出多少算多少,认不出的不去猜。 */
+    if (/(^|\/)(tests?|specs?|__tests__|e2e)\/|[._-](test|spec)\.[a-z0-9]+$|(^|\/)test_[^/]+$/i.test(path)) d.tests++;
     if (lang) d.langs.set(lang, (d.langs.get(lang) || 0) + bytes);
     // 退台看的是这块结构埋得多深。
     d.depth = Math.max(d.depth, path.split('/').length - 1);
@@ -110,6 +114,8 @@ function dirsFromTree(tree) {
       langs,
       kind: kindOf(d.name),
       depth: d.depth,
+      // 测试文件占比(0..1)。test/ 目录本身当然是 1 —— 那座楼就是测试。
+      tests: d.files ? +(d.tests / d.files).toFixed(3) : 0,
       kids: [...d.kids.entries()].sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 8)
         .map(([n, k]) => [n, k.files, k.bytes]),
     };
@@ -167,9 +173,38 @@ async function buildCity(api, owner, repo, branch, tree) {
     const when = list[0] && list[0].commit && list[0].commit.committer && list[0].commit.committer.date;
     if (when) d.age_days = Math.max(0, Math.round((now - Date.parse(when)) / 86400000));
     d.churn = list.length;
+    /* 谁在写这一块。CoderCity 把楼按作者切段上色;这里给两个数,够城市用:
+         authors  这段历史里有几个不同的人;
+         owner    改动最多的那一个人占几成 —— 接近 1 就是"巴士因子 = 1":
+                  这块代码只有一个人懂,他走了就没人懂了。
+       ⚠ 只看最近 100 条提交(一次调用的上限),所以说的是"最近谁在管",不是"谁写的"。 */
+    const who = new Map();
+    for (const c of list) {
+      const k = (c.author && c.author.login) || (c.commit && c.commit.author && c.commit.author.email) || '';
+      if (k) who.set(k, (who.get(k) || 0) + 1);
+    }
+    d.authors = who.size;
+    d.owner = who.size ? +(Math.max(...who.values()) / list.length).toFixed(3) : 0;
   }));
 
-  return { dirs, langs: langsOfTree(tree) };
+  /* 仓库级的几件事:星、fork、许可证、年纪、有没有 CI。一次调用。
+     这些不画进楼里 —— 它们说的是"这个项目在外面怎么样",放在城市下面那几行字里。 */
+  let meta = null;
+  try {
+    const m = await api(`/repos/${owner}/${repo}`);
+    if (m) {
+      meta = {
+        stars: +m.stargazers_count || 0,
+        forks: +m.forks_count || 0,
+        issues: +m.open_issues_count || 0,
+        license: (m.license && m.license.spdx_id && m.license.spdx_id !== 'NOASSERTION') ? m.license.spdx_id : '',
+        age_days: m.created_at ? Math.max(0, Math.round((now - Date.parse(m.created_at)) / 86400000)) : 0,
+        ci: (tree || []).some((n) => /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(String(n.path || ''))),
+      };
+    }
+  } catch (e) { if (e && e.message === 'rate-limited') throw e; }
+
+  return { dirs, langs: langsOfTree(tree), meta };
 }
 
 module.exports = { buildCity, dirsFromTree, langsOfTree, kindOf, langOf, EXT_LANG };

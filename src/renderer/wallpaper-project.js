@@ -35,7 +35,9 @@ export const PROJECT_POINTS = 110000;
    而这一轮加的两行读法**全靠读得出来才有意义**。
    图那一层已经在手机上跑 110000,城市和它从不同时占满(演出时城市在,图那几拍
    城市就站下来),所以这是同一个量级的账。 */
-export const CITY_POINTS = 120000;
+/* 120000 → 160000:字现在按**需要**分(约占四成),楼不能因此被饿瘦 —— 楼身、窗、
+   色带、底座本身也是要读的东西。 */
+export const CITY_POINTS = 160000;
 
 /** 社区配色。星座按"这几块是一伙的"上色 —— 社区是图谱自己聚出来的,不是语言。
  *  刻意和语言色分开:同一个屏幕上两套颜色说两件事,混用一套人就分不清在看什么。 */
@@ -208,13 +210,12 @@ export function sampleImage(img, n) {
  * 槽位数量随 Pro 变 —— 结果就是用户看到"只有图,没有字"。项目自己的字属于项目
  * 自己这一层,不该去排别人的队。
  */
-export function sampleBlock(rows, n) {
+export function sampleBlock(rows, n, W = 1024) {
   // 一整块排版,而不是一行一个画布。
   //
   // 逐行采样时每一行都按自己的宽高比缩放,于是"812 files"和一句 30 字的评论会被
   // 拉成同样的宽度、不同的字号 —— 屏幕上看到的就是几条糊掉的色带(试过,不行)。
   // 排在同一张画布上,行距、字号、居中都由排版决定,采样只负责把它变成粒子。
-  const W = 1024;
   const pad = 10;
   const fontOf = (px, weight) => `${weight || 700} ${px}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif`;
   let H = pad;
@@ -310,8 +311,22 @@ export function sampleBlock(rows, n) {
  * 名字太长就**先截字再缩号**:一直缩下去的话,"android-app" 会变成一条 3 像素高的
  * 灰线 —— 那既不是名字也不是装饰,只是脏。宁可写 "android-a…",它至少还认得出来。
  */
-function sampleLabel(name, n, maxAspect) {
-  const H = 44, PAD = 4;
+/**
+ * 把一个名字栅格化,返回**亮着的像素**。不取样 —— 取样在 sampleLabel 里。
+ *
+ * ⚠ 拆出来是因为城市要**先知道每块牌子需要多少颗粒子**,再去分。原来是按固定
+ * 比例分(屋顶牌 10%、街牌 9%),实测的结果:
+ *     屋顶牌平均 1955 个亮像素 / 分到 1000 颗   —— 2× 欠采样
+ *     街牌下面那行读数 ~6200 个亮像素 / 分到 1186 颗 —— 5× 欠采样
+ * 欠采样时 `lit[floor(p·lit/n)]` 是按扫描顺序**跳着取**,于是笔画变成虚线 ——
+ * 那一行读数就是这么读不出来的。
+ *
+ * @param {number} [H] 字的像素高。**应当约等于它在屏幕上的设备像素高** —— 那时一颗
+ *   粒子就是一个像素,笔画实心;比屏幕细只是白要粒子,比屏幕粗字会发糊。
+ */
+function rasterLabel(name, maxAspect, H) {
+  H = H || 44;
+  const PAD = 4;
   const probe = document.createElement('canvas').getContext('2d');
   const font = `700 ${H}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif`;
   probe.font = font;
@@ -335,15 +350,23 @@ function sampleLabel(name, n, maxAspect) {
   const lit = [];
   for (let i = 0; i < d.length; i += 4) if (d[i] > 90) lit.push(i);
   if (!lit.length) return null;
+  return { lit, w: cv.width, h: cv.height };
+}
+
+function sampleLabel(name, n, maxAspect, H) {
+  const r = rasterLabel(name, maxAspect, H);
+  if (!r) return null;
   const pts = new Float32Array(n * 2);
   for (let p = 0; p < n; p++) {
     // 和图、字同一套:按扫描顺序等距取,不散列 —— 散列取样保不住字的骨架。
-    const i = lit[Math.floor(p * lit.length / n)];
-    const px = (i / 4) % cv.width, py = Math.floor((i / 4) / cv.width);
-    pts[p * 2] = (px + 0.5) / cv.width - 0.5;
-    pts[p * 2 + 1] = 0.5 - (py + 0.5) / cv.height;
+    // n ≥ lit 时每个像素至少一颗(多出来的叠在一起),n < lit 时才会跳 —— 所以城市
+    // 那边按 lit 的数目去分,这里就不会跳。
+    const i = r.lit[Math.floor(p * r.lit.length / n)];
+    const px = (i / 4) % r.w, py = Math.floor((i / 4) / r.w);
+    pts[p * 2] = (px + 0.5) / r.w - 0.5;
+    pts[p * 2 + 1] = 0.5 - (py + 0.5) / r.h;
   }
-  return { pts, aspect: cv.width / cv.height };
+  return { pts, aspect: r.w / r.h, lit: r.lit.length };
 }
 
 /** 1_850_000 → "1.8MB"。楼上的读数是给人扫一眼的,不是给人算的。 */
@@ -532,6 +555,10 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
       bytesRaw: +d.bytes || 0,
       age: Number.isFinite(age) ? age : 9999,
       churn: +d.churn || 0,
+      // ⚠ 没有就是 undefined,不是 0 —— 0 的意思是"查过了,没有测试",会画成红底。
+      tests: (d.tests === undefined || d.tests === null) ? undefined : +d.tests,
+      authors: +d.authors || 0,
+      owner: +d.owner || 0,
       rgb: d.lang ? langRgb(d.lang) : (KIND_RGB[kind] || langRgb('')),
       w: Math.sqrt(Math.max(1, massOf(d))),
     };
@@ -546,7 +573,6 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
   const wSum = towers.reduce((a, t) => a + t.w, 0) || 1;
   const nGround = Math.round(n * 0.05);
   const nLabels = Math.min(3, towers.length);
-  const nLabelPts = nLabels ? Math.round(n * 0.09) : 0;
   // 提交天际线:53 周 × 7 天,摆在城市**后面**的一条带子。城市有结构、有材料、
   // 有关系,唯独没有时间;这条带子就是时间,而且过去理应在身后。
   const days = Array.isArray(commits) ? commits : [];
@@ -554,11 +580,48 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
   // 屋顶牌:**每一座**都要有名字。街上那三块是"这个仓库主要是什么",屋顶牌是
   // "我现在看的这座是什么" —— 一座认不出名字的楼,再好看也只是装饰。
   const nTags = Math.min(12, towers.length);
-  const nTagPts = Math.round(n * 0.10);
   // 地脉:关系那一层。**不是线** —— 是两块街区之间被踩出来的一片低低的、不匀的光。
   const paths = link.filter((l) => towers[l[0]] && towers[l[1]]);
   const nPathPts = paths.length ? Math.round(n * 0.11) : 0;
-  const nTowers = n - nGround - nLabelPts - nTagPts - nPathPts - nSkyPts;
+
+  /* ── 字按"需要多少"分,不按比例分 ──────────────────────────────────────
+     每块牌子先栅格化一次,数它有多少个亮像素,就给它多少颗粒子 —— 一颗一个像素,
+     笔画是实心的。原来按固定比例切,实测屋顶牌 2× 欠采样、街牌读数 5× 欠采样,
+     那一行读数整行都是虚线。
+     字的栅格高度取**它在手机上约占的设备像素**:屋顶牌 0.072 世界单位 ≈ 38px,
+     街牌读数 0.065 ≈ 35px。再高只是白要粒子。
+     总量封顶 45%:再多楼就会被饿瘦,而楼本身也是要读的东西。超了就**等比例**缩,
+     所有牌子一起稍微欠一点,而不是后面几块整块消失。 */
+  const TAG_H = 40, NAME_H = 44, METRIC_H = 34, LEADER = 110;
+  const tagH = 0.072, tagAspect = Math.max(3.2, (cell * 1.5) / tagH);
+  const boxW = (2 / Math.max(1, nLabels)) * 0.94, minH = 0.125, metH = minH * 0.52;
+  const factsOf = (t) => [
+    t.files ? t.files + ' files' : '', human(t.bytesRaw), since(t.age),
+    // 几个人在管这一块 —— CoderCity 用颜色切段,这里用一个数。
+    t.authors ? t.authors + (t.authors === 1 ? ' dev' : ' devs') : '',
+  ].filter(Boolean).join(' · ');
+  const litOf = (str0, asp, H) => { const r = rasterLabel(str0, asp, H); return r ? r.lit.length : 0; };
+  const tagNeed = towers.slice(0, nTags).map((t) => litOf(t.name, tagAspect, TAG_H));
+  const nameNeed = towers.slice(0, nLabels).map((t) => litOf(t.name, boxW / minH, NAME_H));
+  const metNeed = towers.slice(0, nLabels).map((t) => litOf(factsOf(t), boxW / metH, METRIC_H));
+  const sum = (arr) => arr.reduce((x, y) => x + y, 0);
+  const needTotal = sum(tagNeed) + sum(nameNeed) + sum(metNeed) + LEADER * nLabels;
+  const textCap = Math.round(n * 0.45);
+  const kText = needTotal > textCap ? textCap / needTotal : 1;
+  const tagN = tagNeed.map((v) => Math.round(v * kText));
+  const nameN = nameNeed.map((v) => Math.round(v * kText));
+  const metN = metNeed.map((v) => Math.round(v * kText));
+  const nTagPts = sum(tagN);
+  const nLabelPts = nLabels ? sum(nameN) + sum(metN) + LEADER * nLabels : 0;
+
+  /* 测试底座:每座楼脚下一圈。有测试是绿的,没有是红的 —— CodeCharta 那条
+     "红楼 = 缺测试"的规矩,只是画在地上而不是楼身上:楼身的颜色已经是语言了。
+     ⚠ 只在**真的查过**的时候画。Mac 扫出来的城市没有这个字段,那不是"没有测试",
+     是"不知道";画成一圈红会冤枉每一个项目。 */
+  const hasTests = towers.some((t) => t.tests !== undefined);
+  const RING = 72;
+  const nRingPts = hasTests ? RING * towers.length : 0;
+  const nTowers = n - nGround - nLabelPts - nTagPts - nPathPts - nSkyPts - nRingPts;
   const floorShare = Math.floor(nTowers / (towers.length * 4));
   let p = 0;
 
@@ -742,20 +805,40 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
     return [u * cy_ - z1 * sy, y1, u * sy + z1 * cy_];
   };
 
+  if (nRingPts > 0) {
+    for (const t of towers) {
+      const known = t.tests !== undefined;
+      const tested = t.kind === 'test' || (known && t.tests > 0.02);
+      const c = !known ? [0.30, 0.34, 0.40] : (tested ? [0.36, 0.86, 0.52] : [0.88, 0.34, 0.30]);
+      const s2 = t.foot / 2 + 0.018;
+      for (let k = 0; k < RING; k++) {
+        const u = k / RING, side = Math.floor(u * 4), f = u * 4 - side;
+        const x = side === 0 ? -s2 + 2 * s2 * f : side === 1 ? s2 : side === 2 ? s2 - 2 * s2 * f : -s2;
+        const z = side === 0 ? -s2 : side === 1 ? -s2 + 2 * s2 * f : side === 2 ? s2 : s2 - 2 * s2 * f;
+        put(t.cx + x, BASE + 0.003, t.cz + z, c[0], c[1], c[2], 0.5);
+      }
+    }
+  }
+
   /* 屋顶牌:每座楼头顶一块小牌子,写它叫什么。天空是空的,牌子放在自己屋顶正上方
      不会挡住别人 —— 而挂在楼身上会被这座楼自己的窗和色带吃掉。 */
   if (nTagPts > 0 && nTags > 0) {
     const tagEnd = p + nTagPts;
-    const per = Math.floor(nTagPts / nTags);
     for (let i = 0; i < nTags && p < tagEnd; i++) {
       const t = towers[i];
-      const h = 0.072, maxAspect = Math.max(3.2, (cell * 1.5) / h);
-      const lab = sampleLabel(t.name, Math.min(per, tagEnd - p), maxAspect);
+      const take = Math.min(tagN[i] || 0, tagEnd - p);
+      if (take <= 0) continue;
+      const h = tagH;
+      const lab = sampleLabel(t.name, take, tagAspect, TAG_H);
       if (!lab) continue;
       const w = h * lab.aspect;
       const ay = BASE + t.h + 0.07 + (t.churn === maxChurn && maxChurn >= 3 ? t.h * 0.32 : 0);
-      const [lr, lg, lb] = [t.rgb[0] * 0.35 + 0.62, t.rgb[1] * 0.35 + 0.62, t.rgb[2] * 0.35 + 0.62];
-      const take = Math.min(per, tagEnd - p);
+      /* 巴士因子:一块**经常改**的代码,改动几乎全出自一个人 —— 他走了就没人懂了。
+         名牌染成琥珀色。只看忙的那几块(改动 ≥10):一个没人碰的角落只有一个作者,
+         那不是风险,那是安静。 */
+      const solo = t.owner >= 0.85 && t.churn >= 10;
+      const [lr, lg, lb] = solo ? [1.0, 0.74, 0.34]
+        : [t.rgb[0] * 0.35 + 0.62, t.rgb[1] * 0.35 + 0.62, t.rgb[2] * 0.35 + 0.62];
       for (let k = 0; k < take; k++) {
         const [dx, dy, dz] = unbake(lab.pts[k * 2] * w, lab.pts[k * 2 + 1] * h);
         put(t.cx + dx, ay + dy, t.cz + dz, lr, lg, lb, 0.42);
@@ -764,20 +847,16 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
     while (p < tagEnd) put((hash01c(p * 5) - 0.5) * 2.1, BASE - 0.004, (hash01c(p * 7) - 0.5) * 2.1, 0.20, 0.26, 0.34, 0.62);
   }
   if (nLabelPts > 0) {
-    const LEADER = 110;
-    const per = Math.floor(nLabelPts / nLabels);
-    const boxW = (2 / nLabels) * 0.94;
     // 名字得**在真实大小下读得出来**才算数。放大到 2× 才看得清的标签等于没有 ——
     // 壁纸没有 hover,这一眼看不清就永远看不清了。
-    const minH = 0.125;
     // 名字要站在**城外**。z 只推到 1.12 时,前排建筑被俯角压下来的投影正好盖在
     // 名字上 —— 城市越高压得越远,所以这条街得留够。
     const ROW_Y = BASE - 0.34, ROW_Z = 1.52;
     for (let i = 0; i < nLabels && p < n; i++) {
       const t = towers[i];
-      const room = Math.min(per, n - p);
-      const nMetric = Math.floor((room - LEADER) * 0.34);
-      const lab = sampleLabel(t.name, Math.max(1, room - LEADER - nMetric), boxW / minH);
+      const nMetric = metN[i] || 0;
+      const nName = Math.max(1, nameN[i] || 0);
+      const lab = sampleLabel(t.name, nName, boxW / minH, NAME_H);
       if (!lab) continue;
       // **字高是固定的,宽度跟着名字走** —— 反过来(钉死宽度、由宽高比推字高)会让
       // "src" 这种短名字撑成巨无霸,而 "src-tauri" 缩成一行小字:同一排标签,
@@ -786,18 +865,17 @@ export function sampleCity(dirs, n, styleId, links, commits, grow) {
       const ax = -1 + (i + 0.5) * (2 / nLabels), ay = ROW_Y, az = ROW_Z;
       const [r0, g0, b0] = t.rgb;
       const lr = r0 * 0.45 + 0.55, lg = g0 * 0.45 + 0.55, lb = b0 * 0.45 + 0.55;
-      const nPts = Math.max(1, room - LEADER - nMetric);
+      const nPts = nName;
       for (let k = 0; k < nPts && p < n; k++) {
         const [dx, dy, dz] = unbake(lab.pts[k * 2] * w, lab.pts[k * 2 + 1] * h);
         put(ax + dx, ay + dy, az + dz, lr, lg, lb, 0.46);
       }
       // 名字下面一行读数:**几个文件、多大、多久没动**。名字说"这是什么",
       // 读数说"它在这个项目里有多重" —— 少了后半句,一座楼再高也只是好看。
-      const facts = [t.files ? t.files + ' files' : '', human(t.bytesRaw), since(t.age)]
-        .filter(Boolean).join(' · ');
+      const facts = factsOf(t);
       if (facts && nMetric > 8) {
-        const mh = h * 0.52;
-        const ml = sampleLabel(facts, Math.min(nMetric, n - p), boxW / mh);
+        const mh = metH;
+        const ml = sampleLabel(facts, Math.min(nMetric, n - p), boxW / mh, METRIC_H);
         if (ml) {
           const mw = mh * ml.aspect;
           const take2 = Math.min(nMetric, n - p);
@@ -1574,9 +1652,15 @@ export class ProjectLayer {
     // 一块字里放什么:标题、项目自己的信息、以及广场上最有人气的几条评论。
     // 评论用偏冷的白 —— 那是"别人说的",不该和项目自己的品牌色抢。
     const rows = [];
-    if (text && text.title) rows.push({ text: String(text.title).slice(0, 26), px: 96, weight: 800, css: '#F2F7FF' });
-    for (const l of ((text && text.lines) || []).filter(Boolean).slice(0, 2)) {
-      rows.push({ text: String(l).slice(0, 40), px: 58, weight: 700, css: '#C9F03D' });
+    /* 城市这一拍,字的高度是固定的(城市占了上面大半屏),而每多一行,所有行都跟着
+       变小。所以这一拍只留**读城市要用的**:名字、图例、概况、仓库、读法。作者的几行
+       描述和评论在图那几拍里都有,这里让出来,换别的行大一号。 */
+    const onCity = ((text && text.dirs) || []).some((d) => d && (d.files > 0 || d.bytes > 0));
+    if (text && text.title) rows.push({ text: String(text.title).slice(0, 26), px: onCity ? 78 : 96, weight: 800, css: '#F2F7FF' });
+    if (!onCity) {
+      for (const l of ((text && text.lines) || []).filter(Boolean).slice(0, 2)) {
+        rows.push({ text: String(l).slice(0, 40), px: 58, weight: 700, css: '#C9F03D' });
+      }
     }
     // 语言图例:**哪个颜色是哪门语言**。
     //
@@ -1625,16 +1709,39 @@ export class ProjectLayer {
 
       const facts = [`${cityDirs.length} ${W.blocks || 'blocks'}`, human(bytes), `${files} ${W.files || 'files'}`];
       if (fresh >= 0) facts.push(`${W.touched || 'touched'} ${since(fresh)}`);
-      rows.push({ px: 42, weight: 700, css: '#9FB2CC',
+      rows.push({ px: 46, weight: 700, css: '#9FB2CC',
                   parts: [{ text: facts.join('  ·  ') }] });
+
+      /* 仓库在外面怎么样:星、fork、许可证、多老、有没有 CI。一行,都是数和缩写 ——
+         这几样用哪种语言写都一样。 */
+      const M = text && text.meta;
+      if (M) {
+        const k = (v) => (v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k' : String(v));
+        const bits = [];
+        if (M.stars) bits.push('★ ' + k(M.stars));
+        if (M.forks) bits.push('⑂ ' + k(M.forks));
+        if (M.license) bits.push(M.license);
+        if (M.age_days) bits.push(since(M.age_days));
+        if (M.ci) bits.push('CI ✓');
+        if (bits.length) rows.push({ px: 42, weight: 700, css: '#B8C6DA', parts: [{ text: bits.join('   ') }] });
+      }
 
       /* 每一条前面那个小记号就是它在城市里的样子:▮ 是一座楼,● 是亮着的窗,
          ▲ 是塔尖那根信标。记号和实物对得上,这一行才是图例而不是一句话。 */
-      rows.push({ px: 34, weight: 600, css: '#63748C', parts: [
-        { text: '▮ ', css: '#C9D4E6' }, { text: (W.keyHigh || 'height = code') + '   ' },
-        { text: '● ', css: '#FFE9A8' }, { text: (W.keyLit || 'lit = recent') + '   ' },
+      rows.push({ px: 40, weight: 600, css: '#7C8CA4', parts: [
+        { text: '▮ ', css: '#C9D4E6' }, { text: (W.keyHigh || 'height = code') + '    ' },
+        { text: '● ', css: '#FFE9A8' }, { text: (W.keyLit || 'lit = recent') + '    ' },
         { text: '▲ ', css: '#FF9A6C' }, { text: W.keyHot || 'spire = busiest' },
       ] });
+      // 第二行读法:只有城市里**真的画了**测试底座和琥珀名牌时才出现 —— 图例说的
+      // 必须是画面上有的东西。
+      if (cityDirs.some((d) => d.tests !== undefined && d.tests !== null)) {
+        rows.push({ px: 40, weight: 600, css: '#7C8CA4', parts: [
+          { text: '▢ ', css: '#5CDB85' }, { text: (W.keyTest || 'green base = tested') + '    ' },
+          { text: '▢ ', css: '#E0564C' }, { text: (W.keyNoTest || 'red base = no tests') + '    ' },
+          { text: '■ ', css: '#FFBD57' }, { text: W.keySolo || 'amber = one owner' },
+        ] });
+      }
     }
 
     // 评论 = 一句话 + **说这句话的人**。只画话不画名字,壁纸上就是几行来路不明的
@@ -1722,15 +1829,21 @@ export class ProjectLayer {
        有城市的时候不动:那种版面是"城市为主、图为辅",本来就该小。 */
     const imgCy = hasCity ? 0.10 : (hasText ? 0.24 : 0.10);
     const imgHalf = hasCity ? 1.04 : (hasText ? 1.02 : 1.10);
-    const txtCy = hasCity ? -0.83 : (hasImg ? -0.88 : 0);
-    const txtHalf = hasCity ? 0.19 : (hasImg ? 0.15 : 0.52);
+    /* 竖屏城市那一拍,读法那几行要**读得出来**:原来半高 0.19,最小那行只有 ~11 个
+       CSS 像素。把城市往上让一点(见 _setCity 的 roomy),字的半高给到 0.27,每行
+       约大四成。宽屏的布局不动。 */
+    const narrowTxt = !!(text && text.narrow);
+    const txtCy = hasCity ? (narrowTxt ? -0.74 : -0.83) : (hasImg ? -0.88 : 0);
+    const txtHalf = hasCity ? (narrowTxt ? 0.27 : 0.19) : (hasImg ? 0.15 : 0.52);
     if (hasImg) {
       const s = sampleImage(img, nImg);
       if (place(s, 0, nImg, imgCy, imgHalf, hasCity ? 1.7 : 1,
                 { pre: true, dim: hasCity ? 0.45 : 1, z: hasCity ? -0.55 : 0 })) any = true;
     }
     if (hasText && nText > 0) {
-      const s = sampleBlock(rows, nText);
+      /* 城市那一拍画布放宽:高度已经由城市定死了,宽一点就能在同样的字号下装下更长的一行
+         (概况、仓库、两行读法都是长行),不用为了塞下它们把所有字一起缩小。 */
+      const s = sampleBlock(rows, nText, hasCity && narrowTxt ? 1400 : 1024);
       // 字的点比图的点小:一行 20 多像素高的字,拿画图那种点去画就是一条糊掉的
       // 色块(第一版六行字全成了实心方块)。
       if (place(s, nImg, nText, txtCy, txtHalf, 0.5)) any = true;
@@ -1789,6 +1902,9 @@ export class ProjectLayer {
            实测:1.6s 城市完好,3.6s 被一个橙色热点圆盘埋掉。
        所以轮到读法的那一拍,城市的点是 **0**,不是"少一点"。 */
     this.sceneCount = scenes.length;
+    /* 每一拍是哪种幕。外面排出场顺序时要知道"哪几拍是城市" —— 只给一个总数的话,
+       只能按下标切,而城市在第几拍取决于这个项目有没有流程、有没有图谱。 */
+    this.sceneKinds = scenes.map((x) => x.k);
     const pick = pickAt(scene);
     if (!list.length && !pick) { this.cityPoints.visible = false; mark(); return false; }
 
@@ -1827,10 +1943,12 @@ export class ProjectLayer {
        and on a tall phone that is a third of the screen of nothing above a small
        city. When there is no image to make room for, the city takes the room. */
     const roomy = narrow && !!(ex && ex.noImage);
-    const HALF_H = roomy ? 0.78 : 0.56;
+    // 0.78 → 0.70:给下面那几行读法让出一点高度。城市缩一成,字大四成 —— 读法读不出来
+    // 的话,城市画得再清楚也只是好看。
+    const HALF_H = roomy ? 0.70 : 0.56;
     const CITY_CX = sharing ? -0.46 : 0;
     // 整块往上抬一点:城市底下还挂着一排名字,不抬的话它们正好压在标题上。
-    const CITY_CY = roomy ? 0.20 : 0.07;
+    const CITY_CY = roomy ? 0.27 : 0.07;
     // 一个目录都没有、只有图谱的项目是可能的(比如一个只有几个源文件的小仓库)。
     // 那时候包围盒是 ±Infinity,k 会算成 NaN,整块粒子静静地全落在原点 —— 屏幕上
     // 是一个亮点,而不是一个报错。这种"安静地错"最难查,所以在这儿挡掉。

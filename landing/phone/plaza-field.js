@@ -112,6 +112,8 @@
       link: c.link || '',
       // 它在干什么 —— 城市说的是"由什么组成",这两样说的是"做什么"。
       words: WORDS,
+      // 仓库级:星、fork、许可证、年纪、CI。城市那一拍下面的一行字用。
+      meta: c.meta || null,
       flow: c.flow || null,
       verbs: Array.isArray(c.verbs) ? c.verbs : [],
       key: c.key || 0,

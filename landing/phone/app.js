@@ -213,6 +213,7 @@
          高是代码量 —— 这几个词是那张图的钥匙。渲染器不翻译,它只画传进去的字。 */
       city_blocks: 'blocks', city_files: 'files', city_touched: 'touched',
       city_key_high: 'height = code', city_key_lit: 'lit = recent', city_key_hot: 'spire = busiest',
+      city_key_test: 'green base = tested', city_key_notest: 'red base = no tests', city_key_solo: 'amber = one owner',
       ip_lock: 'Lock Screen', ip_home: 'Home Screen', ip_day: 'Monday, 1 September',
       wall_pickbed: 'Backdrop — it lights the particles',
       field_turn: 'Drag to turn it. Pinch to move closer. Double-tap to recentre.',
@@ -438,6 +439,7 @@
       wall_frames: '{n} 帧',
       city_blocks: '座', city_files: '个文件', city_touched: '动过',
       city_key_high: '高 = 代码量', city_key_lit: '灯 = 最近改动', city_key_hot: '塔尖 = 最活跃',
+      city_key_test: '绿底 = 有测试', city_key_notest: '红底 = 没测试', city_key_solo: '琥珀名牌 = 只有一人在管',
       ip_lock: '锁屏', ip_home: '主屏幕', ip_day: '9月1日 星期一',
       wall_pickbed: '底图 —— 粒子的颜色从它来',
       field_turn: '拖动可以转动，捏合拉近，双击回正。',
@@ -3352,6 +3354,7 @@
     window.TersePlazaField.setWords({
       blocks: t('city_blocks'), files: t('city_files'), touched: t('city_touched'),
       keyHigh: t('city_key_high'), keyLit: t('city_key_lit'), keyHot: t('city_key_hot'),
+      keyTest: t('city_key_test'), keyNoTest: t('city_key_notest'), keySolo: t('city_key_solo'),
     });
   }
 

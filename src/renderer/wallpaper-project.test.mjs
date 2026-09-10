@@ -316,6 +316,50 @@ function litY(o) {
      !/if \(narrow\) this\.sceneCount = 1;/.test(src2));
 }
 
+/* ══ 字按需要分,测试底座,琥珀名牌 ═══════════════════════════════════════
+   实测过的问题:屋顶牌 2× 欠采样、街牌读数 5× 欠采样 —— 欠采样时按扫描顺序跳着取,
+   笔画成了虚线。现在每块牌子按它**亮像素的个数**拿粒子。 */
+{
+  const base = (extra) => [
+    { name: 'src', files: 40, bytes: 400000, lang: 'rust', depth: 2, age_days: 3, churn: 60, ...extra },
+    { name: 'docs', files: 8, bytes: 20000, lang: '', depth: 1, age_days: 90, churn: 4, ...extra },
+    { name: 'web', files: 20, bytes: 150000, lang: 'ts', depth: 2, age_days: 20, churn: 12, ...extra },
+  ];
+  const RED = (r, g, b) => r > 0.8 && g < 0.4 && b < 0.4;
+  const GREEN = (r, g, b) => g > 0.8 && r < 0.45 && b < 0.6;
+  const count = (o, f) => { let c = 0; for (let i = 0; i < o.used; i++) if (f(o.color[i*3], o.color[i*3+1], o.color[i*3+2])) c++; return c; };
+
+  const noData = sampleCity(base({}), 60000, 'modern', [], [1, 2, 3]);
+  ok('★ a city with NO test data draws no red base ring (unknown is not "untested")', count(noData, RED) === 0);
+
+  const untested = sampleCity(base({ tests: 0 }), 60000, 'modern', [], [1, 2, 3]);
+  ok('a city whose directories were checked and have no tests shows red bases', count(untested, RED) >= 72);
+
+  const tested = sampleCity(base({ tests: 0.3 }), 60000, 'modern', [], [1, 2, 3]);
+  ok('tested directories get green bases', count(tested, GREEN) >= 72 * 3);
+  ok('and no red at all', count(tested, RED) === 0);
+
+  const all = sampleCity(base({ tests: 0.3 }), 60000, 'modern', [], [1, 2, 3]);
+  ok('the budget is still exactly spent — nothing written past n', all.used <= 60000);
+
+  // 巴士因子:忙的一块几乎全出自一个人 → 名牌琥珀色
+  const AMBER = (r, g, b) => r > 0.95 && g > 0.68 && g < 0.8 && b < 0.4;
+  const solo = sampleCity(base({ tests: 0.3, owner: 0.95, authors: 1 }), 60000, 'modern', [], [1]);
+  const shared = sampleCity(base({ tests: 0.3, owner: 0.4, authors: 6 }), 60000, 'modern', [], [1]);
+  ok('a busy block held by one person gets an amber nameplate', count(solo, AMBER) > 0);
+  ok('a block with many owners does not', count(shared, AMBER) === 0);
+}
+{
+  /* 不跳像素:n ≥ 亮像素数时,每个像素至少一颗。拿 sampleLabel 本身测不到(没导出),
+     所以测它的后果:同一个名字,粒子给够时落点的**不同位置数**等于亮像素数。 */
+  const src = readFileSync(new URL('./wallpaper-project.js', import.meta.url), 'utf8');
+  ok('labels are rasterised once and sized by their lit pixels before points are spent',
+     /function rasterLabel\(/.test(src) && /const tagNeed = /.test(src) && /const metNeed = /.test(src));
+  ok('text is capped so towers are not starved', /const textCap = Math\.round\(n \* 0\.45\)/.test(src));
+  ok('over the cap, every label shrinks together instead of the last ones vanishing',
+     /const kText = needTotal > textCap \? textCap \/ needTotal : 1/.test(src));
+}
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

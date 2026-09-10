@@ -235,6 +235,12 @@ section.section, section[id]{ background-color:transparent !important; }
   --halo-h:257;
   --halo-s:68%;
   --halo-l:15%;
+  /* Strength multiplier on every halo stop. terse-field.js sets it per
+     wallpaper from the bright end of the hero band (0.75 on a dark plate, up to
+     1.45 on a noon-white one), and sets --halo-h/s/l to a shadow tinted with the
+     scene itself. 1 = the halo as it shipped, so a page without the field
+     renders exactly as before. */
+  --halo-k:1;
 }
 
 main, footer, nav,
@@ -243,21 +249,21 @@ main a, main dt, main dd, main td, main th, main label, main small, main strong,
 footer h4, footer a, footer p, nav a,
 .hero .sub{
   text-shadow:
-    0 0  1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.85),
-    0 1px 2px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.85),
-    0 0  8px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.65),
-    0 0 24px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.42);
+    0 0  1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.85 * var(--halo-k, 1))),
+    0 1px 2px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.85 * var(--halo-k, 1))),
+    0 0  8px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.65 * var(--halo-k, 1))),
+    0 0 24px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.42 * var(--halo-k, 1)));
 }
 /* Display type can carry a heavier halo than body copy can. At 19px the tight
    ring starts closing up the counters of dense CJK glyphs, so body text gets
    the lighter recipe above and only the big type gets the full weight. */
 .hero h1, main h1, main h2, .section-title{
   text-shadow:
-    0 0  1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.92),
-    0 1px 1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.88),
-    0 0  6px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.80),
-    0 0 16px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.62),
-    0 0 38px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.45);
+    0 0  1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.92 * var(--halo-k, 1))),
+    0 1px 1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.88 * var(--halo-k, 1))),
+    0 0  6px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.80 * var(--halo-k, 1))),
+    0 0 16px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.62 * var(--halo-k, 1))),
+    0 0 38px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.45 * var(--halo-k, 1)));
 }
 
 /* ── A transparent fill must never carry a text-shadow ────────────────────
@@ -280,8 +286,8 @@ footer h4, footer a, footer p, nav a,
 .gradient-text{
   text-shadow:none !important;
   filter:
-    drop-shadow(0 1px 1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.85))
-    drop-shadow(0 0 10px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.65));
+    drop-shadow(0 1px 1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.85 * var(--halo-k, 1))))
+    drop-shadow(0 0 10px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.65 * var(--halo-k, 1))));
 }
 /* The hero line is the one exception: it was forced to an opaque white fill
    further up (you asked for white there), so it is not a transparent fill any
@@ -291,11 +297,11 @@ footer h4, footer a, footer p, nav a,
 .hero h1 .gradient-text{
   filter:none;
   text-shadow:
-    0 0  1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.92) ,
-    0 1px 1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.88),
-    0 0  6px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.80),
-    0 0 16px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.62),
-    0 0 38px hsla(var(--halo-h),var(--halo-s),var(--halo-l),0.45) !important;
+    0 0  1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.92 * var(--halo-k, 1))) ,
+    0 1px 1px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.88 * var(--halo-k, 1))),
+    0 0  6px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.80 * var(--halo-k, 1))),
+    0 0 16px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.62 * var(--halo-k, 1))),
+    0 0 38px hsla(var(--halo-h),var(--halo-s),var(--halo-l),calc(0.45 * var(--halo-k, 1))) !important;
 }
 /* Surfaces that already have a ground of their own get none of it. */
 pre, code, kbd, samp,

@@ -670,12 +670,25 @@ vec3 procColor(vec2 p, float t){
     'precision highp float;',
     'varying vec3 vColor;',
     'varying float vA;',
-    'uniform float uAlphaScale;',
+    'uniform float uAlphaScale, uMode;',
+    'uniform vec3 uHalo;',
     'void main(){',
     '  float d = length(gl_PointCoord - 0.5) * 2.0;',
     '  if (d > 1.0) discard;',
+    /* uMode 0 = the dot itself; 1 = its halo. Both are PREMULTIPLIED, and the
+       caller picks the blend: OVER for halo and body, ADD only for the bloom.
+       The old shader wrote colour with alpha pinned to 1 under ONE,ONE — so a
+       particle could only ever ADD to the plate. Over a white cloud there is
+       nothing left to add to, which is exactly where users could not read it. */
     '  float f = 1.0 - smoothstep(0.55, 1.0, d);',
-    '  gl_FragColor = vec4(vColor * f, 1.0) * vA * uAlphaScale;',
+    '  if (uMode > 0.5) {',
+    '    float h = (1.0 - smoothstep(0.15, 1.0, d)) * vA * uAlphaScale;',
+    '    h = clamp(h, 0.0, 1.0);',
+    '    gl_FragColor = vec4(uHalo * h, h);',
+    '  } else {',
+    '    float c = clamp(f * vA * uAlphaScale, 0.0, 1.0);',
+    '    gl_FragColor = vec4(vColor * c, c);',
+    '  }',
     '}'
   ].join('\n');
 
@@ -695,7 +708,7 @@ vec3 procColor(vec2 p, float t){
     'attribute vec3 aCCol;',
     'attribute float aCScl;',
     'uniform mat4 uViewProj;',
-    'uniform float uCamR, uPtPx, uForm, uVis, uScale, uTime;',
+    'uniform float uCamR, uPtPx, uForm, uVis, uScale, uTime, uSat, uGain;',
     'uniform vec3 uOrigin;',
     'varying vec3 vColor;',
     'varying float vA;',
@@ -726,10 +739,91 @@ vec3 procColor(vec2 p, float t){
     /* A slow shimmer on the windows only (the bright end of the scale range),
        so the lit ones look alive while the masonry stays still. */
     '  float tw = 0.86 + 0.14 * sin(uTime * 2.1 + r * 21.0);',
-    '  vColor = aCCol * mix(1.0, tw, step(0.9, aCScl));',
+    /* Per-wallpaper saturation and gain, never hue: the colour bands ARE the
+       language reading, so a wallpaper may make them deeper or brighter but
+       must never turn Rust into something else. */
+    '  float lm = dot(aCCol, vec3(0.2126, 0.7152, 0.0722));',
+    '  vec3 cc = clamp(mix(vec3(lm), aCCol, uSat) * uGain, 0.0, 1.0);',
+    '  vColor = cc * mix(1.0, tw, step(0.9, aCScl));',
     '  vA = uVis * (1.0 - u * 0.72);',
     '}'
   ].join('\n');
+
+  /* ── Colour that fits the wallpaper ───────────────────────────────────────
+     Measured, not guessed: on all 20 shipped wallpapers the mint accent had a
+     bare contrast of 1.01-1.84 against the bright part of the hero band on 18
+     of them, white copy cleared 3:1 on only two, and additive particle text fell
+     to 1.35-2.8 on every bright sky. The plates also sit almost entirely at
+     177-229 degrees — sky blue — which is exactly where mint and sky-blue live,
+     so nothing looked vivid even where it was technically legible.
+
+     So colour is chosen per wallpaper, from the part of the plate that is
+     actually on screen (the same image differs a lot between a desktop crop and
+     a portrait one), and per LINE for the particle text, from the pixels under
+     where that line landed. WCAG relative luminance throughout. */
+  var PALETTE = [
+    [0.431, 0.906, 0.718],   /* mint — the brand, preferred when it reads */
+    [0.788, 0.941, 0.239],   /* lime   */
+    [0.984, 0.749, 0.141],   /* amber  */
+    [0.984, 0.443, 0.522],   /* coral  */
+    [0.957, 0.447, 0.714],   /* pink   */
+    [0.769, 0.710, 0.992],   /* violet */
+    [0.490, 0.827, 0.988],   /* sky    */
+    [0.133, 0.827, 0.933]    /* cyan   */
+  ];
+  var MINT = PALETTE[0];
+  /* Colour carries MEANING on this page, so not every colour may go everywhere.
+     The accent paints 152 elements on the home page, and 36 of them are good
+     news: the check column of the comparison table, the savings percentages
+     (-64%, -99%), "token 账单减少约 70%", NEW and LIVE. Coral or pink on "-64%
+     saved" reads as a LOSS. So the red family is never the page accent, and on
+     particle lines it is reserved for the cost lines, where red-ish is the
+     right meaning. Amber is allowed for neutral lines but not for good news. */
+  var POSITIVE = [PALETTE[0], PALETTE[1], PALETTE[6], PALETTE[7], PALETTE[5]];            /* mint lime sky cyan violet */
+  var NEUTRAL  = [PALETTE[0], PALETTE[1], PALETTE[2], PALETTE[5], PALETTE[6], PALETTE[7]]; /* + amber, no coral/pink */
+  function lin1(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function relLum(c) { return 0.2126 * lin1(c[0]) + 0.7152 * lin1(c[1]) + 0.0722 * lin1(c[2]); }
+  function contrast(a, b) { var hi = a > b ? a : b, lo = a > b ? b : a; return (hi + 0.05) / (lo + 0.05); }
+  function hueSat(c) {
+    var r = c[0], g = c[1], b = c[2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0;
+    if (d) { h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+    return [h, mx ? d / mx : 0];
+  }
+  function hslRgb(h, s, l) {
+    var c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2, r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; } else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; } else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+    return [r + m, g + m, b + m];
+  }
+  /** Pick the colour for a patch of plate.
+   *
+   *  Legibility is a FLOOR, not a term in a sum. The first version scored
+   *  0.55 x hue-distance + 0.45 x contrast, and the audit over all 20 plates
+   *  showed what that does: it chose coral and pink for their distance from
+   *  the blue sky, and they are far darker than mint, so the accent got WORSE
+   *  on 8 wallpapers (moonlit meadow 6.2 -> 2.1). Now every candidate is
+   *  measured the way the page actually shows it — against the bright end of
+   *  the patch as darkened by the halo ring — and only colours at 4.5:1 or
+   *  better are eligible. Among those the most vivid wins (hue distance,
+   *  weighted by how saturated the plate is), with a bonus for the preferred
+   *  colour so the brand mint stays wherever it genuinely reads. If nothing
+   *  clears 4.5, the most legible candidate wins outright. */
+  function pickTint(p, preferred, haloL, haloA, pool) {
+    var bgL = p.p90 * (1 - haloA) + haloL * haloA;
+    var base = pool || PALETTE;
+    var cands = preferred ? base.concat([preferred]) : base;
+    var best = null, bestS = -1, top = cands[0], topC = 0;
+    for (var i = 0; i < cands.length; i++) {
+      var c = cands[i], cr = contrast(relLum(c), bgL);
+      if (cr > topC) { topC = cr; top = c; }
+      if (cr < 4.5) continue;
+      var hs = hueSat(c), dh = Math.abs(hs[0] - p.hue); if (dh > 180) dh = 360 - dh;
+      var sc = (dh / 180) * (0.35 + 0.65 * Math.min(1, p.sat * 2))
+             + (c === preferred ? 0.18 : 0) + Math.min(0.15, (cr - 4.5) * 0.03);
+      if (sc > bestS) { bestS = sc; best = c; }
+    }
+    return best || top;
+  }
 
   /* ── GL helpers ─────────────────────────────────────────────────────────── */
   function compile(gl, type, src) {
@@ -903,7 +997,7 @@ vec3 procColor(vec2 p, float t){
                                      'viewProj', 'camR', 'depth', 'slab']);
     this.uGly = u(gl, this.glyProg, ['form', 'vis', 'out', 'inMode', 'outMode', 'stagger', 'time',
                                      'bloom', 'dpr', 'ptPx', 'center', 'size', 'drift', 'aspect', 'tint', 'alphaScale',
-                                     'viewProj', 'camR']);
+                                     'viewProj', 'camR', 'mode', 'halo']);
 
     this.aBedPos = gl.getAttribLocation(this.bedProg, 'aPos');
     this.aHome = gl.getAttribLocation(this.fldProg, 'aHome');
@@ -921,7 +1015,7 @@ vec3 procColor(vec2 p, float t){
       this.cityProg = program(gl, CITY_VS, GLYPH_FS);
       if (this.cityProg) {
         this.uCity = u(gl, this.cityProg, ['viewProj', 'camR', 'ptPx', 'form', 'vis',
-                                           'scale', 'time', 'origin', 'alphaScale']);
+                                           'scale', 'time', 'origin', 'alphaScale', 'mode', 'halo', 'sat', 'gain']);
         this.aCPos = gl.getAttribLocation(this.cityProg, 'aCPos');
         this.aCCol = gl.getAttribLocation(this.cityProg, 'aCCol');
         this.aCScl = gl.getAttribLocation(this.cityProg, 'aCScl');
@@ -973,6 +1067,11 @@ vec3 procColor(vec2 p, float t){
     this.skyMode = 0; this.sky = SKIES[0]; this.skySeed = 0;
     this.sunPos = [0.35, -0.05]; this.skyName = null;
     this.exposure = 1; this.bedLum = 0; this.bedVar = 0; this.soften = 0;
+    /* Colour theme, re-derived from the plate every time the wallpaper changes
+       (_theme). These defaults are the dark-galaxy values: a faint halo, full
+       bloom, city colours untouched. */
+    this.haloRGB = [0.106, 0.048, 0.252];
+    this.cityTheme = { haloK: 0.35, sat: 1.0, gain: 1.0 };
     this.samp = document.createElement('canvas');
     this.sctx = this.samp.getContext('2d', { willReadFrequently: true });
     this.bedPix = null;
@@ -1027,7 +1126,7 @@ vec3 procColor(vec2 p, float t){
         live: null, form: 0, vis: 0, out: 0,
         inMode: 0, outMode: 0, stagger: 0,
         cx: 0, cy: 0, sx: 0.6, sy: 0.15,
-        tint: TINTS.tool, driftX: 0, driftY: 0
+        tint: TINTS.tool, driftX: 0, driftY: 0, haloK: 0.4, bloomK: 1
       });
     }
   };
@@ -1120,7 +1219,11 @@ vec3 procColor(vec2 p, float t){
   /* Cover-fit the loaded image into the sampling canvas, matching what the bed
      shader crops, so particle colours line up with the pixels behind them. */
   Field.prototype._rasterBed = function (img) {
-    var SW = 384, SH = Math.max(1, Math.round(SW * this.h / this.w));
+    /* this.w is 0 while the tab is hidden or not yet laid out, and SW*h/0 made
+       getImageData throw "Value is not of type 'long'" — which silently skipped
+       the whole measurement, so the page never got a theme at all. 16:9 until
+       the real size is known. */
+    var SW = 384, SH = Math.max(1, Math.round(SW * (this.h || 9) / (this.w || 16)));
     this.samp.width = SW; this.samp.height = SH;
     var c = this.sctx, iw = img.width, ih = img.height;
     var sc = Math.max(SW / iw, SH / ih) / 0.94;      /* 0.94 = the ken-burns margin */
@@ -1176,6 +1279,7 @@ vec3 procColor(vec2 p, float t){
     var e = Math.pow(0.11 / Math.max(this.bedLum, 0.012), 0.32);
     this.exposure = 1;
     this._sampleColors();
+    this._theme();
   };
 
 
@@ -1242,6 +1346,7 @@ vec3 procColor(vec2 p, float t){
     this.bedLum = (sum / n) / 255;
     var e = Math.pow(0.11 / Math.max(this.bedLum, 0.012), 0.32);
     this.exposure = Math.min(1.55, Math.max(0.45, e));
+    this._theme();
   };
 
   /* Swap the wallpaper. Pass null for the procedural galaxy, a .jpg/.png for a
@@ -1402,9 +1507,131 @@ vec3 procColor(vec2 p, float t){
     slot.cx = gx; slot.cy = gy;
   };
 
+  /** Stats for a rectangle of the measured plate, in 0..1 fractions of the
+   *  frame. Strided so even a full-frame patch reads at most ~2000 pixels. */
+  Field.prototype._patch = function (x0, x1, y0, y1) {
+    var px = this.bedPix; if (!px) return null;
+    var d = px.data, W = px.w, H = px.h;
+    var xa = Math.max(0, (x0 * W) | 0), xb = Math.min(W, Math.ceil(x1 * W));
+    var ya = Math.max(0, (y0 * H) | 0), yb = Math.min(H, Math.ceil(y1 * H));
+    if (xb - xa < 1 || yb - ya < 1) return null;
+    var st = Math.max(1, Math.round(Math.sqrt(((xb - xa) * (yb - ya)) / 2000)));
+    var Ls = [], R = 0, G = 0, B = 0, hx = 0, hy = 0, sw = 0, n = 0;
+    for (var y = ya; y < yb; y += st) for (var x = xa; x < xb; x += st) {
+      var o = (y * W + x) * 4, c = [d[o] / 255, d[o + 1] / 255, d[o + 2] / 255];
+      var hs = hueSat(c), w = hs[1] * Math.max(c[0], c[1], c[2]);
+      Ls.push(relLum(c)); R += c[0]; G += c[1]; B += c[2]; n++;
+      hx += Math.cos(hs[0] * Math.PI / 180) * w; hy += Math.sin(hs[0] * Math.PI / 180) * w; sw += w;
+    }
+    Ls.sort(function (a, b) { return a - b; });
+    return { rgb: [R / n, G / n, B / n], p50: Ls[(Ls.length * 0.5) | 0], p90: Ls[(Ls.length * 0.9) | 0],
+             hue: (Math.atan2(hy, hx) * 180 / Math.PI + 360) % 360, sat: sw / n };
+  };
+
+  /** Derive the page's colours from the wallpaper that just landed: the halo
+   *  colour and strength (shared by page copy, particle text and the city), the
+   *  accent the page copy uses, and the city's saturation and gain. */
+  Field.prototype._theme = function () {
+    var hero = this._patch(0.15, 0.85, 0.12, 0.62);
+    var cityP = this._patch(0.25, 0.75, 0.45, 1.0);
+    var p = hero;
+    if (!p) {
+      /* a procedural sky has no raster — its own palette says what colour it is */
+      var top = (this.sky && this.sky.top) || [0.1, 0.1, 0.2], hs0 = hueSat(top);
+      var L0 = Math.min(1, (this.bedLum || 0.05) * 1.6);
+      p = { rgb: top, p50: L0, p90: L0, hue: hs0[0], sat: hs0[1] };
+    }
+    /* The halo is a SHADOW tinted with the scene's own colour — deep navy under
+       a blue sky, deep forest under a meadow, plum under pink cloud — instead of
+       one fixed indigo on every plate. Grey plates keep the indigo. */
+    var grey = p.sat < 0.12;
+    var hh = grey ? 257 : p.hue, hsat = grey ? 0.68 : 0.62, hl = 0.10;
+    this.haloRGB = hslRgb(hh, hsat, hl);
+    /* Tinted like the scene, but never LIGHTER than the indigo it replaced.
+       Green and teal carry most of their weight in luminance (G is 0.7152 of
+       it), so at the same HSL lightness a meadow-green shadow is brighter than
+       indigo — the sweep caught it costing the two dark green plates contrast
+       (moonlit meadow 8.41 -> 7.85, summer hillside 11.73 -> 10.77). Scale the
+       colour down to indigo's luminance; sRGB ~ linear^(1/2.2). */
+    var capL = relLum([0.106, 0.048, 0.252]), hL = relLum(this.haloRGB), hlOut = hl;
+    if (hL > capL) {
+      /* Bisect on the real luminance rather than assume sRGB ~ linear^(1/2.2):
+         these halos live in sRGB's linear toe (channels under 0.04), where the
+         power law is wrong, and the closed-form scale left dark green plates
+         ~1% short of indigo (moonlit meadow 8.41 -> 8.31). */
+      var lo = 0, hi = 1, base = this.haloRGB, sc = 1;
+      for (var it = 0; it < 24; it++) {
+        var mid = (lo + hi) / 2;
+        if (relLum([base[0] * mid, base[1] * mid, base[2] * mid]) > capL) hi = mid; else lo = mid;
+      }
+      sc = lo;
+      this.haloRGB = [base[0] * sc, base[1] * sc, base[2] * sc];
+      /* The page copy's halo is built from --halo-h/s/l, not from this RGB, so
+         the cap must reach the CSS too or the text keeps the lighter shadow
+         while the particles get the dark one. Below 50% lightness hslRgb is
+         linear in L at fixed h and s, so scaling the RGB by sc IS scaling the
+         lightness by sc — hue and saturation are untouched. */
+      hlOut = hl * sc;
+    }
+    /* Halo strength follows the bright end of the hero band, but is NEVER
+       weaker than the halo the page shipped with (k=1). The first calibration
+       let dark plates drop to 0.75 to look cleaner, and the audit showed it cost
+       them real contrast (moonlit meadow 8.4 -> 5.1). Lightness 0.10, not 0.13,
+       for the same reason: a scene-tinted shadow must be as dark as the indigo. */
+    var k = Math.max(1.0, Math.min(1.45, 1.0 + 0.95 * (p.p90 - 0.45)));
+
+    var ac = pickTint(p, MINT, relLum(this.haloRGB), Math.min(1, 0.85 * k), POSITIVE);
+    var r = Math.round(ac[0] * 255), g = Math.round(ac[1] * 255), b = Math.round(ac[2] * 255);
+    var r3 = Math.round(r + (255 - r) * 0.45), g3 = Math.round(g + (255 - g) * 0.45), b3 = Math.round(b + (255 - b) * 0.45);
+    var rd = Math.round(r * 0.78), gd = Math.round(g * 0.78), bd = Math.round(b * 0.78);
+    var st = document.documentElement.style;
+    st.setProperty('--halo-h', String(Math.round(hh)));
+    st.setProperty('--halo-s', Math.round(hsat * 100) + '%');
+    st.setProperty('--halo-l', (hlOut * 100).toFixed(1) + '%');
+    st.setProperty('--halo-k', k.toFixed(2));
+    st.setProperty('--ac', 'rgb(' + r + ',' + g + ',' + b + ')');
+    st.setProperty('--ac3', 'rgb(' + r3 + ',' + g3 + ',' + b3 + ')');
+    st.setProperty('--acd', 'rgba(' + r + ',' + g + ',' + b + ',0.10)');
+    st.setProperty('--acm', 'rgba(' + r + ',' + g + ',' + b + ',0.20)');
+    st.setProperty('--gradient', 'linear-gradient(135deg,rgb(' + r + ',' + g + ',' + b + ') 0%,rgb(' + rd + ',' + gd + ',' + bd + ') 100%)');
+    this.accent = ac;
+
+    /* City: never the hue (that is the language), only how deep and how bright.
+       On a bright plate the bands go more saturated so they read as COLOUR
+       rather than pastel, with a stronger silhouette under them. */
+    var c90 = cityP ? cityP.p90 : p.p90;
+    this.cityTheme = {
+      haloK: Math.max(0.25, Math.min(0.9, 0.25 + 0.8 * c90)),
+      sat: 1.1 + 0.4 * c90,
+      gain: c90 > 0.5 ? 0.92 : 1.1
+    };
+  };
+
+  /** Colour one particle line for the plate directly under where it landed. */
+  Field.prototype._adaptSlot = function (slot, tint) {
+    var fx = slot.cx * 0.5 + 0.5, fy = 0.5 - slot.cy * 0.5;
+    var hw = (slot.visW || slot.sx) * 0.25, hh = slot.sy * 0.25;
+    var p = this._patch(fx - hw, fx + hw, fy - hh, fy + hh), L;
+    L = p ? p.p90 : Math.min(1, (this.bedLum || 0.05) * 1.6);
+    /* bright plate under the line -> strong halo, little bloom; dark -> the reverse.
+       The halo is decided FIRST because the tint is judged against the plate as
+       the halo leaves it, not against the raw plate. */
+    slot.haloK = Math.max(0.30, Math.min(0.95, 0.30 + 0.9 * L));
+    slot.bloomK = Math.max(0.15, Math.min(1.0, 1.25 - 1.3 * L));
+    /* The category decides which colours are allowed, because the colour is
+       read as a verdict. Savings are NOT only in 'good': "saved 68%" and
+       "312,480 saved" are 'metric' lines, so metric gets the positive pool too —
+       amber on a savings number reads as a caution. Only 'warm' (a cost or a
+       downgrade) may go red. */
+    var pool = tint === TINTS.warm ? PALETTE
+             : (tint === TINTS.good || tint === TINTS.metric) ? POSITIVE : NEUTRAL;
+    slot.tint = p ? pickTint(p, tint, relLum(this.haloRGB), slot.haloK, pool) : tint;
+  };
+
   Field.prototype._fire = function (slot, text, tint) {
     if (!this._drawGlyph(slot, text, tint)) return false;
     this._place(slot);
+    this._adaptSlot(slot, tint);
     slot.inMode = (Math.random() * 9) | 0;
     slot.outMode = (Math.random() * 9) | 0;
     slot.stagger = Math.random() < 0.75 ? 0.30 + Math.random() * 0.5 : 0;
@@ -1834,8 +2061,24 @@ vec3 procColor(vec2 p, float t){
          language bands (the entire point of the colour) disappeared. Keeping it
          dim is what lets JSON read as yellow and Rust as rust. */
       var cg = Math.min(1.2, Math.max(0.5, this.exposure));
-      gl.uniform1f(this.uCity.alphaScale, 0.46 * cg);
+      /* Same halo / body split as the text. Over the plate instead of added to
+         it, so JSON really reads yellow and Rust really reads rust on a bright
+         sky — at additive, lowering the gain was the only lever and it made the
+         city faint everywhere to stop it burning white somewhere. */
+      var ct = this.cityTheme;
+      gl.uniform1f(this.uCity.sat, ct.sat);
+      gl.uniform1f(this.uCity.gain, ct.gain);
+      gl.uniform3fv(this.uCity.halo, this.haloRGB);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.uniform1f(this.uCity.mode, 1);
+      gl.uniform1f(this.uCity.ptPx, Math.max(1.0, cgap * this.dpr * 1.15) * 2.2);
+      gl.uniform1f(this.uCity.alphaScale, ct.haloK);
       gl.drawArrays(gl.POINTS, 0, this.city.used);
+      gl.uniform1f(this.uCity.mode, 0);
+      gl.uniform1f(this.uCity.ptPx, Math.max(1.0, cgap * this.dpr * 1.15));
+      gl.uniform1f(this.uCity.alphaScale, 0.95 * cg);
+      gl.drawArrays(gl.POINTS, 0, this.city.used);
+      gl.blendFunc(gl.ONE, gl.ONE);
 
       gl.disableVertexAttribArray(this.aCPos);
       gl.disableVertexAttribArray(this.aCCol);
@@ -1891,16 +2134,32 @@ vec3 procColor(vec2 p, float t){
       var gap = Math.sqrt((boxW * boxH) / this.glyphN);
       gl.uniform1f(this.uGly.ptPx, Math.max(1.0, gap * this.dpr * 1.35));
 
-      gl.uniform1f(this.uGly.bloom, 1.0);
-      gl.uniform1f(this.uGly.alphaScale, 1.45 * g);
+      /* Three passes, and the order is the design:
+           1. HALO, composited OVER the plate: a soft dark disc per particle, so
+              the line carries its own ground — the particle version of the
+              text-shadow the page copy already has. Its strength comes from how
+              bright the plate is UNDER THIS LINE (slot.haloK, _adaptSlot).
+           2. BODY, composited OVER: the tint as itself. This is what the app
+              does (NormalBlending on the glyph, additive only on the glow twin);
+              the port had the body additive too, so on a bright sky the colour
+              could only push toward white.
+           3. BLOOM, additive — but scaled by slot.bloomK, which falls as the
+              plate brightens: glow on a noon sky only washes the letters out. */
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.uniform1f(this.uGly.mode, 1);
+      gl.uniform3fv(this.uGly.halo, this.haloRGB);
+      gl.uniform1f(this.uGly.bloom, 2.1);
+      gl.uniform1f(this.uGly.alphaScale, s.haloK);
       gl.drawArrays(gl.POINTS, 0, this.glyphN);
-      /* The glow pass was 3.6x the point size at 0.34 alpha. Against a stroke
-         one or two particles wide that is not a glow around the text, it IS the
-         text — a soft blob per particle, swamping the sharp pass underneath and
-         leaving the line permanently out of focus. Halved, and dimmer, so it
-         reads as light coming off the letters rather than as the letters. */
+
+      gl.uniform1f(this.uGly.mode, 0);
+      gl.uniform1f(this.uGly.bloom, 1.0);
+      gl.uniform1f(this.uGly.alphaScale, 1.15);
+      gl.drawArrays(gl.POINTS, 0, this.glyphN);
+
+      gl.blendFunc(gl.ONE, gl.ONE);
       gl.uniform1f(this.uGly.bloom, 1.9);
-      gl.uniform1f(this.uGly.alphaScale, 0.20 * g);
+      gl.uniform1f(this.uGly.alphaScale, 0.20 * g * s.bloomK);
       gl.drawArrays(gl.POINTS, 0, this.glyphN);
     }
 

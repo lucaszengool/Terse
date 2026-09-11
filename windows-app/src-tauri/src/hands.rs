@@ -39,12 +39,14 @@ static HANDS: LazyLock<Mutex<Hands>> = LazyLock::new(|| Mutex::new(Hands::defaul
 /// The tracker's window label. Only this window may speak for the camera.
 pub const TRACKER: &str = "hands";
 
-/// Identical to macOS: the main window (gesture page preview), the session dock,
-/// the wallpaper, particle mode and the desk cursor. A plain emit would wake
-/// every webview Terse has — farm, pet, Doctor, the island — 30 times a second.
-/// Labels for windows Windows does not build yet cost nothing and keep the two
-/// lists from drifting when those windows arrive.
-const HAND_WINDOWS: [&str; 5] = ["main", "sessions-dock", "wallpaper", "particles", "desk-overlay"];
+/// Identical to macOS, which now sends RAW frames to two windows only: the main
+/// window (the gesture page draws the skeleton itself) and the desk overlay —
+/// the one place gestures are computed, which re-dispatches them to the dock,
+/// wallpaper and particle mode as `gesture-evt`, so every window shares one
+/// cursor. Raw frames anywhere else would wake a renderer 30 times a second for
+/// data it no longer reads. A plain emit would wake every webview Terse has.
+/// renderer-deps.test.mjs fails if this list and the macOS one drift apart.
+const HAND_WINDOWS: [&str; 2] = ["main", "desk-overlay"];
 
 fn config_path() -> PathBuf {
     dirs::home_dir().unwrap_or_default().join(".terse").join("gesture.json")
@@ -93,11 +95,20 @@ fn camera_status_raw() -> String {
             .unwrap_or(false)
     };
     let nonpackaged = format!(r"{BASE}\NonPackaged");
-    if denied("HKLM", BASE) || denied("HKCU", BASE) || denied("HKCU", &nonpackaged) {
-        "denied".into()
-    } else {
-        "authorized".into()
+    // Which switch said no is logged, because the fix differs: a machine policy
+    // is an administrator's, the other two are the user's own toggles. The
+    // first CI run of this could only report "denied", not by what.
+    for (hive, key, what) in [
+        ("HKLM", BASE, "a machine-wide policy"),
+        ("HKCU", BASE, "Settings › Camera access"),
+        ("HKCU", nonpackaged.as_str(), "Settings › Let desktop apps access your camera"),
+    ] {
+        if denied(hive, key) {
+            crate::diag_log("hands", &format!("camera denied by {what} ({hive})"));
+            return "denied".into();
+        }
     }
+    "authorized".into()
 }
 
 /// Whether the camera is allowed right now (never prompts).

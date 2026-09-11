@@ -1565,6 +1565,17 @@ jobs:
             $t = @(Get-Process Terse -ErrorAction SilentlyContinue)
             [pscustomobject]@{ N = $w.Count; MB = ((($w + $t) | Measure-Object WorkingSet64 -Sum).Sum / 1MB); CPU = (($w + $t) | Measure-Object CPU -Sum).Sum }
           }
+          # The runner ships with camera access set to Deny, so autostart refused
+          # correctly and nothing was tested — the first run of this step said
+          # exactly that. This VM is discarded after the job: allow it here, for
+          # this test only, and print what it was before.
+          $base = "Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam"
+          foreach ($k in @("HKLM:\$base", "HKCU:\$base", "HKCU:\$base\NonPackaged")) {
+            $before = (Get-ItemProperty -Path $k -Name Value -ErrorAction SilentlyContinue).Value
+            if (-not (Test-Path $k)) { New-Item -Path $k -Force | Out-Null }
+            Set-ItemProperty -Path $k -Name Value -Value "Allow"
+            Write-Host ("camera consent {0}: {1} -> Allow" -f $k, $(if ($before) { $before } else { "(unset)" }))
+          }
           Remove-Item $log -ErrorAction SilentlyContinue
           Relaunch "false" 40
           $off = Cost

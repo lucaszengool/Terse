@@ -202,5 +202,24 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
   }
 }
 
+// The raw hand-frame target list must be the same on both backends.
+//
+// macOS changed it — five windows down to two, when gesture computation moved
+// into the desk overlay — while the Windows port was being written against the
+// old list. Nothing failed. The wallpaper would simply have kept being woken 30
+// times a second for frames it had stopped reading. (Only checked where both
+// files exist: the macOS hands.rs is not committed yet.)
+{
+  const list = (p) => {
+    const f = resolve(DIR, p);
+    if (!existsSync(f)) return null;
+    const m = readFileSync(f, 'utf8').match(/const HAND_WINDOWS:\s*\[&str;\s*\d+\]\s*=\s*\[([^\]]*)\]/);
+    return m ? (m[1].match(/"([^"]+)"/g) || []).map((s) => s.slice(1, -1)).sort().join(',') : null;
+  };
+  const mac = list('../../src-tauri/src/hands.rs');
+  const win = list('../../windows-app/src-tauri/src/hands.rs');
+  if (mac && win) ok(`HAND_WINDOWS matches macOS (macOS: ${mac} | Windows: ${win})`, mac === win);
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

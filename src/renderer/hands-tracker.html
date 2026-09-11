@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<!--
+  hands-tracker.html — the Windows half of 手势控制 (Pro).
+
+  On macOS the camera is read by terse-hands (Swift + Apple Vision), a child
+  process that writes one JSON line per frame to stdout; hands.rs forwards each
+  line verbatim as `hand-frame`. Windows has no Vision framework, so this page
+  does the same job with MediaPipe's hand landmarker, in its own small webview
+  that only exists while gestures are switched on.
+
+  It is written to be a drop-in replacement for that stdout, not an
+  approximation of it: every line it sends is byte-for-byte the shape
+  terse-hands emits, so gesture-core.js and everything built on it runs
+  unchanged. The joint order was already MediaPipe's — terse-hands says so in
+  its own header — which is what makes that possible.
+
+  Lines, exactly as terse-hands writes them:
+    {"t":epochMs,"ms":inferMs,"h":[{"c":"l|r|u","s":score,"p":[x,y,c ×21]}]}
+    {"status":"starting|loaded|running|denied|no-camera|timeout|error", ...}
+    {"fps":..,"ms":..}                                      every 2 seconds
+  Coordinates 0..1, top-left origin, MIRRORED (move your hand to your right and
+  x grows, like a mirror).
+
+  Pacing is copied from terse-hands, number for number, because the user asked
+  for the same speed, smoothness and CPU cost as the Mac:
+    · every camera frame while a hand is in view (the camera caps it at 30);
+    · no hand for 3 s → look at one frame in three (~10/s), so a hand coming
+      back is picked up within ~100 ms while an empty desk costs almost nothing;
+    · an empty frame is sent once when the hand leaves, then as a 200 ms
+      heartbeat — not 30 times a second to say "still nothing".
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Terse Hands</title>
+<style>
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  /* Kept in layout and barely visible rather than display:none — a video that
+     is never composited may not fire requestVideoFrameCallback at all, which
+     would stall tracking without an error to show for it. */
+  video { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: .01; pointer-events: none; }
+</style>
+</head>
+<body>
+<video id="v" playsinline muted></video>
+<script type="module">
+  // The conversion itself lives in hands-frame.js so the exact code that runs
+  // here is unit-tested (hands-frame.test.mjs) rather than trusted.
+  import { handsJson, frameLine } from './hands-frame.js';
+
+  const core = window.__TAURI__ && window.__TAURI__.core;
+  // Fire-and-forget, never awaited: this is a stream, and on Windows an awaited
+  // invoke from a background window can hang with no reply ever coming back.
+  const send = (line) => { try { core && core.invoke('hands_line', { line }).catch(() => {}); } catch (e) {} };
+  const status = (o) => send(JSON.stringify(o));
+
+  const IDLE_AFTER_MS = 3000;      // terse-hands: 3 s without a hand
+  const IDLE_EVERY = 3;            //              → one frame in three
+  const EMPTY_HEARTBEAT_MS = 200;  //              → empty frames at most every 200 ms
+  const STAT_EVERY_MS = 2000;      //              → {"fps","ms"} every 2 s
+
+  // Never let inference take more than half of one core.
+  //
+  // This is the one pacing rule terse-hands does not need, because Apple
+  // Vision runs on the Neural Engine and a frame costs next to nothing. Here it
+  // depends on the delegate: on the GPU a frame is ~10 ms and this cap never
+  // engages. But the CPU fallback — remote desktop, VMs, blocklisted drivers —
+  // measured 140 ms a frame, and processing every camera frame at that cost
+  // pins a whole core for as long as a hand is in view. So the gap between
+  // processed frames stretches to keep the duty cycle at BUDGET: a CPU-only
+  // machine gets fewer updates (gesture-core's filter smooths between them)
+  // instead of a fan spinning up. The effective rate goes into the stats line
+  // so the trade is visible rather than silent.
+  const BUDGET = 0.5;
+
+  // Assembled at runtime on purpose. renderer-deps.test.mjs fails the build for
+  // any literal import that is not in git, and these files are deliberately
+  // not in git — CI fetches them, pinned by hash, for the Windows build only
+  // (windows-app/fetch-mediapipe.mjs). A literal path here would fail every
+  // macOS checkout for a file macOS never needs.
+  const BASE = ['.', 'vendor', 'mediapipe', ''].join('/');
+
+  const video = document.getElementById('v');
+  let stopped = false, lm = null, stream = null;
+
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) =>
+    setTimeout(() => rej(Object.assign(new Error('camera did not answer'), { name: 'Timeout' })), ms))]);
+
+  function stop() {
+    stopped = true;
+    try { stream && stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+    try { lm && lm.close(); } catch (e) {}
+  }
+  window.addEventListener('pagehide', stop);
+
+  async function start() {
+    status({ status: 'starting' });
+    const t0 = performance.now();
+
+    let vision;
+    try { vision = await import(BASE + 'vision_bundle.mjs'); }
+    catch (e) { status({ status: 'error', detail: 'mediapipe is not bundled in this build: ' + (e && e.message || e) }); return; }
+
+    const opts = (delegate) => ({
+      baseOptions: { modelAssetPath: BASE + 'hand_landmarker.task', delegate },
+      runningMode: 'VIDEO',        // tracking mode: skips palm detection while a hand is held
+      numHands: 2,                 // terse-hands: maximumHandCount = 2 (two-hand zoom needs both)
+      minHandDetectionConfidence: 0.5,
+      minHandPresenceConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+    let delegate = 'GPU';
+    try {
+      const files = await vision.FilesetResolver.forVisionTasks(BASE + 'wasm');
+      try { lm = await vision.HandLandmarker.createFromOptions(files, opts('GPU')); }
+      catch (e) {
+        // No usable WebGL (remote desktop, some VMs, blocklisted drivers). The
+        // SIMD CPU path is slower but still well inside a 33 ms frame.
+        delegate = 'CPU';
+        lm = await vision.HandLandmarker.createFromOptions(files, opts('CPU'));
+      }
+    } catch (e) { status({ status: 'error', detail: 'hand model failed to load: ' + (e && e.message || e) }); return; }
+    status({ status: 'loaded', delegate, loadMs: Math.round(performance.now() - t0), hidden: document.hidden });
+    if (stopped) return;
+
+    try {
+      stream = await withTimeout(navigator.mediaDevices.getUserMedia({
+        audio: false,
+        // terse-hands captures at 640×480: tracking gains nothing from more, and
+        // it halves the work per frame.
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 }, facingMode: 'user' },
+      }), 15000);
+    } catch (e) {
+      const n = e && e.name;
+      status({
+        status: n === 'NotAllowedError' || n === 'SecurityError' ? 'denied'
+              : n === 'NotFoundError' || n === 'OverconstrainedError' ? 'no-camera'
+              : n === 'Timeout' ? 'timeout' : 'error',
+        detail: String(e && e.message || e),
+      });
+      return;
+    }
+    if (stopped) { stop(); return; }
+    const track = stream.getVideoTracks()[0];
+    if (track) track.onended = () => { if (!stopped) status({ status: 'error', detail: 'camera disconnected' }); };
+    video.srcObject = stream;
+    try { await video.play(); } catch (e) {}
+    status({ status: 'running', w: video.videoWidth, h: video.videoHeight, mode: useRVFC ? 'rvfc' : 'timer' });
+    schedule();
+  }
+
+  // ── Pacing ──────────────────────────────────────────────────────────────
+  // requestVideoFrameCallback fires once per NEW camera frame — the same
+  // contract as AVCapture's delegate, so a frame is never processed twice.
+  // If it ever stops firing (a compositor that decides this tiny window is not
+  // worth painting), a timer that watches currentTime takes over, and says so.
+  let useRVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+  let lastCallbackAt = performance.now(), lastVT = -1;
+  function schedule() {
+    if (stopped) return;
+    if (useRVFC) video.requestVideoFrameCallback((now) => onFrame(now));
+    else setTimeout(() => {
+      if (video.currentTime !== lastVT) { lastVT = video.currentTime; onFrame(performance.now()); }
+      else schedule();
+    }, 8);
+  }
+  setInterval(() => {
+    if (!stopped && useRVFC && stream && performance.now() - lastCallbackAt > 1500) {
+      useRVFC = false;
+      status({ status: 'running', mode: 'timer', why: 'requestVideoFrameCallback stopped firing' });
+      schedule();
+    }
+  }, 1000);
+
+  let lastHand = -Infinity, skip = 0, hadHands = false, lastEmptyEmit = -Infinity, lastTs = -1;
+  let frames = 0, busy = 0, lastStat = performance.now();
+  let costEma = 0, lastRun = -Infinity;   // inference cost, for the BUDGET cap
+
+  function onFrame(now) {
+    if (stopped) return;
+    lastCallbackAt = now;
+    if (now - lastHand > IDLE_AFTER_MS) {
+      skip += 1;
+      if (skip % IDLE_EVERY !== 0) { schedule(); return; }
+    }
+    // Duty-cycle cap: at cost c per frame, frames at least c / BUDGET apart.
+    if (costEma && now - lastRun < costEma / BUDGET) { schedule(); return; }
+    lastRun = now;
+    // detectForVideo rejects a timestamp that does not strictly increase.
+    const ts = Math.max(lastTs + 1, Math.round(now)); lastTs = ts;
+    const t0 = performance.now();
+    let res;
+    try { res = lm.detectForVideo(video, ts); } catch (e) { schedule(); return; }
+    const ms = performance.now() - t0;
+    costEma = costEma ? costEma * 0.8 + ms * 0.2 : ms;
+
+    const hands = handsJson(res);
+
+    frames += 1; busy += ms;
+    if (hands.length || hadHands || now - lastEmptyEmit > EMPTY_HEARTBEAT_MS) {
+      send(frameLine(hands, ms, Date.now()));
+      if (!hands.length) lastEmptyEmit = now;
+    }
+    hadHands = hands.length > 0;
+    if (hadHands) lastHand = now;
+    if (now - lastStat >= STAT_EVERY_MS) {
+      const dt = (now - lastStat) / 1000;
+      send(`{"fps":${(frames / dt).toFixed(1)},"ms":${(frames ? busy / frames : 0).toFixed(1)}}`);
+      frames = 0; busy = 0; lastStat = now;
+    }
+    schedule();
+  }
+
+  start();
+</script>
+</body>
+</html>

@@ -88,10 +88,19 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
   const MAC_ONLY = new Map([
     ['ax-status', 'macOS Accessibility authorisation; Windows has no equivalent state'],
   ]);
+  // Not platform-bound — just not ported yet, and part of a family the command
+  // guard below already defers (pm_*, still changing on macOS). Same reason,
+  // same rule: the moment Windows emits one, its entry FAILS and has to go.
+  const EVENT_GAPS = new Map([
+    ['pm-target', 'pm_* is new on macOS and still in flux'],
+  ]);
   if (mac.size && win.size) {
     for (const e of [...mac].sort()) {
-      if (MAC_ONLY.has(e)) continue;
+      if (MAC_ONLY.has(e) || EVENT_GAPS.has(e)) continue;
       ok(`event "${e}" is emitted on Windows too, not just macOS`, win.has(e));
+    }
+    for (const [e, why] of EVENT_GAPS) {
+      ok(`EVENT_GAPS entry "${e}" (${why}) is still actually missing on Windows`, !win.has(e));
     }
   }
 }
@@ -152,6 +161,43 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     // A gap that has been closed must leave the list, or it rots into a lie.
     for (const [c, why] of KNOWN_GAPS) {
       ok(`KNOWN_GAPS entry "${c}" (${why}) is still actually missing`, !win.has(c));
+    }
+  }
+}
+
+// A window that is BUILT but not listed in its backend's capability file.
+//
+// Tauri only checks capabilities for app commands when the app ships an ACL
+// manifest, and neither app does — so such a window's clicks still reach Rust
+// and it looks fine. But every PLUGIN call is refused, events included. The
+// round 3D button shipped to Windows exactly like that: its click worked, its
+// listen('wallpaper-adjust') was silently refused, and so its light could never
+// go out when Esc, the watchdog or a lapsed licence ended the mode — the "lit
+// button, finished mode" state its own comment calls worse than no button.
+{
+  const built = (dir) => {
+    const d = resolve(DIR, dir);
+    if (!existsSync(d)) return [];
+    const out = new Set();
+    for (const f of readdirSync(d).filter((n) => n.endsWith('.rs'))) {
+      const src = readFileSync(join(d, f), 'utf8');
+      for (const m of src.matchAll(/WebviewWindowBuilder::new\(\s*&?[a-z_]+,\s*"([a-z0-9_-]+)"/g)) out.add(m[1]);
+    }
+    return [...out];
+  };
+  const listed = (file) => {
+    const f = resolve(DIR, file);
+    try { return JSON.parse(readFileSync(f, 'utf8')).windows || null; } catch (e) { return null; }
+  };
+  const covers = (label, pats) => pats.some((p) => p === label || (p.endsWith('*') && label.startsWith(p.slice(0, -1))));
+  for (const [name, dir, cap] of [
+    ['macOS', '../../src-tauri/src', '../../src-tauri/capabilities/default.json'],
+    ['Windows', '../../windows-app/src-tauri/src', '../../windows-app/src-tauri/capabilities/default.json'],
+  ]) {
+    const pats = listed(cap);
+    if (!pats) continue;
+    for (const label of built(dir).sort()) {
+      ok(`${name} builds window "${label}", which must be in its capabilities or its events are refused`, covers(label, pats));
     }
   }
 }

@@ -26,6 +26,13 @@ jobs:
       - name: Every renderer import must exist in the checkout
         run: node src/renderer/renderer-deps.test.mjs
 
+      # The Windows gesture tracker must emit the exact line terse-hands emits —
+      # gesture-core.js and everything on it was written against that stdout, and
+      # a drift fails silently: the cursor lands on the wrong side, or the wrong
+      # hand is named. Pure Node, no camera, seconds.
+      - name: Gesture frames match the terse-hands format
+        run: node src/renderer/hands-frame.test.mjs
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -64,6 +71,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      # MediaPipe for the gesture tracker (hands-tracker.html). Fetched here,
+      # pinned by SHA-256, and never committed: ~20 MB that only the Windows
+      # build needs, while src/renderer is the macOS frontend too. It has to be
+      # in place BEFORE the build, because Tauri embeds the frontend into the
+      # exe at compile time. And it must fail loudly when it cannot fetch: a
+      # tracker whose model is missing loads fine and then reports an error in
+      # a window nobody can see.
+      - name: Fetch MediaPipe for the gesture tracker
+        run: |
+          node windows-app/fetch-mediapipe.mjs
+          foreach ($f in @("vision_bundle.mjs", "wasm/vision_wasm_internal.js", "wasm/vision_wasm_internal.wasm", "hand_landmarker.task")) {
+            $p = "src/renderer/vendor/mediapipe/$f"
+            if (-not (Test-Path $p)) { throw "missing $p after fetch" }
+            Write-Host ("{0,-34} {1,10:N0} bytes" -f $f, (Get-Item $p).Length)
+          }
 
       - name: Convert icon to .ico
         run: |
@@ -1511,6 +1534,64 @@ jobs:
             Write-Warning "VERDICT: still hot without the wallpaper - this is NOT the wallpaper and would burn on real hardware too"
           }
 
+
+      # 手势控制 on Windows, as far as a runner can take it. There is no camera
+      # here, so this cannot prove tracking. It proves the part that is
+      # otherwise invisible: that the tracker window comes up inside real
+      # WebView2, gets ~20 MB of MediaPipe out of the exe and a hand model
+      # running — "loaded", with the delegate it chose — before the camera even
+      # matters. A tracker whose model never loads reports it into a 1-pixel
+      # window nobody is looking at; this is where somebody looks.
+      #
+      # It also measures what switching gestures ON costs, since the ask was the
+      # same CPU cost as the Mac. Both launches share every other setting, so the
+      # difference is the tracker and nothing else.
+      - name: Prove the gesture tracker loads MediaPipe inside WebView2
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $log = Join-Path $dir "hands.log"
+          $cfg = Join-Path $dir "gesture.json"
+          function Relaunch($on, $wait) {
+            Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep -Seconds 3
+            "{`"enabled`":$on}" | Set-Content $cfg -Encoding ascii
+            Start-Process -FilePath "$env:TERSE_EXE"
+            Start-Sleep -Seconds $wait
+          }
+          function Cost() {
+            $w = @(Get-Process msedgewebview2 -ErrorAction SilentlyContinue)
+            $t = @(Get-Process Terse -ErrorAction SilentlyContinue)
+            [pscustomobject]@{ N = $w.Count; MB = ((($w + $t) | Measure-Object WorkingSet64 -Sum).Sum / 1MB); CPU = (($w + $t) | Measure-Object CPU -Sum).Sum }
+          }
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Relaunch "false" 40
+          $off = Cost
+          Relaunch "true" 60
+          $on = Cost
+          Write-Host ("gestures OFF: {0} WebView2 proc, {1:N0} MB | ON: {2} proc, {3:N0} MB | the tracker costs {4} proc, {5:N0} MB" -f $off.N, $off.MB, $on.N, $on.MB, ($on.N - $off.N), ($on.MB - $off.MB))
+          if (Test-Path $log) {
+            Write-Host "--- hands.log ---"
+            Get-Content $log | ForEach-Object { Write-Host "  $_" }
+          } else { Write-Warning "no hands.log — the tracker never reported anything" }
+          $txt = if (Test-Path $log) { Get-Content $log -Raw } else { "" }
+          if ($txt -match '"status":"loaded"') {
+            $d = if ($txt -match '"delegate":"(\w+)"') { $Matches[1] } else { "?" }
+            Write-Host "GESTURE TRACKER OK: MediaPipe and the hand model loaded inside WebView2 (delegate $d)"
+          } elseif ($txt -match 'not bundled') {
+            Write-Warning "GESTURE TRACKER FAIL: MediaPipe was not embedded in the exe"
+          } elseif ($txt -match 'model failed') {
+            Write-Warning "GESTURE TRACKER FAIL: the hand model did not load"
+          } elseif ($txt -match 'autostart: camera denied') {
+            Write-Warning "GESTURE TRACKER INCONCLUSIVE: the runner's camera privacy setting is Deny, so it never started"
+          } else {
+            Write-Warning "GESTURE TRACKER INCONCLUSIVE: no load report"
+          }
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if (Test-Path $log) { Copy-Item $log artifacts/hands.log }
+          Relaunch "false" 5
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Upload the evidence
         continue-on-error: true

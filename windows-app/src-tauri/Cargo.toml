@@ -34,6 +34,11 @@ window-vibrancy = "0.6"
 # compiles SQLite from source rather than trusting the host to have it — the CI
 # runner already builds C for tree-sitter, so the toolchain is there either way.
 rusqlite = { version = "0.32", features = ["bundled"] }
+# The gesture tracker's webview must answer its own camera permission request:
+# wry only answers clipboard-read, and an unanswered request shows WebView2's
+# prompt inside a 1-pixel window nobody can see. Pinned to the SAME 0.38 as wry
+# so the ICoreWebView2 types Tauri hands back unify with ours.
+webview2-com = "0.38"
 
 windows = { version = "0.58", features = [
     "Win32_Foundation",

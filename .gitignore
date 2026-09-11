@@ -36,3 +36,8 @@ windows-app/helpers/terse-uia/publish/
 # free permanent licence for anyone who reads the file. Generate with
 # `node api/mint-gift-codes.js`, hand out privately, and import on the server.
 docs/gift-codes-*.txt
+
+# MediaPipe for the Windows gesture tracker. Fetched and hash-pinned at build
+# time by windows-app/fetch-mediapipe.mjs; never committed (~20 MB, and
+# src/renderer is the frontend of the macOS build too).
+src/renderer/vendor/mediapipe/

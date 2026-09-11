@@ -4,6 +4,7 @@
 
 mod capture;
 mod agent_monitor;
+mod hands;
 mod messages;
 mod permission;
 mod phone;
@@ -2706,6 +2707,48 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .build()?,
             16.0,
         ),
+        // The gesture tracker: MediaPipe in a 1-pixel webview, built when gestures
+        // are switched on and destroyed when they are switched off.
+        //
+        // It has to stay VISIBLE. A hidden webview is marked hidden and Chromium
+        // stops delivering video frames to it — tracking would fall to nothing
+        // with no error anywhere. So rather than hidden it is made invisible: one
+        // pixel, transparent, click-through, never focused, out of Alt-Tab, and
+        // pinned on top so no other window can occlude it into that same state.
+        "hands" => {
+            let w = WebviewWindowBuilder::new(app, "hands", WebviewUrl::App("hands-tracker.html".into()))
+                .title("Terse Hands")
+                .inner_size(1.0, 1.0)
+                .position(0.0, 0.0)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .visible(false)
+                .build()?;
+            if let Ok(raw) = w.hwnd() {
+                use windows::Win32::Foundation::HWND;
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
+                    WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
+                };
+                unsafe {
+                    let hwnd = HWND(raw.0);
+                    let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+                    // Not WS_EX_LAYERED — see set_wallpaper_click_through.
+                    let add = (WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0 | WS_EX_TOOLWINDOW.0) as isize;
+                    SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | add);
+                }
+            }
+            // Before the page can ask: it loads ~20 MB of model and wasm first,
+            // so this is registered long before getUserMedia runs.
+            crate::hands::allow_camera(&w);
+            diag_log("lazy-window", "built 'hands' on demand");
+            return Ok(());
+        }
         // The round 3D button, built the first time 3D is switched on.
         //
         // It sits just right of the dynamic island, because that is already where
@@ -4357,6 +4400,11 @@ pub fn run() {
             // an up-to-date token-saving digest without the user lifting a finger.
             start_graph_autobuild(app.handle().clone());
 
+            // 手势控制: if the switch was left on (still Pro, camera allowed), start
+            // the tracker. Off a thread, because the tracker window is built on
+            // the main thread and setup IS the main thread.
+            { let h = app.handle().clone(); std::thread::spawn(move || hands::autostart(h)); }
+
             // The localhost route Claude Code's hook posts to. One thread per
             // request because each can block for up to WAIT — two agents can
             // prompt at the same moment.
@@ -4516,6 +4564,15 @@ pub fn run() {
             notifications::toast_hide,
             notifications::take_pending_toasts,
             wallpaper_set_3d_mode,
+            hands::hands_start,
+            hands::hands_stop,
+            hands::hands_status,
+            hands::hands_camera_status,
+            hands::hands_camera_request,
+            hands::hands_open_camera_settings,
+            hands::hands_get_enabled,
+            hands::hands_set_enabled,
+            hands::hands_line,
             project_list,
             project_candidates,
             project_add,

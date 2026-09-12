@@ -1537,6 +1537,18 @@ app.get(['/m', '/m/*'], (req, res) => {
 // Registered BEFORE the static mount on purpose: `extensions: ['html']` makes
 // express.static answer /m with m.html directly, so a handler after it never
 // runs and the shell goes out unstamped.
+/* A content-stamped landing asset (…?v=<hash>, written by
+   scripts/stamp-landing-assets.mjs) is immutable by construction: the hash
+   changes whenever the bytes do. express.static's default 5-minute TTL meant a
+   returning visitor re-requested terse-cosmos.js and terse-glass.css every time
+   the five minutes had passed. Same rule /app-assets already uses below; an
+   unversioned file keeps the short TTL, because such a URL can change in place. */
+const landingImmutable = express.static(path.join(__dirname, '..', 'landing'), { maxAge: '365d', immutable: true });
+app.use((req, res, next) => {
+  if (req.method === 'GET' && req.query.v && /\.(?:js|css)$/.test(req.path)) return landingImmutable(req, res, next);
+  next();
+});
+
 app.use(express.static(path.join(__dirname, '..', 'landing'), { extensions: ['html'] }));
 
 // /teams/:id → serve the dashboard page (loads team via API client-side)

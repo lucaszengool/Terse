@@ -787,3 +787,62 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
 })();
+
+/* ── Off-screen motion is not free ─────────────────────────────────────────
+   The landing page runs ~26 infinite CSS animations — the pets, the trust
+   marquee, the CTA and wallpaper pulses. Measured on the live page: on first
+   load EVERY one of them is off-screen, and the browser still ticks each of
+   them every frame for as long as the tab is open. One (wpPulse) animates
+   box-shadow, which is a main-thread repaint per frame. That is steady load on
+   a machine that is also drawing the particle stage — on a laptop, the kind
+   that heats it until it throttles, which reads as "slower the longer it's open".
+
+   Nobody can see an animation that is off-screen, so it is paused there and
+   resumed just before it scrolls into view (200px early). On screen nothing
+   changes. It works on the animations themselves (getAnimations), which covers
+   pseudo-elements and anything the demo scenes start later — a light rescan
+   every 4s picks those up, and drops cancelled ones so nothing accumulates. */
+(function () {
+  'use strict';
+  if (!document.getAnimations || !window.IntersectionObserver || typeof Map === 'undefined') return;
+  var byEl = new Map(), onScreen = new Map(), known = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+  if (!known) return;
+  function apply(a, on) { try { if (on) { if (a.playState === 'paused') a.play(); } else if (a.playState === 'running') a.pause(); } catch (e) { /* a finished or detached animation */ } }
+  var io = new IntersectionObserver(function (entries) {
+    for (var i = 0; i < entries.length; i++) {
+      var el = entries[i].target, on = entries[i].isIntersecting, list = byEl.get(el);
+      onScreen.set(el, on);
+      if (list) for (var j = 0; j < list.length; j++) apply(list[j], on);
+    }
+  }, { rootMargin: '200px 0px' });
+  function scan() {
+    var anims = document.getAnimations();
+    for (var i = 0; i < anims.length; i++) {
+      var a = anims[i];
+      if (known.has(a)) continue;
+      var t = a.effect && a.effect.getTiming ? a.effect.getTiming() : null;
+      var el = a.effect && a.effect.target;
+      if (!t || t.iterations !== Infinity || !el || el.nodeType !== 1) continue;
+      known.add(a);
+      var list = byEl.get(el);
+      if (!list) { byEl.set(el, list = []); io.observe(el); }
+      list.push(a);
+      if (onScreen.has(el)) apply(a, onScreen.get(el));
+    }
+    /* Also decide from geometry on every rescan, not only from the observer.
+       IntersectionObserver delivers with rendering updates, so a late or
+       missed callback would leave an off-screen animation running for good;
+       a rect check on ~26 elements every 4s costs nothing and guarantees the
+       state converges. The observer still gives the instant response on scroll. */
+    var H = window.innerHeight || 0;
+    byEl.forEach(function (list, el) {
+      for (var k = list.length - 1; k >= 0; k--) if (list[k].playState === 'idle') list.splice(k, 1);
+      if (!list.length || !el.isConnected) { byEl.delete(el); onScreen.delete(el); io.unobserve(el); return; }
+      var r = el.getBoundingClientRect(), on = r.width > 0 && r.bottom > -200 && r.top < H + 200;
+      onScreen.set(el, on);
+      for (var q = 0; q < list.length; q++) apply(list[q], on);
+    });
+  }
+  function start() { scan(); setInterval(scan, 4000); }
+  if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
+})();

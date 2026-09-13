@@ -123,6 +123,10 @@
     'uniform float uTime, uBass, uMid, uTreble, uBeat, uEnergy, uBurstAmt;',
     'uniform float uPixel, uPointScale, uBloomSize, uMaxPt, uColorBoost, uHasCover;',
     'uniform sampler2D uCoverTex;',
+    /* the film's hand (mineradio-shaders.ts): open palm pushes a hole, a fist winds
+       the field into a vortex, a pinch is a black hole at the fingertip. All zero = off. */
+    'uniform vec2 uHandXY;',
+    'uniform float uHandActive, uHandRad, uVortexK, uVortexAng, uHole;',
     'varying vec3 vColor;',
     'varying float vBright, vRipple, vEdgeBoost, vAlpha, vSourceLum;',
     '#define PI 3.14159265359',
@@ -197,6 +201,33 @@
     '    pos.z += (hash11(aRand * 123.0) - 0.5) * bloom * 0.18;',
     '    vAlpha *= 0.86 + bloom * 0.22;',
     '    maxRippleAmp = max(maxRippleAmp, bloom * 0.10);',
+    '  }',
+    /* mineradio-shaders.ts 562-596, verbatim */
+    '  if (uHandActive > 0.01) {',
+    '    float hdx = pos.x - uHandXY.x, hdy = pos.y - uHandXY.y;',
+    '    float hd = sqrt(hdx * hdx + hdy * hdy);',
+    '    float hr = max(1.0, uHandRad), rad = 1.55 * hr;',
+    '    if (hd < rad) {',
+    '      float push = (rad - hd) / rad; push = push * push * uHandActive;',
+    '      pos.z += push * 1.10 * hr;',
+    '      pos.xy += vec2(hdx, hdy) / max(0.001, hd) * push * 0.28 * (hr > 1.0 ? hr * 1.7 : 1.0);',
+    '    }',
+    '  }',
+    '  if (uVortexK > 0.001 || uHole > 0.001) {',
+    '    vec2 dv = pos.xy - uHandXY; float dd = length(dv), vr = max(1.0, uHandRad);',
+    '    if (uVortexK > 0.001) {',
+    '      float ang = uVortexAng * (0.35 + 2.2 / (1.0 + dd / (2.2 * vr))) * uVortexK;',
+    '      float cs = cos(ang), sn = sin(ang);',
+    '      vec2 rv = mat2(cs, -sn, sn, cs) * dv;',
+    '      rv *= mix(1.0, 0.62 + 0.38 * smoothstep(0.0, 6.0 * vr, dd), uVortexK);',
+    '      pos.xy = uHandXY + rv;',
+    '      pos.z += uVortexK * 1.4 * vr * exp(-dd / (3.0 * vr));',
+    '    }',
+    '    if (uHole > 0.001) {',
+    '      float pull = uHole * exp(-dd / (4.0 * vr));',
+    '      pos.xy = mix(pos.xy, uHandXY + (dv / max(dd, 1e-4)) * 0.2 * vr, pull);',
+    '      pos.z += pull * 2.0 * vr;',
+    '    }',
     '  }',
     /* common tail — colour, brightness, size */
     '  vSourceLum = dot(max(vColor, vec3(0.0)), vec3(0.299, 0.587, 0.114));',
@@ -312,6 +343,231 @@
     '  gl_FragColor = vec4(vColor, a * vA * uAlpha);',
     '}'
   ].join('\n');
+
+  /* ── the console (remotion-flash S20_AgentConsole.tsx) ──────────────────
+     The film computes every console particle on the CPU, per frame, as a pure
+     function of the frame number. Same model here, but on the GPU: each line is
+     rasterised ONCE into static attributes, and this shader runs the film's
+     entry / exit / hand math from a single frame uniform. Nothing per frame on
+     the CPU but a handful of uniforms.
+       a0 = panel x, panel y, alpha, dark-halo flag
+       a1 = rnd, rnd2, reading order (stream: arc), line alpha
+       a2 = born, die, entry + 8 * exit, sweep (stream: speed)
+       a3 = from.xy (flow / stream start), to.xy (absorb / stream end)
+     entry: 0 fade, 1 flow, 2 rain, 3 assemble, 7 stream · exit: 0 none, 1 dust, 2 absorb, 3 shatter */
+  var CON_VS = [
+    'precision highp float;',
+    'attribute vec4 a0, a1, a2, a3;',
+    'attribute vec3 aCol, aTint;',
+    'uniform mat4 uView, uProj;',
+    'uniform float uF, uPx, uMaxPt, uU, uVis, uRefZ;',
+    'uniform vec2 uWH;',
+    'uniform vec3 uOrigin;',
+    'uniform vec4 uHand;',
+    'uniform vec2 uVortex;',
+    'varying vec3 vC;',
+    'varying float vA;',
+    'float cl(float t){ return clamp(t, 0.0, 1.0); }',
+    'float sm(float t){ float x = cl(t); return x * x * (3.0 - 2.0 * x); }',
+    'void main(){',
+    '  float x = a0.x, y = a0.y, z = 0.0, a = a0.z * a1.w, sz = 1.0, fresh = 0.0, xmix = 0.0, heat = 0.0;',
+    '  float r = a1.x, r2 = a1.y, order = a1.z;',
+    '  float ent = mod(a2.z, 8.0), ex = floor(a2.z / 8.0 + 0.001), sweep = a2.w;',
+    '  float age = uF - a2.x, exK = uF - a2.y;',
+    '  if (age < 0.0 || exK > 64.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vC = vec3(0.0); vA = 0.0; return; }',
+    '  if (ent > 6.5) {',
+    '    float ph = fract(r * 7.31 + uF * sweep / 30.0);',
+    '    vec2 d = a3.zw - a3.xy; vec2 nrm = vec2(-d.y, d.x) / max(length(d), 1.0);',
+    '    vec2 p = a3.xy + d * ph + nrm * sin(ph * 3.14159) * order * (0.6 + 0.8 * r2);',
+    '    x = p.x; y = p.y; a = sin(ph * 3.14159) * sm(age / 12.0) * a1.w; sz = 1.1 + r;',
+    '  } else if (ent > 0.5 && ent < 1.5) {',
+    '    float k = (age - r * 3.6) / 18.0;',
+    '    if (k <= 0.0) a = 0.0;',
+    '    else if (k < 1.0) {',
+    '      float e = 1.0 - pow(1.0 - k, 3.0), ang = r * 43.98;',
+    '      vec2 f = a3.xy + vec2(cos(ang), sin(ang)) * r2 * 6.0, dd = vec2(x, y) - f;',
+    '      float sw = e * (1.0 - e) * (r - 0.5) * 0.7;',
+    '      x = f.x + dd.x * e - dd.y * sw; y = f.y + dd.y * e + dd.x * sw; z += (r2 - 0.5) * 200.0 * (1.0 - e); sz = 1.0 + (1.0 - e) * 1.2;',
+    '    }',
+    '    fresh = (1.0 - sm((k - 0.55) / 0.45)) * 0.7;',
+    '  } else if (ent > 1.5 && ent < 2.5) {',
+    '    float k = (age - order * sweep - r * 3.0) / 16.0;',
+    '    if (k <= 0.0) a = 0.0;',
+    '    else {',
+    '      if (k < 1.0) { float fx = x + (r - 0.5) * 24.0, fy = y - 26.0 - r2 * 26.0, b = 1.0 - pow(2.0, -9.0 * k) * cos(k * 10.0);',
+    '        x = fx + (x - fx) * b; y = fy + (y - fy) * b; sz = 1.0 + (1.0 - k) * 0.8; }',
+    '      a *= sm(k / 0.08); fresh = 1.0 - sm((k - 0.55) / 0.45);',
+    '    }',
+    '  } else if (ent > 2.5 && ent < 3.5) {',
+    '    float k = (age - order * sweep - r * 4.0) / 18.0;',
+    '    if (k <= 0.0) a = 0.0;',
+    '    else {',
+    '      if (k < 1.0) { float e = 1.0 - pow(1.0 - k, 3.0), fx = x + 40.0 + r * 120.0, fy = y + (r2 - 0.5) * 60.0;',
+    '        x = fx + (x - fx) * e; y = fy + (y - fy) * e; sz = 1.0 + (1.0 - e) * 1.1; }',
+    '      a *= sm(k / 0.08); fresh = 1.0 - sm((k - 0.55) / 0.45);',
+    '    }',
+    '  } else a *= cl(age / 8.0);',
+    '  if (exK >= 0.0 && ex > 0.5) {',
+    '    if (ex < 1.5) { float k = exK / 14.0;',
+    '      x += (fract(sin(r * 91.7 + r2 * 13.1) * 43758.5) - 0.3) * 50.0 * k; y -= (20.0 + r * 40.0) * (1.0 - pow(1.0 - cl(k), 3.0)); z += r * 160.0 * k; a *= 1.0 - cl(k); }',
+    '    else if (ex < 2.5) { float k = cl((exK - order * 5.0 - r * 3.0) / 14.0), e = k * k * k;',
+    '      vec2 dd = a3.zw - vec2(x, y); float bow = sin(e * 3.14159) * (r - 0.5) * 0.25;',
+    '      x += dd.x * e - dd.y * bow; y += dd.y * e + dd.x * bow; xmix = k; sz *= 1.0 + sin(k * 3.14159) * 0.8; a *= 1.0 - sm((k - 0.82) / 0.18); }',
+    '    else { float t = max(0.0, exK - order * 4.0) / 30.0, k = cl((exK - order * 4.0) / 28.0);',
+    '      x += (r - 0.5) * 140.0 * t; y += (-60.0 - r2 * 90.0) * t + 900.0 * t * t; z += (r - 0.5) * 120.0 * t;',
+    '      xmix = min(1.0, k * 3.0); sz *= 1.0 + min(1.0, k * 4.0) * 0.5; a *= 1.0 - sm((k - 0.35) / 0.65); }',
+    '  }',
+    /* the hand, in panel pixels — S20 lines 488-512 */
+    '  if (uHand.z > 0.01 || uHand.w > 0.01 || uVortex.x > 0.01) {',
+    '    vec2 dv = vec2(x, y) - uHand.xy; float d = length(dv) + 1e-3;',
+    '    if (uHand.z > 0.01 && d < 130.0) { float k = 1.0 - d / 130.0, kk = k * k * uHand.z;',
+    '      x += dv.x / d * kk * 117.0; y += dv.y / d * kk * 117.0; z += kk * 180.0; sz *= 1.0 + kk * 0.5; }',
+    '    if (uVortex.x > 0.01) { float ang = uVortex.y * (0.3 + 2.4 / (1.0 + d / 160.0)) * uVortex.x, cs = cos(ang), sn = sin(ang);',
+    '      float s2 = 1.0 + (0.6 + 0.4 * min(1.0, d / 700.0) - 1.0) * uVortex.x;',
+    '      vec2 rv = mat2(cs, sn, -sn, cs) * dv * s2;',
+    '      x = uHand.x + rv.x; y = uHand.y + rv.y; z += uVortex.x * 160.0 * exp(-d / 300.0); heat = max(heat, uVortex.x * exp(-d / 320.0)); }',
+    '    if (uHand.w > 0.01) { float pull = uHand.w * exp(-d / 260.0);',
+    '      x += (uHand.x - x) * pull; y += (uHand.y - y) * pull; z += pull * 120.0; heat = max(heat, pull); }',
+    '  }',
+    '  x += sin(uF * 0.23 + r * 40.0) * 0.2; y += cos(uF * 0.19 + r2 * 23.0) * 0.2;',
+    '  vec3 c = aCol;',
+    '  if (a0.w < 0.5) {',
+    '    c = mix(c, aTint, fresh * 0.85);',
+    '    c = mix(c, ex > 2.5 ? vec3(1.0, 0.557, 0.557) : vec3(0.788, 0.941, 0.239), xmix);',
+    '    if (heat > 0.01) c = mix(c, vec3(1.0, 0.66, 0.24), heat * 0.6);',
+    '  }',
+    '  vC = c; vA = a * uVis;',
+    '  vec4 mv = uView * vec4(uOrigin + vec3((x - uWH.x * 0.5) * uU, -(y - uWH.y * 0.5) * uU, z * uU), 1.0);',
+    '  gl_PointSize = min(uMaxPt, max(1.0, (a0.w > 0.5 ? 2.0 : 1.25) * sz * uPx * uRefZ / max(0.5, -mv.z)));',
+    '  gl_Position = uProj * mv;',
+    '  if (vA <= 0.0) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);',
+    '}'
+  ].join('\n');
+  var CON_FS = [
+    'precision highp float;',
+    'varying vec3 vC;',
+    'varying float vA;',
+    'void main(){',
+    '  float a = (1.0 - smoothstep(0.38, 0.5, length(gl_PointCoord - vec2(0.5)))) * vA;',
+    '  if (a < 0.01) discard;',
+    '  gl_FragColor = vec4(vC, a);',
+    '}'
+  ].join('\n');
+
+  /* screen-space sprites — the hand's particle skeleton (hand.tsx Skeleton), in device pixels */
+  var SPR_VS = [
+    'precision highp float;',
+    'attribute vec4 aP;',
+    'attribute vec3 aC;',
+    'uniform vec2 uRes;',
+    'varying vec3 vC;',
+    'varying float vA;',
+    'void main(){',
+    '  vC = aC; vA = aP.w;',
+    '  gl_PointSize = aP.z;',
+    '  gl_Position = vec4(aP.x / uRes.x * 2.0 - 1.0, 1.0 - aP.y / uRes.y * 2.0, 0.0, 1.0);',
+    '}'
+  ].join('\n');
+  var SPR_FS = [
+    'precision highp float;',
+    'uniform sampler2D uDotTex;',
+    'varying vec3 vC;',
+    'varying float vA;',
+    'void main(){',
+    '  vec4 t = texture2D(uDotTex, gl_PointCoord);',
+    '  if (t.a < 0.02) discard;',
+    '  gl_FragColor = vec4(vC, t.a * vA);',
+    '}'
+  ].join('\n');
+
+  /* ── console bake: each line rasterised ONCE (S20 rasterLine, ported) ────
+     Drawn in its true colour with a dark halo (the shadow drawn twice), because
+     the panel is 100% transparent and the field behind it can be any brightness.
+     Bright pixels are one particle each; dark (halo) pixels take every other
+     cell and draw 2x2. Dark INK (on the amber / lime pills) skips the halo path,
+     or its strokes get smeared into a blot. */
+  var C_SANS = "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif";
+  var C_MONO = "'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, 'PingFang SC', monospace";
+  var ENTRY = { fade: 0, flow: 1, rain: 2, assemble: 3, stream: 7 }, EXIT = { dust: 1, absorb: 2, shatter: 3 };
+  function hexRgb(h) { var n = parseInt(h.slice(1, 7), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; }
+  function h2(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  function mkCanvas(w, h) { var c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h); return c; }
+  function fontOf(L, K) { return (L.weight || 600) + ' ' + Math.round((L.px || 13) * K) + 'px ' + (L.mono ? C_MONO : C_SANS); }
+  var PROBE = null;
+  function rasterLine(L, K) {
+    var rgb = hexRgb(L.color), i, x, y;
+    if (L.stream) {
+      var sn = L.stream.n, sgc = new Float32Array(sn * 3);
+      for (i = 0; i < sn; i++) { sgc[i * 3] = rgb[0]; sgc[i * 3 + 1] = rgb[1]; sgc[i * 3 + 2] = rgb[2]; }
+      return { gx: new Float32Array(sn), gy: new Float32Array(sn), ga: new Float32Array(sn), gc: sgc, big: new Uint8Array(sn), n: sn, w: 0 };
+    }
+    var inkDark = !L.rect && 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2] < 0.3, halo = !L.rect && !inkDark;
+    var PAD = halo ? Math.ceil(5 * K) : 2, w, h, tw = 0;
+    if (!PROBE) PROBE = mkCanvas(1, 1).getContext('2d');
+    if (L.rect) { w = Math.ceil(L.rect[0] * K) + PAD * 2; h = Math.ceil(L.rect[1] * K) + PAD * 2; }
+    else { PROBE.font = fontOf(L, K); tw = PROBE.measureText(L.text).width / K; w = Math.ceil(tw * K) + PAD * 2 + 2; h = Math.ceil((L.px || 13) * K * 1.45) + PAD * 2; }
+    var c1 = mkCanvas(w, h), g1 = c1.getContext('2d');
+    g1.fillStyle = L.color; g1.strokeStyle = L.color;
+    if (L.rect) {
+      var x0 = PAD, y0 = PAD, x1 = PAD + L.rect[0] * K, y1 = PAD + L.rect[1] * K, r = Math.min(L.rect[2] * K, (x1 - x0) / 2, (y1 - y0) / 2);
+      g1.beginPath();
+      g1.moveTo(x0 + r, y0); g1.lineTo(x1 - r, y0); g1.quadraticCurveTo(x1, y0, x1, y0 + r);
+      g1.lineTo(x1, y1 - r); g1.quadraticCurveTo(x1, y1, x1 - r, y1);
+      g1.lineTo(x0 + r, y1); g1.quadraticCurveTo(x0, y1, x0, y1 - r);
+      g1.lineTo(x0, y0 + r); g1.quadraticCurveTo(x0, y0, x0 + r, y0);
+      if (L.rect[3]) { g1.lineWidth = 1.2 * K; g1.stroke(); } else g1.fill();
+    } else { g1.font = fontOf(L, K); g1.textBaseline = 'top'; g1.fillText(L.text, PAD, PAD + (L.px || 13) * K * 0.1); }
+    var c = mkCanvas(w, h), g = c.getContext('2d', { willReadFrequently: true });
+    if (halo) {
+      g.shadowColor = 'rgba(0,0,0,0.82)'; g.shadowBlur = 3.5 * K; g.shadowOffsetX = w; g.shadowOffsetY = 0.5 * K;
+      g.drawImage(c1, -w, 0); g.drawImage(c1, -w, 0);
+      g.shadowColor = 'rgba(0,0,0,0)'; g.shadowBlur = 0; g.shadowOffsetX = 0; g.shadowOffsetY = 0;
+    }
+    g.drawImage(c1, 0, 0);
+    var d = g.getImageData(0, 0, w, h).data, n = 0;
+    var dark = function (q) { return !inkDark && d[q] + d[q + 1] + d[q + 2] < 90; };
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      i = (y * w + x) * 4; if (d[i + 3] < 16) continue;
+      if (dark(i)) { if ((x & 1) === 0 && (y & 1) === 0) n++; } else if (d[i + 3] > 30) n++;
+    }
+    var off = L.align === 'right' ? -tw : L.align === 'center' ? -tw / 2 : 0;
+    var o = { gx: new Float32Array(n), gy: new Float32Array(n), ga: new Float32Array(n), gc: new Float32Array(n * 3), big: new Uint8Array(n), n: n, w: L.rect ? L.rect[0] : tw }, k = 0;
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      i = (y * w + x) * 4; if (d[i + 3] < 16) continue;
+      var dk = dark(i);
+      if (dk ? ((x & 1) !== 0 || (y & 1) !== 0) : d[i + 3] <= 30) continue;
+      o.gx[k] = L.x + off + (x + (dk ? 0.5 : 0) - PAD) / K; o.gy[k] = L.y + (y + (dk ? 0.5 : 0) - PAD) / K;
+      o.ga[k] = d[i + 3] / 255;
+      o.gc[k * 3] = d[i] / 255; o.gc[k * 3 + 1] = d[i + 1] / 255; o.gc[k * 3 + 2] = d[i + 2] / 255;
+      o.big[k] = dk ? 1 : 0; k++;
+    }
+    return o;
+  }
+  /* all lines → six static attribute arrays (layout documented at CON_VS) */
+  function packConsole(L, G) {
+    var N = 0, li, i;
+    for (li = 0; li < G.length; li++) N += G[li].n;
+    var A0 = new Float32Array(N * 4), A1 = new Float32Array(N * 4), A2 = new Float32Array(N * 4), A3 = new Float32Array(N * 4);
+    var COL = new Float32Array(N * 3), TIN = new Float32Array(N * 3), p = 0;
+    for (li = 0; li < L.length; li++) {
+      var l = L[li], g = G[li], tn = hexRgb(l.tint || CC.lime), st = l.stream;
+      var lead = l.align === 'right' ? -g.w : l.align === 'center' ? -g.w / 2 : 0;
+      var mode = ENTRY[l.entry] + 8 * (l.exit ? EXIT[l.exit] : 0);
+      var sweep = st ? st.speed : l.sweep !== undefined ? l.sweep : l.entry === 'rain' ? 14 : l.entry === 'assemble' ? 8 : 0;
+      var fr = st ? st.from : l.from || [l.x, l.y], to = st ? st.to : l.to || [l.x, l.y];
+      for (i = 0; i < g.n; i++, p++) {
+        A0[p * 4] = g.gx[i]; A0[p * 4 + 1] = g.gy[i]; A0[p * 4 + 2] = st ? 1 : g.ga[i]; A0[p * 4 + 3] = g.big[i];
+        A1[p * 4] = h2(p * 1.618 + 0.3); A1[p * 4 + 1] = h2(p * 7.31 + 2.1);
+        A1[p * 4 + 2] = st ? st.arc : g.w > 0 ? clamp01((g.gx[i] - l.x - lead) / g.w) : 0;
+        A1[p * 4 + 3] = l.alpha === undefined ? 1 : l.alpha;
+        A2[p * 4] = l.born; A2[p * 4 + 1] = l.die; A2[p * 4 + 2] = mode; A2[p * 4 + 3] = sweep;
+        A3[p * 4] = fr[0]; A3[p * 4 + 1] = fr[1]; A3[p * 4 + 2] = to[0]; A3[p * 4 + 3] = to[1];
+        COL[p * 3] = g.gc[i * 3]; COL[p * 3 + 1] = g.gc[i * 3 + 1]; COL[p * 3 + 2] = g.gc[i * 3 + 2];
+        TIN[p * 3] = tn[0]; TIN[p * 3 + 1] = tn[1]; TIN[p * 3 + 2] = tn[2];
+      }
+    }
+    return { n: N, a0: A0, a1: A1, a2: A2, a3: A3, aCol: COL, aTint: TIN };
+  }
 
   /* ── GL helpers ─────────────────────────────────────────────────────────── */
   /* Compiling and linking are fire-and-forget; ASKING whether they finished is
@@ -459,6 +715,282 @@
     return 0;
   }
 
+  /* ── the hand (remotion-flash src/flash/hand.tsx, ported) ───────────────
+     21 joints by forward kinematics — three bends per finger — so poses blend
+     (open → pinch → fist) without fingers passing through each other. Palm
+     coordinates: wrist at the origin, fingers up (−y), unit = palm length. */
+  var H_FINGERS = [
+    { b: [-0.30, -0.16], a: -58, l: [0.34, 0.30, 0.26] }, { b: [-0.22, -0.92], a: -9, l: [0.46, 0.27, 0.22] },
+    { b: [-0.03, -0.98], a: -1, l: [0.50, 0.30, 0.23] }, { b: [0.16, -0.93], a: 8, l: [0.46, 0.28, 0.22] },
+    { b: [0.33, -0.81], a: 18, l: [0.36, 0.22, 0.19] }
+  ];
+  var H_POSES = {
+    open: [[0, 0.1, 0.1], [0.05, 0.08, 0.05], [0.04, 0.06, 0.04], [0.05, 0.08, 0.05], [0.08, 0.1, 0.06]],
+    relax: [[0.2, 0.2, 0.15], [0.3, 0.4, 0.28], [0.28, 0.38, 0.26], [0.34, 0.44, 0.3], [0.4, 0.5, 0.34]],
+    point: [[0.9, 0.5, 0.3], [0.02, 0.03, 0.02], [1.55, 1.7, 1.2], [1.55, 1.7, 1.2], [1.5, 1.6, 1.1]],
+    fist: [[1.0, 0.6, 0.4], [1.55, 1.7, 1.2], [1.55, 1.7, 1.2], [1.55, 1.7, 1.2], [1.5, 1.6, 1.1]],
+    pinch: [[0, 0, 0], [0.5, 0.6, 0.38], [0.36, 0.46, 0.3], [0.46, 0.56, 0.36], [0.52, 0.62, 0.4]]
+  };
+  function hSolve(pose) {
+    var out = [[0, 0, 0]];
+    for (var fi = 0; fi < 5; fi++) {
+      var F = H_FINGERS[fi], bends = H_POSES[pose][fi], i0 = fi === 0 ? 1 : fi * 4 + 1;
+      var x = F.b[0], y = F.b[1], z = 0, a0 = F.a * Math.PI / 180, acc = 0;
+      out[i0] = [x, y, 0];
+      for (var j = 0; j < 3; j++) {
+        acc += bends[j];
+        if (fi === 0) { var a = a0 + acc * 0.9; x += Math.sin(a) * F.l[j]; y += -Math.cos(a) * F.l[j]; }
+        else { var along = Math.cos(acc) * F.l[j]; x += Math.sin(a0) * along; y += -Math.cos(a0) * along; z += Math.sin(acc) * F.l[j]; }
+        out[i0 + j + 1] = [x, y, z];
+      }
+    }
+    if (pose === 'pinch') {       /* the thumb tip meets the index tip, joints on an outward arc */
+      var c = out[1], tip = out[8], T = [tip[0] - 0.02, tip[1] + 0.03, tip[2]];
+      var nx = -(T[1] - c[1]), ny = T[0] - c[0], nl = Math.sqrt(nx * nx + ny * ny) || 1;
+      var bulge = function (k, b) { return [c[0] + (T[0] - c[0]) * k - nx / nl * b, c[1] + (T[1] - c[1]) * k - ny / nl * b, T[2] * k]; };
+      out[2] = bulge(0.38, 0.12); out[3] = bulge(0.72, 0.08); out[4] = T;
+    }
+    return out;
+  }
+  var H_SOLVED = { open: hSolve('open'), relax: hSolve('relax'), point: hSolve('point'), fist: hSolve('fist'), pinch: hSolve('pinch') };
+  var H_BONES = [0, 1, 1, 2, 2, 3, 3, 4, 0, 5, 5, 6, 6, 7, 7, 8, 5, 9, 9, 10, 10, 11, 11, 12, 9, 13, 13, 14, 14, 15, 15, 16, 13, 17, 17, 18, 18, 19, 19, 20, 0, 17];
+  /* the app's cursor-ring colours: pinch lime, open blue, fist amber, point white */
+  var H_RGB = { pinch: [0.79, 0.94, 0.24], open: [0.50, 0.70, 1.0], fist: [1.0, 0.76, 0.29], point: [0.93, 0.95, 0.98], relax: [0.50, 0.70, 1.0] };
+
+  /* 21 screen points for hand h into out (Float32Array 63): the cursor — the
+     midpoint of thumb tip and index tip — lands exactly on (h.x, h.y). */
+  function handPoints(h, out) {
+    var A = H_SOLVED[h.a], B = H_SOLVED[h.b], t = h.t, i;
+    var cx = (A[4][0] + (B[4][0] - A[4][0]) * t + A[8][0] + (B[8][0] - A[8][0]) * t) / 2;
+    var cy = (A[4][1] + (B[4][1] - A[4][1]) * t + A[8][1] + (B[8][1] - A[8][1]) * t) / 2;
+    var cr = Math.cos(h.roll), sr = Math.sin(h.roll);
+    for (i = 0; i < 21; i++) {
+      var lx = A[i][0] + (B[i][0] - A[i][0]) * t - cx, ly = A[i][1] + (B[i][1] - A[i][1]) * t - cy;
+      out[i * 3] = h.x + (lx * cr - ly * sr) * h.s;
+      out[i * 3 + 1] = h.y + (lx * sr + ly * cr) * h.s;
+      out[i * 3 + 2] = A[i][2] + (B[i][2] - A[i][2]) * t;
+    }
+    return out;
+  }
+
+  /* Key track: each key holds until the next one; a key with mv > 0 is
+     "flung into place" — outExpo over min(gap, 14) frames, then pinned (the
+     film's track.ts feel). The pose blends on the same curve. Writes into h. */
+  function handTrack(keys, f, h) {
+    var k = 0;
+    while (k < keys.length - 1 && f >= keys[k + 1].at) k++;
+    /* A key means "be here AT its frame": hold the previous one, then fling in
+       over the last min(gap, 14) frames — or glide across the whole gap. */
+    var A = keys[k], B = keys[Math.min(keys.length - 1, k + 1)];
+    var gap = Math.max(1, B.at - A.at), dur = Math.min(gap, 14), e;
+    if (B === A) e = 0;
+    else if (B.glide) e = smooth(clamp01((f - A.at) / gap));
+    else e = 1 - Math.pow(2, -9 * clamp01((f - (B.at - dur)) / dur));
+    if (B !== A && !B.glide && f < B.at - dur) e = 0;
+    h.x = lerp(A.x, B.x, e); h.y = lerp(A.y, B.y, e);
+    h.vis = lerp(A.vis === undefined ? 1 : A.vis, B.vis === undefined ? 1 : B.vis, e);
+    h.roll = lerp(A.roll || 0, B.roll || 0, e);
+    h.a = A.pose; h.b = B.pose; h.t = e;
+    h.push = ((A.pose === 'open' ? 1 - e : 0) + (B.pose === 'open' ? e : 0)) * h.vis;
+    h.pinch = ((A.pose === 'pinch' ? 1 - e : 0) + (B.pose === 'pinch' ? e : 0)) * h.vis;
+    h.hole = lerp(A.hole || 0, B.hole || 0, e);
+    h.label = (e < 0.5 ? A.label : B.label) || '';
+    return h;
+  }
+
+  /* ── the console's script: the film's mini console, on this page's loop ──
+     Panel pixels, 960×520, the film's layout (session-dock.js sizes: card column
+     at 14 / 372 wide, preview from 422, 512 wide) and colours (session-dock.js
+     DEF + K). Every line lives [born, die) on the loop's clock and leaves by its
+     exit; at T_END everything weathers away and the loop builds it again. */
+  var CON_W = 960, CON_H = 520, CX0 = 14, CW = 372, PVX = 422, PVW = 512;
+  var CC = { title: '#FFFFFF', list: '#F4F6FA', sub: '#AEB5C2', user: '#DCE8FF', assistant: '#EEF1F6', tool: '#A8F5D0',
+    lime: '#C9F03D', amber: '#FFC24B', blue: '#7FB2FF', add: '#7EE2A8', del: '#FF8E8E', t2: '#D6DBE4', white: '#FFFFFF',
+    idle: '#5A606C', ink: '#101400', inkAmber: '#1a1300', glass: '#B9D4F0' };
+  var CB = 16, T_BURST = 60, T_DIFF = 140, T_ALLOW = 212, T_OUT = 262, T_AWAY = 330, T_COMPACT = 400, T_END = 905;
+  var V_S = 600, V_O = 624, V_R = 654;             /* grab → spin · open → freeze · let go → return */
+  /* picked at bake time, not here: this script runs before i18n.js sets <html lang> */
+  var S, S_ZH = {
+    running: '在跑', w1: '1 等你', r2: '2 在跑', r3: '3 在跑', win: '5 小时窗口', reset: '2:14 后重置',
+    used1: '已用 1.4M tok · 最近 38k/分钟', used2: '已用 1.5M tok · 最近 44k/分钟',
+    a: '官网改版', need: '等你批准', b: '反垃圾验证', c: '视频渲染状态检查', done: '刚完成',
+    rend1: '渲完了:3945 帧 / 131.5 秒,', rend2: 'ffprobe 逐帧数过,零报错。',
+    away: '你离开 23 分钟,它改了 6 个文件、跑了 14 条命令', comp: '刚压缩 · 早先的细节只剩摘要',
+    allow: '允许 ↵', deny: '拒绝', pvSub: 'Claude Code · Terse · 上下文 61%', stNeed: '● 等你批准', stRun: '● 正在跑 Edit',
+    u1: '让官网背景像片子里一样动起来', a1: '把手和控制台移进粒子舞台。', ok1: '✓ 1.8 秒构建完成',
+    /* the app's own gesture words (gesture-core.js), not the film's — the film's
+       grab-to-vortex runs ahead of the app, and a site must not label a gesture
+       with something the app does not do */
+    hPoint: '指向左边缘 · 控制台展开', hOpen: '张开手掌 · 推开粒子', hWatch: '看:删掉的行碎成红色', hAim: '对准「允许」',
+    hPinch: '捏一下 = 允许', hGrab: '握拳拧 · 变速', hFreeze: '张掌停住 · 定格', hLet: '松开 · 继续', hHole: '捏住拖 · 拖动视角'
+  }, S_EN = {
+    running: 'Running', w1: '1 waiting', r2: '2 running', r3: '3 running', win: '5-hour window', reset: 'resets in 2:14',
+    used1: '1.4M tok used · 38k/min', used2: '1.5M tok used · 44k/min',
+    a: 'Landing page redesign', need: 'needs you', b: 'Anti-spam verification', c: 'Video render status check', done: 'just finished',
+    rend1: 'Rendered: 3945 frames / 131.5 s,', rend2: 'ffprobe counted every frame — zero errors.',
+    away: 'Away 23 min: 6 files changed, 14 commands run', comp: 'Just compacted · earlier detail kept as a summary',
+    allow: 'Allow ↵', deny: 'Deny', pvSub: 'Claude Code · Terse · context 61%', stNeed: '● needs you', stRun: '● running Edit',
+    u1: 'make the landing background move like the film', a1: 'Porting the hand and the console into the stage.', ok1: '✓ built in 1.8 s',
+    hPoint: 'Point at the edge · the console opens', hOpen: 'Open palm · push the particles', hWatch: 'Watch: removed lines shatter red',
+    hAim: 'Aim at Allow', hPinch: 'Pinch = Allow', hGrab: 'Fist + twist · change the speed', hFreeze: 'Hold an open palm · freeze',
+    hLet: 'Let go · it plays on', hHole: 'Pinch & drag · pull the view'
+  };
+
+  function ext(a, b) { for (var k in b) if (b[k] !== undefined) a[k] = b[k]; return a; }
+  function conScript() {
+    var L = [], A = 118, B = 324, C = 418, dotA = [CX0 + 19, A + 20], dotB = [CX0 + 19, B + 20];
+    var bead = function (i) { return [6, 154 + i * 22]; };
+    var P = function (o) { if (o.die === undefined) { o.die = T_END; o.exit = 'dust'; } L.push(o); };
+    var shell = function (y, h, st, title, meta, born, from, entry, die, exit) {
+      var dot = st === 'need' ? CC.amber : st === 'done' ? CC.white : CC.lime;
+      var b = { born: born, entry: entry || 'flow', from: from, die: die, exit: exit };
+      P(ext({ rect: [CW, h, 13, 1], x: CX0, y: y, color: st === 'need' ? CC.amber : '#FFFFFF', alpha: st === 'need' ? 0.55 : 0.16 }, b));
+      P(ext({ rect: [8, 8, 4], x: CX0 + 15, y: y + 16, color: dot }, b));
+      P(ext({ text: title, x: CX0 + 32, y: y + 11, px: 13.5, weight: 650, color: CC.list }, b));
+      P(ext({ text: meta, x: CX0 + CW - 13, y: y + 13, px: 11, weight: 600, color: st === 'need' ? CC.amber : CC.sub, align: 'right' }, b));
+    };
+    var band = function (y, k, born, die, exit, to) {           /* context watermark: >0.85 red, >0.65 amber */
+      var w = CW - 26, col = k > 0.85 ? '#FF6B6B' : k > 0.65 ? CC.amber : CC.lime;
+      P({ rect: [w, 3, 1.5], x: CX0 + 13, y: y, color: '#FFFFFF', alpha: 0.10, born: born, entry: 'fade', die: die, exit: exit, to: to });
+      P({ rect: [Math.max(3, w * k), 3, 1.5], x: CX0 + 13, y: y, color: col, born: born + 2, entry: 'assemble', sweep: 10, die: die, exit: exit, to: to });
+    };
+    var mono = function (t, x, y, col, born, entry, o) { P(ext({ text: t, x: x, y: y, px: 12, weight: 700, mono: true, color: col, born: born, entry: entry }, o || {})); };
+
+    /* glass: a bright front edge only — 100% transparent, as the film insists */
+    P({ rect: [CON_W + 12, CON_H + 12, 20, 1], x: -6, y: -6, color: CC.glass, alpha: 0.55, born: CB, entry: 'fade' });
+    /* the status-bead rail, before it bursts into cards */
+    [CC.amber, CC.lime, CC.lime, CC.white, CC.idle].forEach(function (c, i) {
+      P({ rect: [8, 8, 4], x: 2, y: 150 + i * 22, color: c, born: CB + 4 + i * 2, entry: 'fade', die: T_BURST + i * 4, exit: 'dust' });
+    });
+    /* header + the 5-hour fuel bar */
+    P({ text: S.running, x: 18, y: 18, px: 15, weight: 700, color: CC.title, born: T_BURST, entry: 'assemble', sweep: 6 });
+    P({ rect: [70, 20, 10], x: 84, y: 17, color: CC.amber, born: T_BURST + 3, entry: 'fade', die: T_ALLOW + 6, exit: 'absorb', to: dotA });
+    P({ text: S.w1, x: 92, y: 20, px: 11, weight: 700, color: CC.inkAmber, born: T_BURST + 4, entry: 'fade', die: T_ALLOW + 6, exit: 'absorb', to: dotA });
+    P({ rect: [78, 20, 10], x: 160, y: 17, color: CC.lime, alpha: 0.2, born: T_BURST + 5, entry: 'fade' });
+    P({ text: S.r2, x: 168, y: 20, px: 11, weight: 700, color: CC.lime, born: T_BURST + 6, entry: 'fade', die: T_ALLOW + 10, exit: 'dust' });
+    P({ text: S.r3, x: 168, y: 20, px: 11, weight: 700, color: CC.lime, born: T_ALLOW + 14, entry: 'rain' });
+    P({ text: S.win, x: 20, y: 56, px: 11, weight: 700, color: CC.sub, born: T_BURST + 8, entry: 'assemble' });
+    P({ text: S.reset, x: 380, y: 56, px: 11, weight: 700, color: CC.sub, align: 'right', born: T_BURST + 9, entry: 'assemble' });
+    P({ rect: [360, 6, 3], x: 20, y: 74, color: '#FFFFFF', alpha: 0.12, born: T_BURST + 8, entry: 'fade' });
+    P({ rect: [150, 6, 3], x: 20, y: 74, color: CC.lime, born: T_BURST + 10, entry: 'assemble', sweep: 10 });
+    P({ rect: [74, 6, 0], x: 166, y: 74, color: '#E4DC44', born: T_BURST + 12, entry: 'assemble', sweep: 8 });
+    P({ rect: [30, 6, 3], x: 234, y: 74, color: CC.amber, born: T_BURST + 14, entry: 'assemble' });
+    P({ text: S.used1, x: 20, y: 86, px: 12, weight: 600, mono: true, color: CC.t2, born: T_BURST + 12, entry: 'assemble', die: T_AWAY, exit: 'dust' });
+    P({ text: S.used2, x: 20, y: 86, px: 12, weight: 600, mono: true, color: CC.t2, born: T_AWAY + 2, entry: 'rain' });
+
+    /* card A — waits for you: the change is shown before you allow it */
+    shell(A, 196, 'need', S.a, S.need, T_BURST, bead(0), 'flow', T_ALLOW + 4, 'dust');
+    mono('Edit', CX0 + 24, A + 38, CC.amber, T_BURST + 6, 'flow', { from: bead(0), die: T_ALLOW, exit: 'absorb', to: dotA });
+    mono('landing/index.html', CX0 + 64, A + 38, '#E9EDF5', T_BURST + 6, 'flow', { weight: 600, from: bead(0), die: T_ALLOW, exit: 'absorb', to: dotA });
+    P({ rect: [CW - 26, 88, 9, 1], x: CX0 + 13, y: A + 60, color: '#FFFFFF', alpha: 0.14, born: T_BURST + 8, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
+    mono('- <img src="hero-shot.png">', CX0 + 26, A + 70, CC.del, T_BURST + 8, 'flow', { weight: 600, from: bead(0), die: T_DIFF, exit: 'shatter', sweep: 10 });
+    mono('+ <canvas id="cosmos"></canvas>', CX0 + 26, A + 92, CC.add, T_DIFF + 8, 'assemble', { weight: 600, tint: CC.add, sweep: 10, die: T_ALLOW + 2, exit: 'absorb', to: dotA });
+    mono('+ <script src="terse-cosmos.js"></script>', CX0 + 26, A + 114, CC.add, T_DIFF + 16, 'assemble', { weight: 600, tint: CC.add, sweep: 10, die: T_ALLOW + 3, exit: 'absorb', to: dotA });
+    P({ rect: [96, 30, 9], x: CX0 + 13, y: A + 152, color: CC.lime, born: T_BURST + 12, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
+    P({ text: S.allow, x: CX0 + 61, y: A + 159, px: 12, weight: 700, color: CC.ink, align: 'center', born: T_BURST + 13, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
+    P({ rect: [80, 30, 9], x: CX0 + 119, y: A + 152, color: '#FFFFFF', alpha: 0.12, born: T_BURST + 12, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
+    P({ text: S.deny, x: CX0 + 159, y: A + 159, px: 12, weight: 700, color: CC.t2, align: 'center', born: T_BURST + 13, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
+    band(A + 186, 0.61, T_BURST + 10, T_ALLOW + 4, 'dust');
+    /* allowed: the same card, now running — its tool line changes every beat */
+    shell(A, 196, 'work', S.a, '0:04', T_ALLOW + 6, null, 'fade');
+    [['Edit', 'landing/index.html', T_ALLOW + 14, T_OUT], ['Bash', 'npm run build', T_OUT, T_OUT + 60],
+     ['Read', 'terse-cosmos.js', T_OUT + 60, T_COMPACT + 40], ['Edit', 'landing/terse-cosmos.js', T_COMPACT + 40, T_END]].forEach(function (s) {
+      var o = s[3] < T_END ? { die: s[3], exit: 'absorb', to: dotA, sweep: 6 } : { sweep: 6 };
+      mono(s[0], CX0 + 32, A + 38, CC.lime, s[2], 'rain', o);
+      mono(s[1], CX0 + 32 + s[0].length * 7.4 + 8, A + 38, CC.t2, s[2] + 1, 'rain', ext({ weight: 600 }, ext({}, o, { sweep: 10 })));
+    });
+    mono(S.ok1, CX0 + 15, A + 64, CC.add, T_OUT + 34, 'rain', { tint: CC.add });
+    band(A + 186, 0.63, T_ALLOW + 8, T_COMPACT, 'absorb', [CX0 + 13, A + 187]);
+    band(A + 186, 0.18, T_COMPACT + 20);
+    P({ text: S.comp, x: CX0 + 15, y: A + 160, px: 11.5, weight: 600, color: CC.amber, born: T_COMPACT + 18, entry: 'rain', tint: CC.amber });
+    P({ stream: { from: dotA, to: [170, 77], n: 90, speed: 1.1, arc: -22 }, x: 0, y: 0, color: CC.lime, born: T_ALLOW + 10, entry: 'stream' });
+
+    /* card B — anti-spam verification, running */
+    shell(B, 84, 'work', S.b, '2:41', T_BURST + 4, bead(1));
+    mono('Bash', CX0 + 32, B + 38, CC.lime, T_BURST + 10, 'flow', { from: bead(1) });
+    mono('pytest tests/test_spam_filter.py -q', CX0 + 72, B + 38, CC.t2, T_BURST + 10, 'flow', { weight: 600, from: bead(1) });
+    P({ text: S.away, x: CX0 + 15, y: B + 58, px: 11.5, weight: 600, color: CC.lime, born: T_AWAY, entry: 'rain' });
+    band(B + 76, 0.47, T_BURST + 12);
+    P({ stream: { from: dotB, to: [150, 77], n: 70, speed: 0.9, arc: 26 }, x: 0, y: 0, color: CC.lime, born: T_BURST + 20, entry: 'stream' });
+
+    /* card C — the video render, just finished */
+    shell(C, 84, 'done', S.c, S.done, T_BURST + 8, bead(3));
+    P({ text: S.rend1, x: CX0 + 15, y: C + 34, px: 12.5, weight: 500, color: CC.t2, born: T_BURST + 14, entry: 'flow', from: bead(3) });
+    P({ text: S.rend2, x: CX0 + 15, y: C + 53, px: 12.5, weight: 500, color: CC.t2, born: T_BURST + 15, entry: 'flow', from: bead(3) });
+    band(C + 76, 0.88, T_BURST + 16);
+
+    /* the preview: the whole conversation of card A */
+    P({ text: S.a, x: PVX, y: 18, px: 16, weight: 700, color: CC.title, born: T_BURST + 20, entry: 'flow', from: dotA });
+    P({ text: S.pvSub, x: PVX, y: 42, px: 11.5, weight: 600, color: CC.sub, born: T_BURST + 21, entry: 'flow', from: dotA });
+    P({ text: S.stNeed, x: PVX + PVW, y: 42, px: 11.5, weight: 600, color: CC.amber, align: 'right', born: T_BURST + 22, entry: 'flow', from: dotA, die: T_ALLOW + 4, exit: 'absorb', to: dotA });
+    P({ text: S.stRun, x: PVX + PVW, y: 42, px: 11.5, weight: 600, color: CC.lime, align: 'right', born: T_ALLOW + 12, entry: 'rain' });
+    var bw = PVW * 0.82, bx = PVX + PVW - bw;
+    P({ rect: [bw, 34, 13], x: bx, y: 80, color: '#284682', alpha: 0.42, born: T_BURST + 26, entry: 'fade' });
+    P({ rect: [bw, 34, 13, 1], x: bx, y: 80, color: CC.blue, alpha: 0.38, born: T_BURST + 26, entry: 'fade' });
+    P({ text: S.u1, x: bx + 13, y: 89, px: 13.5, weight: 600, color: CC.user, born: T_BURST + 27, entry: 'rain', sweep: 12 });
+    P({ text: S.a1, x: PVX, y: 132, px: 13.5, weight: 500, color: CC.assistant, born: T_BURST + 40, entry: 'rain', sweep: 12 });
+    [['Read', 'landing/index.html', T_BURST + 50, 164], ['Edit', 'landing/index.html', T_DIFF, 188], ['Bash', 'npm run build', T_OUT, 212],
+     ['Read', 'terse-cosmos.js', T_OUT + 60, 260], ['Edit', 'landing/terse-cosmos.js', T_COMPACT + 40, 284]].forEach(function (s) {
+      P({ text: s[0], x: PVX, y: s[3], px: 12.5, weight: 700, mono: true, color: CC.tool, born: s[2], entry: 'rain', sweep: 6 });
+      P({ text: s[1], x: PVX + s[0].length * 7.8 + 10, y: s[3], px: 12.5, weight: 600, mono: true, color: CC.t2, born: s[2] + 1, entry: 'rain', sweep: 10 });
+    });
+    P({ text: S.ok1, x: PVX + 12, y: 236, px: 12.5, weight: 700, mono: true, color: CC.add, born: T_OUT + 34, entry: 'rain', tint: CC.add, sweep: 12 });
+    return L;
+  }
+
+  /* The hand's keys. sx/sy = fraction of the viewport; px/py = a point on the
+     console panel, projected every frame (so "aim at Allow" follows the panel
+     through the orbit). s = palm length as a fraction of the viewport height. */
+  function handKeys() {
+    var A = 118, bx = CX0 + 61, by = A + 167;
+    return [
+      { at: 0, sx: 0.96, sy: 1.18, pose: 'relax', vis: 0 },
+      { at: 34, sx: 0.80, sy: 0.82, pose: 'open', label: S.hOpen },
+      { at: 50, px: 22, py: 196, pose: 'point', label: S.hPoint },
+      { at: 60, px: 6, py: 190, pose: 'point', label: S.hPoint },
+      { at: 98, px: 190, py: 150, pose: 'open', label: S.hOpen },
+      { at: 132, px: 270, py: 250, pose: 'relax', label: S.hWatch },
+      { at: 188, px: bx + 30, py: by + 30, pose: 'point', label: S.hAim },
+      { at: 202, px: bx, py: by, pose: 'point', label: S.hAim },
+      { at: T_ALLOW, px: bx, py: by, pose: 'pinch', label: S.hPinch },
+      { at: T_ALLOW + 14, px: bx + 20, py: by + 10, pose: 'open', label: S.hPinch },
+      { at: 250, sx: 0.44, sy: 0.64, pose: 'open', label: S.hOpen },
+      { at: 330, sx: 0.16, sy: 0.46, pose: 'open', label: S.hOpen, glide: 1 },
+      { at: 420, sx: 0.30, sy: 0.70, pose: 'open', label: S.hOpen, glide: 1 },
+      { at: V_S - 20, sx: 0.62, sy: 0.60, pose: 'open', label: S.hOpen, glide: 1 },
+      { at: V_S, sx: 0.62, sy: 0.60, pose: 'fist', label: S.hGrab },
+      { at: V_O, sx: 0.62, sy: 0.60, pose: 'open', label: S.hFreeze },
+      { at: V_R, sx: 0.62, sy: 0.60, pose: 'relax', label: S.hLet },
+      { at: 700, sx: 0.24, sy: 0.64, pose: 'pinch', label: S.hHole, hole: 0.6 },
+      { at: 780, sx: 0.46, sy: 0.40, pose: 'pinch', label: S.hHole, hole: 0.6, glide: 1 },
+      { at: 800, sx: 0.46, sy: 0.40, pose: 'open', label: S.hOpen },
+      { at: 880, sx: 0.62, sy: 1.18, pose: 'relax', vis: 0, glide: 1 },
+      { at: LOOP, sx: 0.96, sy: 1.18, pose: 'relax', vis: 0 }
+    ];
+  }
+
+  /* The film's vortex event (hand.tsx vortexAt / vortexClocks), on the loop.
+     Spinning runs every clock ×2.25, the freeze holds it at ×0 — the 30 frames
+     gained are exactly the 30 frozen, so after it the clock is the loop frame
+     again and nothing downstream drifts. Integrated once, up front. */
+  var VORTEX_W = 0.30, VCL = new Float32Array(LOOP + 1), VANG = new Float32Array(LOOP + 1);
+  function smooth01(t) { var x = clamp01(t); return x * x * (3 - 2 * x); }
+  function vortexAt(f, out) {
+    out.K = 0; out.w = 0; out.ring = -1;
+    if (f >= V_S && f < V_O) { out.K = smooth01((f - V_S) / 10); out.w = VORTEX_W * smooth01((f - V_S) / 16); }
+    else if (f >= V_O && f < V_R) { out.K = 1; if (f - V_O < 16) out.ring = (f - V_O) / 16; }
+    else if (f >= V_R && f < V_R + 24) out.K = 1 - smooth01((f - V_R) / 24);
+    return out;
+  }
+  (function () {
+    var v = { K: 0, w: 0, ring: -1 };
+    for (var i = 1; i <= LOOP; i++) {
+      var r = i - 1 >= V_S && i - 1 < V_O ? 2.25 : i - 1 >= V_O && i - 1 < V_R ? 0 : 1;
+      VCL[i] = VCL[i - 1] + r; VANG[i] = VANG[i - 1] + vortexAt(i - 1, v).w;
+    }
+  })();
+  function tab(T, f) { var n = Math.floor(f); if (n >= LOOP) return T[LOOP]; return T[n] + (T[n + 1] - T[n]) * (f - n); }
+
   /* ── the stage ──────────────────────────────────────────────────────────── */
   /* done(stage) is called once the shaders are linked — on the same call when the
      driver has no parallel compile, a few frames later when it does. */
@@ -471,6 +1003,7 @@
     this.gl = gl;
     var self = this, par = gl.getExtension('KHR_parallel_shader_compile');
     var pend = [link(gl, PULSE_VS, PULSE_FS), link(gl, PULSE_VS, PULSE_BLOOM_FS), link(gl, GLYPH_VS, GLYPH_FS)];
+    if (FEAT) pend.push(link(gl, CON_VS, CON_FS), link(gl, SPR_VS, SPR_FS));
     var check = function () {
       if (par && !gl.isContextLost()) for (var i = 0; i < pend.length; i++) {
         if (!gl.getProgramParameter(pend[i].p, par.COMPLETION_STATUS_KHR)) { window.requestAnimationFrame(check); return; }
@@ -487,6 +1020,19 @@
     this.pGlyph = program(gl, pend[2]);
     if (!this.pBody || !this.pBloom || !this.pGlyph) { this.ok = false; done(this); return; }
     this.ok = true;
+    /* the console and the hand are extras: if either fails to link, the stage runs as before */
+    this.pCon = pend[3] ? program(gl, pend[3]) : null;
+    this.pSpr = pend[4] ? program(gl, pend[4]) : null;
+    this.hand = { x: 0, y: 0, roll: 0, vis: 0, a: 'relax', b: 'relax', t: 0, push: 0, pinch: 0, hole: 0, label: '',
+                  vortex: 0, vang: 0, ring: -1, cx: 0, cy: 0 };
+    this.hdraw = { x: 0, y: 0, s: 1, roll: 0, a: 'relax', b: 'relax', t: 0 };
+    this.vx = { K: 0, w: 0, ring: -1 }; this.hp = [0, 0]; this.hc = [0, 0]; this.hpts = new Float32Array(63);
+    this.cview = new Float32Array(16); this.cproj = new Float32Array(16); this.conVis = 0;
+    if (this.pSpr) {
+      this.spr = new Float32Array(SPR_MAX * 7); this.bSpr = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.bSpr); gl.bufferData(gl.ARRAY_BUFFER, this.spr.byteLength, gl.DYNAMIC_DRAW);
+    }
+    if (this.pCon && this.pSpr) this._conBake();
     this.maxPt = (gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) || [1, 64])[1];
     this.dot = dotTexture(gl);
     this.cover = gl.createTexture(); this.hasCover = 0;
@@ -612,6 +1158,7 @@
     if (this.cv.width !== W || this.cv.height !== H) { this.cv.width = W; this.cv.height = H; }
     /* the video is 1080 tall; every point size was tuned there */
     this.pixel = H / 1080;
+    this._panel();
     this._pulseGeo();
   };
 
@@ -691,13 +1238,18 @@
   };
 
   Cosmos.prototype.draw = function (gf) {
-    var gl = this.gl, dr = this._drive(gf);
+    /* the loop frame drives the camera; the VIRTUAL frame (the grab's ×2.25 then
+       freeze) drives the field, the text and the console — so "open = freeze"
+       stops everything but the camera, as in the film */
+    var gl = this.gl, lf = gf % LOOP, vlf = tab(VCL, lf), vgf = gf - lf + vlf, dr = this._drive(vgf);
+    if (this.con) this.conVis = clamp01((performance.now() - this.con.at) / 900);
     var cam = camAt(gf, this.cam), p = this.par;
     p.x += (p.tx - p.x) * 0.06; p.y += (p.ty - p.y) * 0.06;
     var yaw = cam.yaw + p.x * 10, pitch = cam.pitch - p.y * 6, zoom = cam.zoom;
     var boost = boostAt(gf);
     var pAlpha = Math.min(1, PULSE_ALPHA * (1 + 0.10 * boost)), pScale = PULSE_POINT * (1 + 0.55 * boost);
     var ps = this.pose; ps.yaw = yaw; ps.pitch = pitch; ps.zoom = zoom; ps.boost = boost;
+    var H = this._handFrame(lf, yaw, pitch, zoom);
 
     gl.viewport(0, 0, this.cv.width, this.cv.height);
     gl.clearColor(0, 0, 0, 1);
@@ -723,6 +1275,9 @@
       gl.uniform1f(P.u.uBloomSize, passes[pi][1]); gl.uniform1f(P.u.uMaxPt, this.maxPt);
       gl.uniform1f(P.u.uColorBoost, COLOR_BOOST); gl.uniform1f(P.u.uHasCover, this.hasCover);
       gl.uniform1f(P.u.uAlpha, pAlpha);
+      gl.uniform2f(P.u.uHandXY, this.hp[0], this.hp[1]);
+      gl.uniform1f(P.u.uHandActive, H.push * H.vis); gl.uniform1f(P.u.uHandRad, HAND_RAD);
+      gl.uniform1f(P.u.uVortexK, H.vortex); gl.uniform1f(P.u.uVortexAng, H.vang); gl.uniform1f(P.u.uHole, H.hole * H.vis);
       if (P.u.uBloomStrength) gl.uniform1f(P.u.uBloomStrength, BLOOM_STRENGTH);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.dot); gl.uniform1i(P.u.uDotTex, 0);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.cover); gl.uniform1i(P.u.uCoverTex, 1);
@@ -735,7 +1290,7 @@
     /* ── text: same orbit, the text plane's own camera, both passes additive ── */
     perspective(this.proj, 2 * Math.atan(SILK_HALF_H / SILK_CAM_Z), this.aspect, 0.1, 400);
     orbitView(this.view, SILK_CAM_Z * zoom, yaw, pitch);
-    var G = this.pGlyph, alive = this._alive(gf);
+    var G = this.pGlyph, alive = this._alive(vgf);
     gl.useProgram(G.p);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
     gl.uniformMatrix4fv(G.u.uView, false, this.view);
@@ -762,6 +1317,190 @@
     }
     gl.disableVertexAttribArray(G.a.aUv); gl.disableVertexAttribArray(G.a.aRand);
     this.lastAlive = alive.length;
+    this._drawOverlay(lf, vlf);
+  };
+
+  /* ── console + hand, per frame ─────────────────────────────────────────
+     Wide screens only (a 960×520 panel is unreadable on a phone) and never under
+     reduced motion. */
+  var FEAT = !REDUCE && (window.innerWidth || 0) >= 900;
+  var CON_DAMP = 0.35;     /* the panel follows the orbit at 35% — it moves with the stage and stays readable */
+  var HAND_RAD = 5.2;      /* the film: the PULSE volume needs ~5.2× the radius before a hole reads */
+  var SPR_MAX = 1400, CON_ATTR = ['a0', 'a1', 'a2', 'a3', 'aCol', 'aTint'], TIPS = { 4: 1, 8: 1, 12: 1, 16: 1, 20: 1 };
+
+  /* screen fraction (sx, sy) → the point on the world z = 0 plane under it, for an
+     orbit camera (orbitView's basis; up × z has no y component) */
+  function rayZ0(yaw, pitch, d, halfH, camZ, aspect, sx, sy, out) {
+    var ya = yaw * Math.PI / 180, pa = pitch * Math.PI / 180;
+    var ex = d * Math.sin(ya) * Math.cos(pa), ey = d * Math.sin(pa), ez = d * Math.cos(ya) * Math.cos(pa);
+    var zl = Math.sqrt(ex * ex + ey * ey + ez * ez), zx = ex / zl, zy = ey / zl, zz = ez / zl;
+    var xl = Math.sqrt(zz * zz + zx * zx) || 1, xx = zz / xl, xz = -zx / xl;
+    var yx = zy * xz, yy = zz * xx - zx * xz, yz = -zy * xx;
+    var th = halfH / camZ, nx = sx * 2 - 1, ny = 1 - sy * 2;
+    var dx = -zx + xx * nx * th * aspect + yx * ny * th, dy = -zy + yy * ny * th, dz = -zz + xz * nx * th * aspect + yz * ny * th;
+    var t = Math.abs(dz) > 1e-6 ? -ez / dz : 0;
+    out[0] = ex + dx * t; out[1] = ey + dy * t;
+    return out;
+  }
+  /* world point on z = 0 → screen fraction (our perspective: w = −z_view) */
+  function toScreen(view, proj, wx, wy, out) {
+    var vx = view[0] * wx + view[4] * wy + view[12], vy = view[1] * wx + view[5] * wy + view[13], vz = view[2] * wx + view[6] * wy + view[14];
+    var w = Math.max(1e-4, -vz);
+    out[0] = (proj[0] * vx / w + 1) / 2; out[1] = (1 - proj[5] * vy / w) / 2;
+    return out;
+  }
+  function sp(o, n, x, y, size, a, r, g, b) {
+    if (n >= SPR_MAX) return n;
+    var j = n * 7; o[j] = x; o[j + 1] = y; o[j + 2] = size; o[j + 3] = a; o[j + 4] = r; o[j + 5] = g; o[j + 6] = b;
+    return n + 1;
+  }
+
+  /* the panel: 36% of the frame's width (55% of its height at most), low on the
+     right — clear of the hero's headline, as far as a centred hero allows */
+  Cosmos.prototype._panel = function () {
+    var halfW = SILK_HALF_H * this.aspect;
+    var U = Math.min(halfW * 2 * 0.36 / CON_W, SILK_HALF_H * 2 * 0.55 / CON_H);
+    this.pan = { U: U, ox: halfW - CON_W * U / 2 - halfW * 0.03, oy: -0.42 };
+  };
+
+  /* rasterise the script a few lines per idle slice, after the fonts, then upload once */
+  Cosmos.prototype._conBake = function () {
+    var self = this, L, G = [], i = 0;
+    var ric = window.requestIdleCallback ? function (fn) { window.requestIdleCallback(fn, { timeout: 500 }); }
+                                          : function (fn) { setTimeout(function () { fn(null); }, 16); };
+    var step = function (dl) {
+      if (self.gl.isContextLost()) return;
+      if (!L) { S = /^zh/i.test(document.documentElement.lang || '') ? S_ZH : S_EN; L = conScript(); }
+      do { G.push(rasterLine(L[i], 1)); i++; } while (i < L.length && dl && dl.timeRemaining() > 4);
+      if (i < L.length) { ric(step); return; }
+      var pk = packConsole(L, G), gl = self.gl, b = {};
+      for (var k = 0; k < CON_ATTR.length; k++) {
+        b[CON_ATTR[k]] = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b[CON_ATTR[k]]);
+        gl.bufferData(gl.ARRAY_BUFFER, pk[CON_ATTR[k]], gl.STATIC_DRAW);
+      }
+      self.hkeys = handKeys();
+      self.con = { n: pk.n, b: b, at: performance.now() };
+    };
+    var go = function () { ric(step); };
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(go, go); else go();
+  };
+
+  /* this frame's hand: keys aimed at panel points are projected first, then the
+     track, the vortex, and where the hand falls on the volume and on the panel */
+  Cosmos.prototype._handFrame = function (lf, yaw, pitch, zoom) {
+    var H = this.hand, keys = this.hkeys, pan = this.pan, q = this.hc, i, k;
+    perspective(this.cproj, 2 * Math.atan(SILK_HALF_H / SILK_CAM_Z), this.aspect, 0.1, 400);
+    orbitView(this.cview, SILK_CAM_Z * zoom, yaw * CON_DAMP, pitch * CON_DAMP);
+    if (!keys) { H.vis = 0; H.push = 0; H.hole = 0; H.vortex = 0; return H; }
+    for (i = 0; i < keys.length; i++) {
+      k = keys[i];
+      if (k.px !== undefined) {
+        toScreen(this.cview, this.cproj, pan.ox + (k.px - CON_W / 2) * pan.U, pan.oy - (k.py - CON_H / 2) * pan.U, q);
+        k.x = q[0]; k.y = q[1];
+      } else { k.x = k.sx; k.y = k.sy; }
+    }
+    handTrack(keys, lf, H);
+    H.vis *= this.conVis;
+    vortexAt(lf, this.vx);
+    H.vortex = this.vx.K * this.conVis; H.vang = tab(VANG, lf); H.ring = this.vx.ring;
+    if (H.vortex > 0.01) H.push = 0;
+    rayZ0(yaw, pitch, PULSE_CAM_Z * zoom, PULSE_HALF_H, PULSE_CAM_Z, this.aspect, H.x, H.y, this.hp);
+    rayZ0(yaw * CON_DAMP, pitch * CON_DAMP, SILK_CAM_Z * zoom, SILK_HALF_H, SILK_CAM_Z, this.aspect, H.x, H.y, q);
+    H.cx = (q[0] - pan.ox) / pan.U + CON_W / 2; H.cy = CON_H / 2 - (q[1] - pan.oy) / pan.U;
+    return H;
+  };
+
+  /* hand.tsx Skeleton as sprites: glow + core along every bone, dust that
+     shimmers along it, joints (white tips), the cursor ring, the three energy
+     arcs of a grab, the blue freeze ring. Sizes follow the palm length. */
+  Cosmos.prototype._fillHand = function (f) {
+    var H = this.hand, o = this.spr, n = 0, W = this.cv.width, Hh = this.cv.height, mx = this.maxPt;
+    var s = Hh * 0.2, k = s / 150, kd = Hh / 1080, v = H.vis, d = this.hdraw, i, q, j;
+    d.x = H.x * W; d.y = H.y * Hh; d.s = s; d.roll = H.roll; d.a = H.a; d.b = H.b; d.t = H.t;
+    var P = handPoints(d, this.hpts), A = H_RGB[H.a], B = H_RGB[H.b];
+    var cr = A[0] + (B[0] - A[0]) * H.t, cg = A[1] + (B[1] - A[1]) * H.t, cb = A[2] + (B[2] - A[2]) * H.t;
+    for (i = 0; i < 21; i++) {
+      var a0 = H_BONES[i * 2] * 3, b0 = H_BONES[i * 2 + 1] * 3, ax = P[a0], ay = P[a0 + 1], bx = P[b0], by = P[b0 + 1];
+      for (q = 0; q < 6; q++) { var tg = (q + 0.5) / 6; n = sp(o, n, ax + (bx - ax) * tg, ay + (by - ay) * tg, Math.min(mx, 13 * k * 2.4), 0.09 * v, cr, cg, cb); }
+      for (q = 0; q < 10; q++) { var tc = (q + 0.5) / 10; n = sp(o, n, ax + (bx - ax) * tc, ay + (by - ay) * tc, Math.min(mx, 3.6 * k * 1.8), 0.75 * v, cr + (1 - cr) * 0.3, cg + (1 - cg) * 0.3, cb + (1 - cb) * 0.3); }
+      for (q = 0; q < 10; q++) {
+        var r = h2(i * 13.1 + q * 3.7 + 1), td = (q + 0.5 + Math.sin(f * 0.21 + r * 9) * 0.4) / 10;
+        n = sp(o, n, ax + (bx - ax) * td + Math.sin(f * 0.17 + r * 31) * 3.2 * k, ay + (by - ay) * td + Math.cos(f * 0.19 + r * 17) * 3.2 * k,
+               Math.min(mx, (1.3 + r * 1.6) * k * 2.2), (0.6 + r * 0.4) * v, cr, cg, cb);
+      }
+    }
+    for (i = 0; i < 21; i++) {
+      var tip = TIPS[i] === 1, z = P[i * 3 + 2];
+      if (tip) n = sp(o, n, P[i * 3], P[i * 3 + 1], Math.min(mx, 8 * k * 3), 0.25 * v, cr, cg, cb);
+      n = sp(o, n, P[i * 3], P[i * 3 + 1], Math.min(mx, (tip ? 7.4 : 5.2) * k * 2.4 * (1 + z * 0.25)), v, tip ? 1 : cr, tip ? 1 : cg, tip ? 1 : cb);
+    }
+    var R = (11 - H.pinch * 4) * 1.6 * kd;
+    for (q = 0; q < 28; q++) { var ang = q / 28 * Math.PI * 2; n = sp(o, n, d.x + Math.cos(ang) * R, d.y + Math.sin(ang) * R, Math.min(mx, (1.8 + H.pinch * 1.6) * 2.2 * kd), 0.9 * v, cr, cg, cb); }
+    if (H.vortex > 0.01) for (j = 0; j < 3; j++) {
+      var RA = s * (0.78 + j * 0.26), st = H.vang * (1.6 - j * 0.35) + j * 2.1, white = j === 1;
+      for (q = 0; q < 18; q++) { var aa = st + q / 17 * 1.9;
+        n = sp(o, n, d.x + RA * Math.cos(aa), d.y + RA * Math.sin(aa), Math.min(mx, (5 - j * 1.2) * k * 2.2), H.vortex * (0.9 - j * 0.2) * v, white ? 1 : cr, white ? 1 : cg, white ? 1 : cb); }
+    }
+    if (H.ring >= 0 && H.ring < 1) {
+      var RR = s * 0.3 + H.ring * s * 3.2;
+      for (q = 0; q < 64; q++) { var ar = q / 64 * Math.PI * 2;
+        n = sp(o, n, d.x + RR * Math.cos(ar), d.y + RR * Math.sin(ar), Math.min(mx, (7 * (1 - H.ring) + 1.5) * k * 2.2), (1 - H.ring) * v, 0.5, 0.7, 1); }
+    }
+    return n;
+  };
+
+  /* after the text: the console (normal blend — additive whitens dense strokes,
+     and its dark halo must darken), then the hand (additive glow) */
+  Cosmos.prototype._drawOverlay = function (lf, vlf) {
+    var gl = this.gl, H = this.hand, C = this.pCon, c = this.con, pan = this.pan, i;
+    if (c && C && this.conVis > 0.001) {
+      gl.useProgram(C.p);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.uniformMatrix4fv(C.u.uView, false, this.cview); gl.uniformMatrix4fv(C.u.uProj, false, this.cproj);
+      gl.uniform1f(C.u.uF, vlf); gl.uniform1f(C.u.uPx, this.cv.height / (2 * SILK_HALF_H) * pan.U);
+      gl.uniform1f(C.u.uMaxPt, this.maxPt); gl.uniform1f(C.u.uU, pan.U); gl.uniform1f(C.u.uVis, this.conVis);
+      gl.uniform1f(C.u.uRefZ, SILK_CAM_Z); gl.uniform2f(C.u.uWH, CON_W, CON_H); gl.uniform3f(C.u.uOrigin, pan.ox, pan.oy, 0);
+      /* the console joins the grab at 45%: in the film the hand was ON the panel;
+         here it grabs beside it, and full strength flung the text across the hero */
+      gl.uniform4f(C.u.uHand, H.cx, H.cy, H.push * H.vis, H.hole * H.vis); gl.uniform2f(C.u.uVortex, H.vortex * 0.45, H.vang);
+      for (i = 0; i < CON_ATTR.length; i++) {
+        var loc = C.a[CON_ATTR[i]]; if (loc === undefined || loc < 0) continue;
+        gl.bindBuffer(gl.ARRAY_BUFFER, c.b[CON_ATTR[i]]); gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, i < 4 ? 4 : 3, gl.FLOAT, false, 0, 0);
+      }
+      gl.drawArrays(gl.POINTS, 0, c.n);
+      for (i = 0; i < CON_ATTR.length; i++) { var l2 = C.a[CON_ATTR[i]]; if (l2 !== undefined && l2 >= 0) gl.disableVertexAttribArray(l2); }
+    }
+    if (this.pSpr && H.vis > 0.01) {
+      var n = this._fillHand(lf), Q = this.pSpr;
+      gl.useProgram(Q.p); gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.bSpr); gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.spr);
+      gl.enableVertexAttribArray(Q.a.aP); gl.vertexAttribPointer(Q.a.aP, 4, gl.FLOAT, false, 28, 0);
+      gl.enableVertexAttribArray(Q.a.aC); gl.vertexAttribPointer(Q.a.aC, 3, gl.FLOAT, false, 28, 16);
+      gl.uniform2f(Q.u.uRes, this.cv.width, this.cv.height);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.dot); gl.uniform1i(Q.u.uDotTex, 0);
+      gl.drawArrays(gl.POINTS, 0, n);
+      gl.disableVertexAttribArray(Q.a.aP); gl.disableVertexAttribArray(Q.a.aC);
+    }
+    this._label();
+  };
+
+  /* the gesture pill beside the hand — the film has no voice-over, the pill says
+     what the hand is doing. One element behind the page; transform + opacity only. */
+  Cosmos.prototype._label = function () {
+    var el = this.lab, H = this.hand;
+    if (!el) return;
+    if (!(H.vis > 0.02 && H.label)) { if (el.style.opacity !== '0') el.style.opacity = '0'; return; }
+    if (el._t !== H.label) { el._t = H.label; el.lastChild.textContent = H.label; }
+    var pose = H.t < 0.5 ? H.a : H.b;
+    if (el._p !== pose) {
+      el._p = pose; var c = H_RGB[pose], rgb = Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255);
+      el.style.borderColor = 'rgba(' + rgb + ',0.55)'; el.style.boxShadow = '0 0 18px rgba(' + rgb + ',0.35)';
+      el.firstChild.style.background = 'rgb(' + rgb + ')'; el.firstChild.style.boxShadow = '0 0 10px rgb(' + rgb + ')';
+    }
+    var s = window.innerHeight * 0.2;
+    el.style.opacity = H.vis.toFixed(3);
+    el.style.transform = 'translate3d(' + (H.x * window.innerWidth + s * 0.42).toFixed(1) + 'px,' + (H.y * window.innerHeight - s * 0.62).toFixed(1) + 'px,0)';
   };
 
   Cosmos.prototype.start = function () {
@@ -785,6 +1524,18 @@
     cv.setAttribute('aria-hidden', 'true');
     cv.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;background:#000;display:block';
     document.body.insertBefore(cv, document.body.firstChild);
+    /* the gesture pill (hand.tsx HandOverlay label): behind the page, above the canvas */
+    var lab = null;
+    if (FEAT) {
+      lab = document.createElement('div');
+      lab.setAttribute('aria-hidden', 'true');
+      lab.style.cssText = 'position:fixed;left:0;top:0;z-index:-1;pointer-events:none;opacity:0;will-change:transform,opacity;' +
+        'white-space:nowrap;display:flex;align-items:center;gap:9px;padding:7px 14px 7px 11px;border-radius:999px;' +
+        'background:rgba(8,10,14,0.66);border:1.5px solid rgba(127,178,255,0.55);' +
+        'font:800 15px -apple-system,BlinkMacSystemFont,"Inter","PingFang SC",sans-serif;color:#F4F6FA';
+      lab.innerHTML = '<span style="width:9px;height:9px;border-radius:99px;flex:none"></span><span></span>';
+      cv.parentNode.insertBefore(lab, cv.nextSibling);
+    }
     document.documentElement.style.background = '#000';
 
     /* Build the stage after the page's first paint, not inside the parser: this
@@ -799,6 +1550,7 @@
     c = stage;
     if (!c.ok) { cv.style.background = '#000'; return; }
     window.TerseCosmos = c;
+    c.lab = lab;
 
     /* A still for reduced motion: a readable pose, a hero line fully formed. */
     if (REDUCE) { c.draw(HERO_FROM + G_IN + 10 + (B0 + 135)); return; }
@@ -823,7 +1575,7 @@
     cv.addEventListener('webglcontextrestored', function () {
       new Cosmos(cv, function (n) {
         if (!n.ok) return;
-        n.clock = c.clock; n.par = c.par;
+        n.clock = c.clock; n.par = c.par; n.lab = c.lab;
         c = window.TerseCosmos = n;
         if (!document.hidden) c.start();
       });

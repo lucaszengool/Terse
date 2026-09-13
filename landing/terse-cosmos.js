@@ -314,21 +314,29 @@
   ].join('\n');
 
   /* ── GL helpers ─────────────────────────────────────────────────────────── */
-  function compile(gl, type, src) {
+  /* Compiling and linking are fire-and-forget; ASKING whether they finished is
+     what blocks. Measured on the live page, the six compile-status checks alone
+     held the main thread 618-673 ms (plus 67-86 ms of link checks) — and this
+     script runs inside the parser, so the whole page waited on the GPU before it
+     could paint. So: start the work in link(), let the driver compile in the
+     background (KHR_parallel_shader_compile, polled once a frame without
+     blocking), and only then query everything in program(). */
+  function shader(gl, type, src) {
     var s = gl.createShader(type);
     gl.shaderSource(s, src); gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      if (window.console) console.warn('[terse-cosmos]', gl.getShaderInfoLog(s));
-      return null;
-    }
     return s;
   }
-  function program(gl, vs, fs) {
-    var v = compile(gl, gl.VERTEX_SHADER, vs), f = compile(gl, gl.FRAGMENT_SHADER, fs);
-    if (!v || !f) return null;
-    var p = gl.createProgram();
+  function link(gl, vs, fs) {
+    var v = shader(gl, gl.VERTEX_SHADER, vs), f = shader(gl, gl.FRAGMENT_SHADER, fs), p = gl.createProgram();
     gl.attachShader(p, v); gl.attachShader(p, f); gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { if (window.console) console.warn('[terse-cosmos]', gl.getProgramInfoLog(p)); return null; }
+    return { p: p, v: v, f: f };
+  }
+  function program(gl, pl) {
+    var p = pl.p;
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      if (window.console) console.warn('[terse-cosmos]', gl.getShaderInfoLog(pl.v) || gl.getShaderInfoLog(pl.f) || gl.getProgramInfoLog(p));
+      return null;
+    }
     var info = { p: p, u: {}, a: {} };
     var nu = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS), na = gl.getProgramParameter(p, gl.ACTIVE_ATTRIBUTES), i;
     for (i = 0; i < nu; i++) { var un = gl.getActiveUniform(p, i).name; info.u[un] = gl.getUniformLocation(p, un); }
@@ -452,17 +460,32 @@
   }
 
   /* ── the stage ──────────────────────────────────────────────────────────── */
-  function Cosmos(canvas) {
+  /* done(stage) is called once the shaders are linked — on the same call when the
+     driver has no parallel compile, a few frames later when it does. */
+  function Cosmos(canvas, done) {
     this.cv = canvas;
     var gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false,
                                           premultipliedAlpha: false, powerPreference: 'high-performance' })
           || canvas.getContext('experimental-webgl');
-    if (!gl) { this.ok = false; return; }
+    if (!gl) { this.ok = false; done(this); return; }
     this.gl = gl;
-    this.pBody = program(gl, PULSE_VS, PULSE_FS);
-    this.pBloom = program(gl, PULSE_VS, PULSE_BLOOM_FS);
-    this.pGlyph = program(gl, GLYPH_VS, GLYPH_FS);
-    if (!this.pBody || !this.pBloom || !this.pGlyph) { this.ok = false; return; }
+    var self = this, par = gl.getExtension('KHR_parallel_shader_compile');
+    var pend = [link(gl, PULSE_VS, PULSE_FS), link(gl, PULSE_VS, PULSE_BLOOM_FS), link(gl, GLYPH_VS, GLYPH_FS)];
+    var check = function () {
+      if (par && !gl.isContextLost()) for (var i = 0; i < pend.length; i++) {
+        if (!gl.getProgramParameter(pend[i].p, par.COMPLETION_STATUS_KHR)) { window.requestAnimationFrame(check); return; }
+      }
+      self._init(pend, done);
+    };
+    check();
+  }
+
+  Cosmos.prototype._init = function (pend, done) {
+    var gl = this.gl;
+    this.pBody = program(gl, pend[0]);
+    this.pBloom = program(gl, pend[1]);
+    this.pGlyph = program(gl, pend[2]);
+    if (!this.pBody || !this.pBloom || !this.pGlyph) { this.ok = false; done(this); return; }
     this.ok = true;
     this.maxPt = (gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) || [1, 64])[1];
     this.dot = dotTexture(gl);
@@ -482,7 +505,8 @@
     this._prewarm();
     this.resize();
     this._loadCover();
-  }
+    done(this);
+  };
 
   Cosmos.prototype._loadCover = function () {
     var self = this, img = new Image();
@@ -763,7 +787,16 @@
     document.body.insertBefore(cv, document.body.firstChild);
     document.documentElement.style.background = '#000';
 
-    var c = new Cosmos(cv);
+    /* Build the stage after the page's first paint, not inside the parser: this
+       script is deferred, so it runs before DOMContentLoaded, and creating the
+       context plus waiting on the GPU used to hold the whole page blank. The black
+       canvas is already in place, so the first paint looks the same minus the
+       particles, which arrive a few frames later. */
+    var c;
+    window.requestAnimationFrame(function () { setTimeout(function () { new Cosmos(cv, ready); }, 0); });
+
+    function ready(stage) {
+    c = stage;
     if (!c.ok) { cv.style.background = '#000'; return; }
     window.TerseCosmos = c;
 
@@ -780,8 +813,23 @@
     var rt = 0;
     window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { c.resize(); }, 150); });
     document.addEventListener('visibilitychange', function () { if (document.hidden) c.stop(); else c.start(); });
+    /* A lost context used to stop the stage for good — every program, buffer and
+       texture died with it and nothing rebuilt them, so the particles froze until
+       a reload. macOS drops WebGL contexts on GPU switches, after sleep, and when
+       another app leans on the GPU: exactly "the longer it's open, the more it
+       sticks". On restore, build the stage again on the same canvas and carry the
+       clock and the parallax over, so the film resumes where it froze. */
     cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); c.stop(); });
+    cv.addEventListener('webglcontextrestored', function () {
+      new Cosmos(cv, function (n) {
+        if (!n.ok) return;
+        n.clock = c.clock; n.par = c.par;
+        c = window.TerseCosmos = n;
+        if (!document.hidden) c.start();
+      });
+    });
     c.start();
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);

@@ -836,6 +836,15 @@
     hLet: 'Let go · it plays on', hHole: 'Pinch & drag · pull the view'
   };
 
+  /* The console's words come from the page's language mechanism (i18n.js, keys
+     bg.*, loaded with the language), so every language the switcher offers gets
+     them; the film's English / Chinese are the fallback for a key not there yet. */
+  function pickS() {
+    var I = window.i18n, lang = (I && I.lang) || document.documentElement.lang || 'en', o = {};
+    var base = /^zh(-hans|-cn)?$/i.test(lang) ? S_ZH : S_EN;
+    for (var k in S_EN) { var v = I && I.t ? I.t('bg.' + k) : null; o[k] = v && v !== 'bg.' + k ? v : base[k]; }
+    return o;
+  }
   function ext(a, b) { for (var k in b) if (b[k] !== undefined) a[k] = b[k]; return a; }
   function conScript() {
     var L = [], A = 118, B = 324, C = 418, dotA = [CX0 + 19, A + 20], dotB = [CX0 + 19, B + 20];
@@ -1364,22 +1373,26 @@
   };
 
   /* rasterise the script a few lines per idle slice, after the fonts, then upload once */
+  /* Also runs again on every language switch: the old console keeps playing until
+     the new one is baked, then the buffers swap (no second fade-in); a newer bake
+     cancels an older one mid-way. */
   Cosmos.prototype._conBake = function () {
-    var self = this, L, G = [], i = 0;
+    var self = this, L, G = [], i = 0, gen = self._bakeGen = (self._bakeGen || 0) + 1;
     var ric = window.requestIdleCallback ? function (fn) { window.requestIdleCallback(fn, { timeout: 500 }); }
                                           : function (fn) { setTimeout(function () { fn(null); }, 16); };
     var step = function (dl) {
-      if (self.gl.isContextLost()) return;
-      if (!L) { S = /^zh/i.test(document.documentElement.lang || '') ? S_ZH : S_EN; L = conScript(); }
+      if (gen !== self._bakeGen || self.gl.isContextLost()) return;
+      if (!L) { S = pickS(); L = conScript(); }
       do { G.push(rasterLine(L[i], 1)); i++; } while (i < L.length && dl && dl.timeRemaining() > 4);
       if (i < L.length) { ric(step); return; }
-      var pk = packConsole(L, G), gl = self.gl, b = {};
+      var pk = packConsole(L, G), gl = self.gl, b = {}, old = self.con;
       for (var k = 0; k < CON_ATTR.length; k++) {
         b[CON_ATTR[k]] = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b[CON_ATTR[k]]);
         gl.bufferData(gl.ARRAY_BUFFER, pk[CON_ATTR[k]], gl.STATIC_DRAW);
       }
       self.hkeys = handKeys();
-      self.con = { n: pk.n, b: b, at: performance.now() };
+      self.con = { n: pk.n, b: b, at: old ? old.at : performance.now(), lang: (window.i18n && window.i18n.lang) || 'en' };
+      if (old) for (var ob in old.b) gl.deleteBuffer(old.b[ob]);
     };
     var go = function () { ric(step); };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(go, go); else go();
@@ -1529,6 +1542,7 @@
     if (FEAT) {
       lab = document.createElement('div');
       lab.setAttribute('aria-hidden', 'true');
+      lab.setAttribute('data-no-i18n', '');          /* its words come from pickS(); the page translator must leave it */
       lab.style.cssText = 'position:fixed;left:0;top:0;z-index:-1;pointer-events:none;opacity:0;will-change:transform,opacity;' +
         'white-space:nowrap;display:flex;align-items:center;gap:9px;padding:7px 14px 7px 11px;border-radius:999px;' +
         'background:rgba(8,10,14,0.66);border:1.5px solid rgba(127,178,255,0.55);' +
@@ -1551,6 +1565,10 @@
     if (!c.ok) { cv.style.background = '#000'; return; }
     window.TerseCosmos = c;
     c.lab = lab;
+    /* the language switcher changed the page: bake the console again in that language */
+    document.addEventListener('terse:lang', function () {
+      if (c && c.pCon && c.pSpr && !(c.con && c.con.lang === (window.i18n && window.i18n.lang))) c._conBake();
+    });
 
     /* A still for reduced motion: a readable pose, a hero line fully formed. */
     if (REDUCE) { c.draw(HERO_FROM + G_IN + 10 + (B0 + 135)); return; }

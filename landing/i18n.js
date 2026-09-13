@@ -4148,7 +4148,7 @@
     return 'en';
   }
 
-  function apply(lang){
+  function applyKeys(lang){
     var dict = T[lang] || T.en;
     document.querySelectorAll('[data-i18n]').forEach(function(el){
       var k = el.getAttribute('data-i18n');
@@ -4170,6 +4170,119 @@
     else document.documentElement.removeAttribute('dir');
   }
 
+  /* ── Everything without a data-i18n key ───────────────────────────────────
+     A key per string did not scale: 222 visible strings on the homepage had none,
+     so switching language left them English, and the demo panels write more at
+     runtime. So every element that has its own visible text gets a TEMPLATE: its
+     own text, with each child element written as {n} —
+       "When Claude Code runs {0}, the output can consume 30–60K tokens…"
+     A translation is looked up by that English template and applied by rewriting
+     only the element's own text nodes. Child elements are MOVED, never recreated,
+     so links, buttons, ids and listeners all survive, and switching back to
+     English puts the original text back exactly.
+     Translations (templates, plus any keys a language lacks) live in
+     /i18n/<lang>.json, fetched on first use — this file is loaded by every page,
+     and English visitors should not download 10 languages they will not read.
+     A MutationObserver translates what the demos write, as they write it; it only
+     runs while a non-English language is showing. */
+  var TT = {}, tLoading = {}, tpl = [], tplReady = false, mo = null, TVER = '1';
+  var TSKIP = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, CODE: 1, PRE: 1, KBD: 1, SAMP: 1, TEXTAREA: 1, SELECT: 1, OPTION: 1, CANVAS: 1, svg: 1, SVG: 1, TEMPLATE: 1 };
+  function skipped(el){
+    return !el || el.nodeType !== 1 || !!(el.closest && el.closest('[data-i18n],[data-i18n-html],[data-no-i18n],code,pre,kbd,samp,svg,script,style,textarea,noscript'));
+  }
+  function tplOf(el){
+    var s = '', els = [], has = false;
+    for (var n = el.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 3) { if (/[A-Za-z]{2,}/.test(n.nodeValue)) has = true; s += n.nodeValue; }
+      else if (n.nodeType === 1) { s += '{' + els.length + '}'; els.push(n); }
+    }
+    return has ? { t: s.replace(/\s+/g, ' ').trim(), els: els } : null;
+  }
+  function take(el){
+    var cur = tplOf(el);
+    if (!cur || cur.t === el.__i18nCur) return;          /* no English of its own, or our own rendering */
+    el.__i18nEn = cur.t; el.__i18nEls = cur.els; el.__i18nCur = cur.t;
+    if (!el.__i18nIn) { el.__i18nIn = 1; tpl.push(el); }
+  }
+  function collect(root){
+    if (root.nodeType !== 1 || skipped(root)) return;
+    var w = document.createTreeWalker(root, 1, { acceptNode: function(el){
+      return (TSKIP[el.tagName] || el.hasAttribute('data-i18n') || el.hasAttribute('data-i18n-html') || el.hasAttribute('data-no-i18n')) ? 2 : 1;
+    } });
+    take(root);
+    for (var el = w.nextNode(); el; el = w.nextNode()) take(el);
+  }
+  function render(el, lang){
+    var d = lang === 'en' ? null : TT[lang];
+    var target = (d && d.t && d.t[el.__i18nEn]) || el.__i18nEn;
+    if (target === el.__i18nCur) return;
+    var els = el.__i18nEls, parts = target.split(/\{(\d+)\}/), used = [], n, nx, i;
+    for (n = el.firstChild; n; n = nx) { nx = n.nextSibling; if (n.nodeType === 3) el.removeChild(n); }
+    var frag = document.createDocumentFragment();
+    for (i = 0; i < parts.length; i++) {
+      if (i % 2 === 0) { if (parts[i]) frag.appendChild(document.createTextNode(parts[i])); }
+      else { var e = els[+parts[i]]; if (e && !used[+parts[i]]) { frag.appendChild(e); used[+parts[i]] = 1; } }
+    }
+    for (i = 0; i < els.length; i++) if (!used[i]) frag.appendChild(els[i]);   /* a dropped placeholder keeps its element */
+    el.appendChild(frag);
+    el.__i18nCur = target;
+  }
+  function applyTpl(lang){
+    if (lang === 'en' && !tplReady) return;                 /* English as authored: touch nothing */
+    if (!tplReady) { collect(document.body); tplReady = true; }
+    /* skipped() again here: a demo marks an element data-no-i18n when it starts typing into it */
+    for (var i = 0; i < tpl.length; i++) if (tpl[i].isConnected && !skipped(tpl[i])) render(tpl[i], lang);
+    if (lang !== 'en') watch(); else if (mo) { mo.disconnect(); mo = null; }
+    if (mo) mo.takeRecords();
+  }
+  function watch(){
+    if (mo || !window.MutationObserver) return;
+    mo = new MutationObserver(function(recs){
+      for (var i = 0; i < recs.length; i++) {
+        var r = recs[i], t = r.type === 'characterData' ? r.target.parentNode : r.target;
+        if (r.type === 'childList') for (var k = 0; k < r.addedNodes.length; k++) {
+          var a = r.addedNodes[k];
+          if (a.nodeType === 1 && !skipped(a)) { collect(a); var q = [a], m; while ((m = q.pop())) { if (m.__i18nIn) render(m, currentLang); for (var c = m.firstElementChild; c; c = c.nextElementSibling) q.push(c); } }
+        }
+        if (t && t.nodeType === 1 && !skipped(t)) { take(t); if (t.__i18nIn) render(t, currentLang); }
+      }
+      mo.takeRecords();
+    });
+    mo.observe(document.body, { childList: true, characterData: true, subtree: true });
+  }
+  function loadT(lang, cb){
+    if (lang === 'en' || TT[lang]) { cb(); return; }
+    if (tLoading[lang]) { tLoading[lang].push(cb); return; }
+    tLoading[lang] = [cb];
+    var done = function(d){
+      d = d || {}; TT[lang] = d;
+      if (d.keys && T[lang]) for (var k in d.keys) if (!(k in T[lang])) T[lang][k] = d.keys[k];
+      var q = tLoading[lang]; tLoading[lang] = null; for (var i = 0; i < q.length; i++) q[i]();
+    };
+    if (!window.fetch) { done({}); return; }
+    fetch('/i18n/' + lang + '.json?v=' + TVER).then(function(r){ return r.ok ? r.json() : {}; }).then(done, function(){ done({}); });
+  }
+  function apply(lang){
+    var run = function(){
+      if (lang !== currentLang) return;                     /* a later switch won */
+      applyKeys(lang); applyTpl(lang);
+      try { document.dispatchEvent(new CustomEvent('terse:lang', { detail: lang })); } catch (e) {}
+    };
+    run();
+    if (lang !== 'en' && !TT[lang]) loadT(lang, run);
+  }
+  /* for the audit: every English template on the page right now, and where it sits */
+  function tplDump(){
+    collect(document.body); tplReady = true;
+    var seen = {}, out = [];
+    for (var i = 0; i < tpl.length; i++) {
+      var el = tpl[i], s = el.__i18nEn; if (!s || seen[s]) continue; seen[s] = 1;
+      var sec = el.closest('section[id],[id],section,footer,nav');
+      out.push({ t: s, n: el.__i18nEls.length, where: sec ? (sec.id ? '#' + sec.id : sec.tagName.toLowerCase()) : 'body' });
+    }
+    return out;
+  }
+
   var currentLang = detect();
 
   window.i18n = {
@@ -4182,7 +4295,8 @@
       localStorage.setItem('terse-lang', code);
       apply(code);
     },
-    init: function(){ apply(currentLang); }
+    init: function(){ apply(currentLang); },
+    templates: tplDump
   };
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){window.i18n.init();});

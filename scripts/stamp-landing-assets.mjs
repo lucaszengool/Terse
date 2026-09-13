@@ -26,6 +26,9 @@ const LANDING = path.join(ROOT, 'landing');
 const ASSETS = [
   { file: 'terse-glass.css', attr: 'href' },
   { file: 'terse-cosmos.js', attr: 'src' },
+  // i18n.js was unstamped, and the edge was serving a 15-hour-old copy despite
+  // max-age=300 — a language fix would have reached visitors hours late.
+  { file: 'i18n.js', attr: 'src' },
 ];
 
 const hashes = Object.fromEntries(
@@ -50,9 +53,11 @@ for (const f of htmlFiles(LANDING)) {
   const before = readFileSync(f, 'utf8');
   let after = before;
   for (const { file, attr } of ASSETS) {
-    // matches the bare link and any previously stamped one, so reruns are safe
-    const re = new RegExp(`${attr}="(/${file.replace('.', '\\.')})(\\?v=[0-9a-f]+)?"`, 'g');
-    after = after.replace(re, (_m, p1) => `${attr}="${p1}?v=${hashes[file]}"`);
+    // matches the bare link and any previously stamped one, so reruns are safe.
+    // A relative src="i18n.js" is accepted too and written absolute: at the root it
+    // is the same file, and in a subfolder the relative form was a 404 anyway.
+    const re = new RegExp(`${attr}="/?${file.replace('.', '\\.')}(\\?v=[0-9a-f]+)?"`, 'g');
+    after = after.replace(re, () => `${attr}="/${file}?v=${hashes[file]}"`);
   }
   if (after !== before) {
     writeFileSync(f, after);

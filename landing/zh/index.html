@@ -425,8 +425,10 @@
     nav.scrolled{background:hsla(250,24%,5%,0.95)}
     .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
     .logo-icon{width:30px;height:30px;background:var(--acd);border:1px solid var(--acm);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--ac);font-weight:800;font-size:14px}
-    .nav-links{display:flex;gap:28px}
-    .nav-links a{color:var(--t3);font-size:14px;font-weight:500;transition:color .2s}
+    /* 链接组放不下时才换到第二行:1440px 下连英文版都把 GitHub、语言切换和登录挤出了屏幕右边。 */
+    .nav-links{display:flex;gap:clamp(10px,1.1vw,28px);flex:1 1 auto;min-width:0;flex-wrap:wrap;justify-content:center;row-gap:6px}
+    .nav-links a{color:var(--t3);font-size:14px;font-weight:500;transition:color .2s;word-break:keep-all}
+    .nav-sign-in{white-space:nowrap}
     .nav-links a:hover{color:var(--t1)}
     .nav-cta{padding:8px 20px;background:var(--t1);color:var(--bg0);border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
 
@@ -969,7 +971,7 @@
   <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
   <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
   <link rel="stylesheet" href="/terse-glass.css?v=4f8b6d3d">
-  <script defer src="/terse-cosmos.js?v=649043a6"></script>
+  <script defer src="/terse-cosmos.js?v=9a57802a"></script>
 
 <style>
 /* Live-wallpaper section */
@@ -4909,7 +4911,7 @@ function showPricingToast(msg) {
 })();
 </script>
 <script>try{localStorage.setItem('terse-lang','zh-Hans')}catch(e){}</script>
-<script src="/i18n.js"></script>
+<script src="/i18n.js?v=5d96c533"></script>
 <script>
 // Language switcher
 function initLangSwitcher(){

@@ -484,8 +484,13 @@
     nav.scrolled{background:hsla(250,24%,5%,0.95)}
     .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
     .logo-icon{width:30px;height:30px;background:var(--acd);border:1px solid var(--acm);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--ac);font-weight:800;font-size:14px}
-    .nav-links{display:flex;gap:28px}
-    .nav-links a{color:var(--t3);font-size:14px;font-weight:500;transition:color .2s}
+    /* The link group shrinks and wraps to a second row only when it does not fit.
+       At 1440px even the English nav pushed GitHub, the language switcher and
+       Sign In off the right edge — unreachable — and translated labels pushed up
+       to five items off. min-width:0 + wrap means nothing can be pushed out. */
+    .nav-links{display:flex;gap:clamp(10px,1.1vw,28px);flex:1 1 auto;min-width:0;flex-wrap:wrap;justify-content:center;row-gap:6px}
+    .nav-links a{color:var(--t3);font-size:14px;font-weight:500;transition:color .2s;word-break:keep-all}
+    .nav-sign-in{white-space:nowrap}
     .nav-links a:hover{color:var(--t1)}
     .nav-cta{padding:8px 20px;background:var(--t1);color:var(--bg0);border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
 
@@ -1028,7 +1033,7 @@
        Purely additive: both files only override existing tokens and
        insert their own two elements. Remove these two lines to revert. -->
   <link rel="stylesheet" href="/terse-glass.css?v=4f8b6d3d">
-  <script defer src="/terse-cosmos.js?v=649043a6"></script>
+  <script defer src="/terse-cosmos.js?v=9a57802a"></script>
   <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
   <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/">
   <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
@@ -1058,7 +1063,7 @@
   <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
   <div class="nav-links">
             <a href="guide.html" data-i18n="nav.guide">Guide</a>
-            <a href="#how-it-works" data-i18n="nav.howItWorks">How It Works</a><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="#terse-api" style="color:var(--ac);font-weight:700">API</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API Docs</a><a href="/vibe-projects" style="color:var(--ac);font-weight:700">Vibe Projects</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Docs <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="#cloud" data-i18n="nav.cloud">Cloud</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="#faq" data-i18n="nav.faq">FAQ</a><a href="#news">News</a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Demo <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="/mobile" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Phone <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
+            <a href="#how-it-works" data-i18n="nav.howItWorks">How It Works</a><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="#terse-api" style="color:var(--ac);font-weight:700">API</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API Docs</a><a href="/vibe-projects" style="color:var(--ac);font-weight:700">Vibe Projects</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Docs <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="#cloud">Cloud</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="#faq" data-i18n="nav.faq">FAQ</a><a href="#news">News</a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Demo <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="/mobile" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Phone <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
   <div style="display:flex;gap:10px;align-items:center">
     <div style="position:relative" id="lang-switcher">
       <button onclick="document.getElementById('lang-menu').style.display=document.getElementById('lang-menu').style.display==='block'?'none':'block'" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px">
@@ -1109,7 +1114,7 @@
          sharing — and /mobile is the page that explains the install, rather
          than dropping somebody straight into an app they have not been told
          about. -->
-    <a href="/mobile" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(110,231,183,0.35);color:var(--ac);background:rgba(110,231,183,0.07);transition:all .2s" onmouseover="this.style.background='rgba(110,231,183,0.13)'" onmouseout="this.style.background='rgba(110,231,183,0.07)'" data-i18n="hero.phoneCta">
+    <a href="/mobile" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(110,231,183,0.35);color:var(--ac);background:rgba(110,231,183,0.07);transition:all .2s" onmouseover="this.style.background='rgba(110,231,183,0.13)'" onmouseout="this.style.background='rgba(110,231,183,0.07)'">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg>
       iPhone &amp; Android
     </a>
@@ -1295,9 +1300,9 @@
           </div>
           <div class="agent-mini-stats" id="s3stats">
             <div class="ams"><span class="ams-v" id="s3turns">0</span><span class="ams-l" data-i18n="hero.scene.turns">Turns</span></div>
-            <div class="ams"><span class="ams-v" id="s3input">0</span><span class="ams-l" data-i18n="hero.scene.input">Input</span></div>
-            <div class="ams"><span class="ams-v" id="s3output">0</span><span class="ams-l" data-i18n="hero.scene.output">Output</span></div>
-            <div class="ams"><span class="ams-v" id="s3cost">$0</span><span class="ams-l" data-i18n="hero.scene.cost">Cost</span></div>
+            <div class="ams"><span class="ams-v" id="s3input">0</span><span class="ams-l">Input</span></div>
+            <div class="ams"><span class="ams-v" id="s3output">0</span><span class="ams-l">Output</span></div>
+            <div class="ams"><span class="ams-v" id="s3cost">$0</span><span class="ams-l">Cost</span></div>
           </div>
         </div>
       </div>
@@ -3459,7 +3464,7 @@ console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM call
         <a href="/marketplace" class="btn-primary" style="text-decoration:none;font-size:16px;padding:14px 36px" data-i18n="exchange.ctaSell">Start Selling Tokens <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:4px"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
         <a href="/marketplace" class="btn-ghost" style="text-decoration:none;font-size:16px;padding:14px 36px" data-i18n="exchange.ctaBuy">Buy Tokens at a Discount</a>
       </div>
-      <p style="font-size:12px;color:var(--t3)" data-i18n="exchange.footnote">15% commission &middot; AES-256 encrypted &middot; Stripe payouts &middot; Anthropic, OpenAI, Google supported</p>
+      <p style="font-size:12px;color:var(--t3)">15% commission &middot; AES-256 encrypted &middot; Stripe payouts &middot; Anthropic, OpenAI, Google supported</p>
     </div>
   </div>
 </section>
@@ -3688,8 +3693,8 @@ async function handleNewsletterSubmit(e) {
     <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">The butler for your AI coding agents &mdash; live monitoring, a runaway-spend breaker, MCP management, and 40-70% prompt compression. On-device, with team analytics via Terse Cloud.</p></div>
     <div class="footer-col"><h4 data-i18n="footer.product">Product</h4><a href="#pipeline" data-i18n="nav.pipeline">Pipeline</a><a href="#techniques" data-i18n="footer.techniques">Techniques</a><a href="#agents" data-i18n="nav.agentMonitor">Agent Monitor</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token Exchange</a><a href="#pricing" data-i18n="nav.pricing">Pricing</a><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="#dl" data-i18n="footer.download">Download</a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener">GitHub ★</a></div>
     <div class="footer-col"><h4 data-i18n="footer.techniques">Techniques</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">Spell Correction</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">Pattern Optimization</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP Analysis</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">Telegraph Compression</a></div>
-    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/for-github-copilot">Terse for GitHub Copilot</a><a href="/for-aider">Terse for Aider</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/claude-code-cost-tracker">Claude Code Cost Trackers Compared</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="/i-built-an-app-to-steal-50m-back">How Terse Works</a><a href="/blog">The Terse Blog</a><a href="/luz-wang">About the author</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">Refund Policy</a></div>
-    <div class="footer-col"><h4 data-i18n="footer.support">Support</h4><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Ask a question</a><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Join our Slack</a><a href="mailto:support@terseai.org">Email support</a><a href="/zh/" hreflang="zh-Hans">中文站</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.learn">Learn</h4><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/for-github-copilot">Terse for GitHub Copilot</a><a href="/for-aider">Terse for Aider</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/claude-code-cost-tracker">Claude Code Cost Trackers Compared</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">How to Reduce AI API Costs</a><a href="/i-built-an-app-to-steal-50m-back">How Terse Works</a><a href="/blog">The Terse Blog</a><a href="/luz-wang">About the author</a><a href="/docs">Docs</a><a href="/refund-policy">Refund Policy</a></div>
+    <div class="footer-col"><h4>Support</h4><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Ask a question</a><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Join our Slack</a><a href="mailto:support@terseai.org">Email support</a><a href="/zh/" hreflang="zh-Hans">中文站</a></div>
   </div>
   <div class="footer-bottom"><span data-i18n="footer.copyright">&copy; 2026 Terse</span><span>Tauri &middot; Rust &middot; Swift</span></div>
 </footer>
@@ -3814,7 +3819,7 @@ if(setupViz)setupObs.observe(setupViz);
   function showPhase(id){$(id).classList.add('show')}
   function hwType(el,text,speed){
     el.textContent='';let i=0;
-    const iv=setInterval(()=>{if(i<text.length){el.textContent+=text[i];i++}else clearInterval(iv)},speed);
+    el.setAttribute('data-no-i18n','');const iv=setInterval(()=>{if(i<text.length){el.textContent+=text[i];i++}else clearInterval(iv)},speed);
   }
   function showStage(i,val){
     if(i>0){const p=$('hwS'+(i-1));p.classList.remove('active');p.classList.add('done')}
@@ -3897,7 +3902,10 @@ function nextScene(){showScene((curScene+1)%5)}
 dots.forEach(d=>d.addEventListener('click',()=>{clearInterval(sceneTimer);showScene(+d.dataset.scene);sceneTimer=setInterval(nextScene,SCENE_DUR)}));
 
 // ═══ SHARED HERO HELPERS ═══
-function typeText(el,text,speed,cb){el.textContent='';let i=0;const iv=setInterval(()=>{if(i<text.length){el.textContent+=text[i];i++}else{clearInterval(iv);if(cb)cb()}},speed)}
+/* Typed demo input stays as authored: it types by APPENDING a character at a time,
+   so a translated half-sentence would get English appended onto it. data-no-i18n
+   keeps the page translator out of every element the demos type into. */
+function typeText(el,text,speed,cb){el.setAttribute('data-no-i18n','');el.textContent='';let i=0;const iv=setInterval(()=>{if(i<text.length){el.textContent+=text[i];i++}else{clearInterval(iv);if(cb)cb()}},speed)}
 
 // Scene 0: OpenClaw — comprehensive agent session with live stats, tool calls, cache, auto-reduction
 function runScene0(){
@@ -3940,7 +3948,7 @@ function runScene0(){
   }
   function typeInp(text,speed){
     return new Promise(r=>{inp.textContent='';let i=0;
-      const iv=setInterval(()=>{if(i<text.length){inp.textContent+=text[i];i++}else{clearInterval(iv);r()}},speed);
+      inp.setAttribute('data-no-i18n','');const iv=setInterval(()=>{if(i<text.length){inp.textContent+=text[i];i++}else{clearInterval(iv);r()}},speed);
     });
   }
   function flashSend(){sendBtn.style.background='var(--acd)';sendBtn.style.borderColor='var(--acm)'}
@@ -4354,7 +4362,7 @@ function runTech(){
             },700);
           },300);
         } else {
-          demo.textContent+=(wi>0?' ':'')+words[wi];wi++;
+          demo.setAttribute('data-no-i18n','');demo.textContent+=(wi>0?' ':'')+words[wi];wi++;
         }
       },55);
     }
@@ -5061,7 +5069,7 @@ function showPricingToast(msg) {
   }
 })();
 </script>
-<script src="i18n.js"></script>
+<script src="/i18n.js?v=5d96c533"></script>
 <script>
 // Language switcher
 function initLangSwitcher(){

@@ -7,7 +7,7 @@
 
      src/renderer/city-styles.js       — the 8 civilisations, whole
      src/renderer/lang-colors.js       — language -> colour, whole
-     src/renderer/wallpaper-project.js — hash01c, sampleLabel, human, since, CITY_PITCH, CITY_YAW, KIND_RGB, sampleCity
+     src/renderer/wallpaper-project.js — hash01c, rasterLabel, sampleLabel, human, since, CITY_PITCH, CITY_YAW, KIND_RGB, sampleCity
 
    Exposed as window.TerseCity, because terse-field.js is a plain IIFE that the
    landing pages load with a bare <script> — there are no modules here.
@@ -881,8 +881,9 @@ function styleVariants(id) {
 /* ── wallpaper-project.js: only what sampleCity needs ────────────────────── */
 function hash01c(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
 
-function sampleLabel(name, n, maxAspect) {
-  const H = 44, PAD = 4;
+function rasterLabel(name, maxAspect, H) {
+  H = H || 44;
+  const PAD = 4;
   const probe = document.createElement('canvas').getContext('2d');
   const font = `700 ${H}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif`;
   probe.font = font;
@@ -906,15 +907,23 @@ function sampleLabel(name, n, maxAspect) {
   const lit = [];
   for (let i = 0; i < d.length; i += 4) if (d[i] > 90) lit.push(i);
   if (!lit.length) return null;
+  return { lit, w: cv.width, h: cv.height };
+}
+
+function sampleLabel(name, n, maxAspect, H) {
+  const r = rasterLabel(name, maxAspect, H);
+  if (!r) return null;
   const pts = new Float32Array(n * 2);
   for (let p = 0; p < n; p++) {
     // 和图、字同一套:按扫描顺序等距取,不散列 —— 散列取样保不住字的骨架。
-    const i = lit[Math.floor(p * lit.length / n)];
-    const px = (i / 4) % cv.width, py = Math.floor((i / 4) / cv.width);
-    pts[p * 2] = (px + 0.5) / cv.width - 0.5;
-    pts[p * 2 + 1] = 0.5 - (py + 0.5) / cv.height;
+    // n ≥ lit 时每个像素至少一颗(多出来的叠在一起),n < lit 时才会跳 —— 所以城市
+    // 那边按 lit 的数目去分,这里就不会跳。
+    const i = r.lit[Math.floor(p * r.lit.length / n)];
+    const px = (i / 4) % r.w, py = Math.floor((i / 4) / r.w);
+    pts[p * 2] = (px + 0.5) / r.w - 0.5;
+    pts[p * 2 + 1] = 0.5 - (py + 0.5) / r.h;
   }
-  return { pts, aspect: cv.width / cv.height };
+  return { pts, aspect: r.w / r.h, lit: r.lit.length };
 }
 
 function human(bytes) {
@@ -947,7 +956,7 @@ const KIND_RGB = {
   source: [0.54, 0.54, 0.56],
 };
 
-function sampleCity(dirs, n, styleId, links, commits, grow) {
+function sampleCity(dirs, n, styleId, links, commits, grow, opts) {
   const target = new Float32Array(n * 3);
   const color = new Float32Array(n * 3);
   // 每颗粒子画多大。楼身、地面、窗、标签要的点各不一样 —— 一个 40px 高的名字拿画
@@ -1080,6 +1089,10 @@ function sampleCity(dirs, n, styleId, links, commits, grow) {
       bytesRaw: +d.bytes || 0,
       age: Number.isFinite(age) ? age : 9999,
       churn: +d.churn || 0,
+      // ⚠ 没有就是 undefined,不是 0 —— 0 的意思是"查过了,没有测试",会画成红底。
+      tests: (d.tests === undefined || d.tests === null) ? undefined : +d.tests,
+      authors: +d.authors || 0,
+      owner: +d.owner || 0,
       rgb: d.lang ? langRgb(d.lang) : (KIND_RGB[kind] || langRgb('')),
       w: Math.sqrt(Math.max(1, massOf(d))),
     };
@@ -1093,8 +1106,10 @@ function sampleCity(dirs, n, styleId, links, commits, grow) {
 
   const wSum = towers.reduce((a, t) => a + t.w, 0) || 1;
   const nGround = Math.round(n * 0.05);
-  const nLabels = Math.min(3, towers.length);
-  const nLabelPts = nLabels ? Math.round(n * 0.09) : 0;
+  /* 竖屏:街牌只放两块。三块并排时每块只有 0.63 宽,读数要么被截断、要么缩成看不清的
+     小字 —— 实测那一行 ~7 个 CSS 像素。两块、各大三成、读数拆两行。 */
+  const NARROW = !!(opts && opts.narrow);
+  const nLabels = Math.min(NARROW ? 2 : 3, towers.length);
   // 提交天际线:53 周 × 7 天,摆在城市**后面**的一条带子。城市有结构、有材料、
   // 有关系,唯独没有时间;这条带子就是时间,而且过去理应在身后。
   const days = Array.isArray(commits) ? commits : [];
@@ -1102,11 +1117,65 @@ function sampleCity(dirs, n, styleId, links, commits, grow) {
   // 屋顶牌:**每一座**都要有名字。街上那三块是"这个仓库主要是什么",屋顶牌是
   // "我现在看的这座是什么" —— 一座认不出名字的楼,再好看也只是装饰。
   const nTags = Math.min(12, towers.length);
-  const nTagPts = Math.round(n * 0.10);
   // 地脉:关系那一层。**不是线** —— 是两块街区之间被踩出来的一片低低的、不匀的光。
   const paths = link.filter((l) => towers[l[0]] && towers[l[1]]);
   const nPathPts = paths.length ? Math.round(n * 0.11) : 0;
-  const nTowers = n - nGround - nLabelPts - nTagPts - nPathPts - nSkyPts;
+
+  /* ── 字按"需要多少"分,不按比例分 ──────────────────────────────────────
+     每块牌子先栅格化一次,数它有多少个亮像素,就给它多少颗粒子 —— 一颗一个像素,
+     笔画是实心的。原来按固定比例切,实测屋顶牌 2× 欠采样、街牌读数 5× 欠采样,
+     那一行读数整行都是虚线。
+     字的栅格高度取**它在手机上约占的设备像素**:屋顶牌 0.072 世界单位 ≈ 38px,
+     街牌读数 0.065 ≈ 35px。再高只是白要粒子。
+     总量封顶 45%:再多楼就会被饿瘦,而楼本身也是要读的东西。超了就**等比例**缩,
+     所有牌子一起稍微欠一点,而不是后面几块整块消失。 */
+  // 字大了,栅格也跟着细 —— 否则一颗粒子要盖好几个屏幕像素,笔画又断了。
+  const TAG_H = 40, NAME_H = NARROW ? 56 : 44, METRIC_H = NARROW ? 44 : 34, LEADER = 110;
+  const tagH = 0.072, tagAspect = Math.max(3.2, (cell * 1.5) / tagH);
+  const boxW = (2 / Math.max(1, nLabels)) * 0.94, minH = NARROW ? 0.16 : 0.125, metH = minH * (NARROW ? 0.62 : 0.52);
+  const factsOf = (t) => [
+    t.files ? t.files + ' files' : '', human(t.bytesRaw), since(t.age),
+    // 几个人在管这一块 —— CoderCity 用颜色切段,这里用一个数。
+    t.authors ? t.authors + (t.authors === 1 ? ' dev' : ' devs') : '',
+  ].filter(Boolean).join(' · ');
+  /* 竖屏上一行读数在这么窄的一格里放不下 —— 拆成两行:"多少文件 · 多大" 和
+     "多久没动 · 几个人"。宽屏一行放得下,照旧一行。 */
+  const factLines = (t) => {
+    if (!NARROW) return [factsOf(t)];
+    const a = [t.files ? t.files + ' files' : '', human(t.bytesRaw)].filter(Boolean).join(' · ');
+    const b = [since(t.age), t.authors ? t.authors + (t.authors === 1 ? ' dev' : ' devs') : '']
+      .filter(Boolean).join(' · ');
+    return [a, b].filter(Boolean);
+  };
+  const litOf = (str0, asp, H) => { const r = rasterLabel(str0, asp, H); return r ? r.lit.length : 0; };
+  const tagNeed = towers.slice(0, nTags).map((t) => litOf(t.name, tagAspect, TAG_H));
+  const nameNeed = towers.slice(0, nLabels).map((t) => litOf(t.name, boxW / minH, NAME_H));
+  const metLineNeed = towers.slice(0, nLabels)
+    .map((t) => factLines(t).map((ln) => litOf(ln, boxW / metH, METRIC_H)));
+  // ⚠ 用内联的 reduce:下面那个 sum() 是在这之后才声明的,这里调它会掉进暂时性死区。
+  const metNeed = metLineNeed.map((arr) => arr.reduce((x, y) => x + y, 0));
+  const sum = (arr) => arr.reduce((x, y) => x + y, 0);
+  const needTotal = sum(tagNeed) + sum(nameNeed) + sum(metNeed) + LEADER * nLabels;
+  const textCap = Math.round(n * 0.45);
+  const kText = needTotal > textCap ? textCap / needTotal : 1;
+  const tagN = tagNeed.map((v) => Math.round(v * kText));
+  const nameN = nameNeed.map((v) => Math.round(v * kText));
+  const metN = metNeed.map((v) => Math.round(v * kText));
+  const nTagPts = sum(tagN);
+  const nLabelPts = nLabels ? sum(nameN) + sum(metN) + LEADER * nLabels : 0;
+
+  /* 测试底座:每座楼脚下一圈。有测试是绿的,没有是红的 —— CodeCharta 那条
+     "红楼 = 缺测试"的规矩,只是画在地上而不是楼身上:楼身的颜色已经是语言了。
+     ⚠ 只在**真的查过**的时候画。Mac 扫出来的城市没有这个字段,那不是"没有测试",
+     是"不知道";画成一圈红会冤枉每一个项目。 */
+  const hasTests = towers.some((t) => t.tests !== undefined);
+  /* 仓库最近有几个人在写。巴士因子是**相对于团队**的:一个一人项目里,每一块当然都只有
+     一个人 —— 那是整个项目的事实,不是某一块的风险。实测:两人以下的 6 个仓库贡献了
+     33 座琥珀楼,其中 3 个一大半都是琥珀,那不是警示,是噪音。 */
+  const repoAuthors = Math.max(0, ...towers.map((t) => t.authors || 0));
+  const RING = 72;
+  const nRingPts = hasTests ? RING * towers.length : 0;
+  const nTowers = n - nGround - nLabelPts - nTagPts - nPathPts - nSkyPts - nRingPts;
   const floorShare = Math.floor(nTowers / (towers.length * 4));
   let p = 0;
 
@@ -1290,20 +1359,40 @@ function sampleCity(dirs, n, styleId, links, commits, grow) {
     return [u * cy_ - z1 * sy, y1, u * sy + z1 * cy_];
   };
 
+  if (nRingPts > 0) {
+    for (const t of towers) {
+      const known = t.tests !== undefined;
+      const tested = t.kind === 'test' || (known && t.tests > 0.02);
+      const c = !known ? [0.30, 0.34, 0.40] : (tested ? [0.36, 0.86, 0.52] : [0.88, 0.34, 0.30]);
+      const s2 = t.foot / 2 + 0.018;
+      for (let k = 0; k < RING; k++) {
+        const u = k / RING, side = Math.floor(u * 4), f = u * 4 - side;
+        const x = side === 0 ? -s2 + 2 * s2 * f : side === 1 ? s2 : side === 2 ? s2 - 2 * s2 * f : -s2;
+        const z = side === 0 ? -s2 : side === 1 ? -s2 + 2 * s2 * f : side === 2 ? s2 : s2 - 2 * s2 * f;
+        put(t.cx + x, BASE + 0.003, t.cz + z, c[0], c[1], c[2], 0.5);
+      }
+    }
+  }
+
   /* 屋顶牌:每座楼头顶一块小牌子,写它叫什么。天空是空的,牌子放在自己屋顶正上方
      不会挡住别人 —— 而挂在楼身上会被这座楼自己的窗和色带吃掉。 */
   if (nTagPts > 0 && nTags > 0) {
     const tagEnd = p + nTagPts;
-    const per = Math.floor(nTagPts / nTags);
     for (let i = 0; i < nTags && p < tagEnd; i++) {
       const t = towers[i];
-      const h = 0.072, maxAspect = Math.max(3.2, (cell * 1.5) / h);
-      const lab = sampleLabel(t.name, Math.min(per, tagEnd - p), maxAspect);
+      const take = Math.min(tagN[i] || 0, tagEnd - p);
+      if (take <= 0) continue;
+      const h = tagH;
+      const lab = sampleLabel(t.name, take, tagAspect, TAG_H);
       if (!lab) continue;
       const w = h * lab.aspect;
       const ay = BASE + t.h + 0.07 + (t.churn === maxChurn && maxChurn >= 3 ? t.h * 0.32 : 0);
-      const [lr, lg, lb] = [t.rgb[0] * 0.35 + 0.62, t.rgb[1] * 0.35 + 0.62, t.rgb[2] * 0.35 + 0.62];
-      const take = Math.min(per, tagEnd - p);
+      /* 巴士因子:一块**经常改**的代码,改动几乎全出自一个人 —— 他走了就没人懂了。
+         名牌染成琥珀色。只看忙的那几块(改动 ≥10):一个没人碰的角落只有一个作者,
+         那不是风险,那是安静。 */
+      const solo = repoAuthors >= 3 && t.owner >= 0.85 && t.churn >= 10;
+      const [lr, lg, lb] = solo ? [1.0, 0.74, 0.34]
+        : [t.rgb[0] * 0.35 + 0.62, t.rgb[1] * 0.35 + 0.62, t.rgb[2] * 0.35 + 0.62];
       for (let k = 0; k < take; k++) {
         const [dx, dy, dz] = unbake(lab.pts[k * 2] * w, lab.pts[k * 2 + 1] * h);
         put(t.cx + dx, ay + dy, t.cz + dz, lr, lg, lb, 0.42);
@@ -1312,20 +1401,16 @@ function sampleCity(dirs, n, styleId, links, commits, grow) {
     while (p < tagEnd) put((hash01c(p * 5) - 0.5) * 2.1, BASE - 0.004, (hash01c(p * 7) - 0.5) * 2.1, 0.20, 0.26, 0.34, 0.62);
   }
   if (nLabelPts > 0) {
-    const LEADER = 110;
-    const per = Math.floor(nLabelPts / nLabels);
-    const boxW = (2 / nLabels) * 0.94;
     // 名字得**在真实大小下读得出来**才算数。放大到 2× 才看得清的标签等于没有 ——
     // 壁纸没有 hover,这一眼看不清就永远看不清了。
-    const minH = 0.125;
     // 名字要站在**城外**。z 只推到 1.12 时,前排建筑被俯角压下来的投影正好盖在
     // 名字上 —— 城市越高压得越远,所以这条街得留够。
     const ROW_Y = BASE - 0.34, ROW_Z = 1.52;
     for (let i = 0; i < nLabels && p < n; i++) {
       const t = towers[i];
-      const room = Math.min(per, n - p);
-      const nMetric = Math.floor((room - LEADER) * 0.34);
-      const lab = sampleLabel(t.name, Math.max(1, room - LEADER - nMetric), boxW / minH);
+      const nMetric = metN[i] || 0;
+      const nName = Math.max(1, nameN[i] || 0);
+      const lab = sampleLabel(t.name, nName, boxW / minH, NAME_H);
       if (!lab) continue;
       // **字高是固定的,宽度跟着名字走** —— 反过来(钉死宽度、由宽高比推字高)会让
       // "src" 这种短名字撑成巨无霸,而 "src-tauri" 缩成一行小字:同一排标签,
@@ -1334,23 +1419,27 @@ function sampleCity(dirs, n, styleId, links, commits, grow) {
       const ax = -1 + (i + 0.5) * (2 / nLabels), ay = ROW_Y, az = ROW_Z;
       const [r0, g0, b0] = t.rgb;
       const lr = r0 * 0.45 + 0.55, lg = g0 * 0.45 + 0.55, lb = b0 * 0.45 + 0.55;
-      const nPts = Math.max(1, room - LEADER - nMetric);
+      const nPts = nName;
       for (let k = 0; k < nPts && p < n; k++) {
         const [dx, dy, dz] = unbake(lab.pts[k * 2] * w, lab.pts[k * 2 + 1] * h);
         put(ax + dx, ay + dy, az + dz, lr, lg, lb, 0.46);
       }
       // 名字下面一行读数:**几个文件、多大、多久没动**。名字说"这是什么",
       // 读数说"它在这个项目里有多重" —— 少了后半句,一座楼再高也只是好看。
-      const facts = [t.files ? t.files + ' files' : '', human(t.bytesRaw), since(t.age)]
-        .filter(Boolean).join(' · ');
-      if (facts && nMetric > 8) {
-        const mh = h * 0.52;
-        const ml = sampleLabel(facts, Math.min(nMetric, n - p), boxW / mh);
-        if (ml) {
+      const lines = factLines(t);
+      const need = metLineNeed[i] || [];
+      const needSum = need.reduce((x, y) => x + y, 0) || 1;
+      if (lines.length && nMetric > 8) {
+        const mh = metH;
+        for (let j = 0; j < lines.length && p < n; j++) {
+          // 每一行按它自己的亮像素数分 —— 一颗粒子一个像素,笔画才是实心的。
+          const take2 = Math.min(Math.max(8, Math.round(nMetric * (need[j] || 0) / needSum)), n - p);
+          const ml = sampleLabel(lines[j], take2, boxW / mh, METRIC_H);
+          if (!ml) continue;
           const mw = mh * ml.aspect;
-          const take2 = Math.min(nMetric, n - p);
+          const yOff = -h * 0.86 - j * mh * 1.22;
           for (let k = 0; k < take2 && p < n; k++) {
-            const [dx, dy, dz] = unbake(ml.pts[k * 2] * mw, ml.pts[k * 2 + 1] * mh - h * 0.86);
+            const [dx, dy, dz] = unbake(ml.pts[k * 2] * mw, ml.pts[k * 2 + 1] * mh + yOff);
             put(ax + dx, ay + dy, az + dz, lr * 0.72, lg * 0.74, lb * 0.80, 0.40);
           }
         }

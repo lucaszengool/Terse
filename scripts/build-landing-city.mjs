@@ -64,7 +64,10 @@ const styles = read('city-styles.js').replace(/^export /gm, '');
 const lang   = read('lang-colors.js').replace(/^export /gm, '');
 const wp     = read('wallpaper-project.js');
 
-const NEEDED = ['hash01c', 'sampleLabel', 'human', 'since',
+/* ⚠ 顺序无关(取出来的都是函数声明,会提升),但**缺一个就整个不写** —— 下面那道
+   闭合检查会拦住,这是它存在的全部理由。sampleLabel 后来多调了一个 rasterLabel,
+   于是这份清单就过期了:清单不会自己跟着 app 走,闭合检查才是跟着走的那个。 */
+const NEEDED = ['hash01c', 'rasterLabel', 'sampleLabel', 'human', 'since',
                 'CITY_PITCH', 'CITY_YAW', 'KIND_RGB', 'sampleCity'];
 const parts = NEEDED.map((n) => extract(wp, n));
 

@@ -29,15 +29,17 @@
 const TAU = Math.PI * 2;
 /** 稳定伪随机。整个文件不许出现 Math.random —— 城市必须可复现。 */
 function h01(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
-/** 字符串 → 整数种子(FNV-1a)。同一个目录名永远拿到同一栋楼。 */
-function seedOf(str) {
+/** 字符串 → 整数种子(FNV-1a)。同一个目录名永远拿到同一栋楼。
+ *  ⚠ 室内那套文法(room-interior)靠的是**同一个**种子:走进一栋楼,里面必须还是
+ *  这栋楼。各写一份就会各自漂移,那时外面是波斯、里面是北欧。 */
+export function seedOf(str) {
   let h = 2166136261;
   const s = String(str || '');
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return (h >>> 0) || 1;
 }
 /** 从种子里连续取值:每问一次换一个数,同一栋楼里各槽位互不相关。 */
-function picker(seed) {
+export function picker(seed) {
   let n = seed;
   return {
     /** 0..1 */

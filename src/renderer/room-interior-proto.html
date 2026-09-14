@@ -46,6 +46,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { LANG_COLOR, LANG_FALLBACK } from './lang-colors.js';
+import { interiorOf, interiorVariants, FLOOR, WALL, CEIL, LIGHT, COL, DISP, asLight, mix } from './room-interior.js';
 
 /* ── sample data: one capsule dir, shaped exactly as `leaves` now ships it ── */
 const DIR = {
@@ -64,22 +65,13 @@ const DIR = {
 };
 
 const hex2rgb = (h) => { const n = parseInt(String(h).slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
-/* 语言色在这里是**光的颜色**,不是漆的颜色。GitHub 那套色是给白底的网页调的,
-   直接拿来加色混合会灰掉 —— 拉饱和、提亮度之后才是同一个颜色在暗处的样子。 */
-function asLight(rgb) {
-  const mx = Math.max(rgb[0], rgb[1], rgb[2]) || 1;
-  const k = 1 / mx;                                   // 先推到满亮度
-  return rgb.map((v, i) => Math.min(1, v * k * 0.92 + (v / mx > 0.85 ? 0.08 : 0)));
-}
-const TINT  = asLight(hex2rgb(LANG_COLOR[DIR.lang] || LANG_FALLBACK));
-const GOLD  = hex2rgb('#f6d98a');       // 富丽的那一半:暖金
-const MINT  = hex2rgb('#6ee7b7');       // 产品色
-const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+/* 语言色在这里是**光的颜色**,不是漆的颜色 —— 见 room-interior.js 的 asLight。
+   ⚠ 只有**文件**用语言色。房子用风格调色板:颜色分两层,混在一起就谁也不说明了。 */
+const LANG = asLight(hex2rgb(LANG_COLOR[DIR.lang] || LANG_FALLBACK));
 
-/* 确定性随机 —— 同一个项目每次必须长成同一座厅堂,和 city-styles 同一条规矩。 */
-let _s = 1;
-const srand = () => { _s = (Math.imul(_s, 1664525) + 1013904223) >>> 0; return _s / 4294967296; };
-const seed = (n) => { _s = (n >>> 0) || 1; };
+/* 装哪一种风格。真接进引擎时这个值来自胶囊的 `style`(外面那座楼用的同一个),
+   这里让 ?style= 覆盖,好一次把八种都看一遍。 */
+const STYLE_ID = new URLSearchParams(location.search).get('style') || DIR.style || 'modern';
 
 /* ── layout: 同 mesh 版,矩形既是几何也是碰撞 ── */
 const HALL_W = 18, HALL_D = 14, HALL_H = 6.2, ROOM_H = 3.6, DOOR_W = 2.4;
@@ -129,184 +121,79 @@ function emit(x, y, z, c, size, twinkle) {
   const i = N++;
   pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
   col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
-  siz[i] = size; pha[i] = srand(); twk[i] = twinkle === undefined ? 0.5 : twinkle;
+  // 闪烁相位:按下标哈希,不用 Math.random —— 这个仓库里的城市一律可复现。
+  siz[i] = size; pha[i] = (Math.imul(i, 2654435761) >>> 0) / 4294967296;
+  twk[i] = twinkle === undefined ? 0.5 : twinkle;
 }
 
-/** 地面:玫瑰窗式的辐射纹样,中心亮、外圈暗。厅堂的地一定要有花纹,不然就是块板。 */
-function floorRosette(r, tint, n, petals) {
-  const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2;
-  const R = Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2;
-  for (let i = 0; i < n; i++) {
-    const a = srand() * Math.PI * 2;
-    const t = Math.sqrt(srand());
-    const rad = t * R * 1.18;
-    const x = cx + Math.cos(a) * rad, z = cz + Math.sin(a) * rad;
-    if (x < r.x0 + 0.1 || x > r.x1 - 0.1 || z < r.z0 + 0.1 || z > r.z1 - 0.1) continue;
-    // 花瓣:沿角度的驻波,配上同心环 —— 两者相乘就是石材拼花的样子
-    const rose = Math.abs(Math.cos(a * petals)) * 0.5 + 0.5;
-    const ring = Math.abs(Math.sin(rad * 2.6)) * 0.45 + 0.55;
-    const k = rose * ring;
-    if (srand() > k * 0.85 + 0.12) continue;
-    const c = lerp3(lerp3(tint, GOLD, k * 0.55), [0.03, 0.04, 0.07], 1 - k * 0.8);
-    emit(x, 0.01 + srand() * 0.015, z, c, 0.5 + k * 0.85, 0.25);
-  }
-}
-
-/** 墙:竖向的光帘 + 顶上一条檐口。密度往上衰减,墙就有了"高"的感觉。 */
-function wallCurtain(x0, z0, x1, z1, h, tint, n, gap) {
-  const horiz = Math.abs(x1 - x0) > Math.abs(z1 - z0);
-  const len = horiz ? Math.abs(x1 - x0) : Math.abs(z1 - z0);
-  for (let i = 0; i < n; i++) {
-    const t = srand();
-    const u = t * len;
-    const px = horiz ? Math.min(x0, x1) + u : x0;
-    const pz = horiz ? z0 : Math.min(z0, z1) + u;
-    if (gap && px > gap.x0 && px < gap.x1 && pz > gap.z0 && pz < gap.z1) continue;
-    const yt = Math.pow(srand(), 1.5);
-    const y = yt * h;
-    // 壁柱:每隔一段一根竖棱,亮一些 —— 柱列是"富丽"最省的一笔
-    const flute = Math.pow(Math.abs(Math.cos(u * 1.15)), 8);
-    const near = 1 - yt;
-    if (srand() > 0.20 + flute * 0.75 + near * 0.28) continue;
-    const c = lerp3(lerp3([0.10, 0.13, 0.20], tint, 0.5 + near * 0.35), GOLD, flute * 0.5);
-    emit(px + (horiz ? 0 : (srand() - 0.5) * 0.12), y, pz + (horiz ? (srand() - 0.5) * 0.12 : 0),
-         c, 0.8 + flute * 1.6, 0.4);
-    // 檐口
-    if (srand() < 0.05) emit(px, h - 0.06 + srand() * 0.12, pz, GOLD, 1.5, 0.7);
-  }
-}
-
-/** 穹顶:大厅头顶的半球,肋骨 + 顶心的一点光。 */
-function dome(cx, cz, R, y0, hgt, tint, n, ribs) {
-  for (let i = 0; i < n; i++) {
-    const a = srand() * Math.PI * 2;
-    const p = Math.pow(srand(), 0.72);
-    const phi = p * Math.PI / 2;
-    const rad = Math.cos(phi) * R, y = y0 + Math.sin(phi) * hgt;
-    const rib = Math.pow(Math.abs(Math.cos(a * ribs / 2)), 10);
-    if (srand() > 0.16 + rib * 0.8 + Math.sin(phi) * 0.3) continue;
-    const c = lerp3(lerp3(tint, [0.16, 0.20, 0.32], 0.42), GOLD, rib * 0.7 + Math.sin(phi) * 0.28);
-    emit(cx + Math.cos(a) * rad, y, cz + Math.sin(a) * rad, c, 0.9 + rib * 1.9, 0.55);
-  }
-  for (let i = 0; i < 260; i++) {   // 顶心的采光
-    const a = srand() * Math.PI * 2, rad = srand() * 0.5;
-    emit(cx + Math.cos(a) * rad, y0 + hgt - 0.05, cz + Math.sin(a) * rad, GOLD, 2.2, 0.9);
-  }
-}
-
-/** 柱子:柱础 + 凹槽柱身 + 柱头。厅里的列柱。 */
-function column(x, z, h, tint, n) {
-  const R = 0.30;
-  for (let i = 0; i < n; i++) {
-    const yt = srand(), y = yt * h;
-    const a = srand() * Math.PI * 2;
-    const flute = 0.5 + 0.5 * Math.cos(a * 12);
-    let rad = R * (0.92 + flute * 0.10);
-    let c = lerp3([0.14, 0.17, 0.24], tint, 0.35 + flute * 0.3);
-    if (yt > 0.93) { rad = R * (1.5 + (yt - 0.93) * 4); c = GOLD; }         // 柱头
-    else if (yt < 0.05) { rad = R * (1.45 - yt * 4); c = lerp3(GOLD, tint, 0.5); }  // 柱础
-    emit(x + Math.cos(a) * rad, y, z + Math.sin(a) * rad, c, 1.0 + (yt > 0.93 ? 1.4 : flute * 0.9), 0.35);
-  }
-}
-
-/** 吊灯:一圈圈悬垂的光珠,慢慢转。厅堂的中心。 */
-function chandelier(cx, cy, cz, n, tint) {
-  const tiers = 4;
-  for (let i = 0; i < n; i++) {
-    const tier = Math.floor(srand() * tiers);
-    const tt = tier / (tiers - 1);
-    const R = 0.5 + (1 - tt) * 1.55;
-    const y = cy - tt * 1.5 - srand() * 0.12;
-    const a = srand() * Math.PI * 2;
-    const beadRing = Math.pow(Math.abs(Math.sin(a * 14)), 6);
-    if (srand() > 0.22 + beadRing * 0.8) continue;
-    const c = lerp3(GOLD, lerp3(tint, [1, 1, 1], 0.4), srand() * 0.5);
-    emit(cx + Math.cos(a) * R, y, cz + Math.sin(a) * R, c, 1.3 + beadRing * 2.2, 1.0);
-  }
-  for (let i = 0; i < 220; i++) {                 // 垂下的链
-    const y = cy + srand() * 1.4;
-    emit(cx + (srand() - 0.5) * 0.06, y, cz + (srand() - 0.5) * 0.06, GOLD, 1.2, 0.8);
-  }
-}
-
-/** 拱门:门洞上的半圆券 + 券脚。 */
-function arch(d, h, tint, n) {
+/** 拱门:门洞上的券。风格不改它的做法,只改它的颜色 —— 门就是门。 */
+function arch(d, h, c1, c2, n, rnd) {
   const horiz = d.side === 'N' || d.side === 'S';
   const half = DOOR_W / 2, top = h * 0.62;
   for (let i = 0; i < n; i++) {
-    const t = srand() * Math.PI;
-    const jitter = (srand() - 0.5) * 0.09;
-    const u = Math.cos(t) * half, y = Math.sin(t) * (top - 1.5) + 1.5 + jitter;
-    const c = lerp3(GOLD, tint, srand() * 0.45);
-    emit(d.cx + (horiz ? u : jitter), y, d.cz + (horiz ? jitter : u), c, 1.1 + srand() * 1.2, 0.6);
+    const t = rnd() * Math.PI, j = (rnd() - 0.5) * 0.09;
+    const u = Math.cos(t) * half, y = Math.sin(t) * (top - 1.5) + 1.5 + j;
+    emit(d.cx + (horiz ? u : j), y, d.cz + (horiz ? j : u), mix(c2, c1, rnd() * 0.45), 1.1 + rnd() * 1.2, 0.6);
   }
-  for (let i = 0; i < n / 3; i++) {                // 券脚两侧的竖线
-    const s = srand() < 0.5 ? -1 : 1, y = srand() * 1.5;
-    const c = lerp3(GOLD, tint, 0.5);
-    emit(d.cx + (horiz ? s * half : 0), y, d.cz + (horiz ? 0 : s * half), c, 1.0, 0.5);
+  for (let i = 0; i < n / 3; i++) {
+    const s = rnd() < 0.5 ? -1 : 1;
+    emit(d.cx + (horiz ? s * half : 0), rnd() * 1.5, d.cz + (horiz ? 0 : s * half), mix(c2, c1, 0.5), 1.0, 0.5);
   }
 }
 
-/** 一个文件:一根发光的光柱 + 绕着它的粒子环。高度就是字节数。 */
-function filePillar(x, z, h, tint, n) {
-  const R = 0.17;
-  for (let i = 0; i < n; i++) {
-    const u = srand();
-    if (u < 0.62) {                                 // 柱身
-      const y = srand() * h, a = srand() * Math.PI * 2;
-      const c = lerp3(tint, [1, 1, 1], Math.pow(y / h, 2) * 0.55);
-      emit(x + Math.cos(a) * R * (0.7 + srand() * 0.4), y, z + Math.sin(a) * R * (0.7 + srand() * 0.4), c, 1.0 + (y / h) * 1.1, 0.5);
-    } else if (u < 0.86) {                          // 环
-      const ring = Math.floor(srand() * 3);
-      const y = h * (0.35 + ring * 0.26);
-      const a = srand() * Math.PI * 2, rr = 0.34 + ring * 0.05;
-      emit(x + Math.cos(a) * rr, y + (srand() - 0.5) * 0.03, z + Math.sin(a) * rr, lerp3(tint, GOLD, 0.45), 1.2, 0.9);
-    } else {                                        // 顶冠
-      const a = srand() * Math.PI * 2, rr = srand() * 0.2;
-      emit(x + Math.cos(a) * rr, h + srand() * 0.3, z + Math.sin(a) * rr, lerp3(tint, [1, 1, 1], 0.6), 1.6, 1.0);
+/* ── 盖起来 ────────────────────────────────────────────────────────────────
+   每个房间问一次 interiorOf:风格是**整个项目**的(跟着外面那座楼),槽位是
+   **这个目录自己**的。于是同一个项目里四个子目录同属一个风格,又各装各的。 */
+const props = [];
+const decor = new Map();          // 房间名 → 这间屋子抽到的那套件,HUD 要显示
+
+function furnish(r, isHall) {
+  const ip = interiorOf(STYLE_ID, r.name);
+  const rnd = () => ip.rnd.f();
+  const c1 = asLight(ip.pal.stone, 0.88);          // 石材
+  const c2 = asLight(ip.pal.accent, 1.0);          // 强调色:金 / 朱红 / 蓝釉
+  const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2;
+  const R = Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2;
+  const h = r.h;
+  const scale = isHall ? 1 : 0.42;                 // 子房间用小一号的预算
+  decor.set(r.name, ip);
+
+  FLOOR[ip.floor]({ r, cx, cz, R, n: Math.round(32000 * scale), rnd, c1, c2, grain: ip.grain }, emit);
+
+  for (const s of ['N', 'S', 'W', 'E']) {
+    const x0 = s === 'E' ? r.x1 : r.x0, x1 = s === 'W' ? r.x0 : r.x1;
+    const z0 = s === 'S' ? r.z1 : r.z0, z1 = s === 'N' ? r.z0 : r.z1;
+    const gap = doors.find((d) => (s === 'N' || s === 'S')
+      ? Math.abs(d.cz - z0) < 0.9 && d.x0 > r.x0 - 0.5 && d.x1 < r.x1 + 0.5
+      : Math.abs(d.cx - x0) < 0.9 && d.z0 > r.z0 - 0.5 && d.z1 < r.z1 + 0.5);
+    WALL[ip.wall]({ x0, z0, x1, z1, h, n: Math.round(8500 * scale), rnd, c1, c2, gap }, emit);
+  }
+
+  /* 顶用的是**屋面色**,不是强调色。波斯的蓝釉、唐宋的青瓦就在 pal.roof 里 ——
+     外面那座楼的顶是什么颜色,从里面抬头看就该是什么颜色。用 accent 的话八个
+     风格的顶会一起变成金的,那是这一轮最明显的一处丢失。 */
+  const cRoof = asLight(ip.pal.roof, 1.0);
+  CEIL[ip.ceil]({ r, cx, cz, R: R * 0.95, y: h * (ip.ceil === 'dome' || ip.ceil === 'onion' ? 0.52 : 1),
+                  hgt: h * 0.6, n: Math.round(30000 * scale), rnd,
+                  c1: mix(c1, cRoof, 0.45), c2: mix(cRoof, c2, 0.35), grain: ip.grain }, emit);
+
+  LIGHT[ip.light]({ cx, cy: h * (isHall ? 0.60 : 0.74), cz, r, n: Math.round(8500 * scale), rnd, c1, c2 }, emit);
+
+  if (ip.col !== 'none' && isHall) {
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (let b = 0; b < ip.bays; b++) {
+      const x = sx * (HALL_W / 2 - 2.0 - b * 3.4), z = sz * (HALL_D / 2 - 1.9);
+      if (Math.abs(x) < 2.2) continue;
+      COL[ip.col]({ x, z, h: h * 0.66, n: 2600, rnd, c1, c2 }, emit);
     }
   }
-  for (let i = 0; i < n / 5; i++) {                 // 基座
-    const a = srand() * Math.PI * 2, rr = 0.25 + srand() * 0.22;
-    emit(x + Math.cos(a) * rr, 0.01 + srand() * 0.04, z + Math.sin(a) * rr, lerp3(GOLD, tint, 0.4), 1.1, 0.35);
-  }
+  return { ip, rnd, c1, c2 };
 }
 
-/* ── 盖起来 ── */
-seed(0x7e45e);
-const props = [];   // { x, z, h, name, bytes, dir } —— 点选和标签用
+const hallKit = furnish(hall, true);
+for (const k of DIR.kids) furnish(roomNamed(k[0]), false);
+for (const d of doors) arch(d, HALL_H, hallKit.c1, hallKit.c2, 2600, hallKit.rnd);
 
-// 大厅
-floorRosette(hall, TINT, 34000, 8);
-dome(0, 0, HALL_W * 0.46, HALL_H * 0.52, HALL_H * 0.62, TINT, 30000, 16);
-chandelier(0, HALL_H * 0.60, 0, 9000, TINT);
-{
-  const gapsOf = (sd) => doors.find((d) => d.side === sd);
-  wallCurtain(hall.x0, hall.z0, hall.x1, hall.z0, HALL_H, TINT, 9000, gapsOf('N'));
-  wallCurtain(hall.x0, hall.z1, hall.x1, hall.z1, HALL_H, TINT, 9000, gapsOf('S'));
-  wallCurtain(hall.x0, hall.z0, hall.x0, hall.z1, HALL_H, TINT, 8000, gapsOf('W'));
-  wallCurtain(hall.x1, hall.z0, hall.x1, hall.z1, HALL_H, TINT, 8000, gapsOf('E'));
-}
-for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-  column(sx * (HALL_W / 2 - 2.0), sz * (HALL_D / 2 - 1.9), HALL_H * 0.66, TINT, 3200);
-  column(sx * (HALL_W / 2 - 5.6), sz * (HALL_D / 2 - 1.9), HALL_H * 0.66, TINT, 3200);
-}
-for (const d of doors) arch(d, HALL_H, TINT, 2600);
-
-// 子房间
-for (const k of DIR.kids) {
-  const r = roomNamed(k[0]);
-  const t = lerp3(TINT, GOLD, 0.18);
-  floorRosette(r, t, 9000, 6);
-  wallCurtain(r.x0, r.z0, r.x1, r.z0, ROOM_H, t, 3400, doors.find((d) => d.room === r.name && d.side === 'S'));
-  wallCurtain(r.x0, r.z1, r.x1, r.z1, ROOM_H, t, 3400, doors.find((d) => d.room === r.name && d.side === 'N'));
-  wallCurtain(r.x0, r.z0, r.x0, r.z1, ROOM_H, t, 3200, doors.find((d) => d.room === r.name && d.side === 'E'));
-  wallCurtain(r.x1, r.z0, r.x1, r.z1, ROOM_H, t, 3200, doors.find((d) => d.room === r.name && d.side === 'W'));
-  dome((r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2, Math.min(r.x1 - r.x0, r.z1 - r.z0) * 0.44, ROOM_H * 0.72, ROOM_H * 0.34, t, 5200, 10);
-  chandelier((r.x0 + r.x1) / 2, ROOM_H * 0.78, (r.z0 + r.z1) / 2, 2200, t);
-}
-
-// 文件
+// 文件:陈列方式由那间屋子的 disp 槽决定,高度永远是字节数。
 {
   const byRoom = new Map();
   for (const leaf of DIR.leaves) {
@@ -316,6 +203,9 @@ for (const k of DIR.kids) {
   }
   for (const [k, files] of byRoom) {
     const r = k ? roomNamed(k) : hall;
+    const ip = decor.get(r.name);
+    const rnd = () => ip.rnd.f();
+    const c1 = asLight(ip.pal.stone, 0.88), c2 = asLight(ip.pal.accent, 1.0);
     const cols = Math.ceil(Math.sqrt(files.length)), rowsN = Math.ceil(files.length / cols);
     const m = k ? 1.6 : 3.0;
     files.forEach((f, i) => {
@@ -324,7 +214,7 @@ for (const k of DIR.kids) {
       const c0 = i % cols, r0 = Math.floor(i / cols);
       const x = cols === 1 ? (r.x0 + r.x1) / 2 : r.x0 + m + c0 * (r.x1 - r.x0 - m * 2) / (cols - 1);
       const z = rowsN === 1 ? (r.z0 + r.z1) / 2 : r.z0 + m + r0 * (r.z1 - r.z0 - m * 2) / (rowsN - 1);
-      filePillar(x, z, h, TINT, 2400);
+      DISP[ip.disp]({ x, z, h, n: 2400, rnd, lang: LANG, c1, c2 }, emit);
       props.push({ x, z, h, name, bytes, dir: k || DIR.name });
     });
   }
@@ -517,6 +407,10 @@ window.__room = {
   },
   renderNow: () => { frame1(); },
   particles: () => N, bloom, walkable, rooms, doors, props, camera,
+  /** 这间厅堂抽到了哪几件 —— 看文法有没有真的在变。 */
+  kit: (name) => { const ip = decor.get(name || hall.name); return ip && { style: ip.style.id, floor: ip.floor, wall: ip.wall, ceil: ip.ceil, light: ip.light, col: ip.col, disp: ip.disp }; },
+  kits: () => [...decor.entries()].map(([k, ip]) => [k, ip.floor, ip.wall, ip.ceil, ip.light, ip.col, ip.disp]),
+  variants: interiorVariants,
 };
 </script>
 </body>

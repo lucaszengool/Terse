@@ -44,6 +44,11 @@
       public_rooms: 'Public rooms', refresh: 'Refresh',
       plaza_empty: 'No open rooms right now.',
       room_none: 'You are not in a room.\nJoin one from the plaza.',
+      room_city_none: 'No code cities in here yet.',
+      room_city_n: '{n} code cities in here. Tap the tile beside a name.',
+      room_city_now: '▣ {who} — {what}',
+      room_city_tap: 'Show this code city',
+      someone: 'someone',
       leave: 'Leave', send: 'Send',
       friends_empty: "No friends yet.\nAdd someone from a room's roster.",
       devices: 'Your computers', pair: 'Link this phone',
@@ -272,6 +277,11 @@
       public_rooms: '公开房间', refresh: '刷新',
       plaza_empty: '现在还没有开放的房间。',
       room_none: '你还没有在任何房间里。\n去广场加入一个。',
+      room_city_none: '这屋里还没有人的代码城市。',
+      room_city_n: '这屋里有 {n} 座代码城市,点名字旁边那个块。',
+      room_city_now: '▣ {who} — {what}',
+      room_city_tap: '放这座代码城市',
+      someone: '某人',
       leave: '离开', send: '发送',
       friends_empty: '还没有好友。\n在房间成员列表里添加。',
       devices: '你的电脑', pair: '连接这台手机',
@@ -510,6 +520,10 @@
     var ph = document.querySelectorAll('[data-tph]');
     for (var k = 0; k < ph.length; k++) ph[k].placeholder = t(ph[k].getAttribute('data-tph'));
     if ($('langSel')) $('langSel').value = lang;
+    /* 上面那一轮把每个 data-t 都刷回了它的默认字面。房间那一行不是一句固定的话,
+       它说的是"现在放的是谁" —— 不补这一下,换一次语言就会退回"这屋里还没有人的
+       代码城市",而城还在身后放着,要等下一轮(二十秒)才自己说对。 */
+    if (window.TerseRoomField) showRoomCity(window.TerseRoomField.now());
   }
 
   function toast(msg) {
@@ -700,9 +714,7 @@
        live numbers is the wrong thing entirely. The check is re-asked each
        cycle because pairing can happen mid-session. */
     if (window.TersePlazaField) {
-      window.TersePlazaField.start(wp, function () {
-        return !(wallState && wallState.linked);
-      });
+      window.TersePlazaField.start(wp, function () { return !isLinked(); });
     }
 
     /* The engine measures the canvas in its constructor and falls back to
@@ -967,6 +979,18 @@
     });
 
     renderChip();
+  }
+
+  /* 有没有配对上一台机器。
+   *
+   * ⚠ 这里原本写的是 wallState,而这个名字在这个文件里从来没有声明过。读一个没有
+   * 声明的标识符抛 ReferenceError,而这个异常恰好落在 plaza-field 那条 promise 链
+   * 尾巴上的 .catch 里 —— 那个 catch 的本意是"广场取不到就算了",于是它把一个程序
+   * 错误当成了一次失败的请求咽掉:广场预览一次也没有放过,控制台里一行报错也没有。
+   * 这一类故障没有症状,只有"那个功能好像没做"。
+   */
+  function isLinked() {
+    try { var st = T.link.state(); return !!(st && st.linked); } catch (e) { return false; }
   }
 
   function renderChip() {
@@ -1315,6 +1339,10 @@
        replaying over your own agents, which is the bug that took a whole round
        to find the first time. */
     if (current === 'plaza' && tab !== 'plaza') endProject();
+    /* 房间的城借的是同一块地方,所以也要对称地还回去 —— 走出这一屏就停。壁纸
+       那一屏是这个人自己的 agent 在说话,把室友的城盖上去,和让陌生人的项目盖住
+       他自己的实时数字是同一种错。 */
+    if (current === 'room' && tab !== 'room') leaveRoomField();
     current = tab;
     var views = document.querySelectorAll('.view');
     for (var i = 0; i < views.length; i++) views[i].classList.toggle('on', views[i].id === 'v-' + tab);
@@ -1331,7 +1359,7 @@
     if (tab === 'field' && !T.isPro()) setTimeout(watchPreviews, 60);
     if (tab === 'plaza') loadPlazaTab();
     if (tab === 'friends') loadFriendsTab();
-    if (tab === 'room') renderRoom();
+    if (tab === 'room') { renderRoom(); enterRoomField(); }
     if (tab === 'me') renderMe();
     renderPairBar();
     try { history.replaceState(null, '', '/m/' + tab); } catch (e) {}
@@ -1470,6 +1498,63 @@
   var roster = [];
   var myMemberId = null;
 
+  /* ── 房间里的代码城市 ────────────────────────────────────────────────
+     屋里这几个人发布过的项目,一座一座放在身后那块画布上 —— 和项目预览、广场轮播
+     用的是同一块地方,同一台引擎,同一个 showProject。
+
+     ⚠ 名单只能从服务端拿。名册发到手机上的时候身份串是被摘掉的(api/rooms.js 的
+     roster()),而"这个人发布过什么"恰恰要靠它去广场里查;配对因此在服务端做,
+     手机收到的是已经配好的成员和胶囊。 */
+
+  /** 屋里那一行字:没有城、有几座、正在放谁。 */
+  function showRoomCity(entry) {
+    var el = $('roomCityNow');
+    if (!el) return;
+    var RF = window.TerseRoomField;
+    var n = RF ? RF.count() : 0;
+    if (!n) { el.textContent = t('room_city_none'); el.classList.remove('on'); return; }
+    if (!entry) {
+      el.textContent = t('room_city_n').replace('{n}', String(n));
+      el.classList.remove('on');
+      return;
+    }
+    el.textContent = t('room_city_now')
+      .replace('{who}', entry.name || t('someone'))
+      .replace('{what}', (entry.project && entry.project.title) || '');
+    el.classList.add('on');
+  }
+
+  function enterRoomField() {
+    var RF = window.TerseRoomField;
+    if (!wp || !RF || !Rooms.inRoom()) { showRoomCity(null); return; }
+    /* 广场和房间抢的是同一块地方,先把广场停掉 —— 两条轮播同时跑,后一条会把前
+       一条盖掉一半,看上去像引擎坏了。 */
+    try { if (window.TersePlazaField) window.TersePlazaField.stop(wp); } catch (e) {}
+    RF.start(wp, { onPlay: showRoomCity }).then(function (n) {
+      showRoomCity(n ? RF.now() : null);
+      // 名单回来之后名册才知道哪几行点得动,所以在这里再画一次。
+      if (n) renderRoster(roster);
+    });
+  }
+
+  function leaveRoomField() {
+    var RF = window.TerseRoomField;
+    if (RF) RF.stop(wp);
+    showRoomCity(null);
+    resumePlaza();
+  }
+
+  /* 把画布还给广场。条件和当初启动它的时候必须是同一个:只有没有配对的时候广场才
+     该放。写成无条件恢复的话,一个配了 Mac 的人走出房间就会开始看陌生人的项目,
+     而那正是 plaza-field 顶上那段注释说不能发生的事。 */
+  function resumePlaza() {
+    if (!wp || !window.TersePlazaField) return;
+    if (isLinked()) return;
+    try {
+      window.TersePlazaField.start(wp, function () { return !isLinked(); });
+    } catch (e) {}
+  }
+
   function renderRoom() {
     var inRoom = Rooms.inRoom();
     $('roomNone').classList.toggle('hide', inRoom);
@@ -1494,6 +1579,24 @@
       nm.className = 'grow ell muted';
       nm.textContent = (m.name || 'someone') + (m.member_id === myMemberId ? ' · ' + t('you') : '');
       row.appendChild(av); row.appendChild(nm);
+
+      /* 有城的人,行尾多一个 ▣。做成按钮而不是整行可点:整行可点的话,旁边加好友
+         的 + 就变成了"行里的一块",而它们是两件事。没有城的人这里什么也没有 ——
+         名册说的是谁在屋里,不该因为谁没发布过就把他藏起来。 */
+      var RF = window.TerseRoomField;
+      if (RF && RF.has(m.member_id)) {
+        var city = document.createElement('button');
+        city.type = 'button';
+        city.className = 'btn ghost citybtn';
+        city.textContent = '▣';
+        city.title = t('room_city_tap');
+        city.setAttribute('aria-label', t('room_city_tap'));
+        city.onclick = (function (id) {
+          return function () { RF.playMember(wp, id); };
+        })(m.member_id);
+        row.appendChild(city);
+      }
+
       if (m.member_id !== myMemberId) {
         var add = document.createElement('button');
         add.type = 'button'; add.className = 'btn ghost'; add.style.minHeight = '32px';
@@ -1541,8 +1644,20 @@
         renderRoster(s.members);
         $('msgs').innerHTML = '';
         (s.messages || []).forEach(addMsg);
+        // 快照是"我确实在这个房间里"的第一个证据,城从这里开始放 —— 但只在人正
+        // 看着房间这一屏的时候。
+        if (current === 'room') enterRoomField();
       },
-      onRoster: renderRoster,
+      onRoster: function (members) {
+        renderRoster(members);
+        /* 有人进屋,他的城该跟着他一起到。⚠ 不打断正在放的那一座 —— 名册每有一
+           个人上线下线都会来一条,按这个节奏重开轮播的话,人一多就再也放不完一
+           座城。refresh() 只换名单,下一轮才生效。 */
+        var RF = window.TerseRoomField;
+        if (RF && current === 'room') {
+          RF.refresh(wp).then(function () { renderRoster(members); showRoomCity(RF.now()); });
+        }
+      },
       onMessage: addMsg,
       onClosed: function () { renderRoom(); toast('Room closed'); },
     });
@@ -1562,6 +1677,11 @@
     Rooms.leave().then(function () {
       if (stopRoom) { stopRoom(); stopRoom = null; }
       if (wp && wp.setPeers) wp.setPeers([]);
+      /* clear() 而不是 stop():名单也扔掉。留着的话,下一个房间会先闪一下上一个
+         房间的人 —— 那是别人屋子里的东西。 */
+      if (window.TerseRoomField) window.TerseRoomField.clear(wp);
+      showRoomCity(null);
+      resumePlaza();
       renderRoom();
     });
   });

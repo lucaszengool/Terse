@@ -23,6 +23,8 @@
   var LS = 'terse-room';           // the ACTIVE room: { id, code, key, memberId, … }
   var LS_ROOMS = 'terse-rooms';    // every room this install belongs to, by id
   var LS_ID = 'terse-identity';    // this install's secret — never leaves as-is
+  var LS_ID_LEGACY = 'terse-identity-legacy';   // the random secret, kept after adopting an account id
+  var LS_ID_MERGE = 'terse-identity-merge-pending';
   var LS_MUTE = 'terse-room-mute-log';  // "don't put MY agent log in the room"
   var LS_NAME = 'terse-nickname';  // what the roster calls you, everywhere
   var HEARTBEAT_MS = 20000;        // server ages a member out at 45s
@@ -140,18 +142,251 @@
     });
   }
 
+  /* ── End-to-end encryption ─────────────────────────────────────────────────
+     A private room's messages, agent messages, log lines and files are sealed
+     with a 32-byte room key that exists only on members' devices. The relay
+     stores "e1:" + base64url(iv | AES-GCM ciphertext), with the room id bound in
+     as associated data so a message cannot be replayed into another room.
+
+     Getting the key to a new member without the relay seeing it: every device
+     has an ECDH P-256 pair; a member who holds the key seals it to the newcomer's
+     public key (ECDH → HKDF bound to the room) and the relay carries only that
+     blob. The room records which key is current by its hash (`key_id`), so a
+     share of any other key is refused by the receiver. Same safety code on every
+     screen = nobody slipped a key of their own into the middle. */
+  var LS_KEYS = 'terse-room-keys';      // room id → base64url(room key). Never sent anywhere in the clear.
+  var LS_KP = 'terse-room-keypair';     // this device's ECDH pair: JWK private, raw public
+  var subtle = (root.crypto && root.crypto.subtle) || null;
+  var ECDH = { name: 'ECDH', namedCurve: 'P-256' };
+  function te(s) { return new TextEncoder().encode(s); }
+  function b64u(bytes) {
+    var a = new Uint8Array(bytes), bin = '';
+    for (var i = 0; i < a.length; i++) bin += String.fromCharCode(a[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function unb64u(s) {
+    s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    var bin = atob(s), a = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return a;
+  }
+  function cat(a, b) { var o = new Uint8Array(a.length + b.length); o.set(a, 0); o.set(b, a.length); return o; }
+  function secrets() { try { return JSON.parse(localStorage.getItem(LS_KEYS) || '{}') || {}; } catch (e) { return {}; } }
+  function secretOf(id) { return (id && secrets()[id]) || null; }
+  function setSecret(id, k) {
+    var all = secrets();
+    if (k) all[id] = k; else delete all[id];
+    try { localStorage.setItem(LS_KEYS, JSON.stringify(all)); } catch (e) {}
+  }
+  function newSecret() { return b64u(root.crypto.getRandomValues(new Uint8Array(32))); }
+  function keyIdOf(k) {
+    return subtle.digest('SHA-256', unb64u(k)).then(function (h) { return b64u(h).slice(0, 16); });
+  }
+  var aesCache = {};
+  function aesKey(id) {
+    var s = secretOf(id);
+    if (!s || !subtle) return Promise.resolve(null);
+    var c = aesCache[id];
+    if (c && c.s === s) return c.p;
+    var p = subtle.importKey('raw', unb64u(s), 'AES-GCM', false, ['encrypt', 'decrypt']);
+    aesCache[id] = { s: s, p: p };
+    return p;
+  }
+  function seal(id, text) {
+    return aesKey(id).then(function (k) {
+      if (!k) throw new Error("🔒 You don't have this room's key yet — someone in the room hands it over automatically");
+      var iv = root.crypto.getRandomValues(new Uint8Array(12));
+      return subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: te(id) }, k, te(String(text)))
+        .then(function (ct) { return 'e1:' + b64u(cat(iv, new Uint8Array(ct))); });
+    });
+  }
+  /** Plaintext for anything; null for ciphertext this device cannot open. */
+  function unseal(id, s) {
+    if (typeof s !== 'string' || s.slice(0, 3) !== 'e1:') return Promise.resolve(s);
+    return aesKey(id).then(function (k) {
+      if (!k) return null;
+      var b = unb64u(s.slice(3));
+      return subtle.decrypt({ name: 'AES-GCM', iv: b.slice(0, 12), additionalData: te(id) }, k, b.slice(12))
+        .then(function (pt) { return new TextDecoder().decode(pt); }, function () { return null; });
+    }, function () { return null; });
+  }
+  /** A message as a person should see it. `locked` = sealed with a key this
+      device does not have (yet, or from before the key changed). */
+  function openMessage(id, m) {
+    if (!m || m.role === 'system') return Promise.resolve(m);
+    var f = m.meta && m.meta.file;
+    return Promise.all([unseal(id, m.body), f ? unseal(id, f.name) : null]).then(function (r) {
+      var out = {};
+      Object.keys(m).forEach(function (k) { out[k] = m[k]; });
+      if (m.body && r[0] === null) { out.locked = true; out.body = ''; } else out.body = r[0];
+      if (f) {
+        out.meta = JSON.parse(JSON.stringify(m.meta));
+        if (r[1] === null) { out.locked = true; out.meta.file.name = 'file'; } else out.meta.file.name = r[1];
+      }
+      return out;
+    });
+  }
+
+  var kpPromise = null;
+  function keypair() {
+    if (kpPromise) return kpPromise;
+    if (!subtle) return Promise.reject(new Error('No WebCrypto here'));
+    var stored = null;
+    try { stored = JSON.parse(localStorage.getItem(LS_KP) || 'null'); } catch (e) {}
+    kpPromise = (stored && stored.pub && stored.priv)
+      ? subtle.importKey('jwk', stored.priv, ECDH, false, ['deriveBits'])
+          .then(function (priv) { return { pub: stored.pub, priv: priv }; })
+      : subtle.generateKey(ECDH, true, ['deriveBits']).then(function (pair) {
+          return Promise.all([subtle.exportKey('jwk', pair.privateKey), subtle.exportKey('raw', pair.publicKey)])
+            .then(function (x) {
+              var rec = { priv: x[0], pub: b64u(x[1]) };
+              try { localStorage.setItem(LS_KP, JSON.stringify(rec)); } catch (e) {}
+              return { pub: rec.pub, priv: pair.privateKey };
+            });
+        });
+    kpPromise.catch(function () { kpPromise = null; });
+    return kpPromise;
+  }
+  /** The one-off AES key two devices share for handing a room key across. */
+  function pairKey(roomId, theirPub) {
+    return Promise.all([keypair(), subtle.importKey('raw', unb64u(theirPub), ECDH, false, [])])
+      .then(function (x) { return subtle.deriveBits({ name: 'ECDH', public: x[1] }, x[0].priv, 256); })
+      .then(function (bits) { return subtle.importKey('raw', bits, 'HKDF', false, ['deriveKey']); })
+      .then(function (hk) {
+        return subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: te(roomId), info: te('terse-room-key-v1') },
+          hk, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+      });
+  }
+  function wrapFor(roomId, theirPub) {
+    var k = secretOf(roomId);
+    if (!k) return Promise.reject(new Error('no key'));
+    return pairKey(roomId, theirPub).then(function (wk) {
+      var iv = root.crypto.getRandomValues(new Uint8Array(12));
+      return subtle.encrypt({ name: 'AES-GCM', iv: iv }, wk, unb64u(k))
+        .then(function (ct) { return b64u(cat(iv, new Uint8Array(ct))); });
+    });
+  }
+  function unwrapFrom(roomId, fromPub, blob) {
+    return pairKey(roomId, fromPub).then(function (wk) {
+      var b = unb64u(blob);
+      return subtle.decrypt({ name: 'AES-GCM', iv: b.slice(0, 12) }, wk, b.slice(12));
+    }).then(function (raw) { return b64u(raw); });
+  }
+
+  /* The key duties, run by ONE window (the room window asks for them with
+     keyAgent): publish this device's public key, make the room key if the room
+     has none yet, pick up a share addressed to me, and hand the key to anyone
+     who has published a key but does not hold the room's. */
+  var handed = {};
+  function keyDuty(members, keyshares, h) {
+    var st = readState();
+    if (!subtle || !st || !st.id) return Promise.resolve();
+    var id = st.id;
+    var me = (members || []).filter(function (m) { return String(m.member_id) === String(st.memberId); })[0];
+    function keyed(k) {
+      return keyIdOf(k).then(function (kid) {
+        return call('/' + id + '/keyed', { method: 'POST', body: { key_id: kid } }).then(function () { return true; },
+          function (e) {
+            // Somebody else's key won the race: mine is not the room's. Drop it
+            // and wait for a share of theirs.
+            if (/stale key/.test(String(e && e.message))) { setSecret(id, null); return false; }
+            return false;
+          });
+      });
+    }
+    return keypair().then(function (kp) {
+      var pub = (!me || me.pubkey !== kp.pub)
+        ? call('/' + id + '/pubkey', { method: 'POST', body: { pubkey: kp.pub } }).catch(function () {})
+        : Promise.resolve();
+      if (!st.e2e) return pub;
+      return pub.then(function () {
+        var have = secretOf(id);
+        return (have ? keyIdOf(have) : Promise.resolve(null)).then(function (kid) {
+          if (have && st.keyId && kid !== st.keyId) { setSecret(id, null); have = null; }
+          if (!have && !st.keyId) {            // nobody has made one: make it
+            setSecret(id, newSecret());
+            return keyed(secretOf(id)).then(function (ok) { if (ok && h.onKey) h.onKey(); return ok; });
+          }
+          if (!have) {                          // pick up a share addressed to me
+            var got = keyshares ? Promise.resolve({ keyshares: keyshares }) : call('/' + id + '/keyshares');
+            return got.then(function (j) {
+              var list = (j && j.keyshares) || [];
+              var next = function (i) {
+                if (i >= list.length) return Promise.resolve(false);
+                return unwrapFrom(id, list[i].from_pub, list[i].blob).then(function (k) {
+                  return keyIdOf(k).then(function (kid2) {
+                    if (kid2 !== st.keyId) return next(i + 1);   // not the room's key: refuse it
+                    setSecret(id, k);
+                    return keyed(k).then(function () { if (h.onKey) h.onKey(); return true; });
+                  });
+                }, function () { return next(i + 1); });
+              };
+              return next(0);
+            });
+          }
+          var pre = (me && !me.keyed) ? keyed(have) : Promise.resolve(true);
+          return pre.then(function (ok) {
+            if (!ok) return;
+            return Promise.all((members || []).map(function (m) {
+              if (String(m.member_id) === String(st.memberId) || !m.pubkey || m.keyed) return null;
+              var sig = id + '|' + m.member_id + '|' + m.pubkey + '|' + st.keyId;
+              if (handed[sig]) return null;
+              handed[sig] = true;
+              return wrapFor(id, m.pubkey).then(function (blob) {
+                return call('/' + id + '/keyshares', { method: 'POST', body: { to: m.member_id, from_pub: kp.pub, blob: blob } });
+              }).catch(function () { delete handed[sig]; });
+            }));
+          });
+        });
+      });
+    }).catch(function () {});
+  }
+
   var Rooms = {
     state: readState,
+
+    // ── encryption, for the room window and the Rust side of the agent channel ──
+    secret: secretOf,
+    openMessage: openMessage,
+    /** Turn end-to-end encryption on or off (owner). A new key is made by the
+        first device that notices the room has none. */
+    setE2E: function (on) {
+      var st = readState();
+      if (!st) return Promise.reject(new Error('Not in a room'));
+      setSecret(st.id, null);
+      return call('/' + st.id + '/e2e', { method: 'POST', body: { on: !!on } }).then(function (j) {
+        var s2 = readState();
+        if (s2) { s2.e2e = !!j.room.e2e; s2.keyId = j.room.key_id || null; writeState(s2); }
+        return j.room;
+      });
+    },
+    /** Same digits on every member's screen = same key, same people. */
+    safetyCode: function (members) {
+      var st = readState(), k = st && secretOf(st.id);
+      if (!k || !subtle) return Promise.resolve(null);
+      var pubs = (members || []).filter(function (m) { return m.pubkey && m.keyed; })
+        .map(function (m) { return m.pubkey; }).sort();
+      return subtle.digest('SHA-256', cat(unb64u(k), te(pubs.join('.')))).then(function (h) {
+        var a = new Uint8Array(h), out = [];
+        for (var i = 0; i < 10; i += 2) out.push(('000' + (((a[i] << 8) | a[i + 1]) % 10000)).slice(-4));
+        return out.join(' ');
+      });
+    },
     inRoom: function () { var s = readState(); return !!(s && s.key && s.id); },
 
     create: function (name, memberName, email, opts) {
       return call('', { method: 'POST',
         body: { name: name, member_name: memberName, email: email, identity: identity(),
-                visibility: opts && opts.visibility, category: opts && opts.category } })
+                visibility: opts && opts.visibility, category: opts && opts.category,
+                agents: opts && opts.agents === false ? false : undefined,
+                // Private rooms are end-to-end encrypted unless asked otherwise.
+                e2e: !(opts && opts.e2e === false) && !(opts && opts.visibility === 'public') } })
         .then(function (j) {
           writeState({ id: j.room.id, code: j.room.code, name: j.room.name,
                        key: j.key, memberId: null, owner: true, left: false,
-                       visibility: j.room.visibility, category: j.room.category });
+                       visibility: j.room.visibility, category: j.room.category,
+                       e2e: !!j.room.e2e, keyId: j.room.key_id || null });
           // The member id comes from the snapshot, but the room already EXISTS
           // by now — so a failed snapshot must not report failure and strand an
           // orphan room. The stream teaches us the id again on connect.
@@ -172,7 +407,8 @@
           // would otherwise demote themselves to a guest in their own room.
           writeState({ id: j.room.id, code: j.room.code, name: j.room.name,
                        key: j.key, memberId: j.member_id, owner: !!j.owner, left: false,
-                       visibility: j.room.visibility, category: j.room.category });
+                       visibility: j.room.visibility, category: j.room.category,
+                       e2e: !!j.room.e2e, keyId: j.room.key_id || null });
           return j.room;
         });
     },
@@ -218,7 +454,10 @@
       var st = readState();
       if (!st) return Promise.reject(new Error('Not in a room'));
       var q = '?limit=' + (limit || 50) + (beforeSeq ? '&before=' + encodeURIComponent(beforeSeq) : '');
-      return call('/' + st.id + '/messages' + q);
+      return call('/' + st.id + '/messages' + q).then(function (j) {
+        return Promise.all((j.messages || []).map(function (m) { return openMessage(st.id, m); }))
+          .then(function (list) { j.messages = list; return j; });
+      });
     },
 
     /* Your nickname. Kept locally because it is asked for BEFORE there is a room
@@ -248,18 +487,39 @@
       return !!on;
     },
 
-    sendMessage: function (body, imageUrl) {
+    /** opts.toAgents: address the line to the agents in the room (each owner's
+        Terse decides whether it reaches their agent). */
+    sendMessage: function (body, imageUrl, opts) {
       var st = readState();
       if (!st) return Promise.reject(new Error('Not in a room'));
-      return call('/' + st.id + '/messages', { method: 'POST',
-        body: { body: body, image_url: imageUrl } });
+      var sealed = (st.e2e && body) ? seal(st.id, body) : Promise.resolve(body);
+      return sealed.then(function (b) {
+        return call('/' + st.id + '/messages', { method: 'POST',
+          body: { body: b, image_url: imageUrl, to_agents: !!(opts && opts.toAgents) } });
+      });
+    },
+
+    /* ── Agent channel ──
+       Only the badge and the room's say-so live on the server. Which session is
+       connected, whether peer messages reach it on their own, and every file
+       going in or out are decided on this Mac (room_link.rs). */
+    setAgent: function (on, kind, label) {
+      var st = readState();
+      if (!st) return Promise.reject(new Error('Not in a room'));
+      return call('/' + st.id + '/agent', { method: 'POST',
+        body: { on: !!on, kind: kind, label: label } });
     },
 
     publishLog: function (text, kind) {
       var st = readState();
       if (!st) return Promise.resolve();
-      return call('/' + st.id + '/log', { method: 'POST', body: { text: text, kind: kind } })
-        .catch(function () {});   // a dropped log line is not worth an error path
+      // In an encrypted room a log line is sealed like everything else — or not
+      // sent at all while this device is still waiting for the key.
+      var sealed = st.e2e ? (secretOf(st.id) ? seal(st.id, text) : Promise.reject(new Error('no key')))
+                          : Promise.resolve(text);
+      return sealed.then(function (t) {
+        return call('/' + st.id + '/log', { method: 'POST', body: { text: t, kind: kind } });
+      }).catch(function () {});   // a dropped log line is not worth an error path
     },
 
     /** Ask to add a room member. Fails loudly — the caller shows the reason,
@@ -371,7 +631,8 @@
         if (j.status === 'approved' && j.key) {
           writeState({ id: j.room.id, code: j.room.code, name: j.room.name,
                        key: j.key, memberId: j.member_id, owner: false,
-                       visibility: j.room.visibility, category: j.room.category });
+                       visibility: j.room.visibility, category: j.room.category,
+                       e2e: !!j.room.e2e, keyId: j.room.key_id || null });
         }
         return j;
       });
@@ -441,24 +702,90 @@
       if (!st) return function () {};
       var url = API + '/' + st.id + '/stream?key=' + encodeURIComponent(st.key);
       var es = new EventSource(url);
+      var chain = Promise.resolve(), members = [];
+      function roomInfo(r) {
+        var s2 = readState();
+        if (!r || !s2 || s2.id !== r.id) return;
+        if (s2.e2e !== !!r.e2e || (s2.keyId || null) !== (r.key_id || null)) {
+          s2.e2e = !!r.e2e; s2.keyId = r.key_id || null; writeState(s2);
+        }
+      }
+      function duty(keyshares) { return h.keyAgent ? keyDuty(members, keyshares, h) : Promise.resolve(); }
+      function copy(m) { var c = {}; Object.keys(m).forEach(function (k) { c[k] = m[k]; }); return c; }
+      function handle(m) {
+        var id = st.id;
+        if (m.type === 'snapshot') {
+          // The snapshot is also how a creator learns its own member id.
+          var s2 = readState();
+          if (m.you && s2 && s2.memberId !== m.you) { s2.memberId = m.you; writeState(s2); }
+          roomInfo(m.room);
+          members = m.members || [];
+          // Key first (one may be waiting for me), then open the history with it.
+          return duty(m.keyshares).then(function () {
+            return Promise.all((m.messages || []).map(function (x) { return openMessage(id, x); }));
+          }).then(function (list) { var c = copy(m); c.messages = list; h.onSnapshot && h.onSnapshot(c); });
+        }
+        if (m.type === 'roster') { members = m.members || []; h.onRoster && h.onRoster(members); duty(); return null; }
+        if (m.type === 'room') { roomInfo(m.room); h.onRoom && h.onRoom(m.room); duty(); return null; }
+        if (m.type === 'keyshare') {
+          if (String(m.to) === String((readState() || {}).memberId)) duty();
+          return null;
+        }
+        if (m.type === 'log') {
+          return unseal(id, m.text).then(function (t) {
+            if (t === null) return;               // sealed, and no key here yet
+            var c = copy(m); c.text = t; h.onLog && h.onLog(c);
+          });
+        }
+        if (m.type === 'message') return openMessage(id, m.message).then(function (x) { h.onMessage && h.onMessage(x); });
+        if (m.type === 'friend') h.onFriend && h.onFriend(m.edge);
+        else if (m.type === 'closed') { writeState(null); h.onClosed && h.onClosed(); }
+        return null;
+      }
       es.onmessage = function (e) {
         var m;
         try { m = JSON.parse(e.data); } catch (err) { return; }
-        if (m.type === 'snapshot') {
-          // The snapshot is also how a creator learns its own member id.
-          if (m.you) { var s2 = readState(); if (s2 && s2.memberId !== m.you) { s2.memberId = m.you; writeState(s2); } }
-          h.onSnapshot && h.onSnapshot(m);
-        } else if (m.type === 'roster') h.onRoster && h.onRoster(m.members || []);
-        else if (m.type === 'log') h.onLog && h.onLog(m);
-        else if (m.type === 'message') h.onMessage && h.onMessage(m.message);
-        else if (m.type === 'friend') h.onFriend && h.onFriend(m.edge);
-        else if (m.type === 'closed') { writeState(null); h.onClosed && h.onClosed(); }
+        // One at a time: opening a sealed line is async, and a reply must never
+        // be shown before the line it answers.
+        chain = chain.then(function () { return handle(m); }).catch(function () {});
       };
       var beat = setInterval(function () {
         call('/' + st.id + '/presence', { method: 'POST', body: { status: 'online' } })
           .catch(function () {});
       }, HEARTBEAT_MS);
       return function stop() { clearInterval(beat); try { es.close(); } catch (e) {} };
+    },
+
+    /* ── One person, one identity ──
+       A signed-in device sends the person's account id instead of its random
+       install secret, so rooms, friends, the Plaza and DMs all see the same
+       person — on the Mac and on the phone. What this install made under its old
+       secret (friendships, room seats, rooms it owns) is moved onto the account
+       once; the old secret is kept, never deleted, in case that has to be redone. */
+    adoptIdentity: function (accountId) {
+      accountId = String(accountId || '').trim();
+      if (!accountId) return Promise.resolve(false);
+      var cur = identity(), pending = null;
+      try { pending = localStorage.getItem(LS_ID_MERGE); } catch (e) {}
+      if (cur !== accountId) {
+        try {
+          if (!localStorage.getItem(LS_ID_LEGACY)) localStorage.setItem(LS_ID_LEGACY, cur);
+          localStorage.setItem(LS_ID_MERGE, cur);
+          localStorage.setItem(LS_ID, accountId);
+        } catch (e) { return Promise.resolve(false); }
+        pending = cur;
+      }
+      if (!pending || pending === accountId) return Promise.resolve(false);
+      return fetch(FRIENDS + '/identity/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-terse-identity': accountId },
+        body: JSON.stringify({ legacy: pending }),
+      }).then(function (r) {
+        // Pending until the server has actually done it: offline today means
+        // retried on the next launch, not lost.
+        if (r.ok) { try { localStorage.removeItem(LS_ID_MERGE); } catch (e) {} }
+        return r.ok;
+      }, function () { return false; });
     },
   };
 

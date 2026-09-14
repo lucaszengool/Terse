@@ -27,12 +27,24 @@
        is a moving particle field, which is the worst case for contrast. */
     html, body { height: 100%; background: transparent; color: var(--t1); overflow: hidden;
       font: 13px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", system-ui, sans-serif; }
+    /* The blur lives on a fixed BACKDROP layer, not on the body element.
+
+       backdrop-filter on the element that also holds the scrolling log and the
+       text field means every caret blink, every appended message and every
+       reflow re-blurs the whole window: the compositor cannot cache the result,
+       because the filtered element's own contents keep changing. Hoisting it to
+       an inert sibling that never changes lets the blur be painted once and
+       reused, while the content above repaints on its own cheap layer.
+
+       Identical look; typing stops competing with a 16px blur for the GPU. */
     body { display: flex; flex-direction: column;
-      background: rgba(11,13,18,.46);
-      backdrop-filter: blur(16px) saturate(1.3); -webkit-backdrop-filter: blur(16px) saturate(1.3);
+      background: transparent; color: var(--t1);
       border: 1px solid rgba(255,255,255,.12); border-radius: 14px; overflow: hidden;
       box-shadow: 0 18px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10);
       }
+    #backdrop { position: fixed; inset: 0; z-index: -1; border-radius: 14px;
+      background: rgba(11,13,18,.46);
+      backdrop-filter: blur(16px) saturate(1.3); -webkit-backdrop-filter: blur(16px) saturate(1.3); }
     /* Dragging is done by hand, in JS, further down — NOT by -webkit-app-region.
        That property is Electron's; WKWebView ignores it, which is why the
        window would not move no matter what it was set on. Tauri's own hook is
@@ -76,7 +88,12 @@
 
     /* Right — the conversation. */
     #chat { flex: 1; display: flex; flex-direction: column; min-width: 0 }
-    #log { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px }
+    /* contain: the scroller's layout and paint are its own business. Without it,
+       appending a message invalidates the whole backdrop-filter panel and the
+       blur is recomputed for the entire window. */
+    #log { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;
+      contain: layout paint; overscroll-behavior: contain }
+    #pList { contain: layout paint }
     #more { align-self: center; font-size: 11px; color: var(--t3); border: 1px solid var(--line);
       background: transparent; border-radius: 999px; padding: 3px 12px; cursor: pointer; display: none }
     .msg { display: flex; gap: 9px; align-items: flex-start }
@@ -121,15 +138,90 @@
     #rename input { width: 100%; background: rgba(0,0,0,.3); border: 1px solid var(--line);
       border-radius: 9px; padding: 8px 10px; color: var(--t1); font: inherit; outline: none }
     #rename .row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end }
+
+    /* ── Agent channel ──────────────────────────────────────────────────────
+       Three voices share one log and must never be confused: a PERSON, an
+       AGENT, and the ROOM itself. Agents get a mono label and a dashed rail so
+       that "Mina said" and "Mina's agent said" read differently at a glance —
+       who you are listening to is the whole security model here. */
+    [hidden] { display: none !important }
+    .p-row .ag { font-size: 11px; flex: none }
+    .msg.agent .who { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: .02em }
+    .msg.agent .bd { border-left: 2px dashed rgba(255,255,255,.18); padding-left: 9px }
+    .msg.agent .av { font-size: 13px }
+    .msg .kind { font: 600 9.5px ui-monospace, Menlo, monospace; color: var(--t3); border: 1px solid var(--line);
+      border-radius: 999px; padding: 0 6px; margin-left: 6px; text-transform: lowercase }
+    .msg .to { font: 600 9.5px ui-monospace, Menlo, monospace; color: var(--accent); margin-left: 6px }
+    .note.sys { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: .02em }
+    .acts { display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap }
+    .acts button, .fc button, .pend button, .fr button { font: 600 10.5px inherit; }
+    .dl { font: 600 10px ui-monospace, Menlo, monospace; color: var(--t3) }
+    .dl.ok { color: var(--accent) } .dl.w { color: #F2B84B } .dl.x { color: #FF8A7A }
+    .fc { margin-top: 6px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: rgba(0,0,0,.22);
+      display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; max-width: 380px }
+    .fc .fs, .pend .pf span { font: 10.5px ui-monospace, Menlo, monospace; color: var(--t3) }
+    .fr { flex-basis: 100%; display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--t2) }
+    .fr .path { font: 10.5px ui-monospace, Menlo, monospace; color: var(--t3); word-break: break-all }
+    .fr .warn { color: #F2B84B }
+    .pend { align-self: stretch; border: 1px solid rgba(242,184,75,.45); background: rgba(242,184,75,.08);
+      border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px }
+    .pend .pt { font-size: 11px; font-weight: 800; color: #F2B84B }
+    .pend .pn { color: var(--t2) }
+    .pend .pp { font: 10.5px ui-monospace, Menlo, monospace; color: var(--t3); word-break: break-all }
+    .pend .pb { display: flex; gap: 8px; justify-content: flex-end; font-size: 11px; color: var(--t2); align-items: center }
+
+    #agentBar { border-top: 1px solid var(--line); padding: 7px 12px; display: flex; gap: 8px; align-items: center;
+      flex-wrap: wrap; font-size: 11px; color: var(--t2); background: rgba(201,240,61,.05) }
+    #abTitle { font-weight: 800; color: var(--t1); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    #abWarn { flex-basis: 100%; color: #F2B84B }
+    #agentBar label { display: flex; gap: 5px; align-items: center; cursor: pointer }
+    #agentBar .spacer { flex: 1 }
+    #target { background: rgba(0,0,0,.28); border: 1px solid var(--line); color: var(--t1); border-radius: 10px;
+      padding: 8px 6px; font: inherit; font-size: 11.5px; flex: none; outline: none }
+
+    #agentPanel { position: absolute; inset: 0; background: rgba(6,8,12,.72); backdrop-filter: blur(6px);
+      display: none; place-items: center; z-index: 6 }
+    #agentPanel .card { background: #12151c; border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+      width: min(440px, 92vw); max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px }
+    #agentPanel h3 { font-size: 13px }
+    #agentPanel p { font-size: 11px; color: var(--t2); line-height: 1.65 }
+    #apList { display: flex; flex-direction: column; gap: 5px }
+    .ap-s { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px;
+      border: 1px solid var(--line); border-radius: 10px; cursor: pointer }
+    .ap-s:hover { background: var(--panel) }
+    .ap-s .t { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .ap-s .m { grid-column: 2 / 4; font: 10.5px ui-monospace, Menlo, monospace; color: var(--t3) }
+    .ap-s .h { font: 600 10px ui-monospace, Menlo, monospace; color: var(--t3) }
+    .ap-s .h.ok { color: var(--accent) }
+    .ap-empty { font-size: 11px; color: var(--t3); padding: 8px 2px }
+    .ap-row { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--t2) }
+    .ap-row .spacer { flex: 1 }
+    #apMsg { font-size: 11px; color: #FF8A7A; min-height: 1em }
+    .ap-s .k { font: 600 9.5px ui-monospace, Menlo, monospace; color: var(--t3); border: 1px solid var(--line);
+      border-radius: 999px; padding: 0 6px; margin-right: 6px }
+    #apBudget { background: rgba(0,0,0,.28); border: 1px solid var(--line); color: var(--t1); border-radius: 8px;
+      padding: 3px 6px; font: inherit; font-size: 11px }
+    #apHint { font-size: 10.5px; color: var(--t3); line-height: 1.6 }
+    /* Encryption. A locked line is one sealed with a key this device does not
+       hold yet — shown as such, never as an empty message. */
+    .msg .tx.locked { color: var(--t3); font-style: italic }
+    #btnLock.on { border-color: var(--accent); color: var(--accent) }
+    #btnLock.warn { border-color: rgba(242,184,75,.6); color: #F2B84B }
+    #abBudget { font: 600 10.5px ui-monospace, Menlo, monospace; color: var(--t2) }
+    #abBudget.over { color: #FF8A7A }
   </style>
 </head>
 <body>
+<!-- Inert and never repainted — see #backdrop in the stylesheet. -->
+<div id="backdrop"></div>
   <header data-tauri-drag-region>
     <span class="dot" data-tauri-drag-region></span>
     <span id="rmName" data-tauri-drag-region>Room</span>
     <span id="rmCode" data-tauri-drag-region></span>
     <span class="spacer" data-tauri-drag-region></span>
     <div class="ctl">
+      <button class="chip" id="btnLock" hidden><span id="lockText">🔒 Encrypted</span></button>
+      <button class="chip" id="btnAgent" title="Let your running agent talk with the other agents in this room">🤖 <span id="agentText">Connect my agent</span></button>
       <button class="chip" id="btnName">✎ <span id="myName">Nickname</span></button>
       <button class="chip" id="btnMute" title="Stop sending your agent log to this room">
         <span id="muteIcon">📡</span><span id="muteText">Sharing my agent log</span>
@@ -148,9 +240,29 @@
         <button id="more">Load earlier messages</button>
         <div id="empty">Nobody has said anything yet.<br>Whatever is typed here shows up on everyone's wallpaper.</div>
       </div>
+      <!-- Only while THIS room has my agent connected: what it is, whether peer
+           messages reach it on their own, and the two controls an owner must
+           always be one click from — stop it, and cut it off. -->
+      <div id="agentBar" hidden>
+        <span>🤖</span><span id="abTitle">My agent</span>
+        <label title="Other agents' messages (and lines people address to agents) go to your agent without asking you each time">
+          <input type="checkbox" id="abAuto"> <span>hand messages over automatically</span></label>
+        <span id="abBudget" title="What this session has spent since you connected it. At the limit it stops hearing the room and cannot post."></span>
+        <button class="chip" id="abMore" hidden>+ $3</button>
+        <span class="spacer"></span>
+        <button class="chip" id="abWake" title="It is idle, so nothing can reach it. This types one line into its Claude window so it picks up what is waiting.">Wake it</button>
+        <button class="chip" id="abHalt" title="Stops it at its next step">Stop my agent</button>
+        <button class="chip" id="abOff">Disconnect</button>
+        <span id="abWarn" hidden></span>
+      </div>
       <div id="pad"></div>
       <div id="composer">
         <button id="emoji" title="Emoji">☺</button>
+        <select id="target" title="Who this line is for">
+          <option value="room">To the room</option>
+          <option value="agents">To the agents</option>
+          <option value="mine" id="optMine">Only my agent</option>
+        </select>
         <textarea id="input" rows="1" placeholder="Message the room…" maxlength="2000"></textarea>
         <button id="send">Send</button>
       </div>
@@ -161,7 +273,7 @@
     <div class="card">
       <h3>Your nickname</h3>
       <p>This is what everyone in the room sees. It changes your name in every room you are in.</p>
-      <input id="nameInput" maxlength="40" placeholder="e.g. 小明" spellcheck="false">
+      <input id="nameInput" maxlength="40" placeholder="e.g. Ann" data-i18n-ph="room_name_ph" spellcheck="false">
       <div class="row">
         <button class="chip" id="nameCancel">Cancel</button>
         <button class="chip" id="nameSave">Save</button>
@@ -169,6 +281,35 @@
     </div>
   </div>
 
+  <div id="agentPanel">
+    <div class="card">
+      <h3>Connect an agent to this room</h3>
+      <p data-i18n-html="ra_panel_p">Messages from the other agents reach it as <b>reference material, never as your instructions</b>, and it can't
+        change settings or read keys because another agent asked. It can post here and offer files: every file waits
+        for you to approve it, and anything that looks like a key is stopped on this Mac before it leaves.</p>
+      <div id="apList"></div>
+      <label class="ap-row"><input type="checkbox" id="apAuto">
+        <span>Give it the other agents' messages automatically (off = you pass them on one at a time)</span></label>
+      <label class="ap-row"><span>Spending limit for this session while it is in the room</span>
+        <select id="apBudget">
+          <option value="1">$1</option>
+          <option value="3" selected>$3</option>
+          <option value="10">$10</option>
+          <option value="0">No limit</option>
+        </select></label>
+      <div id="apHint"></div>
+      <div class="ap-row"><span id="apTools">Room tools…</span><span class="spacer"></span>
+        <button class="chip" id="apInstall" hidden>Install</button></div>
+      <div id="apMsg"></div>
+      <div class="ap-row"><span class="spacer"></span>
+        <button class="chip" id="apCancel">Cancel</button>
+        <button class="chip on" id="apConnect">Connect</button></div>
+    </div>
+  </div>
+
+  <!-- Before the window's own script, so the first paint already speaks the
+       reader's language; later changes are caught by its observer. -->
+  <script src="i18n.js"></script>
   <script src="tauri-bridge.js"></script>
   <script src="rooms.js"></script>
   <script>
@@ -181,6 +322,18 @@
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
       });
     };
+
+    /** A line in the reader's language. Most of this window is translated by
+        i18n.js matching its English text; lines that carry a name, a number or
+        a reason are asked for by key here, with the English as the fallback. */
+    function L(key, en, params) {
+      var s = (window.i18n && window.i18n.t) ? window.i18n.t(key, params) : key;
+      if (s === key) {
+        s = en;
+        Object.keys(params || {}).forEach(function (k) { s = s.split('{' + k + '}').join(params[k]); });
+      }
+      return s;
+    }
 
     var roster = new Map(), me = null, stop = null, oldestSeq = null, moreAbove = true;
     // The empty state says two different things — "nobody has spoken" and "you
@@ -209,8 +362,23 @@
     }
 
     // ── People ──
+    /* The roster arrives far more often than it changes — every heartbeat from
+       every member is a delivery. Rebuilding the list each time throws away and
+       recreates DOM under a blurred panel, which is exactly the work that makes
+       typing stutter while other people are in the room. So compare first and
+       write only on a real change. */
+    var rosterSig = null;
+    var lastMembers = [];
     function drawRoster(members) {
+      lastMembers = members;
       roster = new Map(members.map(function (m) { return [String(m.member_id), m]; }));
+      // Sorted for the same reason the server sorts: this is a question about
+      // who is here, not about the order they arrived in the payload.
+      var sig = members.map(function (m) {
+        return m.member_id + '|' + (m.name || m.user_email || '') + '|' + m.status + '|' + (m.agent ? m.agent.kind : '');
+      }).sort().join('~');
+      if (sig === rosterSig) return;      // same people, same states — nothing to do
+      rosterSig = sig;
       $('#pCount').textContent = members.length ? '· ' + members.length : '';
       $('#pList').innerHTML = members.map(function (m) {
         var id = String(m.member_id), mine = id === String(me);
@@ -219,7 +387,8 @@
         return '<div class="p-row ' + (m.status === 'online' ? '' : 'off') + '">' +
           '<span class="sw" style="background:' + colourOf(id) + '"></span>' +
           '<span class="nm">' + esc(m.name || m.user_email || 'someone') +
-          (mine ? ' <span style="color:var(--t3)">(you)</span>' : '') + '</span>' + add + '</div>';
+          (mine ? ' <span style="color:var(--t3)">(you)</span>' : '') + '</span>' +
+          (m.agent ? '<span class="ag" title="Agent connected: ' + esc(m.agent.kind) + '">🤖</span>' : '') + add + '</div>';
       }).join('');
     }
 
@@ -236,18 +405,58 @@
     });
 
     // ── Chat ──
+    function size(n) {
+      n = +n || 0;
+      return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n >= 1024 ? Math.round(n / 1024) + ' KB' : n + ' B';
+    }
+    var msgs = {};    // id → message, for the buttons on a row
+    function fileCard(m) {
+      var f = m.meta && m.meta.file;
+      if (!f) return '';
+      var mine = String(m.member_id) === String(me);
+      var btns = mine ? '<span class="dl">you shared this</span>' :
+        '<button class="chip" data-accept="' + esc(m.id) + '">Accept</button>' +
+        (linkedHere() ? '<button class="chip" data-accept="' + esc(m.id) + '" data-tell="1">Accept &amp; tell my agent</button>' : '');
+      return '<div class="fc"><span>📄 ' + esc(f.name) + '</span><span class="fs">' + size(f.size) + '</span>' +
+        btns + '<div class="fr"></div></div>';
+    }
     function row(m, prepend) {
       var id = String(m.member_id);
       var el = document.createElement('div');
-      el.className = 'msg';
       el.dataset.id = m.id || '';
-      var who = m.name || nameOf(id);
-      el.innerHTML =
-        '<span class="av" style="background:' + colourOf(id) + '">' + esc(who.slice(0, 1).toUpperCase()) + '</span>' +
-        '<span class="bd"><span class="who" style="color:' + colourOf(id) + '">' + esc(who) +
-        '<span class="ts">' + esc(timeOf(m.created_at)) + '</span></span>' +
-        '<div class="tx">' + esc(m.body || '') + '</div>' +
-        (m.image_url ? '<img src="' + esc(m.image_url) + '" alt="">' : '') + '</span>';
+      if (m.id) msgs[m.id] = m;
+      if (m.role === 'system') {
+        // The room speaking: pauses, arrivals. Not a person, so no avatar.
+        el.className = 'note sys';
+        // The server writes these in English; the event code lets each reader
+        // see them in their own language.
+        var ev = (m.meta && m.meta.event) || '', mm = m.meta || {};
+        el.textContent =
+          ev === 'agent_on' ? L('ra_sys_agent_on', '{name} connected their agent ({kind})', { name: mm.name || nameOf(mm.member_id), kind: mm.kind || 'agent' })
+          : ev === 'agent_off' ? L('ra_sys_agent_off', '{name} disconnected their agent', { name: mm.name || nameOf(mm.member_id) })
+          : ev === 'paused' ? L('ra_sys_paused', 'Agents paused after {cap} messages in a row. Any person saying anything resumes them.', { cap: mm.cap || 8 })
+          : ev === 'e2e_on' ? L('ra_sys_e2e_on', m.body || '')
+          : ev === 'e2e_off' ? L('ra_sys_e2e_off', m.body || '')
+          : (m.body || '');
+      } else {
+        var agent = m.role === 'agent';
+        el.className = agent ? 'msg agent' : 'msg';
+        var owner = m.name || nameOf(id);
+        var who = agent ? L('ra_owners_agent', "{name}'s agent", { name: owner }) : owner;
+        var kind = agent && m.meta && m.meta.agent ? '<span class="kind">' + esc(m.meta.agent.kind || 'agent') + '</span>' : '';
+        var to = m.meta && m.meta.to_agents ? '<span class="to">→ agents</span>'
+               : m.meta && m.meta.to ? '<span class="to">→ ' + esc(String(m.meta.to) === String(me) ? L('ra_you', 'you') : nameOf(m.meta.to)) + '</span>' : '';
+        el.innerHTML =
+          '<span class="av" style="background:' + colourOf(id) + '">' + (agent ? '🤖' : esc(owner.slice(0, 1).toUpperCase())) + '</span>' +
+          '<span class="bd"><span class="who" style="color:' + colourOf(id) + '">' + esc(who) + kind + to +
+          '<span class="ts">' + esc(timeOf(m.created_at)) + '</span></span>' +
+          (m.locked
+            ? '<div class="tx locked">🔒 Can\'t read this yet — waiting for this room\'s key</div>'
+            : '<div class="tx">' + esc(m.body || '') + '</div>') +
+          (m.image_url ? '<img src="' + esc(m.image_url) + '" alt="">' : '') + fileCard(m) +
+          '<div class="acts"></div></span>';
+        if (eligible(m) && linkedHere()) giveButton(el, m);
+      }
       var log = $('#log');
       if (prepend) log.insertBefore(el, $('#more').nextSibling);
       else log.appendChild(el);
@@ -298,12 +507,35 @@
     function send() {
       var v = (input.value || '').trim();
       if (!v) return;
+      var target = $('#target').value;
       input.value = '';
       input.style.height = 'auto';
-      R.sendMessage(v).catch(function (err) {
+      if (target === 'mine') {
+        // A whisper: your own voice to your own agent. Never touches the server.
+        return invoke('rl_whisper', { text: v }).then(function (r) {
+          var el = localRow(v);
+          if (r && r.ok) track(r.id, el, r.hooked);
+          else tag(el, L('ra_not_sent_why', 'Not sent: {why}', { why: (r && r.error) || 'not connected' }), 'x');
+        }, function (err) { input.value = v; note(String(err && err.message || err)); });
+      }
+      R.sendMessage(v, null, { toAgents: target === 'agents' }).then(function () {
+        // Addressing the agents includes MINE — in my voice, since it is me.
+        if (target === 'agents' && linkedHere()) invoke('rl_whisper', { text: v });
+      }, function (err) {
         input.value = v;              // never lose what they typed
         note(String(err && err.message || err));
       });
+    }
+    function localRow(text) {
+      var el = document.createElement('div');
+      el.className = 'msg';
+      el.innerHTML = '<span class="av" style="background:' + colourOf(me) + '">→</span><span class="bd">' +
+        '<span class="who" style="color:' + colourOf(me) + '">' + esc(L('ra_you_to_agent', 'You → your agent')) + '<span class="to">only you see this</span></span>' +
+        '<div class="tx">' + esc(text) + '</div><div class="acts"></div></span>';
+      $('#log').appendChild(el);
+      $('#empty').style.display = 'none';
+      atBottom(true);
+      return el;
     }
     $('#send').addEventListener('click', send);
     input.addEventListener('keydown', function (e) {
@@ -311,9 +543,33 @@
       // Enter belongs to the IME, or every Chinese message sends half-typed.
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
     });
-    input.addEventListener('input', function () {
+    /* Auto-grow WITHOUT a forced reflow per keystroke.
+
+       The obvious version — set height to 'auto', then read scrollHeight — makes
+       every single keypress synchronously re-lay-out the window, and because this
+       window is a backdrop-filter panel, that re-lays-out AND re-blurs it. That
+       is the typing lag: the cost is paid on every character, and it grows with
+       how much is on screen.
+
+       So: measure at most once per frame, and only when the text actually
+       changed. Nothing is written unless the height really moved, because an
+       assignment to style.height is itself an invalidation. */
+    var lastVal = '', lastH = 0, sizing = false;
+    function autosize() {
+      sizing = false;
+      if (input.value === lastVal) return;
+      lastVal = input.value;
+      var prev = input.style.height;
       input.style.height = 'auto';
-      input.style.height = Math.min(96, input.scrollHeight) + 'px';
+      var h = Math.min(96, input.scrollHeight);
+      if (h === lastH) { input.style.height = prev; return; }
+      lastH = h;
+      input.style.height = h + 'px';
+    }
+    input.addEventListener('input', function () {
+      if (sizing) return;
+      sizing = true;
+      requestAnimationFrame(autosize);
     });
 
     var pad = $('#pad');
@@ -376,19 +632,41 @@
       oldestSeq = null; moreAbove = true;
 
       stop = R.connect({
+        // This window does the key work for the install: publish the device key,
+        // pick up the room key, hand it to newcomers.
+        keyAgent: true,
+        onKey: function () {
+          // The key just arrived: reopen the history with it, and let my agent's
+          // side seal what it sends.
+          if (linkedHere()) syncLink();
+          stopRoom();
+          startRoom();
+        },
+        onRoom: paintLock,
         onSnapshot: function (s) {
+          paintLock();
           me = s.you || me;
           drawRoster(s.members || []);
           var list = s.messages || [];
           list.forEach(function (m) { if (!seen(m.id)) row(m); });
+          // A file still waiting for my OK belongs under the conversation that
+          // led to it, not above it — the approvals can arrive before the history.
+          $('#log').querySelectorAll('.pend').forEach(function (p) { $('#log').appendChild(p); });
           if (list.length) {
             oldestSeq = list[0].seq;
             $('#more').style.display = 'block';
           }
           atBottom(true);
         },
-        onRoster: drawRoster,
-        onMessage: function (m) { if (!seen(m.id)) { row(m); atBottom(); } },
+        onRoster: function (ms) { drawRoster(ms); paintLock(); },
+        onMessage: function (m) {
+          if (seen(m.id)) return;
+          var el = row(m);
+          atBottom();
+          // Only LIVE lines are handed over on their own. History is context you
+          // can pass on by hand; replaying it into an agent would be a flood.
+          if (eligible(m) && linkedHere() && link.auto) handTo(m, el);
+        },
         onFriend: function (edge) {
           note((edge.b_name || edge.a_name || 'someone') +
                (edge.status === 'accepted' ? ' is now a friend' : ' was asked to connect'));
@@ -451,6 +729,346 @@
       }
     } catch (e) { /* not in Tauri (dev preview) — nothing to hook */ }
 
+    // ── Agent channel ───────────────────────────────────────────────────────
+    /* The room window is the owner's side of the channel: it sees every line,
+       decides which ones reach MY agent (room_link.rs wraps them as data, never
+       as my instructions), approves every file my agent wants to send, and
+       holds the stop button. The server only carries the words. */
+    var TAURI = window.__TAURI__ || null;
+    var invoke = (TAURI && TAURI.core && TAURI.core.invoke) ? TAURI.core.invoke
+      : function () { return Promise.reject(new Error('Only inside Terse')); };
+    var link = null, linkStatus = {}, deliveries = {}, sessions = {};
+
+    function linkedHere() {
+      var st = R.state() || {};
+      return !!(link && st.id && link.room_id === st.id);
+    }
+    /** Lines that are for my agent: another agent speaking to the room (or to
+        me), or another PERSON addressing the agents. Never my own lines, never
+        the room's system notices. */
+    function eligible(m) {
+      if (!m || m.role === 'system' || m.locked || String(m.member_id) === String(me)) return false;
+      if (m.role === 'agent') return !(m.meta && m.meta.to) || String(m.meta.to) === String(me);
+      return !!(m.meta && m.meta.to_agents);
+    }
+    function tag(el, text, cls) {
+      var a = el && el.querySelector('.acts');
+      if (!a) return;
+      a.innerHTML = '<span class="dl ' + (cls || '') + '">' + esc(text) + '</span>';
+    }
+    function giveButton(el, m) {
+      var a = el.querySelector('.acts');
+      if (a) a.innerHTML = '<button class="chip" data-give="' + esc(m.id) + '">Give to my agent</button>';
+    }
+    function track(qid, el, hooked) {
+      deliveries[qid] = el;
+      tag(el, hooked ? 'waiting for its next step…' : 'waiting — it has not picked up Terse yet (restart that session once)', hooked ? '' : 'w');
+    }
+    function handTo(m, el) {
+      return invoke('rl_inbound', { msg: m }).then(function (r) {
+        if (r && r.ok) track(r.id, el, r.hooked);
+        else if (r && r.error === 'throttled') tag(el, 'not passed on — 20 arrived in 10 minutes', 'x');
+        else if (r && r.error === 'budget') tag(el, 'not passed on — spending limit reached', 'x');
+        else if (r && r.error !== 'own') tag(el, L('ra_not_passed_why', 'not passed on: {why}', { why: (r && r.error) || 'error' }), 'x');
+      }, function (e) { tag(el, String(e && e.message || e), 'x'); });
+    }
+
+    function refreshLink() {
+      return invoke('rl_status').then(function (s) {
+        linkStatus = s || {};
+        link = linkStatus.link || null;
+        (linkStatus.pending || []).forEach(pendingCard);
+        paintAgent();
+        return linkStatus;
+      }, function () { paintAgent(); return {}; });
+    }
+    function paintAgent() {
+      var on = linkedHere();
+      $('#btnAgent').classList.toggle('on', on);
+      $('#agentText').textContent = on ? (link.session_title || 'My agent') : 'Connect my agent';
+      $('#agentBar').hidden = !on;
+      $('#optMine').disabled = !on;
+      if (!on && $('#target').value === 'mine') $('#target').value = 'room';
+      if (!on) return;
+      $('#abTitle').textContent = link.session_title || 'My agent';
+      $('#abAuto').checked = !!link.auto;
+      var kind = link.kind || 'claude-code';
+      // Only Claude can be woken from outside; OpenClaw wakes itself on a message.
+      $('#abWake').hidden = kind !== 'claude-code';
+      $('#abHalt').hidden = kind === 'openclaw';
+      var spent = linkStatus.spent, budget = +link.budget_usd || 0;
+      var over = budget > 0 && spent != null && spent >= budget;
+      $('#abBudget').textContent = spent == null ? 'spend unknown'
+        : budget > 0 ? '$' + spent.toFixed(2) + ' / $' + budget.toFixed(0) : L('ra_spent', '${n} spent', { n: spent.toFixed(2) });
+      $('#abBudget').classList.toggle('over', over);
+      $('#abMore').hidden = !(budget > 0);
+      var warn = over ? 'Spending limit reached: your agent no longer hears the room and cannot post. Raise the limit to carry on.'
+        : !linkStatus.mcpInstalled ? 'Room tools are not installed, so your agent can hear the room but not answer. Open "Connect my agent" to install them.'
+        : kind !== 'openclaw' && !linkStatus.directEnabled ? 'Direct control is switched off in the session dock, so nothing can reach your agent.'
+        : kind === 'codex' && !linkStatus.hooked ? 'In Codex, type /hooks and trust Terse\'s two hooks, then start a new thread — until then nothing reaches it.'
+        : kind === 'claude-code' && !linkStatus.hooked ? 'Restart that Claude session once — it started before Terse could reach it.'
+        : kind === 'openclaw' && spent == null && budget > 0 ? 'OpenClaw does not report what it spends, so the limit cannot be enforced for it.' : '';
+      $('#abWarn').textContent = warn;
+      $('#abWarn').hidden = !warn;
+    }
+    /** Re-send the link with the CURRENT key: a key is re-minted every time you
+        walk back into a room, and the stale one would make every post fail. */
+    function syncLink(patch) {
+      var st = R.state() || {};
+      if (!link || !st.key) return Promise.resolve();
+      var l = {
+        room_id: link.room_id, room_key: st.key, room_name: st.name || st.code || '',
+        member_id: st.memberId || me || '', session_id: link.session_id,
+        session_title: link.session_title, auto: !!link.auto, public: st.visibility === 'public',
+        kind: link.kind || 'claude-code', budget_usd: +link.budget_usd || 0, linked_at: link.linked_at || 0,
+        // The room key only ever travels from this window to this Mac's own
+        // process, so the agent's words and files are sealed before they leave.
+        secret: (st.e2e && R.secret(st.id)) || null,
+      };
+      Object.keys(patch || {}).forEach(function (k) { l[k] = patch[k]; });
+      return invoke('rl_link', { link: l }).then(function (s) { linkStatus = s; link = s.link; paintAgent(); });
+    }
+
+    // Connect panel — Claude Code, Codex and OpenClaw sessions side by side.
+    var KIND_LABEL = { 'claude-code': 'Claude Code', codex: 'Codex', openclaw: 'OpenClaw' };
+    function pickedSession() {
+      var pick = document.querySelector('input[name="apSess"]:checked');
+      return pick && sessions[pick.value];
+    }
+    function paintTools() {
+      var s = pickedSession(), kind = s ? s.kind : 'claude-code';
+      var installed = !!(linkStatus.installed && linkStatus.installed[kind]);
+      $('#apTools').textContent = installed
+        ? L('ra_tools_in', 'Room tools installed in {agent} ✓', { agent: KIND_LABEL[kind] })
+        : L('ra_tools_not_in', 'Room tools are not installed in {agent} — without them your agent can listen but not answer.', { agent: KIND_LABEL[kind] });
+      $('#apInstall').hidden = installed;
+      $('#apHint').textContent = kind === 'codex'
+        ? 'Codex: installing adds the room tools to ~/.codex/config.toml and two hooks to ~/.codex/hooks.json. Then type /hooks in Codex, trust the two Terse hooks, and start a new thread. Codex cannot be woken from outside — an idle thread picks messages up when you next talk to it.'
+        : kind === 'openclaw'
+          ? 'OpenClaw: messages go in through the openclaw command and wake the session on their own. OpenClaw does not report spending, so the limit cannot be enforced for it.'
+          : 'Claude Code: a session started before installing needs one restart.';
+    }
+    function openAgentPanel() {
+      var st = R.state() || {};
+      $('#apMsg').textContent = '';
+      $('#apAuto').checked = st.visibility !== 'public';
+      if (link && link.budget_usd != null) $('#apBudget').value = String(+link.budget_usd || 0);
+      $('#apList').innerHTML = '<div class="ap-empty">Looking for running agent sessions…</div>';
+      $('#agentPanel').style.display = 'grid';
+      Promise.all([
+        invoke('sd_active').catch(function () { return []; }),
+        invoke('rl_openclaw_sessions').catch(function () { return []; }),
+        invoke('sd_direct_status').catch(function () { return {}; }),
+        refreshLink(),
+      ]).then(function (r) {
+        var hooked = (r[2] && r[2].seen) || {};
+        var rows = [];
+        (r[0] || []).forEach(function (s) {
+          var codex = s.agent === 'codex';
+          var sid = codex ? String(s.id).replace(/^codex:/, '') : s.id;
+          rows.push({ key: (codex ? 'codex' : 'claude-code') + '|' + sid, kind: codex ? 'codex' : 'claude-code',
+                      id: sid, title: s.title, project: s.project, model: s.model, reachable: !!hooked[sid] });
+        });
+        (r[1] || []).forEach(function (s) {
+          rows.push({ key: 'openclaw|' + s.id, kind: 'openclaw', id: s.id, title: s.title, project: s.project, reachable: true });
+        });
+        sessions = {};
+        rows.forEach(function (s) { sessions[s.key] = s; });
+        $('#apList').innerHTML = rows.length ? rows.map(function (s, i) {
+          var cur = link && link.session_id === s.id;
+          return '<label class="ap-s"><input type="radio" name="apSess" value="' + esc(s.key) + '"' +
+            ((cur || (!link && i === 0)) ? ' checked' : '') + '>' +
+            '<span class="t"><span class="k">' + esc(KIND_LABEL[s.kind]) + '</span>' + esc(s.title) + '</span>' +
+            '<span class="h ' + (s.reachable ? 'ok' : '') + '">' + (s.reachable ? 'reachable' : (s.kind === 'codex' ? 'trust hooks' : 'restart once')) + '</span>' +
+            '<span class="m">' + esc(s.project || '') + (s.model ? ' · ' + esc(s.model) : '') + '</span></label>';
+        }).join('') : '<div class="ap-empty">No agent session is running. Start one in Claude, Codex or OpenClaw, then come back.</div>';
+        paintTools();
+      }, function (e) {
+        $('#apList').innerHTML = '<div class="ap-empty">' + esc(String(e && e.message || e)) + '</div>';
+      });
+    }
+    $('#apList').addEventListener('change', paintTools);
+    $('#btnAgent').addEventListener('click', openAgentPanel);
+    $('#apCancel').addEventListener('click', function () { $('#agentPanel').style.display = 'none'; });
+    $('#apInstall').addEventListener('click', function () {
+      var s = pickedSession();
+      $('#apInstall').disabled = true;
+      invoke('rl_mcp_install', { on: true, kind: s ? s.kind : 'claude-code' }).then(function (st2) { linkStatus = st2; paintTools(); paintAgent(); },
+        function (e) { $('#apMsg').textContent = String(e && e.message || e); })
+        .then(function () { $('#apInstall').disabled = false; });
+    });
+    $('#apConnect').addEventListener('click', function () {
+      var s = pickedSession();
+      if (!s) { $('#apMsg').textContent = 'Pick a session first.'; return; }
+      var st = R.state() || {};
+      if (!st.id || !st.key) { $('#apMsg').textContent = 'You are not in a room.'; return; }
+      $('#apConnect').disabled = true;
+      R.setAgent(true, s.kind, s.project || s.title).then(function () {
+        link = { room_id: st.id, session_id: s.id, session_title: s.title, auto: $('#apAuto').checked,
+                 kind: s.kind, budget_usd: +$('#apBudget').value || 0 };
+        return syncLink();
+      }).then(function () {
+        $('#agentPanel').style.display = 'none';
+        note('Your agent is connected. It hears the room as reference material; you approve every file it sends.');
+      }, function (e) { $('#apMsg').textContent = String(e && e.message || e); })
+        .then(function () { $('#apConnect').disabled = false; });
+    });
+
+    function disconnect(quiet) {
+      var was = link;
+      return invoke('rl_unlink').then(function (s) {
+        linkStatus = s || {}; link = null; paintAgent();
+        var st = R.state() || {};
+        if (was && st.id === was.room_id) R.setAgent(false).catch(function () {});
+        if (!quiet) note('Your agent is disconnected. Nothing more reaches it from this room.');
+      });
+    }
+    $('#abOff').addEventListener('click', function () { disconnect(false); });
+    $('#abAuto').addEventListener('change', function () { syncLink({ auto: $('#abAuto').checked }); });
+    $('#abHalt').addEventListener('click', function () {
+      invoke('rl_halt').then(function () { note('Asked your agent to stop at its next step.'); });
+    });
+    $('#abWake').addEventListener('click', function () {
+      invoke('rl_wake').then(function (r) {
+        if (r && r.ok === false) note(L('ra_wake_fail', 'Could not wake it: {why}', { why: r.error || 'the Claude window was not found' }));
+      });
+    });
+
+    // Files my agent wants to send: nothing leaves until I say so here.
+    function pendingCard(p) {
+      if (!p || !p.id || document.querySelector('[data-pend="' + CSS.escape(p.id) + '"]')) return;
+      var el = document.createElement('div');
+      el.className = 'pend';
+      el.dataset.pend = p.id;
+      el.innerHTML = '<div class="pt">Your agent wants to send a file to the room</div>' +
+        '<div class="pf">📄 ' + esc(p.name) + ' <span>' + size(p.size) + '</span></div>' +
+        (p.note ? '<div class="pn">' + esc(p.note) + '</div>' : '') +
+        (p.from ? '<div class="pp">' + esc(p.from) + '</div>' : '') +
+        '<div class="pb"><button class="chip" data-dec="0">Don\'t send</button>' +
+        '<button class="chip on" data-dec="1">Send to the room</button></div>';
+      $('#log').appendChild(el);
+      $('#empty').style.display = 'none';
+      atBottom(true);
+    }
+
+    $('#log').addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      var st = R.state() || {};
+      if (b.hasAttribute('data-give')) {
+        var m = msgs[b.getAttribute('data-give')];
+        if (m) handTo(m, b.closest('.msg'));
+      } else if (b.hasAttribute('data-dec')) {
+        var card = b.closest('.pend'), yes = b.getAttribute('data-dec') === '1';
+        card.querySelector('.pb').textContent = yes ? 'Uploading…' : 'Not sent';
+        invoke('rl_file_decide', { id: card.dataset.pend, approve: yes }).catch(function (err) {
+          card.querySelector('.pb').textContent = L('ra_not_sent_why', 'Not sent: {why}', { why: (err && err.message) || err });
+        });
+      } else if (b.hasAttribute('data-accept')) {
+        var fm = msgs[b.getAttribute('data-accept')];
+        var box = b.closest('.fc');
+        if (!fm || !box) return;
+        box.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+        invoke('rl_fetch_file', {
+          roomId: st.id, key: st.key, roomName: st.name || st.code || '', file: fm.meta.file,
+          from: (fm.name || nameOf(fm.member_id)) + (fm.role === 'agent' ? "'s agent" : ''),
+          tellAgent: b.hasAttribute('data-tell'),
+          secret: (st.e2e && R.secret(st.id)) || null,
+        }).then(function (f) {
+          box.querySelectorAll('button').forEach(function (x) { x.remove(); });
+          box.querySelector('.fr').innerHTML =
+            '<span>Saved to the quarantine folder — marked as downloaded, not opened, not unpacked.</span>' +
+            '<span class="path">' + esc(f.path) + '</span>' +
+            (f.warnings || []).map(function (w) { return '<span class="warn">⚠ ' + esc(L('ra_w_' + w, w)) + '</span>'; }).join('') +
+            '<span><button class="chip" data-reveal="' + esc(f.path) + '">Show in Finder</button></span>';
+        }, function (err) {
+          box.querySelectorAll('button').forEach(function (x) { x.disabled = false; });
+          box.querySelector('.fr').innerHTML = '<span class="warn">' + esc(String(err && err.message || err)) + '</span>';
+        });
+      } else if (b.hasAttribute('data-reveal')) {
+        invoke('rl_reveal', { path: b.getAttribute('data-reveal') });
+      }
+    });
+
+    if (TAURI && TAURI.event && TAURI.event.listen) {
+      TAURI.event.listen('dock-delivered', function (e) {
+        ((e.payload && e.payload.ids) || []).forEach(function (id) {
+          var el = deliveries[id];
+          if (el) { tag(el, 'your agent has it ✓', 'ok'); delete deliveries[id]; }
+        });
+      });
+      TAURI.event.listen('room-file-pending', function (e) { pendingCard(e.payload); });
+      TAURI.event.listen('room-file-done', function (e) {
+        var p = e.payload || {};
+        var c = document.querySelector('[data-pend="' + CSS.escape(p.id || '') + '"]');
+        if (c) c.querySelector('.pb').textContent = p.sent ? 'Sent to the room ✓' : (p.error ? L('ra_not_sent_why', 'Not sent: {why}', { why: p.error }) : 'Not sent');
+      });
+      TAURI.event.listen('room-link-throttled', function () {
+        note('Stopped passing messages to your agent for a few minutes: 20 arrived in 10 minutes.');
+      });
+      var budgetNoted = false;
+      TAURI.event.listen('room-budget', function () {
+        refreshLink();
+        if (!budgetNoted) { budgetNoted = true; note('Your agent reached its spending limit for this room. Raise it in the bar below to carry on.'); }
+      });
+      TAURI.event.listen('room-agent-error', function (e) {
+        note(L('ra_agent_err', 'Your agent did not get the last message: {why}', { why: (e.payload && e.payload.error) || 'unknown error' }));
+      });
+    }
+
+    $('#abMore').addEventListener('click', function () {
+      syncLink({ budget_usd: (+link.budget_usd || 0) + 3 }).then(refreshLink);
+    });
+    // What the session has spent moves while it works; the bar should too.
+    setInterval(function () { if (linkedHere()) refreshLink(); }, 15000);
+
+    // ── Encryption ───────────────────────────────────────────────────────────
+    var lockArmed = 0;
+    function paintLock() {
+      var st = R.state() || {};
+      var b = $('#btnLock');
+      if (!st.id) { b.hidden = true; return; }
+      b.hidden = false;
+      var have = !!(st.e2e && R.secret(st.id));
+      b.classList.toggle('on', have);
+      b.classList.toggle('warn', !!st.e2e && !have);
+      $('#lockText').textContent = st.visibility === 'public' ? '🌐 Public · not encrypted'
+        : have ? '🔒 End-to-end encrypted'
+        : st.e2e ? '🔒 Waiting for the key…'
+        : st.owner ? '🔓 Not encrypted — turn on' : '🔓 Not encrypted';
+      b.title = st.visibility === 'public'
+        ? L('ra_t_public', 'Anyone can walk into a listed room, so it is not encrypted — the relay can read it.')
+        : have ? L('ra_t_on', 'Only the devices in this room can read it. Click to see the security code.')
+        : st.e2e ? L('ra_t_wait', 'Someone in the room hands your device the key automatically when they are online.')
+        : L('ra_t_off', 'The relay can read this room.');
+      // No key yet = nothing can be sealed, so nothing can be sent.
+      var blocked = !!st.e2e && !have;
+      input.disabled = blocked;
+      input.placeholder = blocked ? L('ra_wait_key_ph', "Waiting for this room's key…") : L('rm_ph', 'Message the room…');
+      $('#send').disabled = blocked;
+    }
+    $('#btnLock').addEventListener('click', function () {
+      var st = R.state() || {};
+      if (st.visibility === 'public') return;
+      if (st.e2e && R.secret(st.id)) {
+        R.safetyCode(lastMembers).then(function (code) {
+          if (code) note(L('ra_code', 'Security code {code} — if everyone in the room sees the same digits, nobody is in the middle.', { code: code }));
+        });
+        return;
+      }
+      if (st.e2e || !st.owner) return;
+      // Two clicks, not a dialog: turning encryption on changes the room for
+      // everybody, and a stray click should not do it.
+      if (Date.now() - lockArmed > 4000) {
+        lockArmed = Date.now();
+        $('#lockText').textContent = '🔓 Click again to encrypt';
+        setTimeout(paintLock, 4000);
+        return;
+      }
+      lockArmed = 0;
+      R.setE2E(true).then(paintLock, function (e) { note(String(e && e.message || e)); });
+    });
+
     paintMute();
     paintName();
     // Joining, leaving and switching rooms all happen in the main window; this
@@ -459,6 +1077,14 @@
       stopRoom();
       if (st && st.id && st.key) {
         startRoom();
+        refreshLink().then(function () {
+          if (!link) return;
+          // Connected to THIS room: carry the fresh key. Connected to a room we
+          // just left: cut it off — an agent must not keep talking into a room
+          // its owner walked out of.
+          if (link.room_id === st.id) syncLink();
+          else disconnect(true);
+        });
         // Shown, but never stolen: coming up beside the wallpaper must not take
         // the keyboard out of whatever the person is actually doing.
         if (!dismissedFor(st.id) && window.terse && window.terse.showRoomWindow) {
@@ -474,6 +1100,5 @@
     window.addEventListener('beforeunload', stopRoom);
   })();
   </script>
-  <script src="i18n.js"></script>
 </body>
 </html>

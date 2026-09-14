@@ -49,6 +49,10 @@ const TREE = [
   ok('a test/ directory is all tests, and is a test building', by.tests.tests === 1 && by.tests.kind === 'test');
   ok('loose root files become one building instead of disappearing', !!by['/'] && by['/'].files === 2);
   ok('the root building takes its language from what is there (main.go)', by['/'].lang === 'go');
+  ok('walkable files inside a building, biggest first', by.src.leaves.map((f) => f[0]).join(',') === 'a.rs,b.rs,a_test.rs,y.rs');
+  ok('a file two levels down still carries the sub-directory it is under', by.src.leaves.find((f) => f[0] === 'y.rs')[2] === 'deep');
+  ok('a file directly in the building has no sub-directory', by.src.leaves.find((f) => f[0] === 'a.rs')[2] === '');
+  ok('loose root files are walkable too', by['/'].leaves.map((f) => f[0]).sort().join(',') === 'README.md,main.go');
   ok('config dirs are recognised', kindOf('.github') === 'config' && kindOf('docs') === 'docs');
   ok('a tree with nothing in it builds nothing', dirsFromTree([]).length === 0);
   const many = Array.from({ length: 30 }, (_, i) => ({ type: 'blob', path: `d${i}/f.js`, size: 1000 + i }));
@@ -130,6 +134,9 @@ const TREE = [
   ok('owner survives sanitize', sSrc.owner === 0.75);
   ok('★ a directory that never had test data does NOT gain tests: 0',
      !('tests' in sMac) && !('authors' in sMac) && !('owner' in sMac));
+  ok('walkable files survive sanitize', sSrc.leaves.map((f) => f[0]).join(',') === 'a.rs,b.rs,a_test.rs,y.rs');
+  ok('★ a directory scanned before this field existed does NOT gain leaves: []',
+     !('leaves' in sMac));
   ok('meta survives sanitize', saved.meta && saved.meta.stars === 2577 && saved.meta.ci === true && saved.meta.license === 'MIT');
 
   db.deleteWallProjectById.run(id);

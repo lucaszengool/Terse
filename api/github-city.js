@@ -63,6 +63,7 @@ function dirsFromTree(tree) {
   const acc = new Map();
   let rootFiles = 0, rootBytes = 0;
   const rootLangs = new Map();
+  const rootFileList = [];
 
   for (const nd of (tree || [])) {
     if (!nd || nd.type !== 'blob') continue;
@@ -78,11 +79,12 @@ function dirsFromTree(tree) {
     if (!top) {
       rootFiles++; rootBytes += bytes;
       if (lang) rootLangs.set(lang, (rootLangs.get(lang) || 0) + bytes);
+      rootFileList.push([path, bytes, '']);
       continue;
     }
 
     let d = acc.get(top);
-    if (!d) { d = { name: top, files: 0, bytes: 0, langs: new Map(), depth: 1, kids: new Map(), tests: 0 }; acc.set(top, d); }
+    if (!d) { d = { name: top, files: 0, bytes: 0, langs: new Map(), depth: 1, kids: new Map(), tests: 0, fileList: [] }; acc.set(top, d); }
     d.files++; d.bytes += bytes;
     /* 测试文件。CodeCharta 把"缺测试"画成红楼 —— 那是城市隐喻里最常被问的一个问题
        ("这块有没有人兜底")。按**文件名约定**认:目录叫 test/spec,或文件名带
@@ -98,6 +100,9 @@ function dirsFromTree(tree) {
       k.files++; k.bytes += bytes;
       d.kids.set(kid, k);
     }
+    // 这座楼里能被走进去看一眼的东西。名字是文件名,不带路径 —— 路径已经用
+    // kid 记过了,再存一遍只是多花字节。
+    d.fileList.push([rest.slice(rest.lastIndexOf('/') + 1), bytes, kid]);
   }
 
   const shape = (d) => {
@@ -118,6 +123,10 @@ function dirsFromTree(tree) {
       tests: d.files ? +(d.tests / d.files).toFixed(3) : 0,
       kids: [...d.kids.entries()].sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 8)
         .map(([n, k]) => [n, k.files, k.bytes]),
+      // 走进这座楼能看见的文件 —— 按体量留最大的 24 个,[名字, 字节, 它在哪个二级目录下]。
+      // 第三项对不上 kids 里任何一个名字就画在大厅(顶层),不是错误。⚠ 叫 leaves 不叫
+      // files —— files 这个名字已经被上面那个"文件数"占了,撞名会把数字换成数组。
+      leaves: d.fileList.sort((a, b) => b[1] - a[1]).slice(0, 24),
     };
   };
 
@@ -130,6 +139,7 @@ function dirsFromTree(tree) {
       langs: [...rootLangs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
         .map(([l, b]) => [l, +(b / total).toFixed(3)]),
       kind: 'source', depth: 1, kids: [],
+      leaves: rootFileList.sort((a, b) => b[1] - a[1]).slice(0, 24),
     });
   }
   // 城市最多十六座 —— 按体量留下最大的那些,小的合不进去也不该挤进画面。

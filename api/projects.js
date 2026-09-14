@@ -182,6 +182,14 @@ function sanitize(capsule) {
     tests: (d && d.tests != null) ? frac(d.tests) : undefined,
     authors: (d && d.authors != null) ? num(d.authors, 0, 9999) : undefined,
     owner: (d && d.owner != null) ? frac(d.owner) : undefined,
+    // 走进这座楼能看见的文件:[名字, 字节, 它在哪个二级目录下(对不上 kids 就是大厅)]。
+    // 同样**没有就不写**——旧胶囊(还没重新扫描过)根本不带这层，房间那边靠"有没有
+    // 这个字段"分辨"这座楼没有细节"和"这座楼确实是空的"。
+    leaves: Array.isArray(d && d.leaves)
+      ? d.leaves.slice(0, 24)
+          .map((f) => (Array.isArray(f) ? [str(f[0], 60), num(f[1], 0, 9999999999), str(f[2], 40)] : null))
+          .filter((f) => f && f[0])
+      : undefined,
   })).filter((d) => d.name) : [];
   // 楼之间的弧:[from, to, weight],下标指向 dirs。指到界外的直接扔掉 ——
   // 一条画到虚空里的弧,在屏幕上就是一道没有来由的光。

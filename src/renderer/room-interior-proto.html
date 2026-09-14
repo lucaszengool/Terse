@@ -10,58 +10,90 @@
   html, body { margin: 0; padding: 0; background: #030407; overflow: hidden; height: 100%; }
   canvas { display: block; }
   #hud {
-    position: fixed; left: 16px; top: 16px; color: #f2f5f4;
+    position: fixed; left: 16px; top: 16px; color: #f2f5f4; z-index: 5;
     font: 13px/1.5 -apple-system, BlinkMacSystemFont, sans-serif;
-    background: rgba(3,4,7,.42); padding: 11px 15px; border-radius: 12px; pointer-events: none;
-    border: 1px solid rgba(255,255,255,.07); backdrop-filter: blur(8px);
+    background: rgba(3,4,7,.55); padding: 11px 15px; border-radius: 12px; pointer-events: none;
+    border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(8px);
   }
-  #roomName { color: #6ee7b7; font-weight: 600; font-size: 15px; letter-spacing: .01em; }
+  #roomName { color: #6ee7b7; font-weight: 600; font-size: 15px; }
   #roomStats { opacity: .72; }
-  #hint { margin-top: 8px; opacity: .45; font-size: 11px; }
+  #hint { margin-top: 6px; opacity: .5; font-size: 11px; }
+  #card { position: fixed; left: 16px; bottom: 16px; width: min(360px, calc(100vw - 32px)); max-height: 46vh; overflow: auto; z-index: 5;
+    background: rgba(6,8,12,.9); color: #e8eeec; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 12px 14px;
+    font: 12px/1.45 -apple-system, BlinkMacSystemFont, sans-serif; }
+  #card b { font-size: 15px; } #card .role { margin: 2px 0 6px; } #card .dim { opacity: .6; }
+  #card .it { display: flex; gap: 6px; margin: 2px 0; } #card .it code { color: #c9f03d; }
 </style>
 </head>
 <body>
 <div id="hud">
   <div id="roomName"></div>
   <div id="roomStats"></div>
-  <div id="hint">drag to look &middot; WASD to walk &middot; click a file to inspect</div>
+  <div id="hint">drag to look &middot; WASD to walk &middot; click furniture</div>
 </div>
+<div id="card" hidden></div>
 <script type="module">
 /* 原型页只是一层壳:房子是 room-scene.js 盖的,和引擎里"点一座楼走进去"是同一份
-   代码。这里自己开一个 renderer、喂一份样例目录,好让截图脚本能一次看遍八种风格。 */
+   代码。这里自己开一个 renderer、喂一份样例目录(深扫的形状,带符号),好让截图
+   脚本一次看遍三种格局 × 昼夜。?deep=0 看"没有深扫数据"时只摆家具的样子。 */
 import * as THREE from 'three';
 import { createRoom } from './room-scene.js';
 
-/* ── sample data: one capsule dir, shaped exactly as `leaves` now ships it ── */
-const DIR = {
-  name: 'src', files: 214, bytes: 268000, lang: 'ts',
-  langs: [['ts', 0.68], ['js', 0.22], ['css', 0.10]],
-  kind: 'source', depth: 4, age_days: 1, churn: 63,
-  kids: [['components', 61, 96000], ['hooks', 18, 21000], ['utils', 24, 30000], ['styles', 9, 12000]],
-  leaves: [
-    ['App.tsx', 9400, 'components'], ['Button.tsx', 3100, 'components'], ['Modal.tsx', 4200, 'components'],
-    ['Sidebar.tsx', 5600, 'components'], ['Card.tsx', 2100, 'components'], ['Table.tsx', 3800, 'components'],
-    ['useAuth.ts', 1800, 'hooks'], ['useRoom.ts', 2200, 'hooks'], ['useSync.ts', 1400, 'hooks'],
-    ['format.ts', 900, 'utils'], ['debounce.ts', 400, 'utils'], ['api.ts', 3300, 'utils'], ['colors.ts', 700, 'utils'],
-    ['theme.css', 2600, 'styles'], ['reset.css', 800, 'styles'],
-    ['index.ts', 1200, ''], ['router.ts', 2800, ''], ['constants.ts', 600, ''],
+const S = (name, kind, line, exp) => [name, kind, line, exp ? 1 : 0];
+const F = (n, sub, b, l, sym, imp = 0, out = 0) => ({ n, p: 'src/' + (sub ? sub + '/' : '') + n, sub, b, l, lang: '', sym, imp, out });
+const DETAIL = {
+  truncated: false,
+  kids: [['components', 61, 96000], ['hooks', 18, 21000], ['utils', 24, 30000], ['__tests__', 12, 18000], ['styles', 9, 12000]],
+  files: [
+    F('App.tsx', '', 9400, 310, [S('App', 'component', 12, 1), S('AppProps', 'type', 4, 1), S('useBoot', 'hook', 40), S('routes', 'const', 60, 1)], 3, 9),
+    F('index.ts', '', 1200, 40, [S('mount', 'fn', 3, 1), S('VERSION', 'const', 1, 1)], 1, 2),
+    F('router.ts', '', 2800, 96, [S('/login', 'route', 8), S('/rooms/:id', 'route', 14), S('/plaza', 'route', 22), S('guard', 'fn', 40, 1)], 2, 4),
+    F('types.ts', '', 2400, 88, [S('Room', 'type', 3, 1), S('Member', 'type', 12, 1), S('Capsule', 'type', 20, 1), S('Dir', 'type', 34, 1), S('Leaf', 'type', 40, 1)], 14, 0),
+    F('README.md', '', 5200, 140, [S('Getting started', 'heading', 1), S('Architecture', 'heading', 20), S('Rooms', 'heading', 48), S('Deploy', 'heading', 90)]),
+    F('schema.sql', '', 1900, 70, [S('rooms', 'table', 1), S('members', 'table', 14), S('projects', 'table', 30)]),
+    F('package.json', '', 1100, 44, []),
+    F('logo.svg', '', 3400, 0, []),
+    F('Button.tsx', 'components', 3100, 120, [S('Button', 'component', 10, 1), S('ButtonProps', 'type', 3, 1), S('variants', 'const', 6)], 11, 1),
+    F('Modal.tsx', 'components', 4200, 160, [S('Modal', 'component', 14, 1), S('useTrap', 'hook', 60), S('ModalProps', 'type', 4, 1)], 6, 2),
+    F('Sidebar.tsx', 'components', 5600, 210, [S('Sidebar', 'component', 20, 1), S('Item', 'component', 90), S('group', 'fn', 150)], 2, 4),
+    F('Card.tsx', 'components', 2100, 70, [S('Card', 'component', 5, 1)], 4, 0),
+    F('Table.tsx', 'components', 3800, 150, [S('Table', 'component', 8, 1), S('sortBy', 'fn', 80), S('Column', 'type', 3, 1)], 3, 1),
+    F('useAuth.ts', 'hooks', 1800, 64, [S('useAuth', 'hook', 5, 1), S('refresh', 'fn', 40)], 9, 1),
+    F('useRoom.ts', 'hooks', 2200, 80, [S('useRoom', 'hook', 7, 1), S('RoomState', 'type', 2, 1)], 5, 2),
+    F('useSync.ts', 'hooks', 1400, 50, [S('useSync', 'hook', 3, 1)], 2, 1),
+    F('api.ts', 'utils', 3300, 130, [S('get', 'fn', 5, 1), S('post', 'fn', 20, 1), S('del', 'fn', 34, 1), S('ApiError', 'class', 50, 1), S('retry', 'fn', 80), S('BASE', 'const', 1, 1)], 12, 1),
+    F('format.ts', 'utils', 900, 36, [S('bytes', 'fn', 2, 1), S('since', 'fn', 12, 1), S('pad', 'fn', 24)], 8, 0),
+    F('debounce.ts', 'utils', 400, 18, [S('debounce', 'fn', 1, 1)], 4, 0),
+    F('colors.ts', 'utils', 700, 30, [S('LANG_COLOR', 'const', 1, 1), S('langRgb', 'fn', 20, 1)], 7, 0),
+    F('Button.test.tsx', '__tests__', 2600, 90, [S('renders label', 'test', 5), S('fires onClick', 'test', 14), S('disabled state', 'test', 24), S('keyboard', 'test', 36)], 0, 1),
+    F('api.test.ts', '__tests__', 3100, 110, [S('get retries', 'test', 6), S('post body', 'test', 20), S('401 refresh', 'test', 34), S('timeout', 'test', 50), S('abort', 'test', 64)], 0, 1),
+    F('theme.css', 'styles', 2600, 120, []),
+    F('reset.css', 'styles', 800, 40, []),
   ],
 };
-
-// ?style= 覆盖,好一次把八种都看一遍。真接进引擎时这个值来自胶囊的 `style`。
-const STYLE_ID = new URLSearchParams(location.search).get('style') || 'modern';
+const DIR = { name: 'src', files: 214, bytes: 268000, lang: 'ts',
+  kids: DETAIL.kids,
+  leaves: DETAIL.files.map((f) => [f.n, f.b, f.sub]) };
+const q = new URLSearchParams(location.search);
+if (q.get('deep') !== '0') DIR.detail = DETAIL;
 
 const renderer = new THREE.WebGLRenderer({ antialias: false });
-renderer.setPixelRatio(Math.min(1.75, devicePixelRatio));
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const nameEl = document.getElementById('roomName'), statEl = document.getElementById('roomStats');
-const hintEl = document.getElementById('hint');
+const nameEl = document.getElementById('roomName'), statEl = document.getElementById('roomStats'), card = document.getElementById('card');
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 const room = createRoom(renderer, DIR, {
-  style: STYLE_ID,
+  style: q.get('style') || 'modern', layout: q.get('layout') || undefined, time: q.get('time') || 'auto',
   onHere: (h) => { nameEl.textContent = h.path; statEl.textContent = h.files + ' files'; },
-  onPick: (p) => { hintEl.textContent = p.dir + '/' + p.name + ' — ' + p.bytes.toLocaleString() + ' bytes'; },
+  onPick: (p, d) => {
+    card.hidden = false;
+    card.innerHTML = `<b>${d.icon} ${esc(d.title)}</b><div class="dim">${esc(d.path)}</div>`
+      + `<div class="role">${esc(d.role)} — ${esc(d.furn)}</div><div class="dim">${esc(d.stats)}</div>`
+      + (d.items.length ? `<div style="margin-top:6px">${esc(d.defines)}:</div>` + d.items.map((i) => `<div class="it">${i.icon} <code>${esc(i.name)}</code> <span class="dim">${esc(i.kind)}${i.line ? ' · L' + i.line : ''}${i.exported ? ' · export' : ''}</span></div>`).join('') : '')
+      + (d.note ? `<div class="dim" style="margin-top:6px">${esc(d.note)}</div>` : '');
+  },
 });
 
 let last = performance.now();

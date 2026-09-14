@@ -37,7 +37,7 @@ const ENGINE_ASSETS = [
   'wallpaper-styles.js', 'wallpaper-view3d.js', 'wallpaper-hud.js',
   'city-styles.js', 'lang-colors.js', 'rooms.js',
   // 点一座楼走进去:引擎按需 import() 进来,room-scene 再拉 room-interior。
-  'room-scene.js', 'room-interior.js',
+  'room-scene.js', 'room-interior.js', 'room-furniture.js',
 ];
 
 /** 一段文本里所有 `/phone/xxx.js`。src="" 和 import() 都是这个形状。 */

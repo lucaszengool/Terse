@@ -124,6 +124,7 @@
       walk_hint: 'Drag to look · stick to walk · tap a file',
       walk_files: '{n} files',
       walk_no_files: 'This one was published before buildings carried their files — the rooms are here, the exhibits are not. Its owner can rescan and publish again.',
+      walk_loading: 'Reading every file in this building…',
       pj_tap_like: 'Double-tap to like',
       prev_free: 'Free',
       feed_files: 'files', feed_buildings: 'buildings', feed_hint: 'Swipe for the next ↑',
@@ -359,6 +360,7 @@
       walk_hint: '拖动看四周 · 摇杆走路 · 点一个文件',
       walk_files: '{n} 个文件',
       walk_no_files: '这个项目发布时楼里还不带文件 —— 房间都在,展品没有。作者重新扫描再发布一次就有了。',
+      walk_loading: '正在读这座楼里的每一个文件…',
       pj_tap_like: '双击点赞',
       prev_free: '免费版',
       feed_files: '个文件', feed_buildings: '座楼', feed_hint: '上滑看下一个 ↑',
@@ -3757,26 +3759,100 @@
     box.classList.remove('hide');
     if (window.TerseFeel) window.TerseFeel.tap('heavy');
     var note = function (s) { $('walkNote').textContent = s; $('walkNote').classList.remove('hide'); };
-    wp.enterRoom(hit.dir, {
-      style: hit.style, host: box, input: box, budget: 0.6,
-      onHere: function (h) {
-        $('walkPath').textContent = h.path;
-        $('walkStat').textContent = t('walk_files').replace('{n}', h.files || 0);
-      },
-      onPick: function (p) {
-        note(p.dir + '/' + p.name + '  ·  ' + walkBytes(p.bytes));
-        if (window.TerseFeel) window.TerseFeel.tap('select');
-      },
-    }).then(function (room) {
-      if (!room) { exitWalk(); return; }
-      // leaves missing ≠ leaves empty: the first is an old capsule, and it says so
-      if (!room.hasLeaves) note(t('walk_no_files'));
-    }).catch(function (e) {
-      exitWalk();
-      $('pjNote').textContent = t('pj_broke').replace('{why}', (e && (e.message || String(e))) || 'room');
-      $('pjNote').classList.remove('hide');
-    });
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    /* A tapped piece of furniture says three things, in this order: which file
+       it is, what KIND of file (the furniture is chosen by that), and what the
+       things on it are — each one a real symbol, with its line. */
+    var card = function (d) {
+      var html = '<b>' + esc(d.icon + ' ' + d.title) + '</b><div class="dim">' + esc(d.path) + '</div>'
+        + '<div>' + esc(d.role) + ' — ' + esc(d.furn) + '</div><div class="dim">' + esc(d.stats) + '</div>';
+      if (d.items.length) {
+        html += '<div style="margin-top:6px">' + esc(d.defines) + '</div>';
+        d.items.slice(0, 24).forEach(function (i) {
+          html += '<div>' + i.icon + ' <code>' + esc(i.name) + '</code> <span class="dim">' + esc(i.kind) + (i.line ? ' · L' + i.line : '') + '</span></div>';
+        });
+      }
+      if (d.note) html += '<div class="dim" style="margin-top:6px">' + esc(d.note) + '</div>';
+      $('walkNote').innerHTML = html;
+      $('walkNote').classList.remove('hide');
+    };
+    var go = function (dir) {
+      if (!walking) return;
+      $('walkNote').classList.add('hide');
+      wp.enterRoom(dir, {
+        style: hit.style, host: box, input: box, budget: 0.55, words: lang === 'zh' ? ROOM_WORDS_ZH : null,
+        onHere: function (h) {
+          $('walkPath').textContent = h.path;
+          $('walkStat').textContent = t('walk_files').replace('{n}', h.files || 0);
+        },
+        onPick: function (p, d) {
+          card(d);
+          if (window.TerseFeel) window.TerseFeel.tap('select');
+        },
+      }).then(function (room) {
+        if (!room) { exitWalk(); return; }
+        // leaves missing ≠ leaves empty: the first is an old capsule, and it says so
+        if (!room.hasLeaves) note(t('walk_no_files'));
+      }).catch(function (e) {
+        exitWalk();
+        $('pjNote').textContent = t('pj_broke').replace('{why}', (e && (e.message || String(e))) || 'room');
+        $('pjNote').classList.remove('hide');
+      });
+    };
+    /* A GitHub project is deep-scanned on the way in: the server reads the
+       repository once (api/github-room.js) and hands back every file in this
+       building with its functions, classes, types and tests — that is what
+       goes on the shelves. Slow or failed, we walk in with what the capsule
+       already had: furniture without the things on it, never a stuck door. */
+    var cap0 = window.TersePlazaField ? window.TersePlazaField.toCapsule(viewing) : null;
+    var gh = /github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/.exec((cap0 && cap0.link) || '');
+    if (!gh || !window.fetch) { go(hit.dir); return; }
+    note(t('walk_loading'));
+    var ctl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 12000);
+    fetch('/api/cloud/github/room?repo=' + encodeURIComponent(gh[1] + '/' + gh[2].replace(/\.git$/, ''))
+      + '&dir=' + encodeURIComponent(hit.name || ''), { signal: ctl ? ctl.signal : undefined, headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; })
+      .then(function (j) {
+        clearTimeout(timer);
+        go(j && j.ok && Array.isArray(j.files) ? Object.assign({}, hit.dir, { detail: j }) : hit.dir);
+      });
   }
+
+  /* 走进楼之后那些词(家具叫什么、架子上的东西叫什么、图例)。英文在渲染器里兜底
+     (room-furniture.js / room-scene.js),这里只给中文 —— 渲染器是 Mac 和手机共用的,
+     它不该知道用户在说哪种语言。 */
+  var ROOM_WORDS_ZH = {
+    role_entry: '入口', furn_entry: '屋子尽头那座主案',
+    role_component: '界面组件', furn_component: '玻璃展柜',
+    role_hook: 'Hook', furn_hook: '钩子架(每盏小灯笼是一个 hook)',
+    role_test: '测试', furn_test: '实验台',
+    role_types: '类型定义', furn_types: '绘图桌',
+    role_config: '配置', furn_config: '控制台',
+    role_docs: '文档', furn_docs: '书架',
+    role_style: '样式', furn_style: '画架',
+    role_asset: '资源(图片 / 字体)', furn_asset: '墙上的画框',
+    role_data: '数据 / 表结构', furn_data: '抽屉柜',
+    role_source: '源代码', furn_source: '柜子',
+    role_archive: '较小的文件', furn_archive: '储物架',
+    item_fn: '函数', item_class: '类', item_type: '类型', item_test: '测试用例', item_component: '组件',
+    item_hook: 'hook', item_route: '路由', item_const: '常量', item_heading: '章节', item_table: '数据表',
+    shape_fn: '一本书', shape_class: '一只箱子', shape_type: '一卷图纸', shape_test: '一只烧瓶', shape_component: '一尊小像',
+    shape_hook: '一盏小灯笼', shape_route: '一只铃', shape_const: '一只罐子', shape_heading: '一册厚书', shape_table: '一格抽屉',
+    ui_files: '{n} 个文件', ui_lines: '{n} 行', ui_used_by: '被 {n} 个文件引用', ui_uses: '引用了 {n} 个文件',
+    ui_defines: '定义了 {n} 样东西', ui_more: '另外 {n} 个较小的文件',
+    ui_room_is: '一间屋子 = 一个目录', ui_court_is: '院子就是这个目录本身',
+    ui_no_symbols: '只摆了家具 —— 这座楼还没深扫过,所以架子上还没有东西。',
+    ui_truncated: '最大的那些文件单独摆出来了,其余的放在储物架上。',
+    ui_day: '白天', ui_night: '夜里', ui_legend: '图例',
+    lg_title: '怎么读这座楼',
+    lg_room: '一间屋子 = 一个目录 · 一扇门 = 它的一个子目录',
+    lg_furn: '一件家具 = 一个文件 · 家具的种类说明这个文件是干什么的',
+    lg_item: '家具上的东西 = 这个文件定义的函数、类、类型……',
+    lg_size: '家具越高,代码越多 · 东西的颜色 = 语言',
+    lg_roles: '家具', lg_items: '架子上的东西',
+  };
 
   /** @param {boolean} [leaving] the whole project window is going too — don't
    *  restart its replay on the way out. */

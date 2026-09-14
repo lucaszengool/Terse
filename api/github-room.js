@@ -9,13 +9,20 @@
  * 下载是流式的:gunzip → 自己写的最小 tar 解析器 → 每个文件读完立刻抽出符号和
  * import,原文随即丢掉。缓存里只留**索引**(元数据 + 符号 + 出入度),不留源码。
  *
- * ⚠ 只在有人走进楼时才拉 —— 懒加载。同一个仓库的不同楼共用一次解析;同时进来的
- * 几个请求共用同一次下载(in-flight 去重)。
+ * ★ **人永远不该等第二次下载。** 索引落盘(sqlite 的 room_index,gzip 的 JSON),重启还在;
+ * 内存 LRU 挡在它前面。有缓存就立刻答,不管多旧 —— 旧过六小时就在**后台**用 git
+ * smart-HTTP 问一句 HEAD 变了没有(不占配额):没变只刷新时间,变了才在后台重下重建。
+ * 只有**从没见过**的仓库才让请求等。为了让这种情况少发生,三处提前预热:扫描之后、
+ * 手机打开项目窗口时(/room/warm)、服务器启动时把广场上的 GitHub 项目挨个过一遍。
+ *
+ * ⚠ 全局最多同时下两个;排队时顺序是 人在楼门口(/room)> 手机预热 > 后台。
+ * 同一个仓库的多个请求共用一个任务。
  *
  * ⚠ 符号是正则抽的,"够用就好"。它回答"这件家具上摆着什么",不是编译器。
  * 认不出来就少摆一样,不会编一样。
  */
 const zlib = require('zlib');
+const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { langOf } = require('./github-city');
@@ -28,12 +35,17 @@ const MAX_RAW = 400 * 1024 * 1024;       // 解压后超过这个 → 413
 const MAX_KEEP = 256 * 1024;             // 单文件超过这个就不读内容,只记大小(和行数)
 const MAX_META = 1024 * 1024;            // pax / longname 头本身的上限 —— 正常只有几百字节
 const TIMEOUT_MS = 30 * 1000;
-const CACHE_MS = 60 * 60 * 1000;
-const FAIL_MS = 10 * 60 * 1000;          // 404/413 也记住十分钟,见 getIndex
-const MAX_REPOS = 8;
+const HEAD_TIMEOUT_MS = 10 * 1000;
+const STALE_MS = 6 * 60 * 60 * 1000;     // 超过这个就在**后台**问一次 HEAD 变了没有 —— 请求照样立刻答
+const NEG_404_MS = 60 * 60 * 1000;       // 记住"没有这个仓库"一小时
+const NEG_413_MS = 24 * 60 * 60 * 1000;  // 记住"太大了"一天 —— 每次重新下 80MB 再说一遍太大,是在烧带宽
+const RETRY_MS = 10 * 60 * 1000;         // 后台问 HEAD 失败了,十分钟内不再问
+const MAX_ACTIVE = 2;                    // 全局最多同时下载两个仓库
+const MAX_REPOS = 8;                     // 内存里最多留八个索引(LRU),其余在磁盘上
 const MAX_FILES = 160;
 const MAX_KIDS = 12;
 const MAX_SYM = 24;
+const MAX_EDGES = 600;
 
 /* ⚠ 和 github-city.js 的 SKIP **逐字一致**(那边没导出它,这里抄一份)。改一边就要改另一边:
    城市里没有的楼,楼里也不该有家具。区别只有一处:城市只看顶层目录,这里看**每一段**
@@ -114,9 +126,10 @@ function parsePax(buf) {
  *   不给就全部 keep(parseTar 用)。
  *
  * 认的类型:'0' / '\0' / '7' 普通文件;'L' GNU 长名;'x' pax(path、size);
- * 'g' 全局 pax 和其它类型(目录、链接)读过去就扔。路径**原样**给出,不去掉顶层目录。
+ * 'g' 全局 pax 交给 onGlobal(git archive 在那里写 comment=<提交 sha>);其它类型(目录、
+ * 链接)读过去就扔。路径**原样**给出,不去掉顶层目录。
  */
-function tarParser(onFile, want) {
+function tarParser(onFile, want, onGlobal) {
   let buf = Buffer.alloc(0);
   let cur = null;                 // 正在读的这一项
   let longName = null, pax = null;
@@ -152,6 +165,7 @@ function tarParser(onFile, want) {
       const d = Buffer.concat(c.parts);
       if (c.meta === 'L') longName = cstr(d, 0, d.length);
       else if (c.meta === 'x') pax = parsePax(d);
+      else if (c.meta === 'g' && onGlobal) onGlobal(parsePax(d));
       return;
     }
     if (!c.file) return;
@@ -740,8 +754,9 @@ function fileMeta(path, size, data, lines) {
 function collector() {
   const files = [];
   const strip = (p) => { const i = p.indexOf('/'); return i < 0 ? '' : p.slice(i + 1); };
-  return {
+  const col = {
     files,
+    sha: '',
     want(path, size) {
       const p = strip(path);
       if (!p || isSkipped(p)) return null;
@@ -749,15 +764,22 @@ function collector() {
       return size <= MAX_KEEP ? 'keep' : 'count';
     },
     onFile(e) { files.push(fileMeta(strip(e.path), e.size, e.data, e.lines)); },
+    /* git archive 的全局 pax 头里写着 comment=<提交 sha>(实测和 info/refs 的 HEAD 一致)
+       —— 下载本身就说明了这是哪个版本,不用再问一次。 */
+    onGlobal(p) { const c = String((p && p.comment) || ''); if (/^[0-9a-f]{40,64}$/.test(c)) col.sha = c; },
   };
+  return col;
 }
 
 /**
- * 文件行 → 带出入度的索引。出入度只算**解析得到的仓库内部边**,同一对文件只算一次。
+ * 文件行 → 带出入度和边的索引。只算**解析得到的仓库内部边**,同一对文件只算一次。
+ * 每个文件多一个 `to`:它 import 的那些文件在 files 里的下标(升序)—— 房间里的 edges 由它来。
+ * ⚠ 存下标不存路径:vite 两千八百个文件,路径再存一遍就是几百 KB。
  * @param {{p:string,b:number,l:number,lang:string,role:string,sym:any[],imps?:string[]}[]} files
  */
 function buildIndex(files) {
-  const set = new Set(files.map((f) => f.p));
+  const pos = new Map(files.map((f, i) => [f.p, i]));
+  const set = new Set(pos.keys());
   const inn = new Map();
   for (const f of files) {
     const outs = new Set();
@@ -766,26 +788,38 @@ function buildIndex(files) {
       if (r && r !== f.p) outs.add(r);
     }
     f.out = outs.size;
+    f.to = [...outs].map((p) => pos.get(p)).sort((a, b) => a - b);
     for (const r of outs) inn.set(r, (inn.get(r) || 0) + 1);
     delete f.imps;
   }
   for (const f of files) f.imp = inn.get(f.p) || 0;
-  return { at: Date.now(), files };
+  return { v: INDEX_V, at: Date.now(), files };
 }
 
 /** 一整个 tar.gz(Buffer)→ 索引。不联网;测试和离线工具用,流式那条路共用 collector。 */
 function indexArchive(gz) {
   const col = collector();
-  const t = tarParser(col.onFile, col.want);
+  const t = tarParser(col.onFile, col.want, col.onGlobal);
   t.push(zlib.gunzipSync(gz)); t.end();
-  return buildIndex(col.files);
+  const idx = buildIndex(col.files);
+  idx.sha = col.sha;
+  return idx;
 }
 
 /* ── 联网 ────────────────────────────────────────────────────────────────── */
 
+/* 可以换掉的依赖。测试里换成假的 fetch / 时钟 / 存储 —— 不联网,不碰真库。 */
+const deps = { fetch: (...a) => globalThis.fetch(...a), now: () => Date.now(), store: null, maxActive: MAX_ACTIVE };
+/** 换依赖:{ fetch, now, store, maxActive }。 */
+function configure(o) { Object.assign(deps, o || {}); return deps; }
+
+function ghHeaders() {
+  const h = { 'User-Agent': UA };
+  if (TOKEN) h.Authorization = 'Bearer ' + TOKEN;
+  return h;
+}
+
 async function fetchArchive(owner, repo, signal) {
-  const headers = { 'User-Agent': UA };
-  if (TOKEN) headers.Authorization = 'Bearer ' + TOKEN;
   /* codeload 是 github.com/archive 重定向过去的地方,直接打它省一跳。它不行再走
      github.com 那条(跟着重定向)—— 私有仓库带 token 时走的是后者。 */
   const urls = [
@@ -794,7 +828,7 @@ async function fetchArchive(owner, repo, signal) {
   ];
   let status = 0;
   for (const u of urls) {
-    const res = await fetch(u, { headers, redirect: 'follow', signal });
+    const res = await deps.fetch(u, { headers: ghHeaders(), redirect: 'follow', signal });
     if (res.ok && res.body) return res;
     status = res.status;
     try { await res.body?.cancel(); } catch (e) { /* 不要了 */ }
@@ -802,7 +836,7 @@ async function fetchArchive(owner, repo, signal) {
   throw status === 404 ? fail(404, 'No such repository') : fail(502, 'GitHub said ' + status);
 }
 
-/** 下载 + 流式解析一个仓库 → 索引。30 秒总时限,压缩 80MB / 解压 400MB 封顶。 */
+/** 下载 + 流式解析一个仓库 → 索引(带 sha)。30 秒总时限,压缩 80MB / 解压 400MB 封顶。 */
 async function indexRepo(owner, repo, opts = {}) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), opts.timeoutMs || TIMEOUT_MS);
@@ -811,7 +845,7 @@ async function indexRepo(owner, repo, opts = {}) {
     const res = await fetchArchive(owner, repo, ac.signal);
     if ((+res.headers.get('content-length') || 0) > MAX_Z) { try { await res.body.cancel(); } catch (e) { /* */ } throw tooBig(); }
     const col = collector();
-    const tar = tarParser(col.onFile, col.want);
+    const tar = tarParser(col.onFile, col.want, col.onGlobal);
     let z = 0, raw = 0;
     await pipeline(
       Readable.fromWeb(res.body),
@@ -821,7 +855,9 @@ async function indexRepo(owner, repo, opts = {}) {
       { signal: ac.signal },
     );
     tar.end();
-    return buildIndex(col.files);
+    const idx = buildIndex(col.files);
+    idx.sha = col.sha;
+    return idx;
   } catch (e) {
     if (e && (e.code === 404 || e.code === 413)) throw e;
     if (ac.signal.aborted) throw fail(502, 'GitHub took too long to send that repository');
@@ -829,32 +865,333 @@ async function indexRepo(owner, repo, opts = {}) {
   } finally { clearTimeout(timer); }
 }
 
-/* 缓存:索引一小时,最多 8 个仓库(LRU,Map 的插入顺序就是新旧)。
-   ⚠ 404 和 413 也记十分钟 —— 一个 80MB 的仓库,每走进一座楼就重新下一遍 80MB 再告诉人
-   "太大了",那是在用服务器的带宽反复确认同一件事。502 不记:那多半是一时的。 */
-const cache = new Map();                 // key → { at, idx?, err? }
-const inflight = new Map();              // key → Promise<idx>
-
-function remember(key, entry) {
-  cache.delete(key); cache.set(key, entry);
-  while (cache.size > MAX_REPOS) cache.delete(cache.keys().next().value);
+/**
+ * info/refs 的 pkt-line → HEAD 的 sha。
+ *   "001e# service=git-upload-pack\n" "0000" "<长度><sha> HEAD\0<能力…>\n" …
+ * 返回 sha;'' = 第一条 ref 不是 HEAD(空仓库);undefined = 字节还不够,再读。
+ */
+function headOf(buf) {
+  let i = 0;
+  while (i + 4 <= buf.length) {
+    const n = parseInt(buf.toString('ascii', i, i + 4), 16);
+    if (Number.isNaN(n)) return '';
+    if (n === 0) { i += 4; continue; }                    // flush
+    if (n < 4) return '';
+    if (i + n > buf.length) return undefined;
+    const line = buf.toString('utf8', i + 4, i + n);
+    i += n;
+    if (line.startsWith('#')) continue;
+    const m = /^([0-9a-f]{40,64}) ([^\0\n]+)/.exec(line);
+    return m && m[2] === 'HEAD' && !/^0+$/.test(m[1]) ? m[1] : '';
+  }
+  return undefined;
 }
 
-async function getIndex(owner, repo) {
-  const key = (owner + '/' + repo).toLowerCase();
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < (hit.err ? FAIL_MS : CACHE_MS)) {
-    remember(key, hit);
-    if (hit.err) throw hit.err;
-    return hit.idx;
+/** 现在的 HEAD 是哪个提交。git smart-HTTP,**不占 REST 配额**;读到第一条 ref 就挂断
+    —— torvalds/linux 的整张 refs 表有 250KB,我们只要头两百字节。
+    ⚠ 仓库不存在时 GitHub 回的是 **401**(它在叫你登录),不是 404。 */
+async function headSha(owner, repo) {
+  const res = await deps.fetch(`https://github.com/${owner}/${repo}.git/info/refs?service=git-upload-pack`,
+    { headers: ghHeaders(), redirect: 'follow', signal: AbortSignal.timeout(HEAD_TIMEOUT_MS) });
+  if (res.status === 401 || res.status === 404) {
+    try { await res.body?.cancel(); } catch (e) { /* */ }
+    throw fail(404, 'No such repository');
   }
-  if (inflight.has(key)) return inflight.get(key);
-  const p = indexRepo(owner, repo)
-    .then((idx) => { remember(key, { at: Date.now(), idx }); return idx; },
-          (e) => { if (e.code === 404 || e.code === 413) remember(key, { at: Date.now(), err: e }); throw e; })
-    .finally(() => inflight.delete(key));
-  inflight.set(key, p);
-  return p;
+  if (!res.ok || !res.body) throw fail(502, 'GitHub said ' + res.status);
+  const reader = res.body.getReader();
+  let buf = Buffer.alloc(0);
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (value) buf = Buffer.concat([buf, Buffer.from(value)]);
+      const h = headOf(buf);
+      if (h !== undefined) return h;
+      if (done || buf.length > 64 * 1024) return '';
+    }
+  } finally { try { await reader.cancel(); } catch (e) { /* 挂断 */ } }
+}
+
+/* ── 磁盘 ────────────────────────────────────────────────────────────────── */
+
+/* 和其它表同一个 sqlite 文件(db.js 导出了 db 句柄)。表建在这里而不是 db.js:它是一份
+   **随时可以扔掉的缓存** —— 整张表删掉,代价只是下一个人等一次下载,不丢任何人的数据。
+   gz 是索引(元数据 + 符号 + 出入度)的 gzip JSON,**永远没有源码原文**。
+   err ≠ 0 的行是"记住的失败"(404 / 413),gz 为空。时间都是毫秒。 */
+function sqliteStore() {
+  const { db } = require('./db');
+  db.exec(`CREATE TABLE IF NOT EXISTS room_index (
+    repo TEXT PRIMARY KEY,
+    sha TEXT NOT NULL DEFAULT '',
+    fetched_at INTEGER NOT NULL,
+    checked_at INTEGER NOT NULL,
+    size INTEGER NOT NULL DEFAULT 0,
+    gz BLOB,
+    err INTEGER NOT NULL DEFAULT 0,
+    msg TEXT NOT NULL DEFAULT ''
+  )`);
+  const get = db.prepare('SELECT * FROM room_index WHERE repo = ?');
+  const peek = db.prepare('SELECT repo, sha, fetched_at, checked_at, size, err FROM room_index WHERE repo = ?');
+  const put = db.prepare(`INSERT INTO room_index (repo, sha, fetched_at, checked_at, size, gz, err, msg)
+    VALUES (@repo, @sha, @fetched_at, @checked_at, @size, @gz, @err, @msg)
+    ON CONFLICT(repo) DO UPDATE SET sha = excluded.sha, fetched_at = excluded.fetched_at,
+      checked_at = excluded.checked_at, size = excluded.size, gz = excluded.gz, err = excluded.err, msg = excluded.msg`);
+  const touch = db.prepare('UPDATE room_index SET checked_at = ? WHERE repo = ?');
+  return {
+    get: (k) => get.get(k),
+    peek: (k) => peek.get(k),
+    put: (row) => put.run(row),
+    touch: (k, at) => touch.run(at, k),
+  };
+}
+function store() { if (!deps.store) deps.store = sqliteStore(); return deps.store; }
+/* 磁盘出了错不能让请求答不出来 —— 缓存坏了就当没有缓存。 */
+function safe(fn) {
+  try { return fn(); } catch (e) { console.error('[room] index store:', e.message); return null; }
+}
+
+/* 索引格式的版本。改了 fileMeta / buildIndex 的字段就加一。v2 加了 to(边)。
+   ⚠ 旧版本的行**照样立刻拿来答**(少一层边而已),同时在后台按新格式重建 —— 人不等。 */
+const INDEX_V = 2;
+function encode(idx) {
+  return zlib.gzipSync(Buffer.from(JSON.stringify({ v: INDEX_V, at: idx.at, sha: idx.sha || '', files: idx.files })));
+}
+function decode(gz) {
+  if (!gz) return null;
+  const o = JSON.parse(zlib.gunzipSync(gz).toString('utf8'));
+  return o && o.v >= 1 && o.v <= INDEX_V && Array.isArray(o.files) ? { v: o.v, at: o.at, sha: o.sha || '', files: o.files } : null;
+}
+
+/* ── 内存 + 新鲜度 ──────────────────────────────────────────────────────── */
+
+const keyOf = (owner, repo) => (owner + '/' + repo).toLowerCase();
+const negTtl = (code) => code === 413 ? NEG_413_MS : NEG_404_MS;
+
+/* 内存:key → { sha, fetchedAt, checkedAt, idx, err, msg, tryAt }。Map 的插入顺序就是新旧。 */
+const mem = new Map();
+function remember(key, e) {
+  mem.delete(key); mem.set(key, e);
+  while (mem.size > MAX_REPOS) mem.delete(mem.keys().next().value);
+}
+const negLive = (e) => !!e.err && deps.now() - e.checkedAt < negTtl(e.err);
+/** 该不该在后台看一眼:旧过六小时,或者是旧格式的索引。 */
+const needsCheck = (e) => deps.now() - e.checkedAt > STALE_MS || !!(e.idx && e.idx.v !== INDEX_V);
+
+/** 内存里有就用内存的,没有就从磁盘读上来(并放进内存)。都没有 → null。 */
+function lookup(key) {
+  const hit = mem.get(key);
+  if (hit) { remember(key, hit); return hit; }
+  const row = safe(() => store().get(key));
+  if (!row) return null;
+  let e;
+  if (row.err) e = { sha: '', fetchedAt: row.fetched_at, checkedAt: row.checked_at, idx: null, err: row.err, msg: row.msg };
+  else {
+    const idx = safe(() => decode(row.gz));
+    if (!idx) return null;
+    e = { sha: row.sha, fetchedAt: row.fetched_at, checkedAt: row.checked_at, idx, err: 0 };
+  }
+  remember(key, e);
+  return e;
+}
+
+/** 有没有**能用的**缓存(成功的,或者还没过期的失败)。不解压 —— 启动预热用它跳过。 */
+function isCached(key) {
+  const e = mem.get(key);
+  if (e) return !e.err || negLive(e);
+  const row = safe(() => store().peek(key));
+  return !!row && (!row.err || deps.now() - row.checked_at < negTtl(row.err));
+}
+
+function save(key, e, gz, keepInMemory) {
+  if (keepInMemory) remember(key, e); else mem.delete(key);
+  safe(() => store().put({
+    repo: key, sha: e.sha || '', fetched_at: e.fetchedAt, checked_at: e.checkedAt,
+    size: gz ? gz.length : 0, gz: gz || null, err: e.err || 0, msg: e.msg || '',
+  }));
+}
+
+/* ── 下载队列 ──────────────────────────────────────────────────────────────── */
+
+/* 优先级:人站在楼门口 > 手机刚打开项目窗口 > 后台(启动预热、过期重验)。 */
+const PRI = { room: 3, warm: 2, bg: 1 };
+const jobs = new Map();          // key → job(排队中或在跑)
+const queue = [];                // 还没开始的 job
+const bg = new Set();            // 所有在飞的后台 promise —— 测试用 _idle() 等它们
+let active = 0, seq = 0;
+
+function track(p) { bg.add(p); p.then(() => bg.delete(p), () => bg.delete(p)); return p; }
+
+function schedule(key, pri, run) {
+  const have = jobs.get(key);
+  if (have) { if (pri > have.pri) have.pri = pri; return have.promise; }   // 同一个仓库共用一个任务,顺带提级
+  const job = { key, pri, run, seq: seq++, started: false };
+  job.promise = new Promise((resolve, reject) => { job.resolve = resolve; job.reject = reject; });
+  job.promise.catch(() => {});   // 没人等的后台任务失败了,不能变成 unhandledRejection
+  track(job.promise);
+  jobs.set(key, job);
+  queue.push(job);
+  pump();
+  return job.promise;
+}
+
+function pump() {
+  while (active < deps.maxActive && queue.length) {
+    let bi = 0;
+    for (let i = 1; i < queue.length; i++) {
+      const a = queue[i], b = queue[bi];
+      if (a.pri > b.pri || (a.pri === b.pri && a.seq < b.seq)) bi = i;
+    }
+    const job = queue.splice(bi, 1)[0];
+    job.started = true;
+    active++;
+    Promise.resolve().then(job.run).then(job.resolve, job.reject)
+      .finally(() => { active--; jobs.delete(job.key); pump(); });
+  }
+}
+
+/**
+ * 下载 + 建索引 + 落盘,排进队列。
+ * ⚠ 失败时如果手上已经有一份好的索引,**留着它**(只把 checked_at 往后推,免得每个请求都
+ * 重下一遍 80MB);只有从没成功过的仓库才把 404 / 413 记下来。
+ */
+function download(owner, repo, pri, keepInMemory = true) {
+  const key = keyOf(owner, repo);
+  return schedule(key, pri, async () => {
+    try {
+      const idx = await indexRepo(owner, repo);
+      const t = deps.now();
+      const e = { sha: idx.sha || '', fetchedAt: t, checkedAt: t, idx, err: 0 };
+      save(key, e, encode(idx), keepInMemory || mem.has(key));
+      return e;
+    } catch (err) {
+      const t = deps.now();
+      const prev = mem.get(key);
+      const row = prev ? null : safe(() => store().peek(key));
+      if ((prev && !prev.err) || (row && !row.err)) {
+        if (prev) prev.checkedAt = t;
+        safe(() => store().touch(key, t));
+      } else if (err.code === 404 || err.code === 413) {
+        save(key, { sha: '', fetchedAt: t, checkedAt: t, idx: null, err: err.code, msg: err.message }, null, true);
+      }
+      throw err;
+    }
+  });
+}
+
+const reval = new Map();         // key → 正在进行的后台重验
+/** 后台重验:问 HEAD;没变就刷新时间,变了就排一个后台下载。永远不让请求等。 */
+function revalidate(owner, repo, key, e) {
+  const t = deps.now();
+  if (reval.has(key) || jobs.has(key) || (e.tryAt && t - e.tryAt < RETRY_MS)) return;
+  e.tryAt = t;
+  const p = (async () => {
+    // 旧格式的索引:不用问 HEAD,sha 一样也得按新格式重建一次。
+    const upgrade = !!(e.idx && e.idx.v !== INDEX_V);
+    let head = '';
+    if (!upgrade) {
+      try { head = await headSha(owner, repo); } catch (x) { return; }   // 问不到就下次再问,旧的照用
+    }
+    const cur = mem.get(key) || e;
+    if (!upgrade && head && head === cur.sha) {
+      const now = deps.now();
+      cur.checkedAt = now;
+      safe(() => store().touch(key, now));
+      return;
+    }
+    await download(owner, repo, PRI.bg, mem.has(key)).catch(() => {});
+  })().finally(() => reval.delete(key));
+  reval.set(key, p);
+  track(p);
+}
+
+/**
+ * 一个仓库的索引。有缓存(不管多旧)就立刻给;旧了顺手在后台重验。
+ * 只有从没见过的仓库(或者记住的失败已经过期)才等下载。
+ */
+async function getIndex(owner, repo, opts = {}) {
+  const key = keyOf(owner, repo);
+  const e = lookup(key);
+  if (e && !e.err) {
+    if (needsCheck(e)) revalidate(owner, repo, key, e);
+    return e.idx;
+  }
+  if (e && negLive(e)) throw fail(e.err, e.msg || 'Could not read that repository');
+  return (await download(owner, repo, opts.priority || PRI.room)).idx;
+}
+
+/** 预热:不等,只说现在是什么状态。'cached' | 'warming'(在下)| 'queued'(在排队)。 */
+function warm(owner, repo, pri = PRI.warm) {
+  const key = keyOf(owner, repo);
+  const j = jobs.get(key);
+  if (j) { if (pri > j.pri) j.pri = pri; return j.started ? 'warming' : 'queued'; }
+  const e = lookup(key);
+  if (e && !e.err) {
+    if (needsCheck(e)) revalidate(owner, repo, key, e);
+    return 'cached';
+  }
+  if (e && negLive(e)) return 'cached';
+  download(owner, repo, pri);
+  const nj = jobs.get(key);
+  return nj && nj.started ? 'warming' : 'queued';
+}
+
+/** 等所有后台的事做完 —— 只给测试和离线脚本用。 */
+async function idle() { while (bg.size) await Promise.allSettled([...bg]); }
+
+/* ── 启动预热 ──────────────────────────────────────────────────────────────── */
+
+/** "owner/name" 或者一条 github.com 的链接 → { owner, repo };别的都是 null。 */
+function repoOf(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  const m = /^https?:\/\/(?:www\.)?github\.com\/([^/?#\s]+)\/([^/?#\s]+)/i.exec(s) || /^([^/\s]+)\/([^/\s]+)$/.exec(s);
+  if (!m) return null;
+  const owner = m[1], repo = m[2].replace(/\.git$/i, '');
+  const okName = (n) => /^[A-Za-z0-9_.-]{1,100}$/.test(n) && !/^\.+$/.test(n);
+  return okName(owner) && okName(repo) ? { owner, repo } : null;
+}
+
+/**
+ * 启动时把广场上的 GitHub 项目挨个索引一遍,新发布的先来,最多 200 个,**一次一个**,
+ * 中间歇一会儿;已经有缓存的跳过。排在最低优先级,人一来就让路。
+ * ⚠ 只由 server.js 在 listen 之后调用 —— require 这个文件不会启动它。
+ *
+ * @param {{list?:()=>{capsule:string|object}[], delayMs?:number, startDelayMs?:number, max?:number}} [opts]
+ * @returns {{stop:()=>void, done:Promise<number>}}  done 给出这一轮真正下载了几个
+ */
+function startWarmer(opts = {}) {
+  const delay = opts.delayMs == null ? 4000 : opts.delayMs;
+  const max = opts.max || 200;
+  const list = opts.list || (() => require('./db').listWallProjects.all({ limit: 1000 }));
+  let stopped = false;
+  const sleep = (ms) => new Promise((r) => { const t = setTimeout(r, ms); if (t.unref) t.unref(); });
+  const done = (async () => {
+    // 让启动先把自己的事做完(清垃圾帖、种子数据),再开始占带宽。
+    await sleep(opts.startDelayMs == null ? 15000 : opts.startDelayMs);
+    let rows = [];
+    try { rows = list() || []; } catch (e) { console.error('[room] warmer: cannot list projects:', e.message); return 0; }
+    const seen = new Set(), todo = [];
+    for (const row of rows) {
+      let cap = row && row.capsule;
+      if (typeof cap === 'string') { try { cap = JSON.parse(cap); } catch (e) { continue; } }
+      const r = repoOf(cap && (cap.link || (cap.source && cap.source.url)));
+      if (!r || !/github\.com/i.test(String((cap && (cap.link || (cap.source && cap.source.url))) || ''))) continue;
+      const k = keyOf(r.owner, r.repo);
+      if (seen.has(k)) continue;
+      seen.add(k); todo.push(r);
+      if (todo.length >= max) break;
+    }
+    let n = 0;
+    for (const r of todo) {
+      if (stopped) break;
+      if (isCached(keyOf(r.owner, r.repo))) continue;
+      // ⚠ 不放进内存:两百个仓库挨个过,会把人正在逛的那几个挤出 LRU。它们在磁盘上就够了。
+      try { await download(r.owner, r.repo, PRI.bg, false); } catch (e) { /* 下一个 */ }
+      n++;
+      if (delay) await sleep(delay);
+    }
+    if (n) console.log(`[room] warmer: indexed ${n} of ${todo.length} plaza repos`);
+    return n;
+  })();
+  return { stop() { stopped = true; }, done };
 }
 
 /* ── 一个房间 ─────────────────────────────────────────────────────────────── */
@@ -877,45 +1214,89 @@ function roomOf(index, dir) {
   if (!picked.length) return null;
 
   const kids = new Map();
-  const rows = picked.map((f) => {
-    const rest = root ? f.p : f.p.slice(pre.length);
-    const sub = rest.indexOf('/') > 0 ? rest.slice(0, rest.indexOf('/')) : '';
+  const subOf = (f) => { const rest = root ? f.p : f.p.slice(pre.length); return rest.indexOf('/') > 0 ? rest.slice(0, rest.indexOf('/')) : ''; };
+  for (const f of picked) {
+    const sub = subOf(f);
     if (sub) { const k = kids.get(sub) || [sub, 0, 0]; k[1]++; k[2] += f.b; kids.set(sub, k); }
-    return { n: baseOf(f.p), p: f.p, sub, b: f.b, l: f.l, lang: f.lang, role: f.role, sym: f.sym, imp: f.imp || 0, out: f.out || 0 };
+  }
+  picked.sort((a, b) => b.b - a.b || (a.p < b.p ? -1 : 1));
+  const kept = picked.slice(0, MAX_FILES);
+  /* 边:[i, j] = files[i] import 了 files[j],下标是**这份响应**里的。两头都得在列表里 ——
+     被 160 截掉的文件没有家具,指向它的线没有地方落。按 (i, j) 排好,最多 600 条。
+     旧格式的索引(v1,没有 to)给空数组,不猜。 */
+  const at = new Map(kept.map((f, i) => [f, i]));
+  const edges = [];
+  kept.forEach((f, i) => {
+    const js = [];
+    for (const t of f.to || []) { const j = at.get(all[t]); if (j !== undefined && j !== i) js.push(j); }
+    js.sort((a, b) => a - b);
+    for (const j of js) edges.push([i, j]);
   });
-  rows.sort((a, b) => b.b - a.b || (a.p < b.p ? -1 : 1));
   return {
     dir: root ? '/' : d,
     root,
-    truncated: rows.length > MAX_FILES,
-    total: rows.length,
+    truncated: picked.length > MAX_FILES,
+    total: picked.length,
     kids: [...kids.values()].sort((a, b) => b[2] - a[2] || (a[0] < b[0] ? -1 : 1)).slice(0, MAX_KIDS),
-    files: rows.slice(0, MAX_FILES),
+    files: kept.map((f) => ({ n: baseOf(f.p), p: f.p, sub: subOf(f), b: f.b, l: f.l, lang: f.lang, role: f.role, sym: f.sym, imp: f.imp || 0, out: f.out || 0 })),
+    edges: edges.slice(0, MAX_EDGES),
   };
 }
 
-const REPO_RX = /^([A-Za-z0-9_.-]{1,100})\/([A-Za-z0-9_.-]{1,100})$/;
+/* HTTP 缓存。同一个 sha 的同一座楼永远是同一份响应,所以 ETag = sha + 楼。
+   ⚠ ROOM_V 是响应格式的版本:改了 roomOf / fileMeta 的输出就加一,旧 ETag 全部作废 ——
+   否则手机会拿着 304 继续用旧形状的数据。
+   v2:加了 edges。索引的版本也算进去 —— 同一个 sha,旧格式索引答出来的(没有边)和
+   重建之后的(有边)必须是两个 ETag,否则手机拿着没有边的那份会一直被 304。 */
+const ROOM_V = 2;
+const CACHE_CONTROL = 'public, max-age=600, stale-while-revalidate=86400';
+function etagOf(idx, dir) {
+  const h = crypto.createHash('sha1').update(`${ROOM_V}\0${idx.v || 1}\0${dir}`).digest('hex').slice(0, 10);
+  return `"${String(idx.sha || 't' + idx.at).slice(0, 16)}-${h}"`;
+}
+function etagMatches(inm, tag) {
+  if (!inm) return false;
+  return String(inm).split(',').some((s) => { const t = s.trim().replace(/^W\//, ''); return t === '*' || t === tag; });
+}
 
 // GET /api/cloud/github/room?repo=owner/name&dir=src
 async function handler(req, res) {
   const q = req.query || {};
-  const m = REPO_RX.exec(String(q.repo || '').trim().replace(/\.git$/i, ''));
-  if (!m || /^\.+$/.test(m[1]) || /^\.+$/.test(m[2])) return res.status(400).json({ error: 'repo must look like owner/name' });
+  const r = repoOf(q.repo);
+  if (!r) return res.status(400).json({ error: 'repo must look like owner/name' });
   const dir = typeof q.dir === 'string' ? q.dir : q.dir == null ? '' : null;
   if (dir == null || dir.length > 300 || /(^|\/)\.\.(\/|$)|[\0-\x1f]/.test(dir)) return res.status(400).json({ error: 'Bad dir' });
   try {
-    const idx = await getIndex(m[1], m[2]);
+    const idx = await getIndex(r.owner, r.repo);
     const room = roomOf(idx, dir);
     if (!room) return res.status(404).json({ error: 'No such directory in that repository' });
-    res.json(Object.assign({ ok: true, repo: `${m[1]}/${m[2]}` }, room));
+    const tag = etagOf(idx, room.dir);
+    res.set('ETag', tag);
+    res.set('Cache-Control', CACHE_CONTROL);
+    if (etagMatches((req.headers || {})['if-none-match'], tag)) return res.status(304).end();
+    res.json(Object.assign({ ok: true, repo: `${r.owner}/${r.repo}`, sha: idx.sha || '' }, room));
   } catch (e) {
     res.status(e && (e.code === 404 || e.code === 413) ? e.code : 502)
        .json({ error: (e && e.message) || 'Could not read that repository' });
   }
 }
 
+// POST /api/cloud/github/room/warm {repo}   (也收 GET ?repo=)→ 202,**从不等下载**
+// 手机在项目窗口一打开就调它 —— 离有人走进楼门大约还有二十秒,够把索引备好。
+function warmHandler(req, res) {
+  const r = repoOf((req.body && req.body.repo) || (req.query && req.query.repo));
+  if (!r) return res.status(400).json({ error: 'repo must look like owner/name' });
+  const state = warm(r.owner, r.repo);
+  const body = { ok: true, state };
+  const e = mem.get(keyOf(r.owner, r.repo));
+  if (e && e.err && negLive(e)) body.err = e.err;   // 记住的 404 / 413:手机可以不画那扇门
+  res.status(202).json(body);
+}
+
 module.exports = {
-  handler, roomOf, getIndex, indexRepo, indexArchive, buildIndex, fileMeta,
+  handler, warmHandler, warm, startWarmer, configure,
+  roomOf, getIndex, indexRepo, indexArchive, buildIndex, fileMeta,
   parseTar, tarParser, roleOf, symbolsOf, importsOf, resolveImport,
-  _cache: cache,
+  headOf, headSha, repoOf, etagOf, encode, decode,
+  _mem: mem, _store: store, _idle: idle, _stats: () => ({ active, queued: queue.length, jobs: jobs.size }),
 };

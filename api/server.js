@@ -1702,6 +1702,8 @@ function sweepSpam() {
 app.listen(PORT, () => {
   console.log(`[pruneai-api] running on port ${PORT}`);
   sweepSpam();
+  // 广场上的 GitHub 项目先把"走进楼"的索引备好(一次一个、最低优先级)。只在真正起服务时跑,require 不会。
+  if (process.env.NODE_ENV !== 'test' && !process.env.TERSE_NO_ROOM_WARM) require('./github-room').startWarmer();
   // Auto-seed marketplace if empty
   try {
     const count = db.getListings.all();

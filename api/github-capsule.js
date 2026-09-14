@@ -32,6 +32,7 @@
 const express = require('express');
 const { png } = require('./tinypng');
 const { probe } = require('./repo-probe');
+const room = require('./github-room');
 
 const router = express.Router();
 
@@ -184,6 +185,35 @@ function coverFor(langs, seedStr) {
   return 'data:image/png;base64,' + buf.toString('base64');
 }
 
+/* 风格从代码里来。GitHub 导入的项目没有作者亲自挑的风格,以前一律写死 'modern',于是广场上
+   每个 GitHub 项目都是同一座城。主语言决定走哪一路传统,仓库名的哈希在这一路里挑一个 ——
+   同一门语言的两个项目也不会长成一样。
+   ⚠ 这是 src/renderer/city-styles.js 里 seedOf / styleForCode 的**逐行移植**(那边是 ESM,
+   这边 require 不进来)。github-room.test.js 把两份对着跑四十多组:改一边就要改另一边,
+   否则服务器写进胶囊的风格和客户端自己算的会对不上。 */
+function seedOf(str) {
+  let h = 2166136261;
+  const s = String(str || '');
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) || 1;
+}
+const STYLE_FAMILIES = [
+  [['ts', 'js', 'html', 'css'], ['modern', 'persia', 'tang']],
+  [['python'], ['hellas', 'giza']],
+  [['rust', 'c', 'c++'], ['norse', 'maya']],
+  [['go'], ['modern', 'edo']],
+  [['java', 'kotlin', 'c#'], ['giza', 'hellas']],
+  [['swift'], ['edo', 'tang']],
+  [['ruby', 'php'], ['maya', 'persia']],
+];
+/** @param {Array<[string, number]>} langs 按占比排好的 [语言, 占比]  @param {string} name 'owner/repo' */
+function styleForCode(langs, name) {
+  const first = (Array.isArray(langs) ? langs : []).find((l) => l && l[0]);
+  const dom = first ? String(first[0]) : '';
+  const fam = (STYLE_FAMILIES.find(([ls]) => ls.includes(dom)) || [null, ['tang', 'norse', 'edo']])[1];
+  return fam[seedOf(String(name || '').toLowerCase()) % fam.length];
+}
+
 async function build(owner, repo) {
   const meta = await gh(`/repos/${owner}/${repo}`);
   const branch = meta.default_branch || 'main';
@@ -230,7 +260,7 @@ async function build(owner, repo) {
     files,
     langs,
     dirs,
-    style: 'modern',
+    style: styleForCode(langs, owner + '/' + repo),
     links: [],
     commits: commitsOf(weeks),
     // ⚠ 拿不到就留空,不猜 —— 见文件顶部。
@@ -258,6 +288,8 @@ async function build(owner, repo) {
 router.post('/scan', async (req, res) => {
   const r = parseRepo((req.body || {}).url);
   if (!r) return res.status(400).json({ error: 'Not a GitHub repository link' });
+  // 答完之后顺手把"走进楼"要的索引备好 —— 预览里人最先点的就是楼。⚠ finish 之后才动,不拖慢扫描。
+  res.once('finish', () => { if (res.statusCode === 200) { try { room.warm(r.owner, r.repo); } catch (e) { /* 预热失败不影响扫描 */ } } });
 
   const hit = cache.get(r.full);
   if (hit && Date.now() - hit.at < CACHE_MS) {
@@ -276,12 +308,17 @@ router.post('/scan', async (req, res) => {
   }
 });
 
-// GET /api/cloud/github/room?repo=owner/name&dir=src  → 走进一座楼:文件 = 家具,符号 = 家具上的东西。
-// 整个仓库只下一次 tar.gz(不占 API 配额),见 github-room.js。
-router.get('/room', require('./github-room').handler);
+// GET  /api/cloud/github/room?repo=owner/name&dir=src → 走进一座楼:文件 = 家具,符号 = 家具上的东西。
+// POST /api/cloud/github/room/warm {repo}(也收 GET ?repo=)→ 202,后台先把索引备好。
+// 整个仓库只下一次 tar.gz(不占 API 配额),索引落盘、过期后台重验 —— 见 github-room.js。
+router.get('/room', room.handler);
+router.post('/room/warm', room.warmHandler);
+router.get('/room/warm', room.warmHandler);
 
 module.exports = router;
 module.exports.parseRepo = parseRepo;
 module.exports.langsOf = langsOf;
 module.exports.dirsOf = dirsOf;
 module.exports.commitsOf = commitsOf;
+module.exports.styleForCode = styleForCode;
+module.exports.seedOf = seedOf;

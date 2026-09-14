@@ -813,6 +813,14 @@
   .insico{width:30px;height:30px;flex:0 0 auto;border-radius:8px;background:var(--card2);
     border:1px solid var(--line);color:var(--ink);display:grid;place-items:center}
 
+  /* ── 房间里的城 ──────────────────────────────────────────────────
+     点得动的那几行是有城的人。按钮而不是整行可点:整行可点的话,旁边那个加好友
+     的 + 会变成"行里的一块",而它是另一件事。 */
+  #roomCityNow{color:var(--faint);transition:color .25s}
+  #roomCityNow.on{color:var(--accent)}
+  .citybtn{min-height:32px;padding:6px 10px;font-size:13px;line-height:1;opacity:.72}
+  .citybtn:active{opacity:1}
+
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tabbar) + var(--safe-b) + 18px);
     z-index:20;padding:11px 17px;border-radius:12px;background:rgba(20,24,30,.96);border:1px solid var(--line2);
     font-size:13.5px;max-width:86vw;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.5)}
@@ -1031,6 +1039,9 @@
             <div class="grow"><h2 id="roomName" class="ell">Room</h2><div class="tiny mono" id="roomCode"></div></div>
             <button class="btn ghost" id="leaveBtn" type="button" data-t="leave">Leave</button>
           </div>
+          <!-- 屋里有什么可看的。名册说的是谁在,这一行说的是谁的城正在放 —— 城本身
+               不在这张卡片里,它在身后那块画布上,和项目预览用的是同一块地方。 -->
+          <div class="tiny" id="roomCityNow" data-t="room_city_none">No code cities in here yet.</div>
           <div class="list" id="roster"></div>
         </div>
         <div class="msgs" id="msgs"></div>
@@ -1345,6 +1356,8 @@
 <script src="/phone/feel.js"></script>
   <script src="/phone/signals.js"></script>
   <script src="/phone/plaza-field.js"></script>
+  <!-- 房间的城。必须排在 plaza-field 之后:胶囊的唯一入口 toCapsule 在那边。 -->
+  <script src="/phone/room-field.js"></script>
 <script src="/phone/beds.js"></script>
 <script src="/phone/install.js"></script>
 <script src="/phone/diag.js"></script>

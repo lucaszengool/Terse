@@ -1720,6 +1720,18 @@ const listWallProjects = db.prepare(
   'SELECT id, identity, title, capsule, views, published_at FROM wall_projects ORDER BY published_at DESC LIMIT @limit');
 const countWallProjects = db.prepare(
   'SELECT COUNT(*) AS n FROM wall_projects WHERE identity = @identity');
+
+/* 一个人发布过的项目,最新的在前 —— 房间要的是"这个人的代码城市"。
+ *
+ * ⚠ **身份在这里是短的那一串**。房间存的是 `sha256(secret)` 完整 64 位,广场存的
+ * 是同一串的前 32 位(见 api/projects.js 的 idHash);短的正好是长的前缀,所以
+ * 这条语句的调用方必须先把房间那串截到 32 位,而不是把两串直接比。写成 LIKE
+ * 前缀匹配也能对上,但那样就用不上 idx_wall_projects_identity 这个等值索引,
+ * 房间每开一次就是一次全表扫描。
+ */
+const wallProjectsByIdentity = db.prepare(
+  'SELECT id, identity, title, capsule, views, published_at FROM wall_projects'
+  + ' WHERE identity = @identity ORDER BY published_at DESC LIMIT @limit');
 const bumpWallProjectViews = db.prepare('UPDATE wall_projects SET views = views + 1 WHERE id = ?');
 const deleteWallProject = db.prepare('DELETE FROM wall_projects WHERE id = @id AND identity = @identity');
 /* 不带身份的删除。⚠ **只给服务端自己的清理用**,没有任何路由暴露它 —— 广场上
@@ -1828,6 +1840,7 @@ const myWallCommentLikes = db.prepare(
 
 module.exports = {
   upsertWallProject, listWallProjects, countWallProjects, bumpWallProjectViews, deleteWallProject,
+  wallProjectsByIdentity,
   addWallReaction, removeWallReaction, hasWallReaction, countWallReactions, myWallReactions,
   insertWallComment, listWallComments, getWallComment, deleteWallComment, deleteWallCommentReplies,
   countWallComments, topWallComments, wallProjectOwner,

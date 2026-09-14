@@ -14,6 +14,7 @@
     "test:push": "node api/push.test.js",
     "test:beds": "node landing/phone/beds.test.js",
     "test:wiring": "node landing/phone/wiring.test.js",
+    "test:roomfield": "node landing/phone/room-field.test.js",
     "test:pushcut": "node api/pushcut.test.js",
     "test:webpush": "node api/webpush.test.js",
     "test:link": "node api/link.test.js",

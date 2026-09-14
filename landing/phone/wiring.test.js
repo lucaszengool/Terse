@@ -274,6 +274,42 @@ ok('restoreFields rebuilds the main field', /function restoreFields\(\)[\s\S]{0,
   ok('a glyph already on screen fades when a project starts', /this\._fadeGlyphs\(\);/.test(sp));
   ok('and the queue of ones waiting to spawn is emptied', /this\._glyphQueue\.length = 0/.test(sp));
 }
+/* ── 房间里的代码城市 ────────────────────────────────────────────────────
+   三件事会安静地坏掉,所以三件事都钉在这里。
+
+   一,m.html 少写一个 <script> 就是 window.TerseRoomField 永远 undefined —— 房间
+   照常能进,只是那一行字永远停在"这屋里还没有人的代码城市",没有任何报错。
+
+   二,room-field.js 必须排在 plaza-field.js 之后:胶囊进引擎的唯一入口 toCapsule
+   在那边,顺序反了就是每一座城都放不出来,而且同样不报错。
+
+   三,房间借走了画布就必须还 —— 不还的话,室友的城会盖在这个人自己的实时数字上,
+   正是 plaza-field 顶上那段注释说不能发生的事。 */
+{
+  const srcs = [...html.matchAll(/<script src="\/phone\/([A-Za-z0-9_.-]+)"/g)].map((m) => m[1]);
+  ok('m.html loads room-field.js', srcs.includes('room-field.js'));
+  for (const f of srcs) ok(`/phone/${f} exists on disk`, fs.existsSync(path.join(dir, f)));
+  ok('room-field.js comes after plaza-field.js (toCapsule is a hard dependency)',
+     srcs.indexOf('room-field.js') > srcs.indexOf('plaza-field.js'));
+
+  const rf = fs.readFileSync(path.join(dir, 'room-field.js'), 'utf8');
+  ok('the room field shapes capsules through the one entry point, not its own copy',
+     /TersePlazaField[\s\S]{0,80}toCapsule\(/.test(rf));
+  ok('and it hands the canvas back on stop()', /hideProject\(\)/.test(rf));
+
+  const app3 = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
+  ok('leaving the room tab stops the room field',
+     /current === 'room' && tab !== 'room'\) leaveRoomField\(\)/.test(app3));
+  ok('and hands the field back to the plaza', /function resumePlaza\(\)/.test(app3));
+  ok('opening the room tab starts it', /tab === 'room'\) \{ renderRoom\(\); enterRoomField\(\);/.test(app3));
+
+  /* ⚠ 回归闸。`wallState` 从来没有被声明过,读它抛 ReferenceError,而那个异常正好
+     落进 plaza-field 那条 promise 链的 .catch 里被当成"取不到广场"咽掉 —— 广场预览
+     一次也没有放过,控制台里一行报错也没有。 */
+  ok('the linked check goes through a name that actually exists',
+     !/wallState\s*&&/.test(app3) && /function isLinked\(\)/.test(app3));
+}
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

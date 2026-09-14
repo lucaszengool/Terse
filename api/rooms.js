@@ -392,6 +392,44 @@ router.get('/:id/messages', requireMember, (req, res) => {
   res.json({ ok: true, messages: rows.reverse(), more: rows.length === limit });
 });
 
+// GET /api/cloud/rooms/:id/projects
+/* 房间里每个人的代码城市。
+ *
+ * ⚠ 这是**服务端才能做的连接**。名册发给客户端时 identity_hash 是被摘掉的
+ * (见 roster()),这是对的 —— 好友关系就是按它记的,不该发给同屋的每个人。
+ * 可是"这个成员发布过什么"恰恰要拿它去广场里查,所以这一步只能在这里做:
+ * 手机拿到的是**已经配好对的**成员和胶囊,自始至终没见过任何人的身份串。
+ *
+ * ⚠ 短身份是长身份的前缀,不是另一串。房间存 64 位,广场存前 32 位;这里截一刀
+ * 就对上了,截错了就是"所有人都没有项目",而且不会报错 —— 只会安安静静地空着。
+ *
+ * 一人一座城,不是一人一串城:房间是一屋子人,轮播的单位是人。谁最近发布的那颗
+ * 就代表谁 —— 他自己最后一次选择展示的东西,而不是他最出名的那个。
+ *
+ * 没有发布过的人不占位置(filter),但**留在名册里** —— 名册说的是谁在屋里,
+ * 这里说的是屋里有什么可看的,两件事。
+ */
+router.get('/:id/projects', requireMember, (req, res) => {
+  const out = [];
+  for (const m of db.getRoomMembers.all(req.room.id)) {
+    if (!m.identity_hash) continue;          // 没有身份的老成员:没有广场地址
+    const short = String(m.identity_hash).slice(0, 32);
+    const rows = db.wallProjectsByIdentity.all({ identity: short, limit: 1 });
+    if (!rows.length) continue;
+    const r = rows[0];
+    let capsule = null;
+    try { capsule = JSON.parse(r.capsule); } catch (e) { /* 坏胶囊 = 这个人没有城 */ }
+    if (!capsule) continue;
+    out.push({
+      member_id: m.member_id,
+      name: m.name || null,
+      status: m.status || 'offline',
+      project: { id: r.id, title: r.title, published_at: r.published_at, capsule },
+    });
+  }
+  res.json({ ok: true, projects: out });
+});
+
 // ════════════════════════════════════════
 //  Live channel
 // ════════════════════════════════════════

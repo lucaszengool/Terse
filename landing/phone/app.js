@@ -3641,6 +3641,7 @@
     // of that is exactly the spend that broke this before.
     stopPreviews();
     var cap = window.TersePlazaField.toCapsule(p);
+    warmRepo(cap);
     $('pjTitle').textContent = cap.title || '—';
     $('pjSub').textContent = cap.subtitle || '';
 
@@ -3772,6 +3773,9 @@
           html += '<div>' + i.icon + ' <code>' + esc(i.name) + '</code> <span class="dim">' + esc(i.kind) + (i.line ? ' · L' + i.line : '') + '</span></div>';
         });
       }
+      // 它和谁牵着:地上那几道亮线说的就是这两行
+      if (d.uses && d.uses.length) html += '<div style="margin-top:6px">🟢 ' + esc(d.usesWord) + ': ' + d.uses.map(esc).join(', ') + '</div>';
+      if (d.usedBy && d.usedBy.length) html += '<div>🟠 ' + esc(d.usedByWord) + ': ' + d.usedBy.map(esc).join(', ') + '</div>';
       if (d.note) html += '<div class="dim" style="margin-top:6px">' + esc(d.note) + '</div>';
       $('walkNote').innerHTML = html;
       $('walkNote').classList.remove('hide');
@@ -3804,20 +3808,84 @@
        building with its functions, classes, types and tests — that is what
        goes on the shelves. Slow or failed, we walk in with what the capsule
        already had: furniture without the things on it, never a stuck door. */
-    var cap0 = window.TersePlazaField ? window.TersePlazaField.toCapsule(viewing) : null;
-    var gh = /github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/.exec((cap0 && cap0.link) || '');
-    if (!gh || !window.fetch) { go(hit.dir); return; }
+    var repo = ghRepoOf(window.TersePlazaField ? window.TersePlazaField.toCapsule(viewing) : null);
+    if (!repo || !window.fetch || ghDead[repo]) { go(hit.dir); return; }
+    var key = repo + '|' + (hit.name || '');
+    var have = roomCache.get(key);
+    // 走过一次的楼:手上那份先用,不让人再等一次。服务端那份变了,下次进来就是新的。
+    if (have) { go(Object.assign({}, hit.dir, { detail: have.body })); revalidate(key, repo, hit.name, have); return; }
     note(t('walk_loading'));
     var ctl = window.AbortController ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 12000);
-    fetch('/api/cloud/github/room?repo=' + encodeURIComponent(gh[1] + '/' + gh[2].replace(/\.git$/, ''))
-      + '&dir=' + encodeURIComponent(hit.name || ''), { signal: ctl ? ctl.signal : undefined, headers: { Accept: 'application/json' } })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; })
-      .then(function (j) {
+    roomFetch(repo, hit.name, null, ctl)
+      .then(function (res) {
         clearTimeout(timer);
-        go(j && j.ok && Array.isArray(j.files) ? Object.assign({}, hit.dir, { detail: j }) : hit.dir);
+        if (res && res.body) roomCache.put(key, res);
+        go(res && res.body ? Object.assign({}, hit.dir, { detail: res.body }) : hit.dir);
       });
+  }
+
+  /* ── 深扫数据的缓存 ─────────────────────────────────────────────────────
+     服务端已经把每个仓库的索引存好了(api/github-room.js,重启也在),这里再加两层,
+     让同一个人永远不为同一座楼等第二次:
+       · 打开项目窗口的那一刻就请服务端预热 —— 城市要放二十秒,等人点楼时早好了;
+       · 取回来的每一间屋子连同 ETag 存在本机,再进同一座楼先用本机那份,后台问一句
+         "变了没有",没变就是一个 304。 */
+  function ghRepoOf(cap) {
+    var m = /github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/.exec((cap && cap.link) || '');
+    return m ? (m[1] + '/' + m[2].replace(/\.git$/, '')).toLowerCase() : '';
+  }
+  var ghDead = {};           // repo → 404 / 413:这种仓库不必再等深扫
+  var roomCache = (function () {
+    var KEY = 'terse.rooms.v1', MAX = 24, BUDGET = 1500000;
+    var mem = null;
+    function load() {
+      if (mem) return mem;
+      try { mem = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { mem = []; }
+      if (!Array.isArray(mem)) mem = [];
+      return mem;
+    }
+    function save() {
+      try {
+        var s = JSON.stringify(mem);
+        while (s.length > BUDGET && mem.length > 1) { mem.shift(); s = JSON.stringify(mem); }
+        localStorage.setItem(KEY, s);
+      } catch (e) { /* 存不下就只留在内存里 */ }
+    }
+    return {
+      get: function (k) { var l = load(); for (var i = 0; i < l.length; i++) if (l[i].k === k) return l[i]; return null; },
+      put: function (k, res) {
+        var l = load().filter(function (x) { return x.k !== k; });
+        l.push({ k: k, etag: res.etag || '', body: res.body });
+        while (l.length > MAX) l.shift();
+        mem = l; save();
+      },
+    };
+  })();
+  function roomFetch(repo, dir, etag, ctl) {
+    var h = { Accept: 'application/json' };
+    if (etag) h['If-None-Match'] = etag;
+    return fetch('/api/cloud/github/room?repo=' + encodeURIComponent(repo) + '&dir=' + encodeURIComponent(dir || ''),
+      { signal: ctl ? ctl.signal : undefined, headers: h })
+      .then(function (r) {
+        if (r.status === 304) return { same: true };
+        if (r.status === 404 || r.status === 413) { ghDead[repo] = r.status; return null; }
+        if (!r.ok) return null;
+        return r.json().then(function (j) { return j && j.ok && Array.isArray(j.files) ? { etag: r.headers.get('ETag') || '', body: j } : null; });
+      })
+      .catch(function () { return null; });
+  }
+  function revalidate(key, repo, dir, have) {
+    roomFetch(repo, dir, have.etag, null).then(function (res) { if (res && res.body) roomCache.put(key, res); });
+  }
+  /** 项目窗口一打开就叫服务端先读这个仓库。不等它,也不管它回什么 —— 除了"没有 / 太大"。 */
+  function warmRepo(cap) {
+    var repo = ghRepoOf(cap);
+    if (!repo || !window.fetch || ghDead[repo]) return;
+    fetch('/api/cloud/github/room/warm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repo: repo }) })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { if (j && (j.err === 404 || j.err === 413)) ghDead[repo] = j.err; })
+      .catch(function () {});
   }
 
   /* 走进楼之后那些词(家具叫什么、架子上的东西叫什么、图例)。英文在渲染器里兜底
@@ -3852,6 +3920,12 @@
     lg_item: '家具上的东西 = 这个文件定义的函数、类、类型……',
     lg_size: '家具越高,代码越多 · 东西的颜色 = 语言',
     lg_roles: '家具', lg_items: '架子上的东西',
+    lg_threads: '地上发光的线 = 一个文件 import 了另一个',
+    ui_uses_list: '它用到', ui_used_by_list: '用到它的',
+    why_tests: '瓷砖地、偏冷 —— 这里多是测试', why_docs: '木地板、偏暖 —— 这里多是文档',
+    why_ui: '亮得像展厅 —— 这里多是界面', why_config: '素净、石板色 —— 这里多是配置',
+    why_classes: '藻井顶 —— 这里类和类型多', why_functions: '敞开的梁架 —— 这里多是散函数',
+    why_many: '一盏大吊灯 —— 这里文件多', why_few: '烛光 —— 这里只有几个文件',
   };
 
   /** @param {boolean} [leaving] the whole project window is going too — don't

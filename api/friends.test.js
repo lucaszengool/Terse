@@ -134,6 +134,60 @@ function req(method, path, { key, identity, body } = {}) {
   eq('and it is gone', (await req('GET', '/friends', { identity: annId })).json.friends.length, 1);
 
   for (const rid of [roomId, other.room.id, r2.room.id]) db.closeRoom.run(rid);
+
+  /* ── 广场上敲门:必须挂在**对方自己发布的**项目上 ────────────────────────
+     这一组钉的是产品决定,不是实现:广场只有身份哈希,如果开一条
+     "按哈希加好友"的裸路由,那些哈希立刻变成一份可以逐个骚扰的名单。
+     私信当初就是在这儿卡住的,解法是把第一次接触挂在对方自己放上广场的东西上。
+     ⚠️ 这条路由比私信更严:目标是**从项目反推出来的**,调用方根本无法指定
+        要加谁 —— 想加谁,就得先找到那个人自己发布的项目。 */
+  {
+    const H = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
+    const carolId = id('carol');
+    const projId = 'proj-' + crypto.randomBytes(6).toString('hex');
+    db.upsertWallProject.run({
+      id: projId, identity: H(annId), title: 'ann の project',
+      capsule: JSON.stringify({ v: 1, title: 'ann の project' }), author: 'ann',
+    });
+
+    const r1 = await req('POST', '/friends/from-project', { identity: carolId, body: { project_id: projId, author: 'carol the builder' } });
+    eq('广场敲门:挂在作者自己的项目上 → 建成 pending', r1.json?.friendship?.status, 'pending');
+    ok('广场敲门:边不挂房间(不是在房间里认识的)',
+       db.getFriendEdge.get({ x: H(carolId), y: H(annId) })?.room_id == null);
+
+    /* ⚠️ 名字必须真的传到对方眼前。requireIdentity 只在带房间钥匙时才填 req.name,
+       而广场敲门没有钥匙 —— 第一版照抄 /request 用了 req.name,结果 a_name 是 null,
+       对方看到的是一行空白加两个接受/拒绝按钮,根本不知道是谁在敲。 */
+    ok('敲门要带名字:对方在 incoming 里看得到是谁',
+       (await req('GET', '/friends', { identity: annId })).json
+         ?.incoming?.some((x) => x.name === 'carol the builder'));
+
+    const r2 = await req('POST', '/friends/from-project', { identity: carolId, body: { project_id: 'no-such-project' } });
+    eq('项目不存在 → 404', r2.status, 404);
+
+    const r3 = await req('POST', '/friends/from-project', { identity: carolId, body: {} });
+    eq('没给 project_id → 400', r3.status, 400);
+
+    const r4 = await req('POST', '/friends/from-project', { identity: annId, body: { project_id: projId } });
+    eq('挂自己的项目加自己 → 400', r4.status, 400);
+
+    const r5 = await req('POST', '/friends/from-project', { identity: carolId, body: { project_id: projId } });
+    ok('再敲一次不产生第二条边(UNIQUE 保证一人只问一次)', r5.json?.existing === true);
+
+    // 反向敲门 = 同意,合并成一条,而不是两条谁也解不掉的镜像 pending
+    const projB = 'proj-' + crypto.randomBytes(6).toString('hex');
+    db.upsertWallProject.run({
+      id: projB, identity: H(carolId), title: 'carol の project',
+      capsule: JSON.stringify({ v: 1, title: 'carol の project' }), author: 'carol',
+    });
+    const r6 = await req('POST', '/friends/from-project', { identity: annId, body: { project_id: projB } });
+    eq('双方都敲过 → 直接成为好友', r6.json?.friendship?.status, 'accepted');
+
+    for (const h of [H(carolId)]) for (const e of db.listFriendEdges.all(h, h)) db.deleteFriend.run(e.id);
+    db.deleteWallProject.run({ id: projId, identity: H(annId) });
+    db.deleteWallProject.run({ id: projB, identity: H(carolId) });
+  }
+
   for (const e of db.listFriendEdges.all(crypto.createHash('sha256').update(annId).digest('hex'),
                                          crypto.createHash('sha256').update(annId).digest('hex'))) db.deleteFriend.run(e.id);
   server.close();

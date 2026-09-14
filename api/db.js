@@ -1249,6 +1249,60 @@ try { db.exec(`ALTER TABLE rooms ADD COLUMN category TEXT`); } catch {}
 // friendship made inside one survives it closing.
 try { db.exec(`ALTER TABLE room_members ADD COLUMN identity_hash TEXT`); } catch {}
 
+// ── Agent channel (rooms.js "Agent channel") ──
+// A member may connect ONE local agent to the room. `agent` is JSON
+// ({kind,label,since}) or NULL = not connected. The room owner can refuse agents
+// outright; a room allows them unless told otherwise.
+try { db.exec(`ALTER TABLE rooms ADD COLUMN agents_allowed INTEGER DEFAULT 1`); } catch {}
+try { db.exec(`ALTER TABLE room_members ADD COLUMN agent TEXT`); } catch {}
+// Who SPOKE: a person, their agent, or the room itself (pauses, joins). The
+// relay stamps this — a client cannot claim a message came from a human.
+try { db.exec(`ALTER TABLE room_messages ADD COLUMN role TEXT DEFAULT 'human'`); } catch {}
+// JSON: { agent, to, to_agents, in_reply_to, file } — addressing and attachments.
+try { db.exec(`ALTER TABLE room_messages ADD COLUMN meta TEXT`); } catch {}
+// Files are blobs on the volume, referenced from a message. They expire: a room
+// is a conversation, not a file server, and an unbounded store on a shared
+// volume is a disk-full outage waiting for one enthusiastic room.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS room_files (
+    id TEXT PRIMARY KEY,
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    member_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    sha256 TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_room_files_room ON room_files(room_id);
+`);
+
+// ── End-to-end encryption (private rooms) ──
+// The server never holds a room key. Each device publishes a public key; a
+// member who already has the room key wraps it for a member who doesn't, and
+// the relay only ever stores and forwards that sealed blob (room_keyshares).
+// `keyed` = this member has told the room they hold the key, so nobody keeps
+// re-sending it. Message bodies in an e2e room are "e1:" ciphertext.
+try { db.exec(`ALTER TABLE rooms ADD COLUMN e2e INTEGER DEFAULT 0`); } catch {}
+try { db.exec(`ALTER TABLE room_members ADD COLUMN pubkey TEXT`); } catch {}
+try { db.exec(`ALTER TABLE room_members ADD COLUMN keyed INTEGER DEFAULT 0`); } catch {}
+// Which key: the first 16 chars of base64url(sha256(key)), set by whoever makes
+// the key. A share whose key does not hash to this is refused by the receiver,
+// and a device holding a key from before encryption was turned off and on again
+// knows to drop it.
+try { db.exec(`ALTER TABLE rooms ADD COLUMN key_id TEXT`); } catch {}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS room_keyshares (
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    to_member TEXT NOT NULL,
+    from_member TEXT NOT NULL,
+    from_pub TEXT NOT NULL,
+    blob TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (room_id, to_member, from_member)
+  );
+`);
+
 // ── Terse Rooms ──
 const createRoom = db.prepare(`
   INSERT INTO rooms (id, code, name, owner_key_hash) VALUES (@id, @code, @name, @owner_key_hash)
@@ -1267,7 +1321,7 @@ const addRoomMember = db.prepare(`
 const getRoomMember = db.prepare('SELECT * FROM room_members WHERE room_id = ? AND key_hash = ?');
 const findRoomMemberByKey = db.prepare('SELECT * FROM room_members WHERE key_hash = ?');
 const getRoomMembers = db.prepare(`
-  SELECT member_id, name, user_email, status, last_seen_at, joined_at, identity_hash
+  SELECT member_id, name, user_email, status, last_seen_at, joined_at, identity_hash, agent, pubkey, keyed
   FROM room_members WHERE room_id = ? ORDER BY joined_at, member_id
 `);
 const touchRoomMember = db.prepare(`
@@ -1309,6 +1363,103 @@ const getRoomMessagesBefore = db.prepare(`
   SELECT rowid AS seq, * FROM room_messages
   WHERE room_id = ? AND rowid < ? ORDER BY rowid DESC LIMIT ?
 `);
+
+// ── Agent channel ──
+const addRoomMessageEx = db.prepare(`
+  INSERT INTO room_messages (id, room_id, member_id, name, body, image_url, role, meta)
+  VALUES (@id, @room_id, @member_id, @name, @body, @image_url, @role, @meta)
+`);
+const setRoomMemberAgent = db.prepare(
+  'UPDATE room_members SET agent = ? WHERE room_id = ? AND key_hash = ?');
+const setRoomAgentsAllowed = db.prepare('UPDATE rooms SET agents_allowed = ? WHERE id = ?');
+// How many agent messages in a row since a PERSON last spoke. This is the loop
+// breaker, and it is a query rather than a counter so there is no state to
+// drift: any human message resets it by existing.
+const agentRunSinceHuman = db.prepare(`
+  SELECT COUNT(*) AS n FROM room_messages
+  WHERE room_id = @room_id AND role = 'agent'
+    AND rowid > COALESCE((SELECT MAX(rowid) FROM room_messages
+                           WHERE room_id = @room_id AND role = 'human'), 0)
+`);
+const lastRoomMessage = db.prepare(
+  'SELECT rowid AS seq, * FROM room_messages WHERE room_id = ? ORDER BY rowid DESC LIMIT 1');
+const recentAgentMessagesBy = db.prepare(`
+  SELECT body, created_at FROM room_messages
+  WHERE room_id = ? AND member_id = ? AND role = 'agent'
+    AND created_at > datetime('now', '-120 seconds')
+  ORDER BY rowid DESC LIMIT 20
+`);
+const addRoomFile = db.prepare(`
+  INSERT INTO room_files (id, room_id, member_id, name, size, sha256, expires_at)
+  VALUES (@id, @room_id, @member_id, @name, @size, @sha256, datetime('now', '+7 days'))
+`);
+const getRoomFile = db.prepare(
+  "SELECT * FROM room_files WHERE id = ? AND expires_at > datetime('now')");
+const roomFilesBytes = db.prepare(
+  "SELECT COALESCE(SUM(size), 0) AS n FROM room_files WHERE room_id = ? AND expires_at > datetime('now')");
+const expiredRoomFiles = db.prepare(`
+  SELECT f.id, f.room_id FROM room_files f LEFT JOIN rooms r ON r.id = f.room_id
+  WHERE f.expires_at <= datetime('now') OR r.closed_at IS NOT NULL LIMIT 500
+`);
+const deleteRoomFile = db.prepare('DELETE FROM room_files WHERE id = ?');
+
+// ── End-to-end encryption ──
+const setRoomE2E = db.prepare('UPDATE rooms SET e2e = ?, key_id = NULL WHERE id = ?');
+const setRoomKeyId = db.prepare('UPDATE rooms SET key_id = ? WHERE id = ? AND key_id IS NULL');
+const setMemberPubkey = db.prepare(
+  'UPDATE room_members SET pubkey = @pubkey, keyed = @keyed WHERE room_id = @room_id AND key_hash = @key_hash');
+const setMemberKeyed = db.prepare('UPDATE room_members SET keyed = 1 WHERE room_id = ? AND key_hash = ?');
+const unkeyRoom = db.prepare('UPDATE room_members SET keyed = 0 WHERE room_id = ?');
+const upsertKeyshare = db.prepare(`
+  INSERT INTO room_keyshares (room_id, to_member, from_member, from_pub, blob)
+  VALUES (@room_id, @to_member, @from_member, @from_pub, @blob)
+  ON CONFLICT(room_id, to_member, from_member) DO UPDATE SET
+    from_pub = excluded.from_pub, blob = excluded.blob, created_at = datetime('now')
+`);
+const keysharesFor = db.prepare(`
+  SELECT from_member, from_pub, blob, created_at FROM room_keyshares
+  WHERE room_id = ? AND to_member = ? ORDER BY created_at DESC LIMIT 10
+`);
+const clearKeysharesFor = db.prepare('DELETE FROM room_keyshares WHERE room_id = ? AND to_member = ?');
+const clearRoomKeyshares = db.prepare('DELETE FROM room_keyshares WHERE room_id = ?');
+
+// ── One person, one identity ──
+// The plaza and DMs key a person by sha256(clerkId)[0:32]; rooms and friends by
+// the full sha256 of whatever identity the client sends. Once a Mac or phone
+// sends its Clerk id to rooms/friends too, the plaza id IS the prefix of the
+// friends id — so a friendship asked for from a plaza project (which only knows
+// the 32-char id) is matched by prefix, and upgraded to the full id the first
+// time its owner is seen.
+const listFriendEdgesFor = db.prepare(`
+  SELECT * FROM friend_links
+  WHERE a_hash IN (@me, @short) OR b_hash IN (@me, @short) ORDER BY created_at DESC
+`);
+const getFriendEdgeLoose = db.prepare(`
+  SELECT * FROM friend_links
+  WHERE (a_hash IN (@x, @xs) AND b_hash IN (@y, @ys)) OR (a_hash IN (@y, @ys) AND b_hash IN (@x, @xs))
+`);
+const upgradeShortA = db.prepare('UPDATE OR IGNORE friend_links SET a_hash = @full WHERE a_hash = @short');
+const upgradeShortB = db.prepare('UPDATE OR IGNORE friend_links SET b_hash = @full WHERE b_hash = @short');
+// Moving everything a device did under its old random install identity onto the
+// person's account identity. Conflicts (the same friendship under both) keep
+// the account's copy; what is left under the old id afterwards is duplicates.
+const mergeIdentityStmts = [
+  'UPDATE OR IGNORE friend_links SET a_hash = @new WHERE a_hash = @old',
+  'UPDATE OR IGNORE friend_links SET b_hash = @new WHERE b_hash = @old',
+  'DELETE FROM friend_links WHERE a_hash = @old OR b_hash = @old OR a_hash = b_hash',
+  'UPDATE OR IGNORE friend_invites SET owner_hash = @new WHERE owner_hash = @old',
+  'DELETE FROM friend_invites WHERE owner_hash = @old',
+  'UPDATE room_members SET identity_hash = @new WHERE identity_hash = @old',
+  'UPDATE rooms SET owner_identity = @new WHERE owner_identity = @old',
+  'UPDATE OR IGNORE room_knocks SET identity_hash = @new WHERE identity_hash = @old',
+  'DELETE FROM room_knocks WHERE identity_hash = @old',
+].map((s) => db.prepare(s));
+const mergeIdentity = db.transaction((p) => {
+  let n = 0;
+  for (const s of mergeIdentityStmts) n += s.run(p).changes;
+  return n;
+});
+
 // ── Discovery + knocking ──
 const setRoomOwnerIdentity = db.prepare('UPDATE rooms SET owner_identity = ? WHERE id = ?');
 const setRoomListing = db.prepare('UPDATE rooms SET visibility = ?, category = ? WHERE id = ?');
@@ -1319,8 +1470,9 @@ const setRoomListing = db.prepare('UPDATE rooms SET visibility = ?, category = ?
 // that offers "ask to join" for a room you are already in (or own) is a dead
 // button — you knock, the owner never sees a stranger, and nothing happens.
 const listPublicRooms = db.prepare(`
-  SELECT r.id, r.code, r.name, r.category, r.created_at,
+  SELECT r.id, r.code, r.name, r.category, r.created_at, r.agents_allowed,
          COUNT(m.member_id) AS members,
+         COALESCE(SUM(CASE WHEN m.agent IS NOT NULL AND m.status = 'online' THEN 1 ELSE 0 END), 0) AS agents,
          COALESCE(SUM(CASE WHEN m.status = 'online' THEN 1 ELSE 0 END), 0) AS online,
          CASE WHEN @identity IS NOT NULL AND r.owner_identity = @identity THEN 1 ELSE 0 END AS owner,
          (SELECT COUNT(*) FROM room_members x
@@ -1899,6 +2051,14 @@ module.exports = {
   renameRoomMember, renameRoomMemberEverywhere,
   findRoomMemberByIdentity, removeRoomMembersByIdentity,
   addRoomMessage, getRoomMessage, getRoomMessages, getRoomMessagesBefore,
+  // Agent channel
+  addRoomMessageEx, setRoomMemberAgent, setRoomAgentsAllowed, agentRunSinceHuman,
+  lastRoomMessage, recentAgentMessagesBy,
+  addRoomFile, getRoomFile, roomFilesBytes, expiredRoomFiles, deleteRoomFile,
+  setRoomE2E, setRoomKeyId, setMemberPubkey, setMemberKeyed, unkeyRoom, upsertKeyshare, keysharesFor,
+  clearKeysharesFor, clearRoomKeyshares,
+  listFriendEdgesFor, getFriendEdgeLoose, upgradeShortA, upgradeShortB, mergeIdentity,
+  DATA_DIR,
   // Terse Cowork
   upsertCoworkSession, getCoworkSessionByKey, getCoworkSession, getCoworkSessions,
   bumpCoworkSessionSeq, endStaleCoworkSessions, idleStaleCoworkSessions,

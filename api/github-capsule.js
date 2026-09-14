@@ -276,6 +276,10 @@ router.post('/scan', async (req, res) => {
   }
 });
 
+// GET /api/cloud/github/room?repo=owner/name&dir=src  → 走进一座楼:文件 = 家具,符号 = 家具上的东西。
+// 整个仓库只下一次 tar.gz(不占 API 配额),见 github-room.js。
+router.get('/room', require('./github-room').handler);
+
 module.exports = router;
 module.exports.parseRepo = parseRepo;
 module.exports.langsOf = langsOf;

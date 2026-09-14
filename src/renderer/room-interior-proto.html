@@ -18,19 +18,6 @@
   #roomName { color: #6ee7b7; font-weight: 600; font-size: 15px; letter-spacing: .01em; }
   #roomStats { opacity: .72; }
   #hint { margin-top: 8px; opacity: .45; font-size: 11px; }
-  .label {
-    position: fixed; transform: translate(-50%, -100%); color: #eef4f2;
-    font: 11px/1 ui-monospace, SFMono-Regular, monospace;
-    background: rgba(3,4,7,.6); padding: 3px 7px; border-radius: 6px; pointer-events: none;
-    white-space: nowrap; border: 1px solid rgba(255,255,255,.12);
-    text-shadow: 0 0 12px rgba(110,231,183,.5);
-  }
-  #joy {
-    position: fixed; left: 24px; bottom: 24px; width: 110px; height: 110px; border-radius: 50%;
-    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.11); touch-action: none; display: none;
-  }
-  #joyStick { position: absolute; left: 35px; top: 35px; width: 40px; height: 40px; border-radius: 50%; background: rgba(110,231,183,.45); }
-  body.touch #joy { display: block; }
 </style>
 </head>
 <body>
@@ -39,14 +26,11 @@
   <div id="roomStats"></div>
   <div id="hint">drag to look &middot; WASD to walk &middot; click a file to inspect</div>
 </div>
-<div id="joy"><div id="joyStick"></div></div>
 <script type="module">
+/* 原型页只是一层壳:房子是 room-scene.js 盖的,和引擎里"点一座楼走进去"是同一份
+   代码。这里自己开一个 renderer、喂一份样例目录,好让截图脚本能一次看遍八种风格。 */
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { LANG_COLOR, LANG_FALLBACK } from './lang-colors.js';
-import { interiorOf, interiorVariants, FLOOR, WALL, CEIL, LIGHT, COL, DISP, asLight, mix } from './room-interior.js';
+import { createRoom } from './room-scene.js';
 
 /* ── sample data: one capsule dir, shaped exactly as `leaves` now ships it ── */
 const DIR = {
@@ -64,354 +48,33 @@ const DIR = {
   ],
 };
 
-const hex2rgb = (h) => { const n = parseInt(String(h).slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
-/* 语言色在这里是**光的颜色**,不是漆的颜色 —— 见 room-interior.js 的 asLight。
-   ⚠ 只有**文件**用语言色。房子用风格调色板:颜色分两层,混在一起就谁也不说明了。 */
-const LANG = asLight(hex2rgb(LANG_COLOR[DIR.lang] || LANG_FALLBACK));
+// ?style= 覆盖,好一次把八种都看一遍。真接进引擎时这个值来自胶囊的 `style`。
+const STYLE_ID = new URLSearchParams(location.search).get('style') || 'modern';
 
-/* 装哪一种风格。真接进引擎时这个值来自胶囊的 `style`(外面那座楼用的同一个),
-   这里让 ?style= 覆盖,好一次把八种都看一遍。 */
-const STYLE_ID = new URLSearchParams(location.search).get('style') || DIR.style || 'modern';
-
-/* ── layout: 同 mesh 版,矩形既是几何也是碰撞 ── */
-const HALL_W = 18, HALL_D = 14, HALL_H = 6.2, ROOM_H = 3.6, DOOR_W = 2.4;
-const hall = { x0: -HALL_W / 2, z0: -HALL_D / 2, x1: HALL_W / 2, z1: HALL_D / 2, name: DIR.name, files: DIR.files, h: HALL_H };
-const rooms = [hall];
-const doors = [];
-const avg = DIR.bytes / Math.max(1, DIR.kids.length);
-
-DIR.kids.forEach((k, i) => {
-  const [name, files, bytes] = k;
-  const share = Math.max(0.55, Math.min(1.5, bytes / avg));
-  const w = 5.0 + share * 2.6, d = 4.4 + share * 2.2;
-  const side = ['N', 'E', 'S', 'W'][i % 4];
-  let rect;
-  if (side === 'N')      rect = { x0: -w / 2, z0: hall.z0 - d, x1: w / 2, z1: hall.z0 };
-  else if (side === 'S') rect = { x0: -w / 2, z0: hall.z1, x1: w / 2, z1: hall.z1 + d };
-  else if (side === 'E') rect = { x0: hall.x1, z0: -d / 2, x1: hall.x1 + w, z1: d / 2 };
-  else                   rect = { x0: hall.x0 - w, z0: -d / 2, x1: hall.x0, z1: d / 2 };
-  rect.name = name; rect.files = files; rect.side = side; rect.h = ROOM_H; rect.bytes = bytes;
-  rooms.push(rect);
-  if (side === 'N' || side === 'S') {
-    const z = side === 'N' ? hall.z0 : hall.z1;
-    doors.push({ x0: -DOOR_W / 2, z0: z - 0.8, x1: DOOR_W / 2, z1: z + 0.8, side, room: name, cx: 0, cz: z });
-  } else {
-    const x = side === 'E' ? hall.x1 : hall.x0;
-    doors.push({ x0: x - 0.8, z0: -DOOR_W / 2, x1: x + 0.8, z1: DOOR_W / 2, side, room: name, cx: x, cz: 0 });
-  }
-});
-
-const PAD = 0.4;
-function walkable(x, z) {
-  for (const r of rooms) if (x > r.x0 + PAD && x < r.x1 - PAD && z > r.z0 + PAD && z < r.z1 - PAD) return true;
-  for (const d of doors) if (x > d.x0 && x < d.x1 && z > d.z0 && z < d.z1) return true;
-  return false;
-}
-const roomNamed = (n) => rooms.find((r) => r.name === n) || hall;
-
-/* ── 粒子缓冲 ───────────────────────────────────────────────────────────────
-   一切都是点。墙、地、穹顶、柱子、吊灯、文件 —— 同一个缓冲、同一支着色器,
-   加色混合 + bloom。外面那座城市就是这么画的,走进来不该换一种材质语言。 */
-const MAX = 260000;
-const pos = new Float32Array(MAX * 3), col = new Float32Array(MAX * 3);
-const siz = new Float32Array(MAX), pha = new Float32Array(MAX), twk = new Float32Array(MAX);
-let N = 0;
-function emit(x, y, z, c, size, twinkle) {
-  if (N >= MAX) return;
-  const i = N++;
-  pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
-  col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
-  // 闪烁相位:按下标哈希,不用 Math.random —— 这个仓库里的城市一律可复现。
-  siz[i] = size; pha[i] = (Math.imul(i, 2654435761) >>> 0) / 4294967296;
-  twk[i] = twinkle === undefined ? 0.5 : twinkle;
-}
-
-/** 拱门:门洞上的券。风格不改它的做法,只改它的颜色 —— 门就是门。 */
-function arch(d, h, c1, c2, n, rnd) {
-  const horiz = d.side === 'N' || d.side === 'S';
-  const half = DOOR_W / 2, top = h * 0.62;
-  for (let i = 0; i < n; i++) {
-    const t = rnd() * Math.PI, j = (rnd() - 0.5) * 0.09;
-    const u = Math.cos(t) * half, y = Math.sin(t) * (top - 1.5) + 1.5 + j;
-    emit(d.cx + (horiz ? u : j), y, d.cz + (horiz ? j : u), mix(c2, c1, rnd() * 0.45), 1.1 + rnd() * 1.2, 0.6);
-  }
-  for (let i = 0; i < n / 3; i++) {
-    const s = rnd() < 0.5 ? -1 : 1;
-    emit(d.cx + (horiz ? s * half : 0), rnd() * 1.5, d.cz + (horiz ? 0 : s * half), mix(c2, c1, 0.5), 1.0, 0.5);
-  }
-}
-
-/* ── 盖起来 ────────────────────────────────────────────────────────────────
-   每个房间问一次 interiorOf:风格是**整个项目**的(跟着外面那座楼),槽位是
-   **这个目录自己**的。于是同一个项目里四个子目录同属一个风格,又各装各的。 */
-const props = [];
-const decor = new Map();          // 房间名 → 这间屋子抽到的那套件,HUD 要显示
-
-function furnish(r, isHall) {
-  const ip = interiorOf(STYLE_ID, r.name);
-  const rnd = () => ip.rnd.f();
-  const c1 = asLight(ip.pal.stone, 0.88);          // 石材
-  const c2 = asLight(ip.pal.accent, 1.0);          // 强调色:金 / 朱红 / 蓝釉
-  const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2;
-  const R = Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2;
-  const h = r.h;
-  const scale = isHall ? 1 : 0.42;                 // 子房间用小一号的预算
-  decor.set(r.name, ip);
-
-  FLOOR[ip.floor]({ r, cx, cz, R, n: Math.round(32000 * scale), rnd, c1, c2, grain: ip.grain }, emit);
-
-  for (const s of ['N', 'S', 'W', 'E']) {
-    const x0 = s === 'E' ? r.x1 : r.x0, x1 = s === 'W' ? r.x0 : r.x1;
-    const z0 = s === 'S' ? r.z1 : r.z0, z1 = s === 'N' ? r.z0 : r.z1;
-    const gap = doors.find((d) => (s === 'N' || s === 'S')
-      ? Math.abs(d.cz - z0) < 0.9 && d.x0 > r.x0 - 0.5 && d.x1 < r.x1 + 0.5
-      : Math.abs(d.cx - x0) < 0.9 && d.z0 > r.z0 - 0.5 && d.z1 < r.z1 + 0.5);
-    WALL[ip.wall]({ x0, z0, x1, z1, h, n: Math.round(8500 * scale), rnd, c1, c2, gap }, emit);
-  }
-
-  /* 顶用的是**屋面色**,不是强调色。波斯的蓝釉、唐宋的青瓦就在 pal.roof 里 ——
-     外面那座楼的顶是什么颜色,从里面抬头看就该是什么颜色。用 accent 的话八个
-     风格的顶会一起变成金的,那是这一轮最明显的一处丢失。 */
-  const cRoof = asLight(ip.pal.roof, 1.0);
-  CEIL[ip.ceil]({ r, cx, cz, R: R * 0.95, y: h * (ip.ceil === 'dome' || ip.ceil === 'onion' ? 0.52 : 1),
-                  hgt: h * 0.6, n: Math.round(30000 * scale), rnd,
-                  c1: mix(c1, cRoof, 0.45), c2: mix(cRoof, c2, 0.35), grain: ip.grain }, emit);
-
-  LIGHT[ip.light]({ cx, cy: h * (isHall ? 0.60 : 0.74), cz, r, n: Math.round(8500 * scale), rnd, c1, c2 }, emit);
-
-  if (ip.col !== 'none' && isHall) {
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (let b = 0; b < ip.bays; b++) {
-      const x = sx * (HALL_W / 2 - 2.0 - b * 3.4), z = sz * (HALL_D / 2 - 1.9);
-      if (Math.abs(x) < 2.2) continue;
-      COL[ip.col]({ x, z, h: h * 0.66, n: 2600, rnd, c1, c2 }, emit);
-    }
-  }
-  return { ip, rnd, c1, c2 };
-}
-
-const hallKit = furnish(hall, true);
-for (const k of DIR.kids) furnish(roomNamed(k[0]), false);
-for (const d of doors) arch(d, HALL_H, hallKit.c1, hallKit.c2, 2600, hallKit.rnd);
-
-// 文件:陈列方式由那间屋子的 disp 槽决定,高度永远是字节数。
-{
-  const byRoom = new Map();
-  for (const leaf of DIR.leaves) {
-    const k = leaf[2] || '';
-    if (!byRoom.has(k)) byRoom.set(k, []);
-    byRoom.get(k).push(leaf);
-  }
-  for (const [k, files] of byRoom) {
-    const r = k ? roomNamed(k) : hall;
-    const ip = decor.get(r.name);
-    const rnd = () => ip.rnd.f();
-    const c1 = asLight(ip.pal.stone, 0.88), c2 = asLight(ip.pal.accent, 1.0);
-    const cols = Math.ceil(Math.sqrt(files.length)), rowsN = Math.ceil(files.length / cols);
-    const m = k ? 1.6 : 3.0;
-    files.forEach((f, i) => {
-      const [name, bytes] = f;
-      const h = Math.min(2.6, 0.55 + Math.log2(1 + bytes / 350) * 0.24);
-      const c0 = i % cols, r0 = Math.floor(i / cols);
-      const x = cols === 1 ? (r.x0 + r.x1) / 2 : r.x0 + m + c0 * (r.x1 - r.x0 - m * 2) / (cols - 1);
-      const z = rowsN === 1 ? (r.z0 + r.z1) / 2 : r.z0 + m + r0 * (r.z1 - r.z0 - m * 2) / (rowsN - 1);
-      DISP[ip.disp]({ x, z, h, n: 2400, rnd, lang: LANG, c1, c2 }, emit);
-      props.push({ x, z, h, name, bytes, dir: k || DIR.name });
-    });
-  }
-}
-
-/* ── 渲染 ── */
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x030407);
-scene.fog = new THREE.FogExp2(0x030407, 0.021);
-const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 220);
 const renderer = new THREE.WebGLRenderer({ antialias: false });
-renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(1.75, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const geo = new THREE.BufferGeometry();
-geo.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, N * 3), 3));
-geo.setAttribute('aColor',   new THREE.BufferAttribute(col.subarray(0, N * 3), 3));
-geo.setAttribute('aSize',    new THREE.BufferAttribute(siz.subarray(0, N), 1));
-geo.setAttribute('aPhase',   new THREE.BufferAttribute(pha.subarray(0, N), 1));
-geo.setAttribute('aTwk',     new THREE.BufferAttribute(twk.subarray(0, N), 1));
-
-const mat = new THREE.ShaderMaterial({
-  uniforms: { uTime: { value: 0 }, uPixel: { value: 1 }, uFog: { value: scene.fog.density } },
-  vertexShader: `
-    precision highp float;
-    attribute vec3 aColor; attribute float aSize; attribute float aPhase; attribute float aTwk;
-    uniform float uTime, uPixel;
-    varying vec3 vColor; varying float vA; varying float vFog;
-    void main(){
-      vec3 p = position;
-      // 呼吸。厅堂不能是死的 —— 一点极慢的起伏就让整片粒子活过来。
-      p.y += sin(uTime * 0.55 + aPhase * 6.2831) * 0.022 * (0.4 + aTwk);
-      vec4 mv = modelViewMatrix * vec4(p, 1.0);
-      float d = -mv.z;
-      // 透视衰减:远处的点自然变小变淡,这是"深"的来源
-      // ⚠ 分母的下限不能太小,否则脚边的点被放得巨大,地面看起来像一地泡沫
-      gl_PointSize = aSize * uPixel * 12.0 / max(1.7, d);
-      // 闪烁只给该闪的东西(吊灯、顶冠),石头不闪
-      float tw = 0.72 + 0.28 * sin(uTime * 1.7 + aPhase * 19.0);
-      vA = mix(1.0, tw, aTwk);
-      vFog = exp(-d * d * ${(0.021 * 0.021).toFixed(8)});
-      vColor = aColor;
-      gl_Position = projectionMatrix * mv;
-    }`,
-  fragmentShader: `
-    precision highp float;
-    varying vec3 vColor; varying float vA; varying float vFog;
-    void main(){
-      vec2 d = gl_PointCoord - vec2(0.5);
-      float r2 = dot(d, d);
-      if (r2 > 0.25) discard;
-      /* 软光晕:中心实、外缘指数衰减 —— 加色叠起来就是那层"贵气"的辉光。
-         ⚠ 系数要小。加色混合下几万颗点一叠就冲到 1.0,颜色全烧成白的 ——
-         第一版的厅堂正是这么没的:金是白的,语言色也是白的。 */
-      float a = exp(-r2 * 11.0) * 0.46;
-      gl_FragColor = vec4(vColor * a * vA * vFog, 1.0);
-    }`,
-  transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
-});
-const points = new THREE.Points(geo, mat);
-points.frustumCulled = false;
-scene.add(points);
-
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-// strength / radius / threshold。阈值低了每一颗点都参与开花,厅堂就糊成一团白。
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.70, 0.42);
-composer.addPass(bloom);
-
-/* ── controls ── */
-let yaw = 0, pitch = -0.02, px = 0, pz = HALL_D / 2 - 2.4;
-let dragging = false, lastX = 0, lastY = 0, downX = 0, downY = 0;
-const keys = new Set(); const move = { x: 0, z: 0 };
-
-renderer.domElement.addEventListener('pointerdown', (e) => {
-  dragging = true; lastX = downX = e.clientX; lastY = downY = e.clientY;
-  try { renderer.domElement.setPointerCapture(e.pointerId); } catch (err) {}
-});
-const endDrag = () => { dragging = false; };
-window.addEventListener('pointerup', endDrag);
-window.addEventListener('pointercancel', endDrag);
-window.addEventListener('blur', endDrag);
-window.addEventListener('pointermove', (e) => {
-  if (!dragging) return;
-  yaw -= (e.clientX - lastX) * 0.0035;
-  pitch = Math.max(-1.1, Math.min(1.1, pitch - (e.clientY - lastY) * 0.0035));
-  lastX = e.clientX; lastY = e.clientY;
-});
-window.addEventListener('keydown', (e) => keys.add(e.key.toLowerCase()));
-window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
-
-if ('ontouchstart' in window) {
-  document.body.classList.add('touch');
-  const joy = document.getElementById('joy'), stick = document.getElementById('joyStick');
-  let id = null;
-  joy.addEventListener('touchstart', (e) => { id = e.changedTouches[0].identifier; e.preventDefault(); }, { passive: false });
-  joy.addEventListener('touchmove', (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier !== id) continue;
-      const b = joy.getBoundingClientRect();
-      const jx = Math.max(-1, Math.min(1, (t.clientX - (b.left + b.width / 2)) / (b.width / 2)));
-      const jy = Math.max(-1, Math.min(1, (t.clientY - (b.top + b.height / 2)) / (b.height / 2)));
-      stick.style.left = 35 + jx * 25 + 'px'; stick.style.top = 35 + jy * 25 + 'px';
-      move.x = jx; move.z = jy; e.preventDefault();
-    }
-  }, { passive: false });
-  const off = (e) => { for (const t of e.changedTouches) if (t.identifier === id) { id = null; move.x = move.z = 0; stick.style.left = stick.style.top = '35px'; } };
-  joy.addEventListener('touchend', off); joy.addEventListener('touchcancel', off);
-}
-
-renderer.domElement.addEventListener('click', (e) => {
-  if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;
-  // 光柱没有网格可以打射线,就按屏幕距离挑最近的那一根
-  let best = null, bd = 60;
-  for (const p of props) {
-    const v = new THREE.Vector3(p.x, p.h * 0.6, p.z).project(camera);
-    if (v.z > 1) continue;
-    const sx = (v.x * 0.5 + 0.5) * innerWidth, sy = (-v.y * 0.5 + 0.5) * innerHeight;
-    const d = Math.hypot(sx - e.clientX, sy - e.clientY);
-    if (d < bd) { bd = d; best = p; }
-  }
-  if (best) document.getElementById('hint').textContent = best.dir + '/' + best.name + ' — ' + best.bytes.toLocaleString() + ' bytes';
-});
-
-const labels = [];
-const labelAt = (i) => {
-  while (labels.length <= i) { const el = document.createElement('div'); el.className = 'label'; el.style.display = 'none'; document.body.appendChild(el); labels.push(el); }
-  return labels[i];
-};
-
 const nameEl = document.getElementById('roomName'), statEl = document.getElementById('roomStats');
-const clock = new THREE.Clock();
-const tmp = new THREE.Vector3();
+const hintEl = document.getElementById('hint');
+const room = createRoom(renderer, DIR, {
+  style: STYLE_ID,
+  onHere: (h) => { nameEl.textContent = h.path; statEl.textContent = h.files + ' files'; },
+  onPick: (p) => { hintEl.textContent = p.dir + '/' + p.name + ' — ' + p.bytes.toLocaleString() + ' bytes'; },
+});
 
-function frame() { frame1(); requestAnimationFrame(frame); }
-function frame1() {
-  const dt = Math.min(0.05, clock.getDelta());
-  mat.uniforms.uTime.value += dt;
-  mat.uniforms.uPixel.value = renderer.getPixelRatio() * (innerHeight / 800);
-
-  const kf = (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0);
-  const kr = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
-  const fwd = kf - move.z, strafe = kr + move.x;
-  if (fwd || strafe) {
-    const s = 3.6 * dt, sin = Math.sin(yaw), cos = Math.cos(yaw);
-    const dx = (-sin * fwd + cos * strafe) * s, dz = (-cos * fwd - sin * strafe) * s;
-    if (walkable(px + dx, pz)) px += dx;
-    if (walkable(px, pz + dz)) pz += dz;
-  }
-  camera.position.set(px, 1.62, pz);
-  camera.rotation.set(0, 0, 0, 'YXZ');
-  camera.rotation.y = yaw; camera.rotation.x = pitch;
-
-  const here = rooms.find((r) => px > r.x0 && px < r.x1 && pz > r.z0 && pz < r.z1) || hall;
-  nameEl.textContent = here === hall ? DIR.name + '/' : DIR.name + '/' + here.name + '/';
-  statEl.textContent = here.files + ' files';
-
-  let n = 0;
-  for (const p of props) {
-    tmp.set(p.x, p.h + 0.55, p.z);
-    const dist = camera.position.distanceTo(new THREE.Vector3(p.x, 1.6, p.z));
-    tmp.project(camera);
-    const el = labelAt(n++);
-    const sx = (tmp.x * 0.5 + 0.5) * innerWidth, sy = (-tmp.y * 0.5 + 0.5) * innerHeight;
-    if (tmp.z > 1 || dist > 16 || sx < -60 || sx > innerWidth + 60 || sy < 0 || sy > innerHeight) { el.style.display = 'none'; continue; }
-    el.style.display = 'block';
-    el.style.left = sx + 'px'; el.style.top = sy + 'px';
-    el.style.opacity = String(Math.max(0.2, 1 - dist / 16));
-    el.textContent = p.name;
-  }
-
-  composer.render();
+let last = performance.now();
+function frame(now) {
+  room.update((now - last) / 1000); last = now;
+  room.render();
+  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
-});
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); room.resize(innerWidth, innerHeight); });
 
-window.__room = {
-  at: (x, z, y, p) => { px = x; pz = z; if (y != null) yaw = y; if (p != null) pitch = p; },
-  where: () => ({ x: +px.toFixed(2), z: +pz.toFixed(2), yaw: +yaw.toFixed(2), room: (rooms.find((r) => px > r.x0 && px < r.x1 && pz > r.z0 && pz < r.z1) || hall).name }),
-  step: (dt, fwd, strafe) => {
-    const s = 3.6 * dt, sin = Math.sin(yaw), cos = Math.cos(yaw);
-    const dx = (-sin * fwd + cos * strafe) * s, dz = (-cos * fwd - sin * strafe) * s;
-    if (walkable(px + dx, pz)) px += dx;
-    if (walkable(px, pz + dz)) pz += dz;
-  },
-  renderNow: () => { frame1(); },
-  particles: () => N, bloom, walkable, rooms, doors, props, camera,
-  /** 这间厅堂抽到了哪几件 —— 看文法有没有真的在变。 */
-  kit: (name) => { const ip = decor.get(name || hall.name); return ip && { style: ip.style.id, floor: ip.floor, wall: ip.wall, ceil: ip.ceil, light: ip.light, col: ip.col, disp: ip.disp }; },
-  kits: () => [...decor.entries()].map(([k, ip]) => [k, ip.floor, ip.wall, ip.ceil, ip.light, ip.col, ip.disp]),
-  variants: interiorVariants,
-};
+window.__room = room;
 </script>
 </body>
 </html>

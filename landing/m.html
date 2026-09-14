@@ -577,6 +577,20 @@
      size differs, because a thumb reaching the bottom of a phone has the whole
      width to land in. */
   .acts.wide{gap:8px}
+  /* 走进楼:盖满整屏,连 tab 栏一起 —— 人在屋子里,底下那排按钮不属于这里。
+     手指落在这一层上就是在转头;touch-action:none 是为了拖动不被当成滚页面。 */
+  #walk{position:fixed;inset:0;z-index:60;touch-action:none;-webkit-user-select:none;user-select:none}
+  #walkHead{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;gap:10px;
+    padding:calc(10px + var(--safe-t)) 14px 16px;background:linear-gradient(180deg,rgba(0,0,0,.7),rgba(0,0,0,0))}
+  #walkHead .txt{flex:1 1 auto;min-width:0}
+  #walkHead b{display:block;font-size:16px;font-weight:640;color:#6ee7b7;letter-spacing:-.01em}
+  #walkHead span{display:block;font-size:12px;color:var(--dim);margin-top:2px}
+  #walkBack{flex:0 0 auto;min-height:34px;padding:7px 12px}
+  #walkNote{position:absolute;left:16px;right:16px;bottom:calc(152px + var(--safe-b));padding:8px 12px;
+    font:12px/1.5 ui-monospace,SFMono-Regular,monospace;color:#eef4f2;background:rgba(3,4,7,.62);
+    border:1px solid rgba(255,255,255,.1);border-radius:10px;pointer-events:none}
+  #walkHint{position:absolute;right:16px;bottom:calc(30px + var(--safe-b));max-width:52%;text-align:right;
+    font-size:11px;line-height:1.45;color:var(--dim);pointer-events:none}
 
   /* Double-tap to like, drawn where the thumb landed. Standard everywhere, and
      the reason it is worth having is that the alternative — aim at a small
@@ -1068,6 +1082,16 @@
       <div id="pjSpace"></div>
       <div id="pjNote"></div>
       <div id="pjBar"></div>
+      <!-- 点一座楼走进去。同样没有自己的画布:引擎把画布让给那间屋子(enterRoom),
+           这一层只是返回键、"你在哪儿"和手指落下去的那块地方。 -->
+      <div id="walk" class="hide">
+        <div id="walkHead">
+          <button class="btn ghost" id="walkBack" type="button">←</button>
+          <span class="txt"><b id="walkPath" class="ell">—</b><span id="walkStat" class="ell"></span></span>
+        </div>
+        <div id="walkNote" class="hide"></div>
+        <div id="walkHint"></div>
+      </div>
     </section>
 
     <!-- ── 好友 · 私信 ──────────────────────────────────────────────────

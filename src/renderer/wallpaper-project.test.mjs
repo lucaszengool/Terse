@@ -404,6 +404,24 @@ function litY(o) {
   ok('narrow frames keep a width margin for the nearer street row', /const HALF_W = sharing \? 0\.82 : \(narrow \? 0\.90 : 1\.00\)/.test(src2));
 }
 
+/* ══ 点一座楼走进去:每座楼站在哪儿 ═══════════════════════════════════════ */
+{
+  const dirs = [
+    { name: 'src', files: 100, bytes: 2e5, lang: 'ts', kids: [['a', 3, 10]], leaves: [['x.ts', 10, 'a']] },
+    { name: 'docs', files: 10, bytes: 1e4, kind: 'docs' },
+  ];
+  const s = sampleCity(dirs, 20000, 'modern', [], [1]);
+  ok('every drawn building reports where it stands', s.towers.length === 2 && s.towers.map((t) => t.name).join() === 'src,docs');
+  ok('and carries its capsule entry, kids and leaves included', s.towers[0].dir === dirs[0] && Array.isArray(s.towers[0].dir.leaves));
+  ok('anchors are finite and the top is above the base',
+     s.towers.every((t) => [...t.base, ...t.top, t.r].every(Number.isFinite) && t.top[1] > t.base[1]));
+  const young = sampleCity([{ name: 'old', files: 5, bytes: 5000, age_days: 100 }, { name: 'new', files: 5, bytes: 5000, age_days: 1 }],
+    8000, 'modern', [], [1], 0.05);
+  ok('a building not yet born cannot be walked into', young.towers.length === 1 && young.towers[0].name === 'old');
+  ok('an empty city has no buildings to tap, not undefined', sampleCity([], 1000, 'modern').towers === undefined
+     || sampleCity([], 1000, 'modern').towers.length === 0);
+}
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

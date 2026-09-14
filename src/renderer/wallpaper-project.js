@@ -561,6 +561,8 @@ export function sampleCity(dirs, n, styleId, links, commits, grow, opts) {
       owner: +d.owner || 0,
       rgb: d.lang ? langRgb(d.lang) : (KIND_RGB[kind] || langRgb('')),
       w: Math.sqrt(Math.max(1, massOf(d))),
+      // 胶囊里的那一条原样带着 —— 点这座楼走进去,要的是它的 kids 和 leaves。
+      src: d,
     };
   });
 
@@ -926,7 +928,18 @@ export function sampleCity(dirs, n, styleId, links, commits, grow, opts) {
   while (p < n) {
     put((Math.random() - 0.5) * 2.1, BASE - 0.004, (Math.random() - 0.5) * 2.1, 0.20, 0.26, 0.34, 0.62);
   }
-  return { target, color, scale, used: p };
+  /* 每座楼在哪儿 —— 点一座楼走进去要用。和粒子走**同一个旋转**(put 里那一段),
+     否则点中的会是它旁边那座。只记脚和顶两点加一个半径:命中测试是"离这根竖线
+     多近",楼长什么样(塔、金字塔、圆仓)不影响点不点得中。 */
+  const rot = (x, y, z) => {
+    const x1 = x * cy_ + z * sy, z1 = -x * sy + z * cy_;
+    return [x1, y * cp - z1 * sp, y * sp + z1 * cp];
+  };
+  const anchors = towers.map((t) => ({
+    name: t.name, dir: t.src, r: t.foot / 2,
+    base: rot(t.cx, BASE, t.cz), top: rot(t.cx, BASE + t.h, t.cz),
+  }));
+  return { target, color, scale, used: p, towers: anchors };
 }
 
 /**
@@ -1929,6 +1942,8 @@ export class ProjectLayer {
     const C = this.cityGeo.attributes.aColor.array;
     const S = this.cityGeo.attributes.aScale.array;
     T.fill(0); C.fill(0); S.fill(1);
+    // 这一拍没有城市(读法独占、或者什么都没有)就没有楼可点 —— 先清掉,下面画了才填。
+    this.cityTowers = [];
     const mark = () => {
       this.cityGeo.attributes.aTarget.needsUpdate = true;
       this.cityGeo.attributes.aColor.needsUpdate = true;
@@ -2019,6 +2034,9 @@ export class ProjectLayer {
     // depthTest 是关掉的,所以真正决定谁挡谁的是画的先后(renderOrder),
     // 而这个 z 决定的是**转起来的时候**它在图和字前面多远。
     const Z_FRONT = 0.30;
+    // 楼的落点走和粒子一模一样的那一步平移缩放 —— 见 sampleCity 末尾的 anchors。
+    const fit = (q) => [(q[0] - mx) * k + CITY_CX, (q[1] - my) * k + CITY_CY, q[2] * k + Z_FRONT];
+    this.cityTowers = (s.towers || []).map((t) => ({ name: t.name, dir: t.dir, r: t.r * k, base: fit(t.base), top: fit(t.top) }));
     for (let i = 0; i < nCityPts; i++) {
       const o = i * 3;
       if (i < s.used) {
@@ -2111,6 +2129,7 @@ export class ProjectLayer {
 
   stop() {
     this.show = null;
+    this.cityTowers = [];
     this.u.uVis.value = 0;
     this.u.uForm.value = 0;
     this.points.visible = false;

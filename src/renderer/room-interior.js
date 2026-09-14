@@ -21,6 +21,7 @@
  */
 
 import { styleOf, seedOf, picker } from './city-styles.js';
+import { LANG_COLOR, LANG_FALLBACK, langOfFile } from './lang-colors.js';
 
 /* ── 每个风格能用哪些件 ──────────────────────────────────────────────────────
    词汇表的差别就是风格的差别:唐宋拿得到斗拱和格栅,古希腊只拿得到凹槽柱和藻井,
@@ -195,22 +196,51 @@ export const WALL = {
   },
 };
 
-/** 墙的公共部分:一面光帘,密度由 `f(u, yt, y)` 决定,门洞处留空。 */
+/** 墙的公共部分:一面光帘,密度由 `f(u, yt, y)` 决定,门洞处留空。
+ *
+ *  ⚠ 走近了墙是空的。纹样本身是稀的(按 k 抽掉一大半),远看成面,贴过去就只剩几颗
+ *  零散的点,读不出"这里是一面墙"。所以每面墙不管什么风格都有三道**连续的线**:
+ *  踢脚、腰线、檐口 —— 那是让一面墙在近处也站得住的骨架,和门一样,风格只改颜色。 */
 function curtain(o, e, f, goldMix = 0.5) {
   const { x0, z0, x1, z1, h, n, rnd, c1, c2, gap } = o;
   const horiz = Math.abs(x1 - x0) > Math.abs(z1 - z0);
   const len = horiz ? Math.abs(x1 - x0) : Math.abs(z1 - z0);
-  for (let i = 0; i < n; i++) {
-    const u = rnd() * len;
-    const px = horiz ? Math.min(x0, x1) + u : x0;
-    const pz = horiz ? z0 : Math.min(z0, z1) + u;
-    if (gap && px > gap.x0 && px < gap.x1 && pz > gap.z0 && pz < gap.z1) continue;
+  const at = (u) => [horiz ? Math.min(x0, x1) + u : x0, horiz ? z0 : Math.min(z0, z1) + u];
+  const inGap = (px, pz) => gap && px > gap.x0 && px < gap.x1 && pz > gap.z0 && pz < gap.z1;
+  const jit = (s) => (rnd() - 0.5) * s;
+  const base = mix([0.13, 0.15, 0.2], c1, 0.55);
+  /* 墙皮:一层很细、很暗、均匀的小点。纹样负责"远看是什么风格",这一层负责
+     "贴近了这里确实是一面墙" —— 小而暗,所以不开花,远处也不抢纹样的戏。 */
+  const plaster = Math.round(n * 0.35);
+  for (let i = 0; i < plaster; i++) {
+    const [px, pz] = at(rnd() * len);
+    if (inGap(px, pz)) continue;
+    const y = Math.pow(rnd(), 1.25) * h;
+    e(px + (horiz ? 0 : jit(0.05)), y, pz + (horiz ? jit(0.05) : 0), mix(base, c1, 0.2), 0.85, 0.08);
+  }
+  for (let i = plaster; i < n; i++) {
+    const [px, pz] = at(rnd() * len);
+    if (inGap(px, pz)) continue;
+    const u = horiz ? px - Math.min(x0, x1) : pz - Math.min(z0, z1);
     const yt = Math.pow(rnd(), 1.5), y = yt * h;
     const k = f(u, yt, y);
     if (rnd() > k) continue;
-    const c = mix(mix([0.09, 0.11, 0.16], c1, 0.5 + (1 - yt) * 0.35), c2, Math.min(1, k) * goldMix);
-    e(px + (horiz ? 0 : (rnd() - 0.5) * 0.12), y, pz + (horiz ? (rnd() - 0.5) * 0.12 : 0), c, 0.7 + k * 1.1, 0.35);
-    if (rnd() < 0.045) e(px, h - 0.06 + rnd() * 0.12, pz, c2, 1.3, 0.6);       // 檐口
+    const c = mix(mix(base, c1, 0.2 + (1 - yt) * 0.35), c2, Math.min(1, k) * goldMix);
+    e(px + (horiz ? 0 : jit(0.12)), y, pz + (horiz ? jit(0.12) : 0), c, 0.8 + k * 1.1, 0.35);
+  }
+  // 骨架:三道线,各自一段高度带。点数跟着墙长走,不跟着纹样的疏密走。
+  const rails = [
+    { y: 0.06, band: 0.12, c: mix(c1, c2, 0.25), sz: 1.0, tw: 0.25 },     // 踢脚
+    { y: 1.05, band: 0.05, c: mix(c1, c2, 0.55), sz: 1.05, tw: 0.35 },    // 腰线
+    { y: h - 0.1, band: 0.16, c: c2, sz: 1.3, tw: 0.55 },                  // 檐口
+  ];
+  const per = Math.round(len * 55);
+  for (const rl of rails) {
+    for (let i = 0; i < per; i++) {
+      const [px, pz] = at(rnd() * len);
+      if (inGap(px, pz) && rl.y < h * 0.62) continue;  // 门洞里没有踢脚和腰线,券以上的檐口照走
+      e(px + (horiz ? 0 : jit(0.06)), rl.y + jit(rl.band), pz + (horiz ? jit(0.06) : 0), rl.c, rl.sz, rl.tw);
+    }
   }
 }
 
@@ -319,26 +349,55 @@ export const LIGHT = {
       e(lx + sx * 0.5, cy - 0.35 + sy * 0.62, lz + sz * 0.5, edge ? c2 : mix(c1, [1, 0.92, 0.7], 0.65), edge ? 1.3 : 1.7, edge ? 0.5 : 1.0);
     }
   },
-  /** 火盆:地上的一圈火。古埃及、玛雅、北欧。 */
+  /** 火盆:地上的一圈火。古埃及、玛雅、北欧。
+   *
+   *  ⚠ 火不是圆锥。第一版半径随高度线性收、点在高度上均匀撒 —— 那就是一个实心圆锥,
+   *  远看像一排圣诞树。火是**几条舌头**:每条自己多高、往哪边歪,中段最胖、顶上
+   *  收成尖;点压在根部(那儿最亮),根部是白芯、梢是红的,再往上飘几颗火星。 */
   brazier(o, e) {
     const { cx, cz, n, rnd, c1, c2, r } = o;
-    const spots = 4;
+    const spots = 4, TONGUES = 5, Y0 = 0.92;
+    const R = Math.min(r.x1 - r.x0, r.z1 - r.z0) * 0.32;
     for (let i = 0; i < n; i++) {
       const k = Math.floor(rnd() * spots), a = (k / spots) * Math.PI * 2 + 0.7;
-      const R = Math.min(r.x1 - r.x0, r.z1 - r.z0) * 0.32;
       const bx = cx + Math.cos(a) * R, bz = cz + Math.sin(a) * R;
       const u = rnd();
-      if (u < 0.42) {                                   // 火焰
-        const t = rnd();
-        const rad = 0.28 * (1 - t) * (0.6 + rnd() * 0.8);
-        const aa = rnd() * Math.PI * 2;
-        e(bx + Math.cos(aa) * rad, 0.95 + t * 1.0, bz + Math.sin(aa) * rad, mix([1, 0.72, 0.28], [1, 0.95, 0.72], 1 - t), 1.5 + (1 - t) * 1.4, 1.0);
-      } else if (u < 0.72) {                            // 盆
-        const aa = rnd() * Math.PI * 2;
-        e(bx + Math.cos(aa) * 0.36, 0.75 + rnd() * 0.16, bz + Math.sin(aa) * 0.36, c2, 1.2, 0.3);
-      } else {                                          // 柱脚
-        const aa = rnd() * Math.PI * 2;
-        e(bx + Math.cos(aa) * 0.1, rnd() * 0.75, bz + Math.sin(aa) * 0.1, mix(c1, c2, 0.4), 0.9, 0.2);
+      if (u < 0.50) {                                   // 火舌
+        const j = Math.floor(rnd() * TONGUES);
+        // 每条舌头的高度、方位、歪向都是固定的(按盆号 × 舌头号取),不随粒子变 ——
+        // 否则舌头会糊成一团光,看不出是几条。
+        const hj = ((Math.imul(k * 7 + j, 2654435761) >>> 0) / 4294967296);
+        const H = 0.55 + hj * 0.55, phi = j / TONGUES * Math.PI * 2 + hj * 1.3;
+        const off = j === 0 ? 0 : 0.11;                 // 一条居中,其余围一圈
+        const t = Math.pow(rnd(), 1.6);                 // 0 = 根,1 = 梢;点压在根部
+        // 泪滴形:中段最胖,梢收成尖
+        const w = 0.13 * Math.pow(Math.sin(Math.PI * Math.min(1, 0.12 + t * 1.05)), 0.8) * (1 - t * 0.55);
+        const lean = Math.sin(t * 2.4 + hj * 6) * 0.07 * t;
+        const aa = rnd() * Math.PI * 2, rr = w * Math.sqrt(rnd());
+        const core = rr < w * 0.4 && t < 0.45;
+        const col = core ? [1, 0.96, 0.82]
+          : t < 0.55 ? mix([1, 0.78, 0.34], [1, 0.52, 0.16], t / 0.55)
+          : mix([1, 0.52, 0.16], [0.85, 0.2, 0.06], (t - 0.55) / 0.45);
+        e(bx + Math.cos(phi) * off * (1 - t) + Math.cos(aa) * rr + Math.cos(phi) * lean,
+          Y0 + t * H,
+          bz + Math.sin(phi) * off * (1 - t) + Math.sin(aa) * rr + Math.sin(phi) * lean,
+          col, (core ? 1.9 : 1.35) + (1 - t) * 0.9, 1.0);
+      } else if (u < 0.535) {                           // 火星:往上飘,越高越稀越暗
+        const t = Math.pow(rnd(), 0.6);
+        e(bx + (rnd() - 0.5) * 0.5 * t, Y0 + 0.9 + t * 1.6, bz + (rnd() - 0.5) * 0.5 * t,
+          mix([1, 0.7, 0.3], [0.7, 0.18, 0.05], t), 1.0 + (1 - t) * 0.6, 1.0);
+      } else if (u < 0.575) {                           // 火光:盆周围一团很淡的大点,把地面照暖
+        const aa = rnd() * Math.PI * 2, rr = 0.2 + rnd() * 0.9;
+        e(bx + Math.cos(aa) * rr, Y0 + (rnd() - 0.3) * 0.6, bz + Math.sin(aa) * rr, [0.22, 0.1, 0.03], 3.2, 0.9);
+      } else if (u < 0.80) {                            // 盆:一只浅碟,口沿最亮
+        const s = Math.sqrt(rnd()), aa = rnd() * Math.PI * 2;
+        const rim = s > 0.9;
+        e(bx + Math.cos(aa) * 0.44 * s, Y0 - (1 - s * s) * 0.2 + (rim ? 0.02 : 0), bz + Math.sin(aa) * 0.44 * s,
+          rim ? c2 : mix(c1, c2, 0.3), rim ? 1.25 : 0.95, 0.3);
+      } else {                                          // 三条腿,往外撇
+        const leg = Math.floor(rnd() * 3), la = leg / 3 * Math.PI * 2 + a;
+        const t = rnd(), rr = 0.12 + (1 - t) * 0.22;
+        e(bx + Math.cos(la) * rr, t * (Y0 - 0.18), bz + Math.sin(la) * rr, mix(c1, c2, 0.35 + t * 0.3), 0.9, 0.2);
       }
     }
   },
@@ -511,4 +570,74 @@ function footing(o, e) {
     const a = rnd() * Math.PI * 2, rr = 0.25 + rnd() * 0.22;
     e(x + Math.cos(a) * rr, 0.01 + rnd() * 0.04, z + Math.sin(a) * rr, mix(c2, c1, 0.4), 1.05, 0.3);
   }
+}
+
+/* ══ 平面图 ════════════════════════════════════════════════════════════════
+   一个目录摆成一座厅:大厅在中间,最大的几个子目录是四面的房间。纯函数 ——
+   room-scene.js 拿它盖房子,测试拿它对账,两边看到的是同一张图。 */
+export const HALL_W = 18, HALL_D = 14, HALL_H = 6.2, ROOM_H = 3.6, DOOR_W = 2.4, PAD = 0.4;
+/** 大厅四面各开一扇门。第五个子目录没有墙可以开门了 —— 它的文件留在大厅里,
+ *  展品上照样写着它在哪个子目录下,而不是被丢掉。 */
+const MAX_KID_ROOMS = 4;
+
+const hex2rgb = (h) => { const n = parseInt(String(h).slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
+
+/** 一个文件的颜色:**它自己的**语言,认不出扩展名才退回目录的主语言。
+ *  这是光的颜色,不是漆的颜色 —— 见 room-interior.js 的 asLight。 */
+export function fileLight(name, dirLang) {
+  const l = langOfFile(name) || dirLang || '';
+  return asLight(hex2rgb(LANG_COLOR[l] || LANG_FALLBACK));
+}
+
+/**
+ * 胶囊里的一个目录 → 平面图。矩形既是几何也是碰撞。
+ * @param {{name?:string, kids?:Array, leaves?:Array}} dir
+ */
+export function layoutOf(dir) {
+  const name = String((dir && dir.name) || '/');
+  const kidsAll = (Array.isArray(dir && dir.kids) ? dir.kids : [])
+    .filter((k) => Array.isArray(k) && k[0])
+    .map((k) => [String(k[0]), +k[1] || 0, +k[2] || 0]);
+  // 最大的几个拿到房间。按字节排,和城市里"楼高是代码量"说的是同一件事。
+  const kids = kidsAll.slice().sort((a, b) => b[2] - a[2]).slice(0, MAX_KID_ROOMS);
+  const hall = { x0: -HALL_W / 2, z0: -HALL_D / 2, x1: HALL_W / 2, z1: HALL_D / 2, name, files: +(dir && dir.files) || 0, h: HALL_H, isHall: true };
+  const rooms = [hall];
+  const doors = [];
+  const avg = kids.reduce((a, k) => a + k[2], 0) / Math.max(1, kids.length);
+
+  kids.forEach((k, i) => {
+    const [kn, files, bytes] = k;
+    const share = Math.max(0.55, Math.min(1.5, avg ? bytes / avg : 1));
+    const w = 5.0 + share * 2.6, d = 4.4 + share * 2.2;
+    const side = ['N', 'E', 'S', 'W'][i];
+    let rect;
+    if (side === 'N')      rect = { x0: -w / 2, z0: hall.z0 - d, x1: w / 2, z1: hall.z0 };
+    else if (side === 'S') rect = { x0: -w / 2, z0: hall.z1, x1: w / 2, z1: hall.z1 + d };
+    else if (side === 'E') rect = { x0: hall.x1, z0: -d / 2, x1: hall.x1 + w, z1: d / 2 };
+    else                   rect = { x0: hall.x0 - w, z0: -d / 2, x1: hall.x0, z1: d / 2 };
+    Object.assign(rect, { name: kn, files, bytes, side, h: ROOM_H, isHall: false });
+    rooms.push(rect);
+    if (side === 'N' || side === 'S') {
+      const z = side === 'N' ? hall.z0 : hall.z1;
+      doors.push({ x0: -DOOR_W / 2, z0: z - 0.8, x1: DOOR_W / 2, z1: z + 0.8, side, room: kn, cx: 0, cz: z });
+    } else {
+      const x = side === 'E' ? hall.x1 : hall.x0;
+      doors.push({ x0: x - 0.8, z0: -DOOR_W / 2, x1: x + 0.8, z1: DOOR_W / 2, side, room: kn, cx: x, cz: 0 });
+    }
+  });
+
+  /* 文件按它在哪个子目录下分进各个房间。对不上房间的(顶层文件、第五个以后的子目录)
+     留在大厅。⚠ leaves 缺席和 leaves 为空是两回事:缺席是"胶囊在这个字段出现之前
+     扫的",调用方要说一声;为空才是"这个目录里真没有文件"。 */
+  const hasLeaves = Array.isArray(dir && dir.leaves);
+  const roomNames = new Set(kids.map((k) => k[0]));
+  const byRoom = new Map();
+  for (const leaf of (hasLeaves ? dir.leaves : [])) {
+    if (!Array.isArray(leaf) || !leaf[0]) continue;
+    const sub = String(leaf[2] || '');
+    const into = roomNames.has(sub) ? sub : '';
+    if (!byRoom.has(into)) byRoom.set(into, []);
+    byRoom.get(into).push({ name: String(leaf[0]), bytes: +leaf[1] || 0, sub });
+  }
+  return { name, hall, rooms, doors, byRoom, hasLeaves, extraKids: kidsAll.length - kids.length };
 }

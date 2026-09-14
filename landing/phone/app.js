@@ -120,6 +120,10 @@
       pz_playing: 'Playing {name} in the field',
       pz_liked: 'Liked', pz_saved: 'Saved',
       pj_no_city: 'No code city in this one. It was published before the plaza carried them — its owner can press Rescan in Terse on their Mac and publish it again.',
+      pj_walk_hint: 'Tap a building to walk in.',
+      walk_hint: 'Drag to look · stick to walk · tap a file',
+      walk_files: '{n} files',
+      walk_no_files: 'This one was published before buildings carried their files — the rooms are here, the exhibits are not. Its owner can rescan and publish again.',
       pj_tap_like: 'Double-tap to like',
       prev_free: 'Free',
       feed_files: 'files', feed_buildings: 'buildings', feed_hint: 'Swipe for the next ↑',
@@ -351,6 +355,10 @@
       pz_playing: '正在场里播放 {name}',
       pz_liked: '已赞', pz_saved: '已收藏',
       pj_no_city: '这个项目里没有代码城市。它是在广场开始携带城市之前发布的 —— 作者在 Mac 上点一次「重新扫描」再重新发布,城市就有了。',
+      pj_walk_hint: '点一座楼,走进去。',
+      walk_hint: '拖动看四周 · 摇杆走路 · 点一个文件',
+      walk_files: '{n} 个文件',
+      walk_no_files: '这个项目发布时楼里还不带文件 —— 房间都在,展品没有。作者重新扫描再发布一次就有了。',
       pj_tap_like: '双击点赞',
       prev_free: '免费版',
       feed_files: '个文件', feed_buildings: '座楼', feed_hint: '上滑看下一个 ↑',
@@ -3640,8 +3648,9 @@
        which is exactly how it was reported. So it says which of the two it is,
        and what the owner has to do about it. */
     var hasCity = !!(cap.dirs && cap.dirs.length);
-    $('pjNote').textContent = hasCity ? '' : t('pj_no_city');
-    $('pjNote').classList.toggle('hide', hasCity);
+    // 有城市就告诉他楼是点得进去的 —— 没人会去点一张看起来是画的东西。
+    $('pjNote').textContent = hasCity ? t('pj_walk_hint') : t('pj_no_city');
+    $('pjNote').classList.remove('hide');
 
     var bar = $('pjBar');
     bar.innerHTML = '';
@@ -3676,6 +3685,7 @@
   /** Tear the preview down. Separate from closeProject so that show() can call
    *  it while navigating without bouncing back through show() again. */
   function endProject() {
+    exitWalk(true);
     clearInterval(pjTimer); pjTimer = null;
     viewing = null;
     try { if (wp) wp.hideProject(); } catch (e) {}
@@ -3686,6 +3696,7 @@
   }
 
   function closeProject() {
+    exitWalk(true);
     clearInterval(pjTimer); pjTimer = null;
     viewing = null;
     /* The overlay comes off and the field is exactly what it was — that is the
@@ -3700,17 +3711,88 @@
   /* Double-tap the sky to like it. The heart in the bar works too, but this is
      the interaction people perform most often, and asking them to aim at a
      small target for it is the wrong trade. Drawn where the thumb landed. */
+  /* A SINGLE tap on a building walks into it. It waits out the double-tap
+     window first, so a like on the sky never also drops you into a tower —
+     and the building is picked at the moment the finger landed, not 380ms
+     later when the city has turned a little further. */
   (function () {
-    var last = 0, lastX = 0, lastY = 0;
+    var last = 0, lastX = 0, lastY = 0, pend = null;
     on($('pjSpace'), 'pointerup', function (e) {
       var now = Date.now();
       var near = Math.abs(e.clientX - lastX) < 44 && Math.abs(e.clientY - lastY) < 44;
       if (now - last < 380 && near) {
         last = 0;
+        clearTimeout(pend); pend = null;
         likeFromTap(e.clientX, e.clientY);
-      } else { last = now; lastX = e.clientX; lastY = e.clientY; }
+      } else {
+        last = now; lastX = e.clientX; lastY = e.clientY;
+        var hit = null;
+        try { hit = wp && wp.towerAt ? wp.towerAt(e.clientX, e.clientY) : null; } catch (err) { hit = null; }
+        clearTimeout(pend); pend = null;
+        if (hit && hit.dir) pend = setTimeout(function () { pend = null; enterWalk(hit); }, 390);
+      }
     });
   }());
+
+  /* ── Walking into a building ─────────────────────────────────────────────
+     The engine lends the room its own canvas (enterRoom) — the same reason the
+     project window has none: iOS will not grant a second full-screen WebGL
+     context. So while you walk, the city's replay is paused, not layered over;
+     on the way out the canvas goes back and the city gathers again. */
+  var walking = false;
+
+  function walkBytes(n) {
+    return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n >= 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B';
+  }
+
+  function enterWalk(hit) {
+    if (!wp || !wp.enterRoom || walking || !viewing) return;
+    walking = true;
+    clearInterval(pjTimer); pjTimer = null;
+    var box = $('walk');
+    $('walkPath').textContent = String(hit.name || '').replace(/\/?$/, '/');
+    $('walkStat').textContent = '';
+    $('walkHint').textContent = t('walk_hint');
+    $('walkNote').classList.add('hide');
+    box.classList.remove('hide');
+    if (window.TerseFeel) window.TerseFeel.tap('heavy');
+    var note = function (s) { $('walkNote').textContent = s; $('walkNote').classList.remove('hide'); };
+    wp.enterRoom(hit.dir, {
+      style: hit.style, host: box, input: box, budget: 0.6,
+      onHere: function (h) {
+        $('walkPath').textContent = h.path;
+        $('walkStat').textContent = t('walk_files').replace('{n}', h.files || 0);
+      },
+      onPick: function (p) {
+        note(p.dir + '/' + p.name + '  ·  ' + walkBytes(p.bytes));
+        if (window.TerseFeel) window.TerseFeel.tap('select');
+      },
+    }).then(function (room) {
+      if (!room) { exitWalk(); return; }
+      // leaves missing ≠ leaves empty: the first is an old capsule, and it says so
+      if (!room.hasLeaves) note(t('walk_no_files'));
+    }).catch(function (e) {
+      exitWalk();
+      $('pjNote').textContent = t('pj_broke').replace('{why}', (e && (e.message || String(e))) || 'room');
+      $('pjNote').classList.remove('hide');
+    });
+  }
+
+  /** @param {boolean} [leaving] the whole project window is going too — don't
+   *  restart its replay on the way out. */
+  function exitWalk(leaving) {
+    if (!walking) return;
+    walking = false;
+    try { if (wp && wp.exitRoom) wp.exitRoom(); } catch (e) {}
+    $('walk').classList.add('hide');
+    if (!leaving && viewing) {
+      replayProject();
+      clearInterval(pjTimer);
+      pjTimer = setInterval(replayProject, showLen(viewing) + 900);
+    }
+  }
+  on($('walkBack'), 'click', function () { exitWalk(); });
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape' && walking) exitWalk(); });
 
   function likeFromTap(x, y) {
     if (!viewing || !requireIdentity()) return;

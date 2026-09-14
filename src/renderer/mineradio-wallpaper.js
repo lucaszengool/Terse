@@ -751,6 +751,14 @@ export default class MineradioWallpaper {
       this._raf = requestAnimationFrame(loop);
       const now = performance.now();
       const dt = Math.min(0.1, (now - this._last) / 1000);
+      /* 走进楼的时候,画布是那间屋子的:外面这片场一帧都不画(见 enterRoom)。
+         不锁 30fps —— 这是有人在走,不是挂在后台的壁纸,掉帧走起来就晕。 */
+      if (this._room) {
+        this._last = now;
+        try { this._room.update(dt); this._room.render(); }
+        catch (e) { this.exitRoom(); }        // 一间画不出来的屋子不能把场一起拖黑
+        return;
+      }
       // 壁纸是常驻后台的,锁 30fps 省电
       if (dt < 1 / 31) return;
       this._last = now;
@@ -775,6 +783,8 @@ export default class MineradioWallpaper {
     this._disposeLayers();
     this._buildLayers();
     for (const L of this.layers) { L.cam.aspect = W / H; L.cam.updateProjectionMatrix(); }
+    // 手机转个方向,屋子的相机和辉光也要跟着换比例
+    if (this._room) { try { this._room.resize(W, H); } catch (e) {} }
   }
 
   /** 一次 token 冲击:节拍 + 一圈涟漪(有数字在显示就从数字那儿推出去) */
@@ -850,6 +860,83 @@ export default class MineradioWallpaper {
     }
     return best;
   }
+
+  /* ── 走进一座楼 ──────────────────────────────────────────────────────────
+     城市里每座楼都是胶囊里的一个目录,而那一条已经带着 kids 和 leaves —— 点一下
+     就能走进去。房子是 room-scene.js 盖的;这里只管两件事:点中的是哪一座,以及
+     走进去的时候把画布让出来。
+
+     ⚠ 画布是**让出来**的,不是再开一块。iOS 只肯给一页有限几个 WebGL 上下文,
+     手机上项目窗口为第二个全屏粒子系统黑过三次(见 app.js)。 */
+
+  /** CSS 像素下点中的那座楼,或者 null。只在城市聚好、正站着的时候算数 ——
+   *  散着的楼没有一个确定的位置,点"它"没有意义。 */
+  towerAt(px, py) {
+    const L = this._projLayer, cam = this._silk && this._silk.cam;
+    if (!L || !cam || !L.show || !L.cityPoints.visible) return null;
+    if (L.u.uVis.value < 0.5 || L.u.uForm.value < 0.7) return null;
+    const towers = L.cityTowers || [];
+    if (!towers.length) return null;
+    let rc = { left: 0, top: 0 };
+    try { rc = this.canvas.getBoundingClientRect(); } catch (e) {}
+    const x = px - rc.left, y = py - rc.top;
+    L.cityPoints.updateMatrixWorld();
+    cam.updateMatrixWorld();
+    const sz = L.u.uSize.value, v = new THREE.Vector3();
+    const scr = (q) => {
+      // 着色器里是 aTarget * uSize,这里必须一样,否则点中的是它旁边那座
+      v.set(q[0] * sz, q[1] * sz, q[2] * sz).applyMatrix4(L.cityPoints.matrixWorld).project(cam);
+      return [(v.x * 0.5 + 0.5) * this.W, (0.5 - v.y * 0.5) * this.H];
+    };
+    let best = null, bestK = Infinity;
+    for (const t of towers) {
+      const a = scr(t.base), b = scr(t.top);
+      const c = scr([t.base[0] + t.r, t.base[1], t.base[2]]);
+      // 至少 22px:手机上一座小楼只有几个像素宽,按真宽度去点是点不中的
+      const reach = Math.max(22, Math.hypot(c[0] - a[0], c[1] - a[1]) * 1.15);
+      const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+      const s = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L2));
+      const d = Math.hypot(x - (a[0] + dx * s), y - (a[1] + dy * s));
+      if (d <= reach && d / reach < bestK) {
+        bestK = d / reach;
+        best = { name: t.name, dir: t.dir, style: this._projStyle || '', x: rc.left + (a[0] + b[0]) / 2, y: rc.top + (a[1] + b[1]) / 2 };
+      }
+    }
+    return best;
+  }
+
+  /**
+   * 走进一座楼。外面这片场停下来,画布交给那间屋子,直到 exitRoom()。
+   * @param {object} dir  胶囊里的一个目录(towerAt 交回来的 `dir`)
+   * @param {object} [opts] 原样交给 createRoom:host / input / budget / onHere / onPick / style
+   * @returns {Promise<object|null>} 那间屋子;中途又被叫走了就是 null
+   */
+  async enterRoom(dir, opts = {}) {
+    if (!dir || !this.renderer) return null;
+    this.exitRoom();
+    const tok = this._roomTok;
+    const { createRoom } = await import('./room-scene.js');
+    if (tok !== this._roomTok) return null;            // 加载的时候已经被叫出来了
+    // 正在演的那座城先撤掉 —— 它的轮播计时器会在后台一直重排一座看不见的城。
+    this.hideProject();
+    const style = opts.style != null ? opts.style : (this._projStyle || '');
+    const room = createRoom(this.renderer, dir, Object.assign({}, opts, { style }));
+    room.resize(this.W, this.H);
+    this._room = room;
+    this._last = performance.now();
+    return room;
+  }
+
+  /** 走出来。画布原样还给外面这片场,下一帧它就接着画。 */
+  exitRoom() {
+    this._roomTok = (this._roomTok | 0) + 1;
+    const room = this._room;
+    if (!room) return;
+    this._room = null;
+    try { room.dispose(); } catch (e) {}
+  }
+
+  isInRoom() { return !!this._room; }
 
   /** Brighten the glyph under the cursor so it reads as a target. */
   setHover(glyph) {
@@ -991,6 +1078,8 @@ export default class MineradioWallpaper {
    *  @param {number} ms whole run, default 20s (the plaza preview's length) */
   showProject(cap, ms = 20000) {
     if (!cap) return false;
+    // 点一座楼走进去时,里面的装修要跟着外面这座城的风格(见 towerAt / enterRoom)。
+    this._projStyle = cap.style || '';
     /* ⚠ MEASURE FIRST. Every layout decision below is made from this.W/this.H,
        and the constructor falls back to 1920x1080 when the canvas had not been
        laid out yet — which is exactly the case for a preview whose window was
@@ -1921,6 +2010,7 @@ export default class MineradioWallpaper {
   }
 
   dispose() {
+    this.exitRoom();
     this.stop();
     window.removeEventListener('resize', this._onResize);
     if (this._ro) { try { this._ro.disconnect(); } catch (e) {} this._ro = null; }

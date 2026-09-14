@@ -18,6 +18,22 @@ export const LANG_COLOR = {
 /** 没认出来的语言。灰的 —— 它得存在,但不该跟真正的语言抢眼睛。 */
 export const LANG_FALLBACK = '#8A8A90';
 
+/** 扩展名 → 上面那张表的键。走进一座楼之后每个文件是一件展品,颜色要是**它自己的**
+ *  语言 —— 一个 TS 目录里的 theme.css 是紫的,不是跟着目录一起变蓝。 */
+const EXT_LANG = {
+  rs: 'rust', ts: 'ts', tsx: 'ts', mts: 'ts', cts: 'ts', js: 'js', jsx: 'js', mjs: 'js', cjs: 'js',
+  py: 'python', go: 'go', swift: 'swift', kt: 'kotlin', kts: 'kotlin', java: 'java',
+  c: 'c', h: 'c', cc: 'c++', cpp: 'c++', cxx: 'c++', hpp: 'c++', hh: 'c++', rb: 'ruby', php: 'php',
+  cs: 'c#', html: 'html', htm: 'html', css: 'css', scss: 'css', sass: 'css', less: 'css',
+  sh: 'shell', bash: 'shell', zsh: 'shell', sql: 'sql',
+};
+
+/** 'Button.tsx' → 'ts'。认不出来就是 '',交给调用方决定退回什么。 */
+export function langOfFile(name) {
+  const m = /\.([A-Za-z0-9]+)$/.exec(String(name || ''));
+  return (m && EXT_LANG[m[1].toLowerCase()]) || '';
+}
+
 /** '#dea584' → [0.87, 0.65, 0.52]。粒子的颜色是 0–1 的浮点,不是 CSS 字符串。 */
 export function langRgb(lang) {
   const hex = LANG_COLOR[lang] || LANG_FALLBACK;

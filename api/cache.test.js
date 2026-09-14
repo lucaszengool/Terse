@@ -195,7 +195,9 @@ ok('no build, no rewrite', stampImports("import {A} from './a.js';", '') === "im
 // And the real engine really does contain such imports — otherwise the rewrite
 // is guarding nothing and this whole route is dead weight.
 const engine = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'mineradio-wallpaper.js'), 'utf8');
-const bare = (engine.match(/from\s*'\.\/[A-Za-z0-9._-]+\.js'/g) || []);
+// Static and dynamic both: the room is `import('./room-scene.js')`, loaded only
+// when somebody walks into a building, and it has to arrive fresh just the same.
+const bare = (engine.match(/(?:from\s*|import\s*\(\s*)'\.\/[A-Za-z0-9._-]+\.js'/g) || []);
 ok(`the engine imports its own modules by bare specifier (${bare.length} of them)`, bare.length >= 2);
 ok('and the rewrite reaches every one of them',
    (stampImports(engine, 'B1').match(/\.js\?v=B1'/g) || []).length === bare.length);

@@ -71,6 +71,15 @@ const DETAIL = {
     F('reset.css', 'styles', 800, 40, []),
   ],
 };
+// 谁 import 谁(下标对着 files):App 用路由、组件、hook;组件用 utils;测试测组件和 api
+{
+  const ix = (n) => DETAIL.files.findIndex((f) => f.n === n);
+  const E = [['App.tsx', 'router.ts'], ['App.tsx', 'Sidebar.tsx'], ['App.tsx', 'useAuth.ts'], ['App.tsx', 'types.ts'], ['index.ts', 'App.tsx'],
+    ['router.ts', 'useAuth.ts'], ['Sidebar.tsx', 'Button.tsx'], ['Sidebar.tsx', 'Card.tsx'], ['Modal.tsx', 'Button.tsx'], ['Table.tsx', 'format.ts'],
+    ['Button.tsx', 'colors.ts'], ['useAuth.ts', 'api.ts'], ['useRoom.ts', 'api.ts'], ['useSync.ts', 'debounce.ts'], ['api.ts', 'types.ts'],
+    ['Button.test.tsx', 'Button.tsx'], ['api.test.ts', 'api.ts'], ['useRoom.ts', 'types.ts']];
+  DETAIL.edges = E.map(([a, b]) => [ix(a), ix(b)]).filter(([a, b]) => a >= 0 && b >= 0);
+}
 const DIR = { name: 'src', files: 214, bytes: 268000, lang: 'ts',
   kids: DETAIL.kids,
   leaves: DETAIL.files.map((f) => [f.n, f.b, f.sub]) };
@@ -92,6 +101,8 @@ const room = createRoom(renderer, DIR, {
     card.innerHTML = `<b>${d.icon} ${esc(d.title)}</b><div class="dim">${esc(d.path)}</div>`
       + `<div class="role">${esc(d.role)} — ${esc(d.furn)}</div><div class="dim">${esc(d.stats)}</div>`
       + (d.items.length ? `<div style="margin-top:6px">${esc(d.defines)}:</div>` + d.items.map((i) => `<div class="it">${i.icon} <code>${esc(i.name)}</code> <span class="dim">${esc(i.kind)}${i.line ? ' · L' + i.line : ''}${i.exported ? ' · export' : ''}</span></div>`).join('') : '')
+      + (d.uses.length ? `<div style="margin-top:6px">🟢 ${esc(d.usesWord)}: ${d.uses.map(esc).join(', ')}</div>` : '')
+      + (d.usedBy.length ? `<div>🟠 ${esc(d.usedByWord)}: ${d.usedBy.map(esc).join(', ')}</div>` : '')
       + (d.note ? `<div class="dim" style="margin-top:6px">${esc(d.note)}</div>` : '');
   },
 });

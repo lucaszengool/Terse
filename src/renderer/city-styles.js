@@ -824,6 +824,27 @@ export function styleOf(id) { return BY_ID[id] || BY_ID[DEFAULT_STYLE]; }
 /** 这个风格要不要 Pro 才能发布(生成和预览永远免费)。 */
 export function styleNeedsPro(id) { return !styleOf(id).free; }
 
+/** 没有作者亲自挑风格的项目(GitHub 导入的就是这种),风格**从代码里来**:
+ *  主语言决定是哪一路传统,仓库名的哈希在这一路里挑一个 —— 同一门语言的两个项目
+ *  也不会长成同一座城。⚠ api/github-capsule.js 有一份逐行移植,测试把两份对着跑。
+ *  @param {Array<[string, number]>} langs 按占比排好的 [语言, 占比]
+ *  @param {string} name 'owner/repo' */
+const STYLE_FAMILIES = [
+  [['ts', 'js', 'html', 'css'], ['modern', 'persia', 'tang']],
+  [['python'], ['hellas', 'giza']],
+  [['rust', 'c', 'c++'], ['norse', 'maya']],
+  [['go'], ['modern', 'edo']],
+  [['java', 'kotlin', 'c#'], ['giza', 'hellas']],
+  [['swift'], ['edo', 'tang']],
+  [['ruby', 'php'], ['maya', 'persia']],
+];
+export function styleForCode(langs, name) {
+  const first = (Array.isArray(langs) ? langs : []).find((l) => l && l[0]);
+  const dom = first ? String(first[0]) : '';
+  const fam = (STYLE_FAMILIES.find(([ls]) => ls.includes(dom)) || [null, ['tang', 'norse', 'edo']])[1];
+  return fam[seedOf(String(name || '').toLowerCase()) % fam.length];
+}
+
 /** 这个风格能拼出多少种不重样的楼 —— 界面上写给人看的,也是这套语法的意义所在。 */
 export function styleVariants(id) {
   const s = styleOf(id).slots;

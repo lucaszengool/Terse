@@ -7,7 +7,7 @@
  * 每次是同一间屋子、风格够不到别人的件、第五个子目录的文件没有被丢掉、老胶囊
  * 说得出自己是老的。
  */
-import { interiorOf, interiorVariants, layoutOf, layoutFor, fileLight, PAD, INTERIOR } from './room-interior.js';
+import { interiorOf, interiorVariants, layoutOf, layoutFor, fileLight, signatureOf, PAD, INTERIOR } from './room-interior.js';
 import { langOfFile } from './lang-colors.js';
 import { roleOfName, ROLE, ROLES } from './room-furniture.js';
 import { createRequire } from 'node:module';
@@ -110,6 +110,26 @@ const ok = (name, cond) => {
   ok('no extension is no language', langOfFile('Makefile') === '' && langOfFile('') === '' && langOfFile(null) === '');
   ok('a css file in a ts directory is not ts-coloured', fileLight('theme.css', 'ts').join() !== fileLight('App.tsx', 'ts').join());
   ok('an unknown extension falls back to the directory language', fileLight('LICENSE', 'ts').join() === fileLight('App.tsx', 'ts').join());
+}
+
+/* ══ 代码决定装修:同一个风格里,代码不一样,屋子就不一样 ══════════════════ */
+{
+  const mk = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+  const tests = mk(10, (i) => ({ name: `a${i}.test.ts`, sub: '', bytes: 1000, lines: 40, role: 'test', sym: [['x', 'test', 1, 0]] }));
+  const docs = mk(10, (i) => ({ name: `d${i}.md`, sub: '', bytes: 1000, lines: 40, role: 'docs', sym: [] }));
+  const cls = mk(10, (i) => ({ name: `C${i}.ts`, sub: '', bytes: 3000, lines: 100, role: 'source', sym: [['A', 'class', 1, 1], ['B', 'type', 5, 1]] }));
+  const st = signatureOf(tests), sd = signatureOf(docs), sc = signatureOf(cls);
+  ok('a signature counts what the files are for', st.roles.test === 1 && sd.roles.docs === 1 && sc.cls === 1);
+  ok('and knows the main language by bytes, not by count', signatureOf([{ name: 'a.rs', bytes: 9000 }, { name: 'b.ts', bytes: 100 }, { name: 'c.ts', bytes: 100 }]).lang === 'rust');
+  const it = interiorOf('modern', 'x', st), idc = interiorOf('norse', 'x', sd), ic = interiorOf('hellas', 'x', sc);
+  ok('a room full of tests gets a tiled floor and a cool mood', ['grid', 'slab'].includes(it.floor) && it.mood && it.mood.why === 'tests');
+  ok('a room full of docs gets wood', idc.floor === 'board' && ['timber', 'lattice'].includes(idc.wall));
+  ok('a room full of classes and types gets a coffered or domed ceiling', ['coffer', 'dome'].includes(ic.ceil) && ic.why.ceil === 'classes');
+  ok('every choice stays inside the style vocabulary', [it, idc, ic].every((ip) => ['floor', 'wall', 'ceil', 'light', 'col'].every((k) => INTERIOR[ip.style.id][k].includes(ip[k]))));
+  const a = interiorOf('modern', 'same-name', st), b = interiorOf('modern', 'same-name', sd);
+  ok('same style, same name, different code → a different room', JSON.stringify([a.floor, a.wall, a.ceil, a.mood && a.mood.why]) !== JSON.stringify([b.floor, b.wall, b.ceil, b.mood && b.mood.why]));
+  ok('the main language tints the room', Array.isArray(it.tint) && it.tint.length === 3);
+  ok('no code, no signature: the room is still deterministic', JSON.stringify(interiorOf('tang', 'q').floor) === JSON.stringify(interiorOf('tang', 'q').floor));
 }
 
 /* ══ 家具的判据:手机上的兜底和服务端的深扫,必须对同一个文件给出同一件家具 ══ */

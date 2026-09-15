@@ -3681,6 +3681,11 @@
     bar.appendChild(projectActions(p, { wide: true }));
 
     show('project');
+    /* ⚠ show() 离开广场时一定会 endProject() —— 把信息流借走的那块地方还回去,这步要留 ——
+       而 endProject 顺手把 viewing 清成了 null。上面刚设的值就这样没了:接下来的
+       replayProject 看到"没有在看的项目"直接返回,点楼进门的 enterWalk 也一样。
+       从广场点进来(现在唯一的入口)正好每次都撞上,所以城市不播、楼也进不去。 */
+    viewing = p;
     // The plaza tab stays lit: this window is somewhere you went FROM the
     // plaza, and an unlit tab bar reads as "you are nowhere".
     var pz = document.querySelector('nav button[data-tab="plaza"]');

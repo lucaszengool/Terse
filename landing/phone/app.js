@@ -3795,10 +3795,26 @@
         },
       }).then(function (room) {
         if (!room) { exitWalk(); return; }
+        /* 进楼 1.5 秒后,真机自己说房间画没画出来、有没有着色器没编译过(api/clientlog.js)。
+           "进去什么都没有"在屏幕上和"还没加载完"一模一样,而且 iOS 的着色器失败不抛错。 */
+        setTimeout(function () {
+          try {
+            var d = room.diag ? room.diag() : {};
+            fetch('/api/cloud/clientlog', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tag: 'room', ok: !d.bad, err: String(d.bad || ''), gl: String(d.gpu || ''),
+                scene: 'points=' + d.points + ' calls=' + d.calls + ' drawn=' + d.drawn + ' maxVU=' + d.maxVU + ' lost=' + d.lost + ' style=' + hit.style,
+                ua: navigator.userAgent, build: window.__TERSE_BUILD || '' }) }).catch(function () {});
+          } catch (e) {}
+        }, 1500);
         // leaves missing ≠ leaves empty: the first is an old capsule, and it says so
         if (!room.hasLeaves) note(t('walk_no_files'));
       }).catch(function (e) {
         exitWalk();
+        try {
+          fetch('/api/cloud/clientlog', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag: 'room-throw', ok: false, err: String((e && (e.stack || e.message)) || e).slice(0, 400),
+              ua: navigator.userAgent, build: window.__TERSE_BUILD || '' }) }).catch(function () {});
+        } catch (e2) {}
         $('pjNote').textContent = t('pj_broke').replace('{why}', (e && (e.message || String(e))) || 'room');
         $('pjNote').classList.remove('hide');
       });

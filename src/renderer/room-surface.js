@@ -50,11 +50,11 @@ uniform vec3 uSunDir, uSunCol, uSky, uGround, uMoon;
 uniform float uKeyK;
 uniform vec4 uL[24]; uniform vec3 uLC[24]; uniform int uNL;
 uniform vec4 uR[8]; uniform vec4 uRH[8]; uniform int uNR;
-uniform vec4 uF[64]; uniform int uNF;
+uniform vec4 uF[32]; uniform int uNF;   // ⚠ 顶点 uniform 总数要留在 iPhone 的上限(≈256 个 vec4)以内,见 setScene
 uniform vec4 uCourt; uniform float uCourtH, uCourtOn;
 uniform sampler2D uShadow; uniform mat4 uShadowVP; uniform float uShadowOn, uShadowTexel;
 // 朝阳的窗:o.xyz 角点 + w 窗型;U.xyz 宽边 + w 所在房间(uR 的下标);V.xyz 高边
-uniform vec4 uWinO[16], uWinU[16], uWinV[16]; uniform int uNWin;
+uniform vec4 uWinO[8], uWinU[8], uWinV[8]; uniform int uNWin;
 // 光遇的空气与暗部:雾(朝太阳 / 背太阳两色)、暗部的颜色、主案那盏白天的焦点光、色调
 uniform vec3 cameraPosition;
 uniform vec3 uFogSun, uFogAway, uShadowTint, uLiftCol, uFocalC; uniform vec4 uFocal;
@@ -78,7 +78,7 @@ float aoOf(vec3 P, vec3 N){
   }
   // 家具脚下:地面上离家具越近越暗 —— 家具才是"放在"地上,不是飘在上面
   if (N.y > 0.5 && P.y < 0.12) {
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < 32; i++) {
       if (i >= uNF) break;
       vec2 q = abs(P.xz - uF[i].xy) - uF[i].zw;
       float sd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
@@ -123,7 +123,7 @@ float barM(float x, float per, float w, float soft){
 }
 float winVis(vec3 P){
   float v = 0.0;
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < 8; i++) {
     if (i >= uNWin) break;
     vec3 o = uWinO[i].xyz, U = uWinU[i].xyz, V = uWinV[i].xyz;
     float ty = uWinO[i].w, ri = uWinU[i].w;
@@ -782,7 +782,7 @@ export function makeUniforms() {
     uMoon: { value: new THREE.Vector3(0.055, 0.065, 0.13) },
     uL: { value: v4(24) }, uLC: { value: v3(24) }, uNL: { value: 0 },
     uR: { value: v4(8) }, uRH: { value: v4(8) }, uNR: { value: 0 },
-    uF: { value: v4(64) }, uNF: { value: 0 },
+    uF: { value: v4(32) }, uNF: { value: 0 },
     uCourt: { value: new THREE.Vector4() }, uCourtH: { value: 3.6 }, uCourtOn: { value: 0 },
     uPx: { value: 800 }, uFogK: { value: 0.0003 }, uFog: { value: new THREE.Color(0, 0, 0) },
     // 抽稀的三档距离(米):这之内全密度,之外依次 1/4、1/16、1/64
@@ -791,8 +791,8 @@ export function makeUniforms() {
     uShadowTexel: { value: 1 / 2048 }, uShadowPx: { value: 40 },
     uDayGlow: { value: 0.15 }, uKeyK: { value: 0.22 }, uRim: { value: new THREE.Vector3(0.2, 0.18, 0.15) }, uSootY: { value: 0 },
     uRocks: { value: Array.from({ length: 4 }, () => new THREE.Vector4()) }, uNRocks: { value: 0 },
-    uWinO: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, uWinU: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) },
-    uWinV: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, uNWin: { value: 0 },
+    uWinO: { value: Array.from({ length: 8 }, () => new THREE.Vector4()) }, uWinU: { value: Array.from({ length: 8 }, () => new THREE.Vector4()) },
+    uWinV: { value: Array.from({ length: 8 }, () => new THREE.Vector4()) }, uNWin: { value: 0 },
     uFogSun: { value: new THREE.Vector3(0.9, 0.85, 0.8) }, uFogAway: { value: new THREE.Vector3(0.7, 0.72, 0.8) },
     uFogA: { value: 0.03 }, uFogB: { value: 0.25 }, uShadowTint: { value: new THREE.Vector3(0.8, 0.82, 1) },
     uSat: { value: 0.92 }, uLift: { value: 0.07 }, uLiftCol: { value: new THREE.Vector3(0.4, 0.42, 0.55) },
@@ -996,7 +996,7 @@ export function setScene(U, { lights = [], rooms = [], feet = [], court = null, 
   // 朝阳的窗(障子不算:江户是纸透进来的柔光,没有硬光斑),大的先上,最多 16 扇
   const sd = U.uSunDir.value;
   const wins = windows.filter((w) => w.type !== 'shoji' && -(sd.x * w.n[0] + sd.y * w.n[1] + sd.z * w.n[2]) > 0.05)
-    .map((w) => ({ w, area: Math.hypot(...w.U) * Math.hypot(...w.V) })).sort((a, b) => b.area - a.area).slice(0, 16);
+    .map((w) => ({ w, area: Math.hypot(...w.U) * Math.hypot(...w.V) })).sort((a, b) => b.area - a.area).slice(0, 8);
   U.uNWin.value = wins.length;
   wins.forEach(({ w }, i) => {
     const ri = w.r ? rooms.slice(0, 8).findIndex((o) => Math.abs(o.x0 - w.r.x0) < 1e-3 && Math.abs(o.z0 - w.r.z0) < 1e-3) : -1;
@@ -1014,8 +1014,11 @@ export function setScene(U, { lights = [], rooms = [], feet = [], court = null, 
   });
   U.uNR.value = Math.min(8, rooms.length);
   rooms.slice(0, 8).forEach((r, i) => { U.uR.value[i].set(r.x0, r.z0, r.x1, r.z1); U.uRH.value[i].set(r.h, r.open ? 1 : 0, 0, 0); });
-  U.uNF.value = Math.min(64, feet.length);
-  feet.slice(0, 64).forEach((f, i) => U.uF.value[i].set(f.x, f.z, f.hw, f.hd));
+  /* ⚠ iPhone 上顶点着色器只有约 256 个 vec4 的 uniform。灯 24+24、房间 8+8、家具脚印 32、
+     窗 8×3、砂纹石头 4,加上矩阵和零散的标量,要一直留在这条线以下 —— 超了不报错,
+     只是整间屋子一个点都不画(桌面上限高得多,本地根本测不出来)。 */
+  U.uNF.value = Math.min(32, feet.length);
+  feet.slice(0, 32).forEach((f, i) => U.uF.value[i].set(f.x, f.z, f.hw, f.hd));
   if (court) { U.uCourt.value.set(court.x0, court.z0, court.x1, court.z1); U.uCourtH.value = court.h; U.uCourtOn.value = 1; }
   else U.uCourtOn.value = 0;
 }

@@ -1092,6 +1092,19 @@ export function createRoom(renderer, dir, opts = {}) {
     update, render, resize, dispose, step, setTime, describe, select,
     time: () => timeMode, layout: L.layout,
     renderNow() { update(0); render(); },
+    /** 真机自检:哪些着色器没编译过(three 只记在 console,不抛)、这一帧画了多少、GPU 的 uniform 上限。 */
+    diag() {
+      const gl = renderer.getContext(), bad = [];
+      for (const p of renderer.info.programs || []) {
+        const d = p.diagnostics;
+        if (d && !d.runnable) bad.push((p.name || '?') + ': ' + ((d.vertexShader && d.vertexShader.log) || '') + ' ' + ((d.fragmentShader && d.fragmentShader.log) || '') + ' ' + (d.programLog || ''));
+      }
+      let maxVU = null, gpu = '';
+      try { maxVU = gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS); gpu = String(gl.getParameter(gl.RENDERER) || ''); } catch (e) {}
+      // lost:iOS 在 GPU 忙不过来时会直接把 WebGL 上下文收走 —— 屏幕同样是什么都没有
+      let lost = null; try { lost = gl.isContextLost(); } catch (e) {}
+      return { bad: bad.join(' | ').slice(0, 700), points: group.userData.points, calls: renderer.info.render.calls, drawn: renderer.info.render.points, maxVU, gpu, lost };
+    },
     // 调试:把"太阳看到的深度"画到屏幕上(越亮越远)。窗洞里能看见地面的地方是亮斑。
     debugShadow() {
       const sc = new THREE.Scene(); sc.add(group.userData.shadow);

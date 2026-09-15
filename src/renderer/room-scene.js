@@ -111,12 +111,25 @@ const GLOW_VS = `
 precision highp float;
 attribute vec3 aColor; attribute float aSize; attribute float aPhase; attribute float aTwk; attribute float aKind;
 uniform float uTime, uPx, uNight, uFogA, uFogB;
-uniform vec3 uSunDir;
+uniform vec3 uSunDir, uHaloC;
 varying vec3 vColor; varying float vA;
 void main(){
-  vec3 p = position;
+  // y < 0 的是地面倒影(teamLab 的镜面地):按本体算动画,最后翻到地下、压暗
+  float mir = position.y < -0.005 ? 1.0 : 0.0;
+  vec3 p = position; p.y = abs(p.y);
   float fade = 1.0, twk = aTwk;
-  if (aKind > 5.5) {
+  if (aKind > 7.5) {
+    // 8 代码光环:这座楼里真实的函数、类名,绕大殿中轴慢慢转,轻轻上下浮
+    float an = uTime * uHaloC.z, cs = cos(an), sn = sin(an);
+    vec2 q = p.xz - uHaloC.xy;
+    p.xz = uHaloC.xy + vec2(q.x * cs - q.y * sn, q.x * sn + q.y * cs);
+    p.y += sin(uTime * 0.5 + aPhase * 6.2831) * 0.03;
+    twk = 0.35;
+  } else if (aKind > 6.5) {
+    // 7 数据流:import 的那条线上,光一段段从引用方流向被引用的文件(aTwk = 这颗点在线上的位置)
+    fade = 0.22 + 1.8 * pow(0.5 + 0.5 * sin((aTwk * 3.0 - uTime * 0.6) * 6.2831), 10.0);
+    twk = 0.0;
+  } else if (aKind > 5.5) {
     // 6 极光丝带(和壁纸 WALLPAPER PULSE 同一种):整条带子沿着自己慢慢起伏、飘动;aTwk 是这条带子的相位
     p.y += sin(p.x * 0.35 + uTime * 0.45 + aTwk) * 0.5 + sin(p.x * 0.9 - uTime * 0.7 + aTwk * 2.0) * 0.15;
     p.z += cos(p.x * 0.25 + uTime * 0.3 + aTwk) * 0.8;
@@ -130,6 +143,7 @@ void main(){
     fade = smoothstep(0.0, 0.12, u) * (1.0 - smoothstep(0.75, 1.0, u));
     twk = 0.5;
   } else p.y += sin(uTime * 0.8 + aPhase * 6.2831) * 0.01 * aTwk;
+  if (mir > 0.5) p.y = -p.y;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float d = -mv.z;
   gl_PointSize = clamp(aSize * uPx / max(0.2, d), 1.0, 64.0);
@@ -144,6 +158,7 @@ void main(){
   vA *= 1.0 - 0.55 * fd;
   // 贴着镜头的发光点淡掉:否则一颗 7cm 的光点在半米外就是一大块光斑
   vA *= smoothstep(0.6, 2.0, d);
+  vA *= mix(1.0, 0.3, mir);   // 倒影淡一些
   vColor = aColor;
   gl_Position = projectionMatrix * mv;
 }`;
@@ -496,12 +511,14 @@ export function createRoom(renderer, dir, opts = {}) {
   /* import 连线:地上一道淡淡的弧,从引用的一方到被引用的一方,颜色从一门语言过渡到
      另一门。一眼看过去,哪几件家具是一伙的就在地上。 */
   const thread = (a, b, bright, emit, col) => {
-    const n = Math.max(10, Math.round(Math.hypot(a.x - b.x, a.z - b.z) * (bright ? 22 : 10)));
+    const n = Math.max(12, Math.round(Math.hypot(a.x - b.x, a.z - b.z) * (bright ? 22 : 16)));
+    const off = ((a.i || 0) * 0.37) % 1;
     for (let k = 0; k <= n; k++) {
       const t = k / n;
       const c = col || mix(a.langRgb || [1, 1, 1], b.langRgb || [1, 1, 1], t);
-      emit(a.x + (b.x - a.x) * t, 0.03 + Math.sin(t * Math.PI) * (bright ? 0.5 : 0.18), a.z + (b.z - a.z) * t,
-           bright ? c : [c[0] * 0.55, c[1] * 0.55, c[2] * 0.55], bright ? 0.05 : 0.032, bright ? 0.4 : 0.2, 2);
+      // 平时是数据流(kind 7):光顺着 import 一段段流过去,tw 带着这颗点在线上的位置;选中时是常亮的高亮线
+      emit(a.x + (b.x - a.x) * t, 0.03 + Math.sin(t * Math.PI) * (bright ? 0.5 : 0.35), a.z + (b.z - a.z) * t,
+           bright ? c : [c[0] * 0.8, c[1] * 0.8, c[2] * 0.8], bright ? 0.05 : 0.04, bright ? 0.4 : t + off, bright ? 2 : 7);
     }
   };
   for (const [i, j] of L.edges) { const a = byIdx.get(i), b = byIdx.get(j); if (a && b) thread(a, b, false, G); }
@@ -510,10 +527,16 @@ export function createRoom(renderer, dir, opts = {}) {
      焦点:主案一带白天也有一盏看不见的暖光,是全屋最亮的地方。 */
   {
     const rr = () => kitOf(hall).rnd.f(), Sk = D.sky, den = Sk.moteDen != null ? Sk.moteDen : 1.2;
+    // 由代码长出来的尺度:文件越多极光越密,代码越多光柱越盛
+    const hsig = sigs.get(keyOf(hall)) || {};
+    const kFiles = Math.max(0.7, Math.min(1.5, 0.7 + (hsig.n || 0) / 120));
+    const kBytes = Math.max(0.6, Math.min(1.6, 0.6 + Math.log10(1 + (hsig.bytes || 0) / 5000) * 0.4));
     for (const r of rooms) {
       const n = Math.round((r.x1 - r.x0) * (r.z1 - r.z0) * den * B * (r.open ? 0.5 : 1));
       const top = r.open ? 4 : r.h * 0.85;
-      for (let i = 0; i < n; i++) G(r.x0 + rr() * (r.x1 - r.x0), 0.2 + rr() * 0.6, r.z0 + rr() * (r.z1 - r.z0), Sk.mote, 0.025 + rr() * 0.02, top, 4);
+      // 每间屋子的光尘带着它主语言的颜色(ts 蓝、py 黄……):同一种风格,代码不同,空气就不同
+      const sg = sigs.get(keyOf(r)), mc = sg && sg.langRgb ? mix(Sk.mote, sg.langRgb, 0.5) : Sk.mote;
+      for (let i = 0; i < n; i++) G(r.x0 + rr() * (r.x1 - r.x0), 0.2 + rr() * 0.6, r.z0 + rr() * (r.z1 - r.z0), mc, 0.025 + rr() * 0.02, top, 4);
     }
     for (const l of lights.slice()) {
       G(l.x, l.y, l.z, l.col.map((v) => v * 0.45), 0.3, 0.3, 1);
@@ -544,7 +567,7 @@ export function createRoom(renderer, dir, opts = {}) {
       const AUR = AURS[styleId] || [P.accent, P.accent2, P.gold];
       for (let k = 0; k < 3; k++) {
         // 只放在大殿后面三分之二:离镜头远,整条带子都在画面里,也不会贴着脸飘过去
-        const c = AUR[k], yb = hall.h * (0.58 + k * 0.08), n = Math.round(5200 * B), zc = hz0 - hw * 0.25 + k * hw * 0.15;
+        const c = AUR[k], yb = hall.h * (0.58 + k * 0.08), n = Math.round(5200 * B * kFiles), zc = hz0 - hw * 0.25 + k * hw * 0.15;
         for (let i = 0; i < n; i++) {
           const t = rr(), v = rr(), x = hall.x0 + 1 + t * (hall.x1 - hall.x0 - 2);
           const y = yb + v * 1.2 * (0.6 + 0.4 * Math.sin(t * 9 + k)), z = zc + Math.sin(t * 8.2 + k * 2) * hw * 0.12;
@@ -555,12 +578,41 @@ export function createRoom(renderer, dir, opts = {}) {
       }
       /* 光之泉:主案上一柱不停往上飘的金色粒子,直通屋顶 —— 全屋的中心 */
       const fz = hall.z0 + 2.05, fc = [0.9 * D.pal.gold[0] + 0.1, 0.9 * D.pal.gold[1] + 0.06, 0.9 * D.pal.gold[2]].map((v) => v * 1.1);
-      for (let i = 0; i < 3000 * B; i++) {
+      for (let i = 0; i < 3000 * B * kBytes; i++) {
         const a = rr() * 6.2832, q = Math.sqrt(rr()) * 0.9;
         G(hx0 + Math.cos(a) * q, 0.3 + rr() * 0.5, fz + Math.sin(a) * q, fc.map((v) => v * 2), 0.06 + rr() * 0.05, hall.h * (0.7 + rr() * 0.3), 4);
       }
       // 光柱本身:沿柱子叠几层大而软的光晕,从地一直亮到顶
       for (let y = 0.4; y < hall.h; y += 0.6) G(hx0, y, fz, fc.map((v) => v * 0.3 * (1 - 0.6 * y / hall.h)), 1.7, 0.15, 2);
+      /* 代码光环:这座楼里真实的函数、类名(导出的优先,每个文件最多两个),写成粒子字排成一圈,
+         绕大殿中轴慢慢转;每个名字是它那个文件的语言色。代码不同,这一圈字就不同 ——
+         这是这间屋子自己的铭文(Anadol:数据就是颜料,而且一直在流动)。 */
+      const words = [];
+      for (const pr of props) {
+        const syms = (pr.sym || []).slice().sort((x, y) => (y[3] ? 1 : 0) - (x[3] ? 1 : 0));
+        const picks = syms.length ? syms.slice(0, 2).map((s) => String(s[0] || '')) : [String(pr.name || '')];
+        for (const w0 of picks) if (w0 && words.length < 28) words.push({ t: w0.slice(0, 22), c: pr.langRgb || [0.8, 0.9, 1] });
+      }
+      if (words.length && typeof document !== 'undefined') {
+        const cv = document.createElement('canvas'), c2 = cv.getContext('2d', { willReadFrequently: true });
+        const R = Math.min(hw * 0.34, 5.2), y0 = Math.max(2.4, Math.min(3.6, hall.h * 0.42)), M = 1 / 110, FNT = '600 34px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+        // 从正对进门的那一侧(大殿里头)开始,角度往前走 —— 从门口、从圈里看,字都是正着读的
+        let ang = -Math.PI / 2 - 0.6;
+        for (const wd of words) {
+          c2.font = FNT;
+          const tw = Math.ceil(c2.measureText(wd.t).width) + 8, span = tw * M;
+          if (ang + Math.PI / 2 + 0.6 + span / R > 6.1) break;
+          cv.width = tw; cv.height = 44;
+          c2.font = FNT; c2.fillStyle = '#fff'; c2.textBaseline = 'top'; c2.fillText(wd.t, 4, 4);
+          const img = c2.getImageData(0, 0, tw, 44).data;
+          for (let yy = 0; yy < 44; yy += 2) for (let xx = 0; xx < tw; xx += 2) {
+            if (img[(yy * tw + xx) * 4 + 3] < 120) continue;
+            const th = ang + (xx * M) / R;
+            G(hx0 + Math.cos(th) * R, y0 + (44 - yy) * M, hz0 + Math.sin(th) * R, [wd.c[0] * 1.5, wd.c[1] * 1.5, wd.c[2] * 1.5], 0.028, 0.35, 8);
+          }
+          ang += span / R + 0.75 / R;
+        }
+      }
     }
     if (L.open) {
       // 露天:三条极光挂在院子北边的夜空里,横过整个院子(白天淡、夜里亮)
@@ -574,6 +626,8 @@ export function createRoom(renderer, dir, opts = {}) {
         }
       }
     }
+    // 代码光环绕着转的中轴(x, z)和转速(弧度/秒)
+    U.uHaloC = { value: new THREE.Vector3(hx0, hz0, 0.05) };
     const sI = D.light.sunI, skc = kelvin(D.light.sunK);
     U.uFocal.value.set(hx0, 1.6, hall.z0 + 2.05, L.open ? 0 : 4.5);
     U.uFocalC.value.set(skc[0] * sI * 0.15, skc[1] * sI * 0.15, skc[2] * sI * 0.15);
@@ -596,6 +650,18 @@ export function createRoom(renderer, dir, opts = {}) {
     freeShadow = renderShadowMap(renderer, U, group, { x0: bx0 - 2, z0: bz0 - 2, x1: bx1 + 2, z1: bz1 + 2, y1: by + 6 }, B >= 0.9 ? 2048 : 1024);
   } catch (e) { U.uShadowOn.value = 0; }
 
+  /* 地面倒影(teamLab 的镜面地):屋里每个高于地面的发光点 —— 灯、火、光柱、极光、光环、
+     数据流 —— 在地下再放一颗,相位也一样,顶点着色器按 y < 0 认出它、同步动画、压暗。
+     地面的粒子之间留着黑缝,倒影就从缝里透上来,像一层湿的石头。 */
+  if (!L.open) {
+    const n0 = NL;
+    for (let i = 0; i < n0 && NL < MAXL; i++) {
+      const y = lPos[i * 3 + 1];
+      if (y < 0.15) continue;
+      G(lPos[i * 3], -y, lPos[i * 3 + 2], [lCol[i * 3], lCol[i * 3 + 1], lCol[i * 3 + 2]], lSiz[i], lTwk[i], lKind[i]);
+      lPha[NL - 1] = lPha[i];
+    }
+  }
   const lGeo = new THREE.BufferGeometry();
   lGeo.setAttribute('position', new THREE.BufferAttribute(lPos.subarray(0, NL * 3), 3));
   lGeo.setAttribute('aColor', new THREE.BufferAttribute(lCol.subarray(0, NL * 3), 3));

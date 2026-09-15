@@ -1172,6 +1172,7 @@
         <div class="row">
           <button class="btn ghost" id="dmBack" type="button" style="min-height:34px;padding:7px 12px">←</button>
           <b class="grow ell" id="dmWho">—</b>
+          <button class="btn ghost" id="dmMore" type="button" style="min-height:34px;padding:7px 12px" aria-label="Report or block">⋯</button>
         </div>
         <p class="tiny hide" id="dmGate" data-t="dm_gate">Your first message goes with the project you tapped — that is what lets it through.</p>
         <div class="msgs" id="dmMsgs"></div>
@@ -1237,6 +1238,12 @@
           </select>
         </div>
         <button class="btn ghost wide" id="signOutBtn" type="button" data-t="sign_out">Sign out</button>
+      </div>
+      <!-- Everyone you blocked, from anywhere — and the way back. -->
+      <div class="card hide" id="blockCard">
+        <h2 data-t="sf_blocks">Blocked users</h2>
+        <div class="list" id="blockList"></div>
+        <p class="muted hide" id="blockEmpty" data-t="sf_blocks_empty">Nobody.</p>
       </div>
       <!-- Notifications. Below the account card because on iPhone this only works
            once the app is on the Home Screen, and the install card sits right
@@ -1368,6 +1375,27 @@
   </div>
 </div>
 
+<!-- ── 举报 · 拉黑 ──────────────────────────────────────────────────────
+     One sheet for a DM, a comment and a room line. After the comment sheet in
+     the markup, so it opens on top of it. -->
+<div class="sheet hide" id="sfSheet">
+  <div class="pane">
+    <div class="grab"></div>
+    <div class="row"><b class="grow ell" id="sfWho">—</b>
+      <button class="btn ghost" id="sfClose" type="button" style="min-height:34px;padding:7px 12px">✕</button></div>
+    <p class="tiny" data-t="sf_why">What is wrong with it?</p>
+    <select id="sfReason" style="background:rgba(0,0,0,.3);border:1px solid var(--line2);border-radius:9px;padding:10px">
+      <option value="spam" data-t="sf_r_spam">Spam or scam</option>
+      <option value="abuse" data-t="sf_r_abuse">Harassment or hate</option>
+      <option value="sexual" data-t="sf_r_sexual">Sexual content</option>
+      <option value="violence" data-t="sf_r_violence">Violence or threats</option>
+      <option value="other" data-t="sf_r_other">Something else</option>
+    </select>
+    <button class="btn primary wide" id="sfReport" type="button" data-t="sf_report">Report</button>
+    <button class="btn ghost wide danger" id="sfBlock" type="button">Block</button>
+  </div>
+</div>
+
 <!-- ── sign-in gate ─────────────────────────────────────────────────── -->
 <!-- ONE SCREEN, AND THE PRODUCT IS THE ONBOARDING.
      The field is already running behind this and already answers a finger, so
@@ -1410,8 +1438,11 @@
 <script src="/phone/mp4.js"></script>
 <script src="/phone/capture.js"></script>
 <script src="/phone/social.js"></script>
+<script src="/phone/safety.js"></script>
 <script src="/phone/frames.js"></script>
 <script src="/phone/tunes.js"></script>
 <script src="/phone/app.js"></script>
+<script src="/phone/account.js"></script>
+<script src="/phone/native.js"></script>
 </body>
 </html>

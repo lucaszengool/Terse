@@ -172,6 +172,14 @@
       fr_already: 'Already your friend', fr_remove: 'Remove',
       fr_remove_ask: 'Remove {name} from your friends?',
       dm_failed: 'Not sent — tap to try again',
+      sf_more: 'Report · block', sf_why: 'What is wrong with it?',
+      sf_r_spam: 'Spam or scam', sf_r_abuse: 'Harassment or hate', sf_r_sexual: 'Sexual content',
+      sf_r_violence: 'Violence or threats', sf_r_other: 'Something else',
+      sf_report: 'Report', sf_block: 'Block {name}',
+      sf_block_ask: 'Block {name}? You will stop seeing their messages, comments and room chat, and they will not be able to message you. They are not told.',
+      sf_reported: 'Reported — a person will review it', sf_blocked: 'Blocked {name}',
+      sf_blocked_thread: 'You blocked this person. Unblock them from the Me tab.',
+      sf_blocks: 'Blocked users', sf_blocks_empty: 'Nobody.', sf_unblock: 'Unblock', sf_unblocked: 'Unblocked',
       dm_empty: 'No messages yet.<br>Tap ✉ on someone\u2019s project, or on a friend.',
       dm_gate: 'Your first message goes with the project you tapped — that is what lets it through.',
       dm_no_reason: 'You can only write to someone about a project they published — open one of theirs first.',
@@ -410,6 +418,14 @@
       fr_already: '已经是好友了', fr_remove: '删除',
       fr_remove_ask: '把 {name} 从好友里删掉?',
       dm_failed: '没发出去 —— 点一下重试',
+      sf_more: '举报 · 拉黑', sf_why: '哪里有问题?',
+      sf_r_spam: '垃圾信息或诈骗', sf_r_abuse: '骚扰或仇恨', sf_r_sexual: '色情内容',
+      sf_r_violence: '暴力或威胁', sf_r_other: '其他',
+      sf_report: '举报', sf_block: '拉黑 {name}',
+      sf_block_ask: '拉黑 {name}?你将不再看到他的私信、评论和房间聊天,他也没法再给你发私信。对方不会收到通知。',
+      sf_reported: '已举报 —— 会有人来看', sf_blocked: '已拉黑 {name}',
+      sf_blocked_thread: '你已拉黑这个人。可以在「我」里取消。',
+      sf_blocks: '已拉黑', sf_blocks_empty: '没有人。', sf_unblock: '取消拉黑', sf_unblocked: '已取消拉黑',
       dm_empty: '还没有私信。<br>在别人的项目上点 ✉，或者在好友那一行点。',
       dm_gate: '第一条消息会挂在你刚点的那个项目上 —— 它就是通行的由头。',
       dm_no_reason: '给陌生人发消息要有由头：只能就他发布过的项目说话，先去打开他的一个项目。',
@@ -1634,14 +1650,30 @@
     }
   }
 
+  /* Members of this room whose lines are not shown here. The server filters the
+     history; live lines go to everyone alike, so they are dropped here. */
+  var roomBlocked = {};
   function addMsg(m) {
+    if (!m || roomBlocked[m.member_id]) return;
     var box = $('msgs');
     var el = document.createElement('div');
     el.className = 'msg' + (m.member_id === myMemberId ? ' me' : '');
+    el.setAttribute('data-member', m.member_id || '');
     var who = document.createElement('span');
     who.className = 'who'; who.textContent = m.name || 'someone';
     el.appendChild(who);
     el.appendChild(document.createTextNode(m.body || ''));
+    // Somebody else's line: tap it to report it or block whoever said it.
+    if (m.member_id !== myMemberId && m.id && m.role !== 'system') {
+      el.onclick = function () {
+        safetySheet({
+          name: m.name,
+          report: function (why) { return Safety.reportRoomMsg(m.id, why, m.body || ''); },
+          block: function () { return Safety.blockRoomMember(m.member_id); },
+          after: function (what, r) { if (what === 'block') dropBlocked((r && r.blocked) || [], m.member_id); },
+        });
+      };
+    }
     box.appendChild(el);
     box.scrollIntoView({ block: 'end' });
     if (wp && wp.peerLog && m.member_id !== myMemberId) {
@@ -1657,6 +1689,8 @@
         myMemberId = s.you || null;
         renderRoom();
         renderRoster(s.members);
+        roomBlocked = {};
+        (s.blocked || []).forEach(function (x) { roomBlocked[x] = true; });
         $('msgs').innerHTML = '';
         (s.messages || []).forEach(addMsg);
         // 快照是"我确实在这个房间里"的第一个证据,城从这里开始放 —— 但只在人正
@@ -1739,6 +1773,7 @@
   }());
 
   var Social = window.TerseSocial;
+  var Safety = window.TerseSafety;
   var myPeer = '';        // my own 32-char id, the one other people message
   var frSeg = 'friends';
   var dmPeer = null;      // the conversation on screen
@@ -2177,6 +2212,10 @@
       } else if (!open) {
         $('dmGate').textContent = t('dm_gate');
       }
+      if (d.blocked) {
+        $('dmGate').textContent = t('sf_blocked_thread');
+        $('dmGate').classList.remove('hide');
+      }
       loadDmList();
     }).catch(function (e) { toast(e.message || '—'); });
   }
@@ -2320,6 +2359,18 @@
         Social.deleteComment(c.id).then(loadComments).catch(function (e) { toast(e.message || '—'); });
       };
       bar.appendChild(del);
+    } else {
+      var more = document.createElement('button');
+      more.type = 'button'; more.textContent = t('sf_more');
+      more.onclick = function () {
+        safetySheet({
+          name: c.author,
+          report: function (why) { return Safety.reportComment(c.id, why); },
+          block: function () { return Safety.blockComment(c.id); },
+          after: function () { loadComments(); },
+        });
+      };
+      bar.appendChild(more);
     }
 
     el.appendChild(head); el.appendChild(body); el.appendChild(bar);
@@ -2354,6 +2405,89 @@
         loadComments();
       })
       .catch(function (e) { toast(e.message || '—'); });
+  }
+
+  /* ── Report · block ──────────────────────────────────────────────────────
+     One sheet for every place somebody can say something to you: a DM, a
+     comment, a room line. A report goes to a person; a block is yours alone —
+     the other side is not told, their words simply stop reaching you. */
+  var sf = null;
+  function safetySheet(o) {
+    if (!requireIdentity() || !Safety) return;
+    sf = o;
+    $('sfWho').textContent = o.name || t('dm_someone');
+    $('sfReason').value = 'spam';
+    $('sfBlock').textContent = t('sf_block').replace('{name}', o.name || t('dm_someone'));
+    $('sfSheet').classList.remove('hide');
+  }
+  function closeSafety() { $('sfSheet').classList.add('hide'); sf = null; }
+  on($('sfClose'), 'click', closeSafety);
+  on($('sfSheet'), 'click', function (e) { if (e.target === $('sfSheet')) closeSafety(); });
+  on($('sfReport'), 'click', function () {
+    var o = sf; if (!o) return;
+    var why = $('sfReason').value || 'other';
+    closeSafety();
+    o.report(why).then(function () {
+      toast(t('sf_reported'));
+      if (window.TerseFeel) window.TerseFeel.tap();
+      if (o.after) o.after('report');
+    }).catch(function (e) { toast(e.message || '—'); });
+  });
+  on($('sfBlock'), 'click', function () {
+    var o = sf; if (!o) return;
+    var nm = o.name || t('dm_someone');
+    // Asks first: it is quiet, and a block made by a slipped thumb would go unnoticed.
+    if (!confirm(t('sf_block_ask').replace('{name}', nm))) return;
+    closeSafety();
+    o.block().then(function (r) {
+      toast(t('sf_blocked').replace('{name}', nm));
+      if (o.after) o.after('block', r);
+    }).catch(function (e) { toast(e.message || '—'); });
+  });
+
+  on($('dmMore'), 'click', function () {
+    if (!dmPeer) return;
+    var peer = dmPeer, nm = dmName;
+    safetySheet({
+      name: nm,
+      report: function (why) { return Safety.reportDm(peer, why); },
+      block: function () { return Safety.blockDm(peer, nm); },
+      after: function (what) { if (what === 'block' && dmPeer === peer) $('dmBack').click(); },
+    });
+  });
+
+  function dropBlocked(list, id) {
+    list.concat(id ? [id] : []).forEach(function (x) { roomBlocked[x] = true; });
+    Array.prototype.forEach.call($('msgs').querySelectorAll('.msg'), function (el) {
+      if (roomBlocked[el.getAttribute('data-member')]) el.parentNode.removeChild(el);
+    });
+  }
+
+  function loadBlocks() {
+    if (!Social.identity() || !Safety) { $('blockCard').classList.add('hide'); return; }
+    Safety.blocks().then(function (d) {
+      var bs = (d && d.blocks) || [];
+      var list = $('blockList');
+      list.innerHTML = '';
+      // Only there once there is something in it — the way back is found where it was left.
+      $('blockCard').classList.toggle('hide', bs.length === 0);
+      $('blockEmpty').classList.toggle('hide', bs.length > 0);
+      bs.forEach(function (b) {
+        var row = document.createElement('div'); row.className = 'item';
+        var box = document.createElement('span'); box.className = 'grow';
+        var nm = document.createElement('b'); nm.className = 'ell'; nm.textContent = b.name || t('dm_someone');
+        box.appendChild(nm); row.appendChild(box);
+        var un = document.createElement('button');
+        un.type = 'button'; un.className = 'btn ghost'; un.style.minHeight = '32px'; un.style.padding = '6px 11px';
+        un.textContent = t('sf_unblock');
+        un.onclick = function () {
+          Safety.unblock(b.id).then(function () { toast(t('sf_unblocked')); loadBlocks(); })
+            .catch(function (e) { toast(e.message || '—'); });
+        };
+        row.appendChild(un);
+        list.appendChild(row);
+      });
+    }).catch(function () {});
   }
 
   /* ── The pairing bar ─────────────────────────────────────────────────────
@@ -2622,6 +2756,7 @@
     // feel like a free one.
     $('proShowMe').classList.toggle('hide', T.isPro());
     $('signOutBtn').classList.toggle('hide', !u);
+    loadBlocks();
 
     var devices = T.link.devices();
     var box = $('deviceList');

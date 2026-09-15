@@ -584,6 +584,11 @@ app.post('/api/checkout', async (req, res) => {
           ? { payment_intent_data: { metadata: { clerk_user_id: clerkUserId, tier: entTier, plan: tier } } }
           : { subscription_data: subscriptionData }),
         ...(custom_text ? { custom_text } : {}),
+        // Every price and every custom_text line above is written in USD. Adaptive
+        // Pricing re-quotes the page in the buyer's currency (a CN buyer saw
+        // "¥35.27 每个月"), which buries the "$0.00 due today" line under a
+        // converted number nobody wrote.
+        adaptive_pricing: { enabled: false },
       });
 
       res.json({ url: session.url, sessionId: session.id });
@@ -821,6 +826,34 @@ app.get('/api/license/:clerkUserId', async (req, res) => {
     }
   } catch (err) {
     console.error('[license] lifetime check error:', err.message);
+  }
+
+  // ── Google Play subscription ──────────────────────────────────────────────
+  // No Stripe customer exists for a Play buyer, so the Stripe lookup below can't
+  // see them. Past the stored expiry, ask Google — a renewal only shows up there.
+  try {
+    const u = db.getUser.get(clerkUserId);
+    const sid = u && u.subscription_id;
+    if (sid && sid.startsWith('play:') && u.status === 'active') {
+      let expiresAt = u.expires_at;
+      let live = !!expiresAt && Date.parse(expiresAt) > Date.now();
+      if (!live) {
+        const v = await playBilling.verifySubscription({ purchaseToken: sid.slice(5), clerkUserId });
+        if (v.ok) { recordPlay(clerkUserId, sid.slice(5), v); live = v.live; expiresAt = v.expiresAt; }
+      }
+      if (live) {
+        return res.json({
+          tier: 'pro',
+          status: 'active',
+          store: 'play',
+          limits: planLimits['pro'] || { optimizations_per_week: -1, max_sessions: 3, max_devices: 2 },
+          expiresAt,
+          trialEnd: null,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[license] play check error:', err.message);
   }
 
   // Check cache first
@@ -1215,7 +1248,40 @@ app.post('/api/auth/apple', async (req, res) => {
 });
 
 // ── IAP Verification (iOS StoreKit) ──
-app.post('/api/iap/verify', (req, res) => {
+// ── Google Play (Android) ──
+// The token is checked with Google before anything is granted (play-billing.js),
+// and the result is written to the users row — licenseCache is a Map and a
+// deploy empties it, so the row is what /api/license reads for Play buyers.
+const playBilling = require('./play-billing');
+function recordPlay(clerkUserId, purchaseToken, v) {
+  const sid = `play:${purchaseToken}`;
+  db.ensureUser(clerkUserId);
+  const row = db.getUser.get(clerkUserId);
+  // A lapsed Play token must not overwrite a Stripe subscription on the same row.
+  if (!v.live && row && row.subscription_id !== sid) return;
+  db.db.prepare('UPDATE users SET tier = ?, subscription_id = ?, status = ?, expires_at = ? WHERE id = ?')
+    .run(v.live ? 'pro' : 'free', sid, v.live ? 'active' : 'cancelled', v.expiresAt, clerkUserId);
+  licenseCache.set(clerkUserId, {
+    tier: v.live ? 'pro' : 'expired', stripeCustomerId: null, subscriptionId: sid,
+    status: v.live ? 'active' : 'cancelled', expiresAt: v.expiresAt,
+  });
+}
+
+app.post('/api/iap/verify', async (req, res) => {
+  if (req.body.platform === 'android') {
+    const { clerkUserId, purchaseToken } = req.body;
+    try {
+      const v = await playBilling.verifySubscription({ purchaseToken, clerkUserId });
+      if (!v.ok) return res.status(v.status).json({ error: v.error });
+      recordPlay(clerkUserId, purchaseToken, v);
+      console.log(`[IAP] Play ${v.state} for ${clerkUserId} (order ${v.orderId}, expires ${v.expiresAt})`);
+      return res.json({ ok: true, tier: v.live ? 'pro' : 'free', expiresAt: v.expiresAt });
+    } catch (err) {
+      console.error('[IAP] Play verification error:', err.message);
+      return res.status(502).json({ error: 'play_verification_failed' });
+    }
+  }
+
   const { clerkUserId, productId, transactionId, originalTransactionId, expirationDate } = req.body;
   if (!clerkUserId || !productId) return res.status(400).json({ error: 'Missing fields' });
 
@@ -1238,26 +1304,49 @@ app.post('/api/iap/verify', (req, res) => {
 });
 
 // ── Account Deletion ──
-app.post('/api/auth/delete', async (req, res) => {
-  const { clerkUserId } = req.body;
-  if (!clerkUserId) return res.status(400).json({ error: 'Missing clerkUserId' });
-
-  console.log(`[Account] Deletion requested for ${clerkUserId}`);
-
-  // Remove from license cache
-  licenseCache.delete(clerkUserId);
-
-  // Delete from Clerk
-  try {
-    const headers = { Authorization: `Bearer ${CLERK_SECRET}` };
-    await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, { method: 'DELETE', headers });
-    console.log(`[Account] Deleted Clerk user ${clerkUserId}`);
-  } catch (err) {
-    console.error(`[Account] Clerk deletion error: ${err.message}`);
-  }
-
-  res.json({ ok: true });
-});
+// This used to delete whatever clerkUserId the body named, with no token — anyone
+// who knew an id could erase that account — and it only ever removed the Clerk
+// user. account.js now requires a Clerk session, derives everything from the
+// verified id, and purges the account's data. The old path is kept for the
+// native apps and runs the same handler.
+const accountRouter = require('./account');
+const clerkUser = (id) => `https://api.clerk.com/v1/users/${encodeURIComponent(id)}`;
+accountRouter.hooks = {
+  async lookupEmail(id) {
+    if (!CLERK_SECRET) return null;
+    const r = await fetch(clerkUser(id), { headers: { Authorization: `Bearer ${CLERK_SECRET}` } });
+    if (!r.ok) return null;
+    const u = await r.json();
+    const all = u.email_addresses || [];
+    const primary = all.find((e) => e.id === u.primary_email_address_id) || all[0];
+    return primary ? primary.email_address.toLowerCase() : null;
+  },
+  // Nobody should keep being billed for an account that no longer exists. A Play
+  // or App Store subscription can only be cancelled by the user in that store.
+  async cancelBilling(id, email, userRow) {
+    const customers = new Set();
+    if (userRow && userRow.stripe_customer_id) customers.add(userRow.stripe_customer_id);
+    if (email) (await stripe.customers.list({ email, limit: 10 })).data.forEach((c) => customers.add(c.id));
+    const cancelled = [];
+    for (const customer of customers) {
+      const subs = await stripe.subscriptions.list({ customer, status: 'all', limit: 20 });
+      for (const s of subs.data) {
+        if (['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(s.status)) {
+          await stripe.subscriptions.cancel(s.id);
+          cancelled.push(s.id);
+        }
+      }
+    }
+    return cancelled;
+  },
+  async deleteAuthUser(id) {
+    const r = await fetch(clerkUser(id), { method: 'DELETE', headers: { Authorization: `Bearer ${CLERK_SECRET}` } });
+    if (!r.ok && r.status !== 404) throw new Error(`Clerk delete returned ${r.status}`);
+  },
+  onDeleted(id) { licenseCache.delete(id); },
+};
+app.post('/api/auth/delete', accountRouter.handleDelete);
+app.use('/api/account', accountRouter);
 
 // ── Marketplace API routes ──
 app.use('/api/marketplace', marketplaceRouter);

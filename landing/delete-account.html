@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delete your Terse account</title>
+  <meta name="description" content="Permanently delete your Terse account and the data stored with it.">
+  <link rel="canonical" href="https://www.terseai.org/delete-account">
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32">
+  <style>
+    :root { --bg: #0b0c0e; --card: #15171a; --line: #26292e; --text: #eceef1; --dim: #9aa1ab; --accent: #6ee7b7; --danger: #ff6b6b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif; }
+    main { max-width: 620px; margin: 0 auto; padding: 56px 20px 80px; }
+    a { color: var(--accent); }
+    h1 { font-size: 28px; line-height: 1.2; margin: 0 0 10px; }
+    .lead { color: var(--dim); margin: 0 0 28px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin: 0 0 16px; }
+    .card h2 { font-size: 15px; margin: 0 0 10px; }
+    ul { margin: 0; padding-left: 20px; color: var(--dim); }
+    li { margin: 4px 0; }
+    .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px; font: inherit; font-weight: 600; cursor: pointer; }
+    .btn.primary { background: var(--accent); color: #062a1d; }
+    .btn.danger { background: var(--danger); color: #2a0606; }
+    .btn:disabled { opacity: .5; cursor: default; }
+    label { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0; color: var(--text); }
+    .who { color: var(--dim); margin: 0 0 12px; }
+    .msg { margin: 14px 0 0; }
+    .msg.err { color: var(--danger); }
+    .tiny { color: var(--dim); font-size: 13px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Delete your Terse account</h1>
+  <p class="lead">This permanently deletes your Terse account and the data stored with it, on every device. It can't be undone.<br>
+    删除 Terse 账号：永久删除账号及其在服务器上的数据，所有设备同时生效，无法恢复。</p>
+
+  <div class="card">
+    <h2>What gets deleted</h2>
+    <ul>
+      <li>Your account, sign-in and profile</li>
+      <li>Plaza posts, comments, likes and reports — and comments others left on your posts</li>
+      <li>Direct messages you sent or received</li>
+      <li>Room memberships and your chat messages; rooms you created are closed</li>
+      <li>Friends, friend links, linked computers, wallpapers and notification subscriptions</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>What happens to billing</h2>
+    <ul>
+      <li>A subscription bought on our website (Stripe) is cancelled immediately.</li>
+      <li>A subscription bought in Google Play or the App Store must be cancelled there — Play Store → Profile → Payments &amp; subscriptions, or iPhone Settings → your name → Subscriptions.</li>
+      <li>Payment records kept by Stripe, Google or Apple are retained by them as the law requires. Server logs and backups roll off within 30 days.</li>
+    </ul>
+  </div>
+
+  <div class="card" id="signedOut">
+    <p class="who">Sign in to the account you want to delete.</p>
+    <button class="btn primary" id="signInBtn" type="button" disabled>Loading…</button>
+  </div>
+
+  <div class="card" id="signedIn" hidden>
+    <p class="who">Signed in as <b id="email"></b></p>
+    <label><input type="checkbox" id="confirm"> I understand my account and its data will be permanently deleted.</label>
+    <button class="btn danger" id="deleteBtn" type="button" disabled>Delete my account</button>
+    <p class="msg" id="msg" hidden></p>
+  </div>
+
+  <div class="card" id="done" hidden>
+    <h2>Your account has been deleted.</h2>
+    <p class="tiny">You've been signed out. If you subscribed through Google Play or the App Store, remember to cancel it there.</p>
+  </div>
+
+  <p class="tiny">Can't sign in? Email <a href="mailto:privacy@terseai.org?subject=Delete%20my%20Terse%20account">privacy@terseai.org</a> from the address on your account and we'll delete it within 30 days. See also our <a href="/privacy">privacy policy</a>.</p>
+</main>
+
+<script
+  async crossorigin="anonymous"
+  data-clerk-publishable-key="pk_live_Y2xlcmsudGVyc2VhaS5vcmck"
+  src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+
+  function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  function render() {
+    var C = window.Clerk, u = C && C.user;
+    $('signedOut').hidden = !!u;
+    $('signedIn').hidden = !u;
+    if (u) {
+      $('email').textContent = (u.primaryEmailAddress && u.primaryEmailAddress.emailAddress) || u.id;
+    } else {
+      $('signInBtn').disabled = false;
+      $('signInBtn').textContent = 'Sign in';
+    }
+  }
+
+  function fail(text) {
+    $('msg').hidden = false; $('msg').className = 'msg err'; $('msg').textContent = text;
+    $('deleteBtn').disabled = !$('confirm').checked;
+  }
+
+  $('confirm').addEventListener('change', function () { $('deleteBtn').disabled = !this.checked; });
+  $('signInBtn').addEventListener('click', function () {
+    window.Clerk.openSignIn({ redirectUrl: location.href });
+  });
+
+  $('deleteBtn').addEventListener('click', function () {
+    var C = window.Clerk;
+    if (!C || !C.session) return fail('Your session expired — sign in again.');
+    $('deleteBtn').disabled = true;
+    $('deleteBtn').textContent = 'Deleting…';
+    C.session.getToken().then(function (tok) {
+      // Install secrets this browser holds reach anything posted before sign-in.
+      var ids = [ls('terse-identity'), ls('terse-identity-legacy')].filter(Boolean);
+      return fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+        body: JSON.stringify({ identities: ids }),
+      });
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      });
+    }).then(function () {
+      try { localStorage.removeItem('terse-identity'); localStorage.removeItem('terse-identity-legacy'); } catch (e) {}
+      $('signedIn').hidden = true; $('done').hidden = false;
+      return C.signOut().catch(function () {});
+    }).catch(function (e) {
+      $('deleteBtn').textContent = 'Delete my account';
+      fail(e.message || 'Something went wrong. Please try again.');
+    });
+  });
+
+  // Clerk's script is async and has no ready event we can bind before it loads.
+  var tries = 0;
+  (function wait() {
+    if (window.Clerk && window.Clerk.load) {
+      window.Clerk.load().then(function () {
+        render();
+        window.Clerk.addListener(render);
+      }).catch(function () { $('signInBtn').textContent = 'Sign-in unavailable — email us below'; });
+      return;
+    }
+    if (++tries < 100) setTimeout(wait, 100);
+    else $('signInBtn').textContent = 'Sign-in unavailable — email us below';
+  })();
+})();
+</script>
+</body>
+</html>

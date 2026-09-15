@@ -38,6 +38,9 @@ const ENGINE_ASSETS = [
   'city-styles.js', 'lang-colors.js', 'rooms.js',
   // 点一座楼走进去:引擎按需 import() 进来,room-scene 再拉 room-interior。
   'room-scene.js', 'room-interior.js', 'room-furniture.js', 'room-surface.js', 'room-arch.js',
+  // 八种风格的设计单(色板、灯光、天与雾):room-scene 和 room-arch 都 import 它 —— 只改它时
+  // 版本号也得变,否则手机一直拿着旧的那份
+  'room-styles.js',
 ];
 
 /** 一段文本里所有 `/phone/xxx.js`。src="" 和 import() 都是这个形状。 */

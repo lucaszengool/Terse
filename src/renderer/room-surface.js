@@ -59,6 +59,9 @@ uniform vec4 uWinO[8], uWinU[8], uWinV[8]; uniform int uNWin;
 uniform vec3 cameraPosition;
 uniform vec3 uFogSun, uFogAway, uShadowTint, uLiftCol, uFocalC; uniform vec4 uFocal;
 uniform float uFogA, uFogB, uSat, uLift;
+uniform vec4 uPick;   // 点了一件家具:(x, z, 点下去的时刻, 强度) —— 一圈光从那里扫开
+uniform float uForm;  // 进门那一刻 0 → 1:粒子从四处聚拢成这间屋子
+uniform vec4 uStep;   // 最近一步落在哪:(x, z, 时刻, 强度) —— 脚下荡开一圈
 
 float aoOf(vec3 P, vec3 N){
   float ao = 1.0;
@@ -630,7 +633,12 @@ ${NOISE_GLSL}
 ${LIGHT_GLSL}
 ${MATERIAL_GLSL}
 void main(){
-${POS_BLOCK}  vec4 mv = modelViewMatrix * vec4(P, 1.0);
+${POS_BLOCK}  /* 入场:粒子从四面八方聚拢成这间屋子(和壁纸的字一样聚出来),离人近的先到。
+     光照和材质仍按落定的位置 P 算,只有画在哪儿(Pd)在飞。 */
+  float fm = clamp(uForm * 1.6 - length(P - cameraPosition) / 30.0, 0.0, 1.0);
+  vec3 rv = vec3(h21(position.xy * 17.3 + seed) - 0.5, h21(position.yx * 29.1 + seed), h21(position.xy * 7.7 - seed) - 0.5);
+  vec3 Pd = P + (rv * vec3(16.0, 10.0, 16.0) + vec3(0.0, 2.0, 0.0)) * pow(1.0 - fm, 3.0);
+  vec4 mv = modelViewMatrix * vec4(Pd, 1.0);
   vec4 clip = projectionMatrix * mv;
   float d = -mv.z;
   /* 看不见的点先扔掉,再算材质和光 —— 任何时候都有一半的点在身后。 */
@@ -692,6 +700,15 @@ ${POS_BLOCK}  vec4 mv = modelViewMatrix * vec4(P, 1.0);
   // 光的涟漪:每隔十来秒一圈亮光从主案出发,扫过整座粒子建筑,扫到的粒子亮一下(壁纸的涟漪)
   float rw = length(P.xz - uFocal.xz) + P.y * 0.3, ph = mod(uTime * 2.6, 34.0) - 4.0;
   vCol *= 1.0 + 0.55 * exp(-(rw - ph) * (rw - ph) * 0.6);
+  // 点一件家具:一圈光从它那里扫开,4 秒里由强到淡(发光点那边同一圈,沿数据流一起走)
+  float pk = uTime - uPick.z, rp = length(P.xz - uPick.xy) - pk * 6.0;
+  vCol *= 1.0 + 0.9 * uPick.w * exp(-rp * rp * 0.8) * max(0.0, 1.0 - pk / 4.0);
+  // 光跟着人走(teamLab):站的地方,脚下和身边柔柔地亮一圈
+  vec2 dq = P.xz - cameraPosition.xz;
+  vCol *= 1.0 + 0.3 * exp(-dot(dq, dq) * 0.3) * (1.0 - smoothstep(0.0, 1.6, P.y));
+  // 走一步,地上荡开一圈
+  float sk = uTime - uStep.z, rs = length(P.xz - uStep.xy) - sk * 2.2;
+  vCol *= 1.0 + 0.7 * uStep.w * exp(-rs * rs * 16.0) * max(0.0, 1.0 - sk / 1.3) * step(P.y, 0.12);
   /* 点的直径:按这一片上**较疏那一向**的点距取,盖得严;但不许超过这一片窄边的一大半 ——
      一本 3cm 宽的书脊,用 3cm 的点去画,边就成了一圈花边。 */
   float sL = max(iT.z, iT.w) / uN, mn = min(iT.z, iT.w);
@@ -764,7 +781,10 @@ void main(){
   vec3 N = normalize(aN);
   float ao = aoOf(position, N);
   vCol = tone(aC * lightAt(position, N, 0.0, ao));
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  // 入场聚拢(和小片那边同一条曲线)
+  float fm = clamp(uForm * 1.6 - length(position - cameraPosition) / 30.0, 0.0, 1.0);
+  vec3 rv = vec3(h21(position.xz * 17.3) - 0.5, h21(position.zx * 29.1), h21(position.xz * 7.7) - 0.5);
+  vec4 mv = modelViewMatrix * vec4(position + (rv * vec3(16.0, 10.0, 16.0) + vec3(0.0, 2.0, 0.0)) * pow(1.0 - fm, 3.0), 1.0);
   float d = -mv.z;
   vec3 fc; vFog = 1.0 - fogOf(position, fc); vFogCol = fc;
   gl_PointSize = clamp(aS * uPx / max(d, 0.05), 1.0, 64.0) * clamp((d - 0.25) / 0.6, 0.0, 1.0);
@@ -799,6 +819,8 @@ export function makeUniforms() {
     uFocal: { value: new THREE.Vector4(0, 1.6, 0, 0) }, uFocalC: { value: new THREE.Vector3() },
     uRimNight: { value: new THREE.Vector3() }, uDetailFw: { value: 0.045 }, uWashH: { value: 6 },
     uGlitter: { value: 0 }, uGlitterDen: { value: 0 },
+    uPick: { value: new THREE.Vector4(0, 0, -99, 0) },
+    uForm: { value: 1 }, uStep: { value: new THREE.Vector4(0, 0, -99, 0) },
   };
 }
 

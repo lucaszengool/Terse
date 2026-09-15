@@ -110,15 +110,22 @@ export function autoTime(now = new Date()) { const h = now.getHours(); return h 
 const GLOW_VS = `
 precision highp float;
 attribute vec3 aColor; attribute float aSize; attribute float aPhase; attribute float aTwk; attribute float aKind;
-uniform float uTime, uPx, uNight, uFogA, uFogB;
+uniform float uTime, uPx, uNight, uFogA, uFogB, uForm;
 uniform vec3 uSunDir, uHaloC;
+uniform vec4 uPick;
 varying vec3 vColor; varying float vA;
 void main(){
   // y < 0 的是地面倒影(teamLab 的镜面地):按本体算动画,最后翻到地下、压暗
   float mir = position.y < -0.005 ? 1.0 : 0.0;
   vec3 p = position; p.y = abs(p.y);
   float fade = 1.0, twk = aTwk;
-  if (aKind > 7.5) {
+  if (aKind > 8.5) {
+    // 9 扫描光(测试多的屋子):一层绿光从地面扫到顶,再从头来 —— 一轮轮在跑的测试。aTwk = 扫多高
+    float s = fract(uTime * 0.12);
+    p.y = 0.05 + s * aTwk;
+    fade = smoothstep(0.0, 0.06, s) * (1.0 - smoothstep(0.8, 1.0, s)) * 1.4;
+    twk = 0.0;
+  } else if (aKind > 7.5) {
     // 8 代码光环:这座楼里真实的函数、类名,绕大殿中轴慢慢转,轻轻上下浮
     float an = uTime * uHaloC.z, cs = cos(an), sn = sin(an);
     vec2 q = p.xz - uHaloC.xy;
@@ -143,6 +150,11 @@ void main(){
     fade = smoothstep(0.0, 0.12, u) * (1.0 - smoothstep(0.75, 1.0, u));
     twk = 0.5;
   } else p.y += sin(uTime * 0.8 + aPhase * 6.2831) * 0.01 * aTwk;
+  // 光尘被人轻轻推开(teamLab:空间回应人的存在)
+  if (aKind > 3.5 && aKind < 5.5) { vec2 dq = p.xz - cameraPosition.xz; float dl = max(length(dq), 1e-3); p.xz += dq / dl * max(0.0, 1.6 - dl) * 0.7; }
+  // 入场:发光点也从四处聚拢,和墙地同一条曲线
+  float fm = clamp(uForm * 1.6 - length(p - cameraPosition) / 30.0, 0.0, 1.0);
+  p += (vec3(sin(aPhase * 91.0), fract(aPhase * 37.0), cos(aPhase * 53.0)) * vec3(16.0, 10.0, 16.0) + vec3(0.0, 2.0, 0.0)) * pow(1.0 - fm, 3.0);
   if (mir > 0.5) p.y = -p.y;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float d = -mv.z;
@@ -159,6 +171,9 @@ void main(){
   // 贴着镜头的发光点淡掉:否则一颗 7cm 的光点在半米外就是一大块光斑
   vA *= smoothstep(0.6, 2.0, d);
   vA *= mix(1.0, 0.3, mir);   // 倒影淡一些
+  // 点了一件家具:和表面同一圈光扫过,光环、数据流、光尘被扫到的那一下亮起来
+  float pk = uTime - uPick.z, rp = length(p.xz - uPick.xy) - pk * 6.0;
+  vA *= 1.0 + 2.5 * uPick.w * exp(-rp * rp * 0.8) * max(0.0, 1.0 - pk / 4.0);
   vColor = aColor;
   gl_Position = projectionMatrix * mv;
 }`;
@@ -298,6 +313,7 @@ export function createRoom(renderer, dir, opts = {}) {
   const spacing = opts.spacing || (B >= 0.9 ? 0.028 : B >= 0.6 ? 0.036 : 0.045);
   const S = new Surfaces(spacing);
   const U = makeUniforms();
+  U.uForm.value = 0;   // 进门:粒子从 0 聚到 1(update 里走,约 2.4 秒)
   /* 设计单:这个风格的层高、太阳、补光、灯色(见 room-styles.js)。层高按风格定基准,
      代码量上下浮动 —— 江户的屋子矮,古埃及的殿高,北欧是低墙加一个两坡顶。 */
   const D = designOf(styleId);
@@ -518,7 +534,7 @@ export function createRoom(renderer, dir, opts = {}) {
       const c = col || mix(a.langRgb || [1, 1, 1], b.langRgb || [1, 1, 1], t);
       // 平时是数据流(kind 7):光顺着 import 一段段流过去,tw 带着这颗点在线上的位置;选中时是常亮的高亮线
       emit(a.x + (b.x - a.x) * t, 0.03 + Math.sin(t * Math.PI) * (bright ? 0.5 : 0.35), a.z + (b.z - a.z) * t,
-           bright ? c : [c[0] * 0.8, c[1] * 0.8, c[2] * 0.8], bright ? 0.05 : 0.04, bright ? 0.4 : t + off, bright ? 2 : 7);
+           bright ? c : [c[0] * 0.8, c[1] * 0.8, c[2] * 0.8], bright ? 0.05 : 0.04, t + off, 7);
     }
   };
   for (const [i, j] of L.edges) { const a = byIdx.get(i), b = byIdx.get(j); if (a && b) thread(a, b, false, G); }
@@ -537,6 +553,38 @@ export function createRoom(renderer, dir, opts = {}) {
       // 每间屋子的光尘带着它主语言的颜色(ts 蓝、py 黄……):同一种风格,代码不同,空气就不同
       const sg = sigs.get(keyOf(r)), mc = sg && sg.langRgb ? mix(Sk.mote, sg.langRgb, 0.5) : Sk.mote;
       for (let i = 0; i < n; i++) G(r.x0 + rr() * (r.x1 - r.x0), 0.2 + rr() * 0.6, r.z0 + rr() * (r.z1 - r.z0), mc, 0.025 + rr() * 0.02, top, 4);
+    }
+    /* 屋子里是什么代码,空气里就有什么光(按这间屋子自己的代码签名,可以叠):
+         测试多 → 一层绿光从地面扫到顶,一轮一轮,像在跑测试
+         文档多 → 暖白的纸屑从顶上慢慢飘落
+         配置/数据多 → 地上三圈琥珀色的轨道,光沿着圈走
+         界面(组件、样式)多 → 彩虹色的光尘
+         类型/类多 → 顶下一片紫色的晶格
+       同一种风格的两座楼,代码不一样,走进去的光就不一样。 */
+    for (const r of rooms) {
+      if (r.open) continue;
+      const sg = sigs.get(keyOf(r));
+      if (!sg || !sg.n) continue;
+      const Rl = sg.roles || {}, rw = r.x1 - r.x0, rd = r.z1 - r.z0, area = rw * rd, rcx = (r.x0 + r.x1) / 2, rcz = (r.z0 + r.z1) / 2;
+      if ((Rl.test || 0) >= 0.25) {
+        const st = 0.4 / Math.sqrt(Math.max(0.3, B));
+        for (let x = r.x0 + 0.3; x < r.x1 - 0.2; x += st) for (let z = r.z0 + 0.3; z < r.z1 - 0.2; z += st)
+          G(x + (rr() - 0.5) * 0.1, 0.05, z + (rr() - 0.5) * 0.1, [0.4, 1, 0.66], 0.03, r.h * 0.9, 9);
+      }
+      if ((Rl.docs || 0) >= 0.25) for (let i = 0; i < area * 2.2 * B; i++)
+        G(r.x0 + rr() * rw, r.h - 0.3, r.z0 + rr() * rd, [1, 0.93, 0.8], 0.035 + rr() * 0.02, -(r.h - 0.4), 4);
+      if ((sg.cfg || 0) >= 0.25) for (const [k, rad] of [[0, 0.9], [1, 1.5], [2, 2.1]]) {
+        const Rg = Math.min(rad, Math.min(rw, rd) * 0.35), n = Math.round(Rg * 70);
+        for (let i = 0; i < n; i++) { const a = i / n * 6.2832; G(rcx + Math.cos(a) * Rg, 0.06, rcz + Math.sin(a) * Rg, [1, 0.72, 0.3], 0.035, i / n + k * 0.3, 7); }
+      }
+      if ((sg.ui || 0) >= 0.3) for (let i = 0; i < area * 1.6 * B; i++) {
+        const hh = rr(), c = [0.5 + 0.5 * Math.cos(6.2832 * hh), 0.5 + 0.5 * Math.cos(6.2832 * (hh + 0.33)), 0.5 + 0.5 * Math.cos(6.2832 * (hh + 0.67))];
+        G(r.x0 + rr() * rw, 0.3 + rr() * 0.8, r.z0 + rr() * rd, c, 0.03 + rr() * 0.02, r.h * 0.8, 4);
+      }
+      if ((sg.cls || 0) >= 0.45 && r.h >= 3.2) for (let x = r.x0 + 0.8; x < r.x1 - 0.5; x += 1.2) for (let z = r.z0 + 0.8; z < r.z1 - 0.5; z += 1.2) for (let y = r.h - 1.6; y < r.h - 0.4; y += 0.6) {
+        G(x, y, z, [0.72, 0.62, 1], 0.05, 0.8, 2);
+        for (let q = 1; q < 5; q++) { G(x + q * 0.24, y, z, [0.36, 0.3, 0.55], 0.018, 0.2, 2); G(x, y, z + q * 0.24, [0.36, 0.3, 0.55], 0.018, 0.2, 2); }
+      }
     }
     for (const l of lights.slice()) {
       G(l.x, l.y, l.z, l.col.map((v) => v * 0.45), 0.3, 0.3, 1);
@@ -695,7 +743,8 @@ export function createRoom(renderer, dir, opts = {}) {
     g.setAttribute('aSize', new THREE.BufferAttribute(f32(1, (a, n, q) => { a[n] = q[4]; }), 1));
     g.setAttribute('aPhase', new THREE.BufferAttribute(f32(1, (a, n) => { a[n] = n / pts.length; }), 1));
     g.setAttribute('aTwk', new THREE.BufferAttribute(f32(1, (a, n, q) => { a[n] = q[5]; }), 1));
-    g.setAttribute('aKind', new THREE.BufferAttribute(f32(1, () => {}).fill(2), 1));
+    // 选中的那件,它的 import 线也是数据流(kind 7):光从它流向它引用的文件、从引用它的文件流进来
+    g.setAttribute('aKind', new THREE.BufferAttribute(f32(1, () => {}).fill(7), 1));
     selGlow = new THREE.Points(g, selMat);
     selGlow.frustumCulled = false; selGlow.renderOrder = 2;
     scene.add(selGlow);
@@ -752,6 +801,7 @@ export function createRoom(renderer, dir, opts = {}) {
 
   /* ── 走 ── */
   let yaw = L.start.yaw, pitch = -0.04, px = L.start.x, pz = L.start.z, t = 0;
+  let lastStepX = px, lastStepZ = pz;   // 脚步涟漪:上一步落在哪
   let dragging = false, lastX = 0, lastY = 0, downX = 0, downY = 0;
   const keys = new Set();
   const move = { x: 0, z: 0 };
@@ -944,10 +994,20 @@ export function createRoom(renderer, dir, opts = {}) {
       const d = Math.hypot(s.x - e.clientX, s.y - e.clientY) * (0.6 + dist / 20);
       if (d < bd) { bd = d; best = p; }
     }
+    if (!best) {
+      // 点在空处:一圈光从点到的那块地上荡开
+      const rc = rectOf(), nx = ((e.clientX - rc.left) / W) * 2 - 1, ny = -((e.clientY - rc.top) / H) * 2 + 1;
+      const v = new THREE.Vector3(nx, ny, 0.5).unproject(camera).sub(camera.position).normalize();
+      if (v.y < -0.02) { const k = -camera.position.y / v.y; U.uPick.value.set(camera.position.x + v.x * k, camera.position.z + v.z * k, U.uTime.value, 0.8); }
+    }
     select(best);
     if (best && opts.onPick) { try { opts.onPick(best, describe(best)); } catch (err) {} }
   });
-  function select(p) { selected = p || null; highlight(selected); }
+  function select(p) {
+    selected = p || null; highlight(selected);
+    // 一圈光从它那里扫开(表面和发光点两边的着色器都认 uPick)
+    if (selected) U.uPick.value.set(selected.x, selected.z, U.uTime.value, 1);
+  }
 
   const labels = [], itemTags = [];   // 名牌和符号签已经换成粒子字(textPool);空数组留给 dispose
 
@@ -1040,6 +1100,9 @@ export function createRoom(renderer, dir, opts = {}) {
   }
 
   function update(dt) {
+    U.uForm.value = Math.min(1, U.uForm.value + Math.min(0.1, dt || 0) / 2.4);
+    // 每走 0.75 米,脚下荡开一圈
+    if (Math.hypot(px - lastStepX, pz - lastStepZ) > 0.75) { lastStepX = px; lastStepZ = pz; U.uStep.value.set(px, pz, U.uTime.value, 1); }
     dt = Math.min(0.05, Math.max(0, dt || 0));
     t += dt;
     U.uTime.value = t;
@@ -1157,7 +1220,7 @@ export function createRoom(renderer, dir, opts = {}) {
   return {
     update, render, resize, dispose, step, setTime, describe, select,
     time: () => timeMode, layout: L.layout,
-    renderNow() { update(0); render(); },
+    renderNow() { U.uForm.value = 1; update(0); render(); },
     /** 真机自检:哪些着色器没编译过(three 只记在 console,不抛)、这一帧画了多少、GPU 的 uniform 上限。 */
     diag() {
       const gl = renderer.getContext(), bad = [];

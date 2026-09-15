@@ -174,7 +174,7 @@ function floor(S, A, C, fl) {
       }
       if (ip.floor !== 'board') {
         // 方砖地沿墙内侧一圈联珠纹锦带(离墙 0.6m、宽 0.5m)
-        const m = 0.6, bw = 0.5, LZ = [0.14, 0.22, 0.42];
+        const m = 0.5, bw = 0.9, LZ = [0.22, 0.34, 0.62];
         strip(r.x0 + m, r.z0 + m, r.x1 - m, r.z0 + m + bw, MAT.lianzhu, LZ, C.gold, 0.005);
         strip(r.x0 + m, r.z1 - m - bw, r.x1 - m, r.z1 - m, MAT.lianzhu, LZ, C.gold, 0.005);
         strip(r.x0 + m, r.z0 + m + bw, r.x0 + m + bw, r.z1 - m - bw, MAT.lianzhu, LZ, C.gold, 0.005);
@@ -213,9 +213,15 @@ function floor(S, A, C, fl) {
     case 'norse':
       q(MAT.earth, C.floor);
       strip(r.x0, r.z0, r.x1, r.z0 + 1.4, MAT.wood, C.wood, null, 0.006); strip(r.x0, r.z1 - 1.4, r.x1, r.z1, MAT.wood, C.wood, null, 0.006);
+      // 火塘两边各一条织毯(和墙上挂毯同一种:红底一队人马),从大殿这头铺到那头
+      if (A.isHall) for (const sz of [-1, 1]) strip(r.x0 + 2, cz + sz * 1.9 - 0.4, r.x1 - 2, cz + sz * 1.9 + 0.4, MAT.tapestry, [0.55, 0.1, 0.06], C.gold, 0.007);
       break;
     // 现代一律洞石:发光网格地看着像廉价写字楼。测试多的屋子(grid)只是石头略深一档
-    default: q(MAT.travertine, ip.floor === 'grid' ? sh(C.floor, 0.88) : C.floor);
+    default:
+      q(MAT.travertine, ip.floor === 'grid' ? sh(C.floor, 0.88) : C.floor);
+      // 主案前一张色域羊毛毯:素净的洞石上,一块柔边的大色
+      if (A.isHall) strip(cx - 3, r.z0 + 3, cx + 3, r.z0 + 7, MAT.colorfield, [A.rnd(), A.rnd(), A.rnd()], null, 0.008);
+      break;
   }
 }
 
@@ -1026,7 +1032,8 @@ export function sky(G, rnd) {
   for (let i = 0; i < 900; i++) { const z = rnd() * 2 - 1, an = rnd() * TAU, q = Math.sqrt(1 - z * z) * Math.sqrt(rnd()); G(-36 + Math.cos(an) * q * 5, 62 + z * 5, -70 + Math.sin(an) * q * 5, [1, 0.97, 0.86], 1.6, 0.1, 1); }
   for (let c = 0; c < 8; c++) {
     const an = rnd() * TAU, R = 55 + rnd() * 35, cx = Math.cos(an) * R, cz = Math.sin(an) * R, cy = 30 + rnd() * 12;
-    for (let i = 0; i < 500; i++) { const u = rnd() * 2 - 1, a = rnd() * TAU, q = Math.sqrt(1 - u * u) * Math.pow(rnd(), 0.4); G(cx + Math.cos(a) * q * 11, cy + u * 2.4, cz + Math.sin(a) * q * 6, [0.98, 0.98, 1], 4.5, 0.1, 3); }
+    // 云:很淡的一团(泛光加强以后,亮的云会糊成几大块白光)
+    for (let i = 0; i < 500; i++) { const u = rnd() * 2 - 1, a = rnd() * TAU, q = Math.sqrt(1 - u * u) * Math.pow(rnd(), 0.4); G(cx + Math.cos(a) * q * 11, cy + u * 2.4, cz + Math.sin(a) * q * 6, [0.22, 0.23, 0.27], 3.0, 0.1, 3); }
   }
 }
 

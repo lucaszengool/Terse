@@ -548,7 +548,8 @@ export function createRoom(renderer, dir, opts = {}) {
         for (let i = 0; i < n; i++) {
           const t = rr(), v = rr(), x = hall.x0 + 1 + t * (hall.x1 - hall.x0 - 2);
           const y = yb + v * 1.2 * (0.6 + 0.4 * Math.sin(t * 9 + k)), z = zc + Math.sin(t * 8.2 + k * 2) * hw * 0.12;
-          const br = (0.3 + 0.7 * Math.pow(1 - v, 2)) * 2.6;
+          // 矮的屋子(江户、北欧、现代)极光就在头顶,亮度按层高打折,不然整间屋子被淹成白的
+          const br = (0.3 + 0.7 * Math.pow(1 - v, 2)) * 2.6 * Math.max(0.35, Math.min(1, (hall.h - 3) / 4));
           G(x, y, z, [c[0] * br, c[1] * br, c[2] * br], 0.07 + rr() * 0.07, k * 2.1, 6);
         }
       }
@@ -560,6 +561,18 @@ export function createRoom(renderer, dir, opts = {}) {
       }
       // 光柱本身:沿柱子叠几层大而软的光晕,从地一直亮到顶
       for (let y = 0.4; y < hall.h; y += 0.6) G(hx0, y, fz, fc.map((v) => v * 0.3 * (1 - 0.6 * y / hall.h)), 1.7, 0.15, 2);
+    }
+    if (L.open) {
+      // 露天:三条极光挂在院子北边的夜空里,横过整个院子(白天淡、夜里亮)
+      const AUR2 = [D.pal.accent, D.pal.accent2, D.pal.gold];
+      for (let k = 0; k < 3; k++) {
+        const c = AUR2[k], n = Math.round(6000 * B);
+        for (let i = 0; i < n; i++) {
+          const t = rr(), v = rr(), x = -30 + t * 60, y = 8 + k * 1.8 + v * 2.5, z = -18 - k * 5 + Math.sin(t * 5 + k) * 6;
+          const br = (0.3 + 0.7 * Math.pow(1 - v, 2)) * 2.6;
+          G(x, y, z, [c[0] * br, c[1] * br, c[2] * br], 0.18 + rr() * 0.15, k * 2.1, 6);
+        }
+      }
     }
     const sI = D.light.sunI, skc = kelvin(D.light.sunK);
     U.uFocal.value.set(hx0, 1.6, hall.z0 + 2.05, L.open ? 0 : 4.5);

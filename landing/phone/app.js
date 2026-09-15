@@ -2986,6 +2986,27 @@
         if (el && el.checkMore) el.checkMore();
       }, 140);
     });
+    /* ⚠ 单击一座楼就走进去 —— 就在信息流里。
+       进楼原本只挂在项目窗口(#pjSpace)上,而广场改成全屏信息流以后,**没有任何地方
+       再调用 openProject**:手机上永远只看得到城市,点楼什么都不发生,房间的代码
+       一次都没被加载过(所以连 clientlog 都是空的)。现在:在信息流里点中一座楼 →
+       打开这个项目 → 走进那座楼。只认真正的"点":手指挪了或按久了是在刷,不是在点;
+       点在右边那排按钮、链接、说明文字上的也不算。renderProjects 会反复调用,只挂一次。 */
+    if (!feed._walkTap) {
+      feed._walkTap = true;
+      var tapX = 0, tapY = 0, tapT = 0, pendWalk = null;
+      on(feed, 'pointerdown', function (e) { tapX = e.clientX; tapY = e.clientY; tapT = Date.now(); });
+      on(feed, 'pointerup', function (e) {
+        if (e.target && e.target.closest && e.target.closest('button, a, .rail, .meta')) return;
+        if (Math.hypot(e.clientX - tapX, e.clientY - tapY) > 10 || Date.now() - tapT > 400) return;
+        var hit = null;
+        try { hit = wp && wp.towerAt ? wp.towerAt(e.clientX, e.clientY) : null; } catch (err) { hit = null; }
+        var p = projPool[feedAt];
+        if (!hit || !hit.dir || !p) return;
+        clearTimeout(pendWalk);
+        pendWalk = setTimeout(function () { pendWalk = null; openProject(p); enterWalk(hit); }, 60);
+      });
+    }
     // And play the one you land on, without waiting for a scroll that may never
     // come — most people look at the first project before they touch anything.
     feedAt = 0;
